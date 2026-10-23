@@ -10,6 +10,9 @@ export class RecorderError extends Error {
   }
 }
 
+/** Processing was postponed by the user; the recording waits under Unfinished recordings. */
+export const PROCESSING_DEFERRED = 'Processing was stopped. Your recording is kept under Unfinished recordings; finish it there any time.'
+
 export const SOURCE_GONE = 'The screen or window you picked is no longer available. Pick it again and retry.'
 
 /** Removes Electron's "Error invoking remote method '…': Error: " wrapper from IPC errors. */

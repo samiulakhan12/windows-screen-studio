@@ -99,6 +99,8 @@ export interface RecordingApi {
   finishRegion(region: NormRect | null): void
   listUnfinishedRecordings(): Promise<UnfinishedRecording[]>
   recoverRecording(id: string): Promise<string>
+  /** Stops the conversion in progress; the recording stays under Unfinished recordings. */
+  finishProcessingLater(): Promise<void>
   openPrivacySettings(kind: 'microphone' | 'camera'): Promise<void>
   onRecorderCommand(cb: (command: RecorderCommand) => void): () => void
   onRecordingStatus(cb: (status: ToolbarStatus) => void): () => void

@@ -5,7 +5,7 @@ import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
 import { cameras, listInputDevices, microphones, onDevicesChanged } from '../recorder/devices'
-import { friendlyError, SOURCE_GONE } from '../../../shared/recording/errors'
+import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE } from '../../../shared/recording/errors'
 import '../recorder/recorder.css'
 
 const PREFS_KEY = 'recorder-prefs'
@@ -208,7 +208,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       }
     } catch (err) {
       const state = toErrorState(err)
-      setError(state)
+      if (state.message === PROCESSING_DEFERRED) warnings.push(state.message)
+      else setError(state)
       if (state.message === SOURCE_GONE || /no longer available/.test(state.message)) void refreshSources()
     } finally {
       running.current = false
@@ -229,7 +230,9 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     try {
       onOpenProject(await window.api.recoverRecording(item.id))
     } catch (err) {
-      setError(toErrorState(err))
+      const state = toErrorState(err)
+      if (state.message === PROCESSING_DEFERRED) setNotices([state.message])
+      else setError(state)
       setBusy(null)
       void refreshLibrary()
     } finally {
@@ -450,6 +453,11 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </div>
               <span className="muted">{Math.round(overlay.progress * 100)}%</span>
             </>
+          )}
+          {busy && (
+            <button className="btn" onClick={() => void window.api.finishProcessingLater()} title="Keep the recording and convert it later from Unfinished recordings">
+              Finish later
+            </button>
           )}
         </div>
       )}

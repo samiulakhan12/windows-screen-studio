@@ -17,6 +17,7 @@ export const recordingApi: RecordingApi = {
   finishRegion: (region) => ipcRenderer.send('region:done', region),
   listUnfinishedRecordings: () => ipcRenderer.invoke('recordings:unfinished'),
   recoverRecording: (id) => ipcRenderer.invoke('recordings:recover', id),
+  finishProcessingLater: () => ipcRenderer.invoke('recordings:finishLater'),
   openPrivacySettings: (kind) => ipcRenderer.invoke('recording:privacySettings', kind),
   onRecorderCommand: (cb) => subscribe<RecorderCommand>('recorder:command', cb),
   onRecordingStatus: (cb) => subscribe<ToolbarStatus>('recording:status', cb),

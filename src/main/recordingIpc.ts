@@ -25,6 +25,7 @@ import type {
   ToolbarStatus,
   TrackKind
 } from '../shared/api/recording'
+import { PROCESSING_DEFERRED } from '../shared/recording/errors'
 import type { CaptureSource, NormRect, RecordingStatus } from '../shared/types'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
@@ -63,6 +64,8 @@ let stopShortcut = false
 let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
 /** Recordings whose proxies are being built (they have no project.json yet). */
 const processing = new Set<string>()
+/** Recordings whose processing the user postponed ("Finish later"). */
+const deferred = new Set<string>()
 const sourceInfo = new Map<string, { name: string; displayId?: string }>()
 let allowClose = false
 
@@ -373,11 +376,45 @@ function setStatus(token: string, status: RecordingStatus): void {
   sendToolbarStatus(lastStatus)
 }
 
+/**
+ * Builds the project from a stopped recording's raw files. On any failure the raw
+ * files stay as an unfinished recording (retryable from Home); only a recording with
+ * nothing in it is removed.
+ */
+async function runProcessing(m: projects.RecordingManifest, explainWhere: boolean): Promise<string> {
+  processing.add(m.id)
+  try {
+    m.status = 'processing'
+    m.error = null
+    await projects.writeManifest(m)
+    return (await processRecording(m, sendProgress)).id
+  } catch (err) {
+    if (deferred.has(m.id)) {
+      m.status = 'interrupted'
+      await projects.writeManifest(m).catch(() => undefined)
+      throw new Error(PROCESSING_DEFERRED)
+    }
+    const message = friendlyMessage(err)
+    console.error('Processing the recording failed:', err)
+    if (err instanceof EmptyRecordingError) {
+      await projects.deleteProject(m.id).catch(() => undefined)
+      throw new Error(message)
+    }
+    m.status = 'failed'
+    m.error = message
+    await projects.writeManifest(m).catch(() => undefined)
+    const where = explainWhere ? ` Your recording was kept in “${projects.projectDir(m.id)}”; you can retry it from Unfinished recordings.` : ''
+    throw new Error(`${message}${where}`)
+  } finally {
+    processing.delete(m.id)
+    deferred.delete(m.id)
+  }
+}
+
 async function save(token: string, payload: SaveRecordingPayload): Promise<string> {
   const s = requireSession(token)
   beginStop(s)
   s.phase = 'processing'
-  processing.add(s.id)
   grant = null
   const m = s.manifest
   try {
@@ -387,27 +424,11 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
     m.duration = measured > 0 ? measured : s.activeSeconds()
     m.webcamOffset = Number.isFinite(payload.webcamOffset) ? payload.webcamOffset : 0
     m.audioOffset = Number.isFinite(payload.audioOffset) ? payload.audioOffset : 0
-    m.status = 'processing'
     await writeTrack(s, m.duration)
-    await projects.writeManifest(m)
-    const project = await processRecording(m, sendProgress)
-    return project.id
-  } catch (err) {
-    const message = friendlyMessage(err)
-    console.error('Saving the recording failed:', err)
-    if (err instanceof EmptyRecordingError) {
-      // Nothing to keep: do not leave an empty folder behind.
-      await projects.deleteProject(s.id).catch(() => undefined)
-      throw new Error(message)
-    }
-    m.status = 'failed'
-    m.error = message
-    await projects.writeManifest(m).catch(() => undefined)
-    throw new Error(`${message} Your recording was kept in “${s.dir}”; you can retry it from Unfinished recordings.`)
+    return await runProcessing(m, true)
   } finally {
     // The input hook only ever runs while recording.
     tracker.stop()
-    processing.delete(s.id)
     if (active === s) active = null
   }
 }
@@ -423,27 +444,7 @@ async function recover(id: string): Promise<string> {
   if (active) throw new Error('Finish the current recording first.')
   if (processing.has(id)) throw new Error('This recording is already being processed.')
   const m = (await projects.readManifest(id)) ?? (await projects.legacyManifest(id))
-  processing.add(id)
-  try {
-    m.status = 'processing'
-    m.error = null
-    await projects.writeManifest(m)
-    const project = await processRecording(m, sendProgress)
-    return project.id
-  } catch (err) {
-    const message = friendlyMessage(err)
-    console.error('Recovering the recording failed:', err)
-    if (err instanceof EmptyRecordingError) {
-      await projects.deleteProject(id).catch(() => undefined)
-      throw new Error(`${message} The empty recording was removed.`)
-    }
-    m.status = 'failed'
-    m.error = message
-    await projects.writeManifest(m).catch(() => undefined)
-    throw new Error(message)
-  } finally {
-    processing.delete(id)
-  }
+  return runProcessing(m, false)
 }
 
 async function pickRegion(sourceId: string): Promise<RegionSelection | null> {
@@ -501,6 +502,11 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('recording:pickRegion', (_e, sourceId: string) => pickRegion(sourceId))
   ipcMain.handle('recordings:unfinished', () => projects.listUnfinished(new Set([...processing, ...(active ? [active.id] : [])])))
   ipcMain.handle('recordings:recover', (_e, id: string) => recover(id))
+  ipcMain.handle('recordings:finishLater', () => {
+    // The raw files stay; the recording is listed as unfinished.
+    for (const id of processing) deferred.add(id)
+    killAllFfmpeg()
+  })
   ipcMain.handle('recording:privacySettings', async (_e, kind: 'microphone' | 'camera') => {
     if (process.platform === 'win32') await shell.openExternal(`ms-settings:privacy-${kind === 'camera' ? 'webcam' : 'microphone'}`)
   })
