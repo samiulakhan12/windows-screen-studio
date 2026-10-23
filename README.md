@@ -9,6 +9,7 @@ Built with Electron, React, TypeScript and ffmpeg.
 - [Research](docs/RESEARCH.md): what Screen Studio does and how others approached it
 - [Feature list](docs/FEATURES.md): what's in v1 and what's on the roadmap
 - [Implementation](docs/IMPLEMENTATION.md): architecture and design decisions
+- [Building](docs/BUILDING.md): toolchain, installer, icon and code signing
 
 ## Features (v1)
 
@@ -21,28 +22,40 @@ Built with Electron, React, TypeScript and ffmpeg.
 
 ## Getting started
 
-Requirements: Windows 10 (2004+) or 11, Node.js 20+.
+Requirements: Windows 10 (2004+) or 11 to run the app; Node.js **20.19+ or 22.12+** to build it
+(Vite 7 and electron-vite 5 need it; see `engines` in `package.json`).
 
 ```bash
 npm install
 npm run dev        # run the app with hot reload
-npm test           # unit tests for the motion engine and ffmpeg pipeline
+npm test           # unit tests
 npm run typecheck
-npm run dist:win   # build an NSIS installer into dist/ (run on Windows)
+npm run dist:win   # build the Windows installer: dist/ScreenStudio-Setup-<version>.exe
 ```
 
-### Building the installer from Linux/macOS
+### Building the installer
 
-`npm run dist:win` works natively on Windows. To cross-build, install Wine (64- and 32-bit) and
-fetch the Windows ffmpeg binary first:
+`npm run dist:win` works on Windows, Linux and macOS (Linux/macOS need Wine, 64- and 32-bit). It
+checks its inputs first and fetches the Windows `ffmpeg.exe` itself when cross-building, so there
+is no manual pre-step; if ffmpeg cannot be fetched the build stops with an error instead of
+producing an installer that cannot record. It also builds and bundles the native capture helper
+when a Rust toolchain is available (optional), then verifies the package: only the compiled app and
+its runtime dependencies in `app.asar`, the app icon in the exe and installer, and only the
+English Chromium locale. See [docs/BUILDING.md](docs/BUILDING.md) for details and sizes.
 
-```bash
-(cd node_modules/ffmpeg-static && npm_config_platform=win32 npm_config_arch=x64 node install.js)
-npm run dist:win   # -> dist/ScreenStudio-Setup-<version>.exe
-```
+### Code signing
 
-The installer is not code-signed yet, so Windows SmartScreen will warn on first launch
-("More info" → "Run anyway").
+The installer is unsigned until you add a certificate, so Windows SmartScreen warns on first launch
+("More info" → "Run anyway"). Signing switches on automatically when the environment (or a
+git-ignored `electron-builder.env`) provides one of:
+
+- a `.pfx` file: `CSC_LINK` + `CSC_KEY_PASSWORD`;
+- a certificate in the Windows store (USB token / EV): `WIN_SIGN_CERT_SHA1` or `WIN_SIGN_CERT_SUBJECT`;
+- Azure Trusted Signing: `AZURE_TRUSTED_SIGNING_ENDPOINT`, `_ACCOUNT`, `_PROFILE`, `_PUBLISHER`
+  plus Microsoft Entra credentials (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`).
+
+Set `SSW_REQUIRE_SIGNING=1` for release builds so an unsigned build fails. Full instructions:
+[docs/BUILDING.md](docs/BUILDING.md#code-signing).
 
 Recordings are stored in `Videos\Screen Studio for Windows\<recording>` as
 `project.json`, `cursor.json` and H.264 proxies of the screen and camera.

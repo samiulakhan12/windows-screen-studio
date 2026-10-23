@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- 16-32 px variant of build/icon.svg: no fine detail, strokes on the pixel grid at 16 and 32 px. -->
+  <defs>
+    <linearGradient id="bg" x1="3" y1="2" x2="29" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7b3cf0"/>
+      <stop offset="0.52" stop-color="#b42ad6"/>
+      <stop offset="1" stop-color="#f0468f"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="30" height="30" rx="7" fill="url(#bg)"/>
+  <rect x="5" y="7" width="22" height="16" rx="2.5" fill="#fff" fill-opacity="0.16" stroke="#fff" stroke-width="2"/>
+  <g transform="translate(14.34 11) scale(0.135)">
+    <path d="M0 0 V108 L27 82 L44 122 L62 114 L45 75 H82 Z" fill="#2b1061" stroke="#2b1061" stroke-width="26" stroke-linejoin="round"/>
+    <path d="M0 0 V108 L27 82 L44 122 L62 114 L45 75 H82 Z" fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+  </g>
+</svg>

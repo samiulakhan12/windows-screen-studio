@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Master app icon (48 px and up). build/icon-small.svg is the simplified 16-32 px variant.
+       Regenerate build/icon.ico and build/icon.png with: npm run icons -->
+  <defs>
+    <linearGradient id="bg" x1="24" y1="16" x2="232" y2="240" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7b3cf0"/>
+      <stop offset="0.52" stop-color="#b42ad6"/>
+      <stop offset="1" stop-color="#f0468f"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="64" cy="20" r="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.30"/>
+      <stop offset="0.55" stop-color="#fff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="62" x2="0" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0.08"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+      <feOffset dy="5"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.38"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Tile -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)"/>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#sheen)"/>
+  <rect x="9" y="9" width="238" height="238" rx="55" fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="2"/>
+
+  <!-- Screen -->
+  <rect x="44" y="60" width="168" height="116" rx="18" fill="url(#glass)" stroke="#fff" stroke-width="13"/>
+
+  <!-- Record dot -->
+  <circle cx="79" cy="94" r="13" fill="#fff"/>
+  <circle cx="79" cy="94" r="8.5" fill="#ff3d6e"/>
+
+  <!-- Cursor: a dark keyline under the white arrow keeps it legible where it crosses the screen edge -->
+  <g transform="translate(122 100) scale(0.86)" filter="url(#shadow)">
+    <path d="M0 0 V108 L27 82 L44 122 L62 114 L45 75 H82 Z" fill="#2b1061" stroke="#2b1061" stroke-width="20" stroke-linejoin="round"/>
+    <path d="M0 0 V108 L27 82 L44 122 L62 114 L45 75 H82 Z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+</svg>
