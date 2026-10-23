@@ -164,12 +164,14 @@ WGC frame pool (free-threaded, polled) ──CopySubresourceRegion──▶ newe
 Verified in this repository (Linux container, no Windows):
 
 - `cargo test`: CLI, protocol/JSON, frame pacing (static screen, pauses, late wake-ups,
-  stop), output sizing and bitrate, cursor-shape table.
-- Cross-compiles cleanly (`cargo clippy -D warnings` level clean) for `x86_64-pc-windows-gnu`.
+  stop), output sizing and bitrate, cursor-shape table, and the built binary's exit codes.
+- Cross-compiles for `x86_64-pc-windows-gnu` with no `cargo clippy -D warnings` findings.
 - Under wine 9: `probe` exits 3 with JSON (wine has no Windows.Graphics.Capture), `list`
-  returns the monitors, `record` fails cleanly with exit 3, `selftest` gets through Direct3D 11
-  device creation and fails cleanly at the video processor (wine has none). Nothing crashes
-  or hangs.
+  returns the monitors, `record` fails cleanly with exit 3. `selftest` creates the Direct3D 11
+  device, the DXGI device manager and the sink writer with all media types, then walks the
+  whole encoder fallback chain (wine has no H.264 encoder) and fails cleanly without leaving
+  files behind. Nothing crashes or hangs. (This run found and fixed a real bug: a failed
+  attempt kept its file locked, so every later fallback failed with a sharing violation.)
 - `tests/nativeCapture.test.ts` and `tests/e2e/native.e2e.cjs` drive the Electron client
   against a protocol-compatible fake helper and against the real exe under wine.
 

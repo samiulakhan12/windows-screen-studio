@@ -2,20 +2,18 @@
 
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
 
-static STDOUT_LOCK: Mutex<()> = Mutex::new(());
 static STDOUT_BROKEN: AtomicBool = AtomicBool::new(false);
 
 /// Writes one line and flushes it, so the app sees events immediately even
 /// through a pipe. Returns false once stdout is gone (the app died): the
-/// recorder treats that like a stop request.
+/// recorder treats that like a stop request. Stdout's own (reentrant) lock keeps
+/// lines from different threads whole, and lets the panic hook write too.
 pub fn emit(line: &str) -> bool {
-    let _guard = STDOUT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut out = io::stdout().lock();
     if STDOUT_BROKEN.load(Ordering::Relaxed) {
         return false;
     }
-    let mut out = io::stdout().lock();
     let ok = out.write_all(line.as_bytes()).and_then(|_| out.write_all(b"\n")).and_then(|_| out.flush()).is_ok();
     if !ok {
         STDOUT_BROKEN.store(true, Ordering::Relaxed);

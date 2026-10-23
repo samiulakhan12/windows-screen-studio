@@ -204,7 +204,8 @@ describe('probe', () => {
     expect((await probeNativeCapture()).supported).toBe(false)
   })
 
-  it('finds ssw-capture.exe in the resources folder when packaged and native/bin in development', async () => {
+  // The stand-in "exe" is a shell script, so this runs on POSIX only.
+  it.skipIf(process.platform === 'win32')('finds ssw-capture.exe in the resources folder when packaged and native/bin in development', async () => {
     delete process.env.SSW_CAPTURE_HELPER
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
     const resourcesPath = (process as { resourcesPath?: string }).resourcesPath

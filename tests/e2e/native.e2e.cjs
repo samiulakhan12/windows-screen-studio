@@ -36,7 +36,7 @@ function ffprobe(file) {
 
 function helperProcesses() {
   const r = spawnSync('pgrep', ['-f', 'fake-capture-helper|ssw-capture.exe'], { encoding: 'utf8' })
-  return r.stdout.split('\n').filter(Boolean)
+  return (r.stdout || '').split('\n').filter(Boolean)
 }
 
 async function setup(ctx, name, env) {
