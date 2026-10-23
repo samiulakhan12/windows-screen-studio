@@ -64,6 +64,18 @@ export interface NativeCaptureSession {
   stop(at?: number): Promise<NativeStopInfo>
   /** Aborts immediately; the output file may be incomplete. */
   kill(): void
+  /**
+   * Registers a callback for the helper ending on its own after it started (monitor
+   * unplugged, capture item closed, crash) — i.e. NOT because stop()/kill() was called.
+   * Optional so simple fakes need not implement it.
+   */
+  onEnded?(cb: (info: NativeEndedInfo) => void): void
+}
+
+export interface NativeEndedInfo {
+  /** Helper-reported reason (e.g. 'closed', 'eof', 'interrupt') or 'crashed'. */
+  reason: string
+  error?: Error
 }
 
 export interface ProbeResult {
