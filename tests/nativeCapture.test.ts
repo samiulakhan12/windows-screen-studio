@@ -1,241 +1,392 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const root = vi.hoisted(() => ({ dir: '' }))
-vi.mock('electron', () => ({ app: { getPath: () => root.dir } }))
+interface FakeDisplay {
+  id: number
+  bounds: { x: number; y: number; width: number; height: number }
+  scaleFactor: number
+  nativeOrigin: { x: number; y: number }
+}
 
-import { ffmpegPath } from '../src/main/ffmpeg'
-import type { NativeCaptureSession, NativeStartInfo, NativeStopInfo } from '../src/main/nativeCapture'
-import * as projects from '../src/main/projects'
-import { processRecording, RecordingError } from '../src/main/recording/finalize'
-import { nativeAvailable, startNativeVideo, stopNativeVideo, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
-import { ActiveRecording } from '../src/main/recording/session'
-import { buildCursorTrack } from '../src/main/recording/trackMath'
+const electron = vi.hoisted(() => ({
+  displays: [] as FakeDisplay[],
+  primary: 1,
+  isPackaged: false,
+  appPath: ''
+}))
 
-const T0 = 1_700_000_000_000
-
-/** A scripted stand-in for the native helper that records how it was driven. */
-function fakeSession(opts: { started?: Promise<NativeStartInfo>; stop?: () => Promise<NativeStopInfo> } = {}) {
-  const calls: string[] = []
-  const session: NativeCaptureSession = {
-    started: opts.started ?? Promise.resolve({ startedAt: T0, width: 320, height: 240 }),
-    pause: () => void calls.push('pause'),
-    resume: () => void calls.push('resume'),
-    stop: () => {
-      calls.push('stop')
-      return opts.stop ? opts.stop() : Promise.resolve({ frames: 10, shapes: [{ at: T0 + 500, shape: 'text' }] })
+vi.mock('electron', () => ({
+  app: {
+    get isPackaged() {
+      return electron.isPackaged
     },
-    kill: () => void calls.push('kill')
+    getAppPath: () => electron.appPath
+  },
+  screen: {
+    getAllDisplays: () => electron.displays,
+    getPrimaryDisplay: () => electron.displays.find((d) => d.id === electron.primary),
+    dipToScreenRect: (_w: unknown, r: unknown) => r
   }
-  return { session, calls }
+}))
+
+import {
+  isNativeCaptureAvailable,
+  matchMonitor,
+  nativeCaptureTimeouts,
+  probeNativeCapture,
+  resetNativeCaptureCache,
+  startNativeCapture,
+  type HelperMonitor,
+  type NativeCaptureSession,
+  type PhysicalDisplay
+} from '../src/main/nativeCapture'
+
+const FAKE = path.resolve(__dirname, 'fixtures/fake-capture-helper.cjs')
+const ENV_KEYS = ['SSW_CAPTURE_HELPER', 'FAKE_HELPER_PROBE', 'FAKE_HELPER_MONITORS', 'FAKE_HELPER_RECORD', 'FAKE_HELPER_VIDEO', 'FAKE_HELPER_LOG', 'FAKE_HELPER_SHAPES']
+const DEFAULT_TIMEOUTS = { ...nativeCaptureTimeouts }
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+let dir = ''
+let logFile = ''
+const sessions: NativeCaptureSession[] = []
+
+function display(id: number, x: number, y: number, width: number, height: number, scaleFactor = 1): FakeDisplay {
+  return { id, bounds: { x, y, width, height }, scaleFactor, nativeOrigin: { x, y } }
 }
 
-function fakeApi(session: NativeCaptureSession | (() => never), available = true): NativeCaptureApi {
-  return {
-    isNativeCaptureAvailable: async () => available,
-    startNativeCapture: () => (typeof session === 'function' ? session() : session)
+function monitor(index: number, x: number, y: number, width: number, height: number, primary = false): HelperMonitor {
+  return { index, device: `\\\\.\\DISPLAY${index + 1}`, name: `Monitor ${index + 1}`, x, y, width, height, primary }
+}
+
+function physical(id: string, x: number, y: number, width: number, height: number, primary = false): PhysicalDisplay {
+  return { id, x, y, width, height, primary }
+}
+
+/** Everything the fake helper logged: argv per invocation and stdin lines. */
+function helperLog(): { argv?: string[]; pid?: number; stdin?: string }[] {
+  try {
+    return readFileSync(logFile, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l))
+  } catch {
+    return []
   }
 }
 
-const opts = { displayId: '1', output: '/tmp/x.mp4', fps: 60 as const }
+/** Commands the fake helper read (stdin closing right after "stop" may or may not be seen). */
+function stdinLines(): string[] {
+  return helperLog().flatMap((e) => (e.stdin && e.stdin !== '<eof>' ? [e.stdin] : []))
+}
 
-describe('startNativeVideo', () => {
-  it('resolves with the helper start info', async () => {
-    const { session } = fakeSession()
-    const r = await startNativeVideo(fakeApi(session), opts)
-    expect(r).toMatchObject({ ok: true, info: { startedAt: T0, width: 320, height: 240 } })
+function recordPid(): number | undefined {
+  return helperLog().find((e) => e.argv?.[0] === 'record')?.pid
+}
+
+function alive(pid: number | undefined): boolean {
+  if (!pid) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function waitFor(cond: () => boolean, ms = 3000): Promise<void> {
+  const end = Date.now() + ms
+  while (!cond()) {
+    if (Date.now() > end) throw new Error('timed out waiting for condition')
+    await sleep(20)
+  }
+}
+
+function start(opts: Partial<{ displayId: string; fps: 30 | 60; bitrate: number }> = {}): NativeCaptureSession {
+  const s = startNativeCapture({ displayId: '1', output: path.join(dir, 'screen.mp4'), fps: 30, ...opts })
+  sessions.push(s)
+  return s
+}
+
+beforeEach(() => {
+  dir = mkdtempSync(path.join(tmpdir(), 'ssw-native-'))
+  logFile = path.join(dir, 'helper.log')
+  for (const k of ENV_KEYS) delete process.env[k]
+  process.env.SSW_CAPTURE_HELPER = FAKE
+  process.env.FAKE_HELPER_LOG = logFile
+  electron.displays = [display(1, 0, 0, 1920, 1080)]
+  electron.primary = 1
+  electron.isPackaged = false
+  electron.appPath = dir
+  Object.assign(nativeCaptureTimeouts, DEFAULT_TIMEOUTS)
+  resetNativeCaptureCache()
+})
+
+afterEach(async () => {
+  for (const s of sessions.splice(0)) s.kill()
+  await sleep(50)
+  for (const k of ENV_KEYS) delete process.env[k]
+  rmSync(dir, { recursive: true, force: true })
+})
+
+describe('matchMonitor', () => {
+  const monitors = [monitor(0, 0, 0, 1920, 1080, true), monitor(1, 1920, -360, 2560, 1440)]
+
+  it('matches by physical rectangle', () => {
+    const displays = [physical('10', 0, 0, 1920, 1080, true), physical('11', 1920, -360, 2560, 1440)]
+    expect(matchMonitor('10', displays, monitors)?.device).toBe('\\\\.\\DISPLAY1')
+    expect(matchMonitor('11', displays, monitors)?.device).toBe('\\\\.\\DISPLAY2')
   })
 
-  it('reports a failed start and kills the helper', async () => {
-    const { session, calls } = fakeSession({ started: Promise.reject(new Error('WGC unsupported')) })
-    expect(await startNativeVideo(fakeApi(session), opts)).toEqual({ ok: false, message: 'WGC unsupported' })
-    expect(calls).toContain('kill')
+  it('tolerates DPI rounding of a pixel or two', () => {
+    const displays = [physical('10', 0, 0, 1920, 1080, true), physical('11', 1921, -359, 2559, 1441)]
+    expect(matchMonitor('11', displays, monitors)?.index).toBe(1)
   })
 
-  it('gives up on a helper that never delivers a frame', async () => {
-    const { session, calls } = fakeSession({ started: new Promise(() => undefined) })
-    const r = await startNativeVideo(fakeApi(session), opts, 50)
-    expect(r.ok).toBe(false)
-    expect(calls).toContain('kill')
+  it('falls back to the only monitor, then to a unique size', () => {
+    expect(matchMonitor('7', [physical('7', 5, 5, 1280, 720, true)], [monitor(0, 0, 0, 1920, 1080, true)])?.index).toBe(0)
+    // Origins disagree (scaled layout) but each size is unique.
+    const displays = [physical('10', 0, 0, 1920, 1080, true), physical('11', 1280, 0, 2560, 1440)]
+    expect(matchMonitor('11', displays, monitors)?.index).toBe(1)
   })
 
-  it('rejects an invalid video size and a throwing launcher', async () => {
-    const { session } = fakeSession({ started: Promise.resolve({ startedAt: T0, width: 0, height: 0 }) })
-    expect((await startNativeVideo(fakeApi(session), opts)).ok).toBe(false)
-    const throwing = (): never => {
-      throw new Error('helper missing')
+  it('refuses ambiguous or unknown displays', () => {
+    const twins = [monitor(0, 0, 0, 1920, 1080, true), monitor(1, 1920, 0, 1920, 1080)]
+    const displays = [physical('1', 0, 0, 1920, 1080, true), physical('2', 1900, 0, 1920, 1080)]
+    expect(matchMonitor('2', displays, twins)).toBeNull()
+    // The primary one is still identifiable by its exact rectangle.
+    expect(matchMonitor('1', displays, twins)?.index).toBe(0)
+    expect(matchMonitor('3', displays, twins)).toBeNull()
+    expect(matchMonitor('1', displays, [])).toBeNull()
+  })
+})
+
+describe('probe', () => {
+  it('is unavailable without a helper on non-Windows', async () => {
+    delete process.env.SSW_CAPTURE_HELPER
+    const r = await probeNativeCapture()
+    expect(r.supported).toBe(false)
+    expect(r.reason).toMatch(/only available on Windows/)
+    expect(await isNativeCaptureAvailable()).toBe(false)
+  })
+
+  it('reports a supported helper and caches availability', async () => {
+    expect(await isNativeCaptureAvailable()).toBe(true)
+    expect(await isNativeCaptureAvailable()).toBe(true)
+    expect(helperLog().filter((e) => e.argv?.[0] === 'probe')).toHaveLength(1)
+    const r = await probeNativeCapture()
+    expect(r).toMatchObject({ supported: true, cursorToggle: true, borderToggle: true, hardwareEncoders: ['Fake H.264 Encoder MFT'] })
+  })
+
+  it('passes on the reason when capture is unsupported', async () => {
+    process.env.FAKE_HELPER_PROBE = 'unsupported'
+    const r = await probeNativeCapture()
+    expect(r).toMatchObject({ supported: false, reason: 'Fake helper: capture unsupported' })
+    expect(await isNativeCaptureAvailable()).toBe(false)
+  })
+
+  it('treats unparsable output, a hang or a missing helper as unavailable', async () => {
+    process.env.FAKE_HELPER_PROBE = 'garbage'
+    expect((await probeNativeCapture()).supported).toBe(false)
+
+    process.env.FAKE_HELPER_PROBE = 'hang'
+    nativeCaptureTimeouts.probe = 500
+    const t0 = Date.now()
+    const r = await probeNativeCapture()
+    expect(r.supported).toBe(false)
+    expect(r.reason).toMatch(/timed out/)
+    expect(Date.now() - t0).toBeLessThan(3000)
+    const pid = helperLog().find((e) => e.argv?.[0] === 'probe')?.pid
+    await waitFor(() => !alive(pid))
+
+    process.env.SSW_CAPTURE_HELPER = path.join(dir, 'missing.cjs')
+    expect((await probeNativeCapture()).supported).toBe(false)
+  })
+
+  // The stand-in "exe" is a shell script, so this runs on POSIX only.
+  it.skipIf(process.platform === 'win32')('finds ssw-capture.exe in the resources folder when packaged and native/bin in development', async () => {
+    delete process.env.SSW_CAPTURE_HELPER
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
+    const resourcesPath = (process as { resourcesPath?: string }).resourcesPath
+    // An executable script standing in for the exe (it is spawned directly).
+    const script = `#!/bin/sh\necho '{"supported":true,"cursorToggle":true,"borderToggle":false,"reason":null,"from":"'$0'"}'\n`
+    const install = (file: string): void => {
+      mkdirSync(path.dirname(file), { recursive: true })
+      writeFileSync(file, script)
+      chmodSync(file, 0o755)
     }
-    expect(await startNativeVideo(fakeApi(throwing), opts)).toEqual({ ok: false, message: 'helper missing' })
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+      expect((await probeNativeCapture()).reason).toMatch(/ssw-capture.exe\) is missing/)
+
+      install(path.join(dir, 'native', 'bin', 'ssw-capture.exe'))
+      expect(await probeNativeCapture()).toMatchObject({ supported: true, borderToggle: false })
+
+      electron.isPackaged = true
+      ;(process as { resourcesPath?: string }).resourcesPath = path.join(dir, 'resources')
+      expect((await probeNativeCapture()).supported).toBe(false)
+      install(path.join(dir, 'resources', 'native', 'ssw-capture.exe'))
+      expect((await probeNativeCapture()).supported).toBe(true)
+    } finally {
+      Object.defineProperty(process, 'platform', platform)
+      ;(process as { resourcesPath?: string }).resourcesPath = resourcesPath
+    }
   })
 })
 
-describe('nativeAvailable', () => {
-  it('treats errors and hangs as unavailable', async () => {
-    const { session } = fakeSession()
-    expect(await nativeAvailable(fakeApi(session, true))).toBe(true)
-    expect(await nativeAvailable({ ...fakeApi(session), isNativeCaptureAvailable: () => Promise.reject(new Error('x')) })).toBe(false)
-    expect(await nativeAvailable({ ...fakeApi(session), isNativeCaptureAvailable: () => new Promise(() => undefined) }, 30)).toBe(false)
-  })
-})
+describe('recording session', () => {
+  it('starts, pauses, resumes and stops with cursor shapes', async () => {
+    const s = start({ fps: 60, bitrate: 8_000_000 })
+    const info = await s.started
+    expect(info).toMatchObject({ width: 1920, height: 1080, fps: 60, encoder: 'Fake H.264 Encoder MFT', hardware: true })
+    expect(Math.abs(info.startedAt - Date.now())).toBeLessThan(2000)
 
-describe('stopNativeVideo', () => {
-  it('kills a helper that does not finish in time', async () => {
-    const { session, calls } = fakeSession({ stop: () => new Promise(() => undefined) })
-    await expect(stopNativeVideo(session, 30)).rejects.toThrow(/did not stop/)
-    expect(calls).toContain('kill')
-  })
-})
+    // The app passes the instants it paused/resumed/stopped at; the helper cuts there.
+    await sleep(300)
+    const pauseAt = Date.now() - 20
+    s.pause(pauseAt)
+    await sleep(200)
+    const resumeAt = Date.now() - 10
+    s.resume(resumeAt)
+    await sleep(300)
+    const stopAt = Date.now() - 5
+    const result = await s.stop(stopAt)
+    const active = pauseAt - info.startedAt + (stopAt - resumeAt)
+    expect(result.duration).toBeCloseTo(active / 1000, 3)
+    expect(result.frames).toBe(Math.round((active / 1000) * 60))
+    expect(result.dropped).toBe(0)
+    expect(result.shapes.map((x) => x.shape)).toEqual(['arrow', 'text', 'pointer'])
+    for (const x of result.shapes) expect(x.at).toBeGreaterThanOrEqual(info.startedAt)
 
-function manifest(over: Partial<projects.RecordingManifest> = {}): projects.RecordingManifest {
-  return {
-    version: 1,
-    id: 'rec-test',
-    createdAt: new Date(T0).toISOString(),
-    status: 'recording',
-    error: null,
-    method: 'native',
-    sourceKind: 'screen',
-    region: null,
-    startedAt: null,
-    width: 0,
-    height: 0,
-    hasAudio: false,
-    hasWebcam: false,
-    webcamFps: 30,
-    webcamOffset: 0,
-    audioOffset: 0,
-    duration: null,
-    ...over
-  }
-}
-
-describe('ActiveRecording with native capture', () => {
-  it('drives pause/resume on the helper and keeps one pause timeline', async () => {
-    const { session, calls } = fakeSession()
-    const s = new ActiveRecording(manifest(), '/tmp')
-    s.attachNative(session, { startedAt: T0, width: 320, height: 240 })
-    expect(s.manifest).toMatchObject({ method: 'native', startedAt: T0, width: 320, height: 240 })
-    s.pause(T0 + 1000)
-    s.pause(T0 + 1100) // already paused: ignored
-    s.resume(T0 + 3000)
-    s.pause(T0 + 4000)
-    s.stop(T0 + 5000) // stopping while paused closes the pause
-    expect(calls).toEqual(['pause', 'resume', 'pause', 'stop'])
-    expect(s.pauses).toEqual([
-      { from: T0 + 1000, to: T0 + 3000 },
-      { from: T0 + 4000, to: T0 + 5000 }
-    ])
-    expect(s.activeSeconds()).toBe(2)
-    expect(await s.finishNative()).toEqual([{ at: T0 + 500, shape: 'text' }])
+    const record = helperLog().find((e) => e.argv?.[0] === 'record')
+    expect(record?.argv).toEqual(['record', '--monitor', '\\\\.\\DISPLAY1', '--out', path.join(dir, 'screen.mp4'), '--fps', '60', '--bitrate', '8000000'])
+    expect(stdinLines()).toEqual([`pause ${pauseAt}`, `resume ${resumeAt}`, `stop ${stopAt}`])
+    await waitFor(() => !alive(record?.pid))
+    expect(await s.stop()).toBe(result)
   })
 
-  it('keeps going when the helper fails to stop cleanly', async () => {
-    const { session, calls } = fakeSession({ stop: () => Promise.reject(new Error('crashed')) })
-    const s = new ActiveRecording(manifest(), '/tmp')
-    s.attachNative(session, { startedAt: T0, width: 320, height: 240 })
-    s.stop(T0 + 1000)
-    expect(await s.finishNative()).toEqual([])
-    expect(calls).toContain('kill')
-  })
-})
-
-const ffmpeg = ffmpegPath()
-const haveFfmpeg = ffmpeg !== 'ffmpeg' && existsSync(ffmpeg)
-const ffprobe = ['/usr/bin/ffprobe', '/usr/local/bin/ffprobe'].find((p) => existsSync(p))
-
-function probe(file: string): { streams: { codec_type: string; width?: number; height?: number; start_time?: string; duration?: string }[] } {
-  return JSON.parse(execFileSync(ffprobe!, ['-v', 'error', '-show_streams', '-of', 'json', file]).toString())
-}
-
-describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () => {
-  const gen = (args: string[]): void => void execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', ...args])
-
-  it('builds a project from native video + separate audio with offset, region crop and cursor shapes', async () => {
-    root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-native-'))
-    const { id, dir } = await projects.createProjectDir(new Date(T0))
-    gen(['-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=60:duration=2', '-c:v', 'libx264', '-g', '120', path.join(dir, 'native.mp4')])
-    gen(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', '-c:a', 'libopus', path.join(dir, 'audio.webm')])
-    const m = manifest({
-      id,
-      startedAt: T0,
-      width: 320,
-      height: 240,
-      hasAudio: true,
-      region: { x: 0, y: 0, w: 0.5, h: 0.5 },
-      audioOffset: 0.5,
-      duration: 2,
-      status: 'processing'
-    })
-    await projects.writeManifest(m)
-    const track = buildCursorTrack(
-      { samples: [{ at: T0 + 100, x: 80, y: 60 }], clicks: [{ at: T0 + 1000, x: 80, y: 60, button: 'left' }], keys: [], bounds: { x: 0, y: 0, width: 320, height: 240 }, scale: 1 },
-      { startedAt: T0, pauses: [], duration: 2, region: m.region, shapes: [{ at: T0 + 700, shape: 'pointer' }], slack: 1 }
-    )
-    await projects.writeCursor(id, track)
-
-    const progress: (number | null)[] = []
-    const project = await processRecording(m, (p) => progress.push(p.progress))
-
-    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: { x: 0, y: 0, w: 0.5, h: 0.5 } })
-    expect(project.cursor.show).toBe(true)
-    expect([project.width, project.height]).toEqual([160, 120])
-    expect(project.hasAudio).toBe(true)
-    expect(project.duration).toBeGreaterThan(1.9)
-    expect(project.duration).toBeLessThan(2.2)
-    expect(project.zooms.length).toBeGreaterThan(0)
-    expect(progress[0]).toBe(0)
-    expect(progress.every((p) => p !== null && p >= 0 && p <= 1)).toBe(true)
-    expect(progress.at(-1)).toBe(1)
-
-    const streams = probe(path.join(dir, 'screen.mp4')).streams
-    const video = streams.find((s) => s.codec_type === 'video')!
-    const audio = streams.find((s) => s.codec_type === 'audio')!
-    expect([video.width, video.height]).toEqual([160, 120])
-    // 0.5 s of leading silence + 1 s tone.
-    expect(Number(audio.duration)).toBeGreaterThan(1.4)
-
-    const cursor = JSON.parse(readFileSync(path.join(dir, 'cursor.json'), 'utf8'))
-    expect(cursor.shapes).toEqual([{ t: 0.7, shape: 'pointer' }])
-    expect(cursor.clicks[0]).toMatchObject({ x: 0.5, y: 0.5 })
-    expect(existsSync(path.join(dir, 'native.mp4'))).toBe(false)
-    expect(existsSync(path.join(dir, 'audio.webm'))).toBe(false)
-    expect(existsSync(path.join(dir, 'recording.json'))).toBe(false)
-    expect(existsSync(path.join(dir, 'project.json'))).toBe(true)
-  }, 60000)
-
-  it('processes a Chromium WebM, probing the real duration', async () => {
-    root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-chromium-'))
-    const { id, dir } = await projects.createProjectDir(new Date(T0))
-    gen([
-      '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=30:duration=1.5',
-      '-f', 'lavfi', '-i', 'sine=duration=1.5',
-      '-c:v', 'libvpx', '-c:a', 'libopus', '-shortest', path.join(dir, 'screen.webm')
-    ])
-    // The renderer measured 0 s (e.g. the source closed); the proxy duration wins.
-    const m = manifest({ id, method: 'chromium', startedAt: T0, width: 640, height: 360, hasAudio: true, duration: 0 })
-    const project = await processRecording(m, () => undefined)
-    expect(project.capture).toEqual({ method: 'chromium', cursorInVideo: true, region: null })
-    expect(project.duration).toBeGreaterThan(1.4)
-    expect(project.hasAudio).toBe(true)
-    expect(existsSync(path.join(dir, 'screen.webm'))).toBe(false)
-  }, 60000)
-
-  it('refuses an empty recording and keeps the folder for inspection', async () => {
-    root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-empty-'))
-    const { id, dir } = await projects.createProjectDir(new Date(T0))
-    writeFileSync(path.join(dir, 'screen.webm'), '')
-    await expect(processRecording(manifest({ id, method: 'chromium' }), () => undefined)).rejects.toBeInstanceOf(RecordingError)
-    expect(existsSync(dir)).toBe(true)
+  it('records the display the app asked for on a multi-monitor setup', async () => {
+    electron.displays = [display(1, 0, 0, 1920, 1080), display(2, 1920, 0, 1280, 720, 2)]
+    process.env.FAKE_HELPER_MONITORS = JSON.stringify([monitor(0, 0, 0, 1920, 1080, true), monitor(1, 1920, 0, 2560, 1440)])
+    const s = start({ displayId: '2' })
+    expect(await s.started).toMatchObject({ width: 2560, height: 1440 })
+    expect(helperLog().find((e) => e.argv?.[0] === 'record')?.argv?.[2]).toBe('\\\\.\\DISPLAY2')
+    await s.stop()
   })
 
-  it('creates unique folders even within the same second', async () => {
-    root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-ids-'))
-    const a = await projects.createProjectDir(new Date(T0))
-    const b = await projects.createProjectDir(new Date(T0))
-    expect(a.id).not.toBe(b.id)
-    expect(b.id).toBe(`${a.id}-2`)
+  it('queues commands issued while the monitor is being looked up', async () => {
+    const s = start()
+    s.pause(Date.now())
+    s.resume()
+    await s.started
+    const result = await s.stop()
+    expect(result.frames).toBeGreaterThanOrEqual(0)
+    expect(stdinLines().map((l) => l.split(' ')[0])).toEqual(['pause', 'resume', 'stop'])
+  })
+
+  it('rejects when no monitor matches the display', async () => {
+    process.env.FAKE_HELPER_MONITORS = JSON.stringify([monitor(0, 0, 0, 1280, 1024, true), monitor(1, 1280, 0, 1280, 1024)])
+    const s = start()
+    await expect(s.started).rejects.toThrow(/No capture monitor matches display 1/)
+    await expect(s.stop()).rejects.toThrow(/No capture monitor matches/)
+    expect(recordPid()).toBeUndefined()
+  })
+
+  it('rejects with the helper error when capture cannot start', async () => {
+    process.env.FAKE_HELPER_RECORD = 'fail-start'
+    const s = start()
+    await expect(s.started).rejects.toThrow(/exited with code 3: Fake helper: Windows.Graphics.Capture is not available/)
+    await expect(s.stop()).rejects.toThrow(/not available/)
+  })
+
+  it('rejects with stderr when the helper crashes before the first frame', async () => {
+    process.env.FAKE_HELPER_RECORD = 'crash'
+    const s = start()
+    await expect(s.started).rejects.toThrow(/exited with code 1: .*Direct3D 11 device failed: fake crash/)
+  })
+
+  it('rejects an invalid start and kills the helper', async () => {
+    process.env.FAKE_HELPER_RECORD = 'bad-start'
+    const s = start()
+    await expect(s.started).rejects.toThrow(/invalid start/)
+    await waitFor(() => !alive(recordPid()))
+  })
+
+  it('times out a helper that never delivers a frame, killing it', async () => {
+    process.env.FAKE_HELPER_RECORD = 'never-start'
+    nativeCaptureTimeouts.start = 1500
+    const s = start()
+    await expect(s.started).rejects.toThrow(/did not start within 1.5 s/)
+    await waitFor(() => !alive(recordPid()))
+    await expect(s.stop()).rejects.toThrow(/did not start/)
+  })
+
+  it('times out a helper that does not finish, killing it', async () => {
+    process.env.FAKE_HELPER_RECORD = 'hang-on-stop'
+    nativeCaptureTimeouts.stop = 800
+    const s = start()
+    await s.started
+    await expect(s.stop()).rejects.toThrow(/did not finish within 0.8 s/)
+    await waitFor(() => !alive(recordPid()))
+  })
+
+  it('rejects stop with the finalisation error', async () => {
+    process.env.FAKE_HELPER_RECORD = 'error-on-stop'
+    const s = start()
+    await s.started
+    await expect(s.stop()).rejects.toThrow(/exited with code 1: Finalising the MP4 failed: fake encoder error/)
+  })
+
+  it('keeps the result of a helper that ended on its own (monitor disconnected)', async () => {
+    process.env.FAKE_HELPER_RECORD = 'close-early'
+    const s = start()
+    await s.started
+    await waitFor(() => !alive(recordPid()))
+    const result = await s.stop()
+    expect(result).toMatchObject({ frames: 6, duration: 0.2 })
+    expect(result.shapes.length).toBeGreaterThan(0)
+  })
+
+  it('kill() ends a running helper and fails stop()', async () => {
+    const s = start()
+    await s.started
+    const pid = recordPid()
+    expect(alive(pid)).toBe(true)
+    s.kill()
+    await waitFor(() => !alive(pid))
+    await expect(s.stop()).rejects.toThrow(/was stopped/)
+  })
+
+  it('kill() or stop() before the helper is spawned never spawns it', async () => {
+    const killed = start()
+    killed.kill()
+    await expect(killed.started).rejects.toThrow(/was stopped/)
+
+    const stopped = start()
+    const result = await stopped.stop()
+    expect(result).toEqual({ frames: 0, shapes: [] })
+    await expect(stopped.started).rejects.toThrow(/stopped before it started/)
+
+    await sleep(300)
+    expect(recordPid()).toBeUndefined()
+  })
+
+  it('ignores commands after stop and unknown cursor shapes', async () => {
+    process.env.FAKE_HELPER_SHAPES = 'arrow,sparkles,text'
+    const s = start()
+    await s.started
+    await sleep(200)
+    const result = await s.stop()
+    s.pause()
+    s.resume()
+    expect(result.shapes.map((x) => x.shape)).toEqual(['arrow', 'text'])
+    expect(stdinLines().filter((l) => l.startsWith('pause'))).toHaveLength(0)
+  })
+
+  it('fails cleanly when the helper is missing', async () => {
+    process.env.SSW_CAPTURE_HELPER = path.join(dir, 'nope.cjs')
+    const s = start()
+    await expect(s.started).rejects.toThrow(/not available/)
   })
 })
