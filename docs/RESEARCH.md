@@ -37,10 +37,11 @@ and a pleasant editor, which is where this project focuses.
 * `MediaRecorder` WebM files have no seek index/duration, so recordings are normalised
   with **ffmpeg** into an H.264 "proxy" with short GOPs that seeks frame-accurately for the
   editor and exporter. ffmpeg also encodes the final MP4/GIF.
-* Chromium composites the OS cursor into desktop capture. We request `cursor: 'never'`
-  where supported; otherwise the editor can still render a smoothed cursor or keep the
-  original one. A native Windows Graphics Capture helper (`IsCursorCaptureEnabled=false`)
-  is on the roadmap.
+* Chromium composites the OS cursor into desktop capture and ignores the `cursor: 'never'`
+  constraint (verified: the track always reports `cursor: 'always'`). A smooth synthetic cursor
+  therefore needs native capture: the app ships a small Windows Graphics Capture helper
+  (`IsCursorCaptureEnabled=false`, see `native/`) and falls back to Chromium capture, with the
+  Windows cursor in the video, where the helper is unavailable.
 
 Sources: [screen.studio](https://screen.studio/), [screen.studio/help](https://Screen.studio/help),
 [Trainn review](https://trainn.co/blog/screen-studio-reviews/),

@@ -1,58 +1,95 @@
 # How it is implemented
 
 ## Stack
-Electron (main + preload + renderer) · React · TypeScript · electron-vite · Vitest ·
-ffmpeg (`ffmpeg-static`) · `uiohook-napi` (optional, global mouse hook) · electron-builder (NSIS installer).
+Electron 44 (main + preload + renderer) · React 18 · TypeScript · electron-vite · Vitest ·
+Playwright (end-to-end) · ffmpeg (`ffmpeg-static`) · `uiohook-napi` (global mouse/keyboard hook) ·
+Rust (`native/`, the Windows capture helper) · electron-builder (NSIS installer).
 
-## Process layout
+## Layout
 ```
-src/main/        Electron main process
-  index.ts         windows (home/editor, floating recording bar), IPC, global shortcut
-  capture.ts       desktopCapturer sources + display-media handler (video + loopback audio)
-  cursorTracker.ts 60 Hz cursor polling + click hook, pause-aware timestamps
-  projects.ts      project folders in Videos/Screen Studio for Windows
-  ffmpeg.ts        WebM -> seekable H.264 proxy, export encoder (raw frames on stdin)
-src/preload/     contextBridge `window.api` (typed in src/shared/api.ts)
-src/shared/      pure, unit-tested logic shared by renderer and tests
-  types.ts         Project / cursor / zoom / style types
-  engine/          spring smoothing, auto zoom, camera, layout, time helpers
-src/renderer/    React UI
-  views/Home       source picker, devices, record button, project library
-  views/Toolbar    floating recording bar
-  views/Editor     preview, timeline, inspector, export dialog
-  render/          canvas compositor (background, frame, camera, cursor, webcam)
-  recorder/        MediaRecorder orchestration
+src/main/               Electron main process
+  index.ts                bootstrap, single-instance lock
+  windows.ts              main window
+  recordingIpc.ts         recording IPC: sources, display-media handler, sessions, toolbar, region picker, recovery
+  recording/              session state, ordered chunk writer, finalize (proxy + project), proxy runner,
+                          native video glue, track maths (pause/region remapping), keystroke filter,
+                          hook clock, toolbar / region windows
+  cursorTracker.ts        cursor polling, clicks and keystrokes via uiohook
+  nativeCapture.ts        client for native/ssw-capture.exe (probe, monitor matching, session protocol)
+  projects.ts, projectsIpc.ts, atomicWrite.ts, styleDefaults.ts
+                          project folders, load/save with Windows lock retries, saved style defaults
+  proxyArgs.ts            WebM / native MP4 -> 60 fps short-GOP proxy (GPU encoder when available, crop, fit)
+  exportIpc.ts, exportArgs.ts, exportJob.ts, exportClipboard.ts, ffmpeg.ts, hwEncoders.ts
+                          export encoder processes, safe temp output, clipboard, GPU encoder detection
+  mediaProtocol.ts        studio-media:// with Range support for <video>
+src/preload/            contextBridge `window.api`, one file per area (typed in src/shared/api/*)
+src/shared/             pure, unit-tested logic shared by main, renderer and tests
+  types.ts                project schema v2 (clips, annotations, effects, audio, capture info)
+  engine/                 timeline (clips <-> output time), history (undo), cursor smoothing, zoom, layout
+  editor/                 edit store, clip/annotation operations, autosave, timeline scale
+  recording/              mime choice, error messages, ordered chunk pipe, region geometry
+  render/                 MP4 demuxer, decode feed plan, export plan, codec tags, overlay timing
+src/renderer/src/       React UI
+  views/                  Home, Editor, Toolbar (floating bar), RegionPicker (area overlay)
+  recorder/               capture streams, MediaRecorders, devices, controller
+  editor/                 player, preview stage, timeline, inspector, transport, export dialog, exporter
+  render/                 compositor, static layer cache, text/keystroke overlays, cursor sprites,
+                          frame sources (WebCodecs decoder / seek fallback), encoder sinks
+native/                 Rust helper ssw-capture.exe (WGC capture, MF H.264, protocol over stdin/stdout)
+scripts/                build-native, predist checks, verify-dist, icon renderer
+tests/                  vitest unit tests; tests/e2e Playwright tests of the built app
 ```
+
+## Data model
+A project folder holds `project.json` (schema v2, migrated automatically from v1), `cursor.json`
+(cursor samples, clicks, keystrokes, cursor shapes, display scale) and H.264 proxies
+(`screen.mp4`, `webcam.mp4`). Edits are a list of **clips** (kept source ranges, each with a speed);
+the gaps between clips are cuts. Zooms, annotations, cursor data and keystrokes stay in **source
+time**, so cutting or re-timing never moves an overlay off its content.
 
 ## Data flow
-1. **Record** – renderer asks main for sources; main installs a display-media handler for the
-   chosen source (`audio: 'loopback'` for system audio). Renderer mixes mic + system audio with
-   WebAudio, records screen and webcam with `MediaRecorder`. Main simultaneously samples the
-   cursor (and clicks) with timestamps relative to the recording start, excluding paused time.
-2. **Finalize** – main writes the WebM files, then ffmpeg converts them into constant 60 fps H.264
-   proxies with a short GOP (`-g 15`) so `<video>` seeking is fast and frame-accurate. (The explicit
-   rate matters: WebM's 1 ms timebase otherwise makes ffmpeg emit 1000 fps.) Auto zoom segments are
-   generated from the click data and stored in `project.json`.
-3. **Edit** – the compositor is a pure function of `(time, project, videos)`:
-   * cursor track → spring-smoothed path (pre-computed at 120 Hz, deterministic, seek-safe);
-   * camera → for each zoom segment an eased in/out envelope; focus follows a second, heavier
-     smoothed cursor path and is clamped so the zoomed view never leaves the frame;
-   * layout → output size from aspect ratio, content rect from padding, rounded clip + shadow.
-4. **Export** – renderer seeks each frame, draws it to an offscreen canvas at output resolution
-   and streams raw RGBA frames to main, which pipes them into ffmpeg (`libx264` + audio from the
-   proxy, trimmed) or a palette-based GIF filter graph.
+1. **Record.** Home picks a source. For screens and areas on Windows, main starts the native helper
+   (cursor excluded, GPU H.264, paused time cut out at the app's exact pause/resume instants) and
+   the renderer records audio only; otherwise the renderer records video+audio with MediaRecorder
+   (hardware H.264 preferred). Every 1 s chunk is sent over an ordered IPC channel and appended to
+   files in the recording folder, with a `recording.json` manifest, so a crash leaves recoverable
+   data. The cursor tracker samples positions, clicks (ignoring the app's own windows and anything
+   outside the recorded display/area) and shortcut keystrokes on the same pause-adjusted clock.
+2. **Process.** ffmpeg builds the proxies (GPU encoder when one works, else x264 superfast; fixed
+   size with aspect-preserving fit; exact crop for areas; separate native video + audio muxed with
+   their measured offset), with progress and "Finish later". The project duration comes from the
+   video frames. Auto zoom segments are generated from click clusters.
+3. **Edit.** An edit store wraps the project in an undo history (drags/sliders coalesce into one step)
+   and autosaves atomically. The player maps output time to source time through the clips (skipping
+   cuts, per-clip `playbackRate`) and draws with the compositor on `requestVideoFrameCallback`,
+   only when something changed. The compositor is a pure function of `(source time, project,
+   frames)`: cached background/shadow layer, camera from zoom envelopes and a heavily smoothed
+   cursor path, motion blur by sampling the camera across the frame interval, cursor sprite,
+   ripples, webcam, text and keystroke overlays.
+4. **Export.** Output frame times come from the clips (`exportFrameTimes`). Source frames are decoded
+   in order with WebCodecs from the proxy (own MP4 demuxer), with a frame-accurate seek fallback.
+   Frames are encoded with WebCodecs (H.264 Annex B chunks to ffmpeg for muxing) or as raw frames to
+   ffmpeg with the best working encoder (NVENC / Quick Sync / AMF, else x264). Audio is rebuilt from
+   the clips with `atrim`/`atempo`/`concat`, volume and exact duration. GIFs use bounded-memory
+   palette passes. Output goes to a temp file and is renamed into place on success.
 
 ## Why these choices
-* Determinism over real-time physics: every visual is a function of time, so preview, scrubbing
-  and export always agree.
-* ffmpeg once after recording fixes MediaRecorder's unseekable WebM and gives a robust encoder.
-* Native code is optional: without `uiohook-napi` the app still records; auto zoom then needs
-  manual segments.
+* **Determinism:** every visual is a function of source time, so preview, scrubbing and export
+  agree; the motion engine is pure TypeScript with unit tests.
+* **Never lose a recording:** streaming to disk plus a manifest replaces holding the recording in
+  memory (which broke above 2 GiB in the first version).
+* **Native capture for the cursor:** Chromium always draws the OS cursor into desktop capture, so the
+  smooth cursor needs Windows Graphics Capture with cursor capture disabled.
+* **Light and smooth:** hardware encoders for recording, proxies and export; no React re-render per
+  playback frame; no work when idle.
 
 ## Testing
-* Vitest unit tests for the engine (smoothing, auto zoom, camera clamping, layout, time mapping)
-  and the ffmpeg argument builders.
-* `npm run typecheck` for main/preload/renderer.
-* End-to-end: the built app was driven with Playwright under Xvfb (record a screen → stop from the
-  floating bar → add a zoom and change background → export MP4 and GIF), and the outputs were
-  checked with ffprobe and by inspecting frames.
+* `npm test`: vitest unit tests for engine, timeline, editor operations, recording maths, export and
+  proxy arguments, MP4 demuxer, overlays, native client protocol (with a fake helper) and packaging.
+* `npm run test:e2e` (after `npm run build`, under `xvfb-run` on Linux): Playwright drives the real
+  app. It records with fake camera/microphone devices and real X11 input, and covers the native path
+  through a helper process that speaks the real protocol. Editor flows, frame-accurate export, A/V
+  sync after cuts and speed changes, colours, cancel safety, clipboard, overlays and packaging are
+  covered too.
+* `cargo test` / `cargo clippy` in `native/`; `npm run dist:win` runs `verify-dist` on the package.
+* Windows-only behaviour that cannot run here is listed in the README and in `native/README.md`.

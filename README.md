@@ -1,29 +1,31 @@
 # Screen Studio for Windows
 
-A Windows screen recorder inspired by [Screen Studio](https://screen.studio/) for macOS:
-record your screen, and get a polished video with **automatic zoom on clicks**, a
-**smooth cursor**, beautiful **backgrounds**, a **webcam bubble** and one-click **MP4 / GIF export**.
+A Windows screen recorder inspired by [Screen Studio](https://screen.studio/) for macOS: record your
+screen, then get a polished video with **automatic zoom on clicks**, a **smooth cursor**, **motion
+blur**, beautiful **backgrounds**, a **webcam bubble**, **text and keystroke overlays**, and fast
+**MP4 / GIF export**.
 
-Built with Electron, React, TypeScript and ffmpeg.
+Built with Electron, React and TypeScript, a small Rust helper for Windows capture, and ffmpeg.
 
-- [Research](docs/RESEARCH.md): what Screen Studio does and how others approached it
-- [Feature list](docs/FEATURES.md): what's in v1 and what's on the roadmap
+- [Feature list](docs/FEATURES.md): everything the app does, and what is still on the roadmap
 - [Implementation](docs/IMPLEMENTATION.md): architecture and design decisions
 - [Building](docs/BUILDING.md): toolchain, installer, icon and code signing
+- [Native capture helper](native/README.md): the Windows Graphics Capture recorder and its manual test checklist
+- [Research](docs/RESEARCH.md): what Screen Studio does and how others approached it
 
-## Features (v1)
+## Features
 
 | | |
 | --- | --- |
-| **Record** | Any screen or window · microphone · system audio (Windows loopback) · webcam · 3-2-1 countdown · floating control bar with pause/resume/discard · `Ctrl+Shift+2` to stop |
-| **Motion** | Auto zoom generated from your clicks · camera follows the cursor with spring smoothing · smooth, resizable cursor · click ripples · hide cursor when idle |
-| **Edit** | Live preview · timeline with trim and draggable/resizable zoom segments · per-zoom level and focus · gradient / colour / image backgrounds · padding, rounded corners, shadow · webcam position, size, shape · aspect ratios (Auto, 16:9, 9:16, 1:1, 4:3) · auto-save |
-| **Export** | MP4 (H.264/AAC) 720p → 4K at 30/60 fps, three quality presets · palette-optimised GIF |
+| **Record** | A full screen, an **area** you drag out, or a single window · microphone · system audio · webcam · 3-2-1 countdown · floating control bar (pause / resume / stop / discard) · `Ctrl+Shift+2` to stop · recordings are streamed to disk while you record, so nothing is lost if something crashes |
+| **No double cursor** | On Windows 10 2004+/11 screens and areas are recorded by a native helper (Windows Graphics Capture, GPU H.264) that leaves the Windows cursor out of the video, so the app can draw its own smooth cursor. Elsewhere it falls back to Chromium capture automatically |
+| **Motion** | Auto zoom from your clicks · camera follows the cursor with spring smoothing · motion blur on zooms and pans · smooth, resizable cursor that keeps the real cursor shape (arrow, text, hand, …) · click ripples · hide cursor when idle |
+| **Edit** | Undo / redo · trim, split, cut and speed (0.25×–8×) per clip · zoom segments (level, follow cursor or fixed point picked on the preview) · text annotations · keystroke overlay for shortcuts (`Ctrl + C`, never plain typing) · backgrounds (gradients, colour, image), padding, corners, shadow · webcam position, size, shape · aspect ratios (Auto, 16:9, 9:16, 1:1, 4:3) · volume / mute · zoomable timeline for long recordings · auto-save |
+| **Export** | MP4 (H.264/AAC) 720p → 4K at 30/60 fps using the GPU when available (WebCodecs, NVENC, Quick Sync, AMF), with software fallback · palette-optimised GIF · exact frames and colours · progress with ETA · **Copy** the exported file to the clipboard to paste into chat apps or Explorer |
 
 ## Getting started
 
-Requirements: Windows 10 (2004+) or 11 to run the app; Node.js **20.19+ or 22.12+** to build it
-(Vite 7 and electron-vite 5 need it; see `engines` in `package.json`).
+Requirements: Windows 10 (2004+) or 11 to run the app; Node.js **20.19+ or 22.12+** to build it.
 
 ```bash
 npm install
@@ -33,15 +35,18 @@ npm run typecheck
 npm run dist:win   # build the Windows installer: dist/ScreenStudio-Setup-<version>.exe
 ```
 
+End-to-end tests drive the built app with Playwright. On Linux run them under a virtual display:
+
+```bash
+npm run build && xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e
+```
+
 ### Building the installer
 
-`npm run dist:win` works on Windows, Linux and macOS (Linux/macOS need Wine, 64- and 32-bit). It
-checks its inputs first and fetches the Windows `ffmpeg.exe` itself when cross-building, so there
-is no manual pre-step; if ffmpeg cannot be fetched the build stops with an error instead of
-producing an installer that cannot record. It also builds and bundles the native capture helper
-when a Rust toolchain is available (optional), then verifies the package: only the compiled app and
-its runtime dependencies in `app.asar`, the app icon in the exe and installer, and only the
-English Chromium locale. See [docs/BUILDING.md](docs/BUILDING.md) for details and sizes.
+`npm run dist:win` works on Windows, Linux and macOS (Linux/macOS need Wine). It checks its inputs
+first (fetching the Windows `ffmpeg.exe` when cross-building), builds the native capture helper when
+a Rust toolchain is available, and verifies the package afterwards. See
+[docs/BUILDING.md](docs/BUILDING.md).
 
 ### Code signing
 
@@ -57,40 +62,60 @@ git-ignored `electron-builder.env`) provides one of:
 Set `SSW_REQUIRE_SIGNING=1` for release builds so an unsigned build fails. Full instructions:
 [docs/BUILDING.md](docs/BUILDING.md#code-signing).
 
-Recordings are stored in `Videos\Screen Studio for Windows\<recording>` as
-`project.json`, `cursor.json` and H.264 proxies of the screen and camera.
+## Using it
+
+Recordings are stored in `Videos\Screen Studio for Windows\<recording>` as `project.json`,
+`cursor.json` and H.264 proxies of the screen and camera. Unfinished recordings (for example after a
+crash) are listed on the home screen and can be recovered.
 
 ### Editor shortcuts
 
 | Key | Action |
 | --- | --- |
 | `Space` | Play / pause |
+| `←` / `→` | Step 1/30 s (hold `Shift` for one second) |
+| `Home` / `End` | Go to the start / end |
+| `S` | Split the clip at the playhead |
 | `Z` | Add a zoom at the playhead |
-| `Delete` | Delete the selected zoom |
-| `←` / `→` | Step one frame (hold `Shift` for one second) |
-| Double-click zoom track | Add a zoom there |
+| `T` | Add text at the playhead |
+| `Delete` / `Backspace` | Delete the selection (clip → cut, zoom, text, or a Shift-dragged range) |
+| `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z`) | Undo / redo |
+| `+` / `-`, `Ctrl`+wheel | Zoom the timeline in / out |
+| `Esc` | Clear the selection, or close the export dialog |
+| Double-click a zoom or text track | Add a zoom / text there |
+| `Shift`+drag on the clip track | Select a range to cut or re-time |
 
 ## How it works (short version)
 
-1. The main process captures the chosen source through Electron's display-media handler
-   (with `loopback` system audio) while sampling the cursor at 60 Hz and listening for clicks
-   via the optional `uiohook-napi` hook.
-2. After recording, ffmpeg turns the MediaRecorder WebM into a 60 fps short-GOP H.264 proxy so
-   the editor can seek frame-accurately; auto zoom segments are generated from click clusters.
-3. A single canvas compositor — a pure function of time — draws background, rounded/shadowed
-   recording, zoom camera, smoothed cursor, click ripples and webcam. The preview and the
-   exporter both use it, so what you see is exactly what you export.
-4. Export renders each frame offscreen and streams raw RGBA into ffmpeg (`libx264` + trimmed
-   audio, or a palette-based GIF).
+1. **Capture.** On Windows the native helper (`ssw-capture.exe`) records the monitor with Windows
+   Graphics Capture, without the cursor, straight to a GPU-encoded MP4, while Chromium records only
+   the audio. Otherwise Chromium's `getDisplayMedia` records video and audio. Everything is streamed
+   to disk as it is recorded. The main process samples the cursor, clicks and shortcut keystrokes.
+2. **Processing.** ffmpeg turns the recording into a 60 fps short-GOP H.264 proxy (on the GPU when
+   possible, cropped for area recordings), and auto zoom segments are generated from click clusters.
+3. **Editing.** One canvas compositor, a pure function of time, draws background, the
+   rounded/shadowed recording, zoom camera with motion blur, smooth cursor, ripples, webcam, text and
+   keystrokes. Cuts and speed changes are a list of clips; everything else stays in recording time.
+4. **Export.** The same compositor renders every output frame. Frames are decoded in order with
+   WebCodecs and encoded on the GPU (WebCodecs or ffmpeg's NVENC / Quick Sync / AMF), falling back to
+   x264; audio follows the cuts and speed changes. The file is written to a temporary name and only
+   moved into place when complete.
+
+## Verification status
+
+- Unit tests (vitest) cover the pure engine, timeline, export/proxy arguments, recording maths,
+  native client protocol and packaging rules. End-to-end tests drive the real built app (recording
+  with fake devices and real X11 input, editor flows, frame-accurate export, A/V sync after edits,
+  colour accuracy, cancel safety, clipboard, motion blur and overlays, packaging).
+- **Not yet verified on a real Windows PC:** Windows Graphics Capture in the native helper, GPU
+  encoders (NVENC / Quick Sync / AMF / Media Foundation), system-audio loopback, the mouse and
+  keyboard hook on Windows layouts, mixed-DPI multi-monitor setups, the PowerShell clipboard copy,
+  and the installer UI. The native helper has a manual checklist in [native/README.md](native/README.md).
 
 ## Known limitations
 
-- Hiding the OS cursor depends on Chromium honouring `cursor: 'never'`. When it doesn't, the
-  Windows cursor is baked into the video and the smooth cursor starts **off** (you can still turn it
-  on; auto zoom works either way). A native Windows Graphics Capture helper is on the roadmap.
-- Cursor tracking and auto zoom need a full-screen recording; window recordings keep the
-  original cursor and use manual zooms.
-- Click detection needs the optional native module `uiohook-napi`; without it, add zooms manually.
-- Verified end-to-end (record → edit → MP4/GIF export) on Linux/X11 under Xvfb; the
-  Windows-specific paths (loopback audio, hiding the control bar from the capture, mouse hook)
-  rely on Electron/uiohook Windows support and still need a run on a real Windows machine.
+- Window recordings use Chromium capture: the Windows cursor stays in the video, and there is no
+  cursor data, so no smooth cursor, click ripples or auto zoom (add zooms manually).
+- The microphone and system audio are mixed into one track at record time.
+- Area recordings capture the whole monitor and crop it afterwards.
+- Code signing needs your own certificate (see above).
