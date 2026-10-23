@@ -2,23 +2,25 @@
 //! textures, so a hardware encoder (NVENC, Quick Sync, AMF) consumes GPU frames
 //! directly. Falls back to the Microsoft software encoder.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use windows::core::{Interface, GUID, HSTRING, PWSTR};
 use windows::Win32::Graphics::Direct3D11::{ID3D11Texture2D, D3D11_BIND_RENDER_TARGET, D3D11_USAGE_DEFAULT};
 use windows::Win32::Media::MediaFoundation::{
     eAVEncCommonRateControlMode_UnconstrainedVBR, eAVEncH264VProfile_High, CODECAPI_AVEncCommonMeanBitRate,
     CODECAPI_AVEncCommonRateControlMode, CODECAPI_AVEncMPVDefaultBPictureCount, CODECAPI_AVEncMPVGOPSize, IMF2DBuffer,
-    IMFAttributes, IMFDXGIBuffer, IMFDXGIDeviceManager, IMFMediaType, IMFSample, IMFSinkWriter, IMFSinkWriterEx,
-    IMFTransform, IMFVideoSampleAllocatorEx, MFCreateAttributes, MFCreateDXGIDeviceManager, MFCreateMediaType,
-    MFCreateSinkWriterFromURL, MFCreateVideoSampleAllocatorEx, MFMediaType_Video, MFNominalRange_16_235,
-    MFT_ENUM_HARDWARE_URL_Attribute, MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264,
-    MFVideoFormat_NV12, MFVideoInterlace_Progressive, MFVideoPrimaries_BT709, MFVideoTransFunc_709,
-    MFVideoTransferMatrix_BT709, MFT_CATEGORY_VIDEO_ENCODER, MF_E_SAMPLEALLOCATOR_EMPTY, MF_MT_ALL_SAMPLES_INDEPENDENT,
-    MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE, MF_MT_MPEG2_PROFILE,
-    MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_MT_TRANSFER_FUNCTION, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_VIDEO_PRIMARIES,
-    MF_MT_YUV_MATRIX, MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SA_D3D11_BINDFLAGS, MF_SA_D3D11_USAGE,
-    MF_SINK_WRITER_D3D_MANAGER, MF_TRANSCODE_CONTAINERTYPE, MF_TRANSFORM_ASYNC,
+    IMFAttributes, IMFByteStream, IMFDXGIBuffer, IMFDXGIDeviceManager, IMFMediaSink, IMFMediaType, IMFSample,
+    IMFSinkWriter, IMFSinkWriterEx, IMFTransform, IMFVideoSampleAllocatorEx, MFCreateAttributes,
+    MFCreateDXGIDeviceManager, MFCreateFile, MFCreateMediaType, MFCreateSinkWriterFromURL,
+    MFCreateVideoSampleAllocatorEx, MFMediaType_Video, MFNominalRange_16_235, MFT_ENUM_HARDWARE_URL_Attribute,
+    MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264, MFVideoFormat_NV12,
+    MFVideoInterlace_Progressive, MFVideoPrimaries_BT709, MFVideoTransFunc_709, MFVideoTransferMatrix_BT709,
+    MFT_CATEGORY_VIDEO_ENCODER, MF_ACCESSMODE_WRITE, MF_E_SAMPLEALLOCATOR_EMPTY, MF_FILEFLAGS_NONE,
+    MF_MT_ALL_SAMPLES_INDEPENDENT, MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE,
+    MF_MT_MAJOR_TYPE, MF_MT_MPEG2_PROFILE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_MT_TRANSFER_FUNCTION,
+    MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_VIDEO_PRIMARIES, MF_MT_YUV_MATRIX, MF_OPENMODE_DELETE_IF_EXIST,
+    MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SA_D3D11_BINDFLAGS, MF_SA_D3D11_USAGE, MF_SINK_WRITER_D3D_MANAGER,
+    MF_SINK_WRITER_MEDIASINK, MF_TRANSCODE_CONTAINERTYPE, MF_TRANSFORM_ASYNC,
 };
 use windows::Win32::System::Com::CoTaskMemFree;
 
@@ -37,13 +39,69 @@ pub struct EncoderSettings {
     pub bitrate: u32,
 }
 
-pub struct Encoder {
+/// A sink writer and the file it writes. Media Foundation releases a writer's file
+/// asynchronously, so an abandoned writer (a failed setup attempt, an error) would keep
+/// the file locked for a while; dropping this shuts the sink down and closes the file.
+struct FileWriter {
     writer: IMFSinkWriter,
+    file: IMFByteStream,
+}
+
+impl FileWriter {
+    unsafe fn open(path: &Path, attributes: &IMFAttributes) -> Result<Self> {
+        unsafe {
+            let url = HSTRING::from(path.as_os_str());
+            let file = MFCreateFile(MF_ACCESSMODE_WRITE, MF_OPENMODE_DELETE_IF_EXIST, MF_FILEFLAGS_NONE, &url)
+                .context("Creating the output file")?;
+            match MFCreateSinkWriterFromURL(&url, &file, attributes) {
+                Ok(writer) => Ok(Self { writer, file }),
+                Err(e) => {
+                    let _ = file.Close();
+                    Err(Failure::runtime(describe("Creating the MP4 writer", &e)))
+                }
+            }
+        }
+    }
+}
+
+impl Drop for FileWriter {
+    fn drop(&mut self) {
+        unsafe {
+            let mut sink = std::ptr::null_mut();
+            let id = MF_SINK_WRITER_MEDIASINK.0;
+            if self.writer.GetServiceForStream(id, &GUID::zeroed(), &IMFMediaSink::IID, &mut sink).is_ok()
+                && !sink.is_null()
+            {
+                // Already shut down after a successful Finalize; then this is a no-op.
+                let _ = IMFMediaSink::from_raw(sink).Shutdown();
+            }
+            let _ = self.file.Close();
+        }
+    }
+}
+
+pub struct Encoder {
+    output: FileWriter,
     stream: u32,
     allocator: IMFVideoSampleAllocatorEx,
     _manager: IMFDXGIDeviceManager,
+    /// Encoder-check files that could not be deleted yet (still open by a failed attempt).
+    leftovers: Vec<PathBuf>,
     pub name: String,
     pub hardware: bool,
+}
+
+impl Drop for Encoder {
+    fn drop(&mut self) {
+        remove_files(&mut self.leftovers);
+    }
+}
+
+fn remove_files(files: &mut Vec<PathBuf>) {
+    files.retain(|f| std::fs::remove_file(f).is_err() && f.exists());
+    for f in files.iter() {
+        output::log(&format!("could not delete {}", f.display()));
+    }
 }
 
 /// A pooled NV12 sample and the texture (or array slice) to render into.
@@ -80,20 +138,46 @@ impl Encoder {
         unsafe { manager.ResetDevice(&device.device, reset_token) }
             .context("Sharing the Direct3D device with Media Foundation")?;
 
+        // Some failures only show once frames flow (e.g. Media Foundation picking a hardware
+        // encoder of another GPU), so each configuration first encodes a few frames into a
+        // throwaway file; the recording then uses the first one that works end to end.
+        // Every attempt gets its own file in case a failed one still holds its file open.
+        let mut leftovers = Vec::new();
         let mut last_error = String::new();
-        for hardware in [true, false] {
-            for tuning in TUNINGS {
-                match Self::try_create(path, &manager, settings, hardware, tuning) {
-                    Ok(encoder) => return Ok(encoder),
-                    Err(e) => {
-                        output::log(&format!("encoder setup (hardware: {hardware}, {tuning:?}) failed: {e}"));
-                        last_error = e.message;
-                    }
+        let attempts = [true, false].into_iter().flat_map(|hw| TUNINGS.into_iter().map(move |t| (hw, t)));
+        for (n, (hardware, tuning)) in attempts.enumerate() {
+            let mut check = path.as_os_str().to_owned();
+            check.push(format!(".encoder-check-{n}.mp4"));
+            let check = PathBuf::from(check);
+            let checked = Self::try_create(&check, &manager, settings, hardware, tuning).and_then(|e| e.smoke_test());
+            if std::fs::remove_file(&check).is_err() && check.exists() {
+                leftovers.push(check);
+            }
+            match checked.and_then(|()| Self::try_create(path, &manager, settings, hardware, tuning)) {
+                Ok(mut encoder) => {
+                    encoder.leftovers = leftovers;
+                    return Ok(encoder);
+                }
+                Err(e) => {
+                    output::log(&format!("encoder setup (hardware: {hardware}, {tuning:?}) failed: {e}"));
+                    last_error = e.message;
                 }
             }
         }
+        remove_files(&mut leftovers);
         let _ = std::fs::remove_file(path);
         Err(Failure::runtime(format!("No H.264 encoder could be set up: {last_error}")))
+    }
+
+    /// Encodes a few frames and finalises; errors from asynchronous hardware encoders
+    /// surface by then.
+    fn smoke_test(self) -> Result<()> {
+        let frame = 10_000_000 / 30;
+        for n in 0..3 {
+            let slot = self.next_slot()?.ok_or_else(|| Failure::runtime("The encoder accepted no input"))?;
+            self.write(slot, n * frame, frame)?;
+        }
+        self.finish()
     }
 
     fn try_create(
@@ -112,8 +196,8 @@ impl Encoder {
             attributes
                 .SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_MPEG4)
                 .context("Configuring the writer")?;
-            let url = HSTRING::from(path.as_os_str());
-            let writer = MFCreateSinkWriterFromURL(&url, None, &attributes).context("Creating the output file")?;
+            let output = FileWriter::open(path, &attributes)?;
+            let writer = &output.writer;
 
             let tagged = tuning != Tuning::Bare;
             let output_type = video_type(s, &MFVideoFormat_H264, tagged)?;
@@ -146,8 +230,16 @@ impl Encoder {
                 .context("Allocating encoder input textures")?;
 
             writer.BeginWriting().context("Starting the encoder")?;
-            let (name, is_hardware) = describe_encoder(&writer, stream, hardware);
-            Ok(Self { writer, stream, allocator, _manager: manager.clone(), name, hardware: is_hardware })
+            let (name, is_hardware) = describe_encoder(writer, stream, hardware);
+            Ok(Self {
+                output,
+                stream,
+                allocator,
+                _manager: manager.clone(),
+                leftovers: Vec::new(),
+                name,
+                hardware: is_hardware,
+            })
         }
     }
 
@@ -179,13 +271,14 @@ impl Encoder {
         unsafe {
             slot.sample.SetSampleTime(time).context("Timestamping the frame")?;
             slot.sample.SetSampleDuration(duration).context("Timestamping the frame")?;
-            self.writer.WriteSample(self.stream, &slot.sample).context("Encoding a frame")
+            self.output.writer.WriteSample(self.stream, &slot.sample).context("Encoding a frame")
         }
     }
 
     /// Drains the encoder and writes the MP4 index. Without it the file is unplayable.
     pub fn finish(self) -> Result<()> {
-        unsafe { self.writer.Finalize() }.context("Finalising the MP4")
+        unsafe { self.output.writer.Finalize() }.context("Finalising the MP4")
+        // Dropping `self` closes the file.
     }
 }
 

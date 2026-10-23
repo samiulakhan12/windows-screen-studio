@@ -214,7 +214,7 @@ fn record(args: &RecordArgs) -> Result<()> {
     let path = output_path(&args.out)?;
     let monitor = monitors::select(&args.monitor)?;
 
-    let device = d3d::create_device()?;
+    let device = d3d::create_device(Some(monitor.handle))?;
     let capture = Capture::new(&device, monitor.handle, args.fps)?;
     let input = capture.size();
     let (width, height) = sizing::output_size(input.0, input.1);

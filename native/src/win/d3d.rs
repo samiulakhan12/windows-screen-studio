@@ -6,8 +6,8 @@ use windows::core::{s, w, IInspectable, Interface, HRESULT};
 use windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 use windows::Win32::Foundation::HMODULE;
 use windows::Win32::Graphics::Direct3D::{
-    D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1,
-    D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1,
+    D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_UNKNOWN, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_10_0,
+    D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1,
 };
 use windows::Win32::Graphics::Direct3D11::{
     D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Multithread, ID3D11Texture2D, D3D11_BIND_RENDER_TARGET,
@@ -15,7 +15,8 @@ use windows::Win32::Graphics::Direct3D11::{
     D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
 };
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT, DXGI_SAMPLE_DESC};
-use windows::Win32::Graphics::Dxgi::IDXGIDevice;
+use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIAdapter, IDXGIAdapter1, IDXGIDevice, IDXGIFactory1};
+use windows::Win32::Graphics::Gdi::HMONITOR;
 use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryExW, LOAD_LIBRARY_SEARCH_SYSTEM32};
 
 use super::{Context, Failure, Result};
@@ -25,15 +26,43 @@ pub struct Device {
     pub context: ID3D11DeviceContext,
 }
 
-pub fn create_device() -> Result<Device> {
+/// The GPU that drives `monitor`. Capturing and encoding there avoids copying every
+/// frame between GPUs on hybrid laptops and multi-GPU desktops, and makes the encoder
+/// that Media Foundation picks for the device belong to the same GPU.
+fn adapter_for(monitor: HMONITOR) -> Option<IDXGIAdapter1> {
+    let factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1() }.ok()?;
+    for i in 0.. {
+        let adapter = unsafe { factory.EnumAdapters1(i) }.ok()?;
+        for j in 0.. {
+            let Ok(output) = (unsafe { adapter.EnumOutputs(j) }) else { break };
+            if unsafe { output.GetDesc() }.is_ok_and(|desc| desc.Monitor == monitor) {
+                return Some(adapter);
+            }
+        }
+    }
+    None
+}
+
+/// Creates the device on the GPU driving `monitor` when known, else on the default GPU.
+pub fn create_device(monitor: Option<HMONITOR>) -> Result<Device> {
+    if let Some(adapter) = monitor.and_then(adapter_for) {
+        if let Ok(device) = create_on(Some(&adapter.cast().context("Querying IDXGIAdapter")?)) {
+            return Ok(device);
+        }
+    }
+    create_on(None)
+}
+
+fn create_on(adapter: Option<&IDXGIAdapter>) -> Result<Device> {
     let levels: [D3D_FEATURE_LEVEL; 4] =
         [D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0];
     let mut device = None;
     let mut context = None;
     unsafe {
         D3D11CreateDevice(
-            None,
-            D3D_DRIVER_TYPE_HARDWARE,
+            adapter,
+            // An explicit adapter requires the "unknown" driver type.
+            if adapter.is_some() { D3D_DRIVER_TYPE_UNKNOWN } else { D3D_DRIVER_TYPE_HARDWARE },
             HMODULE::default(),
             // Video support is needed by the colour-conversion video processor and the encoder.
             D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT,

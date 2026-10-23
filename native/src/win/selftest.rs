@@ -57,16 +57,17 @@ fn selftest(args: &SelftestArgs) -> Result<String> {
     init_winrt()?;
     let _mf = MediaFoundation::start()?;
     let path = output_path(&args.out)?;
-    let device = d3d::create_device()?;
-    let mut processor = Processor::new(&device, (WIDTH, HEIGHT), (WIDTH, HEIGHT), args.fps)?;
+    let device = d3d::create_device(None)?;
     let settings = EncoderSettings {
         width: WIDTH,
         height: HEIGHT,
         fps: args.fps,
         bitrate: sizing::default_bitrate(WIDTH, HEIGHT, args.fps),
     };
+    // Encoder first: it is what this command is mostly about.
     partial.arm(&path);
     let encoder = Encoder::create(&path, &device, &settings)?;
+    let mut processor = Processor::new(&device, (WIDTH, HEIGHT), (WIDTH, HEIGHT), args.fps)?;
 
     let source = d3d::create_texture(&device.device, WIDTH, HEIGHT, DXGI_FORMAT_B8G8R8A8_UNORM)?;
     let mut view: Option<ID3D11RenderTargetView> = None;

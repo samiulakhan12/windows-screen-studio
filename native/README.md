@@ -150,8 +150,12 @@ WGC frame pool (free-threaded, polled) ──CopySubresourceRegion──▶ newe
   `std::thread::sleep`, at least every 15 ms), drains the capture pool, converts and encodes.
   Separate threads read stdin and poll the cursor shape.
 - `pacer.rs` owns the timeline (slots, pauses, stop, catch-up); it is pure and unit-tested.
+- The Direct3D device is created on the GPU that drives the recorded monitor, so frames never
+  cross GPUs on hybrid laptops and the encoder Media Foundation picks sits on that GPU.
 - Encoder setup tries hardware first with full tuning, then progressively simpler settings,
-  then the software encoder, so an encoder that rejects one property still works.
+  then the software encoder, so an encoder that rejects one property still works. Each
+  configuration first encodes three frames into a throwaway `<out>.encoder-check.mp4`
+  (deleted right away), because some failures only appear once frames flow.
 - The encoder's input pool holds at most 16 frames; when it is exhausted the frame is dropped
   instead of queueing without bound, so memory stays flat.
 
