@@ -31,6 +31,19 @@ npm run typecheck
 npm run dist:win   # build an NSIS installer into dist/ (run on Windows)
 ```
 
+### Building the installer from Linux/macOS
+
+`npm run dist:win` works natively on Windows. To cross-build, install Wine (64- and 32-bit) and
+fetch the Windows ffmpeg binary first:
+
+```bash
+(cd node_modules/ffmpeg-static && npm_config_platform=win32 npm_config_arch=x64 node install.js)
+npm run dist:win   # -> dist/ScreenStudio-Setup-<version>.exe
+```
+
+The installer is not code-signed yet, so Windows SmartScreen will warn on first launch
+("More info" → "Run anyway").
+
 Recordings are stored in `Videos\Screen Studio for Windows\<recording>` as
 `project.json`, `cursor.json` and H.264 proxies of the screen and camera.
 

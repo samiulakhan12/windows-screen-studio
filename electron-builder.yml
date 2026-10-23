@@ -10,6 +10,11 @@ asarUnpack:
   - node_modules/ffmpeg-static/**
   - node_modules/uiohook-napi/**
 win:
+  # Keep other platforms' native binaries out of the Windows package (matters when cross-building).
+  files:
+    - '!node_modules/ffmpeg-static/ffmpeg'
+    - '!node_modules/uiohook-napi/prebuilds/{darwin,linux}-*/**'
+    - '!node_modules/uiohook-napi/prebuilds/win32-arm64/**'
   target:
     - target: nsis
       arch: [x64]
