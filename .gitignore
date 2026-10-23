@@ -1,4 +1,5 @@
-node_modules/
+# No trailing slash: in git worktrees node_modules is a symlink, which "node_modules/" does not match.
+node_modules
 out/
 dist/
 *.log
@@ -6,3 +7,10 @@ dist/
 *.tsbuildinfo
 native/target/
 native/bin/
+.claude/worktrees/
+# Local signing material and secrets (see docs/BUILDING.md); never commit these.
+*.pfx
+*.p12
+.env
+.env.*
+electron-builder.env

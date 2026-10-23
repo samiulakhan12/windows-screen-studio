@@ -1,8 +1,22 @@
 import { app, BrowserWindow, shell } from 'electron'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 export const isDev = !app.isPackaged && !!process.env['ELECTRON_RENDERER_URL']
 export const preloadPath = path.join(__dirname, '../preload/index.js')
+
+/**
+ * Window/taskbar icon. Packaged builds return undefined on purpose: on Windows Electron then uses
+ * the exe's embedded multi-size icon (build/icon.ico, put there by electron-builder), which the
+ * shell scales best for every DPI; build/ itself is not shipped. Unpackaged runs (npm run dev, e2e)
+ * would show Electron's own icon, so they use the project's build/ (app.getAppPath() is the folder
+ * holding package.json).
+ */
+export function windowIconPath(): string | undefined {
+  if (app.isPackaged) return undefined
+  const file = path.join(app.getAppPath(), 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
+  return existsSync(file) ? file : undefined
+}
 
 let mainWindow: BrowserWindow | null = null
 
@@ -26,6 +40,7 @@ export function createMainWindow(onClosed: () => void): BrowserWindow {
     show: false,
     backgroundColor: '#0b0b10',
     title: 'Screen Studio for Windows',
+    icon: windowIconPath(),
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#0b0b10', symbolColor: '#e5e7eb', height: 40 },
     webPreferences: {
