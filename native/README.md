@@ -29,7 +29,7 @@ fails, the app records through Chromium as before.
 
 ```bash
 node scripts/build-native.mjs            # -> native/bin/ssw-capture.exe
-node scripts/build-native.mjs --require  # fail (exit 1) instead of warning when Rust is missing
+node scripts/build-native.mjs --require  # fail (exit 1) instead of warning when it cannot be built
 ```
 
 - On Windows it builds for the host toolchain (`x86_64-pc-windows-msvc`, or `-gnu`).
