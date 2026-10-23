@@ -57,9 +57,9 @@ export async function startNativeVideo(api: NativeCaptureApi, options: NativeCap
 }
 
 /** Finalises the helper's MP4; kills it if it does not finish in time. */
-export async function stopNativeVideo(session: NativeCaptureSession, timeoutMs = 30000): Promise<NativeStopInfo> {
+export async function stopNativeVideo(session: NativeCaptureSession, at?: number, timeoutMs = 30000): Promise<NativeStopInfo> {
   try {
-    return await withTimeout(session.stop(), timeoutMs, 'The capture helper did not stop in time')
+    return await withTimeout(session.stop(at), timeoutMs, 'The capture helper did not stop in time')
   } catch (err) {
     try {
       session.kill()

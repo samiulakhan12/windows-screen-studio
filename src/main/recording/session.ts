@@ -63,14 +63,15 @@ export class ActiveRecording {
   pause(at = Date.now()): void {
     if (this.pausedAt !== null || this.stoppedAt !== null) return
     this.pausedAt = at
-    this.native?.pause()
+    // The helper cuts its video at the same instant the cursor/audio timelines pause.
+    this.native?.pause(at)
   }
 
   resume(at = Date.now()): void {
     if (this.pausedAt === null || this.stoppedAt !== null) return
     this.pauses.push({ from: this.pausedAt, to: at })
     this.pausedAt = null
-    this.native?.resume()
+    this.native?.resume(at)
   }
 
   /** Freezes the clock and starts finalising the native video. Idempotent. */
@@ -84,7 +85,7 @@ export class ActiveRecording {
     const native = this.native
     this.native = null
     if (native) {
-      this.nativeStop = stopNativeVideo(native)
+      this.nativeStop = stopNativeVideo(native, at)
       // Awaited by finishNative(); keep a failure from being reported as unhandled meanwhile.
       this.nativeStop.catch(() => undefined)
     }

@@ -84,7 +84,7 @@ describe('nativeAvailable', () => {
 describe('stopNativeVideo', () => {
   it('kills a helper that does not finish in time', async () => {
     const { session, calls } = fakeSession({ stop: () => new Promise(() => undefined) })
-    await expect(stopNativeVideo(session, 30)).rejects.toThrow(/did not stop/)
+    await expect(stopNativeVideo(session, undefined, 30)).rejects.toThrow(/did not stop/)
     expect(calls).toContain('kill')
   })
 })
