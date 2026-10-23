@@ -1,4 +1,14 @@
-import type { Project, ZoomSegment } from '../types'
+import type { CaptureInfo, CursorTrack, Project, ZoomSegment } from '../types'
+import { fullClip, normalizeClips } from './timeline'
+
+export const PROJECT_VERSION = 2
+
+export const DEFAULT_EFFECTS: Project['effects'] = {
+  motionBlur: 0.5,
+  keystrokes: { show: true, position: 'bottom', size: 0.035 }
+}
+
+export const DEFAULT_AUDIO: Project['audio'] = { volume: 1, muted: false }
 
 export function createProject(init: {
   id: string
@@ -11,11 +21,10 @@ export function createProject(init: {
   webcamOffset: number
   zooms: ZoomSegment[]
   cursorValid: boolean
-  /** OS cursor absent from the video, so the smooth cursor won't double up. */
-  cursorHidden: boolean
+  capture: CaptureInfo
 }): Project {
   return {
-    version: 1,
+    version: 2,
     id: init.id,
     name: init.name,
     createdAt: new Date().toISOString(),
@@ -25,9 +34,11 @@ export function createProject(init: {
     hasWebcam: init.hasWebcam,
     hasAudio: init.hasAudio,
     webcamOffset: init.webcamOffset,
-    trim: { start: 0, end: init.duration },
+    capture: init.capture,
+    clips: [fullClip(init.duration)],
     zooms: init.zooms,
     autoZoom: true,
+    annotations: [],
     style: {
       background: { type: 'gradient', preset: 'aurora' },
       padding: 0.07,
@@ -36,13 +47,61 @@ export function createProject(init: {
       aspectRatio: 'auto'
     },
     cursor: {
-      show: init.cursorValid && init.cursorHidden,
+      // The synthetic cursor only makes sense when the OS cursor is not in the pixels.
+      show: init.cursorValid && !init.capture.cursorInVideo,
       size: 1.4,
       smoothing: 0.6,
       clickEffect: true,
       hideWhenIdle: true
     },
-    webcam: { show: init.hasWebcam, corner: 'bottom-right', size: 0.24, shape: 'circle' }
+    webcam: { show: init.hasWebcam, corner: 'bottom-right', size: 0.24, shape: 'circle' },
+    effects: structuredClone(DEFAULT_EFFECTS),
+    audio: { ...DEFAULT_AUDIO }
+  }
+}
+
+type AnyProject = Omit<Project, 'version'> & { version: number; trim?: { start: number; end: number } }
+
+/**
+ * Upgrades a project.json of any earlier version to the current schema.
+ * Missing fields get defaults, so hand-edited or partial files still open.
+ */
+export function migrateProject(raw: unknown): Project {
+  const p = raw as AnyProject
+  if (!p || typeof p !== 'object' || typeof p.id !== 'string') throw new Error('Not a project file')
+  const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
+  const clips =
+    Array.isArray(p.clips) && p.clips.length
+      ? p.clips
+      : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
+  const { trim: _legacyTrim, ...rest } = p
+  void _legacyTrim
+  return {
+    ...rest,
+    version: 2,
+    duration,
+    capture: p.capture ?? { method: 'chromium', cursorInVideo: true, region: null },
+    clips: normalizeClips(clips, duration),
+    zooms: Array.isArray(p.zooms) ? p.zooms : [],
+    annotations: Array.isArray(p.annotations) ? p.annotations : [],
+    effects: {
+      ...DEFAULT_EFFECTS,
+      ...p.effects,
+      keystrokes: { ...DEFAULT_EFFECTS.keystrokes, ...p.effects?.keystrokes }
+    },
+    audio: { ...DEFAULT_AUDIO, ...p.audio }
+  }
+}
+
+/** Older cursor.json files have no keys/shapes arrays. */
+export function migrateCursor(raw: unknown): CursorTrack {
+  const c = (raw ?? {}) as Partial<CursorTrack>
+  return {
+    samples: Array.isArray(c.samples) ? c.samples : [],
+    clicks: Array.isArray(c.clicks) ? c.clicks : [],
+    keys: Array.isArray(c.keys) ? c.keys : [],
+    shapes: Array.isArray(c.shapes) ? c.shapes : [],
+    valid: !!c.valid
   }
 }
 
@@ -54,10 +113,4 @@ export function formatTime(seconds: number, withTenths = true): string {
   const whole = Math.floor(rest)
   const base = `${m}:${whole.toString().padStart(2, '0')}`
   return withTenths ? `${base}.${Math.floor((rest - whole) * 10)}` : base
-}
-
-/** Frame times for an export of [start, end) at `fps`. */
-export function frameTimes(start: number, end: number, fps: number): number[] {
-  const count = Math.max(1, Math.round((end - start) * fps))
-  return Array.from({ length: count }, (_, i) => start + i / fps)
 }

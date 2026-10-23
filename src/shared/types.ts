@@ -12,9 +12,25 @@ export interface ClickEvent {
   button: 'left' | 'right' | 'middle'
 }
 
+/** A shortcut-style keystroke (e.g. "Ctrl + C"); plain typing is never recorded. */
+export interface KeyEvent {
+  t: number
+  label: string
+}
+
+export type CursorShape = 'arrow' | 'text' | 'pointer' | 'crosshair' | 'move' | 'resize-ew' | 'resize-ns' | 'wait'
+
+/** Cursor shape changes (only available from the native Windows capture path). */
+export interface CursorShapeEvent {
+  t: number
+  shape: CursorShape
+}
+
 export interface CursorTrack {
   samples: CursorSample[]
   clicks: ClickEvent[]
+  keys?: KeyEvent[]
+  shapes?: CursorShapeEvent[]
   /** False when the capture target was a window (cursor coordinates unknown). */
   valid: boolean
 }
@@ -65,8 +81,71 @@ export interface WebcamSettings {
   shape: 'circle' | 'rounded'
 }
 
+/**
+ * A kept piece of the recording, in source seconds. The output video is the
+ * clips played back to back, each at its own speed; gaps between clips are cuts.
+ */
+export interface Clip {
+  id: string
+  start: number
+  end: number
+  speed: number
+}
+
+export type AnnotationStyle = 'pill' | 'title'
+
+/** Text overlay shown between `start` and `end` (source seconds). */
+export interface Annotation {
+  id: string
+  start: number
+  end: number
+  text: string
+  /** Centre of the text, normalised to the output frame (0..1). */
+  x: number
+  y: number
+  /** Font size as a fraction of the output frame's shorter side. */
+  size: number
+  style: AnnotationStyle
+}
+
+export interface KeystrokeSettings {
+  show: boolean
+  position: 'bottom' | 'top'
+  /** Label size as a fraction of the output frame's shorter side. */
+  size: number
+}
+
+export interface EffectSettings {
+  /** 0 = off, 1 = strong. Applied to camera (zoom/pan) motion. */
+  motionBlur: number
+  keystrokes: KeystrokeSettings
+}
+
+export interface AudioSettings {
+  /** Linear gain, 0..2. */
+  volume: number
+  muted: boolean
+}
+
+/** Normalised rectangle (0..1) relative to the captured display. */
+export interface NormRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface CaptureInfo {
+  /** 'native' = Windows Graphics Capture helper; 'chromium' = Electron getDisplayMedia. */
+  method: 'native' | 'chromium'
+  /** True when the OS cursor is baked into the video pixels. */
+  cursorInVideo: boolean
+  /** Region of the display that was recorded (already cropped in the proxy), or null for the full source. */
+  region: NormRect | null
+}
+
 export interface Project {
-  version: 1
+  version: 2
   id: string
   name: string
   createdAt: string
@@ -78,12 +157,17 @@ export interface Project {
   hasAudio: boolean
   /** Webcam start offset relative to screen start (seconds). */
   webcamOffset: number
-  trim: { start: number; end: number }
+  capture: CaptureInfo
+  /** Kept ranges of the recording (trim + cuts + speed). Never empty. */
+  clips: Clip[]
   zooms: ZoomSegment[]
   autoZoom: boolean
+  annotations: Annotation[]
   style: StyleSettings
   cursor: CursorSettings
   webcam: WebcamSettings
+  effects: EffectSettings
+  audio: AudioSettings
 }
 
 export interface ProjectSummary {
@@ -102,11 +186,6 @@ export interface CaptureSource {
   displayId?: string
 }
 
-export interface RecordingOptions {
-  sourceId: string
-  systemAudio: boolean
-}
-
 export type ExportFormat = 'mp4' | 'gif'
 
 export interface ExportSettings {
@@ -115,17 +194,8 @@ export interface ExportSettings {
   resolution: 720 | 1080 | 1440 | 2160
   fps: 30 | 60
   quality: 'high' | 'medium' | 'small'
-}
-
-export interface ExportJob {
-  width: number
-  height: number
-  fps: number
-  format: ExportFormat
-  quality: ExportSettings['quality']
-  /** Audio source (proxy file) and trim window; omitted when there is no audio. */
-  audio?: { start: number; end: number }
-  outputPath: string
+  /** 'auto' uses a GPU encoder when one works, else software. */
+  encoder: 'auto' | 'software'
 }
 
 export interface RecordingStatus {

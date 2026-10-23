@@ -1,5 +1,5 @@
 import { outputSize } from '../../../shared/engine/layout'
-import { frameTimes } from '../../../shared/engine/project'
+import { exportFrameTimes, keptBounds } from '../../../shared/engine/timeline'
 import type { ExportSettings, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { createVideo, seekTo, whenReady } from './media'
@@ -43,7 +43,7 @@ export async function exportVideo(input: ExportInput): Promise<void> {
   canvas.height = height
   const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: false })!
 
-  const { start, end } = project.trim
+  const { start, end } = keptBounds(project.clips)
   await window.api.exportStart(project.id, {
     width,
     height,
@@ -55,7 +55,7 @@ export async function exportVideo(input: ExportInput): Promise<void> {
   })
 
   try {
-    const times = frameTimes(start, end, fps)
+    const times = exportFrameTimes(project.clips, fps)
     for (let i = 0; i < times.length; i++) {
       if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError')
       const t = times[i]

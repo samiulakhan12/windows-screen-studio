@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { migrateCursor, migrateProject } from '../shared/engine/project'
 import type { CursorTrack, Project, ProjectSummary } from '../shared/types'
 
 export function projectsRoot(): string {
@@ -32,7 +33,7 @@ export async function writeProject(project: Project): Promise<void> {
 }
 
 export async function readProject(id: string): Promise<Project> {
-  return JSON.parse(await fs.readFile(path.join(projectDir(id), 'project.json'), 'utf8')) as Project
+  return migrateProject(JSON.parse(await fs.readFile(path.join(projectDir(id), 'project.json'), 'utf8')))
 }
 
 export async function writeCursor(id: string, track: CursorTrack): Promise<void> {
@@ -41,9 +42,9 @@ export async function writeCursor(id: string, track: CursorTrack): Promise<void>
 
 export async function readCursor(id: string): Promise<CursorTrack> {
   try {
-    return JSON.parse(await fs.readFile(path.join(projectDir(id), 'cursor.json'), 'utf8')) as CursorTrack
+    return migrateCursor(JSON.parse(await fs.readFile(path.join(projectDir(id), 'cursor.json'), 'utf8')))
   } catch {
-    return { samples: [], clicks: [], valid: false }
+    return migrateCursor(undefined)
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { contentRect, outputSize, webcamRect } from '../src/shared/engine/layout'
-import { formatTime, frameTimes } from '../src/shared/engine/project'
+import { formatTime } from '../src/shared/engine/project'
 
 describe('outputSize', () => {
   it('follows the source aspect in auto mode', () => {
@@ -46,11 +46,5 @@ describe('time helpers', () => {
   it('formats time', () => {
     expect(formatTime(75.34)).toBe('1:15.3')
     expect(formatTime(5, false)).toBe('0:05')
-  })
-  it('produces one frame per 1/fps across the range', () => {
-    const t = frameTimes(1, 2, 30)
-    expect(t).toHaveLength(30)
-    expect(t[0]).toBe(1)
-    expect(t[29]).toBeCloseTo(1 + 29 / 30)
   })
 })

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { outputDuration } from '../../../shared/engine/timeline'
 import type { ExportSettings, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import type { RenderScene } from '../render/compositor'
@@ -18,7 +19,7 @@ type Phase = { kind: 'settings' } | { kind: 'running'; progress: number } | { ki
 const SETTINGS_KEY = 'export-settings'
 
 function loadSettings(): ExportSettings {
-  const fallback: ExportSettings = { format: 'mp4', resolution: 1080, fps: 60, quality: 'high' }
+  const fallback: ExportSettings = { format: 'mp4', resolution: 1080, fps: 60, quality: 'high', encoder: 'auto' }
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
     return raw ? { ...fallback, ...(JSON.parse(raw) as Partial<ExportSettings>) } : fallback
@@ -44,7 +45,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const [phase, setPhase] = useState<Phase>({ kind: 'settings' })
   const abort = useRef<AbortController | null>(null)
   const dims = exportDimensions(props.project, settings)
-  const length = props.project.trim.end - props.project.trim.start
+  const length = outputDuration(props.project.clips)
 
   const set = (patch: Partial<ExportSettings>): void => {
     const next = { ...settings, ...patch }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { exportArgs, proxyArgs } from '../src/main/ffmpegArgs'
-import type { ExportJob } from '../src/shared/types'
+import { exportArgs } from '../src/main/exportArgs'
+import { proxyArgs } from '../src/main/proxyArgs'
+import type { ExportJob } from '../src/shared/api/export'
 
 const job: ExportJob = { width: 1920, height: 1080, fps: 60, format: 'mp4', quality: 'high', outputPath: '/out.mp4' }
 

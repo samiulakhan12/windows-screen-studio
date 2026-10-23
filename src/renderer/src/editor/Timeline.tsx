@@ -1,6 +1,7 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
+import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import type { ClickEvent, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 
@@ -16,7 +17,6 @@ interface Props {
 }
 
 const MIN_ZOOM = 0.6
-const MIN_CLIP = 0.5
 
 function tickStep(duration: number): number {
   return [1, 2, 5, 10, 15, 30, 60, 120, 300].find((s) => duration / s <= 12) ?? 600
@@ -24,7 +24,8 @@ function tickStep(duration: number): number {
 
 export function Timeline({ project, update, time, onSeek, clicks, selectedZoom, setSelectedZoom, onAddZoom }: Props): JSX.Element {
   const areaRef = useRef<HTMLDivElement>(null)
-  const { duration, trim } = project
+  const { duration } = project
+  const trim = keptBounds(project.clips)
   const pct = (t: number): string => `${(clamp(t, 0, duration) / duration) * 100}%`
 
   const timeAt = (clientX: number): number => {
@@ -57,14 +58,13 @@ export function Timeline({ project, update, time, onSeek, clicks, selectedZoom, 
   }
 
   const dragTrim = (edge: 'start' | 'end') => (e: ReactPointerEvent) => {
-    const initial = { ...trim }
+    const initial = project.clips
+    const from = edge === 'start' ? trim.start : trim.end
     drag(e, (dt) => {
-      const next =
-        edge === 'start'
-          ? { start: clamp(initial.start + dt, 0, initial.end - MIN_CLIP), end: initial.end }
-          : { start: initial.start, end: clamp(initial.end + dt, initial.start + MIN_CLIP, duration) }
-      update((p) => ({ ...p, trim: next }))
-      onSeek(edge === 'start' ? next.start : next.end)
+      const clips = edge === 'start' ? setTrimStart(initial, from + dt) : setTrimEnd(initial, from + dt, duration)
+      update((p) => ({ ...p, clips }))
+      const b = keptBounds(clips)
+      onSeek(edge === 'start' ? b.start : b.end)
     })
   }
 

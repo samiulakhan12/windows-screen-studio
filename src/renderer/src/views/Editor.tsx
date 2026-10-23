@@ -4,6 +4,7 @@ import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { outputSize } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
+import { keptBounds, normalizeClips, outputDuration, sourceToOutput } from '../../../shared/engine/timeline'
 import { newZoomId, normalizeZooms, ZOOM_TRANSITION } from '../../../shared/engine/zoom'
 import type { Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -55,13 +56,8 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
             let next = p
             if (w > 0 && h > 0 && (p.width !== w || p.height !== h)) next = { ...next, width: w, height: h }
             if (Number.isFinite(d) && Math.abs(p.duration - d) >= 0.05) {
-              const trimEnd = Math.abs(p.trim.end - p.duration) < 0.05 ? d : Math.min(p.trim.end, d)
-              next = {
-                ...next,
-                duration: d,
-                trim: { start: Math.max(0, Math.min(p.trim.start, trimEnd - 0.5)), end: trimEnd },
-                zooms: normalizeZooms(p.zooms, d)
-              }
+              const clips = p.clips.map((c) => (Math.abs(c.end - p.duration) < 0.05 ? { ...c, end: d } : c))
+              next = { ...next, duration: d, clips: normalizeClips(clips, d), zooms: normalizeZooms(p.zooms, d) }
             }
             return next
           })
@@ -70,8 +66,9 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
         webcamRef.current = webcam
         setLoaded(data)
         setProject(data.project)
-        setTime(data.project.trim.start)
-        screen.currentTime = data.project.trim.start
+        const start = keptBounds(data.project.clips).start
+        setTime(start)
+        screen.currentTime = start
         if (data.backgroundUrl) void loadImage(data.backgroundUrl).then(setBackground).catch(() => undefined)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
@@ -135,7 +132,8 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
     const screen = screenRef.current
     if (!screen || !project) return
     if (screen.paused) {
-      if (screen.currentTime >= project.trim.end - 0.05 || screen.currentTime < project.trim.start) seek(project.trim.start)
+      const bounds = keptBounds(project.clips)
+      if (screen.currentTime >= bounds.end - 0.05 || screen.currentTime < bounds.start) seek(bounds.start)
       void screen.play()
       if (webcamRef.current) void webcamRef.current.play()
       setPlaying(true)
@@ -167,7 +165,7 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
       const playingNow = !screen.paused
       if (playingNow) {
         const t = screen.currentTime
-        if (t >= sc.project.trim.end) {
+        if (t >= keptBounds(sc.project.clips).end) {
           screen.pause()
           webcamRef.current?.pause()
           setPlaying(false)
@@ -280,7 +278,7 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
               <Icon name={playing ? 'pause' : 'play'} />
             </button>
             <span className="timecode">
-              {formatTime(time - project.trim.start)} <span className="muted">/ {formatTime(project.trim.end - project.trim.start)}</span>
+              {formatTime(sourceToOutput(project.clips, time) ?? 0)} <span className="muted">/ {formatTime(outputDuration(project.clips))}</span>
             </span>
             <div className="tb-spacer" />
             <button className="btn ghost" onClick={() => addZoomAt(time)} title="Add zoom at playhead (Z)">
