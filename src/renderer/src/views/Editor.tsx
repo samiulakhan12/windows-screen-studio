@@ -1,231 +1,115 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { LoadedProject } from '../../../shared/api'
+import { createAnnotation } from '../../../shared/editor/annotations'
+import { Autosaver } from '../../../shared/editor/autosave'
+import { canSplitAt, clipAt, correctProjectMedia, restoreRange, stepOutput } from '../../../shared/editor/clips'
+import { EditStore } from '../../../shared/editor/editStore'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
-import { outputSize } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
-import { formatTime } from '../../../shared/engine/project'
-import { keptBounds, normalizeClips, outputDuration, sourceToOutput } from '../../../shared/engine/timeline'
-import { newZoomId, normalizeZooms, ZOOM_TRANSITION } from '../../../shared/engine/zoom'
-import type { Project } from '../../../shared/types'
+import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
+import { insertZoom, isUsableClick, ZOOM_TRANSITION } from '../../../shared/engine/zoom'
+import type { Project, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
+import { EditorContext, type EditorServices } from '../editor/context'
+import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
+import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
 import { Inspector } from '../editor/Inspector'
 import { createVideo, loadImage } from '../editor/media'
-import { Timeline } from '../editor/Timeline'
-import { drawFrame, type RenderScene } from '../render/compositor'
+import { PreviewPlayer } from '../editor/player'
+import { PreviewStage } from '../editor/PreviewStage'
+import { SaveIndicator } from '../editor/SaveIndicator'
+import { validSelection, type Selection } from '../editor/selection'
+import { Timeline, type TimelineHandle } from '../editor/Timeline'
+import { Transport } from '../editor/Transport'
+import type { RenderScene } from '../render/compositor'
+import '../editor/editor.css'
 
-const PREVIEW_HEIGHT = 720
+interface Session {
+  data: LoadedProject
+  store: EditStore<Project>
+  saver: Autosaver<Project>
+  player: PreviewPlayer
+}
+
+type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; session: Session }
+
+const METADATA_TIMEOUT_MS = 20000
+
+/** Resolves once the video's duration and size are known (or after a timeout); rejects if it cannot load. */
+function whenMetadata(v: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (v.readyState >= 1) return resolve()
+    const timer = window.setTimeout(done, METADATA_TIMEOUT_MS)
+    function done(): void {
+      window.clearTimeout(timer)
+      v.removeEventListener('loadedmetadata', done)
+      v.removeEventListener('error', fail)
+      resolve()
+    }
+    function fail(): void {
+      window.clearTimeout(timer)
+      v.removeEventListener('loadedmetadata', done)
+      v.removeEventListener('error', fail)
+      reject(new Error(`the video could not be loaded (${v.error?.message || 'unsupported or missing file'})`))
+    }
+    v.addEventListener('loadedmetadata', done)
+    v.addEventListener('error', fail)
+  })
+}
+
+async function openSession(projectId: string): Promise<Session> {
+  const data = await window.api.loadProject(projectId)
+  const screen = createVideo(data.screenUrl)
+  const webcam = data.webcamUrl ? createVideo(data.webcamUrl) : null
+  try {
+    await whenMetadata(screen)
+  } catch (err) {
+    for (const v of [screen, webcam]) v?.removeAttribute('src')
+    throw err
+  }
+  // Correct duration and size from the file before anything (or any undo step) depends on them.
+  const project = correctProjectMedia(data.project, { duration: screen.duration, width: screen.videoWidth, height: screen.videoHeight })
+  const store = new EditStore(project)
+  const saver = new Autosaver(store, {
+    save: (p, meta) => window.api.saveProject(p, meta),
+    saveSync: (p, meta) => window.api.saveProjectSync(p, meta)
+  })
+  if (project !== data.project) saver.markDirty()
+  const player = new PreviewPlayer(screen, webcam, project)
+  return { data, store, saver, player }
+}
+
+function closeSession(s: Session): void {
+  s.player.dispose()
+  // Normally already flushed by Back; this covers any other way the editor goes away.
+  if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
+  else s.saver.dispose()
+}
 
 export function Editor({ projectId, onClose }: { projectId: string; onClose: () => void }): JSX.Element {
-  const [loaded, setLoaded] = useState<LoadedProject | null>(null)
-  const [project, setProject] = useState<Project | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [time, setTime] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const [selectedZoom, setSelectedZoom] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
-  const [background, setBackground] = useState<HTMLImageElement | null>(null)
+  const [state, setState] = useState<LoadState>({ kind: 'loading' })
 
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const screenRef = useRef<HTMLVideoElement | null>(null)
-  const webcamRef = useRef<HTMLVideoElement | null>(null)
-  const dirty = useRef(true)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latest = useRef<Project | null>(null)
-
-  // Load project + media.
   useEffect(() => {
     let disposed = false
-    window.api
-      .loadProject(projectId)
-      .then((data) => {
-        if (disposed) return
-        const screen = createVideo(data.screenUrl)
-        const webcam = data.webcamUrl ? createVideo(data.webcamUrl) : null
-        if (webcam) webcam.muted = true
-        screen.addEventListener('seeked', () => (dirty.current = true))
-        screen.addEventListener('loadeddata', () => (dirty.current = true))
-        webcam?.addEventListener('seeked', () => (dirty.current = true))
-        screen.addEventListener('loadedmetadata', () => {
-          // MediaRecorder timing can differ slightly from the encoded file; trust the file.
-          // Likewise the encoded frame size can differ from the capture track's reported size.
-          const d = screen.duration
-          const { videoWidth: w, videoHeight: h } = screen
-          setProject((p) => {
-            if (!p) return p
-            let next = p
-            if (w > 0 && h > 0 && (p.width !== w || p.height !== h)) next = { ...next, width: w, height: h }
-            if (Number.isFinite(d) && Math.abs(p.duration - d) >= 0.05) {
-              const clips = p.clips.map((c) => (Math.abs(c.end - p.duration) < 0.05 ? { ...c, end: d } : c))
-              next = { ...next, duration: d, clips: normalizeClips(clips, d), zooms: normalizeZooms(p.zooms, d) }
-            }
-            return next
-          })
-        })
-        screenRef.current = screen
-        webcamRef.current = webcam
-        setLoaded(data)
-        setProject(data.project)
-        const start = keptBounds(data.project.clips).start
-        setTime(start)
-        screen.currentTime = start
-        if (data.backgroundUrl) void loadImage(data.backgroundUrl).then(setBackground).catch(() => undefined)
+    let session: Session | null = null
+    setState({ kind: 'loading' })
+    openSession(projectId)
+      .then((s) => {
+        if (disposed) return closeSession(s)
+        session = s
+        setState({ kind: 'ready', session: s })
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => {
+        if (!disposed) setState({ kind: 'error', message: err instanceof Error ? err.message : String(err) })
+      })
     return () => {
       disposed = true
-      for (const v of [screenRef.current, webcamRef.current]) {
-        if (!v) continue
-        v.pause()
-        v.removeAttribute('src')
-        v.load()
-      }
+      if (session) closeSession(session)
     }
   }, [projectId])
 
-  // Debounced auto-save.
-  useEffect(() => {
-    if (!project || !loaded) return
-    latest.current = project
-    dirty.current = true
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => void window.api.saveProject(project), 500)
-  }, [project, loaded])
-
-  // Flush pending save on unmount.
-  useEffect(
-    () => () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      if (latest.current) void window.api.saveProject(latest.current)
-    },
-    []
-  )
-
-  const update = useCallback((fn: (p: Project) => Project) => setProject((p) => (p ? fn(p) : p)), [])
-
-  const samples = loaded?.cursor.samples
-  const duration = project?.duration ?? 0
-  const smoothing = project?.cursor.smoothing ?? 0.6
-  const cursorPath = useMemo(() => new SmoothedTrack(samples ?? [], duration, smoothing), [samples, duration, smoothing])
-  const focusPath = useMemo(() => new SmoothedTrack(samples ?? [], duration, 1), [samples, duration])
-  const scene: RenderScene | null = useMemo(
-    () => (project && loaded ? { project, cursor: loaded.cursor, cursorPath, focusPath } : null),
-    [project, loaded, cursorPath, focusPath]
-  )
-
-  const size = project ? outputSize(project.style.aspectRatio, project.width, project.height, PREVIEW_HEIGHT) : { width: 1280, height: 720 }
-
-  const seek = useCallback(
-    (t: number) => {
-      const screen = screenRef.current
-      if (!screen || !project) return
-      const clamped = clamp(t, 0, project.duration)
-      screen.currentTime = clamped
-      if (webcamRef.current) webcamRef.current.currentTime = Math.max(0, clamped - project.webcamOffset)
-      setTime(clamped)
-      dirty.current = true
-    },
-    [project]
-  )
-
-  const togglePlay = useCallback(() => {
-    const screen = screenRef.current
-    if (!screen || !project) return
-    if (screen.paused) {
-      const bounds = keptBounds(project.clips)
-      if (screen.currentTime >= bounds.end - 0.05 || screen.currentTime < bounds.start) seek(bounds.start)
-      void screen.play()
-      if (webcamRef.current) void webcamRef.current.play()
-      setPlaying(true)
-    } else {
-      screen.pause()
-      webcamRef.current?.pause()
-      setPlaying(false)
-    }
-  }, [project, seek])
-
-  // Render loop.
-  const sceneRef = useRef(scene)
-  sceneRef.current = scene
-  const bgRef = useRef(background)
-  bgRef.current = background
-  useEffect(() => {
-    dirty.current = true
-  }, [scene, background, size.width, size.height])
-
-  useEffect(() => {
-    let raf = 0
-    let lastUi = 0
-    const tick = (now: number): void => {
-      raf = requestAnimationFrame(tick)
-      const screen = screenRef.current
-      const canvas = canvasRef.current
-      const sc = sceneRef.current
-      if (!screen || !canvas || !sc) return
-      const playingNow = !screen.paused
-      if (playingNow) {
-        const t = screen.currentTime
-        if (t >= keptBounds(sc.project.clips).end) {
-          screen.pause()
-          webcamRef.current?.pause()
-          setPlaying(false)
-        }
-        const cam = webcamRef.current
-        if (cam) {
-          const want = t - sc.project.webcamOffset
-          if (Math.abs(cam.currentTime - want) > 0.15) cam.currentTime = Math.max(0, want)
-        }
-        if (now - lastUi > 50) {
-          lastUi = now
-          setTime(t)
-        }
-      }
-      if (!playingNow && !dirty.current) return
-      dirty.current = false
-      const ctx = canvas.getContext('2d')
-      if (ctx) drawFrame(ctx, canvas.width, canvas.height, screen.currentTime, sc, { screen, webcam: webcamRef.current, background: bgRef.current })
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  const addZoomAt = useCallback(
-    (t: number) => {
-      if (!project) return
-      const start = clamp(t - ZOOM_TRANSITION, 0, project.duration)
-      const id = newZoomId()
-      const zooms = normalizeZooms(
-        [...project.zooms, { id, start, end: Math.min(project.duration, start + 3), scale: 2, focus: { mode: 'cursor' }, auto: false }],
-        project.duration
-      )
-      setProject({ ...project, zooms })
-      if (zooms.some((z) => z.id === id)) setSelectedZoom(id)
-    },
-    [project]
-  )
-
-  // Keyboard shortcuts.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return
-      if (e.code === 'Space') {
-        e.preventDefault()
-        togglePlay()
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedZoom) {
-        update((p) => ({ ...p, zooms: p.zooms.filter((z) => z.id !== selectedZoom) }))
-        setSelectedZoom(null)
-      } else if (e.key.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey) {
-        addZoomAt(time)
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        seek(time + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 1 / 30))
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay, selectedZoom, update, addZoomAt, seek, time])
-
-  if (error) {
+  if (state.kind === 'error') {
     return (
       <div className="app">
         <header className="titlebar">
@@ -233,12 +117,12 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
             <Icon name="back" /> Back
           </button>
         </header>
-        <div className="center-message error">Could not open this recording: {error}</div>
+        <div className="center-message error">Could not open this recording: {state.message}</div>
       </div>
     )
   }
 
-  if (!project || !loaded || !scene) {
+  if (state.kind === 'loading') {
     return (
       <div className="app">
         <div className="overlay">
@@ -249,81 +133,434 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
     )
   }
 
-  return (
-    <div className="app editor">
-      <header className="titlebar">
-        <button className="btn ghost" onClick={onClose} title="Back to recordings">
-          <Icon name="back" />
-        </button>
-        <input className="title-input" value={project.name} onChange={(e) => update((p) => ({ ...p, name: e.target.value }))} />
-        <div className="tb-spacer" />
-        <button className="btn primary" onClick={() => setExporting(true)}>
-          <Icon name="download" size={16} /> Export
-        </button>
-      </header>
+  return <EditorSession session={state.session} onClose={onClose} />
+}
 
-      <div className="editor-body">
-        <div className="stage">
-          <div className="canvas-wrap">
-            <canvas
-              ref={canvasRef}
-              width={size.width}
-              height={size.height}
-              style={{ aspectRatio: `${size.width} / ${size.height}` }}
-              onClick={togglePlay}
+function EditorSession({ session, onClose }: { session: Session; onClose: () => void }): JSX.Element {
+  const { data, store, saver, player } = session
+  const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const services = useMemo<EditorServices>(() => ({ store, player }), [store, player])
+  const cursor = data.cursor
+  const clicks = useMemo(() => cursor.clicks.filter(isUsableClick), [cursor])
+
+  const [rawSelection, setRawSelection] = useState<Selection>(null)
+  const [revealSeq, setRevealSeq] = useState(0)
+  const selection = validSelection(rawSelection, project)
+  const setSelection = useCallback((sel: Selection) => {
+    setRawSelection(sel)
+    if (sel) setRevealSeq((n) => n + 1)
+  }, [])
+  const [pickFocus, setPickFocus] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [background, setBackground] = useState<HTMLImageElement | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const timelineRef = useRef<TimelineHandle>(null)
+
+  // The background image always follows the project state, including undo/redo.
+  // `backgroundVersion` reloads it when a newly picked file reuses the same name.
+  const [backgroundVersion, setBackgroundVersion] = useState(0)
+  const backgroundPath = project.style.background.type === 'image' ? project.style.background.path : null
+  useEffect(() => {
+    if (!backgroundPath) {
+      setBackground(null)
+      return
+    }
+    let cancelled = false
+    window.api
+      .backgroundUrl(store.state.id, backgroundPath)
+      .then((url) => (url ? loadImage(url) : null))
+      .then((img) => !cancelled && setBackground(img))
+      .catch(() => !cancelled && setBackground(null))
+    return () => {
+      cancelled = true
+    }
+  }, [store, backgroundPath, backgroundVersion])
+
+  /* ---------- scene + preview ---------- */
+
+  const cursorPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, project.cursor.smoothing), [cursor.samples, project.duration, project.cursor.smoothing])
+  const focusPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, 1), [cursor.samples, project.duration])
+  const scene: RenderScene = useMemo(() => ({ project, cursor, cursorPath, focusPath }), [project, cursor, cursorPath, focusPath])
+
+  useEffect(() => player.setProject(project), [player, project])
+  useEffect(() => player.setScene(scene, background), [player, scene, background])
+
+  const pickZoom =
+    pickFocus && selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id && z.focus.mode === 'fixed') ?? null) : null
+  useEffect(() => {
+    player.setNoZoom(!!pickZoom)
+    if (pickFocus && !pickZoom) setPickFocus(false)
+  }, [player, pickFocus, pickZoom])
+  // Picking applies to the zoom it was started for; selecting anything else ends it.
+  const selectedZoomId = selection?.kind === 'zoom' ? selection.id : null
+  useEffect(() => setPickFocus(false), [selectedZoomId])
+
+  const selectedAnnotation = selection?.kind === 'annotation' ? (project.annotations.find((a) => a.id === selection.id) ?? null) : null
+
+  /* ---------- notices ---------- */
+
+  const noticeTimer = useRef(0)
+  const showNotice = useCallback((message: string) => {
+    setNotice(message)
+    window.clearTimeout(noticeTimer.current)
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 4000)
+  }, [])
+  useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
+
+  /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
+
+  const latest = useRef({ selection, pickFocus, exporting })
+  latest.current = { selection, pickFocus, exporting }
+
+  const actions = useMemo(() => {
+    const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
+
+    const addZoomAt = (t: number, lead: number): void => {
+      const p = store.state
+      const r = insertZoom(p.zooms, t, p.duration, { lead, focus: newZoomFocus() })
+      if (r.ok) {
+        store.update((q) => ({ ...q, zooms: r.zooms }))
+        setSelection({ kind: 'zoom', id: r.id })
+      } else if (r.reason === 'inside') {
+        setSelection({ kind: 'zoom', id: r.id })
+        showNotice('There is already a zoom here, so it is selected instead')
+      } else {
+        showNotice('No room for a new zoom here: move the playhead to free space or shorten a zoom')
+      }
+    }
+
+    const addTextAt = (t: number): void => {
+      const a = createAnnotation(t, store.state.duration)
+      store.update((p) => ({ ...p, annotations: [...p.annotations, a] }))
+      setSelection({ kind: 'annotation', id: a.id })
+      if (player.time < a.start || player.time >= a.end) player.seek(a.start)
+    }
+
+    const deleteClip = (id: string): void => {
+      if (store.state.clips.length <= 1) {
+        showNotice('The last clip cannot be removed')
+        return
+      }
+      store.update((p) => ({ ...p, clips: removeClip(p.clips, id) }))
+      setSelection(null)
+    }
+
+    const cut = (start: number, end: number): void => {
+      const p = store.state
+      const next = cutRange(p.clips, start, end)
+      if (next === p.clips) {
+        showNotice('Part of the recording has to stay in the video')
+        return
+      }
+      if (Math.abs(outputDuration(next) - outputDuration(p.clips)) < 1e-6) {
+        showNotice('That range is already cut')
+        return
+      }
+      store.update((q) => ({ ...q, clips: next }))
+      setSelection(null)
+    }
+
+    return {
+      togglePlay: (): void => player.toggle(),
+      addZoomAt,
+      addZoom: (): void => addZoomAt(player.time, ZOOM_TRANSITION),
+      addZoomFromTrack: (t: number): void => addZoomAt(t, 0),
+      addTextAt,
+      addText: (): void => addTextAt(player.time),
+      split: (): void => {
+        const t = player.time
+        const clips = store.state.clips
+        if (!canSplitAt(clips, t)) {
+          showNotice(clipAt(clips, t) ? 'Too close to the edge of a clip to split' : 'The playhead is in a cut: move it onto a clip to split')
+          return
+        }
+        store.update((p) => ({ ...p, clips: splitAt(p.clips, t) }))
+      },
+      deleteClip,
+      cut,
+      restore: (start: number, end: number): void => {
+        store.update((p) => ({ ...p, clips: restoreRange(p.clips, start, end, p.duration) }))
+        setSelection(null)
+      },
+      deleteSelection: (): void => {
+        const sel = latest.current.selection
+        if (!sel) return
+        if (sel.kind === 'zoom') store.update((p) => ({ ...p, zooms: p.zooms.filter((z) => z.id !== sel.id) }))
+        else if (sel.kind === 'annotation') store.update((p) => ({ ...p, annotations: p.annotations.filter((a) => a.id !== sel.id) }))
+        else if (sel.kind === 'clip') return deleteClip(sel.id)
+        else if (sel.kind === 'range') return cut(sel.start, sel.end)
+        else return
+        setSelection(null)
+      },
+      undo: (): void => {
+        if (!store.undo()) showNotice('Nothing to undo')
+      },
+      redo: (): void => {
+        if (!store.redo()) showNotice('Nothing to redo')
+      },
+      step: (delta: number): void => player.seek(stepOutput(store.state.clips, player.time, delta)),
+      goToStart: (): void => player.seek(keptBounds(store.state.clips).start),
+      goToEnd: (): void => player.seek(keptBounds(store.state.clips).end)
+    }
+  }, [cursor, player, store, showNotice, setSelection])
+
+  const focusFor = useCallback(
+    (zoom: ZoomSegment) => {
+      if (!cursor.valid) return { x: 0.5, y: 0.5 }
+      const p = focusPath.at((zoom.start + zoom.end) / 2)
+      return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
+    },
+    [cursor.valid, focusPath]
+  )
+
+  const onBackgroundImage = useCallback(async () => {
+    const picked = await window.api.pickBackgroundImage(store.state.id)
+    if (!picked) return
+    store.update((p) => ({ ...p, style: { ...p.style, background: { type: 'image', path: picked.path } } }))
+    setBackgroundVersion((v) => v + 1)
+  }, [store])
+
+  const exitPick = useCallback(() => setPickFocus(false), [])
+
+  const openExport = (): void => {
+    player.pause()
+    releaseFocus()
+    setPickFocus(false)
+    setExporting(true)
+  }
+
+  const goBack = async (): Promise<void> => {
+    if (leaving) return
+    setLeaving(true)
+    player.pause()
+    // Wait for the save so the library shows the latest name and nothing is lost.
+    const saved = await saver.flush()
+    const status = saver.status
+    if (!saved && !window.confirm(`Your latest changes could not be saved${status.state === 'error' ? `:\n${status.message}` : ''}.\n\nLeave the editor anyway?`)) {
+      setLeaving(false)
+      return
+    }
+    onClose()
+  }
+
+  /* ---------- keyboard ---------- */
+
+  useEffect(() => installFocusRelease(), [])
+
+  useEffect(() => {
+    let spaceDown = false
+    const onKeyDown = (e: KeyboardEvent): void => {
+      const L = latest.current
+      if (L.exporting) {
+        // Editor shortcuts are off behind the export dialog. Escape acts as its own close
+        // button, which the dialog only offers while no export is running.
+        if (e.key === 'Escape') {
+          const close = document.querySelector<HTMLButtonElement>('.modal .modal-head button[title="Close"]')
+          if (close) {
+            e.preventDefault()
+            close.click()
+          }
+        }
+        return
+      }
+      const target = e.target instanceof Element ? e.target : null
+      if (isTextEntry(target)) {
+        // Typing: only leave the field. Ctrl+Z stays the field's own undo.
+        if (e.key === 'Escape' || (e.key === 'Enter' && target instanceof HTMLInputElement)) {
+          e.preventDefault()
+          ;(target as HTMLElement).blur()
+        }
+        return
+      }
+      const key = e.key.toLowerCase()
+      if (e.ctrlKey || e.metaKey) {
+        if (e.altKey) return
+        if (key === 'z') {
+          e.preventDefault()
+          if (e.shiftKey) actions.redo()
+          else actions.undo()
+        } else if (key === 'y') {
+          e.preventDefault()
+          actions.redo()
+        }
+        return
+      }
+      if (e.altKey) return
+      if (e.code === 'Space' || e.key === ' ') {
+        // Prevent a focused toggle or button from also reacting to Space.
+        e.preventDefault()
+        blurActiveControl()
+        spaceDown = true
+        if (!e.repeat) actions.togglePlay()
+        return
+      }
+      const onSlider = isRangeInput(target)
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowRight':
+          if (onSlider) return
+          e.preventDefault()
+          actions.step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 1 / 30))
+          return
+        case 'Home':
+        case 'End':
+          if (onSlider) return
+          e.preventDefault()
+          if (e.key === 'Home') actions.goToStart()
+          else actions.goToEnd()
+          return
+        case 'Delete':
+        case 'Backspace':
+          e.preventDefault()
+          actions.deleteSelection()
+          return
+        case 'Escape':
+          if (L.pickFocus) setPickFocus(false)
+          else setSelection(null)
+          return
+        case '+':
+        case '=':
+          timelineRef.current?.zoomIn()
+          return
+        case '-':
+        case '_':
+          timelineRef.current?.zoomOut()
+          return
+      }
+      if (e.repeat) return
+      if (key === 'z') actions.addZoom()
+      else if (key === 't') actions.addText()
+      else if (key === 's') actions.split()
+    }
+    const onKeyUp = (e: KeyboardEvent): void => {
+      if (spaceDown && (e.code === 'Space' || e.key === ' ')) {
+        e.preventDefault()
+        spaceDown = false
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [actions])
+
+  /* ---------- saving on close ---------- */
+
+  useEffect(() => {
+    // Closing the window or quitting tears the page down without unmounting React; save synchronously.
+    const flush = (): void => {
+      saver.flushSync()
+    }
+    window.addEventListener('beforeunload', flush)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('beforeunload', flush)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [saver])
+
+  return (
+    <EditorContext.Provider value={services}>
+      <div className="app editor">
+        <header className="titlebar">
+          <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
+            <Icon name="back" />
+          </button>
+          <input
+            className="title-input"
+            aria-label="Recording name"
+            value={project.name}
+            onChange={(e) => {
+              const name = e.target.value
+              store.update((p) => ({ ...p, name }), 'name')
+            }}
+            onBlur={() => {
+              // An empty name would leave a blank row in the library.
+              if (!store.state.name.trim()) store.update((p) => ({ ...p, name: 'Untitled recording' }), 'name')
+            }}
+          />
+          <div className="history-buttons">
+            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!store.canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+              <EditorIcon name="undo" />
+            </button>
+            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!store.canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+              <EditorIcon name="redo" />
+            </button>
+          </div>
+          <SaveIndicator saver={saver} />
+          <div className="tb-spacer" />
+          <button className="btn primary" onClick={openExport}>
+            <Icon name="download" size={16} /> Export
+          </button>
+        </header>
+
+        <div className="editor-body">
+          <div className="stage">
+            <PreviewStage
+              project={project}
+              pickZoom={pickZoom}
+              selectedAnnotation={selectedAnnotation}
+              onTogglePlay={actions.togglePlay}
+              onExitPick={exitPick}
+            />
+            <Transport
+              clips={project.clips}
+              notice={notice}
+              onTogglePlay={actions.togglePlay}
+              onSplit={actions.split}
+              onAddZoom={actions.addZoom}
+              onAddText={actions.addText}
             />
           </div>
-          <div className="transport">
-            <button className="btn round" onClick={togglePlay} title="Play / pause (Space)">
-              <Icon name={playing ? 'pause' : 'play'} />
-            </button>
-            <span className="timecode">
-              {formatTime(sourceToOutput(project.clips, time) ?? 0)} <span className="muted">/ {formatTime(outputDuration(project.clips))}</span>
-            </span>
-            <div className="tb-spacer" />
-            <button className="btn ghost" onClick={() => addZoomAt(time)} title="Add zoom at playhead (Z)">
-              <Icon name="zoom" size={16} /> Add zoom
-            </button>
-          </div>
+          <Inspector
+            project={project}
+            selection={selection}
+            revealSeq={revealSeq}
+            onSelect={setSelection}
+            cursor={cursor}
+            hasWebcam={!!data.webcamUrl}
+            pickFocus={pickFocus}
+            onPickFocus={setPickFocus}
+            focusFor={focusFor}
+            onBackgroundImage={onBackgroundImage}
+            onNotice={showNotice}
+            onAddText={actions.addText}
+            onSplit={actions.split}
+            onDeleteClip={actions.deleteClip}
+            onRestore={actions.restore}
+            onCutRange={actions.cut}
+          />
         </div>
-        <Inspector
-          project={project}
-          update={update}
-          selectedZoom={selectedZoom}
-          setSelectedZoom={setSelectedZoom}
-          clicks={loaded.cursor.clicks}
-          cursorValid={loaded.cursor.valid}
-          hasWebcam={!!loaded.webcamUrl}
-          onBackgroundImage={async () => {
-            const picked = await window.api.pickBackgroundImage(project.id)
-            if (!picked) return
-            setBackground(await loadImage(picked.url))
-            update((p) => ({ ...p, style: { ...p.style, background: { type: 'image', path: picked.path } } }))
-          }}
+
+        <Timeline
+          ref={timelineRef}
+          duration={project.duration}
+          clips={project.clips}
+          zooms={project.zooms}
+          annotations={project.annotations}
+          clicks={clicks}
+          selection={selection}
+          onSelect={setSelection}
+          onAddZoom={actions.addZoomFromTrack}
+          onAddText={actions.addTextAt}
+          onRestore={actions.restore}
+          onCutRange={actions.cut}
         />
+
+        {exporting && (
+          <ExportDialog
+            project={project}
+            scene={scene}
+            screenUrl={data.screenUrl}
+            webcamUrl={data.webcamUrl}
+            background={background}
+            onClose={() => setExporting(false)}
+          />
+        )}
       </div>
-
-      <Timeline
-        project={project}
-        update={update}
-        time={time}
-        onSeek={seek}
-        clicks={loaded.cursor.clicks}
-        selectedZoom={selectedZoom}
-        setSelectedZoom={setSelectedZoom}
-        onAddZoom={addZoomAt}
-      />
-
-      {exporting && (
-        <ExportDialog
-          project={project}
-          scene={scene}
-          screenUrl={loaded.screenUrl}
-          webcamUrl={loaded.webcamUrl}
-          background={background}
-          onClose={() => setExporting(false)}
-        />
-      )}
-    </div>
+    </EditorContext.Provider>
   )
 }

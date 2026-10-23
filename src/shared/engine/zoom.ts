@@ -1,4 +1,4 @@
-import type { ClickEvent, ZoomSegment } from '../types'
+import type { ClickEvent, ZoomFocus, ZoomSegment } from '../types'
 import type { SmoothedTrack } from './cursor'
 import { clamp, easeInOutCubic, lerp } from './math'
 
@@ -24,6 +24,14 @@ export const DEFAULT_AUTO_ZOOM: AutoZoomOptions = {
 let idCounter = 0
 export const newZoomId = (): string => `z${Date.now().toString(36)}${(idCounter++).toString(36)}`
 
+/**
+ * Left clicks that landed on the captured display. Clicks on other monitors are
+ * normalised outside 0..1 and must never become zooms aimed at the frame edge.
+ */
+export function isUsableClick(c: ClickEvent): boolean {
+  return c.button === 'left' && Number.isFinite(c.t) && c.x >= 0 && c.x <= 1 && c.y >= 0 && c.y <= 1
+}
+
 /** Builds zoom segments from click clusters: zoom in just before a click, hold, ease out. */
 export function generateAutoZooms(
   clicks: ClickEvent[],
@@ -31,7 +39,7 @@ export function generateAutoZooms(
   options: Partial<AutoZoomOptions> = {}
 ): ZoomSegment[] {
   const o = { ...DEFAULT_AUTO_ZOOM, ...options }
-  const sorted = clicks.filter((c) => c.button === 'left').sort((a, b) => a.t - b.t)
+  const sorted = clicks.filter(isUsableClick).sort((a, b) => a.t - b.t)
   const ranges: { start: number; end: number }[] = []
   for (const c of sorted) {
     const last = ranges[ranges.length - 1]
@@ -122,4 +130,114 @@ export function normalizeZooms(zooms: ZoomSegment[], duration: number): ZoomSegm
     if (end - start >= 0.3) out.push({ ...z, start, end, scale: clamp(z.scale, 1.05, 5) })
   }
   return out
+}
+
+/* ---------- Editing helpers: they never move or drop segments other than the one edited ---------- */
+
+/** Shortest zoom the timeline lets the user drag a segment down to. */
+export const MIN_ZOOM_LENGTH = 0.6
+/** Shortest zoom that "add zoom" creates; a smaller free gap is refused with a hint. */
+export const MIN_NEW_ZOOM = 1
+export const DEFAULT_NEW_ZOOM = 3
+
+export const zoomAt = (zooms: ZoomSegment[], t: number): ZoomSegment | null =>
+  zooms.find((z) => t >= z.start && t < z.end) ?? null
+
+export type InsertZoomResult =
+  | { ok: true; zooms: ZoomSegment[]; id: string }
+  | { ok: false; reason: 'inside'; id: string }
+  | { ok: false; reason: 'no-room' }
+
+/**
+ * Adds a zoom covering time `at`, fitted into the free gap around it. `lead` is
+ * how long before `at` the zoom starts, so it is fully zoomed in at `at`.
+ * Existing segments are never changed: inside an existing zoom the result names
+ * that zoom instead, and a gap shorter than MIN_NEW_ZOOM is refused.
+ */
+export function insertZoom(
+  zooms: ZoomSegment[],
+  at: number,
+  duration: number,
+  options: { lead?: number; length?: number; scale?: number; focus?: ZoomFocus } = {}
+): InsertZoomResult {
+  const t = clamp(at, 0, duration)
+  const hit = zoomAt(zooms, t)
+  if (hit) return { ok: false, reason: 'inside', id: hit.id }
+  const length = Math.max(MIN_NEW_ZOOM, options.length ?? DEFAULT_NEW_ZOOM)
+  const gapStart = Math.max(0, ...zooms.filter((z) => z.end <= t).map((z) => z.end))
+  const gapEnd = Math.min(duration, ...zooms.filter((z) => z.start > t).map((z) => z.start))
+  let start = Math.max(gapStart, t - clamp(options.lead ?? 0, 0, length))
+  const end = Math.min(gapEnd, start + length)
+  // Close to the next zoom (or the end), grow backwards into the free space instead.
+  if (end - start < length) start = Math.max(gapStart, end - length)
+  if (end - start < MIN_NEW_ZOOM - 1e-9) return { ok: false, reason: 'no-room' }
+  const id = newZoomId()
+  const seg: ZoomSegment = { id, start, end, scale: options.scale ?? 2, focus: options.focus ?? { mode: 'cursor' }, auto: false }
+  return { ok: true, id, zooms: [...zooms, seg].sort((a, b) => a.start - b.start) }
+}
+
+/** Range a segment may be dragged within without overlapping its neighbours. */
+export function zoomDragBounds(zooms: ZoomSegment[], id: string, duration: number): { lower: number; upper: number } {
+  const seg = zooms.find((z) => z.id === id)
+  if (!seg) return { lower: 0, upper: duration }
+  const others = zooms.filter((z) => z.id !== id)
+  const lower = Math.max(0, ...others.filter((z) => z.end <= seg.start + 1e-6).map((z) => z.end))
+  const upper = Math.min(duration, ...others.filter((z) => z.start >= seg.end - 1e-6).map((z) => z.start))
+  return { lower, upper }
+}
+
+/** New start/end for a move or edge drag by `dt` seconds, kept between the neighbours. */
+export function dragZoomTimes(
+  initial: { start: number; end: number },
+  mode: 'move' | 'start' | 'end',
+  dt: number,
+  bounds: { lower: number; upper: number }
+): { start: number; end: number } {
+  let { start, end } = initial
+  // A segment already shorter than the minimum may grow but not shrink further.
+  const short = end - start < MIN_ZOOM_LENGTH
+  if (mode === 'move') {
+    const len = end - start
+    start = clamp(start + dt, bounds.lower, Math.max(bounds.lower, bounds.upper - len))
+    end = start + len
+  } else if (mode === 'start') {
+    start = clamp(start + dt, Math.min(bounds.lower, start), short ? start : end - MIN_ZOOM_LENGTH)
+  } else {
+    end = clamp(end + dt, short ? end : start + MIN_ZOOM_LENGTH, Math.max(bounds.upper, end))
+  }
+  return { start, end }
+}
+
+/**
+ * Clamps segments into [0, duration] after the media duration was corrected.
+ * Unlike normalizeZooms it never shifts a segment because of its neighbours.
+ */
+export function clampZooms(zooms: ZoomSegment[], duration: number): ZoomSegment[] {
+  const out: ZoomSegment[] = []
+  for (const z of zooms) {
+    const start = clamp(z.start, 0, duration)
+    const end = clamp(z.end, 0, duration)
+    if (end - start >= 0.05) out.push(start === z.start && end === z.end ? z : { ...z, start, end })
+  }
+  return out
+}
+
+/**
+ * Replaces every automatic zoom with a fresh set generated from the clicks.
+ * Zooms the user created or edited (auto: false) are kept as they are, and new
+ * automatic zooms that would overlap them are skipped.
+ */
+export function regenerateAutoZooms(
+  zooms: ZoomSegment[],
+  clicks: ClickEvent[],
+  duration: number
+): { zooms: ZoomSegment[]; removed: number; added: number; kept: number } {
+  const manual = zooms.filter((z) => !z.auto)
+  const fresh = generateAutoZooms(clicks, duration).filter((a) => !manual.some((m) => a.start < m.end && a.end > m.start))
+  return {
+    zooms: [...manual, ...fresh].sort((a, b) => a.start - b.start),
+    removed: zooms.length - manual.length,
+    added: fresh.length,
+    kept: manual.length
+  }
 }
