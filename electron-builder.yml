@@ -1,0 +1,21 @@
+appId: com.samiulakhan12.screenstudio
+productName: Screen Studio for Windows
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - node_modules/ffmpeg-static/**
+  - node_modules/uiohook-napi/**
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ScreenStudio-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+npmRebuild: false
