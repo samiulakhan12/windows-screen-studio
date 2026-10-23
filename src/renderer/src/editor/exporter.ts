@@ -39,6 +39,7 @@ export interface ExportInput {
 export interface ExportResult {
   encoder: string
   seconds: number
+  bytes: number
 }
 
 /** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
@@ -66,8 +67,8 @@ export async function exportVideo(input: ExportInput): Promise<ExportResult> {
       const sink = await prepareRoute(route, input)
       if (!sink) continue
       const t0 = performance.now()
-      await renderAll(input, caps, route, sink, notice)
-      return { encoder: routeLabel(route, input.settings.format), seconds: (performance.now() - t0) / 1000 }
+      const bytes = await renderAll(input, caps, route, sink, notice)
+      return { encoder: routeLabel(route, input.settings.format), seconds: (performance.now() - t0) / 1000, bytes }
     } catch (err) {
       if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw abortError()
       const e = cleanIpcError(err)
@@ -85,23 +86,8 @@ type SinkFactory = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, st
 /** Checks that a route can run here; returns a factory for its sink, or null to skip it. */
 async function prepareRoute(route: ExportRoute, input: ExportInput): Promise<SinkFactory | null> {
   if (route.video === 'ffmpeg') {
-    return (_canvas, ctx, startJob, base) => {
-      const sink = new RawFrameSink(ctx, base.width, base.height)
-      const started = startJob({ ...base, video: { kind: 'raw', encoder: route.encoder } })
-      // Awaited by push/finish; this only keeps an early failure from being reported as unhandled.
-      started.catch(() => undefined)
-      return {
-        push: async () => {
-          await started
-          return sink.push()
-        },
-        finish: async () => {
-          await started
-          return sink.finish()
-        },
-        close: () => sink.close()
-      }
-    }
+    return (canvas, ctx, startJob, base) =>
+      new RawFrameSink(canvas, ctx, (pixelFormat) => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat } }))
   }
   const { width, height, fps } = exportDimensions(input.project, input.settings)
   const config = await supportedAvcConfig(avcConfigs(width, height, fps, input.settings.quality, route.hardware))
@@ -130,7 +116,7 @@ function disposeVideo(v: HTMLVideoElement | null): void {
   v.load()
 }
 
-async function renderAll(input: ExportInput, caps: ExportCapabilities, route: ExportRoute, makeSink: SinkFactory, notice: string | undefined): Promise<void> {
+async function renderAll(input: ExportInput, caps: ExportCapabilities, route: ExportRoute, makeSink: SinkFactory, notice: string | undefined): Promise<number> {
   const { project, settings, signal } = input
   const { width, height, fps } = exportDimensions(project, settings)
   const times = exportFrameTimes(project.clips, fps)
@@ -207,8 +193,9 @@ async function renderAll(input: ExportInput, caps: ExportCapabilities, route: Ex
       `export: ${times.length} frames ${width}x${height} via ${encoder}, ${screen.source.kind} decoding; per frame ms: wait decode ${ms(spent.decode)}, draw ${ms(spent.draw)}, encode/IPC ${ms(spent.encode)}`
     )
     report({ phase: 'finalizing', frame: times.length, fps: 0, eta: null })
-    await sink.finish()
+    const bytes = await sink.finish()
     if (signal.aborted) throw abortError()
+    return bytes
   } catch (err) {
     // Stops ffmpeg (also while it is finishing) and deletes the partial file.
     await window.api.exportCancel().catch(() => undefined)

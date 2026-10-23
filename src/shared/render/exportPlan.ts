@@ -34,8 +34,12 @@ export function routeLabel(r: ExportRoute, format: ExportSettings['format']): st
 /**
  * Fallback chain for "Auto": WebCodecs on the GPU (frames never leave the GPU
  * process; only compressed chunks cross IPC), then ffmpeg's GPU encoders (raw
- * frames over IPC), then WebCodecs' software encoder (about 3x faster than raw
- * frames + x264 at equal quality, larger files), then x264. "Software" means x264.
+ * frames over IPC), then x264. "Software" means x264.
+ *
+ * WebCodecs' software encoder (OpenH264) is about 2.5x faster than raw frames +
+ * x264 on a CPU-only machine, but leaves faint ghosts of anything that fades out
+ * over a flat background until the next keyframe, so it is not used by default
+ * (only through the test override, to exercise the WebCodecs path on Linux).
  */
 export function exportRoutes(settings: ExportSettings, caps: ExportCapabilities): ExportRoute[] {
   const x264: ExportRoute = { video: 'ffmpeg', encoder: 'libx264' }
@@ -46,7 +50,6 @@ export function exportRoutes(settings: ExportSettings, caps: ExportCapabilities)
   const routes: ExportRoute[] = []
   if (forced !== 'ffmpeg') routes.push({ video: 'webcodecs', hardware: true })
   for (const e of caps.hardwareEncoders) routes.push({ video: 'ffmpeg', encoder: e })
-  if (forced !== 'ffmpeg') routes.push({ video: 'webcodecs', hardware: false })
   routes.push(x264)
   return routes
 }

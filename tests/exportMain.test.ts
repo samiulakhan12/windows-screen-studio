@@ -17,7 +17,7 @@ const job: ExportJob = {
   frames: 90,
   format: 'mp4',
   quality: 'high',
-  video: { kind: 'raw', encoder: 'libx264' },
+  video: { kind: 'raw', encoder: 'libx264', pixelFormat: 'rgba' },
   outputPath: path.join(dir, 'out.mp4')
 }
 
@@ -65,7 +65,7 @@ describe('validateJob', () => {
     expect(() => validateJob({ ...job, video: { kind: 'h264', color: { primaries: 1, transfer: 1, matrix: null, fullRange: null } } })).not.toThrow()
   })
   it('rejects values that could alter the ffmpeg command line', () => {
-    expect(() => validateJob({ ...job, video: { kind: 'raw', encoder: '-f' as never } })).toThrow()
+    expect(() => validateJob({ ...job, video: { kind: 'raw', encoder: '-f' as never, pixelFormat: 'rgba' } })).toThrow()
     expect(() => validateJob({ ...job, width: 1281 })).toThrow()
     expect(() => validateJob({ ...job, quality: 'x' as never })).toThrow()
     expect(() => validateJob({ ...job, audio: { volume: 1, clips: [{ id: 'a', start: 2, end: 1, speed: 1 }] } })).toThrow()

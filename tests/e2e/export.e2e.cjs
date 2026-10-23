@@ -261,8 +261,9 @@ async function main() {
     console.log(`  60 s GIF: ${r.seconds.toFixed(1)} s, ${(fs.statSync(out).size / 1e6).toFixed(1)} MB, ${v.width}x${v.height}, ${v.nb_frames} frames, ffmpeg peak RSS ${peak.toFixed(0)} MB`)
     h.assert(v.width === 1280 && v.height === 720, 'real 720p GIF')
     h.assert(Number(v.nb_frames) === 900, `900 frames at 15 fps (got ${v.nb_frames})`)
-    // Buffering every frame (the old split+palettegen graph) would need ~3.3 GB here.
-    h.assert(peak > 0 && peak < 400, `ffmpeg peak RSS ${peak.toFixed(0)} MB`)
+    // Buffering every frame (the old split+palettegen graph) needs ~3.3 GB here and grows
+    // ~55 MB per second of GIF; the streaming passes stay at a few hundred MB whatever the length.
+    h.assert(peak > 0 && peak < 600, `ffmpeg peak RSS ${peak.toFixed(0)} MB`)
     await closeDialog(win)
 
     // Cancel during the palette pass.

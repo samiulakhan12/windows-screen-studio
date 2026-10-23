@@ -93,7 +93,7 @@ export interface ExportIo {
   output: string
 }
 
-/** MP4 export: video arrives on stdin (raw RGBA or an H.264 stream), audio is cut from the proxy. */
+/** MP4 export: video arrives on stdin (raw frames or an H.264 stream), audio is cut from the proxy. */
 export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   if (job.format !== 'mp4') throw new Error('exportArgs builds MP4 exports; GIFs use gifCaptureArgs/gifEncodeArgs')
   const duration = job.frames / job.fps
@@ -101,8 +101,8 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   const color = job.video.kind === 'h264' ? job.video.color : EXPORT_COLOR
   const args = [
     '-y', '-hide_banner', '-loglevel', 'error', '-nostats',
-    ...(raw
-      ? ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${job.width}x${job.height}`, '-framerate', String(job.fps)]
+    ...(job.video.kind === 'raw'
+      ? ['-f', 'rawvideo', '-pix_fmt', job.video.pixelFormat, '-s', `${job.width}x${job.height}`, '-framerate', String(job.fps)]
       : // Input -r: number the packets i/fps. The raw H.264 demuxer's own guesses follow the
         // encoder's VUI timing fields, which WebCodecs encoders fill inconsistently.
         ['-f', 'h264', '-r', String(job.fps)]),
@@ -135,9 +135,10 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
  * separate streaming pass over the intermediate.
  */
 export function gifCaptureArgs(job: ExportJob, intermediate: string): string[] {
+  const pix = job.video.kind === 'raw' ? job.video.pixelFormat : 'rgba'
   return [
     '-y', '-hide_banner', '-loglevel', 'error', '-nostats',
-    '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${job.width}x${job.height}`, '-framerate', String(job.fps),
+    '-f', 'rawvideo', '-pix_fmt', pix, '-s', `${job.width}x${job.height}`, '-framerate', String(job.fps),
     '-i', 'pipe:0',
     '-c:v', 'ffv1', '-pix_fmt', 'bgr0', '-f', 'matroska', intermediate
   ]

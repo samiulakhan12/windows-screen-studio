@@ -15,7 +15,7 @@ const job: ExportJob = {
   frames: 600,
   format: 'mp4',
   quality: 'high',
-  video: { kind: 'raw', encoder: 'libx264' },
+  video: { kind: 'raw', encoder: 'libx264', pixelFormat: 'rgba' },
   outputPath: '/videos/out.mp4'
 }
 const io = { audioInput: null, output: '/videos/.out.partial.mp4' }
@@ -42,7 +42,7 @@ describe('exportArgs (raw frames)', () => {
     expect(args.join(' ')).not.toContain('[aout]')
   })
   it('feeds NV12 to GPU encoders that need it', () => {
-    const qsv = exportArgs({ ...job, video: { kind: 'raw', encoder: 'h264_qsv' } }, io)
+    const qsv = exportArgs({ ...job, video: { kind: 'raw', encoder: 'h264_qsv', pixelFormat: 'bgr0' } }, io)
     expect(after(qsv, '-filter_complex')).toContain('format=nv12')
     expect(qsv).toContain('h264_qsv')
   })

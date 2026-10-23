@@ -21,7 +21,7 @@ interface Props {
 type Phase =
   | { kind: 'settings' }
   | { kind: 'running'; progress: ExportProgress | null }
-  | { kind: 'done'; path: string; encoder: string; seconds: number }
+  | { kind: 'done'; path: string; encoder: string; seconds: number; bytes: number }
   | { kind: 'error'; message: string; detail: string }
 
 type CopyState = { kind: 'idle' } | { kind: 'busy' } | { kind: 'copied' } | { kind: 'failed'; message: string }
@@ -88,6 +88,12 @@ export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.round(seconds - m * 60)
   return s ? `${m} min ${s} s` : `${m} min`
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
+  return `${Math.max(1, Math.round(bytes / 1e3))} KB`
 }
 
 /** First line is the readable reason; anything after a blank line is ffmpeg's log. */
@@ -166,7 +172,7 @@ export function ExportDialog(props: Props): JSX.Element {
           if (!controller.signal.aborted) setPhase({ kind: 'running', progress })
         }
       })
-      setPhase({ kind: 'done', path: outputPath, encoder: result.encoder, seconds: result.seconds })
+      setPhase({ kind: 'done', path: outputPath, ...result })
     } catch (err) {
       if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) setPhase({ kind: 'settings' })
       else setPhase({ kind: 'error', ...splitError(err) })
@@ -201,12 +207,12 @@ export function ExportDialog(props: Props): JSX.Element {
         ? 'GPU encoding is available.'
         : gpuNames
           ? `GPU encoder found: ${gpuNames}.`
-          : 'No GPU encoder found; Auto uses the fast software encoder.'
+          : 'No GPU encoder found; Auto uses the software encoder (x264).'
 
   const running = phase.kind === 'running'
   return (
     <div className="overlay modal-backdrop">
-      <div className="modal export-modal" role="dialog" aria-label="Export">
+      <div className="modal export-modal" role="dialog" aria-modal="true" aria-label="Export">
         <header className="modal-head">
           <h2>Export</h2>
           {!running && (
@@ -310,7 +316,7 @@ export function ExportDialog(props: Props): JSX.Element {
             </p>
             <p className="hint path">{phase.path}</p>
             <p className="hint">
-              {formatDuration(phase.seconds)} · {phase.encoder}
+              {formatBytes(phase.bytes)} · exported in {formatDuration(phase.seconds)} · {phase.encoder}
             </p>
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">

@@ -49,6 +49,37 @@ function indexedVideo({ seconds, width = 1280, height = 720, fps = 60, beeps = f
   return file
 }
 
+/** A flat-colour 60 fps clip: anything drawn over it is easy to find in the export. */
+function solidVideo({ seconds, width = 1280, height = 720, color = '808080' }) {
+  fs.mkdirSync(MEDIA_CACHE, { recursive: true })
+  const file = path.join(MEDIA_CACHE, `solid-${color}-${seconds}s-${width}x${height}.mp4`)
+  if (fs.existsSync(file)) return file
+  const tmp = `${file}.part.mp4`
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=0x${color}:s=${width}x${height}:r=60`, '-t', String(seconds), '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', tmp])
+  fs.renameSync(tmp, file)
+  return file
+}
+
+/** Decoded frames `indices` of `file` as raw `pixFmt` buffers (gray: 1 byte/px, rgb24: 3). */
+function framesAt(file, indices, pixFmt = 'gray') {
+  const info = probe(file).streams.find((s) => s.codec_type === 'video')
+  const { width, height } = info
+  // ffmpeg emits selected frames in stream order, whatever order they were asked for.
+  const sorted = [...new Set(indices)].sort((a, b) => a - b)
+  const select = sorted.map((i) => `eq(n\\,${i})`).join('+')
+  const out = spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `select='${select}'`, '-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', pixFmt, '-'], {
+    maxBuffer: 1 << 30
+  }).stdout
+  const bpp = pixFmt === 'gray' ? 1 : 3
+  const size = width * height * bpp
+  return { width, height, frames: indices.map((i) => out.subarray(sorted.indexOf(i) * size, (sorted.indexOf(i) + 1) * size)) }
+}
+
+/** Saves frame `index` of `file` as a PNG (for looking at). */
+function savePng(file, index, png) {
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-vf', `select='eq(n\\,${index})'`, '-frames:v', '1', png])
+}
+
 /** Frame codes of every frame of `file`, reading the boxes inside `rect` (output pixels). */
 function decodeIndices(file, rect) {
   const { x, y, w, h: rh } = rect
@@ -226,4 +257,4 @@ async function waitForExport(win, timeout = 600000) {
   throw new Error('export timed out')
 }
 
-module.exports = { withHome, exportFrameTimes, watchFfmpegMemory, partialFiles, indexedVideo, decodeIndices, beepOnsets, probe, seedProject, openProject, openExportDialog, pickChip, waitForExport, MEDIA_CACHE }
+module.exports = { solidVideo, framesAt, savePng, withHome, exportFrameTimes, watchFfmpegMemory, partialFiles, indexedVideo, decodeIndices, beepOnsets, probe, seedProject, openProject, openExportDialog, pickChip, waitForExport, MEDIA_CACHE }

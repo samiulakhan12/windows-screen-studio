@@ -9,13 +9,16 @@ const settings: ExportSettings = { format: 'mp4', resolution: 1080, fps: 60, qua
 const noGpu: ExportCapabilities = { hardwareEncoders: [], overrides: {} }
 
 describe('exportRoutes', () => {
-  it('Auto: WebCodecs GPU, then ffmpeg GPU encoders, then WebCodecs software, then x264', () => {
+  it('Auto: WebCodecs GPU, then ffmpeg GPU encoders, then x264', () => {
     const routes = exportRoutes(settings, { hardwareEncoders: ['h264_nvenc', 'h264_mf'], overrides: {} })
     expect(routes).toEqual([
       { video: 'webcodecs', hardware: true },
       { video: 'ffmpeg', encoder: 'h264_nvenc' },
       { video: 'ffmpeg', encoder: 'h264_mf' },
-      { video: 'webcodecs', hardware: false },
+      { video: 'ffmpeg', encoder: 'libx264' }
+    ])
+    expect(exportRoutes(settings, noGpu)).toEqual([
+      { video: 'webcodecs', hardware: true },
       { video: 'ffmpeg', encoder: 'libx264' }
     ])
   })

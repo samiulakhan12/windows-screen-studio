@@ -1,4 +1,4 @@
-import type { ColorTags, ExportJob } from '../../../shared/api/export'
+import type { ColorTags, ExportJob, RawPixelFormat } from '../../../shared/api/export'
 import { avcLevel, colorTagsFrom } from '../../../shared/render/codec'
 
 /**
@@ -7,8 +7,8 @@ import { avcLevel, colorTagsFrom } from '../../../shared/render/codec'
  */
 export interface FrameSink {
   push(index: number): Promise<void>
-  /** Sends everything still buffered and finalises the file. */
-  finish(): Promise<void>
+  /** Sends everything still buffered and finalises the file; resolves with its size in bytes. */
+  finish(): Promise<number>
   close(): void
 }
 
@@ -21,22 +21,60 @@ export function cleanIpcError(e: unknown): Error {
 
 const MAX_IN_FLIGHT = 2
 
-/** Raw RGBA frames to ffmpeg over IPC; up to two frames in flight so reading back overlaps encoding. */
+async function finishJob(): Promise<number> {
+  try {
+    return (await window.api.exportFinish()).bytes
+  } catch (e) {
+    throw cleanIpcError(e)
+  }
+}
+
+const RAW_FORMATS: Partial<Record<VideoPixelFormat, RawPixelFormat>> = { BGRX: 'bgr0', BGRA: 'bgra', RGBX: 'rgb0', RGBA: 'rgba' }
+
+/**
+ * Raw frames to ffmpeg over IPC, up to two in flight so reading back overlaps the
+ * transfer. Pixels are read through a VideoFrame in the canvas's native byte order
+ * (a plain copy, about 3x faster than getImageData's unpremultiplying RGBA copy);
+ * the ffmpeg job starts with the first frame, once that byte order is known.
+ */
 export class RawFrameSink implements FrameSink {
   private inFlight = new Set<Promise<void>>()
   private error: Error | null = null
+  private started: Promise<void> | null = null
 
   constructor(
+    private readonly canvas: HTMLCanvasElement,
     private readonly ctx: CanvasRenderingContext2D,
-    private readonly width: number,
-    private readonly height: number
+    private readonly startJob: (format: RawPixelFormat) => Promise<void>
   ) {}
+
+  private async read(): Promise<{ data: Uint8Array; format: RawPixelFormat }> {
+    if (typeof VideoFrame !== 'undefined') {
+      const frame = new VideoFrame(this.canvas, { timestamp: 0 })
+      try {
+        const format = frame.format ? RAW_FORMATS[frame.format] : undefined
+        if (format) {
+          const data = new Uint8Array(frame.allocationSize())
+          await frame.copyTo(data)
+          return { data, format }
+        }
+      } finally {
+        frame.close()
+      }
+    }
+    const img = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data
+    return { data: new Uint8Array(img.buffer, img.byteOffset, img.byteLength), format: 'rgba' }
+  }
 
   async push(): Promise<void> {
     if (this.error) throw this.error
-    const data = this.ctx.getImageData(0, 0, this.width, this.height).data
+    const { data, format } = await this.read()
+    this.started ??= this.startJob(format)
+    await this.started.catch((e: unknown) => {
+      throw cleanIpcError(e)
+    })
     const p: Promise<void> = window.api
-      .exportFrame(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+      .exportFrame(data)
       .catch((e: unknown) => {
         this.error ??= cleanIpcError(e)
       })
@@ -46,12 +84,10 @@ export class RawFrameSink implements FrameSink {
     if (this.error) throw this.error
   }
 
-  async finish(): Promise<void> {
+  async finish(): Promise<number> {
     await Promise.all(this.inFlight)
     if (this.error) throw this.error
-    await window.api.exportFinish().catch((e: unknown) => {
-      throw cleanIpcError(e)
-    })
+    return finishJob()
   }
 
   close(): void {
@@ -111,6 +147,9 @@ export class WebCodecsSink implements FrameSink {
   private readonly startGate = new Promise<void>((r) => (this.startedResolve = r))
   private error: Error | null = null
   private wake: (() => void) | null = null
+  private lastTimestamp = -1
+  private chunks = 0
+  private frames = 0
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -140,6 +179,13 @@ export class WebCodecsSink implements FrameSink {
 
   private onChunk(chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata): void {
     if (this.error) return
+    // ffmpeg numbers the frames in arrival order, so they must arrive one per frame, in order.
+    if (chunk.timestamp <= this.lastTimestamp) {
+      this.fail(new Error('The GPU video encoder reordered frames'))
+      return
+    }
+    this.lastTimestamp = chunk.timestamp
+    this.chunks++
     if (!this.started) {
       this.started = this.startJob(colorTagsFrom(meta?.decoderConfig?.colorSpace)).then(
         () => this.startedResolve(),
@@ -177,6 +223,7 @@ export class WebCodecsSink implements FrameSink {
 
   async push(index: number): Promise<void> {
     if (this.error) throw this.error
+    this.frames++
     const frame = new VideoFrame(this.canvas, { timestamp: Math.round((index * 1e6) / this.fps), duration: Math.round(1e6 / this.fps) })
     try {
       this.encoder.encode(frame, { keyFrame: index % (this.fps * 2) === 0 })
@@ -189,18 +236,17 @@ export class WebCodecsSink implements FrameSink {
     if (this.error) throw this.error
   }
 
-  async finish(): Promise<void> {
+  async finish(): Promise<number> {
     if (this.error) throw this.error
     await this.encoder.flush().catch((e: unknown) => this.fail(e instanceof Error ? e : new Error(String(e))))
     this.send()
     await this.sends
     if (this.error) throw this.error
     if (!this.started) throw new Error('The GPU video encoder produced no output')
+    if (this.chunks !== this.frames) throw new Error(`The GPU video encoder dropped frames (${this.chunks} of ${this.frames})`)
     await this.started
     if (this.error) throw this.error
-    await window.api.exportFinish().catch((e: unknown) => {
-      throw cleanIpcError(e)
-    })
+    return finishJob()
   }
 
   close(): void {

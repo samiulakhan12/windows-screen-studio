@@ -15,10 +15,13 @@ export interface ColorTags {
   fullRange: boolean | null
 }
 
+/** Byte order of raw frames (ffmpeg pixel format names). */
+export type RawPixelFormat = 'rgba' | 'bgra' | 'rgb0' | 'bgr0'
+
 /** How video reaches ffmpeg. */
 export type VideoInput =
-  /** Raw RGBA frames, encoded by ffmpeg with `encoder`. */
-  | { kind: 'raw'; encoder: H264Encoder }
+  /** Raw 32-bit frames, encoded by ffmpeg with `encoder`. */
+  | { kind: 'raw'; encoder: H264Encoder; pixelFormat: RawPixelFormat }
   /** An H.264 Annex B stream encoded in the renderer (WebCodecs); ffmpeg only muxes it. */
   | { kind: 'h264'; color: ColorTags }
 
@@ -51,8 +54,8 @@ export interface ExportApi {
   exportStart(projectId: string, job: ExportJob): Promise<void>
   /** Raw RGBA frame or a batch of encoded H.264 bytes, depending on the job's video input. */
   exportFrame(data: Uint8Array): Promise<void>
-  /** Finishes encoding and moves the file into place; rejects if cancelled. */
-  exportFinish(): Promise<void>
+  /** Finishes encoding and moves the file into place (resolves with its size); rejects if cancelled. */
+  exportFinish(): Promise<{ bytes: number }>
   /** Stops any export (also during finishing) and deletes its partial file. */
   exportCancel(): Promise<void>
   /** Puts an exported file on the system clipboard (as a file, for pasting into apps). */

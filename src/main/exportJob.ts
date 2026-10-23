@@ -66,7 +66,7 @@ export function validateJob(job: ExportJob): void {
     isNum(job.frames, 1, 1e8) &&
     ['high', 'medium', 'small'].includes(job.quality) &&
     (job.video?.kind === 'raw'
-      ? ENCODERS.includes(job.video.encoder)
+      ? ENCODERS.includes(job.video.encoder) && ['rgba', 'bgra', 'rgb0', 'bgr0'].includes(job.video.pixelFormat)
       : job.video?.kind === 'h264' &&
         [job.video.color.primaries, job.video.color.transfer, job.video.color.matrix ?? 0].every((n) => Number.isInteger(n) && n >= 0 && n <= 255) &&
         (job.video.color.fullRange === null || typeof job.video.color.fullRange === 'boolean')) &&

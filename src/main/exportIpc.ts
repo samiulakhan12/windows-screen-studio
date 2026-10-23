@@ -126,6 +126,7 @@ export function registerExportIpc(): void {
       await moveIntoPlace(job.tempPath, job.finalPath)
       exportedFiles.add(job.finalPath)
       approvedExportPath = null
+      return { bytes: (await fs.stat(job.finalPath)).size }
     } catch (e) {
       await removeFiles(job)
       throw job.cancelled ? new Error(CANCELLED) : toIpcError(e)
