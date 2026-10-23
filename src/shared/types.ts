@@ -31,6 +31,8 @@ export interface CursorTrack {
   clicks: ClickEvent[]
   keys?: KeyEvent[]
   shapes?: CursorShapeEvent[]
+  /** Display scale factor (1 = 100%, 1.5 = 150%) of the captured monitor, for cursor sizing. */
+  scale?: number
   /** False when the capture target was a window (cursor coordinates unknown). */
   valid: boolean
 }

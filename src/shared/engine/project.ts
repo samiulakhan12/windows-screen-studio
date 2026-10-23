@@ -101,6 +101,7 @@ export function migrateCursor(raw: unknown): CursorTrack {
     clicks: Array.isArray(c.clicks) ? c.clicks : [],
     keys: Array.isArray(c.keys) ? c.keys : [],
     shapes: Array.isArray(c.shapes) ? c.shapes : [],
+    scale: typeof c.scale === 'number' && c.scale > 0 ? c.scale : 1,
     valid: !!c.valid
   }
 }

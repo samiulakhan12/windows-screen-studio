@@ -55,7 +55,7 @@ describe('migrateProject', () => {
   })
 
   it('migrates cursor tracks', () => {
-    expect(migrateCursor({ samples: [], clicks: [], valid: true })).toEqual({ samples: [], clicks: [], keys: [], shapes: [], valid: true })
+    expect(migrateCursor({ samples: [], clicks: [], valid: true })).toEqual({ samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: true })
     expect(migrateCursor(undefined).valid).toBe(false)
   })
 })

@@ -12,7 +12,8 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "dist:win": "electron-vite build && electron-builder --win"
+    "dist:win": "electron-vite build && electron-builder --win",
+    "test:e2e": "node tests/e2e/run-all.cjs"
   },
   "dependencies": {
     "ffmpeg-static": "5.3.0"
@@ -28,6 +29,7 @@
     "electron": "44.9.3",
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
+    "playwright-core": "1.56.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "typescript": "5.9.3",
