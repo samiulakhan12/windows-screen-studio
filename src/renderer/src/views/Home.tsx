@@ -1,64 +1,148 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ProcessingProgress, RegionSelection, UnfinishedRecording } from '../../../shared/api/recording'
 import { formatTime } from '../../../shared/engine/project'
 import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
-import { runRecording } from '../recorder/controller'
+import { runRecording, type RecordingPhase } from '../recorder/controller'
+import { cameras, listInputDevices, microphones, onDevicesChanged } from '../recorder/devices'
+import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE } from '../../../shared/recording/errors'
+import '../recorder/recorder.css'
 
 const PREFS_KEY = 'recorder-prefs'
+
+type Mode = 'screen' | 'window' | 'region'
 
 interface Prefs {
   micId: string | null
   cameraId: string | null
   systemAudio: boolean
+  /** Record shortcut keystrokes for the keystroke overlay. */
+  captureKeys: boolean
+  mode: Mode
+  /** Last area picked on each screen. */
+  regions: Record<string, RegionSelection>
 }
+
+const DEFAULT_PREFS: Prefs = { micId: null, cameraId: null, systemAudio: true, captureKeys: true, mode: 'screen', regions: {} }
 
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY)
-    if (raw) return { micId: null, cameraId: null, systemAudio: true, ...(JSON.parse(raw) as Partial<Prefs>) }
+    if (raw) {
+      const p = { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) }
+      if (!['screen', 'window', 'region'].includes(p.mode)) p.mode = 'screen'
+      if (!p.regions || typeof p.regions !== 'object') p.regions = {}
+      return p
+    }
   } catch {
-    // Storage unavailable: fall back to defaults.
+    // Storage unavailable or corrupt: fall back to defaults.
   }
-  return { micId: null, cameraId: null, systemAudio: true }
+  return { ...DEFAULT_PREFS }
 }
 
-async function listDevices(): Promise<MediaDeviceInfo[]> {
-  // Labels are only exposed after media permission has been granted once.
-  for (const constraints of [{ audio: true }, { video: true }]) {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia(constraints)
-      s.getTracks().forEach((t) => t.stop())
-    } catch {
-      // No device of this kind.
-    }
-  }
-  return navigator.mediaDevices.enumerateDevices()
+interface ErrorState {
+  message: string
+  privacy: 'microphone' | 'camera' | null
+}
+
+const toErrorState = (err: unknown): ErrorState => {
+  const e = friendlyError(err)
+  return { message: e.message, privacy: e.privacy }
+}
+
+const PHASE_LABEL: Record<RecordingPhase, string> = {
+  preparing: 'Preparing…',
+  countdown: 'Starting…',
+  recording: 'Recording…',
+  saving: 'Saving…'
+}
+
+function formatBytes(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)} GB`
+  if (n >= 1e6) return `${Math.round(n / 1e6)} MB`
+  return `${Math.max(1, Math.round(n / 1e3))} KB`
+}
+
+/** Notices from a recording that went straight to the editor, shown when Home is next opened. */
+let carriedNotices: string[] = []
+
+function RegionIcon(): JSX.Element {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="icon">
+      <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" />
+      <rect x="8" y="8" width="8" height="8" rx="1" strokeDasharray="2 2" />
+    </svg>
+  )
+}
+
+function KeyboardIcon(): JSX.Element {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="icon">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
+    </svg>
+  )
 }
 
 export function Home({ onOpenProject }: { onOpenProject: (id: string) => void }): JSX.Element {
   const [sources, setSources] = useState<CaptureSource[]>([])
-  const [tab, setTab] = useState<'screen' | 'window'>('screen')
   const [selected, setSelected] = useState<string | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
-  const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [unfinished, setUnfinished] = useState<UnfinishedRecording[]>([])
+  const [phase, setPhase] = useState<RecordingPhase | null>(null)
+  const [busy, setBusy] = useState<ProcessingProgress | null>(null)
+  const [error, setError] = useState<ErrorState | null>(null)
+  const [notices, setNotices] = useState<string[]>(() => {
+    const carried = carriedNotices
+    carriedNotices = []
+    return carried
+  })
+  // A ref, not state: a double click delivers both clicks before React re-renders.
+  const running = useRef(false)
+  const tab = prefs.mode
 
   const refreshSources = useCallback(async () => {
-    const list = await window.api.getSources()
-    setSources(list)
-    setSelected((cur) => (cur && list.some((s) => s.id === cur) ? cur : (list.find((s) => s.kind === 'screen')?.id ?? null)))
+    try {
+      let list = await window.api.getSources()
+      // There is always at least one screen; an empty list is a capturer hiccup.
+      for (let i = 0; i < 2 && !list.some((s) => s.kind === 'screen'); i++) {
+        await new Promise((r) => setTimeout(r, 700))
+        list = await window.api.getSources()
+      }
+      setSources(list)
+    } catch (err) {
+      setError(toErrorState(err))
+    }
   }, [])
 
-  const refreshProjects = useCallback(async () => setProjects(await window.api.listProjects()), [])
+  const refreshLibrary = useCallback(async () => {
+    const [list, pending] = await Promise.all([window.api.listProjects(), window.api.listUnfinishedRecordings()])
+    setProjects(list)
+    setUnfinished(pending)
+  }, [])
+
+  const refreshDevices = useCallback(async () => {
+    try {
+      setDevices(await listInputDevices())
+    } catch (err) {
+      console.warn('Could not list media devices:', err)
+    }
+  }, [])
 
   useEffect(() => {
     void refreshSources()
-    void refreshProjects()
-    void listDevices().then(setDevices)
-    return window.api.onProcessing((msg) => setBusy(msg))
-  }, [refreshSources, refreshProjects])
+    void refreshLibrary()
+    // Enumerate once and on plug/unplug: never open the camera or mic just to list them.
+    void refreshDevices()
+    const offDevices = onDevicesChanged(() => void refreshDevices())
+    const offProgress = window.api.onProcessing(setBusy)
+    return () => {
+      offDevices()
+      offProgress()
+    }
+  }, [refreshSources, refreshLibrary, refreshDevices])
 
   useEffect(() => {
     try {
@@ -68,29 +152,106 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     }
   }, [prefs])
 
-  const mics = devices.filter((d) => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications')
-  const cams = devices.filter((d) => d.kind === 'videoinput')
+  const update = (patch: Partial<Prefs>): void => setPrefs((p) => ({ ...p, ...patch }))
+  const mics = microphones(devices)
+  const cams = cameras(devices)
+  const listed = devices.length > 0
+  const micMissing = listed && !!prefs.micId && !mics.some((m) => m.deviceId === prefs.micId)
+  const camMissing = listed && !!prefs.cameraId && !cams.some((c) => c.deviceId === prefs.cameraId)
   const isWindows = window.api.platform === 'win32'
 
-  const record = async (): Promise<void> => {
-    if (!selected) return
+  const visible = sources.filter((s) => s.kind === (tab === 'window' ? 'window' : 'screen'))
+  // Screens default to the first one; windows must be picked explicitly.
+  const current = visible.some((s) => s.id === selected) ? selected : tab !== 'window' ? (visible[0]?.id ?? null) : null
+  const region = tab === 'region' && current ? (prefs.regions[current] ?? null) : null
+  const idle = phase === null && !busy
+  const canStart = idle && !!current && (tab !== 'region' || !!region)
+
+  const pickRegion = async (sourceId: string): Promise<void> => {
+    if (running.current) return
+    setSelected(sourceId)
     setError(null)
     try {
-      const id = await runRecording({
-        sourceId: selected,
-        systemAudio: prefs.systemAudio && isWindows,
-        micId: mics.some((m) => m.deviceId === prefs.micId) ? prefs.micId : null,
-        cameraId: cams.some((c) => c.deviceId === prefs.cameraId) ? prefs.cameraId : null
-      })
-      setBusy(null)
-      if (id) onOpenProject(id)
+      const picked = await window.api.pickRegion(sourceId)
+      if (picked) setPrefs((p) => ({ ...p, regions: { ...p.regions, [sourceId]: picked } }))
     } catch (err) {
-      setBusy(null)
-      setError(err instanceof Error ? err.message : String(err))
+      setError(toErrorState(err))
+      void refreshSources()
     }
   }
 
-  const visible = sources.filter((s) => s.kind === tab)
+  const record = async (): Promise<void> => {
+    if (running.current || !current) return
+    running.current = true
+    setError(null)
+    setNotices([])
+    const warnings: string[] = []
+    if (micMissing) warnings.push('The selected microphone is not connected, so the recording has no microphone.')
+    if (camMissing) warnings.push('The selected camera is not connected, so the recording has no camera.')
+    let opened = false
+    try {
+      const id = await runRecording(
+        {
+          sourceId: current,
+          region: tab === 'region' ? (region?.region ?? null) : null,
+          systemAudio: prefs.systemAudio && isWindows,
+          micId: micMissing ? null : prefs.micId,
+          cameraId: camMissing ? null : prefs.cameraId,
+          captureKeys: prefs.captureKeys
+        },
+        { onPhase: setPhase, onWarning: (w) => warnings.push(w) }
+      )
+      if (id) {
+        opened = true
+        carriedNotices = [...new Set(warnings)]
+        onOpenProject(id)
+      }
+    } catch (err) {
+      const state = toErrorState(err)
+      if (state.message === PROCESSING_DEFERRED) warnings.push(state.message)
+      else setError(state)
+      if (state.message === SOURCE_GONE || /no longer available/.test(state.message)) void refreshSources()
+    } finally {
+      running.current = false
+      if (!opened) {
+        setNotices([...new Set(warnings)])
+        setPhase(null)
+        setBusy(null)
+        void refreshLibrary()
+      }
+    }
+  }
+
+  const recover = async (item: UnfinishedRecording): Promise<void> => {
+    if (running.current) return
+    running.current = true
+    setError(null)
+    setBusy({ message: 'Recovering recording…', progress: null })
+    try {
+      onOpenProject(await window.api.recoverRecording(item.id))
+    } catch (err) {
+      const state = toErrorState(err)
+      if (state.message === PROCESSING_DEFERRED) setNotices([state.message])
+      else setError(state)
+      setBusy(null)
+      void refreshLibrary()
+    } finally {
+      running.current = false
+    }
+  }
+
+  const removeUnfinished = async (item: UnfinishedRecording): Promise<void> => {
+    if (!confirm(`Delete this unfinished recording (${formatBytes(item.bytes)})? This cannot be undone.`)) return
+    await window.api.deleteProject(item.id)
+    void refreshLibrary()
+  }
+
+  const setTab = (mode: Mode): void => {
+    update({ mode })
+    setError(null)
+  }
+
+  const overlay = busy ?? (phase === 'saving' ? { message: 'Saving recording…', progress: null } : null)
 
   return (
     <div className="app">
@@ -111,20 +272,41 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               <button className={tab === 'window' ? 'active' : ''} onClick={() => setTab('window')}>
                 <Icon name="window" size={16} /> Windows
               </button>
+              <button className={tab === 'region' ? 'active' : ''} onClick={() => setTab('region')}>
+                <RegionIcon /> Area
+              </button>
             </div>
             <button className="btn ghost" onClick={() => void refreshSources()} title="Refresh">
               <Icon name="refresh" size={16} />
             </button>
           </div>
+          {tab === 'region' && (
+            <p className="hint">Click a screen, then drag over the part you want to record.</p>
+          )}
           <div className="source-grid">
             {visible.map((s) => (
-              <button key={s.id} className={`source ${selected === s.id ? 'selected' : ''}`} onClick={() => setSelected(s.id)}>
+              <button
+                key={s.id}
+                className={`source ${current === s.id ? 'selected' : ''}`}
+                onClick={() => (tab === 'region' ? void pickRegion(s.id) : setSelected(s.id))}
+              >
                 <img src={s.thumbnail} alt="" />
                 <span>{s.name}</span>
               </button>
             ))}
-            {visible.length === 0 && <p className="muted empty">No {tab === 'screen' ? 'screens' : 'windows'} found.</p>}
+            {visible.length === 0 && <p className="muted empty">No {tab === 'window' ? 'windows' : 'screens'} found.</p>}
           </div>
+          {tab === 'region' && region && current && (
+            <div className="region-summary">
+              <RegionIcon />
+              <span className="region-dims">
+                Area {region.width} × {region.height}
+              </span>
+              <button className="btn" onClick={() => void pickRegion(current)} disabled={!idle}>
+                Change area
+              </button>
+            </div>
+          )}
           {tab === 'window' && (
             <p className="hint">Window recordings keep the system cursor; auto zoom and the smooth cursor work best with full screens.</p>
           )}
@@ -136,7 +318,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             <span>
               <Icon name="mic" size={16} /> Microphone
             </span>
-            <select value={prefs.micId ?? ''} onChange={(e) => setPrefs({ ...prefs, micId: e.target.value || null })}>
+            <select value={micMissing ? '' : (prefs.micId ?? '')} onChange={(e) => update({ micId: e.target.value || null })}>
               <option value="">No microphone</option>
               {mics.map((m) => (
                 <option key={m.deviceId} value={m.deviceId}>
@@ -144,12 +326,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 </option>
               ))}
             </select>
+            {micMissing && <span className="device-warning">Your microphone is disconnected.</span>}
           </label>
           <label className="field">
             <span>
               <Icon name="camera" size={16} /> Camera
             </span>
-            <select value={prefs.cameraId ?? ''} onChange={(e) => setPrefs({ ...prefs, cameraId: e.target.value || null })}>
+            <select value={camMissing ? '' : (prefs.cameraId ?? '')} onChange={(e) => update({ cameraId: e.target.value || null })}>
               <option value="">No camera</option>
               {cams.map((c) => (
                 <option key={c.deviceId} value={c.deviceId}>
@@ -157,6 +340,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 </option>
               ))}
             </select>
+            {camMissing && <span className="device-warning">Your camera is disconnected.</span>}
           </label>
           <label className={`toggle ${!isWindows ? 'disabled' : ''}`}>
             <span>
@@ -166,26 +350,70 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               type="checkbox"
               checked={prefs.systemAudio && isWindows}
               disabled={!isWindows}
-              onChange={(e) => setPrefs({ ...prefs, systemAudio: e.target.checked })}
+              onChange={(e) => update({ systemAudio: e.target.checked })}
             />
           </label>
-          <button className="btn record" disabled={!selected || !!busy} onClick={() => void record()}>
-            <span className="rec-dot" /> Start recording
+          <label className="toggle" title="Records shortcuts such as Ctrl + C for the keystroke overlay. What you type is never recorded.">
+            <span>
+              <KeyboardIcon /> Capture shortcuts for keystroke overlay
+            </span>
+            <input type="checkbox" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
+          </label>
+          <button className="btn record" disabled={!canStart} onClick={() => void record()}>
+            <span className="rec-dot" /> {phase ? PHASE_LABEL[phase] : tab === 'region' && !region ? 'Select an area first' : 'Start recording'}
           </button>
           <p className="hint">
             Stop with the floating bar or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd>.
           </p>
-          {error && <p className="error">{error}</p>}
+          {notices.length > 0 && (
+            <div className="notice">
+              {notices.map((n) => (
+                <span key={n}>{n}</span>
+              ))}
+            </div>
+          )}
+          {error && (
+            <div className="home-error" role="alert">
+              <span>{error.message}</span>
+              {error.privacy && isWindows && (
+                <button className="btn" onClick={() => void window.api.openPrivacySettings(error.privacy!)}>
+                  Open privacy settings
+                </button>
+              )}
+            </div>
+          )}
         </aside>
 
         <section className="panel library">
           <div className="panel-head">
             <h2>Recent recordings</h2>
           </div>
-          {projects.length === 0 ? (
+          {projects.length === 0 && unfinished.length === 0 ? (
             <p className="muted empty">Your recordings will show up here.</p>
           ) : (
             <ul className="project-list">
+              {unfinished.length > 0 && <li className="section-label">Unfinished recordings</li>}
+              {unfinished.map((u) => (
+                <li key={u.id} className="unfinished">
+                  <div className="unfinished-info" title={u.error ?? undefined}>
+                    <span className="project-name">{new Date(u.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    <span className="muted">
+                      {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {formatBytes(u.bytes)}
+                      {u.error ? ` · ${u.error}` : ''}
+                    </span>
+                  </div>
+                  <button className="btn" disabled={!idle} onClick={() => void recover(u)} title="Turn the saved footage into a project">
+                    {u.status === 'interrupted' ? 'Recover' : 'Retry'}
+                  </button>
+                  <button className="btn ghost" title="Show in Explorer" onClick={() => void window.api.revealProject(u.id)}>
+                    <Icon name="folder" size={16} />
+                  </button>
+                  <button className="btn ghost danger" title="Delete" disabled={!idle} onClick={() => void removeUnfinished(u)}>
+                    <Icon name="trash" size={16} />
+                  </button>
+                </li>
+              ))}
+              {unfinished.length > 0 && projects.length > 0 && <li className="section-label">Projects</li>}
               {projects.map((p) => (
                 <li key={p.id}>
                   <button className="project-open" onClick={() => onOpenProject(p.id)}>
@@ -202,7 +430,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                     onClick={async () => {
                       if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return
                       await window.api.deleteProject(p.id)
-                      void refreshProjects()
+                      void refreshLibrary()
                     }}
                   >
                     <Icon name="trash" size={16} />
@@ -214,10 +442,23 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
         </section>
       </main>
 
-      {busy && (
-        <div className="overlay">
+      {overlay && (
+        <div className="overlay" role="status">
           <div className="spinner" />
-          <p>{busy}</p>
+          <p>{overlay.message}</p>
+          {overlay.progress !== null && (
+            <>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${Math.round(overlay.progress * 100)}%` }} />
+              </div>
+              <span className="muted">{Math.round(overlay.progress * 100)}%</span>
+            </>
+          )}
+          {busy && (
+            <button className="btn" onClick={() => void window.api.finishProcessingLater()} title="Keep the recording and convert it later from Unfinished recordings">
+              Finish later
+            </button>
+          )}
         </div>
       )}
     </div>
