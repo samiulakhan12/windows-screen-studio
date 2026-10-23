@@ -77,6 +77,10 @@ const video = (win) => win.evaluate(() => {
   const v = window.__videos.find((x) => x.getAttribute('src'))
   return v ? { t: v.currentTime, rate: v.playbackRate, paused: v.paused, muted: v.muted, volume: v.volume } : null
 })
+const videos = (win) =>
+  win.evaluate(() =>
+    window.__videos.filter((x) => x.getAttribute('src')).map((v) => ({ t: v.currentTime, rate: v.playbackRate, paused: v.paused }))
+  )
 const near = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps
 
 async function main() {
@@ -249,7 +253,7 @@ async function main() {
   })
 
   await h.run('editor: split, cut and 2x speed play correctly and export to the edited length', async (ctx) => {
-    const { home, id, app, win } = await setup(ctx, 'cuts', { name: 'CutsTest', seconds: 12 })
+    const { home, id, app, win } = await setup(ctx, 'cuts', { name: 'CutsTest', seconds: 12, webcam: true })
     // Exact positions: Home, then three 1 s steps.
     await win.keyboard.press('Home')
     for (let i = 0; i < 3; i++) await win.keyboard.press('Shift+ArrowRight')
@@ -283,14 +287,15 @@ async function main() {
     const samples = []
     const started = Date.now()
     await f.waitFor(async () => {
-      const v = await video(win)
-      samples.push(v)
+      const [screen, cam] = await videos(win)
+      samples.push({ ...screen, camT: cam.t, camRate: cam.rate })
       return !(await isPlaying(win)) && Date.now() - started > 500
     }, 'playback ends', 25000)
     const elapsed = (Date.now() - started) / 1000
     const inGap = samples.filter((s) => s.t > 3.1 && s.t < 5.9)
     h.assert(inGap.length === 0, `never plays the cut: ${JSON.stringify(inGap.slice(0, 3))}`)
     h.assert(samples.some((s) => s.t > 7 && s.rate === 2), 'last clip plays at 2x')
+    h.assert(samples.filter((s) => s.t > 7 && !s.paused).every((s) => s.camRate === 2 && Math.abs(s.camT - s.t) < 0.5), 'camera follows speed and position')
     h.assert(elapsed > 4.5 && elapsed < 14, `took about the edited length (${elapsed.toFixed(1)} s)`)
     h.assert((await timecode(win)) === '0:06.0 / 0:06.0', `transport at the end (${await timecode(win)})`)
     h.assert(await win.$eval('.transport .btn.round', (b) => b.getAttribute('aria-label') === 'Play'), 'button shows Play at the end')

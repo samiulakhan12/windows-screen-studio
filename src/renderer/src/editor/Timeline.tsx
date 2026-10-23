@@ -33,6 +33,7 @@ import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
+import { followPointer } from './pointer'
 import type { Selection } from './selection'
 
 export interface TimelineHandle {
@@ -226,7 +227,7 @@ export const Timeline = memo(
       [duration]
     )
 
-    /** Captures the pointer; `onMove` runs once the pointer moved more than `slop` px. */
+    /** Follows a pointer drag; `onMove` runs once the pointer moved more than `slop` px. */
     const track = (
       e: ReactPointerEvent,
       onMove: (ev: PointerEvent) => void,
@@ -236,26 +237,21 @@ export const Timeline = memo(
       e.preventDefault()
       e.stopPropagation()
       releaseFocus()
-      const el = e.currentTarget as HTMLElement
-      el.setPointerCapture(e.pointerId)
       dragging.current = true
       const sx = e.clientX
       let moved = false
-      const move = (ev: PointerEvent): void => {
-        if (!moved && Math.abs(ev.clientX - sx) <= slop) return
-        moved = true
-        onMove(ev)
-      }
-      const up = (): void => {
-        el.removeEventListener('pointermove', move)
-        el.removeEventListener('pointerup', up)
-        el.removeEventListener('pointercancel', up)
-        dragging.current = false
-        onEnd?.(moved)
-      }
-      el.addEventListener('pointermove', move)
-      el.addEventListener('pointerup', up)
-      el.addEventListener('pointercancel', up)
+      followPointer(
+        e,
+        (ev) => {
+          if (!moved && Math.abs(ev.clientX - sx) <= slop) return
+          moved = true
+          onMove(ev)
+        },
+        () => {
+          dragging.current = false
+          onEnd?.(moved)
+        }
+      )
     }
 
     const scrub = (e: ReactPointerEvent): void => {
@@ -367,22 +363,22 @@ export const Timeline = memo(
       )
     }
 
-    // Double-clicks are detected from pointerdowns: the drag code prevents the default
-    // pointerdown action, after which Chromium does not reliably fire dblclick.
-    const lastDown = useRef({ at: 0, x: 0, track: '' })
-    const isSecondClick = (e: ReactPointerEvent, track: string): boolean => {
+    // A double-click on empty track space is two quick pointerdowns at the same spot.
+    // Detected here, before the first click's scrub, rather than with dblclick.
+    const lastDown = useRef({ at: 0, x: 0, kind: '' })
+    const isSecondClick = (e: ReactPointerEvent, kind: string): boolean => {
       const d = lastDown.current
-      const second = d.track === track && e.timeStamp - d.at < 450 && Math.abs(e.clientX - d.x) < 6
-      lastDown.current = second ? { at: 0, x: 0, track: '' } : { at: e.timeStamp, x: e.clientX, track }
+      const second = d.kind === kind && e.timeStamp - d.at < 450 && Math.abs(e.clientX - d.x) < 6
+      lastDown.current = second ? { at: 0, x: 0, kind: '' } : { at: e.timeStamp, x: e.clientX, kind }
       return second
     }
 
-    const onBackgroundDown = (track: 'zoom' | 'text') => (e: ReactPointerEvent) => {
+    const onBackgroundDown = (kind: 'zoom' | 'text') => (e: ReactPointerEvent) => {
       if (e.button !== 0) return
-      if (isSecondClick(e, track)) {
+      if (isSecondClick(e, kind)) {
         e.preventDefault()
         const t = timeAt(e.clientX)
-        if (track === 'zoom') props.onAddZoom(t)
+        if (kind === 'zoom') props.onAddZoom(t)
         else props.onAddText(t)
         return
       }
@@ -394,12 +390,13 @@ export const Timeline = memo(
 
     const step = tickStep(px)
     const ticks = ticksIn(win.start, win.end, step)
-    const visibleZooms = zooms.filter((z) => overlaps(z, win))
+    const selId = selection && 'id' in selection ? selection.id : null
+    // The selected item stays mounted even when scrolled away, so a drag in progress keeps its element.
+    const visibleZooms = zooms.filter((z) => overlaps(z, win) || z.id === selId)
     const lanes = useMemo(() => annotationLanes(annotations), [annotations])
-    const visibleAnnotations = annotations.filter((a) => overlaps(a, win))
+    const visibleAnnotations = annotations.filter((a) => overlaps(a, win) || a.id === selId)
     const visibleClicks = clicks.filter((c) => c.t >= win.start && c.t <= win.end)
     const kept = keptBounds(clips)
-    const selId = selection && 'id' in selection ? selection.id : null
     const laneH = 100 / lanes.count
 
     return (

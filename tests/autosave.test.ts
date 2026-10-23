@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Autosaver, type SaveMeta } from '../src/shared/editor/autosave'
+import { Autosaver, saveErrorMessage, type SaveMeta } from '../src/shared/editor/autosave'
 import { EditStore } from '../src/shared/editor/editStore'
 
 interface Call {
@@ -66,7 +66,7 @@ describe('Autosaver', () => {
     const { store, saver, calls } = setup(() => (failing ? new Error("Error invoking remote method 'projects:save': Error: EPERM: operation not permitted") : null))
     store.update(() => 1)
     await vi.advanceTimersByTimeAsync(400)
-    expect(saver.status).toEqual({ state: 'error', message: 'EPERM: operation not permitted', retryInMs: 1000 })
+    expect(saver.status).toEqual({ state: 'error', message: 'The project file is locked by another program or is read-only. (EPERM)', retryInMs: 1000 })
     await vi.advanceTimersByTimeAsync(1000)
     expect(calls).toHaveLength(2)
     expect(saver.status).toMatchObject({ state: 'error', retryInMs: 2000 })
@@ -125,6 +125,16 @@ describe('Autosaver', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(docs).toEqual([1, 2])
     expect(saver.dirty).toBe(false)
+  })
+
+  it('explains common failures and keeps unknown ones verbatim', () => {
+    expect(saveErrorMessage(new Error("Error invoking remote method 'projects:save': Error: ENOSPC: no space left on device, write"))).toBe(
+      'The disk is full. (ENOSPC)'
+    )
+    expect(saveErrorMessage('EBUSY: resource busy or locked')).toContain('locked')
+    expect(saveErrorMessage(new Error('The recording folder no longer exists, so changes cannot be saved.'))).toBe(
+      'The recording folder no longer exists, so changes cannot be saved.'
+    )
   })
 
   it('markDirty saves an automatically corrected state', async () => {

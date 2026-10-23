@@ -32,10 +32,22 @@ export interface AutosaveOptions {
   maxRetryMs?: number
 }
 
-const errorMessage = (err: unknown): string => {
-  const raw = err instanceof Error ? err.message : String(err)
-  // Electron prefixes errors thrown in the main process; the user only needs the cause.
-  return raw.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+const FRIENDLY: [RegExp, string][] = [
+  [/\bENOSPC\b/, 'The disk is full.'],
+  [/\b(EPERM|EACCES|EBUSY)\b/, 'The project file is locked by another program or is read-only.'],
+  [/\bEROFS\b/, 'The drive is read-only.']
+]
+
+/** User-facing reason for a failed save, keeping the system error code for support. */
+export function saveErrorMessage(err: unknown): string {
+  const raw = (err instanceof Error ? err.message : String(err))
+    // Electron prefixes errors thrown in the main process; the user only needs the cause.
+    .replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+  for (const [re, text] of FRIENDLY) {
+    const m = re.exec(raw)
+    if (m) return `${text} (${m[1] ?? m[0]})`
+  }
+  return raw
 }
 
 /**
@@ -104,7 +116,7 @@ export class Autosaver<T> {
       this.setStatus({ state: 'saved' })
       return true
     }
-    this.setStatus({ state: 'error', message: result.error, retryInMs: 0 })
+    this.setStatus({ state: 'error', message: saveErrorMessage(result.error), retryInMs: 0 })
     return false
   }
 
@@ -163,7 +175,7 @@ export class Autosaver<T> {
         (err: unknown) => {
           this.failures++
           const retryInMs = Math.min(this.maxRetryMs, 1000 * 2 ** (this.failures - 1))
-          this.setStatus({ state: 'error', message: errorMessage(err), retryInMs })
+          this.setStatus({ state: 'error', message: saveErrorMessage(err), retryInMs })
           this.schedule(retryInMs)
         }
       )

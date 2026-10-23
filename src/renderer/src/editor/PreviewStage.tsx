@@ -5,6 +5,7 @@ import { clamp } from '../../../shared/engine/math'
 import type { Annotation, Project, ZoomSegment } from '../../../shared/types'
 import { holdGesture, useEditor } from './context'
 import { releaseFocus } from './focus'
+import { followPointer } from './pointer'
 
 interface Props {
   project: Project
@@ -113,27 +114,20 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
     if (pickZoom) {
       e.preventDefault()
       holdGesture(store)
-      el.setPointerCapture(e.pointerId)
       pickAt(e.clientX, e.clientY, el)
-      const move = (ev: PointerEvent): void => pickAt(ev.clientX, ev.clientY, el)
-      const up = (): void => {
-        el.removeEventListener('pointermove', move)
-        el.removeEventListener('pointerup', up)
-        el.removeEventListener('pointercancel', up)
-      }
-      el.addEventListener('pointermove', move)
-      el.addEventListener('pointerup', up)
-      el.addEventListener('pointercancel', up)
+      followPointer(e, (ev) => pickAt(ev.clientX, ev.clientY, el))
       return
     }
     // A plain click toggles playback; a drag does nothing.
     const sx = e.clientX
     const sy = e.clientY
-    const up = (ev: PointerEvent): void => {
-      el.removeEventListener('pointerup', up)
-      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) onTogglePlay()
-    }
-    el.addEventListener('pointerup', up)
+    followPointer(
+      e,
+      () => undefined,
+      (ev) => {
+        if (ev.type === 'pointerup' && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) onTogglePlay()
+      }
+    )
   }
 
   return (
@@ -229,20 +223,11 @@ function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Bo
     const offY = e.clientY - (frame.top + annotation.y * frame.height)
     const id = annotation.id
     holdGesture(store)
-    el.setPointerCapture(e.pointerId)
-    const move = (ev: PointerEvent): void => {
+    followPointer(e, (ev) => {
       const x = clamp((ev.clientX - offX - frame.left) / frame.width, 0, 1)
       const y = clamp((ev.clientY - offY - frame.top) / frame.height, 0, 1)
       store.update((p) => ({ ...p, annotations: p.annotations.map((a) => (a.id === id ? { ...a, x, y } : a)) }), `annotation-pos:${id}`)
-    }
-    const up = (): void => {
-      el.removeEventListener('pointermove', move)
-      el.removeEventListener('pointerup', up)
-      el.removeEventListener('pointercancel', up)
-    }
-    el.addEventListener('pointermove', move)
-    el.addEventListener('pointerup', up)
-    el.addEventListener('pointercancel', up)
+    })
   }
 
   return (

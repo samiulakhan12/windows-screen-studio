@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { ANNOTATION_SIZE } from '../../../shared/editor/annotations'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../shared/editor/clips'
 import { outputDuration, SPEED_PRESETS } from '../../../shared/engine/timeline'
@@ -15,6 +15,8 @@ import type { Selection } from './selection'
 export interface InspectorProps {
   project: Project
   selection: Selection
+  /** Increments whenever the user selects something, to reveal its settings again. */
+  revealSeq: number
   onSelect: (sel: Selection) => void
   cursor: CursorTrack
   hasWebcam: boolean
@@ -53,12 +55,14 @@ const CORNERS: Corner[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right
 export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Element {
   const [tab, setTab] = useState<Tab>('style')
   const selKind = props.selection?.kind ?? null
-  const selId = props.selection && 'id' in props.selection ? props.selection.id : props.selection ? `${props.selection.start}` : null
 
-  // Selecting something on the timeline reveals its settings.
+  // Selecting something (even the already selected item) reveals its settings.
+  // Keyed on the selection counter only, so undo or deselecting never switches tabs.
+  const revealKind = useRef(selKind)
+  revealKind.current = selKind
   useEffect(() => {
-    if (selKind) setTab(TAB_FOR[selKind])
-  }, [selKind, selId])
+    if (revealKind.current) setTab(TAB_FOR[revealKind.current])
+  }, [props.revealSeq])
 
   return (
     <aside className="inspector">

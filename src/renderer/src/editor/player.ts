@@ -286,7 +286,8 @@ export class PreviewPlayer {
 
   /** The element paused on its own (end of file, media session keys): keep the transport honest. */
   private onPause = (): void => {
-    if (!this.playing) return
+    // A late event from an earlier pause() must not stop a playback that has restarted since.
+    if (!this.playing || !this.screen.paused) return
     if (this.screen.ended) this.finish()
     else this.pause()
   }

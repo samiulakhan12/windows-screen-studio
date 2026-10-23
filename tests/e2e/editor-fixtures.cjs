@@ -48,6 +48,7 @@ function seedProject(home, opts) {
   fs.mkdirSync(dir, { recursive: true })
   const media = makeVideo({ seconds, width, height, fps, audio })
   fs.symlinkSync(media, path.join(dir, 'screen.mp4'))
+  if (opts.webcam) fs.symlinkSync(makeVideo({ seconds, width: 320, height: 240, fps: 30 }), path.join(dir, 'webcam.mp4'))
   const project = {
     version: 2,
     id,
@@ -56,7 +57,7 @@ function seedProject(home, opts) {
     duration: seconds,
     width,
     height,
-    hasWebcam: false,
+    hasWebcam: !!opts.webcam,
     hasAudio: audio,
     webcamOffset: 0,
     capture: opts.capture || { method: 'chromium', cursorInVideo: true, region: null },
@@ -66,7 +67,7 @@ function seedProject(home, opts) {
     annotations: opts.annotations || [],
     style: { background: { type: 'gradient', preset: 'aurora' }, padding: 0.07, cornerRadius: 14, shadow: 0.6, aspectRatio: 'auto' },
     cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: true, hideWhenIdle: true },
-    webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' },
+    webcam: { show: !!opts.webcam, corner: 'bottom-right', size: 0.24, shape: 'circle' },
     effects: { motionBlur: 0.5, keystrokes: { show: true, position: 'bottom', size: 0.035 } },
     audio: { volume: 1, muted: false }
   }

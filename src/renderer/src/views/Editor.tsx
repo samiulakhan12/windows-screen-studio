@@ -143,8 +143,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const cursor = data.cursor
   const clicks = useMemo(() => cursor.clicks.filter(isUsableClick), [cursor])
 
-  const [rawSelection, setSelection] = useState<Selection>(null)
+  const [rawSelection, setRawSelection] = useState<Selection>(null)
+  const [revealSeq, setRevealSeq] = useState(0)
   const selection = validSelection(rawSelection, project)
+  const setSelection = useCallback((sel: Selection) => {
+    setRawSelection(sel)
+    if (sel) setRevealSeq((n) => n + 1)
+  }, [])
   const [pickFocus, setPickFocus] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -279,7 +284,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       goToStart: (): void => player.seek(keptBounds(store.state.clips).start),
       goToEnd: (): void => player.seek(keptBounds(store.state.clips).end)
     }
-  }, [cursor, player, store, showNotice])
+  }, [cursor, player, store, showNotice, setSelection])
 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
@@ -486,6 +491,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           <Inspector
             project={project}
             selection={selection}
+            revealSeq={revealSeq}
             onSelect={setSelection}
             cursor={cursor}
             hasWebcam={!!data.webcamUrl}
