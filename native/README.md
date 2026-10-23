@@ -35,8 +35,9 @@ node scripts/build-native.mjs --require  # fail (exit 1) instead of warning when
 - On Windows it builds for the host toolchain (`x86_64-pc-windows-msvc`, or `-gnu`).
 - On Linux/macOS it cross-compiles for `x86_64-pc-windows-gnu`, which needs
   `rustup target add x86_64-pc-windows-gnu` and MinGW-w64 (`apt install mingw-w64`).
-- Without a usable toolchain the script prints a warning and exits 0: the app still works
-  and falls back to Chromium capture.
+- Without a usable toolchain (or when the build fails) the script prints a warning and exits 0:
+  the app still works and falls back to Chromium capture. Release builds and CI should pass
+  `--require` so a missing helper fails the build instead of silently shipping without it.
 - Packaging bundles `native/bin/ssw-capture.exe` as `resources/native/ssw-capture.exe`.
   `SSW_CAPTURE_HELPER=<path>` overrides the location (an executable, or a `.js/.cjs` file
   that Electron runs as Node; the tests use `tests/fixtures/fake-capture-helper.cjs`).

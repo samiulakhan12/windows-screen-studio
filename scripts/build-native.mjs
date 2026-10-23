@@ -3,8 +3,8 @@
 // native/bin/ssw-capture.exe, where the app (development) and electron-builder
 // (extraResources -> resources/native/ssw-capture.exe) pick it up.
 //
-//   node scripts/build-native.mjs            # warn and exit 0 when no Rust toolchain is usable
-//   node scripts/build-native.mjs --require  # fail instead (release builds); also SSW_REQUIRE_NATIVE=1
+//   node scripts/build-native.mjs            # warn and exit 0 when the helper cannot be built
+//   node scripts/build-native.mjs --require  # fail instead (release builds/CI); also SSW_REQUIRE_NATIVE=1
 //
 // Windows builds for the host toolchain (x86_64-pc-windows-msvc, or -gnu); Linux and macOS
 // cross-compile for x86_64-pc-windows-gnu, which needs `rustup target add x86_64-pc-windows-gnu`
@@ -65,9 +65,12 @@ const build = run('cargo', ['build', '--release', '--locked', '--target', target
   stdio: 'inherit'
 })
 if (build.error || build.status !== 0) {
-  // A toolchain that is present but fails to build is a real problem, not a missing optional tool.
-  console.error(`build-native: cargo build failed (${build.error?.message ?? `exit code ${build.status}`}).`)
-  process.exit(1)
+  skip(
+    `cargo build failed (${build.error?.message ?? `exit code ${build.status}`}).`,
+    target.endsWith('-msvc')
+      ? 'The MSVC toolchain needs the Visual Studio C++ Build Tools (or use the x86_64-pc-windows-gnu toolchain).'
+      : undefined
+  )
 }
 
 const built = path.join(crate, 'target', target, 'release', 'ssw-capture.exe')
