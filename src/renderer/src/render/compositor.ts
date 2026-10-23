@@ -83,7 +83,7 @@ export function drawFrame(
   ctx.save()
   const rect = contentRect(w, h, vw, vh, style.padding)
   const radius = style.cornerRadius * k
-  paintStaticLayer(ctx, w, h, style, src.background, rect, radius, k)
+  paintStaticLayer(ctx, w, h, style, src.background, rect, radius, k, !!screen)
 
   const focus = cursor.valid ? scene.focusPath : null
   const cam = cameraAt(project.zooms, t, focus)

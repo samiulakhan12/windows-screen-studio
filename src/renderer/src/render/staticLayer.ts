@@ -70,8 +70,22 @@ const layers = new WeakMap<Ctx, CachedLayer>()
  * most expensive things in a frame (the shadow alone is a 140 px blur at 4K), and
  * they never change during playback or an export, so they are rendered once per
  * target canvas and reused until the size or style changes.
+ *
+ * `opaque`: when the recording is about to be drawn over `rect` (rounded by
+ * `radius`), only the bands around it are copied; the interior would be painted
+ * over anyway, and copying it costs as much as drawing the recording on a CPU canvas.
  */
-export function paintStaticLayer(ctx: Ctx, w: number, h: number, style: StyleSettings, image: HTMLImageElement | null, rect: Rect, radius: number, k: number): void {
+export function paintStaticLayer(
+  ctx: Ctx,
+  w: number,
+  h: number,
+  style: StyleSettings,
+  image: HTMLImageElement | null,
+  rect: Rect,
+  radius: number,
+  k: number,
+  opaque = false
+): void {
   if (typeof document === 'undefined') {
     paintStatic(ctx, w, h, style, image, rect, radius, k)
     return
@@ -91,5 +105,21 @@ export function paintStaticLayer(ctx: Ctx, w: number, h: number, style: StyleSet
     layer = { key, image, canvas }
     layers.set(ctx, layer)
   }
-  ctx.drawImage(layer.canvas, 0, 0)
+  if (!opaque) {
+    ctx.drawImage(layer.canvas, 0, 0)
+    return
+  }
+  // Pixels at least the corner radius (+1 px of anti-aliasing) inside the content are fully covered.
+  const r = Math.max(0, Math.min(radius, rect.w / 2, rect.h / 2)) + 1
+  const x0 = Math.min(w, Math.max(0, Math.ceil(rect.x + r)))
+  const y0 = Math.min(h, Math.max(0, Math.ceil(rect.y + r)))
+  const x1 = Math.max(x0, Math.min(w, Math.floor(rect.x + rect.w - r)))
+  const y1 = Math.max(y0, Math.min(h, Math.floor(rect.y + rect.h - r)))
+  const band = (x: number, y: number, bw: number, bh: number): void => {
+    if (bw > 0 && bh > 0) ctx.drawImage(layer!.canvas, x, y, bw, bh, x, y, bw, bh)
+  }
+  band(0, 0, w, y0)
+  band(0, y1, w, h - y1)
+  band(0, y0, x0, y1 - y0)
+  band(x1, y0, w - x1, y1 - y0)
 }
