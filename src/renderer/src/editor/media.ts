@@ -1,5 +1,12 @@
-/** Proxies (screen.mp4, webcam.mp4) are always encoded at 60 fps constant frame rate. */
-export const PROXY_FPS = 60
+import { frameCovers, frameSeekTime } from '../../../shared/render/frameTiming'
+
+/**
+ * Proxies are constant frame rate: the screen proxy (screen.mp4) at 60 fps, the
+ * webcam proxy (webcam.mp4) at the camera's own rate, usually 30 fps. The real rate
+ * is read from the file when possible; these are the fallbacks.
+ */
+export const SCREEN_PROXY_FPS = 60
+export const WEBCAM_PROXY_FPS = 30
 
 export function createVideo(url: string): HTMLVideoElement {
   const v = document.createElement('video')
@@ -55,12 +62,13 @@ export function seekTo(v: HTMLVideoElement, t: number): Promise<void> {
 }
 
 /**
- * Seeks to the proxy frame shown at time `t`. A seek to an exact frame boundary
- * usually shows the previous frame in Chromium, so this aims at the middle of the
- * frame instead; overlays are still computed at `t` by the caller.
+ * Seeks to the frame of a `fps` constant-rate video shown at time `t`. A seek to
+ * an exact frame boundary usually shows the previous frame in Chromium, so this
+ * aims at the middle of the frame instead; overlays are still computed at `t` by
+ * the caller.
  */
-export function seekToFrame(v: HTMLVideoElement, t: number, fps = PROXY_FPS): Promise<void> {
-  return seekTo(v, t + 0.5 / fps)
+export function seekToFrame(v: HTMLVideoElement, t: number, fps: number): Promise<void> {
+  return seekTo(v, frameSeekTime(t, fps))
 }
 
 const pause = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -75,13 +83,10 @@ const pause = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  * when the timestamps never matched, so callers can stop checking a file whose
  * timestamps are offset.
  */
-export async function seekedFrame(v: HTMLVideoElement, t: number, fps = PROXY_FPS, maxWaitMs = 100): Promise<{ frame: VideoFrame; verified: boolean } | null> {
+export async function seekedFrame(v: HTMLVideoElement, t: number, fps: number, maxWaitMs = 100): Promise<{ frame: VideoFrame; verified: boolean } | null> {
   if (typeof VideoFrame === 'undefined') return null
-  const target = clampToMedia(v, t + 0.5 / fps)
-  const shows = (f: VideoFrame): boolean => {
-    const start = f.timestamp / 1e6
-    return start > target - 1 / fps + 1e-4 && start <= target + 1e-4
-  }
+  const target = clampToMedia(v, frameSeekTime(t, fps))
+  const shows = (f: VideoFrame): boolean => frameCovers(f.timestamp / 1e6, target, fps)
   const deadline = performance.now() + maxWaitMs
   for (;;) {
     let frame: VideoFrame

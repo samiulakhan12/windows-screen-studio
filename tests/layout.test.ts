@@ -16,6 +16,9 @@ describe('outputSize', () => {
     expect(outputSize('auto', 1366, 768, 2160)).toEqual({ width: 3840, height: 2160 })
     expect(outputSize('auto', 1440, 900, 1080)).toEqual({ width: 1728, height: 1080 })
     expect(autoAspect(2560, 1080)).toBeCloseTo(64 / 27)
+    // The nearest standard shape wins (64:27 is also within 1% of 43:18).
+    expect(autoAspect(3440, 1440)).toBe(43 / 18)
+    expect(outputSize('auto', 3440, 1440, 1440)).toEqual({ width: 3440, height: 1440 })
   })
   it('keeps an unusual recording shape as it is', () => {
     expect(autoAspect(1000, 700)).toBeCloseTo(1000 / 700)

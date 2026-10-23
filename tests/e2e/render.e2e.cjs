@@ -105,6 +105,49 @@ async function main() {
     }
   }))
 
+  await test('render: raw-frame route at 1080p with motion blur (per-frame cost)', fx.withHome('render-raw-cost', async (ctx, home) => {
+    const media = fx.indexedVideo({ seconds: 4, width: 1920, height: 1080 })
+    const zooms = [{ id: 'z', start: 0.5, end: 3.5, scale: 2, focus: { mode: 'fixed', x: 0.4, y: 0.4 }, auto: false }]
+    const style = { background: { type: 'gradient', preset: 'ocean' }, padding: 0.06, cornerRadius: 14, shadow: 0.6, aspectRatio: 'auto' }
+    fx.seedProject(home, { name: 'Raw cost', media, seconds: 4, width: 1920, height: 1080, zooms, style, effects: { motionBlur: 1, keystrokes: { show: false, position: 'bottom', size: 0.035 } } })
+    // Xvfb has no GPU: by default Chromium rasterises canvases on the CPU. With the
+    // blocklist ignored it uses an accelerated canvas (on SwiftShader), the path a
+    // Windows machine with a GPU takes; its frames read back as RGBX instead of BGRX.
+    const outs = []
+    for (const [mode, args] of [['software', []], ['accelerated', ['--ignore-gpu-blocklist']]]) {
+      // Raw frames to ffmpeg (the GIF / x264 / ffmpeg GPU encoder route).
+      const { app, win, logs } = await h.launch({ home, args, env: { SSW_EXPORT_VIDEO_ENCODER: 'ffmpeg' } })
+      ctx.app = app
+      ctx.logs = logs
+      const canvas = await app.evaluate(({ app: a }) => a.getGPUFeatureStatus()['2d_canvas'])
+      const timing = fx.exportTimings(win)
+      const out = path.join(home, `raw-${mode}.mp4`)
+      await fx.openProject(win, 'Raw cost')
+      await h.mockSaveDialog(app, out)
+      await fx.openExportDialog(win)
+      await fx.pickChip(win, 'Resolution', '1080p')
+      await fx.pickChip(win, 'Frame rate', '60 fps')
+      await win.locator('.modal button.primary', { hasText: 'Export' }).click()
+      const r = await fx.waitForExport(win)
+      h.assert(r.ok, `export (${mode} canvas): ${r.text}`)
+      const t = timing.last()
+      console.log(`  ${mode} canvas (2d_canvas: ${canvas}): ${t.line}; draw + readback ${(t.draw + t.encode).toFixed(1)} ms per frame`)
+      h.assert(/via Software \(x264\)/.test(t.line), 'raw-frame route')
+      const video = fx.probe(out).streams.find((s) => s.codec_type === 'video')
+      h.assert(video.width === 1920 && video.height === 1080 && Number(video.nb_frames) === 240, `1080p, 240 frames (got ${video.width}x${video.height}, ${video.nb_frames})`)
+      outs.push(out)
+      await app.close()
+      ctx.app = null
+    }
+    // Both canvases render the same picture (same colours: the byte order of each is mapped right).
+    const idx = [30, 60, 100, 150, 200]
+    const [A, B] = outs.map((f) => fx.framesAt(f, idx, 'rgb24'))
+    idx.forEach((f, k) => {
+      const d = meanAbsDiff(A.frames[k], B.frames[k])
+      h.assert(d < 3, `frame ${f}: software and accelerated canvases differ by ${d.toFixed(2)}`)
+    })
+  }))
+
   await test('render: annotations, keystrokes, cursor shapes and click ripples', fx.withHome('render-overlays', async (ctx, home) => {
     const media = fx.solidVideo({ seconds: 4 })
     const style = { background: { type: 'color', color: '#808080' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }

@@ -54,14 +54,18 @@ export async function moveIntoPlace(from: string, to: string, rename = fs.rename
 const isNum = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
 const ENCODERS: H264Encoder[] = [...HARDWARE_ENCODERS, 'libx264']
 
+/** Largest frame side any encoder here accepts (the renderer keeps exports at 4096). */
+export const MAX_FRAME_SIDE = 8192
+
 /** The renderer is trusted, but ffmpeg arguments are still built only from validated values. */
 export function validateJob(job: ExportJob): void {
+  const sizeOk = isNum(job.width, 2, MAX_FRAME_SIDE) && isNum(job.height, 2, MAX_FRAME_SIDE) && job.width % 2 === 0 && job.height % 2 === 0
+  if (!sizeOk && typeof job.width === 'number' && typeof job.height === 'number') {
+    throw new Error(`The export size ${job.width}×${job.height} is not supported: each side must be an even number of pixels, at most ${MAX_FRAME_SIDE}. Choose a lower resolution.`)
+  }
   const ok =
     (job.format === 'mp4' || job.format === 'gif') &&
-    isNum(job.width, 2, 8192) &&
-    isNum(job.height, 2, 8192) &&
-    job.width % 2 === 0 &&
-    job.height % 2 === 0 &&
+    sizeOk &&
     isNum(job.fps, 1, 120) &&
     isNum(job.frames, 1, 1e8) &&
     ['high', 'medium', 'small'].includes(job.quality) &&

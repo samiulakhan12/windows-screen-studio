@@ -1,5 +1,5 @@
 import type { ColorTags, ExportJob, RawPixelFormat } from '../../../shared/api/export'
-import { avcLevel, colorTagsFrom } from '../../../shared/render/codec'
+import { avcLevel, colorTagsFrom, rawReadback } from '../../../shared/render/codec'
 
 /**
  * Where rendered frames go. `push` has captured the canvas by the time it resolves
@@ -29,13 +29,13 @@ async function finishJob(): Promise<number> {
   }
 }
 
-const RAW_FORMATS: Partial<Record<VideoPixelFormat, RawPixelFormat>> = { BGRX: 'bgr0', BGRA: 'bgra', RGBX: 'rgb0', RGBA: 'rgba' }
-
 /**
  * Raw frames to ffmpeg over IPC, up to two in flight so reading back overlaps the
- * transfer. Pixels are read through a VideoFrame in the canvas's native byte order
- * (a plain copy, about 3x faster than getImageData's unpremultiplying RGBA copy);
- * the ffmpeg job starts with the first frame, once that byte order is known.
+ * transfer. The canvas is a GPU canvas where Chromium has one: each finished frame
+ * is read back once, asynchronously, through a VideoFrame in the canvas's native
+ * byte order (a plain copy, about 3x faster than getImageData's unpremultiplying
+ * RGBA copy, which is only the fallback). The ffmpeg job starts with the first
+ * frame, once that byte order is known.
  */
 export class RawFrameSink implements FrameSink {
   private inFlight = new Set<Promise<void>>()
@@ -48,27 +48,53 @@ export class RawFrameSink implements FrameSink {
     private readonly startJob: (format: RawPixelFormat) => Promise<void>
   ) {}
 
+  /** Set once a VideoFrame readback failed: later frames use getImageData. */
+  private frameReadback = typeof VideoFrame !== 'undefined'
+  /** Byte order of the job (fixed by the first frame). */
+  private format: RawPixelFormat | null = null
+
+  private async readFrame(): Promise<{ data: Uint8Array; format: RawPixelFormat } | null> {
+    const frame = new VideoFrame(this.canvas, { timestamp: 0 })
+    try {
+      const { copyFormat, pixelFormat } = rawReadback(frame.format)
+      // A later frame must not change the byte order the ffmpeg job was started with.
+      if (this.format && pixelFormat !== this.format) return null
+      const options: VideoFrameCopyToOptions = copyFormat ? { format: copyFormat, colorSpace: 'srgb' } : {}
+      const data = new Uint8Array(frame.allocationSize(options))
+      await frame.copyTo(data, options)
+      return { data, format: pixelFormat }
+    } finally {
+      frame.close()
+    }
+  }
+
   private async read(): Promise<{ data: Uint8Array; format: RawPixelFormat }> {
-    if (typeof VideoFrame !== 'undefined') {
-      const frame = new VideoFrame(this.canvas, { timestamp: 0 })
+    if (this.frameReadback) {
       try {
-        const format = frame.format ? RAW_FORMATS[frame.format] : undefined
-        if (format) {
-          const data = new Uint8Array(frame.allocationSize())
-          await frame.copyTo(data)
-          return { data, format }
-        }
-      } finally {
-        frame.close()
+        const r = await this.readFrame()
+        if (r) return r
+      } catch (e) {
+        console.warn('Reading the frame through a VideoFrame failed; using getImageData:', e)
       }
+      this.frameReadback = false
     }
     const img = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data
-    return { data: new Uint8Array(img.buffer, img.byteOffset, img.byteLength), format: 'rgba' }
+    const data = new Uint8Array(img.buffer, img.byteOffset, img.byteLength)
+    // A job started from VideoFrames in blue-first order keeps that order (the canvas is opaque, so RGBA also serves as RGB0).
+    if (this.format === 'bgra' || this.format === 'bgr0') {
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i]
+        data[i] = data[i + 2]
+        data[i + 2] = r
+      }
+    }
+    return { data, format: this.format ?? 'rgba' }
   }
 
   async push(): Promise<void> {
     if (this.error) throw this.error
     const { data, format } = await this.read()
+    this.format ??= format
     this.started ??= this.startJob(format)
     await this.started.catch((e: unknown) => {
       throw cleanIpcError(e)

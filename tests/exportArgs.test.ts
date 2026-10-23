@@ -5,6 +5,7 @@ import path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { audioFilterGraph, colorBitstreamFilter, colorTagArgs, EXPORT_COLOR, exportArgs, gifCaptureArgs, gifEncodeArgs, gifPaletteArgs, videoEncoderArgs } from '../src/main/exportArgs'
 import { ffmpegPath } from '../src/main/ffmpeg'
+import { detectWith, gpuEncoderOptions, probeArgs } from '../src/main/hwEncoders'
 import type { ExportJob } from '../src/shared/api/export'
 import type { Clip } from '../src/shared/types'
 
@@ -165,6 +166,38 @@ describe('encoder settings', () => {
   })
   it('gives Media Foundation a bitrate', () => {
     expect(Number(after(videoEncoderArgs('h264_mf', job), '-b:v'))).toBeGreaterThan(5e6)
+  })
+  it('asks Media Foundation for a hardware encoder, as the probe did (perf-1 / windows-3)', () => {
+    // Without -hw_encoding 1, h264_mf is Microsoft's software encoder, present on every Windows install.
+    expect(after(videoEncoderArgs('h264_mf', job), '-hw_encoding')).toBe('1')
+    expect(after(probeArgs('h264_mf'), '-hw_encoding')).toBe('1')
+    expect(after(exportArgs({ ...job, video: { kind: 'raw', encoder: 'h264_mf', pixelFormat: 'bgra' } }, io), '-hw_encoding')).toBe('1')
+    // Other encoders take no such flag.
+    for (const e of ['h264_nvenc', 'h264_qsv', 'h264_amf', 'libx264'] as const) {
+      expect(videoEncoderArgs(e, job)).not.toContain('-hw_encoding')
+      expect(probeArgs(e)).not.toContain('-hw_encoding')
+      expect(gpuEncoderOptions(e)).toEqual([])
+    }
+  })
+})
+
+describe('encoder detection (perf-1 / windows-3)', () => {
+  it('lists Media Foundation as a GPU encoder only when its hardware probe passes, after the vendor encoders and before x264', async () => {
+    const probed: string[] = []
+    const only = (ok: string[]) => async (e: string): Promise<boolean> => (probed.push(e), ok.includes(e))
+    expect(await detectWith('win32', only(['h264_mf']))).toEqual(['h264_mf', 'libx264'])
+    expect(await detectWith('win32', only(['h264_nvenc', 'h264_mf']))).toEqual(['h264_nvenc', 'h264_mf', 'libx264'])
+    // A machine with no hardware encoder: only x264 (the software MFT no longer passes the probe).
+    expect(await detectWith('win32', only([]))).toEqual(['libx264'])
+    probed.length = 0
+    expect(await detectWith('linux', only(['h264_mf']))).toEqual(['libx264'])
+    expect(probed).not.toContain('h264_mf')
+  })
+  it('the probe encodes a few frames to nowhere with the same options as a real encode', () => {
+    const a = probeArgs('h264_qsv')
+    expect(after(a, '-c:v')).toBe('h264_qsv')
+    expect(after(a, '-pix_fmt')).toBe('nv12')
+    expect(a.slice(-3)).toEqual(['-f', 'null', '-'])
   })
 })
 
