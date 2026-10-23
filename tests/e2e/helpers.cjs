@@ -34,6 +34,9 @@ async function launch({ home, args = [], env = {} } = {}) {
   app.process().stdout.on('data', (d) => logs.push(`[main] ${d}`))
   app.process().stderr.on('data', (d) => logs.push(`[main:err] ${d}`))
   const win = await app.firstWindow()
+  // firstWindow() can resolve while the initial navigation is still in flight; queries
+  // made then fail with "Execution context was destroyed".
+  await win.waitForLoadState('domcontentloaded')
   win.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`))
   win.on('console', (m) => m.type() === 'error' && logs.push(`[console.error] ${m.text()}`))
   return { app, win, logs }
