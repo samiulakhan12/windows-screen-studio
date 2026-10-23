@@ -39,8 +39,17 @@ function helperProcesses() {
   return (r.stdout || '').split('\n').filter(Boolean)
 }
 
+/** Temporary folders to delete when the file is done. */
+const scratch = []
+function tempDir(prefix) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
+  scratch.push(dir)
+  return dir
+}
+
 async function setup(ctx, name, env) {
   const home = h.tempHome(name)
+  scratch.push(home)
   const { app, win, logs } = await h.launch({ home, env })
   ctx.app = app
   ctx.logs = logs
@@ -52,8 +61,16 @@ async function setup(ctx, name, env) {
 }
 
 ;(async () => {
+  try {
+    await main()
+  } finally {
+    for (const dir of scratch) fs.rmSync(dir, { recursive: true, force: true })
+  }
+})()
+
+async function main() {
   await h.run('native: fake helper records the screen without the cursor, pause is cut out', async (ctx) => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ssw-native-'))
+    const tmp = tempDir('ssw-native-')
     const log = path.join(tmp, 'helper.log')
     const { app, home } = await setup(ctx, 'native', {
       SSW_CAPTURE_HELPER: FAKE,
@@ -110,11 +127,13 @@ async function setup(ctx, name, env) {
     h.assert(Math.abs(probe.duration - result.duration) < 0.15, `file duration ${probe.duration} vs reported ${result.duration}`)
     const frame = path.join(tmp, 'frame.png')
     execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', '1', '-i', out, '-frames:v', '1', frame])
-    console.log(`native: ${probe.nb_read_frames} frames, ${probe.duration.toFixed(2)} s; sample frame ${frame}`)
+    // Set SSW_E2E_KEEP to a folder to look at a frame of the recording.
+    if (process.env.SSW_E2E_KEEP) fs.copyFileSync(frame, path.join(process.env.SSW_E2E_KEEP, 'native-frame.png'))
+    console.log(`native: ${probe.nb_read_frames} frames, ${probe.duration.toFixed(2)} s`)
   })
 
   await h.run('native: failures reject cleanly and kill() leaves no helper process', async (ctx) => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ssw-native-fail-'))
+    const tmp = tempDir('ssw-native-fail-')
     const { app } = await setup(ctx, 'native-fail', { SSW_CAPTURE_HELPER: FAKE, FAKE_HELPER_LOG: path.join(tmp, 'helper.log') })
     const out = path.join(tmp, 'x.mp4')
 
@@ -158,7 +177,7 @@ async function setup(ctx, name, env) {
     return
   }
   await h.run('native: real ssw-capture.exe under wine reports unsupported capture through the client', async (ctx) => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ssw-native-wine-'))
+    const tmp = tempDir('ssw-native-wine-')
     const wrapper = path.join(tmp, 'wine-helper.cjs')
     fs.writeFileSync(
       wrapper,
@@ -189,4 +208,4 @@ p.on('exit', (code) => process.exit(code ?? 1))
     // The monitor list from the real exe matched Electron's display, so `record` ran and failed there.
     h.assert(/exited with code 3: Windows.Graphics.Capture is not available on this system/.test(r.start), `start: ${r.start}`)
   })
-})()
+}
