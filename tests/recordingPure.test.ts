@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { MIN_REGION, regionToRect, sanitizeRegion, toolbarPosition } from '../src/main/recording/placement'
 import { parseInputHasAudio, parseInputSize, parseProgressFrame, parseProgressTime, summarizeFfmpegLog } from '../src/main/recording/proxyRunner'
-import { ChunkPipe } from '../src/renderer/src/recorder/chunkPipe'
-import { friendlyError, RecorderError, SOURCE_GONE, stripIpcPrefix } from '../src/renderer/src/recorder/errors'
-import { pickMime, screenBitrate, screenMimes } from '../src/renderer/src/recorder/mime'
-import { boxFromPoints, isUsable, moveBox, pixelSize, resizeBox, toNormRect } from '../src/renderer/src/recorder/regionGeometry'
+import { ChunkPipe } from '../src/shared/recording/chunkPipe'
+import { friendlyError, RecorderError, SOURCE_GONE, stripIpcPrefix } from '../src/shared/recording/errors'
+import { pickMime, screenBitrate, screenMimes } from '../src/shared/recording/mime'
+import { boxFromPoints, isUsable, moveBox, pixelSize, resizeBox, toNormRect } from '../src/shared/recording/regionGeometry'
 
 describe('MediaRecorder format choice', () => {
   it('prefers H.264, then VP8, then VP9', () => {

@@ -1,4 +1,4 @@
-import type { NormRect } from '../../../shared/types'
+import type { NormRect } from '../types'
 
 /** A rectangle in CSS pixels of the overlay (= DIP of the display). */
 export interface Box {

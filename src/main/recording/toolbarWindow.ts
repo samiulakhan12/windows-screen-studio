@@ -18,7 +18,8 @@ function create(): BrowserWindow {
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    focusable: true,
+    // Clicking Pause must not pull keyboard focus away from the app being recorded.
+    focusable: false,
     show: false,
     hasShadow: false,
     webPreferences: { preload: preloadPath, sandbox: false, contextIsolation: true, nodeIntegration: false }

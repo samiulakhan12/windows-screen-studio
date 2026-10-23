@@ -15,6 +15,9 @@ const SCREEN_FPS = 60
 /** A failure with a message meant for the user. */
 export class RecordingError extends Error {}
 
+/** Nothing was captured: there is nothing to keep or retry. */
+export class EmptyRecordingError extends RecordingError {}
+
 export function friendlyFfmpegError(err: unknown, what: string): RecordingError {
   if (err instanceof RecordingError) return err
   const e = err as NodeJS.ErrnoException & { code?: string | null }
@@ -62,7 +65,7 @@ export async function processRecording(
   const native = manifest.method === 'native'
   const screenIn = path.join(dir, native ? projects.RAW.native : projects.RAW.screen)
   if ((await projects.fileSize(screenIn)) === 0) {
-    throw new RecordingError('Nothing was captured: the recording contains no video.')
+    throw new EmptyRecordingError('Nothing was captured: the recording contains no video.')
   }
   const audioIn = path.join(dir, projects.RAW.audio)
   const audio = native && manifest.hasAudio && (await projects.fileSize(audioIn)) > 0 ? { input: audioIn, offset: manifest.audioOffset } : null

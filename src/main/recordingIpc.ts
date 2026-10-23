@@ -30,7 +30,7 @@ import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
 import * as nativeModule from './nativeCapture'
 import * as projects from './projects'
-import { processRecording, RecordingError } from './recording/finalize'
+import { EmptyRecordingError, processRecording, RecordingError } from './recording/finalize'
 import { nativeAvailable, startNativeVideo, type NativeCaptureApi } from './recording/nativeVideo'
 import { pointInRect, regionToRect, sanitizeRegion } from './recording/placement'
 import { killAllFfmpeg } from './recording/proxyRunner'
@@ -45,7 +45,7 @@ import {
   showToolbar,
   toolbarAreas
 } from './recording/toolbarWindow'
-import { buildCursorTrack, type RawTrack } from './recording/trackMath'
+import { buildCursorTrack } from './recording/trackMath'
 import { getMainWindow, loadRoute } from './windows'
 
 const STOP_SHORTCUT = 'CommandOrControl+Shift+2'
@@ -59,7 +59,6 @@ let activeDisplay: Display | null = null
 let captureKeys = true
 /** The source the next getDisplayMedia() call is granted. */
 let grant: { id: string; name: string; systemAudio: boolean } | null = null
-let rawTrack: RawTrack | null = null
 let stopShortcut = false
 let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
 /** Recordings whose proxies are being built (they have no project.json yet). */
@@ -114,9 +113,12 @@ async function resolveSource(sourceId: string): Promise<{ name: string; display:
   return { name: source.name, kind, display: kind === 'screen' ? displayById(source.display_id || sourceInfo.get(sourceId)?.displayId) : null }
 }
 
+/** Windows that are not being torn down (a closing window's webContents may already be gone). */
+const liveWindows = (): BrowserWindow[] => BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && !w.webContents.isDestroyed())
+
 function isOwnPoint(p: Point): boolean {
   if (toolbarAreas().some((r) => pointInRect(p, r))) return true
-  return BrowserWindow.getAllWindows().some((w) => w.isVisible() && !w.isMinimized() && pointInRect(p, w.getBounds()))
+  return liveWindows().some((w) => w.isVisible() && !w.isMinimized() && pointInRect(p, w.getBounds()))
 }
 
 function startTracker(): void {
@@ -158,14 +160,15 @@ function beginStop(s: ActiveRecording): void {
   if (s.phase === 'stopping' || s.phase === 'processing') return
   s.stop()
   s.phase = 'stopping'
-  if (tracker.active) rawTrack = tracker.collect()
 }
 
 async function writeTrack(s: ActiveRecording, duration: number): Promise<void> {
   const shapes = await s.finishNative()
+  // Collected only now: hook events can reach JavaScript a little late, and anything
+  // after the stop is cut by the duration anyway.
+  const raw = tracker.active ? tracker.collect() : { samples: [], clicks: [], keys: [], bounds: null, scale: 1 }
   const m = s.manifest
   if (m.startedAt === null) return
-  const raw = rawTrack ?? { samples: [], clicks: [], keys: [], bounds: null, scale: 1 }
   // Slack: the final duration comes from the proxy and is applied by processRecording.
   const track = buildCursorTrack(raw, { startedAt: m.startedAt, pauses: s.pauses, duration, region: m.region, shapes, slack: 1 })
   await projects.writeCursor(m.id, track)
@@ -191,6 +194,8 @@ async function interrupt(s: ActiveRecording): Promise<void> {
     await writeTrack(s, duration)
   } catch (err) {
     console.error('Could not save the cursor track:', err)
+  } finally {
+    tracker.stop()
   }
   s.manifest.duration = duration
   s.manifest.status = 'interrupted'
@@ -282,7 +287,6 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   active = s
   activeDisplay = source.display
   captureKeys = request.captureKeys
-  rawTrack = null
   grant = { id: request.sourceId, name: source.name, systemAudio: request.systemAudio }
   prepareToolbar(source.display, region && source.display ? regionToRect(region, source.display.bounds) : null)
   stopShortcut = registerStopShortcut()
@@ -330,7 +334,8 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   m.hasWebcam = info.hasWebcam
   m.webcamFps = info.webcamFps
   s.phase = 'recording'
-  if (!tracker.active) startTracker()
+  // Native capture started tracking with the helper; Chromium capture starts now.
+  if (!s.usesNative) startTracker()
   await projects.writeManifest(m)
 }
 
@@ -390,14 +395,20 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
   } catch (err) {
     const message = friendlyMessage(err)
     console.error('Saving the recording failed:', err)
+    if (err instanceof EmptyRecordingError) {
+      // Nothing to keep: do not leave an empty folder behind.
+      await projects.deleteProject(s.id).catch(() => undefined)
+      throw new Error(message)
+    }
     m.status = 'failed'
     m.error = message
     await projects.writeManifest(m).catch(() => undefined)
     throw new Error(`${message} Your recording was kept in “${s.dir}”; you can retry it from Unfinished recordings.`)
   } finally {
+    // The input hook only ever runs while recording.
+    tracker.stop()
     processing.delete(s.id)
     if (active === s) active = null
-    rawTrack = null
   }
 }
 
@@ -422,6 +433,10 @@ async function recover(id: string): Promise<string> {
   } catch (err) {
     const message = friendlyMessage(err)
     console.error('Recovering the recording failed:', err)
+    if (err instanceof EmptyRecordingError) {
+      await projects.deleteProject(id).catch(() => undefined)
+      throw new Error(`${message} The empty recording was removed.`)
+    }
     m.status = 'failed'
     m.error = message
     await projects.writeManifest(m).catch(() => undefined)
@@ -449,7 +464,7 @@ export function registerRecordingIpc(): void {
   setupDisplayMedia()
 
   ipcMain.handle('sources:list', async (): Promise<CaptureSource[]> => {
-    const own = new Set(BrowserWindow.getAllWindows().map((w) => w.getMediaSourceId()))
+    const own = new Set(liveWindows().map((w) => w.getMediaSourceId()))
     const sources = await desktopCapturer.getSources({
       types: ['screen', 'window'],
       thumbnailSize: { width: 480, height: 270 },

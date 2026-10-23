@@ -1,9 +1,9 @@
 import type { CapturePlan, RecordingApi, RecordingStartInfo, SaveRecordingPayload, TrackKind } from '../../../shared/api/recording'
 import type { NormRect } from '../../../shared/types'
-import { ChunkPipe } from './chunkPipe'
-import { friendlyError, RecorderError, SOURCE_GONE, type DeviceKind } from './errors'
+import { ChunkPipe } from '../../../shared/recording/chunkPipe'
+import { friendlyError, RecorderError, SOURCE_GONE, type DeviceKind } from '../../../shared/recording/errors'
 import { epochNow, nextFrameTime } from './firstFrame'
-import { AUDIO_MIMES, CAMERA_MIMES, pickMime, screenBitrate, screenMimes } from './mime'
+import { AUDIO_MIMES, CAMERA_MIMES, pickMime, screenBitrate, screenMimes } from '../../../shared/recording/mime'
 
 export interface SessionOptions {
   sourceId: string
@@ -181,6 +181,7 @@ export class RecordingSession {
     const live = this.audioSources.filter((t) => t.readyState === 'live')
     if (live.length <= 1) return live[0] ?? null
     this.audioCtx = new AudioContext()
+    void this.audioCtx.resume()
     const dest = this.audioCtx.createMediaStreamDestination()
     for (const track of live) this.audioCtx.createMediaStreamSource(new MediaStream([track])).connect(dest)
     return dest.stream.getAudioTracks()[0] ?? null

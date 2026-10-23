@@ -5,7 +5,7 @@ import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
 import { cameras, listInputDevices, microphones, onDevicesChanged } from '../recorder/devices'
-import { friendlyError, SOURCE_GONE } from '../recorder/errors'
+import { friendlyError, SOURCE_GONE } from '../../../shared/recording/errors'
 import '../recorder/recorder.css'
 
 const PREFS_KEY = 'recorder-prefs'
@@ -75,6 +75,15 @@ function RegionIcon(): JSX.Element {
   )
 }
 
+function KeyboardIcon(): JSX.Element {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="icon">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
+    </svg>
+  )
+}
+
 export function Home({ onOpenProject }: { onOpenProject: (id: string) => void }): JSX.Element {
   const [sources, setSources] = useState<CaptureSource[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -96,7 +105,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
 
   const refreshSources = useCallback(async () => {
     try {
-      setSources(await window.api.getSources())
+      let list = await window.api.getSources()
+      // There is always at least one screen; an empty list is a capturer hiccup.
+      for (let i = 0; i < 2 && !list.some((s) => s.kind === 'screen'); i++) {
+        await new Promise((r) => setTimeout(r, 700))
+        list = await window.api.getSources()
+      }
+      setSources(list)
     } catch (err) {
       setError(toErrorState(err))
     }
@@ -337,7 +352,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           </label>
           <label className="toggle" title="Records shortcuts such as Ctrl + C for the keystroke overlay. What you type is never recorded.">
             <span>
-              <Icon name="cursor" size={16} /> Capture shortcuts for keystroke overlay
+              <KeyboardIcon /> Capture shortcuts for keystroke overlay
             </span>
             <input type="checkbox" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
           </label>
@@ -378,7 +393,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               {unfinished.map((u) => (
                 <li key={u.id} className="unfinished">
                   <div className="unfinished-info" title={u.error ?? undefined}>
-                    <span className="project-name">{new Date(u.createdAt).toLocaleString()}</span>
+                    <span className="project-name">{new Date(u.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
                     <span className="muted">
                       {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {formatBytes(u.bytes)}
                       {u.error ? ` · ${u.error}` : ''}

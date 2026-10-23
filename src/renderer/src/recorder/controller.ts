@@ -1,6 +1,6 @@
 import type { CapturePlan, RecorderCommand } from '../../../shared/api/recording'
 import type { RecordingStatus } from '../../../shared/types'
-import { friendlyError, RecorderError, SOURCE_GONE } from './errors'
+import { friendlyError, RecorderError, SOURCE_GONE } from '../../../shared/recording/errors'
 import { RecordingSession, type SessionOptions } from './session'
 
 export type RecordingPhase = 'preparing' | 'countdown' | 'recording' | 'saving'

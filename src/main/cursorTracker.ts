@@ -15,7 +15,7 @@ interface HookKeyEvent extends KeyInput {
   time: number
 }
 
-type HookModule = {
+export type HookModule = {
   uIOhook: {
     on(event: 'mousedown' | 'mousemove', cb: (e: HookMouseEvent) => void): void
     on(event: 'keydown' | 'keyup', cb: (e: HookKeyEvent) => void): void
@@ -73,6 +73,9 @@ export interface TrackerOptions {
  * (buildCursorTrack), so the same data can be rebuilt after a crash.
  */
 export class CursorTracker {
+  /** `loadHookModule` is injectable so tests can drive the tracker with synthetic input. */
+  constructor(private readonly loadHookModule: () => HookModule | null = loadHook) {}
+
   private opts: TrackerOptions | null = null
   private timer: NodeJS.Timeout | null = null
   private paused = false
@@ -88,7 +91,7 @@ export class CursorTracker {
   }
 
   start(opts: TrackerOptions): void {
-    this.stop()
+    this.halt()
     this.opts = opts
     this.paused = false
     this.clock = new HookClock()
@@ -111,15 +114,16 @@ export class CursorTracker {
   }
 
   private startHook(opts: TrackerOptions): void {
-    const mod = loadHook()
+    const mod = this.loadHookModule()
     if (!mod) return
     const { uIOhook } = mod
     for (const e of HOOK_EVENTS) uIOhook.removeAllListeners(e)
     const observe = (time: number): number => this.clock.observe(time, Date.now())
     if (opts.display) {
+      // Hook events arrive in delayed batches, so pauses are applied later by their
+      // precise times (buildCursorTrack) rather than by the state at delivery.
       uIOhook.on('mousedown', (e) => {
         const tick = observe(e.time)
-        if (this.paused) return
         const p = hookPointToDip(e)
         if (opts.isOwnPoint(p)) return
         this.clicks.push({ tick, x: p.x, y: p.y, button: BUTTONS[e.button as number] ?? 'left' })
@@ -127,7 +131,6 @@ export class CursorTracker {
       if (!POLL_CURSOR) {
         uIOhook.on('mousemove', (e) => {
           const tick = observe(e.time)
-          if (this.paused) return
           const p = hookPointToDip(e)
           const last = this.moves[this.moves.length - 1]
           // At most one stored position per 8 ms, always the latest one.
@@ -141,7 +144,7 @@ export class CursorTracker {
       uIOhook.on('keydown', (e) => {
         const tick = observe(e.time)
         const label = filter.keydown(e)
-        if (label && !this.paused) this.keys.push({ tick, label })
+        if (label) this.keys.push({ tick, label })
       })
       uIOhook.on('keyup', (e) => {
         observe(e.time)
@@ -157,15 +160,22 @@ export class CursorTracker {
     }
   }
 
+  /** Pauses cursor polling (hook events are filtered by time later). */
   setPaused(paused: boolean): void {
     this.paused = paused
   }
 
+  /** Stops tracking and discards what was captured. */
   stop(): void {
+    this.halt()
+    this.opts = null
+  }
+
+  private halt(): void {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
     if (this.hookStarted) {
-      const mod = loadHook()
+      const mod = this.loadHookModule()
       if (mod) {
         for (const e of HOOK_EVENTS) mod.uIOhook.removeAllListeners(e)
         try {
@@ -180,7 +190,7 @@ export class CursorTracker {
 
   /** Stops tracking and returns everything captured (epoch ms, DIP coordinates). */
   collect(): RawTrack {
-    this.stop()
+    this.halt()
     const display = this.opts?.display ?? null
     const at = (tick: number): number => this.clock.toEpoch(tick)
     const track: RawTrack = {

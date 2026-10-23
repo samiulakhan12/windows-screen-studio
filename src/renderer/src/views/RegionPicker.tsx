@@ -9,7 +9,7 @@ import {
   toNormRect,
   type Box,
   type Handle
-} from '../recorder/regionGeometry'
+} from '../../../shared/recording/regionGeometry'
 import './RegionPicker.css'
 
 type Drag = { mode: 'new' | 'move' | Handle; from: { x: number; y: number }; start: Box | null }

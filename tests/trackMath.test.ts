@@ -103,6 +103,24 @@ describe('buildCursorTrack', () => {
     ])
   })
 
+  it('drops input made while paused, judged by event time (hook events arrive late)', () => {
+    const pauses = [{ from: T0 + 1000, to: T0 + 3000 }]
+    const track = buildCursorTrack(
+      raw({
+        samples: [{ at: T0 + 500, x: 100, y: 100 }, { at: T0 + 2000, x: 900, y: 400 }, { at: T0 + 3500, x: 200, y: 200 }],
+        clicks: [
+          { at: T0 + 2000, x: 500, y: 250, button: 'left' },
+          { at: T0 + 3500, x: 500, y: 250, button: 'left' }
+        ],
+        keys: [{ at: T0 + 1500, label: 'Ctrl + V' }]
+      }),
+      { startedAt: T0, pauses, duration: 3, region: null }
+    )
+    expect(track.clicks.map((c) => c.t)).toEqual([1.5])
+    expect(track.keys).toEqual([])
+    expect(track.samples.every((s) => s.x !== 0.9)).toBe(true)
+  })
+
   it('records keys but no positions for window captures', () => {
     const track = buildCursorTrack(
       raw({ bounds: null, samples: [{ at: T0, x: 1, y: 1 }], keys: [{ at: T0 + 100, label: 'Esc' }] }),

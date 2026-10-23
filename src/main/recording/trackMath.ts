@@ -86,8 +86,10 @@ function buildShapes(raw: { at: number; shape: CursorShape }[], time: (at: numbe
 /** Converts captured events into the project's cursor track (source seconds, normalised positions). */
 export function buildCursorTrack(raw: RawTrack, o: TrackOptions): CursorTrack {
   const time = (at: number): number => toSourceTime(at, o.startedAt, o.pauses)
+  const recorded = (at: number): boolean => !o.pauses.some((p) => at > p.from && at < p.to)
   const end = o.duration + (o.slack ?? 0)
   const keys: KeyEvent[] = raw.keys
+    .filter((k) => recorded(k.at))
     .map((k) => ({ t: time(k.at), label: k.label }))
     .filter((k) => k.t >= 0 && k.t <= end)
     .sort(byT)
@@ -101,12 +103,16 @@ export function buildCursorTrack(raw: RawTrack, o: TrackOptions): CursorTrack {
     const ny = (y - b.y) / b.height
     return r ? { x: (nx - r.x) / r.w, y: (ny - r.y) / r.h } : { x: nx, y: ny }
   }
-  const timed = raw.samples.map((s) => ({ t: time(s.at), ...local(s.x, s.y) })).sort(byT)
+  const timed = raw.samples
+    .filter((s) => recorded(s.at))
+    .map((s) => ({ t: time(s.at), ...local(s.x, s.y) }))
+    .sort(byT)
   const before = timed.filter((s) => s.t < 0).pop()
   const inside = timed.filter((s) => s.t >= 0 && s.t <= end)
   // The last position seen before the start is where the cursor was at t = 0.
   if (before && (inside.length === 0 || inside[0].t > 0)) inside.unshift({ ...before, t: 0 })
   const clicks: ClickEvent[] = raw.clicks
+    .filter((c) => recorded(c.at))
     .map((c) => ({ t: time(c.at), button: c.button, ...local(c.x, c.y) }))
     // Clicks on other monitors or outside the region cannot be zoomed into.
     .filter((c) => c.t >= 0 && c.t <= end && inUnitSquare(c))
