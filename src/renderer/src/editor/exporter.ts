@@ -4,7 +4,7 @@ import { exportDimensions, exportRoutes, routeLabel, type ExportRoute } from '..
 import type { ExportSettings, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, WebCodecsSink, type FrameSink } from '../render/encoders'
-import { DecoderFrameSource, ElementFrameSource, type FrameSource } from '../render/frameSource'
+import { DecoderFrameSource, ElementFrameSource, ResilientFrameSource, type FrameSource } from '../render/frameSource'
 import { createVideo, whenReady } from './media'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
@@ -43,7 +43,7 @@ export interface ExportResult {
 }
 
 /** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
-const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not save|could not write|not chosen|invalid export/i
+const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export/i
 
 /** Most motion-blur sub-frames per exported frame (the preview uses fewer). */
 const EXPORT_BLUR_SAMPLES = 10
@@ -95,23 +95,41 @@ async function prepareRoute(route: ExportRoute, input: ExportInput): Promise<Sin
   return (canvas, _ctx, startJob, base) => new WebCodecsSink(canvas, config, fps, (color) => startJob({ ...base, video: { kind: 'h264', color } }))
 }
 
-async function openSource(url: string, times: number[], caps: ExportCapabilities): Promise<{ source: FrameSource; video: HTMLVideoElement | null }> {
+async function openElementSource(url: string, times: number[]): Promise<{ source: FrameSource; video: HTMLVideoElement }> {
+  const video = createVideo(url)
+  video.muted = true
+  try {
+    await whenReady(video)
+  } catch (e) {
+    disposeVideo(video)
+    throw e
+  }
+  return { source: new ElementFrameSource(video, times), video }
+}
+
+/**
+ * Frames come from WebCodecs decoding when possible; otherwise, or if decoding
+ * fails part-way, from seeking a <video> element. `videos` collects the elements
+ * created so they can be released.
+ */
+async function openSource(url: string, times: number[], caps: ExportCapabilities, videos: HTMLVideoElement[]): Promise<FrameSource> {
+  const element = async (): Promise<FrameSource> => {
+    const { source, video } = await openElementSource(url, times)
+    videos.push(video)
+    return source
+  }
   if (caps.overrides.decoder !== 'element') {
     try {
-      const source = await DecoderFrameSource.open(url, times)
-      if (source) return { source, video: null }
+      const decoder = await DecoderFrameSource.open(url, times)
+      if (decoder) return new ResilientFrameSource(decoder, element)
     } catch (e) {
       console.warn('WebCodecs decoding unavailable, seeking the video element instead:', e)
     }
   }
-  const video = createVideo(url)
-  video.muted = true
-  await whenReady(video)
-  return { source: new ElementFrameSource(video, times), video }
+  return element()
 }
 
-function disposeVideo(v: HTMLVideoElement | null): void {
-  if (!v) return
+function disposeVideo(v: HTMLVideoElement): void {
   v.removeAttribute('src')
   v.load()
 }
@@ -125,14 +143,16 @@ async function renderAll(input: ExportInput, caps: ExportCapabilities, route: Ex
   report({ phase: 'preparing', frame: 0, fps: 0, eta: null })
 
   const useWebcam = !!input.webcamUrl && project.webcam.show && project.hasWebcam
-  const screen = await openSource(input.screenUrl, times, caps)
-  let camera: Awaited<ReturnType<typeof openSource>> | null = null
+  const videos: HTMLVideoElement[] = []
+  const screen = await openSource(input.screenUrl, times, caps, videos)
+  let camera: FrameSource | null = null
+  // drawFrame wants an element even when it draws decoded frames; this one is never shown.
   const placeholder = document.createElement('video')
   let sink: FrameSink | null = null
   const onAbort = (): void => void window.api.exportCancel()
   signal.addEventListener('abort', onAbort)
   try {
-    if (useWebcam) camera = await openSource(input.webcamUrl!, times.map((t) => t - project.webcamOffset), caps)
+    if (useWebcam) camera = await openSource(input.webcamUrl!, times.map((t) => t - project.webcamOffset), caps, videos)
     if (signal.aborted) throw abortError()
 
     const canvas = document.createElement('canvas')
@@ -157,7 +177,7 @@ async function renderAll(input: ExportInput, caps: ExportCapabilities, route: Ex
     sink = makeSink(canvas, ctx, startJob, base)
 
     const options = { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES }
-    const sources = { screen: screen.video ?? placeholder, webcam: camera?.video ?? null, background: input.background }
+    const sources = { screen: placeholder, webcam: null, background: input.background }
     // Speed over the last ~1 s of frames, for the fps readout and the ETA.
     const stamps: number[] = []
     let lastReport = 0
@@ -165,12 +185,12 @@ async function renderAll(input: ExportInput, caps: ExportCapabilities, route: Ex
     for (let i = 0; i < times.length; i++) {
       if (signal.aborted) throw abortError()
       const a = performance.now()
-      const [screenFrame, webcamFrame] = await Promise.all([screen.source.get(i), camera ? camera.source.get(i) : null])
+      const [screenFrame, webcamFrame] = await Promise.all([screen.get(i), camera ? camera.get(i) : null])
       const b = performance.now()
       drawFrame(ctx, width, height, times[i], input.scene, { ...sources, screenFrame, webcamFrame }, options)
       // The canvas holds the pixels now: let the sources start on the next frame.
-      screen.source.next()
-      camera?.source.next()
+      screen.next()
+      camera?.next()
       const c = performance.now()
       await sink.push(i)
       spent.decode += b - a
@@ -190,7 +210,7 @@ async function renderAll(input: ExportInput, caps: ExportCapabilities, route: Ex
     if (signal.aborted) throw abortError()
     const ms = (v: number): string => (v / times.length).toFixed(1)
     console.info(
-      `export: ${times.length} frames ${width}x${height} via ${encoder}, ${screen.source.kind} decoding; per frame ms: wait decode ${ms(spent.decode)}, draw ${ms(spent.draw)}, encode/IPC ${ms(spent.encode)}`
+      `export: ${times.length} frames ${width}x${height} via ${encoder}, ${screen.kind} decoding; per frame ms: wait decode ${ms(spent.decode)}, draw ${ms(spent.draw)}, encode/IPC ${ms(spent.encode)}`
     )
     report({ phase: 'finalizing', frame: times.length, fps: 0, eta: null })
     const bytes = await sink.finish()
@@ -203,9 +223,8 @@ async function renderAll(input: ExportInput, caps: ExportCapabilities, route: Ex
   } finally {
     signal.removeEventListener('abort', onAbort)
     sink?.close()
-    screen.source.close()
-    camera?.source.close()
-    disposeVideo(screen.video)
-    disposeVideo(camera?.video ?? null)
+    screen.close()
+    camera?.close()
+    videos.forEach(disposeVideo)
   }
 }

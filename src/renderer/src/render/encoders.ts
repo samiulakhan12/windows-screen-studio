@@ -2,8 +2,8 @@ import type { ColorTags, ExportJob, RawPixelFormat } from '../../../shared/api/e
 import { avcLevel, colorTagsFrom } from '../../../shared/render/codec'
 
 /**
- * Where rendered frames go. `push` snapshots the canvas synchronously (the caller
- * may draw the next frame as soon as it returns a promise) and only awaits back-pressure.
+ * Where rendered frames go. `push` has captured the canvas by the time it resolves
+ * (the caller may then draw the next frame); it also applies back-pressure.
  */
 export interface FrameSink {
   push(index: number): Promise<void>
@@ -159,7 +159,7 @@ export class WebCodecsSink implements FrameSink {
   ) {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => this.onChunk(chunk, meta),
-      error: (e) => this.fail(new Error(`The GPU video encoder failed: ${e.message}`))
+      error: (e) => this.fail(new Error(`The video encoder (WebCodecs) failed: ${e.message}`))
     })
     this.encoder.configure(config)
     this.encoder.addEventListener('dequeue', () => this.notify())
@@ -181,7 +181,7 @@ export class WebCodecsSink implements FrameSink {
     if (this.error) return
     // ffmpeg numbers the frames in arrival order, so they must arrive one per frame, in order.
     if (chunk.timestamp <= this.lastTimestamp) {
-      this.fail(new Error('The GPU video encoder reordered frames'))
+      this.fail(new Error('The video encoder (WebCodecs) reordered frames'))
       return
     }
     this.lastTimestamp = chunk.timestamp
@@ -242,8 +242,8 @@ export class WebCodecsSink implements FrameSink {
     this.send()
     await this.sends
     if (this.error) throw this.error
-    if (!this.started) throw new Error('The GPU video encoder produced no output')
-    if (this.chunks !== this.frames) throw new Error(`The GPU video encoder dropped frames (${this.chunks} of ${this.frames})`)
+    if (!this.started) throw new Error('The video encoder (WebCodecs) produced no output')
+    if (this.chunks !== this.frames) throw new Error(`The video encoder (WebCodecs) dropped frames (${this.chunks} of ${this.frames})`)
     await this.started
     if (this.error) throw this.error
     return finishJob()

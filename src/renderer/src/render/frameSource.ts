@@ -33,7 +33,8 @@ export class RangeReader {
 
   static async open(url: string): Promise<RangeReader> {
     const res = await fetch(url, { headers: { Range: `bytes=0-${BLOCK - 1}` } })
-    if (!res.ok) throw new Error(`Could not read media (${res.status})`)
+    // Without range support the whole file would be loaded into memory.
+    if (res.status !== 206) throw new Error(`Media server does not support ranges (${res.status})`)
     const range = /\/(\d+)\s*$/.exec(res.headers.get('Content-Range') ?? '')
     const bytes = new Uint8Array(await res.arrayBuffer())
     const size = range ? Number(range[1]) : bytes.length
@@ -97,6 +98,7 @@ export class DecoderFrameSource implements FrameSource {
   private matchPtr = 0
   private feedPos = 0
   private flushed = false
+  private drained = false
   private pumping = false
   private ready = new Map<number, VideoFrame>()
   private current: { p: number; frame: VideoFrame } | null = null
@@ -189,9 +191,16 @@ export class DecoderFrameSource implements FrameSource {
       }
       if (!this.flushed && this.feedPos >= feed.length && !this.error && !this.closed) {
         this.flushed = true
-        this.decoder.flush().catch((e: unknown) => {
-          if (!this.closed) this.fail(e instanceof Error ? e : new Error(String(e)))
-        })
+        this.decoder.flush().then(
+          () => {
+            // Every frame is out: anyone still waiting would wait forever.
+            this.drained = true
+            if (this.waiter && !this.ready.has(this.waiter.p)) this.fail(new Error('The video decoder did not return a frame'))
+          },
+          (e: unknown) => {
+            if (!this.closed) this.fail(e instanceof Error ? e : new Error(String(e)))
+          }
+        )
       }
     } catch (e) {
       this.fail(e instanceof Error ? e : new Error(String(e)))
@@ -212,6 +221,9 @@ export class DecoderFrameSource implements FrameSource {
       this.current?.frame.close()
       this.current = null
       if (!this.ready.has(p)) {
+        // Frames come out in presentation order: once a later one arrived (or decoding ended), p never will.
+        const passed = this.matchPtr >= this.unique.length || this.unique[this.matchPtr] > p
+        if (passed || this.drained) throw new Error('The video decoder skipped a frame')
         await new Promise<void>((resolve, reject) => {
           this.waiter = { p, resolve, reject }
           void this.pump()
@@ -285,5 +297,43 @@ export class ElementFrameSource implements FrameSource {
 
   close(): void {
     this.pending = null
+  }
+}
+
+/**
+ * A decoder source that switches to seeking a <video> element if decoding fails
+ * part-way (an unusual stream, a GPU decoder reset), instead of failing the export.
+ */
+export class ResilientFrameSource implements FrameSource {
+  private switched = false
+
+  constructor(
+    private source: FrameSource,
+    private readonly fallback: () => Promise<FrameSource>
+  ) {}
+
+  get kind(): FrameSource['kind'] {
+    return this.source.kind
+  }
+
+  async get(i: number): Promise<FrameImage | null> {
+    try {
+      return await this.source.get(i)
+    } catch (e) {
+      if (this.switched) throw e
+      console.warn(`Decoding failed at frame ${i}, seeking the video element instead:`, e)
+      this.switched = true
+      this.source.close()
+      this.source = await this.fallback()
+      return this.source.get(i)
+    }
+  }
+
+  next(): void {
+    this.source.next()
+  }
+
+  close(): void {
+    this.source.close()
   }
 }

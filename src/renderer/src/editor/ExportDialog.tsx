@@ -200,14 +200,13 @@ export function ExportDialog(props: Props): JSX.Element {
     title: upscaled(r.value) ? `Larger than the recording (${props.project.width}×${props.project.height}): it will be upscaled` : undefined
   }))
   const gpuNames = caps?.hardwareEncoders.length ? caps.hardwareEncoders.map((e) => e.replace('h264_', '').toUpperCase()).join(', ') : ''
-  const gpuHint =
-    webCodecsGpu === null && !caps
-      ? 'Checking for a GPU encoder…'
-      : webCodecsGpu
-        ? 'GPU encoding is available.'
-        : gpuNames
-          ? `GPU encoder found: ${gpuNames}.`
-          : 'No GPU encoder found; Auto uses the software encoder (x264).'
+  const gpuHint = webCodecsGpu
+    ? 'GPU encoding is available.'
+    : gpuNames
+      ? `GPU encoder found: ${gpuNames}.`
+      : webCodecsGpu === null || !caps
+        ? 'Checking for a GPU encoder…'
+        : 'No GPU encoder found; Auto uses the software encoder (x264).'
 
   const running = phase.kind === 'running'
   return (
