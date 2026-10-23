@@ -42,14 +42,18 @@ async function launch({ home, args = [], env = {} } = {}) {
   return { app, win, logs }
 }
 
-/** Waits until a screen source is listed (Xvfb sometimes reports none on the first call). */
-async function waitForSources(win) {
-  for (let i = 0; i < 15 && !(await win.$('.source')); i++) {
-    await sleep(1000)
+/**
+ * Waits until a screen source is listed. Under load Xvfb's X11 capturer can fail
+ * ("Failed to initialize pixel buffer") and list no screens for half a minute or more.
+ */
+async function waitForSources(win, timeout = 90000) {
+  const end = Date.now() + timeout
+  while (!(await win.$('.source'))) {
+    if (Date.now() > end) throw new Error('No capture sources listed (Xvfb screen capturer unavailable)')
     const refresh = await win.$('button[title="Refresh"]')
-    if (refresh) await refresh.click()
+    if (refresh) await refresh.click().catch(() => undefined)
+    await sleep(2000)
   }
-  await win.waitForSelector('.source', { timeout: 20000 })
 }
 
 function toolbarOf(app) {
