@@ -3,8 +3,15 @@ import type { Clip } from '../shared/types'
 import type { ColorTags, ExportJob, H264Encoder } from '../shared/api/export'
 import { encoderPixelFormat } from './hwEncoders'
 
-/** Rec. 709 limited range: what players assume for HD video and what we convert to. */
-export const BT709: ColorTags = { primaries: 1, transfer: 1, matrix: 1, fullRange: false }
+/**
+ * How raw frames are converted and tagged: the BT.601 YUV matrix, limited range,
+ * sRGB-like (BT.709) primaries and transfer, every field tagged so no player has to
+ * guess. Players that honour the tags (Chromium, Media Foundation, VLC) reproduce
+ * the canvas colours either way, but Chromium's software video path decodes the
+ * BT.709 matrix up to 8 levels off in blue and BT.601 within 3, and Chromium's own
+ * WebCodecs encoder also produces BT.601, so both export routes agree.
+ */
+export const EXPORT_COLOR: ColorTags = { primaries: 1, transfer: 1, matrix: 6, fullRange: false }
 
 const PRIMARIES: Record<number, string> = { 1: 'bt709', 5: 'bt470bg', 6: 'smpte170m', 9: 'bt2020' }
 const TRANSFER: Record<number, string> = { 1: 'bt709', 6: 'smpte170m', 8: 'linear', 13: 'iec61966-2-1' }
@@ -91,7 +98,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   if (job.format !== 'mp4') throw new Error('exportArgs builds MP4 exports; GIFs use gifCaptureArgs/gifEncodeArgs')
   const duration = job.frames / job.fps
   const raw = job.video.kind === 'raw'
-  const color = job.video.kind === 'h264' ? job.video.color : BT709
+  const color = job.video.kind === 'h264' ? job.video.color : EXPORT_COLOR
   const args = [
     '-y', '-hide_banner', '-loglevel', 'error', '-nostats',
     ...(raw
@@ -107,8 +114,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   const graphs: string[] = []
   if (job.video.kind === 'raw') {
     const pix = encoderPixelFormat(job.video.encoder)
-    // RGBA -> Rec. 709 limited range, the matrix every player assumes for HD.
-    graphs.push(`[0:v]scale=out_color_matrix=bt709:out_range=tv,format=${pix}[vout]`)
+    graphs.push(`[0:v]scale=out_color_matrix=bt601:out_range=tv,format=${pix}[vout]`)
   }
   if (audio) graphs.push(audioFilterGraph(audio.clips, audio.volume, duration))
   if (graphs.length) args.push('-filter_complex', graphs.join(';'))
@@ -123,22 +129,26 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
 }
 
 /**
- * GIF pass 1, while frames are rendered: builds the palette (a bounded colour
- * histogram) and stores the frames losslessly in `intermediate`, so memory stays
- * flat however long the GIF is.
+ * GIF pass 1, while frames are rendered: frames are stored losslessly in
+ * `intermediate`. Building the palette in the same ffmpeg process would hold every
+ * frame in memory until the end (3.3 GB for a 60 s 720p GIF), so the palette is a
+ * separate streaming pass over the intermediate.
  */
-export function gifCaptureArgs(job: ExportJob, intermediate: string, palette: string): string[] {
+export function gifCaptureArgs(job: ExportJob, intermediate: string): string[] {
   return [
     '-y', '-hide_banner', '-loglevel', 'error', '-nostats',
     '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${job.width}x${job.height}`, '-framerate', String(job.fps),
     '-i', 'pipe:0',
-    '-filter_complex', '[0:v]split[a][b];[a]palettegen=stats_mode=diff[p]',
-    '-map', '[p]', '-update', '1', '-f', 'image2', palette,
-    '-map', '[b]', '-c:v', 'ffv1', '-pix_fmt', 'bgr0', '-f', 'matroska', intermediate
+    '-c:v', 'ffv1', '-pix_fmt', 'bgr0', '-f', 'matroska', intermediate
   ]
 }
 
-/** GIF pass 2: maps every frame onto the palette, streaming. */
+/** GIF pass 2: a 256-colour palette from a colour histogram (bounded memory). */
+export function gifPaletteArgs(intermediate: string, palette: string): string[] {
+  return ['-y', '-hide_banner', '-loglevel', 'error', '-nostats', '-i', intermediate, '-vf', 'palettegen=stats_mode=diff', '-update', '1', '-f', 'image2', palette]
+}
+
+/** GIF pass 3: maps every frame onto the palette, streaming. */
 export function gifEncodeArgs(intermediate: string, palette: string, output: string): string[] {
   return [
     '-y', '-hide_banner', '-loglevel', 'error', '-nostats',

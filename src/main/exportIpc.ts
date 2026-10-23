@@ -1,9 +1,9 @@
 import { app, dialog, ipcMain, shell } from 'electron'
-import { promises as fs, rmSync } from 'node:fs'
+import { constants as fsConstants, promises as fs, rmSync } from 'node:fs'
 import path from 'node:path'
 import type { ExportCapabilities, ExportJob } from '../shared/api/export'
 import type { ExportFormat } from '../shared/types'
-import { exportArgs, gifCaptureArgs, gifEncodeArgs } from './exportArgs'
+import { exportArgs, gifCaptureArgs, gifEncodeArgs, gifPaletteArgs } from './exportArgs'
 import { copyFileToClipboard } from './exportClipboard'
 import { moveIntoPlace, partialPath, tempStem, toIpcError, validateJob } from './exportJob'
 import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
@@ -88,13 +88,16 @@ export function registerExportIpc(): void {
     validateJob(job)
     cancelActive()
     const finalPath = job.outputPath
+    await fs.access(path.dirname(finalPath), fsConstants.W_OK).catch(() => {
+      throw new Error(`Could not write to the folder "${path.dirname(finalPath)}". Choose another folder.`)
+    })
     const tempPath = partialPath(finalPath)
     let gif: ActiveExport['gif'] = null
     let args: string[]
     if (job.format === 'gif') {
       const stem = tempStem(app.getPath('temp'))
       gif = { intermediate: `${stem}.mkv`, palette: `${stem}.png` }
-      args = gifCaptureArgs(job, gif.intermediate, gif.palette)
+      args = gifCaptureArgs(job, gif.intermediate)
     } else {
       const audioInput = job.audio ? path.join(projects.projectDir(projectId), 'screen.mp4') : null
       args = exportArgs(job, { audioInput, output: tempPath })
@@ -114,8 +117,9 @@ export function registerExportIpc(): void {
     if (!job) throw new Error(CANCELLED)
     try {
       await job.encoder.finish()
-      if (job.gif && !job.cancelled) {
-        job.pass2 = startFfmpeg(gifEncodeArgs(job.gif.intermediate, job.gif.palette, job.tempPath))
+      for (const args of job.gif ? [gifPaletteArgs(job.gif.intermediate, job.gif.palette), gifEncodeArgs(job.gif.intermediate, job.gif.palette, job.tempPath)] : []) {
+        if (job.cancelled) break
+        job.pass2 = startFfmpeg(args)
         await job.pass2.done
       }
       if (job.cancelled) throw new Error(CANCELLED)

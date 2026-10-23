@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { audioFilterGraph, BT709, colorBitstreamFilter, colorTagArgs, exportArgs, gifCaptureArgs, gifEncodeArgs, videoEncoderArgs } from '../src/main/exportArgs'
+import { audioFilterGraph, colorBitstreamFilter, colorTagArgs, EXPORT_COLOR, exportArgs, gifCaptureArgs, gifEncodeArgs, gifPaletteArgs, videoEncoderArgs } from '../src/main/exportArgs'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import type { Clip } from '../src/shared/types'
@@ -27,10 +27,10 @@ describe('exportArgs (raw frames)', () => {
   it('reads raw RGBA frames of the right size and rate from stdin', () => {
     expect(args.join(' ')).toContain('-f rawvideo -pix_fmt rgba -s 1920x1080 -framerate 60 -i pipe:0')
   })
-  it('converts to Rec. 709 limited range and tags the result fully', () => {
-    expect(after(args, '-filter_complex')).toContain('scale=out_color_matrix=bt709:out_range=tv,format=yuv420p')
-    expect(args.join(' ')).toContain('-color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range tv')
-    expect(after(args, '-bsf:v')).toBe('h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0')
+  it('converts with the BT.601 matrix (limited range) and tags every colour field', () => {
+    expect(after(args, '-filter_complex')).toContain('scale=out_color_matrix=bt601:out_range=tv,format=yuv420p')
+    expect(args.join(' ')).toContain('-color_primaries bt709 -color_trc bt709 -colorspace smpte170m -color_range tv')
+    expect(after(args, '-bsf:v')).toBe('h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=6:video_full_range_flag=0')
   })
   it('writes MP4 explicitly to the temporary path (not the target)', () => {
     expect(args.slice(-3)).toEqual(['-f', 'mp4', io.output])
@@ -148,9 +148,10 @@ describe('audioFilterGraph with ffmpeg', () => {
 })
 
 describe('colour helpers', () => {
-  it('describes Rec. 709 limited range', () => {
-    expect(colorTagArgs(BT709)).toEqual(['-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-color_range', 'tv'])
-    expect(colorBitstreamFilter({ ...BT709, fullRange: true })).toContain('video_full_range_flag=1')
+  it('maps code points to ffmpeg names', () => {
+    expect(colorTagArgs(EXPORT_COLOR)).toEqual(['-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'smpte170m', '-color_range', 'tv'])
+    expect(colorTagArgs({ ...EXPORT_COLOR, matrix: 1, fullRange: true })).toContain('pc')
+    expect(colorBitstreamFilter({ ...EXPORT_COLOR, fullRange: true })).toContain('video_full_range_flag=1')
   })
 })
 
@@ -167,18 +168,16 @@ describe('encoder settings', () => {
   })
 })
 
-describe('GIF two-pass pipeline', () => {
+describe('GIF pipeline', () => {
   const gif: ExportJob = { ...job, format: 'gif', fps: 15, width: 1280, height: 720 }
-  it('builds the palette and a lossless intermediate while rendering (bounded memory)', () => {
-    const a = gifCaptureArgs(gif, '/tmp/x.mkv', '/tmp/x.png')
-    const graph = after(a, '-filter_complex')
-    expect(graph).toContain('palettegen')
-    // The frames are not routed back into paletteuse in the same graph (that buffers every frame).
-    expect(graph).not.toContain('paletteuse')
-    expect(a.join(' ')).toContain('-c:v ffv1')
-    expect(a.join(' ')).toContain('-s 1280x720 -framerate 15 -i pipe:0')
+  it('only stores frames losslessly while rendering (no palette in the same process: it buffers every frame)', () => {
+    const a = gifCaptureArgs(gif, '/tmp/x.mkv')
+    expect(a.join(' ')).not.toContain('palette')
+    expect(a.join(' ')).toContain('-s 1280x720 -framerate 15 -i pipe:0 -c:v ffv1')
+    expect(a.at(-1)).toBe('/tmp/x.mkv')
   })
-  it('maps frames onto the palette in a second, streaming pass', () => {
+  it('builds the palette, then maps frames onto it, each streaming from the intermediate', () => {
+    expect(gifPaletteArgs('/tmp/x.mkv', '/tmp/x.png').join(' ')).toContain('-i /tmp/x.mkv -vf palettegen')
     const a = gifEncodeArgs('/tmp/x.mkv', '/tmp/x.png', '/v/.a.partial.gif')
     expect(after(a, '-filter_complex')).toContain('paletteuse')
     expect(a.slice(-3)).toEqual(['-f', 'gif', '/v/.a.partial.gif'])

@@ -42,7 +42,7 @@ export interface ExportResult {
 }
 
 /** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
-const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not save|not chosen/i
+const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not save|could not write|not chosen|invalid export/i
 
 /** Most motion-blur sub-frames per exported frame (the preview uses fewer). */
 const EXPORT_BLUR_SAMPLES = 10

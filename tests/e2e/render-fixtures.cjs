@@ -100,12 +100,56 @@ function probe(file) {
   )
 }
 
+/** JS copy of shared/engine/timeline exportFrameTimes (source time of each output frame). */
+function exportFrameTimes(clips, fps) {
+  const len = (c) => (c.end - c.start) / c.speed
+  const total = clips.reduce((s, c) => s + len(c), 0)
+  const count = Math.max(1, Math.round(total * fps))
+  const times = []
+  let ci = 0
+  let clipOutStart = 0
+  for (let i = 0; i < count; i++) {
+    const o = i / fps
+    while (ci < clips.length - 1 && o >= clipOutStart + len(clips[ci]) - 1e-9) {
+      clipOutStart += len(clips[ci])
+      ci++
+    }
+    const c = clips[ci]
+    times.push(Math.min(c.start + (o - clipOutStart) * c.speed, c.end))
+  }
+  return times
+}
+
+/** Peak resident memory (MB) of ffmpeg processes, sampled every `ms` until stop() is called. */
+function watchFfmpegMemory(ms = 200) {
+  let peak = 0
+  const timer = setInterval(() => {
+    for (const pid of fs.readdirSync('/proc').filter((d) => /^\d+$/.test(d))) {
+      try {
+        const status = fs.readFileSync(`/proc/${pid}/status`, 'utf8')
+        if (!/^Name:\s*ffmpeg/m.test(status)) continue
+        const rss = /VmRSS:\s*(\d+)/.exec(status)
+        if (rss) peak = Math.max(peak, Number(rss[1]) / 1024)
+      } catch {
+        // The process exited meanwhile.
+      }
+    }
+  }, ms)
+  return { stop: () => (clearInterval(timer), peak) }
+}
+
+/** Partial files an export might leave next to `file`. */
+function partialFiles(file) {
+  const dir = path.dirname(file)
+  return fs.readdirSync(dir).filter((f) => f.includes('.partial-'))
+}
+
 /** Writes a v2 project folder into `home` and returns its id. */
 function seedProject(home, opts) {
   const { id = 'rec-render', name = 'Render test', seconds, width = 1280, height = 720 } = opts
   const dir = path.join(h.projectsRoot(home), id)
   fs.mkdirSync(dir, { recursive: true })
-  fs.copyFileSync(opts.media, path.join(dir, 'screen.mp4'))
+  fs.symlinkSync(opts.media, path.join(dir, 'screen.mp4'))
   const project = {
     version: 2,
     id,
@@ -131,6 +175,23 @@ function seedProject(home, opts) {
   fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
   fs.writeFileSync(path.join(dir, 'cursor.json'), JSON.stringify(opts.cursor || { samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }))
   return id
+}
+
+/**
+ * Runs a test body with a fresh HOME that is deleted afterwards (exports are large;
+ * set SSW_E2E_KEEP=1 to keep it for debugging). The app is closed first.
+ */
+function withHome(name, body) {
+  return async (ctx) => {
+    const home = h.tempHome(name)
+    try {
+      await body(ctx, home)
+    } finally {
+      if (ctx.app) await ctx.app.close().catch(() => undefined)
+      ctx.app = null
+      if (!process.env.SSW_E2E_KEEP) fs.rmSync(home, { recursive: true, force: true })
+    }
+  }
 }
 
 /** Opens a project from the Home library and waits for the editor preview. */
@@ -165,4 +226,4 @@ async function waitForExport(win, timeout = 600000) {
   throw new Error('export timed out')
 }
 
-module.exports = { indexedVideo, decodeIndices, beepOnsets, probe, seedProject, openProject, openExportDialog, pickChip, waitForExport, MEDIA_CACHE }
+module.exports = { withHome, exportFrameTimes, watchFfmpegMemory, partialFiles, indexedVideo, decodeIndices, beepOnsets, probe, seedProject, openProject, openExportDialog, pickChip, waitForExport, MEDIA_CACHE }
