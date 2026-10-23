@@ -1,0 +1,116 @@
+body.region-body,
+body.region-body #root {
+  background: transparent;
+}
+
+.region-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  cursor: crosshair;
+  background: rgba(8, 8, 12, 0.45);
+}
+
+.region-root.has-box {
+  background: transparent;
+}
+
+.region-help {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 26px;
+  border-radius: 14px;
+  background: rgba(20, 20, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.region-help span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.region-box {
+  position: absolute;
+  border: 2px solid var(--accent-2);
+  /* Dims everything outside the selection. */
+  box-shadow: 0 0 0 100vmax rgba(8, 8, 12, 0.5);
+  cursor: move;
+}
+
+.region-size {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(20, 20, 28, 0.92);
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.region-size.inside {
+  bottom: auto;
+  top: 6px;
+  left: 6px;
+  margin: 0;
+}
+
+.region-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 3px;
+  background: white;
+  border: 2px solid var(--accent);
+}
+
+.region-handle.nw { left: 0; top: 0; cursor: nwse-resize; }
+.region-handle.n { left: 50%; top: 0; cursor: ns-resize; }
+.region-handle.ne { left: 100%; top: 0; cursor: nesw-resize; }
+.region-handle.e { left: 100%; top: 50%; cursor: ew-resize; }
+.region-handle.se { left: 100%; top: 100%; cursor: nwse-resize; }
+.region-handle.s { left: 50%; top: 100%; cursor: ns-resize; }
+.region-handle.sw { left: 0; top: 100%; cursor: nesw-resize; }
+.region-handle.w { left: 0; top: 50%; cursor: ew-resize; }
+
+.region-actions {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(20, 20, 28, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: default;
+}
+
+.region-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.region-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+  color: white;
+}

@@ -1,75 +1,237 @@
-import { BrowserWindow, desktopCapturer, globalShortcut, ipcMain, screen, session } from 'electron'
-import { promises as fs } from 'node:fs'
+import {
+  app,
+  BrowserWindow,
+  desktopCapturer,
+  dialog,
+  globalShortcut,
+  ipcMain,
+  screen,
+  session,
+  shell,
+  type Display,
+  type Point,
+  type Streams
+} from 'electron'
 import path from 'node:path'
-import type { RecorderCommand, SaveRecordingPayload } from '../shared/api/recording'
-import { createProject } from '../shared/engine/project'
-import { generateAutoZooms } from '../shared/engine/zoom'
-import type { CaptureSource, RecordingStatus } from '../shared/types'
+import type {
+  CapturePlan,
+  NativeStartResult,
+  ProcessingProgress,
+  RecorderCommand,
+  RecordingRequest,
+  RecordingStartInfo,
+  RegionSelection,
+  SaveRecordingPayload,
+  ToolbarStatus,
+  TrackKind
+} from '../shared/api/recording'
+import type { CaptureSource, NormRect, RecordingStatus } from '../shared/types'
 import { CursorTracker } from './cursorTracker'
-import { runFfmpeg } from './ffmpeg'
+import { detectH264Encoders } from './hwEncoders'
+import * as nativeModule from './nativeCapture'
 import * as projects from './projects'
-import { proxyArgs } from './proxyArgs'
-import { getMainWindow, loadRoute, preloadPath, sendToMain } from './windows'
+import { processRecording, RecordingError } from './recording/finalize'
+import { nativeAvailable, startNativeVideo, type NativeCaptureApi } from './recording/nativeVideo'
+import { pointInRect, regionToRect, sanitizeRegion } from './recording/placement'
+import { killAllFfmpeg } from './recording/proxyRunner'
+import { pickRegionOnDisplay } from './recording/regionWindow'
+import { ActiveRecording } from './recording/session'
+import {
+  closeToolbar,
+  hideToolbar,
+  isToolbarVisible,
+  prepareToolbar,
+  sendToolbarStatus,
+  showToolbar,
+  toolbarAreas
+} from './recording/toolbarWindow'
+import { buildCursorTrack, type RawTrack } from './recording/trackMath'
+import { getMainWindow, loadRoute } from './windows'
 
 const STOP_SHORTCUT = 'CommandOrControl+Shift+2'
+/** How the stop shortcut appears as a keystroke label (never recorded). */
+const STOP_SHORTCUT_LABEL = 'Ctrl + Shift + 2'
+const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio']
 
-let toolbarWindow: BrowserWindow | null = null
 const tracker = new CursorTracker()
-let pendingSource: { id: string; systemAudio: boolean } | null = null
-const sourceDisplays = new Map<string, string | undefined>()
+let active: ActiveRecording | null = null
+let activeDisplay: Display | null = null
+let captureKeys = true
+/** The source the next getDisplayMedia() call is granted. */
+let grant: { id: string; name: string; systemAudio: boolean } | null = null
+let rawTrack: RawTrack | null = null
+let stopShortcut = false
+let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
+/** Recordings whose proxies are being built (they have no project.json yet). */
+const processing = new Set<string>()
+const sourceInfo = new Map<string, { name: string; displayId?: string }>()
+let allowClose = false
 
-function createToolbarWindow(): BrowserWindow {
-  const { workArea } = screen.getPrimaryDisplay()
-  const width = 340
-  const height = 64
-  const win = new BrowserWindow({
-    width,
-    height,
-    x: Math.round(workArea.x + (workArea.width - width) / 2),
-    y: workArea.y + workArea.height - height - 24,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    focusable: true,
-    show: false,
-    hasShadow: false,
-    webPreferences: { preload: preloadPath, sandbox: false, contextIsolation: true, nodeIntegration: false }
+/** The native capture helper; unpackaged builds let e2e tests substitute a fake one. */
+function nativeCapture(): NativeCaptureApi {
+  const fake = app.isPackaged ? undefined : (globalThis as { __SSW_NATIVE_CAPTURE__?: NativeCaptureApi }).__SSW_NATIVE_CAPTURE__
+  return fake ?? nativeModule
+}
+
+function mainContents(): Electron.WebContents | null {
+  const wc = getMainWindow()?.webContents
+  return wc && !wc.isDestroyed() && !wc.isCrashed() ? wc : null
+}
+
+function sendProgress(p: ProcessingProgress): void {
+  mainContents()?.send('processing', p)
+}
+
+function requireSession(token: unknown): ActiveRecording {
+  if (!active || active.token !== token) throw new Error('This recording is no longer active.')
+  return active
+}
+
+function displayById(id: string | undefined): Display | null {
+  const all = screen.getAllDisplays()
+  const found = id ? all.find((d) => String(d.id) === id) : undefined
+  // Single-display machines (and Xvfb) sometimes report an empty display_id.
+  return found ?? (all.length === 1 ? all[0] : null)
+}
+
+/** Checks the source still exists right before capturing (a window may have closed). */
+async function resolveSource(sourceId: string): Promise<{ name: string; display: Display | null; kind: 'screen' | 'window' }> {
+  const kind = sourceId.startsWith('screen:') ? 'screen' : 'window'
+  const find = async (): Promise<Electron.DesktopCapturerSource | undefined> =>
+    (await desktopCapturer.getSources({ types: [kind], thumbnailSize: { width: 0, height: 0 }, fetchWindowIcons: false })).find(
+      (s) => s.id === sourceId
+    )
+  let source = await find()
+  // Some capturers (Xvfb) intermittently list nothing on the first call.
+  if (!source) source = await new Promise<Electron.DesktopCapturerSource | undefined>((r) => setTimeout(() => void find().then(r), 400))
+  if (!source) {
+    throw new RecordingError(
+      kind === 'screen'
+        ? 'The selected screen is no longer available. Pick another one.'
+        : 'The window you picked is no longer available (it may have been closed). Pick another one.'
+    )
+  }
+  return { name: source.name, kind, display: kind === 'screen' ? displayById(source.display_id || sourceInfo.get(sourceId)?.displayId) : null }
+}
+
+function isOwnPoint(p: Point): boolean {
+  if (toolbarAreas().some((r) => pointInRect(p, r))) return true
+  return BrowserWindow.getAllWindows().some((w) => w.isVisible() && !w.isMinimized() && pointInRect(p, w.getBounds()))
+}
+
+function startTracker(): void {
+  tracker.start({
+    display: activeDisplay ? { bounds: activeDisplay.bounds, scaleFactor: activeDisplay.scaleFactor } : null,
+    captureKeys,
+    isOwnPoint,
+    ignoreKeys: [STOP_SHORTCUT_LABEL]
   })
-  win.setAlwaysOnTop(true, 'screen-saver')
-  // Keep the control bar out of the recording (Windows 10 2004+ / macOS).
-  win.setContentProtection(true)
-  win.on('closed', () => {
-    toolbarWindow = null
-  })
-  loadRoute(win, '/toolbar')
-  return win
+}
+
+function registerStopShortcut(): boolean {
+  globalShortcut.unregister(STOP_SHORTCUT)
+  try {
+    const ok = globalShortcut.register(STOP_SHORTCUT, () => forwardCommand('stop'))
+    if (!ok) console.warn(`${STOP_SHORTCUT} is in use by another application`)
+    return ok
+  } catch (err) {
+    console.warn('Could not register the stop shortcut:', err)
+    return false
+  }
+}
+
+function endRecordingUi(): void {
+  globalShortcut.unregister(STOP_SHORTCUT)
+  lastStatus = { state: 'idle', elapsed: 0 }
+  // Rendered empty while hidden, so the next countdown never flashes stale controls.
+  sendToolbarStatus(lastStatus)
+  hideToolbar()
+  const main = getMainWindow()
+  if (main && !main.isDestroyed()) {
+    main.show()
+    main.focus()
+  }
+}
+
+/** Freezes the recording at the moment stop was requested. */
+function beginStop(s: ActiveRecording): void {
+  if (s.phase === 'stopping' || s.phase === 'processing') return
+  s.stop()
+  s.phase = 'stopping'
+  if (tracker.active) rawTrack = tracker.collect()
+}
+
+async function writeTrack(s: ActiveRecording, duration: number): Promise<void> {
+  const shapes = await s.finishNative()
+  const m = s.manifest
+  if (m.startedAt === null) return
+  const raw = rawTrack ?? { samples: [], clicks: [], keys: [], bounds: null, scale: 1 }
+  // Slack: the final duration comes from the proxy and is applied by processRecording.
+  const track = buildCursorTrack(raw, { startedAt: m.startedAt, pauses: s.pauses, duration, region: m.region, shapes, slack: 1 })
+  await projects.writeCursor(m.id, track)
+}
+
+async function discard(s: ActiveRecording): Promise<void> {
+  if (active === s) active = null
+  grant = null
+  tracker.stop()
+  s.killNative()
+  await s.closeWriters().catch(() => undefined)
+  await projects.deleteProject(s.id).catch((err) => console.warn('Could not remove the discarded recording:', err))
+}
+
+/** Keeps what reached disk as an unfinished recording the user can recover from Home. */
+async function interrupt(s: ActiveRecording): Promise<void> {
+  beginStop(s)
+  if (active === s) active = null
+  grant = null
+  await s.closeWriters().catch(() => undefined)
+  const duration = s.activeSeconds()
+  try {
+    await writeTrack(s, duration)
+  } catch (err) {
+    console.error('Could not save the cursor track:', err)
+  }
+  s.manifest.duration = duration
+  s.manifest.status = 'interrupted'
+  await projects.writeManifest(s.manifest).catch((err) => console.error('Could not save the recording state:', err))
+}
+
+/** Sends a toolbar/shortcut command to the recorder, or recovers if the recorder is gone. */
+function forwardCommand(command: RecorderCommand): void {
+  const wc = mainContents()
+  if (wc) {
+    wc.send('recorder:command', command)
+    return
+  }
+  const s = active
+  if (s && s.phase !== 'processing') void interrupt(s).finally(endRecordingUi)
+}
+
+function friendlyMessage(err: unknown): string {
+  if (err instanceof RecordingError) return err.message
+  const e = err as NodeJS.ErrnoException
+  if (e?.code === 'ENOSPC') return 'Your disk is full.'
+  return e?.message || String(err)
 }
 
 function setupDisplayMedia(): void {
   session.defaultSession.setDisplayMediaRequestHandler(
-    (_request, callback) => {
-      const pending = pendingSource
-      if (!pending) {
-        callback({})
-        return
+    (request, callback) => {
+      const g = grant
+      try {
+        if (!g || !request.videoRequested) {
+          callback(null)
+          return
+        }
+        // The source was validated moments ago in recording:prepare; no re-enumeration needed.
+        const streams: Streams = { video: { id: g.id, name: g.name } }
+        if (g.systemAudio && request.audioRequested && process.platform === 'win32') streams.audio = 'loopback'
+        callback(streams)
+      } catch (err) {
+        // The callback is one-shot: never call it a second time.
+        console.error('Display media request failed:', err)
       }
-      desktopCapturer
-        .getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } })
-        .then((sources) => {
-          const source = sources.find((s) => s.id === pending.id)
-          if (!source) {
-            callback({})
-            return
-          }
-          callback(
-            pending.systemAudio && process.platform === 'win32'
-              ? { video: source, audio: 'loopback' }
-              : { video: source }
-          )
-        })
-        .catch(() => callback({}))
     },
     { useSystemPicker: false }
   )
@@ -79,50 +241,207 @@ function setupDisplayMedia(): void {
   })
 }
 
-async function finalizeRecording(payload: SaveRecordingPayload): Promise<string> {
+async function prepare(request: RecordingRequest): Promise<CapturePlan> {
+  if (active) throw new RecordingError('A recording is already in progress.')
+  if (processing.size > 0) throw new RecordingError('Please wait until the previous recording has finished processing.')
+  const source = await resolveSource(request.sourceId)
+  const region = source.kind === 'screen' ? sanitizeRegion(request.region) : null
+  if (request.region && !region) throw new RecordingError('The selected area is too small. Select a larger area.')
+  if (region && !source.display) throw new RecordingError('Could not find the display for the selected area.')
+  const native = source.kind === 'screen' && !!source.display && (await nativeAvailable(nativeCapture()))
+  // Warm the encoder probe while recording so processing can start at once.
+  void detectH264Encoders()
+
   const { id, dir } = await projects.createProjectDir()
-  const progress = (msg: string): void => sendToMain('processing', msg)
-
-  progress('Saving recording…')
-  await fs.writeFile(path.join(dir, 'screen.webm'), payload.screen)
-  if (payload.webcam) await fs.writeFile(path.join(dir, 'webcam.webm'), payload.webcam)
-  const cursor = tracker.finish(payload.startedAt, payload.duration)
-  await projects.writeCursor(id, cursor)
-
-  progress('Optimising video for editing…')
-  await runFfmpeg(proxyArgs(path.join(dir, 'screen.webm'), path.join(dir, 'screen.mp4'), payload.hasAudio))
-  if (payload.webcam) {
-    progress('Optimising camera…')
-    await runFfmpeg(proxyArgs(path.join(dir, 'webcam.webm'), path.join(dir, 'webcam.mp4'), false))
-  }
-  // The proxies are now the source of truth; drop the large intermediates.
-  await fs.rm(path.join(dir, 'screen.webm'), { force: true })
-  await fs.rm(path.join(dir, 'webcam.webm'), { force: true })
-
-  const project = createProject({
+  const manifest: projects.RecordingManifest = {
+    version: 1,
     id,
-    name: new Date().toLocaleString(),
-    duration: payload.duration,
-    width: payload.width,
-    height: payload.height,
-    hasWebcam: !!payload.webcam,
-    hasAudio: payload.hasAudio,
-    webcamOffset: payload.webcamStartedAt ? (payload.webcamStartedAt - payload.startedAt) / 1000 : 0,
-    zooms: generateAutoZooms(cursor.clicks, payload.duration),
-    cursorValid: cursor.valid,
-    capture: { method: 'chromium', cursorInVideo: !payload.cursorHidden, region: null }
-  })
-  await projects.writeProject(project)
-  return id
+    createdAt: new Date().toISOString(),
+    status: 'recording',
+    error: null,
+    method: native ? 'native' : 'chromium',
+    sourceKind: source.kind,
+    region,
+    startedAt: null,
+    width: 0,
+    height: 0,
+    hasAudio: false,
+    hasWebcam: false,
+    webcamFps: 30,
+    webcamOffset: 0,
+    audioOffset: 0,
+    duration: null
+  }
+  try {
+    await projects.writeManifest(manifest)
+  } catch (err) {
+    await projects.deleteProject(id).catch(() => undefined)
+    throw err
+  }
+  const s = new ActiveRecording(manifest, dir)
+  active = s
+  activeDisplay = source.display
+  captureKeys = request.captureKeys
+  rawTrack = null
+  grant = { id: request.sourceId, name: source.name, systemAudio: request.systemAudio }
+  prepareToolbar(source.display, region && source.display ? regionToRect(region, source.display.bounds) : null)
+  stopShortcut = registerStopShortcut()
+  lastStatus = { state: 'idle', elapsed: 0, stopShortcut }
+  return { token: s.token, method: manifest.method, stopShortcut }
 }
 
-function endRecordingUi(): void {
-  globalShortcut.unregister(STOP_SHORTCUT)
-  toolbarWindow?.hide()
-  const main = getMainWindow()
-  if (main) {
-    main.show()
-    main.focus()
+async function startNative(token: string): Promise<NativeStartResult> {
+  const s = requireSession(token)
+  if (s.manifest.method !== 'native' || !activeDisplay) return { ok: false, message: 'Native capture is not used for this recording.' }
+  startTracker()
+  const result = await startNativeVideo(nativeCapture(), {
+    displayId: String(activeDisplay.id),
+    output: path.join(s.dir, projects.RAW.native),
+    fps: 60
+  })
+  if (active !== s) {
+    // Cancelled while the helper was starting.
+    if (result.ok) result.session.kill()
+    return { ok: false, message: 'The recording was cancelled.' }
+  }
+  if (!result.ok) {
+    console.warn('Native capture failed, falling back to Chromium capture:', result.message)
+    tracker.stop()
+    s.manifest.method = 'chromium'
+    await projects.writeManifest(s.manifest)
+    return { ok: false, message: result.message }
+  }
+  s.attachNative(result.session, result.info)
+  return { ok: true, startedAt: result.info.startedAt, width: result.info.width, height: result.info.height }
+}
+
+async function started(token: string, info: RecordingStartInfo): Promise<void> {
+  const s = requireSession(token)
+  const m = s.manifest
+  if (info.method === 'native' && s.usesNative) {
+    // Size and start time come from the helper (attachNative).
+  } else {
+    m.method = 'chromium'
+    m.startedAt = info.startedAt
+    m.width = info.width
+    m.height = info.height
+  }
+  m.hasAudio = info.hasAudio
+  m.hasWebcam = info.hasWebcam
+  m.webcamFps = info.webcamFps
+  s.phase = 'recording'
+  if (!tracker.active) startTracker()
+  await projects.writeManifest(m)
+}
+
+function setStatus(token: string, status: RecordingStatus): void {
+  const s = active
+  if (!s || s.token !== token) return
+  lastStatus = { state: status.state, elapsed: status.elapsed, stopShortcut }
+  switch (status.state) {
+    case 'countdown':
+    case 'recording': {
+      if (status.state === 'recording' && s.phase === 'paused') {
+        s.resume()
+        tracker.setPaused(false)
+        s.phase = 'recording'
+      }
+      sendToolbarStatus(lastStatus)
+      showToolbar()
+      const main = getMainWindow()
+      if (main?.isVisible()) main.hide()
+      return
+    }
+    case 'paused':
+      if (s.phase === 'recording') {
+        s.pause()
+        tracker.setPaused(true)
+        s.phase = 'paused'
+      }
+      break
+    case 'processing':
+    case 'idle':
+      if (status.state === 'processing') beginStop(s)
+      endRecordingUi()
+      return
+  }
+  sendToolbarStatus(lastStatus)
+}
+
+async function save(token: string, payload: SaveRecordingPayload): Promise<string> {
+  const s = requireSession(token)
+  beginStop(s)
+  s.phase = 'processing'
+  processing.add(s.id)
+  grant = null
+  const m = s.manifest
+  try {
+    await s.closeWriters()
+    if (m.method === 'chromium' && Number.isFinite(payload.startedAt) && payload.startedAt > 0) m.startedAt = payload.startedAt
+    const measured = m.method === 'native' ? s.activeSeconds() : payload.duration
+    m.duration = measured > 0 ? measured : s.activeSeconds()
+    m.webcamOffset = Number.isFinite(payload.webcamOffset) ? payload.webcamOffset : 0
+    m.audioOffset = Number.isFinite(payload.audioOffset) ? payload.audioOffset : 0
+    m.status = 'processing'
+    await writeTrack(s, m.duration)
+    await projects.writeManifest(m)
+    const project = await processRecording(m, sendProgress)
+    return project.id
+  } catch (err) {
+    const message = friendlyMessage(err)
+    console.error('Saving the recording failed:', err)
+    m.status = 'failed'
+    m.error = message
+    await projects.writeManifest(m).catch(() => undefined)
+    throw new Error(`${message} Your recording was kept in “${s.dir}”; you can retry it from Unfinished recordings.`)
+  } finally {
+    processing.delete(s.id)
+    if (active === s) active = null
+    rawTrack = null
+  }
+}
+
+async function cancel(token: string): Promise<void> {
+  const s = active
+  if (!s || s.token !== token || s.phase === 'processing') return
+  await discard(s)
+  endRecordingUi()
+}
+
+async function recover(id: string): Promise<string> {
+  if (active) throw new Error('Finish the current recording first.')
+  if (processing.has(id)) throw new Error('This recording is already being processed.')
+  const m = (await projects.readManifest(id)) ?? (await projects.legacyManifest(id))
+  processing.add(id)
+  try {
+    m.status = 'processing'
+    m.error = null
+    await projects.writeManifest(m)
+    const project = await processRecording(m, sendProgress)
+    return project.id
+  } catch (err) {
+    const message = friendlyMessage(err)
+    console.error('Recovering the recording failed:', err)
+    m.status = 'failed'
+    m.error = message
+    await projects.writeManifest(m).catch(() => undefined)
+    throw new Error(message)
+  } finally {
+    processing.delete(id)
+  }
+}
+
+async function pickRegion(sourceId: string): Promise<RegionSelection | null> {
+  const source = await resolveSource(sourceId)
+  if (source.kind !== 'screen' || !source.display) throw new RecordingError('Areas can only be selected on a screen.')
+  const display = source.display
+  const region: NormRect | null = await pickRegionOnDisplay(display)
+  if (!region) return null
+  const { width, height } = display.bounds
+  return {
+    region,
+    width: Math.round(region.w * width * display.scaleFactor),
+    height: Math.round(region.h * height * display.scaleFactor)
   }
 }
 
@@ -136,69 +455,110 @@ export function registerRecordingIpc(): void {
       thumbnailSize: { width: 480, height: 270 },
       fetchWindowIcons: false
     })
-    sourceDisplays.clear()
+    sourceInfo.clear()
     return sources
       .filter((s) => !own.has(s.id) && s.name !== 'Screen Studio for Windows')
       .map((s) => {
         const kind = s.id.startsWith('screen:') ? 'screen' : 'window'
-        sourceDisplays.set(s.id, kind === 'screen' ? s.display_id || undefined : undefined)
-        return { id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL(), kind, displayId: s.display_id || undefined }
+        const displayId = kind === 'screen' ? s.display_id || undefined : undefined
+        sourceInfo.set(s.id, { name: s.name, displayId })
+        return { id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL(), kind, displayId }
       })
   })
 
-  ipcMain.handle('recording:prepare', (_e, sourceId: string, systemAudio: boolean) => {
-    pendingSource = { id: sourceId, systemAudio }
-  })
-
-  ipcMain.handle('recording:started', () => {
-    const sourceId = pendingSource?.id
-    let displayId = sourceId ? sourceDisplays.get(sourceId) : undefined
-    // Single-display machines sometimes report an empty display_id.
-    if (!displayId && sourceId?.startsWith('screen:') && screen.getAllDisplays().length === 1) {
-      displayId = String(screen.getPrimaryDisplay().id)
-    }
-    tracker.start(displayId)
-    globalShortcut.register(STOP_SHORTCUT, () => sendToMain('recorder:command', 'stop'))
-  })
-
-  ipcMain.handle('recording:status', (_e, status: RecordingStatus) => {
-    if (status.state === 'countdown' || status.state === 'recording' || status.state === 'paused') {
-      if (!toolbarWindow) toolbarWindow = createToolbarWindow()
-      if (!toolbarWindow.isVisible()) toolbarWindow.showInactive()
-      const main = getMainWindow()
-      if (main?.isVisible()) main.hide()
-    }
-    if (status.state === 'paused') tracker.pause()
-    if (status.state === 'recording') tracker.resume()
-    if (status.state === 'processing' || status.state === 'idle') endRecordingUi()
-    toolbarWindow?.webContents.send('recording:status', status)
-  })
-
-  ipcMain.handle('recording:command', (_e, command: RecorderCommand) => {
-    sendToMain('recorder:command', command)
-  })
-
-  ipcMain.handle('recording:save', async (_e, payload: SaveRecordingPayload) => {
+  ipcMain.handle('recording:prepare', (_e, request: RecordingRequest) => prepare(request))
+  ipcMain.handle('recording:chunk', async (_e, token: string, kind: TrackKind, data: Uint8Array) => {
+    const s = requireSession(token)
+    if (!TRACK_KINDS.includes(kind)) throw new Error(`Unknown track ${kind}`)
     try {
-      return await finalizeRecording(payload)
-    } finally {
-      pendingSource = null
+      await s.write(kind, data)
+    } catch (err) {
+      throw new Error(friendlyMessage(err))
     }
   })
-
-  ipcMain.handle('recording:cancel', () => {
-    tracker.stop()
-    pendingSource = null
-    endRecordingUi()
+  ipcMain.handle('recording:startNative', (_e, token: string) => startNative(token))
+  ipcMain.handle('recording:started', (_e, token: string, info: RecordingStartInfo) => started(token, info))
+  ipcMain.handle('recording:status', (_e, token: string, status: RecordingStatus) => setStatus(token, status))
+  ipcMain.handle('recording:command', (_e, command: RecorderCommand) => forwardCommand(command))
+  ipcMain.handle('recording:getStatus', (): ToolbarStatus => lastStatus)
+  ipcMain.handle('recording:save', (_e, token: string, payload: SaveRecordingPayload) => save(token, payload))
+  ipcMain.handle('recording:cancel', (_e, token: string) => cancel(token))
+  ipcMain.handle('recording:pickRegion', (_e, sourceId: string) => pickRegion(sourceId))
+  ipcMain.handle('recordings:unfinished', () => projects.listUnfinished(new Set([...processing, ...(active ? [active.id] : [])])))
+  ipcMain.handle('recordings:recover', (_e, id: string) => recover(id))
+  ipcMain.handle('recording:privacySettings', async (_e, kind: 'microphone' | 'camera') => {
+    if (process.platform === 'win32') await shell.openExternal(`ms-settings:privacy-${kind === 'camera' ? 'webcam' : 'microphone'}`)
   })
+}
+
+/** Recovery and quit protection for the window that runs the recorder. */
+export function attachRecorderWindow(win: BrowserWindow): void {
+  win.webContents.on('render-process-gone', (_e, details) => {
+    void (async () => {
+      const s = active
+      if (s && s.phase !== 'processing') {
+        if (s.manifest.startedAt === null) await discard(s)
+        else await interrupt(s)
+      }
+      grant = null
+      endRecordingUi()
+      if (win.isDestroyed()) return
+      loadRoute(win, '/')
+      if (details.reason === 'clean-exit') return
+      await dialog.showMessageBox(win, {
+        type: 'warning',
+        title: 'Screen Studio for Windows',
+        message: 'The recorder stopped unexpectedly.',
+        detail: s
+          ? 'What was recorded until then has been kept. Recover it from “Unfinished recordings” on the home screen.'
+          : 'Please try again.'
+      })
+    })()
+  })
+
+  win.on('close', (e) => {
+    if (allowClose || (!active && processing.size === 0)) return
+    e.preventDefault()
+    const recording = !!active && active.phase !== 'processing'
+    void dialog
+      .showMessageBox(win, {
+        type: 'warning',
+        title: 'Screen Studio for Windows',
+        buttons: ['Keep working', 'Quit anyway'],
+        defaultId: 0,
+        cancelId: 0,
+        message: recording ? 'A recording is in progress.' : 'A recording is still being processed.',
+        detail: 'If you quit now it is kept as an unfinished recording, which you can finish from the home screen next time.'
+      })
+      .then(({ response }) => {
+        if (response !== 1 || win.isDestroyed()) return
+        allowClose = true
+        win.close()
+      })
+  })
+}
+
+/** Brings the app forward when a second instance is launched. */
+export function focusApp(): void {
+  if (active && active.phase !== 'processing' && isToolbarVisible()) {
+    showToolbar()
+    return
+  }
+  const main = getMainWindow()
+  if (!main || main.isDestroyed()) return
+  if (main.isMinimized()) main.restore()
+  main.show()
+  main.focus()
 }
 
 /** Called when the main window closes. */
 export function closeRecordingWindows(): void {
-  toolbarWindow?.close()
+  closeToolbar()
 }
 
 export function disposeRecording(): void {
   globalShortcut.unregisterAll()
   tracker.stop()
+  active?.killNative()
+  killAllFfmpeg()
 }
