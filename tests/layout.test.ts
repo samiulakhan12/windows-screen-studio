@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contentRect, outputSize, webcamRect } from '../src/shared/engine/layout'
+import { autoAspect, contentRect, outputSize, webcamRect } from '../src/shared/engine/layout'
 import { formatTime } from '../src/shared/engine/project'
 
 describe('outputSize', () => {
@@ -10,6 +10,16 @@ describe('outputSize', () => {
     expect(outputSize('1:1', 1920, 1080, 1080)).toEqual({ width: 1080, height: 1080 })
     expect(outputSize('9:16', 1920, 1080, 1080)).toEqual({ width: 1080, height: 1920 })
     expect(outputSize('4:3', 1920, 1080, 720)).toEqual({ width: 960, height: 720 })
+  })
+  it('snaps near-standard shapes to standard sizes (4K is 3840x2160)', () => {
+    expect(outputSize('auto', 1918, 1080, 2160)).toEqual({ width: 3840, height: 2160 })
+    expect(outputSize('auto', 1366, 768, 2160)).toEqual({ width: 3840, height: 2160 })
+    expect(outputSize('auto', 1440, 900, 1080)).toEqual({ width: 1728, height: 1080 })
+    expect(autoAspect(2560, 1080)).toBeCloseTo(64 / 27)
+  })
+  it('keeps an unusual recording shape as it is', () => {
+    expect(autoAspect(1000, 700)).toBeCloseTo(1000 / 700)
+    expect(outputSize('auto', 1000, 700, 1080)).toEqual({ width: 1542, height: 1080 })
   })
   it('always returns even dimensions (required by H.264)', () => {
     const { width, height } = outputSize('auto', 1366, 768, 721)

@@ -1,14 +1,59 @@
 import { app, dialog, ipcMain, shell } from 'electron'
+import { promises as fs, rmSync } from 'node:fs'
 import path from 'node:path'
-import type { ExportJob } from '../shared/api/export'
+import type { ExportCapabilities, ExportJob } from '../shared/api/export'
 import type { ExportFormat } from '../shared/types'
-import { exportArgs } from './exportArgs'
-import { FrameEncoder } from './ffmpeg'
+import { exportArgs, gifCaptureArgs, gifEncodeArgs } from './exportArgs'
+import { copyFileToClipboard } from './exportClipboard'
+import { moveIntoPlace, partialPath, tempStem, toIpcError, validateJob } from './exportJob'
+import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
+import { detectH264Encoders } from './hwEncoders'
 import * as projects from './projects'
 import { getMainWindow } from './windows'
 
-let encoder: FrameEncoder | null = null
+interface ActiveExport {
+  encoder: FrameEncoder
+  /** ffmpeg writes here; renamed over `finalPath` only after a successful finish. */
+  tempPath: string
+  finalPath: string
+  gif: { intermediate: string; palette: string } | null
+  pass2: FfmpegRun | null
+  cancelled: boolean
+}
+
+let active: ActiveExport | null = null
 let approvedExportPath: string | null = null
+/** Files exported in this session (the only ones the clipboard action accepts). */
+const exportedFiles = new Set<string>()
+
+const CANCELLED = 'The export was cancelled.'
+
+async function removeFiles(job: ActiveExport): Promise<void> {
+  const files = [job.tempPath, job.gif?.intermediate, job.gif?.palette].filter((f): f is string => !!f)
+  await Promise.all(files.map((f) => fs.rm(f, { force: true }).catch(() => undefined)))
+}
+
+function removeFilesSync(job: ActiveExport): void {
+  for (const f of [job.tempPath, job.gif?.intermediate, job.gif?.palette]) {
+    if (!f) continue
+    try {
+      rmSync(f, { force: true })
+    } catch {
+      // Best effort while quitting.
+    }
+  }
+}
+
+function cancelActive(sync = false): void {
+  const job = active
+  active = null
+  if (!job) return
+  job.cancelled = true
+  job.encoder.kill()
+  job.pass2?.kill()
+  if (sync) removeFilesSync(job)
+  else void removeFiles(job)
+}
 
 export function registerExportIpc(): void {
   ipcMain.handle('export:choosePath', async (_e, defaultName: string, format: ExportFormat) => {
@@ -23,35 +68,80 @@ export function registerExportIpc(): void {
     return approvedExportPath
   })
 
-  ipcMain.handle('export:start', (_e, projectId: string, job: ExportJob) => {
+  ipcMain.handle('export:capabilities', async (): Promise<ExportCapabilities> => {
+    const encoders = await detectH264Encoders()
+    const decoder = process.env.SSW_EXPORT_DECODER
+    const videoEncoder = process.env.SSW_EXPORT_VIDEO_ENCODER
+    return {
+      hardwareEncoders: encoders.filter((e) => e !== 'libx264'),
+      overrides: {
+        decoder: decoder === 'element' || decoder === 'webcodecs' ? decoder : undefined,
+        videoEncoder: videoEncoder === 'webcodecs-software' || videoEncoder === 'ffmpeg' ? videoEncoder : undefined
+      }
+    }
+  })
+
+  ipcMain.handle('export:start', async (_e, projectId: string, job: ExportJob) => {
     if (!approvedExportPath || job.outputPath !== approvedExportPath) {
       throw new Error('Export path was not chosen through the save dialog')
     }
-    encoder?.kill()
-    const audioInput = job.audio ? path.join(projects.projectDir(projectId), 'screen.mp4') : null
-    encoder = new FrameEncoder(exportArgs(job, audioInput))
+    validateJob(job)
+    cancelActive()
+    const finalPath = job.outputPath
+    const tempPath = partialPath(finalPath)
+    let gif: ActiveExport['gif'] = null
+    let args: string[]
+    if (job.format === 'gif') {
+      const stem = tempStem(app.getPath('temp'))
+      gif = { intermediate: `${stem}.mkv`, palette: `${stem}.png` }
+      args = gifCaptureArgs(job, gif.intermediate, gif.palette)
+    } else {
+      const audioInput = job.audio ? path.join(projects.projectDir(projectId), 'screen.mp4') : null
+      args = exportArgs(job, { audioInput, output: tempPath })
+    }
+    active = { encoder: new FrameEncoder(args), tempPath, finalPath, gif, pass2: null, cancelled: false }
   })
 
-  ipcMain.handle('export:frame', (_e, frame: Uint8Array) => {
-    if (!encoder) throw new Error('No export in progress')
-    return encoder.write(frame)
+  ipcMain.handle('export:frame', (_e, data: Uint8Array) => {
+    if (!active) throw new Error(CANCELLED)
+    return active.encoder.write(data).catch((e: unknown) => {
+      throw toIpcError(e)
+    })
   })
 
   ipcMain.handle('export:finish', async () => {
-    const current = encoder
-    encoder = null
-    approvedExportPath = null
-    if (current) await current.finish()
+    const job = active
+    if (!job) throw new Error(CANCELLED)
+    try {
+      await job.encoder.finish()
+      if (job.gif && !job.cancelled) {
+        job.pass2 = startFfmpeg(gifEncodeArgs(job.gif.intermediate, job.gif.palette, job.tempPath))
+        await job.pass2.done
+      }
+      if (job.cancelled) throw new Error(CANCELLED)
+      await moveIntoPlace(job.tempPath, job.finalPath)
+      exportedFiles.add(job.finalPath)
+      approvedExportPath = null
+    } catch (e) {
+      await removeFiles(job)
+      throw job.cancelled ? new Error(CANCELLED) : toIpcError(e)
+    } finally {
+      if (job.gif) await removeFiles({ ...job, tempPath: '' })
+      if (active === job) active = null
+    }
   })
 
-  ipcMain.handle('export:cancel', () => {
-    encoder?.kill()
-    encoder = null
+  ipcMain.handle('export:cancel', () => cancelActive())
+
+  ipcMain.handle('export:copyToClipboard', (_e, file: string) => {
+    if (!exportedFiles.has(file)) return { ok: false, message: 'Only files exported in this session can be copied.' }
+    return copyFileToClipboard(file)
   })
 
   ipcMain.handle('shell:showItem', (_e, file: string) => shell.showItemInFolder(file))
 }
 
+/** On quit: stop any export and delete its partial files before the process exits. */
 export function disposeExport(): void {
-  encoder?.kill()
+  cancelActive(true)
 }
