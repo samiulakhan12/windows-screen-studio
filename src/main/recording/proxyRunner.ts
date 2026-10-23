@@ -29,15 +29,9 @@ export function killAllFfmpeg(): void {
 }
 
 /**
- * Media time from one `-progress` line. ffmpeg's out_time_ms is (despite its name)
- * in microseconds too. With several streams it can follow the audio, so the video
- * frame count is what measures the video.
+ * Video frames written, from one `-progress` line. The frame count (not out_time,
+ * which can follow the audio stream) is what measures a constant-rate video.
  */
-export function parseProgressTime(line: string): number | null {
-  const m = /^out_time_(?:us|ms)=(\d+)\s*$/.exec(line.trim())
-  return m ? Number(m[1]) / 1e6 : null
-}
-
 export function parseProgressFrame(line: string): number | null {
   const m = /^frame=\s*(\d+)\s*$/.exec(line.trim())
   return m ? Number(m[1]) : null

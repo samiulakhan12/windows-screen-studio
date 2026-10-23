@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MIN_REGION, regionToRect, sanitizeRegion, toolbarPosition } from '../src/main/recording/placement'
-import { parseInputHasAudio, parseInputSize, parseProgressFrame, parseProgressTime, summarizeFfmpegLog } from '../src/main/recording/proxyRunner'
+import { parseInputHasAudio, parseInputSize, parseProgressFrame, summarizeFfmpegLog } from '../src/main/recording/proxyRunner'
 import { ChunkPipe } from '../src/shared/recording/chunkPipe'
 import { friendlyError, RecorderError, SOURCE_GONE, stripIpcPrefix } from '../src/shared/recording/errors'
 import { pickMime, screenBitrate, screenMimes } from '../src/shared/recording/mime'
@@ -143,13 +143,11 @@ describe('region validation and toolbar placement', () => {
 })
 
 describe('ffmpeg output parsing', () => {
-  it('reads progress (out_time_ms is microseconds too)', () => {
-    expect(parseProgressTime('out_time_us=1500000')).toBe(1.5)
-    expect(parseProgressTime('out_time_ms=2500000')).toBe(2.5)
-    expect(parseProgressTime('out_time=00:00:01.5')).toBeNull()
-    expect(parseProgressTime('out_time_us=N/A')).toBeNull()
+  it('reads the frame count from progress output', () => {
     expect(parseProgressFrame('frame=120')).toBe(120)
+    expect(parseProgressFrame('frame=  7')).toBe(7)
     expect(parseProgressFrame('fps=59.9')).toBeNull()
+    expect(parseProgressFrame('out_time_us=1500000')).toBeNull()
   })
 
   const log = [
