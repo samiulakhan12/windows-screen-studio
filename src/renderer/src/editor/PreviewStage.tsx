@@ -36,7 +36,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   const [box, setBox] = useState<Box>({ w: 0, h: 0 })
   const out = outputSize(project.style.aspectRatio, project.width, project.height, project.height)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     player.attachCanvas(canvasRef.current)
     return () => player.attachCanvas(null)
   }, [player])

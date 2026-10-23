@@ -176,6 +176,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     player.setNoZoom(!!pickZoom)
     if (pickFocus && !pickZoom) setPickFocus(false)
   }, [player, pickFocus, pickZoom])
+  // Picking applies to the zoom it was started for; selecting anything else ends it.
+  const selectedZoomId = selection?.kind === 'zoom' ? selection.id : null
+  useEffect(() => setPickFocus(false), [selectedZoomId])
 
   const selectedAnnotation = selection?.kind === 'annotation' ? (project.annotations.find((a) => a.id === selection.id) ?? null) : null
 
@@ -334,10 +337,14 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const onKeyDown = (e: KeyboardEvent): void => {
       const L = latest.current
       if (L.exporting) {
-        // Editor shortcuts are off behind the export dialog; Escape closes it unless it is rendering.
-        if (e.key === 'Escape' && !document.querySelector('.modal .progress')) {
-          e.preventDefault()
-          setExporting(false)
+        // Editor shortcuts are off behind the export dialog. Escape acts as its own close
+        // button, which the dialog only offers while no export is running.
+        if (e.key === 'Escape') {
+          const close = document.querySelector<HTMLButtonElement>('.modal .modal-head button[title="Close"]')
+          if (close) {
+            e.preventDefault()
+            close.click()
+          }
         }
         return
       }
@@ -453,6 +460,10 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             onChange={(e) => {
               const name = e.target.value
               store.update((p) => ({ ...p, name }), 'name')
+            }}
+            onBlur={() => {
+              // An empty name would leave a blank row in the library.
+              if (!store.state.name.trim()) store.update((p) => ({ ...p, name: 'Untitled recording' }), 'name')
             }}
           />
           <div className="history-buttons">
