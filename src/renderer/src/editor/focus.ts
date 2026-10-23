@@ -36,20 +36,32 @@ export function releaseFocus(target?: EventTarget | null): void {
 }
 
 /**
- * After any pointer interaction finishes (including the click it produces),
- * moves focus off a button, toggle or slider. Keyboard users who Tab to a
- * control keep it focused, since they produce no pointerup.
+ * After a pointer interaction with a button, toggle or slider finishes
+ * (including the click it produces), moves focus off that control. Keyboard
+ * users who Tab to a control keep it focused, since they produce no pointer
+ * events, and only the control the pointer pressed is ever blurred.
  */
 export function installFocusRelease(): () => void {
   let timer = 0
+  let pressed: Element | null = null
+  const onPointerDown = (e: PointerEvent): void => {
+    pressed = e.target instanceof Element ? e.target : null
+  }
   const onPointerUp = (): void => {
+    const target = pressed
     window.clearTimeout(timer)
     // The click (and a label's forwarded click) is dispatched after pointerup in the same task.
-    timer = window.setTimeout(blurActiveControl, 0)
+    timer = window.setTimeout(() => {
+      const el = document.activeElement
+      if (!target || !isTransientControl(el)) return
+      if (el === target || el.contains(target) || target.closest('label')?.contains(el)) el.blur()
+    }, 0)
   }
+  window.addEventListener('pointerdown', onPointerDown, true)
   window.addEventListener('pointerup', onPointerUp, true)
   return () => {
     window.clearTimeout(timer)
+    window.removeEventListener('pointerdown', onPointerDown, true)
     window.removeEventListener('pointerup', onPointerUp, true)
   }
 }

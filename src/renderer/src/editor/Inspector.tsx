@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useLayoutEffect, useRef, useState } from 'react'
 import { ANNOTATION_SIZE } from '../../../shared/editor/annotations'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../shared/editor/clips'
 import { outputDuration, SPEED_PRESETS } from '../../../shared/engine/timeline'
@@ -58,9 +58,10 @@ export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Ele
 
   // Selecting something (even the already selected item) reveals its settings.
   // Keyed on the selection counter only, so undo or deselecting never switches tabs.
+  // A layout effect, so the old tab is never painted for a frame first.
   const revealKind = useRef(selKind)
   revealKind.current = selKind
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (revealKind.current) setTab(TAB_FOR[revealKind.current])
   }, [props.revealSeq])
 

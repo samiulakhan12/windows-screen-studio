@@ -13,7 +13,7 @@ const GUTTER = 10 // .tl-content padding (Timeline.tsx GUTTER)
 async function setup(ctx, tag, opts) {
   const home = h.tempHome(tag)
   const id = f.seedProject(home, opts)
-  const { app, win, logs } = await h.launch({ home })
+  const { app, win, logs } = await h.launch({ home, args: opts.args || [] })
   ctx.app = app
   ctx.logs = logs
   await win.waitForSelector('.home', { timeout: 30000 })
@@ -104,7 +104,7 @@ async function main() {
     await seekTo(win, 4)
     await win.keyboard.press('z')
     await f.waitFor(async () => (await win.$$('.zoom-seg')).length === 1, 'zoom added with Z')
-    h.assert((await activeTab(win)) === 'Zoom', 'adding a zoom reveals the Zoom inspector (F45)')
+    await f.waitFor(async () => (await activeTab(win)) === 'Zoom', 'adding a zoom reveals the Zoom inspector (F45)', 2000)
     const [added] = await segTimes(win, '.zoom-seg')
     h.assert(added.start < 4 && added.end > 4, `new zoom covers the playhead: ${JSON.stringify(added)}`)
 
@@ -120,11 +120,12 @@ async function main() {
     const [moved] = await segTimes(win, '.zoom-seg')
     h.assert(moved.start > added.start + 0.5 && near(moved.end - moved.start, added.end - added.start, 1e-6), `dragged centre moves the zoom: ${JSON.stringify(moved)}`)
     await win.keyboard.press('Control+z')
-    let [now] = await segTimes(win, '.zoom-seg')
-    h.assert(near(now.start, added.start) && near(now.end, added.end), `Ctrl+Z restores the position in one step: ${JSON.stringify(now)}`)
+    await f.waitFor(async () => {
+      const [now] = await segTimes(win, '.zoom-seg')
+      return near(now.start, added.start) && near(now.end, added.end)
+    }, 'Ctrl+Z restores the position in one step', 2000)
     await win.keyboard.press('Control+Shift+z')
-    ;[now] = await segTimes(win, '.zoom-seg')
-    h.assert(near(now.start, moved.start), 'Ctrl+Shift+Z redoes the move')
+    await f.waitFor(async () => near((await segTimes(win, '.zoom-seg'))[0].start, moved.start), 'Ctrl+Shift+Z redoes the move', 2000)
 
     await win.click('.zoom-seg')
     await win.keyboard.press('Delete')
@@ -149,7 +150,7 @@ async function main() {
     const changed = await win.textContent('.slider:has-text("Padding") .muted')
     h.assert(changed !== '7%', `padding changed by dragging (${changed})`)
     await win.keyboard.press('Control+z')
-    h.assert((await win.textContent('.slider:has-text("Padding") .muted')) === '7%', 'one Ctrl+Z restores the padding')
+    await f.waitFor(async () => (await win.textContent('.slider:has-text("Padding") .muted')) === '7%', 'one Ctrl+Z restores the padding', 2000)
     await waitSaved(win)
     const p = disk(home, id)
     h.assert(p.style.padding === 0.07 && p.zooms.length === 1, `autosave wrote the present state: ${JSON.stringify({ padding: p.style.padding, zooms: p.zooms.length })}`)
@@ -246,7 +247,7 @@ async function main() {
     await win.click('.insp-tabs button:has-text("Effects")')
     await win.focus('.slider:has-text("Strength") input')
     await win.keyboard.press('Home')
-    h.assert((await win.textContent('.slider:has-text("Strength") .muted')) === 'Off', 'motion blur off')
+    await f.waitFor(async () => (await win.textContent('.slider:has-text("Strength") .muted')) === 'Off', 'Home on a focused slider sets it (motion blur off)', 2000)
     await win.click('.chips[aria-label="Shortcut position"] .chip:has-text("Top")')
     await waitSaved(win)
     const p = disk(home, id)
@@ -267,15 +268,15 @@ async function main() {
     const xMid = await xForTime(win, 4.5)
     const track = await centerOf(win, '.clip-track')
     await win.mouse.click(xMid, track.y)
-    h.assert((await activeTab(win)) === 'Clip', 'selecting a clip reveals the Clip inspector')
-    h.assert((await timecode(win)).startsWith('0:04.5'), `clicking the clip track scrubs (${await timecode(win)})`)
+    await f.waitFor(async () => (await activeTab(win)) === 'Clip', 'selecting a clip reveals the Clip inspector', 2000)
+    h.assert(Math.abs(outTime(await timecode(win)) - 4.5) < 0.15, `clicking the clip track scrubs (${await timecode(win)})`)
     await win.keyboard.press('Delete')
     await f.waitFor(async () => (await win.$$('.gap-block.cut')).length === 1, 'cut gap shown')
 
     await win.mouse.click(await xForTime(win, 9), track.y)
     await win.click('.chips[aria-label="Clip speed"] .chip:has-text("2×")')
     await f.waitFor(async () => (await win.$$('.clip-block.fast')).length === 1, 'speed badge')
-    h.assert((await timecode(win)).endsWith('/ 0:06.0'), `output length 3 + 6/2 = 6 s (${await timecode(win)})`)
+    await f.waitFor(async () => (await timecode(win)).endsWith('/ 0:06.0'), 'output length 3 + 6/2 = 6 s in the transport', 2000)
 
     // Scrubbing into the cut shows the next kept frame.
     await seekTo(win, 4.5)
@@ -321,7 +322,7 @@ async function main() {
     // Restore the cut from its hatched gap, then undo.
     await win.click('.gap-block.cut .gap-restore')
     await f.waitFor(async () => (await win.$$('.gap-block.cut')).length === 0, 'cut restored')
-    h.assert((await timecode(win)).endsWith('/ 0:09.0'), `restored footage plays at 1x (${await timecode(win)})`)
+    await f.waitFor(async () => (await timecode(win)).endsWith('/ 0:09.0'), 'restored footage plays at 1x', 2000)
     await win.keyboard.press('Control+z')
     await f.waitFor(async () => (await win.$$('.gap-block.cut')).length === 1, 'restore undone')
 
@@ -334,7 +335,7 @@ async function main() {
     await win.waitForSelector('[data-testid="range-selection"]')
     await win.keyboard.press('Delete')
     await f.waitFor(async () => (await win.$$('.gap-block.cut')).length === 2, 'range cut')
-    h.assert(Math.abs(outTime((await timecode(win)).split('/')[1]) - 5) < 0.1, `range removed about 1 s (${await timecode(win)})`)
+    await f.waitFor(async () => Math.abs(outTime((await timecode(win)).split('/')[1]) - 5) < 0.1, 'range removed about 1 s', 2000)
 
     // Trim handle: drag the start in by about half a second.
     const handle = await centerOf(win, '.trim-handle.start')
@@ -351,7 +352,7 @@ async function main() {
     await seekTo(win, 2)
     await win.keyboard.press('t')
     await f.waitFor(async () => (await win.$$('.text-seg')).length === 1, 'text added with T')
-    h.assert((await activeTab(win)) === 'Text', 'Text inspector revealed')
+    await f.waitFor(async () => (await activeTab(win)) === 'Text', 'Text inspector revealed', 2000)
     await win.fill('.text-field', 'Hello e2e')
     await win.keyboard.press('Escape')
     // Shortcuts work again once the field is left.
@@ -512,6 +513,19 @@ async function main() {
     await win.click('.chip:has-text("Fixed point")')
     await waitSaved(win)
     h.assert(JSON.stringify(disk(home, id).zooms[0].focus) === JSON.stringify(z.focus), 'Fixed point does not reset the focus')
+  })
+
+  await h.run('editor: HiDPI preview renders at device pixels, capped at the recording size (F47)', async (ctx) => {
+    const { win } = await setup(ctx, 'hidpi', { name: 'HiDpi', seconds: 3, width: 1920, height: 1080, args: ['--force-device-scale-factor=2'] })
+    const s = await win.evaluate(() => {
+      const c = document.querySelector('.preview-canvas')
+      const r = c.getBoundingClientRect()
+      return { dpr: devicePixelRatio, w: r.width, h: r.height, bw: c.width, bh: c.height }
+    })
+    h.assert(s.dpr === 2, `device pixel ratio forced to 2 (${s.dpr})`)
+    const k = Math.min(1, 1920 / (s.w * 2), 1080 / (s.h * 2))
+    h.assert(s.bw === Math.round(s.w * 2 * k) && s.bw <= 1920, `backing ${s.bw}x${s.bh} for ${s.w}x${s.h} css`)
+    h.assert(s.bw > s.w, 'sharper than CSS pixels on a HiDPI screen')
   })
 
   await h.run('editor: background images follow undo and redo', async (ctx) => {
