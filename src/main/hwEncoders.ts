@@ -1,10 +1,15 @@
 import { spawn } from 'node:child_process'
+import type { H264Encoder } from '../shared/api/export'
 import { ffmpegPath } from './ffmpeg'
 
-export type H264Encoder = 'h264_nvenc' | 'h264_qsv' | 'h264_amf' | 'h264_mf' | 'libx264'
+export type { H264Encoder }
 
 /** GPU encoders in order of preference (NVIDIA, Intel, AMD, then Windows Media Foundation). */
 export const HARDWARE_ENCODERS: H264Encoder[] = ['h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_mf']
+
+/** Input pixel format each encoder accepts: Intel, AMD and Media Foundation want NV12. */
+export const encoderPixelFormat = (encoder: H264Encoder): 'nv12' | 'yuv420p' =>
+  encoder === 'h264_qsv' || encoder === 'h264_amf' || encoder === 'h264_mf' ? 'nv12' : 'yuv420p'
 
 /** Tries a tiny encode; an encoder being compiled in does not mean the GPU/driver supports it. */
 export function probeEncoder(encoder: H264Encoder, timeoutMs = 8000): Promise<boolean> {
@@ -15,7 +20,7 @@ export function probeEncoder(encoder: H264Encoder, timeoutMs = 8000): Promise<bo
       '-f', 'lavfi',
       '-i', 'color=c=black:s=320x240:r=30',
       '-frames:v', '10',
-      '-pix_fmt', 'yuv420p',
+      '-pix_fmt', encoderPixelFormat(encoder),
       '-c:v', encoder,
       '-f', 'null',
       '-'

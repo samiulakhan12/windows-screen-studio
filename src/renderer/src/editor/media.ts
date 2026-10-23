@@ -1,3 +1,6 @@
+/** Proxies (screen.mp4, webcam.mp4) are always encoded at 60 fps constant frame rate. */
+export const PROXY_FPS = 60
+
 export function createVideo(url: string): HTMLVideoElement {
   const v = document.createElement('video')
   v.src = url
@@ -27,18 +30,71 @@ export function whenReady(v: HTMLVideoElement): Promise<void> {
   })
 }
 
+/** `t` clamped to the playable range (the last frame stays reachable). */
+const clampToMedia = (v: HTMLVideoElement, t: number): number => Math.max(0, Math.min(t, (Number.isFinite(v.duration) ? v.duration : t) - 0.001))
+
 /** Seeks and resolves once the frame at `t` is decoded and drawable. */
 export function seekTo(v: HTMLVideoElement, t: number): Promise<void> {
-  const target = Math.max(0, Math.min(t, (Number.isFinite(v.duration) ? v.duration : t) - 0.001))
-  return new Promise((resolve) => {
+  const target = clampToMedia(v, t)
+  return new Promise((resolve, reject) => {
     if (Math.abs(v.currentTime - target) < 0.0005 && v.readyState >= 2 && !v.seeking) return resolve()
     const done = (): void => {
       v.removeEventListener('seeked', done)
+      v.removeEventListener('error', fail)
       resolve()
     }
+    const fail = (): void => {
+      v.removeEventListener('seeked', done)
+      v.removeEventListener('error', fail)
+      reject(new Error(`Could not read video (${v.error?.message ?? 'unknown error'})`))
+    }
     v.addEventListener('seeked', done)
+    v.addEventListener('error', fail)
     v.currentTime = target
   })
+}
+
+/**
+ * Seeks to the proxy frame shown at time `t`. A seek to an exact frame boundary
+ * usually shows the previous frame in Chromium, so this aims at the middle of the
+ * frame instead; overlays are still computed at `t` by the caller.
+ */
+export function seekToFrame(v: HTMLVideoElement, t: number, fps = PROXY_FPS): Promise<void> {
+  return seekTo(v, t + 0.5 / fps)
+}
+
+const pause = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * The frame a paused video shows once a `seekToFrame(v, t)` has finished, as a
+ * VideoFrame the caller must close, or null when it cannot be captured (draw the
+ * element instead). Chromium fires 'seeked' a moment before the new frame reaches
+ * the element's compositor, so an immediate draw shows the previous frame on about
+ * 1 seek in 50 under load. The frame's own timestamp tells which one it is: this
+ * waits (briefly) for the frame covering the seek target. Returns `verified: false`
+ * when the timestamps never matched, so callers can stop checking a file whose
+ * timestamps are offset.
+ */
+export async function seekedFrame(v: HTMLVideoElement, t: number, fps = PROXY_FPS, maxWaitMs = 100): Promise<{ frame: VideoFrame; verified: boolean } | null> {
+  if (typeof VideoFrame === 'undefined') return null
+  const target = clampToMedia(v, t + 0.5 / fps)
+  const shows = (f: VideoFrame): boolean => {
+    const start = f.timestamp / 1e6
+    return start > target - 1 / fps + 1e-4 && start <= target + 1e-4
+  }
+  const deadline = performance.now() + maxWaitMs
+  for (;;) {
+    let frame: VideoFrame
+    try {
+      frame = new VideoFrame(v)
+    } catch {
+      return null
+    }
+    if (shows(frame)) return { frame, verified: true }
+    if (performance.now() >= deadline) return { frame, verified: false }
+    frame.close()
+    await pause(2)
+  }
 }
 
 export function loadImage(url: string): Promise<HTMLImageElement> {
