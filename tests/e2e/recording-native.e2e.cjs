@@ -8,7 +8,7 @@ const h = require('./helpers.cjs')
 const r = require('./recordingHelpers.cjs')
 
 /** Installs a fake NativeCaptureApi (see src/main/recording/nativeVideo.ts). */
-async function installFakeHelper(app, { fail = false } = {}) {
+async function installFakeHelper(app, { fail = false, startDelayMs = 0, endAfterMs = 0 } = {}) {
   await app.evaluate((_electron, cfg) => {
     const { spawn } = process.mainModule.require('node:child_process')
     const log = (globalThis.__fakeNative = { starts: 0, calls: [], options: null })
@@ -34,38 +34,69 @@ async function installFakeHelper(app, { fail = false } = {}) {
           '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-progress', 'pipe:1', opts.output
         ], { stdio: ['pipe', 'pipe', 'inherit'] })
         let startedAt = 0
+        let exited = false
+        let stopRequested = false
+        let onEnded = null
+        const exit = new Promise((resolve) => proc.on('exit', resolve))
         const started = new Promise((resolve, reject) => {
           proc.on('error', reject)
           proc.on('exit', (code) => reject(new Error(`fake helper exited with ${code}`)))
           proc.stdout.on('data', (d) => {
             if (!startedAt && /frame=[1-9]/.test(String(d))) {
               startedAt = spawnedAt
-              resolve({ startedAt, width: 1920, height: 1080 })
+              // A slow start (encoder setup, first frame) keeps the toolbar on "Starting…".
+              setTimeout(() => resolve({ startedAt, width: 1920, height: 1080 }), cfg.startDelayMs)
             }
           })
         })
+        void exit.then(() => {
+          exited = true
+          // The helper ended on its own (monitor unplugged): tell the app, as nativeCapture does.
+          if (!stopRequested && startedAt && onEnded) {
+            log.calls.push('ended')
+            onEnded({ reason: 'closed' })
+          }
+        })
+        if (cfg.endAfterMs) {
+          started.then(
+            () => setTimeout(() => !stopRequested && proc.stdin.end('q'), cfg.endAfterMs),
+            () => undefined
+          )
+        }
+        const result = () => ({ frames: 0, shapes: [{ at: startedAt + 300, shape: 'text' }, { at: startedAt + 1200, shape: 'pointer' }] })
         return {
           started,
           pause: () => void log.calls.push('pause'),
           resume: () => void log.calls.push('resume'),
           stop() {
             log.calls.push('stop')
-            return new Promise((resolve) => {
-              proc.on('exit', () =>
-                resolve({ frames: 0, shapes: [{ at: startedAt + 300, shape: 'text' }, { at: startedAt + 1200, shape: 'pointer' }] })
-              )
-              proc.stdin.end('q')
-            })
+            if (exited) return Promise.resolve(result())
+            stopRequested = true
+            proc.stdin.end('q')
+            return exit.then(result)
           },
           kill() {
             log.calls.push('kill')
+            stopRequested = true
             proc.kill('SIGKILL')
+          },
+          onEnded(cb) {
+            onEnded = cb
           }
         }
       }
     }
-  }, { fail })
+  }, { fail, startDelayMs, endAfterMs })
   return () => app.evaluate(() => globalThis.__fakeNative)
+}
+
+/** seams-2: the proxy is exactly as long as its video, so the editor shows no frozen frames at the end. */
+function assertNoFrozenTail(file, project) {
+  const info = r.probe(file)
+  const video = info.streams.find((s) => s.codec_type === 'video')
+  const container = Number(info.format.duration)
+  h.assert(Math.abs(container - Number(video.duration)) < 0.02, `container ${container} s = video ${video.duration} s`)
+  h.assert(Math.abs(project.duration - Number(video.duration)) < 0.02, `project duration ${project.duration} = video ${video.duration}`)
 }
 
 ;(async () => {
@@ -104,6 +135,7 @@ async function installFakeHelper(app, { fail = false } = {}) {
     h.assert(project.hasAudio && project.width === 1920 && project.height === 1080, 'audio and helper video size')
     const streams = r.probe(path.join(pdir, 'screen.mp4')).streams
     h.assert(streams.some((s) => s.codec_type === 'audio') && streams.some((s) => s.codec_type === 'video' && s.width === 1920), 'proxy muxes helper video and Chromium audio')
+    assertNoFrozenTail(path.join(pdir, 'screen.mp4'), project)
     const cursor = JSON.parse(fs.readFileSync(path.join(pdir, 'cursor.json'), 'utf8'))
     const shapes = cursor.shapes.map((s) => `${s.shape}@${s.t.toFixed(1)}`)
     h.assert(JSON.stringify(shapes) === JSON.stringify(['text@0.3', 'pointer@1.2']), `cursor shapes ${shapes}`)
@@ -127,5 +159,44 @@ async function installFakeHelper(app, { fail = false } = {}) {
     const project = h.readProject(home, h.listProjects(home)[0])
     h.assert(project.capture.method === 'chromium' && project.capture.cursorInVideo === true, `fell back: ${JSON.stringify(project.capture)}`)
     h.assert(project.hasAudio && project.duration > 1.5, 'the fallback recording has audio and content')
+  })
+  await h.run('native capture: a helper that ends on its own stops the recording, keeps it and says why (windows-1)', async (ctx) => {
+    const home = h.tempHome('rec-native-ended')
+    const { app, win, logs } = await h.launch({ home, args: r.FAKE_MEDIA })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    const fake = await installFakeHelper(app, { startDelayMs: 1500, endAfterMs: 2500 })
+    await r.waitForSources(win)
+    await (await win.$$('.record-panel select'))[0].selectOption({ index: 1 })
+    await win.evaluate(() => {
+      // What the processing overlay told the user.
+      window.__overlayNotices = ''
+      new MutationObserver(() => {
+        const n = document.querySelector('.overlay-notices')
+        if (n) window.__overlayNotices = n.textContent
+      }).observe(document.body, { childList: true, subtree: true, characterData: true })
+    })
+    await r.readyToRecord(win)
+    await win.click('button.record')
+    const tb = await r.toolbar(app)
+    // seams-5: the toolbar says the capture is starting while the helper gets ready.
+    await tb.waitForSelector('.countdown-starting', { timeout: 15000 })
+    await tb.waitForSelector('button.stop', { timeout: 20000 })
+    // perf-5: no CSS animation keeps the toolbar repainting every frame.
+    h.assert((await tb.evaluate(() => getComputedStyle(document.querySelector('.rec-dot')).animationName)) === 'none', 'recording dot is not animated by CSS')
+    const t0 = Date.now()
+    // No Stop click: the helper ends by itself after 2.5 s and the app stops the recording.
+    await win.waitForSelector('.editor canvas', { timeout: 120000 })
+    h.assert(Date.now() - t0 < 60000, 'stopped by itself')
+    const state = await fake()
+    h.assert(state.calls.includes('ended') && state.calls.includes('stop'), `helper ended, then the recording was stopped: ${state.calls}`)
+    const notice = await win.evaluate(() => window.__overlayNotices)
+    h.assert(/disconnected or turned off/.test(notice) && /kept/.test(notice), `the user is told why: "${notice}"`)
+
+    const [id] = h.listProjects(home)
+    const project = h.readProject(home, id)
+    h.assert(project.duration > 2 && project.duration < 6, `duration ${project.duration} is what the helper recorded`)
+    h.assert(project.hasAudio, 'the audio recorded until then was kept')
+    assertNoFrozenTail(path.join(h.projectsRoot(home), id, 'screen.mp4'), project)
   })
 })()

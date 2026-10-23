@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { TrackKind } from '../../shared/api/recording'
 import type { CursorShape } from '../../shared/types'
-import type { NativeCaptureSession, NativeStartInfo, NativeStopInfo } from '../nativeCapture'
+import type { NativeCaptureSession, NativeEndedInfo, NativeStartInfo, NativeStopInfo } from '../nativeCapture'
 import { RAW, type RecordingManifest } from '../projects'
 import { ChunkWriter } from './chunkWriter'
 import { stopNativeVideo } from './nativeVideo'
@@ -25,6 +25,9 @@ export class ActiveRecording {
   private writers = new Map<TrackKind, ChunkWriter>()
   private native: NativeCaptureSession | null = null
   private nativeStop: Promise<NativeStopInfo | null> | null = null
+  private nativeStarting: { abort: AbortController; done: Promise<unknown> } | null = null
+  /** The helper ended on its own before the recorder reported that recording began. */
+  nativeEnded: NativeEndedInfo | null = null
 
   constructor(
     readonly manifest: RecordingManifest,
@@ -50,6 +53,23 @@ export class ActiveRecording {
 
   async closeWriters(): Promise<void> {
     await Promise.all([...this.writers.values()].map((w) => w.close()))
+  }
+
+  /** Remembers a helper start in flight, so cancelling the recording can stop it. */
+  trackNativeStart(abort: AbortController, done: Promise<unknown>): void {
+    const entry = { abort, done }
+    this.nativeStarting = entry
+    void done.finally(() => {
+      if (this.nativeStarting === entry) this.nativeStarting = null
+    })
+  }
+
+  /** Stops a helper that is still starting and waits until it is gone (before its folder is removed). */
+  async cancelNativeStart(): Promise<void> {
+    const starting = this.nativeStarting
+    if (!starting) return
+    starting.abort.abort()
+    await starting.done.catch(() => undefined)
   }
 
   attachNative(session: NativeCaptureSession, info: NativeStartInfo): void {

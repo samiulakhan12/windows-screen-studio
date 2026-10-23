@@ -120,4 +120,64 @@ const readManifest = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'recordi
     await win.waitForSelector('.editor canvas', { timeout: 120000 })
     h.assert(h.readProject(home, h.listProjects(home)[0]).duration > 3, 'finished later with the full duration')
   })
+  await h.run('Finish later during "Optimising camera…" keeps the camera for later, never a project without it', async (ctx) => {
+    const home = h.tempHome('rec-later-cam')
+    const { app, win, logs } = await h.launch({ home, args: r.FAKE_MEDIA })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    // Convert at playback speed so the camera step lasts long enough to press the button.
+    await app.evaluate(() => {
+      const cp = process.mainModule.require('node:child_process')
+      globalThis.__realSpawn = cp.spawn
+      globalThis.__proxyRuns = []
+      cp.spawn = function (cmd, args, opts) {
+        if (Array.isArray(args) && args.includes('-progress')) {
+          globalThis.__proxyRuns.push(args[args.length - 1])
+          args = ['-re', ...args]
+        }
+        return globalThis.__realSpawn.call(this, cmd, args, opts)
+      }
+    })
+    await r.waitForSources(win)
+    await (await win.$$('.record-panel select'))[1].selectOption({ index: 1 })
+    const tb = await r.startRecording(app, win)
+    await h.sleep(3000)
+    await tb.click('button.stop')
+    await win.waitForSelector('.overlay p:has-text("Optimising camera")', { timeout: 60000 })
+    await win.click('.overlay button:has-text("Finish later")')
+    await win.waitForSelector('.notice', { timeout: 30000 })
+    h.assert((await win.textContent('.notice')).includes('Processing was stopped'), 'explains the recording waits for later')
+    await win.waitForSelector('.unfinished')
+    h.assert(h.listProjects(home).length === 0, 'no project without the camera')
+    const dir = path.join(h.projectsRoot(home), r.projectDirs(home)[0])
+    h.assert(r.fileSize(path.join(dir, 'webcam.webm')) > 0 && r.fileSize(path.join(dir, 'screen.webm')) > 0, 'raw screen and camera kept')
+    h.assert(readManifest(dir).status === 'interrupted', 'listed as interrupted')
+    await h.sleep(1500)
+    const runs = await app.evaluate(() => globalThis.__proxyRuns)
+    h.assert(runs.length === 2, `the conversion stopped for good (no further encode): ${runs}`)
+
+    await app.evaluate(() => {
+      process.mainModule.require('node:child_process').spawn = globalThis.__realSpawn
+    })
+    await win.click('.unfinished button:has-text("Recover")')
+    await win.waitForSelector('.editor canvas', { timeout: 120000 })
+    const project = h.readProject(home, h.listProjects(home)[0])
+    h.assert(project.hasWebcam === true, 'the recovered project has its camera')
+  })
+
+  await h.run('a crash while not recording is not blamed on the recorder (audit-A-3)', async (ctx) => {
+    const home = h.tempHome('rec-crash-idle')
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    const dialogs = await r.captureDialogs(app)
+    await win.waitForSelector('button.record')
+    await app.evaluate(({ BrowserWindow }) => {
+      const main = BrowserWindow.getAllWindows().find((w) => !w.webContents.isDestroyed() && w.webContents.getURL().endsWith('#/'))
+      main.webContents.forcefullyCrashRenderer()
+    })
+    await r.until(async () => (await dialogs()).length > 0, { what: 'crash message' })
+    const [message] = await dialogs()
+    h.assert(message === 'Screen Studio for Windows stopped unexpectedly and was reloaded.', `message: ${message}`)
+  })
 })()

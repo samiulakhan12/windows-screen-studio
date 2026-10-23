@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_REGION, regionToRect, sanitizeRegion, toolbarPosition } from '../src/main/recording/placement'
+import { regionToRect, sanitizeRegion, toolbarPosition } from '../src/main/recording/placement'
 import { parseInputHasAudio, parseInputSize, parseProgressFrame, summarizeFfmpegLog } from '../src/main/recording/proxyRunner'
 import { ChunkPipe } from '../src/shared/recording/chunkPipe'
 import { friendlyError, RecorderError, SOURCE_GONE, stripIpcPrefix } from '../src/shared/recording/errors'
 import { pickMime, screenBitrate, screenMimes } from '../src/shared/recording/mime'
-import { boxFromPoints, isUsable, moveBox, pixelSize, resizeBox, toNormRect } from '../src/shared/recording/regionGeometry'
+import { boxFromPoints, isUsable, isUsableRegion, MIN_SIZE, moveBox, pixelSize, resizeBox, toNormRect } from '../src/shared/recording/regionGeometry'
 
 describe('MediaRecorder format choice', () => {
   it('prefers H.264, then VP8, then VP9', () => {
@@ -116,11 +116,31 @@ describe('region overlay geometry', () => {
 })
 
 describe('region validation and toolbar placement', () => {
+  const fullHd = { width: 1920, height: 1080 }
+
   it('rejects malformed or tiny regions and clamps to the display', () => {
-    expect(sanitizeRegion(null)).toBeNull()
-    expect(sanitizeRegion({ x: 'a', y: 0, w: 1, h: 1 })).toBeNull()
-    expect(sanitizeRegion({ x: 0, y: 0, w: MIN_REGION / 2, h: 0.5 })).toBeNull()
-    expect(sanitizeRegion({ x: 0.5, y: -0.1, w: 0.8, h: 0.5 })).toEqual({ x: 0.5, y: 0, w: 0.5, h: 0.5 })
+    expect(sanitizeRegion(null, fullHd)).toBeNull()
+    expect(sanitizeRegion({ x: 'a', y: 0, w: 1, h: 1 }, fullHd)).toBeNull()
+    expect(sanitizeRegion({ x: 0, y: 0, w: 20 / 1920, h: 0.5 }, fullHd)).toBeNull()
+    expect(sanitizeRegion({ x: 0.5, y: -0.1, w: 0.8, h: 0.5 }, fullHd)).toEqual({ x: 0.5, y: 0, w: 0.5, h: 0.5 })
+  })
+
+  it('accepts exactly what the picker offers: one minimum-size rule (seams-6)', () => {
+    for (const display of [fullHd, { width: 3840, height: 2160 }, { width: 1366, height: 768 }]) {
+      const bounds = { w: display.width, h: display.height }
+      // The smallest box the overlay enables "Record this area" for…
+      const smallest = { x: display.width - MIN_SIZE, y: 10, w: MIN_SIZE, h: MIN_SIZE }
+      expect(isUsable(smallest)).toBe(true)
+      // …is accepted by the main process (it used to require 2% of the display).
+      expect(sanitizeRegion(toNormRect(smallest, bounds), display)).not.toBeNull()
+      expect(isUsableRegion(toNormRect(smallest, bounds), bounds)).toBe(true)
+      // A box the overlay refuses is refused by main too.
+      const tooSmall = { x: 0, y: 0, w: MIN_SIZE - 2, h: 200 }
+      expect(isUsable(tooSmall)).toBe(false)
+      expect(sanitizeRegion(toNormRect(tooSmall, bounds), display)).toBeNull()
+    }
+    // The case from the review: 35 x 200 DIP on a 1920-wide display.
+    expect(sanitizeRegion(toNormRect({ x: 100, y: 100, w: 35, h: 200 }, { w: 1920, h: 1080 }), fullHd)).not.toBeNull()
   })
 
   it('maps a region to DIP on its display', () => {

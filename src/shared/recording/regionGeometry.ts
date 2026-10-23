@@ -17,8 +17,19 @@ export type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 
 export const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
-/** Smallest selectable area side, in DIP. */
+/**
+ * Smallest area side, in DIP. The one rule for both sides: the picker only offers boxes
+ * this big (isUsable) and the main process accepts exactly those (isUsableRegion).
+ */
 export const MIN_SIZE = 32
+
+/** Rounding slack for a box that was normalised to the display and scaled back. */
+const ROUNDING_DIP = 0.5
+
+/** Whether a region normalised to a display of `bounds` (DIP) meets the minimum size. */
+export function isUsableRegion(region: NormRect, bounds: Size): boolean {
+  return region.w * bounds.w >= MIN_SIZE - ROUNDING_DIP && region.h * bounds.h >= MIN_SIZE - ROUNDING_DIP
+}
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v))
 

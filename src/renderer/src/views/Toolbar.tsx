@@ -61,10 +61,16 @@ export function Toolbar(): JSX.Element | null {
   if (status.state === 'countdown') {
     return (
       <div className="toolbar countdown">
-        <span className="countdown-number" key={status.elapsed}>
-          {status.elapsed}
-        </span>
-        <span className="muted">Recording starts…</span>
+        {status.starting ? (
+          <span className="countdown-starting">Starting…</span>
+        ) : (
+          <>
+            <span className="countdown-number" key={status.elapsed}>
+              {status.elapsed}
+            </span>
+            <span className="muted">Recording starts…</span>
+          </>
+        )}
         <button className="tb-btn cancel" title="Cancel" onClick={send('cancel')}>
           <Icon name="x" />
         </button>
@@ -90,12 +96,15 @@ export function Toolbar(): JSX.Element | null {
   }
 
   const paused = status.state === 'paused'
+  // Blinks once a second with the timer's own re-render: no CSS animation keeps the
+  // always-on-top window repainting at the display refresh rate while recording.
+  const dim = !paused && seconds % 2 === 1
   return (
     <div className="toolbar">
       <button className="tb-btn stop" title={stopHint} onClick={send('stop')}>
         <span className="stop-square" />
       </button>
-      <span className={`rec-dot ${paused ? 'paused' : ''}`} />
+      <span className={`rec-dot ${paused ? 'paused' : ''} ${dim ? 'dim' : ''}`} />
       <span className="tb-time">{formatTime(seconds, false)}</span>
       {status.stopShortcut === false && (
         <span className="tb-warn" title="Ctrl+Shift+2 is used by another app: stop with this button.">

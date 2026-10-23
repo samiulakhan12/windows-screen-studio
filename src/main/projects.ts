@@ -4,6 +4,7 @@ import path from 'node:path'
 import type { UnfinishedRecording } from '../shared/api/recording'
 import { migrateCursor, migrateProject } from '../shared/engine/project'
 import type { CursorTrack, NormRect, Project, ProjectSummary } from '../shared/types'
+import { writeFileAtomicSync } from './atomicWrite'
 
 export function projectsRoot(): string {
   return path.join(app.getPath('videos'), 'Screen Studio for Windows')
@@ -36,11 +37,19 @@ export async function createProjectDir(now = new Date()): Promise<{ id: string; 
   throw new Error('Could not create a folder for the recording')
 }
 
+/**
+ * Small JSON state files go through writeFileAtomicSync: a temporary file and a rename,
+ * retried while Windows reports a short-lived lock (antivirus, indexer, OneDrive or
+ * Explorer's preview holding the file). Being synchronous, two writes of the same file
+ * can never interleave.
+ */
+async function writeJsonAtomic(file: string, value: unknown): Promise<void> {
+  // At most ~150 ms of retries; the callers keep the state in memory and write it again later.
+  writeFileAtomicSync(file, JSON.stringify(value, null, 2), { attempts: 4 })
+}
+
 export async function writeProject(project: Project): Promise<void> {
-  const file = path.join(projectDir(project.id), 'project.json')
-  const tmp = `${file}.tmp`
-  await fs.writeFile(tmp, JSON.stringify(project, null, 2))
-  await fs.rename(tmp, file)
+  await writeJsonAtomic(path.join(projectDir(project.id), 'project.json'), project)
 }
 
 export async function readProject(id: string): Promise<Project> {
@@ -136,10 +145,7 @@ export interface RecordingManifest {
 }
 
 export async function writeManifest(m: RecordingManifest): Promise<void> {
-  const file = path.join(projectDir(m.id), MANIFEST)
-  const tmp = `${file}.tmp`
-  await fs.writeFile(tmp, JSON.stringify(m, null, 2))
-  await fs.rename(tmp, file)
+  await writeJsonAtomic(path.join(projectDir(m.id), MANIFEST), m)
 }
 
 export async function readManifest(id: string): Promise<RecordingManifest | null> {

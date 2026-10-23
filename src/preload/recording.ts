@@ -3,7 +3,7 @@ import type { ProcessingProgress, RecorderCommand, RecordingApi, ToolbarStatus }
 import { subscribe } from './ipc'
 
 export const recordingApi: RecordingApi = {
-  getSources: () => ipcRenderer.invoke('sources:list'),
+  getSources: (kinds) => ipcRenderer.invoke('sources:list', kinds),
   prepareCapture: (request) => ipcRenderer.invoke('recording:prepare', request),
   appendRecordingChunk: (token, kind, data) => ipcRenderer.invoke('recording:chunk', token, kind, data),
   startNativeVideo: (token) => ipcRenderer.invoke('recording:startNative', token),
@@ -20,6 +20,7 @@ export const recordingApi: RecordingApi = {
   finishProcessingLater: () => ipcRenderer.invoke('recordings:finishLater'),
   openPrivacySettings: (kind) => ipcRenderer.invoke('recording:privacySettings', kind),
   onRecorderCommand: (cb) => subscribe<RecorderCommand>('recorder:command', cb),
+  onRecorderWarning: (cb) => subscribe<string>('recorder:warning', cb),
   onRecordingStatus: (cb) => subscribe<ToolbarStatus>('recording:status', cb),
   onProcessing: (cb) => subscribe<ProcessingProgress>('processing', cb)
 }

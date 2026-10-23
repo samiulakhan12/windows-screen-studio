@@ -20,11 +20,26 @@ export class FfmpegError extends Error {
   }
 }
 
-const running = new Set<ChildProcess>()
+/** Error code of an encode stopped on purpose ("Finish later", quitting): never an encoder failure. */
+export const CANCELLED = 'CANCELLED'
 
-/** Stops every proxy encode (used when the user quits during processing). */
+export const cancelledError = (): FfmpegError => new FfmpegError('Processing was stopped', CANCELLED)
+
+/** True for an encode that was stopped on purpose (see CANCELLED). */
+export const isCancelled = (err: unknown): boolean => err instanceof FfmpegError && err.code === CANCELLED
+
+const running = new Set<ChildProcess>()
+/** Processes killed on purpose: their exit is reported as CANCELLED, not as a failure. */
+const stopped = new WeakSet<ChildProcess>()
+
+function stopProcess(proc: ChildProcess): void {
+  stopped.add(proc)
+  proc.kill('SIGKILL')
+}
+
+/** Stops every proxy encode (used when the app quits during processing). */
 export function killAllFfmpeg(): void {
-  for (const proc of running) proc.kill('SIGKILL')
+  for (const proc of running) stopProcess(proc)
   running.clear()
 }
 
@@ -62,9 +77,17 @@ export function summarizeFfmpegLog(log: string): string {
   return last.replace(/^\[[^\]]+\]\s*/, '').slice(0, 200)
 }
 
-/** Runs ffmpeg with `-progress pipe:1` in `args`, reporting the number of video frames written. */
-export function runFfmpegProgress(args: string[], onFrames?: (frames: number) => void): Promise<FfmpegRun> {
+/**
+ * Runs ffmpeg with `-progress pipe:1` in `args`, reporting the number of video frames written.
+ * Aborting `signal` (or killAllFfmpeg) kills the process and rejects with CANCELLED; an
+ * already aborted signal rejects at once without starting ffmpeg.
+ */
+export function runFfmpegProgress(args: string[], onFrames?: (frames: number) => void, signal?: AbortSignal): Promise<FfmpegRun> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(cancelledError())
+      return
+    }
     let proc: ChildProcess
     try {
       proc = spawn(ffmpegPath(), args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -73,6 +96,8 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
       return
     }
     running.add(proc)
+    const onAbort = (): void => stopProcess(proc)
+    signal?.addEventListener('abort', onAbort, { once: true })
     let log = ''
     let pending = ''
     let frames: number | null = null
@@ -94,16 +119,22 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
     })
     proc.on('error', (err: NodeJS.ErrnoException) => {
       running.delete(proc)
-      reject(new FfmpegError(err.message, err.code ?? null))
+      signal?.removeEventListener('abort', onAbort)
+      reject(stopped.has(proc) ? cancelledError() : new FfmpegError(err.message, err.code ?? null))
     })
-    proc.on('close', (code, signal) => {
+    proc.on('close', (code, exitSignal) => {
       running.delete(proc)
+      signal?.removeEventListener('abort', onAbort)
       if (code === 0) {
         resolve({ frames, inputSize: parseInputSize(log), inputHasAudio: parseInputHasAudio(log) })
         return
       }
-      console.error(`ffmpeg ${args.join(' ')}\nexited with ${signal ?? code}\n${log}`)
-      reject(new FfmpegError(signal ? `stopped (${signal})` : summarizeFfmpegLog(log) || `exit code ${code}`, null))
+      if (stopped.has(proc)) {
+        reject(cancelledError())
+        return
+      }
+      console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${log}`)
+      reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(log) || `exit code ${code}`, null))
     })
   })
 }

@@ -4,13 +4,14 @@ import { formatTime } from '../../../shared/engine/project'
 import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
-import { cameras, listInputDevices, microphones, onDevicesChanged } from '../recorder/devices'
-import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE } from '../../../shared/recording/errors'
+import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChanged, type InputDevices } from '../recorder/devices'
+import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
 import '../recorder/recorder.css'
 
 const PREFS_KEY = 'recorder-prefs'
 
 type Mode = 'screen' | 'window' | 'region'
+type SourceKind = CaptureSource['kind']
 
 interface Prefs {
   micId: string | null
@@ -66,6 +67,15 @@ function formatBytes(n: number): string {
 /** Notices from a recording that went straight to the editor, shown when Home is next opened. */
 let carriedNotices: string[] = []
 
+/**
+ * Capture sources from the last listing, kept across visits to Home so returning from
+ * the editor shows them at once; each kind is refreshed in the background, and only
+ * the kind the current tab needs is listed (thumbnails cost the main process time).
+ */
+let sourceCache: CaptureSource[] = []
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
 function RegionIcon(): JSX.Element {
   return (
     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="icon">
@@ -84,10 +94,36 @@ function KeyboardIcon(): JSX.Element {
   )
 }
 
+/** Whether the page is visible (the window is hidden while recording, minimised, …). */
+function usePageVisible(): boolean {
+  const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
+  useEffect(() => {
+    const update = (): void => setVisible(document.visibilityState !== 'hidden')
+    document.addEventListener('visibilitychange', update)
+    return () => document.removeEventListener('visibilitychange', update)
+  }, [])
+  return visible
+}
+
+/** A device problem with a button to the Windows privacy setting that fixes it. */
+function DeviceProblem({ problem, isWindows }: { problem: RecorderError; isWindows: boolean }): JSX.Element {
+  return (
+    <span className="device-warning device-problem" role="status">
+      {problem.message}
+      {problem.privacy && isWindows && (
+        <button type="button" className="link-btn" onClick={() => void window.api.openPrivacySettings(problem.privacy!)}>
+          Open privacy settings
+        </button>
+      )}
+    </span>
+  )
+}
+
 export function Home({ onOpenProject }: { onOpenProject: (id: string) => void }): JSX.Element {
-  const [sources, setSources] = useState<CaptureSource[]>([])
+  const [sources, setSources] = useState<CaptureSource[]>(sourceCache)
   const [selected, setSelected] = useState<string | null>(null)
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [inputs, setInputs] = useState<InputDevices>({ devices: [], blocked: { microphone: null, camera: null } })
+  const [micProblem, setMicProblem] = useState<RecorderError | null>(null)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [unfinished, setUnfinished] = useState<UnfinishedRecording[]>([])
@@ -101,17 +137,21 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   })
   // A ref, not state: a double click delivers both clicks before React re-renders.
   const running = useRef(false)
+  const meterBar = useRef<HTMLDivElement>(null)
+  const pageVisible = usePageVisible()
   const tab = prefs.mode
+  const sourceKind: SourceKind = tab === 'window' ? 'window' : 'screen'
 
-  const refreshSources = useCallback(async () => {
+  const refreshSources = useCallback(async (kind: SourceKind) => {
     try {
-      let list = await window.api.getSources()
+      let list = await window.api.getSources([kind])
       // There is always at least one screen; an empty list is a capturer hiccup.
-      for (let i = 0; i < 2 && !list.some((s) => s.kind === 'screen'); i++) {
-        await new Promise((r) => setTimeout(r, 700))
-        list = await window.api.getSources()
+      for (let i = 0; i < 2 && kind === 'screen' && list.length === 0; i++) {
+        await sleep(700)
+        list = await window.api.getSources([kind])
       }
-      setSources(list)
+      sourceCache = [...sourceCache.filter((s) => s.kind !== kind), ...list]
+      setSources(sourceCache)
     } catch (err) {
       setError(toErrorState(err))
     }
@@ -125,24 +165,38 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
 
   const refreshDevices = useCallback(async () => {
     try {
-      setDevices(await listInputDevices())
+      setInputs(await listInputDevices())
     } catch (err) {
       console.warn('Could not list media devices:', err)
     }
   }, [])
 
   useEffect(() => {
-    void refreshSources()
     void refreshLibrary()
     // Enumerate once and on plug/unplug: never open the camera or mic just to list them.
     void refreshDevices()
     const offDevices = onDevicesChanged(() => void refreshDevices())
-    const offProgress = window.api.onProcessing(setBusy)
+    const offProgress = window.api.onProcessing((p) => {
+      if (!p.done) {
+        setBusy(p)
+        return
+      }
+      // The end of a run this Home did not start (it was reloaded meanwhile).
+      if (!running.current) {
+        setBusy(null)
+        void refreshLibrary()
+      }
+    })
     return () => {
       offDevices()
       offProgress()
     }
-  }, [refreshSources, refreshLibrary, refreshDevices])
+  }, [refreshLibrary, refreshDevices])
+
+  // Lists the kind of source the current tab shows (again on every visit, in the background).
+  useEffect(() => {
+    void refreshSources(sourceKind)
+  }, [refreshSources, sourceKind])
 
   useEffect(() => {
     try {
@@ -153,6 +207,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   }, [prefs])
 
   const update = (patch: Partial<Prefs>): void => setPrefs((p) => ({ ...p, ...patch }))
+  const { devices, blocked } = inputs
   const mics = microphones(devices)
   const cams = cameras(devices)
   const listed = devices.length > 0
@@ -160,12 +215,21 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const camMissing = listed && !!prefs.cameraId && !cams.some((c) => c.deviceId === prefs.cameraId)
   const isWindows = window.api.platform === 'win32'
 
-  const visible = sources.filter((s) => s.kind === (tab === 'window' ? 'window' : 'screen'))
+  const visible = sources.filter((s) => s.kind === sourceKind)
   // Screens default to the first one; windows must be picked explicitly.
   const current = visible.some((s) => s.id === selected) ? selected : tab !== 'window' ? (visible[0]?.id ?? null) : null
   const region = tab === 'region' && current ? (prefs.regions[current] ?? null) : null
   const idle = phase === null && !busy
   const canStart = idle && !!current && (tab !== 'region' || !!region)
+
+  // Live level of the selected microphone, only while Home is idle and on screen.
+  const meteredMic = idle && pageVisible && listed && !micMissing ? prefs.micId : null
+  useEffect(() => {
+    setMicProblem(null)
+    const bar = meterBar.current
+    if (!meteredMic || !bar) return
+    return meterMicrophone(meteredMic, bar, setMicProblem)
+  }, [meteredMic])
 
   const pickRegion = async (sourceId: string): Promise<void> => {
     if (running.current) return
@@ -176,7 +240,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       if (picked) setPrefs((p) => ({ ...p, regions: { ...p.regions, [sourceId]: picked } }))
     } catch (err) {
       setError(toErrorState(err))
-      void refreshSources()
+      void refreshSources('screen')
     }
   }
 
@@ -186,8 +250,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     setError(null)
     setNotices([])
     const warnings: string[] = []
-    if (micMissing) warnings.push('The selected microphone is not connected, so the recording has no microphone.')
-    if (camMissing) warnings.push('The selected camera is not connected, so the recording has no camera.')
+    const warn = (w: string): void => {
+      warnings.push(w)
+      // Shown on the processing overlay too, e.g. why a recording stopped by itself.
+      setNotices([...new Set(warnings)])
+    }
+    if (micMissing) warn('The selected microphone is not connected, so the recording has no microphone.')
+    if (camMissing) warn('The selected camera is not connected, so the recording has no camera.')
     let opened = false
     try {
       const id = await runRecording(
@@ -199,7 +268,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           cameraId: camMissing ? null : prefs.cameraId,
           captureKeys: prefs.captureKeys
         },
-        { onPhase: setPhase, onWarning: (w) => warnings.push(w) }
+        { onPhase: setPhase, onWarning: warn }
       )
       if (id) {
         opened = true
@@ -210,7 +279,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       const state = toErrorState(err)
       if (state.message === PROCESSING_DEFERRED) warnings.push(state.message)
       else setError(state)
-      if (state.message === SOURCE_GONE || /no longer available/.test(state.message)) void refreshSources()
+      if (state.message === SOURCE_GONE || /no longer available/.test(state.message)) void refreshSources(sourceKind)
     } finally {
       running.current = false
       if (!opened) {
@@ -226,6 +295,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     if (running.current) return
     running.current = true
     setError(null)
+    setNotices([])
     setBusy({ message: 'Recovering recording…', progress: null })
     try {
       onOpenProject(await window.api.recoverRecording(item.id))
@@ -252,6 +322,10 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   }
 
   const overlay = busy ?? (phase === 'saving' ? { message: 'Saving recording…', progress: null } : null)
+  // With a microphone selected the live meter tells whether it can be opened; without
+  // one, say why the list may only show unnamed devices.
+  const micHint = prefs.micId ? (micMissing ? null : micProblem) : blocked.microphone
+  const camBlocked = camMissing ? null : blocked.camera
 
   return (
     <div className="app">
@@ -276,7 +350,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 <RegionIcon /> Area
               </button>
             </div>
-            <button className="btn ghost" onClick={() => void refreshSources()} title="Refresh">
+            <button className="btn ghost" onClick={() => void refreshSources(sourceKind)} title="Refresh">
               <Icon name="refresh" size={16} />
             </button>
           </div>
@@ -290,7 +364,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 className={`source ${current === s.id ? 'selected' : ''}`}
                 onClick={() => (tab === 'region' ? void pickRegion(s.id) : setSelected(s.id))}
               >
-                <img src={s.thumbnail} alt="" />
+                {s.thumbnail ? <img src={s.thumbnail} alt="" /> : <span className="source-placeholder" aria-hidden="true" />}
                 <span>{s.name}</span>
               </button>
             ))}
@@ -308,7 +382,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             </div>
           )}
           {tab === 'window' && (
-            <p className="hint">Window recordings keep the system cursor; auto zoom and the smooth cursor work best with full screens.</p>
+            <p className="hint window-hint">
+              Window recordings keep the Windows cursor in the video and have no auto zoom, click highlights or smooth cursor.{' '}
+              <button type="button" className="link-btn" onClick={() => setTab('region')}>
+                Record an area instead
+              </button>{' '}
+              to get them.
+            </p>
           )}
         </section>
 
@@ -326,7 +406,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 </option>
               ))}
             </select>
+            {prefs.micId && !micMissing && (
+              <div className={`mic-meter ${micProblem ? 'unavailable' : ''}`} title="Microphone level" aria-hidden="true">
+                <div className="mic-meter-fill" ref={meterBar} />
+              </div>
+            )}
             {micMissing && <span className="device-warning">Your microphone is disconnected.</span>}
+            {micHint && <DeviceProblem problem={micHint} isWindows={isWindows} />}
           </label>
           <label className="field">
             <span>
@@ -341,6 +427,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               ))}
             </select>
             {camMissing && <span className="device-warning">Your camera is disconnected.</span>}
+            {camBlocked && <DeviceProblem problem={camBlocked} isWindows={isWindows} />}
           </label>
           <label className={`toggle ${!isWindows ? 'disabled' : ''}`}>
             <span>
@@ -453,6 +540,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </div>
               <span className="muted">{Math.round(overlay.progress * 100)}%</span>
             </>
+          )}
+          {notices.length > 0 && (
+            <div className="overlay-notices">
+              {notices.map((n) => (
+                <span key={n}>{n}</span>
+              ))}
+            </div>
           )}
           {busy && (
             <button className="btn" onClick={() => void window.api.finishProcessingLater()} title="Keep the recording and convert it later from Unfinished recordings">

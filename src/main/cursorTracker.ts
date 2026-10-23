@@ -73,8 +73,11 @@ export interface TrackerOptions {
  * (buildCursorTrack), so the same data can be rebuilt after a crash.
  */
 export class CursorTracker {
-  /** `loadHookModule` is injectable so tests can drive the tracker with synthetic input. */
-  constructor(private readonly loadHookModule: () => HookModule | null = loadHook) {}
+  /** `loadHookModule` and `pollCursor` are injectable so tests can drive the tracker with synthetic input. */
+  constructor(
+    private readonly loadHookModule: () => HookModule | null = loadHook,
+    private readonly pollCursor: boolean = POLL_CURSOR
+  ) {}
 
   private opts: TrackerOptions | null = null
   private timer: NodeJS.Timeout | null = null
@@ -84,6 +87,9 @@ export class CursorTracker {
   private moves: { tick: number; x: number; y: number }[] = []
   private clicks: { tick: number; x: number; y: number; button: ClickEvent['button'] }[] = []
   private keys: { tick: number; label: string }[] = []
+  private keyFilter: KeystrokeFilter | null = null
+  /** Time of the last poll that found the cursor where the last stored sample is. */
+  private stillSince: number | null = null
   private hookStarted = false
 
   get active(): boolean {
@@ -99,18 +105,39 @@ export class CursorTracker {
     this.moves = []
     this.clicks = []
     this.keys = []
+    this.keyFilter = null
+    this.stillSince = null
     if (opts.display) {
       const p = screen.getCursorScreenPoint()
       this.samples.push({ at: Date.now(), x: p.x, y: p.y })
-      if (POLL_CURSOR) {
-        this.timer = setInterval(() => {
-          if (this.paused) return
-          const c = screen.getCursorScreenPoint()
-          this.samples.push({ at: Date.now(), x: c.x, y: c.y })
-        }, 1000 / 60)
-      }
+      if (this.pollCursor) this.timer = setInterval(() => this.poll(), 1000 / 60)
     }
     if (opts.display || opts.captureKeys) this.startHook(opts)
+  }
+
+  /**
+   * Stores a position only when the cursor moved: a still cursor adds nothing, so long
+   * idle stretches cost no memory and the track stays small. When it moves again, the
+   * last poll that still saw the old position is stored first, so interpolation between
+   * the samples is exactly what polling every frame would have given.
+   */
+  private poll(at = Date.now()): void {
+    if (this.paused) return
+    const c = screen.getCursorScreenPoint()
+    const last = this.samples[this.samples.length - 1]
+    if (last && last.x === c.x && last.y === c.y) {
+      this.stillSince = at
+      return
+    }
+    this.flushStill()
+    this.samples.push({ at, x: c.x, y: c.y })
+  }
+
+  /** Stores the end of a still period (the last poll that saw the cursor unmoved). */
+  private flushStill(): void {
+    const last = this.samples[this.samples.length - 1]
+    if (last && this.stillSince !== null && this.stillSince > last.at) this.samples.push({ at: this.stillSince, x: last.x, y: last.y })
+    this.stillSince = null
   }
 
   private startHook(opts: TrackerOptions): void {
@@ -128,7 +155,7 @@ export class CursorTracker {
         if (opts.isOwnPoint(p)) return
         this.clicks.push({ tick, x: p.x, y: p.y, button: BUTTONS[e.button as number] ?? 'left' })
       })
-      if (!POLL_CURSOR) {
+      if (!this.pollCursor) {
         uIOhook.on('mousemove', (e) => {
           const tick = observe(e.time)
           const p = hookPointToDip(e)
@@ -141,9 +168,10 @@ export class CursorTracker {
     }
     if (opts.captureKeys) {
       const filter = new KeystrokeFilter(new Set(opts.ignoreKeys))
+      this.keyFilter = filter
       uIOhook.on('keydown', (e) => {
         const tick = observe(e.time)
-        const label = filter.keydown(e)
+        const label = filter.keydown(e, tick)
         if (label) this.keys.push({ tick, label })
       })
       uIOhook.on('keyup', (e) => {
@@ -162,7 +190,11 @@ export class CursorTracker {
 
   /** Pauses cursor polling (hook events are filtered by time later). */
   setPaused(paused: boolean): void {
+    // A still period ends at the pause, as it did when every poll was stored.
+    if (paused) this.flushStill()
     this.paused = paused
+    // Keyups can be missed while paused (the user may lock the PC); start clean.
+    this.keyFilter?.reset()
   }
 
   /** Stops tracking and discards what was captured. */
@@ -191,6 +223,7 @@ export class CursorTracker {
   /** Stops tracking and returns everything captured (epoch ms, DIP coordinates). */
   collect(): RawTrack {
     this.halt()
+    this.flushStill()
     const display = this.opts?.display ?? null
     const at = (tick: number): number => this.clock.toEpoch(tick)
     const track: RawTrack = {

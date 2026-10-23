@@ -3,13 +3,16 @@ import type { NormRect } from '../../shared/types'
 import { getMainWindow, loadRoute, preloadPath } from '../windows'
 import { sanitizeRegion } from './placement'
 
-let open: Promise<NormRect | null> | null = null
+/** The picked area, or none: cancelled, or (`rejected`) a selection that failed validation. */
+export type RegionPick = { region: NormRect } | { region: null; rejected: boolean }
+
+let open: Promise<RegionPick> | null = null
 
 /**
  * Shows a transparent full-screen overlay on `display` where the user drags the
- * area to record. Resolves with the area normalised to the display, or null.
+ * area to record. Resolves with the area normalised to the display.
  */
-export function pickRegionOnDisplay(display: Display): Promise<NormRect | null> {
+export function pickRegionOnDisplay(display: Display): Promise<RegionPick> {
   if (open) return open
   const main = getMainWindow()
   const restoreMain = !!main && main.isVisible()
@@ -41,9 +44,9 @@ export function pickRegionOnDisplay(display: Display): Promise<NormRect | null> 
     win.focus()
   })
 
-  open = new Promise<NormRect | null>((resolve) => {
+  open = new Promise<RegionPick>((resolve) => {
     let done = false
-    const finish = (region: NormRect | null): void => {
+    const finish = (pick: RegionPick): void => {
       if (done) return
       done = true
       open = null
@@ -53,14 +56,21 @@ export function pickRegionOnDisplay(display: Display): Promise<NormRect | null> 
         main.show()
         main.focus()
       }
-      resolve(region)
+      resolve(pick)
     }
     const onDone = (e: IpcMainEvent, value: unknown): void => {
-      if (e.sender === win.webContents) finish(sanitizeRegion(value))
+      if (e.sender !== win.webContents) return
+      if (value === null || value === undefined) {
+        finish({ region: null, rejected: false })
+        return
+      }
+      // Same minimum-size rule as the picker (shared/recording/regionGeometry).
+      const region = sanitizeRegion(value, display.bounds)
+      finish(region ? { region } : { region: null, rejected: true })
     }
     ipcMain.on('region:done', onDone)
-    win.on('closed', () => finish(null))
-    win.webContents.on('render-process-gone', () => finish(null))
+    win.on('closed', () => finish({ region: null, rejected: false }))
+    win.webContents.on('render-process-gone', () => finish({ region: null, rejected: false }))
   })
   return open
 }

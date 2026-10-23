@@ -1,4 +1,10 @@
-import type { NativeCaptureOptions, NativeCaptureSession, NativeStartInfo, NativeStopInfo } from '../nativeCapture'
+import {
+  nativeCaptureTimeouts,
+  type NativeCaptureOptions,
+  type NativeCaptureSession,
+  type NativeStartInfo,
+  type NativeStopInfo
+} from '../nativeCapture'
 
 /** The native capture contract (src/main/nativeCapture.ts), injectable for tests. */
 export interface NativeCaptureApi {
@@ -8,16 +14,36 @@ export interface NativeCaptureApi {
 
 export type NativeStart = { ok: true; session: NativeCaptureSession; info: NativeStartInfo } | { ok: false; message: string }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+/**
+ * Outer guards, only against a broken helper client: the helper session enforces the
+ * real budgets itself (nativeCaptureTimeouts), so these never cut a legitimate but
+ * slow start short (monitor lookup, encoder setup and the first frame can take ~20 s).
+ */
+const MARGIN_MS = 2000
+export const defaultStartTimeoutMs = (): number => nativeCaptureTimeouts.start + MARGIN_MS
+export const defaultProbeTimeoutMs = (): number => nativeCaptureTimeouts.probe + MARGIN_MS
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string, signal?: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms)
+    const onAbort = (): void => {
+      clearTimeout(timer)
+      reject(new Error('The recording was cancelled'))
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      reject(new Error(message))
+    }, ms)
+    if (signal?.aborted) return onAbort()
+    signal?.addEventListener('abort', onAbort, { once: true })
     promise.then(
       (v) => {
         clearTimeout(timer)
+        signal?.removeEventListener('abort', onAbort)
         resolve(v)
       },
       (err) => {
         clearTimeout(timer)
+        signal?.removeEventListener('abort', onAbort)
         reject(err)
       }
     )
@@ -25,7 +51,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 /** False on any error or hang, so callers simply fall back to Chromium capture. */
-export async function nativeAvailable(api: NativeCaptureApi, timeoutMs = 5000): Promise<boolean> {
+export async function nativeAvailable(api: NativeCaptureApi, timeoutMs = defaultProbeTimeoutMs()): Promise<boolean> {
   try {
     return await withTimeout(api.isNativeCaptureAvailable(), timeoutMs, 'timed out')
   } catch (err) {
@@ -34,14 +60,23 @@ export async function nativeAvailable(api: NativeCaptureApi, timeoutMs = 5000): 
   }
 }
 
-/** Starts the helper and waits for its first frame. Failures are returned, never thrown. */
-export async function startNativeVideo(api: NativeCaptureApi, options: NativeCaptureOptions, timeoutMs = 8000): Promise<NativeStart> {
+/**
+ * Starts the helper and waits for its first frame. Failures are returned, never thrown.
+ * Aborting `signal` (the recording was cancelled meanwhile) kills the helper at once.
+ */
+export async function startNativeVideo(
+  api: NativeCaptureApi,
+  options: NativeCaptureOptions,
+  timeoutMs = defaultStartTimeoutMs(),
+  signal?: AbortSignal
+): Promise<NativeStart> {
   let session: NativeCaptureSession | null = null
   try {
+    if (signal?.aborted) throw new Error('The recording was cancelled')
     session = api.startNativeCapture(options)
     // A late rejection after a timeout must not become an unhandled rejection.
     session.started.catch(() => undefined)
-    const info = await withTimeout(session.started, timeoutMs, 'The capture helper did not start in time')
+    const info = await withTimeout(session.started, timeoutMs, 'The capture helper did not start in time', signal)
     if (!(info.width > 0 && info.height > 0 && Number.isFinite(info.startedAt))) {
       throw new Error('The capture helper reported an invalid video')
     }

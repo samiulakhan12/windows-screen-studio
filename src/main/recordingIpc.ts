@@ -9,15 +9,18 @@ import {
   session,
   shell,
   type Display,
+  type NativeImage,
   type Point,
   type Streams
 } from 'electron'
+import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type {
   CapturePlan,
   NativeStartResult,
   ProcessingProgress,
   RecorderCommand,
+  RecorderStatusUpdate,
   RecordingRequest,
   RecordingStartInfo,
   RegionSelection,
@@ -25,16 +28,18 @@ import type {
   ToolbarStatus,
   TrackKind
 } from '../shared/api/recording'
+import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
-import type { CaptureSource, NormRect, RecordingStatus } from '../shared/types'
+import type { CaptureSource, NormRect } from '../shared/types'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
 import * as nativeModule from './nativeCapture'
+import type { NativeEndedInfo } from './nativeCapture'
 import * as projects from './projects'
 import { EmptyRecordingError, processRecording, RecordingError } from './recording/finalize'
-import { nativeAvailable, startNativeVideo, type NativeCaptureApi } from './recording/nativeVideo'
+import { defaultStartTimeoutMs, nativeAvailable, startNativeVideo, type NativeCaptureApi } from './recording/nativeVideo'
 import { pointInRect, regionToRect, sanitizeRegion } from './recording/placement'
-import { killAllFfmpeg } from './recording/proxyRunner'
+import { isCancelled, killAllFfmpeg } from './recording/proxyRunner'
 import { pickRegionOnDisplay } from './recording/regionWindow'
 import { ActiveRecording } from './recording/session'
 import {
@@ -47,12 +52,15 @@ import {
   toolbarAreas
 } from './recording/toolbarWindow'
 import { buildCursorTrack } from './recording/trackMath'
+import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recording/userMessages'
 import { getMainWindow, loadRoute } from './windows'
 
 const STOP_SHORTCUT = 'CommandOrControl+Shift+2'
 /** How the stop shortcut appears as a keystroke label (never recorded). */
 const STOP_SHORTCUT_LABEL = 'Ctrl + Shift + 2'
 const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio']
+/** Source thumbnails on Home: small JPEGs (cheap to encode and to send over IPC). */
+const THUMBNAIL = { width: 384, height: 216, quality: 75 }
 
 const tracker = new CursorTracker()
 let active: ActiveRecording | null = null
@@ -66,6 +74,8 @@ let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
 const processing = new Set<string>()
 /** Recordings whose processing the user postponed ("Finish later"). */
 const deferred = new Set<string>()
+/** Stops the processing of each recording in `processing`. */
+const processingAborts = new Map<string, AbortController>()
 const sourceInfo = new Map<string, { name: string; displayId?: string }>()
 let allowClose = false
 
@@ -96,9 +106,11 @@ function displayById(id: string | undefined): Display | null {
   return found ?? (all.length === 1 ? all[0] : null)
 }
 
+const kindOf = (sourceId: string): CaptureSource['kind'] => (sourceId.startsWith('screen:') ? 'screen' : 'window')
+
 /** Checks the source still exists right before capturing (a window may have closed). */
 async function resolveSource(sourceId: string): Promise<{ name: string; display: Display | null; kind: 'screen' | 'window' }> {
-  const kind = sourceId.startsWith('screen:') ? 'screen' : 'window'
+  const kind = kindOf(sourceId)
   const find = async (): Promise<Electron.DesktopCapturerSource | undefined> =>
     (await desktopCapturer.getSources({ types: [kind], thumbnailSize: { width: 0, height: 0 }, fetchWindowIcons: false })).find(
       (s) => s.id === sourceId
@@ -182,6 +194,8 @@ async function discard(s: ActiveRecording): Promise<void> {
   grant = null
   tracker.stop()
   s.killNative()
+  // A helper still starting would otherwise keep writing into the folder removed below.
+  await s.cancelNativeStart()
   await s.closeWriters().catch(() => undefined)
   await projects.deleteProject(s.id).catch((err) => console.warn('Could not remove the discarded recording:', err))
 }
@@ -216,11 +230,26 @@ function forwardCommand(command: RecorderCommand): void {
   if (s && s.phase !== 'processing') void interrupt(s).finally(endRecordingUi)
 }
 
-function friendlyMessage(err: unknown): string {
-  if (err instanceof RecordingError) return err.message
-  const e = err as NodeJS.ErrnoException
-  if (e?.code === 'ENOSPC') return 'Your disk is full.'
-  return e?.message || String(err)
+/**
+ * The native helper ended by itself (recorded monitor unplugged or switched off, GPU
+ * reset, crash). Stop the whole recording there, keep everything captured until then,
+ * and tell the user why, instead of recording audio and camera over a frozen screen.
+ */
+function onNativeEnded(s: ActiveRecording, info: NativeEndedInfo): void {
+  console.warn(`Native capture ended on its own (${info.reason})`, info.error ?? '')
+  if (active !== s) return
+  if (s.phase === 'countdown') {
+    // The recorder has not reported its start yet: started() stops it right after.
+    s.nativeEnded = info
+    return
+  }
+  if (s.phase === 'recording' || s.phase === 'paused') stopAfterNativeEnd(s, info)
+}
+
+function stopAfterNativeEnd(s: ActiveRecording, info: NativeEndedInfo): void {
+  beginStop(s)
+  mainContents()?.send('recorder:warning', nativeEndedMessage(info))
+  forwardCommand('stop')
 }
 
 function setupDisplayMedia(): void {
@@ -253,14 +282,20 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   if (active) throw new RecordingError('A recording is already in progress.')
   if (processing.size > 0) throw new RecordingError('Please wait until the previous recording has finished processing.')
   const source = await resolveSource(request.sourceId)
-  const region = source.kind === 'screen' ? sanitizeRegion(request.region) : null
-  if (request.region && !region) throw new RecordingError('The selected area is too small. Select a larger area.')
-  if (region && !source.display) throw new RecordingError('Could not find the display for the selected area.')
+  // Areas apply to screens only (the Area tab picks screens).
+  let region: NormRect | null = null
+  if (request.region && source.kind === 'screen') {
+    if (!source.display) throw new RecordingError('Could not find the display for the selected area.')
+    region = sanitizeRegion(request.region, source.display.bounds)
+    if (!region) throw new RecordingError(`The selected area is too small (at least ${MIN_SIZE} × ${MIN_SIZE}). Select a larger area.`)
+  }
   const native = source.kind === 'screen' && !!source.display && (await nativeAvailable(nativeCapture()))
   // Warm the encoder probe while recording so processing can start at once.
   void detectH264Encoders()
 
-  const { id, dir } = await projects.createProjectDir()
+  const { id, dir } = await projects.createProjectDir().catch((err: unknown) => {
+    throw new RecordingError(friendlyMessage(err, projects.projectsRoot()))
+  })
   const manifest: projects.RecordingManifest = {
     version: 1,
     id,
@@ -284,7 +319,7 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
     await projects.writeManifest(manifest)
   } catch (err) {
     await projects.deleteProject(id).catch(() => undefined)
-    throw err
+    throw new RecordingError(friendlyMessage(err, projects.projectsRoot()))
   }
   const s = new ActiveRecording(manifest, dir)
   active = s
@@ -297,15 +332,30 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   return { token: s.token, method: manifest.method, stopShortcut }
 }
 
+/** Removes what a helper that failed to start left behind (its partial video and encoder checks). */
+async function removeNativeLeftovers(dir: string): Promise<void> {
+  const names = await fs.readdir(dir).catch(() => [] as string[])
+  for (const name of names) {
+    if (name !== projects.RAW.native && !name.startsWith(`${projects.RAW.native}.`)) continue
+    // The killed helper may hold the file for a moment longer on Windows: rm retries EBUSY/EPERM.
+    await fs.rm(path.join(dir, name), { force: true, maxRetries: 5, retryDelay: 200 }).catch((err) => console.warn('Could not remove', name, err))
+  }
+}
+
 async function startNative(token: string): Promise<NativeStartResult> {
   const s = requireSession(token)
   if (s.manifest.method !== 'native' || !activeDisplay) return { ok: false, message: 'Native capture is not used for this recording.' }
   startTracker()
-  const result = await startNativeVideo(nativeCapture(), {
-    displayId: String(activeDisplay.id),
-    output: path.join(s.dir, projects.RAW.native),
-    fps: 60
-  })
+  const abort = new AbortController()
+  const starting = startNativeVideo(
+    nativeCapture(),
+    { displayId: String(activeDisplay.id), output: path.join(s.dir, projects.RAW.native), fps: 60 },
+    // The helper's own start budget (monitor lookup, encoder setup, first frame) plus a margin.
+    defaultStartTimeoutMs(),
+    abort.signal
+  )
+  s.trackNativeStart(abort, starting)
+  const result = await starting
   if (active !== s) {
     // Cancelled while the helper was starting.
     if (result.ok) result.session.kill()
@@ -315,10 +365,14 @@ async function startNative(token: string): Promise<NativeStartResult> {
     console.warn('Native capture failed, falling back to Chromium capture:', result.message)
     tracker.stop()
     s.manifest.method = 'chromium'
-    await projects.writeManifest(s.manifest)
+    void removeNativeLeftovers(s.dir)
+    // The in-memory manifest is what counts; started() writes it again.
+    await projects.writeManifest(s.manifest).catch((err) => console.error('Could not save the recording state:', err))
     return { ok: false, message: result.message }
   }
   s.attachNative(result.session, result.info)
+  // Optional in the contract: fakes may not report it.
+  result.session.onEnded?.((info) => onNativeEnded(s, info))
   return { ok: true, startedAt: result.info.startedAt, width: result.info.width, height: result.info.height }
 }
 
@@ -339,13 +393,16 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker()
-  await projects.writeManifest(m)
+  // A failed write must not end a recording that is already running: the manifest in
+  // memory is authoritative and is written again on stop.
+  await projects.writeManifest(m).catch((err) => console.error('Could not save the recording state:', err))
+  if (s.nativeEnded && active === s) stopAfterNativeEnd(s, s.nativeEnded)
 }
 
-function setStatus(token: string, status: RecordingStatus): void {
+function setStatus(token: string, status: RecorderStatusUpdate): void {
   const s = active
   if (!s || s.token !== token) return
-  lastStatus = { state: status.state, elapsed: status.elapsed, stopShortcut }
+  lastStatus = { state: status.state, elapsed: status.elapsed, stopShortcut, ...(status.starting ? { starting: true } : {}) }
   switch (status.state) {
     case 'countdown':
     case 'recording': {
@@ -379,22 +436,24 @@ function setStatus(token: string, status: RecordingStatus): void {
 /**
  * Builds the project from a stopped recording's raw files. On any failure the raw
  * files stay as an unfinished recording (retryable from Home); only a recording with
- * nothing in it is removed.
+ * nothing in it is removed. "Finish later" aborts it, keeping the raw files.
  */
 async function runProcessing(m: projects.RecordingManifest, explainWhere: boolean): Promise<string> {
   processing.add(m.id)
+  const abort = new AbortController()
+  processingAborts.set(m.id, abort)
   try {
     m.status = 'processing'
     m.error = null
-    await projects.writeManifest(m)
-    return (await processRecording(m, sendProgress)).id
+    await projects.writeManifest(m).catch((err) => console.error('Could not save the recording state:', err))
+    return (await processRecording(m, sendProgress, abort.signal)).id
   } catch (err) {
-    if (deferred.has(m.id)) {
+    if (deferred.has(m.id) || isCancelled(err)) {
       m.status = 'interrupted'
       await projects.writeManifest(m).catch(() => undefined)
       throw new Error(PROCESSING_DEFERRED)
     }
-    const message = friendlyMessage(err)
+    const message = friendlyMessage(err, projects.projectDir(m.id))
     console.error('Processing the recording failed:', err)
     if (err instanceof EmptyRecordingError) {
       await projects.deleteProject(m.id).catch(() => undefined)
@@ -408,6 +467,9 @@ async function runProcessing(m: projects.RecordingManifest, explainWhere: boolea
   } finally {
     processing.delete(m.id)
     deferred.delete(m.id)
+    processingAborts.delete(m.id)
+    // Lets a Home that lost track of this run (it was reloaded) clear its progress.
+    sendProgress({ message: '', progress: null, done: true })
   }
 }
 
@@ -418,13 +480,22 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
   grant = null
   const m = s.manifest
   try {
-    await s.closeWriters()
+    try {
+      await s.closeWriters()
+    } catch (err) {
+      throw new RecordingError(friendlyMessage(err, s.dir))
+    }
     if (m.method === 'chromium' && Number.isFinite(payload.startedAt) && payload.startedAt > 0) m.startedAt = payload.startedAt
     const measured = m.method === 'native' ? s.activeSeconds() : payload.duration
     m.duration = measured > 0 ? measured : s.activeSeconds()
     m.webcamOffset = Number.isFinite(payload.webcamOffset) ? payload.webcamOffset : 0
     m.audioOffset = Number.isFinite(payload.audioOffset) ? payload.audioOffset : 0
-    await writeTrack(s, m.duration)
+    try {
+      await writeTrack(s, m.duration)
+    } catch (err) {
+      // The video matters more than the cursor data: carry on without it.
+      console.error('Could not save the cursor track:', err)
+    }
     return await runProcessing(m, true)
   } finally {
     // The input hook only ever runs while recording.
@@ -451,8 +522,12 @@ async function pickRegion(sourceId: string): Promise<RegionSelection | null> {
   const source = await resolveSource(sourceId)
   if (source.kind !== 'screen' || !source.display) throw new RecordingError('Areas can only be selected on a screen.')
   const display = source.display
-  const region: NormRect | null = await pickRegionOnDisplay(display)
-  if (!region) return null
+  const pick = await pickRegionOnDisplay(display)
+  if (!pick.region) {
+    if (pick.rejected) throw new RecordingError(`The selected area is too small (at least ${MIN_SIZE} × ${MIN_SIZE}). Select a larger area.`)
+    return null
+  }
+  const { region } = pick
   const { width, height } = display.bounds
   return {
     region,
@@ -461,24 +536,36 @@ async function pickRegion(sourceId: string): Promise<RegionSelection | null> {
   }
 }
 
+function thumbnailUrl(image: NativeImage): string {
+  if (image.isEmpty()) return ''
+  return `data:image/jpeg;base64,${image.toJPEG(THUMBNAIL.quality).toString('base64')}`
+}
+
+/** The source kinds a renderer asked for (both when unspecified or malformed). */
+function requestedKinds(value: unknown): CaptureSource['kind'][] {
+  const kinds = Array.isArray(value) ? value.filter((k): k is CaptureSource['kind'] => k === 'screen' || k === 'window') : []
+  return kinds.length > 0 ? [...new Set(kinds)] : ['screen', 'window']
+}
+
 export function registerRecordingIpc(): void {
   setupDisplayMedia()
 
-  ipcMain.handle('sources:list', async (): Promise<CaptureSource[]> => {
+  ipcMain.handle('sources:list', async (_e, kinds?: unknown): Promise<CaptureSource[]> => {
+    const types = requestedKinds(kinds)
     const own = new Set(liveWindows().map((w) => w.getMediaSourceId()))
     const sources = await desktopCapturer.getSources({
-      types: ['screen', 'window'],
-      thumbnailSize: { width: 480, height: 270 },
+      types,
+      thumbnailSize: { width: THUMBNAIL.width, height: THUMBNAIL.height },
       fetchWindowIcons: false
     })
-    sourceInfo.clear()
+    for (const id of [...sourceInfo.keys()]) if (types.includes(kindOf(id))) sourceInfo.delete(id)
     return sources
       .filter((s) => !own.has(s.id) && s.name !== 'Screen Studio for Windows')
       .map((s) => {
-        const kind = s.id.startsWith('screen:') ? 'screen' : 'window'
+        const kind = kindOf(s.id)
         const displayId = kind === 'screen' ? s.display_id || undefined : undefined
         sourceInfo.set(s.id, { name: s.name, displayId })
-        return { id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL(), kind, displayId }
+        return { id: s.id, name: s.name, thumbnail: thumbnailUrl(s.thumbnail), kind, displayId }
       })
   })
 
@@ -489,12 +576,12 @@ export function registerRecordingIpc(): void {
     try {
       await s.write(kind, data)
     } catch (err) {
-      throw new Error(friendlyMessage(err))
+      throw new Error(friendlyMessage(err, s.dir))
     }
   })
   ipcMain.handle('recording:startNative', (_e, token: string) => startNative(token))
   ipcMain.handle('recording:started', (_e, token: string, info: RecordingStartInfo) => started(token, info))
-  ipcMain.handle('recording:status', (_e, token: string, status: RecordingStatus) => setStatus(token, status))
+  ipcMain.handle('recording:status', (_e, token: string, status: RecorderStatusUpdate) => setStatus(token, status))
   ipcMain.handle('recording:command', (_e, command: RecorderCommand) => forwardCommand(command))
   ipcMain.handle('recording:getStatus', (): ToolbarStatus => lastStatus)
   ipcMain.handle('recording:save', (_e, token: string, payload: SaveRecordingPayload) => save(token, payload))
@@ -503,9 +590,12 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('recordings:unfinished', () => projects.listUnfinished(new Set([...processing, ...(active ? [active.id] : [])])))
   ipcMain.handle('recordings:recover', (_e, id: string) => recover(id))
   ipcMain.handle('recordings:finishLater', () => {
-    // The raw files stay; the recording is listed as unfinished.
-    for (const id of processing) deferred.add(id)
-    killAllFfmpeg()
+    // Stops the conversion for good (never a fallback to another encoder); the raw
+    // files stay and the recording is listed as unfinished.
+    for (const id of processing) {
+      deferred.add(id)
+      processingAborts.get(id)?.abort()
+    }
   })
   ipcMain.handle('recording:privacySettings', async (_e, kind: 'microphone' | 'camera') => {
     if (process.platform === 'win32') await shell.openExternal(`ms-settings:privacy-${kind === 'camera' ? 'webcam' : 'microphone'}`)
@@ -517,23 +607,20 @@ export function attachRecorderWindow(win: BrowserWindow): void {
   win.webContents.on('render-process-gone', (_e, details) => {
     void (async () => {
       const s = active
-      if (s && s.phase !== 'processing') {
-        if (s.manifest.startedAt === null) await discard(s)
-        else await interrupt(s)
+      const recording = !!s && s.phase !== 'processing'
+      const kept = recording && s.manifest.startedAt !== null
+      if (s && recording) {
+        if (kept) await interrupt(s)
+        else await discard(s)
       }
       grant = null
       endRecordingUi()
       if (win.isDestroyed()) return
       loadRoute(win, '/')
       if (details.reason === 'clean-exit') return
-      await dialog.showMessageBox(win, {
-        type: 'warning',
-        title: 'Screen Studio for Windows',
-        message: 'The recorder stopped unexpectedly.',
-        detail: s
-          ? 'What was recorded until then has been kept. Recover it from “Unfinished recordings” on the home screen.'
-          : 'Please try again.'
-      })
+      // Only a crash during a recording is the recorder's; otherwise say what really happened.
+      const { message, detail } = rendererGoneDialog({ recording, kept, processing: !recording && processing.size > 0 })
+      await dialog.showMessageBox(win, { type: 'warning', title: 'Screen Studio for Windows', message, detail })
     })()
   })
 

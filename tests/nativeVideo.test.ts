@@ -11,7 +11,8 @@ import { ffmpegPath } from '../src/main/ffmpeg'
 import type { NativeCaptureSession, NativeStartInfo, NativeStopInfo } from '../src/main/nativeCapture'
 import * as projects from '../src/main/projects'
 import { processRecording, RecordingError } from '../src/main/recording/finalize'
-import { nativeAvailable, startNativeVideo, stopNativeVideo, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
+import { nativeCaptureTimeouts } from '../src/main/nativeCapture'
+import { defaultStartTimeoutMs, nativeAvailable, startNativeVideo, stopNativeVideo, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
 import { ActiveRecording } from '../src/main/recording/session'
 import { buildCursorTrack } from '../src/main/recording/trackMath'
 
@@ -69,6 +70,36 @@ describe('startNativeVideo', () => {
       throw new Error('helper missing')
     }
     expect(await startNativeVideo(fakeApi(throwing), opts)).toEqual({ ok: false, message: 'helper missing' })
+  })
+})
+
+describe('native start budget (seams-5 / windows-5)', () => {
+  it('never gives up before the helper start budget runs out', () => {
+    expect(defaultStartTimeoutMs()).toBeGreaterThan(nativeCaptureTimeouts.start)
+  })
+
+  it('waits for a slow but legitimate start (9 s) instead of falling back', async () => {
+    vi.useFakeTimers()
+    try {
+      const { session, calls } = fakeSession({
+        started: new Promise((resolve) => setTimeout(() => resolve({ startedAt: T0, width: 320, height: 240 }), 9000))
+      })
+      const result = startNativeVideo(fakeApi(session), opts)
+      await vi.advanceTimersByTimeAsync(9000)
+      expect((await result).ok).toBe(true)
+      expect(calls).not.toContain('kill')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops a helper that is still starting when the recording is cancelled', async () => {
+    const { session, calls } = fakeSession({ started: new Promise(() => undefined) })
+    const abort = new AbortController()
+    const result = startNativeVideo(fakeApi(session), opts, undefined, abort.signal)
+    abort.abort()
+    expect(await result).toEqual({ ok: false, message: 'The recording was cancelled' })
+    expect(calls).toContain('kill')
   })
 })
 
@@ -194,8 +225,11 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     const video = streams.find((s) => s.codec_type === 'video')!
     const audio = streams.find((s) => s.codec_type === 'audio')!
     expect([video.width, video.height]).toEqual([160, 120])
-    // 0.5 s of leading silence + 1 s tone.
+    // 0.5 s of leading silence + 1 s tone, padded to the video: no track outlasts the video (seams-2).
     expect(Number(audio.duration)).toBeGreaterThan(1.4)
+    expect(Number(audio.duration)).toBeLessThanOrEqual(Number(video.duration) + 0.001)
+    expect(project.duration).toBeCloseTo(Number(video.duration), 3)
+    expect(existsSync(path.join(dir, 'screen.video.mp4'))).toBe(false)
 
     const cursor = JSON.parse(readFileSync(path.join(dir, 'cursor.json'), 'utf8'))
     expect(cursor.shapes).toEqual([{ t: 0.7, shape: 'pointer' }])
