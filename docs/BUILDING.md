@@ -84,12 +84,12 @@ Sizes measured on the same code (Linux cross-build, NSIS `compression: maximum`)
 | | Before (`electron-builder.yml`) | After | Change |
 | --- | --- | --- | --- |
 | Installer | 133.7 MB | 113.3 MB | -20.4 MB (-15 %) |
-| Installed | 470.6 MB | 420.0 MB | -50.6 MB (-11 %) |
+| Installed (`dist/win-unpacked`) | 470.6 MB | 420.0 MB | -50.6 MB (-11 %) |
 | `app.asar` | 934 KB (with `src/`, `tests/`, `docs/`...) | 375 KB | |
 | Chromium locales | 50.6 MB (55 files) | 0.6 MB (en-US) | |
 
 "After" includes the 424 KB native helper. Most of what is left is Electron itself (the exe alone is
-247 MB) and ffmpeg.exe (79 MB, the full GPL "essentials" build).
+247 MB) and ffmpeg.exe (83 MB, the full GPL "essentials" build).
 
 ### Cross-building from Linux or macOS
 

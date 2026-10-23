@@ -26,7 +26,7 @@ const fail = (msg) => {
   console.error(`verify-dist: FAIL ${msg}`)
   failures.push(msg)
 }
-const mb = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`
+const mb = (bytes) => `${(bytes / 1e6).toFixed(1)} MB` // decimal MB, as in docs/BUILDING.md
 
 function dirSize(dir) {
   let total = 0

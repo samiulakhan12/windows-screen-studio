@@ -42,7 +42,7 @@ function ensureFfmpeg() {
   }
   const pkg = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'))
   const release = pkg['ffmpeg-static']?.['binary-release-tag'] ?? 'unknown'
-  const min = 20 * 1024 * 1024 // the gyan.dev essentials build is ~80 MB
+  const min = 20 * 1024 * 1024 // the gyan.dev essentials build is ~83 MB
   let check = checkWindowsExe(exe, { minBytes: min })
   if (!check.ok) {
     if (check.reason !== 'missing') {
@@ -70,7 +70,7 @@ function ensureFfmpeg() {
   const readme = path.join(dir, 'ffmpeg.exe.README')
   const version = existsSync(readme) ? /^Version:\s*(\S+)/m.exec(readFileSync(readme, 'utf8'))?.[1] : null
   if (!existsSync(path.join(dir, 'ffmpeg.exe.LICENSE'))) warn('ffmpeg.exe.LICENSE is missing; the GPL requires shipping it with ffmpeg.exe.')
-  log(`ffmpeg.exe OK (${(check.size / 1048576).toFixed(1)} MB, x64${version ? `, ${version}` : ''})`)
+  log(`ffmpeg.exe OK (${(check.size / 1e6).toFixed(1)} MB, x64${version ? `, ${version}` : ''})`)
 }
 
 // 2. Native capture helper ------------------------------------------------------------------
