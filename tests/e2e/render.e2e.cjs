@@ -134,6 +134,8 @@ async function main() {
       seconds: 4,
       style,
       annotations,
+      // Cursor shapes come from native capture, which leaves the OS cursor out of the video.
+      capture: { method: 'native', cursorInVideo: false, region: null },
       cursorSettings: { show: true, size: 1.4, smoothing: 0.5, clickEffect: true, hideWhenIdle: false },
       effects: { motionBlur: 0, keystrokes: { show: true, position: 'bottom', size: 0.035 } },
       cursor: { samples: still(0.75, 0.6), clicks: [{ t: 1.8, x: 0.75, y: 0.6, button: 'left' }], keys, shapes, scale: 1.5, valid: true }
@@ -148,6 +150,18 @@ async function main() {
       cursorSettings: { show: false, size: 1.4, smoothing: 0.5, clickEffect: true, hideWhenIdle: true },
       cursor: { samples: still(0.5, 0.5), clicks: [{ t: 1, x: 0.5, y: 0.5, button: 'left' }], keys: [], shapes: [], scale: 1, valid: true }
     })
+    // The OS cursor is in the video (Chromium capture): even with the smooth cursor
+    // switched on, no second cursor is drawn, and ripples still are.
+    fx.seedProject(home, {
+      id: 'rec-os-cursor',
+      name: 'OS cursor',
+      media,
+      seconds: 2,
+      style,
+      capture: { method: 'chromium', cursorInVideo: true, region: null },
+      cursorSettings: { show: true, size: 1.4, smoothing: 0.5, clickEffect: true, hideWhenIdle: true },
+      cursor: { samples: still(0.5, 0.5), clicks: [{ t: 1, x: 0.5, y: 0.5, button: 'left' }], keys: [], shapes: [], scale: 1, valid: true }
+    })
     const { app, win, logs } = await h.launch({ home, env: process.env.SSW_EXPORT_VIDEO_ENCODER ? { SSW_EXPORT_VIDEO_ENCODER: process.env.SSW_EXPORT_VIDEO_ENCODER } : {} })
     ctx.app = app
     ctx.logs = logs
@@ -155,6 +169,8 @@ async function main() {
     const ripples = path.join(home, 'ripples.mp4')
     await exportMp4(app, win, 'Overlays', overlays)
     await exportMp4(app, win, 'Ripples', ripples)
+    const osCursor = path.join(home, 'os-cursor.mp4')
+    await exportMp4(app, win, 'OS cursor', osCursor)
 
     const at = (t) => Math.round(t * FPS)
     const times = [0.05, 0.7, 1.2, 1.9, 2.2, 2.8, 3.2, 3.7]
@@ -191,6 +207,12 @@ async function main() {
     const after = census(R.frames[1], R.width, R.height, ring, 60, 150)
     console.log(`  ripple pixels before/after click: ${before.bright}/${after.bright}`)
     h.assert(before.bright === 0 && after.bright > 200, 'click ripple drawn although the smooth cursor is off (F03)')
+    const O = fx.framesAt(osCursor, [at(0.9), at(1.1)])
+    const osBefore = census(O.frames[0], O.width, O.height, ring, 60, 150)
+    const osAfter = census(O.frames[1], O.width, O.height, ring, 60, 150)
+    console.log(`  OS cursor in video: cursor pixels ${osBefore.bright + osBefore.dark}, ripple pixels ${osAfter.bright}`)
+    h.assert(osBefore.bright === 0 && osBefore.dark === 0, 'no synthetic cursor over a video with the OS cursor in it')
+    h.assert(osAfter.bright > 200, 'click ripple drawn over a video with the OS cursor in it')
 
     if (SHOTS) {
       for (const t of [0.7, 1.2, 1.9, 2.2, 3.2, 3.7]) fx.savePng(overlays, at(t), path.join(SHOTS, `overlays-${t}s.png`))

@@ -228,6 +228,10 @@ async function main() {
       await win.waitForSelector('.modal .export-status:has-text("Rendering")', { timeout: 60000 })
       await h.sleep(1500)
       await shot(win, 'export-running')
+      // Escape never cancels a running export; only the Cancel button does.
+      await win.keyboard.press('Escape')
+      await h.sleep(300)
+      h.assert(await win.isVisible('.modal .export-status'), 'Escape leaves a running export alone')
       await win.click('.modal button:has-text("Cancel export")')
       await win.waitForSelector('.modal button.primary:has-text("Export MP4")', { timeout: 30000 })
       await h.sleep(500)
@@ -292,11 +296,19 @@ async function main() {
     ctx.app = app
     ctx.logs = logs
     await fx.openProject(win, 'Copy me')
+    // Keyboard: the dialog opens with Export focused, and Escape closes it.
+    await fx.openExportDialog(win)
+    const focused = await win.evaluate(() => document.activeElement?.textContent?.trim())
+    h.assert(focused === 'Export MP4', `Export is focused (got ${JSON.stringify(focused)})`)
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('.modal', { state: 'detached', timeout: 5000 })
     const out = path.join(home, 'My clip #1.mp4')
     await exportTo(app, win, out, { res: '720p' })
     await shot(win, 'export-done')
     await win.click('.modal button:has-text("Copy")')
     await win.waitForSelector('.modal button:has-text("Copied")', { timeout: 10000 })
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('.modal', { state: 'detached', timeout: 5000 })
     h.assert(fs.readFileSync(`${record}.args`, 'utf8').trim() === '-selection clipboard -t text/uri-list -i', 'xclip arguments')
     const uri = fs.readFileSync(`${record}.data`, 'utf8')
     h.assert(uri === `file://${encodeURI(out).replace('#', '%23')}\r\n`, `uri-list payload: ${JSON.stringify(uri)}`)

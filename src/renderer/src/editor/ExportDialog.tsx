@@ -111,6 +111,9 @@ export function ExportDialog(props: Props): JSX.Element {
   const [copy, setCopy] = useState<CopyState>({ kind: 'idle' })
   const [showDetail, setShowDetail] = useState(false)
   const abort = useRef<AbortController | null>(null)
+  const primary = useRef<HTMLButtonElement>(null)
+  const onClose = useRef(props.onClose)
+  onClose.current = props.onClose
   const gif = settings.format === 'gif'
   const resolution = gif ? (Math.min(settings.resolution, GIF_MAX_HEIGHT) as ExportSettings['resolution']) : settings.resolution
   const dims = exportDimensions(props.project, settings)
@@ -138,6 +141,28 @@ export function ExportDialog(props: Props): JSX.Element {
 
   // Leaving the dialog (or the editor) stops a running export.
   useEffect(() => () => abort.current?.abort(), [])
+
+  const running = phase.kind === 'running'
+
+  // Keyboard users start on the main action of each step (Export, Done, Back).
+  useEffect(() => {
+    primary.current?.focus()
+  }, [phase.kind])
+
+  // Escape closes the dialog like its Close button, which only exists while no export
+  // runs (Cancel export is a deliberate click). Captured first so the editor behind
+  // the dialog never sees the key.
+  useEffect(() => {
+    if (running) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      e.preventDefault()
+      e.stopPropagation()
+      onClose.current()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [running])
 
   const set = (patch: Partial<ExportSettings>): void => {
     const next = { ...settings, ...patch }
@@ -208,7 +233,6 @@ export function ExportDialog(props: Props): JSX.Element {
         ? 'Checking for a GPU encoder…'
         : 'No GPU encoder found; Auto uses the software encoder (x264).'
 
-  const running = phase.kind === 'running'
   return (
     <div className="overlay modal-backdrop">
       <div className="modal export-modal" role="dialog" aria-modal="true" aria-label="Export">
@@ -299,7 +323,7 @@ export function ExportDialog(props: Props): JSX.Element {
               <button className="btn" onClick={props.onClose}>
                 Cancel
               </button>
-              <button className="btn primary" onClick={() => void start()}>
+              <button ref={primary} className="btn primary" onClick={() => void start()}>
                 <Icon name="download" size={16} /> Export {settings.format.toUpperCase()}
               </button>
             </footer>
@@ -325,7 +349,7 @@ export function ExportDialog(props: Props): JSX.Element {
               <button className="btn" onClick={() => void window.api.showItemInFolder(phase.path)}>
                 <Icon name="folder" size={16} /> Show in folder
               </button>
-              <button className="btn primary" onClick={props.onClose}>
+              <button ref={primary} className="btn primary" onClick={props.onClose}>
                 Done
               </button>
             </footer>
@@ -344,7 +368,7 @@ export function ExportDialog(props: Props): JSX.Element {
               </>
             )}
             <footer className="modal-foot">
-              <button className="btn" onClick={() => setPhase({ kind: 'settings' })}>
+              <button ref={primary} className="btn" onClick={() => setPhase({ kind: 'settings' })}>
                 Back
               </button>
             </footer>

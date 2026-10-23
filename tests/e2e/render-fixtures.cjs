@@ -14,12 +14,13 @@ const MEDIA_CACHE = path.join(os.tmpdir(), 'ssw-e2e-render-media')
 const BITS = 12
 
 /**
- * 60 fps CFR H.264 (like the app's proxies) whose top quarter encodes the frame
- * index. With `beeps`, a 1 kHz tone plays for 100 ms at the start of every second.
+ * 60 fps CFR H.264 encoded like the app's proxies (B-frames, 15-frame GOP,
+ * faststart) whose top quarter encodes the frame index. With `beeps`, a 1 kHz
+ * tone plays for 100 ms at the start of every second.
  */
 function indexedVideo({ seconds, width = 1280, height = 720, fps = 60, beeps = false }) {
   fs.mkdirSync(MEDIA_CACHE, { recursive: true })
-  const file = path.join(MEDIA_CACHE, `idx-${seconds}s-${width}x${height}-${fps}${beeps ? '-beep' : ''}.mp4`)
+  const file = path.join(MEDIA_CACHE, `idx2-${seconds}s-${width}x${height}-${fps}${beeps ? '-beep' : ''}.mp4`)
   if (fs.existsSync(file)) return file
   const bw = Math.floor(width / BITS)
   const bh = Math.floor(height / 4)
@@ -38,7 +39,7 @@ function indexedVideo({ seconds, width = 1280, height = 720, fps = 60, beeps = f
       '-t', String(seconds),
       '-vf', vf,
       ...(beeps ? ['-af', "volume='if(lt(mod(t,1),0.1),1,0)':eval=frame"] : []),
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-g', '15', '-pix_fmt', 'yuv420p',
       ...(beeps ? ['-c:a', 'aac', '-b:a', '128k'] : []),
       '-movflags', '+faststart',
       tmp
@@ -192,7 +193,7 @@ function seedProject(home, opts) {
     hasWebcam: false,
     hasAudio: !!opts.audio,
     webcamOffset: 0,
-    capture: { method: 'chromium', cursorInVideo: true, region: null },
+    capture: opts.capture || { method: 'chromium', cursorInVideo: true, region: null },
     clips: opts.clips || [{ id: 'c0', start: 0, end: seconds, speed: 1 }],
     zooms: opts.zooms || [],
     autoZoom: false,

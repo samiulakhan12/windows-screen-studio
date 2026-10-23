@@ -135,7 +135,9 @@ export function drawFrame(
         ctx.stroke()
       }
     }
-    if (project.cursor.show && cursor.samples.length > 0) {
+    // With the OS cursor baked into the video (Chromium capture), a synthetic cursor
+    // and idle-hiding would only draw a second, lagging cursor next to it.
+    if (project.cursor.show && !project.capture?.cursorInVideo && cursor.samples.length > 0) {
       const opacity = project.cursor.hideWhenIdle ? cursorOpacity(cursor.samples, t) : 1
       if (opacity > 0.01) {
         const pos = scene.cursorPath.at(t)

@@ -1,6 +1,6 @@
 import { planFeed, type FeedPlan } from '../../../shared/render/feedPlan'
 import { demuxVideoTrack, type VideoTrackInfo } from '../../../shared/render/mp4'
-import { seekToFrame } from '../editor/media'
+import { seekedFrame, seekToFrame } from '../editor/media'
 import type { FrameImage } from './compositor'
 
 /**
@@ -263,11 +263,20 @@ export class DecoderFrameSource implements FrameSource {
 
 /* ---------- <video> element fallback ---------- */
 
-/** Seeks a <video> element to each target; the next seek starts as soon as a frame is consumed. */
+/**
+ * Seeks a <video> element to each target; the next seek starts as soon as a frame
+ * is consumed. Each frame is taken as a VideoFrame whose timestamp proves it is the
+ * seeked one (see seekedFrame); without VideoFrame support the element is drawn.
+ */
+const MAX_MISSES = 3
+
 export class ElementFrameSource implements FrameSource {
   readonly kind = 'element'
   private pending: { i: number; done: Promise<void> } | null = null
   private target = 0
+  private frame: VideoFrame | null = null
+  /** Consecutive frames whose timestamp never matched; at MAX_MISSES the file's timestamps are not trusted. */
+  private misses = 0
 
   constructor(
     private readonly video: HTMLVideoElement,
@@ -287,15 +296,33 @@ export class ElementFrameSource implements FrameSource {
     await this.pending.done
     const v = this.video
     if (v.readyState < 2 || v.videoWidth === 0) return null
+    this.releaseFrame()
+    const checking = this.misses < MAX_MISSES
+    const seeked = await seekedFrame(v, this.times[i], undefined, checking ? 100 : 0)
+    if (seeked) {
+      if (checking) {
+        this.misses = seeked.verified ? 0 : this.misses + 1
+        if (this.misses === MAX_MISSES) console.warn('Frame timestamps do not match the seeks (offset or short video); drawing frames unchecked')
+      }
+      this.frame = seeked.frame
+      return { image: seeked.frame, width: seeked.frame.displayWidth, height: seeked.frame.displayHeight }
+    }
     return { image: v, width: v.videoWidth, height: v.videoHeight }
   }
 
+  private releaseFrame(): void {
+    this.frame?.close()
+    this.frame = null
+  }
+
   next(): void {
+    this.releaseFrame()
     const i = this.target + 1
     if (i < this.times.length) this.pending = this.seek(i)
   }
 
   close(): void {
+    this.releaseFrame()
     this.pending = null
   }
 }
