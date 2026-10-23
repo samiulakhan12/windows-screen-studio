@@ -194,14 +194,16 @@ export function dragZoomTimes(
   bounds: { lower: number; upper: number }
 ): { start: number; end: number } {
   let { start, end } = initial
+  // A segment already shorter than the minimum may grow but not shrink further.
+  const short = end - start < MIN_ZOOM_LENGTH
   if (mode === 'move') {
     const len = end - start
     start = clamp(start + dt, bounds.lower, Math.max(bounds.lower, bounds.upper - len))
     end = start + len
   } else if (mode === 'start') {
-    start = clamp(start + dt, bounds.lower, end - MIN_ZOOM_LENGTH)
+    start = clamp(start + dt, Math.min(bounds.lower, start), short ? start : end - MIN_ZOOM_LENGTH)
   } else {
-    end = clamp(end + dt, start + MIN_ZOOM_LENGTH, bounds.upper)
+    end = clamp(end + dt, short ? end : start + MIN_ZOOM_LENGTH, Math.max(bounds.upper, end))
   }
   return { start, end }
 }

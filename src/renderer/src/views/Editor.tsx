@@ -157,9 +157,25 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const [notice, setNotice] = useState<string | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
 
+  // The background image always follows the project state, including undo/redo.
+  // `backgroundVersion` reloads it when a newly picked file reuses the same name.
+  const [backgroundVersion, setBackgroundVersion] = useState(0)
+  const backgroundPath = project.style.background.type === 'image' ? project.style.background.path : null
   useEffect(() => {
-    if (data.backgroundUrl) void loadImage(data.backgroundUrl).then(setBackground).catch(() => undefined)
-  }, [data])
+    if (!backgroundPath) {
+      setBackground(null)
+      return
+    }
+    let cancelled = false
+    window.api
+      .backgroundUrl(store.state.id, backgroundPath)
+      .then((url) => (url ? loadImage(url) : null))
+      .then((img) => !cancelled && setBackground(img))
+      .catch(() => !cancelled && setBackground(null))
+    return () => {
+      cancelled = true
+    }
+  }, [store, backgroundPath, backgroundVersion])
 
   /* ---------- scene + preview ---------- */
 
@@ -301,8 +317,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const onBackgroundImage = useCallback(async () => {
     const picked = await window.api.pickBackgroundImage(store.state.id)
     if (!picked) return
-    setBackground(await loadImage(picked.url))
     store.update((p) => ({ ...p, style: { ...p.style, background: { type: 'image', path: picked.path } } }))
+    setBackgroundVersion((v) => v + 1)
   }, [store])
 
   const exitPick = useCallback(() => setPickFocus(false), [])

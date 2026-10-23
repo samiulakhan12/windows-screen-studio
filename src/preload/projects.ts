@@ -14,5 +14,6 @@ export const projectsApi: ProjectsApi = {
   },
   deleteProject: (id) => ipcRenderer.invoke('projects:delete', id),
   revealProject: (id) => ipcRenderer.invoke('projects:reveal', id),
-  pickBackgroundImage: (id) => ipcRenderer.invoke('projects:pickBackground', id)
+  pickBackgroundImage: (id) => ipcRenderer.invoke('projects:pickBackground', id),
+  backgroundUrl: (id, path) => ipcRenderer.invoke('projects:backgroundUrl', id, path)
 }

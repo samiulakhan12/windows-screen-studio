@@ -20,4 +20,6 @@ export interface ProjectsApi {
   deleteProject(id: string): Promise<void>
   revealProject(id: string): Promise<void>
   pickBackgroundImage(projectId: string): Promise<{ url: string; path: string } | null>
+  /** URL of a background image stored in the project folder, or null if it is missing. */
+  backgroundUrl(projectId: string, path: string): Promise<string | null>
 }

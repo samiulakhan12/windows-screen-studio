@@ -72,10 +72,21 @@ export function restoreRange(clips: Clip[], start: number, end: number, duration
   return [...before, { id: newClipId(), start: a, end: b, speed: 1 }, ...after]
 }
 
-/** Applies `speed` to the source range [start, end), splitting clips at its ends. */
+/**
+ * Applies `speed` to the source range [start, end), splitting clips at its ends.
+ * Range ends closer than MIN_CLIP to a clip edge snap to that edge, since a split
+ * there would leave a sliver (and splitAt refuses it).
+ */
 export function setRangeSpeed(clips: Clip[], start: number, end: number, speed: number): Clip[] {
-  const a = Math.min(start, end)
-  const b = Math.max(start, end)
+  const snap = (t: number): number => {
+    for (const c of clips) {
+      if (Math.abs(t - c.start) < MIN_CLIP) return c.start
+      if (Math.abs(t - c.end) < MIN_CLIP) return c.end
+    }
+    return t
+  }
+  const a = snap(Math.min(start, end))
+  const b = snap(Math.max(start, end))
   const split = splitAt(splitAt(clips, a), b)
   return split.map((c) => (c.start >= a - EPS && c.end <= b + EPS ? { ...c, speed } : c))
 }

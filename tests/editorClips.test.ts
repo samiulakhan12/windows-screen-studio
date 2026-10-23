@@ -72,6 +72,14 @@ describe('setRangeSpeed', () => {
     ])
     expect(outputDuration(out)).toBeCloseTo(8)
   })
+
+  it('snaps range ends that are a sliver away from a clip edge', () => {
+    expect(spans(setRangeSpeed([clip('a', 0, 10)], 0.05, 10, 2))).toEqual([[0, 10, 2]])
+    expect(spans(setRangeSpeed([clip('a', 0, 4), clip('b', 4, 10)], 3.95, 9.97, 4))).toEqual([
+      [0, 4, 1],
+      [4, 10, 4]
+    ])
+  })
 })
 
 describe('playhead mapping', () => {

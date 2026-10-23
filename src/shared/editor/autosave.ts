@@ -116,7 +116,8 @@ export class Autosaver<T> {
       this.setStatus({ state: 'saved' })
       return true
     }
-    this.setStatus({ state: 'error', message: saveErrorMessage(result.error), retryInMs: 0 })
+    // If the page survives after all (unload cancelled), keep trying in the background.
+    this.fail(result.error)
     return false
   }
 
@@ -135,6 +136,11 @@ export class Autosaver<T> {
 
   private onChange = (): void => {
     if (!this.dirty) return
+    if (this.status.state === 'error') {
+      // Keep the backoff: the scheduled retry saves the latest state anyway.
+      if (!this.timer) this.schedule(this.debounceMs)
+      return
+    }
     const now = Date.now()
     if (!this.timer) this.dirtySince = now
     if (this.status.state === 'saved') this.setStatus({ state: 'pending' })
@@ -172,18 +178,21 @@ export class Autosaver<T> {
           this.setStatus(this.dirty ? { state: 'pending' } : { state: 'saved' })
           if (this.dirty && !this.timer) this.schedule(this.debounceMs)
         },
-        (err: unknown) => {
-          this.failures++
-          const retryInMs = Math.min(this.maxRetryMs, 1000 * 2 ** (this.failures - 1))
-          this.setStatus({ state: 'error', message: saveErrorMessage(err), retryInMs })
-          this.schedule(retryInMs)
-        }
+        (err: unknown) => this.fail(err)
       )
       .finally(() => {
         this.inFlight = null
       })
     this.inFlight = done
     return done
+  }
+
+  /** Shows the failure and schedules a retry with exponential backoff (1 s, 2 s, 4 s, ... capped). */
+  private fail(err: unknown): void {
+    this.failures++
+    const retryInMs = Math.min(this.maxRetryMs, 1000 * 2 ** (this.failures - 1))
+    this.setStatus({ state: 'error', message: saveErrorMessage(err), retryInMs })
+    this.schedule(retryInMs)
   }
 
   private nextMeta(): SaveMeta {

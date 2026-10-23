@@ -3,6 +3,7 @@
 // long-timeline zoom, saving on close/Back/failure, focus picking and audio.
 const fs = require('node:fs')
 const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
 
@@ -511,6 +512,46 @@ async function main() {
     await win.click('.chip:has-text("Fixed point")')
     await waitSaved(win)
     h.assert(JSON.stringify(disk(home, id).zooms[0].focus) === JSON.stringify(z.focus), 'Fixed point does not reset the focus')
+  })
+
+  await h.run('editor: background images follow undo and redo', async (ctx) => {
+    const { home, id, app, win } = await setup(ctx, 'bg', { name: 'BgTest', seconds: 4 })
+    const png = path.join(home, 'red.png')
+    const jpg = path.join(home, 'blue.jpg')
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=red:s=64x64', '-frames:v', '1', png])
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=blue:s=64x64', '-frames:v', '1', jpg])
+    await app.evaluate(({ dialog }, files) => {
+      let i = 0
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [files[i++]] })
+    }, [png, jpg])
+    // Top-left pixel of the preview is background (inside the padding).
+    const corner = () =>
+      win.evaluate(() => {
+        const c = document.querySelector('.preview-canvas')
+        const [r, g, b] = c.getContext('2d').getImageData(3, 3, 1, 1).data
+        return { r, g, b }
+      })
+    const isRed = async () => {
+      const p = await corner()
+      return p.r > 180 && p.g < 80 && p.b < 80
+    }
+    const isBlue = async () => {
+      const p = await corner()
+      return p.b > 180 && p.r < 80 && p.g < 80
+    }
+    await win.click('button:has-text("Image")')
+    await f.waitFor(isRed, 'red background drawn')
+    await win.click('button:has-text("Image")')
+    await f.waitFor(isBlue, 'blue background drawn')
+    await win.keyboard.press('Control+z')
+    await f.waitFor(isRed, 'undo shows the previous image again')
+    await waitSaved(win)
+    h.assert(disk(home, id).style.background.path === 'background.png', 'saved path follows undo')
+    h.assert(fs.existsSync(path.join(h.projectsRoot(home), id, 'background.png')), 'previous image file kept')
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => !(await isRed()) && !(await isBlue()), 'undo back to the gradient')
+    await win.keyboard.press('Control+Shift+z')
+    await f.waitFor(isRed, 'redo')
   })
 
   await h.run('editor: audio mute and volume apply to the preview and are saved (F49)', async (ctx) => {

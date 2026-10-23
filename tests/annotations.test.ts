@@ -29,6 +29,14 @@ describe('dragAnnotationTimes', () => {
     expect(dragAnnotationTimes({ start: 2, end: 4 }, 'start', 5, 10).start).toBeCloseTo(4 - MIN_ANNOTATION_LENGTH)
     expect(dragAnnotationTimes({ start: 2, end: 4 }, 'end', 100, 10).end).toBe(10)
   })
+
+  it('never gives an item shorter than the minimum a negative start', () => {
+    const short = { start: 0.1, end: 0.2 }
+    expect(dragAnnotationTimes(short, 'start', 0, 10)).toEqual(short)
+    expect(dragAnnotationTimes(short, 'start', 1, 10).start).toBeCloseTo(0.1)
+    expect(dragAnnotationTimes(short, 'start', -1, 10).start).toBe(0)
+    expect(dragAnnotationTimes(short, 'end', -1, 10).end).toBeCloseTo(0.2)
+  })
 })
 
 describe('annotationLanes', () => {

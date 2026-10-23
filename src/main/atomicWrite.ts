@@ -8,11 +8,11 @@ const sleepSync = (ms: number): void => {
 }
 
 export interface AtomicWriteOptions {
-  /** Rename attempts before falling back to an in-place copy. */
+  /** Rename attempts while the target is transiently locked. */
   attempts?: number
   delayMs?: number
   /** Injectable for tests. */
-  fsImpl?: Pick<typeof fs, 'writeFileSync' | 'renameSync' | 'copyFileSync' | 'rmSync'>
+  fsImpl?: Pick<typeof fs, 'writeFileSync' | 'renameSync' | 'rmSync'>
 }
 
 /**
@@ -22,11 +22,16 @@ export interface AtomicWriteOptions {
  * one main-process turn means a later save (or a projects:list) can never
  * overtake or interleave with an earlier one, including the final save sent
  * with sendSync while the window is closing.
+ *
+ * A rename blocked by a short-lived lock is retried briefly (at most ~75 ms of
+ * blocking). If the lock persists the error is thrown rather than overwriting
+ * the file in place, which could leave a truncated project.json after a crash;
+ * the editor shows the failure and keeps retrying.
  */
 export function writeFileAtomicSync(file: string, data: string, options: AtomicWriteOptions = {}): void {
   const f = options.fsImpl ?? fs
-  const attempts = options.attempts ?? 5
-  const delayMs = options.delayMs ?? 40
+  const attempts = options.attempts ?? 3
+  const delayMs = options.delayMs ?? 25
   const tmp = `${file}.tmp`
   f.writeFileSync(tmp, data)
   for (let i = 1; ; i++) {
@@ -35,18 +40,11 @@ export function writeFileAtomicSync(file: string, data: string, options: AtomicW
       return
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code ?? ''
-      if (!TRANSIENT.has(code)) {
+      if (!TRANSIENT.has(code) || i >= attempts) {
         f.rmSync(tmp, { force: true })
         throw err
       }
-      if (i >= attempts) break
       sleepSync(delayMs * i)
     }
-  }
-  // The target stays locked against replacement; overwriting its contents in place usually still works.
-  try {
-    f.copyFileSync(tmp, file)
-  } finally {
-    f.rmSync(tmp, { force: true })
   }
 }

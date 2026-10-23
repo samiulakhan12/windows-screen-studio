@@ -16,6 +16,12 @@ afterEach(() => {
 
 const errno = (code: string): NodeJS.ErrnoException => Object.assign(new Error(code), { code })
 
+const withRename = (renameSync: typeof fs.renameSync): Pick<typeof fs, 'writeFileSync' | 'renameSync' | 'rmSync'> => ({
+  writeFileSync: fs.writeFileSync,
+  rmSync: fs.rmSync,
+  renameSync
+})
+
 describe('writeFileAtomicSync', () => {
   it('replaces the file and leaves no temp file', () => {
     const dir = tempDir()
@@ -32,54 +38,47 @@ describe('writeFileAtomicSync', () => {
     let failures = 2
     writeFileAtomicSync(file, 'data', {
       delayMs: 1,
-      fsImpl: {
-        writeFileSync: fs.writeFileSync,
-        copyFileSync: fs.copyFileSync,
-        rmSync: fs.rmSync,
-        renameSync: (a, b) => {
-          if (failures-- > 0) throw errno('EBUSY')
-          fs.renameSync(a, b)
-        }
-      }
+      fsImpl: withRename((a, b) => {
+        if (failures-- > 0) throw errno('EBUSY')
+        fs.renameSync(a, b)
+      })
     })
     expect(fs.readFileSync(file, 'utf8')).toBe('data')
   })
 
-  it('falls back to copying over the file when it stays locked', () => {
+  it('gives up on a persistent lock without touching the old file', () => {
     const dir = tempDir()
     const file = path.join(dir, 'project.json')
     fs.writeFileSync(file, 'old')
-    writeFileAtomicSync(file, 'data', {
-      attempts: 2,
-      delayMs: 1,
-      fsImpl: {
-        writeFileSync: fs.writeFileSync,
-        copyFileSync: fs.copyFileSync,
-        rmSync: fs.rmSync,
-        renameSync: () => {
+    let calls = 0
+    expect(() =>
+      writeFileAtomicSync(file, 'data', {
+        attempts: 3,
+        delayMs: 1,
+        fsImpl: withRename(() => {
+          calls++
           throw errno('EPERM')
-        }
-      }
-    })
-    expect(fs.readFileSync(file, 'utf8')).toBe('data')
+        })
+      })
+    ).toThrow('EPERM')
+    expect(calls).toBe(3)
+    expect(fs.readFileSync(file, 'utf8')).toBe('old')
     expect(fs.existsSync(`${file}.tmp`)).toBe(false)
   })
 
-  it('throws other errors and cleans up the temp file', () => {
+  it('throws other errors at once and cleans up the temp file', () => {
     const dir = tempDir()
     const file = path.join(dir, 'project.json')
+    let calls = 0
     expect(() =>
       writeFileAtomicSync(file, 'data', {
-        fsImpl: {
-          writeFileSync: fs.writeFileSync,
-          copyFileSync: fs.copyFileSync,
-          rmSync: fs.rmSync,
-          renameSync: () => {
-            throw errno('EISDIR')
-          }
-        }
+        fsImpl: withRename(() => {
+          calls++
+          throw errno('EISDIR')
+        })
       })
     ).toThrow('EISDIR')
+    expect(calls).toBe(1)
     expect(fs.existsSync(`${file}.tmp`)).toBe(false)
   })
 

@@ -186,17 +186,19 @@ export const Timeline = memo(
       [fit, player]
     )
 
+    const fitAll = useCallback(() => {
+      pendingScroll.current = 0
+      setZoom({ fit: true })
+    }, [])
+
     useImperativeHandle(
       ref,
       () => ({
         zoomIn: () => setScale(pxRef.current * ZOOM_STEP),
         zoomOut: () => setScale(pxRef.current / ZOOM_STEP),
-        fit: () => {
-          pendingScroll.current = 0
-          setZoom({ fit: true })
-        }
+        fit: fitAll
       }),
-      [setScale]
+      [setScale, fitAll]
     )
 
     useEffect(() => {
@@ -412,15 +414,7 @@ export const Timeline = memo(
             <button className="btn ghost icon-btn" onClick={() => setScale(px * ZOOM_STEP)} title="Zoom in timeline (+ or Ctrl+wheel)" aria-label="Zoom in timeline">
               <EditorIcon name="plus" size={16} />
             </button>
-            <button
-              className="btn ghost"
-              onClick={() => {
-                pendingScroll.current = 0
-                setZoom({ fit: true })
-              }}
-              disabled={zoom.fit}
-              title="Fit the whole recording"
-            >
+            <button className="btn ghost" onClick={fitAll} disabled={zoom.fit} title="Fit the whole recording">
               <EditorIcon name="fit" size={14} /> Fit
             </button>
           </div>

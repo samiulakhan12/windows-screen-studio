@@ -85,6 +85,18 @@ describe('zoom drag helpers', () => {
     expect(dragZoomTimes({ start: 4, end: 6 }, 'end', -10, { lower: 2, upper: 9 }).end).toBeCloseTo(4 + MIN_ZOOM_LENGTH)
   })
 
+  it('lets a segment shorter than the minimum grow but never inverts its bounds', () => {
+    const short = { start: 0.1, end: 0.5 }
+    const bounds = { lower: 0, upper: 10 }
+    expect(dragZoomTimes(short, 'start', 0, bounds)).toEqual(short)
+    expect(dragZoomTimes(short, 'start', 5, bounds).start).toBeCloseTo(0.1)
+    expect(dragZoomTimes(short, 'start', -5, bounds).start).toBe(0)
+    expect(dragZoomTimes(short, 'end', -5, bounds).end).toBeCloseTo(0.5)
+    expect(dragZoomTimes(short, 'end', 5, bounds).end).toBeCloseTo(5.5)
+    const between = dragZoomTimes({ start: 2, end: 2.3 }, 'start', -1, { lower: 1.8, upper: 10 })
+    expect(between.start).toBeCloseTo(1.8)
+  })
+
   it('clampZooms only clamps to the duration and never shifts neighbours', () => {
     const zooms = [seg('a', 1, 3), seg('b', 2.5, 4), seg('c', 9.5, 12), seg('d', 11, 12)]
     expect(clampZooms(zooms, 10).map((z) => [z.id, z.start, z.end])).toEqual([

@@ -76,6 +76,36 @@ describe('Autosaver', () => {
     expect(saver.status.state).toBe('saved')
   })
 
+  it('keeps the backoff while the user edits during a failure', async () => {
+    const { store, saver, calls } = setup(() => new Error('ENOSPC: no space left on device'))
+    store.update(() => 1)
+    await vi.advanceTimersByTimeAsync(400) // fails, retry in 1 s
+    await vi.advanceTimersByTimeAsync(1000) // fails, retry in 2 s
+    expect(calls).toHaveLength(2)
+    for (let i = 2; i < 12; i++) {
+      store.update(() => i)
+      await vi.advanceTimersByTimeAsync(150)
+    }
+    // 1.5 s of edits did not trigger extra attempts before the 2 s retry.
+    expect(calls).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(500)
+    expect(calls).toHaveLength(3)
+    expect(calls[2].doc).toBe(11)
+    saver.dispose()
+  })
+
+  it('retries after a failed synchronous flush if the page stays open', async () => {
+    let failing = true
+    const { store, saver, calls } = setup(() => (failing ? new Error('EBUSY') : null))
+    store.update(() => 1)
+    expect(saver.flushSync()).toBe(false)
+    expect(saver.status.state).toBe('error')
+    failing = false
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(calls.map((c) => c.doc)).toEqual([1])
+    expect(saver.status.state).toBe('saved')
+  })
+
   it('flush saves immediately and reports success', async () => {
     const { store, saver, calls } = setup()
     store.update(() => 4)

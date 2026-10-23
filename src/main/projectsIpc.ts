@@ -80,11 +80,15 @@ export function registerProjectsIpc(): void {
     const src = result.filePaths[0]
     const ext = path.extname(src).toLowerCase().replace('.jpeg', '.jpg')
     const name = `background${ext}`
-    const dir = projects.projectDir(id)
-    for (const old of ['background.png', 'background.jpg', 'background.webp']) {
-      await fs.rm(path.join(dir, old), { force: true })
-    }
-    await fs.copyFile(src, path.join(dir, name))
+    // Images of the other formats are kept so undo can go back to them.
+    await fs.copyFile(src, path.join(projects.projectDir(id), name))
     return { url: mediaUrl(id, name), path: name }
   })
+
+  ipcMain.handle('projects:backgroundUrl', async (_e, id: string, file: string): Promise<string | null> => {
+    if (typeof file !== 'string' || !BACKGROUND_RE.test(file)) return null
+    return (await projects.exists(path.join(projects.projectDir(id), file))) ? mediaUrl(id, file) : null
+  })
 }
+
+const BACKGROUND_RE = /^background\.(png|jpe?g|webp)$/i

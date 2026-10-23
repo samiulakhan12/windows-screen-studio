@@ -33,14 +33,16 @@ export function dragAnnotationTimes(
   duration: number
 ): { start: number; end: number } {
   let { start, end } = initial
+  // An item already shorter than the minimum may grow but not shrink further.
+  const short = end - start < MIN_ANNOTATION_LENGTH
   if (mode === 'move') {
     const len = end - start
     start = clamp(start + dt, 0, Math.max(0, duration - len))
     end = start + len
   } else if (mode === 'start') {
-    start = clamp(start + dt, 0, end - MIN_ANNOTATION_LENGTH)
+    start = clamp(start + dt, Math.min(0, start), short ? start : end - MIN_ANNOTATION_LENGTH)
   } else {
-    end = clamp(end + dt, start + MIN_ANNOTATION_LENGTH, duration)
+    end = clamp(end + dt, short ? end : start + MIN_ANNOTATION_LENGTH, Math.max(duration, end))
   }
   return { start, end }
 }
