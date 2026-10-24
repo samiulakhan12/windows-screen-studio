@@ -1,9 +1,30 @@
-import type { ColorTags } from '../api/export'
+import type { ColorTags, RawPixelFormat } from '../api/export'
 
-/** Lowest H.264 level that allows this frame size and rate (macroblocks per frame / per second). */
+/** 32-bit VideoFrame layouts ffmpeg takes as they are. */
+const RAW_FORMATS: Record<string, RawPixelFormat> = { BGRX: 'bgr0', BGRA: 'bgra', RGBX: 'rgb0', RGBA: 'rgba' }
+
+/**
+ * How to read a canvas VideoFrame of layout `format` as raw 32-bit pixels: as it
+ * is when it already is one of those layouts, else converted by copyTo to RGBX (a
+ * frame in a YUV layout, or with no CPU-visible layout at all, which some GPU
+ * canvases report as null).
+ */
+export function rawReadback(format: string | null): { copyFormat?: 'RGBX'; pixelFormat: RawPixelFormat } {
+  const native = format ? RAW_FORMATS[format] : undefined
+  return native ? { pixelFormat: native } : { copyFormat: 'RGBX', pixelFormat: 'rgb0' }
+}
+
+/**
+ * Lowest H.264 level that allows this frame size and rate (macroblocks per frame /
+ * per second). Each side is also limited to sqrt(8 x max frame size) macroblocks
+ * (A.3.1), which matters for very wide or tall frames.
+ */
 export function avcLevel(width: number, height: number, fps: number): number {
-  const mbs = Math.ceil(width / 16) * Math.ceil(height / 16)
+  const mbw = Math.ceil(width / 16)
+  const mbh = Math.ceil(height / 16)
+  const mbs = mbw * mbh
   const rate = mbs * fps
+  const side = Math.max(mbw, mbh)
   const levels: [number, number, number][] = [
     [0x1f, 3600, 108000],
     [0x20, 5120, 216000],
@@ -16,7 +37,7 @@ export function avcLevel(width: number, height: number, fps: number): number {
     [0x3d, 139264, 8355840],
     [0x3e, 139264, 16711680]
   ]
-  for (const [level, maxFrame, maxRate] of levels) if (mbs <= maxFrame && rate <= maxRate) return level
+  for (const [level, maxFrame, maxRate] of levels) if (mbs <= maxFrame && rate <= maxRate && side * side <= maxFrame * 8) return level
   return 0x3e
 }
 

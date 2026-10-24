@@ -1,3 +1,4 @@
+import { frameDuration } from './frameTiming'
 import { presentationIndex, type VideoSample } from './mp4'
 
 export interface FeedPlan {
@@ -14,8 +15,7 @@ export interface FeedPlan {
  */
 export function planFeed(samples: VideoSample[], times: number[]): FeedPlan {
   const order = samples.map((s, d) => ({ ...s, d })).sort((a, b) => a.time - b.time || a.d - b.d)
-  const durations = samples.map((s) => s.duration).filter((d) => d > 0).sort((a, b) => a - b)
-  const frame = durations.length ? durations[durations.length >> 1] : 1 / 60
+  const frame = frameDuration(samples) ?? 1 / 60
   const keyBefore = new Array<number>(samples.length)
   let lastKey = 0
   for (let d = 0; d < samples.length; d++) {

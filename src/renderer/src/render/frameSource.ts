@@ -1,5 +1,7 @@
 import { planFeed, type FeedPlan } from '../../../shared/render/feedPlan'
+import { frameRate, MissCounter } from '../../../shared/render/frameTiming'
 import { demuxVideoTrack, type VideoTrackInfo } from '../../../shared/render/mp4'
+import { RangeReader } from '../../../shared/render/rangeReader'
 import { seekedFrame, seekToFrame } from '../editor/media'
 import type { FrameImage } from './compositor'
 
@@ -15,71 +17,18 @@ export interface FrameSource {
   close(): void
 }
 
-/* ---------- ranged file reads ---------- */
+/** A media file opened for ranged reads, with its video track's sample table. */
+export interface MediaTrack {
+  reader: RangeReader
+  track: VideoTrackInfo
+  /** Frame rate from the sample durations, or null when unknown. */
+  fps: number | null
+}
 
-const BLOCK = 4 << 20
-
-/** Reads a media URL in large ranged blocks, prefetching the next block while the current one is used. */
-export class RangeReader {
-  private blocks = new Map<number, Promise<Uint8Array>>()
-
-  private constructor(
-    private readonly url: string,
-    readonly size: number,
-    first: Uint8Array
-  ) {
-    this.blocks.set(0, Promise.resolve(first))
-  }
-
-  static async open(url: string): Promise<RangeReader> {
-    const res = await fetch(url, { headers: { Range: `bytes=0-${BLOCK - 1}` } })
-    // Without range support the whole file would be loaded into memory.
-    if (res.status !== 206) throw new Error(`Media server does not support ranges (${res.status})`)
-    const range = /\/(\d+)\s*$/.exec(res.headers.get('Content-Range') ?? '')
-    const bytes = new Uint8Array(await res.arrayBuffer())
-    const size = range ? Number(range[1]) : bytes.length
-    return new RangeReader(url, size, bytes)
-  }
-
-  private async fetchRange(start: number, end: number): Promise<Uint8Array> {
-    const res = await fetch(this.url, { headers: { Range: `bytes=${start}-${end - 1}` } })
-    if (!res.ok) throw new Error(`Could not read media (${res.status})`)
-    return new Uint8Array(await res.arrayBuffer())
-  }
-
-  private block(index: number): Promise<Uint8Array> {
-    let p = this.blocks.get(index)
-    if (!p) {
-      const start = index * BLOCK
-      p = this.fetchRange(start, Math.min(this.size, start + BLOCK))
-      this.blocks.set(index, p)
-      // Keep only the blocks around the read position.
-      for (const k of this.blocks.keys()) if (k < index - 1) this.blocks.delete(k)
-    }
-    return p
-  }
-
-  async read(offset: number, length: number): Promise<Uint8Array> {
-    if (length > BLOCK) return this.fetchRange(offset, offset + length)
-    const first = Math.floor(offset / BLOCK)
-    const last = Math.floor((offset + length - 1) / BLOCK)
-    if ((offset % BLOCK) + length > BLOCK / 2 && (last + 1) * BLOCK < this.size) void this.block(last + 1).catch(() => undefined)
-    if (first === last) {
-      const b = await this.block(first)
-      const at = offset - first * BLOCK
-      return b.subarray(at, at + length)
-    }
-    const out = new Uint8Array(length)
-    let written = 0
-    for (let i = first; i <= last; i++) {
-      const b = await this.block(i)
-      const from = Math.max(offset, i * BLOCK) - i * BLOCK
-      const to = Math.min(offset + length, (i + 1) * BLOCK) - i * BLOCK
-      out.set(b.subarray(from, to), written)
-      written += to - from
-    }
-    return out
-  }
+export async function openTrack(url: string): Promise<MediaTrack> {
+  const reader = await RangeReader.open(url)
+  const track = await demuxVideoTrack((o, l) => reader.read(o, l), reader.size)
+  return { reader, track, fps: frameRate(track.samples) }
 }
 
 /* ---------- WebCodecs decoding ---------- */
@@ -124,11 +73,10 @@ export class DecoderFrameSource implements FrameSource {
     void this.pump()
   }
 
-  /** Opens `url` for decoding, or returns null when WebCodecs cannot decode it here. */
-  static async open(url: string, times: number[]): Promise<DecoderFrameSource | null> {
+  /** Decodes an opened track, or returns null when WebCodecs cannot decode it here. */
+  static async open(media: MediaTrack, times: number[]): Promise<DecoderFrameSource | null> {
     if (typeof VideoDecoder === 'undefined' || times.length === 0) return null
-    const reader = await RangeReader.open(url)
-    const track = await demuxVideoTrack((o, l) => reader.read(o, l), reader.size)
+    const { reader, track } = media
     if (track.samples.length === 0) return null
     const config: VideoDecoderConfig = {
       codec: track.codec,
@@ -268,23 +216,22 @@ export class DecoderFrameSource implements FrameSource {
  * is consumed. Each frame is taken as a VideoFrame whose timestamp proves it is the
  * seeked one (see seekedFrame); without VideoFrame support the element is drawn.
  */
-const MAX_MISSES = 3
-
 export class ElementFrameSource implements FrameSource {
   readonly kind = 'element'
   private pending: { i: number; done: Promise<void> } | null = null
   private target = 0
   private frame: VideoFrame | null = null
-  /** Consecutive frames whose timestamp never matched; at MAX_MISSES the file's timestamps are not trusted. */
-  private misses = 0
+  private readonly misses = new MissCounter()
 
+  /** `fps`: the video's constant frame rate (the webcam proxy is usually 30, the screen proxy 60). */
   constructor(
     private readonly video: HTMLVideoElement,
-    private readonly times: number[]
+    private readonly times: number[],
+    private readonly fps: number
   ) {}
 
   private seek(i: number): { i: number; done: Promise<void> } {
-    const done = seekToFrame(this.video, this.times[i])
+    const done = seekToFrame(this.video, this.times[i], this.fps)
     // A prefetch nobody waits for must not become an unhandled rejection.
     done.catch(() => undefined)
     return { i, done }
@@ -297,12 +244,11 @@ export class ElementFrameSource implements FrameSource {
     const v = this.video
     if (v.readyState < 2 || v.videoWidth === 0) return null
     this.releaseFrame()
-    const checking = this.misses < MAX_MISSES
-    const seeked = await seekedFrame(v, this.times[i], undefined, checking ? 100 : 0)
+    const checking = this.misses.checking
+    const seeked = await seekedFrame(v, this.times[i], this.fps, checking ? 100 : 0)
     if (seeked) {
-      if (checking) {
-        this.misses = seeked.verified ? 0 : this.misses + 1
-        if (this.misses === MAX_MISSES) console.warn('Frame timestamps do not match the seeks (offset or short video); drawing frames unchecked')
+      if (checking && !this.misses.record(seeked.verified)) {
+        console.warn('Frame timestamps do not match the seeks (offset, short or variable-rate video); drawing frames unchecked')
       }
       this.frame = seeked.frame
       return { image: seeked.frame, width: seeked.frame.displayWidth, height: seeked.frame.displayHeight }

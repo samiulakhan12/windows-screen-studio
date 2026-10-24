@@ -170,6 +170,35 @@ function watchFfmpegMemory(ms = 200) {
   return { stop: () => (clearInterval(timer), peak) }
 }
 
+/** Ids of running ffmpeg processes started by process `ppid`. */
+function ffmpegChildren(ppid) {
+  const pids = []
+  for (const pid of fs.readdirSync('/proc').filter((d) => /^\d+$/.test(d))) {
+    try {
+      const status = fs.readFileSync(`/proc/${pid}/status`, 'utf8')
+      if (/^Name:\s*ffmpeg/m.test(status) && new RegExp(`^PPid:\\s*${ppid}$`, 'm').test(status) && !/^State:\s*Z/m.test(status)) pids.push(Number(pid))
+    } catch {
+      // The process exited meanwhile.
+    }
+  }
+  return pids
+}
+
+/** Collects the exporter's per-frame timing lines ("export: N frames ... per frame ms: ...") from `win`'s console. */
+function exportTimings(win) {
+  const lines = []
+  win.on('console', (m) => /^export: /.test(m.text()) && lines.push(m.text()))
+  return {
+    lines,
+    /** Parsed numbers of the last line: { decode, draw, encode } in ms per frame. */
+    last() {
+      const l = lines[lines.length - 1] || ''
+      const num = (k) => Number((new RegExp(`${k} ([\\d.]+)`).exec(l) || [])[1])
+      return { line: l, decode: num('wait decode'), draw: num('draw'), encode: num('encode/IPC') }
+    }
+  }
+}
+
 /** Partial files an export might leave next to `file`. */
 function partialFiles(file) {
   const dir = path.dirname(file)
@@ -182,6 +211,7 @@ function seedProject(home, opts) {
   const dir = path.join(h.projectsRoot(home), id)
   fs.mkdirSync(dir, { recursive: true })
   fs.symlinkSync(opts.media, path.join(dir, 'screen.mp4'))
+  if (opts.webcam) fs.symlinkSync(opts.webcam, path.join(dir, 'webcam.mp4'))
   const project = {
     version: 2,
     id,
@@ -190,7 +220,7 @@ function seedProject(home, opts) {
     duration: seconds,
     width,
     height,
-    hasWebcam: false,
+    hasWebcam: !!opts.webcam,
     hasAudio: !!opts.audio,
     webcamOffset: 0,
     capture: opts.capture || { method: 'chromium', cursorInVideo: true, region: null },
@@ -200,7 +230,7 @@ function seedProject(home, opts) {
     annotations: opts.annotations || [],
     style: opts.style || { background: { type: 'color', color: '#000000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' },
     cursor: opts.cursorSettings || { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true },
-    webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' },
+    webcam: { show: !!opts.webcam, corner: 'bottom-right', size: 0.24, shape: 'circle' },
     effects: opts.effects || { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } },
     audio: opts.audioSettings || { volume: 1, muted: false }
   }
@@ -258,4 +288,4 @@ async function waitForExport(win, timeout = 600000) {
   throw new Error('export timed out')
 }
 
-module.exports = { solidVideo, framesAt, savePng, withHome, exportFrameTimes, watchFfmpegMemory, partialFiles, indexedVideo, decodeIndices, beepOnsets, probe, seedProject, openProject, openExportDialog, pickChip, waitForExport, MEDIA_CACHE }
+module.exports = { solidVideo, framesAt, savePng, withHome, exportFrameTimes, watchFfmpegMemory, ffmpegChildren, exportTimings, partialFiles, indexedVideo, decodeIndices, beepOnsets, probe, seedProject, openProject, openExportDialog, pickChip, waitForExport, MEDIA_CACHE }

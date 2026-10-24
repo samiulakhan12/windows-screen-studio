@@ -1,7 +1,7 @@
 import { atempoChain } from '../shared/engine/timeline'
 import type { Clip } from '../shared/types'
 import type { ColorTags, ExportJob, H264Encoder } from '../shared/api/export'
-import { encoderPixelFormat } from './hwEncoders'
+import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
 
 /**
  * How raw frames are converted and tagged: the BT.601 YUV matrix, limited range,
@@ -80,7 +80,8 @@ export function videoEncoderArgs(encoder: H264Encoder, job: ExportJob): string[]
     case 'h264_amf':
       return ['-c:v', 'h264_amf', '-quality', 'balanced', '-rc', 'cqp', '-qp_i', String(GPU_QP[job.quality] - 1), '-qp_p', String(GPU_QP[job.quality] + 1), ...gop]
     case 'h264_mf':
-      return ['-c:v', 'h264_mf', '-b:v', String(targetBitrate(job)), ...gop]
+      // A hardware Media Foundation encoder only, the one the probe found (see gpuEncoderOptions).
+      return ['-c:v', 'h264_mf', ...gpuEncoderOptions('h264_mf'), '-b:v', String(targetBitrate(job)), ...gop]
     default:
       return ['-c:v', 'libx264', '-preset', X264_PRESET[job.quality], '-crf', String(X264_CRF[job.quality]), ...gop]
   }

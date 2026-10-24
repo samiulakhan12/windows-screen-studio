@@ -73,7 +73,7 @@ const layers = new WeakMap<Ctx, CachedLayer>()
  *
  * `opaque`: when the recording is about to be drawn over `rect` (rounded by
  * `radius`), only the bands around it are copied; the interior would be painted
- * over anyway, and copying it costs as much as drawing the recording on a CPU canvas.
+ * over anyway, and copying it costs about as much as drawing the recording.
  */
 export function paintStaticLayer(
   ctx: Ctx,

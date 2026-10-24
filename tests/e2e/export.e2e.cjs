@@ -249,6 +249,96 @@ async function main() {
     await closeDialog(win)
   }))
 
+  await test('export: a renderer crash stops ffmpeg and deletes the partial file; a killed app is cleaned up at the next start', fx.withHome('export-crash', async (ctx, home) => {
+    const media = fx.indexedVideo({ seconds: 10, width: 1920, height: 1080 })
+    fx.seedProject(home, { name: 'Crash', media, seconds: 10, width: 1920, height: 1080 })
+    const dir = path.join(home, 'out')
+    fs.mkdirSync(dir)
+    const target = path.join(dir, 'crash.mp4')
+    /** Launches, opens the project and starts a long software export into `target`; resolves while it renders. */
+    const exporting = async () => {
+      const { app, win, logs } = await h.launch({ home })
+      ctx.app = app
+      ctx.logs = logs
+      await fx.openProject(win, 'Crash')
+      await startExport(app, win, target, { res: '1080p', fps: '60 fps', encoder: 'Software' })
+      await win.waitForSelector('.modal .export-status:has-text("Rendering")', { timeout: 60000 })
+      await h.sleep(1000)
+      const pid = app.process().pid
+      h.assert(fx.ffmpegChildren(pid).length === 1, 'ffmpeg is encoding')
+      h.assert(fx.partialFiles(target).length === 1, 'the partial file exists while rendering')
+      return { app, pid }
+    }
+
+    // 1. The editor's renderer crashes mid-export (audit-A-3).
+    const first = await exporting()
+    await first.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.forcefullyCrashRenderer())
+    const t0 = Date.now()
+    while (Date.now() - t0 < 15000 && (fx.ffmpegChildren(first.pid).length || fx.partialFiles(target).length)) await h.sleep(200)
+    h.assert(fx.ffmpegChildren(first.pid).length === 0, 'ffmpeg was stopped')
+    h.assert(fx.partialFiles(target).length === 0, `partial file deleted: ${fx.partialFiles(target)}`)
+    console.log(`  renderer crash: ffmpeg stopped and the partial file deleted after ${Date.now() - t0} ms`)
+    await first.app.close()
+    ctx.app = null
+
+    // 2. The whole app is killed mid-export: the next start deletes what it left (audit-B-1).
+    const second = await exporting()
+    second.app.process().kill('SIGKILL')
+    ctx.app = null
+    const t1 = Date.now()
+    while (Date.now() - t1 < 15000 && fx.ffmpegChildren(second.pid).length) await h.sleep(200)
+    const left = fx.partialFiles(target)
+    h.assert(left.length === 1, `the killed app left its partial file (${left})`)
+    const { app, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    const t2 = Date.now()
+    while (Date.now() - t2 < 10000 && fx.partialFiles(target).length) await h.sleep(200)
+    h.assert(fx.partialFiles(target).length === 0, `leftover deleted at start-up: ${fx.partialFiles(target)}`)
+    h.assert(!fs.existsSync(target), 'no file at the target')
+  }))
+
+  await test('export: a very wide Area exports at 4096 px instead of failing (auto aspect)', fx.withHome('export-wide', async (ctx, home) => {
+    const media = fx.indexedVideo({ seconds: 2, width: 1920, height: 200 })
+    fx.seedProject(home, { name: 'Strip', media, seconds: 2, width: 1920, height: 200 })
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await fx.openProject(win, 'Strip')
+    await fx.openExportDialog(win)
+    await fx.pickChip(win, 'Resolution', '1080p')
+    const summary = await win.textContent('.modal .export-size')
+    h.assert(summary.includes('4096×426'), `the dialog shows the real size: ${summary}`)
+    h.assert(await win.isVisible('.modal .export-capped'), 'the dialog says why')
+    await shot(win, 'export-wide-capped')
+    await closeDialog(win)
+    const out = path.join(home, 'strip.mp4')
+    await exportTo(app, win, out, { res: '1080p', fps: '60 fps' })
+    const video = fx.probe(out).streams.find((s) => s.codec_type === 'video')
+    h.assert(video.width === 4096 && video.height === 426, `4096x426 (got ${video.width}x${video.height})`)
+    expectCodes(codes(out, 4096, 426), fx.exportFrameTimes([{ start: 0, end: 2, speed: 1 }], 60), 'wide strip')
+  }))
+
+  await test('export: element seeking with a 30 fps webcam takes each camera frame at once', fx.withHome('export-webcam-element', async (ctx, home) => {
+    const media = fx.indexedVideo({ seconds: 3, width: 1280, height: 720 })
+    const webcam = fx.indexedVideo({ seconds: 3, width: 320, height: 240, fps: 30 })
+    fx.seedProject(home, { name: 'Webcam', media, seconds: 3, webcam })
+    const { app, win, logs } = await h.launch({ home, env: { SSW_EXPORT_DECODER: 'element' } })
+    ctx.app = app
+    ctx.logs = logs
+    const timing = fx.exportTimings(win)
+    await fx.openProject(win, 'Webcam')
+    const out = path.join(home, 'webcam.mp4')
+    await exportTo(app, win, out, { res: '720p', fps: '60 fps' })
+    const t = timing.last()
+    console.log(`  ${t.line}`)
+    h.assert(/element decoding \(webcam: element\)/.test(t.line), 'screen and webcam came from the seeking path')
+    // The screen stays frame-exact (the camera bubble is in the bottom-right corner).
+    expectCodes(codes(out, 1280, 720), fx.exportFrameTimes([{ start: 0, end: 3, speed: 1 }], 60), 'element + webcam')
+    // With the webcam taken as 60 fps, every other frame waited 100 ms for a frame that never came (>= 50 ms per frame).
+    h.assert(t.decode < 30, `waited ${t.decode} ms per frame for decoding`)
+  }))
+
   await test('export: a 60 s GIF keeps ffmpeg memory bounded; cancel works while finalizing', fx.withHome('export-gif', async (ctx, home) => {
     const media = fx.indexedVideo({ seconds: 60, width: 1280, height: 720 })
     fx.seedProject(home, { name: 'Gif', media, seconds: 60 })

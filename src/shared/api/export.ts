@@ -42,6 +42,8 @@ export interface ExportJob {
 export interface ExportCapabilities {
   /** GPU H.264 encoders that passed a test encode, best first. */
   hardwareEncoders: H264Encoder[]
+  /** Whether Chromium draws 2D canvases on the GPU here (false: GPU blocklisted or unavailable). */
+  gpuCanvas: boolean
   /** Test hooks set through the environment (e2e only). */
   overrides: { decoder?: 'element' | 'webcodecs'; videoEncoder?: 'webcodecs-software' | 'ffmpeg' }
 }

@@ -6,7 +6,8 @@ import type { ExportSettings, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import type { RenderScene } from '../render/compositor'
 import { avcConfigs, supportedAvcConfig } from '../render/encoders'
-import { exportDimensions, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, type ExportProgress } from './exporter'
+import { exportSize, MAX_EXPORT_SIDE, type ExportSize } from '../../../shared/render/exportPlan'
+import { exportVideo, GIF_FPS, GIF_MAX_HEIGHT, type ExportProgress } from './exporter'
 import './exportDialog.css'
 
 interface Props {
@@ -116,7 +117,7 @@ export function ExportDialog(props: Props): JSX.Element {
   onClose.current = props.onClose
   const gif = settings.format === 'gif'
   const resolution = gif ? (Math.min(settings.resolution, GIF_MAX_HEIGHT) as ExportSettings['resolution']) : settings.resolution
-  const dims = exportDimensions(props.project, settings)
+  const dims = exportSize(props.project, settings)
   const length = outputDuration(props.project.clips)
 
   useEffect(() => {
@@ -212,18 +213,21 @@ export function ExportDialog(props: Props): JSX.Element {
     setCopy(r.ok ? { kind: 'copied' } : { kind: 'failed', message: r.message })
   }
 
-  // Honest size info: the recording drawn larger than it was captured is an upscale.
+  // Honest size info: the real output size of each choice (very wide or tall recordings
+  // are limited on their long side), and whether the recording is drawn larger than it was captured.
   const sourceH = props.project.height
-  const drawnHeight = (height: number): number => {
-    const d = exportDimensions(props.project, { ...settings, resolution: height as ExportSettings['resolution'] })
-    return contentRect(d.width, d.height, props.project.width, props.project.height, props.project.style.padding).h
+  const sizeFor = (height: number): ExportSize => exportSize(props.project, { ...settings, resolution: height as ExportSettings['resolution'] })
+  const upscaled = (height: number): boolean => {
+    const d = sizeFor(height)
+    return contentRect(d.width, d.height, props.project.width, props.project.height, props.project.style.padding).h > sourceH * 1.05
   }
-  const upscaled = (height: number): boolean => drawnHeight(height) > sourceH * 1.05
-  const resolutionOptions = RESOLUTIONS.filter((r) => !gif || r.value <= GIF_MAX_HEIGHT).map((r) => ({
-    ...r,
-    className: upscaled(r.value) ? 'upscale' : '',
-    title: upscaled(r.value) ? `Larger than the recording (${props.project.width}×${props.project.height}): it will be upscaled` : undefined
-  }))
+  const resolutionOptions = RESOLUTIONS.filter((r) => !gif || r.value <= GIF_MAX_HEIGHT).map((r) => {
+    const d = sizeFor(r.value)
+    const notes = [`${d.width}×${d.height}`]
+    if (d.capped) notes.push(`limited to ${MAX_EXPORT_SIDE} px on the long side`)
+    if (upscaled(r.value)) notes.push(`larger than the recording (${props.project.width}×${props.project.height}): it will be upscaled`)
+    return { ...r, className: upscaled(r.value) ? 'upscale' : '', title: notes.join('; ') }
+  })
   const gpuNames = caps?.hardwareEncoders.length ? caps.hardwareEncoders.map((e) => e.replace('h264_', '').toUpperCase()).join(', ') : ''
   const gpuHint = webCodecsGpu
     ? 'GPU encoding is available.'
@@ -308,10 +312,16 @@ export function ExportDialog(props: Props): JSX.Element {
               </>
             )}
             <div className="export-summary">
-              <p className="hint">
+              <p className="hint export-size">
                 {dims.width}×{dims.height} · {dims.fps} fps · {formatDuration(length)}
                 {gif ? ` · GIFs play at ${GIF_FPS} fps` : ''}
               </p>
+              {dims.capped && (
+                <p className="hint export-capped">
+                  This recording is very {props.project.width >= props.project.height ? 'wide' : 'tall'}, so the video is limited to {MAX_EXPORT_SIDE} pixels on its
+                  long side.
+                </p>
+              )}
               {upscaled(resolution) && (
                 <p className="hint warn">
                   Larger than the recording ({props.project.width}×{props.project.height}): the video is upscaled and may look soft.

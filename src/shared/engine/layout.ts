@@ -26,8 +26,17 @@ const STANDARD_RATIOS = [16 / 9, 16 / 10, 4 / 3, 3 / 2, 64 / 27, 43 / 18, 1].fla
  */
 export function autoAspect(srcW: number, srcH: number): number {
   const ratio = srcW / srcH
-  for (const r of STANDARD_RATIOS) if (Math.abs(ratio / r - 1) < 0.01) return r
-  return ratio
+  // The nearest one: 64:27 and 43:18 (3440x1440) are less than 1% apart.
+  let best = ratio
+  let bestErr = 0.01
+  for (const r of STANDARD_RATIOS) {
+    const err = Math.abs(ratio / r - 1)
+    if (err < bestErr) {
+      best = r
+      bestErr = err
+    }
+  }
+  return best
 }
 
 /** Output frame size for an aspect ratio, given the target height (the shorter side for portrait). */
