@@ -592,7 +592,7 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   m.hasWebcam = info.hasWebcam
   m.webcamFps = info.webcamFps
   // So a recording interrupted by a crash keeps its separately recorded sound in sync.
-  if (typeof info.audioOffset === 'number' && Number.isFinite(info.audioOffset)) m.audioOffset = info.audioOffset
+  if (typeof info.audioOffset === 'number' && Math.abs(info.audioOffset) < 60) m.audioOffset = info.audioOffset
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker(s)
