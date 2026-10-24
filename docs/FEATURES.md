@@ -12,7 +12,8 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ Cursor position, clicks (clicks on the app's own windows and outside the recorded display/area are ignored), cursor shape (native capture) and **shortcut keystrokes** (combos with Ctrl/Alt/Win and special keys only; plain typing is never recorded; can be turned off on Home).
 - ✓ Recordings are **streamed to disk** while recording (no size limit, flat memory) and are never discarded once capture has started: a crashed recorder, a failed conversion or a closed window leaves recoverable files, listed under *Unfinished recordings* (Recover / Retry / Show folder / Delete). Processing shows a percentage and can be finished later.
 - ✓ One recording at a time (double clicks are ignored), single app instance, friendly errors with a link to Windows privacy settings.
-- *roadmap*: separate microphone/system-audio tracks, cursor tracking for window recordings, cropping areas inside the native helper (today the whole monitor is captured and cropped afterwards), device preview/level meter on Home.
+- ✓ Microphone level meter on Home; if system audio cannot start, the recording continues without it and says so; if the native helper stops on its own (e.g. a monitor is unplugged) the recording stops, keeps everything and explains why. Native recordings are written as fragmented MP4, so even a helper crash leaves a playable file.
+- *roadmap*: separate microphone/system-audio tracks, cursor tracking for window recordings, cropping areas inside the native helper (today the whole monitor is captured and cropped afterwards), camera preview on Home.
 
 ## Motion engine
 - ✓ **Auto zoom** generated from click clusters (zoom in just before the click, hold, ease out); regenerate keeps your edited zooms.
@@ -33,12 +34,13 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ Zoomable, scrollable timeline (`+`/`-`, `Ctrl`+wheel, Fit) that stays usable for long recordings; playhead follows playback.
 - ✓ Shortcuts work regardless of which control was last used, and are paused behind the export dialog. Sharp preview on high-DPI screens; only redraws when something changed.
 - ✓ Auto-save with a save indicator; save failures are shown with Retry; edits are flushed when closing the window or going back.
+- ✓ **Save as default style**: background, layout, cursor, camera and effect settings become the starting look of every new recording (Reset restores the built-in look).
 - ✓ Projects library on the home screen (open / delete / show in Explorer).
 
 ## Export
 - ✓ MP4 (H.264 + AAC) at 720p / 1080p / 1440p / 4K, 30 or 60 fps, quality presets (Studio / Web / Small file); a warning when exporting above the recording's resolution.
 - ✓ **GPU-accelerated** when available: frames are decoded in order with WebCodecs and encoded with WebCodecs or ffmpeg's NVENC / Quick Sync / AMF, falling back to x264 (or choose *Software*). Progress shows fps and ETA. *GPU paths Windows-unverified.*
-- ✓ Exact frames (no duplicated or skipped frames) and correct, tagged colours.
+- ✓ Exact frames (no duplicated or skipped frames) and correct, tagged colours. Very wide or tall areas are capped to encoder limits (the dialog shows the real size).
 - ✓ Audio follows cuts and speed changes and stays in sync.
 - ✓ GIF with bounded memory (palette passes), up to 1080p / 15 fps.
 - ✓ Safe output: written to a temporary file and moved into place only when complete; cancel works in every phase and never destroys an existing file.
