@@ -4,7 +4,9 @@
  *
  * The proxy is decoded once per file version and the result kept, so changing the minimum
  * length in the editor never decodes it again. A run that hangs is killed after a time
- * proportional to the recording's length; any failure reads as "no still parts".
+ * proportional to the recording's length. A request that names no project finds nothing; an
+ * analysis that cannot run or fails is reported with its reason (and not kept), so the editor
+ * can say so and try again.
  */
 import { app, ipcMain } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -65,74 +67,93 @@ export function parseFreezeLog(log: string, fallbackEnd = NaN): StillRange[] {
 
 const running = new Set<ChildProcess>()
 
-/** Runs ffmpeg on `file`; its log, or null when it failed, was killed or took longer than `timeoutMs`. */
-function runFreezeDetect(file: string, timeoutMs: number): Promise<string | null> {
+/** Runs ffmpeg on `file`: its log, or why it failed, was killed or took longer than `timeoutMs`. */
+function runFreezeDetect(file: string, timeoutMs: number): Promise<{ log: string } | { error: string }> {
   return new Promise((resolve) => {
     let proc: ChildProcess
     try {
       proc = spawn(ffmpegPath(), freezeDetectArgs(file), { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
-    } catch {
-      resolve(null)
+    } catch (err) {
+      resolve({ error: `ffmpeg could not be started (${err instanceof Error ? err.message : String(err)})` })
       return
     }
     running.add(proc)
     // Keep the interesting lines only: the log of a long recording is mostly noise.
     let log = ''
     let tail = ''
+    let last = ''
     proc.stderr!.on('data', (d: Buffer) => {
       const lines = (tail + d.toString()).split('\n')
       tail = lines.pop() ?? ''
-      for (const line of lines) if (/freezedetect|Duration:/.test(line) && log.length < 2_000_000) log += `${line}\n`
+      for (const line of lines) {
+        if (/freezedetect|Duration:/.test(line)) {
+          if (log.length < 2_000_000) log += `${line}\n`
+        } else if (line.trim()) last = line.trim()
+      }
     })
-    const timer = setTimeout(() => proc.kill('SIGKILL'), timeoutMs)
-    const finish = (ok: boolean): void => {
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      proc.kill('SIGKILL')
+    }, timeoutMs)
+    const finish = (result: { log: string } | { error: string }): void => {
       clearTimeout(timer)
       running.delete(proc)
-      resolve(ok ? log + tail : null)
+      if ('error' in result) console.warn(`Still detection failed: ${result.error}${last ? ` (${last.slice(0, 300)})` : ''}`)
+      resolve(result)
     }
-    proc.on('error', () => finish(false))
-    proc.on('close', (code) => finish(code === 0))
+    proc.on('error', (err) => finish({ error: `ffmpeg could not be started (${err.message})` }))
+    proc.on('close', (code, signal) => {
+      if (code === 0) finish({ log: log + tail })
+      else if (timedOut) finish({ error: 'the analysis took too long and was stopped' })
+      else if (signal) finish({ error: 'the analysis was stopped' })
+      else finish({ error: `ffmpeg could not read the video (exit code ${code})` })
+    })
   })
 }
 
 const cache = new Map<string, Promise<StillRange[]>>()
 
-/** Stretches of at least `minSeconds` where screen.mp4 of project `id` barely changes. */
+/**
+ * Stretches of at least `minSeconds` where screen.mp4 of project `id` barely changes; none for
+ * an `id` that is not a project id. Rejects with a short reason when the analysis cannot run
+ * or fails.
+ */
 export async function detectStill(id: unknown, minSeconds: unknown): Promise<StillRange[]> {
+  let dir: string
   try {
     if (typeof id !== 'string') return []
-    const min = typeof minSeconds === 'number' && Number.isFinite(minSeconds) ? Math.min(Math.max(minSeconds, DETECT_MIN), MAX_SECONDS) : DETECT_MIN
-    const dir = projectDir(id)
-    const file = path.join(dir, 'screen.mp4')
-    const stat = await fs.stat(file)
-    if (!stat.isFile()) return []
-    let duration = NaN
-    try {
-      const project = JSON.parse(await fs.readFile(path.join(dir, 'project.json'), 'utf8')) as { duration?: unknown }
-      if (typeof project.duration === 'number' && Number.isFinite(project.duration)) duration = project.duration
-    } catch {
-      // The length printed by ffmpeg is used instead.
-    }
-    const key = `${id}\n${stat.size}\n${stat.mtimeMs}`
-    let result = cache.get(key)
-    if (!result) {
-      // About a minute, plus as long again as the recording: decoding is far faster than real time.
-      const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
-      result = runFreezeDetect(file, timeoutMs).then((log) => {
-        if (log === null) {
-          cache.delete(key)
-          return []
-        }
-        return parseFreezeLog(log, duration)
-      })
-      cache.set(key, result)
-      while (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value!)
-    }
-    return (await result).filter((r) => r.end - r.start >= min - 1e-6)
-  } catch (err) {
-    console.warn('Still detection failed:', err)
+    dir = projectDir(id)
+  } catch {
     return []
   }
+  const min = typeof minSeconds === 'number' && Number.isFinite(minSeconds) ? Math.min(Math.max(minSeconds, DETECT_MIN), MAX_SECONDS) : DETECT_MIN
+  const file = path.join(dir, 'screen.mp4')
+  const stat = await fs.stat(file).catch(() => null)
+  if (!stat?.isFile()) throw new Error('the video file is missing')
+  let duration = NaN
+  try {
+    const project = JSON.parse(await fs.readFile(path.join(dir, 'project.json'), 'utf8')) as { duration?: unknown }
+    if (typeof project.duration === 'number' && Number.isFinite(project.duration)) duration = project.duration
+  } catch {
+    // The length printed by ffmpeg is used instead.
+  }
+  const key = `${id}\n${stat.size}\n${stat.mtimeMs}`
+  let result = cache.get(key)
+  if (!result) {
+    // About a minute, plus as long again as the recording: decoding is far faster than real time.
+    const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
+    const run = runFreezeDetect(file, timeoutMs).then((r) => {
+      if ('log' in r) return parseFreezeLog(r.log, duration)
+      // A failure is not kept: the next request runs the analysis again.
+      if (cache.get(key) === run) cache.delete(key)
+      throw new Error(r.error)
+    })
+    cache.set(key, run)
+    while (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value!)
+    result = run
+  }
+  return (await result).filter((r) => r.end - r.start >= min - 1e-6)
 }
 
 export function registerAnalysisIpc(): void {

@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, type ChildProcess } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -7,8 +7,22 @@ import { ffmpegPath } from '../src/main/ffmpeg'
 const h = vi.hoisted(() => ({
   root: require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'ssw-analysis-')) as string,
   handlers: new Map<string, (...args: unknown[]) => unknown>(),
-  appEvents: new Map<string, () => void>()
+  appEvents: new Map<string, () => void>(),
+  /** Every process spawned, and a callback for the next one (called as soon as it starts). */
+  spawned: [] as ChildProcess[],
+  onSpawn: null as ((proc: ChildProcess) => void) | null
 }))
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+  const spawn = (...args: Parameters<typeof actual.spawn>): ChildProcess => {
+    const proc = actual.spawn(...args)
+    h.spawned.push(proc)
+    h.onSpawn?.(proc)
+    return proc
+  }
+  return { ...actual, spawn, default: { ...actual, spawn } }
+})
 
 vi.mock('electron', () => ({
   app: {
@@ -98,23 +112,55 @@ describe('detectStill', () => {
     expect(await detectStill('rec-still', -3)).toHaveLength(2)
   })
 
-  it('is reachable over IPC and kills running analyses when the app quits', async () => {
+  it('is reachable over IPC, and analyses each file version once', async () => {
     const handler = h.handlers.get('projects:detectStill')!
+    const runs = h.spawned.length
     expect(await handler({}, 'rec-still', 1)).toHaveLength(2)
-    expect(h.appEvents.has('will-quit')).toBe(true)
-    h.appEvents.get('will-quit')!()
+    expect(await handler({}, 'rec-still', 3)).toHaveLength(2)
+    expect(h.spawned.length).toBe(runs)
   })
 
-  it('returns nothing for invalid ids, missing files and files ffmpeg cannot read', async () => {
+  it('kills a running analysis when the app quits, and does not keep the failure', async () => {
+    seed('rec-quit')
+    const started = new Promise<ChildProcess>((resolve) => {
+      h.onSpawn = (proc) => {
+        h.onSpawn = null
+        resolve(proc)
+      }
+    })
+    const pending = detectStill('rec-quit', 1)
+    const proc = await started
+    expect(proc.exitCode).toBeNull()
+    expect(h.appEvents.has('will-quit')).toBe(true)
+    const t0 = Date.now()
+    h.appEvents.get('will-quit')!()
+    await expect(pending).rejects.toThrow('the analysis was stopped')
+    expect(Date.now() - t0).toBeLessThan(5000)
+    expect(proc.signalCode).toBe('SIGKILL')
+    // The next request analyses the file again, and this time finishes.
+    const runs = h.spawned.length
+    expect(await detectStill('rec-quit', 1)).toHaveLength(2)
+    expect(h.spawned.length).toBe(runs + 1)
+  })
+
+  it('finds nothing for ids that are not project ids', async () => {
+    const runs = h.spawned.length
     for (const id of ['../rec-still', 'a/b', '', 42, null, 'rec still', '..']) expect(await detectStill(id, 1), String(id)).toEqual([])
-    expect(await detectStill('rec-missing', 1)).toEqual([])
+    expect(h.spawned.length).toBe(runs)
+  })
+
+  it('reports a missing video and files ffmpeg cannot read, and tries those again', async () => {
+    await expect(detectStill('rec-missing', 1)).rejects.toThrow('the video file is missing')
+    // A folder named screen.mp4 is not a video either.
+    mkdirSync(path.join(projectsRoot, 'rec-dir', 'screen.mp4'), { recursive: true })
+    await expect(detectStill('rec-dir', 1)).rejects.toThrow('the video file is missing')
     const dir = path.join(projectsRoot, 'rec-broken')
     mkdirSync(dir, { recursive: true })
     writeFileSync(path.join(dir, 'screen.mp4'), 'not a video')
-    expect(await detectStill('rec-broken', 1)).toEqual([])
-    // A folder named screen.mp4 is not a video either.
-    mkdirSync(path.join(projectsRoot, 'rec-dir', 'screen.mp4'), { recursive: true })
-    expect(await detectStill('rec-dir', 1)).toEqual([])
+    const runs = h.spawned.length
+    await expect(detectStill('rec-broken', 1)).rejects.toThrow(/^ffmpeg could not read the video \(exit code \d+\)$/)
+    await expect(detectStill('rec-broken', 1)).rejects.toThrow(/could not read/)
+    expect(h.spawned.length).toBe(runs + 2)
   })
 
   it('uses the length ffmpeg reports when project.json is unreadable', async () => {

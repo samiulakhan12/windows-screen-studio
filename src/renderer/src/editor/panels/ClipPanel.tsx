@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../../shared/editor/clips'
 import type { EditStore } from '../../../../shared/editor/editStore'
-import { shortcutLabel, withShortcut } from '../../../../shared/editor/shortcuts'
+import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import {
   applySmartSpeed,
   DEFAULT_MIN_IDLE,
@@ -15,11 +15,13 @@ import {
 } from '../../../../shared/editor/smartSpeed'
 import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration, SPEED_PRESETS } from '../../../../shared/engine/timeline'
+import { stripIpcPrefix } from '../../../../shared/recording/errors'
 import type { Project } from '../../../../shared/types'
 import { useEditor } from '../context'
 import { Chips, Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
+import { useKeymap } from '../keymapContext'
 import { FirstShortcut } from '../ShortcutKeys'
 import './clipPanel.css'
 
@@ -29,7 +31,8 @@ const GAP_TITLE: Record<Gap['kind'], string> = { 'trim-start': 'Trimmed start', 
 
 export function ClipPanel(props: InspectorProps): JSX.Element {
   const { store } = useEditor()
-  const { project, selection, keymap } = props
+  const keymap = useKeymap()
+  const { project, selection } = props
   const { clips } = project
   const length = outputDuration(clips)
   const clipIndex = selection?.kind === 'clip' ? clips.findIndex((c) => c.id === selection.id) : -1
@@ -59,7 +62,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             className="btn ghost danger"
             disabled={clips.length <= 1}
             onClick={() => props.onDeleteClip(clip.id)}
-            title={clips.length <= 1 ? 'The last clip cannot be removed' : withShortcut('Cut this clip out of the video', keymap?.deleteSelection)}
+            title={clips.length <= 1 ? 'The last clip cannot be removed' : withShortcut('Cut this clip out of the video', keymap.deleteSelection)}
           >
             <EditorIcon name="scissors" size={16} /> Delete clip
           </button>
@@ -78,7 +81,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
           <p className="hint">
             {formatTime(selection.start)} – {formatTime(selection.end)} ({(selection.end - selection.start).toFixed(1)} s)
           </p>
-          <button className="btn" onClick={() => props.onCutRange(selection.start, selection.end)} title={withShortcut('Cut this range out of the video', keymap?.deleteSelection)}>
+          <button className="btn" onClick={() => props.onCutRange(selection.start, selection.end)} title={withShortcut('Cut this range out of the video', keymap.deleteSelection)}>
             <EditorIcon name="scissors" size={16} /> Cut range
           </button>
           <span className="field-label">
@@ -96,19 +99,26 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
         </Section>
       ) : (
         <Section title="Edit">
-          <button className="btn" onClick={props.onSplit} title={withShortcut('Split the clip at the playhead', keymap?.split)}>
+          <button className="btn" onClick={props.onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>
             <EditorIcon name="split" size={16} /> Split at playhead
           </button>
           <p className="hint">
-            {keymap?.split.length ? (
+            {keymap.split.length ? (
               <>
                 Press <FirstShortcut accelerators={keymap.split} fallback="" /> to split at the playhead,
               </>
             ) : (
               'Split at the playhead,'
             )}{' '}
-            select a clip and press <FirstShortcut accelerators={keymap?.deleteSelection ?? ['Delete']} fallback="Delete clip" /> to cut it, or <kbd>Shift</kbd>+drag on the clip
-            track to select a range. Drag the yellow handles to trim.
+            select a clip and{' '}
+            {keymap.deleteSelection.length ? (
+              <>
+                press <FirstShortcut accelerators={keymap.deleteSelection} fallback="" />
+              </>
+            ) : (
+              'use Delete clip'
+            )}{' '}
+            to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.
           </p>
         </Section>
       )}
@@ -133,6 +143,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
 /**
  * Still-picture analysis of the open recording, kept for the editor session (keyed by its
  * store) so switching tabs never runs it again; also which smart speed request was handled.
+ * A failed analysis is not kept: Find tries again.
  */
 interface Analysis {
   still: TimeRange[] | null
@@ -157,7 +168,8 @@ const partKey = (r: TimeRange): string => `${r.start.toFixed(3)}:${r.end.toFixed
 
 function SmartSpeed(props: InspectorProps): JSX.Element {
   const { store, player } = useEditor()
-  const { project, cursor, onSelect, onNotice, keymap } = props
+  const keymap = useKeymap()
+  const { project, cursor, onSelect, onNotice } = props
   const analysis = useMemo<Analysis>(() => {
     let a = analyses.get(store)
     if (!a) analyses.set(store, (a = { still: null, pending: null, request: 0 }))
@@ -167,6 +179,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const [action, setAction] = useState<SmartSpeedAction>(lastChoice.action)
   const [still, setStill] = useState<TimeRange[] | null>(analysis.still)
   const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState<string | null>(null)
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set())
   const boxRef = useRef<HTMLDivElement>(null)
   const alive = useRef(true)
@@ -181,6 +194,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const find = useCallback(
     async (): Promise<void> => {
       setBusy(true)
+      setFailure(null)
       analysis.pending ??= window.api.detectStill(projectId, STILL_DETECT_MIN).finally(() => {
         analysis.pending = null
       })
@@ -190,13 +204,14 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         if (!alive.current) return
         setStill(ranges)
         setSkipped(new Set())
-      } catch {
-        if (alive.current) onNotice('The recording could not be analysed')
+      } catch (err) {
+        // Shown next to the button, which tries again.
+        if (alive.current) setFailure(stripIpcPrefix(err instanceof Error ? err.message : String(err)).replace(/[.\s]+$/, '') || 'unknown error')
       } finally {
         if (alive.current) setBusy(false)
       }
     },
-    [analysis, projectId, onNotice]
+    [analysis, projectId]
   )
 
   // An analysis started before switching tabs: wait for it here.
@@ -236,9 +251,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
     store.update((p) => ({ ...p, clips: applySmartSpeed(p.clips, chosen, action) }))
     const shorter = before - outputDuration(store.state.clips)
     onSelect(null)
-    const undo = keymap?.undo[0] ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''
     const what = action === 'cut' ? `Cut ${plural(chosen.length, 'idle part')}` : `Sped up ${plural(chosen.length, 'idle part')} ${action}×`
-    onNotice(`${what}: the video is ${seconds(shorter)} shorter${undo}`)
+    onNotice(`${what}: the video is ${seconds(shorter)} shorter${undoHint(keymap)}`)
   }
 
   return (
@@ -258,17 +272,25 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
           options={SMART_SPEED_ACTIONS.map((a) => ({ value: a, label: ACTION_LABEL[a], title: ACTION_TITLE[a] }))}
         />
         {!plan ? (
-          <button className="btn" onClick={() => void find()} disabled={busy}>
-            {busy ? (
-              <>
-                <span className="smart-spinner" aria-hidden="true" /> Looking for idle parts…
-              </>
-            ) : (
-              <>
-                <EditorIcon name="sparkle" size={16} /> Find idle parts
-              </>
+          <>
+            {failure && (
+              <p className="callout" role="alert" data-testid="smart-speed-error">
+                <EditorIcon name="alert" size={16} />
+                <span>The recording could not be analysed: {failure}.</span>
+              </p>
             )}
-          </button>
+            <button className="btn" onClick={() => void find()} disabled={busy}>
+              {busy ? (
+                <>
+                  <span className="smart-spinner" aria-hidden="true" /> Looking for idle parts…
+                </>
+              ) : (
+                <>
+                  <EditorIcon name="sparkle" size={16} /> {failure ? 'Try again' : 'Find idle parts'}
+                </>
+              )}
+            </button>
+          </>
         ) : (
           <>
             <p className="smart-summary" role="status">
