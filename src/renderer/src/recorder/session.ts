@@ -1,8 +1,9 @@
 import type { CapturePlan, RecordingApi, RecordingStartInfo, SaveRecordingPayload, TrackKind } from '../../../shared/api/recording'
 import type { NormRect } from '../../../shared/types'
 import { ChunkPipe } from '../../../shared/recording/chunkPipe'
+import { captureDisplay, SYSTEM_AUDIO_WARNING } from '../../../shared/recording/displayCapture'
 import { friendlyError, RecorderError, SOURCE_GONE, type DeviceKind } from '../../../shared/recording/errors'
-import { epochNow, nextFrameTime } from './firstFrame'
+import { epochNow, nextFrameTime, syncEpoch } from './firstFrame'
 import { AUDIO_MIMES, CAMERA_MIMES, pickMime, screenBitrate, screenMimes } from '../../../shared/recording/mime'
 
 export interface SessionOptions {
@@ -67,6 +68,8 @@ export class RecordingSession {
   private resumedAt = 0
   private failure: RecorderError | null = null
   private disposed = false
+  /** System audio could not be started (no active output device, …). */
+  private loopbackFailed = false
   readonly warnings: string[] = []
   /** The captured screen/window went away (closed window, unplugged display). */
   onEnded: (() => void) | null = null
@@ -113,15 +116,18 @@ export class RecordingSession {
       this.audioSources = this.audioSources.filter((t) => !s.getTracks().includes(t))
     }
     this.streams = this.streams.filter((s) => s.getVideoTracks().length === 0)
-    await this.acquireScreen(this.options.systemAudio)
+    // Do not ask again for system audio that already failed to start.
+    await this.acquireScreen(this.options.systemAudio && !this.loopbackFailed)
   }
 
   private async acquireScreen(systemAudio: boolean): Promise<void> {
-    let display: MediaStream
-    try {
-      display = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 } }, audio: systemAudio })
-    } catch (err) {
-      throw friendlyError(err, 'screen')
+    const { stream: display, systemAudioFailed } = await captureDisplay(
+      (audio) => navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 } }, audio }),
+      systemAudio
+    )
+    if (systemAudioFailed) {
+      this.loopbackFailed = true
+      this.warnings.push(SYSTEM_AUDIO_WARNING)
     }
     this.streams.push(display)
     const track = display.getVideoTracks()[0]
@@ -148,7 +154,8 @@ export class RecordingSession {
       this.audioSources.unshift(...s.getAudioTracks())
     } catch (err) {
       console.warn('System audio capture failed:', err)
-      this.warnings.push('System audio could not be captured, so the recording has no system sound.')
+      this.loopbackFailed = true
+      this.warnings.push(SYSTEM_AUDIO_WARNING)
     }
   }
 
@@ -212,6 +219,9 @@ export class RecordingSession {
 
   /** Starts the recorders. `native` is the helper's start when it records the video. */
   start(native: { startedAt: number; width: number; height: number } | null): RecordingStartInfo {
+    // Every epoch time below is compared with Date.now() in the main process and with
+    // the native helper's system clock: align with them now.
+    syncEpoch()
     const audio = this.audioTrack()
     this.hasAudio = !!audio
     if (native) {

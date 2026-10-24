@@ -26,7 +26,8 @@ function pixel(file, t, x, y) {
   return [...buf.subarray(0, 3)]
 }
 
-h.run('region recording: overlay selection, exact crop, cursor remapped', async (ctx) => {
+;(async () => {
+await h.run('region recording: overlay selection, exact crop, cursor remapped', async (ctx) => {
   const home = h.tempHome('rec-region')
   const { app, win, logs } = await h.launch({ home })
   ctx.app = r.closable(app)
@@ -94,3 +95,40 @@ h.run('region recording: overlay selection, exact crop, cursor remapped', async 
   h.assert(Math.abs(cursor.clicks[0].x - 0.75) < 0.01 && Math.abs(cursor.clicks[0].y - 100 / 450) < 0.01, `click remapped ${JSON.stringify(cursor.clicks[0])}`)
   h.assert(cursor.samples.some((s) => s.x > 0.7 && s.x < 0.95 && s.y > 0 && s.y < 0.4), 'cursor samples remapped into the area')
 })
+
+await h.run('region minimum size: main accepts what the picker offers and explains a rejection (seams-6)', async (ctx) => {
+  const home = h.tempHome('rec-region-min')
+  const { app, win, logs } = await h.launch({ home })
+  ctx.app = r.closable(app)
+  ctx.logs = logs
+  await r.waitForSources(win)
+  await win.click('.segmented button:has-text("Area")')
+  const overlayOf = () => r.until(() => app.windows().find((w) => w.url().includes('#/region')), { what: 'region overlay' })
+
+  // A narrow area the overlay accepts (35 DIP wide is under the old 2 % of 1920 DIP).
+  await win.click('.source')
+  let overlay = await overlayOf()
+  await overlay.waitForSelector('.region-root')
+  await overlay.mouse.move(500, 300)
+  await overlay.mouse.down()
+  await overlay.mouse.move(535, 500, { steps: 6 })
+  await overlay.mouse.up()
+  await overlay.waitForSelector('.region-actions')
+  await overlay.keyboard.press('Enter').catch(() => undefined)
+  await r.until(() => r.mainVisible(app), { what: 'main window back' })
+  await win.waitForSelector('.region-summary')
+  h.assert((await win.textContent('.region-dims')).includes('35 × 200'), `narrow area kept: ${await win.textContent('.region-dims')}`)
+  h.assert(!(await win.$('.home-error')), 'no error for an area the picker allowed')
+
+  // An area below the minimum (sent directly, as a stale or tampered overlay could) is
+  // rejected with a message instead of silently disappearing.
+  await win.click('.region-summary button:has-text("Change area")')
+  overlay = await overlayOf()
+  await overlay.waitForSelector('.region-root')
+  await overlay.evaluate(() => window.api.finishRegion({ x: 0.1, y: 0.1, w: 10 / 1920, h: 0.3 })).catch(() => undefined)
+  await r.until(() => r.mainVisible(app), { what: 'main window back' })
+  await win.waitForSelector('.home-error')
+  h.assert(/too small/.test(await win.textContent('.home-error')), `explains the rejection: ${await win.textContent('.home-error')}`)
+  h.assert((await win.textContent('.region-dims')).includes('35 × 200'), 'the previous area is still selected')
+})
+})()

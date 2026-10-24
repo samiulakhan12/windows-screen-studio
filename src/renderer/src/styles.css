@@ -636,18 +636,18 @@ body.toolbar-body #root {
   font-weight: 600;
 }
 
-.toolbar .rec-dot {
-  animation: blink 1.2s ease-in-out infinite;
+/* Dimmed every other second by Toolbar.tsx; no CSS animation (it would repaint every frame). */
+.toolbar .rec-dot.dim {
+  opacity: 0.35;
 }
 
 .toolbar .rec-dot.paused {
   background: #facc15;
-  animation: none;
 }
 
-@keyframes blink {
-  50% {
-    opacity: 0.25;
+@media (prefers-reduced-motion: reduce) {
+  .toolbar .rec-dot.dim {
+    opacity: 1;
   }
 }
 

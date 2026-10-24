@@ -10,10 +10,16 @@ export interface ProxyOptions {
   size?: { width: number; height: number } | null
   /** Normalised crop applied first (region recordings). */
   crop?: NormRect | null
-  /** Separate audio file (native capture) whose timeline starts `offset` seconds after the video's. */
-  audio?: { input: string; offset: number } | null
   /** Write machine-readable progress to stdout (see proxyRunner). */
   progress?: boolean
+  /** Move the index to the front (default). Off for an intermediate file that is remuxed anyway. */
+  faststart?: boolean
+}
+
+/** A separately recorded audio file (native capture) whose timeline starts `offset` seconds after the video's. */
+export interface ExternalAudio {
+  input: string
+  offset: number
 }
 
 /** Rounds a normalised coordinate so TypeScript and ffmpeg's evaluator compute identical pixels. */
@@ -52,7 +58,8 @@ function encoderArgs(encoder: H264Encoder, bitrate: number): string[] {
     case 'h264_amf':
       return ['-c:v', 'h264_amf', '-quality', 'speed', '-rc', 'cqp', '-qp_i', '18', '-qp_p', '20']
     case 'h264_mf':
-      return ['-c:v', 'h264_mf', '-b:v', String(bitrate)]
+      // Without -hw_encoding ffmpeg picks Microsoft's software MFT, not the GPU.
+      return ['-c:v', 'h264_mf', '-hw_encoding', '1', '-b:v', String(bitrate)]
     default:
       return ['-c:v', 'libx264', '-preset', 'superfast', '-crf', '17']
   }
@@ -82,28 +89,50 @@ export function proxyArgs(input: string, output: string, withAudio: boolean, opt
   filters.push(`format=${pixelFormat(encoder)}`)
   const bitrate = Math.round(Math.min(40e6, Math.max(4e6, (size ? size.width * size.height : 1920 * 1080) * fps * 0.15)))
 
-  const audio = options.audio ?? null
-  const audioInput = audio
-    ? [...(audio.offset < 0 ? ['-ss', (-audio.offset).toFixed(3)] : []), '-i', audio.input]
-    : []
-  const audioOut = !!audio || withAudio
   return [
     '-y',
     '-hide_banner',
     '-nostdin',
     '-i', input,
-    ...audioInput,
     '-map', '0:v:0',
-    ...(audio ? ['-map', '1:a:0?'] : withAudio ? ['-map', '0:a:0?'] : []),
+    ...(withAudio ? ['-map', '0:a:0?'] : []),
     '-vf', filters.join(','),
     // WebM uses a 1 ms timebase; without an explicit rate ffmpeg would emit 1000 fps.
     '-fps_mode', 'cfr',
     '-r', String(fps),
     ...encoderArgs(encoder, bitrate),
     '-g', '15',
-    ...(audio && audio.offset > 0 ? ['-af', `adelay=${Math.round(audio.offset * 1000)}:all=1`] : []),
-    ...(audioOut ? ['-c:a', 'aac', '-b:a', '192k'] : ['-an']),
+    ...(withAudio ? ['-c:a', 'aac', '-b:a', '192k'] : ['-an']),
     ...(options.progress ? ['-progress', 'pipe:1', '-nostats'] : []),
+    ...(options.faststart === false ? [] : ['-movflags', '+faststart']),
+    output
+  ]
+}
+
+/**
+ * Adds separately recorded audio to a finished video proxy (stream copy). The audio is
+ * shifted by its offset, padded with silence and cut at `duration` (the video's exact
+ * length, from its frame count), so no track outlasts the video: the file's duration is
+ * the video's, and the editor never plays frozen frames after the last one.
+ */
+export function muxAudioArgs(video: string, output: string, audio: ExternalAudio, duration: number | null, progress = true): string[] {
+  const filters: string[] = []
+  if (audio.offset > 0) filters.push(`adelay=${Math.round(audio.offset * 1000)}:all=1`)
+  if (duration !== null && duration > 0) filters.push('apad', `atrim=end=${duration.toFixed(6)}`)
+  return [
+    '-y',
+    '-hide_banner',
+    '-nostdin',
+    '-i', video,
+    ...(audio.offset < 0 ? ['-ss', (-audio.offset).toFixed(3)] : []),
+    '-i', audio.input,
+    '-map', '0:v:0',
+    '-map', '1:a:0?',
+    '-c:v', 'copy',
+    ...(filters.length > 0 ? ['-af', filters.join(',')] : []),
+    '-c:a', 'aac',
+    '-b:a', '192k',
+    ...(progress ? ['-progress', 'pipe:1', '-nostats'] : []),
     '-movflags', '+faststart',
     output
   ]

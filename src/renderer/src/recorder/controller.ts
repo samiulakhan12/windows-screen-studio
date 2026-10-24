@@ -1,7 +1,9 @@
-import type { CapturePlan, RecorderCommand } from '../../../shared/api/recording'
-import type { RecordingStatus } from '../../../shared/types'
+import type { CapturePlan, RecorderCommand, RecorderStatusUpdate } from '../../../shared/api/recording'
 import { friendlyError, RecorderError, SOURCE_GONE } from '../../../shared/recording/errors'
 import { RecordingSession, type SessionOptions } from './session'
+
+const NATIVE_FALLBACK_WARNING =
+  'Screen capture used standard mode because the native capture helper did not start. The Windows cursor is recorded in the video, so the smooth cursor is unavailable for this recording.'
 
 export type RecordingPhase = 'preparing' | 'countdown' | 'recording' | 'saving'
 
@@ -33,7 +35,13 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
   }
   const { token } = plan
   const session = new RecordingSession(api, plan, options)
-  const status = (s: RecordingStatus): Promise<void> => api.setRecordingStatus(token, s).catch(() => undefined)
+  const status = (s: RecorderStatusUpdate): Promise<void> => api.setRecordingStatus(token, s).catch(() => undefined)
+  const flushWarnings = (): void => {
+    session.warnings.forEach((w) => callbacks.onWarning?.(w))
+    session.warnings.length = 0
+  }
+  // Problems only the main process sees (e.g. the recorded screen was disconnected).
+  const offWarning = api.onRecorderWarning((message) => callbacks.onWarning?.(message))
 
   let started = false
   let saving = false
@@ -76,7 +84,7 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     callbacks.onPhase?.('saving')
     await status({ state: 'processing', elapsed: session.elapsed })
     const meta = await session.stop()
-    session.warnings.forEach((w) => callbacks.onWarning?.(w))
+    flushWarnings()
     const id = await api.saveRecording(token, meta)
     if (session.error) callbacks.onWarning?.(`${session.error.message} Everything recorded before that was saved.`)
     return id
@@ -84,8 +92,7 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
 
   try {
     await session.acquire()
-    session.warnings.forEach((w) => callbacks.onWarning?.(w))
-    session.warnings.length = 0
+    flushWarnings()
     callbacks.onPhase?.('countdown')
     for (let n = 3; n > 0 && !outcome; n--) {
       await status({ state: 'countdown', elapsed: n })
@@ -94,9 +101,17 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
 
     let native: { startedAt: number; width: number; height: number } | null = null
     if (!outcome && plan.method === 'native') {
-      const result = await api.startNativeVideo(token)
-      if (result.ok) native = result
-      else await session.fallbackToChromium()
+      // The helper can take several seconds (encoder setup, first frame): say so.
+      await status({ state: 'countdown', elapsed: 0, starting: true })
+      // Cancel stays responsive meanwhile: the main process stops the helper.
+      const result = await Promise.race([api.startNativeVideo(token), wait().then(() => null)])
+      if (result?.ok) native = result
+      else if (result && !outcome) {
+        console.warn('Native capture did not start:', result.message)
+        callbacks.onWarning?.(NATIVE_FALLBACK_WARNING)
+        await session.fallbackToChromium()
+        flushWarnings()
+      }
     }
     if (outcome) {
       session.dispose()
@@ -131,5 +146,6 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     throw friendlyError(err)
   } finally {
     unsubscribe()
+    offWarning()
   }
 }

@@ -51,6 +51,8 @@ export interface SaveRecordingPayload {
 }
 
 export interface ProcessingProgress {
+  /** Set once on the last event of a run (finished, failed or postponed). */
+  done?: boolean
   message: string
   /** 0..1, or null while the amount of work is unknown. */
   progress: number | null
@@ -76,20 +78,26 @@ export interface RegionSelection {
 }
 
 export interface ToolbarStatus extends RecordingStatus {
+  /** Countdown over, waiting for the capture to start (the native helper can take seconds). */
+  starting?: boolean
   /** False when the stop shortcut could not be registered. */
   stopShortcut?: boolean
 }
 
 export type RecorderCommand = 'stop' | 'pause' | 'resume' | 'cancel'
 
+/** A recorder status sent to the main process (and shown on the toolbar). */
+export type RecorderStatusUpdate = RecordingStatus & Pick<ToolbarStatus, 'starting'>
+
 export interface RecordingApi {
-  getSources(): Promise<CaptureSource[]>
+  /** Screens and/or windows with small JPEG thumbnails (both kinds when `kinds` is omitted). */
+  getSources(kinds?: CaptureSource['kind'][]): Promise<CaptureSource[]>
   prepareCapture(request: RecordingRequest): Promise<CapturePlan>
   /** Appends one MediaRecorder chunk; callers must await each call per kind to keep order. */
   appendRecordingChunk(token: string, kind: TrackKind, data: Uint8Array): Promise<void>
   startNativeVideo(token: string): Promise<NativeStartResult>
   recordingStarted(token: string, info: RecordingStartInfo): Promise<void>
-  setRecordingStatus(token: string, status: RecordingStatus): Promise<void>
+  setRecordingStatus(token: string, status: RecorderStatusUpdate): Promise<void>
   saveRecording(token: string, payload: SaveRecordingPayload): Promise<string>
   cancelRecording(token: string): Promise<void>
   sendRecorderCommand(command: RecorderCommand): Promise<void>
@@ -103,6 +111,8 @@ export interface RecordingApi {
   finishProcessingLater(): Promise<void>
   openPrivacySettings(kind: 'microphone' | 'camera'): Promise<void>
   onRecorderCommand(cb: (command: RecorderCommand) => void): () => void
+  /** Problems the main process noticed during a recording (e.g. the recorded screen went away). */
+  onRecorderWarning(cb: (message: string) => void): () => void
   onRecordingStatus(cb: (status: ToolbarStatus) => void): () => void
   onProcessing(cb: (progress: ProcessingProgress) => void): () => void
 }

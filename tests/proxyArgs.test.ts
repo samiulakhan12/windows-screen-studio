@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
-import { cropFilter, proxyArgs, regionPixels } from '../src/main/proxyArgs'
+import { cropFilter, muxAudioArgs, proxyArgs, regionPixels } from '../src/main/proxyArgs'
 
 const arg = (args: string[], flag: string): string | undefined => args[args.indexOf(flag) + 1]
 
@@ -40,22 +40,43 @@ describe('proxyArgs', () => {
     expect(vf).toContain('pad=1280:720:(ow-iw)/2:(oh-ih)/2')
   })
 
-  it('maps a separate audio file and applies its offset', () => {
-    const later = proxyArgs('v.mp4', 'o.mp4', false, { audio: { input: 'a.webm', offset: 0.25 } })
-    expect(later.join(' ')).toContain('-i v.mp4 -i a.webm')
-    expect(later.join(' ')).toContain('-map 1:a:0?')
-    expect(arg(later, '-af')).toBe('adelay=250:all=1')
-    const earlier = proxyArgs('v.mp4', 'o.mp4', false, { audio: { input: 'a.webm', offset: -0.4 } })
-    expect(earlier.join(' ')).toContain('-ss 0.400 -i a.webm')
-    expect(earlier).not.toContain('-af')
-    expect(earlier).toContain('aac')
-  })
-
   it('drops audio when there is none and can report progress', () => {
     const args = proxyArgs('in.webm', 'out.mp4', false, { progress: true })
     expect(args).toContain('-an')
     expect(args.join(' ')).toContain('-progress pipe:1 -nostats')
     expect(args.at(-1)).toBe('out.mp4')
+  })
+
+  it('makes Media Foundation use the GPU (it defaults to a software encoder)', () => {
+    const mf = proxyArgs('in.webm', 'out.mp4', false, { encoder: 'h264_mf' })
+    expect(arg(mf, '-c:v')).toBe('h264_mf')
+    expect(arg(mf, '-hw_encoding')).toBe('1')
+    expect(arg(mf, '-vf')).toContain('format=nv12')
+  })
+
+  it('can skip faststart for an intermediate file', () => {
+    expect(proxyArgs('in.webm', 'out.mp4', false)).toContain('+faststart')
+    expect(proxyArgs('in.webm', 'out.mp4', false, { faststart: false })).not.toContain('+faststart')
+  })
+})
+
+describe('muxAudioArgs', () => {
+  it('adds a separate audio file at its offset, cut to the video length', () => {
+    const later = muxAudioArgs('v.mp4', 'o.mp4', { input: 'a.webm', offset: 0.25 }, 2.5)
+    expect(later.join(' ')).toContain('-i v.mp4 -i a.webm')
+    expect(later.join(' ')).toContain('-map 0:v:0 -map 1:a:0?')
+    expect(arg(later, '-c:v')).toBe('copy')
+    expect(arg(later, '-af')).toBe('adelay=250:all=1,apad,atrim=end=2.500000')
+    expect(later.at(-1)).toBe('o.mp4')
+    const earlier = muxAudioArgs('v.mp4', 'o.mp4', { input: 'a.webm', offset: -0.4 }, 3)
+    expect(earlier.join(' ')).toContain('-ss 0.400 -i a.webm')
+    expect(arg(earlier, '-af')).toBe('apad,atrim=end=3.000000')
+    expect(earlier).toContain('aac')
+  })
+
+  it('leaves the audio untrimmed when the video length is unknown', () => {
+    const args = muxAudioArgs('v.mp4', 'o.mp4', { input: 'a.webm', offset: 0 }, null)
+    expect(args).not.toContain('-af')
   })
 })
 
@@ -86,6 +107,18 @@ describe.skipIf(!haveFfmpeg)('proxy filters (real ffmpeg)', () => {
     return 'none'
   }
 
+  /** Container duration from ffmpeg's own banner ("Duration: 00:00:02.50"). */
+  const containerSeconds = (file: string): number => {
+    let log = ''
+    try {
+      execFileSync(ffmpeg, ['-hide_banner', '-i', file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    } catch (err) {
+      log = String((err as { stderr?: Buffer }).stderr ?? '')
+    }
+    const m = /Duration: (\d+):(\d+):([\d.]+)/.exec(log)
+    return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : NaN
+  }
+
   const makeInput = (dir: string, size: string): string => {
     const file = path.join(dir, `in-${size}.mkv`)
     execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', `testsrc=size=${size}:rate=30:duration=0.5`, '-c:v', 'ffv1', file])
@@ -101,6 +134,22 @@ describe.skipIf(!haveFfmpeg)('proxy filters (real ffmpeg)', () => {
     execFileSync(ffmpeg, args, { stdio: 'ignore' })
     expect(sizeOf(out)).toBe(`${px.width}x${px.height}`)
     expect(cropFilter(region)).toContain('exact=1')
+  })
+
+  it('gives the native proxy exactly the video duration, whether the audio runs longer or shorter (seams-2)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-mux-'))
+    const gen = (args: string[]): void => void execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', ...args])
+    gen(['-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=60:duration=2.5', '-c:v', 'libx264', '-g', '60', path.join(dir, 'native.mp4')])
+    gen(['-f', 'lavfi', '-i', 'sine=duration=2.9', '-c:a', 'libopus', path.join(dir, 'long.webm')])
+    gen(['-f', 'lavfi', '-i', 'sine=duration=1', '-c:a', 'libopus', path.join(dir, 'short.webm')])
+    const video = path.join(dir, 'video.mp4')
+    execFileSync(ffmpeg, proxyArgs(path.join(dir, 'native.mp4'), video, false, { fps: 60, faststart: false }), { stdio: 'ignore' })
+    for (const [audio, offset] of [['long.webm', 0.05], ['short.webm', 0.5], ['long.webm', -0.2]] as const) {
+      const out = path.join(dir, `out-${audio}-${offset}.mp4`)
+      execFileSync(ffmpeg, muxAudioArgs(video, out, { input: path.join(dir, audio), offset }, 150 / 60, false), { stdio: 'ignore' })
+      // The container is exactly as long as the video: no frozen frames after the last one.
+      expect(containerSeconds(out)).toBeCloseTo(2.5, 2)
+    }
   })
 
   it('fits a differently sized frame (resized window) into the fixed output size', () => {

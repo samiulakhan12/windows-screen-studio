@@ -157,3 +157,65 @@
   background: var(--accent);
   transition: width 0.3s ease-out;
 }
+
+/* ---------- Toolbar: waiting for the capture to start ---------- */
+.countdown-starting {
+  font-weight: 600;
+}
+
+/* ---------- Home: device feedback ---------- */
+.mic-meter {
+  height: 4px;
+  border-radius: 2px;
+  background: #2a2a3a;
+  overflow: hidden;
+}
+
+.mic-meter.unavailable {
+  display: none;
+}
+
+.mic-meter-fill {
+  height: 100%;
+  background: #22c55e;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.device-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-2);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.source-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+}
+
+/* ---------- Processing overlay: why a recording ended early, etc. ---------- */
+.overlay-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  font-size: 12px;
+  text-align: center;
+}

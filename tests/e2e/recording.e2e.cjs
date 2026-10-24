@@ -224,4 +224,36 @@ const r = require('./recordingHelpers.cjs')
     await tb.click('button.stop')
     await win.waitForSelector('.editor canvas', { timeout: 120000 })
   })
+  await h.run('Home: light per-tab thumbnails, honest window hint, live microphone level', async (ctx) => {
+    const home = h.tempHome('rec-home')
+    const { app, win, logs } = await h.launch({ home, args: r.FAKE_MEDIA })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    await r.waitForSources(win)
+    // perf-7: small JPEG thumbnails, and only the kind the tab shows is listed.
+    const src = await win.getAttribute('.source img', 'src')
+    h.assert(src.startsWith('data:image/jpeg;base64,'), `JPEG thumbnail (${src.slice(0, 30)}…)`)
+    const kinds = await win.evaluate(async () => [...new Set((await window.api.getSources(['screen'])).map((s) => s.kind))])
+    h.assert(JSON.stringify(kinds) === '["screen"]', `screens only: ${kinds}`)
+
+    // audit-B-2: the Windows tab says plainly what window recordings lack, and offers Area.
+    await win.click('.segmented button:has-text("Windows")')
+    const hint = await win.textContent('.window-hint')
+    h.assert(/no auto zoom, click highlights or smooth cursor/.test(hint), `window hint: ${hint}`)
+    await win.click('.window-hint button')
+    await win.waitForSelector('.segmented button.active:has-text("Area")')
+
+    // audit-C-2: the selected microphone shows a live level (the fake device beeps).
+    await (await win.$$('.record-panel select'))[0].selectOption({ index: 1 })
+    const peak = await r.until(
+      async () => {
+        const t = await win.evaluate(() => document.querySelector('.mic-meter-fill')?.style.transform ?? '')
+        const v = Number(/scaleX\(([\d.]+)\)/.exec(t)?.[1] ?? 0)
+        return v > 0.05 ? v : 0
+      },
+      { timeout: 10000, what: 'microphone level' }
+    )
+    h.assert(peak > 0.05, `meter moves (${peak})`)
+    h.assert(!(await win.$('.device-problem')), 'no device problem shown')
+  })
 })()

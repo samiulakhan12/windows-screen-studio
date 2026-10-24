@@ -1,5 +1,6 @@
-/** Epoch milliseconds with sub-millisecond precision (same clock as Date.now()). */
-export const epochNow = (): number => performance.timeOrigin + performance.now()
+import { epochNow } from '../../../shared/recording/epochClock'
+
+export { epochNow, syncEpoch } from '../../../shared/recording/epochClock'
 
 interface FrameReader {
   read(): Promise<{ value?: { close(): void }; done: boolean }>

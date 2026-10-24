@@ -1,11 +1,12 @@
+import { isUsableRegion } from '../../shared/recording/regionGeometry'
 import type { NormRect } from '../../shared/types'
 import type { Rect } from './trackMath'
 
-/** Smallest region side accepted, as a fraction of the display. */
-export const MIN_REGION = 0.02
-
-/** Validates a region coming from the overlay window; null when unusable. */
-export function sanitizeRegion(value: unknown): NormRect | null {
+/**
+ * Validates a region (normalised to a display of `display` DIP size) coming from the
+ * overlay window or the renderer; null when malformed or smaller than the picker allows.
+ */
+export function sanitizeRegion(value: unknown, display: { width: number; height: number }): NormRect | null {
   if (!value || typeof value !== 'object') return null
   const r = value as Record<string, unknown>
   const nums = [r.x, r.y, r.w, r.h]
@@ -14,8 +15,8 @@ export function sanitizeRegion(value: unknown): NormRect | null {
   const y = Math.min(1, Math.max(0, r.y as number))
   const w = Math.min(1 - x, Math.max(0, r.w as number))
   const h = Math.min(1 - y, Math.max(0, r.h as number))
-  if (w < MIN_REGION || h < MIN_REGION) return null
-  return { x, y, w, h }
+  const region = { x, y, w, h }
+  return isUsableRegion(region, { w: display.width, h: display.height }) ? region : null
 }
 
 export function regionToRect(region: NormRect, bounds: Rect): Rect {

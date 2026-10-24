@@ -1,16 +1,23 @@
 import { EventEmitter } from 'node:events'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const cursor = vi.hoisted(() => ({ x: 100, y: 50 }))
+/** Every position the tracker read: what storing every poll used to keep. */
+const reads = vi.hoisted(() => [] as { at: number; x: number; y: number }[])
 vi.mock('electron', () => ({
   screen: {
-    getCursorScreenPoint: () => ({ ...cursor }),
+    getCursorScreenPoint: () => {
+      reads.push({ at: Date.now(), x: cursor.x, y: cursor.y })
+      return { ...cursor }
+    },
     // Pretend a 2x display: hook events are physical pixels.
     screenToDipPoint: (p: { x: number; y: number }) => ({ x: p.x / 2, y: p.y / 2 })
   }
 }))
 
 import { CursorTracker, type HookModule } from '../src/main/cursorTracker'
+import { buildCursorTrack, type PauseSpan } from '../src/main/recording/trackMath'
+import { cursorAt, cursorOpacity } from '../src/shared/engine/cursor'
 
 /** Stands in for uiohook-napi: tests emit the events a real hook would. */
 function fakeHook() {
@@ -103,5 +110,51 @@ describe('CursorTracker', () => {
     expect(raw.samples).toEqual([])
     expect(raw.clicks).toEqual([])
     expect(raw.keys.map((k) => k.label)).toEqual(['Enter'])
+  })
+})
+
+describe('CursorTracker polling (perf-3)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('stores positions only when the cursor moved, with exactly the same interpolated track', () => {
+    const T0 = 1_700_000_000_000
+    vi.useFakeTimers({ now: T0 })
+    reads.length = 0
+    Object.assign(cursor, { x: 100, y: 50 })
+    const t = new CursorTracker(() => null, true)
+    t.start(options)
+    const pauses: PauseSpan[] = []
+    const moveTo = (x: number, y: number, ms: number): void => {
+      Object.assign(cursor, { x, y })
+      vi.advanceTimersByTime(ms)
+    }
+    vi.advanceTimersByTime(1000) // still
+    for (let i = 1; i <= 6; i++) moveTo(100 + 20 * i, 50 + 5 * i, 17) // a quick move
+    vi.advanceTimersByTime(2000) // still again
+    const pausedAt = Date.now()
+    t.setPaused(true)
+    moveTo(300, 300, 500) // moved while paused
+    t.setPaused(false)
+    pauses.push({ from: pausedAt, to: Date.now() })
+    vi.advanceTimersByTime(1000)
+    for (let i = 1; i <= 3; i++) moveTo(300 - 30 * i, 300, 17)
+    vi.advanceTimersByTime(700)
+    const raw = t.collect()
+
+    // What storing every poll kept (the previous behaviour), minus reads while paused.
+    const everyPoll = reads.filter((r) => !pauses.some((p) => r.at > p.from && r.at < p.to))
+    expect(raw.samples.length).toBeLessThan(everyPoll.length / 10)
+
+    const duration = (Date.now() - T0 - 500) / 1000
+    const build = (samples: { at: number; x: number; y: number }[]) =>
+      buildCursorTrack({ ...raw, samples }, { startedAt: T0, pauses, duration, region: null }).samples
+    const before = build(everyPoll)
+    const after = build(raw.samples)
+    for (let s = 0; s <= duration; s += 0.004) {
+      expect(cursorAt(after, s)).toEqual(cursorAt(before, s))
+      expect(cursorOpacity(after, s)).toBeCloseTo(cursorOpacity(before, s), 9)
+    }
   })
 })
