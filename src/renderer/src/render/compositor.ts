@@ -1,4 +1,4 @@
-import { activeClicks, clickPulse, cursorOpacity, type SmoothedTrack } from '../../../shared/engine/cursor'
+import { activeClicks, clickPulse, cursorAt, cursorOpacity, type SmoothedTrack } from '../../../shared/engine/cursor'
 import { contentRect, webcamRect } from '../../../shared/engine/layout'
 import { cameraAt, type Camera } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
@@ -147,7 +147,11 @@ export function drawFrame(
     if (project.cursor.show && !project.capture?.cursorInVideo && cursor.samples.length > 0) {
       const opacity = project.cursor.hideWhenIdle ? cursorOpacity(cursor.samples, t) : 1
       const pos = scene.cursorPath.at(t)
-      if (opacity > 0.01 && inVideo(pos)) {
+      // Hide as soon as the recorded position leaves the video (cursor outside a window or
+      // area, or over a window covering the recorded one) instead of letting the smoothed
+      // cursor slide to the edge first.
+      const raw = cursorAt(cursor.samples, t)
+      if (opacity > 0.01 && inVideo(pos) && (!raw || inVideo(raw))) {
         const p = toOut(pos.x, pos.y)
         const height = cursorHeight(rect.h, vh, cursor.scale, cam.scale, project.cursor.size) * clickPulse(cursor.clicks, t)
         drawCursorSprite(ctx, shapeAt(cursor.shapes, t), p.x, p.y, height, opacity, t)

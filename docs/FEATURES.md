@@ -5,7 +5,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 
 ## Recording
 - ✓ Pick a full screen, an **area** (drag a rectangle on a transparent overlay; move/resize handles, size readout, Enter/Esc), or a single window. Source thumbnails refresh on demand.
-- ✓ **Single-window recordings keep every cursor effect**: the native helper records just that window without the Windows cursor (`record --window`) and reports where the window is as it moves, resizes or is minimised; cursor samples and clicks are mapped into the window, so auto zoom, click ripples, follow-cursor zooms and the smooth cursor (with real cursor shapes) all work. A resized window is fitted into the original frame with the same rule everywhere. Without native window capture the window is recorded by Chromium while the helper only watches its position (`watch-window`): auto zoom and ripples still work, with the Windows cursor in the video. *Windows-unverified.*
+- ✓ **Single-window recordings keep every cursor effect**: the native helper records just that window without the Windows cursor (`record --window`) and reports where the window is as it moves, resizes or is minimised; cursor samples and clicks are mapped into the window, so auto zoom, click ripples, follow-cursor zooms and the smooth cursor (with real cursor shapes) all work. A resized window is fitted into the original frame with the same rule everywhere. Clicks on another app's window covering the recorded one are ignored (and the cursor is hidden there); dragging the window keeps the cursor aligned; windows spanning monitors with different scaling are mapped correctly. Without native window capture the window is recorded by Chromium while the helper only watches its position (`watch-window`): auto zoom and ripples still work, with the Windows cursor in the video. *Windows-unverified.*
 - ✓ Microphone (device picker, falls back to the default device with a notice if the chosen one is gone) and **system audio** (Windows loopback), mixed into one track.
 - ✓ Webcam recorded as its own track for the PiP bubble; its start offset is measured from the first frames.
 - ✓ 3-2-1 countdown, floating always-on-top control bar (excluded from the capture) with timer, pause/resume, stop and discard (with confirmation). `Ctrl+Shift+2` stops; if another app owns the shortcut the bar says so.
@@ -17,7 +17,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - *roadmap*: separate microphone/system-audio tracks, cropping areas inside the native helper (today the whole monitor is captured and cropped afterwards), camera preview on Home.
 
 ## Motion engine
-- ✓ **Auto zoom** generated from click clusters (zoom in just before the click, hold, ease out); regenerate keeps your edited zooms.
+- ✓ **Auto zoom** generated from click clusters (zoom in just before the click, hold, ease out), aimed at the click itself even when the cursor arrives just before it; regenerate keeps your edited zooms.
 - ✓ Zoom camera **follows the cursor** with spring smoothing, clamped to the frame; or a **fixed point** picked on the preview.
 - ✓ **Smooth cursor**: spring-smoothed path, adjustable smoothness and size (DPI-independent), real cursor shapes from native capture. Only offered when the Windows cursor is not already in the video.
 - ✓ Click ripples (work with either cursor), hide cursor when idle.
