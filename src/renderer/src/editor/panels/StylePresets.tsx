@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { saveErrorMessage } from '../../../../shared/editor/autosave'
 import {
   addUserPreset,
@@ -116,8 +116,15 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
     }
   }
 
+  // Which presets the project looks like now; only its style, cursor and zoom settings matter.
+  const { style, cursor, zoomSettings, autoZoom } = project
+  const matching = useMemo(() => {
+    const look = { ...project, style, cursor, zoomSettings, autoZoom }
+    return new Set([...BUILT_IN_PRESETS, ...(mine ?? [])].filter((p) => presetMatches(look, p.look)).map((p) => p.id))
+  }, [style, cursor, zoomSettings, autoZoom, mine])
+
   const card = (preset: StylePreset, own: boolean): JSX.Element => {
-    const active = presetMatches(project, preset.look)
+    const active = matching.has(preset.id)
     const renaming = naming?.mode === 'rename' && naming.id === preset.id
     return (
       <div key={preset.id} className={`preset-item ${active ? 'active' : ''}`} data-preset={preset.id}>
@@ -168,7 +175,7 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
     </form>
   )
 
-  const current = [...BUILT_IN_PRESETS, ...(mine ?? [])].find((p) => presetMatches(project, p.look))
+  const current = [...BUILT_IN_PRESETS, ...(mine ?? [])].find((p) => matching.has(p.id))
 
   return (
     <Section
