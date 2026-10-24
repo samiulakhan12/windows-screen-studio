@@ -68,8 +68,11 @@ export function settledWithin(promises: (Promise<unknown> | null | undefined)[],
 
 /** `.Name.partial-<pid>-<id>.mp4` next to the target (exportJob.partialPath). */
 const PARTIAL = /^\..*\.partial-\d+-[0-9a-z]+(\.[A-Za-z0-9]+)?$/
-/** `screen-studio-gif-<pid>-<id>.mkv|png` in the temp folder (exportJob.tempStem). */
-const GIF_TEMP = /^screen-studio-gif-(\d+)-[0-9a-z]+\.(mkv|png)$/
+/**
+ * `screen-studio-gif-<pid>-<id>.mkv|png` in the temp folder (exportJob.tempStem), and the
+ * filter-graph script and two-pass logs of the same stem (exportArgs.ffmpegPlan).
+ */
+const GIF_TEMP = /^screen-studio-gif-(\d+)-[0-9a-z]+\.(mkv|png|graph\.txt|pass-0\.log(\.mbtree)?(\.temp)?)$/
 
 /** Whether `file` is named like a temporary file of an export (nothing else is ever deleted by a sweep). */
 export function isExportTempFile(file: string): boolean {

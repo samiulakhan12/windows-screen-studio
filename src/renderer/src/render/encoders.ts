@@ -1,5 +1,5 @@
-import type { ColorTags, ExportJob, RawPixelFormat } from '../../../shared/api/export'
-import { avcLevel, colorTagsFrom, rawReadback } from '../../../shared/render/codec'
+import type { ColorTags, ExportFinish, ExportJob, RawPixelFormat } from '../../../shared/api/export'
+import { avcLevel, colorTagsFrom, ivfFileHeader, ivfFrameHeader, rawReadback, vp9Codec } from '../../../shared/render/codec'
 
 /**
  * Where rendered frames go. `push` has captured the canvas by the time it resolves
@@ -8,7 +8,7 @@ import { avcLevel, colorTagsFrom, rawReadback } from '../../../shared/render/cod
 export interface FrameSink {
   push(index: number): Promise<void>
   /** Sends everything still buffered and finalises the file; resolves with its size in bytes. */
-  finish(): Promise<number>
+  finish(): Promise<ExportFinish>
   close(): void
 }
 
@@ -21,9 +21,9 @@ export function cleanIpcError(e: unknown): Error {
 
 const MAX_IN_FLIGHT = 2
 
-async function finishJob(): Promise<number> {
+async function finishJob(): Promise<ExportFinish> {
   try {
-    return (await window.api.exportFinish()).bytes
+    return await window.api.exportFinish()
   } catch (e) {
     throw cleanIpcError(e)
   }
@@ -110,7 +110,7 @@ export class RawFrameSink implements FrameSink {
     if (this.error) throw this.error
   }
 
-  async finish(): Promise<number> {
+  async finish(): Promise<ExportFinish> {
     await Promise.all(this.inFlight)
     if (this.error) throw this.error
     return finishJob()
@@ -124,21 +124,45 @@ export class RawFrameSink implements FrameSink {
 /* ---------- WebCodecs ---------- */
 
 const BPP: Record<ExportJob['quality'], number> = { high: 0.12, medium: 0.07, small: 0.04 }
+/** VP9 needs about 30% fewer bits than H.264 for the same quality. */
+const VP9_BPP_FACTOR = 0.7
+
+/**
+ * Bit rate settings: a size target is an average the encoder must hold (constant bit
+ * rate, the mode hardware encoders keep best), otherwise a quality-based variable rate.
+ */
+function rateOf(width: number, height: number, fps: number, quality: ExportJob['quality'], bitrate: number | undefined, factor = 1): Pick<VideoEncoderConfig, 'bitrate' | 'bitrateMode'> {
+  return bitrate ? { bitrate, bitrateMode: 'constant' } : { bitrate: Math.round(width * height * fps * BPP[quality] * factor), bitrateMode: 'variable' }
+}
 
 /** WebCodecs encoder configurations to try, best first (High, then Main profile). */
-export function avcConfigs(width: number, height: number, fps: number, quality: ExportJob['quality'], hardware: boolean): VideoEncoderConfig[] {
+export function avcConfigs(width: number, height: number, fps: number, quality: ExportJob['quality'], hardware: boolean, bitrate?: number): VideoEncoderConfig[] {
   const level = avcLevel(width, height, fps).toString(16).padStart(2, '0')
   return ['6400', '4d00'].map((profile) => ({
     codec: `avc1.${profile}${level}`,
     width,
     height,
     framerate: fps,
-    bitrate: Math.round(width * height * fps * BPP[quality]),
-    bitrateMode: 'variable',
+    ...rateOf(width, height, fps, quality, bitrate),
     latencyMode: 'quality',
     hardwareAcceleration: hardware ? 'prefer-hardware' : 'prefer-software',
     avc: { format: 'annexb' }
   }))
+}
+
+/** WebCodecs VP9 (profile 0, 8-bit 4:2:0) configuration for WebM. */
+export function vp9Configs(width: number, height: number, fps: number, quality: ExportJob['quality'], hardware: boolean, bitrate?: number): VideoEncoderConfig[] {
+  return [
+    {
+      codec: vp9Codec(width, height, fps),
+      width,
+      height,
+      framerate: fps,
+      ...rateOf(width, height, fps, quality, bitrate, VP9_BPP_FACTOR),
+      latencyMode: 'quality',
+      hardwareAcceleration: hardware ? 'prefer-hardware' : 'prefer-software'
+    }
+  ]
 }
 
 /** First configuration this machine can encode, or null. */
@@ -159,8 +183,9 @@ const SEND_BYTES = 1 << 20
 
 /**
  * Encodes canvas frames with WebCodecs (GPU when available) in the renderer and
- * streams the small H.264 chunks to ffmpeg, which only muxes them. The ffmpeg job
- * starts once the first chunk reveals the stream's colour description.
+ * streams the small chunks to ffmpeg, which only muxes them: H.264 as an Annex B
+ * stream, VP9 framed as IVF. The ffmpeg job starts once the first chunk reveals the
+ * stream's colour description.
  */
 export class WebCodecsSink implements FrameSink {
   private readonly encoder: VideoEncoder
@@ -179,9 +204,11 @@ export class WebCodecsSink implements FrameSink {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    config: VideoEncoderConfig,
+    private readonly config: VideoEncoderConfig,
     private readonly fps: number,
-    private readonly startJob: (color: ColorTags) => Promise<void>
+    private readonly startJob: (color: ColorTags) => Promise<void>,
+    /** How chunks are framed for ffmpeg: Annex B (H.264 as configured) or IVF (VP9). */
+    private readonly framing: 'annexb' | 'ivf' = 'annexb'
   ) {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => this.onChunk(chunk, meta),
@@ -218,11 +245,19 @@ export class WebCodecsSink implements FrameSink {
         (e: unknown) => this.fail(cleanIpcError(e))
       )
     }
+    if (this.framing === 'ivf') {
+      if (this.chunks === 1) this.add(ivfFileHeader(this.config.width, this.config.height, this.fps))
+      this.add(ivfFrameHeader(chunk.byteLength, Math.round((chunk.timestamp * this.fps) / 1e6)))
+    }
     const bytes = new Uint8Array(chunk.byteLength)
     chunk.copyTo(bytes)
+    this.add(bytes)
+    if (this.batchBytes >= SEND_BYTES) this.send()
+  }
+
+  private add(bytes: Uint8Array): void {
     this.batch.push(bytes)
     this.batchBytes += bytes.byteLength
-    if (this.batchBytes >= SEND_BYTES) this.send()
   }
 
   /** Queues the buffered chunks for ffmpeg, in order, after the job has started. */
@@ -262,7 +297,7 @@ export class WebCodecsSink implements FrameSink {
     if (this.error) throw this.error
   }
 
-  async finish(): Promise<number> {
+  async finish(): Promise<ExportFinish> {
     if (this.error) throw this.error
     await this.encoder.flush().catch((e: unknown) => this.fail(e instanceof Error ? e : new Error(String(e))))
     this.send()

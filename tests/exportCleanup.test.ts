@@ -61,6 +61,11 @@ describe('isExportTempFile', () => {
     expect(isExportTempFile(partialPath('/home/me/Videos/no extension'))).toBe(true)
     expect(isExportTempFile(`${tempStem('/tmp')}.mkv`)).toBe(true)
     expect(isExportTempFile(`${tempStem('/tmp')}.png`)).toBe(true)
+    // Long filter graphs and two-pass logs (exportArgs.ffmpegPlan).
+    for (const ext of ['graph.txt', 'pass-0.log', 'pass-0.log.temp', 'pass-0.log.mbtree', 'pass-0.log.mbtree.temp']) {
+      expect(isExportTempFile(`${tempStem('/tmp')}.${ext}`)).toBe(true)
+    }
+    expect(isExportTempFile(`${tempStem('/tmp')}.txt`)).toBe(false)
     expect(isExportTempFile('/home/me/Videos/Demo.mp4')).toBe(false)
     expect(isExportTempFile('/home/me/Videos/.Demo.partial.mp4')).toBe(false)
     expect(isExportTempFile('relative/.a.partial-1-x.mp4')).toBe(false)

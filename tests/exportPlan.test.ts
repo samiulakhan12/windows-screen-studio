@@ -24,13 +24,13 @@ describe('exportRoutes', () => {
   it('Auto: WebCodecs GPU, then ffmpeg GPU encoders, then x264', () => {
     const routes = exportRoutes(settings, { hardwareEncoders: ['h264_nvenc', 'h264_mf'], overrides: {} })
     expect(routes).toEqual([
-      { video: 'webcodecs', hardware: true },
+      { video: 'webcodecs', codec: 'h264', hardware: true },
       { video: 'ffmpeg', encoder: 'h264_nvenc' },
       { video: 'ffmpeg', encoder: 'h264_mf' },
       { video: 'ffmpeg', encoder: 'libx264' }
     ])
     expect(exportRoutes(settings, noGpu)).toEqual([
-      { video: 'webcodecs', hardware: true },
+      { video: 'webcodecs', codec: 'h264', hardware: true },
       { video: 'ffmpeg', encoder: 'libx264' }
     ])
   })
@@ -46,11 +46,12 @@ describe('exportRoutes', () => {
     expect(exportRoutes(settings, { hardwareEncoders: [], overrides: { videoEncoder: 'ffmpeg' } })).toEqual([{ video: 'ffmpeg', encoder: 'libx264' }])
     expect(exportRoutes({ ...settings, encoder: 'software' }, { hardwareEncoders: [], overrides: { videoEncoder: 'webcodecs-software' } })[0]).toEqual({
       video: 'webcodecs',
+      codec: 'h264',
       hardware: false
     })
   })
   it('names routes for the UI', () => {
-    expect(routeLabel({ video: 'webcodecs', hardware: true }, 'mp4')).toBe('GPU (WebCodecs)')
+    expect(routeLabel({ video: 'webcodecs', codec: 'h264', hardware: true }, 'mp4')).toBe('GPU (WebCodecs)')
     expect(routeLabel({ video: 'ffmpeg', encoder: 'h264_nvenc' }, 'mp4')).toMatch(/NVENC/)
     expect(routeLabel({ video: 'ffmpeg', encoder: 'libx264' }, 'gif')).toMatch(/GIF/)
   })
