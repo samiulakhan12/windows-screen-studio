@@ -1,11 +1,13 @@
 import { memo, useEffect, useRef, useSyncExternalStore } from 'react'
 import { outputTimeAt } from '../../../shared/editor/clips'
+import { withShortcut } from '../../../shared/editor/shortcuts'
 import { formatTime } from '../../../shared/engine/project'
 import { outputDuration } from '../../../shared/engine/timeline'
 import type { Clip } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
+import { useKeymap } from './keymapContext'
 
 interface Props {
   clips: Clip[]
@@ -27,6 +29,7 @@ export function usePlaying(): boolean {
  */
 export const Transport = memo(function Transport({ clips, notice, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
   const { player } = useEditor()
+  const keymap = useKeymap()
   const playing = usePlaying()
   const timeRef = useRef<HTMLSpanElement>(null)
 
@@ -46,7 +49,7 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
 
   return (
     <div className="transport">
-      <button className="btn round" onClick={onTogglePlay} title={playing ? 'Pause (Space)' : 'Play (Space)'} aria-label={playing ? 'Pause' : 'Play'} data-playing={playing}>
+      <button className="btn round" onClick={onTogglePlay} title={withShortcut(playing ? 'Pause' : 'Play', keymap.play)} aria-label={playing ? 'Pause' : 'Play'} data-playing={playing}>
         <Icon name={playing ? 'pause' : 'play'} />
       </button>
       <span className="timecode" ref={timeRef} title="Position / length of the exported video" />
@@ -54,13 +57,13 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
         {notice && <span className="notice">{notice}</span>}
       </div>
       <div className="tool-group">
-        <button className="btn ghost" onClick={onSplit} title="Split the clip at the playhead (S)">
+        <button className="btn ghost" onClick={onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>
           <EditorIcon name="split" size={16} /> Split
         </button>
-        <button className="btn ghost" onClick={onAddZoom} title="Add a zoom at the playhead (Z)">
+        <button className="btn ghost" onClick={onAddZoom} title={withShortcut('Add a zoom at the playhead', keymap.addZoom)}>
           <Icon name="zoom" size={16} /> Zoom
         </button>
-        <button className="btn ghost" onClick={onAddText} title="Add text at the playhead (T)">
+        <button className="btn ghost" onClick={onAddText} title={withShortcut('Add text at the playhead', keymap.addText)}>
           <EditorIcon name="text" size={16} /> Text
         </button>
       </div>

@@ -6,11 +6,14 @@ import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
+import { useKeymap } from '../keymapContext'
+import { FirstShortcut } from '../ShortcutKeys'
 
 /* ---------- Text ---------- */
 
 export function TextPanel(props: InspectorProps): JSX.Element {
   const { store, player } = useEditor()
+  const keymap = useKeymap()
   const { project, selection } = props
   const ann = selection?.kind === 'annotation' ? (project.annotations.find((a) => a.id === selection.id) ?? null) : null
   const set = (patch: Partial<(typeof project.annotations)[number]>, key?: string): void => {
@@ -26,7 +29,14 @@ export function TextPanel(props: InspectorProps): JSX.Element {
             <EditorIcon name="text" size={16} /> Add text at playhead
           </button>
           <p className="hint">
-            Press <kbd>T</kbd> or double-click the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.
+            {keymap.addText.length ? (
+              <>
+                Press <FirstShortcut accelerators={keymap.addText} fallback="" /> or double-click
+              </>
+            ) : (
+              'Double-click'
+            )}{' '}
+            the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.
           </p>
         </Section>
         {project.annotations.length > 0 && (

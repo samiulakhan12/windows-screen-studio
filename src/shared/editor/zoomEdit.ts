@@ -18,13 +18,16 @@ import type { ZoomFocus, ZoomSegment } from '../types'
 
 export type ZoomRegion = Extract<ZoomFocus, { mode: 'region' }>
 
-/** Level presets offered as chips; `key` is the keyboard shortcut that sets it. */
+/**
+ * Level presets offered as chips; `key` is the default keyboard shortcut that sets it (the
+ * zoomLevel<key> command, which can be rebound).
+ */
 export const ZOOM_LEVEL_PRESETS: { value: number; key: string; label: string; title: string }[] = [
-  { value: 0.75, key: '0', label: '0.75×', title: 'Pull back: show more background (0)' },
-  { value: 1.25, key: '1', label: '1.25×', title: 'Zoom 1.25× (1)' },
-  { value: 1.5, key: '2', label: '1.5×', title: 'Zoom 1.5× (2)' },
-  { value: 2, key: '3', label: '2×', title: 'Zoom 2× (3)' },
-  { value: 3, key: '4', label: '3×', title: 'Zoom 3× (4)' }
+  { value: 0.75, key: '0', label: '0.75×', title: 'Pull back: show more background' },
+  { value: 1.25, key: '1', label: '1.25×', title: 'Zoom 1.25×' },
+  { value: 1.5, key: '2', label: '1.5×', title: 'Zoom 1.5×' },
+  { value: 2, key: '3', label: '2×', title: 'Zoom 2×' },
+  { value: 3, key: '4', label: '3×', title: 'Zoom 3×' }
 ]
 
 /** Zoom level for a number key ('0' pulls back, '1'-'4' zoom in), or null. */

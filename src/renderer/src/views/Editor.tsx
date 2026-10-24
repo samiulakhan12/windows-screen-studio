@@ -1,27 +1,47 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, restoreRange, stepOutput } from '../../../shared/editor/clips'
+import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
 import { EditStore } from '../../../shared/editor/editStore'
 import { mediaLength } from '../../../shared/editor/mediaLength'
+import { createShape, createSpotlight } from '../../../shared/editor/shapes'
+import {
+  chordFromEvent,
+  DEFAULT_KEYMAP,
+  isSliderKey,
+  keymapFromPrefs,
+  keymapOverrides,
+  matchShortcut,
+  serializeShortcuts,
+  shortcutIndex,
+  withShortcut,
+  zoomLevelKeysHint,
+  type Keymap
+} from '../../../shared/editor/shortcuts'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
+import { DEFAULT_EFFECTS } from '../../../shared/engine/project'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
-import { levelForKey, setZoomLevel } from '../../../shared/editor/zoomEdit'
+import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { focusPathFor, insertZoom, isUsableClick, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
-import type { Project, ZoomFocus, ZoomSegment } from '../../../shared/types'
+import type { Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
+import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
 import { EditorContext, type EditorServices } from '../editor/context'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
-import { Inspector } from '../editor/Inspector'
+import { Inspector, type InspectorTab } from '../editor/Inspector'
+import { KeymapContext } from '../editor/keymapContext'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
+import { ShortcutKeys } from '../editor/ShortcutKeys'
+import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
@@ -143,6 +163,15 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
   return <EditorSession session={state.session} onClose={onClose} />
 }
 
+/** What the editor's components read from context: the session's services and the current shortcuts. */
+function EditorProviders({ services, keymap, children }: { services: EditorServices; keymap: Keymap; children: ReactNode }): JSX.Element {
+  return (
+    <EditorContext.Provider value={services}>
+      <KeymapContext.Provider value={keymap}>{children}</KeymapContext.Provider>
+    </EditorContext.Provider>
+  )
+}
+
 function EditorSession({ session, onClose }: { session: Session; onClose: () => void }): JSX.Element {
   const { data, store, saver, player } = session
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
@@ -163,6 +192,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const [background, setBackground] = useState<HTMLImageElement | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
+  const [tab, setTab] = useState<InspectorTab>('style')
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | null>(null)
+  const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
 
   // The background image always follows the project state, including undo/redo.
   // `backgroundVersion` reloads it when a newly picked file reuses the same name.
@@ -215,10 +247,35 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [])
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
+  /* ---------- shortcuts (stored in the editor preferences) ---------- */
+
+  const [keymap, setKeymap] = useState<Keymap>(DEFAULT_KEYMAP)
+  const shortcuts = useMemo(() => shortcutIndex(keymap), [keymap])
+  useEffect(() => {
+    let cancelled = false
+    window.api
+      .getPref('shortcuts')
+      .then((raw) => !cancelled && setKeymap(keymapFromPrefs(raw)))
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const changeKeymap = useCallback(
+    (next: Keymap) => {
+      setKeymap(next)
+      const stored = Object.keys(keymapOverrides(next)).length ? serializeShortcuts(next) : null
+      window.api.setPref('shortcuts', stored).catch((err: unknown) => {
+        showNotice(`Your shortcuts could not be saved: ${(err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+      })
+    },
+    [showNotice]
+  )
+
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, pickFocus, exporting })
-  latest.current = { selection, pickFocus, exporting }
+  const latest = useRef({ selection, pickFocus, exporting, dialog, keymap, shortcuts })
+  latest.current = { selection, pickFocus, exporting, dialog, keymap, shortcuts }
 
   const actions = useMemo(() => {
     const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
@@ -242,6 +299,20 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       store.update((p) => ({ ...p, annotations: [...p.annotations, a] }))
       setSelection({ kind: 'annotation', id: a.id })
       if (player.time < a.start || player.time >= a.end) player.seek(a.start)
+    }
+
+    const addShape = (kind: ShapeKind): void => {
+      const s = createShape(kind, player.time, store.state.duration)
+      store.update((p) => ({ ...p, shapes: [...(p.shapes ?? []), s] }))
+      setSelection({ kind: 'shape', id: s.id })
+      if (player.time < s.start || player.time >= s.end) player.seek(s.start)
+    }
+
+    const addSpotlight = (mode: Spotlight['mode']): void => {
+      const s = createSpotlight(mode, player.time, store.state.duration)
+      store.update((p) => ({ ...p, spotlights: [...(p.spotlights ?? []), s] }))
+      setSelection({ kind: 'spotlight', id: s.id })
+      if (player.time < s.start || player.time >= s.end) player.seek(s.start)
     }
 
     const deleteClip = (id: string): void => {
@@ -268,13 +339,14 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       setSelection(null)
     }
 
-    /** Number keys: level of the selected zoom (else the zoom under the playhead). */
+    /** Zoom level commands: level of the selected zoom (else the zoom under the playhead). */
     const setZoomLevelKey = (level: number): void => {
       const sel = latest.current.selection
       const p = store.state
       const z = sel?.kind === 'zoom' ? p.zooms.find((x) => x.id === sel.id) : zoomAt(p.zooms, player.time)
       if (!z) {
-        showNotice('Select a zoom first: 1-4 set its zoom level, 0 pulls back')
+        const keys = zoomLevelKeysHint(latest.current.keymap)
+        showNotice(keys ? `Select a zoom first: ${keys}` : 'Select a zoom first')
         return
       }
       store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevel(x, level) : x)) }))
@@ -283,6 +355,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
     return {
       togglePlay: (): void => player.toggle(),
+      addShape,
+      addSpotlight,
       addZoomAt,
       addZoom: (): void => addZoomAt(player.time, zoomSettingsOf(store.state).transition),
       setZoomLevelKey,
@@ -303,6 +377,21 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       restore: (start: number, end: number): void => {
         store.update((p) => ({ ...p, clips: restoreRange(p.clips, start, end, p.duration) }))
         setSelection(null)
+      },
+      restoreAll: (): void => {
+        const before = store.state
+        store.update((p) => {
+          const c = p.clips
+          if (c.length === 1 && c[0].start === 0 && c[0].end === p.duration && c[0].speed === 1) return p
+          return { ...p, clips: [{ id: c[0].id, start: 0, end: p.duration, speed: 1 }] }
+        })
+        if (store.state === before) showNotice('Nothing is cut, trimmed or re-timed')
+        else setSelection(null)
+      },
+      cutSelectedRange: (): void => {
+        const sel = latest.current.selection
+        if (sel?.kind === 'range') cut(sel.start, sel.end)
+        else showNotice('Select a range first: Shift+drag on the clip track')
       },
       deleteSelection: (): void => {
         const sel = latest.current.selection
@@ -347,12 +436,145 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const exitPick = useCallback(() => setPickFocus(false), [])
 
-  const openExport = (): void => {
+  const openExport = useCallback((): void => {
     player.pause()
     releaseFocus()
     setPickFocus(false)
     setExporting(true)
-  }
+  }, [player])
+
+  /* ---------- commands (palette and shortcuts) ---------- */
+
+  const lastMotionBlur = useRef(store.state.effects.motionBlur || DEFAULT_EFFECTS.motionBlur)
+  const commands = useMemo((): Record<CommandId, () => void> => {
+    const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
+    const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
+    const showTab = (t: InspectorTab) => (): void => setTab(t)
+    return {
+      play: actions.togglePlay,
+      goToStart: actions.goToStart,
+      goToEnd: actions.goToEnd,
+      stepBack: () => actions.step(-1 / 30),
+      stepForward: () => actions.step(1 / 30),
+      jumpBack: () => actions.step(-1),
+      jumpForward: () => actions.step(1),
+      undo: actions.undo,
+      redo: actions.redo,
+      split: actions.split,
+      deleteSelection: actions.deleteSelection,
+      cutRange: actions.cutSelectedRange,
+      restoreAll: actions.restoreAll,
+      smartSpeed: () => {
+        setTab('clip')
+        setSmartSpeedRequest((n) => n + 1)
+      },
+      addZoom: actions.addZoom,
+      addText: actions.addText,
+      addArrow: () => actions.addShape('arrow'),
+      addLine: () => actions.addShape('line'),
+      addRect: () => actions.addShape('rect'),
+      addEllipse: () => actions.addShape('ellipse'),
+      addHighlight: () => actions.addShape('highlight'),
+      addBlur: () => actions.addShape('blur'),
+      addPixelate: () => actions.addShape('pixelate'),
+      addSpotlight: () => actions.addSpotlight('region'),
+      addCursorSpotlight: () => {
+        if (cursor.valid) actions.addSpotlight('cursor')
+        else showNotice('This recording has no cursor data: add a spotlight on an area instead')
+      },
+      zoomLevel0: level('0'),
+      zoomLevel1: level('1'),
+      zoomLevel2: level('2'),
+      zoomLevel3: level('3'),
+      zoomLevel4: level('4'),
+      toggleCursor: () => {
+        const p = store.state
+        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is already in the video' : 'This recording has no cursor data')
+        store.update((q) => ({ ...q, cursor: { ...q.cursor, show: !p.cursor.show } }))
+        turned('Smooth cursor', !p.cursor.show)
+      },
+      toggleClickEffects: () => {
+        const p = store.state
+        if (!cursor.valid) return showNotice('This recording has no cursor data')
+        store.update((q) => ({ ...q, cursor: { ...q.cursor, clickEffect: !p.cursor.clickEffect } }))
+        turned('Click effects', !p.cursor.clickEffect)
+      },
+      toggleMotionBlur: () => {
+        const was = store.state.effects.motionBlur
+        if (was > 0) lastMotionBlur.current = was
+        const next = was > 0 ? 0 : lastMotionBlur.current
+        store.update((q) => ({ ...q, effects: { ...q.effects, motionBlur: next } }))
+        turned('Motion blur', next > 0)
+      },
+      toggleKeystrokes: () => {
+        const on = !store.state.effects.keystrokes.show
+        store.update((q) => ({ ...q, effects: { ...q.effects, keystrokes: { ...q.effects.keystrokes, show: on } } }))
+        turned('Keystroke overlay', on)
+      },
+      toggleWebcam: () => {
+        if (!data.webcamUrl) return showNotice('This recording has no camera')
+        const on = !store.state.webcam.show
+        store.update((q) => ({ ...q, webcam: { ...q.webcam, show: on } }))
+        turned('Camera', on)
+      },
+      showStyle: showTab('style'),
+      showCursor: showTab('cursor'),
+      showZoom: showTab('zoom'),
+      showClip: showTab('clip'),
+      showText: showTab('text'),
+      showShapes: showTab('shapes'),
+      showEffects: showTab('effects'),
+      showCamera: showTab('camera'),
+      showAudio: showTab('audio'),
+      timelineZoomIn: () => timelineRef.current?.zoomIn(),
+      timelineZoomOut: () => timelineRef.current?.zoomOut(),
+      timelineFit: () => timelineRef.current?.fit(),
+      export: openExport,
+      shortcuts: () => setDialog('shortcuts'),
+      commandPalette: () => setDialog('palette')
+    }
+  }, [actions, cursor.valid, data.webcamUrl, openExport, showNotice, store])
+  const commandsRef = useRef(commands)
+  commandsRef.current = commands
+
+  const closeDialog = useCallback(() => setDialog(null), [])
+  const runFromPalette = useCallback((id: CommandId) => {
+    setDialog(null)
+    commandsRef.current[id]()
+  }, [])
+
+  // What the palette shows: worked out only while it is open, from the moment it opened.
+  const paletteEntries = useMemo((): PaletteEntry[] => {
+    if (dialog !== 'palette') return []
+    const p = project
+    const t = player.time
+    const noCursor = 'This recording has no cursor data'
+    const smoothCursor = cursor.valid && !p.capture.cursorInVideo
+    const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, t)
+    const edited = p.clips.length > 1 || p.clips[0].start > 0 || p.clips[0].end < p.duration || p.clips[0].speed !== 1
+    const unavailable: Partial<Record<CommandId, string | null>> = {
+      undo: store.canUndo ? null : 'Nothing to undo',
+      redo: store.canRedo ? null : 'Nothing to redo',
+      split: canSplitAt(p.clips, t) ? null : clipAt(p.clips, t) ? 'Too close to the edge of a clip to split' : 'The playhead is in a cut',
+      deleteSelection: selection && selection.kind !== 'gap' ? null : 'Select something on the timeline first',
+      cutRange: selection?.kind === 'range' ? null : 'Select a range first: Shift+drag on the clip track',
+      restoreAll: edited ? null : 'Nothing is cut, trimmed or re-timed',
+      addCursorSpotlight: cursor.valid ? null : noCursor,
+      toggleCursor: smoothCursor ? null : cursor.valid ? 'The recorded cursor is already in the video' : noCursor,
+      toggleClickEffects: cursor.valid ? null : noCursor,
+      toggleWebcam: data.webcamUrl ? null : 'This recording has no camera'
+    }
+    for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
+    const on: Partial<Record<CommandId, boolean>> = {
+      toggleCursor: smoothCursor && p.cursor.show,
+      toggleClickEffects: cursor.valid && p.cursor.clickEffect,
+      toggleMotionBlur: p.effects.motionBlur > 0,
+      toggleKeystrokes: p.effects.keystrokes.show,
+      toggleWebcam: !!data.webcamUrl && p.webcam.show
+    }
+    return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
+    // Recomputed when the palette opens or something it shows changes, not on every playhead move.
+  }, [dialog, project, selection, keymap, cursor.valid, data.webcamUrl, store, player])
 
   const goBack = async (): Promise<void> => {
     if (leaving) return
@@ -388,80 +610,38 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         }
         return
       }
+      // The palette and the shortcuts dialog handle their own keys (Esc closes them).
+      if (L.dialog) return
       const target = e.target instanceof Element ? e.target : null
+      const chord = chordFromEvent(e)
+      const id = chord ? matchShortcut(L.shortcuts, chord) : null
       if (isTextEntry(target)) {
-        // Typing: only leave the field. Ctrl+Z stays the field's own undo.
-        if (e.key === 'Escape' || (e.key === 'Enter' && target instanceof HTMLInputElement)) {
+        // Typing: only leave the field (Ctrl+Z stays the field's own undo), or open the palette.
+        if (id && commandInfo(id).inText) {
+          e.preventDefault()
+          if (!e.repeat) commandsRef.current[id]()
+        } else if (e.key === 'Escape' || (e.key === 'Enter' && target instanceof HTMLInputElement)) {
           e.preventDefault()
           ;(target as HTMLElement).blur()
         }
         return
       }
-      const key = e.key.toLowerCase()
-      if (e.ctrlKey || e.metaKey) {
-        if (e.altKey) return
-        if (key === 'z') {
-          e.preventDefault()
-          if (e.shiftKey) actions.redo()
-          else actions.undo()
-        } else if (key === 'y') {
-          e.preventDefault()
-          actions.redo()
-        }
+      if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (L.pickFocus) setPickFocus(false)
+        else setSelection(null)
         return
       }
-      if (e.altKey) return
-      if (e.code === 'Space' || e.key === ' ') {
-        // Prevent a focused toggle or button from also reacting to Space.
-        e.preventDefault()
+      if (!chord || !id) return
+      // A focused slider keeps its own arrow, Home and End keys.
+      if (isRangeInput(target) && isSliderKey(chord)) return
+      e.preventDefault()
+      if (chord.key === 'Space') {
+        // A focused toggle or button must not also react to Space (on key up).
         blurActiveControl()
         spaceDown = true
-        if (!e.repeat) actions.togglePlay()
-        return
       }
-      const onSlider = isRangeInput(target)
-      switch (e.key) {
-        case 'ArrowLeft':
-        case 'ArrowRight':
-          if (onSlider) return
-          e.preventDefault()
-          actions.step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 1 / 30))
-          return
-        case 'Home':
-        case 'End':
-          if (onSlider) return
-          e.preventDefault()
-          if (e.key === 'Home') actions.goToStart()
-          else actions.goToEnd()
-          return
-        case 'Delete':
-        case 'Backspace':
-          e.preventDefault()
-          actions.deleteSelection()
-          return
-        case 'Escape':
-          if (L.pickFocus) setPickFocus(false)
-          else setSelection(null)
-          return
-        case '+':
-        case '=':
-          timelineRef.current?.zoomIn()
-          return
-        case '-':
-        case '_':
-          timelineRef.current?.zoomOut()
-          return
-      }
-      if (e.repeat) return
-      const level = e.shiftKey ? null : levelForKey(e.key)
-      if (level !== null) {
-        e.preventDefault()
-        actions.setZoomLevelKey(level)
-        return
-      }
-      if (key === 'z') actions.addZoom()
-      else if (key === 't') actions.addText()
-      else if (key === 's') actions.split()
+      if (e.repeat && !commandInfo(id).repeat) return
+      commandsRef.current[id]()
     }
     const onKeyUp = (e: KeyboardEvent): void => {
       if (spaceDown && (e.code === 'Space' || e.key === ' ')) {
@@ -475,7 +655,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [actions])
+  }, [setSelection])
 
   /* ---------- saving on close ---------- */
 
@@ -493,7 +673,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [saver])
 
   return (
-    <EditorContext.Provider value={services}>
+    <EditorProviders services={services} keymap={keymap}>
       <div className="app editor">
         <header className="titlebar">
           <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
@@ -513,16 +693,24 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             }}
           />
           <div className="history-buttons">
-            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!store.canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!store.canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
               <EditorIcon name="undo" />
             </button>
-            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!store.canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!store.canRedo} title={withShortcut('Redo', keymap.redo)} aria-label="Redo">
               <EditorIcon name="redo" />
             </button>
           </div>
           <SaveIndicator saver={saver} />
           <div className="tb-spacer" />
-          <button className="btn primary" onClick={openExport}>
+          <button className="btn command-button" onClick={() => setDialog('palette')} title="Search every editor command" aria-label="Command palette">
+            <SearchIcon size={14} />
+            <span>Commands</span>
+            {keymap.commandPalette[0] && <ShortcutKeys accelerator={keymap.commandPalette[0]} />}
+          </button>
+          <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
+            <EditorIcon name="keyboard" />
+          </button>
+          <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
             <Icon name="download" size={16} /> Export
           </button>
         </header>
@@ -549,6 +737,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             />
           </div>
           <Inspector
+            tab={tab}
+            onTab={setTab}
+            smartSpeedRequest={smartSpeedRequest}
             project={project}
             selection={selection}
             revealSeq={revealSeq}
@@ -594,7 +785,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             onClose={() => setExporting(false)}
           />
         )}
+        {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
+        {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
       </div>
-    </EditorContext.Provider>
+    </EditorProviders>
   )
 }

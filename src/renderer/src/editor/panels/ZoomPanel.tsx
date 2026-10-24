@@ -1,3 +1,5 @@
+import { isCommandId } from '../../../../shared/editor/commands'
+import { orPress, shortcutLabel, undoHint, withShortcut, zoomLevelKeysHint } from '../../../../shared/editor/shortcuts'
 import { ZOOM_EASINGS } from '../../../../shared/engine/easing'
 import { formatTime } from '../../../../shared/engine/project'
 import {
@@ -30,6 +32,7 @@ import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
+import { useKeymap } from '../keymapContext'
 import '../zoom.css'
 
 const secFmt = (v: number): string => `${v.toFixed(2)} s`
@@ -49,14 +52,17 @@ function inputSummary(track: CursorTrack, auto: AutoZoomSettings): { clicks: num
 
 export function ZoomPanel(props: InspectorProps): JSX.Element {
   const { project, selection } = props
+  const keymap = useKeymap()
   const zoom = selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id) ?? null) : null
+  const levelKeys = zoomLevelKeysHint(keymap)
   return (
     <>
       {zoom ? (
         <SelectedZoom {...props} zoom={zoom} />
       ) : (
         <p className="hint">
-          Select a zoom on the timeline to edit it, or press Z to add one at the playhead. Keys 1–4 set the selected zoom's level, 0 pulls it back.
+          Select a zoom on the timeline to edit it{keymap.addZoom[0] ? `, or press ${shortcutLabel(keymap.addZoom[0])} to add one at the playhead` : ''}.
+          {levelKeys ? ` With a zoom selected, ${levelKeys}.` : ''}
         </p>
       )}
       <ZoomStyleSection project={project} onNotice={props.onNotice} />
@@ -67,6 +73,7 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
 
 function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Element {
   const { store, player } = useEditor()
+  const keymap = useKeymap()
   const { project, zoom } = props
   const cursorValid = props.cursor.valid
   const style = zoomStyleOf(project)
@@ -128,7 +135,10 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
           label="Zoom level presets"
           value={ZOOM_LEVEL_PRESETS.find((p) => Math.abs(p.value - level) < 1e-3)?.value ?? null}
           onChange={(v) => setLevel(v)}
-          options={ZOOM_LEVEL_PRESETS.map((p) => ({ value: p.value, label: p.label, title: p.title }))}
+          options={ZOOM_LEVEL_PRESETS.map((p) => {
+            const command = `zoomLevel${p.key}`
+            return { value: p.value, label: p.label, title: withShortcut(p.title, isCommandId(command) ? keymap[command] : undefined) }
+          })}
         />
       </div>
       <Slider
@@ -206,6 +216,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
 
 function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (m: string) => void }): JSX.Element {
   const { store } = useEditor()
+  const keymap = useKeymap()
   const settings = zoomSettingsOf(project)
   const set = (patch: Partial<ZoomSettings>, key?: string): void =>
     store.update((p) => ({ ...p, zoomSettings: { ...zoomSettingsOf(p), ...patch } }), key)
@@ -218,7 +229,7 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
       <Slider label="Transition" value={settings.transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(transition) => set({ transition }, 'zoomSettings.transition')} />
       <Slider label="New zoom level" value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={formatLevel} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />
       <p className="hint">
-        Every zoom without its own motion follows this style; Z adds zooms at the new zoom level.
+        Every zoom without its own motion follows this style; zooms you add start at the new zoom level.
         {overridden > 0 ? ` ${plural(overridden, 'zoom')} ${overridden === 1 ? 'has its' : 'have their'} own.` : ''}
       </p>
       <div className="row start zoom-actions">
@@ -227,7 +238,7 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
           disabled={overridden === 0}
           onClick={() => {
             store.update((p) => ({ ...p, zooms: clearZoomStyles(p.zooms) }))
-            onNotice(`Zoom style applied to all zooms · Ctrl+Z to undo`)
+            onNotice(`Zoom style applied to all zooms${undoHint(keymap)}`)
           }}
         >
           Apply to all zooms
@@ -239,6 +250,7 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
 
 function AutoZoomSection({ project, cursor, onNotice }: { project: Project; cursor: CursorTrack; onNotice: (m: string) => void }): JSX.Element {
   const { store } = useEditor()
+  const keymap = useKeymap()
   const settings = zoomSettingsOf(project)
   const auto = settings.auto
   const found = inputSummary(cursor, auto)
@@ -264,7 +276,7 @@ function AutoZoomSection({ project, cursor, onNotice }: { project: Project; curs
   const removeAll = (): void => {
     const n = project.zooms.length
     store.update((p) => ({ ...p, zooms: [] }))
-    onNotice(`Removed ${plural(n, 'zoom')} · Ctrl+Z to undo`)
+    onNotice(`Removed ${plural(n, 'zoom')}${undoHint(keymap)}`)
   }
 
   const sources = [
@@ -278,7 +290,7 @@ function AutoZoomSection({ project, cursor, onNotice }: { project: Project; curs
       <p className="hint" data-testid="auto-zoom-summary">
         {hasInput
           ? `${sources.length ? sources.join(' · ') : 'No usable input'} detected. Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.`
-          : 'No clicks were captured, so add zooms yourself: press Z or double-click the zoom track.'}
+          : `${orPress('No clicks were captured, so add zooms yourself: double-click the zoom track', keymap.addZoom)}.`}
       </p>
       <Toggle label="Auto zoom" checked={auto.enabled} disabled={!hasInput} onChange={(enabled) => setAuto({ enabled })} />
       <div className={`auto-zoom-options ${auto.enabled && hasInput ? '' : 'off'}`}>

@@ -26,6 +26,7 @@ import {
   ticksIn,
   ZOOM_STEP
 } from '../../../shared/editor/timelineScale'
+import { orPress, withShortcut } from '../../../shared/editor/shortcuts'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
@@ -37,6 +38,7 @@ import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
+import { useKeymap } from './keymapContext'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import { ShapeIcon } from './shapeIcons'
@@ -126,6 +128,7 @@ export const Timeline = memo(
   forwardRef<TimelineHandle, Props>(function Timeline(props, ref) {
     const { duration, clips, zooms, annotations, clicks, selection, onSelect } = props
     const { store, player } = useEditor()
+    const keymap = useKeymap()
     const scrollerRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
     const playheadRef = useRef<HTMLDivElement>(null)
@@ -588,7 +591,7 @@ export const Timeline = memo(
                         className="range-cut"
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => props.onCutRange(range.start, range.end)}
-                        title="Cut the selected range (Delete)"
+                        title={withShortcut('Cut the selected range', keymap.deleteSelection)}
                       >
                         <EditorIcon name="scissors" size={13} /> Cut
                       </button>
@@ -648,7 +651,7 @@ export const Timeline = memo(
                     </div>
                   )
                 })}
-                {zooms.length === 0 && <span className="tl-empty">Double-click to add a zoom, or press Z</span>}
+                {zooms.length === 0 && <span className="tl-empty">{orPress('Double-click to add a zoom', keymap.addZoom)}</span>}
               </div>
 
               <div className="tl-track text-track" onPointerDown={onBackgroundDown('text')} title="Double-click to add text">
@@ -672,7 +675,7 @@ export const Timeline = memo(
                     </div>
                   )
                 })}
-                {annotations.length === 0 && <span className="tl-empty">Double-click to add text, or press T</span>}
+                {annotations.length === 0 && <span className="tl-empty">{orPress('Double-click to add text', keymap.addText)}</span>}
               </div>
 
               <div className="tl-track shape-track" onPointerDown={onBackgroundDown('shape')} title="Double-click to add an arrow" data-testid="shape-track">
