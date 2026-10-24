@@ -22,7 +22,7 @@ function create(): BrowserWindow {
     focusable: false,
     show: false,
     hasShadow: false,
-    webPreferences: { preload: preloadPath, sandbox: false, contextIsolation: true, nodeIntegration: false }
+    webPreferences: { preload: preloadPath, sandbox: true, contextIsolation: true, nodeIntegration: false }
   })
   win.setAlwaysOnTop(true, 'screen-saver')
   // Keep the control bar out of the recording (Windows 10 2004+ / macOS).

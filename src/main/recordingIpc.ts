@@ -70,6 +70,7 @@ import {
 import { buildCursorTrack, type RawTrack, type WindowMapping } from './recording/trackMath'
 import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recording/userMessages'
 import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
+import { isAppUrl } from './security'
 import { getMainWindow, loadRoute } from './windows'
 
 const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio', 'mic', 'system']
@@ -409,7 +410,7 @@ function setupDisplayMedia(): void {
     (request, callback) => {
       const g = grant
       try {
-        if (!g || !request.videoRequested) {
+        if (!g || !request.videoRequested || !isAppUrl(request.frame?.url ?? '')) {
           callback(null)
           return
         }
@@ -424,10 +425,6 @@ function setupDisplayMedia(): void {
     },
     { useSystemPicker: false }
   )
-
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(permission === 'media' || permission === 'display-capture')
-  })
 }
 
 async function prepare(request: RecordingRequest): Promise<CapturePlan> {
