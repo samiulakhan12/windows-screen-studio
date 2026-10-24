@@ -25,7 +25,6 @@ interface BlurState {
   /** The mask as segmentation returned it, and softened by a pixel so its steps do not show when scaled up. */
   rawMask: HTMLCanvasElement
   mask: HTMLCanvasElement
-  margin: number
   /** What the canvases hold now: redone only for a new camera frame, mask or blur amount. */
   image: unknown
   pixels: ImageData | null
@@ -44,15 +43,14 @@ function stateOf(ctx: Ctx): LayerState {
   return s
 }
 
-function sized(c: HTMLCanvasElement | undefined, w: number, h: number): HTMLCanvasElement {
-  const canvas = c ?? document.createElement('canvas')
+/** Gives `c` this size (at least 1 x 1); true when that changed it (which clears it). */
+function resize(c: HTMLCanvasElement, w: number, h: number): boolean {
   const cw = Math.max(1, Math.ceil(w))
   const ch = Math.max(1, Math.ceil(h))
-  if (canvas.width !== cw || canvas.height !== ch) {
-    canvas.width = cw
-    canvas.height = ch
-  }
-  return canvas
+  if (c.width === cw && c.height === ch) return false
+  c.width = cw
+  c.height = ch
+  return true
 }
 
 /**
@@ -102,21 +100,20 @@ export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): vo
 }
 
 /**
- * The picture to draw and its person mask. Decoded frames (export) carry a mask prepared before
- * the frame was drawn; the preview's camera element hands over its latest frame with its mask.
+ * The picture to draw and its person mask. Frames the export decoded carry a mask prepared before
+ * they were drawn; the preview's camera element hands over its latest frame with its own mask.
  * Without a mask the camera is drawn unblurred.
  */
 function pictureOf(camera: FrameImage, blur: number): { picture: FrameImage; mask: PersonMask | null } {
   const img = camera.image
-  if (typeof HTMLVideoElement !== 'undefined' && img instanceof HTMLVideoElement) {
-    if (!(blur > 0)) {
-      releaseLivePicture(img)
-      return { picture: camera, mask: null }
-    }
-    const live = livePicture(img)
-    return live ? { picture: live, mask: live.mask } : { picture: camera, mask: null }
+  const prepared = blur > 0 ? maskOf(img) : null
+  if (prepared || typeof HTMLVideoElement === 'undefined' || !(img instanceof HTMLVideoElement)) return { picture: camera, mask: prepared }
+  if (!(blur > 0)) {
+    releaseLivePicture(img)
+    return { picture: camera, mask: null }
   }
-  return { picture: camera, mask: blur > 0 ? maskOf(img) : null }
+  const live = livePicture(img)
+  return live ? { picture: live, mask: live.mask } : { picture: camera, mask: null }
 }
 
 /**
@@ -155,7 +152,8 @@ function drawShadow(ctx: Ctx, state: LayerState, r: Rect, radius: number, s: Sha
   const key = [r.w, r.h, fx, fy, radius, s.color, s.blur, s.offsetY].map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join()
   let sprite = state.shadow
   if (!sprite || sprite.key !== key) {
-    const canvas = sized(sprite?.canvas, fx + r.w + reach, fy + r.h + reach)
+    const canvas = sprite?.canvas ?? document.createElement('canvas')
+    resize(canvas, fx + r.w + reach, fy + r.h + reach)
     const c = canvas.getContext('2d')
     if (!c) {
       paint(ctx, r.x, r.y)
@@ -183,19 +181,19 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
   const sh = Math.max(1, Math.ceil(H * BLUR_DOWNSCALE))
   const sigma = Math.max(0.5, backgroundBlurRadius(amount, W, H) * BLUR_DOWNSCALE)
   const margin = Math.ceil(sigma * 3)
-  const prev = state.blur
-  const b: BlurState = {
-    person: sized(prev?.person, W, H),
-    tmp: sized(prev?.tmp, sw + margin * 2, sh + margin * 2),
-    blurred: sized(prev?.blurred, sw + margin * 2, sh + margin * 2),
-    rawMask: sized(prev?.rawMask, mask.pixels.width, mask.pixels.height),
-    mask: sized(prev?.mask, mask.pixels.width, mask.pixels.height),
-    margin,
-    image: prev?.image,
-    pixels: prev?.pixels ?? null,
-    amount: prev?.amount ?? NaN
+  if (!state.blur) {
+    const c = (): HTMLCanvasElement => document.createElement('canvas')
+    state.blur = { person: c(), tmp: c(), blurred: c(), rawMask: c(), mask: c(), image: null, pixels: null, amount: NaN }
   }
-  state.blur = b
+  const b = state.blur
+  // A resized canvas is cleared: what it held is made again.
+  let cleared = resize(b.person, W, H)
+  cleared = resize(b.tmp, sw + margin * 2, sh + margin * 2) || cleared
+  cleared = resize(b.blurred, sw + margin * 2, sh + margin * 2) || cleared
+  if (cleared) b.image = null
+  let maskCleared = resize(b.rawMask, mask.pixels.width, mask.pixels.height)
+  maskCleared = resize(b.mask, mask.pixels.width, mask.pixels.height) || maskCleared
+  if (maskCleared) b.pixels = null
   if (b.image !== pic.image || b.pixels !== mask.pixels || b.amount !== amount) {
     const pctx = b.person.getContext('2d')
     const tctx = b.tmp.getContext('2d')

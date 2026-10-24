@@ -16,7 +16,12 @@ const attached = new WeakMap<object, PersonMask>()
 /** The mask prepared for a decoded camera frame, if any. */
 export const maskOf = (image: CanvasImageSource): PersonMask | null => attached.get(image) ?? null
 
-const stampOf = (image: CanvasImageSource): number => (typeof VideoFrame !== 'undefined' && image instanceof VideoFrame ? image.timestamp : NaN)
+/** Which camera frame an image shows: a decoded frame's timestamp, a seeked element's time (µs); NaN when unknown. */
+function stampOf(image: CanvasImageSource): number {
+  if (typeof VideoFrame !== 'undefined' && image instanceof VideoFrame) return image.timestamp
+  if (typeof HTMLVideoElement !== 'undefined' && image instanceof HTMLVideoElement) return Math.round(image.currentTime * 1e6)
+  return NaN
+}
 
 /** Segments the camera frames of one export, once per camera frame (a frame shown twice is segmented once). */
 export class CameraMaskPreparer {
@@ -28,14 +33,20 @@ export class CameraMaskPreparer {
   }
 
   async prepare(frame: FrameImage | null): Promise<void> {
-    if (!frame || attached.has(frame.image)) return
+    if (!frame) return
     const stamp = stampOf(frame.image)
-    if (this.last && stamp === this.last.stamp) {
-      attached.set(frame.image, this.last.mask)
+    const known = !Number.isNaN(stamp) && this.last?.stamp === stamp ? this.last.mask : null
+    if (known) {
+      attached.set(frame.image, known)
       return
     }
+    // A decoded frame is a new image each time; a seeked element is the same one showing another frame.
+    if (Number.isNaN(stamp) && attached.has(frame.image)) return
     const mask = await segmentPicture(frame.image, frame.width, frame.height)
-    if (!mask) return
+    if (!mask) {
+      attached.delete(frame.image)
+      return
+    }
     attached.set(frame.image, mask)
     this.last = Number.isNaN(stamp) ? null : { stamp, mask }
   }
