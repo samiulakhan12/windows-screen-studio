@@ -1,8 +1,11 @@
 import { displayTime } from '../../../shared/editor/clips'
 import { clamp } from '../../../shared/engine/math'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
+import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
+import { cursorLook } from '../../../shared/render/cursorFx'
 import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
+import { onCursorAssetsChanged } from '../render/cursorLayer'
 
 /** Proxies are encoded at 60 fps (see proxyArgs); used to look one frame ahead at cut points. */
 const SOURCE_FPS = 60
@@ -37,6 +40,10 @@ export class PreviewPlayer {
   private pendingSeek: number | null = null
   private jumpTarget: number | null = null
   private audio: { ctx: AudioContext; gain: GainNode } | null = null
+  /** Click sounds (CursorSettings.clickSound): which clicks play, and the Web Audio graph playing them. */
+  private readonly clickSounds = new ClickSoundScheduler()
+  private clickAudio: { ctx: AudioContext; gain: GainNode; buffer: AudioBuffer; voices: Set<AudioBufferSourceNode> } | null = null
+  private readonly offCursorAssets: () => void
   private disposed = false
 
   constructor(
@@ -57,6 +64,8 @@ export class PreviewPlayer {
     screen.addEventListener('ended', this.onEnded)
     screen.addEventListener('pause', this.onPause)
     this.applyAudio()
+    // A custom cursor image finishing loading changes the picture.
+    this.offCursorAssets = onCursorAssetsChanged(this.invalidate)
     this.seek(keptBounds(project.clips).start)
   }
 
@@ -83,6 +92,7 @@ export class PreviewPlayer {
 
   setScene(scene: RenderScene, background: HTMLImageElement | null): void {
     this.scene = scene
+    this.clickSounds.setTimes(soundingClicks(scene.cursor))
     this.unzoomed = null
     this.background = background
     this.invalidate()
@@ -120,6 +130,7 @@ export class PreviewPlayer {
       this.time = from.time
       this.setRate(clips[from.index].speed)
       this.jumpTarget = null
+      this.clickSounds.restart(from.time)
       this.screen.currentTime = from.time
       this.syncWebcam(from.time, true)
     } else {
@@ -141,6 +152,9 @@ export class PreviewPlayer {
     if (Math.abs(this.screen.currentTime - from.time) > 1e-3) this.screen.currentTime = from.time
     this.syncWebcam(from.time, true)
     void this.audio?.ctx.resume()
+    this.clickSounds.restart(from.time)
+    // Created here, inside the user's gesture, so the audio context may start.
+    if (cursorLook(this.project.cursor).clickSound) void this.ensureClickAudio()?.ctx.resume()
     this.screen.play().catch((err: unknown) => {
       // AbortError just means pause() won the race.
       if (!(err instanceof DOMException && err.name === 'AbortError')) this.stopPlaying()
@@ -234,6 +248,7 @@ export class PreviewPlayer {
     this.time = t
     this.syncWebcam(t, false)
     this.draw(t)
+    this.playClicks(t, clip)
     this.emit()
     // Jump before the next decoded frame would land in a cut (or past the end).
     if (t + clip.speed * FRAME >= clip.end - 1e-4) this.leaveClip(clips, i)
@@ -252,6 +267,8 @@ export class PreviewPlayer {
 
   private jumpTo(time: number, index: number): void {
     this.jumpTarget = time
+    // Clicks in the cut are skipped; the next clip's clicks play from its start.
+    this.clickSounds.restart(time)
     this.setRate(this.project.clips[index].speed)
     this.screen.currentTime = time
     this.syncWebcam(time, true)
@@ -274,6 +291,7 @@ export class PreviewPlayer {
     if (!this.screen.paused) this.screen.pause()
     if (this.webcam && !this.webcam.paused) this.webcam.pause()
     void this.audio?.ctx.suspend()
+    this.stopClicks()
     if (wasPlaying) {
       this.emit()
       this.invalidate()
@@ -379,6 +397,73 @@ export class PreviewPlayer {
     }
   }
 
+  /* ---------- click sounds ---------- */
+
+  /**
+   * Plays the click sounds due for the frame at `t` (see ClickSoundScheduler): only during
+   * playback, each click once, none for clicks in cuts, at the right moment at any speed.
+   */
+  private playClicks(t: number, clip: Clip): void {
+    const look = cursorLook(this.project.cursor)
+    if (!look.clickSound || look.clickSoundVolume <= 0) {
+      // Switching sounds on mid-playback starts at the playhead, not with a backlog.
+      this.clickSounds.reset()
+      return
+    }
+    const due = this.clickSounds.frame(t, clip)
+    if (due.length === 0) return
+    const audio = this.ensureClickAudio()
+    if (!audio) return
+    if (audio.ctx.state === 'suspended') void audio.ctx.resume()
+    audio.gain.gain.value = look.clickSoundVolume
+    const now = audio.ctx.currentTime
+    for (const d of due) {
+      const voice = audio.ctx.createBufferSource()
+      voice.buffer = audio.buffer
+      voice.connect(audio.gain)
+      voice.onended = () => {
+        audio.voices.delete(voice)
+        voice.disconnect()
+      }
+      audio.voices.add(voice)
+      voice.start(now + d.delay)
+    }
+  }
+
+  /** The click sound graph, created on first use (an AudioContext costs CPU while it runs). */
+  private ensureClickAudio(): PreviewPlayer['clickAudio'] {
+    if (this.clickAudio || this.disposed) return this.clickAudio
+    try {
+      const ctx = new AudioContext({ latencyHint: 'interactive' })
+      const gain = ctx.createGain()
+      gain.connect(ctx.destination)
+      const wave = clickWaveform(ctx.sampleRate)
+      const buffer = ctx.createBuffer(1, wave.length, ctx.sampleRate)
+      buffer.copyToChannel(wave, 0)
+      this.clickAudio = { ctx, gain, buffer, voices: new Set() }
+    } catch (err) {
+      // Without Web Audio the preview is silent; the export still mixes the clicks in.
+      console.warn('Click sounds unavailable in the preview:', err)
+    }
+    return this.clickAudio
+  }
+
+  /** Silences clicks still scheduled (pausing must not let one play late) and idles the audio context. */
+  private stopClicks(): void {
+    this.clickSounds.reset()
+    const audio = this.clickAudio
+    if (!audio) return
+    for (const v of audio.voices) {
+      try {
+        v.stop()
+      } catch {
+        // Already stopped.
+      }
+    }
+    audio.voices.clear()
+    void audio.ctx.suspend()
+  }
+
   dispose(): void {
     if (this.disposed) return
     this.stopPlaying()
@@ -391,6 +476,9 @@ export class PreviewPlayer {
     this.webcam?.removeEventListener('seeked', this.invalidate)
     this.webcam?.removeEventListener('loadeddata', this.invalidate)
     void this.audio?.ctx.close()
+    void this.clickAudio?.ctx.close()
+    this.clickAudio = null
+    this.offCursorAssets()
     this.listeners.clear()
     for (const v of [this.screen, this.webcam]) {
       if (!v) continue

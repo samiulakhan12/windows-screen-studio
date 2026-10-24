@@ -5,7 +5,7 @@ import type { SaveMeta, SyncSaveResult } from '../shared/editor/autosave'
 import type { LoadedProject } from '../shared/api/projects'
 import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
-import { mediaUrl } from './mediaProtocol'
+import { MEDIA_FILE_RE, mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
 import { loadStyleDefaults, saveStyleDefaults, type StyleDefaults } from './styleDefaults'
 import { getMainWindow } from './windows'
@@ -86,6 +86,18 @@ export function registerProjectsIpc(): void {
     return { url: mediaUrl(id, name), path: name }
   })
 
+  ipcMain.handle('projects:pickCursorImage', async (_e, id: string) => {
+    const main = getMainWindow()
+    if (!main) return null
+    const result = await dialog.showOpenDialog(main, {
+      title: 'Choose cursor image',
+      properties: ['openFile'],
+      filters: [{ name: 'Cursor images', extensions: CURSOR_IMAGE_EXTENSIONS }]
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    return importCursorImage(id, result.filePaths[0])
+  })
+
   ipcMain.handle('projects:backgroundUrl', async (_e, id: string, file: string): Promise<string | null> => {
     if (typeof file !== 'string' || !BACKGROUND_RE.test(file)) return null
     return (await projects.exists(path.join(projects.projectDir(id), file))) ? mediaUrl(id, file) : null
@@ -100,3 +112,41 @@ export function registerProjectsIpc(): void {
 }
 
 const BACKGROUND_RE = /^background\.(png|jpe?g|webp)$/i
+
+/** Image formats a custom cursor can be (Chromium decodes all of them; .cur hot spots are not read: top-left). */
+export const CURSOR_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'ico', 'cur']
+const MAX_CURSOR_IMAGE_BYTES = 10 * 1024 * 1024
+
+/** Whether `head` (the first bytes of a file) starts like an image of one of the cursor formats. */
+export function looksLikeCursorImage(head: Buffer): boolean {
+  const starts = (...bytes: number[]): boolean => bytes.every((b, i) => head[i] === b)
+  if (starts(0x89, 0x50, 0x4e, 0x47)) return true // PNG
+  if (starts(0xff, 0xd8, 0xff)) return true // JPEG
+  if (head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WEBP') return true
+  if (starts(0, 0, 1, 0) || starts(0, 0, 2, 0)) return true // ICO, CUR
+  return /<svg[\s>]/i.test(head.toString('utf8')) // SVG (after an XML prolog or comments)
+}
+
+/**
+ * Copies a picked cursor image into the project folder as cursor.<ext> and returns its URL
+ * and project-relative path. Images of other formats stay, so undo can go back to them.
+ * A file that is not an image is refused before anything is overwritten.
+ */
+export async function importCursorImage(id: string, src: string): Promise<{ url: string; path: string }> {
+  const ext = path.extname(src).toLowerCase().replace('.jpeg', '.jpg')
+  if (!CURSOR_IMAGE_EXTENSIONS.includes(ext.slice(1))) throw new Error('Choose a PNG, JPG, WebP, SVG, ICO or CUR image.')
+  const { size } = await fs.stat(src)
+  if (size > MAX_CURSOR_IMAGE_BYTES) throw new Error('This image is too large for a cursor (10 MB at most).')
+  const handle = await fs.open(src, 'r')
+  const head = Buffer.alloc(4096)
+  try {
+    const { bytesRead } = await handle.read(head, 0, head.length, 0)
+    if (!looksLikeCursorImage(head.subarray(0, bytesRead))) throw new Error('This file could not be read as an image.')
+  } finally {
+    await handle.close()
+  }
+  const name = `cursor${ext}`
+  if (!MEDIA_FILE_RE.test(name)) throw new Error('Unsupported cursor image')
+  await fs.copyFile(src, path.join(projects.projectDir(id), name))
+  return { url: mediaUrl(id, name), path: name }
+}

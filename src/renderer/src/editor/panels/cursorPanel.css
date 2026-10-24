@@ -1,0 +1,144 @@
+/* ---------- Cursor panel: style tiles, click styles, colour rows ---------- */
+
+.cursor-styles,
+.click-styles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cursor-style,
+.click-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 4px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.cursor-style:hover:not(:disabled),
+.click-style:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #3a3a4e;
+}
+
+.cursor-style.active,
+.click-style.active {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.cursor-style:disabled,
+.click-style:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* A small coloured "screen" behind each cursor, so white and black styles both read well. */
+.cursor-style-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #6d5bd0 0%, #3f6fb0 55%, #2b8a9a 100%);
+  color: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+}
+
+.custom-cursor-thumb {
+  max-width: 34px;
+  max-height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+}
+
+.click-style .click-icon {
+  color: var(--accent-2);
+}
+
+.click-style.active .click-icon {
+  color: var(--text);
+}
+
+.custom-cursor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.custom-cursor-row .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn.small-btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-row.disabled {
+  opacity: 0.45;
+}
+
+.color-dot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.color-dot:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.color-dot:disabled {
+  cursor: default;
+}
+
+.color-dot.active {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent-2);
+}
+
+/* "Any colour": a rainbow dot (or the chosen colour) opening the system colour picker. */
+.color-dot.custom {
+  background: conic-gradient(#f43f5e, #f59e0b, #facc15, #4ade80, #38bdf8, #8b5cf6, #f43f5e);
+  overflow: hidden;
+}
+
+.color-dot.custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-row.disabled .color-dot.custom input {
+  cursor: default;
+}

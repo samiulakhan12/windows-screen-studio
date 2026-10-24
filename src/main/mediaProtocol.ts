@@ -2,30 +2,36 @@ import { protocol } from 'electron'
 import { createReadStream, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
+import { MEDIA_SCHEME } from '../shared/mediaUrl'
 import { projectDir } from './projects'
 
-export const MEDIA_SCHEME = 'studio-media'
+export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
 
-const FILE_RE = /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp))$/i
+/** Project files the renderer may load: the proxies, a background image and a custom cursor image. */
+export const MEDIA_FILE_RE = /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur))$/i
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp'
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.cur': 'image/x-icon'
 }
 
 // Frames are read back from canvas during export, so media must be CORS-clean.
 const CORS = { 'Access-Control-Allow-Origin': '*' }
+
+/** Extra headers per type: a user's SVG is only ever an image, never a document that runs scripts. */
+const typeHeaders = (type: string): Record<string, string> =>
+  type === 'image/svg+xml' ? { 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:", 'X-Content-Type-Options': 'nosniff' } : {}
 
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
   ])
 }
-
-export const mediaUrl = (projectId: string, file: string): string =>
-  `${MEDIA_SCHEME}://project/${encodeURIComponent(projectId)}/${encodeURIComponent(file)}?v=${Date.now()}`
 
 /**
  * Serves project media with HTTP Range support so <video> can seek.
@@ -36,7 +42,7 @@ export function handleMediaProtocol(): void {
     try {
       const url = new URL(request.url)
       const [id, file] = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
-      if (url.host !== 'project' || !id || !file || !FILE_RE.test(file)) return new Response('Not found', { status: 404 })
+      if (url.host !== 'project' || !id || !file || !MEDIA_FILE_RE.test(file)) return new Response('Not found', { status: 404 })
       const filePath = path.join(projectDir(id), file)
       const { size } = await fs.stat(filePath)
       const type = MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream'
@@ -56,6 +62,7 @@ export function handleMediaProtocol(): void {
             'Content-Length': String(end - start + 1),
             'Content-Range': `bytes ${start}-${end}/${size}`,
             'Accept-Ranges': 'bytes',
+            ...typeHeaders(type),
             ...CORS
           }
         })
@@ -63,7 +70,7 @@ export function handleMediaProtocol(): void {
       const body = Readable.toWeb(createReadStream(filePath)) as ReadableStream
       return new Response(body, {
         status: 200,
-        headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes', ...CORS }
+        headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes', ...typeHeaders(type), ...CORS }
       })
     } catch {
       return new Response('Not found', { status: 404 })

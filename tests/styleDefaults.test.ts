@@ -156,6 +156,50 @@ describe('sanitizeStyleDefaults', () => {
   })
 })
 
+describe('cursor look in saved defaults', () => {
+  const look = {
+    style: 'mac',
+    highlight: { enabled: true, color: '#22C55E', size: 1.5, opacity: 0.5 },
+    clickStyle: 'ring',
+    clickColor: '#F472B6',
+    clickSound: true,
+    clickSoundVolume: 0.4,
+    loopHome: true,
+    tilt: true,
+    trail: true
+  }
+
+  it('saves and applies style, highlight, click style/colour/sound, loop, tilt and trail', () => {
+    const d = sanitizeStyleDefaults({ cursor: look })
+    expect(d?.cursor).toEqual({ ...look, highlight: { ...look.highlight, color: '#22c55e' }, clickColor: '#f472b6' })
+    const p = applyStyleDefaults(newProject(), d)
+    expect(p.cursor).toMatchObject({ style: 'mac', clickStyle: 'ring', clickSound: true, clickSoundVolume: 0.4, loopHome: true, tilt: true, trail: true })
+    expect(p.cursor.highlight).toEqual({ enabled: true, color: '#22c55e', size: 1.5, opacity: 0.5 })
+  })
+
+  it('never saves a custom cursor image (it belongs to one project)', () => {
+    const d = sanitizeStyleDefaults({ cursor: { style: 'custom', customImage: 'cursor.png', size: 2 } })
+    expect(d?.cursor).toEqual({ size: 2 })
+    const edited = { ...newProject(), cursor: { ...newProject().cursor, style: 'custom' as const, customImage: 'cursor.png' } }
+    const again = applyStyleDefaults(newProject(), lookOf(edited))
+    expect(again.cursor.style).toBe('auto')
+    expect(again.cursor.customImage).toBeUndefined()
+  })
+
+  it('clamps and validates the new fields', () => {
+    const d = sanitizeStyleDefaults({
+      cursor: { style: 'neon', clickStyle: 'boom', clickColor: 'red', clickSoundVolume: 7, highlight: { enabled: 'yes', size: 9, opacity: 0, color: 'x' }, tilt: 1 }
+    })
+    expect(d?.cursor).toEqual({ clickSoundVolume: 1, highlight: { enabled: false, color: '#facc15', size: 2.5, opacity: 0.1 } })
+  })
+
+  it('a partial highlight takes the built-in values for the rest', () => {
+    const d = sanitizeStyleDefaults({ cursor: { highlight: { enabled: true } } })
+    expect(d?.cursor.highlight).toEqual({ enabled: true, color: '#facc15', size: 1, opacity: 0.35 })
+    expect(sanitizeStyleDefaults({ cursor: { highlight: { nothing: 1 } } })).toBeNull()
+  })
+})
+
 describe('loadStyleDefaults / saveStyleDefaults', () => {
   const file = path.join(dir, 'nested', 'style-defaults.json')
 
