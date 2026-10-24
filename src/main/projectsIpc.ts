@@ -7,6 +7,7 @@ import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
+import { loadStyleDefaults, saveStyleDefaults, type StyleDefaults } from './styleDefaults'
 import { getMainWindow } from './windows'
 
 /** Newest save written per project, so a save that arrives late cannot overwrite a newer one. */
@@ -88,6 +89,13 @@ export function registerProjectsIpc(): void {
   ipcMain.handle('projects:backgroundUrl', async (_e, id: string, file: string): Promise<string | null> => {
     if (typeof file !== 'string' || !BACKGROUND_RE.test(file)) return null
     return (await projects.exists(path.join(projects.projectDir(id), file))) ? mediaUrl(id, file) : null
+  })
+
+  ipcMain.handle('styleDefaults:get', () => loadStyleDefaults())
+  // The renderer's value is validated field by field before it is stored; only reset removes the file.
+  ipcMain.handle('styleDefaults:save', (_e, look: unknown) => saveStyleDefaults((look ?? {}) as StyleDefaults))
+  ipcMain.handle('styleDefaults:reset', async () => {
+    await saveStyleDefaults(null)
   })
 }
 
