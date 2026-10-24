@@ -14,6 +14,7 @@ import {
   removeBinding,
   resetCommand,
   shortcutLabel,
+  takenDefaults,
   type Keymap
 } from '../../../shared/editor/shortcuts'
 import { Icon } from '../components/Icon'
@@ -21,8 +22,15 @@ import { useModalFocus } from './modalFocus'
 import { ShortcutKeys } from './ShortcutKeys'
 import './commands.css'
 
-/** What a row is doing: recording keys, asking about a key another command has, or showing an error. */
-type RowState = { kind: 'capture'; partial: string } | { kind: 'conflict'; accelerator: string; owner: CommandId } | { kind: 'error'; message: string }
+/**
+ * What a row is doing: recording keys, asking about a key another command has (to add it, or
+ * to reset to defaults other commands have now), or showing an error.
+ */
+type RowState =
+  | { kind: 'capture'; partial: string }
+  | { kind: 'conflict'; accelerator: string; owner: CommandId }
+  | { kind: 'reset'; taken: { accelerator: string; owner: CommandId }[] }
+  | { kind: 'error'; message: string }
 
 function ResetIcon(): JSX.Element {
   return (
@@ -53,7 +61,7 @@ function ShortcutRow({
   const full = bindings.length >= MAX_BINDINGS
 
   // Back on this row's add button when recording or a question ends, unless focus moved on.
-  const busy = state?.kind === 'capture' || state?.kind === 'conflict'
+  const busy = state?.kind === 'capture' || state?.kind === 'conflict' || state?.kind === 'reset'
   const wasBusy = useRef(false)
   useEffect(() => {
     const active = document.activeElement
@@ -78,7 +86,8 @@ function ShortcutRow({
     e.preventDefault()
     e.stopPropagation()
     if (e.repeat) return
-    if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) return onState(null)
+    // Esc cancels, with Shift too (as everywhere in the editor).
+    if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey) return onState(null)
     const chord = chordFromEvent(e)
     if (chord) take(formatChord(chord))
     else onState({ kind: 'capture', partial: partialLabel(e) })
@@ -147,6 +156,9 @@ function ShortcutRow({
             aria-label={`Reset ${title}`}
             title={modified ? `Reset to ${defaults.length ? defaults.map(shortcutLabel).join(' or ') : 'no shortcut'}` : 'Default'}
             onClick={() => {
+              // Defaults another command has now are only taken back when the user says so.
+              const taken = takenDefaults(keymap, id)
+              if (taken.length) return onState({ kind: 'reset', taken })
               onChange(resetCommand(keymap, id))
               onState(null)
             }}
@@ -160,7 +172,7 @@ function ShortcutRow({
           {state.message}
         </p>
       )}
-      {state?.kind === 'conflict' && (
+      {(state?.kind === 'conflict' || state?.kind === 'reset') && (
         <div
           className="shortcut-message conflict"
           role="alert"
@@ -172,22 +184,24 @@ function ShortcutRow({
             onState(null)
           }}
         >
-          <span className="shortcut-question">
-            <ShortcutKeys accelerator={state.accelerator} />
-            <span>
-              is used by <strong>{commandInfo(state.owner).title}</strong>.
+          {(state.kind === 'conflict' ? [{ accelerator: state.accelerator, owner: state.owner }] : state.taken).map((t) => (
+            <span key={t.accelerator} className="shortcut-question">
+              <ShortcutKeys accelerator={t.accelerator} />
+              <span>
+                is used by <strong>{commandInfo(t.owner).title}</strong>.
+              </span>
             </span>
-          </span>
+          ))}
           <button
             type="button"
             className="btn small primary"
             autoFocus
             onClick={() => {
-              onChange(addBinding(keymap, id, state.accelerator))
+              onChange(state.kind === 'conflict' ? addBinding(keymap, id, state.accelerator) : resetCommand(keymap, id, true))
               onState(null)
             }}
           >
-            Use it here
+            {state.kind === 'conflict' ? 'Use it here' : state.taken.length > 1 ? 'Take them back' : 'Take it back'}
           </button>
           <button type="button" className="btn small ghost" onClick={() => onState(null)}>
             Cancel

@@ -69,6 +69,7 @@ const focused = (win) =>
     const el = document.activeElement
     return el ? { tag: el.tagName, label: el.getAttribute('aria-label'), inPalette: !!el.closest('.command-palette'), inShortcuts: !!el.closest('.shortcuts-modal') } : null
   })
+const chips = (win, id) => win.$$eval(`.shortcut-row[data-command="${id}"] .shortcut-chip kbd`, (els) => els.map((e) => e.textContent).join())
 const paletteTitles = (win) => win.$$eval('.command-palette [role="option"] .palette-title', (els) => els.map((e) => e.textContent))
 const notice = (win, text) => win.waitForSelector(`.notice:has-text("${text}")`, { timeout: 10000 })
 
@@ -199,6 +200,38 @@ async function main() {
     await h.sleep(300)
     h.assert(!(await win.$('.command-palette')), 'no palette behind the export dialog')
     await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.export-modal')), 'export dialog closed again')
+
+    // A command that opens another dialog leaves focus in that dialog, not behind it.
+    await win.click('button[aria-label="Command palette"]')
+    await win.waitForSelector('.command-palette')
+    await win.keyboard.type('keyboard shortcuts')
+    await f.waitFor(async () => (await paletteTitles(win))[0] === 'Keyboard shortcuts…', 'Keyboard shortcuts listed', 3000)
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('.shortcuts-modal')
+    await f.waitFor(async () => (await focused(win)).label === 'Search shortcuts', 'the shortcuts search field keeps focus', 2000)
+    await win.keyboard.press('Enter')
+    await h.sleep(200)
+    h.assert((await win.$('.shortcuts-modal')) && !(await win.$('.command-palette')), 'Enter does not press the Commands button behind the dialog')
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.shortcuts-modal')), 'Esc closes the shortcuts dialog')
+    h.assert((await focused(win)).label === 'Command palette', `focus back where the palette was opened from: ${JSON.stringify(await focused(win))}`)
+    // The same from the title field: typing goes to the dialog, not into the recording's name.
+    await waitSaved(win)
+    const name = disk(home, id).name
+    await win.click('.title-input')
+    await openPalette(win)
+    await win.keyboard.type('keyboard shortcuts')
+    await f.waitFor(async () => (await paletteTitles(win))[0] === 'Keyboard shortcuts…', 'Keyboard shortcuts listed', 3000)
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('.shortcuts-modal')
+    await win.keyboard.type('qq')
+    h.assert((await win.inputValue('.shortcuts-search')) === 'qq', 'typed into the shortcuts search')
+    h.assert((await win.inputValue('.title-input')) === name, `the recording's name is unchanged: ${await win.inputValue('.title-input')}`)
+    await win.keyboard.press('Escape') // clears the search
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.shortcuts-modal')), 'shortcuts dialog closed')
+    h.assert((await focused(win)).label === 'Recording name', `focus back on the title field: ${JSON.stringify(await focused(win))}`)
   })
 
   await h.run('commands: a rebound shortcut works and persists after reopening; conflicts and reserved keys; old keys still work', async (ctx) => {
@@ -235,6 +268,13 @@ async function main() {
     await win.keyboard.up('Control')
     await win.keyboard.press('Escape')
     h.assert(await win.$('.shortcuts-modal'), 'Esc in the key field only cancels the recording')
+    // Shift+Esc cancels too: the editor reads it as Esc, so it could never run a command.
+    await win.click('button[aria-label="Add shortcut for Split clip at playhead"]')
+    await win.waitForSelector('.shortcut-capture')
+    await win.keyboard.press('Shift+Escape')
+    await f.waitFor(async () => !(await win.$('.shortcut-capture')), 'Shift+Esc ends the recording', 2000)
+    h.assert((await chips(win, 'split')) === 'S,X' && !(await win.$('.shortcut-message')), `nothing added: ${await chips(win, 'split')}`)
+    h.assert(await win.$('.shortcuts-modal'), 'and the dialog stays open')
     // Stored at once, only the change.
     await f.waitFor(async () => JSON.stringify((await userDataPrefs(app)).shortcuts) === JSON.stringify({ version: 1, bindings: { split: ['S', 'X'] } }), 'stored in editor-prefs.json', 3000)
     await win.keyboard.press('Escape')
@@ -313,8 +353,22 @@ async function main() {
     await win.keyboard.press('x')
     await win.waitForSelector('.shortcut-message.conflict:has-text("Split clip at playhead")')
     await win.click('.shortcut-message.conflict button:has-text("Use it here")')
-    await f.waitFor(async () => (await win.$$eval('.shortcut-row[data-command="addText"] .shortcut-chip kbd', (els) => els.map((e) => e.textContent))).join() === 'T,X', 'X moved to Add text')
-    h.assert((await win.$$eval('.shortcut-row[data-command="split"] .shortcut-chip kbd', (els) => els.map((e) => e.textContent))).join() === 'S', 'and taken from split')
+    await f.waitFor(async () => (await chips(win, 'addText')) === 'T,X', 'X moved to Add text')
+    h.assert((await chips(win, 'split')) === 'S', 'and taken from split')
+    // Reset on a command whose default key another command has now asks first.
+    await win.click('button[aria-label="Add shortcut for Add text at playhead"]')
+    await win.keyboard.press('s')
+    await win.click('.shortcut-message.conflict button:has-text("Use it here")')
+    await f.waitFor(async () => (await chips(win, 'addText')) === 'T,X,S' && (await chips(win, 'split')) === '', 'S moved to Add text')
+    await win.click('button[aria-label="Reset Split clip at playhead"]')
+    await win.waitForSelector('.shortcut-row[data-command="split"] .shortcut-message.conflict:has-text("Add text at playhead")')
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.shortcut-message.conflict')), 'Esc cancels the question')
+    h.assert((await chips(win, 'split')) === '' && (await win.$('.shortcuts-modal')), 'nothing changed, dialog still open')
+    await win.click('button[aria-label="Reset Split clip at playhead"]')
+    await win.click('.shortcut-message.conflict button:has-text("Take it back")')
+    await f.waitFor(async () => (await chips(win, 'split')) === 'S' && (await chips(win, 'addText')) === 'T,X', 'Take it back moves S back to split')
+    h.assert(await win.$eval('button[aria-label="Reset Split clip at playhead"]', (b) => b.disabled), 'split is back to its default')
     await win.click('.shortcuts-modal button:has-text("Reset all")')
     await f.waitFor(async () => (await win.$$eval('.shortcut-row[data-command="addText"] .shortcut-chip kbd', (els) => els.map((e) => e.textContent))).join() === 'T', 'Reset all restores the defaults')
     await f.waitFor(async () => !('shortcuts' in (await userDataPrefs(app))), 'nothing stored once everything is default', 3000)
@@ -323,6 +377,20 @@ async function main() {
     await win.keyboard.press('x')
     await h.sleep(300)
     h.assert((await clipCount(win)) === 4 && (await win.$$('.text-seg')).length === 0, 'X does nothing after Reset all')
+
+    // Hints name the keys as they are bound now.
+    const textHint = () => win.textContent('.text-track .tl-empty')
+    h.assert((await textHint()) === 'Double-click to add text, or press T', `default hint: ${await textHint()}`)
+    await win.keyboard.press('Control+/')
+    await win.waitForSelector('.shortcuts-modal')
+    await win.click('button[aria-label="Remove T from Add text at playhead"]')
+    await win.click('button[aria-label="Add shortcut for Add text at playhead"]')
+    await win.keyboard.press('F2')
+    await f.waitFor(async () => (await chips(win, 'addText')) === 'F2', 'F2 adds text now')
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.shortcuts-modal')), 'closed')
+    h.assert((await textHint()) === 'Double-click to add text, or press F2', `hint follows: ${await textHint()}`)
+    h.assert((await win.$eval('.transport button[title^="Add text"]', (b) => b.title)) === 'Add text at the playhead (F2)', 'tooltip follows')
   })
 
   await h.run('commands: smart speed finds the still, input-free stretch, speeds it up or cuts it, one undo step each', async (ctx) => {
@@ -337,9 +405,19 @@ async function main() {
       cursor: restingTrack(seconds)
     })
     // From the palette: opens the Clip panel and looks for idle parts (3 s, 4× by default).
-    await runCommand(win, 'smart speed', 'Smart speed: find idle parts')
-    h.assert((await activeTab(win)) === 'Clip', 'Clip panel opened')
+    // First without the video file: the analysis fails, says why and can be tried again.
+    const media = path.join(h.projectsRoot(home), id, 'screen.mp4')
+    fs.renameSync(media, `${media}.away`)
+    try {
+      await runCommand(win, 'smart speed', 'Smart speed: find idle parts')
+      h.assert((await activeTab(win)) === 'Clip', 'Clip panel opened')
+      await win.waitForSelector('[data-testid="smart-speed-error"]:has-text("the video file is missing")', { timeout: 30000 })
+    } finally {
+      fs.renameSync(`${media}.away`, media)
+    }
+    await win.click('.smart-speed button:has-text("Try again")')
     await win.waitForSelector('.smart-list li', { timeout: 30000 })
+    h.assert(!(await win.$('[data-testid="smart-speed-error"]')), 'the error is gone')
     const parts = await win.$$eval('.smart-list .smart-range', (els) => els.map((e) => e.textContent))
     // Only 3–9 s: the picture is also still from 11 s, but the mouse moves there.
     h.assert(parts.length === 1 && /^0:03\.\d – 0:08\.\d$/.test(parts[0]), `one idle part, padded inside 3–9 s: ${parts}`)

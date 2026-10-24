@@ -227,6 +227,35 @@ export function withShortcut(text: string, accelerators: readonly string[] | und
   return accelerators?.length ? `${text} (${shortcutLabel(accelerators[0])})` : text
 }
 
+/** `text` followed by ", or press" and the first shortcut: "Double-click to add text, or press T". */
+export function orPress(text: string, accelerators: readonly string[] | undefined): string {
+  return accelerators?.length ? `${text}, or press ${shortcutLabel(accelerators[0])}` : text
+}
+
+/** " · Ctrl + Z to undo", for a notice after a big change; empty when Undo has no shortcut. */
+export function undoHint(keymap: Keymap): string {
+  return keymap.undo.length ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''
+}
+
+/** "A", "A and B", "A, B and C". */
+const listPhrase = (items: string[]): string => (items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
+
+/**
+ * What the zoom level keys do, for hints: "1–4 set its zoom level, 0 pulls back" with the
+ * default keys, following the user's shortcuts; null when none of them has one.
+ */
+export function zoomLevelKeysHint(keymap: Keymap): string | null {
+  const levels = (['zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const).flatMap((id) => keymap[id].slice(0, 1).map(shortcutLabel))
+  // Three or more digits in a row read as a range.
+  const run = levels.length > 2 && levels.every((l, i) => /^\d$/.test(l) && (i === 0 || Number(l) === Number(levels[i - 1]) + 1))
+  const back = keymap.zoomLevel0[0]
+  const parts = [
+    levels.length > 0 && `${run ? `${levels[0]}–${levels[levels.length - 1]}` : listPhrase(levels)} ${levels.length === 1 ? 'sets' : 'set'} its zoom level`,
+    back && `${shortcutLabel(back)} pulls back`
+  ].filter((p): p is string => !!p)
+  return parts.length ? parts.join(', ') : null
+}
+
 /* ---------- keyboard events ---------- */
 
 /** The KeyboardEvent fields shortcuts use (a DOM KeyboardEvent or React's synthetic one). */
@@ -295,15 +324,18 @@ export const isSliderKey = (c: Chord): boolean => SLIDER_KEYS.has(c.key) && !c.c
 
 /* ---------- validation, conflicts and editing ---------- */
 
+const ESCAPE_REASON = 'Esc always cancels: it closes dialogs and clears the selection.'
+
 /** Keys that keep their usual meaning and cannot be shortcuts, with the reason. */
 const RESERVED: Record<string, string> = {
-  Escape: 'Esc always cancels: it closes dialogs and clears the selection.',
   Enter: 'Enter presses the focused button.',
   Tab: 'Tab moves between controls.',
   'Shift+Tab': 'Shift + Tab moves between controls.',
   'Alt+F4': 'Alt + F4 closes the window.',
   'Alt+Space': 'Alt + Space opens the window menu.',
   'Ctrl+Escape': 'Ctrl + Esc opens the Start menu.',
+  'Ctrl+Shift+Escape': 'Ctrl + Shift + Esc opens the Task Manager.',
+  'Alt+Escape': 'Alt + Esc switches to another window.',
   'Ctrl+W': 'Ctrl + W closes the window.',
   'Ctrl+R': 'Ctrl + R reloads the window.',
   'Ctrl+Shift+R': 'Ctrl + Shift + R reloads the window.',
@@ -315,10 +347,18 @@ const RESERVED: Record<string, string> = {
   'Ctrl+-': 'Ctrl + - zooms the window.'
 }
 
+/**
+ * Why a chord cannot be a shortcut, or null. Esc is never one: with Ctrl or Alt it belongs
+ * to Windows, and otherwise (Shift too) the editor reads it as Esc before any shortcut.
+ */
+function reservedChord(c: Chord): string | null {
+  return RESERVED[formatChord(c)] ?? (c.key === 'Escape' ? ESCAPE_REASON : null)
+}
+
 /** Why `accelerator` cannot be a shortcut, or null when it can. */
 export function reservedReason(accelerator: string): string | null {
-  const n = normalizeShortcut(accelerator)
-  return n ? (RESERVED[n] ?? null) : null
+  const c = parseShortcut(accelerator)
+  return c ? reservedChord(c) : null
 }
 
 export type ShortcutCheck = { ok: true; accelerator: string } | { ok: false; message: string }
@@ -328,7 +368,7 @@ export function checkShortcut(accelerator: unknown, id: CommandId): ShortcutChec
   const c = parseShortcut(accelerator)
   if (!c) return { ok: false, message: 'That key cannot be used for a shortcut.' }
   const normalized = formatChord(c)
-  const reserved = RESERVED[normalized]
+  const reserved = reservedChord(c)
   if (reserved) return { ok: false, message: reserved }
   if (commandInfo(id).inText && !c.ctrl && !c.alt && !/^F\d+$/.test(c.key)) {
     return { ok: false, message: `This shortcut also works while typing, so it needs Ctrl or Alt (${shortcutLabel(normalized)} would type instead).` }
@@ -365,10 +405,25 @@ export function removeBinding(keymap: Keymap, id: CommandId, accelerator: string
   return { ...keymap, [id]: keymap[id].filter((a) => a !== accelerator) }
 }
 
-/** `id` back to its default shortcuts, except those another command uses now. */
-export function resetCommand(keymap: Keymap, id: CommandId): Keymap {
-  const taken = new Set(COMMAND_IDS.filter((o) => o !== id).flatMap((o) => keymap[o]))
-  return { ...keymap, [id]: DEFAULT_KEYMAP[id].filter((a) => !taken.has(a)) }
+/** The default shortcuts of `id` that another command has now, with that command. */
+export function takenDefaults(keymap: Keymap, id: CommandId): { accelerator: string; owner: CommandId }[] {
+  const out: { accelerator: string; owner: CommandId }[] = []
+  for (const a of DEFAULT_KEYMAP[id]) {
+    const owner = commandForShortcut(keymap, a)
+    if (owner && owner !== id) out.push({ accelerator: a, owner })
+  }
+  return out
+}
+
+/**
+ * `id` back to its default shortcuts. Those another command has now (takenDefaults) stay
+ * with it, unless `takeBack`, which moves them back to `id`.
+ */
+export function resetCommand(keymap: Keymap, id: CommandId, takeBack = false): Keymap {
+  const taken = new Set(takenDefaults(keymap, id).map((t) => t.accelerator))
+  const next = { ...keymap, [id]: DEFAULT_KEYMAP[id].filter((a) => takeBack || !taken.has(a)) }
+  if (takeBack) for (const other of COMMAND_IDS) if (other !== id && next[other].some((a) => taken.has(a))) next[other] = next[other].filter((a) => !taken.has(a))
+  return next
 }
 
 const sameBindings = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((x) => b.includes(x))

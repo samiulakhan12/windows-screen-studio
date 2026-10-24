@@ -16,6 +16,7 @@ import {
   matchShortcut,
   MAX_BINDINGS,
   normalizeShortcut,
+  orPress,
   parseShortcut,
   partialLabel,
   removeBinding,
@@ -27,7 +28,10 @@ import {
   shortcutIndex,
   shortcutKeys,
   shortcutLabel,
+  takenDefaults,
+  undoHint,
   withShortcut,
+  zoomLevelKeysHint,
   type KeyInput,
   type Keymap
 } from '../src/shared/editor/shortcuts'
@@ -220,6 +224,20 @@ describe('checkShortcut and reserved keys', () => {
     expect(reservedReason('garbage+')).toBeNull()
   })
 
+  it('never takes Esc, with any modifier: the editor reads Shift+Esc as Esc, Windows has the rest', () => {
+    // As recorded in the shortcuts editor.
+    expect(formatChord(chordFromEvent(ev('Escape', 'Escape', { shiftKey: true }))!)).toBe('Shift+Escape')
+    for (const a of ['Escape', 'Shift+Escape', 'Ctrl+Escape', 'Ctrl+Shift+Escape', 'Alt+Escape', 'Ctrl+Alt+Shift+Escape']) {
+      expect(reservedReason(a), a).toBeTruthy()
+      expect(checkShortcut(a, 'split').ok, a).toBe(false)
+      expect(checkShortcut(a, 'commandPalette').ok, a).toBe(false)
+    }
+    expect(reservedReason('Shift+Escape')).toMatch(/^Esc always cancels/)
+    expect(reservedReason('Ctrl+Shift+Escape')).toMatch(/Task Manager/)
+    // Nor is one read back from the preferences.
+    expect(sanitizeShortcuts({ version: 1, bindings: { split: ['Shift+Escape', 'Alt+Esc', 'X'] } })).toEqual({ split: ['X'] })
+  })
+
   it('accepts plain keys for editor commands but not for shortcuts that work while typing', () => {
     expect(checkShortcut('x', 'split')).toEqual({ ok: true, accelerator: 'X' })
     expect(checkShortcut('Shift+X', 'split')).toEqual({ ok: true, accelerator: 'Shift+X' })
@@ -262,11 +280,61 @@ describe('editing the keymap', () => {
     k = resetCommand(k, 'deleteSelection')
     expect(k.deleteSelection).toEqual(['Delete', 'Backspace'])
     expect(isDefaultBinding(k, 'deleteSelection')).toBe(true)
-    // A default now used by another command stays with that command.
+    // A default now used by another command stays with that command unless taken back.
     k = addBinding(DEFAULT_KEYMAP, 'addText', 'S')
-    k = resetCommand(k, 'split')
-    expect(k.split).toEqual([])
-    expect(k.addText).toEqual(['T', 'S'])
+    expect(takenDefaults(k, 'split')).toEqual([{ accelerator: 'S', owner: 'addText' }])
+    expect(resetCommand(k, 'split').split).toEqual([])
+    expect(resetCommand(k, 'split').addText).toEqual(['T', 'S'])
+    const back = resetCommand(k, 'split', true)
+    expect(back.split).toEqual(['S'])
+    expect(back.addText).toEqual(['T'])
+    expect(isDefaultBinding(back, 'split')).toBe(true)
+    expect(takenDefaults(back, 'split')).toEqual([])
+    expect(findConflicts(back).size).toBe(0)
+  })
+
+  it('takes several defaults back from different commands, keeping their other shortcuts', () => {
+    let k = addBinding(DEFAULT_KEYMAP, 'split', 'Delete')
+    k = addBinding(k, 'addText', 'Backspace')
+    k = removeBinding(k, 'deleteSelection', 'Delete')
+    expect(k.deleteSelection).toEqual([])
+    expect(takenDefaults(k, 'deleteSelection')).toEqual([
+      { accelerator: 'Delete', owner: 'split' },
+      { accelerator: 'Backspace', owner: 'addText' }
+    ])
+    const back = resetCommand(k, 'deleteSelection', true)
+    expect(back.deleteSelection).toEqual(['Delete', 'Backspace'])
+    expect(back.split).toEqual(['S'])
+    expect(back.addText).toEqual(['T'])
+    // Nothing taken: both ways are the same.
+    expect(resetCommand(back, 'split', true)).toEqual(resetCommand(back, 'split'))
+  })
+})
+
+describe('hints that name the current keys', () => {
+  it('offers the first shortcut, or nothing when there is none', () => {
+    expect(orPress('Double-click to add text', DEFAULT_KEYMAP.addText)).toBe('Double-click to add text, or press T')
+    expect(orPress('Double-click to add text', [])).toBe('Double-click to add text')
+    expect(undoHint(DEFAULT_KEYMAP)).toBe(' · Ctrl + Z to undo')
+    expect(undoHint(addBinding(removeBinding(DEFAULT_KEYMAP, 'undo', 'Ctrl+Z'), 'undo', 'Alt+U'))).toBe(' · Alt + U to undo')
+    expect(undoHint(removeBinding(DEFAULT_KEYMAP, 'undo', 'Ctrl+Z'))).toBe('')
+  })
+
+  it('describes the zoom level keys as they are bound', () => {
+    expect(zoomLevelKeysHint(DEFAULT_KEYMAP)).toBe('1–4 set its zoom level, 0 pulls back')
+    // Rebound, partly removed, or all gone.
+    let k = addBinding(removeBinding(DEFAULT_KEYMAP, 'zoomLevel4', '4'), 'zoomLevel4', 'F4')
+    expect(zoomLevelKeysHint(k)).toBe('1, 2, 3 and F4 set its zoom level, 0 pulls back')
+    k = removeBinding(removeBinding(removeBinding(k, 'zoomLevel1', '1'), 'zoomLevel2', '2'), 'zoomLevel3', '3')
+    expect(zoomLevelKeysHint(k)).toBe('F4 sets its zoom level, 0 pulls back')
+    k = removeBinding(k, 'zoomLevel0', '0')
+    expect(zoomLevelKeysHint(k)).toBe('F4 sets its zoom level')
+    k = removeBinding(k, 'zoomLevel4', 'F4')
+    expect(zoomLevelKeysHint(k)).toBeNull()
+    expect(zoomLevelKeysHint(addBinding(k, 'zoomLevel0', 'Shift+0'))).toBe('Shift + 0 pulls back')
+    // Two digits are listed, not a range; digits out of order are not a range either.
+    expect(zoomLevelKeysHint(resolveKeymap({ zoomLevel3: [], zoomLevel4: [] }))).toBe('1 and 2 set its zoom level, 0 pulls back')
+    expect(zoomLevelKeysHint(resolveKeymap({ zoomLevel1: ['4'], zoomLevel4: ['1'] }))).toBe('4, 2, 3 and 1 set its zoom level, 0 pulls back')
   })
 })
 

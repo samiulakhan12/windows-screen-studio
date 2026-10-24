@@ -1,5 +1,4 @@
 import { memo, useLayoutEffect, useRef } from 'react'
-import type { Keymap } from '../../../shared/editor/shortcuts'
 import type { CursorTrack, Project, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { EditorIcon } from './EditorIcon'
@@ -33,8 +32,6 @@ export interface InspectorProps {
   onDeleteClip: (id: string) => void
   onRestore: (start: number, end: number) => void
   onCutRange: (start: number, end: number) => void
-  /** The editor's shortcuts, for hints in the panels. */
-  keymap?: Keymap
   /** Increments when the smart speed command asks the Clip panel to find idle parts. */
   smartSpeedRequest?: number
 }

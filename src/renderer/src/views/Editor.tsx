@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
@@ -17,6 +17,7 @@ import {
   serializeShortcuts,
   shortcutIndex,
   withShortcut,
+  zoomLevelKeysHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
@@ -33,6 +34,7 @@ import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
 import { Inspector, type InspectorTab } from '../editor/Inspector'
+import { KeymapContext } from '../editor/keymapContext'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { PreviewStage } from '../editor/PreviewStage'
@@ -161,6 +163,15 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
   return <EditorSession session={state.session} onClose={onClose} />
 }
 
+/** What the editor's components read from context: the session's services and the current shortcuts. */
+function EditorProviders({ services, keymap, children }: { services: EditorServices; keymap: Keymap; children: ReactNode }): JSX.Element {
+  return (
+    <EditorContext.Provider value={services}>
+      <KeymapContext.Provider value={keymap}>{children}</KeymapContext.Provider>
+    </EditorContext.Provider>
+  )
+}
+
 function EditorSession({ session, onClose }: { session: Session; onClose: () => void }): JSX.Element {
   const { data, store, saver, player } = session
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
@@ -263,8 +274,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, pickFocus, exporting, dialog, shortcuts })
-  latest.current = { selection, pickFocus, exporting, dialog, shortcuts }
+  const latest = useRef({ selection, pickFocus, exporting, dialog, keymap, shortcuts })
+  latest.current = { selection, pickFocus, exporting, dialog, keymap, shortcuts }
 
   const actions = useMemo(() => {
     const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
@@ -328,13 +339,14 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       setSelection(null)
     }
 
-    /** Number keys: level of the selected zoom (else the zoom under the playhead). */
+    /** Zoom level commands: level of the selected zoom (else the zoom under the playhead). */
     const setZoomLevelKey = (level: number): void => {
       const sel = latest.current.selection
       const p = store.state
       const z = sel?.kind === 'zoom' ? p.zooms.find((x) => x.id === sel.id) : zoomAt(p.zooms, player.time)
       if (!z) {
-        showNotice('Select a zoom first: 1-4 set its zoom level, 0 pulls back')
+        const keys = zoomLevelKeysHint(latest.current.keymap)
+        showNotice(keys ? `Select a zoom first: ${keys}` : 'Select a zoom first')
         return
       }
       store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevel(x, level) : x)) }))
@@ -661,7 +673,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [saver])
 
   return (
-    <EditorContext.Provider value={services}>
+    <EditorProviders services={services} keymap={keymap}>
       <div className="app editor">
         <header className="titlebar">
           <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
@@ -719,13 +731,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
               onSplit={actions.split}
               onAddZoom={actions.addZoom}
               onAddText={actions.addText}
-              keymap={keymap}
             />
           </div>
           <Inspector
             tab={tab}
             onTab={setTab}
-            keymap={keymap}
             smartSpeedRequest={smartSpeedRequest}
             project={project}
             selection={selection}
@@ -775,6 +785,6 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
       </div>
-    </EditorContext.Provider>
+    </EditorProviders>
   )
 }

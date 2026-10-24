@@ -1,12 +1,13 @@
 import { memo, useEffect, useRef, useSyncExternalStore } from 'react'
 import { outputTimeAt } from '../../../shared/editor/clips'
-import { withShortcut, type Keymap } from '../../../shared/editor/shortcuts'
+import { withShortcut } from '../../../shared/editor/shortcuts'
 import { formatTime } from '../../../shared/engine/project'
 import { outputDuration } from '../../../shared/engine/timeline'
 import type { Clip } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
+import { useKeymap } from './keymapContext'
 
 interface Props {
   clips: Clip[]
@@ -15,8 +16,6 @@ interface Props {
   onSplit: () => void
   onAddZoom: () => void
   onAddText: () => void
-  /** Current shortcuts, shown in the tooltips. */
-  keymap: Keymap
 }
 
 export function usePlaying(): boolean {
@@ -28,8 +27,9 @@ export function usePlaying(): boolean {
  * Play button, output timecode and edit tools. The timecode is written straight
  * to the DOM from the player, so playback never re-renders React components.
  */
-export const Transport = memo(function Transport({ clips, notice, onTogglePlay, onSplit, onAddZoom, onAddText, keymap }: Props): JSX.Element {
+export const Transport = memo(function Transport({ clips, notice, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
   const { player } = useEditor()
+  const keymap = useKeymap()
   const playing = usePlaying()
   const timeRef = useRef<HTMLSpanElement>(null)
 
