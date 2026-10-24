@@ -30,7 +30,15 @@ import type { CursorShape } from '../shared/types'
 
 export interface NativeCaptureOptions {
   /** Electron display id (screen.getAllDisplays()[n].id) of the monitor to record. */
-  displayId: string
+  displayId?: string
+  /**
+   * Electron desktopCapturer window source id ("window:<HWND>:<n>") of a single window to
+   * record instead of a monitor. Exactly one of displayId / windowId must be set.
+   * Window recordings report the window's position over time (NativeStopInfo.windowRects);
+   * the output keeps the window's initial size and later sizes are fitted into it
+   * (src/shared/recording/windowGeometry.ts fitContent — the helper uses the same rule).
+   */
+  windowId?: string
   /** Output .mp4 path. */
   output: string
   fps: 30 | 60
@@ -52,10 +60,23 @@ export interface NativeStartInfo {
   fragmented?: boolean
 }
 
+/** Screen rectangle of a captured/watched window at a moment (physical pixels, DWM visible bounds). */
+export interface WindowRectEvent {
+  /** Epoch ms. */
+  at: number
+  x: number
+  y: number
+  width: number
+  height: number
+  minimized?: boolean
+}
+
 export interface NativeStopInfo {
   frames: number
   /** Cursor shape changes as epoch ms (not yet pause-adjusted). */
   shapes: { at: number; shape: CursorShape }[]
+  /** Window recordings only: the window's rectangle at start and after every change. */
+  windowRects?: WindowRectEvent[]
   /** Frames skipped because the encoder fell behind. */
   dropped?: number
   /** Seconds of video written (paused time excluded). */
@@ -97,6 +118,8 @@ export type NativeCaptureError = Error & { shapes?: NativeStopInfo['shapes'] }
 
 export interface ProbeResult {
   supported: boolean
+  /** Single-window capture (WGC CreateForWindow) with the cursor excluded is available. */
+  windowCapture?: boolean
   cursorToggle: boolean
   borderToggle: boolean
   hardwareEncoders: string[]
@@ -415,6 +438,9 @@ class HelperSession implements NativeCaptureSession {
         this.finish({ ok: true, info: { frames: 0, shapes: [] } }, 'Recording was stopped before it started')
         return
       }
+      // Window capture (options.windowId) is implemented by the native builder: CONTRACT in
+      // NativeCaptureOptions.windowId and native/README.md ("record --window").
+      if (!this.options.displayId) throw new Error('Window capture is not implemented yet')
       const monitor = matchMonitor(this.options.displayId, physicalDisplays(), monitors)
       if (!monitor) {
         const listed = monitors.map((m) => `${m.device} ${m.width}x${m.height}@${m.x},${m.y}`).join('; ')
@@ -689,4 +715,16 @@ function guardQuit(): void {
       app.quit()
     })
   })
+}
+
+/**
+ * Watches a window's screen rectangle without capturing it ("watch-window" helper mode):
+ * used when the window itself is recorded by Chromium, so clicks and the cursor can still
+ * be mapped into the window. `ready` resolves once the helper has reported the first rect.
+ */
+export interface WindowWatchSession {
+  readonly ready: Promise<WindowRectEvent>
+  /** Stops watching and resolves with every rect reported (first one included). */
+  stop(): Promise<WindowRectEvent[]>
+  kill(): void
 }

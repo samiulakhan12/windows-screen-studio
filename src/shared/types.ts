@@ -144,6 +144,8 @@ export interface CaptureInfo {
   cursorInVideo: boolean
   /** Region of the display that was recorded (already cropped in the proxy), or null for the full source. */
   region: NormRect | null
+  /** What was recorded (absent in older projects: 'screen', or 'area' when region is set). */
+  target?: 'screen' | 'area' | 'window'
 }
 
 export interface Project {

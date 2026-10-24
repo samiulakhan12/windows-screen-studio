@@ -53,6 +53,8 @@ handling) run anywhere: `cargo test --manifest-path native/Cargo.toml`.
 ssw-capture probe
 ssw-capture list
 ssw-capture record --monitor <device name | index> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
+ssw-capture record --window <HWND> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
+ssw-capture watch-window --window <HWND>
 ssw-capture selftest --out <file.mp4> [--fps <30|60>] [--seconds <1-60>]
 ssw-capture --version
 ```
@@ -63,7 +65,7 @@ ssw-capture --version
 | 1 | Runtime error (device, capture or encoder failure) |
 | 2 | Invalid arguments (including a missing output folder) |
 | 3 | Unsupported on this system |
-| 4 | Monitor not found |
+| 4 | Monitor or window not found |
 
 Human-readable diagnostics go to stderr; stdout carries only JSON.
 
@@ -121,6 +123,38 @@ before anything kills the helper.
 Cursor shapes: `arrow`, `text`, `pointer`, `crosshair`, `move`, `resize-ew`, `resize-ns`,
 `wait` (`GetCursorInfo` polled at ~60 Hz and compared with the system cursors; diagonal resize
 cursors map to `move`, custom application cursors to `arrow`).
+
+### Window capture: `record --window` and `watch-window`
+
+`<HWND>` is the decimal window handle; Electron's desktopCapturer window source id is
+`window:<HWND>:<n>` on Windows, so the app passes that number. `probe` reports
+`"windowCapture":true` when a single window can be captured with the cursor excluded
+(`GraphicsCaptureItem` via `IGraphicsCaptureItemInterop::CreateForWindow`, plus the cursor
+toggle).
+
+`record --window` records that window (cursor excluded, border hidden where supported) with
+the same events and commands as monitor recording, plus:
+
+| Event | When |
+| --- | --- |
+| `{"event":"window","at":<epoch ms>,"x":X,"y":Y,"width":W,"height":H,"minimized":false}` | The window's screen rectangle in physical pixels (`DWMWA_EXTENDED_FRAME_BOUNDS`, i.e. without the invisible resize border): once right after `started` (before any `cursor` event), then whenever it moves, resizes, or is minimised/restored (polled at ~60 Hz) |
+
+- The encoded size is fixed to the window's **initial** captured content size (made even and
+  within H.264 level limits). When the window is resized, every later frame is scaled to
+  **fit** inside that size, keeping its aspect ratio, centred, with black bars: exactly
+  `fitContent()` in `src/shared/recording/windowGeometry.ts`
+  (`scale = min(W/w, H/h)`, offset `((W - w*scale)/2, (H - h*scale)/2)`).
+- While the window is minimised WGC delivers no frames; the last frame is repeated (constant
+  frame rate) and `window` reports `"minimized":true`.
+- When the window closes, the helper finalises the file and reports
+  `{"event":"stopped",...,"reason":"closed"}` (the app is told through `onEnded`).
+
+`watch-window --window <HWND>` captures nothing. It is used when the app records the window
+with Chromium (no WGC window capture), so clicks and the cursor can still be mapped into the
+window. It prints `{"event":"ready"}`, then the same `window` events (initial rectangle
+first, then changes), and on stdin `stop` or EOF prints `{"event":"stopped","reason":"stop"}`
+and exits 0. If the window does not exist it prints an `error` event and exits 4; if the
+window closes while watched it prints `stopped` with `"reason":"closed"` and exits 0.
 
 ### Output file
 
