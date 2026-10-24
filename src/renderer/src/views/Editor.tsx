@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
+import { openedWithoutStems, withRecordedStems } from '../../../shared/audio/settings'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, restoreRange, stepOutput } from '../../../shared/editor/clips'
@@ -96,14 +97,16 @@ async function openSession(projectId: string): Promise<Session> {
   // Correct duration and size from the file before anything (or any undo step) depends on them.
   // The video track's length, not screen.duration: that is the container's, which includes a longer audio track.
   const duration = mediaLength(data.project.duration, await videoLength, screen.duration)
-  const project = correctProjectMedia(data.project, { duration, width: screen.videoWidth, height: screen.videoHeight })
+  // Without its stems when one of their files is missing; saves keep them, so they are used again once the file is back.
+  const opened = openedWithoutStems(data.project, data.missingStems)
+  const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
   const store = new EditStore(project)
   const saver = new Autosaver(store, {
-    save: (p, meta) => window.api.saveProject(p, meta),
-    saveSync: (p, meta) => window.api.saveProjectSync(p, meta)
+    save: (p, meta) => window.api.saveProject(withRecordedStems(p, data.project), meta),
+    saveSync: (p, meta) => window.api.saveProjectSync(withRecordedStems(p, data.project), meta)
   })
-  if (project !== data.project) saver.markDirty()
-  const player = new PreviewPlayer(screen, webcam, project)
+  if (project !== opened) saver.markDirty()
+  const player = new PreviewPlayer(screen, webcam, project, data.missingStems)
   return { data, store, saver, player }
 }
 

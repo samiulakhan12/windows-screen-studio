@@ -1,3 +1,4 @@
+import type { StemKind } from '../../../shared/audio/settings'
 import { displayTime } from '../../../shared/editor/clips'
 import { clamp } from '../../../shared/engine/math'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
@@ -57,7 +58,9 @@ export class PreviewPlayer {
   constructor(
     readonly screen: HTMLVideoElement,
     readonly webcam: HTMLVideoElement | null,
-    project: Project
+    project: Project,
+    /** Stems whose file was missing when the project was opened: it opened without them (see openedWithoutStems). */
+    readonly missingStems: readonly StemKind[] = []
   ) {
     this.project = project
     screen.preservesPitch = true

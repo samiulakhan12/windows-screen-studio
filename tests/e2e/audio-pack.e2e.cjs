@@ -403,11 +403,12 @@ async function main() {
     h.assert(musicDrift < 0.35, `the music follows the output timeline through the cut (drift ${musicDrift})`)
   }))
 
-  await test('audio pack: a recording whose system sound file is missing opens with its mixed sound, says the muted microphone cannot be left out, and preview and export agree', fx.withHome('ap-stem-missing', async (ctx, home) => {
+  await test('audio pack: a recording whose system sound file is missing opens with its mixed sound and names that file; preview and export agree, and the stems are used again once the file is back', fx.withHome('ap-stem-missing', async (ctx, home) => {
     const media = stemsMixMedia()
     const mic = audioOnly('stem-mic-beeps', 6, micBeeps)
+    const system = audioOnly('stem-system', 6, toneGraph(300, 0.2))
     // The microphone was muted while system.m4a was still there; now it is gone (a folder copied in part).
-    const { id } = seed(home, {
+    const { id, dir } = seed(home, {
       name: 'Lost stem',
       media,
       seconds: 6,
@@ -419,8 +420,10 @@ async function main() {
     const { app, win } = await openEditor(ctx, home, 'Lost stem', { hookMedia: true })
     await win.click('.insp-tabs button:has-text("Audio")')
     await win.waitForSelector('[data-testid="stems-missing"]')
-    const said = await win.textContent('[data-testid="stems-missing"]')
-    h.assert(/files of this recording are missing, so a source can no longer be muted or turned down on its own/.test(said), `the Audio panel says so: ${said}`)
+    const said = (await win.textContent('[data-testid="stems-missing"]')).trim()
+    h.assert(/^The system sound file of this recording \(system\.m4a\) is missing, so a source can no longer be muted or turned down on its own/.test(said), `the Audio panel names the missing file: ${said}`)
+    h.assert(!/microphone|mic\.m4a/.test(said), `and only that one (mic.m4a is there): ${said}`)
+    h.assert(/including one you muted or turned down/.test(said), `and says the muted microphone is heard: ${said}`)
     h.assert(!(await win.$('.insp-section h3:has-text("Microphone")')), 'no per-source controls that cannot apply')
     await shot(win, 'audio-panel-stem-missing')
     // The preview plays the video's own (mixed) track: no stem is loaded.
@@ -432,15 +435,33 @@ async function main() {
     // The export plays the same: the microphone is in it, as the panel said.
     const out = path.join(home, 'lost-stem.m4a')
     await exportAs(app, win, out, 'M4A')
-    const s = pcm(out)
+    let s = pcm(out)
     const ratio = amplitude(s, 1000, 1.01, 1.09) / amplitude(s, 300, 1.01, 1.09)
     h.assert(close(ratio, 1, 0.1), `the export has every source, like the preview (${ratio})`)
-    // Acknowledged: the settings that no longer apply are cleared (one undo step), and the notice goes.
-    await win.click('button:has-text("Use the mixed sound")')
-    await win.waitForSelector('[data-testid="stems-missing"]', { state: 'detached' })
+    // An edit is saved with the stems the recording kept and the microphone still muted.
+    await win.click('.title-input')
+    await win.keyboard.press('End')
+    await win.keyboard.type(' 2')
+    await win.keyboard.press('Enter')
     await waitSaved(win)
     const saved = readProject(home, id)
-    h.assert(!('mic' in saved.audio) && saved.audioStems === undefined, `per-source settings cleared: ${JSON.stringify(saved.audio)} ${JSON.stringify(saved.audioStems)}`)
+    h.assert(
+      saved.name === 'Lost stem 2' && saved.audioStems?.mic === true && saved.audioStems?.system === true && saved.audio.mic?.muted === true,
+      `the stems and their settings are kept: ${JSON.stringify({ name: saved.name, stems: saved.audioStems, audio: saved.audio })}`
+    )
+
+    // The file is back (the copy finished): opening the recording again uses the stems, microphone muted.
+    fs.symlinkSync(system, path.join(dir, 'system.m4a'))
+    await win.click('button[aria-label="Back to recordings"]')
+    await fx.openProject(win, 'Lost stem 2')
+    await win.click('.insp-tabs button:has-text("Audio")')
+    await win.waitForSelector('.insp-section h3:has-text("Microphone")')
+    h.assert(!(await win.$('[data-testid="stems-missing"]')), 'no notice once the file is back')
+    h.assert(await win.isChecked('input[aria-label="Mute microphone"]'), 'the microphone is still muted')
+    const back = path.join(home, 'stem-back.m4a')
+    await exportAs(app, win, back, 'M4A')
+    s = pcm(back)
+    h.assert(amplitude(s, 1000, 1.01, 1.09) < 0.003 && amplitude(s, 300, 0.3, 1.7) > 0.1, 'the export leaves the muted microphone out again')
   }))
 
   await test('audio pack: M4A includes the music, also for a recording without sound', fx.withHome('ap-m4a', async (ctx, home) => {

@@ -1,3 +1,4 @@
+import type { StemKind } from '../audio/settings'
 import type { SaveMeta, SyncSaveResult } from '../editor/autosave'
 import type { StyleDefaults } from '../editor/styleDefaults'
 import type { CursorTrack, Project, ProjectSummary } from '../types'
@@ -9,6 +10,11 @@ export interface LoadedProject {
   screenUrl: string
   webcamUrl: string | null
   backgroundUrl: string | null
+  /**
+   * Stems the recording kept whose file is missing from its folder (project.audioStems stays
+   * as recorded). The editor then opens it without its stems: see openedWithoutStems.
+   */
+  missingStems: StemKind[]
 }
 
 export interface ProjectsApi {

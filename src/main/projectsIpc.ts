@@ -1,7 +1,7 @@
 import { dialog, ipcMain, shell } from 'electron'
 import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
-import { SOURCE_FILES, stemsOf } from '../shared/audio/settings'
+import { SOURCE_FILES, stemsOf, type StemKind } from '../shared/audio/settings'
 import type { SaveMeta, SyncSaveResult } from '../shared/editor/autosave'
 import type { LoadedProject } from '../shared/api/projects'
 import type { Project } from '../shared/types'
@@ -33,21 +33,17 @@ export function saveProjectNow(project: Project, meta?: SaveMeta): void {
 }
 
 /**
- * The project as the editor should open it: stems are only ever used as a complete set (see
- * stemsOf), so when one of their files is missing (a folder copied in part, a file deleted by
- * hand) the project opens without them. The preview, the export and the music's ducking then
- * all use the mixed sound, which has every source; the Audio panel says when a source's own
- * mute or volume can no longer apply.
+ * Stems the recording kept whose file is missing from its folder `dir` (a folder copied in
+ * part, a file deleted by hand). Stems are only ever used as a complete set (see stemsOf), so
+ * the editor then opens the project without them; project.json keeps them, so they are used
+ * again once the file is back.
  */
-export async function withoutMissingStems(project: Project, dir: string, exists = projects.exists): Promise<Project> {
+export async function missingStems(project: Project, dir: string, exists = projects.exists): Promise<StemKind[]> {
   const recorded = stemsOf(project)
-  if (recorded.length === 0) return project
-  const missing = (await Promise.all(recorded.map(async (k) => ((await exists(path.join(dir, SOURCE_FILES[k]))) ? null : SOURCE_FILES[k])))).filter(Boolean)
-  if (missing.length === 0) return project
-  console.warn(`${missing.join(' and ')} of this recording ${missing.length > 1 ? 'are' : 'is'} missing; it opens with its mixed sound.`)
-  const { audioStems: _missing, ...rest } = project
-  void _missing
-  return rest
+  const present = await Promise.all(recorded.map((k) => exists(path.join(dir, SOURCE_FILES[k]))))
+  const missing = recorded.filter((_, i) => !present[i])
+  if (missing.length > 0) console.warn(`${missing.map((k) => SOURCE_FILES[k]).join(' and ')} of this recording ${missing.length > 1 ? 'are' : 'is'} missing; it opens with its mixed sound.`)
+  return missing
 }
 
 export function registerProjectsIpc(): void {
@@ -55,7 +51,7 @@ export function registerProjectsIpc(): void {
 
   ipcMain.handle('projects:load', async (_e, id: string): Promise<LoadedProject> => {
     const dir = projects.projectDir(id)
-    const project = await withoutMissingStems(await projects.readProject(id), dir)
+    const project = await projects.readProject(id)
     const cursor = await projects.readCursor(id)
     const hasWebcam = project.hasWebcam && (await projects.exists(path.join(dir, 'webcam.mp4')))
     const bg = project.style.background
@@ -65,7 +61,8 @@ export function registerProjectsIpc(): void {
       dir,
       screenUrl: mediaUrl(id, 'screen.mp4'),
       webcamUrl: hasWebcam ? mediaUrl(id, 'webcam.mp4') : null,
-      backgroundUrl: bg.type === 'image' ? mediaUrl(id, bg.path) : null
+      backgroundUrl: bg.type === 'image' ? mediaUrl(id, bg.path) : null,
+      missingStems: await missingStems(project, dir)
     }
   })
 

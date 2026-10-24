@@ -100,6 +100,25 @@ export function stemsOf(project: Pick<Project, 'hasAudio' | 'audioStems'>): Stem
   return STEM_KINDS.filter((k) => project.audioStems?.[k] === true)
 }
 
+/**
+ * The project as the editor opens it when files of its stems are missing (`missing`, see
+ * LoadedProject.missingStems): stems are only ever used as a complete set, so it opens without
+ * them, and the preview, the export and the music's ducking all use the mixed sound, which has
+ * every source. Only the editor's copy goes without: saves put the stems back
+ * (withRecordedStems), so they are used again once the file is back.
+ */
+export function openedWithoutStems(project: Project, missing: readonly StemKind[]): Project {
+  if (missing.length === 0 || !project.audioStems) return project
+  const { audioStems: _hidden, ...rest } = project
+  void _hidden
+  return rest
+}
+
+/** `edited` as saved: with the stems of the project as `stored`, which the editor may have opened without them. */
+export function withRecordedStems(edited: Project, stored: Pick<Project, 'audioStems'>): Project {
+  return stored.audioStems && !edited.audioStems ? { ...edited, audioStems: stored.audioStems } : edited
+}
+
 const trackGain = (t: AudioTrackSettings): number => (t.muted ? 0 : t.volume)
 
 /**
