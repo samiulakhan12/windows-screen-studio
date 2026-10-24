@@ -17,6 +17,12 @@ const h = require('./helpers.cjs')
 const r = require('./recordingHelpers.cjs')
 
 const XWINDOW = path.join(__dirname, 'xwindow.py')
+// SSW_E2E_REAL_HELPER=1 (tests/e2e/integration-window.e2e.cjs): instead of an in-process fake,
+// the app's real nativeCapture client runs tests/fixtures/fake-capture-helper.cjs as the helper
+// PROCESS (record --window / watch-window over the real stdin/stdout protocol).
+const REAL_HELPER = process.env.SSW_E2E_REAL_HELPER === '1'
+const HELPER_SCRIPT = path.join(__dirname, '..', 'fixtures', 'fake-capture-helper.cjs')
+const helperEnv = (native) => ({ SSW_CAPTURE_HELPER: HELPER_SCRIPT, FAKE_HELPER_VIDEO: 'x11grab', FAKE_HELPER_WINDOW_CAPTURE: native ? '1' : '0' })
 const TITLE = 'SSW-TESTWIN'
 const START = { x: 300, y: 200 }
 
@@ -294,10 +300,10 @@ async function assertNoLeftovers(fake) {
     await h.run('window (a): native window capture, cursor and clicks mapped through the moving window, smooth cursor on', async (ctx) => {
       await resetWindow(xid)
       const home = h.tempHome('rec-window-native')
-      const { app, win, logs } = await h.launch({ home, env })
+      const { app, win, logs } = await h.launch({ home, env: REAL_HELPER ? helperEnv(true) : env })
       ctx.app = r.closable(app)
       ctx.logs = logs
-      const fake = await installFakeHelper(app, { native: true, watch: true })
+      const fake = REAL_HELPER ? null : await installFakeHelper(app, { native: true, watch: true })
       await pickTestWindow(win)
       await win.waitForSelector('.window-hint')
       h.assert((await win.getAttribute('.window-hint', 'data-support')) === 'full', 'Home: windows get every effect')
@@ -305,11 +311,13 @@ async function assertNoLeftovers(fake) {
       const notices = await watchNotices(win)
 
       const { g0 } = await recordWithInput(app, win, xid)
-      const state = await fake()
-      h.assert(state.starts.length === 1 && state.starts[0].windowId === windowSource && !state.starts[0].displayId && state.starts[0].fps === 60, `helper asked for the window: ${JSON.stringify(state.starts)}`)
-      h.assert(state.calls.includes('stop') && !state.calls.includes('kill'), `helper stopped cleanly: ${state.calls}`)
-      // The helper reports the rectangles itself: no separate watcher for the recording.
-      h.assert(!state.watched.includes(windowSource), `no watch-window while recording natively: ${state.watched}`)
+      if (fake) {
+        const state = await fake()
+        h.assert(state.starts.length === 1 && state.starts[0].windowId === windowSource && !state.starts[0].displayId && state.starts[0].fps === 60, `helper asked for the window: ${JSON.stringify(state.starts)}`)
+        h.assert(state.calls.includes('stop') && !state.calls.includes('kill'), `helper stopped cleanly: ${state.calls}`)
+        // The helper reports the rectangles itself: no separate watcher for the recording.
+        h.assert(!state.watched.includes(windowSource), `no watch-window while recording natively: ${state.watched}`)
+      }
 
       const { project, cursor, dir } = readRecording(home)
       h.assert(project.capture.method === 'native' && project.capture.cursorInVideo === false && project.capture.target === 'window', `capture ${JSON.stringify(project.capture)}`)
@@ -322,25 +330,27 @@ async function assertNoLeftovers(fake) {
       h.assert(await win.$eval('input[aria-label="Show smooth cursor"]', (i) => i.checked && !i.disabled), 'the editor shows the smooth cursor on')
       h.assert(!(await win.$('[data-testid="cursor-in-video"]')) && !(await win.$('[data-testid="cursor-not-recorded"]')), 'no cursor warning')
       h.assert((await notices()).length === 0, `nothing to warn about: ${await notices()}`)
-      await assertNoLeftovers(fake)
+      if (fake) await assertNoLeftovers(fake)
     })
 
     await h.run('window (b): Chromium window capture with a watcher keeps auto zoom and click highlights', async (ctx) => {
       await resetWindow(xid)
       const home = h.tempHome('rec-window-watch')
-      const { app, win, logs } = await h.launch({ home, env })
+      const { app, win, logs } = await h.launch({ home, env: REAL_HELPER ? helperEnv(false) : env })
       ctx.app = r.closable(app)
       ctx.logs = logs
-      const fake = await installFakeHelper(app, { native: false, watch: true })
+      const fake = REAL_HELPER ? null : await installFakeHelper(app, { native: false, watch: true })
       await pickTestWindow(win)
       await win.waitForSelector('.window-hint')
       h.assert((await win.getAttribute('.window-hint', 'data-support')) === 'effects', 'Home: effects, but no smooth cursor')
       h.assert(/no smooth cursor: that needs native capture \(Windows 10 version 2004 or later\)/.test(await win.textContent('.window-hint')), 'the hint says why')
 
       const { g0 } = await recordWithInput(app, win, xid)
-      const state = await fake()
-      h.assert(state.starts.length === 0, 'no native capture')
-      h.assert(state.watched.includes(windowSource) && state.calls.includes(`watch-stop ${windowSource}`), `the window was watched, then stopped: ${JSON.stringify(state)}`)
+      if (fake) {
+        const state = await fake()
+        h.assert(state.starts.length === 0, 'no native capture')
+        h.assert(state.watched.includes(windowSource) && state.calls.includes(`watch-stop ${windowSource}`), `the window was watched, then stopped: ${JSON.stringify(state)}`)
+      }
 
       const { project, cursor, dir } = readRecording(home)
       h.assert(project.capture.method === 'chromium' && project.capture.cursorInVideo === true && project.capture.target === 'window', `capture ${JSON.stringify(project.capture)}`)
@@ -352,10 +362,10 @@ async function assertNoLeftovers(fake) {
       await win.click('.insp-tabs button:has-text("Cursor")')
       h.assert(/window was recorded with standard capture/.test(await win.textContent('[data-testid="cursor-in-video"]')), 'the editor explains the cursor is in the video')
       h.assert(!(await win.$eval('input[aria-label="Click effect"]', (i) => i.disabled)), 'click highlights available')
-      await assertNoLeftovers(fake)
+      if (fake) await assertNoLeftovers(fake)
     })
 
-    await h.run('window (c): nothing follows the window: no cursor data, and the user is told so', async (ctx) => {
+    if (!REAL_HELPER) await h.run('window (c): nothing follows the window: no cursor data, and the user is told so', async (ctx) => {
       await resetWindow(xid)
       const home = h.tempHome('rec-window-plain')
       // No helper at all (as on Linux, or a Windows install without ssw-capture.exe).
