@@ -1,7 +1,5 @@
-import { cursorLook } from '../../../shared/render/cursorFx'
 import { speedAt } from '../../../shared/render/overlays'
 import {
-  cursorPositionAt,
   FEATHER_STOPS,
   featherRects,
   projectSpotlights,
@@ -9,6 +7,7 @@ import {
   spotlightArea,
   spotlightFeather,
   spotlightLevels,
+  visibleCursorAt,
   type IntRect
 } from '../../../shared/render/shapes'
 import type { Spotlight } from '../../../shared/types'
@@ -31,8 +30,9 @@ type Paint = (lit: number) => string
 
 /**
  * Darkens the recording outside the spotlights active at fc.t (inside the card's clip, over
- * the cursor and shapes). A cursor spotlight follows exactly the cursor the cursor layer
- * draws; a region spotlight stays on its content while the camera moves. Spotlights fade in
+ * the cursor and shapes). A cursor spotlight follows exactly the cursor viewers see (the one
+ * the cursor layer draws, or the real one baked into the video); a region spotlight stays on
+ * its content while the camera moves. Spotlights fade in
  * and out over SPOTLIGHT_FADE; several at once light up all their areas.
  */
 export function drawSpotlightLayer(fc: FrameContext): void {
@@ -49,7 +49,7 @@ export function drawSpotlightLayer(fc: FrameContext): void {
   }
   if (count === 0) return
   const speed = speedAt(project.clips, t)
-  const cursor = fc.cursor.valid && fc.cursor.samples.length > 0 ? cursorPositionAt(fc.scene.cursorPath, project.clips, cursorLook(project.cursor).loopHome, t) : null
+  const cursor = fc.cursor.valid ? visibleCursorAt(project, fc.cursor.samples, fc.scene.cursorPath, t) : null
   const { ctx } = fc
   ctx.save()
   if (count === 1) {

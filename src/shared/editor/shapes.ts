@@ -1,5 +1,6 @@
 import { clamp } from '../engine/math'
-import type { Shape, ShapeKind, Spotlight } from '../types'
+import { keptBounds } from '../engine/timeline'
+import type { Clip, Shape, ShapeKind, Spotlight } from '../types'
 import { dragRegion, type Box, type RegionHandle } from './zoomEdit'
 
 /** Default length (seconds) of a new shape or spotlight. */
@@ -52,14 +53,22 @@ const KIND_DEFAULTS: Record<ShapeKind, Partial<Shape>> = {
 let idCounter = 0
 const newId = (prefix: string): string => `${prefix}${Date.now().toString(36)}${(idCounter++).toString(36)}`
 
-/** A new shape of `kind` starting at source time `t`, clamped to the recording's `duration`. */
+/** Times of a new item at `t`: DEFAULT_SHAPE_LENGTH long, moved back to keep that length near the end. */
+function newItemTimes(t: number, duration: number): { start: number; end: number } {
+  const length = Math.min(DEFAULT_SHAPE_LENGTH, Math.max(0, duration))
+  const start = clamp(t, 0, Math.max(0, duration - length))
+  return { start, end: Math.min(duration, start + length) }
+}
+
+/**
+ * A new shape of `kind` starting at source time `t`, inside the recording's `duration` (one
+ * made near the end starts earlier, so it keeps its full length).
+ */
 export function createShape(kind: ShapeKind, t: number, duration: number, init: Partial<Omit<Shape, 'id' | 'kind'>> = {}): Shape {
-  const start = Math.max(0, Math.min(t, duration - 0.1))
   return {
     id: newId('s'),
     kind,
-    start,
-    end: Math.min(duration, start + DEFAULT_SHAPE_LENGTH),
+    ...newItemTimes(t, duration),
     x: 0.35,
     y: 0.35,
     w: 0.3,
@@ -74,14 +83,12 @@ export function createShape(kind: ShapeKind, t: number, duration: number, init: 
   }
 }
 
-/** A new spotlight starting at source time `t`. */
+/** A new spotlight starting at source time `t` (like createShape, it keeps its full length near the end). */
 export function createSpotlight(mode: Spotlight['mode'], t: number, duration: number, init: Partial<Omit<Spotlight, 'id' | 'mode'>> = {}): Spotlight {
-  const start = Math.max(0, Math.min(t, duration - 0.1))
   return {
     id: newId('l'),
     mode,
-    start,
-    end: Math.min(duration, start + DEFAULT_SHAPE_LENGTH),
+    ...newItemTimes(t, duration),
     x: 0.3,
     y: 0.3,
     w: 0.4,
@@ -119,24 +126,63 @@ export function arrowToward(p: { x: number; y: number }, aspect = 16 / 9): Pick<
 export const fadeLead = (kind: ShapeKind | 'spotlight', speed = 1): number => (kind === 'spotlight' ? SPOTLIGHT_FADE : isPrivacyKind(kind) ? 0 : SHAPE_FADE) * speed
 
 /**
- * A new shape for the playhead at `t`: fully shown there (it starts one fade earlier), and an
- * arrow points at the cursor when its position `cursor` is known.
+ * Start and end of a new item for the playhead at `t`: DEFAULT_SHAPE_LENGTH long, starting
+ * `lead` seconds earlier so it is fully faded in at `t`, and inside the kept part of the
+ * recording. Near the end (where the playhead rests after playing through) it starts earlier
+ * instead of getting shorter, so it keeps its full length and is never cut off by a trailing cut.
+ */
+export function playheadTimes(t: number, lead: number, project: { duration: number; clips?: Clip[] }): { start: number; end: number } {
+  const { duration } = project
+  let lo = 0
+  let hi = Math.max(0, duration)
+  if (project.clips && project.clips.length > 0) {
+    const kept = keptBounds(project.clips)
+    const a = clamp(kept.start, 0, hi)
+    const b = clamp(kept.end, a, hi)
+    if (b - a >= MIN_SHAPE_LENGTH) {
+      lo = a
+      hi = b
+    }
+  }
+  const length = Math.min(DEFAULT_SHAPE_LENGTH, hi - lo)
+  const start = clamp(t - lead, lo, hi - length)
+  return { start, end: start + length }
+}
+
+/**
+ * A new shape for the playhead at `t`: fully shown there (see playheadTimes), and an arrow
+ * points at the cursor when its position `cursor` is known.
  */
 export function shapeForPlayhead(
   kind: ShapeKind,
   t: number,
-  project: { duration: number; width: number; height: number },
+  project: { duration: number; width: number; height: number; clips?: Clip[] },
   cursor: { x: number; y: number } | null,
   speed = 1
 ): Shape {
   const init = kind === 'arrow' && cursor ? arrowToward(cursor, project.width / project.height) : {}
-  return createShape(kind, Math.max(0, t - fadeLead(kind, speed)), project.duration, init)
+  return createShape(kind, t, project.duration, { ...init, ...playheadTimes(t, fadeLead(kind, speed), project) })
 }
 
 /** A new spotlight for the playhead at `t`: fully faded in there; around the cursor it is round on screen. */
-export function spotlightForPlayhead(mode: Spotlight['mode'], t: number, project: { duration: number; width: number; height: number }, speed = 1): Spotlight {
+export function spotlightForPlayhead(mode: Spotlight['mode'], t: number, project: { duration: number; width: number; height: number; clips?: Clip[] }, speed = 1): Spotlight {
   const init = mode === 'cursor' ? { w: 0.24 / (project.width / project.height), h: 0.24 } : {}
-  return createSpotlight(mode, Math.max(0, t - fadeLead('spotlight', speed)), project.duration, init)
+  return createSpotlight(mode, t, project.duration, { ...init, ...playheadTimes(t, fadeLead('spotlight', speed), project) })
+}
+
+/**
+ * Where to put the playhead so `item` shows fully on the preview (past its fade-in and before
+ * its fade-out, `fade` source seconds each), as near `t` as possible: `t` itself when it
+ * already does. An item too short to ever show fully gets its middle.
+ */
+export function revealTime(item: { start: number; end: number }, t: number, fade: number): number {
+  const pad = 0.01
+  const lo = item.start + fade
+  // The end itself is not shown (items are end-exclusive).
+  const hi = item.end - Math.max(fade, pad)
+  if (t >= lo - 1e-6 && t <= hi) return t
+  if (hi - lo < 2 * pad) return (item.start + item.end) / 2
+  return clamp(t, lo + pad, hi - pad)
 }
 
 /* ---------- geometry on the preview ---------- */

@@ -7,6 +7,7 @@ import {
   isPrivacyKind,
   itemVisibleAt,
   MIN_SHAPE_LENGTH,
+  revealTime,
   setItemTime,
   SHAPE_COLORS,
   SHAPE_KINDS,
@@ -15,11 +16,12 @@ import {
   spotlightForPlayhead,
   STROKE_LIMITS
 } from '../../../../shared/editor/shapes'
-import { cursorAt } from '../../../../shared/engine/cursor'
+import { SmoothedTrack } from '../../../../shared/engine/cursor'
 import { clamp } from '../../../../shared/engine/math'
 import { formatTime } from '../../../../shared/engine/project'
 import { speedAt } from '../../../../shared/render/overlays'
-import type { Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
+import { visibleCursorAt } from '../../../../shared/render/shapes'
+import type { CursorSample, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
@@ -30,6 +32,21 @@ import '../shapes.css'
 type Item = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotlight }
 
 const spotlightLabel = (s: Spotlight): string => (s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight')
+
+const smoothed = new WeakMap<CursorSample[], { duration: number; smoothing: number; track: SmoothedTrack }>()
+
+/**
+ * The smoothed cursor path the cursor layer draws (the same track the editor's scene builds),
+ * made on first use: only adding an arrow or switching a spotlight to a region reads it.
+ */
+function smoothedPath(samples: CursorSample[], duration: number, smoothing: number): SmoothedTrack {
+  let hit = smoothed.get(samples)
+  if (!hit || hit.duration !== duration || hit.smoothing !== smoothing) {
+    hit = { duration, smoothing, track: new SmoothedTrack(samples, duration, smoothing) }
+    smoothed.set(samples, hit)
+  }
+  return hit.track
+}
 
 /* ---------- Shapes, privacy blur and spotlight ---------- */
 
@@ -42,9 +59,13 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
   const spot = selection?.kind === 'spotlight' ? (spotlights.find((s) => s.id === selection.id) ?? null) : null
   const selId = selection && 'id' in selection ? selection.id : null
 
-  /** The cursor's recorded position at source time `t`, when there is one inside the video. */
+  /**
+   * Where viewers see the cursor at source time `t` (the drawn cursor, or the real one baked
+   * into the video: what a cursor spotlight follows), when it is inside the video.
+   */
   const cursorPos = (t: number): { x: number; y: number } | null => {
-    const p = cursor.valid ? cursorAt(cursor.samples, t) : null
+    const path = { at: (s: number) => smoothedPath(cursor.samples, project.duration, project.cursor.smoothing).at(s) }
+    const p = cursor.valid ? visibleCursorAt(project, cursor.samples, path, t) : null
     return p && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1 ? p : null
   }
 
@@ -54,6 +75,12 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
     if (player.time < shown || player.time >= end) player.seek(shown)
   }
 
+  /** After adding an item at the playhead `t`: keeps it there, or moves it as little as needed to show the item fully. */
+  const showAdded = (item: { start: number; end: number }, t: number, fade: number): void => {
+    const to = revealTime(item, t, fade)
+    if (to !== t) player.seek(to)
+  }
+
   const addShape = (kind: ShapeKind): void => {
     const p = store.state
     const t = player.time
@@ -61,7 +88,7 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
     const s = shapeForPlayhead(kind, t, p, cursorPos(t), speed)
     store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
     props.onSelect({ kind: 'shape', id: s.id })
-    reveal(s.start, s.end, fadeLead(kind, speed))
+    showAdded(s, t, fadeLead(kind, speed))
   }
 
   const addSpotlight = (mode: Spotlight['mode']): void => {
@@ -71,7 +98,7 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
     const s = spotlightForPlayhead(mode, t, p, speed)
     store.update((q) => ({ ...q, spotlights: [...(q.spotlights ?? []), s] }))
     props.onSelect({ kind: 'spotlight', id: s.id })
-    reveal(s.start, s.end, fadeLead('spotlight', speed))
+    showAdded(s, t, fadeLead('spotlight', speed))
   }
 
   const items: Item[] = [...shapes.map((s): Item => ({ type: 'shape', item: s })), ...spotlights.map((s): Item => ({ type: 'spotlight', item: s }))].sort(

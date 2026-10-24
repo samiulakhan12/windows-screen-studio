@@ -1,9 +1,10 @@
 // Shapes, privacy blur/pixelate and spotlights end to end: measured on real exported frames
 // against the source video (blur and pixelate remove detail only inside their boxes, the
 // arrow is drawn where it belongs, a shape stays on its content through a zoom, a spotlight
-// dims only outside its area, the cursor stays sharp over a blur), and edited in the app
-// (add from the panel, see it on the timeline and the preview, move it, also while zoomed,
-// re-time it, delete it, undo).
+// dims only outside its area, a cursor spotlight stays on the cursor baked into the video, the
+// cursor stays sharp over a blur), and edited in the app (add from the panel, see it on the
+// timeline and the preview, move it, also while zoomed, re-time it, delete it, undo, add one
+// where playback ended).
 const fs = require('node:fs')
 const path = require('node:path')
 const h = require('./helpers.cjs')
@@ -339,6 +340,40 @@ async function main() {
     if (SHOTS) fx.savePng(out, at(0.5), path.join(SHOTS, 'shapes-cursor-over-blur.png'))
   }))
 
+  await test('shapes: a cursor spotlight stays on the real cursor baked into the video', fx.withHome('shapes-spot-cursor', async (ctx, home) => {
+    const media = fx.solidVideo({ seconds: 2 })
+    const style = { background: { type: 'color', color: '#000000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }
+    // The mouse sweeps right at 0.4 widths a second. The video's own cursor is exactly there; the
+    // smoothed path (smoothing 0.9) would trail it by about 0.09 widths, outside the lit area.
+    const samples = Array.from({ length: 41 }, (_, i) => ({ t: i * 0.05, x: 0.1 + 0.02 * i, y: 0.5 }))
+    fx.seedProject(home, {
+      id: 'rec-spot-cursor',
+      name: 'Spotlight on the video cursor',
+      media,
+      seconds: 2,
+      style,
+      capture: { method: 'chromium', cursorInVideo: true, region: null },
+      cursorSettings: { show: false, size: 1.4, smoothing: 0.9, clickEffect: false, hideWhenIdle: false },
+      cursor: { samples, clicks: [], keys: [], shapes: [], scale: 1, valid: true }
+    })
+    addItems(home, 'rec-spot-cursor', { spotlights: [{ id: 'sc', mode: 'cursor', start: 0, end: 2, x: 0.4, y: 0.4, w: 0.08, h: 0.14, shape: 'rect', dim: 0.9, feather: 0 }] })
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    const out = path.join(home, 'spot-cursor.mp4')
+    await exportMp4(app, win, 'Spotlight on the video cursor', out)
+    const F = fx.framesAt(out, [FPS], 'rgb24')
+    if (SHOTS) fx.savePng(out, FPS, path.join(SHOTS, 'shapes-spotlight-video-cursor.png'))
+    // Lit columns (the grey video, not dimmed to 10%) along the middle row, 1 s in: the cursor is at x = 0.5.
+    const row = Math.round(0.5 * H)
+    const lit = []
+    for (let x = 0; x < W; x++) if (luma(F.frames[0], (row * W + x) * 3) > 64) lit.push(x)
+    const centre = lit.length ? (lit[0] + lit[lit.length - 1] + 1) / 2 / W : NaN
+    console.log(`  lit ${lit.length} px wide, centred at x = ${centre.toFixed(4)} (cursor 0.5)`)
+    h.assert(near(lit.length, 0.08 * W, 8), `the lit area is the spotlight's width (${lit.length} px)`)
+    h.assert(near(centre, 0.5, 0.01), `the spotlight is on the cursor in the video (centre ${centre.toFixed(4)})`)
+  }))
+
   await test('shapes: add from the panel, edit on the preview (also zoomed) and the timeline, delete, undo', async (ctx) => {
     const home = h.tempHome('shapes-editor')
     const zooms = [{ id: 'z', start: 6, end: 11, scale: 2, focus: { mode: 'fixed', x: 0.5, y: 0.5 }, auto: false }]
@@ -433,6 +468,24 @@ async function main() {
     await win.keyboard.press('Delete')
     await saved(home, 'rec-shapes-ed', (q) => q.spotlights.length === 0, 'the spotlight deleted')
     h.assert((await win.$$('.shape-seg.spotlight')).length === 0, 'and gone from the timeline')
+
+    // Played through, the playhead rests at the very end: a shape added there keeps its full
+    // length (it starts earlier) and the playhead moves just enough for it to show fully.
+    await seekTo(win, 11.5)
+    await win.click('button[aria-label="Play"]')
+    await f.waitFor(async () => (await win.getAttribute('button[data-playing]', 'data-playing')) === 'true', 'playing')
+    await f.waitFor(async () => (await win.getAttribute('button[data-playing]', 'data-playing')) === 'false', 'played to the end', 10000)
+    await h.sleep(300)
+    const redAtEnd = await previewCount(win, 'red')
+    await win.click('button[aria-label="Add ellipse"]')
+    p = await saved(home, 'rec-shapes-ed', (q) => q.shapes.some((s) => s.kind === 'ellipse'), 'the ellipse at the end')
+    const ell = p.shapes.find((s) => s.kind === 'ellipse')
+    console.log(`  ellipse added at the end: ${ell.start.toFixed(3)}..${ell.end.toFixed(3)}`)
+    h.assert(near(ell.end, 12, 1e-6) && near(ell.end - ell.start, 3, 1e-6), `it keeps its full 3 s (${ell.start.toFixed(3)}..${ell.end.toFixed(3)})`)
+    await h.sleep(300)
+    const redEll = await previewCount(win, 'red')
+    console.log(`  red preview pixels at the end before/after adding the ellipse: ${redAtEnd}/${redEll}`)
+    h.assert(redEll - redAtEnd > 100, 'the ellipse shows fully on the preview')
     if (!process.env.SSW_E2E_KEEP) fs.rmSync(home, { recursive: true, force: true })
   })
 }

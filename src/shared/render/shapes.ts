@@ -4,10 +4,11 @@
  * spotlightLayer.ts draw with it, and preview and export both go through that one code path.
  */
 import { isPrivacyKind, SHAPE_FADE, SPOTLIGHT_FADE } from '../editor/shapes'
+import { cursorAt } from '../engine/cursor'
 import { clamp } from '../engine/math'
 import type { Camera } from '../engine/zoom'
-import type { Clip, Project, Shape, ShapeKind, Spotlight } from '../types'
-import { blendHome, loopHomeTime, loopHomeWeight } from './cursorFx'
+import type { Clip, CursorSample, Project, Shape, ShapeKind, Spotlight } from '../types'
+import { blendHome, cursorLook, loopHomeTime, loopHomeWeight } from './cursorFx'
 
 type Pos = { x: number; y: number }
 export interface Box {
@@ -236,11 +237,25 @@ export function arrowGeometry(a: Pos, b: Pos, width: number, minHead = 0): Arrow
 
 /**
  * The cursor position the cursor layer draws at source time `t`: the smoothed path, glided
- * back to its start at the end with "loop home". A cursor spotlight follows exactly this.
+ * back to its start at the end with "loop home".
  */
 export function cursorPositionAt(path: { at(t: number): Pos }, clips: Clip[], loopHome: boolean, t: number): Pos {
   if (!loopHome) return path.at(t)
   return blendHome(path.at(t), path.at(loopHomeTime(clips)), loopHomeWeight(clips, t))
+}
+
+/**
+ * Where viewers see the cursor at source time `t`: a cursor spotlight follows this and a new
+ * arrow points at it. With the real cursor baked into the video (Chromium capture) that is the
+ * recorded position itself, since the video's cursor neither lags like the smoothed path nor
+ * glides home. Otherwise it is where the cursor layer draws the synthetic cursor (`path`, the
+ * smoothed track), also while that is hidden, so a spotlight keeps the smooth motion. Null
+ * without samples.
+ */
+export function visibleCursorAt(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, samples: CursorSample[], path: { at(t: number): Pos }, t: number): Pos | null {
+  if (samples.length === 0) return null
+  if (project.capture?.cursorInVideo) return cursorAt(samples, t)
+  return cursorPositionAt(path, project.clips, cursorLook(project.cursor).loopHome, t)
 }
 
 /** The lit area of a spotlight (normalised source units): its box, or centred on `cursor` in cursor mode. */
@@ -284,13 +299,12 @@ export function featherRects(cx: number, cy: number, rx: number, ry: number, fea
 export const FEATHER_STOPS: [number, number][] = [0, 0.2, 0.4, 0.6, 0.8, 1].map((o) => [o, 1 - o * o * (3 - 2 * o)])
 
 /**
- * Combined darkening of several spotlights active at once: the darkest one sets the overall
- * level, and each one's lit area is cleared in proportion to its own strength (so one fading
- * out lets its area darken gradually while the others stay lit).
+ * Combined darkening of several spotlights active at once: the darkest one (by its Darkness
+ * and how far it has faded in) sets the overall level, and each one's lit area is cleared by
+ * its own fade alone. So every area is fully lit while its spotlight is fully in, whatever its
+ * Darkness, and one fading out lets its area darken gradually while the others stay lit.
  */
 export function spotlightLevels(items: { dim: number; alpha: number }[]): { dim: number; clear: number[] } {
-  const dims = items.map((s) => clamp(s.dim, 0, 1) * clamp(s.alpha, 0, 1))
-  const dim = Math.max(0, ...dims)
-  return { dim, clear: dims.map((d) => (dim > 0 ? d / dim : 0)) }
+  const dim = Math.max(0, ...items.map((s) => clamp(s.dim, 0, 1) * clamp(s.alpha, 0, 1)))
+  return { dim, clear: items.map((s) => (dim > 0 ? clamp(s.alpha, 0, 1) : 0)) }
 }
-

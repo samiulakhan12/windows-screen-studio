@@ -13,7 +13,7 @@ import {
 } from 'react'
 import { annotationLanes, dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { timelineGaps, type Gap } from '../../../shared/editor/clips'
-import { dragShapeTimes, fadeLead, isPrivacyKind, itemLanes, shapeForPlayhead, shapeLabel } from '../../../shared/editor/shapes'
+import { dragShapeTimes, fadeLead, isPrivacyKind, itemLanes, revealTime, shapeForPlayhead, shapeLabel } from '../../../shared/editor/shapes'
 import {
   clampScale,
   fitScale,
@@ -444,13 +444,14 @@ export const Timeline = memo(
       )
     }
 
-    /** Double-click on the shapes track: an arrow, fully shown at `t`. */
+    /** Double-click on the shapes track: an arrow, fully shown at `t` (or as near it as the end allows). */
     const addShapeAt = (t: number): void => {
       const p = store.state
-      const s = shapeForPlayhead('arrow', t, p, null, speedAt(p.clips, t))
+      const speed = speedAt(p.clips, t)
+      const s = shapeForPlayhead('arrow', t, p, null, speed)
       store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
       onSelect({ kind: 'shape', id: s.id })
-      player.seek(Math.min(s.end - 0.01, Math.max(t, s.start + fadeLead('arrow') + 0.01)))
+      player.seek(revealTime(s, t, fadeLead('arrow', speed)))
     }
 
     // A double-click on empty track space is two quick pointerdowns at the same spot.

@@ -16,7 +16,9 @@ import {
   MIN_SHAPE_LENGTH,
   MIN_SHAPE_SIDE,
   moveLine,
+  playheadTimes,
   resizeAround,
+  revealTime,
   setItemTime,
   setLineEnd,
   SHAPE_FADE,
@@ -44,7 +46,8 @@ import {
   spotlightArea,
   spotlightFeather,
   spotlightLevels,
-  sweptBox
+  sweptBox,
+  visibleCursorAt
 } from '../src/shared/render/shapes'
 import type { Clip, Shape, Spotlight } from '../src/shared/types'
 
@@ -56,9 +59,9 @@ describe('createShape / createSpotlight', () => {
     const a = createShape('arrow', 4, 20)
     expect([a.start, a.end]).toEqual([4, 7])
     expect(a.kind).toBe('arrow')
+    // Near the end it starts earlier, keeping its full length.
     const h = createShape('highlight', 19.95, 20)
-    expect(h.start).toBeCloseTo(19.9)
-    expect(h.end).toBe(20)
+    expect([h.start, h.end]).toEqual([17, 20])
     expect(h.color).toBe('#ffd60a')
     expect(h.opacity).toBeLessThan(1)
     expect(createShape('blur', -3, 20).start).toBe(0)
@@ -77,6 +80,13 @@ describe('createShape / createSpotlight', () => {
     expect(c.h).toBeLessThan(r.h)
     expect(c.mode).toBe('cursor')
     expect([r.start, r.end]).toEqual([2, 5])
+    const end = createSpotlight('cursor', 20, 20)
+    expect([end.start, end.end]).toEqual([17, 20])
+  })
+
+  it('a recording shorter than the default length gets one item over all of it', () => {
+    expect([createShape('rect', 1, 2).start, createShape('rect', 1, 2).end]).toEqual([0, 2])
+    expect([createSpotlight('region', 1.5, 2).start, createSpotlight('region', 1.5, 2).end]).toEqual([0, 2])
   })
 })
 
@@ -104,6 +114,52 @@ describe('items made at the playhead', () => {
       const s = shapeForPlayhead('ellipse', t, project, null)
       if (t > SHAPE_FADE) expect(shapeAlpha(s, t)).toBeCloseTo(1)
     }
+  })
+
+  it('made where playback stops (the end), they keep their length and show fully at the playhead after revealTime', () => {
+    for (const kind of ['arrow', 'rect', 'blur', 'pixelate', 'highlight'] as const) {
+      const s = shapeForPlayhead(kind, 20, project, null)
+      expect([s.start, s.end]).toEqual([17, 20])
+      const at = revealTime(s, 20, fadeLead(kind))
+      expect(at).toBeLessThan(20)
+      expect(at).toBeGreaterThan(19.5)
+      expect(shapeAlpha(s, at)).toBe(1)
+    }
+    const sp = spotlightForPlayhead('region', 20, project)
+    expect([sp.start, sp.end]).toEqual([17, 20])
+    expect(spotlightAlpha(sp, revealTime(sp, 20, fadeLead('spotlight')))).toBe(1)
+  })
+
+  it('stay inside the kept part of the recording (cuts at either end)', () => {
+    const clips: Clip[] = [{ id: 'c', start: 2, end: 8, speed: 1 }]
+    const p = { ...project, clips }
+    // The playhead rests at the end of the kept part after playing through.
+    expect(playheadTimes(8, SHAPE_FADE, p)).toEqual({ start: 5, end: 8 })
+    expect(shapeForPlayhead('ellipse', 8, p, null).end).toBe(8)
+    expect(spotlightForPlayhead('cursor', 8, p).start).toBe(5)
+    expect(playheadTimes(2.05, SHAPE_FADE, p).start).toBe(2)
+    // In the middle nothing changes.
+    expect(playheadTimes(5, SHAPE_FADE, p).start).toBeCloseTo(5 - SHAPE_FADE)
+    // Kept part shorter than the default length: all of it.
+    expect(playheadTimes(4, 0, { duration: 20, clips: [{ id: 'c', start: 3, end: 4.5, speed: 1 }] })).toEqual({ start: 3, end: 4.5 })
+    // No clips, or a degenerate kept part: the whole recording.
+    expect(playheadTimes(20, 0, { duration: 20 })).toEqual({ start: 17, end: 20 })
+    expect(playheadTimes(20, 0, { duration: 20, clips: [{ id: 'c', start: 5, end: 5, speed: 1 }] })).toEqual({ start: 17, end: 20 })
+  })
+
+  it('revealTime keeps the playhead when the item already shows fully, else moves it as little as possible', () => {
+    const item = { start: 4, end: 7 }
+    expect(revealTime(item, 5, 0.15)).toBe(5)
+    expect(revealTime(item, 4.15, 0.15)).toBe(4.15)
+    // Before it: just past the fade-in. After it, or in its fade-out: just before the fade-out.
+    expect(revealTime(item, 1, 0.15)).toBeCloseTo(4.16)
+    expect(revealTime(item, 7, 0.15)).toBeCloseTo(6.84)
+    expect(revealTime(item, 6.95, 0.15)).toBeCloseTo(6.84)
+    // Privacy shapes do not fade: the start shows, the end (exclusive) does not.
+    expect(revealTime(item, 4, 0)).toBe(4)
+    expect(revealTime(item, 7, 0)).toBeCloseTo(6.98)
+    // Too short to ever show fully: its middle.
+    expect(revealTime({ start: 4, end: 4.2 }, 9, 0.15)).toBeCloseTo(4.1)
   })
 
   it('a cursor spotlight is round on screen', () => {
@@ -378,6 +434,27 @@ describe('spotlight', () => {
     expect(cursorPositionAt(path, clips, true, 2).x).toBeCloseTo(0.2)
   })
 
+  it('follows the cursor viewers see: the drawn one, or the real one baked into the video', () => {
+    const samples = [
+      { t: 0, x: 0.1, y: 0.5 },
+      { t: 10, x: 0.9, y: 0.5 }
+    ]
+    // A smoothed path lagging behind the recorded position.
+    const lagging = { at: (t: number) => ({ x: Math.max(0.1, 0.1 + 0.08 * (t - 1)), y: 0.5 }) }
+    const cursor = { show: true, size: 1, smoothing: 0.6, clickEffect: false, hideWhenIdle: false }
+    const synthetic = { capture: { method: 'native' as const, cursorInVideo: false, region: null }, cursor, clips }
+    const baked = { ...synthetic, capture: { method: 'chromium' as const, cursorInVideo: true, region: null } }
+    expect(visibleCursorAt(synthetic, samples, lagging, 5)!.x).toBeCloseTo(0.42)
+    expect(visibleCursorAt(baked, samples, lagging, 5)!.x).toBeCloseTo(0.5)
+    // Loop home moves the drawn cursor only: the one in the video cannot glide home.
+    const home = { ...cursor, loopHome: true }
+    expect(visibleCursorAt({ ...synthetic, cursor: home }, samples, path, 10)!.x).toBeCloseTo(0)
+    expect(visibleCursorAt({ ...baked, cursor: home }, samples, path, 10)!.x).toBeCloseTo(0.9)
+    // Older projects without capture info use the drawn cursor; no samples, no position.
+    expect(visibleCursorAt({ cursor, clips } as Parameters<typeof visibleCursorAt>[0], samples, lagging, 5)!.x).toBeCloseTo(0.42)
+    expect(visibleCursorAt(baked, [], lagging, 5)).toBeNull()
+  })
+
   it('lights its box, or the same size around the cursor', () => {
     const s: Pick<Spotlight, 'mode' | 'x' | 'y' | 'w' | 'h'> = { mode: 'cursor', x: 0.1, y: 0.1, w: 0.2, h: 0.4 }
     expect(spotlightArea(s, { x: 0.5, y: 0.5 })).toEqual({ x: 0.4, y: 0.3, w: 0.2, h: 0.4 })
@@ -416,5 +493,38 @@ describe('spotlight', () => {
     expect(two.clear[0]).toBeCloseTo(1)
     expect(two.clear[1]).toBeCloseTo(0.5)
     expect(spotlightLevels([{ dim: 0.6, alpha: 0 }])).toEqual({ dim: 0, clear: [0] })
+  })
+
+  it('a lighter spotlight still lights its whole area next to a darker one', () => {
+    // Darkness left in an area: the overall level times what its clearing leaves.
+    const left = (l: { dim: number; clear: number[] }, i: number): number => l.dim * (1 - l.clear[i])
+    for (const dimB of [0.3, 0.1, 0]) {
+      const l = spotlightLevels([
+        { dim: 0.7, alpha: 1 },
+        { dim: dimB, alpha: 1 }
+      ])
+      expect(l.dim).toBeCloseTo(0.7)
+      expect(left(l, 0)).toBeCloseTo(0)
+      expect(left(l, 1)).toBeCloseTo(0)
+    }
+    // Fading out, an area darkens gradually up to the others' level.
+    const fading = [1, 0.75, 0.5, 0.25, 0].map((a) =>
+      left(
+        spotlightLevels([
+          { dim: 0.7, alpha: 1 },
+          { dim: 0.3, alpha: a }
+        ]),
+        1
+      )
+    )
+    for (let i = 1; i < fading.length; i++) expect(fading[i]).toBeGreaterThan(fading[i - 1])
+    expect(fading[fading.length - 1]).toBeCloseTo(0.7)
+    // The darker one fading out: the level eases down to the lighter one's, its area stays lit.
+    const l = spotlightLevels([
+      { dim: 0.7, alpha: 0.2 },
+      { dim: 0.3, alpha: 1 }
+    ])
+    expect(l.dim).toBeCloseTo(0.3)
+    expect(left(l, 1)).toBeCloseTo(0)
   })
 })

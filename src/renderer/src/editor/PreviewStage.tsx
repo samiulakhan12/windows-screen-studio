@@ -17,8 +17,7 @@ import { dragRegion, formatLevel, regionFromPoints, setZoomRegion, type Box as R
 import { styleContentRect, outputSize, type Rect } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
-import { cursorLook } from '../../../shared/render/cursorFx'
-import { cursorPositionAt, spotlightArea } from '../../../shared/render/shapes'
+import { spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
 import type { Annotation, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
 import { cardRect, type RenderScene } from '../render/compositor'
 import { holdGesture, useEditor } from './context'
@@ -107,8 +106,8 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
       }
       // The same camera and cursor position the compositor uses for this frame.
       const cam = cameraAt(project.zooms, t, scene.cursor.valid ? scene.focusPath : null, zoomStyleOf(project))
-      const follows = item.type === 'spotlight' && item.item.mode === 'cursor' && scene.cursor.valid && scene.cursor.samples.length > 0
-      const cursor = follows ? cursorPositionAt(scene.cursorPath, project.clips, cursorLook(project.cursor).loopHome, t) : null
+      const follows = item.type === 'spotlight' && item.item.mode === 'cursor' && scene.cursor.valid
+      const cursor = follows ? visibleCursorAt(project, scene.cursor.samples, scene.cursorPath, t) : null
       const key = `${cam.scale},${cam.cx},${cam.cy},${cursor?.x},${cursor?.y}`
       if (key === last) return
       last = key
