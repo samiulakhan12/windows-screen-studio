@@ -139,12 +139,32 @@ function ellipseField(ctx: Ctx, g: Lit, paint: Paint, cover: IntRect | null): vo
   const f = Math.max(g.feather / Math.min(g.rx, g.ry), 1 / Math.min(g.rx, g.ry))
   const r0 = Math.max(0, 1 - f / 2)
   const r1 = 1 + f / 2
+  // Past r1 the gradient is its last stop: with `cover`, the gradient fills only the whole-pixel
+  // box around the soft edge and the rest is painted solid (a full-frame gradient is slow without a GPU).
+  let box = { x0: -r1, y0: -r1, x1: r1, y1: r1 }
+  if (cover) {
+    const px = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
+    const b = {
+      x0: px(Math.floor(g.cx - g.rx * r1), cover.x0, cover.x1),
+      y0: px(Math.floor(g.cy - g.ry * r1), cover.y0, cover.y1),
+      x1: px(Math.ceil(g.cx + g.rx * r1), cover.x0, cover.x1),
+      y1: px(Math.ceil(g.cy + g.ry * r1), cover.y0, cover.y1)
+    }
+    ctx.fillStyle = paint(0)
+    const fill = (x0: number, y0: number, x1: number, y1: number): void => {
+      if (x1 > x0 && y1 > y0) ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+    }
+    fill(cover.x0, cover.y0, cover.x1, b.y0)
+    fill(cover.x0, b.y1, cover.x1, cover.y1)
+    fill(cover.x0, b.y0, b.x0, b.y1)
+    fill(b.x1, b.y0, cover.x1, b.y1)
+    box = { x0: (b.x0 - g.cx) / g.rx, y0: (b.y0 - g.cy) / g.ry, x1: (b.x1 - g.cx) / g.rx, y1: (b.y1 - g.cy) / g.ry }
+  }
   ctx.save()
   ctx.translate(g.cx, g.cy)
   ctx.scale(g.rx, g.ry)
   ctx.fillStyle = addStops(ctx.createRadialGradient(0, 0, r0, 0, 0, r1), paint)
-  if (cover) ctx.fillRect((cover.x0 - g.cx) / g.rx, (cover.y0 - g.cy) / g.ry, (cover.x1 - cover.x0) / g.rx, (cover.y1 - cover.y0) / g.ry)
-  else ctx.fillRect(-r1, -r1, r1 * 2, r1 * 2)
+  if (box.x1 > box.x0 && box.y1 > box.y0) ctx.fillRect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0)
   ctx.restore()
 }
 

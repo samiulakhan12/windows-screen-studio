@@ -31,9 +31,13 @@ const PRIVACY_FALLBACK = '#24242e'
 export function drawPrivacyLayer(fc: FrameContext): void {
   const shapes = projectShapes(fc.project)
   if (shapes.length === 0) return
+  // The frame shown at t can be the source frame up to half a frame later (export picks the
+  // nearest one): cover that much (and a millisecond for timestamp rounding) early and late, so
+  // the frame where a secret appears is never drawn uncovered, whichever frame preview or export shows.
+  const slack = 0.5 / (fc.project.capture?.fps ?? 60) + 0.001
   let shutter: Camera[] | null = null
   for (const s of shapes) {
-    if (!isPrivacyKind(s.kind) || !(fc.t >= s.start && fc.t < s.end)) continue
+    if (!isPrivacyKind(s.kind) || !(fc.t + slack >= s.start && fc.t - slack < s.end)) continue
     let box = clipToUnit(shapeBounds(s))
     if (!box) continue
     // While motion blur averages several camera positions, cover the box in all of them.

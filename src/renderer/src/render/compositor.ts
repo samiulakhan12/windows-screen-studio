@@ -7,7 +7,7 @@ import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
-import { cardGeometry, paintBackgroundLayer, paintCard, paintCardLayer, paintStaticLayer, roundRectPath, type CardSpec } from './staticLayer'
+import { cardGeometry, paintBackgroundLayer, paintCardLayer, paintStaticLayer, paintStillCard, roundRectPath, type CardSpec } from './staticLayer'
 import { drawPrivacyLayer, drawShapesLayer } from './shapesLayer'
 import { drawSpotlightLayer } from './spotlightLayer'
 import { beginTiltedCard, drawTiltedCard } from './tiltLayer'
@@ -97,8 +97,8 @@ export function drawFrame(
   const zoomStyle = zoomStyleOf(project)
   const cam = cameraAt(project.zooms, t, focus, zoomStyle)
 
-  // Pulled back, the card shrinks onto the background: draw it (shadow, corners, device frame)
-  // as vectors at its current size over the cached background. Otherwise use the cached static layer.
+  // Pulled back, the card shrinks onto the background: draw it (shadow, corners, device frame) at its
+  // current size over the cached background, cached once it holds still. Otherwise use the cached static layer.
   const card = cardRect(rect, cam)
   const shrink = Math.min(1, cam.scale)
   const frame = frameOf(style)
@@ -112,11 +112,11 @@ export function drawFrame(
   const c = tilted ? tilted.ctx : ctx
   if (tilted) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
-    if (cam.scale < 1) paintCard(c, spec, geom, backdrop, { w, h })
+    if (cam.scale < 1) paintStillCard(c, w, h, spec, geom, backdrop)
     else paintCardLayer(c, w, h, spec, geom, backdrop, true)
   } else if (cam.scale < 1) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
-    paintCard(ctx, spec, geom, backdrop, { w, h })
+    paintStillCard(ctx, w, h, spec, geom, backdrop)
   } else {
     paintStaticLayer(ctx, w, h, spec, geom, src.background, !!screen, bgTime)
   }
@@ -127,9 +127,10 @@ export function drawFrame(
   if (screen) {
     c.imageSmoothingEnabled = true
     c.imageSmoothingQuality = 'high'
+    let image = screen.image
     const drawView = (view: Camera): void => {
       const v = viewSource(view, rect)
-      if (v) c.drawImage(screen.image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
+      if (v) c.drawImage(image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
     }
     const samples = motionSamples(project, t, cam, focus, rect, opts, zoomStyle)
     if (samples.length <= 1) {
@@ -138,6 +139,14 @@ export function drawFrame(
       // Average the sub-frames: sample k is blended in with weight 1/(k+1). The largest view
       // goes first, so a shrinking card never averages in the black well at its edge.
       if (samples.some((s) => s.scale < 1)) samples.sort((a, b) => b.scale - a.scale)
+      // Each draw of a video frame converts it to RGB again (costly without a GPU): convert it once.
+      // Bilinear from that copy matches the video draws (the averaging softens them anyway); a
+      // canvas source with 'high' would take the slow cubic path.
+      const rgb = rgbCopy(c, screen, vw, vh)
+      if (rgb) {
+        image = rgb
+        c.imageSmoothingQuality = 'low'
+      }
       samples.forEach((s, i) => {
         c.globalAlpha = 1 / (i + 1)
         drawView(s)
@@ -190,6 +199,26 @@ export function drawFrame(
   drawTitleCardsLayer(top)
   drawWatermarkLayer(top)
   ctx.restore()
+}
+
+const rgbCopies = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
+
+/** The frame copied once into a reused canvas of its own size (per target), or null without one. */
+function rgbCopy(target: CanvasRenderingContext2D, frame: FrameImage, vw: number, vh: number): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null
+  let canvas = rgbCopies.get(target)
+  if (!canvas) {
+    canvas = document.createElement('canvas')
+    rgbCopies.set(target, canvas)
+  }
+  if (canvas.width !== vw || canvas.height !== vh) {
+    canvas.width = vw
+    canvas.height = vh
+  }
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) return null
+  ctx.drawImage(frame.image, 0, 0, vw, vh)
+  return canvas
 }
 
 /**

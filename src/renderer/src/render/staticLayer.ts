@@ -467,7 +467,8 @@ function paintAnimatedBackground(ctx: Ctx, w: number, h: number, style: StyleSet
   }
   drawAnimated(sctx, sw, sh, preset, t, speed)
   ctx.imageSmoothingEnabled = true
-  ctx.imageSmoothingQuality = 'high'
+  // Soft blobs: a bilinear upscale looks the same as a cubic one and costs ~9x less without a GPU.
+  ctx.imageSmoothingQuality = 'low'
   ctx.drawImage(small, 0, 0, sw, sh, 0, 0, w, h)
 }
 
@@ -518,6 +519,25 @@ export function paintCardLayer(ctx: Ctx, w: number, h: number, spec: CardSpec, g
   if (b.w > 0 && b.h > 0) ctx.drawImage(layer.canvas, 0, 0, b.w, b.h, b.x, b.y, b.w, b.h)
 }
 
+/** Key of the last card paintStillCard painted as vectors, per target. */
+const lastCards = new WeakMap<Ctx, string>()
+
+/**
+ * A pulled-back card. During the zoom transition it moves and shrinks every frame and is painted as
+ * vectors (crisp at every size); for the rest of the pull-back it holds still, and repainting its
+ * large shadow blur every frame is wasted: once the same card comes twice in a row it is drawn
+ * from a cached layer (paintCardLayer with its whole extent), which looks the same.
+ */
+export function paintStillCard(ctx: Ctx, w: number, h: number, spec: CardSpec, geom: CardGeometry, backdrop: Blurred | null): void {
+  const key = JSON.stringify([w, h, spec.style, spec.rect, spec.radius, spec.k, spec.title])
+  if (lastCards.get(ctx) === key) {
+    paintCardLayer(ctx, w, h, spec, geom, backdrop, true)
+    return
+  }
+  lastCards.set(ctx, key)
+  paintCard(ctx, spec, geom, backdrop, { w, h })
+}
+
 /* ---------- background only (pulled-back camera) ---------- */
 
 const backgrounds = new WeakMap<Ctx, CachedLayer>()
@@ -525,7 +545,7 @@ const backgrounds = new WeakMap<Ctx, CachedLayer>()
 /**
  * Paints only the background (no card), cached like paintStaticLayer. Used while the camera
  * pulls back: the card then moves and shrinks every frame, so it is drawn on top with
- * paintCard (vector shapes stay crisp at any size) while the gradient or image is reused.
+ * paintStillCard (vector shapes stay crisp at any size) while the gradient or image is reused.
  * Returns the blurred backdrop a glass border needs (made once), or null.
  */
 export function paintBackgroundLayer(ctx: Ctx, w: number, h: number, style: StyleSettings, image: HTMLImageElement | null, t = 0): Blurred | null {
