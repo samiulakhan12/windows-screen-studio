@@ -535,6 +535,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
               selectedAnnotation={selectedAnnotation}
               onTogglePlay={actions.togglePlay}
               onExitPick={exitPick}
+              scene={scene}
+              selection={selection}
+              onSelect={setSelection}
             />
             <Transport
               clips={project.clips}

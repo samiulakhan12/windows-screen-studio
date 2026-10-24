@@ -8,10 +8,12 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { annotationLanes, dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { timelineGaps, type Gap } from '../../../shared/editor/clips'
+import { dragShapeTimes, fadeLead, isPrivacyKind, itemLanes, revealTime, shapeForPlayhead, shapeLabel } from '../../../shared/editor/shapes'
 import {
   clampScale,
   fitScale,
@@ -29,13 +31,16 @@ import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { formatLevel } from '../../../shared/editor/zoomEdit'
-import type { Annotation, ClickEvent, Clip, ZoomSegment } from '../../../shared/types'
+import { speedAt } from '../../../shared/render/overlays'
+import type { Annotation, ClickEvent, Clip, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
+import { ShapeIcon } from './shapeIcons'
+import './shapes.css'
 import './zoom.css'
 
 export interface TimelineHandle {
@@ -70,8 +75,50 @@ const GUTTER = 10
 /** Grabbable edge width of a segment: never more than a quarter of it, so its middle always moves it. */
 const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 
+const NO_SHAPES: Shape[] = []
+const NO_SPOTLIGHTS: Spotlight[] = []
+
+/** A shape or spotlight as the shapes track shows it. */
+interface TrackItem {
+  type: 'shape' | 'spotlight'
+  id: string
+  start: number
+  end: number
+  label: string
+  icon: Parameters<typeof ShapeIcon>[0]['name']
+  /** Look of its block: annotation shapes, privacy shapes or spotlights. */
+  look: 'mark' | 'privacy' | 'spotlight'
+  /** Seconds it takes to fade in (the playhead is put past it to show the item). */
+  fade: number
+}
+
+function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
+  return [
+    ...shapes.map((s): TrackItem => ({
+      type: 'shape',
+      id: s.id,
+      start: s.start,
+      end: s.end,
+      label: shapeLabel(s.kind),
+      icon: s.kind,
+      look: isPrivacyKind(s.kind) ? 'privacy' : 'mark',
+      fade: fadeLead(s.kind)
+    })),
+    ...spotlights.map((s): TrackItem => ({
+      type: 'spotlight',
+      id: s.id,
+      start: s.start,
+      end: s.end,
+      label: s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight',
+      icon: s.mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region',
+      look: 'spotlight',
+      fade: fadeLead('spotlight')
+    }))
+  ]
+}
+
 /**
- * Source-time timeline: ruler, kept clips with hatched cuts, zoom and text tracks.
+ * Source-time timeline: ruler, kept clips with hatched cuts, zoom, text and shape tracks.
  * Horizontally zoomable (Ctrl+wheel, buttons) and scrollable; only items near the
  * visible window are rendered, and the playhead moves without re-rendering.
  */
@@ -88,6 +135,9 @@ export const Timeline = memo(
     const [win, setWin] = useState<Range>({ start: 0, end: duration })
     const [draftRange, setDraftRange] = useState<Range | null>(null)
     const pendingScroll = useRef<number | null>(null)
+    // Shapes and spotlights come straight from the store: only a change to them re-renders the timeline.
+    const shapes = useSyncExternalStore(store.subscribe, () => store.state.shapes) ?? NO_SHAPES
+    const spotlights = useSyncExternalStore(store.subscribe, () => store.state.spotlights) ?? NO_SPOTLIGHTS
 
     const fit = fitScale(viewport - 2 * GUTTER, duration)
     const px = zoom.fit ? fit : clampScale(zoom.px, fit)
@@ -369,6 +419,41 @@ export const Timeline = memo(
       )
     }
 
+    const onShapeDown = (item: TrackItem) => (e: ReactPointerEvent) => {
+      if (e.button !== 0) return
+      onSelect({ kind: item.type, id: item.id })
+      const mode = dragMode(e)
+      const initial = { start: item.start, end: item.end }
+      const sx = e.clientX
+      const key = `${item.type}-drag:${item.id}`
+      store.beginGesture()
+      track(
+        e,
+        (ev) => {
+          const times = dragShapeTimes(initial, mode, (ev.clientX - sx) / pxRef.current, duration)
+          if (item.type === 'shape') store.update((p) => ({ ...p, shapes: (p.shapes ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
+          else store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
+        },
+        (moved) => {
+          store.endGesture()
+          // A plain click also moves the playhead into the item, so it shows (and can be edited) on the preview.
+          const shown = Math.min(item.end - 0.01, item.start + item.fade + 0.01)
+          if (!moved && (player.time < shown || player.time >= item.end)) player.seek(shown)
+        },
+        3
+      )
+    }
+
+    /** Double-click on the shapes track: an arrow, fully shown at `t` (or as near it as the end allows). */
+    const addShapeAt = (t: number): void => {
+      const p = store.state
+      const speed = speedAt(p.clips, t)
+      const s = shapeForPlayhead('arrow', t, p, null, speed)
+      store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
+      onSelect({ kind: 'shape', id: s.id })
+      player.seek(revealTime(s, t, fadeLead('arrow', speed)))
+    }
+
     // A double-click on empty track space is two quick pointerdowns at the same spot.
     // Detected here, before the first click's scrub, rather than with dblclick.
     const lastDown = useRef({ at: 0, x: 0, kind: '' })
@@ -379,13 +464,14 @@ export const Timeline = memo(
       return second
     }
 
-    const onBackgroundDown = (kind: 'zoom' | 'text') => (e: ReactPointerEvent) => {
+    const onBackgroundDown = (kind: 'zoom' | 'text' | 'shape') => (e: ReactPointerEvent) => {
       if (e.button !== 0) return
       if (isSecondClick(e, kind)) {
         e.preventDefault()
         const t = timeAt(e.clientX)
         if (kind === 'zoom') props.onAddZoom(t)
-        else props.onAddText(t)
+        else if (kind === 'text') props.onAddText(t)
+        else addShapeAt(t)
         return
       }
       onSelect(null)
@@ -410,6 +496,10 @@ export const Timeline = memo(
     }, [zooms, timings])
     const lanes = useMemo(() => annotationLanes(annotations), [annotations])
     const visibleAnnotations = annotations.filter((a) => overlaps(a, win) || a.id === selId)
+    const items = useMemo(() => trackItems(shapes, spotlights), [shapes, spotlights])
+    const itemLaneMap = useMemo(() => itemLanes(items), [items])
+    const visibleItems = items.filter((it) => overlaps(it, win) || it.id === selId)
+    const itemLaneH = 100 / itemLaneMap.count
     const visibleClicks = clicks.filter((c) => c.t >= win.start && c.t <= win.end)
     const kept = keptBounds(clips)
     const laneH = 100 / lanes.count
@@ -443,6 +533,9 @@ export const Timeline = memo(
             </div>
             <div className="tl-label" title="Text">
               <EditorIcon name="text" size={16} />
+            </div>
+            <div className="tl-label" title="Shapes, blur and spotlights">
+              <EditorIcon name="shapes" size={16} />
             </div>
           </div>
           <div className="tl-scroller" ref={scrollerRef} data-testid="timeline-scroller">
@@ -580,6 +673,36 @@ export const Timeline = memo(
                   )
                 })}
                 {annotations.length === 0 && <span className="tl-empty">Double-click to add text, or press T</span>}
+              </div>
+
+              <div className="tl-track shape-track" onPointerDown={onBackgroundDown('shape')} title="Double-click to add an arrow" data-testid="shape-track">
+                {visibleItems.map((it) => {
+                  const w = (it.end - it.start) * px
+                  const lane = itemLaneMap.lanes.get(it.id) ?? 0
+                  return (
+                    <div
+                      key={it.id}
+                      data-shape={it.type === 'shape' ? it.id : undefined}
+                      data-spotlight={it.type === 'spotlight' ? it.id : undefined}
+                      data-start={it.start}
+                      data-end={it.end}
+                      className={`seg shape-seg ${it.look} ${selId === it.id ? 'selected' : ''}`}
+                      style={{ left: it.start * px, width: w, top: `${lane * itemLaneH}%`, height: `${itemLaneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
+                      onPointerDown={onShapeDown(it)}
+                      title={`${it.label} · ${formatTime(it.start)} – ${formatTime(it.end)}`}
+                    >
+                      <span className="edge left" />
+                      {w > 22 && itemLaneMap.count <= 2 && (
+                        <span className="seg-icon">
+                          <ShapeIcon name={it.icon} size={13} />
+                        </span>
+                      )}
+                      {w > 64 && <span className="seg-label">{it.label}</span>}
+                      <span className="edge right" />
+                    </div>
+                  )
+                })}
+                {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
               </div>
 
               <div className="playhead" ref={playheadRef} onPointerDown={(e) => e.button === 0 && scrub(e)} />
