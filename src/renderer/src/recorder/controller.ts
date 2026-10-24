@@ -33,6 +33,8 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
   const { token } = plan
   // E.g. a window recorded without cursor effects: say so before recording, not after.
   if (plan.notice) callbacks.onWarning?.(plan.notice)
+  // A hotkey another app owns: the floating bar still works.
+  plan.hotkeyProblems?.forEach((p) => callbacks.onWarning?.(p))
   const session = new RecordingSession(api, plan, options)
   const status = (s: RecorderStatusUpdate): Promise<void> => api.setRecordingStatus(token, s).catch(() => undefined)
   const flushWarnings = (): void => {

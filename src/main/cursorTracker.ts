@@ -17,7 +17,7 @@ interface HookKeyEvent extends KeyInput {
 
 export type HookModule = {
   uIOhook: {
-    on(event: 'mousedown' | 'mousemove', cb: (e: HookMouseEvent) => void): void
+    on(event: 'mousedown' | 'mousemove' | 'wheel', cb: (e: HookMouseEvent) => void): void
     on(event: 'keydown' | 'keyup', cb: (e: HookKeyEvent) => void): void
     removeAllListeners(event?: string): void
     start(): void
@@ -40,7 +40,9 @@ function loadHook(): HookModule | null {
   return hook
 }
 
-const HOOK_EVENTS = ['mousedown', 'mousemove', 'keydown', 'keyup']
+const HOOK_EVENTS = ['mousedown', 'mousemove', 'wheel', 'keydown', 'keyup']
+/** How often the cursor is checked for movement when only auto-pause needs to know (ms). */
+const ACTIVITY_POLL_MS = 250
 const BUTTONS: Record<number, ClickEvent['button']> = { 1: 'left', 2: 'right', 3: 'middle' }
 
 /**
@@ -66,11 +68,19 @@ export interface TrackerOptions {
    * keystrokes are recorded.
    */
   global?: boolean
-  /** Record shortcut keystrokes for the keystroke overlay. */
+  /**
+   * Record keyboard activity: shortcut keystrokes for the keystroke overlay, and when typing
+   * happened (typing bursts for auto zoom). Which keys were typed is never recorded.
+   */
   captureKeys: boolean
+  /**
+   * Called on any mouse or keyboard input (auto-pause), also while paused. Nothing is
+   * stored for it. Keep it cheap: it runs for every input event.
+   */
+  onActivity?: () => void
   /** True for points over the app's own windows (the toolbar): such clicks are dropped. */
   isOwnPoint: (p: Point) => boolean
-  /** Shortcut labels never recorded (the app's own stop shortcut). */
+  /** Shortcut labels never recorded (the app's own hotkeys). */
   ignoreKeys: string[]
 }
 
@@ -94,13 +104,25 @@ export class CursorTracker {
   private moves: { tick: number; x: number; y: number }[] = []
   private clicks: { tick: number; x: number; y: number; button: ClickEvent['button'] }[] = []
   private keys: { tick: number; label: string }[] = []
+  /** Hook ticks of typing key presses (only the instants, never the keys). */
+  private typing: number[] = []
+  /** "Zoom here" hotkey presses, epoch ms. */
+  private marks: number[] = []
   private keyFilter: KeystrokeFilter | null = null
+  /** Where the cursor was at the last poll (movement means activity). */
+  private seen: { x: number; y: number } | null = null
+  private activityTimer: NodeJS.Timeout | null = null
   /** Time of the last poll that found the cursor where the last stored sample is. */
   private stillSince: number | null = null
   private hookStarted = false
 
   get active(): boolean {
     return this.opts !== null
+  }
+
+  /** The global input hook is running (without it keyboard input cannot be seen). */
+  get hookRunning(): boolean {
+    return this.hookStarted
   }
 
   /** Cursor positions and clicks are recorded (a display, or global coordinates for a window). */
@@ -117,15 +139,39 @@ export class CursorTracker {
     this.moves = []
     this.clicks = []
     this.keys = []
+    this.typing = []
+    this.marks = []
     this.keyFilter = null
     this.stillSince = null
+    this.seen = null
     const pointer = CursorTracker.tracksPointer(opts)
     if (pointer) {
       const p = screen.getCursorScreenPoint()
       this.samples.push({ at: Date.now(), x: p.x, y: p.y })
+      this.seen = { x: p.x, y: p.y }
       if (this.pollCursor) this.timer = setInterval(() => this.poll(), 1000 / 60)
+    } else if (opts.onActivity && this.pollCursor) {
+      // Nothing to record, but auto-pause needs to see the mouse move: a slow check is enough.
+      this.seen = screen.getCursorScreenPoint()
+      this.activityTimer = setInterval(() => this.checkMoved(), ACTIVITY_POLL_MS)
     }
-    if (pointer || opts.captureKeys) this.startHook(opts)
+    if (pointer || opts.captureKeys || opts.onActivity) this.startHook(opts)
+  }
+
+  /** Remembers a "zoom here" hotkey press (epoch ms); pause-adjusted when the track is built. */
+  mark(at = Date.now()): void {
+    if (this.opts) this.marks.push(at)
+  }
+
+  /** Reads the cursor position; a change since the last check is reported as activity. */
+  private checkMoved(): { x: number; y: number } {
+    const c = screen.getCursorScreenPoint()
+    const s = this.seen
+    if (!s || s.x !== c.x || s.y !== c.y) {
+      this.seen = { x: c.x, y: c.y }
+      if (s) this.opts?.onActivity?.()
+    }
+    return c
   }
 
   /**
@@ -135,8 +181,12 @@ export class CursorTracker {
    * the samples is exactly what polling every frame would have given.
    */
   private poll(at = Date.now()): void {
-    if (this.paused) return
-    const c = screen.getCursorScreenPoint()
+    if (this.paused) {
+      // Auto-pause resumes on the next movement; otherwise a paused recording reads nothing.
+      if (this.opts?.onActivity) this.checkMoved()
+      return
+    }
+    const c = this.opts?.onActivity ? this.checkMoved() : screen.getCursorScreenPoint()
     const last = this.samples[this.samples.length - 1]
     if (last && last.x === c.x && last.y === c.y) {
       this.stillSince = at
@@ -159,38 +209,52 @@ export class CursorTracker {
     const { uIOhook } = mod
     for (const e of HOOK_EVENTS) uIOhook.removeAllListeners(e)
     const observe = (time: number): number => this.clock.observe(time, Date.now())
-    if (CursorTracker.tracksPointer(opts)) {
-      // Hook events arrive in delayed batches, so pauses are applied later by their
-      // precise times (buildCursorTrack) rather than by the state at delivery.
+    const activity = opts.onActivity ?? null
+    const pointer = CursorTracker.tracksPointer(opts)
+    // Hook events arrive in delayed batches, so pauses are applied later by their
+    // precise times (buildCursorTrack) rather than by the state at delivery.
+    if (pointer || activity) {
       uIOhook.on('mousedown', (e) => {
+        activity?.()
+        if (!pointer) return
         const tick = observe(e.time)
         const p = hookPointToDip(e)
         if (opts.isOwnPoint(p)) return
         this.clicks.push({ tick, x: p.x, y: p.y, button: BUTTONS[e.button as number] ?? 'left' })
       })
-      if (!this.pollCursor) {
-        uIOhook.on('mousemove', (e) => {
-          const tick = observe(e.time)
-          const p = hookPointToDip(e)
-          const last = this.moves[this.moves.length - 1]
-          // At most one stored position per 8 ms, always the latest one.
-          if (last && tick - last.tick < 8) Object.assign(last, { x: p.x, y: p.y })
-          else this.moves.push({ tick, x: p.x, y: p.y })
-        })
-      }
     }
+    // Where the cursor is polled (Windows), motion events are not needed: polling sees movement.
+    if (!this.pollCursor && (pointer || activity)) {
+      uIOhook.on('mousemove', (e) => {
+        activity?.()
+        if (!pointer) return
+        const tick = observe(e.time)
+        const p = hookPointToDip(e)
+        const last = this.moves[this.moves.length - 1]
+        // At most one stored position per 8 ms, always the latest one.
+        if (last && tick - last.tick < 8) Object.assign(last, { x: p.x, y: p.y })
+        else this.moves.push({ tick, x: p.x, y: p.y })
+      })
+    }
+    if (activity) uIOhook.on('wheel', () => activity())
     if (opts.captureKeys) {
       const filter = new KeystrokeFilter(new Set(opts.ignoreKeys))
       this.keyFilter = filter
       uIOhook.on('keydown', (e) => {
+        activity?.()
         const tick = observe(e.time)
-        const label = filter.keydown(e, tick)
+        const { label, typing } = filter.classify(e, tick)
         if (label) this.keys.push({ tick, label })
+        // Backspace, Enter, … are both: a keystroke to show and part of typing.
+        if (typing) this.typing.push(tick)
       })
       uIOhook.on('keyup', (e) => {
         observe(e.time)
         filter.keyup(e)
       })
+    } else if (activity) {
+      // Keyboard activity keeps a recording from auto-pausing; nothing about it is stored.
+      uIOhook.on('keydown', () => activity())
     }
     try {
       uIOhook.start()
@@ -219,6 +283,8 @@ export class CursorTracker {
   private halt(): void {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
+    if (this.activityTimer) clearInterval(this.activityTimer)
+    this.activityTimer = null
     if (this.hookStarted) {
       const mod = this.loadHookModule()
       if (mod) {
@@ -243,6 +309,8 @@ export class CursorTracker {
       samples: [...this.samples, ...this.moves.map((m) => ({ at: at(m.tick), x: m.x, y: m.y }))].sort((a, b) => a.at - b.at),
       clicks: this.clicks.map((c) => ({ at: at(c.tick), x: c.x, y: c.y, button: c.button })),
       keys: this.keys.map((k) => ({ at: at(k.tick), label: k.label })),
+      typing: this.typing.map(at),
+      marks: [...this.marks],
       bounds: display ? { ...display.bounds } : null,
       scale: display?.scaleFactor ?? 1
     }

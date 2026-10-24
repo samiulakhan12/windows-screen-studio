@@ -1,4 +1,6 @@
 import type { CaptureSource, NormRect, RecordingStatus } from '../types'
+import type { HotkeyAction, HotkeyCheck } from '../recording/hotkeys'
+import type { AppSettings, RecordingSettingsPatch } from '../recording/settings'
 
 /** The media files a recording streams to disk while it runs. */
 export type TrackKind = 'screen' | 'webcam' | 'audio'
@@ -8,7 +10,10 @@ export interface RecordingRequest {
   /** Part of the display to keep (normalised to the display); screens only. */
   region: NormRect | null
   systemAudio: boolean
-  /** Record shortcut-style keystrokes (never plain typing) for the keystroke overlay. */
+  /**
+   * Record keyboard activity: shortcut-style keystrokes for the keystroke overlay and when
+   * typing happened (for auto zoom). Which keys were typed is never recorded.
+   */
   captureKeys: boolean
 }
 
@@ -19,6 +24,10 @@ export interface CapturePlan {
   method: 'native' | 'chromium'
   /** False when another app already owns the stop shortcut. */
   stopShortcut: boolean
+  /** Screen capture frame rate (from the app settings). */
+  fps: 30 | 60
+  /** Hotkeys that could not be registered (another app owns them), as messages to show. */
+  hotkeyProblems?: string[]
   /** Something the user should know about this recording (e.g. a window recorded without cursor effects). */
   notice?: string
 }
@@ -93,6 +102,14 @@ export interface ToolbarStatus extends RecordingStatus {
   starting?: boolean
   /** False when the stop shortcut could not be registered. */
   stopShortcut?: boolean
+  /** Paused by auto-pause (no input for a while); the next input resumes. */
+  idle?: boolean
+  /** Labels of the hotkeys that work during this recording ("Ctrl + Shift + 2"). */
+  hotkeys?: Partial<Record<HotkeyAction, string>>
+  /** Hotkeys that could not be registered, as messages. */
+  hotkeyProblems?: string[]
+  /** "Zoom here" marks made so far (the toolbar acknowledges each one). */
+  marks?: number
 }
 
 export type RecorderCommand = 'stop' | 'pause' | 'resume' | 'cancel'
@@ -123,6 +140,15 @@ export interface RecordingApi {
   /** Stops the conversion in progress; the recording stays under Unfinished recordings. */
   finishProcessingLater(): Promise<void>
   openPrivacySettings(kind: 'microphone' | 'camera'): Promise<void>
+  /** App-wide settings (recording options chosen on Home). */
+  getAppSettings(): Promise<AppSettings>
+  /** Saves a change to the recording options and returns the validated settings. */
+  updateRecordingSettings(patch: RecordingSettingsPatch): Promise<AppSettings>
+  /**
+   * Whether `accelerator` can be the hotkey for `action`: valid, not used by another of the
+   * app's hotkeys, and (when no recording runs) not already taken by another app.
+   */
+  checkHotkey(action: HotkeyAction, accelerator: string): Promise<HotkeyCheck>
   onRecorderCommand(cb: (command: RecorderCommand) => void): () => void
   /** Problems the main process noticed during a recording (e.g. the recorded screen went away). */
   onRecorderWarning(cb: (message: string) => void): () => void

@@ -6,6 +6,7 @@
 #![cfg_attr(not(windows), allow(dead_code))]
 
 mod cli;
+mod desktop;
 mod input;
 mod interrupt;
 mod output;
@@ -46,7 +47,7 @@ fn main() {
         }
         Ok(command) => run(command),
         Err(message) => {
-            if matches!(args.first().map(String::as_str), Some("record" | "selftest" | "watch-window")) {
+            if matches!(args.first().map(String::as_str), Some("record" | "selftest" | "watch-window" | "desktop-icons")) {
                 output::emit(&protocol::event_error(&message));
             }
             output::log(&message);
@@ -77,7 +78,7 @@ fn run(command: cli::Cli) -> i32 {
                     .finish(),
             );
         }
-        cli::Cli::Record(_) | cli::Cli::Selftest(_) | cli::Cli::WatchWindow(_) => {
+        cli::Cli::Record(_) | cli::Cli::Selftest(_) | cli::Cli::WatchWindow(_) | cli::Cli::DesktopIcons(_) => {
             output::emit(&protocol::event_error(message));
         }
         _ => {}

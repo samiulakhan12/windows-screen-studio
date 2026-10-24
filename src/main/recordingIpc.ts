@@ -31,13 +31,27 @@ import type {
 } from '../shared/api/recording'
 import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
+import {
+  HOTKEY_ACTIONS,
+  HOTKEY_NAMES,
+  hotkeyLabel,
+  normalizeHotkey,
+  validateHotkey,
+  type HotkeyAction,
+  type HotkeyCheck,
+  type Hotkeys
+} from '../shared/recording/hotkeys'
+import { DEFAULT_RECORDING_SETTINGS, type AppSettings, type RecordingSettings, type RecordingSettingsPatch } from '../shared/recording/settings'
 import type { CaptureSource, NormRect } from '../shared/types'
+import { appSettings } from './appSettings'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
 import * as nativeModule from './nativeCapture'
 import type { NativeEndedInfo } from './nativeCapture'
 import * as projects from './projects'
+import { DesktopIcons } from './recording/desktopIcons'
 import { EmptyRecordingError, processRecording, RecordingError } from './recording/finalize'
+import { IdleDetector } from './recording/idleDetector'
 import { defaultStartTimeoutMs, nativeAvailable, startNativeVideo, type NativeCaptureApi } from './recording/nativeVideo'
 import { pointInRect, regionToRect, sanitizeRegion } from './recording/placement'
 import { isCancelled, killAllFfmpeg } from './recording/proxyRunner'
@@ -57,9 +71,6 @@ import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recor
 import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
 import { getMainWindow, loadRoute } from './windows'
 
-const STOP_SHORTCUT = 'CommandOrControl+Shift+2'
-/** How the stop shortcut appears as a keystroke label (never recorded). */
-const STOP_SHORTCUT_LABEL = 'Ctrl + Shift + 2'
 const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio']
 /** Source thumbnails on Home: small JPEGs (cheap to encode and to send over IPC). */
 const THUMBNAIL = { width: 384, height: 216, quality: 75 }
@@ -68,10 +79,32 @@ const tracker = new CursorTracker()
 let active: ActiveRecording | null = null
 let activeDisplay: Display | null = null
 let captureKeys = true
+/** Recording options (app settings) of the recording in progress, read when it was prepared. */
+let options: RecordingSettings = DEFAULT_RECORDING_SETTINGS
 /** The source the next getDisplayMedia() call is granted. */
 let grant: { id: string; name: string; systemAudio: boolean } | null = null
 let stopShortcut = false
+/** Accelerators registered for the recording in progress, by action. */
+let registered: Partial<Hotkeys> = {}
+/** Messages about hotkeys that could not be registered. */
+let hotkeyProblems: string[] = []
+/** Auto-pause: watches for input while recording; null when off. */
+let idle: IdleDetector | null = null
+/** The recorder was told to pause because of inactivity (cleared when it records again). */
+let autoPaused = false
+let marks = 0
 let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
+const icons = new DesktopIcons({
+  platform: process.platform,
+  run: (action) => nativeModule.desktopIcons(action),
+  runSync: (action) => nativeModule.desktopIconsSync(action),
+  state: {
+    get desktopIconsHidden() {
+      return appSettings().desktopIconsHidden
+    },
+    setDesktopIconsHidden: (hidden) => appSettings().setDesktopIconsHidden(hidden)
+  }
+})
 /** Recordings whose proxies are being built (they have no project.json yet). */
 const processing = new Set<string>()
 /** Recordings whose processing the user postponed ("Finish later"). */
@@ -146,7 +179,9 @@ function startTracker(s: ActiveRecording): void {
     global: s.windowId !== null && (s.manifest.method === 'native' || s.watchesWindow),
     captureKeys,
     isOwnPoint,
-    ignoreKeys: [STOP_SHORTCUT_LABEL]
+    // The app's own hotkeys are never recorded as keystrokes.
+    ignoreKeys: Object.values(registered).map((a) => hotkeyLabel(a)),
+    ...(options.autoPause ? { onActivity: () => idle?.activity() } : {})
   })
 }
 
@@ -158,20 +193,121 @@ async function windowTrackMapping(s: ActiveRecording, raw: RawTrack): Promise<Wi
   return mapping
 }
 
-function registerStopShortcut(): boolean {
-  globalShortcut.unregister(STOP_SHORTCUT)
-  try {
-    const ok = globalShortcut.register(STOP_SHORTCUT, () => forwardCommand('stop'))
-    if (!ok) console.warn(`${STOP_SHORTCUT} is in use by another application`)
-    return ok
-  } catch (err) {
-    console.warn('Could not register the stop shortcut:', err)
-    return false
+/** Pause/resume hotkey: resumes a paused recording (also one paused by auto-pause), else pauses. */
+function togglePause(): void {
+  const s = active
+  if (!s) return
+  if (s.phase === 'paused') forwardCommand('resume')
+  else if (s.phase === 'recording') forwardCommand('pause')
+}
+
+/** "Zoom here" hotkey: remembers the instant for auto zoom and lets the toolbar acknowledge it. */
+function addMark(): void {
+  if (active?.phase !== 'recording') return
+  tracker.mark()
+  marks++
+  lastStatus = { ...lastStatus, marks }
+  sendToolbarStatus(lastStatus)
+}
+
+const HOTKEY_HANDLERS: Record<HotkeyAction, () => void> = {
+  stop: () => forwardCommand('stop'),
+  pause: togglePause,
+  mark: addMark
+}
+
+function unregisterHotkeys(): void {
+  for (const accelerator of Object.values(registered)) {
+    try {
+      globalShortcut.unregister(accelerator)
+    } catch {
+      // Not registered.
+    }
+  }
+  registered = {}
+}
+
+/**
+ * Registers the recording hotkeys for the recording being prepared. Returns a message for each
+ * one another app already owns (the toolbar buttons still work).
+ */
+function registerHotkeys(keys: Hotkeys): string[] {
+  unregisterHotkeys()
+  const problems: string[] = []
+  for (const action of HOTKEY_ACTIONS) {
+    const accelerator = keys[action]
+    if (!accelerator) continue
+    const what = `${hotkeyLabel(accelerator)} (${HOTKEY_NAMES[action].toLowerCase()})`
+    try {
+      if (globalShortcut.register(accelerator, HOTKEY_HANDLERS[action])) registered[action] = accelerator
+      else problems.push(`${what} is used by another app, so it does not work during this recording.`)
+    } catch (err) {
+      console.warn(`Could not register ${accelerator}:`, err)
+      problems.push(`${what} cannot be used as a hotkey; pick another one on the home screen.`)
+    }
+  }
+  return problems
+}
+
+/** Labels of the hotkeys that work during the recording, for the toolbar. */
+function hotkeyLabels(): Partial<Record<HotkeyAction, string>> {
+  const out: Partial<Record<HotkeyAction, string>> = {}
+  for (const action of HOTKEY_ACTIONS) {
+    const accelerator = registered[action]
+    if (accelerator) out[action] = hotkeyLabel(accelerator)
+  }
+  return out
+}
+
+function toolbarStatus(update: Pick<ToolbarStatus, 'state' | 'elapsed' | 'starting'>): ToolbarStatus {
+  return {
+    state: update.state,
+    elapsed: update.elapsed,
+    stopShortcut,
+    hotkeys: hotkeyLabels(),
+    ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
+    ...(marks ? { marks } : {}),
+    ...(update.starting ? { starting: true } : {}),
+    ...(update.state === 'paused' && autoPaused ? { idle: true } : {})
   }
 }
 
+/** Auto-pause for the recording that just started, when it is switched on. */
+function startIdleDetection(): void {
+  stopIdleDetection()
+  if (!options.autoPause) return
+  if (!tracker.hookRunning) {
+    // Without the input hook typing cannot be seen: auto-pause would stop a recording mid-sentence.
+    mainContents()?.send('recorder:warning', 'Auto-pause was off for this recording: mouse and keyboard input could not be watched on this PC.')
+    return
+  }
+  idle = new IdleDetector(options.idleSeconds * 1000, {
+    onIdle: () => {
+      if (active?.phase !== 'recording') return
+      autoPaused = true
+      forwardCommand('pause')
+    },
+    onActive: () => {
+      // Sent even if the pause has not been confirmed yet: the recorder handles commands in order.
+      if (autoPaused) forwardCommand('resume')
+    }
+  })
+  idle.start()
+}
+
+function stopIdleDetection(): void {
+  idle?.stop()
+  idle = null
+  autoPaused = false
+}
+
 function endRecordingUi(): void {
-  globalShortcut.unregister(STOP_SHORTCUT)
+  unregisterHotkeys()
+  stopIdleDetection()
+  hotkeyProblems = []
+  marks = 0
+  // The desktop icons come back as soon as the recording ends (stop, cancel or crash).
+  void icons.restore()
   lastStatus = { state: 'idle', elapsed: 0 }
   // Rendered empty while hidden, so the next countdown never flashes stale controls.
   sendToolbarStatus(lastStatus)
@@ -313,6 +449,7 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   // Warm the encoder probe while recording so processing can start at once.
   void detectH264Encoders()
 
+  const settings = readRecordingSettings()
   const { id, dir } = await projects.createProjectDir().catch((err: unknown) => {
     watch?.watch.kill()
     throw new RecordingError(friendlyMessage(err, projects.projectsRoot()))
@@ -331,6 +468,7 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
     height: 0,
     hasAudio: false,
     hasWebcam: false,
+    fps: settings.fps,
     webcamFps: 30,
     webcamOffset: 0,
     audioOffset: 0,
@@ -348,11 +486,33 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   active = s
   activeDisplay = source.display
   captureKeys = request.captureKeys
+  options = settings
   grant = { id: request.sourceId, name: source.name, systemAudio: request.systemAudio }
   prepareToolbar(source.display, region && source.display ? regionToRect(region, source.display.bounds) : null)
-  stopShortcut = registerStopShortcut()
-  lastStatus = { state: 'idle', elapsed: 0, stopShortcut }
-  return { token: s.token, method: manifest.method, stopShortcut, ...(notice ? { notice } : {}) }
+  marks = 0
+  hotkeyProblems = registerHotkeys(settings.hotkeys)
+  stopShortcut = !settings.hotkeys.stop || !!registered.stop
+  lastStatus = toolbarStatus({ state: 'idle', elapsed: 0 })
+  // Hidden during the countdown, so they are gone when capture starts.
+  if (settings.hideDesktopIcons) void icons.hide()
+  return {
+    token: s.token,
+    method: manifest.method,
+    stopShortcut,
+    fps: settings.fps,
+    ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
+    ...(notice ? { notice } : {})
+  }
+}
+
+/** The recording options to use now; a broken settings file never stops a recording. */
+function readRecordingSettings(): RecordingSettings {
+  try {
+    return appSettings().recording
+  } catch (err) {
+    console.warn('Could not read the app settings:', err)
+    return structuredClone(DEFAULT_RECORDING_SETTINGS)
+  }
 }
 
 /** Removes what a helper that failed to start left behind (its partial video and encoder checks). */
@@ -373,7 +533,7 @@ async function startNative(token: string): Promise<NativeStartResult> {
   const output = path.join(s.dir, projects.RAW.native)
   const starting = startNativeVideo(
     nativeCapture(),
-    s.windowId !== null ? { windowId: s.windowId, output, fps: 60 } : { displayId: String(activeDisplay!.id), output, fps: 60 },
+    s.windowId !== null ? { windowId: s.windowId, output, fps: s.manifest.fps ?? 60 } : { displayId: String(activeDisplay!.id), output, fps: s.manifest.fps ?? 60 },
     // The helper's own start budget (monitor lookup, encoder setup, first frame) plus a margin.
     defaultStartTimeoutMs(),
     abort.signal
@@ -433,6 +593,7 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker(s)
+  startIdleDetection()
   // A failed write must not end a recording that is already running: the manifest in
   // memory is authoritative and is written again on stop.
   await projects.writeManifest(m).catch((err) => console.error('Could not save the recording state:', err))
@@ -442,7 +603,12 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
 function setStatus(token: string, status: RecorderStatusUpdate): void {
   const s = active
   if (!s || s.token !== token) return
-  lastStatus = { state: status.state, elapsed: status.elapsed, stopShortcut, ...(status.starting ? { starting: true } : {}) }
+  if (status.state === 'recording') {
+    autoPaused = false
+    // Watching again after a manual pause.
+    if (idle && !idle.watching) idle.start()
+  }
+  lastStatus = toolbarStatus(status)
   switch (status.state) {
     case 'countdown':
     case 'recording': {
@@ -463,6 +629,8 @@ function setStatus(token: string, status: RecorderStatusUpdate): void {
         tracker.setPaused(true)
         s.phase = 'paused'
       }
+      // A pause by hand stays until resumed by hand; an automatic one ends with the next input.
+      if (!autoPaused) idle?.stop()
       break
     case 'processing':
     case 'idle':
@@ -648,6 +816,39 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('recording:privacySettings', async (_e, kind: 'microphone' | 'camera') => {
     if (process.platform === 'win32') await shell.openExternal(`ms-settings:privacy-${kind === 'camera' ? 'webcam' : 'microphone'}`)
   })
+  ipcMain.handle('settings:get', (): AppSettings => appSettings().get())
+  ipcMain.handle('settings:updateRecording', (_e, patch: RecordingSettingsPatch): AppSettings => appSettings().updateRecording(patch))
+  ipcMain.handle('settings:checkHotkey', (_e, action: HotkeyAction, accelerator: string) => checkHotkey(action, accelerator))
+
+  // Desktop icons that a crashed session left hidden come back now.
+  void icons.restore()
+}
+
+/**
+ * Whether `accelerator` can be the hotkey for `action`: valid, distinct from the other recording
+ * hotkeys and, outside a recording, free (registered and released at once to find out).
+ */
+function checkHotkey(action: HotkeyAction, accelerator: string): HotkeyCheck {
+  if (!HOTKEY_ACTIONS.includes(action)) return { ok: false, message: 'Unknown hotkey.' }
+  const check = validateHotkey(accelerator)
+  if (!check.ok) return check
+  const current = appSettings().recording.hotkeys
+  for (const other of HOTKEY_ACTIONS) {
+    if (other !== action && normalizeHotkey(current[other]) === check.accelerator) {
+      return { ok: false, message: `${hotkeyLabel(check.accelerator)} is already the hotkey for ${HOTKEY_NAMES[other]}.` }
+    }
+  }
+  // During a recording the app holds its own hotkeys; the next recording reports a clash.
+  if (active || normalizeHotkey(current[action]) === check.accelerator) return check
+  const label = hotkeyLabel(check.accelerator)
+  try {
+    if (!globalShortcut.register(check.accelerator, () => undefined)) return { ok: false, message: `${label} is already used by another app.` }
+    globalShortcut.unregister(check.accelerator)
+    return check
+  } catch (err) {
+    console.warn(`Could not test ${check.accelerator}:`, err)
+    return { ok: false, message: `${label} cannot be used as a hotkey.` }
+  }
 }
 
 /** Recovery and quit protection for the window that runs the recorder. */
@@ -714,6 +915,8 @@ export function closeRecordingWindows(): void {
 
 export function disposeRecording(): void {
   globalShortcut.unregisterAll()
+  stopIdleDetection()
+  icons.restoreSync()
   tracker.stop()
   active?.killNative()
   active?.killWatch()

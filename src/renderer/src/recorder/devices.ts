@@ -62,6 +62,43 @@ export function levelFromSamples(samples: Float32Array): number {
 }
 
 /**
+ * Shows camera `deviceId` live in `video` (mirrored by CSS) at a small size and frame rate,
+ * so the preview costs little; `onLive` is called once frames arrive. Returns a stop function
+ * that releases the camera at once (before a recording opens it at full size).
+ */
+export function previewCamera(deviceId: string, video: HTMLVideoElement, onLive: () => void, onError: (err: RecorderError) => void): () => void {
+  let stopped = false
+  let stream: MediaStream | null = null
+  const live = (): void => {
+    if (!stopped) onLive()
+  }
+  void (async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId }, width: { ideal: 480 }, height: { ideal: 270 }, frameRate: { ideal: 30, max: 30 } }
+      })
+      if (stopped) {
+        s.getTracks().forEach((t) => t.stop())
+        return
+      }
+      stream = s
+      video.srcObject = s
+      video.addEventListener('loadeddata', live, { once: true })
+      await video.play().catch(() => undefined)
+    } catch (err) {
+      if (!stopped) onError(friendlyError(err, 'camera'))
+    }
+  })()
+  return () => {
+    stopped = true
+    video.removeEventListener('loadeddata', live)
+    stream?.getTracks().forEach((t) => t.stop())
+    stream = null
+    video.srcObject = null
+  }
+}
+
+/**
  * Shows the live input level of microphone `deviceId` by scaling `bar` (no React
  * re-render per frame). Runs one AnalyserNode and a requestAnimationFrame loop, which
  * the browser pauses while the window is hidden. Returns a stop function.

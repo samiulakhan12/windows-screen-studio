@@ -30,7 +30,7 @@ async function installFakeHelper(app, { fail = false, startDelayMs = 0, endAfter
         // prettier-ignore
         const proc = spawn('ffmpeg', [
           '-hide_banner', '-loglevel', 'error', '-y',
-          '-f', 'x11grab', '-draw_mouse', '0', '-framerate', '60', '-video_size', '1920x1080', '-i', process.env.DISPLAY,
+          '-f', 'x11grab', '-draw_mouse', '0', '-framerate', String(opts.fps || 60), '-video_size', '1920x1080', '-i', process.env.DISPLAY,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-progress', 'pipe:1', opts.output
         ], { stdio: ['pipe', 'pipe', 'inherit'] })
         let startedAt = 0
@@ -130,7 +130,7 @@ function assertNoFrozenTail(file, project) {
     const [id] = h.listProjects(home)
     const project = h.readProject(home, id)
     const pdir = path.join(h.projectsRoot(home), id)
-    h.assert(JSON.stringify(project.capture) === JSON.stringify({ method: 'native', cursorInVideo: false, region: null, target: 'screen' }), `capture ${JSON.stringify(project.capture)}`)
+    h.assert(JSON.stringify(project.capture) === JSON.stringify({ method: 'native', cursorInVideo: false, region: null, target: 'screen', fps: 60 }), `capture ${JSON.stringify(project.capture)}`)
     h.assert(project.cursor.show === true, 'the synthetic cursor is on (no OS cursor in the video)')
     h.assert(project.hasAudio && project.width === 1920 && project.height === 1080, 'audio and helper video size')
     const streams = r.probe(path.join(pdir, 'screen.mp4')).streams
@@ -140,6 +140,28 @@ function assertNoFrozenTail(file, project) {
     const shapes = cursor.shapes.map((s) => `${s.shape}@${s.t.toFixed(1)}`)
     h.assert(JSON.stringify(shapes) === JSON.stringify(['text@0.3', 'pointer@1.2']), `cursor shapes ${shapes}`)
     for (const f of ['native.mp4', 'audio.webm', 'recording.json']) h.assert(!fs.existsSync(path.join(pdir, f)), `${f} removed`)
+  })
+
+  await h.run('native capture at 30 fps: the helper is asked for 30 fps and the proxy keeps it', async (ctx) => {
+    const home = h.tempHome('rec-native30')
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    const fake = await installFakeHelper(app)
+    await r.waitForSources(win)
+    await win.evaluate(() => window.api.updateRecordingSettings({ fps: 30 }))
+    const tb = await r.startRecording(app, win)
+    await h.sleep(2500)
+    await tb.click('button.stop')
+    await win.waitForSelector('.editor canvas', { timeout: 120000 })
+    const state = await fake()
+    h.assert(state.options.fps === 30, `helper options ${JSON.stringify(state.options)}`)
+    const [id] = h.listProjects(home)
+    const project = h.readProject(home, id)
+    const file = path.join(h.projectsRoot(home), id, 'screen.mp4')
+    const video = r.probe(file).streams.find((s) => s.codec_type === 'video')
+    h.assert(project.capture.fps === 30 && video.r_frame_rate === '30/1', `30 fps proxy (${video.r_frame_rate}, capture ${JSON.stringify(project.capture)})`)
+    assertNoFrozenTail(file, project)
   })
 
   await h.run('native capture failure falls back to Chromium capture automatically', async (ctx) => {

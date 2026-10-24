@@ -5,7 +5,10 @@ import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
 import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChanged, type InputDevices } from '../recorder/devices'
+import { CameraPreview, Keys, RecordingOptions } from '../recorder/RecordingOptions'
 import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
+import { hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
+import { applyRecordingPatch, DEFAULT_RECORDING_SETTINGS, type RecordingSettings, type RecordingSettingsPatch } from '../../../shared/recording/settings'
 import '../recorder/recorder.css'
 
 const PREFS_KEY = 'recorder-prefs'
@@ -17,14 +20,16 @@ interface Prefs {
   micId: string | null
   cameraId: string | null
   systemAudio: boolean
-  /** Record shortcut keystrokes for the keystroke overlay. */
+  /** Record keyboard activity: shortcuts for the keystroke overlay and when typing happened (never which keys). */
   captureKeys: boolean
   mode: Mode
   /** Last area picked on each screen. */
   regions: Record<string, RegionSelection>
+  /** The recording options section is unfolded. */
+  optionsOpen: boolean
 }
 
-const DEFAULT_PREFS: Prefs = { micId: null, cameraId: null, systemAudio: true, captureKeys: true, mode: 'screen', regions: {} }
+const DEFAULT_PREFS: Prefs = { micId: null, cameraId: null, systemAudio: true, captureKeys: true, mode: 'screen', regions: {}, optionsOpen: false }
 
 function loadPrefs(): Prefs {
   try {
@@ -63,6 +68,9 @@ function formatBytes(n: number): string {
   if (n >= 1e6) return `${Math.round(n / 1e6)} MB`
   return `${Math.max(1, Math.round(n / 1e3))} KB`
 }
+
+/** The recording options (app settings, kept by the main process), from the last visit to Home. */
+let settingsCache: RecordingSettings | null = null
 
 /** Notices from a recording that went straight to the editor, shown when Home is next opened. */
 let carriedNotices: string[] = []
@@ -172,6 +180,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const [selected, setSelected] = useState<string | null>(null)
   const [inputs, setInputs] = useState<InputDevices>({ devices: [], blocked: { microphone: null, camera: null } })
   const [micProblem, setMicProblem] = useState<RecorderError | null>(null)
+  const [camProblem, setCamProblem] = useState<RecorderError | null>(null)
+  const [settings, setSettings] = useState<RecordingSettings>(() => settingsCache ?? DEFAULT_RECORDING_SETTINGS)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [unfinished, setUnfinished] = useState<UnfinishedRecording[]>([])
@@ -187,6 +197,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   // A ref, not state: a double click delivers both clicks before React re-renders.
   const running = useRef(false)
   const meterBar = useRef<HTMLDivElement>(null)
+  /** Frees the camera preview at once (a recording is about to open the camera). */
+  const releaseCamera = useRef<(() => void) | null>(null)
   const pageVisible = usePageVisible()
   const tab = prefs.mode
   const sourceKind: SourceKind = tab === 'window' ? 'window' : 'screen'
@@ -219,6 +231,46 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       console.warn('Could not list media devices:', err)
     }
   }, [])
+
+  useEffect(() => {
+    let live = true
+    window.api.getAppSettings().then(
+      (s) => {
+        settingsCache = s.recording
+        if (live) setSettings(s.recording)
+      },
+      (err: unknown) => console.warn('Could not read the recording options:', err)
+    )
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const updateSettings = useCallback(async (patch: RecordingSettingsPatch): Promise<void> => {
+    // Shown at once; the main process validates and saves it.
+    setSettings((current) => applyRecordingPatch(current, patch))
+    try {
+      const saved = await window.api.updateRecordingSettings(patch)
+      settingsCache = saved.recording
+      setSettings(saved.recording)
+    } catch (err) {
+      setError(toErrorState(err))
+      void window.api.getAppSettings().then((s) => setSettings((settingsCache = s.recording)))
+    }
+  }, [])
+
+  const setHotkey = useCallback(
+    async (action: HotkeyAction, accelerator: string): Promise<string | null> => {
+      if (accelerator) {
+        const check = await window.api.checkHotkey(action, accelerator).catch((err: unknown) => ({ ok: false as const, message: friendlyError(err).message }))
+        if (!check.ok) return check.message
+        accelerator = check.accelerator
+      }
+      await updateSettings({ hotkeys: { [action]: accelerator } })
+      return null
+    },
+    [updateSettings]
+  )
 
   useEffect(() => {
     void refreshLibrary()
@@ -282,6 +334,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
 
   // Live level of the selected microphone, only while Home is idle and on screen.
   const meteredMic = idle && pageVisible && listed && !micMissing ? prefs.micId : null
+  // Camera preview: the same rule; nothing runs for it otherwise.
+  const previewedCam = idle && pageVisible && listed && !camMissing ? prefs.cameraId : null
   useEffect(() => {
     setMicProblem(null)
     const bar = meterBar.current
@@ -305,6 +359,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const record = async (): Promise<void> => {
     if (running.current || !current) return
     running.current = true
+    // The recorder opens the camera at full size in a moment: free the preview's hold on it now.
+    releaseCamera.current?.()
     setError(null)
     setNotices([])
     const warnings: string[] = []
@@ -383,7 +439,9 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   // With a microphone selected the live meter tells whether it can be opened; without
   // one, say why the list may only show unnamed devices.
   const micHint = prefs.micId ? (micMissing ? null : micProblem) : blocked.microphone
-  const camBlocked = camMissing ? null : blocked.camera
+  // A selected camera's preview tells whether it can be opened, like the microphone meter.
+  const camBlocked = prefs.cameraId ? (camMissing ? null : (camProblem ?? blocked.camera)) : blocked.camera
+  const stopKey = settings.hotkeys.stop ? hotkeyLabel(settings.hotkeys.stop) : ''
 
   return (
     <div className="app">
@@ -479,6 +537,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             {camMissing && <span className="device-warning">Your camera is disconnected.</span>}
             {camBlocked && <DeviceProblem problem={camBlocked} isWindows={isWindows} />}
           </label>
+          {previewedCam && <CameraPreview deviceId={previewedCam} release={releaseCamera} onProblem={setCamProblem} />}
           <label className={`toggle ${!isWindows ? 'disabled' : ''}`}>
             <span>
               <Icon name="volume" size={16} /> System audio
@@ -490,18 +549,39 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               onChange={(e) => update({ systemAudio: e.target.checked })}
             />
           </label>
-          <label className="toggle" title="Records shortcuts such as Ctrl + C for the keystroke overlay. What you type is never recorded.">
+          <label
+            className="toggle"
+            title="Records shortcuts such as Ctrl + C for the keystroke overlay, and when you type so auto zoom can follow your typing. Which keys you type is never recorded."
+          >
             <span>
-              <KeyboardIcon /> Capture shortcuts for keystroke overlay
+              <KeyboardIcon /> Record keyboard activity
             </span>
-            <input type="checkbox" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
+            <input type="checkbox" aria-label="Record keyboard activity" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
           </label>
-          <button className="btn record" disabled={!canStart} onClick={() => void record()}>
-            <span className="rec-dot" /> {phase ? PHASE_LABEL[phase] : tab === 'region' && !region ? 'Select an area first' : 'Start recording'}
-          </button>
-          <p className="hint">
-            Stop with the floating bar or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd>.
-          </p>
+          <p className="hint toggle-hint">Shortcuts and when you type, never which keys.</p>
+          <RecordingOptions
+            settings={settings}
+            open={prefs.optionsOpen}
+            onToggle={() => update({ optionsOpen: !prefs.optionsOpen })}
+            onChange={(patch) => void updateSettings(patch)}
+            onHotkey={setHotkey}
+            disabled={!idle}
+            isWindows={isWindows}
+          />
+          <div className="record-footer">
+            <button className="btn record" disabled={!canStart} onClick={() => void record()}>
+              <span className="rec-dot" /> {phase ? PHASE_LABEL[phase] : tab === 'region' && !region ? 'Select an area first' : 'Start recording'}
+            </button>
+            <p className="hint">
+              Stop with the floating bar{stopKey ? (
+                <>
+                  {' '}
+                  or <Keys label={stopKey} />
+                </>
+              ) : null}
+              .
+            </p>
+          </div>
           {notices.length > 0 && (
             <div className="notice">
               {notices.map((n) => (

@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ProcessingProgress } from '../../shared/api/recording'
 import { createProject } from '../../shared/engine/project'
-import { generateAutoZooms } from '../../shared/engine/zoom'
+import { autoZoomsForTrack, zoomSettingsOf } from '../../shared/engine/zoom'
 import type { Project } from '../../shared/types'
 import { detectH264Encoders, type H264Encoder } from '../hwEncoders'
 import * as projects from '../projects'
@@ -14,7 +14,8 @@ import { clampTrack } from './trackMath'
 
 export { EmptyRecordingError, RecordingError }
 
-const SCREEN_FPS = 60
+/** Frame rate of the screen proxy: the recording's own (30 or 60; older manifests: 60). */
+export const screenFps = (manifest: Pick<projects.RecordingManifest, 'fps'>): 30 | 60 => (manifest.fps === 30 ? 30 : 60)
 /** The native video proxy before its separately recorded audio is added. */
 const VIDEO_ONLY = 'screen.video.mp4'
 
@@ -97,6 +98,7 @@ export async function processRecording(
   const webcamIn = path.join(dir, projects.RAW.webcam)
   const hasWebcam = manifest.hasWebcam && (await projects.fileSize(webcamIn)) > 0
 
+  const screenRate = screenFps(manifest)
   const known = manifest.width > 0 && manifest.height > 0
   const region = manifest.sourceKind === 'screen' ? manifest.region : null
   const size = !known
@@ -120,14 +122,14 @@ export async function processRecording(
   try {
     stopIfCancelled()
     progress({ message: 'Optimising video for editing…', progress: expected ? 0 : null })
-    const options: ProxyOptions = { fps: SCREEN_FPS, size, crop: region, progress: true, faststart: !audio }
+    const options: ProxyOptions = { fps: screenRate, size, crop: region, progress: true, faststart: !audio }
     let screenRun: FfmpegRun
     try {
       screenRun = await encodeWithFallback(
         encoders,
         (encoder) => proxyArgs(screenIn, videoOut, !native && manifest.hasAudio, { ...options, encoder }),
         videoOut,
-        report('Optimising video for editing…', 0, videoShare, SCREEN_FPS),
+        report('Optimising video for editing…', 0, videoShare, screenRate),
         signal
       )
     } catch (err) {
@@ -136,11 +138,11 @@ export async function processRecording(
     }
     // The proxy is constant-rate, so its frame count is the real video length, even
     // when the recorder's own clock was wrong (e.g. the captured window closed).
-    const videoSeconds = screenRun.frames ? screenRun.frames / SCREEN_FPS : null
+    const videoSeconds = screenRun.frames ? screenRun.frames / screenRate : null
 
     if (audio) {
       try {
-        await runFfmpegProgress(muxAudioArgs(videoOut, screenOut, audio, videoSeconds), report('Adding audio…', videoShare, audioShare, SCREEN_FPS), signal)
+        await runFfmpegProgress(muxAudioArgs(videoOut, screenOut, audio, videoSeconds), report('Adding audio…', videoShare, audioShare, screenRate), signal)
       } catch (err) {
         if (isCancelled(err)) throw err
         throw friendlyFfmpegError(err, 'audio')
@@ -190,12 +192,20 @@ export async function processRecording(
       hasWebcam: webcamOk,
       hasAudio: native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio,
       webcamOffset: webcamOk ? manifest.webcamOffset : 0,
-      zooms: generateAutoZooms(cursor.clicks, duration),
+      zooms: [],
       cursorValid: cursor.valid,
-      capture: { method: manifest.method, cursorInVideo: !native, region, target: manifest.sourceKind === 'window' ? 'window' : region ? 'area' : 'screen' }
+      capture: {
+        method: manifest.method,
+        cursorInVideo: !native,
+        region,
+        target: manifest.sourceKind === 'window' ? 'window' : region ? 'area' : 'screen',
+        fps: screenRate
+      }
     })
     project.createdAt = manifest.createdAt
     project = await withStyleDefaults(project)
+    // After the saved defaults, which may include how auto zoom works (clicks, typing, marks).
+    project.zooms = autoZoomsForTrack(cursor, duration, zoomSettingsOf(project).auto)
     // A stop that landed between two steps must not leave a project behind.
     stopIfCancelled()
     await projects.writeProject(project)
