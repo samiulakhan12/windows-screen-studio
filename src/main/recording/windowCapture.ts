@@ -86,3 +86,29 @@ export function windowMapping(rects: readonly WindowRectEvent[], toDip: (r: Rect
   if (!poses.some((p) => !p.minimized)) return null
   return { poses, out }
 }
+
+/** The part of Electron's screen API that converts a window's rectangles (injectable for tests). */
+export interface DipScreen {
+  screenToDipRect(window: null, rect: Rect): Rect
+  getDisplayMatching(rect: Rect): { scaleFactor: number }
+}
+
+const roundRect = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) })
+
+/**
+ * The cursor mapping of a window recording (see windowMapping), and the scale factor of the
+ * monitor the window is on, so the drawn cursor is as large as the real one there (null when
+ * unknown). The helper's rectangles are physical pixels: on Windows they are converted to DIP
+ * per monitor, like the cursor positions; on X11 both are the same pixels.
+ */
+export function windowCursorMapping(
+  rects: readonly WindowRectEvent[],
+  video: Size,
+  screen: DipScreen,
+  platform: NodeJS.Platform = process.platform
+): { mapping: WindowMapping | null; scale: number | null } {
+  const toDip = platform === 'win32' ? (r: Rect): Rect => screen.screenToDipRect(null, r) : (r: Rect): Rect => r
+  const mapping = windowMapping(rects, toDip, video)
+  const shown = mapping?.poses.find((p) => !p.minimized)
+  return { mapping, scale: shown ? screen.getDisplayMatching(roundRect(shown.dip)).scaleFactor : null }
+}

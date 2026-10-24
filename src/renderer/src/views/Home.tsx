@@ -78,13 +78,18 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 /** What window recordings get on this PC: asked once, when the Windows tab is first shown. */
 let windowSupport: Promise<WindowCaptureSupport> | null = null
+/** The answer, once known (so returning to Home shows the hint at once). */
+let knownWindowSupport: WindowCaptureSupport | null = null
 
 function loadWindowSupport(): Promise<WindowCaptureSupport> {
-  windowSupport ??= window.api.getWindowCaptureSupport().catch((err: unknown) => {
-    console.warn('Could not check window capture support:', err)
-    windowSupport = null
-    return { effects: false, smoothCursor: false }
-  })
+  windowSupport ??= window.api.getWindowCaptureSupport().then(
+    (s) => (knownWindowSupport = s),
+    (err: unknown) => {
+      console.warn('Could not check window capture support:', err)
+      windowSupport = null
+      return { effects: false, smoothCursor: false }
+    }
+  )
   return windowSupport
 }
 
@@ -166,7 +171,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const [phase, setPhase] = useState<RecordingPhase | null>(null)
   const [busy, setBusy] = useState<ProcessingProgress | null>(null)
   const [error, setError] = useState<ErrorState | null>(null)
-  const [windowCapture, setWindowCapture] = useState<WindowCaptureSupport | null>(null)
+  const [windowCapture, setWindowCapture] = useState<WindowCaptureSupport | null>(knownWindowSupport)
   const [notices, setNotices] = useState<string[]>(() => {
     const carried = carriedNotices
     carriedNotices = []

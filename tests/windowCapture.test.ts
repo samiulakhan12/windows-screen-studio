@@ -6,7 +6,8 @@ import type { NativeCaptureSession, NativeStopInfo, WindowRectEvent, WindowWatch
 import type { RecordingManifest } from '../src/main/projects'
 import { nativeWindowAvailable, startWindowWatch, stopWindowWatch, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
 import { ActiveRecording } from '../src/main/recording/session'
-import { planWindowCapture, watchForChromium, windowCaptureSupport, windowMapping } from '../src/main/recording/windowCapture'
+import { buildCursorTrack } from '../src/main/recording/trackMath'
+import { planWindowCapture, watchForChromium, windowCaptureSupport, windowCursorMapping, windowMapping, type DipScreen } from '../src/main/recording/windowCapture'
 import { posesFromRects, type Rect } from '../src/shared/recording/windowGeometry'
 
 const T0 = 1_700_000_000_000
@@ -78,6 +79,35 @@ describe('windowMapping', () => {
     expect(windowMapping([], (r) => r, { width: 800, height: 400 })).toBeNull()
     expect(windowMapping([rect(T0, -32000, -32000, 160, 28, true)], (r) => r, { width: 800, height: 400 })).toBeNull()
     expect(windowMapping([rect(T0)], (r) => r, { width: 0, height: 0 })).toBeNull()
+  })
+})
+
+describe('windowCursorMapping (physical rectangles, DIP cursor)', () => {
+  /** Electron's screen on a 150% monitor: DIP = physical / 1.5. */
+  const screen150: DipScreen = {
+    screenToDipRect: (_w, r) => ({ x: r.x / 1.5, y: r.y / 1.5, width: r.width / 1.5, height: r.height / 1.5 }),
+    getDisplayMatching: () => ({ scaleFactor: 1.5 })
+  }
+
+  it('converts the helper rectangles to DIP on Windows, so DIP clicks land on the right spot', () => {
+    // The window is at (150, 75) physical, 1200 x 600: (100, 50) DIP, 800 x 400.
+    const { mapping, scale } = windowCursorMapping([rect(T0 - 10, 150, 75, 1200, 600)], { width: 1200, height: 600 }, screen150, 'win32')
+    expect(scale).toBe(1.5)
+    expect(mapping!.poses[0].dip).toEqual({ x: 100, y: 50, width: 800, height: 400 })
+    const track = buildCursorTrack(
+      { samples: [], clicks: [{ at: T0 + 100, x: 300, y: 150, button: 'left' }], keys: [], bounds: null, scale: 1 },
+      { startedAt: T0, pauses: [], duration: 1, region: null, window: mapping }
+    )
+    expect(track.clicks[0]).toMatchObject({ x: 0.25, y: 0.25 })
+  })
+
+  it('keeps the rectangles as they are where both spaces are the same pixels (X11)', () => {
+    const { mapping } = windowCursorMapping([rect(T0, 150, 75, 1200, 600)], { width: 1200, height: 600 }, screen150, 'linux')
+    expect(mapping!.poses[0].dip).toEqual({ x: 150, y: 75, width: 1200, height: 600 })
+  })
+
+  it('knows no scale without a visible window', () => {
+    expect(windowCursorMapping([], { width: 800, height: 400 }, screen150, 'win32')).toEqual({ mapping: null, scale: null })
   })
 })
 

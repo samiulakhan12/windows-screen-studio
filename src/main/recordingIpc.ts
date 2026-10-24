@@ -31,7 +31,6 @@ import type {
 } from '../shared/api/recording'
 import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
-import type { Rect } from '../shared/recording/windowGeometry'
 import type { CaptureSource, NormRect } from '../shared/types'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
@@ -55,7 +54,7 @@ import {
 } from './recording/toolbarWindow'
 import { buildCursorTrack, type RawTrack, type WindowMapping } from './recording/trackMath'
 import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recording/userMessages'
-import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowMapping, type WindowRoute } from './recording/windowCapture'
+import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
 import { getMainWindow, loadRoute } from './windows'
 
 const STOP_SHORTCUT = 'CommandOrControl+Shift+2'
@@ -151,22 +150,13 @@ function startTracker(s: ActiveRecording): void {
   })
 }
 
-/** Physical screen pixels (the helper's window rectangles) to the cursor's DIP coordinates. */
-function physicalToDip(r: Rect): Rect {
-  // Windows scales per monitor; on X11 both spaces are the same pixels.
-  return process.platform === 'win32' ? screen.screenToDipRect(null, r) : r
-}
-
 /** Where a recorded window's cursor positions go in its video; null without its rectangle. */
 async function windowTrackMapping(s: ActiveRecording, raw: RawTrack): Promise<WindowMapping | null> {
-  const mapping = windowMapping(await s.windowRects(), physicalToDip, { width: s.manifest.width, height: s.manifest.height })
-  const shown = mapping?.poses.find((p) => !p.minimized)
+  const { mapping, scale } = windowCursorMapping(await s.windowRects(), { width: s.manifest.width, height: s.manifest.height }, screen)
   // The drawn cursor is as large as the real one on the window's monitor.
-  if (shown) raw.scale = screen.getDisplayMatching(roundRect(shown.dip)).scaleFactor
+  if (scale) raw.scale = scale
   return mapping
 }
-
-const roundRect = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) })
 
 function registerStopShortcut(): boolean {
   globalShortcut.unregister(STOP_SHORTCUT)
