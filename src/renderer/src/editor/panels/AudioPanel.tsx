@@ -50,8 +50,8 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
           onChange={(v) => setAudio({ volume: v }, 'audio.volume')}
         />
         <p className="hint">
-          Applies to the preview and the exported video. Sped-up clips keep their pitch.
-          {stems.length > 0 && ' The microphone and the system sound were also kept apart, so you can balance them below.'}
+          Sped-up clips keep their pitch.
+          {stems.length > 0 && ' The microphone and the system sound were also kept apart: balance them below.'}
         </p>
       </Section>
 
@@ -75,34 +75,6 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         </Section>
       ))}
 
-      <Section title="Clean up">
-        <Slider
-          label="Noise reduction"
-          value={look.noiseReduction}
-          min={0}
-          max={1}
-          step={0.05}
-          format={offOrPct}
-          disabled={!recordingOn}
-          onChange={(v) => setAudio({ noiseReduction: v }, 'audio.noiseReduction')}
-        />
-        <p className="hint">
-          Removes steady hiss and hum{stems.includes('mic') ? ' from the microphone' : ''}. Applied when exporting: the preview plays the original sound. Strong settings can thin out
-          quiet speech.
-        </p>
-        <Toggle label="Even out loudness" checked={look.normalize} disabled={!recordingOn} onChange={(v) => setAudio({ normalize: v })} />
-        <p className="hint">
-          Brings the recording to a standard loudness ({LOUDNESS_TARGET.integrated} LUFS, right for YouTube and social apps). The preview approximates it; the export measures it
-          exactly.
-        </p>
-      </Section>
-
-      <Section title="Fades">
-        <Slider label="Fade in at start" value={look.fadeIn} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeIn: v }, 'audio.fadeIn')} />
-        <Slider label="Fade out at end" value={look.fadeOut} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeOut: v }, 'audio.fadeOut')} />
-        <p className="hint">The whole soundtrack, music and click sounds included, fades in at the start of the video and out at its end.</p>
-      </Section>
-
       <MusicSection
         project={project}
         music={look.music}
@@ -115,6 +87,30 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         onRemove={() => setAudio({ music: null })}
         setMusic={setMusic}
       />
+
+      <Section title="Clean up">
+        <Slider
+          label="Noise reduction"
+          value={look.noiseReduction}
+          min={0}
+          max={1}
+          step={0.05}
+          format={offOrPct}
+          disabled={!recordingOn}
+          onChange={(v) => setAudio({ noiseReduction: v }, 'audio.noiseReduction')}
+        />
+        <p className="hint">
+          Removes steady hiss and hum{stems.includes('mic') ? ' from the microphone' : ''} when exporting; the preview plays the original. Strong settings can thin out quiet speech.
+        </p>
+        <Toggle label="Even out loudness" checked={look.normalize} disabled={!recordingOn} onChange={(v) => setAudio({ normalize: v })} />
+        <p className="hint">A standard loudness ({LOUDNESS_TARGET.integrated} LUFS) for YouTube and social apps. The preview approximates it; the export measures it exactly.</p>
+      </Section>
+
+      <Section title="Fades">
+        <Slider label="Fade in at start" value={look.fadeIn} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeIn: v }, 'audio.fadeIn')} />
+        <Slider label="Fade out at end" value={look.fadeOut} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeOut: v }, 'audio.fadeOut')} />
+        <p className="hint">Fades the whole soundtrack, music and click sounds included.</p>
+      </Section>
     </>
   )
 }
@@ -166,7 +162,7 @@ function MusicSection(props: {
     <Section title="Music">
       {!music ? (
         <div className="music-empty">
-          <p className="hint">Add a track to play under the video. It starts with the video, runs on through cuts, and is lowered automatically while the recording has sound.</p>
+          <p className="hint">A track under the whole video. It runs on through cuts and dips automatically while the recording has sound.</p>
           <button className="btn" disabled={busy} onClick={() => void pick()}>
             <MusicIcon /> Choose music…
           </button>
@@ -184,12 +180,14 @@ function MusicSection(props: {
                 {length !== null && ` · ${formatTime(length, false)}`}
               </span>
             </span>
-            <button className="btn ghost small-btn" disabled={busy} onClick={() => void pick()} title="Choose another music file">
-              Replace…
-            </button>
-            <button className="btn ghost small-btn icon-only" disabled={busy} onClick={props.onRemove} title="Remove the music" aria-label="Remove music">
-              <Icon name="trash" size={16} />
-            </button>
+            <span className="music-file-actions">
+              <button className="btn ghost small-btn" disabled={busy} onClick={() => void pick()} title="Choose another music file">
+                Replace…
+              </button>
+              <button className="btn ghost small-btn icon-only" disabled={busy} onClick={props.onRemove} title="Remove the music" aria-label="Remove music">
+                <Icon name="trash" size={16} />
+              </button>
+            </span>
           </div>
           <Slider label="Music volume" value={music.volume} {...AUDIO_LIMITS.volume} step={0.05} format={pctFmt} onChange={(v) => setMusic({ volume: v }, 'audio.music.volume')} />
           <Slider
@@ -203,9 +201,7 @@ function MusicSection(props: {
             onChange={(v) => setMusic({ ducking: v }, 'audio.music.ducking')}
           />
           <p className="hint">
-            {props.canDuck
-              ? 'How far the music dips while the recording has sound, in the preview and in the export alike.'
-              : 'The recording is silent, so the music plays at its own volume throughout.'}
+            {props.canDuck ? 'How far the music dips while the recording has sound.' : 'The recording is silent, so the music keeps its volume throughout.'}
           </p>
           <Toggle label="Loop" title="Repeat the music when it is shorter than the video" checked={music.loop} onChange={(v) => setMusic({ loop: v })} />
           <Slider label="Fade in" value={music.fadeIn} {...AUDIO_LIMITS.musicFade} step={0.1} format={secondsFmt} onChange={(v) => setMusic({ fadeIn: v }, 'audio.music.fadeIn')} />

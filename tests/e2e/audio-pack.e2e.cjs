@@ -318,6 +318,7 @@ async function main() {
 
     // Microphone to about 25% with its slider.
     const slider = await win.$('.slider:has-text("Microphone volume") input')
+    await slider.scrollIntoViewIfNeeded()
     const box = await slider.boundingBox()
     await win.mouse.click(box.x + box.width * 0.125, box.y + box.height / 2)
     await waitSaved(win)
@@ -485,6 +486,7 @@ async function main() {
 
     // Settings survive a replacement.
     const volume = await win.$('.slider:has-text("Music volume") input')
+    await volume.scrollIntoViewIfNeeded()
     const vb = await volume.boundingBox()
     await win.mouse.click(vb.x + vb.width * 0.5, vb.y + vb.height / 2)
     await waitSaved(win)

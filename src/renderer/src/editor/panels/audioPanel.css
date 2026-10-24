@@ -14,9 +14,10 @@
 }
 
 .music-file {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 8px;
+  gap: 8px 10px;
   min-width: 0;
   padding: 8px;
   border-radius: 10px;
@@ -39,7 +40,6 @@
 .music-file-text {
   display: flex;
   flex-direction: column;
-  flex: 1;
   min-width: 0;
   gap: 1px;
 }
@@ -48,6 +48,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.music-file-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .music-file .btn.small-btn {
