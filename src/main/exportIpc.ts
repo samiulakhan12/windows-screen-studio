@@ -3,10 +3,11 @@ import { constants as fsConstants, existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ExportCapabilities, ExportFinish, ExportJob } from '../shared/api/export'
 import type { ExportFormat } from '../shared/types'
+import { analyzeAudio, stopAudioAnalysis } from './audioAnalysis'
 import { describeGifFit, ffmpegPlan, gifEncodeArgs, gifPaletteArgs, nextGifFit, type FfmpegPlan, type GifFit } from './exportArgs'
 import { copyFileToClipboard } from './exportClipboard'
 import { LeftoverLog, removeSyncWithRetries, removeWithRetries, settledWithin, sweepTempDir } from './exportCleanup'
-import { batchFileOk, freeBatchPath, isPng, moveIntoPlace, partialPath, tempStem, toIpcError, validateJob } from './exportJob'
+import { batchFileOk, freeBatchPath, isPng, moveIntoPlace, partialPath, resolveSoundInputs, tempStem, toIpcError, validateJob } from './exportJob'
 import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
 import { detectH264Encoders } from './hwEncoders'
 import * as projects from './projects'
@@ -58,6 +59,8 @@ const SAVE_FILTERS: Record<ExportFormat | 'png', Electron.FileFilter> = {
 }
 
 const tempFiles = (job: Pick<ActiveExport, 'tempPath' | 'plan'>): string[] => [job.tempPath, ...job.plan.temps]
+
+const fileExists = (file: string): Promise<boolean> => fs.access(file).then(() => true, () => false)
 
 /** Deletes `files` (retrying while Windows still reports them in use) and forgets the ones that are gone. */
 async function removeFiles(files: string[]): Promise<void> {
@@ -209,18 +212,21 @@ export function registerExportIpc(): void {
     }
   })
 
-  ipcMain.handle('export:start', async (e, projectId: string, job: ExportJob) => {
-    const approved = !!job?.outputPath && (job.outputPath === approvedExportPath || batchPaths.has(job.outputPath))
+  ipcMain.handle('export:analyzeAudio', (_e, projectId: string, sources: unknown) => analyzeAudio(projectId, sources))
+
+  ipcMain.handle('export:start', async (e, projectId: string, requested: ExportJob) => {
+    const approved = !!requested?.outputPath && (requested.outputPath === approvedExportPath || batchPaths.has(requested.outputPath))
     if (!approved) throw new Error('Export path was not chosen through the save dialog')
-    validateJob(job)
+    validateJob(requested)
     void cancelActive()
-    const finalPath = job.outputPath
+    const finalPath = requested.outputPath
     await fs.access(path.dirname(finalPath), fsConstants.W_OK).catch(() => {
       throw new Error(`Could not write to the folder "${path.dirname(finalPath)}". Choose another folder.`)
     })
     const tempPath = partialPath(finalPath)
-    const audioInput = job.audio ? path.join(projects.projectDir(projectId), 'screen.mp4') : null
-    const plan = ffmpegPlan(job, { audioInput, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
+    const sound = await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists)
+    const { job } = sound
+    const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.
     log?.add(tempFiles({ tempPath, plan }))
     for (const s of plan.scripts) await fs.writeFile(s.path, s.content, 'utf8')
@@ -311,6 +317,7 @@ export function registerExportIpc(): void {
  * log and is removed at the next start.
  */
 export function disposeExport(): void {
+  stopAudioAnalysis()
   const job = active
   active = null
   if (!job) return

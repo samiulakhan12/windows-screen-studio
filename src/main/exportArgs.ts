@@ -1,9 +1,9 @@
-import { atempoChain } from '../shared/engine/timeline'
-import { clickSoundSource } from '../shared/render/clickSound'
+import { AUDIO_RATE, planSoundtrack, type SoundFiles } from '../shared/render/audioPlan'
 import { vp9MetadataFilter } from '../shared/render/codec'
-import type { Clip } from '../shared/types'
-import type { ClickSounds, ColorTags, ExportJob, FfmpegVideoEncoder, H264Encoder } from '../shared/api/export'
+import type { ColorTags, ExportJob, FfmpegVideoEncoder, H264Encoder } from '../shared/api/export'
 import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
+
+export { AUDIO_RATE, audioFilterGraph, clickPositions, clickTrackGraph, soundtrackGraph } from '../shared/render/audioPlan'
 
 /**
  * How raw frames are converted and tagged: the BT.601 YUV matrix, limited range,
@@ -20,12 +20,6 @@ const PRIMARIES: Record<number, string> = { 1: 'bt709', 5: 'bt470bg', 6: 'smpte1
 const TRANSFER: Record<number, string> = { 1: 'bt709', 6: 'smpte170m', 8: 'linear', 13: 'iec61966-2-1' }
 const MATRIX: Record<number, string> = { 0: 'gbr', 1: 'bt709', 5: 'bt470bg', 6: 'smpte170m', 9: 'bt2020nc' }
 
-/** Seconds as a compact decimal string for filter arguments. */
-const sec = (v: number): string => String(Math.max(0, +v.toFixed(6)))
-
-/** Sample rate of every soundtrack the export writes (Opus requires 48 kHz; AAC is fine with it). */
-export const AUDIO_RATE = 48000
-
 /** Container colour tags (the `colr` box / WebM Colour element) for `c`. */
 export function colorTagArgs(c: ColorTags): string[] {
   const args = ['-color_primaries', PRIMARIES[c.primaries] ?? 'bt709', '-color_trc', TRANSFER[c.transfer] ?? 'bt709']
@@ -40,86 +34,6 @@ export function colorBitstreamFilter(c: ColorTags): string {
   if (c.matrix !== null) opts.push(`matrix_coefficients=${c.matrix}`)
   if (c.fullRange !== null) opts.push(`video_full_range_flag=${c.fullRange ? 1 : 0}`)
   return `h264_metadata=${opts.join(':')}`
-}
-
-/**
- * Soundtrack for an edit: each kept clip of the source audio is cut out, sped up
- * or slowed down (pitch preserved), and the pieces are joined in order. Gaps in
- * the source audio (a late-starting or early-ending track) become silence, and the
- * result is exactly `duration` seconds long so it never cuts the last video frames.
- */
-export function audioFilterGraph(clips: Clip[], volume: number, duration: number, input = '1:a', out = 'aout'): string {
-  const n = clips.length
-  const parts: string[] = []
-  const src = `[${input}]aresample=async=1:first_pts=0${n > 1 ? `,asplit=${n}${clips.map((_, i) => `[s${i}]`).join('')}` : '[s0]'}`
-  parts.push(src)
-  clips.forEach((c, i) => {
-    const len = c.end - c.start
-    const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${atempoChain(c.speed)}` : ''
-    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}[c${i}]`)
-  })
-  const joined = n > 1 ? `${clips.map((_, i) => `[c${i}]`).join('')}concat=n=${n}:v=0:a=1,` : '[c0]'
-  const gain = Math.abs(volume - 1) > 1e-6 ? `volume=${+volume.toFixed(4)},` : ''
-  parts.push(`${joined}${gain}apad=whole_dur=${sec(duration)},atrim=end=${sec(duration)}[${out}]`)
-  return parts.join(';')
-}
-
-/** Sample positions of the clicks inside [0, total) samples, sorted, one per position. */
-export function clickPositions(times: number[], duration: number, rate = AUDIO_RATE): number[] {
-  const total = Math.round(duration * rate)
-  const at = times.filter((t) => Number.isFinite(t) && t >= 0).map((t) => Math.round(t * rate)).filter((s) => s < total)
-  return [...new Set(at)].sort((a, b) => a - b)
-}
-
-/**
- * The click track: one click (input `input`, a short mono sound) at each output time,
- * `duration` seconds long. It is built in time order (silence up to the first click,
- * then each click padded with silence up to the next one, cut short when the next
- * click comes first), so the work grows with the length, not length x clicks, and
- * every click lands on its exact sample. Null when no click falls inside the export.
- */
-export function clickTrackGraph(clicks: ClickSounds, duration: number, input: string, out = 'clk', rate = AUDIO_RATE): string | null {
-  const at = clickPositions(clicks.times, duration, rate)
-  if (at.length === 0) return null
-  const total = Math.round(duration * rate)
-  const n = at.length
-  const parts: string[] = []
-  const fmt = `aformat=sample_fmts=fltp:sample_rates=${rate}:channel_layouts=mono`
-  parts.push(`[${input}]${fmt}${n > 1 ? `,asplit=${n}${at.map((_, i) => `[k${i}]`).join('')}` : '[k0]'}`)
-  const segments: string[] = []
-  if (at[0] > 0) {
-    parts.push(`anullsrc=r=${rate}:cl=mono,${fmt},atrim=end_sample=${at[0]}[z]`)
-    segments.push('[z]')
-  }
-  at.forEach((s, i) => {
-    const len = (i + 1 < n ? at[i + 1] : total) - s
-    parts.push(`[k${i}]apad=whole_len=${len},atrim=end_sample=${len}[p${i}]`)
-    segments.push(`[p${i}]`)
-  })
-  const gain = `volume=${+Math.max(0, clicks.volume).toFixed(4)}`
-  const joined = segments.length > 1 ? `${segments.join('')}concat=n=${segments.length}:v=0:a=1,` : segments[0]
-  parts.push(`${joined}${gain},apad=whole_len=${total},atrim=end_sample=${total}[${out}]`)
-  return parts.join(';')
-}
-
-/**
- * The export's soundtrack graph, ending in [aout]: the edited recording audio, the click
- * track, or both mixed (clicks added on top, nothing renormalised). Null when silent.
- */
-export function soundtrackGraph(opts: {
-  duration: number
-  audio?: { clips: Clip[]; volume: number; input: string }
-  clicks?: { sounds: ClickSounds; input: string }
-}): string | null {
-  const { duration, audio, clicks } = opts
-  const clickGraph = clicks ? clickTrackGraph(clicks.sounds, duration, clicks.input, audio ? 'clk' : 'aout') : null
-  if (!audio) return clickGraph
-  if (!clickGraph) return audioFilterGraph(audio.clips, audio.volume, duration, audio.input)
-  return [
-    audioFilterGraph(audio.clips, audio.volume, duration, audio.input, 'rec'),
-    clickGraph,
-    '[rec][clk]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]'
-  ].join(';')
 }
 
 const X264_CRF: Record<ExportJob['quality'], number> = { high: 18, medium: 22, small: 27 }
@@ -187,28 +101,19 @@ const yuvFilter = (pix: string): string => `scale=out_color_matrix=bt601:out_ran
 export interface ExportIo {
   /** File with the source audio (the screen proxy), or null for a silent export. */
   audioInput: string | null
+  /** The stem files the job's soundtrack mixes (mic.m4a, system.m4a). */
+  stems?: SoundFiles['stems']
+  /** The background music file. */
+  music?: string | null
   /** Where ffmpeg writes (a temporary file next to the target). */
   output: string
 }
 
 const HEAD = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats']
 
-/** Audio inputs (recording, clicks) after `first` other inputs, and the graph that mixes them into [aout]. */
-function audioInputs(job: ExportJob, audioInput: string | null, first: number): { args: string[]; graph: string | null } {
-  const args: string[] = []
-  const duration = job.frames / job.fps
-  let next = first
-  let audio: { clips: Clip[]; volume: number; input: string } | undefined
-  if (job.audio && audioInput && job.audio.clips.length > 0) {
-    args.push('-vn', '-i', audioInput)
-    audio = { ...job.audio, input: `${next++}:a` }
-  }
-  let clicks: { sounds: ClickSounds; input: string } | undefined
-  if (job.clicks && clickPositions(job.clicks.times, duration).length > 0) {
-    args.push('-f', 'lavfi', '-i', clickSoundSource())
-    clicks = { sounds: job.clicks, input: `${next++}:a` }
-  }
-  return { args, graph: soundtrackGraph({ duration, audio, clicks }) }
+/** Audio inputs (recording, music, clicks) after `first` other inputs, and the graph that mixes them into [aout]. */
+function audioInputs(job: ExportJob, io: ExportIo, first: number): { args: string[]; graph: string | null } {
+  return planSoundtrack(job, { mix: io.audioInput, stems: io.stems, music: io.music }, first)
 }
 
 /** Audio codec settings of `job`'s container. */
@@ -263,7 +168,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   // IVF carries a 1/fps time base and a frame number per frame.
   else if (v.kind === 'vp9') args.push('-f', 'ivf', '-i', 'pipe:0')
   else args.push('-nostdin')
-  const sound = audioInputs(job, io.audioInput, hasVideo ? 1 : 0)
+  const sound = audioInputs(job, io, hasVideo ? 1 : 0)
   args.push(...sound.args)
 
   const graphs: string[] = []
@@ -454,7 +359,7 @@ export function ffmpegPlan(job: ExportJob, paths: PlanPaths): FfmpegPlan {
     '-c:v', 'libx264', '-preset', 'ultrafast', '-qp', '0', '-f', 'matroska', intermediate
   ]
   const pass1 = [...HEAD, '-i', intermediate, '-map', '0:v:0', ...encoderArgs(encoder, job, 1), '-pass', '1', '-passlogfile', log, '-an', '-f', 'null', '-']
-  const sound = audioInputs(job, paths.audioInput, 1)
+  const sound = audioInputs(job, paths, 1)
   const pass2 = [...HEAD, '-i', intermediate, ...sound.args]
   if (sound.graph) pass2.push('-filter_complex', sound.graph)
   pass2.push('-map', '0:v:0', ...encoderArgs(encoder, job, 2), '-pass', '2', '-passlogfile', log, ...encodedColorArgs(encoder))

@@ -1,3 +1,6 @@
+import type { AudioLevels } from '../audio/loudness'
+import type { AudioSource, StemKind } from '../audio/settings'
+import type { Range } from '../audio/activity'
 import type { Clip, ExportFormat, ExportSettings } from '../types'
 
 /** H.264 encoders ffmpeg may use; GPU ones are only used after a successful probe. */
@@ -40,6 +43,39 @@ export interface ClickSounds {
   volume: number
 }
 
+/** The recording's sound in an export. */
+export interface RecordingSound {
+  /** Kept clips (source seconds): cut and re-timed like the video. */
+  clips: Clip[]
+  /** Master gain 0..2, after the sources are mixed (and normalised). */
+  volume: number
+  /**
+   * Mix the separately recorded microphone / system sound files (mic.m4a, system.m4a) with
+   * these gains instead of the screen proxy's mixed track. A source left out is silent.
+   */
+  stems?: Partial<Record<StemKind, number>>
+  /** Background noise reduction 0..1: on the microphone stem, or on the mixed track without stems. */
+  noiseReduction?: number
+  /** Loudness normalisation to about -16 LUFS (EBU R128). */
+  normalize?: boolean
+}
+
+/** Background music in an export: plays on the output timeline from its start, ignoring cuts. */
+export interface MusicSound {
+  /** Project file (music.<ext>). */
+  file: string
+  /** Linear gain 0..2. */
+  volume: number
+  loop: boolean
+  /** Fade lengths in seconds. */
+  fadeIn: number
+  fadeOut: number
+  /** Length of the music file (seconds) when known: a non-looping track fades out where it ends. */
+  duration: number | null
+  /** Lowered by `depth` (0..1) during `ranges` (output seconds, where the recording has sound). */
+  duck?: { depth: number; attack: number; release: number; ranges: Range[] }
+}
+
 export interface ExportJob {
   width: number
   height: number
@@ -49,10 +85,15 @@ export interface ExportJob {
   format: ExportFormat
   quality: ExportSettings['quality']
   video: VideoInput
-  /** Kept clips (source seconds) and gain for the soundtrack; omitted for silent exports. */
-  audio?: { clips: Clip[]; volume: number }
+  /** The recording's sound; omitted when it is silent. */
+  audio?: RecordingSound
   /** Click sounds mixed into the soundtrack (also when the recording has no audio). */
   clicks?: ClickSounds
+  /** Background music mixed into the soundtrack. */
+  music?: MusicSound
+  /** Fades of the whole soundtrack at the start and end, seconds. */
+  fadeIn?: number
+  fadeOut?: number
   /**
    * Size target: average bit rates (bit/s) to encode at instead of a quality level.
    * The software encoders then run two passes over an intermediate file.
@@ -94,6 +135,11 @@ export interface ExportApi {
    */
   exportBatchPath(folder: string, fileName: string): Promise<string>
   exportCapabilities(): Promise<ExportCapabilities>
+  /**
+   * Sound levels of a project's recorded sources (the screen proxy's track and/or the stems),
+   * for ducking music and the preview's loudness. A source without sound gets an empty envelope.
+   */
+  analyzeAudio(projectId: string, sources: AudioSource[]): Promise<Partial<Record<AudioSource, AudioLevels>>>
   exportStart(projectId: string, job: ExportJob): Promise<void>
   /** Raw RGBA frame or a batch of encoded bytes, depending on the job's video input. */
   exportFrame(data: Uint8Array): Promise<void>

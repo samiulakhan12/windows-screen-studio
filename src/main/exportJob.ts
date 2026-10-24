@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { ColorTags, ExportJob, FfmpegVideoEncoder, VideoInput } from '../shared/api/export'
+import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, VideoInput } from '../shared/api/export'
+import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
 import { FfmpegFailure } from './ffmpeg'
@@ -106,6 +107,47 @@ function validVideo(job: ExportJob): boolean {
   return v.kind === 'none' || validColor(v.color)
 }
 
+/** Most ranges the music ducks for in one export (about one every second of an hour). */
+export const MAX_DUCK_RANGES = 5000
+
+const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
+
+function validRecording(a: RecordingSound): boolean {
+  const stems = a.stems
+  return (
+    isNum(a.volume, 0, 2) &&
+    Array.isArray(a.clips) &&
+    a.clips.every((c) => isNum(c.start, 0, 1e7) && isNum(c.end, c.start, 1e7) && isNum(c.speed, MIN_SPEED, MAX_SPEED)) &&
+    (stems === undefined ||
+      (typeof stems === 'object' &&
+        stems !== null &&
+        Object.keys(stems).length > 0 &&
+        Object.entries(stems).every(([k, g]) => (STEM_KINDS as string[]).includes(k) && isNum(g, 0, 2)))) &&
+    (a.noiseReduction === undefined || isNum(a.noiseReduction, 0, 1)) &&
+    (a.normalize === undefined || isBool(a.normalize))
+  )
+}
+
+function validMusic(m: MusicSound): boolean {
+  const d = m.duck
+  return (
+    typeof m.file === 'string' &&
+    MUSIC_FILE_RE.test(m.file) &&
+    isNum(m.volume, 0, 2) &&
+    isBool(m.loop) &&
+    isNum(m.fadeIn, 0, AUDIO_LIMITS.musicFade.max) &&
+    isNum(m.fadeOut, 0, AUDIO_LIMITS.musicFade.max) &&
+    (m.duration === null || isNum(m.duration, 0, 1e7)) &&
+    (d === undefined ||
+      (isNum(d.depth, 0, 1) &&
+        isNum(d.attack, 0, 5) &&
+        isNum(d.release, 0, 5) &&
+        Array.isArray(d.ranges) &&
+        d.ranges.length <= MAX_DUCK_RANGES &&
+        d.ranges.every((r) => isNum(r?.start, 0, 1e7) && isNum(r.end, r.start, 1e7))))
+  )
+}
+
 /** The renderer is trusted, but ffmpeg arguments are still built only from validated values. */
 export function validateJob(job: ExportJob): void {
   const audioOnly = job.format === 'm4a'
@@ -120,14 +162,53 @@ export function validateJob(job: ExportJob): void {
     isNum(job.frames, 1, 1e8) &&
     ['high', 'medium', 'small'].includes(job.quality) &&
     validVideo(job) &&
-    (!job.audio ||
-      (isNum(job.audio.volume, 0, 2) &&
-        Array.isArray(job.audio.clips) &&
-        job.audio.clips.every((c) => isNum(c.start, 0, 1e7) && isNum(c.end, c.start, 1e7) && isNum(c.speed, MIN_SPEED, MAX_SPEED)))) &&
+    (!job.audio || validRecording(job.audio)) &&
+    (!job.music || (job.format !== 'gif' && validMusic(job.music))) &&
+    (job.fadeIn === undefined || isNum(job.fadeIn, 0, AUDIO_LIMITS.fade.max)) &&
+    (job.fadeOut === undefined || isNum(job.fadeOut, 0, AUDIO_LIMITS.fade.max)) &&
     (!job.clicks ||
       (isNum(job.clicks.volume, 0, 2) && Array.isArray(job.clicks.times) && job.clicks.times.length <= MAX_CLICKS && job.clicks.times.every((t) => isNum(t, 0, 1e7)))) &&
     (!job.bitrate || (isNum(job.bitrate.video, 0, 1e9) && isNum(job.bitrate.audio, 0, 1e6) && (audioOnly || job.bitrate.video >= 1000))) &&
     (job.maxBytes === undefined || (job.format === 'gif' && isNum(job.maxBytes, 1000, 1e12)))
   if (!ok) throw new Error('Invalid export settings')
-  if (audioOnly && !job.audio && !job.clicks) throw new Error('This recording has no sound to export.')
+  if (audioOnly && !job.audio && !job.clicks && !job.music) throw new Error('This recording has no sound to export.')
+}
+
+/** The files a job's soundtrack reads, inside the project folder. */
+export interface SoundInputs {
+  /** The job to run: without stems when one of them is missing (the mixed track is used instead). */
+  job: ExportJob
+  audioInput: string | null
+  stems?: Partial<Record<StemKind, string>>
+  music?: string | null
+}
+
+/**
+ * Resolves the soundtrack files of `job` in project folder `dir`. Names come from fixed
+ * lists only (the music's name was validated), so nothing outside the folder is read. A
+ * missing stem falls back to the screen proxy's mixed track; missing music is an error the
+ * user can act on.
+ */
+export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (file: string) => Promise<boolean>): Promise<SoundInputs> {
+  const audioInput = job.audio ? path.join(dir, SOURCE_FILES.mix) : null
+  let out: SoundInputs = { job, audioInput }
+  const wanted = job.audio?.stems ? STEM_KINDS.filter((k) => job.audio?.stems?.[k] !== undefined) : []
+  if (job.audio && wanted.length > 0) {
+    const files = Object.fromEntries(wanted.map((k) => [k, path.join(dir, SOURCE_FILES[k])])) as Partial<Record<StemKind, string>>
+    const present = await Promise.all(wanted.map((k) => exists(files[k]!)))
+    if (present.every(Boolean)) out.stems = files
+    else {
+      console.warn('A sound track of the recording is missing; exporting its mixed sound instead.')
+      const { stems: _dropped, ...audio } = job.audio
+      void _dropped
+      out = { job: { ...job, audio }, audioInput }
+    }
+  }
+  if (job.music) {
+    if (!MUSIC_FILE_RE.test(job.music.file)) throw new Error('Invalid export settings')
+    const music = path.join(dir, job.music.file)
+    if (!(await exists(music))) throw new Error('The background music file is missing. Choose it again in the Audio panel.')
+    out.music = music
+  }
+  return out
 }
