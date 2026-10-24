@@ -6,6 +6,7 @@ export const exportApi: ExportApi = {
   chooseExportFolder: () => ipcRenderer.invoke('export:chooseFolder'),
   exportBatchPath: (folder, fileName) => ipcRenderer.invoke('export:batchPath', folder, fileName),
   exportCapabilities: () => ipcRenderer.invoke('export:capabilities'),
+  analyzeAudio: (projectId, sources) => ipcRenderer.invoke('export:analyzeAudio', projectId, sources),
   exportStart: (projectId, job) => ipcRenderer.invoke('export:start', projectId, job),
   exportFrame: (data) => ipcRenderer.invoke('export:frame', data),
   exportFinish: () => ipcRenderer.invoke('export:finish'),

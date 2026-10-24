@@ -1,4 +1,5 @@
 import type { CapturePlan, RecordingApi, RecordingStartInfo, SaveRecordingPayload, TrackKind } from '../../../shared/api/recording'
+import type { StemKind } from '../../../shared/audio/settings'
 import type { NormRect } from '../../../shared/types'
 import { ChunkPipe } from '../../../shared/recording/chunkPipe'
 import { captureDisplay, SYSTEM_AUDIO_WARNING } from '../../../shared/recording/displayCapture'
@@ -25,6 +26,13 @@ interface Track {
 }
 
 const isSupported = (mime: string): boolean => MediaRecorder.isTypeSupported(mime)
+const isStem = (kind: TrackKind): kind is StemKind => kind === 'mic' || kind === 'system'
+
+/** A captured sound source: the microphone, or the system sound (loopback or the captured screen's audio). */
+interface AudioSource {
+  kind: StemKind
+  track: MediaStreamTrack
+}
 
 function stopRecorder(r: MediaRecorder, timeoutMs = 5000): Promise<void> {
   return new Promise((resolve) => {
@@ -53,13 +61,15 @@ export class RecordingSession {
   private streams: MediaStream[] = []
   private audioCtx: AudioContext | null = null
   private video: MediaStreamTrack | null = null
-  private audioSources: MediaStreamTrack[] = []
+  private audioSources: AudioSource[] = []
   private camera: MediaStreamTrack | null = null
   private tracks: Track[] = []
   private method: 'native' | 'chromium'
   private nativeStart: number | null = null
   private startCall = 0
   private hasAudio = false
+  /** A stem's recorder or disk write failed: the set is incomplete, so none is kept. */
+  private stemsDropped = false
   private firstFrames: Promise<[number | null, number | null]> = Promise.resolve([null, null])
   private size = { width: 0, height: 0 }
   private running = false
@@ -102,7 +112,7 @@ export class RecordingSession {
       const mic = await this.openDevice('microphone', micId, (deviceId) => ({
         audio: { ...(deviceId ? { deviceId: { exact: deviceId } } : {}), echoCancellation: true, noiseSuppression: true }
       }))
-      if (mic) this.audioSources.push(...mic.getAudioTracks())
+      if (mic) this.audioSources.push(...mic.getAudioTracks().map((track) => ({ kind: 'mic' as const, track })))
     }
     if (cameraId) {
       const cam = await this.openDevice('camera', cameraId, (deviceId) => ({
@@ -118,7 +128,7 @@ export class RecordingSession {
     // The loopback-only stream (if any) is replaced by a full capture with audio.
     for (const s of this.streams.filter((s) => s.getVideoTracks().length > 0)) {
       s.getTracks().forEach((t) => t.stop())
-      this.audioSources = this.audioSources.filter((t) => !s.getTracks().includes(t))
+      this.audioSources = this.audioSources.filter((a) => !s.getTracks().includes(a.track))
     }
     this.streams = this.streams.filter((s) => s.getVideoTracks().length === 0)
     // Do not ask again for system audio that already failed to start.
@@ -143,7 +153,7 @@ export class RecordingSession {
     // A window's video keeps its first frame's size (a resized window is fitted into it), and
     // its cursor is mapped into that size: take it from the first frame, not the settings.
     if (this.options.sourceId.startsWith('window:')) this.size = (await nextFrameSize(track)) ?? this.size
-    this.audioSources.unshift(...display.getAudioTracks())
+    this.audioSources.unshift(...display.getAudioTracks().map((track) => ({ kind: 'system' as const, track })))
     track.addEventListener('ended', () => {
       this.freeze()
       this.onEnded?.()
@@ -159,7 +169,7 @@ export class RecordingSession {
         audio: true
       })
       this.streams.push(s)
-      this.audioSources.unshift(...s.getAudioTracks())
+      this.audioSources.unshift(...s.getAudioTracks().map((track) => ({ kind: 'system' as const, track })))
     } catch (err) {
       console.warn('System audio capture failed:', err)
       this.loopbackFailed = true
@@ -191,14 +201,13 @@ export class RecordingSession {
     return stream
   }
 
-  /** System audio and microphone as one track (mixed only when there are two). */
-  private audioTrack(): MediaStreamTrack | null {
-    const live = this.audioSources.filter((t) => t.readyState === 'live')
-    if (live.length <= 1) return live[0] ?? null
+  /** The `live` sources (system audio and microphone) as one track, mixed only when there are two. */
+  private audioTrack(live: AudioSource[]): MediaStreamTrack | null {
+    if (live.length <= 1) return live[0]?.track ?? null
     this.audioCtx = new AudioContext()
     void this.audioCtx.resume()
     const dest = this.audioCtx.createMediaStreamDestination()
-    for (const track of live) this.audioCtx.createMediaStreamSource(new MediaStream([track])).connect(dest)
+    for (const { track } of live) this.audioCtx.createMediaStreamSource(new MediaStream([track])).connect(dest)
     return dest.stream.getAudioTracks()[0] ?? null
   }
 
@@ -206,16 +215,53 @@ export class RecordingSession {
     const recorder = new MediaRecorder(stream, options)
     const pipe = new ChunkPipe(
       (data) => this.api.appendRecordingChunk(this.plan.token, kind, data),
-      (err) => this.fail(friendlyError(err))
+      (err) => (isStem(kind) ? this.dropStems(kind, err) : this.fail(friendlyError(err)))
     )
     recorder.ondataavailable = (e) => pipe.push(e.data)
     recorder.onerror = (e) => {
       const detail = (e as Event & { error?: DOMException }).error?.message
       if (kind === 'webcam') this.warnings.push('The camera recording stopped early.')
+      else if (isStem(kind)) this.dropStems(kind, detail)
       else this.fail(new RecorderError(`Recording stopped unexpectedly${detail ? ` (${detail})` : ''}.`))
     }
     this.tracks.push({ kind, recorder, pipe })
     return recorder
+  }
+
+  /**
+   * Also records each source of the mixed sound (`live`: the microphone, the system sound) on
+   * its own, for per-source volume and cleanup in the editor; the mixed track stays in the
+   * recording as before. They start with the other recorders, so they share the mixed sound's
+   * timeline. Stems are kept only as a complete set (the editor plays them instead of the
+   * mixed sound, so a missing one would silence its source): when one cannot start, none is
+   * recorded. A stem is a bonus and never stops the recording. Returns the kinds recorded.
+   */
+  private addStems(live: AudioSource[]): StemKind[] {
+    const kinds = live.map((a) => a.kind)
+    // Two sources of one kind would share a stem: only the mixed sound has them both.
+    if (new Set(kinds).size !== kinds.length) return []
+    const mime = pickMime(AUDIO_MIMES, isSupported)
+    try {
+      for (const { kind, track } of live) this.addTrack(kind, new MediaStream([track]), { mimeType: mime, audioBitsPerSecond: 128_000 })
+    } catch (err) {
+      console.warn('The microphone and system sound are not recorded on their own:', err)
+      // Not started yet: the ones already set up are simply left out.
+      this.tracks = this.tracks.filter((t) => !isStem(t.kind))
+      return []
+    }
+    return kinds
+  }
+
+  /**
+   * A stem failed (`kind`'s recorder or its disk writes): the set is incomplete, so every
+   * stem stops and none is kept, also when the recording is recovered after a crash.
+   */
+  private dropStems(kind: StemKind, reason: unknown): void {
+    if (this.stemsDropped) return
+    this.stemsDropped = true
+    console.warn(`The ${kind} sound stopped being recorded on its own; the recording keeps only its mixed sound:`, reason)
+    for (const t of this.tracks) if (isStem(t.kind) && t.recorder.state !== 'inactive') t.recorder.stop()
+    void this.api.dropRecordingStems(this.plan.token).catch((err: unknown) => console.warn('Could not tell the recorder to drop the stems:', err))
   }
 
   private fail(err: RecorderError): void {
@@ -230,7 +276,8 @@ export class RecordingSession {
     // Every epoch time below is compared with Date.now() in the main process and with
     // the native helper's system clock: align with them now.
     syncEpoch()
-    const audio = this.audioTrack()
+    const live = this.audioSources.filter((a) => a.track.readyState === 'live')
+    const audio = this.audioTrack(live)
     this.hasAudio = !!audio
     if (native) {
       this.method = 'native'
@@ -249,6 +296,7 @@ export class RecordingSession {
       // A recorder stops by itself when its video track ends; the clock must stop with it.
       screen.addEventListener('stop', () => this.freeze())
     }
+    const stems = audio ? this.addStems(live) : []
     if (this.camera?.readyState === 'live') {
       this.addTrack('webcam', new MediaStream([this.camera]), { mimeType: pickMime(CAMERA_MIMES, isSupported), videoBitsPerSecond: 4_000_000 })
     }
@@ -268,7 +316,10 @@ export class RecordingSession {
       height: this.size.height,
       hasAudio: this.hasAudio,
       hasWebcam: this.tracks.some((t) => t.kind === 'webcam'),
-      webcamFps: fps && fps > 0 ? Math.min(60, Math.round(fps)) : 30
+      webcamFps: fps && fps > 0 ? Math.min(60, Math.round(fps)) : 30,
+      // Known now for native capture, so a recording interrupted by a crash keeps its sound in sync.
+      audioOffset: native ? (this.startCall - native.startedAt) / 1000 : 0,
+      stems
     }
   }
 
@@ -316,23 +367,26 @@ export class RecordingSession {
     this.dispose()
 
     const start = this.startCall
+    const stems = this.stemsDropped ? [] : this.tracks.map((t) => t.kind).filter(isStem)
     if (this.method === 'native' && this.nativeStart !== null) {
-      // The audio recorder's timeline starts when it was started.
+      // The audio recorders' timelines start when they were started.
       return {
         startedAt: this.nativeStart,
         duration,
         audioOffset: (start - this.nativeStart) / 1000,
-        webcamOffset: ((cameraFirst ?? start) - this.nativeStart) / 1000
+        webcamOffset: ((cameraFirst ?? start) - this.nativeStart) / 1000,
+        stems
       }
     }
     // A recorder's timeline starts with its first media: audio flows at once, video
-    // only with the first frame.
+    // only with the first frame. The stems' recorders start with the screen's.
     const screenZero = this.hasAudio ? Math.min(screenFirst ?? start, start) : (screenFirst ?? start)
     return {
       startedAt: screenZero,
       duration,
-      audioOffset: 0,
-      webcamOffset: ((cameraFirst ?? start) - screenZero) / 1000
+      audioOffset: (start - screenZero) / 1000,
+      webcamOffset: ((cameraFirst ?? start) - screenZero) / 1000,
+      stems
     }
   }
 

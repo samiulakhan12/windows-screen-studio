@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
-import { cropFilter, muxAudioArgs, proxyArgs, regionPixels } from '../src/main/proxyArgs'
+import { cropFilter, muxAudioArgs, proxyArgs, regionPixels, stemArgs } from '../src/main/proxyArgs'
 import { fitContent } from '../src/shared/recording/windowGeometry'
 
 const arg = (args: string[], flag: string): string | undefined => args[args.indexOf(flag) + 1]
@@ -197,5 +197,38 @@ describe.skipIf(!haveFfmpeg)('proxy filters (real ffmpeg)', () => {
     const out = path.join(dir, 'fit.mp4')
     execFileSync(ffmpeg, proxyArgs(makeInput(dir, '1000x640'), out, false, { size: { width: 1280, height: 720 }, fps: 30 }), { stdio: 'ignore' })
     expect(sizeOf(out)).toBe('1280x720')
+  })
+})
+
+describe('stemArgs', () => {
+  it('shifts a stem like the mixed sound, pads and cuts it to the video, as AAC only', () => {
+    const later = stemArgs('mic.webm', 'mic.m4a', 0.25, 2.5)
+    expect(arg(later, '-af')).toBe('adelay=250:all=1,apad,atrim=end=2.500000')
+    expect(later).not.toContain('-ss')
+    expect(later.join(' ')).toContain('-map 0:a:0 -vn')
+    expect(arg(later, '-c:a')).toBe('aac')
+    expect(later[later.length - 1]).toBe('mic.m4a')
+    const earlier = stemArgs('system.webm', 'system.m4a', -0.5, null)
+    expect(arg(earlier, '-ss')).toBe('0.500')
+    expect(earlier.indexOf('-ss')).toBeLessThan(earlier.indexOf('-i'))
+    expect(earlier).not.toContain('-af')
+  })
+
+  it('makes a stem exactly as long as the video with ffmpeg', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-stem-'))
+    const raw = path.join(dir, 'mic.webm')
+    execFileSync(ffmpegPath(), ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=500:sample_rate=48000', '-t', '1.7', '-c:a', 'libopus', raw])
+    const out = path.join(dir, 'mic.m4a')
+    execFileSync(ffmpegPath(), stemArgs(raw, out, 0.1, 2.25))
+    const pcm = execFileSync(ffmpegPath(), ['-v', 'error', '-i', out, '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })
+    // AAC rounds the end up to its last frame (a few ms past the video, never short of it).
+    const seconds = pcm.length / 4 / 48000
+    expect(seconds).toBeGreaterThanOrEqual(2.25)
+    expect(seconds).toBeLessThan(2.25 + 0.03)
+    // Silent for the offset, then the tone.
+    const s = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4)
+    const peak = (a: number, b: number): number => Math.max(...Array.from(s.subarray(a * 48, b * 48), Math.abs))
+    expect(peak(0, 80)).toBeLessThan(0.01)
+    expect(peak(150, 400)).toBeGreaterThan(0.05)
   })
 })

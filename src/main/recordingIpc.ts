@@ -57,6 +57,7 @@ import { pointInRect, regionToRect, sanitizeRegion } from './recording/placement
 import { isCancelled, killAllFfmpeg } from './recording/proxyRunner'
 import { pickRegionOnDisplay } from './recording/regionWindow'
 import { ActiveRecording } from './recording/session'
+import { expectedStems, setExpectedStems, settleStems, STEMS_DROPPED } from './recording/stems'
 import {
   closeToolbar,
   hideToolbar,
@@ -71,7 +72,7 @@ import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recor
 import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
 import { getMainWindow, loadRoute } from './windows'
 
-const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio']
+const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio', 'mic', 'system']
 /** Source thumbnails on Home: small JPEGs (cheap to encode and to send over IPC). */
 const THUMBNAIL = { width: 384, height: 216, quality: 75 }
 
@@ -590,6 +591,9 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   m.hasAudio = info.hasAudio
   m.hasWebcam = info.hasWebcam
   m.webcamFps = info.webcamFps
+  // So a recording interrupted by a crash keeps its separately recorded sound in sync.
+  if (typeof info.audioOffset === 'number' && Math.abs(info.audioOffset) < 60) m.audioOffset = info.audioOffset
+  setExpectedStems(m, info.hasAudio ? info.stems : [])
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker(s)
@@ -681,6 +685,18 @@ async function runProcessing(m: projects.RecordingManifest, explainWhere: boolea
   }
 }
 
+/**
+ * A stem stopped early while recording: none is kept. Written to the manifest at once, so a
+ * recording recovered after a crash does not keep the others (or the shortened one) either.
+ */
+async function dropStems(token: string): Promise<void> {
+  const s = active
+  if (!s || s.token !== token || expectedStems(s.manifest).length === 0) return
+  console.warn(STEMS_DROPPED)
+  setExpectedStems(s.manifest, [])
+  await projects.writeManifest(s.manifest).catch((err) => console.error('Could not save the recording state:', err))
+}
+
 async function save(token: string, payload: SaveRecordingPayload): Promise<string> {
   const s = requireSession(token)
   beginStop(s)
@@ -698,6 +714,8 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
     m.duration = measured > 0 ? measured : s.activeSeconds()
     m.webcamOffset = Number.isFinite(payload.webcamOffset) ? payload.webcamOffset : 0
     m.audioOffset = Number.isFinite(payload.audioOffset) ? payload.audioOffset : 0
+    // Stems are kept only as a complete set: after one failed, the editor uses the mixed sound.
+    await settleStems(m, s.dir, payload.stems)
     try {
       await writeTrack(s, m.duration)
     } catch (err) {
@@ -797,6 +815,7 @@ export function registerRecordingIpc(): void {
   })
   ipcMain.handle('recording:startNative', (_e, token: string) => startNative(token))
   ipcMain.handle('recording:started', (_e, token: string, info: RecordingStartInfo) => started(token, info))
+  ipcMain.handle('recording:dropStems', (_e, token: string) => dropStems(token))
   ipcMain.handle('recording:status', (_e, token: string, status: RecorderStatusUpdate) => setStatus(token, status))
   ipcMain.handle('recording:command', (_e, command: RecorderCommand) => forwardCommand(command))
   ipcMain.handle('recording:getStatus', (): ToolbarStatus => lastStatus)

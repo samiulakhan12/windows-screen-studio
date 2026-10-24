@@ -8,7 +8,6 @@ import { frameCovers, frameSeekTime } from '../../../shared/render/frameTiming'
 export const SCREEN_PROXY_FPS = 60
 export const WEBCAM_PROXY_FPS = 30
 
-
 export function createVideo(url: string): HTMLVideoElement {
   const v = document.createElement('video')
   v.src = url
@@ -16,6 +15,36 @@ export function createVideo(url: string): HTMLVideoElement {
   v.playsInline = true
   v.crossOrigin = 'anonymous'
   return v
+}
+
+/** An audio element for a project sound file (CORS-clean, so Web Audio can process it). */
+export function createAudio(url: string): HTMLAudioElement {
+  const a = document.createElement('audio')
+  a.crossOrigin = 'anonymous'
+  a.preload = 'auto'
+  a.preservesPitch = true
+  a.src = url
+  return a
+}
+
+/** Length (seconds) of an audio or video file, or null when it cannot be read within `timeoutMs`. */
+export function mediaDuration(url: string, timeoutMs = 10000): Promise<number | null> {
+  return new Promise((resolve) => {
+    const a = document.createElement('audio')
+    a.preload = 'metadata'
+    const done = (value: number | null): void => {
+      clearTimeout(timer)
+      a.onloadedmetadata = null
+      a.onerror = null
+      a.removeAttribute('src')
+      a.load()
+      resolve(value)
+    }
+    const timer = setTimeout(() => done(null), timeoutMs)
+    a.onloadedmetadata = () => done(Number.isFinite(a.duration) && a.duration > 0 ? a.duration : null)
+    a.onerror = () => done(null)
+    a.src = url
+  })
 }
 
 export function whenReady(v: HTMLVideoElement): Promise<void> {

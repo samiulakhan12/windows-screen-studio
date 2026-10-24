@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from
 import { styleContentRect } from '../../../shared/engine/layout'
 import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
+import { hasSoundtrack } from '../../../shared/audio/settings'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportProject, exportSize, LOW_BPP, MAX_EXPORT_SIDE, MB, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
 import {
@@ -209,7 +210,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const drawn = useMemo(() => exportProject(project, options), [project, options])
   const dims = exportSize(project, options)
   const hasClickSounds = useMemo(() => !!clickSoundJob(project, props.scene.cursor, clips), [project, props.scene.cursor, clips])
-  const hasSound = (project.hasAudio && !project.audio.muted && project.audio.volume > 0) || hasClickSounds
+  const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
 
   useEffect(() => {

@@ -22,7 +22,27 @@ export const DEFAULT_CURSOR_EXTRAS: Required<Pick<CursorSettings, 'style' | 'hig
   trail: false
 }
 
+/**
+ * Sound settings of a new project. The newer fields (per-source tracks, cleanup, fades, music)
+ * are optional: shared/audio/settings.ts audioLook() supplies their defaults when reading.
+ */
 export const DEFAULT_AUDIO: Project['audio'] = { volume: 1, muted: false }
+
+/** Sound settings of a stored project: defaults for missing fields, malformed optional parts dropped. */
+function migrateAudio(audio: Project['audio'] | undefined): Project['audio'] {
+  const out: Project['audio'] = { ...DEFAULT_AUDIO, ...audio }
+  for (const k of ['mic', 'system', 'music'] as const) {
+    if (out[k] !== undefined && out[k] !== null && typeof out[k] !== 'object') delete out[k]
+  }
+  return out
+}
+
+/** Which stems a stored project has; anything else is treated as none. */
+function migrateStems(stems: unknown): Pick<Project, 'audioStems'> {
+  if (!stems || typeof stems !== 'object') return {}
+  const s = stems as Record<string, unknown>
+  return { audioStems: { mic: s.mic === true, system: s.system === true } }
+}
 
 export function createProject(init: {
   id: string
@@ -92,10 +112,11 @@ export function migrateProject(raw: unknown): Project {
     Array.isArray(p.clips) && p.clips.length
       ? p.clips
       : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, ...rest } = p
+  const { trim: _legacyTrim, audioStems, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
+    ...migrateStems(audioStems),
     version: 2,
     duration,
     capture: p.capture ?? { method: 'chromium', cursorInVideo: true, region: null },
@@ -109,7 +130,7 @@ export function migrateProject(raw: unknown): Project {
       ...p.effects,
       keystrokes: { ...DEFAULT_EFFECTS.keystrokes, ...p.effects?.keystrokes }
     },
-    audio: { ...DEFAULT_AUDIO, ...p.audio }
+    audio: migrateAudio(p.audio)
   }
 }
 

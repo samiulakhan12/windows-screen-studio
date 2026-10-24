@@ -1,15 +1,18 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ProcessingProgress } from '../../shared/api/recording'
+import { SOURCE_FILES, STEM_KINDS, type StemKind } from '../../shared/audio/settings'
 import { createProject } from '../../shared/engine/project'
 import { autoZoomsForTrack, zoomSettingsOf } from '../../shared/engine/zoom'
 import type { Project } from '../../shared/types'
 import { detectH264Encoders, type H264Encoder } from '../hwEncoders'
 import * as projects from '../projects'
-import { muxAudioArgs, proxyArgs, regionPixels, type ExternalAudio, type ProxyOptions } from '../proxyArgs'
+import { muxAudioArgs, proxyArgs, regionPixels, stemArgs, type ExternalAudio, type ProxyOptions } from '../proxyArgs'
 import { applyStyleDefaults, loadStyleDefaults } from '../styleDefaults'
 import { EmptyRecordingError, RecordingError } from './errors'
 import { cancelledError, FfmpegError, isCancelled, runFfmpegProgress, type FfmpegRun } from './proxyRunner'
+import { measureStemLag } from './stemAlign'
+import { expectedStems, STEM_RAW } from './stems'
 import { clampTrack } from './trackMath'
 
 export { EmptyRecordingError, RecordingError }
@@ -58,6 +61,56 @@ export async function encodeWithFallback(
 
 const removeQuietly = (file: string): Promise<void> =>
   fs.rm(file, { force: true, maxRetries: 3 }).catch((err) => console.warn('Could not remove', file, err))
+
+/**
+ * Keeps the microphone and system sound recorded on their own as mic.m4a / system.m4a, on the
+ * proxy's timeline: placed by their timestamps (they start with the separately recorded mixed
+ * sound, so they share its offset), then lined up exactly with the mixed sound in `proxy`,
+ * which contains them (a recorder's timeline may start at its first video frame, and mixing
+ * at record time adds latency).
+ *
+ * Only the complete set of `expected` stems is kept: the editor plays the stems instead of the
+ * mixed sound, so a missing one would silence its source. When one cannot be kept (its file
+ * is missing or cannot be converted), none is, and the recording keeps its mixed sound. Stems
+ * are optional extras that never fail the recording; only a stop on purpose ("Finish later")
+ * ends processing.
+ */
+async function keepStems(
+  dir: string,
+  expected: readonly StemKind[],
+  proxy: string,
+  offset: number,
+  duration: number | null,
+  progress: (message: string) => void,
+  signal?: AbortSignal
+): Promise<StemKind[]> {
+  for (const kind of expected) {
+    if ((await projects.fileSize(path.join(dir, STEM_RAW[kind]))) > 0) continue
+    console.warn(`The ${kind} sound was not recorded on its own, so no source is kept on its own (the mixed sound has them all).`)
+    return []
+  }
+  const outs = expected.map((kind) => path.join(dir, SOURCE_FILES[kind]))
+  for (const [i, kind] of expected.entries()) {
+    const raw = path.join(dir, STEM_RAW[kind])
+    const out = outs[i]
+    if (signal?.aborted) throw cancelledError()
+    try {
+      progress('Keeping the microphone and system sound…')
+      const lag = await measureStemLag(raw, proxy, offset, signal).catch((err: unknown) => {
+        if (isCancelled(err) || signal?.aborted) throw err
+        console.warn(`The ${kind} sound could not be matched with the mixed sound; using its timestamps:`, err)
+        return 0
+      })
+      await runFfmpegProgress(stemArgs(raw, out, offset + lag, duration), undefined, signal)
+    } catch (err) {
+      for (const f of outs) await removeQuietly(f)
+      if (isCancelled(err) || signal?.aborted) throw cancelledError()
+      console.error(`The ${kind} sound could not be kept on its own, so no source is (the mixed sound has them all):`, err)
+      return []
+    }
+  }
+  return [...expected]
+}
 
 /** The user's saved default look; a missing or unreadable file never stops a recording from being saved. */
 async function withStyleDefaults(project: Project): Promise<Project> {
@@ -151,6 +204,15 @@ export async function processRecording(
       }
     }
 
+    // The video's exact length (from its frame count), or the recorder's measure.
+    const length = videoSeconds && videoSeconds > 0.1 ? videoSeconds : (manifest.duration ?? null)
+    const hasAudio = native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio
+    const wanted = hasAudio ? expectedStems(manifest) : []
+    const stems =
+      wanted.length > 0
+        ? await keepStems(dir, wanted, screenOut, manifest.audioOffset, length, (message) => progress({ message, progress: expected ? videoShare + audioShare : null }), signal)
+        : []
+
     let webcamOk = false
     if (hasWebcam) {
       stopIfCancelled()
@@ -190,7 +252,7 @@ export async function processRecording(
       width: outSize.width,
       height: outSize.height,
       hasWebcam: webcamOk,
-      hasAudio: native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio,
+      hasAudio,
       webcamOffset: webcamOk ? manifest.webcamOffset : 0,
       zooms: [],
       cursorValid: cursor.valid,
@@ -203,6 +265,8 @@ export async function processRecording(
       }
     })
     project.createdAt = manifest.createdAt
+    // Every source of the mixed sound (a complete set): `false` means that source was not recorded.
+    if (stems.length > 0) project.audioStems = { mic: stems.includes('mic'), system: stems.includes('system') }
     project = await withStyleDefaults(project)
     // After the saved defaults, which may include how auto zoom works (clicks, typing, marks).
     project.zooms = autoZoomsForTrack(cursor, duration, zoomSettingsOf(project).auto)
@@ -213,13 +277,15 @@ export async function processRecording(
     // The proxies are now the source of truth; drop the large intermediates.
     await removeQuietly(screenIn)
     if (audio) await removeQuietly(audioIn)
+    for (const kind of STEM_KINDS) await removeQuietly(path.join(dir, STEM_RAW[kind]))
     if (webcamOk) await removeQuietly(webcamIn)
     await projects.removeManifest(id)
     return project
   } catch (err) {
     // Stopped: the raw files stay for later; half-built proxies would only take up space.
     if (isCancelled(err)) {
-      await Promise.all([screenOut, videoOut, webcamOut].map((f) => fs.rm(f, { force: true, maxRetries: 3 }).catch(() => undefined)))
+      const stemOuts = STEM_KINDS.map((k) => path.join(dir, SOURCE_FILES[k]))
+      await Promise.all([screenOut, videoOut, webcamOut, ...stemOuts].map((f) => fs.rm(f, { force: true, maxRetries: 3 }).catch(() => undefined)))
     }
     throw err
   }

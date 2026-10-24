@@ -62,3 +62,19 @@ describe('migrateProject', () => {
     expect(withInput.typing).toEqual([{ t: 2, end: 3 }])
   })
 })
+
+describe('migrateProject (sound)', () => {
+  const base = { version: 2, id: 'x', name: 'x', duration: 5, audio: { volume: 0.5, muted: false } }
+  it('keeps an older project\'s sound settings exactly, with no stems', () => {
+    const p = migrateProject(base)
+    expect(p.audio).toEqual({ volume: 0.5, muted: false })
+    expect('audioStems' in p).toBe(false)
+  })
+  it('keeps the newer settings and drops malformed ones', () => {
+    const music = { path: 'music.mp3', volume: 0.3, ducking: 0.5, loop: true, fadeIn: 1, fadeOut: 2 }
+    const p = migrateProject({ ...base, audioStems: { mic: true, system: 'yes' }, audio: { volume: 1, muted: false, mic: 3, music, fadeIn: 1 } })
+    expect(p.audioStems).toEqual({ mic: true, system: false })
+    expect(p.audio).toEqual({ volume: 1, muted: false, music, fadeIn: 1 })
+    expect(migrateProject({ ...base, audioStems: 'mic' }).audioStems).toBeUndefined()
+  })
+})

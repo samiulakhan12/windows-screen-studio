@@ -146,3 +146,30 @@ export function muxAudioArgs(video: string, output: string, audio: ExternalAudio
     output
   ]
 }
+
+/**
+ * One recorded sound source (a stem: the microphone or the system sound) as an AAC file on
+ * the screen proxy's timeline: shifted by its offset like the native mixed track
+ * (muxAudioArgs), padded with silence and cut at `duration`, so source second t of the stem
+ * is source second t of the video, and the editor and the export treat it like the proxy's track.
+ */
+export function stemArgs(input: string, output: string, offset: number, duration: number | null): string[] {
+  const filters: string[] = []
+  if (offset > 0) filters.push(`adelay=${Math.round(offset * 1000)}:all=1`)
+  if (duration !== null && duration > 0) filters.push('apad', `atrim=end=${duration.toFixed(6)}`)
+  return [
+    '-y',
+    '-hide_banner',
+    '-nostdin',
+    ...(offset < 0 ? ['-ss', (-offset).toFixed(3)] : []),
+    '-i', input,
+    '-map', '0:a:0',
+    '-vn',
+    ...(filters.length > 0 ? ['-af', filters.join(',')] : []),
+    '-c:a', 'aac',
+    '-b:a', '160k',
+    '-ar', '48000',
+    '-movflags', '+faststart',
+    output
+  ]
+}
