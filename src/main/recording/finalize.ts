@@ -12,7 +12,7 @@ import { applyStyleDefaults, loadStyleDefaults } from '../styleDefaults'
 import { EmptyRecordingError, RecordingError } from './errors'
 import { cancelledError, FfmpegError, isCancelled, runFfmpegProgress, type FfmpegRun } from './proxyRunner'
 import { measureStemLag } from './stemAlign'
-import { STEM_RAW } from './stems'
+import { expectedStems, STEM_RAW } from './stems'
 import { clampTrack } from './trackMath'
 
 export { EmptyRecordingError, RecordingError }
@@ -67,40 +67,49 @@ const removeQuietly = (file: string): Promise<void> =>
  * proxy's timeline: placed by their timestamps (they start with the separately recorded mixed
  * sound, so they share its offset), then lined up exactly with the mixed sound in `proxy`,
  * which contains them (a recorder's timeline may start at its first video frame, and mixing
- * at record time adds latency). Optional extras: a stem that cannot be converted is left out
- * (the mixed sound has it) and never fails the recording; only a stop on purpose ("Finish
- * later") ends processing.
+ * at record time adds latency).
+ *
+ * Only the complete set of `expected` stems is kept: the editor plays the stems instead of the
+ * mixed sound, so a missing one would silence its source. When one cannot be kept (its file
+ * is missing or cannot be converted), none is, and the recording keeps its mixed sound. Stems
+ * are optional extras that never fail the recording; only a stop on purpose ("Finish later")
+ * ends processing.
  */
 async function keepStems(
   dir: string,
+  expected: readonly StemKind[],
   proxy: string,
   offset: number,
   duration: number | null,
   progress: (message: string) => void,
   signal?: AbortSignal
 ): Promise<StemKind[]> {
-  const kept: StemKind[] = []
-  for (const kind of STEM_KINDS) {
+  for (const kind of expected) {
+    if ((await projects.fileSize(path.join(dir, STEM_RAW[kind]))) > 0) continue
+    console.warn(`The ${kind} sound was not recorded on its own, so no source is kept on its own (the mixed sound has them all).`)
+    return []
+  }
+  const outs = expected.map((kind) => path.join(dir, SOURCE_FILES[kind]))
+  for (const [i, kind] of expected.entries()) {
     const raw = path.join(dir, STEM_RAW[kind])
-    if ((await projects.fileSize(raw)) === 0) continue
+    const out = outs[i]
     if (signal?.aborted) throw cancelledError()
-    progress('Keeping the microphone and system sound…')
-    const out = path.join(dir, SOURCE_FILES[kind])
     try {
+      progress('Keeping the microphone and system sound…')
       const lag = await measureStemLag(raw, proxy, offset, signal).catch((err: unknown) => {
         if (isCancelled(err) || signal?.aborted) throw err
         console.warn(`The ${kind} sound could not be matched with the mixed sound; using its timestamps:`, err)
         return 0
       })
       await runFfmpegProgress(stemArgs(raw, out, offset + lag, duration), undefined, signal)
-      kept.push(kind)
     } catch (err) {
-      await removeQuietly(out)
+      for (const f of outs) await removeQuietly(f)
       if (isCancelled(err) || signal?.aborted) throw cancelledError()
-      console.error(`The ${kind} sound could not be kept on its own (it stays in the mixed sound):`, err)
+      console.error(`The ${kind} sound could not be kept on its own, so no source is (the mixed sound has them all):`, err)
+      return []
     }
   }
-  return kept
+  return [...expected]
 }
 
 /** The user's saved default look; a missing or unreadable file never stops a recording from being saved. */
@@ -198,9 +207,11 @@ export async function processRecording(
     // The video's exact length (from its frame count), or the recorder's measure.
     const length = videoSeconds && videoSeconds > 0.1 ? videoSeconds : (manifest.duration ?? null)
     const hasAudio = native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio
-    const stems = hasAudio
-      ? await keepStems(dir, screenOut, manifest.audioOffset, length, (message) => progress({ message, progress: expected ? videoShare + audioShare : null }), signal)
-      : []
+    const wanted = hasAudio ? expectedStems(manifest) : []
+    const stems =
+      wanted.length > 0
+        ? await keepStems(dir, wanted, screenOut, manifest.audioOffset, length, (message) => progress({ message, progress: expected ? videoShare + audioShare : null }), signal)
+        : []
 
     let webcamOk = false
     if (hasWebcam) {
@@ -254,6 +265,7 @@ export async function processRecording(
       }
     })
     project.createdAt = manifest.createdAt
+    // Every source of the mixed sound (a complete set): `false` means that source was not recorded.
     if (stems.length > 0) project.audioStems = { mic: stems.includes('mic'), system: stems.includes('system') }
     project = await withStyleDefaults(project)
     // After the saved defaults, which may include how auto zoom works (clicks, typing, marks).

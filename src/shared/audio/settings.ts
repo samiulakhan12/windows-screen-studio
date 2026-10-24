@@ -76,7 +76,11 @@ export function audioLook(audio: AudioSettings): AudioLook {
   }
 }
 
-/** Stems the recording kept (none for older projects and recordings without sound). */
+/**
+ * Stems the recording kept (none for older projects and recordings without sound). They are
+ * only ever kept as a complete set, one per source mixed into the recording's sound, so a
+ * source without a stem was not recorded at all: playing the stems loses nothing.
+ */
 export function stemsOf(project: Pick<Project, 'hasAudio' | 'audioStems'>): StemKind[] {
   if (!project.hasAudio || !project.audioStems) return []
   return STEM_KINDS.filter((k) => project.audioStems?.[k] === true)

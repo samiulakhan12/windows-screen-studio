@@ -1,5 +1,5 @@
 import type { CapturePlan, RecordingApi, RecordingStartInfo, SaveRecordingPayload, TrackKind } from '../../../shared/api/recording'
-import { STEM_KINDS, type StemKind } from '../../../shared/audio/settings'
+import type { StemKind } from '../../../shared/audio/settings'
 import type { NormRect } from '../../../shared/types'
 import { ChunkPipe } from '../../../shared/recording/chunkPipe'
 import { captureDisplay, SYSTEM_AUDIO_WARNING } from '../../../shared/recording/displayCapture'
@@ -68,8 +68,8 @@ export class RecordingSession {
   private nativeStart: number | null = null
   private startCall = 0
   private hasAudio = false
-  /** Stems whose recorder or disk write failed: their files are incomplete and are dropped. */
-  private failedStems = new Set<StemKind>()
+  /** A stem's recorder or disk write failed: the set is incomplete, so none is kept. */
+  private stemsDropped = false
   private firstFrames: Promise<[number | null, number | null]> = Promise.resolve([null, null])
   private size = { width: 0, height: 0 }
   private running = false
@@ -201,14 +201,13 @@ export class RecordingSession {
     return stream
   }
 
-  /** System audio and microphone as one track (mixed only when there are two). */
-  private audioTrack(): MediaStreamTrack | null {
-    const live = this.audioSources.map((a) => a.track).filter((t) => t.readyState === 'live')
-    if (live.length <= 1) return live[0] ?? null
+  /** The `live` sources (system audio and microphone) as one track, mixed only when there are two. */
+  private audioTrack(live: AudioSource[]): MediaStreamTrack | null {
+    if (live.length <= 1) return live[0]?.track ?? null
     this.audioCtx = new AudioContext()
     void this.audioCtx.resume()
     const dest = this.audioCtx.createMediaStreamDestination()
-    for (const track of live) this.audioCtx.createMediaStreamSource(new MediaStream([track])).connect(dest)
+    for (const { track } of live) this.audioCtx.createMediaStreamSource(new MediaStream([track])).connect(dest)
     return dest.stream.getAudioTracks()[0] ?? null
   }
 
@@ -216,13 +215,13 @@ export class RecordingSession {
     const recorder = new MediaRecorder(stream, options)
     const pipe = new ChunkPipe(
       (data) => this.api.appendRecordingChunk(this.plan.token, kind, data),
-      (err) => (isStem(kind) ? this.dropStem(kind, err) : this.fail(friendlyError(err)))
+      (err) => (isStem(kind) ? this.dropStems(kind, err) : this.fail(friendlyError(err)))
     )
     recorder.ondataavailable = (e) => pipe.push(e.data)
     recorder.onerror = (e) => {
       const detail = (e as Event & { error?: DOMException }).error?.message
       if (kind === 'webcam') this.warnings.push('The camera recording stopped early.')
-      else if (isStem(kind)) this.dropStem(kind, detail)
+      else if (isStem(kind)) this.dropStems(kind, detail)
       else this.fail(new RecorderError(`Recording stopped unexpectedly${detail ? ` (${detail})` : ''}.`))
     }
     this.tracks.push({ kind, recorder, pipe })
@@ -230,30 +229,39 @@ export class RecordingSession {
   }
 
   /**
-   * Also records the microphone and the system sound each on its own (for per-source volume
-   * and cleanup in the editor), next to the mixed track that stays in the recording as before.
-   * They start with the other recorders, so they share the mixed sound's timeline. A stem is
-   * a bonus: one that cannot start or fails later is dropped and never stops the recording.
+   * Also records each source of the mixed sound (`live`: the microphone, the system sound) on
+   * its own, for per-source volume and cleanup in the editor; the mixed track stays in the
+   * recording as before. They start with the other recorders, so they share the mixed sound's
+   * timeline. Stems are kept only as a complete set (the editor plays them instead of the
+   * mixed sound, so a missing one would silence its source): when one cannot start, none is
+   * recorded. A stem is a bonus and never stops the recording. Returns the kinds recorded.
    */
-  private addStems(): void {
+  private addStems(live: AudioSource[]): StemKind[] {
+    const kinds = live.map((a) => a.kind)
+    // Two sources of one kind would share a stem: only the mixed sound has them both.
+    if (new Set(kinds).size !== kinds.length) return []
     const mime = pickMime(AUDIO_MIMES, isSupported)
-    for (const kind of STEM_KINDS) {
-      const source = this.audioSources.find((a) => a.kind === kind && a.track.readyState === 'live')
-      if (!source) continue
-      try {
-        this.addTrack(kind, new MediaStream([source.track]), { mimeType: mime, audioBitsPerSecond: 128_000 })
-      } catch (err) {
-        console.warn(`The ${kind} sound is not recorded on its own:`, err)
-      }
+    try {
+      for (const { kind, track } of live) this.addTrack(kind, new MediaStream([track]), { mimeType: mime, audioBitsPerSecond: 128_000 })
+    } catch (err) {
+      console.warn('The microphone and system sound are not recorded on their own:', err)
+      // Not started yet: the ones already set up are simply left out.
+      this.tracks = this.tracks.filter((t) => !isStem(t.kind))
+      return []
     }
+    return kinds
   }
 
-  private dropStem(kind: StemKind, reason: unknown): void {
-    if (this.failedStems.has(kind)) return
-    this.failedStems.add(kind)
-    console.warn(`The ${kind} sound stopped being recorded on its own (it stays in the mixed sound):`, reason)
-    const track = this.tracks.find((t) => t.kind === kind)
-    if (track && track.recorder.state !== 'inactive') track.recorder.stop()
+  /**
+   * A stem failed (`kind`'s recorder or its disk writes): the set is incomplete, so every
+   * stem stops and none is kept, also when the recording is recovered after a crash.
+   */
+  private dropStems(kind: StemKind, reason: unknown): void {
+    if (this.stemsDropped) return
+    this.stemsDropped = true
+    console.warn(`The ${kind} sound stopped being recorded on its own; the recording keeps only its mixed sound:`, reason)
+    for (const t of this.tracks) if (isStem(t.kind) && t.recorder.state !== 'inactive') t.recorder.stop()
+    void this.api.dropRecordingStems(this.plan.token).catch((err: unknown) => console.warn('Could not tell the recorder to drop the stems:', err))
   }
 
   private fail(err: RecorderError): void {
@@ -268,7 +276,8 @@ export class RecordingSession {
     // Every epoch time below is compared with Date.now() in the main process and with
     // the native helper's system clock: align with them now.
     syncEpoch()
-    const audio = this.audioTrack()
+    const live = this.audioSources.filter((a) => a.track.readyState === 'live')
+    const audio = this.audioTrack(live)
     this.hasAudio = !!audio
     if (native) {
       this.method = 'native'
@@ -287,7 +296,7 @@ export class RecordingSession {
       // A recorder stops by itself when its video track ends; the clock must stop with it.
       screen.addEventListener('stop', () => this.freeze())
     }
-    if (audio) this.addStems()
+    const stems = audio ? this.addStems(live) : []
     if (this.camera?.readyState === 'live') {
       this.addTrack('webcam', new MediaStream([this.camera]), { mimeType: pickMime(CAMERA_MIMES, isSupported), videoBitsPerSecond: 4_000_000 })
     }
@@ -309,7 +318,8 @@ export class RecordingSession {
       hasWebcam: this.tracks.some((t) => t.kind === 'webcam'),
       webcamFps: fps && fps > 0 ? Math.min(60, Math.round(fps)) : 30,
       // Known now for native capture, so a recording interrupted by a crash keeps its sound in sync.
-      audioOffset: native ? (this.startCall - native.startedAt) / 1000 : 0
+      audioOffset: native ? (this.startCall - native.startedAt) / 1000 : 0,
+      stems
     }
   }
 
@@ -357,7 +367,7 @@ export class RecordingSession {
     this.dispose()
 
     const start = this.startCall
-    const stems = this.tracks.filter((t) => isStem(t.kind) && !this.failedStems.has(t.kind as StemKind)).map((t) => t.kind as StemKind)
+    const stems = this.stemsDropped ? [] : this.tracks.map((t) => t.kind).filter(isStem)
     if (this.method === 'native' && this.nativeStart !== null) {
       // The audio recorders' timelines start when they were started.
       return {

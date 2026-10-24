@@ -2,7 +2,8 @@
 // measured per time window of the export), per-source volume of microphone / system stems,
 // music in an M4A, an older project exporting exactly as before, the Music controls, the
 // preview keeping stems and music on time, and stems kept by real recordings (Chromium and
-// native capture), aligned with the mixed sound.
+// native capture), aligned with the mixed sound, or not at all once one fails (the mixed
+// sound then has every source).
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync, spawn } = require('node:child_process')
@@ -575,6 +576,56 @@ async function main() {
     await js(`[...document.querySelectorAll('.unfinished button')].find((b) => b.textContent.includes('Recover')).click()`)
     await r.until(() => js(`!!document.querySelector('.editor canvas')`), { timeout: 120000, what: 'editor after recovery' })
     await checkRecordedStems(home, 'chromium')
+  })
+
+  await test('audio pack: a microphone track that fails while recording is dropped at once; the recovered recording keeps its mixed sound', async (ctx) => {
+    const home = h.tempHome('ap-rec-stem-fails')
+    const { app, win, logs } = await h.launch({ home, args: r.FAKE_MEDIA })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    await r.captureDialogs(app)
+    await r.waitForSources(win)
+    await (await win.$$('.record-panel select'))[0].selectOption({ index: 1 })
+    await r.startRecording(app, win)
+    const dir = r.activeDir(home)
+    // A folder where the microphone's own file goes: its first write fails (the mixed sound is unaffected).
+    fs.mkdirSync(path.join(dir, 'mic.webm'))
+    const manifest = () => {
+      try {
+        return JSON.parse(fs.readFileSync(path.join(dir, 'recording.json'), 'utf8'))
+      } catch {
+        return {}
+      }
+    }
+    // Started with a microphone track of its own, which the recorder drops when its writes fail.
+    await r.until(() => Array.isArray(manifest().stems) && manifest().stems.length === 0 && manifest().hasAudio === true, {
+      timeout: 20000,
+      what: 'the recording stops expecting stems as soon as one fails'
+    })
+    await r.until(() => logs.join('').includes('stopped being recorded on its own'), { what: 'the stems were started, then dropped while recording' })
+    await h.sleep(1500)
+    await app.evaluate(({ BrowserWindow }) => {
+      const main = BrowserWindow.getAllWindows().find((w) => !w.webContents.isDestroyed() && w.webContents.getURL().endsWith('#/'))
+      main.webContents.forcefullyCrashRenderer()
+    })
+    await r.until(() => r.mainVisible(app), { what: 'main window shown after the crash' })
+    h.assert(JSON.stringify(manifest().stems) === '[]', `the interrupted recording expects no stems: ${JSON.stringify(manifest().stems)}`)
+    const js = (code) =>
+      app.evaluate(({ BrowserWindow }, c) => {
+        const main = BrowserWindow.getAllWindows().find((w) => !w.webContents.isDestroyed() && w.webContents.getURL().endsWith('#/'))
+        return main.webContents.executeJavaScript(c)
+      }, code)
+    await r.until(() => js(`!!document.querySelector('.unfinished')`), { timeout: 20000, what: 'unfinished recording on Home' })
+    await js(`[...document.querySelectorAll('.unfinished button')].find((b) => b.textContent.includes('Recover')).click()`)
+    await r.until(() => js(`!!document.querySelector('.editor canvas')`), { timeout: 120000, what: 'editor after recovery' })
+    const [id] = h.listProjects(home)
+    const project = h.readProject(home, id)
+    h.assert(project.hasAudio === true && !('audioStems' in project), `the mixed sound only, no stems: ${JSON.stringify({ hasAudio: project.hasAudio, audioStems: project.audioStems })}`)
+    h.assert(!fs.existsSync(path.join(dir, 'mic.m4a')), 'no microphone track is kept')
+    h.assert(onsets(pcm(path.join(dir, 'screen.mp4'))).length >= 2, 'the mixed sound has the microphone')
+    await js(`[...document.querySelectorAll('.insp-tabs button')].find((b) => b.textContent.includes('Audio')).click()`)
+    await r.until(() => js(`!!document.querySelector('.insp-section h3')`), { what: 'audio panel' })
+    h.assert(!(await js(`[...document.querySelectorAll('.insp-section h3')].some((e) => /Microphone|System sound/.test(e.textContent))`)), 'no per-source sections')
   })
 }
 

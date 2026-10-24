@@ -61,6 +61,12 @@ export interface RecordingStartInfo {
    * far as known when recording starts (native capture: exact); refined on stop.
    */
   audioOffset?: number
+  /**
+   * Sources also recorded on their own (stems): every source mixed into the recording's
+   * sound, or none. Stems are only ever kept as this complete set, so a source a project has
+   * no stem for was not recorded at all (and is not in the mixed sound either).
+   */
+  stems?: StemKind[]
 }
 
 export type NativeStartResult =
@@ -81,7 +87,7 @@ export interface SaveRecordingPayload {
    * and system stems) minus the screen timeline's start, in seconds.
    */
   audioOffset: number
-  /** Stems recorded to the end; the files of any other stem (one that failed) are discarded. */
+  /** Stems recorded to the end; unless every stem started with the recording is, none is kept. */
   stems?: StemKind[]
 }
 
@@ -142,6 +148,8 @@ export interface RecordingApi {
   appendRecordingChunk(token: string, kind: TrackKind, data: Uint8Array): Promise<void>
   startNativeVideo(token: string): Promise<NativeStartResult>
   recordingStarted(token: string, info: RecordingStartInfo): Promise<void>
+  /** A stem stopped early: the set is incomplete, so none is kept (even if the recording is recovered after a crash). */
+  dropRecordingStems(token: string): Promise<void>
   setRecordingStatus(token: string, status: RecorderStatusUpdate): Promise<void>
   saveRecording(token: string, payload: SaveRecordingPayload): Promise<string>
   cancelRecording(token: string): Promise<void>
