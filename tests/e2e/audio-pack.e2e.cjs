@@ -547,6 +547,35 @@ async function main() {
     await win.waitForSelector('.editor canvas', { timeout: 120000 })
     await checkRecordedStems(home, 'native')
   })
+
+  await test('audio pack: a recording interrupted by a crash keeps its microphone track when recovered', async (ctx) => {
+    const home = h.tempHome('ap-rec-crash')
+    const { app, win, logs } = await h.launch({ home, args: r.FAKE_MEDIA })
+    ctx.app = r.closable(app)
+    ctx.logs = logs
+    await r.captureDialogs(app)
+    await r.waitForSources(win)
+    await (await win.$$('.record-panel select'))[0].selectOption({ index: 1 })
+    await r.startRecording(app, win)
+    await h.sleep(4500)
+    const dir = r.activeDir(home)
+    await app.evaluate(({ BrowserWindow }) => {
+      const main = BrowserWindow.getAllWindows().find((w) => !w.webContents.isDestroyed() && w.webContents.getURL().endsWith('#/'))
+      main.webContents.forcefullyCrashRenderer()
+    })
+    await r.until(() => r.mainVisible(app), { what: 'main window shown after the crash' })
+    h.assert(r.fileSize(path.join(dir, 'mic.webm')) > 0, 'the microphone file is kept with the interrupted recording')
+    // Playwright's page object stays dead after a renderer crash: drive the reloaded page directly.
+    const js = (code) =>
+      app.evaluate(({ BrowserWindow }, c) => {
+        const main = BrowserWindow.getAllWindows().find((w) => !w.webContents.isDestroyed() && w.webContents.getURL().endsWith('#/'))
+        return main.webContents.executeJavaScript(c)
+      }, code)
+    await r.until(() => js(`!!document.querySelector('.unfinished')`), { timeout: 20000, what: 'unfinished recording on Home' })
+    await js(`[...document.querySelectorAll('.unfinished button')].find((b) => b.textContent.includes('Recover')).click()`)
+    await r.until(() => js(`!!document.querySelector('.editor canvas')`), { timeout: 120000, what: 'editor after recovery' })
+    await checkRecordedStems(home, 'chromium')
+  })
 }
 
 /** The newest recording has a microphone stem as long as the video, with its sound where the mixed track has it. */
