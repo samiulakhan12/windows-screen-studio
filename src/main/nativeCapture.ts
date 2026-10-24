@@ -26,7 +26,7 @@
  * overrides it with an executable, or a .js/.cjs script run by Electron as Node (tests).
  * Protocol: native/README.md.
  */
-import { spawn, type ChildProcessWithoutNullStreams, type SpawnOptionsWithoutStdio } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcessWithoutNullStreams, type SpawnOptionsWithoutStdio } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { app, screen, type Display } from 'electron'
@@ -339,6 +339,39 @@ export async function isNativeCaptureAvailable(): Promise<boolean> {
 export async function isNativeWindowCaptureAvailable(): Promise<boolean> {
   const r = await cachedProbe()
   return r.supported && r.windowCapture === true
+}
+
+export type DesktopIconsAction = 'hide' | 'show' | 'status'
+
+/**
+ * `desktop-icons hide|show|status`: whether the desktop icons are visible afterwards, and
+ * whether this call changed that. `ok: false` when there is no helper (not Windows), no
+ * desktop (another shell) or the helper failed; `message` says why.
+ */
+export type DesktopIconsResult = { ok: true; visible: boolean; changed: boolean } | { ok: false; message: string }
+
+function desktopIconsResult(r: RunResult): DesktopIconsResult {
+  const json = lastJson(r.stdout) as { visible?: unknown; changed?: unknown } | undefined
+  if (r.code === 0 && typeof json?.visible === 'boolean') return { ok: true, visible: json.visible, changed: json.changed === true }
+  return { ok: false, message: failureMessage(r, 'Hiding the desktop icons') }
+}
+
+/**
+ * Hides, shows or reports the desktop icons (the desktop's icon view only: never the "Show
+ * desktop icons" setting, so nothing outlives Explorer). Never rejects.
+ */
+export async function desktopIcons(action: DesktopIconsAction): Promise<DesktopIconsResult> {
+  const cmd = helperCommand()
+  if (!cmd) return { ok: false, message: 'Hiding desktop icons needs the capture helper (Windows only)' }
+  return desktopIconsResult(await runHelper(cmd, ['desktop-icons', action], nativeCaptureTimeouts.list))
+}
+
+/** desktopIcons() for quitting, when nothing asynchronous runs any more (bounded by `timeoutMs`). */
+export function desktopIconsSync(action: DesktopIconsAction, timeoutMs = 3000): DesktopIconsResult {
+  const cmd = helperCommand()
+  if (!cmd) return { ok: false, message: 'Hiding desktop icons needs the capture helper (Windows only)' }
+  const r = spawnSync(cmd.file, [...cmd.args, 'desktop-icons', action], { env: cmd.env, windowsHide: true, timeout: timeoutMs, encoding: 'utf8' })
+  return desktopIconsResult({ code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? r.error?.message ?? '', timedOut: (r.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT' })
 }
 
 /** Forgets the cached probe result (tests; or after the helper was installed). */

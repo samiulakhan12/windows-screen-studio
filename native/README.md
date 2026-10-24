@@ -56,6 +56,7 @@ ssw-capture list
 ssw-capture record --monitor <device name | index> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
 ssw-capture record --window <HWND> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
 ssw-capture watch-window --window <HWND>
+ssw-capture desktop-icons <hide|show|status>
 ssw-capture selftest --out <file.mp4> [--fps <30|60>] [--seconds <1-60>]
 ssw-capture --version
 ```
@@ -66,7 +67,7 @@ ssw-capture --version
 | 1 | Runtime error (device, capture or encoder failure) |
 | 2 | Invalid arguments (including a missing output folder) |
 | 3 | Unsupported on this system |
-| 4 | Monitor or window not found |
+| 4 | Monitor or window not found (`desktop-icons`: no desktop icon view) |
 
 Human-readable diagnostics go to stderr; stdout carries only JSON.
 
@@ -225,6 +226,26 @@ Details (`src/window.rs` decides what is reported, `src/win/window.rs` asks Wind
   (more than 4096 px wide/high or 36,864 macroblocks, e.g. 5K) are scaled down to fit and a
   `warning` says so.
 
+### `desktop-icons`
+
+Hides or shows the desktop icons for "Hide desktop icons while recording", and prints
+`{"visible":false,"changed":true}`: whether the icons are visible afterwards, and whether this
+call asked for a change. `status` only reports. Exit code 4 with a JSON error when there is no
+desktop icon view (Explorer is not the shell, or not running).
+
+- The icon view is the `SysListView32` inside `SHELLDLL_DefView`, which lives in `Progman`, or in
+  a top-level `WorkerW` once Explorer moved it there (wallpaper slideshow, some animated
+  wallpapers); Windows 11 24H2 keeps it in `Progman`. The search is portable code
+  (`src/desktop.rs`, unit-tested against those layouts).
+- Only that window's own visibility changes (`ShowWindowAsync` `SW_HIDE` / `SW_SHOWNA`), never
+  Explorer's "Show desktop icons" setting, which Explorer saves in the registry. Nothing outlives
+  Explorer: restarting it (or signing out) always brings the icons back. Asynchronous, so a busy
+  or hung Explorer never blocks the helper; it then waits up to 1 s for the change to show.
+- `changed` is `false` for `hide` when the icons were already hidden (the user switched them off):
+  the app then never "restores" them. The app remembers icons it hid in its settings before
+  hiding them and shows them again when the recording stops, is cancelled or crashes, when the
+  app quits, and at the next start if the app itself died.
+
 ### `selftest`
 
 Runs the same GPU conversion and encoder as `record` on a generated colour sweep, without
@@ -287,6 +308,13 @@ Verified in this repository (Linux container, no Windows):
   attempt kept its file locked, so every later fallback failed with a sharing violation.)
   Wine has no fragmented MP4 sink (`Creating the MP4 writer failed: Invalid parameter`), so
   `selftest` there also exercises the fallback to a plain MP4.
+- `desktop-icons` under wine 9 (`tests/e2e/recording-options.e2e.cjs`): without a desktop
+  (wine has no Explorer shell) it prints a JSON error and exits 4 for `hide`, `show` and
+  `status`, nothing crashes. Against `examples/fake_desktop.rs` (Explorer's window classes,
+  `Progman` or a top-level `WorkerW` holding `SHELLDLL_DefView` > `SysListView32`) the real
+  user32 path runs end to end, also through the app's client (`desktopIcons()` in
+  `src/main/nativeCapture.ts`): `status` → visible, `hide` → `"visible":false,"changed":true`,
+  `hide` again → `"changed":false`, `show` → `"visible":true,"changed":true`.
 - Window commands under wine 9: `probe` reports `"windowCapture":false`; `watch-window` and
   `record --window` with a handle that is no window print a JSON error and exit 4; `watch-window`
   on wine's desktop window (0x10020) prints `ready`, its rectangle (the virtual screen) with
@@ -315,7 +343,9 @@ Verified in this repository (Linux container, no Windows):
   fragmented MP4 cut off mid-fragment (what a killed helper leaves), and fails on a plain MP4
   cut off the same way ("moov atom not found").
 
-**Not verified: actual capture and encoding, which need Windows 10 2004+ or Windows 11.** For
+**Not verified: actual capture and encoding, which need Windows 10 2004+ or Windows 11.** Nor
+`desktop-icons` against the real Explorer (its window layout on each Windows version, and that
+hiding the view leaves the wallpaper and the desktop's other behaviour intact). For
 windows that includes: that `CreateForWindow` captures exactly the `DWMWA_EXTENDED_FRAME_BOUNDS`
 area (the app maps the cursor through that rectangle; a mismatch of a few pixels would offset
 the editor's cursor by as much), the frame-pool headroom and growth on resize (that a maximised
@@ -421,7 +451,19 @@ available (e.g. `node_modules\ffmpeg-static` ships ffmpeg; any ffprobe works).
     - `ffprobe` the file: h264, the initial size, duration ≈ recorded time. Play it: **no mouse
       cursor**, no yellow border (Windows 11).
     - `record --window 1 --out x.mp4 --fps 30` and `watch-window --window 1`: JSON error, exit 4.
-13. **watch-window** — `native\bin\ssw-capture.exe watch-window --window <handle>`: `ready`, then
+13. **Desktop icons** — `native\bin\ssw-capture.exe desktop-icons status`: `{"visible":true,"changed":false}`.
+    `desktop-icons hide`: the icons disappear at once, the wallpaper stays, `"changed":true`; the
+    "Show desktop icons" item of the desktop's View menu is still ticked (the setting is untouched).
+    `desktop-icons show`: they come back. Then: right-click the desktop › View › untick "Show
+    desktop icons"; `desktop-icons hide` prints `"changed":false`, and a recording in the app
+    leaves them hidden afterwards (it never shows icons it did not hide); tick the setting again. With a wallpaper slideshow running
+    (Personalise › Background › Slideshow) repeat `hide`/`show` (the view lives in a `WorkerW`
+    then). Restart Explorer after `hide` (Task Manager › Windows Explorer › Restart): the icons
+    are back. In the app, with "Hide desktop icons" on: they disappear during the countdown and
+    return when the recording stops, is discarded, when the app is closed mid-recording ("Quit
+    anyway"), and — after ending the app's process in Task Manager mid-recording — at the next
+    start of the app.
+14. **watch-window** — `native\bin\ssw-capture.exe watch-window --window <handle>`: `ready`, then
     the rectangle; move/resize/minimise as above; `stop` Enter: `{"event":"stopped","reason":"stop"}`,
     exit 0. Closing the window instead: `"reason":"closed"`. On a 150 % monitor the numbers are
     physical pixels (1.5x what the window's DIP size suggests).
@@ -438,7 +480,7 @@ available (e.g. `node_modules\ffmpeg-static` ships ffmpeg; any ffprobe works).
       Open one of the watched app's own dialogs (Notepad's Font dialog) and hover it: `true`
       (same root owner). Hover the watched window while that modal dialog disables it: `true`.
       An always-on-top window (Task Manager with "Always on top") over it: `false`.
-14. **Window recording in the app** — record a single window with native capture (Windows 10
+15. **Window recording in the app** — record a single window with native capture (Windows 10
     2004+): the editor shows only the smooth cursor (no second, baked-in cursor), click ripples
     and auto zooms land on what was clicked, also after moving and resizing the window during the
     recording; clicks outside the window and time while it was minimised produce nothing; clicks

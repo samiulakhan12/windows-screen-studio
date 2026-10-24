@@ -43,6 +43,7 @@
 /* ---------- Home: recording panel ---------- */
 .record-panel {
   overflow: auto;
+  gap: 12px;
 }
 
 .record-panel .btn.record {
@@ -218,4 +219,263 @@
   color: #fbbf24;
   font-size: 12px;
   text-align: center;
+}
+
+/* ---------- Home: keyboard activity hint ---------- */
+.record-panel .toggle-hint {
+  margin-top: -12px;
+  font-size: 11px;
+}
+
+/* ---------- Home: camera preview ---------- */
+.camera-preview {
+  position: relative;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  /* A little shorter than 16:9 on a narrow panel (cropped top and bottom), so Start stays in view. */
+  max-height: 132px;
+  margin-top: -4px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border);
+}
+
+.camera-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Mirrored, like looking into a mirror (the recording itself is not). */
+  transform: scaleX(-1);
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.camera-preview.live video {
+  opacity: 1;
+}
+
+.camera-preview-wait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- Home: recording options ---------- */
+.rec-options {
+  flex: none;
+  /* Scrolled into view above the sticky Start button when opened. */
+  scroll-margin-bottom: 96px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.rec-options-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rec-options-head .chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.rec-options-head .chevron.open {
+  transform: rotate(90deg);
+}
+
+.rec-options-summary {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-options-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 10px 12px;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.option-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rec-options .chip:not(.active) {
+  background: var(--panel);
+}
+
+.idle-slider {
+  margin-top: -4px;
+  font-size: 12px;
+}
+
+.hotkeys {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.hotkey {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hotkey-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hotkey-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hotkey-field {
+  min-width: 112px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hotkey-field:hover:not(:disabled) {
+  border-color: #3a3a4e;
+}
+
+.hotkey-field.capturing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+}
+
+.hotkey.invalid .hotkey-field {
+  border-color: rgba(244, 63, 94, 0.6);
+}
+
+.hotkey-field:disabled,
+.hotkey-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.hotkey-prompt {
+  color: var(--accent-2);
+  font-size: 12px;
+}
+
+.keys {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.keys kbd {
+  min-width: 18px;
+  text-align: center;
+  line-height: 18px;
+}
+
+.hotkey-reset {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hotkey-reset:hover:not(:disabled) {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.hotkey-error {
+  color: #fb7185;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* The Start button stays in view while the options above it scroll. */
+.record-footer {
+  position: sticky;
+  bottom: -14px;
+  margin: auto -14px -14px;
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(to bottom, rgba(20, 20, 28, 0), var(--panel) 14px);
+}
+
+.record-footer .hint .keys {
+  vertical-align: 1px;
+}
+
+/* ---------- Toolbar: paused state and zoom marks ---------- */
+.tb-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: #facc15;
+  white-space: nowrap;
+}
+
+.tb-state.idle {
+  color: #fcd34d;
+}
+
+.tb-mark {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.9);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }

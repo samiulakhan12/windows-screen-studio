@@ -4,6 +4,7 @@ mod capture;
 mod clock;
 mod cursor;
 mod d3d;
+mod desktop;
 mod encoder;
 mod monitors;
 mod processor;
@@ -95,6 +96,7 @@ pub fn run(command: Cli) -> i32 {
         Cli::Record(args) => record::run(&args),
         Cli::WatchWindow(handle) => window::run_watch(handle),
         Cli::Selftest(args) => selftest::run(&args),
+        Cli::DesktopIcons(action) => desktop::run(action),
         Cli::Help | Cli::Version => exit::OK,
     }
 }

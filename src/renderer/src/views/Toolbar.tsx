@@ -6,6 +6,25 @@ import '../recorder/recorder.css'
 
 /** How long the discard confirmation stays up before reverting. */
 const CONFIRM_MS = 4000
+/** How long "Zoom marked" shows after the "zoom here" hotkey. */
+const MARK_MS = 1400
+
+/** True for a moment after each new "zoom here" mark. */
+function useMarkFlash(marks: number): boolean {
+  const seen = useRef(marks)
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    if (marks <= seen.current) {
+      seen.current = marks
+      return
+    }
+    seen.current = marks
+    setFlash(true)
+    const timer = setTimeout(() => setFlash(false), MARK_MS)
+    return () => clearTimeout(timer)
+  }, [marks])
+  return flash
+}
 
 /**
  * Seconds shown by the timer. It ticks locally from the last status instead of
@@ -33,6 +52,7 @@ export function Toolbar(): JSX.Element | null {
   const [status, setStatus] = useState<ToolbarStatus>({ state: 'idle', elapsed: 0 })
   const [confirming, setConfirming] = useState(false)
   const seconds = useTimer(status)
+  const marked = useMarkFlash(status.marks ?? 0)
 
   useEffect(() => {
     let live = true
@@ -56,7 +76,11 @@ export function Toolbar(): JSX.Element | null {
   }, [confirming])
 
   const send = (cmd: RecorderCommand) => () => void window.api.sendRecorderCommand(cmd)
-  const stopHint = status.stopShortcut === false ? 'Stop (Ctrl+Shift+2 is used by another app)' : 'Stop (Ctrl+Shift+2)'
+  const keys = status.hotkeys ?? {}
+  const withKey = (what: string, key: string | undefined): string => (key ? `${what} (${key})` : what)
+  const stopHint = status.stopShortcut === false ? 'Stop (the stop hotkey is used by another app)' : withKey('Stop', keys.stop)
+  // Hotkeys another app owns (older main processes only report the stop shortcut).
+  const problems = status.hotkeyProblems ?? (status.stopShortcut === false ? ['The stop shortcut is used by another app: stop with this button.'] : [])
 
   if (status.state === 'countdown') {
     return (
@@ -106,13 +130,26 @@ export function Toolbar(): JSX.Element | null {
       </button>
       <span className={`rec-dot ${paused ? 'paused' : ''} ${dim ? 'dim' : ''}`} />
       <span className="tb-time">{formatTime(seconds, false)}</span>
-      {status.stopShortcut === false && (
-        <span className="tb-warn" title="Ctrl+Shift+2 is used by another app: stop with this button.">
+      {paused && (
+        <span
+          className={`tb-state ${status.idle ? 'idle' : ''}`}
+          title={status.idle ? 'Paused because nothing happened for a while. Move the mouse or press a key to continue.' : undefined}
+        >
+          {status.idle ? 'Paused (idle)' : 'Paused'}
+        </span>
+      )}
+      {problems.length > 0 && (
+        <span className="tb-warn" title={problems.join('\n')}>
           !
         </span>
       )}
       <div className="tb-spacer" />
-      <button className="tb-btn pause" title={paused ? 'Resume' : 'Pause'} onClick={send(paused ? 'resume' : 'pause')}>
+      {marked && (
+        <span className="tb-mark" role="status">
+          Zoom marked
+        </span>
+      )}
+      <button className="tb-btn pause" title={withKey(paused ? 'Resume' : 'Pause', keys.pause)} onClick={send(paused ? 'resume' : 'pause')}>
         <Icon name={paused ? 'play' : 'pause'} />
       </button>
       <button className="tb-btn discard" title="Discard recording" onClick={() => setConfirming(true)}>

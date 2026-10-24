@@ -60,9 +60,31 @@ export async function writeCursor(id: string, track: CursorTrack): Promise<void>
   await fs.writeFile(path.join(projectDir(id), 'cursor.json'), JSON.stringify(track))
 }
 
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+
+/**
+ * "Zoom here" marks and typing bursts of a stored track (newer recordings), validated; absent
+ * from older tracks. Kept here so they survive migrateCursor().
+ */
+export function inputEvents(raw: unknown): Pick<CursorTrack, 'marks' | 'typing'> {
+  const c = (raw ?? {}) as { marks?: unknown; typing?: unknown }
+  const out: Pick<CursorTrack, 'marks' | 'typing'> = {}
+  if (Array.isArray(c.marks)) {
+    out.marks = c.marks.filter((m): m is { t: number } => finite((m as { t?: unknown } | null)?.t)).map((m) => ({ t: m.t }))
+  }
+  if (Array.isArray(c.typing)) {
+    out.typing = c.typing
+      .filter((b): b is { t: number; end: number } => finite((b as { t?: unknown } | null)?.t) && finite((b as { end?: unknown }).end))
+      .filter((b) => b.end >= b.t)
+      .map((b) => ({ t: b.t, end: b.end }))
+  }
+  return out
+}
+
 export async function readCursor(id: string): Promise<CursorTrack> {
   try {
-    return migrateCursor(JSON.parse(await fs.readFile(path.join(projectDir(id), 'cursor.json'), 'utf8')))
+    const raw: unknown = JSON.parse(await fs.readFile(path.join(projectDir(id), 'cursor.json'), 'utf8'))
+    return { ...migrateCursor(raw), ...inputEvents(raw) }
   } catch {
     return migrateCursor(undefined)
   }
@@ -137,6 +159,8 @@ export interface RecordingManifest {
   height: number
   hasAudio: boolean
   hasWebcam: boolean
+  /** Screen capture frame rate (absent in older manifests: 60). */
+  fps?: 30 | 60
   webcamFps: number
   webcamOffset: number
   audioOffset: number

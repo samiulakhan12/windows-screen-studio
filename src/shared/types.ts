@@ -216,6 +216,8 @@ export interface CaptureInfo {
   region: NormRect | null
   /** What was recorded (absent in older projects: 'screen', or 'area' when region is set). */
   target?: 'screen' | 'area' | 'window'
+  /** Frame rate of the screen recording and its proxy (absent in older projects: 60). */
+  fps?: number
 }
 
 export interface Project {

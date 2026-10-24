@@ -187,6 +187,13 @@ const ffmpeg = ffmpegPath()
 const haveFfmpeg = ffmpeg !== 'ffmpeg' && existsSync(ffmpeg)
 const ffprobe = ['/usr/bin/ffprobe', '/usr/local/bin/ffprobe'].find((p) => existsSync(p))
 
+function probeFrames(file: string): { r_frame_rate: string; frames: number } {
+  const out = JSON.parse(
+    execFileSync(ffprobe!, ['-v', 'error', '-count_frames', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate,nb_read_frames', '-of', 'json', file]).toString()
+  )
+  return { r_frame_rate: out.streams[0].r_frame_rate, frames: Number(out.streams[0].nb_read_frames) }
+}
+
 function probe(file: string): { streams: { codec_type: string; width?: number; height?: number; start_time?: string; duration?: string }[] } {
   return JSON.parse(execFileSync(ffprobe!, ['-v', 'error', '-show_streams', '-of', 'json', file]).toString())
 }
@@ -220,7 +227,7 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     const progress: (number | null)[] = []
     const project = await processRecording(m, (p) => progress.push(p.progress))
 
-    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: { x: 0, y: 0, w: 0.5, h: 0.5 }, target: 'area' })
+    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: { x: 0, y: 0, w: 0.5, h: 0.5 }, target: 'area', fps: 60 })
     expect(project.cursor.show).toBe(true)
     expect([project.width, project.height]).toEqual([160, 120])
     expect(project.hasAudio).toBe(true)
@@ -277,7 +284,7 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     )
     await projects.writeCursor(id, track)
     const project = await processRecording(m, () => undefined)
-    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: null, target: 'window' })
+    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: null, target: 'window', fps: 60 })
     expect(project.cursor.show).toBe(true)
     expect([project.width, project.height]).toEqual([640, 360])
     const cursor = JSON.parse(readFileSync(path.join(dir, 'cursor.json'), 'utf8'))
@@ -300,10 +307,43 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     // The renderer measured 0 s (e.g. the source closed); the proxy duration wins.
     const m = manifest({ id, method: 'chromium', startedAt: T0, width: 640, height: 360, hasAudio: true, duration: 0 })
     const project = await processRecording(m, () => undefined)
-    expect(project.capture).toEqual({ method: 'chromium', cursorInVideo: true, region: null, target: 'screen' })
+    expect(project.capture).toEqual({ method: 'chromium', cursorInVideo: true, region: null, target: 'screen', fps: 60 })
     expect(project.duration).toBeGreaterThan(1.4)
     expect(project.hasAudio).toBe(true)
     expect(existsSync(path.join(dir, 'screen.webm'))).toBe(false)
+  }, 60000)
+
+  it('keeps a 30 fps recording at 30 fps, with its exact duration, marks and typing bursts', async () => {
+    root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-30fps-'))
+    const { id, dir } = await projects.createProjectDir(new Date(T0))
+    gen(['-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=30:duration=3', '-c:v', 'libx264', '-g', '60', path.join(dir, 'native.mp4')])
+    const m = manifest({ id, startedAt: T0, width: 320, height: 240, duration: 3, fps: 30, status: 'processing' })
+    await projects.writeManifest(m)
+    const track = buildCursorTrack(
+      {
+        samples: [{ at: T0 + 100, x: 80, y: 60 }],
+        clicks: [{ at: T0 + 2000, x: 160, y: 120, button: 'left' }],
+        keys: [],
+        marks: [T0 + 1000, T0 + 9000],
+        typing: [T0 + 200, T0 + 400, T0 + 600, T0 + 800],
+        bounds: { x: 0, y: 0, width: 320, height: 240 },
+        scale: 1
+      },
+      { startedAt: T0, pauses: [], duration: 3, region: null, slack: 1 }
+    )
+    await projects.writeCursor(id, track)
+    const project = await processRecording(m, () => undefined)
+    expect(project.capture.fps).toBe(30)
+    const video = probeFrames(path.join(dir, 'screen.mp4'))
+    expect(video.r_frame_rate).toBe('30/1')
+    expect(video.frames).toBe(90)
+    expect(project.duration).toBeCloseTo(3, 2)
+    // Marks and typing survive processing (the 9 s mark is past the end).
+    const cursor = await projects.readCursor(id)
+    expect(cursor.marks).toEqual([{ t: 1 }])
+    expect(cursor.typing).toEqual([{ t: 0.2, end: 0.8 }])
+    // Auto zoom comes from the whole track (clicks, and marks/typing as the zoom settings allow).
+    expect(project.zooms.length).toBeGreaterThan(0)
   }, 60000)
 
   it('refuses an empty recording and keeps the folder for inspection', async () => {

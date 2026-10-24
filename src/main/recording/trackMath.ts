@@ -19,6 +19,10 @@ export interface RawTrack {
   samples: { at: number; x: number; y: number }[]
   clicks: { at: number; x: number; y: number; button: ClickEvent['button'] }[]
   keys: { at: number; label: string }[]
+  /** Instants of typing key presses (which keys is never recorded). */
+  typing?: number[]
+  /** "Zoom here" hotkey presses. */
+  marks?: number[]
   /**
    * DIP bounds of the captured display; null for window captures (their positions are
    * global DIP screen coordinates, mapped through TrackOptions.window).
@@ -77,6 +81,39 @@ export function toSourceTime(at: number, startedAt: number, pauses: PauseSpan[])
 }
 
 const byT = <T extends { t: number }>(a: T, b: T): number => a.t - b.t
+
+/** Key presses at most this far apart (ms) belong to one typing burst. */
+export const TYPING_GAP_MS = 1500
+/** Fewer key presses than this are not a typing burst (a lone key, a quick "ok"). */
+export const TYPING_MIN_KEYS = 3
+
+/**
+ * Groups typing key presses (epoch ms) into bursts: presses at most `gapMs` apart, with no
+ * pause between them; presses made while paused are not recorded. Returns epoch-ms spans
+ * from the first to the last press of each burst of at least `minKeys` presses.
+ */
+export function typingBursts(presses: number[], pauses: PauseSpan[], gapMs = TYPING_GAP_MS, minKeys = TYPING_MIN_KEYS): PauseSpan[] {
+  const recorded = presses.filter((at) => !pauses.some((p) => at > p.from && at < p.to)).sort((a, b) => a - b)
+  const out: PauseSpan[] = []
+  let from = NaN
+  let last = NaN
+  let count = 0
+  const close = (): void => {
+    if (count >= minKeys) out.push({ from, to: last })
+  }
+  for (const at of recorded) {
+    const split = count === 0 || at - last > gapMs || pauses.some((p) => p.to > last && p.from < at)
+    if (split) {
+      close()
+      from = at
+      count = 0
+    }
+    last = at
+    count++
+  }
+  close()
+  return out
+}
 
 export const inUnitSquare = (p: { x: number; y: number }): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
 
@@ -208,7 +245,23 @@ export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTra
     .filter((k) => k.t >= 0 && k.t <= end)
     .sort(byT)
   const shapes = buildShapes(o.shapes ?? [], time, end)
-  const invalid: CursorTrack = { samples: [], clicks: [], keys, shapes, scale: raw.scale, valid: false }
+  // Marks and typing are about time only: kept even when positions cannot be placed.
+  const input: Pick<CursorTrack, 'marks' | 'typing'> = {}
+  if (raw.marks) {
+    input.marks = raw.marks
+      .filter(recorded)
+      .map((at) => ({ t: time(at) }))
+      .filter((m) => m.t >= 0 && m.t <= end)
+      .sort(byT)
+  }
+  if (raw.typing) {
+    input.typing = typingBursts(raw.typing, o.pauses)
+      .map((b) => ({ t: time(b.from), end: time(b.to) }))
+      // Typing before the start (the countdown) or after the end is cut off.
+      .filter((b) => b.end >= 0 && b.t <= end)
+      .map((b) => ({ t: Math.max(0, b.t), end: Math.min(end, b.end) }))
+  }
+  const invalid: CursorTrack = { samples: [], clicks: [], keys, shapes, ...input, scale: raw.scale, valid: false }
   let place: Placement
   if (o.window !== undefined && o.window !== null) {
     const { poses, out, pointToScreen } = o.window
@@ -256,7 +309,7 @@ export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTra
     if (p && t >= 0 && t <= end) clicks.push({ t, button: c.button, ...p })
   }
   clicks.sort(byT)
-  return { samples: holdSamples(inside), clicks, keys, shapes, scale: raw.scale, valid: true }
+  return { samples: holdSamples(inside), clicks, keys, shapes, ...input, scale: raw.scale, valid: true }
 }
 
 /** Applies the final duration: clicks, keys and shapes up to it; samples get a little slack. */
@@ -266,6 +319,8 @@ export function clampTrack(track: CursorTrack, duration: number): CursorTrack {
     samples: track.samples.filter((s) => s.t <= duration + 0.5),
     clicks: track.clicks.filter((c) => c.t <= duration),
     keys: (track.keys ?? []).filter((k) => k.t <= duration),
-    shapes: (track.shapes ?? []).filter((s) => s.t <= duration)
+    shapes: (track.shapes ?? []).filter((s) => s.t <= duration),
+    ...(track.marks ? { marks: track.marks.filter((m) => m.t <= duration) } : {}),
+    ...(track.typing ? { typing: track.typing.filter((b) => b.t <= duration).map((b) => ({ t: b.t, end: Math.min(b.end, duration) })) } : {})
   }
 }

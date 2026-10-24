@@ -62,6 +62,22 @@ export interface KeyInput {
   metaKey: boolean
 }
 
+/** Keys that edit what is being typed (besides the character keys). */
+const TYPING_EDIT = new Set([14, 15, 28, 3612, 3667])
+const INSERT = 3666
+
+/**
+ * Whether a key press is typing: a character (letters, digits, punctuation, space, the number
+ * pad, also with Shift or AltGr) or Backspace / Tab / Enter / Delete, without Ctrl, Alt or Win.
+ * Only the fact that something was typed is ever used (typing bursts for auto zoom and
+ * auto-pause), never which key it was.
+ */
+export function isTypingKey(e: KeyInput, altGrDown = false): boolean {
+  if (MODIFIERS.has(e.keycode) || e.metaKey) return false
+  if ((e.ctrlKey || e.altKey) && !altGrDown) return false
+  return (CHARACTERS[e.keycode] !== undefined && e.keycode !== INSERT) || TYPING_EDIT.has(e.keycode)
+}
+
 /** Label for one key press, or null when it is typing (or not a key we show). */
 export function shortcutLabel(e: KeyInput, altGrDown = false): string | null {
   if (MODIFIERS.has(e.keycode)) return null
@@ -104,10 +120,18 @@ export class KeystrokeFilter {
 
   /** `at`: event time in ms (the hook's own clock; any monotonic ms clock works). */
   keydown(e: KeyInput, at: number = Date.now()): string | null {
+    return this.classify(e, at).label
+  }
+
+  /**
+   * One key press: its shortcut label (or null), and whether it is a new typing key press.
+   * Auto-repeats of a held key are neither.
+   */
+  classify(e: KeyInput, at: number = Date.now()): { label: string | null; typing: boolean } {
     this.dropReleasedModifiers(e)
     const last = this.held.get(e.keycode)
     this.held.set(e.keycode, at)
-    if (last !== undefined && at >= last && at - last <= REPEAT_WINDOW_MS) return null
+    if (last !== undefined && at >= last && at - last <= REPEAT_WINDOW_MS) return { label: null, typing: false }
     if (e.keycode === LEFT_CTRL) this.ctrlDownAt = at
     if (e.keycode === ALT_GR) {
       this.altGr = e.ctrlKey && this.held.has(LEFT_CTRL) && this.ctrlDownAt !== null && Math.abs(at - this.ctrlDownAt) <= ALT_GR_PAIR_MS
@@ -115,8 +139,9 @@ export class KeystrokeFilter {
     if (!MODIFIERS.has(e.keycode)) {
       for (const k of [...this.held.keys()]) if (k !== e.keycode && !MODIFIERS.has(k)) this.held.delete(k)
     }
-    const label = shortcutLabel(e, this.altGr && this.held.has(ALT_GR))
-    return label && !this.ignore.has(label) ? label : null
+    const altGrDown = this.altGr && this.held.has(ALT_GR)
+    const label = shortcutLabel(e, altGrDown)
+    return { label: label && !this.ignore.has(label) ? label : null, typing: isTypingKey(e, altGrDown) }
   }
 
   keyup(e: Pick<KeyInput, 'keycode'>): void {

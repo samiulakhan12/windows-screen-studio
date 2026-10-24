@@ -84,6 +84,11 @@ export class RecordingSession {
     this.method = plan.method
   }
 
+  /** Screen capture frame rate chosen on Home (the plan carries it; older plans: 60). */
+  private get fps(): 30 | 60 {
+    return this.plan.fps === 30 ? 30 : 60
+  }
+
   get error(): RecorderError | null {
     return this.failure
   }
@@ -122,7 +127,7 @@ export class RecordingSession {
 
   private async acquireScreen(systemAudio: boolean): Promise<void> {
     const { stream: display, systemAudioFailed } = await captureDisplay(
-      (audio) => navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 } }, audio }),
+      (audio) => navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: this.fps, max: this.fps } }, audio }),
       systemAudio
     )
     if (systemAudioFailed) {
@@ -238,7 +243,7 @@ export class RecordingSession {
       const screen = this.addTrack('screen', new MediaStream(audio ? [this.video, audio] : [this.video]), {
         // H.264 encoders need even frame sizes; odd-sized windows use VP8.
         mimeType: pickMime(screenMimes(!!audio, width % 2 === 0 && height % 2 === 0), isSupported),
-        videoBitsPerSecond: screenBitrate(width, height),
+        videoBitsPerSecond: screenBitrate(width, height, this.fps),
         audioBitsPerSecond: 192_000
       })
       // A recorder stops by itself when its video track ends; the clock must stop with it.
