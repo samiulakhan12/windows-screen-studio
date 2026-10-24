@@ -6,9 +6,9 @@ import { createLayoutSegment } from './layouts'
  * segments. Pure; the segments themselves and how they are drawn belong to layouts.ts.
  */
 
-/** Command palette names of the layouts. */
+/** Names of the layouts in the editor's messages. */
 export const LAYOUT_NAMES: Record<CameraLayout, string> = {
-  default: 'Screen and camera bubble',
+  default: 'Screen with camera bubble',
   'camera-only': 'Camera only',
   'screen-only': 'Screen only',
   'side-by-side': 'Side by side',

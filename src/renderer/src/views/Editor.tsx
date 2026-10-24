@@ -367,7 +367,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       const r = setLayoutAt(p, layout, displayTime(p.clips, player.time))
       if (!r.ok) {
         if (r.id) setSelection({ kind: 'layout', id: r.id })
-        showNotice(r.reason === 'same' ? `The camera layout here already is: ${LAYOUT_NAMES[layout].toLowerCase()}` : 'No room for a new camera layout here: another one starts right after the playhead')
+        showNotice(r.reason === 'same' ? `The camera layout here already is ${LAYOUT_NAMES[layout].toLowerCase()}` : 'No room for a new camera layout here: another one starts right after the playhead')
         return
       }
       store.update((q) => ({ ...q, layouts: r.layouts }))
