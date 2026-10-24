@@ -1,7 +1,7 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
 import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/deviceFrames'
-import { sceneContentRect, type Rect } from '../../../shared/engine/layout'
+import { layoutMoving, sceneContentRect, type Rect } from '../../../shared/engine/layout'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
@@ -98,7 +98,8 @@ export function drawFrame(
   const cam = cameraAt(project.zooms, t, focus, zoomStyle)
 
   // Pulled back, the card shrinks onto the background: draw it (shadow, corners, device frame)
-  // as vectors at its current size over the cached background. Otherwise use the cached static layer.
+  // as vectors at its current size over the cached background. So while a camera layout change
+  // moves it. Otherwise use the cached static layer.
   const card = cardRect(rect, cam)
   const shrink = Math.min(1, cam.scale)
   const frame = frameOf(style)
@@ -110,11 +111,12 @@ export function drawFrame(
   // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
   const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom)
   const c = tilted ? tilted.ctx : ctx
+  const moving = cam.scale < 1 || layoutMoving(project, t)
   if (tilted) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
-    if (cam.scale < 1) paintCard(c, spec, geom, backdrop, { w, h })
+    if (moving) paintCard(c, spec, geom, backdrop, { w, h })
     else paintCardLayer(c, w, h, spec, geom, backdrop, true)
-  } else if (cam.scale < 1) {
+  } else if (moving) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
     paintCard(ctx, spec, geom, backdrop, { w, h })
   } else {

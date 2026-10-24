@@ -2,6 +2,7 @@ import type { CaptureInfo, CursorSettings, CursorTrack, Project, ZoomSegment } f
 import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
+import { readLayouts, readWebcam } from './webcamData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
 
@@ -135,7 +136,9 @@ export function migrateProject(raw: unknown): Project {
     // Read as the renderer draws them, so every one listed can be selected and edited.
     shapes: readItems(p.shapes, readShape),
     spotlights: readItems(p.spotlights, readSpotlight),
-    layouts: objects(p.layouts),
+    // One layout at a time, inside the recording; the camera's look sanitised (never added to).
+    layouts: readLayouts(p.layouts, duration),
+    webcam: readWebcam(p.webcam, !!p.hasWebcam),
     titles: readItems(p.titles, (t) => readTitleCard(t, duration)),
     chapters: readItems(p.chapters, (c) => readChapter(c, duration)),
     // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.

@@ -7,6 +7,7 @@ import { cursorLook } from '../../../shared/render/cursorFx'
 import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
+import { onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { PreviewAudio } from './previewAudio'
 
@@ -56,6 +57,7 @@ export class PreviewPlayer {
   private clickAudio: { ctx: AudioContext; gain: GainNode; buffer: AudioBuffer; voices: Set<AudioBufferSourceNode> } | null = null
   private readonly offCursorAssets: () => void
   private readonly offStyleAssets: () => void
+  private readonly offCameraMasks: () => void
   private disposed = false
 
   constructor(
@@ -82,6 +84,8 @@ export class PreviewPlayer {
     // A custom cursor image finishing loading changes the picture.
     this.offCursorAssets = onCursorAssetsChanged(this.invalidate)
     this.offStyleAssets = onStyleAssetsChanged(this.invalidate)
+    // The camera's background blur: a frame's person mask arrives after the frame.
+    this.offCameraMasks = onCameraMasksChanged(this.invalidate)
     this.seek(keptBounds(project.clips).start)
   }
 
@@ -496,6 +500,7 @@ export class PreviewPlayer {
     this.clickAudio = null
     this.offCursorAssets()
     this.offStyleAssets()
+    this.offCameraMasks()
     this.listeners.clear()
     for (const v of [this.screen, this.webcam]) {
       if (!v) continue

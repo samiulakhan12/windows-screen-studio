@@ -98,7 +98,7 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
         {tab === 'text' && <TextPanel {...props} />}
         {tab === 'shapes' && <ShapesPanel {...props} />}
         {tab === 'effects' && <EffectsPanel project={props.project} cursor={props.cursor} />}
-        {tab === 'camera' && <CameraPanel project={props.project} hasWebcam={props.hasWebcam} />}
+        {tab === 'camera' && <CameraPanel {...props} />}
         {tab === 'audio' && <AudioPanel project={props.project} />}
       </div>
     </aside>

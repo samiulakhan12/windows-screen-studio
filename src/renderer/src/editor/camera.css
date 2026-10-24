@@ -1,0 +1,176 @@
+/* Camera: layout track on the timeline, and the Camera panel's framing pad and layout picker. */
+
+/* ---------- Timeline ---------- */
+.layout-track {
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  cursor: col-resize;
+}
+
+.layout-seg {
+  gap: 4px;
+  color: #f0f9ff;
+  background: linear-gradient(180deg, #0369a1, #075985);
+  border: 1px solid #38bdf8;
+}
+
+.layout-seg.camera-large {
+  background: linear-gradient(180deg, #1d4ed8, #1e40af);
+  border-color: #93c5fd;
+}
+
+.layout-seg.camera-only {
+  background: linear-gradient(180deg, #0e7490, #155e75);
+  border-color: #67e8f9;
+}
+
+.layout-seg.screen-only {
+  background: linear-gradient(180deg, #475569, #334155);
+  border-color: #cbd5e1;
+}
+
+.layout-seg.default {
+  background: linear-gradient(180deg, #3f3f55, #2e2e40);
+  border-color: #8b8ba0;
+}
+
+.layout-track.camera-off .layout-seg {
+  opacity: 0.5;
+}
+
+.layout-seg .layout-glyph {
+  flex: none;
+  pointer-events: none;
+}
+
+.layout-seg .seg-label {
+  padding-left: 0;
+}
+
+/* Where the layout animates in and out (LAYOUT_TRANSITION), like a zoom's ramps. */
+.layout-ramp {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.layout-ramp.in {
+  left: 0;
+  background: linear-gradient(90deg, rgba(10, 10, 16, 0.42), rgba(10, 10, 16, 0));
+}
+
+.layout-ramp.out {
+  right: 0;
+  background: linear-gradient(270deg, rgba(10, 10, 16, 0.42), rgba(10, 10, 16, 0));
+}
+
+/* ---------- Camera panel ---------- */
+.layout-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.layout-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.layout-option .layout-glyph {
+  color: #7dd3fc;
+}
+
+.layout-option:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #3a3a4e;
+  background: #20202d;
+}
+
+.layout-option.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.layout-option:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.layout-option.active:disabled {
+  opacity: 0.7;
+}
+
+.layout-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.layout-actions .hint {
+  margin: 0;
+}
+
+/* The camera picture with the part that shows marked; drag to move it. */
+.cam-pad {
+  position: relative;
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+  cursor: grab;
+  touch-action: none;
+}
+
+.cam-pad:active {
+  cursor: grabbing;
+}
+
+.cam-pad.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cam-pad canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cam-pad-frame {
+  position: absolute;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 999px rgba(8, 8, 12, 0.55);
+  pointer-events: none;
+}
+
+.cam-reset {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-2);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.cam-reset:hover {
+  color: var(--text);
+}

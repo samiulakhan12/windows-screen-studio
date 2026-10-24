@@ -69,6 +69,19 @@ if (unexpected.length) fail(`app.asar ships packages that are not runtime depend
 if (missing.length) fail(`app.asar lacks runtime packages: ${missing.join(', ')}`)
 if (!unexpected.length && !missing.length) ok(`app.asar node_modules: ${[...packagesInAsar].sort().join(', ')}`)
 
+// The camera's background blur runs fully offline: its worker, the WebAssembly runtime and the
+// person model are bundled by Vite into out/renderer/assets and must all be in the archive.
+const assetFiles = entries.filter((e) => !e.dir && e.path.startsWith('/out/renderer/assets/')).map((e) => ({ name: e.path.split('/').pop(), size: e.size ?? 0 }))
+const SEGMENTATION_FILES = [
+  { label: 'segmentation worker', re: /^segmentation\.worker-[\w-]+\.js$/, min: 50e3 },
+  { label: 'MediaPipe WebAssembly loader', re: /^vision_wasm_module_internal-[\w-]+\.js$/, min: 100e3 },
+  { label: 'MediaPipe WebAssembly runtime', re: /^vision_wasm_module_internal-[\w-]+\.wasm$/, min: 5e6 },
+  { label: 'person segmentation model', re: /^selfie_segmenter-[\w-]+\.tflite$/, min: 100e3 }
+]
+const segmentationMissing = SEGMENTATION_FILES.filter((f) => !assetFiles.some((a) => f.re.test(a.name) && a.size >= f.min))
+if (segmentationMissing.length) fail(`app.asar lacks the background blur files: ${segmentationMissing.map((f) => f.label).join(', ')}`)
+else ok(`background blur: worker, WebAssembly runtime and model in out/renderer/assets (${mb(assetFiles.filter((a) => SEGMENTATION_FILES.some((f) => f.re.test(a.name))).reduce((t, a) => t + a.size, 0))})`)
+
 // 2. ffmpeg.exe is the Windows x64 build, unpacked next to the archive (F43).
 const ffmpegDir = path.join(unpacked, 'resources', 'app.asar.unpacked', 'node_modules', 'ffmpeg-static')
 const ffmpeg = checkWindowsExe(path.join(ffmpegDir, 'ffmpeg.exe'), { minBytes: 20 * 1048576 })

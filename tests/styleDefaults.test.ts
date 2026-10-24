@@ -129,7 +129,7 @@ describe('sanitizeStyleDefaults', () => {
     const d = sanitizeStyleDefaults({
       style: { background: { type: 'gradient', preset: 'nope' }, padding: NaN, cornerRadius: 10, aspectRatio: '2:1' },
       cursor: { show: true, clickEffect: 'yes', hideWhenIdle: false },
-      webcam: { show: true, corner: 'middle', shape: 'square' },
+      webcam: { show: true, corner: 'middle', shape: 'hexagon' },
       effects: { motionBlur: null, keystrokes: { position: 'left', show: true } }
     })
     expect(d).toEqual({

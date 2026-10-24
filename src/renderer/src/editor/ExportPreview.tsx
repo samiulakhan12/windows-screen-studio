@@ -3,6 +3,7 @@ import { exportProject, exportSize } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
+import { onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { createVideo, SCREEN_PROXY_FPS, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
 
 interface Props {
@@ -27,6 +28,9 @@ export function ExportPreview(props: Props): JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null)
   const media = useRef<{ screen: HTMLVideoElement; webcam: HTMLVideoElement | null } | null>(null)
   const [frameTime, setFrameTime] = useState<number | null>(null)
+  // The camera's background blur: redraw when a frame's person mask arrives.
+  const [masks, setMasks] = useState(0)
+  useEffect(() => onCameraMasksChanged(() => setMasks((n) => n + 1)), [])
   const project = useMemo(() => exportProject(props.project, { aspect: props.options.aspect }), [props.project, props.options.aspect])
   const scene = useMemo(() => (project === props.scene.project ? props.scene : { ...props.scene, project }), [project, props.scene])
   const size = exportSize(project, props.options)
@@ -82,7 +86,7 @@ export function ExportPreview(props: Props): JSX.Element {
     const ctx = c.getContext('2d', { alpha: false })
     if (!ctx) return
     drawFrame(ctx, w, h, frameTime, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: 4 })
-  }, [frameTime, scene, props.background, css.width, css.height, size.fps])
+  }, [frameTime, scene, props.background, css.width, css.height, size.fps, masks])
 
   return <canvas ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
 }
