@@ -9,13 +9,20 @@
  *   first frame has been captured (startedAt = epoch ms of that frame).
  * - pause()/resume() exclude paused time from the output timeline.
  * - stop() finalises the MP4 and resolves with cursor-shape changes seen while recording.
+ * - onEnded() reports the helper ending on its own after it started (monitor unplugged,
+ *   encoder/device failure, crash), so the app can stop the recording and say why.
+ * - Quitting the app stops running helpers gracefully (bounded by nativeCaptureTimeouts.quit)
+ *   before anything kills them, so the MP4 is finalised; see guardQuit().
+ *
+ * The helper writes a fragmented MP4, so even a helper that is killed or crashes leaves a
+ * file that plays up to its last complete (~1 s) fragment.
  *
  * The helper is found at resources/native/ssw-capture.exe when packaged and at
  * native/bin/ssw-capture.exe in development (npm run build:native). SSW_CAPTURE_HELPER
  * overrides it with an executable, or a .js/.cjs script run by Electron as Node (tests).
  * Protocol: native/README.md.
  */
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn, type ChildProcessWithoutNullStreams, type SpawnOptionsWithoutStdio } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { app, screen, type Display } from 'electron'
@@ -41,6 +48,8 @@ export interface NativeStartInfo {
   /** Encoder the helper uses, e.g. "NVIDIA H.264 Encoder MFT". */
   encoder?: string
   hardware?: boolean
+  /** Fragmented MP4: readable up to the last ~1 s fragment even if the helper dies. */
+  fragmented?: boolean
 }
 
 export interface NativeStopInfo {
@@ -73,10 +82,18 @@ export interface NativeCaptureSession {
 }
 
 export interface NativeEndedInfo {
-  /** Helper-reported reason (e.g. 'closed', 'eof', 'interrupt') or 'crashed'. */
+  /**
+   * Helper-reported reason: 'closed' (the monitor went away; the MP4 is finalised), 'eof'
+   * (its stdin/stdout closed), 'interrupt' (Ctrl+C or its console closed), 'shutdown' (sign-out
+   * or shutdown); 'error' (it reported a fatal error, e.g. the encoder or GPU failed; `error`
+   * has its message) or 'crashed' (it exited without saying why).
+   */
   reason: string
   error?: Error
 }
+
+/** Errors from a helper that had started carry the cursor shapes it reported until then. */
+export type NativeCaptureError = Error & { shapes?: NativeStopInfo['shapes'] }
 
 export interface ProbeResult {
   supported: boolean
@@ -122,7 +139,9 @@ export const nativeCaptureTimeouts = {
   /** Covers monitor lookup, device/encoder setup and the helper's own 5 s first-frame limit. */
   start: 20_000,
   /** Finalising the MP4 is quick; this only guards against a wedged encoder. */
-  stop: 30_000
+  stop: 30_000,
+  /** How long quitting the app waits for running helpers to finalise before killing them. */
+  quit: 5_000
 }
 
 const OUTPUT_LIMIT = 256 * 1024
@@ -326,6 +345,18 @@ interface HelperEvent {
   [key: string]: unknown
 }
 
+/**
+ * Spawn options for `record`. On Windows the helper is detached: libuv puts every other child
+ * in a kill-on-close job object, so it would die the instant the app does (crash, End task)
+ * without finalising. Detached, it sees its stdin close when the app dies and finishes the MP4.
+ */
+export function recordSpawnOptions(env: NodeJS.ProcessEnv, platform: NodeJS.Platform = process.platform): SpawnOptionsWithoutStdio {
+  return { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], detached: platform === 'win32' }
+}
+
+/** Record helpers that have not ended yet (for quitting). */
+const live = new Set<HelperSession>()
+
 type Outcome = { ok: true; info: NativeStopInfo } | { ok: false; error: Error }
 
 /** One `ssw-capture record` process and its protocol state. */
@@ -345,6 +376,11 @@ class HelperSession implements NativeCaptureSession {
   private readonly shapes: { at: number; shape: CursorShape }[] = []
   private stopRequested = false
   private killed = false
+  /** The first frame was reported: from now on an end not asked for is reported via onEnded. */
+  private startedOk = false
+  private stopReason: string | null = null
+  private ended: NativeEndedInfo | null = null
+  private readonly endedListeners: ((info: NativeEndedInfo) => void)[] = []
   private outcome: Outcome | null = null
   private stopPromise: Promise<NativeStopInfo> | null = null
   private settleStop: ((o: Outcome) => void) | null = null
@@ -357,6 +393,8 @@ class HelperSession implements NativeCaptureSession {
     })
     // Callers may never await `started` (e.g. stop right away); keep rejections handled.
     this.started.catch(() => undefined)
+    live.add(this)
+    guardQuit()
     const startTimeout = nativeCaptureTimeouts.start
     this.startTimer = setTimeout(() => {
       // Ends the session for good: a helper still being looked up is never spawned.
@@ -384,7 +422,7 @@ class HelperSession implements NativeCaptureSession {
       }
       const args = ['record', '--monitor', monitor.device, '--out', this.options.output, '--fps', String(this.options.fps)]
       if (this.options.bitrate) args.push('--bitrate', String(Math.round(this.options.bitrate)))
-      const child = spawn(cmd.file, [...cmd.args, ...args], { env: cmd.env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+      const child = spawn(cmd.file, [...cmd.args, ...args], recordSpawnOptions(cmd.env))
       this.child = child
       // EPIPE when the helper has already exited; the exit handler reports what happened.
       child.stdin.on('error', () => undefined)
@@ -393,8 +431,8 @@ class HelperSession implements NativeCaptureSession {
       child.stderr.on('data', (d: Buffer) => {
         this.stderr = (this.stderr + d.toString()).slice(-4000)
       })
-      child.on('error', (err) => this.onExit(null, err))
-      child.on('close', (code) => this.onExit(code))
+      child.on('error', (err) => this.onExit(null, null, err))
+      child.on('close', (code, signal) => this.onExit(code, signal))
       for (const line of this.queued) this.send(line)
       this.queued = []
     } catch (err) {
@@ -437,8 +475,10 @@ class HelperSession implements NativeCaptureSession {
         if (num(e.fps)) info.fps = num(e.fps) as number
         if (typeof e.encoder === 'string') info.encoder = e.encoder
         if (typeof e.hardware === 'boolean') info.hardware = e.hardware
+        if (typeof e.fragmented === 'boolean') info.fragmented = e.fragmented
         if (!this.startSettled) {
           this.startSettled = true
+          this.startedOk = true
           this.clearStartTimer()
           this.resolveStarted(info)
         }
@@ -453,9 +493,13 @@ class HelperSession implements NativeCaptureSession {
       }
       case 'stopped':
         this.stats = { frames: num(e.frames) ?? 0, dropped: num(e.dropped) ?? 0, duration: num(e.duration) ?? 0 }
+        this.stopReason = typeof e.reason === 'string' && e.reason ? e.reason : 'eof'
+        // The MP4 is finalised by now; the process exits right after.
+        this.reportEnded({ reason: this.stopReason })
         return
       case 'error':
         if (typeof e.message === 'string') this.lastError = e.message
+        this.reportEnded({ reason: 'error', error: new Error(`The capture helper failed: ${this.lastError ?? 'unknown error'}`) })
         return
       case 'warning':
         if (typeof e.message === 'string') console.warn('capture helper:', e.message)
@@ -466,7 +510,7 @@ class HelperSession implements NativeCaptureSession {
     }
   }
 
-  private onExit(code: number | null, spawnError?: Error): void {
+  private onExit(code: number | null, signal: NodeJS.Signals | null, spawnError?: Error): void {
     if (this.outcome) return
     if (code === 0 && this.stats) {
       const { frames, dropped, duration } = this.stats
@@ -474,20 +518,55 @@ class HelperSession implements NativeCaptureSession {
       return
     }
     const detail = spawnError?.message ?? this.lastError ?? this.stderr.trim().split(/\r?\n/).slice(-3).join(' ')
-    const how = this.killed ? 'was stopped' : code === null ? 'could not run' : `exited with code ${code}`
+    const how = this.killed
+      ? 'was stopped'
+      : spawnError
+        ? 'could not run'
+        : code === null
+          ? `was terminated${signal ? ` (${signal})` : ''}`
+          : `exited with code ${code}`
     this.finish({ ok: false, error: new Error(`The capture helper ${how}${detail ? `: ${detail}` : ''}`) })
   }
 
   /** Records the final outcome: settles `started` (if still pending) and stop(). */
   private finish(outcome: Outcome, notStartedMessage?: string): void {
     if (this.outcome) return
+    if (!outcome.ok && this.startedOk) (outcome.error as NativeCaptureError).shapes = [...this.shapes]
     this.outcome = outcome
     this.child = null
+    live.delete(this)
     this.failStart(outcome.ok ? new Error(notStartedMessage ?? 'The capture helper ended') : outcome.error)
     if (this.stopTimer) clearTimeout(this.stopTimer)
     this.stopTimer = null
     this.settleStop?.(outcome)
     this.settleStop = null
+    this.reportEnded(
+      outcome.ok
+        ? { reason: this.stopReason ?? 'eof' }
+        : { reason: this.lastError ? 'error' : 'crashed', error: outcome.error }
+    )
+  }
+
+  /** Tells onEnded listeners, once, that the helper ended although nobody asked it to. */
+  private reportEnded(info: NativeEndedInfo): void {
+    if (this.ended || !this.startedOk || this.stopRequested || this.killed) return
+    this.ended = info
+    for (const cb of this.endedListeners.splice(0)) this.notify(cb, info)
+  }
+
+  private notify(cb: (info: NativeEndedInfo) => void, info: NativeEndedInfo): void {
+    try {
+      cb(info)
+    } catch (err) {
+      console.error('Native capture ended listener failed:', err)
+    }
+  }
+
+  onEnded(cb: (info: NativeEndedInfo) => void): void {
+    const ended = this.ended
+    // Subscribed late (the helper ended while the app was still attaching): report it anyway.
+    if (ended) queueMicrotask(() => this.notify(cb, ended))
+    else this.endedListeners.push(cb)
   }
 
   private failStart(err: Error): void {
@@ -564,4 +643,50 @@ class HelperSession implements NativeCaptureSession {
 
 export function startNativeCapture(options: NativeCaptureOptions): NativeCaptureSession {
   return new HelperSession(options)
+}
+
+/**
+ * Stops every running record helper the way stop() does (so it finalises its MP4) and waits
+ * up to `timeoutMs`; helpers still running then are killed. Never rejects.
+ */
+export async function stopAllNativeCaptures(timeoutMs = nativeCaptureTimeouts.quit): Promise<void> {
+  const sessions = [...live]
+  if (sessions.length === 0) return
+  let timer: NodeJS.Timeout | undefined
+  const timedOut = await Promise.race([
+    Promise.all(sessions.map((s) => s.stop().catch(() => undefined))).then(() => false),
+    new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(true), timeoutMs)
+    })
+  ])
+  clearTimeout(timer)
+  if (timedOut) for (const s of sessions) s.kill()
+}
+
+let quitGuarded = false
+
+/**
+ * Makes quitting the app finalise running helpers instead of killing them mid-file: the
+ * first 'will-quit' with helpers running is postponed until stopAllNativeCaptures() is done.
+ * Prepended so it runs before the app's own will-quit cleanup (which kills what is left).
+ */
+function guardQuit(): void {
+  if (quitGuarded || typeof app?.prependListener !== 'function') return
+  quitGuarded = true
+  let state: 'idle' | 'stopping' | 'done' = 'idle'
+  app.prependListener('will-quit', (event: { preventDefault(): void }) => {
+    if (state === 'done') return
+    if (state === 'stopping') {
+      // Quit again once the helpers are done.
+      event.preventDefault()
+      return
+    }
+    if (live.size === 0) return
+    event.preventDefault()
+    state = 'stopping'
+    void stopAllNativeCaptures().finally(() => {
+      state = 'done'
+      app.quit()
+    })
+  })
 }

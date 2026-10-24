@@ -10,11 +10,15 @@ interface FakeDisplay {
   nativeOrigin: { x: number; y: number }
 }
 
+type QuitEvent = { preventDefault(): void }
+
 const electron = vi.hoisted(() => ({
   displays: [] as FakeDisplay[],
   primary: 1,
   isPackaged: false,
-  appPath: ''
+  appPath: '',
+  willQuit: [] as ((e: QuitEvent) => void)[],
+  quits: 0
 }))
 
 vi.mock('electron', () => ({
@@ -22,7 +26,13 @@ vi.mock('electron', () => ({
     get isPackaged() {
       return electron.isPackaged
     },
-    getAppPath: () => electron.appPath
+    getAppPath: () => electron.appPath,
+    prependListener: (name: string, fn: (e: QuitEvent) => void) => {
+      if (name === 'will-quit') electron.willQuit.unshift(fn)
+    },
+    quit: () => {
+      electron.quits++
+    }
   },
   screen: {
     getAllDisplays: () => electron.displays,
@@ -36,15 +46,28 @@ import {
   matchMonitor,
   nativeCaptureTimeouts,
   probeNativeCapture,
+  recordSpawnOptions,
   resetNativeCaptureCache,
   startNativeCapture,
+  stopAllNativeCaptures,
   type HelperMonitor,
+  type NativeCaptureError,
   type NativeCaptureSession,
+  type NativeEndedInfo,
   type PhysicalDisplay
 } from '../src/main/nativeCapture'
 
 const FAKE = path.resolve(__dirname, 'fixtures/fake-capture-helper.cjs')
-const ENV_KEYS = ['SSW_CAPTURE_HELPER', 'FAKE_HELPER_PROBE', 'FAKE_HELPER_MONITORS', 'FAKE_HELPER_RECORD', 'FAKE_HELPER_VIDEO', 'FAKE_HELPER_LOG', 'FAKE_HELPER_SHAPES']
+const ENV_KEYS = [
+  'SSW_CAPTURE_HELPER',
+  'FAKE_HELPER_PROBE',
+  'FAKE_HELPER_MONITORS',
+  'FAKE_HELPER_RECORD',
+  'FAKE_HELPER_VIDEO',
+  'FAKE_HELPER_LOG',
+  'FAKE_HELPER_SHAPES',
+  'FAKE_HELPER_END_AFTER_MS'
+]
 const DEFAULT_TIMEOUTS = { ...nativeCaptureTimeouts }
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
@@ -124,8 +147,10 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  for (const s of sessions.splice(0)) s.kill()
-  await sleep(50)
+  const left = sessions.splice(0)
+  for (const s of left) s.kill()
+  // Settled once each helper process is gone, so no test sees another's helper as running.
+  await Promise.allSettled(left.map((s) => s.stop()))
   for (const k of ENV_KEYS) delete process.env[k]
   rmSync(dir, { recursive: true, force: true })
 })
@@ -344,7 +369,9 @@ describe('recording session', () => {
     await s.started
     await waitFor(() => !alive(recordPid()))
     const result = await s.stop()
-    expect(result).toMatchObject({ frames: 6, duration: 0.2 })
+    expect(result.duration).toBeGreaterThanOrEqual(0.2)
+    expect(result.duration).toBeLessThan(1)
+    expect(result.frames).toBe(Math.round(result.duration! * 30))
     expect(result.shapes.length).toBeGreaterThan(0)
   })
 
@@ -388,5 +415,196 @@ describe('recording session', () => {
     process.env.SSW_CAPTURE_HELPER = path.join(dir, 'nope.cjs')
     const s = start()
     await expect(s.started).rejects.toThrow(/not available/)
+  })
+
+  it('reports whether the helper writes a crash-safe (fragmented) MP4', async () => {
+    const s = start()
+    // The fake does not say; the field is optional and absent then.
+    expect((await s.started).fragmented).toBeUndefined()
+    await s.stop()
+  })
+})
+
+describe('spawning the record helper', () => {
+  it('detaches it on Windows, so it outlives a crashed or killed app long enough to finalise', () => {
+    const env = { A: '1' }
+    expect(recordSpawnOptions(env, 'win32')).toEqual({ env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], detached: true })
+    // Elsewhere a child is not killed with its parent anyway; keep it in the app's process group.
+    expect(recordSpawnOptions(env, 'linux').detached).toBe(false)
+  })
+})
+
+describe('helper ending on its own (onEnded)', () => {
+  /** Collects onEnded notifications. */
+  function track(s: NativeCaptureSession): NativeEndedInfo[] {
+    const seen: NativeEndedInfo[] = []
+    s.onEnded!((info) => seen.push(info))
+    return seen
+  }
+
+  it('reports a closed capture (monitor unplugged) once, after the MP4 was finalised', async () => {
+    process.env.FAKE_HELPER_RECORD = 'close-early'
+    process.env.FAKE_HELPER_END_AFTER_MS = '300'
+    const s = start()
+    const seen = track(s)
+    await s.started
+    expect(seen).toEqual([])
+    await waitFor(() => seen.length > 0)
+    expect(seen).toEqual([{ reason: 'closed' }])
+    expect(readFileSync(path.join(dir, 'screen.mp4'), 'utf8')).toBe('fake video')
+    // The app then stops the recording as usual and gets the helper's result.
+    const result = await s.stop()
+    expect(result.duration).toBeGreaterThanOrEqual(0.3)
+    await waitFor(() => !alive(recordPid()))
+    await sleep(100)
+    expect(seen).toHaveLength(1)
+  })
+
+  it('still reports an end that happened before the app subscribed', async () => {
+    process.env.FAKE_HELPER_RECORD = 'close-early'
+    const s = start()
+    await s.started
+    await waitFor(() => !alive(recordPid()))
+    await sleep(50)
+    const seen = track(s)
+    await waitFor(() => seen.length > 0)
+    expect(seen).toEqual([{ reason: 'closed' }])
+  })
+
+  it('honours pause, resume and stop until then; a stopped helper is not reported', async () => {
+    process.env.FAKE_HELPER_RECORD = 'close-early'
+    process.env.FAKE_HELPER_END_AFTER_MS = '1500'
+    const s = start()
+    const seen = track(s)
+    await s.started
+    s.pause()
+    s.resume()
+    const result = await s.stop()
+    expect(result.frames).toBeGreaterThanOrEqual(0)
+    expect(stdinLines().map((l) => l.split(' ')[0])).toEqual(['pause', 'resume', 'stop'])
+    await sleep(200)
+    expect(seen).toEqual([])
+  })
+
+  it('reports a fatal helper error with its message; stop() rejects with the shapes seen', async () => {
+    process.env.FAKE_HELPER_RECORD = 'error-early'
+    process.env.FAKE_HELPER_END_AFTER_MS = '300'
+    const s = start()
+    const seen = track(s)
+    await s.started
+    await waitFor(() => seen.length > 0)
+    expect(seen[0].reason).toBe('error')
+    expect(seen[0].error?.message).toMatch(/fake device removed/)
+    const err = (await s.stop().then(
+      () => null,
+      (e: unknown) => e
+    )) as NativeCaptureError
+    expect(err.message).toMatch(/exited with code 1: Encoding a frame failed: fake device removed/)
+    expect(err.shapes?.map((x) => x.shape)).toEqual(['arrow', 'text', 'pointer'])
+    expect(seen).toHaveLength(1)
+  })
+
+  it('reports a helper that dies without a word as crashed', async () => {
+    process.env.FAKE_HELPER_RECORD = 'crash-early'
+    process.env.FAKE_HELPER_END_AFTER_MS = '300'
+    const s = start()
+    const seen = track(s)
+    await s.started
+    await waitFor(() => seen.length > 0)
+    expect(seen[0].reason).toBe('crashed')
+    expect(seen[0].error?.message).toMatch(/The capture helper was terminated \(SIGKILL\)/)
+    await expect(s.stop()).rejects.toThrow(/terminated/)
+  })
+
+  it('does not report ends the app asked for, or helpers that never started', async () => {
+    const stopped = start()
+    const stoppedSeen = track(stopped)
+    await stopped.started
+    await stopped.stop()
+
+    const killed = start()
+    const killedSeen = track(killed)
+    await killed.started
+    killed.kill()
+    await expect(killed.stop()).rejects.toThrow(/was stopped/)
+
+    process.env.FAKE_HELPER_RECORD = 'fail-start'
+    const failed = start()
+    const failedSeen = track(failed)
+    await expect(failed.started).rejects.toThrow()
+
+    process.env.FAKE_HELPER_RECORD = 'never-start'
+    nativeCaptureTimeouts.start = 500
+    const hung = start()
+    const hungSeen = track(hung)
+    await expect(hung.started).rejects.toThrow(/did not start/)
+
+    await sleep(200)
+    expect([stoppedSeen, killedSeen, failedSeen, hungSeen]).toEqual([[], [], [], []])
+  })
+
+  it('keeps notifying other listeners when one throws', async () => {
+    process.env.FAKE_HELPER_RECORD = 'close-early'
+    const s = start()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    s.onEnded!(() => {
+      throw new Error('listener bug')
+    })
+    const seen = track(s)
+    await waitFor(() => seen.length > 0)
+    expect(error).toHaveBeenCalled()
+    error.mockRestore()
+  })
+})
+
+describe('quitting the app', () => {
+  it('stopAllNativeCaptures finalises running helpers instead of killing them', async () => {
+    const s = start()
+    const seen: NativeEndedInfo[] = []
+    s.onEnded!((info) => seen.push(info))
+    await s.started
+    await stopAllNativeCaptures(5000)
+    expect(stdinLines().map((l) => l.split(' ')[0])).toEqual(['stop'])
+    expect(readFileSync(path.join(dir, 'screen.mp4'), 'utf8')).toBe('fake video')
+    await expect(s.stop()).resolves.toMatchObject({ dropped: 0 })
+    expect(seen).toEqual([])
+    // Nothing left to stop.
+    await stopAllNativeCaptures(10)
+  })
+
+  it('stopAllNativeCaptures kills a helper that does not finish in time', async () => {
+    process.env.FAKE_HELPER_RECORD = 'hang-on-stop'
+    const s = start()
+    await s.started
+    const t0 = Date.now()
+    await stopAllNativeCaptures(400)
+    expect(Date.now() - t0).toBeLessThan(2000)
+    await waitFor(() => !alive(recordPid()))
+    await expect(s.stop()).rejects.toThrow(/was stopped/)
+  })
+
+  it('postpones the first will-quit until running helpers are finalised, then quits', async () => {
+    // Installed (prepended) with the first session of this file.
+    expect(electron.willQuit).toHaveLength(1)
+    const quit = (): number => {
+      let prevented = 0
+      for (const fn of [...electron.willQuit]) fn({ preventDefault: () => void prevented++ })
+      return prevented
+    }
+    // No helper running: nothing to wait for.
+    expect(quit()).toBe(0)
+
+    const s = start()
+    await s.started
+    const quitsBefore = electron.quits
+    expect(quit()).toBe(1)
+    // A second quit while the helper finalises is held back too.
+    expect(quit()).toBe(1)
+    await waitFor(() => electron.quits === quitsBefore + 1)
+    expect(stdinLines().map((l) => l.split(' ')[0])).toEqual(['stop'])
+    await expect(s.stop()).resolves.toMatchObject({ dropped: 0 })
+    expect(readFileSync(path.join(dir, 'screen.mp4'), 'utf8')).toBe('fake video')
+    // The re-issued quit goes through.
+    expect(quit()).toBe(0)
   })
 })

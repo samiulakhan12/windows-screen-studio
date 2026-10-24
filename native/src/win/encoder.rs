@@ -1,6 +1,10 @@
 //! H.264 MP4 writer: a Media Foundation sink writer fed with NV12 Direct3D 11
 //! textures, so a hardware encoder (NVENC, Quick Sync, AMF) consumes GPU frames
 //! directly. Falls back to the Microsoft software encoder.
+//!
+//! The file is a fragmented MP4 (one fragment per 1 s GOP), so a recording whose helper
+//! is killed, crashes or loses power before Finalize still plays up to its last complete
+//! fragment and the app can recover it. A plain MP4 is the fallback.
 
 use std::path::{Path, PathBuf};
 
@@ -13,14 +17,15 @@ use windows::Win32::Media::MediaFoundation::{
     IMFSinkWriter, IMFSinkWriterEx, IMFTransform, IMFVideoSampleAllocatorEx, MFCreateAttributes,
     MFCreateDXGIDeviceManager, MFCreateFile, MFCreateMediaType, MFCreateSinkWriterFromURL,
     MFCreateVideoSampleAllocatorEx, MFMediaType_Video, MFNominalRange_16_235, MFT_ENUM_HARDWARE_URL_Attribute,
-    MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264, MFVideoFormat_NV12,
-    MFVideoInterlace_Progressive, MFVideoPrimaries_BT709, MFVideoTransFunc_709, MFVideoTransferMatrix_BT709,
-    MFT_CATEGORY_VIDEO_ENCODER, MF_ACCESSMODE_WRITE, MF_E_SAMPLEALLOCATOR_EMPTY, MF_FILEFLAGS_NONE,
-    MF_MT_ALL_SAMPLES_INDEPENDENT, MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE,
-    MF_MT_MAJOR_TYPE, MF_MT_MPEG2_PROFILE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_MT_TRANSFER_FUNCTION,
-    MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_VIDEO_PRIMARIES, MF_MT_YUV_MATRIX, MF_OPENMODE_DELETE_IF_EXIST,
-    MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SA_D3D11_BINDFLAGS, MF_SA_D3D11_USAGE, MF_SINK_WRITER_D3D_MANAGER,
-    MF_SINK_WRITER_MEDIASINK, MF_TRANSCODE_CONTAINERTYPE, MF_TRANSFORM_ASYNC,
+    MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_FMPEG4, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264,
+    MFVideoFormat_NV12, MFVideoInterlace_Progressive, MFVideoPrimaries_BT709, MFVideoTransFunc_709,
+    MFVideoTransferMatrix_BT709, MFT_CATEGORY_VIDEO_ENCODER, MF_ACCESSMODE_WRITE, MF_E_SAMPLEALLOCATOR_EMPTY,
+    MF_FILEFLAGS_NONE, MF_MPEG4SINK_MIN_FRAGMENT_DURATION, MF_MT_ALL_SAMPLES_INDEPENDENT, MF_MT_AVG_BITRATE,
+    MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE, MF_MT_MPEG2_PROFILE,
+    MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_MT_TRANSFER_FUNCTION, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_VIDEO_PRIMARIES,
+    MF_MT_YUV_MATRIX, MF_OPENMODE_DELETE_IF_EXIST, MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SA_D3D11_BINDFLAGS,
+    MF_SA_D3D11_USAGE, MF_SINK_WRITER_D3D_MANAGER, MF_SINK_WRITER_MEDIASINK, MF_TRANSCODE_CONTAINERTYPE,
+    MF_TRANSFORM_ASYNC,
 };
 use windows::Win32::System::Com::CoTaskMemFree;
 
@@ -31,6 +36,30 @@ use crate::output;
 /// Samples (NV12 textures) the encoder may hold at once. When all are in use the
 /// encoder is behind and the frame is dropped rather than queued without bound.
 const MAX_SAMPLES_IN_FLIGHT: u32 = 16;
+
+/// Shortest fragment of a fragmented MP4, in 100 ns units. Fragments start at key frames,
+/// so with the 1 s GOP each holds one GOP; slightly under a second so that rounded frame
+/// durations never make a fragment wait for the next GOP.
+const MIN_FRAGMENT_DURATION: u64 = 9_000_000;
+
+/// How the MP4 is laid out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Container {
+    /// `moov` up front, then a `moof`/`mdat` pair per fragment: everything up to the last
+    /// complete fragment stays readable if the file is never finalised.
+    Fragmented,
+    /// The index (`moov`) is written by Finalize: unplayable if the process dies first.
+    Plain,
+}
+
+impl Container {
+    fn guid(self) -> GUID {
+        match self {
+            Container::Fragmented => MFTranscodeContainerType_FMPEG4,
+            Container::Plain => MFTranscodeContainerType_MPEG4,
+        }
+    }
+}
 
 pub struct EncoderSettings {
     pub width: u32,
@@ -48,12 +77,26 @@ struct FileWriter {
 }
 
 impl FileWriter {
-    unsafe fn open(path: &Path, attributes: &IMFAttributes) -> Result<Self> {
+    unsafe fn open(path: &Path, manager: &IMFDXGIDeviceManager, hardware: bool, container: Container) -> Result<Self> {
         unsafe {
+            let attributes = new_attributes(4)?;
+            attributes
+                .SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, hardware as u32)
+                .context("Configuring the writer")?;
+            attributes.SetUnknown(&MF_SINK_WRITER_D3D_MANAGER, manager).context("Configuring the writer")?;
+            attributes.SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &container.guid()).context("Configuring the writer")?;
             let url = HSTRING::from(path.as_os_str());
             let file = MFCreateFile(MF_ACCESSMODE_WRITE, MF_OPENMODE_DELETE_IF_EXIST, MF_FILEFLAGS_NONE, &url)
                 .context("Creating the output file")?;
-            match MFCreateSinkWriterFromURL(&url, &file, attributes) {
+            if container == Container::Fragmented {
+                // Not documented which attribute store the sink reads this from: set it on the
+                // writer's and on the byte stream's. Without it the sink's default applies.
+                let _ = attributes.SetUINT64(&MF_MPEG4SINK_MIN_FRAGMENT_DURATION, MIN_FRAGMENT_DURATION);
+                if let Ok(stream_attributes) = file.cast::<IMFAttributes>() {
+                    let _ = stream_attributes.SetUINT64(&MF_MPEG4SINK_MIN_FRAGMENT_DURATION, MIN_FRAGMENT_DURATION);
+                }
+            }
+            match MFCreateSinkWriterFromURL(&url, &file, &attributes) {
                 Ok(writer) => Ok(Self { writer, file }),
                 Err(e) => {
                     let _ = file.Close();
@@ -89,6 +132,7 @@ pub struct Encoder {
     leftovers: Vec<PathBuf>,
     pub name: String,
     pub hardware: bool,
+    pub container: Container,
 }
 
 impl Drop for Encoder {
@@ -143,25 +187,43 @@ impl Encoder {
         // throwaway file; the recording then uses the first one that works end to end.
         // Every attempt gets its own file in case a failed one still holds its file open.
         let mut leftovers = Vec::new();
+        let container = if fragmented_sink_works(path, &manager, settings, &mut leftovers) {
+            Container::Fragmented
+        } else {
+            Container::Plain
+        };
+        let mut checks = 0;
+        let mut attempt = |hardware: bool, tuning: Tuning, container: Container| -> Result<Self> {
+            let check = sibling(path, &format!(".encoder-check-{checks}.mp4"));
+            checks += 1;
+            let checked =
+                Self::try_create(&check, &manager, settings, hardware, tuning, container).and_then(|e| e.smoke_test());
+            discard(check, &mut leftovers);
+            let result = checked.and_then(|()| Self::try_create(path, &manager, settings, hardware, tuning, container));
+            if let Err(e) = &result {
+                output::log(&format!("encoder setup (hardware: {hardware}, {tuning:?}, {container:?}) failed: {e}"));
+            }
+            result
+        };
+
+        // The fragmented sink may still fail where the plain one works (e.g. at Finalize, with
+        // a particular encoder). Retrying the first failure as a plain MP4 tells that apart
+        // from an encoder problem at the cost of at most one extra attempt.
+        let mut plain_retry = container == Container::Fragmented;
         let mut last_error = String::new();
         let attempts = [true, false].into_iter().flat_map(|hw| TUNINGS.into_iter().map(move |t| (hw, t)));
-        for (n, (hardware, tuning)) in attempts.enumerate() {
-            let mut check = path.as_os_str().to_owned();
-            check.push(format!(".encoder-check-{n}.mp4"));
-            let check = PathBuf::from(check);
-            let checked = Self::try_create(&check, &manager, settings, hardware, tuning).and_then(|e| e.smoke_test());
-            if std::fs::remove_file(&check).is_err() && check.exists() {
-                leftovers.push(check);
+        for (hardware, tuning) in attempts {
+            let mut result = attempt(hardware, tuning, container);
+            if result.is_err() && plain_retry {
+                plain_retry = false;
+                result = attempt(hardware, tuning, Container::Plain);
             }
-            match checked.and_then(|()| Self::try_create(path, &manager, settings, hardware, tuning)) {
+            match result {
                 Ok(mut encoder) => {
                     encoder.leftovers = leftovers;
                     return Ok(encoder);
                 }
-                Err(e) => {
-                    output::log(&format!("encoder setup (hardware: {hardware}, {tuning:?}) failed: {e}"));
-                    last_error = e.message;
-                }
+                Err(e) => last_error = e.message,
             }
         }
         remove_files(&mut leftovers);
@@ -186,28 +248,14 @@ impl Encoder {
         s: &EncoderSettings,
         hardware: bool,
         tuning: Tuning,
+        container: Container,
     ) -> Result<Self> {
         unsafe {
-            let attributes = new_attributes(4)?;
-            attributes
-                .SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, hardware as u32)
-                .context("Configuring the writer")?;
-            attributes.SetUnknown(&MF_SINK_WRITER_D3D_MANAGER, manager).context("Configuring the writer")?;
-            attributes
-                .SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_MPEG4)
-                .context("Configuring the writer")?;
-            let output = FileWriter::open(path, &attributes)?;
+            let output = FileWriter::open(path, manager, hardware, container)?;
             let writer = &output.writer;
 
             let tagged = tuning != Tuning::Bare;
-            let output_type = video_type(s, &MFVideoFormat_H264, tagged)?;
-            output_type.SetUINT32(&MF_MT_AVG_BITRATE, s.bitrate).context("Configuring H.264")?;
-            if tagged {
-                output_type
-                    .SetUINT32(&MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High.0 as u32)
-                    .context("Configuring H.264")?;
-            }
-            let stream = writer.AddStream(&output_type).context("Adding the H.264 stream")?;
+            let stream = writer.AddStream(&h264_type(s, tagged)?).context("Adding the H.264 stream")?;
 
             let input_type = video_type(s, &MFVideoFormat_NV12, tagged)?;
             input_type.SetUINT32(&MF_MT_ALL_SAMPLES_INDEPENDENT, 1).context("Configuring NV12 input")?;
@@ -239,6 +287,7 @@ impl Encoder {
                 leftovers: Vec::new(),
                 name,
                 hardware: is_hardware,
+                container,
             })
         }
     }
@@ -279,6 +328,57 @@ impl Encoder {
     pub fn finish(self) -> Result<()> {
         unsafe { self.output.writer.Finalize() }.context("Finalising the MP4")
         // Dropping `self` closes the file.
+    }
+}
+
+/// Whether the fragmented MP4 sink (Windows 10 1709+) accepts the H.264 stream. Cheap: it
+/// creates the sink but loads no encoder.
+fn fragmented_sink_works(
+    path: &Path,
+    manager: &IMFDXGIDeviceManager,
+    s: &EncoderSettings,
+    leftovers: &mut Vec<PathBuf>,
+) -> bool {
+    let check = sibling(path, ".container-check.mp4");
+    let result = unsafe { FileWriter::open(&check, manager, false, Container::Fragmented) }.and_then(|output| {
+        let stream_type = unsafe { h264_type(s, true) }?;
+        unsafe { output.writer.AddStream(&stream_type) }.context("Adding the H.264 stream")?;
+        // Dropping `output` shuts the sink down and closes the file.
+        Ok(())
+    });
+    discard(check, leftovers);
+    if let Err(e) = &result {
+        output::log(&format!("fragmented MP4 is unavailable, writing a plain MP4: {e}"));
+    }
+    result.is_ok()
+}
+
+/// `<path><suffix>`, next to the output file.
+fn sibling(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(suffix);
+    PathBuf::from(name)
+}
+
+/// Deletes a scratch file, or remembers it when a failed writer still holds it open.
+fn discard(file: PathBuf, leftovers: &mut Vec<PathBuf>) {
+    if std::fs::remove_file(&file).is_err() && file.exists() {
+        leftovers.push(file);
+    }
+}
+
+/// The encoder's output type: H.264 at the target size, rate and bitrate; High profile and
+/// colour tags unless `tagged` is false.
+unsafe fn h264_type(s: &EncoderSettings, tagged: bool) -> Result<IMFMediaType> {
+    unsafe {
+        let output_type = video_type(s, &MFVideoFormat_H264, tagged)?;
+        output_type.SetUINT32(&MF_MT_AVG_BITRATE, s.bitrate).context("Configuring H.264")?;
+        if tagged {
+            output_type
+                .SetUINT32(&MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High.0 as u32)
+                .context("Configuring H.264")?;
+        }
+        Ok(output_type)
     }
 }
 

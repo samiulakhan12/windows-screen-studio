@@ -8,7 +8,7 @@ use windows::Win32::Graphics::Direct3D11::ID3D11RenderTargetView;
 use windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM;
 
 use super::d3d;
-use super::encoder::{Encoder, EncoderSettings};
+use super::encoder::{Container, Encoder, EncoderSettings};
 use super::processor::Processor;
 use super::{init_winrt, output_path, Context, Failure, MediaFoundation, PartialFile, Result};
 use crate::cli::SelftestArgs;
@@ -98,6 +98,7 @@ fn selftest(args: &SelftestArgs) -> Result<String> {
     }
     let name = encoder.name.clone();
     let hardware = encoder.hardware;
+    let fragmented = encoder.container == Container::Fragmented;
     encoder.finish()?;
     partial.keep();
     let elapsed = began.elapsed().as_secs_f64();
@@ -111,6 +112,7 @@ fn selftest(args: &SelftestArgs) -> Result<String> {
         .int("fps", args.fps as i64)
         .str("encoder", &name)
         .bool("hardware", hardware)
+        .bool("fragmented", fragmented)
         .num("seconds", elapsed)
         // How many times faster than real time the pipeline ran (must be > 1 to record live).
         .num("speed", args.seconds as f64 / elapsed.max(1e-6))

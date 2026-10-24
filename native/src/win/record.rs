@@ -3,25 +3,24 @@
 
 use std::io::{self, BufRead};
 use std::ops::Range;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
-use windows::core::BOOL;
 use windows::Win32::Graphics::Direct3D11::{ID3D11Texture2D, D3D11_BOX};
 use windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM;
-use windows::Win32::System::Console::SetConsoleCtrlHandler;
 
 use super::capture::{Capture, Frame};
 use super::clock;
 use super::cursor::CursorWatcher;
 use super::d3d::{self, Device};
-use super::encoder::{Encoder, EncoderSettings};
+use super::encoder::{Container, Encoder, EncoderSettings};
 use super::monitors;
 use super::processor::Processor;
+use super::session_end::{self, SETTLED};
 use super::{init_winrt, output_path, support, Failure, MediaFoundation, PartialFile, Result};
 use crate::cli::RecordArgs;
 use crate::exit;
+use crate::interrupt::SetOnDrop;
 use crate::output;
 use crate::pacer::{Pacer, Timebase};
 use crate::protocol::{self, Command, StartedInfo, StoppedInfo};
@@ -38,15 +37,6 @@ enum Input {
     Command(Command),
     Invalid(String),
     Eof,
-}
-
-/// Set by Ctrl+C / Ctrl+Break / closing the console when run by hand: stop and finalise
-/// the file instead of dying with an unplayable MP4.
-static INTERRUPTED: AtomicBool = AtomicBool::new(false);
-
-unsafe extern "system" fn on_console_ctrl(_kind: u32) -> BOOL {
-    INTERRUPTED.store(true, Ordering::SeqCst);
-    BOOL(1)
 }
 
 pub fn run(args: &RecordArgs) -> i32 {
@@ -193,9 +183,12 @@ impl Session {
 }
 
 fn record(args: &RecordArgs) -> Result<()> {
-    // Declared first so it is dropped last, after the encoder and Media Foundation released the file.
+    // Declared first so it is dropped last: once the file is settled, a console close or
+    // session end waiting in session_end.rs may let Windows end the process.
+    let _settled = SetOnDrop(&SETTLED);
+    // Dropped right before, after the encoder and Media Foundation released the file.
     let mut partial = PartialFile::default();
-    let _ = unsafe { SetConsoleCtrlHandler(Some(on_console_ctrl), true) };
+    session_end::watch();
     init_winrt()?;
     let _mf = MediaFoundation::start()?;
     match support::capture_supported() {
@@ -227,6 +220,12 @@ fn record(args: &RecordArgs) -> Result<()> {
     };
     partial.arm(&path);
     let encoder = Encoder::create(&path, &device, &settings)?;
+    if encoder.container != Container::Fragmented {
+        output::emit(&protocol::event_warning(
+            "Writing a plain MP4 (fragmented MP4 could not be set up): \
+             the recording is lost if the capture helper is killed before it finishes",
+        ));
+    }
     if sizing::is_scaled(input, (width, height)) {
         output::emit(&protocol::event_warning(&format!(
             "The {}x{} monitor is recorded at {width}x{height}, the largest size H.264 encoders accept",
@@ -263,13 +262,8 @@ fn record(args: &RecordArgs) -> Result<()> {
                 }
             }
         }
-        if INTERRUPTED.load(Ordering::SeqCst) {
-            output::emit(&protocol::event_stopped(&StoppedInfo {
-                frames: 0,
-                dropped: 0,
-                duration: 0.0,
-                reason: "interrupt",
-            }));
+        if let Some(reason) = session_end::requested() {
+            output::emit(&protocol::event_stopped(&StoppedInfo { frames: 0, dropped: 0, duration: 0.0, reason }));
             return Ok(());
         }
         if capture.is_closed() {
@@ -303,6 +297,7 @@ fn record(args: &RecordArgs) -> Result<()> {
         fps: args.fps,
         encoder: &encoder.name,
         hardware: encoder.hardware,
+        fragmented: encoder.container == Container::Fragmented,
     }));
     let cursor = CursorWatcher::spawn(timebase);
 
@@ -315,12 +310,21 @@ fn record(args: &RecordArgs) -> Result<()> {
 
     let result = run_loop(&mut session, &encoder, &inputs, stop);
     cursor.stop();
+    let written = session.pacer.written();
+    // A fragmented MP4 that could not be finalised still plays up to its last complete
+    // fragment, so it is kept for recovery; a plain one has no index and is useless.
+    let keep_unfinalised = encoder.container == Container::Fragmented && written > 0;
     match result {
         Ok(reason) => {
-            encoder.finish()?;
+            if let Err(e) = encoder.finish() {
+                if keep_unfinalised {
+                    partial.keep();
+                }
+                return Err(e);
+            }
             partial.keep();
             output::emit(&protocol::event_stopped(&StoppedInfo {
-                frames: session.pacer.written(),
+                frames: written,
                 dropped: session.pacer.dropped(),
                 duration: session.pacer.duration() as f64 / 10_000_000.0,
                 reason,
@@ -329,10 +333,15 @@ fn record(args: &RecordArgs) -> Result<()> {
         }
         Err(failure) => {
             // Keep whatever was recorded playable.
-            if session.pacer.written() > 0 {
+            if written > 0 {
                 match encoder.finish() {
                     Ok(()) => partial.keep(),
-                    Err(e) => output::log(&format!("could not finalise the partial recording: {e}")),
+                    Err(e) => {
+                        output::log(&format!("could not finalise the partial recording: {e}"));
+                        if keep_unfinalised {
+                            partial.keep();
+                        }
+                    }
                 }
             }
             Err(failure)
@@ -368,8 +377,10 @@ fn run_loop(
         if stop.is_none() && output::stdout_broken() {
             stop = Some((clock::now_ticks(), "eof"));
         }
-        if stop.is_none() && INTERRUPTED.load(Ordering::SeqCst) {
-            stop = Some((clock::now_ticks(), "interrupt"));
+        if stop.is_none() {
+            if let Some(reason) = session_end::requested() {
+                stop = Some((clock::now_ticks(), reason));
+            }
         }
 
         if let Err(e) = session.refresh_frame() {

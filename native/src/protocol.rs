@@ -147,6 +147,8 @@ pub struct StartedInfo<'a> {
     pub fps: u32,
     pub encoder: &'a str,
     pub hardware: bool,
+    /// Fragmented MP4: playable up to the last ~1 s fragment even if the helper dies.
+    pub fragmented: bool,
 }
 
 pub fn event_started(info: &StartedInfo) -> String {
@@ -158,6 +160,7 @@ pub fn event_started(info: &StartedInfo) -> String {
         .int("fps", info.fps as i64)
         .str("encoder", info.encoder)
         .bool("hardware", info.hardware)
+        .bool("fragmented", info.fragmented)
         .finish()
 }
 
@@ -179,7 +182,7 @@ pub struct StoppedInfo<'a> {
     /// Seconds of video written (paused time excluded).
     pub duration: f64,
     /// Why recording ended: "stop" (command), "eof" (stdin or stdout closed), "closed" (monitor
-    /// went away) or "interrupt" (Ctrl+C in a console).
+    /// went away), "interrupt" (Ctrl+C or closing the console) or "shutdown" (sign-out/shutdown).
     pub reason: &'a str,
 }
 
@@ -240,10 +243,11 @@ mod tests {
             fps: 60,
             encoder: "NVIDIA H.264 Encoder MFT",
             hardware: true,
+            fragmented: true,
         });
         assert_eq!(
             started,
-            r#"{"event":"started","at":1700000000123,"width":1920,"height":1080,"fps":60,"encoder":"NVIDIA H.264 Encoder MFT","hardware":true}"#
+            r#"{"event":"started","at":1700000000123,"width":1920,"height":1080,"fps":60,"encoder":"NVIDIA H.264 Encoder MFT","hardware":true,"fragmented":true}"#
         );
         assert_eq!(event_ready(), r#"{"event":"ready"}"#);
         assert_eq!(event_cursor(12.25, "text"), r#"{"event":"cursor","at":12.25,"shape":"text"}"#);
