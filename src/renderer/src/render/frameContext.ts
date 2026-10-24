@@ -34,6 +34,8 @@ export interface FrameContext {
   screen: FrameImage | null
   /** Motion-blur shutter of this frame (privacy shapes cover everything its sub-frames show). */
   options?: Required<DrawOptions>
+  /** The project's background image (a title card with the project's background paints it). */
+  background?: HTMLImageElement | null
   /** Normalised source coordinates -> output pixels, through the camera. */
   toOut(x: number, y: number): { x: number; y: number }
 }

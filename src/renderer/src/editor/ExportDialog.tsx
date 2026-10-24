@@ -3,6 +3,7 @@ import { styleContentRect } from '../../../shared/engine/layout'
 import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { hasSoundtrack } from '../../../shared/audio/settings'
+import { outputChapters, youtubeChapters, type OutputChapter } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportProject, exportSize, LOW_BPP, MAX_EXPORT_SIDE, MB, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
 import {
@@ -30,6 +31,7 @@ import { AspectGlyph, PresetBadge } from './exportIcons'
 import { ExportPreview } from './ExportPreview'
 import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, type BatchJob, type BatchStatus, type ExportProgress, type ExportResult } from './exporter'
 import './exportDialog.css'
+import './titles.css'
 
 interface Props {
   project: Project
@@ -144,6 +146,60 @@ export function formatClock(seconds: number, tenths = false): string {
   return `${m}:${sec}`
 }
 
+/** Puts `text` on the clipboard; the older copy command is the fallback when the page has no focus. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    try {
+      return document.execCommand('copy')
+    } catch {
+      return false
+    } finally {
+      area.remove()
+    }
+  }
+}
+
+/**
+ * The video's chapters: how many go into the file, and a button that copies them as YouTube
+ * timestamps ("0:00 Intro"), saying what YouTube still needs when the list does not qualify.
+ */
+function ChapterCopy({ chapters, length, gif }: { chapters: OutputChapter[]; length: number; gif: boolean }): JSX.Element | null {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const yt = useMemo(() => youtubeChapters(chapters, length), [chapters, length])
+  useEffect(() => setState('idle'), [yt.text])
+  if (!chapters.length) return null
+  const copy = async (): Promise<void> => setState((await copyText(yt.text)) ? 'copied' : 'failed')
+  const count = `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`
+  return (
+    <div className="export-chapters" data-testid="export-chapters">
+      <p className="hint">{gif ? `${count} · GIFs have no chapters, other formats keep them.` : `${count}, written into the file.`}</p>
+      <button className="btn small chapter-copy" onClick={() => void copy()} title="Copy the chapters as YouTube timestamps (0:00 Intro…) for the video's description">
+        {state === 'copied' ? <Icon name="check" size={14} /> : <CopyIcon />} {state === 'copied' ? 'Copied' : 'Copy chapters'}
+      </button>
+      {state === 'failed' && <p className="hint warn">The chapters could not be copied to the clipboard.</p>}
+      {yt.problems.length ? (
+        yt.problems.map((p) => (
+          <p key={p} className="hint warn">
+            {p}
+          </p>
+        ))
+      ) : (
+        <p className="hint">Ready for YouTube: paste them into the description.</p>
+      )}
+    </div>
+  )
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
@@ -212,6 +268,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const hasClickSounds = useMemo(() => !!clickSoundJob(project, props.scene.cursor, clips), [project, props.scene.cursor, clips])
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
+  const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips), [project.chapters, clips])
 
   useEffect(() => {
     let live = true
@@ -490,6 +547,7 @@ export function ExportDialog(props: Props): JSX.Element {
                   </p>
                 )}
                 {thumb.kind === 'failed' && <p className="hint warn">{thumb.message}</p>}
+                <ChapterCopy chapters={chapters} length={length} gif={mode === 'single' && gif} />
 
                 <div className="export-summary">
                   {mode === 'single' ? (
@@ -744,6 +802,7 @@ export function ExportDialog(props: Props): JSX.Element {
               {formatBytes(phase.bytes)} · exported in {formatDuration(phase.seconds)} · {phase.encoder}
             </p>
             <SizeReport result={phase} />
+            {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">
               <button className="btn" onClick={() => void copyFile(phase.path)} disabled={copy.kind === 'busy'} title="Copy the file to paste it into a chat, an email or a folder">

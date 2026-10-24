@@ -3,9 +3,10 @@ import type { LoadedProject } from '../../../shared/api'
 import { openedWithoutStems, withRecordedStems } from '../../../shared/audio/settings'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
-import { canSplitAt, clipAt, correctProjectMedia, restoreRange, stepOutput } from '../../../shared/editor/clips'
+import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
 import { EditStore } from '../../../shared/editor/editStore'
+import { LAYOUT_NAMES, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { mediaLength } from '../../../shared/editor/mediaLength'
 import {
   chordFromEvent,
@@ -16,6 +17,7 @@ import {
   matchShortcut,
   serializeShortcuts,
   shortcutIndex,
+  shortcutLabel,
   withShortcut,
   zoomLevelKeysHint,
   type Keymap
@@ -24,9 +26,10 @@ import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { DEFAULT_EFFECTS } from '../../../shared/engine/project'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
+import { nextChapter, previousChapter } from '../../../shared/editor/titles'
 import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { focusPathFor, insertZoom, isUsableClick, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
-import type { Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
+import type { CameraLayout, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
 import { EditorContext, type EditorServices } from '../editor/context'
@@ -43,6 +46,7 @@ import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
+import { addChapterAt, addTitleAt } from '../editor/titleItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
@@ -346,6 +350,30 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       if (sel?.kind !== 'zoom') setSelection({ kind: 'zoom', id: z.id })
     }
 
+    /** Chapter commands: moves the playhead to the next (or previous) chapter. */
+    const goToChapter = (next: boolean): void => {
+      const chapters = store.state.chapters ?? []
+      const c = next ? nextChapter(chapters, player.time) : previousChapter(chapters, player.time)
+      if (c) return player.seek(c.t)
+      const key = latest.current.keymap.addChapter[0]
+      if (chapters.length) showNotice(next ? 'There is no chapter after the playhead' : 'There is no chapter before the playhead')
+      else showNotice(`This video has no chapters yet${key ? `: press ${shortcutLabel(key)} to add one at the playhead` : ''}`)
+    }
+
+    /** Camera layout commands: the layout at the playhead (a new layout segment, or the one there changes). */
+    const setLayout = (layout: CameraLayout): void => {
+      if (!data.webcamUrl) return showNotice('This recording has no camera')
+      const p = store.state
+      const r = setLayoutAt(p, layout, displayTime(p.clips, player.time))
+      if (!r.ok) {
+        if (r.id) setSelection({ kind: 'layout', id: r.id })
+        showNotice(r.reason === 'same' ? `The camera layout here already is: ${LAYOUT_NAMES[layout].toLowerCase()}` : 'No room for a new camera layout here: another one starts right after the playhead')
+        return
+      }
+      store.update((q) => ({ ...q, layouts: r.layouts }))
+      setSelection({ kind: 'layout', id: r.id })
+    }
+
     return {
       togglePlay: (): void => player.toggle(),
       addShape,
@@ -356,6 +384,10 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       addZoomFromTrack: (t: number): void => addZoomAt(t, 0),
       addTextAt,
       addText: (): void => addTextAt(player.time),
+      addTitle: (): void => void addTitleAt({ store, player }, { onSelect: setSelection }),
+      addChapter: (): void => void addChapterAt({ store, player }, { onSelect: setSelection, onNotice: showNotice }),
+      goToChapter,
+      setLayout,
       split: (): void => {
         const t = player.time
         const clips = store.state.clips
@@ -411,7 +443,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       goToStart: (): void => player.seek(keptBounds(store.state.clips).start),
       goToEnd: (): void => player.seek(keptBounds(store.state.clips).end)
     }
-  }, [cursor, player, store, showNotice, setSelection])
+  }, [cursor, data.webcamUrl, player, store, showNotice, setSelection])
 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
@@ -454,6 +486,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       stepForward: () => actions.step(1 / 30),
       jumpBack: () => actions.step(-1),
       jumpForward: () => actions.step(1),
+      nextChapter: () => actions.goToChapter(true),
+      prevChapter: () => actions.goToChapter(false),
       undo: actions.undo,
       redo: actions.redo,
       split: actions.split,
@@ -478,6 +512,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         if (cursor.valid) actions.addSpotlight('cursor')
         else showNotice('This recording has no cursor data: add a spotlight on an area instead')
       },
+      addTitle: actions.addTitle,
+      addChapter: actions.addChapter,
+      layoutDefault: () => actions.setLayout('default'),
+      layoutCameraOnly: () => actions.setLayout('camera-only'),
+      layoutScreenOnly: () => actions.setLayout('screen-only'),
+      layoutSideBySide: () => actions.setLayout('side-by-side'),
+      layoutCameraLarge: () => actions.setLayout('camera-large'),
       zoomLevel0: level('0'),
       zoomLevel1: level('1'),
       zoomLevel2: level('2'),
@@ -558,7 +599,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       addCursorSpotlight: cursor.valid ? null : noCursor,
       toggleCursor: smoothCursor ? null : cursor.valid ? 'The recorded cursor is already in the video' : noCursor,
       toggleClickEffects: cursor.valid ? null : noCursor,
-      toggleWebcam: data.webcamUrl ? null : 'This recording has no camera'
+      toggleWebcam: data.webcamUrl ? null : 'This recording has no camera',
+      nextChapter: nextChapter(p.chapters ?? [], t) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
+      prevChapter: previousChapter(p.chapters ?? [], t) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet'
+    }
+    for (const k of ['layoutDefault', 'layoutCameraOnly', 'layoutScreenOnly', 'layoutSideBySide', 'layoutCameraLarge'] as const) {
+      unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
     }
     for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
     const on: Partial<Record<CommandId, boolean>> = {

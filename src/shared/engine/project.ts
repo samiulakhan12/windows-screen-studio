@@ -1,5 +1,6 @@
 import type { CaptureInfo, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
 import { readItems, readShape, readSpotlight } from './shapeData'
+import { readChapter, readTitleCard } from './titleData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
 
@@ -134,8 +135,8 @@ export function migrateProject(raw: unknown): Project {
     shapes: readItems(p.shapes, readShape),
     spotlights: readItems(p.spotlights, readSpotlight),
     layouts: objects(p.layouts),
-    titles: objects(p.titles),
-    chapters: objects(p.chapters),
+    titles: readItems(p.titles, (t) => readTitleCard(t, duration)),
+    chapters: readItems(p.chapters, (c) => readChapter(c, duration)),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

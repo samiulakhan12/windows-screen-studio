@@ -2,6 +2,7 @@ import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
 import { exportFrameTimes } from '../../../shared/engine/timeline'
+import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
@@ -133,6 +134,13 @@ async function musicOf({ project }: ExportSource): Promise<MusicSound | undefine
   }
 }
 
+/** The chapters written into the file (every format but GIF), in output seconds. */
+function chaptersOf(project: Project, format: ExportOptions['format']): Pick<ExportJob, 'chapters'> {
+  if (format === 'gif') return {}
+  const chapters = outputChapters(project.chapters ?? [], project.clips)
+  return chapters.length ? { chapters } : {}
+}
+
 /** Bit rates for a size target (video formats other than GIF; GIFs are fitted by the main process). */
 function rateOf(settings: ExportOptions, frames: number, size: { width: number; height: number; fps: number }, sound: boolean): Pick<ExportJob, 'bitrate' | 'maxBytes'> {
   const target = settings.targetSizeMB
@@ -150,6 +158,7 @@ interface JobPlan {
   times: number[]
   sound: SoundParts
   rate: Pick<ExportJob, 'bitrate' | 'maxBytes'>
+  chapters: Pick<ExportJob, 'chapters'>
 }
 
 async function planJob(input: ExportInput): Promise<JobPlan> {
@@ -157,7 +166,7 @@ async function planJob(input: ExportInput): Promise<JobPlan> {
   const times = exportFrameTimes(input.project.clips, fps)
   const sound = await soundOf(input, input.settings.format)
   const rate = rateOf(input.settings, times.length, { width, height, fps }, !!(sound.audio || sound.clicks || sound.music))
-  return { width, height, fps, times, sound, rate }
+  return { width, height, fps, times, sound, rate, chapters: chaptersOf(input.project, input.settings.format) }
 }
 
 /**
@@ -218,6 +227,7 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
       video: { kind: 'none' },
       ...sound,
       ...rateOf(settings, frames, { width: 0, height: 0, fps: AUDIO_ONLY_FPS }, true),
+      ...chaptersOf(project, settings.format),
       outputPath: input.outputPath
     }
     await window.api.exportStart(project.id, job)
@@ -355,6 +365,7 @@ async function renderAll(
       quality: settings.quality,
       ...plan.sound,
       ...plan.rate,
+      ...plan.chapters,
       outputPath: input.outputPath
     }
     const startJob = (job: ExportJob): Promise<void> => window.api.exportStart(project.id, job)

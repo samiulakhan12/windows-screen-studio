@@ -1,6 +1,7 @@
 import { AUDIO_RATE, planSoundtrack, type SoundFiles } from '../shared/render/audioPlan'
 import { vp9MetadataFilter } from '../shared/render/codec'
 import type { ColorTags, ExportJob, FfmpegVideoEncoder, H264Encoder } from '../shared/api/export'
+import type { OutputChapter } from '../shared/render/chapters'
 import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
 
 export { AUDIO_RATE, audioFilterGraph, clickPositions, clickTrackGraph, soundtrackGraph } from '../shared/render/audioPlan'
@@ -105,11 +106,47 @@ export interface ExportIo {
   stems?: SoundFiles['stems']
   /** The background music file. */
   music?: string | null
+  /** The job's chapters as an ffmetadata file (chapterMetadata), written before ffmpeg starts. */
+  chapters?: string | null
   /** Where ffmpeg writes (a temporary file next to the target). */
   output: string
 }
 
 const HEAD = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats']
+
+/* ---------- chapters ---------- */
+
+/** A value in an ffmetadata file: '=', ';', '#', '\\' and line breaks are escaped with a backslash. */
+const metadataValue = (v: string): string => v.replace(/[=;#\\\n]/g, (c) => `\\${c}`).replace(/\r/g, '')
+
+/**
+ * The chapters of a `duration`-second export as an ffmetadata file: one [CHAPTER] per chapter in
+ * milliseconds, each ending where the next starts and the last at the end of the video. Chapters
+ * that would be empty (at or past the end, or in the same millisecond as the next) are left out;
+ * null when none is left.
+ */
+export function chapterMetadata(chapters: readonly OutputChapter[], duration: number): string | null {
+  const end = Math.round(duration * 1000)
+  const starts = chapters.map((c) => Math.max(0, Math.round(c.start * 1000)))
+  const entries: string[] = []
+  chapters.forEach((c, i) => {
+    const start = starts[i]
+    const stop = Math.min(end, i + 1 < chapters.length ? starts[i + 1] : end)
+    if (!(stop > start)) return
+    const title = metadataValue(c.title.replace(/\s+/g, ' ').trim())
+    entries.push(['[CHAPTER]', 'TIMEBASE=1/1000', `START=${start}`, `END=${stop}`, `title=${title}`].join('\n'))
+  })
+  return entries.length ? [';FFMETADATA1', ...entries, ''].join('\n') : null
+}
+
+/** Input arguments of the chapters file (after `inputs` other inputs) and its mapping onto the output. */
+function chapterArgs(io: ExportIo, inputs: number): { input: string[]; map: string[] } {
+  if (!io.chapters) return { input: [], map: [] }
+  return { input: ['-f', 'ffmetadata', '-i', io.chapters], map: ['-map_chapters', String(inputs)] }
+}
+
+/** Number of inputs in an ffmpeg argument list so far. */
+const inputCount = (args: readonly string[]): number => args.filter((a) => a === '-i').length
 
 /** Audio inputs (recording, music, clicks) after `first` other inputs, and the graph that mixes them into [aout]. */
 function audioInputs(job: ExportJob, io: ExportIo, first: number): { args: string[]; graph: string | null } {
@@ -170,6 +207,8 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   else args.push('-nostdin')
   const sound = audioInputs(job, io, hasVideo ? 1 : 0)
   args.push(...sound.args)
+  const chapters = chapterArgs(io, inputCount(args))
+  args.push(...chapters.input)
 
   const graphs: string[] = []
   if (v.kind === 'raw') graphs.push(`[0:v]${yuvFilter(pixelFormatFor(v.encoder))}[vout]`)
@@ -180,7 +219,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   else if (hasVideo) args.push('-map', '0:v:0', ...copyVideoArgs(job))
   if (sound.graph) args.push('-map', '[aout]', ...audioCodecArgs(job))
   if (!hasVideo && !sound.graph) throw new Error('This recording has no sound to export.')
-  args.push(...containerArgs(job, io.output))
+  args.push(...chapters.map, ...containerArgs(job, io.output))
   return args
 }
 
@@ -332,22 +371,28 @@ export function externalizeGraph(args: string[], scriptPath: string): { args: st
  * encoders stores the converted frames losslessly (x264 qp 0, fast), then runs the encoder's
  * two passes over them, so the file lands on the size without guessing.
  */
-export function ffmpegPlan(job: ExportJob, paths: PlanPaths): FfmpegPlan {
-  const { tempStem } = paths
+export function ffmpegPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
+  const { tempStem } = given
   if (job.format === 'gif') {
     const gif = { intermediate: `${tempStem}.mkv`, palette: `${tempStem}.png` }
     return {
       capture: gifCaptureArgs(job, gif.intermediate),
-      passes: [gifPaletteArgs(gif.intermediate, gif.palette), gifEncodeArgs(gif.intermediate, gif.palette, paths.output)],
+      passes: [gifPaletteArgs(gif.intermediate, gif.palette), gifEncodeArgs(gif.intermediate, gif.palette, given.output)],
       scripts: [],
       temps: [gif.intermediate, gif.palette],
       gif
     }
   }
   const script = `${tempStem}.graph.txt`
+  // Chapters go in through an ffmetadata file written next to the graph script.
+  const metadata = job.chapters?.length ? chapterMetadata(job.chapters, job.frames / job.fps) : null
+  const chapterFile = metadata ? { path: `${tempStem}.chapters.txt`, content: metadata } : null
+  const paths: PlanPaths = { ...given, chapters: chapterFile?.path ?? null }
+  const extra = chapterFile ? [chapterFile] : []
   if (!isTwoPass(job) || job.video.kind !== 'raw') {
     const { args, script: s } = externalizeGraph(exportArgs(job, paths), script)
-    return { capture: args, passes: [], scripts: s ? [s] : [], temps: s ? [s.path] : [] }
+    const scripts = [...extra, ...(s ? [s] : [])]
+    return { capture: args, passes: [], scripts, temps: scripts.map((f) => f.path) }
   }
   const encoder = job.video.encoder
   const intermediate = `${tempStem}.mkv`
@@ -361,11 +406,14 @@ export function ffmpegPlan(job: ExportJob, paths: PlanPaths): FfmpegPlan {
   const pass1 = [...HEAD, '-i', intermediate, '-map', '0:v:0', ...encoderArgs(encoder, job, 1), '-pass', '1', '-passlogfile', log, '-an', '-f', 'null', '-']
   const sound = audioInputs(job, paths, 1)
   const pass2 = [...HEAD, '-i', intermediate, ...sound.args]
+  const chapters = chapterArgs(paths, inputCount(pass2))
+  pass2.push(...chapters.input)
   if (sound.graph) pass2.push('-filter_complex', sound.graph)
   pass2.push('-map', '0:v:0', ...encoderArgs(encoder, job, 2), '-pass', '2', '-passlogfile', log, ...encodedColorArgs(encoder))
   if (sound.graph) pass2.push('-map', '[aout]', ...audioCodecArgs(job))
-  pass2.push(...containerArgs(job, paths.output))
+  pass2.push(...chapters.map, ...containerArgs(job, paths.output))
   const { args, script: s } = externalizeGraph(pass2, script)
   const logs = [`${log}-0.log`, `${log}-0.log.temp`, `${log}-0.log.mbtree`, `${log}-0.log.mbtree.temp`]
-  return { capture, passes: [pass1, args], scripts: s ? [s] : [], temps: [intermediate, ...logs, ...(s ? [s.path] : [])] }
+  const scripts = [...extra, ...(s ? [s] : [])]
+  return { capture, passes: [pass1, args], scripts, temps: [intermediate, ...logs, ...scripts.map((f) => f.path)] }
 }
