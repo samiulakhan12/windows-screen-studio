@@ -13,12 +13,13 @@ import type {
 } from '../nativeCapture'
 import { RAW, type RecordingManifest } from '../projects'
 import { ChunkWriter } from './chunkWriter'
+import { STEM_RAW } from './stems'
 import { stopNativeVideo, stopWindowWatch } from './nativeVideo'
 import type { PauseSpan } from './trackMath'
 
 export type Phase = 'countdown' | 'recording' | 'paused' | 'stopping' | 'processing'
 
-const FILES: Record<TrackKind, string> = { screen: RAW.screen, webcam: RAW.webcam, audio: RAW.audio }
+const FILES: Record<TrackKind, string> = { screen: RAW.screen, webcam: RAW.webcam, audio: RAW.audio, ...STEM_RAW }
 
 /**
  * Main-process state of the one recording in progress: its folder, the files

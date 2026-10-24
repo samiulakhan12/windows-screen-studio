@@ -1,9 +1,14 @@
+import type { StemKind } from '../audio/settings'
 import type { CaptureSource, NormRect, RecordingStatus } from '../types'
 import type { HotkeyAction, HotkeyCheck } from '../recording/hotkeys'
 import type { AppSettings, RecordingSettingsPatch } from '../recording/settings'
 
-/** The media files a recording streams to disk while it runs. */
-export type TrackKind = 'screen' | 'webcam' | 'audio'
+/**
+ * The media files a recording streams to disk while it runs: the screen (with the mixed
+ * sound under Chromium capture), the camera, the mixed sound (native capture), and the
+ * microphone and the system sound each on its own ("stems", for per-source editing).
+ */
+export type TrackKind = 'screen' | 'webcam' | 'audio' | StemKind
 
 export interface RecordingRequest {
   sourceId: string
@@ -51,6 +56,11 @@ export interface RecordingStartInfo {
   hasAudio: boolean
   hasWebcam: boolean
   webcamFps: number
+  /**
+   * Start of the separately recorded sound minus the screen timeline's start, in seconds, as
+   * far as known when recording starts (native capture: exact); refined on stop.
+   */
+  audioOffset?: number
 }
 
 export type NativeStartResult =
@@ -66,8 +76,13 @@ export interface SaveRecordingPayload {
   duration: number
   /** Webcam timeline start minus screen timeline start, in seconds. */
   webcamOffset: number
-  /** Audio timeline start minus video timeline start (native capture only), in seconds. */
+  /**
+   * Start of the separately recorded sound (native capture's mixed track, and the microphone
+   * and system stems) minus the screen timeline's start, in seconds.
+   */
   audioOffset: number
+  /** Stems recorded to the end; the files of any other stem (one that failed) are discarded. */
+  stems?: StemKind[]
 }
 
 export interface ProcessingProgress {

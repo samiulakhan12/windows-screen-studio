@@ -203,3 +203,61 @@ describe('encoder fallback still works for real failures', () => {
     expect(project.hasAudio).toBe(true)
   })
 })
+
+describe('microphone and system sound kept on their own (stems)', () => {
+  const withStems = async (over: Partial<projects.RecordingManifest> = {}): Promise<{ m: projects.RecordingManifest; dir: string }> => {
+    const r = await setup({ hasAudio: true, ...over })
+    writeFileSync(path.join(r.dir, 'mic.webm'), 'raw mic')
+    writeFileSync(path.join(r.dir, 'system.webm'), 'raw system')
+    return r
+  }
+  const audioDone = (frames = 150): Step => async (args) => {
+    writeFileSync(output(args), 'proxy')
+    return { ...done(frames), inputHasAudio: true }
+  }
+
+  it('turns each into an m4a on the video timeline, cut to its frame count, and lists them in the project', async () => {
+    const { m, dir } = await withStems({ audioOffset: 0.02 })
+    runner.steps = [audioDone(150), succeed(), succeed()]
+    const project = await processRecording(m, () => undefined)
+    const [, mic, system] = runner.calls
+    expect(mic[mic.indexOf('-i') + 1]).toMatch(/mic\.webm$/)
+    expect(mic[mic.indexOf('-af') + 1]).toBe('adelay=20:all=1,apad,atrim=end=2.500000')
+    expect(output(mic)).toMatch(/mic\.m4a$/)
+    expect(output(system)).toMatch(/system\.m4a$/)
+    expect(project.audioStems).toEqual({ mic: true, system: true })
+    for (const f of ['mic.webm', 'system.webm']) expect(existsSync(path.join(dir, f)), `${f} removed`).toBe(false)
+    expect(existsSync(path.join(dir, 'mic.m4a'))).toBe(true)
+  })
+
+  it('a stem that fails is left out; the recording is saved with its mixed sound', async () => {
+    const { m, dir } = await withStems()
+    runner.steps = [audioDone(), async () => Promise.reject(new FfmpegError('Invalid data found when processing input', null)), succeed()]
+    const project = await processRecording(m, () => undefined)
+    expect(project.hasAudio).toBe(true)
+    expect(project.audioStems).toEqual({ mic: false, system: true })
+    expect(existsSync(path.join(dir, 'mic.m4a'))).toBe(false)
+  })
+
+  it('no stems for a recording whose sound is gone, and none in older recordings', async () => {
+    const silent = await withStems()
+    runner.steps = [succeed()]
+    expect((await processRecording(silent.m, () => undefined)).audioStems).toBeUndefined()
+    const older = await setup({ hasAudio: true })
+    runner.steps = [audioDone()]
+    expect((await processRecording(older.m, () => undefined)).audioStems).toBeUndefined()
+  })
+
+  it('"Finish later" while the stems are converted keeps everything for later', async () => {
+    const { m, dir } = await withStems()
+    runner.steps = [audioDone(), runUntilStopped, succeed()]
+    const abort = new AbortController()
+    const run = processRecording(m, () => undefined, abort.signal)
+    await until(() => runner.calls.length === 2)
+    abort.abort()
+    expect(isCancelled(await run.catch((e: unknown) => e))).toBe(true)
+    expect(runner.calls).toHaveLength(2)
+    await expectKeptForLater(m, dir, ['screen.webm', 'mic.webm', 'system.webm'])
+    expect(existsSync(path.join(dir, 'mic.m4a'))).toBe(false)
+  })
+})

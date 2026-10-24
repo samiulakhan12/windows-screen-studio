@@ -1,15 +1,17 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ProcessingProgress } from '../../shared/api/recording'
+import { SOURCE_FILES, STEM_KINDS, type StemKind } from '../../shared/audio/settings'
 import { createProject } from '../../shared/engine/project'
 import { autoZoomsForTrack, zoomSettingsOf } from '../../shared/engine/zoom'
 import type { Project } from '../../shared/types'
 import { detectH264Encoders, type H264Encoder } from '../hwEncoders'
 import * as projects from '../projects'
-import { muxAudioArgs, proxyArgs, regionPixels, type ExternalAudio, type ProxyOptions } from '../proxyArgs'
+import { muxAudioArgs, proxyArgs, regionPixels, stemArgs, type ExternalAudio, type ProxyOptions } from '../proxyArgs'
 import { applyStyleDefaults, loadStyleDefaults } from '../styleDefaults'
 import { EmptyRecordingError, RecordingError } from './errors'
 import { cancelledError, FfmpegError, isCancelled, runFfmpegProgress, type FfmpegRun } from './proxyRunner'
+import { STEM_RAW } from './stems'
 import { clampTrack } from './trackMath'
 
 export { EmptyRecordingError, RecordingError }
@@ -58,6 +60,38 @@ export async function encodeWithFallback(
 
 const removeQuietly = (file: string): Promise<void> =>
   fs.rm(file, { force: true, maxRetries: 3 }).catch((err) => console.warn('Could not remove', file, err))
+
+/**
+ * Keeps the microphone and system sound recorded on their own as mic.m4a / system.m4a, on the
+ * proxy's timeline (same offset as the separately recorded mixed sound). Optional extras: a
+ * stem that cannot be converted is left out (the mixed sound has it) and never fails the
+ * recording; only a stop on purpose ("Finish later") ends processing.
+ */
+async function keepStems(
+  dir: string,
+  offset: number,
+  duration: number | null,
+  progress: (message: string) => void,
+  signal?: AbortSignal
+): Promise<StemKind[]> {
+  const kept: StemKind[] = []
+  for (const kind of STEM_KINDS) {
+    const raw = path.join(dir, STEM_RAW[kind])
+    if ((await projects.fileSize(raw)) === 0) continue
+    if (signal?.aborted) throw cancelledError()
+    progress('Keeping the microphone and system sound…')
+    const out = path.join(dir, SOURCE_FILES[kind])
+    try {
+      await runFfmpegProgress(stemArgs(raw, out, offset, duration), undefined, signal)
+      kept.push(kind)
+    } catch (err) {
+      await removeQuietly(out)
+      if (isCancelled(err) || signal?.aborted) throw cancelledError()
+      console.error(`The ${kind} sound could not be kept on its own (it stays in the mixed sound):`, err)
+    }
+  }
+  return kept
+}
 
 /** The user's saved default look; a missing or unreadable file never stops a recording from being saved. */
 async function withStyleDefaults(project: Project): Promise<Project> {
@@ -151,6 +185,13 @@ export async function processRecording(
       }
     }
 
+    // The video's exact length (from its frame count), or the recorder's measure.
+    const length = videoSeconds && videoSeconds > 0.1 ? videoSeconds : (manifest.duration ?? null)
+    const hasAudio = native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio
+    const stems = hasAudio
+      ? await keepStems(dir, manifest.audioOffset, length, (message) => progress({ message, progress: expected ? videoShare + audioShare : null }), signal)
+      : []
+
     let webcamOk = false
     if (hasWebcam) {
       stopIfCancelled()
@@ -190,7 +231,7 @@ export async function processRecording(
       width: outSize.width,
       height: outSize.height,
       hasWebcam: webcamOk,
-      hasAudio: native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio,
+      hasAudio,
       webcamOffset: webcamOk ? manifest.webcamOffset : 0,
       zooms: [],
       cursorValid: cursor.valid,
@@ -203,6 +244,7 @@ export async function processRecording(
       }
     })
     project.createdAt = manifest.createdAt
+    if (stems.length > 0) project.audioStems = { mic: stems.includes('mic'), system: stems.includes('system') }
     project = await withStyleDefaults(project)
     // After the saved defaults, which may include how auto zoom works (clicks, typing, marks).
     project.zooms = autoZoomsForTrack(cursor, duration, zoomSettingsOf(project).auto)
@@ -213,13 +255,15 @@ export async function processRecording(
     // The proxies are now the source of truth; drop the large intermediates.
     await removeQuietly(screenIn)
     if (audio) await removeQuietly(audioIn)
+    for (const kind of STEM_KINDS) await removeQuietly(path.join(dir, STEM_RAW[kind]))
     if (webcamOk) await removeQuietly(webcamIn)
     await projects.removeManifest(id)
     return project
   } catch (err) {
     // Stopped: the raw files stay for later; half-built proxies would only take up space.
     if (isCancelled(err)) {
-      await Promise.all([screenOut, videoOut, webcamOut].map((f) => fs.rm(f, { force: true, maxRetries: 3 }).catch(() => undefined)))
+      const stemOuts = STEM_KINDS.map((k) => path.join(dir, SOURCE_FILES[k]))
+      await Promise.all([screenOut, videoOut, webcamOut, ...stemOuts].map((f) => fs.rm(f, { force: true, maxRetries: 3 }).catch(() => undefined)))
     }
     throw err
   }

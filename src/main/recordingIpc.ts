@@ -57,6 +57,7 @@ import { pointInRect, regionToRect, sanitizeRegion } from './recording/placement
 import { isCancelled, killAllFfmpeg } from './recording/proxyRunner'
 import { pickRegionOnDisplay } from './recording/regionWindow'
 import { ActiveRecording } from './recording/session'
+import { discardStems } from './recording/stems'
 import {
   closeToolbar,
   hideToolbar,
@@ -71,7 +72,7 @@ import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recor
 import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
 import { getMainWindow, loadRoute } from './windows'
 
-const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio']
+const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio', 'mic', 'system']
 /** Source thumbnails on Home: small JPEGs (cheap to encode and to send over IPC). */
 const THUMBNAIL = { width: 384, height: 216, quality: 75 }
 
@@ -590,6 +591,8 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   m.hasAudio = info.hasAudio
   m.hasWebcam = info.hasWebcam
   m.webcamFps = info.webcamFps
+  // So a recording interrupted by a crash keeps its separately recorded sound in sync.
+  if (typeof info.audioOffset === 'number' && Number.isFinite(info.audioOffset)) m.audioOffset = info.audioOffset
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker(s)
@@ -698,6 +701,8 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
     m.duration = measured > 0 ? measured : s.activeSeconds()
     m.webcamOffset = Number.isFinite(payload.webcamOffset) ? payload.webcamOffset : 0
     m.audioOffset = Number.isFinite(payload.audioOffset) ? payload.audioOffset : 0
+    // Stems that failed while recording are incomplete: the editor uses the mixed sound instead.
+    if (Array.isArray(payload.stems)) await discardStems(s.dir, payload.stems)
     try {
       await writeTrack(s, m.duration)
     } catch (err) {
