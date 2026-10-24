@@ -49,8 +49,11 @@ export const NORMALIZE_FILTERS = `aformat=channel_layouts=stereo,loudnorm=I=${LO
 
 /**
  * How early atempo plays a clip re-timed to `speed`, in output seconds. Each atempo stage
- * returns its sound half a window (1/48 s) early in its own output time, and every later
+ * returns its sound about half a window (1/48 s) early in its own output time, and every later
  * stage scales what the earlier ones left: 41.7 ms at 0.5x, 125 ms at 0.25x, 10.4 ms at 2x.
+ * The real lead varies with the sound around this (from about half of it, for the middle of a
+ * slowed-down beep): sound ahead of the picture is what viewers notice, so the full lead is
+ * taken back and what is left errs late.
  */
 export function atempoLead(speed: number): number {
   let lead = 0
