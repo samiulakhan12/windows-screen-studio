@@ -13,7 +13,9 @@ import {
   applyRecordingPatch,
   DEFAULT_RECORDING_SETTINGS,
   missingDeviceNotice,
+  presetInUse,
   presetMatches,
+  presetNamed,
   presetRecordingPatch,
   resolvePresetDevice,
   type PresetDevice,
@@ -88,6 +90,8 @@ let settingsCache: RecordingSettings | null = null
 let presetsCache: RecordingPreset[] = []
 /** The preset picked last, offered as the name when saving (so it is easy to update). */
 let lastPresetName = ''
+/** The preset picked or saved last: shown as the one in use when several match the setup. */
+let pickedPresetId: string | null = null
 
 /** Notices from a recording that went straight to the editor, shown when Home is next opened. */
 let carriedNotices: string[] = []
@@ -200,6 +204,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const [camProblem, setCamProblem] = useState<RecorderError | null>(null)
   const [settings, setSettings] = useState<RecordingSettings>(() => settingsCache ?? DEFAULT_RECORDING_SETTINGS)
   const [presets, setPresets] = useState<RecordingPreset[]>(presetsCache)
+  const [pickedId, setPickedId] = useState<string | null>(pickedPresetId)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [unfinished, setUnfinished] = useState<UnfinishedRecording[]>([])
@@ -373,7 +378,11 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     const camera = resolveDevice(p.camera, 'camera').id
     return { ...p, mic: mic ? { id: mic, label: '' } : null, camera: camera ? { id: camera, label: '' } : null }
   }
-  const activePreset = presets.find((p) => presetMatches(asUsed(p), setup)) ?? null
+  const activePreset = presetInUse(presets, (p) => presetMatches(asUsed(p), setup), pickedId)
+  const pick = (id: string | null): void => {
+    pickedPresetId = id
+    setPickedId(id)
+  }
 
   const applyPreset = (p: RecordingPreset): void => {
     const mic = resolveDevice(p.mic, 'microphone')
@@ -381,6 +390,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     update({ mode: p.source === 'area' ? 'region' : p.source, micId: mic.id, cameraId: camera.id, systemAudio: p.systemAudio, captureKeys: p.captureKeys })
     void updateSettings(presetRecordingPatch(p))
     lastPresetName = p.name
+    pick(p.id)
     setError(null)
     setNotices([
       ...(mic.missing ? [missingDeviceNotice('microphone', mic.missing)] : []),
@@ -394,6 +404,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       presetsCache = saved.presets
       setPresets(saved.presets)
       lastPresetName = name
+      pick(presetNamed(saved.presets, name)?.id ?? null)
       return null
     } catch (err) {
       return friendlyError(err).message

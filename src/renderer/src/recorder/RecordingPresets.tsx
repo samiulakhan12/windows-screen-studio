@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { cleanPresetName, MAX_PRESETS, PRESET_NAME_MAX, presetSummary, type RecordingPreset } from '../../../shared/recording/settings'
+import { cleanPresetName, MAX_PRESETS, PRESET_NAME_MAX, presetNamed, presetSummary, type RecordingPreset } from '../../../shared/recording/settings'
 import { Icon } from '../components/Icon'
 import './presets.css'
 
@@ -29,7 +29,7 @@ export function RecordingPresets({
   onDelete
 }: {
   presets: RecordingPreset[]
-  /** The preset the current setup matches, if any. */
+  /** The preset the current setup matches, if any (the one picked last when several do). */
   active: RecordingPreset | null
   /** Name offered when saving (the preset applied last, so it is easy to update). */
   suggestedName: string
@@ -49,7 +49,7 @@ export function RecordingPresets({
   }, [naming])
 
   const clean = cleanPresetName(name)
-  const replaces = clean ? presets.find((p) => p.name.localeCompare(clean, undefined, { sensitivity: 'accent' }) === 0) : undefined
+  const replaces = presetNamed(presets, clean)
   const full = presets.length >= MAX_PRESETS && !replaces
 
   const startNaming = (): void => {

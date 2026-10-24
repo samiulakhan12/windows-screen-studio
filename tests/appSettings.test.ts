@@ -17,7 +17,9 @@ import {
   IDLE_SECONDS,
   MAX_PRESETS,
   missingDeviceNotice,
+  presetInUse,
   presetMatches,
+  presetNamed,
   presetRecordingPatch,
   presetSummary,
   resolvePresetDevice,
@@ -281,6 +283,42 @@ describe('preset devices', () => {
     const none = resolvePresetDevice({ id: 'cam', label: '' }, [])
     expect(none).toEqual({ id: null, missing: { wanted: '', fallback: null } })
     expect(missingDeviceNotice('camera', none.missing!)).toBe('The preset\'s camera is not connected, so the recording has no camera.')
+  })
+})
+
+describe('the preset in use', () => {
+  const laptop = { deviceId: 'mic-laptop', label: 'Laptop Mic', groupId: 'g0' }
+  const podcast: RecordingPreset = { id: 'p1', name: 'Podcast', ...SETUP, mic: { id: 'mic-usb', label: 'USB Mic' } }
+  const headset: RecordingPreset = { id: 'p2', name: 'Headset', ...SETUP, mic: { id: 'mic-headset', label: 'Headset Mic' } }
+  const presets = [podcast, headset]
+  // Neither microphone is plugged in: both presets fall back to the laptop's, the setup in use.
+  const asUsed = (p: PresetSetup): PresetSetup => {
+    const id = resolvePresetDevice(p.mic, [laptop]).id
+    return { ...p, mic: id ? { id, label: '' } : null }
+  }
+  const setup: PresetSetup = { ...SETUP, mic: { id: 'mic-laptop', label: 'Laptop Mic' } }
+  const matches = (p: RecordingPreset): boolean => presetMatches(asUsed(p), setup)
+
+  it('is the one picked last when several resolve to the same setup', () => {
+    expect(presets.every(matches)).toBe(true)
+    expect(presetInUse(presets, matches, 'p2')).toBe(headset)
+    expect(presetInUse(presets, matches, 'p1')).toBe(podcast)
+  })
+
+  it('is the first match when nothing was picked, the picked one is gone or no longer matches', () => {
+    expect(presetInUse(presets, matches, null)).toBe(podcast)
+    expect(presetInUse(presets, matches, 'deleted')).toBe(podcast)
+    const other: RecordingPreset = { ...headset, fps: 60 }
+    expect(presetInUse([podcast, other], matches, 'p2')).toBe(podcast)
+    expect(presetInUse([other], matches, 'p2')).toBeNull()
+    expect(presetInUse([], matches, 'p2')).toBeNull()
+  })
+
+  it('finds a preset by name as saving does: ignoring case, after cleaning', () => {
+    expect(presetNamed(presets, 'headset')).toBe(headset)
+    expect(presetNamed(presets, '  Podcast \n')).toBe(podcast)
+    expect(presetNamed(presets, 'Other')).toBeUndefined()
+    expect(presetNamed(presets, '   ')).toBeUndefined()
   })
 })
 

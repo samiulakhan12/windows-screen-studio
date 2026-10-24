@@ -197,7 +197,8 @@ async function main() {
     const [z] = zooms
     h.assert(z.start < click.t && z.end > last.end, `the zoom spans the click and all the typing: ${z.start}–${z.end}`)
     h.assert(Math.abs(z.anchor.x - click.x) < 1e-6 && Math.abs(z.anchor.y - click.y) < 1e-6, `aimed at the click: ${JSON.stringify(z.anchor)} vs ${JSON.stringify(click)}`)
-    h.assert(Math.abs(z.anchor.t - z.end) < 1e-6, 'looks at the field for the whole zoom, not at the mouse pushed aside')
+    // The aim spans the click and the typing, so the whole zoom (however its edges are edited later) looks at the field.
+    h.assert(Math.abs(z.anchor.t - click.t) < 1e-6 && Math.abs(z.anchor.until - last.end) < 1e-6, `aims from the click to the last key: ${JSON.stringify(z.anchor)}`)
     h.assert(Math.abs(z.scale - 2.16) < 1e-6, `a step closer than click zooms: ${z.scale}`)
     // The Zoom panel lists it as one automatic zoom.
     await win.click('.insp-tabs button:has-text("Zoom")')
@@ -300,9 +301,28 @@ async function main() {
     h.assert(used !== '' && used !== 'gone-mic', `a connected microphone is used: ${used}`)
     h.assert((await win.textContent('select[aria-label="Recording preset"] option:checked')) === 'Tutorial', 'the preset, as it can be used here, is in use')
 
+    // A second preset that comes to the same setup here (its microphone is the one Tutorial falls
+    // back to): the picker shows, deletes and offers to replace the one picked, not the first.
+    const pickedName = async () => win.textContent('select[aria-label="Recording preset"] option:checked')
+    await win.click('button[aria-label="Save as preset"]')
+    await win.fill('input[aria-label="Preset name"]', 'Twin')
+    await win.keyboard.press('Enter')
+    await f.waitFor(async () => (await pickedName()) === 'Twin', 'the preset just saved is in use')
+    await win.selectOption('select[aria-label="Recording preset"]', { label: 'Tutorial' })
+    await f.waitFor(async () => (await pickedName()) === 'Tutorial', 'the preset picked is in use')
+    h.assert(!!(await win.$('button[aria-label="Delete preset Tutorial"]')), 'delete offers the preset picked')
+    await win.click('button[aria-label="Save as preset"]')
+    h.assert((await win.inputValue('input[aria-label="Preset name"]')) === 'Tutorial', 'saving offers to update the preset picked')
+    await win.press('input[aria-label="Preset name"]', 'Escape')
+    await win.selectOption('select[aria-label="Recording preset"]', { label: 'Twin' })
+    await f.waitFor(async () => (await pickedName()) === 'Twin', 'the other twin, once picked')
+    await win.click('button[aria-label="Delete preset Twin"]')
+    await f.waitFor(async () => (await pickedName()) === 'Tutorial', 'the twin deleted, the setup is still Tutorial')
+    h.assert(readSettings(home).presets.map((x) => x.name).join() === 'Tutorial', 'only the picked twin was deleted')
+
     // Deleting the preset in use.
     await win.click('button[aria-label="Delete preset Tutorial"]')
-    await f.waitFor(async () => (await win.textContent('select[aria-label="Recording preset"] option:checked')) === 'No presets saved', 'deleted')
+    await f.waitFor(async () => (await pickedName()) === 'No presets saved', 'deleted')
     await f.waitFor(() => !readSettings(home).presets, 'deleted on disk')
   })
 

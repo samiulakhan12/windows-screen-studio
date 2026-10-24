@@ -182,6 +182,24 @@ export function savePreset(presets: readonly RecordingPreset[], input: unknown, 
   return [...presets, { id: newId, name, ...setup }]
 }
 
+/** The saved preset called `name` (ignoring case, as saving does), if any. */
+export function presetNamed<P extends { name: string }>(presets: readonly P[], name: string): P | undefined {
+  const clean = cleanPresetName(name)
+  return clean ? presets.find((p) => sameName(p.name, clean)) : undefined
+}
+
+/**
+ * The preset in use: one `matches` accepts for the current setup. Several can (two saved alike,
+ * or presets whose devices are gone and fall back to the same one): then the one picked or
+ * saved last (`pickedId`) wins while it still matches, so the picker shows, deletes and
+ * replaces the preset the user chose; otherwise the first.
+ */
+export function presetInUse<P extends { id: string }>(presets: readonly P[], matches: (p: P) => boolean, pickedId: string | null): P | null {
+  const picked = pickedId ? presets.find((p) => p.id === pickedId) : undefined
+  if (picked && matches(picked)) return picked
+  return presets.find(matches) ?? null
+}
+
 /** The presets without the one with id `id` (unchanged when there is none). */
 export function deletePreset(presets: readonly RecordingPreset[], id: unknown): RecordingPreset[] {
   return presets.filter((p) => p.id !== id)
