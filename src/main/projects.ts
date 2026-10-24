@@ -52,12 +52,21 @@ export async function writeProject(project: Project): Promise<void> {
   await writeJsonAtomic(path.join(projectDir(project.id), 'project.json'), project)
 }
 
+/**
+ * The folder decides the id: a copied folder (a backup, a OneDrive conflict copy) still holds
+ * the original's id, which would make loading, saving and deleting it act on the original.
+ */
 export async function readProject(id: string): Promise<Project> {
-  return migrateProject(JSON.parse(await fs.readFile(path.join(projectDir(id), 'project.json'), 'utf8')))
+  return { ...migrateProject(JSON.parse(await fs.readFile(path.join(projectDir(id), 'project.json'), 'utf8'))), id }
 }
 
 export async function writeCursor(id: string, track: CursorTrack): Promise<void> {
-  await fs.writeFile(path.join(projectDir(id), 'cursor.json'), JSON.stringify(track))
+  writeCursorSync(id, track)
+}
+
+/** Atomic like the other state files: a failed or interrupted write never truncates the track. */
+export function writeCursorSync(id: string, track: CursorTrack): void {
+  writeFileAtomicSync(path.join(projectDir(id), 'cursor.json'), JSON.stringify(track), { attempts: 4 })
 }
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -99,7 +108,7 @@ export async function listProjects(): Promise<ProjectSummary[]> {
     if (!e.isDirectory() || !ID_RE.test(e.name)) continue
     try {
       const p = await readProject(e.name)
-      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(p.id) })
+      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(e.name) })
     } catch {
       // Not a finished project; unfinished recordings are listed by listUnfinished().
     }
@@ -174,7 +183,10 @@ export async function writeManifest(m: RecordingManifest): Promise<void> {
 
 export async function readManifest(id: string): Promise<RecordingManifest | null> {
   try {
-    return JSON.parse(await fs.readFile(path.join(projectDir(id), MANIFEST), 'utf8')) as RecordingManifest
+    const m = JSON.parse(await fs.readFile(path.join(projectDir(id), MANIFEST), 'utf8')) as RecordingManifest
+    // The folder decides, as for projects: recovering a copied folder must never process (or,
+    // when it holds no video, delete) the folder its manifest was copied from.
+    return { ...m, id }
   } catch {
     return null
   }

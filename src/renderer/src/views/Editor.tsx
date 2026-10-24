@@ -8,6 +8,7 @@ import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/e
 import { EditStore } from '../../../shared/editor/editStore'
 import { LAYOUT_NAMES, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { mediaLength } from '../../../shared/editor/mediaLength'
+import { UNTITLED, withSavedName } from '../../../shared/editor/projectName'
 import {
   chordFromEvent,
   DEFAULT_KEYMAP,
@@ -107,7 +108,7 @@ async function openSession(projectId: string): Promise<Session> {
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
   const store = new EditStore(project)
-  const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(p, data.project), data.project)
+  const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),
     saveSync: (p, meta) => window.api.saveProjectSync(recorded(p), meta)
@@ -740,8 +741,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
               store.update((p) => ({ ...p, name }), 'name')
             }}
             onBlur={() => {
-              // An empty name would leave a blank row in the library.
-              if (!store.state.name.trim()) store.update((p) => ({ ...p, name: 'Untitled recording' }), 'name')
+              // Saves never store an empty name (withSavedName); the field shows what they store.
+              if (!store.state.name.trim()) store.update((p) => ({ ...p, name: UNTITLED }), 'name')
             }}
           />
           <div className="history-buttons">

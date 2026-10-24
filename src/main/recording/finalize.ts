@@ -193,20 +193,28 @@ export async function processRecording(
     // when the recorder's own clock was wrong (e.g. the captured window closed).
     const videoSeconds = screenRun.frames ? screenRun.frames / screenRate : null
 
+    let audioLost = false
     if (audio) {
       try {
         await runFfmpegProgress(muxAudioArgs(videoOut, screenOut, audio, videoSeconds), report('Adding audio…', videoShare, audioShare, screenRate), signal)
-      } catch (err) {
-        if (isCancelled(err)) throw err
-        throw friendlyFfmpegError(err, 'audio')
-      } finally {
         await removeQuietly(videoOut)
+      } catch (err) {
+        if (isCancelled(err)) {
+          await removeQuietly(videoOut)
+          throw err
+        }
+        // A damaged sound file (cut short by a crash or a full disk) must not keep the screen
+        // recording out of the editor for good: it opens without sound, like a failed camera.
+        console.error('The sound could not be added; the project opens without it:', err)
+        await removeQuietly(screenOut)
+        await fs.rename(videoOut, screenOut)
+        audioLost = true
       }
     }
 
     // The video's exact length (from its frame count), or the recorder's measure.
     const length = videoSeconds && videoSeconds > 0.1 ? videoSeconds : (manifest.duration ?? null)
-    const hasAudio = native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio
+    const hasAudio = native ? !!audio && !audioLost : manifest.hasAudio && screenRun.inputHasAudio
     const wanted = hasAudio ? expectedStems(manifest) : []
     const stems =
       wanted.length > 0

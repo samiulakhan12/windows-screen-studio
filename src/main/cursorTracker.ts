@@ -303,10 +303,20 @@ export class CursorTracker {
   collect(): RawTrack {
     this.halt()
     this.flushStill()
+    const track = this.snapshot()
+    this.opts = null
+    return track
+  }
+
+  /** Everything captured so far (epoch ms, DIP coordinates), while tracking goes on. */
+  snapshot(): RawTrack {
     const display = this.opts?.display ?? null
     const at = (tick: number): number => this.clock.toEpoch(tick)
-    const track: RawTrack = {
-      samples: [...this.samples, ...this.moves.map((m) => ({ at: at(m.tick), x: m.x, y: m.y }))].sort((a, b) => a.at - b.at),
+    const last = this.samples[this.samples.length - 1]
+    // The still period so far, as flushStill() would end it now.
+    const still = last && this.stillSince !== null && this.stillSince > last.at ? [{ at: this.stillSince, x: last.x, y: last.y }] : []
+    return {
+      samples: [...this.samples, ...still, ...this.moves.map((m) => ({ at: at(m.tick), x: m.x, y: m.y }))].sort((a, b) => a.at - b.at),
       clicks: this.clicks.map((c) => ({ at: at(c.tick), x: c.x, y: c.y, button: c.button })),
       keys: this.keys.map((k) => ({ at: at(k.tick), label: k.label })),
       typing: this.typing.map(at),
@@ -314,7 +324,5 @@ export class CursorTracker {
       bounds: display ? { ...display.bounds } : null,
       scale: display?.scaleFactor ?? 1
     }
-    this.opts = null
-    return track
   }
 }

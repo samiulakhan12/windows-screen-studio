@@ -1,4 +1,4 @@
-import type { CapturePlan, RecordingApi, RecordingStartInfo, SaveRecordingPayload, TrackKind } from '../../../shared/api/recording'
+import type { CapturePlan, RecordingApi, RecordingOffsets, RecordingStartInfo, SaveRecordingPayload, TrackKind } from '../../../shared/api/recording'
 import type { StemKind } from '../../../shared/audio/settings'
 import type { NormRect } from '../../../shared/types'
 import { ChunkPipe } from '../../../shared/recording/chunkPipe'
@@ -305,6 +305,10 @@ export class RecordingSession {
       this.camera ? nextFrameTime(this.camera) : Promise.resolve(null)
     ])
     this.startCall = epochNow()
+    // Known within a few frames: kept by the main process at once, for a recording recovered after a crash.
+    void this.firstFrames
+      .then(([screenFirst, cameraFirst]) => (this.disposed ? undefined : this.api.recordingOffsets(this.plan.token, this.offsets(screenFirst, cameraFirst))))
+      .catch((err: unknown) => console.warn('Could not send the recording offsets:', err))
     for (const t of this.tracks) t.recorder.start(TIMESLICE_MS)
     this.running = true
     this.resumedAt = performance.now()
@@ -365,17 +369,19 @@ export class RecordingSession {
       new Promise<[null, null]>((r) => setTimeout(() => r([null, null]), 500))
     ])
     this.dispose()
-
-    const start = this.startCall
     const stems = this.stemsDropped ? [] : this.tracks.map((t) => t.kind).filter(isStem)
+    return { ...this.offsets(screenFirst, cameraFirst), duration, stems }
+  }
+
+  /** The screen timeline's start and the other tracks' offsets from it, given the first frames' times. */
+  private offsets(screenFirst: number | null, cameraFirst: number | null): RecordingOffsets {
+    const start = this.startCall
     if (this.method === 'native' && this.nativeStart !== null) {
       // The audio recorders' timelines start when they were started.
       return {
         startedAt: this.nativeStart,
-        duration,
         audioOffset: (start - this.nativeStart) / 1000,
-        webcamOffset: ((cameraFirst ?? start) - this.nativeStart) / 1000,
-        stems
+        webcamOffset: ((cameraFirst ?? start) - this.nativeStart) / 1000
       }
     }
     // A recorder's timeline starts with its first media: audio flows at once, video
@@ -383,10 +389,8 @@ export class RecordingSession {
     const screenZero = this.hasAudio ? Math.min(screenFirst ?? start, start) : (screenFirst ?? start)
     return {
       startedAt: screenZero,
-      duration,
       audioOffset: (start - screenZero) / 1000,
-      webcamOffset: ((cameraFirst ?? start) - screenZero) / 1000,
-      stems
+      webcamOffset: ((cameraFirst ?? start) - screenZero) / 1000
     }
   }
 

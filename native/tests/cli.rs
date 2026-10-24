@@ -74,18 +74,18 @@ fn reports_unsupported_off_windows() {
 fn desktop_icons_arguments() {
     let (code, stdout, _) = run(&["desktop-icons", "toggle"]);
     assert_eq!(code, 2);
-    assert_eq!(stdout.trim(), r#"{"event":"error","message":"desktop-icons takes hide, show or status, got 'toggle'"}"#);
+    assert_eq!(stdout.trim(), r#"{"event":"error","message":"desktop-icons takes hide, show, hold or status, got 'toggle'"}"#);
     let (code, stdout, _) = run(&["desktop-icons"]);
     assert_eq!(code, 2);
     assert!(stdout.contains("desktop-icons takes one argument"), "{stdout}");
     let (_, stdout, _) = run(&["--help"]);
-    assert!(stdout.contains("desktop-icons <hide|show|status>"), "{stdout}");
+    assert!(stdout.contains("desktop-icons <hide|show|hold|status>"), "{stdout}");
 }
 
 #[cfg(not(windows))]
 #[test]
 fn desktop_icons_unsupported_off_windows() {
-    for action in ["hide", "show", "status"] {
+    for action in ["hide", "show", "hold", "status"] {
         let (code, stdout, _) = run(&["desktop-icons", action]);
         assert_eq!(code, 3, "{action}");
         assert!(stdout.starts_with(r#"{"event":"error""#), "{stdout}");

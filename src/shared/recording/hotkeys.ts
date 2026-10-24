@@ -11,7 +11,8 @@ export type Hotkeys = Record<HotkeyAction, string>
 
 export const HOTKEY_ACTIONS: readonly HotkeyAction[] = ['stop', 'pause', 'mark']
 
-export const DEFAULT_HOTKEYS: Hotkeys = { stop: 'Ctrl+Shift+2', pause: 'Ctrl+Shift+P', mark: 'Ctrl+Shift+Z' }
+/** Hotkeys are taken from every app while recording, so the defaults avoid what apps use (see COMMON). */
+export const DEFAULT_HOTKEYS: Hotkeys = { stop: 'Ctrl+Shift+2', pause: 'Ctrl+Shift+F9', mark: 'Ctrl+Shift+F10' }
 
 export const HOTKEY_NAMES: Record<HotkeyAction, string> = { stop: 'Stop', pause: 'Pause / resume', mark: 'Zoom here' }
 
@@ -162,6 +163,8 @@ const COMMON: Record<string, string> = {
   'Ctrl+X': 'Cut',
   'Ctrl+Z': 'Undo',
   'Ctrl+Y': 'Redo',
+  'Ctrl+Shift+Z': 'Redo',
+  'Ctrl+Shift+P': 'the command palette',
   'Ctrl+A': 'Select all',
   'Ctrl+S': 'Save',
   'Ctrl+F': 'Find'

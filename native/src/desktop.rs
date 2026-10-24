@@ -1,9 +1,11 @@
-//! `desktop-icons hide|show|status`: the desktop's icon view, found and decided here, portably
-//! (and unit-tested); the Win32 calls are in `win::desktop`.
+//! `desktop-icons hide|show|hold|status`: the desktop's icon view, found and decided here,
+//! portably (and unit-tested); the Win32 calls are in `win::desktop`.
 //!
 //! Only the icon list view's own visibility is changed (`ShowWindowAsync`), never Explorer's
 //! "Show desktop icons" setting (which is saved in the registry): an Explorer restart or a
 //! sign-out always brings the icons back, whatever happens to the app.
+
+use std::io::Read;
 
 use crate::protocol::JsonObject;
 
@@ -11,6 +13,9 @@ use crate::protocol::JsonObject;
 pub enum IconsAction {
     Hide,
     Show,
+    /// Hides, then waits until stdin closes (the app released it, or exited or died) and
+    /// shows the icons again if it hid them.
+    Hold,
     Status,
 }
 
@@ -19,15 +24,16 @@ impl IconsAction {
         match value {
             "hide" => Ok(Self::Hide),
             "show" => Ok(Self::Show),
+            "hold" => Ok(Self::Hold),
             "status" => Ok(Self::Status),
-            other => Err(format!("desktop-icons takes hide, show or status, got '{other}'")),
+            other => Err(format!("desktop-icons takes hide, show, hold or status, got '{other}'")),
         }
     }
 
     /// The visibility to set, or None to only report it.
     pub fn target(self) -> Option<bool> {
         match self {
-            Self::Hide => Some(false),
+            Self::Hide | Self::Hold => Some(false),
             Self::Show => Some(true),
             Self::Status => None,
         }
@@ -62,6 +68,21 @@ pub fn find_icon_view<W: DesktopWindows>(w: &W) -> Option<W::Handle> {
     w.child(def_view, LIST_VIEW)
 }
 
+/// What a call does given the view's visibility `before`: the visibility to request, and
+/// whether that is a change (`changed` in the reply). The request is posted even when the view
+/// already reads as wanted: a hide posted moments ago may not be applied yet (Explorer busy),
+/// and a show skipped then would let that hide land afterwards and keep the icons hidden.
+pub fn plan(action: IconsAction, before: bool) -> (Option<bool>, bool) {
+    let target = action.target();
+    (target, target.is_some_and(|t| t != before))
+}
+
+/// `hold`: blocks until `input` (stdin) is closed, whatever is written to it.
+pub fn wait_for_eof(mut input: impl Read) {
+    let mut buf = [0u8; 256];
+    while matches!(input.read(&mut buf), Ok(n) if n > 0) {}
+}
+
 /// What to print: whether the icons are visible now, and whether this call asked to change it.
 /// `changed` is what the app relies on to restore only icons it hid itself: icons the user had
 /// already hidden report `changed: false` on `hide`.
@@ -94,9 +115,11 @@ mod tests {
         assert_eq!(IconsAction::parse("hide"), Ok(IconsAction::Hide));
         assert_eq!(IconsAction::parse("show"), Ok(IconsAction::Show));
         assert_eq!(IconsAction::parse("status"), Ok(IconsAction::Status));
+        assert_eq!(IconsAction::parse("hold"), Ok(IconsAction::Hold));
         assert!(IconsAction::parse("Hide").is_err());
         assert!(IconsAction::parse("").is_err());
         assert_eq!(IconsAction::Hide.target(), Some(false));
+        assert_eq!(IconsAction::Hold.target(), Some(false));
         assert_eq!(IconsAction::Show.target(), Some(true));
         assert_eq!(IconsAction::Status.target(), None);
     }
@@ -127,6 +150,24 @@ mod tests {
         assert_eq!(find_icon_view(&Fake(vec![(1, PROGMAN, 0), (2, DEF_VIEW, 1)])), None);
         // A DefView that is not a child of Progman/WorkerW is not the desktop's.
         assert_eq!(find_icon_view(&Fake(vec![(1, "CabinetWClass", 0), (2, DEF_VIEW, 1), (3, LIST_VIEW, 2)])), None);
+    }
+
+    #[test]
+    fn requests_are_posted_even_when_the_view_already_reads_as_wanted() {
+        // Audit R-6: a show right after a hide Explorer has not applied yet must still be posted.
+        assert_eq!(plan(IconsAction::Show, true), (Some(true), false));
+        assert_eq!(plan(IconsAction::Show, false), (Some(true), true));
+        assert_eq!(plan(IconsAction::Hide, true), (Some(false), true));
+        // Icons the user hid: hidden again (harmless), but not ours to restore.
+        assert_eq!(plan(IconsAction::Hide, false), (Some(false), false));
+        assert_eq!(plan(IconsAction::Hold, false), (Some(false), false));
+        assert_eq!(plan(IconsAction::Status, true), (None, false));
+    }
+
+    #[test]
+    fn hold_waits_for_the_end_of_its_input() {
+        wait_for_eof(std::io::Cursor::new(b"anything\nat all\n".to_vec()));
+        wait_for_eof(std::io::empty());
     }
 
     #[test]

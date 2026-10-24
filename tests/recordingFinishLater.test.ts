@@ -1,7 +1,7 @@
 // "Finish later" (audit-A-1 / audit-C-1 / seams-1): stopping processing must stop it for
 // good, whatever the encoder list, and must never produce a project without its camera.
 // The real processRecording runs against a scripted ffmpeg runner and encoder probe.
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -339,5 +339,20 @@ describe('stems settled on stop', () => {
     const older = await write(undefined)
     expect(await settleStems(older.m, older.dir, undefined)).toEqual([])
     expect(expectedStems({ ...older.m, stems: 'mic' } as projects.RecordingManifest)).toEqual([])
+  })
+})
+
+describe('a damaged native sound file (audit R-3)', () => {
+  it('opens the recording without sound instead of failing it for good', async () => {
+    const { m, dir } = await setup({ method: 'native', hasAudio: true, audioOffset: 0.1 })
+    // ffmpeg refuses an audio.webm cut inside its header (exit 187 / 251 with real files).
+    runner.steps = [succeed(150), async () => Promise.reject(new FfmpegError('Invalid data found when processing input', null))]
+    const project = await processRecording(m, () => undefined)
+    expect(project.hasAudio).toBe(false)
+    expect(project.duration).toBeCloseTo(2.5)
+    expect(readFileSync(path.join(dir, 'screen.mp4'), 'utf8')).toBe('proxy')
+    expect(existsSync(path.join(dir, 'screen.video.mp4'))).toBe(false)
+    expect(existsSync(path.join(dir, 'project.json'))).toBe(true)
+    expect(existsSync(path.join(dir, 'recording.json'))).toBe(false)
   })
 })

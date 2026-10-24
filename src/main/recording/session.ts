@@ -194,6 +194,11 @@ export class ActiveRecording {
     this.native = null
   }
 
+  /** The paused spans so far, the current one (while paused) up to `at`. */
+  pausesUntil(at = this.stoppedAt ?? Date.now()): PauseSpan[] {
+    return this.pausedAt === null ? [...this.pauses] : [...this.pauses, { from: this.pausedAt, to: at }]
+  }
+
   /** Recorded (non-paused) seconds since the video started. */
   activeSeconds(at = this.stoppedAt ?? Date.now()): number {
     const start = this.manifest.startedAt

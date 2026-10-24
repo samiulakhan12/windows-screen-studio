@@ -9,6 +9,7 @@ export const recordingApi: RecordingApi = {
   appendRecordingChunk: (token, kind, data) => ipcRenderer.invoke('recording:chunk', token, kind, data),
   startNativeVideo: (token) => ipcRenderer.invoke('recording:startNative', token),
   recordingStarted: (token, info) => ipcRenderer.invoke('recording:started', token, info),
+  recordingOffsets: (token, offsets) => ipcRenderer.invoke('recording:offsets', token, offsets),
   dropRecordingStems: (token) => ipcRenderer.invoke('recording:dropStems', token),
   setRecordingStatus: (token, status) => ipcRenderer.invoke('recording:status', token, status),
   saveRecording: (token, payload) => ipcRenderer.invoke('recording:save', token, payload),
