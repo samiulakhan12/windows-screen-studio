@@ -1,13 +1,15 @@
 /**
  * Picking a user file into a project folder ("assets"): the watermark image and background
- * music. The file is copied as `<kind>.<ext>` (replacing an earlier pick of the same kind) so
- * the project folder stays self-contained, and served to the renderer by studio-media://.
+ * music, copied in so the project folder stays self-contained and served to the renderer by
+ * studio-media://. Music is stored as music.<ext> (replacing an earlier pick). Each logo gets
+ * a new name (watermark-<n>.<ext>) and the latest few are kept: a pick never overwrites the
+ * logo in use, so undo can go back to it and an image the renderer cannot decode changes nothing.
  */
 import { dialog, ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { AssetKind } from '../shared/api/projects'
-import { WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
+import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
 import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
 import { getMainWindow } from './windows'
@@ -19,19 +21,35 @@ interface AssetSpec {
   maxBytes: number
   /** Readable name of the accepted formats, for error messages. */
   formats: string
-  /** Whether the first bytes of a file look like one of the accepted formats. */
-  sniff: (head: Buffer) => boolean
+  /** Why a file with these first bytes and extension is refused, or null when it looks right. */
+  check: (head: Buffer, ext: string) => string | null
 }
 
 const starts = (head: Buffer, ...bytes: number[]): boolean => bytes.every((b, i) => head[i] === b)
 const ascii = (head: Buffer, from: number, to: number): string => head.subarray(from, to).toString('latin1')
 
-/** PNG, JPEG, WebP or SVG. */
-export function looksLikeImage(head: Buffer): boolean {
-  if (starts(head, 0x89, 0x50, 0x4e, 0x47)) return true
-  if (starts(head, 0xff, 0xd8, 0xff)) return true
-  if (ascii(head, 0, 4) === 'RIFF' && ascii(head, 8, 12) === 'WEBP') return true
-  return /<svg[\s>]/i.test(head.toString('utf8'))
+type ImageType = 'png' | 'jpg' | 'webp' | 'svg'
+const IMAGE_NAMES: Record<ImageType, string> = { png: 'a PNG', jpg: 'a JPG', webp: 'a WebP', svg: 'an SVG' }
+
+/** The image format the first bytes of a file show: PNG, JPEG, WebP or SVG, else null. */
+export function imageType(head: Buffer): ImageType | null {
+  if (starts(head, 0x89, 0x50, 0x4e, 0x47)) return 'png'
+  if (starts(head, 0xff, 0xd8, 0xff)) return 'jpg'
+  if (ascii(head, 0, 4) === 'RIFF' && ascii(head, 8, 12) === 'WEBP') return 'webp'
+  return /<svg[\s>]/i.test(head.toString('utf8')) ? 'svg' : null
+}
+
+export const looksLikeImage = (head: Buffer): boolean => imageType(head) !== null
+
+/**
+ * An image is decoded as the type its extension is served as (an SVG strictly, with nosniff),
+ * so its content must be that type: a PNG named logo.svg would never show.
+ */
+function checkImage(head: Buffer, ext: string): string | null {
+  const type = imageType(head)
+  if (!type) return `This file could not be read as ${ASSET_SPECS.watermark.formats}.`
+  const named = ext === 'jpeg' ? 'jpg' : ext
+  return type === named ? null : `This file is named .${ext} but holds ${IMAGE_NAMES[type]} image: rename it to .${type} and choose it again.`
 }
 
 /** MP3, M4A/AAC, WAV, Ogg/Opus or FLAC. */
@@ -51,7 +69,7 @@ export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
     extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'],
     maxBytes: WATERMARK_MAX_BYTES,
     formats: 'a PNG, JPG, WebP or SVG image',
-    sniff: looksLikeImage
+    check: checkImage
   },
   music: {
     title: 'Choose background music',
@@ -59,9 +77,15 @@ export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
     extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'opus', 'flac'],
     maxBytes: 500 * 1024 * 1024,
     formats: 'an MP3, M4A, AAC, WAV, Ogg, Opus or FLAC file',
-    sniff: looksLikeAudio
+    // Audio decoders read the container from the content, whatever the extension says.
+    check: (head) => (looksLikeAudio(head) ? null : `This file could not be read as ${ASSET_SPECS.music.formats}.`)
   }
 }
+
+const MUSIC_FILE_RE = /^music\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i
+
+/** Asset files the media protocol may serve. */
+export const isAssetFile = (file: string): boolean => WATERMARK_FILE_RE.test(file) || MUSIC_FILE_RE.test(file)
 
 const isKind = (kind: unknown): kind is AssetKind => typeof kind === 'string' && Object.prototype.hasOwnProperty.call(ASSET_SPECS, kind)
 
@@ -72,9 +96,9 @@ export function assetFileName(kind: AssetKind, ext: string): string {
 }
 
 /**
- * Copies `src` into project `id` as its `kind` asset, then removes earlier picks of that kind.
- * The file is checked first (type by extension and content, size), and copied under a temporary
- * name: a failure leaves the earlier pick in place.
+ * Copies `src` into project `id` as its `kind` asset. The file is checked first (type by
+ * extension and content, size) and copied under a temporary name, so a failure leaves the
+ * earlier pick in place. A new logo gets a new name; a new music file replaces the old one.
  */
 export async function importAsset(id: string, kind: AssetKind, src: string): Promise<{ url: string; path: string }> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
@@ -90,25 +114,47 @@ export async function importAsset(id: string, kind: AssetKind, src: string): Pro
   try {
     const head = Buffer.alloc(4096)
     const { bytesRead } = await handle.read(head, 0, head.length, 0)
-    if (!spec.sniff(head.subarray(0, bytesRead))) throw new Error(`This file could not be read as ${spec.formats}.`)
+    const problem = spec.check(head.subarray(0, bytesRead), ext)
+    if (problem) throw new Error(problem)
   } finally {
     await handle.close()
   }
-  const name = assetFileName(kind, ext)
-  if (!ASSET_FILE_RE.test(name)) throw new Error(`Choose ${spec.formats}.`)
+  const name = kind === 'watermark' ? nextWatermarkFile(await fs.readdir(dir).catch(() => []), ext) : assetFileName(kind, ext)
+  if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
   const tmp = path.join(dir, `.${name}.part`)
   try {
     await fs.copyFile(src, tmp)
-    for (const e of spec.extensions) {
-      const other = assetFileName(kind, e)
-      if (other !== name) await fs.rm(path.join(dir, other), { force: true })
+    if (kind === 'music') {
+      for (const e of spec.extensions) {
+        const other = assetFileName(kind, e)
+        if (other !== name) await fs.rm(path.join(dir, other), { force: true })
+      }
     }
     await fs.rename(tmp, path.join(dir, name))
   } catch (err) {
     await fs.rm(tmp, { force: true }).catch(() => undefined)
     throw err
   }
+  if (kind === 'watermark') await pruneWatermarks(id, dir, name)
   return { url: mediaUrl(id, name), path: name }
+}
+
+/**
+ * Removes logo picks nothing returns to any more: all but the latest few, keeping the new pick
+ * and the logo the saved project uses. Never fails the pick (a leftover file is harmless).
+ */
+async function pruneWatermarks(id: string, dir: string, picked: string): Promise<void> {
+  try {
+    const keep = new Set([picked])
+    const saved = await projects.readProject(id).then(
+      (p) => p.watermark?.path,
+      () => undefined
+    )
+    if (typeof saved === 'string') keep.add(saved)
+    for (const name of staleWatermarkFiles(await fs.readdir(dir), keep)) await fs.rm(path.join(dir, name), { force: true })
+  } catch (err) {
+    console.warn('Could not remove earlier logo picks:', err)
+  }
 }
 
 export function registerAssetIpc(): void {
@@ -129,7 +175,7 @@ export function registerAssetIpc(): void {
   })
 
   ipcMain.handle('projects:assetUrl', async (_e, id: unknown, file: unknown): Promise<string | null> => {
-    if (typeof id !== 'string' || typeof file !== 'string' || !ASSET_FILE_RE.test(file)) return null
+    if (typeof id !== 'string' || typeof file !== 'string' || !isAssetFile(file)) return null
     let dir: string
     try {
       dir = projects.projectDir(id)
@@ -139,6 +185,3 @@ export function registerAssetIpc(): void {
     return (await projects.exists(path.join(dir, file))) ? mediaUrl(id, file) : null
   })
 }
-
-/** Asset files the media protocol may serve. */
-export const ASSET_FILE_RE = /^(watermark\.(png|jpg|webp|svg)|music\.(mp3|m4a|aac|wav|ogg|opus|flac))$/i

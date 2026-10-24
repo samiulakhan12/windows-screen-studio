@@ -12,7 +12,18 @@ import {
 } from '../src/shared/engine/backgrounds'
 import { cardLook, shadowPaint, shadowReach } from '../src/shared/engine/cardStyle'
 import type { Draw2D } from '../src/shared/engine/draw2d'
-import { activeWatermark, watermarkRect, watermarkSettings, WATERMARK_SIZE } from '../src/shared/engine/watermark'
+import {
+  activeWatermark,
+  nextWatermarkFile,
+  plainWatermarkFile,
+  staleWatermarkFiles,
+  WATERMARK_FILE_RE,
+  WATERMARK_KEEP_PICKS,
+  watermarkPickNumber,
+  watermarkRect,
+  watermarkSettings,
+  WATERMARK_SIZE
+} from '../src/shared/engine/watermark'
 import { drawWallpaper, WALLPAPERS, wallpaperById } from '../src/shared/engine/wallpapers'
 import type { Clip, WatermarkSettings } from '../src/shared/types'
 
@@ -215,5 +226,36 @@ describe('watermark', () => {
     const r = watermarkRect(400, 400, wm({ size: 0.4, margin: 0 }), 20)
     expect(r.w).toBeLessThanOrEqual(400 + 1e-9)
     expect(r.x).toBeGreaterThanOrEqual(-1e-9)
+  })
+})
+
+describe('watermark files', () => {
+  it('accepts only watermark.<ext> and watermark-<n>.<ext> names', () => {
+    for (const f of ['watermark.png', 'watermark.jpg', 'watermark.webp', 'watermark.svg', 'watermark-1.png', 'watermark-42.svg', 'WATERMARK-7.PNG']) expect(WATERMARK_FILE_RE.test(f), f).toBe(true)
+    for (const f of ['watermark.jpeg', 'watermark.gif', 'watermark-0.png', 'watermark-01.png', 'watermark-.png', 'watermark-x.png', 'watermark-1.png.part', '../watermark.png', 'watermark-1234567890.png', 'mywatermark.png'])
+      expect(WATERMARK_FILE_RE.test(f), f).toBe(false)
+    expect(watermarkPickNumber('watermark.png')).toBe(0)
+    expect(watermarkPickNumber('watermark-12.webp')).toBe(12)
+    expect(watermarkPickNumber('music.mp3')).toBe(-1)
+  })
+
+  it('gives every pick a new name after the newest one in the folder', () => {
+    expect(nextWatermarkFile([], 'png')).toBe('watermark-1.png')
+    expect(nextWatermarkFile(['project.json', 'watermark.png'], 'JPEG')).toBe('watermark-1.jpg')
+    // Never the name of a file that is still there, whatever the gaps and extensions.
+    expect(nextWatermarkFile(['watermark-3.svg', 'watermark-9.png', 'watermark-4.png', '.watermark-20.png.part'], 'webp')).toBe('watermark-10.webp')
+  })
+
+  it('keeps the latest picks and the files still in use', () => {
+    const files = ['project.json', 'screen.mp4', 'watermark.png', ...Array.from({ length: 8 }, (_, i) => `watermark-${i + 1}.png`)]
+    const stale = staleWatermarkFiles(files, new Set(['watermark-8.png', 'watermark-2.png']))
+    expect(stale.sort()).toEqual(['watermark-1.png', 'watermark-3.png', 'watermark.png'])
+    expect(files.length - 2 - stale.length).toBe(WATERMARK_KEEP_PICKS + 1)
+    expect(staleWatermarkFiles(['watermark-1.png', 'watermark-2.svg'], new Set())).toEqual([])
+  })
+
+  it('a saved look keeps its logo under the plain name', () => {
+    expect(plainWatermarkFile('watermark-12.svg')).toBe('watermark.svg')
+    expect(plainWatermarkFile('watermark.png')).toBe('watermark.png')
   })
 })

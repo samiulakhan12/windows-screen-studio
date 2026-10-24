@@ -12,10 +12,42 @@ export const WATERMARK_LIMITS = {
 } as const
 /** Longest watermark text. */
 export const WATERMARK_TEXT_MAX = 80
-/** Files a watermark image may be stored as in a project folder. */
-export const WATERMARK_FILE_RE = /^watermark\.(png|jpg|webp|svg)$/i
+/**
+ * Files a watermark image may be stored as in a project folder: watermark.<ext>, or
+ * watermark-<n>.<ext> for the n-th logo picked. Each pick gets a new name, so a pick never
+ * overwrites the logo in use (undo can go back to it, and an unreadable pick changes nothing).
+ */
+export const WATERMARK_FILE_RE = /^watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)$/i
 /** Largest watermark image accepted. */
 export const WATERMARK_MAX_BYTES = 20 * 1024 * 1024
+/** How many of the latest logo picks a project folder keeps (besides the one its saved project uses). */
+export const WATERMARK_KEEP_PICKS = 5
+
+/** The pick number of watermark file `name` (0 for watermark.<ext>), or -1 when it is not one. */
+export function watermarkPickNumber(name: string): number {
+  const m = WATERMARK_FILE_RE.exec(name)
+  return m ? (m[1] ? Number(m[1].slice(1)) : 0) : -1
+}
+
+/** The file name of a new logo pick with extension `ext`, after the files already in the folder. */
+export function nextWatermarkFile(existing: readonly string[], ext: string): string {
+  const last = existing.reduce((n, name) => Math.max(n, watermarkPickNumber(name)), 0)
+  return `watermark-${last + 1}.${ext.toLowerCase().replace(/^\./, '').replace('jpeg', 'jpg')}`
+}
+
+/**
+ * Watermark files in a folder that can go after a new pick: all but the newest
+ * WATERMARK_KEEP_PICKS picks and the files in `keep` (the new pick, the saved project's logo).
+ */
+export function staleWatermarkFiles(existing: readonly string[], keep: ReadonlySet<string>): string[] {
+  const picks = existing.filter((name) => watermarkPickNumber(name) >= 0).sort((a, b) => watermarkPickNumber(b) - watermarkPickNumber(a))
+  return picks.slice(WATERMARK_KEEP_PICKS).filter((name) => !keep.has(name))
+}
+
+/** watermark-<n>.<ext> -> watermark.<ext>: the name a saved look keeps its logo under. */
+export function plainWatermarkFile(name: string): string {
+  return name.replace(/^watermark-[0-9]+\./i, 'watermark.')
+}
 
 /** A good size for each kind: text height is much smaller than a logo's width. */
 export const WATERMARK_SIZE: Record<WatermarkSettings['kind'], number> = { image: 0.12, text: 0.035 }

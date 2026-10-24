@@ -84,13 +84,17 @@ function watermarkImage(projectId: string, file: string): LoadedImage | null {
 }
 
 /**
- * Loads `file` again from `url` (or a fresh URL), after the user picked a new image that was
- * copied over the old file of the same name. Resolves once decoded; rejects when unreadable.
+ * Decodes a newly picked logo before the project switches to it. Resolves once it is ready to
+ * draw; rejects when it cannot be read, leaving whatever was cached (and drawn) as it was.
  */
-export async function reloadWatermarkImage(projectId: string, file: string, url?: string): Promise<void> {
-  const entry = load(projectId, file, url ?? projectMediaUrl(projectId)(file))
-  await entry.done
-  if (entry.failed) throw new Error('This image could not be read')
+export async function preloadWatermarkImage(projectId: string, file: string, url?: string): Promise<void> {
+  const image = await decode(url ?? projectMediaUrl(projectId)(file), /\.svg$/i.test(file)).catch((err: unknown) => {
+    console.warn(`Watermark ${file} could not be loaded:`, err)
+    return null
+  })
+  if (!image) throw new Error('This image could not be read')
+  images.set(imageKey(projectId, file), { image, failed: false, done: Promise.resolve() })
+  notifyStyleAssetsChanged()
 }
 
 /* ---------- drawing ---------- */

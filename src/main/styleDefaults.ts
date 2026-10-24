@@ -11,7 +11,7 @@ import { app } from 'electron'
 import fsSync, { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { applyStyleDefaults as applyLook, sanitizeStyleDefaults, type StyleDefaults } from '../shared/editor/styleDefaults'
-import { WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
+import { plainWatermarkFile, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
 import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 import { projectDir } from './projects'
@@ -25,8 +25,11 @@ export function styleDefaultsFile(): string {
   return path.join(app.getPath('userData'), 'style-defaults.json')
 }
 
-/** Where the saved look's copy of watermark image `name` (watermark.<ext>) lives, next to `file`. */
-const watermarkCopy = (file: string, name: string): string => path.join(path.dirname(file), `${WATERMARK_COPY_PREFIX}${name}`)
+/**
+ * Where the saved look's copy of watermark image `name` lives, next to `file`. A look keeps
+ * its logo as watermark.<ext> (a project's watermark-<n>.<ext> pick is stored under that name).
+ */
+const watermarkCopy = (file: string, name: string): string => path.join(path.dirname(file), `${WATERMARK_COPY_PREFIX}${plainWatermarkFile(name)}`)
 
 /** Removes every saved watermark copy except `keep`. */
 async function removeWatermarkCopies(file: string, keep?: string): Promise<void> {
@@ -87,15 +90,16 @@ export async function saveStyleDefaults(defaults: StyleDefaults | null, file = s
   if (!clean) throw new Error('These settings cannot be saved as defaults.')
   const { source, ...look } = clean
   const image = look.watermark?.kind === 'image' ? look.watermark.path : undefined
-  if (image) {
+  if (image && look.watermark) {
     try {
       await keepWatermarkImage(file, source, image)
+      look.watermark = { ...look.watermark, path: plainWatermarkFile(image) }
     } catch (err) {
       console.warn('Saving the default look without its watermark image:', err)
       delete look.watermark
     }
   }
-  await removeWatermarkCopies(file, look.watermark?.kind === 'image' ? image : undefined)
+  await removeWatermarkCopies(file, look.watermark?.kind === 'image' ? look.watermark.path : undefined)
   await fs.mkdir(path.dirname(file), { recursive: true })
   writeFileAtomicSync(file, JSON.stringify({ version: FILE_VERSION, ...look }, null, 2))
   return look
@@ -112,9 +116,10 @@ export function applyStyleDefaults(project: Project, defaults: StyleDefaults | n
   if (out === project || !wm || wm === project.watermark || wm.kind !== 'image' || !wm.path) return out
   try {
     const dir = projectDir(project.id)
+    const name = plainWatermarkFile(wm.path)
     fsSync.mkdirSync(dir, { recursive: true })
-    fsSync.copyFileSync(watermarkCopy(file ?? styleDefaultsFile(), wm.path), path.join(dir, wm.path))
-    return out
+    fsSync.copyFileSync(watermarkCopy(file ?? styleDefaultsFile(), name), path.join(dir, name))
+    return name === wm.path ? out : { ...out, watermark: { ...wm, path: name } }
   } catch (err) {
     console.warn('The default watermark image could not be copied into the new recording:', err)
     const { watermark: _dropped, ...rest } = out

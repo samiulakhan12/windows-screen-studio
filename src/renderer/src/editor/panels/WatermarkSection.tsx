@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { DEFAULT_WATERMARK, WATERMARK_LIMITS, WATERMARK_SIZE, WATERMARK_TEXT_MAX, watermarkSettings } from '../../../../shared/engine/watermark'
 import type { Project, WatermarkSettings } from '../../../../shared/types'
-import { reloadWatermarkImage } from '../../render/watermarkLayer'
+import { preloadWatermarkImage } from '../../render/watermarkLayer'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
@@ -34,8 +34,13 @@ export function WatermarkSection({ project }: { project: Project }): JSX.Element
     try {
       const picked = await window.api.pickAsset(project.id, 'watermark')
       if (!picked) return
-      // A new image may replace an older one of the same name: decode it before switching.
-      await reloadWatermarkImage(project.id, picked.path, picked.url)
+      // Each pick is a new file: decode it before switching, so an unreadable one changes nothing.
+      try {
+        await preloadWatermarkImage(project.id, picked.path, picked.url)
+      } catch {
+        setError(wm?.kind === 'image' && wm.path ? 'This image could not be read. Your current logo is kept.' : 'This image could not be read.')
+        return
+      }
       const sizeFor = wm?.kind === 'image' ? wm.size : WATERMARK_SIZE.image
       set({ show: true, kind: 'image', path: picked.path, size: sizeFor })
       player.invalidate()

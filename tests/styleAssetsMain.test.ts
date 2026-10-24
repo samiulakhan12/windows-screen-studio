@@ -15,7 +15,9 @@ vi.mock('electron', () => ({
 }))
 
 const { applyStyleDefaults, loadStyleDefaults, saveStyleDefaults } = await import('../src/main/styleDefaults')
-const { importAsset, looksLikeAudio, looksLikeImage } = await import('../src/main/assetIpc')
+const { importAsset, isAssetFile, looksLikeAudio, looksLikeImage } = await import('../src/main/assetIpc')
+const { MEDIA_FILE_RE } = await import('../src/main/mediaProtocol')
+const { writeProject } = await import('../src/main/projects')
 const { lookOf } = await import('../src/shared/editor/styleDefaults')
 const { createProject } = await import('../src/shared/engine/project')
 const { projectDir } = await import('../src/main/projects')
@@ -66,6 +68,21 @@ describe('saved look with a watermark (main process)', () => {
     expect(readFileSync(path.join(projectDir('rec-new'), 'watermark.png'))).toEqual(PNG)
     expect(applied.style).toMatchObject({ frame: { kind: 'browser', theme: 'dark', title: 'acme.dev' }, border: { width: 4, glass: true }, shadowStyle: 'glow', shadowColor: '#ff00ff' })
     expect(applied.zoomSettings).toMatchObject({ defaultScale: 1.5, easing: 'bouncy', transition: 1.2 })
+  })
+
+  it('keeps a picked logo (watermark-<n>.<ext>) under its plain name', async () => {
+    const src = project('rec-pick')
+    writeFileSync(path.join(projectDir('rec-pick'), 'watermark-3.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
+    src.watermark = { show: true, kind: 'image', path: 'watermark-3.svg', position: 'top-left', size: 0.15, opacity: 0.7, margin: 0.02 }
+    const stored = await saveStyleDefaults(lookOf(src), defaultsFile())
+    expect(stored?.watermark?.path).toBe('watermark.svg')
+    expect(readdirSync(userData()).filter((f) => f.startsWith('style-defaults-watermark'))).toEqual(['style-defaults-watermark.svg'])
+    const applied = applyStyleDefaults(project('rec-pick-new'), await loadStyleDefaults(defaultsFile()), defaultsFile())
+    expect(applied.watermark?.path).toBe('watermark.svg')
+    expect(existsSync(path.join(projectDir('rec-pick-new'), 'watermark.svg'))).toBe(true)
+    // A hand-edited defaults file naming a pick still finds the kept copy.
+    const edited = { ...(await loadStyleDefaults(defaultsFile()))!, watermark: { ...stored!.watermark!, path: 'watermark-9.svg' } }
+    expect(applyStyleDefaults(project('rec-pick-edit'), edited, defaultsFile()).watermark?.path).toBe('watermark.svg')
   })
 
   it('saves the look without the watermark when its image is missing, and never copies one in', async () => {
@@ -126,14 +143,56 @@ describe('importAsset', () => {
     return f
   }
 
-  it('copies a real image in as watermark.<ext>, replacing an earlier pick', async () => {
+  const SVG = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"></svg>'
+  const logos = (id: string): string[] => readdirSync(projectDir(id)).filter((f) => f.startsWith('watermark') || f.includes('.part')).sort()
+
+  it('copies every logo in under a new name, keeping the one in use', async () => {
     project('rec-asset')
     const first = await importAsset('rec-asset', 'watermark', file('logo.png', PNG))
-    expect(first.path).toBe('watermark.png')
-    const svg = await importAsset('rec-asset', 'watermark', file('logo.svg', '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"></svg>'))
-    expect(svg.path).toBe('watermark.svg')
-    const files = readdirSync(projectDir('rec-asset'))
-    expect(files.filter((f) => f.startsWith('watermark') || f.includes('.part'))).toEqual(['watermark.svg'])
+    expect(first.path).toBe('watermark-1.png')
+    expect(first.url).toContain('/rec-asset/watermark-1.png')
+    const svg = await importAsset('rec-asset', 'watermark', file('logo.svg', SVG))
+    expect(svg.path).toBe('watermark-2.svg')
+    // The earlier logo is still there: undo can go back to it, and it is untouched.
+    expect(logos('rec-asset')).toEqual(['watermark-1.png', 'watermark-2.svg'])
+    expect(readFileSync(path.join(projectDir('rec-asset'), 'watermark-1.png'))).toEqual(PNG)
+  })
+
+  it('keeps the latest few picks and the logo the saved project uses', async () => {
+    const p = project('rec-many')
+    writeFileSync(path.join(projectDir('rec-many'), 'watermark.png'), PNG)
+    await writeProject({ ...p, watermark: { show: true, kind: 'image', path: 'watermark-2.png', position: 'top-left', size: 0.1, opacity: 1, margin: 0 } })
+    for (let i = 1; i <= 9; i++) expect((await importAsset('rec-many', 'watermark', file(`logo${i}.png`, PNG))).path).toBe(`watermark-${i}.png`)
+    expect(logos('rec-many')).toEqual(['watermark-2.png', 'watermark-5.png', 'watermark-6.png', 'watermark-7.png', 'watermark-8.png', 'watermark-9.png'])
+  })
+
+  it('refuses an image whose content does not match its extension, leaving the logo in use alone', async () => {
+    project('rec-mismatch')
+    await importAsset('rec-mismatch', 'watermark', file('ok.png', PNG))
+    await expect(importAsset('rec-mismatch', 'watermark', file('png-inside.svg', PNG))).rejects.toThrow(/named \.svg but holds a PNG image: rename it to \.png/)
+    await expect(importAsset('rec-mismatch', 'watermark', file('svg-inside.png', SVG))).rejects.toThrow(/named \.png but holds an SVG image/)
+    await expect(importAsset('rec-mismatch', 'watermark', file('webp-inside.jpg', Buffer.from('RIFF\0\0\0\0WEBPVP8 ', 'latin1')))).rejects.toThrow(/\.jpg but holds a WebP/)
+    expect(logos('rec-mismatch')).toEqual(['watermark-1.png'])
+    // A .jpeg is a JPG.
+    expect((await importAsset('rec-mismatch', 'watermark', file('photo.jpeg', Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0])))).path).toBe('watermark-2.jpg')
+  })
+
+  it('serves exactly the asset names it creates', () => {
+    for (const f of ['watermark.png', 'watermark-1.png', 'watermark-25.svg', 'music.mp3', 'music.flac']) {
+      expect(isAssetFile(f), f).toBe(true)
+      expect(MEDIA_FILE_RE.test(f), f).toBe(true)
+    }
+    for (const f of ['watermark-0.png', 'watermark-1.gif', '.watermark-1.png.part', 'music-1.mp3', 'project.json', '../watermark.png']) {
+      expect(isAssetFile(f), f).toBe(false)
+      expect(MEDIA_FILE_RE.test(f), f).toBe(false)
+    }
+  })
+
+  it('replaces earlier music, whatever its extension', async () => {
+    project('rec-music')
+    expect((await importAsset('rec-music', 'music', file('song.wav', 'RIFF\0\0\0\0WAVEfmt '))).path).toBe('music.wav')
+    expect((await importAsset('rec-music', 'music', file('song.mp3', 'ID3\x04\0\0'))).path).toBe('music.mp3')
+    expect(readdirSync(projectDir('rec-music')).filter((f) => f.startsWith('music'))).toEqual(['music.mp3'])
   })
 
   it('refuses wrong types, disguised files, empty files, folders and bad ids', async () => {

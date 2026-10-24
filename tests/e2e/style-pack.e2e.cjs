@@ -349,23 +349,25 @@ async function main() {
     await fx.openProject(win, 'Watermark logo')
     await win.click('label.toggle:has-text("Show watermark")')
     await win.click('.chip:has-text("Logo")')
-    await f.waitFor(async () => (await win.textContent('.style-file-row')).includes('watermark.png'), 'logo picked', 15000)
-    h.assert(fs.existsSync(path.join(h.projectsRoot(home), 'rec-wm-logo', 'watermark.png')), 'the logo is copied into the project')
+    await f.waitFor(async () => (await win.textContent('.style-file-row')).includes('watermark-1.png'), 'logo picked', 15000)
+    h.assert(fs.existsSync(path.join(h.projectsRoot(home), 'rec-wm-logo', 'watermark-1.png')), 'the logo is copied into the project')
     await win.click('button[aria-label="Watermark bottom right"]')
     await win.focus('.slider:has-text("Opacity") input')
     await win.keyboard.press('End')
     await f.waitFor(() => h.readProject(home, 'rec-wm-logo').watermark?.opacity === 1, 'logo settings saved', 10000)
     const wm = h.readProject(home, 'rec-wm-logo').watermark
-    h.assert(wm.kind === 'image' && wm.path === 'watermark.png' && wm.position === 'bottom-right', `logo saved: ${JSON.stringify(wm)}`)
+    h.assert(wm.kind === 'image' && wm.path === 'watermark-1.png' && wm.position === 'bottom-right', `logo saved: ${JSON.stringify(wm)}`)
     // The preview shows it too (loaded lazily, then repainted).
-    const previewRed = () =>
-      win.evaluate(() => {
+    /** How many sampled preview pixels are pure red (channel 0) or pure blue (channel 2). */
+    const previewPure = (channel) =>
+      win.evaluate((ch) => {
         const c = document.querySelector('.preview-canvas')
         const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
         let n = 0
-        for (let i = 0; i < d.length; i += 4 * 7) if (d[i] > 200 && d[i + 1] < 60 && d[i + 2] < 60) n++
+        for (let i = 0; i < d.length; i += 4 * 7) if ([0, 1, 2].every((k) => (k === ch ? d[i + k] > 200 : d[i + k] < 60))) n++
         return n
-      })
+      }, channel)
+    const previewRed = () => previewPure(0)
     await f.waitFor(async () => (await previewRed()) > 50, 'the logo shows in the preview', 10000)
     const outLogo = path.join(home, 'wm-logo.mp4')
     await exportOpen(app, win, outLogo)
@@ -377,6 +379,38 @@ async function main() {
     h.assert(r.x + r.w > W - m * 0.1 && r.y + r.h > H - m * 0.1, 'in the bottom-right corner')
     const elsewhere = b.mean({ x: 20, y: 20, w: 100, h: 60 })
     h.assert(near(elsewhere, [32, 32, 32], 12), `no logo at the top left (${fmt(elsewhere)})`)
+
+    // A pick that cannot be decoded (a PNG cut short) changes nothing: the red logo stays.
+    const pickNext = (file) =>
+      app.evaluate(({ dialog }, picked) => {
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] })
+      }, file)
+    const broken = path.join(home, 'broken.png')
+    fs.writeFileSync(broken, Buffer.concat([fs.readFileSync(logo).subarray(0, 8), Buffer.alloc(64, 7)]))
+    await pickNext(broken)
+    await win.click('button:has-text("Change logo")')
+    await win.waitForSelector('[data-testid="watermark-error"]:has-text("Your current logo is kept")', { timeout: 15000 })
+    h.assert((await win.textContent('.style-file-row')).includes('watermark-1.png'), 'the panel still names the red logo')
+    h.assert((await previewRed()) > 50, 'the red logo still shows after an unreadable pick')
+    h.assert(h.readProject(home, 'rec-wm-logo').watermark.path === 'watermark-1.png', 'the project still uses the red logo')
+    h.assert(fs.existsSync(path.join(h.projectsRoot(home), 'rec-wm-logo', 'watermark-1.png')), 'the red logo file is kept')
+
+    // Changing the logo can be undone: each pick has its own file.
+    const blue = path.join(home, 'blue.png')
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=0x0000ff:s=200x100', '-frames:v', '1', blue])
+    await pickNext(blue)
+    await win.click('button:has-text("Change logo")')
+    await f.waitFor(() => h.readProject(home, 'rec-wm-logo').watermark?.path === 'watermark-3.png', 'the blue logo is saved', 15000)
+    h.assert(!(await win.$('[data-testid="watermark-error"]')), 'the error is gone after a good pick')
+    await f.waitFor(async () => (await previewPure(2)) > 50 && (await previewRed()) === 0, 'the blue logo replaces the red one in the preview')
+    await win.keyboard.press('Control+z')
+    await f.waitFor(() => h.readProject(home, 'rec-wm-logo').watermark?.path === 'watermark-1.png', 'undo goes back to the red logo', 10000)
+    await f.waitFor(async () => (await previewRed()) > 50 && (await previewPure(2)) === 0, 'the red logo is back in the preview')
+    const outUndo = path.join(home, 'wm-undo.mp4')
+    await exportOpen(app, win, outUndo)
+    const u = frameOf(outUndo, 10)
+    const inUndo = u.mean({ x: r.x + r.w * 0.3, y: r.y + r.h * 0.3, w: r.w * 0.4, h: r.h * 0.4 })
+    h.assert(near(inUndo, [255, 0, 0], 40), `the export after undo has the red logo (${fmt(inUndo)})`)
   }))
 
   await test('style pack: presets apply as one undo step; your own presets are saved, renamed and deleted', async (ctx) => {
@@ -472,7 +506,7 @@ async function main() {
     for (let i = 0; i < 4; i++) await win.keyboard.press('ArrowRight')
     await win.click('label.toggle:has-text("Show watermark")')
     await win.click('.chip:has-text("Logo")')
-    await f.waitFor(async () => (await win.textContent('.style-file-row')).includes('watermark.png'), 'logo picked', 15000)
+    await f.waitFor(async () => (await win.textContent('.style-file-row')).includes('watermark-1.png'), 'logo picked', 15000)
     await win.click('.insp-tabs button:has-text("Zoom")')
     await win.click('.chip:has-text("Bouncy")')
     await win.click('.insp-tabs button:has-text("Style")')
@@ -485,7 +519,7 @@ async function main() {
     const stored = JSON.parse(fs.readFileSync(path.join(userData, 'style-defaults.json'), 'utf8'))
     h.assert(stored.style.frame.kind === 'browser' && stored.style.frame.theme === 'dark', `frame stored: ${JSON.stringify(stored.style.frame)}`)
     h.assert(stored.style.background.id === 'dunes' && stored.style.shadowStyle === 'glow' && stored.style.border.width === 4, `style stored: ${JSON.stringify(stored.style)}`)
-    h.assert(stored.watermark.kind === 'image' && stored.zoom.easing === 'bouncy' && !('source' in stored), `watermark/zoom stored: ${JSON.stringify({ wm: stored.watermark, zoom: stored.zoom })}`)
+    h.assert(stored.watermark.kind === 'image' && stored.watermark.path === 'watermark.png' && stored.zoom.easing === 'bouncy' && !('source' in stored), `watermark/zoom stored: ${JSON.stringify({ wm: stored.watermark, zoom: stored.zoom })}`)
     h.assert(fs.existsSync(path.join(userData, 'style-defaults-watermark.png')), 'a copy of the logo is kept with the defaults')
 
     // A new recording, created the way the recorder does it.
