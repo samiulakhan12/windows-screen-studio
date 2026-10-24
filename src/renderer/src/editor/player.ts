@@ -6,6 +6,7 @@ import { cursorLook } from '../../../shared/render/cursorFx'
 import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
+import { onStyleAssetsChanged } from '../render/watermarkLayer'
 
 /** Proxy frame rate when the project does not say (older projects: always 60 fps). */
 const SOURCE_FPS = 60
@@ -48,6 +49,7 @@ export class PreviewPlayer {
   private readonly clickSounds = new ClickSoundScheduler()
   private clickAudio: { ctx: AudioContext; gain: GainNode; buffer: AudioBuffer; voices: Set<AudioBufferSourceNode> } | null = null
   private readonly offCursorAssets: () => void
+  private readonly offStyleAssets: () => void
   private disposed = false
 
   constructor(
@@ -70,6 +72,7 @@ export class PreviewPlayer {
     this.applyAudio()
     // A custom cursor image finishing loading changes the picture.
     this.offCursorAssets = onCursorAssetsChanged(this.invalidate)
+    this.offStyleAssets = onStyleAssetsChanged(this.invalidate)
     this.seek(keptBounds(project.clips).start)
   }
 
@@ -483,6 +486,7 @@ export class PreviewPlayer {
     void this.clickAudio?.ctx.close()
     this.clickAudio = null
     this.offCursorAssets()
+    this.offStyleAssets()
     this.listeners.clear()
     for (const v of [this.screen, this.webcam]) {
       if (!v) continue

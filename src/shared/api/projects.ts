@@ -27,6 +27,12 @@ export interface ProjectsApi {
    * or oversized file.
    */
   pickCursorImage(projectId: string): Promise<{ url: string; path: string } | null>
+  /** Lets the user pick a file and copies it into the project as its `kind` asset. */
+  pickAsset(projectId: string, kind: AssetKind): Promise<{ url: string; path: string } | null>
+  /** studio-media URL of a project asset file, or null when it is missing. */
+  assetUrl(projectId: string, file: string): Promise<string | null>
+  /** Stretches (source seconds) of at least `minSeconds` where the recorded picture does not change. */
+  detectStill(projectId: string, minSeconds: number): Promise<StillRange[]>
   /** URL of a background image stored in the project folder, or null if it is missing. */
   backgroundUrl(projectId: string, path: string): Promise<string | null>
   /** The look new recordings start with, or null when the built-in look is used. */
@@ -38,4 +44,13 @@ export interface ProjectsApi {
   saveStyleDefaults(look: StyleDefaults): Promise<StyleDefaults | null>
   /** Forgets the saved look, so new recordings use the built-in one again. */
   resetStyleDefaults(): Promise<void>
+}
+
+/** Kinds of user files a project can hold (copied in as `<kind>.<ext>`). */
+export type AssetKind = 'watermark' | 'music'
+
+/** A stretch of the recording (source seconds) where the picture stays the same. */
+export interface StillRange {
+  start: number
+  end: number
 }

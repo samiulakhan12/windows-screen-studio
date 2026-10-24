@@ -6,6 +6,8 @@ export type Selection =
   | { kind: 'zoom'; id: string }
   | { kind: 'annotation'; id: string }
   | { kind: 'clip'; id: string }
+  | { kind: 'shape'; id: string }
+  | { kind: 'spotlight'; id: string }
   | { kind: 'gap'; start: number; end: number }
   | { kind: 'range'; start: number; end: number }
   | null
@@ -20,6 +22,10 @@ export function validSelection(sel: Selection, project: Project): Selection {
       return project.annotations.some((a) => a.id === sel.id) ? sel : null
     case 'clip':
       return project.clips.some((c) => c.id === sel.id) ? sel : null
+    case 'shape':
+      return (project.shapes ?? []).some((s) => s.id === sel.id) ? sel : null
+    case 'spotlight':
+      return (project.spotlights ?? []).some((s) => s.id === sel.id) ? sel : null
     case 'gap':
       return timelineGaps(project.clips, project.duration).some((g) => Math.abs(g.start - sel.start) < 1e-6 && Math.abs(g.end - sel.end) < 1e-6)
         ? sel

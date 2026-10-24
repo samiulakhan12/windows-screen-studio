@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { contentRect } from '../../../shared/engine/layout'
+import { styleContentRect } from '../../../shared/engine/layout'
 import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { clickSoundJob } from '../../../shared/render/clickSound'
@@ -362,7 +362,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const sizeFor = (height: number): ExportSize => exportSize(project, { ...options, resolution: height as ExportSettings['resolution'] })
   const upscaled = (height: number): boolean => {
     const d = sizeFor(height)
-    return contentRect(d.width, d.height, project.width, project.height, drawn.style.padding).h > project.height * 1.05
+    return styleContentRect(d.width, d.height, project.width, project.height, drawn.style).h > project.height * 1.05
   }
   const resolutionOptions = RESOLUTIONS.filter((r) => !gif || r <= GIF_MAX_HEIGHT).map((r) => {
     const d = sizeFor(r)

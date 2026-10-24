@@ -1,12 +1,15 @@
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
-import { contentRect, type Rect } from '../../../shared/engine/layout'
+import { styleContentRect, type Rect } from '../../../shared/engine/layout'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
 import { paintBackgroundLayer, paintCard, paintStaticLayer, roundRectPath } from './staticLayer'
+import { drawPrivacyLayer, drawShapesLayer } from './shapesLayer'
+import { drawSpotlightLayer } from './spotlightLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
+import { drawWatermarkLayer } from './watermarkLayer'
 import { drawWebcamLayer } from './webcamLayer'
 
 export interface RenderScene {
@@ -83,7 +86,7 @@ export function drawFrame(
   const vh = screen?.height || src.screen.videoHeight || project.height
 
   ctx.save()
-  const rect = contentRect(w, h, vw, vh, style.padding)
+  const rect = styleContentRect(w, h, vw, vh, style)
   const radius = style.cornerRadius * k
 
   const focus = cursor.valid ? scene.focusPath : null
@@ -95,10 +98,10 @@ export function drawFrame(
   const card = cardRect(rect, cam)
   const cardRadius = radius * Math.min(1, cam.scale)
   if (cam.scale < 1) {
-    paintBackgroundLayer(ctx, w, h, style, src.background)
+    paintBackgroundLayer(ctx, w, h, style, src.background, t)
     paintCard(ctx, style, card, cardRadius, k * cam.scale)
   } else {
-    paintStaticLayer(ctx, w, h, style, src.background, rect, radius, k, !!screen)
+    paintStaticLayer(ctx, w, h, style, src.background, rect, radius, k, !!screen, t)
   }
 
   ctx.save()
@@ -143,17 +146,22 @@ export function drawFrame(
     rect,
     radius,
     cam,
+    screen,
     // Normalised source coordinates -> output pixels, through the camera.
     toOut: (x, y) => ({ x: rect.x + (x - viewX) * cam.scale * rect.w, y: rect.y + (y - viewY) * cam.scale * rect.h })
   }
 
+  drawPrivacyLayer(fc)
   drawCursorLayer(fc)
+  drawShapesLayer(fc)
+  drawSpotlightLayer(fc)
   ctx.restore()
 
   drawWebcamLayer(fc, project.webcam.show ? webcamImage(src) : null)
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)
+  drawWatermarkLayer(fc)
   ctx.restore()
 }
 

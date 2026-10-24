@@ -309,6 +309,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         if (!sel) return
         if (sel.kind === 'zoom') store.update((p) => ({ ...p, zooms: p.zooms.filter((z) => z.id !== sel.id) }))
         else if (sel.kind === 'annotation') store.update((p) => ({ ...p, annotations: p.annotations.filter((a) => a.id !== sel.id) }))
+        else if (sel.kind === 'shape') store.update((p) => ({ ...p, shapes: (p.shapes ?? []).filter((s) => s.id !== sel.id) }))
+        else if (sel.kind === 'spotlight') store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else return

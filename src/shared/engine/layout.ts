@@ -1,4 +1,4 @@
-import type { AspectRatio, Corner, WebcamSettings } from '../types'
+import type { AspectRatio, Corner, StyleSettings, WebcamSettings } from '../types'
 
 export interface Rect {
   x: number
@@ -56,6 +56,15 @@ export function contentRect(outW: number, outH: number, srcW: number, srcH: numb
   const w = srcW * scale
   const h = srcH * scale
   return { x: (outW - w) / 2, y: (outH - h) / 2, w, h }
+}
+
+/**
+ * Rectangle where the recording itself is drawn for a style: inside the padding, leaving room
+ * for the device frame's chrome (title bar, bezels, laptop base) around it. Every caller that
+ * maps between the output frame and the recording goes through this.
+ */
+export function styleContentRect(outW: number, outH: number, srcW: number, srcH: number, style: Pick<StyleSettings, 'padding' | 'frame'>): Rect {
+  return contentRect(outW, outH, srcW, srcH, style.padding)
 }
 
 export function webcamRect(outW: number, outH: number, settings: Pick<WebcamSettings, 'corner' | 'size'>): Rect {

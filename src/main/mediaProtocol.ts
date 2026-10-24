@@ -8,7 +8,8 @@ import { projectDir } from './projects'
 export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
 
 /** Project files the renderer may load: the proxies, a background image and a custom cursor image. */
-export const MEDIA_FILE_RE = /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur))$/i
+export const MEDIA_FILE_RE =
+  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark\.(png|jpg|webp|svg)|music\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a)$/i
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.png': 'image/png',
@@ -17,7 +18,14 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
-  '.cur': 'image/x-icon'
+  '.cur': 'image/x-icon',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.opus': 'audio/ogg',
+  '.flac': 'audio/flac'
 }
 
 // Frames are read back from canvas during export, so media must be CORS-clean.

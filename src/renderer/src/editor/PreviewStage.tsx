@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { annotationVisibleAt } from '../../../shared/editor/annotations'
 import { dragRegion, formatLevel, regionFromPoints, setZoomRegion, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
-import { contentRect, outputSize, type Rect } from '../../../shared/engine/layout'
+import { styleContentRect, outputSize, type Rect } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { cameraFor, zoomTargetScale } from '../../../shared/engine/zoom'
 import type { Annotation, Project, ZoomSegment } from '../../../shared/types'
@@ -94,7 +94,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   // Source-space rectangle of the recording inside the frame (what drawFrame computes).
   const vw = player.screen.videoWidth || project.width
   const vh = player.screen.videoHeight || project.height
-  const rect = contentRect(box.w, box.h, vw, vh, project.style.padding)
+  const rect = styleContentRect(box.w, box.h, vw, vh, project.style)
 
   /** Normalised source position under a pointer (the preview shows the unzoomed frame while picking). */
   const sourceAt = (clientX: number, clientY: number, el: HTMLElement): { x: number; y: number } => {

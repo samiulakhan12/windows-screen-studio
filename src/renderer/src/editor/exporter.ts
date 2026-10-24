@@ -6,6 +6,7 @@ import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { prepareCursorAssets } from '../render/cursorLayer'
+import { prepareStyleAssets } from '../render/watermarkLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
 import { projectMediaUrl } from '../../../shared/mediaUrl'
@@ -74,6 +75,7 @@ async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 
   const project = exportProject(input.project, input.settings)
   const scene = project === input.project ? input.scene : { ...input.scene, project }
   await prepareCursorAssets(project, projectMediaUrl(project.id))
+  await prepareStyleAssets(project, projectMediaUrl(project.id))
   return { ...input, project, scene }
 }
 

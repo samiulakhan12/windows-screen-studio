@@ -54,6 +54,8 @@ export function createProject(init: {
     autoZoom: true,
     zoomSettings: structuredClone(DEFAULT_ZOOM_SETTINGS),
     annotations: [],
+    shapes: [],
+    spotlights: [],
     style: {
       background: { type: 'gradient', preset: 'aurora' },
       padding: 0.07,
@@ -100,6 +102,8 @@ export function migrateProject(raw: unknown): Project {
     clips: normalizeClips(clips, duration),
     zooms: Array.isArray(p.zooms) ? p.zooms : [],
     annotations: Array.isArray(p.annotations) ? p.annotations : [],
+    shapes: Array.isArray(p.shapes) ? p.shapes : [],
+    spotlights: Array.isArray(p.spotlights) ? p.spotlights : [],
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

@@ -101,7 +101,46 @@ export interface ZoomSettings {
 export type Background =
   | { type: 'gradient'; preset: string }
   | { type: 'color'; color: string }
-  | { type: 'image'; path: string }
+  /** `blur`: 0 (sharp) .. 1 (strongly blurred), so the recording stands out. */
+  | { type: 'image'; path: string; blur?: number }
+  /** A generated wallpaper from the built-in pack (shared/engine/wallpapers.ts). */
+  | { type: 'wallpaper'; id: string; blur?: number }
+  /** A gradient that slowly moves while the video plays; `speed` 0.25..2 (default 1). */
+  | { type: 'animated'; preset: string; speed?: number }
+
+export type DeviceFrameKind = 'none' | 'browser' | 'laptop' | 'monitor' | 'phone'
+
+/** Device chrome drawn around the recording. */
+export interface DeviceFrame {
+  kind: DeviceFrameKind
+  theme: 'light' | 'dark'
+  /** Address bar text of the browser frame. */
+  title?: string
+}
+
+export type ShadowStyle = 'soft' | 'hard' | 'glow'
+
+export interface CardBorder {
+  /** Width in 1080p-referenced pixels; 0 = none. */
+  width: number
+  color: string
+  /** Frosted, semi-transparent border (glass) instead of a solid one. */
+  glass: boolean
+}
+
+export interface WatermarkSettings {
+  show: boolean
+  kind: 'image' | 'text'
+  /** Project-relative image file (watermark.<ext>), for kind 'image'. */
+  path?: string
+  text?: string
+  position: Corner | 'center'
+  /** Width (image) or text height as a fraction of the output's shorter side. */
+  size: number
+  opacity: number
+  /** Distance from the frame's edges as a fraction of the shorter side. */
+  margin: number
+}
 
 export type AspectRatio = 'auto' | '16:9' | '9:16' | '1:1' | '4:3'
 export type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
@@ -113,6 +152,13 @@ export interface StyleSettings {
   cornerRadius: number
   shadow: number
   aspectRatio: AspectRatio
+  /** Device frame around the recording; absent = none. */
+  frame?: DeviceFrame
+  border?: CardBorder
+  /** Look of the shadow; absent = 'soft' (the original drop shadow). */
+  shadowStyle?: ShadowStyle
+  /** Colour of a 'hard' or 'glow' shadow. */
+  shadowColor?: string
 }
 
 /** 'auto' follows the recorded cursor shapes; the others force one look. */
@@ -193,10 +239,86 @@ export interface EffectSettings {
   keystrokes: KeystrokeSettings
 }
 
-export interface AudioSettings {
+export interface AudioTrackSettings {
   /** Linear gain, 0..2. */
   volume: number
   muted: boolean
+}
+
+export interface MusicSettings {
+  /** Project-relative file (music.<ext>). */
+  path: string
+  /** Linear gain, 0..2. */
+  volume: number
+  /** How much the music is lowered while the recording has sound, 0 (never) .. 1 (to silence). */
+  ducking: number
+  /** Repeat the music when it is shorter than the video. */
+  loop: boolean
+  /** Fade lengths in seconds. */
+  fadeIn: number
+  fadeOut: number
+}
+
+export interface AudioSettings {
+  /** Linear gain of the whole recording sound, 0..2. */
+  volume: number
+  muted: boolean
+  /** Per-source settings when the recording kept the microphone and system sound apart (Project.audioStems). */
+  mic?: AudioTrackSettings
+  system?: AudioTrackSettings
+  /** Background noise reduction, 0 (off) .. 1 (strong). */
+  noiseReduction?: number
+  /** Even out the loudness (about -16 LUFS). */
+  normalize?: boolean
+  /** Fade of the whole soundtrack at the start and end of the video, seconds. */
+  fadeIn?: number
+  fadeOut?: number
+  music?: MusicSettings | null
+}
+
+export type ShapeKind = 'arrow' | 'line' | 'rect' | 'ellipse' | 'highlight' | 'blur' | 'pixelate'
+
+/**
+ * A shape drawn over the recording between `start` and `end` (source seconds). Positions are
+ * normalised to the recorded video, so a shape stays on its content while the camera zooms.
+ * Arrows and lines go from (x, y) to (x + w, y + h) (w and h may be negative); the other
+ * kinds fill the box.
+ */
+export interface Shape {
+  id: string
+  start: number
+  end: number
+  kind: ShapeKind
+  x: number
+  y: number
+  w: number
+  h: number
+  color: string
+  /** Stroke width in 1080p-referenced pixels. */
+  strokeWidth: number
+  /** Filled instead of outlined (rect, ellipse). */
+  fill: boolean
+  opacity: number
+  /** Blur radius or pixel size of 'blur' and 'pixelate', 0..1. */
+  strength: number
+}
+
+/** Darkens everything but one area: around the cursor or a fixed region. */
+export interface Spotlight {
+  id: string
+  start: number
+  end: number
+  mode: 'cursor' | 'region'
+  /** The lit area, normalised to the recorded video; in 'cursor' mode only w and h are used. */
+  x: number
+  y: number
+  w: number
+  h: number
+  shape: 'ellipse' | 'rect'
+  /** How dark the rest gets, 0..1. */
+  dim: number
+  /** Edge softness, 0..1. */
+  feather: number
 }
 
 /** Normalised rectangle (0..1) relative to the captured display. */
@@ -246,6 +368,12 @@ export interface Project {
   webcam: WebcamSettings
   effects: EffectSettings
   audio: AudioSettings
+  /** Logo or text stamped on every frame. */
+  watermark?: WatermarkSettings
+  shapes?: Shape[]
+  spotlights?: Spotlight[]
+  /** Separate microphone (mic.m4a) and system sound (system.m4a) files kept by the recording. */
+  audioStems?: { mic: boolean; system: boolean }
 }
 
 export interface ProjectSummary {

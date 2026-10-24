@@ -11,6 +11,7 @@ import { TextPanel } from './panels/TextPanel'
 import { EffectsPanel } from './panels/EffectsPanel'
 import { CameraPanel } from './panels/CameraPanel'
 import { AudioPanel } from './panels/AudioPanel'
+import { ShapesPanel } from './panels/ShapesPanel'
 
 export interface InspectorProps {
   project: Project
@@ -33,7 +34,7 @@ export interface InspectorProps {
   onCutRange: (start: number, end: number) => void
 }
 
-type Tab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'effects' | 'camera' | 'audio'
+type Tab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'shapes' | 'effects' | 'camera' | 'audio'
 
 const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
   { id: 'style', label: 'Style', icon: 'palette' },
@@ -41,12 +42,21 @@ const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
   { id: 'zoom', label: 'Zoom', icon: 'zoom' },
   { id: 'clip', label: 'Clip', icon: 'scissors', editorIcon: true },
   { id: 'text', label: 'Text', icon: 'text', editorIcon: true },
+  { id: 'shapes', label: 'Shapes', icon: 'shapes', editorIcon: true },
   { id: 'effects', label: 'Effects', icon: 'sparkle', editorIcon: true },
   { id: 'camera', label: 'Camera', icon: 'camera' },
   { id: 'audio', label: 'Audio', icon: 'volume', editorIcon: true }
 ]
 
-const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = { zoom: 'zoom', annotation: 'text', clip: 'clip', gap: 'clip', range: 'clip' }
+const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
+  zoom: 'zoom',
+  annotation: 'text',
+  clip: 'clip',
+  gap: 'clip',
+  range: 'clip',
+  shape: 'shapes',
+  spotlight: 'shapes'
+}
 
 
 export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Element {
@@ -78,6 +88,7 @@ export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Ele
         {tab === 'zoom' && <ZoomPanel {...props} />}
         {tab === 'clip' && <ClipPanel {...props} />}
         {tab === 'text' && <TextPanel {...props} />}
+        {tab === 'shapes' && <ShapesPanel {...props} />}
         {tab === 'effects' && <EffectsPanel project={props.project} cursor={props.cursor} />}
         {tab === 'camera' && <CameraPanel project={props.project} hasWebcam={props.hasWebcam} />}
         {tab === 'audio' && <AudioPanel project={props.project} />}

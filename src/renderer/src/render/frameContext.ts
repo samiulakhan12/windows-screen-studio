@@ -2,7 +2,7 @@ import type { SmoothedTrack } from '../../../shared/engine/cursor'
 import type { Rect } from '../../../shared/engine/layout'
 import type { Camera } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
-import type { RenderScene } from './compositor'
+import type { FrameImage, RenderScene } from './compositor'
 
 /**
  * Everything a render layer needs for one output frame. Built once per frame by
@@ -30,6 +30,8 @@ export interface FrameContext {
   radius: number
   /** Zoom camera at t. */
   cam: Camera
+  /** The recording's frame at t (null before the first frame is decoded). */
+  screen: FrameImage | null
   /** Normalised source coordinates -> output pixels, through the camera. */
   toOut(x: number, y: number): { x: number; y: number }
 }

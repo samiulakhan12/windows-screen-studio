@@ -1,6 +1,9 @@
 import { app, BrowserWindow } from 'electron'
+import { registerAnalysisIpc } from './analysisIpc'
+import { registerAssetIpc } from './assetIpc'
 import { disposeExport, registerExportIpc } from './exportIpc'
 import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
+import { registerPrefsIpc } from './prefsIpc'
 import { registerProjectsIpc } from './projectsIpc'
 import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp, registerRecordingIpc } from './recordingIpc'
 import { createMainWindow } from './windows'
@@ -20,6 +23,9 @@ if (!app.requestSingleInstanceLock()) {
     handleMediaProtocol()
     registerRecordingIpc()
     registerProjectsIpc()
+    registerAssetIpc()
+    registerAnalysisIpc()
+    registerPrefsIpc()
     registerExportIpc()
     openMainWindow()
     app.on('activate', () => {

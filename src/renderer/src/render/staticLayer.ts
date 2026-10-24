@@ -92,8 +92,11 @@ export function paintStaticLayer(
   rect: Rect,
   radius: number,
   k: number,
-  opaque = false
+  opaque = false,
+  /** Source time, for backgrounds that move (animated gradients). */
+  t = 0
 ): void {
+  void t
   if (typeof document === 'undefined') {
     paintStatic(ctx, w, h, style, image, rect, radius, k)
     return
@@ -139,7 +142,8 @@ const backgrounds = new WeakMap<Ctx, CachedLayer>()
  * pulls back: the card then moves and shrinks every frame, so it is drawn on top with
  * paintCard (vector shapes stay crisp at any size) while the gradient or image is reused.
  */
-export function paintBackgroundLayer(ctx: Ctx, w: number, h: number, style: StyleSettings, image: HTMLImageElement | null): void {
+export function paintBackgroundLayer(ctx: Ctx, w: number, h: number, style: StyleSettings, image: HTMLImageElement | null, t = 0): void {
+  void t
   if (typeof document === 'undefined') {
     drawBackground(ctx, w, h, style, image)
     return
