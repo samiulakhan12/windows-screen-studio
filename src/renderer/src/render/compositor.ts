@@ -1,11 +1,13 @@
+import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
+import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/deviceFrames'
 import { styleContentRect, type Rect } from '../../../shared/engine/layout'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
-import { paintBackgroundLayer, paintCard, paintStaticLayer, roundRectPath } from './staticLayer'
+import { cardGeometry, paintBackgroundLayer, paintCard, paintStaticLayer, roundRectPath, type CardSpec } from './staticLayer'
 import { drawPrivacyLayer, drawShapesLayer } from './shapesLayer'
 import { drawSpotlightLayer } from './spotlightLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
@@ -93,19 +95,24 @@ export function drawFrame(
   const zoomStyle = zoomStyleOf(project)
   const cam = cameraAt(project.zooms, t, focus, zoomStyle)
 
-  // Pulled back, the card shrinks onto the background: draw it (shadow, corners) as vectors
-  // at its current size over the cached background. Otherwise use the cached static layer.
+  // Pulled back, the card shrinks onto the background: draw it (shadow, corners, device frame)
+  // as vectors at its current size over the cached background. Otherwise use the cached static layer.
   const card = cardRect(rect, cam)
-  const cardRadius = radius * Math.min(1, cam.scale)
+  const shrink = Math.min(1, cam.scale)
+  const frame = frameOf(style)
+  const spec: CardSpec = { style, rect: card, radius: radius * shrink, k: k * shrink, title: frame?.kind === 'browser' ? frameTitle(style, project.name) : '' }
+  const geom = cardGeometry(spec)
+  // Animated backgrounds run on output time, so they flow on smoothly across cuts.
+  const bgTime = isAnimated(style.background) ? animationTime(project.clips, t) : 0
   if (cam.scale < 1) {
-    paintBackgroundLayer(ctx, w, h, style, src.background, t)
-    paintCard(ctx, style, card, cardRadius, k * cam.scale)
+    const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
+    paintCard(ctx, spec, geom, backdrop, { w, h })
   } else {
-    paintStaticLayer(ctx, w, h, style, src.background, rect, radius, k, !!screen, t)
+    paintStaticLayer(ctx, w, h, spec, geom, src.background, !!screen, bgTime)
   }
 
   ctx.save()
-  roundRectPath(ctx, card, cardRadius)
+  roundRectPath(ctx, card, geom.screenRadii)
   ctx.clip()
   if (screen) {
     ctx.imageSmoothingEnabled = true
@@ -144,7 +151,7 @@ export function drawFrame(
     vw,
     vh,
     rect,
-    radius,
+    radius: frame ? screenCornerRadius(frame, rect, radius) : radius,
     cam,
     screen,
     options: opts,

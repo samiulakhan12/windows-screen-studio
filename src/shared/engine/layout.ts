@@ -1,4 +1,5 @@
 import type { AspectRatio, Corner, StyleSettings, WebcamSettings } from '../types'
+import { frameInsets, frameOf } from './deviceFrames'
 
 export interface Rect {
   x: number
@@ -64,7 +65,22 @@ export function contentRect(outW: number, outH: number, srcW: number, srcH: numb
  * maps between the output frame and the recording goes through this.
  */
 export function styleContentRect(outW: number, outH: number, srcW: number, srcH: number, style: Pick<StyleSettings, 'padding' | 'frame'>): Rect {
-  return contentRect(outW, outH, srcW, srcH, style.padding)
+  const frame = frameOf(style)
+  if (!frame) return contentRect(outW, outH, srcW, srcH, style.padding)
+  // The chrome is sized in multiples of the recording's shorter side, so the whole device
+  // grows linearly with the recording: fit that, then centre the device (not the recording).
+  const ins = frameInsets(frame.kind, srcW > srcH)
+  const pad = Math.min(outW, outH) * style.padding
+  const availW = Math.max(1, outW - pad * 2)
+  const availH = Math.max(1, outH - pad * 2)
+  const m = Math.min(srcW, srcH)
+  const scale = Math.min(availW / (srcW + (ins.left + ins.right) * m), availH / (srcH + (ins.top + ins.bottom) * m))
+  const u = m * scale
+  const w = srcW * scale
+  const h = srcH * scale
+  const outerW = w + (ins.left + ins.right) * u
+  const outerH = h + (ins.top + ins.bottom) * u
+  return { x: (outW - outerW) / 2 + ins.left * u, y: (outH - outerH) / 2 + ins.top * u, w, h }
 }
 
 export function webcamRect(outW: number, outH: number, settings: Pick<WebcamSettings, 'corner' | 'size'>): Rect {

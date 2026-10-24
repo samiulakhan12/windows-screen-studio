@@ -1,0 +1,326 @@
+/* ---------- Style panel: presets, device frames, backgrounds, watermark ---------- */
+
+.style-subhead {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Presets: closed, the current look's name and a way in; open, a miniature of each look. */
+.preset-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.preset-summary:hover {
+  border-color: #3a3a4e;
+}
+
+.preset-summary-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.preset-summary-action {
+  flex: none;
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.preset-item {
+  position: relative;
+  min-width: 0;
+}
+
+.preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 4px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.preset-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 7px;
+  background: var(--bg);
+}
+
+.preset-card:hover {
+  color: var(--text);
+  border-color: #3a3a4e;
+}
+
+.preset-item.active .preset-card {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.preset-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  padding: 0 2px;
+}
+
+/* Rename / delete on your own presets, shown on hover or keyboard focus. */
+.preset-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.preset-item:hover .preset-tools,
+.preset-tools:focus-within,
+.preset-tool.confirm {
+  opacity: 1;
+}
+
+.preset-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(10, 10, 16, 0.78);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.preset-tool:hover:not(:disabled) {
+  background: rgba(10, 10, 16, 0.95);
+}
+
+.preset-tool.confirm {
+  background: var(--danger);
+  color: white;
+  font-weight: 600;
+}
+
+.preset-name-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.preset-name-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.text-input {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  user-select: text;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.field-label.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+
+/* Device frame tiles. */
+.frame-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.frame-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 4px 6px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.frame-tile img {
+  width: 100%;
+  max-width: 64px;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  /* A tinted stage so dark and light chrome both read. */
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6d5bd0 0%, #3f6fb0 55%, #2b8a9a 100%);
+}
+
+.frame-tile:hover {
+  color: var(--text);
+  border-color: #3a3a4e;
+}
+
+.frame-tile.active {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* One row of compact chips (the background kinds). */
+.compact-chips .chips {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.compact-chips .chip {
+  flex: 1;
+  padding: 0 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Wallpaper and animated swatches are wider than gradient ones. */
+.swatches.wide {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.swatches.wide .swatch {
+  aspect-ratio: 16 / 10;
+  background-size: cover;
+  background-position: center;
+}
+
+.swatch.animated {
+  position: relative;
+}
+
+/* A small "moves" mark on animated swatches. */
+.swatch.animated::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid rgba(255, 255, 255, 0.9);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.6));
+}
+
+/* Watermark position: four corners and the centre. */
+.wm-positions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+  width: 132px;
+  height: 78px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.wm-position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wm-position span {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--muted);
+  opacity: 0.55;
+}
+
+.wm-position:hover span {
+  opacity: 1;
+}
+
+.wm-position.active span {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.wm-position.top-left {
+  grid-area: 1 / 1;
+}
+.wm-position.top-right {
+  grid-area: 1 / 3;
+}
+.wm-position.center {
+  grid-area: 2 / 2;
+}
+.wm-position.bottom-left {
+  grid-area: 3 / 1;
+}
+.wm-position.bottom-right {
+  grid-area: 3 / 3;
+}
+
+.style-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.style-file-row .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
