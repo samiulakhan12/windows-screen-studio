@@ -1,7 +1,7 @@
 import type { StemKind } from '../audio/settings'
 import type { CaptureSource, NormRect, RecordingStatus } from '../types'
 import type { HotkeyAction, HotkeyCheck } from '../recording/hotkeys'
-import type { AppSettings, RecordingSettingsPatch } from '../recording/settings'
+import type { AppSettings, RecordingPresetInput, RecordingSettingsPatch } from '../recording/settings'
 
 /**
  * The media files a recording streams to disk while it runs: the screen (with the mixed
@@ -31,6 +31,8 @@ export interface CapturePlan {
   stopShortcut: boolean
   /** Screen capture frame rate (from the app settings). */
   fps: 30 | 60
+  /** Seconds to count down before recording (from the app settings; absent: 3). */
+  countdown?: number
   /** Hotkeys that could not be registered (another app owns them), as messages to show. */
   hotkeyProblems?: string[]
   /** Something the user should know about this recording (e.g. a window recorded without cursor effects). */
@@ -167,6 +169,9 @@ export interface RecordingApi {
   getAppSettings(): Promise<AppSettings>
   /** Saves a change to the recording options and returns the validated settings. */
   updateRecordingSettings(patch: RecordingSettingsPatch): Promise<AppSettings>
+  /** Saves a recording preset (replacing one with the same name) and returns the settings; rejects with a message to show. */
+  saveRecordingPreset(preset: RecordingPresetInput): Promise<AppSettings>
+  deleteRecordingPreset(id: string): Promise<AppSettings>
   /**
    * Whether `accelerator` can be the hotkey for `action`: valid, not used by another of the
    * app's hotkeys, and (when no recording runs) not already taken by another app.

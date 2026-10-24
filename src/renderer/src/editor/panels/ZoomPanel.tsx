@@ -299,7 +299,13 @@ function AutoZoomSection({ project, cursor, onNotice }: { project: Project; curs
         <Slider label="Zoom in before" value={auto.leadIn} min={0.2} max={2.5} step={0.05} format={secFmt} disabled={!auto.enabled || !hasInput} onChange={(leadIn) => setAuto({ leadIn }, 'auto.leadIn')} />
         <Slider label="Hold after" value={auto.hold} min={0.5} max={6} step={0.1} format={(v) => `${v.toFixed(1)} s`} disabled={!auto.enabled || !hasInput} onChange={(hold) => setAuto({ hold }, 'auto.hold')} />
         <Toggle label="Right clicks" checked={auto.rightClicks} disabled={!auto.enabled || !hasInput} onChange={(rightClicks) => setAuto({ rightClicks })} />
-        <Toggle label="Typing" title="Zoom in on the place you type into" checked={auto.onTyping} disabled={!auto.enabled || !hasInput} onChange={(onTyping) => setAuto({ onTyping })} />
+        <Toggle
+          label="Typing"
+          title="Zoom in a little closer on the field you type into, and stay there until you stop typing (short pauses included)"
+          checked={auto.onTyping}
+          disabled={!auto.enabled || !hasInput}
+          onChange={(onTyping) => setAuto({ onTyping })}
+        />
         <Toggle label="Zoom-here marks" title="Zoom where you pressed the zoom-here shortcut while recording" checked={auto.onMarks} disabled={!auto.enabled || !hasInput} onChange={(onMarks) => setAuto({ onMarks })} />
       </div>
       <div className="row start zoom-actions">

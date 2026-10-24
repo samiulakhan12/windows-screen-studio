@@ -1,0 +1,38 @@
+/* Clip panel: smart speed's two modes (idle parts, silences) and the Silences mode. */
+.smart-mode .chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.smart-mode .chip {
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.smart-mode .chip:not(.active):hover {
+  background: var(--panel-2);
+}
+
+/* Why there is nothing to find: information, not a warning. */
+.silence-callout {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.silence-callout > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.silence-callout .link {
+  font: inherit;
+  font-weight: 600;
+}

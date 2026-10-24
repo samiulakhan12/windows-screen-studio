@@ -69,33 +69,110 @@ interface ZoomEvent {
   t0: number
   t1: number
   anchor: { t: number; x: number; y: number }
-  /** Typing: keeps an earlier aim at the same place (the field just clicked) until it ends. */
-  holdsAim?: boolean
+  /** Typing into the field at `anchor` from t0 to t1: the zoom holds its aim there for as long as it lasts. */
+  typing?: boolean
 }
 
-/** Anchors closer than this (normalised units) are the same place on screen. */
-const SAME_PLACE = 0.02
+/** Places closer than this (normalised units) are the same field: one zoom aims at both. */
+const SAME_FIELD = 0.08
+
+const near = (a: { x: number; y: number }, b: { x: number; y: number }): boolean => Math.hypot(a.x - b.x, a.y - b.y) < SAME_FIELD
+
+/** Consecutive events of one zoom that aim at the same thing: clicks and marks together, or one typing session. */
+interface ZoomPart {
+  t0: number
+  t1: number
+  anchor: ZoomEvent['anchor']
+  typing: boolean
+  events: ZoomEvent[]
+}
+
+/** The parts of one zoom: typing on its own (with clicks into the same field), clicks and marks between. */
+function zoomParts(events: ZoomEvent[]): ZoomPart[] {
+  const parts: ZoomPart[] = []
+  for (const e of events) {
+    const last = parts[parts.length - 1]
+    if (last && !e.typing && !last.typing) {
+      last.t1 = Math.max(last.t1, e.t1)
+      last.events.push(e)
+    } else {
+      parts.push({ t0: e.t0, t1: e.t1, anchor: { ...e.anchor }, typing: !!e.typing, events: [e] })
+    }
+  }
+  // Clicking into a field and typing there (or typing on after a pause) is one part aimed at the field.
+  const sameField = (a: ZoomPart, b: ZoomPart): boolean => {
+    if (!a.typing && !b.typing) return false
+    const field = a.typing ? a.anchor : b.anchor
+    return [...a.events, ...b.events].every((e) => near(e.anchor, field))
+  }
+  for (let i = 0; i + 1 < parts.length; ) {
+    const a = parts[i]
+    const b = parts[i + 1]
+    if (!sameField(a, b)) {
+      i++
+      continue
+    }
+    const field = a.typing ? a.anchor : b.anchor
+    parts.splice(i, 2, { t0: a.t0, t1: Math.max(a.t1, b.t1), anchor: { ...field }, typing: true, events: [...a.events, ...b.events] })
+  }
+  return parts
+}
+
+/**
+ * The zoom segments of one range [start, end]: one per part, back to back, so the camera pans
+ * from one part to the next without zooming out. A part's segment begins leadIn before it (or
+ * halfway from the previous part when that is closer, never before the previous part ends).
+ * Click parts aim at their first event as zooms always have; typing parts look at their field
+ * for the whole segment (an anchor spanning the typing, see anchorWeight), at `typingScale`.
+ */
+function rangeSegments(r: { start: number; end: number; events: ZoomEvent[] }, o: AutoZoomOptions, typingScale: number): ZoomSegment[] {
+  const parts = zoomParts(r.events)
+  const bounds = [r.start]
+  for (let i = 1; i < parts.length; i++) {
+    const prev = parts[i - 1]
+    const next = parts[i]
+    bounds.push(clamp(Math.max(next.t0 - o.leadIn, (prev.t1 + next.t0) / 2), bounds[i - 1], r.end))
+  }
+  bounds.push(r.end)
+  const segments: ZoomSegment[] = []
+  parts.forEach((part, i) => {
+    const start = bounds[i]
+    const end = bounds[i + 1]
+    // Only when clamped to the recording's end: nothing is left of this part, the previous one goes on.
+    if (end - start < 0.05) {
+      const prev = segments[segments.length - 1]
+      if (prev) prev.end = end
+      else bounds[i + 1] = start
+      return
+    }
+    // Typing spans its whole part (from the click into the field to the last key), not one instant.
+    const anchor = part.typing ? { t: part.t0, x: part.anchor.x, y: part.anchor.y, until: part.t1 } : { ...part.anchor }
+    segments.push({ id: newZoomId(), start, end, scale: part.typing ? typingScale : o.scale, focus: { mode: 'cursor' }, auto: true, anchor })
+  })
+  return segments
+}
 
 /**
  * Zoom segments from recorded events: events closer than clusterGap share one zoom, which
  * starts leadIn before the first and holds until `hold` after the last; segments whose
  * transitions would overlap are merged (no zoom-out/in dip). Each zoom aims at its first
- * event; typing at the same place (the field just clicked) keeps the aim there until it ends.
+ * event; typing gets its own part of the zoom, aimed at the field for as long as it lasts,
+ * joined to the clicks around it by a pan.
  */
-function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions): ZoomSegment[] {
+function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions, typingScale = o.scale): ZoomSegment[] {
   const sorted = [...events].sort((a, b) => a.t0 - b.t0)
-  const ranges: { start: number; end: number; last: number; anchor: ZoomEvent['anchor'] }[] = []
+  const ranges: { start: number; end: number; last: number; events: ZoomEvent[] }[] = []
   for (const e of sorted) {
     const cur = ranges[ranges.length - 1]
     if (cur && e.t0 - cur.last <= o.clusterGap) {
       cur.last = Math.max(cur.last, e.t1)
       cur.end = Math.max(cur.end, e.t1 + o.hold)
-      if (e.holdsAim && Math.hypot(e.anchor.x - cur.anchor.x, e.anchor.y - cur.anchor.y) < SAME_PLACE) cur.anchor = { ...cur.anchor, t: Math.max(cur.anchor.t, e.anchor.t) }
+      cur.events.push(e)
     } else {
-      ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, last: e.t1, anchor: { ...e.anchor } })
+      ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, last: e.t1, events: [e] })
     }
   }
-  const segments: ZoomSegment[] = []
+  const zooms: { start: number; end: number; events: ZoomEvent[] }[] = []
   for (const r of ranges) {
     let start = clamp(r.start, 0, duration)
     let end = clamp(Math.max(r.end, start + o.minDuration), 0, duration)
@@ -103,17 +180,16 @@ function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptio
       start = clamp(end - 2 * ZOOM_TRANSITION, 0, duration)
       end = clamp(start + 2 * ZOOM_TRANSITION, 0, duration)
     }
-    const prev = segments[segments.length - 1]
+    const prev = zooms[zooms.length - 1]
     // Merge segments whose transitions would overlap, to avoid a zoom-out/in "dip".
     if (prev && start - prev.end < ZOOM_TRANSITION) {
       prev.end = Math.max(prev.end, end)
+      prev.events.push(...r.events)
       continue
     }
-    if (end - start > 0.2) {
-      segments.push({ id: newZoomId(), start, end, scale: o.scale, focus: { mode: 'cursor' }, auto: true, anchor: r.anchor })
-    }
+    if (end - start > 0.2) zooms.push({ start, end, events: [...r.events] })
   }
-  return segments
+  return zooms.flatMap((r) => rangeSegments(r, o, typingScale))
 }
 
 const clickEvent = (c: ClickEvent): ZoomEvent => ({ t0: c.t, t1: c.t, anchor: { t: c.t, x: c.x, y: c.y } })
@@ -129,6 +205,20 @@ export function generateAutoZooms(
 
 /** How far back (seconds) a click still counts as "the field being typed into". */
 export const TYPING_CLICK_WINDOW = 10
+/** A click this shortly before typing (seconds) is the click into the field: they are one zoom. */
+export const TYPING_CLICK_JOIN = 5
+/** Typing shorter than this (seconds: a lone key, a quick "ok") makes no zoom of its own. */
+export const TYPING_MIN_LENGTH = 0.5
+/** Pauses between typing bursts up to this long (seconds) keep the zoom in: thinking mid-sentence. */
+export const TYPING_PAUSE = 6
+
+/**
+ * Level of a typing zoom: text needs a closer look than a click, so a step (20%) closer than
+ * click zooms, up to 2.2× (a level already above that is kept, never lowered).
+ */
+export function typingScale(scale: number): number {
+  return Math.max(scale, Math.min(scale * 1.2, 2.2))
+}
 
 /** Where a typing burst starting at `t` types into: the last click before it, else the cursor. */
 function typingPlace(track: CursorTrack, t: number, rightClicks: boolean): { x: number; y: number } {
@@ -146,30 +236,61 @@ function cursorPlace(track: CursorTrack, t: number): { x: number; y: number } {
   return p ? { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) } : { x: 0.5, y: 0.5 }
 }
 
+/** A stretch of typing into one field, with the click into it (when there was one just before). */
+interface TypingSession {
+  t0: number
+  t1: number
+  place: { x: number; y: number }
+  click: ClickEvent | null
+}
+
+/**
+ * Typing sessions from the recorded bursts: bursts with pauses up to `pause` between them and
+ * no click in between are one session (a click means another field, or the same one again:
+ * then the sessions join later, being at the same place). Sessions shorter than
+ * TYPING_MIN_LENGTH are dropped. A session takes the last zoom click up to TYPING_CLICK_JOIN
+ * before it (after the previous session) as the click into its field.
+ */
+function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause: number, rightClicks: boolean): TypingSession[] {
+  const bursts = (track.typing ?? [])
+    .filter((b) => Number.isFinite(b.t) && Number.isFinite(b.end))
+    .map((b) => ({ t0: b.t, t1: Math.max(b.t, b.end) }))
+    .sort((a, b) => a.t0 - b.t0)
+  const runs: { t0: number; t1: number }[] = []
+  for (const b of bursts) {
+    const cur = runs[runs.length - 1]
+    if (cur && b.t0 - cur.t1 <= pause && !clicks.some((c) => c.t > cur.t1 && c.t < b.t0)) cur.t1 = Math.max(cur.t1, b.t1)
+    else runs.push({ ...b })
+  }
+  const sessions: TypingSession[] = []
+  let after = -Infinity
+  for (const r of runs) {
+    if (r.t1 - r.t0 < TYPING_MIN_LENGTH) continue
+    let click: ClickEvent | null = null
+    for (const c of clicks) if (c.t <= r.t0 && c.t > after && (!click || c.t >= click.t)) click = c
+    const into = click && r.t0 - click.t <= TYPING_CLICK_JOIN ? click : null
+    sessions.push({ t0: into ? into.t : r.t0, t1: r.t1, place: into ? { x: into.x, y: into.y } : typingPlace(track, r.t0, rightClicks), click: into })
+    after = r.t1
+  }
+  return sessions
+}
+
 /**
  * Auto zoom segments for a whole cursor track: clicks (right clicks too when enabled),
- * typing bursts (a zoom covering the burst, aimed at the place being typed into: the last
- * click up to TYPING_CLICK_WINDOW before it, else the cursor) and "zoom here" marks (aimed
- * at the cursor). Overlapping results are merged. Every zoom carries an anchor.
+ * typing (see below) and "zoom here" marks (aimed at the cursor). Overlapping results are
+ * merged. Every zoom carries an anchor.
+ *
+ * Typing: bursts a short pause apart are one session, which holds the zoom in until it ends
+ * (plus the hold) instead of zooming out mid-sentence. It aims at the place being typed into,
+ * the last click up to TYPING_CLICK_WINDOW before it, else the cursor where it starts, for its
+ * whole length (the idle mouse is never chased), a little closer than click zooms
+ * (typingScale). The click into the field just before and the typing are one zoom; clicks and
+ * marks elsewhere in the same zoom pan to their own place and back. Typing too short to read
+ * makes no zoom of its own.
  * CONTRACT: used by recording finalize and by "Regenerate".
  */
 export function autoZoomsForTrack(track: CursorTrack, duration: number, settings: AutoZoomSettings = DEFAULT_ZOOM_SETTINGS.auto): ZoomSegment[] {
   if (!settings.enabled) return []
-  const events: ZoomEvent[] = track.clicks.filter((c) => isZoomClick(c, settings.rightClicks)).map(clickEvent)
-  if (track.valid !== false && settings.onTyping) {
-    for (const b of track.typing ?? []) {
-      if (!Number.isFinite(b.t) || !Number.isFinite(b.end)) continue
-      const end = Math.max(b.t, b.end)
-      // Aim at the field for the whole burst, then hand back to the cursor.
-      events.push({ t0: b.t, t1: end, anchor: { t: end, ...typingPlace(track, b.t, settings.rightClicks) }, holdsAim: true })
-    }
-  }
-  if (settings.onMarks) {
-    for (const m of track.marks ?? []) {
-      if (!Number.isFinite(m.t)) continue
-      events.push({ t0: m.t, t1: m.t, anchor: { t: m.t, ...cursorPlace(track, m.t) } })
-    }
-  }
   const o: AutoZoomOptions = {
     scale: clamp(settings.scale, 1.05, ZOOM_MAX_SCALE),
     clusterGap: Math.max(0, settings.clusterGap),
@@ -177,7 +298,19 @@ export function autoZoomsForTrack(track: CursorTrack, duration: number, settings
     hold: Math.max(0, settings.hold),
     minDuration: DEFAULT_AUTO_ZOOM.minDuration
   }
-  const zooms = zoomsFromEvents(events, duration, o)
+  const clicks = track.clicks.filter((c) => isZoomClick(c, settings.rightClicks)).sort((a, b) => a.t - b.t)
+  const sessions = track.valid !== false && settings.onTyping ? typingSessions(track, clicks, Math.max(TYPING_PAUSE, o.clusterGap), settings.rightClicks) : []
+  // Clicks into a field, and clicks and marks while typing, belong to the typing.
+  const typed = (t: number): boolean => sessions.some((s) => t >= s.t0 && t <= s.t1)
+  const events: ZoomEvent[] = clicks.filter((c) => !sessions.some((s) => s.click === c) && !typed(c.t)).map(clickEvent)
+  for (const s of sessions) events.push({ t0: s.t0, t1: s.t1, anchor: { t: s.t0, ...s.place }, typing: true })
+  if (settings.onMarks) {
+    for (const m of track.marks ?? []) {
+      if (!Number.isFinite(m.t) || typed(m.t)) continue
+      events.push({ t0: m.t, t1: m.t, anchor: { t: m.t, ...cursorPlace(track, m.t) } })
+    }
+  }
+  const zooms = zoomsFromEvents(events, duration, o, typingScale(o.scale))
   // Without cursor data there is no cursor to follow: look at the anchor instead.
   return track.valid === false ? zooms.map((z) => ({ ...z, focus: { mode: 'fixed', x: z.anchor?.x ?? 0.5, y: z.anchor?.y ?? 0.5 } })) : zooms
 }
@@ -208,13 +341,18 @@ export interface Camera {
 const REST: Camera = { scale: 1, cx: 0.5, cy: 0.5 }
 
 /**
- * How much an auto zoom aims at its click (anchor) rather than at the smoothed cursor at
- * time t: fully until the click, then handing back to the cursor over ANCHOR_RELEASE. 0
- * without an anchor, or for an anchor the segment no longer covers (it was moved).
+ * How much an auto zoom aims at its anchor rather than at the smoothed cursor at time t. A
+ * click: fully until the click, then handing back to the cursor over ANCHOR_RELEASE. Typing
+ * (an anchor spanning t..until): fully for the whole zoom, so a trimmed, disconnected or
+ * clamped end never sets the camera chasing the idle mouse. 0 without an anchor, or for one
+ * the segment no longer covers (it was moved away from the click or the typing).
  */
 export function anchorWeight(seg: ZoomSegment, t: number): number {
   const a = seg.anchor
-  if (!a || !(a.t >= seg.start && a.t <= seg.end)) return 0
+  if (!a) return 0
+  const until = a.until
+  if (typeof until === 'number' && Number.isFinite(until)) return Math.min(a.t, until) <= seg.end && Math.max(a.t, until) >= seg.start ? 1 : 0
+  if (!(a.t >= seg.start && a.t <= seg.end)) return 0
   if (t <= a.t) return 1
   const k = (t - a.t) / ANCHOR_RELEASE
   return k >= 1 ? 0 : 1 - easeInOutCubic(k)

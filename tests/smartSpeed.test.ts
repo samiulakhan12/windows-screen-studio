@@ -5,13 +5,18 @@ import { outputDuration } from '../src/shared/engine/timeline'
 import {
   applySmartSpeed,
   findIdleRanges,
+  findSilences,
   inputGaps,
   intersectRanges,
   keptRanges,
   mergeRanges,
+  outputToSourceRanges,
+  planSilences,
   planSmartSpeed,
   rangeGaps,
   rangeSaving,
+  SILENCE_LENGTH,
+  SILENCE_PADDING,
   type TimeRange
 } from '../src/shared/editor/smartSpeed'
 import type { Clip, CursorTrack, Project } from '../src/shared/types'
@@ -248,5 +253,107 @@ describe('smart speed and the recording\'s sound', () => {
     for (const p of [{ hasAudio: true, audio: { volume: 1, muted: true } }, { hasAudio: false, audio: { volume: 1, muted: false } }]) {
       expect(round(findIdleRanges({ ...base, sound: sound(p) }, 3))).toEqual([{ start: 3, end: 10.5 }])
     }
+  })
+})
+
+describe('silences', () => {
+  const settings = { minLength: 1, padding: 0.25 }
+  const pieces = (parts: { pieces: TimeRange[] }[]): TimeRange[][] => parts.map((p) => round(p.pieces))
+
+  it('finds the pauses between sounds and keeps some silence next to the sound', () => {
+    // Talk 0–2 s, a 3 s pause, talk 5–8 s, then silence to the end.
+    const sound = [{ start: 0, end: 2 }, { start: 5, end: 8 }]
+    const parts = findSilences(sound, [clip(0, 10)], settings)
+    expect(pieces(parts)).toEqual([[{ start: 2.25, end: 4.75 }], [{ start: 8.25, end: 10 }]])
+    // The length is the whole pause; the end of the video needs no padding (no sound there).
+    expect(parts.map((p) => +p.length.toFixed(2))).toEqual([3, 2])
+    // Silence before the first word: cut up to the padding before it.
+    expect(pieces(findSilences([{ start: 3, end: 9 }], [clip(0, 10)], settings))).toEqual([[{ start: 0, end: 2.75 }], [{ start: 9.25, end: 10 }]])
+  })
+
+  it('leaves pauses shorter than the minimum, and pauses the padding would use up', () => {
+    const sound = [{ start: 0, end: 2 }, { start: 2.8, end: 5 }, { start: 6.2, end: 10 }]
+    // 0.8 s and 1.2 s pauses: only the second is long enough.
+    expect(pieces(findSilences(sound, [clip(0, 10)], settings))).toEqual([[{ start: 5.25, end: 5.95 }]])
+    expect(findSilences(sound, [clip(0, 10)], { minLength: 1.5, padding: 0.25 })).toEqual([])
+    // A 1.2 s pause with 0.6 s kept at each end leaves nothing to remove.
+    expect(findSilences(sound, [clip(0, 10)], { minLength: 1, padding: 0.6 })).toEqual([])
+  })
+
+  it('merges sounds that overlap or touch, so no pause is found between them', () => {
+    const sound = [{ start: 4, end: 6 }, { start: 0, end: 2 }, { start: 1.5, end: 4 }, { start: 6, end: 10 }]
+    expect(findSilences(sound, [clip(0, 10)], settings)).toEqual([])
+  })
+
+  it('only looks at what is in the video: trimmed and cut parts are left alone', () => {
+    const sound = [{ start: 1, end: 3 }, { start: 12, end: 14 }]
+    // Trimmed to 2–15 s with 5–9 s cut: the pause 3–12 s plays as 3–5 and 9–12 (5 s), one pause across the cut.
+    const clips = [clip(2, 5), clip(9, 15)]
+    const [part, tail] = findSilences(sound, clips, settings)
+    expect(round(part.pieces)).toEqual([
+      { start: 3.25, end: 5 },
+      { start: 9, end: 11.75 }
+    ])
+    expect(part.length).toBeCloseTo(5)
+    expect(round([part])).toEqual([{ start: 3.25, end: 11.75 }])
+    // After the last word, up to the trimmed end.
+    expect(round(tail.pieces)).toEqual([{ start: 14.25, end: 15 }])
+    // A pause that is only long counting the cut part is not one in the video.
+    expect(findSilences([{ start: 0, end: 4 }, { start: 8, end: 10 }], [clip(0, 4.4), clip(7.6, 10)], settings)).toEqual([])
+  })
+
+  it('measures pauses and padding as the video plays them', () => {
+    // A 2× clip: the 3 s pause plays for 1.5 s, and the padding is 0.25 s of the video (0.5 s of recording).
+    const sound = [{ start: 0, end: 2 }, { start: 5, end: 8 }]
+    const fast = [clip(0, 10, 2)]
+    expect(pieces(findSilences(sound, fast, { minLength: 1, padding: 0.25 }))).toEqual([[{ start: 2.5, end: 4.5 }], [{ start: 8.5, end: 10 }]])
+    expect(findSilences(sound, fast, { minLength: 2, padding: 0.25 })).toEqual([])
+    // Clips touching at different speeds are one piece.
+    expect(outputToSourceRanges([clip(0, 4), clip(4, 8, 2)], 3, 5)).toEqual([{ start: 3, end: 6 }])
+    expect(outputToSourceRanges([clip(0, 4), clip(6, 8)], 3, 5)).toEqual([
+      { start: 3, end: 4 },
+      { start: 6, end: 7 }
+    ])
+  })
+
+  it('finds nothing when nothing is heard, rather than cutting the whole video', () => {
+    expect(findSilences([], [clip(0, 10)], settings)).toEqual([])
+    // Sound only in a cut-out part is not heard in the video either.
+    expect(findSilences([{ start: 6, end: 8 }], [clip(0, 5), clip(9, 10)], settings)).toEqual([])
+    expect(planSilences([], [clip(0, 10)], settings, 'cut')).toEqual({ parts: [], saved: 0 })
+  })
+
+  it('plans exactly what applying saves, cut or sped up, in one go', () => {
+    const sound = [{ start: 0, end: 2 }, { start: 5, end: 8 }, { start: 11, end: 12 }]
+    const clips = [clip(0, 12)]
+    const cut = planSilences(sound, clips, settings, 'cut')
+    expect(pieces(cut.parts)).toEqual([[{ start: 2.25, end: 4.75 }], [{ start: 8.25, end: 10.75 }]])
+    expect(cut.saved).toBeCloseTo(5)
+    const after = applySmartSpeed(clips, cut.parts.flatMap((p) => p.pieces), 'cut')
+    expect(outputDuration(after)).toBeCloseTo(12 - cut.saved)
+    // What is left of each pause is the padding: no pause long enough remains.
+    expect(findSilences(sound, after, settings)).toEqual([])
+    const sped = planSilences(sound, clips, settings, 4)
+    expect(sped.saved).toBeCloseTo(5 * 0.75)
+    expect(outputDuration(clips) - outputDuration(applySmartSpeed(clips, sped.parts.flatMap((p) => p.pieces), 4))).toBeCloseTo(sped.saved)
+    // A pause across a cut is cut on both sides of it.
+    const split = [clip(0, 3), clip(4, 12)]
+    const across = planSilences(sound, split, settings, 'cut')
+    const applied = applySmartSpeed(split, across.parts.flatMap((p) => p.pieces), 'cut')
+    expect(outputDuration(split) - outputDuration(applied)).toBeCloseTo(across.saved)
+    expect(applied.map((c) => [c.start, +c.end.toFixed(2)])).toEqual([
+      [0, 2.25],
+      [4.75, 8.25],
+      [10.75, 12]
+    ])
+  })
+
+  it('offers sensible slider ranges', () => {
+    expect(SILENCE_LENGTH.default).toBeGreaterThanOrEqual(SILENCE_LENGTH.min)
+    expect(SILENCE_PADDING.min).toBe(0.15)
+    expect(SILENCE_PADDING.max).toBe(0.5)
+    // Malformed settings fall back to the defaults instead of finding nonsense.
+    const parts = findSilences([{ start: 0, end: 2 }, { start: 5, end: 6 }], [clip(0, 6)], { minLength: NaN, padding: NaN })
+    expect(pieces(parts)).toEqual([[{ start: 2.25, end: 4.75 }]])
   })
 })

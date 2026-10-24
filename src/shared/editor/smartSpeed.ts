@@ -4,9 +4,13 @@
  * nothing is done with the mouse or keyboard, and speeds them up or cuts them. Everything here
  * is in source seconds; only parts still in the video count. Pure, so the Clip panel's list and
  * its Apply button agree exactly.
+ *
+ * Its "Silences" mode finds the pauses where nothing is heard instead, measured as the video
+ * plays them (after cuts and speed changes), and keeps a little of each pause next to the sound.
  */
+import { rangesToOutput } from '../audio/activity'
 import { clamp } from '../engine/math'
-import { cutRange } from '../engine/timeline'
+import { cutRange, outputDuration } from '../engine/timeline'
 import type { Clip, CursorTrack } from '../types'
 import { setRangeSpeed } from './clips'
 
@@ -207,4 +211,88 @@ export function applySmartSpeed(clips: Clip[], ranges: readonly TimeRange[], act
     for (const p of pieces) out = setRangeSpeed(out, p.start, p.end, action)
   }
   return out
+}
+
+/* ---------- Silences ---------- */
+
+/** Shortest pause (seconds of the video) the Silences mode acts on: the slider's range and default. */
+export const SILENCE_LENGTH = { min: 0.5, max: 5, step: 0.1, default: 1 } as const
+/** Silence kept next to the sound at each end of a pause (seconds of the video), so speech is never clipped. */
+export const SILENCE_PADDING = { min: 0.15, max: 0.5, step: 0.05, default: 0.25 } as const
+
+export interface SilenceSettings {
+  /** Pauses shorter than this (output seconds) are left alone. */
+  minLength: number
+  /** Silence kept next to the sound at each end (output seconds). */
+  padding: number
+}
+
+export interface SilencePart extends SmartSpeedPart {
+  /**
+   * The source ranges the action applies to, padding taken off: one, or several when the
+   * pause runs across a cut. `start` and `end` span all of them.
+   */
+  pieces: TimeRange[]
+  /** How long the whole pause plays in the video now (output seconds, padding included). */
+  length: number
+}
+
+export interface SilencePlan {
+  parts: SilencePart[]
+  /** Output seconds saved in all. */
+  saved: number
+}
+
+/**
+ * The source ranges of kept clips that play during output seconds [from, to]; ranges of
+ * neighbouring clips that touch are joined, so only a cut separates two of them.
+ */
+export function outputToSourceRanges(clips: readonly Clip[], from: number, to: number): TimeRange[] {
+  const out: TimeRange[] = []
+  let at = 0
+  for (const c of clips) {
+    const length = (c.end - c.start) / c.speed
+    const s = Math.max(from, at)
+    const e = Math.min(to, at + length)
+    if (e - s > EPS) out.push({ start: c.start + (s - at) * c.speed, end: c.start + (e - at) * c.speed })
+    at += length
+    if (at >= to) break
+  }
+  return mergeRanges(out)
+}
+
+/**
+ * The pauses of the video: stretches of the output where `sound` (source seconds, where the
+ * recording is heard) is silent for at least `minLength`, measured as the video plays them, so
+ * a pause running across a cut is one pause and a sped-up one is shorter. Each loses `padding`
+ * at an end that meets sound (not at the very start or end of the video), and comes back as the
+ * source ranges to act on. Nothing when nothing is heard at all: then there is no sound to keep.
+ */
+export function findSilences(sound: readonly TimeRange[], clips: readonly Clip[], settings: SilenceSettings): Omit<SilencePart, 'saved'>[] {
+  const list = [...clips]
+  const total = outputDuration(list)
+  const heard = rangesToOutput(sound, list).filter((r) => r.end - r.start > EPS)
+  if (heard.length === 0 || total <= EPS) return []
+  const minLength = Math.max(0.05, Number.isFinite(settings.minLength) ? settings.minLength : SILENCE_LENGTH.default)
+  const padding = clamp(Number.isFinite(settings.padding) ? settings.padding : SILENCE_PADDING.default, 0, 10)
+  const out: Omit<SilencePart, 'saved'>[] = []
+  for (const gap of rangeGaps(heard, total)) {
+    const length = gap.end - gap.start
+    if (length < minLength - EPS) continue
+    const from = gap.start + (gap.start > EPS ? padding : 0)
+    const to = gap.end - (gap.end < total - EPS ? padding : 0)
+    if (to - from <= EPS) continue
+    const pieces = outputToSourceRanges(list, from, to)
+    if (pieces.length === 0) continue
+    out.push({ start: pieces[0].start, end: pieces[pieces.length - 1].end, pieces, length })
+  }
+  return out
+}
+
+/** The pauses worth acting on (they save time with `action`), and what each saves. */
+export function planSilences(sound: readonly TimeRange[], clips: readonly Clip[], settings: SilenceSettings, action: SmartSpeedAction): SilencePlan {
+  const parts = findSilences(sound, clips, settings)
+    .map((p) => ({ ...p, saved: p.pieces.reduce((s, r) => s + rangeSaving(r, clips, action), 0) }))
+    .filter((p) => p.saved >= MIN_SAVING)
+  return { parts, saved: parts.reduce((s, p) => s + p.saved, 0) }
 }

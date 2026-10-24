@@ -95,9 +95,15 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     await session.acquire()
     flushWarnings()
     callbacks.onPhase?.('countdown')
-    for (let n = 3; n > 0 && !outcome; n--) {
+    const countdown = plan.countdown ?? 3
+    for (let n = countdown; n > 0 && !outcome; n--) {
       await status({ state: 'countdown', elapsed: n })
       await wait(1000)
+    }
+    if (countdown <= 0 && !outcome) {
+      // No countdown: the app's window still has to be out of the picture before capture starts.
+      await status({ state: 'countdown', elapsed: 0, starting: true })
+      await wait(400)
     }
 
     let native: { startedAt: number; width: number; height: number } | null = null
