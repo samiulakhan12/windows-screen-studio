@@ -11,6 +11,7 @@ import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
+import { CameraMaskPreparer } from '../render/segmentation/cameraMasks'
 import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
@@ -295,6 +296,16 @@ async function openSource(url: string, times: number[], caps: ExportCapabilities
   return element()
 }
 
+/**
+ * Segments the camera frames when the camera's background is blurred, or null when it is not
+ * (or segmentation cannot run here: the camera is then drawn unblurred, as in the preview).
+ */
+async function cameraMasks(project: Project, camera: boolean): Promise<CameraMaskPreparer | null> {
+  if (!camera || !((project.webcam.backgroundBlur ?? 0) > 0)) return null
+  const masks = new CameraMaskPreparer()
+  return (await masks.start()) ? masks : null
+}
+
 function disposeVideo(v: HTMLVideoElement): void {
   v.removeAttribute('src')
   v.load()
@@ -332,6 +343,7 @@ async function renderAll(
   signal.addEventListener('abort', onAbort)
   try {
     if (useWebcam) camera = await openSource(input.webcamUrl!, times.map((t) => t - project.webcamOffset), caps, videos, WEBCAM_PROXY_FPS)
+    const masks = await cameraMasks(project, !!camera)
     if (signal.aborted) throw abortError()
 
     const canvas = document.createElement('canvas')
@@ -370,6 +382,8 @@ async function renderAll(
       if (signal.aborted) throw abortError()
       const a = performance.now()
       const [screenFrame, webcamFrame] = await Promise.all([screen.get(i), camera ? camera.get(i) : null])
+      // The person mask of the camera frame, before drawing (drawFrame never waits).
+      await masks?.prepare(webcamFrame)
       const b = performance.now()
       drawFrame(ctx, width, height, times[i], input.scene, { ...sources, screenFrame, webcamFrame }, options)
       // The canvas holds the pixels now: let the sources start on the next frame.
@@ -444,6 +458,7 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     const ctx = canvas.getContext('2d', { alpha: false })
     if (!ctx) throw new Error('Could not create a drawing surface')
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
+    await (await cameraMasks(project, !!camera))?.prepare(webcamFrame)
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
     drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES })
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))

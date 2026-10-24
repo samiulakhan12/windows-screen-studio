@@ -29,6 +29,7 @@
     "uiohook-napi": "1.5.5"
   },
   "devDependencies": {
+    "@mediapipe/tasks-vision": "1.0.1",
     "@types/node": "22.19.1",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
