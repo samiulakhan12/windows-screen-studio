@@ -1,5 +1,71 @@
 import { describe, expect, it } from 'vitest'
-import { fitContent, insideWindow, mapPointToWindowVideo, poseIndexAt, type WindowPose } from '../src/shared/recording/windowGeometry'
+import { fitContent, hiddenPoint, insideWindow, mapPointToWindowVideo, poseAt, poseIndexAt, posesFromRects, type WindowPose } from '../src/shared/recording/windowGeometry'
+
+describe('mapping beside a resized window (no cursor in the black bars)', () => {
+  // A 1280 x 720 video; the window became 640 x 720 at (100, 0): content at x 320..960.
+  const out = { width: 1280, height: 720 }
+  const p: WindowPose = { at: 0, dip: { x: 100, y: 0, width: 640, height: 720 }, physical: { x: 100, y: 0, width: 640, height: 720 } }
+  it('maps the window edges onto the content edges, and anything beside them outside 0..1', () => {
+    expect(mapPointToWindowVideo({ x: 100, y: 360 }, p, out)!.x).toBeCloseTo(0.25)
+    expect(mapPointToWindowVideo({ x: 740, y: 360 }, p, out)!.x).toBeCloseTo(0.75)
+    expect(mapPointToWindowVideo({ x: 741, y: 360 }, p, out)!.x).toBeGreaterThan(1)
+    expect(mapPointToWindowVideo({ x: 99, y: 360 }, p, out)!.x).toBeLessThan(0)
+    // Continues outwards at the content's scale from the video edge.
+    expect(mapPointToWindowVideo({ x: 740 + 640, y: 360 }, p, out)!.x).toBeCloseTo(1.5)
+  })
+})
+
+describe('poseAt (window moves between polls)', () => {
+  const at = (t: number, x: number, w = 100, extra: Partial<WindowPose> = {}): WindowPose => ({
+    at: t,
+    dip: { x, y: 0, width: w, height: 50 },
+    physical: { x, y: 0, width: w, height: 50 },
+    ...extra
+  })
+  it('interpolates a move across the last poll interval before the next pose only', () => {
+    const poses = [at(0, 0), at(1000, 170)]
+    expect(poseAt(poses, 500).dip.x).toBe(0)
+    expect(poseAt(poses, 983).dip.x).toBe(0)
+    expect(poseAt(poses, 991.5).dip.x).toBeCloseTo(85)
+    expect(poseAt(poses, 991.5).physical.x).toBeCloseTo(85)
+    expect(poseAt(poses, 1000).dip.x).toBe(170)
+  })
+  it('steps across resizes, minimised windows and gaps shorter than a poll', () => {
+    expect(poseAt([at(0, 0), at(10, 100, 200)], 5).dip.x).toBe(0)
+    expect(poseAt([at(0, 0), at(10, 100, 100, { minimized: true })], 5).dip.x).toBe(0)
+    expect(poseAt([at(0, 0, 100, { minimized: true }), at(10, 100)], 5).minimized).toBe(true)
+    // Polls 10 ms apart: the whole gap is interpolated.
+    expect(poseAt([at(0, 0), at(10, 100)], 5).dip.x).toBeCloseTo(50)
+  })
+  it('keeps the covering state of the pose in effect', () => {
+    expect(poseAt([at(0, 0, 100, { cursorOver: false }), at(10, 100)], 5).cursorOver).toBe(false)
+  })
+})
+
+describe('hiddenPoint', () => {
+  it('puts a point past the nearest video edge, keeping the other coordinate', () => {
+    expect(hiddenPoint({ x: 0.9, y: 0.4 })).toEqual({ x: 2, y: 0.4 })
+    expect(hiddenPoint({ x: 0.2, y: 0.1 })).toEqual({ x: 0.2, y: -1 })
+    expect(hiddenPoint({ x: 0.05, y: 0.5 })).toEqual({ x: -1, y: 0.5 })
+    expect(hiddenPoint({ x: 0.5, y: 0.97 })).toEqual({ x: 0.5, y: 2 })
+  })
+  it('leaves a point already outside the video alone', () => {
+    expect(hiddenPoint({ x: 1.3, y: 0.5 })).toEqual({ x: 1.3, y: 0.5 })
+  })
+})
+
+describe('posesFromRects cursorOver', () => {
+  it('keeps cursorOver false only; absent or true means over the window', () => {
+    const [a, b, c] = posesFromRects([
+      { at: 0, x: 0, y: 0, width: 10, height: 10, cursorOver: false },
+      { at: 1, x: 0, y: 0, width: 10, height: 10, cursorOver: true },
+      { at: 2, x: 0, y: 0, width: 10, height: 10 }
+    ])
+    expect(a.cursorOver).toBe(false)
+    expect(b.cursorOver).toBeUndefined()
+    expect(c.cursorOver).toBeUndefined()
+  })
+})
 
 const pose = (at: number, x: number, y: number, w: number, h: number, scale = 1, minimized = false): WindowPose => ({
   at,

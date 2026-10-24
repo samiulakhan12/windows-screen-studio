@@ -1,4 +1,4 @@
-import { insideWindow, mapPointToWindowVideo, poseIndexAt, type Size, type WindowPose } from '../../shared/recording/windowGeometry'
+import { cursorOverWindow, hiddenPoint, insideWindow, mapPointToWindowVideo, poseAt, type Size, type WindowPose } from '../../shared/recording/windowGeometry'
 import type { ClickEvent, CursorSample, CursorShape, CursorShapeEvent, CursorTrack, KeyEvent, NormRect } from '../../shared/types'
 
 /** A paused interval in epoch ms. */
@@ -34,6 +34,13 @@ export interface WindowMapping {
   poses: WindowPose[]
   /** Size of the video the window content is fitted into (the proxy's output size). */
   out: Size
+  /**
+   * Converts a captured position (Electron DIP on Windows) into the space of `poses`
+   * (physical pixels), one point at a time; the identity when absent. Electron's DIP space
+   * is not continuous across monitors with different scale factors, so a window straddling
+   * two of them can only be mapped exactly in physical pixels.
+   */
+  pointToScreen?: (p: { x: number; y: number }) => { x: number; y: number }
 }
 
 export interface TrackOptions {
@@ -105,15 +112,17 @@ type Point = { x: number; y: number }
 
 /**
  * Where each captured position lands in the video. `point` is null when it cannot be
- * shown (the window was minimised); `click` is false for clicks that are not on the
- * recorded content (another monitor, outside the area or the window).
+ * shown (the window was minimised), and outside 0..1 where it is not over the recorded
+ * content; `click` is null for clicks that are not on the recorded content (another
+ * monitor, outside the area or the window, or on another window covering it).
  */
 interface Placement {
   point(x: number, y: number, at: number): Point | null
   click(x: number, y: number, at: number): Point | null
   /**
    * Instants at which the recorded content moved on screen (a window was moved, resized
-   * or restored): a cursor standing still there still moves in the video.
+   * or restored) or the cursor went over or off it: a cursor standing still there still
+   * moves (or appears, or disappears) in the video.
    */
   moves?: number[]
 }
@@ -136,14 +145,20 @@ function displayPlacement(b: Rect, r: NormRect | null): Placement {
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
 
 function windowPlacement({ poses, out }: WindowMapping): Placement {
-  const poseAt = (at: number): WindowPose => poses[poseIndexAt(poses, at)]
+  const at = (t: number): WindowPose => poseAt(poses, t)
   return {
+    // Also the instants the cursor went over or off a window covering the recorded one.
     moves: poses.slice(1).map((p) => p.at),
-    // Outside the window the cursor maps outside the content (the compositor hides it there).
-    point: (x, y, at) => mapPointToWindowVideo({ x, y }, poseAt(at), out),
-    click: (x, y, at) => {
-      const pose = poseAt(at)
-      if (!insideWindow({ x, y }, pose)) return null
+    point: (x, y, t) => {
+      const pose = at(t)
+      // Outside the window the cursor maps outside the video (the compositor hides it there).
+      const p = mapPointToWindowVideo({ x, y }, pose, out)
+      // Over another window covering the recorded one: not on the recorded content either.
+      return p && !cursorOverWindow(pose) ? hiddenPoint(p) : p
+    },
+    click: (x, y, t) => {
+      const pose = at(t)
+      if (!insideWindow({ x, y }, pose) || !cursorOverWindow(pose)) return null
       const p = mapPointToWindowVideo({ x, y }, pose, out)
       // On the window's edge rounding can land a hair outside 0..1.
       return p && { x: clamp01(p.x), y: clamp01(p.y) }
@@ -182,7 +197,8 @@ function rawPositionAt(samples: RawTrack['samples']): (at: number) => Point | nu
 }
 
 /** Converts captured events into the project's cursor track (source seconds, normalised positions). */
-export function buildCursorTrack(raw: RawTrack, o: TrackOptions): CursorTrack {
+export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTrack {
+  let raw = captured
   const time = (at: number): number => toSourceTime(at, o.startedAt, o.pauses)
   const recorded = (at: number): boolean => !o.pauses.some((p) => at > p.from && at < p.to)
   const end = o.duration + (o.slack ?? 0)
@@ -195,9 +211,14 @@ export function buildCursorTrack(raw: RawTrack, o: TrackOptions): CursorTrack {
   const invalid: CursorTrack = { samples: [], clicks: [], keys, shapes, scale: raw.scale, valid: false }
   let place: Placement
   if (o.window !== undefined && o.window !== null) {
-    const { poses, out } = o.window
+    const { poses, out, pointToScreen } = o.window
     if (poses.length === 0 || !(out.width > 0 && out.height > 0)) return invalid
     place = windowPlacement(o.window)
+    if (pointToScreen) {
+      // Into the rectangles' space before anything is interpolated between positions.
+      const conv = <T extends { x: number; y: number }>(p: T): T => ({ ...p, ...pointToScreen({ x: p.x, y: p.y }) })
+      raw = { ...raw, samples: raw.samples.map(conv), clicks: raw.clicks.map(conv) }
+    }
   } else {
     const b = raw.bounds
     if (!b || b.width <= 0 || b.height <= 0) return invalid

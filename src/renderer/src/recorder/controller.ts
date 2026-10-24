@@ -1,9 +1,6 @@
 import type { CapturePlan, RecorderCommand, RecorderStatusUpdate } from '../../../shared/api/recording'
-import { friendlyError, RecorderError, SOURCE_GONE } from '../../../shared/recording/errors'
+import { friendlyError, nativeFallbackWarning, RecorderError, SOURCE_GONE } from '../../../shared/recording/errors'
 import { RecordingSession, type SessionOptions } from './session'
-
-const NATIVE_FALLBACK_WARNING =
-  'Screen capture used standard mode because the native capture helper did not start. The Windows cursor is recorded in the video, so the smooth cursor is unavailable for this recording.'
 
 export type RecordingPhase = 'preparing' | 'countdown' | 'recording' | 'saving'
 
@@ -110,7 +107,7 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
       if (result?.ok) native = result
       else if (result && !outcome) {
         console.warn('Native capture did not start:', result.message)
-        callbacks.onWarning?.(NATIVE_FALLBACK_WARNING)
+        callbacks.onWarning?.(nativeFallbackWarning(options.sourceId.startsWith('window:') ? 'window' : 'screen', result.message))
         if (result.notice) callbacks.onWarning?.(result.notice)
         await session.fallbackToChromium()
         flushWarnings()

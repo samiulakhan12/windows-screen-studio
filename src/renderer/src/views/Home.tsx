@@ -76,14 +76,21 @@ let sourceCache: CaptureSource[] = []
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-/** What window recordings get on this PC: asked once, when the Windows tab is first shown. */
+/**
+ * What window recordings get on this PC: asked when the Windows tab is shown, and kept once
+ * the answer is that they get effects. A "no" is asked again on the next visit (a first start
+ * of the helper can be too slow for the check), meanwhile showing the last answer.
+ */
 let windowSupport: Promise<WindowCaptureSupport> | null = null
 /** The answer, once known (so returning to Home shows the hint at once). */
 let knownWindowSupport: WindowCaptureSupport | null = null
 
 function loadWindowSupport(): Promise<WindowCaptureSupport> {
   windowSupport ??= window.api.getWindowCaptureSupport().then(
-    (s) => (knownWindowSupport = s),
+    (s) => {
+      if (!s.effects) windowSupport = null
+      return (knownWindowSupport = s)
+    },
     (err: unknown) => {
       console.warn('Could not check window capture support:', err)
       windowSupport = null
@@ -101,7 +108,7 @@ function WindowHint({ support, onArea }: { support: WindowCaptureSupport | null;
       <p className="hint window-hint" data-support={support.smoothCursor ? 'full' : 'effects'}>
         {support.smoothCursor
           ? 'Window recordings get auto zoom, click highlights and the smooth cursor.'
-          : 'Window recordings get auto zoom and click highlights. The Windows cursor stays in the video, so there is no smooth cursor: that needs native capture (Windows 10 version 2004 or later).'}{' '}
+          : 'Window recordings get auto zoom and click highlights. The Windows cursor stays in the video, so there is no smooth cursor: native window capture is not available on this PC.'}{' '}
         Moving the window is fine; a resized window is fitted into its starting size.
       </p>
     )

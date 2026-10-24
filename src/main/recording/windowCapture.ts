@@ -40,21 +40,27 @@ export async function watchForChromium(
   return { method: 'chromium', watch: null, reason: watched.message }
 }
 
+/** Window recordings followed by a watcher (Chromium capture): effects, no smooth cursor. */
+const WATCHED: WindowCaptureSupport = { effects: true, smoothCursor: false }
+
+/** The hint's answer per helper client (positive answers only, see windowCaptureSupport). */
+const supportCache = new WeakMap<NativeCaptureApi, Promise<WindowCaptureSupport>>()
+
 /** Picks the best way to record `windowId` (an Electron "window:<id>:<n>" source id). */
 export async function planWindowCapture(api: NativeCaptureApi, windowId: string, timeoutMs?: number): Promise<WindowRoute> {
   if (await nativeWindowAvailable(api)) return { method: 'native' }
-  return watchForChromium(api, windowId, timeoutMs)
+  const route = await watchForChromium(api, windowId, timeoutMs)
+  // A watcher followed this window, so the hint on Home says so from now on.
+  if (route.watch) supportCache.set(api, Promise.resolve(WATCHED))
+  return route
 }
 
-/** How long the support check waits for a watcher's first rectangle. */
-const SUPPORT_PROBE_MS = 3000
-
-const supportCache = new WeakMap<NativeCaptureApi, Promise<WindowCaptureSupport>>()
-
 /**
- * What window recordings get on this PC (for the hint on Home), checked once per helper:
- * native window capture, else whether a watcher can follow a window at all, tried on one
- * of the app's own windows (`probeWindowId`) so the answer is exactly what recording does.
+ * What window recordings get on this PC (for the hint on Home): native window capture, else
+ * whether a watcher can follow a window at all, tried on one of the app's own windows
+ * (`probeWindowId`) with the same budget as a recording, so the answer is exactly what
+ * recording does. A positive answer is kept for the session; a negative one is asked again
+ * next time (a first start of the helper can be slow, e.g. while it is being scanned).
  */
 export function windowCaptureSupport(api: NativeCaptureApi, probeWindowId: string | null): Promise<WindowCaptureSupport> {
   const cached = supportCache.get(api)
@@ -62,21 +68,24 @@ export function windowCaptureSupport(api: NativeCaptureApi, probeWindowId: strin
   const check = (async (): Promise<WindowCaptureSupport> => {
     if (await nativeWindowAvailable(api)) return { effects: true, smoothCursor: true }
     if (!probeWindowId) return { effects: false, smoothCursor: false }
-    const watched = await startWindowWatch(api, probeWindowId, SUPPORT_PROBE_MS)
+    const watched = await startWindowWatch(api, probeWindowId)
     if (!watched.ok) return { effects: false, smoothCursor: false }
     void stopWindowWatch(watched.watch)
-    return { effects: true, smoothCursor: false }
+    return WATCHED
   })()
   supportCache.set(api, check)
-  // A check that failed unexpectedly is not remembered.
-  check.catch(() => supportCache.delete(api))
+  const forget = (): void => {
+    if (supportCache.get(api) === check) supportCache.delete(api)
+  }
+  // Only a positive answer is kept; a negative one (or a check that failed) is asked again.
+  void check.then((s) => !s.effects && forget(), forget)
   return check
 }
 
 /**
  * How a window recording's cursor positions are mapped into its video: the window's
- * rectangle over time (`rects`, physical pixels, converted to the cursor's DIP space by
- * `toDip`) fitted into the video, whose size is that of the proxy (`video`, rounded down
+ * rectangle over time (`rects`, physical pixels, converted by `toDip` into the space of the
+ * positions) fitted into the video, whose size is that of the proxy (`video`, rounded down
  * to even pixels as the proxy step does). Null when nothing is known about the window.
  */
 export function windowMapping(rects: readonly WindowRectEvent[], toDip: (r: Rect) => Rect, video: Size): WindowMapping | null {
@@ -87,9 +96,10 @@ export function windowMapping(rects: readonly WindowRectEvent[], toDip: (r: Rect
   return { poses, out }
 }
 
-/** The part of Electron's screen API that converts a window's rectangles (injectable for tests). */
+/** The part of Electron's screen API that converts between DIP and physical pixels (injectable for tests). */
 export interface DipScreen {
   screenToDipRect(window: null, rect: Rect): Rect
+  dipToScreenPoint(point: { x: number; y: number }): { x: number; y: number }
   getDisplayMatching(rect: Rect): { scaleFactor: number }
 }
 
@@ -98,8 +108,12 @@ const roundRect = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), 
 /**
  * The cursor mapping of a window recording (see windowMapping), and the scale factor of the
  * monitor the window is on, so the drawn cursor is as large as the real one there (null when
- * unknown). The helper's rectangles are physical pixels: on Windows they are converted to DIP
- * per monitor, like the cursor positions; on X11 both are the same pixels.
+ * unknown). The helper's rectangles are physical pixels, and the mapping stays in physical
+ * pixels: on Windows each cursor position (DIP) is converted back to physical pixels on its
+ * own (mapping.pointToScreen), the exact inverse of how it was converted to DIP. Converting
+ * the rectangle to DIP instead would use one monitor's scale for all of it, which is wrong
+ * for a window straddling monitors with different scale factors. On X11 both are the same
+ * pixels.
  */
 export function windowCursorMapping(
   rects: readonly WindowRectEvent[],
@@ -107,8 +121,12 @@ export function windowCursorMapping(
   screen: DipScreen,
   platform: NodeJS.Platform = process.platform
 ): { mapping: WindowMapping | null; scale: number | null } {
-  const toDip = platform === 'win32' ? (r: Rect): Rect => screen.screenToDipRect(null, r) : (r: Rect): Rect => r
-  const mapping = windowMapping(rects, toDip, video)
+  const windows = platform === 'win32'
+  const found = windowMapping(rects, (r) => r, video)
+  const mapping = found && windows ? { ...found, pointToScreen: (p: { x: number; y: number }) => screen.dipToScreenPoint(p) } : found
   const shown = mapping?.poses.find((p) => !p.minimized)
-  return { mapping, scale: shown ? screen.getDisplayMatching(roundRect(shown.dip)).scaleFactor : null }
+  if (!shown) return { mapping, scale: null }
+  // DIP only to find the monitor (and its scale) the window is mostly on.
+  const dip = windows ? screen.screenToDipRect(null, shown.physical) : shown.physical
+  return { mapping, scale: screen.getDisplayMatching(roundRect(dip)).scaleFactor }
 }
