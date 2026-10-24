@@ -55,7 +55,9 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
       {zoom ? (
         <SelectedZoom {...props} zoom={zoom} />
       ) : (
-        <p className="hint">Select a zoom on the timeline to edit it, or press Z to add one at the playhead.</p>
+        <p className="hint">
+          Select a zoom on the timeline to edit it, or press Z to add one at the playhead. Keys 1–4 set the selected zoom's level, 0 pulls it back.
+        </p>
       )}
       <ZoomStyleSection project={project} onNotice={props.onNotice} />
       <AutoZoomSection project={project} cursor={props.cursor} onNotice={props.onNotice} />
@@ -217,7 +219,7 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
       <Slider label="New zoom level" value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={formatLevel} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />
       <p className="hint">
         Every zoom without its own motion follows this style; Z adds zooms at the new zoom level.
-        {overridden > 0 ? ` ${plural(overridden, 'zoom')} ${overridden === 1 ? 'has' : 'have'} its own.` : ''}
+        {overridden > 0 ? ` ${plural(overridden, 'zoom')} ${overridden === 1 ? 'has its' : 'have their'} own.` : ''}
       </p>
       <div className="row start zoom-actions">
         <button

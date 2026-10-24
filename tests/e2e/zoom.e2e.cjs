@@ -361,7 +361,9 @@ async function main() {
     h.assert(near(pv.scale, 0.75, 0.02), `preview pulled back to 0.75x: ${fmt(pv)}`)
 
     const out = path.join(home, 'pull.mp4')
+    const timing = fx.exportTimings(win)
     await exportMp4(app, win, 'pull', out)
+    console.log(`  ${timing.last().line}`)
     const at = (t) => Math.round(t * FPS)
     // Every third frame across the pair (decoded frames are 2.7 MB each).
     const times = []

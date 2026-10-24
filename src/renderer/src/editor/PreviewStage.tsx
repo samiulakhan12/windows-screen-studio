@@ -128,8 +128,8 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
         // A tiny box would zoom past the limit: normalizeRegion grows it around its centre.
         setRegion(id, box)
       },
-      () => {
-        if (!drew) setRegion(id, dragRegion(initial, 'move', clamp(a.x, 0, 1) - (initial.x + initial.w / 2), clamp(a.y, 0, 1) - (initial.y + initial.h / 2)))
+      (ev) => {
+        if (!drew && ev.type === 'pointerup') setRegion(id, dragRegion(initial, 'move', clamp(a.x, 0, 1) - (initial.x + initial.w / 2), clamp(a.y, 0, 1) - (initial.y + initial.h / 2)))
       }
     )
   }
