@@ -1,0 +1,185 @@
+/* Zoom editing: inspector extras, timeline transitions and links, region editor on the preview. */
+
+/* ---------- Inspector ---------- */
+/* Chip rows that share one line evenly (level presets, easings). */
+.zoom-chips-fill .chips {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.zoom-chips-fill .chip {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Buttons wrap as a whole rather than breaking their labels. */
+.zoom-actions {
+  flex-wrap: wrap;
+}
+
+.zoom-actions .btn {
+  white-space: nowrap;
+}
+
+.zoom-subhead {
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.auto-zoom-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  transition: opacity 0.15s ease;
+}
+
+.auto-zoom-options.off {
+  opacity: 0.55;
+}
+
+/* ---------- Timeline ---------- */
+.zoom-seg.pullback {
+  background: linear-gradient(180deg, #0e7490, #155e75);
+  border-color: #67e8f9;
+}
+
+.zoom-seg.pullback.auto {
+  background: linear-gradient(180deg, #13708a, #135468);
+}
+
+/* Linked zooms read as one continuous camera move. */
+.zoom-seg.linked-next {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.zoom-seg.linked-prev {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+/* The label paints above the ramps (both positioned, in document order). */
+.zoom-seg .seg-label {
+  position: relative;
+}
+
+/* Transition ramps: shaded where the camera is still moving in or out. */
+.zoom-ramp {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.zoom-ramp.in {
+  left: 0;
+  background: linear-gradient(90deg, rgba(10, 10, 16, 0.42), rgba(10, 10, 16, 0));
+}
+
+.zoom-ramp.out {
+  right: 0;
+  background: linear-gradient(270deg, rgba(10, 10, 16, 0.42), rgba(10, 10, 16, 0));
+}
+
+.zoom-ramp.in.pan {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+}
+
+.zoom-link {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  background: rgba(167, 139, 250, 0.55);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.zoom-link svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #f5f3ff;
+  color: #5b21b6;
+  box-shadow: 0 0 0 1.5px #7c3aed, 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Region editor on the preview ---------- */
+.region-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.region-view {
+  position: absolute;
+  border: 1.5px dashed rgba(255, 255, 255, 0.55);
+  border-radius: 3px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+}
+
+.region-box {
+  position: absolute;
+  border: 2px solid var(--accent-2);
+  border-radius: 3px;
+  background: rgba(139, 92, 246, 0.08);
+  cursor: move;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.region-box .region-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(10, 10, 16, 0.8);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.region-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 3px;
+  background: white;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.region-handle[data-handle='nw'],
+.region-handle[data-handle='se'] {
+  cursor: nwse-resize;
+}
+
+.region-handle[data-handle='ne'],
+.region-handle[data-handle='sw'] {
+  cursor: nesw-resize;
+}
+
+.region-handle[data-handle='n'],
+.region-handle[data-handle='s'] {
+  cursor: ns-resize;
+}
+
+.region-handle[data-handle='e'],
+.region-handle[data-handle='w'] {
+  cursor: ew-resize;
+}

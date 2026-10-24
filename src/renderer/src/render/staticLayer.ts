@@ -42,6 +42,14 @@ function drawBackground(ctx: Ctx, w: number, h: number, style: StyleSettings, im
 /** Everything behind the recording: background, drop shadow and the black content well. */
 function paintStatic(ctx: Ctx, w: number, h: number, style: StyleSettings, image: HTMLImageElement | null, rect: Rect, radius: number, k: number): void {
   drawBackground(ctx, w, h, style, image)
+  paintCard(ctx, style, rect, radius, k)
+}
+
+/**
+ * The recording's card: its drop shadow and the black content well. `k` scales the shadow
+ * (1080p-referenced sizes); a pulled-back card passes a smaller one so its shadow shrinks with it.
+ */
+export function paintCard(ctx: Ctx, style: StyleSettings, rect: Rect, radius: number, k: number): void {
   if (style.shadow > 0 && style.padding > 0) {
     ctx.save()
     ctx.shadowColor = `rgba(0,0,0,${0.55 * style.shadow})`
@@ -122,4 +130,34 @@ export function paintStaticLayer(
   band(0, y1, w, h - y1)
   band(0, y0, x0, y1 - y0)
   band(x1, y0, w - x1, y1 - y0)
+}
+
+const backgrounds = new WeakMap<Ctx, CachedLayer>()
+
+/**
+ * Paints only the background (no card), cached like paintStaticLayer. Used while the camera
+ * pulls back: the card then moves and shrinks every frame, so it is drawn on top with
+ * paintCard (vector shapes stay crisp at any size) while the gradient or image is reused.
+ */
+export function paintBackgroundLayer(ctx: Ctx, w: number, h: number, style: StyleSettings, image: HTMLImageElement | null): void {
+  if (typeof document === 'undefined') {
+    drawBackground(ctx, w, h, style, image)
+    return
+  }
+  const key = JSON.stringify([w, h, style.background, image?.naturalWidth ?? 0])
+  let layer = backgrounds.get(ctx)
+  if (!layer || layer.key !== key || layer.image !== image) {
+    const canvas = layer?.canvas ?? document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const lctx = canvas.getContext('2d', { alpha: false })
+    if (!lctx) {
+      drawBackground(ctx, w, h, style, image)
+      return
+    }
+    drawBackground(lctx, w, h, style, image)
+    layer = { key, image, canvas }
+    backgrounds.set(ctx, layer)
+  }
+  ctx.drawImage(layer.canvas, 0, 0)
 }
