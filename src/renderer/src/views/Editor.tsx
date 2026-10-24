@@ -352,8 +352,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
     /** Chapter commands: moves the playhead to the next (or previous) chapter. */
     const goToChapter = (next: boolean): void => {
-      const chapters = store.state.chapters ?? []
-      const c = next ? nextChapter(chapters, player.time) : previousChapter(chapters, player.time)
+      const { chapters = [], clips } = store.state
+      const c = next ? nextChapter(chapters, player.time, clips) : previousChapter(chapters, player.time, clips)
       if (c) return player.seek(c.t)
       const key = latest.current.keymap.addChapter[0]
       if (chapters.length) showNotice(next ? 'There is no chapter after the playhead' : 'There is no chapter before the playhead')
@@ -367,7 +367,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       const r = setLayoutAt(p, layout, displayTime(p.clips, player.time))
       if (!r.ok) {
         if (r.id) setSelection({ kind: 'layout', id: r.id })
-        showNotice(r.reason === 'same' ? `The camera layout here already is ${LAYOUT_NAMES[layout].toLowerCase()}` : 'No room for a new camera layout here: another one starts right after the playhead')
+        showNotice(
+          r.reason === 'same'
+            ? `The camera layout here already is ${LAYOUT_NAMES[layout].toLowerCase()}`
+            : r.reason === 'end'
+              ? 'Too close to the end of the video for a new camera layout'
+              : 'No room for a new camera layout here: another one starts right after the playhead'
+        )
         return
       }
       store.update((q) => ({ ...q, layouts: r.layouts }))
@@ -600,8 +606,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleCursor: smoothCursor ? null : cursor.valid ? 'The recorded cursor is already in the video' : noCursor,
       toggleClickEffects: cursor.valid ? null : noCursor,
       toggleWebcam: data.webcamUrl ? null : 'This recording has no camera',
-      nextChapter: nextChapter(p.chapters ?? [], t) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
-      prevChapter: previousChapter(p.chapters ?? [], t) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet'
+      nextChapter: nextChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
+      prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet'
     }
     for (const k of ['layoutDefault', 'layoutCameraOnly', 'layoutScreenOnly', 'layoutSideBySide', 'layoutCameraLarge'] as const) {
       unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'

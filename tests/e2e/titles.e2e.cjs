@@ -1,7 +1,7 @@
 // Title cards and chapters end to end: measured on exported frames (a centered card covers the
 // frame with its background and shows its text in the middle, a lower third leaves the top of
 // the video visible, cards fade in and out, the blurred-video background is soft and darker,
-// the project's background fills a "background" card), chapters in the exported file at the
+// the project's background fills a "background" card, with dark text on a light one), chapters in the exported file at the
 // right output times after a cut (MP4 and M4A) and copied as YouTube timestamps, and edited in
 // the app (palette and keys add titles and chapters, chapter keys move the playhead, flags drag
 // on the timeline, the Text panel renames, camera layout commands on a recording with a camera).
@@ -98,6 +98,14 @@ function frameOf(file, index) {
     }
     return n
   }
+  /** Pixels in `r` darker than `max` on every channel (dark text). */
+  const dark = (r, max = 60) => {
+    let n = 0
+    for (let y = Math.round(r.y); y < Math.round(r.y + r.h); y += 2) {
+      for (let x = Math.round(r.x); x < Math.round(r.x + r.w); x += 2) if (px(x, y).every((v) => v <= max)) n++
+    }
+    return n
+  }
   /** Mean squared luma step to the next pixel inside `r` (drops a lot when the picture is blurred). */
   const sharpness = (r) => {
     let s = 0
@@ -115,7 +123,7 @@ function frameOf(file, index) {
     }
     return s / n
   }
-  return { px, mean, bright, sharpness }
+  return { px, mean, bright, dark, sharpness }
 }
 
 const near = (p, want, tol = 18) => p.every((v, i) => Math.abs(v - want[i]) <= tol)
@@ -138,6 +146,7 @@ const outTime = (tc) => {
   const [m, s] = tc.split('/')[0].trim().split(':')
   return Number(m) * 60 + Number(s)
 }
+const isPlaying = (win) => win.$eval('.transport .btn.round', (b) => b.dataset.playing === 'true')
 const paletteTitles = (win) => win.$$eval('.command-palette [role="option"] .palette-title', (els) => els.map((e) => e.textContent))
 const activeTab = (win) => win.$eval('.insp-tabs button.active', (b) => b.textContent.trim())
 
@@ -230,6 +239,26 @@ async function main() {
     const big = frameOf(out, 170).bright({ x: 0, y: H * 0.15, w: W, h: H * 0.7 }) / 'BIG'.length
     const centered = frameOf(out, 45).bright({ x: 0, y: H * 0.15, w: W, h: H * 0.7 }) / 'Helloworld'.length
     h.assert(big > centered * 2.5, `the big style's letters are large (${Math.round(big)} vs ${Math.round(centered)} white pixels per letter)`)
+  }))
+
+  await test('titles: a "background" card on a light project background has dark text (export)', fx.withHome('titles-light', async (ctx, home) => {
+    const media = fx.solidVideo({ seconds: 2 })
+    const LIGHT = hex('#f1f5f9')
+    fx.seedProject(home, { id: 'rec-light', name: 'Light', media, seconds: 2, style: { ...STYLE, background: { type: 'color', color: '#f1f5f9' } }, effects: NO_FX })
+    // No text colour of its own: the default follows the project's background.
+    const card = title('a', 0.5, 2, { title: 'Light background', background: 'style' })
+    delete card.textColor
+    addItems(home, 'rec-light', { titles: [card] })
+    const { app, win } = await launch(ctx, home)
+    await fx.openProject(win, 'Light')
+    const out = path.join(home, 'light.mp4')
+    await exportOpen(app, win, out)
+    shot(out, 40, 'titles-light')
+    const fr = frameOf(out, 40)
+    h.assert(near(fr.mean({ x: W * 0.45, y: H * 0.15, w: 30, h: 30 }), LIGHT, 10), `the light background covers the recording (${fmt(fr.mean({ x: W * 0.45, y: H * 0.15, w: 30, h: 30 }))})`)
+    const middle = { x: W * 0.2, y: H * 0.4, w: W * 0.6, h: H * 0.2 }
+    h.assert(fr.dark(middle) > 800, `dark text in the middle (${fr.dark(middle)} dark pixels)`)
+    h.assert(fr.bright(middle, 252) < 50, `no white text (${fr.bright(middle, 252)} white pixels)`)
   }))
 
   await test('titles: the blurred-video background is soft and darker than the video', fx.withHome('titles-blur', async (ctx, home) => {
@@ -340,6 +369,24 @@ async function main() {
     await playheadIs(win, 8, 'and on to the next')
     await win.keyboard.press('Shift+PageUp')
     await playheadIs(win, 4, 'Shift+Page Up goes back')
+    // While playing: well into a chapter it goes to that chapter's start, and pressed again right
+    // after (the video playing on) to the one before, not back to the same one.
+    await playheadAt(win, 10)
+    await win.keyboard.press('Space')
+    await f.waitFor(() => isPlaying(win), 'Space plays')
+    await win.keyboard.press('Shift+PageUp')
+    await f.waitFor(async () => {
+      const t = outTime(await timecode(win))
+      return t >= 7.95 && t < 9
+    }, 'playing: Shift+Page Up goes to the start of the chapter', 3000)
+    await h.sleep(250)
+    await win.keyboard.press('Shift+PageUp')
+    await f.waitFor(async () => {
+      const t = outTime(await timecode(win))
+      return t >= 3.95 && t < 5.5
+    }, 'and again, while it plays on, to the chapter before', 3000)
+    await win.keyboard.press('Space')
+    await f.waitFor(async () => !(await isPlaying(win)), 'Space pauses')
     await win.keyboard.press('End')
     await win.keyboard.press('Shift+PageDown')
     await win.waitForSelector('.notice:has-text("no chapter after the playhead")')
@@ -382,6 +429,12 @@ async function main() {
     await runCommand(win, 'camera only', 'Camera layout: camera only')
     p = await saved(home, id, (q) => q.layouts?.[0]?.layout === 'camera-only', 'the segment under the playhead changes')
     h.assert(p.layouts.length === 1, 'still one segment')
+    // At the very end of the video: a segment ending with it, after the one before.
+    await win.keyboard.press('End')
+    await runCommand(win, 'side by side', 'Camera layout: side by side')
+    p = await saved(home, id, (q) => q.layouts?.length === 2, 'a layout segment at the end')
+    const last = p.layouts.find((s) => s.id !== p.layouts[0].id)
+    h.assert(last.layout === 'side-by-side' && Math.abs(last.end - p.duration) < 0.02 && Math.abs(last.start - p.layouts[0].end) < 0.02, `ends with the video: ${JSON.stringify(last)}`)
     await win.click('header .btn.ghost >> nth=0')
     await f.openProject(win, 'NoCamera')
     await win.keyboard.press('Control+k')

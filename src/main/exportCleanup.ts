@@ -70,9 +70,9 @@ export function settledWithin(promises: (Promise<unknown> | null | undefined)[],
 const PARTIAL = /^\..*\.partial-\d+-[0-9a-z]+(\.[A-Za-z0-9]+)?$/
 /**
  * `screen-studio-gif-<pid>-<id>.mkv|png` in the temp folder (exportJob.tempStem), and the
- * filter-graph script and two-pass logs of the same stem (exportArgs.ffmpegPlan).
+ * filter-graph script, chapters file and two-pass logs of the same stem (exportArgs.ffmpegPlan).
  */
-const GIF_TEMP = /^screen-studio-gif-(\d+)-[0-9a-z]+\.(mkv|png|graph\.txt|pass-0\.log(\.mbtree)?(\.temp)?)$/
+const GIF_TEMP = /^screen-studio-gif-(\d+)-[0-9a-z]+\.(mkv|png|graph\.txt|chapters\.txt|pass-0\.log(\.mbtree)?(\.temp)?)$/
 
 /** Whether `file` is named like a temporary file of an export (nothing else is ever deleted by a sweep). */
 export function isExportTempFile(file: string): boolean {

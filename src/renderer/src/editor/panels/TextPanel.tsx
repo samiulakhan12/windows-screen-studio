@@ -223,7 +223,7 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
       )}
       <div className="field">
         <span>Text colour</span>
-        <ColorDots label="Text colour" value={titleTextColorOf(card)} presets={TITLE_TEXT_COLORS} onChange={(textColor, key) => set({ textColor }, key ?? undefined)} mergeKey={`title-text-color:${id}`} />
+        <ColorDots label="Text colour" value={titleTextColorOf(card, project.style.background)} presets={TITLE_TEXT_COLORS} onChange={(textColor, key) => set({ textColor }, key ?? undefined)} mergeKey={`title-text-color:${id}`} />
       </div>
       <TitleOnPreview card={card} clips={project.clips} />
       <p className="hint">Drag the card on the title track to change when it shows; it fades in and out. Long titles wrap and shrink to fit.</p>

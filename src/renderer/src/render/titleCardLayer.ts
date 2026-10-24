@@ -1,5 +1,5 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
-import { titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
+import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
 import { TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
 import type { TitleCard } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
@@ -114,7 +114,7 @@ function blurredFrame(fc: FrameContext): BlurredFrame | null {
 
 /* ---------- drawing ---------- */
 
-/** Darkening over the blurred video, so white text reads on any picture. */
+/** Darkening over the blurred video (and a project background picture), so white text reads on any picture. */
 const BLUR_TINT = 'rgba(10, 10, 16, 0.42)'
 const BAND_TINT = 'rgba(12, 12, 18, 0.5)'
 
@@ -127,6 +127,11 @@ function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): v
   } else if (card.background === 'style') {
     const t = isAnimated(project.style.background) ? animationTime(project.clips, fc.t) : 0
     paintBackgroundLayer(ctx, w, h, project.style, fc.background ?? null, t)
+    // Colours and wallpapers pick the text colour (titleTextColorOf); an image of unknown brightness is darkened like the video.
+    if (backgroundIsLight(project.style.background) === null) {
+      ctx.fillStyle = tint
+      ctx.fillRect(0, 0, w, h)
+    }
   } else {
     const b = blurredFrame(fc)
     if (b) {
@@ -170,14 +175,15 @@ function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: 
     ctx.restore()
   }
   if (phase.text <= 0.002 || l.height <= 0) return
+  const color = titleTextColorOf(card, fc.project.style.background)
   ctx.save()
-  // A soft shadow keeps the text readable on a picture; a solid colour does not need one.
-  if (card.background !== 'solid') {
+  // A soft shadow keeps light text readable on a picture; a solid colour and dark text do not need one.
+  if (card.background !== 'solid' && luminance(color) > 0.2) {
     ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
     ctx.shadowBlur = l.title.px * 0.28
     ctx.shadowOffsetY = l.title.px * 0.04
   }
-  drawText(ctx, l, w / 2, (h - l.height) / 2 + phase.rise * l.rise, 'center', titleTextColorOf(card), phase.text)
+  drawText(ctx, l, w / 2, (h - l.height) / 2 + phase.rise * l.rise, 'center', color, phase.text)
   ctx.restore()
 }
 
@@ -210,7 +216,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.stroke()
   }
-  const color = titleTextColorOf(card)
+  const color = titleTextColorOf(card, fc.project.style.background)
   // An accent bar beside the text.
   ctx.fillStyle = color
   ctx.globalAlpha = phase.text * 0.9

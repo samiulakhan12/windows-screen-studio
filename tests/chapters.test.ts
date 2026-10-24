@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { chapterMetadata, exportArgs, ffmpegPlan } from '../src/main/exportArgs'
+import { isExportTempFile } from '../src/main/exportCleanup'
+import { tempStem, validateJob } from '../src/main/exportJob'
 import { ffmpegPath } from '../src/main/ffmpeg'
-import { validateJob } from '../src/main/exportJob'
 import type { ExportJob } from '../src/shared/api/export'
 import { chapterInVideo, formatTimestamp, MAX_CHAPTERS, outputChapters, youtubeChapters } from '../src/shared/render/chapters'
 import type { Chapter, Clip } from '../src/shared/types'
@@ -150,6 +151,20 @@ describe('chapter metadata in exports', () => {
     expect(twoPass.temps).toContain('/tmp/s.chapters.txt')
     // A job without chapters writes no file.
     expect(ffmpegPlan({ ...job, chapters: undefined }, { audioInput: null, output: '/o.mp4', tempStem: '/tmp/s' }).scripts).toEqual([])
+  })
+
+  it('names every temporary file so a sweep after a crash deletes it', () => {
+    const big = { ...job, audio: { clips: Array.from({ length: 400 }, (_, i) => clip(i * 2, i * 2 + 1)), volume: 1 } }
+    const plans = [
+      ffmpegPlan(big, { audioInput: '/p/screen.mp4', output: '/o.mp4', tempStem: tempStem(tmpdir()) }),
+      ffmpegPlan({ ...big, bitrate: { video: 2_000_000, audio: 128_000 } }, { audioInput: '/p/screen.mp4', output: '/o.mp4', tempStem: tempStem(tmpdir()) }),
+      ffmpegPlan({ ...job, format: 'gif', chapters: undefined }, { audioInput: null, output: '/o.gif', tempStem: tempStem(tmpdir()) })
+    ]
+    expect(plans[0].temps.some((f) => f.endsWith('.chapters.txt'))).toBe(true)
+    expect(plans[0].temps.some((f) => f.endsWith('.graph.txt'))).toBe(true)
+    for (const plan of plans) {
+      for (const f of plan.temps) expect(isExportTempFile(f), f).toBe(true)
+    }
   })
 
   it('accepts only ordered, named chapters, and none for GIFs', () => {

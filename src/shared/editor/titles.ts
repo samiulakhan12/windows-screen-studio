@@ -1,7 +1,10 @@
+import { animatedById, gradientById } from '../engine/backgrounds'
 import { clamp } from '../engine/math'
 import { keptBounds } from '../engine/timeline'
 import { HEX_COLOR } from '../engine/titleData'
-import type { Chapter, Clip, TitleCard, TitleCardStyle } from '../types'
+import { wallpaperById } from '../engine/wallpapers'
+import type { Background, Chapter, Clip, TitleCard, TitleCardStyle } from '../types'
+import { outputTimeAt } from './clips'
 
 export { CHAPTER_MAX_CHARS, cleanChapterName, cleanTitle, readChapter, readTitleCard, TITLE_MAX_CHARS } from '../engine/titleData'
 
@@ -100,10 +103,43 @@ export function luminance(hex: string): number {
 /** The solid colour of a card (its own, or the default). */
 export const titleColorOf = (card: Pick<TitleCard, 'color'>): string => (card.color && HEX_COLOR.test(card.color) ? card.color : DEFAULT_TITLE_COLOR)
 
-/** The text colour of a card: its own, or white (dark on a light solid colour). */
-export function titleTextColorOf(card: Pick<TitleCard, 'textColor' | 'color' | 'background'>): string {
+/** Backgrounds lighter than this (relative luminance) get dark text. */
+const LIGHT = 0.45
+
+const meanLuminance = (colors: readonly string[]): number => colors.reduce((sum, c) => sum + luminance(c), 0) / Math.max(1, colors.length)
+
+/**
+ * Whether the project's background is light (dark text reads better on it), from its colours: the
+ * colour, a gradient's stops, an animated gradient's base and blobs, or a wallpaper's own flag.
+ * Null for a picture (an image file) or anything unknown, whose brightness is not known here.
+ */
+export function backgroundIsLight(bg: Background): boolean | null {
+  switch (bg.type) {
+    case 'color':
+      return HEX_COLOR.test(bg.color) ? luminance(bg.color) > LIGHT : null
+    case 'gradient':
+      return meanLuminance(gradientById(bg.preset).stops) > LIGHT
+    case 'animated': {
+      const a = animatedById(bg.preset)
+      return (luminance(a.base) + meanLuminance(a.colors)) / 2 > LIGHT
+    }
+    case 'wallpaper': {
+      const w = wallpaperById(bg.id)
+      return w ? !w.dark : null
+    }
+    default:
+      return null
+  }
+}
+
+/**
+ * The text colour of a card: its own, or white, dark on a light solid colour or on a light
+ * project background (`background`: the project's, for a card showing it).
+ */
+export function titleTextColorOf(card: Pick<TitleCard, 'textColor' | 'color' | 'background'>, background?: Background): string {
   if (card.textColor && HEX_COLOR.test(card.textColor)) return card.textColor
-  return card.background === 'solid' && luminance(titleColorOf(card)) > 0.45 ? '#14141c' : '#ffffff'
+  const light = card.background === 'solid' ? luminance(titleColorOf(card)) > LIGHT : card.background === 'style' && !!background && backgroundIsLight(background) === true
+  return light ? '#14141c' : '#ffffff'
 }
 
 /* ---------- chapters ---------- */
@@ -127,14 +163,49 @@ export function nextChapterName(chapters: readonly Chapter[]): string {
 /** The chapter within CHAPTER_NEAR of `t`, if any. */
 export const chapterNear = (chapters: readonly Chapter[], t: number): Chapter | null => chapters.find((c) => Math.abs(c.t - t) < CHAPTER_NEAR) ?? null
 
-/** The first chapter after `t` (a hair past `t`, so pressing again moves on), or null. */
-export function nextChapter(chapters: readonly Chapter[], t: number): Chapter | null {
-  return sortedChapters(chapters).find((c) => c.t > t + 1e-3) ?? null
+/**
+ * Seconds of the edited video into a chapter within which "previous chapter" goes to the chapter
+ * before it rather than back to its start, as media players do: while the video plays on after a
+ * jump to a chapter, pressing again moves further back instead of returning to the same one.
+ */
+export const CHAPTER_BACK_WINDOW = 1.5
+
+/** Chapters closer than this in the edited video (seconds) are at the same place. */
+const SAME_PLACE = 1e-3
+
+/**
+ * The chapters in order with their time in the edited video (`clips`; one inside a cut is where
+ * the video goes on, as in exports), and the playhead's (source time `t`). Without clips: source times.
+ */
+function chaptersAround(chapters: readonly Chapter[], t: number, clips?: Clip[]): { list: { c: Chapter; o: number }[]; now: number } {
+  const at = (s: number): number => (clips?.length ? outputTimeAt(clips, s) : s)
+  return { list: sortedChapters(chapters).map((c) => ({ c, o: at(c.t) })), now: at(t) }
 }
 
-/** The last chapter before `t`, or null. */
-export function previousChapter(chapters: readonly Chapter[], t: number): Chapter | null {
-  const before = sortedChapters(chapters).filter((c) => c.t < t - 1e-3)
-  return before[before.length - 1] ?? null
+/**
+ * The first chapter after the playhead at source time `t` in the edited video (`clips`), or null.
+ * Past it by a hair, so pressing again moves on; chapters at the same place (in one cut) count once.
+ */
+export function nextChapter(chapters: readonly Chapter[], t: number, clips?: Clip[]): Chapter | null {
+  const { list, now } = chaptersAround(chapters, t, clips)
+  return list.find((x) => x.o > now + SAME_PLACE)?.c ?? null
 }
 
+/**
+ * Where "previous chapter" goes from the playhead at source time `t`: the start of the chapter it
+ * is in, or, within CHAPTER_BACK_WINDOW of that start (also while the video plays on after going
+ * there), the chapter before it. Null when no chapter starts before the playhead.
+ */
+export function previousChapter(chapters: readonly Chapter[], t: number, clips?: Clip[]): Chapter | null {
+  const { list, now } = chaptersAround(chapters, t, clips)
+  let i = list.length - 1
+  while (i >= 0 && list[i].o > now + SAME_PLACE) i--
+  if (i < 0) return null
+  const current = list[i]
+  if (now - current.o > CHAPTER_BACK_WINDOW) return current.c
+  // The one before, skipping chapters at the same place as the current one.
+  while (i >= 0 && list[i].o > current.o - SAME_PLACE) i--
+  if (i >= 0) return list[i].c
+  // The first chapter: back to its start, unless the playhead already is there.
+  return now - current.o > SAME_PLACE ? current.c : null
+}

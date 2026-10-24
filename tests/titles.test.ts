@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { setLayoutAt } from '../src/shared/editor/layoutCommands'
 import { createLayoutSegment } from '../src/shared/editor/layouts'
 import {
+  backgroundIsLight,
+  CHAPTER_BACK_WINDOW,
   chapterNear,
   cleanChapterName,
   createChapter,
@@ -72,6 +74,31 @@ describe('title cards: creating and timing', () => {
     expect(titleTextColorOf({ background: 'solid', color: '#2563eb' })).toBe('#ffffff')
     expect(titleTextColorOf({ background: 'solid', color: '#ffffff', textColor: '#ff0000' })).toBe('#ff0000')
   })
+
+  it("reads the project's background for a card showing it", () => {
+    const peach = { type: 'gradient', preset: 'peach' } as const
+    expect(backgroundIsLight(peach)).toBe(true)
+    expect(backgroundIsLight({ type: 'gradient', preset: 'midnight' })).toBe(false)
+    expect(backgroundIsLight({ type: 'color', color: '#ffffff' })).toBe(true)
+    expect(backgroundIsLight({ type: 'color', color: '#00a040' })).toBe(false)
+    expect(backgroundIsLight({ type: 'color', color: 'white' })).toBeNull()
+    expect(backgroundIsLight({ type: 'animated', preset: 'ocean' })).toBe(false)
+    expect(backgroundIsLight({ type: 'wallpaper', id: 'peach-mesh' })).toBe(true)
+    expect(backgroundIsLight({ type: 'wallpaper', id: 'violet-mesh' })).toBe(false)
+    expect(backgroundIsLight({ type: 'wallpaper', id: 'gone' })).toBeNull()
+    // A picture's brightness is unknown: white text (the renderer darkens the picture under it).
+    expect(backgroundIsLight({ type: 'image', path: 'background.png' })).toBeNull()
+
+    // Dark text on a light project background, white on a dark one; the card's own choice wins.
+    expect(titleTextColorOf({ background: 'style' }, peach)).toBe('#14141c')
+    expect(titleTextColorOf({ background: 'style' }, { type: 'color', color: '#f8fafc' })).toBe('#14141c')
+    expect(titleTextColorOf({ background: 'style' }, { type: 'gradient', preset: 'midnight' })).toBe('#ffffff')
+    expect(titleTextColorOf({ background: 'style' }, { type: 'image', path: 'background.png' })).toBe('#ffffff')
+    expect(titleTextColorOf({ background: 'style', textColor: '#facc15' }, peach)).toBe('#facc15')
+    // Only cards showing the project's background read it.
+    expect(titleTextColorOf({ background: 'blur' }, peach)).toBe('#ffffff')
+    expect(titleTextColorOf({ background: 'style' })).toBe('#ffffff')
+  })
 })
 
 describe('chapters', () => {
@@ -93,10 +120,50 @@ describe('chapters', () => {
     // Standing on a chapter, "next" moves on and "previous" goes back.
     expect(nextChapter(list, 20)?.id).toBe('c')
     expect(previousChapter(list, 20)?.id).toBe('a')
-    expect(previousChapter(list, 21)?.id).toBe('b')
+    // Well into a chapter, "previous" goes back to its start; just past its start, to the one before.
+    expect(previousChapter(list, 20 + CHAPTER_BACK_WINDOW + 0.1)?.id).toBe('b')
+    expect(previousChapter(list, 21)?.id).toBe('a')
     expect(nextChapter(list, 45)).toBeNull()
     expect(previousChapter(list, 0)).toBeNull()
+    // Just past the first chapter: back to its start.
+    expect(previousChapter(list, 0.5)?.id).toBe('a')
     expect(nextChapter([], 0)).toBeNull()
+    expect(previousChapter([], 5)).toBeNull()
+  })
+
+  it('"previous" keeps going back while the video plays on between presses', () => {
+    // Intro 0:00, Setup 0:30, Demo 1:00; playing from 1:05, each press then 16 ms (a frame) of playback.
+    const chapters = [chapter('intro', 0), chapter('setup', 30), chapter('demo', 60)]
+    const clips = [clip(0, 90)]
+    let t = 65
+    const visited: string[] = []
+    for (let i = 0; i < 3; i++) {
+      const c = previousChapter(chapters, t, clips)
+      if (!c) break
+      visited.push(c.id)
+      t = c.t + 0.016
+    }
+    expect(visited).toEqual(['demo', 'setup', 'intro'])
+    // Holding the key at the first chapter stays there.
+    expect(previousChapter(chapters, 0.016, clips)?.id).toBe('intro')
+  })
+
+  it('goes by the edited video: chapters in a cut are where the video goes on, and count once', () => {
+    // Kept: 0-20 and 40-60 (the cut 20-40 holds two chapters, both shown at output 20).
+    const clips = [clip(0, 20), clip(40, 60)]
+    const chapters = [chapter('a', 5), chapter('cut1', 25), chapter('cut2', 30), chapter('b', 50)]
+    // Playing after a jump to a chapter in the cut: the playhead is at the next clip's start (source 40).
+    expect(previousChapter(chapters, 40.016, clips)?.id).toBe('a')
+    // Paused on it (source 30, in the cut): the same place.
+    expect(previousChapter(chapters, 30, clips)?.id).toBe('a')
+    expect(previousChapter(chapters, 25, clips)?.id).toBe('a')
+    // "Next" from the first of the two in the cut skips the other one (the same frame).
+    expect(nextChapter(chapters, 25, clips)?.id).toBe('b')
+    expect(nextChapter(chapters, 5, clips)?.id).toBe('cut1')
+    // Speed counts in output seconds: 1 source second at 4x is 0.25 s, within the window.
+    const fast = [clip(0, 100, 4)]
+    expect(previousChapter([chapter('x', 10), chapter('y', 50)], 54, fast)?.id).toBe('x')
+    expect(previousChapter([chapter('x', 10), chapter('y', 50)], 50 + 4 * (CHAPTER_BACK_WINDOW + 0.1), fast)?.id).toBe('y')
   })
 
   it('keeps names on one line and short', () => {
@@ -188,5 +255,25 @@ describe('camera layout at the playhead', () => {
     // Near the end of the recording: still inside it.
     const end = setLayoutAt({ layouts: [], duration: 20 }, 'camera-only', 19)
     expect(end.ok && end.layouts[0].end).toBe(20)
+  })
+
+  it('at the very end of the video, the new segment ends with it and starts earlier', () => {
+    const len = createLayoutSegment('default', 0, 100).end
+    for (const t of [12, 11.95, 11.8]) {
+      const r = setLayoutAt({ layouts: [], duration: 12 }, 'side-by-side', t)
+      expect(r.ok, `at ${t}`).toBe(true)
+      if (r.ok) expect(r.layouts[0]).toMatchObject({ start: 12 - len, end: 12, layout: 'side-by-side' })
+    }
+    // Pressing again at the end finds that segment: the playhead at the end shows the last frame.
+    const r = setLayoutAt({ layouts: [], duration: 12 }, 'side-by-side', 12)
+    if (r.ok) expect(setLayoutAt({ layouts: r.layouts, duration: 12 }, 'side-by-side', 12)).toEqual({ ok: false, reason: 'same', id: r.id })
+    // Never over the segment before it.
+    const after = setLayoutAt({ layouts: [seg('a', 2, 9)], duration: 12 }, 'camera-large', 12)
+    expect(after.ok && after.layouts.find((s) => s.id === after.id)).toMatchObject({ start: 9, end: 12 })
+    // A trimmed end is the end of the video.
+    const trimmed = setLayoutAt({ layouts: [], duration: 20, clips: [clip(0, 12)] }, 'camera-only', 12)
+    expect(trimmed.ok && trimmed.layouts[0]).toMatchObject({ start: 12 - len, end: 12 })
+    // No room between the one before and the end: says so (not "another starts right after") and points at it.
+    expect(setLayoutAt({ layouts: [seg('a', 2, 11.9)], duration: 12 }, 'camera-large', 11.95)).toEqual({ ok: false, reason: 'end', id: 'a' })
   })
 })
