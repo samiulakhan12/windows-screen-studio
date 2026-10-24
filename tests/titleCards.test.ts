@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { TITLE_FADE, TITLE_SAFE, titleLayout, titlePhase, wrapText, type MeasureText } from '../src/shared/render/titleCards'
+import { exportFrameTimes } from '../src/shared/engine/timeline'
+import { TITLE_FADE, TITLE_SAFE, titleLayout, titlePhase, titleShowTime, wrapText, type MeasureText } from '../src/shared/render/titleCards'
 import type { Clip, TitleCard } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -46,6 +47,81 @@ describe('titlePhase: fade and rise', () => {
     // A lower third fades in anyway.
     expect(titlePhase(card({ start: 0, end: 3, style: 'lower-third' }), 0, clips)!.background).toBe(0)
     expect(titlePhase(card({ start: 7, end: 10 }), 9.99, clips)).toEqual({ background: 1, text: 1, rise: 0 })
+  })
+})
+
+describe('titlePhase: fades in viewing time, across speed changes and cuts', () => {
+  const FPS = 60
+  /** Text opacity of `c` on every frame of a 60 fps export (what the preview draws at the same times). */
+  const textOver = (c: TitleCard, clips: Clip[]): number[] => exportFrameTimes(clips, FPS).map((t) => titlePhase(c, t, clips)?.text ?? 0)
+  /** The largest step a fade takes between two frames: its first one (easeOutCubic starts steepest). */
+  const firstStep = 1 - (1 - 1 / (FPS * TITLE_FADE)) ** 3 + 1e-6
+
+  /** Opacity rises to 1 and falls back to 0 (or stays), never stepping back or jumping. */
+  function expectSmooth(text: number[]): void {
+    const top = text.indexOf(1)
+    expect(top, 'reaches full opacity').toBeGreaterThan(0)
+    for (let i = 1; i < text.length; i++) {
+      expect(Math.abs(text[i] - text[i - 1]), `frame ${i}: ${text[i - 1]} -> ${text[i]}`).toBeLessThanOrEqual(firstStep)
+      if (i <= top) expect(text[i], `fades in without stepping back at frame ${i}`).toBeGreaterThanOrEqual(text[i - 1])
+    }
+    const last = text.lastIndexOf(1)
+    for (let i = last + 1; i < text.length; i++) expect(text[i], `fades out without coming back at frame ${i}`).toBeLessThanOrEqual(text[i - 1])
+  }
+
+  /** Frames from the first shown to the first fully shown. */
+  const fadeInFrames = (text: number[]): number => text.indexOf(1) - text.findIndex((v) => v > 0) + 1
+
+  it('a speed change inside the fade-in neither steps back nor stretches it', () => {
+    const fast = [clip(0, 10.2), clip(10.2, 30, 4)]
+    const text = textOver(card({ start: 10, end: 20 }), fast)
+    expectSmooth(text)
+    expect(fadeInFrames(text)).toBe(Math.round(TITLE_FADE * FPS))
+  })
+
+  it('a lower third in a pause sped up by smart speed fades in and out once', () => {
+    // Speed up silences 4x around a card over the pause, 0.25 s inside each end of it.
+    const clips = [clip(0.75, 10.25), clip(10.25, 12.75, 4), clip(12.75, 29.25)]
+    const text = textOver(card({ start: 10, end: 13, style: 'lower-third' }), clips)
+    expectSmooth(text)
+    const shown = text.filter((v) => v > 0).length
+    // 0.25 + 2.5 / 4 + 0.25 s of viewing time.
+    expect(Math.abs(shown - Math.round(1.125 * FPS))).toBeLessThanOrEqual(1)
+  })
+
+  it('a cut inside a fade continues it after the cut, and a card ending in a cut fades out before it', () => {
+    // 4.1–6 s is cut, right after the card starts showing.
+    const inCut = textOver(card({ start: 4, end: 9 }), [clip(0, 4.1), clip(6, 12)])
+    expectSmooth(inCut)
+    expect(fadeInFrames(inCut)).toBe(Math.round(TITLE_FADE * FPS))
+    // The card ends at 7 s, in the cut 5–8 s: gone by the jump, not cut off at full opacity.
+    const clips = [clip(0, 5), clip(8, 10)]
+    const endsInCut = textOver(card({ start: 3, end: 7 }), clips)
+    expectSmooth(endsInCut)
+    const lastShown = endsInCut.length - 1 - [...endsInCut].reverse().findIndex((v) => v > 0)
+    expect(endsInCut[lastShown]).toBeLessThan(firstStep)
+    expect(exportFrameTimes(clips, FPS)[lastShown]).toBeLessThan(5)
+    // A card starting in a cut fades in where it starts showing.
+    expect(titlePhase(card({ start: 6, end: 9 }), 8, clips)).toEqual({ background: 0, text: 0, rise: 1 })
+  })
+
+  it('"show title" moves the playhead to where the card is fully shown, as drawn', () => {
+    const cases: [TitleCard, Clip[]][] = [
+      [card({ start: 10, end: 20 }), [clip(0, 10.2), clip(10.2, 30, 4)]],
+      [card({ start: 4, end: 9 }), [clip(0, 4.1), clip(6, 12)]],
+      [card({ start: 6, end: 9 }), [clip(0, 5), clip(8, 10)]],
+      [card({ start: 2, end: 2.3 }), [clip(0, 10)]],
+      [card(), []]
+    ]
+    for (const [c, clips] of cases) {
+      const at = titleShowTime(c, 0, clips)
+      const phase = titlePhase(c, at, clips)
+      expect(phase?.text, `${JSON.stringify(c)} at ${at}`).toBeCloseTo(1, 2)
+      // Already fully shown there: the playhead stays.
+      expect(titleShowTime(c, at, clips)).toBe(at)
+    }
+    // Played at 4x right after the start, the fade-in ends 0.35 s of viewing time later: 1.4 s of recording.
+    expect(titleShowTime(card({ start: 10, end: 20 }), 0, [clip(0, 10), clip(10, 30, 4)])).toBeCloseTo(10 + (TITLE_FADE + 0.01) * 4)
   })
 })
 

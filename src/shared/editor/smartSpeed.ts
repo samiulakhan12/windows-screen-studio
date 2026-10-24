@@ -7,6 +7,7 @@
  *
  * Its "Silences" mode finds the pauses where nothing is heard instead, measured as the video
  * plays them (after cuts and speed changes), and keeps a little of each pause next to the sound.
+ * Both modes leave the time of title cards alone: a card shown over a pause is content.
  */
 import { rangesToOutput } from '../audio/activity'
 import { clamp } from '../engine/math'
@@ -142,17 +143,24 @@ export interface IdleInput {
   sound?: readonly TimeRange[] | null
   clips: readonly Clip[]
   duration: number
+  /**
+   * Stretches that are content however still and silent they are, and are never sped up or cut:
+   * the title cards (a card is usually put over a pause or a still screen on purpose).
+   */
+  keep?: readonly TimeRange[]
 }
 
 /**
- * Idle parts in the video: still AND silent AND without input, at least `minIdle` seconds of it
- * in the video, with up to IDLE_PAD seconds left at normal speed at each end (less for short parts).
+ * Idle parts in the video: still AND silent AND without input AND outside `keep`, at least
+ * `minIdle` seconds of it in the video, with up to IDLE_PAD seconds left at normal speed at each
+ * end (less for short parts).
  */
 export function findIdleRanges(input: IdleInput, minIdle: number): TimeRange[] {
   const whole = [{ start: 0, end: input.duration }]
   const still = intersectRanges(mergeRanges(input.still, STILL_MERGE_GAP), whole)
   const quiet = input.sound ? intersectRanges(still, rangeGaps(input.sound, input.duration)) : still
-  const idle = input.inactive ? intersectRanges(quiet, input.inactive) : quiet
+  const resting = input.inactive ? intersectRanges(quiet, input.inactive) : quiet
+  const idle = input.keep?.length ? intersectRanges(resting, rangeGaps(input.keep, input.duration)) : resting
   const out: TimeRange[] = []
   for (const r of intersectRanges(idle, keptRanges(input.clips))) {
     const length = r.end - r.start
@@ -267,16 +275,24 @@ export function outputToSourceRanges(clips: readonly Clip[], from: number, to: n
  * a pause running across a cut is one pause and a sped-up one is shorter. Each loses `padding`
  * at an end that meets sound (not at the very start or end of the video), and comes back as the
  * source ranges to act on. Nothing when nothing is heard at all: then there is no sound to keep.
+ * `keep` (source seconds: the title cards) counts as sound, so a card over a pause stays whole,
+ * with the padding next to it.
  */
-export function findSilences(sound: readonly TimeRange[], clips: readonly Clip[], settings: SilenceSettings): Omit<SilencePart, 'saved'>[] {
+export function findSilences(
+  sound: readonly TimeRange[],
+  clips: readonly Clip[],
+  settings: SilenceSettings,
+  keep: readonly TimeRange[] = []
+): Omit<SilencePart, 'saved'>[] {
   const list = [...clips]
   const total = outputDuration(list)
   const heard = rangesToOutput(sound, list).filter((r) => r.end - r.start > EPS)
   if (heard.length === 0 || total <= EPS) return []
+  const busy = keep.length ? mergeRanges([...heard, ...rangesToOutput(keep, list)]) : heard
   const minLength = Math.max(0.05, Number.isFinite(settings.minLength) ? settings.minLength : SILENCE_LENGTH.default)
   const padding = clamp(Number.isFinite(settings.padding) ? settings.padding : SILENCE_PADDING.default, 0, 10)
   const out: Omit<SilencePart, 'saved'>[] = []
-  for (const gap of rangeGaps(heard, total)) {
+  for (const gap of rangeGaps(busy, total)) {
     const length = gap.end - gap.start
     if (length < minLength - EPS) continue
     const from = gap.start + (gap.start > EPS ? padding : 0)
@@ -289,9 +305,15 @@ export function findSilences(sound: readonly TimeRange[], clips: readonly Clip[]
   return out
 }
 
-/** The pauses worth acting on (they save time with `action`), and what each saves. */
-export function planSilences(sound: readonly TimeRange[], clips: readonly Clip[], settings: SilenceSettings, action: SmartSpeedAction): SilencePlan {
-  const parts = findSilences(sound, clips, settings)
+/** The pauses worth acting on (they save time with `action`), and what each saves; `keep` as in findSilences. */
+export function planSilences(
+  sound: readonly TimeRange[],
+  clips: readonly Clip[],
+  settings: SilenceSettings,
+  action: SmartSpeedAction,
+  keep: readonly TimeRange[] = []
+): SilencePlan {
+  const parts = findSilences(sound, clips, settings, keep)
     .map((p) => ({ ...p, saved: p.pieces.reduce((s, r) => s + rangeSaving(r, clips, action), 0) }))
     .filter((p) => p.saved >= MIN_SAVING)
   return { parts, saved: parts.reduce((s, p) => s + p.saved, 0) }

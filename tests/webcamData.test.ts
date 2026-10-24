@@ -101,17 +101,16 @@ describe('layout editing', () => {
 
   it('adds a segment into the free time, never over another one', () => {
     const list = [seg('a', 2, 4), seg('b', 8, 12)]
-    const added = addLayoutAt(list, 'side-by-side', 5, 20)!
+    const added = addLayoutAt({ layouts: list, duration: 20 }, 'side-by-side', 5)
+    if (!added.ok) throw new Error(added.reason)
     expect([added.segment.start, added.segment.end]).toEqual([5, 8])
     expect(added.layouts.map((s) => s.id)).toEqual(['a', added.segment.id, 'b'])
-    expect(addLayoutAt(list, 'side-by-side', 3, 20)).toBeNull()
-    // Right before the next one: it starts earlier so it is long enough.
-    const tight = addLayoutAt(list, 'camera-large', 7.95, 20)!
-    expect(tight.segment.end).toBe(8)
-    expect(tight.segment.end - tight.segment.start).toBeCloseTo(MIN_LAYOUT_LENGTH)
-    expect(addLayoutAt([seg('a', 0, 4), seg('b', 4.1, 6)], 'camera-large', 4.05, 20)).toBeNull()
-    expect(addLayoutAt(undefined, 'camera-only', 1, 20)!.segment).toMatchObject({ start: 1, end: 6, layout: 'camera-only' })
-    expect(addLayoutAt([], 'camera-only', 1, 0)).toBeNull()
+    expect(addLayoutAt({ layouts: list, duration: 20 }, 'side-by-side', 3)).toEqual({ ok: false, reason: 'inside', id: 'a' })
+    // Right before the next one: no room for a change that could play.
+    expect(addLayoutAt({ layouts: list, duration: 20 }, 'camera-large', 7.95)).toEqual({ ok: false, reason: 'no-room', id: null })
+    expect(addLayoutAt({ layouts: [seg('a', 0, 4), seg('b', 4.1, 6)], duration: 20 }, 'camera-large', 4.05)).toMatchObject({ ok: false, reason: 'no-room' })
+    expect(addLayoutAt({ layouts: undefined, duration: 20 }, 'camera-only', 1)).toMatchObject({ ok: true, segment: { start: 1, end: 6, layout: 'camera-only' } })
+    expect(addLayoutAt({ layouts: [], duration: 0 }, 'camera-only', 1)).toMatchObject({ ok: false })
   })
 
   it('moves and trims between the neighbours', () => {

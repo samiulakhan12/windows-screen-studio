@@ -336,15 +336,18 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const { hasAudio, audioStems, audio } = project
   const heardNeeded = analysed || mode === 'silence'
   const sound = useMemo(() => (heardNeeded ? sourceActivity({ hasAudio, audioStems, audio }, levels) : null), [heardNeeded, hasAudio, audioStems, audio, levels])
+  // Title cards are content however still and silent the time under them is: never sped up or cut.
+  const titles = project.titles
+  const keep = useMemo(() => (titles ?? []).map(({ start, end }) => ({ start, end })), [titles])
   const idlePlan = useMemo(
-    () => (mode === 'idle' && still ? planSmartSpeed({ still, inactive, sound, clips: project.clips, duration: project.duration }, minIdle, action) : null),
-    [mode, still, inactive, sound, project.clips, project.duration, minIdle, action]
+    () => (mode === 'idle' && still ? planSmartSpeed({ still, inactive, sound, keep, clips: project.clips, duration: project.duration }, minIdle, action) : null),
+    [mode, still, inactive, sound, keep, project.clips, project.duration, minIdle, action]
   )
   // Silences need sound that was measured: null until then (or without sound at all).
   const heard = mode === 'silence' && sources.length > 0 ? sound : null
   const silencePlan = useMemo(
-    () => (heard ? planSilences(heard, project.clips, { minLength: minSilence, padding }, silenceAction) : null),
-    [heard, project.clips, minSilence, padding, silenceAction]
+    () => (heard ? planSilences(heard, project.clips, { minLength: minSilence, padding }, silenceAction, keep) : null),
+    [heard, project.clips, minSilence, padding, silenceAction, keep]
   )
 
   const currentAction = mode === 'idle' ? action : silenceAction
@@ -382,6 +385,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         {mode === 'idle' ? (
           <>
             <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and the mouse and keyboard rest.</p>
+            {keep.length > 0 && <TitlesKept />}
             {!cursor.valid && <p className="hint">This recording has no mouse or keyboard data, so only the picture decides.</p>}
             <span className="field-label">Idle for at least</span>
             <Chips label="Minimum idle length" value={minIdle} onChange={(v) => choose({ minIdle: v })} options={MIN_IDLE_CHOICES.map((s) => ({ value: s, label: `${s} s` }))} />
@@ -440,6 +444,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         ) : (
           <>
             <p className="hint">Cuts or speeds up the pauses where nothing is heard, keeping a little of the silence next to the sound so no word is clipped.</p>
+            {keep.length > 0 && <TitlesKept />}
             {!hasAudio ? (
               <p className="callout silence-callout" data-testid="silence-unavailable">
                 <EditorIcon name="mute" size={16} />
@@ -538,6 +543,15 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         )}
       </Section>
     </div>
+  )
+}
+
+/** Why the time under a title card is never listed. */
+function TitlesKept(): JSX.Element {
+  return (
+    <p className="hint" data-testid="smart-speed-titles">
+      Title cards stay as they are: the time they are on screen is never sped up or cut.
+    </p>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { addLayoutAt, LAYOUT_OPTIONS, layoutAt, layoutSegmentAt, updateLayout } from '../../../../shared/editor/layouts'
+import { layoutRefusal, setLayoutAt } from '../../../../shared/editor/layoutCommands'
+import { LAYOUT_OPTIONS, layoutAt, layoutSegmentAt, layoutTimeAt, updateLayout } from '../../../../shared/editor/layouts'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { cameraSourceRect, layoutGeometry, outputSize } from '../../../../shared/engine/layout'
@@ -13,6 +14,7 @@ import { Icon } from '../../components/Icon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import { LayoutGlyph } from '../layoutGlyphs'
+import { showLayout } from '../LayoutTrack'
 import { followPointer } from '../pointer'
 import '../camera.css'
 import './cursorPanel.css'
@@ -23,11 +25,11 @@ const pxFmt = (v: number): string => (v > 0 ? `${Math.round(v)} px` : 'Off')
 const offPct = (v: number): string => (v > 0 ? pctFmt(v) : 'Off')
 const zoomFmt = (v: number): string => `${v.toFixed(1)}×`
 
-type Props = Pick<InspectorProps, 'project' | 'hasWebcam' | 'selection' | 'onSelect'>
+type Props = Pick<InspectorProps, 'project' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice'>
 
 /* ---------- Camera ---------- */
 
-export function CameraPanel({ project, hasWebcam, selection, onSelect }: Props): JSX.Element {
+export function CameraPanel({ project, hasWebcam, selection, onSelect, onNotice }: Props): JSX.Element {
   const { store } = useEditor()
   const { webcam } = project
   const look = webcamLook(webcam)
@@ -84,7 +86,7 @@ export function CameraPanel({ project, hasWebcam, selection, onSelect }: Props):
 
       <FramingSection project={project} off={off} set={set} />
       <BlurSection value={look.backgroundBlur} off={off} set={set} />
-      {hasWebcam && <LayoutSection project={project} selection={selection} onSelect={onSelect} />}
+      {hasWebcam && <LayoutSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} />}
     </>
   )
 }
@@ -106,9 +108,9 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
   const camW = video?.videoWidth || 16
   const camH = video?.videoHeight || 9
   const padH = Math.round((PAD_W * camH) / camW)
-  // The shape of the camera in the layout at the playhead decides how much of the picture shows.
+  // The shape of the camera in the layout at the playhead (on the frame the preview shows) decides how much of the picture shows.
   const out = outputSize(project.style.aspectRatio, project.width, project.height, 1080)
-  const layout = useSyncExternalStore(player.subscribe, () => layoutAt(project, player.time))
+  const layout = useSyncExternalStore(player.subscribe, () => layoutAt(project, layoutTimeAt(project, player.time)))
   const box = layoutGeometry(layout, project, out.width, out.height, project.width, project.height).camera.rect
   const src = cameraSourceRect(camW, camH, Math.max(1, box.w), Math.max(1, box.h), look)
   const fx = src.x / camW
@@ -240,30 +242,34 @@ function BlurSection({ value, off, set }: { value: number; off: boolean; set: (p
 
 /**
  * How the screen and the camera share the frame over time: the layout of the selected change,
- * or of the playhead (picking one there adds a change at the playhead).
+ * or of the playhead (picking one there adds a change at the playhead, as the layout commands do).
  */
-function LayoutSection({ project, selection, onSelect }: Pick<Props, 'project' | 'selection' | 'onSelect'>): JSX.Element {
+function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, 'project' | 'selection' | 'onSelect' | 'onNotice'>): JSX.Element {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const layouts = project.layouts ?? []
-  // Re-renders only when the playhead enters or leaves a change, not on every frame.
-  const hereId = useSyncExternalStore(player.subscribe, () => layoutSegmentAt(layouts, player.time)?.id ?? '')
+  // The change on the frame the preview shows. Re-renders only when the playhead enters or leaves one, not on every frame.
+  const hereId = useSyncExternalStore(player.subscribe, () => layoutSegmentAt(layouts, layoutTimeAt(project, player.time))?.id ?? '')
   const selected = selection?.kind === 'layout' ? (layouts.find((s) => s.id === selection.id) ?? null) : null
   const target = selected ?? layouts.find((s) => s.id === hereId) ?? null
   const current: CameraLayout = target ? target.layout : 'default'
   const hidden = !project.webcam.show
 
   const pick = (layout: CameraLayout): void => {
-    if (target) {
-      if (target.layout !== layout) store.update((p) => ({ ...p, layouts: updateLayout(p.layouts, target.id, { layout }) }))
-      if (!selected) onSelect({ kind: 'layout', id: target.id })
+    if (selected) {
+      if (selected.layout !== layout) store.update((p) => ({ ...p, layouts: updateLayout(p.layouts, selected.id, { layout }) }))
       return
     }
-    if (layout === 'default') return
-    const added = addLayoutAt(store.state.layouts, layout, player.time, project.duration)
-    if (!added) return
-    store.update((p) => ({ ...p, layouts: added.layouts }))
-    onSelect({ kind: 'layout', id: added.segment.id })
+    // At the playhead: the change there, else a new one (the rule of the layout commands).
+    const r = setLayoutAt(store.state, layout, player.time)
+    if (!r.ok) {
+      if (r.id) onSelect({ kind: 'layout', id: r.id })
+      if (r.reason !== 'same') onNotice(layoutRefusal(r.reason, layout))
+      return
+    }
+    store.update((p) => ({ ...p, layouts: r.layouts }))
+    onSelect({ kind: 'layout', id: r.id })
+    if (r.added) showLayout(player, store.state, r.id)
   }
 
   const remove = (): void => {

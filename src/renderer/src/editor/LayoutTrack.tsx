@@ -1,14 +1,15 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { addLayoutAt, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel } from '../../../shared/editor/layouts'
+import { addLayoutAt, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime } from '../../../shared/editor/layouts'
 import { overlaps } from '../../../shared/editor/timelineScale'
-import { layoutRamps, LAYOUT_TRANSITION } from '../../../shared/engine/layout'
+import { layoutRamps } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
-import type { CameraLayout, LayoutSegment } from '../../../shared/types'
+import type { CameraLayout, LayoutSegment, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { releaseFocus } from './focus'
 import { LayoutGlyph } from './layoutGlyphs'
+import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import './camera.css'
@@ -21,6 +22,11 @@ export interface TrackSlotProps {
   duration: number
   selection: Selection
   onSelect: (sel: Selection) => void
+  /**
+   * The timeline's scrub for a press on empty track space: moves the playhead with the pointer,
+   * as on every track (the timeline does not scroll after the playhead while it is dragged).
+   */
+  scrub: (e: ReactPointerEvent) => void
 }
 
 /** Layout a double-click on the track adds (the Camera panel then shows the others). */
@@ -30,6 +36,13 @@ const NO_LAYOUTS: LayoutSegment[] = []
 /** Grabbable edge width of a block: never more than a quarter of it, so its middle always moves it (as on the other tracks). */
 const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 const shortLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.short ?? layoutLabel(layout)
+
+/** Moves the playhead so the preview shows layout change `id` settled, past its change in (unless it already does). */
+export function showLayout(player: PreviewPlayer, project: Project, id: string): void {
+  const seg = project.layouts?.find((s) => s.id === id)
+  const at = seg ? layoutShowTime(project, seg, player.time) : null
+  if (at !== null) player.seek(at)
+}
 
 /** Whether the open recording has a camera (and its video): the layout track and its label show only then. */
 const useHasCamera = (): boolean => {
@@ -42,7 +55,7 @@ const useHasCamera = (): boolean => {
  * segment, labelled with its layout and shaded where it animates in and out. Click selects (and
  * shows it on the preview), drag moves, the edges trim, a double-click on free time adds one.
  */
-export function LayoutTrack({ px, win, duration, selection, onSelect }: TrackSlotProps): JSX.Element | null {
+export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: TrackSlotProps): JSX.Element | null {
   const { store, player } = useEditor()
   const hasCamera = useHasCamera()
   const layouts = useSyncExternalStore(store.subscribe, () => store.state.layouts) ?? NO_LAYOUTS
@@ -87,15 +100,19 @@ export function LayoutTrack({ px, win, duration, selection, onSelect }: TrackSlo
     lastDown.current = second ? { at: 0, x: 0 } : { at: e.timeStamp, x: e.clientX }
     if (second) {
       e.preventDefault()
-      const added = addLayoutAt(store.state.layouts, ADDED_LAYOUT, timeAt(e.clientX), duration)
-      if (!added) return
-      store.update((p) => ({ ...p, layouts: added.layouts }))
-      onSelect({ kind: 'layout', id: added.segment.id })
+      // Added as at the playhead there (the same rule as the Camera panel and the commands).
+      const r = addLayoutAt(store.state, ADDED_LAYOUT, timeAt(e.clientX))
+      if (!r.ok) {
+        if (r.id) onSelect({ kind: 'layout', id: r.id })
+        return
+      }
+      store.update((p) => ({ ...p, layouts: r.layouts }))
+      onSelect({ kind: 'layout', id: r.segment.id })
+      showLayout(player, store.state, r.segment.id)
       return
     }
     onSelect(null)
-    player.seek(timeAt(e.clientX))
-    drag(e, (ev) => player.seek(timeAt(ev.clientX)), () => undefined)
+    scrub(e)
   }
 
   const onSegmentDown = (s: LayoutSegment) => (e: ReactPointerEvent<HTMLElement>) => {
@@ -117,7 +134,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect }: TrackSlo
       (moved) => {
         store.endGesture()
         // A plain click shows the layout on the preview, past its change in.
-        if (!moved && (player.time < s.start || player.time >= s.end)) player.seek(s.start + Math.min(LAYOUT_TRANSITION, (s.end - s.start) / 2))
+        if (!moved) showLayout(player, store.state, s.id)
       }
     )
   }

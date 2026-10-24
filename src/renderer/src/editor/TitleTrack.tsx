@@ -27,7 +27,7 @@ const styleLabel = (style: TitleCardStyle): string => TITLE_STYLES.find((s) => s
  * the text track, flags drag to move a chapter, a click selects (and shows it on the preview),
  * a double-click on empty space adds a title card, or a chapter in the flag strip.
  */
-export function TitleTrack({ px, win, duration, selection, onSelect }: TrackSlotProps): JSX.Element {
+export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: TrackSlotProps): JSX.Element {
   const services = useEditor()
   const { store, player } = services
   const keymap = useKeymap()
@@ -44,20 +44,6 @@ export function TitleTrack({ px, win, duration, selection, onSelect }: TrackSlot
   const timeAt = (clientX: number): number => {
     const r = trackRef.current!.getBoundingClientRect()
     return clamp((clientX - r.left) / pxRef.current, 0, duration)
-  }
-
-  /**
-   * Source time under a pointer that is scrubbing, kept inside the visible part of a scrolled
-   * timeline: the timeline scrolls to follow a playhead reaching its edges (except while one of
-   * its own tracks is dragged), which would move the time under a still pointer on and on.
-   */
-  const scrubTimeAt = (clientX: number): number => {
-    const t = timeAt(clientX)
-    const scroller = trackRef.current?.closest<HTMLElement>('.tl-scroller')
-    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1) return t
-    const left = trackRef.current!.getBoundingClientRect().left
-    const view = scroller.getBoundingClientRect()
-    return clamp(t, (view.left + 16 - left) / pxRef.current, Math.max(0, (view.right - 28 - left) / pxRef.current))
   }
 
   /** Follows a pointer drag; `onMove` runs once it moved more than `slop` px. */
@@ -148,8 +134,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect }: TrackSlot
       return
     }
     onSelect(null)
-    player.seek(timeAt(e.clientX))
-    track(e, (ev) => player.seek(scrubTimeAt(ev.clientX)))
+    scrub(e)
   }
 
   const visibleTitles = titles.filter((c) => overlaps(c, win) || c.id === selId)

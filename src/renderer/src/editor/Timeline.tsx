@@ -706,8 +706,8 @@ export const Timeline = memo(
                 {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
               </div>
 
-              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} />
-              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} />
+              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
+              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
 
               <div className="playhead" ref={playheadRef} onPointerDown={(e) => e.button === 0 && scrub(e)} />
             </div>
