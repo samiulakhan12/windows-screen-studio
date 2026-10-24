@@ -111,6 +111,30 @@ describe('CursorTracker', () => {
     expect(raw.clicks).toEqual([])
     expect(raw.keys.map((k) => k.label)).toEqual(['Enter'])
   })
+
+  it('records the cursor and clicks in global DIP coordinates for a window whose position is known', () => {
+    const hook = fakeHook()
+    const t = new CursorTracker(() => hook.mod, false)
+    cursor.x = 100
+    t.start({ ...options, display: null, global: true })
+    hook.emit('mousemove', { time: 0, x: 3000, y: 1600, button: 0 }) // beyond any one display: kept
+    hook.emit('mousedown', { time: 10, x: 4000, y: 2000, button: 1 })
+    hook.emit('mousedown', { time: 20, x: 1000, y: 900, button: 1 }) // the toolbar: dropped
+    hook.emit('keydown', key(28, {}, 30))
+    const raw = t.collect()
+    // Mapped into the window when the recording is finalised.
+    expect(raw.bounds).toBeNull()
+    expect(raw.samples).toHaveLength(2)
+    expect(raw.samples.map((s) => [s.x, s.y])).toEqual(
+      expect.arrayContaining([
+        [100, 50],
+        [1500, 800]
+      ])
+    )
+    expect(raw.clicks.map((c) => [c.x, c.y, c.button])).toEqual([[2000, 1000, 'left']])
+    expect(raw.keys.map((k) => k.label)).toEqual(['Enter'])
+    expect(hook.state.started).toBe(1)
+  })
 })
 
 describe('CursorTracker polling (perf-3)', () => {

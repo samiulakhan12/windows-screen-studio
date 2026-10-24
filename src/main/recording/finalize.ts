@@ -192,7 +192,7 @@ export async function processRecording(
       webcamOffset: webcamOk ? manifest.webcamOffset : 0,
       zooms: generateAutoZooms(cursor.clicks, duration),
       cursorValid: cursor.valid,
-      capture: { method: manifest.method, cursorInVideo: !native, region }
+      capture: { method: manifest.method, cursorInVideo: !native, region, target: manifest.sourceKind === 'window' ? 'window' : region ? 'area' : 'screen' }
     })
     project.createdAt = manifest.createdAt
     project = await withStyleDefaults(project)

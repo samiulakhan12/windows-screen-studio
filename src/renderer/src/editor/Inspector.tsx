@@ -205,22 +205,29 @@ function CursorPanel({ project, cursor: track }: { project: Project; cursor: Cur
   const { cursor } = project
   const set = (patch: Partial<Project['cursor']>, key?: string): void => store.update((p) => ({ ...p, cursor: { ...p.cursor, ...patch } }), key)
   const inVideo = project.capture.cursorInVideo
+  const isWindow = project.capture.target === 'window'
   // A drawn cursor only makes sense when the real one is not already in the pixels.
   const smoothAvailable = track.valid && !inVideo
   const smoothOn = smoothAvailable && cursor.show
   return (
     <>
       {!track.valid ? (
-        <p className="callout">
+        <p className="callout" data-testid="cursor-not-recorded">
           <EditorIcon name="alert" size={16} />
-          <span>Cursor movement was not recorded for this capture (window recordings have no screen coordinates), so cursor effects are not available.</span>
+          <span>
+            {isWindow
+              ? 'Cursor movement was not recorded for this window (its position on screen could not be followed), so cursor effects are not available.'
+              : 'Cursor movement was not recorded for this capture (window recordings have no screen coordinates), so cursor effects are not available.'}
+          </span>
         </p>
       ) : inVideo ? (
         <p className="callout" data-testid="cursor-in-video">
           <EditorIcon name="alert" size={16} />
           <span>
-            The Windows cursor is part of this video (it was recorded with screen capture), so a smooth cursor would show up as a second cursor.
-            Smooth cursor and hide-when-idle are therefore off. Click highlights still work on top of the recorded cursor.
+            {isWindow
+              ? 'The Windows cursor is part of this video (the window was recorded with standard capture; native capture needs Windows 10 version 2004 or later), so a smooth cursor would show up as a second cursor. '
+              : 'The Windows cursor is part of this video (it was recorded with screen capture), so a smooth cursor would show up as a second cursor. '}
+            Smooth cursor and hide-when-idle are therefore off. Click highlights {isWindow ? 'and auto zoom still work' : 'still work on top of the recorded cursor'}.
           </span>
         </p>
       ) : null}

@@ -3,7 +3,7 @@ import type { NormRect } from '../../../shared/types'
 import { ChunkPipe } from '../../../shared/recording/chunkPipe'
 import { captureDisplay, SYSTEM_AUDIO_WARNING } from '../../../shared/recording/displayCapture'
 import { friendlyError, RecorderError, SOURCE_GONE, type DeviceKind } from '../../../shared/recording/errors'
-import { epochNow, nextFrameTime, syncEpoch } from './firstFrame'
+import { epochNow, nextFrameSize, nextFrameTime, syncEpoch } from './firstFrame'
 import { AUDIO_MIMES, CAMERA_MIMES, pickMime, screenBitrate, screenMimes } from '../../../shared/recording/mime'
 
 export interface SessionOptions {
@@ -135,6 +135,9 @@ export class RecordingSession {
     this.video = track
     const s = track.getSettings()
     this.size = { width: s.width ?? 1920, height: s.height ?? 1080 }
+    // A window's video keeps its first frame's size (a resized window is fitted into it), and
+    // its cursor is mapped into that size: take it from the first frame, not the settings.
+    if (this.options.sourceId.startsWith('window:')) this.size = (await nextFrameSize(track)) ?? this.size
     this.audioSources.unshift(...display.getAudioTracks())
     track.addEventListener('ended', () => {
       this.freeze()

@@ -57,8 +57,15 @@ function hookPointToDip(e: { x: number; y: number }): Point {
 }
 
 export interface TrackerOptions {
-  /** The captured display; null for window captures (positions are then not recorded). */
+  /** The captured display; null for window captures. */
   display: { bounds: Rectangle; scaleFactor: number } | null
+  /**
+   * Window captures whose position on screen is known (native window capture, or a window
+   * watcher): record the cursor and clicks in global DIP screen coordinates, mapped into
+   * the window when the recording is finalised. Without it (and without a display) only
+   * keystrokes are recorded.
+   */
+  global?: boolean
   /** Record shortcut keystrokes for the keystroke overlay. */
   captureKeys: boolean
   /** True for points over the app's own windows (the toolbar): such clicks are dropped. */
@@ -96,6 +103,11 @@ export class CursorTracker {
     return this.opts !== null
   }
 
+  /** Cursor positions and clicks are recorded (a display, or global coordinates for a window). */
+  private static tracksPointer(opts: TrackerOptions): boolean {
+    return opts.display !== null || opts.global === true
+  }
+
   start(opts: TrackerOptions): void {
     this.halt()
     this.opts = opts
@@ -107,12 +119,13 @@ export class CursorTracker {
     this.keys = []
     this.keyFilter = null
     this.stillSince = null
-    if (opts.display) {
+    const pointer = CursorTracker.tracksPointer(opts)
+    if (pointer) {
       const p = screen.getCursorScreenPoint()
       this.samples.push({ at: Date.now(), x: p.x, y: p.y })
       if (this.pollCursor) this.timer = setInterval(() => this.poll(), 1000 / 60)
     }
-    if (opts.display || opts.captureKeys) this.startHook(opts)
+    if (pointer || opts.captureKeys) this.startHook(opts)
   }
 
   /**
@@ -146,7 +159,7 @@ export class CursorTracker {
     const { uIOhook } = mod
     for (const e of HOOK_EVENTS) uIOhook.removeAllListeners(e)
     const observe = (time: number): number => this.clock.observe(time, Date.now())
-    if (opts.display) {
+    if (CursorTracker.tracksPointer(opts)) {
       // Hook events arrive in delayed batches, so pauses are applied later by their
       // precise times (buildCursorTrack) rather than by the state at delivery.
       uIOhook.on('mousedown', (e) => {

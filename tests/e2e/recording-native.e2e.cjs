@@ -130,7 +130,7 @@ function assertNoFrozenTail(file, project) {
     const [id] = h.listProjects(home)
     const project = h.readProject(home, id)
     const pdir = path.join(h.projectsRoot(home), id)
-    h.assert(JSON.stringify(project.capture) === JSON.stringify({ method: 'native', cursorInVideo: false, region: null }), `capture ${JSON.stringify(project.capture)}`)
+    h.assert(JSON.stringify(project.capture) === JSON.stringify({ method: 'native', cursorInVideo: false, region: null, target: 'screen' }), `capture ${JSON.stringify(project.capture)}`)
     h.assert(project.cursor.show === true, 'the synthetic cursor is on (no OS cursor in the video)')
     h.assert(project.hasAudio && project.width === 1920 && project.height === 1080, 'audio and helper video size')
     const streams = r.probe(path.join(pdir, 'screen.mp4')).streams

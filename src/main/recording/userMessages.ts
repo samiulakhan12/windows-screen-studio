@@ -33,10 +33,14 @@ export function friendlyMessage(err: unknown, folder?: string): string {
 }
 
 /** Why a native recording stopped by itself (the capture helper ended). */
-export function nativeEndedMessage(info: NativeEndedInfo): string {
+export function nativeEndedMessage(info: NativeEndedInfo, target: 'screen' | 'window' = 'screen'): string {
   const kept = 'Everything recorded until then was kept.'
-  if (info.reason === 'closed') return `Recording stopped because the recorded screen was disconnected or turned off. ${kept}`
-  return `Recording stopped because screen capture failed unexpectedly. ${kept}`
+  if (info.reason === 'closed') {
+    return target === 'window'
+      ? `Recording stopped because the recorded window was closed. ${kept}`
+      : `Recording stopped because the recorded screen was disconnected or turned off. ${kept}`
+  }
+  return `Recording stopped because ${target === 'window' ? 'window' : 'screen'} capture failed unexpectedly. ${kept}`
 }
 
 export interface RendererGone {

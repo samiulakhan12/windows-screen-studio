@@ -45,6 +45,12 @@ export interface DrawOptions {
 
 const DEFAULT_OPTIONS: Required<DrawOptions> = { frameInterval: 1 / 60, blurSamples: 4 }
 
+/**
+ * A normalised position inside the recorded video. The cursor of a window or area
+ * recording can be outside it (over another window, outside the area): nothing is drawn there.
+ */
+const inVideo = (p: { x: number; y: number }): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
+
 function screenImage(src: RenderSources): FrameImage | null {
   if (src.screenFrame) return src.screenFrame
   const v = src.screen
@@ -125,6 +131,7 @@ export function drawFrame(
     if (project.cursor.clickEffect && cursor.clicks.length > 0) {
       const speed = speedAt(project.clips, t)
       for (const { click, progress } of activeClicks(cursor.clicks, t, 0.45 * speed)) {
+        if (!inVideo(click)) continue
         const p = toOut(click.x, click.y)
         ctx.beginPath()
         ctx.arc(p.x, p.y, (8 + 34 * progress) * k * cam.scale * 0.8, 0, Math.PI * 2)
@@ -139,8 +146,8 @@ export function drawFrame(
     // and idle-hiding would only draw a second, lagging cursor next to it.
     if (project.cursor.show && !project.capture?.cursorInVideo && cursor.samples.length > 0) {
       const opacity = project.cursor.hideWhenIdle ? cursorOpacity(cursor.samples, t) : 1
-      if (opacity > 0.01) {
-        const pos = scene.cursorPath.at(t)
+      const pos = scene.cursorPath.at(t)
+      if (opacity > 0.01 && inVideo(pos)) {
         const p = toOut(pos.x, pos.y)
         const height = cursorHeight(rect.h, vh, cursor.scale, cam.scale, project.cursor.size) * clickPulse(cursor.clicks, t)
         drawCursorSprite(ctx, shapeAt(cursor.shapes, t), p.x, p.y, height, opacity, t)

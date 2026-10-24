@@ -34,6 +34,8 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     throw friendlyError(err)
   }
   const { token } = plan
+  // E.g. a window recorded without cursor effects: say so before recording, not after.
+  if (plan.notice) callbacks.onWarning?.(plan.notice)
   const session = new RecordingSession(api, plan, options)
   const status = (s: RecorderStatusUpdate): Promise<void> => api.setRecordingStatus(token, s).catch(() => undefined)
   const flushWarnings = (): void => {
@@ -109,6 +111,7 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
       else if (result && !outcome) {
         console.warn('Native capture did not start:', result.message)
         callbacks.onWarning?.(NATIVE_FALLBACK_WARNING)
+        if (result.notice) callbacks.onWarning?.(result.notice)
         await session.fallbackToChromium()
         flushWarnings()
       }

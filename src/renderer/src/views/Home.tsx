@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ProcessingProgress, RegionSelection, UnfinishedRecording } from '../../../shared/api/recording'
+import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
 import { formatTime } from '../../../shared/engine/project'
 import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -76,6 +76,47 @@ let sourceCache: CaptureSource[] = []
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
+/** What window recordings get on this PC: asked once, when the Windows tab is first shown. */
+let windowSupport: Promise<WindowCaptureSupport> | null = null
+/** The answer, once known (so returning to Home shows the hint at once). */
+let knownWindowSupport: WindowCaptureSupport | null = null
+
+function loadWindowSupport(): Promise<WindowCaptureSupport> {
+  windowSupport ??= window.api.getWindowCaptureSupport().then(
+    (s) => (knownWindowSupport = s),
+    (err: unknown) => {
+      console.warn('Could not check window capture support:', err)
+      windowSupport = null
+      return { effects: false, smoothCursor: false }
+    }
+  )
+  return windowSupport
+}
+
+/** Says plainly what a window recording gets on this PC (shown once that is known). */
+function WindowHint({ support, onArea }: { support: WindowCaptureSupport | null; onArea: () => void }): JSX.Element | null {
+  if (!support) return null
+  if (support.effects) {
+    return (
+      <p className="hint window-hint" data-support={support.smoothCursor ? 'full' : 'effects'}>
+        {support.smoothCursor
+          ? 'Window recordings get auto zoom, click highlights and the smooth cursor.'
+          : 'Window recordings get auto zoom and click highlights. The Windows cursor stays in the video, so there is no smooth cursor: that needs native capture (Windows 10 version 2004 or later).'}{' '}
+        Moving the window is fine; a resized window is fitted into its starting size.
+      </p>
+    )
+  }
+  return (
+    <p className="hint window-hint" data-support="none">
+      Window recordings keep the Windows cursor in the video and have no auto zoom, click highlights or smooth cursor here.{' '}
+      <button type="button" className="link-btn" onClick={onArea}>
+        Record an area instead
+      </button>{' '}
+      to get them.
+    </p>
+  )
+}
+
 function RegionIcon(): JSX.Element {
   return (
     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="icon">
@@ -130,6 +171,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const [phase, setPhase] = useState<RecordingPhase | null>(null)
   const [busy, setBusy] = useState<ProcessingProgress | null>(null)
   const [error, setError] = useState<ErrorState | null>(null)
+  const [windowCapture, setWindowCapture] = useState<WindowCaptureSupport | null>(knownWindowSupport)
   const [notices, setNotices] = useState<string[]>(() => {
     const carried = carriedNotices
     carriedNotices = []
@@ -197,6 +239,15 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   useEffect(() => {
     void refreshSources(sourceKind)
   }, [refreshSources, sourceKind])
+
+  useEffect(() => {
+    if (tab !== 'window') return
+    let live = true
+    void loadWindowSupport().then((s) => live && setWindowCapture(s))
+    return () => {
+      live = false
+    }
+  }, [tab])
 
   useEffect(() => {
     try {
@@ -381,15 +432,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </button>
             </div>
           )}
-          {tab === 'window' && (
-            <p className="hint window-hint">
-              Window recordings keep the Windows cursor in the video and have no auto zoom, click highlights or smooth cursor.{' '}
-              <button type="button" className="link-btn" onClick={() => setTab('region')}>
-                Record an area instead
-              </button>{' '}
-              to get them.
-            </p>
-          )}
+          {tab === 'window' && <WindowHint support={windowCapture} onArea={() => setTab('region')} />}
         </section>
 
         <aside className="panel record-panel">
