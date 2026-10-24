@@ -41,6 +41,9 @@ export class PreviewPlayer {
   private canvas: HTMLCanvasElement | null = null
   private ctx: CanvasRenderingContext2D | null = null
   private noZoom = false
+  /** Draw without the 3D tilt (while something is edited on the preview, so handles line up). */
+  private flat = false
+  private flatScene: RenderScene | null = null
   private readonly listeners = new Set<() => void>()
   private drawRaf = 0
   private frameHandle = 0
@@ -110,6 +113,7 @@ export class PreviewPlayer {
     this.scene = scene
     this.clickSounds.setTimes(soundingClicks(scene.cursor))
     this.unzoomed = null
+    this.flatScene = null
     this.background = background
     this.invalidate()
   }
@@ -118,6 +122,13 @@ export class PreviewPlayer {
   setNoZoom(on: boolean): void {
     if (this.noZoom === on) return
     this.noZoom = on
+    this.invalidate()
+  }
+
+  /** Shows the frame without the 3D tilt (while the user edits something on the preview). */
+  setFlat(on: boolean): void {
+    if (this.flat === on) return
+    this.flat = on
     this.invalidate()
   }
 
@@ -212,7 +223,7 @@ export class PreviewPlayer {
   private draw(t: number): void {
     const { canvas, ctx, scene } = this
     if (!canvas || !ctx || !scene || this.screen.readyState < 2) return
-    drawFrame(ctx, canvas.width, canvas.height, t, this.noZoom ? this.unzoomedScene(scene) : scene, {
+    drawFrame(ctx, canvas.width, canvas.height, t, this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene, {
       screen: this.screen,
       webcam: this.webcam,
       background: this.background
@@ -220,8 +231,14 @@ export class PreviewPlayer {
   }
 
   private unzoomedScene(scene: RenderScene): RenderScene {
-    if (!this.unzoomed) this.unzoomed = { ...scene, project: { ...scene.project, zooms: [] } }
+    if (!this.unzoomed) this.unzoomed = { ...scene, project: { ...scene.project, zooms: [], tilt: undefined } }
     return this.unzoomed
+  }
+
+  private untiltedScene(scene: RenderScene): RenderScene {
+    if (!scene.project.tilt?.enabled) return scene
+    if (!this.flatScene) this.flatScene = { ...scene, project: { ...scene.project, tilt: undefined } }
+    return this.flatScene
   }
 
   /* ---------- playback loop ---------- */

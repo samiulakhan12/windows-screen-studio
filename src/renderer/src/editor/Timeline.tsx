@@ -1,3 +1,5 @@
+import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
+import { TitleTrack, TitleTrackLabel } from './TitleTrack'
 import {
   forwardRef,
   memo,
@@ -534,6 +536,8 @@ export const Timeline = memo(
             <div className="tl-label" title="Shapes, blur and spotlights">
               <EditorIcon name="shapes" size={16} />
             </div>
+            <TitleTrackLabel />
+            <LayoutTrackLabel />
           </div>
           <div className="tl-scroller" ref={scrollerRef} data-testid="timeline-scroller">
             <div className="tl-content" ref={contentRef} style={{ width }} data-px-per-sec={px}>
@@ -701,6 +705,9 @@ export const Timeline = memo(
                 })}
                 {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
               </div>
+
+              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} />
+              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} />
 
               <div className="playhead" ref={playheadRef} onPointerDown={(e) => e.button === 0 && scrub(e)} />
             </div>

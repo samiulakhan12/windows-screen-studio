@@ -58,7 +58,10 @@ const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
   gap: 'clip',
   range: 'clip',
   shape: 'shapes',
-  spotlight: 'shapes'
+  spotlight: 'shapes',
+  layout: 'camera',
+  title: 'text',
+  chapter: 'text'
 }
 
 /**

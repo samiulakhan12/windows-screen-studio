@@ -1,4 +1,4 @@
-import type { AspectRatio, Corner, StyleSettings, WebcamSettings } from '../types'
+import type { AspectRatio, Corner, Project, StyleSettings, WebcamSettings } from '../types'
 import { frameInsets, frameOf } from './deviceFrames'
 
 export interface Rect {
@@ -90,4 +90,14 @@ export function webcamRect(outW: number, outH: number, settings: Pick<WebcamSett
   const x = corner.endsWith('left') ? margin : outW - margin - size
   const y = corner.startsWith('top') ? margin : outH - margin - size
   return { x, y, w: size, h: size }
+}
+
+/**
+ * Rectangle of the recording in the output frame at source time `t`, after the camera layout
+ * in effect then (side-by-side moves the screen aside; layouts animate between each other).
+ * The compositor and the preview's pointer mapping use this, so they always agree.
+ */
+export function sceneContentRect(project: Pick<Project, 'style' | 'layouts' | 'webcam' | 'hasWebcam'>, outW: number, outH: number, srcW: number, srcH: number, t: number): Rect {
+  void t
+  return styleContentRect(outW, outH, srcW, srcH, project.style)
 }

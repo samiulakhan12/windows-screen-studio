@@ -196,7 +196,71 @@ export interface WebcamSettings {
   corner: Corner
   /** Diameter as a fraction of output height. */
   size: number
-  shape: 'circle' | 'rounded'
+  shape: 'circle' | 'rounded' | 'square'
+  /** Ring around the camera; width in 1080p-referenced pixels (0 = none). */
+  border?: { width: number; color: string }
+  /** Show the camera mirrored, like a mirror (default true for new projects is up to the camera builder). */
+  mirror?: boolean
+  /** Blur behind the person, 0 (off) .. 1 (strong); needs person segmentation. */
+  backgroundBlur?: number
+  /** Crop into the camera picture, 1 (whole picture) .. 3; centred on (cropX, cropY), normalised. */
+  zoom?: number
+  cropX?: number
+  cropY?: number
+  /** Drop shadow under the camera, 0..1. */
+  shadow?: number
+}
+
+/**
+ * How the screen and the camera share the frame:
+ * 'default' the screen with the camera bubble; 'camera-only' the camera fills the frame;
+ * 'screen-only' no camera; 'side-by-side' screen and camera next to each other;
+ * 'camera-large' a large camera over the screen.
+ */
+export type CameraLayout = 'default' | 'camera-only' | 'screen-only' | 'side-by-side' | 'camera-large'
+
+/** A layout used between `start` and `end` (source seconds); elsewhere the layout is 'default'. */
+export interface LayoutSegment {
+  id: string
+  start: number
+  end: number
+  layout: CameraLayout
+}
+
+/** A 3D tilt of the recording card (degrees), for a perspective "product shot" look. */
+export interface TiltSettings {
+  enabled: boolean
+  /** Rotation around the horizontal axis (top away from the viewer when positive), -30..30. */
+  rotateX: number
+  /** Rotation around the vertical axis, -30..30. */
+  rotateY: number
+  /** Strength of the perspective, 0 (flat) .. 1 (strong). */
+  perspective: number
+  /** 'cursor': leans a little toward the cursor; 'zoom': flattens while zoomed in; 'none': fixed. */
+  animate: 'none' | 'cursor' | 'zoom'
+}
+
+export type TitleCardStyle = 'centered' | 'lower-third' | 'big'
+
+/** A full-frame or lower-third title shown between `start` and `end` (source seconds). */
+export interface TitleCard {
+  id: string
+  start: number
+  end: number
+  title: string
+  subtitle?: string
+  style: TitleCardStyle
+  /** What is behind a full-frame card: the blurred video, a solid colour, or the project's background. */
+  background: 'blur' | 'solid' | 'style'
+  color?: string
+  textColor?: string
+}
+
+/** A named chapter starting at `t` (source seconds). */
+export interface Chapter {
+  id: string
+  t: number
+  title: string
 }
 
 /**
@@ -374,6 +438,11 @@ export interface Project {
   spotlights?: Spotlight[]
   /** Separate microphone (mic.m4a) and system sound (system.m4a) files kept by the recording. */
   audioStems?: { mic: boolean; system: boolean }
+  /** Camera layout changes over time. */
+  layouts?: LayoutSegment[]
+  tilt?: TiltSettings
+  titles?: TitleCard[]
+  chapters?: Chapter[]
 }
 
 export interface ProjectSummary {

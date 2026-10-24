@@ -77,6 +77,9 @@ export function createProject(init: {
     annotations: [],
     shapes: [],
     spotlights: [],
+    layouts: [],
+    titles: [],
+    chapters: [],
     style: {
       background: { type: 'gradient', preset: 'aurora' },
       padding: 0.07,
@@ -130,6 +133,9 @@ export function migrateProject(raw: unknown): Project {
     // Read as the renderer draws them, so every one listed can be selected and edited.
     shapes: readItems(p.shapes, readShape),
     spotlights: readItems(p.spotlights, readSpotlight),
+    layouts: objects(p.layouts),
+    titles: objects(p.titles),
+    chapters: objects(p.chapters),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

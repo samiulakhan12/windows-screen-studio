@@ -1,7 +1,7 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
 import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/deviceFrames'
-import { styleContentRect, type Rect } from '../../../shared/engine/layout'
+import { sceneContentRect, type Rect } from '../../../shared/engine/layout'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
@@ -11,6 +11,7 @@ import { cardGeometry, paintBackgroundLayer, paintCard, paintStaticLayer, roundR
 import { drawPrivacyLayer, drawShapesLayer } from './shapesLayer'
 import { drawSpotlightLayer } from './spotlightLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
+import { drawTitleCardsLayer } from './titleCardLayer'
 import { drawWatermarkLayer } from './watermarkLayer'
 import { drawWebcamLayer } from './webcamLayer'
 
@@ -88,7 +89,7 @@ export function drawFrame(
   const vh = screen?.height || src.screen.videoHeight || project.height
 
   ctx.save()
-  const rect = styleContentRect(w, h, vw, vh, style)
+  const rect = sceneContentRect(project, w, h, vw, vh, t)
   const radius = style.cornerRadius * k
 
   const focus = cursor.valid ? scene.focusPath : null
@@ -169,6 +170,7 @@ export function drawFrame(
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)
+  drawTitleCardsLayer(fc)
   drawWatermarkLayer(fc)
   ctx.restore()
 }

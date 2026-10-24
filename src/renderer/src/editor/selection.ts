@@ -8,6 +8,9 @@ export type Selection =
   | { kind: 'clip'; id: string }
   | { kind: 'shape'; id: string }
   | { kind: 'spotlight'; id: string }
+  | { kind: 'layout'; id: string }
+  | { kind: 'title'; id: string }
+  | { kind: 'chapter'; id: string }
   | { kind: 'gap'; start: number; end: number }
   | { kind: 'range'; start: number; end: number }
   | null
@@ -26,6 +29,12 @@ export function validSelection(sel: Selection, project: Project): Selection {
       return (project.shapes ?? []).some((s) => s.id === sel.id) ? sel : null
     case 'spotlight':
       return (project.spotlights ?? []).some((s) => s.id === sel.id) ? sel : null
+    case 'layout':
+      return (project.layouts ?? []).some((s) => s.id === sel.id) ? sel : null
+    case 'title':
+      return (project.titles ?? []).some((s) => s.id === sel.id) ? sel : null
+    case 'chapter':
+      return (project.chapters ?? []).some((s) => s.id === sel.id) ? sel : null
     case 'gap':
       return timelineGaps(project.clips, project.duration).some((g) => Math.abs(g.start - sel.start) < 1e-6 && Math.abs(g.end - sel.end) < 1e-6)
         ? sel

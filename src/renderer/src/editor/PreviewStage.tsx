@@ -14,7 +14,8 @@ import {
   shapeLabel
 } from '../../../shared/editor/shapes'
 import { dragRegion, formatLevel, regionFromPoints, setZoomRegion, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
-import { styleContentRect, outputSize, type Rect } from '../../../shared/engine/layout'
+import { outputSize, type Rect } from '../../../shared/engine/layout'
+import { useSceneRect } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
 import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
@@ -137,6 +138,11 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   const [box, setBox] = useState<Box>({ w: 0, h: 0 })
   const out = outputSize(project.style.aspectRatio, project.width, project.height, project.height)
 
+  // Handles are laid out on the flat frame: the 3D tilt is left out while something is edited.
+  const editing = !!pickZoom || !!selectedAnnotation || !!selection
+  useEffect(() => player.setFlat(editing), [player, editing])
+  useEffect(() => () => player.setFlat(false), [player])
+
   useLayoutEffect(() => {
     player.attachCanvas(canvasRef.current)
     return () => player.attachCanvas(null)
@@ -191,7 +197,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   // Source-space rectangle of the recording inside the frame (what drawFrame computes).
   const vw = player.screen.videoWidth || project.width
   const vh = player.screen.videoHeight || project.height
-  const rect = styleContentRect(box.w, box.h, vw, vh, project.style)
+  const rect = useSceneRect(project, box.w, box.h, vw, vh)
 
   /** Normalised source position under a pointer (the preview shows the unzoomed frame while picking). */
   const sourceAt = (clientX: number, clientY: number, el: HTMLElement): { x: number; y: number } => {

@@ -393,6 +393,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else if (sel.kind === 'annotation') store.update((p) => ({ ...p, annotations: p.annotations.filter((a) => a.id !== sel.id) }))
         else if (sel.kind === 'shape') store.update((p) => ({ ...p, shapes: (p.shapes ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'spotlight') store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).filter((s) => s.id !== sel.id) }))
+        else if (sel.kind === 'layout') store.update((p) => ({ ...p, layouts: (p.layouts ?? []).filter((s) => s.id !== sel.id) }))
+        else if (sel.kind === 'title') store.update((p) => ({ ...p, titles: (p.titles ?? []).filter((s) => s.id !== sel.id) }))
+        else if (sel.kind === 'chapter') store.update((p) => ({ ...p, chapters: (p.chapters ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else return
