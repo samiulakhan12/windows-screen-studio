@@ -138,9 +138,6 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   const [box, setBox] = useState<Box>({ w: 0, h: 0 })
   const out = outputSize(project.style.aspectRatio, project.width, project.height, project.height)
 
-  // Handles are laid out on the flat frame: the 3D tilt is left out while something is edited.
-  const editing = !!pickZoom || !!selectedAnnotation || !!selection
-  useEffect(() => player.setFlat(editing), [player, editing])
   useEffect(() => () => player.setFlat(false), [player])
 
   useLayoutEffect(() => {
@@ -220,6 +217,12 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   }, [pickZoom, selection, project.shapes, project.spotlights])
   const view = useStageView(player, project, scene, editItem)
   const mapping = view ? mappingFor(view.cam, rect) : null
+
+  // Handles are laid out on the flat frame: the 3D tilt is left out while the preview shows
+  // some (a zoom's focus being picked, the selected shape or spotlight being edited). Other
+  // selections, playback and text (always drawn flat) keep the tilt.
+  const editing = !!pickZoom || !!(editItem && view)
+  useEffect(() => player.setFlat(editing), [player, editing])
 
   /** Dragging on the preview outside the selected item draws it anew there (not a cursor spotlight). */
   const redrawItem = (e: ReactPointerEvent<HTMLElement>, el: HTMLElement): boolean => {

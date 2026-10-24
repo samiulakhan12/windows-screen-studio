@@ -285,10 +285,8 @@ export function paintCard(ctx: Ctx, spec: CardSpec, geom: CardGeometry = cardGeo
   ctx.fill()
 }
 
-/** Output pixels the card (with its shadow and border) can touch, for drawing only that part of a cached card layer. */
-function cardBounds(spec: CardSpec, geom: CardGeometry, w: number, h: number): Rect {
-  const look = cardLook(spec.style)
-  const reach = shadowReach(spec.style.padding > 0 ? shadowPaint(look, spec.style.shadow, spec.k) : null) + (look.border ? look.border.width * spec.k : 0) + 2
+/** Bounding box of the card's shapes: the outline and the device chrome (no border or shadow). */
+function shapesBox(geom: CardGeometry): { x0: number; y0: number; x1: number; y1: number } {
   let x0 = Infinity
   let y0 = Infinity
   let x1 = -Infinity
@@ -300,9 +298,39 @@ function cardBounds(spec: CardSpec, geom: CardGeometry, w: number, h: number): R
     x1 = Math.max(x1, r.x + r.w)
     y1 = Math.max(y1, r.y + r.h)
   }
-  const bx = Math.max(0, Math.floor(x0 - reach))
-  const by = Math.max(0, Math.floor(y0 - reach))
-  return { x: bx, y: by, w: Math.max(0, Math.min(w, Math.ceil(x1 + reach)) - bx), h: Math.max(0, Math.min(h, Math.ceil(y1 + reach)) - by) }
+  return { x0, y0, x1, y1 }
+}
+
+/**
+ * The card itself (output px): device chrome and border included, shadow left out. The 3D tilt
+ * turns the card about its centre and keeps its corners inside the frame.
+ */
+export function cardBody(spec: CardSpec, geom: CardGeometry): Rect {
+  const border = frameTakesBorder(geom.frame) ? cardLook(spec.style).border : null
+  const bw = border ? border.width * spec.k : 0
+  const b = shapesBox(geom)
+  return { x: b.x0 - bw, y: b.y0 - bw, w: b.x1 - b.x0 + bw * 2, h: b.y1 - b.y0 + bw * 2 }
+}
+
+/**
+ * Pixel-aligned output rectangle the card (with its shadow and border) can touch, wherever it
+ * is, also past the frame's edges (a tilted card can bring that part of its shadow into view).
+ */
+export function cardExtent(spec: CardSpec, geom: CardGeometry): Rect {
+  const look = cardLook(spec.style)
+  const reach = shadowReach(spec.style.padding > 0 ? shadowPaint(look, spec.style.shadow, spec.k) : null) + (look.border ? look.border.width * spec.k : 0) + 2
+  const b = shapesBox(geom)
+  const x = Math.floor(b.x0 - reach)
+  const y = Math.floor(b.y0 - reach)
+  return { x, y, w: Math.ceil(b.x1 + reach) - x, h: Math.ceil(b.y1 + reach) - y }
+}
+
+/** Output pixels the card (with its shadow and border) can touch, for drawing only that part of a cached card layer. */
+function cardBounds(spec: CardSpec, geom: CardGeometry, w: number, h: number): Rect {
+  const e = cardExtent(spec, geom)
+  const bx = Math.max(0, e.x)
+  const by = Math.max(0, e.y)
+  return { x: bx, y: by, w: Math.max(0, Math.min(w, e.x + e.w) - bx), h: Math.max(0, Math.min(h, e.y + e.h) - by) }
 }
 
 /* ---------- cached layers ---------- */
@@ -447,40 +475,43 @@ interface CardLayer {
   key: string
   canvas: HTMLCanvasElement
   bounds: Rect
+  backdrop: Blurred | null
 }
 
 const cardLayers = new WeakMap<Ctx, CardLayer>()
 
 /**
- * The card (shadow, border, frame, well) over a moving background: painted once on a
- * transparent canvas just big enough for it, then composited every frame, so the large shadow
- * blur is never redrawn while the gradient moves.
+ * The card (shadow, border, frame, well) on its own: painted once on a transparent canvas just
+ * big enough for it, then composited every frame, so the large shadow blur is never redrawn
+ * while an animated gradient moves, or while the 3D tilt draws the card on its own canvas.
+ * `backdrop` is the blurred background a glass border shows; `extent` paints the card's whole
+ * extent (cardExtent) instead of only its part inside the frame.
  */
-function paintCardLayer(ctx: Ctx, w: number, h: number, spec: CardSpec, geom: CardGeometry): void {
+export function paintCardLayer(ctx: Ctx, w: number, h: number, spec: CardSpec, geom: CardGeometry, backdrop: Blurred | null = null, extent = false): void {
   if (typeof document === 'undefined') {
-    paintCard(ctx, spec, geom, null, { w, h })
+    paintCard(ctx, spec, geom, backdrop, { w, h })
     return
   }
   const { background: _bg, ...rest } = spec.style
   void _bg
-  const key = JSON.stringify([w, h, rest, spec.rect, spec.radius, spec.k, spec.title])
+  const key = JSON.stringify([w, h, rest, spec.rect, spec.radius, spec.k, spec.title, extent])
   let layer = cardLayers.get(ctx)
-  if (!layer || layer.key !== key) {
-    const bounds = cardBounds(spec, geom, w, h)
+  if (!layer || layer.key !== key || layer.backdrop !== backdrop) {
+    const bounds = extent ? cardExtent(spec, geom) : cardBounds(spec, geom, w, h)
     const c = layer?.canvas ?? document.createElement('canvas')
     c.width = Math.max(1, bounds.w)
     c.height = Math.max(1, bounds.h)
     const lctx = c.getContext('2d')
     if (!lctx) {
-      paintCard(ctx, spec, geom, null, { w, h })
+      paintCard(ctx, spec, geom, backdrop, { w, h })
       return
     }
     lctx.clearRect(0, 0, c.width, c.height)
     lctx.save()
     lctx.translate(-bounds.x, -bounds.y)
-    paintCard(lctx, spec, geom, null, { w, h })
+    paintCard(lctx, spec, geom, backdrop, { w, h })
     lctx.restore()
-    layer = { key, canvas: c, bounds }
+    layer = { key, canvas: c, bounds, backdrop }
     cardLayers.set(ctx, layer)
   }
   const b = layer.bounds

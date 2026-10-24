@@ -7,6 +7,7 @@ import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLa
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
+import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
@@ -328,6 +329,7 @@ async function renderAll(
   // drawFrame wants an element even when it draws decoded frames; this one is never shown.
   const placeholder = document.createElement('video')
   let sink: FrameSink | null = null
+  let drawn: CanvasRenderingContext2D | null = null
   const onAbort = (): void => void window.api.exportCancel()
   signal.addEventListener('abort', onAbort)
   try {
@@ -345,6 +347,7 @@ async function renderAll(
     // or missing GPU) the canvas is on the CPU anyway, and the hint saves a copy per readback.
     const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: route.video === 'ffmpeg' && !caps.gpuCanvas })
     if (!ctx) throw new Error('Could not create a drawing surface')
+    drawn = ctx
 
     const base: Omit<ExportJob, 'video'> = {
       width,
@@ -407,6 +410,8 @@ async function renderAll(
   } finally {
     signal.removeEventListener('abort', onAbort)
     sink?.close()
+    // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more.
+    if (drawn) releaseTilt(drawn)
     screen.close()
     camera?.close()
     videos.forEach(disposeVideo)
@@ -436,6 +441,7 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
   const t = raw.time
   const screen = await openSource(input.screenUrl, [t], caps, videos, SCREEN_PROXY_FPS)
   let camera: FrameSource | null = null
+  let drawn: CanvasRenderingContext2D | null = null
   try {
     if (input.webcamUrl && project.webcam.show && project.hasWebcam) camera = await openSource(input.webcamUrl, [t - project.webcamOffset], caps, videos, WEBCAM_PROXY_FPS)
     const canvas = document.createElement('canvas')
@@ -443,6 +449,7 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     canvas.height = height
     const ctx = canvas.getContext('2d', { alpha: false })
     if (!ctx) throw new Error('Could not create a drawing surface')
+    drawn = ctx
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
     drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES })
@@ -450,6 +457,8 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     if (!blob) throw new Error('Could not encode the thumbnail')
     return { png: new Uint8Array(await blob.arrayBuffer()), width, height }
   } finally {
+    // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more.
+    if (drawn) releaseTilt(drawn)
     screen.close()
     camera?.close()
     videos.forEach(disposeVideo)

@@ -4,6 +4,7 @@ import { FRAME_KINDS } from '../engine/deviceFrames'
 import { ZOOM_EASINGS } from '../engine/easing'
 import { clamp } from '../engine/math'
 import { DEFAULT_CURSOR_EXTRAS } from '../engine/project'
+import { TILT_ANIMATIONS, TILT_LIMITS, tiltSettingsOf } from '../engine/tilt'
 import { WATERMARK_FILE_RE, WATERMARK_LIMITS, WATERMARK_POSITIONS, WATERMARK_TEXT_MAX } from '../engine/watermark'
 import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomSettingsOf } from '../engine/zoom'
 import type {
@@ -18,6 +19,7 @@ import type {
   KeystrokeSettings,
   Project,
   StyleSettings,
+  TiltSettings,
   WatermarkSettings,
   WebcamSettings,
   ZoomEasing,
@@ -82,6 +84,8 @@ export interface StyleDefaults {
   /** Zoom style: level of new zooms, easing and transition. */
   zoom?: ZoomStyleLook
   watermark?: WatermarkSettings
+  /** 3D tilt of the card (absent: new recordings keep theirs, which is off). */
+  tilt?: Partial<TiltSettings>
   /** Id of the project the look was saved from (where its watermark image is); never stored. */
   source?: string
 }
@@ -96,6 +100,7 @@ export function lookOf(project: Project): StyleDefaults {
     effects: project.effects,
     zoom: { defaultScale: z.defaultScale, easing: z.easing, transition: z.transition },
     watermark: project.watermark,
+    tilt: project.tilt,
     source: project.id
   }
 }
@@ -221,6 +226,18 @@ export function sanitizeZoomStyle(v: unknown): ZoomStyleLook {
   })
 }
 
+/** The tilt fields of a look, validated field by field (angles and perspective clamped). */
+export function sanitizeTiltLook(v: unknown): Partial<TiltSettings> {
+  if (!isObject(v)) return {}
+  return defined<TiltSettings>({
+    enabled: bool(v.enabled),
+    rotateX: num(v.rotateX, TILT_LIMITS.angle),
+    rotateY: num(v.rotateY, TILT_LIMITS.angle),
+    perspective: num(v.perspective, TILT_LIMITS.perspective),
+    animate: oneOf(v.animate, TILT_ANIMATIONS)
+  })
+}
+
 /** A complete, valid watermark, or undefined (an image one needs its file name). */
 export function sanitizeWatermark(v: unknown): WatermarkSettings | undefined {
   if (!isObject(v)) return undefined
@@ -275,8 +292,10 @@ export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
   if (!empty(zoom)) out.zoom = zoom
   const watermark = sanitizeWatermark(raw.watermark)
   if (watermark) out.watermark = watermark
+  const tilt = sanitizeTiltLook(raw.tilt)
+  if (!empty(tilt)) out.tilt = tilt
   if (typeof raw.source === 'string' && raw.source) out.source = raw.source
-  return [out.style, out.cursor, out.webcam, out.effects, zoom].every(empty) && !watermark ? null : out
+  return [out.style, out.cursor, out.webcam, out.effects, zoom, tilt].every(empty) && !watermark ? null : out
 }
 
 /**
@@ -297,5 +316,6 @@ export function applyStyleDefaults(project: Project, defaults: StyleDefaults | n
   }
   if (d.zoom) out.zoomSettings = { ...zoomSettingsOf(project), ...d.zoom }
   if (d.watermark) out.watermark = d.watermark
+  if (d.tilt) out.tilt = { ...tiltSettingsOf(project), ...d.tilt }
   return out
 }

@@ -7,9 +7,10 @@ import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
-import { cardGeometry, paintBackgroundLayer, paintCard, paintStaticLayer, roundRectPath, type CardSpec } from './staticLayer'
+import { cardGeometry, paintBackgroundLayer, paintCard, paintCardLayer, paintStaticLayer, roundRectPath, type CardSpec } from './staticLayer'
 import { drawPrivacyLayer, drawShapesLayer } from './shapesLayer'
 import { drawSpotlightLayer } from './spotlightLayer'
+import { beginTiltedCard, drawTiltedCard } from './tiltLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
 import { drawTitleCardsLayer } from './titleCardLayer'
 import { drawWatermarkLayer } from './watermarkLayer'
@@ -105,22 +106,30 @@ export function drawFrame(
   const geom = cardGeometry(spec)
   // Animated backgrounds run on output time, so they flow on smoothly across cuts.
   const bgTime = isAnimated(style.background) ? animationTime(project.clips, t) : 0
-  if (cam.scale < 1) {
+  // With the 3D tilt on, the card and everything on it is painted on a canvas of its own (`c`)
+  // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
+  const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom)
+  const c = tilted ? tilted.ctx : ctx
+  if (tilted) {
+    const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
+    if (cam.scale < 1) paintCard(c, spec, geom, backdrop, { w, h })
+    else paintCardLayer(c, w, h, spec, geom, backdrop, true)
+  } else if (cam.scale < 1) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
     paintCard(ctx, spec, geom, backdrop, { w, h })
   } else {
     paintStaticLayer(ctx, w, h, spec, geom, src.background, !!screen, bgTime)
   }
 
-  ctx.save()
-  roundRectPath(ctx, card, geom.screenRadii)
-  ctx.clip()
+  c.save()
+  roundRectPath(c, card, geom.screenRadii)
+  c.clip()
   if (screen) {
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-    const drawView = (c: Camera): void => {
-      const v = viewSource(c, rect)
-      if (v) ctx.drawImage(screen.image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
+    c.imageSmoothingEnabled = true
+    c.imageSmoothingQuality = 'high'
+    const drawView = (view: Camera): void => {
+      const v = viewSource(view, rect)
+      if (v) c.drawImage(screen.image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
     }
     const samples = motionSamples(project, t, cam, focus, rect, opts, zoomStyle)
     if (samples.length <= 1) {
@@ -128,19 +137,19 @@ export function drawFrame(
     } else {
       // Average the sub-frames: sample k is blended in with weight 1/(k+1). The largest view
       // goes first, so a shrinking card never averages in the black well at its edge.
-      if (samples.some((c) => c.scale < 1)) samples.sort((a, b) => b.scale - a.scale)
-      samples.forEach((c, i) => {
-        ctx.globalAlpha = 1 / (i + 1)
-        drawView(c)
+      if (samples.some((s) => s.scale < 1)) samples.sort((a, b) => b.scale - a.scale)
+      samples.forEach((s, i) => {
+        c.globalAlpha = 1 / (i + 1)
+        drawView(s)
       })
-      ctx.globalAlpha = 1
+      c.globalAlpha = 1
     }
   }
 
   const viewX = cam.cx - 0.5 / cam.scale
   const viewY = cam.cy - 0.5 / cam.scale
   const fc: FrameContext = {
-    ctx,
+    ctx: c,
     w,
     h,
     t,
@@ -164,14 +173,21 @@ export function drawFrame(
   drawCursorLayer(fc)
   drawShapesLayer(fc)
   drawSpotlightLayer(fc)
-  ctx.restore()
+  c.restore()
 
-  drawWebcamLayer(fc, project.webcam.show ? webcamImage(src) : null)
+  // Everything from here on is drawn flat over the (tilted) card.
+  let top = fc
+  if (tilted) {
+    drawTiltedCard(ctx, w, h, tilted)
+    top = { ...fc, ctx }
+  }
+
+  drawWebcamLayer(top, project.webcam.show ? webcamImage(src) : null)
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)
-  drawTitleCardsLayer(fc)
-  drawWatermarkLayer(fc)
+  drawTitleCardsLayer(top)
+  drawWatermarkLayer(top)
   ctx.restore()
 }
 
