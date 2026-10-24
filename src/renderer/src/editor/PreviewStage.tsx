@@ -1,14 +1,32 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { annotationVisibleAt } from '../../../shared/editor/annotations'
+import { displayTime } from '../../../shared/editor/clips'
+import {
+  dragShapeBox,
+  drawnBox,
+  drawnGeometry,
+  isLineKind,
+  itemVisibleAt,
+  moveLine,
+  resizeAround,
+  setLineEnd,
+  shapeBounds,
+  shapeLabel
+} from '../../../shared/editor/shapes'
 import { dragRegion, formatLevel, regionFromPoints, setZoomRegion, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
 import { styleContentRect, outputSize, type Rect } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
-import { cameraFor, zoomTargetScale } from '../../../shared/engine/zoom'
-import type { Annotation, Project, ZoomSegment } from '../../../shared/types'
-import { cardRect } from '../render/compositor'
+import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
+import { cursorLook } from '../../../shared/render/cursorFx'
+import { cursorPositionAt, spotlightArea } from '../../../shared/render/shapes'
+import type { Annotation, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
+import { cardRect, type RenderScene } from '../render/compositor'
 import { holdGesture, useEditor } from './context'
 import { releaseFocus } from './focus'
+import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
+import type { Selection } from './selection'
+import './shapes.css'
 import './zoom.css'
 
 interface Props {
@@ -18,6 +36,10 @@ interface Props {
   selectedAnnotation: Annotation | null
   onTogglePlay: () => void
   onExitPick: () => void
+  /** What the preview draws (camera focus, cursor path): shapes are edited through the camera. */
+  scene?: RenderScene
+  selection?: Selection
+  onSelect?: (sel: Selection) => void
 }
 
 interface Box {
@@ -27,13 +49,83 @@ interface Box {
 
 const CLICK_SLOP = 4
 
+type Pos = { x: number; y: number }
+
+/** The selected shape or spotlight, edited on the preview. */
+type EditItem = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotlight }
+
+/**
+ * How the preview shows the recording at the playhead: the zoom camera (and, for a cursor
+ * spotlight, where the cursor is). Shapes are edited through it, so handles sit exactly on
+ * the drawn shape, zoomed or not.
+ */
+interface StageView {
+  cam: Camera
+  cursor: Pos | null
+}
+
+/** Maps between the overlay's pixels and normalised source coordinates through a camera. */
+interface Mapping {
+  toPx: (x: number, y: number) => Pos
+  toSource: (px: number, py: number) => Pos
+  /** Source units per overlay pixel. */
+  ux: number
+  uy: number
+}
+
+function mappingFor(cam: Camera, rect: Rect): Mapping {
+  const vx = cam.cx - 0.5 / cam.scale
+  const vy = cam.cy - 0.5 / cam.scale
+  const sx = cam.scale * rect.w
+  const sy = cam.scale * rect.h
+  return {
+    toPx: (x, y) => ({ x: rect.x + (x - vx) * sx, y: rect.y + (y - vy) * sy }),
+    toSource: (px, py) => ({ x: vx + (px - rect.x) / sx, y: vy + (py - rect.y) / sy }),
+    ux: 1 / sx,
+    uy: 1 / sy
+  }
+}
+
+/**
+ * The view while `item` can be edited (paused, playhead inside it), else null. Follows the
+ * player, but only re-renders when the camera or cursor actually moved.
+ */
+function useStageView(player: PreviewPlayer, project: Project, scene: RenderScene | undefined, item: EditItem | null): StageView | null {
+  const [view, setView] = useState<StageView | null>(null)
+  useEffect(() => {
+    if (!item || !scene) {
+      setView(null)
+      return
+    }
+    let last = ''
+    const update = (): void => {
+      const t = displayTime(project.clips, player.time)
+      if (player.playing || !itemVisibleAt(item.item, t)) {
+        if (last !== 'none') setView(null)
+        last = 'none'
+        return
+      }
+      const valid = scene.cursor.valid && scene.cursor.samples.length > 0
+      const cam = cameraAt(project.zooms, t, valid ? scene.focusPath : null, zoomStyleOf(project))
+      const cursor = item.type === 'spotlight' && item.item.mode === 'cursor' && valid ? cursorPositionAt(scene.cursorPath, project.clips, cursorLook(project.cursor).loopHome, t) : null
+      const key = `${cam.scale},${cam.cx},${cam.cy},${cursor?.x},${cursor?.y}`
+      if (key === last) return
+      last = key
+      setView({ cam, cursor })
+    }
+    update()
+    return player.subscribe(update)
+  }, [player, project, scene, item])
+  return view
+}
+
 /**
  * The preview canvas, sized to fill the stage at the output aspect ratio. Its
  * backing store follows devicePixelRatio but never exceeds the recording's own
  * resolution, so HiDPI screens get a sharp preview without wasted pixels.
  * Overlays: picking a zoom's focus point, and moving the selected text.
  */
-export const PreviewStage = memo(function PreviewStage({ project, pickZoom, selectedAnnotation, onTogglePlay, onExitPick }: Props): JSX.Element {
+export const PreviewStage = memo(function PreviewStage({ project, pickZoom, selectedAnnotation, onTogglePlay, onExitPick, scene, selection, onSelect }: Props): JSX.Element {
   const { store, player } = useEditor()
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -102,6 +194,50 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
     return { x: (clientX - r.left - rect.x) / rect.w, y: (clientY - r.top - rect.y) / rect.h }
   }
 
+  // The selected shape or spotlight, edited on the preview through the camera at the playhead.
+  const editItem = useMemo<EditItem | null>(() => {
+    if (pickZoom || !selection) return null
+    if (selection.kind === 'shape') {
+      const item = (project.shapes ?? []).find((s) => s.id === selection.id)
+      return item ? { type: 'shape', item } : null
+    }
+    if (selection.kind === 'spotlight') {
+      const item = (project.spotlights ?? []).find((s) => s.id === selection.id)
+      return item ? { type: 'spotlight', item } : null
+    }
+    return null
+  }, [pickZoom, selection, project.shapes, project.spotlights])
+  const view = useStageView(player, project, scene, editItem)
+  const mapping = view ? mappingFor(view.cam, rect) : null
+
+  /** Dragging on the preview outside the selected item draws it anew there (not a cursor spotlight). */
+  const redrawItem = (e: ReactPointerEvent<HTMLElement>, el: HTMLElement): boolean => {
+    if (!editItem || !mapping || (editItem.type === 'spotlight' && editItem.item.mode === 'cursor')) return false
+    const r = el.getBoundingClientRect()
+    const at = (ev: { clientX: number; clientY: number }): Pos => mapping.toSource(ev.clientX - r.left, ev.clientY - r.top)
+    const a = at(e)
+    const sx = e.clientX
+    const sy = e.clientY
+    const { type, item } = editItem
+    let drew = false
+    holdGesture(store)
+    followPointer(
+      e,
+      (ev) => {
+        if (!drew && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) return
+        drew = true
+        const b = at(ev)
+        if (type === 'shape') updateShape(store, item.id, drawnGeometry(item.kind, a, b))
+        else updateSpotlight(store, item.id, drawnBox(a, b))
+      },
+      (ev) => {
+        // A plain click still plays or pauses.
+        if (!drew && ev.type === 'pointerup' && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) onTogglePlay()
+      }
+    )
+    return true
+  }
+
   const setRegion = (id: string, box: RegionBox): void => {
     store.update((p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === id ? setZoomRegion(z, box) : z)) }), `zoom-region:${id}`)
   }
@@ -165,6 +301,10 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
       followPointer(e, (ev) => pickAt(ev.clientX, ev.clientY, el))
       return
     }
+    if (view && redrawItem(e, el)) {
+      e.preventDefault()
+      return
+    }
     // A plain click toggles playback; a drag does nothing.
     const sx = e.clientX
     const sy = e.clientY
@@ -190,6 +330,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
           {!pickZoom && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} box={box} />}
+          {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} onDone={() => onSelect?.(null)} />}
         </div>
       </div>
     </div>
@@ -360,5 +501,111 @@ function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Bo
       style={{ left: annotation.x * box.w - w / 2, top: annotation.y * box.h - h / 2, width: w, height: h }}
       onPointerDown={onDown}
     />
+  )
+}
+
+/* ---------- shapes and spotlights ---------- */
+
+type Store = ReturnType<typeof useEditor>['store']
+
+function updateShape(store: Store, id: string, patch: Partial<Shape>): void {
+  store.update((p) => ({ ...p, shapes: (p.shapes ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), `shape-geom:${id}`)
+}
+
+function updateSpotlight(store: Store, id: string, patch: Partial<Spotlight>): void {
+  store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), `spot-geom:${id}`)
+}
+
+const BOX_HANDLES: RegionHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+
+/**
+ * Handles for the selected shape or spotlight, where the compositor draws it: a box with
+ * resize handles (boxes, ellipses, highlights, blur, region spotlights), both ends of an
+ * arrow or line, or the lit area around the cursor (resized from its corners). Drags are
+ * mapped through the camera at the playhead, so they work the same zoomed in.
+ */
+function ShapeEditor({ edit, view, mapping, onDone }: { edit: EditItem; view: StageView; mapping: Mapping; onDone: () => void }): JSX.Element {
+  const { store } = useEditor()
+  const { type, item } = edit
+
+  /** Follows a drag from a handle; `apply` gets the pointer's movement in source units. */
+  const drag = (apply: (dx: number, dy: number, ev: PointerEvent) => void) => (e: ReactPointerEvent<Element>) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    releaseFocus(e.target)
+    const sx = e.clientX
+    const sy = e.clientY
+    holdGesture(store)
+    followPointer(e, (ev) => apply((ev.clientX - sx) * mapping.ux, (ev.clientY - sy) * mapping.uy, ev))
+  }
+
+  let body: JSX.Element
+  if (type === 'shape' && isLineKind(item.kind)) {
+    const a = mapping.toPx(item.x, item.y)
+    const b = mapping.toPx(item.x + item.w, item.y + item.h)
+    const initial = { x: item.x, y: item.y, w: item.w, h: item.h }
+    const moveEnd = (end: 'start' | 'end') =>
+      drag((dx, dy) => {
+        const from = end === 'start' ? { x: initial.x, y: initial.y } : { x: initial.x + initial.w, y: initial.y + initial.h }
+        updateShape(store, item.id, setLineEnd(initial, end, { x: from.x + dx, y: from.y + dy }))
+      })
+    body = (
+      <>
+        <svg className="shape-lines" aria-hidden="true">
+          <line className="guide" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+          <line className="hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} onPointerDown={drag((dx, dy) => updateShape(store, item.id, moveLine(initial, dx, dy)))} data-testid="shape-line" />
+        </svg>
+        <span className="shape-end" data-end="start" style={{ left: a.x, top: a.y }} onPointerDown={moveEnd('start')} title="Drag to move this end" />
+        <span className="shape-end" data-end="end" style={{ left: b.x, top: b.y }} onPointerDown={moveEnd('end')} title={item.kind === 'arrow' ? 'Drag to move the arrowhead' : 'Drag to move this end'} />
+      </>
+    )
+  } else {
+    const follows = type === 'spotlight' && item.mode === 'cursor'
+    const area = type === 'spotlight' ? spotlightArea(item, view.cursor) : shapeBounds(item)
+    const a = mapping.toPx(area.x, area.y)
+    const b = mapping.toPx(area.x + area.w, area.y + area.h)
+    const initial = { x: area.x, y: area.y, w: area.w, h: area.h }
+    const resize = (handle: RegionHandle) =>
+      drag((dx, dy, ev) => {
+        if (follows) updateSpotlight(store, item.id, resizeAround(initial, handle, dx, dy))
+        else if (type === 'spotlight') updateSpotlight(store, item.id, dragShapeBox(initial, handle, dx, dy, ev.shiftKey))
+        else updateShape(store, item.id, dragShapeBox(initial, handle, dx, dy, ev.shiftKey))
+      })
+    const round = (type === 'spotlight' && item.shape === 'ellipse') || (type === 'shape' && item.kind === 'ellipse')
+    body = (
+      <div
+        className={`shape-box ${follows ? 'follows' : ''}`}
+        style={{ left: a.x, top: a.y, width: b.x - a.x, height: b.y - a.y }}
+        onPointerDown={follows ? (e) => e.stopPropagation() : resize('move')}
+        data-testid="shape-box"
+        title={follows ? 'Follows the cursor: drag a corner to resize' : 'Drag to move · handles resize (Shift: keep the shape)'}
+      >
+        {round && <span className="shape-box round" style={{ inset: -1.5, pointerEvents: 'none' }} />}
+        {follows && <span className="shape-tag">Follows the cursor</span>}
+        {(follows ? (['nw', 'ne', 'sw', 'se'] as RegionHandle[]) : BOX_HANDLES).map((h) => (
+          <span
+            key={h}
+            className="shape-handle"
+            data-handle={h}
+            style={{ left: h.includes('w') ? 0 : h.includes('e') ? '100%' : '50%', top: h.includes('n') ? 0 : h.includes('s') ? '100%' : '50%' }}
+            onPointerDown={resize(h)}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const label = type === 'shape' ? shapeLabel(item.kind) : item.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight'
+  return (
+    <div className="shape-editor" data-testid="shape-editor" data-item={item.id}>
+      {body}
+      <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
+        {label} · drag to place it{type === 'spotlight' && item.mode === 'cursor' ? '' : ', or drag elsewhere to draw it again'} ·{' '}
+        <button className="link" onClick={onDone}>
+          Done
+        </button>
+      </div>
+    </div>
   )
 }

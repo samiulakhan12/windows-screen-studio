@@ -1,0 +1,314 @@
+/* Shapes, privacy blur and spotlight: inspector tools, timeline track, editor on the preview. */
+
+/* ---------- Inspector ---------- */
+.shape-tools {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.shape-tools.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.shape-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.shape-tool .icon {
+  color: #5eead4;
+}
+
+.shape-tool.privacy .icon {
+  color: #cbd5e1;
+}
+
+.shape-tool.spotlight .icon {
+  color: #f9a8d4;
+}
+
+.shape-tool:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #3a3a4e;
+  background: #20202d;
+}
+
+.shape-tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.shape-tools.two .shape-tool {
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 6px;
+  font-size: 12px;
+}
+
+.shape-colors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.shape-color {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.shape-color:hover {
+  transform: scale(1.1);
+}
+
+.shape-color.active {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent-2);
+}
+
+.shape-color.custom {
+  background: conic-gradient(#f43f5e, #f59e0b, #facc15, #4ade80, #38bdf8, #8b5cf6, #f43f5e);
+  overflow: hidden;
+}
+
+.shape-color.custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.shape-times {
+  display: grid;
+  grid-template-columns: 1fr 92px auto;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.shape-time-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.shape-time-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn.shape-time-now {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  justify-content: center;
+}
+
+.shape-actions {
+  flex-wrap: wrap;
+}
+
+.shape-actions .btn {
+  white-space: nowrap;
+}
+
+.shape-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shape-list button .icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.shape-list button > span:not(.muted) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shape-list button .muted {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.shape-list button.active {
+  background: var(--panel-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* ---------- Timeline ---------- */
+.shape-track {
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  cursor: col-resize;
+}
+
+.shape-seg {
+  bottom: auto;
+  gap: 4px;
+  background: linear-gradient(180deg, #0d9488, #0f766e);
+  border: 1px solid #5eead4;
+}
+
+.shape-seg.privacy {
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0 4px, transparent 4px 8px),
+    linear-gradient(180deg, #475569, #334155);
+  border-color: #cbd5e1;
+}
+
+.shape-seg.spotlight {
+  background: linear-gradient(180deg, #be185d, #9d174d);
+  border-color: #f9a8d4;
+}
+
+.shape-seg .seg-icon {
+  flex: none;
+  display: flex;
+  margin-left: 4px;
+  pointer-events: none;
+}
+
+.shape-seg .seg-label {
+  padding-left: 0;
+}
+
+/* ---------- Editor on the preview ---------- */
+.shape-box {
+  position: absolute;
+  border: 1.5px dashed var(--accent-2);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  cursor: move;
+}
+
+.shape-box.round {
+  border-radius: 50%;
+  border-style: solid;
+  border-color: rgba(167, 139, 250, 0.55);
+}
+
+.shape-box.follows {
+  cursor: default;
+}
+
+.shape-box .shape-tag {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 6px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(10, 10, 16, 0.8);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.shape-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 3px;
+  background: white;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.shape-handle[data-handle='nw'],
+.shape-handle[data-handle='se'] {
+  cursor: nwse-resize;
+}
+
+.shape-handle[data-handle='ne'],
+.shape-handle[data-handle='sw'] {
+  cursor: nesw-resize;
+}
+
+.shape-handle[data-handle='n'],
+.shape-handle[data-handle='s'] {
+  cursor: ns-resize;
+}
+
+.shape-handle[data-handle='e'],
+.shape-handle[data-handle='w'] {
+  cursor: ew-resize;
+}
+
+.shape-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.shape-lines .hit {
+  stroke: transparent;
+  stroke-width: 16px;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: move;
+}
+
+.shape-lines .guide {
+  stroke: var(--accent-2);
+  stroke-width: 1.5px;
+  stroke-dasharray: 5 4;
+  opacity: 0.9;
+}
+
+.shape-end {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+.shape-end:active {
+  cursor: grabbing;
+}
+
+.pick-hint.shape-hint {
+  pointer-events: auto;
+}

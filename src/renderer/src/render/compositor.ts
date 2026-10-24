@@ -147,6 +147,7 @@ export function drawFrame(
     radius,
     cam,
     screen,
+    options: opts,
     // Normalised source coordinates -> output pixels, through the camera.
     toOut: (x, y) => ({ x: rect.x + (x - viewX) * cam.scale * rect.w, y: rect.y + (y - viewY) * cam.scale * rect.h })
   }
