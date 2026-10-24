@@ -253,7 +253,7 @@ async function prepareRoute(route: ExportRoute, input: ExportInput, plan: JobPla
   if (route.video === 'none') return null
   if (route.video === 'ffmpeg') {
     return (canvas, ctx, startJob, base) =>
-      new RawFrameSink(canvas, ctx, (pixelFormat) => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat } }))
+      new RawFrameSink(canvas, ctx, (pixelFormat) => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat } }), base.format !== 'gif')
   }
   const { width, height, fps } = plan
   const configs = route.codec === 'vp9' ? vp9Configs : avcConfigs

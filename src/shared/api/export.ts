@@ -22,12 +22,18 @@ export interface ColorTags {
   fullRange: boolean | null
 }
 
-/** Byte order of raw frames (ffmpeg pixel format names). */
-export type RawPixelFormat = 'rgba' | 'bgra' | 'rgb0' | 'bgr0'
+/** Byte order of 32-bit canvas frames (ffmpeg pixel format names). */
+export type Rgb32Format = 'rgba' | 'bgra' | 'rgb0' | 'bgr0'
+
+/**
+ * Pixel format of raw frames: 32-bit as read back from the canvas (GIFs, whose palette wants
+ * RGB), or planar 4:2:0 YUV converted in the renderer (rgbToI420), 2.7x less to send.
+ */
+export type RawPixelFormat = Rgb32Format | 'yuv420p'
 
 /** How video reaches ffmpeg. */
 export type VideoInput =
-  /** Raw 32-bit frames, encoded by ffmpeg with `encoder`. */
+  /** Raw frames, encoded by ffmpeg with `encoder`. */
   | { kind: 'raw'; encoder: FfmpegVideoEncoder; pixelFormat: RawPixelFormat }
   /** An H.264 Annex B stream encoded in the renderer (WebCodecs); ffmpeg only muxes it. */
   | { kind: 'h264'; color: ColorTags }
