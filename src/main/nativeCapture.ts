@@ -728,3 +728,20 @@ export interface WindowWatchSession {
   stop(): Promise<WindowRectEvent[]>
   kill(): void
 }
+
+/**
+ * True when single-window capture with the cursor excluded is available (probe.windowCapture).
+ * CONTRACT stub — implemented by the native builder.
+ */
+export async function isNativeWindowCaptureAvailable(): Promise<boolean> {
+  return false
+}
+
+/**
+ * Starts "watch-window" for an Electron window source id ("window:<HWND>:<n>").
+ * CONTRACT stub — implemented by the native builder; callers must handle a throw / rejected
+ * `ready` by recording without window tracking.
+ */
+export function watchWindow(_windowId: string): WindowWatchSession {
+  throw new Error('Window watching is not available in this build')
+}
