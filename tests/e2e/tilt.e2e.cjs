@@ -2,8 +2,10 @@
 // where shared/engine/tilt.ts puts them (a light card on a dark background), perspective makes
 // the far edge shorter, a tilt that is off exports the very same pixels as a project without
 // one, 'Flatten on zoom' draws the flat frame while zoomed in, the preview is drawn flat while
-// a shape is selected, the Effects panel edits the tilt (one undo step per change) and "Save as
-// default" keeps it, and without WebGL the card is drawn flat with a warning.
+// a shape is edited on it (and stays tilted for a clip selected on the timeline), the Effects
+// panel edits the tilt (one undo step per change), "Save as default" and the style presets
+// keep it (their highlight follows an undo of the tilt), a preset following the cursor reads
+// as still on a recording without one, and without WebGL the card is drawn flat with a warning.
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -94,6 +96,8 @@ function exportFrame(file, index) {
   h.assert(width === W && height === H, `export is ${W}x${H} (got ${width}x${height})`)
   return grayImage(frames[0], width, height)
 }
+
+const isPlaying = (win) => win.$eval('.transport .btn.round', (b) => b.dataset.playing === 'true')
 
 /** The preview canvas as a grey image. */
 async function previewImage(win) {
@@ -264,7 +268,7 @@ async function main() {
     h.assert(!cardIs(mid, cardCorners(W, H, tilt)) || !cardIs(mid, cardCorners(W, H, null)), 'moving between the two during the transition')
   }))
 
-  await test('tilt: the preview is tilted, and drawn flat while a shape is selected', fx.withHome('tilt-preview', async (ctx, home) => {
+  await test('tilt: the preview is tilted, flat while a shape is edited on it, tilted for a clip selection and during playback', fx.withHome('tilt-preview', async (ctx, home) => {
     const shape = { id: 's1', kind: 'rect', start: 0, end: 4, x: 0.4, y: 0.4, w: 0.2, h: 0.2, color: '#ebebeb', strokeWidth: 2, fill: false, opacity: 1, strength: 0.5 }
     seed(home, 'rec-prev', 'Preview tilt', 4, { tilt: TILT, shapes: [shape] })
     const { win } = await launch(ctx, home)
@@ -291,6 +295,29 @@ async function main() {
 
     await win.keyboard.press('Escape')
     await f.waitFor(async () => cardIs(await previewImage(win), tilted), 'tilted again once nothing is selected', 5000)
+
+    // A clip selected on the timeline (a click on the clip track, which also moves the
+    // playhead) has nothing to edit on the preview: it stays tilted.
+    const track = await win.$eval('.clip-block', (el) => el.getBoundingClientRect().toJSON())
+    await win.mouse.click(track.left + track.width * 0.6, track.top + track.height / 2)
+    await win.waitForSelector('.clip-block.selected')
+    for (let i = 0; i < 4; i++) {
+      await h.sleep(150)
+      checkCard(await previewImage(win), tilted, `preview with a clip selected (${i})`)
+    }
+    // Played with the shape selected (no handles while playing), the preview shows the tilt;
+    // paused on the shape, it is flat again.
+    await win.click('.shape-seg[data-shape="s1"]')
+    await f.waitFor(async () => cardIs(await previewImage(win), flat), 'flat again with the shape selected', 5000)
+    await win.keyboard.press('Home')
+    await win.keyboard.press('Space')
+    await f.waitFor(() => isPlaying(win), 'playing', 3000)
+    await f.waitFor(async () => cardIs(await previewImage(win), tilted), 'tilted while playing with the shape selected', 2500)
+    await win.keyboard.press('Space')
+    await f.waitFor(async () => !(await isPlaying(win)), 'paused', 3000)
+    await f.waitFor(async () => cardIs(await previewImage(win), flat), 'flat once paused on the selected shape', 5000)
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => cardIs(await previewImage(win), tilted), 'tilted once the shape is let go', 5000)
   }))
 
   await test('tilt: the Effects panel switches it on, applies presets and sliders as single undo steps; "Save as default" keeps it', fx.withHome('tilt-panel', async (ctx, home) => {
@@ -340,16 +367,42 @@ async function main() {
     h.assert(JSON.stringify(stored.tilt) === JSON.stringify({ enabled: true, rotateX: 6, rotateY: -20, perspective: 0.55, animate: 'zoom' }), `tilt saved with the default look: ${JSON.stringify(stored.tilt)}`)
 
     // A built-in preset with a tilt, then one without: the second switches it off.
-    await win.click('.preset-summary')
-    await win.click('button[aria-label="Laptop showcase preset"]')
+    const showcase = 'button[aria-label="Laptop showcase preset"]'
+    const pressed = async (sel) => (await win.getAttribute(sel, 'aria-pressed')) === 'true'
+    const openPresets = async () => {
+      if (await win.$('.preset-summary')) await win.click('.preset-summary')
+      await win.waitForSelector(showcase)
+    }
+    await openPresets()
+    await win.click(showcase)
     tilt = await saved((t) => t?.rotateX === 14, 'the Laptop showcase tilt')
     h.assert(tilt.enabled && tilt.rotateY === -12 && tilt.animate === 'zoom', `showcase tilt: ${JSON.stringify(tilt)}`)
+    await f.waitFor(() => pressed(showcase), 'the Laptop showcase tile is lit', 3000)
+    // The tilt alone switched off and back on (undo): the tile follows.
+    await win.click('.insp-tabs button:has-text("Effects")')
+    await win.click('label.toggle:has-text("Tilt the recording in 3D")')
+    await saved((t) => t?.enabled === false, 'the showcase tilt switched off')
+    await win.click('.insp-tabs button:has-text("Style")')
+    await openPresets()
+    h.assert(!(await pressed(showcase)), 'without its tilt the project is not the Laptop showcase look')
+    await win.keyboard.press('Control+z')
+    await saved((t) => t?.enabled === true && t.rotateX === 14, 'undo: the showcase tilt is back')
+    await f.waitFor(() => pressed(showcase), 'the Laptop showcase tile is lit again after the undo', 3000)
     await win.click('button[aria-label="Studio preset"]')
     tilt = await saved((t) => t?.enabled === false, 'Studio switches the tilt off')
     h.assert(tilt.rotateX === 14, 'and keeps the angles for later')
 
-    // Off again from the panel.
+    // A preset that follows the cursor, on this recording without cursor positions: the panel
+    // shows the card standing still, and says why.
+    await win.click('button[aria-label="Midnight browser preset"]')
+    tilt = await saved((t) => t?.enabled === true && t.animate === 'cursor', 'the Midnight browser tilt')
     await win.click('.insp-tabs button:has-text("Effects")')
+    const chip = (label) => win.getAttribute(`.chips[aria-label="Tilt movement"] .chip:has-text("${label}")`, 'aria-pressed')
+    h.assert((await chip('Still')) === 'true' && (await chip('Follow cursor')) === 'false', 'no cursor to follow: the movement reads Still')
+    const why = await win.textContent('[data-testid="tilt-movement"]')
+    h.assert(/no cursor positions/.test(why) && !/leans/.test(why), `the hint says there is no cursor to follow: ${why}`)
+
+    // Off again from the panel.
     await win.click('button[aria-label="Top tilt"]')
     tilt = await saved((t) => t?.enabled === true && t.rotateX === 24, 'a preset turns the tilt back on')
     await win.click('label.toggle:has-text("Tilt the recording in 3D")')

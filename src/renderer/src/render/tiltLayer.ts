@@ -1,5 +1,5 @@
 import type { Rect } from '../../../shared/engine/layout'
-import { poseIsFlat, projectRect, quadBounds, tiltOf, tiltPoseAt, tiltView, type TiltPoint } from '../../../shared/engine/tilt'
+import { leansToCursor, poseIsFlat, projectRect, quadBounds, tiltOf, tiltPoseAt, tiltViewAt, type TiltFocus, type TiltPoint } from '../../../shared/engine/tilt'
 import type { Camera } from '../../../shared/engine/zoom'
 import type { Project } from '../../../shared/types'
 import { cardBody, cardExtent, type CardGeometry, type CardSpec } from './staticLayer'
@@ -14,7 +14,8 @@ import { cardBody, cardExtent, type CardGeometry, type CardSpec } from './static
  * frame and reused for every frame after (canvases only grow, buffers are preallocated). The
  * contexts are kept in a small pool keyed weakly by the target: browsers lose the oldest
  * context past about 16, and every export draws on a new canvas, so the least recently used
- * one is released instead (and those of canvases that are gone).
+ * one is released instead, and those of canvases that are gone (looked for on every frame
+ * while the pool is not empty). An export lets go of its own with releaseTilt when it is done.
  */
 
 type Ctx = CanvasRenderingContext2D
@@ -179,19 +180,16 @@ function release(w: Warp): void {
   w.view.width = w.view.height = 0
 }
 
-/** The card canvas and WebGL context of `target`, made on first use; null without WebGL. */
-function warpFor(target: Ctx): Warp | null {
-  if (!unavailable && typeof document === 'undefined') unavailable = true
-  if (unavailable) {
-    warnOnce('WebGL is not available')
-    return null
-  }
+/**
+ * Releases the warps whose canvas is gone or whose context the GPU dropped (made again on the
+ * next tilted frame) and returns the one of `target`, if any, moved to the most recently used end.
+ */
+function sweep(target: Ctx | null): Warp | null {
   let found: Warp | null = null
   for (let i = warps.length - 1; i >= 0; i--) {
     const w = warps[i]
     const t = w.target.deref()
     if (!t || w.gl.isContextLost()) {
-      // Its canvas is gone, or the GPU dropped the context (made again below).
       release(w)
       warps.splice(i, 1)
     } else if (t === target) {
@@ -202,6 +200,26 @@ function warpFor(target: Ctx): Warp | null {
       }
     }
   }
+  return found
+}
+
+/**
+ * Lets go of the WebGL context and card canvas the tilt keeps for `target` (an export or
+ * thumbnail canvas that is done), instead of holding them until the pool needs room.
+ */
+export function releaseTilt(target: Ctx): void {
+  const i = warps.findIndex((w) => w.target.deref() === target)
+  if (i >= 0) release(warps.splice(i, 1)[0])
+}
+
+/** The card canvas and WebGL context of `target`, made on first use; null without WebGL. */
+function warpFor(target: Ctx): Warp | null {
+  if (!unavailable && typeof document === 'undefined') unavailable = true
+  if (unavailable) {
+    warnOnce('WebGL is not available')
+    return null
+  }
+  const found = sweep(target)
   if (found) return found
   const made = createWarp(target)
   if (!made) {
@@ -216,19 +234,27 @@ function warpFor(target: Ctx): Warp | null {
 
 /**
  * Starts a tilted frame: when `project` has its tilt on and the pose at `t` is not flat (the
- * 'zoom' animation can flatten it completely), returns the cleared card canvas to paint the
- * card on, in output coordinates, and where it will land. Null means: draw the frame flat.
+ * 'zoom' animation can flatten it completely) or the card leans toward the cursor, returns the
+ * cleared card canvas to paint the card on, in output coordinates, and where it will land.
+ * Null means: draw the frame flat.
  */
-export function beginTiltedCard(target: Ctx, w: number, h: number, t: number, project: Project, cam: Camera, focus: { at(t: number): { x: number; y: number } } | null, spec: CardSpec, geom: CardGeometry): TiltedCard | null {
+export function beginTiltedCard(target: Ctx, w: number, h: number, t: number, project: Project, cam: Camera, focus: TiltFocus | null, spec: CardSpec, geom: CardGeometry): TiltedCard | null {
   const tilt = tiltOf(project)
-  if (!tilt) return null
+  if (!tilt) {
+    // Frames without a tilt let go of the contexts of canvases that are gone (none kept: nothing to do).
+    if (warps.length) sweep(null)
+    return null
+  }
   const pose = tiltPoseAt(tilt, t, cam, focus)
-  if (poseIsFlat(pose)) return null
+  const leaning = leansToCursor(tilt, focus)
+  // A flat pose is the flat card; one leaning toward the cursor keeps its leaning size even then.
+  if (poseIsFlat(pose) && !leaning) return null
   const warp = warpFor(target)
   if (!warp) return null
   const extent = cardExtent(spec, geom)
-  // Tilted, the card keeps the style's padding from the frame's edges (as far as the flat card does).
-  const view = tiltView(pose, cardBody(spec, geom), w, h, spec.style.padding * Math.min(w, h))
+  // Tilted, the card keeps the style's padding from the frame's edges (as far as the flat card
+  // does); leaning toward the cursor, it keeps one size.
+  const view = tiltViewAt(tilt, pose, leaning, cardBody(spec, geom), w, h, spec.style.padding * Math.min(w, h))
   const { card, cardCtx } = warp
   if (card.width < extent.w || card.height < extent.h) {
     card.width = Math.max(card.width, Math.ceil(extent.w / GROW_STEP) * GROW_STEP)

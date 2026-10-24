@@ -116,12 +116,12 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
     }
   }
 
-  // Which presets the project looks like now; only its style, cursor and zoom settings matter.
-  const { style, cursor, zoomSettings, autoZoom } = project
+  // Which presets the project looks like now; only its style, cursor, zoom settings and tilt matter.
+  const { style, cursor, zoomSettings, autoZoom, tilt } = project
   const matching = useMemo(() => {
-    const look = { ...project, style, cursor, zoomSettings, autoZoom }
+    const look = { ...project, style, cursor, zoomSettings, autoZoom, tilt }
     return new Set([...BUILT_IN_PRESETS, ...(mine ?? [])].filter((p) => presetMatches(look, p.look)).map((p) => p.id))
-  }, [style, cursor, zoomSettings, autoZoom, mine])
+  }, [style, cursor, zoomSettings, autoZoom, tilt, mine])
 
   const card = (preset: StylePreset, own: boolean): JSX.Element => {
     const active = matching.has(preset.id)
@@ -211,7 +211,7 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
               <Icon name="plus" size={16} /> Save this look as a preset…
             </button>
           )}
-          <p className="hint">A preset sets the background, card, device frame, cursor look and zoom style in one step; undo brings the previous look back.</p>
+          <p className="hint">A preset sets the background, card, device frame, 3D tilt, cursor look and zoom style in one step; undo brings the previous look back.</p>
         </>
       )}
     </Section>

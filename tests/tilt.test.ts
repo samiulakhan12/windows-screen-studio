@@ -4,6 +4,8 @@ import {
   CURSOR_LEAN,
   cursorLean,
   DEFAULT_TILT,
+  leanFit,
+  leansToCursor,
   poseIsFlat,
   projectPoint,
   projectRect,
@@ -15,6 +17,7 @@ import {
   tiltPoseAt,
   tiltSettingsOf,
   tiltView,
+  tiltViewAt,
   TILT_PRESETS,
   ZOOM_FLAT_SCALE,
   zoomFlatten,
@@ -308,6 +311,98 @@ describe('tiltPoseAt: animation', () => {
     const moving = { at: (s: number) => ({ x: 0.5 + 0.4 * Math.sin(s), y: 0.5 }) }
     expect(tiltPoseAt(t, 2.5, REST, moving)).toEqual(tiltPoseAt(t, 2.5, REST, moving))
     expect(tiltPoseAt(t, 2.5, REST, moving)).not.toEqual(tiltPoseAt(t, 0, REST, moving))
+  })
+})
+
+describe('tiltViewAt: a card leaning toward the cursor keeps one size', () => {
+  // The "Midnight browser" look at 1080p: padding 0.08, a browser frame, turned right, following the cursor.
+  const pad = 0.08 * H
+  const body: Rect = { x: pad, y: pad, w: W - 2 * pad, h: H - 2 * pad }
+  const midnight = settings({ rotateX: 6, rotateY: 16, perspective: 0.55, animate: 'cursor' })
+  const at = (x: number, y: number, tilt = midnight, cam = REST) => {
+    const focus = { at: () => ({ x, y }) }
+    return tiltViewAt(tilt, tiltPoseAt(tilt, 0, cam, focus), leansToCursor(tilt, focus), body, W, H, pad)
+  }
+  const spots = [-0.5, 0, 0.1, 0.25, 0.5, 0.75, 0.9, 1, 1.5]
+
+  it('has the same fit wherever the cursor is, only the angles change', () => {
+    // Fitted pose by pose, the card would grow and shrink with the cursor (by about 6% here).
+    const own = [pose(1, 11, 0.55), pose(6, 16, 0.55), pose(11, 21, 0.55)].map((a) => tiltView(a, body, W, H, pad).fit)
+    expect(Math.max(...own) - Math.min(...own)).toBeGreaterThan(0.04)
+    const fit = leanFit(midnight, body, W, H, pad)
+    expect(fit).toBeLessThanOrEqual(Math.min(...own))
+    const angles = new Set<string>()
+    for (const x of spots) {
+      for (const y of spots) {
+        const v = at(x, y)
+        expect(v.fit).toBe(fit)
+        angles.add(`${v.ax},${v.by}`)
+      }
+    }
+    expect(angles.size).toBeGreaterThan(20)
+    // Zoomed in, the cursor is read through the camera: still the same size.
+    expect(at(0.3, 0.6, midnight, { scale: 2, cx: 0.3, cy: 0.4 }).fit).toBe(fit)
+  })
+
+  it('keeps every corner inside the padding for any lean (the widest pose can lie inside the range)', () => {
+    let seed = 3
+    const rand = (): number => {
+      seed = (seed * 16807) % 2147483647
+      return seed / 2147483647
+    }
+    for (let i = 0; i < 60; i++) {
+      const m = rand() * 0.15 * H
+      const b: Rect = { x: m, y: m, w: W - 2 * m, h: H - 2 * m }
+      const tilt = settings({ rotateX: -30 + rand() * 60, rotateY: -30 + rand() * 60, perspective: rand(), animate: 'cursor' })
+      const fit = leanFit(tilt, b, W, H, m)
+      for (let a = 0; a <= 20; a++) {
+        for (let c = 0; c <= 20; c++) {
+          const focus = { at: () => ({ x: a / 20, y: c / 20 }) }
+          const v = tiltViewAt(tilt, tiltPoseAt(tilt, 0, REST, focus), true, b, W, H, m)
+          expect(v.fit).toBe(fit)
+          for (const p of projectRect(v, b)) {
+            // Lean poses are tried a grid apart: a pose between them may come a hair closer.
+            expect(p.x).toBeGreaterThanOrEqual(m - 0.25)
+            expect(p.x).toBeLessThanOrEqual(W - m + 0.25)
+            expect(p.y).toBeGreaterThanOrEqual(m - 0.25)
+            expect(p.y).toBeLessThanOrEqual(H - m + 0.25)
+          }
+        }
+      }
+    }
+  })
+
+  it('is tiltView when the card does not lean', () => {
+    const p = pose(12, -18, 0.6)
+    for (const animate of ['none', 'zoom', 'cursor'] as const) {
+      expect(tiltViewAt(settings({ ...p, animate }), p, false, body, W, H, pad)).toEqual(tiltView(p, body, W, H, pad))
+    }
+    // A 'zoom' card grows back to full size as it straightens.
+    const flat = pose(0, 0, 0.6)
+    expect(tiltViewAt(settings({ ...p, animate: 'zoom' }), flat, false, body, W, H, pad).fit).toBe(1)
+  })
+
+  it('follows the card: a pulled-back card, another frame size or other angles get their own fit', () => {
+    const small: Rect = { x: body.x + 300, y: body.y + 170, w: body.w - 600, h: body.h - 340 }
+    const fit = at(0.5, 0.5).fit
+    const focus = { at: () => ({ x: 0.5, y: 0.5 }) }
+    const v = tiltViewAt(midnight, tiltPoseAt(midnight, 0, REST, focus), true, small, W, H, pad)
+    expect(v.fit).toBe(leanFit(midnight, small, W, H, pad))
+    expect(v.fit).toBeGreaterThan(fit)
+    const steeper = settings({ ...midnight, rotateY: 28 })
+    expect(at(0.5, 0.5, steeper).fit).toBe(leanFit(steeper, body, W, H, pad))
+    expect(at(0.5, 0.5, steeper).fit).toBeLessThan(fit)
+    // And back: the first one again.
+    expect(at(0.9, 0.1).fit).toBe(fit)
+  })
+
+  it('leans only with a cursor to follow', () => {
+    const focus = { at: () => ({ x: 0, y: 0 }) }
+    expect(leansToCursor(midnight, focus)).toBe(true)
+    expect(leansToCursor(midnight, null)).toBe(false)
+    expect(leansToCursor(settings({ animate: 'zoom' }), focus)).toBe(false)
+    // No lean room needed for a small tilt on a well padded card.
+    expect(leanFit(pose(2, 2, 0.2), BODY, W, H)).toBe(1)
   })
 })
 

@@ -62,6 +62,7 @@ const MOVEMENT: Record<TiltAnimation, string> = {
   cursor: 'The card leans a little toward the cursor as it moves, so the part you work on comes forward.',
   zoom: 'The card straightens up while the camera zooms in, so zoomed-in details stay easy to read.'
 }
+const NO_CURSOR = 'This recording has no cursor positions to follow'
 
 const degrees = (v: number): number => Math.round(Math.abs(v))
 
@@ -73,6 +74,9 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
   // Asked once per panel: without WebGL the tilt is drawn flat (the compositor says so too).
   const supported = useMemo(() => tiltSupported(), [])
   const set = (patch: Partial<TiltSettings>, key?: string): void => store.update((p) => ({ ...p, tilt: { ...tiltSettingsOf(p), ...patch } }), key)
+  // Following the cursor (from a preset or a saved default) without one to follow: the card stands still.
+  const noCursor = tilt.animate === 'cursor' && !cursor.valid
+  const movement: TiltAnimation = noCursor ? 'none' : tilt.animate
   const A = TILT_LIMITS.angle
   return (
     <Section title="3D tilt">
@@ -129,7 +133,7 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
       />
       <Chips
         label="Tilt movement"
-        value={tilt.animate}
+        value={movement}
         disabled={!on}
         onChange={(animate) => set({ animate })}
         options={[
@@ -137,19 +141,19 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
           {
             value: 'cursor',
             label: 'Follow cursor',
-            title: cursor.valid ? MOVEMENT.cursor : 'This recording has no cursor positions to follow',
+            title: cursor.valid ? MOVEMENT.cursor : NO_CURSOR,
             disabled: !cursor.valid
           },
           { value: 'zoom', label: 'Flatten on zoom', title: MOVEMENT.zoom }
         ]}
       />
-      <p className="hint">{MOVEMENT[tilt.animate]}</p>
+      <p className="hint" data-testid="tilt-movement">{noCursor ? `${NO_CURSOR}, so the card keeps these angles.` : MOVEMENT[movement]}</p>
       {!supported && (
         <p className="hint tilt-warn" data-testid="tilt-unsupported">
           3D tilt needs WebGL, which this computer's graphics driver does not provide: the video is shown and exported flat.
         </p>
       )}
-      <p className="hint">While something is selected or edited on the preview, it is shown flat so the handles line up with the video.</p>
+      <p className="hint">While a shape or spotlight is edited on the preview, or a zoom's focus is picked, the preview shows the card flat so the handles line up with the video.</p>
     </Section>
   )
 }
