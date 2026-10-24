@@ -92,15 +92,21 @@ describe('saved default look: tilt', () => {
 describe('style presets: tilt', () => {
   it('some built-in presets tilt the card, the others switch the tilt off', () => {
     const tilted = BUILT_IN_PRESETS.filter((p) => p.look.tilt?.enabled)
-    expect(tilted.length).toBeGreaterThanOrEqual(1)
+    expect(tilted.map((p) => p.id)).toEqual(['midnight-browser', 'showcase'])
     for (const p of BUILT_IN_PRESETS) expect(p.look.tilt).toBeDefined()
-    for (const p of tilted) expect(sanitizePresetLook(p.look)?.tilt).toEqual(p.look.tilt)
+    // Complete tilts that survive validation unchanged.
+    for (const p of tilted) {
+      expect(Object.keys(p.look.tilt!).sort()).toEqual(['animate', 'enabled', 'perspective', 'rotateX', 'rotateY'])
+      expect(sanitizePresetLook(p.look)?.tilt).toEqual(p.look.tilt)
+    }
   })
 
   it('applies a tilted preset, and a flat one switches it off but keeps the angles', () => {
-    const showcase = BUILT_IN_PRESETS.find((p) => p.look.tilt?.enabled)!
-    const tilted = applyPreset(newProject(), showcase.look)
-    expect(tiltOf(tilted)).toEqual({ ...DEFAULT_TILT, ...showcase.look.tilt })
+    for (const preset of BUILT_IN_PRESETS.filter((p) => p.look.tilt?.enabled)) {
+      const tilted = applyPreset({ ...newProject(), tilt: { ...HERO, enabled: false } }, preset.look)
+      expect(tiltOf(tilted), preset.id).toEqual(preset.look.tilt)
+      expect(presetMatches(tilted, preset.look), preset.id).toBe(true)
+    }
     const studio = BUILT_IN_PRESETS.find((p) => p.id === 'studio')!
     const flat = applyPreset({ ...newProject(), tilt: HERO }, studio.look)
     expect(flat.tilt).toEqual({ ...HERO, enabled: false })

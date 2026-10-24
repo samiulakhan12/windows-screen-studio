@@ -71,7 +71,9 @@ export const BUILT_IN_PRESETS: StylePreset[] = [
     look: look(
       { background: { type: 'wallpaper', id: 'midnight-glow' }, padding: 0.08, cornerRadius: 12, shadow: 0.7, shadowStyle: 'soft', border: NO_BORDER, frame: { kind: 'browser', theme: 'dark' } },
       { size: 1.4, style: 'mac', highlight: noHighlight, clickStyle: 'ripple', clickColor: '#a78bfa' },
-      { defaultScale: 2, easing: 'snappy', transition: 0.55 }
+      { defaultScale: 2, easing: 'snappy', transition: 0.55 },
+      // The window turned a little to the right, leaning toward where you work.
+      { enabled: true, rotateX: 6, rotateY: 16, perspective: 0.55, animate: 'cursor' }
     )
   },
   {
