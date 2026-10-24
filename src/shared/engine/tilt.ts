@@ -124,9 +124,10 @@ export const leansToCursor = (tilt: TiltSettings, focus: TiltFocus | null): focu
  * The tilt's pose at source time `t`. 'none' keeps the set angles; 'cursor' leans up to
  * CURSOR_LEAN degrees further toward the smoothed cursor (the side it is on comes forward), or
  * toward what the zoom camera aims at instead while one of `zooms` holds its aim on a click or
- * on the field being typed into (aimAt: the idle mouse is not followed then); 'zoom' flattens
- * the card while the camera is zoomed in, following the camera's level, so zoomed details stay
- * readable. A pure function of t, like the camera.
+ * on the field being typed into (aimAt: the idle mouse is not followed then, and the lean turns
+ * over as the camera moves in and out, never in one frame); 'zoom' flattens the card while the
+ * camera is zoomed in, following the camera's level, so zoomed details stay readable. A pure
+ * function of t, like the camera.
  */
 export function tiltPoseAt(tilt: TiltSettings, t: number, cam: Camera, focus: TiltFocus | null, zooms: ZoomSegment[] = [], style: ZoomStyle = DEFAULT_ZOOM_STYLE): TiltAngles {
   let rx = tilt.rotateX

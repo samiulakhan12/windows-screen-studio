@@ -200,6 +200,46 @@ describe('preview camera while it seeks, paused', () => {
     expect(frames).toEqual([])
   })
 
+  it('is not held up by a camera the frame does not show: turned off, or hidden by the layout', () => {
+    for (const hide of ['off', 'screen-only'] as const) {
+      const screen = new FakeVideo()
+      const camera = new FakeVideo()
+      const p = project()
+      if (hide === 'off') p.webcam = { ...p.webcam, show: false }
+      else p.layouts = [{ id: 'l', start: 0, end: 30, layout: 'screen-only' }]
+      const player = new PreviewPlayer(screen, camera, p)
+      screen.land()
+      camera.land()
+      player.attachCanvas({ width: 640, height: 360, getContext: () => ({}) })
+      player.setScene({ project: p, cursor: { samples: [], clicks: [], valid: false } }, null)
+      frame()
+      draws.length = 0
+      // A slow drag: the screen lands before each next move, the camera (seeked along) never does.
+      for (let i = 1; i <= 10; i++) {
+        player.seek(i)
+        screen.land()
+        frame()
+      }
+      expect(camera.seeking).toBe(true)
+      expect(draws.map((d) => d.t)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+      // Its landing changes nothing on screen: no redraw.
+      camera.land()
+      frame()
+      expect(draws).toHaveLength(10)
+      if (hide === 'screen-only') {
+        // Past the hiding segment the camera shows again, and is waited for.
+        player.seek(40)
+        screen.land()
+        frame()
+        expect(draws).toHaveLength(10)
+        camera.land()
+        frame()
+        expect(draws).toHaveLength(11)
+      }
+      player.dispose()
+    }
+  })
+
   it('is not held up by a camera file that failed', () => {
     const { screen, camera, player } = setUp()
     player.seek(10)

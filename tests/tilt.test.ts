@@ -27,8 +27,8 @@ import {
   type TiltAngles,
   type TiltPoint
 } from '../src/shared/engine/tilt'
-import { autoZoomsForTrack, cameraAt, DEFAULT_ZOOM_SETTINGS, focusPathFor, type Camera } from '../src/shared/engine/zoom'
-import type { CameraLayout, CursorSample, CursorTrack, Project, TiltSettings } from '../src/shared/types'
+import { aimAt, autoZoomsForTrack, cameraAt, DEFAULT_ZOOM_SETTINGS, focusPathFor, ZOOM_TRANSITION, type Camera } from '../src/shared/engine/zoom'
+import type { CameraLayout, CursorSample, CursorTrack, Project, TiltSettings, ZoomSegment } from '../src/shared/types'
 
 const W = 1920
 const H = 1080
@@ -439,6 +439,55 @@ describe('tiltPoseAt: the cursor lean during an auto zoom', () => {
       expect(mouse.rotateX).toBeCloseTo(midnight.rotateX + CURSOR_LEAN, 6)
       expect(mouse.rotateY).toBeCloseTo(midnight.rotateY - CURSOR_LEAN, 6)
     }
+  })
+
+  /** Largest change of either angle from one 60 fps frame to the next over [t0, t1], and when. */
+  function maxStep(zs: ZoomSegment[], t0: number, t1: number): { step: number; at: number } {
+    let prev: TiltAngles | null = null
+    let step = 0
+    let at = t0
+    for (let i = Math.round(t0 * 60); i <= Math.round(t1 * 60); i++) {
+      const t = i / 60
+      const p = tiltPoseAt(midnight, t, cameraAt(zs, t, focus), focus, zs)
+      const d = prev ? Math.max(Math.abs(p.rotateX - prev.rotateX), Math.abs(p.rotateY - prev.rotateY)) : 0
+      if (d > step) {
+        step = d
+        at = t
+      }
+      prev = p
+    }
+    return { step, at }
+  }
+
+  it('turns over to the field as the camera moves in and back as it moves out, never in one frame', () => {
+    const z = zooms[0]
+    // At the zoom's very start and end the lean is the mouse's, as the camera is the full frame.
+    for (const t of [z.start, z.end]) {
+      const cam = cameraAt(zooms, t, focus)
+      expect(tiltPoseAt(midnight, t, cam, focus, zooms)).toEqual(tiltPoseAt(midnight, t, cam, focus))
+    }
+    // Following the mouse alone, the card turns at most 0.4 degrees a frame here. Switching the
+    // lean at once would turn it 3.8 degrees in the frame the zoom starts and 7.8 as it ends.
+    const { step, at } = maxStep(zooms, 0, 10)
+    expect(step, `at ${at}`).toBeLessThan(0.6)
+  })
+
+  it('pans the lean from one field to the next across connected typing zooms, as the camera pans', () => {
+    const z = zooms[0]
+    const a: ZoomSegment = { ...z, id: 'a', start: 1.5, end: 4, anchor: { t: 1.5, x: 0.15, y: 0.12, until: 4 } }
+    const b: ZoomSegment = { ...z, id: 'b', start: 4, end: 7, anchor: { t: 4, x: 0.8, y: 0.2, until: 7 } }
+    const chain = [a, b]
+    // Still on the first field as the second zoom starts; on the second once the camera got there.
+    const near = (p: { x: number; y: number }, x: number, y: number): void => {
+      expect(p.x).toBeCloseTo(x, 9)
+      expect(p.y).toBeCloseTo(y, 9)
+    }
+    near(aimAt(chain, 4, focus), 0.15, 0.12)
+    near(aimAt(chain, 4 + ZOOM_TRANSITION, focus), 0.8, 0.2)
+    const mid = aimAt(chain, 4 + ZOOM_TRANSITION / 2, focus)
+    expect(mid.x).toBeGreaterThan(0.2)
+    expect(mid.x).toBeLessThan(0.75)
+    expect(maxStep(chain, 0, 10).step).toBeLessThan(0.6)
   })
 
   it('follows the cursor again once the zoom has ended, and wherever no zoom holds its aim', () => {

@@ -1,5 +1,6 @@
 import type { StemKind } from '../../../shared/audio/settings'
 import { displayTime } from '../../../shared/editor/clips'
+import { cameraShownAt } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
 import { webcamLook } from '../../../shared/engine/webcamData'
@@ -217,14 +218,16 @@ export class PreviewPlayer {
 
   /**
    * Redraws on the next animation frame (coalesced); a no-op while playing. Not while the screen
-   * or the camera seeks: the frame would show the camera missing (with a camera layout, the whole
-   * picture changes); the one landing last redraws.
+   * seeks, nor while the camera seeks when the frame shows it: it would be missing (with a camera
+   * layout, the whole picture changes); the one landing last redraws. A camera the frame does not
+   * show (turned off, or hidden by the layout) is not waited for.
    */
   invalidate = (): void => {
     if (this.playing || this.drawRaf || this.disposed) return
     this.drawRaf = requestAnimationFrame(() => {
       this.drawRaf = 0
-      if (!this.playing && !this.screen.seeking && !this.webcamSeeking()) this.draw(this.screen.currentTime)
+      const t = this.screen.currentTime
+      if (!this.playing && !this.screen.seeking && !(this.webcamSeeking() && this.webcamShownAt(t))) this.draw(t)
     })
   }
 
@@ -247,6 +250,14 @@ export class PreviewPlayer {
   /** True while the camera seeks (an element that failed never lands: it does not hold drawing up). */
   private webcamSeeking(): boolean {
     return !!this.webcam?.seeking && !this.webcam.error
+  }
+
+  /** True when the frame at `t` shows the camera: the compositor's own test (cameraShownAt), at the size it draws. */
+  private webcamShownAt(t: number): boolean {
+    const { canvas, scene } = this
+    if (!canvas || !scene) return false
+    const p = scene.project
+    return cameraShownAt(p, canvas.width, canvas.height, this.screen.videoWidth || p.width, this.screen.videoHeight || p.height, t)
   }
 
   /**
@@ -459,7 +470,8 @@ export class PreviewPlayer {
   private onWebcamSeeked = (): void => {
     if (this.webcamSeeking()) return
     this.releaseWebcam()
-    this.invalidate()
+    // A camera the paused frame does not show changes nothing in it.
+    if (this.webcamShownAt(this.screen.currentTime)) this.invalidate()
   }
 
   private setRate(speed: number): void {
