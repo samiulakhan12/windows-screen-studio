@@ -73,6 +73,13 @@ export interface WindowRectEvent {
   width: number
   height: number
   minimized?: boolean
+  /**
+   * Whether the cursor is over the recorded window itself (the top-level window under the
+   * cursor, via WindowFromPoint + GetAncestor(GA_ROOTOWNER), is the recorded one). False while
+   * another app's window covers the spot. The helper also emits a 'window' event when only
+   * this changes. Absent from older helpers: treat as unknown (true).
+   */
+  cursorOver?: boolean
 }
 
 export interface NativeStopInfo {

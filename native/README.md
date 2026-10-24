@@ -137,7 +137,7 @@ the same events and commands as monitor recording, plus:
 
 | Event | When |
 | --- | --- |
-| `{"event":"window","at":<epoch ms>,"x":X,"y":Y,"width":W,"height":H,"minimized":false}` | The window's screen rectangle in physical pixels (`DWMWA_EXTENDED_FRAME_BOUNDS`, i.e. without the invisible resize border): once right after `started` (before any `cursor` event), then whenever it moves, resizes, or is minimised/restored (polled at ~60 Hz) |
+| `{"event":"window","at":<epoch ms>,"x":X,"y":Y,"width":W,"height":H,"minimized":false,"cursorOver":true}` | The window's screen rectangle in physical pixels (`DWMWA_EXTENDED_FRAME_BOUNDS`, i.e. without the invisible resize border): once right after `started` (before any `cursor` event), then whenever it moves, resizes, is minimised/restored, or `cursorOver` changes (polled at ~60 Hz). `cursorOver` is true when the top-level window under the cursor (`WindowFromPoint` + `GetAncestor(GA_ROOTOWNER)`) is the recorded window, false when another window covers that spot; the app ignores clicks and hides the cursor while it is false |
 
 - The encoded size is fixed to the window's **initial** captured content size (made even and
   within H.264 level limits). When the window is resized, every later frame is scaled to
