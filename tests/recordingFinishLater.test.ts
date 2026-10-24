@@ -30,6 +30,10 @@ vi.mock('../src/main/recording/proxyRunner', async (importOriginal) => {
   }
 })
 
+// Matching stems with the mixed sound decodes real audio; here it reports a fixed correction.
+const align = vi.hoisted(() => ({ lag: 0.004 }))
+vi.mock('../src/main/recording/stemAlign', () => ({ measureStemLag: async () => align.lag }))
+
 import * as projects from '../src/main/projects'
 import { processRecording } from '../src/main/recording/finalize'
 import { cancelledError, FfmpegError, isCancelled } from '../src/main/recording/proxyRunner'
@@ -216,13 +220,14 @@ describe('microphone and system sound kept on their own (stems)', () => {
     return { ...done(frames), inputHasAudio: true }
   }
 
-  it('turns each into an m4a on the video timeline, cut to its frame count, and lists them in the project', async () => {
+  it('turns each into an m4a on the video timeline, lined up with the mixed sound, cut to its frame count, and lists them in the project', async () => {
     const { m, dir } = await withStems({ audioOffset: 0.02 })
     runner.steps = [audioDone(150), succeed(), succeed()]
     const project = await processRecording(m, () => undefined)
     const [, mic, system] = runner.calls
     expect(mic[mic.indexOf('-i') + 1]).toMatch(/mic\.webm$/)
-    expect(mic[mic.indexOf('-af') + 1]).toBe('adelay=20:all=1,apad,atrim=end=2.500000')
+    // The timestamps' 20 ms plus the 4 ms the sound itself showed.
+    expect(mic[mic.indexOf('-af') + 1]).toBe('adelay=24:all=1,apad,atrim=end=2.500000')
     expect(output(mic)).toMatch(/mic\.m4a$/)
     expect(output(system)).toMatch(/system\.m4a$/)
     expect(project.audioStems).toEqual({ mic: true, system: true })

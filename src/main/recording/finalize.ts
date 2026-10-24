@@ -11,6 +11,7 @@ import { muxAudioArgs, proxyArgs, regionPixels, stemArgs, type ExternalAudio, ty
 import { applyStyleDefaults, loadStyleDefaults } from '../styleDefaults'
 import { EmptyRecordingError, RecordingError } from './errors'
 import { cancelledError, FfmpegError, isCancelled, runFfmpegProgress, type FfmpegRun } from './proxyRunner'
+import { measureStemLag } from './stemAlign'
 import { STEM_RAW } from './stems'
 import { clampTrack } from './trackMath'
 
@@ -63,12 +64,16 @@ const removeQuietly = (file: string): Promise<void> =>
 
 /**
  * Keeps the microphone and system sound recorded on their own as mic.m4a / system.m4a, on the
- * proxy's timeline (same offset as the separately recorded mixed sound). Optional extras: a
- * stem that cannot be converted is left out (the mixed sound has it) and never fails the
- * recording; only a stop on purpose ("Finish later") ends processing.
+ * proxy's timeline: placed by their timestamps (they start with the separately recorded mixed
+ * sound, so they share its offset), then lined up exactly with the mixed sound in `proxy`,
+ * which contains them (a recorder's timeline may start at its first video frame, and mixing
+ * at record time adds latency). Optional extras: a stem that cannot be converted is left out
+ * (the mixed sound has it) and never fails the recording; only a stop on purpose ("Finish
+ * later") ends processing.
  */
 async function keepStems(
   dir: string,
+  proxy: string,
   offset: number,
   duration: number | null,
   progress: (message: string) => void,
@@ -82,7 +87,12 @@ async function keepStems(
     progress('Keeping the microphone and system sound…')
     const out = path.join(dir, SOURCE_FILES[kind])
     try {
-      await runFfmpegProgress(stemArgs(raw, out, offset, duration), undefined, signal)
+      const lag = await measureStemLag(raw, proxy, offset, signal).catch((err: unknown) => {
+        if (isCancelled(err) || signal?.aborted) throw err
+        console.warn(`The ${kind} sound could not be matched with the mixed sound; using its timestamps:`, err)
+        return 0
+      })
+      await runFfmpegProgress(stemArgs(raw, out, offset + lag, duration), undefined, signal)
       kept.push(kind)
     } catch (err) {
       await removeQuietly(out)
@@ -189,7 +199,7 @@ export async function processRecording(
     const length = videoSeconds && videoSeconds > 0.1 ? videoSeconds : (manifest.duration ?? null)
     const hasAudio = native ? !!audio : manifest.hasAudio && screenRun.inputHasAudio
     const stems = hasAudio
-      ? await keepStems(dir, manifest.audioOffset, length, (message) => progress({ message, progress: expected ? videoShare + audioShare : null }), signal)
+      ? await keepStems(dir, screenOut, manifest.audioOffset, length, (message) => progress({ message, progress: expected ? videoShare + audioShare : null }), signal)
       : []
 
     let webcamOk = false

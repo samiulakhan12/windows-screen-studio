@@ -1,4 +1,6 @@
-import type { ExportCapabilities, ExportJob } from '../../../shared/api/export'
+import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
+import { audioLook, recordingMix } from '../../../shared/audio/settings'
+import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
 import { exportFrameTimes } from '../../../shared/engine/timeline'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
@@ -9,8 +11,9 @@ import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
-import { projectMediaUrl } from '../../../shared/mediaUrl'
-import { createVideo, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
+import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
+import { loadAudioAnalysis } from './audioAnalysis'
+import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -79,15 +82,55 @@ async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 
   return { ...input, project, scene }
 }
 
-/** The soundtrack parts of a job: the edited recording audio and the click sounds. */
-function soundOf(input: ExportSource, format: ExportOptions['format']): Pick<ExportJob, 'audio' | 'clicks'> {
+type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut'>
+
+/**
+ * The soundtrack parts of a job: the edited recording (the mixed track, or the stems with
+ * their own gains), its cleanup, the click sounds, the music with the same ducking ranges the
+ * preview uses, and the fades. A project without the newer settings gets exactly the job of
+ * earlier versions.
+ */
+async function soundOf(input: ExportSource, format: ExportOptions['format']): Promise<SoundParts> {
   const { project } = input
   if (format === 'gif') return {}
-  const mute = project.audio.muted || project.audio.volume <= 0
-  const audio = project.hasAudio && !mute ? { clips: project.clips, volume: project.audio.volume } : undefined
+  const look = audioLook(project.audio)
+  const mix = recordingMix(project, { denoise: true })
+  let audio: RecordingSound | undefined
+  if (mix.kind !== 'none') {
+    audio = { clips: project.clips, volume: mix.volume }
+    if (mix.kind === 'stems') audio.stems = mix.stems
+    if (look.noiseReduction > 0) audio.noiseReduction = look.noiseReduction
+    if (look.normalize) audio.normalize = true
+  }
   const job = clickSoundJob(project, input.scene.cursor, project.clips)
   const clicks = job && job.times.length > 0 && job.volume > 0 ? { times: job.times, volume: job.volume } : undefined
-  return { audio, clicks }
+  const music = await musicOf(input)
+  return {
+    audio,
+    clicks,
+    ...(music ? { music } : {}),
+    ...(look.fadeIn > 0 ? { fadeIn: look.fadeIn } : {}),
+    ...(look.fadeOut > 0 ? { fadeOut: look.fadeOut } : {})
+  }
+}
+
+/** The background music of the export: its settings, length and ducking ranges. */
+async function musicOf({ project }: ExportSource): Promise<MusicSound | undefined> {
+  const m = audioLook(project.audio).music
+  if (!m || m.volume <= 0) return undefined
+  const sources = analysisSources(project)
+  const activity = m.ducking > 0 ? soundActivity(project, sources.length > 0 ? await loadAudioAnalysis(project.id, sources) : {}) : null
+  if (m.ducking > 0 && activity === null) console.warn('The recording\'s sound could not be measured: the music is exported without ducking.')
+  const duck = musicDucking(project, activity)
+  return {
+    file: m.path,
+    volume: m.volume,
+    loop: m.loop,
+    fadeIn: m.fadeIn,
+    fadeOut: m.fadeOut,
+    duration: m.loop ? null : await mediaDuration(mediaUrl(project.id, m.path)),
+    ...(duck ? { duck: { depth: duck.shape.depth, attack: duck.shape.attack, release: duck.shape.release, ranges: duck.ranges } } : {})
+  }
 }
 
 /** Bit rates for a size target (video formats other than GIF; GIFs are fitted by the main process). */
@@ -105,15 +148,15 @@ interface JobPlan {
   height: number
   fps: number
   times: number[]
-  sound: Pick<ExportJob, 'audio' | 'clicks'>
+  sound: SoundParts
   rate: Pick<ExportJob, 'bitrate' | 'maxBytes'>
 }
 
-function planJob(input: ExportInput): JobPlan {
+async function planJob(input: ExportInput): Promise<JobPlan> {
   const { width, height, fps } = exportDimensions(input.project, input.settings)
   const times = exportFrameTimes(input.project.clips, fps)
-  const sound = soundOf(input, input.settings.format)
-  const rate = rateOf(input.settings, times.length, { width, height, fps }, !!(sound.audio || sound.clicks))
+  const sound = await soundOf(input, input.settings.format)
+  const rate = rateOf(input.settings, times.length, { width, height, fps }, !!(sound.audio || sound.clicks || sound.music))
   return { width, height, fps, times, sound, rate }
 }
 
@@ -129,7 +172,7 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
   if (isAudioOnly(input.settings.format)) return exportAudio(input)
   const caps = await window.api.exportCapabilities()
   const routes = exportRoutes(input.settings, caps)
-  const plan = planJob(input)
+  const plan = await planJob(input)
   let notice: string | undefined
   for (let r = 0; r < routes.length; r++) {
     const route = routes[r]
@@ -159,8 +202,8 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
   const encoder = routeLabel({ video: 'none' }, settings.format)
   const report = (phase: ExportProgress['phase']): void => input.onProgress({ phase, frame: 0, frames, fps: 0, eta: null, encoder, detail: phase === 'finalizing' ? 'Encoding the audio…' : undefined })
   report('preparing')
-  const sound = soundOf(input, settings.format)
-  if (!sound.audio && !sound.clicks) throw new Error('This recording has no sound to export. Turn the audio on in the Audio panel, or choose a video format.')
+  const sound = await soundOf(input, settings.format)
+  if (!sound.audio && !sound.clicks && !sound.music) throw new Error('This recording has no sound to export. Turn the audio on in the Audio panel, or choose a video format.')
   const t0 = performance.now()
   const onAbort = (): void => void window.api.exportCancel()
   signal.addEventListener('abort', onAbort)

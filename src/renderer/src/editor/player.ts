@@ -7,6 +7,7 @@ import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
+import { PreviewAudio } from './previewAudio'
 
 /** Proxy frame rate when the project does not say (older projects: always 60 fps). */
 const SOURCE_FPS = 60
@@ -44,7 +45,8 @@ export class PreviewPlayer {
   private frameHandle = 0
   private pendingSeek: number | null = null
   private jumpTarget: number | null = null
-  private audio: { ctx: AudioContext; gain: GainNode } | null = null
+  /** The soundtrack: the video's own track, or Web Audio for stems, music, fades and gains above 100%. */
+  private readonly sound: PreviewAudio
   /** Click sounds (CursorSettings.clickSound): which clicks play, and the Web Audio graph playing them. */
   private readonly clickSounds = new ClickSoundScheduler()
   private clickAudio: { ctx: AudioContext; gain: GainNode; buffer: AudioBuffer; voices: Set<AudioBufferSourceNode> } | null = null
@@ -69,7 +71,7 @@ export class PreviewPlayer {
     screen.addEventListener('loadeddata', this.invalidate)
     screen.addEventListener('ended', this.onEnded)
     screen.addEventListener('pause', this.onPause)
-    this.applyAudio()
+    this.sound = new PreviewAudio(screen, project)
     // A custom cursor image finishing loading changes the picture.
     this.offCursorAssets = onCursorAssetsChanged(this.invalidate)
     this.offStyleAssets = onStyleAssetsChanged(this.invalidate)
@@ -115,7 +117,7 @@ export class PreviewPlayer {
   setProject(project: Project): void {
     const prev = this.project
     this.project = project
-    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio) this.applyAudio()
+    this.sound.setProject(project)
     if (project.webcamOffset !== prev.webcamOffset) this.syncWebcam(this.screen.currentTime, true)
     if (project.clips !== prev.clips || project.duration !== prev.duration) {
       // Re-show the right frame if the playhead is now in a cut; while playing the frame loop handles it.
@@ -139,6 +141,7 @@ export class PreviewPlayer {
       this.jumpTarget = null
       this.clickSounds.restart(from.time)
       this.screen.currentTime = from.time
+      this.sound.jump(from.time, clips[from.index].speed)
       this.syncWebcam(from.time, true)
     } else {
       this.seekVideo(this.frameTimeFor(displayTime(clips, this.time)))
@@ -158,7 +161,7 @@ export class PreviewPlayer {
     this.setRate(clips[from.index].speed)
     if (Math.abs(this.screen.currentTime - from.time) > 1e-3) this.screen.currentTime = from.time
     this.syncWebcam(from.time, true)
-    void this.audio?.ctx.resume()
+    this.sound.play(from.time, clips[from.index].speed)
     this.clickSounds.restart(from.time)
     // Created here, inside the user's gesture, so the audio context may start.
     if (cursorLook(this.project.cursor).clickSound) void this.ensureClickAudio()?.ctx.resume()
@@ -254,6 +257,7 @@ export class PreviewPlayer {
     if (this.screen.playbackRate !== clip.speed) this.setRate(clip.speed)
     this.time = t
     this.syncWebcam(t, false)
+    this.sound.frame()
     this.draw(t)
     this.playClicks(t, clip)
     this.emit()
@@ -278,6 +282,7 @@ export class PreviewPlayer {
     this.clickSounds.restart(time)
     this.setRate(this.project.clips[index].speed)
     this.screen.currentTime = time
+    this.sound.jump(time, this.project.clips[index].speed)
     this.syncWebcam(time, true)
   }
 
@@ -297,7 +302,7 @@ export class PreviewPlayer {
     this.jumpTarget = null
     if (!this.screen.paused) this.screen.pause()
     if (this.webcam && !this.webcam.paused) this.webcam.pause()
-    void this.audio?.ctx.suspend()
+    this.sound.pause()
     this.stopClicks()
     if (wasPlaying) {
       this.emit()
@@ -373,35 +378,12 @@ export class PreviewPlayer {
   private setRate(speed: number): void {
     this.screen.playbackRate = speed
     if (this.webcam) this.webcam.playbackRate = speed
+    this.sound.setRate(speed)
   }
 
-  /**
-   * Preview volume. Up to 100% uses the element volume; louder needs a gain node,
-   * which is only created on demand (an AudioContext costs CPU while running).
-   */
-  private applyAudio(): void {
-    const { volume, muted } = this.project.audio
-    const silent = !this.project.hasAudio || muted || volume <= 0
-    this.screen.muted = silent
-    if (!silent && volume > 1 && !this.audio) this.createGain()
-    if (this.audio) {
-      this.audio.gain.gain.value = clamp(volume, 0, 2)
-      this.screen.volume = 1
-    } else {
-      this.screen.volume = clamp(volume, 0, 1)
-    }
-  }
-
-  private createGain(): void {
-    try {
-      const ctx = new AudioContext()
-      const gain = ctx.createGain()
-      ctx.createMediaElementSource(this.screen).connect(gain).connect(ctx.destination)
-      this.audio = { ctx, gain }
-      if (!this.playing) void ctx.suspend()
-    } catch {
-      // Without Web Audio the preview tops out at 100%; export still applies the gain.
-    }
+  /** Loads the background music again (a new file replaced it under the same name). */
+  reloadMusic(): void {
+    this.sound.reloadMusic()
   }
 
   /* ---------- click sounds ---------- */
@@ -422,7 +404,8 @@ export class PreviewPlayer {
     const audio = this.ensureClickAudio()
     if (!audio) return
     if (audio.ctx.state === 'suspended') void audio.ctx.resume()
-    audio.gain.gain.value = look.clickSoundVolume
+    // The whole soundtrack's fades apply to the clicks too, as in the export.
+    audio.gain.gain.value = look.clickSoundVolume * this.sound.fadeAt(t)
     const now = audio.ctx.currentTime
     for (const d of due) {
       const voice = audio.ctx.createBufferSource()
@@ -482,7 +465,7 @@ export class PreviewPlayer {
     this.screen.removeEventListener('pause', this.onPause)
     this.webcam?.removeEventListener('seeked', this.invalidate)
     this.webcam?.removeEventListener('loadeddata', this.invalidate)
-    void this.audio?.ctx.close()
+    this.sound.dispose()
     void this.clickAudio?.ctx.close()
     this.clickAudio = null
     this.offCursorAssets()
