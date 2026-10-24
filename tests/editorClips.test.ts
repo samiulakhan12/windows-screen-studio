@@ -9,6 +9,8 @@ import {
   stepOutput,
   timelineGaps
 } from '../src/shared/editor/clips'
+import { createShape, createSpotlight } from '../src/shared/editor/shapes'
+import { createTitleCard } from '../src/shared/editor/titles'
 import { createProject } from '../src/shared/engine/project'
 import { cutRange, outputDuration } from '../src/shared/engine/timeline'
 import type { Clip } from '../src/shared/types'
@@ -80,6 +82,14 @@ describe('setRangeSpeed', () => {
       [4, 10, 4]
     ])
   })
+
+  it('returns the input when the range changes nothing (audit E5)', () => {
+    const clips = [clip('a', 0, 5), clip('b', 7, 10)]
+    // Inside the cut, and a range that already plays at that speed.
+    expect(setRangeSpeed(clips, 5.2, 6.8, 2)).toBe(clips)
+    expect(setRangeSpeed(clips, 1, 3, 1)).toBe(clips)
+    expect(setRangeSpeed(clips, 1, 3, 2)).not.toBe(clips)
+  })
 })
 
 describe('playhead mapping', () => {
@@ -144,6 +154,31 @@ describe('correctProjectMedia', () => {
     const p = correctProjectMedia(base, { duration: 10.4, width: 1918, height: 1080 })
     expect(p.clips[0].end).toBe(10.4)
     expect(p.width).toBe(1918)
+  })
+
+  it('keeps shapes, spotlights, titles, layouts and chapters inside a shorter file (audit E4)', () => {
+    const p = correctProjectMedia(
+      {
+        ...base,
+        shapes: [createShape('rect', 0, 10, { start: 8.5, end: 10 }), createShape('rect', 0, 10, { start: 9.5, end: 10 })],
+        spotlights: [createSpotlight('region', 0, 10, { start: 8, end: 9.6 })],
+        titles: [createTitleCard(0, 10, { start: 1, end: 2 }), createTitleCard(0, 10, { start: 8.9, end: 10 })],
+        layouts: [{ id: 'y', start: 7, end: 10, layout: 'camera-only' }],
+        chapters: [
+          { id: 'c1', t: 0, title: 'Intro' },
+          { id: 'c2', t: 9.8, title: 'End' }
+        ]
+      },
+      { duration: 9, width: 1920, height: 1080 }
+    )
+    expect(p.shapes?.map((s) => [s.start, s.end])).toEqual([[8.5, 9]])
+    expect(p.spotlights?.map((s) => [s.start, s.end])).toEqual([[8, 9]])
+    expect(p.titles?.map((t) => [t.start, t.end])).toEqual([
+      [1, 2],
+      [8.9, 9]
+    ])
+    expect(p.layouts?.map((y) => [y.start, y.end])).toEqual([[7, 9]])
+    expect(p.chapters?.map((c) => c.t)).toEqual([0, 9])
   })
 
   it('returns the same object when nothing differs', () => {

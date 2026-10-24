@@ -30,6 +30,7 @@ import { EditorContext } from './context'
 import { AspectGlyph, PresetBadge } from './exportIcons'
 import { ExportPreview } from './ExportPreview'
 import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, type BatchJob, type BatchStatus, type ExportProgress, type ExportResult } from './exporter'
+import { useModalFocus } from './modalFocus'
 import './exportDialog.css'
 import './titles.css'
 
@@ -257,6 +258,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const frameSource = outputToSource(clips, Math.min(frameAt, Math.max(0, length - 1e-3))).time
   const abort = useRef<AbortController | null>(null)
   const primary = useRef<HTMLButtonElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
   const onClose = useRef(props.onClose)
   onClose.current = props.onClose
 
@@ -300,6 +302,10 @@ export function ExportDialog(props: Props): JSX.Element {
   useEffect(() => {
     primary.current?.focus()
   }, [phase.kind, phase.kind === 'batch' && phase.finished])
+
+  // Tab stays inside the dialog: the editor behind it (Back, Undo, the name field) must not be
+  // reachable, since leaving the editor would abort a running export. Escape is handled below.
+  useModalFocus(boxRef, () => undefined)
 
   // Escape closes the dialog like its Close button, which only exists while no export
   // runs (Cancel export is a deliberate click). Captured first so the editor behind
@@ -488,7 +494,7 @@ export function ExportDialog(props: Props): JSX.Element {
 
   return (
     <div className="overlay modal-backdrop">
-      <div className={`modal export-modal ${phase.kind === 'settings' ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label="Export">
+      <div ref={boxRef} className={`modal export-modal ${phase.kind === 'settings' ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label="Export">
         <header className="modal-head">
           <h2>Export</h2>
           {phase.kind === 'settings' && (
