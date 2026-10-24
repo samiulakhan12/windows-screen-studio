@@ -6,8 +6,9 @@
 import { isPrivacyKind, SHAPE_FADE, SPOTLIGHT_FADE } from '../editor/shapes'
 import { cursorAt } from '../engine/cursor'
 import { clamp } from '../engine/math'
+import { readShape, readSpotlight } from '../engine/shapeData'
 import type { Camera } from '../engine/zoom'
-import type { Clip, CursorSample, Project, Shape, ShapeKind, Spotlight } from '../types'
+import type { Clip, CursorSample, Project, Shape, Spotlight } from '../types'
 import { blendHome, cursorLook, loopHomeTime, loopHomeWeight } from './cursorFx'
 
 type Pos = { x: number; y: number }
@@ -20,51 +21,7 @@ export interface Box {
 
 /* ---------- reading shapes (defaults applied at read time) ---------- */
 
-const KINDS: ShapeKind[] = ['arrow', 'line', 'rect', 'ellipse', 'highlight', 'blur', 'pixelate']
-const HEX = /^#[0-9a-f]{6}$/i
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-const num = (v: unknown, fallback: number, min: number, max: number): number => (finite(v) ? clamp(v, min, max) : fallback)
-
-/** A shape with every field usable, or null when it cannot be drawn (hand-edited or damaged files). */
-export function readShape(raw: Partial<Shape> | null | undefined): Shape | null {
-  if (!raw || typeof raw !== 'object' || !KINDS.includes(raw.kind as ShapeKind)) return null
-  if (!finite(raw.start) || !finite(raw.end) || !(raw.end > raw.start)) return null
-  if (!finite(raw.x) || !finite(raw.y) || !finite(raw.w) || !finite(raw.h)) return null
-  return {
-    id: typeof raw.id === 'string' ? raw.id : '',
-    kind: raw.kind as ShapeKind,
-    start: raw.start,
-    end: raw.end,
-    x: raw.x,
-    y: raw.y,
-    w: raw.w,
-    h: raw.h,
-    color: typeof raw.color === 'string' && HEX.test(raw.color) ? raw.color : '#ff3b30',
-    strokeWidth: num(raw.strokeWidth, 6, 0.5, 64),
-    fill: raw.fill === true,
-    opacity: num(raw.opacity, 1, 0, 1),
-    strength: num(raw.strength, 0.5, 0, 1)
-  }
-}
-
-/** A spotlight with every field usable, or null when it cannot be drawn. */
-export function readSpotlight(raw: Partial<Spotlight> | null | undefined): Spotlight | null {
-  if (!raw || typeof raw !== 'object' || (raw.mode !== 'cursor' && raw.mode !== 'region')) return null
-  if (!finite(raw.start) || !finite(raw.end) || !(raw.end > raw.start)) return null
-  return {
-    id: typeof raw.id === 'string' ? raw.id : '',
-    mode: raw.mode,
-    start: raw.start,
-    end: raw.end,
-    x: num(raw.x, 0.3, -1, 2),
-    y: num(raw.y, 0.3, -1, 2),
-    w: num(raw.w, 0.4, 0.005, 2),
-    h: num(raw.h, 0.4, 0.005, 2),
-    shape: raw.shape === 'rect' ? 'rect' : 'ellipse',
-    dim: num(raw.dim, 0.6, 0, 1),
-    feather: num(raw.feather, 0.4, 0, 1)
-  }
-}
+export { readShape, readSpotlight }
 
 const shapeCache = new WeakMap<Shape[], Shape[]>()
 const spotCache = new WeakMap<Spotlight[], Spotlight[]>()
@@ -256,6 +213,69 @@ export function visibleCursorAt(project: Pick<Project, 'capture' | 'cursor' | 'c
   if (samples.length === 0) return null
   if (project.capture?.cursorInVideo) return cursorAt(samples, t)
   return cursorPositionAt(path, project.clips, cursorLook(project.cursor).loopHome, t)
+}
+
+/** A normalised position inside the recorded video. */
+export const insideVideo = (p: Pos): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
+
+/**
+ * Whether the cursor viewers see at source time `t` is over the recording. In a window or area
+ * recording it can leave it (over another window or monitor, outside the area): the cursor layer
+ * then stops drawing it at once, also while the smoothed cursor would still be sliding to the
+ * edge, so both the drawn and the recorded position (glided home with it) must be inside. With
+ * the real cursor baked into the video, that is where the recorded position is.
+ */
+export function cursorOverVideoAt(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, samples: CursorSample[], path: { at(t: number): Pos }, t: number): boolean {
+  return overVideo(project, samples, path)(t)
+}
+
+/** cursorOverVideoAt as a function of time, with what does not depend on it worked out once. */
+function overVideo(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, samples: CursorSample[], path: { at(t: number): Pos }): (t: number) => boolean {
+  const baked = !!project.capture?.cursorInVideo
+  const { loopHome } = cursorLook(project.cursor)
+  const home = loopHome && !baked ? cursorAt(samples, loopHomeTime(project.clips)) : null
+  return (t) => {
+    const raw = cursorAt(samples, t)
+    if (!raw) return false
+    if (baked) return insideVideo(raw)
+    const w = home ? loopHomeWeight(project.clips, t) : 0
+    const recorded = home && w > 0 ? blendHome(raw, home, w) : raw
+    return insideVideo(cursorPositionAt(path, project.clips, loopHome, t)) && insideVideo(recorded)
+  }
+}
+
+/**
+ * How much (0..1) of a cursor spotlight shows at `t` as far as the cursor goes: none while the
+ * cursor is off the recording (`over` false: its lit area would be off screen and only darken
+ * the whole frame), easing out over the `fade` source seconds before it leaves and back in over
+ * those after it returns. A pure function of `t`, so preview and export agree.
+ */
+export function cursorPresence(over: (t: number) => boolean, t: number, fade: number): number {
+  if (!over(t)) return 0
+  if (!(fade > 0)) return 1
+  // Looks around `t` in steps of at most 1/240 s for the nearest moment the cursor is off.
+  const steps = clamp(Math.ceil(fade * 240), 8, 960)
+  let near = fade
+  for (const dir of [-1, 1]) {
+    for (let i = 1; i <= steps && (i * fade) / steps < near; i++) {
+      const d = (i * fade) / steps
+      if (!over(t + dir * d)) {
+        near = d
+        break
+      }
+    }
+  }
+  const k = clamp(near / fade, 0, 1)
+  return k * k * (3 - 2 * k)
+}
+
+/**
+ * How much of a cursor spotlight shows at `t` (`speed`: the clip's, so its fades last as long
+ * on screen as the spotlight's own): it fades out while the cursor is off the recording, just
+ * as the cursor layer hides the cursor then (cursorOverVideoAt).
+ */
+export function cursorSpotlightPresence(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, samples: CursorSample[], path: { at(t: number): Pos }, t: number, speed = 1): number {
+  return cursorPresence(overVideo(project, samples, path), t, SPOTLIGHT_FADE * speed)
 }
 
 /** The lit area of a spotlight (normalised source units): its box, or centred on `cursor` in cursor mode. */

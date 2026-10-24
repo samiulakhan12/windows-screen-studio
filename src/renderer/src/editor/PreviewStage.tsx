@@ -17,7 +17,7 @@ import { dragRegion, formatLevel, regionFromPoints, setZoomRegion, type Box as R
 import { styleContentRect, outputSize, type Rect } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
-import { spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
+import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
 import type { Annotation, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
 import { cardRect, type RenderScene } from '../render/compositor'
 import { holdGesture, useEditor } from './context'
@@ -61,6 +61,8 @@ type EditItem = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spot
 interface StageView {
   cam: Camera
   cursor: Pos | null
+  /** A cursor spotlight's cursor is off the recording: the spotlight shows nothing there. */
+  cursorOff: boolean
 }
 
 /** Maps between the overlay's pixels and normalised source coordinates through a camera. */
@@ -108,10 +110,12 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
       const cam = cameraAt(project.zooms, t, scene.cursor.valid ? scene.focusPath : null, zoomStyleOf(project))
       const follows = item.type === 'spotlight' && item.item.mode === 'cursor' && scene.cursor.valid
       const cursor = follows ? visibleCursorAt(project, scene.cursor.samples, scene.cursorPath, t) : null
-      const key = `${cam.scale},${cam.cx},${cam.cy},${cursor?.x},${cursor?.y}`
+      // The same rule the spotlight layer fades it out by.
+      const cursorOff = !!cursor && !cursorOverVideoAt(project, scene.cursor.samples, scene.cursorPath, t)
+      const key = `${cam.scale},${cam.cx},${cam.cy},${cursor?.x},${cursor?.y},${cursorOff}`
       if (key === last) return
       last = key
-      setView({ cam, cursor })
+      setView({ cam, cursor, cursorOff })
     }
     update()
     return player.subscribe(update)
@@ -541,8 +545,12 @@ function ShapeEditor({ edit, view, mapping, onDone }: { edit: EditItem; view: St
     followPointer(e, (ev) => apply((ev.clientX - sx) * mapping.ux, (ev.clientY - sy) * mapping.uy, ev))
   }
 
-  let body: JSX.Element
-  if (type === 'shape' && isLineKind(item.kind)) {
+  // A cursor spotlight whose cursor is off the recording shows nothing here, so it has no box.
+  const offscreen = type === 'spotlight' && item.mode === 'cursor' && view.cursorOff
+  let body: JSX.Element | null
+  if (offscreen) {
+    body = null
+  } else if (type === 'shape' && isLineKind(item.kind)) {
     const a = mapping.toPx(item.x, item.y)
     const b = mapping.toPx(item.x + item.w, item.y + item.h)
     const initial = { x: item.x, y: item.y, w: item.w, h: item.h }
@@ -602,7 +610,7 @@ function ShapeEditor({ edit, view, mapping, onDone }: { edit: EditItem; view: St
     <div className="shape-editor" data-testid="shape-editor" data-item={item.id}>
       {body}
       <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
-        {label} · drag to place it{type === 'spotlight' && item.mode === 'cursor' ? '' : ', or drag elsewhere to draw it again'} ·{' '}
+        {label} · {offscreen ? 'the cursor is off the recording here' : `drag to place it${type === 'spotlight' && item.mode === 'cursor' ? '' : ', or drag elsewhere to draw it again'}`} ·{' '}
         <button className="link" onClick={onDone}>
           Done
         </button>

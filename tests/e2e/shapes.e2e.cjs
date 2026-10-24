@@ -374,6 +374,98 @@ async function main() {
     h.assert(near(centre, 0.5, 0.01), `the spotlight is on the cursor in the video (centre ${centre.toFixed(4)})`)
   }))
 
+  await test('shapes: a cursor spotlight fades out while the cursor is off a window recording instead of darkening everything', fx.withHome('shapes-spot-off', async (ctx, home) => {
+    const media = fx.solidVideo({ seconds: 2 })
+    const style = { background: { type: 'color', color: '#000000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }
+    // On the recorded window until 0.8 s, then over another window (mapped off the recording) until 1.6 s.
+    const samples = Array.from({ length: 41 }, (_, i) => ({ t: i * 0.05, x: i * 0.05 > 0.8 && i * 0.05 < 1.6 ? 1.6 : 0.5, y: 0.5 }))
+    fx.seedProject(home, {
+      id: 'rec-spot-off',
+      name: 'Spotlight off the window',
+      media,
+      seconds: 2,
+      style,
+      capture: { method: 'native', cursorInVideo: false, region: null },
+      cursorSettings: { show: false, size: 1.4, smoothing: 0.3, clickEffect: false, hideWhenIdle: false },
+      cursor: { samples, clicks: [], keys: [], shapes: [], scale: 1, valid: true }
+    })
+    addItems(home, 'rec-spot-off', { spotlights: [{ id: 'sc', mode: 'cursor', start: 0, end: 2, x: 0.4, y: 0.4, w: 0.2, h: 0.3, shape: 'rect', dim: 0.9, feather: 0 }] })
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    const out = path.join(home, 'spot-off.mp4')
+    await exportMp4(app, win, 'Spotlight off the window', out)
+    const at = (t) => Math.round(t * FPS)
+    const F = fx.framesAt(out, [at(0.4), at(1.2)], 'rgb24')
+    if (SHOTS) fx.savePng(out, at(1.2), path.join(SHOTS, 'shapes-spotlight-cursor-off.png'))
+    const corner = { x: 0.05, y: 0.05, w: 0.2, h: 0.2 }
+    const lit = { x: 0.46, y: 0.42, w: 0.08, h: 0.16 }
+    const L = (i, r) => meanLuma(F.frames[i], r)
+    console.log(`  cursor on the window: corner ${L(0, corner).toFixed(1)}, lit ${L(0, lit).toFixed(1)}; off it: corner ${L(1, corner).toFixed(1)}, middle ${L(1, lit).toFixed(1)}`)
+    h.assert(L(0, corner) < 40 && L(0, lit) > 100, 'while the cursor is on the recording, all but its area is darkened')
+    h.assert(L(1, corner) > 100 && L(1, lit) > 100, 'while it is off the recording, nothing is darkened (the spotlight faded out with the cursor)')
+  }))
+
+  await test('shapes: showing an item lands on a kept frame past its fade-in at the clip speed; damaged entries do not stop the project opening', async (ctx) => {
+    const home = h.tempHome('shapes-reveal')
+    // 4-6 s is cut; 6-12 s plays at 4x (as smart speed makes it).
+    const clips = [
+      { id: 'a', start: 0, end: 4, speed: 1 },
+      { id: 'b', start: 6, end: 12, speed: 4 }
+    ]
+    f.seedProject(home, { id: 'rec-reveal', name: 'Shapes reveal', seconds: 12, clips })
+    const box = { x: 0.3, y: 0.3, w: 0.3, h: 0.3 }
+    // Hand-edited: a null and an unusable entry next to the real ones.
+    addItems(home, 'rec-reveal', {
+      shapes: [null, shape('r', 'rect', 5, 9, box), { id: 'bad', kind: 'rect', start: 'x' }, shape('gone', 'arrow', 4.2, 5.8, box)],
+      spotlights: [{ id: 'sp', mode: 'region', start: 7, end: 10, ...box, shape: 'ellipse', dim: 0.6, feather: 0.4 }, 42]
+    })
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await f.openProject(win, 'Shapes reveal')
+    await f.waitFor(async () => (await win.$$('.shape-seg')).length === 3, 'the three usable items on the shapes track')
+    await win.click('.insp-tabs button:has-text("Shapes")')
+    h.assert((await win.$$('.shape-list button[data-shape-item]')).length === 3, 'and in the Shapes panel')
+
+    const playhead = () =>
+      win.$eval('.playhead', (el) => {
+        const m = /translateX\(([-\d.e]+)px\)/.exec(el.style.transform)
+        return m ? Number(m[1]) / Number(el.closest('.tl-content').dataset.pxPerSec) : NaN
+      })
+    const landsIn = async (lo, hi, what) => {
+      const t = await f.waitFor(async () => {
+        const v = await playhead()
+        return v >= lo && v <= hi ? v : null
+      }, `${what}: playhead in ${lo}..${hi} s (last ${await playhead()})`, 3000)
+      console.log(`  ${what}: playhead at ${t.toFixed(3)} s`)
+    }
+
+    // A block on the shapes track: the rect starts in the cut, so the first kept frame past its fade-in.
+    await seekTo(win, 1)
+    await win.click('.shape-seg[data-shape="r"]')
+    await landsIn(6, 6.1, 'rect block')
+    // The spotlight in the 4x clip: past its fade-in at 4x (1 s of source time), not 0.25 s.
+    await seekTo(win, 1)
+    await win.click('.shape-seg[data-spotlight="sp"]')
+    await landsIn(8, 8.1, 'spotlight block')
+    // The list in the Shapes panel.
+    await seekTo(win, 1)
+    await win.click('.shape-list button[data-shape-item="sp"]')
+    await landsIn(8, 8.1, 'spotlight in the list')
+    // "Show it on the preview".
+    await seekTo(win, 1)
+    await win.waitForSelector('.shape-offscreen button.link')
+    await win.click('.shape-offscreen button.link')
+    await landsIn(8, 8.1, 'Show it on the preview')
+    await f.waitFor(async () => !(await win.$('.shape-offscreen')), 'the link goes once it shows')
+    // All of it cut: nothing to show, and it says so.
+    await win.click('.shape-list button[data-shape-item="gone"]')
+    await win.waitForSelector('.shape-offscreen:has-text("Not in the video")')
+    await landsIn(8, 8.1, 'the playhead stays')
+    if (!process.env.SSW_E2E_KEEP) fs.rmSync(home, { recursive: true, force: true })
+  })
+
   await test('shapes: add from the panel, edit on the preview (also zoomed) and the timeline, delete, undo', async (ctx) => {
     const home = h.tempHome('shapes-editor')
     const zooms = [{ id: 'z', start: 6, end: 11, scale: 2, focus: { mode: 'fixed', x: 0.5, y: 0.5 }, auto: false }]

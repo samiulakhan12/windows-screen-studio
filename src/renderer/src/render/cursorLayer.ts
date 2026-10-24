@@ -1,4 +1,4 @@
-import { clickPulse, cursorAt, cursorOpacity } from '../../../shared/engine/cursor'
+import { clickPulse, cursorOpacity } from '../../../shared/engine/cursor'
 import { clamp, easeOutCubic, lerp } from '../../../shared/engine/math'
 import { projectMediaUrl } from '../../../shared/mediaUrl'
 import {
@@ -14,6 +14,7 @@ import {
   type CursorLook
 } from '../../../shared/render/cursorFx'
 import { cursorHeight, shapeAt, speedAt } from '../../../shared/render/overlays'
+import { cursorOverVideoAt } from '../../../shared/render/shapes'
 import type { ClickStyle, CursorShape, Project } from '../../../shared/types'
 import { drawCursorImage, drawCursorSprite, type SpriteTheme } from './cursorSprites'
 import { inVideo, type FrameContext } from './frameContext'
@@ -71,13 +72,8 @@ function cursorState(fc: FrameContext, look: CursorLook): CursorState | null {
   const pos = posAt(t)
   // Hide as soon as the recorded position leaves the video (cursor outside a window or
   // area, or over a window covering the recorded one) instead of letting the smoothed
-  // cursor slide to the edge first.
-  let raw = cursorAt(cursor.samples, t)
-  if (raw && w > 0) {
-    const rawHome = cursorAt(cursor.samples, homeT)
-    if (rawHome) raw = blendHome(raw, rawHome, w)
-  }
-  if (opacity <= 0.01 || !inVideo(pos) || (raw && !inVideo(raw))) return null
+  // cursor slide to the edge first. A cursor spotlight fades out by the same rule.
+  if (opacity <= 0.01 || !cursorOverVideoAt(project, cursor.samples, path, t)) return null
   const height = cursorHeight(rect.h, vh, cursor.scale, cam.scale, project.cursor.size) * CURSOR_STYLE_SCALE[look.style]
   // On-screen velocity in content widths per output second (zooming in makes it faster).
   const angle = look.tilt ? tiltAngle(cursorVelocity(posAt, clips, t).vx * cam.scale) : 0

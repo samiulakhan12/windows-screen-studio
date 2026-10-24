@@ -6,7 +6,6 @@ import { canSplitAt, clipAt, correctProjectMedia, restoreRange, stepOutput } fro
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
 import { EditStore } from '../../../shared/editor/editStore'
 import { mediaLength } from '../../../shared/editor/mediaLength'
-import { createShape, createSpotlight } from '../../../shared/editor/shapes'
 import {
   chordFromEvent,
   DEFAULT_KEYMAP,
@@ -37,6 +36,7 @@ import { Inspector, type InspectorTab } from '../editor/Inspector'
 import { KeymapContext } from '../editor/keymapContext'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
+import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
@@ -301,19 +301,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       if (player.time < a.start || player.time >= a.end) player.seek(a.start)
     }
 
-    const addShape = (kind: ShapeKind): void => {
-      const s = createShape(kind, player.time, store.state.duration)
-      store.update((p) => ({ ...p, shapes: [...(p.shapes ?? []), s] }))
-      setSelection({ kind: 'shape', id: s.id })
-      if (player.time < s.start || player.time >= s.end) player.seek(s.start)
-    }
-
-    const addSpotlight = (mode: Spotlight['mode']): void => {
-      const s = createSpotlight(mode, player.time, store.state.duration)
-      store.update((p) => ({ ...p, spotlights: [...(p.spotlights ?? []), s] }))
-      setSelection({ kind: 'spotlight', id: s.id })
-      if (player.time < s.start || player.time >= s.end) player.seek(s.start)
-    }
+    // Placed and shown exactly as from the Shapes panel and the timeline.
+    const addShape = (kind: ShapeKind): void => void addShapeAt({ store, player }, kind, cursor, { onSelect: setSelection })
+    const addSpotlight = (mode: Spotlight['mode']): void => void addSpotlightAt({ store, player }, mode, { onSelect: setSelection })
 
     const deleteClip = (id: string): void => {
       if (store.state.clips.length <= 1) {
@@ -617,10 +607,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       const id = chord ? matchShortcut(L.shortcuts, chord) : null
       if (isTextEntry(target)) {
         // Typing: only leave the field (Ctrl+Z stays the field's own undo), or open the palette.
+        // Enter in a field of a form submits the form (e.g. naming a style preset) instead.
         if (id && commandInfo(id).inText) {
           e.preventDefault()
           if (!e.repeat) commandsRef.current[id]()
-        } else if (e.key === 'Escape' || (e.key === 'Enter' && target instanceof HTMLInputElement)) {
+        } else if (e.key === 'Escape' || (e.key === 'Enter' && target instanceof HTMLInputElement && !target.form)) {
           e.preventDefault()
           ;(target as HTMLElement).blur()
         }
@@ -767,6 +758,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           zoomStyle={zoomStyleOf(project)}
           annotations={project.annotations}
           clicks={clicks}
+          cursor={cursor}
           selection={selection}
           onSelect={setSelection}
           onAddZoom={actions.addZoomFromTrack}

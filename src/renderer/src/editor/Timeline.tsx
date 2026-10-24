@@ -13,7 +13,7 @@ import {
 } from 'react'
 import { annotationLanes, dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { timelineGaps, type Gap } from '../../../shared/editor/clips'
-import { dragShapeTimes, fadeLead, isPrivacyKind, itemLanes, revealTime, shapeForPlayhead, shapeLabel } from '../../../shared/editor/shapes'
+import { dragShapeTimes, isPrivacyKind, itemLanes, shapeLabel } from '../../../shared/editor/shapes'
 import {
   clampScale,
   fitScale,
@@ -26,19 +26,19 @@ import {
   ticksIn,
   ZOOM_STEP
 } from '../../../shared/editor/timelineScale'
-import { orPress, withShortcut } from '../../../shared/editor/shortcuts'
+import { orPress, shortcutLabel, withShortcut } from '../../../shared/editor/shortcuts'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { formatLevel } from '../../../shared/editor/zoomEdit'
-import { speedAt } from '../../../shared/render/overlays'
-import type { Annotation, ClickEvent, Clip, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
+import type { Annotation, ClickEvent, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
 import { useKeymap } from './keymapContext'
+import { addShapeAt, revealItem } from './playheadItems'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import { ShapeIcon } from './shapeIcons'
@@ -59,6 +59,8 @@ interface Props {
   zoomStyle?: ZoomStyle
   annotations: Annotation[]
   clicks: ClickEvent[]
+  /** The recording's cursor: an arrow added on the shapes track points at it. */
+  cursor?: CursorTrack
   selection: Selection
   onSelect: (sel: Selection) => void
   /** Double-click on the zoom track: a zoom starting at `t`. */
@@ -90,8 +92,8 @@ interface TrackItem {
   icon: Parameters<typeof ShapeIcon>[0]['name']
   /** Look of its block: annotation shapes, privacy shapes or spotlights. */
   look: 'mark' | 'privacy' | 'spotlight'
-  /** Seconds it takes to fade in (the playhead is put past it to show the item). */
-  fade: number
+  /** What fades it in and out (the playhead is put past that to show the item). */
+  kind: ShapeKind | 'spotlight'
 }
 
 function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
@@ -104,7 +106,7 @@ function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
       label: shapeLabel(s.kind),
       icon: s.kind,
       look: isPrivacyKind(s.kind) ? 'privacy' : 'mark',
-      fade: fadeLead(s.kind)
+      kind: s.kind
     })),
     ...spotlights.map((s): TrackItem => ({
       type: 'spotlight',
@@ -114,7 +116,7 @@ function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
       label: s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight',
       icon: s.mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region',
       look: 'spotlight',
-      fade: fadeLead('spotlight')
+      kind: 'spotlight'
     }))
   ]
 }
@@ -440,22 +442,14 @@ export const Timeline = memo(
         (moved) => {
           store.endGesture()
           // A plain click also moves the playhead into the item, so it shows (and can be edited) on the preview.
-          const shown = Math.min(item.end - 0.01, item.start + item.fade + 0.01)
-          if (!moved && (player.time < shown || player.time >= item.end)) player.seek(shown)
+          if (!moved) revealItem(player, clips, item, item.kind)
         },
         3
       )
     }
 
     /** Double-click on the shapes track: an arrow, fully shown at `t` (or as near it as the end allows). */
-    const addShapeAt = (t: number): void => {
-      const p = store.state
-      const speed = speedAt(p.clips, t)
-      const s = shapeForPlayhead('arrow', t, p, null, speed)
-      store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
-      onSelect({ kind: 'shape', id: s.id })
-      player.seek(revealTime(s, t, fadeLead('arrow', speed)))
-    }
+    const addArrowAt = (t: number): void => void addShapeAt({ store, player }, 'arrow', props.cursor ?? null, { at: t, onSelect })
 
     // A double-click on empty track space is two quick pointerdowns at the same spot.
     // Detected here, before the first click's scrub, rather than with dblclick.
@@ -474,7 +468,7 @@ export const Timeline = memo(
         const t = timeAt(e.clientX)
         if (kind === 'zoom') props.onAddZoom(t)
         else if (kind === 'text') props.onAddText(t)
-        else addShapeAt(t)
+        else addArrowAt(t)
         return
       }
       onSelect(null)
@@ -514,10 +508,10 @@ export const Timeline = memo(
             Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add
           </span>
           <div className="tl-zoom" role="group" aria-label="Timeline zoom">
-            <button className="btn ghost icon-btn" onClick={() => setScale(px / ZOOM_STEP)} disabled={zoom.fit} title="Zoom out timeline (-)" aria-label="Zoom out timeline">
+            <button className="btn ghost icon-btn" onClick={() => setScale(px / ZOOM_STEP)} disabled={zoom.fit} title={withShortcut('Zoom out timeline', keymap.timelineZoomOut)} aria-label="Zoom out timeline">
               <EditorIcon name="minus" size={16} />
             </button>
-            <button className="btn ghost icon-btn" onClick={() => setScale(px * ZOOM_STEP)} title="Zoom in timeline (+ or Ctrl+wheel)" aria-label="Zoom in timeline">
+            <button className="btn ghost icon-btn" onClick={() => setScale(px * ZOOM_STEP)} title={zoomInTitle(keymap.timelineZoomIn)} aria-label="Zoom in timeline">
               <EditorIcon name="plus" size={16} />
             </button>
             <button className="btn ghost" onClick={fitAll} disabled={zoom.fit} title="Fit the whole recording">
@@ -716,6 +710,9 @@ export const Timeline = memo(
     )
   })
 )
+
+/** "Zoom in timeline (+ or Ctrl+wheel)" with the first key bound now (Ctrl+wheel always zooms). */
+const zoomInTitle = (keys: readonly string[]): string => `Zoom in timeline (${keys.length ? `${shortcutLabel(keys[0])} or ` : ''}Ctrl+wheel)`
 
 /** Arrow between two linked zooms: the camera pans across. */
 function PanIcon(): JSX.Element {

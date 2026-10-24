@@ -185,6 +185,36 @@ export function revealTime(item: { start: number; end: number }, t: number, fade
   return clamp(t, lo + pad, hi - pad)
 }
 
+/**
+ * Where to put the playhead so `item` (a shape of `kind`, or a spotlight) shows fully on the
+ * preview, as revealTime, but only on frames the edit keeps (never in a cut or a trimmed end,
+ * where the preview shows another frame) and with its fades as long as the clip there makes
+ * them (sped-up clips fade over more source time). `t` itself when it already shows the item
+ * fully; the middle of its longest kept part when no kept frame shows it fully; null when the
+ * edit keeps none of it.
+ */
+export function revealKeptTime(item: { start: number; end: number }, kind: ShapeKind | 'spotlight', clips: Clip[], t: number): number | null {
+  const pad = 0.01
+  let best: number | null = null
+  let longest: { a: number; b: number } | null = null
+  for (const c of clips) {
+    const a = Math.max(c.start, item.start)
+    const b = Math.min(c.end, item.end)
+    if (!(b - a > 1e-6)) continue
+    if (!longest || b - a > longest.b - longest.a) longest = { a, b }
+    const fade = fadeLead(kind, c.speed)
+    const lo = Math.max(a, item.start + fade)
+    // The clip's end shows the next clip's frame, and the item's end is not shown (end-exclusive).
+    const hi = Math.min(b - pad, item.end - Math.max(fade, pad))
+    if (t >= lo - 1e-6 && t <= hi && t >= c.start && t < c.end) return t
+    if (hi - lo < 2 * pad) continue
+    const at = clamp(t, lo + pad, hi - pad)
+    if (best === null || Math.abs(at - t) < Math.abs(best - t)) best = at
+  }
+  if (best !== null) return best
+  return longest ? (longest.a + longest.b) / 2 : null
+}
+
 /* ---------- geometry on the preview ---------- */
 
 /** The box a shape covers (arrows and lines: the box around both ends), with positive sides. */

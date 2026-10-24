@@ -1,4 +1,5 @@
 import type { CaptureInfo, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
+import { readItems, readShape, readSpotlight } from './shapeData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
 
@@ -100,6 +101,9 @@ export function createProject(init: {
 
 type AnyProject = Omit<Project, 'version'> & { version: number; trim?: { start: number; end: number } }
 
+/** The objects in a stored list (a null or a number in a hand-edited file would crash the timeline). */
+const objects = <T>(list: unknown): T[] => (Array.isArray(list) ? list.filter((v) => !!v && typeof v === 'object' && !Array.isArray(v)) : [])
+
 /**
  * Upgrades a project.json of any earlier version to the current schema.
  * Missing fields get defaults, so hand-edited or partial files still open.
@@ -121,10 +125,11 @@ export function migrateProject(raw: unknown): Project {
     duration,
     capture: p.capture ?? { method: 'chromium', cursorInVideo: true, region: null },
     clips: normalizeClips(clips, duration),
-    zooms: Array.isArray(p.zooms) ? p.zooms : [],
-    annotations: Array.isArray(p.annotations) ? p.annotations : [],
-    shapes: Array.isArray(p.shapes) ? p.shapes : [],
-    spotlights: Array.isArray(p.spotlights) ? p.spotlights : [],
+    zooms: objects(p.zooms),
+    annotations: objects(p.annotations),
+    // Read as the renderer draws them, so every one listed can be selected and edited.
+    shapes: readItems(p.shapes, readShape),
+    spotlights: readItems(p.spotlights, readSpotlight),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

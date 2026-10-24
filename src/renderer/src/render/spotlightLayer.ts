@@ -1,5 +1,6 @@
 import { speedAt } from '../../../shared/render/overlays'
 import {
+  cursorSpotlightPresence,
   FEATHER_STOPS,
   featherRects,
   projectSpotlights,
@@ -31,9 +32,9 @@ type Paint = (lit: number) => string
 /**
  * Darkens the recording outside the spotlights active at fc.t (inside the card's clip, over
  * the cursor and shapes). A cursor spotlight follows exactly the cursor viewers see (the one
- * the cursor layer draws, or the real one baked into the video); a region spotlight stays on
- * its content while the camera moves. Spotlights fade in
- * and out over SPOTLIGHT_FADE; several at once light up all their areas.
+ * the cursor layer draws, or the real one baked into the video), and fades out while that is
+ * off the recording; a region spotlight stays on its content while the camera moves.
+ * Spotlights fade in and out over SPOTLIGHT_FADE; several at once light up all their areas.
  */
 export function drawSpotlightLayer(fc: FrameContext): void {
   const list = projectSpotlights(fc.project)
@@ -49,20 +50,30 @@ export function drawSpotlightLayer(fc: FrameContext): void {
   }
   if (count === 0) return
   const speed = speedAt(project.clips, t)
-  const cursor = fc.cursor.valid ? visibleCursorAt(project, fc.cursor.samples, fc.scene.cursorPath, t) : null
+  const { samples } = fc.cursor
+  const path = fc.scene.cursorPath
+  const cursor = fc.cursor.valid ? visibleCursorAt(project, samples, path, t) : null
+  // A cursor spotlight fades out while the cursor is off the recording (the cursor layer hides it then).
+  let presence = -1
+  const alphaOf = (s: Spotlight): number => {
+    const a = spotlightAlpha(s, t, speed)
+    if (s.mode !== 'cursor' || !cursor || a <= 0) return a
+    if (presence < 0) presence = cursorSpotlightPresence(project, samples, path, t, speed)
+    return a * presence
+  }
   const { ctx } = fc
   ctx.save()
   if (count === 1) {
     // The usual case: one spotlight, painted straight onto the frame.
     const s = list[first]
-    const dim = s.dim * spotlightAlpha(s, t, speed)
+    const dim = s.dim * alphaOf(s)
     if (dim > 0.002) paintField(ctx, litArea(fc, s, cursor), (lit) => `rgba(0,0,0,${(dim * (1 - lit)).toFixed(4)})`, { x0: 0, y0: 0, x1: fc.w, y1: fc.h })
     ctx.restore()
     return
   }
   // Several at once: darken a layer, clear every lit area out of it, then lay it over the frame.
   const active = list.filter((s) => t >= s.start && t < s.end)
-  const levels = spotlightLevels(active.map((s) => ({ dim: s.dim, alpha: spotlightAlpha(s, t, speed) })))
+  const levels = spotlightLevels(active.map((s) => ({ dim: s.dim, alpha: alphaOf(s) })))
   const layer = levels.dim > 0.002 ? layerFor(ctx, fc.w, fc.h) : null
   if (layer) {
     const l = layer.ctx
