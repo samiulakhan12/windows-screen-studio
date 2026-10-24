@@ -16,13 +16,6 @@ import {
   tweakOptions,
   type ExportOptions
 } from '../src/shared/render/exportPresets'
-import { projectMediaUrl } from '../src/shared/render/mediaUrl'
-
-describe('projectMediaUrl (cursor assets for the export)', () => {
-  it("points at another file of the screen proxy's project", () => {
-    expect(projectMediaUrl('studio-media://project/rec%201/screen.mp4?v=12', 'my cursor.png')).toBe('studio-media://project/rec%201/my%20cursor.png?v=12')
-  })
-})
 
 const project = createProject({
   id: 'p',

@@ -118,6 +118,8 @@ export function migrateCursor(raw: unknown): CursorTrack {
     keys: Array.isArray(c.keys) ? c.keys : [],
     shapes: Array.isArray(c.shapes) ? c.shapes : [],
     scale: typeof c.scale === 'number' && c.scale > 0 ? c.scale : 1,
+    ...(Array.isArray(c.marks) ? { marks: c.marks.filter((m) => Number.isFinite(m?.t)) } : {}),
+    ...(Array.isArray(c.typing) ? { typing: c.typing.filter((b) => Number.isFinite(b?.t) && Number.isFinite(b?.end)) } : {}),
     valid: !!c.valid
   }
 }

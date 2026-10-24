@@ -8,7 +8,8 @@ import { drawFrame, type RenderScene } from '../render/compositor'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
-import { createVideo, projectMediaUrl, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
+import { projectMediaUrl } from '../../../shared/mediaUrl'
+import { createVideo, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -72,7 +73,7 @@ const abortError = (): DOMException => new DOMException('Export cancelled', 'Abo
 async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 'aspect'> }>(input: T): Promise<T> {
   const project = exportProject(input.project, input.settings)
   const scene = project === input.project ? input.scene : { ...input.scene, project }
-  await prepareCursorAssets(project, (file) => projectMediaUrl(input.screenUrl, file))
+  await prepareCursorAssets(project, projectMediaUrl(project.id))
   return { ...input, project, scene }
 }
 

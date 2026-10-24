@@ -7,9 +7,8 @@ import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
 
-/** Proxies are encoded at 60 fps (see proxyArgs); used to look one frame ahead at cut points. */
+/** Proxy frame rate when the project does not say (older projects: always 60 fps). */
 const SOURCE_FPS = 60
-const FRAME = 1 / SOURCE_FPS
 const WEBCAM_DRIFT = 0.15
 
 const hasVideoFrameCallback = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype
@@ -28,6 +27,11 @@ export class PreviewPlayer {
   playing = false
 
   private project: Project
+
+  /** One proxy frame (proxies run at the recording's frame rate, 30 or 60 fps); used to look ahead at cut points. */
+  private get frame(): number {
+    return 1 / (this.project.capture?.fps ?? SOURCE_FPS)
+  }
   private scene: RenderScene | null = null
   private unzoomed: RenderScene | null = null
   private background: HTMLImageElement | null = null
@@ -143,7 +147,7 @@ export class PreviewPlayer {
     if (this.playing || this.disposed) return
     const clips = this.project.clips
     let from = playableFrom(clips, this.time)
-    if (!from || this.time >= keptBounds(clips).end - FRAME) from = { time: clips[0].start, index: 0 }
+    if (!from || this.time >= keptBounds(clips).end - this.frame) from = { time: clips[0].start, index: 0 }
     this.playing = true
     this.time = from.time
     this.pendingSeek = null
@@ -229,7 +233,7 @@ export class PreviewPlayer {
     const clips = this.project.clips
     if (this.jumpTarget !== null) {
       // Frames decoded before the jump landed belong to the cut: never show them.
-      if (Math.abs(t - this.jumpTarget) > FRAME * 1.5 && t < this.jumpTarget) {
+      if (Math.abs(t - this.jumpTarget) > this.frame * 1.5 && t < this.jumpTarget) {
         this.scheduleFrame()
         return
       }
@@ -251,7 +255,7 @@ export class PreviewPlayer {
     this.playClicks(t, clip)
     this.emit()
     // Jump before the next decoded frame would land in a cut (or past the end).
-    if (t + clip.speed * FRAME >= clip.end - 1e-4) this.leaveClip(clips, i)
+    if (t + clip.speed * this.frame >= clip.end - 1e-4) this.leaveClip(clips, i)
     if (this.playing) this.scheduleFrame()
   }
 
@@ -317,7 +321,7 @@ export class PreviewPlayer {
     const clips = this.project.clips
     const last = clips[clips.length - 1]
     const media = Number.isFinite(this.screen.duration) ? this.screen.duration : this.project.duration
-    const t = s >= last.end - 1e-6 ? Math.max(last.start, last.end - FRAME / 4) : s
+    const t = s >= last.end - 1e-6 ? Math.max(last.start, last.end - this.frame / 4) : s
     return clamp(t, 0, Math.max(0, media - 0.001))
   }
 

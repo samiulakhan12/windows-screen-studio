@@ -8,7 +8,6 @@ import { frameCovers, frameSeekTime } from '../../../shared/render/frameTiming'
 export const SCREEN_PROXY_FPS = 60
 export const WEBCAM_PROXY_FPS = 30
 
-export { projectMediaUrl } from '../../../shared/render/mediaUrl'
 
 export function createVideo(url: string): HTMLVideoElement {
   const v = document.createElement('video')
