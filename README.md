@@ -17,12 +17,12 @@ Built with Electron, React and TypeScript, a small Rust helper for Windows captu
 
 | | |
 | --- | --- |
-| **Record** | A full screen, an **area** you drag out, or a single window · microphone · system audio · webcam · 3-2-1 countdown · floating control bar (pause / resume / stop / discard) · `Ctrl+Shift+2` to stop · recordings are streamed to disk while you record, so nothing is lost if something crashes |
+| **Record** | A full screen, an **area** you drag out, or a single window · microphone · system audio · webcam · 3-2-1 countdown · floating control bar (pause / resume / stop / discard) · custom hotkeys (stop, pause, zoom here) · 30/60 fps · auto-pause when idle · hide desktop icons · camera preview · recordings are streamed to disk while you record, so nothing is lost if something crashes |
 | **No double cursor** | On Windows 10 2004+/11 screens, areas **and single windows** are recorded by a native helper (Windows Graphics Capture, GPU H.264) that leaves the Windows cursor out of the video, so the app can draw its own smooth cursor. Elsewhere it falls back to Chromium capture automatically |
 | **Windows too** | Recording a single window keeps every cursor effect: the cursor and clicks are mapped into the window as it moves or resizes, so auto zoom, click ripples and (with native capture) the smooth cursor all work. Without native window capture the app still follows the window for auto zoom and ripples, with the Windows cursor left in the video |
-| **Motion** | Auto zoom from your clicks · camera follows the cursor with spring smoothing · motion blur on zooms and pans · smooth, resizable cursor that keeps the real cursor shape (arrow, text, hand, …) · click ripples · hide cursor when idle |
+| **Motion** | Auto zoom from your clicks, typing and "zoom here" marks · region zoom · pull back · zoom easing and connected pans · camera follows the cursor with spring smoothing · motion blur on zooms and pans · smooth, resizable cursor that keeps the real cursor shape (arrow, text, hand, …) or a style of your choice (macOS, Windows, white, black, custom image) · highlight halo · ripple / ring / pulse clicks with optional click sound · tilt, trail, loop home · hide cursor when idle |
 | **Edit** | Undo / redo · trim, split, cut and speed (0.25×–8×) per clip · zoom segments (level, follow cursor or fixed point picked on the preview) · text annotations · keystroke overlay for shortcuts (`Ctrl + C`, never plain typing) · backgrounds (gradients, colour, image), padding, corners, shadow · webcam position, size, shape · aspect ratios (Auto, 16:9, 9:16, 1:1, 4:3) · volume / mute · zoomable timeline for long recordings · **save your look as the default** for new recordings · auto-save |
-| **Export** | MP4 (H.264/AAC) 720p → 4K at 30/60 fps using the GPU when available (WebCodecs, NVENC, Quick Sync, AMF), with software fallback · palette-optimised GIF · exact frames and colours · progress with ETA · **Copy** the exported file to the clipboard to paste into chat apps or Explorer |
+| **Export** | Destination presets (YouTube, X, LinkedIn, Reels, TikTok, Shorts, Slack, email) · batch export · target file size · MP4 / MOV / WebM / GIF / M4A · PNG thumbnail · MP4 (H.264/AAC) 720p → 4K at 30/60 fps using the GPU when available (WebCodecs, NVENC, Quick Sync, AMF), with software fallback · palette-optimised GIF · exact frames and colours · progress with ETA · **Copy** the exported file to the clipboard to paste into chat apps or Explorer |
 
 ## Getting started
 
@@ -78,6 +78,7 @@ crash) are listed on the home screen and can be recovered.
 | `Home` / `End` | Go to the start / end |
 | `S` | Split the clip at the playhead |
 | `Z` | Add a zoom at the playhead |
+| `1`–`4` / `0` | Set the selected zoom's level (1.25×, 1.5×, 2×, 3×) / pull back to 0.75× |
 | `T` | Add text at the playhead |
 | `Delete` / `Backspace` | Delete the selection (clip → cut, zoom, text, or a Shift-dragged range) |
 | `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z`) | Undo / redo |
