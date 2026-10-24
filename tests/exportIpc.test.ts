@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import type { ExportJob } from '../src/shared/api/export'
+import type { ExportFinish, ExportJob } from '../src/shared/api/export'
 
 /**
  * The export lifecycle in the main process with a fake ffmpeg: like the real one it
@@ -18,6 +18,11 @@ const h = vi.hoisted(() => {
     quit: vi.fn(),
     canvasStatus: 'enabled',
     saveTo: '',
+    folder: '',
+    /** Sizes (bytes) the next fake ffmpeg passes write, in order; 'pass' (4 bytes) when empty. */
+    passSizes: [] as number[],
+    /** Fake passes exit successfully on their own. */
+    autoExit: false,
     encoders: [] as FakeEncoderLike[],
     runs: [] as { args: string[]; kill: () => void; exit: (ok: boolean) => void }[]
   }
@@ -36,7 +41,10 @@ vi.mock('electron', () => ({
     quit: h.quit,
     getGPUFeatureStatus: () => ({ '2d_canvas': h.canvasStatus })
   },
-  dialog: { showSaveDialog: async () => ({ canceled: false, filePath: h.saveTo }) },
+  dialog: {
+    showSaveDialog: async () => ({ canceled: false, filePath: h.saveTo }),
+    showOpenDialog: async () => ({ canceled: !h.folder, filePaths: h.folder ? [h.folder] : [] })
+  },
   ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => h.handlers.set(channel, fn) },
   shell: { showItemInFolder: () => undefined }
 }))
@@ -79,9 +87,13 @@ vi.mock('../src/main/ffmpeg', async (orig) => {
     let settle!: (ok: boolean) => void
     const done = new Promise<void>((resolve, reject) => (settle = (ok) => (ok ? resolve() : reject(new Error('stopped')))))
     done.catch(() => undefined)
-    fs.writeFileSync(args[args.length - 1], 'pass')
+    // Pass 1 of a two-pass encode writes to '-' (the null muxer): nothing to create.
+    const target = args[args.length - 1]
+    const size = h.passSizes.shift()
+    if (require('node:path').isAbsolute(target)) fs.writeFileSync(target, size ? Buffer.alloc(size) : 'pass')
     const run = { args, kill: () => undefined, exit: (ok: boolean) => settle(ok), done }
     h.runs.push(run)
+    if (h.autoExit) setTimeout(() => settle(true), 1)
     return run
   }
   return { ...real, FrameEncoder, startFfmpeg }
@@ -276,3 +288,99 @@ describe('export clean-up in the main process', () => {
     expect(path.basename(tempStem(h.root))).toMatch(/^screen-studio-gif-\d+-[0-9a-z]+$/)
   })
 })
+
+describe('batch exports, size targets and thumbnails in the main process', () => {
+  const finishAll = async (): Promise<ExportFinish> => {
+    h.autoExit = true
+    try {
+      return (await invoke('export:finish')) as ExportFinish
+    } finally {
+      h.autoExit = false
+    }
+  }
+
+  it('a batch writes only into the chosen folder, never over an existing file, each path once', async () => {
+    const folder = path.join(out, 'batch')
+    mkdirSync(folder)
+    writeFileSync(path.join(folder, 'Demo - Email.mp4'), 'OLD')
+    h.folder = folder
+    expect(await invoke('export:chooseFolder')).toBe(folder)
+    await expect(invoke('export:batchPath', {}, path.join(out, 'elsewhere'), 'a.mp4')).rejects.toThrow(/folder dialog/)
+    await expect(invoke('export:batchPath', {}, folder, '../a.mp4')).rejects.toThrow(/file name/)
+    const first = (await invoke('export:batchPath', {}, folder, 'Demo - Email.mp4')) as string
+    expect(first).toBe(path.join(folder, 'Demo - Email (2).mp4'))
+    // Handed out but not written yet: the next one is (3).
+    expect(await invoke('export:batchPath', {}, folder, 'Demo - Email.mp4')).toBe(path.join(folder, 'Demo - Email (3).mp4'))
+    await invoke('export:start', { sender: renderer() }, 'p1', jobFor(first))
+    await invoke('export:finish')
+    expect(readFileSync(path.join(folder, 'Demo - Email.mp4'), 'utf8')).toBe('OLD')
+    expect(existsSync(first)).toBe(true)
+    // Accepted once.
+    await expect(invoke('export:start', { sender: renderer() }, 'p1', jobFor(first))).rejects.toThrow(/save dialog/)
+    // A path in the folder that was never handed out is refused.
+    await expect(invoke('export:start', { sender: renderer() }, 'p1', jobFor(path.join(folder, 'x.mp4')))).rejects.toThrow(/save dialog/)
+    h.folder = ''
+  })
+
+  it('a size target on x264 runs both passes, then deletes the intermediate and logs', async () => {
+    const target = path.join(out, 'Target.mp4')
+    h.saveTo = target
+    await invoke('export:choosePath', {}, 'x', 'mp4')
+    await invoke('export:start', { sender: renderer() }, 'p1', { ...jobFor(target), bitrate: { video: 1_000_000, audio: 0 } })
+    const enc = lastEncoder()
+    expect(enc.args.join(' ')).toContain('-qp 0 -f matroska')
+    const runs = h.runs.length
+    await finishAll()
+    const passes = h.runs.slice(runs).map((r) => r.args.join(' '))
+    expect(passes).toHaveLength(2)
+    expect(passes[0]).toContain('-pass 1')
+    expect(passes[1]).toContain('-pass 2')
+    expect(existsSync(target)).toBe(true)
+    expect(gifTemps()).toEqual([])
+    expect(partials()).toEqual([])
+  })
+
+  it('a GIF over its size limit is made again smaller until it fits, and says how', async () => {
+    const target = path.join(out, 'Slack.gif')
+    h.saveTo = target
+    await invoke('export:choosePath', {}, 'x', 'gif')
+    await invoke('export:start', { sender: renderer() }, 'p1', { ...jobFor(target, 'gif'), maxBytes: 3000 })
+    // palette, GIF (too big), then palette + GIF of the first reduction (fits).
+    h.passSizes = [100, 9000, 100, 2500]
+    const runs = h.runs.length
+    const r = await finishAll()
+    expect(r.bytes).toBe(2500)
+    expect(r.reduced).toMatch(/fps/)
+    expect(r.overLimit).toBeUndefined()
+    expect(h.runs.slice(runs)).toHaveLength(4)
+    expect(h.runs[h.runs.length - 1].args.join(' ')).toMatch(/fps=\d+/)
+    expect(gifTemps()).toEqual([])
+  })
+
+  it('says so when a GIF cannot fit even at the smallest setting', async () => {
+    const target = path.join(out, 'Huge.gif')
+    h.saveTo = target
+    await invoke('export:choosePath', {}, 'x', 'gif')
+    await invoke('export:start', { sender: renderer() }, 'p1', { ...jobFor(target, 'gif'), maxBytes: 1000 })
+    h.passSizes = Array.from({ length: 40 }, (_, i) => (i % 2 ? 1_000_000 : 100))
+    const r = await finishAll()
+    h.passSizes = []
+    expect(r.overLimit).toBe(true)
+    expect(existsSync(target)).toBe(true)
+  })
+
+  it('saves a thumbnail only to the path chosen for it, only as a PNG, through a temporary file', async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+    const file = path.join(out, 'thumb.png')
+    await expect(invoke('export:saveThumbnail', {}, file, png)).rejects.toThrow(/save dialog/)
+    h.saveTo = file
+    await invoke('export:choosePath', {}, 'x', 'png')
+    await expect(invoke('export:saveThumbnail', {}, file, new Uint8Array(20))).rejects.toThrow(/Invalid thumbnail/)
+    expect(await invoke('export:saveThumbnail', {}, file, png)).toEqual({ bytes: png.byteLength })
+    expect(Array.from(readFileSync(file))).toEqual(Array.from(png))
+    expect(partials()).toEqual([])
+    // The approval is used up.
+    await expect(invoke('export:saveThumbnail', {}, file, png)).rejects.toThrow(/save dialog/)
+  })
+})
+

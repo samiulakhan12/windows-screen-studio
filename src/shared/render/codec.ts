@@ -66,3 +66,73 @@ export function colorTagsFrom(space: ReportedColorSpace | undefined | null): Col
     fullRange: typeof space?.fullRange === 'boolean' ? space.fullRange : null
   }
 }
+
+/**
+ * VP9 level (Annex A: luma sample rate and picture size) for the WebCodecs codec
+ * string, as its two-digit code (10 = level 1, 41 = level 4.1, ...).
+ */
+export function vp9Level(width: number, height: number, fps: number): number {
+  const size = width * height
+  const rate = size * fps
+  const levels: [number, number, number][] = [
+    [10, 36864, 829440],
+    [11, 73728, 2764800],
+    [20, 122880, 4608000],
+    [21, 245760, 9216000],
+    [30, 552960, 20736000],
+    [31, 983040, 36864000],
+    [40, 2228224, 83558400],
+    [41, 2228224, 160432128],
+    [50, 8912896, 311951360],
+    [51, 8912896, 588251136],
+    [52, 8912896, 1176502272],
+    [60, 35651584, 1176502272],
+    [61, 35651584, 2353004544],
+    [62, 35651584, 4706009088]
+  ]
+  for (const [level, maxSize, maxRate] of levels) if (size <= maxSize && rate <= maxRate) return level
+  return 62
+}
+
+/** WebCodecs codec string for 8-bit 4:2:0 VP9 (profile 0) at this size and rate. */
+export const vp9Codec = (width: number, height: number, fps: number): string => `vp09.00.${vp9Level(width, height, fps)}.08`
+
+/**
+ * IVF, the minimal container ffmpeg reads VP9 from a pipe in: a 32-byte file header,
+ * then each frame as a 12-byte header (size, timestamp in frames) and its bytes.
+ */
+export function ivfFileHeader(width: number, height: number, fps: number, frames = 0): Uint8Array {
+  const b = new Uint8Array(32)
+  const v = new DataView(b.buffer)
+  b.set([0x44, 0x4b, 0x49, 0x46]) // 'DKIF'
+  v.setUint16(4, 0, true) // version
+  v.setUint16(6, 32, true) // header size
+  b.set([0x56, 0x50, 0x39, 0x30], 8) // 'VP90'
+  v.setUint16(12, width, true)
+  v.setUint16(14, height, true)
+  v.setUint32(16, fps, true) // time base denominator
+  v.setUint32(20, 1, true) // time base numerator
+  v.setUint32(24, frames, true)
+  return b
+}
+
+/** Header of one IVF frame: its size in bytes and its timestamp (in frames). */
+export function ivfFrameHeader(size: number, pts: number): Uint8Array {
+  const b = new Uint8Array(12)
+  const v = new DataView(b.buffer)
+  v.setUint32(0, size, true)
+  v.setUint32(4, pts >>> 0, true)
+  v.setUint32(8, Math.floor(pts / 2 ** 32), true)
+  return b
+}
+
+/** VP9 bitstream colour space names of ffmpeg's vp9_metadata filter, by H.273 matrix code point. */
+const VP9_COLOR_SPACE: Record<number, string> = { 0: 'rgb', 1: 'bt709', 5: 'bt601', 6: 'smpte170', 7: 'smpte240', 9: 'bt2020' }
+
+/** ffmpeg bitstream filter that writes the colour description into a VP9 stream, or null when unknown. */
+export function vp9MetadataFilter(c: ColorTags): string | null {
+  const opts: string[] = []
+  if (c.matrix !== null && VP9_COLOR_SPACE[c.matrix]) opts.push(`color_space=${VP9_COLOR_SPACE[c.matrix]}`)
+  if (c.fullRange !== null) opts.push(`color_range=${c.fullRange ? 'pc' : 'tv'}`)
+  return opts.length ? `vp9_metadata=${opts.join(':')}` : null
+}
