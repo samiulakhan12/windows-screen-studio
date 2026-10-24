@@ -23,7 +23,8 @@
  *
  * The helper is found at resources/native/ssw-capture.exe when packaged and at
  * native/bin/ssw-capture.exe in development (npm run build:native). SSW_CAPTURE_HELPER
- * overrides it with an executable, or a .js/.cjs script run by Electron as Node (tests).
+ * overrides it with an executable, or a .js/.cjs script run by Electron as Node (tests;
+ * unpackaged runs only).
  * Protocol: native/README.md.
  */
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams, type SpawnOptionsWithoutStdio } from 'node:child_process'
@@ -199,7 +200,8 @@ const SHAPES: ReadonlySet<string> = new Set<CursorShape>([
 ])
 
 function helperCommand(): HelperCommand | null {
-  const override = process.env.SSW_CAPTURE_HELPER
+  // A test hook: a packaged (signed) app never runs another program in the helper's place.
+  const override = app.isPackaged ? undefined : process.env.SSW_CAPTURE_HELPER
   if (override) {
     if (!existsSync(override)) return null
     if (/\.(c|m)?js$/i.test(override)) {

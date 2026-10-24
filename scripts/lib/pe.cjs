@@ -2,6 +2,8 @@
 // Authenticode presence and the icon resources. Works on any OS (no Windows tools).
 'use strict'
 
+const { createHash } = require('node:crypto')
+
 const MACHINES = { 0x14c: 'x86', 0x8664: 'x64', 0xaa64: 'arm64' }
 const RT_ICON = 3
 const RT_GROUP_ICON = 14
@@ -10,7 +12,7 @@ const RT_GROUP_ICON = 14
  * Parses the headers of a PE file.
  * @param {Buffer} buf whole file
  * @returns {{ machine: string, sections: {name: string, virtualAddress: number, virtualSize: number, rawOffset: number, rawSize: number}[],
- *   rawEnd: number, truncated: boolean, signed: boolean, resourceRva: number, resourceSize: number }}
+ *   rawEnd: number, truncated: boolean, signed: boolean, certOffset: number, resourceRva: number, resourceSize: number }}
  */
 function parsePe(buf) {
   if (buf.length < 64 || buf.toString('latin1', 0, 2) !== 'MZ') throw new Error('not a Windows executable (no MZ header)')
@@ -52,6 +54,7 @@ function parsePe(buf) {
     rawEnd,
     truncated: sections.length < sectionCount || buf.length < rawEnd,
     signed: security.size > 0 && security.rva + security.size <= buf.length,
+    certOffset: security.size ? security.rva : 0,
     resourceRva: resource.rva,
     resourceSize: resource.size
   }
@@ -121,11 +124,41 @@ function readIconGroups(buf) {
 }
 
 /**
+ * SHA-256 of a PE file's first `length` bytes with the two header fields Authenticode signing
+ * rewrites (the checksum and the certificate table entry) read as zeros. Signing only pads the
+ * file to 8 bytes and appends the certificate table, so over the unsigned length this hash is
+ * the same before and after signing.
+ */
+function peContentHash(buf, length = buf.length) {
+  const opt = buf.readUInt32LE(0x3c) + 24
+  const checksum = opt + 64
+  const certEntry = opt + (buf.readUInt16LE(opt) === 0x20b ? 112 : 96) + 4 * 8
+  return createHash('sha256')
+    .update(buf.subarray(0, checksum))
+    .update(Buffer.alloc(4))
+    .update(buf.subarray(checksum + 4, certEntry))
+    .update(Buffer.alloc(8))
+    .update(buf.subarray(certEntry + 8, length))
+    .digest('hex')
+}
+
+/**
+ * Whether `buf` is the build `pin` describes ({ size, sha256 } of the unsigned file, sha256 as
+ * peContentHash), signed or not.
+ */
+function matchesPin(buf, info, pin) {
+  const end = info.signed ? info.certOffset : buf.length
+  if (end < pin.size || end - pin.size >= 8 || buf.subarray(pin.size, end).some((b) => b !== 0)) return false
+  return peContentHash(buf, pin.size) === pin.sha256
+}
+
+/**
  * Is `file` a complete x64 Windows executable? Catches a missing file, the build host's own
- * (Linux/macOS) binary, a 32-bit/ARM build and an interrupted download.
+ * (Linux/macOS) binary, a 32-bit/ARM build and an interrupted download. With `pin`, the file
+ * must also be exactly that build (see matchesPin).
  * @returns {{ ok: true, size: number, signed: boolean } | { ok: false, reason: string }}
  */
-function checkWindowsExe(file, { minBytes = 0, fs = require('node:fs') } = {}) {
+function checkWindowsExe(file, { minBytes = 0, pin = null, fs = require('node:fs') } = {}) {
   let buf
   try {
     buf = fs.readFileSync(file)
@@ -141,7 +174,8 @@ function checkWindowsExe(file, { minBytes = 0, fs = require('node:fs') } = {}) {
   if (info.machine !== 'x64') return { ok: false, reason: `built for ${info.machine}, not x64` }
   if (info.truncated) return { ok: false, reason: `truncated (${buf.length} of at least ${info.rawEnd} bytes)` }
   if (buf.length < minBytes) return { ok: false, reason: `only ${buf.length} bytes` }
+  if (pin && !matchesPin(buf, info, pin)) return { ok: false, reason: `not the expected build (its SHA-256 differs from the pinned ${pin.sha256})` }
   return { ok: true, size: buf.length, signed: info.signed }
 }
 
-module.exports = { parsePe, readResources, readIconGroups, checkWindowsExe, RT_ICON, RT_GROUP_ICON }
+module.exports = { parsePe, readResources, readIconGroups, checkWindowsExe, peContentHash, RT_ICON, RT_GROUP_ICON }

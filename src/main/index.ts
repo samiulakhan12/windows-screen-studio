@@ -6,6 +6,7 @@ import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
 import { registerPrefsIpc } from './prefsIpc'
 import { registerProjectsIpc } from './projectsIpc'
 import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp, registerRecordingIpc } from './recordingIpc'
+import { registerSecurity } from './security'
 import { createMainWindow } from './windows'
 
 // One instance only: a second one would fight over the input hook, the stop shortcut and the projects folder.
@@ -20,6 +21,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     app.setAppUserModelId('com.samiulakhan12.screenstudio')
+    registerSecurity()
     handleMediaProtocol()
     registerRecordingIpc()
     registerProjectsIpc()

@@ -45,7 +45,7 @@ export function createMainWindow(onClosed: () => void): BrowserWindow {
     titleBarOverlay: { color: '#0b0b10', symbolColor: '#e5e7eb', height: 40 },
     webPreferences: {
       preload: preloadPath,
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       // Recording keeps running while this window is hidden.

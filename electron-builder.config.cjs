@@ -3,7 +3,7 @@
 'use strict'
 
 const { resolveWindowsSigning } = require('./scripts/lib/signing.cjs')
-const { appFiles, nativeHelper, nativeHelperResource, nativeHelperStatus } = require('./scripts/lib/packaging.cjs')
+const { appFiles, nativeHelper, nativeHelperResource, nativeHelperStatus, SIGN_EXTS } = require('./scripts/lib/packaging.cjs')
 
 const signing = resolveWindowsSigning(process.env, { projectDir: __dirname })
 for (const w of signing.warnings) console.warn(`  • code signing: ${w}`)
@@ -35,10 +35,21 @@ module.exports = {
   // No auto-updater is wired up, so skip update metadata (app-update.yml, latest.yml, blockmap).
   publish: null,
   forceCodeSigning: signing.forceCodeSigning,
+  // Flipped before signing. The signed exe never runs as plain Node (ELECTRON_RUN_AS_NODE), ignores
+  // NODE_OPTIONS and --inspect, and loads only the app.asar whose header hash is embedded in it.
+  electronFuses: {
+    runAsNode: false,
+    enableNodeOptionsEnvironmentVariable: false,
+    enableNodeCliInspectArguments: false,
+    enableEmbeddedAsarIntegrityValidation: true,
+    onlyLoadAppFromAsar: true
+  },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
     icon: 'build/icon.ico',
     artifactName: 'ScreenStudio-Setup-${version}.${ext}',
+    // Every .exe is signed anyway; this adds the uiohook-napi .node in app.asar.unpacked.
+    signExts: SIGN_EXTS,
     ...signing.win
   },
   nsis: {

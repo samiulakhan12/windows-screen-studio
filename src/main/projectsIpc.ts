@@ -6,6 +6,7 @@ import type { SaveMeta, SyncSaveResult } from '../shared/editor/autosave'
 import type { LoadedProject } from '../shared/api/projects'
 import type { Project } from '../shared/types'
 import { stopAnalyses } from './analysisIpc'
+import { imageType } from './assetIpc'
 import { writeFileAtomicSync } from './atomicWrite'
 import { MEDIA_FILE_RE, mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
@@ -97,12 +98,7 @@ export function registerProjectsIpc(): void {
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
     })
     if (result.canceled || !result.filePaths[0]) return null
-    const src = result.filePaths[0]
-    const ext = path.extname(src).toLowerCase().replace('.jpeg', '.jpg')
-    const name = `background${ext}`
-    // Images of the other formats are kept so undo can go back to them.
-    await fs.copyFile(src, path.join(projects.projectDir(id), name))
-    return { url: mediaUrl(id, name), path: name }
+    return importBackgroundImage(id, result.filePaths[0])
   })
 
   ipcMain.handle('projects:pickCursorImage', async (_e, id: string) => {
@@ -131,6 +127,53 @@ export function registerProjectsIpc(): void {
 }
 
 const BACKGROUND_RE = /^background\.(png|jpe?g|webp)$/i
+const MAX_BACKGROUND_IMAGE_BYTES = 100 * 1024 * 1024
+
+/** The first 4 KB of `src` (enough to tell an image's format). */
+async function readHead(src: string): Promise<Buffer> {
+  const handle = await fs.open(src, 'r')
+  try {
+    const head = Buffer.alloc(4096)
+    const { bytesRead } = await handle.read(head, 0, head.length, 0)
+    return head.subarray(0, bytesRead)
+  } finally {
+    await handle.close()
+  }
+}
+
+/**
+ * Copies `src` into project `id` as `name` through a temporary file and a rename, so a copy
+ * that fails partway (a disconnected drive, a full disk) leaves the image in use intact.
+ */
+async function copyIntoProject(id: string, src: string, name: string): Promise<void> {
+  const dir = projects.projectDir(id)
+  const tmp = path.join(dir, `.${name}.part`)
+  try {
+    await fs.copyFile(src, tmp)
+    await fs.rename(tmp, path.join(dir, name))
+  } catch (err) {
+    await fs.rm(tmp, { force: true }).catch(() => undefined)
+    throw err
+  }
+}
+
+/**
+ * Copies a picked background image into the project folder as background.<ext> and returns its
+ * URL and project-relative path. Images of the other formats are kept so undo can go back to
+ * them. A file that is not a PNG, JPG or WebP image of its extension is refused before anything
+ * is replaced.
+ */
+export async function importBackgroundImage(id: string, src: string): Promise<{ url: string; path: string }> {
+  const ext = path.extname(src).slice(1).toLowerCase().replace('jpeg', 'jpg')
+  const name = `background.${ext}`
+  if (!BACKGROUND_RE.test(name)) throw new Error('Choose a PNG, JPG or WebP image.')
+  const st = await fs.stat(src)
+  if (!st.isFile()) throw new Error('Choose a PNG, JPG or WebP image.')
+  if (st.size > MAX_BACKGROUND_IMAGE_BYTES) throw new Error('This image is too large for a background (100 MB at most).')
+  if (imageType(await readHead(src)) !== ext) throw new Error(`This file could not be read as a .${ext} image.`)
+  await copyIntoProject(id, src, name)
+  return { url: mediaUrl(id, name), path: name }
+}
 
 /** Image formats a custom cursor can be (Chromium decodes all of them; .cur hot spots are not read: top-left). */
 export const CURSOR_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'ico', 'cur']
@@ -154,18 +197,12 @@ export function looksLikeCursorImage(head: Buffer): boolean {
 export async function importCursorImage(id: string, src: string): Promise<{ url: string; path: string }> {
   const ext = path.extname(src).toLowerCase().replace('.jpeg', '.jpg')
   if (!CURSOR_IMAGE_EXTENSIONS.includes(ext.slice(1))) throw new Error('Choose a PNG, JPG, WebP, SVG, ICO or CUR image.')
-  const { size } = await fs.stat(src)
-  if (size > MAX_CURSOR_IMAGE_BYTES) throw new Error('This image is too large for a cursor (10 MB at most).')
-  const handle = await fs.open(src, 'r')
-  const head = Buffer.alloc(4096)
-  try {
-    const { bytesRead } = await handle.read(head, 0, head.length, 0)
-    if (!looksLikeCursorImage(head.subarray(0, bytesRead))) throw new Error('This file could not be read as an image.')
-  } finally {
-    await handle.close()
-  }
+  const st = await fs.stat(src)
+  if (!st.isFile()) throw new Error('Choose a PNG, JPG, WebP, SVG, ICO or CUR image.')
+  if (st.size > MAX_CURSOR_IMAGE_BYTES) throw new Error('This image is too large for a cursor (10 MB at most).')
+  if (!looksLikeCursorImage(await readHead(src))) throw new Error('This file could not be read as an image.')
   const name = `cursor${ext}`
   if (!MEDIA_FILE_RE.test(name)) throw new Error('Unsupported cursor image')
-  await fs.copyFile(src, path.join(projects.projectDir(id), name))
+  await copyIntoProject(id, src, name)
   return { url: mediaUrl(id, name), path: name }
 }

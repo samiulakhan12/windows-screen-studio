@@ -468,11 +468,14 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   )
 
   const onBackgroundImage = useCallback(async () => {
-    const picked = await window.api.pickBackgroundImage(store.state.id)
+    const picked = await window.api.pickBackgroundImage(store.state.id).catch((err: unknown) => {
+      showNotice((err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+      return null
+    })
     if (!picked) return
     store.update((p) => ({ ...p, style: { ...p.style, background: { type: 'image', path: picked.path } } }))
     setBackgroundVersion((v) => v + 1)
-  }, [store])
+  }, [store, showNotice])
 
   const exitPick = useCallback(() => setPickFocus(false), [])
 

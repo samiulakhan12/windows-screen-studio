@@ -34,7 +34,7 @@ export function pickRegionOnDisplay(display: Display): Promise<RegionPick> {
     hasShadow: false,
     enableLargerThanScreen: true,
     show: false,
-    webPreferences: { preload: preloadPath, sandbox: false, contextIsolation: true, nodeIntegration: false }
+    webPreferences: { preload: preloadPath, sandbox: true, contextIsolation: true, nodeIntegration: false }
   })
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setBounds(display.bounds)

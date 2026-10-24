@@ -26,7 +26,8 @@ const pe = require('../scripts/lib/pe.cjs') as {
   parsePe(buf: Buffer): { machine: string; truncated: boolean; signed: boolean; rawEnd: number }
   readResources(buf: Buffer): { type: number | null; id: number | null; lang: number | null; data: Buffer }[]
   readIconGroups(buf: Buffer): { id: number | null; images: { width: number; height: number; bitCount: number; data: Buffer | null }[] }[]
-  checkWindowsExe(file: string, options?: { minBytes?: number }): { ok: true; size: number; signed: boolean } | { ok: false; reason: string }
+  checkWindowsExe(file: string, options?: { minBytes?: number; pin?: { size: number; sha256: string } }): { ok: true; size: number; signed: boolean } | { ok: false; reason: string }
+  peContentHash(buf: Buffer, length?: number): string
 }
 interface Signing {
   mode: 'unsigned' | 'pfx' | 'store' | 'azure'
@@ -42,6 +43,9 @@ const signing = require('../scripts/lib/signing.cjs') as {
 }
 const packaging = require('../scripts/lib/packaging.cjs') as {
   appFiles(rootDir?: string): string[]
+  FFMPEG_EXE: { release: string; size: number; sha256: string }
+  SIGN_EXTS: string[]
+  signedFiles(dir: string): string[]
   nativeHelper(): { from: string; to: string }
   nativeHelperResource(): { from: string; to: string; filter: string[] }
   nativeHelperStatus(rootDir?: string): { bundle: boolean; present: boolean; reason?: string; size?: number }
@@ -285,6 +289,35 @@ describe('pe', () => {
     expect(pe.checkWindowsExe(file('cut.exe', good.subarray(0, good.length - 10)))).toMatchObject({ ok: false, reason: /truncated/ })
     expect(pe.checkWindowsExe(file('small.exe', good), { minBytes: good.length + 1 })).toMatchObject({ ok: false, reason: /only/ })
   })
+
+  it('checkWindowsExe with a pin accepts only that build, before and after signing', () => {
+    const dir = tmpDir()
+    const file = (name: string, data: Buffer): string => {
+      writeFileSync(path.join(dir, name), data)
+      return path.join(dir, name)
+    }
+    const exe = fakePe({ resources: [{ type: 3, id: 1, data: Buffer.from('ffmpeg') }] })
+    const pin = { size: exe.length, sha256: pe.peContentHash(exe) }
+    expect(pe.checkWindowsExe(file('ffmpeg.exe', exe), { pin })).toEqual({ ok: true, size: exe.length, signed: false })
+    // What signing does: a new checksum, the certificate table entry, padding and the table itself.
+    const signedExe = Buffer.concat([exe, Buffer.alloc(64, 0xcc)])
+    signedExe.writeUInt32LE(0x1234, 0x58 + 64)
+    signedExe.writeUInt32LE(exe.length, 0x58 + 112 + 4 * 8)
+    signedExe.writeUInt32LE(64, 0x58 + 112 + 4 * 8 + 4)
+    expect(pe.checkWindowsExe(file('signed.exe', signedExe), { pin })).toEqual({ ok: true, size: signedExe.length, signed: true })
+    // Any other byte, or bytes appended, is another build.
+    const tampered = Buffer.from(exe)
+    tampered[exe.length - 1] ^= 1
+    expect(pe.checkWindowsExe(file('tampered.exe', tampered), { pin })).toMatchObject({ ok: false, reason: /SHA-256 differs/ })
+    expect(pe.checkWindowsExe(file('longer.exe', Buffer.concat([exe, Buffer.alloc(512, 1)])), { pin })).toMatchObject({ ok: false, reason: /SHA-256 differs/ })
+  })
+
+  it('pins the ffmpeg.exe of the release ffmpeg-static downloads', () => {
+    const ffmpegStatic = JSON.parse(readFileSync(path.join(ROOT, 'node_modules/ffmpeg-static/package.json'), 'utf8'))
+    expect(packaging.FFMPEG_EXE.release).toBe(ffmpegStatic['ffmpeg-static']['binary-release-tag'])
+    expect(packaging.FFMPEG_EXE.sha256).toMatch(/^[0-9a-f]{64}$/)
+    expect(packaging.FFMPEG_EXE.size).toBeGreaterThan(20 * 1024 * 1024)
+  })
 })
 
 describe('signing', () => {
@@ -412,6 +445,23 @@ describe('packaging', () => {
     expect(files).toContain('!node_modules/ffmpeg-static/ffmpeg')
   })
 
+  it('lists every .exe and .node file of a packaged app folder as needing a signature', () => {
+    const root = tmpDir()
+    const files = ['App.exe', 'ffmpeg.dll', 'resources/elevate.exe', 'resources/app.asar', 'resources/native/ssw-capture.exe',
+      'resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe', 'resources/app.asar.unpacked/node_modules/uiohook-napi/prebuilds/win32-x64/uiohook-napi.node']
+    for (const f of files) {
+      mkdirSync(path.dirname(path.join(root, f)), { recursive: true })
+      writeFileSync(path.join(root, f), '')
+    }
+    expect(packaging.signedFiles(root)).toEqual([
+      'App.exe',
+      'resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe',
+      'resources/app.asar.unpacked/node_modules/uiohook-napi/prebuilds/win32-x64/uiohook-napi.node',
+      'resources/elevate.exe',
+      'resources/native/ssw-capture.exe'
+    ])
+  })
+
   it('lists every uiohook-napi prebuild except win32-x64', () => {
     const root = tmpDir()
     for (const d of ['win32-x64', 'win32-arm64', 'linux-x64']) mkdirSync(path.join(root, 'node_modules/uiohook-napi/prebuilds', d), { recursive: true })
@@ -473,6 +523,20 @@ describe('electron-builder.config.cjs', () => {
       expect(existsSync(path.join(ROOT, f))).toBe(true)
     }
     expect(config.extraResources).toEqual(packaging.nativeHelperStatus().bundle ? [packaging.nativeHelperResource()] : [])
+  })
+
+  it('signs the uiohook-napi .node besides every .exe', () => {
+    expect(loadConfig().win.signExts).toEqual(['.node'])
+  })
+
+  it('turns off running as Node, NODE_OPTIONS and --inspect, and checks app.asar integrity', () => {
+    expect(loadConfig().electronFuses).toEqual({
+      runAsNode: false,
+      enableNodeOptionsEnvironmentVariable: false,
+      enableNodeCliInspectArguments: false,
+      enableEmbeddedAsarIntegrityValidation: true,
+      onlyLoadAppFromAsar: true
+    })
   })
 })
 
