@@ -374,6 +374,82 @@ export function desktopIconsSync(action: DesktopIconsAction, timeoutMs = 3000): 
   return desktopIconsResult({ code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? r.error?.message ?? '', timedOut: (r.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT' })
 }
 
+/**
+ * `desktop-icons hold`: hides the icons and keeps a helper running that shows them again
+ * when its stdin closes, which also happens when the app dies (End task, crash): the icons
+ * never stay hidden until the next app start. `result` is the hide's; release() closes stdin.
+ */
+export interface DesktopIconsHold {
+  readonly result: Promise<DesktopIconsResult>
+  /** Lets the helper show the icons (if it hid them) and waits until it is gone (bounded). */
+  release(): Promise<void>
+  /** release() for quitting: closes stdin without waiting (the helper finishes on its own). */
+  releaseSync(): void
+}
+
+export function holdDesktopIcons(timeoutMs = nativeCaptureTimeouts.list): DesktopIconsHold {
+  const cmd = helperCommand()
+  if (!cmd) {
+    const result = Promise.resolve<DesktopIconsResult>({ ok: false, message: 'Hiding desktop icons needs the capture helper (Windows only)' })
+    return { result, release: async () => undefined, releaseSync: () => undefined }
+  }
+  const run: RunResult = { code: null, stdout: '', stderr: '', timedOut: false }
+  let child: ChildProcessWithoutNullStreams
+  try {
+    // Detached on Windows like `record`: otherwise the app's job object kills it with the app.
+    child = spawn(cmd.file, [...cmd.args, 'desktop-icons', 'hold'], recordSpawnOptions(cmd.env)) as ChildProcessWithoutNullStreams
+  } catch (err) {
+    run.stderr = err instanceof Error ? err.message : String(err)
+    return { result: Promise.resolve(desktopIconsResult(run)), release: async () => undefined, releaseSync: () => undefined }
+  }
+  const exited = new Promise<void>((resolve) => {
+    child.on('error', (err) => {
+      run.stderr += err.message
+      resolve()
+    })
+    child.on('close', (code) => {
+      run.code = code
+      resolve()
+    })
+  })
+  child.stdin.on('error', () => undefined)
+  child.stderr.on('data', (d: Buffer) => {
+    run.stderr = (run.stderr + d.toString()).slice(-OUTPUT_LIMIT)
+  })
+  const result = new Promise<DesktopIconsResult>((resolve) => {
+    const timer = setTimeout(() => {
+      run.timedOut = true
+      child.kill('SIGKILL')
+    }, timeoutMs)
+    child.stdout.on('data', (d: Buffer) => {
+      run.stdout = (run.stdout + d.toString()).slice(-OUTPUT_LIMIT)
+      const json = lastJson(run.stdout) as { visible?: unknown } | undefined
+      if (typeof json?.visible !== 'boolean') return
+      clearTimeout(timer)
+      // Still running (exit code unknown): the first result line is the hide's.
+      resolve(desktopIconsResult({ ...run, code: 0 }))
+    })
+    void exited.then(() => {
+      clearTimeout(timer)
+      resolve(desktopIconsResult({ ...run, code: run.code ?? null }))
+    })
+  })
+  const releaseSync = (): void => {
+    if (!child.stdin.destroyed) child.stdin.end()
+  }
+  return {
+    result,
+    releaseSync,
+    release: async () => {
+      releaseSync()
+      let timer: NodeJS.Timeout | undefined
+      const gone = await Promise.race([exited.then(() => true), new Promise<boolean>((r) => (timer = setTimeout(() => r(false), timeoutMs)))])
+      clearTimeout(timer)
+      if (!gone) child.kill('SIGKILL')
+    }
+  }
+}
+
 /** Forgets the cached probe result (tests; or after the helper was installed). */
 export function resetNativeCaptureCache(): void {
   probed = null

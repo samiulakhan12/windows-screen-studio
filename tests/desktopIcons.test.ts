@@ -3,7 +3,7 @@ import type { DesktopIconsAction, DesktopIconsResult } from '../src/main/nativeC
 import { DesktopIcons, type DesktopIconsDeps } from '../src/main/recording/desktopIcons'
 
 /** A desktop whose icons the fake helper hides and shows, and a persisted flag. */
-function setup(opts: { platform?: NodeJS.Platform; visible?: boolean; fail?: DesktopIconsAction[]; hidden?: boolean; saveFails?: boolean } = {}) {
+function setup(opts: { platform?: NodeJS.Platform; visible?: boolean; fail?: DesktopIconsAction[]; hidden?: boolean; saveFails?: boolean; hold?: boolean } = {}) {
   const desktop = { visible: opts.visible ?? true }
   const calls: string[] = []
   const saved = { hidden: opts.hidden ?? false }
@@ -22,6 +22,22 @@ function setup(opts: { platform?: NodeJS.Platform; visible?: boolean; fail?: Des
       return apply(action)
     },
     runSync: apply,
+    // Like `desktop-icons hold`: hides, and shows them again on release if it hid them.
+    ...(opts.hold
+      ? {
+          hold: () => {
+            const result = apply('hide')
+            let released = false
+            const release = (): void => {
+              if (released) return
+              released = true
+              calls.push('released')
+              if (result.ok && result.changed) desktop.visible = true
+            }
+            return { result: Promise.resolve(result), release: async () => release(), releaseSync: release }
+          }
+        }
+      : {}),
     state: {
       get desktopIconsHidden() {
         return saved.hidden
@@ -114,5 +130,32 @@ describe('DesktopIcons', () => {
     await icons.restore()
     icons.restoreSync()
     expect(calls).toEqual([])
+  })
+
+  describe('held by a helper that outlives the app (audit R-7)', () => {
+    it('keeps the helper while hidden and releases it before showing', async () => {
+      const { icons, desktop, calls, saved } = setup({ hold: true })
+      expect(await icons.hide()).toBe(true)
+      expect(desktop.visible).toBe(false)
+      expect(saved.hidden).toBe(true)
+      // Not released while recording: if the app dies now, the helper's stdin ends and it shows them.
+      expect(calls).toEqual(['hide'])
+      await icons.restore()
+      expect(calls).toEqual(['hide', 'released', 'show'])
+      expect(desktop.visible).toBe(true)
+      expect(saved.hidden).toBe(false)
+    })
+
+    it('releases at once a helper that hid nothing, and on quit', async () => {
+      const own = setup({ hold: true, visible: false })
+      expect(await own.icons.hide()).toBe(false)
+      expect(own.calls).toEqual(['hide', 'released'])
+      expect(own.desktop.visible).toBe(false)
+      const quit = setup({ hold: true })
+      await quit.icons.hide()
+      quit.icons.restoreSync()
+      expect(quit.calls).toEqual(['hide', 'released', 'show'])
+      expect(quit.desktop.visible).toBe(true)
+    })
   })
 })

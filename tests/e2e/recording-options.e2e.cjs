@@ -230,30 +230,30 @@ async function main() {
       h.assert(hint.replace(/\s/g, '').includes('CtrlAltS'), `Home's stop hint follows the hotkey (${hint})`)
       if (OUT) await win.screenshot({ path: path.join(OUT, 'home-hotkeys.png') })
       const saved = JSON.parse(fs.readFileSync(settingsFile(home), 'utf8')).recording.hotkeys
-      h.assert(JSON.stringify(saved) === JSON.stringify({ stop: 'Ctrl+Alt+S', pause: 'Ctrl+Shift+P', mark: 'Ctrl+Shift+Z' }), `saved ${JSON.stringify(saved)}`)
+      h.assert(JSON.stringify(saved) === JSON.stringify({ stop: 'Ctrl+Alt+S', pause: 'Ctrl+Shift+F9', mark: 'Ctrl+Shift+F10' }), `saved ${JSON.stringify(saved)}`)
 
       const tb = await r.startRecording(app, win)
       const t0 = Date.now()
       h.assert(!(await tb.$('.tb-warn')), 'every hotkey registered')
       h.assert((await tb.getAttribute('button.stop', 'title')) === 'Stop (Ctrl + Alt + S)', 'Stop names its hotkey')
-      await r.xinput('m 400 300; s 0.6; k ctrl+shift+z')
+      await r.xinput('m 400 300; s 0.6; k ctrl+shift+F10')
       const mark1 = (Date.now() - t0) / 1000
       await tb.waitForSelector('.tb-mark', { timeout: 3000 })
       if (OUT) await tb.screenshot({ path: path.join(OUT, 'toolbar-mark.png') })
       await r.xinput(`s 0.3; ${typeWord('hello')}; s 1.8`)
       // Pause and resume by hotkey; input while paused is not recorded.
-      await r.xinput('k ctrl+shift+p')
+      await r.xinput('k ctrl+shift+F9')
       await tb.waitForSelector('.rec-dot.paused', { timeout: 5000 })
       const pausedAt = Date.now()
       h.assert((await tb.textContent('.tb-state')) === 'Paused', 'paused by hand (not idle)')
-      await r.xinput(`s 0.4; k ctrl+shift+z; ${typeWord('abc')}; s 1.5`)
-      await r.xinput('k ctrl+shift+p')
+      await r.xinput(`s 0.4; k ctrl+shift+F10; ${typeWord('abc')}; s 1.5`)
+      await r.xinput('k ctrl+shift+F9')
       await tb.waitForSelector('.rec-dot:not(.paused)', { timeout: 5000 })
       const pausedFor = (Date.now() - pausedAt) / 1000
       // The old stop shortcut is an ordinary key combo now.
       await r.xinput('s 0.5; k ctrl+shift+2; s 0.8')
       h.assert(await tb.$('button.stop'), 'Ctrl+Shift+2 no longer stops')
-      await r.xinput('k ctrl+shift+z')
+      await r.xinput('k ctrl+shift+F10')
       const mark2 = (Date.now() - t0) / 1000
       await r.xinput(`s 0.3; ${typeWord('world')}; s 1.0; k ctrl+alt+s`)
       await win.waitForSelector('.editor canvas', { timeout: 120000 })
@@ -269,7 +269,7 @@ async function main() {
       h.assert(cursor.typing[0].t > cursor.marks[0].t && cursor.typing[0].t < cursor.marks[0].t + 1, 'first burst right after the first mark')
       h.assert(cursor.typing[1].t > cursor.marks[1].t, 'second burst after the second mark')
       const labels = cursor.keys.map((k) => k.label)
-      for (const own of ['Ctrl + Shift + Z', 'Ctrl + Shift + P', 'Ctrl + Alt + S']) h.assert(!labels.includes(own), `the app's own ${own} is not a keystroke`)
+      for (const own of ['Ctrl + Shift + F10', 'Ctrl + Shift + F9', 'Ctrl + Alt + S']) h.assert(!labels.includes(own), `the app's own ${own} is not a keystroke`)
       h.assert(labels.includes('Ctrl + Shift + 2'), `an ordinary shortcut is kept: ${labels}`)
       h.assert(labels.every((l) => l.length > 1 || !/[a-z]/i.test(l)), `no typed letters: ${labels}`)
       const raw = fs.readFileSync(path.join(h.projectsRoot(home), id, 'cursor.json'), 'utf8')

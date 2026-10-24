@@ -22,6 +22,7 @@ import type {
   RecorderCommand,
   RecorderStatusUpdate,
   RecordingRequest,
+  RecordingOffsets,
   RecordingStartInfo,
   RegionSelection,
   SaveRecordingPayload,
@@ -75,6 +76,8 @@ import { getMainWindow, loadRoute } from './windows'
 const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio', 'mic', 'system']
 /** Source thumbnails on Home: small JPEGs (cheap to encode and to send over IPC). */
 const THUMBNAIL = { width: 384, height: 216, quality: 75 }
+/** How often the cursor track recorded so far is saved while recording (ms). */
+const CHECKPOINT_MS = 5000
 
 const tracker = new CursorTracker()
 let active: ActiveRecording | null = null
@@ -95,10 +98,12 @@ let idle: IdleDetector | null = null
 let autoPaused = false
 let marks = 0
 let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
+let checkpoints: NodeJS.Timeout | null = null
 const icons = new DesktopIcons({
   platform: process.platform,
   run: (action) => nativeModule.desktopIcons(action),
   runSync: (action) => nativeModule.desktopIconsSync(action),
+  hold: () => nativeModule.holdDesktopIcons(),
   state: {
     get desktopIconsHidden() {
       return appSettings().desktopIconsHidden
@@ -322,9 +327,41 @@ function endRecordingUi(): void {
 
 /** Freezes the recording at the moment stop was requested. */
 function beginStop(s: ActiveRecording): void {
+  stopCheckpoints()
   if (s.phase === 'stopping' || s.phase === 'processing') return
   s.stop()
   s.phase = 'stopping'
+}
+
+/**
+ * Saves the cursor track recorded so far, synchronously (quitting runs it too). Cursor data
+ * only lives in memory until the recording stops: without this, a main-process crash, End task
+ * or a forced quit would leave a recovered recording with no cursor, clicks or keystrokes at
+ * all. Stopping, or a recorder crash, writes the complete track over it (writeTrack). Window
+ * recordings keep only their keys, marks and typing here: placing positions in the window
+ * needs its rectangles, which are known after the stop.
+ */
+function checkpointTrack(s: ActiveRecording): void {
+  const m = s.manifest
+  if (!tracker.active || m.startedAt === null) return
+  try {
+    const track = buildCursorTrack(tracker.snapshot(), { startedAt: m.startedAt, pauses: s.pausesUntil(), duration: s.activeSeconds(), region: m.region, slack: 1 })
+    projects.writeCursorSync(m.id, track)
+  } catch (err) {
+    console.warn('Could not save the cursor track so far:', err)
+  }
+}
+
+function startCheckpoints(s: ActiveRecording): void {
+  stopCheckpoints()
+  checkpoints = setInterval(() => {
+    if (active === s) checkpointTrack(s)
+  }, CHECKPOINT_MS)
+}
+
+function stopCheckpoints(): void {
+  if (checkpoints) clearInterval(checkpoints)
+  checkpoints = null
 }
 
 async function writeTrack(s: ActiveRecording, duration: number): Promise<void> {
@@ -341,6 +378,7 @@ async function writeTrack(s: ActiveRecording, duration: number): Promise<void> {
 }
 
 async function discard(s: ActiveRecording): Promise<void> {
+  stopCheckpoints()
   if (active === s) active = null
   grant = null
   tracker.stop()
@@ -598,6 +636,7 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker(s)
+  startCheckpoints(s)
   startIdleDetection()
   // A failed write must not end a recording that is already running: the manifest in
   // memory is authoritative and is written again on stop.
@@ -644,6 +683,23 @@ function setStatus(token: string, status: RecorderStatusUpdate): void {
       return
   }
   sendToolbarStatus(lastStatus)
+}
+
+/**
+ * The timing the recorder measured once the first frames arrived, kept in the manifest at once:
+ * a recording recovered after a crash then has its camera (and, for Chromium capture, its cursor
+ * track) in sync, as a stopped one does. Stopping sends the same values again.
+ */
+async function setOffsets(token: string, offsets: RecordingOffsets): Promise<void> {
+  const s = active
+  // Before started() they would be overwritten by its estimates; stop() sends them anyway.
+  if (!s || s.token !== token || (s.phase !== 'recording' && s.phase !== 'paused')) return
+  const m = s.manifest
+  const near = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 60
+  if (m.method === 'chromium' && typeof offsets?.startedAt === 'number' && Number.isFinite(offsets.startedAt) && offsets.startedAt > 0) m.startedAt = offsets.startedAt
+  if (near(offsets?.webcamOffset)) m.webcamOffset = offsets.webcamOffset
+  if (near(offsets?.audioOffset)) m.audioOffset = offsets.audioOffset
+  await projects.writeManifest(m).catch((err) => console.error('Could not save the recording state:', err))
 }
 
 /**
@@ -816,6 +872,7 @@ export function registerRecordingIpc(): void {
   })
   ipcMain.handle('recording:startNative', (_e, token: string) => startNative(token))
   ipcMain.handle('recording:started', (_e, token: string, info: RecordingStartInfo) => started(token, info))
+  ipcMain.handle('recording:offsets', (_e, token: string, offsets: RecordingOffsets) => setOffsets(token, offsets))
   ipcMain.handle('recording:dropStems', (_e, token: string) => dropStems(token))
   ipcMain.handle('recording:status', (_e, token: string, status: RecorderStatusUpdate) => setStatus(token, status))
   ipcMain.handle('recording:command', (_e, command: RecorderCommand) => forwardCommand(command))
@@ -937,6 +994,9 @@ export function closeRecordingWindows(): void {
 }
 
 export function disposeRecording(): void {
+  // First, while the tracker still holds them: the cursor data of a recording cut short by quitting.
+  if (active) checkpointTrack(active)
+  stopCheckpoints()
   globalShortcut.unregisterAll()
   stopIdleDetection()
   icons.restoreSync()

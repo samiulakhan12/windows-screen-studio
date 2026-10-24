@@ -113,7 +113,14 @@ describe('sanitizeHotkeys', () => {
   it('falls back to defaults for invalid values, duplicates and garbage', () => {
     expect(sanitizeHotkeys(undefined)).toEqual(DEFAULT_HOTKEYS)
     expect(sanitizeHotkeys({ stop: 'Ctrl+C', pause: 7, mark: 'A' })).toEqual(DEFAULT_HOTKEYS)
-    expect(sanitizeHotkeys({ stop: 'Ctrl+Shift+Z', pause: 'Ctrl+Shift+Z' })).toEqual({ stop: 'Ctrl+Shift+Z', pause: 'Ctrl+Shift+P', mark: '' })
+    expect(sanitizeHotkeys({ stop: 'Ctrl+Shift+F10', pause: 'Ctrl+Shift+F10' })).toEqual({ stop: 'Ctrl+Shift+F10', pause: 'Ctrl+Shift+F9', mark: '' })
+  })
+
+  it('never takes Redo or the command palette from the recorded app, and moves saved old defaults off them (audit R-5)', () => {
+    for (const action of ['stop', 'pause', 'mark'] as const) expect(validateHotkey(DEFAULT_HOTKEYS[action]).ok, action).toBe(true)
+    expect(validateHotkey('Ctrl+Shift+Z')).toEqual({ ok: false, message: 'Ctrl + Shift + Z is Redo in most apps; it would stop working there while you record.' })
+    expect(validateHotkey('ctrl+shift+p').ok).toBe(false)
+    expect(sanitizeHotkeys({ stop: 'Ctrl+Shift+2', pause: 'Ctrl+Shift+P', mark: 'Ctrl+Shift+Z' })).toEqual(DEFAULT_HOTKEYS)
   })
 })
 

@@ -21,9 +21,11 @@ USAGE:
   ssw-capture watch-window --window <HWND>
       Captures nothing: reports the window's screen rectangle (ready, window, stopped) until
       `stop` or the end of stdin, or until the window closes.
-  ssw-capture desktop-icons <hide|show|status>
+  ssw-capture desktop-icons <hide|show|hold|status>
       Hides or shows the desktop icons (the icon view only, never the \"Show desktop icons\"
       setting) and prints {\"visible\",\"changed\"} as JSON. Exit code 4 when there is no desktop.
+      `hold` hides them, then waits for the end of stdin (the app closed it, exited or died)
+      and shows them again if it hid them.
   ssw-capture selftest --out <file.mp4> [--fps <30|60>] [--seconds <1-60>]
       Encodes a generated 1920x1080 colour sweep through the same GPU colour conversion and
       H.264 encoder as `record` (no screen capture) and prints the encoder and its speed.
@@ -73,7 +75,7 @@ pub enum Cli {
     /// `watch-window --window <HWND>`.
     WatchWindow(i64),
     Selftest(SelftestArgs),
-    /// `desktop-icons hide|show|status`.
+    /// `desktop-icons hide|show|hold|status`.
     DesktopIcons(IconsAction),
     Help,
     Version,
@@ -93,7 +95,7 @@ pub fn parse(args: &[String]) -> Result<Cli, String> {
         "selftest" => parse_selftest(rest).map(Cli::Selftest),
         "desktop-icons" => match rest {
             [action] => IconsAction::parse(action).map(Cli::DesktopIcons),
-            _ => Err("desktop-icons takes one argument: hide, show or status".into()),
+            _ => Err("desktop-icons takes one argument: hide, show, hold or status".into()),
         },
         "help" | "--help" | "-h" => Ok(Cli::Help),
         "--version" | "-V" => Ok(Cli::Version),
@@ -319,6 +321,7 @@ mod tests {
         assert_eq!(parse(&args(&["desktop-icons", "hide"])), Ok(Cli::DesktopIcons(IconsAction::Hide)));
         assert_eq!(parse(&args(&["desktop-icons", "show"])), Ok(Cli::DesktopIcons(IconsAction::Show)));
         assert_eq!(parse(&args(&["desktop-icons", "status"])), Ok(Cli::DesktopIcons(IconsAction::Status)));
+        assert_eq!(parse(&args(&["desktop-icons", "hold"])), Ok(Cli::DesktopIcons(IconsAction::Hold)));
         for bad in [vec!["desktop-icons"], vec!["desktop-icons", "toggle"], vec!["desktop-icons", "hide", "now"]] {
             assert!(parse(&args(&bad)).is_err(), "{bad:?} should fail");
         }

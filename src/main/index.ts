@@ -33,7 +33,10 @@ if (!app.requestSingleInstanceLock()) {
     })
   })
 
-  app.on('will-quit', () => {
+  app.on('will-quit', (event) => {
+    // Postponed by nativeCapture's guard (prepended) while a capture helper finalises its video;
+    // the will-quit that follows runs this cleanup.
+    if (event.defaultPrevented) return
     disposeRecording()
     disposeExport()
   })

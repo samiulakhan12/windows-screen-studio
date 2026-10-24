@@ -206,8 +206,11 @@ impl Timebase {
         self.epoch_ms + (ticks - self.ticks) as f64 / 10_000.0
     }
 
+    /// Saturates for instants far outside the clock's range (`pause 1e20`), which the
+    /// pacer then clamps to now, instead of overflowing.
     pub fn ticks_at(&self, ms: f64) -> i64 {
-        self.ticks + ((ms - self.epoch_ms) * 10_000.0).round() as i64
+        // `as` saturates (NaN gives 0); saturating_add keeps the sum from wrapping.
+        self.ticks.saturating_add(((ms - self.epoch_ms) * 10_000.0).round() as i64)
     }
 }
 
@@ -334,6 +337,31 @@ mod tests {
     }
 
     #[test]
+    fn late_pauses_never_shift_the_timeline_after_resume() {
+        // Audit R-8: a pause read 10 ms late leaves the slots already written past the pause
+        // instant (at most the command latency). The paused span still runs from the app's
+        // instant, as the cursor track's and the sound's do, so later slots stay on the app's
+        // timeline and nothing accumulates over pauses.
+        let mut p = Pacer::new(60, 0);
+        let mut t = 0;
+        let mut app_paused = 0;
+        for round in 0..3 {
+            let pause_at = (990 + round * 3000) * MS;
+            while t <= pause_at + 10 * MS {
+                step(&mut p, t);
+                t += MS;
+            }
+            assert_eq!(p.pause(pause_at, t), Some(pause_at));
+            t += 1000 * MS;
+            assert_eq!(p.resume(t, t), Some(t));
+            app_paused += t - pause_at;
+            assert_eq!(p.next_due(), Some(app_paused + p.slot_time(p.next)));
+        }
+        assert_eq!(p.active_at(t), t - app_paused);
+        assert_eq!(p.dropped(), 0);
+    }
+
+    #[test]
     fn finish_extends_the_video_to_the_stop_instant() {
         let mut p = Pacer::new(60, 0);
         step(&mut p, 0);
@@ -389,5 +417,17 @@ mod tests {
         assert_eq!(tb.epoch_ms_at(1_000_000_000 + 25 * MS), 1_700_000_000_025.0);
         assert_eq!(tb.ticks_at(1_700_000_000_025.0), 1_000_000_000 + 25 * MS);
         assert_eq!(tb.ticks_at(1_699_999_999_990.5), 1_000_000_000 - 95_000);
+    }
+
+    #[test]
+    fn far_off_instants_saturate_instead_of_overflowing() {
+        // Audit R-9: `pause 1e20` panicked in debug builds and wrapped in release builds.
+        let tb = Timebase::new(1_000_000_000, 1_700_000_000_000.0);
+        assert_eq!(tb.ticks_at(1e20), i64::MAX);
+        assert_eq!(tb.ticks_at(-1e20), i64::MIN + 1_000_000_000);
+        let mut p = Pacer::new(60, 0);
+        step(&mut p, 0);
+        assert_eq!(p.pause(tb.ticks_at(1e20), 500 * MS), Some(500 * MS));
+        assert_eq!(p.resume(tb.ticks_at(-1e20), 600 * MS), Some(500 * MS));
     }
 }

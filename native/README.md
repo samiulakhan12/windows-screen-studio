@@ -56,7 +56,7 @@ ssw-capture list
 ssw-capture record --monitor <device name | index> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
 ssw-capture record --window <HWND> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
 ssw-capture watch-window --window <HWND>
-ssw-capture desktop-icons <hide|show|status>
+ssw-capture desktop-icons <hide|show|hold|status>
 ssw-capture selftest --out <file.mp4> [--fps <30|60>] [--seconds <1-60>]
 ssw-capture --version
 ```
@@ -230,7 +230,9 @@ Details (`src/window.rs` decides what is reported, `src/win/window.rs` asks Wind
 
 Hides or shows the desktop icons for "Hide desktop icons while recording", and prints
 `{"visible":false,"changed":true}`: whether the icons are visible afterwards, and whether this
-call asked for a change. `status` only reports. Exit code 4 with a JSON error when there is no
+call asked for a change. `status` only reports. `hold` hides like `hide`, prints the same JSON,
+then keeps running until its stdin ends (the app closes it, or the app exits or dies) and then
+shows the icons again if it hid them (printing the JSON once more). Exit code 4 with a JSON error when there is no
 desktop icon view (Explorer is not the shell, or not running).
 
 - The icon view is the `SysListView32` inside `SHELLDLL_DefView`, which lives in `Progman`, or in
@@ -240,11 +242,14 @@ desktop icon view (Explorer is not the shell, or not running).
 - Only that window's own visibility changes (`ShowWindowAsync` `SW_HIDE` / `SW_SHOWNA`), never
   Explorer's "Show desktop icons" setting, which Explorer saves in the registry. Nothing outlives
   Explorer: restarting it (or signing out) always brings the icons back. Asynchronous, so a busy
-  or hung Explorer never blocks the helper; it then waits up to 1 s for the change to show.
+  or hung Explorer never blocks the helper; it then waits up to 1 s for the change to show. The
+  request is posted even when the view already reads as wanted: a hide Explorer has not applied
+  yet would otherwise outlive a `show` that came right after it.
 - `changed` is `false` for `hide` when the icons were already hidden (the user switched them off):
-  the app then never "restores" them. The app remembers icons it hid in its settings before
-  hiding them and shows them again when the recording stops, is cancelled or crashes, when the
-  app quits, and at the next start if the app itself died.
+  the app then never "restores" them. The app hides them with `hold` (spawned detached, so it
+  outlives the app), remembers icons it hid in its settings before hiding them, and shows them
+  again when the recording stops, is cancelled or crashes and when the app quits; if the app
+  itself dies, the `hold` helper shows them, and failing that the next app start does.
 
 ### `selftest`
 
@@ -461,8 +466,11 @@ available (e.g. `node_modules\ffmpeg-static` ships ffmpeg; any ffprobe works).
     then). Restart Explorer after `hide` (Task Manager › Windows Explorer › Restart): the icons
     are back. In the app, with "Hide desktop icons" on: they disappear during the countdown and
     return when the recording stops, is discarded, when the app is closed mid-recording ("Quit
-    anyway"), and — after ending the app's process in Task Manager mid-recording — at the next
-    start of the app.
+    anyway"), and — after ending the app's process in Task Manager mid-recording — at once (the
+    `desktop-icons hold` helper sees its stdin end; check it is gone from Task Manager afterwards).
+    `desktop-icons hold` by hand: the icons disappear; Ctrl+Z Enter (end of stdin) brings them
+    back and the helper exits. Run `desktop-icons hide` and then at once `desktop-icons show`
+    while Explorer is busy (e.g. right after sign-in): the icons end up visible.
 14. **watch-window** — `native\bin\ssw-capture.exe watch-window --window <handle>`: `ready`, then
     the rectangle; move/resize/minimise as above; `stop` Enter: `{"event":"stopped","reason":"stop"}`,
     exit 0. Closing the window instead: `"reason":"closed"`. On a 150 % monitor the numbers are

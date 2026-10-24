@@ -93,6 +93,12 @@ export interface SaveRecordingPayload {
   stems?: StemKind[]
 }
 
+/**
+ * Timing measured once the first frames arrived, sent while recording so that a recording
+ * recovered after a crash is in sync too (the same values as on stop).
+ */
+export type RecordingOffsets = Pick<SaveRecordingPayload, 'startedAt' | 'webcamOffset' | 'audioOffset'>
+
 export interface ProcessingProgress {
   /** Set once on the last event of a run (finished, failed or postponed). */
   done?: boolean
@@ -150,6 +156,7 @@ export interface RecordingApi {
   appendRecordingChunk(token: string, kind: TrackKind, data: Uint8Array): Promise<void>
   startNativeVideo(token: string): Promise<NativeStartResult>
   recordingStarted(token: string, info: RecordingStartInfo): Promise<void>
+  recordingOffsets(token: string, offsets: RecordingOffsets): Promise<void>
   /** A stem stopped early: the set is incomplete, so none is kept (even if the recording is recovered after a crash). */
   dropRecordingStems(token: string): Promise<void>
   setRecordingStatus(token: string, status: RecorderStatusUpdate): Promise<void>

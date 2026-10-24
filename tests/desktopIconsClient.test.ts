@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,7 @@ vi.mock('electron', () => ({
   screen: {}
 }))
 
-import { desktopIcons, desktopIconsSync } from '../src/main/nativeCapture'
+import { desktopIcons, desktopIconsSync, holdDesktopIcons } from '../src/main/nativeCapture'
 
 /** A stand-in helper: `desktop-icons <action>` prints what the real one would, per scenario. */
 const FAKE = `
@@ -25,6 +25,14 @@ if (mode === 'garbage') {
 }
 console.log('a log line')
 console.log(JSON.stringify({ visible: action === 'show' || (action === 'status'), changed: action !== 'status' }))
+if (action === 'hold') {
+  // Like the real helper: waits for the end of stdin, then shows the icons again.
+  process.stdin.resume()
+  process.stdin.on('end', () => {
+    require('node:fs').writeFileSync(process.env.FAKE_ICONS_SHOWN, 'shown')
+    console.log(JSON.stringify({ visible: true, changed: true }))
+  })
+}
 `
 
 let dir = ''
@@ -62,9 +70,29 @@ describe('desktopIcons client', () => {
     expect((await desktopIcons('status')).ok).toBe(false)
   })
 
+  it('holds the icons hidden until released, then the helper shows them and exits (audit R-7)', async () => {
+    const shown = path.join(dir, 'shown')
+    process.env.FAKE_ICONS_SHOWN = shown
+    const hold = holdDesktopIcons(20000)
+    expect(await hold.result).toEqual({ ok: true, visible: false, changed: true })
+    await new Promise((r) => setTimeout(r, 200))
+    expect(existsSync(shown)).toBe(false)
+    await hold.release()
+    expect(existsSync(shown)).toBe(true)
+    delete process.env.FAKE_ICONS_SHOWN
+  })
+
+  it('reports a hold that fails like the other actions', async () => {
+    process.env.FAKE_ICONS = 'none'
+    const hold = holdDesktopIcons(20000)
+    expect((await hold.result).ok).toBe(false)
+    await hold.release()
+  })
+
   it('is unavailable without a helper (not Windows)', async () => {
     process.env.SSW_CAPTURE_HELPER = path.join(dir, 'missing.cjs')
     expect(await desktopIcons('hide')).toMatchObject({ ok: false, message: expect.stringMatching(/Windows only/) })
     expect(desktopIconsSync('show')).toMatchObject({ ok: false })
+    expect((await holdDesktopIcons().result).ok).toBe(false)
   })
 })

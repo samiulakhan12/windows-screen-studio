@@ -4,16 +4,20 @@
  * "Show desktop icons" setting, so restarting Explorer brings the icons back whatever happens.
  *
  * Restoring is what matters: the icons come back when the recording stops, is cancelled or
- * crashes and when the app quits. Before hiding, the fact that they are hidden is saved in the
- * app settings, so the next app start restores them if the app itself died meanwhile. Icons
- * that were already hidden (by the user's own setting) are left alone and never "restored".
+ * crashes and when the app quits. While they are hidden a helper holds them (`desktop-icons
+ * hold`) and shows them again as soon as the app is gone, even if it died (End task, crash).
+ * Before hiding, the fact that they are hidden is also saved in the app settings, so the next
+ * app start restores them if the helper was killed too. Icons that were already hidden (by the
+ * user's own setting) are left alone and never "restored".
  */
-import type { DesktopIconsAction, DesktopIconsResult } from '../nativeCapture'
+import type { DesktopIconsAction, DesktopIconsHold, DesktopIconsResult } from '../nativeCapture'
 
 export interface DesktopIconsDeps {
   platform: NodeJS.Platform
   run(action: DesktopIconsAction): Promise<DesktopIconsResult>
   runSync(action: DesktopIconsAction): DesktopIconsResult
+  /** Hides the icons with a helper that shows them again when released or when the app dies. */
+  hold?(): DesktopIconsHold
   /** Persistent "hidden by us" flag (AppSettingsStore). */
   state: { readonly desktopIconsHidden: boolean; setDesktopIconsHidden(hidden: boolean): void }
 }
@@ -21,6 +25,8 @@ export interface DesktopIconsDeps {
 export class DesktopIcons {
   /** Operations run one after another (a hide still running when the recording is cancelled). */
   private queue: Promise<unknown> = Promise.resolve()
+  /** The helper holding the icons hidden, while a recording hid them. */
+  private held: DesktopIconsHold | null = null
 
   constructor(private readonly deps: DesktopIconsDeps) {}
 
@@ -51,11 +57,15 @@ export class DesktopIcons {
       // Saved first: if the app dies right after hiding, the next start still restores them.
       // Unsaved, hiding would risk icons that stay hidden: do not hide then.
       if (!this.remember(true)) return false
-      const r = await this.deps.run('hide')
+      const hold = this.deps.hold?.() ?? null
+      const r = hold ? await hold.result : await this.deps.run('hide')
       const ours = r.ok && r.changed
       if (!r.ok) console.warn('Could not hide the desktop icons:', r.message)
       // Already hidden (the user's own setting) or failed: nothing to restore later.
-      if (!ours) this.remember(false)
+      if (!ours) {
+        this.remember(false)
+        await hold?.release()
+      } else this.held = hold
       return ours
     })
   }
@@ -64,6 +74,10 @@ export class DesktopIcons {
   restore(): Promise<void> {
     if (!this.supported) return Promise.resolve()
     return this.enqueue(async () => {
+      // Released first, and waited for: it must never show the icons after a later hide.
+      const held = this.held
+      this.held = null
+      await held?.release()
       if (!this.deps.state.desktopIconsHidden) return
       const r = await this.deps.run('show')
       if (r.ok) this.remember(false)
@@ -74,6 +88,8 @@ export class DesktopIcons {
 
   /** restore() for quitting: synchronous (the app no longer waits for promises). */
   restoreSync(): void {
+    this.held?.releaseSync()
+    this.held = null
     if (!this.supported || !this.deps.state.desktopIconsHidden) return
     const r = this.deps.runSync('show')
     if (r.ok) this.remember(false)
