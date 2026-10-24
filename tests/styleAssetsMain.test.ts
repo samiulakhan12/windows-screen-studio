@@ -106,6 +106,25 @@ describe('saved look with a watermark (main process)', () => {
     expect(applied.watermark).toMatchObject({ kind: 'text', text: '© ACME' })
   })
 
+  it('a text watermark that still names the logo used before saves and applies without it', async () => {
+    // Switching a logo watermark to text keeps its file name in the project (switching back reuses it).
+    const src = project('rec-was-logo')
+    writeFileSync(path.join(projectDir('rec-was-logo'), 'watermark-2.png'), PNG)
+    src.watermark = { show: true, kind: 'text', text: 'ACME', path: 'watermark-2.png', position: 'top-left', size: 0.035, opacity: 0.8, margin: 0.02 }
+    const stored = await saveStyleDefaults(lookOf(src), defaultsFile())
+    expect(stored?.watermark).toMatchObject({ kind: 'text', text: 'ACME' })
+    expect(stored?.watermark).not.toHaveProperty('path')
+    expect(JSON.parse(readFileSync(defaultsFile(), 'utf8')).watermark).not.toHaveProperty('path')
+    expect(readdirSync(userData()).filter((f) => f.startsWith('style-defaults-watermark'))).toEqual([])
+    const applied = applyStyleDefaults(project('rec-after-text'), await loadStyleDefaults(defaultsFile()), defaultsFile())
+    expect(applied.watermark).toMatchObject({ kind: 'text', text: 'ACME' })
+    expect(applied.watermark?.path).toBeUndefined()
+    // A look saved before keeps working, without the stale name.
+    writeFileSync(defaultsFile(), JSON.stringify({ version: 1, style: {}, watermark: { ...src.watermark } }))
+    expect((await loadStyleDefaults(defaultsFile()))?.watermark?.path).toBeUndefined()
+    expect(applyStyleDefaults(project('rec-older-look'), await loadStyleDefaults(defaultsFile()), defaultsFile()).watermark).toMatchObject({ kind: 'text', text: 'ACME' })
+  })
+
   it('drops the watermark from a new recording when the saved copy is gone', async () => {
     const src = project('rec-gone')
     writeFileSync(path.join(projectDir('rec-gone'), 'watermark.png'), PNG)
@@ -178,21 +197,37 @@ describe('importAsset', () => {
   })
 
   it('serves exactly the asset names it creates', () => {
-    for (const f of ['watermark.png', 'watermark-1.png', 'watermark-25.svg', 'music.mp3', 'music.flac']) {
+    for (const f of ['watermark.png', 'watermark-1.png', 'watermark-25.svg', 'music.mp3', 'music.flac', 'music-1.mp3', 'music-12.wav']) {
       expect(isAssetFile(f), f).toBe(true)
       expect(MEDIA_FILE_RE.test(f), f).toBe(true)
     }
-    for (const f of ['watermark-0.png', 'watermark-1.gif', '.watermark-1.png.part', 'music-1.mp3', 'project.json', '../watermark.png']) {
+    for (const f of ['watermark-0.png', 'watermark-1.gif', '.watermark-1.png.part', 'music-0.mp3', 'music-1.exe', '.music-1.mp3.part', 'project.json', '../watermark.png']) {
       expect(isAssetFile(f), f).toBe(false)
       expect(MEDIA_FILE_RE.test(f), f).toBe(false)
     }
   })
 
-  it('replaces earlier music, whatever its extension', async () => {
+  const tracks = (id: string): string[] => readdirSync(projectDir(id)).filter((f) => f.startsWith('music') || f.includes('.part')).sort()
+
+  it('copies every music track in under a new name, keeping the one in use (undo can go back to it)', async () => {
     project('rec-music')
-    expect((await importAsset('rec-music', 'music', file('song.wav', 'RIFF\0\0\0\0WAVEfmt '))).path).toBe('music.wav')
-    expect((await importAsset('rec-music', 'music', file('song.mp3', 'ID3\x04\0\0'))).path).toBe('music.mp3')
-    expect(readdirSync(projectDir('rec-music')).filter((f) => f.startsWith('music'))).toEqual(['music.mp3'])
+    const WAV = 'RIFF\0\0\0\0WAVEfmt '
+    expect((await importAsset('rec-music', 'music', file('song.wav', WAV))).path).toBe('music-1.wav')
+    // Same extension or not, the earlier track is still there and untouched.
+    expect((await importAsset('rec-music', 'music', file('song.mp3', 'ID3\x04\0\0'))).path).toBe('music-2.mp3')
+    const again = await importAsset('rec-music', 'music', file('other.wav', 'RIFF\0\0\0\0WAVEfmt other'))
+    expect(again).toMatchObject({ path: 'music-3.wav' })
+    expect(again.url).toContain('/rec-music/music-3.wav')
+    expect(tracks('rec-music')).toEqual(['music-1.wav', 'music-2.mp3', 'music-3.wav'])
+    expect(readFileSync(path.join(projectDir('rec-music'), 'music-1.wav'), 'latin1')).toBe(WAV)
+  })
+
+  it('keeps the latest few music picks and the track the saved project uses, also an older music.<ext>', async () => {
+    const p = project('rec-music-many')
+    writeFileSync(path.join(projectDir('rec-music-many'), 'music.mp3'), 'ID3\x04\0\0')
+    await writeProject({ ...p, audio: { ...p.audio, music: { path: 'music.mp3', volume: 0.35, ducking: 0.7, loop: true, fadeIn: 1, fadeOut: 2 } } })
+    for (let i = 1; i <= 6; i++) expect((await importAsset('rec-music-many', 'music', file(`track${i}.mp3`, 'ID3\x04\0\0'))).path).toBe(`music-${i}.mp3`)
+    expect(tracks('rec-music-many')).toEqual(['music-4.mp3', 'music-5.mp3', 'music-6.mp3', 'music.mp3'])
   })
 
   it('refuses wrong types, disguised files, empty files, folders and bad ids', async () => {

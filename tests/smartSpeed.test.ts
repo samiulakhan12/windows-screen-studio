@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { LEVEL_WINDOW, type AudioLevels } from '../src/shared/audio/loudness'
+import { sourceActivity } from '../src/shared/audio/soundtrack'
 import { outputDuration } from '../src/shared/engine/timeline'
 import {
   applySmartSpeed,
@@ -8,10 +10,11 @@ import {
   keptRanges,
   mergeRanges,
   planSmartSpeed,
+  rangeGaps,
   rangeSaving,
   type TimeRange
 } from '../src/shared/editor/smartSpeed'
-import type { Clip, CursorTrack } from '../src/shared/types'
+import type { Clip, CursorTrack, Project } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1, id = `c${start}`): Clip => ({ id, start, end, speed })
 
@@ -196,5 +199,54 @@ describe('planning and applying', () => {
     ])
     expect(applySmartSpeed(clips, [{ start: 0, end: 20 }], 'cut')).toEqual(clips)
     expect(applySmartSpeed(clips, [], 4)).toBe(clips)
+  })
+})
+
+describe('smart speed and the recording\'s sound', () => {
+  // Still from 2.5 s to 11 s, no mouse or keyboard input after a click at 2 s.
+  const base = { duration: 12, clips: [clip(0, 12)], still: [{ start: 2.5, end: 11 }], inactive: [{ start: 2.05, end: 12 }] }
+
+  it('the parts of the recording outside some ranges', () => {
+    expect(rangeGaps([{ start: 4, end: 9 }, { start: 8, end: 10 }, { start: 11, end: 20 }], 12)).toEqual([
+      { start: 0, end: 4 },
+      { start: 10, end: 11 }
+    ])
+    expect(rangeGaps([], 5)).toEqual([{ start: 0, end: 5 }])
+    expect(rangeGaps([{ start: -1, end: 6 }], 5)).toEqual([])
+  })
+
+  it('someone talking over a still screen is not idle', () => {
+    // Narration from 4 s to 9 s: no part of 3 s or more is left, and none covers the speech.
+    const talking = { ...base, sound: [{ start: 4, end: 9 }] }
+    expect(planSmartSpeed(talking, 3, 4).parts).toEqual([])
+    const short = findIdleRanges(talking, 1)
+    expect(round(short)).toEqual([
+      { start: 2.8, end: 3.7 },
+      { start: 9.4, end: 10.6 }
+    ])
+    for (const r of short) expect(intersectRanges([r], talking.sound)).toEqual([])
+  })
+
+  it('without sound, or with its sound unknown, the picture and the input decide as before', () => {
+    const before = findIdleRanges(base, 3)
+    expect(round(before)).toEqual([{ start: 3, end: 10.5 }])
+    expect(findIdleRanges({ ...base, sound: null }, 3)).toEqual(before)
+    // Measured and silent: nothing is heard anywhere.
+    expect(findIdleRanges({ ...base, sound: [] }, 3)).toEqual(before)
+  })
+
+  it('takes the sound from the measured levels of the sources that are heard', () => {
+    const levels = (db: number[]): AudioLevels => ({ window: LEVEL_WINDOW, power: Float32Array.from(db, (v) => 10 ** (v / 10)) })
+    const run = (db: number, seconds: number): number[] => new Array(Math.round(seconds / LEVEL_WINDOW)).fill(db)
+    // Room noise, and speech from 4 s to 9 s.
+    const mix = levels([...run(-60, 4), ...run(-20, 5), ...run(-60, 3)])
+    const sound = (p: Pick<Project, 'hasAudio' | 'audioStems' | 'audio'>) => sourceActivity(p, { mix })
+    const narrated = sound({ hasAudio: true, audio: { volume: 1, muted: false } })
+    expect(round(narrated!)).toEqual([{ start: 4, end: 9 }])
+    expect(planSmartSpeed({ ...base, sound: narrated }, 3, 4).parts).toEqual([])
+    // Muted, or a recording without sound: nothing is heard, smart speed finds what it did before.
+    for (const p of [{ hasAudio: true, audio: { volume: 1, muted: true } }, { hasAudio: false, audio: { volume: 1, muted: false } }]) {
+      expect(round(findIdleRanges({ ...base, sound: sound(p) }, 3))).toEqual([{ start: 3, end: 10.5 }])
+    }
   })
 })

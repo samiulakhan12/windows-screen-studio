@@ -231,8 +231,12 @@ export function sanitizeWatermark(v: unknown): WatermarkSettings | undefined {
   const margin = num(v.margin, WATERMARK_LIMITS.margin)
   if (!kind || !position || size === undefined || opacity === undefined || margin === undefined) return undefined
   const out: WatermarkSettings = { show: v.show !== false, kind, position, size, opacity, margin, text: text(v.text, WATERMARK_TEXT_MAX) ?? '' }
-  if (typeof v.path === 'string' && WATERMARK_FILE_RE.test(v.path)) out.path = v.path
-  else if (kind === 'image') return undefined
+  // Only a logo has a file. A text watermark may still name the logo the project used before
+  // (switching back reuses it there), but in a saved look that name is another folder's file.
+  if (kind === 'image') {
+    if (typeof v.path !== 'string' || !WATERMARK_FILE_RE.test(v.path)) return undefined
+    out.path = v.path
+  }
   return out
 }
 

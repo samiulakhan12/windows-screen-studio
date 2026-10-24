@@ -1,9 +1,11 @@
 import { dialog, ipcMain, shell } from 'electron'
 import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
+import { SOURCE_FILES, stemsOf, type StemKind } from '../shared/audio/settings'
 import type { SaveMeta, SyncSaveResult } from '../shared/editor/autosave'
 import type { LoadedProject } from '../shared/api/projects'
 import type { Project } from '../shared/types'
+import { stopAnalyses } from './analysisIpc'
 import { writeFileAtomicSync } from './atomicWrite'
 import { MEDIA_FILE_RE, mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
@@ -30,12 +32,26 @@ export function saveProjectNow(project: Project, meta?: SaveMeta): void {
   if (meta) lastSaved.set(project.id, meta)
 }
 
+/**
+ * Stems the recording kept whose file is missing from its folder `dir` (a folder copied in
+ * part, a file deleted by hand). Stems are only ever used as a complete set (see stemsOf), so
+ * the editor then opens the project without them; project.json keeps them, so they are used
+ * again once the file is back.
+ */
+export async function missingStems(project: Project, dir: string, exists = projects.exists): Promise<StemKind[]> {
+  const recorded = stemsOf(project)
+  const present = await Promise.all(recorded.map((k) => exists(path.join(dir, SOURCE_FILES[k]))))
+  const missing = recorded.filter((_, i) => !present[i])
+  if (missing.length > 0) console.warn(`${missing.map((k) => SOURCE_FILES[k]).join(' and ')} of this recording ${missing.length > 1 ? 'are' : 'is'} missing; it opens with its mixed sound.`)
+  return missing
+}
+
 export function registerProjectsIpc(): void {
   ipcMain.handle('projects:list', () => projects.listProjects())
 
   ipcMain.handle('projects:load', async (_e, id: string): Promise<LoadedProject> => {
-    const project = await projects.readProject(id)
     const dir = projects.projectDir(id)
+    const project = await projects.readProject(id)
     const cursor = await projects.readCursor(id)
     const hasWebcam = project.hasWebcam && (await projects.exists(path.join(dir, 'webcam.mp4')))
     const bg = project.style.background
@@ -45,7 +61,8 @@ export function registerProjectsIpc(): void {
       dir,
       screenUrl: mediaUrl(id, 'screen.mp4'),
       webcamUrl: hasWebcam ? mediaUrl(id, 'webcam.mp4') : null,
-      backgroundUrl: bg.type === 'image' ? mediaUrl(id, bg.path) : null
+      backgroundUrl: bg.type === 'image' ? mediaUrl(id, bg.path) : null,
+      missingStems: await missingStems(project, dir)
     }
   })
 
@@ -63,8 +80,10 @@ export function registerProjectsIpc(): void {
     e.returnValue = result
   })
 
-  ipcMain.handle('projects:delete', (_e, id: string) => {
+  ipcMain.handle('projects:delete', async (_e, id: string) => {
     lastSaved.delete(id)
+    // An analysis still reading the recording holds its files open, and Windows refuses to delete those.
+    await stopAnalyses(id)
     return projects.deleteProject(id)
   })
   ipcMain.handle('projects:reveal', (_e, id: string) => shell.openPath(projects.projectDir(id)))

@@ -1,6 +1,7 @@
 import type { Corner, Project, WatermarkSettings } from '../types'
 import type { Rect } from './layout'
 import { clamp } from './math'
+import { nextPickFile, pickNumber, stalePickFiles, type PickedFiles } from './picks'
 
 /** Logo or text stamped on every frame (Project.watermark). */
 
@@ -22,27 +23,19 @@ export const WATERMARK_FILE_RE = /^watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|s
 export const WATERMARK_MAX_BYTES = 20 * 1024 * 1024
 /** How many of the latest logo picks a project folder keeps (besides the one its saved project uses). */
 export const WATERMARK_KEEP_PICKS = 5
+const LOGO_PICKS: PickedFiles = { base: 'watermark', re: WATERMARK_FILE_RE, keep: WATERMARK_KEEP_PICKS }
 
 /** The pick number of watermark file `name` (0 for watermark.<ext>), or -1 when it is not one. */
-export function watermarkPickNumber(name: string): number {
-  const m = WATERMARK_FILE_RE.exec(name)
-  return m ? (m[1] ? Number(m[1].slice(1)) : 0) : -1
-}
+export const watermarkPickNumber = (name: string): number => pickNumber(LOGO_PICKS, name)
 
 /** The file name of a new logo pick with extension `ext`, after the files already in the folder. */
-export function nextWatermarkFile(existing: readonly string[], ext: string): string {
-  const last = existing.reduce((n, name) => Math.max(n, watermarkPickNumber(name)), 0)
-  return `watermark-${last + 1}.${ext.toLowerCase().replace(/^\./, '').replace('jpeg', 'jpg')}`
-}
+export const nextWatermarkFile = (existing: readonly string[], ext: string): string => nextPickFile(LOGO_PICKS, existing, ext)
 
 /**
  * Watermark files in a folder that can go after a new pick: all but the newest
  * WATERMARK_KEEP_PICKS picks and the files in `keep` (the new pick, the saved project's logo).
  */
-export function staleWatermarkFiles(existing: readonly string[], keep: ReadonlySet<string>): string[] {
-  const picks = existing.filter((name) => watermarkPickNumber(name) >= 0).sort((a, b) => watermarkPickNumber(b) - watermarkPickNumber(a))
-  return picks.slice(WATERMARK_KEEP_PICKS).filter((name) => !keep.has(name))
-}
+export const staleWatermarkFiles = (existing: readonly string[], keep: ReadonlySet<string>): string[] => stalePickFiles(LOGO_PICKS, existing, keep)
 
 /** watermark-<n>.<ext> -> watermark.<ext>: the name a saved look keeps its logo under. */
 export function plainWatermarkFile(name: string): string {

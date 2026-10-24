@@ -9,7 +9,7 @@ export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
 
 /** Project files the renderer may load: the proxies, a background image and a custom cursor image. */
 export const MEDIA_FILE_RE =
-  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a)$/i
+  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a)$/i
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.png': 'image/png',

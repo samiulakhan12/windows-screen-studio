@@ -49,7 +49,13 @@ vi.mock('electron', () => ({
   shell: { showItemInFolder: () => undefined }
 }))
 vi.mock('../src/main/windows', () => ({ getMainWindow: () => ({}) }))
-vi.mock('../src/main/projects', () => ({ projectDir: (id: string) => path.join(h.root, 'projects', id) }))
+vi.mock('../src/main/projects', () => ({
+  projectDir: (id: string) => path.join(h.root, 'projects', id),
+  // No project.json in these tests: the export then knows of no stems beyond the job's.
+  readProject: async () => {
+    throw new Error('no project.json')
+  }
+}))
 vi.mock('../src/main/hwEncoders', async (orig) => ({ ...(await orig<object>()), detectH264Encoders: async () => ['libx264'] }))
 vi.mock('../src/main/ffmpeg', async (orig) => {
   const real = await orig<typeof import('../src/main/ffmpeg')>()

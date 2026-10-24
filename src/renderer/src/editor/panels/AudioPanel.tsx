@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { AUDIO_LIMITS, audioLook, DEFAULT_MUSIC, recordingMix, stemsOf, type StemKind } from '../../../../shared/audio/settings'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { AUDIO_LIMITS, audioLook, DEFAULT_MUSIC, recordingMix, SOURCE_FILES, STEM_KINDS, stemsOf, type StemKind } from '../../../../shared/audio/settings'
 import { LOUDNESS_TARGET } from '../../../../shared/audio/loudness'
 import { formatTime } from '../../../../shared/engine/project'
 import { mediaUrl } from '../../../../shared/mediaUrl'
@@ -26,6 +26,12 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
   const look = audioLook(project.audio)
   const stems = stemsOf(project)
   const recordingOn = recordingMix(project).kind !== 'none'
+  // Stem files found missing while editing (the preview plays the mixed sound), or when the
+  // project was opened (it opened without its stems: a source's own mute or volume no longer
+  // applies). Either way the mixed sound has every source.
+  const failed = useSyncExternalStore(player.subscribe, player.getFailedStems)
+  const failedStems = failed ? (failed.split(',') as StemKind[]) : []
+  const sourceSet = STEM_KINDS.some((k) => look[k].muted || look[k].volume !== 1)
   const setAudio = (patch: Partial<AudioSettings>, key?: string): void => store.update((p) => ({ ...p, audio: { ...p.audio, ...patch } }), key)
   const setTrack = (kind: StemKind, patch: Partial<AudioTrackSettings>, key?: string): void =>
     store.update((p) => ({ ...p, audio: { ...p.audio, [kind]: { ...audioLook(p.audio)[kind], ...patch } } }), key)
@@ -51,8 +57,28 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         />
         <p className="hint">
           Sped-up clips keep their pitch.
-          {stems.length > 0 && ' The microphone and the system sound were also kept apart: balance them below.'}
+          {stems.length > 0 && !failed && ' The microphone and the system sound were also kept apart: balance them below.'}
         </p>
+        {failedStems.length > 0 ? (
+          <p className="callout" role="alert" data-testid="stems-missing">
+            <EditorIcon name="alert" size={16} />
+            <span>
+              {missingFiles(failedStems)} missing, so the preview plays the mixed sound, with every source, whatever is set below. Open the recording again to export it that
+              way.
+            </span>
+          </p>
+        ) : (
+          player.missingStems.length > 0 && (
+            <p className="callout" role="alert" data-testid="stems-missing">
+              <EditorIcon name="alert" size={16} />
+              <span>
+                {missingFiles(player.missingStems)} missing, so a source can no longer be muted or turned down on its own: the preview and the export play the mixed sound,
+                with every source{sourceSet ? ', including one you muted or turned down' : ''}. Put the {player.missingStems.length > 1 ? 'files' : 'file'} back in the
+                recording's folder and open the recording again to set the sources apart.
+              </span>
+            </p>
+          )
+        )}
       </Section>
 
       {stems.map((kind) => (
@@ -115,6 +141,13 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
   )
 }
 
+/** "The system sound file of this recording (system.m4a) is", for the stems in `kinds`. */
+function missingFiles(kinds: readonly StemKind[]): string {
+  const names = kinds.map((k) => STEM_NAMES[k].toLowerCase()).join(' and ')
+  const files = kinds.map((k) => SOURCE_FILES[k]).join(' and ')
+  return kinds.length > 1 ? `The ${names} files of this recording (${files}) are` : `The ${names} file of this recording (${files}) is`
+}
+
 /* ---------- Music ---------- */
 
 function MusicSection(props: {
@@ -130,13 +163,20 @@ function MusicSection(props: {
   const [error, setError] = useState<string | null>(null)
   const [version, setVersion] = useState(() => Date.now())
   const [length, setLength] = useState<number | null>(null)
+  const [missing, setMissing] = useState(false)
   const path = music?.path ?? null
 
   useEffect(() => {
     setLength(null)
+    setMissing(false)
     if (!path) return
     let live = true
-    void mediaDuration(mediaUrl(project.id, path, version)).then((d) => live && setLength(d))
+    void mediaDuration(mediaUrl(project.id, path, version)).then(async (d) => {
+      if (!live) return
+      setLength(d)
+      // Undo far back can return to a track the folder no longer keeps (only the latest few picks are).
+      if (d === null && !(await window.api.assetUrl(project.id, path)) && live) setMissing(true)
+    })
     return () => {
       live = false
     }
@@ -189,6 +229,12 @@ function MusicSection(props: {
               </button>
             </span>
           </div>
+          {missing && (
+            <p className="callout" role="alert" data-testid="music-missing">
+              <EditorIcon name="alert" size={16} />
+              <span>This music file is no longer in the recording's folder, so it cannot play or be exported. Choose it again with Replace…</span>
+            </p>
+          )}
           <Slider label="Music volume" value={music.volume} {...AUDIO_LIMITS.volume} step={0.05} format={pctFmt} onChange={(v) => setMusic({ volume: v }, 'audio.music.volume')} />
           <Slider
             label="Lower under speech"

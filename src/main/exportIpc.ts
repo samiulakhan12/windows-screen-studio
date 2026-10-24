@@ -2,6 +2,7 @@ import { app, dialog, ipcMain, shell, type WebContents } from 'electron'
 import { constants as fsConstants, existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ExportCapabilities, ExportFinish, ExportJob } from '../shared/api/export'
+import { stemsOf } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
 import { analyzeAudio, stopAudioAnalysis } from './audioAnalysis'
 import { describeGifFit, ffmpegPlan, gifEncodeArgs, gifPaletteArgs, nextGifFit, type FfmpegPlan, type GifFit } from './exportArgs'
@@ -224,7 +225,9 @@ export function registerExportIpc(): void {
       throw new Error(`Could not write to the folder "${path.dirname(finalPath)}". Choose another folder.`)
     })
     const tempPath = partialPath(finalPath)
-    const sound = await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists)
+    // The stems the recording kept: a missing one may only fall back to the mixed sound when that sounds the same.
+    const recorded = await projects.readProject(projectId).then(stemsOf, () => [])
+    const sound = await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists, recorded)
     const { job } = sound
     const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.

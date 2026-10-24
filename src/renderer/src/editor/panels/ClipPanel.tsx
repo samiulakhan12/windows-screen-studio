@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { activitySources, type AudioSource } from '../../../../shared/audio/settings'
+import { sourceActivity, type AudioAnalysis } from '../../../../shared/audio/soundtrack'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../../shared/editor/clips'
 import type { EditStore } from '../../../../shared/editor/editStore'
 import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
@@ -17,6 +19,7 @@ import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration, SPEED_PRESETS } from '../../../../shared/engine/timeline'
 import { stripIpcPrefix } from '../../../../shared/recording/errors'
 import type { Project } from '../../../../shared/types'
+import { loadAudioAnalysis } from '../audioAnalysis'
 import { useEditor } from '../context'
 import { Chips, Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
@@ -141,13 +144,14 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
 /* ---------- Smart speed ---------- */
 
 /**
- * Still-picture analysis of the open recording, kept for the editor session (keyed by its
- * store) so switching tabs never runs it again; also which smart speed request was handled.
- * A failed analysis is not kept: Find tries again.
+ * Still-picture analysis of the open recording and the measured levels of its sound, kept for
+ * the editor session (keyed by its store) so switching tabs never runs them again; also which
+ * smart speed request was handled. A failed analysis is not kept: Find tries again.
  */
 interface Analysis {
   still: TimeRange[] | null
   pending: Promise<TimeRange[]> | null
+  levels: AudioAnalysis
   request: number
 }
 const analyses = new WeakMap<EditStore<Project>, Analysis>()
@@ -172,12 +176,13 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const { project, cursor, onSelect, onNotice } = props
   const analysis = useMemo<Analysis>(() => {
     let a = analyses.get(store)
-    if (!a) analyses.set(store, (a = { still: null, pending: null, request: 0 }))
+    if (!a) analyses.set(store, (a = { still: null, pending: null, levels: {}, request: 0 }))
     return a
   }, [store])
   const [minIdle, setMinIdle] = useState(lastChoice.minIdle)
   const [action, setAction] = useState<SmartSpeedAction>(lastChoice.action)
   const [still, setStill] = useState<TimeRange[] | null>(analysis.still)
+  const [levels, setLevels] = useState<AudioAnalysis>(analysis.levels)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set())
@@ -191,6 +196,16 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   }, [])
 
   const projectId = project.id
+  // Sources whose sound counts (a muted one does not): someone talking over a still screen is not idle.
+  const sourcesKey = activitySources(project).join(',')
+  const measure = useCallback(async (): Promise<void> => {
+    const sources = sourcesKey ? (sourcesKey.split(',') as AudioSource[]) : []
+    if (sources.every((s) => analysis.levels[s])) return
+    // Never rejects: a source that cannot be measured is left out, and then only the picture and the input decide.
+    analysis.levels = { ...analysis.levels, ...(await loadAudioAnalysis(projectId, sources)) }
+    if (alive.current) setLevels(analysis.levels)
+  }, [analysis, projectId, sourcesKey])
+
   const find = useCallback(
     async (): Promise<void> => {
       setBusy(true)
@@ -199,7 +214,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         analysis.pending = null
       })
       try {
-        const ranges = await analysis.pending
+        const [ranges] = await Promise.all([analysis.pending, measure()])
         analysis.still = ranges
         if (!alive.current) return
         setStill(ranges)
@@ -211,7 +226,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         if (alive.current) setBusy(false)
       }
     },
-    [analysis, projectId]
+    [analysis, projectId, measure]
   )
 
   // An analysis started before switching tabs: wait for it here.
@@ -232,9 +247,16 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   // so edits (a trim drag) only redo the cheap part below.
   const analysed = still !== null
   const inactive = useMemo(() => (analysed ? inputGaps(cursor, project.duration) : null), [analysed, cursor, project.duration])
+  // A source turned on again after the analysis is measured too.
+  useEffect(() => {
+    if (analysed) void measure()
+  }, [analysed, measure])
+  // Where the recording is heard (source seconds): none without sound, null while unknown.
+  const { hasAudio, audioStems, audio } = project
+  const sound = useMemo(() => (analysed ? sourceActivity({ hasAudio, audioStems, audio }, levels) : null), [analysed, hasAudio, audioStems, audio, levels])
   const plan = useMemo(
-    () => (still ? planSmartSpeed({ still, inactive, clips: project.clips, duration: project.duration }, minIdle, action) : null),
-    [still, inactive, project.clips, project.duration, minIdle, action]
+    () => (still ? planSmartSpeed({ still, inactive, sound, clips: project.clips, duration: project.duration }, minIdle, action) : null),
+    [still, inactive, sound, project.clips, project.duration, minIdle, action]
   )
   const chosen = plan ? plan.parts.filter((p) => !skipped.has(partKey(p))) : []
   const saved = chosen.reduce((s, p) => s + p.saved, 0)
@@ -258,7 +280,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   return (
     <div className="smart-speed" ref={boxRef} data-testid="smart-speed">
       <Section title="Smart speed">
-        <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still and the mouse and keyboard rest.</p>
+        <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and the mouse and keyboard rest.</p>
         {!cursor.valid && <p className="hint">This recording has no mouse or keyboard data, so only the picture decides.</p>}
         <span className="field-label">Idle for at least</span>
         <Chips label="Minimum idle length" value={minIdle} onChange={(v) => choose({ minIdle: v })} options={MIN_IDLE_CHOICES.map((s) => ({ value: s, label: `${s} s` }))} />

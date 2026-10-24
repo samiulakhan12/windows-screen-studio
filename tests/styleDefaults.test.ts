@@ -310,6 +310,8 @@ describe('style pack fields in saved defaults', () => {
     expect(sanitizeStyleDefaults({ watermark: { ...text, size: 9, opacity: 0, text: 'x'.repeat(300) } })?.watermark).toMatchObject({ size: 0.4, opacity: 0.1, text: 'x'.repeat(80) })
     const p = applyStyleDefaults(newProject(), { style: {}, cursor: {}, webcam: {}, effects: {}, watermark: text as never })
     expect(p.watermark).toEqual(text)
+    // Only a logo keeps its file name: a text watermark's leftover one belongs to another project's folder.
+    expect(sanitizeStyleDefaults({ watermark: { ...text, path: 'watermark-2.png' } })?.watermark).toEqual(text)
   })
 
   it('lookOf carries the zoom style, the watermark and where they came from', () => {

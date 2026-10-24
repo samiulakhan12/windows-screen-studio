@@ -1,8 +1,9 @@
 /**
  * Smart speed: finds the idle parts of a recording, where the picture stays still (ffmpeg
- * freezedetect in the main process) and nothing is done with the mouse or keyboard, and speeds
- * them up or cuts them. Everything here is in source seconds; only parts still in the video
- * count. Pure, so the Clip panel's list and its Apply button agree exactly.
+ * freezedetect in the main process), nothing is heard (the audio pack's sound activity) and
+ * nothing is done with the mouse or keyboard, and speeds them up or cuts them. Everything here
+ * is in source seconds; only parts still in the video count. Pure, so the Clip panel's list and
+ * its Apply button agree exactly.
  */
 import { clamp } from '../engine/math'
 import { cutRange } from '../engine/timeline'
@@ -68,6 +69,18 @@ export function intersectRanges(a: readonly TimeRange[], b: readonly TimeRange[]
   return out
 }
 
+/** The parts of [0, duration] outside `ranges`. */
+export function rangeGaps(ranges: readonly TimeRange[], duration: number): TimeRange[] {
+  const gaps: TimeRange[] = []
+  let at = 0
+  for (const r of intersectRanges(ranges, [{ start: 0, end: duration }])) {
+    if (r.start - at > EPS) gaps.push({ start: at, end: r.start })
+    at = r.end
+  }
+  if (duration - at > EPS) gaps.push({ start: at, end: duration })
+  return gaps
+}
+
 /** The parts of the recording that are in the video (clips next to each other are one part). */
 export function keptRanges(clips: readonly Clip[]): TimeRange[] {
   return mergeRanges(clips.map((c) => ({ start: c.start, end: c.end })))
@@ -117,18 +130,25 @@ export interface IdleInput {
   still: readonly TimeRange[]
   /** Stretches without input (inputGaps), or null when unknown: then the picture alone decides. */
   inactive: readonly TimeRange[] | null
+  /**
+   * Stretches where the recording is heard (sourceActivity: someone talking over a still
+   * screen is not idle), or null/absent when that is not known (no sound, or not measured):
+   * then the picture and the input decide.
+   */
+  sound?: readonly TimeRange[] | null
   clips: readonly Clip[]
   duration: number
 }
 
 /**
- * Idle parts in the video: still AND without input, at least `minIdle` seconds of it in the
- * video, with up to IDLE_PAD seconds left at normal speed at each end (less for short parts).
+ * Idle parts in the video: still AND silent AND without input, at least `minIdle` seconds of it
+ * in the video, with up to IDLE_PAD seconds left at normal speed at each end (less for short parts).
  */
 export function findIdleRanges(input: IdleInput, minIdle: number): TimeRange[] {
   const whole = [{ start: 0, end: input.duration }]
   const still = intersectRanges(mergeRanges(input.still, STILL_MERGE_GAP), whole)
-  const idle = input.inactive ? intersectRanges(still, input.inactive) : still
+  const quiet = input.sound ? intersectRanges(still, rangeGaps(input.sound, input.duration)) : still
+  const idle = input.inactive ? intersectRanges(quiet, input.inactive) : quiet
   const out: TimeRange[] = []
   for (const r of intersectRanges(idle, keptRanges(input.clips))) {
     const length = r.end - r.start
