@@ -40,8 +40,8 @@ export const hasStroke = (s: Pick<Shape, 'kind' | 'fill'>): boolean => isLineKin
 /** Geometry and look a new shape of each kind starts with (before the caller's `init`). */
 const KIND_DEFAULTS: Record<ShapeKind, Partial<Shape>> = {
   // Down and to the right, ending a little left of the middle: points at the centre.
-  arrow: { x: 0.3, y: 0.28, w: 0.16, h: 0.17 },
-  line: { x: 0.35, y: 0.62, w: 0.3, h: 0 },
+  arrow: { x: 0.3, y: 0.28, w: 0.16, h: 0.17, strokeWidth: 10 },
+  line: { x: 0.35, y: 0.62, w: 0.3, h: 0, strokeWidth: 8 },
   rect: {},
   ellipse: {},
   highlight: { x: 0.3, y: 0.45, w: 0.4, h: 0.1, color: '#ffd60a', opacity: 0.55 },

@@ -126,8 +126,8 @@ function blurBox(img: FrameImage, box: Box, sigma: number): Blurred | null {
   const cy0 = Math.max(0, sy0)
   const cx1 = Math.min(W, sx1)
   const cy1 = Math.min(H, sy1)
-  const X = [0, (cx0 - sx0) * d, (cx1 - sx0) * d, sw]
-  const Y = [0, (cy0 - sy0) * d, (cy1 - sy0) * d, sh]
+  const X = [0, (cx0 - sx0) * d, (cx1 - sx0) * d, (sx1 - sx0) * d]
+  const Y = [0, (cy0 - sy0) * d, (cy1 - sy0) * d, (sy1 - sy0) * d]
   // Source column/row ranges for the three bands across: before, inside, after the recording.
   const SX = [[0, 1], [cx0, cx1 - cx0], [W - 1, 1]]
   const SY = [[0, 1], [cy0, cy1 - cy0], [H - 1, 1]]

@@ -49,13 +49,6 @@
   cursor: default;
 }
 
-.shape-tools.two .shape-tool {
-  flex-direction: row;
-  justify-content: center;
-  gap: 8px;
-  padding: 9px 6px;
-  font-size: 12px;
-}
 
 .shape-colors {
   display: flex;
@@ -286,11 +279,12 @@
   cursor: move;
 }
 
+/* A faint line between the handles: the arrow itself stays clearly visible under it. */
 .shape-lines .guide {
-  stroke: var(--accent-2);
-  stroke-width: 1.5px;
-  stroke-dasharray: 5 4;
-  opacity: 0.9;
+  stroke: white;
+  stroke-width: 1px;
+  stroke-dasharray: 4 5;
+  opacity: 0.55;
 }
 
 .shape-end {
