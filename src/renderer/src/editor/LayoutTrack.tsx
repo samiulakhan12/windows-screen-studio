@@ -37,10 +37,13 @@ const NO_LAYOUTS: LayoutSegment[] = []
 const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 const shortLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.short ?? layoutLabel(layout)
 
-/** Moves the playhead so the preview shows layout change `id` settled, past its change in (unless it already does). */
+/**
+ * Moves the playhead so the preview shows layout change `id` settled, past its change in (unless
+ * it already does). While playing, only to a change the playhead is not in: one just added there plays.
+ */
 export function showLayout(player: PreviewPlayer, project: Project, id: string): void {
   const seg = project.layouts?.find((s) => s.id === id)
-  const at = seg ? layoutShowTime(project, seg, player.time) : null
+  const at = seg ? layoutShowTime(project, seg, player.time, player.playing) : null
   if (at !== null) player.seek(at)
 }
 

@@ -101,17 +101,31 @@ export function addLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number
 
 /**
  * Where to move a playhead at `t` so the preview shows `seg` (one of `project.layouts`) settled,
- * past its change in: null when the frame shown there already does. Measured as if the camera
- * were shown, so the playhead lands the same whether it is or not.
+ * past its change in: null when the frame shown there already does. While `playing`, a playhead
+ * in the segment stays (its change plays). Measured as if the camera were shown, so the playhead
+ * lands the same whether it is or not.
  */
-export function layoutShowTime(project: LayoutEdit & Pick<Project, 'webcam'>, seg: LayoutSegment, t: number): number | null {
+export function layoutShowTime(project: LayoutEdit & Pick<Project, 'webcam'>, seg: LayoutSegment, t: number, playing = false): number | null {
   const ramps = layoutRamps({ ...project, hasWebcam: true, webcam: { ...project.webcam, show: true } }, seg)
   const shown = layoutTimeAt(project, t)
-  if (shown >= seg.start + ramps.in && shown < seg.end - ramps.out) return null
-  const at = Math.min(seg.start + ramps.in + 0.01, (seg.start + seg.end) / 2)
-  // On the frame the preview shows there (a change running into a cut shows after it).
-  const kept = project.clips?.length ? displayTime(project.clips, at) : at
-  return kept < seg.end ? kept : at
+  if (playing && shown >= seg.start && shown < seg.end) return null
+  // Settled from the end of its change in to the start of its change out, or without one up to its end (where the next one shows).
+  const settledTo = ramps.out > 0 ? seg.end - ramps.out : seg.end - 1e-3
+  if (shown >= seg.start + ramps.in && shown <= settledTo) return null
+  // Just past its change in; too short to settle (a change in that runs into the next one), as far into it as it gets.
+  const at = Math.min(seg.start + ramps.in + 0.01, settledTo)
+  const clips = project.clips
+  if (!clips?.length) return at
+  // On the frame the preview shows there: a change running into a cut shows after it...
+  const kept = displayTime(clips, at)
+  if (kept <= settledTo) return kept
+  // ...unless it settles only in the cut: then the kept frame next to the cut that is furthest into the change.
+  const prev = clips.filter((c) => c.start <= at).pop()
+  const before = prev ? Math.min(at, prev.end - 1e-3) : -1
+  const into = (s: number): number =>
+    s < seg.start || s >= seg.end ? -1 : Math.min(ramps.in > 0 ? (s - seg.start) / ramps.in : 1, ramps.out > 0 ? (seg.end - s) / ramps.out : 1)
+  if (into(before) < 0 && into(kept) < 0) return at
+  return into(before) >= into(kept) ? before : kept
 }
 
 /** How far segment `id` may move or grow: up to its neighbours and the recording's ends. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { setLayoutAt } from '../src/shared/editor/layoutCommands'
 import { addLayoutAt, DEFAULT_LAYOUT_LENGTH, layoutSegmentAt, layoutShowTime, layoutTimeAt } from '../src/shared/editor/layouts'
-import { layoutPhaseAt, LAYOUT_TRANSITION } from '../src/shared/engine/layout'
+import { layoutPhaseAt, layoutRamps, LAYOUT_TRANSITION } from '../src/shared/engine/layout'
 import type { CameraLayout, Clip, LayoutSegment, WebcamSettings } from '../src/shared/types'
 
 /*
@@ -74,16 +74,18 @@ describe('a camera layout change at the playhead', () => {
     expect(setLayoutAt(p, 'side-by-side', 8.9)).toEqual({ ok: false, reason: 'no-room', id: null })
   })
 
+  /** Whether the preview of a paused playhead at `t` shows `s` settled. */
+  const settled = (p: ReturnType<typeof edit>, s: LayoutSegment, t: number): boolean => {
+    const phase = layoutPhaseAt(p, layoutTimeAt(p, t))
+    return phase.progress === 1 && phase.to === s.layout
+  }
+  const add = (p: ReturnType<typeof edit>, t: number, layout: CameraLayout = 'side-by-side') => {
+    const r = setLayoutAt(p, layout, t)
+    if (!r.ok || !r.added) throw new Error(JSON.stringify(r))
+    return { p: { ...p, layouts: r.layouts }, s: r.layouts.find((s) => s.id === r.id)! }
+  }
+
   it('then moves the playhead past the change in, so the paused preview shows it', () => {
-    const settled = (p: ReturnType<typeof edit>, s: LayoutSegment, t: number): boolean => {
-      const phase = layoutPhaseAt(p, layoutTimeAt(p, t))
-      return phase.progress === 1 && phase.to === s.layout
-    }
-    const add = (p: ReturnType<typeof edit>, t: number) => {
-      const r = addLayoutAt(p, 'side-by-side', t)
-      if (!r.ok) throw new Error(r.reason)
-      return { p: { ...p, layouts: r.layouts }, s: r.segment }
-    }
     // Added at 3 s: at the playhead it has not changed anything yet.
     const mid = add(edit({ duration: 20 }), 3)
     expect(settled(mid.p, mid.s, 3)).toBe(false)
@@ -105,5 +107,56 @@ describe('a camera layout change at the playhead', () => {
     // The same whether the camera is shown or hidden.
     const hidden = { ...mid.p, webcam: { ...webcam, show: false } }
     expect(layoutShowTime(hidden, mid.s, 3)).toBe(at)
+  })
+
+  it('a short change running straight into the next one shows settled before it, or as far as it gets', () => {
+    const p = edit({ duration: 20, layouts: [seg('b', 8, 12, 'screen-only')] })
+    // Up to the next change: it changes in, then straight into the next one (no change out).
+    const short = add(p, 7.4, 'camera-only')
+    expect([short.s.start, short.s.end]).toEqual([7.4, 8])
+    expect(layoutRamps(short.p, short.s)).toEqual({ in: LAYOUT_TRANSITION, out: 0 })
+    const at = layoutShowTime(short.p, short.s, 7.4)!
+    expect(settled(short.p, short.s, at)).toBe(true)
+    expect(layoutShowTime(short.p, short.s, at)).toBeNull()
+    // Too short to settle before the next one: its last frame, the furthest its change gets.
+    const tiny = add(p, 7.65, 'camera-only')
+    const last = layoutShowTime(tiny.p, tiny.s, 7.65)!
+    expect(last).toBeLessThan(8)
+    const phase = layoutPhaseAt(tiny.p, last)
+    expect(phase.to).toBe('camera-only')
+    expect(phase.progress).toBeGreaterThan(0.99)
+    // Settling only in a cut: as far into its change as the kept video gets, before the cut
+    // (not the frame after the cut, which is outside the change).
+    const cut = edit({ duration: 20, clips: [clip(0, 4.2), clip(7, 20)], layouts: [seg('b', 4.4, 6, 'screen-only')] })
+    const inCut = add(cut, 3.9, 'camera-only')
+    expect([inCut.s.start, inCut.s.end]).toEqual([3.9, 4.4])
+    const before = layoutShowTime(inCut.p, inCut.s, 3.9)!
+    expect(layoutTimeAt(inCut.p, before)).toBe(before)
+    expect(before).toBeGreaterThan(4.19)
+    expect(before).toBeLessThan(4.2)
+    expect(layoutPhaseAt(inCut.p, before).to).toBe('camera-only')
+    // With the cut covering all of the settled part, the side of it further into the change.
+    const across = edit({ duration: 20, clips: [clip(0, 9.2), clip(10.9, 20)], layouts: [seg('a', 9, 11)] })
+    const side = layoutShowTime(across, across.layouts[0], 3)!
+    expect(side).toBeGreaterThan(9.19)
+    expect(side).toBeLessThan(9.2)
+    // A short one with a change out as well: settled between the two, at its middle.
+    const both = edit({ duration: 20, layouts: [seg('a', 2, 2.6)] })
+    const ramps = layoutRamps(both, both.layouts[0])
+    expect([ramps.in, ramps.out].map((v) => v.toFixed(6))).toEqual(['0.300000', '0.300000'])
+    expect(settled(both, both.layouts[0], layoutShowTime(both, both.layouts[0], 1)!)).toBe(true)
+  })
+
+  it('while playing, a change the playhead is in plays: the playhead stays', () => {
+    const mid = add(edit({ duration: 20 }), 3)
+    // Just added at the playhead, in its change in, settled, and in its change out.
+    for (const t of [3, 3 + LAYOUT_TRANSITION / 2, 5, mid.s.end - LAYOUT_TRANSITION / 2]) expect(layoutShowTime(mid.p, mid.s, t, true), `at ${t}`).toBeNull()
+    // Added near the end it starts before the playhead, which is in it.
+    const end = add(edit({ duration: 12, clips: [clip(0, 10)] }), 9.9)
+    expect(end.s.start).toBeLessThan(9.9)
+    expect(layoutShowTime(end.p, end.s, 9.9, true)).toBeNull()
+    // A click on a change elsewhere still goes to it, as when paused.
+    for (const t of [1, 12]) expect(layoutShowTime(mid.p, mid.s, t, true), `at ${t}`).toBe(layoutShowTime(mid.p, mid.s, t))
+    expect(layoutShowTime(mid.p, mid.s, 12, true)).not.toBeNull()
   })
 })

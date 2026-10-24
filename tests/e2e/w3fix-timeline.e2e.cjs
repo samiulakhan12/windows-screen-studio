@@ -3,7 +3,8 @@
 // playhead (in a cut, near a trimmed end) whether it comes from the camera track, the Camera
 // panel or a command, and the playhead then moves to where the change shows; and scrubbing the
 // camera layout and title tracks of a zoomed-in timeline keeps the view still with the playhead
-// under the pointer, as on the other tracks.
+// under the pointer, as on the other tracks. A change added while playing plays: the playhead
+// does not jump past it.
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -56,6 +57,16 @@ async function openSeeded(ctx, tag, opts, patch = {}) {
   ctx.app = app
   ctx.logs = logs
   await win.waitForSelector('.home', { timeout: 30000 })
+  // Keep handles on the editor's (detached) <video> elements (as editor.e2e.cjs).
+  await win.evaluate(() => {
+    const create = document.createElement.bind(document)
+    window.__videos = []
+    document.createElement = (tag, ...rest) => {
+      const el = create(tag, ...rest)
+      if (String(tag).toLowerCase() === 'video') window.__videos.push(el)
+      return el
+    }
+  })
   await f.openProject(win, opts.name)
   return { home, id, win }
 }
@@ -130,6 +141,19 @@ const saved = (home, id, pred, what) =>
   }, what, 10000)
 
 const near = (a, b, tol) => Math.abs(a - b) <= tol
+
+const isPlaying = (win) => win.$eval('.transport .btn.round', (b) => b.dataset.playing === 'true')
+
+/** Starts counting the seeks of the screen video: playing a project without cuts never seeks it, a jump does. */
+const countSeeks = (win) =>
+  win.evaluate(() => {
+    const v = window.__videos.find((x) => /screen/.test(x.getAttribute('src') || ''))
+    if (!v) throw new Error(`no screen video in ${JSON.stringify(window.__videos.map((x) => x.getAttribute('src')))}`)
+    v.__seeks = 0
+    if (!v.__counting) v.addEventListener('seeking', () => v.__seeks++)
+    v.__counting = true
+  })
+const seeks = (win) => win.evaluate(() => window.__videos.find((x) => /screen/.test(x.getAttribute('src') || '')).__seeks)
 
 async function main() {
   await test('silences: a title card over a pause is kept, and the panel says why', async (ctx) => {
@@ -232,6 +256,42 @@ async function main() {
       h.assert(after === before, `${name} track: the timeline does not scroll while scrubbing (${before} -> ${after})`)
       h.assert(Math.abs(t - under) * Number(await win.$eval('.tl-content', (el) => el.dataset.pxPerSec)) < 3, `${name} track: the playhead is under the pointer (${t.toFixed(2)} vs ${under.toFixed(2)} s)`)
     }
+  })
+
+  await test('camera layouts added while playing play: the playhead does not jump past the change', async (ctx) => {
+    const { home, id, win } = await openSeeded(ctx, 'w3fix-playing', { name: 'Camera', seconds: 20, webcam: true })
+    await win.waitForSelector('[data-testid="layout-track"]')
+    if (!(await win.$('.insp-tabs button[title="Camera"][aria-pressed="true"]'))) await win.click('.insp-tabs button[title="Camera"]')
+    await win.keyboard.press('Escape')
+    await win.keyboard.press('Space')
+    await f.waitFor(() => isPlaying(win), 'playing')
+    await f.waitFor(async () => (await playheadTime(win)) > 1, 'played a second', 10000)
+
+    // From the Camera panel: a change at the playhead, which then plays on through it.
+    await countSeeks(win)
+    const t0 = await playheadTime(win)
+    await win.click('.layout-option:has-text("Side by side")')
+    let p = await saved(home, id, (q) => (q.layouts ?? []).length === 1, 'a layout change from the panel')
+    const side = p.layouts[0]
+    await h.sleep(300)
+    let t = await playheadTime(win)
+    console.log(`  panel while playing at ${t0.toFixed(2)}: ${side.start.toFixed(2)}..${side.end.toFixed(2)}, playhead ${t.toFixed(2)}, seeks ${await seeks(win)}`)
+    h.assert(side.layout === 'side-by-side' && side.start >= t0 - 0.01 && side.start < t0 + 1, `at the playhead: ${JSON.stringify(side)}`)
+    h.assert((await seeks(win)) === 0, 'the panel did not move the playing playhead')
+    h.assert(await isPlaying(win), 'still playing')
+
+    // From the command palette (which does not pause) once past that change: the same.
+    await f.waitFor(async () => (await playheadTime(win)) > side.end + 0.2, 'past the first change', 15000)
+    await countSeeks(win)
+    await runCommand(win, 'camera only', 'Camera layout: camera only')
+    p = await saved(home, id, (q) => q.layouts.length === 2, 'a layout change from the command')
+    const cam = p.layouts.find((s) => s.layout === 'camera-only')
+    await h.sleep(300)
+    t = await playheadTime(win)
+    console.log(`  command while playing: ${cam.start.toFixed(2)}..${cam.end.toFixed(2)}, playhead ${t.toFixed(2)}, seeks ${await seeks(win)}`)
+    h.assert(cam.start > side.end, `after the first: ${JSON.stringify(cam)}`)
+    h.assert((await seeks(win)) === 0, 'the command did not move the playing playhead')
+    h.assert(await isPlaying(win), 'still playing after the command')
   })
 }
 
