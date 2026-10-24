@@ -2,11 +2,11 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
-import { combineLevels, detectActivity, mergeRanges, rangesToOutput } from '../src/shared/audio/activity'
-import { DUCK_TIMING, duckAmount, duckExpression, duckGainAt, duckKeyframes, duckRanges, fadeGainAt, fadeKeyframes, fitFades, gainAt } from '../src/shared/audio/automation'
+import { combineLevels, detectActivity, kthSmallest, limitRanges, mergeRanges, rangesToOutput } from '../src/shared/audio/activity'
+import { DUCK_TIMING, duckAmount, duckExpression, duckGainAt, duckKeyframes, duckRanges, fadeGainAt, fadeKeyframes, fitFades, gainAt, MAX_DUCK_RANGES } from '../src/shared/audio/automation'
 import { integratedLoudness, kWeighting, LEVEL_WINDOW, LevelMeter, loudnessOf, normalizeGain, type AudioLevels } from '../src/shared/audio/loudness'
 import { activitySources, audioLook, hasSoundtrack, musicEnd, needsAudioGraph, recordingMix, stemsOf } from '../src/shared/audio/settings'
-import { analysisSources, musicDucking, previewNormalizeGain, recordingLoudness, soundActivity } from '../src/shared/audio/soundtrack'
+import { analysisSources, editLoudness, heardLevels, musicDucking, previewNormalizeGain, recordingLoudness, soundActivity, sourceActivity } from '../src/shared/audio/soundtrack'
 import { migrateProject } from '../src/shared/engine/project'
 import type { Clip, Project } from '../src/shared/types'
 
@@ -66,8 +66,7 @@ describe('K-weighting and the level meter', () => {
       for (let i = 0; i < n; i += 777) meter.push(sine.subarray(i, i + 777))
       const env = meter.finish()
       expect(env.power.length).toBe(60)
-      const windows = Array.from(env.power, (power) => ({ power, weight: 1 }))
-      expect(integratedLoudness(windows)).toBeCloseTo(-3.01, 1)
+      expect(integratedLoudness({ power: env.power })).toBeCloseTo(-3.01, 1)
     }
   })
 
@@ -78,7 +77,7 @@ describe('K-weighting and the level meter', () => {
     const st = new Float32Array(n * 2)
     for (let i = 0; i < n; i++) st[2 * i] = st[2 * i + 1] = 0.5 * Math.sin((2 * Math.PI * 1000 * i) / rate)
     meter.push(st)
-    const l = integratedLoudness(Array.from(meter.finish().power, (power) => ({ power, weight: 1 })))
+    const l = integratedLoudness({ power: meter.finish().power })
     expect(l).toBeCloseTo(-3.01 - 6.02 + 3.01, 1)
   })
 
@@ -92,16 +91,25 @@ describe('K-weighting and the level meter', () => {
     const pcm = execFileSync(ff, ['-v', 'error', ...src, '-ac', '2', '-ar', '16000', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })
     const meter = new LevelMeter(16000, 2)
     meter.push(new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4))
-    const ours = integratedLoudness(Array.from(meter.finish().power, (power) => ({ power, weight: 1 })))!
+    const ours = integratedLoudness({ power: meter.finish().power })!
     expect(Math.abs(ours - reference)).toBeLessThan(0.5)
   })
 
   it('gates silence out and returns null for a silent recording', () => {
-    const half = [...run(-20, 3), ...run(-300, 3)].map((db) => ({ power: db <= -200 ? 0 : 10 ** (db / 10), weight: 1 }))
+    const half = levels([...run(-20, 3), ...run(-300, 3)])
     // The silent half does not pull the loudness down 3 dB (only the blocks at the edge count, a little).
     expect(Math.abs(integratedLoudness(half)! - loudnessOf(10 ** -2))).toBeLessThan(0.5)
-    expect(integratedLoudness(run(-300, 2).map(() => ({ power: 0, weight: 1 })))).toBeNull()
-    expect(integratedLoudness([])).toBeNull()
+    expect(integratedLoudness(levels(run(-300, 2)))).toBeNull()
+    expect(integratedLoudness({ power: [] })).toBeNull()
+  })
+
+  it('weighs each window by how long it lasts in the output', () => {
+    // 2 s at -20 dB played at 2x (1 s heard) and 1 s at -30 dB: the quieter part counts as much.
+    const power = levels([...run(-20, 2), ...run(-30, 1)]).power
+    const weight = Float64Array.from(power, (_, i) => (i < 40 ? 0.5 : 1))
+    const even = loudnessOf((10 ** -2 + 10 ** -3) / 2)
+    expect(integratedLoudness({ power, weight })!).toBeCloseTo(even, 0)
+    expect(integratedLoudness({ power })!).toBeGreaterThan(integratedLoudness({ power, weight })!)
   })
 
   it('normalises to -16 LUFS within ±30 dB, and leaves silence alone', () => {
@@ -152,6 +160,50 @@ describe('sound activity', () => {
     expect(rangesToOutput([{ start: 1, end: 5 }], clips)).toEqual([{ start: 1, end: 2.5 }])
     expect(rangesToOutput([{ start: 2.5, end: 3.5 }], clips)).toEqual([])
     expect(rangesToOutput([{ start: 6, end: 9 }], clips)).toEqual([{ start: 3, end: 4 }])
+  })
+
+  it('maps unsorted and overlapping ranges like their union', () => {
+    const clips = [clip(0, 2), clip(4, 8, 2)]
+    expect(rangesToOutput([{ start: 6, end: 9 }, { start: 1, end: 1.5 }, { start: 1.2, end: 5 }], clips)).toEqual([
+      { start: 1, end: 2.5 },
+      { start: 3, end: 4 }
+    ])
+    expect(rangesToOutput([], clips)).toEqual([])
+  })
+
+  it('finds the noise floor percentile without sorting (quickselect)', () => {
+    let seed = 7
+    const rnd = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647
+    for (let trial = 0; trial < 500; trial++) {
+      const n = 1 + Math.floor(rnd() * 50)
+      const kind = trial % 4
+      // Random, ascending, descending, and with many duplicates.
+      const values = Float64Array.from({ length: n }, (_, i) => (kind === 0 ? rnd() : kind === 1 ? i : kind === 2 ? n - i : Math.floor(rnd() * 3)))
+      const k = Math.floor(rnd() * n)
+      expect(kthSmallest(Float64Array.from(values), k)).toBe(Float64Array.from(values).sort()[k])
+    }
+  })
+
+  it('limits the number of ranges by joining the closest neighbours first', () => {
+    const ranges = [
+      { start: 0, end: 1 },
+      { start: 1.5, end: 2 }, // 0.5 s gap
+      { start: 5, end: 6 }, // 3 s gap
+      { start: 6.2, end: 7 }, // 0.2 s gap
+      { start: 9, end: 10 } // 2 s gap
+    ]
+    expect(limitRanges(ranges, 10)).toEqual(ranges)
+    expect(limitRanges(ranges, 4)).toEqual([{ start: 0, end: 1 }, { start: 1.5, end: 2 }, { start: 5, end: 7 }, { start: 9, end: 10 }])
+    expect(limitRanges(ranges, 3)).toEqual([{ start: 0, end: 2 }, { start: 5, end: 7 }, { start: 9, end: 10 }])
+    expect(limitRanges(ranges, 1)).toEqual([{ start: 0, end: 10 }])
+    expect(limitRanges(ranges, 0)).toEqual([{ start: 0, end: 10 }])
+    expect(limitRanges([], 3)).toEqual([])
+    // Of equal gaps, the earliest are joined: exactly as many ranges as asked for, not one.
+    const even = Array.from({ length: 10 }, (_, i) => ({ start: i, end: i + 0.5 }))
+    const limited = limitRanges(even, 7)
+    expect(limited).toHaveLength(7)
+    expect(limited[0]).toEqual({ start: 0, end: 3.5 })
+    expect(limited.slice(1)).toEqual(even.slice(4))
   })
 
   it('merges ranges closer than a gap', () => {
@@ -208,6 +260,31 @@ describe('gain automation', () => {
     for (let t = 0; t <= 18; t += 0.013) expect(fn(t)).toBeCloseTo(duckGainAt(ranges, t, shape), 3)
     expect(duckExpression([], shape)).toBe('1')
     expect(duckExpression(activity, { ...shape, depth: 0 })).toBe('1')
+  })
+
+  it('keyframes a long, busy recording exactly, in linear time', () => {
+    const shape = { depth: 0.7, ...DUCK_TIMING }
+    let seed = 11
+    const rnd = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647
+    // Unjoined input with bursts and pauses of every length, one starting before 0, one running past the end.
+    const activity: { start: number; end: number }[] = [{ start: -1, end: 0.05 }]
+    for (let t = 0.3; t < 590; ) {
+      const len = 0.05 + rnd() * 2
+      activity.push({ start: t, end: t + len })
+      t += len + rnd() * 2
+    }
+    activity.push({ start: 599.9, end: 640 })
+    const ranges = duckRanges(activity, shape)
+    const keys = duckKeyframes(activity, 600, shape)
+    expect(keys[0].t).toBe(0)
+    expect(keys[keys.length - 1].t).toBe(600)
+    for (let i = 1; i < keys.length; i++) expect(keys[i].t).toBeGreaterThan(keys[i - 1].t)
+    for (let t = 0; t <= 600; t += 0.0371) expect(gainAt(keys, t)).toBeCloseTo(duckGainAt(ranges, t, shape), 5)
+    // Thousands of ranges take milliseconds, not seconds.
+    const many = Array.from({ length: 5000 }, (_, i) => ({ start: i, end: i + 0.2 }))
+    const t0 = performance.now()
+    expect(duckKeyframes(many, 5000, shape).length).toBeGreaterThan(4 * 4999)
+    expect(performance.now() - t0).toBeLessThan(500)
   })
 
   it('never ducks more than the depth, even for overlapping input', () => {
@@ -301,6 +378,28 @@ describe('shared preview/export sound decisions', () => {
     expect(musicDucking(project(), [{ start: 0, end: 1 }])).toBeNull()
   })
 
+  it('splits activity into a source-time step (per measurement) and the edit mapping', () => {
+    const p = project({ clips: [clip(0, 1), clip(2, 10, 2)], audio: { volume: 1, muted: false, music } })
+    const source = sourceActivity(p, { mix: speech })!
+    expect(source).toEqual([{ start: 2, end: 4 }])
+    expect(soundActivity(p, { mix: speech })).toEqual(rangesToOutput(source, p.clips))
+    expect(sourceActivity(p, {})).toBeNull()
+  })
+
+  it('ducks under at most MAX_DUCK_RANGES ranges, the same in the preview and the export', () => {
+    const p = project({ audio: { volume: 1, muted: false, music } })
+    // A burst every 0.8 s for over an hour: more ranges than an export takes.
+    const activity = Array.from({ length: MAX_DUCK_RANGES + 500 }, (_, i) => ({ start: i * 0.8, end: i * 0.8 + 0.15 }))
+    const d = musicDucking(p, activity)!
+    expect(d.ranges.length).toBeLessThanOrEqual(MAX_DUCK_RANGES)
+    expect(d.ranges.length).toBeGreaterThan(MAX_DUCK_RANGES / 2)
+    expect(d.ranges[0].start).toBe(0)
+    expect(d.ranges[d.ranges.length - 1].end).toBeCloseTo(activity[activity.length - 1].end, 9)
+    // Joined again by the export (duckRanges in duckExpression), the ranges stay the same.
+    expect(duckRanges(d.ranges, d.shape)).toEqual(d.ranges)
+    expect(musicDucking(p, activity.slice(0, 100))!.ranges).toHaveLength(100)
+  })
+
   it('measures the loudness as heard: kept clips, stem gains, speed', () => {
     const mic = levels(run(-23.0 + 0.691, 10))
     const sys = levels(run(-300, 10))
@@ -310,5 +409,13 @@ describe('shared preview/export sound decisions', () => {
     expect(previewNormalizeGain(p, { mic, system: sys })).toBeCloseTo(10 ** ((-16 - (-23 + 6.02)) / 20), 2)
     expect(recordingLoudness(p, { mic })).toBeNull()
     expect(previewNormalizeGain(project({ hasAudio: false }), {})).toBe(1)
+    // In two steps (the preview mixes once per measurement, then measures each edit).
+    const heard = heardLevels(p, { mic, system: sys })!
+    expect(editLoudness(heard, p.clips)).toBe(recordingLoudness(p, { mic, system: sys }))
+    expect(heardLevels(project(), { mix: mic })).toBe(mic)
+    expect(heardLevels(p, { mic })).toBeNull()
+    // Only kept clips count: the quiet part is cut out.
+    const loudThenQuiet = levels([...run(-20, 5), ...run(-40, 5)])
+    expect(editLoudness(loudThenQuiet, [clip(0, 5)])!).toBeCloseTo(-20.691, 1)
   })
 })

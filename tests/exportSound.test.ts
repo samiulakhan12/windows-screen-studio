@@ -2,7 +2,8 @@
 // inside the project folder only, stems falling back to the mixed track.
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { MAX_DUCK_RANGES, resolveSoundInputs, validateJob } from '../src/main/exportJob'
+import { resolveSoundInputs, validateJob } from '../src/main/exportJob'
+import { MAX_DUCK_RANGES } from '../src/shared/audio/automation'
 import type { ExportJob, MusicSound } from '../src/shared/api/export'
 
 const job: ExportJob = {

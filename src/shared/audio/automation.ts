@@ -24,6 +24,14 @@ export interface DuckShape {
 
 export const DUCK_TIMING = { attack: 0.15, release: 0.45 } as const
 
+/**
+ * Most ranges the music ducks for (about one every 0.7 s of an hour, the closest joined
+ * ranges can be). A longer, busier recording has its closest ranges joined (limitRanges) in
+ * the shared code, so the preview and the export still duck alike and the export's filter
+ * stays a manageable size.
+ */
+export const MAX_DUCK_RANGES = 5000
+
 const clip01 = (v: number): number => Math.min(1, Math.max(0, v))
 
 /** Fade gain at `t` of a `duration`-long sound: up over the first `fadeIn` seconds, down over the last `fadeOut`. */
@@ -73,35 +81,66 @@ export function duckAmount(ranges: readonly Range[], t: number, shape: Pick<Duck
 /** Music gain at `t` with ducking (1 = not ducked). */
 export const duckGainAt = (ranges: readonly Range[], t: number, shape: DuckShape): number => 1 - shape.depth * duckAmount(ranges, t, shape)
 
-/** Keyframes of duckGainAt over [0, duration] (exact: the curve is linear between them). */
+/**
+ * Keyframes of duckGainAt over [0, duration] (exact: the curve is linear between them), in
+ * time linear in the number of ranges: joined ranges never overlap, so each one's corners
+ * (fully up before the attack, fully down from its start to its end, up again after the
+ * release) are known without looking at the others.
+ */
 export function duckKeyframes(ranges: readonly Range[], duration: number, shape: DuckShape): Keyframe[] {
+  const joined = duckRanges(ranges, shape)
   const { a, r } = ramps(shape)
-  const ts = [0, duration]
-  for (const g of ranges) ts.push(g.start - a, g.start, g.end, g.end + r)
-  return keyframesAt(
-    ts.filter((t) => t >= 0 && t <= duration),
-    (t) => duckGainAt(ranges, t, shape)
-  )
+  const down = 1 - shape.depth
+  const points: Keyframe[] = [{ t: 0, gain: duckGainAt(joined, 0, shape) }]
+  for (const g of joined) {
+    points.push({ t: g.start - a, gain: 1 }, { t: g.start, gain: down }, { t: g.end, gain: down }, { t: g.end + r, gain: 1 })
+  }
+  points.push({ t: duration, gain: duckGainAt(joined, duration, shape) })
+  return keyframesOf(points.filter((k) => k.t >= 0 && k.t <= duration))
+}
+
+/** Index of the first keyframe at or after `t` (binary search; keys.length when none). */
+export function keyIndexAt(keys: readonly Keyframe[], t: number): number {
+  let lo = 0
+  let hi = keys.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (keys[mid].t >= t) hi = mid
+    else lo = mid + 1
+  }
+  return lo
 }
 
 /** Gain at `t` of a keyframed curve (held before the first and after the last keyframe). */
 export function gainAt(keys: readonly Keyframe[], t: number): number {
   if (keys.length === 0) return 1
   if (t <= keys[0].t) return keys[0].gain
-  for (let i = 1; i < keys.length; i++) {
-    const b = keys[i]
-    if (t <= b.t) {
-      const a = keys[i - 1]
-      return b.t > a.t ? a.gain + ((b.gain - a.gain) * (t - a.t)) / (b.t - a.t) : b.gain
-    }
-  }
-  return keys[keys.length - 1].gain
+  const i = keyIndexAt(keys, t)
+  if (i >= keys.length) return keys[keys.length - 1].gain
+  const b = keys[i]
+  const prev = keys[i - 1]
+  return b.t > prev.t ? prev.gain + ((b.gain - prev.gain) * (t - prev.t)) / (b.t - prev.t) : b.gain
 }
 
 /** Sorted, de-duplicated times with the curve's value at each; collinear points are dropped. */
 function keyframesAt(times: number[], value: (t: number) => number): Keyframe[] {
-  const ts = [...new Set(times.map((t) => +t.toFixed(6)))].sort((a, b) => a - b)
-  const keys = ts.map((t) => ({ t, gain: +value(t).toFixed(6) }))
+  return keyframesOf(times.map((t) => ({ t, gain: value(t) })))
+}
+
+/** To a millionth (times that close are one keyframe). */
+const round6 = (v: number): number => Math.round(v * 1e6) / 1e6
+
+/** Points of a curve (times may repeat with the same value), sorted and rounded, corners only. */
+function keyframesOf(points: readonly Keyframe[]): Keyframe[] {
+  const seen = new Set<number>()
+  const keys: Keyframe[] = []
+  for (const p of points) {
+    const t = round6(p.t)
+    if (seen.has(t)) continue
+    seen.add(t)
+    keys.push({ t, gain: round6(p.gain) })
+  }
+  keys.sort((x, y) => x.t - y.t)
   return keys.filter((k, i) => {
     if (i === 0 || i === keys.length - 1) return true
     const a = keys[i - 1]

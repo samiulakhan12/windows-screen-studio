@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, VideoInput } from '../shared/api/export'
+import { MAX_DUCK_RANGES } from '../shared/audio/automation'
 import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
@@ -106,9 +107,6 @@ function validVideo(job: ExportJob): boolean {
   }
   return v.kind === 'none' || validColor(v.color)
 }
-
-/** Most ranges the music ducks for in one export (about one every second of an hour). */
-export const MAX_DUCK_RANGES = 5000
 
 const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
 

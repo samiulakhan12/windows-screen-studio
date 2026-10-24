@@ -128,39 +128,65 @@ export const powerDb = (p: number): number => (p > 0 ? 10 * Math.log10(p) : -Inf
 /** BS.1770 loudness (LUFS) of a K-weighted, channel-summed mean square. */
 export const loudnessOf = (power: number): number => -0.691 + powerDb(power)
 
-/** One window of a source as it is heard: its power and how long it lasts in the output. */
-export interface WeightedWindow {
-  power: number
-  weight: number
+/**
+ * A sequence of windows as heard: the power of each, and how long each lasts in the output
+ * (1/speed; all 1 when left out). Typed arrays keep an hours-long edit cheap to measure.
+ */
+export interface WeightedWindows {
+  power: ArrayLike<number>
+  weight?: ArrayLike<number>
 }
 
 /**
  * Integrated loudness (LUFS) of a sequence of windows, gated like BS.1770-4: 400 ms blocks
  * overlapping by 75%, an absolute gate at -70 LUFS and a relative gate 10 LU below the
- * loudness of the blocks above it. `weight` is how long each window lasts in the output
- * (1/speed). Null when nothing is above the absolute gate (silence).
+ * loudness of the blocks above it, each window weighted by how long it lasts in the
+ * output. Null when nothing is above the absolute gate (silence).
  */
-export function integratedLoudness(windows: readonly WeightedWindow[], window = LEVEL_WINDOW): number | null {
+export function integratedLoudness({ power, weight }: WeightedWindows, window = LEVEL_WINDOW): number | null {
+  const n = power.length
   const per = Math.max(1, Math.round(0.4 / window))
   const step = Math.max(1, Math.round(0.1 / window))
-  const blocks: number[] = []
+  const size = n < per ? 1 : Math.floor((n - per) / step) + 1
+  // Each block's mean power, and how long it lasts in the output (a block of a part played
+  // at 2x counts half as much, as if the output itself had been measured).
+  const blocks = new Float64Array(size)
+  const lasts = new Float64Array(size)
+  let count = 0
   const block = (from: number, to: number): void => {
     let p = 0
     let w = 0
     for (let i = from; i < to; i++) {
-      p += windows[i].power * windows[i].weight
-      w += windows[i].weight
+      const wi = weight ? weight[i] : 1
+      p += power[i] * wi
+      w += wi
     }
-    if (w > 0) blocks.push(p / w)
+    if (w > 0) {
+      blocks[count] = p / w
+      lasts[count++] = w
+    }
   }
-  if (windows.length < per) block(0, windows.length)
-  else for (let i = 0; i + per <= windows.length; i += step) block(i, i + per)
-  const gated = (min: number): number[] => blocks.filter((p) => loudnessOf(p) > min)
-  const mean = (ps: number[]): number => ps.reduce((a, b) => a + b, 0) / ps.length
+  if (n < per) block(0, n)
+  else for (let i = 0; i + per <= n; i += step) block(i, i + per)
+  // Mean power of the blocks louder than `min` (LUFS), and how many there are.
+  const gated = (min: number): { mean: number; count: number } => {
+    const above = 10 ** ((min + 0.691) / 10)
+    let sum = 0
+    let total = 0
+    let k = 0
+    for (let i = 0; i < count; i++) {
+      if (blocks[i] > above) {
+        sum += blocks[i] * lasts[i]
+        total += lasts[i]
+        k++
+      }
+    }
+    return { mean: total > 0 ? sum / total : 0, count: k }
+  }
   const absolute = gated(-70)
-  if (absolute.length === 0) return null
-  const relative = gated(loudnessOf(mean(absolute)) - 10)
-  return loudnessOf(mean(relative.length > 0 ? relative : absolute))
+  if (absolute.count === 0) return null
+  const relative = gated(loudnessOf(absolute.mean) - 10)
+  return loudnessOf(relative.count > 0 ? relative.mean : absolute.mean)
 }
 
 /** Largest change the preview's normalisation applies, dB (loudnorm's own range is similar). */

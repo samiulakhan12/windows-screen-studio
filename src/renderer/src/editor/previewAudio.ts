@@ -1,7 +1,8 @@
-import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, type Keyframe } from '../../../shared/audio/automation'
-import { audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
-import { analysisSources, musicDucking, previewNormalizeGain, soundActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
-import type { Range } from '../../../shared/audio/activity'
+import { rangesToOutput, type Range } from '../../../shared/audio/activity'
+import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, keyIndexAt, type Keyframe } from '../../../shared/audio/automation'
+import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
+import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
+import { analysisSources, editLoudness, heardLevels, musicDucking, sourceActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
 import { clamp } from '../../../shared/engine/math'
 import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import { mediaUrl } from '../../../shared/mediaUrl'
@@ -39,6 +40,19 @@ interface Source {
   node: MediaElementAudioSourceNode
   gain: GainNode
   failed: boolean
+}
+
+/** The keyframed gain curves of the soundtrack (output seconds). */
+interface Curves {
+  master: Keyframe[]
+  musicFade: Keyframe[]
+  duck: Keyframe[]
+}
+
+/** A value computed from what `key` describes, kept until that changes. */
+interface Memo<T> {
+  key: string
+  value: T
 }
 
 interface Music extends Source {
@@ -82,9 +96,10 @@ function softLimitCurve(): Float32Array<ArrayBuffer> {
  */
 export class PreviewAudio {
   private project: Project
-  /** The project's sound settings with defaults, and the edit's output length (kept for every frame). */
+  /** The project's sound settings with defaults, the edit's output length and timing (kept for every frame). */
   private look: AudioLook
   private length: number
+  private clipsKey: string
   private graph: Graph | null = null
   private readonly stems = new Map<StemKind, Source>()
   private music: Music | null = null
@@ -95,10 +110,19 @@ export class PreviewAudio {
   private speed = 1
   /** Audio-clock time and output time the scheduled automation starts from. */
   private anchor: { ctx: number; out: number; until: number } | null = null
-  /** What the scheduled curves were made from; they are rebuilt only when it changes. */
-  private curvesKey = ''
-  private activity: { key: string; ranges: Range[] | null } = { key: '', ranges: null }
-  private loudness: { key: string; gain: number } = { key: '', gain: 1 }
+  /** What the scheduled automation was made from; it is scheduled again only when that changes. */
+  private scheduledKey = ''
+  /**
+   * Work that grows with the recording's length, redone only when its inputs change: the
+   * curves; where the recording has sound (per measurement and heard sources in source
+   * time, then per edit on the output); its heard levels (per measurement and gains) and
+   * their loudness in the edit.
+   */
+  private curveMemo: Memo<Curves> = { key: '', value: { master: [], musicFade: [], duck: [] } }
+  private sourceActivity: Memo<Range[] | null> = { key: '', value: null }
+  private activity: Memo<Range[] | null> = { key: '', value: null }
+  private heard: Memo<AudioLevels | null> = { key: '', value: null }
+  private loudness: Memo<number> = { key: '', value: 1 }
   private warnedStems = false
   private limiting = false
   private disposed = false
@@ -110,6 +134,7 @@ export class PreviewAudio {
     this.project = project
     this.look = audioLook(project.audio)
     this.length = outputDuration(project.clips)
+    this.clipsKey = clipsKeyOf(project)
     this.apply()
   }
 
@@ -121,6 +146,7 @@ export class PreviewAudio {
     if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || project.clips !== prev.clips) {
       this.look = audioLook(project.audio)
       this.length = outputDuration(project.clips)
+      if (project.clips !== prev.clips) this.clipsKey = clipsKeyOf(project)
       this.apply()
     }
   }
@@ -239,7 +265,7 @@ export class PreviewAudio {
       const music: Music = { el, node, gain, fade, duck, path: m.path, duration: null, failed: false }
       el.addEventListener('loadedmetadata', () => {
         music.duration = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : null
-        this.curvesKey = ''
+        this.scheduledKey = ''
         this.scheduleIfChanged()
         if (this.playing) this.syncMusic(true)
       })
@@ -248,7 +274,7 @@ export class PreviewAudio {
         console.warn('The background music could not be played in the preview:', el.error?.message)
       })
       this.music = music
-      this.curvesKey = ''
+      this.scheduledKey = ''
     }
     this.music.gain.gain.value = m.volume
     this.music.el.loop = m.loop
@@ -281,48 +307,77 @@ export class PreviewAudio {
     })
   }
 
-  /** The loudness gain for the current mix (recomputed only when the mix or the edit changes). */
+  /** The loudness gain for the current mix: the heard levels per mix, their loudness per edit. */
   private normalizeGain(): number {
     const mix = recordingMix(this.project)
-    const key = `${this.analysisVersion}|${JSON.stringify(mix)}|${clipsKey(this.project)}`
-    if (this.loudness.key !== key) this.loudness = { key, gain: previewNormalizeGain(this.project, this.analysis) }
-    return this.loudness.gain
+    const heardKey = `${this.analysisVersion}|${mix.kind}|${mix.kind === 'stems' ? JSON.stringify(mix.stems) : ''}`
+    if (this.heard.key !== heardKey) this.heard = { key: heardKey, value: heardLevels(this.project, this.analysis) }
+    const key = `${heardKey}|${this.clipsKey}`
+    if (this.loudness.key !== key) {
+      const levels = this.heard.value
+      this.loudness = { key, value: normalizeGain(levels && editLoudness(levels, this.project.clips)) }
+    }
+    return this.loudness.value
   }
 
-  /** Where the recording has sound on the output timeline (memoised: the same for every frame). */
+  /**
+   * Where the recording has sound on the output timeline (soundActivity, in two steps: the
+   * source-time ranges per measurement and heard sources, their output times per edit).
+   */
   private soundRanges(): Range[] | null {
-    const look = this.look
-    const key = `${this.analysisVersion}|${look.muted}|${look.volume > 0}|${STEM_KINDS.map((k) => look[k].muted || look[k].volume <= 0).join()}|${clipsKey(this.project)}`
-    if (this.activity.key !== key) this.activity = { key, ranges: soundActivity(this.project, this.analysis) }
-    return this.activity.ranges
+    const sourceKey = `${this.analysisVersion}|${activitySources(this.project).join()}`
+    if (this.sourceActivity.key !== sourceKey) this.sourceActivity = { key: sourceKey, value: sourceActivity(this.project, this.analysis) }
+    const key = `${sourceKey}|${this.clipsKey}`
+    if (this.activity.key !== key) {
+      const ranges = this.sourceActivity.value
+      this.activity = { key, value: ranges && rangesToOutput(ranges, this.project.clips) }
+    }
+    return this.activity.value
   }
 
   /* ---------- automation ---------- */
 
-  private curves(): { master: Keyframe[]; musicFade: Keyframe[]; duck: Keyframe[] } {
+  /** Whether the music ducks (and so needs to know where the recording has sound). */
+  private get ducks(): boolean {
+    const m = this.look.music
+    return !!m && m.volume > 0 && m.ducking > 0
+  }
+
+  /** Everything the curves are made from. */
+  private curvesKey(): string {
+    const { look, length } = this
+    const m = look.music
+    return [
+      look.fadeIn,
+      look.fadeOut,
+      length,
+      m ? [m.path, m.loop, m.fadeIn, m.fadeOut, m.ducking, this.music?.duration].join() : '',
+      this.ducks && this.soundRanges() ? this.activity.key : 'none'
+    ].join('|')
+  }
+
+  /** The curves (memoised: playback schedules them again after every jump and re-anchor). */
+  private curves(): Curves {
+    const key = this.curvesKey()
+    if (this.curveMemo.key === key) return this.curveMemo.value
     const { look, length } = this
     const m = look.music
     const end = m ? musicEnd(length, this.music?.duration ?? null, m.loop) : length
-    const duck = m ? musicDucking(this.project, this.soundRanges()) : null
-    return {
+    const duck = this.ducks ? musicDucking(this.project, this.soundRanges()) : null
+    const value: Curves = {
       master: fadeKeyframes(length, look.fadeIn, look.fadeOut),
       musicFade: m ? fadeKeyframes(end, m.fadeIn, m.fadeOut) : [],
       duck: duck ? duckKeyframes(duck.ranges, length, duck.shape) : []
     }
+    this.curveMemo = { key, value }
+    return value
   }
 
+  /** Schedules the automation again when the curves or the edit's timing (the playhead's output time) changed. */
   private scheduleIfChanged(): void {
-    const look = this.look
-    const m = look.music
-    const key = [
-      look.fadeIn,
-      look.fadeOut,
-      m ? [m.path, m.loop, m.fadeIn, m.fadeOut, m.ducking, this.music?.duration].join() : '',
-      this.soundRanges() ? this.activity.key : 'none',
-      clipsKey(this.project)
-    ].join('|')
-    if (key === this.curvesKey) return
-    this.curvesKey = key
+    const key = `${this.curvesKey()}|${this.clipsKey}`
+    if (key === this.scheduledKey) return
+    this.scheduledKey = key
     this.schedule()
   }
 
@@ -345,8 +400,11 @@ export class PreviewAudio {
     param.cancelScheduledValues(0)
     param.setValueAtTime(gainAt(keys, out), now)
     if (!this.playing) return
-    for (const k of keys) {
-      if (k.t <= out) continue
+    // From the first keyframe after the playhead (a binary search: curves can be long).
+    let i = keyIndexAt(keys, out)
+    while (i < keys.length && keys[i].t <= out) i++
+    for (; i < keys.length; i++) {
+      const k = keys[i]
       param.linearRampToValueAtTime(k.gain, now + (k.t - out))
       // One keyframe past the horizon keeps the last ramp going until the next top-up.
       if (k.t > out + HORIZON) break
@@ -483,4 +541,4 @@ function nudge(drift: number, dead: number): number {
 }
 
 /** Identity of the edit's timing (clips change identity on every edit). */
-const clipsKey = (p: Project): string => p.clips.map((c) => `${c.start},${c.end},${c.speed}`).join(';')
+const clipsKeyOf = (p: Project): string => p.clips.map((c) => `${c.start},${c.end},${c.speed}`).join(';')
