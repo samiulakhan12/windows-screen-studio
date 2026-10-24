@@ -501,6 +501,7 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
     method: manifest.method,
     stopShortcut,
     fps: settings.fps,
+    countdown: settings.countdown,
     ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
     ...(notice ? { notice } : {})
   }
@@ -837,6 +838,9 @@ export function registerRecordingIpc(): void {
   })
   ipcMain.handle('settings:get', (): AppSettings => appSettings().get())
   ipcMain.handle('settings:updateRecording', (_e, patch: RecordingSettingsPatch): AppSettings => appSettings().updateRecording(patch))
+  // Validated by the store: a malformed preset is repaired field by field, a nameless one refused.
+  ipcMain.handle('settings:savePreset', (_e, preset: unknown): AppSettings => appSettings().savePreset(preset))
+  ipcMain.handle('settings:deletePreset', (_e, id: unknown): AppSettings => appSettings().deletePreset(id))
   ipcMain.handle('settings:checkHotkey', (_e, action: HotkeyAction, accelerator: string) => checkHotkey(action, accelerator))
 
   // Desktop icons that a crashed session left hidden come back now.

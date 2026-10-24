@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { comboFromKeyEvent, DEFAULT_HOTKEYS, HOTKEY_ACTIONS, HOTKEY_NAMES, hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
-import { IDLE_SECONDS, type RecordingSettings, type RecordingSettingsPatch } from '../../../shared/recording/settings'
+import { COUNTDOWN, COUNTDOWN_CHOICES, IDLE_SECONDS, type RecordingSettings, type RecordingSettingsPatch } from '../../../shared/recording/settings'
 import type { RecorderError } from '../../../shared/recording/errors'
 import { previewCamera } from './devices'
+import './presets.css'
 
 /** Names in the narrow hotkey list (the full names are in the tooltips and messages). */
 const SHORT_NAMES: Record<HotkeyAction, string> = { stop: 'Stop', pause: 'Pause', mark: 'Zoom here' }
@@ -176,12 +177,15 @@ function Chevron({ open }: { open: boolean }): JSX.Element {
 /** Short summary of the options, shown while they are folded. */
 export function optionsSummary(s: RecordingSettings, isWindows: boolean): string {
   const parts = [`${s.fps} fps`]
+  if (s.countdown !== COUNTDOWN.default) parts.push(s.countdown ? `${s.countdown} s countdown` : 'no countdown')
   if (s.autoPause) parts.push(`auto-pause ${s.idleSeconds} s`)
   if (s.hideDesktopIcons && isWindows) parts.push('no desktop icons')
   return parts.join(' · ')
 }
 
-/** Frame rate, desktop icons, auto-pause and hotkeys: saved at once in the app settings. */
+const COUNTDOWN_TITLE = (n: number): string => (n === 0 ? 'Start recording at once' : `Count down ${n} seconds before recording starts`)
+
+/** Frame rate, countdown, desktop icons, auto-pause and hotkeys: saved at once in the app settings. */
 export function RecordingOptions({
   settings,
   open,
@@ -229,6 +233,24 @@ export function RecordingOptions({
                   onClick={() => onChange({ fps })}
                 >
                   {fps} fps
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="option-row">
+            <span>Countdown</span>
+            <div className="chips" role="group" aria-label="Countdown">
+              {COUNTDOWN_CHOICES.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`chip ${settings.countdown === n ? 'active' : ''}`}
+                  aria-pressed={settings.countdown === n}
+                  disabled={disabled}
+                  title={COUNTDOWN_TITLE(n)}
+                  onClick={() => onChange({ countdown: n })}
+                >
+                  {n === 0 ? 'Off' : `${n} s`}
                 </button>
               ))}
             </div>

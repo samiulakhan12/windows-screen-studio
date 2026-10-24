@@ -6,9 +6,22 @@ import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
 import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChanged, type InputDevices } from '../recorder/devices'
 import { CameraPreview, Keys, RecordingOptions } from '../recorder/RecordingOptions'
+import { RecordingPresets } from '../recorder/RecordingPresets'
 import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
 import { hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
-import { applyRecordingPatch, DEFAULT_RECORDING_SETTINGS, type RecordingSettings, type RecordingSettingsPatch } from '../../../shared/recording/settings'
+import {
+  applyRecordingPatch,
+  DEFAULT_RECORDING_SETTINGS,
+  missingDeviceNotice,
+  presetMatches,
+  presetRecordingPatch,
+  resolvePresetDevice,
+  type PresetDevice,
+  type PresetSetup,
+  type RecordingPreset,
+  type RecordingSettings,
+  type RecordingSettingsPatch
+} from '../../../shared/recording/settings'
 import '../recorder/recorder.css'
 
 const PREFS_KEY = 'recorder-prefs'
@@ -71,6 +84,10 @@ function formatBytes(n: number): string {
 
 /** The recording options (app settings, kept by the main process), from the last visit to Home. */
 let settingsCache: RecordingSettings | null = null
+/** The recording presets (app settings too), from the last visit to Home. */
+let presetsCache: RecordingPreset[] = []
+/** The preset picked last, offered as the name when saving (so it is easy to update). */
+let lastPresetName = ''
 
 /** Notices from a recording that went straight to the editor, shown when Home is next opened. */
 let carriedNotices: string[] = []
@@ -182,6 +199,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const [micProblem, setMicProblem] = useState<RecorderError | null>(null)
   const [camProblem, setCamProblem] = useState<RecorderError | null>(null)
   const [settings, setSettings] = useState<RecordingSettings>(() => settingsCache ?? DEFAULT_RECORDING_SETTINGS)
+  const [presets, setPresets] = useState<RecordingPreset[]>(presetsCache)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [unfinished, setUnfinished] = useState<UnfinishedRecording[]>([])
@@ -237,7 +255,11 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     window.api.getAppSettings().then(
       (s) => {
         settingsCache = s.recording
-        if (live) setSettings(s.recording)
+        presetsCache = s.presets
+        if (live) {
+          setSettings(s.recording)
+          setPresets(s.presets)
+        }
       },
       (err: unknown) => console.warn('Could not read the recording options:', err)
     )
@@ -324,6 +346,69 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const micMissing = listed && !!prefs.micId && !mics.some((m) => m.deviceId === prefs.micId)
   const camMissing = listed && !!prefs.cameraId && !cams.some((c) => c.deviceId === prefs.cameraId)
   const isWindows = window.api.platform === 'win32'
+
+  // The setup as shown (a device that is gone shows as none), for the preset picker.
+  const deviceOf = (id: string | null, list: MediaDeviceInfo[]): PresetDevice | null => (id ? { id, label: list.find((d) => d.deviceId === id)?.label ?? '' } : null)
+  const setup: PresetSetup = {
+    source: tab === 'region' ? 'area' : tab,
+    fps: settings.fps,
+    countdown: settings.countdown,
+    autoPause: settings.autoPause,
+    idleSeconds: settings.idleSeconds,
+    hideDesktopIcons: settings.hideDesktopIcons,
+    captureKeys: prefs.captureKeys,
+    systemAudio: prefs.systemAudio,
+    mic: deviceOf(micMissing ? null : prefs.micId, mics),
+    camera: deviceOf(camMissing ? null : prefs.cameraId, cams)
+  }
+  /** A preset's device as it would be used now: itself, the same-named one, or the default when it is gone. */
+  const resolveDevice = (wanted: PresetDevice | null, kind: 'microphone' | 'camera') => {
+    // Before the devices are listed nothing can be told: the preset's own device is used.
+    if (!listed) return { id: wanted?.id ?? null, missing: null }
+    if (kind === 'camera') return resolvePresetDevice(wanted, cams)
+    return resolvePresetDevice(wanted, mics, devices.find((d) => d.kind === 'audioinput' && d.deviceId === 'default'))
+  }
+  const asUsed = (p: PresetSetup): PresetSetup => {
+    const mic = resolveDevice(p.mic, 'microphone').id
+    const camera = resolveDevice(p.camera, 'camera').id
+    return { ...p, mic: mic ? { id: mic, label: '' } : null, camera: camera ? { id: camera, label: '' } : null }
+  }
+  const activePreset = presets.find((p) => presetMatches(asUsed(p), setup)) ?? null
+
+  const applyPreset = (p: RecordingPreset): void => {
+    const mic = resolveDevice(p.mic, 'microphone')
+    const camera = resolveDevice(p.camera, 'camera')
+    update({ mode: p.source === 'area' ? 'region' : p.source, micId: mic.id, cameraId: camera.id, systemAudio: p.systemAudio, captureKeys: p.captureKeys })
+    void updateSettings(presetRecordingPatch(p))
+    lastPresetName = p.name
+    setError(null)
+    setNotices([
+      ...(mic.missing ? [missingDeviceNotice('microphone', mic.missing)] : []),
+      ...(camera.missing ? [missingDeviceNotice('camera', camera.missing)] : [])
+    ])
+  }
+
+  const savePreset = async (name: string): Promise<string | null> => {
+    try {
+      const saved = await window.api.saveRecordingPreset({ name, ...setup })
+      presetsCache = saved.presets
+      setPresets(saved.presets)
+      lastPresetName = name
+      return null
+    } catch (err) {
+      return friendlyError(err).message
+    }
+  }
+
+  const deletePreset = async (p: RecordingPreset): Promise<void> => {
+    try {
+      const saved = await window.api.deleteRecordingPreset(p.id)
+      presetsCache = saved.presets
+      setPresets(saved.presets)
+    } catch (err) {
+      setError(toErrorState(err))
+    }
+  }
 
   const visible = sources.filter((s) => s.kind === sourceKind)
   // Screens default to the first one; windows must be picked explicitly.
@@ -559,6 +644,15 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             <input type="checkbox" aria-label="Record keyboard activity" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
           </label>
           <p className="hint toggle-hint">Shortcuts and when you type, never which keys.</p>
+          <RecordingPresets
+            presets={presets}
+            active={activePreset}
+            suggestedName={lastPresetName}
+            disabled={!idle}
+            onApply={applyPreset}
+            onSave={savePreset}
+            onDelete={(p) => void deletePreset(p)}
+          />
           <RecordingOptions
             settings={settings}
             open={prefs.optionsOpen}

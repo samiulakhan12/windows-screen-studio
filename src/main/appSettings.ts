@@ -1,7 +1,8 @@
 /**
  * App-wide settings, stored as JSON in userData/app-settings.json: the recording options
- * chosen on Home (frame rate, hotkeys, auto-pause, desktop icons) and a little app state that
- * must survive a crash (whether the desktop icons are hidden by us and still need restoring).
+ * chosen on Home (frame rate, countdown, hotkeys, auto-pause, desktop icons), the recording
+ * presets saved there, and a little app state that must survive a crash (whether the desktop
+ * icons are hidden by us and still need restoring).
  *
  * Reads happen once (small file, synchronous); every change is written at once through
  * writeFileAtomicSync (temporary file + rename, retried while Windows briefly locks it), so a
@@ -13,8 +14,11 @@ import path from 'node:path'
 import {
   applyRecordingPatch,
   defaultAppSettings,
+  deletePreset,
   sanitizeAppSettings,
+  savePreset,
   type AppSettings,
+  type RecordingPreset,
   type RecordingSettings,
   type RecordingSettingsPatch
 } from '../shared/recording/settings'
@@ -22,9 +26,14 @@ import { writeFileAtomicSync } from './atomicWrite'
 
 const FILE_VERSION = 1
 
+let idCounter = 0
+const newPresetId = (): string => `p${Date.now().toString(36)}${(idCounter++).toString(36)}`
+
 interface StoredFile {
   version: number
   recording: RecordingSettings
+  /** Absent while none were saved. */
+  presets?: RecordingPreset[]
   /** Set while the desktop icons are hidden for a recording; cleared once they are shown again. */
   desktopIconsHidden?: boolean
 }
@@ -66,6 +75,29 @@ export class AppSettingsStore {
     return this.get()
   }
 
+  /**
+   * Saves a recording preset (validated; one with the same name is replaced) and returns the
+   * settings. Throws with a message to show when it has no name or there is no room for it.
+   */
+  savePreset(input: unknown): AppSettings {
+    const current = this.load()
+    const next: AppSettings = { ...current, presets: savePreset(current.presets, input, newPresetId()) }
+    this.write(next, this.iconsHidden)
+    this.value = next
+    return this.get()
+  }
+
+  /** Deletes the recording preset with id `id` (nothing when there is none) and returns the settings. */
+  deletePreset(id: unknown): AppSettings {
+    const current = this.load()
+    const presets = deletePreset(current.presets, id)
+    if (presets.length === current.presets.length) return this.get()
+    const next: AppSettings = { ...current, presets }
+    this.write(next, this.iconsHidden)
+    this.value = next
+    return this.get()
+  }
+
   /** True when the desktop icons were hidden by a recording and not shown again (e.g. after a crash). */
   get desktopIconsHidden(): boolean {
     this.load()
@@ -81,7 +113,12 @@ export class AppSettingsStore {
   }
 
   private write(settings: AppSettings, iconsHidden: boolean): void {
-    const data: StoredFile = { version: FILE_VERSION, recording: settings.recording, ...(iconsHidden ? { desktopIconsHidden: true } : {}) }
+    const data: StoredFile = {
+      version: FILE_VERSION,
+      recording: settings.recording,
+      ...(settings.presets.length ? { presets: settings.presets } : {}),
+      ...(iconsHidden ? { desktopIconsHidden: true } : {})
+    }
     fs.mkdirSync(path.dirname(this.file), { recursive: true })
     writeFileAtomicSync(this.file, JSON.stringify(data, null, 2), { attempts: 4 })
   }
