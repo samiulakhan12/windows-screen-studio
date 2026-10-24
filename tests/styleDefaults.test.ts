@@ -253,3 +253,70 @@ describe('loadStyleDefaults / saveStyleDefaults', () => {
     await expect(saveStyleDefaults(null, file)).resolves.toBeNull()
   })
 })
+
+describe('style pack fields in saved defaults', () => {
+  it('saves and applies frames, borders, shadow styles, wallpapers, animated backgrounds and the zoom style', () => {
+    const d = sanitizeStyleDefaults({
+      style: {
+        background: { type: 'wallpaper', id: 'dunes', blur: 0.4 },
+        frame: { kind: 'laptop', theme: 'dark' },
+        border: { width: 6, color: '#ABCDEF', glass: true },
+        shadowStyle: 'hard',
+        shadowColor: '#112233'
+      },
+      zoom: { defaultScale: 1.5, easing: 'snappy', transition: 0.4 }
+    })
+    expect(d?.style).toEqual({
+      background: { type: 'wallpaper', id: 'dunes', blur: 0.4 },
+      frame: { kind: 'laptop', theme: 'dark' },
+      border: { width: 6, color: '#abcdef', glass: true },
+      shadowStyle: 'hard',
+      shadowColor: '#112233'
+    })
+    const p = applyStyleDefaults(newProject(), d)
+    expect(p.style.frame).toEqual({ kind: 'laptop', theme: 'dark' })
+    expect(p.zoomSettings).toMatchObject({ defaultScale: 1.5, easing: 'snappy', transition: 0.4 })
+    // Auto zoom settings are not part of the zoom style.
+    expect(p.zoomSettings?.auto).toEqual(newProject().zoomSettings?.auto)
+    expect(sanitizeStyleDefaults({ style: { background: { type: 'animated', preset: 'ocean', speed: 7 } } })?.style.background).toEqual({ type: 'animated', preset: 'ocean', speed: 2 })
+  })
+
+  it('drops unknown presets, kinds and malformed values field by field', () => {
+    const d = sanitizeStyleDefaults({
+      style: {
+        background: { type: 'wallpaper', id: 'nope' },
+        frame: { kind: 'tv', theme: 'dark' },
+        border: { width: 'thick' },
+        shadowStyle: 'neon',
+        shadowColor: 'pink',
+        padding: 0.1
+      },
+      zoom: { defaultScale: 99, easing: 'wobbly', transition: -1 }
+    })
+    expect(d?.style).toEqual({ padding: 0.1 })
+    expect(d?.zoom).toEqual({ defaultScale: 5, transition: 0.15 })
+    expect(sanitizeStyleDefaults({ style: { background: { type: 'animated', preset: 'nope' } } })).toBeNull()
+    expect(sanitizeStyleDefaults({ style: { border: { width: 999, color: 'x' } } })?.style.border).toEqual({ width: 24, color: '#ffffff', glass: false })
+    expect(sanitizeStyleDefaults({ style: { frame: { kind: 'browser', theme: 'x', title: 'y'.repeat(500) } } })?.style.frame).toEqual({ kind: 'browser', theme: 'light', title: 'y'.repeat(120) })
+  })
+
+  it('keeps a valid watermark (an image one needs a watermark file name)', () => {
+    const text = { show: true, kind: 'text', text: 'ACME', position: 'top-right', size: 0.05, opacity: 0.7, margin: 0.03 }
+    expect(sanitizeStyleDefaults({ watermark: text })?.watermark).toEqual(text)
+    expect(sanitizeStyleDefaults({ watermark: { ...text, kind: 'image', path: 'watermark.png' } })?.watermark?.path).toBe('watermark.png')
+    expect(sanitizeStyleDefaults({ watermark: { ...text, kind: 'image', path: '../../etc/passwd' } })).toBeNull()
+    expect(sanitizeStyleDefaults({ watermark: { ...text, kind: 'image' } })).toBeNull()
+    expect(sanitizeStyleDefaults({ watermark: { ...text, position: 'middle' } })).toBeNull()
+    expect(sanitizeStyleDefaults({ watermark: { ...text, size: 9, opacity: 0, text: 'x'.repeat(300) } })?.watermark).toMatchObject({ size: 0.4, opacity: 0.1, text: 'x'.repeat(80) })
+    const p = applyStyleDefaults(newProject(), { style: {}, cursor: {}, webcam: {}, effects: {}, watermark: text as never })
+    expect(p.watermark).toEqual(text)
+  })
+
+  it('lookOf carries the zoom style, the watermark and where they came from', () => {
+    const p = { ...newProject(), watermark: { show: true, kind: 'text' as const, text: 'Hi', position: 'center' as const, size: 0.05, opacity: 1, margin: 0 } }
+    const look = lookOf(p)
+    expect(look.zoom).toEqual({ defaultScale: 2, easing: 'smooth', transition: 0.7 })
+    expect(look.watermark).toBe(p.watermark)
+    expect(look.source).toBe('rec-1')
+  })
+})

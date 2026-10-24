@@ -1,7 +1,28 @@
-import { GRADIENTS } from '../engine/backgrounds'
+import { ANIMATED_SPEED, isKnownBackground } from '../engine/backgrounds'
+import { BORDER_WIDTH, SHADOW_STYLES } from '../engine/cardStyle'
+import { FRAME_KINDS } from '../engine/deviceFrames'
+import { ZOOM_EASINGS } from '../engine/easing'
 import { clamp } from '../engine/math'
 import { DEFAULT_CURSOR_EXTRAS } from '../engine/project'
-import type { AspectRatio, Background, ClickStyle, Corner, CursorSettings, CursorStyle, KeystrokeSettings, Project, StyleSettings, WebcamSettings } from '../types'
+import { WATERMARK_FILE_RE, WATERMARK_LIMITS, WATERMARK_POSITIONS, WATERMARK_TEXT_MAX } from '../engine/watermark'
+import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomSettingsOf } from '../engine/zoom'
+import type {
+  AspectRatio,
+  Background,
+  CardBorder,
+  ClickStyle,
+  Corner,
+  CursorSettings,
+  CursorStyle,
+  DeviceFrame,
+  KeystrokeSettings,
+  Project,
+  StyleSettings,
+  WatermarkSettings,
+  WebcamSettings,
+  ZoomEasing,
+  ZoomSettings
+} from '../types'
 
 /**
  * The user's saved look ("Save as default for new recordings"), applied to every new
@@ -20,14 +41,26 @@ export const LOOK_LIMITS = {
   clickSoundVolume: { min: 0, max: 1 },
   webcamSize: { min: 0.12, max: 0.45 },
   motionBlur: { min: 0, max: 1 },
-  keystrokeSize: { min: 0.02, max: 0.07 }
+  keystrokeSize: { min: 0.02, max: 0.07 },
+  backgroundBlur: { min: 0, max: 1 },
+  animatedSpeed: ANIMATED_SPEED,
+  borderWidth: BORDER_WIDTH,
+  zoomScale: { min: ZOOM_MIN_SCALE, max: ZOOM_MAX_SCALE },
+  zoomTransition: { min: MIN_TRANSITION, max: MAX_TRANSITION }
 } as const
+
+/** Longest address bar text a browser frame keeps. */
+export const FRAME_TITLE_MAX = 120
 
 export const ASPECT_RATIOS: AspectRatio[] = ['auto', '16:9', '9:16', '1:1', '4:3']
 export const CORNERS: Corner[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
 /** Cursor styles a saved look may carry: 'custom' needs an image file of one project, so it is never saved. */
 const SAVED_CURSOR_STYLES: CursorStyle[] = ['auto', 'mac', 'windows', 'white', 'black']
 const CLICK_STYLES: ClickStyle[] = ['ripple', 'ring', 'pulse']
+const EASINGS: ZoomEasing[] = ZOOM_EASINGS.map((e) => e.value)
+
+/** The zoom style a look carries: what new zooms start with and how zooms move. */
+export type ZoomStyleLook = Partial<Pick<ZoomSettings, 'defaultScale' | 'easing' | 'transition'>>
 
 /**
  * A saved look. Every field is optional: one that is missing or invalid leaves the new
@@ -38,17 +71,33 @@ const CLICK_STYLES: ClickStyle[] = ['ripple', 'ring', 'pulse']
  * - a custom cursor image (cursor.style 'custom', cursor.customImage): the file lives in one project's folder;
  * - webcam.show: follows whether the recording has a camera;
  * - image backgrounds: the image file lives in one project's folder.
+ * A watermark image is different: the main process keeps a copy of it next to the saved look
+ * and copies it into every new recording (src/main/styleDefaults.ts).
  */
 export interface StyleDefaults {
   style: Partial<StyleSettings>
   cursor: Partial<CursorSettings>
   webcam: Partial<WebcamSettings>
   effects: { motionBlur?: number; keystrokes?: Partial<KeystrokeSettings> }
+  /** Zoom style: level of new zooms, easing and transition. */
+  zoom?: ZoomStyleLook
+  watermark?: WatermarkSettings
+  /** Id of the project the look was saved from (where its watermark image is); never stored. */
+  source?: string
 }
 
 /** The parts of a project that "Save as default" stores. */
 export function lookOf(project: Project): StyleDefaults {
-  return { style: project.style, cursor: project.cursor, webcam: project.webcam, effects: project.effects }
+  const z = zoomSettingsOf(project)
+  return {
+    style: project.style,
+    cursor: project.cursor,
+    webcam: project.webcam,
+    effects: project.effects,
+    zoom: { defaultScale: z.defaultScale, easing: z.easing, transition: z.transition },
+    watermark: project.watermark,
+    source: project.id
+  }
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -62,12 +111,26 @@ const oneOf = <T extends string>(v: unknown, allowed: readonly T[]): T | undefin
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
-/** A gradient preset or solid colour; image backgrounds and anything unknown are dropped. */
-function background(v: unknown): Background | undefined {
+const text = (v: unknown, max: number): string | undefined => (typeof v === 'string' ? v.slice(0, max) : undefined)
+
+/**
+ * A built-in background (gradient, wallpaper, animated gradient) or a solid colour, with its
+ * options clamped; image backgrounds and anything unknown are dropped.
+ */
+export function sanitizeBackground(v: unknown): Background | undefined {
   if (!isObject(v)) return undefined
-  if (v.type === 'gradient' && typeof v.preset === 'string' && GRADIENTS.some((g) => g.id === v.preset)) return { type: 'gradient', preset: v.preset }
-  if (v.type === 'color' && typeof v.color === 'string' && HEX_COLOR.test(v.color)) return { type: 'color', color: v.color.toLowerCase() }
-  return undefined
+  const L = LOOK_LIMITS
+  let bg: Background | undefined
+  if (v.type === 'gradient' && typeof v.preset === 'string') bg = { type: 'gradient', preset: v.preset }
+  else if (v.type === 'color' && typeof v.color === 'string' && HEX_COLOR.test(v.color)) bg = { type: 'color', color: v.color.toLowerCase() }
+  else if (v.type === 'wallpaper' && typeof v.id === 'string') {
+    const blur = num(v.blur, L.backgroundBlur)
+    bg = blur ? { type: 'wallpaper', id: v.id, blur } : { type: 'wallpaper', id: v.id }
+  } else if (v.type === 'animated' && typeof v.preset === 'string') {
+    const speed = num(v.speed, L.animatedSpeed)
+    bg = speed !== undefined ? { type: 'animated', preset: v.preset, speed } : { type: 'animated', preset: v.preset }
+  }
+  return bg && isKnownBackground(bg) ? bg : undefined
 }
 
 const color = (v: unknown): string | undefined => (typeof v === 'string' && HEX_COLOR.test(v) ? v.toLowerCase() : undefined)
@@ -96,6 +159,83 @@ function defined<T extends object>(o: Partial<T>): Partial<T> {
 
 const empty = (o: object): boolean => Object.keys(o).length === 0
 
+function frame(v: unknown): DeviceFrame | undefined {
+  if (!isObject(v)) return undefined
+  const kind = oneOf(v.kind, FRAME_KINDS)
+  if (!kind) return undefined
+  const out: DeviceFrame = { kind, theme: oneOf(v.theme, ['light', 'dark'] as const) ?? 'light' }
+  const title = text(v.title, FRAME_TITLE_MAX)
+  if (title !== undefined && title.trim()) out.title = title
+  return out
+}
+
+function border(v: unknown): CardBorder | undefined {
+  if (!isObject(v)) return undefined
+  const width = num(v.width, LOOK_LIMITS.borderWidth)
+  if (width === undefined) return undefined
+  return { width, color: color(v.color) ?? '#ffffff', glass: v.glass === true }
+}
+
+/** The look fields of a style (everything but the aspect ratio), validated field by field. */
+export function sanitizeStyleLook(s: Record<string, unknown>): Partial<StyleSettings> {
+  const L = LOOK_LIMITS
+  return defined<StyleSettings>({
+    background: sanitizeBackground(s.background),
+    padding: num(s.padding, L.padding),
+    cornerRadius: num(s.cornerRadius, L.cornerRadius),
+    shadow: num(s.shadow, L.shadow),
+    frame: frame(s.frame),
+    border: border(s.border),
+    shadowStyle: oneOf(s.shadowStyle, SHADOW_STYLES),
+    shadowColor: color(s.shadowColor)
+  })
+}
+
+/** Cursor look fields (never visibility or a custom image), validated field by field. */
+export function sanitizeCursorLook(c: Record<string, unknown>): Partial<CursorSettings> {
+  const L = LOOK_LIMITS
+  return defined<CursorSettings>({
+    size: num(c.size, L.cursorSize),
+    smoothing: num(c.smoothing, L.smoothing),
+    clickEffect: bool(c.clickEffect),
+    hideWhenIdle: bool(c.hideWhenIdle),
+    style: oneOf(c.style, SAVED_CURSOR_STYLES),
+    highlight: highlight(c.highlight),
+    clickStyle: oneOf(c.clickStyle, CLICK_STYLES),
+    clickColor: color(c.clickColor),
+    clickSound: bool(c.clickSound),
+    clickSoundVolume: num(c.clickSoundVolume, L.clickSoundVolume),
+    loopHome: bool(c.loopHome),
+    tilt: bool(c.tilt),
+    trail: bool(c.trail)
+  })
+}
+
+export function sanitizeZoomStyle(v: unknown): ZoomStyleLook {
+  if (!isObject(v)) return {}
+  const L = LOOK_LIMITS
+  return defined<Required<ZoomStyleLook>>({
+    defaultScale: num(v.defaultScale, L.zoomScale),
+    easing: oneOf(v.easing, EASINGS),
+    transition: num(v.transition, L.zoomTransition)
+  })
+}
+
+/** A complete, valid watermark, or undefined (an image one needs its file name). */
+export function sanitizeWatermark(v: unknown): WatermarkSettings | undefined {
+  if (!isObject(v)) return undefined
+  const kind = oneOf(v.kind, ['image', 'text'] as const)
+  const position = oneOf(v.position, WATERMARK_POSITIONS)
+  const size = num(v.size, WATERMARK_LIMITS.size)
+  const opacity = num(v.opacity, WATERMARK_LIMITS.opacity)
+  const margin = num(v.margin, WATERMARK_LIMITS.margin)
+  if (!kind || !position || size === undefined || opacity === undefined || margin === undefined) return undefined
+  const out: WatermarkSettings = { show: v.show !== false, kind, position, size, opacity, margin, text: text(v.text, WATERMARK_TEXT_MAX) ?? '' }
+  if (typeof v.path === 'string' && WATERMARK_FILE_RE.test(v.path)) out.path = v.path
+  else if (kind === 'image') return undefined
+  return out
+}
+
 /**
  * Validates a saved look field by field (a hand-edited or partly corrupt file still
  * applies what is valid). Returns null when nothing usable is left. The result never
@@ -115,28 +255,8 @@ export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
     size: num(k.size, L.keystrokeSize)
   })
   const out: StyleDefaults = {
-    style: defined<StyleSettings>({
-      background: background(s.background),
-      padding: num(s.padding, L.padding),
-      cornerRadius: num(s.cornerRadius, L.cornerRadius),
-      shadow: num(s.shadow, L.shadow),
-      aspectRatio: oneOf(s.aspectRatio, ASPECT_RATIOS)
-    }),
-    cursor: defined<CursorSettings>({
-      size: num(c.size, L.cursorSize),
-      smoothing: num(c.smoothing, L.smoothing),
-      clickEffect: bool(c.clickEffect),
-      hideWhenIdle: bool(c.hideWhenIdle),
-      style: oneOf(c.style, SAVED_CURSOR_STYLES),
-      highlight: highlight(c.highlight),
-      clickStyle: oneOf(c.clickStyle, CLICK_STYLES),
-      clickColor: color(c.clickColor),
-      clickSound: bool(c.clickSound),
-      clickSoundVolume: num(c.clickSoundVolume, L.clickSoundVolume),
-      loopHome: bool(c.loopHome),
-      tilt: bool(c.tilt),
-      trail: bool(c.trail)
-    }),
+    style: defined<StyleSettings>({ ...sanitizeStyleLook(s), aspectRatio: oneOf(s.aspectRatio, ASPECT_RATIOS) }),
+    cursor: sanitizeCursorLook(c),
     webcam: defined<WebcamSettings>({
       corner: oneOf(w.corner, CORNERS),
       size: num(w.size, L.webcamSize),
@@ -147,7 +267,12 @@ export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
       keystrokes: empty(keystrokes) ? undefined : keystrokes
     })
   }
-  return [out.style, out.cursor, out.webcam, out.effects].every(empty) ? null : out
+  const zoom = sanitizeZoomStyle(raw.zoom)
+  if (!empty(zoom)) out.zoom = zoom
+  const watermark = sanitizeWatermark(raw.watermark)
+  if (watermark) out.watermark = watermark
+  if (typeof raw.source === 'string' && raw.source) out.source = raw.source
+  return [out.style, out.cursor, out.webcam, out.effects, zoom].every(empty) && !watermark ? null : out
 }
 
 /**
@@ -159,11 +284,14 @@ export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
 export function applyStyleDefaults(project: Project, defaults: StyleDefaults | null | undefined): Project {
   const d = sanitizeStyleDefaults(defaults)
   if (!d) return project
-  return {
+  const out: Project = {
     ...project,
     style: { ...project.style, ...d.style },
     cursor: { ...project.cursor, ...d.cursor, show: project.cursor.show && !project.capture.cursorInVideo },
     webcam: { ...project.webcam, ...d.webcam, show: project.hasWebcam },
     effects: { ...project.effects, ...d.effects, keystrokes: { ...project.effects.keystrokes, ...d.effects.keystrokes } }
   }
+  if (d.zoom) out.zoomSettings = { ...zoomSettingsOf(project), ...d.zoom }
+  if (d.watermark) out.watermark = d.watermark
+  return out
 }
