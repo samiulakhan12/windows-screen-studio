@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { disconnectFromNext } from '../src/shared/editor/zoomEdit'
 import {
+  anchorWeight,
   autoZoomsForTrack,
   cameraAt,
+  cameraFor,
+  clampZooms,
   DEFAULT_ZOOM_SETTINGS,
   focusPathFor,
   generateAutoZooms,
@@ -74,8 +78,8 @@ describe('autoZoomsForTrack', () => {
     const [z] = zs
     expect(z.start).toBeCloseTo(4 - AUTO.leadIn)
     expect(z.end).toBeCloseTo(9 + AUTO.hold)
-    // Aimed at the clicked field until the zoom ends, a step closer than a click zoom.
-    expect(z.anchor).toEqual({ t: z.end, x: 0.3, y: 0.6 })
+    // Aimed at the clicked field from the click to the last key (and so for the whole zoom), a step closer than a click zoom.
+    expect(z.anchor).toEqual({ t: 4, x: 0.3, y: 0.6, until: 9 })
     expect(z.scale).toBeCloseTo(typingScale(AUTO.scale))
   })
 
@@ -91,16 +95,16 @@ describe('autoZoomsForTrack', () => {
     const typing = zs[1]
     expect(typing.start).toBeCloseTo(8 - AUTO.leadIn)
     expect(typing.end).toBeCloseTo(10 + AUTO.hold)
-    expect(typing.anchor).toEqual({ t: typing.end, x: 0.3, y: 0.6 })
+    expect(typing.anchor).toEqual({ t: 8, x: 0.3, y: 0.6, until: 10 })
   })
 
   it('without a recent click, a typing burst aims at the cursor where it starts', () => {
     const t = track({ clicks: [click(1, 0.3, 0.6)], typing: [{ t: 1 + TYPING_CLICK_WINDOW + 5, end: 18 }] })
     const typing = autoZoomsForTrack(t, 40).find((z) => covers(z, 17))!
-    expect(typing.anchor).toEqual({ t: typing.end, x: 0.2, y: 0.7 })
+    expect(typing.anchor).toEqual({ t: 16, x: 0.2, y: 0.7, until: 18 })
     // No cursor data at all: the centre.
     const blind = autoZoomsForTrack({ samples: [], clicks: [], valid: true, typing: [{ t: 3, end: 4 }] }, 20)
-    expect(blind[0].anchor).toEqual({ t: blind[0].end, x: 0.5, y: 0.5 })
+    expect(blind[0].anchor).toEqual({ t: 3, x: 0.5, y: 0.5, until: 4 })
   })
 
   it('typing zooms can be turned off', () => {
@@ -229,7 +233,7 @@ describe('auto zoom on typing, with realistic recordings', () => {
     expect(zs[0].end).toBeCloseTo(21 + AUTO.hold)
     expect(zs[1].start).toBeCloseTo(34 - AUTO.leadIn)
     // The later typing still types into the field clicked last, if that was recent; here it was not.
-    expect(zs[1].anchor).toEqual({ t: zs[1].end, x: 0.5, y: 0.5 })
+    expect(zs[1].anchor).toEqual({ t: 34, x: 0.5, y: 0.5, until: 36 })
     // With a larger click grouping the pauses may be longer still.
     expect(autoZoomsForTrack({ samples, clicks: [], valid: true, typing: [{ t: 2, end: 4 }, { t: 11.5, end: 13 }] }, duration, settings({ clusterGap: 8 }))).toHaveLength(1)
   })
@@ -238,7 +242,7 @@ describe('auto zoom on typing, with realistic recordings', () => {
     const samples = glide([[0, 0.7, 0.35], [9, 0.7, 0.35], [10, 0.15, 0.85]], duration)
     const zs = autoZoomsForTrack({ samples, clicks: [], valid: true, typing: [{ t: 8, end: 14 }] }, duration)
     expect(zs).toHaveLength(1)
-    expect(zs[0].anchor).toEqual({ t: zs[0].end, x: 0.7, y: 0.35 })
+    expect(zs[0].anchor).toEqual({ t: 8, x: 0.7, y: 0.35, until: 14 })
     const v = lookAt(zs, samples, duration, 13)
     expect(Math.hypot(v.x - 0.7, v.y - 0.35)).toBeLessThan(0.01)
   })
@@ -257,7 +261,7 @@ describe('auto zoom on typing, with realistic recordings', () => {
     const [menu, field, submit] = zs
     expect(menu.anchor).toEqual({ t: 2, x: 0.2, y: 0.2 })
     expect(menu.scale).toBeCloseTo(AUTO.scale)
-    expect(field.anchor).toEqual({ t: field.end, x: 0.7, y: 0.6 })
+    expect(field.anchor).toEqual({ t: 4.5, x: 0.7, y: 0.6, until: 8 })
     expect(field.scale).toBeCloseTo(typingScale(AUTO.scale))
     expect(field.start).toBeLessThanOrEqual(4.5)
     expect(field.end).toBeGreaterThanOrEqual(8)
@@ -268,11 +272,59 @@ describe('auto zoom on typing, with realistic recordings', () => {
     expect(Math.hypot(v.x - 0.7, v.y - 0.6)).toBeLessThan(0.01)
   })
 
+  it('a typing zoom keeps aiming at the field when its end is trimmed, disconnected or clamped', () => {
+    // Click a field at (0.2, 0.2) at 16 s and type until 19.5 s; the mouse is pushed aside to (0.9, 0.9).
+    const length = 20
+    const samples = glide([[0, 0.9, 0.9], [15.5, 0.9, 0.9], [15.9, 0.2, 0.2], [16.2, 0.2, 0.2], [16.6, 0.9, 0.9]], length)
+    const [z] = autoZoomsForTrack({ samples, clicks: [click(16, 0.2, 0.2)], valid: true, typing: [{ t: 16.5, end: 19.5 }] }, length)
+    expect(z.start).toBeCloseTo(16 - AUTO.leadIn)
+    expect(z.end).toBe(length)
+    const field = cameraFor(z.scale, 0.2, 0.2)
+    const aimsAtField = (zs: ZoomSegment[], at: number): void => {
+      const v = lookAt(zs, samples, length, at)
+      expect(Math.hypot(v.x - field.cx, v.y - field.cy), `${at} s: ${JSON.stringify(v)}`).toBeLessThan(0.01)
+    }
+    aimsAtField([z], 18.5)
+    // The end dragged a little earlier on the timeline, or clamped to a slightly shorter video.
+    aimsAtField([{ ...z, end: z.end - 0.3 }], 18.5)
+    aimsAtField(clampZooms([z], 19.97), 18.5)
+    // Even trimmed to end before the last key, it still shows the typing.
+    aimsAtField([{ ...z, end: 18.8 }], 17.5)
+
+    // "Pan to next zoom" turned off between the typing and the click on Submit after it.
+    const s2 = glide([[0, 0.5, 0.5], [1.8, 0.2, 0.2], [2.3, 0.2, 0.2], [2.8, 0.9, 0.1], [6.2, 0.9, 0.1], [6.5, 0.85, 0.8]], length)
+    const zs = autoZoomsForTrack({ samples: s2, clicks: [click(2, 0.2, 0.2), click(6.5, 0.85, 0.8)], valid: true, typing: [{ t: 2.4, end: 4.5 }] }, length)
+    expect(zs).toHaveLength(2)
+    expect(zoomsConnected(zs[0], zs[1])).toBe(true)
+    const apart = disconnectFromNext(zs, zs[0].id)!
+    expect(apart[0].end).toBeLessThan(zs[0].end)
+    expect(zoomsConnected(apart[0], apart[1])).toBe(false)
+    for (const list of [zs, apart]) {
+      const v = lookAt(list, s2, length, 4)
+      const f = cameraFor(list[0].scale, 0.2, 0.2)
+      expect(Math.hypot(v.x - f.cx, v.y - f.cy), JSON.stringify(v)).toBeLessThan(0.01)
+    }
+  })
+
+  it('a typing anchor holds for the whole zoom while the zoom overlaps the typing, and not once moved off it', () => {
+    const seg: ZoomSegment = { id: 't', start: 15, end: 20, scale: 2, focus: { mode: 'cursor' }, auto: true, anchor: { t: 16, x: 0.2, y: 0.2, until: 19.5 } }
+    for (const at of [15.2, 16, 17.5, 19.5, 19.9]) expect(anchorWeight(seg, at)).toBe(1)
+    expect(anchorWeight({ ...seg, start: 18, end: 19 }, 18.5)).toBe(1)
+    expect(anchorWeight({ ...seg, start: 15, end: 16 }, 15.5)).toBe(1)
+    // Moved away from the typing, before or after it.
+    expect(anchorWeight({ ...seg, start: 5, end: 10 }, 7)).toBe(0)
+    expect(anchorWeight({ ...seg, start: 19.6, end: 22 }, 20)).toBe(0)
+    // A malformed span (hand-edited file) is read as a click anchor at t.
+    const bad = { ...seg, anchor: { t: 16, x: 0.2, y: 0.2, until: Number.NaN } }
+    expect(anchorWeight(bad, 15.5)).toBe(1)
+    expect(anchorWeight(bad, 17)).toBe(0)
+  })
+
   it('clicking again in the field between bursts keeps one part aimed at the field', () => {
     const clicks = [click(3, 0.4, 0.5), click(7, 0.43, 0.52)]
     const zs = autoZoomsForTrack({ samples: glide([[0, 0.4, 0.5]], duration), clicks, valid: true, typing: [{ t: 3.4, end: 6 }, { t: 7.3, end: 10 }] }, duration)
     expect(zs).toHaveLength(1)
-    expect(zs[0].anchor).toEqual({ t: zs[0].end, x: 0.4, y: 0.5 })
+    expect(zs[0].anchor).toEqual({ t: 3, x: 0.4, y: 0.5, until: 10 })
   })
 
   it('a single short keystroke burst makes no zoom of its own', () => {

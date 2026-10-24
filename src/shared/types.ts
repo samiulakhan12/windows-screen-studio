@@ -63,8 +63,11 @@ export interface ZoomSegment {
    * focus the camera aims at it while zooming in and hands back to the cursor shortly after
    * it, so the zoom frames the click even when the cursor arrived just before. Absent in
    * older projects and in zooms made by hand.
+   * A typing zoom's anchor is the field being typed into: `t` is when the typing began (the
+   * click into the field, or the first key) and `until` the last key; the camera aims at the
+   * field for the whole zoom, as long as the zoom still overlaps that typing.
    */
-  anchor?: { t: number; x: number; y: number }
+  anchor?: { t: number; x: number; y: number; until?: number }
   /** Ease for this zoom's transitions (default: project zoomSettings.easing). */
   easing?: ZoomEasing
   /** Seconds the zoom takes to move in and out (default: project zoomSettings.transition). */

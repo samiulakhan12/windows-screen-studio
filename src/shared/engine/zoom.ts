@@ -69,7 +69,7 @@ interface ZoomEvent {
   t0: number
   t1: number
   anchor: { t: number; x: number; y: number }
-  /** Typing into the field at `anchor`: the zoom holds its aim there for as long as it lasts. */
+  /** Typing into the field at `anchor` from t0 to t1: the zoom holds its aim there for as long as it lasts. */
   typing?: boolean
 }
 
@@ -123,7 +123,7 @@ function zoomParts(events: ZoomEvent[]): ZoomPart[] {
  * from one part to the next without zooming out. A part's segment begins leadIn before it (or
  * halfway from the previous part when that is closer, never before the previous part ends).
  * Click parts aim at their first event as zooms always have; typing parts look at their field
- * for the whole segment, at `typingScale`.
+ * for the whole segment (an anchor spanning the typing, see anchorWeight), at `typingScale`.
  */
 function rangeSegments(r: { start: number; end: number; events: ZoomEvent[] }, o: AutoZoomOptions, typingScale: number): ZoomSegment[] {
   const parts = zoomParts(r.events)
@@ -135,7 +135,6 @@ function rangeSegments(r: { start: number; end: number; events: ZoomEvent[] }, o
   }
   bounds.push(r.end)
   const segments: ZoomSegment[] = []
-  const typing: boolean[] = []
   parts.forEach((part, i) => {
     const start = bounds[i]
     const end = bounds[i + 1]
@@ -146,12 +145,9 @@ function rangeSegments(r: { start: number; end: number; events: ZoomEvent[] }, o
       else bounds[i + 1] = start
       return
     }
-    segments.push({ id: newZoomId(), start, end, scale: part.typing ? typingScale : o.scale, focus: { mode: 'cursor' }, auto: true, anchor: { ...part.anchor } })
-    typing.push(part.typing)
-  })
-  // Typing looks at its field until its segment ends.
-  segments.forEach((z, i) => {
-    if (typing[i] && z.anchor) z.anchor.t = z.end
+    // Typing spans its whole part (from the click into the field to the last key), not one instant.
+    const anchor = part.typing ? { t: part.t0, x: part.anchor.x, y: part.anchor.y, until: part.t1 } : { ...part.anchor }
+    segments.push({ id: newZoomId(), start, end, scale: part.typing ? typingScale : o.scale, focus: { mode: 'cursor' }, auto: true, anchor })
   })
   return segments
 }
@@ -307,7 +303,7 @@ export function autoZoomsForTrack(track: CursorTrack, duration: number, settings
   // Clicks into a field, and clicks and marks while typing, belong to the typing.
   const typed = (t: number): boolean => sessions.some((s) => t >= s.t0 && t <= s.t1)
   const events: ZoomEvent[] = clicks.filter((c) => !sessions.some((s) => s.click === c) && !typed(c.t)).map(clickEvent)
-  for (const s of sessions) events.push({ t0: s.t0, t1: s.t1, anchor: { t: s.t1, ...s.place }, typing: true })
+  for (const s of sessions) events.push({ t0: s.t0, t1: s.t1, anchor: { t: s.t0, ...s.place }, typing: true })
   if (settings.onMarks) {
     for (const m of track.marks ?? []) {
       if (!Number.isFinite(m.t) || typed(m.t)) continue
@@ -345,13 +341,18 @@ export interface Camera {
 const REST: Camera = { scale: 1, cx: 0.5, cy: 0.5 }
 
 /**
- * How much an auto zoom aims at its click (anchor) rather than at the smoothed cursor at
- * time t: fully until the click, then handing back to the cursor over ANCHOR_RELEASE. 0
- * without an anchor, or for an anchor the segment no longer covers (it was moved).
+ * How much an auto zoom aims at its anchor rather than at the smoothed cursor at time t. A
+ * click: fully until the click, then handing back to the cursor over ANCHOR_RELEASE. Typing
+ * (an anchor spanning t..until): fully for the whole zoom, so a trimmed, disconnected or
+ * clamped end never sets the camera chasing the idle mouse. 0 without an anchor, or for one
+ * the segment no longer covers (it was moved away from the click or the typing).
  */
 export function anchorWeight(seg: ZoomSegment, t: number): number {
   const a = seg.anchor
-  if (!a || !(a.t >= seg.start && a.t <= seg.end)) return 0
+  if (!a) return 0
+  const until = a.until
+  if (typeof until === 'number' && Number.isFinite(until)) return Math.min(a.t, until) <= seg.end && Math.max(a.t, until) >= seg.start ? 1 : 0
+  if (!(a.t >= seg.start && a.t <= seg.end)) return 0
   if (t <= a.t) return 1
   const k = (t - a.t) / ANCHOR_RELEASE
   return k >= 1 ? 0 : 1 - easeInOutCubic(k)
