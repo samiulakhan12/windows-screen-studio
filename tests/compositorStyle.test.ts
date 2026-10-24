@@ -54,7 +54,7 @@ function makeProject(style: Partial<StyleSettings>, zooms: ZoomSegment[] = []): 
   const project = createProject({
     id: 'p',
     name: 'Demo project',
-    duration: 30,
+    duration: 40,
     width: 1600,
     height: 900,
     hasWebcam: false,
@@ -182,7 +182,7 @@ describe('animated backgrounds', () => {
     const style: Partial<StyleSettings> = { background: { type: 'animated', preset: 'ocean', speed: 1 } }
     const gradients = (t: number) => JSON.stringify(draw(makeProject(style), t).filter((c) => c.name === 'createRadialGradient').map((c) => nums(c.args)))
     expect(gradients(1)).not.toEqual(gradients(4))
-    expect(gradients(1)).toEqual(gradients(21))
+    expect(gradients(1)).toEqual(gradients(31))
   })
 })
 

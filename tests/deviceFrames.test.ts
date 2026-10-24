@@ -163,6 +163,22 @@ describe('deviceFrameDrawing', () => {
     expect(frameTakesBorder({ kind: 'laptop', theme: 'light' })).toBe(false)
   })
 
+  it('a phone stands upright for portrait recordings and lies on its side for landscape ones', () => {
+    const up = deviceFrameDrawing({ kind: 'phone', theme: 'light' }, { x: 500, y: 100, w: 450, h: 800 }, { radius: 0, title: '' })
+    const islandUp = up.parts.find((p) => p.type === 'rrect' && p.fill === '#18181c')!
+    expect(islandUp.type === 'rrect' && islandUp.rect.y + islandUp.rect.h <= 100 && islandUp.rect.w > islandUp.rect.h).toBe(true)
+    const side = deviceFrameDrawing({ kind: 'phone', theme: 'light' }, { x: 300, y: 200, w: 800, h: 450 }, { radius: 0, title: '' })
+    const islandSide = side.parts.find((p) => p.type === 'rrect' && p.fill === '#18181c')!
+    expect(islandSide.type === 'rrect' && islandSide.rect.x + islandSide.rect.w <= 300 && islandSide.rect.h > islandSide.rect.w).toBe(true)
+    // The thick ends are left and right; the outer box is the upright one turned.
+    expect(side.outer.w).toBeCloseTo(up.outer.h * (800 / 800), 6)
+    expect(frameInsets('phone', true).left).toBeCloseTo(frameInsets('phone').top)
+    // Layout uses the same orientation: the sideways phone fits the frame.
+    const r = styleContentRect(1920, 1080, 1280, 720, withFrame('phone'))
+    const d = deviceFrameDrawing({ kind: 'phone', theme: 'dark' }, r, { radius: 0, title: '' })
+    expect(d.outer.h).toBeCloseTo(1080 - 2 * 0.07 * 1080, 6)
+  })
+
   it('insets are non-negative and only the browser has none at the bottom', () => {
     for (const kind of FRAME_KINDS) {
       const i = frameInsets(kind)

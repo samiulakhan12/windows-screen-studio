@@ -69,7 +69,7 @@ export function styleContentRect(outW: number, outH: number, srcW: number, srcH:
   if (!frame) return contentRect(outW, outH, srcW, srcH, style.padding)
   // The chrome is sized in multiples of the recording's shorter side, so the whole device
   // grows linearly with the recording: fit that, then centre the device (not the recording).
-  const ins = frameInsets(frame.kind)
+  const ins = frameInsets(frame.kind, srcW > srcH)
   const pad = Math.min(outW, outH) * style.padding
   const availW = Math.max(1, outW - pad * 2)
   const availH = Math.max(1, outH - pad * 2)

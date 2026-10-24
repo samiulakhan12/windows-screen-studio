@@ -50,7 +50,7 @@ export const ANIMATED_GRADIENTS: AnimatedPreset[] = [
 export const animatedById = (id: string): AnimatedPreset => ANIMATED_GRADIENTS.find((g) => g.id === id) ?? ANIMATED_GRADIENTS[0]
 
 /** Seconds one loop of an animated gradient takes at speed 1 (it then repeats seamlessly). */
-export const ANIMATED_PERIOD = 20
+export const ANIMATED_PERIOD = 30
 export const ANIMATED_SPEED = { min: 0.25, max: 2 } as const
 
 export const animatedSpeed = (bg: Background): number =>
@@ -80,8 +80,8 @@ export function animatedBlobs(preset: AnimatedPreset, time: number, speed = 1): 
     const fy = 1 + ((i + 1) % 2)
     const dir = i % 3 === 1 ? -1 : 1
     return {
-      x: 0.5 + 0.36 * Math.cos(dir * phase * fx + a),
-      y: 0.5 + 0.32 * Math.sin(dir * phase * fy + a * 1.3),
+      x: 0.5 + 0.3 * Math.cos(dir * phase * fx + a),
+      y: 0.5 + 0.26 * Math.sin(dir * phase * fy + a * 1.3),
       r: 0.5 + 0.1 * Math.sin(phase + i * 2.1),
       color
     }

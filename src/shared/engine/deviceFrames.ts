@@ -77,8 +77,14 @@ const INSETS: Record<DeviceFrameKind, Insets> = {
   phone: { top: PHONE_RIM + PHONE_END, bottom: PHONE_RIM + PHONE_END, left: PHONE_RIM + PHONE_SIDE + PHONE_BUTTON, right: PHONE_RIM + PHONE_SIDE + PHONE_BUTTON }
 }
 
-/** How much chrome a frame adds on each side of the recording (multiples of its shorter side). */
-export const frameInsets = (kind: DeviceFrameKind): Insets => INSETS[kind] ?? NO_INSETS
+/** A phone holding a landscape recording is turned on its side: the thick ends go left and right. */
+const PHONE_SIDEWAYS: Insets = { top: INSETS.phone.left, bottom: INSETS.phone.right, left: INSETS.phone.top, right: INSETS.phone.bottom }
+
+/**
+ * How much chrome a frame adds on each side of the recording (multiples of its shorter side).
+ * `landscape`: the recording is wider than tall (a phone then lies on its side).
+ */
+export const frameInsets = (kind: DeviceFrameKind, landscape = false): Insets => (kind === 'phone' && landscape ? PHONE_SIDEWAYS : (INSETS[kind] ?? NO_INSETS))
 
 /** The style's device frame with valid fields, or null for none (absent, 'none' or unknown). */
 export function frameOf(style: Pick<StyleSettings, 'frame'>): DeviceFrame | null {
@@ -132,7 +138,7 @@ export const screenCornerRadius = (frame: DeviceFrame | null, screen: Rect, radi
  */
 export function deviceFrameDrawing(frame: DeviceFrame, screen: Rect, opts: { radius: number; title: string }): FrameDrawing {
   const u = Math.min(screen.w, screen.h)
-  const ins = frameInsets(frame.kind)
+  const ins = frameInsets(frame.kind, screen.w > screen.h)
   const outer = { x: screen.x - ins.left * u, y: screen.y - ins.top * u, w: screen.w + (ins.left + ins.right) * u, h: screen.h + (ins.top + ins.bottom) * u }
   const dark = frame.theme === 'dark'
   const radii = screenRadii(frame, screen, opts.radius)
@@ -243,20 +249,33 @@ function monitor(s: Rect, u: number, dark: boolean): Chrome {
 }
 
 function phone(s: Rect, u: number, dark: boolean): Chrome {
-  const bezel = { x: s.x - PHONE_SIDE * u, y: s.y - PHONE_END * u, w: s.w + PHONE_SIDE * 2 * u, h: s.h + PHONE_END * 2 * u }
+  // Upright, the thick ends (with the camera island) are at the top and bottom; on its side
+  // (a landscape recording) they are left and right, with the island on the left.
+  const side = s.w > s.h
+  const ex = (side ? PHONE_END : PHONE_SIDE) * u
+  const ey = (side ? PHONE_SIDE : PHONE_END) * u
+  const bezel = { x: s.x - ex, y: s.y - ey, w: s.w + ex * 2, h: s.h + ey * 2 }
   const body = expand(bezel, PHONE_RIM * u)
   const bodyR = 0.13 * u
-  const button = (left: boolean, at: number, len: number): FramePart => ({
+  const out = PHONE_BUTTON * u
+  const overlap = 0.002 * u
+  // Buttons stick out of the rim: on the long sides, `at`..`at + len` along them from the island's end.
+  const button = (first: boolean, at: number, len: number): FramePart => ({
     type: 'rrect',
-    rect: { x: left ? body.x - PHONE_BUTTON * u : body.x + body.w - 0.002 * u, y: body.y + body.h * at, w: (PHONE_BUTTON + 0.002) * u, h: body.h * len },
+    rect: side
+      ? { x: body.x + body.w * at, y: first ? body.y + body.h - overlap : body.y - out, w: body.w * len, h: out + overlap }
+      : { x: first ? body.x - out : body.x + body.w - overlap, y: body.y + body.h * at, w: out + overlap, h: body.h * len },
     radii: all(0.003 * u),
     fill: dark ? '#2a2b2f' : '#c3c6cc'
   })
-  const islandW = 0.26 * u
-  const islandH = 0.036 * u
-  const island = { x: s.x + (s.w - islandW) / 2, y: bezel.y + (PHONE_END * u - islandH) / 2, w: islandW, h: islandH }
-  const lensX = island.x + islandW - islandH / 2
-  const lensY = island.y + islandH / 2
+  const islandLong = 0.26 * u
+  const islandShort = 0.036 * u
+  const island = side
+    ? { x: bezel.x + (ex - islandShort) / 2, y: s.y + (s.h - islandLong) / 2, w: islandShort, h: islandLong }
+    : { x: s.x + (s.w - islandLong) / 2, y: bezel.y + (ey - islandShort) / 2, w: islandLong, h: islandShort }
+  // The lens sits at one end of the island.
+  const lensX = side ? island.x + islandShort / 2 : island.x + islandLong - islandShort / 2
+  const lensY = side ? island.y + islandShort / 2 : island.y + islandShort / 2
   return {
     outline: [{ rect: body, radii: all(bodyR) }],
     parts: [
@@ -270,9 +289,9 @@ function phone(s: Rect, u: number, dark: boolean): Chrome {
         fill: { x0: body.x, y0: body.y, x1: body.x + body.w, y1: body.y + body.h, stops: dark ? [[0, '#3a3b40'], [0.5, '#1b1b1e'], [1, '#2e2f33']] : [[0, '#f4f5f7'], [0.5, '#cfd2d8'], [1, '#eef0f2']] }
       },
       { type: 'rrect', rect: bezel, radii: all(bodyR - PHONE_RIM * u), fill: '#050506' },
-      { type: 'rrect', rect: island, radii: all(islandH / 2), fill: '#18181c' },
-      { type: 'circle', x: lensX, y: lensY, r: islandH * 0.3, fill: '#0e1a2b' },
-      { type: 'circle', x: lensX - islandH * 0.08, y: lensY - islandH * 0.08, r: islandH * 0.09, fill: '#3b5b8a' }
+      { type: 'rrect', rect: island, radii: all(islandShort / 2), fill: '#18181c' },
+      { type: 'circle', x: lensX, y: lensY, r: islandShort * 0.3, fill: '#0e1a2b' },
+      { type: 'circle', x: lensX - islandShort * 0.08, y: lensY - islandShort * 0.08, r: islandShort * 0.09, fill: '#3b5b8a' }
     ]
   }
 }
