@@ -203,6 +203,9 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.clip()
     paintCardBackground(fc, card, BAND_TINT)
     ctx.restore()
+    // The background may have drawn paths of its own: the band's outline again for its edge.
+    ctx.beginPath()
+    ctx.roundRect(band.x, y, band.w, band.h, band.radius)
     ctx.lineWidth = Math.max(1, band.h * 0.012)
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.stroke()
