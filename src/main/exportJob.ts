@@ -181,13 +181,19 @@ export interface SoundInputs {
   music?: string | null
 }
 
+const SOURCE_NAMES: Record<StemKind, string> = { mic: 'microphone', system: 'system sound' }
+
 /**
  * Resolves the soundtrack files of `job` in project folder `dir`. Names come from fixed
  * lists only (the music's name was validated), so nothing outside the folder is read. A
- * missing stem falls back to the screen proxy's mixed track; missing music is an error the
+ * missing stem falls back to the screen proxy's mixed track only when that sounds the same:
+ * every stem the recording kept (`recorded`) at its full volume (the stems were asked for to
+ * clean the microphone). The mixed track has every source, so it would bring back a source
+ * the user muted or turned down: that is refused with a message instead (the editor opens a
+ * project with a missing stem without its stems, and says so). Missing music is an error the
  * user can act on.
  */
-export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (file: string) => Promise<boolean>): Promise<SoundInputs> {
+export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (file: string) => Promise<boolean>, recorded: readonly StemKind[]): Promise<SoundInputs> {
   const audioInput = job.audio ? path.join(dir, SOURCE_FILES.mix) : null
   let out: SoundInputs = { job, audioInput }
   const wanted = job.audio?.stems ? STEM_KINDS.filter((k) => job.audio?.stems?.[k] !== undefined) : []
@@ -196,6 +202,14 @@ export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (f
     const present = await Promise.all(wanted.map((k) => exists(files[k]!)))
     if (present.every(Boolean)) out.stems = files
     else {
+      const missing = wanted.filter((_, i) => !present[i])
+      const full = (g: number | undefined): boolean => g !== undefined && Math.abs(g - 1) < 1e-6
+      if (![...new Set([...recorded, ...wanted])].every((k) => full(job.audio?.stems?.[k]))) {
+        const names = missing.map((k) => `${SOURCE_NAMES[k]} (${SOURCE_FILES[k]})`).join(' and ')
+        throw new Error(
+          `The ${names} ${missing.length > 1 ? 'files of this recording are' : 'file of this recording is'} missing, so a source you muted or turned down cannot be left out. Open the recording again to use its mixed sound, with every source.`
+        )
+      }
       console.warn('A sound track of the recording is missing; exporting its mixed sound instead.')
       const { stems: _dropped, ...audio } = job.audio
       void _dropped

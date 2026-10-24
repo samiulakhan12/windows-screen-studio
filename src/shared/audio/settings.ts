@@ -3,6 +3,7 @@
  * and the decisions the preview and the export share: which recorded files make the
  * recording's sound, with what gains, and what the music does.
  */
+import { nextPickFile, stalePickFiles, type PickedFiles } from '../engine/picks'
 import { outputDuration } from '../engine/timeline'
 import type { AudioSettings, AudioTrackSettings, MusicSettings, Project } from '../types'
 
@@ -14,8 +15,21 @@ export const STEM_KINDS: readonly StemKind[] = ['mic', 'system']
 /** File of each recorded source in the project folder. */
 export const SOURCE_FILES: Record<AudioSource, string> = { mix: 'screen.mp4', mic: 'mic.m4a', system: 'system.m4a' }
 
-/** Background music file names a project may hold (see the asset picker). */
-export const MUSIC_FILE_RE = /^music\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i
+/**
+ * Background music file names a project may hold: music.<ext> (older projects), or
+ * music-<n>.<ext> for the n-th track picked. Each pick gets a new name, so replacing the music
+ * never deletes or overwrites the track in use: undo can go back to it.
+ */
+export const MUSIC_FILE_RE = /^music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i
+/** How many of the latest music picks a project folder keeps besides the one its saved project uses (tracks can be large). */
+export const MUSIC_KEEP_PICKS = 3
+const MUSIC_PICKS: PickedFiles = { base: 'music', re: MUSIC_FILE_RE, keep: MUSIC_KEEP_PICKS }
+
+/** The file name of a new music pick with extension `ext`, after the files already in the folder. */
+export const nextMusicFile = (existing: readonly string[], ext: string): string => nextPickFile(MUSIC_PICKS, existing, ext)
+
+/** Music files in a folder that can go after a new pick: all but the newest few and the files in `keep`. */
+export const staleMusicFiles = (existing: readonly string[], keep: ReadonlySet<string>): string[] => stalePickFiles(MUSIC_PICKS, existing, keep)
 
 export const DEFAULT_TRACK: AudioTrackSettings = { volume: 1, muted: false }
 

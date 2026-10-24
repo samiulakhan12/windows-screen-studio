@@ -1,15 +1,17 @@
 /**
  * Picking a user file into a project folder ("assets"): the watermark image and background
  * music, copied in so the project folder stays self-contained and served to the renderer by
- * studio-media://. Music is stored as music.<ext> (replacing an earlier pick). Each logo gets
- * a new name (watermark-<n>.<ext>) and the latest few are kept: a pick never overwrites the
- * logo in use, so undo can go back to it and an image the renderer cannot decode changes nothing.
+ * studio-media://. Each pick gets a new name (watermark-<n>.<ext>, music-<n>.<ext>) and the
+ * latest few are kept: a pick never overwrites or deletes the file in use, so undo can go back
+ * to it and a file the renderer cannot decode changes nothing.
  */
 import { dialog, ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { AssetKind } from '../shared/api/projects'
+import { MUSIC_FILE_RE, nextMusicFile, staleMusicFiles } from '../shared/audio/settings'
 import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
+import type { Project } from '../shared/types'
 import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
 import { getMainWindow } from './windows'
@@ -82,23 +84,28 @@ export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
   }
 }
 
-const MUSIC_FILE_RE = /^music\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i
-
 /** Asset files the media protocol may serve. */
 export const isAssetFile = (file: string): boolean => WATERMARK_FILE_RE.test(file) || MUSIC_FILE_RE.test(file)
 
 const isKind = (kind: unknown): kind is AssetKind => typeof kind === 'string' && Object.prototype.hasOwnProperty.call(ASSET_SPECS, kind)
 
-/** File name an asset of `kind` with extension `ext` is stored under. */
-export function assetFileName(kind: AssetKind, ext: string): string {
-  const e = ext.toLowerCase().replace(/^\./, '').replace('jpeg', 'jpg')
-  return `${kind}.${e}`
+interface Picks {
+  /** The new pick's file name, after the files already in the folder. */
+  next: (existing: readonly string[], ext: string) => string
+  /** Earlier picks a new one makes unneeded: all but the latest few and the ones in `keep`. */
+  stale: (existing: readonly string[], keep: ReadonlySet<string>) => string[]
+  /** The pick a saved project uses. */
+  saved: (p: Project) => string | undefined
+}
+const PICKS: Record<AssetKind, Picks> = {
+  watermark: { next: nextWatermarkFile, stale: staleWatermarkFiles, saved: (p) => p.watermark?.path },
+  music: { next: nextMusicFile, stale: staleMusicFiles, saved: (p) => p.audio?.music?.path }
 }
 
 /**
  * Copies `src` into project `id` as its `kind` asset. The file is checked first (type by
  * extension and content, size) and copied under a temporary name, so a failure leaves the
- * earlier pick in place. A new logo gets a new name; a new music file replaces the old one.
+ * earlier pick in place. Every pick gets a new name.
  */
 export async function importAsset(id: string, kind: AssetKind, src: string): Promise<{ url: string; path: string }> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
@@ -119,41 +126,32 @@ export async function importAsset(id: string, kind: AssetKind, src: string): Pro
   } finally {
     await handle.close()
   }
-  const name = kind === 'watermark' ? nextWatermarkFile(await fs.readdir(dir).catch(() => []), ext) : assetFileName(kind, ext)
+  const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), ext)
   if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
   const tmp = path.join(dir, `.${name}.part`)
   try {
     await fs.copyFile(src, tmp)
-    if (kind === 'music') {
-      for (const e of spec.extensions) {
-        const other = assetFileName(kind, e)
-        if (other !== name) await fs.rm(path.join(dir, other), { force: true })
-      }
-    }
     await fs.rename(tmp, path.join(dir, name))
   } catch (err) {
     await fs.rm(tmp, { force: true }).catch(() => undefined)
     throw err
   }
-  if (kind === 'watermark') await pruneWatermarks(id, dir, name)
+  await prunePicks(id, kind, dir, name)
   return { url: mediaUrl(id, name), path: name }
 }
 
 /**
- * Removes logo picks nothing returns to any more: all but the latest few, keeping the new pick
- * and the logo the saved project uses. Never fails the pick (a leftover file is harmless).
+ * Removes picks nothing returns to any more: all but the latest few, keeping the new pick and
+ * the file the saved project uses. Never fails the pick (a leftover file is harmless).
  */
-async function pruneWatermarks(id: string, dir: string, picked: string): Promise<void> {
+async function prunePicks(id: string, kind: AssetKind, dir: string, picked: string): Promise<void> {
   try {
     const keep = new Set([picked])
-    const saved = await projects.readProject(id).then(
-      (p) => p.watermark?.path,
-      () => undefined
-    )
+    const saved = await projects.readProject(id).then(PICKS[kind].saved, () => undefined)
     if (typeof saved === 'string') keep.add(saved)
-    for (const name of staleWatermarkFiles(await fs.readdir(dir), keep)) await fs.rm(path.join(dir, name), { force: true })
+    for (const name of PICKS[kind].stale(await fs.readdir(dir), keep)) await fs.rm(path.join(dir, name), { force: true })
   } catch (err) {
-    console.warn('Could not remove earlier logo picks:', err)
+    console.warn(`Could not remove earlier ${kind === 'music' ? 'music' : 'logo'} picks:`, err)
   }
 }
 

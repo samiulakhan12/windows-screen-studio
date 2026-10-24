@@ -6,14 +6,17 @@
  * length in the editor never decodes it again. A run that hangs is killed after a time
  * proportional to the recording's length. A request that names no project finds nothing; an
  * analysis that cannot run or fails is reported with its reason (and not kept), so the editor
- * can say so and try again.
+ * can say so and try again. A project's analysis stops when its editor closes or before it is
+ * deleted (see ProjectProcesses).
  */
 import { app, ipcMain } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { StillRange } from '../shared/api/projects'
+import { stopAudioAnalysisFor } from './audioAnalysis'
 import { ffmpegPath } from './ffmpeg'
+import { ProjectProcesses } from './projectProcesses'
 import { projectDir } from './projects'
 
 /** Shortest still stretch looked for: longer minimums are filtered from the same result. */
@@ -65,10 +68,10 @@ export function parseFreezeLog(log: string, fallbackEnd = NaN): StillRange[] {
   return out
 }
 
-const running = new Set<ChildProcess>()
+const running = new ProjectProcesses()
 
-/** Runs ffmpeg on `file`: its log, or why it failed, was killed or took longer than `timeoutMs`. */
-function runFreezeDetect(file: string, timeoutMs: number): Promise<{ log: string } | { error: string }> {
+/** Runs ffmpeg on `file` of project `id`: its log, or why it failed, was killed or took longer than `timeoutMs`. */
+function runFreezeDetect(file: string, id: string, timeoutMs: number): Promise<{ log: string } | { error: string }> {
   return new Promise((resolve) => {
     let proc: ChildProcess
     try {
@@ -77,7 +80,7 @@ function runFreezeDetect(file: string, timeoutMs: number): Promise<{ log: string
       resolve({ error: `ffmpeg could not be started (${err instanceof Error ? err.message : String(err)})` })
       return
     }
-    running.add(proc)
+    running.add(proc, id)
     // Keep the interesting lines only: the log of a long recording is mostly noise.
     let log = ''
     let tail = ''
@@ -127,6 +130,7 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
   } catch {
     return []
   }
+  const generation = running.generation(id)
   const min = typeof minSeconds === 'number' && Number.isFinite(minSeconds) ? Math.min(Math.max(minSeconds, DETECT_MIN), MAX_SECONDS) : DETECT_MIN
   const file = path.join(dir, 'screen.mp4')
   const stat = await fs.stat(file).catch(() => null)
@@ -141,9 +145,11 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
   const key = `${id}\n${stat.size}\n${stat.mtimeMs}`
   let result = cache.get(key)
   if (!result) {
+    // Stopped while the file was being looked at (the editor closed, the project is being deleted).
+    if (running.generation(id) !== generation) throw new Error('the analysis was stopped')
     // About a minute, plus as long again as the recording: decoding is far faster than real time.
     const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
-    const run = runFreezeDetect(file, timeoutMs).then((r) => {
+    const run = runFreezeDetect(file, id, timeoutMs).then((r) => {
       if ('log' in r) return parseFreezeLog(r.log, duration)
       // A failure is not kept: the next request runs the analysis again.
       if (cache.get(key) === run) cache.delete(key)
@@ -156,10 +162,20 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
   return (await result).filter((r) => r.end - r.start >= min - 1e-6)
 }
 
+/** Stops project `id`'s still detection; resolves once ffmpeg has let go of the video. */
+export const stopStillDetection = (id: string): Promise<void> => running.stop(id)
+
+/**
+ * Stops every analysis reading project `id`'s files (still detection, sound levels) and waits
+ * until they have let go of them: the editor closed, or the project is about to be deleted.
+ */
+export async function stopAnalyses(id: string): Promise<void> {
+  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id)])
+}
+
 export function registerAnalysisIpc(): void {
   ipcMain.handle('projects:detectStill', (_e, id: unknown, minSeconds: unknown) => detectStill(id, minSeconds))
+  ipcMain.handle('projects:stopAnalysis', (_e, id: unknown) => (typeof id === 'string' ? stopAnalyses(id) : undefined))
   // An analysis must not outlive the app.
-  app.on('will-quit', () => {
-    for (const proc of running) proc.kill('SIGKILL')
-  })
+  app.on('will-quit', () => running.stopAll())
 }

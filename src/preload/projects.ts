@@ -19,6 +19,7 @@ export const projectsApi: ProjectsApi = {
   pickAsset: (id, kind) => ipcRenderer.invoke('projects:pickAsset', id, kind),
   assetUrl: (id, file) => ipcRenderer.invoke('projects:assetUrl', id, file),
   detectStill: (id, minSeconds) => ipcRenderer.invoke('projects:detectStill', id, minSeconds),
+  stopAnalysis: (id) => ipcRenderer.invoke('projects:stopAnalysis', id),
   backgroundUrl: (id, path) => ipcRenderer.invoke('projects:backgroundUrl', id, path),
   getStyleDefaults: () => ipcRenderer.invoke('styleDefaults:get'),
   saveStyleDefaults: (look) => ipcRenderer.invoke('styleDefaults:save', look),

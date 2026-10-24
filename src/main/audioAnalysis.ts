@@ -3,7 +3,8 @@
  * system.m4a): ffmpeg decodes the audio at a low rate and the level meter of
  * shared/audio/loudness measures it as it streams in, so an hour-long recording costs a few
  * seconds and constant memory. The renderer turns the levels into ducking ranges and the
- * preview's loudness gain.
+ * preview's loudness gain. A project's measurements stop when its editor closes or before it
+ * is deleted (see ProjectProcesses).
  */
 import { spawn, type ChildProcess } from 'node:child_process'
 import { promises as fs } from 'node:fs'
@@ -11,6 +12,7 @@ import path from 'node:path'
 import { LevelMeter, type AudioLevels } from '../shared/audio/loudness'
 import { SOURCE_FILES, type AudioSource } from '../shared/audio/settings'
 import { ffmpegPath } from './ffmpeg'
+import { ProjectProcesses } from './projectProcesses'
 import * as projects from './projects'
 
 /** Decoding rate and layout: plenty for speech and loudness, cheap to measure. */
@@ -21,15 +23,15 @@ const SOURCES: readonly AudioSource[] = ['mix', 'mic', 'system']
 const CACHE_SIZE = 12
 
 const cache = new Map<string, Promise<AudioLevels>>()
-const running = new Set<ChildProcess>()
+const running = new ProjectProcesses()
 
 /** ffmpeg arguments that decode the first audio stream of `file` to raw float samples on stdout. */
 export function levelArgs(file: string): string[] {
   return ['-v', 'error', '-nostdin', '-i', file, '-map', '0:a:0?', '-vn', '-ac', String(CHANNELS), '-ar', String(RATE), '-f', 'f32le', 'pipe:1']
 }
 
-/** Levels of one file; an empty envelope when it has no audio stream. */
-export function measureLevels(file: string): Promise<AudioLevels> {
+/** Levels of one file (of project `owner`); an empty envelope when it has no audio stream. */
+export function measureLevels(file: string, owner = ''): Promise<AudioLevels> {
   return new Promise((resolve, reject) => {
     const meter = new LevelMeter(RATE, CHANNELS)
     let proc: ChildProcess
@@ -39,7 +41,7 @@ export function measureLevels(file: string): Promise<AudioLevels> {
       reject(err)
       return
     }
-    running.add(proc)
+    running.add(proc, owner)
     // Chunks end anywhere; carry the bytes of an incomplete sample over to the next one.
     let carry = Buffer.alloc(0)
     proc.stdout?.on('data', (d: Buffer) => {
@@ -60,19 +62,20 @@ export function measureLevels(file: string): Promise<AudioLevels> {
       running.delete(proc)
       reject(err)
     })
-    proc.on('close', (code) => {
+    proc.on('close', (code, signal) => {
       running.delete(proc)
       if (code === 0) resolve(meter.finish())
+      else if (signal) reject(new Error('The sound measurement was stopped.'))
       else reject(new Error(`Could not read the sound of ${path.basename(file)} (${log.trim().split('\n').pop() || `exit code ${code}`})`))
     })
   })
 }
 
-function cachedLevels(file: string, stat: { size: number; mtimeMs: number }): Promise<AudioLevels> {
+function cachedLevels(id: string, file: string, stat: { size: number; mtimeMs: number }): Promise<AudioLevels> {
   const key = `${file}|${stat.size}|${stat.mtimeMs}`
   let levels = cache.get(key)
   if (!levels) {
-    levels = measureLevels(file)
+    levels = measureLevels(file, id)
     cache.set(key, levels)
     // A failure is not remembered: the next request tries again.
     levels.catch(() => cache.delete(key))
@@ -86,18 +89,23 @@ export async function analyzeAudio(id: string, sources: unknown): Promise<Partia
   const dir = projects.projectDir(id)
   const wanted = Array.isArray(sources) ? [...new Set(sources.filter((s): s is AudioSource => SOURCES.includes(s as AudioSource)))] : []
   const out: Partial<Record<AudioSource, AudioLevels>> = {}
+  const generation = running.generation(id)
   // One at a time: decoding is light, but exports and the preview share the CPU.
   for (const source of wanted) {
     const file = path.join(dir, SOURCE_FILES[source])
     const stat = await fs.stat(file).catch(() => null)
     if (!stat?.isFile()) continue
-    out[source] = await cachedLevels(file, stat)
+    // Stopped meanwhile (the editor closed, the project is being deleted): nothing more is read.
+    if (running.generation(id) !== generation) throw new Error('The sound measurement was stopped.')
+    out[source] = await cachedLevels(id, file, stat)
   }
   return out
 }
 
+/** Stops project `id`'s measurements; resolves once ffmpeg has let go of its files. */
+export const stopAudioAnalysisFor = (id: string): Promise<void> => running.stop(id)
+
 /** Stops measurements in progress (the app is quitting). */
 export function stopAudioAnalysis(): void {
-  for (const proc of running) proc.kill('SIGKILL')
-  running.clear()
+  running.stopAll()
 }

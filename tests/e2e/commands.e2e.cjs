@@ -1,7 +1,7 @@
 // Command palette, custom shortcuts and smart speed, end to end on seeded projects: Ctrl+K
 // searches and runs commands, a rebound shortcut works and survives reopening the editor,
 // the editor's original keys keep working, and smart speed finds a still, input-free stretch,
-// speeds it up (or cuts it) in one undo step.
+// speeds it up (or cuts it) in one undo step, and leaves a still stretch with a voice over it alone.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -22,6 +22,23 @@ function stillVideo() {
     '-t', '16',
     '-filter_complex', '[0:v]split[a][b];[a][b]freezeframes=first=90:last=270:replace=90[c];[c]split[d][e];[d][e]freezeframes=first=330:last=479:replace=330',
     '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+    tmp
+  ], { stdio: 'inherit' })
+  fs.renameSync(tmp, file)
+  return file
+}
+
+/** stillVideo with a voice (a tone) from 4 s to 8 s, over the first still part (cached). */
+function narratedStillVideo() {
+  fs.mkdirSync(MEDIA_CACHE, { recursive: true })
+  const file = path.join(MEDIA_CACHE, 'still-narrated-16s-640x360-30.mp4')
+  if (fs.existsSync(file)) return file
+  const tmp = `${file}.part.mp4`
+  execFileSync('ffmpeg', [
+    '-v', 'error', '-y',
+    '-i', stillVideo(),
+    '-f', 'lavfi', '-i', "sine=frequency=220:sample_rate=48000,volume='if(between(t,4,8),2,0)':eval=frame",
+    '-t', '16', '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
     tmp
   ], { stdio: 'inherit' })
   fs.renameSync(tmp, file)
@@ -465,6 +482,42 @@ async function main() {
     // Unticking the only part disables Apply.
     await win.click('.smart-list input[type="checkbox"]')
     h.assert(await win.$eval('.smart-speed button.btn.primary', (b) => b.disabled), 'nothing chosen, nothing to apply')
+  })
+
+  await h.run('commands: smart speed leaves a still stretch with someone talking over it alone, unless the recording is muted', async (ctx) => {
+    const seconds = 16
+    const { win } = await setup(ctx, 'smart-voice', {
+      name: 'Narrated',
+      seconds,
+      width: 640,
+      height: 360,
+      fps: 30,
+      audio: true,
+      video: narratedStillVideo(),
+      cursor: restingTrack(seconds)
+    })
+    await runCommand(win, 'smart speed', 'Smart speed: find idle parts')
+    // Still and without input from 3 s to 9 s, but a voice from 4 s to 8 s: nothing of 3 s is idle.
+    await win.waitForSelector('.smart-summary', { timeout: 30000 })
+    await f.waitFor(async () => (await win.textContent('.smart-summary')).includes('No idle parts of 3 s'), 'the narrated stretch is not idle', 5000)
+    h.assert((await win.textContent('.smart-speed .hint')).includes('nothing is heard'), 'the hint names the sound')
+    // Shorter parts around the voice may be idle, never the voice itself.
+    await win.click('.chips[aria-label="Minimum idle length"] .chip:has-text("1 s")')
+    await h.sleep(300)
+    const parts = await win.$$eval('.smart-list .smart-range', (els) => els.map((e) => e.textContent))
+    const secs = (t) => t.split(':').reduce((a, v) => a * 60 + Number(v), 0)
+    for (const p of parts) {
+      const [a, b] = p.split('–').map((t) => secs(t.trim()))
+      h.assert(b <= 4.05 || a >= 7.95, `no idle part over the voice: ${parts}`)
+    }
+    // Muted, the voice is not heard: the whole still, input-free stretch is idle again.
+    await win.click('.insp-tabs button:has-text("Audio")')
+    await win.click('label.toggle:has-text("Mute")')
+    await win.click('.insp-tabs button:has-text("Clip")')
+    await win.click('.chips[aria-label="Minimum idle length"] .chip:has-text("3 s")')
+    await f.waitFor(async () => (await win.textContent('.smart-summary')).includes('1 idle part'), 'idle once muted', 5000)
+    const muted = await win.$$eval('.smart-list .smart-range', (els) => els.map((e) => e.textContent))
+    h.assert(muted.length === 1 && /^0:03\.\d – 0:08\.\d$/.test(muted[0]), `one idle part, padded inside 3–9 s: ${muted}`)
   })
 }
 

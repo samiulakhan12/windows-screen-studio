@@ -126,6 +126,8 @@ export class PreviewAudio {
   private warnedStems = false
   private limiting = false
   private disposed = false
+  /** Called when a stem's file turns out to be missing (the Audio panel says so). */
+  onStemFailed: (() => void) | null = null
 
   constructor(
     private readonly screen: HTMLVideoElement,
@@ -149,6 +151,15 @@ export class PreviewAudio {
       if (project.clips !== prev.clips) this.clipsKey = clipsKeyOf(project)
       this.apply()
     }
+  }
+
+  /**
+   * Stems whose file could not be loaded (it went missing after the project was opened): the
+   * preview plays the mixed sound instead, and the export refuses to when that would bring
+   * back a source the user muted or turned down.
+   */
+  get failedStems(): StemKind[] {
+    return STEM_KINDS.filter((k) => this.stems.get(k)?.failed)
   }
 
   /** Loads the music file again (a new pick replaced it under the same name). */
@@ -238,6 +249,7 @@ export class PreviewAudio {
     el.addEventListener('error', () => {
       stem.failed = true
       this.apply()
+      this.onStemFailed?.()
     })
     this.stems.set(kind, stem)
     return stem

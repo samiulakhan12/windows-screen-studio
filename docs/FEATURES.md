@@ -50,7 +50,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ **Audio**: master volume and mute; separate microphone and system-sound volume and mute when the recording kept them apart; noise reduction (applied on export); *even out loudness* (about −16 LUFS); fade in / fade out; **background music** (MP3, M4A, AAC, WAV, OGG, Opus, FLAC) with volume, loop, fades and automatic lowering while the recording has sound (the same ducking in preview and export).
 - ✓ **Command palette** (`Ctrl+K` or `Ctrl+Shift+P`): search every editor command (playback, editing, zooms, text, shapes, spotlight, toggles, inspector tabs, export, smart speed), each shown with its shortcut; recently used commands come first.
 - ✓ **Custom shortcuts** (`Ctrl+/`): rebind any command, see and resolve conflicts, reset one or all; hints across the editor follow your keys.
-- ✓ **Smart speed**: finds stretches where the picture does not change *and* you did not move, click or type, then speeds them up (2×/4×/8×) or cuts them in one undoable step, showing how much time it saves.
+- ✓ **Smart speed**: finds stretches where the picture does not change, nothing is heard *and* you did not move, click or type, then speeds them up (2×/4×/8×) or cuts them in one undoable step, showing how much time it saves.
 - ✓ Webcam bubble: show/hide, corner, size, circle or rounded.
 - ✓ Audio volume (0–200%) and mute, applied to preview and export.
 - ✓ Zoomable, scrollable timeline (`+`/`-`, `Ctrl`+wheel, Fit) that stays usable for long recordings; playhead follows playback.

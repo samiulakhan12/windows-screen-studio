@@ -33,6 +33,8 @@ export interface ProjectsApi {
   assetUrl(projectId: string, file: string): Promise<string | null>
   /** Stretches (source seconds) of at least `minSeconds` where the recorded picture does not change. */
   detectStill(projectId: string, minSeconds: number): Promise<StillRange[]>
+  /** Stops the analyses reading the project's files (still detection, sound levels): its editor closed. */
+  stopAnalysis(projectId: string): Promise<void>
   /** URL of a background image stored in the project folder, or null if it is missing. */
   backgroundUrl(projectId: string, path: string): Promise<string | null>
   /** The look new recordings start with, or null when the built-in look is used. */

@@ -1,9 +1,9 @@
 // Audio pack in the real built app: background music with ducking, loop and fades (levels
 // measured per time window of the export), per-source volume of microphone / system stems,
-// music in an M4A, an older project exporting exactly as before, the Music controls, the
-// preview keeping stems and music on time, and stems kept by real recordings (Chromium and
-// native capture), aligned with the mixed sound, or not at all once one fails (the mixed
-// sound then has every source).
+// music in an M4A, an older project exporting as before (re-timed clips now exactly on their
+// video), the Music controls, the preview keeping stems and music on time, and stems kept by
+// real recordings (Chromium and native capture), aligned with the mixed sound, or not at all
+// once one fails (the mixed sound then has every source).
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync, spawn } = require('node:child_process')
@@ -52,6 +52,16 @@ const audioOnly = (name, seconds, audioGraph, ext = 'm4a') =>
 
 /** A tone of `freq` Hz at amplitude `amp`, sounding where `when` (an expression in t) is true. */
 const toneGraph = (freq, amp, when = '1') => `sine=frequency=${freq}:sample_rate=48000,volume='if(${when},${amp * 8},0)':eval=frame`
+
+/** The microphone beeps (1 kHz, 0.1 s at the start of every second) over a steady system sound (300 Hz). */
+const micBeeps = toneGraph(1000, 0.2, 'lt(mod(t,1),0.1)')
+/** A 6 s video whose mixed sound is the beeping microphone and the system sound. */
+const stemsMixMedia = () =>
+  cached('audio-pack-stems-mix-beeps.mp4', [
+    '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=60',
+    '-filter_complex', `${micBeeps}[m];${toneGraph(300, 0.2)}[s];[m][s]amix=inputs=2:normalize=0[a]`, '-t', '6', '-map', '0:v', '-map', '[a]',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart'
+  ])
 
 /** Seeds a project (render-fixtures layout) and adds the given files and project fields. */
 function seed(home, opts) {
@@ -281,13 +291,8 @@ async function main() {
   }))
 
   await test('audio pack: per-source volume and mute of the microphone and system stems change the export; the preview keeps them on time', fx.withHome('ap-stems', async (ctx, home) => {
-    // The microphone beeps (1 kHz, 0.1 s at the start of every second) over a steady system sound (300 Hz).
-    const beeps = toneGraph(1000, 0.2, 'lt(mod(t,1),0.1)')
-    const media = cached('audio-pack-stems-mix-beeps.mp4', [
-      '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=60',
-      '-filter_complex', `${beeps}[m];${toneGraph(300, 0.2)}[s];[m][s]amix=inputs=2:normalize=0[a]`, '-t', '6', '-map', '0:v', '-map', '[a]',
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart'
-    ])
+    const beeps = micBeeps
+    const media = stemsMixMedia()
     const mic = audioOnly('stem-mic-beeps', 6, beeps)
     const system = audioOnly('stem-system', 6, toneGraph(300, 0.2))
     const music = audioOnly('music-8s', 8, toneGraph(440, 0.125))
@@ -398,6 +403,46 @@ async function main() {
     h.assert(musicDrift < 0.35, `the music follows the output timeline through the cut (drift ${musicDrift})`)
   }))
 
+  await test('audio pack: a recording whose system sound file is missing opens with its mixed sound, says the muted microphone cannot be left out, and preview and export agree', fx.withHome('ap-stem-missing', async (ctx, home) => {
+    const media = stemsMixMedia()
+    const mic = audioOnly('stem-mic-beeps', 6, micBeeps)
+    // The microphone was muted while system.m4a was still there; now it is gone (a folder copied in part).
+    const { id } = seed(home, {
+      name: 'Lost stem',
+      media,
+      seconds: 6,
+      audio: true,
+      files: { 'mic.m4a': mic },
+      audioSettings: { volume: 1, muted: false, mic: { volume: 1, muted: true } },
+      extra: { audioStems: { mic: true, system: true } }
+    })
+    const { app, win } = await openEditor(ctx, home, 'Lost stem', { hookMedia: true })
+    await win.click('.insp-tabs button:has-text("Audio")')
+    await win.waitForSelector('[data-testid="stems-missing"]')
+    const said = await win.textContent('[data-testid="stems-missing"]')
+    h.assert(/files of this recording are missing, so a source can no longer be muted or turned down on its own/.test(said), `the Audio panel says so: ${said}`)
+    h.assert(!(await win.$('.insp-section h3:has-text("Microphone")')), 'no per-source controls that cannot apply')
+    await shot(win, 'audio-panel-stem-missing')
+    // The preview plays the video's own (mixed) track: no stem is loaded.
+    await win.click('.transport .btn.round')
+    await h.sleep(800)
+    await win.click('.transport .btn.round')
+    const stems = await win.evaluate(() => window.__media.filter((m) => /(mic|system)\.m4a/.test(m.src)).length)
+    h.assert(stems === 0, `the preview plays the mixed sound (${stems} stem elements)`)
+    // The export plays the same: the microphone is in it, as the panel said.
+    const out = path.join(home, 'lost-stem.m4a')
+    await exportAs(app, win, out, 'M4A')
+    const s = pcm(out)
+    const ratio = amplitude(s, 1000, 1.01, 1.09) / amplitude(s, 300, 1.01, 1.09)
+    h.assert(close(ratio, 1, 0.1), `the export has every source, like the preview (${ratio})`)
+    // Acknowledged: the settings that no longer apply are cleared (one undo step), and the notice goes.
+    await win.click('button:has-text("Use the mixed sound")')
+    await win.waitForSelector('[data-testid="stems-missing"]', { state: 'detached' })
+    await waitSaved(win)
+    const saved = readProject(home, id)
+    h.assert(!('mic' in saved.audio) && saved.audioStems === undefined, `per-source settings cleared: ${JSON.stringify(saved.audio)} ${JSON.stringify(saved.audioStems)}`)
+  }))
+
   await test('audio pack: M4A includes the music, also for a recording without sound', fx.withHome('ap-m4a', async (ctx, home) => {
     const media = fx.indexedVideo({ seconds: 4, width: 1280, height: 720 })
     const music = audioOnly('music-mp3', 10, toneGraph(440, 0.125), 'mp3')
@@ -421,7 +466,7 @@ async function main() {
     h.assert(close(amplitude(s, 440, 1, 3), 0.125, 0.015), `the music is in the M4A at its volume (${amplitude(s, 440, 1, 3)})`)
   }))
 
-  await test('audio pack: an older project (no stems, music or new settings) exports exactly the audio it did before', fx.withHome('ap-legacy', async (ctx, home) => {
+  await test('audio pack: an older project (no stems, music or new settings) exports the audio it did before, with re-timed clips now exactly on their video', fx.withHome('ap-legacy', async (ctx, home) => {
     const media = fx.indexedVideo({ seconds: 8, width: 1280, height: 720, beeps: true })
     const clips = [
       { id: 'a', start: 0, end: 2, speed: 1 },
@@ -436,22 +481,51 @@ async function main() {
     h.assert(!(await win.$('.insp-section h3:has-text("Microphone")')), 'no per-source controls without stems')
     const out = path.join(home, 'older.m4a')
     await exportAs(app, win, out, 'M4A')
-    // What earlier versions ran for this project (see tests/fixtures/legacy-audio-args.json).
-    const graph =
+    // What earlier versions ran for this project (see tests/fixtures/legacy-audio-args.json),
+    // and the same graph with the one intended change: the clips are read at 48 kHz and each
+    // is cut to the samples its video lasts (2 s, 1 s, 2 s), because atempo's output is a
+    // little off the clip's length and every later clip used to move by that much.
+    const earlier =
       '[0:a]aresample=async=1:first_pts=0,asplit=3[s0][s1][s2];' +
       '[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2[c0];' +
       '[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,atempo=2[c1];' +
       '[s2]atrim=start=6:end=7,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,atempo=0.5[c2];' +
       '[c0][c1][c2]concat=n=3:v=0:a=1,volume=0.8,apad=whole_dur=5,atrim=end=5[aout]'
-    const reference = path.join(home, 'reference.m4a')
-    // prettier-ignore
-    execFileSync(FF, ['-y', '-hide_banner', '-loglevel', 'error', '-nostats', '-nostdin', '-vn', '-i', path.join(dir, 'screen.mp4'), '-filter_complex', graph, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-movflags', '+faststart', '-f', 'ipod', reference])
+    const exact = earlier
+      .replace('aresample=async=1', 'aresample=48000:async=1')
+      .replace('[c0];', ',apad=whole_len=96000,atrim=end_sample=96000[c0];')
+      .replace('[c1];', ',apad=whole_len=48000,atrim=end_sample=48000[c1];')
+      .replace('[c2];', ',apad=whole_len=96000,atrim=end_sample=96000[c2];')
+    const encode = (graph, file) =>
+      // prettier-ignore
+      execFileSync(FF, ['-y', '-hide_banner', '-loglevel', 'error', '-nostats', '-nostdin', '-vn', '-i', path.join(dir, 'screen.mp4'), '-filter_complex', graph, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-movflags', '+faststart', '-f', 'ipod', file])
+    encode(exact, path.join(home, 'reference.m4a'))
+    encode(earlier, path.join(home, 'earlier.m4a'))
     const a = pcm(out)
-    const b = pcm(reference)
+    const b = pcm(path.join(home, 'reference.m4a'))
     let diff = 0
     for (let i = 0; i < Math.max(a.length, b.length); i++) diff = Math.max(diff, Math.abs((a[i] ?? 9) - (b[i] ?? 9)))
-    console.log(`  older project: ${a.length} samples, largest difference from the earlier export ${diff}`)
-    h.assert(a.length === b.length && diff < 1e-6, `the export's audio is identical to before (${a.length} vs ${b.length} samples, max diff ${diff})`)
+    console.log(`  older project: ${a.length} samples, largest difference from the reference export ${diff}`)
+    h.assert(a.length === b.length && diff < 1e-6, `the export's audio is exactly the earlier graph with exact clip lengths (${a.length} vs ${b.length} samples, max diff ${diff})`)
+    // The last clip (0.5x from 3 s) on its own, as the video shows it: where does it start in each export?
+    // prettier-ignore
+    const alone = execFileSync(FF, ['-v', 'error', '-i', path.join(dir, 'screen.mp4'), '-af', 'aresample=48000:async=1:first_pts=0,atrim=start=6:end=7,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,atempo=0.5,volume=0.8', '-ac', '1', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })
+    const clip = new Float32Array(alone.buffer, alone.byteOffset, alone.length / 4).subarray(0, RATE)
+    const lagAt = (s, at) => {
+      let best = 0
+      let bestSum = -Infinity
+      for (let lag = -480; lag <= 480; lag++) {
+        let sum = 0
+        for (let i = 0; i < clip.length; i++) sum += (s[at + lag + i] ?? 0) * clip[i]
+        if (sum > bestSum) [best, bestSum] = [lag, sum]
+      }
+      return best
+    }
+    const now = lagAt(a, 3 * RATE)
+    const then = lagAt(pcm(path.join(home, 'earlier.m4a')), 3 * RATE)
+    console.log(`  older project: the 0.5x clip starts ${now} samples from its video time (earlier versions: ${then})`)
+    h.assert(Math.abs(now) <= 1, `the last clip's sound starts with its video (${now} samples off)`)
+    h.assert(Math.abs(then) > Math.abs(now), `earlier versions started it off its video (${then} samples), so the change is a fix`)
     await app.close()
     ctx.app = null
     const after = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'))
@@ -459,7 +533,7 @@ async function main() {
     void id
   }))
 
-  await test('audio pack: choose, replace and remove music in the Audio panel (undoable)', fx.withHome('ap-pick', async (ctx, home) => {
+  await test('audio pack: choose, replace and remove music in the Audio panel (undoable, also back to the replaced track)', fx.withHome('ap-pick', async (ctx, home) => {
     const media = videoWithSound('speech', 9, toneGraph(1000, 0.25, 'between(t,2,3.5)+between(t,6,7)'))
     const { id, dir } = seed(home, { name: 'Pick music', media, seconds: 9, audio: true })
     const { app, win } = await openEditor(ctx, home, 'Pick music')
@@ -482,8 +556,8 @@ async function main() {
     await win.waitForSelector('[data-testid="music-file"]')
     await waitSaved(win)
     let music = readProject(home, id).audio.music
-    h.assert(music && music.path === 'music.m4a' && music.volume === 0.35 && music.ducking === 0.7 && music.loop === true, `music added with defaults: ${JSON.stringify(music)}`)
-    h.assert(fs.existsSync(path.join(dir, 'music.m4a')), 'the file is copied into the project')
+    h.assert(music && music.path === 'music-1.m4a' && music.volume === 0.35 && music.ducking === 0.7 && music.loop === true, `music added with defaults: ${JSON.stringify(music)}`)
+    h.assert(fs.existsSync(path.join(dir, 'music-1.m4a')), 'the file is copied into the project')
     await shot(win, 'audio-panel-picked')
 
     // Settings survive a replacement.
@@ -497,9 +571,23 @@ async function main() {
     await h.sleep(500)
     await waitSaved(win)
     music = readProject(home, id).audio.music
-    h.assert(music.path === 'music.mp3' && music.volume > 0.9 && music.volume < 1.1, `replaced, keeping the volume: ${JSON.stringify(music)}`)
-    h.assert(!fs.existsSync(path.join(dir, 'music.m4a')), 'the old file is replaced')
+    h.assert(music.path === 'music-2.mp3' && music.volume > 0.9 && music.volume < 1.1, `replaced, keeping the volume: ${JSON.stringify(music)}`)
+    h.assert(fs.existsSync(path.join(dir, 'music-1.m4a')), 'the replaced track stays in the folder (undo can go back to it)')
     await win.waitForFunction(() => /MP3 · 0:10/.test(document.querySelector('[data-testid="music-file"]')?.textContent ?? ''))
+
+    // Undo goes back to the first track, which plays and exports; redo to the new one.
+    await win.keyboard.press('Control+z')
+    await waitSaved(win)
+    h.assert(readProject(home, id).audio.music.path === 'music-1.m4a', `undo brings back the first track: ${JSON.stringify(readProject(home, id).audio.music)}`)
+    await win.waitForFunction(() => /M4A · 0:03/.test(document.querySelector('[data-testid="music-file"]')?.textContent ?? ''))
+    h.assert(!(await win.$('[data-testid="music-missing"]')), 'the first track is found')
+    const undone = path.join(home, 'undone.m4a')
+    await exportAs(app, win, undone, 'M4A')
+    const back = pcm(undone)
+    h.assert(amplitude(back, 440, 0.5, 2.5) > 0.02, `the export has the music again, from the first track's file (${amplitude(back, 440, 0.5, 2.5)})`)
+    await win.keyboard.press('Control+y')
+    await waitSaved(win)
+    h.assert(readProject(home, id).audio.music.path === 'music-2.mp3', 'redo returns to the replacement')
 
     await win.click('button[aria-label="Remove music"]')
     await waitSaved(win)
@@ -507,7 +595,7 @@ async function main() {
     await win.keyboard.press('Control+z')
     await win.waitForSelector('[data-testid="music-file"]')
     await waitSaved(win)
-    h.assert(readProject(home, id).audio.music.path === 'music.mp3', 'undo brings it back')
+    h.assert(readProject(home, id).audio.music.path === 'music-2.mp3', 'undo brings it back')
   }))
 
   await test('audio pack: a Chromium recording keeps the microphone as its own track, aligned with the mixed sound', async (ctx) => {

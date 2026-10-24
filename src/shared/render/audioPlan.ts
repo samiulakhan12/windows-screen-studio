@@ -4,7 +4,8 @@
  * system stems with their own gains), cut and re-timed clip by clip; optional noise reduction
  * and loudness normalisation; background music on the output timeline with its fades and
  * ducking; the click sounds; and fades of the whole soundtrack. A job without any of the
- * newer settings produces exactly the graph earlier versions did.
+ * newer settings produces exactly the graph earlier versions did, except that re-timed clips
+ * are cut to the exact length of their video and click sounds keep the recording's channels.
  */
 import type { ClickSounds, ExportJob } from '../api/export'
 import { duckExpression, fitFades } from '../audio/automation'
@@ -22,6 +23,9 @@ const sec = (v: number): string => String(Math.max(0, +v.toFixed(6)))
 /** `,volume=g` when `g` changes anything. */
 const gainFilter = (g: number): string => (Math.abs(g - 1) > 1e-6 ? `,volume=${+g.toFixed(4)}` : '')
 
+/** afftdn's delay: half its 50 ms window (1200 samples at 48 kHz, 1102 at 44.1 kHz), at any strength. */
+export const DENOISE_LATENCY = 0.025
+
 /**
  * Noise reduction (ffmpeg afftdn) for a strength of 0..1. The noise floor is what afftdn
  * treats as noise: raising it with the strength (-60 to -32 dB) is what makes it stronger,
@@ -30,7 +34,10 @@ const gainFilter = (g: number): string => (Math.abs(g - 1) > 1e-6 ? `,volume=${+
  */
 export function denoiseFilter(strength: number): string {
   const s = Math.min(1, Math.max(0, strength))
-  return `afftdn=nr=${Math.round(8 + 22 * s)}:nf=${Math.round(-60 + 28 * s)}`
+  // afftdn returns every sample DENOISE_LATENCY late and drops as much at the end: the pad
+  // lets the end out and the trim puts the cleaned sound back on its own samples.
+  const d = DENOISE_LATENCY
+  return `apad=pad_dur=${d},afftdn=nr=${Math.round(8 + 22 * s)}:nf=${Math.round(-60 + 28 * s)},atrim=start=${d},asetpts=PTS-STARTPTS`
 }
 
 /**
@@ -82,13 +89,27 @@ export function audioFilterGraph(clips: Clip[], volume: number, duration: number
   return recordingGraph({ clips, volume, input }, duration, out)
 }
 
+/**
+ * Sample (at AUDIO_RATE) where each clip starts on the output timeline, then where the last
+ * one ends: the video shows clip i from output second sum(len/speed) of the clips before it.
+ */
+export function clipSampleBounds(clips: Clip[], rate = AUDIO_RATE): number[] {
+  let t = 0
+  return [0, ...clips.map((c) => Math.round((t += (c.end - c.start) / c.speed) * rate))]
+}
+
 /** audioFilterGraph for the recording with its stems, noise reduction and normalisation. */
 export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout'): string {
   const { clips } = rec
   const n = clips.length
   const parts: string[] = []
   const denoise = rec.noiseReduction && rec.noiseReduction > 0 ? `,${denoiseFilter(rec.noiseReduction)}` : ''
-  const resample = 'aresample=async=1:first_pts=0'
+  // atempo never returns exactly len/speed seconds (tens of ms off per clip), and concat would
+  // carry each error into every later clip. So an edit with re-timed clips works at the export's
+  // rate and cuts every clip to the exact samples the video gives it.
+  const retimed = clips.some((c) => Math.abs(c.speed - 1) > 1e-6)
+  const bounds = retimed ? clipSampleBounds(clips) : []
+  const resample = retimed ? `aresample=${AUDIO_RATE}:async=1:first_pts=0` : 'aresample=async=1:first_pts=0'
   let head: string
   const stems = rec.stems ?? []
   if (stems.length === 0) {
@@ -105,7 +126,8 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
   clips.forEach((c, i) => {
     const len = c.end - c.start
     const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${atempoChain(c.speed)}` : ''
-    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}[c${i}]`)
+    const exact = retimed ? `,apad=whole_len=${bounds[i + 1] - bounds[i]},atrim=end_sample=${bounds[i + 1] - bounds[i]}` : ''
+    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${exact}[c${i}]`)
   })
   const joined = n > 1 ? `${clips.map((_, i) => `[c${i}]`).join('')}concat=n=${n}:v=0:a=1,` : '[c0]'
   const normalize = rec.normalize ? `${NORMALIZE_FILTERS},` : ''
@@ -202,7 +224,12 @@ export function soundtrackGraph(opts: {
   const branches: { label: string; graph: string }[] = []
   if (audio) branches.push({ label: 'rec', graph: recordingGraph(audio, duration, solo ? 'aout' : 'rec') })
   if (music) branches.push({ label: 'mus', graph: musicGraph(music, duration, solo ? 'aout' : 'mus') })
-  if (clicks && hasClicks) branches.push({ label: 'clk', graph: clickTrackGraph(clicks.sounds, duration, clicks.input, solo ? 'aout' : 'clk')! })
+  if (clicks && hasClicks) {
+    const graph = clickTrackGraph(clicks.sounds, duration, clicks.input, solo ? 'aout' : 'clk0')!
+    // amix gives all its inputs one channel layout: the mono click would make the whole
+    // soundtrack mono. aresample lets the click take the layout of the sound it joins.
+    branches.push({ label: 'clk', graph: solo ? graph : `${graph};[clk0]aresample[clk]` })
+  }
   if (branches.length === 0) return null
   if (solo) return branches[0].graph
   const inputs = branches.map((b) => `[${b.label}]`).join('')
