@@ -18,6 +18,9 @@ export interface OutputChapter {
   title: string
 }
 
+/** False for a chapter at source time `t` that would start at the very end of the edited video (nothing after it: exports leave it out). */
+export const chapterInVideo = (clips: Clip[], t: number): boolean => viewingTime(clips, t) <= outputDuration(clips) - MIN_CHAPTER_GAP
+
 /**
  * The chapters of the edited video, in output seconds and in order: each source time is mapped
  * through the clips (one inside a cut starts where the video goes on, one at or past the end is

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ANNOTATION_SIZE } from '../../../../shared/editor/annotations'
 import { displayTime } from '../../../../shared/editor/clips'
-import { shortcutLabel, withShortcut } from '../../../../shared/editor/shortcuts'
+import { withShortcut } from '../../../../shared/editor/shortcuts'
 import {
   cleanChapterName,
   cleanTitle,
@@ -15,6 +15,7 @@ import {
   titleVisibleAt
 } from '../../../../shared/editor/titles'
 import { formatTime } from '../../../../shared/engine/project'
+import { chapterInVideo } from '../../../../shared/render/chapters'
 import { viewingTime } from '../../../../shared/render/overlays'
 import type { AnnotationStyle, Chapter, Clip, Project, TitleCard } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -24,7 +25,7 @@ import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import type { Selection } from '../selection'
-import { FirstShortcut } from '../ShortcutKeys'
+import { FirstShortcut, ShortcutKeys } from '../ShortcutKeys'
 import { addChapterAt, addTitleAt, showTitle } from '../titleItems'
 import { TitleStyleIcon } from '../TitleTrack'
 import '../shapes.css'
@@ -51,6 +52,16 @@ export function TextPanel(props: InspectorProps): JSX.Element {
   )
 }
 
+/** "Press T or double-click", following the user's shortcut ("Double-click" without one). */
+function PressOr({ accelerators }: { accelerators: readonly string[] }): JSX.Element {
+  if (!accelerators.length) return <>Double-click</>
+  return (
+    <>
+      Press <FirstShortcut accelerators={accelerators} fallback="" /> or double-click
+    </>
+  )
+}
+
 /* ---------- text annotations ---------- */
 
 function TextSection(props: InspectorProps): JSX.Element {
@@ -64,14 +75,7 @@ function TextSection(props: InspectorProps): JSX.Element {
           <EditorIcon name="text" size={16} /> Add text at playhead
         </button>
         <p className="hint">
-          {keymap.addText.length ? (
-            <>
-              Press <FirstShortcut accelerators={keymap.addText} fallback="" /> or double-click
-            </>
-          ) : (
-            'Double-click'
-          )}{' '}
-          the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.
+          <PressOr accelerators={keymap.addText} /> the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.
         </p>
       </Section>
       {project.annotations.length > 0 && (
@@ -151,7 +155,9 @@ function TitlesSection({ project, onSelect }: { project: Project; onSelect: (sel
           <TitleStyleIcon style="centered" size={16} /> Add title card
         </button>
       </div>
-      <p className="hint">An intro, a section title over a blurred frame, or a lower third with a name. Double-click the title track to add one there.</p>
+      <p className="hint">
+        An intro, a section title over the blurred video, or a lower third with a name. <PressOr accelerators={keymap.addTitle} /> the title track to add one.
+      </p>
       {titles.length > 0 && (
         <ul className="item-list title-list">
           {[...titles]
@@ -294,8 +300,9 @@ function ColorDots({
 
 /* ---------- chapters ---------- */
 
-/** "At 0:12 in the video", or where a chapter in a cut starts the video instead. */
+/** "At 0:12 in the video", or where a chapter in a cut starts the video instead, or that it is left out at the end. */
 function outputNote(clips: Clip[], t: number): string {
+  if (!chapterInVideo(clips, t)) return 'At the very end of the video, with nothing after it: exports leave it out.'
   const at = formatTime(viewingTime(clips, t), false)
   return Math.abs(displayTime(clips, t) - t) > 1e-6 ? `In a part that is cut: it starts at ${at} in the video, where it goes on.` : `At ${at} in the exported video.`
 }
@@ -350,7 +357,8 @@ function ChaptersSection({
   const { store, player } = services
   const keymap = useKeymap()
   const chapters = sortedChapters(project.chapters ?? [])
-  const jumpKeys = [keymap.nextChapter[0], keymap.prevChapter[0]].filter(Boolean).map(shortcutLabel)
+  const next = keymap.nextChapter[0]
+  const prev = keymap.prevChapter[0]
   return (
     <Section title={chapters.length ? `Chapters (${chapters.length})` : 'Chapters'}>
       <div className="title-tools">
@@ -359,8 +367,14 @@ function ChaptersSection({
         </button>
       </div>
       <p className="hint">
-        Chapters are written into MP4, MOV, WebM and M4A exports; the Export dialog copies them as YouTube timestamps.
-        {jumpKeys.length === 2 ? ` ${jumpKeys[0]} and ${jumpKeys[1]} jump between them.` : ''}
+        <PressOr accelerators={keymap.addChapter} /> the strip above the title cards to add one. Chapters go into MP4, MOV, WebM and M4A exports, and the
+        Export dialog copies them as YouTube timestamps.
+        {next && prev && (
+          <>
+            {' '}
+            <ShortcutKeys accelerator={next} /> and <ShortcutKeys accelerator={prev} /> jump between them.
+          </>
+        )}
       </p>
       {chapters.length > 0 && (
         <ul className="item-list chapter-list">

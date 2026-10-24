@@ -1,5 +1,6 @@
 import { displayTime } from '../../../shared/editor/clips'
 import { chapterNear, createChapter, createTitleCard, nextChapterName, titleTimesAt } from '../../../shared/editor/titles'
+import { chapterInVideo } from '../../../shared/render/chapters'
 import { speedAt } from '../../../shared/render/overlays'
 import { TITLE_FADE } from '../../../shared/render/titleCards'
 import type { Chapter, Clip, TitleCard } from '../../../shared/types'
@@ -45,9 +46,9 @@ export function addTitleAt({ store, player }: EditorServices, opts: AddOptions):
 
 /**
  * Adds a chapter at the playhead (on the frame the preview shows) and selects it. Where there is
- * one already, that one is selected instead.
+ * one already, that one is selected instead; at the very end of the video nothing is added.
  */
-export function addChapterAt({ store, player }: EditorServices, opts: AddOptions): Chapter {
+export function addChapterAt({ store, player }: EditorServices, opts: AddOptions): Chapter | null {
   const p = store.state
   const chapters = p.chapters ?? []
   const t = displayTime(p.clips, opts.at ?? player.time)
@@ -56,6 +57,10 @@ export function addChapterAt({ store, player }: EditorServices, opts: AddOptions
     opts.onSelect({ kind: 'chapter', id: near.id })
     opts.onNotice?.(`"${near.title}" already starts here, so it is selected instead`)
     return near
+  }
+  if (!chapterInVideo(p.clips, t)) {
+    opts.onNotice?.('A chapter needs some video after it: move the playhead back from the end')
+    return null
   }
   const chapter = createChapter(t, nextChapterName(chapters))
   store.update((q) => ({ ...q, chapters: [...(q.chapters ?? []), chapter] }))

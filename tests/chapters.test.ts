@@ -7,7 +7,7 @@ import { chapterMetadata, exportArgs, ffmpegPlan } from '../src/main/exportArgs'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { validateJob } from '../src/main/exportJob'
 import type { ExportJob } from '../src/shared/api/export'
-import { formatTimestamp, MAX_CHAPTERS, outputChapters, youtubeChapters } from '../src/shared/render/chapters'
+import { chapterInVideo, formatTimestamp, MAX_CHAPTERS, outputChapters, youtubeChapters } from '../src/shared/render/chapters'
 import type { Chapter, Clip } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -48,6 +48,15 @@ describe('outputChapters: source chapters on the edited video', () => {
       { start: 5, title: 'Two lines' }
     ])
     expect(outputChapters([], clips)).toEqual([])
+  })
+
+  it('says which chapters have video after them', () => {
+    const clips = [clip(0, 10), clip(15, 20)]
+    expect(chapterInVideo(clips, 0)).toBe(true)
+    expect(chapterInVideo(clips, 12)).toBe(true)
+    expect(chapterInVideo(clips, 19.85)).toBe(true)
+    expect(chapterInVideo(clips, 19.95)).toBe(false)
+    expect(chapterInVideo(clips, 25)).toBe(false)
   })
 
   it('never returns more than MAX_CHAPTERS', () => {

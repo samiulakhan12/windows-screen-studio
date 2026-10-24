@@ -96,7 +96,10 @@ function blurredFrame(fc: FrameContext): BlurredFrame | null {
   o.filter = `blur(${sigma}px)`
   o.drawImage(b.small, 0, 0)
   o.filter = 'none'
-  Object.assign(b, { m, sw, sh, fc })
+  b.m = m
+  b.sw = sw
+  b.sh = sh
+  b.fc = fc
   return b
 }
 
