@@ -39,7 +39,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ **Text annotations** on their own track (`T` / double-click): text (multi-line), caption pill or title style, size, position by dragging on the preview.
 - ✓ **Keystroke overlay**: keycap pills for recorded shortcuts, top or bottom, adjustable size.
 - ✓ Background (10 gradient presets, solid colour, custom image), padding, corner radius, shadow; aspect ratios Auto, 16:9, 9:16, 1:1, 4:3.
-- ✓ **Wallpapers and moving backgrounds**: 18 generated wallpapers (mesh gradients, waves, dunes, northern lights, blueprint, …; no image files), blur for wallpapers and custom images, and 6 **animated gradients** with adjustable speed.
+- ✓ **Wallpapers and moving backgrounds**: 16 generated wallpapers (mesh gradients, waves, dunes, northern lights, blueprint, …; no image files), blur for wallpapers and custom images, and 6 **animated gradients** with adjustable speed.
 - ✓ **Device frames**: browser window (address bar with your title), laptop, monitor and phone, light or dark, vector-drawn so they stay crisp; they shrink with the card when the camera pulls back.
 - ✓ **Card looks**: border (solid or frosted *glass*), shadow styles soft / hard (offset, no blur) / glow (coloured), with a colour.
 - ✓ **Watermark or logo**: an image (PNG, JPG, WebP, SVG) or text in a corner or the centre, with size, opacity and margin; unaffected by zoom. Changing the logo can be undone.
