@@ -4,6 +4,7 @@ import { FRAME_KINDS } from '../engine/deviceFrames'
 import { ZOOM_EASINGS } from '../engine/easing'
 import { clamp } from '../engine/math'
 import { DEFAULT_CURSOR_EXTRAS } from '../engine/project'
+import { readWebcamLook, WEBCAM_SHAPES } from '../engine/webcamData'
 import { WATERMARK_FILE_RE, WATERMARK_LIMITS, WATERMARK_POSITIONS, WATERMARK_TEXT_MAX } from '../engine/watermark'
 import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomSettingsOf } from '../engine/zoom'
 import type {
@@ -264,7 +265,8 @@ export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
     webcam: defined<WebcamSettings>({
       corner: oneOf(w.corner, CORNERS),
       size: num(w.size, L.webcamSize),
-      shape: oneOf(w.shape, ['circle', 'rounded'] as const)
+      shape: oneOf(w.shape, WEBCAM_SHAPES),
+      ...readWebcamLook(w)
     }),
     effects: defined<StyleDefaults['effects']>({
       motionBlur: num(e.motionBlur, L.motionBlur),
