@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { TrackKind } from '../../shared/api/recording'
 import type { CursorShape } from '../../shared/types'
-import type { NativeCaptureSession, NativeEndedInfo, NativeStartInfo, NativeStopInfo } from '../nativeCapture'
+import type { NativeCaptureError, NativeCaptureSession, NativeEndedInfo, NativeStartInfo, NativeStopInfo } from '../nativeCapture'
 import { RAW, type RecordingManifest } from '../projects'
 import { ChunkWriter } from './chunkWriter'
 import { stopNativeVideo } from './nativeVideo'
@@ -117,9 +117,10 @@ export class ActiveRecording {
     try {
       return (await this.nativeStop)?.shapes ?? []
     } catch (err) {
-      // The MP4 may still be usable; processing will tell.
+      // The MP4 may still be usable (fragmented, readable up to the crash); processing will
+      // tell. Keep the cursor shapes the helper reported before it failed.
       console.error('Native capture did not stop cleanly:', err)
-      return []
+      return (err as NativeCaptureError | undefined)?.shapes ?? []
     }
   }
 

@@ -171,6 +171,15 @@ describe('ActiveRecording with native capture', () => {
     expect(await s.finishNative()).toEqual([])
     expect(calls).toContain('kill')
   })
+
+  it('keeps the cursor shapes a crashed helper reported before it failed', async () => {
+    const err = Object.assign(new Error('crashed'), { shapes: [{ at: T0 + 200, shape: 'pointer' as const }] })
+    const { session } = fakeSession({ stop: () => Promise.reject(err) })
+    const s = new ActiveRecording(manifest(), '/tmp')
+    s.attachNative(session, { startedAt: T0, width: 320, height: 240 })
+    s.stop(T0 + 1000)
+    expect(await s.finishNative()).toEqual([{ at: T0 + 200, shape: 'pointer' }])
+  })
 })
 
 const ffmpeg = ffmpegPath()
