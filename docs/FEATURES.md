@@ -11,6 +11,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ 3-2-1 countdown, floating always-on-top control bar (excluded from the capture) with timer, pause/resume, stop and discard (with confirmation). A hotkey (default `Ctrl+Shift+2`) stops; if another app owns it the bar says so.
 - ✓ Recording options on Home, saved in the app settings: 30 or 60 fps (the editing proxy keeps the rate); hide desktop icons while recording (Windows; restored on stop, cancel, crash, quit or next start; *Windows-unverified*); auto-pause when idle (3–60 s, "Paused (idle)" on the bar, resumes on the next input); custom hotkeys for stop / pause-resume / zoom here (default `Ctrl+Shift+2` / `Ctrl+Shift+P` / `Ctrl+Shift+Z`), checked for conflicts and for combos another app owns.
 - ✓ Live camera preview on Home (mirrored; released the moment recording starts).
+- ✓ **Recording presets** on Home: save the current setup (source kind, frame rate, microphone / system audio / camera and their devices, countdown, auto-pause, desktop icons, keyboard activity) under a name and pick it again later; a device that is gone falls back to the default with a notice.
 - ✓ "Zoom here" marks and typing bursts for auto zoom (only *when* typing happened, never which keys; the "Record keyboard activity" toggle covers shortcuts and typing).
 - ✓ **Native Windows capture** (`ssw-capture.exe`, Windows Graphics Capture + Media Foundation): screens and areas are recorded **without the Windows cursor**, encoded on the GPU, with paused time cut out. Chromium records the audio. Any failure falls back to Chromium capture automatically. *Windows-unverified.*
 - ✓ Cursor position, clicks (clicks on the app's own windows and outside the recorded display/area are ignored), cursor shape (native capture) and **shortcut keystrokes** (combos with Ctrl/Alt/Win and special keys only; plain typing is never recorded; can be turned off on Home).
@@ -30,6 +31,8 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ **Region zoom**: draw, move or resize a rectangle on the preview; the zoom frames exactly it.
 - ✓ **Pull back**: levels 0.5–1× shrink the recording card (crisp corners and shadow) to show more background.
 - ✓ **Auto zoom settings** (level, grouping, lead-in, hold, right clicks, typing, zoom-here marks) regenerate automatic zooms live.
+- ✓ **Typing zoom**: a click into a field and the typing that follows become one zoom that holds through the whole burst (and short pauses), aimed at where you clicked rather than at the idle mouse.
+- ✓ **3D tilt**: the recording shown as a tilted card in perspective (presets plus angle and perspective sliders), standing still, leaning gently toward the cursor, or flattening while zoomed in. Drawn with WebGL in preview and export; part of style presets and the default style. The preview shows the flat frame while you edit something on it, so handles line up.
 - ✓ **Cursor styles**: Auto (recorded shapes), macOS-like, Windows-like, large white/black, or a custom PNG/JPG/WebP/SVG image; highlight halo; ripple / ring / pulse click effects in any colour; click sounds (preview and export); loop home for seamless GIFs; tilt and motion trail.
 
 ## Editor
@@ -51,7 +54,12 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ **Command palette** (`Ctrl+K` or `Ctrl+Shift+P`): search every editor command (playback, editing, zooms, text, shapes, spotlight, toggles, inspector tabs, export, smart speed), each shown with its shortcut; recently used commands come first.
 - ✓ **Custom shortcuts** (`Ctrl+/`): rebind any command, see and resolve conflicts, reset one or all; hints across the editor follow your keys.
 - ✓ **Smart speed**: finds stretches where the picture does not change, nothing is heard *and* you did not move, click or type, then speeds them up (2×/4×/8×) or cuts them in one undoable step, showing how much time it saves.
-- ✓ Webcam bubble: show/hide, corner, size, circle or rounded.
+- ✓ Webcam bubble: show/hide, corner, size, circle, rounded or square, border (width, colour), mirror, drop shadow, and framing (zoom into the picture and drag to choose the visible part).
+- ✓ **Background blur behind you** on the camera, fully offline: person segmentation (MediaPipe selfie segmenter) runs in a worker with the model and WebAssembly shipped inside the app; the same mask is used in preview and export. If it cannot run (for example without WebGL) the camera is shown unblurred and the Camera panel says why. *Windows-unverified.*
+- ✓ **Camera layouts over time**: screen with bubble, camera only, screen only, side by side, or a large camera, on their own timeline track with smooth 0.4 s transitions (only for recordings with a camera).
+- ✓ **Title cards**: centered, big or lower-third titles with an optional subtitle, over a blurred frame, a solid colour or the project's background, with fades; on their own timeline track, edited in the Text panel (`Shift+T` adds one).
+- ✓ **Chapters**: flags on the timeline (`M` adds one, `Shift+PageDown` / `Shift+PageUp` jump between them), listed in the Text panel, written into MP4 / MOV / WebM / M4A exports, and **Copy chapters** gives YouTube timestamps with hints when YouTube would not accept them.
+- ✓ **Remove silences** (Clip tab, Smart speed): finds stretches without sound, keeps a little padding, and cuts or speeds them up in one undoable step.
 - ✓ Audio volume (0–200%) and mute, applied to preview and export.
 - ✓ Zoomable, scrollable timeline (`+`/`-`, `Ctrl`+wheel, Fit) that stays usable for long recordings; playhead follows playback.
 - ✓ Shortcuts work regardless of which control was last used, and are paused behind the export dialog. Sharp preview on high-DPI screens; only redraws when something changed.
