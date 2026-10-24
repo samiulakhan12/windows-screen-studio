@@ -1,7 +1,7 @@
 # ssw-capture — native Windows capture helper
 
-A small Rust program (≈430 KB) that records one monitor with **Windows.Graphics.Capture
-with the mouse cursor excluded** and encodes it to **H.264 MP4 with Media Foundation**,
+A small Rust program (≈440 KB) that records one monitor or one window with
+**Windows.Graphics.Capture with the mouse cursor excluded** and encodes it to **H.264 MP4 with Media Foundation**,
 on the GPU when a hardware encoder is present (NVIDIA NVENC, Intel Quick Sync, AMD AMF).
 The MP4 is **fragmented**, so a recording survives the helper being killed or crashing.
 
@@ -44,8 +44,8 @@ node scripts/build-native.mjs --require  # fail (exit 1) instead of warning when
   that Electron runs as Node; the tests use `tests/fixtures/fake-capture-helper.cjs`).
 
 Release profile: `opt-level = "s"`, LTO, stripped, `panic = "abort"`. Unit tests of the
-platform-independent logic (CLI, protocol, frame pacing, sizing, cursor shapes, interrupt
-handling) run anywhere: `cargo test --manifest-path native/Cargo.toml`.
+platform-independent logic (CLI, protocol, frame pacing, sizing and the window fit, cursor
+shapes, window tracking, interrupt handling) run anywhere: `cargo test --manifest-path native/Cargo.toml`.
 
 ## Command line
 
@@ -72,7 +72,7 @@ Human-readable diagnostics go to stderr; stdout carries only JSON.
 ### `probe`
 
 ```json
-{"supported":true,"cursorToggle":true,"borderToggle":true,"capture":true,"minUpdateInterval":false,
+{"supported":true,"cursorToggle":true,"borderToggle":true,"windowCapture":true,"capture":true,"minUpdateInterval":false,
  "hardwareEncoders":["NVIDIA H.264 Encoder MFT"],"softwareEncoder":true,"reason":null}
 ```
 
@@ -100,7 +100,7 @@ Events, one JSON object per line on stdout:
 | `{"event":"cursor","at":<epoch ms>,"shape":"arrow"}` | Cursor shape changed (and once right after `started`) |
 | `{"event":"paused","at":…}` / `{"event":"resumed","at":…}` | A pause/resume took effect at `at` |
 | `{"event":"warning","message":"…"}` | Something non-fatal (e.g. the border could not be hidden, or a plain MP4 is written because fragmented MP4 could not be set up) |
-| `{"event":"stopped","frames":N,"dropped":D,"duration":S,"reason":"stop"}` | The MP4 is finalised; `reason` is `stop`, `eof` (stdin/stdout closed), `closed` (monitor disconnected or the capture was revoked), `interrupt` (Ctrl+C or the console closed) or `shutdown` (sign-out, shutdown, restart) |
+| `{"event":"stopped","frames":N,"dropped":D,"duration":S,"reason":"stop"}` | The MP4 is finalised; `reason` is `stop`, `eof` (stdin/stdout closed), `closed` (monitor disconnected, recorded window closed, or the capture was revoked), `interrupt` (Ctrl+C or the console closed) or `shutdown` (sign-out, shutdown, restart) |
 | `{"event":"error","message":"…"}` | Fatal; the process exits non-zero (a partial recording is finalised when possible, and a fragmented one is kept even when that fails) |
 
 Commands, one per line on stdin: `pause [epochMs]`, `resume [epochMs]`, `stop [epochMs]`.
@@ -155,6 +155,26 @@ window. It prints `{"event":"ready"}`, then the same `window` events (initial re
 first, then changes), and on stdin `stop` or EOF prints `{"event":"stopped","reason":"stop"}`
 and exits 0. If the window does not exist it prints an `error` event and exits 4; if the
 window closes while watched it prints `stopped` with `"reason":"closed"` and exits 0.
+It needs neither Windows.Graphics.Capture nor an encoder (only user32 and DWM), so it also works
+where `probe` reports `"supported":false`.
+
+Details (`src/window.rs` decides what is reported, `src/win/window.rs` asks Windows):
+
+- A handle that is not a window (`IsWindow`) is "not found" (exit 4) for both commands, before
+  any capability check, so a stale handle is told apart from an unsupported system.
+- Not on screen = minimised (`IsIconic`), hidden (`!IsWindowVisible`) or cloaked
+  (`DWMWA_CLOAKED`: another virtual desktop, a suspended app). All are reported as
+  `"minimized":true` with the **last on-screen rectangle** (not Windows' -32000,-32000 parking
+  spot), so a minimise/restore pair does not look like a jump across the screen.
+- `record --window` emits the first `window` event on the recording thread right after
+  `started`, then the cursor thread (which already polls the cursor shape every 16 ms) looks
+  at the window on the same tick; nothing is printed unless something changed.
+- Frames: a resized window's frame whose content outgrew the pool's buffers (WGC then delivers a
+  cropped picture until the pool is recreated) is skipped and the last full frame stays on
+  screen for that slot; frames that arrive while the window is minimised are ignored.
+- The window must not be minimised when recording starts (WGC delivers no first frame then; the
+  helper says so after 5 s and exits 1). The device is created on the GPU of the monitor showing
+  most of the window (`MonitorFromWindow`).
 
 ### Output file
 
@@ -204,7 +224,8 @@ WGC frame pool (free-threaded, polled) ──CopySubresourceRegion──▶ newe
   `std::thread::sleep`, at least every 15 ms), drains the capture pool, converts and encodes.
   Separate threads read stdin and poll the cursor shape.
 - `pacer.rs` owns the timeline (slots, pauses, stop, catch-up); it is pure and unit-tested.
-- The Direct3D device is created on the GPU that drives the recorded monitor, so frames never
+- The Direct3D device is created on the GPU that drives the recorded monitor (for a window: the
+  monitor showing most of it), so frames never
   cross GPUs on hybrid laptops and the encoder Media Foundation picks sits on that GPU.
 - Encoder setup tries hardware first with full tuning, then progressively simpler settings,
   then the software encoder, so an encoder that rejects one property still works. Each
@@ -220,8 +241,14 @@ WGC frame pool (free-threaded, polled) ──CopySubresourceRegion──▶ newe
 
 Verified in this repository (Linux container, no Windows):
 
-- `cargo test`: CLI, protocol/JSON, frame pacing (static screen, pauses, late wake-ups,
-  stop), output sizing and bitrate, cursor-shape table, and the built binary's exit codes.
+- `cargo test`: CLI (including `--window` / `watch-window` parsing: decimal and signed handles,
+  `0x` hex, rejects 0, junk, whole `window:<n>:<m>` ids and `--monitor` + `--window`), protocol/JSON
+  (the `window` event and the watch `stopped` event, field for field as in the table above),
+  frame pacing (static screen, pauses, late wake-ups, stop), output sizing and bitrate, the fit of
+  a resized window (`fit_content`, checked against the vectors of `tests/windowGeometry.test.ts`
+  so the helper and the app agree), the window tracker (first state, changes only, minimise keeps
+  the on-screen rectangle, close reported once), cursor-shape table, and the built binary's exit
+  codes.
 - Cross-compiles for `x86_64-pc-windows-gnu` with no `cargo clippy -D warnings` findings.
 - Under wine 9: `probe` exits 3 with JSON (wine has no Windows.Graphics.Capture), `list`
   returns the monitors, `record` fails cleanly with exit 3. `selftest` creates the Direct3D 11
@@ -231,6 +258,18 @@ Verified in this repository (Linux container, no Windows):
   attempt kept its file locked, so every later fallback failed with a sharing violation.)
   Wine has no fragmented MP4 sink (`Creating the MP4 writer failed: Invalid parameter`), so
   `selftest` there also exercises the fallback to a plain MP4.
+- Window commands under wine 9: `probe` reports `"windowCapture":false`; `watch-window` and
+  `record --window` with a handle that is no window print a JSON error and exit 4; `watch-window`
+  on wine's desktop window (0x10020) prints `ready`, its rectangle (the virtual screen) and, on
+  `stop`, `stopped` with exit 0 — the real polling/stdin loop end to end; `record --window` on that
+  window gets past the lookup and exits 3 (no Windows.Graphics.Capture). These run through the
+  Electron client in `tests/e2e/native.e2e.cjs`.
+- Window recording through the client against the fake helper on Xvfb + openbox: an xterm found
+  through Electron's `desktopCapturer` (`window:<xid>:0`), moved (XMoveWindow) and resized
+  (XResizeWindow) mid-recording: the rectangle timeline, the fixed output size and the letterboxed
+  fit of the resized window in the video; `watchWindow()` following it; the window closing ending
+  a recording (`onEnded` "closed") and a watch. `tests/nativeCapture.test.ts` covers the client's
+  window paths (ids, timelines, minimise, close, early exits, timeouts, no stray processes).
 - `tests/nativeCapture.test.ts` and `tests/e2e/native.e2e.cjs` drive the Electron client
   against a protocol-compatible fake helper and against the real exe under wine: `onEnded`
   for a closed capture, a fatal error and a crash; graceful stop when the app quits (the e2e
@@ -240,7 +279,11 @@ Verified in this repository (Linux container, no Windows):
   fragmented MP4 cut off mid-fragment (what a killed helper leaves), and fails on a plain MP4
   cut off the same way ("moov atom not found").
 
-**Not verified: actual capture and encoding, which need Windows 10 2004+ or Windows 11.**
+**Not verified: actual capture and encoding, which need Windows 10 2004+ or Windows 11.** For
+windows that includes: that `CreateForWindow` captures exactly the `DWMWA_EXTENDED_FRAME_BOUNDS`
+area (the app maps the cursor through that rectangle; a mismatch of a few pixels would offset
+the editor's cursor by as much), the frame-pool recreation on resize, minimise/restore and
+close handling, and the cursor being absent from window captures.
 Also unverified for the same reason: that Media Foundation's fragmented sink honours
 `MF_MPEG4SINK_MIN_FRAGMENT_DURATION` (≈1 s fragments) and that ffmpeg reads its output as it
 reads ffmpeg's own fMP4; the console-close and sign-out/shutdown handling; the detached spawn
@@ -310,3 +353,32 @@ available (e.g. `node_modules\ffmpeg-static` ships ffmpeg; any ffprobe works).
       if it does, fragmented MP4 could not be set up on this machine.
 11. **No helper** — rename `native\bin\ssw-capture.exe` and record: the app falls back to
     Chromium capture without errors.
+12. **Window capture from the command line** — open Notepad and get its handle in PowerShell:
+    `(Get-Process notepad).MainWindowHandle`. Then
+    `native\bin\ssw-capture.exe record --window <handle> --out %TEMP%\win.mp4 --fps 60`.
+    Expect `ready`, `started` (width/height = Notepad's size, made even), then one `window` event
+    whose rectangle matches Notepad's visible frame (no invisible border: compare with a
+    screenshot), before the first `cursor` event. While recording:
+    - **Move** it: one `window` event per position change (none while it stands still).
+    - **Resize** it larger and smaller: `window` events with the new size; the video keeps the
+      initial size and shows the window scaled to fit, centred, with black bars — never stretched,
+      never cropped, no garbage in the bars, no frame showing only a corner of the window.
+    - **Minimise** and restore: `"minimized":true` with the previous rectangle, then
+      `"minimized":false`; the video holds the last picture meanwhile (constant frame rate).
+    - Move it to **another virtual desktop** and back: `"minimized":true` meanwhile.
+    - **Close** it: `stopped` with `"reason":"closed"`, exit 0, a playable file.
+    - `ffprobe` the file: h264, the initial size, duration ≈ recorded time. Play it: **no mouse
+      cursor**, no yellow border (Windows 11).
+    - `record --window 1 --out x.mp4 --fps 30` and `watch-window --window 1`: JSON error, exit 4.
+13. **watch-window** — `native\bin\ssw-capture.exe watch-window --window <handle>`: `ready`, then
+    the rectangle; move/resize/minimise as above; `stop` Enter: `{"event":"stopped","reason":"stop"}`,
+    exit 0. Closing the window instead: `"reason":"closed"`. On a 150 % monitor the numbers are
+    physical pixels (1.5x what the window's DIP size suggests).
+14. **Window recording in the app** — record a single window with native capture (Windows 10
+    2004+): the editor shows only the smooth cursor (no second, baked-in cursor), click ripples
+    and auto zooms land on what was clicked, also after moving and resizing the window during the
+    recording; clicks outside the window and time while it was minimised produce nothing. Repeat
+    with the window on a 150 % monitor and with the window straddling two monitors. Then with a
+    helper whose `probe` reports `"windowCapture":false` (or on a machine where window capture
+    fails) the app records the window with Chromium plus `watch-window`: ripples and zooms still
+    land correctly (the OS cursor is in the video then).

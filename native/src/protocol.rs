@@ -2,6 +2,10 @@
 //! (see src/main/nativeCapture.ts). Events are newline-delimited JSON objects on
 //! stdout; commands are plain text lines on stdin.
 
+#[cfg(test)]
+use crate::window::WindowRect;
+use crate::window::WindowState;
+
 /// A command read from stdin. The optional value is the epoch-ms instant the app
 /// paused/resumed/stopped at, so the video timeline matches the app's own clock
 /// even though the line arrives a few milliseconds later.
@@ -196,6 +200,25 @@ pub fn event_stopped(info: &StoppedInfo) -> String {
         .finish()
 }
 
+/// `watch-window` ends: "stop" (stop command or end of stdin) or "closed" (the window closed).
+pub fn event_watch_stopped(reason: &str) -> String {
+    JsonObject::new().str("event", "stopped").str("reason", reason).finish()
+}
+
+/// The recorded or watched window's screen rectangle (physical pixels) at `at`.
+pub fn event_window(at: f64, state: &WindowState) -> String {
+    let r = state.rect;
+    JsonObject::new()
+        .str("event", "window")
+        .num("at", at)
+        .int("x", r.x as i64)
+        .int("y", r.y as i64)
+        .int("width", r.width as i64)
+        .int("height", r.height as i64)
+        .bool("minimized", state.minimized)
+        .finish()
+}
+
 pub fn event_error(message: &str) -> String {
     JsonObject::new().str("event", "error").str("message", message).finish()
 }
@@ -257,6 +280,20 @@ mod tests {
         );
         assert_eq!(event_error("bad \"thing\""), r#"{"event":"error","message":"bad \"thing\""}"#);
         assert!(!event_error("line1\nline2").contains('\n'));
+    }
+
+    #[test]
+    fn writes_window_events() {
+        // Field names and order as in native/README.md and WindowRectEvent (nativeCapture.ts).
+        let state = WindowState { rect: WindowRect { x: -8, y: 120, width: 1282, height: 721 }, minimized: false };
+        assert_eq!(
+            event_window(1700000000123.25, &state),
+            r#"{"event":"window","at":1700000000123.25,"x":-8,"y":120,"width":1282,"height":721,"minimized":false}"#
+        );
+        let minimized = WindowState { minimized: true, ..state };
+        assert!(event_window(1.0, &minimized).ends_with(r#""minimized":true}"#));
+        assert_eq!(event_watch_stopped("closed"), r#"{"event":"stopped","reason":"closed"}"#);
+        assert_eq!(event_watch_stopped("stop"), r#"{"event":"stopped","reason":"stop"}"#);
     }
 
     #[test]

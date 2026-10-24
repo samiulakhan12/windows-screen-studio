@@ -21,7 +21,21 @@ fn invalid_arguments_exit_2_with_a_json_error_for_record() {
 
     let (code, stdout, _) = run(&["bogus"]);
     assert_eq!(code, 2);
-    assert!(stdout.is_empty(), "only record/selftest print JSON errors");
+    assert!(stdout.is_empty(), "only record/selftest/watch-window print JSON errors");
+}
+
+#[test]
+fn invalid_window_arguments_exit_2_with_a_json_error() {
+    // The app passes the number from Electron's "window:<HWND>:<n>"; never the whole id.
+    let (code, stdout, _) = run(&["watch-window", "--window", "window:123:0"]);
+    assert_eq!(code, 2);
+    assert!(stdout.starts_with(r#"{"event":"error","message":"--window must be a window handle"#), "{stdout}");
+    let (code, stdout, _) = run(&["record", "--window", "0", "--out", "x.mp4", "--fps", "30"]);
+    assert_eq!(code, 2);
+    assert_eq!(stdout.trim(), r#"{"event":"error","message":"--window must not be 0"}"#);
+    let (code, stdout, _) = run(&["record", "--window", "5", "--monitor", "0", "--out", "x.mp4", "--fps", "30"]);
+    assert_eq!(code, 2);
+    assert!(stdout.contains("cannot be combined"), "{stdout}");
 }
 
 #[test]
@@ -32,6 +46,8 @@ fn version_and_help_succeed() {
     let (code, stdout, _) = run(&["--help"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("record --monitor"));
+    assert!(stdout.contains("record --window"));
+    assert!(stdout.contains("watch-window --window"));
 }
 
 #[cfg(not(windows))]
@@ -40,7 +56,16 @@ fn reports_unsupported_off_windows() {
     let (code, stdout, _) = run(&["probe"]);
     assert_eq!(code, 3);
     assert!(stdout.starts_with(r#"{"supported":false,"cursorToggle":false,"borderToggle":false"#), "{stdout}");
+    assert!(stdout.contains(r#""windowCapture":false"#), "{stdout}");
     let (code, stdout, _) = run(&["record", "--monitor", "0", "--out", "x.mp4", "--fps", "60"]);
     assert_eq!(code, 3);
     assert!(stdout.starts_with(r#"{"event":"error""#), "{stdout}");
+    for args in [
+        &["record", "--window", "131330", "--out", "x.mp4", "--fps", "30"][..],
+        &["watch-window", "--window", "131330"],
+    ] {
+        let (code, stdout, _) = run(args);
+        assert_eq!(code, 3, "{args:?}");
+        assert!(stdout.starts_with(r#"{"event":"error""#), "{stdout}");
+    }
 }

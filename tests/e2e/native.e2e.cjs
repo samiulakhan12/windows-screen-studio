@@ -1,10 +1,14 @@
 // Native capture client (src/main/nativeCapture.ts) inside the real Electron main process:
 // display -> monitor matching with Electron's screen module, the helper protocol, pause/resume
 // cutting, stop/kill and error reporting. The helper is the fake (tests/fixtures), recording the
-// Xvfb screen with ffmpeg x11grab -draw_mouse 0; when wine is installed the real ssw-capture.exe
-// (npm run build:native) is also driven through wine, where Windows.Graphics.Capture is absent,
-// to check that the client and the real binary agree on arguments, JSON and errors.
-const { execFileSync, spawnSync } = require('node:child_process')
+// Xvfb screen with ffmpeg x11grab -draw_mouse 0. Single windows: openbox (started here when
+// installed) and an xterm; the window source id comes from Electron's desktopCapturer, the window
+// is moved and resized with XMoveWindow/XResizeWindow mid-recording, and its rectangle timeline,
+// the fixed output size and the fit of the resized window are checked; watchWindow() follows it
+// until it closes. When wine is installed the real ssw-capture.exe (npm run build:native) is also
+// driven through wine, where Windows.Graphics.Capture is absent, to check that the client and the
+// real binary agree on arguments, JSON and errors (including record --window / watch-window).
+const { execFileSync, spawn, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -34,9 +38,101 @@ function ffprobe(file) {
   return { ...j.streams[0], duration: parseFloat(j.format.duration) }
 }
 
+// Every app (and so every helper) of this run carries this variable, so the leftover check
+// ignores other processes that happen to mention the helper (another test run, a shell).
+const RUN_MARK = `SSW_E2E_NATIVE_RUN=${process.pid}`
+
+/** Helper processes of this run still running ("pid command line"). */
 function helperProcesses() {
-  const r = spawnSync('pgrep', ['-f', 'fake-capture-helper|ssw-capture.exe'], { encoding: 'utf8' })
-  return (r.stdout || '').split('\n').filter(Boolean)
+  const found = []
+  for (const pid of fs.readdirSync('/proc').filter((d) => /^\d+$/.test(d))) {
+    try {
+      const cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ').trim()
+      if (!/fake-capture-helper|ssw-capture\.exe/.test(cmd)) continue
+      if (fs.readFileSync(`/proc/${pid}/environ`, 'utf8').split('\0').includes(RUN_MARK)) found.push(`${pid} ${cmd.slice(0, 160)}`)
+    } catch {
+      // Gone meanwhile, or not ours to read.
+    }
+  }
+  return found
+}
+
+// X11 window operations for the window tests (python3 + libX11 through ctypes).
+const XWIN = String.raw`
+import ctypes, json, sys
+from ctypes import POINTER, byref, c_char_p, c_int, c_uint, c_ulong, c_void_p
+x11 = ctypes.cdll.LoadLibrary('libX11.so.6')
+x11.XOpenDisplay.argtypes = [c_char_p]
+x11.XOpenDisplay.restype = c_void_p
+x11.XDefaultRootWindow.argtypes = [c_void_p]
+x11.XDefaultRootWindow.restype = c_ulong
+x11.XMoveWindow.argtypes = [c_void_p, c_ulong, c_int, c_int]
+x11.XResizeWindow.argtypes = [c_void_p, c_ulong, c_uint, c_uint]
+x11.XSync.argtypes = [c_void_p, c_int]
+x11.XTranslateCoordinates.argtypes = [c_void_p, c_ulong, c_ulong, c_int, c_int, POINTER(c_int), POINTER(c_int), POINTER(c_ulong)]
+x11.XGetGeometry.argtypes = [c_void_p, c_ulong, POINTER(c_ulong), POINTER(c_int), POINTER(c_int), POINTER(c_uint), POINTER(c_uint), POINTER(c_uint), POINTER(c_uint)]
+d = x11.XOpenDisplay(None)
+op, w = sys.argv[1], int(sys.argv[2])
+if op == 'move':
+    x11.XMoveWindow(d, w, int(sys.argv[3]), int(sys.argv[4]))
+elif op == 'resize':
+    x11.XResizeWindow(d, w, int(sys.argv[3]), int(sys.argv[4]))
+elif op == 'geometry':
+    root, x, y, child = c_ulong(), c_int(), c_int(), c_ulong()
+    gx, gy, width, height, border, depth = c_int(), c_int(), c_uint(), c_uint(), c_uint(), c_uint()
+    x11.XGetGeometry(d, w, byref(root), byref(gx), byref(gy), byref(width), byref(height), byref(border), byref(depth))
+    x11.XTranslateCoordinates(d, w, x11.XDefaultRootWindow(d), 0, 0, byref(x), byref(y), byref(child))
+    print(json.dumps({'x': x.value, 'y': y.value, 'width': width.value, 'height': height.value}))
+x11.XSync(d, 0)
+`
+
+function xwin(...args) {
+  return execFileSync('python3', ['-I', '-c', XWIN, ...args.map(String)]).toString()
+}
+
+const xgeometry = (xid) => JSON.parse(xwin('geometry', xid))
+
+/** RGB of one pixel of the video frame at `at` seconds. */
+function pixel(file, at, x, y) {
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-ss', at.toFixed(3), '-i', file, '-frames:v', '1', '-vf', `format=rgb24,crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])
+  return [...raw.subarray(0, 3)]
+}
+
+const has = (cmd) => spawnSync('which', [cmd]).status === 0
+
+/** Starts openbox on the test's display (desktopCapturer lists windows only with a window manager). */
+function startWindowManager() {
+  // Exits at once when a window manager already runs; harmless.
+  const wm = spawn('openbox', [], { stdio: 'ignore' })
+  wm.on('error', () => undefined)
+  return wm
+}
+
+/** Starts an xterm titled `title` and resolves with it once it is mapped. */
+async function startXterm(title, geometry) {
+  const term = spawn('xterm', ['-T', title, '-geometry', geometry, '-e', 'sleep', '600'], { stdio: 'ignore' })
+  term.on('error', () => undefined)
+  await h.sleep(1500)
+  return term
+}
+
+/** The desktopCapturer window source titled `title` (retries: the X11 capturer can be flaky under load). */
+async function windowSource(app, title) {
+  const end = Date.now() + 60000
+  for (;;) {
+    const found = await app.evaluate(async ({ desktopCapturer }, name) => {
+      try {
+        const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 0, height: 0 } })
+        const s = sources.find((x) => x.name === name)
+        return s ? { id: s.id, name: s.name } : null
+      } catch {
+        return null
+      }
+    }, title)
+    if (found) return found
+    if (Date.now() > end) throw new Error(`desktopCapturer lists no window "${title}"`)
+    await h.sleep(1000)
+  }
 }
 
 /** Temporary folders to delete when the file is done. */
@@ -50,7 +146,7 @@ function tempDir(prefix) {
 async function setup(ctx, name, env) {
   const home = h.tempHome(name)
   scratch.push(home)
-  const { app, win, logs } = await h.launch({ home, env })
+  const { app, win, logs } = await h.launch({ home, env: { ...env, SSW_E2E_NATIVE_RUN: String(process.pid) } })
   ctx.app = app
   ctx.logs = logs
   const client = compileClient(home)
@@ -242,6 +338,8 @@ async function main() {
     h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
   })
 
+  await windowTests()
+
   const wine = spawnSync('wine', ['--version'], { encoding: 'utf8' })
   if (wine.status !== 0 || !fs.existsSync(EXE)) {
     console.log('SKIP native: real ssw-capture.exe under wine (wine or native/bin/ssw-capture.exe missing)')
@@ -276,7 +374,176 @@ p.on('exit', (code) => process.exit(code ?? 1))
     }, path.join(tmp, 'wine.mp4'))
     console.log(`native (wine): probe ${JSON.stringify(r.probe)}; start: ${r.start}`)
     h.assert(r.probe.supported === false && /Windows.Graphics.Capture/.test(r.probe.reason), `probe ${JSON.stringify(r.probe)}`)
+    h.assert(r.probe.windowCapture === false, `probe reports no window capture: ${JSON.stringify(r.probe)}`)
     // The monitor list from the real exe matched Electron's display, so `record` ran and failed there.
     h.assert(/exited with code 3: Windows.Graphics.Capture is not available on this system/.test(r.start), `start: ${r.start}`)
+
+    // Windows: a handle that is no window is "not found" (exit 4) with a JSON error, for both modes.
+    const w = await app.evaluate(async (_e, file) => {
+      const nc = globalThis.__nc
+      Object.assign(nc.nativeCaptureTimeouts, { watchReady: 120000 })
+      const isAvailable = await nc.isNativeWindowCaptureAvailable()
+      const watch = nc.watchWindow('window:12345:0')
+      const watched = await watch.ready.then(
+        () => 'ready',
+        (e) => e.message
+      )
+      const left = await watch.stop()
+      const s = nc.startNativeCapture({ windowId: 'window:12345:0', output: file, fps: 30 })
+      const recorded = await s.started.then(
+        () => 'started',
+        (e) => e.message
+      )
+      // Wine's desktop window (0x10020) is a real window: watch-window reports it; record --window
+      // gets past the window lookup and fails for want of Windows.Graphics.Capture.
+      const desktop = nc.watchWindow('window:65568:0')
+      const desktopReady = await desktop.ready.then(
+        (rect) => rect,
+        (e) => e.message
+      )
+      const desktopRects = await desktop.stop()
+      const d = nc.startNativeCapture({ windowId: 'window:65568:0', output: file, fps: 30 })
+      const desktopRecord = await d.started.then(
+        () => 'started',
+        (e) => e.message
+      )
+      return { isAvailable, watched, left, recorded, desktopReady, desktopRects, desktopRecord }
+    }, path.join(tmp, 'wine-window.mp4'))
+    console.log(`native (wine): window ${JSON.stringify(w)}`)
+    h.assert(w.isAvailable === false, 'no native window capture under wine')
+    h.assert(/exited with code 4.*Window 12345 not found/.test(w.watched) && w.left.length === 0, `watch-window of a missing window: ${w.watched}`)
+    h.assert(/exited with code 4: Window 12345 not found/.test(w.recorded), `record --window of a missing window: ${w.recorded}`)
+    if (typeof w.desktopReady === 'object') {
+      h.assert(w.desktopReady.width > 0 && w.desktopReady.height > 0 && w.desktopReady.minimized === false, `desktop rect ${JSON.stringify(w.desktopReady)}`)
+      h.assert(w.desktopRects.length >= 1 && w.desktopRects[0].width === w.desktopReady.width, `desktop rects ${JSON.stringify(w.desktopRects)}`)
+      h.assert(/exited with code 3: Windows.Graphics.Capture is not available/.test(w.desktopRecord), `record --window of the desktop: ${w.desktopRecord}`)
+    } else {
+      console.log(`SKIP native (wine): wine's desktop window is not 0x10020 here (${w.desktopReady})`)
+    }
+    h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
   })
+}
+
+async function windowTests() {
+  if (!process.env.DISPLAY || !has('openbox') || !has('xterm') || !has('python3')) {
+    console.log('SKIP native: window capture (needs an X display, openbox, xterm and python3)')
+    return
+  }
+  const wm = startWindowManager()
+  const terms = []
+  try {
+    await h.run('native: recording a single window follows it as it moves and fits it when resized', async (ctx) => {
+      const tmp = tempDir('ssw-native-window-')
+      const log = path.join(tmp, 'helper.log')
+      const title = `SSW-E2E-WINDOW-${process.pid}`
+      terms.push(await startXterm(title, '80x24+200+150'))
+      const { app } = await setup(ctx, 'native-window', { SSW_CAPTURE_HELPER: FAKE, FAKE_HELPER_VIDEO: 'x11grab', FAKE_HELPER_LOG: log })
+      // Without a compositor the screen grab shows whatever is on top: keep the app's own windows away.
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.hide()))
+      const source = await windowSource(app, title)
+      const xid = Number(source.id.split(':')[1])
+      const initial = xgeometry(xid)
+
+      const out = path.join(tmp, 'window.mp4')
+      const info = await app.evaluate(async (_e, { windowId, file }) => {
+        const nc = globalThis.__nc
+        if (!(await nc.isNativeWindowCaptureAvailable())) throw new Error('native window capture is not available')
+        const s = nc.startNativeCapture({ windowId, output: file, fps: 30 })
+        globalThis.__session = s
+        return s.started
+      }, { windowId: source.id, file: out })
+      h.assert(info.width === (initial.width & ~1) && info.height === (initial.height & ~1), `started ${JSON.stringify(info)} for ${JSON.stringify(initial)}`)
+
+      await h.sleep(1200)
+      xwin('move', xid, initial.x + 300, initial.y + 150)
+      await h.sleep(1200)
+      const moved = xgeometry(xid)
+      xwin('resize', xid, initial.width * 2, initial.height)
+      // The fake starts a new ffmpeg segment for the new size; give it time to take over.
+      await h.sleep(2500)
+      const resized = xgeometry(xid)
+      const { stopAt, result } = await app.evaluate(async () => {
+        const at = Date.now()
+        return { stopAt: at, result: await globalThis.__session.stop(at) }
+      })
+
+      const rects = result.windowRects
+      console.log(`native: window ${source.id} rects ${JSON.stringify(rects.map((r) => [r.x, r.y, r.width, r.height]))}`)
+      const same = (r, g) => r.x === g.x && r.y === g.y && r.width === g.width && r.height === g.height && !r.minimized
+      h.assert(same(rects[0], initial), `first rect ${JSON.stringify(rects[0])} is where the window was ${JSON.stringify(initial)}`)
+      h.assert(moved.x > initial.x + 250 && rects.some((r) => same(r, moved)), `a rect for the moved window ${JSON.stringify(moved)}`)
+      h.assert(resized.width > initial.width * 1.5 && same(rects[rects.length - 1], resized), `the last rect is the resized window ${JSON.stringify(resized)}`)
+      h.assert(rects.every((r, i) => i === 0 || r.at >= rects[i - 1].at), 'rects in time order')
+      h.assert(rects[0].at >= info.startedAt - 50 && rects[rects.length - 1].at <= stopAt, 'rects within the recording')
+      h.assert(rects.length <= 8, `only changes are reported (${rects.length} rects)`)
+
+      const lines = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+      const record = lines.find((l) => l.argv && l.argv[0] === 'record')
+      h.assert(record.argv[1] === '--window' && record.argv[2] === String(xid), `record argv ${JSON.stringify(record.argv)}`)
+
+      // The video keeps the initial size; the twice-as-wide window is fitted inside, centred,
+      // with black bars above and below (xterm's background is white).
+      const probe = ffprobe(out)
+      h.assert(probe.width === info.width && probe.height === info.height, `video ${JSON.stringify(probe)}`)
+      h.assert(Math.abs(probe.duration - result.duration) < 0.2, `file duration ${probe.duration} vs reported ${result.duration}`)
+      const end = probe.duration - 0.3
+      const bar = pixel(out, end, Math.round(info.width / 2), 3)
+      const content = pixel(out, end, Math.round(info.width / 2), Math.round(info.height / 2))
+      const before = pixel(out, 0.5, Math.round(info.width / 2), 3)
+      h.assert(bar.every((c) => c < 40), `letterbox bar after the resize: ${bar}`)
+      h.assert(content.every((c) => c > 200), `window content in the middle: ${content}`)
+      h.assert(before.every((c) => c > 200), `no bar before the resize: ${before}`)
+      if (process.env.SSW_E2E_KEEP) fs.copyFileSync(out, path.join(process.env.SSW_E2E_KEEP, 'native-window.mp4'))
+    })
+
+    await h.run('native: watchWindow follows a window until it closes; a recorded window closing ends the recording', async (ctx) => {
+      const tmp = tempDir('ssw-native-watch-')
+      const title = `SSW-E2E-WATCH-${process.pid}`
+      const term = await startXterm(title, '60x20+100+100')
+      terms.push(term)
+      const { app } = await setup(ctx, 'native-watch', { SSW_CAPTURE_HELPER: FAKE, FAKE_HELPER_LOG: path.join(tmp, 'helper.log') })
+      const source = await windowSource(app, title)
+      const xid = Number(source.id.split(':')[1])
+      const initial = xgeometry(xid)
+      const first = await app.evaluate(async (_e, windowId) => {
+        globalThis.__watch = globalThis.__nc.watchWindow(windowId)
+        return globalThis.__watch.ready
+      }, source.id)
+      h.assert(first.x === initial.x && first.y === initial.y && first.width === initial.width, `ready ${JSON.stringify(first)} vs ${JSON.stringify(initial)}`)
+      xwin('move', xid, initial.x + 200, initial.y + 50)
+      await h.sleep(800)
+      const moved = xgeometry(xid)
+      const watched = await app.evaluate(() => globalThis.__watch.stop())
+      h.assert(watched.length >= 2 && watched[watched.length - 1].x === moved.x && watched[watched.length - 1].y === moved.y, `watched ${JSON.stringify(watched)}`)
+
+      // Recording it, then closing it: the helper finalises and says "closed" (onEnded).
+      const ended = app.evaluate(async (_e, { windowId, file }) => {
+        const nc = globalThis.__nc
+        const s = nc.startNativeCapture({ windowId, output: file, fps: 30 })
+        const end = new Promise((resolve) => s.onEnded((e) => resolve(e.reason)))
+        const w = nc.watchWindow(windowId)
+        await Promise.all([s.started, w.ready])
+        globalThis.__recording = { s, w, end }
+        return true
+      }, { windowId: source.id, file: path.join(tmp, 'closed.mp4') })
+      await ended
+      await h.sleep(500)
+      term.kill('SIGKILL')
+      const r = await app.evaluate(async () => {
+        const { s, w, end } = globalThis.__recording
+        const reason = await Promise.race([end, new Promise((r) => setTimeout(() => r('no onEnded within 10 s'), 10000))])
+        const result = await s.stop()
+        const rects = await w.stop()
+        return { reason, rects: result.windowRects, watched: rects }
+      })
+      h.assert(r.reason === 'closed', `onEnded: ${r.reason}`)
+      h.assert(r.rects.length >= 1 && r.watched.length >= 1, `rects kept: ${JSON.stringify(r)}`)
+      h.assert(fs.readFileSync(path.join(tmp, 'closed.mp4'), 'utf8') === 'fake video', 'the recording was finalised')
+      await h.sleep(300)
+      h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
+    })
+  } finally {
+    for (const t of terms) t.kill('SIGKILL')
+    wm.kill()
+  }
 }

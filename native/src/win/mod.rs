@@ -1,4 +1,4 @@
-//! Windows implementation: probe, list and record.
+//! Windows implementation: probe, list, record and watch-window.
 
 mod capture;
 mod clock;
@@ -11,6 +11,7 @@ mod record;
 mod selftest;
 mod session_end;
 mod support;
+mod window;
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -91,6 +92,7 @@ pub fn run(command: Cli) -> i32 {
         Cli::Probe => run_probe(),
         Cli::List => run_list(),
         Cli::Record(args) => record::run(&args),
+        Cli::WatchWindow(handle) => window::run_watch(handle),
         Cli::Selftest(args) => selftest::run(&args),
         Cli::Help | Cli::Version => exit::OK,
     }

@@ -2,13 +2,14 @@
 
 use windows::core::{HSTRING, PWSTR};
 use windows::Foundation::Metadata::ApiInformation;
-use windows::Graphics::Capture::GraphicsCaptureSession;
+use windows::Graphics::Capture::{GraphicsCaptureItem, GraphicsCaptureSession};
 use windows::Win32::Media::MediaFoundation::{
     IMFActivate, MFMediaType_Video, MFShutdown, MFStartup, MFTEnumEx, MFT_FRIENDLY_NAME_Attribute, MFVideoFormat_H264,
     MFSTARTUP_LITE, MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_FLAG, MFT_ENUM_FLAG_ASYNCMFT, MFT_ENUM_FLAG_HARDWARE,
     MFT_ENUM_FLAG_SORTANDFILTER, MFT_ENUM_FLAG_SYNCMFT, MFT_REGISTER_TYPE_INFO, MF_VERSION,
 };
 use windows::Win32::System::Com::CoTaskMemFree;
+use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemInterop;
 
 use crate::protocol::{json_array, push_json_string, JsonObject};
 
@@ -17,6 +18,8 @@ const SESSION_CLASS: &str = "Windows.Graphics.Capture.GraphicsCaptureSession";
 #[derive(Debug, Default)]
 pub struct Report {
     pub supported: bool,
+    /// One window can be recorded (with the cursor excluded): `record --window`.
+    pub window_capture: bool,
     pub capture: bool,
     pub cursor_toggle: bool,
     pub border_toggle: bool,
@@ -45,6 +48,7 @@ impl Report {
             .bool("supported", self.supported)
             .bool("cursorToggle", self.cursor_toggle)
             .bool("borderToggle", self.border_toggle)
+            .bool("windowCapture", self.window_capture)
             .bool("capture", self.capture)
             .bool("minUpdateInterval", self.min_update_interval)
             .raw("hardwareEncoders", &json_array(&encoders))
@@ -79,6 +83,12 @@ pub fn border_toggle_supported() -> bool {
     property_present("IsBorderRequired")
 }
 
+/// Capture items can be created for windows (IGraphicsCaptureItemInterop::CreateForWindow,
+/// available wherever Windows.Graphics.Capture is). Windows Runtime must be initialised.
+pub fn window_capture_supported() -> bool {
+    windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>().is_ok()
+}
+
 /// MinUpdateInterval only exists on recent Windows 11 builds.
 pub fn min_update_interval_supported() -> bool {
     property_present("MinUpdateInterval")
@@ -109,6 +119,7 @@ pub fn probe() -> Report {
     }
     let has_encoder = !report.hardware_encoders.is_empty() || report.software_encoder;
     report.supported = report.capture && report.cursor_toggle && has_encoder;
+    report.window_capture = report.supported && window_capture_supported();
     if !report.supported && report.reason.is_none() {
         report.reason = Some(
             if !report.capture {

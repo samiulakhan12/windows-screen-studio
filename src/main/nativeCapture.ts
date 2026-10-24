@@ -13,6 +13,10 @@
  *   encoder/device failure, crash), so the app can stop the recording and say why.
  * - Quitting the app stops running helpers gracefully (bounded by nativeCaptureTimeouts.quit)
  *   before anything kills them, so the MP4 is finalised; see guardQuit().
+ * - Single windows: startNativeCapture({ windowId }) records one window ("record --window",
+ *   available when isNativeWindowCaptureAvailable()); its rectangle over time comes back in
+ *   NativeStopInfo.windowRects. watchWindow() only follows a window's rectangle
+ *   ("watch-window"), for windows that Chromium records.
  *
  * The helper writes a fragmented MP4, so even a helper that is killed or crashes leaves a
  * file that plays up to its last complete (~1 s) fragment.
@@ -113,8 +117,11 @@ export interface NativeEndedInfo {
   error?: Error
 }
 
-/** Errors from a helper that had started carry the cursor shapes it reported until then. */
-export type NativeCaptureError = Error & { shapes?: NativeStopInfo['shapes'] }
+/**
+ * Errors from a helper that had started carry the cursor shapes (and, recording a window, the
+ * window rectangles) it reported until then.
+ */
+export type NativeCaptureError = Error & { shapes?: NativeStopInfo['shapes']; windowRects?: WindowRectEvent[] }
 
 export interface ProbeResult {
   supported: boolean
@@ -164,7 +171,11 @@ export const nativeCaptureTimeouts = {
   /** Finalising the MP4 is quick; this only guards against a wedged encoder. */
   stop: 30_000,
   /** How long quitting the app waits for running helpers to finalise before killing them. */
-  quit: 5_000
+  quit: 5_000,
+  /** watch-window: until the window's first rectangle. */
+  watchReady: 10_000,
+  /** watch-window: until the helper exits after stop() (it holds no file). */
+  watchStop: 5_000
 }
 
 const OUTPUT_LIMIT = 256 * 1024
@@ -266,6 +277,7 @@ function failureMessage(r: RunResult, what: string): string {
 export async function probeNativeCapture(): Promise<ProbeResult> {
   const unsupported = (reason: string): ProbeResult => ({
     supported: false,
+    windowCapture: false,
     cursorToggle: false,
     borderToggle: false,
     hardwareEncoders: [],
@@ -280,8 +292,11 @@ export async function probeNativeCapture(): Promise<ProbeResult> {
   const r = await runHelper(cmd, ['probe'], nativeCaptureTimeouts.probe)
   const json = lastJson(r.stdout) as Partial<Record<keyof ProbeResult, unknown>> | undefined
   if (!json || typeof json !== 'object') return unsupported(failureMessage(r, 'The capture helper probe'))
+  const supported = json.supported === true && json.cursorToggle === true && r.code === 0
   const result: ProbeResult = {
-    supported: json.supported === true && json.cursorToggle === true && r.code === 0,
+    supported,
+    // Older helpers do not report it: no window capture then.
+    windowCapture: supported && json.windowCapture === true,
     cursorToggle: json.cursorToggle === true,
     borderToggle: json.borderToggle === true,
     hardwareEncoders: Array.isArray(json.hardwareEncoders) ? json.hardwareEncoders.filter((e): e is string => typeof e === 'string') : [],
@@ -291,21 +306,53 @@ export async function probeNativeCapture(): Promise<ProbeResult> {
   return result
 }
 
-let availability: Promise<boolean> | null = null
+let probed: Promise<ProbeResult> | null = null
 
-export function isNativeCaptureAvailable(): Promise<boolean> {
-  if (!availability) {
-    availability = probeNativeCapture().then((r) => {
+/** The helper's probe, run once per app session. */
+function cachedProbe(): Promise<ProbeResult> {
+  if (!probed) {
+    probed = probeNativeCapture().then((r) => {
       if (!r.supported) console.info(`Native capture unavailable, using Chromium capture: ${r.reason}`)
-      return r.supported
+      else if (!r.windowCapture) console.info('Native window capture unavailable; windows are recorded with Chromium')
+      return r
     })
   }
-  return availability
+  return probed
+}
+
+export async function isNativeCaptureAvailable(): Promise<boolean> {
+  return (await cachedProbe()).supported
+}
+
+/**
+ * True when single-window capture with the cursor excluded is available (probe.windowCapture):
+ * startNativeCapture({ windowId }) can record a window. Shares the cached probe with
+ * isNativeCaptureAvailable(); false wherever that is false.
+ */
+export async function isNativeWindowCaptureAvailable(): Promise<boolean> {
+  const r = await cachedProbe()
+  return r.supported && r.windowCapture === true
 }
 
 /** Forgets the cached probe result (tests; or after the helper was installed). */
 export function resetNativeCaptureCache(): void {
-  availability = null
+  probed = null
+}
+
+const I64_MIN = -(2n ** 63n)
+const I64_MAX = 2n ** 63n - 1n
+
+/**
+ * The window handle in an Electron desktopCapturer window source id "window:<id>:<n>", as the
+ * helper's --window wants it (decimal; the HWND on Windows, the X window id on Linux/X11), or
+ * null when `windowId` is not a window source id (e.g. "screen:0:0", "window:abc:0", "window:0:0").
+ */
+export function windowHandleOf(windowId: string): string | null {
+  const m = /^window:(-?\d{1,20}):(-?\d{1,20})$/.exec(windowId)
+  if (!m) return null
+  const handle = BigInt(m[1])
+  if (handle === 0n || handle < I64_MIN || handle > I64_MAX) return null
+  return handle.toString()
 }
 
 function isMonitor(m: unknown): m is HelperMonitor {
@@ -368,6 +415,39 @@ interface HelperEvent {
   [key: string]: unknown
 }
 
+/** A `window` event's rectangle, or null when it is malformed. */
+function windowRectOf(e: HelperEvent): WindowRectEvent | null {
+  const fields = ['at', 'x', 'y', 'width', 'height'] as const
+  if (!fields.every((k) => typeof e[k] === 'number' && Number.isFinite(e[k]))) return null
+  const width = e.width as number
+  const height = e.height as number
+  if (width < 0 || height < 0) return null
+  return { at: e.at as number, x: e.x as number, y: e.y as number, width, height, minimized: e.minimized === true }
+}
+
+/** Splits a helper's stdout into JSON events. */
+function eventReader(onEvent: (e: HelperEvent) => void): (chunk: string) => void {
+  let buffer = ''
+  return (chunk) => {
+    buffer += chunk
+    let newline: number
+    while ((newline = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, newline).trim()
+      buffer = buffer.slice(newline + 1)
+      if (!line) continue
+      let event: HelperEvent
+      try {
+        event = JSON.parse(line) as HelperEvent
+      } catch {
+        console.warn('capture helper:', line)
+        continue
+      }
+      onEvent(event)
+    }
+    if (buffer.length > OUTPUT_LIMIT) buffer = ''
+  }
+}
+
 /**
  * Spawn options for `record`. On Windows the helper is detached: libuv puts every other child
  * in a kill-on-close job object, so it would die the instant the app does (crash, End task)
@@ -392,11 +472,11 @@ class HelperSession implements NativeCaptureSession {
   private child: ChildProcessWithoutNullStreams | null = null
   /** Commands issued while the monitor was still being resolved. */
   private queued: string[] = []
-  private stdoutBuffer = ''
   private stderr = ''
   private lastError: string | null = null
   private stats: { frames: number; dropped: number; duration: number } | null = null
   private readonly shapes: { at: number; shape: CursorShape }[] = []
+  private readonly windowRects: WindowRectEvent[] = []
   private stopRequested = false
   private killed = false
   /** The first frame was reported: from now on an end not asked for is reported via onEnded. */
@@ -427,33 +507,51 @@ class HelperSession implements NativeCaptureSession {
     void this.launch()
   }
 
+  /** What this session reports when it ends: window recordings include the window's rectangles. */
+  private stopInfo(info: Omit<NativeStopInfo, 'shapes' | 'windowRects'>): NativeStopInfo {
+    const result: NativeStopInfo = { ...info, shapes: [...this.shapes] }
+    if (this.options.windowId !== undefined) result.windowRects = [...this.windowRects]
+    return result
+  }
+
+  /** The helper's --monitor/--window arguments. */
+  private async target(cmd: HelperCommand): Promise<string[]> {
+    const { displayId, windowId } = this.options
+    if (displayId && windowId !== undefined) throw new Error('Record either a display or a window, not both')
+    if (windowId !== undefined) {
+      const handle = windowHandleOf(windowId)
+      if (!handle) throw new Error(`Not a window source id: ${JSON.stringify(windowId)} (expected "window:<handle>:<n>")`)
+      return ['--window', handle]
+    }
+    if (!displayId) throw new Error('No display or window to record')
+    const monitors = await listMonitors(cmd)
+    const monitor = matchMonitor(displayId, physicalDisplays(), monitors)
+    if (!monitor) {
+      const listed = monitors.map((m) => `${m.device} ${m.width}x${m.height}@${m.x},${m.y}`).join('; ')
+      throw new Error(`No capture monitor matches display ${displayId} (helper lists: ${listed || 'none'})`)
+    }
+    return ['--monitor', monitor.device]
+  }
+
   private async launch(): Promise<void> {
     try {
       const cmd = helperCommand()
       if (!cmd) throw new Error('The native capture helper is not available')
-      const monitors = await listMonitors(cmd)
+      const target = await this.target(cmd)
       // Killed or timed out meanwhile.
       if (this.outcome) return
       if (this.stopRequested) {
-        this.finish({ ok: true, info: { frames: 0, shapes: [] } }, 'Recording was stopped before it started')
+        this.finish({ ok: true, info: this.stopInfo({ frames: 0 }) }, 'Recording was stopped before it started')
         return
       }
-      // Window capture (options.windowId) is implemented by the native builder: CONTRACT in
-      // NativeCaptureOptions.windowId and native/README.md ("record --window").
-      if (!this.options.displayId) throw new Error('Window capture is not implemented yet')
-      const monitor = matchMonitor(this.options.displayId, physicalDisplays(), monitors)
-      if (!monitor) {
-        const listed = monitors.map((m) => `${m.device} ${m.width}x${m.height}@${m.x},${m.y}`).join('; ')
-        throw new Error(`No capture monitor matches display ${this.options.displayId} (helper lists: ${listed || 'none'})`)
-      }
-      const args = ['record', '--monitor', monitor.device, '--out', this.options.output, '--fps', String(this.options.fps)]
+      const args = ['record', ...target, '--out', this.options.output, '--fps', String(this.options.fps)]
       if (this.options.bitrate) args.push('--bitrate', String(Math.round(this.options.bitrate)))
       const child = spawn(cmd.file, [...cmd.args, ...args], recordSpawnOptions(cmd.env))
       this.child = child
       // EPIPE when the helper has already exited; the exit handler reports what happened.
       child.stdin.on('error', () => undefined)
       child.stdout.setEncoding('utf8')
-      child.stdout.on('data', (chunk: string) => this.onStdout(chunk))
+      child.stdout.on('data', eventReader((e) => this.onEvent(e)))
       child.stderr.on('data', (d: Buffer) => {
         this.stderr = (this.stderr + d.toString()).slice(-4000)
       })
@@ -464,25 +562,6 @@ class HelperSession implements NativeCaptureSession {
     } catch (err) {
       this.finish({ ok: false, error: errorOf(err) })
     }
-  }
-
-  private onStdout(chunk: string): void {
-    this.stdoutBuffer += chunk
-    let newline: number
-    while ((newline = this.stdoutBuffer.indexOf('\n')) >= 0) {
-      const line = this.stdoutBuffer.slice(0, newline).trim()
-      this.stdoutBuffer = this.stdoutBuffer.slice(newline + 1)
-      if (!line) continue
-      let event: HelperEvent
-      try {
-        event = JSON.parse(line) as HelperEvent
-      } catch {
-        console.warn('capture helper:', line)
-        continue
-      }
-      this.onEvent(event)
-    }
-    if (this.stdoutBuffer.length > OUTPUT_LIMIT) this.stdoutBuffer = ''
   }
 
   private onEvent(e: HelperEvent): void {
@@ -517,6 +596,11 @@ class HelperSession implements NativeCaptureSession {
         }
         return
       }
+      case 'window': {
+        const rect = windowRectOf(e)
+        if (rect && this.options.windowId !== undefined) this.windowRects.push(rect)
+        return
+      }
       case 'stopped':
         this.stats = { frames: num(e.frames) ?? 0, dropped: num(e.dropped) ?? 0, duration: num(e.duration) ?? 0 }
         this.stopReason = typeof e.reason === 'string' && e.reason ? e.reason : 'eof'
@@ -540,7 +624,7 @@ class HelperSession implements NativeCaptureSession {
     if (this.outcome) return
     if (code === 0 && this.stats) {
       const { frames, dropped, duration } = this.stats
-      this.finish({ ok: true, info: { frames, shapes: [...this.shapes], dropped, duration } }, 'Recording was stopped before the first frame')
+      this.finish({ ok: true, info: this.stopInfo({ frames, dropped, duration }) }, 'Recording was stopped before the first frame')
       return
     }
     const detail = spawnError?.message ?? this.lastError ?? this.stderr.trim().split(/\r?\n/).slice(-3).join(' ')
@@ -557,7 +641,11 @@ class HelperSession implements NativeCaptureSession {
   /** Records the final outcome: settles `started` (if still pending) and stop(). */
   private finish(outcome: Outcome, notStartedMessage?: string): void {
     if (this.outcome) return
-    if (!outcome.ok && this.startedOk) (outcome.error as NativeCaptureError).shapes = [...this.shapes]
+    if (!outcome.ok && this.startedOk) {
+      const error = outcome.error as NativeCaptureError
+      error.shapes = [...this.shapes]
+      if (this.options.windowId !== undefined) error.windowRects = [...this.windowRects]
+    }
     this.outcome = outcome
     this.child = null
     live.delete(this)
@@ -729,19 +817,166 @@ export interface WindowWatchSession {
   kill(): void
 }
 
-/**
- * True when single-window capture with the cursor excluded is available (probe.windowCapture).
- * CONTRACT stub — implemented by the native builder.
- */
-export async function isNativeWindowCaptureAvailable(): Promise<boolean> {
-  return false
+/** Window watchers still running (killed when the app exits). */
+const watchers = new Set<WindowWatcher>()
+let exitGuarded = false
+
+/** One `ssw-capture watch-window` process. */
+class WindowWatcher implements WindowWatchSession {
+  readonly ready: Promise<WindowRectEvent>
+  private resolveReady!: (rect: WindowRectEvent) => void
+  private rejectReady!: (err: Error) => void
+  private readySettled = false
+  private readyTimer: NodeJS.Timeout | null = null
+  private readonly child: ChildProcessWithoutNullStreams
+  private readonly rects: WindowRectEvent[] = []
+  private readonly exited: Promise<void>
+  private hasExited = false
+  private stderr = ''
+  private lastError: string | null = null
+  private stopPromise: Promise<WindowRectEvent[]> | null = null
+
+  constructor(cmd: HelperCommand, handle: string) {
+    this.ready = new Promise<WindowRectEvent>((resolve, reject) => {
+      this.resolveReady = resolve
+      this.rejectReady = reject
+    })
+    // Callers may stop without awaiting `ready`.
+    this.ready.catch(() => undefined)
+    // Not detached: there is no file to finalise, and its stdin closing with the app stops it.
+    this.child = spawn(cmd.file, [...cmd.args, 'watch-window', '--window', handle], {
+      env: cmd.env,
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    watchers.add(this)
+    guardExit()
+    this.exited = new Promise<void>((resolve) => {
+      const done = (code: number | null, signal: NodeJS.Signals | null, spawnError?: Error): void => {
+        if (this.hasExited) return
+        this.hasExited = true
+        watchers.delete(this)
+        const detail = spawnError?.message ?? this.lastError ?? this.stderr.trim().split(/\r?\n/).slice(-3).join(' ')
+        const how = spawnError
+          ? 'could not run'
+          : code === null
+            ? `was terminated${signal ? ` (${signal})` : ''}`
+            : `exited with code ${code}`
+        this.failReady(new Error(`The window watcher ${how} before reporting the window${detail ? `: ${detail}` : ''}`))
+        resolve()
+      }
+      this.child.on('error', (err) => done(null, null, err))
+      this.child.on('close', (code, signal) => done(code, signal))
+    })
+    this.child.stdin.on('error', () => undefined)
+    this.child.stdout.setEncoding('utf8')
+    this.child.stdout.on('data', eventReader((e) => this.onEvent(e)))
+    this.child.stderr.on('data', (d: Buffer) => {
+      this.stderr = (this.stderr + d.toString()).slice(-4000)
+    })
+    const timeout = nativeCaptureTimeouts.watchReady
+    this.readyTimer = setTimeout(() => {
+      this.failReady(new Error(`The window watcher reported no window within ${timeout / 1000} s`))
+      this.kill()
+    }, timeout)
+  }
+
+  private onEvent(e: HelperEvent): void {
+    switch (e.event) {
+      case 'window': {
+        const rect = windowRectOf(e)
+        if (!rect) return
+        this.rects.push(rect)
+        if (!this.readySettled) {
+          this.readySettled = true
+          this.clearReadyTimer()
+          this.resolveReady(rect)
+        }
+        return
+      }
+      case 'error':
+        if (typeof e.message === 'string') this.lastError = e.message
+        return
+      case 'warning':
+        if (typeof e.message === 'string') console.warn('window watcher:', e.message)
+        return
+      default:
+        // ready; stopped ("stop", or "closed" when the window closed: the rects stay valid).
+        return
+    }
+  }
+
+  private clearReadyTimer(): void {
+    if (this.readyTimer) clearTimeout(this.readyTimer)
+    this.readyTimer = null
+  }
+
+  private failReady(err: Error): void {
+    this.clearReadyTimer()
+    if (this.readySettled) return
+    this.readySettled = true
+    this.rejectReady(err)
+  }
+
+  stop(): Promise<WindowRectEvent[]> {
+    if (this.stopPromise) return this.stopPromise
+    this.failReady(new Error('Window watching was stopped before the window was reported'))
+    this.stopPromise = (async () => {
+      if (!this.hasExited) {
+        if (this.child.stdin.writable) this.child.stdin.write('stop\n')
+        // Closing stdin stops it too, should the line get lost.
+        this.child.stdin.end()
+        let timer: NodeJS.Timeout | undefined
+        const timedOut = await Promise.race([
+          this.exited.then(() => false),
+          new Promise<boolean>((resolve) => {
+            timer = setTimeout(() => resolve(true), nativeCaptureTimeouts.watchStop)
+          })
+        ])
+        clearTimeout(timer)
+        if (timedOut) {
+          this.kill()
+          await this.exited
+        }
+      }
+      return [...this.rects]
+    })()
+    return this.stopPromise
+  }
+
+  kill(): void {
+    this.failReady(new Error('Window watching was stopped before the window was reported'))
+    if (!this.hasExited) this.child.kill('SIGKILL')
+  }
+}
+
+/** Watchers have no file to finalise: when the app exits, end any still running. */
+function guardExit(): void {
+  if (exitGuarded) return
+  exitGuarded = true
+  process.once('exit', () => {
+    for (const w of watchers) w.kill()
+  })
 }
 
 /**
- * Starts "watch-window" for an Electron window source id ("window:<HWND>:<n>").
- * CONTRACT stub — implemented by the native builder; callers must handle a throw / rejected
- * `ready` by recording without window tracking.
+ * Starts "watch-window" for an Electron window source id ("window:<HWND>:<n>"; on Linux/X11 the
+ * number is the X window id, for tests with SSW_CAPTURE_HELPER). Throws when the id is not a
+ * window source id or there is no helper (on Windows: the exe is missing; elsewhere only an
+ * SSW_CAPTURE_HELPER override provides one). `ready` rejects when the window does not exist
+ * (the helper exits 4), the helper fails or reports nothing within nativeCaptureTimeouts.watchReady.
+ * stop() never rejects: it resolves with every rectangle reported, also after a failure or after
+ * the window closed. Needs neither Windows.Graphics.Capture nor an encoder, so it works where
+ * isNativeCaptureAvailable() is false.
  */
-export function watchWindow(_windowId: string): WindowWatchSession {
-  throw new Error('Window watching is not available in this build')
+export function watchWindow(windowId: string): WindowWatchSession {
+  const handle = windowHandleOf(windowId)
+  if (!handle) throw new Error(`Not a window source id: ${JSON.stringify(windowId)} (expected "window:<handle>:<n>")`)
+  const cmd = helperCommand()
+  if (!cmd) {
+    throw new Error(
+      process.platform === 'win32' ? 'The capture helper (ssw-capture.exe) is missing' : 'Window watching is only available on Windows'
+    )
+  }
+  return new WindowWatcher(cmd, handle)
 }

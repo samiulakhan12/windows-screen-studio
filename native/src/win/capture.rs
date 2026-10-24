@@ -1,4 +1,4 @@
-//! Windows.Graphics.Capture of one monitor, cursor excluded.
+//! Windows.Graphics.Capture of one monitor or one window, cursor excluded.
 //!
 //! The frame pool is free-threaded and polled from the recording loop, so no
 //! message pump or callback thread is needed and frames never pile up.
@@ -16,6 +16,7 @@ use windows::Graphics::Capture::{
 use windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 use windows::Graphics::DirectX::DirectXPixelFormat;
 use windows::Graphics::SizeInt32;
+use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Direct3D11::ID3D11Texture2D;
 use windows::Win32::Graphics::Gdi::HMONITOR;
 use windows::Win32::System::WinRT::Direct3D11::IDirect3DDxgiInterfaceAccess;
@@ -29,6 +30,23 @@ use crate::protocol;
 const PIXEL_FORMAT: DirectXPixelFormat = DirectXPixelFormat::B8G8R8A8UIntNormalized;
 const POOL_BUFFERS: i32 = 2;
 
+/// What is captured.
+#[derive(Clone, Copy)]
+pub enum Source {
+    Monitor(HMONITOR),
+    Window(HWND),
+}
+
+impl Source {
+    /// "monitor" / "window", for messages.
+    pub fn noun(self) -> &'static str {
+        match self {
+            Source::Monitor(_) => "monitor",
+            Source::Window(_) => "window",
+        }
+    }
+}
+
 /// A captured frame; returned to the pool when dropped.
 pub struct Frame {
     frame: Direct3D11CaptureFrame,
@@ -36,6 +54,9 @@ pub struct Frame {
     /// Size of the valid content (top-left aligned) within `texture`.
     pub width: u32,
     pub height: u32,
+    /// False when the content grew beyond the pool's buffers: the frame then holds only its
+    /// top-left part, until the pool is recreated at the new size (the next call).
+    pub complete: bool,
     /// Capture time, 100 ns QPC ticks.
     pub time: i64,
 }
@@ -59,18 +80,24 @@ pub struct Capture {
 }
 
 impl Capture {
-    pub fn new(device: &Device, monitor: HMONITOR, fps: u32) -> Result<Self> {
+    pub fn new(device: &Device, source: Source, fps: u32) -> Result<Self> {
         let winrt_device = d3d::winrt_device(&device.device)?;
         let interop = windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()
             .context("Getting the GraphicsCaptureItem factory")?;
-        let item: GraphicsCaptureItem =
-            unsafe { interop.CreateForMonitor(monitor) }.context("Creating the capture item for the monitor")?;
-        let size = item.Size().context("Reading the monitor size")?;
+        let item: GraphicsCaptureItem = match source {
+            Source::Monitor(monitor) => {
+                unsafe { interop.CreateForMonitor(monitor) }.context("Creating the capture item for the monitor")?
+            }
+            // Fails for windows that cannot be captured (e.g. the shell's own, or another
+            // desktop's); the app then records the window with Chromium instead.
+            Source::Window(window) => {
+                unsafe { interop.CreateForWindow(window) }.context("Creating the capture item for the window")?
+            }
+        };
+        let noun = source.noun();
+        let size = item.Size().context(&format!("Reading the {noun} size"))?;
         if size.Width <= 0 || size.Height <= 0 {
-            return Err(Failure::runtime(format!(
-                "The monitor reports an invalid size {}x{}",
-                size.Width, size.Height
-            )));
+            return Err(Failure::runtime(format!("The {noun} reports an invalid size {}x{}", size.Width, size.Height)));
         }
         let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(&winrt_device, PIXEL_FORMAT, POOL_BUFFERS, size)
             .context("Creating the capture frame pool")?;
@@ -113,7 +140,7 @@ impl Capture {
         })
     }
 
-    /// Physical size of the monitor when capture was set up.
+    /// Physical size of the monitor or window when capture was set up.
     pub fn size(&self) -> (u32, u32) {
         (self.pool_size.Width as u32, self.pool_size.Height as u32)
     }
@@ -122,7 +149,7 @@ impl Capture {
         self.session.StartCapture().context("Starting the capture")
     }
 
-    /// True once the monitor was disconnected or the capture was revoked.
+    /// True once the monitor was disconnected, the window closed, or the capture was revoked.
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::SeqCst)
     }
@@ -130,7 +157,8 @@ impl Capture {
     /// The newest frame waiting in the pool, if any; older ones are released.
     pub fn newest(&mut self) -> Result<Option<Frame>> {
         if let Some(size) = self.pending_resize.take() {
-            // Resolution or orientation changed: later frames get buffers of the new size.
+            // Resolution or orientation changed, or the window was resized: later frames get
+            // buffers of the new size.
             self.pool
                 .Recreate(&self.device, PIXEL_FORMAT, POOL_BUFFERS, size)
                 .context("Resizing the capture frame pool")?;
@@ -160,6 +188,7 @@ impl Capture {
         let desc = d3d::texture_desc(&texture);
         let width = (content.Width.max(0) as u32).min(desc.Width);
         let height = (content.Height.max(0) as u32).min(desc.Height);
+        let complete = content.Width.max(0) as u32 <= desc.Width && content.Height.max(0) as u32 <= desc.Height;
 
         if (content.Width != self.pool_size.Width || content.Height != self.pool_size.Height)
             && content.Width > 0
@@ -171,7 +200,7 @@ impl Capture {
             let _ = frame.Close();
             return Ok(None);
         }
-        Ok(Some(Frame { frame, texture, width, height, time }))
+        Ok(Some(Frame { frame, texture, width, height, complete, time }))
     }
 }
 
