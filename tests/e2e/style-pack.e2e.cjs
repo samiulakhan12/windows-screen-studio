@@ -462,8 +462,9 @@ async function main() {
     await win.click('button[aria-label="Laptop showcase preset"]')
     await win.click('button:has-text("Save this look as a preset")')
     await win.fill('input[aria-label="New preset name"]', 'Launch video')
-    await win.click('.preset-name-row button[type="submit"]')
-    await win.waitForSelector('button[aria-label="Launch video preset"]')
+    // Enter in the name field saves (the editor's keys leave a form's Enter alone).
+    await win.press('input[aria-label="New preset name"]', 'Enter')
+    await win.waitForSelector('button[aria-label="Launch video preset"]', { timeout: 5000 })
     const stored = () => JSON.parse(fs.readFileSync(path.join(realUserData, 'editor-prefs.json'), 'utf8')).stylePresets
     const s1 = stored()
     h.assert(s1.length === 2 && s1[0].name === 'Launch video' && s1[0].look.style.frame.kind === 'laptop', `saved to the preferences: ${JSON.stringify(s1.map((x) => x.name))}`)

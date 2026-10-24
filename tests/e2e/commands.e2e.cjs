@@ -201,7 +201,8 @@ async function main() {
     await runCommand(win, 'add arrow', 'Add arrow')
     await waitSaved(win)
     const shapes = disk(home, id).shapes || []
-    h.assert(shapes.length === 1 && shapes[0].kind === 'arrow' && Math.abs(shapes[0].start - 3) < 0.05, `arrow added at the playhead: ${JSON.stringify(shapes)}`)
+    // Like the Shapes panel's: it starts one fade (0.15 s) early, so it is fully shown at the playhead.
+    h.assert(shapes.length === 1 && shapes[0].kind === 'arrow' && Math.abs(shapes[0].start - 2.85) < 0.05 && shapes[0].end > 3, `arrow added at the playhead: ${JSON.stringify(shapes)}`)
     h.assert((await activeTab(win)) === 'Shapes', 'the new shape is selected (Shapes tab)')
     await win.keyboard.press('Control+z')
     await waitSaved(win)
@@ -249,6 +250,78 @@ async function main() {
     await win.keyboard.press('Escape')
     await f.waitFor(async () => !(await win.$('.shortcuts-modal')), 'shortcuts dialog closed')
     h.assert((await focused(win)).label === 'Recording name', `focus back on the title field: ${JSON.stringify(await focused(win))}`)
+  })
+
+  await h.run("commands: shapes and spotlights from the palette are placed like the Shapes panel's; their hints follow the shortcuts", async (ctx) => {
+    // A portrait recording trimmed to its first 8 s; the seeded cursor is baked into the video.
+    const clips = [{ id: 'c0', start: 0, end: 8, speed: 1 }]
+    const { home, id, win } = await setup(ctx, 'palette-shapes', { name: 'PaletteShapes', seconds: 12, width: 720, height: 1280, clips })
+    const saved = (pred, what) =>
+      f.waitFor(() => {
+        try {
+          const p = disk(home, id)
+          return pred(p) ? p : null
+        } catch {
+          return null // mid-write
+        }
+      }, what, 10000)
+    await playheadAt(win, 3)
+
+    // An arrow fully shown at the playhead, pointing at the cursor there (editor-fixtures cursorTrack).
+    await runCommand(win, 'add arrow', 'Add arrow')
+    let p = await saved((q) => q.shapes?.length === 1, 'the arrow')
+    const arrow = p.shapes[0]
+    const cursor = { x: 0.5 + 0.3 * Math.sin(3), y: 0.5 + 0.3 * Math.cos(3 * 0.7) }
+    h.assert(Math.abs(arrow.start - 2.85) < 0.02 && arrow.end > 3, `fully shown at 3 s: ${arrow.start}..${arrow.end}`)
+    h.assert(Math.hypot(arrow.x + arrow.w - cursor.x, arrow.y + arrow.h - cursor.y) < 0.05, `points at the cursor ${JSON.stringify(cursor)}: ${JSON.stringify(arrow)}`)
+
+    // A cursor spotlight fully faded in at the playhead and round on screen (not 16:9-shaped).
+    await runCommand(win, 'add cursor spotlight', 'Add cursor spotlight')
+    p = await saved((q) => q.spotlights?.length === 1, 'the cursor spotlight')
+    const spot = p.spotlights[0]
+    h.assert(spot.mode === 'cursor' && Math.abs(spot.start - 2.75) < 0.02, `fully faded in at 3 s: ${spot.start}`)
+    h.assert(Math.abs(spot.w * 720 - spot.h * 1280) < 1, `round on screen: ${spot.w * 720} x ${spot.h * 1280} px`)
+
+    // At the end of the trimmed video (where playback stops): inside the kept part, not after it.
+    await win.keyboard.press('End')
+    await runCommand(win, 'add blur', 'Add blur')
+    p = await saved((q) => q.shapes?.some((s) => s.kind === 'blur'), 'the blur')
+    const blur = p.shapes.find((s) => s.kind === 'blur')
+    h.assert(Math.abs(blur.start - 5) < 1e-6 && Math.abs(blur.end - 8) < 1e-6, `the blur keeps its 3 s inside the kept 0-8 s: ${blur.start}..${blur.end}`)
+    h.assert((await activeTab(win)) === 'Shapes', 'the Shapes panel shows it')
+
+    // Tooltips name the keys bound now: first the defaults.
+    const deleteTitle = () => win.$eval('.shape-actions button.danger', (b) => b.title)
+    const zoomTitles = () => win.$$eval('.tl-zoom button', (bs) => bs.slice(0, 2).map((b) => b.title).join(' | '))
+    const arrowTitle = () => win.$eval('.shape-tool[data-kind="arrow"]', (b) => b.title)
+    h.assert((await deleteTitle()) === 'Delete this blur (Delete)', `default delete tooltip: ${await deleteTitle()}`)
+    h.assert((await zoomTitles()) === 'Zoom out timeline (-) | Zoom in timeline (+ or Ctrl+wheel)', `default zoom tooltips: ${await zoomTitles()}`)
+    h.assert((await arrowTitle()) === 'Point at something', `no shortcut for adding an arrow yet: ${await arrowTitle()}`)
+    // Delete selection on X only, timeline zoom in on ] only, zoom out on none, Add arrow on A.
+    await win.keyboard.press('Control+/')
+    await win.waitForSelector('.shortcuts-modal')
+    const rebind = async (title, remove, add) => {
+      for (const k of remove) await win.click(`button[aria-label="Remove ${k} from ${title}"]`)
+      if (add) {
+        await win.click(`button[aria-label="Add shortcut for ${title}"]`)
+        await win.waitForSelector('.shortcut-capture')
+        await win.keyboard.press(add)
+        await f.waitFor(async () => !(await win.$('.shortcut-capture')), `${add} recorded for ${title}`, 3000)
+      }
+    }
+    await rebind('Delete selection', ['Delete', 'Backspace'], 'x')
+    await rebind('Zoom timeline in', ['+', '='], ']')
+    await rebind('Zoom timeline out', ['-', '_'], null)
+    await rebind('Add arrow', [], 'a')
+    await f.waitFor(async () => (await chips(win, 'deleteSelection')) === 'X' && (await chips(win, 'timelineZoomIn')) === ']' && (await chips(win, 'timelineZoomOut')) === '' && (await chips(win, 'addArrow')) === 'A', 'rebound', 3000)
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.shortcuts-modal')), 'shortcuts dialog closed')
+    h.assert((await deleteTitle()) === 'Delete this blur (X)', `delete tooltip follows: ${await deleteTitle()}`)
+    h.assert((await zoomTitles()) === 'Zoom out timeline | Zoom in timeline (] or Ctrl+wheel)', `zoom tooltips follow: ${await zoomTitles()}`)
+    h.assert((await arrowTitle()) === 'Point at something (A)', `add arrow tooltip follows: ${await arrowTitle()}`)
+    // And the keys they name work.
+    await win.keyboard.press('x')
+    await saved((q) => !q.shapes.some((s) => s.kind === 'blur'), 'X deletes the selected blur')
   })
 
   await h.run('commands: a rebound shortcut works and persists after reopening; conflicts and reserved keys; old keys still work', async (ctx) => {

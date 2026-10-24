@@ -1,31 +1,30 @@
 import { useEffect, useState } from 'react'
+import { displayTime } from '../../../../shared/editor/clips'
+import type { CommandId } from '../../../../shared/editor/commands'
 import {
   duplicateItem,
-  fadeLead,
   hasStroke,
   HIGHLIGHT_COLORS,
   isPrivacyKind,
   itemVisibleAt,
   MIN_SHAPE_LENGTH,
-  revealTime,
+  revealKeptTime,
   setItemTime,
   SHAPE_COLORS,
   SHAPE_KINDS,
-  shapeForPlayhead,
   shapeLabel,
-  spotlightForPlayhead,
   STROKE_LIMITS
 } from '../../../../shared/editor/shapes'
-import { SmoothedTrack } from '../../../../shared/engine/cursor'
+import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { clamp } from '../../../../shared/engine/math'
 import { formatTime } from '../../../../shared/engine/project'
-import { speedAt } from '../../../../shared/render/overlays'
-import { visibleCursorAt } from '../../../../shared/render/shapes'
-import type { CursorSample, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
+import type { Clip, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import type { InspectorProps } from '../Inspector'
+import { useKeymap } from '../keymapContext'
+import { addShapeAt, addSpotlightAt, cursorPosFor, revealItem } from '../playheadItems'
 import { ShapeIcon } from '../shapeIcons'
 import '../shapes.css'
 
@@ -33,25 +32,23 @@ type Item = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotligh
 
 const spotlightLabel = (s: Spotlight): string => (s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight')
 
-const smoothed = new WeakMap<CursorSample[], { duration: number; smoothing: number; track: SmoothedTrack }>()
-
-/**
- * The smoothed cursor path the cursor layer draws (the same track the editor's scene builds),
- * made on first use: only adding an arrow or switching a spotlight to a region reads it.
- */
-function smoothedPath(samples: CursorSample[], duration: number, smoothing: number): SmoothedTrack {
-  let hit = smoothed.get(samples)
-  if (!hit || hit.duration !== duration || hit.smoothing !== smoothing) {
-    hit = { duration, smoothing, track: new SmoothedTrack(samples, duration, smoothing) }
-    smoothed.set(samples, hit)
-  }
-  return hit.track
+/** Which command adds each kind (its shortcut, if the user gave it one, goes in the tooltip). */
+const ADD_COMMAND: Record<ShapeKind, CommandId> = {
+  arrow: 'addArrow',
+  line: 'addLine',
+  rect: 'addRect',
+  ellipse: 'addEllipse',
+  highlight: 'addHighlight',
+  blur: 'addBlur',
+  pixelate: 'addPixelate'
 }
 
 /* ---------- Shapes, privacy blur and spotlight ---------- */
 
 export function ShapesPanel(props: InspectorProps): JSX.Element {
-  const { store, player } = useEditor()
+  const services = useEditor()
+  const { player } = services
+  const keymap = useKeymap()
   const { project, selection, cursor } = props
   const shapes = project.shapes ?? []
   const spotlights = project.spotlights ?? []
@@ -59,47 +56,11 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
   const spot = selection?.kind === 'spotlight' ? (spotlights.find((s) => s.id === selection.id) ?? null) : null
   const selId = selection && 'id' in selection ? selection.id : null
 
-  /**
-   * Where viewers see the cursor at source time `t` (the drawn cursor, or the real one baked
-   * into the video: what a cursor spotlight follows), when it is inside the video.
-   */
-  const cursorPos = (t: number): { x: number; y: number } | null => {
-    const path = { at: (s: number) => smoothedPath(cursor.samples, project.duration, project.cursor.smoothing).at(s) }
-    const p = cursor.valid ? visibleCursorAt(project, cursor.samples, path, t) : null
-    return p && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1 ? p : null
-  }
+  /** Where viewers see the cursor at source time `t` (what a cursor spotlight follows), when it is over the recording. */
+  const cursorPos = (t: number): { x: number; y: number } | null => cursorPosFor(project, cursor, t)
 
-  /** Moves the playhead into an item (past its fade-in) unless it is already showing there. */
-  const reveal = (start: number, end: number, fade: number): void => {
-    const shown = Math.min(end - 0.01, start + fade + 0.01)
-    if (player.time < shown || player.time >= end) player.seek(shown)
-  }
-
-  /** After adding an item at the playhead `t`: keeps it there, or moves it as little as needed to show the item fully. */
-  const showAdded = (item: { start: number; end: number }, t: number, fade: number): void => {
-    const to = revealTime(item, t, fade)
-    if (to !== t) player.seek(to)
-  }
-
-  const addShape = (kind: ShapeKind): void => {
-    const p = store.state
-    const t = player.time
-    const speed = speedAt(p.clips, t)
-    const s = shapeForPlayhead(kind, t, p, cursorPos(t), speed)
-    store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
-    props.onSelect({ kind: 'shape', id: s.id })
-    showAdded(s, t, fadeLead(kind, speed))
-  }
-
-  const addSpotlight = (mode: Spotlight['mode']): void => {
-    const p = store.state
-    const t = player.time
-    const speed = speedAt(p.clips, t)
-    const s = spotlightForPlayhead(mode, t, p, speed)
-    store.update((q) => ({ ...q, spotlights: [...(q.spotlights ?? []), s] }))
-    props.onSelect({ kind: 'spotlight', id: s.id })
-    showAdded(s, t, fadeLead('spotlight', speed))
-  }
+  const addShape = (kind: ShapeKind): void => void addShapeAt(services, kind, cursor, { onSelect: props.onSelect })
+  const addSpotlight = (mode: Spotlight['mode']): void => void addSpotlightAt(services, mode, { onSelect: props.onSelect })
 
   const items: Item[] = [...shapes.map((s): Item => ({ type: 'shape', item: s })), ...spotlights.map((s): Item => ({ type: 'spotlight', item: s }))].sort(
     (a, b) => a.item.start - b.item.start
@@ -113,7 +74,14 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
       <Section title="Add at playhead">
         <div className="shape-tools" role="group" aria-label="Add a shape">
           {SHAPE_KINDS.map((k) => (
-            <button key={k.kind} className={`shape-tool ${isPrivacyKind(k.kind) ? 'privacy' : ''}`} data-kind={k.kind} title={k.title} aria-label={`Add ${k.label.toLowerCase()}`} onClick={() => addShape(k.kind)}>
+            <button
+              key={k.kind}
+              className={`shape-tool ${isPrivacyKind(k.kind) ? 'privacy' : ''}`}
+              data-kind={k.kind}
+              title={withShortcut(k.title, keymap[ADD_COMMAND[k.kind]])}
+              aria-label={`Add ${k.label.toLowerCase()}`}
+              onClick={() => addShape(k.kind)}
+            >
               <ShapeIcon name={k.kind} size={20} />
               <span>{k.label}</span>
             </button>
@@ -128,14 +96,20 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
             className="shape-tool spotlight"
             data-kind="spotlight-cursor"
             disabled={!cursor.valid}
-            title={cursor.valid ? 'Dim everything but the area around the cursor' : 'No cursor data in this recording'}
+            title={cursor.valid ? withShortcut('Dim everything but the area around the cursor', keymap.addCursorSpotlight) : 'No cursor data in this recording'}
             aria-label="Add cursor spotlight"
             onClick={() => addSpotlight('cursor')}
           >
             <ShapeIcon name="spotlight-cursor" size={20} />
             <span>Follow cursor</span>
           </button>
-          <button className="shape-tool spotlight" data-kind="spotlight-region" title="Dim everything but an area you place" aria-label="Add region spotlight" onClick={() => addSpotlight('region')}>
+          <button
+            className="shape-tool spotlight"
+            data-kind="spotlight-region"
+            title={withShortcut('Dim everything but an area you place', keymap.addSpotlight)}
+            aria-label="Add region spotlight"
+            onClick={() => addSpotlight('region')}
+          >
             <ShapeIcon name="spotlight-region" size={20} />
             <span>Region</span>
           </button>
@@ -154,7 +128,7 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
                     data-shape-item={item.id}
                     onClick={() => {
                       props.onSelect({ kind: type, id: item.id })
-                      reveal(item.start, item.end, fadeLead(type === 'spotlight' ? 'spotlight' : (item as Shape).kind))
+                      revealItem(player, project.clips, item, type === 'spotlight' ? 'spotlight' : (item as Shape).kind)
                     }}
                   >
                     <ShapeIcon name={type === 'shape' ? (item as Shape).kind : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
@@ -188,7 +162,7 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
 
   return (
     <Section title={title} aside={<span className="muted small">{formatTime(shape.start)} – {formatTime(shape.end)}</span>}>
-      <OnPreview item={shape} fade={fadeLead(shape.kind)} />
+      <OnPreview item={shape} kind={shape.kind} clips={project.clips} />
       {privacy ? (
         <>
           <Chips<ShapeKind>
@@ -285,7 +259,7 @@ function SelectedSpotlight({
 
   return (
     <Section title="Selected spotlight" aside={<span className="muted small">{formatTime(spot.start)} – {formatTime(spot.end)}</span>}>
-      <OnPreview item={spot} fade={fadeLead('spotlight')} />
+      <OnPreview item={spot} kind="spotlight" clips={project.clips} />
       <Chips<Spotlight['mode']>
         label="Spotlight follows"
         value={spot.mode === 'cursor' && !cursorValid ? null : spot.mode}
@@ -338,22 +312,24 @@ function SelectedSpotlight({
 /* ---------- shared controls ---------- */
 
 /**
- * The selected item is edited on the preview while the playhead is inside it: when it is
- * not, a link moves the playhead there.
+ * The selected item is edited on the preview while the frame there shows it: when it does not,
+ * a link moves the playhead there (onto a kept frame where it is fully shown).
  */
-function OnPreview({ item, fade }: { item: { start: number; end: number }; fade: number }): JSX.Element | null {
+function OnPreview({ item, kind, clips }: { item: { start: number; end: number }; kind: ShapeKind | 'spotlight'; clips: Clip[] }): JSX.Element | null {
   const { player } = useEditor()
-  const [inside, setInside] = useState(() => itemVisibleAt(item, player.time))
+  // The frame the preview shows (inside a cut, the next kept one), as the preview's handles use.
+  const [inside, setInside] = useState(() => itemVisibleAt(item, displayTime(clips, player.time)))
   useEffect(() => {
-    const check = (): void => setInside(itemVisibleAt(item, player.time))
+    const check = (): void => setInside(itemVisibleAt(item, displayTime(clips, player.time)))
     check()
     return player.subscribe(check)
-  }, [item, player])
+  }, [item, clips, player])
   if (inside) return null
+  if (revealKeptTime(item, kind, clips, player.time) === null) return <p className="hint shape-offscreen">Not in the video: all of it is in a part that is cut.</p>
   return (
     <p className="hint shape-offscreen">
       Not on screen at the playhead.{' '}
-      <button className="link" onClick={() => player.seek(Math.min(item.end - 0.01, item.start + fade + 0.01))}>
+      <button className="link" onClick={() => revealItem(player, clips, item, kind)}>
         Show it on the preview
       </button>
     </p>
@@ -436,12 +412,13 @@ function TimeField({
 }
 
 function ItemActions({ onDuplicate, onDelete, what }: { onDuplicate: () => void; onDelete: () => void; what: string }): JSX.Element {
+  const keymap = useKeymap()
   return (
     <div className="row start shape-actions">
       <button className="btn" onClick={onDuplicate} title={`Duplicate this ${what}`}>
         <ShapeIcon name="duplicate" size={16} /> Duplicate
       </button>
-      <button className="btn ghost danger" onClick={onDelete} title={`Delete this ${what} (Delete)`}>
+      <button className="btn ghost danger" onClick={onDelete} title={withShortcut(`Delete this ${what}`, keymap.deleteSelection)}>
         <Icon name="trash" size={16} /> Delete
       </button>
     </div>
