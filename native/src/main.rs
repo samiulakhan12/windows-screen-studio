@@ -1,11 +1,12 @@
-//! ssw-capture: records one monitor with Windows.Graphics.Capture, cursor excluded,
-//! to an H.264 MP4 through Media Foundation (hardware encoder when available).
+//! ssw-capture: records one monitor or one window with Windows.Graphics.Capture, cursor
+//! excluded, to an H.264 MP4 through Media Foundation (hardware encoder when available).
 //! Driven by the Electron main process; see src/main/nativeCapture.ts and README.md.
 
 // The portable modules are unit-tested on any OS but only used by the Windows code.
 #![cfg_attr(not(windows), allow(dead_code))]
 
 mod cli;
+mod input;
 mod interrupt;
 mod output;
 mod pacer;
@@ -14,13 +15,15 @@ mod shapes;
 mod sizing;
 #[cfg(windows)]
 mod win;
+mod window;
 
 pub mod exit {
     pub const OK: i32 = 0;
     pub const RUNTIME: i32 = 1;
     pub const USAGE: i32 = 2;
     pub const UNSUPPORTED: i32 = 3;
-    pub const NO_MONITOR: i32 = 4;
+    /// The monitor or window to record (or watch) does not exist.
+    pub const NOT_FOUND: i32 = 4;
 }
 
 fn main() {
@@ -42,7 +45,7 @@ fn main() {
         }
         Ok(command) => run(command),
         Err(message) => {
-            if matches!(args.first().map(String::as_str), Some("record" | "selftest")) {
+            if matches!(args.first().map(String::as_str), Some("record" | "selftest" | "watch-window")) {
                 output::emit(&protocol::event_error(&message));
             }
             output::log(&message);
@@ -68,11 +71,12 @@ fn run(command: cli::Cli) -> i32 {
                     .bool("supported", false)
                     .bool("cursorToggle", false)
                     .bool("borderToggle", false)
+                    .bool("windowCapture", false)
                     .str("reason", message)
                     .finish(),
             );
         }
-        cli::Cli::Record(_) | cli::Cli::Selftest(_) => {
+        cli::Cli::Record(_) | cli::Cli::Selftest(_) | cli::Cli::WatchWindow(_) => {
             output::emit(&protocol::event_error(message));
         }
         _ => {}

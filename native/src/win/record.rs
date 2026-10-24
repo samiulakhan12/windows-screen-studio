@@ -1,30 +1,39 @@
 //! `record`: capture -> newest-frame texture -> NV12 (GPU) -> H.264 MP4, paced on
 //! a constant frame grid with paused time removed (see pacer.rs).
+//!
+//! A window (`--window`) is recorded at its initial size; later sizes are scaled to fit
+//! inside it (processor.rs, `sizing::fit_rects`), and its rectangle is reported as `window`
+//! events (cursor.rs polls it). While it is minimised the last frame is repeated.
 
-use std::io::{self, BufRead};
 use std::ops::Range;
-use std::sync::mpsc::{self, Receiver};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Direct3D11::{ID3D11Texture2D, D3D11_BOX};
 use windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM;
 
-use super::capture::{Capture, Frame};
+use super::capture::{Capture, Frame, Source};
 use super::clock;
-use super::cursor::CursorWatcher;
+use super::cursor::{CursorWatcher, FollowWindow};
 use super::d3d::{self, Device};
 use super::encoder::{Container, Encoder, EncoderSettings};
 use super::monitors;
 use super::processor::Processor;
 use super::session_end::{self, SETTLED};
+use super::window;
 use super::{init_winrt, output_path, support, Failure, MediaFoundation, PartialFile, Result};
-use crate::cli::RecordArgs;
+use crate::cli::{RecordArgs, Target};
 use crate::exit;
+use crate::input::{spawn_stdin_reader, Input};
 use crate::interrupt::SetOnDrop;
 use crate::output;
 use crate::pacer::{Pacer, Timebase};
 use crate::protocol::{self, Command, StartedInfo, StoppedInfo};
 use crate::sizing;
+use crate::window::{Change, WindowTracker};
 
 /// WGC delivers the current screen right after StartCapture; no frame by then means it is broken.
 const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(5);
@@ -32,12 +41,6 @@ const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_WAIT_TICKS: i64 = 150_000; // 15 ms
 /// How long the last frames wait for the encoder to accept them.
 const TAIL_WAIT: Duration = Duration::from_secs(1);
-
-enum Input {
-    Command(Command),
-    Invalid(String),
-    Eof,
-}
 
 pub fn run(args: &RecordArgs) -> i32 {
     match record(args) {
@@ -48,43 +51,6 @@ pub fn run(args: &RecordArgs) -> i32 {
             failure.code
         }
     }
-}
-
-fn spawn_stdin_reader() -> Receiver<Input> {
-    let (tx, rx) = mpsc::channel();
-    let spawned = std::thread::Builder::new().name("stdin".into()).spawn(move || {
-        let stdin = io::stdin();
-        let mut lock = stdin.lock();
-        let mut line = Vec::new();
-        loop {
-            line.clear();
-            match lock.read_until(b'\n', &mut line) {
-                // EOF: the app closed our stdin or died. Either way, finish the file.
-                Ok(0) | Err(_) => {
-                    let _ = tx.send(Input::Eof);
-                    return;
-                }
-                Ok(_) => {
-                    let text = String::from_utf8_lossy(&line);
-                    let text = text.trim();
-                    if text.is_empty() {
-                        continue;
-                    }
-                    let input = match protocol::parse_command(text) {
-                        Ok(c) => Input::Command(c),
-                        Err(e) => Input::Invalid(e),
-                    };
-                    if tx.send(input).is_err() {
-                        return;
-                    }
-                }
-            }
-        }
-    });
-    if spawned.is_err() {
-        output::log("could not start the stdin reader; only closing the process stops the recording");
-    }
-    rx
 }
 
 /// The newest captured frame, copied out of the capture pool so WGC can reuse its buffers.
@@ -120,14 +86,29 @@ struct Session {
     latest: Latest,
     pacer: Pacer,
     timebase: Timebase,
+    /// The recorded window, if recording one.
+    window: Option<HWND>,
+    /// Set by the cursor thread once the recorded window no longer exists.
+    window_gone: Arc<AtomicBool>,
 }
 
 impl Session {
     fn refresh_frame(&mut self) -> Result<()> {
         if let Some(frame) = self.capture.newest()? {
-            self.latest.update(&self.device, &mut self.processor, &frame)?;
+            // Keep showing the last full picture rather than a partial one (the content grew
+            // past the pool's buffers; the pool is recreated at the new size right away), or
+            // whatever Windows may hand over for a minimised window.
+            let have_frame = self.latest.texture.is_some();
+            let skip = have_frame && (!frame.complete || self.window.is_some_and(window::is_minimized));
+            if !skip {
+                self.latest.update(&self.device, &mut self.processor, &frame)?;
+            }
         }
         Ok(())
+    }
+
+    fn window_closed(&self) -> bool {
+        self.window_gone.load(Ordering::SeqCst)
     }
 
     /// Encodes the newest frame into `slots`. While recording, a slot the encoder has no
@@ -189,6 +170,11 @@ fn record(args: &RecordArgs) -> Result<()> {
     // Dropped right before, after the encoder and Media Foundation released the file.
     let mut partial = PartialFile::default();
     session_end::watch();
+    // A window that does not exist is "not found" (exit 4) on any system, like an unknown monitor.
+    let window = match args.target {
+        Target::Window(handle) => Some(window::find(handle)?),
+        Target::Monitor(_) => None,
+    };
     init_winrt()?;
     let _mf = MediaFoundation::start()?;
     match support::capture_supported() {
@@ -205,10 +191,18 @@ fn record(args: &RecordArgs) -> Result<()> {
         ));
     }
     let path = output_path(&args.out)?;
-    let monitor = monitors::select(&args.monitor)?;
+    let (source, gpu_monitor) = match (window, &args.target) {
+        (Some(w), _) => (Source::Window(w), window::monitor(w)),
+        (None, Target::Monitor(selector)) => {
+            let monitor = monitors::select(selector)?;
+            (Source::Monitor(monitor.handle), monitor.handle)
+        }
+        (None, Target::Window(_)) => unreachable!("the window was looked up above"),
+    };
+    let noun = source.noun();
 
-    let device = d3d::create_device(Some(monitor.handle))?;
-    let capture = Capture::new(&device, monitor.handle, args.fps)?;
+    let device = d3d::create_device(Some(gpu_monitor))?;
+    let capture = Capture::new(&device, source, args.fps)?;
     let input = capture.size();
     let (width, height) = sizing::output_size(input.0, input.1);
     let processor = Processor::new(&device, input, (width, height), args.fps)?;
@@ -228,7 +222,7 @@ fn record(args: &RecordArgs) -> Result<()> {
     }
     if sizing::is_scaled(input, (width, height)) {
         output::emit(&protocol::event_warning(&format!(
-            "The {}x{} monitor is recorded at {width}x{height}, the largest size H.264 encoders accept",
+            "The {}x{} {noun} is recorded at {width}x{height}, the largest size H.264 encoders accept",
             input.0, input.1
         )));
     }
@@ -267,9 +261,17 @@ fn record(args: &RecordArgs) -> Result<()> {
             return Ok(());
         }
         if capture.is_closed() {
-            return Err(Failure::runtime("The monitor was disconnected before recording started"));
+            return Err(Failure::runtime(match source {
+                Source::Monitor(_) => "The monitor was disconnected before recording started",
+                Source::Window(_) => "The window was closed before recording started",
+            }));
         }
         if Instant::now() > deadline {
+            if window.is_some_and(window::is_minimized) {
+                return Err(Failure::runtime(
+                    "The window is minimised: Windows.Graphics.Capture shows nothing of it until it is restored",
+                ));
+            }
             return Err(Failure::runtime("Windows.Graphics.Capture delivered no frame within 5 seconds"));
         }
         std::thread::sleep(Duration::from_millis(2));
@@ -286,6 +288,8 @@ fn record(args: &RecordArgs) -> Result<()> {
         latest: Latest { texture: None, size: (0, 0) },
         pacer: Pacer::new(args.fps, start),
         timebase,
+        window,
+        window_gone: Arc::new(AtomicBool::new(false)),
     };
     session.latest.update(&session.device, &mut session.processor, &first)?;
     drop(first);
@@ -299,7 +303,19 @@ fn record(args: &RecordArgs) -> Result<()> {
         hardware: encoder.hardware,
         fragmented: encoder.container == Container::Fragmented,
     }));
-    let cursor = CursorWatcher::spawn(timebase);
+    // The window's rectangle: once now (before any cursor event), then on change (cursor.rs).
+    let follow = window.map(|w| {
+        let mut tracker = WindowTracker::new();
+        match tracker.update(window::observe(w)) {
+            Change::Changed(state) => {
+                output::emit(&protocol::event_window(session.epoch_ms(clock::now_ticks()), &state));
+            }
+            Change::Closed => session.window_gone.store(true, Ordering::SeqCst),
+            Change::Unchanged => {}
+        }
+        FollowWindow { handle: w.0 as isize as i64, tracker, gone: session.window_gone.clone() }
+    });
+    let cursor = CursorWatcher::spawn(timebase, follow);
 
     let mut stop: Option<(i64, &str)> = None;
     for (command, received) in queued {
@@ -371,7 +387,7 @@ fn run_loop(
                 Input::Eof => stop = Some((now, "eof")),
             }
         }
-        if stop.is_none() && session.capture.is_closed() {
+        if stop.is_none() && (session.capture.is_closed() || session.window_closed()) {
             stop = Some((clock::now_ticks(), "closed"));
         }
         if stop.is_none() && output::stdout_broken() {
@@ -384,8 +400,8 @@ fn run_loop(
         }
 
         if let Err(e) = session.refresh_frame() {
-            // Reading frames fails once the monitor is gone; end the recording normally then.
-            if !session.capture.is_closed() {
+            // Reading frames fails once the monitor or window is gone; end the recording normally then.
+            if !session.capture.is_closed() && !session.window_closed() {
                 return Err(e);
             }
             stop.get_or_insert((clock::now_ticks(), "closed"));

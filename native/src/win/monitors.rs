@@ -103,7 +103,7 @@ pub fn select(selector: &MonitorSelector) -> Result<MonitorInfo> {
     };
     found.ok_or_else(|| {
         let available: Vec<String> = monitors.iter().map(|m| format!("{} {}", m.index, m.device)).collect();
-        Failure::new(exit::NO_MONITOR, format!("Monitor {selector:?} not found (available: {})", available.join(", ")))
+        Failure::new(exit::NOT_FOUND, format!("Monitor {selector:?} not found (available: {})", available.join(", ")))
     })
 }
 

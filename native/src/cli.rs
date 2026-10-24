@@ -7,21 +7,27 @@ ssw-capture: Windows.Graphics.Capture recorder for Screen Studio for Windows
 
 USAGE:
   ssw-capture probe
-      Prints {\"supported\",\"cursorToggle\",\"borderToggle\",...} as JSON.
+      Prints {\"supported\",\"windowCapture\",\"cursorToggle\",\"borderToggle\",...} as JSON.
       Exit code 0 when cursor-free capture and an H.264 encoder are available, 3 otherwise.
   ssw-capture list
       Prints the monitors as a JSON array (index, device, name, x, y, width, height, primary).
   ssw-capture record --monitor <device name | index> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
-      Records one monitor without the mouse cursor. Newline-delimited JSON events on stdout
-      (ready, started, cursor, paused, resumed, stopped, error); commands on stdin:
-      pause [epochMs], resume [epochMs], stop [epochMs]. Closing stdin also stops.
+  ssw-capture record --window <HWND> --out <file.mp4> --fps <30|60> [--bitrate <bps>]
+      Records one monitor, or one window (decimal handle), without the mouse cursor.
+      Newline-delimited JSON events on stdout (ready, started, window, cursor, paused, resumed,
+      stopped, error); commands on stdin: pause [epochMs], resume [epochMs], stop [epochMs].
+      Closing stdin also stops.
+  ssw-capture watch-window --window <HWND>
+      Captures nothing: reports the window's screen rectangle (ready, window, stopped) until
+      `stop` or the end of stdin, or until the window closes.
   ssw-capture selftest --out <file.mp4> [--fps <30|60>] [--seconds <1-60>]
       Encodes a generated 1920x1080 colour sweep through the same GPU colour conversion and
       H.264 encoder as `record` (no screen capture) and prints the encoder and its speed.
   ssw-capture --version
 
 EXIT CODES:
-  0 success, 1 runtime error, 2 invalid arguments, 3 unsupported on this system, 4 monitor not found
+  0 success, 1 runtime error, 2 invalid arguments, 3 unsupported on this system,
+  4 monitor or window not found
 ";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,9 +38,17 @@ pub enum MonitorSelector {
     Device(String),
 }
 
+/// What `record` captures.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Target {
+    Monitor(MonitorSelector),
+    /// A window handle (HWND), as in Electron's `window:<HWND>:<n>` source id.
+    Window(i64),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordArgs {
-    pub monitor: MonitorSelector,
+    pub target: Target,
     pub out: String,
     pub fps: u32,
     pub bitrate: Option<u32>,
@@ -52,6 +66,8 @@ pub enum Cli {
     Probe,
     List,
     Record(RecordArgs),
+    /// `watch-window --window <HWND>`.
+    WatchWindow(i64),
     Selftest(SelftestArgs),
     Help,
     Version,
@@ -67,6 +83,7 @@ pub fn parse(args: &[String]) -> Result<Cli, String> {
         "probe" => Ok(Cli::Probe),
         "list" => Ok(Cli::List),
         "record" => parse_record(rest).map(Cli::Record),
+        "watch-window" => parse_watch_window(rest).map(Cli::WatchWindow),
         "selftest" => parse_selftest(rest).map(Cli::Selftest),
         "help" | "--help" | "-h" => Ok(Cli::Help),
         "--version" | "-V" => Ok(Cli::Version),
@@ -76,6 +93,7 @@ pub fn parse(args: &[String]) -> Result<Cli, String> {
 
 fn parse_record(args: &[String]) -> Result<RecordArgs, String> {
     let mut monitor = None;
+    let mut window = None;
     let mut out = None;
     let mut fps = None;
     let mut bitrate = None;
@@ -85,6 +103,7 @@ fn parse_record(args: &[String]) -> Result<RecordArgs, String> {
         let value = args.get(i + 1).ok_or_else(|| format!("{flag} needs a value"))?;
         match flag {
             "--monitor" => monitor = Some(parse_monitor(value)?),
+            "--window" => window = Some(parse_window(value)?),
             "--out" => {
                 if value.trim().is_empty() {
                     return Err("--out must not be empty".into());
@@ -105,12 +124,47 @@ fn parse_record(args: &[String]) -> Result<RecordArgs, String> {
         }
         i += 2;
     }
-    Ok(RecordArgs {
-        monitor: monitor.ok_or("--monitor is required")?,
-        out: out.ok_or("--out is required")?,
-        fps: fps.ok_or("--fps is required")?,
-        bitrate,
-    })
+    let target = match (monitor, window) {
+        (Some(m), None) => Target::Monitor(m),
+        (None, Some(w)) => Target::Window(w),
+        (Some(_), Some(_)) => return Err("--monitor and --window cannot be combined".into()),
+        (None, None) => return Err("--monitor or --window is required".into()),
+    };
+    Ok(RecordArgs { target, out: out.ok_or("--out is required")?, fps: fps.ok_or("--fps is required")?, bitrate })
+}
+
+fn parse_watch_window(args: &[String]) -> Result<i64, String> {
+    match args {
+        [flag, value] if flag == "--window" => parse_window(value),
+        [flag] if flag == "--window" => Err("--window needs a value".into()),
+        [] => Err("--window is required".into()),
+        _ => Err(format!("invalid arguments for watch-window: {}", args.join(" "))),
+    }
+}
+
+/// A window handle: decimal as Electron prints it (`window:<HWND>:<n>`, a signed intptr_t),
+/// or `0x`-prefixed hexadecimal for manual use. Zero is never a window.
+pub fn parse_window(value: &str) -> Result<i64, String> {
+    let v = value.trim();
+    let parsed = match v.strip_prefix("0x").or_else(|| v.strip_prefix("0X")) {
+        Some(hex) if !hex.is_empty() && hex.len() <= 16 && hex.bytes().all(|b| b.is_ascii_hexdigit()) => {
+            u64::from_str_radix(hex, 16).ok().map(|n| n as i64)
+        }
+        Some(_) => None,
+        None => {
+            let digits = v.strip_prefix('-').unwrap_or(v);
+            if !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()) {
+                v.parse::<i64>().ok()
+            } else {
+                None
+            }
+        }
+    };
+    match parsed {
+        Some(0) => Err("--window must not be 0".into()),
+        Some(n) => Ok(n),
+        None => Err(format!("--window must be a window handle (decimal HWND), got '{value}'")),
+    }
 }
 
 fn parse_fps(value: &str) -> Result<u32, String> {
@@ -182,7 +236,7 @@ mod tests {
         assert_eq!(
             r,
             Ok(Cli::Record(RecordArgs {
-                monitor: MonitorSelector::Device(r"\\.\DISPLAY2".into()),
+                target: Target::Monitor(MonitorSelector::Device(r"\\.\DISPLAY2".into())),
                 out: r"C:\a b\screen.mp4".into(),
                 fps: 60,
                 bitrate: None
@@ -192,12 +246,62 @@ mod tests {
         assert_eq!(
             r,
             Ok(Cli::Record(RecordArgs {
-                monitor: MonitorSelector::Index(1),
+                target: Target::Monitor(MonitorSelector::Index(1)),
                 out: "x.mp4".into(),
                 fps: 30,
                 bitrate: Some(8_000_000)
             }))
         );
+    }
+
+    #[test]
+    fn parses_window_record_and_watch() {
+        assert_eq!(
+            parse(&args(&["record", "--window", "4194316", "--out", "w.mp4", "--fps", "30"])),
+            Ok(Cli::Record(RecordArgs {
+                target: Target::Window(4_194_316),
+                out: "w.mp4".into(),
+                fps: 30,
+                bitrate: None
+            }))
+        );
+        assert_eq!(
+            parse(&args(&["record", "--out", "w.mp4", "--window", "0x20102", "--fps", "60", "--bitrate", "4000000"])),
+            Ok(Cli::Record(RecordArgs {
+                target: Target::Window(0x20102),
+                out: "w.mp4".into(),
+                fps: 60,
+                bitrate: Some(4_000_000)
+            }))
+        );
+        assert_eq!(parse(&args(&["watch-window", "--window", "131330"])), Ok(Cli::WatchWindow(131_330)));
+        assert_eq!(parse(&args(&["watch-window", "--window", " 131330 "])), Ok(Cli::WatchWindow(131_330)));
+        // Chromium prints the handle as a signed intptr_t.
+        assert_eq!(parse(&args(&["watch-window", "--window", "-2147352318"])), Ok(Cli::WatchWindow(-2_147_352_318)));
+    }
+
+    #[test]
+    fn rejects_bad_window_arguments() {
+        for bad in [
+            vec!["watch-window"],
+            vec!["watch-window", "--window"],
+            vec!["watch-window", "--window", "0"],
+            vec!["watch-window", "--window", "-0"],
+            vec!["watch-window", "--window", "abc"],
+            vec!["watch-window", "--window", "-"],
+            vec!["watch-window", "--window", "window:123:0"],
+            vec!["watch-window", "--window", "12", "--out", "x"],
+            vec!["watch-window", "--monitor", "0"],
+            vec!["record", "--window", "12", "--monitor", "0", "--out", "x.mp4", "--fps", "30"],
+            vec!["record", "--window", "", "--out", "x.mp4", "--fps", "30"],
+            vec!["record", "--window", "0x", "--out", "x.mp4", "--fps", "30"],
+            vec!["record", "--window", "0x12345678901234567", "--out", "x.mp4", "--fps", "30"],
+            vec!["record", "--window", "1.5", "--out", "x.mp4", "--fps", "30"],
+            vec!["record", "--window", "99999999999999999999", "--out", "x.mp4", "--fps", "30"],
+            vec!["record", "--window", "12", "--out", "x.mp4"],
+        ] {
+            assert!(parse(&args(&bad)).is_err(), "{bad:?} should fail");
+        }
     }
 
     #[test]
