@@ -1,6 +1,7 @@
 import type { AudioLevels } from '../audio/loudness'
 import type { AudioSource, StemKind } from '../audio/settings'
 import type { Range } from '../audio/activity'
+import type { OutputChapter } from '../render/chapters'
 import type { Clip, ExportFormat, ExportSettings } from '../types'
 
 /** H.264 encoders ffmpeg may use; GPU ones are only used after a successful probe. */
@@ -101,6 +102,8 @@ export interface ExportJob {
   bitrate?: { video: number; audio: number }
   /** GIF only: largest file in bytes; frame rate, size and colours are reduced until it fits. */
   maxBytes?: number
+  /** Chapter markers written into the file (not GIF): output seconds, in order (see shared/render/chapters). */
+  chapters?: OutputChapter[]
   outputPath: string
 }
 

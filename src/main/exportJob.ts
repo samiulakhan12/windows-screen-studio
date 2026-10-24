@@ -4,6 +4,7 @@ import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSou
 import { MAX_DUCK_RANGES } from '../shared/audio/automation'
 import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
+import { MAX_CHAPTERS } from '../shared/render/chapters'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
 import { FfmpegFailure } from './ffmpeg'
 import { HARDWARE_ENCODERS } from './hwEncoders'
@@ -146,6 +147,21 @@ function validMusic(m: MusicSound): boolean {
   )
 }
 
+/** Longest chapter name accepted (the editor keeps them far shorter). */
+export const MAX_CHAPTER_TITLE = 500
+
+/** Chapters in output seconds, strictly in order, with names. */
+function validChapters(list: unknown): boolean {
+  if (!Array.isArray(list) || list.length > MAX_CHAPTERS) return false
+  let last = -1
+  for (const c of list) {
+    if (!c || typeof c !== 'object' || !isNum(c.start, 0, 1e7) || !(c.start > last)) return false
+    if (typeof c.title !== 'string' || c.title.length > MAX_CHAPTER_TITLE) return false
+    last = c.start
+  }
+  return true
+}
+
 /** The renderer is trusted, but ffmpeg arguments are still built only from validated values. */
 export function validateJob(job: ExportJob): void {
   const audioOnly = job.format === 'm4a'
@@ -167,7 +183,8 @@ export function validateJob(job: ExportJob): void {
     (!job.clicks ||
       (isNum(job.clicks.volume, 0, 2) && Array.isArray(job.clicks.times) && job.clicks.times.length <= MAX_CLICKS && job.clicks.times.every((t) => isNum(t, 0, 1e7)))) &&
     (!job.bitrate || (isNum(job.bitrate.video, 0, 1e9) && isNum(job.bitrate.audio, 0, 1e6) && (audioOnly || job.bitrate.video >= 1000))) &&
-    (job.maxBytes === undefined || (job.format === 'gif' && isNum(job.maxBytes, 1000, 1e12)))
+    (job.maxBytes === undefined || (job.format === 'gif' && isNum(job.maxBytes, 1000, 1e12))) &&
+    (job.chapters === undefined || (job.format !== 'gif' && validChapters(job.chapters)))
   if (!ok) throw new Error('Invalid export settings')
   if (audioOnly && !job.audio && !job.clicks && !job.music) throw new Error('This recording has no sound to export.')
 }

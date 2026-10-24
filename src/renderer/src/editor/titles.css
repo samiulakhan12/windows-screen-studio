@@ -1,0 +1,257 @@
+/* Title cards and chapters: their timeline track and the Text panel's sections. */
+
+/* ---------- Timeline (two classes each: editor.css loads after this file) ---------- */
+.tl-label.title-label {
+  height: 46px;
+}
+
+.tl-track.title-track {
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Chapter flags along the top of the track; their line runs down across the title cards. */
+.chapter-strip {
+  position: relative;
+  flex: none;
+  height: 14px;
+  z-index: 2;
+  cursor: col-resize;
+}
+
+.tl-empty.chapter-empty {
+  font-size: 10px;
+  justify-content: flex-start;
+  padding-left: 6px;
+}
+
+.chapter-flag {
+  position: absolute;
+  top: 0;
+  height: 14px;
+  max-width: 140px;
+  margin-left: -1px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 5px;
+  border-radius: 0 5px 5px 0;
+  background: #f59e0b;
+  color: #1c1305;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: grab;
+  white-space: nowrap;
+}
+
+.chapter-flag::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 46px;
+  background: rgba(245, 158, 11, 0.85);
+  pointer-events: none;
+}
+
+.chapter-flag:hover {
+  background: #fbbf24;
+  z-index: 1;
+}
+
+.chapter-flag.selected {
+  outline: 2px solid white;
+  outline-offset: 0;
+  z-index: 2;
+}
+
+.chapter-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.title-lane {
+  position: relative;
+  flex: 1;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  cursor: col-resize;
+}
+
+.seg.title-seg {
+  bottom: auto;
+  gap: 4px;
+  background: linear-gradient(180deg, #4f46e5, #4338ca);
+  border: 1px solid #a5b4fc;
+}
+
+.seg.title-seg .seg-icon {
+  flex: none;
+  display: flex;
+  margin-left: 4px;
+  pointer-events: none;
+}
+
+.seg.title-seg .seg-label {
+  padding-left: 0;
+}
+
+/* ---------- Text panel ---------- */
+.title-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.title-tools .btn {
+  white-space: nowrap;
+}
+
+.tc-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+}
+
+.tc-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.title-styles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.title-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.title-style .icon {
+  color: #a5b4fc;
+}
+
+.title-style:hover {
+  color: var(--text);
+  border-color: #3a3a4e;
+}
+
+.title-style.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: #20202d;
+}
+
+.title-list button,
+.chapter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-list button .icon {
+  flex: none;
+  color: #a5b4fc;
+}
+
+.title-list button > span:not(.muted) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-list button .muted,
+.chapter-row .chapter-time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.title-list button.active {
+  background: var(--panel-2);
+}
+
+.chapter-list {
+  gap: 4px;
+}
+
+.chapter-row {
+  padding: 2px 2px 2px 0;
+  border-radius: 8px;
+}
+
+.chapter-row.active {
+  background: var(--panel-2);
+}
+
+.chapter-row .chapter-time {
+  width: 48px;
+  height: 28px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #fbbf24;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chapter-row .chapter-time:hover {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.chapter-row .tc-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  font-size: 12px;
+}
+
+.chapter-row .btn.icon-btn {
+  flex: none;
+  width: auto;
+  height: 28px;
+  padding: 0 6px;
+}
+
+/* ---------- Export dialog ---------- */
+.export-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.export-chapters .chapter-copy {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

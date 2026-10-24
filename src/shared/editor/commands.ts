@@ -4,10 +4,10 @@
  * Pure: what a command does lives in the editor (views/Editor.tsx), which runs them by id.
  */
 
-export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Panels' | 'Timeline' | 'General'
+export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Camera' | 'Panels' | 'Timeline' | 'General'
 
 /** Categories in the order the palette and the shortcuts editor list them. */
-export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit', 'Add', 'Zoom', 'Effects', 'Panels', 'Timeline', 'General']
+export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit', 'Add', 'Zoom', 'Effects', 'Camera', 'Panels', 'Timeline', 'General']
 
 interface CommandSpec {
   id: string
@@ -37,6 +37,8 @@ const COMMAND_LIST = [
   { id: 'stepForward', title: 'Step forward one frame', category: 'Playback', keywords: 'next frame right', repeat: true },
   { id: 'jumpBack', title: 'Back one second', category: 'Playback', keywords: 'rewind skip', repeat: true },
   { id: 'jumpForward', title: 'Forward one second', category: 'Playback', keywords: 'skip ahead', repeat: true },
+  { id: 'nextChapter', title: 'Go to next chapter', category: 'Playback', keywords: 'chapter marker section skip jump forward', repeat: true },
+  { id: 'prevChapter', title: 'Go to previous chapter', category: 'Playback', keywords: 'chapter marker section skip jump back', repeat: true },
 
   { id: 'undo', title: 'Undo', category: 'Edit', keywords: 'revert back', repeat: true },
   { id: 'redo', title: 'Redo', category: 'Edit', keywords: 'again', repeat: true },
@@ -57,6 +59,8 @@ const COMMAND_LIST = [
   { id: 'addPixelate', title: 'Add pixelate', category: 'Add', keywords: 'privacy mosaic censor redact hide' },
   { id: 'addSpotlight', title: 'Add spotlight', category: 'Add', keywords: 'focus dim darken region area' },
   { id: 'addCursorSpotlight', title: 'Add cursor spotlight', category: 'Add', keywords: 'focus dim darken follow pointer mouse' },
+  { id: 'addTitle', title: 'Add title card at playhead', category: 'Add', keywords: 'intro heading lower third slide caption text' },
+  { id: 'addChapter', title: 'Add chapter at playhead', category: 'Add', keywords: 'marker section bookmark youtube timestamps' },
 
   { id: 'zoomLevel0', title: 'Pull back selected zoom (0.75×)', category: 'Zoom', keywords: 'level scale out background' },
   { id: 'zoomLevel1', title: 'Zoom level 1.25×', category: 'Zoom', keywords: 'level scale selected' },
@@ -70,11 +74,17 @@ const COMMAND_LIST = [
   { id: 'toggleKeystrokes', title: 'Keystroke overlay', category: 'Effects', keywords: 'keyboard shortcuts keys toggle show hide', toggle: true },
   { id: 'toggleWebcam', title: 'Camera bubble', category: 'Effects', keywords: 'webcam face show hide toggle', toggle: true },
 
+  { id: 'layoutDefault', title: 'Camera layout: screen with camera bubble', category: 'Camera', keywords: 'webcam layout default picture in picture pip' },
+  { id: 'layoutCameraOnly', title: 'Camera layout: camera only', category: 'Camera', keywords: 'webcam layout full face talking head fullscreen' },
+  { id: 'layoutScreenOnly', title: 'Camera layout: screen only', category: 'Camera', keywords: 'webcam layout hide no camera' },
+  { id: 'layoutSideBySide', title: 'Camera layout: side by side', category: 'Camera', keywords: 'webcam layout split two columns' },
+  { id: 'layoutCameraLarge', title: 'Camera layout: large camera', category: 'Camera', keywords: 'webcam layout big presenter' },
+
   { id: 'showStyle', title: 'Open Style settings', category: 'Panels', keywords: 'background padding corners shadow aspect inspector tab' },
   { id: 'showCursor', title: 'Open Cursor settings', category: 'Panels', keywords: 'pointer clicks inspector tab' },
   { id: 'showZoom', title: 'Open Zoom settings', category: 'Panels', keywords: 'auto zoom inspector tab' },
   { id: 'showClip', title: 'Open Clip settings', category: 'Panels', keywords: 'cuts speed trim inspector tab' },
-  { id: 'showText', title: 'Open Text settings', category: 'Panels', keywords: 'annotations inspector tab' },
+  { id: 'showText', title: 'Open Text settings', category: 'Panels', keywords: 'annotations titles chapters inspector tab' },
   { id: 'showShapes', title: 'Open Shapes settings', category: 'Panels', keywords: 'arrows blur spotlight inspector tab' },
   { id: 'showEffects', title: 'Open Effects settings', category: 'Panels', keywords: 'motion blur keystrokes inspector tab' },
   { id: 'showCamera', title: 'Open Camera settings', category: 'Panels', keywords: 'webcam inspector tab' },
