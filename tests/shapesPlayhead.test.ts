@@ -237,16 +237,53 @@ describe('a cursor spotlight while the cursor is off the recording', () => {
   it('fades out before the cursor leaves and back in after it returns', () => {
     const over = (t: number): boolean => !(t >= 4 && t < 6)
     const f = SPOTLIGHT_FADE
-    expect(cursorPresence(over, 3, f)).toBe(1)
-    expect(cursorPresence(over, 5, f)).toBe(0)
-    expect(cursorPresence(over, 4 - f / 2, f)).toBeCloseTo(0.5, 1)
-    expect(cursorPresence(over, 6 + f / 2, f)).toBeCloseTo(0.5, 1)
-    const out = [3.7, 3.8, 3.9, 3.95, 3.99].map((t) => cursorPresence(over, t, f))
+    const clips = p.clips
+    expect(cursorPresence(over, clips, 3, f)).toBe(1)
+    expect(cursorPresence(over, clips, 5, f)).toBe(0)
+    expect(cursorPresence(over, clips, 4 - f / 2, f)).toBeCloseTo(0.5, 1)
+    expect(cursorPresence(over, clips, 6 + f / 2, f)).toBeCloseTo(0.5, 1)
+    const out = [3.7, 3.8, 3.9, 3.95, 3.99].map((t) => cursorPresence(over, clips, t, f))
     for (let i = 1; i < out.length; i++) expect(out[i]).toBeLessThan(out[i - 1])
     // Over as much more source time in a sped-up clip.
-    expect(cursorSpotlightPresence(p, samples, path, 3.5, 1)).toBe(1)
-    expect(cursorSpotlightPresence(p, samples, path, 3.5, 4)).toBeLessThan(0.5)
+    expect(cursorSpotlightPresence(p, samples, path, 3.5)).toBe(1)
+    const fast = { ...p, clips: [{ id: 'c', start: 0, end: 12, speed: 4 }] }
+    expect(cursorSpotlightPresence(fast, samples, path, 3.5)).toBeLessThan(0.5)
     expect(cursorSpotlightPresence(p, samples, path, 5)).toBe(0)
+  })
+
+  it('only reacts to the cursor leaving where viewers see it (along the edit, not the source)', () => {
+    // A window recording where the cursor is off the window only from 4.1 s to 5.9 s, all of it cut.
+    const away: CursorSample[] = []
+    for (let i = 0; i <= 240; i++) away.push({ t: i * 0.05, x: i > 82 && i < 118 ? 1.6 : 0.5, y: 0.5 })
+    const awayPath = new SmoothedTrack(away, 12, p.cursor.smoothing)
+    const cut = project({ clips: [{ id: 'a', start: 0, end: 4, speed: 1 }, { id: 'b', start: 6, end: 12, speed: 1 }] })
+    // Every kept frame beside the cut shows the cursor, so the spotlight stays at full strength.
+    for (const t of [3.6, 3.75, 3.85, 3.9, 3.933, 3.967, 3.999, 6, 6.033, 6.1, 6.2]) {
+      expect(cursorOverVideoAt(cut, away, awayPath, t)).toBe(true)
+      expect(cursorSpotlightPresence(cut, away, awayPath, t)).toBe(1)
+    }
+    // Uncut, the same excursion is seen, and the spotlight fades around it.
+    const whole = project()
+    expect(cursorSpotlightPresence(whole, away, awayPath, 3.967)).toBeLessThan(0.8)
+    expect(cursorOverVideoAt(whole, away, awayPath, 5)).toBe(false)
+    expect(cursorSpotlightPresence(whole, away, awayPath, 5)).toBe(0)
+
+    // An excursion just after a cut, in a sped-up clip, is that close on screen to the frames before it.
+    const over = (t: number): boolean => !(t >= 6.6 && t < 8)
+    const sped = [{ id: 'a', start: 0, end: 4, speed: 1 }, { id: 'b', start: 6, end: 12, speed: 4 }]
+    // 3.95 s is 0.05 s before the cut on screen, and 6.6 s at 4x another 0.15 s after it: 0.2 s of a 0.25 s fade.
+    const beside = cursorPresence(over, sped, 3.95, SPOTLIGHT_FADE)
+    expect(beside).toBeGreaterThan(0.85)
+    expect(beside).toBeLessThan(0.93)
+    // Nothing before the edit starts or after it ends is on screen either.
+    const trimmed = [{ id: 'a', start: 2, end: 10, speed: 1 }]
+    const offOutside = (t: number): boolean => t >= 1.9 && t <= 10.1
+    expect(cursorPresence(offOutside, trimmed, 2, SPOTLIGHT_FADE)).toBe(1)
+    expect(cursorPresence(offOutside, trimmed, 10, SPOTLIGHT_FADE)).toBe(1)
+    // A paused frame inside a cut (only the preview shows one) looks around in source time.
+    const offInCut = (t: number): boolean => !(t >= 5 && t < 5.5)
+    expect(cursorPresence(offInCut, sped, 4.5, SPOTLIGHT_FADE)).toBe(1)
+    expect(cursorPresence(offInCut, sped, 4.9, SPOTLIGHT_FADE)).toBeLessThan(0.5)
   })
 
   /** A 2D context that records the drawing calls made on it into `calls`. */

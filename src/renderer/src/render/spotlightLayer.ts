@@ -58,7 +58,7 @@ export function drawSpotlightLayer(fc: FrameContext): void {
   const alphaOf = (s: Spotlight): number => {
     const a = spotlightAlpha(s, t, speed)
     if (s.mode !== 'cursor' || !cursor || a <= 0) return a
-    if (presence < 0) presence = cursorSpotlightPresence(project, samples, path, t, speed)
+    if (presence < 0) presence = cursorSpotlightPresence(project, samples, path, t)
     return a * presence
   }
   const { ctx } = fc

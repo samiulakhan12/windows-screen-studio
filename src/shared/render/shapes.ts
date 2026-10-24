@@ -7,6 +7,7 @@ import { isPrivacyKind, SHAPE_FADE, SPOTLIGHT_FADE } from '../editor/shapes'
 import { cursorAt } from '../engine/cursor'
 import { clamp } from '../engine/math'
 import { readShape, readSpotlight } from '../engine/shapeData'
+import { outputDuration, outputToSource, sourceToOutput } from '../engine/timeline'
 import type { Camera } from '../engine/zoom'
 import type { Clip, CursorSample, Project, Shape, Spotlight } from '../types'
 import { blendHome, cursorLook, loopHomeTime, loopHomeWeight } from './cursorFx'
@@ -245,21 +246,34 @@ function overVideo(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, sampl
 }
 
 /**
- * How much (0..1) of a cursor spotlight shows at `t` as far as the cursor goes: none while the
- * cursor is off the recording (`over` false: its lit area would be off screen and only darken
- * the whole frame), easing out over the `fade` source seconds before it leaves and back in over
- * those after it returns. A pure function of `t`, so preview and export agree.
+ * How much (0..1) of a cursor spotlight shows at source time `t` as far as the cursor goes: none
+ * while the cursor is off the recording (`over` false: its lit area would be off screen and only
+ * darken the whole frame), easing out over the `fade` seconds of the edited video before it
+ * leaves and back in over those after it returns. It looks around `t` along the edit (`clips`),
+ * so only what viewers see counts: the cursor leaving inside a cut, or before the edit starts or
+ * after it ends, does not dim the frames beside it, and the fades last as long on screen at any
+ * clip speed. A frame inside a cut (only the paused preview shows one) looks around in source
+ * time. A pure function of `t`, so preview and export agree.
  */
-export function cursorPresence(over: (t: number) => boolean, t: number, fade: number): number {
+export function cursorPresence(over: (t: number) => boolean, clips: Clip[], t: number, fade = SPOTLIGHT_FADE): number {
   if (!over(t)) return 0
   if (!(fade > 0)) return 1
+  const o = sourceToOutput(clips, t)
+  const end = outputDuration(clips)
+  // The source time viewers see `d` seconds from `t`, or null past either end of the edit.
+  const away = (d: number): number | null => {
+    if (o === null) return t + d
+    return o + d < 0 || o + d > end ? null : outputToSource(clips, o + d).time
+  }
   // Looks around `t` in steps of at most 1/240 s for the nearest moment the cursor is off.
   const steps = clamp(Math.ceil(fade * 240), 8, 960)
   let near = fade
   for (const dir of [-1, 1]) {
     for (let i = 1; i <= steps && (i * fade) / steps < near; i++) {
       const d = (i * fade) / steps
-      if (!over(t + dir * d)) {
+      const s = away(dir * d)
+      if (s === null) break
+      if (!over(s)) {
         near = d
         break
       }
@@ -270,12 +284,12 @@ export function cursorPresence(over: (t: number) => boolean, t: number, fade: nu
 }
 
 /**
- * How much of a cursor spotlight shows at `t` (`speed`: the clip's, so its fades last as long
- * on screen as the spotlight's own): it fades out while the cursor is off the recording, just
- * as the cursor layer hides the cursor then (cursorOverVideoAt).
+ * How much of a cursor spotlight shows at source time `t`: it fades out while the cursor is off
+ * the recording, just as the cursor layer hides the cursor then (cursorOverVideoAt), over as
+ * long on screen as the spotlight's own fades.
  */
-export function cursorSpotlightPresence(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, samples: CursorSample[], path: { at(t: number): Pos }, t: number, speed = 1): number {
-  return cursorPresence(overVideo(project, samples, path), t, SPOTLIGHT_FADE * speed)
+export function cursorSpotlightPresence(project: Pick<Project, 'capture' | 'cursor' | 'clips'>, samples: CursorSample[], path: { at(t: number): Pos }, t: number): number {
+  return cursorPresence(overVideo(project, samples, path), project.clips, t, SPOTLIGHT_FADE)
 }
 
 /** The lit area of a spotlight (normalised source units): its box, or centred on `cursor` in cursor mode. */
