@@ -46,6 +46,20 @@ export function TitleTrack({ px, win, duration, selection, onSelect }: TrackSlot
     return clamp((clientX - r.left) / pxRef.current, 0, duration)
   }
 
+  /**
+   * Source time under a pointer that is scrubbing, kept inside the visible part of a scrolled
+   * timeline: the timeline scrolls to follow a playhead reaching its edges (except while one of
+   * its own tracks is dragged), which would move the time under a still pointer on and on.
+   */
+  const scrubTimeAt = (clientX: number): number => {
+    const t = timeAt(clientX)
+    const scroller = trackRef.current?.closest<HTMLElement>('.tl-scroller')
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1) return t
+    const left = trackRef.current!.getBoundingClientRect().left
+    const view = scroller.getBoundingClientRect()
+    return clamp(t, (view.left + 16 - left) / pxRef.current, Math.max(0, (view.right - 28 - left) / pxRef.current))
+  }
+
   /** Follows a pointer drag; `onMove` runs once it moved more than `slop` px. */
   const track = (e: ReactPointerEvent, onMove: (ev: PointerEvent) => void, onEnd?: (moved: boolean) => void, slop = 0): void => {
     e.preventDefault()
@@ -135,7 +149,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect }: TrackSlot
     }
     onSelect(null)
     player.seek(timeAt(e.clientX))
-    track(e, (ev) => player.seek(timeAt(ev.clientX)))
+    track(e, (ev) => player.seek(scrubTimeAt(ev.clientX)))
   }
 
   const visibleTitles = titles.filter((c) => overlaps(c, win) || c.id === selId)

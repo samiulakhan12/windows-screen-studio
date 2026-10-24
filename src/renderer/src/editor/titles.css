@@ -1,11 +1,11 @@
 /* Title cards and chapters: their timeline track and the Text panel's sections. */
 
-/* ---------- Timeline ---------- */
+/* ---------- Timeline (two classes each: editor.css loads after this file) ---------- */
 .tl-label.title-label {
   height: 46px;
 }
 
-.title-track {
+.tl-track.title-track {
   height: 46px;
   display: flex;
   flex-direction: column;
@@ -21,7 +21,7 @@
   cursor: col-resize;
 }
 
-.chapter-empty {
+.tl-empty.chapter-empty {
   font-size: 10px;
   justify-content: flex-start;
   padding-left: 6px;
@@ -83,21 +83,21 @@
   cursor: col-resize;
 }
 
-.title-seg {
+.seg.title-seg {
   bottom: auto;
   gap: 4px;
   background: linear-gradient(180deg, #4f46e5, #4338ca);
   border: 1px solid #a5b4fc;
 }
 
-.title-seg .seg-icon {
+.seg.title-seg .seg-icon {
   flex: none;
   display: flex;
   margin-left: 4px;
   pointer-events: none;
 }
 
-.title-seg .seg-label {
+.seg.title-seg .seg-label {
   padding-left: 0;
 }
 
@@ -112,7 +112,7 @@
   white-space: nowrap;
 }
 
-.title-input {
+.tc-input {
   width: 100%;
   height: 32px;
   padding: 0 8px;
@@ -124,7 +124,7 @@
   user-select: text;
 }
 
-.title-input:focus {
+.tc-input:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -224,7 +224,7 @@
   background: rgba(245, 158, 11, 0.14);
 }
 
-.chapter-row .title-input {
+.chapter-row .tc-input {
   flex: 1;
   min-width: 0;
   height: 28px;
@@ -233,6 +233,7 @@
 
 .chapter-row .btn.icon-btn {
   flex: none;
+  width: auto;
   height: 28px;
   padding: 0 6px;
 }

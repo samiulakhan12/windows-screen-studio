@@ -26,7 +26,7 @@ export const TITLE_STYLES: { value: TitleCardStyle; label: string; title: string
 export const TITLE_BACKGROUNDS: { value: TitleCard['background']; label: string; title: string }[] = [
   { value: 'blur', label: 'Blurred video', title: 'The video behind it, blurred and darkened' },
   { value: 'solid', label: 'Colour', title: 'A solid colour' },
-  { value: 'style', label: 'Background', title: "The project's background (Style panel)" }
+  { value: 'style', label: 'Project background', title: "The project's background, as set in the Style panel" }
 ]
 
 /** Colour of a solid card when none is chosen. */

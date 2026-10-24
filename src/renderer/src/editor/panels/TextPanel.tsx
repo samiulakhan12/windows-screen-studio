@@ -192,7 +192,7 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
       </label>
       <label className="field">
         <span>Subtitle</span>
-        <input className="title-input" aria-label="Subtitle" value={card.subtitle ?? ''} onChange={(e) => set({ subtitle: cleanTitle(e.target.value) }, `title-subtitle:${id}`)} placeholder="Optional" />
+        <input className="tc-input" aria-label="Subtitle" value={card.subtitle ?? ''} onChange={(e) => set({ subtitle: cleanTitle(e.target.value) }, `title-subtitle:${id}`)} placeholder="Optional" />
       </label>
       <div className="field">
         <span>Style</span>
@@ -310,7 +310,7 @@ function SelectedChapter({ project, chapter, onSelect }: { project: Project; cha
     <Section title="Selected chapter" aside={<span className="muted small">{formatTime(chapter.t)}</span>}>
       <label className="field">
         <span>Name</span>
-        <input className="title-input" aria-label="Chapter name" value={chapter.title} placeholder="Chapter name" onChange={(e) => set({ title: cleanChapterName(e.target.value) }, `chapter-title:${id}`)} />
+        <input className="tc-input" aria-label="Chapter name" value={chapter.title} placeholder="Chapter name" onChange={(e) => set({ title: cleanChapterName(e.target.value) }, `chapter-title:${id}`)} />
       </label>
       <p className="hint">{outputNote(project.clips, chapter.t)}</p>
       <div className="row start title-tools">
@@ -377,7 +377,7 @@ function ChaptersSection({
                 {formatTime(viewingTime(project.clips, c.t), false)}
               </button>
               <input
-                className="title-input"
+                className="tc-input"
                 aria-label={`Name of the chapter at ${formatTime(c.t, false)}`}
                 value={c.title}
                 placeholder="Chapter name"
