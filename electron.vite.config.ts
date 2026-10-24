@@ -12,6 +12,8 @@ export default defineConfig({
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     build: {
+      // electron-vite leaves the renderer unminified by default.
+      minify: true,
       rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') }
     },
     plugins: [react()]

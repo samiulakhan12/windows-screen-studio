@@ -40,10 +40,27 @@ export class SmoothedTrack {
     let y = samples[0].y
     let vx = 0
     let vy = 0
+    // The step times only grow: walk the samples forward (the same target as cursorAt(samples, t),
+    // without a binary search per step; this is rebuilt on every smoothing slider step).
+    let j = -1
     for (let i = 0; i < n; i++) {
-      const target = cursorAt(samples, i * dt)!
-      const ax = omega * omega * (target.x - x) - 2 * omega * vx
-      const ay = omega * omega * (target.y - y) - 2 * omega * vy
+      const t = i * dt
+      while (j + 1 < samples.length && samples[j + 1].t <= t) j++
+      let tx: number
+      let ty: number
+      if (j < 0 || j >= samples.length - 1) {
+        const s = samples[Math.max(0, j)]
+        tx = s.x
+        ty = s.y
+      } else {
+        const a = samples[j]
+        const b = samples[j + 1]
+        const k = b.t === a.t ? 0 : (t - a.t) / (b.t - a.t)
+        tx = lerp(a.x, b.x, k)
+        ty = lerp(a.y, b.y, k)
+      }
+      const ax = omega * omega * (tx - x) - 2 * omega * vx
+      const ay = omega * omega * (ty - y) - 2 * omega * vy
       vx += ax * dt
       vy += ay * dt
       x += vx * dt
