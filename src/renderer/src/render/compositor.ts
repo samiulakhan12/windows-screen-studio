@@ -1,11 +1,13 @@
-import { activeClicks, clickPulse, cursorAt, cursorOpacity, type SmoothedTrack } from '../../../shared/engine/cursor'
-import { contentRect, webcamRect } from '../../../shared/engine/layout'
+import type { SmoothedTrack } from '../../../shared/engine/cursor'
+import { contentRect } from '../../../shared/engine/layout'
 import { cameraAt, type Camera } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
-import { drawCursorSprite } from './cursorSprites'
-import { blurSampleCount, cameraDisplacement, cursorHeight, shapeAt, shutterTimes, speedAt } from '../../../shared/render/overlays'
-import { drawCover, paintStaticLayer, roundRectPath } from './staticLayer'
+import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
+import { drawCursorLayer } from './cursorLayer'
+import type { FrameContext } from './frameContext'
+import { paintStaticLayer, roundRectPath } from './staticLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
+import { drawWebcamLayer } from './webcamLayer'
 
 export interface RenderScene {
   project: Project
@@ -44,12 +46,6 @@ export interface DrawOptions {
 }
 
 const DEFAULT_OPTIONS: Required<DrawOptions> = { frameInterval: 1 / 60, blurSamples: 4 }
-
-/**
- * A normalised position inside the recorded video. The cursor of a window or area
- * recording can be outside it (over another window, outside the area): nothing is drawn there.
- */
-const inVideo = (p: { x: number; y: number }): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
 
 function screenImage(src: RenderSources): FrameImage | null {
   if (src.screenFrame) return src.screenFrame
@@ -120,73 +116,29 @@ export function drawFrame(
 
   const viewX = cam.cx - 0.5 / cam.scale
   const viewY = cam.cy - 0.5 / cam.scale
-  // Normalised source coordinates -> output pixels, through the camera.
-  const toOut = (x: number, y: number): { x: number; y: number } => ({
-    x: rect.x + (x - viewX) * cam.scale * rect.w,
-    y: rect.y + (y - viewY) * cam.scale * rect.h
-  })
-
-  if (cursor.valid) {
-    // Ripples also mark clicks over the OS cursor baked into the video.
-    if (project.cursor.clickEffect && cursor.clicks.length > 0) {
-      const speed = speedAt(project.clips, t)
-      for (const { click, progress } of activeClicks(cursor.clicks, t, 0.45 * speed)) {
-        if (!inVideo(click)) continue
-        const p = toOut(click.x, click.y)
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, (8 + 34 * progress) * k * cam.scale * 0.8, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,255,255,${0.35 * (1 - progress)})`
-        ctx.fill()
-        ctx.lineWidth = 2.5 * k
-        ctx.strokeStyle = `rgba(255,255,255,${0.8 * (1 - progress)})`
-        ctx.stroke()
-      }
-    }
-    // With the OS cursor baked into the video (Chromium capture), a synthetic cursor
-    // and idle-hiding would only draw a second, lagging cursor next to it.
-    if (project.cursor.show && !project.capture?.cursorInVideo && cursor.samples.length > 0) {
-      const opacity = project.cursor.hideWhenIdle ? cursorOpacity(cursor.samples, t) : 1
-      const pos = scene.cursorPath.at(t)
-      // Hide as soon as the recorded position leaves the video (cursor outside a window or
-      // area, or over a window covering the recorded one) instead of letting the smoothed
-      // cursor slide to the edge first.
-      const raw = cursorAt(cursor.samples, t)
-      if (opacity > 0.01 && inVideo(pos) && (!raw || inVideo(raw))) {
-        const p = toOut(pos.x, pos.y)
-        const height = cursorHeight(rect.h, vh, cursor.scale, cam.scale, project.cursor.size) * clickPulse(cursor.clicks, t)
-        drawCursorSprite(ctx, shapeAt(cursor.shapes, t), p.x, p.y, height, opacity, t)
-      }
-    }
+  const fc: FrameContext = {
+    ctx,
+    w,
+    h,
+    t,
+    k,
+    scene,
+    project,
+    cursor,
+    focus,
+    vw,
+    vh,
+    rect,
+    radius,
+    cam,
+    // Normalised source coordinates -> output pixels, through the camera.
+    toOut: (x, y) => ({ x: rect.x + (x - viewX) * cam.scale * rect.w, y: rect.y + (y - viewY) * cam.scale * rect.h })
   }
+
+  drawCursorLayer(fc)
   ctx.restore()
 
-  const camera = project.webcam.show ? webcamImage(src) : null
-  if (camera) {
-    const r = webcamRect(w, h, project.webcam)
-    const camRadius = project.webcam.shape === 'circle' ? r.w / 2 : r.w * 0.18
-    ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.4)'
-    ctx.shadowBlur = 30 * k
-    ctx.shadowOffsetY = 10 * k
-    ctx.fillStyle = '#000'
-    roundRectPath(ctx, r, camRadius)
-    ctx.fill()
-    ctx.restore()
-    ctx.save()
-    roundRectPath(ctx, r, camRadius)
-    ctx.clip()
-    // Mirror the camera like a selfie view.
-    ctx.translate(r.x * 2 + r.w, 0)
-    ctx.scale(-1, 1)
-    drawCover(ctx, camera.image, camera.width, camera.height, r)
-    ctx.restore()
-    ctx.save()
-    roundRectPath(ctx, r, camRadius)
-    ctx.lineWidth = 3 * k
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)'
-    ctx.stroke()
-    ctx.restore()
-  }
+  drawWebcamLayer(fc, project.webcam.show ? webcamImage(src) : null)
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)

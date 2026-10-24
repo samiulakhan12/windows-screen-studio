@@ -31,13 +31,24 @@ export interface CursorTrack {
   clicks: ClickEvent[]
   keys?: KeyEvent[]
   shapes?: CursorShapeEvent[]
+  /** "Zoom here" hotkey presses while recording (source seconds). */
+  marks?: { t: number }[]
+  /** Typing bursts (source seconds; which keys were typed is never recorded). */
+  typing?: { t: number; end: number }[]
   /** Display scale factor (1 = 100%, 1.5 = 150%) of the captured monitor, for cursor sizing. */
   scale?: number
   /** False when the capture target was a window (cursor coordinates unknown). */
   valid: boolean
 }
 
-export type ZoomFocus = { mode: 'cursor' } | { mode: 'fixed'; x: number; y: number }
+export type ZoomFocus =
+  | { mode: 'cursor' }
+  | { mode: 'fixed'; x: number; y: number }
+  /** Frame exactly this normalised source rectangle (scale and centre follow from it). */
+  | { mode: 'region'; x: number; y: number; w: number; h: number }
+
+/** How a zoom moves in and out. */
+export type ZoomEasing = 'smooth' | 'snappy' | 'bouncy' | 'linear'
 
 export interface ZoomSegment {
   id: string
@@ -54,8 +65,39 @@ export interface ZoomSegment {
    * older projects and in zooms made by hand.
    */
   anchor?: { t: number; x: number; y: number }
+  /** Ease for this zoom's transitions (default: project zoomSettings.easing). */
+  easing?: ZoomEasing
+  /** Seconds the zoom takes to move in and out (default: project zoomSettings.transition). */
+  transition?: number
 }
 
+/** How auto zoom turns recorded input into zoom segments. */
+export interface AutoZoomSettings {
+  enabled: boolean
+  /** Zoom level of generated zooms. */
+  scale: number
+  /** Clicks closer than this (seconds) share one zoom. */
+  clusterGap: number
+  /** Seconds the zoom starts before the first click. */
+  leadIn: number
+  /** Seconds the zoom holds after the last click. */
+  hold: number
+  /** Right clicks also create zooms. */
+  rightClicks: boolean
+  /** Typing bursts (CursorTrack.typing) create zooms at the place being typed into. */
+  onTyping: boolean
+  /** "Zoom here" marks pressed while recording (CursorTrack.marks) create zooms. */
+  onMarks: boolean
+}
+
+export interface ZoomSettings {
+  /** Level of new manual zooms (below 1 pulls back to show more background). */
+  defaultScale: number
+  easing: ZoomEasing
+  /** Default transition seconds. */
+  transition: number
+  auto: AutoZoomSettings
+}
 export type Background =
   | { type: 'gradient'; preset: string }
   | { type: 'color'; color: string }
@@ -73,6 +115,10 @@ export interface StyleSettings {
   aspectRatio: AspectRatio
 }
 
+/** 'auto' follows the recorded cursor shapes; the others force one look. */
+export type CursorStyle = 'auto' | 'mac' | 'windows' | 'white' | 'black' | 'custom'
+export type ClickStyle = 'ripple' | 'ring' | 'pulse'
+
 export interface CursorSettings {
   show: boolean
   size: number
@@ -80,6 +126,23 @@ export interface CursorSettings {
   smoothing: number
   clickEffect: boolean
   hideWhenIdle: boolean
+  style?: CursorStyle
+  /** Project-relative image file used when style is 'custom' (hot spot = top-left). */
+  customImage?: string
+  /** Halo drawn around the cursor. */
+  highlight?: { enabled: boolean; color: string; size: number; opacity: number }
+  clickStyle?: ClickStyle
+  clickColor?: string
+  /** Play a click sound at every click (preview and export). */
+  clickSound?: boolean
+  /** 0..1 */
+  clickSoundVolume?: number
+  /** Glide the cursor back to where it started during the last second (seamless loops). */
+  loopHome?: boolean
+  /** Lean the cursor slightly in the direction it moves. */
+  tilt?: boolean
+  /** Short fading trail behind a moving cursor. */
+  trail?: boolean
 }
 
 export interface WebcamSettings {
@@ -173,6 +236,8 @@ export interface Project {
   clips: Clip[]
   zooms: ZoomSegment[]
   autoZoom: boolean
+  /** Zoom defaults and auto zoom settings (absent in older projects: defaults). */
+  zoomSettings?: ZoomSettings
   annotations: Annotation[]
   style: StyleSettings
   cursor: CursorSettings
@@ -197,7 +262,8 @@ export interface CaptureSource {
   displayId?: string
 }
 
-export type ExportFormat = 'mp4' | 'gif'
+/** mp4 (H.264), webm (VP9), mov (H.264 in QuickTime), gif, m4a (audio only). */
+export type ExportFormat = 'mp4' | 'gif' | 'webm' | 'mov' | 'm4a'
 
 export interface ExportSettings {
   format: ExportFormat
@@ -207,6 +273,10 @@ export interface ExportSettings {
   quality: 'high' | 'medium' | 'small'
   /** 'auto' uses a GPU encoder when one works, else software. */
   encoder: 'auto' | 'software'
+  /** Id of the destination preset these settings came from (e.g. 'youtube-4k'), if any. */
+  preset?: string
+  /** Aim for this file size (MB) instead of a quality level (two-pass bitrate). */
+  targetSizeMB?: number
 }
 
 export interface RecordingStatus {

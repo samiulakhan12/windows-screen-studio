@@ -1,4 +1,5 @@
-import type { CaptureInfo, CursorTrack, Project, ZoomSegment } from '../types'
+import type { CaptureInfo, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
+import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
 
 export const PROJECT_VERSION = 2
@@ -6,6 +7,19 @@ export const PROJECT_VERSION = 2
 export const DEFAULT_EFFECTS: Project['effects'] = {
   motionBlur: 0.5,
   keystrokes: { show: true, position: 'bottom', size: 0.035 }
+}
+
+/** Defaults for the optional cursor look fields (older projects simply lack them). */
+export const DEFAULT_CURSOR_EXTRAS: Required<Pick<CursorSettings, 'style' | 'highlight' | 'clickStyle' | 'clickColor' | 'clickSound' | 'clickSoundVolume' | 'loopHome' | 'tilt' | 'trail'>> = {
+  style: 'auto',
+  highlight: { enabled: false, color: '#facc15', size: 1, opacity: 0.35 },
+  clickStyle: 'ripple',
+  clickColor: '#ffffff',
+  clickSound: false,
+  clickSoundVolume: 0.6,
+  loopHome: false,
+  tilt: false,
+  trail: false
 }
 
 export const DEFAULT_AUDIO: Project['audio'] = { volume: 1, muted: false }
@@ -38,6 +52,7 @@ export function createProject(init: {
     clips: [fullClip(init.duration)],
     zooms: init.zooms,
     autoZoom: true,
+    zoomSettings: structuredClone(DEFAULT_ZOOM_SETTINGS),
     annotations: [],
     style: {
       background: { type: 'gradient', preset: 'aurora' },
@@ -52,7 +67,8 @@ export function createProject(init: {
       size: 1.4,
       smoothing: 0.6,
       clickEffect: true,
-      hideWhenIdle: true
+      hideWhenIdle: true,
+      ...DEFAULT_CURSOR_EXTRAS
     },
     webcam: { show: init.hasWebcam, corner: 'bottom-right', size: 0.24, shape: 'circle' },
     effects: structuredClone(DEFAULT_EFFECTS),

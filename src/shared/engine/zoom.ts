@@ -1,4 +1,4 @@
-import type { ClickEvent, CursorSample, ZoomFocus, ZoomSegment } from '../types'
+import type { AutoZoomSettings, ClickEvent, CursorSample, CursorTrack, ZoomFocus, ZoomSegment, ZoomSettings } from '../types'
 import { SmoothedTrack } from './cursor'
 import { clamp, easeInOutCubic, lerp } from './math'
 
@@ -262,6 +262,43 @@ export function clampZooms(zooms: ZoomSegment[], duration: number): ZoomSegment[
  * Zooms the user created or edited (auto: false) are kept as they are, and new
  * automatic zooms that would overlap them are skipped.
  */
+/** Defaults for Project.zoomSettings (older projects have none). */
+export const DEFAULT_ZOOM_SETTINGS: ZoomSettings = {
+  defaultScale: 2,
+  easing: 'smooth',
+  transition: ZOOM_TRANSITION,
+  auto: {
+    enabled: true,
+    scale: DEFAULT_AUTO_ZOOM.scale,
+    clusterGap: DEFAULT_AUTO_ZOOM.clusterGap,
+    leadIn: DEFAULT_AUTO_ZOOM.leadIn,
+    hold: DEFAULT_AUTO_ZOOM.hold,
+    rightClicks: false,
+    onTyping: true,
+    onMarks: true
+  }
+}
+
+/** The project's zoom settings with defaults filled in. */
+export function zoomSettingsOf(project: { zoomSettings?: ZoomSettings; autoZoom?: boolean }): ZoomSettings {
+  const z = project.zoomSettings
+  return {
+    ...DEFAULT_ZOOM_SETTINGS,
+    ...z,
+    auto: { ...DEFAULT_ZOOM_SETTINGS.auto, enabled: project.autoZoom ?? true, ...z?.auto }
+  }
+}
+
+/**
+ * Auto zoom segments for a whole cursor track (clicks, and with the settings' permission
+ * typing bursts and "zoom here" marks). CONTRACT: used by recording finalize and by
+ * "Regenerate"; the zoom builder extends it (typing, marks, right clicks).
+ */
+export function autoZoomsForTrack(track: CursorTrack, duration: number, settings: AutoZoomSettings = DEFAULT_ZOOM_SETTINGS.auto): ZoomSegment[] {
+  if (!settings.enabled) return []
+  return generateAutoZooms(track.clicks, duration, settings)
+}
+
 export function regenerateAutoZooms(
   zooms: ZoomSegment[],
   clicks: ClickEvent[],

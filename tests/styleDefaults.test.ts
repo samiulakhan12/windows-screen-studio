@@ -46,7 +46,7 @@ describe('applyStyleDefaults', () => {
   it('applies style, cursor, camera and effect settings', () => {
     const p = applyStyleDefaults(newProject({ hasWebcam: true }), saved)
     expect(p.style).toEqual(saved.style)
-    expect(p.cursor).toEqual({ show: true, size: 2, smoothing: 0.9, clickEffect: false, hideWhenIdle: false })
+    expect(p.cursor).toMatchObject({ show: true, size: 2, smoothing: 0.9, clickEffect: false, hideWhenIdle: false })
     expect(p.webcam).toEqual({ show: true, corner: 'top-left', size: 0.3, shape: 'rounded' })
     expect(p.effects).toEqual({ motionBlur: 0, keystrokes: { show: false, position: 'top', size: 0.05 } })
   })
