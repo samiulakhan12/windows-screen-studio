@@ -1,5 +1,5 @@
 import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, type Keyframe } from '../../../shared/audio/automation'
-import { audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioSource, type StemKind } from '../../../shared/audio/settings'
+import { audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, previewNormalizeGain, soundActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
 import type { Range } from '../../../shared/audio/activity'
 import { clamp } from '../../../shared/engine/math'
@@ -82,6 +82,9 @@ function softLimitCurve(): Float32Array<ArrayBuffer> {
  */
 export class PreviewAudio {
   private project: Project
+  /** The project's sound settings with defaults, and the edit's output length (kept for every frame). */
+  private look: AudioLook
+  private length: number
   private graph: Graph | null = null
   private readonly stems = new Map<StemKind, Source>()
   private music: Music | null = null
@@ -105,6 +108,8 @@ export class PreviewAudio {
     project: Project
   ) {
     this.project = project
+    this.look = audioLook(project.audio)
+    this.length = outputDuration(project.clips)
     this.apply()
   }
 
@@ -113,7 +118,11 @@ export class PreviewAudio {
   setProject(project: Project): void {
     const prev = this.project
     this.project = project
-    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || project.clips !== prev.clips) this.apply()
+    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || project.clips !== prev.clips) {
+      this.look = audioLook(project.audio)
+      this.length = outputDuration(project.clips)
+      this.apply()
+    }
   }
 
   /** Loads the music file again (a new pick replaced it under the same name). */
@@ -124,9 +133,9 @@ export class PreviewAudio {
 
   /** Gain of the whole soundtrack's fades at source time `t` (the player's click sounds follow it). */
   fadeAt(t: number): number {
-    const look = audioLook(this.project.audio)
+    const look = this.look
     if (look.fadeIn <= 0 && look.fadeOut <= 0) return 1
-    return fadeGainAt(this.outputAt(t), outputDuration(this.project.clips), look.fadeIn, look.fadeOut)
+    return fadeGainAt(this.outputAt(t), this.length, look.fadeIn, look.fadeOut)
   }
 
   /** Brings the graph in line with the project: sources, gains, music, measurements, curves. */
@@ -136,7 +145,7 @@ export class PreviewAudio {
     if (!this.graph && !needsAudioGraph(p)) return this.applyElementOnly()
     const g = this.ensureGraph()
     if (!g) return this.applyElementOnly()
-    const look = audioLook(p.audio)
+    const look = this.look
     const mix = recordingMix(p)
     const stemsOk = mix.kind === 'stems' && Object.keys(mix.stems).every((k) => !this.stems.get(k as StemKind)?.failed)
     if (mix.kind === 'stems' && !stemsOk && !this.warnedStems) {
@@ -165,7 +174,7 @@ export class PreviewAudio {
 
   /** No graph: the video element plays its own track at up to 100% (as earlier versions did). */
   private applyElementOnly(): void {
-    const { volume, muted } = audioLook(this.project.audio)
+    const { volume, muted } = this.look
     this.screen.muted = !this.project.hasAudio || muted || volume <= 0
     this.screen.volume = clamp(volume, 0, 1)
   }
@@ -209,9 +218,17 @@ export class PreviewAudio {
   }
 
   private applyMusic(g: Graph): void {
-    const m = audioLook(this.project.audio).music
+    const m = this.look.music
     if (this.music && (!m || m.path !== this.music.path)) this.disposeMusic()
-    if (!m || m.volume <= 0) return
+    if (!m) return
+    if (m.volume <= 0) {
+      // Turned all the way down: silent and idle, ready to come back.
+      if (this.music) {
+        this.music.gain.gain.value = 0
+        this.music.el.pause()
+      }
+      return
+    }
     if (!this.music) {
       const el = createAudio(mediaUrl(this.project.id, m.path))
       const node = g.ctx.createMediaElementSource(el)
@@ -274,7 +291,7 @@ export class PreviewAudio {
 
   /** Where the recording has sound on the output timeline (memoised: the same for every frame). */
   private soundRanges(): Range[] | null {
-    const look = audioLook(this.project.audio)
+    const look = this.look
     const key = `${this.analysisVersion}|${look.muted}|${look.volume > 0}|${STEM_KINDS.map((k) => look[k].muted || look[k].volume <= 0).join()}|${clipsKey(this.project)}`
     if (this.activity.key !== key) this.activity = { key, ranges: soundActivity(this.project, this.analysis) }
     return this.activity.ranges
@@ -283,8 +300,7 @@ export class PreviewAudio {
   /* ---------- automation ---------- */
 
   private curves(): { master: Keyframe[]; musicFade: Keyframe[]; duck: Keyframe[] } {
-    const look = audioLook(this.project.audio)
-    const length = outputDuration(this.project.clips)
+    const { look, length } = this
     const m = look.music
     const end = m ? musicEnd(length, this.music?.duration ?? null, m.loop) : length
     const duck = m ? musicDucking(this.project, this.soundRanges()) : null
@@ -296,7 +312,7 @@ export class PreviewAudio {
   }
 
   private scheduleIfChanged(): void {
-    const look = audioLook(this.project.audio)
+    const look = this.look
     const m = look.music
     const key = [
       look.fadeIn,
@@ -345,7 +361,7 @@ export class PreviewAudio {
     const at = sourceToOutput(clips, t)
     if (at !== null) return at
     const next = playableFrom(clips, t)
-    return next ? (sourceToOutput(clips, next.time) ?? 0) : outputDuration(clips)
+    return next ? (sourceToOutput(clips, next.time) ?? 0) : this.length
   }
 
   /** Playback starts at source time `t` with clip speed `speed`. */
@@ -417,11 +433,10 @@ export class PreviewAudio {
   /** Keeps the music at the output time of source time `t`; `hard` moves it there at once. */
   private syncMusic(hard: boolean, t = this.screen.currentTime): void {
     const music = this.music
-    const m = audioLook(this.project.audio).music
-    if (!music || music.failed || !m || !this.playing) return
+    const m = this.look.music
+    if (!music || music.failed || !m || m.volume <= 0 || !this.playing) return
     const out = this.outputAt(t)
-    const length = outputDuration(this.project.clips)
-    const end = musicEnd(length, music.duration, m.loop)
+    const end = musicEnd(this.length, music.duration, m.loop)
     if (out >= end - 1e-3) {
       music.el.pause()
       return
