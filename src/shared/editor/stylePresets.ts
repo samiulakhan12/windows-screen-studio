@@ -121,14 +121,27 @@ function pick<T extends object, K extends keyof T>(o: T, keys: readonly K[]): Pa
 }
 
 /**
- * The project's current look as a preset. Image backgrounds (the file lives in this project)
- * and a custom cursor image are left out; applying the preset then keeps the project's own.
+ * The project's current look as a preset. Fields the project never set are written as what
+ * they render as (no frame, no border, a soft shadow, the default cursor look), so applying
+ * the preset over another look brings back exactly this one. Image backgrounds (the file
+ * lives in this project) and a custom cursor image are left out; applying the preset then
+ * keeps the project's own.
  */
 export function presetLookOf(project: Project): PresetLook {
-  const style = pick(project.style, STYLE_KEYS)
-  if (style.background?.type === 'image') delete style.background
-  const cursor = pick(project.cursor, CURSOR_KEYS)
-  if (cursor.style === 'custom') delete cursor.style
+  const s = project.style
+  const card = cardLook(s)
+  const style: PresetStyle = {
+    ...pick(s, ['padding', 'cornerRadius', 'shadow'] as const),
+    shadowStyle: card.shadowStyle,
+    border: card.border ?? NO_BORDER,
+    frame: frameOf(s) ?? NO_FRAME
+  }
+  if (s.background?.type !== 'image') style.background = s.background
+  // A soft shadow is always black: its colour only matters for hard and glow.
+  if (card.shadowStyle !== 'soft') style.shadowColor = card.shadowColor
+  const c = cursorLook(project.cursor)
+  const cursor: PresetCursor = { ...pick(project.cursor, ['size'] as const), highlight: c.highlight, clickStyle: c.clickStyle, clickColor: c.clickColor }
+  if (c.style !== 'custom') cursor.style = c.style
   const z = zoomSettingsOf(project)
   return sanitizePresetLook({ style, cursor, zoom: { defaultScale: z.defaultScale, easing: z.easing, transition: z.transition } }) ?? { style: {}, cursor: {}, zoom: {} }
 }

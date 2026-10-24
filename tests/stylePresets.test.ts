@@ -125,6 +125,47 @@ describe('presetLookOf', () => {
     const other = newProject()
     expect(applyPreset(other, look).style.background).toEqual(other.style.background)
   })
+
+  it('writes what unset fields render as, so the saved look comes back over any other look', () => {
+    const fresh = newProject()
+    expect(fresh.style.frame).toBeUndefined()
+    expect(fresh.style.border).toBeUndefined()
+    expect(fresh.style.shadowStyle).toBeUndefined()
+    const mine = presetLookOf(fresh)
+    expect(mine.style).toMatchObject({ frame: { kind: 'none', theme: 'light' }, border: { width: 0 }, shadowStyle: 'soft' })
+    // A soft shadow's colour does not show, so it is not part of the look.
+    expect(mine.style).not.toHaveProperty('shadowColor')
+    for (const id of ['showcase', 'neon', 'pop', 'midnight-browser']) {
+      const other = applyPreset(newProject(), BUILT_IN_PRESETS.find((x) => x.id === id)!.look)
+      const back = applyPreset(other, mine)
+      expect(back.style.frame?.kind ?? 'none', id).toBe('none')
+      expect(back.style.border?.width ?? 0, id).toBe(0)
+      expect(back.style.shadowStyle ?? 'soft', id).toBe('soft')
+      expect(back.cursor.style, id).toBe(fresh.cursor.style)
+      expect(back.cursor.highlight, id).toEqual(fresh.cursor.highlight)
+      expect(back.cursor.clickStyle, id).toBe(fresh.cursor.clickStyle)
+      expect(presetMatches(back, mine), id).toBe(true)
+      // Before applying it, the other look is not mistaken for the saved one.
+      expect(presetMatches(other, mine), id).toBe(false)
+    }
+  })
+
+  it('fills the cursor look of an older project that never set it', () => {
+    const p = newProject()
+    p.cursor = { show: true, size: 1.2, smoothing: 0.5, clickEffect: true, hideWhenIdle: false }
+    const look = presetLookOf(p)
+    expect(look.cursor).toMatchObject({ size: 1.2, style: expect.any(String), clickStyle: expect.any(String), clickColor: expect.any(String), highlight: { enabled: false } })
+    const neon = applyPreset(newProject(), BUILT_IN_PRESETS.find((x) => x.id === 'neon')!.look)
+    expect(applyPreset(neon, look).cursor.highlight?.enabled).toBe(false)
+  })
+
+  it('keeps the hard or glow shadow colour', () => {
+    const p = applyPreset(newProject(), BUILT_IN_PRESETS.find((x) => x.id === 'pop')!.look)
+    expect(presetLookOf(p).style).toMatchObject({ shadowStyle: 'hard', shadowColor: '#111827', border: { width: 3, color: '#111827' } })
+    const glow = { ...newProject(), style: { ...newProject().style, shadowStyle: 'glow' as const } }
+    // No colour of its own: the glow's default colour is what shows.
+    expect(presetLookOf(glow).style.shadowColor).toBe('#8b5cf6')
+  })
 })
 
 describe('user presets', () => {
