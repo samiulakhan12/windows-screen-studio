@@ -11,10 +11,15 @@ import { exportArgs, ffmpegPlan } from '../src/main/exportArgs'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import { DUCK_TIMING } from '../src/shared/audio/automation'
-import { clipSampleBounds, DENOISE_LATENCY, denoiseFilter, musicGraph, NORMALIZE_FILTERS, planSoundtrack, recordingGraph, soundtrackGraph } from '../src/shared/render/audioPlan'
+import { atempoChain } from '../src/shared/engine/timeline'
+import { atempoLead, clipSampleBounds, DENOISE_LATENCY, denoiseFilter, musicGraph, NORMALIZE_FILTERS, planSoundtrack, recordingGraph, soundtrackGraph, STEREO } from '../src/shared/render/audioPlan'
 import type { Clip } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
+
+/** What a clip at `speed` goes through: silence, atempo, then its lead dropped (see recordingGraph). */
+const retimed = (speed: number): string =>
+  `adelay=delays=${(2 * atempoLead(speed) * speed * 1000).toFixed(3)}:all=1,${atempoChain(speed)},asetpts=PTS-STARTPTS,atrim=start_sample=${Math.round(atempoLead(speed) * 48000)},asetpts=PTS-STARTPTS`
 
 /** An audio-only (M4A) job of `seconds`. */
 const m4a = (seconds: number, over: Partial<ExportJob> = {}): ExportJob => ({
@@ -51,7 +56,11 @@ describe('backwards compatibility', () => {
     expect(exportArgs(job, io)).toEqual(legacy.cuts)
   })
 
-  /** The earlier arguments with only the two intended changes: exact clip lengths, and clicks that keep the recording's channels. */
+  /**
+   * The earlier arguments with only the intended changes: re-timed clips kept on their frames
+   * despite atempo's lead (retimed) and cut to exact lengths, and clicks that keep the
+   * recording's channels.
+   */
   const fixed = (args: string[]): string[] => {
     const bounds = clipSampleBounds(clips)
     return args.map((a) => {
@@ -59,17 +68,20 @@ describe('backwards compatibility', () => {
       let g = a.replace('aresample=async=1:first_pts=0', 'aresample=48000:async=1:first_pts=0')
       clips.forEach((_, i) => {
         const n = bounds[i + 1] - bounds[i]
+        const { speed } = clips[i]
+        if (speed !== 1) g = g.replace(new RegExp(`(\\[s${i}\\][^;]*),${atempoChain(speed)}\\[c${i}\\]`), `$1,${retimed(speed)}[c${i}]`)
         g = g.replace(new RegExp(`(\\[s${i}\\][^;]*)\\[c${i}\\]`), `$1,apad=whole_len=${n},atrim=end_sample=${n}[c${i}]`)
       })
       return g.replace('[clk];', '[clk0];[clk0]aresample[clk];')
     })
   }
-  it('re-timed clips change only by being cut to the exact samples of their video (audio)', () => {
+  it('re-timed clips change only by being kept on their frames and cut to the exact samples of their video (audio)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 0.8 } }, io)
     expect(args).not.toEqual(legacy.audio)
     expect(args).toEqual(fixed(legacy.audio))
-    expect(args.join(' ')).toContain('atempo=2,apad=whole_len=48000,atrim=end_sample=48000[c1]')
-    expect(args.join(' ')).toContain('atempo=0.5,apad=whole_len=96000,atrim=end_sample=96000[c2]')
+    // 2x: atempo leads by 1/96 s; it gets twice that (in recording time: 1/24 s) of silence first and the first 1/96 s it returns is dropped.
+    expect(args.join(' ')).toContain('atrim=end=2,adelay=delays=41.667:all=1,atempo=2,asetpts=PTS-STARTPTS,atrim=start_sample=500,asetpts=PTS-STARTPTS,apad=whole_len=48000,atrim=end_sample=48000[c1]')
+    expect(args.join(' ')).toContain('atrim=end=1,adelay=delays=41.667:all=1,atempo=0.5,asetpts=PTS-STARTPTS,atrim=start_sample=2000,asetpts=PTS-STARTPTS,apad=whole_len=96000,atrim=end_sample=96000[c2]')
   })
   it('clicks over the recording change only by keeping its channel layout (audioClicks)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 1 }, clicks: { times: [0.5, 1, 4.2], volume: 0.6 } }, io)
@@ -94,11 +106,12 @@ describe('recording graph', () => {
       3
     )
     // A re-timed clip: the stems are read at the export's rate so every clip is cut to its exact samples.
-    expect(g).toContain(`[1:a]aresample=48000:async=1:first_pts=0,${denoiseFilter(0.5)},volume=1.5[m0]`)
-    expect(g).toContain('[2:a]aresample=48000:async=1:first_pts=0[m1]')
+    // Each stem is made stereo before the mix (a mono microphone would make the mix mono).
+    expect(g).toContain(`[1:a]aresample=48000:async=1:first_pts=0,${denoiseFilter(0.5)},volume=1.5,${STEREO}[m0]`)
+    expect(g).toContain(`[2:a]aresample=48000:async=1:first_pts=0,${STEREO}[m1]`)
     expect(g).toContain('[m0][m1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,asplit=2[s0][s1]')
     expect(g).toContain('[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,apad=whole_len=96000,atrim=end_sample=96000[c0]')
-    expect(g).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,atempo=2,apad=whole_len=48000,atrim=end_sample=48000[c1]')
+    expect(g).toContain(`[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,${retimed(2)},apad=whole_len=48000,atrim=end_sample=48000[c1]`)
     expect(g).toMatch(/concat=n=2:v=0:a=1,volume=0\.9,apad=whole_dur=3,atrim=end=3\[aout\]$/)
   })
 
@@ -131,7 +144,7 @@ describe('music and the whole soundtrack', () => {
   it('cuts the music where it ends, fades and ducks it, then pads to the length', () => {
     const g = musicGraph({ input: '2:a', volume: 0.4, end: 6, fadeIn: 1, fadeOut: 2, duck: '1-0.5*clip(t,0,1)' }, 10)
     expect(g).toBe(
-      "[2:a]aresample=async=1:first_pts=0,atrim=end=6,volume=0.4,afade=t=in:st=0:d=1,afade=t=out:st=4:d=2,asetnsamples=n=256:p=0,volume=volume='1-0.5*clip(t,0,1)':eval=frame,apad=whole_dur=10,atrim=end=10[mus]"
+      "[2:a]aresample=async=1:first_pts=0,pan=stereo|FL=FL+FC|FR=FR+FC,atrim=end=6,volume=0.4,afade=t=in:st=0:d=1,afade=t=out:st=4:d=2,asetnsamples=n=256:p=0,volume=volume='1-0.5*clip(t,0,1)':eval=frame,apad=whole_dur=10,atrim=end=10[mus]"
     )
   })
 
@@ -145,7 +158,8 @@ describe('music and the whole soundtrack', () => {
     })
     const plan = planSoundtrack(job, { mix: '/p/screen.mp4', music: '/p/music.mp3' }, 0)
     expect(plan.args.slice(0, 9)).toEqual(['-vn', '-i', '/p/screen.mp4', '-stream_loop', '-1', '-vn', '-i', '/p/music.mp3', '-f'])
-    expect(plan.graph).toContain('[1:a]aresample=async=1:first_pts=0,atrim=end=10,volume=0.5')
+    expect(plan.graph).toContain(`[c0]apad=whole_dur=10,atrim=end=10[rec0];[rec0]${STEREO}[rec]`)
+    expect(plan.graph).toContain(`[1:a]aresample=async=1:first_pts=0,${STEREO},atrim=end=10,volume=0.5`)
     expect(plan.graph).toContain("volume=volume='1-0.7*clip((t-1.85)/0.15,0,1)*clip((4.45-t)/0.45,0,1)':eval=frame")
     expect(plan.graph).toMatch(/\[rec\]\[mus\]\[clk\]amix=inputs=3:duration=first:dropout_transition=0:normalize=0,afade=t=in:st=0:d=0\.5,afade=t=out:st=9:d=1\[aout\]$/)
   })
@@ -154,7 +168,7 @@ describe('music and the whole soundtrack', () => {
     const job = m4a(10, { music: { file: 'music.mp3', volume: 1, loop: false, fadeIn: 0, fadeOut: 1, duration: 4 } })
     const plan = planSoundtrack(job, { mix: null, music: '/p/music.mp3' }, 0)
     expect(plan.args).toEqual(['-vn', '-i', '/p/music.mp3'])
-    expect(plan.graph).toBe('[0:a]aresample=async=1:first_pts=0,atrim=end=4,afade=t=out:st=3:d=1,apad=whole_dur=10,atrim=end=10[aout]')
+    expect(plan.graph).toBe('[0:a]aresample=async=1:first_pts=0,pan=stereo|FL=FL+FC|FR=FR+FC,atrim=end=4,afade=t=out:st=3:d=1,apad=whole_dur=10,atrim=end=10[aout]')
   })
 
   it('fades a lone recording with its own last step', () => {
@@ -166,8 +180,8 @@ describe('music and the whole soundtrack', () => {
     const job = m4a(4, { audio: { clips: [clip(0, 4)], volume: 1, stems: { mic: 1, system: 0.5 }, noiseReduction: 0.3 } })
     const plan = planSoundtrack(job, { mix: '/p/screen.mp4', stems: { mic: '/p/mic.m4a', system: '/p/system.m4a' } }, 0)
     expect(plan.args).toEqual(['-vn', '-i', '/p/mic.m4a', '-vn', '-i', '/p/system.m4a'])
-    expect(plan.graph).toContain(`[0:a]aresample=async=1:first_pts=0,${denoiseFilter(0.3)}[m0]`)
-    expect(plan.graph).toContain('[1:a]aresample=async=1:first_pts=0,volume=0.5[m1]')
+    expect(plan.graph).toContain(`[0:a]aresample=async=1:first_pts=0,${denoiseFilter(0.3)},${STEREO}[m0]`)
+    expect(plan.graph).toContain(`[1:a]aresample=async=1:first_pts=0,volume=0.5,${STEREO}[m1]`)
     expect(() => planSoundtrack(job, { mix: '/p/screen.mp4', stems: { mic: '/p/mic.m4a' } }, 0)).toThrow(/system sound/)
   })
 
@@ -297,7 +311,8 @@ describe('soundtrack graphs with ffmpeg', () => {
 
   it('re-timed clips stay on their video: no drift over many speed changes', () => {
     // 20 clips at 1.5x, 2x, 4x, 8x and 0.5x with cuts between some of them (what smart speed
-    // makes), and a tick in the recording where each clip starts.
+    // makes), and a tick in the recording 50 ms after each clip starts (atempo fades in its
+    // first window: a click exactly on the cut comes out softer).
     const speeds = [1.5, 2, 4, 8, 0.5]
     const clips: Clip[] = []
     let at = 0.3
@@ -306,16 +321,45 @@ describe('soundtrack graphs with ffmpeg', () => {
       clips.push(clip(+at.toFixed(3), +(at + len).toFixed(3), speeds[i % 5]))
       at += len + (i % 3 === 0 ? 0.77 : 0)
     }
-    const src = ticks('ticks.m4a', clips.map((c) => c.start), at + 1)
+    const src = ticks('ticks.m4a', clips.map((c) => c.start + 0.05), at + 1)
     const bounds = clipSampleBounds(clips)
     const job = m4a(bounds[20] / RATE, { audio: { clips, volume: 1 } })
     const out = render(job, { mix: src })
     expect(out.length).toBe(Math.round((job.frames / job.fps) * RATE))
-    // Each tick lands where the video shows its clip starting, within one audio frame (sample)
-    // either way. Before, every clip moved the rest early: 290 ms by the last one.
-    const found = onsets(out, 0.05)
-    expect(found).toHaveLength(20)
-    found.forEach((s, i) => expect(Math.abs(s - bounds[i]), `clip ${i} at ${clips[i].speed}x`).toBeLessThanOrEqual(2))
+    // Each tick lands where the video shows it, within atempo's own jitter (up to about 20 ms
+    // at 0.5x), never adding up. Before, every clip moved the rest early: 290 ms by the last one.
+    // (A slowed-down tick can come out twice: the first loud sample near each one is taken.)
+    clips.forEach((c, i) => {
+      const expected = bounds[i] + (0.05 / c.speed) * RATE
+      const from = Math.max(0, Math.round(expected - 0.04 * RATE))
+      const at = out.subarray(from, Math.round(expected + 0.04 * RATE)).findIndex((v) => Math.abs(v) > 0.05)
+      expect(at, `clip ${i} at ${c.speed}x`).toBeGreaterThanOrEqual(0)
+      expect(Math.abs(from + at - expected) / RATE, `clip ${i} at ${c.speed}x`).toBeLessThan(0.025)
+    })
+  })
+
+  it('the sound inside a re-timed clip plays with its frames, not ahead of them', () => {
+    // A tick every 0.5 s of the recording; clips at 0.5x, 0.25x, 2x, 0.75x and 1.5x. atempo used
+    // to play everything after a clip's first moments early: 40 ms at 0.5x, over 100 ms at 0.25x.
+    const clips = [clip(0, 2.05, 0.5), clip(3, 5.05, 0.25), clip(6, 8.05, 2), clip(9, 11.05, 0.75), clip(12, 14.05, 1.5)]
+    const src = ticks('body.m4a', Array.from({ length: 30 }, (_, i) => i / 2 + 0.25), 15)
+    const bounds = clipSampleBounds(clips)
+    const out = render(m4a(bounds[clips.length] / RATE, { audio: { clips, volume: 1 } }), { mix: src })
+    clips.forEach((c, i) => {
+      const errors: number[] = []
+      for (let t = c.start + 0.25; t < c.end; t += 0.5) {
+        // Where the video shows this moment, and the first loud sample around it.
+        const expected = bounds[i] + ((t - c.start) / c.speed) * RATE
+        const from = Math.round(expected - 0.15 * RATE)
+        const at = out.subarray(from, Math.round(expected + 0.1 * RATE)).findIndex((v) => Math.abs(v) > 0.05)
+        expect(at, `tick at ${t} s (${c.speed}x)`).toBeGreaterThanOrEqual(0)
+        errors.push((from + at - expected) / RATE)
+      }
+      // atempo's own jitter is up to about 20 ms either way; the mean shows any constant lead
+      // (about 16 ms late at 0.25x, where two atempo stages lead a little less than modelled).
+      const mean = errors.reduce((a, b) => a + b, 0) / errors.length
+      expect(Math.abs(mean), `${c.speed}x: ${errors.map((e) => (e * 1000).toFixed(1)).join(', ')} ms`).toBeLessThan(0.02)
+    })
   })
 
   it('noise reduction keeps the microphone on its samples: sound starts and cuts where they did without it', () => {
@@ -339,8 +383,8 @@ describe('soundtrack graphs with ffmpeg', () => {
     expect(on.afterCut).toBeLessThan(0.01)
   })
 
-  /** Channels of a planned soundtrack, and the RMS of its first channel over [from, to). */
-  function channels(job: ExportJob, files: Parameters<typeof planSoundtrack>[1]): { count: number; level: (from: number, to: number) => number } {
+  /** Channels of a planned soundtrack, and the RMS of one channel (the first by default) over [from, to). */
+  function channels(job: ExportJob, files: Parameters<typeof planSoundtrack>[1]): { count: number; level: (from: number, to: number, channel?: number) => number } {
     const plan = planSoundtrack(job, files, 0)
     const file = path.join(dir, `layout-${Math.random().toString(36).slice(2)}.wav`)
     const r = spawnSync(ff, ['-v', 'error', ...plan.args, '-filter_complex', plan.graph!, '-map', '[aout]', '-c:a', 'pcm_f32le', file])
@@ -349,10 +393,10 @@ describe('soundtrack graphs with ffmpeg', () => {
     const count = wav.readUInt16LE(22)
     const data = wav.indexOf('data')
     const s = new Float32Array(wav.buffer.slice(wav.byteOffset + data + 8, wav.byteOffset + wav.length))
-    const level = (from: number, to: number): number => {
+    const level = (from: number, to: number, channel = 0): number => {
       let sum = 0
       let n = 0
-      for (let i = Math.round(from * RATE) * count; i < Math.round(to * RATE) * count; i += count, n++) sum += s[i] * s[i]
+      for (let i = Math.round(from * RATE) * count + channel; i < Math.round(to * RATE) * count; i += count, n++) sum += s[i] * s[i]
       return Math.sqrt(sum / n)
     }
     return { count, level }
@@ -373,5 +417,32 @@ describe('soundtrack graphs with ffmpeg', () => {
     expect(plain.count).toBe(1)
     expect(clicked.count).toBe(1)
     expect(clicked.level(2.2, 3.8)).toBeCloseTo(plain.level(2.2, 3.8), 3)
+  })
+
+  it('a mono microphone or recording keeps stereo system sound and music stereo, and plays on both sides at full level', () => {
+    // The microphone (mono, as Chromium records it with echo cancellation) sounds in the first
+    // half; the system sound and the music are stereo with sound on the left only.
+    const mic = make('mono-mic.m4a', "sine=frequency=500:sample_rate=48000,volume='if(lt(t,2),1,0)':eval=frame,aformat=channel_layouts=mono", 4)
+    const left = "sine=frequency=800:sample_rate=48000,volume='if(gte(t,2),1,0)':eval=frame[l];anullsrc=r=48000:cl=mono[r];[l][r]join=inputs=2:channel_layout=stereo"
+    const sys = make('left-system.m4a', left, 4)
+    const music = make('left-music.m4a', left, 4)
+    const mono = { level: 0 }
+    const alone = channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 } }), { mix: mic })
+    expect(alone.count).toBe(1)
+    mono.level = alone.level(0.2, 1.8)
+    const sides = (out: ReturnType<typeof channels>): void => {
+      expect(out.count).toBe(2)
+      // The mono source at its own level on both sides.
+      expect(out.level(0.2, 1.8, 0)).toBeCloseTo(mono.level, 2)
+      expect(out.level(0.2, 1.8, 1)).toBeCloseTo(mono.level, 2)
+      // The stereo source stays on its side, not averaged into the middle at half its level.
+      expect(out.level(2.2, 3.8, 0)).toBeGreaterThan(0.08)
+      expect(out.level(2.2, 3.8, 1)).toBeLessThan(0.001)
+    }
+    // Stems (used as soon as a source's volume changes or noise reduction is on): microphone first.
+    sides(channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1, stems: { mic: 1, system: 1 } } }), { mix: null, stems: { mic, system: sys } }))
+    // A mono recording under stereo music.
+    const tune = { file: 'left-music.m4a', volume: 1, loop: false, fadeIn: 0, fadeOut: 0, duration: 4 }
+    sides(channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 }, music: tune }), { mix: mic, music }))
   })
 })

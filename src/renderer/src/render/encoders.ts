@@ -1,5 +1,5 @@
-import type { ColorTags, ExportFinish, ExportJob, RawPixelFormat } from '../../../shared/api/export'
-import { avcLevel, colorTagsFrom, ivfFileHeader, ivfFrameHeader, rawReadback, vp9Codec } from '../../../shared/render/codec'
+import type { ColorTags, ExportFinish, ExportJob, RawPixelFormat, Rgb32Format } from '../../../shared/api/export'
+import { avcLevel, colorTagsFrom, ivfFileHeader, ivfFrameHeader, rawReadback, rgbToI420, vp9Codec } from '../../../shared/render/codec'
 
 /**
  * Where rendered frames go. `push` has captured the canvas by the time it resolves
@@ -34,8 +34,10 @@ async function finishJob(): Promise<ExportFinish> {
  * transfer. The canvas is a GPU canvas where Chromium has one: each finished frame
  * is read back once, asynchronously, through a VideoFrame in the canvas's native
  * byte order (a plain copy, about 3x faster than getImageData's unpremultiplying
- * RGBA copy, which is only the fallback). The ffmpeg job starts with the first
- * frame, once that byte order is known.
+ * RGBA copy, which is only the fallback). With `yuv` (every format but GIF) each frame
+ * is converted to 4:2:0 YUV before it is sent: IPC copies cost far more than the
+ * conversion, and it is 2.7x less to copy. The ffmpeg job starts with the first frame,
+ * once its pixel format is known.
  */
 export class RawFrameSink implements FrameSink {
   private inFlight = new Set<Promise<void>>()
@@ -45,20 +47,21 @@ export class RawFrameSink implements FrameSink {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly ctx: CanvasRenderingContext2D,
-    private readonly startJob: (format: RawPixelFormat) => Promise<void>
+    private readonly startJob: (format: RawPixelFormat) => Promise<void>,
+    private readonly yuv = false
   ) {}
 
   /** Set once a VideoFrame readback failed: later frames use getImageData. */
   private frameReadback = typeof VideoFrame !== 'undefined'
-  /** Byte order of the job (fixed by the first frame). */
+  /** Pixel format of the job (fixed by the first frame). */
   private format: RawPixelFormat | null = null
 
-  private async readFrame(): Promise<{ data: Uint8Array; format: RawPixelFormat } | null> {
+  private async readFrame(): Promise<{ data: Uint8Array; format: Rgb32Format } | null> {
     const frame = new VideoFrame(this.canvas, { timestamp: 0 })
     try {
       const { copyFormat, pixelFormat } = rawReadback(frame.format)
-      // A later frame must not change the byte order the ffmpeg job was started with.
-      if (this.format && pixelFormat !== this.format) return null
+      // A later frame must not change the byte order the ffmpeg job was started with (frames converted to YUV may).
+      if (!this.yuv && this.format && pixelFormat !== this.format) return null
       const options: VideoFrameCopyToOptions = copyFormat ? { format: copyFormat, colorSpace: 'srgb' } : {}
       const data = new Uint8Array(frame.allocationSize(options))
       await frame.copyTo(data, options)
@@ -68,7 +71,7 @@ export class RawFrameSink implements FrameSink {
     }
   }
 
-  private async read(): Promise<{ data: Uint8Array; format: RawPixelFormat }> {
+  private async read(): Promise<{ data: Uint8Array; format: Rgb32Format }> {
     if (this.frameReadback) {
       try {
         const r = await this.readFrame()
@@ -88,12 +91,14 @@ export class RawFrameSink implements FrameSink {
         data[i + 2] = r
       }
     }
-    return { data, format: this.format ?? 'rgba' }
+    return { data, format: this.format && this.format !== 'yuv420p' ? this.format : 'rgba' }
   }
 
   async push(): Promise<void> {
     if (this.error) throw this.error
-    const { data, format } = await this.read()
+    const frame = await this.read()
+    const data = this.yuv ? rgbToI420(frame.data, this.canvas.width, this.canvas.height, frame.format) : frame.data
+    const format = this.yuv ? 'yuv420p' : frame.format
     this.format ??= format
     this.started ??= this.startJob(format)
     await this.started.catch((e: unknown) => {

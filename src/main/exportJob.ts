@@ -104,7 +104,9 @@ function validVideo(job: ExportJob): boolean {
   if (!v || !KINDS[job.format]?.includes(v.kind)) return false
   if (v.kind === 'raw') {
     const vp9 = v.encoder === 'libvpx-vp9'
-    return ENCODERS.includes(v.encoder) && vp9 === (job.format === 'webm') && ['rgba', 'bgra', 'rgb0', 'bgr0'].includes(v.pixelFormat)
+    // GIFs take RGB frames: their palette is built from RGB.
+    const formats = job.format === 'gif' ? ['rgba', 'bgra', 'rgb0', 'bgr0'] : ['rgba', 'bgra', 'rgb0', 'bgr0', 'yuv420p']
+    return ENCODERS.includes(v.encoder) && vp9 === (job.format === 'webm') && formats.includes(v.pixelFormat)
   }
   return v.kind === 'none' || validColor(v.color)
 }

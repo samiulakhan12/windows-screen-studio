@@ -5,13 +5,14 @@
  * and loudness normalisation; background music on the output timeline with its fades and
  * ducking; the click sounds; and fades of the whole soundtrack. A job without any of the
  * newer settings produces exactly the graph earlier versions did, except that re-timed clips
- * are cut to the exact length of their video and click sounds keep the recording's channels.
+ * are cut to the exact length of their video and kept on its frames, click sounds keep the
+ * recording's channels, and sources mixed together are made stereo.
  */
 import type { ClickSounds, ExportJob } from '../api/export'
 import { duckExpression, fitFades } from '../audio/automation'
 import { LOUDNESS_TARGET } from '../audio/loudness'
 import { musicEnd, STEM_KINDS, type StemKind } from '../audio/settings'
-import { atempoChain } from '../engine/timeline'
+import { atempoChain, atempoStages } from '../engine/timeline'
 import type { Clip } from '../types'
 import { clickSoundSource } from './clickSound'
 
@@ -45,6 +46,39 @@ export function denoiseFilter(strength: number): string {
  * stereo it plays as, and works at 192 kHz internally: the result is resampled back.
  */
 export const NORMALIZE_FILTERS = `aformat=channel_layouts=stereo,loudnorm=I=${LOUDNESS_TARGET.integrated}:TP=${LOUDNESS_TARGET.truePeak}:LRA=${LOUDNESS_TARGET.range},aresample=${AUDIO_RATE}`
+
+/**
+ * How early atempo plays a clip re-timed to `speed`, in output seconds. Each atempo stage
+ * returns its sound about half a window (1/48 s) early in its own output time, and every later
+ * stage scales what the earlier ones left: 41.7 ms at 0.5x, 125 ms at 0.25x, 10.4 ms at 2x.
+ * The real lead varies with the sound around this (from about half of it, for the middle of a
+ * slowed-down beep): sound ahead of the picture is what viewers notice, so the full lead is
+ * taken back and what is left errs late.
+ */
+export function atempoLead(speed: number): number {
+  let lead = 0
+  for (const s of atempoStages(speed)) lead = (lead + 1 / 48) / s
+  return lead
+}
+
+/**
+ * A clip's sound re-timed to `speed` (at AUDIO_RATE), on its frames. atempo plays its sound
+ * atempoLead early, so the clip is given twice that lead of silence first (in recording time)
+ * and the first lead of what atempo returns is dropped: the sound starts and stays on its
+ * frames, with no gap at the start. Sound from before the clip instead of the silence would
+ * be heard, as atempo plays its first window at once.
+ */
+function retimeFilters(speed: number): string {
+  const lead = atempoLead(speed)
+  return `adelay=delays=${(2 * lead * speed * 1000).toFixed(3)}:all=1,${atempoChain(speed)},asetpts=PTS-STARTPTS,atrim=start_sample=${Math.round(lead * AUDIO_RATE)},asetpts=PTS-STARTPTS`
+}
+
+/**
+ * Mono to stereo at full level on both sides (as the preview's Web Audio upmixes), stereo
+ * unchanged. amix gives its output the first input's channel layout, so every source mixed
+ * with another is made stereo first: a mono microphone would make the whole soundtrack mono.
+ */
+export const STEREO = 'pan=stereo|FL=FL+FC|FR=FR+FC'
 
 /** One stem of the recording in the graph: its input, gain and whether it is cleaned. */
 export interface StemPart {
@@ -119,13 +153,13 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
     head = `[${s.input}]${resample}${s.denoise ? denoise : ''}${gainFilter(s.gain)}`
   } else {
     // The stems are as long as the video (padded at record time), so they line up sample for sample.
-    stems.forEach((s, i) => parts.push(`[${s.input}]${resample}${s.denoise ? denoise : ''}${gainFilter(s.gain)}[m${i}]`))
+    stems.forEach((s, i) => parts.push(`[${s.input}]${resample}${s.denoise ? denoise : ''}${gainFilter(s.gain)},${STEREO}[m${i}]`))
     head = `${stems.map((_, i) => `[m${i}]`).join('')}amix=inputs=${stems.length}:duration=longest:dropout_transition=0:normalize=0`
   }
   parts.push(`${head}${n > 1 ? `,asplit=${n}${clips.map((_, i) => `[s${i}]`).join('')}` : '[s0]'}`)
   clips.forEach((c, i) => {
     const len = c.end - c.start
-    const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${atempoChain(c.speed)}` : ''
+    const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${retimeFilters(c.speed)}` : ''
     const exact = retimed ? `,apad=whole_len=${bounds[i + 1] - bounds[i]},atrim=end_sample=${bounds[i + 1] - bounds[i]}` : ''
     parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${exact}[c${i}]`)
   })
@@ -185,7 +219,7 @@ const DUCK_FRAME = 256
 export function musicGraph(m: MusicPart, duration: number, out = 'mus'): string {
   const end = Math.max(0, Math.min(duration, m.end))
   const f = fitFades(end, m.fadeIn, m.fadeOut)
-  const chain = [`[${m.input}]aresample=async=1:first_pts=0`, `atrim=end=${sec(end)}`]
+  const chain = [`[${m.input}]aresample=async=1:first_pts=0`, STEREO, `atrim=end=${sec(end)}`]
   if (Math.abs(m.volume - 1) > 1e-6) chain.push(`volume=${+m.volume.toFixed(4)}`)
   if (f.fadeIn > 0) chain.push(`afade=t=in:st=0:d=${sec(f.fadeIn)}`)
   if (f.fadeOut > 0) chain.push(`afade=t=out:st=${sec(end - f.fadeOut)}:d=${sec(f.fadeOut)}`)
@@ -222,7 +256,11 @@ export function soundtrackGraph(opts: {
   // A single source without fades ends in [aout] directly (the graph earlier versions made).
   const solo = (audio ? 1 : 0) + (music ? 1 : 0) + (hasClicks ? 1 : 0) === 1 && !fades
   const branches: { label: string; graph: string }[] = []
-  if (audio) branches.push({ label: 'rec', graph: recordingGraph(audio, duration, solo ? 'aout' : 'rec') })
+  if (audio) {
+    // Under stereo music, a mono recording is made stereo too (see STEREO).
+    const graph = recordingGraph(audio, duration, solo ? 'aout' : music ? 'rec0' : 'rec')
+    branches.push({ label: 'rec', graph: music && !solo ? `${graph};[rec0]${STEREO}[rec]` : graph })
+  }
   if (music) branches.push({ label: 'mus', graph: musicGraph(music, duration, solo ? 'aout' : 'mus') })
   if (clicks && hasClicks) {
     const graph = clickTrackGraph(clicks.sounds, duration, clicks.input, solo ? 'aout' : 'clk0')!

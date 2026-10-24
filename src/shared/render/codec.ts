@@ -1,7 +1,7 @@
-import type { ColorTags, RawPixelFormat } from '../api/export'
+import type { ColorTags, Rgb32Format } from '../api/export'
 
 /** 32-bit VideoFrame layouts ffmpeg takes as they are. */
-const RAW_FORMATS: Record<string, RawPixelFormat> = { BGRX: 'bgr0', BGRA: 'bgra', RGBX: 'rgb0', RGBA: 'rgba' }
+const RAW_FORMATS: Record<string, Rgb32Format> = { BGRX: 'bgr0', BGRA: 'bgra', RGBX: 'rgb0', RGBA: 'rgba' }
 
 /**
  * How to read a canvas VideoFrame of layout `format` as raw 32-bit pixels: as it
@@ -9,9 +9,44 @@ const RAW_FORMATS: Record<string, RawPixelFormat> = { BGRX: 'bgr0', BGRA: 'bgra'
  * frame in a YUV layout, or with no CPU-visible layout at all, which some GPU
  * canvases report as null).
  */
-export function rawReadback(format: string | null): { copyFormat?: 'RGBX'; pixelFormat: RawPixelFormat } {
+export function rawReadback(format: string | null): { copyFormat?: 'RGBX'; pixelFormat: Rgb32Format } {
   const native = format ? RAW_FORMATS[format] : undefined
   return native ? { pixelFormat: native } : { copyFormat: 'RGBX', pixelFormat: 'rgb0' }
+}
+
+/**
+ * A 32-bit frame (`order`, as rawReadback reports it) as planar 4:2:0 YUV, BT.601 limited
+ * range (EXPORT_COLOR), the conversion ffmpeg would otherwise make: 1.5 bytes a pixel instead
+ * of 4 to send to ffmpeg. Chroma is the mean of each 2x2 block. Even sizes only (every export
+ * size is even). Written into `out` when it is given and large enough.
+ */
+export function rgbToI420(src: Uint8Array, width: number, height: number, order: Rgb32Format, out?: Uint8Array): Uint8Array {
+  const size = width * height
+  const dst = out && out.length >= (size * 3) / 2 ? out : new Uint8Array((size * 3) / 2)
+  const r = order === 'bgra' || order === 'bgr0' ? 2 : 0
+  const b = 2 - r
+  const cw = width >> 1
+  let u = size
+  let v = size + (size >> 2)
+  // 16.16 fixed point: Y = 16 + 219/255 (0.299 R + 0.587 G + 0.114 B), Cb and Cr scaled by 224/255.
+  for (let y = 0; y < height; y += 2) {
+    let i = y * width * 4
+    let j = i + width * 4
+    let o = y * width
+    for (let x = 0; x < cw; x++, i += 8, j += 8, o += 2) {
+      // The 2x2 block: (i, i + 4) on this row, (j, j + 4) on the next.
+      dst[o] = (16829 * src[i + r] + 33039 * src[i + 1] + 6416 * src[i + b] + 1081344) >> 16
+      dst[o + 1] = (16829 * src[i + 4 + r] + 33039 * src[i + 5] + 6416 * src[i + 4 + b] + 1081344) >> 16
+      dst[o + width] = (16829 * src[j + r] + 33039 * src[j + 1] + 6416 * src[j + b] + 1081344) >> 16
+      dst[o + width + 1] = (16829 * src[j + 4 + r] + 33039 * src[j + 5] + 6416 * src[j + 4 + b] + 1081344) >> 16
+      const rs = src[i + r] + src[i + 4 + r] + src[j + r] + src[j + 4 + r]
+      const gs = src[i + 1] + src[i + 5] + src[j + 1] + src[j + 5]
+      const bs = src[i + b] + src[i + 4 + b] + src[j + b] + src[j + 4 + b]
+      dst[u++] = (-9714 * rs - 19070 * gs + 28784 * bs + 33685504) >> 18
+      dst[v++] = (28784 * rs - 24103 * gs - 4681 * bs + 33685504) >> 18
+    }
+  }
+  return dst
 }
 
 /**

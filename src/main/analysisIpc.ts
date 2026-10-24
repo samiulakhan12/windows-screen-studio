@@ -24,19 +24,27 @@ const DETECT_MIN = 0.5
 const MAX_SECONDS = 3600
 /** Frames whose mean difference stays below this (about -50 dB) count as the same picture. */
 const NOISE = '-50dB'
+/** Seconds between key frames of a 60 fps proxy (see proxyArgs). */
+const KEY_INTERVAL = 0.25
 /** Kept results (project files analysed). */
 const CACHE_SIZE = 8
 
-/** ffmpeg arguments: the first video stream at 10 fps and 320 px wide is plenty to see change. */
-export function freezeDetectArgs(file: string, minSeconds = DETECT_MIN): string[] {
+/**
+ * ffmpeg arguments: the first video stream at 10 fps and 320 px wide is plenty to see change.
+ * With `keyFramesOnly` only the key frames are decoded and compared (every 0.25 s in a 60 fps
+ * proxy, see proxyArgs): decoding the frames fps=10 then drops was most of the work, about 9x
+ * as much. fps=10 is left out then, as its copies of each key frame would look still.
+ */
+export function freezeDetectArgs(file: string, minSeconds = DETECT_MIN, keyFramesOnly = false): string[] {
   return [
     '-hide_banner',
     '-nostdin',
     '-nostats',
+    ...(keyFramesOnly ? ['-skip_frame', 'nokey'] : []),
     '-i', file,
     '-map', '0:v:0',
     '-an', '-sn', '-dn',
-    '-vf', `fps=10,scale=320:-2:flags=area,freezedetect=n=${NOISE}:d=${+minSeconds.toFixed(3)}`,
+    '-vf', `${keyFramesOnly ? '' : 'fps=10,'}scale=320:-2:flags=area,freezedetect=n=${NOISE}:d=${+minSeconds.toFixed(3)}`,
     '-f', 'null',
     '-'
   ]
@@ -47,9 +55,10 @@ const num = (s: string | undefined): number => (s === undefined ? NaN : Number(s
 /**
  * Still stretches from ffmpeg's log, relative to the start of the video. A freeze still
  * running when the video ends lasts to its end (the "Duration" ffmpeg printed, else
- * `fallbackEnd`).
+ * `fallbackEnd`). Ends are moved `endEarly` seconds back: with key frames only, the picture
+ * changed somewhere after the key frame before the one ffmpeg reports.
  */
-export function parseFreezeLog(log: string, fallbackEnd = NaN): StillRange[] {
+export function parseFreezeLog(log: string, fallbackEnd = NaN, endEarly = 0): StillRange[] {
   const header = /Duration:\s*(\d+):(\d{2}):(\d{2}(?:\.\d+)?)(?:,\s*start:\s*(-?\d+(?:\.\d+)?))?/.exec(log)
   const offset = header && Number.isFinite(num(header[4])) ? num(header[4]) : 0
   const total = header ? Number(header[1]) * 3600 + Number(header[2]) * 60 + Number(header[3]) : fallbackEnd
@@ -60,7 +69,7 @@ export function parseFreezeLog(log: string, fallbackEnd = NaN): StillRange[] {
     if (!Number.isFinite(t)) continue
     if (m[1] === 'start') open = t
     else if (open !== null) {
-      if (t > open) out.push({ start: Math.max(0, open), end: t })
+      if (t - endEarly > open) out.push({ start: Math.max(0, open), end: t - endEarly })
       open = null
     }
   }
@@ -71,11 +80,11 @@ export function parseFreezeLog(log: string, fallbackEnd = NaN): StillRange[] {
 const running = new ProjectProcesses()
 
 /** Runs ffmpeg on `file` of project `id`: its log, or why it failed, was killed or took longer than `timeoutMs`. */
-function runFreezeDetect(file: string, id: string, timeoutMs: number): Promise<{ log: string } | { error: string }> {
+function runFreezeDetect(file: string, id: string, timeoutMs: number, keyFramesOnly: boolean): Promise<{ log: string } | { error: string }> {
   return new Promise((resolve) => {
     let proc: ChildProcess
     try {
-      proc = spawn(ffmpegPath(), freezeDetectArgs(file), { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+      proc = spawn(ffmpegPath(), freezeDetectArgs(file, DETECT_MIN, keyFramesOnly), { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
     } catch (err) {
       resolve({ error: `ffmpeg could not be started (${err instanceof Error ? err.message : String(err)})` })
       return
@@ -136,9 +145,12 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
   const stat = await fs.stat(file).catch(() => null)
   if (!stat?.isFile()) throw new Error('the video file is missing')
   let duration = NaN
+  // A 30 fps proxy has a key frame only every 0.5 s (as long as the shortest still looked for): all its frames are decoded.
+  let keyFramesOnly = true
   try {
-    const project = JSON.parse(await fs.readFile(path.join(dir, 'project.json'), 'utf8')) as { duration?: unknown }
+    const project = JSON.parse(await fs.readFile(path.join(dir, 'project.json'), 'utf8')) as { duration?: unknown; capture?: { fps?: unknown } }
     if (typeof project.duration === 'number' && Number.isFinite(project.duration)) duration = project.duration
+    keyFramesOnly = project.capture?.fps !== 30
   } catch {
     // The length printed by ffmpeg is used instead.
   }
@@ -149,8 +161,8 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
     if (running.generation(id) !== generation) throw new Error('the analysis was stopped')
     // About a minute, plus as long again as the recording: decoding is far faster than real time.
     const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
-    const run = runFreezeDetect(file, id, timeoutMs).then((r) => {
-      if ('log' in r) return parseFreezeLog(r.log, duration)
+    const run = runFreezeDetect(file, id, timeoutMs, keyFramesOnly).then((r) => {
+      if ('log' in r) return parseFreezeLog(r.log, duration, keyFramesOnly ? KEY_INTERVAL : 0)
       // A failure is not kept: the next request runs the analysis again.
       if (cache.get(key) === run) cache.delete(key)
       throw new Error(r.error)

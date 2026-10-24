@@ -160,20 +160,25 @@ export function setTrimEnd(clips: Clip[], e: number, duration: number): Clip[] {
 }
 
 /**
- * Splits atempo into a chain within ffmpeg's supported 0.5..2 per-filter range
- * (e.g. 8 -> "atempo=2,atempo=2,atempo=2").
+ * The tempo of each atempo filter for `speed`, within ffmpeg's supported 0.5..2 per-filter
+ * range (e.g. 8 -> [2, 2, 2]).
  */
-export function atempoChain(speed: number): string {
-  const parts: string[] = []
+export function atempoStages(speed: number): number[] {
+  const stages: number[] = []
   let s = speed
   while (s > 2 + 1e-9) {
-    parts.push('atempo=2')
+    stages.push(2)
     s /= 2
   }
   while (s < 0.5 - 1e-9) {
-    parts.push('atempo=0.5')
+    stages.push(0.5)
     s /= 0.5
   }
-  if (Math.abs(s - 1) > 1e-9 || parts.length === 0) parts.push(`atempo=${+s.toFixed(6)}`)
-  return parts.join(',')
+  if (Math.abs(s - 1) > 1e-9 || stages.length === 0) stages.push(s)
+  return stages
+}
+
+/** atempoStages as a filter chain (e.g. 8 -> "atempo=2,atempo=2,atempo=2"). */
+export function atempoChain(speed: number): string {
+  return atempoStages(speed).map((s) => `atempo=${+s.toFixed(6)}`).join(',')
 }

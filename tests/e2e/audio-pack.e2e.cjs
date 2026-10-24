@@ -503,17 +503,22 @@ async function main() {
     const out = path.join(home, 'older.m4a')
     await exportAs(app, win, out, 'M4A')
     // What earlier versions ran for this project (see tests/fixtures/legacy-audio-args.json),
-    // and the same graph with the one intended change: the clips are read at 48 kHz and each
-    // is cut to the samples its video lasts (2 s, 1 s, 2 s), because atempo's output is a
-    // little off the clip's length and every later clip used to move by that much.
+    // and the same graph with the intended changes: the clips are read at 48 kHz and each is
+    // cut to the samples its video lasts (2 s, 1 s, 2 s), because atempo's output is a little
+    // off the clip's length and every later clip used to move by that much; and each re-timed
+    // clip is kept on its frames, as atempo plays its sound early (half a window per stage):
+    // silence first, then the lead (1/96 s at 2x, 1/24 s at 0.5x) dropped from its output.
     const earlier =
       '[0:a]aresample=async=1:first_pts=0,asplit=3[s0][s1][s2];' +
       '[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2[c0];' +
       '[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,atempo=2[c1];' +
       '[s2]atrim=start=6:end=7,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,atempo=0.5[c2];' +
       '[c0][c1][c2]concat=n=3:v=0:a=1,volume=0.8,apad=whole_dur=5,atrim=end=5[aout]'
+    const retimed = (pre, chain, lead) => `adelay=delays=${pre}:all=1,${chain},asetpts=PTS-STARTPTS,atrim=start_sample=${lead},asetpts=PTS-STARTPTS`
     const exact = earlier
       .replace('aresample=async=1', 'aresample=48000:async=1')
+      .replace(',atempo=2[c1]', `,${retimed('41.667', 'atempo=2', 500)}[c1]`)
+      .replace(',atempo=0.5[c2]', `,${retimed('41.667', 'atempo=0.5', 2000)}[c2]`)
       .replace('[c0];', ',apad=whole_len=96000,atrim=end_sample=96000[c0];')
       .replace('[c1];', ',apad=whole_len=48000,atrim=end_sample=48000[c1];')
       .replace('[c2];', ',apad=whole_len=96000,atrim=end_sample=96000[c2];')
@@ -527,10 +532,10 @@ async function main() {
     let diff = 0
     for (let i = 0; i < Math.max(a.length, b.length); i++) diff = Math.max(diff, Math.abs((a[i] ?? 9) - (b[i] ?? 9)))
     console.log(`  older project: ${a.length} samples, largest difference from the reference export ${diff}`)
-    h.assert(a.length === b.length && diff < 1e-6, `the export's audio is exactly the earlier graph with exact clip lengths (${a.length} vs ${b.length} samples, max diff ${diff})`)
+    h.assert(a.length === b.length && diff < 1e-6, `the export's audio is exactly the earlier graph with exact, on-frame re-timed clips (${a.length} vs ${b.length} samples, max diff ${diff})`)
     // The last clip (0.5x from 3 s) on its own, as the video shows it: where does it start in each export?
     // prettier-ignore
-    const alone = execFileSync(FF, ['-v', 'error', '-i', path.join(dir, 'screen.mp4'), '-af', 'aresample=48000:async=1:first_pts=0,atrim=start=6:end=7,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,atempo=0.5,volume=0.8', '-ac', '1', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })
+    const alone = execFileSync(FF, ['-v', 'error', '-i', path.join(dir, 'screen.mp4'), '-af', `aresample=48000:async=1:first_pts=0,atrim=start=6:end=7,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,${retimed('41.667', 'atempo=0.5', 2000)},volume=0.8`, '-ac', '1', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })
     const clip = new Float32Array(alone.buffer, alone.byteOffset, alone.length / 4).subarray(0, RATE)
     const lagAt = (s, at) => {
       let best = 0

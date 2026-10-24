@@ -69,9 +69,11 @@ time**, so cutting or re-timing never moves an overlay off its content.
 4. **Export.** Output frame times come from the clips (`exportFrameTimes`). Source frames are decoded
    in order with WebCodecs from the proxy (own MP4 demuxer), with a frame-accurate seek fallback.
    Frames are encoded with WebCodecs (H.264 Annex B chunks to ffmpeg for muxing) or as raw frames to
-   ffmpeg with the best working encoder (NVENC / Quick Sync / AMF, else x264). Audio is rebuilt from
-   the clips with `atrim`/`atempo`/`concat`, volume and exact duration. GIFs use bounded-memory
-   palette passes. Output goes to a temp file and is renamed into place on success.
+   ffmpeg with the best working encoder (NVENC / Quick Sync / AMF, else x264); raw video frames are
+   converted to 4:2:0 YUV in the renderer, which makes the IPC copies 2.7x smaller. Audio is rebuilt
+   from the clips with `atrim`/`atempo`/`concat` (each re-timed clip kept on its frames despite
+   atempo's lead), volume and exact duration; sources mixed together are made stereo first. GIFs use
+   bounded-memory palette passes. Output goes to a temp file and is renamed into place on success.
 
 ## Why these choices
 * **Determinism:** every visual is a function of source time, so preview, scrubbing and export
