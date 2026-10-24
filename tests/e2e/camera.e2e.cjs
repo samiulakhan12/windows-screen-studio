@@ -3,7 +3,8 @@
 // where they belong and animates between them; background blur removes detail behind the person
 // (a synthetic person the bundled model recognises) but not on the person, and without WebGL it
 // says so and draws the camera unblurred; and the layout track in the app (add, move, trim,
-// change, delete, undo; hidden without a camera).
+// change, delete, undo; hidden without a camera), the framing pad, and a recording whose camera
+// file went missing (its layouts leave the screen where it is, and are kept for when it is back).
 //
 // Background blur needs WebGL in a worker; Xvfb has no GPU, so the blur tests launch the app with
 // SwiftShader (--enable-unsafe-swiftshader), and the "unavailable" test with --disable-webgl.
@@ -355,11 +356,16 @@ async function main() {
       { id: 'screen', start: 4.2, end: 5, layout: 'screen-only' }
     ]
     seedCamera(home, { id: 'layouts', name: 'Layouts', seconds: 5, camera, style, webcam: { mirror: false }, layouts })
+    // The same edit whose camera file has gone missing.
+    seedCamera(home, { id: 'gone', name: 'Camera gone', seconds: 5, camera, style, webcam: { mirror: false }, layouts })
+    fs.rmSync(path.join(h.projectsRoot(home), 'gone', 'webcam.mp4'))
     const { app, win, logs } = await h.launch({ home })
     ctx.app = app
     ctx.logs = logs
     const out = path.join(home, 'layouts.mp4')
+    const gone = path.join(home, 'gone.mp4')
     await exportMp4(app, win, 'Layouts', out)
+    await exportMp4(app, win, 'Camera gone', gone)
     const times = [0.3, 1.2, 1.5, 1.6, 1.7, 2, 3.4, 4.8]
     if (SHOTS) for (const t of times) fx.savePng(out, Math.round(t * FPS), path.join(SHOTS, `camera-layout-${t}s.png`))
     const F = framesAtTimes(out, times)
@@ -408,6 +414,12 @@ async function main() {
     h.assert(isBlack(at(3.4, 15, 360)) && camera_(at(3.4, 60, 360)), 'camera only: the camera card ends at the padding')
     // 4.8 s, screen only: no camera.
     h.assert(isGray(at(4.8, smallC.x, smallC.y)), `screen only: the camera is gone (${at(4.8, smallC.x, smallC.y)})`)
+
+    // Without its camera file the layouts do not apply: the screen stays where it is, whole.
+    const G = framesAtTimes(gone, [2, 3.4])
+    for (const [t, x, y] of [[2, 450, 360], [2, 1068, 360], [2, 1205, 360], [3.4, 100, 100], [3.4, 1180, 620]]) {
+      h.assert(isGray(rgb(G.at(t), x, y)), `camera file missing: the screen at (${x}, ${y}) at ${t} s (${rgb(G.at(t), x, y)})`)
+    }
   }))
 
   await test('camera background blur: detail behind the person goes, the person stays sharp (in the preview too)', fx.withHome('camera-blur', async (ctx, home) => {
@@ -487,11 +499,25 @@ async function main() {
     const home = h.tempHome('camera-track')
     f.seedProject(home, { id: 'rec-cam', name: 'With camera', seconds: 12, webcam: true })
     f.seedProject(home, { id: 'rec-nocam', name: 'No camera', seconds: 12, ageMs: 1000 })
+    f.seedProject(home, { id: 'rec-gone', name: 'Camera gone', seconds: 12, webcam: true, ageMs: 2000 })
+    const goneFile = path.join(h.projectsRoot(home), 'rec-gone', 'project.json')
+    fs.writeFileSync(goneFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(goneFile, 'utf8')), layouts: [{ id: 'side', start: 0, end: 12, layout: 'side-by-side' }] }, null, 2))
+    fs.rmSync(path.join(h.projectsRoot(home), 'rec-gone', 'webcam.mp4'))
     const { app, win, logs } = await h.launch({ home })
     ctx.app = app
     ctx.logs = logs
     await f.openProject(win, 'No camera')
     h.assert(!(await win.$('[data-testid="layout-track"]')), 'no layout track without a camera')
+    await backHome(win)
+
+    // A camera file gone missing: opened as without a camera; saves keep the camera and its layouts.
+    await f.openProject(win, 'Camera gone')
+    h.assert(!(await win.$('[data-testid="layout-track"]')), 'no layout track without the camera file')
+    await win.mouse.click(await xForTime(win, 3), (await boxOf(win, '.tl-ruler')).y)
+    await h.sleep(300)
+    await win.keyboard.press('z')
+    const kept = await saved(home, 'rec-gone', (q) => (q.zooms ?? []).length === 1, 'an edit saved')
+    h.assert(kept.hasWebcam === true && kept.layouts.length === 1 && kept.layouts[0].layout === 'side-by-side', `saved with its camera and layouts (hasWebcam ${kept.hasWebcam}, ${kept.layouts.length} layouts)`)
     await backHome(win)
 
     await f.openProject(win, 'With camera')
@@ -543,6 +569,26 @@ async function main() {
     p = await saved(home, 'rec-cam', (q) => q.layouts.length === 2, 'a change added from the panel')
     const large = p.layouts.find((s) => s.layout === 'camera-large')
     h.assert(large && near(large.start, 1, 0.1) && large.end <= p.layouts.find((s) => s.layout === 'camera-only').start + 1e-6, `large camera from the playhead, before the next change (${large && large.start.toFixed(2)}..${large && large.end.toFixed(2)})`)
+
+    // The framing pad keeps the point pressed (the 4:3 camera mirrored in the round bubble shows
+    // 3/4 of its width) ...
+    const pressPad = async (t, fxr, fyr) => {
+      await win.mouse.click(await xForTime(win, t), (await boxOf(win, '.tl-ruler')).y)
+      await h.sleep(300)
+      await win.keyboard.press('Escape')
+      await win.locator('[data-testid="camera-framing"]').scrollIntoViewIfNeeded()
+      const pad = await boxOf(win, '[data-testid="camera-framing"]')
+      await win.mouse.click(pad.left + pad.w * fxr, pad.top + pad.h * fyr)
+    }
+    await pressPad(0.5, 0.1, 0.5)
+    p = await saved(home, 'rec-cam', (q) => q.webcam.cropX !== undefined, 'the framing set')
+    console.log(`  framing in the bubble: ${p.webcam.cropX}, ${p.webcam.cropY}`)
+    h.assert(near(p.webcam.cropX, 0.9, 0.02), `the point pressed, also past what the bubble can centre on (${p.webcam.cropX})`)
+    // ... and a press where the camera fills the frame (its whole width shows) moves only the height.
+    await pressPad(6, 0.5, 0.15)
+    p = await saved(home, 'rec-cam', (q) => q.webcam.cropY < 0.4, 'the framing moved')
+    console.log(`  framing after a press in camera only: ${p.webcam.cropX}, ${p.webcam.cropY}`)
+    h.assert(near(p.webcam.cropX, 0.9, 0.02) && near(p.webcam.cropY, 0.15, 0.02), `the bubble's framing across is kept (${p.webcam.cropX}, ${p.webcam.cropY})`)
     if (!process.env.SSW_E2E_KEEP) fs.rmSync(home, { recursive: true, force: true })
   })
 }

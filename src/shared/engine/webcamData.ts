@@ -3,7 +3,7 @@
  * time, so an old project draws exactly as before), and sanitising of stored values (a
  * hand-edited or damaged project.json still opens and draws).
  */
-import type { CameraLayout, Corner, LayoutSegment, WebcamSettings } from '../types'
+import type { CameraLayout, Corner, LayoutSegment, Project, WebcamSettings } from '../types'
 import { clamp } from './math'
 
 export const CAMERA_LAYOUTS: CameraLayout[] = ['default', 'camera-only', 'screen-only', 'side-by-side', 'camera-large']
@@ -54,6 +54,38 @@ export function webcamLook(w: WebcamSettings): WebcamLook {
     cropX: finite(w.cropX) ? clamp(w.cropX, 0, 1) : 0.5,
     cropY: finite(w.cropY) ? clamp(w.cropY, 0, 1) : 0.5
   }
+}
+
+/** A visible part at least this share of the picture along an axis shows all of it there. */
+const WHOLE = 0.999
+
+/**
+ * The framing (cropX, cropY) for a press at (x, y) on the camera picture as shown (0..1, mirrored
+ * when the camera is): the point pressed, kept as it is, since each layout keeps its own visible
+ * part inside the picture when it draws (cameraSourceRect) and centres it on that point as far as
+ * it can. An axis the visible part (`visible`: its share of the picture) already spans whole is
+ * left as it was: pressing cannot show a change there, so it must not undo the framing that
+ * layouts with more room use.
+ */
+export function framingAt(x: number, y: number, look: Pick<WebcamLook, 'cropX' | 'cropY' | 'mirror'>, visible: { w: number; h: number }): { cropX: number; cropY: number } {
+  const px = clamp(look.mirror ? 1 - x : x, 0, 1)
+  const py = clamp(y, 0, 1)
+  return { cropX: visible.w < WHOLE ? +px.toFixed(4) : look.cropX, cropY: visible.h < WHOLE ? +py.toFixed(4) : look.cropY }
+}
+
+/**
+ * The project as the editor opens it when its camera file is missing: as a recording without a
+ * camera, so its camera layouts never move the screen around a camera that cannot be drawn.
+ * Only the editor's copy goes without: saves put the camera back (withRecordedCamera), so it is
+ * used again, layouts and all, once the file is back.
+ */
+export function openedWithoutCamera(project: Project, missing: boolean): Project {
+  return missing && project.hasWebcam ? { ...project, hasWebcam: false } : project
+}
+
+/** `edited` as saved: with the camera of the project as `stored`, which the editor may have opened without it. */
+export function withRecordedCamera(edited: Project, stored: Pick<Project, 'hasWebcam'>): Project {
+  return stored.hasWebcam && !edited.hasWebcam ? { ...edited, hasWebcam: true } : edited
 }
 
 /**

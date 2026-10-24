@@ -23,6 +23,7 @@ import {
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { DEFAULT_EFFECTS } from '../../../shared/engine/project'
+import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { focusPathFor, insertZoom, isUsableClick, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
@@ -98,12 +99,14 @@ async function openSession(projectId: string): Promise<Session> {
   // The video track's length, not screen.duration: that is the container's, which includes a longer audio track.
   const duration = mediaLength(data.project.duration, await videoLength, screen.duration)
   // Without its stems when one of their files is missing; saves keep them, so they are used again once the file is back.
-  const opened = openedWithoutStems(data.project, data.missingStems)
+  // Likewise without its camera when the camera file is missing (its layouts then leave the screen be).
+  const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
   const store = new EditStore(project)
+  const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(p, data.project), data.project)
   const saver = new Autosaver(store, {
-    save: (p, meta) => window.api.saveProject(withRecordedStems(p, data.project), meta),
-    saveSync: (p, meta) => window.api.saveProjectSync(withRecordedStems(p, data.project), meta)
+    save: (p, meta) => window.api.saveProject(recorded(p), meta),
+    saveSync: (p, meta) => window.api.saveProjectSync(recorded(p), meta)
   })
   if (project !== opened) saver.markDirty()
   const player = new PreviewPlayer(screen, webcam, project, data.missingStems)

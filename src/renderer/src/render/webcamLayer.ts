@@ -10,10 +10,14 @@ import { roundRectPath } from './staticLayer'
 type Ctx = CanvasRenderingContext2D
 type Shadow = NonNullable<ReturnType<typeof cameraShadow>>
 
-/** Canvases one target keeps between frames: the shadow sprite and the background-blur composite. */
+/**
+ * What one target keeps between frames: the shadow sprite, the background-blur composite, and
+ * the preview camera it draws blurred (segmented in the background while it does).
+ */
 interface LayerState {
   shadow?: { canvas: HTMLCanvasElement; key: string; x: number; y: number }
   blur?: BlurState
+  live?: HTMLVideoElement
 }
 
 interface BlurState {
@@ -61,13 +65,18 @@ function resize(c: HTMLCanvasElement, w: number, h: number): boolean {
  */
 export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): void {
   const { ctx, project, w, h, k } = fc
-  if (!project.webcam.show || !camera) return
+  if (!project.webcam.show) {
+    // Hidden: the preview camera stops being segmented.
+    if (states.has(ctx)) drawLive(stateOf(ctx), null)
+    return
+  }
+  if (!camera) return
   const box = sceneCameraBox(project, w, h, fc.vw, fc.vh, fc.t)
   if (!box || box.opacity < 0.004 || box.rect.w < 1 || box.rect.h < 1) return
   const look = webcamLook(project.webcam)
-  const { picture, mask } = pictureOf(camera, look.backgroundBlur)
-  const r = box.rect
   const state = stateOf(ctx)
+  const { picture, mask } = pictureOf(camera, look.backgroundBlur, state)
+  const r = box.rect
   const settled = layoutPhaseAt(project, fc.t).progress >= 1
 
   ctx.save()
@@ -100,20 +109,28 @@ export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): vo
 }
 
 /**
- * The picture to draw and its person mask. Frames the export decoded carry a mask prepared before
- * they were drawn; the preview's camera element hands over its latest frame with its own mask.
- * Without a mask the camera is drawn unblurred.
+ * The picture to draw and its person mask. Frames the export draws carry a mask prepared before
+ * they were drawn (or none: that frame is drawn unblurred); the preview's camera element hands
+ * over its latest frame with its own mask. Without a mask the camera is drawn unblurred.
  */
-function pictureOf(camera: FrameImage, blur: number): { picture: FrameImage; mask: PersonMask | null } {
+function pictureOf(camera: FrameImage, blur: number, state: LayerState): { picture: FrameImage; mask: PersonMask | null } {
   const img = camera.image
   const prepared = blur > 0 ? maskOf(img) : null
-  if (prepared || typeof HTMLVideoElement === 'undefined' || !(img instanceof HTMLVideoElement)) return { picture: camera, mask: prepared }
-  if (!(blur > 0)) {
-    releaseLivePicture(img)
-    return { picture: camera, mask: null }
+  const element = typeof HTMLVideoElement !== 'undefined' && img instanceof HTMLVideoElement ? img : null
+  if (prepared !== undefined || !element) {
+    drawLive(state, null)
+    if (element) releaseLivePicture(element)
+    return { picture: camera, mask: prepared ?? null }
   }
-  const live = livePicture(img)
+  drawLive(state, element)
+  const live = livePicture(element)
   return live ? { picture: live, mask: live.mask } : { picture: camera, mask: null }
+}
+
+/** Notes the preview camera this target draws blurred (null: none); one it no longer draws so stops being segmented. */
+function drawLive(state: LayerState, video: HTMLVideoElement | null): void {
+  if (state.live && state.live !== video) releaseLivePicture(state.live)
+  state.live = video ?? undefined
 }
 
 /**

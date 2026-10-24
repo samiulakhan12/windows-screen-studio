@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { addLayoutAt, createLayoutSegment, dragLayoutTimes, layoutAt, layoutDragBounds, layoutSegmentAt, updateLayout } from '../src/shared/editor/layouts'
 import { applyStyleDefaults, lookOf, sanitizeStyleDefaults } from '../src/shared/editor/styleDefaults'
 import { createProject, migrateProject } from '../src/shared/engine/project'
-import { DEFAULT_WEBCAM_BORDER, MIN_LAYOUT_LENGTH, readLayouts, readWebcam, webcamLook } from '../src/shared/engine/webcamData'
-import type { LayoutSegment } from '../src/shared/types'
+import { cameraSourceRect, layoutGeometry, sceneContentRect, styleContentRect } from '../src/shared/engine/layout'
+import { DEFAULT_WEBCAM_BORDER, framingAt, MIN_LAYOUT_LENGTH, openedWithoutCamera, readLayouts, readWebcam, webcamLook, withRecordedCamera } from '../src/shared/engine/webcamData'
+import type { LayoutSegment, Project } from '../src/shared/types'
 
 const seg = (id: string, start: number, end: number, layout: LayoutSegment['layout'] = 'camera-only'): LayoutSegment => ({ id, start, end, layout })
 
@@ -153,5 +154,85 @@ describe('saved default look', () => {
     const next = applyStyleDefaults(p, saved)
     expect(next.webcam).toMatchObject({ shape: 'square', mirror: false, backgroundBlur: 0.5 })
     expect(next.webcam.zoom).toBeUndefined()
+  })
+})
+
+const cameraProject = (): Project =>
+  createProject({
+    id: 'p',
+    name: 'P',
+    duration: 10,
+    width: 1280,
+    height: 720,
+    hasWebcam: true,
+    hasAudio: false,
+    webcamOffset: 0,
+    zooms: [],
+    cursorValid: false,
+    capture: { method: 'chromium', cursorInVideo: true, region: null }
+  })
+
+describe('framing pad', () => {
+  /** The visible share of a 16:9 camera picture in `layout` of a 1080p frame of a 1280x720 recording. */
+  const visible = (layout: LayoutSegment['layout'], zoom = 1): { w: number; h: number } => {
+    const p = cameraProject()
+    const box = layoutGeometry(layout, p, 1920, 1080, 1280, 720).camera.rect
+    const src = cameraSourceRect(1280, 720, box.w, box.h, { zoom, cropX: 0.5, cropY: 0.5 })
+    return { w: src.w / 1280, h: src.h / 720 }
+  }
+
+  it('keeps the point pressed, also beyond what this layout can centre on', () => {
+    const bubble = visible('default')
+    expect(bubble.w).toBeCloseTo(0.5625, 3)
+    expect(bubble.h).toBeCloseTo(1, 6)
+    // Unmirrored: x as pressed; y untouched, since the bubble shows the picture's whole height.
+    expect(framingAt(0.1, 0.8, { cropX: 0.5, cropY: 0.3, mirror: false }, bubble)).toEqual({ cropX: 0.1, cropY: 0.3 })
+    // Mirrored: the picture shows flipped, so a press on its left is the camera's right.
+    expect(framingAt(0.1, 0.8, { cropX: 0.5, cropY: 0.3, mirror: true }, bubble)).toEqual({ cropX: 0.9, cropY: 0.3 })
+    // Zoomed in, both axes move; presses outside the pad stay on the picture.
+    expect(framingAt(-0.2, 1.4, { cropX: 0.5, cropY: 0.5, mirror: false }, visible('default', 2))).toEqual({ cropX: 0, cropY: 1 })
+  })
+
+  it('leaves the framing of other layouts alone where this one shows the whole picture', () => {
+    // A 16:9 camera filling the (wider) padded 16:9 frame shows its whole width: x stays, y moves.
+    const card = visible('camera-only')
+    expect(card.w).toBeCloseTo(1, 6)
+    expect(card.h).toBeLessThan(0.999)
+    expect(framingAt(0.8, 0.2, { cropX: 0.3, cropY: 0.6, mirror: false }, card)).toEqual({ cropX: 0.3, cropY: 0.2 })
+    // Showing the whole picture, a press changes nothing.
+    expect(framingAt(0.8, 0.2, { cropX: 0.3, cropY: 0.6, mirror: true }, { w: 1, h: 1 })).toEqual({ cropX: 0.3, cropY: 0.6 })
+    // A layout showing part of the width moves it there.
+    const side = visible('side-by-side')
+    expect(side.w).toBeLessThan(0.5)
+    expect(framingAt(0.25, 0.5, { cropX: 0.3, cropY: 0.6, mirror: false }, side)).toEqual({ cropX: 0.25, cropY: 0.6 })
+  })
+})
+
+describe('a recording whose camera file is missing', () => {
+  it('opens without its camera, so its layouts leave the screen where it is', () => {
+    const p = { ...cameraProject(), layouts: [seg('a', 0, 10, 'side-by-side')] }
+    const opened = openedWithoutCamera(p, true)
+    expect(opened.hasWebcam).toBe(false)
+    expect(opened.layouts).toEqual(p.layouts)
+    const base = styleContentRect(1920, 1080, 1280, 720, p.style)
+    expect(sceneContentRect(p, 1920, 1080, 1280, 720, 5)).not.toEqual(base)
+    expect(sceneContentRect(opened, 1920, 1080, 1280, 720, 5)).toEqual(base)
+    // With the file there, or without a camera at all, nothing changes.
+    expect(openedWithoutCamera(p, false)).toBe(p)
+    const none = { ...p, hasWebcam: false }
+    expect(openedWithoutCamera(none, true)).toBe(none)
+  })
+
+  it('saves with its camera, so it is used again once the file is back', () => {
+    const stored = cameraProject()
+    const edited = { ...openedWithoutCamera(stored, true), name: 'Renamed' }
+    const saved = withRecordedCamera(edited, stored)
+    expect(saved.hasWebcam).toBe(true)
+    expect(saved.name).toBe('Renamed')
+    // Opened with its camera, or recorded without one: saved as edited.
+    const plain = { ...stored, name: 'X' }
+    expect(withRecordedCamera(plain, stored)).toBe(plain)
+    const noCamera = { ...stored, hasWebcam: false }
+    expect(withRecordedCamera(noCamera, noCamera)).toBe(noCamera)
   })
 })

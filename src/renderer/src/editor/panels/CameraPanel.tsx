@@ -3,9 +3,8 @@ import { addLayoutAt, LAYOUT_OPTIONS, layoutAt, layoutSegmentAt, updateLayout } 
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { cameraSourceRect, layoutGeometry, outputSize } from '../../../../shared/engine/layout'
-import { clamp } from '../../../../shared/engine/math'
 import { formatTime } from '../../../../shared/engine/project'
-import { DEFAULT_WEBCAM_BORDER, WEBCAM_LIMITS, webcamLook } from '../../../../shared/engine/webcamData'
+import { DEFAULT_WEBCAM_BORDER, framingAt, WEBCAM_LIMITS, webcamLook } from '../../../../shared/engine/webcamData'
 import type { CameraLayout, Project, WebcamSettings } from '../../../../shared/types'
 import { ensureSegmenter, onSegmenterState, segmenterState } from '../../render/segmentation/personSegmenter'
 import { holdGesture, useEditor } from '../context'
@@ -152,20 +151,17 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
     }
   }, [video, player, look.mirror, padH])
 
-  /** Centres the visible area on the pointer (in picture coordinates), kept inside the picture. */
+  /**
+   * Centres the visible area on the pointer (in picture coordinates): every layout then centres
+   * on that point as far as its own visible area allows (an axis this one shows whole is kept).
+   */
   const onPadDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0 || off) return
     const el = e.currentTarget
+    const visible = { w: fw, h: src.h / camH }
     const grab = (ev: { clientX: number; clientY: number }, key?: string): void => {
       const r = el.getBoundingClientRect()
-      const x = clamp((ev.clientX - r.left) / r.width, 0, 1)
-      const y = clamp((ev.clientY - r.top) / r.height, 0, 1)
-      // Kept where the drawing keeps it: the visible area never leaves the picture.
-      const hx = fw / 2
-      const hy = src.h / camH / 2
-      const cropX = clamp(look.mirror ? 1 - x : x, hx, 1 - hx)
-      const cropY = clamp(y, hy, 1 - hy)
-      set({ cropX: +cropX.toFixed(4), cropY: +cropY.toFixed(4) }, key)
+      set(framingAt((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height, look, visible), key)
     }
     holdGesture(store)
     grab(e, 'webcam.crop')

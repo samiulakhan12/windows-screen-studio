@@ -9,10 +9,14 @@ export interface PersonMask {
   pixels: ImageData
 }
 
+/** Pictures in a row that may fail (each is drawn unblurred) before segmentation counts as broken. */
+const MAX_MISSES = 3
+
 let worker: Worker | null = null
 let state: SegmenterState = { status: 'idle' }
 let ready: Promise<boolean> | null = null
 let nextId = 1
+let misses = 0
 const pending = new Map<number, (mask: PersonMask | null) => void>()
 const listeners = new Set<() => void>()
 
@@ -40,14 +44,24 @@ function fail(reason: string): void {
   setState({ status: 'failed', reason })
 }
 
+function settle(id: number, mask: PersonMask | null): void {
+  const resolve = pending.get(id)
+  pending.delete(id)
+  resolve?.(mask)
+}
+
 function onMessage(e: MessageEvent<FromWorker>): void {
   const msg = e.data
   if (msg.type === 'ready') {
     if (state.status === 'loading') setState({ status: 'ready' })
   } else if (msg.type === 'mask') {
-    const resolve = pending.get(msg.id)
-    pending.delete(msg.id)
-    resolve?.({ pixels: new ImageData(new Uint8ClampedArray(msg.pixels), msg.width, msg.height) })
+    misses = 0
+    settle(msg.id, { pixels: new ImageData(new Uint8ClampedArray(msg.pixels), msg.width, msg.height) })
+  } else if (msg.type === 'missed') {
+    // One picture failed: it gets no mask. Failing again and again means segmentation is broken here.
+    settle(msg.id, null)
+    if (++misses >= MAX_MISSES) fail(msg.reason)
+    else console.warn(`Background blur skipped a camera frame: ${msg.reason}`)
   } else {
     fail(msg.reason)
   }
@@ -68,7 +82,7 @@ export function ensureSegmenter(): Promise<boolean> {
     try {
       worker = new Worker(new URL('./segmentation.worker.ts', import.meta.url), { type: 'module' })
       worker.onmessage = onMessage
-      worker.onerror = (e) => fail(`it could not start (${e.message || 'worker error'})`)
+      worker.onerror = (e) => fail(`it ${state.status === 'ready' ? 'stopped working' : 'could not start'} (${e.message || 'worker error'})`)
       worker.postMessage({ type: 'init' } satisfies ToWorker)
     } catch (err) {
       fail(`it could not start (${err instanceof Error ? err.message : String(err)})`)
@@ -82,7 +96,7 @@ let scratch: CanvasRenderingContext2D | null = null
 
 /**
  * The person mask of `image` (a camera picture `width` x `height`), or null when segmentation
- * cannot run. The picture is scaled down to the model's size first, the same way for the preview
+ * cannot run or this picture failed. The picture is scaled down to the model's size first, the same way for the preview
  * and the export, so the same frame always gets the same mask.
  */
 export async function segmentPicture(image: CanvasImageSource, width: number, height: number): Promise<PersonMask | null> {

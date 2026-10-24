@@ -17,6 +17,8 @@ const scope = self as unknown as {
 }
 
 let segmenter: Promise<ImageSegmenter> | null = null
+/** Pictures are segmented one after another, so one that failed is followed by a fresh segmenter. */
+let queue: Promise<void> = Promise.resolve()
 
 const absolute = (url: string): string => new URL(url, self.location.href).href
 
@@ -63,6 +65,30 @@ function run(s: ImageSegmenter, image: ImageData): Uint8ClampedArray {
   }
 }
 
+/** The person mask of one picture: `missed` when this picture fails, `failed` when the segmenter cannot load. */
+async function segment({ id, width, height, pixels }: Extract<ToWorker, { type: 'segment' }>): Promise<void> {
+  let s: ImageSegmenter
+  try {
+    s = await (segmenter ??= load())
+  } catch (err) {
+    scope.postMessage({ type: 'failed', reason: explain(err) })
+    return
+  }
+  try {
+    const out = run(s, new ImageData(new Uint8ClampedArray(pixels), width, height))
+    scope.postMessage({ type: 'mask', id, width, height, pixels: out.buffer as ArrayBuffer }, [out.buffer as ArrayBuffer])
+  } catch (err) {
+    // A lost graphics context or low memory: no mask for this picture, a fresh segmenter for the next.
+    segmenter = null
+    try {
+      s.close()
+    } catch {
+      // Already broken.
+    }
+    scope.postMessage({ type: 'missed', id, reason: explain(err) })
+  }
+}
+
 scope.onmessage = (e) => {
   const msg = e.data
   if (msg.type === 'init') {
@@ -73,11 +99,5 @@ scope.onmessage = (e) => {
     )
     return
   }
-  const { id, width, height, pixels } = msg
-  ;(segmenter ??= load())
-    .then((s) => {
-      const out = run(s, new ImageData(new Uint8ClampedArray(pixels), width, height))
-      scope.postMessage({ type: 'mask', id, width, height, pixels: out.buffer as ArrayBuffer }, [out.buffer as ArrayBuffer])
-    })
-    .catch((err: unknown) => scope.postMessage({ type: 'failed', id, reason: explain(err) }))
+  queue = queue.then(() => segment(msg))
 }
