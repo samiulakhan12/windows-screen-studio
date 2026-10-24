@@ -1,10 +1,14 @@
-import { sortedLayouts } from '../engine/layout'
+import { layoutRamps } from '../engine/layout'
 import { clamp } from '../engine/math'
+import { keptBounds } from '../engine/timeline'
 import { MIN_LAYOUT_LENGTH } from '../engine/webcamData'
-import type { CameraLayout, LayoutSegment, Project } from '../types'
+import type { CameraLayout, Clip, LayoutSegment, Project } from '../types'
+import { displayTime } from './clips'
 
 /** Default length (seconds) of a new layout segment. */
 export const DEFAULT_LAYOUT_LENGTH = 5
+/** A new segment shorter than this (seconds) has no room. */
+const MIN_NEW_SEGMENT = 0.3
 
 let idCounter = 0
 const newId = (): string => `y${Date.now().toString(36)}${(idCounter++).toString(36)}`
@@ -35,24 +39,93 @@ export function createLayoutSegment(layout: CameraLayout, t: number, duration: n
 export const layoutSegmentAt = (layouts: LayoutSegment[] | undefined, t: number): LayoutSegment | null =>
   layouts?.find((s) => t >= s.start && t < s.end) ?? null
 
-/**
- * A new segment of `layout` at `t`, fitted into the free time there (it never overlaps or
- * shortens another segment), and the layouts with it added in order. Null when `t` is inside
- * a segment or there is no room for one.
+/*
+ * A layout change "at the playhead" (the Camera panel, a double-click on the camera track and the
+ * editor's commands all go through these): it goes where the preview shows the playhead, so a
+ * playhead in a cut adds it on the next kept frame and one at the end of the video on its last
+ * frame, and it is fitted into the video that is kept (a trimmed end is the end).
  */
-export function addLayoutAt(layouts: LayoutSegment[] | undefined, layout: CameraLayout, t: number, duration: number): { layouts: LayoutSegment[]; segment: LayoutSegment } | null {
-  const list = layouts ?? []
-  if (!(duration > 0) || layoutSegmentAt(list, t)) return null
-  const seg = createLayoutSegment(layout, clamp(t, 0, duration), duration)
-  const next = sortedLayouts(list).find((s) => s.start >= seg.start - 1e-6)
-  const end = Math.min(seg.end, next ? next.start : duration)
-  // Too close to the next one: start earlier when there is room before it.
-  const prevEnd = Math.max(0, ...list.filter((s) => s.end <= seg.start + 1e-6).map((s) => s.end))
-  let start = seg.start
-  if (end - start < MIN_LAYOUT_LENGTH) start = Math.max(prevEnd, end - MIN_LAYOUT_LENGTH)
-  if (end - start < MIN_LAYOUT_LENGTH - 1e-6) return null
-  const segment = { ...seg, start, end }
-  return { layouts: [...list, segment].sort((a, b) => a.start - b.start), segment }
+
+/** The project as the layout changes at the playhead need it: its layouts, length and edit. */
+export type LayoutEdit = Pick<Project, 'layouts' | 'duration'> & { clips?: Clip[] }
+
+/** Where the edited video ends (source seconds): its kept end, within the recording. */
+const videoEnd = (p: LayoutEdit): number => Math.max(0, p.clips?.length ? Math.min(p.duration, keptBounds(p.clips).end) : p.duration)
+
+/**
+ * Source time of the frame the preview shows for a playhead at `t`: inside a cut the next kept
+ * frame, at (or past) the end of the video its last frame, which is in a segment ending there.
+ */
+export function layoutTimeAt(project: LayoutEdit, t: number): number {
+  const shown = project.clips?.length ? displayTime(project.clips, t) : t
+  return clamp(shown, 0, Math.max(0, videoEnd(project) - 1e-3))
+}
+
+export type AddLayoutResult =
+  | { ok: true; layouts: LayoutSegment[]; segment: LayoutSegment }
+  /**
+   * 'inside': the playhead shows segment `id`; 'no-room': another segment starts right after it;
+   * 'end': the video ends right after it and the segment before (`id`, if any) ends right before.
+   */
+  | { ok: false; reason: 'inside' | 'no-room' | 'end'; id: string | null }
+
+/**
+ * A new segment of `layout` at the playhead `t` (layoutTimeAt), and the layouts with it added in
+ * order. It starts there and lasts DEFAULT_LAYOUT_LENGTH, ending where the next one starts so
+ * segments never overlap. Too close to the end of the video for that, it ends with the video and
+ * starts earlier instead (after the one before), so its change still plays.
+ */
+export function addLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number): AddLayoutResult {
+  const layouts = project.layouts ?? []
+  const end = videoEnd(project)
+  const at = layoutTimeAt(project, t)
+  const here = layoutSegmentAt(layouts, at)
+  if (here) return { ok: false, reason: 'inside', id: here.id }
+  const seg = createLayoutSegment(layout, at, project.duration)
+  // Never over a neighbour: after the one before, up to the one after.
+  const prev = layouts.filter((s) => s.end <= at + 1e-9).reduce<LayoutSegment | null>((a, s) => (!a || s.end > a.end ? s : a), null)
+  const before = Math.max(0, prev?.end ?? 0)
+  const after = Math.min(Infinity, ...layouts.filter((s) => s.start > at).map((s) => s.start))
+  let start = Math.max(seg.start, before)
+  let stop = Math.min(seg.end, after)
+  const atEnd = after >= end - 1e-9 && Math.min(stop, end) - start < MIN_NEW_SEGMENT
+  if (atEnd) {
+    // Too close to the end of the video to start at the playhead: up to the end, as long as a new one would be.
+    stop = end
+    start = Math.max(before, stop - DEFAULT_LAYOUT_LENGTH)
+  }
+  if (stop - start < MIN_NEW_SEGMENT) return atEnd ? { ok: false, reason: 'end', id: prev?.id ?? null } : { ok: false, reason: 'no-room', id: null }
+  const segment = { ...seg, start, end: stop }
+  return { ok: true, layouts: [...layouts, segment].sort((a, b) => a.start - b.start), segment }
+}
+
+/**
+ * Where to move a playhead at `t` so the preview shows `seg` (one of `project.layouts`) settled,
+ * past its change in: null when the frame shown there already does. While `playing`, a playhead
+ * in the segment stays (its change plays). Measured as if the camera were shown, so the playhead
+ * lands the same whether it is or not.
+ */
+export function layoutShowTime(project: LayoutEdit & Pick<Project, 'webcam'>, seg: LayoutSegment, t: number, playing = false): number | null {
+  const ramps = layoutRamps({ ...project, hasWebcam: true, webcam: { ...project.webcam, show: true } }, seg)
+  const shown = layoutTimeAt(project, t)
+  if (playing && shown >= seg.start && shown < seg.end) return null
+  // Settled from the end of its change in to the start of its change out, or without one up to its end (where the next one shows).
+  const settledTo = ramps.out > 0 ? seg.end - ramps.out : seg.end - 1e-3
+  if (shown >= seg.start + ramps.in && shown <= settledTo) return null
+  // Just past its change in; too short to settle (a change in that runs into the next one), as far into it as it gets.
+  const at = Math.min(seg.start + ramps.in + 0.01, settledTo)
+  const clips = project.clips
+  if (!clips?.length) return at
+  // On the frame the preview shows there: a change running into a cut shows after it...
+  const kept = displayTime(clips, at)
+  if (kept <= settledTo) return kept
+  // ...unless it settles only in the cut: then the kept frame next to the cut that is furthest into the change.
+  const prev = clips.filter((c) => c.start <= at).pop()
+  const before = prev ? Math.min(at, prev.end - 1e-3) : -1
+  const into = (s: number): number =>
+    s < seg.start || s >= seg.end ? -1 : Math.min(ramps.in > 0 ? (s - seg.start) / ramps.in : 1, ramps.out > 0 ? (seg.end - s) / ramps.out : 1)
+  if (into(before) < 0 && into(kept) < 0) return at
+  return into(before) >= into(kept) ? before : kept
 }
 
 /** How far segment `id` may move or grow: up to its neighbours and the recording's ends. */

@@ -1,8 +1,7 @@
 import { displayTime } from '../../../shared/editor/clips'
 import { chapterNear, createChapter, createTitleCard, nextChapterName, titleTimesAt } from '../../../shared/editor/titles'
 import { chapterInVideo } from '../../../shared/render/chapters'
-import { speedAt } from '../../../shared/render/overlays'
-import { TITLE_FADE } from '../../../shared/render/titleCards'
+import { titleShowTime } from '../../../shared/render/titleCards'
 import type { Chapter, Clip, TitleCard } from '../../../shared/types'
 import type { EditorServices } from './context'
 import type { PreviewPlayer } from './player'
@@ -23,11 +22,8 @@ interface AddOptions {
 
 /** Moves the playhead into `card`, just past its fade-in, unless the preview already shows it fully. */
 export function showTitle(player: PreviewPlayer, clips: Clip[], card: { start: number; end: number }): void {
-  const fade = Math.min(TITLE_FADE * speedAt(clips, card.start), (card.end - card.start) / 2)
-  const lo = card.start + fade + 0.01
-  const hi = card.end - fade - 0.01
-  if (player.time >= lo && player.time <= hi) return
-  player.seek(lo <= hi ? lo : (card.start + card.end) / 2)
+  const at = titleShowTime(card, player.time, clips)
+  if (at !== player.time) player.seek(at)
 }
 
 /**

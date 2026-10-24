@@ -5,9 +5,9 @@
  * scaled, so the preview and the export wrap the same words onto the same lines.
  */
 import { clamp, easeOutCubic } from '../engine/math'
-import { keptBounds } from '../engine/timeline'
+import { keptBounds, outputToSource } from '../engine/timeline'
 import type { Clip, TitleCard, TitleCardStyle } from '../types'
-import { speedAt } from './overlays'
+import { viewingTime } from './overlays'
 
 /** Seconds (of viewing time) a card takes to fade and rise in, and to fade out. */
 export const TITLE_FADE = 0.35
@@ -23,21 +23,36 @@ export interface TitlePhase {
   rise: number
 }
 
+/** Viewing (output) time at which source time `t` is on screen; source time itself without clips. */
+const viewAt = (clips: Clip[], t: number): number => (clips.length ? viewingTime(clips, t) : t)
+
+/**
+ * The card's fades in viewing time: when it starts and stops showing, and how long each fade
+ * lasts (TITLE_FADE, at most half of what shows of the card).
+ */
+function titleTiming(card: Pick<TitleCard, 'start' | 'end'>, clips: Clip[]): { from: number; to: number; fade: number } {
+  const from = viewAt(clips, card.start)
+  const to = viewAt(clips, card.end)
+  return { from, to, fade: Math.max(1e-3, Math.min(TITLE_FADE, (to - from) / 2)) }
+}
+
 /**
  * How far a card has faded in or out at source time `t`, or null when it is not shown. Fades last
- * TITLE_FADE seconds of viewing time (longer in source time on a sped-up clip), at most half the
- * card. A full-frame card that starts the video shows its background from the first frame (the
- * text still rises in), and one that ends the video stays until the last frame.
+ * TITLE_FADE seconds of viewing time, measured from where the card starts and stops showing (a
+ * cut or a speed change inside a fade neither jumps nor stretches it), at most half the card. A
+ * full-frame card that starts the video shows its background from the first frame (the text
+ * still rises in), and one that ends the video stays until the last frame.
  */
 export function titlePhase(card: Pick<TitleCard, 'start' | 'end' | 'style'>, t: number, clips: Clip[]): TitlePhase | null {
   if (!(t >= card.start && t < card.end)) return null
-  const fade = Math.max(1e-3, Math.min(TITLE_FADE * speedAt(clips, t), (card.end - card.start) / 2))
+  const { from, to, fade } = titleTiming(card, clips)
+  const now = viewAt(clips, t)
   const kept = clips.length ? keptBounds(clips) : { start: 0, end: Infinity }
   const fullFrame = card.style !== 'lower-third'
   const opensVideo = card.start <= kept.start + 1e-6
   const closesVideo = card.end >= kept.end - 1e-6
-  const inP = clamp((t - card.start) / fade, 0, 1)
-  const outP = closesVideo ? 1 : clamp((card.end - t) / fade, 0, 1)
+  const inP = clamp((now - from) / fade, 0, 1)
+  const outP = closesVideo ? 1 : clamp((to - now) / fade, 0, 1)
   if (outP < inP) {
     // Fading out: the text drifts up a little as it goes.
     const a = easeOutCubic(outP)
@@ -45,6 +60,21 @@ export function titlePhase(card: Pick<TitleCard, 'start' | 'end' | 'style'>, t: 
   }
   const a = easeOutCubic(inP)
   return { background: fullFrame && opensVideo ? 1 : a, text: a, rise: 1 - a }
+}
+
+/**
+ * Where a playhead at source time `t` goes to show `card` fully on the preview (past its fade-in,
+ * before its fade-out, as titlePhase fades it): `t` itself when the frame shown there already
+ * does, else just past the fade-in (the middle of a card too short to hold).
+ */
+export function titleShowTime(card: Pick<TitleCard, 'start' | 'end'>, t: number, clips: Clip[]): number {
+  const { from, to, fade } = titleTiming(card, clips)
+  const lo = from + fade + 0.01
+  const hi = to - fade - 0.01
+  const now = viewAt(clips, t)
+  if (now >= lo && now <= hi) return t
+  const at = lo <= hi ? lo : (from + to) / 2
+  return clips.length ? outputToSource(clips, at).time : at
 }
 
 /* ---------- text layout ---------- */

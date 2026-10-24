@@ -6,7 +6,7 @@ import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
 import { EditStore } from '../../../shared/editor/editStore'
-import { LAYOUT_NAMES, setLayoutAt } from '../../../shared/editor/layoutCommands'
+import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { mediaLength } from '../../../shared/editor/mediaLength'
 import { UNTITLED, withSavedName } from '../../../shared/editor/projectName'
 import {
@@ -40,6 +40,7 @@ import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
 import { Inspector, type InspectorTab } from '../editor/Inspector'
 import { KeymapContext } from '../editor/keymapContext'
+import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
@@ -369,21 +370,16 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     /** Camera layout commands: the layout at the playhead (a new layout segment, or the one there changes). */
     const setLayout = (layout: CameraLayout): void => {
       if (!data.webcamUrl) return showNotice('This recording has no camera')
-      const p = store.state
-      const r = setLayoutAt(p, layout, displayTime(p.clips, player.time))
+      const r = setLayoutAt(store.state, layout, player.time)
       if (!r.ok) {
         if (r.id) setSelection({ kind: 'layout', id: r.id })
-        showNotice(
-          r.reason === 'same'
-            ? `The camera layout here already is ${LAYOUT_NAMES[layout].toLowerCase()}`
-            : r.reason === 'end'
-              ? 'Too close to the end of the video for a new camera layout'
-              : 'No room for a new camera layout here: another one starts right after the playhead'
-        )
+        showNotice(layoutRefusal(r.reason, layout))
         return
       }
       store.update((q) => ({ ...q, layouts: r.layouts }))
       setSelection({ kind: 'layout', id: r.id })
+      // A new change starts at the playhead, where it has not changed anything yet: show it.
+      if (r.added) showLayout(player, store.state, r.id)
     }
 
     return {

@@ -357,3 +357,81 @@ describe('silences', () => {
     expect(pieces(parts)).toEqual([[{ start: 2.25, end: 4.75 }]])
   })
 })
+
+describe('title cards are content: smart speed keeps their time', () => {
+  const settings = { minLength: 1, padding: 0.25 }
+  /** Whether all of `card` (source seconds) is still in the video, at normal speed. */
+  const shownWhole = (clips: Clip[], card: TimeRange): boolean =>
+    JSON.stringify(intersectRanges(keptRanges(clips), [card])) === JSON.stringify([card]) &&
+    clips.every((c) => Math.min(c.end, card.end) - Math.max(c.start, card.start) <= 1e-9 || c.speed === 1)
+
+  it('silences: an intro card at 0:00 over a silent start is not cut or sped up', () => {
+    // Speech from 3.5 s; the card the title commands add at 0:00 lasts 3 s.
+    const sound = [{ start: 3.5, end: 18 }]
+    const clips = [clip(0, 20)]
+    const intro = { start: 0, end: 3 }
+    // Without the card the silent start is cut from 0 (no padding at the start of the video).
+    expect(pieces(findSilences(sound, clips, settings))).toEqual([[{ start: 0, end: 3.25 }], [{ start: 18.25, end: 20 }]])
+    // With it, the card counts as sound: what is left of the opening pause (0.5 s) is under the minimum.
+    const cut = planSilences(sound, clips, settings, 'cut', [intro])
+    expect(pieces(cut.parts)).toEqual([[{ start: 18.25, end: 20 }]])
+    expect(shownWhole(applySmartSpeed(clips, cut.parts.flatMap((p) => p.pieces), 'cut'), intro)).toBe(true)
+    for (const action of [2, 4, 8] as const) {
+      const sped = planSilences(sound, clips, settings, action, [intro])
+      expect(shownWhole(applySmartSpeed(clips, sped.parts.flatMap((p) => p.pieces), action), intro), `${action}x`).toBe(true)
+    }
+    // A longer pause after the card is still found, with the padding kept next to the card too.
+    const later = planSilences([{ start: 4, end: 9 }, { start: 12, end: 20 }], clips, settings, 'cut', [intro])
+    expect(pieces(later.parts)).toEqual([[{ start: 3.25, end: 3.75 }], [{ start: 9.25, end: 11.75 }]])
+    expect(shownWhole(applySmartSpeed(clips, later.parts.flatMap((p) => p.pieces), 'cut'), intro)).toBe(true)
+  })
+
+  function pieces(parts: { pieces: TimeRange[] }[]): TimeRange[][] {
+    return parts.map((p) => round(p.pieces))
+  }
+
+  it('silences: a card in a pause between sections stays whole; the rest of the pause is still found', () => {
+    const sound = [{ start: 1, end: 10 }, { start: 13, end: 29 }]
+    const clips = [clip(0, 30)]
+    const lower = { start: 10, end: 13 }
+    // The whole pause is the card: nothing is left to act on between the sections.
+    const plan = planSilences(sound, clips, settings, 'cut', [lower])
+    expect(plan.parts.every((p) => intersectRanges(p.pieces, [lower]).length === 0)).toBe(true)
+    expect(shownWhole(applySmartSpeed(clips, plan.parts.flatMap((p) => p.pieces), 'cut'), lower)).toBe(true)
+    // A shorter card inside a 3 s pause: the silence on each side is still cut, up to the padding.
+    const short = { start: 11, end: 12 }
+    const around = planSilences([{ start: 1, end: 10 }, { start: 13, end: 29 }], clips, settings, 4, [short])
+    expect(pieces(around.parts).filter((ps) => ps[0].start > 5 && ps[0].start < 20)).toEqual([[{ start: 10.25, end: 10.75 }], [{ start: 12.25, end: 12.75 }]])
+    expect(shownWhole(applySmartSpeed(clips, around.parts.flatMap((p) => p.pieces), 4), short)).toBe(true)
+    // Nothing heard at all: still nothing to remove, card or not.
+    expect(findSilences([], clips, settings, [lower])).toEqual([])
+  })
+
+  it('silences: a card measured as the video plays it (after a cut and a speed change)', () => {
+    // 4–6 s is cut and 6–10 s plays at 2x; a card at 6–8 s plays for 1 s right after the cut.
+    const clips = [clip(0, 4), clip(6, 10, 2), clip(10, 20)]
+    const sound = [{ start: 0, end: 3 }, { start: 12, end: 20 }]
+    const card = { start: 6, end: 8 }
+    const plan = planSilences(sound, clips, settings, 'cut', [card])
+    expect(plan.parts.every((p) => intersectRanges(p.pieces, [card]).length === 0)).toBe(true)
+    const applied = applySmartSpeed(clips, plan.parts.flatMap((p) => p.pieces), 'cut')
+    expect(intersectRanges(keptRanges(applied), [card])).toEqual([card])
+  })
+
+  it('idle parts: an intro card over a still, silent opening is not sped up or cut', () => {
+    const clips = [clip(0, 20)]
+    const intro = { start: 0, end: 3 }
+    const input = { duration: 20, clips, still: [{ start: 0, end: 8 }], inactive: null, sound: [] }
+    // Without the card the opening is one idle part.
+    expect(round(findIdleRanges(input, 3))).toEqual([{ start: 0.5, end: 7.5 }])
+    // With it, only what follows the card is idle, padded at both ends.
+    const parts = findIdleRanges({ ...input, keep: [intro] }, 3)
+    expect(round(parts)).toEqual([{ start: 3.5, end: 7.5 }])
+    for (const action of ['cut', 2, 4, 8] as const) {
+      const plan = planSmartSpeed({ ...input, keep: [intro] }, 3, action)
+      expect(shownWhole(applySmartSpeed(clips, plan.parts, action), intro), `${action}`).toBe(true)
+    }
+    // What is left after the card can fall under the minimum: then nothing is listed.
+    expect(findIdleRanges({ ...input, keep: [{ start: 2, end: 6 }] }, 3)).toEqual([])
+  })
+})
