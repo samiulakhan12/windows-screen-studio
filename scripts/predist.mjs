@@ -2,7 +2,9 @@
 // Pre-flight for `npm run dist:win`. Everything the Windows package needs is checked BEFORE
 // electron-builder runs, so a broken installer is never produced silently:
 //   1. ffmpeg.exe: ffmpeg-static downloads only the build host's binary, so on Linux/macOS the
-//      Windows one is fetched here (and a corrupt or wrong-architecture file is replaced).
+//      Windows one is fetched here (and a corrupt, wrong-architecture or unknown file is replaced).
+//      It is signed with the release certificate, so only the build pinned in
+//      scripts/lib/packaging.cjs (FFMPEG_EXE, by SHA-256) is accepted.
 //   2. The native capture helper is built with scripts/build-native.mjs when that script exists.
 //      It is optional (the app falls back to Chromium capture) unless SSW_REQUIRE_NATIVE=1.
 //   3. The icon files exist (npm run icons).
@@ -17,7 +19,7 @@ const require = createRequire(import.meta.url)
 const { checkWindowsExe } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
 const { loadBuilderEnv, resolveWindowsSigning } = require('./lib/signing.cjs')
-const { nativeHelper } = require('./lib/packaging.cjs')
+const { FFMPEG_EXE, nativeHelper } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const failures = []
@@ -42,8 +44,13 @@ function ensureFfmpeg() {
   }
   const pkg = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'))
   const release = pkg['ffmpeg-static']?.['binary-release-tag'] ?? 'unknown'
+  if (release !== FFMPEG_EXE.release) {
+    fail(`ffmpeg-static ${pkg.version} uses release ${release}, but scripts/lib/packaging.cjs pins ffmpeg.exe of ${FFMPEG_EXE.release}. Update FFMPEG_EXE there.`)
+    return
+  }
   const min = 20 * 1024 * 1024 // the gyan.dev essentials build is ~83 MB
-  let check = checkWindowsExe(exe, { minBytes: min })
+  const options = { minBytes: min, pin: FFMPEG_EXE }
+  let check = checkWindowsExe(exe, options)
   if (!check.ok) {
     if (check.reason !== 'missing') {
       warn(`node_modules/ffmpeg-static/ffmpeg.exe is unusable (${check.reason}); downloading it again.`)
@@ -51,11 +58,13 @@ function ensureFfmpeg() {
     } else {
       log(`fetching the Windows ffmpeg.exe (ffmpeg-static ${pkg.version}, release ${release})...`)
     }
-    // ffmpeg-static's own installer, pointed at Windows x64. FFMPEG_BIN would redirect it elsewhere.
+    // ffmpeg-static's own installer, pointed at Windows x64. FFMPEG_BIN would redirect it elsewhere,
+    // and only the pinned release can pass the check below.
     const env = { ...process.env, npm_config_platform: 'win32', npm_config_arch: 'x64' }
     delete env.FFMPEG_BIN
+    delete env.FFMPEG_BINARY_RELEASE
     const r = spawnSync(process.execPath, ['install.js'], { cwd: dir, env, stdio: 'inherit' })
-    check = checkWindowsExe(exe, { minBytes: min })
+    check = checkWindowsExe(exe, options)
     if (r.status !== 0 || !check.ok) {
       rmSync(exe, { force: true })
       fail(
@@ -70,7 +79,7 @@ function ensureFfmpeg() {
   const readme = path.join(dir, 'ffmpeg.exe.README')
   const version = existsSync(readme) ? /^Version:\s*(\S+)/m.exec(readFileSync(readme, 'utf8'))?.[1] : null
   if (!existsSync(path.join(dir, 'ffmpeg.exe.LICENSE'))) warn('ffmpeg.exe.LICENSE is missing; the GPL requires shipping it with ffmpeg.exe.')
-  log(`ffmpeg.exe OK (${(check.size / 1e6).toFixed(1)} MB, x64${version ? `, ${version}` : ''})`)
+  log(`ffmpeg.exe OK (${(check.size / 1e6).toFixed(1)} MB, x64${version ? `, ${version}` : ''}, SHA-256 matches the ${release} pin)`)
 }
 
 // 2. Native capture helper ------------------------------------------------------------------

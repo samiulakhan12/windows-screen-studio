@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url)
 const { readAsarHeader, listAsar } = require('./lib/asar.cjs')
 const { checkWindowsExe, parsePe, readIconGroups } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
-const { nativeHelper, nativeHelperStatus, runtimePackages } = require('./lib/packaging.cjs')
+const { FFMPEG_EXE, nativeHelper, nativeHelperStatus, runtimePackages, signedFiles } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const distDir = path.resolve(root, process.argv[2] ?? 'dist')
@@ -69,11 +69,11 @@ if (unexpected.length) fail(`app.asar ships packages that are not runtime depend
 if (missing.length) fail(`app.asar lacks runtime packages: ${missing.join(', ')}`)
 if (!unexpected.length && !missing.length) ok(`app.asar node_modules: ${[...packagesInAsar].sort().join(', ')}`)
 
-// 2. ffmpeg.exe is the Windows x64 build, unpacked next to the archive (F43).
+// 2. ffmpeg.exe is the pinned Windows x64 build, unpacked next to the archive (F43).
 const ffmpegDir = path.join(unpacked, 'resources', 'app.asar.unpacked', 'node_modules', 'ffmpeg-static')
-const ffmpeg = checkWindowsExe(path.join(ffmpegDir, 'ffmpeg.exe'), { minBytes: 20 * 1048576 })
+const ffmpeg = checkWindowsExe(path.join(ffmpegDir, 'ffmpeg.exe'), { minBytes: 20 * 1048576, pin: FFMPEG_EXE })
 if (!ffmpeg.ok) fail(`resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe: ${ffmpeg.reason}`)
-else ok(`ffmpeg.exe x64, ${mb(ffmpeg.size)}`)
+else ok(`ffmpeg.exe x64, ${mb(ffmpeg.size)}, SHA-256 matches the ${FFMPEG_EXE.release} pin`)
 if (!existsSync(path.join(ffmpegDir, 'ffmpeg.exe.LICENSE'))) fail('ffmpeg.exe.LICENSE is missing (the GPL requires it next to ffmpeg.exe)')
 if (existsSync(path.join(ffmpegDir, 'ffmpeg'))) fail('the build host ffmpeg binary (node_modules/ffmpeg-static/ffmpeg) was packaged')
 
@@ -130,10 +130,19 @@ if (existsSync(installer)) {
   fail(`${path.relative(root, installer)} is missing`)
 }
 
-// 6. Signing status (informational unless SSW_REQUIRE_SIGNING=1).
-const signed = (file) => existsSync(file) && parsePe(readFileSync(file)).signed
-const signState = `app exe ${signed(appExe) ? 'signed' : 'UNSIGNED'}, installer ${signed(installer) ? 'signed' : 'UNSIGNED'}`
-if (process.env.SSW_REQUIRE_SIGNING === '1' && !(signed(appExe) && signed(installer))) fail(`code signing required but ${signState}`)
+// 6. Signing status (informational unless SSW_REQUIRE_SIGNING=1): the installer and every .exe
+// and .node in the app folder (app exe, ffmpeg.exe, the native helper, elevate.exe, uiohook-napi).
+const signed = (file) => {
+  try {
+    return parsePe(readFileSync(file)).signed
+  } catch {
+    return false
+  }
+}
+const unsignedFiles = signedFiles(unpacked).filter((rel) => !signed(path.join(unpacked, rel)))
+if (!signed(installer)) unsignedFiles.push(path.relative(distDir, installer))
+const signState = unsignedFiles.length ? `UNSIGNED: ${unsignedFiles.join(', ')}` : `installer and ${signedFiles(unpacked).length} file(s) in win-unpacked signed`
+if (process.env.SSW_REQUIRE_SIGNING === '1' && unsignedFiles.length) fail(`code signing required but ${signState}`)
 else note(`Authenticode: ${signState}`)
 
 const installSize = dirSize(unpacked)

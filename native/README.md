@@ -41,7 +41,8 @@ node scripts/build-native.mjs --require  # fail (exit 1) instead of warning when
   `--require` so a missing helper fails the build instead of silently shipping without it.
 - Packaging bundles `native/bin/ssw-capture.exe` as `resources/native/ssw-capture.exe`.
   `SSW_CAPTURE_HELPER=<path>` overrides the location (an executable, or a `.js/.cjs` file
-  that Electron runs as Node; the tests use `tests/fixtures/fake-capture-helper.cjs`).
+  that Electron runs as Node; the tests use `tests/fixtures/fake-capture-helper.cjs`). Packaged
+  builds ignore it.
 
 Release profile: `opt-level = "s"`, LTO, stripped, `panic = "abort"`. Unit tests of the
 platform-independent logic (CLI, protocol, frame pacing, sizing, the window fit and the capture

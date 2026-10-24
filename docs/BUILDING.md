@@ -43,7 +43,10 @@ that fails:
      Linux/macOS (or when `node_modules/ffmpeg-static/ffmpeg.exe` is missing, cut short or not an
      x64 Windows program) predist runs ffmpeg-static's own `install.js` with
      `npm_config_platform=win32 npm_config_arch=x64` to fetch it. If that fails the build stops with
-     an error and instructions; it never ships an installer without ffmpeg.
+     an error and instructions; it never ships an installer without ffmpeg. The file is signed with
+     the release certificate, so only the build pinned by SHA-256 in `scripts/lib/packaging.cjs`
+     (`FFMPEG_EXE`) is accepted: any other file is replaced, and a download that does not match
+     stops the build. Update the pin when ffmpeg-static's `binary-release-tag` changes.
    - **Native capture helper.** If `scripts/build-native.mjs` exists, predist runs it
      (`npm run build:native` does the same on its own). Without a Rust toolchain, or if the build
      fails, this is only a warning: the app then records through Chromium, with the OS cursor in
@@ -54,12 +57,14 @@ that fails:
 3. **`electron-builder --win --x64 --config electron-builder.config.cjs`** packages it. The
    configuration is a JS file because signing and the native helper depend on the environment.
    electron-builder does not find `electron-builder.config.cjs` by itself, so always build through
-   `npm run dist:win` (or pass `--config electron-builder.config.cjs`).
+   `npm run dist:win` (or pass `--config electron-builder.config.cjs`). It also sets the exe's
+   Electron fuses: no `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` or `--inspect`, and only the
+   `app.asar` whose header hash is embedded in the exe is loaded.
 4. **`npm run verify:dist`** (`scripts/verify-dist.mjs`) inspects the result and fails if
    `app.asar` holds anything but `out/`, `package.json` and the runtime `node_modules`, if
-   `ffmpeg.exe` is missing or not x64, if other platforms' binaries or locales slipped in, if the
-   exe or the installer does not carry `build/icon.ico`, or if signing was required but did not
-   happen. It ends with the installer and install sizes.
+   `ffmpeg.exe` is missing, not x64 or not the pinned build, if other platforms' binaries or
+   locales slipped in, if the exe or the installer does not carry `build/icon.ico`, or if signing
+   was required but the installer or any `.exe` or `.node` file in `win-unpacked` is unsigned. It ends with the installer and install sizes.
 
 On Linux, keep Wine's console noise down with `WINEDEBUG=-all npm run dist:win`.
 
@@ -97,7 +102,8 @@ Install Wine (both 64- and 32-bit) and run `npm run dist:win`. Nothing else is m
 fetches the Windows `ffmpeg.exe` itself. Without network access, download `ffmpeg-win32-x64.gz` for
 the release tag in `node_modules/ffmpeg-static/package.json` (`b6.1.1` today) from
 <https://github.com/eugeneware/ffmpeg-static/releases>, gunzip it to
-`node_modules/ffmpeg-static/ffmpeg.exe`, or point `FFMPEG_BINARIES_URL` at a mirror.
+`node_modules/ffmpeg-static/ffmpeg.exe`, or point `FFMPEG_BINARIES_URL` at a mirror. Either way the
+file must match the SHA-256 pin.
 
 The native helper cross-compiles too (`rustup target add x86_64-pc-windows-gnu` and MinGW-w64);
 see `native/README.md`.
@@ -132,7 +138,8 @@ on first launch ("Windows protected your PC" -> More info -> Run anyway). Signin
 as soon as the variables for **one** of the methods below are set, in the environment or in an
 `electron-builder.env` file next to `package.json` (git-ignored; electron-builder and predist both
 read it). No configuration change is needed. electron-builder then signs the app exe, `ffmpeg.exe`,
-the native helper, `elevate.exe`, the uninstaller and the installer with SHA-256, and timestamps
+the native helper, `elevate.exe`, the input hook (`uiohook-napi.node`, through `win.signExts`), the
+uninstaller and the installer with SHA-256, and timestamps
 each signature so it stays valid after the certificate expires.
 
 Release builds should set `SSW_REQUIRE_SIGNING=1`: the build then fails instead of quietly producing
@@ -190,7 +197,8 @@ variables, `Invoke-TrustedSigning` falls back to other sign-ins (Azure CLI, mana
 
 ### Checking a signature
 
-`npm run verify:dist` prints `Authenticode: app exe signed, installer signed`. On Windows, right-click
+`npm run verify:dist` prints `Authenticode: installer and <n> file(s) in win-unpacked signed` (or
+lists the unsigned files). On Windows, right-click
 the installer -> Properties -> Digital Signatures, or run
 `Get-AuthenticodeSignature .\dist\ScreenStudio-Setup-0.1.0.exe`.
 

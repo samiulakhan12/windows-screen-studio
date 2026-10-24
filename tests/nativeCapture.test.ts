@@ -243,6 +243,14 @@ describe('probe', () => {
     expect((await probeNativeCapture()).supported).toBe(false)
   })
 
+  it('ignores SSW_CAPTURE_HELPER in a packaged app', async () => {
+    expect((await probeNativeCapture()).supported).toBe(true)
+    resetNativeCaptureCache()
+    electron.isPackaged = true
+    // Only resources/native/ssw-capture.exe (absent here) may run, on Windows only.
+    expect((await probeNativeCapture()).supported).toBe(false)
+  })
+
   // The stand-in "exe" is a shell script, so this runs on POSIX only.
   it.skipIf(process.platform === 'win32')('finds ssw-capture.exe in the resources folder when packaged and native/bin in development', async () => {
     delete process.env.SSW_CAPTURE_HELPER

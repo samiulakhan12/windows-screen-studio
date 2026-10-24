@@ -8,6 +8,39 @@ const { checkWindowsExe } = require('./pe.cjs')
 
 const ROOT = path.resolve(__dirname, '../..')
 
+/**
+ * The Windows ffmpeg.exe that ships: ffmpeg-static's ffmpeg-win32-x64 asset of this release
+ * tag, gunzipped (https://github.com/eugeneware/ffmpeg-static/releases). The package signs it
+ * with the publisher's certificate, so predist and verify-dist accept only this exact build.
+ * sha256 is pe.cjs peContentHash, which is the same before and after signing. Update all three
+ * values together when ffmpeg-static's binary-release-tag changes.
+ */
+const FFMPEG_EXE = {
+  release: 'b6.1.1',
+  size: 82797568,
+  sha256: 'b146ee98b213af232337d8fa6574eeaee2d58b90e7832f338c06e7d9f1436f30'
+}
+
+/**
+ * Extensions electron-builder signs besides .exe (its win.signExts): uiohook-napi's .node is a
+ * DLL the main process loads, which Smart App Control or WDAC can block when it is unsigned.
+ */
+const SIGN_EXTS = ['.node']
+
+/** Files of a packaged app folder that signing must cover (every .exe and SIGN_EXTS file), relative paths. */
+function signedFiles(dir) {
+  const out = []
+  const walk = (rel) => {
+    for (const entry of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+      const p = rel ? `${rel}/${entry.name}` : entry.name
+      if (entry.isDirectory()) walk(p)
+      else if (['.exe', ...SIGN_EXTS].includes(path.extname(entry.name).toLowerCase())) out.push(p)
+    }
+  }
+  walk('')
+  return out.sort()
+}
+
 /** Packages whose dependencies are needed only by their npm install script, never at runtime. */
 const INSTALL_ONLY_DEPS_OF = ['ffmpeg-static']
 
@@ -142,6 +175,9 @@ function appFiles(rootDir = ROOT) {
 
 module.exports = {
   appFiles,
+  FFMPEG_EXE,
+  SIGN_EXTS,
+  signedFiles,
   nativeHelper,
   nativeHelperResource,
   nativeHelperStatus,
