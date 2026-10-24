@@ -7,10 +7,20 @@
 //   FAKE_HELPER_PROBE    supported (default) | unsupported | hang | garbage
 //   FAKE_HELPER_MONITORS JSON array for `list` (default: one 1920x1080 primary monitor at 0,0)
 //   FAKE_HELPER_RECORD   ok (default) | fail-start | crash | never-start | hang-on-stop | error-on-stop
-//                        | close-early | bad-start
+//                        | bad-start
+//                        | close-early  ends on its own FAKE_HELPER_END_AFTER_MS after "started", like the
+//                                       real helper when the monitor goes away: finalises the video,
+//                                       {"event":"stopped","reason":"closed"}, exit 0
+//                        | error-early  same, but like an encoder/GPU failure: keeps the partial video,
+//                                       {"event":"error"}, exit 1
+//                        | crash-early  same, but dies without a word (SIGKILL), leaving the video as a
+//                                       killed helper's fragmented MP4 would be
+//                        Until then pause/resume/stop work as usual.
+//   FAKE_HELPER_END_AFTER_MS  for the *-early modes (default 200)
 //   FAKE_HELPER_VIDEO    none (default: placeholder file) | x11grab (real screen, no cursor) | testsrc
 //                        Real videos are recorded in segments, one per active span, and joined on stop,
-//                        so paused time is excluded like the real helper does.
+//                        so paused time is excluded like the real helper does. Like the real helper's,
+//                        they are fragmented MP4 (one fragment per 1 s GOP).
 //   FAKE_HELPER_LOG      file to append the argv and every stdin line to (JSON lines)
 //   FAKE_HELPER_SHAPES   comma-separated cursor shapes emitted 50 ms apart after "started" (default arrow,text,pointer)
 //   FFMPEG               ffmpeg binary for real videos (default: ffmpeg on PATH)
@@ -24,6 +34,8 @@ const log = (entry) => {
   if (env.FAKE_HELPER_LOG) fs.appendFileSync(env.FAKE_HELPER_LOG, JSON.stringify({ t: Date.now(), ...entry }) + '\n')
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+// The real helper's container: moov first, then one moof/mdat per key frame (1 s GOP).
+const FRAGMENTED = ['-movflags', '+frag_keyframe+empty_moov+default_base_moof']
 
 log({ argv: args, pid: process.pid })
 
@@ -98,7 +110,7 @@ class Segments {
     const proc = spawn(env.FFMPEG || 'ffmpeg', [
       '-hide_banner', '-loglevel', 'error', '-y', ...this.input(),
       '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', String(this.fps), '-r', String(this.fps),
-      '-progress', 'pipe:1', part.file
+      ...FRAGMENTED, '-progress', 'pipe:1', part.file
     ], { stdio: ['pipe', 'pipe', 'inherit'] })
     this.current = { proc, part, done: new Promise((r) => proc.on('close', r)) }
     return new Promise((resolve, reject) => {
@@ -131,13 +143,40 @@ class Segments {
 
   async finish(at) {
     await this.stopCurrent(at)
+    this.join()
+  }
+
+  join() {
     const list = `${this.file}.parts.txt`
     const quote = (f) => `'${f.replace(/'/g, "'\\''")}'`
     const entries = this.parts.map((p) => `file ${quote(p.file)}\noutpoint ${Math.max(0.001, (p.end - p.start) / 1000).toFixed(3)}`)
     fs.writeFileSync(list, entries.join('\n'))
-    const r = spawnSync(env.FFMPEG || 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', this.file])
+    // prettier-ignore
+    const r = spawnSync(env.FFMPEG || 'ffmpeg', [
+      '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', ...FRAGMENTED, this.file
+    ])
     for (const p of [...this.parts.map((x) => x.file), list]) fs.rmSync(p, { force: true })
     if (r.status !== 0) throw new Error(`joining segments failed: ${r.stderr}`)
+  }
+
+  /**
+   * The state a killed helper leaves: the running segment's ffmpeg is killed too (its
+   * fragmented part keeps its complete fragments), and what is readable becomes the output.
+   */
+  crash(at) {
+    const seg = this.current
+    this.current = null
+    if (seg) {
+      seg.part.end = at
+      seg.proc.kill('SIGKILL')
+    }
+    try {
+      this.join()
+    } catch {
+      // Nothing readable yet (killed before its first fragment): leave the cut-off part.
+      const last = this.parts[this.parts.length - 1]
+      if (last && fs.existsSync(last.file)) fs.renameSync(last.file, this.file)
+    }
   }
 }
 
@@ -220,13 +259,11 @@ async function record() {
     }
   })()
 
-  if (mode === 'close-early') {
-    await sleep(200)
-    if (segments) await segments.finish(Date.now())
-    else fs.writeFileSync(file, 'fake video')
-    out({ event: 'stopped', frames: Math.round(0.2 * fps), dropped: 0, duration: 0.2, reason: 'closed' })
-    return 0
-  }
+  // The *-early modes: the helper ends on its own (monitor unplugged, encoder failure, crash).
+  const END = Symbol('end')
+  const endsEarly = ['close-early', 'error-early', 'crash-early'].includes(mode)
+  const endAfter = Number(env.FAKE_HELPER_END_AFTER_MS || 200)
+  const ended = endsEarly ? sleep(endAfter).then(() => END) : new Promise(() => undefined)
 
   // Active time bookkeeping, as in the real helper: pauses are cut out of the video.
   let active = 0
@@ -235,7 +272,29 @@ async function record() {
   let reason = 'eof'
   let stopAt = Date.now()
   for (;;) {
-    const line = await nextLine()
+    const line = await Promise.race([nextLine(), ended])
+    if (line === END) {
+      const at = Date.now()
+      if (!paused) active += Math.max(0, at - since)
+      log({ ended: mode })
+      if (mode === 'crash-early') {
+        // No event, no finalising: what is on disk is what a killed helper leaves.
+        if (segments) segments.crash(at)
+        else fs.writeFileSync(file, 'fake video (cut off)')
+        process.kill(process.pid, 'SIGKILL')
+        return new Promise(() => undefined)
+      }
+      if (segments) await segments.finish(at)
+      else fs.writeFileSync(file, 'fake video')
+      const duration = segments ? segments.duration() : active / 1000
+      if (mode === 'error-early') {
+        // The real helper finalises what it recorded, then reports the failure.
+        out({ event: 'error', message: 'Encoding a frame failed: fake device removed (HRESULT 0x887A0005)' })
+        return 1
+      }
+      out({ event: 'stopped', frames: Math.round(duration * fps), dropped: 0, duration: Math.round(duration * 1000) / 1000, reason: 'closed' })
+      return 0
+    }
     const [name, value] = (line ?? 'stop').split(/\s+/)
     const at = value ? Math.min(Number(value), Date.now()) : Date.now()
     if (name === 'pause' && !paused) {

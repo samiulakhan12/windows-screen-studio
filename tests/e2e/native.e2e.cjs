@@ -171,6 +171,77 @@ async function main() {
     h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
   })
 
+  await h.run('native: a helper that ends on its own is reported through onEnded, with a readable fragmented MP4', async (ctx) => {
+    const tmp = tempDir('ssw-native-ended-')
+    const { app } = await setup(ctx, 'native-ended', { SSW_CAPTURE_HELPER: FAKE, FAKE_HELPER_VIDEO: 'testsrc', FAKE_HELPER_LOG: path.join(tmp, 'helper.log') })
+    const run = (mode, file) =>
+      app.evaluate(
+        async ({ screen }, { mode, file }) => {
+          process.env.FAKE_HELPER_RECORD = mode
+          process.env.FAKE_HELPER_END_AFTER_MS = '2500'
+          const s = globalThis.__nc.startNativeCapture({ displayId: String(screen.getPrimaryDisplay().id), output: file, fps: 30 })
+          const ended = new Promise((resolve) => s.onEnded((info) => resolve({ reason: info.reason, error: info.error && info.error.message })))
+          const info = await s.started
+          const t0 = Date.now()
+          const end = await Promise.race([ended, new Promise((r) => setTimeout(() => r('no onEnded within 20 s'), 20000))])
+          const stop = await s.stop().then(
+            (r) => ({ ok: true, duration: r.duration }),
+            (e) => ({ ok: false, message: e.message })
+          )
+          return { started: info.startedAt, after: Date.now() - t0, end, stop }
+        },
+        { mode, file }
+      )
+
+    // Monitor unplugged: the helper finalises the MP4 and says "closed".
+    const closedFile = path.join(tmp, 'closed.mp4')
+    const closed = await run('close-early', closedFile)
+    h.assert(closed.end && closed.end.reason === 'closed' && !closed.end.error, `closed: ${JSON.stringify(closed)}`)
+    h.assert(closed.stop.ok && closed.stop.duration > 2, `stop after close: ${JSON.stringify(closed.stop)}`)
+    const probe = ffprobe(closedFile)
+    h.assert(probe.codec_name === 'h264' && Math.abs(probe.duration - closed.stop.duration) < 0.2, `closed video ${JSON.stringify(probe)}`)
+    h.assert(fs.readFileSync(closedFile).includes('moof'), 'the video is a fragmented MP4')
+
+    // Killed or crashed: no event, no finalising; complete fragments are still readable.
+    const crashedFile = path.join(tmp, 'crashed.mp4')
+    const crashed = await run('crash-early', crashedFile)
+    h.assert(crashed.end && crashed.end.reason === 'crashed' && /terminated/.test(crashed.end.error), `crashed: ${JSON.stringify(crashed)}`)
+    h.assert(!crashed.stop.ok, `stop after a crash rejects: ${JSON.stringify(crashed.stop)}`)
+    const left = ffprobe(crashedFile)
+    // 2.5 s recorded; at least the first full 1 s fragments survive.
+    h.assert(left.codec_name === 'h264' && Number(left.nb_read_frames) >= 30, `crashed video ${JSON.stringify(left)}`)
+    console.log(`native: closed after ${closed.after} ms (${probe.duration.toFixed(2)} s), crashed left ${left.nb_read_frames} frames`)
+    await h.sleep(300)
+    h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
+  })
+
+  await h.run('native: quitting the app finalises a running recording instead of killing it', async (ctx) => {
+    const tmp = tempDir('ssw-native-quit-')
+    const log = path.join(tmp, 'helper.log')
+    const { app } = await setup(ctx, 'native-quit', { SSW_CAPTURE_HELPER: FAKE, FAKE_HELPER_VIDEO: 'testsrc', FAKE_HELPER_LOG: log })
+    const out = path.join(tmp, 'quit.mp4')
+    await app.evaluate(async ({ screen }, file) => {
+      const s = globalThis.__nc.startNativeCapture({ displayId: String(screen.getPrimaryDisplay().id), output: file, fps: 30 })
+      await s.started
+    }, out)
+    await h.sleep(2000)
+    const exited = new Promise((resolve) => app.process().once('exit', resolve))
+    const t0 = Date.now()
+    await app.evaluate(({ app: electronApp }) => {
+      setTimeout(() => electronApp.quit(), 0)
+    })
+    await Promise.race([exited, h.sleep(20000)])
+    h.assert(app.process().exitCode !== null || app.process().signalCode !== null, 'the app quit')
+    const lines = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    const commands = lines.filter((l) => l.stdin && l.stdin !== '<eof>').map((l) => l.stdin.split(' ')[0])
+    h.assert(commands.join() === 'stop', `the helper was asked to stop: ${commands}`)
+    // The fake writes the final file only when it finishes; a killed one leaves none.
+    const probe = ffprobe(out)
+    h.assert(probe.codec_name === 'h264' && probe.duration > 1.5, `finalised video ${JSON.stringify(probe)}`)
+    console.log(`native: quit took ${Date.now() - t0} ms, ${probe.duration.toFixed(2)} s finalised`)
+    h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
+  })
+
   const wine = spawnSync('wine', ['--version'], { encoding: 'utf8' })
   if (wine.status !== 0 || !fs.existsSync(EXE)) {
     console.log('SKIP native: real ssw-capture.exe under wine (wine or native/bin/ssw-capture.exe missing)')

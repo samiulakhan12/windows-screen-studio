@@ -9,6 +9,7 @@ mod monitors;
 mod processor;
 mod record;
 mod selftest;
+mod session_end;
 mod support;
 
 use std::fmt;

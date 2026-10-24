@@ -6,6 +6,7 @@
 #![cfg_attr(not(windows), allow(dead_code))]
 
 mod cli;
+mod interrupt;
 mod output;
 mod pacer;
 mod protocol;
