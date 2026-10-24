@@ -49,6 +49,14 @@ describe('migrateProject', () => {
     expect(p.audio.volume).toBe(1)
   })
 
+  it('opens a file with a malformed clips entry (audit E3)', () => {
+    const raw = { ...createProject({ ...base, capture: { method: 'chromium', cursorInVideo: true, region: null } }) } as Record<string, unknown>
+    raw.clips = [null, 3, { id: 'x', start: 'a', end: 4, speed: 1 }, { id: 'a', start: 0, end: 5, speed: 1 }]
+    expect(migrateProject(raw).clips.map((c) => [c.id, c.start, c.end])).toEqual([['a', 0, 5]])
+    raw.clips = [null]
+    expect(migrateProject(raw).clips.map((c) => [c.start, c.end])).toEqual([[0, 10]])
+  })
+
   it('rejects garbage', () => {
     expect(() => migrateProject(null)).toThrow()
     expect(() => migrateProject({})).toThrow()

@@ -1,4 +1,4 @@
-import type { CaptureInfo, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
+import type { CaptureInfo, Clip, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
 import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
@@ -117,10 +117,8 @@ export function migrateProject(raw: unknown): Project {
   const p = raw as AnyProject
   if (!p || typeof p !== 'object' || typeof p.id !== 'string') throw new Error('Not a project file')
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
-  const clips =
-    Array.isArray(p.clips) && p.clips.length
-      ? p.clips
-      : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
+  const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
+  const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
   const { trim: _legacyTrim, audioStems, ...rest } = p
   void _legacyTrim
   return {

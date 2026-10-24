@@ -99,7 +99,14 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             label="Range speed"
             value={null}
             onChange={(s) => {
-              store.update((p) => ({ ...p, clips: setRangeSpeed(p.clips, selection.start, selection.end, s) }))
+              // A range that changes nothing keeps its selection and adds no undo step.
+              const current = store.state.clips
+              const next = setRangeSpeed(current, selection.start, selection.end, s)
+              if (next === current) {
+                props.onNotice(`Nothing to change: this range is cut or already plays at ${s}×`)
+                return
+              }
+              store.update((p) => ({ ...p, clips: next }))
               props.onSelect(null)
             }}
             options={SPEED_PRESETS.map((s) => ({ value: s, label: `${s}×` }))}

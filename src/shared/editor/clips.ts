@@ -75,7 +75,8 @@ export function restoreRange(clips: Clip[], start: number, end: number, duration
 /**
  * Applies `speed` to the source range [start, end), splitting clips at its ends.
  * Range ends closer than MIN_CLIP to a clip edge snap to that edge, since a split
- * there would leave a sliver (and splitAt refuses it).
+ * there would leave a sliver (and splitAt refuses it). Returns `clips` itself when no kept
+ * part of the range changes speed (it is cut, or already plays at `speed`).
  */
 export function setRangeSpeed(clips: Clip[], start: number, end: number, speed: number): Clip[] {
   const snap = (t: number): number => {
@@ -88,7 +89,13 @@ export function setRangeSpeed(clips: Clip[], start: number, end: number, speed: 
   const a = snap(Math.min(start, end))
   const b = snap(Math.max(start, end))
   const split = splitAt(splitAt(clips, a), b)
-  return split.map((c) => (c.start >= a - EPS && c.end <= b + EPS ? { ...c, speed } : c))
+  let changed = false
+  const out = split.map((c) => {
+    if (c.start < a - EPS || c.end > b + EPS || c.speed === speed) return c
+    changed = true
+    return { ...c, speed }
+  })
+  return changed ? out : clips
 }
 
 /**
@@ -124,10 +131,21 @@ export function canSplitAt(clips: Clip[], t: number): boolean {
   return !!c && t - c.start >= MIN_CLIP && c.end - t >= MIN_CLIP
 }
 
+/** Timed items clamped to [0, d]; items the clamp leaves shorter than 0.05 s are dropped. */
+function clampTimed<T extends { start: number; end: number }>(list: T[], d: number): T[] {
+  return list.flatMap((x) => {
+    if (x.start >= 0 && x.end <= d) return [x]
+    const start = clamp(x.start, 0, d)
+    const end = clamp(x.end, 0, d)
+    return end - start >= 0.05 ? [{ ...x, start, end }] : []
+  })
+}
+
 /**
  * Reconciles a project with the media file actually on disk. MediaRecorder timing
  * and the capture track's reported size can differ slightly from the encoded file;
- * the file wins. Clips that ended at the old duration follow the new one.
+ * the file wins. Clips that ended at the old duration follow the new one; timed
+ * items and chapters are kept inside the new duration.
  */
 export function correctProjectMedia(project: Project, media: { duration: number; width: number; height: number }): Project {
   let next = project
@@ -142,9 +160,12 @@ export function correctProjectMedia(project: Project, media: { duration: number;
       duration: d,
       clips: normalizeClips(clips, d),
       zooms: clampZooms(project.zooms, d),
-      annotations: project.annotations
-        .map((a) => ({ ...a, start: clamp(a.start, 0, d), end: clamp(a.end, 0, d) }))
-        .filter((a) => a.end - a.start >= 0.05)
+      annotations: clampTimed(project.annotations, d),
+      ...(project.shapes && { shapes: clampTimed(project.shapes, d) }),
+      ...(project.spotlights && { spotlights: clampTimed(project.spotlights, d) }),
+      ...(project.titles && { titles: clampTimed(project.titles, d) }),
+      ...(project.layouts && { layouts: clampTimed(project.layouts, d) }),
+      ...(project.chapters && { chapters: project.chapters.map((c) => (c.t > d ? { ...c, t: d } : c)) })
     }
   }
   return next

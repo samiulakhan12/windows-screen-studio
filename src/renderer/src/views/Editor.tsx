@@ -287,9 +287,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const actions = useMemo(() => {
     const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
 
+    // Zooms and text go on the frame the preview shows at `t` (in a cut, the next kept one), like
+    // shapes (playheadItems.ts): placed at a cut's source time they would never be seen.
     const addZoomAt = (t: number, lead: number): void => {
       const p = store.state
-      const r = insertZoom(p.zooms, t, p.duration, { lead, focus: newZoomFocus(), scale: zoomSettingsOf(p).defaultScale })
+      const r = insertZoom(p.zooms, displayTime(p.clips, t), p.duration, { lead, focus: newZoomFocus(), scale: zoomSettingsOf(p).defaultScale })
       if (r.ok) {
         store.update((q) => ({ ...q, zooms: r.zooms }))
         setSelection({ kind: 'zoom', id: r.id })
@@ -302,7 +304,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     }
 
     const addTextAt = (t: number): void => {
-      const a = createAnnotation(t, store.state.duration)
+      const a = createAnnotation(displayTime(store.state.clips, t), store.state.duration)
       store.update((p) => ({ ...p, annotations: [...p.annotations, a] }))
       setSelection({ kind: 'annotation', id: a.id })
       if (player.time < a.start || player.time >= a.end) player.seek(a.start)
