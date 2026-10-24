@@ -340,6 +340,20 @@ export function sceneCameraBox(project: SceneProject, outW: number, outH: number
   return sceneLayout(project, outW, outH, srcW, srcH, t).camera
 }
 
+/** A camera fainter than this (the end of a fade out) is not drawn. */
+const CAMERA_SHOWN = 0.004
+
+/** True when `box` puts some of the camera on screen: the webcam layer draws exactly these. */
+export const cameraBoxShown = (box: CameraBox | null): box is CameraBox => !!box && box.opacity >= CAMERA_SHOWN && box.rect.w >= 1 && box.rect.h >= 1
+
+/**
+ * Whether the camera is drawn at source time `t` (the layout may hide it). The export makes a
+ * camera frame's person mask only then; the webcam layer uses the same test, so they agree.
+ */
+export function cameraShownAt(project: SceneProject, outW: number, outH: number, srcW: number, srcH: number, t: number): boolean {
+  return cameraBoxShown(sceneCameraBox(project, outW, outH, srcW, srcH, t))
+}
+
 /**
  * The part of the camera picture (camera pixels) shown in a `boxW` x `boxH` box: the picture
  * covers the box, then `zoom` (1..3) crops into it around (cropX, cropY), normalised and kept

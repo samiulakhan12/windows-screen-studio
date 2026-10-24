@@ -1,6 +1,7 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
 import { TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
+import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
 import { paintBackgroundLayer } from './staticLayer'
@@ -112,6 +113,69 @@ function blurredFrame(fc: FrameContext): BlurredFrame | null {
   return b
 }
 
+/* ---------- the text as a picture (made once per card, text and size) ---------- */
+
+/**
+ * What a card draws over its background at full opacity: its text (with the soft shadow), and
+ * for a lower third the accent bar (and a solid band with its shadow). Drawn once on a canvas
+ * of its own; every frame of the card then copies it with its fade as the alpha, instead of
+ * laying out the glyphs and blurring their shadow again (perf audit, wave-3 rules 4 and 6).
+ */
+interface Sprite {
+  canvas: HTMLCanvasElement
+  /** Where the canvas goes while the card holds still (whole pixels). */
+  x: number
+  y: number
+}
+
+/** Cards on screen at once are few; a 4K sprite is tens of MB, so only the latest are kept. */
+const MAX_SPRITES = 4
+const sprites = new Map<string, Sprite>()
+
+/**
+ * The picture `paint` draws in output coordinates within `pad` px around `box`, made once per
+ * `key` (its fractional position kept inside the canvas). Null without a DOM: draw directly.
+ */
+function spriteOf(key: string, box: Rect, pad: number, paint: (c: Ctx) => void): Sprite | null {
+  const hit = sprites.get(key)
+  if (hit) {
+    // The most recently used last: the oldest one goes first.
+    sprites.delete(key)
+    sprites.set(key, hit)
+    return hit
+  }
+  if (typeof document === 'undefined') return null
+  const x = Math.floor(box.x) - pad
+  const y = Math.floor(box.y) - pad
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.ceil(box.x + box.w) + pad - x)
+  canvas.height = Math.max(1, Math.ceil(box.y + box.h) + pad - y)
+  const c = canvas.getContext('2d')
+  if (!c) return null
+  c.translate(-x, -y)
+  paint(c)
+  if (sprites.size >= MAX_SPRITES) {
+    const [oldest, gone] = sprites.entries().next().value!
+    sprites.delete(oldest)
+    gone.canvas.width = gone.canvas.height = 0
+  }
+  const sprite = { canvas, x, y }
+  sprites.set(key, sprite)
+  return sprite
+}
+
+/**
+ * Copies `sprite` moved down by `dy` (the rise) at whole pixels: exactly what drawing the card
+ * directly gives while it holds still, and crisp (the glyphs land on whole pixels anyway) and
+ * cheap while it rises.
+ */
+function drawSprite(ctx: Ctx, sprite: Sprite, dy: number): void {
+  ctx.drawImage(sprite.canvas, sprite.x, Math.round(sprite.y + dy))
+}
+
+/** Room around a text block for glyphs reaching past their line (accents, descenders, overhangs). */
+const glyphPad = (l: TitleLayout): number => Math.ceil(Math.max(l.title.px, l.subtitle?.px ?? 0) * 0.35)
+
 /* ---------- drawing ---------- */
 
 /** Darkening over the blurred video (and a project background picture), so white text reads on any picture. */
@@ -176,35 +240,73 @@ function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: 
   }
   if (phase.text <= 0.002 || l.height <= 0) return
   const color = titleTextColorOf(card, fc.project.style.background)
-  ctx.save()
   // A soft shadow keeps light text readable on a picture; a solid colour and dark text do not need one.
-  if (card.background !== 'solid' && luminance(color) > 0.2) {
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
-    ctx.shadowBlur = l.title.px * 0.28
-    ctx.shadowOffsetY = l.title.px * 0.04
+  const shadowed = card.background !== 'solid' && luminance(color) > 0.2
+  const blur = l.title.px * 0.28
+  const drop = l.title.px * 0.04
+  const top = (h - l.height) / 2
+  const paint = (c: Ctx, alpha: number, rise: number): void => {
+    c.save()
+    if (shadowed) {
+      c.shadowColor = 'rgba(0, 0, 0, 0.35)'
+      c.shadowBlur = blur
+      c.shadowOffsetY = drop
+    }
+    drawText(c, l, w / 2, top + rise, 'center', color, alpha)
+    c.restore()
   }
-  drawText(ctx, l, w / 2, (h - l.height) / 2 + phase.rise * l.rise, 'center', color, phase.text)
+  const key = JSON.stringify(['full', w, h, card.style, card.title, card.subtitle ?? '', color, shadowed])
+  const pad = glyphPad(l) + (shadowed ? Math.ceil(blur * 1.5 + drop) : 0)
+  const sprite = spriteOf(key, { x: (w - l.width) / 2, y: top, w: l.width, h: l.height }, pad, (c) => paint(c, 1, 0))
+  if (!sprite) {
+    paint(ctx, phase.text, phase.rise * l.rise)
+    return
+  }
+  ctx.save()
+  ctx.globalAlpha = phase.text
+  drawSprite(ctx, sprite, phase.rise * l.rise)
   ctx.restore()
 }
 
 function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout): void {
-  const { ctx } = fc
+  const { ctx, w, h } = fc
   const band = l.band
   if (!band || phase.text <= 0.002 || l.height <= 0) return
+  const solid = card.background === 'solid'
+  const color = titleTextColorOf(card, fc.project.style.background)
+  const blur = band.h * 0.35
+  const drop = band.h * 0.06
+  // A solid band with its shadow, the accent bar and the text: the same in every frame of the card.
+  const paint = (c: Ctx, alpha: number, y: number): void => {
+    c.save()
+    c.globalAlpha = alpha
+    if (solid) {
+      c.save()
+      c.shadowColor = 'rgba(0, 0, 0, 0.3)'
+      c.shadowBlur = blur
+      c.shadowOffsetY = drop
+      c.fillStyle = titleColorOf(card)
+      c.beginPath()
+      c.roundRect(band.x, y, band.w, band.h, band.radius)
+      c.fill()
+      c.restore()
+    }
+    // An accent bar beside the text.
+    c.fillStyle = color
+    c.globalAlpha = alpha * 0.9
+    c.beginPath()
+    c.roundRect(band.x + band.padX, y + band.padY, band.accent, l.height, band.accent / 2)
+    c.fill()
+    drawText(c, l, band.x + band.padX + band.accent * 2.4, y + band.padY, 'left', color, alpha)
+    c.restore()
+  }
   const y = band.y + phase.rise * l.rise
   ctx.save()
   ctx.globalAlpha = phase.text
-  ctx.beginPath()
-  ctx.roundRect(band.x, y, band.w, band.h, band.radius)
-  if (card.background === 'solid') {
-    ctx.save()
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'
-    ctx.shadowBlur = band.h * 0.35
-    ctx.shadowOffsetY = band.h * 0.06
-    ctx.fillStyle = titleColorOf(card)
-    ctx.fill()
-    ctx.restore()
-  } else {
+  if (!solid) {
+    // The band shows the frame (or the project's background) behind it, so it is drawn every frame.
+    ctx.beginPath()
+    ctx.roundRect(band.x, y, band.w, band.h, band.radius)
     ctx.save()
     ctx.clip()
     paintCardBackground(fc, card, BAND_TINT)
@@ -216,14 +318,11 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.stroke()
   }
-  const color = titleTextColorOf(card, fc.project.style.background)
-  // An accent bar beside the text.
-  ctx.fillStyle = color
-  ctx.globalAlpha = phase.text * 0.9
-  ctx.beginPath()
-  ctx.roundRect(band.x + band.padX, y + band.padY, band.accent, l.height, band.accent / 2)
-  ctx.fill()
-  drawText(ctx, l, band.x + band.padX + band.accent * 2.4, y + band.padY, 'left', color, phase.text)
+  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : ''])
+  const pad = glyphPad(l) + (solid ? Math.ceil(blur * 1.5 + drop) : 0)
+  const sprite = spriteOf(key, band, pad, (c) => paint(c, 1, band.y))
+  if (sprite) drawSprite(ctx, sprite, phase.rise * l.rise)
+  else paint(ctx, phase.text, y)
   ctx.restore()
 }
 

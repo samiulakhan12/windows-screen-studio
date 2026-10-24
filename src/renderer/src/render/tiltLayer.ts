@@ -1,6 +1,6 @@
 import type { Rect } from '../../../shared/engine/layout'
-import { leansToCursor, poseIsFlat, projectRect, quadBounds, tiltOf, tiltPoseAt, tiltViewAt, type TiltFocus, type TiltPoint } from '../../../shared/engine/tilt'
-import type { Camera } from '../../../shared/engine/zoom'
+import { leansToCursor, poseIsFlat, projectRect, quadBounds, tiltArea, tiltOf, tiltPoseAt, tiltViewAt, type TiltFocus, type TiltPoint } from '../../../shared/engine/tilt'
+import { zoomStyleOf, type Camera } from '../../../shared/engine/zoom'
 import type { Project } from '../../../shared/types'
 import { cardBody, cardExtent, type CardGeometry, type CardSpec } from './staticLayer'
 
@@ -236,16 +236,28 @@ function warpFor(target: Ctx): Warp | null {
  * Starts a tilted frame: when `project` has its tilt on and the pose at `t` is not flat (the
  * 'zoom' animation can flatten it completely) or the card leans toward the cursor, returns the
  * cleared card canvas to paint the card on, in output coordinates, and where it will land.
- * Null means: draw the frame flat.
+ * Null means: draw the frame flat. `vw` x `vh` is the recording's size (for the camera layout).
  */
-export function beginTiltedCard(target: Ctx, w: number, h: number, t: number, project: Project, cam: Camera, focus: TiltFocus | null, spec: CardSpec, geom: CardGeometry): TiltedCard | null {
+export function beginTiltedCard(
+  target: Ctx,
+  w: number,
+  h: number,
+  t: number,
+  project: Project,
+  cam: Camera,
+  focus: TiltFocus | null,
+  spec: CardSpec,
+  geom: CardGeometry,
+  vw: number,
+  vh: number
+): TiltedCard | null {
   const tilt = tiltOf(project)
   if (!tilt) {
     // Frames without a tilt let go of the contexts of canvases that are gone (none kept: nothing to do).
     if (warps.length) sweep(null)
     return null
   }
-  const pose = tiltPoseAt(tilt, t, cam, focus)
+  const pose = tiltPoseAt(tilt, t, cam, focus, project.zooms, zoomStyleOf(project))
   const leaning = leansToCursor(tilt, focus)
   // A flat pose is the flat card; one leaning toward the cursor keeps its leaning size even then.
   if (poseIsFlat(pose) && !leaning) return null
@@ -253,8 +265,8 @@ export function beginTiltedCard(target: Ctx, w: number, h: number, t: number, pr
   if (!warp) return null
   const extent = cardExtent(spec, geom)
   // Tilted, the card keeps the style's padding from the frame's edges (as far as the flat card
-  // does); leaning toward the cursor, it keeps one size.
-  const view = tiltViewAt(tilt, pose, leaning, cardBody(spec, geom), w, h, spec.style.padding * Math.min(w, h))
+  // does) and clear of a camera card beside it; leaning toward the cursor, it keeps one size.
+  const view = tiltViewAt(tilt, pose, leaning, cardBody(spec, geom), tiltArea(project, w, h, vw, vh, t))
   const { card, cardCtx } = warp
   if (card.width < extent.w || card.height < extent.h) {
     card.width = Math.max(card.width, Math.ceil(extent.w / GROW_STEP) * GROW_STEP)

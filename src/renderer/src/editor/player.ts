@@ -2,17 +2,19 @@ import type { StemKind } from '../../../shared/audio/settings'
 import { displayTime } from '../../../shared/editor/clips'
 import { clamp } from '../../../shared/engine/math'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
+import { webcamLook } from '../../../shared/engine/webcamData'
 import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
 import { cursorLook } from '../../../shared/render/cursorFx'
 import type { Clip, Project } from '../../../shared/types'
-import { drawFrame, type RenderScene } from '../render/compositor'
+import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
-import { onCameraMasksChanged } from '../render/segmentation/cameraMasks'
+import { heldLivePicture, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { PreviewAudio } from './previewAudio'
 
 /** Proxy frame rate when the project does not say (older projects: always 60 fps). */
 const SOURCE_FPS = 60
+/** Seconds of viewing time the camera may drift from the screen before it is seeked back. */
 const WEBCAM_DRIFT = 0.15
 
 const hasVideoFrameCallback = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype
@@ -50,6 +52,8 @@ export class PreviewPlayer {
   private frameHandle = 0
   private pendingSeek: number | null = null
   private jumpTarget: number | null = null
+  /** The camera's picture from before a seek during playback, drawn until the seek lands (closed then). */
+  private heldCam: VideoFrame | null = null
   /** The soundtrack: the video's own track, or Web Audio for stems, music, fades and gains above 100%. */
   private readonly sound: PreviewAudio
   /** Click sounds (CursorSettings.clickSound): which clicks play, and the Web Audio graph playing them. */
@@ -72,8 +76,9 @@ export class PreviewPlayer {
     if (webcam) {
       webcam.muted = true
       webcam.preservesPitch = true
-      webcam.addEventListener('seeked', this.invalidate)
+      webcam.addEventListener('seeked', this.onWebcamSeeked)
       webcam.addEventListener('loadeddata', this.invalidate)
+      webcam.addEventListener('error', this.onWebcamSeeked)
     }
     screen.addEventListener('seeked', this.onSeeked)
     screen.addEventListener('loadeddata', this.invalidate)
@@ -210,12 +215,16 @@ export class PreviewPlayer {
 
   /* ---------- drawing ---------- */
 
-  /** Redraws on the next animation frame (coalesced); a no-op while playing. */
+  /**
+   * Redraws on the next animation frame (coalesced); a no-op while playing. Not while the screen
+   * or the camera seeks: the frame would show the camera missing (with a camera layout, the whole
+   * picture changes); the one landing last redraws.
+   */
   invalidate = (): void => {
     if (this.playing || this.drawRaf || this.disposed) return
     this.drawRaf = requestAnimationFrame(() => {
       this.drawRaf = 0
-      if (!this.playing && !this.screen.seeking) this.draw(this.screen.currentTime)
+      if (!this.playing && !this.screen.seeking && !this.webcamSeeking()) this.draw(this.screen.currentTime)
     })
   }
 
@@ -230,8 +239,27 @@ export class PreviewPlayer {
     drawFrame(ctx, canvas.width, canvas.height, t, this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene, {
       screen: this.screen,
       webcam: this.webcam,
-      background: this.background
+      background: this.background,
+      webcamFrame: this.seekingWebcamPicture(scene)
     })
+  }
+
+  /** True while the camera seeks (an element that failed never lands: it does not hold drawing up). */
+  private webcamSeeking(): boolean {
+    return !!this.webcam?.seeking && !this.webcam.error
+  }
+
+  /**
+   * The camera's picture while it seeks, when its element has none: with the background blurred,
+   * the live camera's last blurred frame (the layer finds it through the element); otherwise the
+   * frame held from before the seek. Null when it is not seeking (the element is drawn as it is).
+   */
+  private seekingWebcamPicture(scene: RenderScene): FrameImage | null {
+    const cam = this.webcam
+    if (!cam || !this.webcamSeeking()) return null
+    if (webcamLook(scene.project.webcam).backgroundBlur > 0 && heldLivePicture(cam)) return { image: cam, width: cam.videoWidth, height: cam.videoHeight }
+    const held = this.heldCam
+    return held ? { image: held, width: held.displayWidth, height: held.displayHeight } : null
   }
 
   private unzoomedScene(scene: RenderScene): RenderScene {
@@ -395,12 +423,43 @@ export class PreviewPlayer {
     return want >= 0 && (!Number.isFinite(cam.duration) || want < cam.duration)
   }
 
+  /**
+   * Seeks the camera to the screen's time `t` (forced, or when it drifted). A drift is measured in
+   * viewing time, and not while a seek is under way: at a high speed the camera would otherwise
+   * be seeked again before it lands, over and over, and never show a picture.
+   */
   private syncWebcam(t: number, force: boolean): void {
     const cam = this.webcam
     if (!cam) return
     const want = Math.max(0, t - this.project.webcamOffset)
-    if (force || Math.abs(cam.currentTime - want) > WEBCAM_DRIFT) cam.currentTime = want
+    const drift = WEBCAM_DRIFT * Math.max(1, this.screen.playbackRate)
+    if (force || (!cam.seeking && Math.abs(cam.currentTime - want) > drift)) {
+      if (this.playing) this.holdWebcam(cam)
+      cam.currentTime = want
+    }
     if (this.playing && cam.paused && this.webcamInRange(t)) void cam.play().catch(() => undefined)
+  }
+
+  /** Keeps the camera's current picture to draw while it seeks (one copy per seek; one already held is kept). */
+  private holdWebcam(cam: HTMLVideoElement): void {
+    if (cam.seeking || cam.readyState < 2 || typeof VideoFrame === 'undefined') return
+    this.releaseWebcam()
+    try {
+      this.heldCam = new VideoFrame(cam)
+    } catch {
+      // No picture to keep: the camera is left out until its seek lands, as before.
+    }
+  }
+
+  private releaseWebcam(): void {
+    this.heldCam?.close()
+    this.heldCam = null
+  }
+
+  private onWebcamSeeked = (): void => {
+    if (this.webcamSeeking()) return
+    this.releaseWebcam()
+    this.invalidate()
   }
 
   private setRate(speed: number): void {
@@ -491,8 +550,10 @@ export class PreviewPlayer {
     this.screen.removeEventListener('loadeddata', this.invalidate)
     this.screen.removeEventListener('ended', this.onEnded)
     this.screen.removeEventListener('pause', this.onPause)
-    this.webcam?.removeEventListener('seeked', this.invalidate)
+    this.webcam?.removeEventListener('seeked', this.onWebcamSeeked)
     this.webcam?.removeEventListener('loadeddata', this.invalidate)
+    this.webcam?.removeEventListener('error', this.onWebcamSeeked)
+    this.releaseWebcam()
     this.sound.dispose()
     // The editor is closing: the project's analyses (smart speed, sound levels) stop reading its files.
     void window.api.stopAnalysis(this.project.id).catch(() => undefined)

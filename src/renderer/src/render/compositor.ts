@@ -98,8 +98,8 @@ export function drawFrame(
   const cam = cameraAt(project.zooms, t, focus, zoomStyle)
 
   // Pulled back, or moved by a camera layout change, the card is drawn (shadow, corners, device frame)
-  // at its current size over the cached background, cached once it holds still. Otherwise use the
-  // cached static layer.
+  // at its current size over the cached background, cached once it holds still (a layout change
+  // stretches its shadow from a sprite: paintStillCard). Otherwise use the cached static layer.
   const card = cardRect(rect, cam)
   const shrink = Math.min(1, cam.scale)
   const frame = frameOf(style)
@@ -109,16 +109,17 @@ export function drawFrame(
   const bgTime = isAnimated(style.background) ? animationTime(project.clips, t) : 0
   // With the 3D tilt on, the card and everything on it is painted on a canvas of its own (`c`)
   // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
-  const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom)
+  const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom, vw, vh)
   const c = tilted ? tilted.ctx : ctx
-  const moving = cam.scale < 1 || layoutMoving(project, t)
+  const layoutMove = layoutMoving(project, t)
+  const moving = cam.scale < 1 || layoutMove
   if (tilted) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
-    if (moving) paintStillCard(c, w, h, spec, geom, backdrop)
+    if (moving) paintStillCard(c, w, h, spec, geom, backdrop, layoutMove)
     else paintCardLayer(c, w, h, spec, geom, backdrop, true)
   } else if (moving) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
-    paintStillCard(ctx, w, h, spec, geom, backdrop)
+    paintStillCard(ctx, w, h, spec, geom, backdrop, layoutMove)
   } else {
     paintStaticLayer(ctx, w, h, spec, geom, src.background, !!screen, bgTime)
   }

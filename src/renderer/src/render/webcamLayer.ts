@@ -1,4 +1,4 @@
-import { cameraSourceRect, layoutPhaseAt, sceneCameraBox, type Rect } from '../../../shared/engine/layout'
+import { cameraBoxShown, cameraSourceRect, layoutPhaseAt, sceneCameraBox, type Rect } from '../../../shared/engine/layout'
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { backgroundBlurRadius, BLUR_DOWNSCALE, cameraShadow, shadowReach } from '../../../shared/render/cameraLook'
 import type { FrameImage } from './compositor'
@@ -21,7 +21,10 @@ interface LayerState {
 }
 
 interface BlurState {
-  /** The camera picture cut out along the person (camera pixels, unmirrored). */
+  /**
+   * The finished picture (camera pixels, unmirrored): the person cut out along the mask over the
+   * blurred background, so a fading camera is drawn once at its opacity, never one over the other.
+   */
   person: HTMLCanvasElement
   /** The picture small, with a stretched margin so the blur does not fade at the edges; then blurred. */
   tmp: HTMLCanvasElement
@@ -72,7 +75,8 @@ export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): vo
   }
   if (!camera) return
   const box = sceneCameraBox(project, w, h, fc.vw, fc.vh, fc.t)
-  if (!box || box.opacity < 0.004 || box.rect.w < 1 || box.rect.h < 1) return
+  // The export prepares person masks with the same test (cameraShownAt): a hidden frame has none.
+  if (!cameraBoxShown(box)) return
   const look = webcamLook(project.webcam)
   const state = stateOf(ctx)
   const { picture, mask } = pictureOf(camera, look.backgroundBlur, state)
@@ -187,9 +191,9 @@ function drawShadow(ctx: Ctx, state: LayerState, r: Rect, radius: number, s: Sha
 }
 
 /**
- * Background blur: the blurred picture with the sharp person on top. Both are made at the
+ * Background blur: the blurred picture with the sharp person on top, put together at the
  * camera's own size (unmirrored, uncropped) once per camera frame, so a paused preview, a crop
- * or a layout change reuses them; the shown part is then drawn into the box like the plain picture.
+ * or a layout change reuses it; the shown part is then drawn into the box like the plain picture.
  */
 function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonMask, amount: number, src: Rect, r: Rect): void {
   const W = pic.width
@@ -228,14 +232,6 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
       mctx.drawImage(b.rawMask, 0, 0)
       mctx.filter = 'none'
     }
-    // The person: the picture, kept only where the (smoothly scaled-up) mask is.
-    pctx.globalCompositeOperation = 'copy'
-    pctx.drawImage(pic.image, 0, 0, W, H, 0, 0, W, H)
-    pctx.globalCompositeOperation = 'destination-in'
-    pctx.imageSmoothingEnabled = true
-    pctx.imageSmoothingQuality = 'high'
-    pctx.drawImage(b.mask, 0, 0, b.mask.width, b.mask.height, 0, 0, W, H)
-    pctx.globalCompositeOperation = 'source-over'
     // The background: the picture small, stretched under the margins, then blurred once.
     tctx.imageSmoothingEnabled = true
     tctx.drawImage(pic.image, 0, 0, W, H, 0, 0, b.tmp.width, b.tmp.height)
@@ -244,12 +240,22 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
     bctx.filter = `blur(${sigma.toFixed(2)}px)`
     bctx.drawImage(b.tmp, 0, 0)
     bctx.filter = 'none'
+    // The person: the picture, kept only where the (smoothly scaled-up) mask is, then the blurred
+    // background behind it. The mask and the background are soft pictures scaled up from small
+    // ones: bilinear looks the same as cubic there and costs a fraction without a GPU (perf audit F1).
+    pctx.imageSmoothingEnabled = true
+    pctx.imageSmoothingQuality = 'low'
+    pctx.globalCompositeOperation = 'copy'
+    pctx.drawImage(pic.image, 0, 0, W, H, 0, 0, W, H)
+    pctx.globalCompositeOperation = 'destination-in'
+    pctx.drawImage(b.mask, 0, 0, b.mask.width, b.mask.height, 0, 0, W, H)
+    pctx.globalCompositeOperation = 'destination-over'
+    pctx.drawImage(b.blurred, margin, margin, sw, sh, 0, 0, W, H)
+    pctx.globalCompositeOperation = 'source-over'
     b.image = pic.image
     b.pixels = mask.pixels
     b.amount = amount
   }
-  const kx = sw / W
-  const ky = sh / H
-  ctx.drawImage(b.blurred, margin + src.x * kx, margin + src.y * ky, src.w * kx, src.h * ky, r.x, r.y, r.w, r.h)
+  // One draw of the sharp picture (with the caller's 'high' smoothing), at the camera's opacity.
   ctx.drawImage(b.person, src.x, src.y, src.w, src.h, r.x, r.y, r.w, r.h)
 }

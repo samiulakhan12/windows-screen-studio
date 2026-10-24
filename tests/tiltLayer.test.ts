@@ -92,7 +92,8 @@ const { releaseTilt, beginTiltedCard } = (await import(/* @vite-ignore */ TILT_L
   beginTiltedCard: (...args: unknown[]) => { extent: Rect; quad: { x: number; y: number }[] } | null
 }
 const { cardGeometry } = (await import(/* @vite-ignore */ STATIC_LAYER)) as { cardGeometry: (spec: unknown) => unknown }
-const { leanFit } = await import('../src/shared/engine/tilt')
+const { frameArea, leanFit } = await import('../src/shared/engine/tilt')
+const layout = await import('../src/shared/engine/layout')
 type Rect = import('../src/shared/engine/layout').Rect
 
 const TILT: TiltSettings = { enabled: true, rotateX: 15, rotateY: -20, perspective: 0.6, animate: 'none' }
@@ -176,8 +177,8 @@ describe('tilt layer: a card leaning toward the cursor', () => {
     const geom = cardGeometry(spec)
     const target = context2d()
     const rest = { scale: 1, cx: 0.5, cy: 0.5 }
-    const at = (x: number, focus = true) => beginTiltedCard(target, 640, 360, 0, p, rest, focus ? { at: () => ({ x, y: 0.5 }) } : null, spec, geom)
-    const fit = leanFit({ rotateX: 0, rotateY: 0, perspective: 0.8 }, body, 640, 360, 0)
+    const at = (x: number, focus = true) => beginTiltedCard(target, 640, 360, 0, p, rest, focus ? { at: () => ({ x, y: 0.5 }) } : null, spec, geom, 1600, 900)
+    const fit = leanFit({ rotateX: 0, rotateY: 0, perspective: 0.8 }, body, frameArea(640, 360))
     expect(fit).toBeLessThan(0.99)
     // The cursor in the middle: no lean, but the card is as large as while it leans.
     const still = at(0.5)!
@@ -187,5 +188,30 @@ describe('tilt layer: a card leaning toward the cursor', () => {
     expect(at(0.9)).not.toBeNull()
     // Without a cursor to follow, a level card is simply flat.
     expect(at(0.5, false)).toBeNull()
+  })
+})
+
+describe('tilt layer: a camera card beside the screen', () => {
+  it('keeps the tilted screen (shadow included) clear of the flat camera card next to it', () => {
+    // The default tilt (Hero) and the default camera corner, side by side, at 1080p.
+    const p = project({ enabled: true, rotateX: 16, rotateY: -14, perspective: 0.7, animate: 'none' })
+    p.hasWebcam = true
+    p.webcam = { ...p.webcam, show: true, corner: 'bottom-right' }
+    p.layouts = [{ id: 'l', start: 0, end: 6, layout: 'side-by-side' }]
+    p.style = { ...p.style, padding: 0.06, shadow: 0, cornerRadius: 0 }
+    const { sceneCameraBox, sceneContentRect } = layout
+    const rect = sceneContentRect(p, 1920, 1080, 1600, 900, 3)
+    const camera = sceneCameraBox(p, 1920, 1080, 1600, 900, 3)!.rect
+    expect(camera.x).toBeGreaterThan(rect.x + rect.w)
+    const spec = { style: p.style, rect, radius: 0, k: 1, title: '' }
+    const card = beginTiltedCard(context2d(), 1920, 1080, 3, p, { scale: 1, cx: 0.5, cy: 0.5 }, null, spec, cardGeometry(spec), 1600, 900)!
+    expect(card).not.toBeNull()
+    // The card canvas reaches 2-3 px past the card (a little more where perspective enlarges it):
+    // its corners stay about the middle of the gap, well clear of the camera card.
+    const gapMid = (rect.x + rect.w + camera.x) / 2
+    for (const q of card.quad) {
+      expect(q.x).toBeLessThan(gapMid + 5)
+      expect(q.x).toBeLessThan(camera.x - 10)
+    }
   })
 })

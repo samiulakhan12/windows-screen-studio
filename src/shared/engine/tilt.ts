@@ -9,10 +9,10 @@
  * vertical one (rotateY > 0: the right edge goes away), about its own centre, and seen through
  * a camera straight in front of that centre: like CSS `perspective(d) rotateY(y) rotateX(x)`.
  */
-import type { Project, TiltSettings } from '../types'
-import type { Rect } from './layout'
-import { clamp } from './math'
-import type { Camera } from './zoom'
+import type { CameraLayout, Project, TiltSettings, ZoomSegment } from '../types'
+import { layoutGeometry, layoutPhaseAt, type Rect, type SceneProject } from './layout'
+import { clamp, easeInOutCubic, lerp } from './math'
+import { aimAt, DEFAULT_ZOOM_STYLE, type Camera, type ZoomStyle } from './zoom'
 
 export const TILT_LIMITS = {
   angle: { min: -30, max: 30 },
@@ -122,15 +122,17 @@ export const leansToCursor = (tilt: TiltSettings, focus: TiltFocus | null): focu
 
 /**
  * The tilt's pose at source time `t`. 'none' keeps the set angles; 'cursor' leans up to
- * CURSOR_LEAN degrees further toward the smoothed cursor (the side it is on comes forward);
- * 'zoom' flattens the card while the camera is zoomed in, following the camera's level, so
- * zoomed details stay readable. A pure function of t, like the camera.
+ * CURSOR_LEAN degrees further toward the smoothed cursor (the side it is on comes forward), or
+ * toward what the zoom camera aims at instead while one of `zooms` holds its aim on a click or
+ * on the field being typed into (aimAt: the idle mouse is not followed then); 'zoom' flattens
+ * the card while the camera is zoomed in, following the camera's level, so zoomed details stay
+ * readable. A pure function of t, like the camera.
  */
-export function tiltPoseAt(tilt: TiltSettings, t: number, cam: Camera, focus: TiltFocus | null): TiltAngles {
+export function tiltPoseAt(tilt: TiltSettings, t: number, cam: Camera, focus: TiltFocus | null, zooms: ZoomSegment[] = [], style: ZoomStyle = DEFAULT_ZOOM_STYLE): TiltAngles {
   let rx = tilt.rotateX
   let ry = tilt.rotateY
   if (leansToCursor(tilt, focus)) {
-    const lean = cursorLean(focus.at(t), cam)
+    const lean = cursorLean(aimAt(zooms, t, focus, style), cam)
     // Lower in the view brings the bottom forward (the top goes away); further right brings the right edge forward.
     rx += lean.y * CURSOR_LEAN
     ry -= lean.x * CURSOR_LEAN
@@ -212,16 +214,59 @@ function poseView(angles: TiltAngles, body: Rect): TiltView {
   }
 }
 
+/** Part of the output frame (px, its edges) the corners of a tilted card stay inside. */
+export interface TiltArea {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/** The `w` x `h` frame, `margin` px in from its edges. */
+export function frameArea(w: number, h: number, margin = 0): TiltArea {
+  const m = clamp(finite(margin) ? margin : 0, 0, Math.min(w, h) / 2)
+  return { x0: m, y0: m, x1: w - m, y1: h - m }
+}
+
+/** The tilt area of a settled `layout`: next to a camera card, only up to the middle of the gap between them. */
+function layoutArea(layout: CameraLayout, frame: TiltArea, project: SceneProject, w: number, h: number, srcW: number, srcH: number): TiltArea {
+  if (layout !== 'side-by-side') return frame
+  const { screen: s, camera } = layoutGeometry(layout, project, w, h, srcW, srcH)
+  const c = camera.rect
+  const a = { ...frame }
+  if (c.x >= s.x + s.w) a.x1 = Math.min(a.x1, (s.x + s.w + c.x) / 2)
+  else if (c.x + c.w <= s.x) a.x0 = Math.max(a.x0, (c.x + c.w + s.x) / 2)
+  else if (c.y >= s.y + s.h) a.y1 = Math.min(a.y1, (s.y + s.h + c.y) / 2)
+  else if (c.y + c.h <= s.y) a.y0 = Math.max(a.y0, (c.y + c.h + s.y) / 2)
+  return a
+}
+
+/**
+ * Where the tilted card may reach at source time `t` in a `w` x `h` output of a `srcW` x `srcH`
+ * recording: the frame inside the style's padding and, while a camera card stands next to the
+ * screen (side by side), only up to the middle of the gap between them, so the tilted screen
+ * never slides under the flat camera card. It moves between layouts as the cards do.
+ */
+export function tiltArea(project: SceneProject, w: number, h: number, srcW: number, srcH: number, t: number): TiltArea {
+  const frame = frameArea(w, h, project.style.padding * Math.min(w, h))
+  if (!project.webcam.show) return frame
+  const phase = layoutPhaseAt(project, t)
+  const to = layoutArea(phase.to, frame, project, w, h, srcW, srcH)
+  if (phase.progress >= 1 || phase.from === phase.to) return to
+  const from = layoutArea(phase.from, frame, project, w, h, srcW, srcH)
+  const e = easeInOutCubic(clamp(phase.progress, 0, 1))
+  return { x0: lerp(from.x0, to.x0, e), y0: lerp(from.y0, to.y0, e), x1: lerp(from.x1, to.x1, e), y1: lerp(from.y1, to.y1, e) }
+}
+
 /**
  * The largest shrink (<= 1) about the centre that keeps the corners of `body`, seen through
- * `v`, at least `margin` px inside the frame; never more than the flat body itself needs.
+ * `v`, inside `area`; never more than the flat body itself needs.
  */
-function fitInFrame(v: TiltView, body: Rect, frameW: number, frameH: number, margin: number): number {
-  const m = clamp(finite(margin) ? margin : 0, 0, Math.min(frameW, frameH) / 2)
-  const loX = Math.min(m, body.x)
-  const loY = Math.min(m, body.y)
-  const hiX = Math.max(frameW - m, body.x + body.w)
-  const hiY = Math.max(frameH - m, body.y + body.h)
+function fitInFrame(v: TiltView, body: Rect, area: TiltArea): number {
+  const loX = Math.min(area.x0, body.x)
+  const loY = Math.min(area.y0, body.y)
+  const hiX = Math.max(area.x1, body.x + body.w)
+  const hiY = Math.max(area.y1, body.y + body.h)
   let fit = 1
   for (let i = 0; i < 4; i++) {
     // Clockwise from the top left.
@@ -238,15 +283,14 @@ function fitInFrame(v: TiltView, body: Rect, frameW: number, frameH: number, mar
 
 /**
  * How `angles` tilt a card whose body (device chrome and border included, shadow left out)
- * is `body`, in a `frameW` x `frameH` output. The perspective scales with the card, so a
- * pulled-back card looks the same, only smaller. When a tilted corner would come closer than
- * `margin` (the style's padding, px) to the frame's edge, the whole card is shrunk about its
- * centre until it fits; never more than the flat body itself needs, so no tilt is exactly the
- * flat card, and the corners never leave the frame.
+ * is `body`. The perspective scales with the card, so a pulled-back card looks the same, only
+ * smaller. When a tilted corner would leave `area` (the frame inside the style's padding, see
+ * tiltArea), the whole card is shrunk about its centre until it fits; never more than the flat
+ * body itself needs, so no tilt is exactly the flat card, and the corners never leave the area.
  */
-export function tiltView(angles: TiltAngles, body: Rect, frameW: number, frameH: number, margin = 0): TiltView {
+export function tiltView(angles: TiltAngles, body: Rect, area: TiltArea): TiltView {
   const v = poseView(angles, body)
-  v.fit = fitInFrame(v, body, frameW, frameH, margin)
+  v.fit = fitInFrame(v, body, area)
   return v
 }
 
@@ -260,22 +304,22 @@ const LEAN_SAMPLES = 9
  * across the whole range are tried, not only its ends: with perspective, the edge coming
  * forward is widest part of the way round.
  */
-export function leanFit(angles: TiltAngles, body: Rect, frameW: number, frameH: number, margin = 0): number {
+export function leanFit(angles: TiltAngles, body: Rect, area: TiltArea): number {
   const n = LEAN_SAMPLES - 1
   let fit = 1
   for (let i = 0; i <= n; i++) {
     for (let j = 0; j <= n; j++) {
       const lean = { rotateX: angles.rotateX + CURSOR_LEAN * ((2 * i) / n - 1), rotateY: angles.rotateY + CURSOR_LEAN * ((2 * j) / n - 1), perspective: angles.perspective }
-      fit = Math.min(fit, fitInFrame(poseView(lean, body), body, frameW, frameH, margin))
+      fit = Math.min(fit, fitInFrame(poseView(lean, body), body, area))
     }
   }
   return fit
 }
 
 /** The last lean fit worked out, with what it was for: every frame of a video asks for the same one. */
-let leanFitCache: { angles: TiltAngles; body: Rect; frameW: number; frameH: number; margin: number; fit: number } | null = null
+let leanFitCache: { angles: TiltAngles; body: Rect; area: TiltArea; fit: number } | null = null
 
-function steadyLeanFit(tilt: TiltSettings, body: Rect, frameW: number, frameH: number, margin: number): number {
+function steadyLeanFit(tilt: TiltSettings, body: Rect, area: TiltArea): number {
   const c = leanFitCache
   if (
     c &&
@@ -286,14 +330,15 @@ function steadyLeanFit(tilt: TiltSettings, body: Rect, frameW: number, frameH: n
     c.body.y === body.y &&
     c.body.w === body.w &&
     c.body.h === body.h &&
-    c.frameW === frameW &&
-    c.frameH === frameH &&
-    c.margin === margin
+    c.area.x0 === area.x0 &&
+    c.area.y0 === area.y0 &&
+    c.area.x1 === area.x1 &&
+    c.area.y1 === area.y1
   ) {
     return c.fit
   }
-  const fit = leanFit(tilt, body, frameW, frameH, margin)
-  leanFitCache = { angles: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, perspective: tilt.perspective }, body: { ...body }, frameW, frameH, margin, fit }
+  const fit = leanFit(tilt, body, area)
+  leanFitCache = { angles: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, perspective: tilt.perspective }, body: { ...body }, area: { ...area }, fit }
   return fit
 }
 
@@ -303,10 +348,10 @@ function steadyLeanFit(tilt: TiltSettings, body: Rect, frameW: number, frameH: n
  * whole lean (leanFit), so it only turns as the cursor moves. A card the 'zoom' animation
  * flattens grows back to its full size as it straightens.
  */
-export function tiltViewAt(tilt: TiltSettings, pose: TiltAngles, leaning: boolean, body: Rect, frameW: number, frameH: number, margin = 0): TiltView {
-  if (!leaning) return tiltView(pose, body, frameW, frameH, margin)
+export function tiltViewAt(tilt: TiltSettings, pose: TiltAngles, leaning: boolean, body: Rect, area: TiltArea): TiltView {
+  if (!leaning) return tiltView(pose, body, area)
   const v = poseView(pose, body)
-  v.fit = steadyLeanFit(tilt, body, frameW, frameH, margin)
+  v.fit = steadyLeanFit(tilt, body, area)
   return v
 }
 

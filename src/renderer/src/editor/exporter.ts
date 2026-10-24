@@ -1,13 +1,14 @@
 import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
+import { cameraShownAt } from '../../../shared/engine/layout'
 import { exportFrameTimes } from '../../../shared/engine/timeline'
 import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
-import { drawFrame, type RenderScene } from '../render/compositor'
+import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
 import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
@@ -388,6 +389,15 @@ async function renderAll(
 
     const options = { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES }
     const sources = { screen: placeholder, webcam: null, background: input.background }
+    // Person masks only for frames that show the camera (drawWebcamLayer's own test, same sizes as drawFrame).
+    const masked = (i: number, screenFrame: FrameImage | null): boolean =>
+      !!masks && cameraShownAt(input.scene.project, width, height, screenFrame?.width || input.scene.project.width, screenFrame?.height || input.scene.project.height, times[i])
+    // The next camera frame and its mask, made while this frame is encoded (errors surface on its own get).
+    let ahead: Promise<unknown> | null = null
+    const cameraFrame = async (i: number): Promise<FrameImage | null> => {
+      await ahead
+      return camera!.get(i)
+    }
     // Speed over the last ~1 s of frames, for the fps readout and the ETA.
     const stamps: number[] = []
     let lastReport = 0
@@ -395,14 +405,15 @@ async function renderAll(
     for (let i = 0; i < times.length; i++) {
       if (signal.aborted) throw abortError()
       const a = performance.now()
-      const [screenFrame, webcamFrame] = await Promise.all([screen.get(i), camera ? camera.get(i) : null])
-      // The person mask of the camera frame, before drawing (drawFrame never waits).
-      await masks?.prepare(webcamFrame)
+      const [screenFrame, webcamFrame] = await Promise.all([screen.get(i), camera ? cameraFrame(i) : null])
+      // The person mask of the camera frame, before drawing (drawFrame never waits); quick when made ahead.
+      if (masked(i, screenFrame)) await masks!.prepare(webcamFrame)
       const b = performance.now()
       drawFrame(ctx, width, height, times[i], input.scene, { ...sources, screenFrame, webcamFrame }, options)
       // The canvas holds the pixels now: let the sources start on the next frame.
       screen.next()
       camera?.next()
+      ahead = camera && i + 1 < times.length && masked(i + 1, screenFrame) ? camera.get(i + 1).then((f) => masks!.prepare(f)).catch(() => undefined) : null
       const c = performance.now()
       await sink.push(i)
       spent.decode += b - a
@@ -476,7 +487,9 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     if (!ctx) throw new Error('Could not create a drawing surface')
     drawn = ctx
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
-    await (await cameraMasks(project, !!camera))?.prepare(webcamFrame)
+    // Segmentation is loaded only when the frame shows the camera.
+    const shown = cameraShownAt(input.scene.project, width, height, screenFrame?.width || project.width, screenFrame?.height || project.height, t)
+    await (await cameraMasks(project, !!camera && shown))?.prepare(webcamFrame)
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
     drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES })
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))

@@ -155,8 +155,11 @@ function shapesPath(ctx: Ctx, shapes: { rect: Rect; radii: Corners }[], dx = 0, 
 /**
  * The card's shadow. `outsideOnly` keeps it off the card itself (needed under a see-through
  * glass border); otherwise it is cast by a black copy of the card, which the card then covers.
+ * `sliced`: a soft shadow of one shape is stretched from a small sprite (shadowSlices) instead
+ * of blurring the whole card again, for a card that moves.
  */
-function paintShadow(ctx: Ctx, shapes: { rect: Rect; radii: Corners }[], paint: ShadowPaint, outsideOnly: boolean, w: number, h: number): void {
+function paintShadow(ctx: Ctx, shapes: { rect: Rect; radii: Corners }[], paint: ShadowPaint, outsideOnly: boolean, w: number, h: number, sliced = false): void {
+  if (sliced && paint.kind === 'blur' && shapes.length === 1 && shadowSlices(ctx, shapes[0], paint, outsideOnly)) return
   ctx.save()
   if (outsideOnly) {
     ctx.beginPath()
@@ -178,6 +181,66 @@ function paintShadow(ctx: Ctx, shapes: { rect: Rect; radii: Corners }[], paint: 
     ctx.fill()
   }
   ctx.restore()
+}
+
+/** Width of the middle slice of a shadow sprite, stretched along the card's straight sides. */
+const MID_SLICE = 4
+
+interface ShadowSprite {
+  key: string
+  canvas: HTMLCanvasElement
+}
+
+const shadowSprites = new WeakMap<Ctx, ShadowSprite>()
+
+/**
+ * The soft shadow of one rounded rectangle, made on a small canvas (kept per target) for a shape
+ * with these corners and this shadow, and drawn onto `shape` in nine slices: the corners as they
+ * are, the edges and the middle stretched along the straight sides, where a blurred shadow is
+ * the same all along. The slices land on whole pixels, so they join without seams. A shape too
+ * small to hold the corners returns false (draw it directly).
+ */
+function shadowSlices(ctx: Ctx, shape: { rect: Rect; radii: Corners }, paint: Extract<ShadowPaint, { kind: 'blur' }>, outsideOnly: boolean): boolean {
+  if (typeof document === 'undefined') return false
+  const r = shape.rect
+  const radius = Math.ceil(maxCorner(shape.radii))
+  // Room the shadow takes outside the shape, and how far from each corner the corner shows.
+  const pad = Math.ceil(paint.blur * 1.5 + Math.max(Math.abs(paint.offsetX), Math.abs(paint.offsetY))) + 2
+  const corner = radius + pad
+  if (r.w < corner * 2 || r.h < corner * 2 || radius > Math.min(r.w, r.h) / 2) return false
+  const key = JSON.stringify([paint, shape.radii, outsideOnly])
+  let sprite = shadowSprites.get(ctx)
+  if (!sprite || sprite.key !== key) {
+    const canvas = sprite?.canvas ?? document.createElement('canvas')
+    const size = corner * 2 + MID_SLICE
+    canvas.width = canvas.height = size + pad * 2
+    const c = canvas.getContext('2d')
+    if (!c) return false
+    paintShadow(c, [{ rect: { x: pad, y: pad, w: size, h: size }, radii: shape.radii }], paint, outsideOnly, canvas.width, canvas.height)
+    sprite = { key, canvas }
+    shadowSprites.set(ctx, sprite)
+  }
+  const n = sprite.canvas.width
+  const src = [0, pad + corner, pad + corner + MID_SLICE, n]
+  const x0 = Math.round(r.x)
+  const y0 = Math.round(r.y)
+  const x1 = Math.round(r.x + r.w)
+  const y1 = Math.round(r.y + r.h)
+  const xs = [x0 - pad, x0 + corner, x1 - corner, x1 + pad]
+  const ys = [y0 - pad, y0 + corner, y1 - corner, y1 + pad]
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  // A soft picture: bilinear is enough to stretch it (perf audit F1).
+  ctx.imageSmoothingQuality = 'low'
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      const dw = xs[i + 1] - xs[i]
+      const dh = ys[j + 1] - ys[j]
+      if (dw > 0 && dh > 0) ctx.drawImage(sprite.canvas, src[i], src[j], src[i + 1] - src[i], src[j + 1] - src[j], xs[i], ys[j], dw, dh)
+    }
+  }
+  ctx.restore()
+  return true
 }
 
 function paintBorder(ctx: Ctx, body: { rect: Rect; radii: Corners }, border: CardBorder, bw: number, k: number, backdrop: Blurred | null, w: number, h: number): void {
@@ -266,8 +329,9 @@ const needsBackdrop = (style: StyleSettings): boolean => {
  * The recording's card: its shadow (soft, hard or glow), border, device frame and the black
  * content well. `spec.k` scales the 1080p-referenced sizes; a pulled-back card passes a smaller
  * one so everything shrinks with it. `backdrop` is the blurred background a glass border shows.
+ * `sliced`: the card moves at one size (a camera layout change); its soft shadow comes from a sprite.
  */
-export function paintCard(ctx: Ctx, spec: CardSpec, geom: CardGeometry = cardGeometry(spec), backdrop: Blurred | null = null, size?: { w: number; h: number }): void {
+export function paintCard(ctx: Ctx, spec: CardSpec, geom: CardGeometry = cardGeometry(spec), backdrop: Blurred | null = null, size?: { w: number; h: number }, sliced = false): void {
   const { style, k } = spec
   const look = cardLook(style)
   const border = frameTakesBorder(geom.frame) ? look.border : null
@@ -277,7 +341,7 @@ export function paintCard(ctx: Ctx, spec: CardSpec, geom: CardGeometry = cardGeo
   // With a border the card casts its shadow from the border's outer edge.
   const casting = bw > 0 ? [grow(geom.outline[0], bw), ...geom.outline.slice(1)] : geom.outline
   const shadow = style.padding > 0 ? shadowPaint(look, style.shadow, k) : null
-  if (shadow) paintShadow(ctx, casting, shadow, !!border?.glass, w, h)
+  if (shadow) paintShadow(ctx, casting, shadow, !!border?.glass, w, h, sliced)
   if (border) paintBorder(ctx, geom.outline[0], border, bw, k, backdrop, w, h)
   if (geom.drawing) paintParts(ctx, geom.drawing.parts)
   ctx.fillStyle = '#000'
@@ -523,19 +587,25 @@ export function paintCardLayer(ctx: Ctx, w: number, h: number, spec: CardSpec, g
 const lastCards = new WeakMap<Ctx, string>()
 
 /**
- * A pulled-back card. During the zoom transition it moves and shrinks every frame and is painted as
- * vectors (crisp at every size); for the rest of the pull-back it holds still, and repainting its
- * large shadow blur every frame is wasted: once the same card comes twice in a row it is drawn
- * from a cached layer (paintCardLayer with its whole extent), which looks the same.
+ * A pulled-back card, or one a camera layout change moves. While it moves (and shrinks) every
+ * frame it is painted as vectors (crisp at every size); once it holds still, the same card comes
+ * twice in a row and is drawn from a cached layer (paintCardLayer with its whole extent), which
+ * looks the same.
+ *
+ * `layoutMove`: a camera layout change moves the card. Its corner radius and shadow keep their
+ * size (only a pull-back scales them), so its large soft shadow is stretched from a sprite made
+ * once (shadowSlices) instead of blurred again every frame. The cached layer is not drawn scaled
+ * instead (perf audit rule 1): that would shrink the corners and the shadow with the card, leave
+ * the well's corners outside the recording's rounded clip, and jump back when the layout settles.
  */
-export function paintStillCard(ctx: Ctx, w: number, h: number, spec: CardSpec, geom: CardGeometry, backdrop: Blurred | null): void {
+export function paintStillCard(ctx: Ctx, w: number, h: number, spec: CardSpec, geom: CardGeometry, backdrop: Blurred | null, layoutMove = false): void {
   const key = JSON.stringify([w, h, spec.style, spec.rect, spec.radius, spec.k, spec.title])
   if (lastCards.get(ctx) === key) {
     paintCardLayer(ctx, w, h, spec, geom, backdrop, true)
     return
   }
   lastCards.set(ctx, key)
-  paintCard(ctx, spec, geom, backdrop, { w, h })
+  paintCard(ctx, spec, geom, backdrop, { w, h }, layoutMove)
 }
 
 /* ---------- background only (pulled-back camera) ---------- */

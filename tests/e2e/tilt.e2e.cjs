@@ -117,7 +117,7 @@ async function previewImage(win) {
 function cardCorners(w, h, tilt) {
   const body = geo.styleContentRect(w, h, VW, VH, STYLE)
   const pose = tilt ? geo.tiltPoseAt(tilt, 0, { scale: 1, cx: 0.5, cy: 0.5 }, null) : { rotateX: 0, rotateY: 0, perspective: 0 }
-  return geo.projectRect(geo.tiltView(pose, body, w, h, STYLE.padding * Math.min(w, h)), body)
+  return geo.projectRect(geo.tiltView(pose, body, geo.frameArea(w, h, STYLE.padding * Math.min(w, h))), body)
 }
 
 /**
