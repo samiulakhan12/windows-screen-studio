@@ -474,7 +474,8 @@ async function main() {
     await pickFile(bad)
     await win.click('button:has-text("Choose music")')
     await win.waitForSelector('[data-testid="music-error"]')
-    h.assert(/Unsupported file type/.test(await win.textContent('[data-testid="music-error"]')), 'unsupported file explained')
+    const refusal = await win.textContent('[data-testid="music-error"]')
+    h.assert(/Choose an MP3, M4A, AAC, WAV, Ogg, Opus or FLAC file/.test(refusal), `unsupported file explained: ${refusal}`)
 
     await pickFile(audioOnly('music-3s', 3, toneGraph(440, 0.125)))
     await win.click('button:has-text("Choose music")')
