@@ -15,6 +15,19 @@ export const PROCESSING_DEFERRED = 'Processing was stopped. Your recording is ke
 
 export const SOURCE_GONE = 'The screen or window you picked is no longer available. Pick it again and retry.'
 
+/**
+ * Told when native capture did not start and the recording goes on with standard (Chromium)
+ * capture. For a window it says why, in the helper's words (e.g. the window was minimised),
+ * rather than guessing a cause such as the Windows version.
+ */
+export function nativeFallbackWarning(target: 'screen' | 'window', reason: string): string {
+  const cost = 'The Windows cursor is recorded in the video, so the smooth cursor is unavailable for this recording.'
+  if (target === 'screen') return `Screen capture used standard mode because the native capture helper did not start. ${cost}`
+  let why = stripIpcPrefix(reason).replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '')
+  if (why.length > 200) why = `${why.slice(0, 199).trimEnd()}…`
+  return `Native window capture did not start${why ? ` (${why})` : ''}, so the window is recorded in standard mode. ${cost}`
+}
+
 /** Removes Electron's "Error invoking remote method '…': Error: " wrapper from IPC errors. */
 export function stripIpcPrefix(message: string): string {
   return message.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^(?:[A-Za-z]*Error):\s*/, '')

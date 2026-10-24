@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { RecordingError } from '../src/main/recording/errors'
 import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from '../src/main/recording/userMessages'
+import { nativeFallbackWarning } from '../src/shared/recording/errors'
+
+describe('nativeFallbackWarning (ux-5)', () => {
+  it('says what happened to a window, in the helper’s words, without blaming the Windows version', () => {
+    const text = nativeFallbackWarning(
+      'window',
+      "Error invoking remote method 'recording:startNative': Error: The capture helper exited with code 1: The window is minimised: Windows.Graphics.Capture shows nothing of it until it is restored."
+    )
+    expect(text).toMatch(/^Native window capture did not start \(The capture helper exited with code 1: The window is minimised: .* restored\), so the window is recorded in standard mode\./)
+    expect(text).not.toMatch(/Screen capture|Windows 10|2004/)
+    expect(nativeFallbackWarning('window', '')).toMatch(/^Native window capture did not start, so the window/)
+    expect(nativeFallbackWarning('window', 'x'.repeat(500)).length).toBeLessThan(400)
+  })
+
+  it('keeps the screen wording for screens and areas', () => {
+    expect(nativeFallbackWarning('screen', 'whatever')).toMatch(/^Screen capture used standard mode because the native capture helper did not start\./)
+  })
+})
 
 const errno = (code: string, message = `${code}: something, open 'C:\\Users\\me\\Videos\\x\\screen.webm'`) =>
   Object.assign(new Error(message), { code })

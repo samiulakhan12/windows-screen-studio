@@ -1,8 +1,25 @@
-import type { ClickEvent, ZoomFocus, ZoomSegment } from '../types'
-import type { SmoothedTrack } from './cursor'
+import type { ClickEvent, CursorSample, ZoomFocus, ZoomSegment } from '../types'
+import { SmoothedTrack } from './cursor'
 import { clamp, easeInOutCubic, lerp } from './math'
 
 export const ZOOM_TRANSITION = 0.7
+/** How long after an auto zoom's click the camera takes to hand its aim back to the cursor. */
+export const ANCHOR_RELEASE = 0.3
+
+const outsideFrame = (s: CursorSample): boolean => s.x < 0 || s.x > 1 || s.y < 0 || s.y > 1
+
+/**
+ * The path the zoom camera follows with cursor focus: the cursor, heavily smoothed, with
+ * positions off the recorded frame (another monitor, beside the recorded area or window, or
+ * hidden) held at the frame's edge. Far-off positions would otherwise drag the camera to the
+ * opposite side and keep it lagging there long after the cursor came back.
+ */
+export function focusPathFor(samples: CursorSample[], duration: number): SmoothedTrack {
+  const inFrame = samples.some(outsideFrame)
+    ? samples.map((s) => (outsideFrame(s) ? { t: s.t, x: clamp(s.x, 0, 1), y: clamp(s.y, 0, 1) } : s))
+    : samples
+  return new SmoothedTrack(inFrame, duration, 1)
+}
 
 export interface AutoZoomOptions {
   scale: number
@@ -40,13 +57,13 @@ export function generateAutoZooms(
 ): ZoomSegment[] {
   const o = { ...DEFAULT_AUTO_ZOOM, ...options }
   const sorted = clicks.filter(isUsableClick).sort((a, b) => a.t - b.t)
-  const ranges: { start: number; end: number }[] = []
+  const ranges: { start: number; end: number; first: ClickEvent }[] = []
   for (const c of sorted) {
     const last = ranges[ranges.length - 1]
     if (last && c.t - (last.end - o.hold) <= o.clusterGap) {
       last.end = c.t + o.hold
     } else {
-      ranges.push({ start: c.t - o.leadIn, end: c.t + o.hold })
+      ranges.push({ start: c.t - o.leadIn, end: c.t + o.hold, first: c })
     }
   }
   const segments: ZoomSegment[] = []
@@ -64,7 +81,8 @@ export function generateAutoZooms(
       continue
     }
     if (end - start > 0.2) {
-      segments.push({ id: newZoomId(), start, end, scale: o.scale, focus: { mode: 'cursor' }, auto: true })
+      const { t, x, y } = r.first
+      segments.push({ id: newZoomId(), start, end, scale: o.scale, focus: { mode: 'cursor' }, auto: true, anchor: { t, x, y } })
     }
   }
   return segments
@@ -88,8 +106,23 @@ export interface Camera {
 }
 
 /**
- * Camera at time `t`. Focus follows a heavily smoothed cursor path (`focusTrack`)
- * and is clamped so the zoomed viewport never shows anything outside the recording.
+ * How much an auto zoom aims at its click (anchor) rather than at the smoothed cursor at
+ * time t: fully until the click, then handing back to the cursor over ANCHOR_RELEASE. 0
+ * without an anchor, or for an anchor the segment no longer covers (it was moved).
+ */
+export function anchorWeight(seg: ZoomSegment, t: number): number {
+  const a = seg.anchor
+  if (!a || !(a.t >= seg.start && a.t <= seg.end)) return 0
+  if (t <= a.t) return 1
+  const k = (t - a.t) / ANCHOR_RELEASE
+  return k >= 1 ? 0 : 1 - easeInOutCubic(k)
+}
+
+/**
+ * Camera at time `t`. Focus follows a heavily smoothed cursor path (`focusTrack`), except
+ * that an auto zoom aims at its click while zooming in (the smoothed cursor lags behind a
+ * quick move to the click), and is clamped so the zoomed viewport never shows anything
+ * outside the recording.
  */
 export function cameraAt(zooms: ZoomSegment[], t: number, focusTrack: SmoothedTrack | null): Camera {
   let best: ZoomSegment | null = null
@@ -110,8 +143,10 @@ export function cameraAt(zooms: ZoomSegment[], t: number, focusTrack: SmoothedTr
     fy = best.focus.y
   } else if (focusTrack) {
     const p = focusTrack.at(t)
-    fx = p.x
-    fy = p.y
+    const a = best.anchor
+    const w = a ? anchorWeight(best, t) : 0
+    fx = a && w > 0 ? lerp(p.x, a.x, w) : p.x
+    fy = a && w > 0 ? lerp(p.y, a.y, w) : p.y
   }
   const half = 0.5 / scale
   const cx = clamp(lerp(0.5, fx, env), half, 1 - half)

@@ -82,8 +82,15 @@ export async function nativeWindowAvailable(api: NativeCaptureApi, timeoutMs = d
 
 /** How long a window watcher may take to report the window's first rectangle. */
 export const WATCH_READY_MS = 5000
-/** How long stopping a window watcher may take before it is killed. */
-export const WATCH_STOP_MS = 5000
+/**
+ * Outer guard on stopping a window watcher. The watcher client kills a helper that does not
+ * exit within nativeCaptureTimeouts.watchStop and then still hands over every rectangle it
+ * collected, so this must leave it time to do that (an equal budget would always lose the
+ * race and throw the whole timeline away).
+ */
+export const defaultWatchStopTimeoutMs = (): number => nativeCaptureTimeouts.watchStop + MARGIN_MS
+/** After the outer guard killed a watcher, how long its client may take to hand over its rectangles. */
+const WATCH_KILLED_GRACE_MS = 1000
 
 export type WindowWatchStart = { ok: true; watch: WindowWatchSession; first: WindowRectEvent } | { ok: false; message: string }
 
@@ -123,14 +130,34 @@ export async function startWindowWatch(
   }
 }
 
-/** Stops a window watcher and returns every rectangle it reported; [] (and killed) on failure. */
-export async function stopWindowWatch(watch: WindowWatchSession, timeoutMs = WATCH_STOP_MS): Promise<WindowRectEvent[]> {
+/**
+ * Stops a window watcher and returns every rectangle it reported. One that does not stop in
+ * time is killed, and what it collected is still returned when its client hands it over
+ * then; [] only when nothing can be had (the client failed or never answers).
+ */
+export async function stopWindowWatch(
+  watch: WindowWatchSession,
+  timeoutMs = defaultWatchStopTimeoutMs(),
+  killedGraceMs = WATCH_KILLED_GRACE_MS
+): Promise<WindowRectEvent[]> {
+  const asRects = (v: unknown): WindowRectEvent[] => (Array.isArray(v) ? (v as WindowRectEvent[]) : [])
+  let stopping: Promise<WindowRectEvent[]>
   try {
-    const rects = await withTimeout(watch.stop(), timeoutMs, 'The window watcher did not stop in time')
-    return Array.isArray(rects) ? rects : []
+    stopping = Promise.resolve(watch.stop())
+  } catch (err) {
+    stopping = Promise.reject(err)
+  }
+  // Settles after the guard below may have given up: never an unhandled rejection.
+  stopping.catch(() => undefined)
+  try {
+    return asRects(await withTimeout(stopping, timeoutMs, 'The window watcher did not stop in time'))
   } catch (err) {
     console.warn('The window watcher did not stop cleanly:', err)
     killQuietly(watch)
+  }
+  try {
+    return asRects(await withTimeout(stopping, killedGraceMs, 'The window watcher did not hand over its rectangles'))
+  } catch {
     return []
   }
 }

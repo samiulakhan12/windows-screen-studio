@@ -8,7 +8,7 @@ import { mediaLength } from '../../../shared/editor/mediaLength'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
-import { insertZoom, isUsableClick, ZOOM_TRANSITION } from '../../../shared/engine/zoom'
+import { focusPathFor, insertZoom, isUsableClick, ZOOM_TRANSITION } from '../../../shared/engine/zoom'
 import type { Project, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { EditorContext, type EditorServices } from '../editor/context'
@@ -186,7 +186,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   /* ---------- scene + preview ---------- */
 
   const cursorPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, project.cursor.smoothing), [cursor.samples, project.duration, project.cursor.smoothing])
-  const focusPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, 1), [cursor.samples, project.duration])
+  const focusPath = useMemo(() => focusPathFor(cursor.samples, project.duration), [cursor.samples, project.duration])
   const scene: RenderScene = useMemo(() => ({ project, cursor, cursorPath, focusPath }), [project, cursor, cursorPath, focusPath])
 
   useEffect(() => player.setProject(project), [player, project])
@@ -314,7 +314,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
       if (!cursor.valid) return { x: 0.5, y: 0.5 }
-      const p = focusPath.at((zoom.start + zoom.end) / 2)
+      // An auto zoom's own click, else where the camera would be in its middle.
+      const p = zoom.anchor ?? focusPath.at((zoom.start + zoom.end) / 2)
       return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
     },
     [cursor.valid, focusPath]

@@ -217,7 +217,7 @@ function CursorPanel({ project, cursor: track }: { project: Project; cursor: Cur
           <span>
             {isWindow
               ? 'Cursor movement was not recorded for this window (its position on screen could not be followed), so cursor effects are not available.'
-              : 'Cursor movement was not recorded for this capture (window recordings have no screen coordinates), so cursor effects are not available.'}
+              : 'Cursor movement was not recorded for this capture, so cursor effects are not available.'}
           </span>
         </p>
       ) : inVideo ? (
@@ -225,7 +225,7 @@ function CursorPanel({ project, cursor: track }: { project: Project; cursor: Cur
           <EditorIcon name="alert" size={16} />
           <span>
             {isWindow
-              ? 'The Windows cursor is part of this video (the window was recorded with standard capture; native capture needs Windows 10 version 2004 or later), so a smooth cursor would show up as a second cursor. '
+              ? 'The Windows cursor is part of this video (the window was recorded with standard capture, which includes it), so a smooth cursor would show up as a second cursor. '
               : 'The Windows cursor is part of this video (it was recorded with screen capture), so a smooth cursor would show up as a second cursor. '}
             Smooth cursor and hide-when-idle are therefore off. Click highlights {isWindow ? 'and auto zoom still work' : 'still work on top of the recorded cursor'}.
           </span>

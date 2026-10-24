@@ -331,3 +331,100 @@ describe('buildCursorTrack for a window', () => {
     expect(track.keys).toEqual([{ t: 0.1, label: 'Esc' }])
   })
 })
+
+describe('buildCursorTrack for a window: bars, drags and covering windows', () => {
+  type R = { at: number; x: number; y: number; width: number; height: number; minimized?: boolean; cursorOver?: boolean }
+  const rect = (at: number, x: number, y: number, width = 1280, height = 720, extra: Partial<R> = {}): R => ({ at, x, y, width, height, ...extra })
+  const build = (r: Partial<RawTrack>, rects: R[], video = { width: 1280, height: 720 }, duration = 10) =>
+    buildCursorTrack(raw({ bounds: null, scale: 1, ...r }), { startedAt: T0, pauses: [], duration, region: null, window: windowMapping(rects, (x) => x, video) })
+  const sampleAt = (track: ReturnType<typeof build>, t: number) => track.samples.find((s) => Math.abs(s.t - t) < 1e-9)!
+  const inVideo = (p: { x: number; y: number }): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
+
+  it('maps the cursor beside a window resized to another shape outside the video, never into the black bars (mapping-2)', () => {
+    // 1280 x 720 at (100, 0), resized at 3 s to 640 x 720: its content sits at x 0.25..0.75.
+    const track = build(
+      {
+        samples: [
+          { at: T0 + 3100, x: 900, y: 300 },
+          { at: T0 + 3200, x: 1000, y: 300 },
+          { at: T0 + 3300, x: 50, y: 300 },
+          { at: T0 + 3400, x: 400, y: 300 }
+        ],
+        clicks: [{ at: T0 + 3250, x: 1000, y: 300, button: 'left' }]
+      },
+      [rect(T0 - 500, 100, 0), rect(T0 + 3000, 100, 0, 640, 720)]
+    )
+    expect(sampleAt(track, 3.1).x).toBeGreaterThan(1)
+    expect(sampleAt(track, 3.2).x).toBeGreaterThan(1)
+    expect(sampleAt(track, 3.3).x).toBeLessThan(0)
+    // Inside the window: on the fitted content, as before.
+    expect(sampleAt(track, 3.4).x).toBeCloseTo(0.25 + (300 / 640) * 0.5, 9)
+    expect(track.clicks).toEqual([])
+  })
+
+  it('moves a cursor standing still beside the window outside the video when the window is resized under it', () => {
+    const track = build({ samples: [{ at: T0 + 100, x: 1500, y: 300 }] }, [rect(T0 - 500, 100, 0), rect(T0 + 3000, 100, 0, 640, 720)])
+    expect(sampleAt(track, 3).x).toBeGreaterThan(1)
+    expect(track.samples.every((s) => !inVideo(s))).toBe(true)
+  })
+
+  it('keeps a cursor that drags the window by its title bar on the title bar (mapping-3)', () => {
+    // Dragged right at 1500 px/s: rectangles every 16 ms, cursor samples every 16.67 ms at
+    // another phase, the grab point 400 px into the window, 15 px down.
+    const rects: R[] = [rect(T0 - 1000, 100, 100)]
+    for (let at = 0; at <= 1000; at += 16) rects.push(rect(T0 + at, 100 + 1.5 * at, 100))
+    const samples: RawTrack['samples'] = []
+    for (let at = 3; at <= 1000; at += 1000 / 60) samples.push({ at: T0 + at, x: 500 + 1.5 * at, y: 115 })
+    const track = build({ samples }, rects)
+    const during = track.samples.filter((s) => s.t > 0.05 && s.t < 0.98)
+    expect(during.length).toBeGreaterThan(50)
+    for (const s of during) {
+      expect(Math.abs(s.x * 1280 - 400)).toBeLessThan(1)
+      expect(Math.abs(s.y * 720 - 15)).toBeLessThan(1e-6)
+    }
+  })
+
+  it('does not move a still window early: a pose reported 5 s later applies from one poll before it', () => {
+    const track = build(
+      { samples: [{ at: T0 + 100, x: 740, y: 360 }, { at: T0 + 2500, x: 740, y: 360 }, { at: T0 + 4980, x: 740, y: 360 }] },
+      [rect(T0 - 500, 100, 0), rect(T0 + 5000, 500, 0)]
+    )
+    expect(sampleAt(track, 2.5).x).toBeCloseTo(0.5, 9)
+    expect(sampleAt(track, 4.98).x).toBeCloseTo(0.5, 9)
+    expect(sampleAt(track, 5).x).toBeCloseTo(240 / 1280, 9)
+  })
+
+  it('ignores clicks and hides the cursor while another window covers the recorded one under it (mapping-5)', () => {
+    const track = build(
+      {
+        samples: [
+          { at: T0 + 500, x: 740, y: 360 }, // over the window
+          { at: T0 + 1500, x: 1200, y: 600 }, // over a chat window covering its lower right corner
+          { at: T0 + 2500, x: 740, y: 360 } // back over the window
+        ],
+        clicks: [
+          { at: T0 + 1600, x: 1200, y: 600, button: 'left' },
+          { at: T0 + 2600, x: 740, y: 360, button: 'left' }
+        ]
+      },
+      [rect(T0 - 500, 100, 0), rect(T0 + 1400, 100, 0, 1280, 720, { cursorOver: false }), rect(T0 + 2400, 100, 0, 1280, 720, { cursorOver: true })]
+    )
+    expect(track.clicks.map((c) => c.t)).toEqual([2.6])
+    expect(inVideo(sampleAt(track, 0.5))).toBe(true)
+    // Hidden past the video edge nearest to where it is (the right edge here).
+    const hidden = sampleAt(track, 1.5)
+    expect(inVideo(hidden)).toBe(false)
+    expect(hidden.x).toBeGreaterThan(1)
+    expect(hidden.y).toBeCloseTo(600 / 720, 9)
+    // From the instant the cursor went off the window, and shown again on return.
+    expect(inVideo(sampleAt(track, 1.4))).toBe(false)
+    expect(inVideo(sampleAt(track, 2.4))).toBe(true)
+    expect(inVideo(sampleAt(track, 2.5))).toBe(true)
+  })
+
+  it('treats a missing cursorOver (older helpers) as over the window', () => {
+    const track = build({ samples: [{ at: T0 + 500, x: 740, y: 360 }], clicks: [{ at: T0 + 600, x: 740, y: 360, button: 'left' }] }, [rect(T0 - 500, 100, 0)])
+    expect(track.clicks).toHaveLength(1)
+    expect(inVideo(track.samples[0])).toBe(true)
+  })
+})

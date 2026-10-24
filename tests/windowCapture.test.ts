@@ -1,10 +1,11 @@
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('electron', () => ({ app: { getPath: () => '/tmp' } }))
+vi.mock('electron', () => ({ app: { getPath: () => '/tmp', isPackaged: false, getAppPath: () => '/tmp' } }))
 
-import type { NativeCaptureSession, NativeStopInfo, WindowRectEvent, WindowWatchSession } from '../src/main/nativeCapture'
+import { nativeCaptureTimeouts, watchWindow, type NativeCaptureSession, type NativeStopInfo, type WindowRectEvent, type WindowWatchSession } from '../src/main/nativeCapture'
 import type { RecordingManifest } from '../src/main/projects'
-import { nativeWindowAvailable, startWindowWatch, stopWindowWatch, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
+import { defaultWatchStopTimeoutMs, nativeWindowAvailable, startWindowWatch, stopWindowWatch, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
 import { ActiveRecording } from '../src/main/recording/session'
 import { buildCursorTrack } from '../src/main/recording/trackMath'
 import { planWindowCapture, watchForChromium, windowCaptureSupport, windowCursorMapping, windowMapping, type DipScreen } from '../src/main/recording/windowCapture'
@@ -86,24 +87,93 @@ describe('windowCursorMapping (physical rectangles, DIP cursor)', () => {
   /** Electron's screen on a 150% monitor: DIP = physical / 1.5. */
   const screen150: DipScreen = {
     screenToDipRect: (_w, r) => ({ x: r.x / 1.5, y: r.y / 1.5, width: r.width / 1.5, height: r.height / 1.5 }),
+    dipToScreenPoint: (p) => ({ x: Math.round(p.x * 1.5), y: Math.round(p.y * 1.5) }),
     getDisplayMatching: () => ({ scaleFactor: 1.5 })
   }
 
-  it('converts the helper rectangles to DIP on Windows, so DIP clicks land on the right spot', () => {
+  it('maps in physical pixels on Windows, converting each DIP position back, so DIP clicks land on the right spot', () => {
     // The window is at (150, 75) physical, 1200 x 600: (100, 50) DIP, 800 x 400.
     const { mapping, scale } = windowCursorMapping([rect(T0 - 10, 150, 75, 1200, 600)], { width: 1200, height: 600 }, screen150, 'win32')
     expect(scale).toBe(1.5)
-    expect(mapping!.poses[0].dip).toEqual({ x: 100, y: 50, width: 800, height: 400 })
+    expect(mapping!.poses[0].dip).toEqual({ x: 150, y: 75, width: 1200, height: 600 })
     const track = buildCursorTrack(
-      { samples: [], clicks: [{ at: T0 + 100, x: 300, y: 150, button: 'left' }], keys: [], bounds: null, scale: 1 },
+      { samples: [{ at: T0, x: 500, y: 250 }], clicks: [{ at: T0 + 100, x: 300, y: 150, button: 'left' }], keys: [], bounds: null, scale: 1 },
       { startedAt: T0, pauses: [], duration: 1, region: null, window: mapping }
     )
     expect(track.clicks[0]).toMatchObject({ x: 0.25, y: 0.25 })
+    expect(track.samples[0]).toMatchObject({ x: 0.5, y: 0.5 })
   })
 
   it('keeps the rectangles as they are where both spaces are the same pixels (X11)', () => {
     const { mapping } = windowCursorMapping([rect(T0, 150, 75, 1200, 600)], { width: 1200, height: 600 }, screen150, 'linux')
     expect(mapping!.poses[0].dip).toEqual({ x: 150, y: 75, width: 1200, height: 600 })
+    expect(mapping!.pointToScreen).toBeUndefined()
+  })
+
+  /**
+   * Electron's screen (Chromium ScreenWin) with two monitors: A at 100%, physical and DIP
+   * (0, 0) 1920 x 1080; B at 150% to its right, physical (1920, 0) 3840 x 2160, DIP (1920, 0)
+   * 2560 x 1440. Points convert on the monitor that holds them; a rectangle converts as a
+   * whole on the monitor it overlaps most (MonitorFromRect).
+   */
+  const mixed = (() => {
+    const monitors = [
+      { phys: { x: 0, y: 0, width: 1920, height: 1080 }, dip: { x: 0, y: 0, width: 1920, height: 1080 }, scale: 1 },
+      { phys: { x: 1920, y: 0, width: 3840, height: 2160 }, dip: { x: 1920, y: 0, width: 2560, height: 1440 }, scale: 1.5 }
+    ]
+    const overlap = (a: Rect, b: Rect): number =>
+      Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y))
+    const holding = (p: { x: number; y: number }, space: 'phys' | 'dip') => monitors.find((m) => p.x < m[space].x + m[space].width) ?? monitors[1]
+    const screen: DipScreen & { screenToDipPoint(p: { x: number; y: number }): { x: number; y: number } } = {
+      screenToDipPoint: (p) => {
+        const m = holding(p, 'phys')
+        return { x: m.dip.x + (p.x - m.phys.x) / m.scale, y: m.dip.y + (p.y - m.phys.y) / m.scale }
+      },
+      dipToScreenPoint: (p) => {
+        const m = holding(p, 'dip')
+        return { x: Math.round(m.phys.x + (p.x - m.dip.x) * m.scale), y: Math.round(m.phys.y + (p.y - m.dip.y) * m.scale) }
+      },
+      screenToDipRect: (_w, r) => {
+        const m = [...monitors].sort((a, b) => overlap(r, b.phys) - overlap(r, a.phys))[0]
+        return { x: m.dip.x + (r.x - m.phys.x) / m.scale, y: m.dip.y + (r.y - m.phys.y) / m.scale, width: r.width / m.scale, height: r.height / m.scale }
+      },
+      getDisplayMatching: (r) => ({ scaleFactor: [...monitors].sort((a, b) => overlap(r, b.dip) - overlap(r, a.dip))[0].scale })
+    }
+    return screen
+  })()
+
+  it('maps a window straddling a 100% and a 150% monitor exactly on both, dropping no click (mapping-1)', () => {
+    // Physical x 1500..2700, y 100..900: 420 px on A, 780 px on B (B holds most of it).
+    const { mapping, scale } = windowCursorMapping([rect(T0 - 10, 1500, 100, 1200, 800)], { width: 1200, height: 800 }, mixed, 'win32')
+    expect(scale).toBe(1.5)
+    // Positions as the app captures them: DIP, converted on the monitor holding each point.
+    const xs = [1510, 1550, 1700, 1900, 1919, 1921, 2100, 2690]
+    const dip = (x: number, y: number) => mixed.screenToDipPoint({ x, y })
+    const track = buildCursorTrack(
+      {
+        samples: xs.map((x, i) => ({ at: T0 + 10 * i, ...dip(x, 300) })),
+        clicks: xs.map((x, i) => ({ at: T0 + 10 * i, ...dip(x, 500), button: 'left' as const })),
+        keys: [],
+        bounds: null,
+        scale: 1
+      },
+      { startedAt: T0, pauses: [], duration: 1, region: null, window: mapping }
+    )
+    expect(track.clicks).toHaveLength(xs.length)
+    track.clicks.forEach((c, i) => {
+      expect(c.x).toBeCloseTo((xs[i] - 1500) / 1200, 2)
+      expect(c.y).toBeCloseTo(0.5, 2)
+    })
+    for (const [i, x] of xs.entries()) {
+      const s = track.samples.find((p) => Math.abs(p.t - (10 * i) / 1000) < 1e-9)!
+      expect(s.x).toBeCloseTo((x - 1500) / 1200, 2)
+      expect(s.y).toBeCloseTo(0.25, 2)
+    }
+  })
+
+  it('looks up the cursor size on the monitor holding most of the window', () => {
+    expect(windowCursorMapping([rect(T0, 100, 100, 1200, 800)], { width: 1200, height: 800 }, mixed, 'win32').scale).toBe(1)
+    expect(windowCursorMapping([rect(T0, 1800, 100, 1200, 800)], { width: 1200, height: 800 }, mixed, 'win32').scale).toBe(1.5)
   })
 
   it('knows no scale without a visible window', () => {
@@ -161,8 +231,48 @@ describe('startWindowWatch / stopWindowWatch', () => {
     expect(await stopWindowWatch(failing.watch)).toEqual([])
     expect(failing.calls).toEqual(['stop', 'kill'])
     const hanging = fakeWatch({ stop: () => new Promise(() => undefined) })
-    expect(await stopWindowWatch(hanging.watch, 30)).toEqual([])
+    expect(await stopWindowWatch(hanging.watch, 30, 30)).toEqual([])
     expect(hanging.calls).toEqual(['stop', 'kill'])
+  })
+
+  it('keeps what a watcher collected when it is killed for not stopping in time (mapping-4)', async () => {
+    // Like the real client: stop() resolves with the rectangles once the killed process is gone.
+    let killed: () => void = () => undefined
+    const gone = new Promise<void>((resolve) => (killed = resolve))
+    const watch: WindowWatchSession = {
+      ready: Promise.resolve(rect(T0)),
+      stop: () => gone.then(() => [rect(T0), rect(T0 + 700, 400)]),
+      kill: () => setTimeout(killed, 5)
+    }
+    expect(await stopWindowWatch(watch, 30)).toEqual([rect(T0), rect(T0 + 700, 400)])
+  })
+
+  it('leaves the real watcher client time to kill a hung helper and hand over its timeline (mapping-4)', async () => {
+    expect(defaultWatchStopTimeoutMs()).toBeGreaterThan(nativeCaptureTimeouts.watchStop)
+    const saved = { ...nativeCaptureTimeouts }
+    const keys = ['SSW_CAPTURE_HELPER', 'FAKE_HELPER_WINDOW_RECTS', 'FAKE_HELPER_WATCH'] as const
+    const env = Object.fromEntries(keys.map((k) => [k, process.env[k]]))
+    try {
+      process.env.SSW_CAPTURE_HELPER = path.resolve(__dirname, 'fixtures/fake-capture-helper.cjs')
+      process.env.FAKE_HELPER_WINDOW_RECTS = JSON.stringify([
+        { after: 0, x: 3, y: 4, width: 10, height: 10 },
+        { after: 100, x: 30, y: 4, width: 10, height: 10 }
+      ])
+      process.env.FAKE_HELPER_WATCH = 'hang-on-stop'
+      nativeCaptureTimeouts.watchStop = 300
+      const w = watchWindow(WINDOW)
+      await w.ready
+      await new Promise((r) => setTimeout(r, 400))
+      // Both guards used to be equal, so the outer one always won and returned [].
+      const rects = await stopWindowWatch(w)
+      expect(rects.map((r) => r.x)).toEqual([3, 30])
+    } finally {
+      Object.assign(nativeCaptureTimeouts, saved)
+      for (const k of keys) {
+        if (env[k] === undefined) delete process.env[k]
+        else process.env[k] = env[k]
+      }
+    }
   })
 })
 
@@ -204,6 +314,46 @@ describe('windowCaptureSupport (the hint on Home)', () => {
 
     expect(await windowCaptureSupport(api({ native: false }), 'window:1:0')).toEqual({ effects: false, smoothCursor: false })
     expect(await windowCaptureSupport(api({ native: false, watch: () => fakeWatch().watch }), null)).toEqual({ effects: false, smoothCursor: false })
+  })
+
+  it('asks again after a negative answer: a slow first start of the helper is not remembered (ux-4)', async () => {
+    let attempt = 0
+    const flaky = api({
+      native: false,
+      watch: () => (++attempt === 1 ? fakeWatch({ ready: Promise.reject(new Error('did not answer in time')) }) : fakeWatch()).watch
+    })
+    expect(await windowCaptureSupport(flaky, 'window:1:0')).toEqual({ effects: false, smoothCursor: false })
+    expect(await windowCaptureSupport(flaky, 'window:1:0')).toEqual({ effects: true, smoothCursor: false })
+    expect(await windowCaptureSupport(flaky, 'window:1:0')).toEqual({ effects: true, smoothCursor: false })
+    expect(flaky.watched).toHaveLength(2)
+  })
+
+  it('gives the probe watcher the same budget as a recording (ux-4)', async () => {
+    vi.useFakeTimers()
+    try {
+      let answer: (r: WindowRectEvent) => void = () => undefined
+      const slow = fakeWatch({ ready: new Promise((resolve) => (answer = resolve)) })
+      const check = windowCaptureSupport(api({ native: false, watch: () => slow.watch }), 'window:1:0')
+      // Slower than the old 3 s probe budget, within the recording's 5 s.
+      await vi.advanceTimersByTimeAsync(4000)
+      answer(rect(T0))
+      expect(await check).toEqual({ effects: true, smoothCursor: false })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('says effects once a recording was followed by a watcher', async () => {
+    let attempt = 0
+    const a = api({
+      native: false,
+      watch: () => (++attempt === 1 ? fakeWatch({ ready: Promise.reject(new Error('slow')) }) : fakeWatch()).watch
+    })
+    expect(await windowCaptureSupport(a, null)).toEqual({ effects: false, smoothCursor: false })
+    expect((await planWindowCapture(a, WINDOW)).method).toBe('chromium')
+    expect(await windowCaptureSupport(a, null)).toEqual({ effects: false, smoothCursor: false })
+    expect(await planWindowCapture(a, WINDOW)).toMatchObject({ method: 'chromium', first: rect(T0) })
+    expect(await windowCaptureSupport(a, null)).toEqual({ effects: true, smoothCursor: false })
   })
 })
 
