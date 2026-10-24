@@ -92,11 +92,11 @@ describe('audioFilterGraph', () => {
   })
   it('cuts, re-times and joins clips in order, then applies the gain', () => {
     const g = audioFilterGraph([clip(0, 2), clip(3, 5, 2), clip(5, 6, 0.25)], 1.5, 7)
-    // Re-timed: read at the export's rate, every clip cut to the samples its video lasts.
+    // Re-timed: read at the export's rate, delayed by atempo's lead, every clip cut to the samples its video lasts.
     expect(g).toContain('[1:a]aresample=48000:async=1:first_pts=0,asplit=3[s0][s1][s2]')
     expect(g).toContain('[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,apad=whole_len=96000,atrim=end_sample=96000[c0]')
-    expect(g).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,atempo=2,apad=whole_len=48000,atrim=end_sample=48000[c1]')
-    expect(g).toContain('[s2]atrim=start=5:end=6,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,atempo=0.5,atempo=0.5,apad=whole_len=192000,atrim=end_sample=192000[c2]')
+    expect(g).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,atempo=2,adelay=delays=10.417:all=1,apad=whole_len=48000,atrim=end_sample=48000[c1]')
+    expect(g).toContain('[s2]atrim=start=5:end=6,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,atempo=0.5,atempo=0.5,adelay=delays=125.000:all=1,apad=whole_len=192000,atrim=end_sample=192000[c2]')
     expect(g).toContain('[c0][c1][c2]concat=n=3:v=0:a=1,volume=1.5,apad=whole_dur=7,atrim=end=7[aout]')
   })
   it('keeps the earlier graph for clips at normal speed', () => {
