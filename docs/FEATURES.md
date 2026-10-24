@@ -59,7 +59,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ **Camera layouts over time**: screen with bubble, camera only, screen only, side by side, or a large camera, on their own timeline track with smooth 0.4 s transitions (only for recordings with a camera).
 - ✓ **Title cards**: centered, big or lower-third titles with an optional subtitle, over a blurred frame, a solid colour or the project's background, with fades; on their own timeline track, edited in the Text panel (`Shift+T` adds one).
 - ✓ **Chapters**: flags on the timeline (`M` adds one, `Shift+PageDown` / `Shift+PageUp` jump between them), listed in the Text panel, written into MP4 / MOV / WebM / M4A exports, and **Copy chapters** gives YouTube timestamps with hints when YouTube would not accept them.
-- ✓ **Remove silences** (Clip tab, Smart speed): finds stretches without sound, keeps a little padding, and cuts or speeds them up in one undoable step.
+- ✓ **Remove silences** (Clip tab, Smart speed): finds stretches without sound, keeps a little padding, and cuts or speeds them up in one undoable step. Both smart speed modes leave the time of title cards alone.
 - ✓ Audio volume (0–200%) and mute, applied to preview and export.
 - ✓ Zoomable, scrollable timeline (`+`/`-`, `Ctrl`+wheel, Fit) that stays usable for long recordings; playhead follows playback.
 - ✓ Shortcuts work regardless of which control was last used, and are paused behind the export dialog. Sharp preview on high-DPI screens; only redraws when something changed.
