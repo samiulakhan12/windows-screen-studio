@@ -1,6 +1,7 @@
 import { GRADIENTS } from '../engine/backgrounds'
 import { clamp } from '../engine/math'
-import type { AspectRatio, Background, Corner, CursorSettings, KeystrokeSettings, Project, StyleSettings, WebcamSettings } from '../types'
+import { DEFAULT_CURSOR_EXTRAS } from '../engine/project'
+import type { AspectRatio, Background, ClickStyle, Corner, CursorSettings, CursorStyle, KeystrokeSettings, Project, StyleSettings, WebcamSettings } from '../types'
 
 /**
  * The user's saved look ("Save as default for new recordings"), applied to every new
@@ -14,6 +15,9 @@ export const LOOK_LIMITS = {
   shadow: { min: 0, max: 1 },
   cursorSize: { min: 0.6, max: 3 },
   smoothing: { min: 0, max: 1 },
+  highlightSize: { min: 0.5, max: 2.5 },
+  highlightOpacity: { min: 0.1, max: 1 },
+  clickSoundVolume: { min: 0, max: 1 },
   webcamSize: { min: 0.12, max: 0.45 },
   motionBlur: { min: 0, max: 1 },
   keystrokeSize: { min: 0.02, max: 0.07 }
@@ -21,6 +25,9 @@ export const LOOK_LIMITS = {
 
 export const ASPECT_RATIOS: AspectRatio[] = ['auto', '16:9', '9:16', '1:1', '4:3']
 export const CORNERS: Corner[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+/** Cursor styles a saved look may carry: 'custom' needs an image file of one project, so it is never saved. */
+const SAVED_CURSOR_STYLES: CursorStyle[] = ['auto', 'mac', 'windows', 'white', 'black']
+const CLICK_STYLES: ClickStyle[] = ['ripple', 'ring', 'pulse']
 
 /**
  * A saved look. Every field is optional: one that is missing or invalid leaves the new
@@ -28,6 +35,7 @@ export const CORNERS: Corner[] = ['top-left', 'top-right', 'bottom-left', 'botto
  *
  * Never applied from the saved look, because they belong to one recording:
  * - cursor.show: the recording decides it (never on when the OS cursor is in the video);
+ * - a custom cursor image (cursor.style 'custom', cursor.customImage): the file lives in one project's folder;
  * - webcam.show: follows whether the recording has a camera;
  * - image backgrounds: the image file lives in one project's folder.
  */
@@ -62,6 +70,23 @@ function background(v: unknown): Background | undefined {
   return undefined
 }
 
+const color = (v: unknown): string | undefined => (typeof v === 'string' && HEX_COLOR.test(v) ? v.toLowerCase() : undefined)
+
+/** A highlight with every field valid; missing or invalid fields take the built-in values. */
+function highlight(v: unknown): CursorSettings['highlight'] {
+  if (!isObject(v)) return undefined
+  const d = DEFAULT_CURSOR_EXTRAS.highlight
+  const L = LOOK_LIMITS
+  const out = {
+    enabled: bool(v.enabled),
+    color: color(v.color),
+    size: num(v.size, L.highlightSize),
+    opacity: num(v.opacity, L.highlightOpacity)
+  }
+  if (Object.values(out).every((x) => x === undefined)) return undefined
+  return { enabled: out.enabled ?? d.enabled, color: out.color ?? d.color, size: out.size ?? d.size, opacity: out.opacity ?? d.opacity }
+}
+
 /** Drops undefined values, so spreading the result never overwrites a project value with undefined. */
 function defined<T extends object>(o: Partial<T>): Partial<T> {
   const out: Partial<T> = {}
@@ -74,7 +99,7 @@ const empty = (o: object): boolean => Object.keys(o).length === 0
 /**
  * Validates a saved look field by field (a hand-edited or partly corrupt file still
  * applies what is valid). Returns null when nothing usable is left. The result never
- * contains cursor.show, webcam.show or an image background.
+ * contains cursor.show, webcam.show, an image background or a custom cursor image.
  */
 export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
   if (!isObject(raw)) return null
@@ -101,7 +126,16 @@ export function sanitizeStyleDefaults(raw: unknown): StyleDefaults | null {
       size: num(c.size, L.cursorSize),
       smoothing: num(c.smoothing, L.smoothing),
       clickEffect: bool(c.clickEffect),
-      hideWhenIdle: bool(c.hideWhenIdle)
+      hideWhenIdle: bool(c.hideWhenIdle),
+      style: oneOf(c.style, SAVED_CURSOR_STYLES),
+      highlight: highlight(c.highlight),
+      clickStyle: oneOf(c.clickStyle, CLICK_STYLES),
+      clickColor: color(c.clickColor),
+      clickSound: bool(c.clickSound),
+      clickSoundVolume: num(c.clickSoundVolume, L.clickSoundVolume),
+      loopHome: bool(c.loopHome),
+      tilt: bool(c.tilt),
+      trail: bool(c.trail)
     }),
     webcam: defined<WebcamSettings>({
       corner: oneOf(w.corner, CORNERS),

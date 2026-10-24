@@ -21,6 +21,12 @@ export interface ProjectsApi {
   deleteProject(id: string): Promise<void>
   revealProject(id: string): Promise<void>
   pickBackgroundImage(projectId: string): Promise<{ url: string; path: string } | null>
+  /**
+   * Lets the user pick an image for a custom cursor and copies it into the project folder
+   * (cursor.<ext>); null when cancelled. Rejects with a readable message for an unsupported
+   * or oversized file.
+   */
+  pickCursorImage(projectId: string): Promise<{ url: string; path: string } | null>
   /** URL of a background image stored in the project folder, or null if it is missing. */
   backgroundUrl(projectId: string, path: string): Promise<string | null>
   /** The look new recordings start with, or null when the built-in look is used. */
