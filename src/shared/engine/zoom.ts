@@ -485,6 +485,15 @@ export function cameraFor(scale: number, fx: number, fy: number): Camera {
   return clampCamera({ scale, cx: fx + (0.5 - fx) / scale, cy: fy + (0.5 - fy) / scale })
 }
 
+type Point = { x: number; y: number }
+
+/** Where a cursor-following zoom aims at t, the smoothed cursor being at `p`: toward its anchor by anchorWeight. */
+function anchoredAim(seg: ZoomSegment, t: number, p: Point): Point {
+  const a = seg.anchor
+  const w = a ? anchorWeight(seg, t) : 0
+  return a && w > 0 ? { x: lerp(p.x, a.x, w), y: lerp(p.y, a.y, w) } : p
+}
+
 /** Where a zoom aims at time t. */
 function focusOf(it: PlanItem, t: number, focusTrack: SmoothedTrack | null): { x: number; y: number } {
   const f = it.seg.focus
@@ -492,10 +501,7 @@ function focusOf(it: PlanItem, t: number, focusTrack: SmoothedTrack | null): { x
   if (f.mode === 'region') return { x: f.x + f.w / 2, y: f.y + f.h / 2 }
   // A cursor-following pull-back stays centred: the whole recording is visible anyway.
   if (it.scale < 1 || !focusTrack) return { x: 0.5, y: 0.5 }
-  const p = focusTrack.at(t)
-  const a = it.seg.anchor
-  const w = a ? anchorWeight(it.seg, t) : 0
-  return a && w > 0 ? { x: lerp(p.x, a.x, w), y: lerp(p.y, a.y, w) } : p
+  return anchoredAim(it.seg, t, focusTrack.at(t))
 }
 
 const targetOf = (it: PlanItem, t: number, focusTrack: SmoothedTrack | null): Camera => {
@@ -569,6 +575,36 @@ export function cameraAt(zooms: ZoomSegment[], t: number, focusTrack: SmoothedTr
   }
   if (it.tout > 0 && t > end - it.tout) return move(target, REST, it.easing, (t - (end - it.tout)) / it.tout)
   return target
+}
+
+/** Where zoom `it` aims at t in place of the cursor `p`: toward its anchor when it follows the cursor (as focusOf), else `p`. */
+const aimOf = (it: PlanItem, t: number, p: Point): Point => (it.seg.focus.mode === 'cursor' && it.scale >= 1 ? anchoredAim(it.seg, t, p) : p)
+
+const lerpPoint = (a: Point, b: Point, w: number): Point => (w <= 0 ? a : w >= 1 ? b : { x: lerp(a.x, b.x, w), y: lerp(a.y, b.y, w) })
+
+/**
+ * The point the camera follows at `t` in place of the smoothed cursor (`focusTrack`): the cursor
+ * itself, except while a cursor-following zoom holds its aim on its anchor (the click it zooms
+ * to, the field being typed into), exactly as cameraAt aims. It goes over to the anchor while
+ * the camera moves in (from the cursor, or from the previous zoom's aim) and back while it moves
+ * out, with the camera's own progress, so it never jumps. Fixed, region and pull-back zooms leave
+ * it the cursor. The 3D tilt's 'cursor' lean follows it, so the card leans toward what the camera
+ * looks at, never toward an idle mouse the camera ignores.
+ */
+export function aimAt(zooms: ZoomSegment[], t: number, focusTrack: { at(t: number): Point }, style: ZoomStyle = DEFAULT_ZOOM_STYLE): Point {
+  const p = focusTrack.at(t)
+  if (zooms.length === 0) return p
+  const plan = planFor(zooms, style)
+  const i = itemAt(plan, t)
+  if (i < 0) return p
+  const it = plan.items[i]
+  const { start, end } = it.seg
+  // Past its end the camera has gone back to the full frame, unless it pans on into the next zoom.
+  if (t >= end) return it.toNext ? aimOf(it, t, p) : p
+  const aim = aimOf(it, t, p)
+  if (it.tin > 0 && t < start + it.tin) return lerpPoint(it.fromPrev ? aimOf(plan.items[i - 1], t, p) : p, aim, ease(it.easing, (t - start) / it.tin, false))
+  if (it.tout > 0 && t > end - it.tout) return lerpPoint(aim, p, ease(it.easing, (t - (end - it.tout)) / it.tout, false))
+  return aim
 }
 
 /** Keeps segments sorted, inside [0, duration] and non-overlapping. */

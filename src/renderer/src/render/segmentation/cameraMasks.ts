@@ -225,6 +225,14 @@ export function livePicture(video: HTMLVideoElement): MaskedPicture | null {
   return cam.pair
 }
 
+/**
+ * The preview camera's last frame with its mask, without starting anything: what the preview
+ * draws while the camera seeks (its element has no picture then). Null when there is none.
+ */
+export function heldLivePicture(video: HTMLVideoElement): MaskedPicture | null {
+  return usable() ? (live.get(video)?.pair ?? null) : null
+}
+
 /** Stops segmenting the preview camera and drops its held frame (background blur off, or the camera not drawn). */
 export function releaseLivePicture(video: HTMLVideoElement): void {
   live.get(video)?.close()

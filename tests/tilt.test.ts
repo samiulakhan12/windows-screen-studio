@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { Rect } from '../src/shared/engine/layout'
+import { sceneCameraBox, sceneContentRect, type Rect } from '../src/shared/engine/layout'
+import { createProject } from '../src/shared/engine/project'
 import {
   CURSOR_LEAN,
   cursorLean,
   DEFAULT_TILT,
+  frameArea,
   leanFit,
   leansToCursor,
   poseIsFlat,
@@ -16,6 +18,7 @@ import {
   tiltOf,
   tiltPoseAt,
   tiltSettingsOf,
+  tiltArea,
   tiltView,
   tiltViewAt,
   TILT_PRESETS,
@@ -24,8 +27,8 @@ import {
   type TiltAngles,
   type TiltPoint
 } from '../src/shared/engine/tilt'
-import type { Camera } from '../src/shared/engine/zoom'
-import type { TiltSettings } from '../src/shared/types'
+import { aimAt, autoZoomsForTrack, cameraAt, DEFAULT_ZOOM_SETTINGS, focusPathFor, ZOOM_TRANSITION, type Camera } from '../src/shared/engine/zoom'
+import type { CameraLayout, CursorSample, CursorTrack, Project, TiltSettings, ZoomSegment } from '../src/shared/types'
 
 const W = 1920
 const H = 1080
@@ -80,7 +83,7 @@ describe('tiltOf / tiltSettingsOf', () => {
 describe('tiltView: projection of the card', () => {
   it('is the identity without a tilt, whatever the perspective', () => {
     for (const p of [0, 0.5, 1]) {
-      const v = tiltView(pose(0, 0, p), BODY, W, H)
+      const v = tiltView(pose(0, 0, p), BODY, frameArea(W, H))
       expect(v.fit).toBe(1)
       const [tl, tr, br, bl] = projectRect(v, BODY)
       expect(tl).toEqual({ x: BODY.x, y: BODY.y, q: 1 })
@@ -93,7 +96,7 @@ describe('tiltView: projection of the card', () => {
   })
 
   it('keeps the centre where it is', () => {
-    const v = tiltView(pose(18, -25, 1), BODY, W, H)
+    const v = tiltView(pose(18, -25, 1), BODY, frameArea(W, H))
     const c = projectPoint(v, BODY.x + BODY.w / 2, BODY.y + BODY.h / 2)
     expect(c.x).toBeCloseTo(BODY.x + BODY.w / 2, 9)
     expect(c.y).toBeCloseTo(BODY.y + BODY.h / 2, 9)
@@ -101,26 +104,26 @@ describe('tiltView: projection of the card', () => {
   })
 
   it('without perspective, turning only narrows the card by the cosine', () => {
-    const v = tiltView(pose(0, 20, 0), BODY, W, H)
+    const v = tiltView(pose(0, 20, 0), BODY, frameArea(W, H))
     const [tl, tr, br, bl] = projectRect(v, BODY)
     expect(tr.x - tl.x).toBeCloseTo(BODY.w * Math.cos((20 * Math.PI) / 180), 9)
     expect(br.y - tr.y).toBeCloseTo(BODY.h, 9)
     expect(bl.y - tl.y).toBeCloseTo(BODY.h, 9)
     // Tilting back only shortens it.
-    const [a, b, , d] = projectRect(tiltView(pose(25, 0, 0), BODY, W, H), BODY)
+    const [a, b, , d] = projectRect(tiltView(pose(25, 0, 0), BODY, frameArea(W, H)), BODY)
     expect(d.y - a.y).toBeCloseTo(BODY.h * Math.cos((25 * Math.PI) / 180), 9)
     expect(b.x - a.x).toBeCloseTo(BODY.w, 9)
   })
 
   it('makes the far edge shorter: the right edge when turned right, the top when tilted back', () => {
-    const [tl, tr, br, bl] = projectRect(tiltView(pose(0, 20, 0.6), BODY, W, H), BODY)
+    const [tl, tr, br, bl] = projectRect(tiltView(pose(0, 20, 0.6), BODY, frameArea(W, H)), BODY)
     expect(len(tr, br)).toBeLessThan(len(tl, bl) * 0.9)
     expect(tr.q).toBeGreaterThan(1)
     expect(tl.q).toBeLessThan(1)
-    const [a, b, c, d] = projectRect(tiltView(pose(20, 0, 0.6), BODY, W, H), BODY)
+    const [a, b, c, d] = projectRect(tiltView(pose(20, 0, 0.6), BODY, frameArea(W, H)), BODY)
     expect(len(a, b)).toBeLessThan(len(d, c) * 0.9)
     // More perspective, more difference.
-    const [, s1, s2] = projectRect(tiltView(pose(0, 20, 0.2), BODY, W, H), BODY)
+    const [, s1, s2] = projectRect(tiltView(pose(0, 20, 0.2), BODY, frameArea(W, H)), BODY)
     expect(len(s1, s2)).toBeGreaterThan(len(tr, br))
   })
 
@@ -130,8 +133,8 @@ describe('tiltView: projection of the card', () => {
       [-15, 8, 1],
       [25, 30, 0.2]
     ]) {
-      const a = projectRect(tiltView(pose(rx, ry, p), BODY, W, H), BODY)
-      const b = projectRect(tiltView(pose(rx, -ry, p), BODY, W, H), BODY)
+      const a = projectRect(tiltView(pose(rx, ry, p), BODY, frameArea(W, H)), BODY)
+      const b = projectRect(tiltView(pose(rx, -ry, p), BODY, frameArea(W, H)), BODY)
       const cx = BODY.x + BODY.w / 2
       // Corner i of one is the horizontally mirrored corner of the other (TL <-> TR, BR <-> BL).
       const mirror = [1, 0, 3, 2]
@@ -141,7 +144,7 @@ describe('tiltView: projection of the card', () => {
         expect(p1.y).toBeCloseTo(p2.y, 6)
       })
       // And tilting forward instead of back mirrors it vertically.
-      const c = projectRect(tiltView(pose(-rx, ry, p), BODY, W, H), BODY)
+      const c = projectRect(tiltView(pose(-rx, ry, p), BODY, frameArea(W, H)), BODY)
       const cy = BODY.y + BODY.h / 2
       const flip = [3, 2, 1, 0]
       a.forEach((p1, i) => {
@@ -156,7 +159,7 @@ describe('tiltView: projection of the card', () => {
     const rx = 17
     const ry = -23
     const p = 0.8
-    const v = tiltView(pose(rx, ry, p), BODY, W, H)
+    const v = tiltView(pose(rx, ry, p), BODY, frameArea(W, H))
     const a = (rx * Math.PI) / 180
     const b = (ry * Math.PI) / 180
     const d = Math.max(BODY.w, BODY.h) / p
@@ -181,7 +184,7 @@ describe('tiltView: projection of the card', () => {
   it('shrinks the card just enough to keep every tilted corner inside the frame', () => {
     // A card filling the whole frame (no padding): any tilt brings a corner out.
     const full: Rect = { x: 0, y: 0, w: W, h: H }
-    const v = tiltView(pose(10, 25, 1), full, W, H)
+    const v = tiltView(pose(10, 25, 1), full, frameArea(W, H))
     expect(v.fit).toBeLessThan(1)
     const corners = projectRect(v, full)
     for (const c of corners) expect(inside(c, W, H)).toBe(true)
@@ -189,13 +192,13 @@ describe('tiltView: projection of the card', () => {
     const touches = corners.some((c) => Math.abs(c.x) < 1e-6 || Math.abs(c.x - W) < 1e-6 || Math.abs(c.y) < 1e-6 || Math.abs(c.y - H) < 1e-6)
     expect(touches).toBe(true)
     // A padded card that stays inside anyway keeps its size.
-    expect(tiltView(pose(6, -12, 0.3), BODY, W, H).fit).toBe(1)
+    expect(tiltView(pose(6, -12, 0.3), BODY, frameArea(W, H)).fit).toBe(1)
   })
 
   it("keeps the style's padding around a tilted card, but never shrinks a flat one", () => {
     const pad = 0.07 * H
-    const v = tiltView(pose(16, -14, 0.7), BODY, W, H, pad)
-    expect(v.fit).toBeLessThan(tiltView(pose(16, -14, 0.7), BODY, W, H).fit)
+    const v = tiltView(pose(16, -14, 0.7), BODY, frameArea(W, H, pad))
+    expect(v.fit).toBeLessThan(tiltView(pose(16, -14, 0.7), BODY, frameArea(W, H)).fit)
     for (const c of projectRect(v, BODY)) {
       expect(c.x).toBeGreaterThanOrEqual(pad - 1e-6)
       expect(c.x).toBeLessThanOrEqual(W - pad + 1e-6)
@@ -204,9 +207,9 @@ describe('tiltView: projection of the card', () => {
     }
     // A flat card already inside the margin (a device frame's chrome, a large padding) stays as it is.
     const big = { x: 10, y: 10, w: W - 20, h: H - 20 }
-    expect(tiltView(pose(0, 0, 1), big, W, H, pad).fit).toBe(1)
+    expect(tiltView(pose(0, 0, 1), big, frameArea(W, H, pad)).fit).toBe(1)
     // A bigger margin than half the frame is not a margin.
-    expect(tiltView(pose(10, 10, 0.5), BODY, W, H, 1e9).fit).toBeGreaterThan(0)
+    expect(tiltView(pose(10, 10, 0.5), BODY, frameArea(W, H, 1e9)).fit).toBeGreaterThan(0)
   })
 
   it('keeps corners inside the frame for any pose, size and position (and the card in front of the camera)', () => {
@@ -221,7 +224,7 @@ describe('tiltView: projection of the card', () => {
       const bw = w * (0.2 + rand() * 0.8)
       const bh = h * (0.2 + rand() * 0.8)
       const body = { x: rand() * (w - bw), y: rand() * (h - bh), w: bw, h: bh }
-      const v = tiltView(pose(-30 + rand() * 60, -30 + rand() * 60, rand()), body, w, h, rand() * 0.25 * Math.min(w, h))
+      const v = tiltView(pose(-30 + rand() * 60, -30 + rand() * 60, rand()), body, frameArea(w, h, rand() * 0.25 * Math.min(w, h)))
       for (const c of projectRect(v, body)) {
         expect(inside(c, w, h, 1e-6 * Math.max(w, h))).toBe(true)
         expect(c.q).toBeGreaterThan(0.3)
@@ -230,10 +233,10 @@ describe('tiltView: projection of the card', () => {
   })
 
   it('looks the same at any size: a smaller card (pulled back, or a smaller export) is the same picture scaled', () => {
-    const v1 = tiltView(pose(14, -20, 0.7), BODY, W, H)
+    const v1 = tiltView(pose(14, -20, 0.7), BODY, frameArea(W, H))
     const s = 0.5
     const small = { x: BODY.x * s, y: BODY.y * s, w: BODY.w * s, h: BODY.h * s }
-    const v2 = tiltView(pose(14, -20, 0.7), small, W * s, H * s)
+    const v2 = tiltView(pose(14, -20, 0.7), small, frameArea(W * s, H * s))
     const a = projectRect(v1, BODY)
     const b = projectRect(v2, small)
     a.forEach((p, i) => {
@@ -244,7 +247,7 @@ describe('tiltView: projection of the card', () => {
   })
 
   it('treats a missing perspective as none', () => {
-    const v = tiltView({ rotateX: 0, rotateY: 20, perspective: NaN }, BODY, W, H)
+    const v = tiltView({ rotateX: 0, rotateY: 20, perspective: NaN }, BODY, frameArea(W, H))
     expect(v.invD).toBe(0)
   })
 })
@@ -321,15 +324,15 @@ describe('tiltViewAt: a card leaning toward the cursor keeps one size', () => {
   const midnight = settings({ rotateX: 6, rotateY: 16, perspective: 0.55, animate: 'cursor' })
   const at = (x: number, y: number, tilt = midnight, cam = REST) => {
     const focus = { at: () => ({ x, y }) }
-    return tiltViewAt(tilt, tiltPoseAt(tilt, 0, cam, focus), leansToCursor(tilt, focus), body, W, H, pad)
+    return tiltViewAt(tilt, tiltPoseAt(tilt, 0, cam, focus), leansToCursor(tilt, focus), body, frameArea(W, H, pad))
   }
   const spots = [-0.5, 0, 0.1, 0.25, 0.5, 0.75, 0.9, 1, 1.5]
 
   it('has the same fit wherever the cursor is, only the angles change', () => {
     // Fitted pose by pose, the card would grow and shrink with the cursor (by about 6% here).
-    const own = [pose(1, 11, 0.55), pose(6, 16, 0.55), pose(11, 21, 0.55)].map((a) => tiltView(a, body, W, H, pad).fit)
+    const own = [pose(1, 11, 0.55), pose(6, 16, 0.55), pose(11, 21, 0.55)].map((a) => tiltView(a, body, frameArea(W, H, pad)).fit)
     expect(Math.max(...own) - Math.min(...own)).toBeGreaterThan(0.04)
-    const fit = leanFit(midnight, body, W, H, pad)
+    const fit = leanFit(midnight, body, frameArea(W, H, pad))
     expect(fit).toBeLessThanOrEqual(Math.min(...own))
     const angles = new Set<string>()
     for (const x of spots) {
@@ -354,11 +357,11 @@ describe('tiltViewAt: a card leaning toward the cursor keeps one size', () => {
       const m = rand() * 0.15 * H
       const b: Rect = { x: m, y: m, w: W - 2 * m, h: H - 2 * m }
       const tilt = settings({ rotateX: -30 + rand() * 60, rotateY: -30 + rand() * 60, perspective: rand(), animate: 'cursor' })
-      const fit = leanFit(tilt, b, W, H, m)
+      const fit = leanFit(tilt, b, frameArea(W, H, m))
       for (let a = 0; a <= 20; a++) {
         for (let c = 0; c <= 20; c++) {
           const focus = { at: () => ({ x: a / 20, y: c / 20 }) }
-          const v = tiltViewAt(tilt, tiltPoseAt(tilt, 0, REST, focus), true, b, W, H, m)
+          const v = tiltViewAt(tilt, tiltPoseAt(tilt, 0, REST, focus), true, b, frameArea(W, H, m))
           expect(v.fit).toBe(fit)
           for (const p of projectRect(v, b)) {
             // Lean poses are tried a grid apart: a pose between them may come a hair closer.
@@ -375,22 +378,22 @@ describe('tiltViewAt: a card leaning toward the cursor keeps one size', () => {
   it('is tiltView when the card does not lean', () => {
     const p = pose(12, -18, 0.6)
     for (const animate of ['none', 'zoom', 'cursor'] as const) {
-      expect(tiltViewAt(settings({ ...p, animate }), p, false, body, W, H, pad)).toEqual(tiltView(p, body, W, H, pad))
+      expect(tiltViewAt(settings({ ...p, animate }), p, false, body, frameArea(W, H, pad))).toEqual(tiltView(p, body, frameArea(W, H, pad)))
     }
     // A 'zoom' card grows back to full size as it straightens.
     const flat = pose(0, 0, 0.6)
-    expect(tiltViewAt(settings({ ...p, animate: 'zoom' }), flat, false, body, W, H, pad).fit).toBe(1)
+    expect(tiltViewAt(settings({ ...p, animate: 'zoom' }), flat, false, body, frameArea(W, H, pad)).fit).toBe(1)
   })
 
   it('follows the card: a pulled-back card, another frame size or other angles get their own fit', () => {
     const small: Rect = { x: body.x + 300, y: body.y + 170, w: body.w - 600, h: body.h - 340 }
     const fit = at(0.5, 0.5).fit
     const focus = { at: () => ({ x: 0.5, y: 0.5 }) }
-    const v = tiltViewAt(midnight, tiltPoseAt(midnight, 0, REST, focus), true, small, W, H, pad)
-    expect(v.fit).toBe(leanFit(midnight, small, W, H, pad))
+    const v = tiltViewAt(midnight, tiltPoseAt(midnight, 0, REST, focus), true, small, frameArea(W, H, pad))
+    expect(v.fit).toBe(leanFit(midnight, small, frameArea(W, H, pad)))
     expect(v.fit).toBeGreaterThan(fit)
     const steeper = settings({ ...midnight, rotateY: 28 })
-    expect(at(0.5, 0.5, steeper).fit).toBe(leanFit(steeper, body, W, H, pad))
+    expect(at(0.5, 0.5, steeper).fit).toBe(leanFit(steeper, body, frameArea(W, H, pad)))
     expect(at(0.5, 0.5, steeper).fit).toBeLessThan(fit)
     // And back: the first one again.
     expect(at(0.9, 0.1).fit).toBe(fit)
@@ -402,7 +405,179 @@ describe('tiltViewAt: a card leaning toward the cursor keeps one size', () => {
     expect(leansToCursor(midnight, null)).toBe(false)
     expect(leansToCursor(settings({ animate: 'zoom' }), focus)).toBe(false)
     // No lean room needed for a small tilt on a well padded card.
-    expect(leanFit(pose(2, 2, 0.2), BODY, W, H)).toBe(1)
+    expect(leanFit(pose(2, 2, 0.2), BODY, frameArea(W, H))).toBe(1)
+  })
+})
+
+describe('tiltPoseAt: the cursor lean during an auto zoom', () => {
+  // Click into a search box at the top left at 1 s, park the mouse at the bottom right, type from 1.5 to 7 s.
+  const samples: CursorSample[] = []
+  for (let i = 0; i <= 600; i++) {
+    const t = i / 60
+    const k = (t - 1) / 0.4
+    samples.push(
+      t < 1 ? { t, x: 0.5 - 0.35 * t, y: 0.5 - 0.38 * t } : t < 1.4 ? { t, x: 0.15 + 0.77 * k, y: 0.12 + 0.78 * k } : { t, x: 0.92, y: 0.9 }
+    )
+  }
+  const track: CursorTrack = { samples, clicks: [{ t: 1, x: 0.15, y: 0.12, button: 'left' }], typing: [{ t: 1.5, end: 7 }], valid: true }
+  const zooms = autoZoomsForTrack(track, 10, DEFAULT_ZOOM_SETTINGS.auto)
+  const focus = focusPathFor(samples, 10)
+  // The 'Midnight' look: turned right, leaning toward where you work.
+  const midnight = settings({ rotateX: 6, rotateY: 16, perspective: 0.55, animate: 'cursor' })
+
+  it('leans toward the field being typed into, as the camera looks at it, not toward the idle mouse', () => {
+    expect(zooms).toHaveLength(1)
+    expect(zooms[0].anchor?.until).toBe(7)
+    for (const t of [2, 4, 6.5]) {
+      const cam = cameraAt(zooms, t, focus)
+      const p = tiltPoseAt(midnight, t, cam, focus, zooms)
+      // The top left (the field) comes forward: the top less far away, the left edge further round.
+      expect(p.rotateX).toBeLessThan(midnight.rotateX)
+      expect(p.rotateY).toBeGreaterThan(midnight.rotateY)
+      // Following the mouse instead would bring the bottom right forward by the whole lean.
+      const mouse = tiltPoseAt(midnight, t, cam, focus)
+      expect(mouse.rotateX).toBeCloseTo(midnight.rotateX + CURSOR_LEAN, 6)
+      expect(mouse.rotateY).toBeCloseTo(midnight.rotateY - CURSOR_LEAN, 6)
+    }
+  })
+
+  /** Largest change of either angle from one 60 fps frame to the next over [t0, t1], and when. */
+  function maxStep(zs: ZoomSegment[], t0: number, t1: number): { step: number; at: number } {
+    let prev: TiltAngles | null = null
+    let step = 0
+    let at = t0
+    for (let i = Math.round(t0 * 60); i <= Math.round(t1 * 60); i++) {
+      const t = i / 60
+      const p = tiltPoseAt(midnight, t, cameraAt(zs, t, focus), focus, zs)
+      const d = prev ? Math.max(Math.abs(p.rotateX - prev.rotateX), Math.abs(p.rotateY - prev.rotateY)) : 0
+      if (d > step) {
+        step = d
+        at = t
+      }
+      prev = p
+    }
+    return { step, at }
+  }
+
+  it('turns over to the field as the camera moves in and back as it moves out, never in one frame', () => {
+    const z = zooms[0]
+    // At the zoom's very start and end the lean is the mouse's, as the camera is the full frame.
+    for (const t of [z.start, z.end]) {
+      const cam = cameraAt(zooms, t, focus)
+      expect(tiltPoseAt(midnight, t, cam, focus, zooms)).toEqual(tiltPoseAt(midnight, t, cam, focus))
+    }
+    // Following the mouse alone, the card turns at most 0.4 degrees a frame here. Switching the
+    // lean at once would turn it 3.8 degrees in the frame the zoom starts and 7.8 as it ends.
+    const { step, at } = maxStep(zooms, 0, 10)
+    expect(step, `at ${at}`).toBeLessThan(0.6)
+  })
+
+  it('pans the lean from one field to the next across connected typing zooms, as the camera pans', () => {
+    const z = zooms[0]
+    const a: ZoomSegment = { ...z, id: 'a', start: 1.5, end: 4, anchor: { t: 1.5, x: 0.15, y: 0.12, until: 4 } }
+    const b: ZoomSegment = { ...z, id: 'b', start: 4, end: 7, anchor: { t: 4, x: 0.8, y: 0.2, until: 7 } }
+    const chain = [a, b]
+    // Still on the first field as the second zoom starts; on the second once the camera got there.
+    const near = (p: { x: number; y: number }, x: number, y: number): void => {
+      expect(p.x).toBeCloseTo(x, 9)
+      expect(p.y).toBeCloseTo(y, 9)
+    }
+    near(aimAt(chain, 4, focus), 0.15, 0.12)
+    near(aimAt(chain, 4 + ZOOM_TRANSITION, focus), 0.8, 0.2)
+    const mid = aimAt(chain, 4 + ZOOM_TRANSITION / 2, focus)
+    expect(mid.x).toBeGreaterThan(0.2)
+    expect(mid.x).toBeLessThan(0.75)
+    expect(maxStep(chain, 0, 10).step).toBeLessThan(0.6)
+  })
+
+  it('follows the cursor again once the zoom has ended, and wherever no zoom holds its aim', () => {
+    const cam = cameraAt(zooms, 9.5, focus)
+    expect(tiltPoseAt(midnight, 9.5, cam, focus, zooms)).toEqual(tiltPoseAt(midnight, 9.5, cam, focus))
+    // A zoom with a fixed focus does not move the lean off the cursor.
+    const fixed = [{ id: 'f', start: 0, end: 10, scale: 2, focus: { mode: 'fixed' as const, x: 0.2, y: 0.2 }, auto: false }]
+    const fcam = cameraAt(fixed, 4, focus)
+    expect(tiltPoseAt(midnight, 4, fcam, focus, fixed)).toEqual(tiltPoseAt(midnight, 4, fcam, focus))
+  })
+})
+
+describe('tiltArea: the tilted screen stays in its own slot', () => {
+  function sceneProject(layout: CameraLayout | null, corner: Project['webcam']['corner'] = 'bottom-right', padding = 0.06): Project {
+    const p = createProject({
+      id: 'p',
+      name: 'p',
+      duration: 10,
+      width: 1920,
+      height: 1080,
+      hasWebcam: true,
+      hasAudio: false,
+      webcamOffset: 0,
+      zooms: [],
+      cursorValid: false,
+      capture: { method: 'native', cursorInVideo: false, region: null }
+    })
+    p.style = { background: { type: 'color', color: '#123456' }, padding, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }
+    p.webcam = { ...p.webcam, show: true, corner }
+    p.layouts = layout ? [{ id: 'l', start: 2, end: 8, layout }] : []
+    return p
+  }
+  const hero = TILT_PRESETS.find((t) => t.id === 'hero')!.angles
+
+  it('keeps the default Hero tilt left of the camera card beside it (it used to go 17 px under it)', () => {
+    const p = sceneProject('side-by-side')
+    const screen = sceneContentRect(p, W, H, W, H, 5)
+    const cam = sceneCameraBox(p, W, H, W, H, 5)!
+    expect(cam.rect.x).toBeGreaterThan(screen.x + screen.w)
+    // Fitted to the whole frame, the bottom-right corner lands past the camera card's left edge.
+    const loose = projectRect(tiltView(hero, screen, frameArea(W, H, 0.06 * H)), screen)
+    expect(Math.max(...loose.map((c) => c.x))).toBeGreaterThan(cam.rect.x)
+    const area = tiltArea(p, W, H, W, H, 5)
+    const gapMid = (screen.x + screen.w + cam.rect.x) / 2
+    expect(area).toEqual({ ...frameArea(W, H, 0.06 * H), x1: gapMid })
+    for (const c of projectRect(tiltView(hero, screen, area), screen)) {
+      expect(c.x).toBeLessThanOrEqual(gapMid + 1e-6)
+      expect(c.x).toBeGreaterThanOrEqual(area.x0 - 1e-6)
+      expect(c.y).toBeGreaterThanOrEqual(area.y0 - 1e-6)
+      expect(c.y).toBeLessThanOrEqual(area.y1 + 1e-6)
+    }
+  })
+
+  it('keeps clear of a camera on the left, and of one below the screen in a portrait frame', () => {
+    const left = sceneProject('side-by-side', 'bottom-left')
+    const cl = sceneCameraBox(left, W, H, W, H, 5)!.rect
+    const sl = sceneContentRect(left, W, H, W, H, 5)
+    expect(tiltArea(left, W, H, W, H, 5).x0).toBeCloseTo((cl.x + cl.w + sl.x) / 2, 9)
+    for (const c of projectRect(tiltView(pose(6, 20, 0.55), sl, tiltArea(left, W, H, W, H, 5)), sl)) expect(c.x).toBeGreaterThan(cl.x + cl.w)
+    // 1080 x 1920: the camera card goes under the screen.
+    const tall = sceneProject('side-by-side')
+    const cb = sceneCameraBox(tall, H, W, W, H, 5)!.rect
+    const sb = sceneContentRect(tall, H, W, W, H, 5)
+    expect(cb.y).toBeGreaterThan(sb.y + sb.h)
+    expect(tiltArea(tall, H, W, W, H, 5).y1).toBeCloseTo((sb.y + sb.h + cb.y) / 2, 9)
+  })
+
+  it('is the frame inside the padding for every other layout, without a camera, and outside layouts', () => {
+    const frame = frameArea(W, H, 0.06 * H)
+    for (const layout of ['default', 'camera-large', 'camera-only', 'screen-only'] as const) expect(tiltArea(sceneProject(layout), W, H, W, H, 5)).toEqual(frame)
+    expect(tiltArea(sceneProject('side-by-side'), W, H, W, H, 1)).toEqual(frame)
+    const hidden = sceneProject('side-by-side')
+    hidden.webcam = { ...hidden.webcam, show: false }
+    expect(tiltArea(hidden, W, H, W, H, 5)).toEqual(frame)
+  })
+
+  it('moves with the cards while the layout changes, without a jump', () => {
+    const p = sceneProject('side-by-side')
+    const frame = frameArea(W, H, 0.06 * H)
+    const settled = tiltArea(p, W, H, W, H, 5)
+    // Eased like the cards over LAYOUT_TRANSITION (0.4 s, ease in-out cubic): at most 3x the average speed.
+    const step = ((frame.x1 - settled.x1) * 3 * 0.01) / 0.4
+    let last = frame.x1
+    for (let t = 1.9; t <= 2.5; t += 0.01) {
+      const a = tiltArea(p, W, H, W, H, t)
+      expect(a.x1).toBeLessThanOrEqual(last + 1e-9)
+      expect(last - a.x1).toBeLessThan(step + 1e-6)
+      last = a.x1
+    }
+    expect(last).toBeCloseTo(settled.x1, 9)
   })
 })
 
