@@ -5,7 +5,9 @@
 //
 // Commands: probe, list, record --monitor <device|index> | --window <id>, watch-window --window <id>.
 // On Linux the window id is an X11 window id (Electron's "window:<xid>:0"): its rectangle is read
-// with python3 + libX11 (XGetWindowAttributes, XTranslateCoordinates to the root) at 60 Hz.
+// with python3 + libX11 (XGetWindowAttributes, XTranslateCoordinates to the root) at 60 Hz, and
+// cursorOver like the real helper's WindowFromPoint + GA_ROOTOWNER: the root's child under the
+// pointer (XQueryPointer) is the recorded window's top-level window (its window-manager frame).
 //
 // Environment:
 //   FAKE_HELPER_PROBE    supported (default) | unsupported | hang | garbage
@@ -30,11 +32,14 @@
 //                        that size (fitContent in src/shared/recording/windowGeometry.ts), starting a new
 //                        segment when the rectangle changes (overlapping, so no time is lost).
 //   FAKE_HELPER_WINDOW_RECTS  JSON timeline used instead of the X11 window, e.g.
-//                        [{"after":0,"x":10,"y":20,"width":800,"height":600},
+//                        [{"after":0,"x":10,"y":20,"width":800,"height":600,"cursorOver":true},
 //                         {"after":300,"x":50,"y":20,"width":800,"height":600,"minimized":false},
+//                         {"after":500,"cursorOver":false},
 //                         {"after":900,"closed":true}]
 //                        `after` is ms after "started" (record) or "ready" (watch-window); a first entry
-//                        with "closed" means the window does not exist (exit 4).
+//                        with "closed" means the window does not exist (exit 4). `cursorOver` carries over
+//                        to later entries; an entry without x keeps the rectangle (only cursorOver changes).
+//                        A timeline that never sets cursorOver omits it, like helpers that predate it.
 //   FAKE_HELPER_WATCH    ok (default) | crash (exits 1 after "ready", before any rectangle)
 //                        | silent (never reports a rectangle, ignores stdin) | hang-on-stop
 //   FAKE_HELPER_LOG      file to append the argv and every stdin line to (JSON lines)
@@ -139,11 +144,11 @@ function commandReader() {
 }
 
 // Reads one X11 window's geometry at 60 Hz and prints it on change (JSON lines): first
-// {"screen":{...}}, then {"x","y","width","height","minimized"} or {"gone":true}. Exits when the
+// {"screen":{...}}, then {"x","y","width","height","minimized","cursorOver"} or {"gone":true}. Exits when the
 // window is gone or its parent (this helper) died.
 const X11_WINDOW = String.raw`
 import ctypes, json, os, sys, time
-from ctypes import POINTER, byref, c_int, c_long, c_ulong, c_void_p
+from ctypes import POINTER, byref, c_int, c_long, c_uint, c_ulong, c_void_p
 
 def out(obj):
     sys.stdout.write(json.dumps(obj) + '\n')
@@ -174,6 +179,10 @@ x11.XDisplayWidth.argtypes = [c_void_p, c_int]
 x11.XDisplayHeight.argtypes = [c_void_p, c_int]
 x11.XGetWindowAttributes.argtypes = [c_void_p, c_ulong, POINTER(Attributes)]
 x11.XTranslateCoordinates.argtypes = [c_void_p, c_ulong, c_ulong, c_int, c_int, POINTER(c_int), POINTER(c_int), POINTER(c_ulong)]
+x11.XQueryPointer.argtypes = [c_void_p, c_ulong, POINTER(c_ulong), POINTER(c_ulong), POINTER(c_int), POINTER(c_int),
+                              POINTER(c_int), POINTER(c_int), POINTER(c_uint)]
+x11.XQueryTree.argtypes = [c_void_p, c_ulong, POINTER(c_ulong), POINTER(c_ulong), POINTER(POINTER(c_ulong)), POINTER(c_uint)]
+x11.XFree.argtypes = [c_void_p]
 
 # BadWindow once the window is destroyed: report it instead of exiting.
 ignore_errors = ERROR_HANDLER(lambda display, event: 0)
@@ -185,6 +194,28 @@ if not display:
 root = x11.XDefaultRootWindow(display)
 window = int(sys.argv[1]) & 0xFFFFFFFF
 parent = os.getppid()
+
+def top_level(w):
+    # The root's child holding w: the window manager's frame around it (or w itself): like
+    # GetAncestor(GA_ROOTOWNER) on Windows.
+    while True:
+        root_return, up, children, count = c_ulong(), c_ulong(), POINTER(c_ulong)(), c_uint()
+        if not x11.XQueryTree(display, w, byref(root_return), byref(up), byref(children), byref(count)):
+            return w
+        if children:
+            x11.XFree(children)
+        if up.value in (0, root_return.value):
+            return w
+        w = up.value
+
+def under_pointer():
+    # The root's child under the pointer, in stacking order (like WindowFromPoint), or 0.
+    root_return, child = c_ulong(), c_ulong()
+    rx, ry, wx, wy, mask = c_int(), c_int(), c_int(), c_int(), c_uint()
+    if not x11.XQueryPointer(display, root, byref(root_return), byref(child), byref(rx), byref(ry), byref(wx), byref(wy), byref(mask)):
+        return 0
+    return child.value
+
 out({'screen': {'width': x11.XDisplayWidth(display, 0), 'height': x11.XDisplayHeight(display, 0)}})
 last = None
 while os.getppid() == parent:
@@ -197,6 +228,8 @@ while os.getppid() == parent:
     # IsViewable = 2: an iconified (minimised) window is unmapped.
     state = {'x': x.value, 'y': y.value, 'width': attributes.width, 'height': attributes.height,
              'minimized': attributes.map_state != 2}
+    over = under_pointer()
+    state['cursorOver'] = over != 0 and over == top_level(window)
     if state != last:
         out(state)
         last = state
@@ -287,15 +320,22 @@ class WindowFollower {
     }
     const before = this.last
     const state = this.normalise(msg)
-    if (!before || ['x', 'y', 'width', 'height', 'minimized'].some((k) => before[k] !== state[k])) this.onState(state)
+    if (!before || ['x', 'y', 'width', 'height', 'minimized', 'cursorOver'].some((k) => before[k] !== state[k])) this.onState(state)
   }
 
   normalise(msg) {
+    if (typeof msg.cursorOver === 'boolean') this.cursorOver = msg.cursorOver
+    const over = this.cursorOver === undefined ? {} : { cursorOver: this.cursorOver }
+    if (msg.x === undefined && this.last) {
+      // A timeline entry that only moves the cursor onto or off the window.
+      this.last = { ...this.last, ...over }
+      return this.last
+    }
     const minimized = msg.minimized === true
     let rect = { x: msg.x, y: msg.y, width: msg.width, height: msg.height }
     if (minimized) rect = this.lastShown || rect
     else this.lastShown = rect
-    this.last = { ...rect, minimized }
+    this.last = { ...rect, minimized, ...over }
     return this.last
   }
 
@@ -308,7 +348,10 @@ class WindowFollower {
 }
 
 function windowEvent(state) {
-  return { event: 'window', at: Date.now(), x: state.x, y: state.y, width: state.width, height: state.height, minimized: state.minimized }
+  const event = { event: 'window', at: Date.now(), x: state.x, y: state.y, width: state.width, height: state.height, minimized: state.minimized }
+  // Like the real helper (always), unless a timeline never set it (helpers that predate it).
+  if (state.cursorOver !== undefined) event.cursorOver = state.cursorOver
+  return event
 }
 
 /** fitContent() of src/shared/recording/windowGeometry.ts. */

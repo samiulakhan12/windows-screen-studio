@@ -422,14 +422,19 @@ interface HelperEvent {
   [key: string]: unknown
 }
 
-/** A `window` event's rectangle, or null when it is malformed. */
+/**
+ * A `window` event's rectangle, or null when it is malformed. `cursorOver` is kept only when the
+ * helper reports it as a boolean (older helpers do not: absent means unknown).
+ */
 function windowRectOf(e: HelperEvent): WindowRectEvent | null {
   const fields = ['at', 'x', 'y', 'width', 'height'] as const
   if (!fields.every((k) => typeof e[k] === 'number' && Number.isFinite(e[k]))) return null
   const width = e.width as number
   const height = e.height as number
   if (width < 0 || height < 0) return null
-  return { at: e.at as number, x: e.x as number, y: e.y as number, width, height, minimized: e.minimized === true }
+  const rect: WindowRectEvent = { at: e.at as number, x: e.x as number, y: e.y as number, width, height, minimized: e.minimized === true }
+  if (typeof e.cursorOver === 'boolean') rect.cursorOver = e.cursorOver
+  return rect
 }
 
 /** Splits a helper's stdout into JSON events. */

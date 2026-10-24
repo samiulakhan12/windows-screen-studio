@@ -101,6 +101,56 @@ pub fn fit_rects(content: (u32, u32), output: (u32, u32)) -> (Rect, Rect) {
     (Rect::sized(cw, ch), Rect { left, top, right: left + dw as i32, bottom: top + dh as i32 })
 }
 
+/// Largest texture side Direct3D 11 allows (`D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION`).
+pub const MAX_TEXTURE_SIDE: u32 = 16_384;
+/// Added to the largest monitor's size for a window's capture buffers: a maximised window's
+/// frame can reach a few pixels past its monitor.
+pub const WINDOW_BUFFER_MARGIN: u32 = 64;
+/// A window that outgrows its capture buffers gets buffers this many times its content size,
+/// so a resize drag that goes on does not outgrow them again with the next frame.
+pub const WINDOW_BUFFER_GROWTH: f64 = 1.25;
+
+/// The smallest size holding both `a` and `b` (top-left aligned): the larger of each side.
+pub fn covering(a: (u32, u32), b: (u32, u32)) -> (u32, u32) {
+    (a.0.max(b.0), a.1.max(b.1))
+}
+
+/// Whether content of `size` fits in a texture or buffer of `capacity` (top-left aligned).
+pub fn fits_in(size: (u32, u32), capacity: (u32, u32)) -> bool {
+    size.0 <= capacity.0 && size.1 <= capacity.1
+}
+
+/// Capture buffer size for a window whose content is `item` now: room for it to grow up to the
+/// largest monitor (maximised there, or dragged larger) without any frame being cropped.
+/// Windows.Graphics.Capture puts smaller content at the buffer's top-left, and the frame says
+/// how large it is, so a larger buffer costs only memory (two buffers, as when recording that
+/// monitor). Never smaller than `item`.
+pub fn window_buffer_size(item: (u32, u32), largest_monitor: Option<(u32, u32)>) -> (u32, u32) {
+    let room = |monitor: u32| monitor.saturating_add(WINDOW_BUFFER_MARGIN).min(MAX_TEXTURE_SIDE);
+    match largest_monitor {
+        Some((w, h)) => covering(item, (room(w), room(h))),
+        None => item,
+    }
+}
+
+/// New capture buffer size once a frame's `content` no longer fits buffers of `buffers` (None
+/// while it fits). Buffers only grow, never shrink; `headroom` (windows) makes them
+/// `WINDOW_BUFFER_GROWTH` times the content, a monitor's new resolution or rotation gets
+/// exactly its size.
+pub fn grown_buffer_size(buffers: (u32, u32), content: (u32, u32), headroom: bool) -> Option<(u32, u32)> {
+    if fits_in(content, buffers) {
+        return None;
+    }
+    let grow = |side: u32| {
+        if headroom {
+            ((side as f64 * WINDOW_BUFFER_GROWTH).ceil() as u32).min(MAX_TEXTURE_SIDE).max(side)
+        } else {
+            side
+        }
+    };
+    Some(covering(buffers, (grow(content.0), grow(content.1))))
+}
+
 /// Default average bitrate: about 0.07 bits per pixel per frame, which keeps
 /// text crisp in screen recordings (1080p60 = 8.7 Mbps, 4K60 = 34.8 Mbps).
 pub fn default_bitrate(w: u32, h: u32, fps: u32) -> u32 {
@@ -201,6 +251,47 @@ mod tests {
         assert!((dst.left as f64 - f.dx).abs() <= 1.0 && (dst.top as f64 - f.dy).abs() <= 1.0);
         assert!(((dst.right - dst.left) as f64 - f.width).abs() <= 1.0);
         assert!(((dst.bottom - dst.top) as f64 - f.height).abs() <= 1.0);
+    }
+
+    #[test]
+    fn window_buffers_leave_room_up_to_the_largest_monitor() {
+        // A 1280x720 window on a 1920x1080 + 2560x1440 setup: maximising it anywhere fits.
+        assert_eq!(window_buffer_size((1280, 720), Some((2560, 1440))), (2624, 1504));
+        // A portrait monitor next to a landscape one: the larger of each side.
+        assert_eq!(window_buffer_size((800, 600), Some((1920, 1920))), (1984, 1984));
+        // A window already larger than every monitor (spanning two) keeps its own size.
+        assert_eq!(window_buffer_size((3800, 1000), Some((1920, 1080))), (3800, 1144));
+        // Within Direct3D's texture limit, but never below the window.
+        assert_eq!(window_buffer_size((100, 100), Some((16_380, 20_000))), (MAX_TEXTURE_SIDE, MAX_TEXTURE_SIDE));
+        // No monitor information: the window's own size.
+        assert_eq!(window_buffer_size((1280, 720), None), (1280, 720));
+    }
+
+    #[test]
+    fn buffers_grow_only_when_content_outgrows_them_and_never_shrink() {
+        // Fits (equal, smaller, shrunk on one side): nothing to do.
+        assert_eq!(grown_buffer_size((1984, 1144), (1984, 1144), true), None);
+        assert_eq!(grown_buffer_size((1984, 1144), (640, 480), true), None);
+        assert_eq!(grown_buffer_size((1984, 1144), (1984, 10), false), None);
+        // A window wider than its buffers: 1.25x headroom on both sides, never below the old size.
+        assert_eq!(grown_buffer_size((1984, 1144), (2400, 1000), true), Some((3000, 1250)));
+        assert_eq!(grown_buffer_size((1984, 1144), (2400, 600), true), Some((3000, 1144)));
+        // A continuing drag: the next frames fit the grown buffers.
+        let grown = grown_buffer_size((1984, 1144), (2400, 1000), true).unwrap();
+        assert_eq!(grown_buffer_size(grown, (2900, 1200), true), None);
+        // Capped at Direct3D's limit, never below the content itself.
+        assert_eq!(grown_buffer_size((16_000, 100), (16_100, 100), true), Some((MAX_TEXTURE_SIDE, 125)));
+        // A rotated monitor: exactly its new size, the other side kept.
+        assert_eq!(grown_buffer_size((1920, 1080), (1080, 1920), false), Some((1920, 1920)));
+    }
+
+    #[test]
+    fn capacity_helpers() {
+        assert!(fits_in((10, 10), (10, 10)));
+        assert!(fits_in((5, 10), (10, 10)));
+        assert!(!fits_in((11, 10), (10, 10)));
+        assert!(!fits_in((10, 11), (10, 10)));
+        assert_eq!(covering((1920, 600), (800, 1080)), (1920, 1080));
     }
 
     #[test]

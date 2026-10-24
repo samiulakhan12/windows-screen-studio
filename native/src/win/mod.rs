@@ -11,6 +11,7 @@ mod record;
 mod selftest;
 mod session_end;
 mod support;
+mod timer;
 mod window;
 
 use std::fmt;

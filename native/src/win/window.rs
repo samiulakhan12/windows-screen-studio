@@ -1,26 +1,28 @@
-//! The recorded or watched window: whether it exists, its screen rectangle and whether it is on
-//! screen. Which observations become `window` events is decided by `crate::window`.
+//! The recorded or watched window: whether it exists, its screen rectangle, whether it is on
+//! screen and whether the cursor is over it. Which observations become `window` events is
+//! decided by `crate::window`.
 
 use std::ffi::c_void;
 use std::mem::size_of;
-use std::sync::mpsc::RecvTimeoutError;
-use std::time::Duration;
+use std::sync::mpsc::TryRecvError;
+use std::time::Instant;
 
-use windows::Win32::Foundation::{HWND, RECT};
+use windows::Win32::Foundation::{HWND, POINT, RECT};
 use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS};
 use windows::Win32::Graphics::Gdi::{MonitorFromWindow, HMONITOR, MONITOR_DEFAULTTONEAREST};
-use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsIconic, IsWindow, IsWindowVisible};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetAncestor, GetCursorPos, GetWindowRect, IsIconic, IsWindow, IsWindowVisible, WindowFromPoint, GA_ROOTOWNER,
+};
 
 use super::clock;
+use super::timer::PreciseSleep;
 use super::{Failure, Result};
 use crate::exit;
 use crate::input::{self, Input};
 use crate::output;
 use crate::protocol::{self, Command};
+use crate::ticker::{Ticker, POLL_INTERVAL};
 use crate::window::{Change, Observation, WindowRect, WindowTracker};
-
-/// How often `watch-window` looks at the window (the recorder polls on its cursor thread).
-pub const POLL_INTERVAL: Duration = Duration::from_millis(16);
 
 /// The handle as Electron prints it (`window:<HWND>:<n>`); window handles are 32-bit values
 /// sign-extended to pointer size, so any i64 the CLI accepted converts losslessly.
@@ -76,6 +78,32 @@ fn bounds(window: HWND) -> Option<WindowRect> {
     Some(WindowRect::from_edges(r.left, r.top, r.right, r.bottom))
 }
 
+/// The window at the root of `window`'s parent and owner chain (`GA_ROOTOWNER`): the app's main
+/// window for its child windows, dialogs and other owned popups. `window` itself if it has none.
+fn root_owner(window: HWND) -> HWND {
+    let root = unsafe { GetAncestor(window, GA_ROOTOWNER) };
+    if root.0.is_null() {
+        window
+    } else {
+        root
+    }
+}
+
+/// Whether the cursor is over the window itself: the window under it (`WindowFromPoint`, which
+/// follows the Z order) has the same root owner. False while another app's window covers that
+/// spot: a window capture does not show that window, so a click there is not on the recorded
+/// content. Three cheap user32 calls; `WindowFromPoint` sends messages only to windows of the
+/// calling thread, which has none, so it never waits on another app.
+pub fn cursor_over(window: HWND) -> bool {
+    let mut point = POINT::default();
+    if unsafe { GetCursorPos(&mut point) }.is_err() {
+        // No cursor position (e.g. the secure desktop is showing): not over the window.
+        return false;
+    }
+    let under = unsafe { WindowFromPoint(point) };
+    !under.0.is_null() && root_owner(under) == root_owner(window)
+}
+
 /// One look at the window: a handful of cheap user32/DWM queries, fine at 60 Hz.
 pub fn observe(window: HWND) -> Observation {
     if !unsafe { IsWindow(Some(window)) }.as_bool() {
@@ -89,8 +117,10 @@ pub fn observe(window: HWND) -> Observation {
     }
 }
 
-/// `watch-window`: reports the window's rectangle until `stop`, the end of stdin, or the window
-/// closing. Captures nothing, so it needs neither Windows.Graphics.Capture nor an encoder.
+/// `watch-window`: reports the window's rectangle (and `cursorOver`) until `stop`, the end of
+/// stdin, or the window closing. Captures nothing, so it needs neither Windows.Graphics.Capture
+/// nor an encoder. Polls every `POLL_INTERVAL` on a precise timer (a channel wait would end on
+/// the 15.6 ms system tick, halving the rate) and handles commands between polls.
 pub fn run_watch(handle: i64) -> i32 {
     let window = match find(handle) {
         Ok(w) => w,
@@ -106,8 +136,10 @@ pub fn run_watch(handle: i64) -> i32 {
         return exit::OK;
     }
     let mut tracker = WindowTracker::new();
+    let sleeper = PreciseSleep::new();
+    let mut ticker = Ticker::new(POLL_INTERVAL, Instant::now());
     loop {
-        match tracker.update(observe(window)) {
+        match tracker.update(observe(window), cursor_over(window)) {
             Change::Changed(state) => {
                 let at = timebase.epoch_ms_at(clock::now_ticks());
                 if !output::emit(&protocol::event_window(at, &state)) {
@@ -121,16 +153,20 @@ pub fn run_watch(handle: i64) -> i32 {
             }
             Change::Unchanged => {}
         }
-        match inputs.recv_timeout(POLL_INTERVAL) {
-            Ok(Input::Command(Command::Stop(_))) | Ok(Input::Eof) | Err(RecvTimeoutError::Disconnected) => {
-                output::emit(&protocol::event_watch_stopped("stop"));
-                return exit::OK;
-            }
-            // pause/resume mean nothing here: the app maps every rectangle with its own clock.
-            Ok(Input::Command(_)) | Err(RecvTimeoutError::Timeout) => {}
-            Ok(Input::Invalid(e)) => {
-                output::emit(&protocol::event_warning(&e));
+        loop {
+            match inputs.try_recv() {
+                Ok(Input::Command(Command::Stop(_))) | Ok(Input::Eof) | Err(TryRecvError::Disconnected) => {
+                    output::emit(&protocol::event_watch_stopped("stop"));
+                    return exit::OK;
+                }
+                // pause/resume mean nothing here: the app maps every rectangle with its own clock.
+                Ok(Input::Command(_)) => {}
+                Ok(Input::Invalid(e)) => {
+                    output::emit(&protocol::event_warning(&e));
+                }
+                Err(TryRecvError::Empty) => break,
             }
         }
+        sleeper.sleep(ticker.wait(Instant::now()));
     }
 }

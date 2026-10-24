@@ -13,6 +13,7 @@ mod pacer;
 mod protocol;
 mod shapes;
 mod sizing;
+mod ticker;
 #[cfg(windows)]
 mod win;
 mod window;

@@ -1,6 +1,10 @@
 //! BGRA -> NV12 conversion (BT.709, limited range) and optional scaling on the GPU
 //! with the Direct3D 11 video processor, so the encoder gets the exact input it
 //! wants and no colour conversion runs on the CPU.
+//!
+//! The input texture may be larger than the content in it (top-left aligned): a resized window
+//! only changes the source and destination rectangles. The processor is rebuilt only when the
+//! content outgrows the size it was created for (`capacity`).
 
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -25,7 +29,7 @@ use windows::Win32::Graphics::Dxgi::Common::{
 
 use super::d3d::{self, Device};
 use super::{Context, Failure, Result};
-use crate::sizing::{fit_rects, Rect};
+use crate::sizing::{covering, fit_rects, fits_in, Rect};
 
 /// Legacy colour space bits (D3D11_VIDEO_PROCESSOR_COLOR_SPACE): YCbCr_Matrix = BT.709
 /// (bit 2) and Nominal_Range = 16-235 (bits 4-5 = 1). RGB input: all zero = full range.
@@ -37,7 +41,11 @@ pub struct Processor {
     enumerator: ID3D11VideoProcessorEnumerator,
     processor: ID3D11VideoProcessor,
     fps: u32,
-    input_size: (u32, u32),
+    /// Largest input the enumerator and processor were created for: content up to this size
+    /// (and input textures up to it) needs no rebuild.
+    capacity: (u32, u32),
+    /// Size of the content at the input texture's top-left, fitted into the output.
+    content: (u32, u32),
     output_size: (u32, u32),
     input_view: Option<(usize, ID3D11VideoProcessorInputView)>,
     output_views: HashMap<(usize, u32), ID3D11VideoProcessorOutputView>,
@@ -56,7 +64,8 @@ impl Processor {
             enumerator,
             processor,
             fps,
-            input_size: input,
+            capacity: input,
+            content: input,
             output_size: output,
             input_view: None,
             output_views: HashMap::new(),
@@ -66,16 +75,25 @@ impl Processor {
         Ok(p)
     }
 
-    pub fn input_size(&self) -> (u32, u32) {
-        self.input_size
-    }
-
-    /// The captured content changed size (resolution change or rotation).
-    pub fn resize_input(&mut self, input: (u32, u32)) -> Result<()> {
-        let (enumerator, processor) = create(&self.video_device, input, self.output_size, self.fps)?;
+    /// The captured content changed size (a resized window, a new monitor resolution or a
+    /// rotation). While it fits the capacity only the source and destination rectangles change
+    /// (two cheap state calls, fine on every frame of a resize drag); larger content rebuilds
+    /// the enumerator and processor for it, and they never shrink.
+    pub fn set_content(&mut self, content: (u32, u32)) -> Result<()> {
+        if content == self.content {
+            return Ok(());
+        }
+        if fits_in(content, self.capacity) {
+            self.content = content;
+            self.set_rects();
+            return Ok(());
+        }
+        let capacity = covering(self.capacity, content);
+        let (enumerator, processor) = create(&self.video_device, capacity, self.output_size, self.fps)?;
         self.enumerator = enumerator;
         self.processor = processor;
-        self.input_size = input;
+        self.capacity = capacity;
+        self.content = content;
         // Views belong to the enumerator they were created with.
         self.input_view = None;
         self.output_views.clear();
@@ -83,17 +101,26 @@ impl Processor {
         Ok(())
     }
 
+    /// Where the content is read from (all of it, at the input's top-left) and where it lands in
+    /// the output (fitted, centred).
+    fn set_rects(&self) {
+        let (src, dst) = fit_rects(self.content, self.output_size);
+        let vc = &self.video_context;
+        unsafe {
+            vc.VideoProcessorSetStreamSourceRect(&self.processor, 0, true, Some(&to_rect(src)));
+            vc.VideoProcessorSetStreamDestRect(&self.processor, 0, true, Some(&to_rect(dst)));
+        }
+    }
+
     fn configure(&self) {
         let vc = &self.video_context;
         let p = &self.processor;
-        let (src, dst) = fit_rects(self.input_size, self.output_size);
         let target = Rect::sized(self.output_size.0, self.output_size.1);
+        self.set_rects();
         unsafe {
             vc.VideoProcessorSetStreamFrameFormat(p, 0, D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE);
             // No driver "enhancements" (denoise, edge enhancement...) on screen content.
             vc.VideoProcessorSetStreamAutoProcessingMode(p, 0, false);
-            vc.VideoProcessorSetStreamSourceRect(p, 0, true, Some(&to_rect(src)));
-            vc.VideoProcessorSetStreamDestRect(p, 0, true, Some(&to_rect(dst)));
             vc.VideoProcessorSetOutputTargetRect(p, true, Some(&to_rect(target)));
             let black = D3D11_VIDEO_COLOR {
                 Anonymous: D3D11_VIDEO_COLOR_0 { RGBA: D3D11_VIDEO_COLOR_RGBA { R: 0.0, G: 0.0, B: 0.0, A: 1.0 } },
@@ -115,7 +142,8 @@ impl Processor {
         }
     }
 
-    /// Uses `texture` (BGRA, `input_size`) as the source of the following conversions.
+    /// Uses `texture` (BGRA, no larger than any content seen so far, the content at its
+    /// top-left) as the source of the following conversions.
     pub fn set_input(&mut self, texture: &ID3D11Texture2D) -> Result<()> {
         let key = texture.as_raw() as usize;
         if self.input_view.as_ref().is_some_and(|(k, _)| *k == key) {
