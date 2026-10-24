@@ -2,10 +2,18 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { TrackKind } from '../../shared/api/recording'
 import type { CursorShape } from '../../shared/types'
-import type { NativeCaptureError, NativeCaptureSession, NativeEndedInfo, NativeStartInfo, NativeStopInfo } from '../nativeCapture'
+import type {
+  NativeCaptureError,
+  NativeCaptureSession,
+  NativeEndedInfo,
+  NativeStartInfo,
+  NativeStopInfo,
+  WindowRectEvent,
+  WindowWatchSession
+} from '../nativeCapture'
 import { RAW, type RecordingManifest } from '../projects'
 import { ChunkWriter } from './chunkWriter'
-import { stopNativeVideo } from './nativeVideo'
+import { stopNativeVideo, stopWindowWatch } from './nativeVideo'
 import type { PauseSpan } from './trackMath'
 
 export type Phase = 'countdown' | 'recording' | 'paused' | 'stopping' | 'processing'
@@ -14,7 +22,8 @@ const FILES: Record<TrackKind, string> = { screen: RAW.screen, webcam: RAW.webca
 
 /**
  * Main-process state of the one recording in progress: its folder, the files
- * chunks are streamed into, the pause timeline and the native capture helper.
+ * chunks are streamed into, the pause timeline, the native capture helper and, for a
+ * window recorded by Chromium, the watcher that follows the window on screen.
  */
 export class ActiveRecording {
   readonly token = randomUUID()
@@ -28,10 +37,15 @@ export class ActiveRecording {
   private nativeStarting: { abort: AbortController; done: Promise<unknown> } | null = null
   /** The helper ended on its own before the recorder reported that recording began. */
   nativeEnded: NativeEndedInfo | null = null
+  private watch: WindowWatchSession | null = null
+  private watchFirst: WindowRectEvent | null = null
+  private watchStop: Promise<WindowRectEvent[]> | null = null
 
+  /** `windowId`: the Electron source id ("window:<id>:<n>") of a recorded window. */
   constructor(
     readonly manifest: RecordingManifest,
-    readonly dir: string
+    readonly dir: string,
+    readonly windowId: string | null = null
   ) {}
 
   get id(): string {
@@ -40,6 +54,29 @@ export class ActiveRecording {
 
   get usesNative(): boolean {
     return this.native !== null || this.nativeStop !== null
+  }
+
+  /** A watcher reports where the recorded window is (Chromium window capture). */
+  get watchesWindow(): boolean {
+    return this.watch !== null || this.watchStop !== null
+  }
+
+  /** Follows the recorded window with `watch`, whose first rectangle was `first`. */
+  attachWatch(watch: WindowWatchSession, first: WindowRectEvent): void {
+    this.killWatch()
+    if (this.stoppedAt !== null) {
+      // Stopped meanwhile: nothing left to watch.
+      killQuietly(watch)
+      return
+    }
+    this.watch = watch
+    this.watchFirst = first
+  }
+
+  /** Ends the window watcher at once (the recording is discarded). */
+  killWatch(): void {
+    killQuietly(this.watch)
+    this.watch = null
   }
 
   write(kind: TrackKind, data: Uint8Array): Promise<void> {
@@ -109,6 +146,10 @@ export class ActiveRecording {
       // Awaited by finishNative(); keep a failure from being reported as unhandled meanwhile.
       this.nativeStop.catch(() => undefined)
     }
+    const watch = this.watch
+    this.watch = null
+    // Never rejects; awaited by windowRects().
+    if (watch) this.watchStop = stopWindowWatch(watch)
   }
 
   /** Waits for the helper to finalise its MP4 and returns its cursor shapes (pause-adjusted later). */
@@ -122,6 +163,25 @@ export class ActiveRecording {
       console.error('Native capture did not stop cleanly:', err)
       return (err as NativeCaptureError | undefined)?.shapes ?? []
     }
+  }
+
+  /**
+   * The recorded window's rectangle over time (physical pixels, epoch ms): reported by the
+   * native helper, or else by the watcher. [] when unknown (no tracking, or a screen).
+   * Call after stop().
+   */
+  async windowRects(): Promise<WindowRectEvent[]> {
+    if (this.nativeStop) {
+      try {
+        return validRects((await this.nativeStop)?.windowRects)
+      } catch (err) {
+        // A helper that failed while recording reports the rectangles it saw until then.
+        return validRects((err as { windowRects?: unknown } | undefined)?.windowRects)
+      }
+    }
+    const rects = this.watchStop ? validRects(await this.watchStop) : []
+    // A watcher that could not report its rectangles still gave the first one.
+    return rects.length > 0 ? rects : this.watchFirst ? [this.watchFirst] : []
   }
 
   killNative(): void {
@@ -142,4 +202,16 @@ export class ActiveRecording {
     if (this.pausedAt !== null) paused += at - this.pausedAt
     return Math.max(0, (at - start - paused) / 1000)
   }
+}
+
+function killQuietly(target: { kill(): void } | null): void {
+  try {
+    target?.kill()
+  } catch {
+    // Already gone.
+  }
+}
+
+function validRects(value: unknown): WindowRectEvent[] {
+  return Array.isArray(value) ? (value as WindowRectEvent[]) : []
 }

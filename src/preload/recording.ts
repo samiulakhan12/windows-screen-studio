@@ -4,6 +4,7 @@ import { subscribe } from './ipc'
 
 export const recordingApi: RecordingApi = {
   getSources: (kinds) => ipcRenderer.invoke('sources:list', kinds),
+  getWindowCaptureSupport: () => ipcRenderer.invoke('recording:windowSupport'),
   prepareCapture: (request) => ipcRenderer.invoke('recording:prepare', request),
   appendRecordingChunk: (token, kind, data) => ipcRenderer.invoke('recording:chunk', token, kind, data),
   startNativeVideo: (token) => ipcRenderer.invoke('recording:startNative', token),

@@ -19,6 +19,16 @@ export interface CapturePlan {
   method: 'native' | 'chromium'
   /** False when another app already owns the stop shortcut. */
   stopShortcut: boolean
+  /** Something the user should know about this recording (e.g. a window recorded without cursor effects). */
+  notice?: string
+}
+
+/** What window recordings get on this PC (the hint on Home). */
+export interface WindowCaptureSupport {
+  /** Cursor data for windows: auto zoom, click highlights, follow-cursor zooms. */
+  effects: boolean
+  /** The window is recorded without the Windows cursor, so the smooth cursor replaces it. */
+  smoothCursor: boolean
 }
 
 export interface RecordingStartInfo {
@@ -36,7 +46,8 @@ export interface RecordingStartInfo {
 
 export type NativeStartResult =
   | { ok: true; startedAt: number; width: number; height: number }
-  | { ok: false; message: string }
+  /** `notice`: what the fallback to Chromium capture costs (e.g. a window loses its cursor effects). */
+  | { ok: false; message: string; notice?: string }
 
 /** Metadata sent on stop; the media itself has already been streamed to disk. */
 export interface SaveRecordingPayload {
@@ -92,6 +103,8 @@ export type RecorderStatusUpdate = RecordingStatus & Pick<ToolbarStatus, 'starti
 export interface RecordingApi {
   /** Screens and/or windows with small JPEG thumbnails (both kinds when `kinds` is omitted). */
   getSources(kinds?: CaptureSource['kind'][]): Promise<CaptureSource[]>
+  /** What window recordings get on this PC (checked once). */
+  getWindowCaptureSupport(): Promise<WindowCaptureSupport>
   prepareCapture(request: RecordingRequest): Promise<CapturePlan>
   /** Appends one MediaRecorder chunk; callers must await each call per kind to keep order. */
   appendRecordingChunk(token: string, kind: TrackKind, data: Uint8Array): Promise<void>

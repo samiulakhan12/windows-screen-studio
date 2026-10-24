@@ -26,10 +26,12 @@ import type {
   RegionSelection,
   SaveRecordingPayload,
   ToolbarStatus,
-  TrackKind
+  TrackKind,
+  WindowCaptureSupport
 } from '../shared/api/recording'
 import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
+import type { Rect } from '../shared/recording/windowGeometry'
 import type { CaptureSource, NormRect } from '../shared/types'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
@@ -51,8 +53,9 @@ import {
   showToolbar,
   toolbarAreas
 } from './recording/toolbarWindow'
-import { buildCursorTrack } from './recording/trackMath'
+import { buildCursorTrack, type RawTrack, type WindowMapping } from './recording/trackMath'
 import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recording/userMessages'
+import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowMapping, type WindowRoute } from './recording/windowCapture'
 import { getMainWindow, loadRoute } from './windows'
 
 const STOP_SHORTCUT = 'CommandOrControl+Shift+2'
@@ -136,14 +139,34 @@ function isOwnPoint(p: Point): boolean {
   return liveWindows().some((w) => w.isVisible() && !w.isMinimized() && pointInRect(p, w.getBounds()))
 }
 
-function startTracker(): void {
+function startTracker(s: ActiveRecording): void {
   tracker.start({
     display: activeDisplay ? { bounds: activeDisplay.bounds, scaleFactor: activeDisplay.scaleFactor } : null,
+    // A window whose position is known (native window capture, or a watcher) gets the
+    // cursor and clicks in screen coordinates, mapped into the window when finalised.
+    global: s.windowId !== null && (s.manifest.method === 'native' || s.watchesWindow),
     captureKeys,
     isOwnPoint,
     ignoreKeys: [STOP_SHORTCUT_LABEL]
   })
 }
+
+/** Physical screen pixels (the helper's window rectangles) to the cursor's DIP coordinates. */
+function physicalToDip(r: Rect): Rect {
+  // Windows scales per monitor; on X11 both spaces are the same pixels.
+  return process.platform === 'win32' ? screen.screenToDipRect(null, r) : r
+}
+
+/** Where a recorded window's cursor positions go in its video; null without its rectangle. */
+async function windowTrackMapping(s: ActiveRecording, raw: RawTrack): Promise<WindowMapping | null> {
+  const mapping = windowMapping(await s.windowRects(), physicalToDip, { width: s.manifest.width, height: s.manifest.height })
+  const shown = mapping?.poses.find((p) => !p.minimized)
+  // The drawn cursor is as large as the real one on the window's monitor.
+  if (shown) raw.scale = screen.getDisplayMatching(roundRect(shown.dip)).scaleFactor
+  return mapping
+}
+
+const roundRect = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) })
 
 function registerStopShortcut(): boolean {
   globalShortcut.unregister(STOP_SHORTCUT)
@@ -181,11 +204,12 @@ async function writeTrack(s: ActiveRecording, duration: number): Promise<void> {
   const shapes = await s.finishNative()
   // Collected only now: hook events can reach JavaScript a little late, and anything
   // after the stop is cut by the duration anyway.
-  const raw = tracker.active ? tracker.collect() : { samples: [], clicks: [], keys: [], bounds: null, scale: 1 }
+  const raw: RawTrack = tracker.active ? tracker.collect() : { samples: [], clicks: [], keys: [], bounds: null, scale: 1 }
   const m = s.manifest
   if (m.startedAt === null) return
+  const window = s.windowId !== null ? await windowTrackMapping(s, raw) : null
   // Slack: the final duration comes from the proxy and is applied by processRecording.
-  const track = buildCursorTrack(raw, { startedAt: m.startedAt, pauses: s.pauses, duration, region: m.region, shapes, slack: 1 })
+  const track = buildCursorTrack(raw, { startedAt: m.startedAt, pauses: s.pauses, duration, region: m.region, shapes, slack: 1, window })
   await projects.writeCursor(m.id, track)
 }
 
@@ -194,6 +218,7 @@ async function discard(s: ActiveRecording): Promise<void> {
   grant = null
   tracker.stop()
   s.killNative()
+  s.killWatch()
   // A helper still starting would otherwise keep writing into the folder removed below.
   await s.cancelNativeStart()
   await s.closeWriters().catch(() => undefined)
@@ -248,7 +273,7 @@ function onNativeEnded(s: ActiveRecording, info: NativeEndedInfo): void {
 
 function stopAfterNativeEnd(s: ActiveRecording, info: NativeEndedInfo): void {
   beginStop(s)
-  mainContents()?.send('recorder:warning', nativeEndedMessage(info))
+  mainContents()?.send('recorder:warning', nativeEndedMessage(info, s.windowId !== null ? 'window' : 'screen'))
   forwardCommand('stop')
 }
 
@@ -289,11 +314,17 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
     region = sanitizeRegion(request.region, source.display.bounds)
     if (!region) throw new RecordingError(`The selected area is too small (at least ${MIN_SIZE} × ${MIN_SIZE}). Select a larger area.`)
   }
-  const native = source.kind === 'screen' && !!source.display && (await nativeAvailable(nativeCapture()))
+  const api = nativeCapture()
+  // Windows: native window capture, else Chromium with a watcher, else Chromium alone.
+  const windowRoute: WindowRoute | null = source.kind === 'window' ? await planWindowCapture(api, request.sourceId) : null
+  const native = windowRoute ? windowRoute.method === 'native' : !!source.display && (await nativeAvailable(api))
+  const watch = windowRoute?.method === 'chromium' && windowRoute.watch ? windowRoute : null
+  const notice = windowRoute?.method === 'chromium' && !windowRoute.watch ? WINDOW_NO_EFFECTS : undefined
   // Warm the encoder probe while recording so processing can start at once.
   void detectH264Encoders()
 
   const { id, dir } = await projects.createProjectDir().catch((err: unknown) => {
+    watch?.watch.kill()
     throw new RecordingError(friendlyMessage(err, projects.projectsRoot()))
   })
   const manifest: projects.RecordingManifest = {
@@ -318,10 +349,12 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   try {
     await projects.writeManifest(manifest)
   } catch (err) {
+    watch?.watch.kill()
     await projects.deleteProject(id).catch(() => undefined)
     throw new RecordingError(friendlyMessage(err, projects.projectsRoot()))
   }
-  const s = new ActiveRecording(manifest, dir)
+  const s = new ActiveRecording(manifest, dir, source.kind === 'window' ? request.sourceId : null)
+  if (watch) s.attachWatch(watch.watch, watch.first)
   active = s
   activeDisplay = source.display
   captureKeys = request.captureKeys
@@ -329,7 +362,7 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   prepareToolbar(source.display, region && source.display ? regionToRect(region, source.display.bounds) : null)
   stopShortcut = registerStopShortcut()
   lastStatus = { state: 'idle', elapsed: 0, stopShortcut }
-  return { token: s.token, method: manifest.method, stopShortcut }
+  return { token: s.token, method: manifest.method, stopShortcut, ...(notice ? { notice } : {}) }
 }
 
 /** Removes what a helper that failed to start left behind (its partial video and encoder checks). */
@@ -344,12 +377,13 @@ async function removeNativeLeftovers(dir: string): Promise<void> {
 
 async function startNative(token: string): Promise<NativeStartResult> {
   const s = requireSession(token)
-  if (s.manifest.method !== 'native' || !activeDisplay) return { ok: false, message: 'Native capture is not used for this recording.' }
-  startTracker()
+  if (s.manifest.method !== 'native' || (!activeDisplay && s.windowId === null)) return { ok: false, message: 'Native capture is not used for this recording.' }
+  startTracker(s)
   const abort = new AbortController()
+  const output = path.join(s.dir, projects.RAW.native)
   const starting = startNativeVideo(
     nativeCapture(),
-    { displayId: String(activeDisplay.id), output: path.join(s.dir, projects.RAW.native), fps: 60 },
+    s.windowId !== null ? { windowId: s.windowId, output, fps: 60 } : { displayId: String(activeDisplay!.id), output, fps: 60 },
     // The helper's own start budget (monitor lookup, encoder setup, first frame) plus a margin.
     defaultStartTimeoutMs(),
     abort.signal
@@ -366,14 +400,30 @@ async function startNative(token: string): Promise<NativeStartResult> {
     tracker.stop()
     s.manifest.method = 'chromium'
     void removeNativeLeftovers(s.dir)
+    // A window keeps its cursor effects when a watcher can follow it while Chromium records it.
+    const notice = s.windowId !== null ? await watchWindowAfterFallback(s, s.windowId) : undefined
+    if (active !== s) return { ok: false, message: 'The recording was cancelled.' }
     // The in-memory manifest is what counts; started() writes it again.
     await projects.writeManifest(s.manifest).catch((err) => console.error('Could not save the recording state:', err))
-    return { ok: false, message: result.message }
+    return { ok: false, message: result.message, ...(notice ? { notice } : {}) }
   }
   s.attachNative(result.session, result.info)
   // Optional in the contract: fakes may not report it.
   result.session.onEnded?.((info) => onNativeEnded(s, info))
   return { ok: true, startedAt: result.info.startedAt, width: result.info.width, height: result.info.height }
+}
+
+/** Starts following a window whose native capture failed; returns a notice when that fails too. */
+async function watchWindowAfterFallback(s: ActiveRecording, windowId: string): Promise<string | undefined> {
+  const abort = new AbortController()
+  const watching = watchForChromium(nativeCapture(), windowId, undefined, abort.signal)
+  // Cancelling the recording meanwhile stops the watcher before the folder is removed.
+  s.trackNativeStart(abort, watching)
+  const route = await watching
+  if (!route.watch) return WINDOW_NO_EFFECTS
+  if (active === s) s.attachWatch(route.watch, route.first)
+  else route.watch.kill()
+  return undefined
 }
 
 async function started(token: string, info: RecordingStartInfo): Promise<void> {
@@ -392,7 +442,7 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   m.webcamFps = info.webcamFps
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
-  if (!s.usesNative) startTracker()
+  if (!s.usesNative) startTracker(s)
   // A failed write must not end a recording that is already running: the manifest in
   // memory is authoritative and is written again on stop.
   await projects.writeManifest(m).catch((err) => console.error('Could not save the recording state:', err))
@@ -536,6 +586,13 @@ async function pickRegion(sourceId: string): Promise<RegionSelection | null> {
   }
 }
 
+/** What window recordings get on this PC; the main window serves as the window to try a watcher on. */
+function windowSupport(): Promise<WindowCaptureSupport> {
+  const main = getMainWindow()
+  const probe = main && !main.isDestroyed() ? main.getMediaSourceId() : null
+  return windowCaptureSupport(nativeCapture(), probe)
+}
+
 function thumbnailUrl(image: NativeImage): string {
   if (image.isEmpty()) return ''
   return `data:image/jpeg;base64,${image.toJPEG(THUMBNAIL.quality).toString('base64')}`
@@ -569,6 +626,7 @@ export function registerRecordingIpc(): void {
       })
   })
 
+  ipcMain.handle('recording:windowSupport', () => windowSupport())
   ipcMain.handle('recording:prepare', (_e, request: RecordingRequest) => prepare(request))
   ipcMain.handle('recording:chunk', async (_e, token: string, kind: TrackKind, data: Uint8Array) => {
     const s = requireSession(token)
@@ -668,5 +726,6 @@ export function disposeRecording(): void {
   globalShortcut.unregisterAll()
   tracker.stop()
   active?.killNative()
+  active?.killWatch()
   killAllFfmpeg()
 }

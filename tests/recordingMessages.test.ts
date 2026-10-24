@@ -34,6 +34,11 @@ describe('nativeEndedMessage (windows-1)', () => {
     expect(nativeEndedMessage({ reason: 'closed' })).toMatch(/disconnected or turned off.*kept/)
     expect(nativeEndedMessage({ reason: 'crashed', error: new Error('access violation') })).toMatch(/failed unexpectedly.*kept/)
   })
+
+  it('says the recorded window was closed (window recordings)', () => {
+    expect(nativeEndedMessage({ reason: 'closed' }, 'window')).toBe('Recording stopped because the recorded window was closed. Everything recorded until then was kept.')
+    expect(nativeEndedMessage({ reason: 'error' }, 'window')).toMatch(/window capture failed unexpectedly.*kept/)
+  })
 })
 
 describe('rendererGoneDialog (audit-A-3)', () => {

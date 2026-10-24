@@ -49,6 +49,20 @@ export function cropFilter(region: NormRect): string {
   return `crop=w=${w}:h=${h}:x=${x}:y=${y}:exact=1`
 }
 
+/**
+ * Scales every frame to FIT inside a fixed W x H output, centred, with black bars: the rule
+ * of fitContent() in src/shared/recording/windowGeometry.ts, which the cursor mapping of
+ * window recordings (and the native helper) use for a window resized mid-recording. The
+ * scaled size is the exact fit rounded so both bars are equal and even (4:2:0 video), so
+ * every content edge is within a pixel of the exact fit. Frames of the output's own size
+ * pass unscaled.
+ */
+export function fitFilters(width: number, height: number): string[] {
+  const scale = `min(${width}/iw\\,${height}/ih)`
+  const dim = (out: number, input: 'iw' | 'ih'): string => `max(2\\,${out}-4*round((${out}-${input}*${scale})/4))`
+  return [`scale=w=${dim(width, 'iw')}:h=${dim(height, 'ih')}`, `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`, 'setsar=1']
+}
+
 function encoderArgs(encoder: H264Encoder, bitrate: number): string[] {
   switch (encoder) {
     case 'h264_nvenc':
@@ -77,12 +91,7 @@ export function proxyArgs(input: string, output: string, withAudio: boolean, opt
   if (options.crop) filters.push(cropFilter(options.crop))
   const size = options.size
   if (size) {
-    const { width: W, height: H } = size
-    filters.push(
-      `scale=${W}:${H}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
-      `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2`,
-      'setsar=1'
-    )
+    filters.push(...fitFilters(size.width, size.height))
   } else {
     filters.push('scale=trunc(iw/2)*2:trunc(ih/2)*2')
   }

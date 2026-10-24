@@ -15,6 +15,7 @@ import { nativeCaptureTimeouts } from '../src/main/nativeCapture'
 import { defaultStartTimeoutMs, nativeAvailable, startNativeVideo, stopNativeVideo, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
 import { ActiveRecording } from '../src/main/recording/session'
 import { buildCursorTrack } from '../src/main/recording/trackMath'
+import { windowMapping } from '../src/main/recording/windowCapture'
 
 const T0 = 1_700_000_000_000
 
@@ -219,7 +220,7 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     const progress: (number | null)[] = []
     const project = await processRecording(m, (p) => progress.push(p.progress))
 
-    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: { x: 0, y: 0, w: 0.5, h: 0.5 } })
+    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: { x: 0, y: 0, w: 0.5, h: 0.5 }, target: 'area' })
     expect(project.cursor.show).toBe(true)
     expect([project.width, project.height]).toEqual([160, 120])
     expect(project.hasAudio).toBe(true)
@@ -249,6 +250,45 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     expect(existsSync(path.join(dir, 'project.json'))).toBe(true)
   }, 60000)
 
+  it('builds a native window recording: smooth cursor on, clicks mapped through the window, auto zooms', async () => {
+    root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-window-'))
+    const { id, dir } = await projects.createProjectDir(new Date(T0))
+    gen(['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=60:duration=2', '-c:v', 'libx264', '-g', '120', path.join(dir, 'native.mp4')])
+    const m = manifest({ id, sourceKind: 'window', startedAt: T0, width: 640, height: 360, duration: 2, status: 'processing' })
+    await projects.writeManifest(m)
+    // The window is at (1000, 500) and moves to (0, 0) at 1 s.
+    const rects = [
+      { at: T0 - 50, x: 1000, y: 500, width: 640, height: 360 },
+      { at: T0 + 1000, x: 0, y: 0, width: 640, height: 360 }
+    ]
+    const track = buildCursorTrack(
+      {
+        samples: [{ at: T0 + 100, x: 1320, y: 680 }],
+        clicks: [
+          { at: T0 + 500, x: 1160, y: 590, button: 'left' },
+          { at: T0 + 600, x: 100, y: 100, button: 'left' }, // outside the window then: dropped
+          { at: T0 + 1500, x: 480, y: 270, button: 'left' }
+        ],
+        keys: [],
+        bounds: null,
+        scale: 1
+      },
+      { startedAt: T0, pauses: [], duration: 2, region: null, slack: 1, window: windowMapping(rects, (r) => r, { width: 640, height: 360 }) }
+    )
+    await projects.writeCursor(id, track)
+    const project = await processRecording(m, () => undefined)
+    expect(project.capture).toEqual({ method: 'native', cursorInVideo: false, region: null, target: 'window' })
+    expect(project.cursor.show).toBe(true)
+    expect([project.width, project.height]).toEqual([640, 360])
+    const cursor = JSON.parse(readFileSync(path.join(dir, 'cursor.json'), 'utf8'))
+    expect(cursor.valid).toBe(true)
+    expect(cursor.clicks.map((c: { x: number; y: number }) => [c.x, c.y])).toEqual([
+      [0.25, 0.25],
+      [0.75, 0.75]
+    ])
+    expect(project.zooms.length).toBeGreaterThan(0)
+  }, 60000)
+
   it('processes a Chromium WebM, probing the real duration', async () => {
     root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-chromium-'))
     const { id, dir } = await projects.createProjectDir(new Date(T0))
@@ -260,7 +300,7 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
     // The renderer measured 0 s (e.g. the source closed); the proxy duration wins.
     const m = manifest({ id, method: 'chromium', startedAt: T0, width: 640, height: 360, hasAudio: true, duration: 0 })
     const project = await processRecording(m, () => undefined)
-    expect(project.capture).toEqual({ method: 'chromium', cursorInVideo: true, region: null })
+    expect(project.capture).toEqual({ method: 'chromium', cursorInVideo: true, region: null, target: 'screen' })
     expect(project.duration).toBeGreaterThan(1.4)
     expect(project.hasAudio).toBe(true)
     expect(existsSync(path.join(dir, 'screen.webm'))).toBe(false)

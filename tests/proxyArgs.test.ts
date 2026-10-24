@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { cropFilter, muxAudioArgs, proxyArgs, regionPixels } from '../src/main/proxyArgs'
+import { fitContent } from '../src/shared/recording/windowGeometry'
 
 const arg = (args: string[], flag: string): string | undefined => args[args.indexOf(flag) + 1]
 
@@ -36,7 +37,8 @@ describe('proxyArgs', () => {
 
   it('fits frames of another size into the fixed output without stretching', () => {
     const vf = arg(proxyArgs('in.webm', 'out.mp4', false, { size: { width: 1280, height: 720 } }), '-vf')!
-    expect(vf).toContain('scale=1280:720:force_original_aspect_ratio=decrease')
+    // fitContent's rule: the smaller scale of the two axes, centred, bars on both sides even.
+    expect(vf).toContain('scale=w=max(2\\,1280-4*round((1280-iw*min(1280/iw\\,720/ih))/4)):h=max(2\\,720-4*round((720-ih*min(1280/iw\\,720/ih))/4))')
     expect(vf).toContain('pad=1280:720:(ow-iw)/2:(oh-ih)/2')
   })
 
@@ -151,6 +153,44 @@ describe.skipIf(!haveFfmpeg)('proxy filters (real ffmpeg)', () => {
       expect(containerSeconds(out)).toBeCloseTo(2.5, 2)
     }
   })
+
+  it('fits a window resized mid-recording by fitContent\'s rule, centred (cursor mapping matches the pixels)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-proxy-'))
+    const gen = (args: string[]): void => void execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', ...args])
+    // White window content; like Chromium's WebM, the frame size changes mid-stream.
+    const sizes = [
+      { width: 1280, height: 720 },
+      { width: 1000, height: 640 },
+      { width: 1280, height: 520 }
+    ]
+    const parts = sizes.map(({ width, height }, i) => {
+      const file = path.join(dir, `part${i}.webm`)
+      gen(['-f', 'lavfi', '-i', `color=white:size=${width}x${height}:rate=30:duration=0.4`, '-c:v', 'libvpx', '-b:v', '1M', file])
+      return `file '${file}'`
+    })
+    writeFileSync(path.join(dir, 'list.txt'), parts.join('\n'))
+    const input = path.join(dir, 'resized.webm')
+    gen(['-f', 'concat', '-safe', '0', '-i', path.join(dir, 'list.txt'), '-c', 'copy', input])
+    const out = { width: 1280, height: 720 }
+    const proxy = path.join(dir, 'proxy.mp4')
+    execFileSync(ffmpeg, proxyArgs(input, proxy, false, { size: out, fps: 30 }), { stdio: 'ignore' })
+    expect(sizeOf(proxy)).toBe('1280x720')
+    sizes.forEach((content, i) => {
+      // The middle of each part, as 8-bit grey.
+      const frame = execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-ss', String(i * 0.4 + 0.2), '-i', proxy, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], {
+        maxBuffer: 16 << 20
+      })
+      const lit = (x: number, y: number): boolean => frame[y * out.width + x] > 128
+      const row = Array.from({ length: out.width }, (_, x) => lit(x, out.height >> 1))
+      const col = Array.from({ length: out.height }, (_, y) => lit(out.width >> 1, y))
+      const fit = fitContent(content, out)
+      // Within a pixel of the exact (fractional) fit: what the cursor mapping assumes.
+      expect(Math.abs(row.indexOf(true) - fit.dx)).toBeLessThanOrEqual(1)
+      expect(Math.abs(row.lastIndexOf(true) + 1 - (fit.dx + fit.width))).toBeLessThanOrEqual(1)
+      expect(Math.abs(col.indexOf(true) - fit.dy)).toBeLessThanOrEqual(1)
+      expect(Math.abs(col.lastIndexOf(true) + 1 - (fit.dy + fit.height))).toBeLessThanOrEqual(1)
+    })
+  }, 60000)
 
   it('fits a differently sized frame (resized window) into the fixed output size', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'ssw-proxy-'))

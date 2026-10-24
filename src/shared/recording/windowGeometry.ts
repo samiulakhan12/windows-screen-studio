@@ -80,3 +80,31 @@ export function insideWindow(point: { x: number; y: number }, pose: WindowPose):
   const r = pose.dip
   return !pose.minimized && point.x >= r.x && point.y >= r.y && point.x <= r.x + r.width && point.y <= r.y + r.height
 }
+
+/** A window rectangle as the capture helper reports it: physical pixels at epoch ms `at`. */
+export interface WindowRectSample extends Rect {
+  at: number
+  minimized?: boolean
+}
+
+const finite = (...v: unknown[]): boolean => v.every((n) => typeof n === 'number' && Number.isFinite(n))
+
+/**
+ * Turns the helper's rectangle timeline (physical pixels) into poses sorted by time.
+ * `toDip` converts a physical rectangle into the cursor's coordinate space (Electron's
+ * screen.screenToDipRect on Windows; the identity where both spaces are the same).
+ * Malformed entries are skipped. A minimised window's rectangle is meaningless (Windows
+ * parks it at -32000, -32000), so it is kept as is and never converted.
+ */
+export function posesFromRects(rects: readonly WindowRectSample[], toDip: (r: Rect) => Rect = (r) => r): WindowPose[] {
+  const poses: WindowPose[] = []
+  for (const r of rects) {
+    if (!r || !finite(r.at, r.x, r.y, r.width, r.height)) continue
+    const physical = { x: r.x, y: r.y, width: r.width, height: r.height }
+    const minimized = r.minimized === true
+    if (!minimized && (r.width <= 0 || r.height <= 0)) continue
+    poses.push({ at: r.at, dip: minimized ? { ...physical } : toDip(physical), physical, minimized })
+  }
+  // Stable: rectangles reported at the same instant keep their order (the later one wins).
+  return poses.sort((a, b) => a.at - b.at)
+}
