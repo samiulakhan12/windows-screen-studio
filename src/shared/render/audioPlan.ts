@@ -5,7 +5,8 @@
  * and loudness normalisation; background music on the output timeline with its fades and
  * ducking; the click sounds; and fades of the whole soundtrack. A job without any of the
  * newer settings produces exactly the graph earlier versions did, except that re-timed clips
- * are cut to the exact length of their video and click sounds keep the recording's channels.
+ * are cut to the exact length of their video and kept on its frames, click sounds keep the
+ * recording's channels, and sources mixed together are made stereo.
  */
 import type { ClickSounds, ExportJob } from '../api/export'
 import { duckExpression, fitFades } from '../audio/automation'
@@ -55,6 +56,18 @@ export function atempoLead(speed: number): number {
   let lead = 0
   for (const s of atempoStages(speed)) lead = (lead + 1 / 48) / s
   return lead
+}
+
+/**
+ * A clip's sound re-timed to `speed` (at AUDIO_RATE), on its frames. atempo plays its sound
+ * atempoLead early, so the clip is given twice that lead of silence first (in recording time)
+ * and the first lead of what atempo returns is dropped: the sound starts and stays on its
+ * frames, with no gap at the start. Sound from before the clip instead of the silence would
+ * be heard, as atempo plays its first window at once.
+ */
+function retimeFilters(speed: number): string {
+  const lead = atempoLead(speed)
+  return `adelay=delays=${(2 * lead * speed * 1000).toFixed(3)}:all=1,${atempoChain(speed)},asetpts=PTS-STARTPTS,atrim=start_sample=${Math.round(lead * AUDIO_RATE)},asetpts=PTS-STARTPTS`
 }
 
 /**
@@ -143,8 +156,7 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
   parts.push(`${head}${n > 1 ? `,asplit=${n}${clips.map((_, i) => `[s${i}]`).join('')}` : '[s0]'}`)
   clips.forEach((c, i) => {
     const len = c.end - c.start
-    // Delayed by atempo's lead, so the sound plays with its frames (the exact cut below keeps its length).
-    const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${atempoChain(c.speed)},adelay=delays=${(atempoLead(c.speed) * 1000).toFixed(3)}:all=1` : ''
+    const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${retimeFilters(c.speed)}` : ''
     const exact = retimed ? `,apad=whole_len=${bounds[i + 1] - bounds[i]},atrim=end_sample=${bounds[i + 1] - bounds[i]}` : ''
     parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${exact}[c${i}]`)
   })

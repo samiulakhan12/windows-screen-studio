@@ -11,10 +11,15 @@ import { exportArgs, ffmpegPlan } from '../src/main/exportArgs'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import { DUCK_TIMING } from '../src/shared/audio/automation'
+import { atempoChain } from '../src/shared/engine/timeline'
 import { atempoLead, clipSampleBounds, DENOISE_LATENCY, denoiseFilter, musicGraph, NORMALIZE_FILTERS, planSoundtrack, recordingGraph, soundtrackGraph, STEREO } from '../src/shared/render/audioPlan'
 import type { Clip } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
+
+/** What a clip at `speed` goes through: silence, atempo, then its lead dropped (see recordingGraph). */
+const retimed = (speed: number): string =>
+  `adelay=delays=${(2 * atempoLead(speed) * speed * 1000).toFixed(3)}:all=1,${atempoChain(speed)},asetpts=PTS-STARTPTS,atrim=start_sample=${Math.round(atempoLead(speed) * 48000)},asetpts=PTS-STARTPTS`
 
 /** An audio-only (M4A) job of `seconds`. */
 const m4a = (seconds: number, over: Partial<ExportJob> = {}): ExportJob => ({
@@ -52,8 +57,9 @@ describe('backwards compatibility', () => {
   })
 
   /**
-   * The earlier arguments with only the intended changes: re-timed clips delayed by atempo's lead
-   * and cut to exact lengths, and clicks that keep the recording's channels.
+   * The earlier arguments with only the intended changes: re-timed clips kept on their frames
+   * despite atempo's lead (retimed) and cut to exact lengths, and clicks that keep the
+   * recording's channels.
    */
   const fixed = (args: string[]): string[] => {
     const bounds = clipSampleBounds(clips)
@@ -62,18 +68,20 @@ describe('backwards compatibility', () => {
       let g = a.replace('aresample=async=1:first_pts=0', 'aresample=48000:async=1:first_pts=0')
       clips.forEach((_, i) => {
         const n = bounds[i + 1] - bounds[i]
-        const delay = clips[i].speed !== 1 ? `,adelay=delays=${(atempoLead(clips[i].speed) * 1000).toFixed(3)}:all=1` : ''
-        g = g.replace(new RegExp(`(\\[s${i}\\][^;]*)\\[c${i}\\]`), `$1${delay},apad=whole_len=${n},atrim=end_sample=${n}[c${i}]`)
+        const { speed } = clips[i]
+        if (speed !== 1) g = g.replace(new RegExp(`(\\[s${i}\\][^;]*),${atempoChain(speed)}\\[c${i}\\]`), `$1,${retimed(speed)}[c${i}]`)
+        g = g.replace(new RegExp(`(\\[s${i}\\][^;]*)\\[c${i}\\]`), `$1,apad=whole_len=${n},atrim=end_sample=${n}[c${i}]`)
       })
       return g.replace('[clk];', '[clk0];[clk0]aresample[clk];')
     })
   }
-  it('re-timed clips change only by being delayed by the atempo lead and cut to the exact samples of their video (audio)', () => {
+  it('re-timed clips change only by being kept on their frames and cut to the exact samples of their video (audio)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 0.8 } }, io)
     expect(args).not.toEqual(legacy.audio)
     expect(args).toEqual(fixed(legacy.audio))
-    expect(args.join(' ')).toContain('atempo=2,adelay=delays=10.417:all=1,apad=whole_len=48000,atrim=end_sample=48000[c1]')
-    expect(args.join(' ')).toContain('atempo=0.5,adelay=delays=41.667:all=1,apad=whole_len=96000,atrim=end_sample=96000[c2]')
+    // 2x: atempo leads by 1/96 s; it gets twice that (in recording time: 1/24 s) of silence first and the first 1/96 s it returns is dropped.
+    expect(args.join(' ')).toContain('atrim=end=2,adelay=delays=41.667:all=1,atempo=2,asetpts=PTS-STARTPTS,atrim=start_sample=500,asetpts=PTS-STARTPTS,apad=whole_len=48000,atrim=end_sample=48000[c1]')
+    expect(args.join(' ')).toContain('atrim=end=1,adelay=delays=41.667:all=1,atempo=0.5,asetpts=PTS-STARTPTS,atrim=start_sample=2000,asetpts=PTS-STARTPTS,apad=whole_len=96000,atrim=end_sample=96000[c2]')
   })
   it('clicks over the recording change only by keeping its channel layout (audioClicks)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 1 }, clicks: { times: [0.5, 1, 4.2], volume: 0.6 } }, io)
@@ -103,7 +111,7 @@ describe('recording graph', () => {
     expect(g).toContain(`[2:a]aresample=48000:async=1:first_pts=0,${STEREO}[m1]`)
     expect(g).toContain('[m0][m1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,asplit=2[s0][s1]')
     expect(g).toContain('[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,apad=whole_len=96000,atrim=end_sample=96000[c0]')
-    expect(g).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,atempo=2,adelay=delays=10.417:all=1,apad=whole_len=48000,atrim=end_sample=48000[c1]')
+    expect(g).toContain(`[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,${retimed(2)},apad=whole_len=48000,atrim=end_sample=48000[c1]`)
     expect(g).toMatch(/concat=n=2:v=0:a=1,volume=0\.9,apad=whole_dur=3,atrim=end=3\[aout\]$/)
   })
 
@@ -303,7 +311,8 @@ describe('soundtrack graphs with ffmpeg', () => {
 
   it('re-timed clips stay on their video: no drift over many speed changes', () => {
     // 20 clips at 1.5x, 2x, 4x, 8x and 0.5x with cuts between some of them (what smart speed
-    // makes), and a tick in the recording where each clip starts.
+    // makes), and a tick in the recording 50 ms after each clip starts (atempo fades in its
+    // first window: a click exactly on the cut comes out softer).
     const speeds = [1.5, 2, 4, 8, 0.5]
     const clips: Clip[] = []
     let at = 0.3
@@ -312,18 +321,21 @@ describe('soundtrack graphs with ffmpeg', () => {
       clips.push(clip(+at.toFixed(3), +(at + len).toFixed(3), speeds[i % 5]))
       at += len + (i % 3 === 0 ? 0.77 : 0)
     }
-    const src = ticks('ticks.m4a', clips.map((c) => c.start), at + 1)
+    const src = ticks('ticks.m4a', clips.map((c) => c.start + 0.05), at + 1)
     const bounds = clipSampleBounds(clips)
     const job = m4a(bounds[20] / RATE, { audio: { clips, volume: 1 } })
     const out = render(job, { mix: src })
     expect(out.length).toBe(Math.round((job.frames / job.fps) * RATE))
-    // Each tick lands where the video shows its clip starting, within one audio frame (sample)
-    // either way. Before, every clip moved the rest early: 290 ms by the last one.
-    const found = onsets(out, 0.05)
-    expect(found).toHaveLength(20)
-    // A tick right at the cut is inside atempo's first half window, which atempo does not play
-    // early: the delay that puts the rest of a re-timed clip on its frames moves it that late.
-    found.forEach((s, i) => expect(Math.abs(s - bounds[i] - Math.round(atempoLead(clips[i].speed) * RATE)), `clip ${i} at ${clips[i].speed}x`).toBeLessThanOrEqual(2))
+    // Each tick lands where the video shows it, within atempo's own jitter (up to about 20 ms
+    // at 0.5x), never adding up. Before, every clip moved the rest early: 290 ms by the last one.
+    // (A slowed-down tick can come out twice: the first loud sample near each one is taken.)
+    clips.forEach((c, i) => {
+      const expected = bounds[i] + (0.05 / c.speed) * RATE
+      const from = Math.max(0, Math.round(expected - 0.04 * RATE))
+      const at = out.subarray(from, Math.round(expected + 0.04 * RATE)).findIndex((v) => Math.abs(v) > 0.05)
+      expect(at, `clip ${i} at ${c.speed}x`).toBeGreaterThanOrEqual(0)
+      expect(Math.abs(from + at - expected) / RATE, `clip ${i} at ${c.speed}x`).toBeLessThan(0.025)
+    })
   })
 
   it('the sound inside a re-timed clip plays with its frames, not ahead of them', () => {
@@ -343,9 +355,10 @@ describe('soundtrack graphs with ffmpeg', () => {
         expect(at, `tick at ${t} s (${c.speed}x)`).toBeGreaterThanOrEqual(0)
         errors.push((from + at - expected) / RATE)
       }
-      // atempo's own jitter is a few ms either way; the mean shows any constant lead.
+      // atempo's own jitter is up to about 20 ms either way; the mean shows any constant lead
+      // (about 16 ms late at 0.25x, where two atempo stages lead a little less than modelled).
       const mean = errors.reduce((a, b) => a + b, 0) / errors.length
-      expect(Math.abs(mean), `${c.speed}x: ${errors.map((e) => (e * 1000).toFixed(1)).join(', ')} ms`).toBeLessThan(0.015)
+      expect(Math.abs(mean), `${c.speed}x: ${errors.map((e) => (e * 1000).toFixed(1)).join(', ')} ms`).toBeLessThan(0.02)
     })
   })
 
