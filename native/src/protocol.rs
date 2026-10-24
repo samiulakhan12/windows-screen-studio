@@ -205,7 +205,8 @@ pub fn event_watch_stopped(reason: &str) -> String {
     JsonObject::new().str("event", "stopped").str("reason", reason).finish()
 }
 
-/// The recorded or watched window's screen rectangle (physical pixels) at `at`.
+/// The recorded or watched window's screen rectangle (physical pixels) at `at`, and whether the
+/// cursor is over the window itself (`cursorOver`, always present).
 pub fn event_window(at: f64, state: &WindowState) -> String {
     let r = state.rect;
     JsonObject::new()
@@ -216,6 +217,7 @@ pub fn event_window(at: f64, state: &WindowState) -> String {
         .int("width", r.width as i64)
         .int("height", r.height as i64)
         .bool("minimized", state.minimized)
+        .bool("cursorOver", state.cursor_over)
         .finish()
 }
 
@@ -285,13 +287,23 @@ mod tests {
     #[test]
     fn writes_window_events() {
         // Field names and order as in native/README.md and WindowRectEvent (nativeCapture.ts).
-        let state = WindowState { rect: WindowRect { x: -8, y: 120, width: 1282, height: 721 }, minimized: false };
+        let state = WindowState {
+            rect: WindowRect { x: -8, y: 120, width: 1282, height: 721 },
+            minimized: false,
+            cursor_over: true,
+        };
         assert_eq!(
             event_window(1700000000123.25, &state),
-            r#"{"event":"window","at":1700000000123.25,"x":-8,"y":120,"width":1282,"height":721,"minimized":false}"#
+            r#"{"event":"window","at":1700000000123.25,"x":-8,"y":120,"width":1282,"height":721,"minimized":false,"cursorOver":true}"#
         );
-        let minimized = WindowState { minimized: true, ..state };
-        assert!(event_window(1.0, &minimized).ends_with(r#""minimized":true}"#));
+        let minimized = WindowState { minimized: true, cursor_over: false, ..state };
+        assert!(event_window(1.0, &minimized).ends_with(r#""minimized":true,"cursorOver":false}"#));
+        // Another window covers the spot under the cursor: only cursorOver differs.
+        let covered = WindowState { cursor_over: false, ..state };
+        assert_eq!(
+            event_window(5.0, &covered),
+            r#"{"event":"window","at":5,"x":-8,"y":120,"width":1282,"height":721,"minimized":false,"cursorOver":false}"#
+        );
         assert_eq!(event_watch_stopped("closed"), r#"{"event":"stopped","reason":"closed"}"#);
         assert_eq!(event_watch_stopped("stop"), r#"{"event":"stopped","reason":"stop"}"#);
     }

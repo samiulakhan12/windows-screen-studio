@@ -5,9 +5,11 @@
 // installed) and an xterm; the window source id comes from Electron's desktopCapturer, the window
 // is moved and resized with XMoveWindow/XResizeWindow mid-recording, and its rectangle timeline,
 // the fixed output size and the fit of the resized window are checked; watchWindow() follows it
-// until it closes. When wine is installed the real ssw-capture.exe (npm run build:native) is also
-// driven through wine, where Windows.Graphics.Capture is absent, to check that the client and the
-// real binary agree on arguments, JSON and errors (including record --window / watch-window).
+// until it closes. A second xterm over part of the recorded one and real pointer motion (XTest)
+// check cursorOver (the pointer over the recorded window, or over the one covering it). When wine
+// is installed the real ssw-capture.exe (npm run build:native) is also driven through wine, where
+// Windows.Graphics.Capture is absent, to check that the client and the real binary agree on
+// arguments, JSON and errors (including record --window / watch-window).
 const { execFileSync, spawn, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
@@ -17,6 +19,12 @@ const h = require('./helpers.cjs')
 
 const FAKE = path.join(h.APP_DIR, 'tests/fixtures/fake-capture-helper.cjs')
 const EXE = path.join(h.APP_DIR, 'native/bin/ssw-capture.exe')
+const XINPUT = path.join(__dirname, 'xinput.py')
+
+/** Moves the pointer with XTest (a real motion event, as the user's mouse would). */
+function pointer(x, y) {
+  execFileSync('python3', ['-I', XINPUT, 'script', `m ${Math.round(x)} ${Math.round(y)}`])
+}
 
 /** nativeCapture.ts is only bundled once recordingIpc uses it; compile it on its own. */
 function compileClient(dir) {
@@ -415,6 +423,8 @@ p.on('exit', (code) => process.exit(code ?? 1))
     h.assert(/exited with code 4: Window 12345 not found/.test(w.recorded), `record --window of a missing window: ${w.recorded}`)
     if (typeof w.desktopReady === 'object') {
       h.assert(w.desktopReady.width > 0 && w.desktopReady.height > 0 && w.desktopReady.minimized === false, `desktop rect ${JSON.stringify(w.desktopReady)}`)
+      // The real binary always reports cursorOver (WindowFromPoint + GA_ROOTOWNER), and the client keeps it.
+      h.assert(typeof w.desktopReady.cursorOver === 'boolean', `desktop rect has cursorOver: ${JSON.stringify(w.desktopReady)}`)
       h.assert(w.desktopRects.length >= 1 && w.desktopRects[0].width === w.desktopReady.width, `desktop rects ${JSON.stringify(w.desktopRects)}`)
       h.assert(/exited with code 3: Windows.Graphics.Capture is not available/.test(w.desktopRecord), `record --window of the desktop: ${w.desktopRecord}`)
     } else {
@@ -431,6 +441,8 @@ async function windowTests() {
   }
   const wm = startWindowManager()
   const terms = []
+  // Park the pointer on the bare root window, so cursorOver changes only where a test moves it.
+  pointer(1880, 1060)
   try {
     await h.run('native: recording a single window follows it as it moves and fits it when resized', async (ctx) => {
       const tmp = tempDir('ssw-native-window-')
@@ -494,6 +506,67 @@ async function windowTests() {
       h.assert(content.every((c) => c > 200), `window content in the middle: ${content}`)
       h.assert(before.every((c) => c > 200), `no bar before the resize: ${before}`)
       if (process.env.SSW_E2E_KEEP) fs.copyFileSync(out, path.join(process.env.SSW_E2E_KEEP, 'native-window.mp4'))
+    })
+
+    await h.run('native: cursorOver says whether the pointer is over the recorded window or a window covering it', async (ctx) => {
+      const tmp = tempDir('ssw-native-over-')
+      const title = `SSW-E2E-OVER-${process.pid}`
+      const coverTitle = `SSW-E2E-COVER-${process.pid}`
+      terms.push(await startXterm(title, '80x24+100+100'))
+      const { app } = await setup(ctx, 'native-over', { SSW_CAPTURE_HELPER: FAKE, FAKE_HELPER_LOG: path.join(tmp, 'helper.log') })
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.hide()))
+      const source = await windowSource(app, title)
+      const g = xgeometry(Number(source.id.split(':')[1]))
+      // A second window over the recorded one's lower-right part; mapped later, so stacked above it.
+      terms.push(await startXterm(coverTitle, `30x8+${g.x + Math.round(g.width / 2)}+${g.y + Math.round(g.height / 2)}`))
+      const cover = xgeometry(Number((await windowSource(app, coverTitle)).id.split(':')[1]))
+      const overlap = {
+        x0: Math.max(g.x, cover.x),
+        y0: Math.max(g.y, cover.y),
+        x1: Math.min(g.x + g.width, cover.x + cover.width),
+        y1: Math.min(g.y + g.height, cover.y + cover.height)
+      }
+      h.assert(overlap.x1 - overlap.x0 > 40 && overlap.y1 - overlap.y0 > 40, `the second window covers part of the first: ${JSON.stringify({ g, cover })}`)
+      const onRecorded = { x: g.x + 40, y: g.y + 40 }
+      const onCover = { x: (overlap.x0 + overlap.x1) / 2, y: (overlap.y0 + overlap.y1) / 2 }
+      const away = { x: 1880, y: 1060 } // the bare root window
+      h.assert(away.x > cover.x + cover.width && away.x > g.x + g.width, 'the far corner is on no window')
+
+      pointer(onRecorded.x, onRecorded.y)
+      await app.evaluate(async (_e, { windowId, file }) => {
+        const s = globalThis.__nc.startNativeCapture({ windowId, output: file, fps: 30 })
+        globalThis.__session = s
+        await s.started
+      }, { windowId: source.id, file: path.join(tmp, 'over.mp4') })
+      const steps = [onCover, onRecorded, away]
+      for (const p of steps) {
+        await h.sleep(500)
+        pointer(p.x, p.y)
+      }
+      await h.sleep(500)
+      const rects = (await app.evaluate(() => globalThis.__session.stop())).windowRects
+      console.log(`native: cursorOver ${JSON.stringify(rects.map((r) => [r.x, r.y, r.width, r.height, r.cursorOver]))}`)
+      h.assert(rects.every((r) => typeof r.cursorOver === 'boolean'), 'every window event says whether the cursor is over the window')
+      // Only cursorOver changed: one event per change, the rectangle the same throughout.
+      h.assert(JSON.stringify(rects.map((r) => r.cursorOver)) === '[true,false,true,false]', `cursorOver over time: ${rects.map((r) => r.cursorOver)}`)
+      h.assert(rects.every((r) => r.x === g.x && r.y === g.y && r.width === g.width && r.height === g.height && !r.minimized), 'the rectangle did not change')
+      h.assert(rects.every((r, i) => i === 0 || r.at > rects[i - 1].at), 'in time order')
+
+      // watch-window reports it the same way.
+      const watched = await app.evaluate(async (_e, windowId) => {
+        const w = globalThis.__nc.watchWindow(windowId)
+        globalThis.__watch = w
+        return w.ready
+      }, source.id)
+      h.assert(watched.cursorOver === false, `watch-window: the pointer is away: ${JSON.stringify(watched)}`)
+      pointer(onRecorded.x, onRecorded.y)
+      await h.sleep(500)
+      pointer(onCover.x, onCover.y)
+      await h.sleep(500)
+      const watchedRects = await app.evaluate(() => globalThis.__watch.stop())
+      h.assert(JSON.stringify(watchedRects.map((r) => r.cursorOver)) === '[false,true,false]', `watch-window cursorOver: ${watchedRects.map((r) => r.cursorOver)}`)
+      await h.sleep(300)
+      h.assert(helperProcesses().length === 0, `no helper left running: ${helperProcesses()}`)
     })
 
     await h.run('native: watchWindow follows a window until it closes; a recorded window closing ends the recording', async (ctx) => {

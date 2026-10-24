@@ -729,6 +729,37 @@ describe('recording a window', () => {
     expect(stdinLines()).toEqual([`stop ${stopAt}`])
   })
 
+  it('reports whether the cursor is over the window, also when only that changes', async () => {
+    timeline(
+      { after: 0, x: 100, y: 50, width: 800, height: 600, cursorOver: true },
+      // Another window now covers the spot under the cursor: same rectangle, only cursorOver.
+      { after: 100, cursorOver: false },
+      { after: 200, x: 120, y: 50, width: 800, height: 600 },
+      { after: 300, cursorOver: true }
+    )
+    const s = startWindow()
+    await s.started
+    await sleep(500)
+    const result = await s.stop()
+    expect(result.windowRects?.map((r) => ({ x: r.x, cursorOver: r.cursorOver }))).toEqual([
+      { x: 100, cursorOver: true },
+      { x: 100, cursorOver: false },
+      // Carried over while the window moved.
+      { x: 120, cursorOver: false },
+      { x: 120, cursorOver: true }
+    ])
+  })
+
+  it('leaves cursorOver out when the helper does not report it (older helpers)', async () => {
+    timeline({ after: 0, x: 0, y: 0, width: 640, height: 480 }, { after: 100, x: 10, y: 0, width: 640, height: 480 })
+    const s = startWindow()
+    await s.started
+    await sleep(300)
+    const rects = (await s.stop()).windowRects!
+    expect(rects).toHaveLength(2)
+    for (const r of rects) expect('cursorOver' in r).toBe(false)
+  })
+
   it('pauses and resumes like a monitor recording', async () => {
     timeline({ after: 0, x: 0, y: 0, width: 640, height: 480 })
     const s = startWindow()
@@ -827,6 +858,36 @@ describe('watching a window (watch-window)', () => {
     expect(stdinLines()).toEqual(['stop'])
     await waitFor(() => !alive(watchPid()))
     expect(await w.stop()).toBe(rects)
+  })
+
+  it('reports cursorOver through ready and every change, keeping only booleans', async () => {
+    timeline({ after: 0, x: 5, y: 6, width: 700, height: 500, cursorOver: false }, { after: 100, cursorOver: true })
+    const w = watch()
+    expect(await w.ready).toMatchObject({ x: 5, cursorOver: false })
+    await sleep(300)
+    expect((await w.stop()).map((r) => [r.x, r.cursorOver])).toEqual([
+      [5, false],
+      [5, true]
+    ])
+
+    // A malformed value is dropped (unknown), not turned into true or false.
+    const odd = path.join(dir, 'odd-helper.cjs')
+    writeFileSync(
+      odd,
+      `const out = (o) => process.stdout.write(JSON.stringify(o) + '\\n')
+out({ event: 'ready' })
+out({ event: 'window', at: Date.now(), x: 1, y: 2, width: 30, height: 40, minimized: false, cursorOver: 'yes' })
+out({ event: 'window', at: Date.now(), x: 1, y: 2, width: 30, height: 40, minimized: false, cursorOver: false })
+process.stdin.on('data', () => { out({ event: 'stopped', reason: 'stop' }); process.exit(0) })
+`
+    )
+    process.env.SSW_CAPTURE_HELPER = odd
+    const w2 = watch()
+    const first = await w2.ready
+    expect('cursorOver' in first).toBe(false)
+    await sleep(100)
+    const rects = await w2.stop()
+    expect(rects.map((r) => r.cursorOver)).toEqual([undefined, false])
   })
 
   it('keeps the rectangles of a window that closed while watched', async () => {

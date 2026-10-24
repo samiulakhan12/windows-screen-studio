@@ -62,6 +62,24 @@ unsafe extern "system" fn collect(monitor: HMONITOR, _: HDC, _: *mut RECT, data:
     BOOL(1)
 }
 
+/// The largest monitor width and the largest monitor height (physical pixels, possibly of two
+/// different monitors), or None when no monitor can be read. Cheap: no display-config queries.
+pub fn largest_size() -> Option<(u32, u32)> {
+    let mut handles: Vec<HMONITOR> = Vec::new();
+    let ok = unsafe { EnumDisplayMonitors(None, None, Some(collect), LPARAM(&mut handles as *mut _ as isize)) };
+    if !ok.as_bool() {
+        return None;
+    }
+    handles
+        .into_iter()
+        .filter_map(|handle| {
+            let mut info = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
+            unsafe { GetMonitorInfoW(handle, &mut info) }.as_bool().then_some(info.rcMonitor)
+        })
+        .map(|r| ((r.right - r.left).max(0) as u32, (r.bottom - r.top).max(0) as u32))
+        .reduce(|a, b| (a.0.max(b.0), a.1.max(b.1)))
+}
+
 pub fn enumerate() -> Result<Vec<MonitorInfo>> {
     let mut handles: Vec<HMONITOR> = Vec::new();
     let ok = unsafe { EnumDisplayMonitors(None, None, Some(collect), LPARAM(&mut handles as *mut _ as isize)) };

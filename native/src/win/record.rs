@@ -54,27 +54,34 @@ pub fn run(args: &RecordArgs) -> i32 {
 }
 
 /// The newest captured frame, copied out of the capture pool so WGC can reuse its buffers.
+/// The texture holds the content at its top-left and only grows (to the largest content seen),
+/// so a window being resized costs a copy per frame, not a new texture and video processor.
+#[derive(Default)]
 struct Latest {
     texture: Option<ID3D11Texture2D>,
-    size: (u32, u32),
+    /// The texture's size: the largest content seen.
+    capacity: (u32, u32),
 }
 
 impl Latest {
     fn update(&mut self, device: &Device, processor: &mut Processor, frame: &Frame) -> Result<()> {
         let size = (frame.width, frame.height);
-        if self.texture.is_none() || self.size != size {
-            let texture = d3d::create_texture(&device.device, size.0, size.1, DXGI_FORMAT_B8G8R8A8_UNORM)?;
-            if processor.input_size() != size {
-                processor.resize_input(size)?;
+        // The processor first: content larger than ever before rebuilds it (and drops its views).
+        processor.set_content(size)?;
+        let texture = match &self.texture {
+            Some(texture) if sizing::fits_in(size, self.capacity) => texture.clone(),
+            _ => {
+                let capacity = sizing::covering(self.capacity, size);
+                let texture = d3d::create_texture(&device.device, capacity.0, capacity.1, DXGI_FORMAT_B8G8R8A8_UNORM)?;
+                self.capacity = capacity;
+                self.texture = Some(texture.clone());
+                texture
             }
-            processor.set_input(&texture)?;
-            self.texture = Some(texture);
-            self.size = size;
-        }
-        if let Some(texture) = &self.texture {
-            let region = D3D11_BOX { left: 0, top: 0, front: 0, right: size.0, bottom: size.1, back: 1 };
-            unsafe { device.context.CopySubresourceRegion(texture, 0, 0, 0, 0, &frame.texture, 0, Some(&region)) };
-        }
+        };
+        // Cached per texture: only a new texture or a rebuilt processor creates a view.
+        processor.set_input(&texture)?;
+        let region = D3D11_BOX { left: 0, top: 0, front: 0, right: size.0, bottom: size.1, back: 1 };
+        unsafe { device.context.CopySubresourceRegion(&texture, 0, 0, 0, 0, &frame.texture, 0, Some(&region)) };
         Ok(())
     }
 }
@@ -95,11 +102,11 @@ struct Session {
 impl Session {
     fn refresh_frame(&mut self) -> Result<()> {
         if let Some(frame) = self.capture.newest()? {
-            // Keep showing the last full picture rather than a partial one (the content grew
-            // past the pool's buffers; the pool is recreated at the new size right away), or
-            // whatever Windows may hand over for a minimised window.
+            // Keep showing the last picture rather than whatever Windows may hand over for a
+            // minimised window. (Cropped frames of a window that outgrew the capture buffers
+            // never get here: capture.rs drops them and grows the buffers.)
             let have_frame = self.latest.texture.is_some();
-            let skip = have_frame && (!frame.complete || self.window.is_some_and(window::is_minimized));
+            let skip = have_frame && self.window.is_some_and(window::is_minimized);
             if !skip {
                 self.latest.update(&self.device, &mut self.processor, &frame)?;
             }
@@ -285,7 +292,7 @@ fn record(args: &RecordArgs) -> Result<()> {
         device,
         capture,
         processor,
-        latest: Latest { texture: None, size: (0, 0) },
+        latest: Latest::default(),
         pacer: Pacer::new(args.fps, start),
         timebase,
         window,
@@ -306,7 +313,7 @@ fn record(args: &RecordArgs) -> Result<()> {
     // The window's rectangle: once now (before any cursor event), then on change (cursor.rs).
     let follow = window.map(|w| {
         let mut tracker = WindowTracker::new();
-        match tracker.update(window::observe(w)) {
+        match tracker.update(window::observe(w), window::cursor_over(w)) {
             Change::Changed(state) => {
                 output::emit(&protocol::event_window(session.epoch_ms(clock::now_ticks()), &state));
             }

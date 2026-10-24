@@ -2,6 +2,16 @@
 //!
 //! The frame pool is free-threaded and polled from the recording loop, so no
 //! message pump or callback thread is needed and frames never pile up.
+//!
+//! Buffers and resizing: WGC renders each frame at the top-left of a pool buffer and crops
+//! content larger than the buffer. A window's buffers are therefore created with room for it
+//! to grow up to the largest monitor (`sizing::window_buffer_size`), so maximising it or
+//! dragging it larger never yields a cropped frame. Content that still outgrows them (a window
+//! spanning monitors) makes the buffers grow at once, with headroom, in the same call; they
+//! never shrink. A cropped frame is never shown, and since WGC only sends a frame when the
+//! content changes, the session is restarted (which always sends the current picture) if no
+//! full frame follows soon: the video never keeps the pre-resize picture of a window that does
+//! not repaint.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -23,12 +33,16 @@ use windows::Win32::System::WinRT::Direct3D11::IDirect3DDxgiInterfaceAccess;
 use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemInterop;
 
 use super::d3d::{self, Device};
-use super::{support, Context, Failure, Result};
+use super::{monitors, support, Context, Failure, Result};
 use crate::output;
 use crate::protocol;
+use crate::sizing;
 
 const PIXEL_FORMAT: DirectXPixelFormat = DirectXPixelFormat::B8G8R8A8UIntNormalized;
 const POOL_BUFFERS: i32 = 2;
+/// After a cropped frame made the buffers grow, how long to wait for a full frame before
+/// restarting the session to get one (a window that does not repaint sends none).
+const FULL_FRAME_WAIT: Duration = Duration::from_millis(100);
 
 /// What is captured.
 #[derive(Clone, Copy)]
@@ -47,16 +61,14 @@ impl Source {
     }
 }
 
-/// A captured frame; returned to the pool when dropped.
+/// A captured frame; returned to the pool when dropped. Always the whole content (cropped
+/// frames are never returned).
 pub struct Frame {
     frame: Direct3D11CaptureFrame,
     pub texture: ID3D11Texture2D,
-    /// Size of the valid content (top-left aligned) within `texture`.
+    /// Size of the content (top-left aligned) within `texture`, which may be larger.
     pub width: u32,
     pub height: u32,
-    /// False when the content grew beyond the pool's buffers: the frame then holds only its
-    /// top-left part, until the pool is recreated at the new size (the next call).
-    pub complete: bool,
     /// Capture time, 100 ns QPC ticks.
     pub time: i64,
 }
@@ -72,11 +84,50 @@ pub struct Capture {
     pool: Direct3D11CaptureFramePool,
     session: GraphicsCaptureSession,
     device: IDirect3DDevice,
-    pool_size: SizeInt32,
-    /// New content size seen in a frame; the pool is recreated once that frame is released.
-    pending_resize: Option<SizeInt32>,
+    fps: u32,
+    /// A window: its buffers get headroom when they grow.
+    window: bool,
+    /// Size of the monitor or window when capture was set up (the recording's size).
+    item_size: (u32, u32),
+    /// Size of the pool's buffers: content up to this size arrives whole.
+    buffer_size: (u32, u32),
+    /// When a cropped frame made the buffers grow, while no full frame has arrived since.
+    cropped_since: Option<Instant>,
     closed: Arc<AtomicBool>,
     closed_token: Option<i64>,
+}
+
+fn dims(size: SizeInt32) -> (u32, u32) {
+    (size.Width.max(0) as u32, size.Height.max(0) as u32)
+}
+
+fn size_int(size: (u32, u32)) -> SizeInt32 {
+    SizeInt32 { Width: size.0 as i32, Height: size.1 as i32 }
+}
+
+/// A capture session on `pool` set up the way this helper wants it (not started yet).
+fn create_session(
+    pool: &Direct3D11CaptureFramePool,
+    item: &GraphicsCaptureItem,
+    fps: u32,
+) -> Result<GraphicsCaptureSession> {
+    let session = pool.CreateCaptureSession(item).context("Creating the capture session")?;
+
+    // The whole point of this helper: the app draws its own smooth cursor.
+    session.SetIsCursorCaptureEnabled(false).context("Excluding the cursor from the capture")?;
+
+    if support::border_toggle_supported() {
+        if let Err(e) = session.SetIsBorderRequired(false) {
+            output::emit(&protocol::event_warning(&super::describe("Hiding the capture border", &e)));
+        }
+    }
+    if support::min_update_interval_supported() {
+        // Twice the output rate: fresh content for every output frame without
+        // composing 144-240 frames per second on high refresh rate monitors.
+        let interval = TimeSpan { Duration: 10_000_000 / (2 * fps as i64) };
+        let _ = session.SetMinUpdateInterval(interval);
+    }
+    Ok(session)
 }
 
 impl Capture {
@@ -99,25 +150,21 @@ impl Capture {
         if size.Width <= 0 || size.Height <= 0 {
             return Err(Failure::runtime(format!("The {noun} reports an invalid size {}x{}", size.Width, size.Height)));
         }
-        let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(&winrt_device, PIXEL_FORMAT, POOL_BUFFERS, size)
-            .context("Creating the capture frame pool")?;
-        let session = pool.CreateCaptureSession(&item).context("Creating the capture session")?;
-
-        // The whole point of this helper: the app draws its own smooth cursor.
-        session.SetIsCursorCaptureEnabled(false).context("Excluding the cursor from the capture")?;
-
+        let item_size = dims(size);
+        let window = matches!(source, Source::Window(_));
+        let buffer_size =
+            if window { sizing::window_buffer_size(item_size, monitors::largest_size()) } else { item_size };
+        let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
+            &winrt_device,
+            PIXEL_FORMAT,
+            POOL_BUFFERS,
+            size_int(buffer_size),
+        )
+        .context("Creating the capture frame pool")?;
         if support::border_toggle_supported() {
             request_borderless_access();
-            if let Err(e) = session.SetIsBorderRequired(false) {
-                output::emit(&protocol::event_warning(&super::describe("Hiding the capture border", &e)));
-            }
         }
-        if support::min_update_interval_supported() {
-            // Twice the output rate: fresh content for every output frame without
-            // composing 144-240 frames per second on high refresh rate monitors.
-            let interval = TimeSpan { Duration: 10_000_000 / (2 * fps as i64) };
-            let _ = session.SetMinUpdateInterval(interval);
-        }
+        let session = create_session(&pool, &item, fps)?;
 
         let closed = Arc::new(AtomicBool::new(false));
         let flag = closed.clone();
@@ -133,16 +180,20 @@ impl Capture {
             pool,
             session,
             device: winrt_device,
-            pool_size: size,
-            pending_resize: None,
+            fps,
+            window,
+            item_size,
+            buffer_size,
+            cropped_since: None,
             closed,
             closed_token,
         })
     }
 
-    /// Physical size of the monitor or window when capture was set up.
+    /// Physical size of the monitor or window when capture was set up: the recording's size,
+    /// whatever size the buffers grow to.
     pub fn size(&self) -> (u32, u32) {
-        (self.pool_size.Width as u32, self.pool_size.Height as u32)
+        self.item_size
     }
 
     pub fn start(&self) -> Result<()> {
@@ -154,15 +205,20 @@ impl Capture {
         self.closed.load(Ordering::SeqCst)
     }
 
-    /// The newest frame waiting in the pool, if any; older ones are released.
+    /// A new session on the same pool: StartCapture always sends the current picture, also of a
+    /// window that does not repaint.
+    fn restart(&mut self) -> Result<()> {
+        let _ = self.session.Close();
+        self.session = create_session(&self.pool, &self.item, self.fps)?;
+        self.start()
+    }
+
+    /// The newest frame waiting in the pool, if any; older ones are released. A frame whose
+    /// content outgrew the buffers (cropped) is released too, and the buffers grow right away.
     pub fn newest(&mut self) -> Result<Option<Frame>> {
-        if let Some(size) = self.pending_resize.take() {
-            // Resolution or orientation changed, or the window was resized: later frames get
-            // buffers of the new size.
-            self.pool
-                .Recreate(&self.device, PIXEL_FORMAT, POOL_BUFFERS, size)
-                .context("Resizing the capture frame pool")?;
-            self.pool_size = size;
+        if self.cropped_since.is_some_and(|t| t.elapsed() >= FULL_FRAME_WAIT) {
+            self.cropped_since = None;
+            self.restart()?;
         }
         let mut newest: Option<Direct3D11CaptureFrame> = None;
         for _ in 0..16 {
@@ -180,27 +236,34 @@ impl Capture {
         let Some(frame) = newest else {
             return Ok(None);
         };
-        let content = frame.ContentSize().context("Reading the frame size")?;
+        let content = dims(frame.ContentSize().context("Reading the frame size")?);
         let time = frame.SystemRelativeTime().context("Reading the frame time")?.Duration;
         let surface = frame.Surface().context("Reading the frame surface")?;
         let access: IDirect3DDxgiInterfaceAccess = surface.cast().context("Querying the frame surface")?;
         let texture: ID3D11Texture2D = unsafe { access.GetInterface() }.context("Reading the frame texture")?;
         let desc = d3d::texture_desc(&texture);
-        let width = (content.Width.max(0) as u32).min(desc.Width);
-        let height = (content.Height.max(0) as u32).min(desc.Height);
-        let complete = content.Width.max(0) as u32 <= desc.Width && content.Height.max(0) as u32 <= desc.Height;
-
-        if (content.Width != self.pool_size.Width || content.Height != self.pool_size.Height)
-            && content.Width > 0
-            && content.Height > 0
-        {
-            self.pending_resize = Some(content);
+        if !sizing::fits_in(content, (desc.Width, desc.Height)) {
+            // Cropped: the window grew past the buffers (or the monitor's resolution grew, or it
+            // was rotated). Drop the frame and grow the buffers for the following ones now
+            // (Recreate also discards the frames still queued, drawn into the old buffers).
+            drop((texture, access, surface));
+            let _ = frame.Close();
+            if let Some(grown) = sizing::grown_buffer_size(self.buffer_size, content, self.window) {
+                self.pool
+                    .Recreate(&self.device, PIXEL_FORMAT, POOL_BUFFERS, size_int(grown))
+                    .context("Growing the capture frame pool")?;
+                self.buffer_size = grown;
+            }
+            self.cropped_since.get_or_insert_with(Instant::now);
+            return Ok(None);
         }
+        self.cropped_since = None;
+        let (width, height) = content;
         if width < 2 || height < 2 {
             let _ = frame.Close();
             return Ok(None);
         }
-        Ok(Some(Frame { frame, texture, width, height, complete, time }))
+        Ok(Some(Frame { frame, texture, width, height, time }))
     }
 }
 

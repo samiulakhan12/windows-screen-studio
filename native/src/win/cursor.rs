@@ -1,6 +1,7 @@
 //! Reports cursor shape changes (the cursor itself is not in the video; the app
 //! draws it from its own position track and these shapes) and, for window recordings, the
-//! window's rectangle, on one ~60 Hz polling thread.
+//! window's rectangle and whether the cursor is over it, on one ~60 Hz polling thread
+//! (a fixed-rate schedule on a high-resolution timer: ticker.rs, timer.rs).
 
 use std::collections::HashMap;
 use std::mem::size_of;
@@ -12,14 +13,15 @@ use std::time::{Duration, Instant};
 use windows::core::PCWSTR;
 use windows::Win32::UI::WindowsAndMessaging::{GetCursorInfo, LoadCursorW, CURSORINFO, CURSOR_SHOWING};
 
+use super::timer::PreciseSleep;
 use super::{clock, window};
 use crate::output;
 use crate::pacer::Timebase;
 use crate::protocol;
 use crate::shapes::{ShapeChanges, FALLBACK_SHAPE, SYSTEM_CURSORS};
+use crate::ticker::{Ticker, POLL_INTERVAL};
 use crate::window::{Change, WindowTracker};
 
-const POLL_INTERVAL: Duration = Duration::from_millis(16);
 /// Cursor handles change when the user switches cursor scheme or size.
 const RELOAD_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -77,7 +79,8 @@ fn load_table() -> HashMap<isize, &'static str> {
 
 /// Reports a change of the followed window. False once stdout is gone.
 fn follow_window(timebase: Timebase, follow: &mut FollowWindow) -> bool {
-    match follow.tracker.update(window::observe(window::hwnd(follow.handle))) {
+    let hwnd = window::hwnd(follow.handle);
+    match follow.tracker.update(window::observe(hwnd), window::cursor_over(hwnd)) {
         Change::Changed(state) => {
             let at = timebase.epoch_ms_at(clock::now_ticks());
             output::emit(&protocol::event_window(at, &state))
@@ -94,6 +97,8 @@ fn watch(timebase: Timebase, mut follow: Option<FollowWindow>, stop: &AtomicBool
     let mut table = load_table();
     let mut loaded_at = Instant::now();
     let mut changes = ShapeChanges::default();
+    let sleeper = PreciseSleep::new();
+    let mut ticker = Ticker::new(POLL_INTERVAL, Instant::now());
     while !stop.load(Ordering::SeqCst) {
         if let Some(follow) = follow.as_mut() {
             if !follow_window(timebase, follow) {
@@ -115,6 +120,6 @@ fn watch(timebase: Timebase, mut follow: Option<FollowWindow>, stop: &AtomicBool
                 }
             }
         }
-        std::thread::sleep(POLL_INTERVAL);
+        sleeper.sleep(ticker.wait(Instant::now()));
     }
 }
