@@ -5,6 +5,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 
 ## Recording
 - ✓ Pick a full screen, an **area** (drag a rectangle on a transparent overlay; move/resize handles, size readout, Enter/Esc), or a single window. Source thumbnails refresh on demand.
+- ✓ **Single-window recordings keep every cursor effect**: the native helper records just that window without the Windows cursor (`record --window`) and reports where the window is as it moves, resizes or is minimised; cursor samples and clicks are mapped into the window, so auto zoom, click ripples, follow-cursor zooms and the smooth cursor (with real cursor shapes) all work. A resized window is fitted into the original frame with the same rule everywhere. Without native window capture the window is recorded by Chromium while the helper only watches its position (`watch-window`): auto zoom and ripples still work, with the Windows cursor in the video. *Windows-unverified.*
 - ✓ Microphone (device picker, falls back to the default device with a notice if the chosen one is gone) and **system audio** (Windows loopback), mixed into one track.
 - ✓ Webcam recorded as its own track for the PiP bubble; its start offset is measured from the first frames.
 - ✓ 3-2-1 countdown, floating always-on-top control bar (excluded from the capture) with timer, pause/resume, stop and discard (with confirmation). `Ctrl+Shift+2` stops; if another app owns the shortcut the bar says so.
@@ -13,7 +14,7 @@ and tested on Linux / with stand-ins, but has not yet been run on a real Windows
 - ✓ Recordings are **streamed to disk** while recording (no size limit, flat memory) and are never discarded once capture has started: a crashed recorder, a failed conversion or a closed window leaves recoverable files, listed under *Unfinished recordings* (Recover / Retry / Show folder / Delete). Processing shows a percentage and can be finished later.
 - ✓ One recording at a time (double clicks are ignored), single app instance, friendly errors with a link to Windows privacy settings.
 - ✓ Microphone level meter on Home; if system audio cannot start, the recording continues without it and says so; if the native helper stops on its own (e.g. a monitor is unplugged) the recording stops, keeps everything and explains why. Native recordings are written as fragmented MP4, so even a helper crash leaves a playable file.
-- *roadmap*: separate microphone/system-audio tracks, cursor tracking for window recordings, cropping areas inside the native helper (today the whole monitor is captured and cropped afterwards), camera preview on Home.
+- *roadmap*: separate microphone/system-audio tracks, cropping areas inside the native helper (today the whole monitor is captured and cropped afterwards), camera preview on Home.
 
 ## Motion engine
 - ✓ **Auto zoom** generated from click clusters (zoom in just before the click, hold, ease out); regenerate keeps your edited zooms.
