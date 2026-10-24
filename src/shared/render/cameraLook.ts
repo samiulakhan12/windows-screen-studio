@@ -19,7 +19,7 @@ export const shadowReach = (s: { blur: number; offsetY: number }): number => Mat
  * Blur radius (camera pixels) behind the person for `amount` (0..1). Relative to the camera
  * picture, so it looks the same at any output size and in the preview and the export.
  */
-export const backgroundBlurRadius = (amount: number, camW: number, camH: number): number => clamp(amount, 0, 1) * 0.035 * Math.max(camW, camH)
+export const backgroundBlurRadius = (amount: number, camW: number, camH: number): number => clamp(amount, 0, 1) * 0.03 * Math.max(camW, camH)
 
 /** The background is blurred at this fraction of the camera's size (same look, a fraction of the cost). */
 export const BLUR_DOWNSCALE = 0.25

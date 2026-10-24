@@ -229,13 +229,11 @@ function BlurSection({ value, off, set }: { value: number; off: boolean; set: (p
         <p className="callout" role="alert" data-testid="blur-unavailable">
           Background blur is unavailable: {state.reason}. The camera is shown without it, in the preview and the export.
         </p>
-      ) : on && state.status === 'loading' ? (
-        <p className="hint" data-testid="blur-status">
-          Loading person detection…
-        </p>
       ) : (
-        <p className="hint" data-testid="blur-status">
-          Softens the room behind you and keeps you sharp. The person is found on this PC; nothing is uploaded.
+        <p className="hint" data-testid="blur-status" data-state={on ? state.status : 'off'}>
+          {on && state.status === 'loading'
+            ? 'Loading person detection…'
+            : 'Softens the room behind you and keeps you sharp. The person is found on this PC; nothing is uploaded.'}
         </p>
       )}
     </Section>

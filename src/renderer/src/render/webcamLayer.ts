@@ -22,6 +22,8 @@ interface BlurState {
   /** The picture small, with a stretched margin so the blur does not fade at the edges; then blurred. */
   tmp: HTMLCanvasElement
   blurred: HTMLCanvasElement
+  /** The mask as segmentation returned it, and softened by a pixel so its steps do not show when scaled up. */
+  rawMask: HTMLCanvasElement
   mask: HTMLCanvasElement
   margin: number
   /** What the canvases hold now: redone only for a new camera frame, mask or blur amount. */
@@ -186,6 +188,7 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
     person: sized(prev?.person, W, H),
     tmp: sized(prev?.tmp, sw + margin * 2, sh + margin * 2),
     blurred: sized(prev?.blurred, sw + margin * 2, sh + margin * 2),
+    rawMask: sized(prev?.rawMask, mask.pixels.width, mask.pixels.height),
     mask: sized(prev?.mask, mask.pixels.width, mask.pixels.height),
     margin,
     image: prev?.image,
@@ -197,12 +200,19 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
     const pctx = b.person.getContext('2d')
     const tctx = b.tmp.getContext('2d')
     const bctx = b.blurred.getContext('2d')
+    const rctx = b.rawMask.getContext('2d')
     const mctx = b.mask.getContext('2d')
-    if (!pctx || !tctx || !bctx || !mctx) {
+    if (!pctx || !tctx || !bctx || !rctx || !mctx) {
       ctx.drawImage(pic.image, src.x, src.y, src.w, src.h, r.x, r.y, r.w, r.h)
       return
     }
-    if (b.pixels !== mask.pixels) mctx.putImageData(mask.pixels, 0, 0)
+    if (b.pixels !== mask.pixels) {
+      rctx.putImageData(mask.pixels, 0, 0)
+      mctx.clearRect(0, 0, b.mask.width, b.mask.height)
+      mctx.filter = 'blur(0.7px)'
+      mctx.drawImage(b.rawMask, 0, 0)
+      mctx.filter = 'none'
+    }
     // The person: the picture, kept only where the (smoothly scaled-up) mask is.
     pctx.globalCompositeOperation = 'copy'
     pctx.drawImage(pic.image, 0, 0, W, H, 0, 0, W, H)

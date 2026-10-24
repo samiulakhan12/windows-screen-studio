@@ -37,7 +37,7 @@ describe('camera shadow', () => {
 describe('background blur', () => {
   it('scales with the camera picture, so preview and export blur alike at any size', () => {
     expect(backgroundBlurRadius(0, 1280, 720)).toBe(0)
-    expect(backgroundBlurRadius(1, 1280, 720)).toBeCloseTo(44.8)
+    expect(backgroundBlurRadius(1, 1280, 720)).toBeCloseTo(38.4)
     expect(backgroundBlurRadius(1, 640, 360)).toBeCloseTo(backgroundBlurRadius(1, 1280, 720) / 2)
     expect(backgroundBlurRadius(2, 1280, 720)).toBe(backgroundBlurRadius(1, 1280, 720))
     expect(backgroundBlurRadius(-1, 1280, 720)).toBe(0)

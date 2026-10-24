@@ -31,10 +31,10 @@ const NO_LAYOUTS: LayoutSegment[] = []
 const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 const shortLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.short ?? layoutLabel(layout)
 
-/** Whether the open recording has a camera: the layout track and its label show only then. */
+/** Whether the open recording has a camera (and its video): the layout track and its label show only then. */
 const useHasCamera = (): boolean => {
-  const { store } = useEditor()
-  return useSyncExternalStore(store.subscribe, () => store.state.hasWebcam)
+  const { store, player } = useEditor()
+  return useSyncExternalStore(store.subscribe, () => store.state.hasWebcam) && player.webcam !== null
 }
 
 /**
