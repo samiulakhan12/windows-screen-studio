@@ -20,6 +20,9 @@ import { lookThumb } from './styleThumbs'
 
 type Naming = { mode: 'new' } | { mode: 'rename'; id: string } | null
 
+/** Whether the preset gallery is open; kept while the editor runs, so switching tabs does not close it. */
+let galleryOpen = false
+
 /**
  * Named looks: the built-in presets and the user's own (saved in the editor preferences).
  * Applying one is a single undo step; your own can be renamed and deleted.
@@ -32,6 +35,11 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
   const [name, setName] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [open, setOpenState] = useState(galleryOpen)
+  const setOpen = (v: boolean): void => {
+    galleryOpen = v
+    setOpenState(v)
+  }
 
   useEffect(() => {
     let live = true
@@ -160,25 +168,45 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
     </form>
   )
 
+  const current = [...BUILT_IN_PRESETS, ...(mine ?? [])].find((p) => presetMatches(project, p.look))
+
   return (
-    <Section title="Presets">
-      <div className="preset-grid" data-testid="built-in-presets">
-        {BUILT_IN_PRESETS.map((p) => card(p, false))}
-      </div>
-      {!!mine?.length && (
+    <Section
+      title="Presets"
+      aside={
+        open ? (
+          <button className="link small" onClick={() => setOpen(false)}>
+            Hide
+          </button>
+        ) : undefined
+      }
+    >
+      {!open ? (
+        <button className="preset-summary" onClick={() => setOpen(true)} title="Show the style presets">
+          <span className="preset-summary-name">{current ? current.name : 'Custom look'}</span>
+          <span className="preset-summary-action">Browse presets…</span>
+        </button>
+      ) : (
         <>
-          <h4 className="style-subhead">Your presets</h4>
-          <div className="preset-grid" data-testid="user-presets">
-            {mine.map((p) => card(p, true))}
+          <div className="preset-grid" data-testid="built-in-presets">
+            {BUILT_IN_PRESETS.map((p) => card(p, false))}
           </div>
+          {!!mine?.length && (
+            <>
+              <h4 className="style-subhead">Your presets</h4>
+              <div className="preset-grid" data-testid="user-presets">
+                {mine.map((p) => card(p, true))}
+              </div>
+            </>
+          )}
+          {form || (
+            <button className="btn" disabled={!mine || busy} onClick={() => startNaming({ mode: 'new' }, '')}>
+              <Icon name="plus" size={16} /> Save this look as a preset…
+            </button>
+          )}
+          <p className="hint">A preset sets the background, card, device frame, cursor look and zoom style in one step; undo brings the previous look back.</p>
         </>
       )}
-      {form || (
-        <button className="btn" disabled={!mine || busy} onClick={() => startNaming({ mode: 'new' }, '')}>
-          <Icon name="plus" size={16} /> Save this look as a preset…
-        </button>
-      )}
-      <p className="hint">A preset sets the background, card, device frame, cursor look and zoom style in one step; undo brings the previous look back.</p>
     </Section>
   )
 }

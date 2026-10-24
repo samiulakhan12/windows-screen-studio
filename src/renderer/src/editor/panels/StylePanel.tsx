@@ -26,7 +26,7 @@ const FRAMES: { kind: DeviceFrameKind; label: string; title: string }[] = [
   { kind: 'browser', label: 'Browser', title: 'A browser window with an address bar' },
   { kind: 'laptop', label: 'Laptop', title: 'A laptop screen on its base' },
   { kind: 'monitor', label: 'Monitor', title: 'A desktop monitor on a stand' },
-  { kind: 'phone', label: 'Phone', title: 'A phone, best for portrait recordings' }
+  { kind: 'phone', label: 'Phone', title: 'A phone (on its side for landscape recordings)' }
 ]
 
 const SHADOW_STYLES: { value: ShadowStyle; label: string; title: string }[] = [
@@ -73,50 +73,6 @@ export function StylePanel({ project, onBackgroundImage, onNotice }: { project: 
 
       <Section title="Frame">
         <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
-        <div className="frame-tiles" role="radiogroup" aria-label="Device frame">
-          {FRAMES.map((f) => {
-            const active = (frame?.kind ?? 'none') === f.kind
-            return (
-              <button
-                key={f.kind}
-                role="radio"
-                aria-checked={active}
-                aria-label={`${f.label} frame`}
-                title={f.title}
-                className={`frame-tile ${active ? 'active' : ''}`}
-                onClick={() => setFrame({ kind: f.kind })}
-              >
-                <img src={frameThumb({ kind: f.kind, theme: frame?.theme ?? 'light' }, f.kind === 'phone')} alt="" draggable={false} />
-                <span>{f.label}</span>
-              </button>
-            )
-          })}
-        </div>
-        {frame && (
-          <Chips
-            label="Frame theme"
-            value={frame.theme}
-            onChange={(theme) => setFrame({ theme })}
-            options={[
-              { value: 'light', label: 'Light' },
-              { value: 'dark', label: 'Dark' }
-            ]}
-          />
-        )}
-        {frame?.kind === 'browser' && (
-          <label className="field-label stacked">
-            Address bar
-            <input
-              className="text-input"
-              aria-label="Address bar text"
-              placeholder={project.name}
-              maxLength={120}
-              value={style.frame?.title ?? ''}
-              onChange={(e) => setFrame({ title: e.target.value }, 'style.frame.title')}
-            />
-          </label>
-        )}
-        {frame?.kind === 'phone' && project.width > project.height && <p className="hint">Phone frames suit portrait (vertical) recordings best.</p>}
       </Section>
 
       <Section title="Background">
@@ -226,6 +182,52 @@ export function StylePanel({ project, onBackgroundImage, onNotice }: { project: 
           onChange={(v) => setStyle({ cornerRadius: v }, 'style.radius')}
         />
         {!frameUsesRadius(frame) && <p className="hint">The device frame sets the corners of the recording.</p>}
+      </Section>
+
+      <Section title="Device frame">
+        <div className="frame-tiles" role="radiogroup" aria-label="Device frame">
+          {FRAMES.map((f) => {
+            const active = (frame?.kind ?? 'none') === f.kind
+            return (
+              <button
+                key={f.kind}
+                role="radio"
+                aria-checked={active}
+                aria-label={`${f.label} frame`}
+                title={f.title}
+                className={`frame-tile ${active ? 'active' : ''}`}
+                onClick={() => setFrame({ kind: f.kind })}
+              >
+                <img src={frameThumb({ kind: f.kind, theme: frame?.theme ?? 'light' }, f.kind === 'phone')} alt="" draggable={false} />
+                <span>{f.label}</span>
+              </button>
+            )
+          })}
+        </div>
+        {frame && (
+          <Chips
+            label="Frame theme"
+            value={frame.theme}
+            onChange={(theme) => setFrame({ theme })}
+            options={[
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' }
+            ]}
+          />
+        )}
+        {frame?.kind === 'browser' && (
+          <label className="field-label stacked">
+            Address bar
+            <input
+              className="text-input"
+              aria-label="Address bar text"
+              placeholder={project.name}
+              maxLength={120}
+              value={style.frame?.title ?? ''}
+              onChange={(e) => setFrame({ title: e.target.value }, 'style.frame.title')}
+            />
+          </label>
+        )}
       </Section>
 
       <Section title="Shadow">

@@ -389,6 +389,9 @@ async function main() {
     fs.mkdirSync(realUserData, { recursive: true })
     fs.writeFileSync(path.join(realUserData, 'editor-prefs.json'), JSON.stringify({ stylePresets: [{ id: 'mine1', name: 'Orange', look }, { id: 'bad' }, 42, { id: 'x y', name: 'Bad id', look }] }))
     await f.openProject(win, 'Presets')
+    // The gallery opens from the current look's name.
+    h.assert((await win.textContent('.preset-summary')).includes('Custom look'), 'a seeded project matches no preset')
+    await win.click('button:has-text("Browse presets")')
 
     const corner = () =>
       win.evaluate(() => {
