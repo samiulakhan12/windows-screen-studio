@@ -27,7 +27,8 @@ import {
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
-import { dragZoomTimes, zoomDragBounds } from '../../../shared/engine/zoom'
+import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
+import { formatLevel } from '../../../shared/editor/zoomEdit'
 import type { Annotation, ClickEvent, Clip, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
@@ -35,6 +36,7 @@ import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
+import './zoom.css'
 
 export interface TimelineHandle {
   zoomIn(): void
@@ -46,6 +48,8 @@ interface Props {
   duration: number
   clips: Clip[]
   zooms: ZoomSegment[]
+  /** Project zoom style: transitions and which zooms pan into the next one. */
+  zoomStyle?: ZoomStyle
   annotations: Annotation[]
   clicks: ClickEvent[]
   selection: Selection
@@ -395,6 +399,15 @@ export const Timeline = memo(
     const selId = selection && 'id' in selection ? selection.id : null
     // The selected item stays mounted even when scrolled away, so a drag in progress keeps its element.
     const visibleZooms = zooms.filter((z) => overlaps(z, win) || z.id === selId)
+    const zoomStyle = props.zoomStyle ?? DEFAULT_ZOOM_STYLE
+    const timings = useMemo(() => zoomTimings(zooms, zoomStyle), [zooms, zoomStyle])
+    // Pairs of zooms the camera pans between without zooming out: drawn joined, with a link.
+    const links = useMemo(() => {
+      const sorted = [...zooms].sort((a, b) => a.start - b.start)
+      const out: { from: ZoomSegment; to: ZoomSegment }[] = []
+      for (let i = 0; i + 1 < sorted.length; i++) if (timings.get(sorted[i].id)?.toNext) out.push({ from: sorted[i], to: sorted[i + 1] })
+      return out
+    }, [zooms, timings])
     const lanes = useMemo(() => annotationLanes(annotations), [annotations])
     const visibleAnnotations = annotations.filter((a) => overlaps(a, win) || a.id === selId)
     const visibleClicks = clicks.filter((c) => c.t >= win.start && c.t <= win.end)
@@ -492,24 +505,50 @@ export const Timeline = memo(
               </div>
 
               <div className="tl-track zoom-track" onPointerDown={onBackgroundDown('zoom')} title="Double-click to add a zoom">
+                {links
+                  .filter((l) => overlaps({ start: l.from.end - 1, end: l.to.start + 1 }, win))
+                  .map(({ from, to }) => (
+                    <div
+                      key={`link:${from.id}`}
+                      className="zoom-link"
+                      data-zoom-link={`${from.id}>${to.id}`}
+                      style={{ left: Math.min(from.end, to.start) * px, width: Math.max(0, to.start - from.end) * px }}
+                      title="The camera pans from this zoom straight into the next one"
+                    >
+                      <PanIcon />
+                    </div>
+                  ))}
                 {visibleZooms.map((z) => {
                   const w = (z.end - z.start) * px
+                  const scale = zoomTargetScale(z)
+                  const tm = timings.get(z.id)
+                  const kind = z.focus.mode === 'region' ? ' · region' : z.focus.mode === 'fixed' ? ' · fixed' : ''
                   return (
                     <div
                       key={z.id}
                       data-zoom={z.id}
                       data-start={z.start}
                       data-end={z.end}
-                      className={`seg zoom-seg ${selId === z.id ? 'selected' : ''} ${z.auto ? 'auto' : ''}`}
+                      data-scale={scale}
+                      data-linked-next={tm?.toNext ? 'true' : undefined}
+                      data-linked-prev={tm?.fromPrev ? 'true' : undefined}
+                      className={`seg zoom-seg ${selId === z.id ? 'selected' : ''} ${z.auto ? 'auto' : ''} ${scale < 1 ? 'pullback' : ''} ${tm?.toNext ? 'linked-next' : ''} ${tm?.fromPrev ? 'linked-prev' : ''}`}
                       style={{ left: z.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onZoomDown(z)}
-                      title={`${formatTime(z.start)} – ${formatTime(z.end)} · ${z.auto ? 'automatic' : 'edited'} zoom`}
+                      title={`${formatTime(z.start)} – ${formatTime(z.end)} · ${formatLevel(scale)}${scale < 1 ? ' pull back' : ''} · ${z.auto ? 'automatic' : 'edited'} zoom${tm?.toNext ? ' · pans to the next zoom' : ''}`}
                     >
+                      {tm && w > 24 && (
+                        <>
+                          <span className={`zoom-ramp in ${tm.fromPrev ? 'pan' : ''}`} style={{ width: Math.min(w / 2, tm.tin * px) }} />
+                          {tm.tout > 0 && <span className="zoom-ramp out" style={{ width: Math.min(w / 2, tm.tout * px) }} />}
+                        </>
+                      )}
                       <span className="edge left" />
                       {w > 34 && (
                         <span className="seg-label">
-                          {z.scale.toFixed(1)}×{z.focus.mode === 'fixed' ? ' · fixed' : ''}
-                          {z.auto && w > 90 ? ' · auto' : ''}
+                          {formatLevel(scale)}
+                          {w > 70 ? kind : ''}
+                          {z.auto && w > 110 ? ' · auto' : ''}
                         </span>
                       )}
                       <span className="edge right" />
@@ -551,6 +590,15 @@ export const Timeline = memo(
     )
   })
 )
+
+/** Arrow between two linked zooms: the camera pans across. */
+function PanIcon(): JSX.Element {
+  return (
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 12h15M14 6l6 6-6 6" />
+    </svg>
+  )
+}
 
 const GapBlock = memo(function GapBlock({
   gap,

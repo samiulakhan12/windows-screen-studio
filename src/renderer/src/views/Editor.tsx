@@ -8,7 +8,8 @@ import { mediaLength } from '../../../shared/editor/mediaLength'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
-import { focusPathFor, insertZoom, isUsableClick, ZOOM_TRANSITION } from '../../../shared/engine/zoom'
+import { levelForKey, setZoomLevel } from '../../../shared/editor/zoomEdit'
+import { focusPathFor, insertZoom, isUsableClick, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
 import type { Project, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { EditorContext, type EditorServices } from '../editor/context'
@@ -193,7 +194,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   useEffect(() => player.setScene(scene, background), [player, scene, background])
 
   const pickZoom =
-    pickFocus && selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id && z.focus.mode === 'fixed') ?? null) : null
+    pickFocus && selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id && z.focus.mode !== 'cursor') ?? null) : null
   useEffect(() => {
     player.setNoZoom(!!pickZoom)
     if (pickFocus && !pickZoom) setPickFocus(false)
@@ -224,7 +225,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
     const addZoomAt = (t: number, lead: number): void => {
       const p = store.state
-      const r = insertZoom(p.zooms, t, p.duration, { lead, focus: newZoomFocus() })
+      const r = insertZoom(p.zooms, t, p.duration, { lead, focus: newZoomFocus(), scale: zoomSettingsOf(p).defaultScale })
       if (r.ok) {
         store.update((q) => ({ ...q, zooms: r.zooms }))
         setSelection({ kind: 'zoom', id: r.id })
@@ -267,10 +268,24 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       setSelection(null)
     }
 
+    /** Number keys: level of the selected zoom (else the zoom under the playhead). */
+    const setZoomLevelKey = (level: number): void => {
+      const sel = latest.current.selection
+      const p = store.state
+      const z = sel?.kind === 'zoom' ? p.zooms.find((x) => x.id === sel.id) : zoomAt(p.zooms, player.time)
+      if (!z) {
+        showNotice('Select a zoom first: 1-4 set its zoom level, 0 pulls back')
+        return
+      }
+      store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevel(x, level) : x)) }))
+      if (sel?.kind !== 'zoom') setSelection({ kind: 'zoom', id: z.id })
+    }
+
     return {
       togglePlay: (): void => player.toggle(),
       addZoomAt,
-      addZoom: (): void => addZoomAt(player.time, ZOOM_TRANSITION),
+      addZoom: (): void => addZoomAt(player.time, zoomSettingsOf(store.state).transition),
+      setZoomLevelKey,
       addZoomFromTrack: (t: number): void => addZoomAt(t, 0),
       addTextAt,
       addText: (): void => addTextAt(player.time),
@@ -436,6 +451,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           return
       }
       if (e.repeat) return
+      const level = e.shiftKey ? null : levelForKey(e.key)
+      if (level !== null) {
+        e.preventDefault()
+        actions.setZoomLevelKey(level)
+        return
+      }
       if (key === 'z') actions.addZoom()
       else if (key === 't') actions.addText()
       else if (key === 's') actions.split()
@@ -547,6 +568,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           duration={project.duration}
           clips={project.clips}
           zooms={project.zooms}
+          zoomStyle={zoomStyleOf(project)}
           annotations={project.annotations}
           clicks={clicks}
           selection={selection}
