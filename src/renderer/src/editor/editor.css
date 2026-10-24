@@ -800,3 +800,19 @@
   background: #f43f5e;
   pointer-events: auto;
 }
+
+.defaults-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* The labels are long for the inspector's width: let them wrap instead of overflowing. */
+.defaults-actions .btn {
+  height: auto;
+  min-height: 32px;
+  padding: 6px 10px;
+  line-height: 1.3;
+  text-align: center;
+}

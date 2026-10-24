@@ -4,6 +4,7 @@ import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { EditStore } from '../../../shared/editor/editStore'
+import { mediaLength } from '../../../shared/editor/mediaLength'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
@@ -22,6 +23,7 @@ import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
+import { videoTrackDuration } from '../editor/videoTrack'
 import type { RenderScene } from '../render/compositor'
 import '../editor/editor.css'
 
@@ -62,6 +64,8 @@ async function openSession(projectId: string): Promise<Session> {
   const data = await window.api.loadProject(projectId)
   const screen = createVideo(data.screenUrl)
   const webcam = data.webcamUrl ? createVideo(data.webcamUrl) : null
+  // Read in parallel with the element's metadata; never rejects.
+  const videoLength = videoTrackDuration(data.screenUrl)
   try {
     await whenMetadata(screen)
   } catch (err) {
@@ -69,7 +73,9 @@ async function openSession(projectId: string): Promise<Session> {
     throw err
   }
   // Correct duration and size from the file before anything (or any undo step) depends on them.
-  const project = correctProjectMedia(data.project, { duration: screen.duration, width: screen.videoWidth, height: screen.videoHeight })
+  // The video track's length, not screen.duration: that is the container's, which includes a longer audio track.
+  const duration = mediaLength(data.project.duration, await videoLength, screen.duration)
+  const project = correctProjectMedia(data.project, { duration, width: screen.videoWidth, height: screen.videoHeight })
   const store = new EditStore(project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(p, meta),

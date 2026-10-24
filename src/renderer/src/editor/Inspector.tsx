@@ -1,11 +1,13 @@
-import { memo, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ANNOTATION_SIZE } from '../../../shared/editor/annotations'
+import { saveErrorMessage } from '../../../shared/editor/autosave'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../shared/editor/clips'
+import { ASPECT_RATIOS, CORNERS, LOOK_LIMITS, lookOf } from '../../../shared/editor/styleDefaults'
 import { outputDuration, SPEED_PRESETS } from '../../../shared/engine/timeline'
 import { GRADIENTS, gradientCss } from '../../../shared/engine/backgrounds'
 import { formatTime } from '../../../shared/engine/project'
 import { isUsableClick, regenerateAutoZooms } from '../../../shared/engine/zoom'
-import type { AnnotationStyle, AspectRatio, Corner, CursorTrack, Project, ZoomSegment } from '../../../shared/types'
+import type { AnnotationStyle, CursorTrack, Project, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { Chips, pctFmt, Section, Slider, Toggle } from './controls'
@@ -49,8 +51,7 @@ const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
 const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = { zoom: 'zoom', annotation: 'text', clip: 'clip', gap: 'clip', range: 'clip' }
 
 const GAP_TITLE: Record<Gap['kind'], string> = { 'trim-start': 'Trimmed start', cut: 'Cut', 'trim-end': 'Trimmed end' }
-const ASPECTS: AspectRatio[] = ['auto', '16:9', '9:16', '1:1', '4:3']
-const CORNERS: Corner[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+const L = LOOK_LIMITS
 
 export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Element {
   const [tab, setTab] = useState<Tab>('style')
@@ -76,7 +77,7 @@ export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Ele
         ))}
       </nav>
       <div className="insp-body" data-tab={tab}>
-        {tab === 'style' && <StylePanel project={props.project} onBackgroundImage={props.onBackgroundImage} />}
+        {tab === 'style' && <StylePanel project={props.project} onBackgroundImage={props.onBackgroundImage} onNotice={props.onNotice} />}
         {tab === 'cursor' && <CursorPanel project={props.project} cursor={props.cursor} />}
         {tab === 'zoom' && <ZoomPanel {...props} />}
         {tab === 'clip' && <ClipPanel {...props} />}
@@ -91,14 +92,14 @@ export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Ele
 
 /* ---------- Style ---------- */
 
-function StylePanel({ project, onBackgroundImage }: { project: Project; onBackgroundImage: () => void }): JSX.Element {
+function StylePanel({ project, onBackgroundImage, onNotice }: { project: Project; onBackgroundImage: () => void; onNotice: (message: string) => void }): JSX.Element {
   const { store } = useEditor()
   const { style } = project
   const setStyle = (patch: Partial<Project['style']>, key?: string): void => store.update((p) => ({ ...p, style: { ...p.style, ...patch } }), key)
   return (
     <>
       <Section title="Frame">
-        <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECTS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
+        <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
       </Section>
       <Section title="Background">
         <div className="swatches">
@@ -128,11 +129,72 @@ function StylePanel({ project, onBackgroundImage }: { project: Project; onBackgr
         </div>
       </Section>
       <Section title="Layout">
-        <Slider label="Padding" value={style.padding} min={0} max={0.25} step={0.005} format={pctFmt} onChange={(v) => setStyle({ padding: v }, 'style.padding')} />
-        <Slider label="Corner radius" value={style.cornerRadius} min={0} max={60} step={1} format={(v) => `${v}px`} onChange={(v) => setStyle({ cornerRadius: v }, 'style.radius')} />
-        <Slider label="Shadow" value={style.shadow} min={0} max={1} step={0.05} format={pctFmt} onChange={(v) => setStyle({ shadow: v }, 'style.shadow')} />
+        <Slider label="Padding" value={style.padding} {...L.padding} step={0.005} format={pctFmt} onChange={(v) => setStyle({ padding: v }, 'style.padding')} />
+        <Slider label="Corner radius" value={style.cornerRadius} {...L.cornerRadius} step={1} format={(v) => `${v}px`} onChange={(v) => setStyle({ cornerRadius: v }, 'style.radius')} />
+        <Slider label="Shadow" value={style.shadow} {...L.shadow} step={0.05} format={pctFmt} onChange={(v) => setStyle({ shadow: v }, 'style.shadow')} />
       </Section>
+      <StyleDefaultsSection project={project} onNotice={onNotice} />
     </>
+  )
+}
+
+/** Saves this project's look (style, cursor, camera, effects) as the start of every new recording. */
+function StyleDefaultsSection({ project, onNotice }: { project: Project; onNotice: (message: string) => void }): JSX.Element {
+  // null while unknown (the saved state is read once when the Style tab opens).
+  const [saved, setSaved] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    let live = true
+    window.api
+      .getStyleDefaults()
+      .then((d) => live && setSaved(!!d))
+      .catch(() => live && setSaved(false))
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const run = async (action: () => Promise<string>, failure: string): Promise<void> => {
+    setBusy(true)
+    try {
+      onNotice(await action())
+    } catch (err) {
+      onNotice(`${failure}: ${saveErrorMessage(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const save = (): Promise<void> =>
+    run(async () => {
+      await window.api.saveStyleDefaults(lookOf(project))
+      setSaved(true)
+      return project.style.background.type === 'image' ? 'Saved as default (image backgrounds are not included)' : 'Saved as default for new recordings'
+    }, 'Could not save the defaults')
+
+  const reset = (): Promise<void> =>
+    run(async () => {
+      await window.api.resetStyleDefaults()
+      setSaved(false)
+      return 'Defaults reset: new recordings use the built-in look'
+    }, 'Could not reset the defaults')
+
+  return (
+    <Section title="New recordings">
+      <p className="hint" data-testid="style-defaults-state">
+        {saved
+          ? 'New recordings start with your saved look: background, layout, cursor, camera and effects.'
+          : 'New recordings start with the built-in look. Save this one to use it for every new recording.'}
+      </p>
+      <div className="defaults-actions">
+        <button className="btn" disabled={busy} onClick={() => void save()}>
+          <Icon name="check" size={16} /> Save as default for new recordings
+        </button>
+        <button className="btn ghost" disabled={busy || !saved} onClick={() => void reset()} title={saved ? 'Go back to the built-in look for new recordings' : 'No defaults are saved'}>
+          <Icon name="refresh" size={16} /> Reset defaults
+        </button>
+      </div>
+    </Section>
   )
 }
 
@@ -173,8 +235,8 @@ function CursorPanel({ project, cursor: track }: { project: Project; cursor: Cur
           title={smoothAvailable ? undefined : 'Not available: the recorded cursor is in the video'}
           onChange={(v) => set({ show: v })}
         />
-        <Slider label="Size" value={cursor.size} min={0.6} max={3} step={0.05} format={(v) => `${v.toFixed(2)}×`} disabled={!smoothOn} onChange={(v) => set({ size: v }, 'cursor.size')} />
-        <Slider label="Smoothing" value={cursor.smoothing} min={0} max={1} step={0.05} format={pctFmt} disabled={!smoothOn} onChange={(v) => set({ smoothing: v }, 'cursor.smoothing')} />
+        <Slider label="Size" value={cursor.size} {...L.cursorSize} step={0.05} format={(v) => `${v.toFixed(2)}×`} disabled={!smoothOn} onChange={(v) => set({ size: v }, 'cursor.size')} />
+        <Slider label="Smoothing" value={cursor.smoothing} {...L.smoothing} step={0.05} format={pctFmt} disabled={!smoothOn} onChange={(v) => set({ smoothing: v }, 'cursor.smoothing')} />
         <Toggle label="Hide when idle" checked={smoothOn && cursor.hideWhenIdle} disabled={!smoothOn} onChange={(v) => set({ hideWhenIdle: v })} />
       </Section>
     </>
@@ -464,8 +526,7 @@ function EffectsPanel({ project, cursor }: { project: Project; cursor: CursorTra
         <Slider
           label="Strength"
           value={effects.motionBlur}
-          min={0}
-          max={1}
+          {...L.motionBlur}
           step={0.05}
           format={(v) => (v === 0 ? 'Off' : pctFmt(v))}
           onChange={(v) => store.update((p) => ({ ...p, effects: { ...p.effects, motionBlur: v } }), 'effects.motionBlur')}
@@ -487,7 +548,7 @@ function EffectsPanel({ project, cursor }: { project: Project; cursor: CursorTra
             { value: 'top', label: 'Top' }
           ]}
         />
-        <Slider label="Size" value={effects.keystrokes.size} min={0.02} max={0.07} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} disabled={!effects.keystrokes.show} onChange={(v) => setKeys({ size: v }, 'effects.keys.size')} />
+        <Slider label="Size" value={effects.keystrokes.size} {...L.keystrokeSize} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} disabled={!effects.keystrokes.show} onChange={(v) => setKeys({ size: v }, 'effects.keys.size')} />
       </Section>
     </>
   )
@@ -505,7 +566,7 @@ function CameraPanel({ project, hasWebcam }: { project: Project; hasWebcam: bool
       {!hasWebcam && <p className="hint">This recording has no camera. Pick a camera on the home screen before recording.</p>}
       <Section title="Camera">
         <Toggle label="Show camera" checked={hasWebcam && webcam.show} disabled={!hasWebcam} onChange={(v) => set({ show: v })} />
-        <Slider label="Size" value={webcam.size} min={0.12} max={0.45} step={0.01} format={pctFmt} disabled={off} onChange={(v) => set({ size: v }, 'webcam.size')} />
+        <Slider label="Size" value={webcam.size} {...L.webcamSize} step={0.01} format={pctFmt} disabled={off} onChange={(v) => set({ size: v }, 'webcam.size')} />
         <Chips
           label="Camera shape"
           value={webcam.shape}

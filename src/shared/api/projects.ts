@@ -1,4 +1,5 @@
 import type { SaveMeta, SyncSaveResult } from '../editor/autosave'
+import type { StyleDefaults } from '../editor/styleDefaults'
 import type { CursorTrack, Project, ProjectSummary } from '../types'
 
 export interface LoadedProject {
@@ -22,4 +23,13 @@ export interface ProjectsApi {
   pickBackgroundImage(projectId: string): Promise<{ url: string; path: string } | null>
   /** URL of a background image stored in the project folder, or null if it is missing. */
   backgroundUrl(projectId: string, path: string): Promise<string | null>
+  /** The look new recordings start with, or null when the built-in look is used. */
+  getStyleDefaults(): Promise<StyleDefaults | null>
+  /**
+   * Saves `look` (usually a project's style, cursor, camera and effects) as the look of new
+   * recordings and returns what was stored: image backgrounds and cursor/camera visibility are left out.
+   */
+  saveStyleDefaults(look: StyleDefaults): Promise<StyleDefaults | null>
+  /** Forgets the saved look, so new recordings use the built-in one again. */
+  resetStyleDefaults(): Promise<void>
 }
