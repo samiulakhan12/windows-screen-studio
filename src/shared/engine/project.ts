@@ -1,5 +1,6 @@
 import type { CaptureInfo, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
 import { readItems, readShape, readSpotlight } from './shapeData'
+import { readTilt } from './tilt'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
 
@@ -136,6 +137,8 @@ export function migrateProject(raw: unknown): Project {
     layouts: objects(p.layouts),
     titles: objects(p.titles),
     chapters: objects(p.chapters),
+    // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.
+    tilt: readTilt(p.tilt),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

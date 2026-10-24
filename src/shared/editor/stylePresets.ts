@@ -1,15 +1,16 @@
 import { cardLook } from '../engine/cardStyle'
 import { frameOf } from '../engine/deviceFrames'
+import { tiltOf, tiltSettingsOf } from '../engine/tilt'
 import { zoomSettingsOf } from '../engine/zoom'
 import { cursorLook } from '../render/cursorFx'
-import type { CursorSettings, Project, StyleSettings } from '../types'
-import { sanitizeCursorLook, sanitizeStyleLook, sanitizeZoomStyle, type ZoomStyleLook } from './styleDefaults'
+import type { CursorSettings, Project, StyleSettings, TiltSettings } from '../types'
+import { sanitizeCursorLook, sanitizeStyleLook, sanitizeTiltLook, sanitizeZoomStyle, type ZoomStyleLook } from './styleDefaults'
 
 /**
  * Named looks ("Style presets"): a background, the card (padding, corners, shadow, border,
- * device frame), a cursor look and the zoom style, applied to a project in one step. Built-in
- * presets ship with the app; the user's own are stored with window.api.setPref('stylePresets').
- * Pure: the Style panel does the storing.
+ * device frame, 3D tilt), a cursor look and the zoom style, applied to a project in one step.
+ * Built-in presets ship with the app; the user's own are stored with
+ * window.api.setPref('stylePresets'). Pure: the Style panel does the storing.
  */
 
 export type PresetStyle = Partial<Pick<StyleSettings, 'background' | 'padding' | 'cornerRadius' | 'shadow' | 'shadowStyle' | 'shadowColor' | 'border' | 'frame'>>
@@ -19,6 +20,11 @@ export interface PresetLook {
   style: PresetStyle
   cursor: PresetCursor
   zoom: ZoomStyleLook
+  /**
+   * The 3D tilt. `{ enabled: false }` switches it off (the project keeps its angles for later);
+   * absent (presets saved before tilts existed) leaves the project's tilt alone.
+   */
+  tilt?: Partial<TiltSettings>
 }
 
 export interface StylePreset {
@@ -34,7 +40,8 @@ export const MAX_USER_PRESETS = 50
 const STYLE_KEYS = ['background', 'padding', 'cornerRadius', 'shadow', 'shadowStyle', 'shadowColor', 'border', 'frame'] as const
 const CURSOR_KEYS = ['size', 'style', 'highlight', 'clickStyle', 'clickColor'] as const
 
-const look = (style: PresetStyle, cursor: PresetCursor, zoom: ZoomStyleLook): PresetLook => ({ style, cursor, zoom })
+const NO_TILT: Partial<TiltSettings> = { enabled: false }
+const look = (style: PresetStyle, cursor: PresetCursor, zoom: ZoomStyleLook, tilt = NO_TILT): PresetLook => ({ style, cursor, zoom, tilt })
 const NO_BORDER = { width: 0, color: '#ffffff', glass: false }
 const NO_FRAME = { kind: 'none', theme: 'light' } as const
 const noHighlight = { enabled: false, color: '#facc15', size: 1, opacity: 0.35 }
@@ -91,7 +98,9 @@ export const BUILT_IN_PRESETS: StylePreset[] = [
     look: look(
       { background: { type: 'wallpaper', id: 'dunes' }, padding: 0.1, cornerRadius: 14, shadow: 0.55, shadowStyle: 'soft', border: NO_BORDER, frame: { kind: 'laptop', theme: 'light' } },
       { size: 1.4, style: 'mac', highlight: noHighlight, clickStyle: 'ripple', clickColor: '#ffffff' },
-      { defaultScale: 1.6, easing: 'smooth', transition: 1 }
+      { defaultScale: 1.6, easing: 'smooth', transition: 1 },
+      // Seen from above and a little to the side, standing up straight while zoomed in.
+      { enabled: true, rotateX: 14, rotateY: -12, perspective: 0.6, animate: 'zoom' }
     )
   },
   {
@@ -143,7 +152,9 @@ export function presetLookOf(project: Project): PresetLook {
   const cursor: PresetCursor = { ...pick(project.cursor, ['size'] as const), highlight: c.highlight, clickStyle: c.clickStyle, clickColor: c.clickColor }
   if (c.style !== 'custom') cursor.style = c.style
   const z = zoomSettingsOf(project)
-  return sanitizePresetLook({ style, cursor, zoom: { defaultScale: z.defaultScale, easing: z.easing, transition: z.transition } }) ?? { style: {}, cursor: {}, zoom: {} }
+  // A tilt that is off is saved as off only, so applying the preset keeps the other project's angles.
+  const tilt = tiltOf(project) ?? NO_TILT
+  return sanitizePresetLook({ style, cursor, zoom: { defaultScale: z.defaultScale, easing: z.easing, transition: z.transition }, tilt }) ?? { style: {}, cursor: {}, zoom: {} }
 }
 
 /**
@@ -157,6 +168,7 @@ export function applyPreset(project: Project, preset: PresetLook): Project {
   const cursor: CursorSettings = { ...project.cursor, ...lookIn.cursor }
   const out: Project = { ...project, style, cursor }
   if (Object.keys(lookIn.zoom).length) out.zoomSettings = { ...zoomSettingsOf(project), ...lookIn.zoom }
+  if (lookIn.tilt) out.tilt = { ...tiltSettingsOf(project), ...lookIn.tilt }
   return out
 }
 
@@ -166,6 +178,7 @@ function canonical(project: Project): string {
   const card = cardLook(s)
   const c = cursorLook(project.cursor)
   const z = zoomSettingsOf(project)
+  const tilt = tiltOf(project)
   const lower = (v: unknown): unknown => (typeof v === 'string' ? v.toLowerCase() : v)
   return JSON.stringify({
     background: s.background,
@@ -177,7 +190,9 @@ function canonical(project: Project): string {
     border: card.border && { ...card.border, color: lower(card.border.color) },
     frame: frameOf(s),
     cursor: [project.cursor.size, c.style, { ...c.highlight, color: lower(c.highlight.color) }, c.clickStyle, lower(c.clickColor)],
-    zoom: [z.defaultScale, z.easing, z.transition]
+    zoom: [z.defaultScale, z.easing, z.transition],
+    // Angles of a tilt that is off do not show.
+    tilt: tilt && [tilt.rotateX, tilt.rotateY, tilt.perspective, tilt.animate]
   })
 }
 
@@ -195,8 +210,10 @@ export function sanitizePresetLook(raw: unknown): PresetLook | null {
   const style = pick(sanitizeStyleLook(isObject(raw.style) ? raw.style : {}), STYLE_KEYS)
   const cursor = pick(sanitizeCursorLook(isObject(raw.cursor) ? raw.cursor : {}), CURSOR_KEYS)
   const zoom = sanitizeZoomStyle(raw.zoom)
-  if (!Object.keys(style).length && !Object.keys(cursor).length && !Object.keys(zoom).length) return null
-  return { style, cursor, zoom }
+  const tilt = sanitizeTiltLook(raw.tilt)
+  const hasTilt = Object.keys(tilt).length > 0
+  if (!Object.keys(style).length && !Object.keys(cursor).length && !Object.keys(zoom).length && !hasTilt) return null
+  return hasTilt ? { style, cursor, zoom, tilt } : { style, cursor, zoom }
 }
 
 /** A usable preset name (trimmed, at most PRESET_NAME_MAX characters), or null. */
