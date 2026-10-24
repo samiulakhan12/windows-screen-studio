@@ -3,7 +3,7 @@ import { contentRect } from '../../../shared/engine/layout'
 import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { clickSoundJob } from '../../../shared/render/clickSound'
-import { exportProject, exportSize, LOW_BPP, MAX_EXPORT_SIDE, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
+import { exportProject, exportSize, LOW_BPP, MAX_EXPORT_SIDE, MB, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
 import {
   applyPreset,
   BATCH_ASPECTS,
@@ -42,7 +42,7 @@ interface Props {
 type Phase =
   | { kind: 'settings' }
   | { kind: 'running'; progress: ExportProgress | null }
-  | ({ kind: 'done'; path: string; targetMB?: number } & ExportResult)
+  | ({ kind: 'done'; path: string; targetMB?: number; limit?: { label: string; maxMB: number } } & ExportResult)
   | { kind: 'batch'; jobs: BatchJob[]; statuses: BatchStatus[]; folder: string; finished: boolean }
   | { kind: 'error'; message: string; detail: string }
 
@@ -308,7 +308,7 @@ export function ExportDialog(props: Props): JSX.Element {
           if (!controller.signal.aborted) setPhase({ kind: 'running', progress })
         }
       })
-      setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, ...result })
+      setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, ...result })
     } catch (err) {
       if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) setPhase({ kind: 'settings' })
       else setPhase({ kind: 'error', ...splitError(err) })
@@ -782,7 +782,7 @@ export function ExportDialog(props: Props): JSX.Element {
 }
 
 /** How a finished file compares with its size target, and what was done to meet it. */
-function SizeReport({ result }: { result: { bytes: number; targetMB?: number; reduced?: string; overLimit?: boolean } }): JSX.Element | null {
+function SizeReport({ result }: { result: { bytes: number; targetMB?: number; reduced?: string; overLimit?: boolean; limit?: { label: string; maxMB: number } } }): JSX.Element | null {
   const { targetMB } = result
   const lines: { text: string; warn?: boolean }[] = []
   if (result.reduced) lines.push({ text: `To fit ${targetMB} MB the GIF was made at ${result.reduced}.` })
@@ -791,6 +791,10 @@ function SizeReport({ result }: { result: { bytes: number; targetMB?: number; re
     const err = sizeError(result.bytes, targetMB)
     if (err > 0.1) lines.push({ text: `${Math.round(err * 100)}% over the ${targetMB} MB target: this encoder could not hold the rate. Try the Software encoder.`, warn: true })
     else lines.push({ text: `Target ${targetMB} MB: ${err <= 0 ? 'within the limit' : `${Math.round(err * 100)}% over`}${err < -0.1 ? ' (the video needed fewer bits)' : ''}.` })
+  }
+  const limit = result.limit
+  if (limit && result.bytes > limit.maxMB * MB) {
+    lines.push({ text: `Larger than the ${limit.maxMB} MB ${limit.label} accepts: set a target size of about ${Math.floor(limit.maxMB * 0.95)} MB and export again.`, warn: true })
   }
   if (!lines.length) return null
   return (
