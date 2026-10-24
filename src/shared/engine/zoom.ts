@@ -69,6 +69,8 @@ interface ZoomEvent {
   t0: number
   t1: number
   anchor: { t: number; x: number; y: number }
+  /** Typing: keeps an earlier aim at the same place (the field just clicked) until it ends. */
+  holdsAim?: boolean
 }
 
 /** Anchors closer than this (normalised units) are the same place on screen. */
@@ -78,8 +80,7 @@ const SAME_PLACE = 0.02
  * Zoom segments from recorded events: events closer than clusterGap share one zoom, which
  * starts leadIn before the first and holds until `hold` after the last; segments whose
  * transitions would overlap are merged (no zoom-out/in dip). Each zoom aims at its first
- * event; a later event at the same place (typing into the field just clicked) keeps the aim
- * there until it ends.
+ * event; typing at the same place (the field just clicked) keeps the aim there until it ends.
  */
 function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions): ZoomSegment[] {
   const sorted = [...events].sort((a, b) => a.t0 - b.t0)
@@ -89,7 +90,7 @@ function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptio
     if (cur && e.t0 - cur.last <= o.clusterGap) {
       cur.last = Math.max(cur.last, e.t1)
       cur.end = Math.max(cur.end, e.t1 + o.hold)
-      if (Math.hypot(e.anchor.x - cur.anchor.x, e.anchor.y - cur.anchor.y) < SAME_PLACE) cur.anchor = { ...cur.anchor, t: Math.max(cur.anchor.t, e.anchor.t) }
+      if (e.holdsAim && Math.hypot(e.anchor.x - cur.anchor.x, e.anchor.y - cur.anchor.y) < SAME_PLACE) cur.anchor = { ...cur.anchor, t: Math.max(cur.anchor.t, e.anchor.t) }
     } else {
       ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, last: e.t1, anchor: { ...e.anchor } })
     }
@@ -160,7 +161,7 @@ export function autoZoomsForTrack(track: CursorTrack, duration: number, settings
       if (!Number.isFinite(b.t) || !Number.isFinite(b.end)) continue
       const end = Math.max(b.t, b.end)
       // Aim at the field for the whole burst, then hand back to the cursor.
-      events.push({ t0: b.t, t1: end, anchor: { t: end, ...typingPlace(track, b.t, settings.rightClicks) } })
+      events.push({ t0: b.t, t1: end, anchor: { t: end, ...typingPlace(track, b.t, settings.rightClicks) }, holdsAim: true })
     }
   }
   if (settings.onMarks) {

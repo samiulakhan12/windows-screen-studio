@@ -66,6 +66,11 @@ describe('autoZoomsForTrack', () => {
     expect(z.anchor).toEqual({ t: 9, x: 0.3, y: 0.6 })
   })
 
+  it('repeated clicks at one place keep aiming from the first click, as before', () => {
+    const [z] = autoZoomsForTrack(track({ clicks: [click(4, 0.3, 0.6), click(5.5, 0.3, 0.6)] }), 30)
+    expect(z.anchor).toEqual({ t: 4, x: 0.3, y: 0.6 })
+  })
+
   it('a typing burst far from any click zooms on its own, aimed at the last click within 10 s', () => {
     const t = track({ clicks: [click(1, 0.3, 0.6)], typing: [{ t: 8, end: 10 }] })
     const zs = autoZoomsForTrack(t, 40)
