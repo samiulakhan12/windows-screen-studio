@@ -50,8 +50,8 @@ const BLUR_SIDE = 256
 const BLUR_SIGMA = 0.045
 
 interface BlurredFrame {
-  /** The frame drawn small (with its edges stretched into a margin) and the blurred result. */
-  small: HTMLCanvasElement
+  /** Work canvas (the frame with its edges stretched into a margin) and the blurred result. */
+  padded: HTMLCanvasElement
   blurred: HTMLCanvasElement
   /** Where the frame is in `blurred`. */
   m: number
@@ -65,8 +65,9 @@ const blurs = new WeakMap<Ctx, BlurredFrame>()
 
 /**
  * The frame drawn so far, small and blurred. Made once per frame on two small canvases kept for
- * the output (never allocated per frame): the frame is drawn into a margin-padded copy with its
- * edges stretched into the margin (so the blur does not darken the edges), then blurred.
+ * the output (never allocated per frame), reading the full-size frame only once: it is drawn
+ * small, copied with its edges stretched into a margin (so the blur does not darken the edges),
+ * then blurred.
  */
 function blurredFrame(fc: FrameContext): BlurredFrame | null {
   if (typeof document === 'undefined') return null
@@ -78,24 +79,32 @@ function blurredFrame(fc: FrameContext): BlurredFrame | null {
   const sigma = Math.max(1, BLUR_SIGMA * Math.min(sw, sh))
   const m = Math.ceil(sigma * 2.5)
   if (!b) {
-    b = { small: document.createElement('canvas'), blurred: document.createElement('canvas'), m, sw, sh, fc: null }
+    b = { padded: document.createElement('canvas'), blurred: document.createElement('canvas'), m, sw, sh, fc: null }
     blurs.set(fc.ctx, b)
   }
-  for (const c of [b.small, b.blurred]) {
+  for (const c of [b.padded, b.blurred]) {
     if (c.width !== sw + 2 * m) c.width = sw + 2 * m
     if (c.height !== sh + 2 * m) c.height = sh + 2 * m
   }
-  const a = b.small.getContext('2d', { alpha: false })
+  const p = b.padded.getContext('2d', { alpha: false })
   const o = b.blurred.getContext('2d', { alpha: false })
-  if (!a || !o) return null
-  const src = fc.ctx.canvas
-  a.imageSmoothingEnabled = true
-  a.imageSmoothingQuality = 'medium'
-  a.drawImage(src, 0, 0, fc.w, fc.h, 0, 0, sw + 2 * m, sh + 2 * m)
-  a.drawImage(src, 0, 0, fc.w, fc.h, m, m, sw, sh)
+  if (!p || !o) return null
+  const W = sw + 2 * m
+  const H = sh + 2 * m
+  // 1. The frame, small, into the middle of the result canvas (its only full-size read).
+  o.imageSmoothingEnabled = true
+  o.imageSmoothingQuality = 'medium'
+  o.globalCompositeOperation = 'copy'
+  o.drawImage(fc.ctx.canvas, 0, 0, fc.w, fc.h, m, m, sw, sh)
+  // 2. Stretched over the whole work canvas (filling the margin from the edges), and exact in its middle.
+  p.imageSmoothingEnabled = true
+  p.drawImage(b.blurred, m, m, sw, sh, 0, 0, W, H)
+  p.drawImage(b.blurred, m, m, sw, sh, m, m, sw, sh)
+  // 3. Blurred back into the result.
   o.filter = `blur(${sigma}px)`
-  o.drawImage(b.small, 0, 0)
+  o.drawImage(b.padded, 0, 0)
   o.filter = 'none'
+  o.globalCompositeOperation = 'source-over'
   b.m = m
   b.sw = sw
   b.sh = sh
@@ -121,8 +130,9 @@ function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): v
   } else {
     const b = blurredFrame(fc)
     if (b) {
+      // Bilinear is enough to scale up a picture this soft.
       ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
+      ctx.imageSmoothingQuality = 'low'
       ctx.drawImage(b.blurred, b.m, b.m, b.sw, b.sh, 0, 0, w, h)
     }
     ctx.fillStyle = b ? tint : '#14141c'
