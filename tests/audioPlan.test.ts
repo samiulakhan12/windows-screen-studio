@@ -445,4 +445,24 @@ describe('soundtrack graphs with ffmpeg', () => {
     const tune = { file: 'left-music.m4a', volume: 1, loop: false, fadeIn: 0, fadeOut: 0, duration: 4 }
     sides(channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 }, music: tune }), { mix: mic, music }))
   })
+
+  it('mono music, alone or with a mono recording, plays at its volume on each side: made stereo, not louder', () => {
+    // Each side is what is heard. ffmpeg's -ac 1 adds the sides at -3 dB each, so it reads such
+    // a track sqrt(2) louder than it plays; the level itself must stay what the volume says.
+    const tone = make('mono-tune.m4a', 'sine=frequency=440:sample_rate=48000,aformat=channel_layouts=mono', 4)
+    const quiet = make('mono-quiet.m4a', 'anullsrc=r=48000:cl=mono', 4)
+    // The tone's own level, through the graph as a lone recording (which stays mono).
+    const source = channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 } }), { mix: tone })
+    expect(source.count).toBe(1)
+    const level = source.level(0.5, 3.5)
+    expect(level).toBeGreaterThan(0.08)
+    const music = { file: 'mono-tune.m4a', volume: 0.5, loop: false, fadeIn: 0, fadeOut: 0, duration: 4 }
+    const alone = channels(m4a(4, { music }), { mix: null, music: tone })
+    const withRecording = channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 }, music }), { mix: quiet, music: tone })
+    for (const out of [alone, withRecording]) {
+      expect(out.count).toBe(2)
+      expect(out.level(0.5, 3.5, 0)).toBeCloseTo(0.5 * level, 4)
+      expect(out.level(0.5, 3.5, 1)).toBeCloseTo(0.5 * level, 4)
+    }
+  })
 })
