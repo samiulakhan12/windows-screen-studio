@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useSyncExternalStore } from 'react'
 import { outputTimeAt } from '../../../shared/editor/clips'
+import { withShortcut, type Keymap } from '../../../shared/editor/shortcuts'
 import { formatTime } from '../../../shared/engine/project'
 import { outputDuration } from '../../../shared/engine/timeline'
 import type { Clip } from '../../../shared/types'
@@ -14,6 +15,8 @@ interface Props {
   onSplit: () => void
   onAddZoom: () => void
   onAddText: () => void
+  /** Current shortcuts, shown in the tooltips. */
+  keymap: Keymap
 }
 
 export function usePlaying(): boolean {
@@ -25,7 +28,7 @@ export function usePlaying(): boolean {
  * Play button, output timecode and edit tools. The timecode is written straight
  * to the DOM from the player, so playback never re-renders React components.
  */
-export const Transport = memo(function Transport({ clips, notice, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
+export const Transport = memo(function Transport({ clips, notice, onTogglePlay, onSplit, onAddZoom, onAddText, keymap }: Props): JSX.Element {
   const { player } = useEditor()
   const playing = usePlaying()
   const timeRef = useRef<HTMLSpanElement>(null)
@@ -46,7 +49,7 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
 
   return (
     <div className="transport">
-      <button className="btn round" onClick={onTogglePlay} title={playing ? 'Pause (Space)' : 'Play (Space)'} aria-label={playing ? 'Pause' : 'Play'} data-playing={playing}>
+      <button className="btn round" onClick={onTogglePlay} title={withShortcut(playing ? 'Pause' : 'Play', keymap.play)} aria-label={playing ? 'Pause' : 'Play'} data-playing={playing}>
         <Icon name={playing ? 'pause' : 'play'} />
       </button>
       <span className="timecode" ref={timeRef} title="Position / length of the exported video" />
@@ -54,13 +57,13 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
         {notice && <span className="notice">{notice}</span>}
       </div>
       <div className="tool-group">
-        <button className="btn ghost" onClick={onSplit} title="Split the clip at the playhead (S)">
+        <button className="btn ghost" onClick={onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>
           <EditorIcon name="split" size={16} /> Split
         </button>
-        <button className="btn ghost" onClick={onAddZoom} title="Add a zoom at the playhead (Z)">
+        <button className="btn ghost" onClick={onAddZoom} title={withShortcut('Add a zoom at the playhead', keymap.addZoom)}>
           <Icon name="zoom" size={16} /> Zoom
         </button>
-        <button className="btn ghost" onClick={onAddText} title="Add text at the playhead (T)">
+        <button className="btn ghost" onClick={onAddText} title={withShortcut('Add text at the playhead', keymap.addText)}>
           <EditorIcon name="text" size={16} /> Text
         </button>
       </div>

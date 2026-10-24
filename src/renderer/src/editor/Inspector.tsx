@@ -1,4 +1,5 @@
-import { memo, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useLayoutEffect, useRef } from 'react'
+import type { Keymap } from '../../../shared/editor/shortcuts'
 import type { CursorTrack, Project, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { EditorIcon } from './EditorIcon'
@@ -32,9 +33,14 @@ export interface InspectorProps {
   onDeleteClip: (id: string) => void
   onRestore: (start: number, end: number) => void
   onCutRange: (start: number, end: number) => void
+  /** The editor's shortcuts, for hints in the panels. */
+  keymap?: Keymap
+  /** Increments when the smart speed command asks the Clip panel to find idle parts. */
+  smartSpeedRequest?: number
 }
 
-type Tab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'shapes' | 'effects' | 'camera' | 'audio'
+export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'shapes' | 'effects' | 'camera' | 'audio'
+type Tab = InspectorTab
 
 const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
   { id: 'style', label: 'Style', icon: 'palette' },
@@ -58,9 +64,11 @@ const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
   spotlight: 'shapes'
 }
 
-
-export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Element {
-  const [tab, setTab] = useState<Tab>('style')
+/**
+ * The settings panels, one tab each. The editor owns the open tab (`tab`/`onTab`), so commands
+ * can switch it; selecting something on the timeline still reveals its panel.
+ */
+export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props }: InspectorProps & { tab: InspectorTab; onTab: (tab: InspectorTab) => void }): JSX.Element {
   const selKind = props.selection?.kind ?? null
 
   // Selecting something (even the already selected item) reveals its settings.
@@ -70,7 +78,7 @@ export const Inspector = memo(function Inspector(props: InspectorProps): JSX.Ele
   revealKind.current = selKind
   useLayoutEffect(() => {
     if (revealKind.current) setTab(TAB_FOR[revealKind.current])
-  }, [props.revealSeq])
+  }, [props.revealSeq, setTab])
 
   return (
     <aside className="inspector">

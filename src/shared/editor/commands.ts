@@ -205,10 +205,12 @@ export interface RankedCommand {
 
 /** How much a recently used command is lifted (the most recent one the most). */
 const RECENT_BOOST = 3
+/** Base score of a word found in a command's category or keywords. */
+const KEYWORD_SCORE = 2
 
 /**
  * Commands matching `query`, best first. Every word of the query must match the title, or
- * failing that the category and keywords (scoring less, without highlights). Recently used
+ * failing that start a word of the category or keywords (scoring less, without highlights). Recently used
  * commands rank higher; with an empty query they come first, in the order they were used,
  * followed by the rest in registry order.
  */
@@ -222,7 +224,7 @@ export function searchCommands(commands: readonly CommandInfo[], query: string, 
   }
   const out: { ranked: RankedCommand; order: number }[] = []
   commands.forEach((command, order) => {
-    const extra = `${command.category} ${command.keywords ?? ''}`
+    const extra = `${command.category} ${command.keywords ?? ''}`.toLowerCase().split(/\s+/)
     let score = 0
     const indices = new Set<number>()
     for (const word of words) {
@@ -232,10 +234,10 @@ export function searchCommands(commands: readonly CommandInfo[], query: string, 
         for (const i of inTitle.indices) indices.add(i)
         continue
       }
-      const inExtra = fuzzyMatch(word, extra)
-      // Keywords must match as a word start, not as scattered letters.
-      if (!inExtra || !wordStart(extra, inExtra.indices[0])) return
-      score += inExtra.score * 0.5
+      // Category and keywords match by the start of a word only, and score below the title.
+      const w = word.toLowerCase()
+      if (!extra.some((k) => k.startsWith(w))) return
+      score += KEYWORD_SCORE + w.length
     }
     const r = recentRank.get(command.id)
     const recentHit = r !== undefined
