@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   duplicateItem,
   fadeLead,
@@ -160,7 +160,8 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
   const title = `Selected ${shapeLabel(shape.kind).toLowerCase()}`
 
   return (
-    <Section title={title} aside={<span className="muted small">{privacy ? 'privacy' : `${formatTime(shape.start)} – ${formatTime(shape.end)}`}</span>}>
+    <Section title={title} aside={<span className="muted small">{formatTime(shape.start)} – {formatTime(shape.end)}</span>}>
+      <OnPreview item={shape} fade={fadeLead(shape.kind)} />
       {privacy ? (
         <>
           <Chips<ShapeKind>
@@ -244,8 +245,6 @@ function SelectedSpotlight({
   const id = spot.id
   const set = (patch: Partial<Spotlight>, key?: string): void =>
     store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), key)
-  const aspect = project.width / project.height
-
   const setMode = (mode: Spotlight['mode']): void => {
     if (mode === spot.mode) return
     if (mode === 'region') {
@@ -259,6 +258,7 @@ function SelectedSpotlight({
 
   return (
     <Section title="Selected spotlight" aside={<span className="muted small">{formatTime(spot.start)} – {formatTime(spot.end)}</span>}>
+      <OnPreview item={spot} fade={fadeLead('spotlight')} />
       <Chips<Spotlight['mode']>
         label="Spotlight follows"
         value={spot.mode === 'cursor' && !cursorValid ? null : spot.mode}
@@ -290,10 +290,7 @@ function SelectedSpotlight({
           onChange={(h) => set({ h, w: clamp((spot.w / spot.h) * h, 0.04, 2) }, `spot-size:${id}`)}
         />
       )}
-      <p className="hint">
-        {spot.mode === 'cursor' ? 'Follows the cursor. Drag its corners on the preview to resize it.' : 'Drag the lit area on the preview to move it, its handles to resize it.'}
-        {spot.mode === 'cursor' && Math.abs(spot.w * aspect - spot.h) < 0.01 && spot.shape === 'ellipse' ? ' It is round on screen.' : ''}
-      </p>
+      <p className="hint">{spot.mode === 'cursor' ? 'Follows the cursor. Drag its corners on the preview to resize it.' : 'Drag the lit area on the preview to move it, its handles to resize it.'}</p>
       <TimeFields project={project} item={spot} onChange={(times) => set(times, `spot-time:${id}`)} />
       <ItemActions
         onDuplicate={() => {
@@ -312,6 +309,29 @@ function SelectedSpotlight({
 }
 
 /* ---------- shared controls ---------- */
+
+/**
+ * The selected item is edited on the preview while the playhead is inside it: when it is
+ * not, a link moves the playhead there.
+ */
+function OnPreview({ item, fade }: { item: { start: number; end: number }; fade: number }): JSX.Element | null {
+  const { player } = useEditor()
+  const [inside, setInside] = useState(() => itemVisibleAt(item, player.time))
+  useEffect(() => {
+    const check = (): void => setInside(itemVisibleAt(item, player.time))
+    check()
+    return player.subscribe(check)
+  }, [item, player])
+  if (inside) return null
+  return (
+    <p className="hint shape-offscreen">
+      Not on screen at the playhead.{' '}
+      <button className="link" onClick={() => player.seek(Math.min(item.end - 0.01, item.start + fade + 0.01))}>
+        Show it on the preview
+      </button>
+    </p>
+  )
+}
 
 /** Start and end in seconds, typed or set from the playhead. */
 function TimeFields({ project, item, onChange }: { project: Project; item: { start: number; end: number }; onChange: (t: { start: number; end: number }) => void }): JSX.Element {

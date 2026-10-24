@@ -45,8 +45,10 @@ export function drawPrivacyLayer(fc: FrameContext): void {
     if (!(out.w >= 0.5 && out.h >= 0.5)) continue
     const done = fc.screen && (s.kind === 'blur' ? drawBlurred(fc.ctx, fc.screen, box, out, s.strength) : drawPixelated(fc.ctx, fc.screen, box, out, s.strength))
     if (!done) {
+      fc.ctx.save()
       fc.ctx.fillStyle = PRIVACY_FALLBACK
       fc.ctx.fillRect(out.x, out.y, out.w, out.h)
+      fc.ctx.restore()
     }
   }
 }

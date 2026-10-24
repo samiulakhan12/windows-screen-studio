@@ -105,9 +105,10 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
         last = 'none'
         return
       }
-      const valid = scene.cursor.valid && scene.cursor.samples.length > 0
-      const cam = cameraAt(project.zooms, t, valid ? scene.focusPath : null, zoomStyleOf(project))
-      const cursor = item.type === 'spotlight' && item.item.mode === 'cursor' && valid ? cursorPositionAt(scene.cursorPath, project.clips, cursorLook(project.cursor).loopHome, t) : null
+      // The same camera and cursor position the compositor uses for this frame.
+      const cam = cameraAt(project.zooms, t, scene.cursor.valid ? scene.focusPath : null, zoomStyleOf(project))
+      const follows = item.type === 'spotlight' && item.item.mode === 'cursor' && scene.cursor.valid && scene.cursor.samples.length > 0
+      const cursor = follows ? cursorPositionAt(scene.cursorPath, project.clips, cursorLook(project.cursor).loopHome, t) : null
       const key = `${cam.scale},${cam.cx},${cam.cy},${cursor?.x},${cursor?.y}`
       if (key === last) return
       last = key
@@ -123,7 +124,8 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
  * The preview canvas, sized to fill the stage at the output aspect ratio. Its
  * backing store follows devicePixelRatio but never exceeds the recording's own
  * resolution, so HiDPI screens get a sharp preview without wasted pixels.
- * Overlays: picking a zoom's focus point, and moving the selected text.
+ * Overlays: picking a zoom's focus point, moving the selected text, and editing the selected
+ * shape or spotlight.
  */
 export const PreviewStage = memo(function PreviewStage({ project, pickZoom, selectedAnnotation, onTogglePlay, onExitPick, scene, selection, onSelect }: Props): JSX.Element {
   const { store, player } = useEditor()
