@@ -2,6 +2,7 @@ import { SettingsButton } from '../settings/SettingsButton'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
 import { openedWithoutStems, withRecordedStems } from '../../../shared/audio/settings'
+import { captionsOf } from '../../../shared/captions/settings'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
@@ -51,6 +52,7 @@ import { validSelection, type Selection } from '../editor/selection'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { addChapterAt, addTitleAt } from '../editor/titleItems'
+import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
@@ -568,6 +570,22 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         store.update((q) => ({ ...q, webcam: { ...q.webcam, show: on } }))
         turned('Camera', on)
       },
+      generateCaptions: () => {
+        setTab('captions')
+        requestCaptions({ kind: 'generate' })
+      },
+      toggleCaptions: () => {
+        if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
+        const on = !captionsOf(store.state).show
+        store.update((q) => ({ ...q, captions: { ...captionsOf(q), show: on } }))
+        turned('Captions', on)
+      },
+      exportCaptions: () => {
+        if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
+        setTab('captions')
+        requestCaptions({ kind: 'export' })
+      },
+      showCaptions: showTab('captions'),
       showStyle: showTab('style'),
       showCursor: showTab('cursor'),
       showZoom: showTab('zoom'),
@@ -615,7 +633,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleClickEffects: cursor.valid ? null : noCursor,
       toggleWebcam: data.webcamUrl ? null : 'This recording has no camera',
       nextChapter: nextChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
-      prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet'
+      prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet',
+      toggleCaptions: p.transcript?.segments.length ? null : 'No captions yet',
+      exportCaptions: p.transcript?.segments.length ? null : 'No captions yet'
     }
     for (const k of ['layoutDefault', 'layoutCameraOnly', 'layoutScreenOnly', 'layoutSideBySide', 'layoutCameraLarge'] as const) {
       unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
@@ -626,7 +646,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleClickEffects: cursor.valid && p.cursor.clickEffect,
       toggleMotionBlur: p.effects.motionBlur > 0,
       toggleKeystrokes: p.effects.keystrokes.show,
-      toggleWebcam: !!data.webcamUrl && p.webcam.show
+      toggleWebcam: !!data.webcamUrl && p.webcam.show,
+      toggleCaptions: !!p.transcript?.segments.length && captionsOf(p).show
     }
     return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.

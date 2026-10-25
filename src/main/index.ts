@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import { registerAiIpc } from './aiIpc'
 import { registerAnalysisIpc } from './analysisIpc'
 import { registerAssetIpc } from './assetIpc'
+import { registerCaptionsIpc } from './captionsIpc'
 import { disposeExport, registerExportIpc } from './exportIpc'
 import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
 import { registerPrefsIpc } from './prefsIpc'
@@ -30,6 +31,7 @@ if (!app.requestSingleInstanceLock()) {
     registerAnalysisIpc()
     registerPrefsIpc()
     registerAiIpc()
+    registerCaptionsIpc()
     registerExportIpc()
     openMainWindow()
     app.on('activate', () => {
