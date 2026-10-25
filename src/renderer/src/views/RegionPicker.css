@@ -1,3 +1,8 @@
+/*
+ * The overlay window is transparent, but the app-wide `:root` paints the page background over the
+ * whole window: the picker's page clears it so the desktop shows through the dimmed layer.
+ */
+:root:has(> body.region-body),
 body.region-body,
 body.region-body #root {
   background: transparent;

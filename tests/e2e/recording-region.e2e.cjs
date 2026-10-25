@@ -39,6 +39,9 @@ await h.run('region recording: overlay selection, exact crop, cursor remapped', 
 
   const overlay = await r.until(() => app.windows().find((w) => w.url().includes('#/region')), { what: 'region overlay' })
   await overlay.waitForSelector('.region-root')
+  // The overlay's page paints nothing of its own: only the dimmed layer covers the desktop.
+  const rootBg = await overlay.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)
+  h.assert(rootBg === 'rgba(0, 0, 0, 0)', `the overlay's page has no background: ${rootBg}`)
   h.assert(!(await r.mainVisible(app)), 'main window hidden while selecting')
   await overlay.mouse.move(400, 300)
   await overlay.mouse.down()

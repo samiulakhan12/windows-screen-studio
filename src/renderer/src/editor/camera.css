@@ -48,10 +48,14 @@
   pointer-events: none;
 }
 
-/* A change of the camera's corner alone. */
+/* A change of the camera's corner alone: the layout family's blue, not the zoom track's violet. */
 .layout-seg.default[data-corner] {
-  background: linear-gradient(180deg, #5b4a8a, #44386b);
-  border-color: #a78bfa;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--track-layout) 46%, #000 54%),
+    color-mix(in srgb, var(--track-layout) 34%, #000 66%)
+  );
+  border-color: color-mix(in srgb, var(--track-layout) 60%, #fff 40%);
 }
 
 .layout-seg .seg-label {
