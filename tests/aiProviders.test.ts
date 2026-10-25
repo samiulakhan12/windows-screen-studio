@@ -4,8 +4,9 @@
  * transcription pipeline with real ffmpeg (sound picked, decoded, split in pauses, sent, merged),
  * the text tasks with each provider, error messages, retries and cancelling.
  */
+import Anthropic from '@anthropic-ai/sdk'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
@@ -41,10 +42,13 @@ vi.mock('electron', () => ({
 }))
 
 import { registerAiIpc } from '../src/main/aiIpc'
-import { claudeAnswerText, claudeRequest } from '../src/main/ai/anthropic'
+import { anthropicFailure, claudeAnswerText, claudeRequest } from '../src/main/ai/anthropic'
 import { baseUrlOverride } from '../src/main/ai/endpoints'
-import { stopTranscription } from '../src/main/ai/transcribe'
+import { geminiClient, geminiFailure } from '../src/main/ai/gemini'
+import { callWithRetry } from '../src/main/ai/request'
+import { stopTranscription, sweepTranscribeTemp } from '../src/main/ai/transcribe'
 import { ffmpegPath } from '../src/main/ffmpeg'
+import { ApiError } from '@google/genai'
 
 const req = createRequire(import.meta.url)
 const { startMockAi, mockAiEnv, burstAudioArgs } = req('./e2e/ai-mock-server.cjs') as {
@@ -131,6 +135,68 @@ describe('base URL overrides', () => {
     } finally {
       h.packaged = false
     }
+  })
+
+  it("send Gemini requests to Google itself in a packaged app, whatever GOOGLE_GEMINI_BASE_URL says", async () => {
+    const urls: string[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      urls.push(String(input instanceof Request ? input.url : input))
+      throw new TypeError('fetch failed')
+    })
+    h.packaged = true
+    process.env.GOOGLE_GEMINI_BASE_URL = `${mock.url}/gemini`
+    try {
+      await geminiClient('AIza-packaged-key', 'gemini-x', 'gemini-x')
+        .test(new AbortController().signal)
+        .catch(() => undefined)
+    } finally {
+      h.packaged = false
+      delete process.env.GOOGLE_GEMINI_BASE_URL
+      fetchSpy.mockRestore()
+    }
+    expect(urls.length).toBeGreaterThan(0)
+    for (const u of urls) expect(u.startsWith('https://generativelanguage.googleapis.com/')).toBe(true)
+  }, 30_000)
+})
+
+describe('request failures', () => {
+  const hang = (s: AbortSignal): Promise<never> => new Promise((_, reject) => s.addEventListener('abort', () => reject(new Error('aborted')), { once: true }))
+
+  it("report the caller's time limit as a time-out, not as cancelled", async () => {
+    const o = { provider: 'OpenAI', toFailure: () => ({ network: true }), timeoutMs: 10_000, attempts: 2 }
+    // During an attempt...
+    expect(await failure(callWithRetry(hang, { ...o, signal: AbortSignal.timeout(100) }))).toMatch(/OpenAI took too long to answer/)
+    // ...and during the wait before the next one.
+    expect(await failure(callWithRetry(() => Promise.reject(new Error('down')), { ...o, signal: AbortSignal.timeout(100) }))).toMatch(/OpenAI took too long to answer/)
+    // A real cancel stays a cancel.
+    const c = new AbortController()
+    setTimeout(() => c.abort(), 50)
+    expect(await failure(callWithRetry(hang, { ...o, signal: c.signal }))).toBe('Cancelled.')
+  })
+
+  it('reads an SSE error event (after HTTP 200, no status) from Claude as the status it stands for', () => {
+    const body = { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }
+    const info = anthropicFailure(new Anthropic.APIError(undefined, body, undefined, new Headers(), 'overloaded_error'))
+    expect(info).toMatchObject({ status: 529, code: 'overloaded_error', message: 'Overloaded' })
+  })
+
+  it("reads Gemini's per-minute rate limit as retryable after its RetryInfo delay, and the per-day one as quota", () => {
+    const body = (quotaId: string): string =>
+      JSON.stringify({
+        error: {
+          code: 429,
+          message: 'You exceeded your current quota, please check your plan and billing details.',
+          status: 'RESOURCE_EXHAUSTED',
+          details: [
+            { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId }] },
+            { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '17s' }
+          ]
+        }
+      })
+    const minute = geminiFailure(new ApiError({ message: body('GenerateRequestsPerMinutePerProjectPerModel-FreeTier'), status: 429 }))
+    expect(minute).toMatchObject({ status: 429, retryAfter: 17 })
+    expect(minute.code).toContain('PerMinute')
+    expect(geminiFailure(new ApiError({ message: body('GenerateRequestsPerDayPerProjectPerModel-FreeTier'), status: 429 })).code).toContain('PerDay')
   })
 })
 
@@ -253,6 +319,34 @@ describe('transcription', () => {
     // The editor closing or the project being deleted stops it the same way (stopAnalyses calls this).
     await stopTranscription('rec-words')
   }, 60_000)
+
+  it('removes the temporary files at once when the app quits mid-transcription', async () => {
+    const slow = providers['Slow OpenAI'] ?? (await add('Slow OpenAI', 'openai', 'slow-openai-key-1'))
+    let started!: () => void
+    const transcribing = new Promise<void>((r) => (started = r))
+    appEvent.sender.send = vi.fn((_c: string, p: TranscribeProgress) => p.phase === 'transcribing' && started())
+    const run = call<Transcript>('ai:transcribe', 'rec-words', { providerId: slow.id })
+    await transcribing
+    expect(transcribeTemps().length).toBe(1)
+    // Nothing asynchronous runs after will-quit: the folder must be gone when the handler returns.
+    h.appEvents.get('will-quit')!()
+    expect(transcribeTemps()).toEqual([])
+    expect(await failure(run)).toBe('Cancelled.')
+  }, 60_000)
+
+  it('sweeps temporary folders a crash left behind, but not young ones another copy of the app may use', async () => {
+    const dir = mkdtempSync(path.join(h.root, 'tmp-'))
+    const old = path.join(dir, 'ssw-transcribe-old')
+    const young = path.join(dir, 'ssw-transcribe-young')
+    const other = path.join(dir, 'unrelated-old')
+    for (const d of [old, young, other]) mkdirSync(d)
+    writeFileSync(path.join(old, 'sound.pcm'), 'pcm')
+    const day = new Date(Date.now() - 24 * 3600_000)
+    utimesSync(old, day, day)
+    utimesSync(other, day, day)
+    expect(await sweepTranscribeTemp(dir)).toEqual([old])
+    expect(readdirSync(dir).sort()).toEqual(['ssw-transcribe-young', 'unrelated-old'])
+  })
 })
 
 describe('text tasks', () => {
@@ -295,14 +389,30 @@ describe('text tasks', () => {
     expect(old.output_config).toEqual({ format: { type: 'json_schema', schema: {} } })
   })
 
-  it('keeps only the answer after a mid-answer model switch, and reports refusals', async () => {
+  it("joins the partial answer and the fallback model's continuation, and reports refusals", async () => {
     const fb = await add('Claude fallback', 'anthropic', 'fallback-claude-key-1')
     expect(await call('ai:text', fb.id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title' })
+    expect(await call('ai:text', fb.id, { task: 'chapters', segments })).toEqual({ task: 'chapters', chapters: [{ t: 1, title: 'Introduction' }, { t: 30, title: 'Main part' }] })
+    const content = [
+      { type: 'text', text: 'ab', citations: null },
+      { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-4-8' } },
+      { type: 'text', text: 'cd', citations: null }
+    ] as unknown as Parameters<typeof claudeAnswerText>[0]['content']
+    expect(claudeAnswerText({ content, stop_reason: 'end_turn', stop_details: null })).toBe('abcd')
     for (const [kind, key] of [['openai', 'refuse-openai-key'], ['gemini', 'refuse-gemini-key'], ['anthropic', 'refuse-claude-key']] as const) {
       const p = await add(`Refusing ${kind}`, kind, key)
       expect(await failure(call('ai:text', p.id, { task: 'summary', segments }))).toMatch(/declined/)
     }
     expect(() => claudeAnswerText({ content: [], stop_reason: 'max_tokens', stop_details: null })).toThrow(/too long/)
+  }, 30_000)
+
+  it('retries an overloaded error that arrives mid-stream from Claude, and a per-minute rate limit from Gemini', async () => {
+    for (const [name, kind, key] of [['Claude mid-stream', 'anthropic', 'midstream-claude-key-1'], ['Gemini per-minute', 'gemini', 'ratemin-gemini-key-1']] as const) {
+      const p = await add(name, kind, key)
+      const before = mock.requests.length
+      expect(await call('ai:text', p.id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title' })
+      expect(mock.requests.slice(before).filter((r) => r.key === key).length).toBe(2)
+    }
   }, 30_000)
 
   it('rejects malformed requests before calling anyone', async () => {

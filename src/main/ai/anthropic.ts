@@ -8,9 +8,9 @@
  * (https://platform.claude.com/docs/en/build-with-claude/structured-outputs). A request a
  * safety classifier declines is retried server-side on the model Anthropic recommends for its
  * category (fallbacks "default", beta server-side-fallback-2026-07-01); stop_reason is checked
- * before the content is read, and when the answer switched models mid-way only the text after
- * the last fallback block is the answer
- * (https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback).
+ * before the content is read. On a stream, a model switch mid-way keeps the partial text and the
+ * fallback model continues from it, so the answer is all text blocks joined (the fallback block
+ * only marks the switch) (https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback).
  */
 import Anthropic from '@anthropic-ai/sdk'
 import { AI_PROVIDER_KINDS } from '../../shared/api/ai'
@@ -26,12 +26,22 @@ const ADAPTIVE_RE = /^claude-(fable|mythos|opus|sonnet|haiku)-5|^claude-(opus|so
 /** Models with server-side refusal fallback. */
 const FALLBACK_RE = /^claude-(fable-5(-1)?|opus-5(-5)?|sonnet-5-5)$/
 
+/** HTTP statuses that an SSE `error` event (sent after HTTP 200, so without a status) stands for. */
+const STREAM_ERROR_STATUS: Record<string, number> = { overloaded_error: 529, api_error: 500, rate_limit_error: 429, timeout_error: 408 }
+
 /** An SDK error as a FailureInfo (abort and time-outs are handled by callWithRetry). */
 export function anthropicFailure(err: unknown): FailureInfo {
   // APIConnectionError (and its time-out subclass) extends APIError: checked first.
   if (err instanceof Anthropic.APIConnectionError) return { network: true }
   if (err instanceof Anthropic.APIError) {
-    return { status: err.status, code: err.type ?? undefined, message: err.message, retryAfter: retryAfterSeconds(err.headers?.get('retry-after')) }
+    const code = err.type ?? undefined
+    const inner = (err.error as { error?: { message?: unknown } } | undefined)?.error?.message
+    return {
+      status: err.status ?? (code ? STREAM_ERROR_STATUS[code] : undefined),
+      code,
+      message: typeof inner === 'string' ? inner : err.message,
+      retryAfter: retryAfterSeconds(err.headers?.get('retry-after'))
+    }
   }
   if (isNetworkError(err)) return { network: true }
   return { message: err instanceof Error ? err.message : String(err) }
@@ -53,7 +63,11 @@ export function claudeRequest(model: string, prompt: { system: string; user: str
   }
 }
 
-/** The answer's text: only what follows the last fallback block (output before a model switch is discarded). */
+/**
+ * The answer's text: every text block joined. Requests are streamed, and on a stream the fallback
+ * model continues from the declined model's partial text (a non-streamed answer would omit that
+ * partial instead, so joining is right either way).
+ */
 export function claudeAnswerText(message: Pick<Anthropic.Beta.Messages.BetaMessage, 'content' | 'stop_reason' | 'stop_details'>): string {
   if (message.stop_reason === 'refusal') {
     const category = message.stop_details?.category
@@ -62,14 +76,7 @@ export function claudeAnswerText(message: Pick<Anthropic.Beta.Messages.BetaMessa
   if (message.stop_reason === 'max_tokens' || message.stop_reason === 'model_context_window_exceeded') {
     throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} stopped before finishing the answer (it was too long). Try a shorter transcript.` })
   }
-  let start = 0
-  message.content.forEach((block, i) => {
-    if (block.type === 'fallback') start = i + 1
-  })
-  return message.content
-    .slice(start)
-    .map((block) => (block.type === 'text' ? block.text : ''))
-    .join('')
+  return message.content.map((block) => (block.type === 'text' ? block.text : '')).join('')
 }
 
 export function anthropicClient(apiKey: string, model: string): AiClient {

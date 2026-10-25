@@ -132,6 +132,12 @@ async function main() {
 
     await test('Settings: add, test, edit and remove providers; keys encrypted and never in the page', fx.withHome('ai-settings', async (ctx, home) => {
       const { app, win } = await launch(ctx, home, mock)
+      // Other parts of the app (the Captions tab) re-read their provider lists on this event.
+      await win.evaluate(() => {
+        window.__providersChanged = 0
+        window.addEventListener('ssw:ai-providers-changed', () => window.__providersChanged++)
+      })
+      const changes = () => win.evaluate(() => window.__providersChanged)
       const gear = win.getByRole('button', { name: 'Settings' })
       await gear.click()
       const d = dialog(win)
@@ -161,7 +167,9 @@ async function main() {
       await d.getByRole('button', { name: '+ Add provider' }).waitFor()
       h.assert(await d.isVisible(), 'dialog still open after Esc in the form')
 
+      h.assert((await changes()) === 0, 'no providers-changed event before a change')
       await addProvider(win, 'openai', 'My OpenAI', KEYS.openai)
+      h.assert((await changes()) === 1, 'providers-changed event after adding, while Settings is still open')
       await addProvider(win, 'gemini', 'My Gemini', KEYS.gemini)
       await addProvider(win, 'anthropic', 'My Claude', KEYS.anthropic)
       await addProvider(win, 'openai', 'Wrong key', 'bad-e2e-openai-key')
@@ -181,8 +189,10 @@ async function main() {
       h.assert(/Leave empty to keep the current key \(…0003\)/.test(await d.locator('form').textContent()), 'edit keeps the key unless one is typed')
       await d.getByLabel('Name').fill('Claude (work)')
       await d.getByLabel('Model for text tasks').fill('claude-sonnet-5-5')
+      const beforeEdit = await changes()
       await d.locator('form button[type="submit"]').click()
       await d.locator('.ai-provider', { hasText: 'Claude (work)' }).waitFor()
+      h.assert((await changes()) === beforeEdit + 1, 'providers-changed event after editing')
       h.assert(/claude-sonnet-5-5/.test(await d.locator('.ai-provider', { hasText: 'Claude (work)' }).textContent()), 'model changed')
       h.assert(/^✓/.test(await testProvider(win, 'Claude (work)')), 'edited provider still has its key')
 
@@ -192,16 +202,20 @@ async function main() {
       await win.keyboard.press('Escape')
       await d.locator('.ai-remove-question').waitFor({ state: 'detached' })
       h.assert(await win.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Remove Wrong key'), 'focus back on Remove after cancelling')
+      const beforeRemove = await changes()
       await d.getByRole('button', { name: 'Remove Wrong key' }).click()
       await d.locator('.ai-remove-question').getByRole('button', { name: 'Remove' }).click()
       await d.locator('.ai-provider', { hasText: 'Wrong key' }).waitFor({ state: 'detached' })
+      h.assert((await changes()) === beforeRemove + 1, 'providers-changed event after removing')
 
       // Tab stays in the dialog; Esc closes it and focus goes back to the gear.
       for (let i = 0; i < 25; i++) await win.keyboard.press('Tab')
       h.assert(await win.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')), 'Tab stays inside the dialog')
+      const beforeClose = await changes()
       await win.keyboard.press('Escape')
       await d.waitFor({ state: 'detached' })
       h.assert(await win.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Settings'), 'focus back on the Settings button')
+      h.assert((await changes()) === beforeClose + 1, 'providers-changed event when Settings closes')
 
       // Other parts of the app open it with the event.
       await win.evaluate(() => window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } })))

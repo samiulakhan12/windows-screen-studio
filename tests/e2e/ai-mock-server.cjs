@@ -19,7 +19,9 @@
  * The API key picks a behaviour: "bad..." is rejected (401, or Gemini's 400 API_KEY_INVALID),
  * "quota..." has no credits, "flaky..." fails twice per endpoint with a server error first,
  * "slow..." takes 60 s to transcribe (for cancelling), "refuse..." is declined by the model,
- * "fallback..." (Claude) switches models mid-answer. Anything else works.
+ * "fallback..." (Claude) switches models mid-answer, "midstream..." (Claude) fails once per endpoint
+ * with an SSE overloaded_error after HTTP 200, "ratemin..." (Gemini) hits a per-minute free-tier
+ * rate limit once per endpoint (429 with RetryInfo). Anything else works.
  */
 'use strict'
 const http = require('node:http')
@@ -153,6 +155,13 @@ function startMockAi({ ffmpeg }) {
     hits.set(id, n)
     return n <= 2
   }
+  /** True the first time per key and endpoint. */
+  const once = (key, route) => {
+    const id = `once ${key} ${route}`
+    if (hits.has(id)) return false
+    hits.set(id, 1)
+    return true
+  }
   const json = (res, status, body, headers = {}) => {
     res.writeHead(status, { 'content-type': 'application/json', ...headers })
     res.end(JSON.stringify(body))
@@ -229,6 +238,20 @@ function startMockAi({ ffmpeg }) {
     }
     if (/^bad/.test(key)) return error(400, 'API key not valid. Please pass a valid API key.', 'INVALID_ARGUMENT', 'API_KEY_INVALID')
     if (/^quota/.test(key)) return error(429, 'You exceeded your current quota, please check your plan and billing details. Quota exceeded for metric: generate_content_requests_PerDay', 'RESOURCE_EXHAUSTED')
+    if (/^ratemin/.test(key) && once(key, route)) {
+      // The free tier's per-minute limit: the same wording as running out of quota; only the quotaId and RetryInfo differ.
+      return json(res, 429, {
+        error: {
+          code: 429,
+          message: 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.',
+          status: 'RESOURCE_EXHAUSTED',
+          details: [
+            { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaMetric: 'generativelanguage.googleapis.com/generate_content_free_tier_requests', quotaId: 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' }] },
+            { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '0.2s' }
+          ]
+        }
+      })
+    }
     if (flaky(key, route.replace(/files\/\w+/, 'files'))) return error(503, 'The model is overloaded. Please try again later.', 'UNAVAILABLE')
     if (req.method === 'POST' && route === '/upload/v1beta/files') {
       if (req.headers['x-goog-upload-protocol'] !== 'resumable' || req.headers['x-goog-upload-command'] !== 'start') return error(400, 'resumable start expected', 'INVALID_ARGUMENT')
@@ -317,9 +340,17 @@ function startMockAi({ ffmpeg }) {
         send({ type: 'content_block_stop', index })
         index++
       }
+      if (/^midstream/.test(key) && once(key, route)) {
+        // Overloaded after the stream started: an SSE error event, after HTTP 200.
+        send({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })
+        return res.end()
+      }
+      let rest = answer
       if (/^fallback/.test(key)) {
-        // Declined mid-answer and continued on another model: the partial text must be discarded.
-        text('{"segments":[{"id":')
+        // Declined mid-answer: the fallback model continues from the partial text already streamed.
+        const k = Math.floor(answer.length / 3)
+        text(answer.slice(0, k))
+        rest = answer.slice(k)
         send({ type: 'content_block_start', index, content_block: { type: 'fallback', from: { model: b.model }, to: { model: 'claude-opus-4-8' }, trigger: { type: 'refusal', category: 'cyber' } } })
         send({ type: 'content_block_stop', index })
         index++
@@ -327,7 +358,7 @@ function startMockAi({ ffmpeg }) {
       if (/^refuse/.test(key)) {
         send({ type: 'message_delta', delta: { stop_reason: 'refusal', stop_sequence: null, stop_details: { type: 'refusal', category: 'cyber', explanation: null } }, usage: { output_tokens: 0 } })
       } else {
-        text(answer)
+        text(rest)
         send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null, stop_details: null }, usage: { output_tokens: 30 } })
       }
       send({ type: 'message_stop' })

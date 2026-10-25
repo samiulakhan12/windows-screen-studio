@@ -1,7 +1,9 @@
 /**
  * Puts the transcripts of a recording's parts (see transcriptPlan) together: times moved from
- * each part's own clock to source seconds, each segment taken from the one part whose kept
- * window holds its middle, and segments both overlapping parts heard near a fixed cut kept once.
+ * each part's own clock to source seconds, and each word taken from the one part whose kept
+ * window holds its middle (a sentence across a fixed cut is split there: its start from one
+ * part, its end from the other). Segments without word times are taken whole by their middle,
+ * and those both overlapping parts heard near a fixed cut are kept once.
  */
 import type { CaptionSegment, CaptionWord } from '../types'
 import type { RawSegment, RawTranscript } from './transcriptParse'
@@ -22,25 +24,37 @@ const round = (t: number): number => Math.round(t * 1000) / 1000
 export function placePart(part: TranscriptPart, transcript: RawTranscript, duration: number, last: boolean): Placed[] {
   const lo = Math.max(0, part.start)
   const hi = Math.min(duration, part.end)
+  const kept = (a: number, b: number): boolean => {
+    const mid = (a + b) / 2
+    return mid >= part.keepStart && (mid < part.keepEnd || (last && mid === part.keepEnd))
+  }
   const out: Placed[] = []
   for (const s of transcript.segments) {
     const start = Math.min(Math.max(s.start + part.start, lo), hi)
     const end = Math.min(Math.max(s.end + part.start, lo), hi)
-    const mid = (start + end) / 2
-    if (mid < part.keepStart || mid > part.keepEnd || (mid === part.keepEnd && !last)) continue
-    const words = s.words
-      ?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end) }))
-      .filter((w) => w.end >= w.start)
-    out.push({ seg: { start, end, text: s.text, ...(words?.length ? { words } : {}) }, margin: Math.min(mid - lo, hi - mid) })
+    const words = s.words?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end) }))
+    let seg: RawSegment
+    if (words?.length) {
+      const mine = words.filter((w) => kept(w.start, w.end))
+      if (!mine.length) continue
+      // All its words: as heard (with its punctuation); some: only those, across a fixed cut.
+      seg = mine.length === words.length ? { start, end, text: s.text, words } : { start: mine[0].start, end: mine[mine.length - 1].end, text: mine.map((w) => w.text).join(' '), words: mine }
+    } else {
+      if (!kept(start, end)) continue
+      seg = { start, end, text: s.text }
+    }
+    const mid = (seg.start + seg.end) / 2
+    out.push({ seg, margin: Math.min(mid - lo, hi - mid) })
   }
   return out
 }
 
 /**
- * The whole transcript from the parts' results (in plan order). Overlapping segments from
- * neighbouring parts (the same words heard twice around a fixed cut) are kept once, from the
- * part that heard them farther from its edge; any remaining overlap is trimmed so segments
- * follow one another. Ids are "t1", "t2", ... in time order.
+ * The whole transcript from the parts' results (in plan order). Overlapping segments without
+ * word times from neighbouring parts (the same words heard twice around a fixed cut) are kept
+ * once, from the part that heard them farther from its edge (segments with words were already
+ * split by word); any remaining overlap is trimmed so segments follow one another. Ids are
+ * "t1", "t2", ... in time order.
  */
 export function mergeParts(results: readonly { part: TranscriptPart; transcript: RawTranscript }[], duration: number): { segments: CaptionSegment[]; language?: string } {
   const placed: Placed[] = []
@@ -52,7 +66,7 @@ export function mergeParts(results: readonly { part: TranscriptPart; transcript:
     if (prev) {
       const overlap = Math.min(prev.seg.end, p.seg.end) - Math.max(prev.seg.start, p.seg.start)
       const shorter = Math.min(prev.seg.end - prev.seg.start, p.seg.end - p.seg.start)
-      if (overlap > 0 && overlap >= shorter / 2) {
+      if (overlap > 0 && overlap >= shorter / 2 && !(prev.seg.words && p.seg.words)) {
         if (p.margin > prev.margin) kept[kept.length - 1] = p
         continue
       }

@@ -6,12 +6,13 @@
  * only the app's own page may call these handlers.
  */
 import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron'
+import os from 'node:os'
 import path from 'node:path'
 import type { AiTextRequest, AiTextResult, TranscribeProgress } from '../shared/api/ai'
 import { runTextTask, validateTextRequest } from '../shared/captions/transcriptText'
 import { AiProviderStore, type SecretBox } from './ai/keyStore'
 import { clientFor } from './ai/providers'
-import { stopAllTranscriptions, stopTranscription, transcribeProject } from './ai/transcribe'
+import { stopAllTranscriptions, stopTranscription, sweepTranscribeTemp, transcribeProject } from './ai/transcribe'
 import type { TextEffort } from './ai/types'
 import { isAppUrl } from './security'
 
@@ -95,7 +96,8 @@ export function registerAiIpc(): void {
     fromApp(e)
     return aiText(providerId, request)
   })
-  // Requests and ffmpeg must not outlive the app.
+  // Requests and ffmpeg must not outlive the app, nor their temporary files.
+  void sweepTranscribeTemp(os.tmpdir())
   app.on('will-quit', () => {
     stopAllTranscriptions()
     for (const c of textCalls) c.abort()

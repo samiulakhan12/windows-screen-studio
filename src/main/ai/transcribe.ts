@@ -15,10 +15,11 @@
  *
  * Progress is sent per phase and part. One job runs per project; cancelling it (or closing its
  * editor, or deleting the project: see stopAnalyses) aborts the requests, kills ffmpeg and
- * removes the temporary files before it resolves.
+ * removes the temporary files before it resolves. Quitting removes them synchronously (nothing
+ * asynchronous runs after will-quit), and folders a crash left behind are swept at the next start.
  */
 import { spawn } from 'node:child_process'
-import { createReadStream, promises as fs } from 'node:fs'
+import { createReadStream, promises as fs, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { AI_PROVIDER_KINDS, type TranscribeOptions, type TranscribeProgress } from '../../shared/api/ai'
@@ -28,6 +29,7 @@ import { mergeParts } from '../../shared/captions/transcriptMerge'
 import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { planParts, secondsForBytes, silencesBetween, type TranscriptPart } from '../../shared/captions/transcriptPlan'
 import type { Transcript } from '../../shared/types'
+import { removeSyncWithRetries } from '../exportCleanup'
 import { describeFfmpegError, ffmpegPath } from '../ffmpeg'
 import { ProjectProcesses } from '../projectProcesses'
 import { projectDir, readProject } from '../projects'
@@ -43,10 +45,15 @@ const PCM_RATE = RATE * 2
 const MP3_BITRATE = 32000
 const LANGUAGE_RE = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/
 const SOURCES = ['auto', 'mic', 'mixed'] as const
+const TEMP_PREFIX = 'ssw-transcribe-'
+/** Temporary folders older than this are no job's (another copy of the app may own a younger one). */
+const STALE_TEMP_MS = 6 * 3600_000
 
 interface Job {
   controller: AbortController
   done: Promise<unknown>
+  /** The job's temporary folder, once made. */
+  tmp?: string
 }
 
 const jobs = new Map<string, Job>()
@@ -164,8 +171,9 @@ export async function transcribeProject(store: AiProviderStore, projectId: unkno
   }
   const controller = new AbortController()
   const model = info.transcriptionModel ?? AI_PROVIDER_KINDS[info.kind].defaultTranscriptionModel!
-  const run = clientFor(info, apiKey).then((client) => runJob(projectId, dir, options, info.kind, model, client, controller.signal, progress))
-  const job: Job = { controller, done: run.catch(() => undefined) }
+  const job: Job = { controller, done: Promise.resolve() }
+  const run = clientFor(info, apiKey).then((client) => runJob(projectId, dir, options, info.kind, model, client, controller.signal, progress, (tmp) => (job.tmp = tmp)))
+  job.done = run.catch(() => undefined)
   jobs.set(projectId, job)
   try {
     return await run
@@ -182,14 +190,16 @@ async function runJob(
   model: string,
   client: AiClient,
   signal: AbortSignal,
-  progress: (p: TranscribeProgress) => void
+  progress: (p: TranscribeProgress) => void,
+  onTemp: (dir: string) => void
 ): Promise<Transcript> {
   const send = (phase: TranscribeProgress['phase'], done: number, total: number): void => progress({ projectId: id, phase, done, total })
   const project = await readProject(id).catch(() => {
     throw new Error('This recording could not be read (it may have been moved or deleted).')
   })
   const input = await soundFile(dir, project, options.source)
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ssw-transcribe-'))
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), TEMP_PREFIX))
+  onTemp(tmp)
   try {
     send('extracting', 0, 1)
     const pcm = path.join(tmp, 'sound.pcm')
@@ -244,9 +254,28 @@ export async function stopTranscription(id: string): Promise<void> {
   await job?.done
 }
 
-/** Stops every transcription (the app is quitting). */
+/** Stops every transcription and removes its temporary files (the app is quitting: this blocks). */
 export function stopAllTranscriptions(): void {
   for (const job of jobs.values()) job.controller.abort()
   processes.stopAll()
+  // Retried: Windows lets go of the files of the ffmpeg just killed a moment later.
+  for (const job of jobs.values()) if (job.tmp) removeSyncWithRetries(job.tmp, { rmSync: (f) => rmSync(f, { recursive: true, force: true }) })
+}
+
+/**
+ * At startup: temporary folders of transcriptions a crash or a failed delete left in `dir`
+ * (the decoded sound of a whole recording). Resolves with the folders removed.
+ */
+export async function sweepTranscribeTemp(dir: string, now = Date.now()): Promise<string[]> {
+  const names = await fs.readdir(dir).catch(() => [] as string[])
+  const removed: string[] = []
+  for (const name of names) {
+    if (!name.startsWith(TEMP_PREFIX)) continue
+    const folder = path.join(dir, name)
+    const stat = await fs.stat(folder).catch(() => null)
+    if (!stat?.isDirectory() || now - stat.mtimeMs < STALE_TEMP_MS) continue
+    if (await fs.rm(folder, { recursive: true, force: true }).then(() => true, () => false)) removed.push(folder)
+  }
+  return removed
 }
 
