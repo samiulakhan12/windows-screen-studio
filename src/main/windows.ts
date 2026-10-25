@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
@@ -19,6 +19,24 @@ export function windowIconPath(): string | undefined {
 }
 
 let mainWindow: BrowserWindow | null = null
+
+/** A window the main window's page may open itself (window.open with its name). */
+export interface PagePopup {
+  /** Its window options, or null to refuse it now. */
+  options(): BrowserWindowConstructorOptions | null
+  created(win: BrowserWindow): void
+}
+
+const popups = new Map<string, PagePopup>()
+
+/**
+ * Lets the main window's page open `name` with window.open('about:blank', name): a window of its
+ * own process that it fills itself (the live camera bubble shows the page's camera stream that
+ * way). Every other window.open stays refused; the popup gets the usual guards (security.ts).
+ */
+export function allowPopup(name: string, popup: PagePopup): void {
+  popups.set(name, popup)
+}
 
 export function loadRoute(win: BrowserWindow, route: string): void {
   if (isDev) void win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#${route}`)
@@ -58,9 +76,17 @@ export function createMainWindow(onClosed: () => void): BrowserWindow {
     mainWindow = null
     onClosed()
   })
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url, frameName }) => {
+    const popup = url === 'about:blank' ? popups.get(frameName) : undefined
+    const options = popup?.options()
+    if (options) return { action: 'allow', overrideBrowserWindowOptions: options }
     if (url.startsWith('https://')) void shell.openExternal(url)
     return { action: 'deny' }
+  })
+  win.webContents.on('did-create-window', (child, { frameName }) => {
+    const popup = popups.get(frameName)
+    if (popup) popup.created(child)
+    else child.destroy()
   })
   loadRoute(win, '/')
   return win

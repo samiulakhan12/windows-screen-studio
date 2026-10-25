@@ -362,6 +362,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     autoPause: settings.autoPause,
     idleSeconds: settings.idleSeconds,
     hideDesktopIcons: settings.hideDesktopIcons,
+    cameraFollowsBubble: settings.cameraFollowsBubble,
     captureKeys: prefs.captureKeys,
     systemAudio: prefs.systemAudio,
     mic: deviceOf(micMissing ? null : prefs.micId, mics),

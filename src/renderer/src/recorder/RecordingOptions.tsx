@@ -180,12 +180,13 @@ export function optionsSummary(s: RecordingSettings, isWindows: boolean): string
   if (s.countdown !== COUNTDOWN.default) parts.push(s.countdown ? `${s.countdown} s countdown` : 'no countdown')
   if (s.autoPause) parts.push(`auto-pause ${s.idleSeconds} s`)
   if (s.hideDesktopIcons && isWindows) parts.push('no desktop icons')
+  if (!s.cameraFollowsBubble) parts.push('camera stays in its corner')
   return parts.join(' · ')
 }
 
 const COUNTDOWN_TITLE = (n: number): string => (n === 0 ? 'Start recording at once' : `Count down ${n} seconds before recording starts`)
 
-/** Frame rate, countdown, desktop icons, auto-pause and hotkeys: saved at once in the app settings. */
+/** Frame rate, countdown, desktop icons, auto-pause, the camera bubble and hotkeys: saved at once in the app settings. */
 export function RecordingOptions({
   settings,
   open,
@@ -290,6 +291,19 @@ export function RecordingOptions({
               />
             </label>
           )}
+          <label
+            className={`toggle ${disabled ? 'disabled' : ''}`}
+            title="While recording with a camera, a live camera bubble shows on screen (never in the recording). Drag it to another corner and the camera moves there in the video at that moment."
+          >
+            <span>Camera follows the preview bubble</span>
+            <input
+              type="checkbox"
+              aria-label="Camera follows the preview bubble"
+              checked={settings.cameraFollowsBubble}
+              disabled={disabled}
+              onChange={(e) => onChange({ cameraFollowsBubble: e.target.checked })}
+            />
+          </label>
           <div className="hotkeys" role="group" aria-label="Hotkeys while recording">
             <span className="option-label">Hotkeys while recording</span>
             {HOTKEY_ACTIONS.map((action) => (

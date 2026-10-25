@@ -1,4 +1,6 @@
-import type { CameraLayout, LayoutSegment } from '../types'
+import { cornered } from '../engine/layout'
+import { CORNER_NAMES } from '../recording/cameraBubble'
+import type { CameraLayout, Corner, LayoutSegment, Project } from '../types'
 import { addLayoutAt, layoutSegmentAt, layoutTimeAt, type LayoutEdit } from './layouts'
 
 /*
@@ -48,4 +50,40 @@ export function layoutRefusal(reason: 'same' | 'no-room' | 'end', layout: Camera
   if (reason === 'same') return `The camera layout here already is ${LAYOUT_NAMES[layout].toLowerCase()}`
   if (reason === 'end') return 'Too close to the end of the video for a new camera layout'
   return 'No room for a new camera layout here: another one starts right after the playhead'
+}
+
+export type CornerAtResult =
+  | { ok: true; layouts: LayoutSegment[]; id: string; added: boolean }
+  /**
+   * 'same': the camera already is in that corner at `t` (`id`: the segment there, if any);
+   * 'no-corner': the layout at `t` (segment `id`) shows no camera bubble; 'no-room' / 'end' as for setLayoutAt.
+   */
+  | { ok: false; reason: 'same' | 'no-corner' | 'no-room' | 'end'; id: string | null }
+
+/**
+ * Puts the camera in `corner` at the playhead `t` (on the frame the preview shows there). Inside a
+ * layout segment that segment's corner changes; elsewhere a new segment of the default layout
+ * with that corner is added there (addLayoutAt), so the camera moves there from the playhead on.
+ * The project's own corner stays the default for times without a segment.
+ */
+export function setCornerAt(project: LayoutEdit & Pick<Project, 'webcam'>, corner: Corner, t: number): CornerAtResult {
+  const layouts = project.layouts ?? []
+  const here = layoutSegmentAt(layouts, layoutTimeAt(project, t))
+  if (here) {
+    if (!cornered(here.layout)) return { ok: false, reason: 'no-corner', id: here.id }
+    if ((here.corner ?? project.webcam.corner) === corner) return { ok: false, reason: 'same', id: here.id }
+    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? { ...s, corner } : s)), id: here.id, added: false }
+  }
+  if (corner === project.webcam.corner) return { ok: false, reason: 'same', id: null }
+  const r = addLayoutAt(project, 'default', t, corner)
+  if (r.ok) return { ok: true, layouts: r.layouts, id: r.segment.id, added: true }
+  return { ok: false, reason: r.reason === 'inside' ? 'same' : r.reason, id: r.id }
+}
+
+/** What the editor says when setCornerAt changed nothing. */
+export function cornerRefusal(reason: 'same' | 'no-corner' | 'no-room' | 'end', corner: Corner): string {
+  if (reason === 'same') return `The camera already is in the ${CORNER_NAMES[corner].toLowerCase()} corner here`
+  if (reason === 'no-corner') return 'The camera layout here has no camera corner: pick the default or large camera layout first'
+  if (reason === 'end') return 'Too close to the end of the video to move the camera'
+  return 'No room to move the camera here: another camera layout starts right after the playhead'
 }

@@ -1,45 +1,3 @@
-/* ---------- Floating toolbar additions ---------- */
-.toolbar.confirm {
-  padding: 0 8px 0 18px;
-}
-
-.tb-question {
-  font-weight: 600;
-}
-
-.tb-text-btn {
-  -webkit-app-region: no-drag;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 17px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: transparent;
-  cursor: pointer;
-}
-
-.tb-text-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.tb-text-btn.danger {
-  background: var(--rec);
-  border-color: var(--rec);
-  font-weight: 600;
-}
-
-.tb-warn {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #facc15;
-  color: #111;
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* ---------- Home: recording panel ---------- */
 .record-panel {
   overflow: auto;
@@ -157,11 +115,6 @@
   height: 100%;
   background: var(--accent);
   transition: width 0.3s ease-out;
-}
-
-/* ---------- Toolbar: waiting for the capture to start ---------- */
-.countdown-starting {
-  font-weight: 600;
 }
 
 /* ---------- Home: device feedback ---------- */
@@ -456,26 +409,4 @@
 
 .record-footer .hint .keys {
   vertical-align: 1px;
-}
-
-/* ---------- Toolbar: paused state and zoom marks ---------- */
-.tb-state {
-  font-size: 12px;
-  font-weight: 600;
-  color: #facc15;
-  white-space: nowrap;
-}
-
-.tb-state.idle {
-  color: #fcd34d;
-}
-
-.tb-mark {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(139, 92, 246, 0.9);
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
 }

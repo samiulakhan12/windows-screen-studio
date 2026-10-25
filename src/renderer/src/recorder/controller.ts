@@ -1,5 +1,6 @@
 import type { CapturePlan, RecorderCommand, RecorderStatusUpdate } from '../../../shared/api/recording'
 import { friendlyError, nativeFallbackWarning, RecorderError, SOURCE_GONE } from '../../../shared/recording/errors'
+import { openCameraBubble, type LiveBubble } from './cameraBubble'
 import { RecordingSession, type SessionOptions } from './session'
 
 export type RecordingPhase = 'preparing' | 'countdown' | 'recording' | 'saving'
@@ -15,8 +16,18 @@ export interface RecordingCallbacks {
  * from the floating toolbar or shortcut, then let the main process build the project.
  * Resolves to the new project id, or null when cancelled. Once recording has started,
  * captured media is never thrown away on errors: it is saved, or kept on disk.
+ * "Restart" on the toolbar throws the recording away and runs a new one with the same setup.
  */
 export async function runRecording(options: SessionOptions, callbacks: RecordingCallbacks = {}): Promise<string | null> {
+  for (;;) {
+    const result = await recordOnce(options, callbacks)
+    if (result !== RESTART) return result
+  }
+}
+
+const RESTART = Symbol('restart')
+
+async function recordOnce(options: SessionOptions, callbacks: RecordingCallbacks): Promise<string | null | typeof RESTART> {
   const api = window.api
   callbacks.onPhase?.('preparing')
   let plan: CapturePlan
@@ -36,7 +47,10 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
   // A hotkey another app owns: the floating bar still works.
   plan.hotkeyProblems?.forEach((p) => callbacks.onWarning?.(p))
   const session = new RecordingSession(api, plan, options)
-  const status = (s: RecorderStatusUpdate): Promise<void> => api.setRecordingStatus(token, s).catch(() => undefined)
+  // Every status says whether the microphone is muted (the recording bar shows it).
+  const status = (s: RecorderStatusUpdate): Promise<void> =>
+    api.setRecordingStatus(token, session.hasMic ? { ...s, mic: { muted: session.micMuted } } : s).catch(() => undefined)
+  let bubble: LiveBubble | null = null
   const flushWarnings = (): void => {
     session.warnings.forEach((w) => callbacks.onWarning?.(w))
     session.warnings.length = 0
@@ -46,10 +60,10 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
 
   let started = false
   let saving = false
-  let outcome: 'stop' | 'cancel' | null = null
+  let outcome: 'stop' | 'cancel' | 'restart' | null = null
   let cancelReason: string | null = null
   let wake: (() => void) | null = null
-  const finish = (o: 'stop' | 'cancel', reason: string | null = null): void => {
+  const finish = (o: 'stop' | 'cancel' | 'restart', reason: string | null = null): void => {
     if (outcome) return
     outcome = o
     cancelReason = reason
@@ -63,6 +77,12 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     })
 
   const unsubscribe = api.onRecorderCommand((cmd: RecorderCommand) => {
+    if (cmd === 'restart') return finish('restart')
+    if (cmd === 'mute' || cmd === 'unmute') {
+      session.setMicMuted(cmd === 'mute')
+      if (started) void status({ state: session.paused ? 'paused' : 'recording', elapsed: session.elapsed })
+      return
+    }
     if (!started) {
       // Before the recorder runs, "stop" means "never mind": there is nothing to save.
       if (cmd === 'stop' || cmd === 'cancel') finish('cancel')
@@ -82,6 +102,7 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
 
   const saveWhatWasRecorded = async (): Promise<string> => {
     saving = true
+    bubble?.close()
     callbacks.onPhase?.('saving')
     await status({ state: 'processing', elapsed: session.elapsed })
     const meta = await session.stop()
@@ -94,6 +115,9 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
   try {
     await session.acquire()
     flushWarnings()
+    // Shown from the countdown on, so it can be put in place before recording starts.
+    const camera = session.cameraTrack
+    if (camera) bubble = openCameraBubble(api, token, camera)
     callbacks.onPhase?.('countdown')
     const countdown = plan.countdown ?? 3
     for (let n = countdown; n > 0 && !outcome; n--) {
@@ -122,10 +146,11 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
       }
     }
     if (outcome) {
+      bubble?.close()
       session.dispose()
-      await api.cancelRecording(token)
+      await api.cancelRecording(token, outcome === 'restart')
       if (cancelReason) throw new RecorderError(cancelReason)
-      return null
+      return outcome === 'restart' ? RESTART : null
     }
 
     const info = session.start(native)
@@ -133,15 +158,18 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     await api.recordingStarted(token, info)
     await status({ state: 'recording', elapsed: 0 })
     callbacks.onPhase?.('recording')
+    session.meterMic((level) => api.sendRecordingLevel(token, level))
     await wait()
 
-    if (outcome === 'cancel') {
+    if (outcome === 'cancel' || outcome === 'restart') {
+      bubble?.close()
       session.dispose()
-      await api.cancelRecording(token)
-      return null
+      await api.cancelRecording(token, outcome === 'restart')
+      return outcome === 'restart' ? RESTART : null
     }
     return await saveWhatWasRecorded()
   } catch (err) {
+    bubble?.close()
     if (!started) {
       session.dispose()
       await api.cancelRecording(token).catch(() => undefined)
@@ -153,6 +181,7 @@ export async function runRecording(options: SessionOptions, callbacks: Recording
     }
     throw friendlyError(err)
   } finally {
+    bubble?.close()
     unsubscribe()
     offWarning()
   }

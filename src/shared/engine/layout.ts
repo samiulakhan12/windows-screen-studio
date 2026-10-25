@@ -198,12 +198,22 @@ function sideBySide(project: SceneProject, outW: number, outH: number, srcW: num
  * Where the screen and the camera are in `layout`, standing still. The camera keeps its
  * bubble shape over the screen; as a card (filling the frame, or next to the screen) it takes
  * the screen's corner radius. A hidden camera is its bubble, smaller and fully transparent,
- * so it fades out where it was.
+ * so it fades out where it was. `corner` (a segment's own) places the bubble and the large
+ * camera instead of the project's corner.
  */
-export function layoutGeometry(layout: CameraLayout, project: SceneProject, outW: number, outH: number, srcW: number, srcH: number): { screen: Rect; camera: CameraBox } {
+export function layoutGeometry(
+  layout: CameraLayout,
+  project: SceneProject,
+  outW: number,
+  outH: number,
+  srcW: number,
+  srcH: number,
+  corner?: Corner
+): { screen: Rect; camera: CameraBox } {
   const base = styleContentRect(outW, outH, srcW, srcH, project.style)
   const card = project.style.cornerRadius * (Math.min(outW, outH) / 1080)
-  const { webcam } = project
+  // A segment's own corner moves the bubble (and the large camera); the other layouts keep the project's.
+  const webcam = corner && cornered(layout) ? { ...project.webcam, corner } : project.webcam
   switch (layout) {
     case 'camera-only':
       return { screen: scaleRect(base, BEHIND_SCALE), camera: { rect: paddedArea(outW, outH, project.style.padding), radius: card, opacity: 1 } }
@@ -226,6 +236,12 @@ export function layoutGeometry(layout: CameraLayout, project: SceneProject, outW
   }
 }
 
+/** The layouts whose camera sits in a corner that a segment may choose (LayoutSegment.corner). */
+export const cornered = (l: CameraLayout): boolean => l === 'default' || l === 'camera-large'
+
+/** The corner a segment puts the camera in, when it chooses one its layout uses. */
+export const segmentCorner = (s: Pick<LayoutSegment, 'layout' | 'corner'>): Corner | undefined => (s.corner && cornered(s.layout) ? s.corner : undefined)
+
 /** The layouts that place the screen alike: changing between them leaves the screen still. */
 const screenPlace = (l: CameraLayout): string => (l === 'camera-only' || l === 'side-by-side' ? l : 'base')
 
@@ -244,20 +260,67 @@ export function sortedLayouts(list: LayoutSegment[]): LayoutSegment[] {
   return sorted
 }
 
-/** A layout change in progress: from which layout to which, and how far it has got (1 = settled). */
+/**
+ * A layout change in progress: from which layout to which, and how far it has got (1 = settled).
+ * `fromCorner` / `toCorner`: the corner a segment chose on either side (absent: the project's
+ * corner); set only when a segment chose one, so projects without corners get the same phases.
+ */
 export interface LayoutPhase {
   from: CameraLayout
   to: CameraLayout
   progress: number
+  fromCorner?: Corner
+  toCorner?: Corner
 }
 
 const SETTLED: LayoutPhase = { from: 'default', to: 'default', progress: 1 }
+
+/** What a frame shows standing still: a layout, and the corner a segment chose for it (if any). */
+interface LayoutState {
+  layout: CameraLayout
+  corner: Corner | undefined
+}
+
+const DEFAULT_STATE: LayoutState = { layout: 'default', corner: undefined }
+
+/** Whether two states look the same (a chosen corner equal to the project's is no change). */
+const sameState = (a: LayoutState, b: LayoutState, corner: Corner): boolean => a.layout === b.layout && (a.corner ?? corner) === (b.corner ?? corner)
+
+function phase(from: LayoutState, to: LayoutState, progress: number): LayoutPhase {
+  const p: LayoutPhase = { from: from.layout, to: to.layout, progress }
+  if (from.corner) p.fromCorner = from.corner
+  if (to.corner) p.toCorner = to.corner
+  return p
+}
+
+/** How segment `i` of `blocks` changes in and out: the state before it, and whether each change animates (and how long). */
+function segmentChange(
+  project: Omit<SceneProject, 'style'>,
+  blocks: LayoutSegment[],
+  i: number
+): { from: LayoutState; to: LayoutState; rampIn: boolean; rampOut: boolean; span: number } {
+  const b = blocks[i]
+  const prev = blocks[i - 1]
+  const next = blocks[i + 1]
+  const corner = project.webcam.corner
+  const from: LayoutState = prev && b.start - prev.end <= ADJACENT ? { layout: prev.layout, corner: segmentCorner(prev) } : DEFAULT_STATE
+  const to: LayoutState = { layout: b.layout, corner: segmentCorner(b) }
+  const nextAdjacent = !!next && next.start - b.end <= ADJACENT
+  const keptStart = project.clips?.length ? project.clips[0].start : 0
+  const keptEnd = project.clips?.length ? project.clips[project.clips.length - 1].end : (project.duration ?? Infinity)
+  const rampIn = !sameState(from, to, corner) && b.start > keptStart + ADJACENT
+  const rampOut = !nextAdjacent && !sameState(to, DEFAULT_STATE, corner) && b.end < keptEnd - ADJACENT
+  const len = b.end - b.start
+  const span = Math.min(LAYOUT_TRANSITION, rampIn && rampOut ? len / 2 : len)
+  return { from, to, rampIn, rampOut, span }
+}
 
 /**
  * The layout change at `t`. A segment's layout animates in over its first LAYOUT_TRANSITION
  * seconds and back to 'default' over its last ones, like a zoom; back-to-back segments change
  * straight from one layout to the next at the second one's start. A change at the very start or
- * end of the edit is instant, so the video starts (and ends) in that layout.
+ * end of the edit is instant, so the video starts (and ends) in that layout. A segment's own
+ * camera corner changes the same way (a move from corner to corner, eased).
  */
 export function layoutPhaseAt(project: Omit<SceneProject, 'style'>, t: number): LayoutPhase {
   const list = project.layouts
@@ -277,32 +340,21 @@ export function layoutPhaseAt(project: Omit<SceneProject, 'style'>, t: number): 
   }
   if (i < 0 || t >= blocks[i].end) return SETTLED
   const b = blocks[i]
-  const prev = blocks[i - 1]
-  const next = blocks[i + 1]
-  const from: CameraLayout = prev && b.start - prev.end <= ADJACENT ? prev.layout : 'default'
-  const nextAdjacent = !!next && next.start - b.end <= ADJACENT
-  const keptStart = project.clips?.length ? project.clips[0].start : 0
-  const keptEnd = project.clips?.length ? project.clips[project.clips.length - 1].end : (project.duration ?? Infinity)
-  const rampIn = from !== b.layout && b.start > keptStart + ADJACENT
-  const rampOut = !nextAdjacent && b.layout !== 'default' && b.end < keptEnd - ADJACENT
-  const len = b.end - b.start
-  const span = Math.min(LAYOUT_TRANSITION, rampIn && rampOut ? len / 2 : len)
-  if (rampIn && t < b.start + span) return { from, to: b.layout, progress: (t - b.start) / span }
-  if (rampOut && t > b.end - span) return { from: b.layout, to: 'default', progress: (t - (b.end - span)) / span }
-  return { from: b.layout, to: b.layout, progress: 1 }
+  const { from, to, rampIn, rampOut, span } = segmentChange(project, blocks, i)
+  if (rampIn && t < b.start + span) return phase(from, to, (t - b.start) / span)
+  if (rampOut && t > b.end - span) return phase(to, DEFAULT_STATE, (t - (b.end - span)) / span)
+  return phase(to, to, 1)
 }
 
 /** Seconds of a segment's animated change in and out (0 when it changes instantly or not at all), as layoutPhaseAt animates them. */
 export function layoutRamps(project: Omit<SceneProject, 'style'>, seg: LayoutSegment): { in: number; out: number } {
   const len = seg.end - seg.start
   if (!(len > 0)) return { in: 0, out: 0 }
-  const at = (t: number): LayoutPhase => layoutPhaseAt(project, t)
-  const first = at(seg.start)
-  const last = at(seg.end - 1e-6)
-  const rampIn = first.progress < 1
-  const rampOut = last.progress < 1 && last.from === seg.layout && last.to !== seg.layout
-  const span = Math.min(LAYOUT_TRANSITION, rampIn && rampOut ? len / 2 : len)
-  return { in: rampIn ? span : 0, out: rampOut ? span : 0 }
+  const blocks = sortedLayouts(project.layouts ?? [])
+  const i = blocks.findIndex((s) => s === seg || s.id === seg.id)
+  if (i < 0 || !layoutsApply(project)) return { in: 0, out: 0 }
+  const c = segmentChange(project, blocks, i)
+  return { in: c.rampIn ? c.span : 0, out: c.rampOut ? c.span : 0 }
 }
 
 /** Whether the screen's rectangle is animating at `t` (the compositor then draws the card as it moves instead of from its cache). */
@@ -314,15 +366,15 @@ export function layoutMoving(project: Omit<SceneProject, 'style'>, t: number): b
 /** Where the screen and the camera are at source time `t`, with layout changes animated (eased). */
 export function sceneLayout(project: SceneProject, outW: number, outH: number, srcW: number, srcH: number, t: number): SceneLayout {
   if (!project.webcam.show) return { screen: styleContentRect(outW, outH, srcW, srcH, project.style), camera: null, moving: false }
-  const phase = layoutPhaseAt(project, t)
-  const to = layoutGeometry(phase.to, project, outW, outH, srcW, srcH)
-  if (phase.progress >= 1 || phase.from === phase.to) return { ...to, moving: false }
-  const from = layoutGeometry(phase.from, project, outW, outH, srcW, srcH)
-  const e = easeInOutCubic(clamp(phase.progress, 0, 1))
+  const p = layoutPhaseAt(project, t)
+  const to = layoutGeometry(p.to, project, outW, outH, srcW, srcH, p.toCorner)
+  if (p.progress >= 1 || (p.from === p.to && p.fromCorner === p.toCorner)) return { ...to, moving: false }
+  const from = layoutGeometry(p.from, project, outW, outH, srcW, srcH, p.fromCorner)
+  const e = easeInOutCubic(clamp(p.progress, 0, 1))
   return {
     screen: lerpRect(from.screen, to.screen, e),
     camera: { rect: lerpRect(from.camera.rect, to.camera.rect, e), radius: lerp(from.camera.radius, to.camera.radius, e), opacity: lerp(from.camera.opacity, to.camera.opacity, e) },
-    moving: screenPlace(phase.from) !== screenPlace(phase.to)
+    moving: screenPlace(p.from) !== screenPlace(p.to)
   }
 }
 

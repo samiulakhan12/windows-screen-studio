@@ -1,0 +1,120 @@
+/*
+ * The live camera bubble's window (injected into its own document, see recorder/cameraBubble.tsx).
+ * The window is transparent: only the bubble shows. No CSS animation runs: an always-on-top
+ * window that repaints at the display rate would cost the recording frames.
+ */
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+#bubble-root {
+  width: 100%;
+  height: 100%;
+}
+
+.cam-bubble {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #16161d;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  cursor: grab;
+  touch-action: none;
+}
+
+.cam-bubble.shape-circle {
+  border-radius: 50%;
+}
+
+.cam-bubble.shape-rounded {
+  border-radius: 18%;
+}
+
+.cam-bubble.shape-square {
+  border-radius: 6px;
+}
+
+.cam-bubble.dragging {
+  cursor: grabbing;
+  border-color: #fff;
+}
+
+.cam-bubble video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.cam-bubble video.mirrored {
+  transform: scaleX(-1);
+}
+
+.cam-bubble-wait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+.cam-bubble-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(12, 12, 18, 0.78);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.cam-bubble:hover .cam-bubble-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cam-bubble.dragging .cam-bubble-controls {
+  opacity: 0;
+}
+
+.cam-bubble-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font: 600 11px/1 inherit;
+  cursor: pointer;
+}
+
+.cam-bubble-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.cam-bubble-btn.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+}

@@ -1,0 +1,362 @@
+/*
+ * The floating recording bar (its own transparent, always-on-top window; see Toolbar.tsx).
+ * Self-contained: every rule is scoped to .rec-bar so the app-wide stylesheet cannot reshape it.
+ * While recording nothing animates with CSS (an always-on-top window repainting at the display
+ * rate costs the recording frames): the dot pulses with a short transition once a second.
+ */
+.toolbar.rec-bar {
+  --rb-bg: rgba(18, 18, 26, 0.96);
+  --rb-line: rgba(255, 255, 255, 0.1);
+  --rb-text: #f2f2f7;
+  --rb-muted: #9b9bb0;
+  --rb-hover: rgba(255, 255, 255, 0.1);
+  --rb-rec: #ef4444;
+  --rb-paused: #facc15;
+  --rb-accent: #8b5cf6;
+  box-sizing: border-box;
+  margin: 6px;
+  height: 52px;
+  padding: 0 7px 0 10px;
+  border-radius: 26px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  font: 13px/1.2 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.rec-bar button {
+  -webkit-app-region: no-drag;
+  font: inherit;
+  color: inherit;
+}
+
+.rec-bar .tb-spacer {
+  flex: 1;
+}
+
+.rec-bar .muted {
+  color: var(--rb-muted);
+  font-size: 11.5px;
+}
+
+.rec-bar .rb-grip {
+  display: inline-flex;
+  color: rgba(255, 255, 255, 0.32);
+  margin-right: 2px;
+}
+
+/* ---------- status: dot, timer, state ---------- */
+.toolbar.rec-bar .rec-dot {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rb-rec);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.22);
+  transition:
+    opacity 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.toolbar.rec-bar .rec-dot.dim {
+  opacity: 0.45;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.1);
+}
+
+.toolbar.rec-bar .rec-dot.paused {
+  background: var(--rb-paused);
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar.rec-bar .rec-dot {
+    transition: none;
+  }
+  .toolbar.rec-bar .rec-dot.dim {
+    opacity: 1;
+  }
+}
+
+.rec-bar .tb-time {
+  min-width: 44px;
+  font-size: 15px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+}
+
+.rec-bar.is-paused .tb-time {
+  color: var(--rb-muted);
+}
+
+.rec-bar .tb-state {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.14);
+  color: var(--rb-paused);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.rec-bar .tb-state.idle {
+  background: rgba(252, 211, 77, 0.18);
+  color: #fcd34d;
+}
+
+.rec-bar .tb-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  background: var(--rb-accent);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.rec-bar .tb-warn {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rb-paused);
+  color: #111;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+/* ---------- buttons ---------- */
+.rec-bar .tb-btn {
+  width: auto;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  flex: none;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.rec-bar .tb-btn:hover {
+  background: var(--rb-hover);
+}
+
+.rec-bar .tb-btn:focus-visible,
+.rec-bar .tb-text-btn:focus-visible {
+  outline: 2px solid var(--rb-accent);
+  outline-offset: 1px;
+}
+
+.rec-bar .tb-btn.mic {
+  padding: 0 9px 0 8px;
+}
+
+.rec-bar .tb-btn.mic.muted,
+.rec-bar .tb-btn.camera.off {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.rec-bar .rb-meter {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  display: inline-flex;
+  align-items: flex-end;
+}
+
+.rec-bar .rb-meter-fill {
+  width: 100%;
+  height: 100%;
+  background: #4ade80;
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+
+.rec-bar .rb-sep {
+  width: 1px;
+  height: 22px;
+  margin: 0 3px;
+  background: var(--rb-line);
+}
+
+.rec-bar .tb-btn.stop {
+  margin-left: 2px;
+  padding: 0 14px 0 12px;
+  background: var(--rb-rec);
+  color: #fff;
+  font-weight: 650;
+}
+
+.rec-bar .tb-btn.stop:hover {
+  background: #dc2626;
+}
+
+.rec-bar .stop-square {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: #fff;
+}
+
+/* ---------- confirm discard / restart ---------- */
+.toolbar.rec-bar.confirm {
+  padding: 0 7px 0 12px;
+  gap: 10px;
+}
+
+.rec-bar .rb-confirm-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+.rec-bar .rb-confirm-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.rec-bar .tb-question {
+  font-weight: 650;
+}
+
+.rec-bar .tb-text-btn {
+  -webkit-app-region: no-drag;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  cursor: pointer;
+}
+
+.rec-bar .tb-text-btn:hover {
+  background: var(--rb-hover);
+}
+
+.rec-bar .tb-text-btn.danger {
+  background: var(--rb-rec);
+  border-color: var(--rb-rec);
+  font-weight: 650;
+}
+
+/* ---------- countdown ---------- */
+.toolbar.rec-bar.countdown {
+  padding: 0 7px 0 8px;
+  gap: 10px;
+}
+
+.rec-bar .rb-count {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rec-bar .rb-count-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.rec-bar .rb-count-ring circle {
+  fill: rgba(239, 68, 68, 0.14);
+  stroke: var(--rb-rec);
+  stroke-width: 3;
+  stroke-linecap: round;
+  /* 2πr of r = 16: the ring empties over the second (short animations, countdown only). */
+  stroke-dasharray: 100.53;
+  animation: rb-ring 1s linear forwards;
+}
+
+.rec-bar .countdown-number {
+  position: relative;
+  font-size: 20px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  animation: rb-pop 0.45s ease-out;
+}
+
+.rec-bar .rb-count-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.rec-bar .countdown-starting {
+  font-weight: 650;
+}
+
+.rec-bar .rb-spinner {
+  width: 18px;
+  height: 18px;
+  margin: 0 4px 0 8px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--rb-text);
+  animation: rb-spin 0.8s linear infinite;
+}
+
+@keyframes rb-ring {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 100.53;
+  }
+}
+
+@keyframes rb-pop {
+  from {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes rb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-bar .rb-count-ring circle,
+  .rec-bar .countdown-number,
+  .rec-bar .rb-spinner {
+    animation: none;
+  }
+}

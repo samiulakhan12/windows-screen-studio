@@ -43,6 +43,17 @@
   pointer-events: none;
 }
 
+.layout-seg .corner-glyph {
+  flex: none;
+  pointer-events: none;
+}
+
+/* A change of the camera's corner alone. */
+.layout-seg.default[data-corner] {
+  background: linear-gradient(180deg, #5b4a8a, #44386b);
+  border-color: #a78bfa;
+}
+
 .layout-seg .seg-label {
   padding-left: 0;
 }

@@ -17,6 +17,11 @@ export interface RecordingSettings {
   autoPause: boolean
   idleSeconds: number
   hotkeys: Hotkeys
+  /**
+   * The camera goes where the live camera bubble was moved during the recording: each corner it
+   * was dragged to becomes a camera corner on the layout track at that moment.
+   */
+  cameraFollowsBubble: boolean
 }
 
 export interface AppSettings {
@@ -39,7 +44,8 @@ export const DEFAULT_RECORDING_SETTINGS: RecordingSettings = {
   hideDesktopIcons: false,
   autoPause: false,
   idleSeconds: IDLE_SECONDS.default,
-  hotkeys: { ...DEFAULT_HOTKEYS }
+  hotkeys: { ...DEFAULT_HOTKEYS },
+  cameraFollowsBubble: true
 }
 
 export function defaultAppSettings(): AppSettings {
@@ -59,7 +65,8 @@ export function sanitizeRecordingSettings(raw: unknown): RecordingSettings {
     hideDesktopIcons: bool(r.hideDesktopIcons, d.hideDesktopIcons),
     autoPause: bool(r.autoPause, d.autoPause),
     idleSeconds: wholeIn(r.idleSeconds, IDLE_SECONDS.min, IDLE_SECONDS.max, d.idleSeconds),
-    hotkeys: sanitizeHotkeys(r.hotkeys)
+    hotkeys: sanitizeHotkeys(r.hotkeys),
+    cameraFollowsBubble: bool(r.cameraFollowsBubble, d.cameraFollowsBubble)
   }
 }
 
@@ -99,6 +106,8 @@ export interface PresetSetup {
   /** null: no microphone, no camera. */
   mic: PresetDevice | null
   camera: PresetDevice | null
+  /** Absent in presets saved before it existed: applying one leaves the option as it is (matching counts it as on). */
+  cameraFollowsBubble?: boolean
 }
 
 export interface RecordingPreset extends PresetSetup {
@@ -144,7 +153,9 @@ export function sanitizePresetSetup(raw: unknown): PresetSetup {
     captureKeys: bool(r.captureKeys, true),
     systemAudio: bool(r.systemAudio, true),
     mic: sanitizeDevice(r.mic),
-    camera: sanitizeDevice(r.camera)
+    camera: sanitizeDevice(r.camera),
+    // Kept only when set: older presets leave the option as it is.
+    ...(typeof r.cameraFollowsBubble === 'boolean' ? { cameraFollowsBubble: r.cameraFollowsBubble } : {})
   }
 }
 
@@ -207,7 +218,14 @@ export function deletePreset(presets: readonly RecordingPreset[], id: unknown): 
 
 /** The recording options a preset sets in the app settings. */
 export function presetRecordingPatch(p: PresetSetup): RecordingSettingsPatch {
-  return { fps: p.fps, countdown: p.countdown, autoPause: p.autoPause, idleSeconds: p.idleSeconds, hideDesktopIcons: p.hideDesktopIcons }
+  return {
+    fps: p.fps,
+    countdown: p.countdown,
+    autoPause: p.autoPause,
+    idleSeconds: p.idleSeconds,
+    hideDesktopIcons: p.hideDesktopIcons,
+    ...(typeof p.cameraFollowsBubble === 'boolean' ? { cameraFollowsBubble: p.cameraFollowsBubble } : {})
+  }
 }
 
 /** Whether the current setup is exactly what preset `p` sets up (devices compared by id). */
@@ -223,7 +241,9 @@ export function presetMatches(p: PresetSetup, setup: PresetSetup): boolean {
     p.captureKeys === setup.captureKeys &&
     p.systemAudio === setup.systemAudio &&
     (p.mic?.id ?? null) === (setup.mic?.id ?? null) &&
-    (p.camera?.id ?? null) === (setup.camera?.id ?? null)
+    (p.camera?.id ?? null) === (setup.camera?.id ?? null) &&
+    // Only counts with a camera (the option is not shown otherwise).
+    (!p.camera || (p.cameraFollowsBubble ?? true) === (setup.cameraFollowsBubble ?? true))
   )
 }
 

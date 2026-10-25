@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { layoutRefusal, setLayoutAt } from '../../../../shared/editor/layoutCommands'
-import { LAYOUT_OPTIONS, layoutAt, layoutSegmentAt, layoutTimeAt, updateLayout } from '../../../../shared/editor/layouts'
+import { cornerRefusal, layoutRefusal, setCornerAt, setLayoutAt } from '../../../../shared/editor/layoutCommands'
+import { LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
+import { CORNER_NAMES } from '../../../../shared/recording/cameraBubble'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { cameraSourceRect, layoutGeometry, outputSize } from '../../../../shared/engine/layout'
 import { formatTime } from '../../../../shared/engine/project'
 import { DEFAULT_WEBCAM_BORDER, framingAt, WEBCAM_LIMITS, webcamLook } from '../../../../shared/engine/webcamData'
-import type { CameraLayout, Project, WebcamSettings } from '../../../../shared/types'
+import type { CameraLayout, Corner, Project, WebcamSettings } from '../../../../shared/types'
 import { ensureSegmenter, onSegmenterState, segmenterState } from '../../render/segmentation/personSegmenter'
 import { holdGesture, useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
@@ -52,7 +53,7 @@ export function CameraPanel({ project, hasWebcam, selection, onSelect, onNotice 
             { value: 'square', label: 'Square' }
           ]}
         />
-        <div className="corner-grid" role="group" aria-label="Camera corner">
+        <div className="corner-grid" role="group" aria-label="Camera corner" title="The camera's corner wherever no layout change chooses another one">
           {CORNERS.map((c) => (
             <button key={c} disabled={off} className={`corner ${webcam.corner === c ? 'active' : ''} ${c}`} onClick={() => set({ corner: c })} title={c.replace('-', ' ')} aria-label={c.replace('-', ' ')}>
               <span />
@@ -87,6 +88,7 @@ export function CameraPanel({ project, hasWebcam, selection, onSelect, onNotice 
       <FramingSection project={project} off={off} set={set} />
       <BlurSection value={look.backgroundBlur} off={off} set={set} />
       {hasWebcam && <LayoutSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} />}
+      {hasWebcam && <PositionSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} />}
     </>
   )
 }
@@ -315,6 +317,86 @@ function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, '
       ) : (
         <p className="hint">Pick a layout to switch to it at the playhead, or double-click the camera track on the timeline. Changes animate smoothly in and out.</p>
       )}
+    </Section>
+  )
+}
+
+/* ---------- camera position over time ---------- */
+
+/**
+ * Where the camera bubble sits over time: the corner of the selected layout change (or the one at
+ * the playhead), or, outside every change, "Move camera here from the playhead", which adds a
+ * change with that corner there. The Camera section's corner stays the default elsewhere.
+ */
+function PositionSection({ project, selection, onSelect, onNotice }: Pick<Props, 'project' | 'selection' | 'onSelect' | 'onNotice'>): JSX.Element {
+  const { store, player } = useEditor()
+  const layouts = project.layouts ?? []
+  const hereId = useSyncExternalStore(player.subscribe, () => layoutSegmentAt(layouts, layoutTimeAt(project, player.time))?.id ?? '')
+  const selected = selection?.kind === 'layout' ? (layouts.find((s) => s.id === selection.id) ?? null) : null
+  const target = selected ?? layouts.find((s) => s.id === hereId) ?? null
+  const hidden = !project.webcam.show
+  const fixed = !!target && !segmentHasCorner(target)
+  const current: Corner = target?.corner ?? project.webcam.corner
+
+  const pick = (corner: Corner): void => {
+    if (selected) {
+      if (!segmentHasCorner(selected) || (selected.corner ?? project.webcam.corner) === corner) return
+      store.update((p) => ({ ...p, layouts: updateLayout(p.layouts, selected.id, { corner }) }))
+      return
+    }
+    // At the playhead: the change there, else a new one with that corner (the rule of the layout commands).
+    const r = setCornerAt(store.state, corner, player.time)
+    if (!r.ok) {
+      if (r.id) onSelect({ kind: 'layout', id: r.id })
+      if (r.reason !== 'same') onNotice(cornerRefusal(r.reason, corner))
+      return
+    }
+    store.update((p) => ({ ...p, layouts: r.layouts }))
+    onSelect({ kind: 'layout', id: r.id })
+    if (r.added) showLayout(player, store.state, r.id)
+  }
+
+  const reset = (): void => {
+    if (!target?.corner) return
+    store.update((p) => ({ ...p, layouts: (p.layouts ?? []).map((s) => (s.id === target.id ? { ...s, corner: undefined } : s)) }))
+  }
+
+  const label = target ? 'Camera position' : 'Move camera here from the playhead'
+  return (
+    <Section
+      title="Camera position"
+      aside={
+        target?.corner && !fixed ? (
+          <button className="cam-reset" onClick={reset} title="Use the camera's default corner (Camera section) in this change">
+            Default
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="corner-grid cam-position" role="group" aria-label={label} data-testid="camera-position">
+        {CORNERS.map((c) => (
+          <button
+            key={c}
+            disabled={hidden || fixed}
+            className={`corner ${target && !fixed && current === c ? 'active' : ''} ${c}`}
+            aria-pressed={!!target && !fixed && current === c}
+            onClick={() => pick(c)}
+            title={target ? `${CORNER_NAMES[c]} during this layout change` : `Move the camera to the ${CORNER_NAMES[c].toLowerCase()} corner from the playhead`}
+            aria-label={`${label}: ${CORNER_NAMES[c].toLowerCase()}`}
+          >
+            <span />
+          </button>
+        ))}
+      </div>
+      <p className="hint">
+        {hidden
+          ? 'The camera is hidden: show it to move it.'
+          : fixed
+            ? `${layoutLabel(target!.layout)} has no camera corner.`
+            : target
+              ? 'The corner of the camera during this layout change; it glides there and back.'
+              : 'Pick a corner to move the camera there from the playhead. Elsewhere it stays in the corner chosen above.'}
+      </p>
     </Section>
   )
 }

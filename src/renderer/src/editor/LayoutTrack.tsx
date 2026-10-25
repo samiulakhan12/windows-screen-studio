@@ -1,10 +1,11 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { addLayoutAt, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime } from '../../../shared/editor/layouts'
 import { overlaps } from '../../../shared/editor/timelineScale'
-import { layoutRamps } from '../../../shared/engine/layout'
+import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
-import type { CameraLayout, LayoutSegment, Project } from '../../../shared/types'
+import { CORNER_NAMES } from '../../../shared/recording/cameraBubble'
+import type { CameraLayout, Corner, LayoutSegment, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { releaseFocus } from './focus'
@@ -37,6 +38,18 @@ const NO_LAYOUTS: LayoutSegment[] = []
 const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 const shortLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.short ?? layoutLabel(layout)
 
+/** A small frame with the camera's dot in `corner`: the corner a layout change puts the camera in. */
+function CornerGlyph({ corner }: { corner: Corner }): JSX.Element {
+  const x = corner.endsWith('left') ? 4.5 : 13.5
+  const y = corner.startsWith('top') ? 4.5 : 9.5
+  return (
+    <svg className="corner-glyph" width="18" height="14" viewBox="0 0 18 14" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="16.5" height="12.5" rx="2" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.7" />
+      <circle cx={x} cy={y} r="2.6" fill="currentColor" />
+    </svg>
+  )
+}
+
 /**
  * Moves the playhead so the preview shows layout change `id` settled, past its change in (unless
  * it already does). While playing, only to a change the playhead is not in: one just added there plays.
@@ -64,12 +77,14 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
   const layouts = useSyncExternalStore(store.subscribe, () => store.state.layouts) ?? NO_LAYOUTS
   const shown = useSyncExternalStore(store.subscribe, () => store.state.webcam.show)
   const clips = useSyncExternalStore(store.subscribe, () => store.state.clips)
+  // Ramps depend on the default corner too: a change to the corner the camera already is in has none.
+  const corner = useSyncExternalStore(store.subscribe, () => store.state.webcam.corner)
   const trackRef = useRef<HTMLDivElement>(null)
   const lastDown = useRef({ at: 0, x: 0 })
   const ramps = useMemo(() => {
     const scene = { layouts, clips, duration, hasWebcam: true, webcam: { ...store.state.webcam, show: true } }
     return new Map(layouts.map((s) => [s.id, layoutRamps(scene, s)]))
-  }, [layouts, clips, duration, store])
+  }, [layouts, clips, duration, store, corner])
   if (!hasCamera) return null
 
   const timeAt = (clientX: number): number => {
@@ -156,17 +171,21 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
         .map((s) => {
           const w = (s.end - s.start) * px
           const ramp = ramps.get(s.id)
+          const corner = segmentCorner(s)
+          // A change of corner alone (the default layout) is named by its corner.
+          const label = corner && s.layout === 'default' ? CORNER_NAMES[corner] : shortLabel(s.layout)
           return (
             <div
               key={s.id}
               data-layout={s.id}
               data-layout-kind={s.layout}
+              data-corner={corner}
               data-start={s.start}
               data-end={s.end}
               className={`seg layout-seg ${s.layout} ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onSegmentDown(s)}
-              title={`${layoutLabel(s.layout)} · ${formatTime(s.start)} – ${formatTime(s.end)}`}
+              title={`${layoutLabel(s.layout)}${corner ? ` · camera ${CORNER_NAMES[corner].toLowerCase()}` : ''} · ${formatTime(s.start)} – ${formatTime(s.end)}`}
             >
               {ramp && w > 24 && (
                 <>
@@ -175,8 +194,9 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
                 </>
               )}
               <span className="edge left" />
-              {w > 30 && <LayoutGlyph layout={s.layout} size={18} />}
-              {w > 84 && <span className="seg-label">{shortLabel(s.layout)}</span>}
+              {w > 30 && (corner && s.layout === 'default' ? <CornerGlyph corner={corner} /> : <LayoutGlyph layout={s.layout} size={18} />)}
+              {corner && s.layout !== 'default' && w > 54 && <CornerGlyph corner={corner} />}
+              {w > 84 && <span className="seg-label">{label}</span>}
               <span className="edge right" />
             </div>
           )

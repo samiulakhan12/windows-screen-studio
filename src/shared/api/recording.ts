@@ -1,5 +1,6 @@
 import type { StemKind } from '../audio/settings'
-import type { CaptureSource, NormRect, RecordingStatus } from '../types'
+import type { CaptureSource, Corner, NormRect, RecordingStatus } from '../types'
+import type { BubbleSize } from '../recording/cameraBubble'
 import type { HotkeyAction, HotkeyCheck } from '../recording/hotkeys'
 import type { AppSettings, RecordingPresetInput, RecordingSettingsPatch } from '../recording/settings'
 
@@ -139,12 +140,28 @@ export interface ToolbarStatus extends RecordingStatus {
   hotkeyProblems?: string[]
   /** "Zoom here" marks made so far (the toolbar acknowledges each one). */
   marks?: number
+  /** The recording has a microphone; `muted` while it records silence. */
+  mic?: { muted: boolean }
+  /** The live camera bubble is open (`shown`: not hidden from the recording bar). */
+  camera?: { shown: boolean }
 }
 
-export type RecorderCommand = 'stop' | 'pause' | 'resume' | 'cancel'
+/**
+ * 'restart' throws the recording away and starts a new one with the same setup; 'mute' and
+ * 'unmute' silence the microphone in the recording for a while.
+ */
+export type RecorderCommand = 'stop' | 'pause' | 'resume' | 'cancel' | 'restart' | 'mute' | 'unmute'
 
 /** A recorder status sent to the main process (and shown on the toolbar). */
-export type RecorderStatusUpdate = RecordingStatus & Pick<ToolbarStatus, 'starting'>
+export type RecorderStatusUpdate = RecordingStatus & Pick<ToolbarStatus, 'starting' | 'mic'>
+
+/** What the recorder's page needs to show the live camera bubble, or why there is none. */
+export type CameraBubbleGrant =
+  | { ok: true; name: string; shape: 'circle' | 'rounded' | 'square'; mirror: boolean; size: BubbleSize; corner: Corner }
+  | { ok: false; reason: string }
+
+/** A pointer drag of the camera bubble, in screen DIP. */
+export type BubbleDragPhase = 'start' | 'move' | 'end'
 
 export interface RecordingApi {
   /** Screens and/or windows with small JPEG thumbnails (both kinds when `kinds` is omitted). */
@@ -161,7 +178,8 @@ export interface RecordingApi {
   dropRecordingStems(token: string): Promise<void>
   setRecordingStatus(token: string, status: RecorderStatusUpdate): Promise<void>
   saveRecording(token: string, payload: SaveRecordingPayload): Promise<string>
-  cancelRecording(token: string): Promise<void>
+  /** `restarting`: a new recording follows at once (the main window stays hidden meanwhile). */
+  cancelRecording(token: string, restarting?: boolean): Promise<void>
   sendRecorderCommand(command: RecorderCommand): Promise<void>
   getRecordingStatus(): Promise<ToolbarStatus>
   pickRegion(sourceId: string): Promise<RegionSelection | null>
@@ -184,6 +202,19 @@ export interface RecordingApi {
    * app's hotkeys, and (when no recording runs) not already taken by another app.
    */
   checkHotkey(action: HotkeyAction, accelerator: string): Promise<HotkeyCheck>
+  /**
+   * Asks to show the live camera bubble for recording `token`: on yes, the page opens it with
+   * window.open('about:blank', grant.name) and shows its own camera stream there.
+   */
+  allowCameraBubble(token: string): Promise<CameraBubbleGrant>
+  /** The bubble is dragged by the pointer (screen DIP); the end snaps it into the nearest corner. */
+  dragCameraBubble(token: string, phase: BubbleDragPhase, x: number, y: number): void
+  resizeCameraBubble(token: string, size: BubbleSize): void
+  /** Hides the camera bubble or shows it again (the recording bar). */
+  toggleCameraBubble(): Promise<void>
+  /** The microphone's level while recording (0..1, a few times a second), for the recording bar's meter. */
+  sendRecordingLevel(token: string, level: number): void
+  onRecordingLevel(cb: (level: number) => void): () => void
   onRecorderCommand(cb: (command: RecorderCommand) => void): () => void
   /** Problems the main process noticed during a recording (e.g. the recorded screen went away). */
   onRecorderWarning(cb: (message: string) => void): () => void

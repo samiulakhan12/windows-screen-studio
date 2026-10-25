@@ -44,9 +44,9 @@ afterEach(() => {
 })
 
 describe('recording settings validation', () => {
-  it('defaults: 60 fps, a 3 s countdown, nothing automatic, the documented hotkeys, no presets', () => {
+  it('defaults: 60 fps, a 3 s countdown, nothing automatic, the documented hotkeys, the camera following its bubble, no presets', () => {
     expect(defaultAppSettings()).toEqual({
-      recording: { fps: 60, countdown: 3, hideDesktopIcons: false, autoPause: false, idleSeconds: 10, hotkeys: DEFAULT_HOTKEYS },
+      recording: { fps: 60, countdown: 3, hideDesktopIcons: false, autoPause: false, idleSeconds: 10, hotkeys: DEFAULT_HOTKEYS, cameraFollowsBubble: true },
       presets: []
     })
     // A copy every time: callers may mutate it.
