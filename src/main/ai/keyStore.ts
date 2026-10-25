@@ -138,7 +138,8 @@ export class AiProviderStore {
 
   private encrypt(apiKey: string): string {
     if (!this.box.isEncryptionAvailable()) {
-      throw new Error('API keys cannot be stored safely on this PC: system encryption (Windows data protection) is not available, so the key was not saved.')
+      const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
+      throw new Error(`API keys cannot be stored safely on this PC: ${what} is not available, so the key was not saved.`)
     }
     const weak = this.box.weakness?.()
     if (weak) throw new Error(`API keys cannot be stored safely on this PC (${weak}), so the key was not saved.`)

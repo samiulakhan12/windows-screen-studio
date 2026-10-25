@@ -185,7 +185,9 @@ async function runJob(
   progress: (p: TranscribeProgress) => void
 ): Promise<Transcript> {
   const send = (phase: TranscribeProgress['phase'], done: number, total: number): void => progress({ projectId: id, phase, done, total })
-  const project = await readProject(id)
+  const project = await readProject(id).catch(() => {
+    throw new Error('This recording could not be read (it may have been moved or deleted).')
+  })
   const input = await soundFile(dir, project, options.source)
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ssw-transcribe-'))
   try {

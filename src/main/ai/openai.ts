@@ -34,8 +34,9 @@ export function openAiFailure(err: unknown): FailureInfo {
 }
 
 export function openAiClient(apiKey: string, model: string, transcriptionModel: string): AiClient {
-  // An explicit base URL: OPENAI_BASE_URL in the user's environment must not redirect their key.
-  const client = new OpenAI({ apiKey, baseURL: baseUrlOverride('openai') ?? OFFICIAL_URL, maxRetries: 0, timeout: 30 * 60_000 })
+  // An explicit base URL: OPENAI_BASE_URL in the user's environment must not redirect their key;
+  // and no logging, whatever OPENAI_LOG says (requests carry the key).
+  const client = new OpenAI({ apiKey, baseURL: baseUrlOverride('openai') ?? OFFICIAL_URL, maxRetries: 0, timeout: 30 * 60_000, logLevel: 'off' })
   const base = { provider: PROVIDER, toFailure: openAiFailure }
   return {
     partLimits: { maxSeconds: 600, maxBytes: MAX_UPLOAD },

@@ -73,8 +73,9 @@ export function claudeAnswerText(message: Pick<Anthropic.Beta.Messages.BetaMessa
 }
 
 export function anthropicClient(apiKey: string, model: string): AiClient {
-  // Explicit base URL and no auth token: ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN in the user's environment must not apply.
-  const client = new Anthropic({ apiKey, authToken: null, baseURL: baseUrlOverride('anthropic') ?? OFFICIAL_URL, maxRetries: 0, timeout: 30 * 60_000 })
+  // Explicit base URL and no auth token: ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN in the user's
+  // environment must not apply; and no logging, whatever ANTHROPIC_LOG says.
+  const client = new Anthropic({ apiKey, authToken: null, baseURL: baseUrlOverride('anthropic') ?? OFFICIAL_URL, maxRetries: 0, timeout: 30 * 60_000, logLevel: 'off' })
   const base = { provider: PROVIDER, model, toFailure: anthropicFailure }
   return {
     async test(signal) {
