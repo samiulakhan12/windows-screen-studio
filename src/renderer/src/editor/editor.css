@@ -228,7 +228,8 @@
   justify-content: center;
 }
 
-.notice {
+/* Scoped: Home has its own .notice warning box (recorder.css) and both land in one stylesheet. */
+.notice-slot .notice {
   max-width: 100%;
   padding: 5px 12px;
   border-radius: var(--radius-pill);
@@ -272,6 +273,8 @@
   background: var(--surface-1);
   display: flex;
   min-height: 0;
+  /* Its height is set by the window and the timeline, never by its content. */
+  container: inspector / size;
 }
 
 /* Icon rail: ten tabs with short labels; the full name is in the tooltip. */
@@ -285,11 +288,6 @@
   border-right: 1px solid var(--border-subtle);
   background: var(--surface-0);
   overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.insp-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .insp-tabs button {
@@ -344,6 +342,24 @@
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: var(--accent-500);
+}
+
+/* The labelled rail needs 480 px. Below that (short windows, a recording with a camera and
+   captions) it turns into a compact icon rail that still fits all ten tabs at the minimum
+   window size; anything shorter scrolls, with a visible scrollbar. */
+@container inspector (max-height: 480px) {
+  .insp-tabs {
+    gap: 1px;
+    padding: 6px;
+  }
+
+  .insp-tabs button {
+    padding: 5px 0;
+  }
+
+  .insp-tabs button span {
+    display: none;
+  }
 }
 
 .insp-body {
@@ -948,7 +964,8 @@
   pointer-events: none;
 }
 
-/* Segments on the tracks share one look; each kind sets its colour. */
+/* Segments on the tracks share one look; each kind sets its colour. Keep every stop dark enough
+   for the white 11 px label to reach 4.5:1, also under the hover brightness(1.1). */
 .seg {
   position: absolute;
   top: 2px;
@@ -977,7 +994,7 @@
 }
 
 .zoom-seg {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--track-zoom) 92%, #ffffff 8%), color-mix(in srgb, var(--track-zoom) 78%, #000000 22%));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--track-zoom) 85%, #000000 15%), color-mix(in srgb, var(--track-zoom) 70%, #000000 30%));
   border: 1px solid color-mix(in srgb, var(--track-zoom) 55%, #ffffff 45%);
 }
 
@@ -988,7 +1005,7 @@
 
 .text-seg {
   bottom: auto;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--track-text) 82%, #000000 18%), color-mix(in srgb, var(--track-text) 62%, #000000 38%));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--track-text) 55%, #000000 45%), color-mix(in srgb, var(--track-text) 45%, #000000 55%));
   border: 1px solid color-mix(in srgb, var(--track-text) 60%, #ffffff 40%);
 }
 

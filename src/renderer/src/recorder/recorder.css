@@ -8,7 +8,8 @@
   font-size: var(--text-sm);
 }
 
-.notice {
+/* Scoped: the editor's transport has its own .notice pill (editor.css). */
+.record-panel .notice {
   display: flex;
   flex-direction: column;
   gap: 4px;
