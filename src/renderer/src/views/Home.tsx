@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
 import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChanged, type InputDevices } from '../recorder/devices'
 import { CameraPreview, Keys, RecordingOptions } from '../recorder/RecordingOptions'
+import { BrandLogo } from '../components/BrandLogo'
 import { RecordingPresets } from '../recorder/RecordingPresets'
 import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
 import { hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
@@ -705,8 +706,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     <div className="app">
       <header className="titlebar">
         <div className="brand">
-          <span className="brand-mark" />
-          Screen Studio <span className="muted">for Windows</span>
+          <BrandLogo size={22} />
         </div>
         <div className="tb-spacer" />
         <SettingsButton />

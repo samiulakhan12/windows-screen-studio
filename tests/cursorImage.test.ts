@@ -22,7 +22,7 @@ root.dir = mkdtempSync(path.join(tmpdir(), 'ssw-cursor-image-'))
 afterAll(() => rmSync(root.dir, { recursive: true, force: true }))
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
-const projectDir = path.join(root.dir, 'Screen Studio for Windows', 'rec-1')
+const projectDir = path.join(root.dir, 'Flown', 'rec-1')
 mkdirSync(projectDir, { recursive: true })
 
 function file(name: string, content: Buffer | string): string {

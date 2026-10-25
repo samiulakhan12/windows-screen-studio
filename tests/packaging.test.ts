@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { APP_USER_MODEL_ID } from '../src/shared/brand'
 
 const require = createRequire(import.meta.url)
 const ROOT = path.resolve(__dirname, '..')
@@ -26,6 +27,7 @@ const pe = require('../scripts/lib/pe.cjs') as {
   parsePe(buf: Buffer): { machine: string; truncated: boolean; signed: boolean; rawEnd: number }
   readResources(buf: Buffer): { type: number | null; id: number | null; lang: number | null; data: Buffer }[]
   readIconGroups(buf: Buffer): { id: number | null; images: { width: number; height: number; bitCount: number; data: Buffer | null }[] }[]
+  readVersionStrings(buf: Buffer): Record<string, string>
   checkWindowsExe(file: string, options?: { minBytes?: number; pin?: { size: number; sha256: string } }): { ok: true; size: number; signed: boolean } | { ok: false; reason: string }
   peContentHash(buf: Buffer, length?: number): string
 }
@@ -189,6 +191,26 @@ function groupIcon(images: { size: number; id: number; bytes: number }[]): Buffe
   return b
 }
 
+/** A VS_VERSIONINFO block as rc.exe writes it: header, UTF-16 key, value and children, 32-bit aligned. */
+function versionBlock(key: string, value: Buffer | string | null, children: Buffer[] = []): Buffer {
+  const pad = (b: Buffer): Buffer => Buffer.concat([b, Buffer.alloc((4 - (b.length % 4)) % 4)])
+  const text = typeof value === 'string'
+  const valueBytes = text ? Buffer.from(`${value}\0`, 'utf16le') : (value ?? Buffer.alloc(0))
+  const head = pad(Buffer.concat([Buffer.alloc(6), Buffer.from(`${key}\0`, 'utf16le')]))
+  const body = Buffer.concat([head, pad(valueBytes), ...children.map(pad)])
+  body.writeUInt16LE(body.length, 0)
+  body.writeUInt16LE(text ? valueBytes.length / 2 : valueBytes.length, 2)
+  body.writeUInt16LE(text ? 1 : 0, 4)
+  return body
+}
+
+function versionInfo(strings: Record<string, string>): Buffer {
+  const table = versionBlock('040904b0', null, Object.entries(strings).map(([k, v]) => versionBlock(k, v)))
+  const fixed = Buffer.alloc(52)
+  fixed.writeUInt32LE(0xfeef04bd, 0)
+  return versionBlock('VS_VERSION_INFO', fixed, [versionBlock('StringFileInfo', null, [table]), versionBlock('VarFileInfo', null, [versionBlock('Translation', Buffer.from([9, 4, 0xb0, 4]))])])
+}
+
 describe('ico', () => {
   it('round-trips DIB and PNG images, with 256 px stored as 0 in the directory', () => {
     const rgba = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0, 10, 20, 30, 255])
@@ -236,7 +258,7 @@ describe('ico', () => {
 
   it('the committed build/icon.ico has every Windows size, small ones as DIBs and 256 px as PNG', () => {
     const entries = ico.parseIco(readFileSync(path.join(ROOT, 'build/icon.ico')))
-    expect(entries.map((e) => e.width)).toEqual([16, 24, 32, 48, 64, 128, 256])
+    expect(entries.map((e) => e.width)).toEqual([16, 20, 24, 32, 40, 48, 64, 96, 128, 256])
     expect(entries.every((e) => e.width === e.height && e.bitCount === 32)).toBe(true)
     expect(entries.filter((e) => e.format === 'png').map((e) => e.width)).toEqual([256])
     expect(ico.pngSize(readFileSync(path.join(ROOT, 'build/icon.png')))).toEqual({ width: 512, height: 512 })
@@ -246,6 +268,13 @@ describe('ico', () => {
 })
 
 describe('pe', () => {
+  it('reads the version strings Explorer shows (file properties)', () => {
+    const strings = { CompanyName: 'Qbexel', FileDescription: 'Flown', ProductName: 'Flown', LegalCopyright: 'Copyright © 2026 Qbexel', FileVersion: '0.1.0' }
+    const exe = fakePe({ resources: [{ type: 16, id: 1, data: versionInfo(strings) }] })
+    expect(pe.readVersionStrings(exe)).toEqual(strings)
+    expect(pe.readVersionStrings(fakePe({}))).toEqual({})
+  })
+
   it('reads the machine, the icon groups and the certificate of an executable', () => {
     const small = Buffer.from('small-icon')
     const big = Buffer.from('big-icon-png')
@@ -509,6 +538,27 @@ describe('electron-builder.config.cjs', () => {
       Object.assign(process.env, saved)
     }
   }
+
+  it('names the app Flown by Qbexel and keeps upgrading installs of Screen Studio for Windows', () => {
+    const config = loadConfig()
+    const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+    expect([pkg.name, pkg.productName, pkg.author, pkg.homepage]).toEqual(['flown', 'Flown', { name: 'Qbexel', url: 'https://qbexel.com' }, 'https://qbexel.com'])
+    expect([config.productName, config.executableName, config.copyright]).toEqual(['Flown', 'Flown', 'Copyright © 2026 Qbexel'])
+    expect(config.win.artifactName).toBe('Flown-Setup-${version}.${ext}')
+    expect([config.nsis.shortcutName, config.nsis.uninstallDisplayName]).toEqual(['Flown', 'Flown'])
+    // The shortcuts' AppUserModelID is the appId; the app sets the same one (taskbar grouping).
+    expect(config.appId).toBe(APP_USER_MODEL_ID)
+    // The product GUID electron-builder derived from the old appId: the installer finds and
+    // uninstalls the old app instead of installing Flown beside it.
+    const { UUID } = require('builder-util-runtime') as { UUID: { parse(s: string): Buffer; v5(name: string, ns: Buffer): string } }
+    const namespace = UUID.parse('50e065bc-3134-11e6-9bab-38c9862bdaf3')
+    expect(config.nsis.guid).toBe(UUID.v5('com.samiulakhan12.screenstudio', namespace))
+    expect(config.nsis.guid).not.toBe(UUID.v5(config.appId, namespace))
+    const nsh = readFileSync(path.join(ROOT, config.nsis.include), 'utf8')
+    expect(nsh).toMatch(/!macro customInit/)
+    expect(nsh).toContain('!define FLOWN_LEGACY_DIR "\\Screen Studio for Windows"')
+    expect(nsh).toContain('!define FLOWN_LEGACY_SHORTCUT "Screen Studio for Windows"')
+  })
 
   it('ships one files whitelist, English only, our icons, and the native helper when it is built', () => {
     const config = loadConfig()

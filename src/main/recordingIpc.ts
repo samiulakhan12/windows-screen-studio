@@ -32,6 +32,7 @@ import type {
   TrackKind,
   WindowCaptureSupport
 } from '../shared/api/recording'
+import { APP_NAME } from '../shared/brand'
 import { isBubbleSize, isCorner } from '../shared/recording/cameraBubble'
 import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
@@ -932,7 +933,7 @@ export function registerRecordingIpc(): void {
     })
     for (const id of [...sourceInfo.keys()]) if (types.includes(kindOf(id))) sourceInfo.delete(id)
     return sources
-      .filter((s) => !own.has(s.id) && s.name !== 'Screen Studio for Windows')
+      .filter((s) => !own.has(s.id) && s.name !== APP_NAME)
       .map((s) => {
         const kind = kindOf(s.id)
         const displayId = kind === 'screen' ? s.display_id || undefined : undefined
@@ -1051,7 +1052,7 @@ export function attachRecorderWindow(win: BrowserWindow): void {
       if (details.reason === 'clean-exit') return
       // Only a crash during a recording is the recorder's; otherwise say what really happened.
       const { message, detail } = rendererGoneDialog({ recording, kept, processing: !recording && processing.size > 0 })
-      await dialog.showMessageBox(win, { type: 'warning', title: 'Screen Studio for Windows', message, detail })
+      await dialog.showMessageBox(win, { type: 'warning', title: APP_NAME, message, detail })
     })()
   })
 
@@ -1062,7 +1063,7 @@ export function attachRecorderWindow(win: BrowserWindow): void {
     void dialog
       .showMessageBox(win, {
         type: 'warning',
-        title: 'Screen Studio for Windows',
+        title: APP_NAME,
         buttons: ['Keep working', 'Quit anyway'],
         defaultId: 0,
         cancelId: 0,

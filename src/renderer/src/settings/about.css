@@ -1,0 +1,46 @@
+/* ---------- Settings: About (AboutSection.tsx) ---------- */
+.about-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.about-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  /* The brand's Ink: the logo is made for it. */
+  background: #0d0f1c;
+  border: 1px solid var(--border);
+}
+
+.about-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.about-text p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.about-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: var(--weight-semibold);
+}
+
+.about-version,
+.about-legal {
+  color: var(--muted);
+  font-weight: var(--weight-regular);
+}
+
+.about-legal {
+  font-size: 12px;
+}

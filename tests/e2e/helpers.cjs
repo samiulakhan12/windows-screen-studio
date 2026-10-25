@@ -20,7 +20,7 @@ function tempHome(name) {
 
 /** Videos folder used by the app for a given HOME (Linux XDG default). */
 function projectsRoot(home) {
-  return path.join(home, 'Videos', 'Screen Studio for Windows')
+  return path.join(home, 'Videos', 'Flown')
 }
 
 async function launch({ home, args = [], env = {} } = {}) {

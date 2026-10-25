@@ -31,7 +31,7 @@ xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e   # end-to-end tests of
 ## Building the installer
 
 ```bash
-npm run dist:win     # -> dist/ScreenStudio-Setup-<version>.exe
+npm run dist:win     # -> dist/Flown-Setup-<version>.exe
 ```
 
 The same command works on Windows, Linux and macOS. It runs four steps and stops at the first one
@@ -63,7 +63,9 @@ that fails:
 4. **`npm run verify:dist`** (`scripts/verify-dist.mjs`) inspects the result and fails if
    `app.asar` holds anything but `out/`, `package.json` and the runtime `node_modules`, if
    `ffmpeg.exe` is missing, not x64 or not the pinned build, if other platforms' binaries or
-   locales slipped in, if the exe or the installer does not carry `build/icon.ico`, or if signing
+   locales slipped in, if `build/icon.ico` lacks a Windows size or the exe or the installer does
+   not carry it, if their file properties do not name Flown and Qbexel (CompanyName, ProductName,
+   FileDescription, LegalCopyright, read from the version resource), or if signing
    was required but the installer or any `.exe` or `.node` file in `win-unpacked` is unsigned. It ends with the installer and install sizes.
 
 On Linux, keep Wine's console noise down with `WINEDEBUG=-all npm run dist:win`.
@@ -72,7 +74,7 @@ On Linux, keep Wine's console noise down with `WINEDEBUG=-all npm run dist:win`.
 
 | Where (installed) | What |
 | --- | --- |
-| `Screen Studio for Windows.exe` + Chromium files | Electron 44, our icon embedded |
+| `Flown.exe` + Chromium files | Electron 44, the Flown icon embedded; file properties: Flown by Qbexel |
 | `locales/en-US.pak` | the only Chromium locale (the UI is English; the other 54 were ~50 MB) |
 | `resources/app.asar` | `out/` (no source maps), `package.json`, and from `node_modules` only `ffmpeg-static` (`index.js`), `uiohook-napi` and `node-gyp-build` |
 | `resources/app.asar.unpacked/node_modules/ffmpeg-static/` | `ffmpeg.exe` with its `LICENSE` and `README` (the GPL requires them) |
@@ -110,15 +112,15 @@ see `native/README.md`.
 
 ## The app icon
 
-The icon is original artwork: a violet-to-pink rounded tile with a screen frame, a record dot and a
-cursor. Sources live in `build/`:
+The icon is the Flown app icon from Qbexel's brand kit: the gradient "F" mark on an Ink tile. The
+masters are in `assets/brand/` (see `assets/brand/BRAND.md` for the colours and usage rules):
 
 | File | Use |
 | --- | --- |
-| `build/icon.svg` | master artwork, used for 48 px and up |
-| `build/icon-small.svg` | simplified 16-32 px variant, drawn on the pixel grid so small sizes stay crisp |
-| `build/installer-sidebar.svg` | the installer's welcome/finish page image |
-| `build/icon.ico` *(generated)* | 16, 24, 32, 48, 64, 128 and 256 px: exe, installer, uninstaller, shortcuts, taskbar |
+| `assets/brand/flown-app-icon.svg` | master artwork, used for 48 px and up |
+| `assets/brand/flown-app-icon-small.svg` | the kit's under-48 px art (flat gradient, wider gap between the blades) for 16-40 px |
+| `build/installer-sidebar.svg` | the installer's welcome/finish page image (the kit's mark and wordmark on Ink) |
+| `build/icon.ico` *(generated)* | 16, 20, 24, 32, 40, 48, 64, 96, 128 and 256 px: exe, installer, uninstaller, shortcuts, taskbar |
 | `build/icon.png` *(generated)* | 512 px: window icon in development, docs |
 | `build/installerSidebar.bmp` *(generated)* | 164x314 NSIS sidebar |
 
@@ -130,6 +132,30 @@ image tools are needed, and writes the ICO itself (`scripts/icons/render-icons.c
 The installed app's shortcuts point at the exe, and packaged windows use the exe's embedded icon,
 so `build/` is not shipped. In development `src/main/windows.ts` loads `build/icon.ico` (Windows) or
 `build/icon.png` for the window.
+
+## Upgrading installs of "Screen Studio for Windows"
+
+The app was called "Screen Studio for Windows" (appId `com.samiulakhan12.screenstudio`) before it
+became Flown (appId `com.qbexel.flown`). electron-builder derives the NSIS product GUID from the
+appId, which would make the Flown installer a different product: it would install beside the old
+app and leave it, its shortcuts and its uninstall entry in place. So `nsis.guid` in
+`electron-builder.config.cjs` keeps the GUID of the old appId
+(`25fa5926-dc93-5490-a32e-c16bd99d39ca`, UUID v5 in electron-builder's namespace; the unit test
+recomputes it). Installing Flown over the old app then:
+
+- finds the old install (`Software\{GUID}`), runs its uninstaller with `--updated /KEEP_APP_DATA`,
+  which removes the old exe, its Desktop and Start menu shortcuts (`Screen Studio for Windows.lnk`)
+  and keeps the user's data; `build/installer.nsh` deletes those shortcuts too if they are still
+  there;
+- installs to `...\Programs\Flown` instead of reusing the old `...\Programs\Screen Studio for Windows`
+  folder (`build/installer.nsh`, `customInit` and a hidden page after the directory page); a folder
+  the user had chosen under another name is kept;
+- creates `Flown.lnk` shortcuts stamped with the AppUserModelID `com.qbexel.flown`, which the app
+  sets at start (`APP_USER_MODEL_ID` in `src/shared/brand.ts`), so the taskbar groups the window
+  with its shortcut. A taskbar pin of the old shortcut is removed with it; pin Flown again.
+
+On the first start the app moves the old settings and recordings to Flown's folders (see
+`docs/IMPLEMENTATION.md`, Data model).
 
 ## Code signing
 
@@ -148,7 +174,7 @@ an unsigned installer, and `verify:dist` checks the signatures.
 ### 1. Certificate file (`.pfx` / `.p12`)
 
 ```bash
-CSC_LINK=C:\certs\screenstudio.pfx       # path, https:// URL or base64 of the file
+CSC_LINK=C:\certs\flown.pfx       # path, https:// URL or base64 of the file
 CSC_KEY_PASSWORD=...                     # the file's password
 ```
 
@@ -200,7 +226,7 @@ variables, `Invoke-TrustedSigning` falls back to other sign-ins (Azure CLI, mana
 `npm run verify:dist` prints `Authenticode: installer and <n> file(s) in win-unpacked signed` (or
 lists the unsigned files). On Windows, right-click
 the installer -> Properties -> Digital Signatures, or run
-`Get-AuthenticodeSignature .\dist\ScreenStudio-Setup-0.1.0.exe`.
+`Get-AuthenticodeSignature .\dist\Flown-Setup-0.1.0.exe`.
 
 ## The native capture helper
 

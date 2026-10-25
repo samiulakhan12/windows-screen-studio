@@ -4,7 +4,7 @@ use crate::desktop::IconsAction;
 use crate::sizing::BITRATE_RANGE;
 
 pub const USAGE: &str = "\
-ssw-capture: Windows.Graphics.Capture recorder for Screen Studio for Windows
+ssw-capture: Windows.Graphics.Capture recorder for Flown
 
 USAGE:
   ssw-capture probe

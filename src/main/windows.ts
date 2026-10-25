@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { APP_NAME } from '../shared/brand'
 
 export const isDev = !app.isPackaged && !!process.env['ELECTRON_RENDERER_URL']
 export const preloadPath = path.join(__dirname, '../preload/index.js')
@@ -57,7 +58,7 @@ export function createMainWindow(onClosed: () => void): BrowserWindow {
     minHeight: 680,
     show: false,
     backgroundColor: '#0b0b10',
-    title: 'Screen Studio for Windows',
+    title: APP_NAME,
     icon: windowIconPath(),
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#0b0b10', symbolColor: '#e5e7eb', height: 40 },

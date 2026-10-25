@@ -1,11 +1,15 @@
 {
-  "name": "windows-screen-studio",
-  "productName": "Screen Studio for Windows",
+  "name": "flown",
+  "productName": "Flown",
   "version": "0.1.0",
-  "description": "Beautiful screen recordings on Windows: auto zoom, smooth cursor, backgrounds, webcam and one-click export.",
+  "description": "Screen recorder and editor for Windows by Qbexel: auto zoom, smooth cursor, backgrounds, webcam and one-click export.",
   "main": "out/main/index.js",
   "license": "MIT",
-  "author": "samiulakhan12",
+  "author": {
+    "name": "Qbexel",
+    "url": "https://qbexel.com"
+  },
+  "homepage": "https://qbexel.com",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },

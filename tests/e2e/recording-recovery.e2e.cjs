@@ -178,6 +178,6 @@ const readManifest = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'recordi
     })
     await r.until(async () => (await dialogs()).length > 0, { what: 'crash message' })
     const [message] = await dialogs()
-    h.assert(message === 'Screen Studio for Windows stopped unexpectedly and was reloaded.', `message: ${message}`)
+    h.assert(message === 'Flown stopped unexpectedly and was reloaded.', `message: ${message}`)
   })
 })()

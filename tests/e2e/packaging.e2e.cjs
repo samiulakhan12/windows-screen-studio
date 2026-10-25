@@ -26,7 +26,7 @@ while i + 2 <= len(values):
   w, hgt = values[i], values[i + 1]
   px = values[i + 2:i + 2 + w * hgt]
   sample = lambda fx, fy: px[int(fy * hgt) * w + int(fx * w)]
-  icons.append({'w': w, 'h': hgt, 'tile': sample(0.1, 0.5), 'frame': sample(0.5, 0.25), 'corner': sample(0.0, 0.0)})
+  icons.append({'w': w, 'h': hgt, 'tile': sample(0.1, 0.5), 'top': sample(0.5, 0.25), 'bottom': sample(0.3, 0.75), 'corner': sample(0.0, 0.0)})
   i += 2 + w * hgt
 print(json.dumps(icons))
 `
@@ -53,13 +53,16 @@ async function windowIcon(ctx) {
   h.assert(icons.length > 0, 'the main window publishes an icon (_NET_WM_ICON)')
   const big = icons.reduce((a, b) => (b.w > a.w ? b : a))
   h.assert(big.w === big.h && big.w >= 64, `square icon of at least 64 px (got ${big.w}x${big.h})`)
-  // build/icon.png: transparent corners, a violet tile, a white screen frame. Electron's default
-  // icon is a dark tile with a cyan atom, so these samples tell the two apart.
+  // build/icon.png (Flown): transparent corners, a dark Ink tile, the violet upper blade of the F
+  // and the cyan lower one. Electron's default icon is a dark tile with a cyan atom ring, whose
+  // middle top is the dark tile, so the violet blade tells the two apart.
   const tile = argb(big.tile)
-  const frame = argb(big.frame)
+  const top = argb(big.top)
+  const bottom = argb(big.bottom)
   h.assert(argb(big.corner).a < 16, `transparent corner (${JSON.stringify(argb(big.corner))})`)
-  h.assert(tile.a > 240 && tile.r > 100 && tile.b > 180 && tile.g < 110, `violet tile (${JSON.stringify(tile)})`)
-  h.assert(frame.a > 240 && frame.r > 235 && frame.g > 235 && frame.b > 235, `white screen frame (${JSON.stringify(frame)})`)
+  h.assert(tile.a > 240 && tile.r < 60 && tile.g < 60 && tile.b > 40 && tile.b < 110, `dark Ink tile (${JSON.stringify(tile)})`)
+  h.assert(top.a > 240 && top.b > 200 && top.r > 90 && top.g < 150, `violet upper blade (${JSON.stringify(top)})`)
+  h.assert(bottom.a > 240 && bottom.b > 220 && bottom.g > 150 && bottom.r < 120, `cyan lower blade (${JSON.stringify(bottom)})`)
   console.log(`  window icon sizes: ${icons.map((i) => `${i.w}x${i.h}`).join(', ')}`)
 }
 

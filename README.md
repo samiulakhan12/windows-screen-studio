@@ -1,6 +1,6 @@
-# Screen Studio for Windows
+# Flown
 
-A Windows screen recorder inspired by [Screen Studio](https://screen.studio/) for macOS: record your
+Flown — a Windows screen recorder and editor by Qbexel ([qbexel.com](https://qbexel.com)): record your
 screen, then get a polished video with **automatic zoom on clicks**, a **smooth cursor**, **motion
 blur**, beautiful **backgrounds**, a **webcam bubble**, **text and keystroke overlays**, and fast
 **MP4 / GIF export**.
@@ -11,7 +11,7 @@ Built with Electron, React and TypeScript, a small Rust helper for Windows captu
 - [Implementation](docs/IMPLEMENTATION.md): architecture and design decisions
 - [Building](docs/BUILDING.md): toolchain, installer, icon and code signing
 - [Native capture helper](native/README.md): the Windows Graphics Capture recorder and its manual test checklist
-- [Research](docs/RESEARCH.md): what Screen Studio does and how others approached it
+- [Research](docs/RESEARCH.md): the macOS recorder that inspired it, and how others approached it
 
 ## Features
 
@@ -35,7 +35,7 @@ npm install
 npm run dev        # run the app with hot reload
 npm test           # unit tests
 npm run typecheck
-npm run dist:win   # build the Windows installer: dist/ScreenStudio-Setup-<version>.exe
+npm run dist:win   # build the Windows installer: dist/Flown-Setup-<version>.exe
 ```
 
 End-to-end tests drive the built app with Playwright. On Linux run them under a virtual display:
@@ -67,7 +67,7 @@ Set `SSW_REQUIRE_SIGNING=1` for release builds so an unsigned build fails. Full 
 
 ## Using it
 
-Recordings are stored in `Videos\Screen Studio for Windows\<recording>` as `project.json`,
+Recordings are stored in `Videos\Flown\<recording>` as `project.json`,
 `cursor.json` and H.264 proxies of the screen and camera. Unfinished recordings (for example after a
 crash) are listed on the home screen and can be recovered.
 

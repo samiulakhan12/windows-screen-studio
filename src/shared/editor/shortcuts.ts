@@ -53,6 +53,7 @@ export const DEFAULT_KEYMAP: Keymap = Object.freeze({
   timelineZoomOut: ['-', '_'],
   export: ['Ctrl+E'],
   shortcuts: ['Ctrl+/'],
+  about: [],
   commandPalette: ['Ctrl+K', 'Ctrl+Shift+P']
 })
 

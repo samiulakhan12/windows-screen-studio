@@ -1,4 +1,4 @@
-import { SettingsButton } from '../settings/SettingsButton'
+import { OPEN_SETTINGS_EVENT, SettingsButton } from '../settings/SettingsButton'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
 import { openedWithoutStems, withRecordedStems } from '../../../shared/audio/settings'
@@ -600,6 +600,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       timelineFit: () => timelineRef.current?.fit(),
       export: openExport,
       shortcuts: () => setDialog('shortcuts'),
+      about: () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'about' } })),
       commandPalette: () => setDialog('palette')
     }
   }, [actions, cursor.valid, data.webcamUrl, openExport, showNotice, store])

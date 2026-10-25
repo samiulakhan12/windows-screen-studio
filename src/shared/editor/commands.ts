@@ -101,6 +101,7 @@ const COMMAND_LIST = [
 
   { id: 'export', title: 'Export…', category: 'General', keywords: 'render save mp4 gif video share' },
   { id: 'shortcuts', title: 'Keyboard shortcuts…', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },
+  { id: 'about', title: 'About Flown', category: 'General', keywords: 'version qbexel website credits info' },
   { id: 'commandPalette', title: 'Command palette', category: 'General', keywords: 'search commands', inText: true, hidden: true }
 ] as const satisfies readonly CommandSpec[]
 
