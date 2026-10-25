@@ -1,5 +1,6 @@
 import type { CursorTrack, Project } from '../../../shared/types'
 import { ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
+import { captionBlockAt } from './captionsLayer'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -55,6 +56,7 @@ export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, proje
 /**
  * Keystroke overlay: the latest shortcut(s) as keycap pills, bottom or top centre,
  * fading out ~1.2 s after the last press. Presses in quick succession stack in one row.
+ * A caption at the same edge keeps its place and the keys move inside it, so neither covers the other.
  */
 export function drawKeystrokes(ctx: Ctx, w: number, h: number, t: number, project: Project, cursor: CursorTrack): void {
   const settings = project.effects.keystrokes
@@ -83,7 +85,12 @@ export function drawKeystrokes(ctx: Ctx, w: number, h: number, t: number, projec
   const boxH = capH + pad * 2
   const margin = Math.min(w, h) * 0.05
   const x0 = (w - boxW) / 2
-  const y0 = settings.position === 'top' ? margin : h - margin - boxH
+  let y0 = settings.position === 'top' ? margin : h - margin - boxH
+  // A caption at the same edge stays put; the keys show just inside it.
+  const caption = captionBlockAt(ctx, project, t, w, h)
+  const gap = Math.min(w, h) * 0.015
+  if (caption?.position === 'bottom' && settings.position === 'bottom') y0 = Math.min(y0, caption.top - gap - boxH)
+  if (caption?.position === 'top' && settings.position === 'top') y0 = Math.max(y0, caption.bottom + gap)
 
   ctx.globalAlpha = view.alpha
   ctx.shadowColor = 'rgba(0,0,0,0.35)'

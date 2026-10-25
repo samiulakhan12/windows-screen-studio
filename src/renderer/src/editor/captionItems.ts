@@ -1,8 +1,10 @@
-import { readTranscript } from '../../../shared/captions/captionData'
+import { MAX_CAPTIONS, readTranscript } from '../../../shared/captions/captionData'
 import { captionAlpha } from '../../../shared/captions/layout'
 import { captionsOf } from '../../../shared/captions/settings'
 import type { TranscribeOptions, TranscribeProgress } from '../../../shared/api/ai'
+import { formatTime } from '../../../shared/engine/project'
 import { playableFrom } from '../../../shared/engine/timeline'
+import { viewingTime } from '../../../shared/render/overlays'
 import type { CaptionSegment, Clip, Project } from '../../../shared/types'
 import type { EditorServices } from './context'
 import type { PreviewPlayer } from './player'
@@ -60,11 +62,16 @@ export interface TranscriptionJob {
   progress: TranscribeProgress | null
   /** Set once it failed (the tab shows it until the next attempt). */
   error: string | null
+  /** Set when it worked but not all of it could be kept (shown until dismissed). */
+  notice?: string
   running: boolean
+  /** Cancelled, waiting for the main process to stop it. */
+  stopping?: boolean
 }
 
 let job: TranscriptionJob | null = null
-let cancelled = false
+/** Counts transcribe() calls and cancels: a call whose number is no longer current drops its result or error. */
+let generation = 0
 const jobListeners = new Set<() => void>()
 
 const setJob = (next: TranscriptionJob | null): void => {
@@ -80,7 +87,10 @@ export function onTranscriptionJob(listener: () => void): () => void {
 }
 
 /** An error from the main process without Electron's "Error invoking remote method" prefix. */
-export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
+
+/** The main process stopped the job (Cancel, or the editor was closed): not a failure. */
+const isCancel = (message: string): boolean => message === 'Cancelled.'
 
 /**
  * Sends the recording's sound to the provider and stores the transcript it returns in the
@@ -90,39 +100,54 @@ export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.
 export async function transcribe({ store }: EditorServices, options: TranscribeOptions): Promise<boolean> {
   const projectId = store.state.id
   if (job?.running) return false
-  cancelled = false
+  const mine = ++generation
   setJob({ projectId, progress: null, error: null, running: true })
   const off = window.api.onTranscribeProgress((progress) => {
-    if (progress.projectId === projectId && job?.running) setJob({ ...job, progress })
+    if (mine === generation && progress.projectId === projectId && job?.running) setJob({ ...job, progress })
   })
   try {
     const raw = await window.api.transcribe(projectId, options)
-    if (cancelled) {
-      setJob(null)
-      return false
-    }
+    if (mine !== generation) return false
     const transcript = readTranscript(raw, store.state.duration)
     if (!transcript) throw new Error('The provider returned something that is not a transcript')
     if (!transcript.segments.length) throw new Error('No speech was found in this recording')
     store.update((p: Project) => (p.id !== projectId ? p : { ...p, transcript, captions: { ...captionsOf(p), show: true } }))
-    setJob(null)
+    // A project keeps at most MAX_CAPTIONS captions: say where the kept ones stop rather than drop the rest silently.
+    const given = (raw as { segments?: unknown } | null)?.segments
+    if (Array.isArray(given) && given.length > MAX_CAPTIONS && transcript.segments.length >= MAX_CAPTIONS) {
+      const last = transcript.segments[transcript.segments.length - 1]
+      const at = formatTime(viewingTime(store.state.clips, last.end), false)
+      setJob({ projectId, progress: null, error: null, running: false, notice: `A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${at} were left out.` })
+    } else setJob(null)
     return true
   } catch (err) {
-    setJob(cancelled ? null : { projectId, progress: null, error: ipcMessage(err), running: false })
+    if (mine !== generation) return false
+    const message = ipcMessage(err)
+    setJob(isCancel(message) ? null : { projectId, progress: null, error: message, running: false })
     return false
   } finally {
     off()
   }
 }
 
+/**
+ * Stops the running job. Its late result or error is dropped; it shows as running (Stopping…)
+ * until the main process has let go of it, so a new Generate is not refused as a second job.
+ */
 export function cancelTranscription(): void {
-  if (!job?.running) return
-  cancelled = true
-  void window.api.cancelTranscription(job.projectId).catch(() => undefined)
-  setJob(null)
+  if (!job?.running || job.stopping) return
+  generation++
+  const { projectId } = job
+  setJob({ ...job, progress: null, stopping: true })
+  void window.api
+    .cancelTranscription(projectId)
+    .catch(() => undefined)
+    .finally(() => {
+      if (job?.projectId === projectId && job.stopping) setJob(null)
+    })
 }
 
-/** Forgets a failed job's error (closing it, or before another attempt). */
+/** Forgets a failed job's error or a finished job's notice (closing it, or before another attempt). */
 export function clearTranscriptionError(): void {
   if (job && !job.running) setJob(null)
 }

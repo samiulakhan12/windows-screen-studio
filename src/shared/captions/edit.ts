@@ -138,7 +138,9 @@ export function replaceInCaptions(segments: readonly CaptionSegment[], find: str
 /**
  * The captions with the texts an AI task returned ('cleanup', 'translate'), or null when the result
  * does not match them: the same ids in the same order with the same times (within a millisecond),
- * and text for each. Word timings are kept only where the word count did not change.
+ * and text for each (a caption that was already empty may stay empty). Word timings are kept only
+ * where the result kept them (a clean-up that kept the words; never a translation, whose words
+ * are not the ones spoken), and then the captions' own, not times sent back.
  */
 export function applyTextResult(current: readonly CaptionSegment[], result: unknown): CaptionSegment[] | null {
   if (!Array.isArray(result) || result.length !== current.length) return null
@@ -149,8 +151,13 @@ export function applyTextResult(current: readonly CaptionSegment[], result: unkn
     if (!r || typeof r !== 'object' || r.id !== c.id || typeof r.text !== 'string') return null
     if (typeof r.start !== 'number' || typeof r.end !== 'number' || Math.abs(r.start - c.start) > 1e-3 || Math.abs(r.end - c.end) > 1e-3) return null
     const text = cleanCaptionText(r.text)
-    if (!text) return null
-    out.push(withCaptionText(c, text))
+    if (!text) {
+      if (cleanCaptionText(c.text)) return null
+      out.push(c)
+      continue
+    }
+    const { words, ...rest } = c
+    out.push(Array.isArray(r.words) && words ? { ...rest, text, words } : { ...rest, text })
   }
   return out
 }

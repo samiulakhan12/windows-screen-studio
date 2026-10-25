@@ -1,7 +1,7 @@
 import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
 import { luminance } from '../../../shared/editor/titles'
-import type { CaptionSegment, CaptionSettings } from '../../../shared/types'
+import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
 
 type Ctx = CanvasRenderingContext2D
@@ -111,6 +111,8 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
   c.save()
   c.font = font
   c.textAlign = 'left'
+  // x is still each word's left edge; the direction puts punctuation on the right side of an RTL word.
+  c.direction = layout.rtl ? 'rtl' : 'ltr'
   c.textBaseline = 'middle'
   c.lineJoin = 'round'
   if (settings.background === 'box') {
@@ -160,6 +162,45 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
   c.restore()
 }
 
+interface Shown {
+  seg: CaptionSegment
+  settings: CaptionSettings
+  layout: CaptionLayout
+  ci: number
+  chunk: CaptionChunk
+  alpha: number
+  placed: ReturnType<typeof placeChunk>
+}
+
+/** The caption chunk on screen at source time `t` in a `w` x `h` frame, or null when none shows. */
+function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number): Shown | null {
+  const segments = project.transcript?.segments
+  if (!segments?.length) return null
+  const settings = project.captions ?? DEFAULT_CAPTIONS
+  if (!settings.show) return null
+  const i = captionIndexAt(segments, t)
+  if (i < 0) return null
+  const alpha = captionAlpha(segments, i, t, project.clips)
+  if (alpha <= 0.002) return null
+  const seg = segments[i]
+  const layout = layoutOf(ctx, seg, settings, w, h)
+  const ci = chunkIndexAt(layout, t)
+  if (ci < 0) return null
+  const chunk = layout.chunks[ci]
+  return { seg, settings, layout, ci, chunk, alpha, placed: placeChunk(layout, chunk, settings.position, w, h) }
+}
+
+/**
+ * Where the caption showing at source time `t` is (its lines with their box padding, px) and at
+ * which edge, or null without one: the keystroke overlay keeps clear of it (textOverlays.ts).
+ */
+export function captionBlockAt(ctx: Ctx, project: Project, t: number, w: number, h: number): { position: CaptionSettings['position']; top: number; bottom: number } | null {
+  const shown = shownAt(ctx, project, t, w, h)
+  if (!shown) return null
+  const { placed, settings } = shown
+  return { position: settings.position, top: placed.top, bottom: placed.top + placed.height }
+}
+
 /**
  * Captions of the transcript at fc.t, drawn over the finished frame (under title cards and the
  * watermark): the caption showing then, broken into lines that fit the safe area, a long one
@@ -168,25 +209,14 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
  * captions hidden.
  */
 export function drawCaptionsLayer(fc: FrameContext): void {
-  const segments = fc.project.transcript?.segments
-  if (!segments?.length) return
-  const settings = fc.project.captions ?? DEFAULT_CAPTIONS
-  if (!settings.show) return
-  const i = captionIndexAt(segments, fc.t)
-  if (i < 0) return
-  const alpha = captionAlpha(segments, i, fc.t, fc.project.clips)
-  if (alpha <= 0.002) return
   const { ctx, w, h } = fc
-  const seg = segments[i]
-  const layout = layoutOf(ctx, seg, settings, w, h)
-  const ci = chunkIndexAt(layout, fc.t)
-  if (ci < 0) return
-  const chunk = layout.chunks[ci]
+  const shown = shownAt(ctx, fc.project, fc.t, w, h)
+  if (!shown) return
+  const { seg, settings, layout, ci, chunk, alpha, placed } = shown
   const spoken = layout.look.karaoke ? spokenToken(layout, chunk, fc.t) : -1
   let serial = serials.get(seg)
   if (serial === undefined) serials.set(seg, (serial = nextSerial++))
   const key = `${serial}|${ci}|${spoken}|${w}x${h}|${settings.preset}|${settings.position}|${settings.size}|${settings.color}|${settings.highlightColor}|${settings.background}|${settings.maxLines}`
-  const placed = placeChunk(layout, chunk, settings.position, w, h)
   // Room for the box padding, the outline, the shadow and glyphs reaching past their line.
   const pad = Math.ceil(layout.px * 0.7 + layout.padX)
   const box = { x: Math.min(...placed.lines.map((l) => l.x)) - pad, y: placed.top - pad, w: chunk.width + pad * 2, h: placed.height + pad * 2 }

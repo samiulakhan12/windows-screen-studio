@@ -78,10 +78,16 @@ const remembered: { provider: string; language: string; source: TranscribeOption
   format: 'srt'
 }
 
+/** Sent by the settings when providers are added, changed or removed. */
+const AI_PROVIDERS_CHANGED = 'ssw:ai-providers-changed'
+
+/** Whether a node removed from the page was the settings dialog (it is rendered straight into the body). */
+const isSettingsDialog = (n: Node): boolean => n instanceof Element && n.classList.contains('settings-backdrop')
+
 /**
  * The configured AI providers: read when the tab opens, when the window gets the focus back
- * (the settings may have changed) and when the settings say they changed ('ssw:ai-providers-changed').
- * Null while the first read is under way.
+ * (the settings may have changed), when the settings say they changed (AI_PROVIDERS_CHANGED) and
+ * when the settings dialog closes. Null while the first read is under way.
  */
 function useAiProviders(): { providers: AiProviderInfo[] | null; error: string | null; reload: () => void } {
   const [providers, setProviders] = useState<AiProviderInfo[] | null>(null)
@@ -105,11 +111,17 @@ function useAiProviders(): { providers: AiProviderInfo[] | null; error: string |
   useEffect(() => {
     reload()
     window.addEventListener('focus', reload)
-    window.addEventListener('ssw:ai-providers-changed', reload)
+    window.addEventListener(AI_PROVIDERS_CHANGED, reload)
+    // The dialog closing: only the body's own children are watched, so this costs nothing while editing.
+    const closed = new MutationObserver((changes) => {
+      if (changes.some((c) => Array.from(c.removedNodes).some(isSettingsDialog))) reload()
+    })
+    closed.observe(document.body, { childList: true })
     return () => {
       seq.current++
       window.removeEventListener('focus', reload)
-      window.removeEventListener('ssw:ai-providers-changed', reload)
+      window.removeEventListener(AI_PROVIDERS_CHANGED, reload)
+      closed.disconnect()
     }
   }, [reload])
   return { providers, error, reload }
@@ -235,13 +247,21 @@ function GenerateSection({
     else (capable.length ? generateRef : addRef).current?.focus()
   }, [request, providers, capable.length, project.hasAudio, hasTranscript])
 
-  if (hasTranscript && !open && !mine) {
+  if (hasTranscript && !open && !mine?.running && !mine?.error) {
     return (
       <Section title="Generate">
         <p className="hint">
           {project.transcript!.segments.length} captions by {KIND_NAMES[project.transcript!.provider]}
           {project.transcript!.language ? ` (${CAPTION_LANGUAGES.find((l) => l.code === project.transcript!.language)?.name ?? project.transcript!.language})` : ''}.
         </p>
+        {mine?.notice && (
+          <div className="captions-suggestion" role="status">
+            <p className="hint warn">{mine.notice}</p>
+            <button className="link" onClick={clearTranscriptionError}>
+              Dismiss
+            </button>
+          </div>
+        )}
         <button className="btn" onClick={() => setOpen(true)}>
           <Icon name="refresh" size={15} /> Regenerate captions…
         </button>
@@ -251,8 +271,9 @@ function GenerateSection({
 
   if (mine?.running) {
     const p = mine.progress
-    const phase = !p ? 'Starting…' : p.phase === 'extracting' ? 'Preparing the sound…' : p.phase === 'uploading' ? 'Sending the sound…' : p.phase === 'transcribing' ? 'Transcribing…' : 'Finishing…'
-    const share = p && p.total > 0 ? Math.min(1, p.done / p.total) : null
+    const phase = mine.stopping ? 'Stopping…' : !p ? 'Starting…' : p.phase === 'extracting' ? 'Preparing the sound…' : p.phase === 'uploading' ? 'Sending the sound…' : p.phase === 'transcribing' ? 'Transcribing…' : 'Finishing…'
+    // Moving until a part is done: a recording sent in one part reports 0 of 1 until it is finished.
+    const share = p && p.total > 0 && p.done > 0 ? Math.min(1, p.done / p.total) : null
     return (
       <Section title="Generating captions">
         <div className="captions-progress" role="status" aria-live="polite">
@@ -264,7 +285,7 @@ function GenerateSection({
             <span style={share === null ? undefined : { width: `${Math.round(share * 100)}%` }} />
           </div>
         </div>
-        <button className="btn" onClick={cancelTranscription}>
+        <button className="btn" onClick={cancelTranscription} disabled={!!mine.stopping}>
           Cancel
         </button>
       </Section>
@@ -536,8 +557,12 @@ function TranscriptSection({
   }
   const tidyText = (id: string): void => {
     const seg = store.state.transcript?.segments.find((s) => s.id === id)
-    if (!seg || cleanCaptionText(seg.text) === seg.text) return
-    store.replace((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? { ...s, text: cleanCaptionText(s.text) } : s))))
+    if (!seg) return
+    const text = cleanCaptionText(seg.text)
+    if (text === seg.text && text) return
+    // A caption whose text was all deleted goes, as Replace all and loading a project do (part of the typing's undo step).
+    store.replace((p) => setSegments(p, (p.transcript?.segments ?? []).flatMap((s) => (s.id !== id ? [s] : text ? [{ ...s, text }] : []))))
+    if (!text && selectedId === id) onSelect(null)
   }
 
   const split = (id: string): void => {
@@ -643,7 +668,11 @@ function TranscriptSection({
 
 /* ---------- AI tools ---------- */
 
-type AiTask = 'cleanup' | 'translate' | 'chapters' | 'title'
+type AiTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
+
+/** Control characters of an AI answer as spaces (`keepLines`: line breaks stay), trimmed. */
+const plainAnswer = (text: string, keepLines = false): string =>
+  (keepLines ? text.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n') : text.replace(/[\u0000-\u001f\u007f]+/g, ' ')).trim()
 
 function AiToolsSection({
   providers,
@@ -660,6 +689,7 @@ function AiToolsSection({
   const [busy, setBusy] = useState<AiTask | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
+  const [summary, setSummary] = useState<string | null>(null)
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   const live = useRef(true)
@@ -681,8 +711,10 @@ function AiToolsSection({
     setBusy(task)
     setError(null)
     setTitle(null)
+    setSummary(null)
     const request: AiTextRequest = { task, segments: before.segments }
-    if (task === 'translate') request.targetLanguage = translateTo
+    // The language's name: the provider is told to translate "into" it, and a code such as 'it' or 'id' reads as a word.
+    if (task === 'translate') request.targetLanguage = CAPTION_LANGUAGES.find((l) => l.code === translateTo)?.name ?? translateTo
     let result: AiTextResult
     try {
       result = await window.api.aiText(chosen.id, request)
@@ -713,9 +745,13 @@ function AiToolsSection({
       store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
       onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
     } else if (result.task === 'title') {
-      const text = typeof result.text === 'string' ? result.text.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/^["“'\s]+|["”'\s]+$/g, '').slice(0, 120) : ''
+      const text = typeof result.text === 'string' ? plainAnswer(result.text).replace(/^["“'\s]+|["”'\s]+$/g, '').slice(0, 120) : ''
       if (!text) return fail('The provider suggested no title.')
       if (live.current) setTitle(text)
+    } else if (result.task === 'summary') {
+      const text = typeof result.text === 'string' ? plainAnswer(result.text, true).slice(0, 4000) : ''
+      if (!text) return fail('The provider wrote no summary.')
+      if (live.current) setSummary(text)
     }
   }
 
@@ -763,6 +799,9 @@ function AiToolsSection({
             <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
               {label('title', 'Suggest a title')}
             </button>
+            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
+              {label('summary', 'Summarize')}
+            </button>
           </div>
           {title && (
             <div className="captions-suggestion" role="status">
@@ -781,6 +820,28 @@ function AiToolsSection({
                   Rename the recording
                 </button>
                 <button className="btn small ghost" onClick={() => setTitle(null)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+          {summary && (
+            <div className="captions-suggestion" role="status">
+              <p>Summary:</p>
+              <p className="captions-summary">{summary}</p>
+              <div className="row start">
+                <button
+                  className="btn small primary"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(summary).then(
+                      () => onNotice('Summary copied'),
+                      () => onNotice('The summary could not be copied')
+                    )
+                  }
+                >
+                  Copy
+                </button>
+                <button className="btn small ghost" onClick={() => setSummary(null)}>
                   Dismiss
                 </button>
               </div>

@@ -141,32 +141,47 @@ export interface CaptionLayout {
   padX: number
   padY: number
   radius: number
+  /** Right-to-left text (Arabic, Hebrew…): the words' x are mirrored, so a line reads from its right edge. */
+  rtl: boolean
 }
 
 interface Piece {
   token: number
   text: string
   w: number
+  /** Share of its token's text before this piece (0 for a whole word). */
+  at: number
 }
 
-/** Pieces of the caption's words: whole words, or letters of a word wider than a line. */
+/** Letters as the reader sees them: a base letter with its combining marks (Thai vowels, accents) is never cut. */
+const graphemes: (text: string) => string[] =
+  typeof Intl !== 'undefined' && 'Segmenter' in Intl
+    ? ((seg) => (text) => Array.from(seg.segment(text), (s) => s.segment))(new Intl.Segmenter(undefined, { granularity: 'grapheme' }))
+    : (text) => Array.from(text)
+
+/** Pieces of the caption's words: whole words, or letters of a word wider than a line (Chinese or Japanese text without spaces is one long word). */
 function piecesOf(tokens: CaptionToken[], maxWidth: number, width: (s: string) => number): Piece[] {
   const out: Piece[] = []
   tokens.forEach((t, i) => {
     const w = width(t.text)
-    if (w <= maxWidth) return void out.push({ token: i, text: t.text, w })
+    if (w <= maxWidth) return void out.push({ token: i, text: t.text, w, at: 0 })
     let part = ''
-    for (const ch of Array.from(t.text)) {
+    let before = 0
+    for (const ch of graphemes(t.text)) {
       if (part && width(part + ch) > maxWidth) {
-        out.push({ token: i, text: part, w: width(part) })
+        out.push({ token: i, text: part, w: width(part), at: before / t.text.length })
+        before += part.length
         part = ''
       }
       part += ch
     }
-    if (part) out.push({ token: i, text: part, w: width(part) })
+    if (part) out.push({ token: i, text: part, w: width(part), at: before / t.text.length })
   })
   return out
 }
+
+/** The first strong letter is from a right-to-left script (Hebrew, Arabic, Syriac, Thaana, N'Ko and their presentation forms). */
+const RTL_FIRST = /^[^\p{L}]*[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
 
 /** Greedy line breaking of `pieces` into lines no wider than `maxWidth` (indices into `pieces`, [from, to)). */
 function breakLines(pieces: Piece[], maxWidth: number, space: number): [number, number][] {
@@ -238,6 +253,7 @@ export function captionLayout(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
   const pieces = piecesOf(tokens, m.maxWidth, width)
   const lines = breakLines(pieces, m.maxWidth, space)
   const per = settings.maxLines === 1 ? 1 : 2
+  const rtl = RTL_FIRST.test(seg.text)
   const chunks: CaptionChunk[] = []
   for (let c = 0; c < lines.length; c += per) {
     const group = lines.slice(c, c + per)
@@ -252,18 +268,35 @@ export function captionLayout(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
         words.push({ token: pieces[i].token, text: pieces[i].text, x, w: pieces[i].w })
         x += pieces[i].w
       }
+      if (rtl) for (const wd of words) wd.x = x - wd.x - wd.w
       return { words, width: x }
     })
-    chunks.push({ start: 0, end: 0, lines: out, first: pieces[from].token, last: pieces[to - 1].token, width: Math.max(...out.map((l) => l.width)) })
+    // A chunk starting inside a word broken over lines starts that far into the word's time.
+    const tk = tokens[pieces[from].token]
+    const start = tk.start + pieces[from].at * (tk.end - tk.start)
+    chunks.push({ start, end: 0, lines: out, first: pieces[from].token, last: pieces[to - 1].token, width: Math.max(...out.map((l) => l.width)) })
   }
   // Each chunk shows from its first word (the first from the caption's start) to the next chunk.
   chunks.forEach((ch, i) => {
-    ch.start = i === 0 ? seg.start : Math.max(seg.start, tokens[ch.first].start)
+    ch.start = i === 0 ? seg.start : Math.max(seg.start, ch.start)
   })
+  // Chunks starting together (word timings that share a start) share the time up to the next one, so each shows.
+  for (let i = 1; i < chunks.length; ) {
+    const from = chunks[i - 1].start
+    if (chunks[i].start > from) {
+      i++
+      continue
+    }
+    let j = i
+    while (j < chunks.length && chunks[j].start <= from) j++
+    const to = j < chunks.length ? chunks[j].start : seg.end
+    for (let k = i; k < j; k++) chunks[k].start = from + ((k - i + 1) / (j - i + 1)) * (to - from)
+    i = j
+  }
   chunks.forEach((ch, i) => {
     ch.end = i + 1 < chunks.length ? Math.max(ch.start, chunks[i + 1].start) : seg.end
   })
-  return { look, tokens, chunks, px: m.px, lineHeight: m.lineHeight, padX: m.padX, padY: m.padY, radius: m.padX ? Math.min(m.px * 0.32, (m.lineHeight + m.padY * 2) / 2) : 0 }
+  return { look, tokens, chunks, px: m.px, lineHeight: m.lineHeight, padX: m.padX, padY: m.padY, radius: m.padX ? Math.min(m.px * 0.32, (m.lineHeight + m.padY * 2) / 2) : 0, rtl }
 }
 
 /** Index of the chunk showing at source time `t` (the last one whose start has passed), or -1 without chunks. */
