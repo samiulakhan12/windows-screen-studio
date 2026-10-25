@@ -66,6 +66,8 @@ export class RecordingSession {
   private video: MediaStreamTrack | null = null
   private audioSources: AudioSource[] = []
   private camera: MediaStreamTrack | null = null
+  /** The tiny screen capture that only carries system audio for native capture. */
+  private loopback: MediaStream | null = null
   private tracks: Track[] = []
   private method: 'native' | 'chromium'
   private nativeStart: number | null = null
@@ -130,12 +132,15 @@ export class RecordingSession {
   /** Switches a native-capture session to Chromium capture (the helper failed to start). */
   async fallbackToChromium(): Promise<void> {
     this.method = 'chromium'
-    // The loopback-only stream (if any) is replaced by a full capture with audio.
-    for (const s of this.streams.filter((s) => s.getVideoTracks().length > 0)) {
-      s.getTracks().forEach((t) => t.stop())
-      this.audioSources = this.audioSources.filter((a) => !s.getTracks().includes(a.track))
+    // The loopback-only stream (if any) is replaced by a full capture with audio. The camera and
+    // microphone streams stay open: the camera is recorded (and shown in the bubble) as before.
+    const lb = this.loopback
+    if (lb) {
+      lb.getTracks().forEach((t) => t.stop())
+      this.audioSources = this.audioSources.filter((a) => !lb.getTracks().includes(a.track))
+      this.streams = this.streams.filter((s) => s !== lb)
+      this.loopback = null
     }
-    this.streams = this.streams.filter((s) => s.getVideoTracks().length === 0)
     // Do not ask again for system audio that already failed to start.
     await this.acquireScreen(this.options.systemAudio && !this.loopbackFailed)
   }
@@ -174,6 +179,7 @@ export class RecordingSession {
         audio: true
       })
       this.streams.push(s)
+      this.loopback = s
       this.audioSources.unshift(...s.getAudioTracks().map((track) => ({ kind: 'system' as const, track })))
     } catch (err) {
       console.warn('System audio capture failed:', err)
@@ -302,6 +308,7 @@ export class RecordingSession {
       screen.addEventListener('stop', () => this.freeze())
     }
     const stems = audio ? this.addStems(live) : []
+    if (this.camera && this.camera.readyState !== 'live') this.warnings.push('The camera stopped before recording started, so the recording has no camera.')
     if (this.camera?.readyState === 'live') {
       this.addTrack('webcam', new MediaStream([this.camera]), { mimeType: pickMime(CAMERA_MIMES, isSupported), videoBitsPerSecond: 4_000_000 })
     }

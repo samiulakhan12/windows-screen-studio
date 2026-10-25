@@ -43,3 +43,16 @@ export function cameraMovesOf(m: RecordingManifest): CameraMove[] {
 export function bubbleLayouts(m: RecordingManifest, duration: number, defaultCorner: Corner): LayoutSegment[] {
   return cornerSegments(cameraMovesOf(m), duration, defaultCorner)
 }
+
+/**
+ * A new project's camera from the bubble: the corner the camera starts in becomes the project's
+ * corner (a bubble moved during the countdown, or before its first stay), so the Camera section's
+ * corner is the one the video shows and short layout changes can still be added from the start;
+ * the segments cover only the later stays elsewhere.
+ */
+export function bubbleCamera(m: RecordingManifest, duration: number, defaultCorner: Corner): { corner: Corner; layouts: LayoutSegment[] } {
+  const layouts = bubbleLayouts(m, duration, defaultCorner)
+  const first = layouts[0]
+  if (!first?.corner || first.start > 0) return { corner: defaultCorner, layouts }
+  return { corner: first.corner, layouts: bubbleLayouts(m, duration, first.corner) }
+}

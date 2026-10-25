@@ -942,7 +942,18 @@ export function registerRecordingIpc(): void {
   })
 
   ipcMain.handle('recording:windowSupport', () => windowSupport())
-  ipcMain.handle('recording:prepare', (_e, request: RecordingRequest) => prepare(request))
+  ipcMain.handle('recording:prepare', (_e, request: RecordingRequest) =>
+    prepare(request).catch((err: unknown) => {
+      // A restarted take keeps the main window hidden (endRecordingUi(true)): when the next take
+      // cannot even be prepared, bring the app back so the error is seen.
+      const main = getMainWindow()
+      if (!active && main && !main.isDestroyed() && !main.isVisible()) {
+        main.show()
+        main.focus()
+      }
+      throw err
+    })
+  )
   ipcMain.handle('recording:chunk', async (_e, token: string, kind: TrackKind, data: Uint8Array) => {
     const s = requireSession(token)
     if (!TRACK_KINDS.includes(kind)) throw new Error(`Unknown track ${kind}`)

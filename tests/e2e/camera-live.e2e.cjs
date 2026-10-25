@@ -4,8 +4,9 @@
 // stream it already records (the camera is opened once); dragging the bubble with real X input
 // snaps it into corners, and those moves (one while paused) become camera corners on the saved
 // project's layout track at the right times, which the export draws there (measured on exported
-// frames); the bubble hides and shows from the bar; the bar's pause/resume, mute, restart and
-// discard (both confirmed) work; with "Camera follows the preview bubble" off nothing moves; and
+// frames); the bubble hides and shows from the bar (its timer keeps counting); the bar's and the
+// bubble's pages paint no background; the bar's pause/resume, mute, restart and discard (both
+// confirmed) work, and a restarted take that cannot be prepared brings the app back; with "Camera follows the preview bubble" off nothing moves; and
 // the Camera panel's camera position (a change's corner, "Move camera here from the playhead",
 // undo).
 const { spawn, spawnSync } = require('node:child_process')
@@ -345,6 +346,28 @@ async function main() {
       await tb.waitForSelector('button.camera[aria-label="Hide camera bubble"]')
       h.assert(await tb.$('.tb-time'), 'timer shown')
       h.assert((await tb.evaluate(() => getComputedStyle(document.querySelector('.rec-dot')).animationName)) === 'none', 'recording dot is not animated by CSS')
+      // The bar's and the bubble's windows show only the pill and the bubble: their pages paint no
+      // background over the desktop; the main window keeps its own.
+      const rootBg = (page) => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)
+      h.assert((await rootBg(tb)) === 'rgba(0, 0, 0, 0)', `the bar's page has no background: ${await rootBg(tb)}`)
+      h.assert((await rootBg(await bubblePage(app))) === 'rgba(0, 0, 0, 0)', 'the bubble page has no background')
+      h.assert((await rootBg(win)) !== 'rgba(0, 0, 0, 0)', `the main window keeps its background: ${await rootBg(win)}`)
+
+      // Hiding and showing the camera bubble keeps the bar's timer running (it never jumps back).
+      const timerSeconds = () =>
+        tb.$eval('.tb-time', (el) => {
+          const [m, sec] = el.textContent.split(':').map(Number)
+          return m * 60 + sec
+        })
+      await r.until(async () => (await timerSeconds()) >= 3, { what: 'the timer at 3 s', timeout: 15000 })
+      await tb.click('button.camera')
+      await tb.waitForSelector('button.camera.off[aria-label="Show camera bubble"]')
+      await h.sleep(700)
+      h.assert((await timerSeconds()) >= 3, `the timer keeps counting after hiding the bubble: ${await timerSeconds()} s`)
+      await tb.click('button.camera')
+      await tb.waitForSelector('button.camera[aria-label="Hide camera bubble"]')
+      await h.sleep(700)
+      h.assert((await timerSeconds()) >= 3, `the timer keeps counting after showing the bubble: ${await timerSeconds()} s`)
 
       await tb.click('button.pause')
       await tb.waitForSelector('.rec-dot.paused')
@@ -388,6 +411,33 @@ async function main() {
       h.assert(r.projectDirs(home).length === 0, `nothing left: ${r.projectDirs(home)}`)
       h.assert(!(await bubbleWindow(app)), 'no bubble left')
       h.assert(!(await win.$('.home-error')), 'no error shown')
+    })
+
+    await test('restart: a next take that cannot be prepared brings the app back with its error', async (ctx) => {
+      const home = h.tempHome('cam-restart-fail')
+      const { app, win, logs } = await h.launch({ home, args: r.FAKE_MEDIA })
+      ctx.app = r.closable(app)
+      ctx.logs = logs
+      await r.waitForSources(win)
+      await pickDevices(win)
+      const tb = await r.startRecording(app, win)
+      h.assert(!(await r.mainVisible(app)), 'the main window is hidden while recording')
+      // From now on no new recording folder can be created (a full disk, say).
+      await app.evaluate(() => {
+        const fsp = process.getBuiltinModule('node:fs').promises
+        const mkdir = fsp.mkdir
+        fsp.mkdir = function (p, opts, ...rest) {
+          if (!opts && /[\\/]rec-[^\\/]*$/.test(String(p))) return Promise.reject(Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }))
+          return mkdir.call(this, p, opts, ...rest)
+        }
+      })
+      await tb.click('button.restart')
+      await tb.waitForSelector('.toolbar.confirm.restart')
+      await tb.click('.toolbar.confirm button:has-text("Restart")')
+      await r.until(() => r.mainVisible(app), { what: 'main window shown again', timeout: 15000 })
+      await win.waitForSelector('.home-error', { timeout: 10000 })
+      h.assert(r.projectDirs(home).length === 0, `the restarted take was deleted: ${r.projectDirs(home)}`)
+      h.assert(!(await bubbleWindow(app)), 'no bubble left')
     })
 
     await test('"Camera follows the preview bubble" off: moving the bubble moves nothing in the video', async (ctx) => {
