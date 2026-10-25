@@ -259,6 +259,65 @@ commit `f17cd98`, and the editor does not have it yet. E-01, E-04, E-05, E-08, E
 
 ---
 
+## Free automation (no running cost)
+
+Researched 26 October 2026. Each item automates work with no paid API call and no Qbexel server:
+AI that runs on the user's PC, features built into Windows or Electron, or plain rules. A reviewer
+checked each one against the code and the roadmap, and checked licences and sizes on the web.
+Sizes and speeds marked "about" are estimates to benchmark. Large models are optional downloads,
+fetched only when the user turns the feature on (see F-13). All are `planned`.
+
+Quality trade-off: on-device models are free and private, but small language and vision models
+write plainer text than OpenAI, Gemini or Claude, and are weaker on rare languages. Paid providers
+stay available as the premium option.
+
+### Best value
+
+| Id | Feature | What it automates | How it is free | Size | Serves |
+|---|---|---|---|---|---|
+| F-01 | **Offline captions with exact word timings** | Captions, karaoke and transcript editing with no key, no upload and no cost; keeps working after OpenAI's 26 Feb 2027 shutdown | whisper.cpp (MIT) in a Rust sidecar (whisper-rs, Unlicense), CPU and Vulkan builds; models on demand: base 142 MB, small 466 MB, large-v3-turbo q5 574 MB; Silero VAD built in; DTW word times (needs flash attention off). Optional faster English/European engine: Parakeet TDT 0.6B v3 (CC-BY-4.0, attribution) via sherpa-onnx | L | LT-20, NW-09, NW-01, NW-04 |
+| F-02 | **After-recording autopilot and naming templates** | Each recording preset runs steps when you stop: style, remove silences, captions, export to a folder, copy, notify; names like `{app} - {preset} - {date} #{n}` | Plain app code reusing finalize, smart speed and batch export; needs a hidden export window (new) and a saved approved folder | M–L | E-01 |
+| F-03 | **Neural speech detector** | Remove silences, smart speed, music ducking and the camera director react to real speech, not keyboard clatter or fans | Silero VAD (MIT LICENSE file; record the release), 2.3 MB, shipped in the installer; under 1 ms per 30 ms chunk on one core | S | Silences, smart speed, NW-08, NW-01 |
+| F-04 | **"On this PC" AI provider** | Titles, chapters, summaries, clean-up, translate, copy pack and script drafts with no key | llama.cpp via node-llama-cpp (MIT) in a utility process (CPU 33 MB or Vulkan 74 MB runtime); Qwen3.5 2B (1.3 GB) or 4B (2.7 GB), Apache-2.0, on demand; JSON-schema output. Label it "good for drafts" | L | NW-14, NW-13, X-02, NW-02 |
+| F-05 | **Fillers and retakes found offline** | Suggested cuts for "um", repeats and abandoned takes, reviewed in one list | Fillers from F-01 verbatim transcripts plus word lists; retakes from sentence similarity (all-MiniLM-L6-v2 Apache-2.0 about 23 MB quantised, or multilingual-e5-small MIT about 118 MB) via transformers.js | M | NW-01, NW-04 |
+| F-06 | **Know what was clicked** | Auto zoom frames the whole button or dialog, typing zooms aim at the text box, empty-space clicks are flagged stray, guides say "Click 'Export'" without AI | Windows UI Automation (built in since Windows 7) in a new long-running helper subcommand, queried at mouse-down with timeouts; never reads text fields, skips password boxes | M | NW-03, LT-03, LT-07, LT-15 |
+| F-07 | **Auto-blur passwords, emails, keys and card numbers** | Blur suggestions to review, instead of scrubbing the video | UIA password-box rectangles; Windows.Media.Ocr (officially needs package identity) with PaddleOCR PP-OCRv5 ONNX (Apache-2.0, about 20 MB) as a real fallback; Luhn and key-prefix patterns | M–L | LT-05 |
+| F-08 | **Studio voice** | Removes fan hum, keyboard and room noise; the preview sounds like the export | DeepFilterNet3 (MIT/Apache-2.0, about 8 MB, Rust/tract); render the cleaned stem once and play it in preview; ffmpeg arnndn as the no-download fallback | M | NW-10 |
+| F-09 | **Markers that edit while recording** | Hotkeys for "new chapter here" and "cut that"; the project opens with chapters and suggested cuts. Later, the spoken phrases after recording | Extends today's "zoom here" marks; phase 2 is offline keyword spotting on the mic stem (sherpa-onnx, Apache-2.0, a few MB) | S | NW-01, E-02, chapters |
+| F-10 | **Chapters without AI** | Named chapters from app switches, scene changes and pauses, following YouTube's rules; silent recordings too | Foreground-window log in the helper, ffmpeg scdet, F-03 pauses; names from window titles (reviewed before export, they can be private) | M | Chapters, LT-09, NW-13 |
+| F-11 | **Export bundle and one file per chapter** | SRT/VTT, chapter list, thumbnail and description written next to each export; "01 Intro.mp4", "02 Billing.mp4" in one tick | Reuses subtitle, chapter, thumbnail and batch export code | S | NW-13, LT-02 |
+| F-12 | **Hands-off long jobs** | Taskbar progress, Pause/Stop on the taskbar thumbnail, "Export finished" notification with buttons, PC kept awake, lock pauses, sleep stops cleanly | Electron built-ins: Notification actions, setProgressBar, setThumbarButtons, powerSaveBlocker, powerMonitor | S | NW-11 |
+| F-13 | **Model manager and hardware check** | One Settings page lists optional models with size and purpose, downloads on demand, resumes, verifies each file, removes with one click | Free hosting on GitHub Releases or Hugging Face, SHA-256 pinned; models under about 20 MB ship in the installer. Pick one ONNX route (sherpa-onnx native for audio) | M | NW-15; needed by F-01, F-04, F-05, F-16, F-21 |
+
+### Worth doing
+
+| Id | Feature | What it automates | How it is free | Size |
+|---|---|---|---|---|
+| F-14 | **Start recording from anywhere** | Global start hotkey per preset, "record the last area again", tray menu, taskbar jump list, start quietly with Windows | Electron globalShortcut, Tray, setUserTasks, setLoginItemSettings; a tested argument parser shared with F-23 | S |
+| F-15 | **Face and expression tracking** | Face centring, screen-only when the presenter looks away, no blink freeze frames, thumbnail picks with eyes open and smiling | MediaPipe Face Landmarker (Apache-2.0, 3.76 MB) in the existing worker; blaze_face (0.23 MB) if only centring is needed | S |
+| F-16 | **Offline caption translation** | Captions and titles in other languages, timings kept | Mozilla Bergamot (MPL-2.0) built to WASM with the fallback GEMM, models re-hosted (15–40 MB per pair); opus-mt (CC-BY-4.0) for gaps; avoid NLLB (non-commercial) | M–L |
+| F-17 | **Unwanted-sound finder** | Lists pings, buzzes, coughs, barks and background music with Mute, Cut or Duck | YAMNet (Apache-2.0, 4.1 MB) via MediaPipe tasks-audio (adds about 11 MB to the installer) | S |
+| F-18 | **Search every recording** | Find a moment by meaning or by on-screen text across the library | Local index of transcripts, OCR, UIA labels and titles; small embedding model via transformers.js | M |
+| F-19 | **Profiles per app and per client** | The right style, export preset and folder picked by the app being recorded or the client | Rules in settings; process name and foreground hook in the helper (new subcommand) | M |
+| F-20 | **Batch actions with a background queue** | Restyle, remove silences, caption or export many recordings at once | Existing modules plus a hidden render window; project snapshots for undo | M–L |
+| F-21 | **Offline voiceover** | Narration from a script or captions, timed to each caption | Kokoro-82M (Apache-2.0 weights, 92 MB q8) via kokoro-js; its phonemizer bundles eSpeak NG (GPL-3.0), so legal review before shipping; Windows voices as a no-download fallback | M |
+| F-22 | **Share without a server** | Copy to OneDrive/Dropbox/Google Drive folders, upload with the user's rclone and copy a link, post to a Discord/Slack/n8n webhook | File copies and local programs; webhook URLs stored like API keys | S |
+| F-23 | **Command line, flown:// links, scheduled and self-stopping recordings** | Stream Deck, AutoHotkey or Task Scheduler can start a preset; recordings stop after N minutes, a file size or N seconds of silence | Protocol handler, second-instance arguments, per-user schtasks; links can never start a recording without confirmation | M |
+| F-24 | **Clean desktop mode and notification guard** | Taskbar auto-hide, plain wallpaper and minimised windows for the session, restored afterwards; warns about notifications | Documented Win32 calls, every change opt-in; Windows has no public Do not disturb switch, so warn and link only | M |
+| F-25 | **Speaker labels on the PC** | Who is speaking in calls and interviews | Mic vs system stems first (free today); then sherpa-onnx diarization (pyannote segmentation MIT, ERes2Net 26.5 MB Apache-2.0) | M |
+| F-26 | **Storage manager with clean-up rules** | Disk use per recording, approved clean-up rules, Recycle Bin instead of permanent delete, move the library | fs.statfs, shell.trashItem; record the last export in project.json | S |
+
+### Later
+
+| Id | Feature | Notes | Size |
+|---|---|---|---|
+| F-27 | **Teleprompter that follows the voice** | Needs NW-02 first. Moonshine streaming (MIT, English) or sherpa-onnx streaming zipformers; Moonshine's non-English models are non-commercial | M |
+| F-28 | **Auto zoom for videos from other recorders, and watch folders** | Needs NW-07. Cursor template matching and inferred clicks (marked "estimated"), OpenCV.js (Apache-2.0); avoid AGPL YOLO detectors | L |
+| F-29 | **Small vision model for silent recordings** | Florence-2-base (MIT) or Qwen3.5 with vision via F-04; drafts only, weaker than cloud vision; avoid AGPL OmniParser/YOLO | L |
+| F-30 | **Copilot+ PC fast path** | Windows AI APIs on Windows 11 24H2 Copilot+ PCs (NPU): OCR, Phi Silica, upscaling, object erase. Needs package identity (a signed sparse MSIX; free only if Qbexel already signs), Windows App SDK 1.8; a documented Electron crash with sparse packages must be detected, never worked around by disabling the sandbox | L |
+
+---
+
 ## Later
 
 ### AI
