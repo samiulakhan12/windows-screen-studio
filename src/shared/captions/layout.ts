@@ -141,7 +141,7 @@ export interface CaptionLayout {
   padX: number
   padY: number
   radius: number
-  /** Right-to-left text (Arabic, Hebrew…): the words' x are mirrored, so a line reads from its right edge. */
+  /** Right-to-left text (Arabic, Hebrew…): the words' x are mirrored, so a line reads from its right edge (a run of English words in it keeps its order). */
   rtl: boolean
 }
 
@@ -182,6 +182,66 @@ function piecesOf(tokens: CaptionToken[], maxWidth: number, width: (s: string) =
 
 /** The first strong letter is from a right-to-left script (Hebrew, Arabic, Syriac, Thaana, N'Ko and their presentation forms). */
 const RTL_FIRST = /^[^\p{L}]*[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
+/** A letter of those scripts. */
+const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
+
+type Dir = 'l' | 'r'
+
+/**
+ * The reading direction of each token, a word-level shortcut of the Unicode bidi algorithm (which
+ * players apply to SRT/VTT): a word goes the way of its first letter; a number continues the word
+ * before it ('Windows 11' in an Arabic caption, a count between Arabic words); anything else
+ * without a letter (a dash, an emoji) goes the way of its neighbours when both agree, else the caption's.
+ */
+function tokenDirs(tokens: CaptionToken[], caption: Dir): Dir[] {
+  const dirs = tokens.map((t): Dir | null => {
+    const letter = /\p{L}/u.exec(t.text)
+    return letter ? (RTL_LETTER.test(letter[0]) ? 'r' : 'l') : null
+  })
+  let before = caption
+  tokens.forEach((t, i) => {
+    const d = dirs[i]
+    if (d) before = d
+    else if (/\p{Nd}/u.test(t.text)) dirs[i] = before
+  })
+  return dirs.map((d, i) => {
+    if (d) return d
+    let a = i - 1
+    while (a >= 0 && !dirs[a]) a--
+    let b = i + 1
+    while (b < dirs.length && !dirs[b]) b++
+    const prev = a >= 0 ? dirs[a]! : caption
+    const next = b < dirs.length ? dirs[b]! : caption
+    return prev === next ? prev : caption
+  })
+}
+
+/**
+ * Puts the words of a line (x measured in reading order, the line `width` wide) where they show:
+ * a right-to-left caption's line is mirrored, then each run of words read the other way (English
+ * in an Arabic caption, Arabic in an English one) is mirrored within the room it takes, so the
+ * run keeps its own order (in an Arabic caption, 'Visual Studio Code' still reads left to right).
+ */
+function displayOrder(words: CaptionWordBox[], width: number, dirs: Dir[], caption: Dir): void {
+  if (caption === 'r') for (const wd of words) wd.x = width - wd.x - wd.w
+  for (let s = 0; s < words.length; ) {
+    if (dirs[words[s].token] === caption) {
+      s++
+      continue
+    }
+    let e = s + 1
+    while (e < words.length && dirs[words[e].token] !== caption) e++
+    // Words s..e-1 run the other way: mirror them between their outer edges.
+    let lo = Infinity
+    let hi = -Infinity
+    for (let k = s; k < e; k++) {
+      lo = Math.min(lo, words[k].x)
+      hi = Math.max(hi, words[k].x + words[k].w)
+    }
+    for (let k = s; k < e; k++) words[k].x = lo + hi - words[k].x - words[k].w
+    s = e
+  }
+}
 
 /** Greedy line breaking of `pieces` into lines no wider than `maxWidth` (indices into `pieces`, [from, to)). */
 function breakLines(pieces: Piece[], maxWidth: number, space: number): [number, number][] {
@@ -254,6 +314,7 @@ export function captionLayout(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
   const lines = breakLines(pieces, m.maxWidth, space)
   const per = settings.maxLines === 1 ? 1 : 2
   const rtl = RTL_FIRST.test(seg.text)
+  const dirs = tokenDirs(tokens, rtl ? 'r' : 'l')
   const chunks: CaptionChunk[] = []
   for (let c = 0; c < lines.length; c += per) {
     const group = lines.slice(c, c + per)
@@ -268,7 +329,7 @@ export function captionLayout(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
         words.push({ token: pieces[i].token, text: pieces[i].text, x, w: pieces[i].w })
         x += pieces[i].w
       }
-      if (rtl) for (const wd of words) wd.x = x - wd.x - wd.w
+      displayOrder(words, x, dirs, rtl ? 'r' : 'l')
       return { words, width: x }
     })
     // A chunk starting inside a word broken over lines starts that far into the word's time.
@@ -292,6 +353,15 @@ export function captionLayout(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
     const to = j < chunks.length ? chunks[j].start : seg.end
     for (let k = i; k < j; k++) chunks[k].start = from + ((k - i + 1) / (j - i + 1)) * (to - from)
     i = j
+  }
+  // Chunks whose first word was clamped to the caption's end (an end trim on the caption track, or
+  // word timings later than the caption) would start as it ends: from the end back, each of them
+  // starts at least minShow before the next, as far back as that crowds them.
+  const minShow = Math.min(0.4, (seg.end - seg.start) / chunks.length)
+  for (let i = chunks.length - 1; i > 0; i--) {
+    const latest = (i + 1 < chunks.length ? chunks[i + 1].start : seg.end) - minShow
+    if (chunks[i].start <= latest) break
+    chunks[i].start = latest
   }
   chunks.forEach((ch, i) => {
     ch.end = i + 1 < chunks.length ? Math.max(ch.start, chunks[i + 1].start) : seg.end
