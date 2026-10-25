@@ -334,6 +334,8 @@
 
 .rec-options-head .chevron {
   flex: none;
+  /* Points right while folded (the export dialog's .chevron rule rotates it otherwise). */
+  transform: none;
   color: var(--text-2);
   transition: transform var(--dur-med) var(--ease-out);
 }

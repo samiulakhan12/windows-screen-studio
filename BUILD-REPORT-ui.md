@@ -104,9 +104,23 @@ six e2e selectors in `polish.e2e.cjs` and `recording-options.e2e.cjs` changed fr
 
 ## Verification
 
-VERIFICATION_RESULTS
+- `npm run typecheck`: passes.
+- `npx vitest run`: 101 files, **1334 / 1334 tests pass**.
+- `npm run build`: passes.
+- Full e2e (`xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`): **34 / 35 files passed,
+  154 cases passed** on the first full run. The one failure was
+  `native: quitting the app finalises a running recording instead of killing it`, which threw
+  inside Playwright (`ElectronApplication.process()` reading a closed connection) after the app
+  had quit. It is a main-process test with a fake capture helper and touches no renderer UI; run
+  again on its own, `native.e2e.cjs` passed all 7 cases. Skips are the expected ones (no wine,
+  no `dist/` folder).
+- After the last CSS fix (the "More options" chevron), the Home-heavy files `smoke`, `polish`
+  and `recording-options` were run again against the final build: 3 / 3 files pass.
 
 ## Known gaps
+
+- Fixed on the way: the global `.chevron` rule in `exportDialog.css` rotated Home's options
+  chevron to point up while folded; it now points right.
 
 - Library thumbnails decode `screen.mp4` in the renderer; on very large libraries the first
   visit takes a moment per card (one at a time, cached for the session). Whether Windows ever
