@@ -169,11 +169,12 @@ const COLOR_FNS = `
     await f.openProject(win, 'Everything')
     await setSize(app, win, 1600, 1000)
     await win.waitForSelector('.text-seg .seg-label')
+    await win.waitForSelector('.caption-seg .seg-label')
     await win.evaluate(COLOR_FNS)
 
     const labels = await win.evaluate(() => {
       const u = window.__ui
-      return [...document.querySelectorAll('.seg:not(.caption-seg) .seg-label')]
+      return [...document.querySelectorAll('.seg .seg-label')]
         .filter((l) => l.textContent.trim())
         .map((l) => {
           const seg = l.closest('.seg')
@@ -191,7 +192,7 @@ const COLOR_FNS = `
         })
     })
     const kinds = new Set(labels.map((l) => l.seg.split(' ')[1]))
-    for (const k of ['zoom-seg', 'text-seg', 'shape-seg', 'title-seg', 'layout-seg']) h.assert(kinds.has(k), `a ${k} label is checked (${[...kinds]})`)
+    for (const k of ['zoom-seg', 'text-seg', 'shape-seg', 'title-seg', 'layout-seg', 'caption-seg']) h.assert(kinds.has(k), `a ${k} label is checked (${[...kinds]})`)
     for (const l of labels) {
       h.assert(l.stops > 0, `${l.seg} has a background`)
       h.assert(l.min >= 4.5 && l.hover >= 4.5, `"${l.label}" on ${l.seg}: ${l.min.toFixed(2)}:1, hovered ${l.hover.toFixed(2)}:1`)
