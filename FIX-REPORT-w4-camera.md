@@ -109,8 +109,18 @@ All of them fail without the change. The existing camera-live e2e test (three dr
 Run in this container (Linux, Xvfb and openbox), after `npm ci`:
 
 - `npm run typecheck`: passes.
-- `npx vitest run --testTimeout=60000`: 116 files, 1476 tests passed (run before the new e2e steps were added; re-run pending)
+- `npx vitest run --testTimeout=60000`: 116 files, 1476 tests passed (re-run on the final code)
 - `npm run build`: passes.
 - e2e, one at a time with `xvfb-run -a -s "-screen 0 1920x1080x24"`:
 
-  - camera-live.e2e.cjs: 5/5 PASS (first run). The other files are still running and are reported in a follow-up commit.
+  - camera-live.e2e.cjs: 5/5 PASS
+  - camera.e2e.cjs: 5/5 PASS
+  - recording.e2e.cjs: 9/9 PASS
+  - recording-native.e2e.cjs: 4/4 PASS
+  - recording-options.e2e.cjs: 4/4 PASS
+  - recording-recovery.e2e.cjs: 5/5 PASS
+  - recording-window.e2e.cjs: 4/4 PASS
+  - audit-recording.e2e.cjs: 4/4 PASS
+  - smoke.e2e.cjs: 1/1 PASS
+
+Each new e2e step was also run against a build with its fix reverted, and failed as described above.
