@@ -295,7 +295,7 @@ function GenerateSection({
         <>
           <label className="field">
             <span>Provider</span>
-            <select className="captions-select" aria-label="Transcription provider" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)} onFocus={reload}>
+            <select className="captions-select" aria-label="Transcription provider" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)}>
               {capable.map((p) => (
                 <option key={p.id} value={p.id}>
                   {providerLabel(p, true)}
