@@ -93,7 +93,7 @@ No type or contract was renamed or reshaped; no optional fields were added to th
 
 ## Verification (this branch)
 - `npm run typecheck`: pass.
-- `npx vitest run`: 106 files, all tests pass (new: `captionLayout`, `subtitles`, `captionData`
+- `npx vitest run`: 105 files / 1385 tests pass in the full run (plus `captionsIpc.test.ts`, 5 tests, added after and passing) (new: `captionLayout`, `subtitles`, `captionData`
   (readers, migration, editing), `captionsIpc`).
 - `npm run build`: pass.
 - e2e, one at a time with `xvfb-run -a -s "-screen 0 1920x1080x24"`: see the results table below.
@@ -101,7 +101,14 @@ No type or contract was renamed or reshaped; no optional fields were added to th
   captions, 600 frames, 1-px readback): +0.1–0.25 ms per frame for clean / boxed / bold / minimal /
   karaoke; nothing measurable with captions off or without a transcript.
 
-E2E_RESULTS_PLACEHOLDER
+| e2e file | result |
+| --- | --- |
+| `captions.e2e.cjs` | 6 / 6 pass (also re-run after the final build) |
+| `titles.e2e.cjs` | 6 / 6 pass |
+| `commands.e2e.cjs` | 5 / 5 pass |
+| `editor.e2e.cjs` | 13 / 13 pass |
+| `render.e2e.cjs` | 3 / 3 pass |
+| `export.e2e.cjs` | 10 / 10 pass |
 
 ## Known gaps
 - Transcription and AI text tasks run against the stubs on this branch; the e2e covers the UI with
