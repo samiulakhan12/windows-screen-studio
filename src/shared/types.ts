@@ -228,7 +228,7 @@ export interface LayoutSegment {
   start: number
   end: number
   layout: CameraLayout
-  /** Corner of the camera bubble while this segment is in effect ('default' and 'camera-large'); absent = project.webcam.corner. */
+  /** Corner of the camera while this segment is in effect ('default' and 'camera-large'; for 'side-by-side', the side its card is on); absent = project.webcam.corner. */
   corner?: Corner
 }
 

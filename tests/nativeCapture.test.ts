@@ -476,7 +476,8 @@ describe('helper ending on its own (onEnded)', () => {
     expect(readFileSync(path.join(dir, 'screen.mp4'), 'utf8')).toBe('fake video')
     // The app then stops the recording as usual and gets the helper's result.
     const result = await s.stop()
-    expect(result.duration).toBeGreaterThanOrEqual(0.3)
+    // The fake ends 300 ms after it starts by a timer, which Node may fire a millisecond early by Date.now().
+    expect(result.duration).toBeGreaterThanOrEqual(0.29)
     await waitFor(() => !alive(recordPid()))
     await sleep(100)
     expect(seen).toHaveLength(1)
