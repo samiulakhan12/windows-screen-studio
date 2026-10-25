@@ -29,7 +29,18 @@ Root cause: the test is out of date, not a product bug. It was written on the ca
 
 ## Verification
 
-VERIFICATION_RESULTS
+All on the final commit of this branch:
+
+- `npm run typecheck`: passes.
+- `npx vitest run --testTimeout=60000`: 116 files, 1484 tests, all pass.
+- `npm run build`: passes.
+- `xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/<file>`, one at a time:
+  - captions.e2e.cjs: 7/7 pass (the previously failing Generate test included)
+  - ai.e2e.cjs: 4/4
+  - titles.e2e.cjs: 6/6
+  - render.e2e.cjs: 3/3
+  - editor.e2e.cjs: 13/13
+  - commands.e2e.cjs: 5/5
 
 Run on the original sources with the new tests: the three new or updated captions e2e tests fail at their first new check: chunk by chunk ("the first chunk (746 px wide) shows before the last (744 px)"), Generate (the tab does not update when the dialog closes, timeout), and AI tools ("dropdown has its arrow: none"). The other three captions tests pass on both. The unit tests fail without the fix: captionLayout 5/21, captionData 2/19, captionsKeystrokes 3/3, captionItems 5/7 (the 2 that pass on the old code are controls: "a result that arrives after Cancel is dropped" and "says nothing when everything was kept").
 
