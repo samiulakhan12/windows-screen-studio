@@ -128,7 +128,7 @@ export function CaptionTrackLabel(): JSX.Element | null {
   const has = useSyncExternalStore(store.subscribe, () => !!store.state.transcript)
   if (!has) return null
   return (
-    <div className="tl-label" title="Captions">
+    <div className="tl-label caption-label" title="Captions">
       <EditorIcon name="captions" size={16} />
     </div>
   )

@@ -12,6 +12,8 @@ import {
   splitCaption
 } from '../src/shared/captions/edit'
 import { DEFAULT_CAPTIONS, readCaptionSettings, withPreset } from '../src/shared/captions/settings'
+import { outputCues } from '../src/shared/captions/subtitles'
+import { validateSegmentsAnswer } from '../src/shared/captions/transcriptText'
 import { migrateProject } from '../src/shared/engine/project'
 import type { CaptionSegment } from '../src/shared/types'
 
@@ -214,6 +216,33 @@ describe('caption editing', () => {
     expect(applyTextResult(list, [good[0], { ...good[1], start: 1.5 }])).toBeNull()
     expect(applyTextResult(list, [good[0], { ...good[1], text: '  ' }])).toBeNull()
     expect(applyTextResult(list, 'nope')).toBeNull()
+  })
+
+  it('drops the word timings of a translation, keeps those of a clean-up that kept the words (CAP-6)', () => {
+    const words = [
+      { text: 'the', start: 0, end: 0.5 },
+      { text: 'red', start: 0.6, end: 1.2 },
+      { text: 'car', start: 1.3, end: 2 }
+    ]
+    const list = [seg('a', 0, 2, 'the red car', words)]
+    // What the main process answers (it drops the words of a translation).
+    const translated = validateSegmentsAnswer('translate', list, { segments: [{ id: 'a', text: 'el coche rojo' }] })
+    const t = applyTextResult(list, translated)!
+    expect(t[0].text).toBe('el coche rojo')
+    expect(t[0].words).toBeUndefined()
+    // Cutting 'red' out keeps the whole (untimed) translation, rather than dropping 'coche' by the English times.
+    expect(outputCues(t, [{ id: 'x', start: 0, end: 0.55, speed: 1 }, { id: 'y', start: 1.25, end: 2, speed: 1 }])[0].text).toBe('el coche rojo')
+    const cleaned = validateSegmentsAnswer('cleanup', list, { segments: [{ id: 'a', text: 'The red car.' }] })
+    const c = applyTextResult(list, cleaned)!
+    expect(c[0].text).toBe('The red car.')
+    expect(c[0].words).toBe(words)
+  })
+
+  it('a caption that was already empty may come back empty; other captions may not (CAP-7)', () => {
+    const list = [seg('a', 0, 1, 'hello world'), seg('b', 1, 2, ''), seg('c', 2, 3, 'bye now')]
+    const answer = validateSegmentsAnswer('cleanup', list, { segments: [{ id: 'a', text: 'Hello, world.' }, { id: 'b', text: '' }, { id: 'c', text: 'Bye now.' }] })
+    expect(applyTextResult(list, answer)!.map((s) => s.text)).toEqual(['Hello, world.', '', 'Bye now.'])
+    expect(applyTextResult(list, answer.map((s) => (s.id === 'c' ? { ...s, text: '' } : s)))).toBeNull()
   })
 
   it('reads suggested chapters', () => {

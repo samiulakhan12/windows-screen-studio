@@ -241,6 +241,59 @@ async function main() {
     h.assert(Math.abs(centres[1] - W / 2) < 120, `the middle word is in the middle (${Math.round(centres[1])})`)
   }))
 
+  await test('captions: a caption without spaces shows chunk by chunk, Arabic reads from the right, the keys keep clear of a caption (export)', fx.withHome('captions-scripts', async (ctx, home) => {
+    const media = fx.solidVideo({ seconds: 6 })
+    // D: Chinese has no spaces: one long word, two one-line chunks.
+    const chinese = '我们今天来看一下如何在这个应用程序里面录制屏幕并且添加字幕然后把视频导出成为一个文件'
+    fx.seedProject(home, { id: 'rec-d', name: 'Chinese', media, seconds: 6, style: STYLE, effects: NO_FX })
+    addItems(home, 'rec-d', { transcript: transcript([seg('s1', 0.5, 4.5, chinese)], { language: 'zh' }), captions: captions({ maxLines: 1 }) })
+    // E: Arabic, karaoke: the first word is lit first, and it is the rightmost.
+    const arabic = 'مرحبا بكم في البرنامج'
+    const words = arabic.split(' ').map((text, i) => ({ text, start: 1 + i * 0.5, end: 1.4 + i * 0.5 }))
+    fx.seedProject(home, { id: 'rec-e', name: 'Arabic', media, seconds: 6, style: STYLE, effects: NO_FX })
+    addItems(home, 'rec-e', { transcript: transcript([seg('s1', 1, 3, arabic, words)], { language: 'ar' }), captions: captions({ preset: 'karaoke', highlightColor: '#22d3ee' }) })
+    // F: the default look of both (clean caption, keys at the bottom); a shortcut during the caption and one after it.
+    const keys = { motionBlur: 0, keystrokes: { show: true, position: 'bottom', size: 0.035 } }
+    const cursor = { samples: [], clicks: [], keys: [{ t: 1, label: 'Ctrl+S' }, { t: 4, label: 'Ctrl+S' }], shapes: [], scale: 1, valid: false }
+    fx.seedProject(home, { id: 'rec-f', name: 'Keys', media, seconds: 6, style: STYLE, effects: keys, cursor })
+    addItems(home, 'rec-f', { transcript: transcript([seg('s1', 0.5, 3, 'Saving the project with the keyboard')]), captions: captions({ preset: 'clean', background: 'shadow', size: 0.045 }) })
+
+    const { app, win } = await launch(ctx, home)
+    const outs = {}
+    for (const [name, file] of [['Chinese', 'd'], ['Arabic', 'e'], ['Keys', 'f']]) {
+      await fx.openProject(win, name)
+      outs[file] = path.join(home, `${file}.mp4`)
+      await exportOpen(app, win, outs[file])
+      await win.click('button[aria-label="Back to recordings"]')
+      await win.waitForSelector('.home', { timeout: 30000 })
+    }
+    for (const i of [30, 126]) shot(outs.d, i, `captions-d-${i}`)
+    shot(outs.e, 36, 'captions-e-36')
+    for (const i of [36, 126]) shot(outs.f, i, `captions-f-${i}`)
+
+    // D: the start of the sentence (a full line) at 1.0 s, its end (a shorter line) at 4.2 s.
+    const bottom = band(captions())
+    const first = frameOf(outs.d, 30).count(bottom, BOX)
+    const last = frameOf(outs.d, 126).count(bottom, BOX)
+    h.assert(first.n > 2000 && last.n > 2000, `a caption at 1.0 s and at 4.2 s (${first.n}, ${last.n} box pixels)`)
+    h.assert(first.maxX - first.minX > last.maxX - last.minX + 150, `the first chunk (${first.maxX - first.minX} px wide) shows before the last (${last.maxX - last.minX} px)`)
+
+    // E: at 1.2 s the first word's pill is right of the centre.
+    const cyan = near(hex('#22d3ee'), 40)
+    const pill = frameOf(outs.e, 36).count(bottom, cyan)
+    h.assert(pill.n > 200 && pill.x > W / 2 + 40, `the first Arabic word is lit on the right (${pill.n} pixels at x ${Math.round(pill.x)})`)
+
+    // F: during the caption the keys sit just above it, the caption keeps its place; after it, the keys are back at the bottom.
+    const clean = band(captions({ preset: 'clean', background: 'shadow', size: 0.045 }))
+    const above = { x: 0, y: clean.y - 120, w: W, h: 96 }
+    let fr = frameOf(outs.f, 36)
+    h.assert(fr.count(clean, WHITE).n > 300, 'the caption is in its place')
+    const keysAbove = fr.count(above, BOX)
+    h.assert(keysAbove.n > 2000 && Math.abs((keysAbove.minX + keysAbove.maxX) / 2 - W / 2) < 40, `the keys show just above the caption (${keysAbove.n} pixels)`)
+    fr = frameOf(outs.f, 126)
+    h.assert(fr.count(above, BOX).n < 100 && fr.count({ x: 0, y: H - 160, w: W, h: 140 }, BOX).n > 2000, 'without a caption the keys are at the bottom')
+  }))
+
   await test('captions: editing the text in the Captions tab changes the render (export)', fx.withHome('captions-edit', async (ctx, home) => {
     const media = fx.solidVideo({ seconds: 2 })
     fx.seedProject(home, { id: 'rec-edit', name: 'Edit', media, seconds: 2, style: STYLE, effects: NO_FX })
@@ -377,6 +430,9 @@ async function main() {
     await win.click('.captions-empty button:has-text("Add an AI provider")')
     const opened = await win.evaluate(() => window.__settingsOpened)
     h.assert(opened.length === 1 && opened[0].section === 'ai', `"Add an AI provider" opens the AI settings: ${JSON.stringify(opened)}`)
+    const settings = win.locator('[role="dialog"][aria-labelledby="settings-title"]')
+    await settings.waitFor()
+    h.assert((await settings.getAttribute('data-section')) === 'ai', 'the Settings dialog opens at the AI providers')
 
     const provide = (list) =>
       app.evaluate(({ ipcMain }, providers) => {
@@ -384,7 +440,16 @@ async function main() {
         ipcMain.handle('ai:listProviders', () => providers)
       }, list)
     const claude = { id: 'p-claude', kind: 'anthropic', label: 'My Claude', model: 'claude-model', maskedKey: '…abcd', createdAt: '' }
+    // A Claude provider is added while the dialog is open: closing the dialog updates the tab (no "Check again" needed).
     // Only Claude: it cannot listen to audio.
+    await provide([claude])
+    await settings.getByRole('button', { name: 'Done' }).click()
+    await settings.waitFor({ state: 'detached' })
+    await win.waitForSelector('.captions-empty:has-text("Claude cannot listen to audio")', { timeout: 5000 })
+    // The settings saying the providers changed updates the tab too.
+    await provide([])
+    await win.evaluate(() => window.dispatchEvent(new Event('ssw:ai-providers-changed')))
+    await win.waitForSelector('.captions-empty:has-text("Add an AI provider with your own API key")', { timeout: 5000 })
     await provide([claude])
     await win.click('.captions-empty button:has-text("Check again")')
     await win.waitForSelector('.captions-empty:has-text("Claude cannot listen to audio")')
@@ -401,9 +466,37 @@ async function main() {
     await win.click('button:has-text("Generate captions")')
     await win.waitForSelector('.captions-error', { timeout: 15000 })
     const message = (await win.textContent('.captions-error')).trim()
-    h.assert(/^Captions could not be made: \S/.test(message) && !/Error invoking remote method/.test(message), `a clear error: "${message}"`)
+    h.assert(/^Captions could not be made: \S/.test(message) && !/Error invoking remote method|^Captions could not be made: \w*Error: /.test(message), `a clear error: "${message}"`)
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'captions-generate-error.png') })
     h.assert(!h.readProject(home, 'rec-gen').transcript, 'nothing is stored')
+
+    // A recording sent in one part: the bar moves (it does not sit at 0 of 1) until the part is done.
+    // Cancel then shows "Stopping…" until the main process has stopped, and leaves no error.
+    await app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('ai:transcribe')
+      ipcMain.handle('ai:transcribe', (e, projectId) => {
+        e.sender.send('ai:transcribeProgress', { projectId, phase: 'transcribing', done: 0, total: 1 })
+        return new Promise((resolve, reject) => {
+          globalThis.__stopTranscription = () => reject(Object.assign(new Error('Cancelled.'), { name: 'AiError' }))
+        })
+      })
+      ipcMain.removeHandler('ai:cancelTranscription')
+      ipcMain.handle('ai:cancelTranscription', () => new Promise((resolve) => (globalThis.__cancelled = resolve)))
+    })
+    await win.click('.captions-error button:has-text("Dismiss")')
+    await win.click('button:has-text("Generate captions")')
+    await win.waitForSelector('.captions-phase:has-text("Transcribing")')
+    h.assert(await win.isVisible('.captions-bar.busy'), 'the bar moves while the only part is under way')
+    await win.click('.captions-progress ~ button:has-text("Cancel")')
+    await win.waitForSelector('.captions-phase:has-text("Stopping")')
+    h.assert(await win.isDisabled('.captions-progress ~ button:has-text("Cancel")'), 'Cancel is done once')
+    await app.evaluate(() => {
+      globalThis.__stopTranscription()
+      globalThis.__cancelled()
+    })
+    await win.waitForSelector('button:has-text("Generate captions")')
+    await new Promise((r) => setTimeout(r, 300))
+    h.assert(!(await win.isVisible('.captions-error')), 'a cancel is not shown as an error')
   }))
 
   await test('captions: AI tools apply a result only when it matches the captions, in one undo step', fx.withHome('captions-ai', async (ctx, home) => {
@@ -427,11 +520,37 @@ async function main() {
     await win.click('.insp-tabs button:has-text("Captions")')
     await win.waitForSelector('select[aria-label="AI provider for text"]')
 
+    // The tab's dropdowns show the global chevron; the caption lane and its label use the timeline's look and the caption hue.
+    for (const label of ['AI provider for text', 'Translate to']) {
+      const bg = await win.$eval(`select[aria-label="${label}"]`, (e) => getComputedStyle(e).backgroundImage)
+      h.assert(/svg/.test(bg), `the "${label}" dropdown has its arrow: ${bg}`)
+    }
+    const look = await win.evaluate(() => {
+      const css = (sel, prop) => getComputedStyle(document.querySelector(sel)).getPropertyValue(prop).trim()
+      return {
+        lane: css('.tl-track.caption-track', 'background-color'),
+        zoomLane: css('.tl-track.zoom-track', 'background-color'),
+        captionSeg: css('.seg.caption-seg', 'border-top-color'),
+        label: css('.tl-label[title="Captions"]', '--kind')
+      }
+    })
+    h.assert(look.lane === look.zoomLane, `the caption lane looks like the other lanes: ${JSON.stringify(look)}`)
+    h.assert(look.captionSeg !== 'rgb(94, 234, 212)' && /^#86efac$/i.test(look.label), `captions have their own hue, not the shapes' teal: ${JSON.stringify(look)}`)
+
+    // A caption whose text is all deleted goes when the field is left (it would make every AI answer unusable).
+    await win.fill('textarea[aria-label^="Caption at"] >> nth=1', '')
+    await win.click('.caption-time >> nth=0')
+    await saved(home, id, (q) => q.transcript.segments.length === 1, 'the emptied caption is removed')
+    await win.keyboard.press('Control+z')
+    await saved(home, id, (q) => q.transcript.segments.length === 2 && q.transcript.segments[1].text === 'secnd one', 'one undo brings it back')
+
     // Times changed: refused, nothing replaced.
     await answer("return { task: 'cleanup', segments: request.segments.map((s) => ({ ...s, start: s.start + 0.5, text: 'x' })) }")
     await win.click('button:has-text("Fix captions")')
     await win.waitForSelector('.hint.warn:has-text("timing")')
     h.assert(h.readProject(home, id).transcript.segments[0].text === 'helo wrld', 'a result with other times is not applied')
+    const warn = await win.$eval('.hint.warn', (e) => [getComputedStyle(e).color, getComputedStyle(e.nextElementSibling).color])
+    h.assert(warn[0] !== warn[1], `the error stands out from the hint under it: ${warn}`)
 
     // Matching ids and times: the texts are replaced, once.
     await answer("return { task: 'cleanup', segments: request.segments.map((s) => ({ ...s, text: s.id === 'a' ? 'Hello world' : 'Second one' })) }")
@@ -443,9 +562,9 @@ async function main() {
     await win.keyboard.press('Control+z')
     await saved(home, id, (q) => q.transcript.segments[0].text === 'helo wrld', 'one undo brings the original back')
 
-    // Translation to Bengali keeps the times and sets the language.
+    // Translation to Bengali (the provider is told the language's name) keeps the times and sets the language.
     await win.selectOption('select[aria-label="Translate to"]', 'bn')
-    await answer("return request.targetLanguage === 'bn' ? { task: 'translate', segments: request.segments.map((s) => ({ ...s, text: 'হ্যালো ' + s.id })) } : null")
+    await answer("return request.targetLanguage === 'Bengali' ? { task: 'translate', segments: request.segments.map((s) => ({ ...s, text: 'হ্যালো ' + s.id })) } : null")
     await win.click('button:has-text("Translate to…")')
     let p = await saved(home, id, (q) => q.transcript.segments[0].text === 'হ্যালো a', 'the translated captions')
     h.assert(p.transcript.language === 'bn' && p.transcript.segments[1].start === 3, 'the language is set and the times kept')
@@ -460,6 +579,19 @@ async function main() {
     await win.waitForSelector('.captions-suggestion:has-text("A Better Name")')
     await win.click('.captions-suggestion button:has-text("Rename the recording")')
     await saved(home, id, (q) => q.name === 'A Better Name', 'the recording is renamed')
+
+    // A summary is shown with its paragraphs, and Copy puts it on the clipboard.
+    const summary = 'A short tour of the editor.\n\nIt ends with the export.'
+    await answer(`return { task: 'summary', text: ${JSON.stringify(summary)} }`)
+    await win.click('button:has-text("Summarize")')
+    await win.waitForSelector('.captions-summary')
+    h.assert((await win.$eval('.captions-summary', (e) => e.innerText)) === summary, 'the summary is shown as it came, paragraphs kept')
+    const asked = await app.evaluate(() => globalThis.__aiRequests)
+    h.assert(asked[asked.length - 1].request.task === 'summary', 'Summarize asks for a summary')
+    await win.click('.captions-suggestion button:has-text("Copy")')
+    await f.waitFor(async () => (await app.evaluate(({ clipboard }) => clipboard.readText())) === summary, 'the summary is copied', 5000)
+    await win.click('.captions-suggestion button:has-text("Dismiss")')
+    await win.waitForSelector('.captions-summary', { state: 'detached' })
 
     // A provider error is shown as it is.
     await answer("throw new Error('The key was refused')")

@@ -211,3 +211,72 @@ describe('captionAlpha: fades in viewing time', () => {
     expect(after).toBeCloseTo(plain, 5)
   })
 })
+
+describe('captionLayout: every chunk shows (CAP-1)', () => {
+  /** Checks that chunk starts increase, each chunk has time, and chunkIndexAt reaches each in turn. */
+  const allShown = (layout: ReturnType<typeof captionLayout>, s: CaptionSegment): void => {
+    expect(layout.chunks.length).toBeGreaterThan(1)
+    expect(layout.chunks[0].start).toBe(s.start)
+    layout.chunks.forEach((ch, i) => {
+      expect(ch.end).toBeGreaterThan(ch.start)
+      if (i) expect(ch.start).toBeGreaterThan(layout.chunks[i - 1].start)
+      expect(chunkIndexAt(layout, (ch.start + ch.end) / 2)).toBe(i)
+    })
+    expect(chunkIndexAt(layout, s.start)).toBe(0)
+    expect(chunkIndexAt(layout, s.end - 1e-3)).toBe(layout.chunks.length - 1)
+  }
+  // Chinese has no spaces: the whole caption is one word, broken over lines and chunks.
+  const chinese = '我们今天来看一下如何在这个应用程序里面录制屏幕并且添加字幕然后把视频导出成为一个文件分享给大家使用'
+
+  it('a caption without spaces, two lines at 9:16 and one line at 16:9, shows from its start to its end', () => {
+    const s = seg('a', 10, 16, chinese)
+    for (const [w, h, maxLines] of [[1080, 1920, 2], [1920, 1080, 1]] as const) {
+      const layout = captionLayout(s, settings({ maxLines }), w, h, (text, px) => Array.from(text).length * px)
+      expect(layout.tokens).toHaveLength(1)
+      allShown(layout, s)
+      // Chunks take time in proportion to their characters.
+      const first = layout.chunks[0]
+      const chars = first.lines.reduce((n, l) => n + l.words.reduce((k, wd) => k + wd.text.length, 0), 0)
+      expect((first.end - first.start) / 6).toBeCloseTo(chars / (chinese.length + 1), 1)
+    }
+  })
+
+  it('word timings that start chunks together still give each chunk its time', () => {
+    const words = 'one two three four five six seven eight nine ten eleven twelve'.split(' ')
+    // A provider gave the last eight words one start.
+    const s = seg('a', 0, 8, words.join(' '), words.map((text, i) => ({ text, start: i < 4 ? i * 0.5 : 2, end: i < 4 ? i * 0.5 + 0.4 : 2.2 })))
+    const layout = captionLayout(s, settings({ maxLines: 1, size: 0.2 }), 1920, 1080, measure)
+    expect(layout.chunks.length).toBeGreaterThan(2)
+    allShown(layout, s)
+  })
+
+  it('breaks a long word between letters as read, never between a Thai letter and its vowel mark', () => {
+    const thai = 'สวัสดีครับวันนี้เราจะมาดูวิธีการบันทึกหน้าจอและการเพิ่มคำบรรยายให้กับวิดีโอของเรา'
+    const layout = captionLayout(seg('a', 0, 6, thai), settings({ maxLines: 1 }), 1920, 1080, (text, px) => Array.from(text).length * px)
+    const pieces = layout.chunks.flatMap((c) => c.lines.flatMap((l) => l.words.map((wd) => wd.text)))
+    expect(pieces.length).toBeGreaterThan(1)
+    expect(pieces.join('')).toBe(thai)
+    // No piece starts with a combining mark (vowel signs and tone marks are \p{M}).
+    for (const p of pieces) expect(/^\p{M}/u.test(p)).toBe(false)
+  })
+})
+
+describe('captionLayout: right-to-left captions (CAP-2)', () => {
+  it('an Arabic caption reads from the right: its first word is the rightmost', () => {
+    const layout = captionLayout(seg('a', 0, 4, 'مرحبا بكم في البرنامج'), settings(), 1920, 1080, measure)
+    expect(layout.rtl).toBe(true)
+    const line = layout.chunks[0].lines[0]
+    const xs = line.words.map((wd) => wd.x)
+    expect(xs).toEqual([...xs].sort((a, b) => b - a))
+    expect(xs[0] + line.words[0].w).toBeCloseTo(line.width, 6)
+    expect(line.words[line.words.length - 1].x).toBeCloseTo(0, 6)
+  })
+
+  it('Hebrew too; English stays left to right, also when it starts with digits or punctuation', () => {
+    expect(captionLayout(seg('a', 0, 4, 'שלום לכולם'), settings(), 1920, 1080, measure).rtl).toBe(true)
+    const en = captionLayout(seg('a', 0, 4, '3, 2, 1 go now'), settings(), 1920, 1080, measure)
+    expect(en.rtl).toBe(false)
+    expect(en.chunks[0].lines[0].words[0].x).toBe(0)
+    expect(captionLayout(seg('a', 0, 4, '«مرحبا» world'), settings(), 1920, 1080, measure).rtl).toBe(true)
+  })
+})
