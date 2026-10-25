@@ -56,11 +56,13 @@ export function createMainWindow(onClosed: () => void): BrowserWindow {
     minWidth: 1040,
     minHeight: 680,
     show: false,
-    backgroundColor: '#0b0b10',
+    // Mirrors the renderer's design tokens (styles.css): --surface-0 behind the page, and the
+    // .titlebar background (--surface-1) and height (44 px less its 1 px bottom hairline).
+    backgroundColor: '#0e0e11',
     title: 'Screen Studio for Windows',
     icon: windowIconPath(),
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#0b0b10', symbolColor: '#e5e7eb', height: 40 },
+    titleBarOverlay: { color: '#141418', symbolColor: '#e5e7eb', height: 43 },
     webPreferences: {
       preload: preloadPath,
       sandbox: true,

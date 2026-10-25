@@ -83,9 +83,16 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
     if (revealKind.current) setTab(TAB_FOR[revealKind.current])
   }, [props.revealSeq, setTab])
 
+  // On a short window the rail scrolls: keep the open tab (also one opened by a selection or a
+  // command) in view.
+  const railRef = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    railRef.current?.querySelector<HTMLElement>('button.active')?.scrollIntoView({ block: 'nearest' })
+  }, [tab])
+
   return (
     <aside className="inspector">
-      <nav className="insp-tabs" aria-label="Inspector">
+      <nav className="insp-tabs" aria-label="Inspector" ref={railRef}>
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)} aria-pressed={tab === t.id} title={t.label}>
             {t.editorIcon ? <EditorIcon name={t.icon} size={17} /> : <Icon name={t.icon} size={17} />}

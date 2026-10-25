@@ -26,6 +26,22 @@ Built with Electron, React and TypeScript, a small Rust helper for Windows captu
 | **Audio** | Separate microphone and system-sound tracks with their own volume · noise reduction · even out loudness · fades · **background music** that lowers itself while you talk · master volume / mute |
 | **Export** | Destination presets (YouTube, X, LinkedIn, Reels, TikTok, Shorts, Slack, email) · batch export · target file size · MP4 / MOV / WebM / GIF / M4A · PNG thumbnail · MP4 (H.264/AAC) 720p → 4K at 30/60 fps using the GPU when available (WebCodecs, NVENC, Quick Sync, AMF), with software fallback · palette-optimised GIF · exact frames and colours · progress with ETA · **Copy** the exported file to the clipboard to paste into chat apps or Explorer |
 
+## Screenshots
+
+Taken from the built app with seeded projects (`SSW_UI_SHOTS=docs/screenshots` with
+`tests/e2e/ui.e2e.cjs`).
+
+| | |
+| --- | --- |
+| ![Home: pick what to record, recent recordings](docs/screenshots/home.png) | ![Editor, Style tab](docs/screenshots/editor-style.png) |
+| **Home**: pick a screen, window or area; recent recordings | **Editor**: background, padding, corners and shadow in the Style tab |
+| ![Editor, Captions tab](docs/screenshots/editor-captions.png) | ![Editor, Camera tab](docs/screenshots/editor-camera.png) |
+| **Captions**: generated captions on their own track, styles and position | **Camera**: webcam bubble and camera layouts over time |
+| ![Export dialog](docs/screenshots/export.png) | ![Settings, adding an AI provider](docs/screenshots/settings-ai.png) |
+| **Export**: destination presets, format, resolution and quality | **Settings**: your own OpenAI, Gemini or Claude key for captions and transcript tools |
+| ![Command palette](docs/screenshots/palette.png) | |
+| **Command palette** (`Ctrl+K`): every editor action by name | |
+
 ## Getting started
 
 Requirements: Windows 10 (2004+) or 11 to run the app; Node.js **20.19+ or 22.12+** to build it.
