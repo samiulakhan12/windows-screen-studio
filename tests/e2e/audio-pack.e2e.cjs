@@ -117,10 +117,28 @@ const readProject = (home, id) => h.readProject(home, id)
 
 /* ---------- measuring ---------- */
 
-/** Mono samples of the first audio stream of `file`, at 48 kHz. */
+/** Samples of each channel of the first audio stream of `file`, at 48 kHz. */
+function channels(file) {
+  const n = Number(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=channels', '-of', 'csv=p=0', file]).toString().trim())
+  h.assert(n >= 1, `${file} has sound (${n} channels)`)
+  const out = execFileSync(FF, ['-v', 'error', '-i', file, '-map', '0:a:0', '-ar', String(RATE), '-f', 'f32le', '-'], { maxBuffer: 1 << 30 })
+  const all = new Float32Array(out.buffer, out.byteOffset, out.length / 4)
+  const len = Math.floor(all.length / n)
+  return Array.from({ length: n }, (_, c) => Float32Array.from({ length: len }, (_, i) => all[i * n + c]))
+}
+
+/**
+ * The first audio stream of `file` as one signal at 48 kHz: the mean of its channels, so a
+ * level reads as heard on each side. Sources mixed with others are exported in stereo, a mono
+ * one on both sides at its own level; ffmpeg's -ac 1 adds the two sides at -3 dB each and would
+ * read such a track sqrt(2) louder than it plays.
+ */
 function pcm(file) {
-  const out = execFileSync(FF, ['-v', 'error', '-i', file, '-map', '0:a:0', '-ac', '1', '-ar', String(RATE), '-f', 'f32le', '-'], { maxBuffer: 1 << 30 })
-  return new Float32Array(out.buffer, out.byteOffset, out.length / 4)
+  const ch = channels(file)
+  if (ch.length === 1) return ch[0]
+  const out = new Float32Array(ch[0].length)
+  for (const c of ch) for (let i = 0; i < out.length; i++) out[i] += c[i] / ch.length
+  return out
 }
 
 /** Amplitude of the `freq` Hz component of [from, to) seconds (Goertzel). */
@@ -269,6 +287,12 @@ async function main() {
     console.log(`  music levels (1 = full): ${JSON.stringify(Object.fromEntries(Object.entries(report).map(([k, v]) => [k, +v.toFixed(3)])))}`)
     h.assert(report.fadeIn < 0.15, `music fades in (${report.fadeIn})`)
     h.assert(close(report.full, 1, 0.1), `music at its volume (${report.full})`)
+    // Each side on its own: the music at its volume and ducked, not one side louder for the other.
+    for (const [i, side] of channels(m4a).entries()) {
+      const full = amplitude(side, 440, 1.2, 1.7) / M
+      const ducked = amplitude(side, 440, 2.3, 2.95) / M
+      h.assert(close(full, 1, 0.1) && close(ducked, 0.2, 0.06), `channel ${i}: music at its volume (${full}) and ducked (${ducked})`)
+    }
     h.assert(close(report.ducked, 0.2, 0.06), `music ducked by 80% under the recording (${report.ducked})`)
     h.assert(close(report.back, 1, 0.1), `music back up after the release, and still playing after its 3 s file looped (${report.back})`)
     // Speech at 6-7 s (source) is at 5-6 s of the output: the ducking follows the cut.
@@ -485,6 +509,7 @@ async function main() {
     const s = pcm(out)
     h.assert(close(s.length / RATE, 4, 0.03), `M4A as long as the video (${s.length / RATE})`)
     h.assert(close(amplitude(s, 440, 1, 3), 0.125, 0.015), `the music is in the M4A at its volume (${amplitude(s, 440, 1, 3)})`)
+    for (const [i, side] of channels(out).entries()) h.assert(close(amplitude(side, 440, 1, 3), 0.125, 0.015), `channel ${i}: the music at its volume (${amplitude(side, 440, 1, 3)})`)
   }))
 
   await test('audio pack: an older project (no stems, music or new settings) exports the audio it did before, with re-timed clips now exactly on their video', fx.withHome('ap-legacy', async (ctx, home) => {
@@ -755,8 +780,12 @@ async function checkRecordedStems(home, method) {
   const mic = pcm(path.join(dir, 'mic.m4a'))
   const mix = pcm(path.join(dir, 'screen.mp4'))
   h.assert(close(mic.length / RATE, project.duration, 0.05), `the stem is as long as the video (${mic.length / RATE} vs ${project.duration})`)
-  const a = onsets(mic)
-  const b = onsets(mix)
+  // Compared over the recording, which ends with the video's last frame. The stem ends there;
+  // the mixed track of a Chromium recording can run a few tens of ms longer, and a burst that
+  // starts in that tail is never played or exported.
+  const end = Math.round(project.duration * RATE)
+  const a = onsets(mic.subarray(0, end))
+  const b = onsets(mix.subarray(0, end))
   console.log(`  ${method}: stem onsets ${a.map((t) => t.toFixed(3)).join(' ')} | mixed ${b.map((t) => t.toFixed(3)).join(' ')}`)
   h.assert(a.length >= 2 && a.length === b.length, `the same sound bursts in both (${a.length} vs ${b.length})`)
   const worst = Math.max(...a.map((t, i) => Math.abs(t - b[i])))

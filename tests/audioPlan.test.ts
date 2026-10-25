@@ -59,7 +59,7 @@ describe('backwards compatibility', () => {
   /**
    * The earlier arguments with only the intended changes: re-timed clips kept on their frames
    * despite atempo's lead (retimed) and cut to exact lengths, and clicks that keep the
-   * recording's channels.
+   * recording's channels, at full level on each side.
    */
   const fixed = (args: string[]): string[] => {
     const bounds = clipSampleBounds(clips)
@@ -72,7 +72,7 @@ describe('backwards compatibility', () => {
         if (speed !== 1) g = g.replace(new RegExp(`(\\[s${i}\\][^;]*),${atempoChain(speed)}\\[c${i}\\]`), `$1,${retimed(speed)}[c${i}]`)
         g = g.replace(new RegExp(`(\\[s${i}\\][^;]*)\\[c${i}\\]`), `$1,apad=whole_len=${n},atrim=end_sample=${n}[c${i}]`)
       })
-      return g.replace('[clk];', '[clk0];[clk0]aresample[clk];')
+      return g.replace('[clk];', `[clk0];[clk0]${STEREO},aresample=rematrix_maxval=1[clk];`)
     })
   }
   it('re-timed clips change only by being kept on their frames and cut to the exact samples of their video (audio)', () => {
@@ -83,10 +83,10 @@ describe('backwards compatibility', () => {
     expect(args.join(' ')).toContain('atrim=end=2,adelay=delays=41.667:all=1,atempo=2,asetpts=PTS-STARTPTS,atrim=start_sample=500,asetpts=PTS-STARTPTS,apad=whole_len=48000,atrim=end_sample=48000[c1]')
     expect(args.join(' ')).toContain('atrim=end=1,adelay=delays=41.667:all=1,atempo=0.5,asetpts=PTS-STARTPTS,atrim=start_sample=2000,asetpts=PTS-STARTPTS,apad=whole_len=96000,atrim=end_sample=96000[c2]')
   })
-  it('clicks over the recording change only by keeping its channel layout (audioClicks)', () => {
+  it('clicks over the recording change only by keeping its channel layout, at full level on each side (audioClicks)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 1 }, clicks: { times: [0.5, 1, 4.2], volume: 0.6 } }, io)
     expect(args).toEqual(fixed(legacy.audioClicks))
-    expect(args.join(' ')).toContain('[clk0]aresample[clk];[rec][clk]amix')
+    expect(args.join(' ')).toContain(`[clk0]${STEREO},aresample=rematrix_maxval=1[clk];[rec][clk]amix`)
   })
 })
 
@@ -444,5 +444,58 @@ describe('soundtrack graphs with ffmpeg', () => {
     // A mono recording under stereo music.
     const tune = { file: 'left-music.m4a', volume: 1, loop: false, fadeIn: 0, fadeOut: 0, duration: 4 }
     sides(channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 }, music: tune }), { mix: mic, music }))
+  })
+
+  it('click sounds play at their volume on each side, as in the preview, also when the soundtrack is stereo', () => {
+    // The preview plays the mono click on both sides at full level (Web Audio's upmix).
+    // aresample's own mono-to-stereo upmix is 3 dB lower: under music, between two stems or
+    // over a stereo recording, the clicks came out at 0.707 of their volume on each side.
+    const mono = make('quiet-mono.m4a', 'anullsrc=r=48000:cl=mono', 4)
+    const stereo = make('quiet-stereo.m4a', 'anullsrc=r=48000:cl=stereo', 4)
+    const audio = { clips: [clip(0, 4)], volume: 1 }
+    const clicks = { times: [0.5], volume: 1 }
+    const music = { file: 'quiet-mono.m4a', volume: 1, loop: false, fadeIn: 0, fadeOut: 0, duration: 4 }
+    // The click track on its own (mono).
+    const alone = channels(m4a(4, { clicks }), { mix: null })
+    expect(alone.count).toBe(1)
+    const level = alone.level(0.45, 0.6)
+    expect(level).toBeGreaterThan(0.05)
+    // Over a mono recording (or a single mono stem) it stays mono, at its volume.
+    for (const out of [channels(m4a(4, { audio, clicks }), { mix: mono }), channels(m4a(4, { audio: { ...audio, stems: { mic: 1 } }, clicks }), { mix: null, stems: { mic: mono } })]) {
+      expect(out.count).toBe(1)
+      expect(out.level(0.45, 0.6)).toBeCloseTo(level, 4)
+    }
+    const sides = [
+      channels(m4a(4, { audio, clicks }), { mix: stereo }),
+      channels(m4a(4, { audio, clicks, music }), { mix: mono, music: mono }),
+      channels(m4a(4, { audio: { ...audio, stems: { mic: 1, system: 1 } }, clicks }), { mix: null, stems: { mic: mono, system: mono } }),
+      channels(m4a(4, { audio: { ...audio, normalize: true }, clicks }), { mix: mono }),
+      channels(m4a(4, { music, clicks }), { mix: null, music: mono })
+    ]
+    sides.forEach((out, i) => {
+      expect(out.count, `case ${i}`).toBe(2)
+      expect(out.level(0.45, 0.6, 0), `case ${i}, left`).toBeCloseTo(level, 4)
+      expect(out.level(0.45, 0.6, 1), `case ${i}, right`).toBeCloseTo(level, 4)
+    })
+  })
+
+  it('mono music, alone or with a mono recording, plays at its volume on each side: made stereo, not louder', () => {
+    // Each side is what is heard. ffmpeg's -ac 1 adds the sides at -3 dB each, so it reads such
+    // a track sqrt(2) louder than it plays; the level itself must stay what the volume says.
+    const tone = make('mono-tune.m4a', 'sine=frequency=440:sample_rate=48000,aformat=channel_layouts=mono', 4)
+    const quiet = make('mono-quiet.m4a', 'anullsrc=r=48000:cl=mono', 4)
+    // The tone's own level, through the graph as a lone recording (which stays mono).
+    const source = channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 } }), { mix: tone })
+    expect(source.count).toBe(1)
+    const level = source.level(0.5, 3.5)
+    expect(level).toBeGreaterThan(0.08)
+    const music = { file: 'mono-tune.m4a', volume: 0.5, loop: false, fadeIn: 0, fadeOut: 0, duration: 4 }
+    const alone = channels(m4a(4, { music }), { mix: null, music: tone })
+    const withRecording = channels(m4a(4, { audio: { clips: [clip(0, 4)], volume: 1 }, music }), { mix: quiet, music: tone })
+    for (const out of [alone, withRecording]) {
+      expect(out.count).toBe(2)
+      expect(out.level(0.5, 3.5, 0)).toBeCloseTo(0.5 * level, 4)
+      expect(out.level(0.5, 3.5, 1)).toBeCloseTo(0.5 * level, 4)
+    }
   })
 })
