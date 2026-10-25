@@ -4,7 +4,7 @@ import { loadRoute, preloadPath } from '../windows'
 import { toolbarPosition } from './placement'
 import type { Rect } from './trackMath'
 
-const SIZE = { width: 580, height: 64 }
+const SIZE = { width: 560, height: 64 }
 
 let toolbar: BrowserWindow | null = null
 /** Every place the toolbar occupied during this recording (clicks there are not content). */

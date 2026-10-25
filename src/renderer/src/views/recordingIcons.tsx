@@ -1,6 +1,6 @@
 /** Icons of the recording bar and the camera bubble (24-unit strokes, like the app's Icon). */
 const PATHS = {
-  pause: 'M8 5h3v14H8zM13 5h3v14h-3z',
+  pause: 'M7 5h3.5v14H7zM13.5 5H17v14h-3.5z',
   play: 'M8 5.5v13l11-6.5z',
   x: 'M6 6l12 12M18 6L6 18',
   trash: 'M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V4h6v3',
@@ -20,10 +20,17 @@ export type RecordingIconName = keyof typeof PATHS
 const FILLED: ReadonlySet<RecordingIconName> = new Set(['pause', 'play'])
 
 export function RecIcon({ name, size = 16 }: { name: RecordingIconName; size?: number }): JSX.Element {
-  const grip = name === 'grip'
+  const filled = FILLED.has(name)
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={grip ? 3.2 : 1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="rec-icon">
-      <path d={PATHS[name]} fill={FILLED.has(name) ? 'currentColor' : 'none'} />
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="rec-icon">
+      <path
+        d={PATHS[name]}
+        fill={filled ? 'currentColor' : 'none'}
+        stroke={filled ? 'none' : 'currentColor'}
+        strokeWidth={name === 'grip' ? 3.2 : 1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

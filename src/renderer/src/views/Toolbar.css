@@ -140,6 +140,7 @@
 
 /* ---------- buttons ---------- */
 .rec-bar .tb-btn {
+  width: auto;
   height: 36px;
   min-width: 36px;
   padding: 0;
