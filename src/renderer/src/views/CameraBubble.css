@@ -3,6 +3,25 @@
  * The window is transparent: only the bubble shows. No CSS animation runs: an always-on-top
  * window that repaints at the display rate would cost the recording frames.
  */
+
+/* This document does not load styles.css: the design tokens it uses, with the same values. */
+:root {
+  --surface-1: #141418;
+  --surface-overlay: rgba(14, 14, 17, 0.94);
+  --text-1: #f4f4f6;
+  --text-2: #a1a1ad;
+  --focus-ring: #a99bff;
+  --focus-ring-width: 2px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --weight-semibold: 600;
+  --dur-fast: 110ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 html,
 body {
   margin: 0;
@@ -10,7 +29,7 @@ body {
   height: 100%;
   overflow: hidden;
   background: transparent;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-sans);
   user-select: none;
 }
 
@@ -25,7 +44,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #16161d;
+  background: var(--surface-1);
   border: 3px solid rgba(255, 255, 255, 0.92);
   cursor: grab;
   touch-action: none;
@@ -40,7 +59,7 @@ body {
 }
 
 .cam-bubble.shape-square {
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .cam-bubble.dragging {
@@ -66,8 +85,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  color: var(--text-2);
+  font-size: var(--text-sm);
 }
 
 .cam-bubble-controls {
@@ -78,11 +97,11 @@ body {
   display: flex;
   gap: 3px;
   padding: 3px;
-  border-radius: 999px;
-  background: rgba(12, 12, 18, 0.78);
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .cam-bubble:hover .cam-bubble-controls {
@@ -102,19 +121,24 @@ body {
   height: 22px;
   padding: 0 4px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: rgba(255, 255, 255, 0.82);
-  font: 600 11px/1 inherit;
+  color: var(--text-2);
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-sans);
   cursor: pointer;
 }
 
 .cam-bubble-btn:hover {
   background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  color: var(--text-1);
+}
+
+.cam-bubble-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .cam-bubble-btn.active {
   background: rgba(255, 255, 255, 0.92);
-  color: #111;
+  color: #111114;
 }
