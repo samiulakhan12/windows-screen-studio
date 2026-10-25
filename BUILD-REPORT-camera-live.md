@@ -175,7 +175,44 @@ validates). No README/docs or shared e2e helper was edited.
 
 ## Verification
 
-(In progress: results are filled in when the e2e runs finish.)
+Run in this container (Linux, Xvfb 1920×1080, openbox, fake camera and microphone):
+
+| check | result |
+| --- | --- |
+| `npm run typecheck` | pass |
+| `npx vitest run` | 1360 of 1361 pass (27 new tests in `cameraBubble.test.ts`, `cameraCorners.test.ts`). The one failure is `tilt.test.ts` › "keeps every corner inside the padding for any lean", a 5 s **timeout**: it runs about 6–8 s on this CPU and fails the same way on the base commit `2144728` without my changes. It passes with `--testTimeout=60000` (38/38). |
+| `npm run build` | pass |
+| `camera-live.e2e.cjs` (new) | 4/4 pass, twice (in the full list and again on the final build) |
+| `camera.e2e.cjs` | pass |
+| `recording.e2e.cjs` | in the full list, 8/9: "vanished sources give friendly errors…" failed once. It presses Stop the moment the bar shows it, and the screen file was empty ("Nothing was captured"). That test has no camera or microphone, so none of the new code runs. **Rerun alone on the final build: 9/9 pass.** I count this as a timing flake under load, not proven. |
+| `recording-options.e2e.cjs` | pass (its desktop-icons-under-wine part SKIPs: no wine here, as before) |
+| `recording-recovery.e2e.cjs` | pass |
+| `recording-region.e2e.cjs` | pass |
+| `recording-window.e2e.cjs` | pass |
+| `recording-native.e2e.cjs` | pass |
+| `smoke.e2e.cjs` | pass |
+| `audit-recording.e2e.cjs` | pass |
+
+`native/` was not changed, so cargo was not run.
+
+What `camera-live.e2e.cjs` proves:
+- the bubble window exists during the countdown and the recording: always on top, not focusable,
+  `setContentProtection(true)` called on it, its video playing the fake camera (pixel check of its
+  screenshot), no preload;
+- exactly one video `getUserMedia` in the recorder's page for the whole recording;
+- three real X drags (top left, top right, and bottom left while paused) become three back-to-back
+  `default` segments with those corners. They start at the drop times (±0.9 s), the paused move
+  lands at the pause start, and the last one runs to the end. The layout track shows the corners;
+- the 720p export has the camera in the expected corner at times before, inside and between the
+  segments. It is measured where only the camera can be (the padding), with a mid-glide frame in
+  neither top corner;
+- hide and show from the bar; pause and resume; mute and unmute. Restart (Keep first, then confirm)
+  gives a new countdown with the main window still hidden, deletes the first take and brings the
+  bubble back. Discard (Keep first, then confirm) leaves nothing;
+- with the option off, the same drag leaves no layouts;
+- Camera panel: "Move camera here from the playhead" adds a 5 s top-left change, a corner button
+  changes the selected one in place, two undos restore, and a camera-only change disables the
+  corners.
 
 ## Known gaps
 
