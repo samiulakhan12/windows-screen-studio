@@ -72,7 +72,8 @@ time**, so cutting or re-timing never moves an overlay off its content.
    ffmpeg with the best working encoder (NVENC / Quick Sync / AMF, else x264); raw video frames are
    converted to 4:2:0 YUV in the renderer, which makes the IPC copies 2.7x smaller. Audio is rebuilt
    from the clips with `atrim`/`atempo`/`concat` (each re-timed clip kept on its frames despite
-   atempo's lead), volume and exact duration; sources mixed together are made stereo first. GIFs use
+   atempo's lead), volume and exact duration; sources mixed together (click sounds too) are made
+   stereo first, a mono one at full level on each side as the preview plays it. GIFs use
    bounded-memory palette passes. Output goes to a temp file and is renamed into place on success.
 
 ## Why these choices

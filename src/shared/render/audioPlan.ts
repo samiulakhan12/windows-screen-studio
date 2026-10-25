@@ -6,7 +6,7 @@
  * ducking; the click sounds; and fades of the whole soundtrack. A job without any of the
  * newer settings produces exactly the graph earlier versions did, except that re-timed clips
  * are cut to the exact length of their video and kept on its frames, click sounds keep the
- * recording's channels, and sources mixed together are made stereo.
+ * recording's channels at full level on each side, and sources mixed together are made stereo.
  */
 import type { ClickSounds, ExportJob } from '../api/export'
 import { duckExpression, fitFades } from '../audio/automation'
@@ -265,8 +265,12 @@ export function soundtrackGraph(opts: {
   if (clicks && hasClicks) {
     const graph = clickTrackGraph(clicks.sounds, duration, clicks.input, solo ? 'aout' : 'clk0')!
     // amix gives all its inputs one channel layout: the mono click would make the whole
-    // soundtrack mono. aresample lets the click take the layout of the sound it joins.
-    branches.push({ label: 'clk', graph: solo ? graph : `${graph};[clk0]aresample[clk]` })
+    // soundtrack mono. The click takes the layout of the sound it joins, at full level on each
+    // side as the preview plays it (aresample's own mono upmix is 3 dB lower): it is made
+    // stereo (see STEREO), then aresample follows the mix. Into a mono recording it averages
+    // the two equal sides back (rematrix_maxval=1 scales its downmix, which adds them, to 1).
+    const join = audio || music ? `${STEREO},aresample=rematrix_maxval=1` : 'aresample'
+    branches.push({ label: 'clk', graph: solo ? graph : `${graph};[clk0]${join}[clk]` })
   }
   if (branches.length === 0) return null
   if (solo) return branches[0].graph
