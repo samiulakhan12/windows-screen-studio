@@ -232,7 +232,10 @@ function GenerateSection({
     clearTranscriptionError()
     const options: TranscribeOptions = { providerId: chosen.id, source: stems ? source : 'auto' }
     if (language) options.language = language
-    void transcribe(services, options)
+    // Once it worked the form closes: the summary shows the new captions and the job's notice.
+    void transcribe(services, options).then((ok) => {
+      if (ok) setOpen(false)
+    })
   }
   const startRef = useRef(start)
   startRef.current = start

@@ -12,6 +12,7 @@ import {
   spokenToken,
   type MeasureText
 } from '../src/shared/captions/layout'
+import { retimeWords } from '../src/shared/captions/edit'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { CaptionSegment, CaptionSettings, Clip } from '../src/shared/types'
 
@@ -250,6 +251,24 @@ describe('captionLayout: every chunk shows (CAP-1)', () => {
     allShown(layout, s)
   })
 
+  it('a caption trimmed on the track into its speech still shows each chunk for a moment', () => {
+    const words = Array.from({ length: 28 }, (_, i) => `word${i}`)
+    const s = seg('a', 0, 8, words.join(' '), words.map((text, i) => ({ text, start: (i * 8) / 28, end: ((i + 0.8) * 8) / 28 })))
+    const look = settings({ maxLines: 1 })
+    const whole = captionLayout(s, look, 1920, 1080, measure)
+    expect(whole.chunks.length).toBeGreaterThan(2)
+    // The end dragged in before the second chunk's first word, then before the last chunk's:
+    // retimeWords clamps the words after it to the new end, where their chunks start.
+    for (const end of [whole.chunks[1].start - 0.1, whole.chunks[whole.chunks.length - 1].start - 0.05]) {
+      const trimmed = retimeWords(s, { start: 0, end })
+      const layout = captionLayout(trimmed, look, 1920, 1080, measure)
+      expect(layout.chunks).toHaveLength(whole.chunks.length)
+      allShown(layout, trimmed)
+      const minShow = Math.min(0.4, end / layout.chunks.length)
+      for (const ch of layout.chunks) expect(ch.end - ch.start).toBeGreaterThanOrEqual(minShow - 1e-9)
+    }
+  })
+
   it('breaks a long word between letters as read, never between a Thai letter and its vowel mark', () => {
     const thai = 'สวัสดีครับวันนี้เราจะมาดูวิธีการบันทึกหน้าจอและการเพิ่มคำบรรยายให้กับวิดีโอของเรา'
     const layout = captionLayout(seg('a', 0, 6, thai), settings({ maxLines: 1 }), 1920, 1080, (text, px) => Array.from(text).length * px)
@@ -278,5 +297,30 @@ describe('captionLayout: right-to-left captions (CAP-2)', () => {
     expect(en.rtl).toBe(false)
     expect(en.chunks[0].lines[0].words[0].x).toBe(0)
     expect(captionLayout(seg('a', 0, 4, '«مرحبا» world'), settings(), 1920, 1080, measure).rtl).toBe(true)
+  })
+
+  /** The words of a one-line caption from left to right as shown (checking they sit side by side across the line). */
+  const shown = (text: string): string[] => {
+    const layout = captionLayout(seg('a', 0, 4, text), settings(), 1920, 1080, measure)
+    expect(layout.chunks).toHaveLength(1)
+    expect(layout.chunks[0].lines).toHaveLength(1)
+    const line = layout.chunks[0].lines[0]
+    const words = [...line.words].sort((a, b) => a.x - b.x)
+    expect(words[0].x).toBeCloseTo(0, 6)
+    expect(words[words.length - 1].x + words[words.length - 1].w).toBeCloseTo(line.width, 6)
+    for (let i = 1; i < words.length; i++) expect(words[i].x).toBeCloseTo(words[i - 1].x + words[i - 1].w + measure(' ', layout.px, 0), 6)
+    return words.map((wd) => wd.text)
+  }
+
+  it('a run of English words in an Arabic caption keeps its order, a number with it', () => {
+    expect(shown('افتح Visual Studio Code الآن')).toEqual(['الآن', 'Visual', 'Studio', 'Code', 'افتح'])
+    expect(shown('ثبت Windows 11 الآن')).toEqual(['الآن', 'Windows', '11', 'ثبت'])
+    // A number between Arabic words reads with them, from the right.
+    expect(shown('عندي 3 قطط')).toEqual(['قطط', '3', 'عندي'])
+  })
+
+  it('a run of Arabic words in an English caption reads from the right', () => {
+    expect(shown('Welcome everyone مرحبا بكم')).toEqual(['Welcome', 'everyone', 'بكم', 'مرحبا'])
+    expect(shown('Say مرحبا بكم to everyone')).toEqual(['Say', 'بكم', 'مرحبا', 'to', 'everyone'])
   })
 })
