@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { cornerRefusal, layoutRefusal, setCornerAt, setLayoutAt } from '../../../../shared/editor/layoutCommands'
-import { LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
+import { LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, removeLayout, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
 import { CORNER_NAMES } from '../../../../shared/recording/cameraBubble'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
@@ -276,7 +276,7 @@ function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, '
 
   const remove = (): void => {
     if (!target) return
-    store.update((p) => ({ ...p, layouts: (p.layouts ?? []).filter((s) => s.id !== target.id) }))
+    store.update((p) => ({ ...p, layouts: removeLayout(p.layouts, target.id) }))
     onSelect(null)
   }
 

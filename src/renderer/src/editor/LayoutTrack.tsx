@@ -1,5 +1,5 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { addLayoutAt, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime } from '../../../shared/editor/layouts'
+import { addLayoutAt, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
@@ -140,6 +140,8 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
     const edge = edgeWidth(r.width)
     const mode = e.clientX - r.left < edge ? 'start' : r.right - e.clientX < edge ? 'end' : 'move'
     const bounds = layoutDragBounds(store.state.layouts ?? [], s.id, duration)
+    // A change cut out of a camera position takes the position's pieces next to it along, so no gap opens in it.
+    const around = stayAround(store.state.layouts ?? [], s)
     const initial = { start: s.start, end: s.end }
     const sx = e.clientX
     store.beginGesture()
@@ -147,7 +149,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
       e,
       (ev) => {
         const times = dragLayoutTimes(initial, mode, (ev.clientX - sx) / px, bounds)
-        store.update((p) => ({ ...p, layouts: (p.layouts ?? []).map((x) => (x.id === s.id ? { ...x, ...times } : x)) }), `layout-drag:${s.id}`)
+        store.update((p) => ({ ...p, layouts: dragLayout(p.layouts, s.id, times, around) }), `layout-drag:${s.id}`)
       },
       (moved) => {
         store.endGesture()

@@ -106,13 +106,28 @@ describe('camera corner per layout segment: geometry', () => {
     expectRect(camAt(large, 7), box)
     expect(box.x).toBeLessThan(W / 4)
     expect(box.y).toBeLessThan(H / 4)
-    // Side by side keeps the project's side; camera only fills the frame: the corner is ignored.
-    for (const layout of ['side-by-side', 'camera-only'] as const) {
-      const p = project([seg('a', 5, 10, 'top-left', layout)])
-      const plain = project([seg('a', 5, 10, undefined, layout)])
-      expectRect(camAt(p, 7), camAt(plain, 7))
-      expect(layoutPhaseAt(p, 7)).toEqual(layoutPhaseAt(plain, 7))
-    }
+    // Camera only fills the frame: the corner is ignored.
+    const p = project([seg('a', 5, 10, 'top-left', 'camera-only')])
+    const plain = project([seg('a', 5, 10, undefined, 'camera-only')])
+    expectRect(camAt(p, 7), camAt(plain, 7))
+    expect(layoutPhaseAt(p, 7)).toEqual(layoutPhaseAt(plain, 7))
+  })
+
+  it('puts the camera card beside the screen on the side of its segment corner', () => {
+    const left = project([seg('a', 5, 10, 'top-left', 'side-by-side')])
+    const card = camAt(left, 7)
+    const screen = sceneContentRect(left, W, H, 1280, 720, 7)
+    expect(card.x + card.w).toBeLessThan(screen.x)
+    expectRect(card, layoutGeometry('side-by-side', project([], { webcam: { show: true, corner: 'top-left', size: 0.24, shape: 'circle' } }), W, H, 1280, 720).camera.rect)
+    // Without one it is the project's side (bottom right: on the right).
+    expect(camAt(project([seg('a', 5, 10, undefined, 'side-by-side')]), 7).x).toBeGreaterThan(W / 2)
+    // A card changing sides moves the screen too.
+    const across = project([seg('a', 5, 10, 'top-left', 'side-by-side'), seg('b', 10, 15, 'top-right', 'side-by-side')])
+    expect(layoutPhaseAt(across, 10.1)).toMatchObject({ from: 'side-by-side', to: 'side-by-side', fromCorner: 'top-left', toCorner: 'top-right' })
+    expect(layoutMoving(across, 10.1)).toBe(true)
+    expect(layoutMoving(across, 12)).toBe(false)
+    // Its corner can be changed at the playhead like the bubble's.
+    expect(setCornerAt({ ...left, duration: 30 }, 'bottom-right', 7)).toMatchObject({ ok: true, id: 'a', added: false })
   })
 
   it('old projects (no corners) get exactly the same phases and boxes as before', () => {

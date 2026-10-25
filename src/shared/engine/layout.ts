@@ -198,8 +198,8 @@ function sideBySide(project: SceneProject, outW: number, outH: number, srcW: num
  * Where the screen and the camera are in `layout`, standing still. The camera keeps its
  * bubble shape over the screen; as a card (filling the frame, or next to the screen) it takes
  * the screen's corner radius. A hidden camera is its bubble, smaller and fully transparent,
- * so it fades out where it was. `corner` (a segment's own) places the bubble and the large
- * camera instead of the project's corner.
+ * so it fades out where it was. `corner` (a segment's own) places the bubble, the large camera
+ * and the side of the card next to the screen instead of the project's corner.
  */
 export function layoutGeometry(
   layout: CameraLayout,
@@ -212,13 +212,13 @@ export function layoutGeometry(
 ): { screen: Rect; camera: CameraBox } {
   const base = styleContentRect(outW, outH, srcW, srcH, project.style)
   const card = project.style.cornerRadius * (Math.min(outW, outH) / 1080)
-  // A segment's own corner moves the bubble (and the large camera) and places a hidden one; the other layouts keep the project's.
+  // A segment's own corner moves the bubble (the large camera, the card beside the screen) and places a hidden one; camera only keeps the project's.
   const webcam = corner && (cornered(layout) || layout === 'screen-only') ? { ...project.webcam, corner } : project.webcam
   switch (layout) {
     case 'camera-only':
       return { screen: scaleRect(base, BEHIND_SCALE), camera: { rect: paddedArea(outW, outH, project.style.padding), radius: card, opacity: 1 } }
     case 'side-by-side': {
-      const g = sideBySide(project, outW, outH, srcW, srcH)
+      const g = sideBySide({ ...project, webcam }, outW, outH, srcW, srcH)
       return { screen: g.screen, camera: { rect: g.camera, radius: card, opacity: 1 } }
     }
     case 'camera-large': {
@@ -236,14 +236,18 @@ export function layoutGeometry(
   }
 }
 
-/** The layouts whose camera sits in a corner that a segment may choose (LayoutSegment.corner). */
-export const cornered = (l: CameraLayout): boolean => l === 'default' || l === 'camera-large'
+/** The layouts whose camera a segment may place by a corner of its own (LayoutSegment.corner); next to the screen it picks the side. */
+export const cornered = (l: CameraLayout): boolean => l === 'default' || l === 'camera-large' || l === 'side-by-side'
 
 /** The corner a segment puts the camera in, when it chooses one its layout uses. */
 export const segmentCorner = (s: Pick<LayoutSegment, 'layout' | 'corner'>): Corner | undefined => (s.corner && cornered(s.layout) ? s.corner : undefined)
 
 /** The layouts that place the screen alike: changing between them leaves the screen still. */
 const screenPlace = (l: CameraLayout): string => (l === 'camera-only' || l === 'side-by-side' ? l : 'base')
+
+/** Whether change `p` moves the screen: between layouts that place it differently, or a card beside it changing sides. */
+const screenMoves = (p: LayoutPhase): boolean =>
+  screenPlace(p.from) !== screenPlace(p.to) || (p.from === 'side-by-side' && p.to === 'side-by-side' && p.fromCorner !== p.toCorner)
 
 /** Whether the camera layouts of `project` apply: a recording with a camera that is shown. */
 export const layoutsApply = (project: Pick<Project, 'hasWebcam' | 'webcam'>): boolean => project.hasWebcam && project.webcam.show
@@ -363,7 +367,7 @@ export function layoutRamps(project: Omit<SceneProject, 'style'>, seg: LayoutSeg
 /** Whether the screen's rectangle is animating at `t` (the compositor then draws the card as it moves instead of from its cache). */
 export function layoutMoving(project: Omit<SceneProject, 'style'>, t: number): boolean {
   const p = layoutPhaseAt(project, t)
-  return p.progress < 1 && screenPlace(p.from) !== screenPlace(p.to)
+  return p.progress < 1 && screenMoves(p)
 }
 
 /** Where the screen and the camera are at source time `t`, with layout changes animated (eased). */
@@ -377,7 +381,7 @@ export function sceneLayout(project: SceneProject, outW: number, outH: number, s
   return {
     screen: lerpRect(from.screen, to.screen, e),
     camera: { rect: lerpRect(from.camera.rect, to.camera.rect, e), radius: lerp(from.camera.radius, to.camera.radius, e), opacity: lerp(from.camera.opacity, to.camera.opacity, e) },
-    moving: screenPlace(p.from) !== screenPlace(p.to)
+    moving: screenMoves(p)
   }
 }
 
