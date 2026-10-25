@@ -42,10 +42,19 @@ tests/                  vitest unit tests; tests/e2e Playwright tests of the bui
 
 ## Data model
 A project folder holds `project.json` (schema v2, migrated automatically from v1), `cursor.json`
-(cursor samples, clicks, keystrokes, cursor shapes, display scale) and H.264 proxies
-(`screen.mp4`, `webcam.mp4`). Edits are a list of **clips** (kept source ranges, each with a speed);
-the gaps between clips are cuts. Zooms, annotations, cursor data and keystrokes stay in **source
-time**, so cutting or re-timing never moves an overlay off its content.
+(cursor samples, clicks with their release times, keystrokes, cursor shapes, zoom-here marks,
+typing bursts, mouse-wheel scrolls, display scale) and H.264 proxies (`screen.mp4`, `webcam.mp4`).
+Edits are a list of **clips** (kept source ranges, each with a speed); the gaps between clips are
+cuts. Zooms, annotations, cursor data and keystrokes stay in **source time**, so cutting or
+re-timing never moves an overlay off its content.
+
+`cursor.json` is written only while recording and once when processing finishes; the editor never
+changes it. Edits to the recorded input are data in `project.json` `inputEdits`: ignored clicks
+(named by their time in whole milliseconds), the straighten-moves option and painted path ranges.
+`shared/engine/inputTrack.ts` `effectiveTrack()` applies them, and the editor's scene (so preview
+and export), processing and every auto zoom regeneration read the track only through it
+(`docs/design/smarter-auto-zoom.md`). Older recordings have no scroll or release data and no
+`inputEdits`, and behave exactly as before.
 
 Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
 names from `productName`). The app was called "Screen Studio for Windows" before; on the first

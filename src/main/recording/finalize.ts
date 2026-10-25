@@ -3,6 +3,8 @@ import path from 'node:path'
 import type { ProcessingProgress } from '../../shared/api/recording'
 import { SOURCE_FILES, STEM_KINDS, type StemKind } from '../../shared/audio/settings'
 import { createProject } from '../../shared/engine/project'
+import { findStrayClicks } from '../../shared/editor/inputEdits'
+import { effectiveTrack } from '../../shared/engine/inputTrack'
 import { autoZoomsForTrack, zoomSettingsOf } from '../../shared/engine/zoom'
 import type { Project } from '../../shared/types'
 import { detectH264Encoders, type H264Encoder } from '../hwEncoders'
@@ -283,8 +285,13 @@ export async function processRecording(
       project.webcam = { ...project.webcam, corner: camera.corner }
       project.layouts = camera.layouts
     }
+    // Clicks that are almost certainly not part of the demo (the click that focused the app,
+    // a click right before stopping, one made while flying past) start out ignored; the editor
+    // shows them and can use them again. Never in cursor.json: only the edit changes.
+    const stray = findStrayClicks(cursor, duration, outSize.width / outSize.height)
+    if (stray.length > 0) project.inputEdits = { ignoredClicks: stray }
     // After the saved defaults, which may include how auto zoom works (clicks, typing, marks).
-    project.zooms = autoZoomsForTrack(cursor, duration, zoomSettingsOf(project).auto)
+    project.zooms = autoZoomsForTrack(effectiveTrack(cursor, project), duration, zoomSettingsOf(project).auto)
     // A stop that landed between two steps must not leave a project behind.
     stopIfCancelled()
     await projects.writeProject(project)

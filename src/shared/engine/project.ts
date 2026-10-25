@@ -1,6 +1,7 @@
 import { readTranscript } from '../captions/captionData'
 import { readCaptionSettings } from '../captions/settings'
 import type { CaptureInfo, Clip, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
+import { readInputEdits, readScrolls } from './inputData'
 import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
@@ -125,7 +126,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
@@ -135,6 +136,8 @@ export function migrateProject(raw: unknown): Project {
     capture: p.capture ?? { method: 'chromium', cursorInVideo: true, region: null },
     clips: normalizeClips(clips, duration),
     zooms: objects(p.zooms),
+    // Ignored clicks and straightened cursor paths, cleaned (absent: the input as recorded).
+    ...optional('inputEdits', readInputEdits(inputEdits, duration)),
     annotations: objects(p.annotations),
     // Read as the renderer draws them, so every one listed can be selected and edited.
     shapes: readItems(p.shapes, readShape),
@@ -158,7 +161,7 @@ export function migrateProject(raw: unknown): Project {
   }
 }
 
-/** Older cursor.json files have no keys/shapes arrays. */
+/** Older cursor.json files have no keys/shapes arrays (nor marks, typing or scrolls). */
 export function migrateCursor(raw: unknown): CursorTrack {
   const c = (raw ?? {}) as Partial<CursorTrack>
   return {
@@ -169,6 +172,8 @@ export function migrateCursor(raw: unknown): CursorTrack {
     scale: typeof c.scale === 'number' && c.scale > 0 ? c.scale : 1,
     ...(Array.isArray(c.marks) ? { marks: c.marks.filter((m) => Number.isFinite(m?.t)) } : {}),
     ...(Array.isArray(c.typing) ? { typing: c.typing.filter((b) => Number.isFinite(b?.t) && Number.isFinite(b?.end)) } : {}),
+    // Mouse-wheel scrolling (newer recordings); older tracks get no `scrolls` key at all.
+    ...optional('scrolls', readScrolls(c.scrolls)),
     valid: !!c.valid
   }
 }

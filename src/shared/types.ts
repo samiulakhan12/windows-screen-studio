@@ -10,6 +10,26 @@ export interface ClickEvent {
   x: number
   y: number
   button: 'left' | 'right' | 'middle'
+  /**
+   * When the button was released (source seconds), for recordings that captured releases; absent
+   * in older recordings and when the release was not seen. A press held while the cursor moves is
+   * a drag, whose path is never straightened. Trust it only when finite and >= `t`.
+   */
+  up?: number
+}
+
+/**
+ * Mouse-wheel input over the recorded content (source seconds, normalised position mapped like
+ * clicks). `dx`/`dy` are signed wheel notches, + = right / down, summed when the tracker merged
+ * events less than 50 ms apart; a touchpad step smaller than a notch is 0 and still counts as
+ * scrolling (activity).
+ */
+export interface ScrollEvent {
+  t: number
+  x: number
+  y: number
+  dx: number
+  dy: number
 }
 
 /** A shortcut-style keystroke (e.g. "Ctrl + C"); plain typing is never recorded. */
@@ -35,6 +55,11 @@ export interface CursorTrack {
   marks?: { t: number }[]
   /** Typing bursts (source seconds; which keys were typed is never recorded). */
   typing?: { t: number; end: number }[]
+  /**
+   * Mouse-wheel scrolling, sorted by time. Absent: recorded before scrolling was captured (auto
+   * zoom then works exactly as it always did); [] means scrolling was captured and none happened.
+   */
+  scrolls?: ScrollEvent[]
   /** Display scale factor (1 = 100%, 1.5 = 150%) of the captured monitor, for cursor sizing. */
   scale?: number
   /** False when the capture target was a window (cursor coordinates unknown). */
@@ -91,7 +116,16 @@ export interface AutoZoomSettings {
   onTyping: boolean
   /** "Zoom here" marks pressed while recording (CursorTrack.marks) create zooms. */
   onMarks: boolean
+  /**
+   * What auto zoom does while a page scrolls (CursorTrack.scrolls): 'zoom-out' shows the whole
+   * frame during a long scroll and zooms back in where it stops (short scrolls hold the zoom);
+   * 'hold' keeps the zoom in through every scroll; 'ignore' leaves zooms as they would be without
+   * scroll data. Absent = 'zoom-out'. No effect on recordings without scroll data.
+   */
+  scrolling?: ScrollZoomMode
 }
+
+export type ScrollZoomMode = 'zoom-out' | 'hold' | 'ignore'
 
 export interface ZoomSettings {
   /** Level of new manual zooms (below 1 pulls back to show more background). */
@@ -458,6 +492,40 @@ export interface CaptureInfo {
   fps?: number
 }
 
+/** Why stray-click detection took a click out (shared/editor/inputEdits.ts findStrayClicks). */
+export type StrayReason = 'start' | 'end' | 'moving'
+
+/** A recorded click taken out of the edit: no zoom, click effect, click sound or smart speed activity. */
+export interface IgnoredClick {
+  /** The click's recorded time in whole milliseconds, clickKey(t) = Math.round(t * 1000): names it in cursor.json. */
+  ms: number
+  /** Set when stray-click detection ignored it rather than the user (the UI says why). */
+  stray?: StrayReason
+}
+
+/** How the cursor moves inside a painted range: straightened, or exactly as recorded. */
+export type PathMode = 'straight' | 'recorded'
+
+/** Source seconds whose cursor moves follow `mode` whatever InputEdits.straighten says. */
+export interface PathRange {
+  start: number
+  end: number
+  mode: PathMode
+}
+
+/**
+ * Edits to the recorded input (cursor.json is never rewritten): every field is optional and
+ * absent means "as recorded", so a project without edits behaves exactly as before.
+ */
+export interface InputEdits {
+  /** Sorted by `ms`, unique. */
+  ignoredClicks?: IgnoredClick[]
+  /** Straighten every eligible cursor move between two resting points (shared/engine/cursorPath.ts). */
+  straighten?: boolean
+  /** Sorted, never overlapping; a move follows the range containing its midpoint. */
+  paths?: PathRange[]
+}
+
 export interface Project {
   version: 2
   id: string
@@ -478,6 +546,8 @@ export interface Project {
   autoZoom: boolean
   /** Zoom defaults and auto zoom settings (absent in older projects: defaults). */
   zoomSettings?: ZoomSettings
+  /** Ignored clicks and straightened cursor paths (absent: the input as recorded). */
+  inputEdits?: InputEdits
   annotations: Annotation[]
   style: StyleSettings
   cursor: CursorSettings

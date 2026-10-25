@@ -287,7 +287,14 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
  * (typingScale). The click into the field just before and the typing are one zoom; clicks and
  * marks elsewhere in the same zoom pan to their own place and back. Typing too short to read
  * makes no zoom of its own.
- * CONTRACT: used by recording finalize and by "Regenerate".
+ *
+ * Scrolling (track.scrolls with settings.scrolling, docs/design/smarter-auto-zoom.md part 3):
+ * 'zoom-out' (the default) zooms out during long scrolls and back in where they stop, short
+ * scrolls hold the zoom; 'hold' holds through every scroll. Without scroll data (older
+ * recordings, or `scrolls: []`) or with 'ignore' the result is exactly what it was before
+ * scrolling was recorded.
+ * CONTRACT: used by recording finalize and by "Regenerate", always with the effective track
+ * (shared/engine/inputTrack.ts effectiveTrack), so ignored clicks stay ignored.
  */
 export function autoZoomsForTrack(track: CursorTrack, duration: number, settings: AutoZoomSettings = DEFAULT_ZOOM_SETTINGS.auto): ZoomSegment[] {
   if (!settings.enabled) return []
@@ -723,7 +730,8 @@ export const DEFAULT_ZOOM_SETTINGS: ZoomSettings = {
     hold: DEFAULT_AUTO_ZOOM.hold,
     rightClicks: false,
     onTyping: true,
-    onMarks: true
+    onMarks: true,
+    scrolling: 'zoom-out'
   }
 }
 
@@ -772,4 +780,28 @@ export function regenerateAutoZooms(
     added: fresh.length,
     kept: manual.length
   }
+}
+
+/**
+ * The project's zooms after a change of the input auto zoom reads (a click ignored or used
+ * again): only the automatic zooms that change are replaced, so zooms the user deleted stay
+ * deleted and zooms the user edited (auto: false) are never touched. `before` and `after` are
+ * autoZoomsForTrack() for the old and the new effective track, with the same settings and
+ * duration. Two zooms are the same when start and end agree within 1e-6 s, scale and focus are
+ * equal, and their anchors agree (t, x, y within 1e-6, and `until`). Rules:
+ *  - keep every zoom of `zooms` (same object, same id) unless it is auto, matches a zoom of
+ *    `before` and matches none of `after`;
+ *  - also drop an auto zoom whose click anchor (anchor.until undefined) has its clickKey(anchor.t)
+ *    in `dropAnchors` (zooms from an older generator, which `before` no longer reproduces);
+ *  - add (with a new id) every zoom of `after` that matches none of `before` and overlaps no
+ *    kept zoom;
+ *  - sorted by start. Returns `zooms` itself when nothing changes.
+ * CONTRACT: used by shared/editor/inputEdits.ts setClicksIgnored (one undo step with the edit).
+ */
+export function rebaseAutoZooms(zooms: ZoomSegment[], before: ZoomSegment[], after: ZoomSegment[], dropAnchors: readonly number[] = []): ZoomSegment[] {
+  void zooms
+  void before
+  void after
+  void dropAnchors
+  throw new Error('not implemented')
 }

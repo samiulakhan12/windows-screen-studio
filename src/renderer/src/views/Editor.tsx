@@ -33,6 +33,7 @@ import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
 import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
+import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { focusPathFor, insertZoom, isUsableClick, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
 import type { CameraLayout, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -192,7 +193,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const { data, store, saver, player } = session
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const services = useMemo<EditorServices>(() => ({ store, player }), [store, player])
-  const cursor = data.cursor
+  // cursor.json as recorded; never changed. Everything that shows or uses input reads `cursor`:
+  // the recording with the project's input edits (ignored clicks, straightened moves) applied.
+  const recorded = data.cursor
+  const { inputEdits, capture, width, height } = project
+  const cursor = useMemo(() => effectiveTrack(recorded, { inputEdits, capture, width, height }), [recorded, inputEdits, capture, width, height])
   const clicks = useMemo(() => cursor.clicks.filter(isUsableClick), [cursor])
 
   const [rawSelection, setRawSelection] = useState<Selection>(null)
