@@ -4,7 +4,7 @@ import { loadRoute, preloadPath } from '../windows'
 import { toolbarPosition } from './placement'
 import type { Rect } from './trackMath'
 
-const SIZE = { width: 360, height: 64 }
+const SIZE = { width: 580, height: 64 }
 
 let toolbar: BrowserWindow | null = null
 /** Every place the toolbar occupied during this recording (clicks there are not content). */
@@ -63,6 +63,12 @@ export function hideToolbar(): void {
 export function sendToolbarStatus(status: ToolbarStatus): void {
   const wc = toolbar?.webContents
   if (wc && !wc.isDestroyed() && !wc.isCrashed()) wc.send('recording:status', status)
+}
+
+/** The microphone's level for the meter (only while the bar is shown). */
+export function sendToolbarLevel(level: number): void {
+  const wc = toolbar?.webContents
+  if (wc && !wc.isDestroyed() && !wc.isCrashed() && toolbar!.isVisible()) wc.send('recording:level', level)
 }
 
 export function toolbarAreas(): readonly Rectangle[] {

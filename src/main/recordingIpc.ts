@@ -16,6 +16,8 @@ import {
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type {
+  BubbleDragPhase,
+  CameraBubbleGrant,
   CapturePlan,
   NativeStartResult,
   ProcessingProgress,
@@ -30,6 +32,7 @@ import type {
   TrackKind,
   WindowCaptureSupport
 } from '../shared/api/recording'
+import { isBubbleSize, isCorner } from '../shared/recording/cameraBubble'
 import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
 import {
@@ -43,13 +46,26 @@ import {
   type Hotkeys
 } from '../shared/recording/hotkeys'
 import { DEFAULT_RECORDING_SETTINGS, type AppSettings, type RecordingSettings, type RecordingSettingsPatch } from '../shared/recording/settings'
-import type { CaptureSource, NormRect } from '../shared/types'
+import type { CaptureSource, Corner, NormRect, WebcamSettings } from '../shared/types'
 import { appSettings } from './appSettings'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
 import * as nativeModule from './nativeCapture'
 import type { NativeEndedInfo } from './nativeCapture'
 import * as projects from './projects'
+import {
+  allowBubble,
+  BUBBLE_FRAME,
+  bubbleCreated,
+  bubbleStatus,
+  bubbleWindowOptions,
+  closeBubble,
+  dragBubble,
+  moveBubble,
+  resizeBubble,
+  toggleBubble
+} from './recording/cameraBubbleWindow'
+import { setCameraFollows, setCameraMoves, type BubbleMove } from './recording/cameraMoves'
 import { DesktopIcons } from './recording/desktopIcons'
 import { EmptyRecordingError, processRecording, RecordingError } from './recording/finalize'
 import { IdleDetector } from './recording/idleDetector'
@@ -64,6 +80,7 @@ import {
   hideToolbar,
   isToolbarVisible,
   prepareToolbar,
+  sendToolbarLevel,
   sendToolbarStatus,
   showToolbar,
   toolbarAreas
@@ -72,7 +89,8 @@ import { buildCursorTrack, type RawTrack, type WindowMapping } from './recording
 import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recording/userMessages'
 import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
 import { isAppUrl } from './security'
-import { getMainWindow, loadRoute } from './windows'
+import { loadStyleDefaults } from './styleDefaults'
+import { allowPopup, getMainWindow, loadRoute } from './windows'
 
 const TRACK_KINDS: readonly TrackKind[] = ['screen', 'webcam', 'audio', 'mic', 'system']
 /** Source thumbnails on Home: small JPEGs (cheap to encode and to send over IPC). */
@@ -98,6 +116,12 @@ let idle: IdleDetector | null = null
 /** The recorder was told to pause because of inactivity (cleared when it records again). */
 let autoPaused = false
 let marks = 0
+/** The microphone as the recorder last reported it (null: the recording has none). */
+let micStatus: ToolbarStatus['mic'] | null = null
+/** How the camera bubble of the recording being prepared starts: the default look's corner, shape and mirroring. */
+let bubbleLook: { corner: Corner; shape: WebcamSettings['shape']; mirror: boolean } = { corner: 'bottom-right', shape: 'circle', mirror: true }
+/** Every corner the camera bubble went to during the recording in progress (the first: where it started). */
+let bubbleMoves: BubbleMove[] = []
 let lastStatus: ToolbarStatus = { state: 'idle', elapsed: 0 }
 let checkpoints: NodeJS.Timeout | null = null
 const icons = new DesktopIcons({
@@ -275,7 +299,9 @@ function toolbarStatus(update: Pick<ToolbarStatus, 'state' | 'elapsed' | 'starti
     ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
     ...(marks ? { marks } : {}),
     ...(update.starting ? { starting: true } : {}),
-    ...(update.state === 'paused' && autoPaused ? { idle: true } : {})
+    ...(update.state === 'paused' && autoPaused ? { idle: true } : {}),
+    ...(micStatus ? { mic: micStatus } : {}),
+    ...(bubbleStatus() ? { camera: bubbleStatus()! } : {})
   }
 }
 
@@ -308,9 +334,13 @@ function stopIdleDetection(): void {
   autoPaused = false
 }
 
-function endRecordingUi(): void {
+/** `restarting`: a new recording follows at once, so the main window stays hidden. */
+function endRecordingUi(restarting = false): void {
   unregisterHotkeys()
   stopIdleDetection()
+  closeBubble()
+  bubbleMoves = []
+  micStatus = null
   hotkeyProblems = []
   marks = 0
   // The desktop icons come back as soon as the recording ends (stop, cancel or crash).
@@ -320,7 +350,7 @@ function endRecordingUi(): void {
   sendToolbarStatus(lastStatus)
   hideToolbar()
   const main = getMainWindow()
-  if (main && !main.isDestroyed()) {
+  if (main && !main.isDestroyed() && !restarting) {
     main.show()
     main.focus()
   }
@@ -405,6 +435,7 @@ async function interrupt(s: ActiveRecording): Promise<void> {
   } finally {
     tracker.stop()
   }
+  saveBubbleMoves(s)
   s.manifest.duration = duration
   s.manifest.status = 'interrupted'
   await projects.writeManifest(s.manifest).catch((err) => console.error('Could not save the recording state:', err))
@@ -523,6 +554,9 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   activeDisplay = source.display
   captureKeys = request.captureKeys
   options = settings
+  setCameraFollows(manifest, settings.cameraFollowsBubble)
+  bubbleMoves = []
+  bubbleLook = await bubbleLookOfDefaults()
   grant = { id: request.sourceId, name: source.name, systemAudio: request.systemAudio }
   prepareToolbar(source.display, region && source.display ? regionToRect(region, source.display.bounds) : null)
   marks = 0
@@ -540,6 +574,55 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
     ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
     ...(notice ? { notice } : {})
   }
+}
+
+/** The camera bubble looks like the camera of a new recording: the saved default look's corner, shape and mirroring. */
+async function bubbleLookOfDefaults(): Promise<typeof bubbleLook> {
+  const look: typeof bubbleLook = { corner: 'bottom-right', shape: 'circle', mirror: true }
+  try {
+    const w = (await loadStyleDefaults())?.webcam
+    if (isCorner(w?.corner)) look.corner = w.corner
+    if (w?.shape === 'circle' || w?.shape === 'rounded' || w?.shape === 'square') look.shape = w.shape
+    if (typeof w?.mirror === 'boolean') look.mirror = w.mirror
+  } catch (err) {
+    console.warn('Could not read the default look for the camera bubble:', err)
+  }
+  return look
+}
+
+/**
+ * Lets the recorder's page open the live camera bubble for recording `token` (it shows the
+ * camera stream the page already records, so the camera is never opened twice). Refused when no
+ * camera bubble can be kept out of the capture on this PC; the recording goes on either way.
+ */
+function allowCameraBubble(token: string): CameraBubbleGrant {
+  const s = requireSession(token)
+  if (s.phase !== 'countdown' && s.phase !== 'recording' && s.phase !== 'paused') return { ok: false, reason: 'The recording is ending.' }
+  const display = activeDisplay ?? screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const { corner, shape, mirror } = bubbleLook
+  const shownChanged = (): void => {
+    lastStatus = toolbarStatus(lastStatus)
+    sendToolbarStatus(lastStatus)
+  }
+  const ok = allowBubble(token, display.workArea, corner, (c) => bubbleMoved(s, c), shownChanged)
+  if (!ok) return { ok: false, reason: 'The live camera bubble needs Windows 10 version 2004 or later, which can keep it out of the recording.' }
+  bubbleMoves = [{ at: Date.now(), corner }]
+  return { ok: true, name: BUBBLE_FRAME, shape, mirror, size: 'M', corner }
+}
+
+/** The bubble went to `corner`: remembered with its time (kept in the manifest at once, for a crash). */
+function bubbleMoved(s: ActiveRecording, corner: Corner): void {
+  if (active !== s) return
+  bubbleMoves.push({ at: Date.now(), corner })
+  if (s.manifest.startedAt === null) return
+  saveBubbleMoves(s)
+  void projects.writeManifest(s.manifest).catch((err) => console.error('Could not save the recording state:', err))
+}
+
+/** Puts the bubble's moves in the manifest, in recording time (call again once the pauses or the start are final). */
+function saveBubbleMoves(s: ActiveRecording): void {
+  const m = s.manifest
+  if (m.startedAt !== null && bubbleMoves.length > 0) setCameraMoves(m, bubbleMoves, m.startedAt, s.pausesUntil())
 }
 
 /** The recording options to use now; a broken settings file never stops a recording. */
@@ -630,6 +713,7 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
   // So a recording interrupted by a crash keeps its separately recorded sound in sync.
   if (typeof info.audioOffset === 'number' && Math.abs(info.audioOffset) < 60) m.audioOffset = info.audioOffset
   setExpectedStems(m, info.hasAudio ? info.stems : [])
+  saveBubbleMoves(s)
   s.phase = 'recording'
   // Native capture started tracking with the helper; Chromium capture starts now.
   if (!s.usesNative) startTracker(s)
@@ -644,6 +728,7 @@ async function started(token: string, info: RecordingStartInfo): Promise<void> {
 function setStatus(token: string, status: RecorderStatusUpdate): void {
   const s = active
   if (!s || s.token !== token) return
+  if (status.mic) micStatus = { muted: status.mic.muted === true }
   if (status.state === 'recording') {
     autoPaused = false
     // Watching again after a manual pause.
@@ -768,6 +853,7 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
     m.duration = measured > 0 ? measured : s.activeSeconds()
     m.webcamOffset = Number.isFinite(payload.webcamOffset) ? payload.webcamOffset : 0
     m.audioOffset = Number.isFinite(payload.audioOffset) ? payload.audioOffset : 0
+    saveBubbleMoves(s)
     // Stems are kept only as a complete set: after one failed, the editor uses the mixed sound.
     await settleStems(m, s.dir, payload.stems)
     try {
@@ -784,11 +870,11 @@ async function save(token: string, payload: SaveRecordingPayload): Promise<strin
   }
 }
 
-async function cancel(token: string): Promise<void> {
+async function cancel(token: string, restarting: boolean): Promise<void> {
   const s = active
   if (!s || s.token !== token || s.phase === 'processing') return
   await discard(s)
-  endRecordingUi()
+  endRecordingUi(restarting)
 }
 
 async function recover(id: string): Promise<string> {
@@ -875,7 +961,25 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('recording:command', (_e, command: RecorderCommand) => forwardCommand(command))
   ipcMain.handle('recording:getStatus', (): ToolbarStatus => lastStatus)
   ipcMain.handle('recording:save', (_e, token: string, payload: SaveRecordingPayload) => save(token, payload))
-  ipcMain.handle('recording:cancel', (_e, token: string) => cancel(token))
+  ipcMain.handle('recording:cancel', (_e, token: string, restarting?: unknown) => cancel(token, restarting === true))
+  // The camera bubble: asked for and moved by the recorder's page, hidden or shown from the recording bar.
+  allowPopup(BUBBLE_FRAME, { options: bubbleWindowOptions, created: bubbleCreated })
+  ipcMain.handle('recording:allowBubble', (e, token: string) => (fromApp(e) ? allowCameraBubble(token) : { ok: false, reason: 'Not allowed.' }))
+  ipcMain.on('recording:dragBubble', (e, token: unknown, phase: BubbleDragPhase, x: unknown, y: unknown) => {
+    if (fromApp(e)) dragBubble(token, phase, x, y)
+  })
+  ipcMain.on('recording:moveBubble', (e, token: unknown, corner: unknown) => {
+    if (fromApp(e) && isCorner(corner)) moveBubble(token, corner)
+  })
+  ipcMain.on('recording:resizeBubble', (e, token: unknown, size: unknown) => {
+    if (fromApp(e) && isBubbleSize(size)) resizeBubble(token, size)
+  })
+  ipcMain.handle('recording:toggleBubble', (e) => {
+    if (fromApp(e)) toggleBubble()
+  })
+  ipcMain.on('recording:level', (e, token: unknown, level: unknown) => {
+    if (fromApp(e) && active?.token === token && typeof level === 'number' && Number.isFinite(level)) sendToolbarLevel(Math.min(1, Math.max(0, level)))
+  })
   ipcMain.handle('recording:pickRegion', (_e, sourceId: string) => pickRegion(sourceId))
   ipcMain.handle('recordings:unfinished', () => projects.listUnfinished(new Set([...processing, ...(active ? [active.id] : [])])))
   ipcMain.handle('recordings:recover', (_e, id: string) => recover(id))
@@ -899,6 +1003,11 @@ export function registerRecordingIpc(): void {
 
   // Desktop icons that a crashed session left hidden come back now.
   void icons.restore()
+}
+
+/** Whether an IPC message comes from the app's own page (the camera bubble's calls are checked). */
+function fromApp(e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean {
+  return isAppUrl(e.senderFrame?.url ?? '')
 }
 
 /**

@@ -4,6 +4,7 @@ import type { NormRect } from '../../../shared/types'
 import { ChunkPipe } from '../../../shared/recording/chunkPipe'
 import { captureDisplay, SYSTEM_AUDIO_WARNING } from '../../../shared/recording/displayCapture'
 import { friendlyError, RecorderError, SOURCE_GONE, type DeviceKind } from '../../../shared/recording/errors'
+import { levelFromSamples } from './devices'
 import { epochNow, nextFrameSize, nextFrameTime, syncEpoch } from './firstFrame'
 import { AUDIO_MIMES, CAMERA_MIMES, pickMime, screenBitrate, screenMimes } from '../../../shared/recording/mime'
 
@@ -18,6 +19,8 @@ export interface SessionOptions {
 
 /** One-second chunks keep at most ~1 s of media per track in flight. */
 const TIMESLICE_MS = 1000
+/** How often the microphone's level is measured for the recording bar's meter (ms). */
+const METER_MS = 125
 
 interface Track {
   kind: TrackKind
@@ -80,6 +83,8 @@ export class RecordingSession {
   private disposed = false
   /** System audio could not be started (no active output device, …). */
   private loopbackFailed = false
+  private muted = false
+  private meter: { ctx: AudioContext; timer: number } | null = null
   readonly warnings: string[] = []
   /** The captured screen/window went away (closed window, unplugged display). */
   onEnded: (() => void) | null = null
@@ -357,6 +362,66 @@ export class RecordingSession {
     return this.isPaused
   }
 
+  /**
+   * The camera as it is being recorded, for the live camera bubble: the same capture (a clone of
+   * the track shows it elsewhere), so the camera is never opened a second time.
+   */
+  get cameraTrack(): MediaStreamTrack | null {
+    return this.camera?.readyState === 'live' ? this.camera : null
+  }
+
+  /** The recording has a microphone. */
+  get hasMic(): boolean {
+    return this.audioSources.some((a) => a.kind === 'mic')
+  }
+
+  get micMuted(): boolean {
+    return this.muted
+  }
+
+  /**
+   * Silences the microphone in the recording (and its stem) while `muted`: the track keeps
+   * running and delivers silence, so nothing restarts and the timelines stay in step.
+   */
+  setMicMuted(muted: boolean): void {
+    this.muted = muted
+    for (const a of this.audioSources) if (a.kind === 'mic') a.track.enabled = !muted
+  }
+
+  /**
+   * Measures the microphone a few times a second for the recording bar's meter (`onLevel`, 0..1,
+   * sent only when it changes visibly). A meter that cannot start is simply left out.
+   */
+  meterMic(onLevel: (level: number) => void): void {
+    const mic = this.audioSources.find((a) => a.kind === 'mic' && a.track.readyState === 'live')
+    if (!mic || this.meter) return
+    try {
+      const ctx = new AudioContext()
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 1024
+      ctx.createMediaStreamSource(new MediaStream([mic.track])).connect(analyser)
+      const samples = new Float32Array(analyser.fftSize)
+      let sent = -1
+      const timer = window.setInterval(() => {
+        analyser.getFloatTimeDomainData(samples)
+        const level = this.muted || this.isPaused ? 0 : levelFromSamples(samples)
+        if (Math.abs(level - sent) < 0.03) return
+        sent = level
+        onLevel(level)
+      }, METER_MS)
+      this.meter = { ctx, timer }
+    } catch (err) {
+      console.warn('The microphone level is not shown:', err)
+    }
+  }
+
+  private stopMeter(): void {
+    if (!this.meter) return
+    window.clearInterval(this.meter.timer)
+    void this.meter.ctx.close().catch(() => undefined)
+    this.meter = null
+  }
+
   /** Stops the recorders, waits until every chunk is on disk and returns the timing metadata. */
   async stop(): Promise<SaveRecordingPayload> {
     this.freeze()
@@ -396,6 +461,7 @@ export class RecordingSession {
 
   dispose(): void {
     this.disposed = true
+    this.stopMeter()
     for (const t of this.tracks) if (t.recorder.state !== 'inactive') t.recorder.stop()
     for (const s of this.streams) s.getTracks().forEach((t) => t.stop())
     this.streams = []

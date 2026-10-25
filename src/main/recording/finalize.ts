@@ -11,6 +11,7 @@ import { muxAudioArgs, proxyArgs, regionPixels, stemArgs, type ExternalAudio, ty
 import { applyStyleDefaults, loadStyleDefaults } from '../styleDefaults'
 import { EmptyRecordingError, RecordingError } from './errors'
 import { cancelledError, FfmpegError, isCancelled, runFfmpegProgress, type FfmpegRun } from './proxyRunner'
+import { bubbleLayouts } from './cameraMoves'
 import { measureStemLag } from './stemAlign'
 import { expectedStems, STEM_RAW } from './stems'
 import { clampTrack } from './trackMath'
@@ -276,6 +277,8 @@ export async function processRecording(
     // Every source of the mixed sound (a complete set): `false` means that source was not recorded.
     if (stems.length > 0) project.audioStems = { mic: stems.includes('mic'), system: stems.includes('system') }
     project = await withStyleDefaults(project)
+    // Where the live camera bubble was moved while recording (when the camera follows it).
+    if (webcamOk) project.layouts = bubbleLayouts(manifest, duration, project.webcam.corner)
     // After the saved defaults, which may include how auto zoom works (clicks, typing, marks).
     project.zooms = autoZoomsForTrack(cursor, duration, zoomSettingsOf(project).auto)
     // A stop that landed between two steps must not leave a project behind.

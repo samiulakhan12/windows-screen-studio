@@ -127,8 +127,9 @@ export function readWebcamLook(w: Record<string, unknown>): Pick<WebcamSettings,
 
 /**
  * Stored layout segments, sanitised: entries that are not objects, have no (or a repeated) id,
- * an unknown layout or unusable times are dropped; the rest are clamped to the recording,
- * sorted, and trimmed so none overlaps the one before it (one layout at a time).
+ * an unknown layout or unusable times are dropped (an unknown camera corner is left out); the
+ * rest are clamped to the recording, sorted, and trimmed so none overlaps the one before it (one
+ * layout at a time).
  */
 export function readLayouts(list: unknown, duration: number): LayoutSegment[] {
   if (!Array.isArray(list)) return []
@@ -143,7 +144,10 @@ export function readLayouts(list: unknown, duration: number): LayoutSegment[] {
     const end = clamp(s.end, 0, duration)
     if (end - start < 0.05) continue
     ids.add(s.id)
-    items.push({ id: s.id, start, end, layout: s.layout as CameraLayout })
+    const seg: LayoutSegment = { id: s.id, start, end, layout: s.layout as CameraLayout }
+    // A chosen camera corner is kept when valid (older projects have none).
+    if (CORNERS.includes(s.corner as Corner)) seg.corner = s.corner
+    items.push(seg)
   }
   items.sort((a, b) => a.start - b.start)
   const out: LayoutSegment[] = []

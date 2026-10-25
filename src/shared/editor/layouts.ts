@@ -1,8 +1,8 @@
-import { layoutRamps } from '../engine/layout'
+import { cornered, layoutRamps, segmentCorner } from '../engine/layout'
 import { clamp } from '../engine/math'
 import { keptBounds } from '../engine/timeline'
 import { MIN_LAYOUT_LENGTH } from '../engine/webcamData'
-import type { CameraLayout, Clip, LayoutSegment, Project } from '../types'
+import type { CameraLayout, Clip, Corner, LayoutSegment, Project } from '../types'
 import { displayTime } from './clips'
 
 /** Default length (seconds) of a new layout segment. */
@@ -28,6 +28,18 @@ export const layoutLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find
 export function layoutAt(project: Pick<Project, 'layouts'>, t: number): CameraLayout {
   return project.layouts?.find((s) => t >= s.start && t < s.end)?.layout ?? 'default'
 }
+
+/**
+ * The camera's corner at source time `t`: the corner the segment there chose, else the project's
+ * (the Camera section's corner, the default for times without a segment).
+ */
+export function cornerAt(project: Pick<Project, 'layouts' | 'webcam'>, t: number): Corner {
+  const seg = layoutSegmentAt(project.layouts, t)
+  return (seg && segmentCorner(seg)) ?? project.webcam.corner
+}
+
+/** Whether segment `seg`'s layout puts the camera in a corner it may choose. */
+export const segmentHasCorner = (seg: Pick<LayoutSegment, 'layout'>): boolean => cornered(seg.layout)
 
 /** A new layout segment starting at `t`, clamped to the recording. */
 export function createLayoutSegment(layout: CameraLayout, t: number, duration: number): LayoutSegment {
@@ -73,9 +85,10 @@ export type AddLayoutResult =
  * A new segment of `layout` at the playhead `t` (layoutTimeAt), and the layouts with it added in
  * order. It starts there and lasts DEFAULT_LAYOUT_LENGTH, ending where the next one starts so
  * segments never overlap. Too close to the end of the video for that, it ends with the video and
- * starts earlier instead (after the one before), so its change still plays.
+ * starts earlier instead (after the one before), so its change still plays. `corner`: the camera
+ * corner the new segment chooses.
  */
-export function addLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number): AddLayoutResult {
+export function addLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number, corner?: Corner): AddLayoutResult {
   const layouts = project.layouts ?? []
   const end = videoEnd(project)
   const at = layoutTimeAt(project, t)
@@ -95,7 +108,7 @@ export function addLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number
     start = Math.max(before, stop - DEFAULT_LAYOUT_LENGTH)
   }
   if (stop - start < MIN_NEW_SEGMENT) return atEnd ? { ok: false, reason: 'end', id: prev?.id ?? null } : { ok: false, reason: 'no-room', id: null }
-  const segment = { ...seg, start, end: stop }
+  const segment: LayoutSegment = { ...seg, start, end: stop, ...(corner ? { corner } : {}) }
   return { ok: true, layouts: [...layouts, segment].sort((a, b) => a.start - b.start), segment }
 }
 
