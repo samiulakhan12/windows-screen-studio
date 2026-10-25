@@ -6,7 +6,9 @@
  * regeneration all see the same clicks and the same cursor path. cursor.json itself is never
  * changed. Pure.
  */
-import type { CursorTrack, Project } from '../types'
+import type { ClickEvent, CursorSample, CursorTrack, IgnoredClick, PathRange, Project } from '../types'
+import { planCursorPath } from './cursorPath'
+import { clickKey } from './inputData'
 
 /** What effectiveTrack reads from the project. */
 export type InputContext = Pick<Project, 'inputEdits' | 'capture' | 'width' | 'height'>
@@ -28,7 +30,67 @@ export type InputContext = Pick<Project, 'inputEdits' | 'capture' | 'width' | 'h
  * samples any other way.
  */
 export function effectiveTrack(recorded: CursorTrack, ctx: InputContext): CursorTrack {
-  // Stub until workstream B lands: no edit is applied, which is exactly the old behaviour.
-  void ctx
-  return recorded
+  if (!recorded.valid) return recorded
+  const edits = ctx.inputEdits
+  const ignored = edits?.ignoredClicks ?? NONE_IGNORED
+  const paths = edits?.paths ?? NO_PATHS
+  const straighten = edits?.straighten === true
+  const aspect = ctx.width > 0 && ctx.height > 0 ? ctx.width / ctx.height : 16 / 9
+  const inVideo = !!ctx.capture?.cursorInVideo
+  const hit = trackCache.get(recorded)
+  if (
+    hit &&
+    hit.samples === recorded.samples &&
+    hit.clicks === recorded.clicks &&
+    hit.scrolls === recorded.scrolls &&
+    hit.ignored === ignored &&
+    hit.paths === paths &&
+    hit.straighten === straighten &&
+    hit.aspect === aspect &&
+    hit.inVideo === inVideo
+  )
+    return hit.track
+  const clicks = usedClicks(recorded.clicks, ignored)
+  const samples: CursorSample[] =
+    inVideo || (!straighten && paths.length === 0) ? recorded.samples : planCursorPath(recorded, { aspect, straighten, paths }).samples
+  const track = clicks === recorded.clicks && samples === recorded.samples ? recorded : { ...recorded, samples, clicks }
+  trackCache.set(recorded, { samples: recorded.samples, clicks: recorded.clicks, scrolls: recorded.scrolls, ignored, paths, straighten, aspect, inVideo, track })
+  return track
+}
+
+const NONE_IGNORED: IgnoredClick[] = []
+const NO_PATHS: PathRange[] = []
+
+const trackCache = new WeakMap<
+  CursorTrack,
+  {
+    samples: CursorSample[]
+    clicks: ClickEvent[]
+    scrolls: CursorTrack['scrolls']
+    ignored: IgnoredClick[]
+    paths: PathRange[]
+    straighten: boolean
+    aspect: number
+    inVideo: boolean
+    track: CursorTrack
+  }
+>()
+const clickCache = new WeakMap<ClickEvent[], WeakMap<IgnoredClick[], ClickEvent[]>>()
+
+/** `clicks` without the ignored ones: `clicks` itself when none of them is ignored. Cached per (clicks, ignored) arrays. */
+function usedClicks(clicks: ClickEvent[], ignored: IgnoredClick[]): ClickEvent[] {
+  if (ignored.length === 0 || clicks.length === 0) return clicks
+  let byIgnored = clickCache.get(clicks)
+  if (!byIgnored) {
+    byIgnored = new WeakMap()
+    clickCache.set(clicks, byIgnored)
+  }
+  let used = byIgnored.get(ignored)
+  if (!used) {
+    const keys = new Set(ignored.map((e) => e.ms))
+    const kept = clicks.filter((c) => !keys.has(clickKey(c.t)))
+    used = kept.length === clicks.length ? clicks : kept
+    byIgnored.set(ignored, used)
+  }
+  return used
 }

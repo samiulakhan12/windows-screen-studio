@@ -1,7 +1,7 @@
 /**
  * Smart speed: finds the idle parts of a recording, where the picture stays still (ffmpeg
  * freezedetect in the main process), nothing is heard (the audio pack's sound activity) and
- * nothing is done with the mouse or keyboard, and speeds them up or cuts them. Everything here
+ * you did not move, click, scroll or type, and speeds them up or cuts them. Everything here
  * is in source seconds; only parts still in the video count. Pure, so the Clip panel's list and
  * its Apply button agree exactly.
  *
@@ -11,6 +11,7 @@
  */
 import { rangesToOutput } from '../audio/activity'
 import { clamp } from '../engine/math'
+import { SCROLL, scrollSessions } from '../engine/scroll'
 import { cutRange, outputDuration } from '../engine/timeline'
 import type { Clip, CursorTrack } from '../types'
 import { setRangeSpeed } from './clips'
@@ -92,8 +93,10 @@ export function keptRanges(clips: readonly Clip[]): TimeRange[] {
 }
 
 /**
- * Stretches of [0, duration] with no input: no cursor movement (beyond jitter), clicks,
- * shortcuts, typing or "zoom here" marks. Null when the recording has no input data (a
+ * Stretches of [0, duration] with no input, where you did not move, click, scroll or type: no
+ * cursor movement (beyond jitter), clicks, shortcuts, typing, mouse-wheel scrolling (a whole
+ * scroll session is busy, SCROLL.activityPad either side, so wheel events up to SCROLL.join
+ * apart leave no idle hole) or "zoom here" marks. Null when the recording has no input data (a
  * window recorded without the native helper), since then nothing is known about input.
  */
 export function inputGaps(track: CursorTrack, duration: number): TimeRange[] | null {
@@ -116,6 +119,7 @@ export function inputGaps(track: CursorTrack, duration: number): TimeRange[] | n
   for (const k of track.keys ?? []) at(k.t)
   for (const m of track.marks ?? []) at(m.t)
   for (const b of track.typing ?? []) activity.push({ start: b.t - INPUT_SPAN / 2, end: Math.max(b.t, b.end) + INPUT_SPAN / 2 })
+  for (const s of scrollSessions(track.scrolls)) activity.push({ start: s.start - SCROLL.activityPad, end: s.end + SCROLL.activityPad })
   const busy = activity
     .filter((r) => Number.isFinite(r.start) && Number.isFinite(r.end))
     .map((r) => ({ start: clamp(r.start, 0, duration), end: clamp(r.end, 0, duration) }))

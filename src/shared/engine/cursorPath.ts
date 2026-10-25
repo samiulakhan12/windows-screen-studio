@@ -7,7 +7,7 @@
  * Distances are in video heights: d(p, q) = hypot((p.x - q.x) * aspect, p.y - q.y) with
  * aspect = project width / height (at 1080p, 0.001 is about 1 px). Pure and deterministic.
  */
-import type { CursorSample, CursorTrack, PathRange } from '../types'
+import type { ClickEvent, CursorSample, CursorTrack, PathRange, ScrollEvent } from '../types'
 
 export const PATH = {
   /** Samples staying within this distance of a rest's first sample belong to the rest. */
@@ -80,16 +80,165 @@ export const minJerk = (s: number): number => s * s * s * (10 - 15 * s + 6 * s *
  * both modes. Cached per (samples, clicks, scrolls) arrays and aspect. [] for an invalid track.
  */
 export function cursorMoves(track: CursorTrack, aspect: number): CursorMove[] {
-  // Stub until workstream B lands: no moves (nothing is straightened, every count is 0).
-  void track
-  void aspect
-  return []
+  if (!track.valid || track.samples.length < 2) return []
+  const A = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9
+  let entries = moveCache.get(track.samples)
+  if (!entries) {
+    entries = []
+    moveCache.set(track.samples, entries)
+  }
+  const hit = entries.find((e) => e.clicks === track.clicks && e.scrolls === track.scrolls && e.aspect === A)
+  if (hit) return hit.moves
+  const moves = findMoves(track.samples, track.clicks, track.scrolls ?? NO_SCROLLS, A)
+  entries.unshift({ clicks: track.clicks, scrolls: track.scrolls, aspect: A, moves })
+  if (entries.length > CACHE_SIZE) entries.pop()
+  return moves
+}
+
+const CACHE_SIZE = 4
+const NO_SCROLLS: ScrollEvent[] = []
+const moveCache = new WeakMap<CursorSample[], { clicks: ClickEvent[]; scrolls: ScrollEvent[] | undefined; aspect: number; moves: CursorMove[] }[]>()
+const restCache = new WeakMap<CursorSample[], { aspect: number; rests: [number, number][] }[]>()
+const EPS = 1e-9
+
+type Pt = { x: number; y: number }
+
+const dist = (p: Pt, q: Pt, A: number): number => Math.hypot((p.x - q.x) * A, p.y - q.y)
+
+/** Distance (video heights) from p to the segment a-b. */
+function segmentDist(p: Pt, a: Pt, b: Pt, A: number): number {
+  const ax = a.x * A
+  const bx = b.x * A
+  const px = p.x * A
+  const dx = bx - ax
+  const dy = b.y - a.y
+  const len2 = dx * dx + dy * dy
+  const k = len2 > 0 ? Math.min(1, Math.max(0, ((px - ax) * dx + (p.y - a.y) * dy) / len2)) : 0
+  return Math.hypot(px - (ax + dx * k), p.y - (a.y + dy * k))
+}
+
+/** The rests of `samples` as [first, last] index pairs (see cursorMoves). Cached per samples array and aspect. */
+function restsOf(samples: CursorSample[], A: number): [number, number][] {
+  let entries = restCache.get(samples)
+  if (!entries) {
+    entries = []
+    restCache.set(samples, entries)
+  }
+  const hit = entries.find((e) => e.aspect === A)
+  if (hit) return hit.rests
+  const rests: [number, number][] = []
+  const n = samples.length
+  for (let i = 0; i < n; ) {
+    let j = i
+    while (j + 1 < n && dist(samples[j + 1], samples[i], A) <= PATH.restRadius) j++
+    if (samples[j].t - samples[i].t >= PATH.restMin - EPS) {
+      rests.push([i, j])
+      i = j + 1
+    } else {
+      i++
+    }
+  }
+  entries.unshift({ aspect: A, rests })
+  if (entries.length > CACHE_SIZE) entries.pop()
+  return rests
+}
+
+/** Signed sum of direction changes (radians) along the path resampled every PATH.turnStep of arc length. */
+function turning(path: readonly Pt[], A: number): number {
+  const pts: Pt[] = [{ x: path[0].x * A, y: path[0].y }]
+  let carry = 0
+  for (let i = 1; i < path.length; i++) {
+    const ax = path[i - 1].x * A
+    const ay = path[i - 1].y
+    const bx = path[i].x * A
+    const by = path[i].y
+    const len = Math.hypot(bx - ax, by - ay)
+    if (len <= 0) continue
+    let at = PATH.turnStep - carry
+    while (at <= len + EPS) {
+      pts.push({ x: ax + ((bx - ax) * at) / len, y: ay + ((by - ay) * at) / len })
+      at += PATH.turnStep
+    }
+    carry = len - (at - PATH.turnStep)
+  }
+  const end = path[path.length - 1]
+  const last = pts[pts.length - 1]
+  if (Math.hypot(end.x * A - last.x, end.y - last.y) > EPS) pts.push({ x: end.x * A, y: end.y })
+  let sum = 0
+  let prev: Pt | null = null
+  for (let i = 1; i < pts.length; i++) {
+    const d = { x: pts[i].x - pts[i - 1].x, y: pts[i].y - pts[i - 1].y }
+    if (Math.hypot(d.x, d.y) <= EPS) continue
+    if (prev) sum += Math.atan2(prev.x * d.y - prev.y * d.x, prev.x * d.x + prev.y * d.y)
+    prev = d
+  }
+  return sum
+}
+
+const offFrame = (s: Pt): boolean => !(s.x >= 0 && s.x <= 1 && s.y >= 0 && s.y <= 1)
+/** A release time that can be trusted (ClickEvent.up). */
+const releaseOf = (c: ClickEvent): number | null => (typeof c.up === 'number' && Number.isFinite(c.up) && c.up >= c.t ? c.up : null)
+
+function findMoves(samples: CursorSample[], clicks: readonly ClickEvent[], scrolls: readonly ScrollEvent[], A: number): CursorMove[] {
+  const rests = restsOf(samples, A)
+  const moves: CursorMove[] = []
+  for (let k = 0; k + 1 < rests.length; k++) {
+    const i0 = rests[k][1]
+    const i1 = rests[k + 1][0]
+    const from = samples[i0]
+    const to = samples[i1]
+    const t0 = from.t
+    const t1 = to.t
+    const L = dist(from, to, A)
+    let far = 0
+    let off = false
+    for (let i = i0; i <= i1; i++) {
+      if (offFrame(samples[i])) off = true
+      if (i > i0 && i < i1) far = Math.max(far, segmentDist(samples[i], from, to, A))
+    }
+    const wobble = L > 0 ? far / L : far > 0 ? Infinity : 0
+    let hard: MoveReason | null = null
+    if (off) hard = 'off-frame'
+    else if (clicks.some((c) => c.t > t0 && c.t < t1)) hard = 'click'
+    else if (scrolls.some((s) => s.t > t0 && s.t < t1)) hard = 'scroll'
+    else if (
+      clicks.some((c) => {
+        const up = releaseOf(c)
+        return up !== null && Math.min(up, t1) - Math.max(c.t, t0) > PATH.dragOverlap
+      })
+    )
+      hard = 'drag'
+    const length = t1 - t0
+    let auto: MoveReason | null = hard
+    if (!auto) {
+      if (clicks.some((c) => releaseOf(c) === null && c.t >= t0 - PATH.dragGuess && c.t <= t0)) auto = 'drag-guess'
+      else if (length < PATH.minSeconds) auto = 'short'
+      else if (length > PATH.maxSeconds) auto = 'long'
+      else if (L < PATH.minChord) auto = 'small'
+      else if (wobble > PATH.wobbleMax) auto = 'wobbly'
+      else if (Math.abs(turning(samples.slice(i0, i1 + 1), A)) >= (PATH.maxTurnDeg * Math.PI) / 180) auto = 'gesture'
+    }
+    let manual: MoveReason | null = hard
+    if (!manual) {
+      if (length > PATH.maxManualSeconds) manual = 'long'
+      else if (L < PATH.minManualChord) manual = 'small'
+    }
+    moves.push({ t0, t1, i0, i1, from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, wobble, auto, manual })
+  }
+  return moves
 }
 
 /** The move whose [t0, t1] contains `t` (moves are sorted and disjoint), or null. */
 export function moveAt(moves: readonly CursorMove[], t: number): CursorMove | null {
-  void moves
-  void t
+  let lo = 0
+  let hi = moves.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const m = moves[mid]
+    if (t < m.t0) hi = mid - 1
+    else if (t > m.t1) lo = mid + 1
+    else return m
+  }
   return null
 }
 
@@ -101,9 +250,32 @@ export function moveAt(moves: readonly CursorMove[], t: number): CursorMove | nu
  * `moves` is empty.
  */
 export function straightenSamples(samples: CursorSample[], moves: readonly CursorMove[]): CursorSample[] {
-  void samples
-  void moves
-  throw new Error('not implemented')
+  if (moves.length === 0) return samples
+  const sorted = [...moves].sort((a, b) => a.t0 - b.t0)
+  const out: CursorSample[] = []
+  let m = 0
+  for (const s of samples) {
+    // Reaching the end of a move: its glide goes in before the sample at t1.
+    for (; m < sorted.length && s.t >= sorted[m].t1; m++) pushGlide(out, sorted[m])
+    if (m < sorted.length && s.t > sorted[m].t0 && s.t < sorted[m].t1) continue
+    out.push(s)
+  }
+  for (; m < sorted.length; m++) pushGlide(out, sorted[m])
+  return out
+}
+
+/** The synthetic samples of one straightened move (strictly between t0 and t1). */
+function pushGlide(out: CursorSample[], move: CursorMove): void {
+  const { t0, t1, from, to } = move
+  const span = t1 - t0
+  if (!(span > 0)) return
+  const steps = Math.ceil(span * PATH.hz - EPS)
+  for (let k = 1; k < steps; k++) {
+    const t = t0 + k / PATH.hz
+    if (t >= t1 - EPS) break
+    const e = minJerk((t - t0) / span)
+    out.push({ t, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e })
+  }
 }
 
 /** Which moves a project straightens, and the samples that result. */
@@ -123,7 +295,32 @@ export interface PathPlan {
  * array (by identity).
  */
 export function planCursorPath(track: CursorTrack, ctx: { aspect: number; straighten: boolean; paths: readonly PathRange[] }): PathPlan {
-  // Stub until workstream B lands: the path as recorded.
-  void ctx
-  return { samples: track.samples, moves: [], straightened: [] }
+  const moves = cursorMoves(track, ctx.aspect)
+  if (moves.length === 0) return { samples: track.samples, moves, straightened: [] }
+  let entries = planCache.get(moves)
+  if (!entries) {
+    entries = []
+    planCache.set(moves, entries)
+  }
+  const straighten = !!ctx.straighten
+  const hit = entries.find((e) => e.samples === track.samples && e.straighten === straighten && e.paths === ctx.paths)
+  if (hit) return hit.plan
+  const straightened = moves.filter((m) => {
+    const mode = pathModeAt(ctx.paths, (m.t0 + m.t1) / 2)
+    if (mode === 'recorded') return false
+    if (mode === 'straight') return m.manual === null
+    return straighten && m.auto === null
+  })
+  const plan: PathPlan = { samples: straightenSamples(track.samples, straightened), moves, straightened }
+  entries.unshift({ samples: track.samples, straighten, paths: ctx.paths, plan })
+  if (entries.length > CACHE_SIZE) entries.pop()
+  return plan
+}
+
+const planCache = new WeakMap<CursorMove[], { samples: CursorSample[]; straighten: boolean; paths: readonly PathRange[]; plan: PathPlan }[]>()
+
+/** The mode of the path range containing `t` (start <= t < end), or null outside every range. */
+export function pathModeAt(paths: readonly PathRange[], t: number): PathRange['mode'] | null {
+  for (const r of paths) if (r.start <= t && t < r.end) return r.mode
+  return null
 }
