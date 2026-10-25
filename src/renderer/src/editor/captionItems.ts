@@ -1,0 +1,128 @@
+import { readTranscript } from '../../../shared/captions/captionData'
+import { captionAlpha } from '../../../shared/captions/layout'
+import { captionsOf } from '../../../shared/captions/settings'
+import type { TranscribeOptions, TranscribeProgress } from '../../../shared/api/ai'
+import { playableFrom } from '../../../shared/engine/timeline'
+import type { CaptionSegment, Clip, Project } from '../../../shared/types'
+import type { EditorServices } from './context'
+import type { PreviewPlayer } from './player'
+
+/*
+ * Captions outside the Captions tab: what the commands and the caption track ask the tab to do,
+ * the transcription job (it goes on while another tab is open), and showing a caption on the preview.
+ */
+
+/* ---------- requests to the Captions tab ---------- */
+
+/** 'generate' and 'export' from the commands; `focus` a caption's text (a double-click on the track). */
+export type CaptionsRequest = { kind: 'generate' } | { kind: 'export' } | { kind: 'focus'; id: string }
+
+let pending: CaptionsRequest | null = null
+const requestListeners = new Set<() => void>()
+
+/** Asks the Captions tab to act (it may be opening: it takes the request once mounted). */
+export function requestCaptions(request: CaptionsRequest): void {
+  pending = request
+  for (const l of [...requestListeners]) l()
+}
+
+/** The request waiting for the tab, taken (null when there is none). */
+export function takeCaptionsRequest(): CaptionsRequest | null {
+  const r = pending
+  pending = null
+  return r
+}
+
+export function onCaptionsRequest(listener: () => void): () => void {
+  requestListeners.add(listener)
+  return () => requestListeners.delete(listener)
+}
+
+/* ---------- showing a caption ---------- */
+
+/**
+ * Moves the playhead to caption `i` where the preview shows it: its first kept moment, just past
+ * its fade-in when it fades in (a caption that follows another shows at once).
+ */
+export function showCaption(player: PreviewPlayer, segments: readonly CaptionSegment[], i: number, clips: Clip[]): void {
+  const seg = segments[i]
+  if (!seg) return
+  const kept = playableFrom(clips, seg.start)
+  let at = kept && kept.time < seg.end ? kept.time : seg.start
+  if (captionAlpha(segments, i, at, clips) < 0.99) at = Math.min(at + 0.14 * (clips[kept?.index ?? 0]?.speed ?? 1), (at + seg.end) / 2)
+  player.seek(at)
+}
+
+/* ---------- transcription ---------- */
+
+export interface TranscriptionJob {
+  projectId: string
+  progress: TranscribeProgress | null
+  /** Set once it failed (the tab shows it until the next attempt). */
+  error: string | null
+  running: boolean
+}
+
+let job: TranscriptionJob | null = null
+let cancelled = false
+const jobListeners = new Set<() => void>()
+
+const setJob = (next: TranscriptionJob | null): void => {
+  job = next
+  for (const l of [...jobListeners]) l()
+}
+
+export const transcriptionJob = (): TranscriptionJob | null => job
+
+export function onTranscriptionJob(listener: () => void): () => void {
+  jobListeners.add(listener)
+  return () => jobListeners.delete(listener)
+}
+
+/** An error from the main process without Electron's "Error invoking remote method" prefix. */
+export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+
+/**
+ * Sends the recording's sound to the provider and stores the transcript it returns in the
+ * project, with captions turned on (one undo step). Progress and errors go to the job
+ * (transcriptionJob), which the Captions tab shows; a cancel just drops the result.
+ */
+export async function transcribe({ store }: EditorServices, options: TranscribeOptions): Promise<boolean> {
+  const projectId = store.state.id
+  if (job?.running) return false
+  cancelled = false
+  setJob({ projectId, progress: null, error: null, running: true })
+  const off = window.api.onTranscribeProgress((progress) => {
+    if (progress.projectId === projectId && job?.running) setJob({ ...job, progress })
+  })
+  try {
+    const raw = await window.api.transcribe(projectId, options)
+    if (cancelled) {
+      setJob(null)
+      return false
+    }
+    const transcript = readTranscript(raw, store.state.duration)
+    if (!transcript) throw new Error('The provider returned something that is not a transcript')
+    if (!transcript.segments.length) throw new Error('No speech was found in this recording')
+    store.update((p: Project) => (p.id !== projectId ? p : { ...p, transcript, captions: { ...captionsOf(p), show: true } }))
+    setJob(null)
+    return true
+  } catch (err) {
+    setJob(cancelled ? null : { projectId, progress: null, error: ipcMessage(err), running: false })
+    return false
+  } finally {
+    off()
+  }
+}
+
+export function cancelTranscription(): void {
+  if (!job?.running) return
+  cancelled = true
+  void window.api.cancelTranscription(job.projectId).catch(() => undefined)
+  setJob(null)
+}
+
+/** Forgets a failed job's error (closing it, or before another attempt). */
+export function clearTranscriptionError(): void {
+  if (job && !job.running) setJob(null)
+}

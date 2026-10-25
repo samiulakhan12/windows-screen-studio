@@ -478,6 +478,7 @@ export function ExportDialog(props: Props): JSX.Element {
   if (!audioOnly && upscaled(resolution)) {
     warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${project.width}×${project.height}): the video is upscaled and may look soft.` })
   }
+  if (!audioOnly && project.transcript?.segments.length) warnings.push({ key: 'captions', cls: 'export-captions', text: `Captions are drawn on the video when Show captions is on (now ${project.captions?.show === false ? 'off' : 'on'}, in the Captions tab, where Export captions saves them as SRT or VTT).` })
   if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: 'Long GIFs get very large; MP4 is better for clips over 30 s.' })
   if (audioOnly && !hasSound) warnings.push({ key: 'silent', cls: 'warn', text: 'This recording has no sound to export.' })
   if (limits?.maxSeconds && length > limits.maxSeconds) {

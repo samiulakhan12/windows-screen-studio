@@ -4,10 +4,10 @@
  * Pure: what a command does lives in the editor (views/Editor.tsx), which runs them by id.
  */
 
-export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Camera' | 'Panels' | 'Timeline' | 'General'
+export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Camera' | 'Captions' | 'Panels' | 'Timeline' | 'General'
 
 /** Categories in the order the palette and the shortcuts editor list them. */
-export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit', 'Add', 'Zoom', 'Effects', 'Camera', 'Panels', 'Timeline', 'General']
+export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit', 'Add', 'Zoom', 'Effects', 'Camera', 'Captions', 'Panels', 'Timeline', 'General']
 
 interface CommandSpec {
   id: string
@@ -80,11 +80,16 @@ const COMMAND_LIST = [
   { id: 'layoutSideBySide', title: 'Camera layout: side by side', category: 'Camera', keywords: 'webcam layout split two columns' },
   { id: 'layoutCameraLarge', title: 'Camera layout: large camera', category: 'Camera', keywords: 'webcam layout big presenter' },
 
+  { id: 'generateCaptions', title: 'Generate captions', category: 'Captions', keywords: 'transcribe transcript subtitles speech text auto ai' },
+  { id: 'toggleCaptions', title: 'Show or hide captions', category: 'Captions', keywords: 'subtitles transcript on off toggle burn', toggle: true },
+  { id: 'exportCaptions', title: 'Export captions…', category: 'Captions', keywords: 'subtitles srt vtt transcript text save file' },
+
   { id: 'showStyle', title: 'Open Style settings', category: 'Panels', keywords: 'background padding corners shadow aspect inspector tab' },
   { id: 'showCursor', title: 'Open Cursor settings', category: 'Panels', keywords: 'pointer clicks inspector tab' },
   { id: 'showZoom', title: 'Open Zoom settings', category: 'Panels', keywords: 'auto zoom inspector tab' },
   { id: 'showClip', title: 'Open Clip settings', category: 'Panels', keywords: 'cuts speed trim inspector tab' },
   { id: 'showText', title: 'Open Text settings', category: 'Panels', keywords: 'annotations titles chapters inspector tab' },
+  { id: 'showCaptions', title: 'Open Captions settings', category: 'Panels', keywords: 'subtitles transcript inspector tab' },
   { id: 'showShapes', title: 'Open Shapes settings', category: 'Panels', keywords: 'arrows blur spotlight inspector tab' },
   { id: 'showEffects', title: 'Open Effects settings', category: 'Panels', keywords: 'motion blur keystrokes inspector tab' },
   { id: 'showCamera', title: 'Open Camera settings', category: 'Panels', keywords: 'webcam inspector tab' },
@@ -249,6 +254,8 @@ export function searchCommands(commands: readonly CommandInfo[], query: string, 
       if (!extra.some((k) => k.startsWith(w))) return
       score += KEYWORD_SCORE + w.length
     }
+    // On a tie, the title the query covers more of ("export": "Export…" before "Export captions…").
+    if (indices.size) score += indices.size / command.title.length
     const r = recentRank.get(command.id)
     const recentHit = r !== undefined
     if (recentHit) score += RECENT_BOOST * (1 - r / Math.max(1, recent.length))

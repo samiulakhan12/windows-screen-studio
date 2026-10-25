@@ -1,0 +1,364 @@
+/* Captions: their timeline track and the Captions tab. */
+
+/* ---------- Timeline (two classes each: editor.css loads after this file) ---------- */
+.tl-track.caption-track {
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  cursor: col-resize;
+}
+
+.seg.caption-seg {
+  justify-content: flex-start;
+  color: #ecfeff;
+  background: linear-gradient(180deg, #0f766e, #115e59);
+  border: 1px solid #5eead4;
+}
+
+.seg.caption-seg .seg-label {
+  font-size: 10.5px;
+}
+
+.tl-track.caption-track.captions-off .caption-seg {
+  opacity: 0.5;
+}
+
+/* ---------- Captions tab ---------- */
+.captions-intro {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.captions-intro svg {
+  flex: none;
+  color: #5eead4;
+  margin-top: 2px;
+}
+
+.captions-intro p {
+  margin: 0;
+}
+
+.captions-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: var(--panel-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.captions-empty p {
+  margin: 0;
+}
+
+.captions-select {
+  width: 100%;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.captions-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.captions-actions {
+  gap: 6px;
+}
+
+.captions-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.captions-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+
+.captions-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.captions-bar.busy span {
+  width: 35%;
+  animation: captions-busy 1.3s ease-in-out infinite;
+}
+
+@keyframes captions-busy {
+  from {
+    left: -35%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+.captions-error {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.08);
+  color: #fecdd3;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.captions-error p {
+  margin: 0 0 4px;
+}
+
+/* Style presets: a sample of each look. */
+.caption-presets {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.caption-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 2px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.caption-preset:hover {
+  color: var(--text);
+  border-color: #3a3a4e;
+}
+
+.caption-preset.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: #20202d;
+}
+
+.caption-sample {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #3b82f6, #a855f7);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.caption-sample.bold {
+  font-weight: 800;
+  -webkit-text-stroke: 0.6px #000;
+  color: #facc15;
+}
+
+.caption-sample.boxed,
+.caption-sample.karaoke {
+  text-shadow: none;
+  background:
+    linear-gradient(rgba(10, 10, 16, 0.7), rgba(10, 10, 16, 0.7)) center / 80% 70% no-repeat,
+    linear-gradient(135deg, #3b82f6, #a855f7);
+}
+
+.caption-sample.karaoke em {
+  font-style: normal;
+  color: #0b0b10;
+  background: #22d3ee;
+  border-radius: 3px;
+  padding: 0 2px;
+  margin-right: 1px;
+}
+
+.caption-sample.minimal {
+  font-weight: 500;
+  font-size: 11px;
+  text-shadow: none;
+  -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.6);
+}
+
+/* Transcript editor. */
+.captions-find {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.captions-find .row {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.captions-pager {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.caption-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.caption-row {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  grid-template-rows: auto auto;
+  gap: 0 6px;
+  padding: 4px 4px 2px 0;
+  border-radius: 8px;
+  border-left: 2px solid transparent;
+}
+
+.caption-row.current {
+  background: rgba(94, 234, 212, 0.07);
+  border-left-color: #5eead4;
+}
+
+.caption-row.selected {
+  background: var(--panel-2);
+  border-left-color: var(--accent);
+}
+
+.caption-row.match .caption-text {
+  border-color: rgba(250, 204, 21, 0.55);
+}
+
+.caption-time {
+  grid-row: 1 / span 2;
+  align-self: start;
+  height: 26px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #5eead4;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.caption-time:hover {
+  background: var(--panel-2);
+}
+
+.caption-text {
+  width: 100%;
+  min-height: 28px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.35;
+  resize: none;
+  user-select: text;
+}
+
+.caption-text:hover {
+  border-color: var(--border);
+}
+
+.caption-text:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+.caption-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.caption-row:hover .caption-tools,
+.caption-row:focus-within .caption-tools,
+.caption-row.selected .caption-tools {
+  opacity: 1;
+}
+
+.caption-tools .btn.icon-btn {
+  width: 24px;
+  height: 22px;
+  padding: 0;
+}
+
+/* AI tools. */
+.captions-ai {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.captions-ai .btn {
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.captions-translate {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+}
+
+.captions-suggestion {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 12px;
+}
+
+.captions-suggestion p {
+  margin: 0 0 6px;
+}
+
+.captions-suggestion .row {
+  gap: 6px;
+}
