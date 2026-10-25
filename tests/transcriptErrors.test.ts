@@ -29,6 +29,14 @@ describe('describeFailure', () => {
     expect([retry({ status: 401 }), retry({ status: 400 }), retry({ status: 429, code: 'insufficient_quota' }), retry({ cancelled: true })]).toEqual([false, false, false, false])
   })
 
+  it("retries Gemini's per-minute limit, worded like running out of quota, and not its per-day one", () => {
+    const message = 'You exceeded your current quota, please check your plan and billing details.'
+    const minute = describeFailure({ status: 429, code: 'RESOURCE_EXHAUSTED GenerateRequestsPerMinutePerProjectPerModel-FreeTier', message, retryAfter: 17 }, 'Google Gemini')
+    expect(minute).toMatchObject({ kind: 'rate-limit', retryable: true, retryAfter: 17 })
+    const day = describeFailure({ status: 429, code: 'RESOURCE_EXHAUSTED GenerateRequestsPerDayPerProjectPerModel-FreeTier', message, retryAfter: 17 }, 'Google Gemini')
+    expect(day).toMatchObject({ kind: 'quota', retryable: false })
+  })
+
   it('never repeats the provider message for key problems, and names the model', () => {
     const f = describeFailure({ status: 401, message: 'Incorrect API key provided: sk-proj-abcdef' }, 'OpenAI')
     expect(f.message).not.toContain('sk-')

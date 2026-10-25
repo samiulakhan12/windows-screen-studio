@@ -48,18 +48,22 @@ export interface CallOptions {
   toFailure: (err: unknown) => FailureInfo
 }
 
+/** Why `o.signal` stopped the call: a caller's time limit (AbortSignal.timeout) is a time-out, anything else a cancel. */
+const stopped = (o: CallOptions): AiError =>
+  (o.signal.reason as { name?: unknown } | undefined)?.name === 'TimeoutError' ? new AiError(describeFailure({ timeout: true }, o.provider, o.model)) : cancelled()
+
 /** Runs `fn` (given a signal that aborts on cancel or time-out) until it succeeds or fails for good. */
 export async function callWithRetry<T>(fn: (signal: AbortSignal) => Promise<T>, o: CallOptions): Promise<T> {
   const attempts = o.attempts ?? 4
   for (let attempt = 1; ; attempt++) {
-    if (o.signal.aborted) throw cancelled()
+    if (o.signal.aborted) throw stopped(o)
     const timeout = new AbortController()
     const timer = setTimeout(() => timeout.abort(), o.timeoutMs)
     let failure: Failure
     try {
       return await fn(AbortSignal.any([o.signal, timeout.signal]))
     } catch (err) {
-      if (o.signal.aborted) throw cancelled()
+      if (o.signal.aborted) throw stopped(o)
       if (err instanceof AiError || err instanceof AiOutputError) throw err
       const info: FailureInfo = timeout.signal.aborted ? { timeout: true } : o.toFailure(err)
       failure = describeFailure(info, o.provider, o.model)
@@ -67,7 +71,9 @@ export async function callWithRetry<T>(fn: (signal: AbortSignal) => Promise<T>, 
       clearTimeout(timer)
     }
     if (!failure.retryable || attempt >= attempts) throw new AiError(failure)
-    await sleep(retryDelay(attempt, failure.retryAfter), o.signal)
+    await sleep(retryDelay(attempt, failure.retryAfter), o.signal).catch(() => {
+      throw stopped(o)
+    })
   }
 }
 

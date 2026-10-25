@@ -12,7 +12,7 @@ export type SettingsSection = 'ai'
  * inside first), and focus goes back to where it was. Keys pressed inside stay inside, so the
  * editor's shortcuts never act behind it.
  */
-export function SettingsDialog({ section, onClose }: { section: SettingsSection; onClose: () => void }): JSX.Element {
+export function SettingsDialog({ section, onClose, onProvidersChanged }: { section: SettingsSection; onClose: () => void; onProvidersChanged?: () => void }): JSX.Element {
   const boxRef = useRef<HTMLDivElement>(null)
   useModalFocus(boxRef, onClose)
 
@@ -40,7 +40,7 @@ export function SettingsDialog({ section, onClose }: { section: SettingsSection;
           </button>
         </header>
         <div className="settings-body">
-          <AiProvidersSection />
+          <AiProvidersSection onChanged={onProvidersChanged} />
         </div>
         <footer className="modal-foot">
           <button type="button" className="btn primary" onClick={onClose}>

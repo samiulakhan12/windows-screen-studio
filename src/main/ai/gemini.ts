@@ -20,6 +20,7 @@ import { baseUrlOverride, testLimit } from './endpoints'
 import { AiError, callWithRetry, isNetworkError, sleep } from './request'
 import type { AiClient, AudioPart } from './types'
 
+const OFFICIAL_URL = 'https://generativelanguage.googleapis.com/'
 const PROVIDER = AI_PROVIDER_KINDS.gemini.label
 /** Inline data must keep the whole request under 20 MB; base64 makes it a third larger. */
 const INLINE_MAX = 14 * 1024 * 1024
@@ -31,23 +32,30 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 /**
  * An SDK error as a FailureInfo. ApiError's message is the error body as JSON:
  * { error: { code, message, status: "INVALID_ARGUMENT", details: [{ reason: "API_KEY_INVALID" }] } }.
+ * A 429 has the same message for a per-minute and a per-day limit: the QuotaFailure detail's
+ * quotaId tells them apart, and its RetryInfo detail says how long to wait ("17s").
  */
 export function geminiFailure(err: unknown): FailureInfo {
   if (err instanceof ApiError) {
     let code: string | undefined
     let message = err.message
+    let retryAfter: number | undefined
     try {
       const body: unknown = JSON.parse(err.message)
       const e = isObject(body) && isObject(body.error) ? body.error : null
       if (e) {
-        const reasons = Array.isArray(e.details) ? e.details.map((d) => (isObject(d) && typeof d.reason === 'string' ? d.reason : '')).filter(Boolean) : []
-        code = [typeof e.status === 'string' ? e.status : '', ...reasons].filter(Boolean).join(' ') || undefined
+        const details = Array.isArray(e.details) ? e.details.filter(isObject) : []
+        const reasons = details.map((d) => (typeof d.reason === 'string' ? d.reason : '')).filter(Boolean)
+        const quotaIds = details.flatMap((d) => (Array.isArray(d.violations) ? d.violations : [])).map((v) => (isObject(v) && typeof v.quotaId === 'string' ? v.quotaId : '')).filter(Boolean)
+        code = [typeof e.status === 'string' ? e.status : '', ...reasons, ...quotaIds].filter(Boolean).join(' ') || undefined
         if (typeof e.message === 'string') message = e.message
+        const delay = details.find((d) => typeof d.retryDelay === 'string')?.retryDelay as string | undefined
+        if (delay !== undefined && Number.isFinite(parseFloat(delay))) retryAfter = parseFloat(delay)
       }
     } catch {
       // Not JSON: the message as it is.
     }
-    return { status: err.status, code, message }
+    return { status: err.status, code, message, ...(retryAfter !== undefined ? { retryAfter } : {}) }
   }
   if (isNetworkError(err)) return { network: true }
   return { message: err instanceof Error ? err.message : String(err) }
@@ -79,8 +87,8 @@ const TRANSCRIBE_PROMPT =
   'Leave out silence, music and noises. If nobody speaks, return an empty list of segments.'
 
 export function geminiClient(apiKey: string, model: string, transcriptionModel: string): AiClient {
-  const override = baseUrlOverride('gemini')
-  const ai = new GoogleGenAI({ apiKey, vertexai: false, httpOptions: { ...(override ? { baseUrl: override } : {}), retryOptions: { attempts: 1 } } })
+  // Explicit base URL: GOOGLE_GEMINI_BASE_URL in the user's environment must not redirect their key.
+  const ai = new GoogleGenAI({ apiKey, vertexai: false, httpOptions: { baseUrl: baseUrlOverride('gemini') ?? OFFICIAL_URL, retryOptions: { attempts: 1 } } })
   const base = { provider: PROVIDER, toFailure: geminiFailure }
   const inlineMax = testLimit('SSW_AI_GEMINI_INLINE_BYTES') ?? INLINE_MAX
 

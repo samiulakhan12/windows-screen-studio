@@ -31,6 +31,8 @@ export interface Failure {
 }
 
 const QUOTA_RE = /insufficient_quota|billing|credit balance|exceeded your current quota.*(plan|billing)|per ?day|PerDay/i
+/** A 429 that waiting a minute will not fix. */
+const QUOTA_429_RE = /insufficient_quota|per ?day|PerDay/i
 const AUTH_RE = /invalid_api_key|api[_ ]key[_ ]invalid|api key not valid|incorrect api key|authentication_error|invalid x-api-key/i
 
 const short = (s: string | undefined): string => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
@@ -43,15 +45,17 @@ export function describeFailure(info: FailureInfo, provider: string, model?: str
   if (info.timeout) return { kind: 'timeout', retryable: true, message: `${provider} took too long to answer. Try again in a moment.` }
   if (info.network) return { kind: 'network', retryable: true, message: `Could not reach ${provider}. Check the internet connection and try again.` }
   if (status === 401 || AUTH_RE.test(text)) return { kind: 'auth', retryable: false, message: `${provider} did not accept the API key. Check the key in Settings → AI providers.` }
-  if (status === 402 || QUOTA_RE.test(text)) {
+  // A 429 is a rate limit unless it says the quota is gone for good (OpenAI) or for the day (Gemini):
+  // Gemini words its per-minute limits like running out of quota.
+  if (status === 429 && !QUOTA_429_RE.test(text)) {
+    return { kind: 'rate-limit', retryable: true, retryAfter: info.retryAfter, message: `${provider} is limiting requests (rate limit). Wait a minute and try again, or check your plan's limits.` }
+  }
+  if (status === 402 || status === 429 || QUOTA_RE.test(text)) {
     return { kind: 'quota', retryable: false, message: `Your ${provider} account has no credits or quota left. Check its billing and usage limits, then try again.` }
   }
   if (status === 403) return { kind: 'auth', retryable: false, message: `${provider} refused the request: this key has no access to ${model ? `the model “${model}”` : 'that API'}.` }
   if (status === 404) return { kind: 'not-found', retryable: false, message: `${provider} does not know the model${model ? ` “${model}”` : ''}. Check the model name in Settings → AI providers.` }
   if (status === 413) return { kind: 'too-large', retryable: false, message: `The sound was too large for ${provider}.` }
-  if (status === 429) {
-    return { kind: 'rate-limit', retryable: true, retryAfter: info.retryAfter, message: `${provider} is limiting requests (rate limit). Wait a minute and try again, or check your plan's limits.` }
-  }
   if (status === 408 || status === 409 || (status !== undefined && status >= 500)) {
     return { kind: 'server', retryable: true, retryAfter: info.retryAfter, message: `${provider} had a problem answering (HTTP ${status}). Try again in a moment.` }
   }

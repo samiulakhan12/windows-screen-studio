@@ -9,9 +9,9 @@ type Mode = { kind: 'list' } | { kind: 'add' } | { kind: 'edit'; provider: AiPro
 /**
  * The AI providers the user added with their own API keys: list, add, edit, test, remove. Keys
  * are typed here and sent once to the main process, which encrypts and keeps them; this page
- * only ever gets them back masked.
+ * only ever gets them back masked. `onChanged` runs after a provider was saved or removed.
  */
-export function AiProvidersSection(): JSX.Element {
+export function AiProvidersSection({ onChanged }: { onChanged?: () => void } = {}): JSX.Element {
   const [providers, setProviders] = useState<AiProviderInfo[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
@@ -57,6 +57,7 @@ export function AiProvidersSection(): JSX.Element {
   const remove = async (p: AiProviderInfo): Promise<void> => {
     try {
       await window.api.removeAiProvider(p.id)
+      onChanged?.()
       setProviders((list) => list?.filter((x) => x.id !== p.id) ?? null)
       setRemoving(null)
       setRemoveError(null)
@@ -91,8 +92,8 @@ export function AiProvidersSection(): JSX.Element {
     >
       <h3 id="settings-ai-title">AI providers</h3>
       <p className="hint">
-        Use your own API key for auto captions and transcript tools. <strong>Transcription</strong> works with OpenAI or Google Gemini. Anthropic Claude cannot
-        transcribe (the Claude API does not accept sound), but it can clean up, translate and suggest chapters, a title or a summary for a transcript.
+        Use your own API key for auto captions and transcript tools. <strong>Transcription</strong> works with OpenAI or Google Gemini. All three providers can
+        clean up and translate a transcript and suggest chapters, a title or a summary for it; Anthropic Claude cannot transcribe (the Claude API does not accept sound).
       </p>
       <p className="settings-privacy">
         <span aria-hidden="true">🔒</span> Keys are stored encrypted on this PC and are only sent to the provider you pick.
@@ -113,6 +114,7 @@ export function AiProvidersSection(): JSX.Element {
               return rest
             })
             closeForm(`test:${saved.id}`)
+            onChanged?.()
           }}
         />
       ) : (

@@ -44,11 +44,53 @@ describe('mergeParts', () => {
     )
     expect(out.segments.map((s) => [s.text, s.start, s.end])).toEqual([
       ['before', 6, 8],
-      // Both parts heard it; part 0 heard it farther from the edge of its sound.
+      // Without word times both parts' segments are whole: the one heard farther from an edge wins.
       ['across', 8.3, 9.5],
       ['after', 9.75, 11]
     ])
     expect(out.language).toBeUndefined()
+  })
+
+  it('splits a sentence across a fixed cut by word: each word from one part, none lost or repeated', () => {
+    const parts = planParts(18, [], { maxSeconds: 10, overlap: 2 })
+    const out = mergeParts(
+      [
+        // Part 0 (sent until 10) hears the sentence's start; "the" is past the cut at 9.
+        { part: parts[0], transcript: { segments: [seg(8.3, 9.7, 'Across the', [{ text: 'Across', start: 8.3, end: 8.9 }, { text: 'the', start: 9.1, end: 9.7 }])] } },
+        // Part 1 (sent from 8) hears it whole; "across" is before the cut.
+        {
+          part: parts[1],
+          transcript: { segments: [seg(0.3, 1.9, 'across the cut.', [{ text: 'across', start: 0.3, end: 0.9 }, { text: 'the', start: 1.1, end: 1.5 }, { text: 'cut.', start: 1.55, end: 1.9 }])] }
+        }
+      ],
+      18
+    )
+    expect(out.segments.map((s) => [s.text, s.start, s.end])).toEqual([
+      ['Across', 8.3, 8.9],
+      ['the cut.', 9.1, 9.9]
+    ])
+    expect(out.segments[1].words?.map((w) => w.text)).toEqual(['the', 'cut.'])
+  })
+
+  it('keeps every word of a long sentence across a fixed cut exactly once', () => {
+    // 1000 s without a pause: a fixed cut at 599, part 0 sent until 600 and part 1 from 598.
+    const parts = planParts(1000, [], { maxSeconds: 600 })
+    expect(parts.map((p) => [p.start, p.keepEnd])).toEqual([
+      [0, 599],
+      [598, 1000]
+    ])
+    // Words w590 .. w609, one a second, in a 20 s sentence that both parts hear in part.
+    const words = (from: number, to: number, offset: number): { text: string; start: number; end: number }[] =>
+      Array.from({ length: to - from }, (_, i) => ({ text: `w${from + i}`, start: from + i - offset, end: from + i + 0.8 - offset }))
+    const out = mergeParts(
+      [
+        { part: parts[0], transcript: { segments: [seg(590, 600, words(590, 600, 0).map((w) => w.text).join(' '), words(590, 600, 0))] } },
+        { part: parts[1], transcript: { segments: [seg(0, 12, words(598, 610, 598).map((w) => w.text).join(' '), words(598, 610, 598))] } }
+      ],
+      1000
+    )
+    expect(out.segments.map((s) => s.text).join(' ')).toBe(words(590, 610, 0).map((w) => w.text).join(' '))
+    expect(out.segments.flatMap((s) => s.words!.map((w) => w.text))).toEqual(words(590, 610, 0).map((w) => w.text))
   })
 
   it('trims overlapping neighbours so segments follow one another, and drops slivers', () => {
