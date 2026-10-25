@@ -185,6 +185,24 @@ describe('mergeParts', () => {
     ])
   })
 
+  it('pairs a word the two parts time apart at a fixed cut, so it is neither repeated nor lost', () => {
+    const sentence = ['we', 'need', 'an', 'important', 'change', 'now.']
+    // Part 1 hears 'an' 0.1 s after part 0 did: the same word, already kept by part 0.
+    expect(
+      acrossCut(
+        [w('we', 596, 596.4), w('need', 596.5, 597), w('an', 598.3, 598.5), w('important', 598.75, 599.35), w('change', 599.4, 599.9)],
+        [w('an', 598.6, 598.8), w('important', 599.05, 599.65), w('change', 599.7, 600.2), w('now.', 600.3, 600.8)]
+      )
+    ).toEqual(sentence)
+    // Part 1 hears 'change' 0.1 s before part 0's copy starts: part 0 did not keep it, so part 1 does.
+    expect(
+      acrossCut(
+        [w('we', 596, 596.4), w('need', 596.5, 597), w('an', 597.6, 598), w('important', 598.67, 599.28), w('change', 599.38, 599.61)],
+        [w('important', 598.5, 599.1), w('change', 599.14, 599.27), w('now.', 599.4, 599.9)]
+      )
+    ).toEqual(sentence)
+  })
+
   it('trims overlapping neighbours so segments follow one another, and drops slivers', () => {
     const parts = planParts(10, [], { maxSeconds: 60 })
     const out = mergeParts([{ part: parts[0], transcript: { segments: [seg(0, 2.5, 'a', [{ text: 'a', start: 2, end: 2.5 }]), seg(2, 4, 'b'), seg(4, 4.01, 'c')] } }], 10)

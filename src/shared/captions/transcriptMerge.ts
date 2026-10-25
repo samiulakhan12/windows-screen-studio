@@ -31,6 +31,9 @@ interface Start {
 
 const round = (t: number): number => Math.round(t * 1000) / 1000
 
+/** How far apart, seconds, two parts may time the same word at a fixed cut and still be paired. */
+const PAIR_SLACK = 0.5
+
 /** The same word whatever its case and punctuation ("" for none). */
 const wordKey = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 
@@ -78,7 +81,7 @@ export function placePart(part: TranscriptPart, segments: readonly RawSegment[],
  * How `part`, which starts at a fixed cut, keeps the words there, decided on the timing of the
  * part before it (`prev`, its segments `heard` and those it `kept`), as each part's own timing
  * could keep a word twice or not at all. A word both heard in the overlap (the same text at
- * overlapping times, paired in order) is kept only if `prev` did not keep it, and any other
+ * times within PAIR_SLACK of each other, paired in order) is kept only if `prev` did not keep it, and any other
  * from a middle after the last word `prev` kept.
  */
 function startAfter(prev: TranscriptPart, heard: readonly RawSegment[], kept: readonly Placed[], part: TranscriptPart, segments: readonly RawSegment[]): Start {
@@ -93,7 +96,7 @@ function startAfter(prev: TranscriptPart, heard: readonly RawSegment[], kept: re
   let next = 0
   for (const w of inOverlap(heard)) {
     const key = wordKey(w.text)
-    const i = key ? mine.findIndex((m, j) => j >= next && m.start <= w.end && w.start <= m.end && wordKey(m.text) === key) : -1
+    const i = key ? mine.findIndex((m, j) => j >= next && m.start <= w.end + PAIR_SLACK && w.start <= m.end + PAIR_SLACK && wordKey(m.text) === key) : -1
     if (i < 0) continue
     settled.set(mine[i], !theirs.has(w))
     next = i + 1
