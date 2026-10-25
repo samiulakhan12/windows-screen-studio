@@ -14,6 +14,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { StillRange } from '../shared/api/projects'
+import { stopTranscription } from './ai/transcribe'
 import { stopAudioAnalysisFor } from './audioAnalysis'
 import { ffmpegPath } from './ffmpeg'
 import { ProjectProcesses } from './projectProcesses'
@@ -178,11 +179,12 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
 export const stopStillDetection = (id: string): Promise<void> => running.stop(id)
 
 /**
- * Stops every analysis reading project `id`'s files (still detection, sound levels) and waits
- * until they have let go of them: the editor closed, or the project is about to be deleted.
+ * Stops every analysis reading project `id`'s files (still detection, sound levels, a
+ * transcription) and waits until they have let go of them: the editor closed, or the project is
+ * about to be deleted.
  */
 export async function stopAnalyses(id: string): Promise<void> {
-  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id)])
+  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id), stopTranscription(id)])
 }
 
 export function registerAnalysisIpc(): void {
