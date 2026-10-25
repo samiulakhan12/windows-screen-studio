@@ -2,8 +2,8 @@
 
 /* ---------- Timeline ---------- */
 .layout-track {
-  background: var(--panel-2);
-  border: 1px dashed var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
   cursor: col-resize;
 }
 
@@ -95,14 +95,14 @@
 
 .layout-option:hover:not(:disabled) {
   color: var(--text);
-  border-color: #3a3a4e;
-  background: #20202d;
+  border-color: var(--border-strong);
+  background: var(--surface-3);
 }
 
 .layout-option.active {
   color: var(--text);
   border-color: var(--accent);
-  background: rgba(139, 92, 246, 0.12);
+  background: var(--accent-softer);
 }
 
 .layout-option:disabled {

@@ -24,23 +24,24 @@
 }
 
 .export-mode {
-  background: var(--bg);
+  background: var(--surface-sunken);
 }
 
 .export-mode button {
   height: 26px;
   padding: 0 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--muted);
+  color: var(--text-2);
+  font-weight: var(--weight-medium);
   cursor: pointer;
 }
 
 .export-mode button.active {
-  background: var(--panel-2);
-  color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  background: var(--surface-3);
+  color: var(--text-1);
+  box-shadow: var(--highlight-top), var(--shadow-1);
 }
 
 /* ---------- Settings step: preview column + choices ---------- */
@@ -66,17 +67,18 @@
   display: grid;
   place-items: center;
   height: 252px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background:
-    repeating-conic-gradient(#15151d 0% 25%, #191922 0% 50%) 50% / 16px 16px;
-  border: 1px solid var(--border);
+    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1.2px) 0 0 / 14px 14px,
+    var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
 }
 
 .export-preview-canvas {
   display: block;
-  border-radius: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.55);
 }
 
 .export-preview.audio-only .export-preview-canvas {
@@ -87,9 +89,9 @@
 .export-preview-badge {
   position: absolute;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.7);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .export-frame {
@@ -99,8 +101,8 @@
 }
 
 .export-frame .slider-head {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--text-sm);
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -123,11 +125,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-3);
 }
 
 .export-section-head .muted {
@@ -141,7 +143,7 @@ button.export-section-head {
   margin-top: 4px;
   padding: 6px 0;
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
   background: none;
   cursor: pointer;
   text-align: left;
@@ -154,7 +156,7 @@ button.export-section-head:hover {
 .chevron {
   display: inline-flex;
   transform: rotate(-90deg);
-  transition: transform 0.15s;
+  transition: transform var(--dur-med) var(--ease-out);
 }
 
 .chevron.open {
@@ -165,7 +167,7 @@ button.export-section-head:hover {
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .preset-card {
@@ -174,34 +176,39 @@ button.export-section-head:hover {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 7px 10px 7px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
+  padding: var(--space-2) 10px var(--space-2) var(--space-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  box-shadow: var(--highlight-top);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .preset-card:hover {
-  border-color: #3a3a4e;
-  background: #20202c;
+  border-color: var(--border-strong);
+  background: var(--surface-3);
 }
 
 .preset-card.active {
-  border-color: var(--accent);
-  background: rgba(139, 92, 246, 0.14);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  border-color: var(--accent-500);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-500);
 }
 
 .preset-card:focus-visible {
-  outline: 2px solid var(--accent-2);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
 .preset-badge {
   flex: none;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
 }
 
 .preset-text {
@@ -219,8 +226,8 @@ button.export-section-head:hover {
 }
 
 .preset-meta {
-  font-size: 11px;
-  color: var(--muted);
+  font-size: var(--text-xs);
+  color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -228,7 +235,7 @@ button.export-section-head:hover {
 }
 
 .preset-limit {
-  color: #c4b5fd;
+  color: var(--accent-text);
 }
 
 .preset-check {
@@ -238,13 +245,13 @@ button.export-section-head:hover {
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  border: 1.5px solid #4a4a60;
+  border: 1.5px solid var(--border-strong);
   color: white;
 }
 
 .preset-check.on {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-500);
+  border-color: var(--accent-500);
 }
 
 .export-settings {
@@ -281,15 +288,17 @@ button.export-section-head:hover {
   width: 76px;
   height: 28px;
   padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-0);
   font-variant-numeric: tabular-nums;
+  user-select: text;
 }
 
 .export-target input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .export-target .btn.small {
@@ -304,7 +313,7 @@ button.export-section-head:hover {
 }
 
 .export-modal .hint.warn {
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .export-modal .chip.upscale:not(.active) {
@@ -316,8 +325,8 @@ button.export-section-head:hover {
   padding: 0;
   border: none;
   background: none;
-  color: var(--accent-2);
-  font-size: 12px;
+  color: var(--accent-text);
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 
@@ -390,9 +399,10 @@ button.export-section-head:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 8px;
-  border-radius: 8px;
-  background: var(--panel-2);
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
 }
 
 .batch-row.waiting,
@@ -412,6 +422,7 @@ button.export-section-head:hover {
 
 .batch-row.done .batch-icon {
   background: #059669;
+  box-shadow: 0 0 0 3px var(--success-soft);
 }
 
 .batch-row.failed .batch-icon {
@@ -429,7 +440,7 @@ button.export-section-head:hover {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid #3a3a4e;
+  border: 2px solid var(--border-strong);
   border-top-color: var(--accent);
   animation: spin 0.8s linear infinite;
 }
@@ -455,12 +466,12 @@ button.export-section-head:hover {
 }
 
 .batch-row.failed .batch-status {
-  color: #fb7185;
+  color: var(--danger-text);
   user-select: text;
 }
 
 .batch-status.warn {
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .batch-bar {
@@ -473,7 +484,7 @@ button.export-section-head:hover {
 .batch-bar > span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), #ec4899);
+  background: var(--accent-gradient);
   transition: width 0.2s;
 }
 

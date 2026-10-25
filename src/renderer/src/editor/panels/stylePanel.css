@@ -24,7 +24,7 @@
 }
 
 .preset-summary:hover {
-  border-color: #3a3a4e;
+  border-color: var(--border-strong);
 }
 
 .preset-summary-name {
@@ -77,7 +77,7 @@
 
 .preset-card:hover {
   color: var(--text);
-  border-color: #3a3a4e;
+  border-color: var(--border-strong);
 }
 
 .preset-item.active .preset-card {
@@ -203,7 +203,7 @@
 
 .frame-tile:hover {
   color: var(--text);
-  border-color: #3a3a4e;
+  border-color: var(--border-strong);
 }
 
 .frame-tile.active {
