@@ -1,4 +1,7 @@
 import { isCommandId } from '../../../../shared/editor/commands'
+import { zoomCause } from '../../../../shared/editor/inputEdits'
+import type { ClickRow } from '../../../../shared/engine/inputData'
+import { scrollBreaks } from '../../../../shared/engine/scroll'
 import { orPress, shortcutLabel, undoHint, withShortcut, zoomLevelKeysHint } from '../../../../shared/editor/shortcuts'
 import { ZOOM_EASINGS } from '../../../../shared/engine/easing'
 import { formatTime } from '../../../../shared/engine/project'
@@ -26,22 +29,35 @@ import {
   setZoomLevel,
   ZOOM_LEVEL_PRESETS
 } from '../../../../shared/editor/zoomEdit'
-import type { AutoZoomSettings, CursorTrack, Project, ZoomEasing, ZoomSegment, ZoomSettings } from '../../../../shared/types'
+import type { AutoZoomSettings, CursorTrack, Project, ScrollZoomMode, ZoomEasing, ZoomSegment, ZoomSettings } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
-import type { InspectorProps } from '../Inspector'
+import type { InputActions, InspectorProps } from '../Inspector'
+import { clickKind, clickState, STRAY_REASON_TEXT } from '../selection'
 import { useKeymap } from '../keymapContext'
+import { ShortcutKeys } from '../ShortcutKeys'
 import '../zoom.css'
 
 const secFmt = (v: number): string => `${v.toFixed(2)} s`
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
-/** Recorded input auto zoom can use, given its settings. */
-function inputSummary(track: CursorTrack, auto: AutoZoomSettings): { clicks: number; typing: number; marks: number } {
+/**
+ * Recorded input auto zoom can use, given its settings: the recorded clicks it can zoom for
+ * (`clicks`, ignored ones included, and how many of them are `ignored`), typing, marks and the
+ * long scrolls it zooms out for.
+ */
+function inputSummary(
+  track: CursorTrack,
+  rows: readonly ClickRow[],
+  auto: AutoZoomSettings
+): { clicks: number; ignored: number; typing: number; marks: number; scrolls: number } {
+  const zoomRows = rows.filter((r) => isZoomClick(r.click, auto.rightClicks))
   return {
-    clicks: track.valid ? track.clicks.filter((c) => isZoomClick(c, auto.rightClicks)).length : 0,
+    clicks: zoomRows.length,
+    ignored: zoomRows.filter((r) => r.ignored).length,
+    scrolls: track.valid ? scrollBreaks(track, auto).length : 0,
     // Typing zooms aim at clicks or the cursor, so they need cursor data; marks do not.
     typing: track.valid ? (track.typing?.length ?? 0) : 0,
     marks: track.marks?.length ?? 0
@@ -54,11 +70,14 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
   const { project, selection } = props
   const keymap = useKeymap()
   const zoom = selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id) ?? null) : null
+  const click = selection?.kind === 'click' ? (props.clickRows.find((r) => r.ms === selection.ms) ?? null) : null
   const levelKeys = zoomLevelKeysHint(keymap)
   return (
     <>
       {zoom ? (
         <SelectedZoom {...props} zoom={zoom} />
+      ) : click ? (
+        <SelectedClick row={click} input={props.input} />
       ) : (
         <p className="hint">
           Select a zoom on the timeline to edit it{keymap.addZoom[0] ? `, or press ${shortcutLabel(keymap.addZoom[0])} to add one at the playhead` : ''}.
@@ -66,8 +85,82 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
         </p>
       )}
       <ZoomStyleSection project={project} onNotice={props.onNotice} />
-      <AutoZoomSection project={project} cursor={props.cursor} onNotice={props.onNotice} />
+      <AutoZoomSection
+        project={project}
+        cursor={props.cursor}
+        recorded={props.recorded}
+        rows={props.clickRows}
+        input={props.input}
+        selectedClick={selection?.kind === 'click' ? selection.ms : null}
+        onNotice={props.onNotice}
+      />
     </>
+  )
+}
+
+/** A click selected on the timeline (or in the recorded clicks list): ignore it or use it again. */
+function SelectedClick({ row, input }: { row: ClickRow; input: InputActions }): JSX.Element {
+  const keymap = useKeymap()
+  const state = clickState(row)
+  return (
+    <Section title="Selected click" aside={<span className="muted small">{`${clickKind(row.click.button)} · ${formatTime(row.click.t)}`}</span>}>
+      <div className="selected-click" data-testid="selected-click" data-state={state}>
+        {state === 'used' ? (
+          <p className="hint">Used: it can start an automatic zoom, shows the click effect, plays the click sound and counts as activity for smart speed.</p>
+        ) : (
+          <p className="hint">
+            Ignored: no zoom, click effect or sound, and smart speed does not count it.
+            {row.ignored?.stray ? ` It was ignored automatically: ${STRAY_REASON_TEXT[row.ignored.stray]}.` : ''}
+          </p>
+        )}
+        {state === 'used' ? (
+          <button className="btn" onClick={() => input.setIgnored([row.ms], true)} title={withShortcut('Ignore this click', keymap.deleteSelection)}>
+            <EyeOffIcon /> Ignore click
+            {keymap.deleteSelection[0] && <ShortcutKeys accelerator={keymap.deleteSelection[0]} className="btn-shortcut" />}
+          </button>
+        ) : (
+          <button className="btn" onClick={() => input.setIgnored([row.ms], false)} title="Use this click again">
+            <Icon name="refresh" size={16} /> Use click
+          </button>
+        )}
+        <p className="hint">Only automatic zooms change; zooms you added or edited stay as they are.</p>
+      </div>
+    </Section>
+  )
+}
+
+/** Why an automatic zoom exists: the click, typing, mark or scroll it was made for. */
+function ZoomCauseLine({ zoom, cursor, auto, input, onSelect }: { zoom: ZoomSegment; cursor: CursorTrack; auto: AutoZoomSettings; input: InputActions; onSelect: InspectorProps['onSelect'] }): JSX.Element | null {
+  const cause = zoomCause(zoom, cursor, auto)
+  if (!cause) return null
+  if (cause.kind === 'click') {
+    return (
+      <div className="zoom-cause" data-testid="zoom-cause" data-kind="click">
+        <span>Made for the click at {formatTime(cause.click.t)}</span>
+        <button
+          className="btn ghost small-btn"
+          title="Stop using this click: its zoom, click effect and sound go away"
+          onClick={() => {
+            input.setIgnored([cause.ms], true)
+            // The zoom is gone with its click.
+            onSelect(null)
+          }}
+        >
+          Ignore this click
+        </button>
+      </div>
+    )
+  }
+  const text =
+    cause.kind === 'typing'
+      ? `Made for typing at ${formatTime(cause.t)}`
+      : cause.kind === 'mark'
+        ? `Made for a zoom-here mark at ${formatTime(cause.t)}`
+        : `Zooms back in where scrolling stopped (${formatTime(cause.t)})`
+  return (
+    <div className="zoom-cause" data-testid="zoom-cause" data-kind={cause.kind}>
+      <span>{text}</span>
+    </div>
   )
 }
 
@@ -130,6 +223,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
       <p className="hint">
         {formatTime(zoom.start)} – {formatTime(zoom.end)} · {(zoom.end - zoom.start).toFixed(1)} s
       </p>
+      {zoom.auto && <ZoomCauseLine zoom={zoom} cursor={props.cursor} auto={zoomSettingsOf(project).auto} input={props.input} onSelect={props.onSelect} />}
       <div className="zoom-chips-fill">
         <Chips
           label="Zoom level presets"
@@ -248,14 +342,40 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
   )
 }
 
-function AutoZoomSection({ project, cursor, onNotice }: { project: Project; cursor: CursorTrack; onNotice: (m: string) => void }): JSX.Element {
+const SCROLL_MODES: { value: ScrollZoomMode; label: string; title: string }[] = [
+  { value: 'zoom-out', label: 'Zoom out', title: 'Show the whole page while it scrolls, then zoom in where you stop' },
+  { value: 'hold', label: 'Hold', title: 'Keep the zoom steady until scrolling stops' },
+  { value: 'ignore', label: 'Ignore', title: 'Scrolling does not change the zooms' }
+]
+
+function AutoZoomSection({
+  project,
+  cursor,
+  recorded,
+  rows,
+  input,
+  selectedClick,
+  onNotice
+}: {
+  project: Project
+  /** The effective track: what the zooms are generated from. */
+  cursor: CursorTrack
+  /** cursor.json as recorded: whether there is input at all, and whether scrolling was recorded. */
+  recorded: CursorTrack
+  rows: ClickRow[]
+  input: InputActions
+  selectedClick: number | null
+  onNotice: (m: string) => void
+}): JSX.Element {
   const { store } = useEditor()
   const keymap = useKeymap()
   const settings = zoomSettingsOf(project)
   const auto = settings.auto
-  const found = inputSummary(cursor, auto)
+  const found = inputSummary(cursor, rows, auto)
   const autoCount = project.zooms.filter((z) => z.auto).length
-  const hasInput = (cursor.valid && cursor.clicks.some((c) => isZoomClick(c, true))) || found.typing > 0 || found.marks > 0
+  // The recorded clicks count, so ignoring every click does not turn auto zoom off here.
+  const hasInput = rows.some((r) => isZoomClick(r.click, true)) || found.typing > 0 || found.marks > 0
+  const scrollsRecorded = recorded.valid && recorded.scrolls !== undefined
 
   /** Changes auto zoom settings and regenerates the automatic zooms with them (one undo step per drag). */
   const setAuto = (patch: Partial<AutoZoomSettings>, key?: string): void => {
@@ -279,10 +399,17 @@ function AutoZoomSection({ project, cursor, onNotice }: { project: Project; curs
     onNotice(`Removed ${plural(n, 'zoom')}${undoHint(keymap)}`)
   }
 
+  const clickWord = auto.rightClicks ? 'click' : 'left click'
   const sources = [
-    found.clicks > 0 && plural(found.clicks, auto.rightClicks ? 'click' : 'left click'),
+    found.clicks > 0 &&
+      (found.ignored === found.clicks
+        ? found.clicks === 1
+          ? `The only ${clickWord} is ignored`
+          : `All ${found.clicks} ${clickWord}s are ignored`
+        : `${plural(found.clicks, clickWord)}${found.ignored ? ` (${found.ignored} ignored)` : ''}`),
     found.typing > 0 && plural(found.typing, 'typing burst'),
-    found.marks > 0 && plural(found.marks, 'zoom mark')
+    found.marks > 0 && plural(found.marks, 'zoom mark'),
+    found.scrolls > 0 && plural(found.scrolls, 'long scroll')
   ].filter(Boolean)
 
   return (
@@ -307,6 +434,21 @@ function AutoZoomSection({ project, cursor, onNotice }: { project: Project; curs
           onChange={(onTyping) => setAuto({ onTyping })}
         />
         <Toggle label="Zoom-here marks" title="Zoom where you pressed the zoom-here shortcut while recording" checked={auto.onMarks} disabled={!auto.enabled || !hasInput} onChange={(onMarks) => setAuto({ onMarks })} />
+        <span className="field-label">While scrolling</span>
+        <div className="zoom-chips-fill">
+          <Chips
+            label="While scrolling"
+            value={auto.scrolling ?? 'zoom-out'}
+            disabled={!auto.enabled || !hasInput || !scrollsRecorded}
+            onChange={(scrolling) => setAuto({ scrolling })}
+            options={SCROLL_MODES}
+          />
+        </div>
+        {!scrollsRecorded && recorded.valid && (
+          <p className="hint" data-testid="scroll-not-recorded">
+            Scrolling was not recorded in this video (it was made before Flown recorded scrolling).
+          </p>
+        )}
       </div>
       <div className="row start zoom-actions">
         <button className="btn" disabled={!hasInput} onClick={regenerate}>
@@ -316,7 +458,55 @@ function AutoZoomSection({ project, cursor, onNotice }: { project: Project; curs
           <Icon name="trash" size={16} /> Remove all
         </button>
       </div>
+      {rows.length > 0 && <RecordedClicks rows={rows} input={input} selected={selectedClick} />}
     </Section>
+  )
+}
+
+/** Every recorded click, to review: select one (it shows on the preview), ignore it or use it again. */
+function RecordedClicks({ rows, input, selected }: { rows: ClickRow[]; input: InputActions; selected: number | null }): JSX.Element {
+  const ignored = rows.filter((r) => r.ignored).length
+  return (
+    <details className="click-review" data-testid="recorded-clicks">
+      <summary>
+        Recorded clicks · {rows.length}
+        {ignored > 0 ? ` · ${ignored} ignored` : ''}
+      </summary>
+      <ul className="click-list" aria-label="Recorded clicks">
+        {rows.map((r, i) => {
+          const state = clickState(r)
+          const at = formatTime(r.click.t)
+          return (
+            <li key={`${r.ms}:${i}`} className={`${state === 'used' ? '' : 'ignored'} ${selected === r.ms ? 'selected' : ''}`} data-click-ms={r.ms} data-state={state}>
+              <button className="click-time" title="Select this click on the timeline" aria-current={selected === r.ms ? 'true' : undefined} onClick={() => input.selectClick(r.ms)}>
+                {at}
+              </button>
+              <span className="click-kind">{r.click.button}</span>
+              <span className="click-state" title={r.ignored?.stray ? `Ignored automatically: ${STRAY_REASON_TEXT[r.ignored.stray]}` : undefined}>
+                {state === 'used' ? 'used' : state === 'stray' ? 'stray' : 'ignored'}
+              </span>
+              {state === 'used' ? (
+                <button className="btn ghost small-btn" aria-label={`Ignore the click at ${at}`} onClick={() => input.setIgnored([r.ms], true)}>
+                  Ignore
+                </button>
+              ) : (
+                <button className="btn ghost small-btn" aria-label={`Use the click at ${at}`} onClick={() => input.setIgnored([r.ms], false)}>
+                  Use
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      <div className="row start zoom-actions">
+        <button className="btn" onClick={input.findStray} title="Ignore clicks that are almost certainly not part of the demo: right at the start, right before stopping, or made while the cursor flew past">
+          Find stray clicks
+        </button>
+        <button className="btn ghost" disabled={ignored === 0} onClick={input.useAll}>
+          Use all clicks
+        </button>
+      </div>
+    </details>
   )
 }
 
@@ -324,6 +514,15 @@ function RegionIcon(): JSX.Element {
   return (
     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="icon">
       <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M9 9h6v6H9z" />
+    </svg>
+  )
+}
+
+/** A click that no longer counts: the eye-off glyph of the Ignore buttons. */
+function EyeOffIcon(): JSX.Element {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="icon">
+      <path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a16 16 0 0 1-2.7 3.3M6.6 6.6C4.3 8.1 3 12 3 12s4 6 9 6a9 9 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2" />
     </svg>
   )
 }

@@ -895,17 +895,85 @@
   border-radius: 0 6px 6px 0;
 }
 
+/* A recorded click: a 12 x 14 px hit area with its dot drawn inside (::before). Selecting it
+   (Delete then ignores it) never scrubs; Shift+drag over it still selects a range. */
 .click-marker {
   position: absolute;
+  bottom: 0;
+  width: 12px;
+  height: 14px;
+  margin-left: -6px;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.click-marker::before {
+  content: '';
+  position: absolute;
+  left: 3px;
   bottom: 4px;
   width: 6px;
   height: 6px;
-  margin-left: -3px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.35);
+}
+
+/* Right and middle clicks: a smaller dot. */
+.click-marker.minor::before {
+  left: 4px;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+}
+
+.click-marker:hover::before {
+  background: #ffffff;
+}
+
+/* Ignored: a hollow ring (dashed when stray-click detection ignored it). */
+.click-marker[data-state='ignored']::before,
+.click-marker[data-state='stray']::before {
+  left: 3px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  background: transparent;
+  border: 1.5px solid #ffffff;
+  box-shadow: none;
+  opacity: 0.45;
+}
+
+.click-marker[data-state='stray']::before {
+  border-style: dashed;
+}
+
+.click-marker:hover[data-state='ignored']::before,
+.click-marker:hover[data-state='stray']::before {
+  opacity: 0.75;
+}
+
+.click-marker.selected {
+  z-index: 3;
+}
+
+.click-marker.selected::before {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px var(--focus-ring),
+    0 0 0 3.5px rgba(0, 0, 0, 0.5);
+}
+
+/* A straightened cursor move: a thin bar along the bottom of the clip track. */
+.path-bar {
+  position: absolute;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent-text);
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
 .range-sel {

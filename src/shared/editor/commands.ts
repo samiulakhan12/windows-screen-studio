@@ -47,6 +47,8 @@ const COMMAND_LIST = [
   { id: 'cutRange', title: 'Cut selected range', category: 'Edit', keywords: 'remove delete trim range' },
   { id: 'restoreAll', title: 'Restore the whole recording', category: 'Edit', keywords: 'undo cuts trims speed reset uncut' },
   { id: 'smartSpeed', title: 'Smart speed: find idle parts', category: 'Edit', keywords: 'speed up skip pauses still inactivity fast forward silence auto cut' },
+  { id: 'straightenRange', title: 'Straighten cursor in selected range', category: 'Edit', keywords: 'cursor path straight line glide smooth wobble mouse range' },
+  { id: 'recordedPathRange', title: 'Keep recorded cursor path in selected range', category: 'Edit', keywords: 'cursor path as recorded original wobble mouse range' },
 
   { id: 'addZoom', title: 'Add zoom at playhead', category: 'Add', keywords: 'magnify scale camera' },
   { id: 'addText', title: 'Add text at playhead', category: 'Add', keywords: 'annotation title caption label' },
@@ -67,9 +69,13 @@ const COMMAND_LIST = [
   { id: 'zoomLevel2', title: 'Zoom level 1.5×', category: 'Zoom', keywords: 'level scale selected' },
   { id: 'zoomLevel3', title: 'Zoom level 2×', category: 'Zoom', keywords: 'level scale selected' },
   { id: 'zoomLevel4', title: 'Zoom level 3×', category: 'Zoom', keywords: 'level scale selected' },
+  { id: 'toggleClickAtPlayhead', title: 'Ignore or use the click at the playhead', category: 'Zoom', keywords: 'click stray skip auto zoom ripple sound mouse' },
+  { id: 'findStrayClicks', title: 'Find stray clicks', category: 'Zoom', keywords: 'click ignore skip accidental auto zoom mouse' },
+  { id: 'useAllClicks', title: 'Use all ignored clicks again', category: 'Zoom', keywords: 'click restore unignore auto zoom mouse' },
 
   { id: 'toggleCursor', title: 'Smooth cursor', category: 'Effects', keywords: 'show hide pointer mouse toggle', toggle: true },
   { id: 'toggleClickEffects', title: 'Click effects', category: 'Effects', keywords: 'ripple ring pulse toggle', toggle: true },
+  { id: 'toggleStraighten', title: 'Straighten cursor moves', category: 'Effects', keywords: 'cursor path straight line glide smooth wobble mouse toggle', toggle: true },
   { id: 'toggleMotionBlur', title: 'Motion blur', category: 'Effects', keywords: 'toggle smooth camera', toggle: true },
   { id: 'toggleKeystrokes', title: 'Keystroke overlay', category: 'Effects', keywords: 'keyboard shortcuts keys toggle show hide', toggle: true },
   { id: 'toggleWebcam', title: 'Camera bubble', category: 'Effects', keywords: 'webcam face show hide toggle', toggle: true },

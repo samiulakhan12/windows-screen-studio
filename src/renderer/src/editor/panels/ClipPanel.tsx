@@ -3,6 +3,7 @@ import { activitySources, type AudioSource } from '../../../../shared/audio/sett
 import { sourceActivity, type AudioAnalysis } from '../../../../shared/audio/soundtrack'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../../shared/editor/clips'
 import type { EditStore } from '../../../../shared/editor/editStore'
+import { pathSummary } from '../../../../shared/editor/inputEdits'
 import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import {
   applySmartSpeed,
@@ -111,6 +112,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             }}
             options={SPEED_PRESETS.map((s) => ({ value: s, label: `${s}×` }))}
           />
+          {props.recorded.valid && !project.capture.cursorInVideo && <CursorPathField {...props} range={selection} />}
         </Section>
       ) : (
         <Section title="Edit">
@@ -150,6 +152,42 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
         </button>
       )}
     </>
+  )
+}
+
+/* ---------- Cursor path of a selected range ---------- */
+
+/**
+ * Straightens the cursor moves of the selected range, keeps them as recorded, or (Reset) lets
+ * them follow the Straighten moves option again. The range stays selected, to compare.
+ */
+function CursorPathField(props: InspectorProps & { range: { start: number; end: number } }): JSX.Element {
+  const { project, recorded, input, range } = props
+  const summary = useMemo(() => pathSummary(recorded, project, range), [recorded, project, range])
+  // Reset only where a painted range lies under the selection.
+  const painted = (project.inputEdits?.paths ?? []).some((r) => r.start < range.end && r.end > range.start)
+  return (
+    <div className="cursor-path" data-testid="cursor-path">
+      <span className="field-label">
+        <EditorIcon name="crosshair" size={14} /> Cursor path
+      </span>
+      <div className="row start cursor-path-actions">
+        <button className="btn" onClick={() => input.setPathRange(range, 'straight')} title="Replace the cursor moves in this range with straight, smooth glides">
+          Straighten
+        </button>
+        <button className="btn" onClick={() => input.setPathRange(range, 'recorded')} title="Keep the cursor moves in this range exactly as recorded">
+          As recorded
+        </button>
+        {painted && (
+          <button className="btn ghost" onClick={() => input.setPathRange(range, null)} title="Let this range follow the Straighten moves option again">
+            Reset
+          </button>
+        )}
+      </div>
+      <p className="hint" data-testid="cursor-path-summary">
+        {plural(summary.moves, 'move')} here · {summary.straightened} straightened
+      </p>
+    </div>
   )
 }
 
@@ -384,7 +422,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         </div>
         {mode === 'idle' ? (
           <>
-            <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and the mouse and keyboard rest.</p>
+            <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and you did not move, click, scroll or type.</p>
             {keep.length > 0 && <TitlesKept />}
             {!cursor.valid && <p className="hint">This recording has no mouse or keyboard data, so only the picture decides.</p>}
             <span className="field-label">Idle for at least</span>

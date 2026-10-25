@@ -183,3 +183,137 @@
 .region-handle[data-handle='w'] {
   cursor: ew-resize;
 }
+
+/* A long scroll auto zoom zooms out for: a faint hatched band behind the zooms. It passes every
+   pointer event on to the track (double-click to add a zoom, scrubbing) and only shows its title. */
+.scroll-band {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: var(--radius-xs);
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0 3px, transparent 3px 7px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Ignoring clicks ---------- */
+
+.selected-click {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.btn .btn-shortcut {
+  margin-left: 4px;
+}
+
+/* "Made for the click at 0:04.2 [Ignore this click]" under a selected auto zoom. */
+.zoom-cause {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: -4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.zoom-cause .btn.small-btn,
+.click-list .btn.small-btn {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* The recorded clicks of Zoom › Auto zoom (styled like the smart speed parts list). */
+.click-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.click-review > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 2px 0;
+  border-radius: var(--radius-xs);
+}
+
+.click-review > summary:hover,
+.click-review[open] > summary {
+  color: var(--text-1);
+}
+
+.click-review[open] > summary {
+  margin-bottom: 8px;
+}
+
+.click-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.click-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 0 0 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.click-list li:hover {
+  background: var(--panel-2);
+}
+
+.click-list li.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+
+.click-time {
+  padding: 0;
+  border: none;
+  background: none;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  min-width: 48px;
+  text-align: left;
+}
+
+.click-time:hover {
+  color: var(--accent-text);
+}
+
+.click-kind {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-2);
+}
+
+.click-state {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.click-list li.ignored .click-time,
+.click-list li.ignored .click-kind {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
