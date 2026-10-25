@@ -29,21 +29,22 @@ function useMarkFlash(marks: number): boolean {
 /**
  * Seconds shown by the timer. It ticks locally from the last status instead of
  * receiving a message every few hundred milliseconds, and re-renders only when the
- * displayed second changes.
+ * displayed second changes. A status resent with the same state and elapsed time (the
+ * camera bubble shown or hidden, a "zoom here" mark) keeps the running count.
  */
-function useTimer(status: ToolbarStatus): number {
+function useTimer({ state, elapsed: statusElapsed }: ToolbarStatus): number {
   const base = useRef({ elapsed: 0, at: 0 })
   const [seconds, setSeconds] = useState(0)
   useEffect(() => {
-    base.current = { elapsed: status.elapsed, at: performance.now() }
-    setSeconds(Math.floor(status.elapsed))
-    if (status.state !== 'recording') return
+    base.current = { elapsed: statusElapsed, at: performance.now() }
+    setSeconds(Math.floor(statusElapsed))
+    if (state !== 'recording') return
     const timer = setInterval(() => {
       const { elapsed, at } = base.current
       setSeconds(Math.floor(elapsed + (performance.now() - at) / 1000))
     }, 250)
     return () => clearInterval(timer)
-  }, [status])
+  }, [state, statusElapsed])
   return seconds
 }
 

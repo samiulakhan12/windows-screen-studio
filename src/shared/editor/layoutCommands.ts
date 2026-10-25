@@ -1,7 +1,7 @@
 import { cornered } from '../engine/layout'
 import { CORNER_NAMES } from '../recording/cameraBubble'
 import type { CameraLayout, Corner, LayoutSegment, Project } from '../types'
-import { addLayoutAt, layoutSegmentAt, layoutTimeAt, type LayoutEdit } from './layouts'
+import { addLayoutAt, cornerOnly, layoutSegmentAt, layoutTimeAt, type LayoutEdit } from './layouts'
 
 /*
  * The editor's "camera layout at the playhead" commands, and the Camera panel's layout picker
@@ -29,7 +29,8 @@ export type LayoutAtResult =
 
 /**
  * Sets the camera layout at the playhead `t`, on the frame the preview shows there (layoutTimeAt).
- * Inside a layout segment that segment changes; elsewhere a new one is added (addLayoutAt).
+ * Inside a layout segment that segment changes, except a corner-only one (a camera position, such
+ * as a bubble move): a new one is added there, in its corner, as elsewhere (addLayoutAt).
  * Outside every segment the layout is already 'default'.
  */
 export function setLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number): LayoutAtResult {
@@ -37,6 +38,8 @@ export function setLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number
   const here = layoutSegmentAt(layouts, layoutTimeAt(project, t))
   if (here) {
     if (here.layout === layout) return { ok: false, reason: 'same', id: here.id }
+    const r = cornerOnly(here) ? addLayoutAt(project, layout, t) : null
+    if (r?.ok) return { ok: true, layouts: r.layouts, id: r.segment.id, added: true }
     return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? { ...s, layout } : s)), id: here.id, added: false }
   }
   if (layout === 'default') return { ok: false, reason: 'same', id: null }

@@ -212,8 +212,8 @@ export function layoutGeometry(
 ): { screen: Rect; camera: CameraBox } {
   const base = styleContentRect(outW, outH, srcW, srcH, project.style)
   const card = project.style.cornerRadius * (Math.min(outW, outH) / 1080)
-  // A segment's own corner moves the bubble (and the large camera); the other layouts keep the project's.
-  const webcam = corner && cornered(layout) ? { ...project.webcam, corner } : project.webcam
+  // A segment's own corner moves the bubble (and the large camera) and places a hidden one; the other layouts keep the project's.
+  const webcam = corner && (cornered(layout) || layout === 'screen-only') ? { ...project.webcam, corner } : project.webcam
   switch (layout) {
     case 'camera-only':
       return { screen: scaleRect(base, BEHIND_SCALE), camera: { rect: paddedArea(outW, outH, project.style.padding), radius: card, opacity: 1 } }
@@ -288,8 +288,11 @@ const sameState = (a: LayoutState, b: LayoutState, corner: Corner): boolean => a
 
 function phase(from: LayoutState, to: LayoutState, progress: number): LayoutPhase {
   const p: LayoutPhase = { from: from.layout, to: to.layout, progress }
-  if (from.corner) p.fromCorner = from.corner
-  if (to.corner) p.toCorner = to.corner
+  // A hidden camera fades where the camera is on the other side, not from the project's corner.
+  const fromCorner = from.layout === 'screen-only' ? to.corner : from.corner
+  const toCorner = to.layout === 'screen-only' ? from.corner : to.corner
+  if (fromCorner) p.fromCorner = fromCorner
+  if (toCorner) p.toCorner = toCorner
   return p
 }
 

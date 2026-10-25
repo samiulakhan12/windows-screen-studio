@@ -41,6 +41,39 @@ export function cornerAt(project: Pick<Project, 'layouts' | 'webcam'>, t: number
 /** Whether segment `seg`'s layout puts the camera in a corner it may choose. */
 export const segmentHasCorner = (seg: Pick<LayoutSegment, 'layout'>): boolean => cornered(seg.layout)
 
+/**
+ * Whether segment `s` only puts the camera in its own corner (the default layout with a corner):
+ * where the live bubble was moved while recording, or "Move camera here". It is a camera
+ * position, not a change of layout, so a layout change at the playhead inside it is added there
+ * (layoutInStay) rather than retyping the whole stay, which can run for minutes.
+ */
+export const cornerOnly = (s: Pick<LayoutSegment, 'layout' | 'corner'>): boolean => s.layout === 'default' && !!s.corner
+
+/**
+ * A change to `layout` at `at` inside corner-only segment `here`: a DEFAULT_LAYOUT_LENGTH segment
+ * of `layout` in the same corner, cut out of the stay, which carries on around it. It stays
+ * inside the stay and the kept video (near their ends it starts earlier, as addLayoutAt does), and
+ * a leftover too short to keep goes to the new segment. Null when the stay is too short for it.
+ */
+function layoutInStay(layouts: LayoutSegment[], here: LayoutSegment, layout: CameraLayout, at: number, end: number): { layouts: LayoutSegment[]; segment: LayoutSegment } | null {
+  const limit = Math.min(here.end, end)
+  let start = at
+  let stop = Math.min(at + DEFAULT_LAYOUT_LENGTH, limit)
+  if (stop - start < MIN_NEW_SEGMENT) {
+    stop = limit
+    start = Math.max(here.start, stop - DEFAULT_LAYOUT_LENGTH)
+  }
+  if (stop - start < MIN_NEW_SEGMENT) return null
+  if (start - here.start < MIN_LAYOUT_LENGTH) start = here.start
+  if (here.end - stop < MIN_LAYOUT_LENGTH) stop = here.end
+  const segment: LayoutSegment = { id: newId(), layout, start, end: stop, corner: here.corner }
+  const pieces: LayoutSegment[] = []
+  if (start > here.start) pieces.push({ ...here, end: start })
+  pieces.push(segment)
+  if (stop < here.end) pieces.push({ ...here, id: pieces.length > 1 ? newId() : here.id, start: stop })
+  return { layouts: [...layouts.filter((s) => s.id !== here.id), ...pieces].sort((a, b) => a.start - b.start), segment }
+}
+
 /** A new layout segment starting at `t`, clamped to the recording. */
 export function createLayoutSegment(layout: CameraLayout, t: number, duration: number): LayoutSegment {
   const start = Math.max(0, Math.min(t, duration - 0.1))
@@ -85,15 +118,19 @@ export type AddLayoutResult =
  * A new segment of `layout` at the playhead `t` (layoutTimeAt), and the layouts with it added in
  * order. It starts there and lasts DEFAULT_LAYOUT_LENGTH, ending where the next one starts so
  * segments never overlap. Too close to the end of the video for that, it ends with the video and
- * starts earlier instead (after the one before), so its change still plays. `corner`: the camera
- * corner the new segment chooses.
+ * starts earlier instead (after the one before), so its change still plays. Inside a corner-only
+ * segment it is cut out of that camera position (layoutInStay). `corner`: the camera corner the
+ * new segment chooses.
  */
 export function addLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number, corner?: Corner): AddLayoutResult {
   const layouts = project.layouts ?? []
   const end = videoEnd(project)
   const at = layoutTimeAt(project, t)
   const here = layoutSegmentAt(layouts, at)
-  if (here) return { ok: false, reason: 'inside', id: here.id }
+  if (here) {
+    const inStay = cornerOnly(here) && layout !== 'default' ? layoutInStay(layouts, here, layout, at, end) : null
+    return inStay ? { ok: true, ...inStay } : { ok: false, reason: 'inside', id: here.id }
+  }
   const seg = createLayoutSegment(layout, at, project.duration)
   // Never over a neighbour: after the one before, up to the one after.
   const prev = layouts.filter((s) => s.end <= at + 1e-9).reduce<LayoutSegment | null>((a, s) => (!a || s.end > a.end ? s : a), null)

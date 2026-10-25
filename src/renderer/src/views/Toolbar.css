@@ -4,6 +4,15 @@
  * While recording nothing animates with CSS (an always-on-top window repainting at the display
  * rate costs the recording frames): the dot pulses with a short transition once a second.
  */
+
+/*
+ * The bar's window is transparent, but the app-wide `:root` paints the page background, which
+ * covers the whole window: the bar's page clears it so only the pill shows.
+ */
+:root:has(> body.toolbar-body) {
+  background: transparent;
+}
+
 .toolbar.rec-bar {
   --rb-bg: rgba(18, 18, 26, 0.96);
   --rb-line: rgba(255, 255, 255, 0.1);
