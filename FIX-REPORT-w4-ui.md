@@ -218,4 +218,23 @@ Run on this branch under Xvfb (1920×1080×24):
 - `npm run build`: passes.
 - `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (all files): see below.
 
-Full e2e run in progress; results follow in the next commit.
+**Full suite result: 37 of 39 files passed. 162 tests passed and 2 failed.**
+
+All five `ui.e2e.cjs` checks passed in the full run.
+
+The two failures:
+
+1. **`captions.e2e.cjs`: "Generate with no provider, with only Claude, and the error from a
+   provider that fails".** The test times out clicking `.captions-empty button:has-text("Check
+   again")`. This is the known failure at `48ed9a7` that the captions fixer owns, and my changes
+   do not cause it. In a clean worktree of `48ed9a7` (built and run with
+   `SSW_E2E_ONLY="Generate with no provider"`), it fails in exactly the same way, with the same
+   locator and the same click timeout. My branch does not touch `captions.css` or any captions
+   code.
+2. **`native.e2e.cjs`: "quitting the app finalises a running recording instead of killing it".**
+   Playwright threw `Cannot read properties of undefined (reading '_object')` from
+   `ElectronApplication.process()` after the app had quit. That is a timing race in the test
+   harness, with no UI involved. Re-run on its own on this branch, `native.e2e.cjs` passed 4/4,
+   this test included. The rest of the file passed in the full run as well.
+
+Apart from the known captions failure, every e2e test passes on this branch.
