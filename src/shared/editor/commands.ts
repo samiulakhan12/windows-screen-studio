@@ -79,6 +79,7 @@ const COMMAND_LIST = [
   { id: 'layoutScreenOnly', title: 'Camera layout: screen only', category: 'Camera', keywords: 'webcam layout hide no camera' },
   { id: 'layoutSideBySide', title: 'Camera layout: side by side', category: 'Camera', keywords: 'webcam layout split two columns' },
   { id: 'layoutCameraLarge', title: 'Camera layout: large camera', category: 'Camera', keywords: 'webcam layout big presenter' },
+  { id: 'directCamera', title: 'Direct the camera automatically', category: 'Camera', keywords: 'auto director webcam layout intro outro bubble corner move hide silence face centre framing' },
 
   { id: 'generateCaptions', title: 'Generate captions', category: 'Captions', keywords: 'transcribe transcript subtitles speech text auto ai' },
   { id: 'toggleCaptions', title: 'Show or hide captions', category: 'Captions', keywords: 'subtitles transcript on off toggle burn', toggle: true },

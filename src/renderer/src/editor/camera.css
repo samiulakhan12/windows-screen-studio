@@ -189,3 +189,9 @@
 .cam-reset:hover {
   color: var(--text);
 }
+
+/* Made by the camera director: dashed and a little dimmer, like an auto zoom (.zoom-seg.auto). */
+.layout-seg.auto {
+  border-style: dashed;
+  filter: saturate(0.75) brightness(0.88);
+}

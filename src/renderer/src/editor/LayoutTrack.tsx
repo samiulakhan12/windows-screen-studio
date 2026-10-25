@@ -1,4 +1,5 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
+import { AUTO_TITLE_SUFFIX } from '../../../shared/editor/directorCopy'
 import { addLayoutAt, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
@@ -39,7 +40,7 @@ const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 const shortLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.short ?? layoutLabel(layout)
 
 /** A small frame with the camera's dot in `corner`: the corner a layout change puts the camera in. */
-function CornerGlyph({ corner }: { corner: Corner }): JSX.Element {
+export function CornerGlyph({ corner }: { corner: Corner }): JSX.Element {
   const x = corner.endsWith('left') ? 4.5 : 13.5
   const y = corner.startsWith('top') ? 4.5 : 9.5
   return (
@@ -176,6 +177,8 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
           const corner = segmentCorner(s)
           // A change of corner alone (the default layout) is named by its corner.
           const label = corner && s.layout === 'default' ? CORNER_NAMES[corner] : shortLabel(s.layout)
+          // Made by the camera director (any edit by hand clears the mark: then it is the user's).
+          const auto = s.auto === true
           return (
             <div
               key={s.id}
@@ -184,10 +187,11 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
               data-corner={corner}
               data-start={s.start}
               data-end={s.end}
-              className={`seg layout-seg ${s.layout} ${selId === s.id ? 'selected' : ''}`}
+              data-auto={auto ? 'true' : undefined}
+              className={`seg layout-seg ${s.layout} ${auto ? 'auto' : ''} ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onSegmentDown(s)}
-              title={`${layoutLabel(s.layout)}${corner ? ` · camera ${CORNER_NAMES[corner].toLowerCase()}` : ''} · ${formatTime(s.start)} – ${formatTime(s.end)}`}
+              title={`${layoutLabel(s.layout)}${corner ? ` · camera ${CORNER_NAMES[corner].toLowerCase()}` : ''} · ${formatTime(s.start)} – ${formatTime(s.end)}${auto ? AUTO_TITLE_SUFFIX : ''}`}
             >
               {ramp && w > 24 && (
                 <>
@@ -198,7 +202,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
               <span className="edge left" />
               {w > 30 && (corner && s.layout === 'default' ? <CornerGlyph corner={corner} /> : <LayoutGlyph layout={s.layout} size={18} />)}
               {corner && s.layout !== 'default' && w > 54 && <CornerGlyph corner={corner} />}
-              {w > 84 && <span className="seg-label">{label}</span>}
+              {w > 84 && <span className="seg-label">{auto && w > 110 ? `${label} · auto` : label}</span>}
               <span className="edge right" />
             </div>
           )
