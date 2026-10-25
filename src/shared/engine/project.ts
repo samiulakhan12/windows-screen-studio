@@ -1,3 +1,5 @@
+import { readTranscript } from '../captions/captionData'
+import { readCaptionSettings } from '../captions/settings'
 import type { CaptureInfo, Clip, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
 import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
@@ -110,6 +112,9 @@ type AnyProject = Omit<Project, 'version'> & { version: number; trim?: { start: 
 /** The objects in a stored list (a null or a number in a hand-edited file would crash the timeline). */
 const objects = <T>(list: unknown): T[] => (Array.isArray(list) ? list.filter((v) => !!v && typeof v === 'object' && !Array.isArray(v)) : [])
 
+/** `{ [key]: value }`, or nothing when the value is absent (no `key: undefined` in the saved file). */
+const optional = <K extends string, V>(key: K, value: V | undefined): { [P in K]?: V } => (value === undefined ? {} : ({ [key]: value } as { [P in K]?: V }))
+
 /**
  * Upgrades a project.json of any earlier version to the current schema.
  * Missing fields get defaults, so hand-edited or partial files still open.
@@ -120,7 +125,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
@@ -141,7 +146,9 @@ export function migrateProject(raw: unknown): Project {
     chapters: readItems(p.chapters, (c) => readChapter(c, duration)),
     // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.
     tilt: readTilt(p.tilt),
-    transcript: p.transcript && typeof p.transcript === 'object' && Array.isArray(p.transcript.segments) ? p.transcript : undefined,
+    // Captions inside the recording, sorted, with unique ids; their look sanitised (absent = defaults).
+    ...optional('transcript', readTranscript(transcript, duration)),
+    ...optional('captions', readCaptionSettings(captions)),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,
