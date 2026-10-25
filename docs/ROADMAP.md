@@ -84,7 +84,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 - **Seen in:** Descript, Loom, Camtasia/Audiate.
 
 ### NW-02 · Teleprompter and speaker notes, with an AI script draft
-**Recording · S · planned**
+**Recording · S · next (Wave 5, after NW-08 and NW-03)**
 
 - **What:** a floating notes window only the presenter sees, kept out of the recording. It has font size, scroll speed and hotkey scrolling. A "Draft script" button turns bullet points into a spoken script.
 - **Works with:** the script draft uses OpenAI, Gemini or Claude. The teleprompter needs no AI.
@@ -93,7 +93,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 - **Seen in:** Screen Studio, Loom, FocuSee, Riverside, Descript.
 
 ### NW-03 · Better auto zoom input: ignore stray clicks, straighten cursor paths, follow scrolling
-**Editing · M · planned**
+**Editing · M · in progress (Wave 5)**
 
 - **What:**
   - Mark a click as "ignore" so it no longer triggers a zoom or click effect.
@@ -150,7 +150,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
   - Cost estimates go stale when prices change.
 
 ### NW-08 · Automatic camera director
-**AI · M · planned**
+**AI · M · in progress (Wave 5)**
 
 - **What:** one click builds the camera track: full-screen camera for the intro and outro, a small bubble during the demo. The bubble moves away from the cursor, hides during long silences, and the crop keeps the face centred.
 - **Works with:** runs on the PC, using voice activity, cursor and typing data, and a face detector. The face detector needs MediaPipe's `blaze_face_short_range` (about 0.2 MB); only the selfie segmenter is bundled today. OpenAI, Gemini or Claude can optionally label the intro, demo and outro from the transcript.
