@@ -1,19 +1,103 @@
 /**
  * AI providers (OpenAI, Gemini, Claude) with the user's own API keys: key storage, transcription
- * of a recording's sound, and text tasks on its transcript. Keys stay in the main process.
+ * of a recording's sound, and text tasks on its transcript. Keys stay in the main process: the
+ * renderer only ever sees AiProviderInfo (with a masked key), and every request to a provider is
+ * made from here (the renderer's CSP allows no network access). Every input is checked, and
+ * only the app's own page may call these handlers.
  */
-import { ipcMain } from 'electron'
+import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron'
+import path from 'node:path'
+import type { AiTextRequest, AiTextResult, TranscribeProgress } from '../shared/api/ai'
+import { runTextTask, validateTextRequest } from '../shared/captions/transcriptText'
+import { AiProviderStore, type SecretBox } from './ai/keyStore'
+import { clientFor } from './ai/providers'
+import { stopAllTranscriptions, stopTranscription, transcribeProject } from './ai/transcribe'
+import type { TextEffort } from './ai/types'
+import { isAppUrl } from './security'
 
-const notReady = (): never => {
-  throw new Error('AI providers are not available yet')
+/** safeStorage (DPAPI on Windows). On Linux without a keyring it falls back to a fixed key: a packaged app refuses that. */
+const secretBox: SecretBox = {
+  isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+  encryptString: (plain) => safeStorage.encryptString(plain),
+  decryptString: (encrypted) => safeStorage.decryptString(encrypted),
+  weakness: () =>
+    process.platform === 'linux' && app.isPackaged && safeStorage.getSelectedStorageBackend() === 'basic_text' ? 'no system keyring is available' : null
+}
+
+let store: AiProviderStore | null = null
+const providers = (): AiProviderStore => (store ??= new AiProviderStore(path.join(app.getPath('userData'), 'ai-providers.json'), secretBox))
+
+/** Text tasks in progress, stopped when the app quits. */
+const textCalls = new Set<AbortController>()
+
+const EFFORT: Record<AiTextRequest['task'], TextEffort> = { cleanup: 'medium', translate: 'medium', chapters: 'medium', title: 'low', summary: 'low' }
+
+/** Runs a text task on the transcript with provider `providerId`. */
+export async function aiText(providerId: unknown, raw: unknown): Promise<AiTextResult> {
+  const request = validateTextRequest(raw)
+  const { info, apiKey } = providers().get(providerId)
+  const client = await clientFor(info, apiKey)
+  const controller = new AbortController()
+  textCalls.add(controller)
+  try {
+    return await runTextTask(request, (prompt) => client.json(prompt, { signal: controller.signal, effort: EFFORT[request.task] }))
+  } finally {
+    textCalls.delete(controller)
+  }
+}
+
+/** Checks provider `id`'s key with a tiny request; never throws. */
+export async function testAiProvider(id: unknown): Promise<{ ok: boolean; message: string }> {
+  try {
+    const { info, apiKey } = providers().get(id)
+    const message = await (await clientFor(info, apiKey)).test(AbortSignal.timeout(60_000))
+    return { ok: true, message }
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/** Only the app's own page may use the user's keys. */
+function fromApp(e: IpcMainInvokeEvent): void {
+  if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
 }
 
 export function registerAiIpc(): void {
-  ipcMain.handle('ai:listProviders', () => [])
-  ipcMain.handle('ai:saveProvider', () => notReady())
-  ipcMain.handle('ai:removeProvider', () => notReady())
-  ipcMain.handle('ai:testProvider', () => notReady())
-  ipcMain.handle('ai:transcribe', () => notReady())
-  ipcMain.handle('ai:cancelTranscription', () => undefined)
-  ipcMain.handle('ai:text', () => notReady())
+  ipcMain.handle('ai:listProviders', (e) => {
+    fromApp(e)
+    return providers().list()
+  })
+  ipcMain.handle('ai:saveProvider', (e, input: unknown) => {
+    fromApp(e)
+    return providers().save(input)
+  })
+  ipcMain.handle('ai:removeProvider', (e, id: unknown) => {
+    fromApp(e)
+    providers().remove(id)
+  })
+  ipcMain.handle('ai:testProvider', (e, id: unknown) => {
+    fromApp(e)
+    return testAiProvider(id)
+  })
+  ipcMain.handle('ai:transcribe', (e, projectId: unknown, options: unknown) => {
+    fromApp(e)
+    const sender = e.sender
+    const progress = (p: TranscribeProgress): void => {
+      if (!sender.isDestroyed()) sender.send('ai:transcribeProgress', p)
+    }
+    return transcribeProject(providers(), projectId, options, progress)
+  })
+  ipcMain.handle('ai:cancelTranscription', (e, projectId: unknown) => {
+    fromApp(e)
+    return typeof projectId === 'string' ? stopTranscription(projectId) : undefined
+  })
+  ipcMain.handle('ai:text', (e, providerId: unknown, request: unknown) => {
+    fromApp(e)
+    return aiText(providerId, request)
+  })
+  // Requests and ffmpeg must not outlive the app.
+  app.on('will-quit', () => {
+    stopAllTranscriptions()
+    for (const c of textCalls) c.abort()
+  })
 }

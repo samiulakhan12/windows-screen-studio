@@ -13,6 +13,8 @@ export interface AiProviderInfo {
   /** Last characters of the key, e.g. "…a1b2". */
   maskedKey: string
   createdAt: string
+  /** Whether it can transcribe sound (OpenAI and Gemini; Claude cannot). Added in wave 4. */
+  canTranscribe?: boolean
 }
 
 export interface AiProviderInput {
@@ -71,3 +73,62 @@ export interface AiApi {
   onTranscribeProgress(listener: (progress: TranscribeProgress) => void): () => void
   aiText(providerId: string, request: AiTextRequest): Promise<AiTextResult>
 }
+
+/** What each kind of provider is called, can do and uses by default (shown in Settings). */
+export interface AiProviderKindInfo {
+  kind: AiProviderKind
+  label: string
+  /** Whether its API accepts sound: the Claude API does not, so Claude cannot transcribe. */
+  canTranscribe: boolean
+  /** Default model for text tasks. */
+  defaultModel: string
+  /** Default transcription model (providers that can transcribe). */
+  defaultTranscriptionModel?: string
+  /** Where the user creates an API key. */
+  keyPage: string
+  /** How keys of this provider usually start, as a placeholder. */
+  keyPlaceholder: string
+}
+
+export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
+  openai: {
+    kind: 'openai',
+    label: 'OpenAI',
+    canTranscribe: true,
+    defaultModel: 'gpt-6.1-sol',
+    // The only OpenAI transcription model that returns segment and word timings (timestamp_granularities).
+    defaultTranscriptionModel: 'whisper-1',
+    keyPage: 'https://platform.openai.com/api-keys',
+    keyPlaceholder: 'sk-…'
+  },
+  gemini: {
+    kind: 'gemini',
+    label: 'Google Gemini',
+    canTranscribe: true,
+    defaultModel: 'gemini-3.8-flash',
+    defaultTranscriptionModel: 'gemini-3.8-flash',
+    keyPage: 'https://aistudio.google.com/apikey',
+    keyPlaceholder: 'AIza…'
+  },
+  anthropic: {
+    kind: 'anthropic',
+    label: 'Anthropic Claude',
+    canTranscribe: false,
+    defaultModel: 'claude-opus-5-5',
+    keyPage: 'https://platform.claude.com/settings/keys',
+    keyPlaceholder: 'sk-ant-…'
+  }
+}
+
+export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary']
+
+/** Limits of what the renderer may send (checked again in the main process). */
+export const AI_LIMITS = {
+  maxProviders: 20,
+  labelLength: 60,
+  keyLength: 400,
+  modelLength: 100,
+  maxSegments: 20000,
+  segmentTextLength: 2000,
+  languageLength: 60
+} as const
