@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sceneCameraBox, sceneContentRect, type Rect } from '../src/shared/engine/layout'
+import { LAYOUT_TRANSITION, sceneCameraBox, sceneContentRect, type Rect } from '../src/shared/engine/layout'
 import { createProject } from '../src/shared/engine/project'
 import {
   CURSOR_LEAN,
@@ -553,6 +553,21 @@ describe('tiltArea: the tilted screen stays in its own slot', () => {
     const sb = sceneContentRect(tall, H, W, W, H, 5)
     expect(cb.y).toBeGreaterThan(sb.y + sb.h)
     expect(tiltArea(tall, H, W, W, H, 5).y1).toBeCloseTo((sb.y + sb.h + cb.y) / 2, 9)
+  })
+
+  it('keeps clear of a card on the side of its segment corner, and moves with it as it changes sides', () => {
+    const left = sceneProject('side-by-side', 'bottom-left')
+    const right = sceneProject('side-by-side')
+    const own = sceneProject(null)
+    own.layouts = [{ id: 'l', start: 2, end: 8, layout: 'side-by-side', corner: 'top-left' }]
+    expect(tiltArea(own, W, H, W, H, 5)).toEqual(tiltArea(left, W, H, W, H, 5))
+    // Straight into a card on the project's side (the right): half way, half way between the two.
+    own.layouts = [...own.layouts, { id: 'r', start: 8, end: 10, layout: 'side-by-side' }]
+    const a = tiltArea(left, W, H, W, H, 5)
+    const b = tiltArea(right, W, H, W, H, 5)
+    const mid = tiltArea(own, W, H, W, H, 8 + LAYOUT_TRANSITION / 2)
+    expect(mid.x0).toBeCloseTo((a.x0 + b.x0) / 2, 6)
+    expect(mid.x1).toBeCloseTo((a.x1 + b.x1) / 2, 6)
   })
 
   it('is the frame inside the padding for every other layout, without a camera, and outside layouts', () => {

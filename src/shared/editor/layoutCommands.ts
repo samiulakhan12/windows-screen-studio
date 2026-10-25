@@ -86,7 +86,7 @@ export function setCornerAt(project: LayoutEdit & Pick<Project, 'webcam'>, corne
 /** What the editor says when setCornerAt changed nothing. */
 export function cornerRefusal(reason: 'same' | 'no-corner' | 'no-room' | 'end', corner: Corner): string {
   if (reason === 'same') return `The camera already is in the ${CORNER_NAMES[corner].toLowerCase()} corner here`
-  if (reason === 'no-corner') return 'The camera layout here has no camera corner: pick the default or large camera layout first'
+  if (reason === 'no-corner') return 'The camera layout here has no camera corner: pick the default, large camera or side by side layout first'
   if (reason === 'end') return 'Too close to the end of the video to move the camera'
   return 'No room to move the camera here: another camera layout starts right after the playhead'
 }

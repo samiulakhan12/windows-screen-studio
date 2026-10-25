@@ -9,7 +9,7 @@
  * vertical one (rotateY > 0: the right edge goes away), about its own centre, and seen through
  * a camera straight in front of that centre: like CSS `perspective(d) rotateY(y) rotateX(x)`.
  */
-import type { CameraLayout, Project, TiltSettings, ZoomSegment } from '../types'
+import type { CameraLayout, Corner, Project, TiltSettings, ZoomSegment } from '../types'
 import { layoutGeometry, layoutPhaseAt, type Rect, type SceneProject } from './layout'
 import { clamp, easeInOutCubic, lerp } from './math'
 import { aimAt, DEFAULT_ZOOM_STYLE, type Camera, type ZoomStyle } from './zoom'
@@ -229,10 +229,10 @@ export function frameArea(w: number, h: number, margin = 0): TiltArea {
   return { x0: m, y0: m, x1: w - m, y1: h - m }
 }
 
-/** The tilt area of a settled `layout`: next to a camera card, only up to the middle of the gap between them. */
-function layoutArea(layout: CameraLayout, frame: TiltArea, project: SceneProject, w: number, h: number, srcW: number, srcH: number): TiltArea {
+/** The tilt area of a settled `layout` (`corner`: a segment's own): next to a camera card, only up to the middle of the gap between them. */
+function layoutArea(layout: CameraLayout, corner: Corner | undefined, frame: TiltArea, project: SceneProject, w: number, h: number, srcW: number, srcH: number): TiltArea {
   if (layout !== 'side-by-side') return frame
-  const { screen: s, camera } = layoutGeometry(layout, project, w, h, srcW, srcH)
+  const { screen: s, camera } = layoutGeometry(layout, project, w, h, srcW, srcH, corner)
   const c = camera.rect
   const a = { ...frame }
   if (c.x >= s.x + s.w) a.x1 = Math.min(a.x1, (s.x + s.w + c.x) / 2)
@@ -252,9 +252,9 @@ export function tiltArea(project: SceneProject, w: number, h: number, srcW: numb
   const frame = frameArea(w, h, project.style.padding * Math.min(w, h))
   if (!project.webcam.show) return frame
   const phase = layoutPhaseAt(project, t)
-  const to = layoutArea(phase.to, frame, project, w, h, srcW, srcH)
-  if (phase.progress >= 1 || phase.from === phase.to) return to
-  const from = layoutArea(phase.from, frame, project, w, h, srcW, srcH)
+  const to = layoutArea(phase.to, phase.toCorner, frame, project, w, h, srcW, srcH)
+  if (phase.progress >= 1 || (phase.from === phase.to && phase.fromCorner === phase.toCorner)) return to
+  const from = layoutArea(phase.from, phase.fromCorner, frame, project, w, h, srcW, srcH)
   const e = easeInOutCubic(clamp(phase.progress, 0, 1))
   return { x0: lerp(from.x0, to.x0, e), y0: lerp(from.y0, to.y0, e), x1: lerp(from.x1, to.x1, e), y1: lerp(from.y1, to.y1, e) }
 }

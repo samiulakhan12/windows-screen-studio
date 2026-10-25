@@ -1,4 +1,4 @@
-import { cornered, layoutRamps, segmentCorner } from '../engine/layout'
+import { cornered, LAYOUT_TRANSITION, layoutRamps, segmentCorner } from '../engine/layout'
 import { clamp } from '../engine/math'
 import { keptBounds } from '../engine/timeline'
 import { MIN_LAYOUT_LENGTH } from '../engine/webcamData'
@@ -53,7 +53,7 @@ export const cornerOnly = (s: Pick<LayoutSegment, 'layout' | 'corner'>): boolean
  * A change to `layout` at `at` inside corner-only segment `here`: a DEFAULT_LAYOUT_LENGTH segment
  * of `layout` in the same corner, cut out of the stay, which carries on around it. It stays
  * inside the stay and the kept video (near their ends it starts earlier, as addLayoutAt does), and
- * a leftover too short to keep goes to the new segment. Null when the stay is too short for it.
+ * a leftover too short for its own change goes to the new segment. Null when the stay is too short for it.
  */
 function layoutInStay(layouts: LayoutSegment[], here: LayoutSegment, layout: CameraLayout, at: number, end: number): { layouts: LayoutSegment[]; segment: LayoutSegment } | null {
   const limit = Math.min(here.end, end)
@@ -64,14 +64,41 @@ function layoutInStay(layouts: LayoutSegment[], here: LayoutSegment, layout: Cam
     start = Math.max(here.start, stop - DEFAULT_LAYOUT_LENGTH)
   }
   if (stop - start < MIN_NEW_SEGMENT) return null
-  if (start - here.start < MIN_LAYOUT_LENGTH) start = here.start
-  if (here.end - stop < MIN_LAYOUT_LENGTH) stop = here.end
+  // The piece before only changes in (the new segment follows it); the one after changes in and usually out again.
+  if (start - here.start < LAYOUT_TRANSITION) start = here.start
+  if (here.end - stop < 2 * LAYOUT_TRANSITION) stop = here.end
   const segment: LayoutSegment = { id: newId(), layout, start, end: stop, corner: here.corner }
   const pieces: LayoutSegment[] = []
   if (start > here.start) pieces.push({ ...here, end: start })
   pieces.push(segment)
   if (stop < here.end) pieces.push({ ...here, id: pieces.length > 1 ? newId() : here.id, start: stop })
   return { layouts: [...layouts.filter((s) => s.id !== here.id), ...pieces].sort((a, b) => a.start - b.start), segment }
+}
+
+/**
+ * The pieces of the camera position that segment `seg` was cut out of (layoutInStay), right before
+ * and after it: corner-only segments in its corner touching it. None for a camera position itself,
+ * unless it sits between two of them (a change cut out of one, set back to the default layout).
+ */
+export function stayAround(layouts: LayoutSegment[], seg: LayoutSegment): { before?: LayoutSegment; after?: LayoutSegment } {
+  if (!seg.corner) return {}
+  const piece = (s: LayoutSegment): boolean => s.id !== seg.id && cornerOnly(s) && s.corner === seg.corner
+  const before = layouts.find((s) => piece(s) && Math.abs(s.end - seg.start) <= 1e-6)
+  const after = layouts.find((s) => piece(s) && Math.abs(s.start - seg.end) <= 1e-6)
+  if (cornerOnly(seg) && !(before && after)) return {}
+  return { before, after }
+}
+
+/** The layouts without segment `id`. A change cut out of a camera position gives its time back to it: the pieces join again, keeping the first one's id. */
+export function removeLayout(layouts: LayoutSegment[] | undefined, id: string): LayoutSegment[] {
+  const list = layouts ?? []
+  const seg = list.find((s) => s.id === id)
+  const rest = list.filter((s) => s.id !== id)
+  if (!seg) return rest
+  const { before, after } = stayAround(list, seg)
+  if (before) return rest.filter((s) => s !== after).map((s) => (s === before ? { ...s, end: after?.end ?? seg.end } : s))
+  if (after) return rest.map((s) => (s === after ? { ...s, start: seg.start } : s))
+  return rest
 }
 
 /** A new layout segment starting at `t`, clamped to the recording. */
@@ -178,14 +205,34 @@ export function layoutShowTime(project: LayoutEdit & Pick<Project, 'webcam'>, se
   return into(before) >= into(kept) ? before : kept
 }
 
-/** How far segment `id` may move or grow: up to its neighbours and the recording's ends. */
+/**
+ * How far segment `id` may move or grow: up to its neighbours and the recording's ends. A change
+ * cut out of a camera position moves inside it: the pieces next to it (stayAround) follow its
+ * edges (dragLayout) down to MIN_LAYOUT_LENGTH.
+ */
 export function layoutDragBounds(layouts: LayoutSegment[], id: string, duration: number): { lower: number; upper: number } {
   const seg = layouts.find((s) => s.id === id)
   if (!seg) return { lower: 0, upper: duration }
-  const others = layouts.filter((s) => s.id !== id)
-  const lower = Math.max(0, ...others.filter((s) => s.end <= seg.start + 1e-6).map((s) => s.end))
-  const upper = Math.min(duration, ...others.filter((s) => s.start >= seg.end - 1e-6).map((s) => s.start))
+  const { before, after } = stayAround(layouts, seg)
+  const others = layouts.filter((s) => s.id !== id && s !== before && s !== after)
+  const lower = Math.max(0, before ? Math.min(seg.start, before.start + MIN_LAYOUT_LENGTH) : 0, ...others.filter((s) => s.end <= seg.start + 1e-6).map((s) => s.end))
+  const upper = Math.min(duration, after ? Math.max(seg.end, after.end - MIN_LAYOUT_LENGTH) : duration, ...others.filter((s) => s.start >= seg.end - 1e-6).map((s) => s.start))
   return { lower, upper }
+}
+
+/** The layouts with segment `id` dragged to `times`; the pieces of a camera position around it (`around`: stayAround as the drag began) follow its edges. */
+export function dragLayout(
+  layouts: LayoutSegment[] | undefined,
+  id: string,
+  times: { start: number; end: number },
+  around: { before?: LayoutSegment; after?: LayoutSegment } = {}
+): LayoutSegment[] {
+  return (layouts ?? []).map((s) => {
+    if (s.id === id) return { ...s, ...times }
+    if (s.id === around.before?.id) return { ...s, end: times.start }
+    if (s.id === around.after?.id) return { ...s, start: times.end }
+    return s
+  })
 }
 
 /** New start/end for a move or edge drag by `dt` seconds, kept between the neighbours and at least MIN_LAYOUT_LENGTH long. */
