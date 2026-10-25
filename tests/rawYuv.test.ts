@@ -26,6 +26,32 @@ const pattern = (): Uint8Array => {
   return new Uint8Array(r.stdout.buffer, r.stdout.byteOffset, r.stdout.length)
 }
 
+/**
+ * Coverage (0..1) of fifteen 1.4 px anti-aliased rings, radii 10..56 px, centred at different
+ * sub-pixel offsets so their strokes cross every 2x2 chroma block phase.
+ */
+function ringCoverage(): Float32Array {
+  const cover = new Float32Array(W * H)
+  const SS = 4
+  for (let j = 0; j < 3; j++) {
+    for (let i = 0; i < 5; i++) {
+      const cx = 64 + i * 128.25
+      const cy = 60 + j * 120.375
+      const R = 10 + 4 * i + 9 * j
+      for (let y = Math.floor(cy - R - 2); y <= cy + R + 2; y++) {
+        for (let x = Math.floor(cx - R - 2); x <= cx + R + 2; x++) {
+          let n = 0
+          for (let sy = 0; sy < SS; sy++) {
+            for (let sx = 0; sx < SS; sx++) if (Math.abs(Math.hypot(x + (sx + 0.5) / SS - cx, y + (sy + 0.5) / SS - cy) - R) <= 0.7) n++
+          }
+          cover[y * W + x] = Math.max(cover[y * W + x], n / (SS * SS))
+        }
+      }
+    }
+  }
+  return cover
+}
+
 /** The export's own video filter (from exportArgs) run on one raw frame of `pix`: its yuv420p output. */
 function exportFilter(frame: Uint8Array, pix: RawPixelFormat): Buffer {
   const job: ExportJob = { width: W, height: H, fps: 30, frames: 1, format: 'mp4', quality: 'high', video: { kind: 'raw', encoder: 'libx264', pixelFormat: pix }, outputPath: '/o.mp4' }
@@ -65,6 +91,39 @@ describe('rgbToI420', () => {
     expect(px(0, 0, 0)).toEqual([16, 16, 16, 16, 128, 128])
     expect(px(255, 255, 255)).toEqual([235, 235, 235, 235, 128, 128])
     expect(px(255, 0, 0)).toEqual([81, 81, 81, 81, 90, 240])
+  })
+
+  it('keeps thin coloured strokes: their luma as ffmpeg makes it, their colour no further from the frame than ffmpeg puts it', () => {
+    // Click rings are 1.4 px anti-aliased strokes. swscale filters chroma rows with a wider kernel
+    // than the 2x2 mean, so stroke pixels differ by a few chroma levels. That is enough to move a
+    // decoded stroke pixel across a fixed redness threshold, but not further from the frame.
+    const decode = (yuv: Uint8Array, flags: string[]): Buffer => {
+      const r = spawnSync(ff, ['-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'yuv420p', '-s', `${W}x${H}`, '-i', '-', ...flags, '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'], { input: yuv, maxBuffer: 1 << 26 })
+      expect(r.status, r.stderr.toString()).toBe(0)
+      return r.stdout
+    }
+    const error = (a: Uint8Array, b: Uint8Array): number => {
+      let s = 0
+      for (let i = 0; i < a.length; i += 4) s += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])
+      return s
+    }
+    const cover = ringCoverage()
+    for (const color of [[255, 0, 0], [0, 0, 255], [255, 255, 0], [0, 200, 0]] as const) {
+      const frame = new Uint8Array(W * H * 4)
+      for (let p = 0; p < W * H; p++) {
+        const a = 0.63 * cover[p]
+        for (let c = 0; c < 3; c++) frame[p * 4 + c] = Math.round(color[c] * a + 128 * (1 - a))
+        frame[p * 4 + 3] = 255
+      }
+      const ours = rgbToI420(frame, W, H, 'rgba')
+      const theirs = exportFilter(frame, 'rgba')
+      expect(diff(ours, theirs, 0, W * H).max).toBeLessThanOrEqual(1)
+      expect(diff(ours, theirs, W * H, ours.length).max).toBeLessThanOrEqual(8)
+      // Decoded as the e2e tests read frames, and with interpolated chroma as players show them.
+      for (const flags of [[], ['-sws_flags', 'bilinear+full_chroma_int+accurate_rnd']]) {
+        expect(error(decode(ours, flags), frame)).toBeLessThanOrEqual(error(decode(theirs, flags), frame))
+      }
+    }
   })
 
   it('reads either byte order', () => {

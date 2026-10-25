@@ -353,16 +353,26 @@ async function main() {
     const R2 = fx.framesAt(outs.ring2x, [at(0.25 + 0.15), at(0.25 + 0.5)], 'rgb24')
     const R1 = fx.framesAt(outs.ring, [at(0.5 + 0.15), at(0.5 + 0.5)], 'rgb24')
     const n = (FF, i) => count(FF.frames[i], W, area, reddish)
-    // Outer radius of the ring: the furthest red pixel right of the click on its row.
-    const radius = (FF, i) => {
+    // Outer radius of the ring: the furthest pixel right of the click, on its row, that the ring
+    // darkens. Measured on the luma plane, which is full resolution: the colour of a 1.4 px ring
+    // is one 4:2:0 chroma sample per 2x2 block, decoded to within a few levels of the redness
+    // threshold, so the colour conversion and the encoder decide whether it counts as red.
+    const L2 = fx.framesAt(outs.ring2x, [at(0.25 + 0.15)], 'gray')
+    const L1 = fx.framesAt(outs.ring, [at(0.5 + 0.15)], 'gray')
+    const radius = (FF) => {
+      const y = FF.frames[0]
+      // The grey background, right of the ring.
+      let bg = 0
+      for (let x = 740; x < 760; x++) bg += y[360 * W + x]
+      bg /= 20
       let r = 0
-      for (const p of pixels(FF.frames[i], W, { x: 640, y: 359, w: 80, h: 3 })) if (reddish(p)) r = Math.max(r, p.x - 640)
+      for (let row = 359; row < 362; row++) for (let x = 640; x < 720; x++) if (y[row * W + x] <= bg - 10) r = Math.max(r, x - 640)
       return r
     }
-    const ring1 = { n: n(R1, 0), r: radius(R1, 0) }
-    const ring2 = { n: n(R2, 0), r: radius(R2, 0) }
+    const ring1 = { n: n(R1, 0), r: radius(L1) }
+    const ring2 = { n: n(R2, 0), r: radius(L2) }
     console.log(`  ring 0.15 s after the click: 1x ${JSON.stringify(ring1)}, 2x ${JSON.stringify(ring2)}; 0.5 s after: ${n(R1, 1)}/${n(R2, 1)} red pixels`)
-    h.assert(ring1.n > 100 && ring2.n > 100 && Math.abs(ring1.r - ring2.r) <= 2, 'the effect looks the same 0.15 s after the click at 1x and 2x')
+    h.assert(ring1.n > 100 && ring2.n > 100 && ring1.r > 10 && Math.abs(ring1.r - ring2.r) <= 2, 'the effect looks the same 0.15 s after the click at 1x and 2x')
     h.assert(n(R1, 1) === 0 && n(R2, 1) === 0, 'and has ended 0.5 s after it at both speeds')
   }))
 
