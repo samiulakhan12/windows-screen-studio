@@ -29,7 +29,6 @@ export const recordingApi: RecordingApi = {
   checkHotkey: (action, accelerator) => ipcRenderer.invoke('settings:checkHotkey', action, accelerator),
   allowCameraBubble: (token) => ipcRenderer.invoke('recording:allowBubble', token),
   dragCameraBubble: (token, phase, x, y) => ipcRenderer.send('recording:dragBubble', token, phase, x, y),
-  moveCameraBubble: (token, corner) => ipcRenderer.send('recording:moveBubble', token, corner),
   resizeCameraBubble: (token, size) => ipcRenderer.send('recording:resizeBubble', token, size),
   toggleCameraBubble: () => ipcRenderer.invoke('recording:toggleBubble'),
   sendRecordingLevel: (token, level) => ipcRenderer.send('recording:level', token, level),

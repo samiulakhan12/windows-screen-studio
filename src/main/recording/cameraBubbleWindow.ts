@@ -174,12 +174,6 @@ function setCorner(s: BubbleState, corner: Corner): void {
   onCorner?.(corner)
 }
 
-/** Puts the bubble in `corner` (the bubble's own corner buttons and keys). */
-export function moveBubble(token: unknown, corner: Corner): void {
-  const s = forToken(token)
-  if (s && alive(bubble)) setCorner(s, corner)
-}
-
 /** Changes the bubble's size; it stays in its corner. */
 export function resizeBubble(token: unknown, size: BubbleSize): void {
   const s = forToken(token)

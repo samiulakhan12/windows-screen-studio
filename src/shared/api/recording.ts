@@ -209,7 +209,6 @@ export interface RecordingApi {
   allowCameraBubble(token: string): Promise<CameraBubbleGrant>
   /** The bubble is dragged by the pointer (screen DIP); the end snaps it into the nearest corner. */
   dragCameraBubble(token: string, phase: BubbleDragPhase, x: number, y: number): void
-  moveCameraBubble(token: string, corner: Corner): void
   resizeCameraBubble(token: string, size: BubbleSize): void
   /** Hides the camera bubble or shows it again (the recording bar). */
   toggleCameraBubble(): Promise<void>

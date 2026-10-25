@@ -61,7 +61,6 @@ import {
   bubbleWindowOptions,
   closeBubble,
   dragBubble,
-  moveBubble,
   resizeBubble,
   toggleBubble
 } from './recording/cameraBubbleWindow'
@@ -967,9 +966,6 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('recording:allowBubble', (e, token: string) => (fromApp(e) ? allowCameraBubble(token) : { ok: false, reason: 'Not allowed.' }))
   ipcMain.on('recording:dragBubble', (e, token: unknown, phase: BubbleDragPhase, x: unknown, y: unknown) => {
     if (fromApp(e)) dragBubble(token, phase, x, y)
-  })
-  ipcMain.on('recording:moveBubble', (e, token: unknown, corner: unknown) => {
-    if (fromApp(e) && isCorner(corner)) moveBubble(token, corner)
   })
   ipcMain.on('recording:resizeBubble', (e, token: unknown, size: unknown) => {
     if (fromApp(e) && isBubbleSize(size)) resizeBubble(token, size)
