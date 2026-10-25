@@ -2,6 +2,7 @@ import { SettingsButton } from '../settings/SettingsButton'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
 import { formatTime } from '../../../shared/engine/project'
+import { mediaUrl } from '../../../shared/mediaUrl'
 import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
@@ -169,6 +170,157 @@ function KeyboardIcon(): JSX.Element {
       <rect x="3" y="6" width="18" height="12" rx="2" />
       <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
     </svg>
+  )
+}
+
+function FrameRateIcon(): JSX.Element {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="icon">
+      <path d="M12 3a9 9 0 1 0 9 9M12 7v5l3 2M17 3h4v4" />
+    </svg>
+  )
+}
+
+/**
+ * Library thumbnails: a frame from early in each project's screen.mp4, drawn once per session
+ * and kept as a small JPEG. One video at a time, released as soon as its frame is drawn (so the
+ * file is never held open for longer than that, e.g. while the project is deleted).
+ */
+const thumbnails = new Map<string, string | null>()
+const thumbnailWaiters = new Map<string, Array<(url: string | null) => void>>()
+const thumbnailQueue: string[] = []
+let thumbnailBusy: { id: string; done: Promise<void> } | null = null
+const THUMB_WIDTH = 384
+
+function captureThumbnail(id: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    // createElementNS: a detached element made outside document.createElement, so code that
+    // watches the editor's <video> elements never sees it.
+    const video = document.createElementNS('http://www.w3.org/1999/xhtml', 'video') as HTMLVideoElement
+    let settled = false
+    const finish = (url: string | null): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      video.removeAttribute('src')
+      video.load()
+      resolve(url)
+    }
+    const timer = setTimeout(() => finish(null), 6000)
+    video.muted = true
+    video.preload = 'auto'
+    video.crossOrigin = 'anonymous'
+    video.onerror = () => finish(null)
+    video.onloadedmetadata = () => {
+      video.currentTime = Math.min(1, (video.duration || 0) * 0.15)
+    }
+    video.onseeked = () => {
+      try {
+        const w = Math.min(THUMB_WIDTH, video.videoWidth)
+        const h = Math.round((w / video.videoWidth) * video.videoHeight)
+        if (!w || !h) return finish(null)
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d')?.drawImage(video, 0, 0, w, h)
+        finish(canvas.toDataURL('image/jpeg', 0.78))
+      } catch {
+        finish(null)
+      }
+    }
+    video.src = mediaUrl(id, 'screen.mp4', 0)
+  })
+}
+
+function pumpThumbnails(): void {
+  if (thumbnailBusy) return
+  const id = thumbnailQueue.shift()
+  if (!id) return
+  const done = captureThumbnail(id).then((url) => {
+    thumbnails.set(id, url)
+    for (const w of thumbnailWaiters.get(id) ?? []) w(url)
+    thumbnailWaiters.delete(id)
+    thumbnailBusy = null
+    pumpThumbnails()
+  })
+  thumbnailBusy = { id, done }
+}
+
+function requestThumbnail(id: string, onReady: (url: string | null) => void): () => void {
+  const waiters = thumbnailWaiters.get(id) ?? []
+  waiters.push(onReady)
+  thumbnailWaiters.set(id, waiters)
+  if (!thumbnailQueue.includes(id) && thumbnailBusy?.id !== id) thumbnailQueue.push(id)
+  pumpThumbnails()
+  return () => {
+    const left = (thumbnailWaiters.get(id) ?? []).filter((w) => w !== onReady)
+    if (left.length) thumbnailWaiters.set(id, left)
+    else {
+      thumbnailWaiters.delete(id)
+      const i = thumbnailQueue.indexOf(id)
+      if (i >= 0) thumbnailQueue.splice(i, 1)
+    }
+  }
+}
+
+/** Waits until the project's video is not being read for a thumbnail (before deleting it). */
+async function releaseThumbnail(id: string): Promise<void> {
+  const i = thumbnailQueue.indexOf(id)
+  if (i >= 0) thumbnailQueue.splice(i, 1)
+  if (thumbnailBusy?.id === id) await thumbnailBusy.done
+  thumbnails.delete(id)
+}
+
+function useProjectThumbnail(id: string): string | null {
+  const [url, setUrl] = useState<string | null>(() => thumbnails.get(id) ?? null)
+  useEffect(() => {
+    if (thumbnails.has(id)) {
+      setUrl(thumbnails.get(id) ?? null)
+      return
+    }
+    return requestThumbnail(id, setUrl)
+  }, [id])
+  return url
+}
+
+const DAY_MS = 86_400_000
+
+/** "Today, 14:32", "Yesterday, 09:10" or "12 Mar 2026". */
+function projectDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  if (d.getTime() >= startOfToday.getTime()) return `Today, ${time}`
+  if (d.getTime() >= startOfToday.getTime() - DAY_MS) return `Yesterday, ${time}`
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** A recording in the library: thumbnail, name, length and date; open, show in Explorer and delete. */
+function ProjectCard({ project, onOpen, onDelete }: { project: ProjectSummary; onOpen: () => void; onDelete: () => Promise<void> }): JSX.Element {
+  const thumb = useProjectThumbnail(project.id)
+  return (
+    <li className="project-card">
+      <button className="project-open" onClick={onOpen}>
+        <span className="project-thumb">
+          {thumb ? <img src={thumb} alt="" /> : <Icon name="film" size={22} />}
+          <span className="project-duration">{formatTime(project.duration, false)}</span>
+        </span>
+        <span className="project-meta">
+          <span className="project-name">{project.name}</span>
+          <span className="project-date">{projectDate(project.createdAt)}</span>
+        </span>
+      </button>
+      <div className="project-actions">
+        <button className="btn ghost" title="Show in Explorer" aria-label={`Show ${project.name} in Explorer`} onClick={() => void window.api.revealProject(project.id)}>
+          <Icon name="folder" size={15} />
+        </button>
+        <button className="btn ghost danger" title="Delete" aria-label={`Delete ${project.name}`} onClick={() => void onDelete()}>
+          <Icon name="trash" size={15} />
+        </button>
+      </div>
+    </li>
   )
 }
 
@@ -540,6 +692,14 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const camBlocked = prefs.cameraId ? (camMissing ? null : (camProblem ?? blocked.camera)) : blocked.camera
   const stopKey = settings.hotkeys.stop ? hotkeyLabel(settings.hotkeys.stop) : ''
 
+  const sourceName = visible.find((s) => s.id === current)?.name ?? null
+  const target =
+    tab === 'region'
+      ? region
+        ? `Area ${region.width} × ${region.height}${sourceName ? ` on ${sourceName}` : ''}`
+        : 'Pick a screen, then drag out an area'
+      : (sourceName ?? (tab === 'window' ? 'Pick a window to record' : 'No screen found'))
+
   return (
     <div className="app">
       <header className="titlebar">
@@ -552,130 +712,264 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       </header>
 
       <main className="home">
-        <section className="panel sources">
-          <div className="panel-head">
-            <div className="segmented">
-              <button className={tab === 'screen' ? 'active' : ''} onClick={() => setTab('screen')}>
-                <Icon name="monitor" size={16} /> Screens
-              </button>
-              <button className={tab === 'window' ? 'active' : ''} onClick={() => setTab('window')}>
-                <Icon name="window" size={16} /> Windows
-              </button>
-              <button className={tab === 'region' ? 'active' : ''} onClick={() => setTab('region')}>
-                <RegionIcon /> Area
-              </button>
+        <div className="home-main">
+          <section className="panel sources" aria-label="What to record">
+            <div className="home-section-head">
+              <div>
+                <h2 className="home-section-title">What to record</h2>
+                <p className="home-subtitle">
+                  {tab === 'region' ? 'Click a screen, then drag over the part you want to record.' : tab === 'window' ? 'Pick the window to record.' : 'Pick the screen to record.'}
+                </p>
+              </div>
+              <div className="source-tools">
+                <div className="segmented">
+                  <button className={tab === 'screen' ? 'active' : ''} onClick={() => setTab('screen')}>
+                    <Icon name="monitor" size={16} /> Screens
+                  </button>
+                  <button className={tab === 'window' ? 'active' : ''} onClick={() => setTab('window')}>
+                    <Icon name="window" size={16} /> Windows
+                  </button>
+                  <button className={tab === 'region' ? 'active' : ''} onClick={() => setTab('region')}>
+                    <RegionIcon /> Area
+                  </button>
+                </div>
+                <button className="btn ghost icon-btn" onClick={() => void refreshSources(sourceKind)} title="Refresh" aria-label="Refresh sources">
+                  <Icon name="refresh" size={16} />
+                </button>
+              </div>
             </div>
-            <button className="btn ghost" onClick={() => void refreshSources(sourceKind)} title="Refresh">
-              <Icon name="refresh" size={16} />
-            </button>
-          </div>
-          {tab === 'region' && (
-            <p className="hint">Click a screen, then drag over the part you want to record.</p>
-          )}
-          <div className="source-grid">
-            {visible.map((s) => (
-              <button
-                key={s.id}
-                className={`source ${current === s.id ? 'selected' : ''}`}
-                onClick={() => (tab === 'region' ? void pickRegion(s.id) : setSelected(s.id))}
-              >
-                {s.thumbnail ? <img src={s.thumbnail} alt="" /> : <span className="source-placeholder" aria-hidden="true" />}
-                <span>{s.name}</span>
-              </button>
-            ))}
-            {visible.length === 0 && <p className="muted empty">No {tab === 'window' ? 'windows' : 'screens'} found.</p>}
-          </div>
-          {tab === 'region' && region && current && (
-            <div className="region-summary">
-              <RegionIcon />
-              <span className="region-dims">
-                Area {region.width} × {region.height}
-              </span>
-              <button className="btn" onClick={() => void pickRegion(current)} disabled={!idle}>
-                Change area
-              </button>
-            </div>
-          )}
-          {tab === 'window' && <WindowHint support={windowCapture} onArea={() => setTab('region')} />}
-        </section>
-
-        <aside className="panel record-panel">
-          <h2>New recording</h2>
-          <label className="field">
-            <span>
-              <Icon name="mic" size={16} /> Microphone
-            </span>
-            <select value={micMissing ? '' : (prefs.micId ?? '')} onChange={(e) => update({ micId: e.target.value || null })}>
-              <option value="">No microphone</option>
-              {mics.map((m) => (
-                <option key={m.deviceId} value={m.deviceId}>
-                  {m.label || 'Microphone'}
-                </option>
+            <div className="source-grid">
+              {visible.map((s) => (
+                <button
+                  key={s.id}
+                  className={`source ${current === s.id ? 'selected' : ''}`}
+                  aria-pressed={current === s.id}
+                  onClick={() => (tab === 'region' ? void pickRegion(s.id) : setSelected(s.id))}
+                >
+                  {s.thumbnail ? <img src={s.thumbnail} alt="" /> : <span className="source-placeholder" aria-hidden="true" />}
+                  <span>{s.name}</span>
+                </button>
               ))}
-            </select>
-            {prefs.micId && !micMissing && (
-              <div className={`mic-meter ${micProblem ? 'unavailable' : ''}`} title="Microphone level" aria-hidden="true">
-                <div className="mic-meter-fill" ref={meterBar} />
+              {visible.length === 0 && (
+                <div className="empty-state sources-empty">
+                  <span className="empty-state-icon">
+                    <Icon name={tab === 'window' ? 'window' : 'monitor'} size={20} />
+                  </span>
+                  <strong>No {tab === 'window' ? 'windows' : 'screens'} found.</strong>
+                  <p>{tab === 'window' ? 'Open the app you want to record, then refresh.' : 'Refresh to look again.'}</p>
+                </div>
+              )}
+            </div>
+            {tab === 'region' && region && current && (
+              <div className="region-summary">
+                <RegionIcon />
+                <span className="region-dims">
+                  Area {region.width} × {region.height}
+                </span>
+                <button className="btn" onClick={() => void pickRegion(current)} disabled={!idle}>
+                  Change area
+                </button>
               </div>
             )}
-            {micMissing && <span className="device-warning">Your microphone is disconnected.</span>}
-            {micHint && <DeviceProblem problem={micHint} isWindows={isWindows} />}
-          </label>
-          <label className="field">
-            <span>
-              <Icon name="camera" size={16} /> Camera
-            </span>
-            <select value={camMissing ? '' : (prefs.cameraId ?? '')} onChange={(e) => update({ cameraId: e.target.value || null })}>
-              <option value="">No camera</option>
-              {cams.map((c) => (
-                <option key={c.deviceId} value={c.deviceId}>
-                  {c.label || 'Camera'}
-                </option>
-              ))}
-            </select>
-            {camMissing && <span className="device-warning">Your camera is disconnected.</span>}
-            {camBlocked && <DeviceProblem problem={camBlocked} isWindows={isWindows} />}
-          </label>
-          {previewedCam && <CameraPreview deviceId={previewedCam} release={releaseCamera} onProblem={setCamProblem} />}
-          <label className={`toggle ${!isWindows ? 'disabled' : ''}`}>
-            <span>
-              <Icon name="volume" size={16} /> System audio
-            </span>
-            <input
-              type="checkbox"
-              checked={prefs.systemAudio && isWindows}
-              disabled={!isWindows}
-              onChange={(e) => update({ systemAudio: e.target.checked })}
+            {tab === 'window' && <WindowHint support={windowCapture} onArea={() => setTab('region')} />}
+          </section>
+
+          {unfinished.length > 0 && (
+            <section className="unfinished-section" aria-label="Unfinished recordings">
+              <div className="home-section-head">
+                <h2 className="home-section-title">
+                  Unfinished recordings <span className="count">{unfinished.length}</span>
+                </h2>
+              </div>
+              <p className="home-subtitle unfinished-intro">Footage that was kept when a recording did not finish. Recover it to edit it like any other recording.</p>
+              <ul className="unfinished-list">
+                {unfinished.map((u) => (
+                  <li key={u.id} className="unfinished">
+                    <span className="unfinished-icon" aria-hidden="true">
+                      <Icon name="film" size={16} />
+                    </span>
+                    <div className="unfinished-info" title={u.error ?? undefined}>
+                      <span className="project-name">{new Date(u.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="muted">
+                        {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {formatBytes(u.bytes)}
+                        {u.error ? ` · ${u.error}` : ''}
+                      </span>
+                    </div>
+                    <button className="btn" disabled={!idle} onClick={() => void recover(u)} title="Turn the saved footage into a project">
+                      {u.status === 'interrupted' ? 'Recover' : 'Retry'}
+                    </button>
+                    <button className="btn ghost icon-btn" title="Show in Explorer" onClick={() => void window.api.revealProject(u.id)}>
+                      <Icon name="folder" size={16} />
+                    </button>
+                    <button className="btn ghost icon-btn danger" title="Delete" disabled={!idle} onClick={() => void removeUnfinished(u)}>
+                      <Icon name="trash" size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="library" aria-label="Recent recordings">
+            <div className="home-section-head">
+              <h2 className="home-section-title">
+                Recent recordings {projects.length > 0 && <span className="count">{projects.length}</span>}
+              </h2>
+            </div>
+            {projects.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-state-icon">
+                  <Icon name="film" size={20} />
+                </span>
+                <strong>Your recordings will show up here.</strong>
+                <p>Pick what to record and press Start recording. Every recording opens in the editor and is saved automatically.</p>
+              </div>
+            ) : (
+              <ul className="project-grid">
+                {projects.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onOpen={() => onOpenProject(p.id)}
+                    onDelete={async () => {
+                      if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return
+                      await releaseThumbnail(p.id)
+                      await window.api.deleteProject(p.id)
+                      void refreshLibrary()
+                    }}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <aside className="panel record-panel">
+          <div className="record-head">
+            <h2>New recording</h2>
+            <div className="record-target">
+              {tab === 'region' ? <RegionIcon /> : <Icon name={tab === 'window' ? 'window' : 'monitor'} size={14} />}
+              <span>{target}</span>
+            </div>
+          </div>
+          <div className="record-body">
+            <div className="rec-group" role="group" aria-label="Audio and camera">
+              <label className="field">
+                <span>
+                  <Icon name="mic" size={16} /> Microphone
+                </span>
+                <select value={micMissing ? '' : (prefs.micId ?? '')} onChange={(e) => update({ micId: e.target.value || null })}>
+                  <option value="">No microphone</option>
+                  {mics.map((m) => (
+                    <option key={m.deviceId} value={m.deviceId}>
+                      {m.label || 'Microphone'}
+                    </option>
+                  ))}
+                </select>
+                {prefs.micId && !micMissing && (
+                  <div className={`mic-meter ${micProblem ? 'unavailable' : ''}`} title="Microphone level" aria-hidden="true">
+                    <div className="mic-meter-fill" ref={meterBar} />
+                  </div>
+                )}
+                {micMissing && <span className="device-warning">Your microphone is disconnected.</span>}
+                {micHint && <DeviceProblem problem={micHint} isWindows={isWindows} />}
+              </label>
+              <label className="field">
+                <span>
+                  <Icon name="camera" size={16} /> Camera
+                </span>
+                <select value={camMissing ? '' : (prefs.cameraId ?? '')} onChange={(e) => update({ cameraId: e.target.value || null })}>
+                  <option value="">No camera</option>
+                  {cams.map((c) => (
+                    <option key={c.deviceId} value={c.deviceId}>
+                      {c.label || 'Camera'}
+                    </option>
+                  ))}
+                </select>
+                {camMissing && <span className="device-warning">Your camera is disconnected.</span>}
+                {camBlocked && <DeviceProblem problem={camBlocked} isWindows={isWindows} />}
+              </label>
+              {previewedCam && <CameraPreview deviceId={previewedCam} release={releaseCamera} onProblem={setCamProblem} />}
+              <div className="rec-divider" />
+              <label className={`toggle ${!isWindows ? 'disabled' : ''}`} title={isWindows ? undefined : 'Windows only'}>
+                <span>
+                  <Icon name="volume" size={16} /> System audio
+                </span>
+                <input
+                  type="checkbox"
+                  checked={prefs.systemAudio && isWindows}
+                  disabled={!isWindows}
+                  onChange={(e) => update({ systemAudio: e.target.checked })}
+                />
+              </label>
+              <label
+                className="toggle"
+                title="Records shortcuts such as Ctrl + C for the keystroke overlay, and when you type so auto zoom can follow your typing. Which keys you type is never recorded."
+              >
+                <span>
+                  <KeyboardIcon /> Record keyboard activity
+                </span>
+                <input type="checkbox" aria-label="Record keyboard activity" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
+              </label>
+              <p className="hint toggle-hint">Shortcuts and when you type, never which keys.</p>
+              <div className="rec-divider" />
+              <div className="fps-row">
+                <span>
+                  <FrameRateIcon /> Frame rate
+                </span>
+                <div className="chips fps-picker" role="group" aria-label="Frame rate">
+                  {([30, 60] as const).map((fps) => (
+                    <button
+                      key={fps}
+                      type="button"
+                      className={`chip ${settings.fps === fps ? 'active' : ''}`}
+                      aria-pressed={settings.fps === fps}
+                      disabled={!idle}
+                      title={fps === 30 ? 'Lighter: half the frames to capture, encode and edit' : 'Smoothest motion'}
+                      onClick={() => void updateSettings({ fps })}
+                    >
+                      {fps} fps
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <RecordingPresets
+              presets={presets}
+              active={activePreset}
+              suggestedName={lastPresetName}
+              disabled={!idle}
+              onApply={applyPreset}
+              onSave={savePreset}
+              onDelete={(p) => void deletePreset(p)}
             />
-          </label>
-          <label
-            className="toggle"
-            title="Records shortcuts such as Ctrl + C for the keystroke overlay, and when you type so auto zoom can follow your typing. Which keys you type is never recorded."
-          >
-            <span>
-              <KeyboardIcon /> Record keyboard activity
-            </span>
-            <input type="checkbox" aria-label="Record keyboard activity" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
-          </label>
-          <p className="hint toggle-hint">Shortcuts and when you type, never which keys.</p>
-          <RecordingPresets
-            presets={presets}
-            active={activePreset}
-            suggestedName={lastPresetName}
-            disabled={!idle}
-            onApply={applyPreset}
-            onSave={savePreset}
-            onDelete={(p) => void deletePreset(p)}
-          />
-          <RecordingOptions
-            settings={settings}
-            open={prefs.optionsOpen}
-            onToggle={() => update({ optionsOpen: !prefs.optionsOpen })}
-            onChange={(patch) => void updateSettings(patch)}
-            onHotkey={setHotkey}
-            disabled={!idle}
-            isWindows={isWindows}
-          />
+            <RecordingOptions
+              settings={settings}
+              open={prefs.optionsOpen}
+              onToggle={() => update({ optionsOpen: !prefs.optionsOpen })}
+              onChange={(patch) => void updateSettings(patch)}
+              onHotkey={setHotkey}
+              disabled={!idle}
+              isWindows={isWindows}
+            />
+            {notices.length > 0 && (
+              <div className="notice">
+                {notices.map((n) => (
+                  <span key={n}>{n}</span>
+                ))}
+              </div>
+            )}
+            {error && (
+              <div className="home-error" role="alert">
+                <span>{error.message}</span>
+                {error.privacy && isWindows && (
+                  <button className="btn" onClick={() => void window.api.openPrivacySettings(error.privacy!)}>
+                    Open privacy settings
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <div className="record-footer">
             <button className="btn record" disabled={!canStart} onClick={() => void record()}>
               <span className="rec-dot" /> {phase ? PHASE_LABEL[phase] : tab === 'region' && !region ? 'Select an area first' : 'Start recording'}
@@ -690,81 +984,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               .
             </p>
           </div>
-          {notices.length > 0 && (
-            <div className="notice">
-              {notices.map((n) => (
-                <span key={n}>{n}</span>
-              ))}
-            </div>
-          )}
-          {error && (
-            <div className="home-error" role="alert">
-              <span>{error.message}</span>
-              {error.privacy && isWindows && (
-                <button className="btn" onClick={() => void window.api.openPrivacySettings(error.privacy!)}>
-                  Open privacy settings
-                </button>
-              )}
-            </div>
-          )}
         </aside>
-
-        <section className="panel library">
-          <div className="panel-head">
-            <h2>Recent recordings</h2>
-          </div>
-          {projects.length === 0 && unfinished.length === 0 ? (
-            <p className="muted empty">Your recordings will show up here.</p>
-          ) : (
-            <ul className="project-list">
-              {unfinished.length > 0 && <li className="section-label">Unfinished recordings</li>}
-              {unfinished.map((u) => (
-                <li key={u.id} className="unfinished">
-                  <div className="unfinished-info" title={u.error ?? undefined}>
-                    <span className="project-name">{new Date(u.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
-                    <span className="muted">
-                      {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {formatBytes(u.bytes)}
-                      {u.error ? ` · ${u.error}` : ''}
-                    </span>
-                  </div>
-                  <button className="btn" disabled={!idle} onClick={() => void recover(u)} title="Turn the saved footage into a project">
-                    {u.status === 'interrupted' ? 'Recover' : 'Retry'}
-                  </button>
-                  <button className="btn ghost" title="Show in Explorer" onClick={() => void window.api.revealProject(u.id)}>
-                    <Icon name="folder" size={16} />
-                  </button>
-                  <button className="btn ghost danger" title="Delete" disabled={!idle} onClick={() => void removeUnfinished(u)}>
-                    <Icon name="trash" size={16} />
-                  </button>
-                </li>
-              ))}
-              {unfinished.length > 0 && projects.length > 0 && <li className="section-label">Projects</li>}
-              {projects.map((p) => (
-                <li key={p.id}>
-                  <button className="project-open" onClick={() => onOpenProject(p.id)}>
-                    <Icon name="film" />
-                    <span className="project-name">{p.name}</span>
-                    <span className="muted">{formatTime(p.duration, false)}</span>
-                  </button>
-                  <button className="btn ghost" title="Show in Explorer" onClick={() => void window.api.revealProject(p.id)}>
-                    <Icon name="folder" size={16} />
-                  </button>
-                  <button
-                    className="btn ghost danger"
-                    title="Delete"
-                    onClick={async () => {
-                      if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return
-                      await window.api.deleteProject(p.id)
-                      void refreshLibrary()
-                    }}
-                  >
-                    <Icon name="trash" size={16} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </main>
 
       {overlay && (
