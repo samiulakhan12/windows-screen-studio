@@ -40,8 +40,8 @@
 
 .shape-tool:hover:not(:disabled) {
   color: var(--text);
-  border-color: #3a3a4e;
-  background: #20202d;
+  border-color: var(--border-strong);
+  background: var(--surface-3);
 }
 
 .shape-tool:disabled {
@@ -163,8 +163,8 @@
 
 /* ---------- Timeline ---------- */
 .shape-track {
-  background: var(--panel-2);
-  border: 1px dashed var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
   cursor: col-resize;
 }
 

@@ -35,16 +35,16 @@
   min-width: 0;
   height: 32px;
   padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-0);
   user-select: text;
 }
 
 .preset-save input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .preset-save .btn {
@@ -53,11 +53,11 @@
 
 .preset-note {
   margin-top: -2px;
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 
 .preset-note.error {
-  color: #fb7185;
+  color: var(--danger-text);
 }
 
 /* ---------- Home: countdown choice (four chips on one line) ---------- */

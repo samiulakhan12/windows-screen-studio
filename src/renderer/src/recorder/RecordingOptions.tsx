@@ -174,19 +174,19 @@ function Chevron({ open }: { open: boolean }): JSX.Element {
   )
 }
 
-/** Short summary of the options, shown while they are folded. */
+/** Short summary of the options, shown while they are folded (the frame rate is shown on Home itself). */
 export function optionsSummary(s: RecordingSettings, isWindows: boolean): string {
-  const parts = [`${s.fps} fps`]
+  const parts: string[] = []
   if (s.countdown !== COUNTDOWN.default) parts.push(s.countdown ? `${s.countdown} s countdown` : 'no countdown')
   if (s.autoPause) parts.push(`auto-pause ${s.idleSeconds} s`)
   if (s.hideDesktopIcons && isWindows) parts.push('no desktop icons')
   if (!s.cameraFollowsBubble) parts.push('camera stays in its corner')
-  return parts.join(' · ')
+  return parts.length ? parts.join(' · ') : 'Countdown, auto-pause, hotkeys'
 }
 
 const COUNTDOWN_TITLE = (n: number): string => (n === 0 ? 'Start recording at once' : `Count down ${n} seconds before recording starts`)
 
-/** Frame rate, countdown, desktop icons, auto-pause, the camera bubble and hotkeys: saved at once in the app settings. */
+/** Countdown, desktop icons, auto-pause, the camera bubble and hotkeys: saved at once in the app settings. */
 export function RecordingOptions({
   settings,
   open,
@@ -215,29 +215,11 @@ export function RecordingOptions({
     <section ref={section} className={`rec-options ${open ? 'open' : ''}`}>
       <button type="button" className="rec-options-head" aria-expanded={open} onClick={onToggle}>
         <Chevron open={open} />
-        <span>Recording options</span>
+        <span>More options</span>
         {!open && <span className="rec-options-summary">{optionsSummary(settings, isWindows)}</span>}
       </button>
       {open && (
         <div className="rec-options-body">
-          <div className="option-row">
-            <span>Frame rate</span>
-            <div className="chips" role="group" aria-label="Frame rate">
-              {([30, 60] as const).map((fps) => (
-                <button
-                  key={fps}
-                  type="button"
-                  className={`chip ${settings.fps === fps ? 'active' : ''}`}
-                  aria-pressed={settings.fps === fps}
-                  disabled={disabled}
-                  title={fps === 30 ? 'Lighter: half the frames to capture, encode and edit' : 'Smoothest motion'}
-                  onClick={() => onChange({ fps })}
-                >
-                  {fps} fps
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="option-row">
             <span>Countdown</span>
             <div className="chips" role="group" aria-label="Countdown">

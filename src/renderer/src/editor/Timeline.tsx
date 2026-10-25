@@ -528,13 +528,13 @@ export const Timeline = memo(
             <div className="tl-label clip-label" title="Clip: cut, split and speed">
               <Icon name="film" size={16} />
             </div>
-            <div className="tl-label" title="Zoom">
+            <div className="tl-label zoom-label" title="Zoom">
               <Icon name="zoom" size={16} />
             </div>
-            <div className="tl-label" title="Text">
+            <div className="tl-label text-label" title="Text">
               <EditorIcon name="text" size={16} />
             </div>
-            <div className="tl-label" title="Shapes, blur and spotlights">
+            <div className="tl-label shape-label" title="Shapes, blur and spotlights">
               <EditorIcon name="shapes" size={16} />
             </div>
             <TitleTrackLabel />

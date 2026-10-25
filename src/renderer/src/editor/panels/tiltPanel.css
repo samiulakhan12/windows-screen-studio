@@ -24,7 +24,7 @@
 
 .tilt-preset:hover {
   color: var(--text);
-  border-color: #3a3a4e;
+  border-color: var(--border-strong);
 }
 
 .tilt-preset.active {

@@ -134,7 +134,7 @@
   position: absolute;
   border: 2px solid var(--accent-2);
   border-radius: 3px;
-  background: rgba(139, 92, 246, 0.08);
+  background: var(--accent-softer);
   cursor: move;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }

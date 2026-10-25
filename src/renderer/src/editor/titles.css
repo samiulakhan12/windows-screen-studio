@@ -78,8 +78,8 @@
   position: relative;
   flex: 1;
   border-radius: 8px;
-  background: var(--panel-2);
-  border: 1px dashed var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
   cursor: col-resize;
 }
 
@@ -156,13 +156,13 @@
 
 .title-style:hover {
   color: var(--text);
-  border-color: #3a3a4e;
+  border-color: var(--border-strong);
 }
 
 .title-style.active {
   color: var(--text);
   border-color: var(--accent);
-  background: #20202d;
+  background: var(--surface-3);
 }
 
 .title-list button,

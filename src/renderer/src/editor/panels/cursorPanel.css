@@ -26,7 +26,7 @@
 .cursor-style:hover:not(:disabled),
 .click-style:hover:not(:disabled) {
   color: var(--text);
-  border-color: #3a3a4e;
+  border-color: var(--border-strong);
 }
 
 .cursor-style.active,

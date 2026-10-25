@@ -114,8 +114,8 @@ async function main() {
 
     // 30 fps, chosen on Home.
     await openOptions(win)
-    await win.click('.rec-options .chip:has-text("30 fps")')
-    await win.waitForSelector('.rec-options .chip.active:has-text("30 fps")')
+    await win.click('.fps-picker .chip:has-text("30 fps")')
+    await win.waitForSelector('.fps-picker .chip.active:has-text("30 fps")')
 
     const tb = await r.startRecording(app, win)
     const t0 = Date.now()
@@ -149,8 +149,8 @@ async function main() {
     const again = await h.launch({ home, args: r.FAKE_MEDIA })
     ctx.app = r.closable(again.app)
     ctx.logs = again.logs
-    // The options stay unfolded (a Home preference) and show the saved frame rate.
-    await again.win.waitForSelector('.rec-options .chip.active:has-text("30 fps")', { timeout: 15000 })
+    // Home shows the saved frame rate again.
+    await again.win.waitForSelector('.fps-picker .chip.active:has-text("30 fps")', { timeout: 15000 })
     // The preview comes back for the remembered camera.
     await again.win.waitForSelector('.camera-preview.live', { timeout: 15000 })
   })
