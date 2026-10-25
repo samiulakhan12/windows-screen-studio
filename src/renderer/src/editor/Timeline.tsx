@@ -1,3 +1,4 @@
+import { CaptionTrack, CaptionTrackLabel } from './CaptionTrack'
 import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
 import { TitleTrack, TitleTrackLabel } from './TitleTrack'
 import {
@@ -537,6 +538,7 @@ export const Timeline = memo(
               <EditorIcon name="shapes" size={16} />
             </div>
             <TitleTrackLabel />
+            <CaptionTrackLabel />
             <LayoutTrackLabel />
           </div>
           <div className="tl-scroller" ref={scrollerRef} data-testid="timeline-scroller">
@@ -707,6 +709,7 @@ export const Timeline = memo(
               </div>
 
               <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
+              <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
               <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
 
               <div className="playhead" ref={playheadRef} onPointerDown={(e) => e.button === 0 && scrub(e)} />

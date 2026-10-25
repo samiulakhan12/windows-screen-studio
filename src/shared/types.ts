@@ -228,6 +228,55 @@ export interface LayoutSegment {
   start: number
   end: number
   layout: CameraLayout
+  /** Corner of the camera bubble while this segment is in effect ('default' and 'camera-large'); absent = project.webcam.corner. */
+  corner?: Corner
+}
+
+/** AI services the app can call with the user's own API key. */
+export type AiProviderKind = 'openai' | 'gemini' | 'anthropic'
+
+/** A word of a transcript with its timing (source seconds). */
+export interface CaptionWord {
+  text: string
+  start: number
+  end: number
+}
+
+/** One caption (a sentence or phrase) of the transcript, in source seconds. */
+export interface CaptionSegment {
+  id: string
+  start: number
+  end: number
+  text: string
+  /** Word timings when the provider returned them (karaoke highlighting, cut by word). */
+  words?: CaptionWord[]
+}
+
+/** What was said in the recording, as returned by a transcription provider and edited by the user. */
+export interface Transcript {
+  /** BCP-47 language code when known ("en", "bn", ...). */
+  language?: string
+  provider: AiProviderKind
+  model: string
+  createdAt: string
+  segments: CaptionSegment[]
+}
+
+export type CaptionPreset = 'clean' | 'bold' | 'boxed' | 'karaoke' | 'minimal'
+
+/** How captions are drawn on the video (preview and export). */
+export interface CaptionSettings {
+  show: boolean
+  preset: CaptionPreset
+  position: 'bottom' | 'middle' | 'top'
+  /** Text height as a fraction of the output's shorter side. */
+  size: number
+  color: string
+  /** Colour of the spoken word ('karaoke') or emphasis. */
+  highlightColor: string
+  background: 'none' | 'box' | 'shadow'
+  /** Most lines shown at once. */
+  maxLines: 1 | 2
 }
 
 /** A 3D tilt of the recording card (degrees), for a perspective "product shot" look. */
@@ -446,6 +495,9 @@ export interface Project {
   tilt?: TiltSettings
   titles?: TitleCard[]
   chapters?: Chapter[]
+  /** What was said, from a transcription provider (edited by the user). */
+  transcript?: Transcript
+  captions?: CaptionSettings
 }
 
 export interface ProjectSummary {

@@ -141,6 +141,7 @@ export function migrateProject(raw: unknown): Project {
     chapters: readItems(p.chapters, (c) => readChapter(c, duration)),
     // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.
     tilt: readTilt(p.tilt),
+    transcript: p.transcript && typeof p.transcript === 'object' && Array.isArray(p.transcript.segments) ? p.transcript : undefined,
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

@@ -1,3 +1,4 @@
+import { SettingsButton } from '../settings/SettingsButton'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
 import { formatTime } from '../../../shared/engine/project'
@@ -546,6 +547,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           <span className="brand-mark" />
           Screen Studio <span className="muted">for Windows</span>
         </div>
+        <div className="tb-spacer" />
+        <SettingsButton />
       </header>
 
       <main className="home">

@@ -1,3 +1,4 @@
+import { SettingsButton } from '../settings/SettingsButton'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
 import { openedWithoutStems, withRecordedStems } from '../../../shared/audio/settings'
@@ -436,6 +437,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else if (sel.kind === 'layout') store.update((p) => ({ ...p, layouts: (p.layouts ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'title') store.update((p) => ({ ...p, titles: (p.titles ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'chapter') store.update((p) => ({ ...p, chapters: (p.chapters ?? []).filter((s) => s.id !== sel.id) }))
+        else if (sel.kind === 'caption')
+          store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: p.transcript.segments.filter((s) => s.id !== sel.id) } } : p))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else return
@@ -756,6 +759,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           </div>
           <SaveIndicator saver={saver} />
           <div className="tb-spacer" />
+          <SettingsButton />
           <button className="btn command-button" onClick={() => setDialog('palette')} title="Search every editor command" aria-label="Command palette">
             <SearchIcon size={14} />
             <span>Commands</span>

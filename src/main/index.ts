@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import { registerAiIpc } from './aiIpc'
 import { registerAnalysisIpc } from './analysisIpc'
 import { registerAssetIpc } from './assetIpc'
 import { disposeExport, registerExportIpc } from './exportIpc'
@@ -28,6 +29,7 @@ if (!app.requestSingleInstanceLock()) {
     registerAssetIpc()
     registerAnalysisIpc()
     registerPrefsIpc()
+    registerAiIpc()
     registerExportIpc()
     openMainWindow()
     app.on('activate', () => {

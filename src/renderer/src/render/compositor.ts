@@ -12,6 +12,7 @@ import { drawPrivacyLayer, drawShapesLayer } from './shapesLayer'
 import { drawSpotlightLayer } from './spotlightLayer'
 import { beginTiltedCard, drawTiltedCard } from './tiltLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
+import { drawCaptionsLayer } from './captionsLayer'
 import { drawTitleCardsLayer } from './titleCardLayer'
 import { drawWatermarkLayer } from './watermarkLayer'
 import { drawWebcamLayer } from './webcamLayer'
@@ -199,6 +200,7 @@ export function drawFrame(
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)
+  drawCaptionsLayer(top)
   drawTitleCardsLayer(top)
   drawWatermarkLayer(top)
   ctx.restore()

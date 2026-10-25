@@ -11,6 +11,7 @@ import { TextPanel } from './panels/TextPanel'
 import { EffectsPanel } from './panels/EffectsPanel'
 import { CameraPanel } from './panels/CameraPanel'
 import { AudioPanel } from './panels/AudioPanel'
+import { CaptionsPanel } from './panels/CaptionsPanel'
 import { ShapesPanel } from './panels/ShapesPanel'
 
 export interface InspectorProps {
@@ -36,7 +37,7 @@ export interface InspectorProps {
   smartSpeedRequest?: number
 }
 
-export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'shapes' | 'effects' | 'camera' | 'audio'
+export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'captions' | 'shapes' | 'effects' | 'camera' | 'audio'
 type Tab = InspectorTab
 
 const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
@@ -45,6 +46,7 @@ const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
   { id: 'zoom', label: 'Zoom', icon: 'zoom' },
   { id: 'clip', label: 'Clip', icon: 'scissors', editorIcon: true },
   { id: 'text', label: 'Text', icon: 'text', editorIcon: true },
+  { id: 'captions', label: 'Captions', icon: 'captions', editorIcon: true },
   { id: 'shapes', label: 'Shapes', icon: 'shapes', editorIcon: true },
   { id: 'effects', label: 'Effects', icon: 'sparkle', editorIcon: true },
   { id: 'camera', label: 'Camera', icon: 'camera' },
@@ -61,7 +63,8 @@ const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
   spotlight: 'shapes',
   layout: 'camera',
   title: 'text',
-  chapter: 'text'
+  chapter: 'text',
+  caption: 'captions'
 }
 
 /**
@@ -96,6 +99,7 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
         {tab === 'zoom' && <ZoomPanel {...props} />}
         {tab === 'clip' && <ClipPanel {...props} />}
         {tab === 'text' && <TextPanel {...props} />}
+        {tab === 'captions' && <CaptionsPanel {...props} />}
         {tab === 'shapes' && <ShapesPanel {...props} />}
         {tab === 'effects' && <EffectsPanel project={props.project} cursor={props.cursor} />}
         {tab === 'camera' && <CameraPanel {...props} />}
