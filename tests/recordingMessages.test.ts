@@ -29,7 +29,7 @@ describe('friendlyMessage (audit-C-2)', () => {
   })
 
   it('never shows raw Node errors for common file problems', () => {
-    const folder = 'C:\\Users\\me\\Videos\\Screen Studio for Windows'
+    const folder = 'C:\\Users\\me\\Videos\\Flown'
     for (const code of ['EPERM', 'EACCES', 'EBUSY', 'ENOSPC', 'EROFS', 'ENOENT', 'EMFILE', 'EIO']) {
       const text = friendlyMessage(errno(code), folder)
       expect(text, code).not.toMatch(/screen\.webm|resource busy|open '/)

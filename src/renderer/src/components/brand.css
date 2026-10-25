@@ -1,0 +1,19 @@
+/* ---------- Flown logo (components/BrandLogo.tsx) ---------- */
+.flown-logo {
+  display: inline-flex;
+  align-items: center;
+  /* As in the kit's horizontal logo: the wordmark is 0.52 of the mark's height, 0.16 of it away. */
+  gap: calc(var(--flown-logo-size) * 0.16);
+  line-height: 0;
+  user-select: none;
+}
+
+.flown-logo-mark {
+  width: var(--flown-logo-size);
+  height: var(--flown-logo-size);
+}
+
+.flown-logo-wordmark {
+  height: calc(var(--flown-logo-size) * 0.52);
+  width: auto;
+}

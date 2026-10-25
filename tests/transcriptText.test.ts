@@ -15,7 +15,7 @@ import type { CaptionSegment } from '../src/shared/types'
 
 const segs: CaptionSegment[] = [
   { id: 't1', start: 0.5, end: 2.25, text: 'helo world this is', words: [{ text: 'helo', start: 0.5, end: 0.9 }, { text: 'world', start: 0.9, end: 1.4 }, { text: 'this', start: 1.4, end: 1.8 }, { text: 'is', start: 1.8, end: 2.25 }] },
-  { id: 't2', start: 2.5, end: 5, text: 'screen studio for windows' },
+  { id: 't2', start: 2.5, end: 5, text: 'flown for windows' },
   { id: 't3', start: 70, end: 75, text: 'now the export' }
 ]
 
@@ -52,13 +52,13 @@ describe('validateSegmentsAnswer', () => {
     const out = validateSegmentsAnswer('cleanup', segs, {
       segments: [
         { id: 't1', text: 'Hello world, this is' },
-        { id: 't2', text: '  Screen Studio for Windows. ' },
+        { id: 't2', text: '  Flown for Windows. ' },
         { id: 't3', text: 'Now, the export.' }
       ]
     })
     expect(out.map((s) => [s.id, s.start, s.end, s.text])).toEqual([
       ['t1', 0.5, 2.25, 'Hello world, this is'],
-      ['t2', 2.5, 5, 'Screen Studio for Windows.'],
+      ['t2', 2.5, 5, 'Flown for Windows.'],
       ['t3', 70, 75, 'Now, the export.']
     ])
     expect(out[0].words).toEqual([
@@ -111,7 +111,7 @@ describe('validateChaptersAnswer', () => {
 
 describe('validateTextAnswer', () => {
   it('cleans a title and keeps a summary', () => {
-    expect(validateTextAnswer('title', { text: '"Exporting in Screen Studio."' })).toBe('Exporting in Screen Studio')
+    expect(validateTextAnswer('title', { text: '"Exporting in Flown."' })).toBe('Exporting in Flown')
     expect(validateTextAnswer('summary', { text: ' A short tour.\nThe end. ' })).toBe('A short tour.\nThe end.')
     expect(() => validateTextAnswer('title', { text: '  ' })).toThrow(AiOutputError)
     expect(() => validateTextAnswer('summary', { summary: 'x' })).toThrow(AiOutputError)

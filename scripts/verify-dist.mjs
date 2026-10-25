@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks what electron-builder produced (the last step of `npm run dist:win`), so a package that
-// leaks the source tree, misses ffmpeg.exe or shows the stock Electron icon is caught before it
-// ships. Works on any OS: it reads the asar header and the PE resources directly.
+// leaks the source tree, misses ffmpeg.exe, shows the stock Electron icon or carries the wrong
+// name or publisher in its file properties is caught before it ships. Works on any OS: it reads the asar header and the PE resources directly.
 //   node scripts/verify-dist.mjs [dist directory]      (default: dist)
 // Exits 1 on a problem. Prints the install and installer sizes.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { readAsarHeader, listAsar } = require('./lib/asar.cjs')
-const { checkWindowsExe, parsePe, readIconGroups } = require('./lib/pe.cjs')
+const { checkWindowsExe, parsePe, readIconGroups, readVersionStrings } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
 const { FFMPEG_EXE, nativeHelper, nativeHelperStatus, runtimePackages, signedFiles } = require('./lib/packaging.cjs')
 
@@ -119,6 +119,10 @@ if (existsSync(helperOut)) {
 // 5. Our icon is embedded in the app exe and the installer (F33).
 const icoImages = parseIco(readFileSync(path.join(root, 'build', 'icon.ico')))
 const icoSizes = icoImages.map((i) => i.width).sort((a, b) => a - b)
+// Every size Explorer, the taskbar and the title bar ask for at 100-200 % scaling.
+const REQUIRED_ICON_SIZES = [16, 24, 32, 48, 64, 128, 256]
+const missingSizes = REQUIRED_ICON_SIZES.filter((s) => !icoSizes.includes(s))
+if (missingSizes.length) fail(`build/icon.ico lacks the ${missingSizes.join(', ')} px images (npm run icons)`)
 function checkIcon(label, file) {
   const buf = readFileSync(file)
   const group = readIconGroups(buf)[0]
@@ -134,7 +138,7 @@ function checkIcon(label, file) {
 const appExe = path.join(unpacked, `${pkg.productName}.exe`)
 checkIcon(path.basename(appExe), appExe)
 
-const installer = path.join(distDir, `ScreenStudio-Setup-${pkg.version}.exe`)
+const installer = path.join(distDir, `${pkg.productName}-Setup-${pkg.version}.exe`)
 let installerSize = 0
 if (existsSync(installer)) {
   installerSize = statSync(installer).size
@@ -142,6 +146,19 @@ if (existsSync(installer)) {
 } else {
   fail(`${path.relative(root, installer)} is missing`)
 }
+
+// 5b. File properties (Explorer's Details tab, the UAC prompt, Task Manager): the product and
+// its publisher, from package.json (productName, author) and the builder's copyright.
+const company = typeof pkg.author === 'object' ? pkg.author.name : pkg.author
+function checkVersionStrings(label, file, expected) {
+  const strings = readVersionStrings(readFileSync(file))
+  const wrong = Object.entries(expected).filter(([key, want]) => (want instanceof RegExp ? !want.test(strings[key] ?? '') : strings[key] !== want))
+  if (wrong.length) return fail(`${label} file properties: ${wrong.map(([key, want]) => `${key} is ${JSON.stringify(strings[key] ?? null)}, expected ${want}`).join('; ')}`)
+  ok(`${label} properties: ${Object.keys(expected).map((key) => `${key} "${strings[key]}"`).join(', ')}`)
+}
+const copyright = new RegExp(`^Copyright © \\d{4} ${company}$`)
+checkVersionStrings(path.basename(appExe), appExe, { CompanyName: company, ProductName: pkg.productName, FileDescription: pkg.productName, LegalCopyright: copyright })
+if (existsSync(installer)) checkVersionStrings(path.basename(installer), installer, { CompanyName: company, ProductName: pkg.productName, LegalCopyright: copyright })
 
 // 6. Signing status (informational unless SSW_REQUIRE_SIGNING=1): the installer and every .exe
 // and .node in the app folder (app exe, ffmpeg.exe, the native helper, elevate.exe, uiohook-napi).

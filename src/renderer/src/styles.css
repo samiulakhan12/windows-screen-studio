@@ -26,15 +26,15 @@
   --text-3: #8a8a96;
   --text-on-accent: #ffffff;
 
-  /* One confident accent (white text on it: 5.2:1). */
-  --accent-500: #6d4aff;
-  --accent-400: #7d5fff;
-  --accent-600: #5d3ef0;
-  --accent-text: #a99bff;
-  --accent-soft: rgba(109, 74, 255, 0.16);
-  --accent-softer: rgba(109, 74, 255, 0.09);
-  --accent-ring: rgba(125, 95, 255, 0.35);
-  --accent-gradient: linear-gradient(135deg, #7d5fff 0%, #b25cff 55%, #ff5ca8 100%);
+  /* One confident accent: Flown indigo (white text on it: 5.1:1, on the hover 4.6:1). */
+  --accent-500: #6252fc;
+  --accent-400: #6b5dfd;
+  --accent-600: #5443ec;
+  --accent-text: #9d94ff;
+  --accent-soft: rgba(98, 82, 252, 0.16);
+  --accent-softer: rgba(98, 82, 252, 0.09);
+  --accent-ring: rgba(107, 93, 253, 0.35);
+  --accent-gradient: linear-gradient(135deg, #3fcbff 0%, #4d9bff 33%, #6252fc 66%, #8b3aff 100%);
 
   /* Semantic colours: solid, text on dark, and a soft fill. */
   --success: #34d399;
@@ -46,7 +46,7 @@
   --danger-500: #f43f5e;
   --danger-text: #fb7185;
   --danger-soft: rgba(244, 63, 94, 0.12);
-  --record: #ef4444;
+  --record: #ff4757;
 
   /* Timeline tracks, one hue per kind. */
   --track-clip: #6d4aff;

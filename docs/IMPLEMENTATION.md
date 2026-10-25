@@ -47,6 +47,15 @@ A project folder holds `project.json` (schema v2, migrated automatically from v1
 the gaps between clips are cuts. Zooms, annotations, cursor data and keystrokes stay in **source
 time**, so cutting or re-timing never moves an overlay off its content.
 
+Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
+names from `productName`). The app was called "Screen Studio for Windows" before; on the first
+start as Flown `src/main/brandMigration.ts` renames the old userData folder (before the
+single-instance lock, which lives in it; the whole folder moves, so Chromium's `Local State` and
+the safeStorage key that decrypts saved AI keys stay together) and moves `Videos\Screen Studio
+for Windows` to `Videos\Flown`. Each step is one rename, so it is crash-safe and simply resumes
+on the next start; whatever cannot be moved stays where it is and is still used (userData via
+`app.setPath`, recordings as an extra library root in `projects.ts`).
+
 ## Data flow
 1. **Record.** Home picks a source. For screens and areas on Windows, main starts the native helper
    (cursor excluded, GPU H.264, paused time cut out at the app's exact pause/resume instants) and

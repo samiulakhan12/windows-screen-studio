@@ -8,7 +8,7 @@ vi.mock('electron', () => ({ app: { isPackaged: true }, session: {} }))
 
 import { guardWebContents, isAppUrl, permissionAllowed, type AppPage } from '../src/main/security'
 
-const indexFile = path.resolve('/opt/Screen Studio for Windows/resources/app.asar/out/renderer/index.html')
+const indexFile = path.resolve('/opt/Flown/resources/app.asar/out/renderer/index.html')
 const built: AppPage = { devUrl: null, indexFile }
 const page = pathToFileURL(indexFile).href
 

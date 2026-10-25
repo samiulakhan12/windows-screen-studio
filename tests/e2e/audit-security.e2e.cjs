@@ -31,7 +31,7 @@ h.run('security: no navigation away from the app, no new windows, dropped files 
   }, evil).catch(() => undefined)
   await h.sleep(1500)
   h.assert(win.url() === appUrl, `still on the app page (${win.url()})`)
-  h.assert((await win.title()) === 'Screen Studio for Windows', `title ${await win.title()}`)
+  h.assert((await win.title()) === 'Flown', `title ${await win.title()}`)
   h.assert(await win.isVisible('button.record'), 'Home is still shown')
 
   // window.open() of any page is refused.

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.82"
 license = "MIT"
-description = "Screen Studio for Windows capture helper: Windows.Graphics.Capture without the cursor, encoded to H.264 MP4 with Media Foundation."
+description = "Flown capture helper: Windows.Graphics.Capture without the cursor, encoded to H.264 MP4 with Media Foundation."
 publish = false
 
 [[bin]]

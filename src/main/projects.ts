@@ -1,21 +1,60 @@
 import { app } from 'electron'
-import { promises as fs } from 'node:fs'
+import { existsSync, promises as fs, type Dirent } from 'node:fs'
 import path from 'node:path'
+import { APP_NAME } from '../shared/brand'
 import type { UnfinishedRecording } from '../shared/api/recording'
 import { migrateCursor, migrateProject } from '../shared/engine/project'
 import type { CursorTrack, NormRect, Project, ProjectSummary } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 
+/** Where recordings are kept: Videos\Flown. */
 export function projectsRoot(): string {
-  return path.join(app.getPath('videos'), 'Screen Studio for Windows')
+  return path.join(app.getPath('videos'), APP_NAME)
 }
+
+/**
+ * Older recordings folders still listed because the start-up move could not empty them
+ * (brandMigration.ts). Usually none.
+ */
+let legacyRoots: string[] = []
+
+export function setLegacyProjectRoots(roots: readonly string[]): void {
+  legacyRoots = [...roots]
+}
+
+/** Every folder the library lists, the current one first (it wins when an id is in two). */
+const allRoots = (): string[] => [projectsRoot(), ...legacyRoots]
 
 const ID_RE = /^[a-zA-Z0-9_-]+$/
 
-/** Resolves a project directory, rejecting ids that could escape the projects root. */
+/**
+ * Resolves a project directory, rejecting ids that could escape the projects root. An id found
+ * only in a legacy root resolves there; new ids always land in the current root (createProjectDir
+ * skips ids a legacy root holds, since their folder exists).
+ */
 export function projectDir(id: string): string {
   if (!ID_RE.test(id)) throw new Error(`Invalid project id: ${id}`)
-  return path.join(projectsRoot(), id)
+  const dir = path.join(projectsRoot(), id)
+  if (legacyRoots.length && !existsSync(dir)) {
+    for (const root of legacyRoots) if (existsSync(path.join(root, id))) return path.join(root, id)
+  }
+  return dir
+}
+
+/** Folder names of every root, each id once (the current root's copy first). */
+async function projectFolders(): Promise<string[]> {
+  await fs.mkdir(projectsRoot(), { recursive: true })
+  const seen = new Set<string>()
+  for (const root of allRoots()) {
+    let entries: Dirent[]
+    try {
+      entries = await fs.readdir(root, { withFileTypes: true })
+    } catch {
+      continue // a legacy root removed meanwhile
+    }
+    for (const e of entries) if (e.isDirectory() && ID_RE.test(e.name)) seen.add(e.name)
+  }
+  return [...seen]
 }
 
 /** Creates a new, never reused project folder (a suffix is added when the second is taken). */
@@ -100,15 +139,11 @@ export async function readCursor(id: string): Promise<CursorTrack> {
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
-  const root = projectsRoot()
-  await fs.mkdir(root, { recursive: true })
-  const entries = await fs.readdir(root, { withFileTypes: true })
   const out: ProjectSummary[] = []
-  for (const e of entries) {
-    if (!e.isDirectory() || !ID_RE.test(e.name)) continue
+  for (const name of await projectFolders()) {
     try {
-      const p = await readProject(e.name)
-      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(e.name) })
+      const p = await readProject(name)
+      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name) })
     } catch {
       // Not a finished project; unfinished recordings are listed by listUnfinished().
     }
@@ -233,18 +268,16 @@ export async function legacyManifest(id: string): Promise<RecordingManifest> {
 
 /** Recordings that never became a project (interrupted, or processing failed). */
 export async function listUnfinished(exclude: ReadonlySet<string>): Promise<UnfinishedRecording[]> {
-  const root = projectsRoot()
-  await fs.mkdir(root, { recursive: true })
   const out: UnfinishedRecording[] = []
-  for (const e of await fs.readdir(root, { withFileTypes: true })) {
-    if (!e.isDirectory() || !ID_RE.test(e.name) || exclude.has(e.name)) continue
-    const dir = projectDir(e.name)
+  for (const name of await projectFolders()) {
+    if (exclude.has(name)) continue
+    const dir = projectDir(name)
     if (await exists(path.join(dir, 'project.json'))) continue
     const bytes = await rawBytes(dir)
     if (bytes === 0) continue
-    const m = (await readManifest(e.name)) ?? (await legacyManifest(e.name))
+    const m = (await readManifest(name)) ?? (await legacyManifest(name))
     out.push({
-      id: e.name,
+      id: name,
       createdAt: m.createdAt,
       status: m.status === 'failed' ? 'failed' : 'interrupted',
       error: m.error,

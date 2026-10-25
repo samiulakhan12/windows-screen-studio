@@ -16,7 +16,7 @@ export function friendlyMessage(err: unknown, folder?: string): string {
       return 'Your disk is full. Free some space and try again.'
     case 'EPERM':
     case 'EACCES':
-      return `Windows blocked saving to ${where}. If Controlled folder access or your antivirus protects it, allow Screen Studio for Windows and try again.`
+      return `Windows blocked saving to ${where}. If Controlled folder access or your antivirus protects it, allow Flown and try again.`
     case 'EBUSY':
       return 'A recording file is in use by another program (for example antivirus or OneDrive). Try again in a moment.'
     case 'EROFS':
@@ -63,7 +63,7 @@ export function rendererGoneDialog(state: RendererGone): { message: string; deta
     }
   }
   return {
-    message: 'Screen Studio for Windows stopped unexpectedly and was reloaded.',
+    message: 'Flown stopped unexpectedly and was reloaded.',
     detail: state.processing
       ? 'Your recording is still being prepared and will appear under “Recent recordings” when it is ready.'
       : 'Your projects are saved automatically. If an export was running, it was stopped; please start it again.'

@@ -70,7 +70,7 @@ const failure = async (p: Promise<unknown>): Promise<string> => {
 }
 
 let mock: Awaited<ReturnType<typeof startMockAi>>
-const projectsRoot = path.join(h.root, 'videos', 'Screen Studio for Windows')
+const projectsRoot = path.join(h.root, 'videos', 'Flown')
 /** "Word k" bursts start at these times (seconds). */
 const STARTS = [1, 3.6, 6.2, 8.8, 11.4, 14, 16.6]
 

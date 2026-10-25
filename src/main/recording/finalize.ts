@@ -26,7 +26,7 @@ const VIDEO_ONLY = 'screen.video.mp4'
 export function friendlyFfmpegError(err: unknown, what: string): RecordingError {
   if (err instanceof RecordingError) return err
   const e = err as NodeJS.ErrnoException & { code?: string | null }
-  if (e?.code === 'ENOENT') return new RecordingError('The video converter (ffmpeg) is missing. Please reinstall Screen Studio for Windows.')
+  if (e?.code === 'ENOENT') return new RecordingError('The video converter (ffmpeg) is missing. Please reinstall Flown.')
   if (e?.code === 'ENOSPC' || /No space left/i.test(e?.message ?? '')) return new RecordingError('Your disk is full. Free some space and try again.')
   const detail = err instanceof FfmpegError ? err.message : e?.message
   return new RecordingError(`Couldn't convert the ${what}${detail ? ` (${detail})` : ''}.`)

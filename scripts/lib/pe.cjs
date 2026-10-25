@@ -1,5 +1,5 @@
 // Minimal Windows PE reader for the packaging checks: architecture, truncation,
-// Authenticode presence and the icon resources. Works on any OS (no Windows tools).
+// Authenticode presence, the icon resources and the version strings. Works on any OS (no Windows tools).
 'use strict'
 
 const { createHash } = require('node:crypto')
@@ -7,6 +7,7 @@ const { createHash } = require('node:crypto')
 const MACHINES = { 0x14c: 'x86', 0x8664: 'x64', 0xaa64: 'arm64' }
 const RT_ICON = 3
 const RT_GROUP_ICON = 14
+const RT_VERSION = 16
 
 /**
  * Parses the headers of a PE file.
@@ -124,6 +125,51 @@ function readIconGroups(buf) {
 }
 
 /**
+ * One block of a VS_VERSIONINFO tree (wLength, wValueLength, wType, a NUL-terminated UTF-16 key,
+ * the value and the child blocks, each 32-bit aligned within the resource).
+ */
+function readVersionBlock(d, offset) {
+  const align = (n) => (n + 3) & ~3
+  const length = d.readUInt16LE(offset)
+  const valueLength = d.readUInt16LE(offset + 2)
+  const text = d.readUInt16LE(offset + 4) === 1
+  const end = Math.min(offset + length, d.length)
+  let p = offset + 6
+  let key = ''
+  for (; p + 1 < end; p += 2) {
+    const c = d.readUInt16LE(p)
+    if (!c) break
+    key += String.fromCharCode(c)
+  }
+  p = align(p + 2)
+  const value = d.subarray(p, Math.min(p + (text ? valueLength * 2 : valueLength), end))
+  p = align(p + value.length)
+  const children = []
+  while (p + 6 <= end) {
+    const child = readVersionBlock(d, p)
+    if (!child.length) break
+    children.push(child)
+    p = align(p + child.length)
+  }
+  return { key, text, value, children, length }
+}
+
+/**
+ * The version strings of an executable (CompanyName, FileDescription, ProductName,
+ * LegalCopyright, FileVersion, ...) from its first string table, or {} when it has none.
+ * @returns {Record<string, string>}
+ */
+function readVersionStrings(buf) {
+  const resource = readResources(buf).find((r) => r.type === RT_VERSION)
+  if (!resource) return {}
+  const root = readVersionBlock(resource.data, 0)
+  const table = root.children.find((c) => c.key === 'StringFileInfo')?.children[0]
+  const out = {}
+  for (const entry of table?.children ?? []) out[entry.key] = entry.value.toString('utf16le').replace(/\0+$/, '')
+  return out
+}
+
+/**
  * SHA-256 of a PE file's first `length` bytes with the two header fields Authenticode signing
  * rewrites (the checksum and the certificate table entry) read as zeros. Signing only pads the
  * file to 8 bytes and appends the certificate table, so over the unsigned length this hash is
@@ -178,4 +224,4 @@ function checkWindowsExe(file, { minBytes = 0, pin = null, fs = require('node:fs
   return { ok: true, size: buf.length, signed: info.signed }
 }
 
-module.exports = { parsePe, readResources, readIconGroups, checkWindowsExe, peContentHash, RT_ICON, RT_GROUP_ICON }
+module.exports = { parsePe, readResources, readIconGroups, readVersionStrings, checkWindowsExe, peContentHash, RT_ICON, RT_GROUP_ICON, RT_VERSION }

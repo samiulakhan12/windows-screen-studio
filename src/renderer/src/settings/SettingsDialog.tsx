@@ -1,10 +1,11 @@
 import { useRef } from 'react'
 import { Icon } from '../components/Icon'
 import { useModalFocus } from '../editor/modalFocus'
+import { AboutSection } from './AboutSection'
 import { AiProvidersSection } from './AiProvidersSection'
 import './settings.css'
 
-export type SettingsSection = 'ai'
+export type SettingsSection = 'ai' | 'about'
 
 /**
  * App settings: for now the AI providers (the user's own API keys for transcription and text
@@ -41,6 +42,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
         </header>
         <div className="settings-body">
           <AiProvidersSection onChanged={onProvidersChanged} />
+          <AboutSection reveal={section === 'about'} />
         </div>
         <footer className="modal-foot">
           <button type="button" className="btn primary" onClick={onClose}>

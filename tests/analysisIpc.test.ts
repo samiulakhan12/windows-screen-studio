@@ -34,7 +34,7 @@ vi.mock('electron', () => ({
 
 import { detectStill, freezeDetectArgs, parseFreezeLog, registerAnalysisIpc } from '../src/main/analysisIpc'
 
-const projectsRoot = path.join(h.root, 'videos', 'Screen Studio for Windows')
+const projectsRoot = path.join(h.root, 'videos', 'Flown')
 
 /** A 16 s test pattern that freezes from 3 s to 9 s and from 11 s to the end, with a key frame every 15 frames like a proxy. */
 function seed(id: string, opts: { project?: unknown; fps?: number } = {}): string {

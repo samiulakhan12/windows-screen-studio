@@ -422,7 +422,7 @@ available (e.g. `node_modules\ffmpeg-static` ships ffmpeg; any ffprobe works).
     - **Helper killed** — while recording, end `ssw-capture.exe` in Task Manager (Details tab).
       The app stops the recording by itself and says the capture stopped (the app's `onEnded`
       handling); the project (or "Unfinished recordings") has the video up to about the kill.
-    - **App killed** — while recording, end only the app's main `Screen Studio for Windows.exe`
+    - **App killed** — while recording, end only the app's main `Flown.exe`
       process in Task Manager's Details tab. `ssw-capture.exe` exits by itself within a second
       or two; on the next start, recovering the recording gives the full video up to the kill.
     - **Quit while recording** — close the main window and choose "Quit anyway". The app takes
