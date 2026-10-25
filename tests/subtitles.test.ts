@@ -98,6 +98,14 @@ describe('subtitle files', () => {
     expect(srt).toContain('2\n00:00:04,000 --> 00:00:05,000\ntwo\n')
   })
 
+  it('leaves out empty captions (an emptied caption brought back by Undo; CAP-7)', () => {
+    const words = [{ text: 'gone', start: 0, end: 1 }]
+    const segments = [seg('a', 0, 2, '', words), seg('b', 2, 4, 'second'), seg('c', 4, 5, '  ')]
+    expect(subtitleFile(segments, [clip(0, 10)], 'srt')).toBe('1\n00:00:02,000 --> 00:00:04,000\nsecond\n')
+    expect(subtitleFile(segments, [clip(0, 10)], 'vtt')).toBe('WEBVTT\n\n00:00:02.000 --> 00:00:04.000\nsecond\n')
+    expect(subtitleFile(segments, [clip(0, 10)], 'txt')).toBe('second\n')
+  })
+
   it('validates content before it is written', () => {
     expect(validSubtitle('srt', '')).toBe(true)
     expect(validSubtitle('srt', 'hello')).toBe(false)

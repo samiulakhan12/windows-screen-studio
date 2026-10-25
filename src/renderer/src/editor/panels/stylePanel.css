@@ -130,8 +130,9 @@
   background: rgba(10, 10, 16, 0.95);
 }
 
+/* Darkened red: the white label reaches 4.5:1. */
 .preset-tool.confirm {
-  background: var(--danger);
+  background: color-mix(in srgb, var(--danger) 80%, #000000);
   color: white;
   font-weight: 600;
 }

@@ -8,11 +8,12 @@
   transition: background var(--dur-fast), border-color var(--dur-fast);
 }
 
-/* The caption hue (--track-caption), as the other kinds' blocks and labels use theirs. */
+/* The caption hue (--track-caption), as the other kinds' blocks and labels use theirs (stops dark
+   enough for the label's 4.5:1, also hovered: see .seg in editor.css). */
 .seg.caption-seg {
   justify-content: flex-start;
   color: #f0fdf4;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--track-caption) 70%, #000000 30%), color-mix(in srgb, var(--track-caption) 52%, #000000 48%));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--track-caption) 60%, #000000 40%), color-mix(in srgb, var(--track-caption) 52%, #000000 48%));
   border: 1px solid color-mix(in srgb, var(--track-caption) 60%, #ffffff 40%);
 }
 

@@ -210,16 +210,17 @@
   background: var(--rb-line);
 }
 
+/* Red fills behind white labels are darkened to reach 4.5:1 (the record red itself is lighter). */
 .rec-bar .tb-btn.stop {
   margin-left: 2px;
   padding: 0 14px 0 12px;
-  background: var(--rb-rec);
+  background: color-mix(in srgb, var(--rb-rec) 80%, #000000);
   color: var(--text-on-accent);
   font-weight: var(--weight-semibold);
 }
 
 .rec-bar .tb-btn.stop:hover {
-  background: color-mix(in srgb, var(--rb-rec) 85%, #000000);
+  background: color-mix(in srgb, var(--rb-rec) 70%, #000000);
 }
 
 .rec-bar .stop-square {
@@ -272,8 +273,8 @@
 }
 
 .rec-bar .tb-text-btn.danger {
-  background: var(--rb-rec);
-  border-color: var(--rb-rec);
+  background: color-mix(in srgb, var(--rb-rec) 80%, #000000);
+  border-color: color-mix(in srgb, var(--rb-rec) 80%, #000000);
   color: var(--text-on-accent);
   font-weight: var(--weight-semibold);
 }

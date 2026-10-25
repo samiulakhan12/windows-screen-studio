@@ -32,6 +32,7 @@ const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c
  * The captions as they play in the exported video: each one's kept part from its first to its
  * last shown moment (the clips around a cut play back to back, so it stays one cue), scaled by
  * the speed. With word timings that still match the text, words whose middle was cut are left out.
+ * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {
   const cues: Cue[] = []
@@ -44,6 +45,7 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
   }
   const kept = (s: number): boolean => clips.some((c) => s >= c.start && s < c.end)
   for (const seg of segments) {
+    if (!seg.text.trim()) continue
     let first: number | null = null
     let last: number | null = null
     for (let i = 0; i < clips.length; i++) {
