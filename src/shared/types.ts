@@ -230,6 +230,48 @@ export interface LayoutSegment {
   layout: CameraLayout
   /** Corner of the camera while this segment is in effect ('default' and 'camera-large'; for 'side-by-side', the side its card is on); absent = project.webcam.corner. */
   corner?: Corner
+  /**
+   * True when the camera director made it: "Direct again" and "Remove automatic changes" replace
+   * only these, and any edit by hand clears it (the segment is then the user's), as with
+   * ZoomSegment.auto. Absent in older projects and in everything placed by hand or recorded
+   * from the live bubble. Rendering ignores it.
+   */
+  auto?: boolean
+  /**
+   * Only with `auto` and a `corner`, on a layout other than 'default': the director cut this
+   * segment out of a camera position (a corner-only segment in the same corner, recorded from the
+   * live bubble or placed with "Move camera here"). Removing it gives its time back to that
+   * position, so the position comes back whole. Rendering ignores it.
+   */
+  cutOut?: boolean
+}
+
+/** Hide-the-camera thresholds the director offers (output seconds of silence; 0 = never). */
+export type DirectorHideAfter = 0 | 5 | 10 | 20
+
+/**
+ * The camera director's options for a project, saved with the project when it directs. Absent
+ * in projects that were never directed (defaults: shared/engine/directorData.ts).
+ */
+export interface DirectorSettings {
+  /** Full camera while you talk before the first action and after the last one: the layout used, or 'off'. */
+  intro: 'camera-only' | 'camera-large' | 'off'
+  /**
+   * 'auto': the bubble moves away from the cursor in time nobody placed it; 'keep': it stays in
+   * the project's corner there. Camera positions placed by hand or recorded from the live
+   * bubble are kept either way.
+   */
+  corners: 'auto' | 'keep'
+  /** Hide the camera in silences of the demo at least this long (output seconds); 0 never. */
+  hideAfter: DirectorHideAfter
+  /** Centre the face: set the webcam zoom and crop from person masks of sampled camera frames. */
+  frameFace: boolean
+  /**
+   * The framing (webcam zoom, cropX, cropY) the director last applied. While the webcam's
+   * framing still equals it, the framing is the director's to replace or remove; a hand edit
+   * in the Framing section makes it differ, and then it is the user's.
+   */
+  framed?: { zoom: number; cropX: number; cropY: number }
 }
 
 /** AI services the app can call with the user's own API key. */
@@ -492,6 +534,8 @@ export interface Project {
   audioStems?: { mic: boolean; system: boolean }
   /** Camera layout changes over time. */
   layouts?: LayoutSegment[]
+  /** The camera director's options, saved when it last directed (absent: never directed). */
+  director?: DirectorSettings
   tilt?: TiltSettings
   titles?: TitleCard[]
   chapters?: Chapter[]

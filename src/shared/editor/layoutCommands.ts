@@ -1,7 +1,7 @@
 import { cornered } from '../engine/layout'
 import { CORNER_NAMES } from '../recording/cameraBubble'
 import type { CameraLayout, Corner, LayoutSegment, Project } from '../types'
-import { addLayoutAt, cornerOnly, layoutSegmentAt, layoutTimeAt, type LayoutEdit } from './layouts'
+import { addLayoutAt, byHand, cornerOnly, layoutSegmentAt, layoutTimeAt, type LayoutEdit } from './layouts'
 
 /*
  * The editor's "camera layout at the playhead" commands, and the Camera panel's layout picker
@@ -29,9 +29,9 @@ export type LayoutAtResult =
 
 /**
  * Sets the camera layout at the playhead `t`, on the frame the preview shows there (layoutTimeAt).
- * Inside a layout segment that segment changes, except a corner-only one (a camera position, such
- * as a bubble move): a new one is added there, in its corner, as elsewhere (addLayoutAt).
- * Outside every segment the layout is already 'default'.
+ * Inside a layout segment that segment changes (and becomes the user's, byHand), except a
+ * corner-only one (a camera position, such as a bubble move): a new one is added there, in its
+ * corner, as elsewhere (addLayoutAt). Outside every segment the layout is already 'default'.
  */
 export function setLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number): LayoutAtResult {
   const layouts = project.layouts ?? []
@@ -40,7 +40,7 @@ export function setLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number
     if (here.layout === layout) return { ok: false, reason: 'same', id: here.id }
     const r = cornerOnly(here) ? addLayoutAt(project, layout, t) : null
     if (r?.ok) return { ok: true, layouts: r.layouts, id: r.segment.id, added: true }
-    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? { ...s, layout } : s)), id: here.id, added: false }
+    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? byHand({ ...s, layout }) : s)), id: here.id, added: false }
   }
   if (layout === 'default') return { ok: false, reason: 'same', id: null }
   const r = addLayoutAt(project, layout, t)
@@ -65,9 +65,10 @@ export type CornerAtResult =
 
 /**
  * Puts the camera in `corner` at the playhead `t` (on the frame the preview shows there). Inside a
- * layout segment that segment's corner changes; elsewhere a new segment of the default layout
- * with that corner is added there (addLayoutAt), so the camera moves there from the playhead on.
- * The project's own corner stays the default for times without a segment.
+ * layout segment that segment's corner changes (it becomes the user's, byHand); elsewhere a new
+ * segment of the default layout with that corner is added there (addLayoutAt), so the camera
+ * moves there from the playhead on. The project's own corner stays the default for times without
+ * a segment.
  */
 export function setCornerAt(project: LayoutEdit & Pick<Project, 'webcam'>, corner: Corner, t: number): CornerAtResult {
   const layouts = project.layouts ?? []
@@ -75,7 +76,7 @@ export function setCornerAt(project: LayoutEdit & Pick<Project, 'webcam'>, corne
   if (here) {
     if (!cornered(here.layout)) return { ok: false, reason: 'no-corner', id: here.id }
     if ((here.corner ?? project.webcam.corner) === corner) return { ok: false, reason: 'same', id: here.id }
-    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? { ...s, corner } : s)), id: here.id, added: false }
+    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? byHand({ ...s, corner }) : s)), id: here.id, added: false }
   }
   if (corner === project.webcam.corner) return { ok: false, reason: 'same', id: null }
   const r = addLayoutAt(project, 'default', t, corner)

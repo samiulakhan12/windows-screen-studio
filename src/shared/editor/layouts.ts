@@ -50,6 +50,19 @@ export const segmentHasCorner = (seg: Pick<LayoutSegment, 'layout'>): boolean =>
 export const cornerOnly = (s: Pick<LayoutSegment, 'layout' | 'corner'>): boolean => s.layout === 'default' && !!s.corner
 
 /**
+ * Segment `s` as the user's own: without the camera director's marks (LayoutSegment.auto and
+ * cutOut), so "Direct again" keeps it. Every edit by hand of a segment goes through this, as
+ * editing a zoom sets its auto to false; the same object when it has no marks.
+ */
+export function byHand(s: LayoutSegment): LayoutSegment {
+  if (s.auto === undefined && s.cutOut === undefined) return s
+  const { auto: _auto, cutOut: _cutOut, ...rest } = s
+  void _auto
+  void _cutOut
+  return rest
+}
+
+/**
  * A change to `layout` at `at` inside corner-only segment `here`: a DEFAULT_LAYOUT_LENGTH segment
  * of `layout` in the same corner, cut out of the stay, which carries on around it. It stays
  * inside the stay and the kept video (near their ends it starts earlier, as addLayoutAt does), and
@@ -89,7 +102,12 @@ export function stayAround(layouts: LayoutSegment[], seg: LayoutSegment): { befo
   return { before, after }
 }
 
-/** The layouts without segment `id`. A change cut out of a camera position gives its time back to it: the pieces join again, keeping the first one's id. */
+/**
+ * The layouts without segment `id`. A change cut out of a camera position gives its time back to
+ * it: the pieces join again, keeping the first one's id. A change the camera director cut out of
+ * a camera position it covered whole (LayoutSegment.cutOut, no pieces left around it) becomes
+ * that camera position again.
+ */
 export function removeLayout(layouts: LayoutSegment[] | undefined, id: string): LayoutSegment[] {
   const list = layouts ?? []
   const seg = list.find((s) => s.id === id)
@@ -98,6 +116,10 @@ export function removeLayout(layouts: LayoutSegment[] | undefined, id: string): 
   const { before, after } = stayAround(list, seg)
   if (before) return rest.filter((s) => s !== after).map((s) => (s === before ? { ...s, end: after?.end ?? seg.end } : s))
   if (after) return rest.map((s) => (s === after ? { ...s, start: seg.start } : s))
+  if (seg.auto && seg.cutOut && seg.corner) {
+    const position: LayoutSegment = { id: seg.id, start: seg.start, end: seg.end, layout: 'default', corner: seg.corner }
+    return [...rest, position].sort((a, b) => a.start - b.start)
+  }
   return rest
 }
 
@@ -220,7 +242,11 @@ export function layoutDragBounds(layouts: LayoutSegment[], id: string, duration:
   return { lower, upper }
 }
 
-/** The layouts with segment `id` dragged to `times`; the pieces of a camera position around it (`around`: stayAround as the drag began) follow its edges. */
+/**
+ * The layouts with segment `id` dragged to `times`, made the user's (byHand); the pieces of a
+ * camera position around it (`around`: stayAround as the drag began) follow its edges and keep
+ * their marks.
+ */
 export function dragLayout(
   layouts: LayoutSegment[] | undefined,
   id: string,
@@ -228,7 +254,7 @@ export function dragLayout(
   around: { before?: LayoutSegment; after?: LayoutSegment } = {}
 ): LayoutSegment[] {
   return (layouts ?? []).map((s) => {
-    if (s.id === id) return { ...s, ...times }
+    if (s.id === id) return byHand({ ...s, ...times })
     if (s.id === around.before?.id) return { ...s, end: times.start }
     if (s.id === around.after?.id) return { ...s, start: times.end }
     return s
@@ -257,7 +283,7 @@ export function dragLayoutTimes(
   return { start, end }
 }
 
-/** The layouts with segment `id` changed by `patch`, kept in order. */
-export function updateLayout(layouts: LayoutSegment[] | undefined, id: string, patch: Partial<Omit<LayoutSegment, 'id'>>): LayoutSegment[] {
-  return (layouts ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)).sort((a, b) => a.start - b.start)
+/** The layouts with segment `id` changed by `patch` (an edit by hand: it becomes the user's, byHand), kept in order. */
+export function updateLayout(layouts: LayoutSegment[] | undefined, id: string, patch: Partial<Omit<LayoutSegment, 'id' | 'auto' | 'cutOut'>>): LayoutSegment[] {
+  return (layouts ?? []).map((s) => (s.id === id ? byHand({ ...s, ...patch }) : s)).sort((a, b) => a.start - b.start)
 }

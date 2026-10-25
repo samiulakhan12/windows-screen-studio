@@ -2,6 +2,7 @@ import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
 import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/deviceFrames'
 import { layoutMoving, sceneContentRect, type Rect } from '../../../shared/engine/layout'
+import { toOutput } from '../../../shared/engine/outputPoint'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
@@ -159,8 +160,6 @@ export function drawFrame(
     }
   }
 
-  const viewX = cam.cx - 0.5 / cam.scale
-  const viewY = cam.cy - 0.5 / cam.scale
   const fc: FrameContext = {
     ctx: c,
     w,
@@ -179,8 +178,8 @@ export function drawFrame(
     screen,
     options: opts,
     background: src.background,
-    // Normalised source coordinates -> output pixels, through the camera.
-    toOut: (x, y) => ({ x: rect.x + (x - viewX) * cam.scale * rect.w, y: rect.y + (y - viewY) * cam.scale * rect.h })
+    // Normalised source coordinates -> output pixels, through the camera (as the camera director measures them).
+    toOut: toOutput(rect, cam)
   }
 
   drawPrivacyLayer(fc)
