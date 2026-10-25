@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mergeParts } from '../src/shared/captions/transcriptMerge'
-import type { RawTranscript } from '../src/shared/captions/transcriptParse'
+import type { RawTranscript, RawWord } from '../src/shared/captions/transcriptParse'
 import { planParts } from '../src/shared/captions/transcriptPlan'
 
 const seg = (start: number, end: number, text: string, words?: { text: string; start: number; end: number }[]): RawTranscript['segments'][number] => ({ start, end, text, ...(words ? { words } : {}) })
@@ -23,6 +23,33 @@ describe('mergeParts', () => {
       { id: 't3', start: 10.1, end: 12, text: 'three', words: [{ text: 'three', start: 10.2, end: 11.9 }] },
       // Clamped to the recording.
       { id: 't4', start: 13.5, end: 19.9, text: 'four' }
+    ])
+  })
+
+  it('keeps a word timed past the end of a part cut in a pause, with its punctuation', () => {
+    // A pause at 300: parts 0..300 and 300..600, which share no sound.
+    const parts = planParts(600, [{ start: 299.7, end: 300.3 }], { maxSeconds: 400 })
+    expect(parts.map((p) => [p.start, p.keepEnd, p.end])).toEqual([
+      [0, 300, 300],
+      [300, 600, 600]
+    ])
+    const out = mergeParts(
+      [
+        // Part 0 times "it" after the end of what it sent (a provider's times can run late).
+        {
+          part: parts[0],
+          transcript: {
+            segments: [seg(297, 300.6, "And that's it.", [{ text: 'And', start: 297, end: 297.4 }, { text: "that's", start: 297.5, end: 298 }, { text: 'it', start: 300.1, end: 300.5 }])]
+          }
+        },
+        { part: parts[1], transcript: { segments: [seg(1, 2, 'Next topic.', [{ text: 'Next', start: 1, end: 1.4 }, { text: 'topic.', start: 1.5, end: 2 }])] } }
+      ],
+      600
+    )
+    // Part 1 never heard "it": part 0 keeps it, so the segment stays as heard.
+    expect(out.segments.map((s) => [s.text, s.start, s.end])).toEqual([
+      ["And that's it.", 297, 300],
+      ['Next topic.', 301, 302]
     ])
   })
 
@@ -91,6 +118,71 @@ describe('mergeParts', () => {
     )
     expect(out.segments.map((s) => s.text).join(' ')).toBe(words(590, 610, 0).map((w) => w.text).join(' '))
     expect(out.segments.flatMap((s) => s.words!.map((w) => w.text))).toEqual(words(590, 610, 0).map((w) => w.text))
+  })
+
+  // A fixed cut at 599: part 0 sent until 600, part 1 from 598. Each times "we need an <word>
+  // change now." on its own (given here in source seconds); the merged words are returned.
+  const acrossCut = (first: RawWord[], second: RawWord[]): string[] => {
+    const parts = planParts(1000, [], { maxSeconds: 600 })
+    const segOf = (words: RawWord[], offset: number): RawTranscript['segments'][number] =>
+      seg(
+        words[0].start - offset,
+        words[words.length - 1].end - offset,
+        words.map((w) => w.text).join(' '),
+        words.map((w) => ({ text: w.text, start: w.start - offset, end: w.end - offset }))
+      )
+    const out = mergeParts(
+      [
+        { part: parts[0], transcript: { segments: [segOf(first, 0)] } },
+        { part: parts[1], transcript: { segments: [segOf(second, 598)] } }
+      ],
+      1000
+    )
+    const words = out.segments.flatMap((s) => s.words!.map((w) => w.text))
+    expect(out.segments.map((s) => s.text).join(' ')).toBe(words.join(' '))
+    return words
+  }
+  const w = (text: string, start: number, end: number): RawWord => ({ text, start, end })
+  const before = [w('we', 596, 596.4), w('need', 596.5, 597), w('an', 597.6, 598)]
+
+  it('keeps a word both parts hear at a fixed cut once, though they time it a little differently', () => {
+    const sentence = ['we', 'need', 'an', 'important', 'change', 'now.']
+    // Part 0 puts its middle before the cut and part 1 after it: kept by part 0 only.
+    expect(acrossCut([...before, w('important', 598.68, 599.3), w('change', 599.4, 599.9)], [w('important', 598.72, 599.34), w('change', 599.4, 599.9), w('now.', 600, 600.5)])).toEqual(sentence)
+    // The other way round: kept by part 1 only.
+    expect(acrossCut([...before, w('important', 598.72, 599.34), w('change', 599.4, 599.9)], [w('important', 598.66, 599.3), w('change', 599.4, 599.9), w('now.', 600, 600.5)])).toEqual(sentence)
+  })
+
+  it('keeps a word both parts hear at a fixed cut once with whole-second times that drift', () => {
+    const sentence = ['we', 'need', 'an', 'important', 'change', 'now.']
+    const coarse = [w('we', 595, 596), w('need', 596, 597), w('an', 597, 598)]
+    // Part 1 half a second late: "important" ends where part 0's ends, after the cut, in both.
+    expect(acrossCut([...coarse, w('important', 598, 599), w('change', 599, 600)], [w('important', 598.5, 599.5), w('change', 599.5, 600.5), w('now.', 600.5, 601.5)])).toEqual(sentence)
+    // Part 0 half a second late: each part puts "important"'s middle on its other side of the cut.
+    expect(
+      acrossCut([w('we', 595.5, 596.5), w('need', 596.5, 597.5), w('an', 597.5, 598.5), w('important', 598.5, 599.5), w('change', 599.5, 600)], [w('important', 598, 599), w('change', 599, 600), w('now.', 600, 601)])
+    ).toEqual(sentence)
+  })
+
+  it("keeps a word the two parts hear differently at a fixed cut once, on the earlier part's timing", () => {
+    // Part 0 keeps "important", which ends after part 1's "importance" has its middle.
+    expect(acrossCut([...before, w('important', 598.68, 599.3), w('change', 599.4, 599.9)], [w('importance', 598.72, 599.34), w('change', 599.4, 599.9), w('now.', 600, 600.5)])).toEqual([
+      'we',
+      'need',
+      'an',
+      'important',
+      'change',
+      'now.'
+    ])
+    // Part 0 does not keep it: part 1's, after the last word part 0 kept, is.
+    expect(acrossCut([...before, w('important', 598.72, 599.34), w('change', 599.4, 599.9)], [w('importance', 598.66, 599.3), w('change', 599.4, 599.9), w('now.', 600, 600.5)])).toEqual([
+      'we',
+      'need',
+      'an',
+      'importance',
+      'change',
+      'now.'
+    ])
   })
 
   it('trims overlapping neighbours so segments follow one another, and drops slivers', () => {

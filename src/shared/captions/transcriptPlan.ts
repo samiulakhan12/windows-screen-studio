@@ -3,7 +3,8 @@
  * (by length and by upload size), cut in the middle of a quiet stretch when there is one near
  * the end of a part, so no word is cut in two. Where the sound never pauses, parts are cut at
  * fixed points and overlap a little: words cut at the edge of one part are heard whole in the
- * other, and the merge keeps each word from one part only (see transcriptMerge).
+ * other, and the merge keeps each word from one part only, deciding on the earlier part's
+ * timing since the two time the words there a little differently (see transcriptMerge).
  */
 import type { Range } from '../audio/activity'
 
@@ -13,7 +14,11 @@ export interface TranscriptPart {
   /** What is sent. */
   start: number
   end: number
-  /** What is kept of its result: segments whose middle is in [keepStart, keepEnd). */
+  /**
+   * What is kept of its result: words (segments without them) whose middle is in
+   * [keepStart, keepEnd), or at keepEnd where nothing past it is sent; at a fixed cut the
+   * merge decides on the earlier part's timing.
+   */
   keepStart: number
   keepEnd: number
 }

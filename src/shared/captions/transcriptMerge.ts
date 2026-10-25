@@ -2,11 +2,14 @@
  * Puts the transcripts of a recording's parts (see transcriptPlan) together: times moved from
  * each part's own clock to source seconds, and each word taken from the one part whose kept
  * window holds its middle (a sentence across a fixed cut is split there: its start from one
- * part, its end from the other). Segments without word times are taken whole by their middle,
- * and those both overlapping parts heard near a fixed cut are kept once.
+ * part, its end from the other). The two parts time the words at a fixed cut a little
+ * differently, so the earlier part's timing decides there: the later part keeps a word both
+ * heard only if the earlier did not, and any other word only if it is after the last word the
+ * earlier part kept. Segments without word times are taken whole by their middle, and those
+ * both overlapping parts heard near a fixed cut are kept once.
  */
 import type { CaptionSegment, CaptionWord } from '../types'
-import type { RawSegment, RawTranscript } from './transcriptParse'
+import type { RawSegment, RawTranscript, RawWord } from './transcriptParse'
 import type { TranscriptPart } from './transcriptPlan'
 
 /** Shortest segment kept, seconds. */
@@ -18,35 +21,86 @@ interface Placed {
   margin: number
 }
 
+/** How a part that starts at a fixed cut keeps the words there (see startAfter). */
+interface Start {
+  /** Other words are kept if their middle is here or later. */
+  from: number
+  /** Words the part before also heard: whether this part keeps them. */
+  settled: Map<RawWord, boolean>
+}
+
 const round = (t: number): number => Math.round(t * 1000) / 1000
 
-/** Segments of one part in source seconds, those it keeps, clamped to what it sent and to the recording. */
-export function placePart(part: TranscriptPart, transcript: RawTranscript, duration: number, last: boolean): Placed[] {
+/** The same word whatever its case and punctuation ("" for none). */
+const wordKey = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+
+/** Segments of one part in source seconds, clamped to what it sent and to the recording (words to their segment). */
+function shiftPart(part: TranscriptPart, transcript: RawTranscript, duration: number): RawSegment[] {
   const lo = Math.max(0, part.start)
   const hi = Math.min(duration, part.end)
-  const kept = (a: number, b: number): boolean => {
-    const mid = (a + b) / 2
-    return mid >= part.keepStart && (mid < part.keepEnd || (last && mid === part.keepEnd))
-  }
-  const out: Placed[] = []
-  for (const s of transcript.segments) {
+  return transcript.segments.map((s) => {
     const start = Math.min(Math.max(s.start + part.start, lo), hi)
     const end = Math.min(Math.max(s.end + part.start, lo), hi)
     const words = s.words?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end) }))
+    return { start, end, text: s.text, ...(words ? { words } : {}) }
+  })
+}
+
+/** Of one part's segments (see shiftPart), those it keeps; `begin` settles the words at a fixed cut it starts at. */
+export function placePart(part: TranscriptPart, segments: readonly RawSegment[], duration: number, last: boolean, begin?: Start): Placed[] {
+  const lo = Math.max(0, part.start)
+  const hi = Math.min(duration, part.end)
+  // A part cut in a pause sent nothing past keepEnd, so a word clamped onto it was heard here only.
+  const closedEnd = last || part.end <= part.keepEnd
+  const kept = (a: number, b: number, from: number, settled?: boolean): boolean => {
+    const mid = (a + b) / 2
+    return (settled ?? mid >= from) && (mid < part.keepEnd || (closedEnd && mid === part.keepEnd))
+  }
+  const out: Placed[] = []
+  for (const s of segments) {
     let seg: RawSegment
-    if (words?.length) {
-      const mine = words.filter((w) => kept(w.start, w.end))
+    if (s.words?.length) {
+      const mine = s.words.filter((w) => kept(w.start, w.end, begin?.from ?? part.keepStart, begin?.settled.get(w)))
       if (!mine.length) continue
       // All its words: as heard (with its punctuation); some: only those, across a fixed cut.
-      seg = mine.length === words.length ? { start, end, text: s.text, words } : { start: mine[0].start, end: mine[mine.length - 1].end, text: mine.map((w) => w.text).join(' '), words: mine }
+      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text: mine.map((w) => w.text).join(' '), words: mine }
     } else {
-      if (!kept(start, end)) continue
-      seg = { start, end, text: s.text }
+      if (!kept(s.start, s.end, part.keepStart)) continue
+      seg = { start: s.start, end: s.end, text: s.text }
     }
     const mid = (seg.start + seg.end) / 2
     out.push({ seg, margin: Math.min(mid - lo, hi - mid) })
   }
   return out
+}
+
+/**
+ * How `part`, which starts at a fixed cut, keeps the words there, decided on the timing of the
+ * part before it (`prev`, its segments `heard` and those it `kept`), as each part's own timing
+ * could keep a word twice or not at all. A word both heard in the overlap (the same text at
+ * overlapping times, paired in order) is kept only if `prev` did not keep it, and any other
+ * from a middle after the last word `prev` kept.
+ */
+function startAfter(prev: TranscriptPart, heard: readonly RawSegment[], kept: readonly Placed[], part: TranscriptPart, segments: readonly RawSegment[]): Start {
+  const inOverlap = (segs: readonly RawSegment[]): RawWord[] =>
+    segs
+      .flatMap((s) => s.words ?? [])
+      .filter((w) => w.end >= part.start && w.start <= prev.end)
+      .sort((a, b) => a.start - b.start)
+  const mine = inOverlap(segments)
+  const theirs = new Set(kept.flatMap((p) => p.seg.words ?? []))
+  const settled = new Map<RawWord, boolean>()
+  let next = 0
+  for (const w of inOverlap(heard)) {
+    const key = wordKey(w.text)
+    const i = key ? mine.findIndex((m, j) => j >= next && m.start <= w.end && w.start <= m.end && wordKey(m.text) === key) : -1
+    if (i < 0) continue
+    settled.set(mine[i], !theirs.has(w))
+    next = i + 1
+  }
+  let lastEnd = -Infinity
+  for (const w of theirs) lastEnd = Math.max(lastEnd, w.end)
+  return { from: lastEnd >= part.start ? lastEnd : part.keepStart, settled }
 }
 
 /**
@@ -58,7 +112,15 @@ export function placePart(part: TranscriptPart, transcript: RawTranscript, durat
  */
 export function mergeParts(results: readonly { part: TranscriptPart; transcript: RawTranscript }[], duration: number): { segments: CaptionSegment[]; language?: string } {
   const placed: Placed[] = []
-  results.forEach((r, i) => placed.push(...placePart(r.part, r.transcript, duration, i === results.length - 1)))
+  let prev: { part: TranscriptPart; heard: RawSegment[]; kept: Placed[] } | undefined
+  for (let i = 0; i < results.length; i++) {
+    const { part, transcript } = results[i]
+    const heard = shiftPart(part, transcript, duration)
+    const begin = prev && part.start < part.keepStart ? startAfter(prev.part, prev.heard, prev.kept, part, heard) : undefined
+    const own = placePart(part, heard, duration, i === results.length - 1, begin)
+    placed.push(...own)
+    prev = { part, heard, kept: own }
+  }
   placed.sort((a, b) => a.seg.start - b.seg.start || a.seg.end - b.seg.end)
   const kept: Placed[] = []
   for (const p of placed) {
