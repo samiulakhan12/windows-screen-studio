@@ -114,6 +114,79 @@ describe('inputGaps', () => {
   })
 })
 
+describe('inputGaps and scrolling', () => {
+  const still = (scrolls?: CursorTrack['scrolls'], extra: Partial<CursorTrack> = {}): CursorTrack => ({
+    samples: [{ t: 0, x: 0.5, y: 0.5 }],
+    clicks: [],
+    valid: true,
+    ...(scrolls ? { scrolls } : {}),
+    ...extra
+  })
+  const wheel = (t: number) => ({ t, x: 0.5, y: 0.5, dx: 0, dy: 1 })
+
+  it('a whole scroll session is busy: wheel events every 0.5 s over 10-14 s leave no gap inside [9.95, 14.05]', () => {
+    const scrolls = [10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14].map(wheel)
+    const gaps = inputGaps(still(scrolls), 20)!
+    expect(gaps.map((g) => [+g.start.toFixed(6), +g.end.toFixed(6)])).toEqual([
+      [0, 9.95],
+      [14.05, 20]
+    ])
+  })
+
+  it('separate sessions leave the time between them idle', () => {
+    const gaps = inputGaps(still([wheel(5), wheel(6)]), 10)!
+    expect(gaps.map((g) => [+g.start.toFixed(6), +g.end.toFixed(6)])).toEqual([
+      [0, 4.95],
+      [5.05, 5.95],
+      [6.05, 10]
+    ])
+  })
+
+  it('without scroll data the output is unchanged', () => {
+    const t = track(20, [{ start: 4, end: 12 }], { clicks: [{ t: 8, x: 0.5, y: 0.5, button: 'left' }], typing: [{ t: 15, end: 16 }], marks: [{ t: 18 }] })
+    const { scrolls: _none, ...withoutKey } = t
+    expect(inputGaps({ ...t, scrolls: [] }, 20)).toEqual(inputGaps(withoutKey, 20))
+    expect(inputGaps(withoutKey, 20)).toEqual(legacyInputGaps(withoutKey, 20))
+    expect(inputGaps(still(undefined, { clicks: [{ t: 3, x: 0.5, y: 0.5, button: 'left' }] }), 10)).toEqual(
+      legacyInputGaps(still(undefined, { clicks: [{ t: 3, x: 0.5, y: 0.5, button: 'left' }] }), 10)
+    )
+  })
+})
+
+/** inputGaps as it was before scrolling was recorded, for the parity check above. */
+function legacyInputGaps(track: CursorTrack, duration: number): TimeRange[] | null {
+  if (!track.valid) return null
+  const activity: TimeRange[] = []
+  const at = (t: number): void => void activity.push({ start: t - 0.05, end: t + 0.05 })
+  let anchor: { x: number; y: number } | null = null
+  for (const s of track.samples) {
+    if (!anchor) {
+      anchor = s
+      continue
+    }
+    if (Math.hypot(s.x - anchor.x, s.y - anchor.y) > 0.004) {
+      at(s.t)
+      anchor = s
+    }
+  }
+  for (const c of track.clicks) at(c.t)
+  for (const k of track.keys ?? []) at(k.t)
+  for (const m of track.marks ?? []) at(m.t)
+  for (const b of track.typing ?? []) activity.push({ start: b.t - 0.05, end: Math.max(b.t, b.end) + 0.05 })
+  const busy = activity
+    .filter((r) => Number.isFinite(r.start) && Number.isFinite(r.end))
+    .map((r) => ({ start: Math.min(duration, Math.max(0, r.start)), end: Math.min(duration, Math.max(0, r.end)) }))
+    .sort((a, b) => a.start - b.start)
+  const gaps: TimeRange[] = []
+  let cursor = 0
+  for (const r of busy) {
+    if (r.start - cursor > 1e-6) gaps.push({ start: cursor, end: r.start })
+    cursor = Math.max(cursor, r.end)
+  }
+  if (duration - cursor > 1e-6) gaps.push({ start: cursor, end: duration })
+  return gaps
+}
+
 describe('findIdleRanges', () => {
   const base = { duration: 20, clips: [clip(0, 20)] }
 

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
+import { effectiveTrack } from '../src/shared/engine/inputTrack'
 import { createProject } from '../src/shared/engine/project'
 import {
   CLICK_MIN_GAP,
@@ -196,5 +197,26 @@ describe('ClickSoundScheduler (preview playback)', () => {
     const s = new ClickSoundScheduler([1, 1.001, 1.002, 1.003, 1.004, 1.005])
     s.restart(1)
     expect(s.frame(1, clip(0, 10, 8)).length).toBeLessThanOrEqual(4)
+  })
+})
+
+describe('ignored clicks (the effective track) make no sound', () => {
+  it('soundingClicks and clickSoundJob leave them out, in preview and export alike', () => {
+    const p = { ...project({ clickSound: true }), inputEdits: { ignoredClicks: [{ ms: 4000 }, { ms: 9000 }] } }
+    const recorded = track([click(2), click(4, 0.5, 0.5, 'right'), click(9), click(12)])
+    const cursor = effectiveTrack(recorded, p)
+    expect(soundingClicks(recorded)).toEqual([2, 4, 9, 12])
+    expect(soundingClicks(cursor)).toEqual([2, 12])
+    expect(clickSoundJob(p, cursor, full)?.times).toEqual([2, 12])
+    // Every click ignored: no sound job at all.
+    const all = { ...p, inputEdits: { ignoredClicks: [2000, 4000, 9000, 12000].map((ms) => ({ ms })) } }
+    expect(clickSoundJob(all, effectiveTrack(recorded, all), full)).toBeNull()
+  })
+
+  it('without input edits the track and the sounds are exactly as recorded', () => {
+    const recorded = track([click(2), click(4)])
+    const p = project({ clickSound: true })
+    expect(effectiveTrack(recorded, p)).toBe(recorded)
+    expect(clickSoundJob(p, effectiveTrack(recorded, p), full)).toEqual(clickSoundJob(p, recorded, full))
   })
 })

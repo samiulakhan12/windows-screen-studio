@@ -1,7 +1,9 @@
 import type { AutoZoomSettings, ClickEvent, CursorSample, CursorTrack, ZoomEasing, ZoomFocus, ZoomSegment, ZoomSettings } from '../types'
 import { cursorAt, SmoothedTrack } from './cursor'
 import { BOUNCY_OVERSHOOT, ease } from './easing'
+import { clickKey } from './inputData'
 import { clamp, easeInOutCubic, lerp } from './math'
+import { isLongScroll, SCROLL, scrollSessions, type ScrollSession } from './scroll'
 
 export const ZOOM_TRANSITION = 0.7
 /** How long after an auto zoom's click the camera takes to hand its aim back to the cursor. */
@@ -152,42 +154,92 @@ function rangeSegments(r: { start: number; end: number; events: ZoomEvent[] }, o
   return segments
 }
 
+/** How scrolling shapes the zooms (docs/design/smarter-auto-zoom.md part 3); empty without scroll data. */
+interface ScrollShape {
+  /** Long scrolls: the camera shows the whole frame while they last, and no zoom spans one. */
+  breaks: readonly ScrollSession[]
+  /** Other scrolling: a zoom that is in when it starts stays in until `hold` after it ends. */
+  holds: readonly ScrollSession[]
+}
+
+const NO_SCROLL: ScrollShape = { breaks: [], holds: [] }
+
 /**
  * Zoom segments from recorded events: events closer than clusterGap share one zoom, which
  * starts leadIn before the first and holds until `hold` after the last; segments whose
  * transitions would overlap are merged (no zoom-out/in dip). Each zoom aims at its first
  * event; typing gets its own part of the zoom, aimed at the field for as long as it lasts,
  * joined to the clicks around it by a pan.
+ * Scrolling: no zoom clusters, merges or lasts across a break (it ends SCROLL.outBy after the
+ * break starts and starts SCROLL.rest after it ends, and is dropped when that leaves less than
+ * two transitions); a hold starting inside a zoom keeps it in. Without breaks and holds the
+ * arithmetic is exactly what it was before scrolling was recorded.
  */
-function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions, typingScale = o.scale): ZoomSegment[] {
+function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions, typingScale = o.scale, scroll: ScrollShape = NO_SCROLL): ZoomSegment[] {
   const sorted = [...events].sort((a, b) => a.t0 - b.t0)
-  const ranges: { start: number; end: number; last: number; events: ZoomEvent[] }[] = []
+  const { breaks, holds } = scroll
+  // A break overlapping the open interval (a, b).
+  const breakBetween = (a: number, b: number): boolean => breaks.some((s) => s.start < b && s.end > a)
+  const ranges: { start: number; end: number; first: number; last: number; events: ZoomEvent[] }[] = []
+  let h = 0
+  // Holds in time order, interleaved with the events (an event first when they start together).
+  const applyHolds = (before: number): void => {
+    for (; h < holds.length && holds[h].start < before; h++) {
+      const cur = ranges[ranges.length - 1]
+      const hold = holds[h]
+      if (cur && cur.start <= hold.start && hold.start <= cur.end) {
+        cur.end = Math.max(cur.end, hold.end + o.hold)
+        cur.last = Math.max(cur.last, hold.end)
+      }
+    }
+  }
   for (const e of sorted) {
+    applyHolds(e.t0)
     const cur = ranges[ranges.length - 1]
-    if (cur && e.t0 - cur.last <= o.clusterGap) {
+    if (cur && e.t0 - cur.last <= o.clusterGap && !breakBetween(cur.last, e.t0)) {
       cur.last = Math.max(cur.last, e.t1)
       cur.end = Math.max(cur.end, e.t1 + o.hold)
       cur.events.push(e)
     } else {
-      ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, last: e.t1, events: [e] })
+      ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, first: e.t0, last: e.t1, events: [e] })
     }
   }
-  const zooms: { start: number; end: number; events: ZoomEvent[] }[] = []
+  applyHolds(Infinity)
+  const zooms: { start: number; end: number; last: number; events: ZoomEvent[] }[] = []
   for (const r of ranges) {
-    let start = clamp(r.start, 0, duration)
-    let end = clamp(Math.max(r.end, start + o.minDuration), 0, duration)
-    if (end - start < 2 * ZOOM_TRANSITION) {
-      start = clamp(end - 2 * ZOOM_TRANSITION, 0, duration)
-      end = clamp(start + 2 * ZOOM_TRANSITION, 0, duration)
+    let lo = 0
+    let hi = duration
+    let byBreak = false
+    if (breaks.length > 0) {
+      let prevBreak: ScrollSession | null = null
+      for (const b of breaks) if (b.end <= r.first) prevBreak = b
+      const nextBreak = breaks.find((b) => b.start >= r.last) ?? null
+      if (prevBreak && prevBreak.end + SCROLL.rest > 0) {
+        lo = prevBreak.end + SCROLL.rest
+        byBreak = true
+      }
+      if (nextBreak && nextBreak.start + SCROLL.outBy < duration) {
+        hi = nextBreak.start + SCROLL.outBy
+        byBreak = true
+      }
     }
+    let start = clamp(r.start, lo, hi)
+    let end = clamp(Math.max(r.end, start + o.minDuration), lo, hi)
+    if (end - start < 2 * ZOOM_TRANSITION) {
+      start = clamp(end - 2 * ZOOM_TRANSITION, lo, hi)
+      end = clamp(start + 2 * ZOOM_TRANSITION, lo, hi)
+    }
+    // Squeezed between scrolls: too short to zoom in and out without a dip.
+    if (byBreak && end - start < 2 * ZOOM_TRANSITION - 1e-9) continue
     const prev = zooms[zooms.length - 1]
     // Merge segments whose transitions would overlap, to avoid a zoom-out/in "dip".
-    if (prev && start - prev.end < ZOOM_TRANSITION) {
+    if (prev && start - prev.end < ZOOM_TRANSITION && !breakBetween(prev.last, r.first)) {
       prev.end = Math.max(prev.end, end)
+      prev.last = Math.max(prev.last, r.last)
       prev.events.push(...r.events)
       continue
     }
-    if (end - start > 0.2) zooms.push({ start, end, events: [...r.events] })
+    if (end - start > 0.2) zooms.push({ start, end, last: r.last, events: [...r.events] })
   }
   return zooms.flatMap((r) => rangeSegments(r, o, typingScale))
 }
@@ -298,6 +350,23 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
  */
 export function autoZoomsForTrack(track: CursorTrack, duration: number, settings: AutoZoomSettings = DEFAULT_ZOOM_SETTINGS.auto): ZoomSegment[] {
   if (!settings.enabled) return []
+  const input = autoZoomInput(track, settings)
+  const scroll = planScroll(track, settings, input, duration)
+  const events = scroll.landings.length > 0 ? [...input.events, ...scroll.landings] : input.events
+  const zooms = zoomsFromEvents(events, duration, input.o, typingScale(input.o.scale), scroll)
+  // Without cursor data there is no cursor to follow: look at the anchor instead.
+  return track.valid === false ? zooms.map((z) => ({ ...z, focus: { mode: 'fixed', x: z.anchor?.x ?? 0.5, y: z.anchor?.y ?? 0.5 } })) : zooms
+}
+
+/** What auto zoom reads from a track with given settings: its options, typing sessions and zoom events. */
+interface AutoZoomInput {
+  o: AutoZoomOptions
+  sessions: TypingSession[]
+  /** Clicks, typing and marks (landings after long scrolls are not among them). */
+  events: ZoomEvent[]
+}
+
+function autoZoomInput(track: CursorTrack, settings: AutoZoomSettings): AutoZoomInput {
   const o: AutoZoomOptions = {
     scale: clamp(settings.scale, 1.05, ZOOM_MAX_SCALE),
     clusterGap: Math.max(0, settings.clusterGap),
@@ -317,9 +386,65 @@ export function autoZoomsForTrack(track: CursorTrack, duration: number, settings
       events.push({ t0: m.t, t1: m.t, anchor: { t: m.t, ...cursorPlace(track, m.t) } })
     }
   }
-  const zooms = zoomsFromEvents(events, duration, o, typingScale(o.scale))
-  // Without cursor data there is no cursor to follow: look at the anchor instead.
-  return track.valid === false ? zooms.map((z) => ({ ...z, focus: { mode: 'fixed', x: z.anchor?.x ?? 0.5, y: z.anchor?.y ?? 0.5 } })) : zooms
+  return { o, sessions, events }
+}
+
+/** How auto zoom treats a track's scrolling (scrollZoomPlan). */
+export interface ScrollZoomPlan {
+  /** Long scrolls ('zoom-out' only): the camera shows the whole frame while they last. */
+  breaks: ScrollSession[]
+  /** The other scrolling: a zoom already in stays in until `hold` after it. */
+  holds: ScrollSession[]
+  /** Zooming back in where a long scroll stopped: one zoom event at each landing time. */
+  landings: { t0: number; t1: number; anchor: { t: number; x: number; y: number } }[]
+}
+
+const NO_SCROLL_PLAN: ScrollZoomPlan = { breaks: [], holds: [], landings: [] }
+
+/**
+ * The breaks, holds and landings of `settings.scrolling` (docs/design/smarter-auto-zoom.md
+ * §6.1-6.3). Sessions are cut at every zoom event instant (clicks used for zooms, marks, typing
+ * session starts and ends). 'zoom-out': a long session (isLongScroll) that overlaps no typing
+ * session is a break, every other one a hold; a break gets a landing when a zoom event (landings
+ * included) ended within `hold` before it began, no click, mark or typing starts within
+ * SCROLL.landSkip after it, and the landing, SCROLL.rest + leadIn after its last wheel event,
+ * is inside the recording. 'hold': every session is a hold. 'ignore', no scroll data, or auto
+ * zoom off: nothing.
+ */
+function planScroll(track: CursorTrack, settings: AutoZoomSettings, input: AutoZoomInput, duration: number): ScrollZoomPlan {
+  const mode = settings.scrolling ?? 'zoom-out'
+  if (!settings.enabled || mode === 'ignore' || !track.scrolls || track.scrolls.length === 0) return NO_SCROLL_PLAN
+  const { o, sessions: typing, events } = input
+  const sessions = scrollSessions(
+    track.scrolls,
+    events.flatMap((e) => [e.t0, e.t1])
+  )
+  if (mode === 'hold') return { breaks: [], holds: sessions, landings: [] }
+  const breaks: ScrollSession[] = []
+  const holds: ScrollSession[] = []
+  for (const s of sessions) {
+    if (isLongScroll(s) && !typing.some((ts) => s.start < ts.t1 && s.end > ts.t0)) breaks.push(s)
+    else holds.push(s)
+  }
+  const landings: ScrollZoomPlan['landings'] = []
+  const EPS = 1e-9
+  for (const b of breaks) {
+    const zoomedIn = [...events, ...landings].some((e) => e.t1 >= b.start - o.hold - EPS && e.t1 <= b.start + EPS)
+    const busy = events.some((e) => e.t0 >= b.end - EPS && e.t0 <= b.end + SCROLL.landSkip + EPS)
+    const t = b.end + SCROLL.rest + o.leadIn
+    if (zoomedIn && !busy && t <= duration) landings.push({ t0: t, t1: t, anchor: { t, x: b.last.x, y: b.last.y } })
+  }
+  return { breaks, holds, landings }
+}
+
+/**
+ * How auto zoom treats `track`'s scrolling with `settings`, exactly as autoZoomsForTrack does
+ * (landings are only placed up to `duration`). Empty without scroll data, with 'ignore', or with
+ * auto zoom off. For scroll.ts scrollBreaks and the editor.
+ */
+export function scrollZoomPlan(track: CursorTrack, settings: AutoZoomSettings, duration = Infinity): ScrollZoomPlan {
+  if (!settings.enabled) return NO_SCROLL_PLAN
+  return planScroll(track, settings, autoZoomInput(track, settings), duration)
 }
 
 /** Envelope 0..1 of a segment at time t (eased ramps at both ends). */
@@ -799,9 +924,34 @@ export function regenerateAutoZooms(
  * CONTRACT: used by shared/editor/inputEdits.ts setClicksIgnored (one undo step with the edit).
  */
 export function rebaseAutoZooms(zooms: ZoomSegment[], before: ZoomSegment[], after: ZoomSegment[], dropAnchors: readonly number[] = []): ZoomSegment[] {
-  void zooms
-  void before
-  void after
-  void dropAnchors
-  throw new Error('not implemented')
+  const drop = new Set(dropAnchors)
+  const kept = zooms.filter((z) => {
+    if (!z.auto) return true
+    if (before.some((b) => sameZoom(z, b)) && !after.some((a) => sameZoom(z, a))) return false
+    const a = z.anchor
+    return !(a && typeof a.until !== 'number' && drop.has(clickKey(a.t)))
+  })
+  const added = after
+    .filter((a) => !before.some((b) => sameZoom(a, b)) && !kept.some((k) => a.start < k.end && a.end > k.start))
+    .map((a) => ({ ...a, id: newZoomId() }))
+  if (kept.length === zooms.length && added.length === 0) return zooms
+  return [...kept, ...added].sort((a, b) => a.start - b.start)
+}
+
+const SAME = 1e-6
+
+/** The same zoom as generated (ids aside): see rebaseAutoZooms. */
+function sameZoom(a: ZoomSegment, b: ZoomSegment): boolean {
+  return Math.abs(a.start - b.start) <= SAME && Math.abs(a.end - b.end) <= SAME && a.scale === b.scale && sameFocus(a.focus, b.focus) && sameAnchor(a.anchor, b.anchor)
+}
+
+function sameFocus(a: ZoomFocus, b: ZoomFocus): boolean {
+  if (a.mode === 'cursor' || b.mode === 'cursor') return a.mode === b.mode
+  if (a.mode === 'fixed' || b.mode === 'fixed') return a.mode === b.mode && a.x === b.x && a.y === b.y
+  return a.mode === b.mode && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
+}
+
+function sameAnchor(a: ZoomSegment['anchor'], b: ZoomSegment['anchor']): boolean {
+  if (!a || !b) return !a && !b
+  return Math.abs(a.t - b.t) <= SAME && Math.abs(a.x - b.x) <= SAME && Math.abs(a.y - b.y) <= SAME && a.until === b.until
 }
