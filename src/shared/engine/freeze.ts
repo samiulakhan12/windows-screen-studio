@@ -258,6 +258,17 @@ export function videoFrames(clips: Clip[], plan: FreezePlan, fps: number): { tim
   return { times, pictures, held }
 }
 
+/**
+ * Texts ending at or after this source time do not fade out (E-11): the edit's end, when a pause
+ * freeze holds a moment of the edit's last `fade` seconds (edit time) and a text running to the end
+ * would be drawn part faded out through the whole hold ("Add text on the freeze" on a freeze at or
+ * near the end ends its text there). Infinity otherwise: every text fades out as before.
+ */
+export function noFadeOutFrom(clips: Clip[], plan: FreezePlan, fade: number): number {
+  const last = plan.holds[plan.holds.length - 1]
+  return last && outputDuration(clips) - last.edit < fade ? clips[clips.length - 1].end - END_SNAP : Infinity
+}
+
 /** The source time whose picture is drawn at source time `t`: a still's anchor inside its span, else `t`. */
 export function pictureTime(clips: Clip[], plan: FreezePlan, t: number): number {
   if (plan.stills.length === 0) return t

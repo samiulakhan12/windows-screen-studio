@@ -379,6 +379,7 @@ Other operations:
 - `freezeTextRange(clips, f)` returns `{ start: outputToSource(clips, max(0, e − 0.5)).time, end: outputToSource(clips, e + 0.5).time }`, or `null` when the freeze is inactive.
   - "Add text on the freeze" uses it through `createAnnotation(start, p.duration, { end })` (`annotations.ts`).
   - The text is past its `ANNOTATION_FADE` (0.15 s) fade-in before the picture stops, so it shows through the whole freeze.
+  - Near the edit's end the range is cut at the end, so the hold would repeat a moment of the text's fade-out. A text running to the edit's end therefore does not fade out there while a pause freeze holds one of the edit's last 0.15 s (§13).
 
 How other features treat freezes:
 - **Cuts, splits, trims, speed changes** (`timeline.ts`, `clips.ts`): untouched. A freeze whose frame is cut is inactive. A continue span is measured in edit time, so speed changes keep its length.
@@ -745,6 +746,8 @@ What the implementation does where it differs from, or adds to, the sections abo
 - An anchor within 1 ms of `last.end` is the edit's end (`atEditEnd` and `anchorEdit` in `freeze.ts`, the same 1 ms as the playhead's snap to the end and `soundPieces`): `freezePlan`, `freezeRefusal`, `freezeTextRange` and `setFreezeSound` read it so. A freeze made at the end stores `last.end`, which after a trim or a cut is rarely whole ms, and `readFreezes` rounds it on the next load, past the end or into the last frame. Without the tolerance that freeze came back inactive, or as a hold before the last frame. `readFreezes` is unchanged: it does not see the clips. The preview's end hold shows `frameTimeFor(last.end)` whichever way the anchor was rounded.
 - New exports in `freezeEdit.ts`: `freezeRefusal(p, t)` (the refusal without building a project; the Clip panel button and the palette use it), `freezeIdAt(p, t)` (the freeze the playhead is on), `FREEZE_REFUSAL_TEXT` and `atEditEnd(clips, at)`.
 - `soundPieces` gives each hold to the clip that contains its frame, so a hold where two clips touch (a split with different speeds) is used once. Holds in a cut are dropped.
+
+- `noFadeOutFrom(clips, plan, fade)` (`freeze.ts`), read by `drawAnnotations` (`textOverlays.ts`): when a pause freeze holds a moment of the edit's last `ANNOTATION_FADE` seconds, a text ending at the edit's end (within 1 ms) does not fade out there. Otherwise "Add text on the freeze" on a freeze at the end gives the text `[e − 0.5, last.end]`, and every held frame draws it at the opacity of the moment it repeats: 22 % in a 30 fps export, 11 % at 60 fps, 3 % in the preview. Without such a hold, texts fade out at the end as before.
 
 **Export**
 - `ThumbnailInput` gains `held?: boolean` next to `soundTime`: a pause hold has `soundTime === time` but is still drawn with `blurSamples: 1`. `ExportPreview` gets the same two props, and both seek the camera to `soundTime` (the camera is live in a still, as in the export).
