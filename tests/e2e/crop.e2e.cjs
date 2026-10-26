@@ -2,7 +2,7 @@
 // taskbar (a red band along the bottom of a grey recording) with one preset and one undo step;
 // the preview and an Auto export show none of it, with no red bleeding in at the cut edge, and
 // take the cropped shape; the tool shows the whole recording again while it is open; Undo, Esc
-// and the C shortcut behave; items stay where they were stored.
+// (also in the middle of a drag) and the C shortcut behave; items stay where they were stored.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -170,5 +170,23 @@ h.run(
     const near = (a, want, tol) => Math.abs(a - want) <= tol
     h.assert(near(moved.w, shape.w, 1e-9) && near(moved.h, shape.h, 1e-9), `the shape keeps its size (${moved.w} × ${moved.h})`)
     h.assert(near(moved.x - shape.x, (40 * shape.w) / b.w, 0.004) && near(moved.y - shape.y, (30 * shape.h) / b.h, 0.004), `moved by the drag (${moved.x - shape.x}, ${moved.y - shape.y})`)
+
+    // 8. Esc while a handle is still held closes the tool for good: moving on does not open it again.
+    await win.keyboard.press('c')
+    await win.waitForSelector('[data-testid=crop-editor]', { timeout: 5000 })
+    const grip = await win.$eval('[data-testid=crop-handle-n]', (el) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    })
+    await win.mouse.move(grip.x, grip.y)
+    await win.mouse.down()
+    await win.mouse.move(grip.x, grip.y + 30, { steps: 4 })
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid=crop-editor]', { state: 'detached', timeout: 5000 })
+    await win.mouse.move(grip.x, grip.y + 60, { steps: 4 })
+    await win.mouse.up()
+    await h.sleep(300)
+    h.assert((await win.$('[data-testid=crop-editor]')) === null, 'the tool stays closed after Esc in the middle of a drag')
+    h.assert(JSON.stringify(h.readProject(home, id).crop) === JSON.stringify(saved), 'Esc in the middle of a drag applies nothing')
   })
 )

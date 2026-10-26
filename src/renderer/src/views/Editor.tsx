@@ -675,7 +675,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const applyCrop = useCallback(() => cropActions.done(cropRef.current), [cropActions])
   const applyCropRef = useRef(applyCrop)
   applyCropRef.current = applyCrop
-  const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: setCropDraft, onDone: applyCrop } : null), [cropDraft, applyCrop])
+  // A draft counts only while the tool is open: nothing late (a drag still held) opens it again.
+  const editCropDraft = useCallback((d: CropDraft) => setCropDraft((cur) => (cur ? d : cur)), [])
+  const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: editCropDraft, onDone: applyCrop } : null), [cropDraft, editCropDraft, applyCrop])
   const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : cropActions.reset()), [cropActions])
 
   /* ---------- commands (palette and shortcuts) ---------- */
@@ -1141,7 +1143,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
                 draft={cropDraft}
                 capture={project.capture}
                 scale={recorded.scale}
-                onDraft={setCropDraft}
+                onDraft={editCropDraft}
                 onDone={applyCrop}
                 onCancel={cropActions.cancel}
               />

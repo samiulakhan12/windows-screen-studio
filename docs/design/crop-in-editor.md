@@ -414,6 +414,7 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 
 - The selection is cleared. Playback and scrubbing work.
 - Undo, Redo (the `actions` the title bar and the shortcuts share), opening Export and leaving the editor all close the tool without applying.
+- A drag still held when the tool closes (Esc, Enter, Undo, Export) ends with it: `CropEditor` stops following the pointer when it unmounts, and the Editor takes a draft only while the tool is open, so moving on never opens the tool again (nor hands Export the crop tool's scene).
 - `C` while the tool is open keeps the draft. From the palette, **Show the whole recording** and **Crop out the taskbar** change the draft while the tool is open, as its bar does.
 - The Editor sets `player.setNoZoom(!!pickZoom || !!cropDraft)`, combined into the existing effect at `Editor.tsx:294`.
 
@@ -510,7 +511,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 - `src/shared/editor/cropEdit.ts`: drag, aspect, snap, presets, `setCrop`, `outsideCrop` and the notice copy.
 - `src/renderer/src/editor/CropEditor.tsx` and `src/renderer/src/editor/crop.css`: the overlay (`CropEditor`) and its bar (`CropBar`).
 - `src/renderer/src/editor/panels/CropRow.tsx`: the Style › Frame row.
-- Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
+- Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/cropEditor.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
 
 **Modify**
 
@@ -638,6 +639,11 @@ Same harness as `compositorBounds.test.ts`: `recordingContext`, a stubbed `Path2
 - No crop: equal to `outputSize(aspect, w, h, res)` for 10 recording sizes.
 - A 1920×64 crop at 2160 → `capped: true`, long side 4096.
 
+**`tests/cropEditor.test.ts`** (the overlay without a DOM, React's hooks swapped as in `captionsPanel.test.ts`)
+
+- A drag writes the draft while the pointer moves and stops listening on release.
+- A drag still held when the overlay unmounts writes no more drafts and leaves no window listeners.
+
 **Existing:** `tests/commands.test.ts` (unique ids, known categories) and `tests/shortcuts.test.ts` must pass, with no conflicts between default keys.
 
 **E2E: `tests/e2e/crop.e2e.cjs`**
@@ -660,6 +666,7 @@ The fixture is built inline into the test home with ffmpeg: `color=c=0x808080:s=
    - In the bottom 4 rows (columns 8 to width−8), every pixel has `r − g < 30`, so there is no edge bleed.
 6. Close the dialog (Esc). Press Ctrl+Z, then `waitFor` until `crop` is absent from project.json.
 7. Press `C`: `[data-testid=crop-editor]` is visible. Press Esc: it closes, and project.json is unchanged after 1 s.
+8. Press `C`, hold the top handle and drag, press Esc, then move on and release: the tool stays closed and the crop is unchanged.
 
 ---
 

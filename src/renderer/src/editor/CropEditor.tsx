@@ -1,4 +1,4 @@
-import { useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   browserBarCrop,
   CROP_ASPECTS,
@@ -50,6 +50,10 @@ const sizeText = (r: NormRect, size: Size): string => {
  */
 export function CropEditor({ recorded, rect, draft, onDraft, onDone }: { recorded: Size; rect: Rect } & CropTool): JSX.Element {
   const [dragging, setDragging] = useState(false)
+  // A drag still held when the tool closes (Esc, Enter, undo, export) ends with it: its moves would
+  // write the draft back and open the tool again.
+  const stopDrag = useRef<(() => void) | null>(null)
+  useEffect(() => () => stopDrag.current?.(), [])
   const r = draft.rect
   const left = rect.x + r.x * rect.w
   const top = rect.y + r.y * rect.h
@@ -69,7 +73,7 @@ export function CropEditor({ recorded, rect, draft, onDraft, onDone }: { recorde
     const own = (initial.w * recorded.width) / (initial.h * recorded.height)
     const magnet = { x: MAGNET_PX / Math.max(1, rect.w), y: MAGNET_PX / Math.max(1, rect.h) }
     setDragging(true)
-    followPointer(
+    stopDrag.current = followPointer(
       e,
       (ev) => {
         const ratio = locked ?? (ev.shiftKey ? own : null)
@@ -79,7 +83,10 @@ export function CropEditor({ recorded, rect, draft, onDraft, onDone }: { recorde
         const snapped = handle === 'move' ? snapCrop(next, recorded, magnet, own) : snapCrop(next, recorded, ratio ? NO_MAGNET : magnet, ratio, handle)
         onDraft({ ...draft, rect: snapped })
       },
-      () => setDragging(false)
+      () => {
+        stopDrag.current = null
+        setDragging(false)
+      }
     )
   }
 
