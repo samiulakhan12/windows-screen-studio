@@ -47,6 +47,7 @@ import { checkAnyHotkey } from './notes/notesIpc'
 import { notesStore } from './notes/notesStore'
 import {
   closeNotes,
+  discardKeptNotes,
   endRecordingNotes,
   hideNotesWhilePicking,
   notesAreaContains,
@@ -999,8 +1000,10 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('recording:windowSupport', () => windowSupport())
   ipcMain.handle('recording:prepare', (_e, request: RecordingRequest) =>
     prepare(request).catch((err: unknown) => {
-      // A restarted take keeps the main window hidden (endRecordingUi(true)): when the next take
-      // cannot even be prepared, bring the app back so the error is seen.
+      // A restarted take keeps the main window hidden (endRecordingUi(true)) and the notes window
+      // for the next take: when that take cannot even be prepared, the notes window is closed
+      // and the app comes back so the error is seen.
+      if (!active) discardKeptNotes()
       const main = getMainWindow()
       if (!active && main && !main.isDestroyed() && !main.isVisible()) {
         main.show()

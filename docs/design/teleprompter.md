@@ -129,7 +129,10 @@ spelling hint for transcription (NW-09).
 6. Stop, cancel, a recorder crash: `endRecordingUi(restarting)` calls
    `endRecordingNotes(restarting)`: the hotkeys are released, the store is released (one write),
    and the window is destroyed, or, when restarting, hidden and kept for the next take (which
-   starts at the top: new `take`).
+   starts at the top: new `take`). The kept window holds no hotkeys (`notesSettingsChanged`
+   registers them only for a rehearsal or a recording), and when the next take cannot be
+   prepared (`recording:prepare` fails, e.g. the recorded window is gone) it is closed
+   (`discardKeptNotes`).
 7. The main window closing: `closeRecordingWindows()` also closes the notes window (otherwise
    `window-all-closed` never fires). Quitting: `disposeRecording()` releases the store.
 

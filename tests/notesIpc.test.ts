@@ -155,6 +155,7 @@ const win = vi.hoisted(() => ({
   showNotes: vi.fn(() => void h.order.push('showNotes')),
   setNotesRecording: vi.fn((s: string) => void h.order.push(`notes:${s}`)),
   endRecordingNotes: vi.fn((restarting: boolean) => void h.order.push(`endNotes(${restarting})`)),
+  discardKeptNotes: vi.fn(() => void h.order.push('discardKeptNotes')),
   closeNotes: vi.fn(() => void h.order.push('closeNotes')),
   hideNotesWhilePicking: vi.fn(() => {
     h.order.push('hideNotes')
@@ -415,6 +416,20 @@ describe('the recording hooks (recordingIpc)', async () => {
     h.idle.callbacks.onIdle()
     expect(commands()).toEqual(['pause'])
     await end(token)
+  })
+
+  it('a restarted take that cannot be prepared closes the notes window kept for it', async () => {
+    const first = await start()
+    await invoke('recording:cancel', home, first.token, true)
+    h.order.length = 0
+    await expect(invoke('recording:prepare', home, { ...request, region: { x: 0, y: 0, w: 0.001, h: 0.001 } })).rejects.toThrow(/too small/)
+    expect(h.order).toEqual(['discardKeptNotes'])
+    // A second prepare refused while a recording runs closes nothing.
+    const second = await start()
+    h.order.length = 0
+    await expect(invoke('recording:prepare', home, request)).rejects.toThrow(/already in progress/)
+    expect(h.order).not.toContain('discardKeptNotes')
+    await end(second.token)
   })
 
   it('the end closes the notes, or keeps them for a restarted take', async () => {

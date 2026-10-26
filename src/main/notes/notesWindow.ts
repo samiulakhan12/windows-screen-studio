@@ -476,6 +476,15 @@ export function endRecordingNotes(restarting: boolean): void {
   if (wasOn) notesStore().release()
 }
 
+/**
+ * The next take could not be prepared (recording:prepare failed): the window kept for it by a
+ * restart is closed, so a hidden page never holds the notes hotkeys. Anything else is left alone.
+ */
+export function discardKeptNotes(): void {
+  const n = current
+  if (n && n.mode === 'record' && !recordingOn) dispose(n)
+}
+
 /** The recording bar's notes button: hides the window or shows it again. */
 export function toggleNotesShown(): void {
   const n = current
@@ -558,7 +567,8 @@ export function setNotesLook(patch: NotesLookPatch): void {
 
 /**
  * The notes settings changed from Home (or a recording hotkey did): the open window gets the new
- * view, its hotkeys and its place.
+ * view, its hotkeys (a rehearsal or a recording only: never a window kept hidden for a restart)
+ * and its place.
  */
 export function notesSettingsChanged(): void {
   const n = current
@@ -566,7 +576,7 @@ export function notesSettingsChanged(): void {
   const settings = notesSettingsNow()
   const wanted = NOTES_HOTKEY_ACTIONS.map((a) => settings.hotkeys[a]).join('|')
   const held = NOTES_HOTKEY_ACTIONS.map((a) => registered[a] ?? '').join('|')
-  if (wanted !== held || problems.length) registerNotesHotkeys(settings)
+  if ((n.mode === 'rehearse' || recordingOn) && (wanted !== held || problems.length)) registerNotesHotkeys(settings)
   if (!n.locked) {
     const { rect } = notesBounds(notesDisplays(), settings)
     if (rect.x !== n.rect.x || rect.y !== n.rect.y || rect.width !== n.rect.width || rect.height !== n.rect.height) {

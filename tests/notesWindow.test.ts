@@ -299,6 +299,45 @@ describe('the recording window', () => {
     expect(notes.notesStatus()).toBeNull()
   })
 
+  it('a window kept hidden for a restart never takes the notes hotkeys, whatever changes on Home', () => {
+    const win = startRecording()
+    notes.endRecordingNotes(true)
+    // Home: the notes or a recording option change (each calls notesSettingsChanged()).
+    notesStore().update({ text: 'Intro, changed' })
+    notes.notesSettingsChanged()
+    expect(h.shortcuts.size).toBe(0)
+    expect(notes.notesHotkeyLabels()).toEqual({})
+    expect(win.visible).toBe(false)
+    // The next take takes them again.
+    notes.prepareRecordingNotes(screenPlan(), recDir)
+    expect(last()).toBe(win)
+    expect(h.shortcuts.size).toBe(3)
+  })
+
+  it('the window kept for a restart is closed when the next take cannot be prepared', () => {
+    const win = startRecording()
+    notes.endRecordingNotes(true)
+    notes.discardKeptNotes()
+    expect(win.destroyed).toBe(true)
+    expect(notes.notesWindowInfo()).toBeNull()
+    expect(h.shortcuts.size).toBe(0)
+    notes.notesSettingsChanged()
+    expect(h.shortcuts.size).toBe(0)
+    expect(commands(win)).toEqual([])
+  })
+
+  it('discarding a kept window leaves a rehearsal and a running recording alone', () => {
+    notes.openRehearsal()
+    const rehearsal = last()
+    notes.discardKeptNotes()
+    expect(rehearsal.destroyed).toBe(false)
+    notes.closeRehearsal()
+    const win = startRecording()
+    notes.discardKeptNotes()
+    expect(win.destroyed).toBe(false)
+    expect(h.shortcuts.size).toBe(3)
+  })
+
   it('the bar hides and shows it; a hotkey while hidden only shows it again', () => {
     const win = startRecording()
     notes.toggleNotesShown()
