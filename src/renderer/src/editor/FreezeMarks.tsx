@@ -98,7 +98,8 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     // Shift or Alt+drag still selects a range on the clip track.
     if (e.button !== 0 || e.shiftKey || e.altKey) return
     onSelect({ kind: 'freeze', id: f.id })
-    const session = snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }] })
+    // The playhead follows the anchor during this drag, so it is no target.
+    const session = snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true })
     drag(e, f, (dt, ev) => {
       const t = session ? session.at(ev, f.at + dt, { min: 0, max: duration }) : f.at + dt
       store.update((p) => moveFreeze(p, f.id, t), `freeze-move:${f.id}`)
