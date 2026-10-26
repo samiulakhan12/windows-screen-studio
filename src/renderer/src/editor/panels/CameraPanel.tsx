@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PointerE
 import { cornerRefusal, layoutRefusal, setCornerAt, setLayoutAt } from '../../../../shared/editor/layoutCommands'
 import { LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, removeLayout, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
 import { CORNER_NAMES } from '../../../../shared/recording/cameraBubble'
+import { AUTO_LAYOUT_HINT } from '../../../../shared/editor/directorCopy'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { cameraSourceRect, layoutGeometry, outputSize } from '../../../../shared/engine/layout'
@@ -16,6 +17,7 @@ import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import { LayoutGlyph } from '../layoutGlyphs'
 import { showLayout } from '../LayoutTrack'
+import { DirectorSection } from './DirectorSection'
 import { followPointer } from '../pointer'
 import '../camera.css'
 import './cursorPanel.css'
@@ -26,11 +28,11 @@ const pxFmt = (v: number): string => (v > 0 ? `${Math.round(v)} px` : 'Off')
 const offPct = (v: number): string => (v > 0 ? pctFmt(v) : 'Off')
 const zoomFmt = (v: number): string => `${v.toFixed(1)}×`
 
-type Props = Pick<InspectorProps, 'project' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice'>
+type Props = Pick<InspectorProps, 'project' | 'cursor' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice' | 'directorRequest'>
 
 /* ---------- Camera ---------- */
 
-export function CameraPanel({ project, hasWebcam, selection, onSelect, onNotice }: Props): JSX.Element {
+export function CameraPanel({ project, cursor, hasWebcam, selection, onSelect, onNotice, directorRequest }: Props): JSX.Element {
   const { store } = useEditor()
   const { webcam } = project
   const look = webcamLook(webcam)
@@ -39,6 +41,7 @@ export function CameraPanel({ project, hasWebcam, selection, onSelect, onNotice 
   return (
     <>
       {!hasWebcam && <p className="hint">This recording has no camera. Pick a camera on the home screen before recording.</p>}
+      {hasWebcam && <DirectorSection project={project} cursor={cursor} onSelect={onSelect} onNotice={onNotice} directorRequest={directorRequest} />}
       <Section title="Camera">
         <Toggle label="Show camera" checked={hasWebcam && webcam.show} disabled={!hasWebcam} onChange={(v) => set({ show: v })} />
         <Slider label="Size" value={webcam.size} {...L.webcamSize} step={0.01} format={pctFmt} disabled={off} onChange={(v) => set({ size: v }, 'webcam.size')} />
@@ -307,6 +310,11 @@ function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, '
           </button>
         ))}
       </div>
+      {target?.auto && (
+        <p className="hint" data-testid="layout-auto-hint">
+          {AUTO_LAYOUT_HINT}
+        </p>
+      )}
       {target ? (
         <div className="layout-actions">
           <p className="hint">Drag the block on the camera track to move it; drag its ends to change when it starts and stops.</p>
@@ -358,7 +366,8 @@ function PositionSection({ project, selection, onSelect, onNotice }: Pick<Props,
 
   const reset = (): void => {
     if (!target?.corner) return
-    store.update((p) => ({ ...p, layouts: (p.layouts ?? []).map((s) => (s.id === target.id ? { ...s, corner: undefined } : s)) }))
+    // An edit by hand: a change the director made becomes the user's (updateLayout).
+    store.update((p) => ({ ...p, layouts: updateLayout(p.layouts, target.id, { corner: undefined }) }))
   }
 
   const label = target ? 'Camera position' : 'Move camera here from the playhead'

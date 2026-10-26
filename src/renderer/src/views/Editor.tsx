@@ -7,6 +7,7 @@ import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
+import { directUnavailable } from '../../../shared/editor/directorCopy'
 import { EditStore } from '../../../shared/editor/editStore'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
@@ -216,6 +217,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const [tab, setTab] = useState<InspectorTab>('style')
   const [dialog, setDialog] = useState<'palette' | 'shortcuts' | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
+  const [directorRequest, setDirectorRequest] = useState(0)
 
   // The background image always follows the project state, including undo/redo.
   // `backgroundVersion` reloads it when a newly picked file reuses the same name.
@@ -541,6 +543,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       layoutScreenOnly: () => actions.setLayout('screen-only'),
       layoutSideBySide: () => actions.setLayout('side-by-side'),
       layoutCameraLarge: () => actions.setLayout('camera-large'),
+      directCamera: () => {
+        const why = directUnavailable(!!data.webcamUrl, store.state.webcam.show)
+        if (why) return showNotice(why)
+        setTab('camera')
+        setDirectorRequest((n) => n + 1)
+      },
       zoomLevel0: level('0'),
       zoomLevel1: level('1'),
       zoomLevel2: level('2'),
@@ -639,6 +647,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleCursor: smoothCursor ? null : cursor.valid ? 'The recorded cursor is already in the video' : noCursor,
       toggleClickEffects: cursor.valid ? null : noCursor,
       toggleWebcam: data.webcamUrl ? null : 'This recording has no camera',
+      directCamera: directUnavailable(!!data.webcamUrl, p.webcam.show),
       nextChapter: nextChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
       prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet',
       toggleCaptions: p.transcript?.segments.length ? null : 'No captions yet',
@@ -826,6 +835,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             tab={tab}
             onTab={setTab}
             smartSpeedRequest={smartSpeedRequest}
+            directorRequest={directorRequest}
             project={project}
             selection={selection}
             revealSeq={revealSeq}

@@ -1,0 +1,203 @@
+/* The Camera panel's "Auto director" section (DirectorSection.tsx): sound status, plan strip, list of changes, summary, buttons. */
+
+.director .director-source {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.director .director-source .icon {
+  flex: none;
+}
+
+/* ---------- plan strip: the whole output timeline by what the camera does ---------- */
+.director-strip {
+  position: relative;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+}
+
+.director-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #f0fdfa;
+  background: transparent;
+  cursor: pointer;
+}
+
+.director-block + .director-block {
+  box-shadow: inset 1px 0 0 rgba(10, 10, 16, 0.6);
+}
+
+/* Camera only or large: the director's violet. */
+.director-block.intro,
+.director-block.outro {
+  background: linear-gradient(180deg, #7c4dff, #5b34d6);
+}
+
+/* The bubble where it already is: quiet. */
+.director-block.bubble {
+  background: var(--surface-3);
+}
+
+/* The bubble in another corner: teal, with the corner glyph of the camera track. */
+.director-block.bubble.moved {
+  background: linear-gradient(180deg, #0f8f82, #0b6e64);
+}
+
+/* Hidden: grey hatching. */
+.director-block.hidden {
+  background: repeating-linear-gradient(135deg, #3a3a46 0 4px, #24242c 4px 8px);
+}
+
+/* The user's own segments: outlined, kept. */
+.director-block.yours {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+}
+
+.director-block:hover {
+  filter: brightness(1.18);
+}
+
+.director-block:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.director-block .corner-glyph {
+  flex: none;
+  pointer-events: none;
+}
+
+/* ---------- list of changes ---------- */
+.director-parts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.director-part {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-md);
+  padding: 4px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  line-height: var(--leading-tight);
+}
+
+button.director-part {
+  cursor: pointer;
+}
+
+button.director-part:hover {
+  background: var(--surface-3);
+}
+
+button.director-part:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.director-part-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.director-reason {
+  color: var(--text-2);
+}
+
+.director-glyph {
+  flex: none;
+  width: 26px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.director-glyph.intro,
+.director-glyph.outro {
+  color: #c4b5fd;
+  background: rgba(124, 77, 255, 0.18);
+}
+
+.director-glyph.corner {
+  color: #5eead4;
+  background: rgba(20, 184, 166, 0.16);
+}
+
+.director-glyph.face {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+/* ---------- summary, notes and buttons ---------- */
+.director-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-1);
+}
+
+.director-summary .muted {
+  color: var(--text-2);
+}
+
+.director-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.director-actions .btn {
+  gap: 6px;
+}
+
+/* Announces the Apply progress to screen readers only. */
+.director-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

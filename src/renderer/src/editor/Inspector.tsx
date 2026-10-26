@@ -35,6 +35,8 @@ export interface InspectorProps {
   onCutRange: (start: number, end: number) => void
   /** Increments when the smart speed command asks the Clip panel to find idle parts. */
   smartSpeedRequest?: number
+  /** Increments when the camera director command asks the Camera panel to direct the camera. */
+  directorRequest?: number
 }
 
 export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'captions' | 'shapes' | 'effects' | 'camera' | 'audio'
