@@ -54,6 +54,13 @@ describe('placementOf', () => {
     expect(placementOf(DISPLAYS, { x: 1500, y: 0, width: 560, height: 240 }).displayId).toBe('1')
   })
 
+  it('the display holding the centre wins over the one it overlaps most', () => {
+    const big: NotesDisplay = { id: 'big', bounds: { x: 0, y: 0, width: 1000, height: 1000 }, workArea: { x: 0, y: 0, width: 1000, height: 1000 }, primary: true }
+    const thin: NotesDisplay = { id: 'thin', bounds: { x: 1000, y: 400, width: 1000, height: 200 }, workArea: { x: 1000, y: 400, width: 1000, height: 200 }, primary: false }
+    // Centre (1050, 500) on the thin display; 200 000 DIP² on the big one, 60 000 on the thin one.
+    expect(placementOf([big, thin], { x: 800, y: 0, width: 500, height: 1000 }).displayId).toBe('thin')
+  })
+
   it('a centre off every display goes to the one it overlaps most; no room means 0.5', () => {
     expect(placementOf(DISPLAYS, { x: 1800, y: 800, width: 400, height: 400 }).displayId).toBe('2')
     expect(placementOf(DISPLAYS, { x: 0, y: 0, width: 1920, height: 1040 })).toEqual({ displayId: '1', x: 0.5, y: 0.5 })
@@ -75,6 +82,8 @@ describe('rectsOverlap and notesAllowed', () => {
 
   it('older Windows: never for a window, and only off the captured screen or area', () => {
     expect(notesAllowed({ excluded: false, kind: 'window', notes, captured: null })).toBe(false)
+    // Even when the window is elsewhere now: it can move under the notes.
+    expect(notesAllowed({ excluded: false, kind: 'window', notes, captured: D2.bounds })).toBe(false)
     expect(notesAllowed({ excluded: false, kind: 'screen', notes, captured: D1.bounds })).toBe(false)
     expect(notesAllowed({ excluded: false, kind: 'screen', notes, captured: D2.bounds })).toBe(true)
     expect(notesAllowed({ excluded: false, kind: 'area', notes, captured: { x: 0, y: 300, width: 800, height: 600 } })).toBe(true)

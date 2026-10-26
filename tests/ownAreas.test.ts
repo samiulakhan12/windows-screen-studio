@@ -30,13 +30,13 @@ describe('AreaHistory', () => {
     expect(h.contains({ x: 510, y: 510 }, 99_000)).toBe(true)
   })
 
-  it('repeating the same rectangle extends one span', () => {
+  it('repeating the same rectangle extends one span (it never pushes the oldest out)', () => {
     const h = new AreaHistory()
-    h.set(A, 1000)
-    h.set(A, 5000)
+    for (let i = 0; i <= 2 * OWN_AREA_MAX_SPANS; i++) h.set(A, 1000 + i)
     h.set(null, 6000)
-    // One span from 1000: a second span from 5000 would leave 2000 outside.
-    expect(h.contains(inA, 2000)).toBe(true)
+    expect(h.contains(inA, 1000)).toBe(true)
+    expect(h.contains(inA, 5000)).toBe(true)
+    expect(h.contains(inA, 6300)).toBe(false)
   })
 
   it('keeps at most OWN_AREA_MAX_SPANS spans, dropping the oldest', () => {

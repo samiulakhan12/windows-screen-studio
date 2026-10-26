@@ -89,7 +89,10 @@ describe('NotesStore', () => {
   it('release() without changes writes nothing', () => {
     const file = tempFile()
     const store = new NotesStore(file)
+    expect(store.get().wpm).toBe(130)
     store.hold()
+    // Changes that change nothing do not count either.
+    store.update({ wpm: 130 })
     const rename = vi.spyOn(fs, 'renameSync')
     store.release()
     expect(rename).not.toHaveBeenCalled()

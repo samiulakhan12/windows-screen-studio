@@ -510,6 +510,7 @@ describe('rehearsal', () => {
     expect(win.bounds).toEqual({ x: 1920 - 1200, y: 100, width: 1200, height: 140 })
     const sent = views(win).length
     notes.setNotesLook({})
+    notes.notesSettingsChanged()
     expect(views(win).length).toBe(sent)
   })
 })
