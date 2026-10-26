@@ -626,9 +626,18 @@ async function main() {
         await win.keyboard.press('Escape')
         await win.waitForSelector('.settings-backdrop', { state: 'detached' })
         h.assert(await win.$('.notes-modal'), 'the Notes dialog stays open behind the settings')
+        h.assert(await win.evaluate(() => document.activeElement?.textContent === 'Add an AI provider'), 'focus back on Add an AI provider')
 
+        // A provider added while the settings are open: Add an AI provider goes meanwhile, so the
+        // focus comes back to Draft script when they close (and Esc still closes the dialog).
+        await win.click('.notes-draft button:has-text("Add an AI provider")')
+        await win.waitForSelector('.settings-backdrop')
         await win.evaluate(() => window.api.saveAiProvider({ kind: 'anthropic', label: 'Claude', apiKey: 'sk-ant-e2e-notes-key-0001' }))
         await win.evaluate(() => window.dispatchEvent(new Event('ssw:ai-providers-changed')))
+        await win.waitForSelector('text=Draft script needs an AI provider with your own key', { state: 'detached' })
+        await win.keyboard.press('Escape')
+        await win.waitForSelector('.settings-backdrop', { state: 'detached' })
+        await r.until(async () => await win.evaluate(() => document.activeElement?.classList.contains('notes-draft-btn')), { what: 'focus on Draft script after the settings closed' })
         await win.waitForSelector('text=Only these notes are sent to Claude, with your key.')
         await win.click('.notes-draft-btn')
         await win.waitForSelector('text=Script drafted from your notes. Read it through before you record.', { timeout: 20000 })

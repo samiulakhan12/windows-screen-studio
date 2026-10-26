@@ -21,9 +21,14 @@ type Draft =
 /** Whether a node removed from the page was the settings dialog (it is rendered straight into the body). */
 const isSettingsDialog = (n: Node): boolean => n instanceof Element && n.classList.contains('settings-backdrop')
 
-/** The AI providers: read now, when the settings say they changed, and when the settings dialog closes. */
-function useProviders(): AiProviderInfo[] | null {
+/**
+ * The AI providers: read now, when the settings say they changed, and when the settings dialog
+ * closes (which also calls `onSettingsClosed`).
+ */
+function useProviders(onSettingsClosed: () => void): AiProviderInfo[] | null {
   const [providers, setProviders] = useState<AiProviderInfo[] | null>(null)
+  const closedRef = useRef(onSettingsClosed)
+  closedRef.current = onSettingsClosed
   useEffect(() => {
     let seq = 0
     const reload = (): void => {
@@ -39,7 +44,10 @@ function useProviders(): AiProviderInfo[] | null {
     reload()
     window.addEventListener(AI_PROVIDERS_CHANGED_EVENT, reload)
     const closed = new MutationObserver((changes) => {
-      if (changes.some((c) => Array.from(c.removedNodes).some(isSettingsDialog))) reload()
+      if (changes.some((c) => Array.from(c.removedNodes).some(isSettingsDialog))) {
+        reload()
+        closedRef.current()
+      }
     })
     closed.observe(document.body, { childList: true })
     return () => {
@@ -58,7 +66,29 @@ function useProviders(): AiProviderInfo[] | null {
  * until the dialog closes, which unmounts this).
  */
 export function DraftScript({ text, onReplace, disabled }: { text: string; onReplace: (text: string) => void; disabled?: boolean }): JSX.Element {
-  const providers = useProviders()
+  // The focused button went away (Draft script and Cancel take turns, Restore my notes goes, or
+  // Add an AI provider, which opened the settings, went while they were open): the one there
+  // now takes the focus, so it stays in the dialog (Esc still closes it). Draft script may be
+  // disabled (a draft too long to draft again): then Restore my notes, else the text.
+  const draftButton = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  const restoreButton = useRef<HTMLButtonElement>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const keepFocus = useCallback((): void => {
+    if (document.activeElement && document.activeElement !== document.body) return
+    const textarea = box.current?.closest('[role="dialog"]')?.querySelector('textarea') ?? null
+    for (const el of [cancelButton.current ?? draftButton.current, restoreButton.current, textarea]) {
+      el?.focus()
+      if (el && document.activeElement === el) return
+    }
+  }, [])
+  // After the settings dialog's own clean-up, which sends the focus back to what opened it if it is still there.
+  const afterSettings = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(afterSettings.current), [])
+  const providers = useProviders(() => {
+    clearTimeout(afterSettings.current)
+    afterSettings.current = setTimeout(keepFocus, 0)
+  })
   const [provider, setProvider] = useState(rememberedProvider)
   const [draft, setDraft] = useState<Draft>({ kind: 'idle' })
   const request = useRef(0)
@@ -130,21 +160,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
 
   const busy = draft.kind === 'busy'
 
-  // The focused button went away (Draft script and Cancel take turns, Restore my notes goes): the
-  // one there now takes the focus, so it stays in the dialog (Esc still closes it). Draft script
-  // may be disabled (a draft too long to draft again): then Restore my notes, else the text.
-  const draftButton = useRef<HTMLButtonElement>(null)
-  const cancelButton = useRef<HTMLButtonElement>(null)
-  const restoreButton = useRef<HTMLButtonElement>(null)
-  const box = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    if (document.activeElement && document.activeElement !== document.body) return
-    const textarea = box.current?.closest('[role="dialog"]')?.querySelector('textarea') ?? null
-    for (const el of [busy ? cancelButton.current : draftButton.current, restoreButton.current, textarea]) {
-      el?.focus()
-      if (el && document.activeElement === el) return
-    }
-  }, [draft.kind, busy])
+  useLayoutEffect(keepFocus, [draft.kind, busy, keepFocus])
 
   const blockedTitle = empty ? NOTES_COPY.draftEmpty : tooLong ? NOTES_COPY.draftTooLong : undefined
   return (

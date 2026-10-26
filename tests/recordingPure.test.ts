@@ -196,6 +196,24 @@ describe('region validation and toolbar placement', () => {
     const low = { x: 680, y: 790, width: 560, height: 240 }
     expect(toolbarPosition(wa, bar, null, [low])).toEqual({ x: 660, y: 790 - 64 - 12 })
   })
+
+  it('keeps the bar on the recorded display when the notes are on another one', () => {
+    const bar = { width: 600, height: 64 }
+    const within = (p: { x: number; y: number }, w: { x: number; y: number; width: number; height: number }): boolean =>
+      p.x >= w.x && p.y >= w.y && p.x + bar.width <= w.x + w.width && p.y + bar.height <= w.y + w.height
+    // A 1920 x 1080 display left of a taller primary and lower than it; the notes at the top
+    // centre of the primary; a full-height area: the bar stays at the bottom centre of the
+    // recorded display (just below the notes would be above it, on no display at all).
+    const left = { x: -1920, y: 360, width: 1920, height: 1040 }
+    const p = toolbarPosition(left, bar, { x: -1920, y: 360, width: 1200, height: 1080 }, [{ x: 1000, y: 8, width: 560, height: 240 }])
+    expect(p).toEqual({ x: -1260, y: 1312 })
+    expect(within(p, left)).toBe(true)
+    // A portrait display on the right, raised, with the notes at its top; a nearly full area.
+    const wa = { x: 0, y: 0, width: 1920, height: 1040 }
+    const q = toolbarPosition(wa, bar, { x: 0, y: 40, width: 1920, height: 960 }, [{ x: 2180, y: -420, width: 560, height: 240 }])
+    expect(q).toEqual({ x: 660, y: 952 })
+    expect(within(q, wa)).toBe(true)
+  })
 })
 
 describe('ffmpeg output parsing', () => {

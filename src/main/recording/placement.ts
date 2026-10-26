@@ -37,7 +37,8 @@ export function regionToRect(region: NormRect, bounds: Rect): Rect {
  * one too, the bar goes just below (else above) it. The first spot clear of both
  * wins; else the first clear of the region (on Windows before 10 version 2004 a bar
  * inside it is a black box in the video); else the first clear of the notes; else
- * the first choice.
+ * the first choice. Always inside the work area: notes on another display are
+ * ignored, and a spot beside them that leaves the work area is never used.
  */
 export function toolbarPosition(
   workArea: Rect,
@@ -60,16 +61,19 @@ export function toolbarPosition(
     if (above >= workArea.y) out.push({ x, y: Math.round(above) })
     return out
   }
+  // Notes on another display cannot cover the bar.
+  const notes = keepClear.filter((r) => rectsOverlap(r, workArea))
   const nearArea = avoid ? beside(avoid, clampX(avoid.x + (avoid.width - size.width) / 2)) : []
   const spots = [...nearArea]
   // The same heights, to the left and the right of each of the notes.
-  for (const p of nearArea) for (const r of keepClear) spots.push({ x: clampX(r.x - 12 - size.width), y: p.y }, { x: clampX(r.x + r.width + 12), y: p.y })
+  for (const p of nearArea) for (const r of notes) spots.push({ x: clampX(r.x - 12 - size.width), y: p.y }, { x: clampX(r.x + r.width + 12), y: p.y })
   spots.push(fallback)
-  for (const r of keepClear) spots.push(...beside(r, fallback.x))
+  for (const r of notes) spots.push(...beside(r, fallback.x))
+  const inside = spots.filter((p) => p.y >= workArea.y && p.y + size.height <= workArea.y + workArea.height)
   const bar = (p: { x: number; y: number }): Rect => ({ ...p, ...size })
-  const notesClear = (p: { x: number; y: number }): boolean => !keepClear.some((r) => rectsOverlap(bar(p), r))
+  const notesClear = (p: { x: number; y: number }): boolean => !notes.some((r) => rectsOverlap(bar(p), r))
   const areaClear = (p: { x: number; y: number }): boolean => !avoid || !rectsOverlap(bar(p), avoid)
-  return spots.find((p) => notesClear(p) && areaClear(p)) ?? spots.find(areaClear) ?? spots.find(notesClear) ?? spots[0]
+  return inside.find((p) => notesClear(p) && areaClear(p)) ?? inside.find(areaClear) ?? inside.find(notesClear) ?? inside[0] ?? fallback
 }
 
 export const pointInRect = (p: { x: number; y: number }, r: Rect): boolean =>

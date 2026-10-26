@@ -115,11 +115,13 @@ spelling hint for transcription (NW-09).
      registered, the store is held (§2.11), and `script.txt` is written to the recording
      folder when `keepWithRecording` (async; a failure is logged, never fatal);
    - if refused: `CapturePlan.notesNotice` says why; no window, no hotkeys.
-   Then the bar is placed clear of the notes: `prepareToolbar(display, area, [recordingNotesRect()])`
-   tries its usual spots (below the area, above it), the same heights to the left and the right of
-   the notes, the bottom centre, and just below or just above the notes. The first spot clear of
-   both the notes and the area wins; else the first clear of the area (on Windows before 10
-   version 2004 a bar inside it is a black box in the video); else the first clear of the notes.
+   Then the bar is placed clear of the notes where it can be: `prepareToolbar(display, area,
+   [recordingNotesRect()])` tries its usual spots (below the area, above it), the same heights to
+   the left and the right of the notes, the bottom centre, and just below or just above the notes,
+   keeping only spots inside the recorded display's work area (notes on another display are
+   ignored). The first spot clear of both the notes and the area wins; else the first clear of the
+   area (on Windows before 10 version 2004 a bar inside it is a black box in the video); else the
+   first clear of the notes; else the first spot.
    Otherwise the 600 DIP bar lands under the 560 DIP notes for many areas (an area that reaches the
    bottom of the screen and starts less than about 324 DIP from the top puts the bar just above
    it, where the notes sit) and its buttons cannot be reached.
