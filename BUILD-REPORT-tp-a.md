@@ -51,5 +51,58 @@ npm run typecheck                        ok (node and web)
 npx vitest run --testTimeout=60000       Test Files 144 passed (144), Tests 2052 passed (2052)
 npm run build                            ok
 xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/run-all.cjs recording camera-live
-E2E_RESULT
+10/10 e2e files passed (40 PASS lines, exit 0), on the final build:
+```
+
+```
+=== audit-recording.e2e.cjs
+PASS R-1/R-2: quitting during a native recording finalises the video and keeps the cursor track
+PASS R-1: when the whole app dies, the cursor track recorded until the last checkpoint is on disk
+PASS R-4: the camera offset is saved while recording and kept by a recorder crash
+PASS E6: an emptied recording name is saved as "Untitled recording", even while the field keeps focus
+=== camera-live.e2e.cjs
+PASS the live camera bubble: one camera open, out of the capture, dragged corners become camera corners at their times
+PASS recording bar: pause and resume, mute, restart and discard with confirmation
+PASS restart: a next take that cannot be prepared brings the app back with its error
+PASS "Camera follows the preview bubble" off: moving the bubble moves nothing in the video
+PASS Camera panel: camera position of a layout change, "Move camera here from the playhead", undo
+=== recording-input.e2e.cjs
+PASS real input: cursor, clicks, releases, scrolling and shortcuts are captured; toolbar input is not content
+PASS real input in an area recording: scrolls and releases remapped into the area, outside input dropped
+=== recording-long.e2e.cjs
+PASS a 65 s recording streams to disk and keeps renderer memory flat
+=== recording-native.e2e.cjs
+PASS native capture: helper video + Chromium audio, cursor shapes, no cursor in video
+PASS native capture at 30 fps: the helper is asked for 30 fps and the proxy keeps it
+PASS native capture failure falls back to Chromium capture automatically
+PASS native capture: a helper that ends on its own stops the recording, keeps it and says why (windows-1)
+=== recording-options.e2e.cjs
+PASS camera preview on Home: live, mirrored frames; released when recording starts; 30 fps recording
+PASS auto-pause: pauses after the idle time, resumes on the next real input
+PASS custom hotkeys: conflicts and taken combos refused on Home; stop, pause and zoom marks by hotkey; typing bursts without keys
+PASS a hotkey another app took after it was set is reported when recording starts
+=== recording-recovery.e2e.cjs
+PASS recorder crash mid-recording: UI recovers and the footage can be recovered
+PASS failed conversion keeps the recording, explains where it is, and Retry finishes it
+PASS Finish later stops a long conversion and keeps the recording for later
+PASS Finish later during "Optimising camera…" keeps the camera for later, never a project without it
+PASS a crash while not recording is not blamed on the recorder (audit-A-3)
+=== recording-region.e2e.cjs
+PASS region recording: overlay selection, exact crop, cursor remapped
+PASS region minimum size: main accepts what the picker offers and explains a rejection (seams-6)
+=== recording-window.e2e.cjs
+PASS window (a): native window capture, cursor and clicks mapped through the moving window, smooth cursor on
+PASS window (b): Chromium window capture with a watcher keeps auto zoom and click highlights
+PASS window (c): nothing follows the window: no cursor data, and the user is told so
+PASS window (d): another window covering the recorded one: a click on it is ignored, the cursor hidden there
+=== recording.e2e.cjs
+PASS record with fake mic + camera, pause/resume, media streamed while recording
+PASS cancel during the countdown leaves nothing behind
+PASS stop during the countdown cancels instead of saving an empty recording
+PASS double-clicking Start runs a single recording
+PASS discard asks for confirmation; Keep continues the recording
+PASS vanished sources give friendly errors; unexpected capture requests are denied once
+PASS a second launch hands over to the running instance
+PASS a stop shortcut owned by another app is reported on the toolbar
+PASS Home: light per-tab thumbnails, honest window hint, live microphone level
 ```
