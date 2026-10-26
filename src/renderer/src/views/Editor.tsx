@@ -7,6 +7,7 @@ import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
+import { cropNotice, setCrop, setZoomLevelInView, snapCrop, taskbarCrop, type CropDraft } from '../../../shared/editor/cropEdit'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
 import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
@@ -29,6 +30,7 @@ import {
   undoHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
+import { clampIntoCrop, cropOf, cropView, fromCrop, FULL_FRAME, type CropView } from '../../../shared/engine/crop'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
@@ -38,13 +40,14 @@ import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
-import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
+import { ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
-import type { CameraLayout, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
+import type { CameraLayout, NormRect, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
 import { EditorContext, type EditorServices } from '../editor/context'
+import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
@@ -285,9 +288,23 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   /* ---------- scene + preview ---------- */
 
-  const cursorPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, project.cursor.smoothing), [cursor.samples, project.duration, project.cursor.smoothing])
-  const focusPath = useMemo(() => focusPathFor(cursor.samples, project.duration), [cursor.samples, project.duration])
-  const scene: RenderScene = useMemo(() => ({ project, cursor, cursorPath, focusPath }), [project, cursor, cursorPath, focusPath])
+  // The crop being edited (the crop tool is open); Done applies it as one undo step.
+  const [cropDraft, setCropDraft] = useState<CropDraft | null>(null)
+  const cropping = !!cropDraft
+  // What is drawn: the project and input as shown (cropView: positions relative to the crop, its
+  // pixel size). While the crop tool is open, the whole recording without the camera (nor camera
+  // layouts); setNoZoom below leaves zooms and the tilt out.
+  const drawn = useMemo((): CropView<Project> => {
+    if (!cropping) return cropView(project, cursor)
+    const { crop: _crop, ...whole } = project
+    return { project: { ...whole, webcam: { ...project.webcam, show: false } }, cursor, crop: null }
+  }, [cropping, project, cursor])
+  const cursorPath = useMemo(() => new SmoothedTrack(drawn.cursor.samples, project.duration, project.cursor.smoothing), [drawn.cursor.samples, project.duration, project.cursor.smoothing])
+  const focusPath = useMemo(() => focusPathFor(drawn.cursor.samples, project.duration), [drawn.cursor.samples, project.duration])
+  const scene: RenderScene = useMemo(
+    () => ({ project: drawn.project, cursor: drawn.cursor, cursorPath, focusPath, ...(drawn.crop ? { crop: drawn.crop } : {}) }),
+    [drawn, cursorPath, focusPath]
+  )
 
   useEffect(() => player.setProject(project), [player, project])
   useEffect(() => player.setScene(scene, background), [player, scene, background])
@@ -295,9 +312,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const pickZoom =
     pickFocus && selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id && z.focus.mode !== 'cursor') ?? null) : null
   useEffect(() => {
-    player.setNoZoom(!!pickZoom)
+    player.setNoZoom(!!pickZoom || cropping)
     if (pickFocus && !pickZoom) setPickFocus(false)
-  }, [player, pickFocus, pickZoom])
+  }, [player, pickFocus, pickZoom, cropping])
   // Picking applies to the zoom it was started for; selecting anything else ends it.
   const selectedZoomId = selection?.kind === 'zoom' ? selection.id : null
   useEffect(() => setPickFocus(false), [selectedZoomId])
@@ -458,7 +475,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         showNotice(keys ? `Select a zoom first: ${keys}` : 'Select a zoom first')
         return
       }
-      store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevel(x, level) : x)) }))
+      store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevelInView(cropOf(q), x, level) : x)) }))
       if (sel?.kind !== 'zoom') setSelection({ kind: 'zoom', id: z.id })
     }
 
@@ -554,9 +571,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         setSelection(null)
       },
       undo: (): void => {
+        setCropDraft(null)
         if (!store.undo()) showNotice('Nothing to undo')
       },
       redo: (): void => {
+        setCropDraft(null)
         if (!store.redo()) showNotice('Nothing to redo')
       },
       step: (delta: number): void => player.seek(stepOutput(store.state.clips, player.time, delta)),
@@ -568,11 +587,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
       if (!cursor.valid) return { x: 0.5, y: 0.5 }
-      // An auto zoom's own click, else where the camera would be in its middle.
-      const p = zoom.anchor ?? focusPath.at((zoom.start + zoom.end) / 2)
+      // An auto zoom's own click, else where the camera would be in its middle (the focus path is
+      // in the crop's view), inside the part of the recording that is shown.
+      const c = scene.crop ?? null
+      const p = clampIntoCrop(c, zoom.anchor ?? fromCrop(c, focusPath.at((zoom.start + zoom.end) / 2)))
       return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
     },
-    [cursor.valid, focusPath]
+    [cursor.valid, focusPath, scene.crop]
   )
 
   const onBackgroundImage = useCallback(async () => {
@@ -591,8 +612,61 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     player.pause()
     releaseFocus()
     setPickFocus(false)
+    setCropDraft(null)
     setExporting(true)
   }, [player])
+
+  /* ---------- crop ---------- */
+
+  const cropActions = useMemo(() => {
+    /** Applies `rect` (null: the whole recording) as one undo step, rebasing the automatic zooms; false when nothing changes. */
+    const apply = (rect: NormRect | null): boolean => {
+      const p = store.state
+      const outcome = setCrop(p, rect, effectiveTrack(recorded, p))
+      if (outcome.project === p) return false
+      store.update(() => outcome.project)
+      showNotice(cropNotice(outcome))
+      return true
+    }
+    /** The draft (or, without one, the crop) with the taskbar cut off; null when the recording does not show it. */
+    const withoutTaskbar = (r: NormRect): NormRect | null => {
+      const p = store.state
+      const cut = taskbarCrop(r, p, recorded.scale)
+      return cut && snapCrop(cut, p, { x: 0, y: 0 }, null)
+    }
+    return {
+      /** Opens the crop tool on the current crop. */
+      open: (): void => {
+        setSelection(null)
+        setPickFocus(false)
+        setCropDraft((d) => d ?? { rect: cropOf(store.state) ?? { ...FULL_FRAME }, aspect: 'free' })
+      },
+      cancel: (): void => setCropDraft(null),
+      /** Applies the draft (Done, Enter, a double-click on the box). */
+      done: (draft: CropDraft | null): void => {
+        setCropDraft(null)
+        if (draft) apply(draft.rect)
+      },
+      reset: (): void => {
+        if (!cropOf(store.state)) return showNotice('The recording is not cropped')
+        apply(null)
+      },
+      taskbar: (): void => {
+        const r = withoutTaskbar(cropOf(store.state) ?? FULL_FRAME)
+        if (!r) return showNotice('This recording does not show the taskbar')
+        if (!apply(r)) showNotice('The taskbar is already cropped out')
+      },
+      withoutTaskbar
+    }
+  }, [store, recorded, showNotice, setSelection])
+  // The draft and its actions, for the keyboard and the stage.
+  const cropRef = useRef(cropDraft)
+  cropRef.current = cropDraft
+  const applyCrop = useCallback(() => cropActions.done(cropRef.current), [cropActions])
+  const applyCropRef = useRef(applyCrop)
+  applyCropRef.current = applyCrop
+  const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: setCropDraft, onDone: applyCrop } : null), [cropDraft, applyCrop])
+  const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : cropActions.reset()), [cropActions])
 
   /* ---------- commands (palette and shortcuts) ---------- */
 
@@ -764,16 +838,25 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       previewSpeedUp: () => showNotice('Coming soon'),
       previewSpeedDown: () => showNotice('Coming soon'),
 
-      // E-10 crop (filled by the E-10 workstream)
-      cropRecording: () => showNotice('Coming soon'),
-      resetCrop: () => showNotice('Coming soon'),
-      cropTaskbar: () => showNotice('Coming soon'),
+      // E-10 crop: while the tool is open, Reset and the taskbar preset change the draft, as its bar does.
+      cropRecording: cropActions.open,
+      resetCrop: () => {
+        if (cropRef.current) setCropDraft({ rect: { ...FULL_FRAME }, aspect: 'free' })
+        else cropActions.reset()
+      },
+      cropTaskbar: () => {
+        const draft = cropRef.current
+        if (!draft) return cropActions.taskbar()
+        const rect = cropActions.withoutTaskbar(draft.rect)
+        if (rect) setCropDraft({ rect, aspect: 'free' })
+        else showNotice('This recording does not show the taskbar')
+      },
 
       // E-11 freeze frame (filled by the E-11 workstream)
       freezeFrame: () => showNotice('Coming soon'),
       toggleFreezeSound: () => showNotice('Coming soon')
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
 
@@ -811,7 +894,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
-      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor
+      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor,
+      resetCrop: cropOf(p) || cropDraft ? null : 'The recording is not cropped',
+      cropTaskbar: taskbarCrop(cropDraft?.rect ?? cropOf(p) ?? FULL_FRAME, p, recorded.scale) ? null : 'This recording does not show the taskbar'
     }
     for (const k of ['straightenRange', 'recordedPathRange'] as const) {
       unavailable[k] = !cursor.valid
@@ -837,7 +922,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     }
     return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
-  }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player])
+  }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale])
 
   const goBack = async (): Promise<void> => {
     if (leaving) return
@@ -888,6 +973,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           e.preventDefault()
           ;(target as HTMLElement).blur()
         }
+        return
+      }
+      // The crop tool: Esc closes it without applying, Enter applies it (a focused button takes Enter itself).
+      if (cropRef.current && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey && !(target instanceof HTMLButtonElement)))) {
+        e.preventDefault()
+        if (e.key === 'Escape') setCropDraft(null)
+        else if (!e.repeat) applyCropRef.current()
         return
       }
       if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -991,7 +1083,19 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
               scene={scene}
               selection={selection}
               onSelect={setSelection}
+              cropTool={cropTool}
             />
+            {cropDraft && (
+              <CropBar
+                recorded={{ width: project.width, height: project.height }}
+                draft={cropDraft}
+                capture={project.capture}
+                scale={recorded.scale}
+                onDraft={setCropDraft}
+                onDone={applyCrop}
+                onCancel={cropActions.cancel}
+              />
+            )}
             <Transport
               clips={project.clips}
               notice={notice}
@@ -1019,6 +1123,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             onPickFocus={setPickFocus}
             focusFor={focusFor}
             onBackgroundImage={onBackgroundImage}
+            onCrop={onCrop}
             onNotice={showNotice}
             onAddText={actions.addText}
             onSplit={actions.split}

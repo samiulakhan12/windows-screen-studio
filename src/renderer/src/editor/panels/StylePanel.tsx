@@ -10,6 +10,7 @@ import type { Background, DeviceFrame, DeviceFrameKind, Project, ShadowStyle } f
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
+import { CropRow } from './CropRow'
 import { PresetsSection } from './StylePresets'
 import { animatedThumb, frameThumb, wallpaperThumb } from './styleThumbs'
 import { WatermarkSection } from './WatermarkSection'
@@ -40,7 +41,18 @@ const BORDER_COLORS = ['#ffffff', '#111827', '#8b5cf6', '#38bdf8', '#f472b6', '#
 
 /* ---------- Style ---------- */
 
-export function StylePanel({ project, onBackgroundImage, onNotice }: { project: Project; onBackgroundImage: () => void; onNotice: (message: string) => void }): JSX.Element {
+export function StylePanel({
+  project,
+  onBackgroundImage,
+  onNotice,
+  onCrop
+}: {
+  project: Project
+  onBackgroundImage: () => void
+  onNotice: (message: string) => void
+  /** Opens the crop tool, or shows the whole recording again. */
+  onCrop: (action: 'edit' | 'reset') => void
+}): JSX.Element {
   const { store } = useEditor()
   const { style } = project
   const setStyle = (patch: Partial<Project['style']>, key?: string): void => store.update((p) => ({ ...p, style: { ...p.style, ...patch } }), key)
@@ -73,6 +85,7 @@ export function StylePanel({ project, onBackgroundImage, onNotice }: { project: 
 
       <Section title="Frame">
         <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
+        <CropRow project={project} onCrop={onCrop} />
       </Section>
 
       <Section title="Background">
