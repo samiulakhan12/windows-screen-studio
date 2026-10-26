@@ -16,6 +16,7 @@ export type Selection =
   | { kind: 'title'; id: string }
   | { kind: 'chapter'; id: string }
   | { kind: 'caption'; id: string }
+  | { kind: 'freeze'; id: string }
   | { kind: 'gap'; start: number; end: number }
   | { kind: 'range'; start: number; end: number }
   /** A recorded click, by its key (clickKey: its time in whole milliseconds). */
@@ -44,6 +45,8 @@ export function validSelection(sel: Selection, project: Project): Selection {
       return (project.chapters ?? []).some((s) => s.id === sel.id) ? sel : null
     case 'caption':
       return (project.transcript?.segments ?? []).some((s) => s.id === sel.id) ? sel : null
+    case 'freeze':
+      return (project.freezes ?? []).some((f) => f.id === sel.id) ? sel : null
     case 'gap':
       return timelineGaps(project.clips, project.duration).some((g) => Math.abs(g.start - sel.start) < 1e-6 && Math.abs(g.end - sel.end) < 1e-6)
         ? sel

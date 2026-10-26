@@ -2,6 +2,7 @@
  * Chapters of an exported video: the project's chapters (source time) mapped onto the edited
  * output, as written into the file's metadata and as YouTube-style timestamps. Pure.
  */
+import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
 import { outputDuration } from '../engine/timeline'
 import type { Chapter, Clip } from '../types'
 import { viewingTime } from './overlays'
@@ -24,17 +25,19 @@ export const chapterInVideo = (clips: Clip[], t: number): boolean => viewingTime
 /**
  * The chapters of the edited video, in output seconds and in order: each source time is mapped
  * through the clips (one inside a cut starts where the video goes on, one at or past the end is
- * left out), an empty name becomes "Chapter n", and of chapters landing in the same place
- * (within MIN_CHAPTER_GAP) only the last one in the recording stays, the one nearest its content.
+ * left out) and then past the pause freezes of `plan` (one exactly at a freeze starts with it), an
+ * empty name becomes "Chapter n", and of chapters landing in the same place (within
+ * MIN_CHAPTER_GAP) only the last one in the recording stays, the one nearest its content.
  */
-export function outputChapters(chapters: readonly Chapter[], clips: Clip[]): OutputChapter[] {
+export function outputChapters(chapters: readonly Chapter[], clips: Clip[], plan: FreezePlan = NO_FREEZES): OutputChapter[] {
   if (!chapters.length || !clips.length) return []
   const total = outputDuration(clips)
   const out: OutputChapter[] = []
   const sorted = [...chapters].filter((c) => Number.isFinite(c.t)).sort((a, b) => a.t - b.t)
   sorted.forEach((c, i) => {
-    const start = Math.max(0, viewingTime(clips, c.t))
-    if (start > total - MIN_CHAPTER_GAP) return
+    const edit = Math.max(0, viewingTime(clips, c.t))
+    if (edit > total - MIN_CHAPTER_GAP) return
+    const start = editToVideo(plan, edit)
     const chapter = { start, title: c.title.replace(/\s+/g, ' ').trim() || `Chapter ${i + 1}` }
     const last = out[out.length - 1]
     if (last && start - last.start < MIN_CHAPTER_GAP) out[out.length - 1] = chapter

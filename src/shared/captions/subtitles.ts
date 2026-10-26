@@ -5,6 +5,7 @@
  * spoken there, when the words are known), and each piece is scaled by its clip's speed. Pure.
  */
 import { captionTokens } from './layout'
+import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
 import type { CaptionSegment, Clip } from '../types'
 
 export type SubtitleFormat = 'srt' | 'vtt' | 'txt'
@@ -130,9 +131,13 @@ export function toPlainText(cues: readonly Cue[]): string {
   return cues.map((c) => c.text).join('\n') + (cues.length ? '\n' : '')
 }
 
-/** The subtitle file of `segments` in output time, as `format`. */
-export function subtitleFile(segments: readonly CaptionSegment[], clips: readonly Clip[], format: SubtitleFormat): string {
-  const cues = outputCues(segments, clips)
+/**
+ * The subtitle file of `segments` in the exported video's time, as `format`: past the pause freezes
+ * of `plan` (a caption across one stretches over it, one starting exactly at it shows through it).
+ */
+export function subtitleFile(segments: readonly CaptionSegment[], clips: readonly Clip[], format: SubtitleFormat, plan: FreezePlan = NO_FREEZES): string {
+  const edited = outputCues(segments, clips)
+  const cues = plan.holds.length ? edited.map((c) => ({ ...c, start: editToVideo(plan, c.start), end: editToVideo(plan, c.end) })) : edited
   return format === 'srt' ? toSrt(cues) : format === 'vtt' ? toVtt(cues) : toPlainText(cues)
 }
 

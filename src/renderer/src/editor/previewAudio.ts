@@ -3,6 +3,7 @@ import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, keyIndexAt, type Keyf
 import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
 import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
 import { analysisSources, editLoudness, heardLevels, musicDucking, sourceActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
+import { editToVideo, NO_FREEZES, planOf, videoDuration, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { clamp } from '../../../shared/engine/math'
 import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import { mediaUrl } from '../../../shared/mediaUrl'
@@ -88,18 +89,21 @@ function softLimitCurve(): Float32Array<ArrayBuffer> {
  *   drift is re-seeked, a small one corrected with a slight speed change);
  * - per-source and master volume, and loudness normalisation approximated by one gain (from
  *   the measured loudness) and a soft limiter; noise reduction is export-only;
- * - background music on the OUTPUT timeline (it runs on through cuts), looped, faded and
- *   ducked under the recording's sound;
+ * - background music on the OUTPUT timeline (it runs on through cuts and pause freezes), looped,
+ *   faded and ducked under the recording's sound;
  * - fades of the whole soundtrack.
  * Fades and ducking are the same keyframed curves the export renders (shared/audio), run as
  * Web Audio ramps anchored to the playhead and re-anchored after every jump.
  */
 export class PreviewAudio {
   private project: Project
-  /** The project's sound settings with defaults, the edit's output length and timing (kept for every frame). */
+  /** The project's sound settings with defaults, the video's length and timing (kept for every frame). */
   private look: AudioLook
   private length: number
   private clipsKey: string
+  /** Freeze frames (E-11): the plan, and the pause freeze the player holds (or just left) and how far into it. */
+  private plan: FreezePlan
+  private held: { h: Hold; elapsed: number } | null = null
   private graph: Graph | null = null
   private readonly stems = new Map<StemKind, Source>()
   private music: Music | null = null
@@ -139,7 +143,8 @@ export class PreviewAudio {
   ) {
     this.project = project
     this.look = audioLook(project.audio)
-    this.length = outputDuration(project.clips)
+    this.plan = planOf(project)
+    this.length = videoDuration(project.clips, this.plan)
     this.clipsKey = clipsKeyOf(project)
     this.apply()
   }
@@ -149,10 +154,12 @@ export class PreviewAudio {
   setProject(project: Project): void {
     const prev = this.project
     this.project = project
-    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || project.clips !== prev.clips) {
+    const timing = project.clips !== prev.clips || project.freezes !== prev.freezes
+    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || timing) {
       this.look = audioLook(project.audio)
-      this.length = outputDuration(project.clips)
-      if (project.clips !== prev.clips) this.clipsKey = clipsKeyOf(project)
+      this.plan = planOf(project)
+      this.length = videoDuration(project.clips, this.plan)
+      if (timing) this.clipsKey = clipsKeyOf(project)
       this.apply()
     }
   }
@@ -338,7 +345,8 @@ export class PreviewAudio {
 
   /**
    * Where the recording has sound on the output timeline (soundActivity, in two steps: the
-   * source-time ranges per measurement and heard sources, their output times per edit).
+   * source-time ranges per measurement and heard sources, their output times per edit), past the
+   * pause freezes as the export ducks: speech around one stays ducked across it.
    */
   private soundRanges(): Range[] | null {
     const sourceKey = `${this.analysisVersion}|${activitySources(this.project).join()}`
@@ -346,7 +354,9 @@ export class PreviewAudio {
     const key = `${sourceKey}|${this.clipsKey}`
     if (this.activity.key !== key) {
       const ranges = this.sourceActivity.value
-      this.activity = { key, value: ranges && rangesToOutput(ranges, this.project.clips) }
+      const edited = ranges && rangesToOutput(ranges, this.project.clips)
+      const plan = this.plan
+      this.activity = { key, value: edited && plan.holds.length ? edited.map((r) => ({ start: editToVideo(plan, r.start), end: editToVideo(plan, r.end) })) : edited }
     }
     return this.activity.value
   }
@@ -429,13 +439,40 @@ export class PreviewAudio {
 
   /* ---------- playback ---------- */
 
-  /** Output time of source time `t` (a time inside a cut counts as the next clip's start). */
+  /**
+   * Output (video) time of source time `t`: its edit time past the pause freezes, plus the time
+   * held in one at its frame (editToVideo leaves a hold AT a time out) until the playhead moves on.
+   */
   private outputAt(t: number): number {
+    const edit = this.editAt(t)
+    if (this.plan === NO_FREEZES) return edit
+    const held = this.held
+    return editToVideo(this.plan, edit) + (held && !(held.h.edit < edit - 1e-9) ? held.elapsed : 0)
+  }
+
+  /** Edit time of source time `t` (a time inside a cut counts as the next clip's start). */
+  private editAt(t: number): number {
     const clips = this.project.clips
     const at = sourceToOutput(clips, t)
     if (at !== null) return at
     const next = playableFrom(clips, t)
-    return next ? (sourceToOutput(clips, next.time) ?? 0) : this.length
+    return next ? (sourceToOutput(clips, next.time) ?? 0) : outputDuration(clips)
+  }
+
+  /**
+   * The player holds pause freeze `h` (E-11), `elapsed` seconds into it: the stems wait on its frame
+   * while the music plays on the video's clock. With its whole length once it is left (until the
+   * playhead moves past its frame), null after that or on a seek.
+   */
+  hold(h: Hold | null, elapsed: number): void {
+    const was = this.holding
+    this.held = h ? { h, elapsed } : null
+    if (this.holding && !was) for (const stem of this.stems.values()) stem.el.pause()
+  }
+
+  /** Inside a pause freeze: the stems wait (they start again on the jump that leaves it). */
+  private get holding(): boolean {
+    return !!this.held && this.held.elapsed < this.held.h.length
   }
 
   /** Playback starts at source time `t` with clip speed `speed`. */
@@ -523,6 +560,7 @@ export class PreviewAudio {
   }
 
   private startStem(stem: Source, t = this.screen.currentTime): void {
+    if (this.holding) return
     stem.el.playbackRate = this.speed
     if (Math.abs(stem.el.currentTime - t) > 1e-3) stem.el.currentTime = t
     if (stem.el.paused) void stem.el.play().catch(() => undefined)
@@ -580,5 +618,6 @@ function nudge(drift: number, dead: number): number {
   return 1 - clamp(drift / 2, -MAX_NUDGE, MAX_NUDGE)
 }
 
-/** Identity of the edit's timing (clips change identity on every edit). */
-const clipsKeyOf = (p: Project): string => p.clips.map((c) => `${c.start},${c.end},${c.speed}`).join(';')
+/** Identity of the edit's timing (clips change identity on every edit), with its pause freezes. */
+const clipsKeyOf = (p: Project): string =>
+  p.clips.map((c) => `${c.start},${c.end},${c.speed}`).join(';') + planOf(p).holds.map((h) => `|${h.at},${h.length}`).join('')

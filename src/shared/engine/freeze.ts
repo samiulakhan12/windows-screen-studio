@@ -7,11 +7,11 @@
  * written into files and the displayed positions read video time; everything else stays in source
  * or edit time.
  *
+ * One rule covers ranges and points: something that starts exactly at a hold includes the hold, a
+ * range that ends exactly at a hold ends before it, and a range with a hold inside stretches across.
+ *
  * A project without freezes plans to NO_FREEZES, and every map below is then the identity, so it
  * previews and exports exactly as before.
- *
- * Contracts commit: the constants, types, NO_FREEZES, planOf and freezeKeepRanges are final; the
- * plan and the maps are the identity until E-11 lands (TODO(E-11) below).
  */
 import type { Clip, Freeze, FreezeSound, Project } from '../types'
 import { exportFrameTimes, outputDuration, outputToSource, playableFrom, sourceToOutput } from './timeline'
@@ -65,15 +65,49 @@ export interface FreezePlan {
 
 const frozen = <T>(list: T[]): T[] => Object.freeze(list) as T[]
 
+/** Shortest continue span (edit s) that is shown; a shorter one is inactive. */
+const MIN_STILL = 0.05
+/** Edit or video times closer than this are the same moment. */
+const EPS = 1e-9
+
+const clipLength = (c: Clip): number => (c.end - c.start) / c.speed
+
 /** The plan of a project without freezes (every map is the identity for it). */
 export const NO_FREEZES: FreezePlan = Object.freeze({ holds: frozen<Hold>([]), stills: frozen<Still>([]), added: 0, inactive: frozen<string>([]) })
 
-/** The plan for `freezes` on `clips` (docs/design/freeze-frame.md §4.1). */
+/**
+ * The plan for `freezes` on `clips` (docs/design/freeze-frame.md §4.1): a freeze whose frame is cut
+ * is inactive; the active ones in edit order become holds (pause: each inserted at its edit time,
+ * after the holds before it) and stills (continue: the span ends at the next active freeze, at the
+ * end of the video, or after its length, whichever comes first; a span under MIN_STILL is inactive).
+ */
 export function freezePlan(clips: readonly Clip[], freezes: readonly Freeze[] | undefined): FreezePlan {
-  // TODO(E-11): holds and stills from the active freezes in edit order.
-  void clips
-  void freezes
-  return NO_FREEZES
+  if (!freezes || freezes.length === 0 || clips.length === 0) return NO_FREEZES
+  const list = clips as Clip[]
+  const total = outputDuration(list)
+  const lastEnd = list[list.length - 1].end
+  const inactive: string[] = []
+  const active: { f: Freeze; edit: number }[] = []
+  for (const f of [...freezes].sort((a, b) => a.at - b.at)) {
+    const edit = sourceToOutput(list, f.at)
+    if (edit === null) inactive.push(f.id)
+    else active.push({ f, edit })
+  }
+  active.sort((a, b) => a.edit - b.edit)
+  const holds: Hold[] = []
+  const stills: Still[] = []
+  let added = 0
+  active.forEach(({ f, edit }, i) => {
+    if (f.sound === 'pause') {
+      holds.push({ id: f.id, at: f.at, edit, start: edit + added, length: f.length, end: Math.abs(f.at - lastEnd) < 1e-6 })
+      added += f.length
+      return
+    }
+    const editEnd = Math.min(edit + f.length, i + 1 < active.length ? active[i + 1].edit : total, total)
+    if (editEnd - edit < MIN_STILL) inactive.push(f.id)
+    else stills.push({ id: f.id, at: f.at, editStart: edit, editEnd })
+  })
+  return { holds, stills, added, inactive }
 }
 
 let memo: { clips: Clip[]; freezes: Freeze[]; plan: FreezePlan } | null = null
@@ -95,24 +129,30 @@ export function videoDuration(clips: Clip[], plan: FreezePlan): number {
 
 /** Video time of edit time `o`: plus the holds before it (a hold AT `o` comes first: `o` maps to its start). */
 export function editToVideo(plan: FreezePlan, o: number): number {
-  // TODO(E-11): o + Σ h.length for holds with h.edit < o − 1e-9.
-  void plan
-  return o
+  let v = o
+  for (const h of plan.holds) {
+    if (!(h.edit < o - EPS)) break
+    v += h.length
+  }
+  return v
 }
 
 /** Edit time of video time `v`; inside a hold, the hold's edit time and how far into it `v` is. */
 export function videoToEdit(plan: FreezePlan, v: number): { edit: number; hold: Hold | null; elapsed: number } {
-  // TODO(E-11): subtract the holds before `v`.
-  void plan
-  return { edit: v, hold: null, elapsed: 0 }
+  let added = 0
+  for (const h of plan.holds) {
+    if (v < h.start - EPS) break
+    if (v < h.start + h.length - EPS) return { edit: h.edit, hold: h, elapsed: Math.max(0, v - h.start) }
+    added += h.length
+  }
+  return { edit: v - added, hold: null, elapsed: 0 }
 }
 
 /** Source time shown at video time `v` (the held frame inside a hold), its clip, and the hold. */
 export function videoToSource(clips: Clip[], plan: FreezePlan, v: number): { time: number; index: number; hold: Hold | null } {
-  // TODO(E-11): through videoToEdit; time = h.at inside a hold.
-  void plan
-  const { time, index } = outputToSource(clips, v)
-  return { time, index, hold: null }
+  const { edit, hold } = videoToEdit(plan, v)
+  const { time, index } = outputToSource(clips, edit)
+  return hold ? { time: hold.at, index, hold } : { time, index, hold: null }
 }
 
 /** Edit time for a playhead at source time `t` (editor/clips.ts outputTimeAt; engine does not import editor/). */
@@ -124,29 +164,88 @@ function editTimeAt(clips: Clip[], t: number): number {
 
 /** Video time for a playhead at source time `t` (the edit's end is the video's end). */
 export function videoTimeAt(clips: Clip[], plan: FreezePlan, t: number): number {
-  // TODO(E-11): videoDuration at the edit's end, else editToVideo(plan, edit time).
-  void plan
-  return editTimeAt(clips, t)
+  const o = editTimeAt(clips, t)
+  if (plan.holds.length === 0) return o
+  return o >= outputDuration(clips) - EPS ? videoDuration(clips, plan) : editToVideo(plan, o)
+}
+
+/** The still whose span holds edit time `o`, or null. */
+function stillAt(plan: FreezePlan, o: number): Still | null {
+  return plan.stills.find((s) => o >= s.editStart - EPS && o < s.editEnd - EPS) ?? null
 }
 
 /**
  * Source frames of an export at `fps`: `times` drive the clock (sound, camera), `pictures` the
  * screen frame drawn (the still during a continue freeze), `held` marks frames inside a freeze
  * (drawn without motion blur). Without freezes: exportFrameTimes, `pictures === times`, `held` null.
+ *
+ * Frame i shows video time i / fps. Inside a hold it repeats the held frame; a hold at the edit's
+ * end repeats the last frame the edit exported (its source time at the edit's end could decode as
+ * the first frame trimmed off). Neither list ever decreases (feedPlan handles repeats and jumps).
  */
 export function videoFrames(clips: Clip[], plan: FreezePlan, fps: number): { times: number[]; pictures: number[]; held: Uint8Array | null } {
-  // TODO(E-11): hold frames and still pictures.
-  void plan
-  const times = exportFrameTimes(clips, fps)
-  return { times, pictures: times, held: null }
+  const { holds, stills } = plan
+  if (holds.length === 0) {
+    const times = exportFrameTimes(clips, fps)
+    if (stills.length === 0) return { times, pictures: times, held: null }
+    // No time added: the video's clock is the edit's, only the pictures of the spans change.
+    const pictures = times.slice()
+    const held = new Uint8Array(times.length)
+    for (let i = 0; i < times.length; i++) {
+      const s = stillAt(plan, i / fps)
+      if (s) {
+        pictures[i] = s.at
+        held[i] = 1
+      }
+    }
+    return { times, pictures, held }
+  }
+  const count = Math.max(1, Math.round(videoDuration(clips, plan) * fps))
+  const times: number[] = new Array(count)
+  const pictures: number[] = new Array(count)
+  const held = new Uint8Array(count)
+  // One pointer walks the holds (with the time they added so far), one the clips, one the stills.
+  let hi = 0
+  let added = 0
+  let ci = 0
+  let clipOutStart = 0
+  let si = 0
+  let shown = { time: clips[clips.length - 1].start, picture: clips[clips.length - 1].start }
+  for (let i = 0; i < count; i++) {
+    const v = i / fps
+    while (hi < holds.length && v >= holds[hi].start + holds[hi].length - EPS) added += holds[hi++].length
+    const h = holds[hi]
+    if (h && v >= h.start - EPS) {
+      const at = h.end ? shown : { time: h.at, picture: h.at }
+      times[i] = at.time
+      pictures[i] = at.picture
+      held[i] = 1
+      continue
+    }
+    const o = v - added
+    while (ci < clips.length - 1 && o >= clipOutStart + clipLength(clips[ci]) - EPS) {
+      clipOutStart += clipLength(clips[ci])
+      ci++
+    }
+    const c = clips[ci]
+    const t = Math.min(c.start + (o - clipOutStart) * c.speed, c.end)
+    while (si < stills.length && o >= stills[si].editEnd - EPS) si++
+    const s = stills[si]
+    const still = !!s && o >= s.editStart - EPS
+    times[i] = t
+    pictures[i] = still ? s.at : t
+    if (still) held[i] = 1
+    shown = { time: t, picture: pictures[i] }
+  }
+  return { times, pictures, held }
 }
 
 /** The source time whose picture is drawn at source time `t`: a still's anchor inside its span, else `t`. */
 export function pictureTime(clips: Clip[], plan: FreezePlan, t: number): number {
-  // TODO(E-11): still.at when sourceToOutput(clips, t) is in [editStart, editEnd).
-  void clips
-  void plan
-  return t
+  if (plan.stills.length === 0) return t
+  const o = sourceToOutput(clips, t)
+  const s = o === null ? null : stillAt(plan, o)
+  return s ? s.at : t
 }
 
 /**
@@ -157,10 +256,8 @@ export function freezeKeepRanges(freezes: readonly Freeze[] | undefined): { star
   return (freezes ?? []).map((f) => ({ start: f.at - FREEZE_KEEP, end: f.at + FREEZE_KEEP }))
 }
 
-/** Source seconds snapping catches (E-05): active anchors and still ends. */
+/** Source seconds snapping catches (E-05): active anchors and still ends, sorted, once each. */
 export function freezeSnapTargets(clips: Clip[], plan: FreezePlan): number[] {
-  // TODO(E-11): from the plan's holds and stills.
-  void clips
-  void plan
-  return []
+  const times = [...plan.holds.map((h) => h.at), ...plan.stills.flatMap((s) => [s.at, outputToSource(clips, s.editEnd).time])]
+  return [...new Set(times)].sort((a, b) => a - b)
 }

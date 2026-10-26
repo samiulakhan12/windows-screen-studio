@@ -14,6 +14,7 @@ import {
   type ShuttleKey,
   type ShuttleStep
 } from '../../../shared/editor/shuttle'
+import { pictureTime, planOf, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
@@ -21,16 +22,19 @@ import { webcamLook } from '../../../shared/engine/webcamData'
 import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
 import { cursorLook } from '../../../shared/render/cursorFx'
 import type { Clip, Project } from '../../../shared/types'
-import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
+import { drawFrame, type DrawOptions, type FrameImage, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
 import { heldLivePicture, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
+import { FreezeStills } from './freezeStills'
 import { PreviewAudio } from './previewAudio'
 
 /** Proxy frame rate when the project does not say (older projects: always 60 fps). */
 const SOURCE_FPS = 60
 /** Seconds of viewing time the camera may drift from the screen before it is seeked back. */
 const WEBCAM_DRIFT = 0.15
+/** A frozen frame (E-11) is drawn sharp, as the export draws it: no motion blur. */
+const FROZEN: DrawOptions = { blurSamples: 1 }
 
 const hasVideoFrameCallback = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype
 
@@ -75,9 +79,19 @@ export class PreviewPlayer {
     return viewRate(this.shuttleNow, this.speedSetting)
   }
 
-  /** Seconds into the pause freeze being held (E-11); 0 until then. */
+  /**
+   * Seconds into the pause freeze being held (E-11). Just after one, until the playhead moves past
+   * its frame, its whole length: video time counts a hold AT a time apart (editToVideo leaves it out).
+   */
   get holdElapsed(): number {
-    return 0
+    if (this.hold) return this.hold.elapsed
+    const p = this.passed
+    return p && !(p.edit < outputTimeAt(this.project.clips, this.time) - 1e-9) ? p.length : 0
+  }
+
+  /** Id of the pause freeze being held (its timeline block shows how far), or null. */
+  get heldFreeze(): string | null {
+    return this.hold?.h.id ?? null
   }
 
   private project: Project
@@ -119,6 +133,17 @@ export class PreviewPlayer {
   private readonly offCursorAssets: () => void
   private readonly offStyleAssets: () => void
   private readonly offCameraMasks: () => void
+  /**
+   * Freeze frames (E-11): the plan; the pause freeze being held (seconds into it, and the wall clock
+   * of the last tick) and its timer; the one just left; where playback may next enter a hold (source
+   * s: the end of what earlier frames looked ahead at); the stills continue freezes show.
+   */
+  private plan: FreezePlan
+  private hold: { h: Hold; elapsed: number; t0: number } | null = null
+  private holdRaf = 0
+  private passed: Hold | null = null
+  private holdFrom = 0
+  private stills: FreezeStills | null = null
   private disposed = false
 
   constructor(
@@ -129,6 +154,7 @@ export class PreviewPlayer {
     readonly missingStems: readonly StemKind[] = []
   ) {
     this.project = project
+    this.plan = planOf(project)
     screen.preservesPitch = true
     if (webcam) {
       webcam.muted = true
@@ -148,6 +174,7 @@ export class PreviewPlayer {
     this.offStyleAssets = onStyleAssetsChanged(this.invalidate)
     // The camera's background blur: a frame's person mask arrives after the frame.
     this.offCameraMasks = onCameraMasksChanged(this.invalidate)
+    this.prepareStills()
     this.seek(keptBounds(project.clips).start)
   }
 
@@ -217,11 +244,14 @@ export class PreviewPlayer {
       // Re-show the right frame if the playhead is now in a cut; while playing the frame loop handles it.
       if (!this.playing) this.seek(this.time)
     }
+    if (project.clips !== prev.clips || project.freezes !== prev.freezes) this.replan()
   }
 
   /* ---------- transport ---------- */
 
   seek(t: number): void {
+    // A seek leaves a pause freeze (E-11); playback goes on from the new place.
+    const held = this.clearHold()
     this.time = clamp(t, 0, this.project.duration)
     const clips = this.project.clips
     // Reversing: the loop moves the video from the new position.
@@ -233,12 +263,14 @@ export class PreviewPlayer {
         return
       }
       this.time = from.time
+      this.holdFrom = from.time - this.frame / 2
       this.setRate(clips[from.index].speed)
       this.jumpTarget = null
       this.clickSounds.restart(from.time)
       this.screen.currentTime = from.time
       this.sound.jump(from.time, this.rateFor(clips[from.index].speed))
       this.syncWebcam(from.time, true)
+      if (held) this.goOn()
     } else {
       this.seekVideo(this.frameTimeFor(displayTime(clips, this.time)))
     }
@@ -249,9 +281,15 @@ export class PreviewPlayer {
     if (this.playing || this.disposed) return
     if (this.rev) this.stopReverse()
     if (this.shuttleNow.dir !== 1) this.shuttleNow = { dir: 1, level: 0 }
+    // Paused in a pause freeze (E-11): the hold goes on.
+    if (this.hold) return this.resumeHold()
     const clips = this.project.clips
     let from = playableFrom(clips, this.time)
     if (!from || this.time >= keptBounds(clips).end - this.frame) from = { time: clips[0].start, index: 0 }
+    // On the frame of the pause freeze just left, that one is over; otherwise one at the playhead starts the playback.
+    const after = !!this.passed && this.holdElapsed > 0 && from.time >= this.passed.at - this.frame
+    this.holdFrom = after ? this.passed!.at + 1e-6 : from.time - this.frame / 2
+    if (!after) this.clearHold()
     this.playing = true
     this.time = from.time
     this.pendingSeek = null
@@ -280,7 +318,8 @@ export class PreviewPlayer {
     }
     if (!this.playing) return
     this.stopPlaying()
-    this.time = this.screen.currentTime
+    // In a pause freeze (E-11) the playhead stays on its frame.
+    if (!this.hold) this.time = this.screen.currentTime
     this.emit()
   }
 
@@ -341,11 +380,12 @@ export class PreviewPlayer {
    * show (turned off, or hidden by the layout) is not waited for.
    */
   invalidate = (): void => {
-    if (this.playing || this.drawRaf || this.disposed) return
+    // While a pause freeze holds (E-11) no frame comes: it redraws like a paused player.
+    if ((this.playing && !this.hold) || this.drawRaf || this.disposed) return
     this.drawRaf = requestAnimationFrame(() => {
       this.drawRaf = 0
       const t = this.screen.currentTime
-      if (!this.playing && !this.screen.seeking && !(this.webcamSeeking() && this.webcamShownAt(t))) this.draw(t)
+      if ((!this.playing || this.hold) && !this.screen.seeking && !(this.webcamSeeking() && this.webcamShownAt(t))) this.draw(t)
     })
   }
 
@@ -357,12 +397,27 @@ export class PreviewPlayer {
   private draw(t: number): void {
     const { canvas, ctx, scene } = this
     if (!canvas || !ctx || !scene || this.screen.readyState < 2) return
-    drawFrame(ctx, canvas.width, canvas.height, t, this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene, {
-      screen: this.screen,
-      webcam: this.webcam,
-      background: this.background,
-      webcamFrame: this.seekingWebcamPicture(scene)
-    })
+    // Freeze frames (E-11): a pause freeze shows its frame (the playhead stays on it), a continue
+    // freeze its still once that is ready (the screen plays on for its sound); both sharp.
+    const s = this.hold ? this.heldTime(this.hold.h) : t
+    const p = pictureTime(this.project.clips, this.plan, s)
+    const still = p !== s ? this.stills?.get(p) : null
+    drawFrame(
+      ctx,
+      canvas.width,
+      canvas.height,
+      still ? p : s,
+      this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene,
+      {
+        screen: this.screen,
+        webcam: this.webcam,
+        background: this.background,
+        webcamFrame: this.seekingWebcamPicture(scene),
+        ...(still && { screenFrame: { image: still, width: still.width, height: still.height } })
+      },
+      this.hold || still ? FROZEN : undefined,
+      s
+    )
   }
 
   /** True while the camera seeks (an element that failed never lands: it does not hold drawing up). */
@@ -405,7 +460,7 @@ export class PreviewPlayer {
   /* ---------- playback loop ---------- */
 
   private scheduleFrame(): void {
-    if (!this.playing) return
+    if (!this.playing || this.hold) return
     if (hasVideoFrameCallback) this.frameHandle = this.screen.requestVideoFrameCallback(this.onVideoFrame)
     else this.frameHandle = requestAnimationFrame(() => this.onVideoFrame(performance.now()))
   }
@@ -443,12 +498,15 @@ export class PreviewPlayer {
     if (this.screen.playbackRate !== rate) this.setRate(clip.speed)
     this.time = t
     this.syncWebcam(t, false)
+    this.leavePassed(t)
     this.sound.frame()
     this.draw(t)
     // Clicks land on their frames at the element's rate; none while the sound is off.
     if (this.audible) this.playClicks(t, rate === clip.speed ? clip : { ...clip, speed: rate })
     else this.clickSounds.reset()
     this.emit()
+    // A pause freeze whose frame comes before the next decoded frame: hold it there (E-11).
+    if (this.holdAhead(t)) return
     // Jump before the next decoded frame would land in a cut (or past the end).
     if (t + rate * this.frame >= clip.end - 1e-4) this.leaveClip(clips, i)
     if (this.playing) this.scheduleFrame()
@@ -457,7 +515,10 @@ export class PreviewPlayer {
   private leaveClip(clips: Clip[], i: number): void {
     const next = clips[i + 1]
     if (!next) {
-      this.finish()
+      // A pause freeze at the edit's end holds the last frame first (E-11).
+      const end = this.plan.holds.find((h) => h.end)
+      if (end) this.startHold(end)
+      else this.finish()
       return
     }
     // Adjacent clips (a split with different speeds) need no seek, only the new rate.
@@ -503,13 +564,14 @@ export class PreviewPlayer {
   }
 
   private onEnded = (): void => {
-    if (this.playing) this.finish()
+    if (this.playing && !this.hold) this.finish()
   }
 
   /** The element paused on its own (end of file, media session keys): keep the transport honest. */
   private onPause = (): void => {
-    // A late event from an earlier pause() must not stop a playback that has restarted since.
-    if (!this.playing || !this.screen.paused) return
+    // A late event from an earlier pause() must not stop a playback that has restarted since, nor
+    // the player's own pause for a pause freeze (E-11).
+    if (!this.playing || this.hold || !this.screen.paused) return
     if (this.screen.ended) this.finish()
     else this.pause()
   }
@@ -522,6 +584,8 @@ export class PreviewPlayer {
    * sought. The position is walked in output time, so cuts are skipped.
    */
   private startReverse(out: number): void {
+    // Reverse playback skips freeze frames (E-11): a hold in progress is left.
+    this.clearHold()
     this.pendingSeek = null
     this.rev = { fromOut: out, t0: performance.now(), rate: Math.abs(this.viewRate), raf: 0 }
     this.revStep()
@@ -658,7 +722,7 @@ export class PreviewPlayer {
       if (this.playing) this.holdWebcam(cam)
       cam.currentTime = want
     }
-    if (this.playing && cam.paused && this.webcamInRange(t)) void cam.play().catch(() => undefined)
+    if (this.playing && !this.hold && cam.paused && this.webcamInRange(t)) void cam.play().catch(() => undefined)
   }
 
   /** Keeps the camera's current picture to draw while it seeks (one copy per seek; one already held is kept). */
@@ -719,6 +783,142 @@ export class PreviewPlayer {
   /** The element rate for a clip at `speed` at the current viewing rate. */
   private rateFor(speed: number): number {
     return elementRate(speed, this.viewRate)
+  }
+
+  /* ---------- freeze frames (E-11) ---------- */
+
+  /** A new freeze plan: a hold in progress or just left is let go (playback goes on from its frame); the stills follow. */
+  private replan(): void {
+    const plan = planOf(this.project)
+    if (plan === this.plan) return
+    this.plan = plan
+    if (this.hold || this.passed) this.seek(this.time)
+    this.prepareStills()
+  }
+
+  /** Makes the stills of the continue freezes ahead (the cache exists only once there are some). */
+  private prepareStills(): void {
+    const ats = this.plan.stills.map((s) => s.at)
+    if (ats.length === 0) return
+    this.stills ??= new FreezeStills(this.screen.currentSrc || this.screen.src, 1 / this.frame, this.invalidate)
+    this.stills.prepare(ats)
+  }
+
+  /**
+   * Holds the pause freeze whose frame comes before the next decoded frame (from where earlier
+   * frames looked ahead to, so one is not missed when frames are dropped): true when it did.
+   */
+  private holdAhead(t: number): boolean {
+    const until = t + this.screen.playbackRate * this.frame
+    const h = this.plan.holds.find((x) => !x.end && x.at >= this.holdFrom && x.at < until)
+    if (h) this.startHold(h)
+    else this.holdFrom = Math.max(this.holdFrom, until)
+    return !!h
+  }
+
+  /**
+   * Holds pause freeze `h`: the screen and camera wait on its frame (the edit's last for one at its
+   * end), the stems with them, while the music plays on; a wall clock at the viewing rate runs its
+   * length. The playhead stays on the frame.
+   */
+  private startHold(h: Hold): void {
+    const s = this.frameTimeFor(h.at)
+    // Set first: pausing the screen fires 'pause', and no frame callback may run meanwhile.
+    this.hold = { h, elapsed: 0, t0: performance.now() }
+    this.passed = null
+    this.time = this.heldTime(h)
+    this.cancelFrame()
+    if (!this.screen.paused) this.screen.pause()
+    if (this.webcam && !this.webcam.paused) this.webcam.pause()
+    if (Math.abs(this.screen.currentTime - s) > 1e-3) this.screen.currentTime = s
+    // Forced: the camera's drift tolerance would hold a different face than the export.
+    this.syncWebcam(this.time, true)
+    this.sound.hold(h, 0)
+    this.invalidate()
+    cancelAnimationFrame(this.holdRaf)
+    this.holdRaf = requestAnimationFrame(this.holdTick)
+    this.emit()
+  }
+
+  /** Source time a hold shows: its frame, or for one at the edit's end the last frame (as the paused end shows it). */
+  private heldTime(h: Hold): number {
+    return h.end ? this.frameTimeFor(h.at) : h.at
+  }
+
+  /** Playing again while paused in a hold: the music plays on (the stems wait), the hold's clock goes on. */
+  private resumeHold(): void {
+    const hold = this.hold!
+    const clips = this.project.clips
+    this.playing = true
+    hold.t0 = performance.now()
+    // The viewing rate of this playback (a hold at the edit's end belongs to the last clip).
+    this.setRate(clips[clipIndexAt(clips, hold.h.at)]?.speed ?? clips[clips.length - 1].speed)
+    if (this.audible) this.sound.play(this.screen.currentTime, this.screen.playbackRate)
+    this.sound.hold(hold.h, hold.elapsed)
+    // Created here, inside the user's gesture, so the audio context may start.
+    if (cursorLook(this.project.cursor).clickSound) void this.ensureClickAudio()?.ctx.resume()
+    cancelAnimationFrame(this.holdRaf)
+    this.holdRaf = requestAnimationFrame(this.holdTick)
+    this.emit()
+  }
+
+  /** One tick of a hold: a pause freeze lasts length / |viewing rate| seconds of wall clock (the rate is never 0 while playing). */
+  private holdTick = (): void => {
+    this.holdRaf = 0
+    const hold = this.hold
+    if (!hold || !this.playing || this.disposed) return
+    const now = performance.now()
+    hold.elapsed += ((now - hold.t0) / 1000) * (Math.abs(this.viewRate) || 1)
+    hold.t0 = now
+    if (hold.elapsed >= hold.h.length) return this.leaveHold()
+    this.sound.hold(hold.h, hold.elapsed)
+    this.sound.frame()
+    this.emit()
+    this.holdRaf = requestAnimationFrame(this.holdTick)
+  }
+
+  /** The hold is over: playback goes on from its frame, or ends after a hold at the edit's end. */
+  private leaveHold(): void {
+    const { h } = this.hold!
+    this.hold = null
+    this.sound.hold(h.end ? null : h, h.length)
+    if (h.end) return this.finish()
+    this.passed = h
+    this.holdFrom = h.at + 1e-6
+    this.time = h.at
+    // The stems start again from the frame; the music's clock stays past the hold.
+    this.sound.jump(h.at, this.screen.playbackRate)
+    this.syncWebcam(h.at, false)
+    this.goOn()
+    this.emit()
+  }
+
+  /** The playhead moved past the frame of the hold just left: video time counts that hold from here on. */
+  private leavePassed(t: number): void {
+    const p = this.passed
+    if (!p || !(p.edit < outputTimeAt(this.project.clips, t) - 1e-9)) return
+    this.passed = null
+    this.sound.hold(null, 0)
+  }
+
+  /** Leaves any hold without going on from it (a seek, a new plan); true when one was held. */
+  private clearHold(): boolean {
+    const held = !!this.hold
+    cancelAnimationFrame(this.holdRaf)
+    this.holdRaf = 0
+    if (held || this.passed) this.sound.hold(null, 0)
+    this.hold = null
+    this.passed = null
+    return held
+  }
+
+  /** The screen plays again after a hold (the camera follows through syncWebcam), and the frame loop goes on. */
+  private goOn(): void {
+    this.screen.play().catch((err: unknown) => {
+      // AbortError just means pause() won the race.
+      if (!(err instanceof DOMException && err.name === 'AbortError')) this.stopPlaying()
+    })
+    this.scheduleFrame()
   }
 
   /** Loads the background music again (a new file replaced it under the same name). */
@@ -800,6 +1000,8 @@ export class PreviewPlayer {
     this.stopPlaying()
     this.disposed = true
     cancelAnimationFrame(this.drawRaf)
+    cancelAnimationFrame(this.holdRaf)
+    this.stills?.dispose()
     this.screen.removeEventListener('seeked', this.onSeeked)
     this.screen.removeEventListener('loadeddata', this.invalidate)
     this.screen.removeEventListener('ended', this.onEnded)

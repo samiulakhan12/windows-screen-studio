@@ -14,9 +14,9 @@ import {
   titleTextColorOf,
   titleVisibleAt
 } from '../../../../shared/editor/titles'
+import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { chapterInVideo } from '../../../../shared/render/chapters'
-import { viewingTime } from '../../../../shared/render/overlays'
 import type { AnnotationStyle, Chapter, Clip, Project, TitleCard } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
@@ -301,9 +301,11 @@ function ColorDots({
 /* ---------- chapters ---------- */
 
 /** "At 0:12 in the video", or where a chapter in a cut starts the video instead, or that it is left out at the end. */
-function outputNote(clips: Clip[], t: number): string {
+function outputNote(project: Project, t: number): string {
+  const { clips } = project
   if (!chapterInVideo(clips, t)) return 'At the very end of the video, with nothing after it: exports leave it out.'
-  const at = formatTime(viewingTime(clips, t), false)
+  // In seconds of the exported video, as the Transport and the YouTube timestamps count them (freeze frames included).
+  const at = formatTime(videoTimeAt(clips, planOf(project), t), false)
   return Math.abs(displayTime(clips, t) - t) > 1e-6 ? `In a part that is cut: it starts at ${at} in the video, where it goes on.` : `At ${at} in the exported video.`
 }
 
@@ -319,7 +321,7 @@ function SelectedChapter({ project, chapter, onSelect }: { project: Project; cha
         <span>Name</span>
         <input className="tc-input" aria-label="Chapter name" value={chapter.title} placeholder="Chapter name" onChange={(e) => set({ title: cleanChapterName(e.target.value) }, `chapter-title:${id}`)} />
       </label>
-      <p className="hint">{outputNote(project.clips, chapter.t)}</p>
+      <p className="hint">{outputNote(project, chapter.t)}</p>
       <div className="row start title-tools">
         <button className="btn" onClick={() => player.seek(chapter.t)} title="Move the playhead to this chapter">
           Go to
@@ -388,7 +390,7 @@ function ChaptersSection({
                   player.seek(c.t)
                 }}
               >
-                {formatTime(viewingTime(project.clips, c.t), false)}
+                {formatTime(videoTimeAt(project.clips, planOf(project), c.t), false)}
               </button>
               <input
                 className="tc-input"

@@ -44,6 +44,7 @@ import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
+import { FreezeMarks } from './FreezeMarks'
 import { useKeymap } from './keymapContext'
 import { addShapeAt, revealItem } from './playheadItems'
 import { followPointer } from './pointer'
@@ -645,6 +646,7 @@ export const Timeline = memo(
                     />
                   )
                 })}
+                <FreezeMarks px={px} win={win} duration={duration} clips={clips} selection={selection} onSelect={onSelect} />
                 <div className="trim-handle start" style={{ left: kept.start * px }} onPointerDown={onTrimDown('start')} title="Drag to trim the start" />
                 <div className="trim-handle end" style={{ left: kept.end * px }} onPointerDown={onTrimDown('end')} title="Drag to trim the end" />
                 {range && (

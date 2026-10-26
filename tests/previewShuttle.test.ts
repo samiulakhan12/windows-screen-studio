@@ -40,6 +40,7 @@ vi.mock('../src/renderer/src/editor/previewAudio', () => ({
     setSilent(on: boolean) {
       sound.push(`silent ${on}`)
     }
+    hold() {}
     frame() {}
     fadeAt() {
       return 1
