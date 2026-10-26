@@ -39,14 +39,14 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 
 1. **NW-09 + LT-20**: transcription that survives the OpenAI shutdown. This has a deadline.
 2. **NW-04 + NW-01**: transcript editing, then filler and retake removal. They share one review screen.
-3. **NW-02**: teleprompter and speaker notes (shipped in Wave 5).
+3. **NW-02**: teleprompter and speaker notes (shipped in 0.3.0).
 4. **NW-03**: better auto zoom input.
 5. **NW-06**: smooth cuts. Ship the audio fades first.
 6. **NW-07**: import an existing video.
 7. **NW-13**: publishing copy pack.
 8. **NW-15 + X-03**: auto-update and a diagnostics bundle.
 
-**Agreed order (25 October 2026):** NW-08 camera director and NW-03 smarter auto zoom (both shipped in Wave 5), then NW-02
+**Agreed order (25 October 2026):** NW-08 camera director and NW-03 smarter auto zoom (both shipped in Wave 5, 0.2.0), then NW-02
 teleprompter, then the quick editing wins E-01 polish in one click, E-04 waveform, E-05 snapping, E-08 J/K/L
 and preview speed, E-10 crop the recording, E-11 freeze frame.
 
@@ -88,7 +88,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Descript, Loom, Camtasia/Audiate.
 
 ### NW-02 · Teleprompter and speaker notes, with an AI script draft
-**Recording · S · shipped (Wave 5)**: see [FEATURES.md](FEATURES.md) (Speaker notes) and `docs/design/teleprompter.md`. Scrolling that follows the voice is F-27.
+**Recording · S · shipped (0.3.0)**: see [FEATURES.md](FEATURES.md) (Speaker notes) and `docs/design/teleprompter.md`. Scrolling that follows the voice is F-27.
 
 - **What:** a floating notes window only the presenter sees, kept out of the recording. It has font size, scroll speed and hotkey scrolling. A "Draft script" button turns bullet points into a spoken script.
 - **Works with:** the script draft uses OpenAI, Gemini or Claude. The teleprompter needs no AI.
