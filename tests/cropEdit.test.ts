@@ -161,6 +161,24 @@ describe('snapCrop', () => {
     expect(p.h).toBeCloseTo(540, 9)
     expect(p.y).toBeCloseTo(200, 9)
   })
+
+  it('with a handle, snaps only the edges it moves: a thin cut on another edge stays', () => {
+    // A small overlay, where 8 px are 5% of the recording: more than the 48 px taskbar (4.4%).
+    const wide = { x: 0.05, y: 0.05 }
+    const inPx = (r: NormRect): NormRect => {
+      const p = px(r)
+      return { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.w), h: Math.round(p.h) }
+    }
+    expect(inPx(snapCrop(dragCrop(TASKBAR, 'w', 0.1, 0, HD, null), HD, wide, null, 'w'))).toEqual({ x: 192, y: 0, w: 1728, h: 1032 })
+    // The dragged edge still snaps to the frame's edge; the opposite one on its axis does not.
+    expect(snapCrop(dragCrop(TASKBAR, 'w', 0.02, 0, HD, null), HD, wide, null, 'w').x).toBe(0)
+    const nearRight: NormRect = { x: 0.2, y: 0, w: 0.79, h: 1 }
+    expect(inPx(snapCrop(dragCrop(nearRight, 'w', 0.1, 0, HD, null), HD, wide, null, 'w'))).toEqual({ x: 576, y: 0, w: 1325, h: 1080 })
+    // A corner moves, and snaps, its two edges.
+    expect(inPx(snapCrop(dragCrop(TASKBAR, 'se', -0.02, 0.02, HD, null), HD, wide, null, 'se'))).toEqual({ x: 0, y: 0, w: 1920, h: 1080 })
+    // Without a handle every edge snaps, as before.
+    expect(snapCrop(dragCrop(TASKBAR, 'w', 0.1, 0, HD, null), HD, wide, null).h).toBe(1)
+  })
 })
 
 describe('presets', () => {

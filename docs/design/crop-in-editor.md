@@ -306,9 +306,9 @@ Everything works in recorded pixels `W×H`, so ratios are pixel ratios. `MIN = (
 
 **`fitCropAspect(r, R, size)`** runs when you pick a lock chip. It returns the largest rectangle of ratio `R` inside `r`, around `r`'s centre. Example: 1920×1032 with 16:9 gives 1835×1032 at x ≈ 42. "Original" uses `R = W/H`.
 
-**`snapCrop(r, size, magnet, ratio)`** runs after every step:
+**`snapCrop(r, size, magnet, ratio, handle?)`** runs after every step:
 
-- Free: an edge within `magnet` of 0 or 1 snaps to it. `magnet = { x: 8 / rect.w, y: 8 / rect.h }`, i.e. 8 screen px of the overlay.
+- Free: an edge within `magnet` of 0 or 1 snaps to it. `magnet = { x: 8 / rect.w, y: 8 / rect.h }`, i.e. 8 screen px of the overlay. The tool passes the dragged `handle`, and only the edges it moves snap: an edge left a few pixels from the frame's edge (a hidden taskbar, under 8 overlay px in a small window) stays when another edge is dragged. Without a handle, every edge snaps.
 - With a ratio, the magnet moves the whole box instead, so its shape stays. The tool passes the box's own ratio for a move (a move never resizes), and no magnet for a locked resize (its anchor corner must stay; the drag already stops at the frame's edge).
 - Edges are then rounded to whole pixels.
 - With a lock, `w` is rounded and `h = round(w/R)` (±1 px).
@@ -486,7 +486,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 | | `cropRatio` | `(a: CropAspect, width: number, height: number) => number \| null` |
 | | `dragCrop` | `(r: NormRect, handle: RegionHandle, dx: number, dy: number, size: { width: number; height: number }, ratio: number \| null) => NormRect` |
 | | `fitCropAspect` | `(r: NormRect, ratio: number, size: { width: number; height: number }) => NormRect` |
-| | `snapCrop` | `(r: NormRect, size: { width: number; height: number }, magnet: { x: number; y: number }, ratio: number \| null) => NormRect` |
+| | `snapCrop` | `(r: NormRect, size: { width: number; height: number }, magnet: { x: number; y: number }, ratio: number \| null, handle?: RegionHandle) => NormRect` |
 | | `taskbarCrop` / `browserBarCrop` | `(r: NormRect, p: Pick<Project, 'capture' \| 'width' \| 'height'>, scale: number \| undefined) => NormRect \| null` |
 | | `outsideCrop` | `(p: Project, crop: NormRect \| null) => OutsideCount` |
 | | `setCrop` | `(p: Project, crop: NormRect \| null, track: CursorTrack \| null) => CropOutcome` |
@@ -602,7 +602,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 
 - `dragCrop`: the free, `move`, locked-corner (1:1 → `{0,0,0.5625,1}`) and locked-edge (16:9 `n` → `{0.2,0.15,0.6,0.6}`) cases from 4.7. The result is never smaller than 64 px.
 - `fitCropAspect`: 1920×1032 with 16:9 gives a width within 1 px of 1835, height 1032, centred.
-- `snapCrop`: an edge 5 px from the right with an 8 px magnet snaps to 1. All values land on whole pixels.
+- `snapCrop`: an edge 5 px from the right with an 8 px magnet snaps to 1. All values land on whole pixels. With a handle, only the edges it moves snap: dragging `w` keeps a taskbar cut that is inside the magnet.
 - `taskbarCrop`:
   - h = 1032/1080;
   - h = 0.95 at s = 1.5;

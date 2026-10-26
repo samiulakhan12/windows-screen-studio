@@ -74,8 +74,9 @@ export function CropEditor({ recorded, rect, draft, onDraft, onDone }: { recorde
       (ev) => {
         const ratio = locked ?? (ev.shiftKey ? own : null)
         const next = dragCrop(initial, handle, (ev.clientX - sx) / rect.w, (ev.clientY - sy) / rect.h, recorded, ratio)
-        // A move snaps by moving the whole box; a locked resize only rounds (its anchor corner stays).
-        const snapped = handle === 'move' ? snapCrop(next, recorded, magnet, own) : snapCrop(next, recorded, ratio ? NO_MAGNET : magnet, ratio)
+        // A move snaps by moving the whole box; a free resize snaps only the edges it drags; a locked
+        // resize only rounds (its anchor corner stays).
+        const snapped = handle === 'move' ? snapCrop(next, recorded, magnet, own) : snapCrop(next, recorded, ratio ? NO_MAGNET : magnet, ratio, handle)
         onDraft({ ...draft, rect: snapped })
       },
       () => setDragging(false)
