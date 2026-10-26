@@ -64,6 +64,7 @@ import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
+import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 import type { RenderScene } from '../render/compositor'
 import '../editor/editor.css'
 
@@ -751,8 +752,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       // E-01 polish (filled by the E-01 workstream)
       polish: () => showNotice('Coming soon'),
 
-      // E-04 waveform (filled by the E-04 workstream)
-      toggleWaveform: () => showNotice('Coming soon'),
+      // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
+      toggleWaveform: () => {
+        if (!store.state.hasAudio) return showNotice('This recording has no sound')
+        const on = !waveformShown()
+        setWaveformShown(on)
+        turned('Audio waveform', on)
+      },
 
       // E-05 snapping (filled by the E-05 workstream)
       toggleSnapping: () => showNotice('Coming soon'),
@@ -826,6 +832,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
     }
     for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
+    unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
     const on: Partial<Record<CommandId, boolean>> = {
       toggleCursor: smoothCursor && p.cursor.show,
       toggleClickEffects: cursor.valid && p.cursor.clickEffect,
@@ -835,6 +842,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleWebcam: !!data.webcamUrl && p.webcam.show,
       toggleCaptions: !!p.transcript?.segments.length && captionsOf(p).show
     }
+    on.toggleWaveform = p.hasAudio && waveformShown()
     return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
   }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player])
