@@ -274,7 +274,10 @@ export class PreviewPlayer {
       this.syncWebcam(from.time, true)
       if (held) this.goOn()
     } else {
-      this.seekVideo(this.frameTimeFor(displayTime(clips, this.time)))
+      // On a pause freeze's anchor (a paused edit in its hold, a click on its block, text added on
+      // it): the middle of its frame, as the hold and the export show it, not the frame before.
+      const anchor = this.plan.holds.some((h) => !h.end && h.at === this.time)
+      this.seekVideo(anchor ? frameSeekTime(this.time, 1 / this.frame) : this.frameTimeFor(displayTime(clips, this.time)))
     }
     this.emit()
   }

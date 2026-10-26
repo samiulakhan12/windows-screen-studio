@@ -472,6 +472,31 @@ describe('an edit during a pause freeze', () => {
   })
 })
 
+describe('paused on a pause freeze', () => {
+  it('an edit or a seek to its anchor keeps the screen on the middle of its frame, not the frame before', () => {
+    // 2.05 s is the start of frame 123 at 60 fps; a seek to exactly 2.05 shows frame 122 in Chromium.
+    const { screen, player, project: p } = setUp([freeze('f', 2.05)])
+    player.play()
+    playOn(screen, 2.04)
+    expect(player.heldFreeze).toBe('f')
+    screen.land()
+    player.pause()
+    player.setProject({ ...p, freezes: [freeze('f', 2.05, 4)] })
+    expect(player.time).toBe(2.05)
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+    // A click on the block or "Add text on the freeze": a seek to the anchor.
+    screen.land()
+    player.seek(1)
+    screen.land()
+    player.seek(2.05)
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+    // Anywhere else, scrubbing is as before.
+    screen.land()
+    player.seek(2.5)
+    expect(screen.currentTime).not.toBeCloseTo(123.5 / 60, 6)
+  })
+})
+
 describe('a continue freeze in the preview', () => {
   it('draws its still over its span, sharp, while the sound and the clock go on', () => {
     const { screen, player } = setUp([freeze('k', 2, 1.5, 'continue')])
