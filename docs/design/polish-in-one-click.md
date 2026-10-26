@@ -329,8 +329,9 @@ The dialog reads the providers (`window.api.listAiProviders()`) and the options 
 1. **Collect, in parallel.**
    - **(a) Sound.** Call `loadAudioAnalysis(project.id, sources)`, where `sources` is `activitySources(p)` plus `speechLevelSource(p)` when it is not already among them.
      - Each source is measured once per editor session and shared with preview ducking, smart speed and the director.
-     - The call never rejects, because a failed source is left out.
+     - The call never rejects, because a failed source is left out. One file ffmpeg cannot read fails the main process's whole request, so every source of that request is left out (and asked for again on the next call).
      - Then `sound = sourceActivity(p, levels)`, which is null when a source is missing.
+     - When it is null, only Remove silences is skipped (`'not-measured'`), and its row says so at once ("The sound could not be measured, so nothing was cut"). The other steps go on: the director's speech falls back to the transcript, as in the Camera tab (`loadDirectorSpeech`).
    - **(b) Captions**, only when the row is available and selected:
      - Call the new `fetchTranscript(projectId, p.duration, { providerId, source: 'auto' })`. It runs the existing transcription job, so `transcriptionJob()`, `onTranscribeProgress` and `cancelTranscription()` behave as in the Captions tab. It **does not write to the store**. The job ends when it resolves; an error stays on the job, so the Captions tab shows it too.
      - `{ transcript }` → `input.transcript`.
@@ -372,6 +373,7 @@ The options are saved with `window.api.setPref('polish', options)` when **Polish
 - **Skip** on the Captions row calls `cancelTranscription()`. `fetchTranscript` then resolves `{ cancelled }` (its `generation` no longer matches), and the run continues.
 - **Skip** on the Camera row aborts only the face signal. `measureFraming` resolves `'skipped'`, and the director applies without framing.
 - Cancel is not offered after the commit, because the commit is synchronous.
+- **A run that fails** (it throws while collecting or planning) stops as Cancel does: it aborts, cancels the transcription it started, and its rows no longer change. The dialog then stays on "Polish failed: … Nothing was changed."
 
 ### 4.4 Preview = export
 
@@ -450,7 +452,7 @@ Rows (`data-testid="polish-row-<step>"`, `data-available`) appear in run order (
 **Running view.** The same rows, each with a state and a text:
 
 - Waiting: "Waiting…"
-- Silences: "Measuring the sound…"
+- Silences: "Measuring the sound…", then skipped with "The sound could not be measured, so nothing was cut" when it could not be.
 - Captions: the Captions tab's words, through `transcribePhaseText(progress, stopping)`:
   - "Starting…", "Preparing the sound…", "Sending the sound…", "Transcribing…", "Finishing…" or "Stopping…";
   - plus " Part 2 of 3." when `total > 1`;
@@ -660,6 +662,8 @@ Cases:
 
 **`tests/fetchTranscript.test.ts`** (the main process stubbed as in `tests/captionItems.test.ts`, which still covers `transcribe()`): the transcript comes back with the job ended and nothing written; `leftOut` over `MAX_CAPTIONS`; a failure (and "No speech was found") is returned and stays on the job; a cancel resolves `{ cancelled }`, also for a late answer and for the main process's "Cancelled."; a job already running is left alone.
 
+**`tests/polishRunner.test.ts`** (`runPolish` on a recording with microphone and system stems, the levels and the transcription job stubbed as above): when the levels request fails, the Silences row is skipped at once with its reason while the transcription goes on, and the run applies the captions and the style with the silences `'not-measured'`; measured levels cut the pause; a run that throws while the transcription runs rejects, cancels that job and calls `onProgress` no more; Cancel cancels the job and writes nothing. **`tests/audioAnalysis.test.ts`:** `loadAudioAnalysis` resolves without the sources of a failed request (two at once included) and asks for them again on the next call.
+
 **`tests/polishCopy.test.ts`:**
 
 - `polishHeadline` for `saved` 3.5 → "Polished: the video is 3.5 s shorter", for 72 → "Polished: the video is 1:12.0 shorter", and for 0 with changes → "Polished".
@@ -733,6 +737,12 @@ The `openSeeded` media swap and `waitSaved` (`.save-state[data-state="saved"]`) 
 4. Polish again, then click **Skip** on the Captions row.
    - `polish-line-captions` reads "Captions: skipped".
    - `project.json` has cut clips and no `transcript`.
+
+**Scenario "a sound that cannot be measured"** (its own HOME and launch, same media): the recording gets `audioStems: { mic: true, system: true }`, with the words' sound as `mic.m4a` and a `system.m4a` ffmpeg cannot read, and the slow key.
+
+1. Polish with Studio. `polish-row-silences` becomes `data-phase="skipped"` with "The sound could not be measured, so nothing was cut", while the Captions row still transcribes and the dialog stays in the running view.
+2. Skip the captions. In the summary, the silences line is skipped with that reason, and style and auto zoom are changed.
+3. After **Done**, `project.json` has the clips it had, the Studio background and no `transcript`.
 
 ---
 
