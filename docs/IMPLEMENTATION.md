@@ -13,7 +13,11 @@ src/main/               Electron main process
   recordingIpc.ts         recording IPC: sources, display-media handler, sessions, toolbar, region picker, recovery
   recording/              session state, ordered chunk writer, finalize (proxy + project), proxy runner,
                           native video glue, track maths (pause/region remapping), keystroke filter,
-                          hook clock, toolbar / region windows
+                          hook clock, toolbar / region windows, capture exclusion (Windows 10 2004+)
+  notes/                  speaker notes (teleprompter, docs/design/teleprompter.md): the store
+                          (userData/notes.json, held during recordings), the notes window in its
+                          rehearse and record modes (content protection, focus rules, hotkeys,
+                          placement, where it was and when), and its IPC with per-channel sender checks
   cursorTracker.ts        cursor polling, clicks and keystrokes via uiohook
   nativeCapture.ts        client for native/ssw-capture.exe (probe, monitor matching, session protocol)
   projects.ts, projectsIpc.ts, atomicWrite.ts, styleDefaults.ts

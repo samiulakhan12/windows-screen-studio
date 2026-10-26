@@ -65,7 +65,7 @@ export function scriptPrompt(request: ScriptDraftRequest): TextPrompt {
 }
 
 /** A list marker or heading mark at the start of a paragraph: "# ", "- ", "* ", "• ", "1. ", "1) ". */
-const LEADING_MARKER = /^(?:#+\s*|[-*\u2022]\s+|\d{1,3}[.)]\s+)/
+const LEADING_MARKER = /^(?:#+\s*|[-*\u2022](?:\s+|$)|\d{1,3}[.)](?:\s+|$))/
 
 /** One paragraph as read aloud: line breaks become spaces, other control characters go, list markers too. */
 function cleanParagraph(raw: string): string {

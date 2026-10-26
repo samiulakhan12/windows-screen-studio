@@ -279,6 +279,8 @@ function create(mode: NotesMode, rect: Rect, locked: boolean, captured: Rect | n
   win.on('moved', () => {
     if (current !== n || win.isDestroyed()) return
     const b = win.getBounds()
+    // Some platforms report our own setBounds() as a move: only a real drag is remembered.
+    if (b.x === n.rect.x && b.y === n.rect.y && b.width === n.rect.width && b.height === n.rect.height) return
     n.rect = b
     if (win.isVisible()) areaNow(b)
     saveLook({ placement: placementOf(notesDisplays(), b) })
