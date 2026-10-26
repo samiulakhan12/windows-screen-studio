@@ -161,20 +161,35 @@ describe('region validation and toolbar placement', () => {
     expect(toolbarPosition(wa, size, { x: 0, y: 0, width: 1920, height: 1040 })).toEqual({ x: 780, y: 952 })
   })
 
-  it('never puts the bar under the speaker notes', () => {
+  it('never puts the bar under the speaker notes, and keeps it out of the recorded area when it can', () => {
     const wa = { x: 0, y: 0, width: 1920, height: 1040 }
     const bar = { width: 600, height: 64 }
     const notes = { x: 680, y: 8, width: 560, height: 240 }
-    const overlaps = (p: { x: number; y: number }): boolean =>
-      p.x < notes.x + notes.width && notes.x < p.x + bar.width && p.y < notes.y + notes.height && notes.y < p.y + bar.height
-    // An area from y = 130 to the bottom: no room below it, and the spot above it is under the notes.
-    for (const top of [80, 130, 200, 300]) {
+    const hits = (p: { x: number; y: number }, r: { x: number; y: number; width: number; height: number }): boolean =>
+      p.x < r.x + r.width && r.x < p.x + bar.width && p.y < r.y + r.height && r.y < p.y + bar.height
+    // An area from `top` to the bottom: no room below it, and the spot above it is under the notes,
+    // so the bar goes to the left of the notes at that height, outside the area (on Windows before
+    // 10 version 2004 a bar inside it is a black box in the video).
+    for (const top of [80, 130, 200, 300, 320]) {
       const area = { x: 0, y: top, width: 1920, height: 1040 - top }
-      expect(overlaps(toolbarPosition(wa, bar, area))).toBe(true)
-      expect(toolbarPosition(wa, bar, area, [notes])).toEqual({ x: 660, y: 952 })
+      expect(hits(toolbarPosition(wa, bar, area), notes)).toBe(true)
+      const p = toolbarPosition(wa, bar, area, [notes])
+      expect(p).toEqual({ x: 68, y: top - 64 - 12 })
+      expect(hits(p, notes)).toBe(false)
+      expect(hits(p, area)).toBe(false)
     }
-    // An area at the top: the spot below it is under the notes too; the bottom-centre is clear.
-    expect(toolbarPosition(wa, bar, { x: 0, y: 0, width: 1920, height: 170 }, [notes])).toEqual({ x: 660, y: 952 })
+    // No room to the left: to the right.
+    const right = { x: 300, y: 8, width: 560, height: 240 }
+    expect(toolbarPosition(wa, bar, { x: 0, y: 300, width: 1920, height: 740 }, [right])).toEqual({ x: 872, y: 224 })
+    // An area at the top: the spot below it is under the notes too, so beside them below the area.
+    expect(toolbarPosition(wa, bar, { x: 0, y: 0, width: 1920, height: 170 }, [notes])).toEqual({ x: 68, y: 182 })
+    // The whole screen: nothing is outside it, so the bottom-centre, clear of the notes.
+    expect(toolbarPosition(wa, bar, { x: 0, y: 0, width: 1920, height: 1040 }, [notes])).toEqual({ x: 660, y: 952 })
+    // Nothing clear of both: outside the area wins over clear of the notes.
+    const wide = { x: 0, y: 8, width: 1920, height: 240 }
+    const below = toolbarPosition(wa, bar, { x: 0, y: 300, width: 1920, height: 740 }, [wide])
+    expect(hits(below, { x: 0, y: 300, width: 1920, height: 740 })).toBe(false)
+    expect(below).toEqual({ x: 660, y: 224 })
     // Spots that are clear stay as they were.
     expect(toolbarPosition(wa, bar, { x: 100, y: 400, width: 400, height: 300 }, [notes])).toEqual(toolbarPosition(wa, bar, { x: 100, y: 400, width: 400, height: 300 }))
     // Notes moved to the bottom centre: the bar goes just above them.

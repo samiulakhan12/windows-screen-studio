@@ -670,6 +670,22 @@ async function main() {
         h.assert(await win.evaluate(() => document.activeElement?.classList.contains('notes-draft-btn')), 'focus on Draft script after Cancel')
         await win.keyboard.press('Escape')
         await win.waitForSelector('.notes-modal', { state: 'detached', timeout: 3000 })
+
+        // A draft longer than Draft script takes (300 lines of 63 come back as 21,298 characters): Draft
+        // script is then disabled, so the focus goes to Restore my notes, and Esc still closes.
+        const long = Array.from({ length: 300 }, (_, i) => `- Step ${String(i).padStart(3, '0')} ${'x'.repeat(52)}`).join('\n')
+        h.assert(long.length <= 20000, `the long notes can be drafted: ${long.length}`)
+        await win.click('.notes-card button:has-text("Edit notes")')
+        await win.waitForSelector('.notes-modal textarea')
+        await win.fill('.notes-modal textarea', long)
+        await win.selectOption('.notes-draft-provider', { label: 'Claude' })
+        await win.click('.notes-draft-btn')
+        await win.waitForSelector('text=Script drafted from your notes. Read it through before you record.', { timeout: 20000 })
+        h.assert((await win.inputValue('.notes-modal textarea')).length > 20000, 'the draft is longer than Draft script takes')
+        h.assert(await win.isDisabled('.notes-draft-btn'), 'Draft script is disabled for the long draft')
+        h.assert(await win.evaluate(() => document.activeElement?.textContent === 'Restore my notes'), 'focus on Restore my notes after a long draft')
+        await win.keyboard.press('Escape')
+        await win.waitForSelector('.notes-modal', { state: 'detached', timeout: 3000 })
       })
     } finally {
       await ai.close()

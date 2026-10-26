@@ -131,17 +131,24 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
   const busy = draft.kind === 'busy'
 
   // The focused button went away (Draft script and Cancel take turns, Restore my notes goes): the
-  // one there now takes the focus, so it stays in the dialog (Esc still closes it).
+  // one there now takes the focus, so it stays in the dialog (Esc still closes it). Draft script
+  // may be disabled (a draft too long to draft again): then Restore my notes, else the text.
   const draftButton = useRef<HTMLButtonElement>(null)
   const cancelButton = useRef<HTMLButtonElement>(null)
+  const restoreButton = useRef<HTMLButtonElement>(null)
+  const box = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     if (document.activeElement && document.activeElement !== document.body) return
-    ;(busy ? cancelButton : draftButton).current?.focus()
+    const textarea = box.current?.closest('[role="dialog"]')?.querySelector('textarea') ?? null
+    for (const el of [busy ? cancelButton.current : draftButton.current, restoreButton.current, textarea]) {
+      el?.focus()
+      if (el && document.activeElement === el) return
+    }
   }, [draft.kind, busy])
 
   const blockedTitle = empty ? NOTES_COPY.draftEmpty : tooLong ? NOTES_COPY.draftTooLong : undefined
   return (
-    <div className="notes-draft" data-state={draft.kind}>
+    <div ref={box} className="notes-draft" data-state={draft.kind}>
       <div className="notes-draft-row">
         {busy ? (
           <>
@@ -192,6 +199,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
         <div className="notes-draft-msg" role="status">
           <p className="hint notes-ok">{NOTES_COPY.drafted}</p>
           <button
+            ref={restoreButton}
             type="button"
             className="btn"
             onClick={() => {

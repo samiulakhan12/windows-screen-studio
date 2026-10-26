@@ -116,11 +116,13 @@ spelling hint for transcription (NW-09).
      folder when `keepWithRecording` (async; a failure is logged, never fatal);
    - if refused: `CapturePlan.notesNotice` says why; no window, no hotkeys.
    Then the bar is placed clear of the notes: `prepareToolbar(display, area, [recordingNotesRect()])`
-   skips each of its usual spots (below the area, above it, the bottom centre) that would be under
-   the notes, and else goes just below or just above them. Otherwise the 600 DIP bar lands under the
-   560 DIP notes for many areas (an area that reaches the bottom of the screen and starts less than
-   about 330 DIP from the top puts the bar just above it, where the notes sit) and its buttons
-   cannot be reached.
+   tries its usual spots (below the area, above it), the same heights to the left and the right of
+   the notes, the bottom centre, and just below or just above the notes. The first spot clear of
+   both the notes and the area wins; else the first clear of the area (on Windows before 10
+   version 2004 a bar inside it is a black box in the video); else the first clear of the notes.
+   Otherwise the 600 DIP bar lands under the 560 DIP notes for many areas (an area that reaches the
+   bottom of the screen and starts less than about 324 DIP from the top puts the bar just above
+   it, where the notes sit) and its buttons cannot be reached.
 2. Each `'countdown'` status: `showNotes()`, then `setNotesRecording('countdown')`, then
    `showToolbar()` and `raiseToolbar()` (`moveTop()` on the bar, which never activates it), so the
    bar ends up above the notes. `showNotes` is idempotent (countdown statuses arrive every second)
