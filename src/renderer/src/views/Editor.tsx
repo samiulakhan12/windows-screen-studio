@@ -419,7 +419,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [recorded, store, player, showNotice, setSelection])
 
   const actions = useMemo(() => {
-    const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
+    const newZoomFocus = (): ZoomFocus => {
+      if (cursor.valid) return { mode: 'cursor' }
+      // The centre of the part of the recording that is shown, stored in the whole frame.
+      const at = fromCrop(cropOf(store.state), { x: 0.5, y: 0.5 })
+      return { mode: 'fixed', x: at.x, y: at.y }
+    }
 
     // Zooms and text go on the frame the preview shows at `t` (in a cut, the next kept one), like
     // shapes (playheadItems.ts): placed at a cut's source time they would never be seen.
@@ -596,10 +601,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
-      if (!cursor.valid) return { x: 0.5, y: 0.5 }
       // An auto zoom's own click, else where the camera would be in its middle (the focus path is
-      // in the crop's view), inside the part of the recording that is shown.
+      // in the crop's view; without cursor data, its centre), inside the part of the recording that
+      // is shown.
       const c = scene.crop ?? null
+      if (!cursor.valid) return fromCrop(c, { x: 0.5, y: 0.5 })
       const p = clampIntoCrop(c, zoom.anchor ?? fromCrop(c, focusPath.at((zoom.start + zoom.end) / 2)))
       return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
     },

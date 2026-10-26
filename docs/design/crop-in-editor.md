@@ -199,7 +199,8 @@ Example: a 1280×720 recording with a 48 px taskbar gives `c = {0, 0, 1, 0.93333
 | `CameraPanel.tsx:117-119` camera box preview | `project.width/height` | `visibleSize(project)` | 1 line |
 | `playheadItems.ts:75,86` `addShapeAt`/`addSpotlightAt` (`shapeForPlayhead` aspect, `arrowToward`, `0.24/aspect`, `cursorPosFor`) | `store.state`, full cursor | build against `cropView(p, cursor)`, store `geometryFromCrop(c, item)` | 2 functions |
 | `ShapesPanel.tsx:60,253-254` region spotlight placed at the cursor | `cursorPosFor(project, cursor)`, clamp to [0, 1] | position from the view, clamp in view, then `geometryFromCrop` | 2 lines |
-| `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view) | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))` | 1 line |
+| `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view); `(0.5, 0.5)` without cursor data | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))`; without cursor data `fromCrop(c, (0.5, 0.5))`, the crop's centre | 2 lines |
+| `Editor.tsx` `newZoomFocus` (Z, the transport's and the timeline's Add zoom), without cursor data | fixed `(0.5, 0.5)`, the whole frame's centre | fixed at `fromCrop(cropOf(p), (0.5, 0.5))`, the crop's centre | 1 line (**missed by the draft**: on a lopsided crop the new zoom aimed outside the part shown and the camera stopped at the crop's edge) |
 | ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop`; a switch to Fixed point or Follow cursor stores the level shown as `scale` (a region zoom's stored `scale` is its level where it was drawn, which a crop made since changes) | about 8 lines (**193–200 and 273 missed by the draft**) |
 | `Editor.tsx` zoom level keys 0–4 (`setZoomLevelKey`, `setZoomLevel`) | full-frame region | `setZoomLevelInView(cropOf(q), z, level)` | 1 line (**missed by the draft**: with a crop that is not the frame's shape, a region resized in the full frame frames another level in the view) |
 | `Timeline.tsx:675` zoom block level label (`zoomTargetScale(z)`) | full-frame region | `zoomTargetScale(zoomInView(crop ? cropOf(store.state) : null, z))`, with `crop` read by one `useSyncExternalStore` (the memoised timeline has no project prop) | 2 lines, SHARED (**missed by the draft**) |
@@ -672,6 +673,7 @@ The fixture is built inline into the test home with ffmpeg: `color=c=0x808080:s=
 6. Close the dialog (Esc). Press Ctrl+Z, then `waitFor` until `crop` is absent from project.json.
 7. Press `C`: `[data-testid=crop-editor]` is visible. Press Esc: it closes, and project.json is unchanged after 1 s.
 8. Press `C`, hold the top handle and drag, press Esc, then move on and release: the tool stays closed and the crop is unchanged.
+9. The recording has no cursor data (`valid: false`), and a seeded zoom follows the cursor. Home, then `Z`: the new zoom is fixed at the crop's centre, `(0.5, 336/720)`. The seeded zoom set to **Fixed point** in the Zoom panel lands there too.
 
 ---
 

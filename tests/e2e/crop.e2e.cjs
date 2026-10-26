@@ -2,7 +2,8 @@
 // taskbar (a red band along the bottom of a grey recording) with one preset and one undo step;
 // the preview and an Auto export show none of it, with no red bleeding in at the cut edge, and
 // take the cropped shape; the tool shows the whole recording again while it is open; Undo, Esc
-// (also in the middle of a drag) and the C shortcut behave; items stay where they were stored.
+// (also in the middle of a drag) and the C shortcut behave; items stay where they were stored;
+// without cursor data, zooms look at the centre of the part shown.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -55,6 +56,8 @@ h.run(
   'crop: hide the taskbar, preview and export it, undo, and the keyboard',
   fx.withHome('crop', async (ctx, home) => {
     const shape = { id: 's1', start: 0, end: 4, kind: 'rect', x: 0.2, y: 0.5, w: 0.3, h: 0.2, color: '#00ff00', strokeWidth: 6, fill: false, opacity: 1, strength: 0.5 }
+    // Follows the cursor, but the recording has no cursor data (after the exported frames).
+    const follow = { id: 'zc', start: 3.2, end: 3.9, scale: 2, focus: { mode: 'cursor' }, auto: false }
     const id = fx.seedProject(home, {
       id: 'rec-crop',
       name: 'Crop test',
@@ -64,7 +67,7 @@ h.run(
       cursor: { samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }
     })
     const file = path.join(h.projectsRoot(home), id, 'project.json')
-    fs.writeFileSync(file, JSON.stringify({ ...h.readProject(home, id), shapes: [shape] }, null, 2))
+    fs.writeFileSync(file, JSON.stringify({ ...h.readProject(home, id), shapes: [shape], zooms: [follow] }, null, 2))
 
     const { app, win, logs } = await h.launch({ home })
     ctx.app = app
@@ -188,5 +191,21 @@ h.run(
     await h.sleep(300)
     h.assert((await win.$('[data-testid=crop-editor]')) === null, 'the tool stays closed after Esc in the middle of a drag')
     h.assert(JSON.stringify(h.readProject(home, id).crop) === JSON.stringify(saved), 'Esc in the middle of a drag applies nothing')
+
+    // 9. Without cursor data, zooms look at the centre of the part shown (stored in the whole frame:
+    // y = 0.5 × 672/720), not at the whole frame's centre: a new zoom (Z), and a cursor zoom set to
+    // a fixed point.
+    const centred = (focus) => focus.mode === 'fixed' && Math.abs(focus.x - 0.5) < 1e-9 && Math.abs(focus.y - 336 / 720) < 1e-9
+    await win.keyboard.press('Home')
+    await win.keyboard.press('z')
+    const added = await f.waitFor(() => h.readProject(home, id).zooms.find((z) => z.id !== follow.id) ?? null, 'the new zoom')
+    h.assert(centred(added.focus), `a new zoom looks at the centre of the crop (got ${JSON.stringify(added.focus)})`)
+    await win.click(`.zoom-seg[data-zoom="${follow.id}"]`)
+    await win.click('[aria-label="Zoom focus"] .chip:has-text("Fixed point")')
+    const fixed = await f.waitFor(() => {
+      const z = h.readProject(home, id).zooms.find((x) => x.id === follow.id)
+      return z.focus.mode === 'fixed' ? z : null
+    }, 'the cursor zoom set to a fixed point')
+    h.assert(centred(fixed.focus), `a cursor zoom set to a fixed point looks at the centre of the crop (got ${JSON.stringify(fixed.focus)})`)
   })
 )
