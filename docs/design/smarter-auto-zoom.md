@@ -463,6 +463,11 @@ no break overlaps (cur.last, e.t0).
 - `cur.end = max(cur.end, h1 + hold)`;
 - `cur.last = max(cur.last, h1)`.
 
+A hold that starts in a new range's lead-in, before its first event, comes before the range
+does. It is applied when the range is created, the same way, if no break overlaps (h0, first
+event). Only a landing meets such a hold with the hold still going: every other event cuts the
+scroll sessions (§6.1).
+
 A hold outside every range does nothing: scrolling alone never creates a zoom.
 
 **c. Bounds per range.** Let f be the range's first event and l its last (`cur.last`):
@@ -508,6 +513,8 @@ In `zoom-out` mode, A's zoom starts leaving at 2.65 s.
   landing (8.1) would be inside it, so there is none; the camera stays at scale 1 through both
   and lands at 11.1 → [10.2, 12.9]. With a 1.3 s pause (8.3–10.0 s) the first landing fits:
   [7.2, 8.65], then [10.2, 12.9].
+- A short scroll from 7.85 to 9.2 s after the main scroll starts in the landing's lead-in
+  (7.2–8.1) and keeps it in: [7.2, **11.0**] (9.2 + 1.8).
 - With **Hold after** 3.0, a long scroll at 2.2–3.8 s and a 2-notch scroll at 4.7–4.8 s: the
   short scroll is across the break from A, so it does not keep A in. The zooms are [1.1, 2.55]
   and the landing [4.0, 7.9].
@@ -873,6 +880,7 @@ needs them. Changing a frozen file or an exported signature goes through the lea
 - Typing overlapping a scroll gives no break.
 - Two long scrolls 0.9 s apart: no landing inside the second, one after it.
 - A short scroll across a break from a zoom (Hold after 3.0) does not keep that zoom in.
+- A short scroll that starts in a landing's lead-in keeps the landing zoom in.
 - **Golden parity:** every fixture of `autoZoomTrack.test.ts` and `zoom.test.ts`, with `scrolls`
   absent, `[]`, and with scrolls under `'ignore'`, deep-equals today's output (ids stripped).
 

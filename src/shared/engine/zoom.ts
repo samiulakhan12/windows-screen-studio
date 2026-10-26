@@ -172,7 +172,8 @@ const NO_SCROLL: ScrollShape = { breaks: [], holds: [] }
  * joined to the clicks around it by a pan.
  * Scrolling: no zoom clusters, merges or lasts across a break (it ends SCROLL.outBy after the
  * break starts and starts SCROLL.rest after it ends, and is dropped when that leaves less than
- * two transitions); a hold starting inside a zoom, with no break before it, keeps it in.
+ * two transitions); a hold starting inside a zoom (its lead-in included), with no break before
+ * it, keeps it in.
  * Without breaks and holds the arithmetic is exactly what it was before scrolling was recorded.
  */
 function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions, typingScale = o.scale, scroll: ScrollShape = NO_SCROLL): ZoomSegment[] {
@@ -202,7 +203,14 @@ function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptio
       cur.end = Math.max(cur.end, e.t1 + o.hold)
       cur.events.push(e)
     } else {
-      ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, first: e.t0, last: e.t1, events: [e] })
+      const r = { start: e.t0 - o.leadIn, end: e.t1 + o.hold, first: e.t0, last: e.t1, events: [e] }
+      ranges.push(r)
+      // Holds that started in its lead-in came before it existed (a scroll just before a landing): they count too.
+      for (let k = h - 1; k >= 0 && holds[k].start >= r.start; k--) {
+        if (breakBetween(holds[k].start, e.t0)) continue
+        r.end = Math.max(r.end, holds[k].end + o.hold)
+        r.last = Math.max(r.last, holds[k].end)
+      }
     }
   }
   applyHolds(Infinity)

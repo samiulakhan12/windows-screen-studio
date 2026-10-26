@@ -349,6 +349,18 @@ describe('auto zoom while scrolling: variants', () => {
     ])
   })
 
+  it('a short scroll that starts before the landing keeps the landing zoom in', () => {
+    // 7.85-9.2 s: 1.35 s, short. It starts 0.85 s after the long scroll, in the landing's lead-in (8.1 - 0.9).
+    const track = scrollTrack([A], [...MAIN, ...wheels(7.85, 9.15), wheel(9.2)])
+    expect(scrollBreaks(track, auto('zoom-out')).map((b) => [b.start, b.end])).toEqual([[3, 7]])
+    const zs = autoZoomsForTrack(track, D, auto('zoom-out'))
+    expect(spans(zs)).toEqual([
+      [1.1, 3.35],
+      [7.2, 11]
+    ])
+    expect(anchorOf(zs[1])).toEqual({ t: 8.1, x: 0.5, y: 0.5 })
+  })
+
   it('a short scroll after a long one does not keep the zoom from before it in (long hold)', () => {
     const settings = { ...auto('zoom-out'), hold: 3 }
     // A 17-notch long scroll right after A, then a 2-notch scroll at 4.7-4.8 s.
