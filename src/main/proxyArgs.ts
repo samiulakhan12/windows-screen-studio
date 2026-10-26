@@ -20,9 +20,11 @@ export interface ProxyOptions {
  * Puts every recorded sound sample at its timestamp. A MediaRecorder track has a gap where the
  * recorder dropped a packet (60 ms of Opus, under load); encoded as is, the samples after it
  * move up into the gap, so the track ends that much short of the video and runs early from the
- * gap on. Gaps over 20 ms become silence; the recorder's few ms of jitter are left alone.
+ * gap on. Gaps over 50 ms become silence. Smaller differences (a late packet, a device clock that
+ * drifts from the timestamps) are absorbed by stretching at most 48 samples a second, which is
+ * inaudible, rather than by inserting silences or cutting.
  */
-export const ON_TIMESTAMPS = 'aresample=async=1:min_hard_comp=0.02'
+export const ON_TIMESTAMPS = 'aresample=async=48:min_hard_comp=0.05'
 
 /** A separately recorded audio file (native capture) whose timeline starts `offset` seconds after the video's. */
 export interface ExternalAudio {

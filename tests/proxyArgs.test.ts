@@ -285,6 +285,31 @@ describe.skipIf(!haveFfmpeg)('recorded sound with a dropped packet (real ffmpeg)
     expect(Math.abs(onset(s) - 1.5)).toBeLessThan(0.01)
   })
 
+  it('leaves a packet that arrives a little late alone: no silence is inserted into the sound', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-late-'))
+    const tone = path.join(dir, 'tone.wav')
+    run(['-f', 'lavfi', '-i', 'aevalsrc=0.5*sin(2*PI*500*t):s=48000:d=2.4', tone])
+    const whole = path.join(dir, 'whole.webm')
+    run(['-i', tone, '-c:a', 'libopus', '-frame_duration', '60', whole])
+    // Packets from the 11th on are stamped 25 ms late (the WebM time base is 1 ms).
+    const late = path.join(dir, 'late.webm')
+    run(['-i', whole, '-c', 'copy', '-bsf:a', 'setts=ts=TS+if(gte(N\\,10)\\,25\\,0)', late])
+    const out = path.join(dir, 'mic.m4a')
+    execFileSync(ffmpeg, stemArgs(late, out, 0, 2.4), { stdio: 'ignore' })
+    const s = decode(out)
+    // The longest run of near-silence inside the continuous tone (a 500 Hz sine crosses zero
+    // every 1 ms, so a run of a few ms can only be inserted silence).
+    let longest = 0
+    let run0 = -1
+    for (let i = Math.round(0.1 * 48000); i < Math.round(2.3 * 48000); i++) {
+      if (Math.abs(s[i]) < 0.01) {
+        if (run0 < 0) run0 = i
+        longest = Math.max(longest, i - run0 + 1)
+      } else run0 = -1
+    }
+    expect(longest / 48000).toBeLessThan(0.005)
+  })
+
   it("keeps a Chromium recording's mixed sound on time after the gap", () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'ssw-gap-'))
     const out = path.join(dir, 'screen.mp4')
