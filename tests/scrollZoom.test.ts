@@ -338,6 +338,46 @@ describe('auto zoom while scrolling: variants', () => {
   })
 })
 
+describe('auto zoom while scrolling: the variants in every mode', () => {
+  const cases: { name: string; track: CursorTrack; zoomOut: [number, number][]; hold: [number, number][]; ignore: [number, number][] }[] = [
+    {
+      name: 'a 3-notch scroll at 3.0-3.2 s',
+      track: scrollTrack([A, B], [wheel(3.0), wheel(3.1), wheel(3.2)]),
+      zoomOut: [[1.1, 5], [11.1, 13.8]],
+      hold: [[1.1, 5], [11.1, 13.8]],
+      ignore: [[1.1, 3.8], [11.1, 13.8]]
+    },
+    {
+      name: 'a long scroll at 5-9 s, after A ended',
+      track: scrollTrack([A, B], wheels(5, 9)),
+      zoomOut: [[1.1, 3.8], [11.1, 13.8]],
+      hold: [[1.1, 3.8], [11.1, 13.8]],
+      ignore: [[1.1, 3.8], [11.1, 13.8]]
+    },
+    {
+      name: 'click B at 7.5 s after the 3-7 s scroll',
+      track: scrollTrack([A, click(7.5, 0.6, 0.4)], MAIN),
+      zoomOut: [[1.1, 3.35], [7.2, 9.4]],
+      hold: [[1.1, 9.3]],
+      ignore: [[1.1, 3.8], [6.6, 9.3]]
+    },
+    {
+      name: 'a click at 5.0 s inside the 3-7 s scroll',
+      track: scrollTrack([A, click(5, 0.4, 0.4), B], MAIN),
+      zoomOut: [[1.1, 3.35], [7.2, 9.9], [11.1, 13.8]],
+      hold: [[1.1, 8.8], [11.1, 13.8]],
+      ignore: [[1.1, 6.8], [11.1, 13.8]]
+    }
+  ]
+  for (const c of cases) {
+    it(c.name, () => {
+      expect(spans(autoZoomsForTrack(c.track, D, auto('zoom-out')))).toEqual(c.zoomOut)
+      expect(spans(autoZoomsForTrack(c.track, D, auto('hold')))).toEqual(c.hold)
+      expect(spans(autoZoomsForTrack(c.track, D, auto('ignore')))).toEqual(c.ignore)
+    })
+  }
+})
+
 /* ---------- the generator as it was before scrolling was recorded (5dbaccb), verbatim ---------- */
 
 let legacyId = 0
