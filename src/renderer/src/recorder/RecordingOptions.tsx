@@ -1,17 +1,39 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
-import { comboFromKeyEvent, DEFAULT_HOTKEYS, HOTKEY_ACTIONS, HOTKEY_NAMES, hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
+import {
+  anyHotkeyName,
+  comboFromKeyEvent,
+  DEFAULT_HOTKEYS,
+  DEFAULT_NOTES_HOTKEYS,
+  HOTKEY_ACTIONS,
+  hotkeyLabel,
+  isNotesHotkeyAction,
+  type AnyHotkeyAction,
+  type HotkeyAction
+} from '../../../shared/recording/hotkeys'
 import { COUNTDOWN, COUNTDOWN_CHOICES, IDLE_SECONDS, type RecordingSettings, type RecordingSettingsPatch } from '../../../shared/recording/settings'
 import type { RecorderError } from '../../../shared/recording/errors'
 import { previewCamera } from './devices'
 import './presets.css'
 
-/** Names in the narrow hotkey list (the full names are in the tooltips and messages). */
-const SHORT_NAMES: Record<HotkeyAction, string> = { stop: 'Stop', pause: 'Pause', mark: 'Zoom here' }
-const HOTKEY_HELP: Record<HotkeyAction, string> = {
+/** Names in the narrow hotkey lists (the full names are in the tooltips and messages). */
+const SHORT_NAMES: Record<AnyHotkeyAction, string> = {
+  stop: 'Stop',
+  pause: 'Pause',
+  mark: 'Zoom here',
+  notesToggle: 'Play / pause',
+  notesBack: 'Back',
+  notesForward: 'Forward'
+}
+const HOTKEY_HELP: Record<AnyHotkeyAction, string> = {
   stop: 'Stops the recording.',
   pause: 'Pauses the recording, and resumes it when pressed again.',
-  mark: 'Marks the moment for auto zoom: a zoom on the cursor right there.'
+  mark: 'Marks the moment for auto zoom: a zoom on the cursor right there.',
+  notesToggle: 'Starts or pauses the scrolling of your notes.',
+  notesBack: 'Goes back to the start of the line or block you are reading.',
+  notesForward: 'Goes on to the next line or block of your notes.'
 }
+
+const defaultHotkey = (action: AnyHotkeyAction): string => (isNotesHotkeyAction(action) ? DEFAULT_NOTES_HOTKEYS[action] : DEFAULT_HOTKEYS[action])
 
 /** A hotkey as keycaps: "Ctrl + Shift + 2" → Ctrl Shift 2. */
 export function Keys({ label }: { label: string }): JSX.Element {
@@ -65,14 +87,14 @@ export function CameraPreview({
   )
 }
 
-/** Click, then press the keys: a hotkey field with validation messages from the caller. */
-function HotkeyField({
+/** Click, then press the keys: a hotkey field with validation messages from the caller (recording or notes hotkeys). */
+export function HotkeyField({
   action,
   value,
   disabled,
   onSet
 }: {
-  action: HotkeyAction
+  action: AnyHotkeyAction
   value: string
   disabled: boolean
   /** Saves the hotkey ('' = none); resolves to an error message, or null when saved. */
@@ -82,7 +104,7 @@ function HotkeyField({
   const [partial, setPartial] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const name = HOTKEY_NAMES[action]
+  const name = anyHotkeyName(action)
 
   const commit = async (accelerator: string): Promise<void> => {
     setCapturing(false)
@@ -147,10 +169,10 @@ function HotkeyField({
         <button
           type="button"
           className="hotkey-reset"
-          title={`Reset to ${hotkeyLabel(DEFAULT_HOTKEYS[action])}`}
+          title={`Reset to ${hotkeyLabel(defaultHotkey(action))}`}
           aria-label={`Reset ${name} hotkey`}
-          disabled={disabled || busy || value === DEFAULT_HOTKEYS[action]}
-          onClick={() => void commit(DEFAULT_HOTKEYS[action])}
+          disabled={disabled || busy || value === defaultHotkey(action)}
+          onClick={() => void commit(defaultHotkey(action))}
         >
           <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M4 12a8 8 0 1 0 2.3-5.7M4 5v5h5" />
@@ -251,7 +273,10 @@ export function RecordingOptions({
               onChange={(e) => onChange({ hideDesktopIcons: e.target.checked })}
             />
           </label>
-          <label className={`toggle ${disabled ? 'disabled' : ''}`} title="Pauses when you leave the mouse and keyboard alone, and resumes as soon as you continue.">
+          <label
+            className={`toggle ${disabled ? 'disabled' : ''}`}
+            title={'Pauses when you leave the mouse and keyboard alone, and resumes as soon as you continue. While your notes scroll, Flown counts that as activity.'}
+          >
             <span>Auto-pause when idle</span>
             <input type="checkbox" aria-label="Auto-pause when idle" checked={settings.autoPause} disabled={disabled} onChange={(e) => onChange({ autoPause: e.target.checked })} />
           </label>

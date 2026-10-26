@@ -10,6 +10,7 @@ import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { formatTime } from '../../../../shared/engine/project'
 import { viewingTime } from '../../../../shared/render/overlays'
+import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
 import type { CaptionPreset, CaptionSegment, CaptionSettings, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { SearchIcon } from '../CommandPalette'
@@ -173,7 +174,95 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
       )}
+      {project.script && <ScriptSection text={project.script.text} onNotice={props.onNotice} />}
     </div>
+  )
+}
+
+/* ---------- the speaker notes read while recording ---------- */
+
+/**
+ * "Your script": the speaker notes this recording was made with (kept when "Keep a copy with
+ * the recording" was on). Folded by default. Not a transcript: it has no timings.
+ */
+function ScriptSection({ text, onNotice }: { text: string; onNotice: (message: string) => void }): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const live = useRef(true)
+  useEffect(
+    () => () => {
+      live.current = false
+    },
+    []
+  )
+
+  const use = async (replace: boolean): Promise<void> => {
+    setBusy(true)
+    try {
+      if (!replace) {
+        const current = (await window.api.getNotes()).settings.text
+        if (current.trim() && current !== text) {
+          if (live.current) setAsking(true)
+          return
+        }
+      }
+      await window.api.updateNotes({ text })
+      if (live.current) setAsking(false)
+      onNotice('Your speaker notes are this script again')
+    } catch (err) {
+      onNotice(`Your speaker notes could not be changed: ${ipcMessage(err)}`)
+    } finally {
+      if (live.current) setBusy(false)
+    }
+  }
+
+  return (
+    <section className="insp-section captions-script">
+      <h3>
+        <button type="button" className="captions-script-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true" className={`captions-script-chevron ${open ? 'open' : ''}`}>
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+          <span>{NOTES_COPY.scriptSection}</span>
+        </button>
+      </h3>
+      {open && (
+        <>
+          <p className="hint">{NOTES_COPY.scriptIntro}</p>
+          <p className="captions-script-text">{text}</p>
+          <div className="row start captions-script-actions">
+            <button
+              className="btn small"
+              onClick={() =>
+                void navigator.clipboard.writeText(text).then(
+                  () => onNotice('Script copied'),
+                  () => onNotice('The script could not be copied')
+                )
+              }
+            >
+              {NOTES_COPY.copyScript}
+            </button>
+            <button className="btn small" disabled={busy || asking} onClick={() => void use(false)}>
+              {NOTES_COPY.useAgain}
+            </button>
+          </div>
+          {asking && (
+            <div className="captions-suggestion" role="alertdialog" aria-label={NOTES_COPY.replaceQuestion}>
+              <p>{NOTES_COPY.replaceQuestion}</p>
+              <div className="row start">
+                <button className="btn small primary" disabled={busy} onClick={() => void use(true)}>
+                  {NOTES_COPY.replace}
+                </button>
+                <button className="btn small ghost" onClick={() => setAsking(false)}>
+                  {NOTES_COPY.cancel}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   )
 }
 

@@ -44,6 +44,8 @@ async function recordOnce(options: SessionOptions, callbacks: RecordingCallbacks
   const { token } = plan
   // E.g. a window recorded without cursor effects: say so before recording, not after.
   if (plan.notice) callbacks.onWarning?.(plan.notice)
+  // Why the speaker notes stay hidden in this recording (older Windows would record them).
+  if (plan.notesNotice) callbacks.onWarning?.(plan.notesNotice)
   // A hotkey another app owns: the floating bar still works.
   plan.hotkeyProblems?.forEach((p) => callbacks.onWarning?.(p))
   const session = new RecordingSession(api, plan, options)
