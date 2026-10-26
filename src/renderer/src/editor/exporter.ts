@@ -1,6 +1,7 @@
 import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
+import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { exportFrameTimes } from '../../../shared/engine/timeline'
 import { outputChapters } from '../../../shared/render/chapters'
@@ -76,11 +77,13 @@ const abortError = (): DOMException => new DOMException('Export cancelled', 'Abo
 
 /**
  * The input as this export draws it: a copy of the project with the export's aspect
- * ratio (the saved project is never touched), and the cursor's images loaded.
+ * ratio (the saved project is never touched), and the cursor's images loaded. The scene keeps
+ * the project as drawn (cropped: the view), with the same aspect ratio.
  */
 async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 'aspect'> }>(input: T): Promise<T> {
   const project = exportProject(input.project, input.settings)
-  const scene = project === input.project ? input.scene : { ...input.scene, project }
+  const drawn = input.scene.project === input.project ? project : exportProject(input.scene.project, input.settings)
+  const scene = drawn === input.scene.project ? input.scene : { ...input.scene, project: drawn }
   await prepareCursorAssets(project, projectMediaUrl(project.id))
   await prepareStyleAssets(project, projectMediaUrl(project.id))
   return { ...input, project, scene }
@@ -390,8 +393,11 @@ async function renderAll(
     const options = { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES }
     const sources = { screen: placeholder, webcam: null, background: input.background }
     // Person masks only for frames that show the camera (drawWebcamLayer's own test, same sizes as drawFrame).
-    const masked = (i: number, screenFrame: FrameImage | null): boolean =>
-      !!masks && cameraShownAt(input.scene.project, width, height, screenFrame?.width || input.scene.project.width, screenFrame?.height || input.scene.project.height, times[i])
+    const masked = (i: number, screenFrame: FrameImage | null): boolean => {
+      if (!masks) return false
+      const shown = croppedFrameSize(input.scene.crop ?? null, screenFrame?.width ?? 0, screenFrame?.height ?? 0, input.scene.project)
+      return cameraShownAt(input.scene.project, width, height, shown.width, shown.height, times[i])
+    }
     // The next camera frame and its mask, made while this frame is encoded (errors surface on its own get).
     let ahead: Promise<unknown> | null = null
     const cameraFrame = async (i: number): Promise<FrameImage | null> => {
@@ -488,7 +494,8 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     drawn = ctx
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
     // Segmentation is loaded only when the frame shows the camera.
-    const shown = cameraShownAt(input.scene.project, width, height, screenFrame?.width || project.width, screenFrame?.height || project.height, t)
+    const drawnSize = croppedFrameSize(input.scene.crop ?? null, screenFrame?.width ?? 0, screenFrame?.height ?? 0, input.scene.project)
+    const shown = cameraShownAt(input.scene.project, width, height, drawnSize.width, drawnSize.height, t)
     await (await cameraMasks(project, !!camera && shown))?.prepare(webcamFrame)
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
     drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES })

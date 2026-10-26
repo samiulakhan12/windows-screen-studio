@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { visibleSize } from '../../../shared/engine/crop'
 import { styleContentRect } from '../../../shared/engine/layout'
 import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
@@ -422,17 +423,18 @@ export function ExportDialog(props: Props): JSX.Element {
   }
 
   // Honest size info: the real output size of each choice (very wide or tall recordings
-  // are limited on their long side), and whether the recording is drawn larger than it was captured.
+  // are limited on their long side), and whether the recording (as shown: its crop) is drawn larger than it was captured.
   const sizeFor = (height: number): ExportSize => exportSize(project, { ...options, resolution: height as ExportSettings['resolution'] })
+  const shown = visibleSize(project)
   const upscaled = (height: number): boolean => {
     const d = sizeFor(height)
-    return styleContentRect(d.width, d.height, project.width, project.height, drawn.style).h > project.height * 1.05
+    return styleContentRect(d.width, d.height, shown.width, shown.height, drawn.style).h > shown.height * 1.05
   }
   const resolutionOptions = RESOLUTIONS.filter((r) => !gif || r <= GIF_MAX_HEIGHT).map((r) => {
     const d = sizeFor(r)
     const notes = [`${d.width}×${d.height}`]
     if (d.capped) notes.push(`limited to ${MAX_EXPORT_SIDE} px on the long side`)
-    if (upscaled(r)) notes.push(`larger than the recording (${project.width}×${project.height}): it will be upscaled`)
+    if (upscaled(r)) notes.push(`larger than the recording (${shown.width}×${shown.height}): it will be upscaled`)
     return { value: r, label: RESOLUTION_LABELS[r], className: upscaled(r) ? 'upscale' : '', title: notes.join('; ') }
   })
   const projectAspect = project.style.aspectRatio
@@ -472,11 +474,11 @@ export function ExportDialog(props: Props): JSX.Element {
     warnings.push({
       key: 'capped',
       cls: 'export-capped',
-      text: `This recording is very ${project.width >= project.height ? 'wide' : 'tall'}, so the video is limited to ${MAX_EXPORT_SIDE} pixels on its long side.`
+      text: `This recording is very ${shown.width >= shown.height ? 'wide' : 'tall'}, so the video is limited to ${MAX_EXPORT_SIDE} pixels on its long side.`
     })
   }
   if (!audioOnly && upscaled(resolution)) {
-    warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${project.width}×${project.height}): the video is upscaled and may look soft.` })
+    warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${shown.width}×${shown.height}): the video is upscaled and may look soft.` })
   }
   if (!audioOnly && project.transcript?.segments.length) warnings.push({ key: 'captions', cls: 'export-captions', text: `Captions are drawn on the video when Show captions is on (now ${project.captions?.show === false ? 'off' : 'on'}, in the Captions tab, where Export captions saves them as SRT or VTT).` })
   if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: 'Long GIFs get very large; MP4 is better for clips over 30 s.' })

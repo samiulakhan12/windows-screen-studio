@@ -30,6 +30,7 @@ import {
   ZOOM_STEP
 } from '../../../shared/editor/timelineScale'
 import { orPress, shortcutLabel, withShortcut } from '../../../shared/editor/shortcuts'
+import { cropOf, zoomInView } from '../../../shared/engine/crop'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
@@ -157,6 +158,8 @@ export const Timeline = memo(
     const spotlights = useSyncExternalStore(store.subscribe, () => store.state.spotlights) ?? NO_SPOTLIGHTS
     // Whether right clicks start auto zooms: what the click markers' tooltips promise.
     const rightClicks = useSyncExternalStore(store.subscribe, () => zoomSettingsOf(store.state).auto.rightClicks)
+    // The crop: zoom levels are relative to the part of the recording that is shown.
+    const crop = useSyncExternalStore(store.subscribe, () => store.state.crop)
 
     const fit = fitScale(viewport - 2 * GUTTER, duration)
     const px = zoom.fit ? fit : clampScale(zoom.px, fit)
@@ -672,7 +675,7 @@ export const Timeline = memo(
                   ))}
                 {visibleZooms.map((z) => {
                   const w = (z.end - z.start) * px
-                  const scale = zoomTargetScale(z)
+                  const scale = zoomTargetScale(zoomInView(crop ? cropOf(store.state) : null, z))
                   const tm = timings.get(z.id)
                   const kind = z.focus.mode === 'region' ? ' · region' : z.focus.mode === 'fixed' ? ' · fixed' : ''
                   return (

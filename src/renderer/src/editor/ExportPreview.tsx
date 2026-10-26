@@ -32,7 +32,12 @@ export function ExportPreview(props: Props): JSX.Element {
   const [masks, setMasks] = useState(0)
   useEffect(() => onCameraMasksChanged(() => setMasks((n) => n + 1)), [])
   const project = useMemo(() => exportProject(props.project, { aspect: props.options.aspect }), [props.project, props.options.aspect])
-  const scene = useMemo(() => (project === props.scene.project ? props.scene : { ...props.scene, project }), [project, props.scene])
+  // The scene keeps the project as drawn (cropped: the view), with the export's aspect ratio.
+  const drawn = useMemo(
+    () => (props.scene.project === props.project ? project : exportProject(props.scene.project, { aspect: props.options.aspect })),
+    [project, props.project, props.scene.project, props.options.aspect]
+  )
+  const scene = useMemo(() => (drawn === props.scene.project ? props.scene : { ...props.scene, project: drawn }), [drawn, props.scene])
   const size = exportSize(project, props.options)
   const k = Math.min(props.box.width / size.width, props.box.height / size.height)
   const css = { width: Math.max(1, Math.round(size.width * k)), height: Math.max(1, Math.round(size.height * k)) }

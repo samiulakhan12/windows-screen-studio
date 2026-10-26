@@ -1,15 +1,16 @@
 import { isCommandId } from '../../../../shared/editor/commands'
+import { setZoomLevelInView } from '../../../../shared/editor/cropEdit'
 import { zoomCause } from '../../../../shared/editor/inputEdits'
 import type { ClickRow } from '../../../../shared/engine/inputData'
 import { scrollBreaks } from '../../../../shared/engine/scroll'
 import { orPress, shortcutLabel, undoHint, withShortcut, zoomLevelKeysHint } from '../../../../shared/editor/shortcuts'
 import { ZOOM_EASINGS } from '../../../../shared/engine/easing'
+import { cropOf, fromCrop, regenerateInFrame, toCrop, zoomFromView, zoomInView } from '../../../../shared/engine/crop'
 import { formatTime } from '../../../../shared/engine/project'
 import {
   isZoomClick,
   MAX_TRANSITION,
   MIN_TRANSITION,
-  regenerateAutoZooms,
   zoomEasing,
   zoomSettingsOf,
   zoomStyleOf,
@@ -29,7 +30,7 @@ import {
   setZoomLevel,
   ZOOM_LEVEL_PRESETS
 } from '../../../../shared/editor/zoomEdit'
-import type { AutoZoomSettings, CursorTrack, Project, ScrollZoomMode, ZoomEasing, ZoomSegment, ZoomSettings } from '../../../../shared/types'
+import type { AutoZoomSettings, CursorTrack, Project, ScrollZoomMode, ZoomEasing, ZoomFocus, ZoomSegment, ZoomSettings } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
@@ -172,14 +173,23 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
   const style = zoomStyleOf(project)
   const next = nextZoom(project.zooms, zoom.id)
   const connected = isConnectedToNext(project.zooms, zoom.id, style)
-  const focus = zoom.focus
-  const level = zoomTargetScale(zoom)
+  // The zoom as the preview frames it: levels and places are relative to the part of the recording
+  // that is shown (its crop); edits are stored in the full frame.
+  const crop = cropOf(project)
+  const shown = zoomInView(crop, zoom)
+  const focus = shown.focus
+  const level = zoomTargetScale(shown)
 
   const patch = (fn: (z: ZoomSegment) => ZoomSegment, key?: string): void => {
     store.update((p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === zoom.id ? fn(z) : z)) }), key)
   }
   const setZoom = (change: Partial<ZoomSegment>, key?: string): void => patch((z) => ({ ...z, ...change, auto: false }), key)
-  const setLevel = (v: number, key?: string): void => patch((z) => setZoomLevel(z, v), key)
+  const setLevel = (v: number, key?: string): void => patch((z) => setZoomLevelInView(crop, z, v), key)
+  /** A fixed focus on the shown point (x, y). */
+  const fixedAt = (x: number, y: number): ZoomFocus => {
+    const at = fromCrop(crop, { x, y })
+    return { mode: 'fixed', x: at.x, y: at.y }
+  }
 
   /** Shows the zoom on the preview while picking on it. */
   const startPicking = (): void => {
@@ -190,15 +200,15 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
   const setFocusMode = (mode: 'cursor' | 'fixed' | 'region'): void => {
     if (mode === focus.mode) return
     // Keep looking where the zoom looks now instead of jumping to the centre.
-    const f = focus.mode === 'region' ? { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2 } : focus.mode === 'fixed' ? focus : props.focusFor(zoom)
+    const f = focus.mode === 'region' ? { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2 } : focus.mode === 'fixed' ? focus : toCrop(crop, props.focusFor(zoom))
     if (mode === 'cursor') {
       setZoom({ focus: { mode: 'cursor' } })
       props.onPickFocus(false)
     } else if (mode === 'fixed') {
-      setZoom({ focus: { mode: 'fixed', x: f.x, y: f.y } })
+      setZoom({ focus: fixedAt(f.x, f.y) })
     } else {
       const region = regionAround(f.x, f.y, level >= 1.05 ? level : 2)
-      patch((z) => setZoomLevel({ ...z, focus: region }, level >= 1.05 ? level : 2))
+      patch((z) => zoomFromView(crop, setZoomLevel({ ...zoomInView(crop, z), focus: region }, level >= 1.05 ? level : 2)))
       startPicking()
     }
   }
@@ -260,8 +270,8 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
           <button className={`btn ${props.pickFocus ? 'primary' : ''}`} onClick={() => (props.pickFocus ? props.onPickFocus(false) : startPicking())} aria-pressed={props.pickFocus}>
             <EditorIcon name="crosshair" size={16} /> {props.pickFocus ? 'Done picking' : 'Pick on preview'}
           </button>
-          <Slider label="Focus X" value={focus.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: { mode: 'fixed', x: v, y: focus.y } }, `zoom-focus:${zoom.id}`)} />
-          <Slider label="Focus Y" value={focus.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: { mode: 'fixed', x: focus.x, y: v } }, `zoom-focus:${zoom.id}`)} />
+          <Slider label="Focus X" value={focus.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: fixedAt(v, focus.y) }, `zoom-focus:${zoom.id}`)} />
+          <Slider label="Focus Y" value={focus.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: fixedAt(focus.x, v) }, `zoom-focus:${zoom.id}`)} />
         </>
       )}
       {focus.mode === 'region' && (
@@ -382,13 +392,13 @@ function AutoZoomSection({
     store.update((p) => {
       const zs = zoomSettingsOf(p)
       const next = { ...zs, auto: { ...zs.auto, ...patch } }
-      const zooms = hasInput || !next.auto.enabled ? regenerateAutoZooms(p.zooms, cursor, p.duration, next.auto).zooms : p.zooms
+      const zooms = hasInput || !next.auto.enabled ? regenerateInFrame(p.zooms, cursor, p, next.auto).zooms : p.zooms
       return { ...p, autoZoom: next.auto.enabled, zoomSettings: next, zooms }
     }, key)
   }
 
   const regenerate = (): void => {
-    const r = regenerateAutoZooms(project.zooms, cursor, project.duration, { ...auto, enabled: true })
+    const r = regenerateInFrame(project.zooms, cursor, project, { ...auto, enabled: true })
     store.update((p) => ({ ...p, autoZoom: true, zoomSettings: { ...zoomSettingsOf(p), auto: { ...zoomSettingsOf(p).auto, enabled: true } }, zooms: r.zooms }))
     onNotice(`Auto zoom: ${plural(r.added, 'zoom')}${r.kept ? `, ${r.kept} edited kept` : ''}`)
   }
