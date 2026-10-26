@@ -62,6 +62,8 @@ interface Session {
    * redo the undone one again. Remove forgets them all.
    */
   outcomes: WeakMap<DirectorSettings, FramingOutcome>
+  /** The outcome of an Apply that changed nothing: shown on that project only (its director may be an earlier Apply's). */
+  unchanged: { project: Project; outcome: FramingOutcome } | null
   busy: { listening: boolean; done: number; total: number } | null
   listeners: Set<() => void>
   /** Bumped on every change, for useSyncExternalStore. */
@@ -141,7 +143,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   const keymap = useKeymap()
   const session = useMemo<Session>(() => {
     let s = sessions.get(store)
-    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcomes: new WeakMap(), busy: null, listeners: new Set(), version: 0 }))
+    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcomes: new WeakMap(), unchanged: null, busy: null, listeners: new Set(), version: 0 }))
     return s
   }, [store])
   const subscribe = useCallback(
@@ -200,7 +202,8 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   const mayFrame = directorMayFrame(project.webcam, project.director)
   const framedByDirector = !framingUntouched(project.webcam) && framingIsDirectors(project.webcam, project.director)
   // The outcome of the Apply that wrote the project's options (none after undoing the first Apply, or after Remove).
-  const lastOutcome = project.director ? (session.outcomes.get(project.director) ?? null) : null
+  const lastOutcome =
+    session.unchanged?.project === project ? session.unchanged.outcome : project.director ? (session.outcomes.get(project.director) ?? null) : null
   // A framing measured within FACE.nearZoom / nearCrop of the camera's: Apply left the camera as it was, which shows it.
   const measuredAsShown = lastOutcome?.status === 'framed' && framingNearWebcam(lastOutcome, project.webcam)
   const framingShown = framedByDirector || measuredAsShown
@@ -255,7 +258,13 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
         const before = store.state
         store.update((p) => applyDirectorPlan(p, planDirector(inputFor(p), chosen), outcome))
         const after = store.state
-        if (after.director) session.outcomes.set(after.director, outcome)
+        // An Apply that changed nothing wrote no director of its own: its outcome belongs to this
+        // project only, not to the earlier Apply whose director it shares.
+        if (after === before) session.unchanged = { project: after, outcome }
+        else {
+          session.unchanged = null
+          if (after.director) session.outcomes.set(after.director, outcome)
+        }
         const parts = planDirector(inputFor(after), chosen).parts
         const removed = (before.layouts ?? []).some((s) => s.auto) && !(after.layouts ?? []).some((s) => s.auto)
         onNotice(directedNotice(parts, outcome, after !== before, undoHint(keymap), removed))
@@ -278,6 +287,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
       return
     }
     session.outcomes = new WeakMap()
+    session.unchanged = null
     emit(session)
     onSelect(null)
     onNotice(removedNotice(store.state !== before, undoHint(keymap)))

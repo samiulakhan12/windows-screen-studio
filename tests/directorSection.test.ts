@@ -471,6 +471,38 @@ describe('the framing outcome follows the project (ui-dir-4)', () => {
   })
 })
 
+describe('a Direct again that changed nothing', () => {
+  it('keeps its outcome on that project: an undo of an edit before it shows the earlier Apply', async () => {
+    player.webcam = CAMERA
+    framingReply = () => Promise.resolve(FRAMED)
+    render()
+    await flush()
+    let out = render()
+    ;(apply(out).props.onClick as () => void)()
+    await flush()
+    const directed = store.state
+    out = render()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
+    // An edit that leaves the director as it is, then a Direct again (the palette command runs
+    // it even when up to date) while face framing is unavailable: nothing changes.
+    store.update((p) => ({ ...p }))
+    const edited = store.state
+    expect(edited.director).toBe(directed.director)
+    framingReply = () => Promise.resolve({ status: 'unavailable', reason: 'WebGL is not available' })
+    out = render()
+    ;(apply(out).props.onClick as () => void)()
+    await flush()
+    expect(store.state).toBe(edited)
+    out = render()
+    expect(one(out, 'director-framing-unavailable')).toBeDefined()
+    // Ctrl+Z of the edit: the directed project shows its own Apply's line.
+    store.state = directed
+    out = render()
+    expect(one(out, 'director-framing-unavailable')).toBeUndefined()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
+  })
+})
+
 describe('a measured framing the camera already shows (ui-dir-5)', () => {
   it('leaves no framing to do: "Up to date", and the face row names it', async () => {
     player.webcam = CAMERA

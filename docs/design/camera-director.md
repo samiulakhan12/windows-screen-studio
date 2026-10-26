@@ -156,7 +156,9 @@ wrote the project's options: the section keeps each Apply's outcome by the `Proj
 wrote, a new object whenever that Apply changed the project, also when it changed only the layouts
 (a Direct again putting back a deleted automatic segment). So an undo shows the outcome of the
 Apply before it (none before the first Apply; Remove forgets them all), a redo the undone one again, and
-edits by hand keep it; "framed" only while the camera shows that framing:
+edits by hand keep it. An Apply that changed nothing (the palette command runs even when up to date)
+wrote no director of its own, so its outcome is shown on that project only and never replaces the
+outcome of the Apply whose director it shares; "framed" only while the camera shows that framing:
 
 | Status | Copy |
 |---|---|

@@ -240,6 +240,9 @@ It never runs live.
 - **Add**, with a new id, every zoom of `after` that matches none in `before`, overlaps no kept zoom,
   and overlaps only `before` zooms that overlap a zoom dropped by the two rules above. A `before`
   zoom the user deleted is not in `zooms`, so nothing drops for it and its stretch stays clear.
+  An `after` zoom that overlaps a `before` zoom must itself overlap a dropped zoom: it replaces
+  something rather than only covering a stretch the user cleared (delete one half of a merged
+  zoom, use the middle click again, then ignore the kept half's click: nothing comes back).
   An `after` zoom that overlaps no `before` zoom (a lone click used again) is added.
 - **Keep back**: an `after` zoom that is not added because it overlaps a kept zoom or a `before`
   zoom the user deleted keeps the zooms it overlaps that only the first rule dropped, so a zoom

@@ -213,6 +213,20 @@ describe('setClicksIgnored and rebaseAutoZooms (the §4.3 example)', () => {
     expect(spans(merged.zooms)).toEqual([[1.1, 9.8]])
   })
 
+  it('a stretch the user cleared stays clear when a later click edit drops the zoom they kept', () => {
+    const three = track([click(2, 0.3, 0.3), click(5, 0.4, 0.4), click(8, 0.6, 0.6)])
+    const split = setClicksIgnored(project({ zooms: autoZoomsForTrack(three, 20) }), three, { ignore: [{ ms: 5000 }] })
+    // Delete one half, use 5 again (nothing visible changes), then ignore the kept half's click:
+    // the kept zoom goes with its click, and nothing comes back over the cleared half.
+    for (const [keep, kept] of [
+      [1, 8000],
+      [0, 2000]
+    ]) {
+      const used = setClicksIgnored({ ...split, zooms: [split.zooms[keep]] }, three, { use: [5000] })
+      expect(spans(setClicksIgnored(used, three, { ignore: [{ ms: kept }] }).zooms)).toEqual([])
+    }
+  })
+
   it('rebaseAutoZooms: a kept zoom holds back the next replacement too', () => {
     const seg = (start: number, end: number, t: number): ZoomSegment => ({ id: `z${t}`, start, end, scale: 2, focus: { mode: 'cursor' }, auto: true, anchor: { t, x: 0.5, y: 0.5 } })
     // `before` has A, B and C; `after` replaces A and B with X, and B and C with Y.
