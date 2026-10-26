@@ -46,7 +46,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 7. **NW-13**: publishing copy pack.
 8. **NW-15 + X-03**: auto-update and a diagnostics bundle.
 
-**Agreed order (25 October 2026):** NW-08 camera director (in progress) and NW-03 smarter auto zoom (shipped), then NW-02
+**Agreed order (25 October 2026):** NW-08 camera director and NW-03 smarter auto zoom (both shipped in Wave 5), then NW-02
 teleprompter, then the quick editing wins E-01 polish in one click, E-04 waveform, E-05 snapping, E-08 J/K/L
 and preview speed, E-10 crop the recording, E-11 freeze frame.
 
@@ -154,8 +154,9 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
   - Cost estimates go stale when prices change.
 
 ### NW-08 · Automatic camera director
-**AI · M · in progress (Wave 5)**
+**AI · M · shipped (Wave 5)** · see [FEATURES.md](FEATURES.md) and `docs/design/camera-director.md`
 
+- **Shipped as designed**, with no separate face model: the face is found from the bundled selfie segmenter's person mask (the top of the silhouette), so `blaze_face_short_range` is not needed. AI labelling of intro and outro is left for later.
 - **What:** one click builds the camera track: full-screen camera for the intro and outro, a small bubble during the demo. The bubble moves away from the cursor, hides during long silences, and the crop keeps the face centred.
 - **Works with:** runs on the PC, using voice activity, cursor and typing data, and a face detector. The face detector needs MediaPipe's `blaze_face_short_range` (about 0.2 MB); only the selfie segmenter is bundled today. OpenAI, Gemini or Claude can optionally label the intro, demo and outro from the transcript.
 - **Builds on:** `LayoutSegment` (it needs an `auto` flag, as zoom segments have); `src/shared/audio/activity.ts`; the bundled MediaPipe worker.

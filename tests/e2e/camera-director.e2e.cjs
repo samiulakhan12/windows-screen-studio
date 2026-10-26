@@ -270,7 +270,16 @@ async function main() {
     h.assert(plan.state === 'ready', `the summary is ready (${plan.state})`)
     h.assert((await win.$eval('[data-testid="director-source"]', (e) => e.dataset.source)) === 'mic', 'it listens to the microphone')
     h.assert(/Direct camera/.test(await win.textContent('[data-testid="director-apply"]')), 'the button reads Direct camera')
-    await shot(win.locator('[data-testid="director"]'), 'director-section.png')
+    if (SHOTS) {
+      // Tall enough for the whole section (the inspector scrolls otherwise).
+      const size = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getContentSize())
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1440, 1560))
+      await h.sleep(600)
+      await win.locator('[data-testid="director"]').evaluate((el) => el.scrollIntoView({ block: 'start' }))
+      await shot(win.locator('[data-testid="director"]'), 'director-section.png')
+      await app.evaluate(({ BrowserWindow }, [w, hh]) => BrowserWindow.getAllWindows()[0].setContentSize(w, hh), size)
+      await h.sleep(600)
+    }
 
     await apply(win)
     const p = await saved(home, 'dir-a', (q) => (q.layouts ?? []).length === 5 && !!q.director, 'the directed camera track')
