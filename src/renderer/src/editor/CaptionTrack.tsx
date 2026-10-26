@@ -28,7 +28,7 @@ const useCaptions = (): CaptionSegment[] => {
  * moves the playhead into it, a drag moves it, the edges trim it (never over its neighbours),
  * and a double-click puts the cursor in its text in the Captions tab.
  */
-export function CaptionTrack({ px, win, duration, selection, onSelect, scrub }: TrackSlotProps): JSX.Element | null {
+export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element | null {
   const { store, player } = useEditor()
   const captions = useCaptions()
   const shown = useSyncExternalStore(store.subscribe, () => store.state.captions?.show !== false)
@@ -62,13 +62,14 @@ export function CaptionTrack({ px, win, duration, selection, onSelect, scrub }: 
     const initial = { start: seg.start, end: seg.end }
     const sx = e.clientX
     let moved = false
+    const s = snap.begin(e, { exclude: [{ owner: `caption:${seg.id}` }] })
     store.beginGesture()
     followPointer(
       e,
       (ev) => {
         if (!moved && Math.abs(ev.clientX - sx) <= 3) return
         moved = true
-        const times = dragCaptionTimes(initial, mode, (ev.clientX - sx) / px, bounds)
+        const times = s.span(ev, initial, mode, (ev.clientX - sx) / px, (d) => dragCaptionTimes(initial, mode, d, bounds))
         store.update(
           (p) =>
             p.transcript

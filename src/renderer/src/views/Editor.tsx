@@ -59,6 +59,7 @@ import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
+import { snapPref } from '../editor/snapControl'
 import { addChapterAt, addTitleAt } from '../editor/titleItems'
 import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
@@ -760,8 +761,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         turned('Audio waveform', on)
       },
 
-      // E-05 snapping (filled by the E-05 workstream)
-      toggleSnapping: () => showNotice('Coming soon'),
+      // E-05 snapping: an editor preference, not an edit (no undo step)
+      toggleSnapping: () => turned('Snapping', snapPref.toggle()),
 
       // E-08 shuttle and preview speed (filled by the E-08 workstream)
       shuttleReverse: () => showNotice('Coming soon'),
@@ -834,6 +835,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
     unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
     const on: Partial<Record<CommandId, boolean>> = {
+      toggleSnapping: snapPref.get(),
       toggleCursor: smoothCursor && p.cursor.show,
       toggleClickEffects: cursor.valid && p.cursor.clickEffect,
       toggleStraighten: smoothCursor && !!p.inputEdits?.straighten,

@@ -42,11 +42,11 @@ Snapping only chooses the numbers that an existing drag writes. It adds nothing 
 | 6 | Clicks | Only **used** clicks are targets: `ClickRow.ignored === null`. Every button counts, since `clickRows` in `engine/inputData.ts` keeps all in-video clicks. | An ignored click drives nothing and is drawn dashed. It is usually a stray click. |
 | 7 | Target collection | Targets are collected **once, at pointerdown**, from `store.state`. They are sorted and merged within 1e-6 s into a `Float64Array`. Each move does a binary search. | The dragged item changes on every move. Collecting at press time uses the other items as they were, at O(log n) per move. |
 | 8 | Own edges | Excluded by owner key: `zoom:<id>`, `annotation:<id>`, `shape:<id>`, `spotlight:<id>`, `title:<id>`, `caption:<id>`, `layout:<id>`, `chapter:<id>`, `trim:start`, `trim:end`. A layout drag also excludes the shared edges of its `stayAround` neighbours (the `before` end and the `after` start), because `dragLayout` moves those edges with it. | An edge must never snap to itself or to an edge that follows it. |
-| 9 | Playhead as target | Only when the player is paused at pointerdown (`player.playing === false`). It is never a target for a scrub, which moves the playhead itself, or for a trim drag, which seeks the playhead to the edge (`Timeline.tsx:393`). | A moving target cannot be caught reliably. |
+| 9 | Playhead as target | Only when the player is not moving at pointerdown (`player.moving === false`: not playing and, once E-08 lands, not shuttling in reverse). It is never a target for a scrub, which moves the playhead itself, or for a trim drag, which seeks the playhead to the edge (`Timeline.tsx:393`). | A moving target cannot be caught reliably. |
 | 10 | Where snapping applies | The pure `snapSpan` snaps the **raw `dt`** and then calls the unchanged helper (`dragZoomTimes`, `dragAnnotationTimes`, `dragShapeTimes`, `dragTitleTimes`, `dragCaptionTimes` or `dragLayoutTimes`), which still clamps. **Rejected:** a snap parameter on six helpers in five modules. | No helper or helper test changes. Bounds and minimum lengths behave as they do now. |
 | 11 | Snap lost to a clamp | If the clamp moves the snapped edge off its target (a neighbour bound, a minimum length), `snapSpan` returns the **unsnapped** result `resolve(dt)`. It shows no guide and clears the current target. Point drags take a `limit` and ignore targets outside it. | The edge never jumps to a place the pointer did not ask for. The guide shows only when the edge really sits on the target. |
 | 12 | Exactness | The snapped edge is written as `target.t` exactly. In a move, the other edge is `target.t ± (initial.end − initial.start)`, the same length the helpers keep (`end = start + len`). A point drag returns `target.t`. | `start + (dt + delta)` is not always `T` in floating point. Visibility tests are half-open, as in `titleVisibleAt`'s `t >= start && t < end`. `exportFrameTimes` samples `c.start` exactly whenever a frame falls on a clip's output start. A title snapped to a clip start must then show on that frame in both preview and export. |
-| 13 | Scrubbing | The press seeks exactly as today. Snapping starts once the pointer has moved **3 px** from the press. | A click on the ruler goes where you clicked, and scrubbing still finds cuts and chapters. |
+| 13 | Scrubbing | The press seeks exactly as today. Snapping starts once the pointer has moved **3 px** from the press, and stays on for the rest of the scrub. | A click on the ruler goes where you clicked, and scrubbing still finds cuts and chapters, also back near the press point. |
 | 14 | Turning it off | Alt (live, `ev.altKey`) plus a persistent toggle. **Rejected:** Ctrl, because Ctrl+wheel zooms the timeline. **Rejected:** Shift, because Shift+drag selects a range. | Alt is the convention the roadmap names. The app is Windows only, so macOS Option is not a concern. |
 | 15 | Where the toggle is stored | `localStorage['editor-snapping']`: `'0'` means off, anything else means on. Every read and write is in try/catch. This follows `CommandPalette.tsx` (`RECENT_KEY = 'editor-recent-commands'`). | **Rejected:** `project.json`. Snapping is not an edit, and storing it would dirty the project and its undo history. **Rejected:** `editor-prefs.json`. It needs a new `PrefKey` in `PREF_KEYS` (`src/shared/api/prefs.ts`, imported by `src/main/prefsIpc.ts`), and it is an async IPC read, while pointerdown needs the value synchronously. **Rejected:** app settings, because `src/shared/recording/settings.ts` belongs to the teleprompter team. |
 | 16 | Default key | `N`. It is free in `DEFAULT_KEYMAP`, and DaVinci Resolve and Final Cut use it for snapping. `S` is split. | See section 6 for the conflict check. |
@@ -156,6 +156,7 @@ export interface SnapResult {
 - `clips` is `p.clips`.
 - `clicks` is `rows.filter((r) => r.ignored === null).map((r) => r.click.t)`. These are the same rows the timeline draws: the `clickRows` prop, built from `clickRows(recorded, inputEdits)` at `Editor.tsx:235`.
 - `chapters` is `p.chapters ?? []`.
+- `freezes` is `opts.freezes`, or else `projectFreezeTargets(p)`.
 - `segments` comes from `projectSnapSegments(p, { layouts })`:
 
 | Source | Owner | Label |
@@ -169,6 +170,8 @@ export interface SnapResult {
 | `p.layouts`, only when `layouts` is true | `layout:<id>` | "Camera layout" |
 
 `layouts` is true only when the camera is present. This is the same test as `useHasCamera` in `LayoutTrack.tsx`: `store.state.hasWebcam && player.webcam !== null`. When the layout track is hidden, its blocks are not targets.
+
+`projectFreezeTargets(p, exclude)` gives the freeze targets: `freezeSnapTargets(p.clips, planOf(p))` (E-11, `engine/freeze.ts`). Those are bare source times without an owner, so an exclude entry `freeze:<id>` cannot remove them in `buildSnapIndex`. Instead, when `exclude` names freezes, the targets come from the plan of the other freezes, `freezeSnapTargets(p.clips, freezePlan(p.clips, others))`. A dragged freeze therefore never catches its own anchor or still end, and E-05 still knows nothing of the plan's internals.
 
 `buildSnapIndex(src, exclude)` emits:
 
@@ -239,13 +242,14 @@ At fit, a 10 min recording in a ~1180 px view gives `px ≈ 1.93`, so 8 px is ab
 
 ### 4.4 The session (renderer, `snapControl.ts`)
 
-`useSnapController({ pxRef, scrollerRef, clickRows, guideRef })` is called once in `Timeline`. It returns a controller with **stable identity**, built once with refs. `clickRows` is kept in a ref that is updated on every render.
+`useSnapController({ pxRef, scrollerRef, clickRows, guideRef })` is called once in `Timeline`. It returns a controller with **stable identity**, built once with refs. Its dependencies (and `store` and `player` from `useEditor`) are kept in a ref that is updated on every render.
 
 `controller.begin(e, spec)` is called once at pointerdown by each drag handler. It:
 
+- ends a session that is still open (one drag at a time);
 - reads `snapPref.get()` once;
-- builds the index:
-  `buildSnapIndex(projectSnapSources(store.state, clickRowsRef.current, { playhead: spec.noPlayhead || player.playing ? null : player.time, layouts: store.state.hasWebcam && player.webcam !== null, freezes: [] }), spec.exclude)`;
+- when snapping is on, builds the index:
+  `buildSnapIndex(projectSnapSources(store.state, clickRows, { playhead: spec.noPlayhead || player.moving ? null : player.time, layouts: store.state.hasWebcam && player.webcam !== null, freezes: projectFreezeTargets(store.state, spec.exclude) }), spec.exclude)`;
 - records `e.clientX` and `e.pointerId`, and sets `current = null`;
 - adds `pointerup` and `pointercancel` listeners on `window` in the capture phase, as `holdGesture` in `context.ts` does. They hide the guide and drop the session;
 - while the session is open, calls `preventDefault()` on Alt `keydown`/`keyup` (risk 1).
@@ -254,7 +258,7 @@ The session is gated on every move. It passes values straight through, with `cur
 
 - snapping is off;
 - `ev.altKey` is true;
-- `Math.abs(ev.clientX − sx) < (spec.slopPx ?? 0)`.
+- the pointer has not yet moved `spec.slopPx ?? 0` px from the press (`Math.abs(ev.clientX − sx) >= slop` once opens this gate for the rest of the session).
 
 With the default slop 0, the gate is open at the press itself, so a range anchor can snap.
 
@@ -322,7 +326,7 @@ The one numerical effect is #12: snapped edges are exactly the target. A title o
 - Markup: `<button className="btn ghost icon-btn tl-snap" aria-pressed={on} aria-label="Snapping" data-testid="snap-toggle">` with `<EditorIcon name="magnet" size={16} />`.
 - Tooltip when on: `withShortcut('Snapping on: edges and the playhead snap to cuts, clicks, chapters and other items. Hold Alt while dragging to place freely', keymap.toggleSnapping)`.
 - Tooltip when off: `withShortcut('Snapping off: items move freely. Click to snap to cuts, clicks, chapters and other items', keymap.toggleSnapping)`.
-- Pressed style: `.tl-snap[aria-pressed="true"] { color: var(--accent-text) }`.
+- Pressed style: `.tl-snap[aria-pressed="true"] { color: var(--accent-text) }`. The button is 28 px high, to sit level with the `.tl-zoom` group.
 - It is never disabled. A click toggles it without a notice, since the button shows its own state.
 
 **Hint line.** The `.tl-hint` text (`Timeline.tsx:534`) becomes "Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while dragging to place freely". The wording avoids "Alt+drag", which already means a range on the clip track. The span ellipsises on narrow windows; no e2e test reads it.
@@ -331,7 +335,7 @@ The one numerical effect is #12: snapped edges are exactly the target. A title o
 
 - Markup: `<div class="snap-guide" data-testid="snap-guide" hidden><span class="snap-label"/></div>`. While shown, it carries `data-kind` and `data-t` (the target's source time).
 - Line (`snap.css`): `position:absolute; top:0; bottom:0; left:10px; width:1px; margin-left:-0.5px; background:var(--accent-400); pointer-events:none; z-index:5`. That places it above the track blocks and click markers (z-index 1–4) and below `.playhead` (z-index 6). It is placed with `transform: translateX(t * px)`, like the playhead.
-- Label: a 10 px pill at the top of the ruler on `var(--accent-400)`. It flips to the left of the line (class `flip`) within 100 px of the content's right edge.
+- Label: a 10 px pill at the top of the ruler, white on `var(--accent-500)` (white on `--accent-400` is 4.2:1, under AA; `styles.css`). It flips to the left of the line (class `flip`) when its measured width would run past the visible right edge of the timeline (`scrollLeft + clientWidth` of the scroller), which also covers the content's right edge.
 - Label text comes from `snapLabel(target)`, which is `"<label> · <formatTime(t)>"`. `formatTime` floors the tenths, as every timeline tooltip does. Examples:
   - "Cut · 0:04.0"
   - "Split · 0:07.5"
@@ -357,12 +361,12 @@ The one numerical effect is #12: snapped edges are exactly the target. A title o
 |---|---|---|---|---|---|
 | `toggleSnapping` | Timeline | Snapping | `snap magnet align edges cuts clicks chapters playhead stick toggle` | `toggle: true` | `N` |
 
-`CommandId` is inferred from `COMMAND_LIST` in `commands.ts`, so adding the entry after `timelineFit` adds the id. `DEFAULT_KEYMAP` gets `toggleSnapping: ['N']`.
+`CommandId` is inferred from `COMMAND_LIST` in `commands.ts`, so adding the entry after `timelineFit` adds the id. `DEFAULT_KEYMAP` gets `toggleSnapping: ['N']`. Both were added in the wave's contracts commit (`editing-wins.md` §3), with the `n` → `toggleSnapping` key case in `tests/editingWinsContracts.test.ts`.
 
 Wiring in `Editor.tsx`:
 
 - The `commands` map (`Editor.tsx:600`, next to `timelineFit` at line 745) gets `toggleSnapping: () => turned('Snapping', snapPref.toggle())`, where `toggle()` returns the new state. The map is typed `Record<CommandId, () => void>`, so the entry is required.
-- The palette `on` map (`Editor.tsx:804`) gets `toggleSnapping: snapPref.get()`.
+- The palette `on` map (`Editor.tsx:804`) gets `toggleSnapping: snapPref.get()`, as its first entry (the other features append theirs at the end).
 
 The keydown handler, the Shortcuts dialog and custom shortcuts read `COMMANDS` and `DEFAULT_KEYMAP` and need no change. `N` is a plain key without `inText`, so it does nothing while typing.
 
@@ -398,6 +402,7 @@ These are committed first as types and stubs that pass values through, so the ap
 |---|---|---|
 | `src/shared/editor/snapping.ts` | `SNAP`, `SnapKind`, `SNAP_PRIORITY`, `SnapEdge`, `DragMode`, `Span`, `SnapTarget`, `SnapSegment`, `SnapSources`, `SnapExclude`, `SnapIndex`, `SnapView`, `SnapResult` | as in section 3 |
 | 〃 | `projectSnapSegments` | `(p: Project, opts: { layouts: boolean }) => SnapSegment[]` |
+| 〃 | `projectFreezeTargets` | `(p: Pick<Project, 'clips' \| 'freezes'>, exclude?: readonly SnapExclude[]) => number[]` (added in the implementation, §4.1) |
 | 〃 | `projectSnapSources` | `(p: Project, rows: readonly ClickRow[], opts: { playhead: number \| null; layouts: boolean; freezes?: readonly number[] }) => SnapSources` |
 | 〃 | `buildSnapIndex` | `(src: SnapSources, exclude?: readonly SnapExclude[]) => SnapIndex` |
 | 〃 | `dragPoints` | `(initial: Span, mode: DragMode, dt: number) => number[]` |
@@ -411,8 +416,8 @@ These are committed first as types and stubs that pass values through, so the ap
 | 〃 | `SnapSession` | `{ span(ev: PointerEvent, initial: Span, mode: DragMode, dt: number, resolve: (dt: number) => Span): Span; at(ev: PointerEvent, t: number, limit?: { min: number; max: number }): number }` |
 | 〃 | `SnapController` | `{ begin(e: ReactPointerEvent, spec?: SnapBegin): SnapSession }` (stable identity) |
 | 〃 | `useSnapController` | `(deps: { pxRef: RefObject<number>; scrollerRef: RefObject<HTMLDivElement>; clickRows: readonly ClickRow[]; guideRef: RefObject<SnapGuideHandle> }) => SnapController` |
-| `src/renderer/src/editor/SnapGuide.tsx` | `SnapGuideHandle` | `{ show(t: number, pxPerSec: number, target: SnapTarget): void; hide(): void }` |
-| 〃 | `SnapGuide` | `forwardRef<SnapGuideHandle>` component |
+| 〃 | `SnapGuideHandle` | `{ show(t: number, pxPerSec: number, target: SnapTarget): void; hide(): void }` (declared here by the contracts commit; `SnapGuide.tsx` imports it) |
+| `src/renderer/src/editor/SnapGuide.tsx` | `SnapGuide` | `forwardRef<SnapGuideHandle>` component |
 | 〃 | `SnapButton` | `() => JSX.Element` (reads `snapPref` with `useSyncExternalStore` and the keymap with `useKeymap`) |
 | `src/renderer/src/editor/LayoutTrack.tsx` | `TrackSlotProps.snap` | `snap: SnapController` (additive field) |
 | `src/shared/editor/commands.ts` | `COMMAND_LIST` entry | `{ id: 'toggleSnapping', title: 'Snapping', category: 'Timeline', keywords: '…', toggle: true }` (so `CommandId` gains `'toggleSnapping'`) |
@@ -447,24 +452,21 @@ These are committed first as types and stubs that pass values through, so the ap
 - `src/renderer/src/editor/LayoutTrack.tsx`: the `TrackSlotProps.snap` field, plus a `begin` and a move line in `onSegmentDown`.
 - `src/renderer/src/editor/TitleTrack.tsx`: a `begin` and a move line in `onTitleDown` and in `onChapterDown`.
 - `src/renderer/src/editor/CaptionTrack.tsx`: a `begin` and a move line in `onCaptionDown`.
-- `src/shared/editor/commands.ts` (**SHARED**): one entry after `timelineFit`.
-- `src/shared/editor/shortcuts.ts` (**SHARED**): one line, `toggleSnapping: ['N']`, after `timelineZoomOut` in `DEFAULT_KEYMAP`.
-- `src/renderer/src/views/Editor.tsx` (**SHARED**): one entry in the `commands` map and one in the palette `on` map.
+- `src/shared/editor/commands.ts` and `src/shared/editor/shortcuts.ts` (**SHARED**, frozen): the `toggleSnapping` entry and `N` came with the contracts commit; E-05 does not edit them.
+- `src/renderer/src/views/Editor.tsx` (**SHARED**): the import of `snapPref`, the `toggleSnapping` handler in the E-05 group of the `commands` map, and one entry in the palette `on` map.
 - `src/renderer/src/editor/EditorIcon.tsx` (**SHARED**): one `PATHS` entry, `magnet: 'M6 3v8a6 6 0 0 0 12 0V3h-4v8a2 2 0 0 1-4 0V3zM6 7h4M14 7h4'`.
-- `tests/shortcuts.test.ts` (**SHARED**): one case in the event table, `[ev('n', 'KeyN'), 'toggleSnapping']`.
+- `tests/shortcuts.test.ts`: not changed. The `n` → `toggleSnapping` case is in `tests/editingWinsContracts.test.ts` (contracts commit).
 - `tests/e2e/w3fix-timeline.e2e.cjs` and `tests/e2e/editor.e2e.cjs` (**SHARED**, only if a run fails; see section 10): one line in the setup that turns snapping off for tests that assert free placement.
-- `docs/FEATURES.md` (**SHARED**, additive): one bullet after "Zoomable, scrollable timeline": "✓ **Snapping**: item edges, chapter flags, trim handles, range ends and the playhead snap to cuts, clicks, chapters, the playhead and other items while dragging, with a labelled guide; hold `Alt` to place freely; the magnet button or `N` turns it off."
-- `docs/ROADMAP.md` (**SHARED**, additive): mark E-05 done.
+- `docs/FEATURES.md` and `docs/ROADMAP.md`: edited by the lead after the merge (`editing-wins.md` decision 4). The suggested FEATURES bullet, after "Zoomable, scrollable timeline": "✓ **Snapping**: item edges, chapter flags, trim handles, range ends and the playhead snap to cuts, clicks, chapters, the playhead and other items while dragging, with a labelled guide; hold `Alt` to place freely; the magnet button or `N` turns it off." ROADMAP: mark E-05 done.
 
 **Not touched:** `src/shared/types.ts`, `src/shared/engine/*`, `src/shared/render/*`, `src/renderer/src/render/*`, `player.ts`, `exporter.ts`, `src/shared/api/prefs.ts`, all of `src/main/**`, and every recording or teleprompter file (`recordingIpc.ts`, `src/shared/recording/**`, `Home.tsx`, `Toolbar.tsx`, `recorder/**`).
 
 **Interaction with the parallel features**
 
-- **E-11 Freeze frame.** Freeze frames are `freeze` targets. E-11 exports `freezeTimes(p: Project): number[]` from its own file and replaces `freezes: []` in `snapControl.ts` `begin` (**SHARED**, that argument only).
-  - If E-11 stores a freeze as a clip, its edges are already `clip` targets and `freezes` stays `[]`.
-  - If freeze markers can be dragged, E-11's handler calls `snap.begin(e, { exclude: [{ owner: 'freeze:' + id }] })` and then `s.at(ev, t, { min: 0, max: duration })`.
+- **E-11 Freeze frame.** Freeze frames are `freeze` targets, from E-11's `freezeSnapTargets(clips, plan)` in `engine/freeze.ts` (a stub returning `[]` until E-11 lands). E-05 wires it in already (`projectFreezeTargets`, §4.1), so nothing in `snapControl.ts` changes when E-11 merges.
+  - E-11's `FreezeMarks` drag calls `snap.begin(e, { exclude: [{ owner: 'freeze:' + id }] })` and then `session.at(ev, t, limit)`. The exclusion plans the freeze targets without the dragged freeze. Because the playhead follows `at` during that drag, passing `noPlayhead: true` as well keeps the playhead's press-time position from catching the anchor.
 - **E-04 Waveform.** It adds no targets. The guide (z-index 5) draws above the waveform. Snapping to pause edges is in Later.
-- **E-08 J/K/L.** The playhead is a target only while paused (`player.playing`). If shuttle or reverse playback uses a separate flag, `begin` must read it too.
+- **E-08 J/K/L.** The playhead is a target only while the player is not moving (`player.moving`, a contracts getter that E-08 extends to reverse shuttling).
 - **E-10 Crop.** No interaction; crop is spatial.
 - **E-01 Polish.** The cuts, zooms and layouts it makes become targets. Polish never touches `snapPref`.
 
@@ -504,7 +506,7 @@ Common fixture `F`: clips `[{c0, 0–4, 1×}, {c1, 6–10, 1×}, {c2, 10–12, 2
 
 Existing tests that must stay unchanged and green:
 
-- `tests/shortcuts.test.ts` (the conflicts/reserved test now covers `N`, plus the new `n` → `toggleSnapping` case);
+- `tests/shortcuts.test.ts` (the conflicts/reserved test now covers `N`) and `tests/editingWinsContracts.test.ts` (the `n` → `toggleSnapping` case);
 - `tests/commands.test.ts` (unique ids, palette search order);
 - `tests/editorClips.test.ts`, `tests/timeline.test.ts`;
 - every drag-helper test (`dragZoomTimes`, `dragCaptionTimes` and the others are not edited).
@@ -516,8 +518,7 @@ Existing tests that must stay unchanged and green:
 - `h.tempHome`, `h.launch`, `h.run`, `h.readProject`, `h.sleep` and `h.assert` from `helpers.cjs`;
 - `f.seedProject`, `f.openProject` and `f.waitFor` from `editor-fixtures.cjs`. `seedProject` takes `zooms` directly;
 - a local copy of `openSeeded(ctx, tag, opts, patch)` from `w3fix-timeline.e2e.cjs`, which patches `chapters` into `project.json`;
-- local copies of `xForTime` and `centerOf` from `editor.e2e.cjs` (`GUTTER = 10`), and of `playheadTime` from `w3fix-timeline.e2e.cjs`;
-- `waitSaved` (`.save-state[data-state="saved"]`).
+- local copies of `xForTime` and `centerOf` from `editor.e2e.cjs` (`GUTTER = 10`), and of `playheadTime` and `saved` (polls `project.json` until it matches) from `w3fix-timeline.e2e.cjs`.
 
 The shared `drag` helper releases the mouse at the end. This test therefore adds a local `dragHold(win, from, to, steps = 8)` that does `mouse.move`, `mouse.down` and the stepped moves, without `mouse.up`.
 
@@ -533,7 +534,7 @@ The shared `drag` helper releases the mouse at the end. This test therefore adds
 
    Then `mouse.up()` and assert:
    - the guide is hidden;
-   - after `waitSaved`, `h.readProject(home, id).zooms[0]` has `end === 4` and `Math.abs(start − 3) < 1e-9`.
+   - once saved, `h.readProject(home, id).zooms[0]` has `end === 4` and `Math.abs(start − 3) < 1e-9`.
 3. **One undo step.** `Control+Z`, then `[data-zoom="z1"]` has `data-start="1"` and `data-end="2"`.
 4. **Alt frees.** `keyboard.down('Alt')`, the same `dragHold`, and before release assert the guide is hidden. Release, `keyboard.up('Alt')`. Assert `end > 4 + 2 / px` and `start > 3 + 2 / px`. `Control+Z`.
 5. **`N` toggles.** Press `n` and assert:
@@ -547,7 +548,7 @@ The shared `drag` helper releases the mouse at the end. This test therefore adds
    - the guide has `data-kind="chapter"` and the text "Chapter · Demo · 0:09.0".
 
    Release; the guide is hidden.
-7. **Trim handle to the cut end.** Drag from `centerOf('.trim-handle.start')` to `xForTime(6) − 5`, at the handle's y. After `waitSaved`, `clips.length === 1` and `clips[0].start === 6`. Unsnapped, `setTrimStart` would leave `start ≈ 6 − 5 / px`.
+7. **Trim handle to the cut end.** Drag from `centerOf('.trim-handle.start')` by `xForTime(6) − xForTime(0) − 5` px, at the handle's y (the handle is 10 px wide, so its centre is 5 px right of the kept start). Once saved, `clips.length === 1` and `clips[0].start === 6`. Unsnapped, `setTrimStart` would leave `start ≈ 6 − 5 / px`.
 8. **No errors.** `ctx.logs` has no `[pageerror]` or `[console.error]` entries.
 
 **Existing e2e suite.** Snapping is on by default, so run the whole suite (`tests/e2e/run-all.cjs`). Tests that place items or the playhead freely and assert tight positions could now snap. The ones known to be at risk:
@@ -570,7 +571,7 @@ For any test that fails, add `await win.evaluate(() => localStorage.setItem('edi
 4. **Existing e2e tests break** because snapping is on by default (section 10). Mitigation: run the suite and switch snapping off in the setup of failing tests. This touches shared test files by one line each.
 5. **Hysteresis may feel sticky.** The constants live in `SNAP` and can be tuned without changing the logic or the shape of the tests.
 6. **Merge conflicts in `Timeline.tsx`** with E-04 and E-11. Mitigation: the exact region list in section 9; no E-05 change touches the clip track's render body.
-7. **E-11's data shape** is unknown until it lands. Mitigation: `freezes: []` behind one argument, with the rule for both possible shapes in section 9.
+7. **E-11's freeze targets** are only a stub until E-11 lands. Mitigation: E-05 reads them through E-11's own `freezeSnapTargets` and `freezePlan` (contracts), so they appear with no further change; the unit test for a dragged freeze compares against those functions and holds before and after the merge.
 8. **Building the index at every press**, including plain scrubs: O(n log n) for a few thousand targets, far below a frame. Unit case 22 guards it. If profiling disagrees, cache the index by `store.revision`, `clickRows` and the playhead.
 
 ---

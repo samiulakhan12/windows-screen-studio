@@ -18,6 +18,7 @@ import {
 import { annotationLanes, dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { timelineGaps, type Gap } from '../../../shared/editor/clips'
 import { dragShapeTimes, isPrivacyKind, itemLanes, shapeLabel } from '../../../shared/editor/shapes'
+import { SNAP } from '../../../shared/editor/snapping'
 import {
   clampScale,
   fitScale,
@@ -33,7 +34,7 @@ import {
 import { orPress, shortcutLabel, withShortcut } from '../../../shared/editor/shortcuts'
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
-import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
+import { keptBounds, MIN_CLIP, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomSettingsOf, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { formatLevel } from '../../../shared/editor/zoomEdit'
 import type { ClickRow } from '../../../shared/engine/inputData'
@@ -48,6 +49,8 @@ import { addShapeAt, revealItem } from './playheadItems'
 import { followPointer } from './pointer'
 import { clickState, clickTooltip, type Selection } from './selection'
 import { ShapeIcon } from './shapeIcons'
+import { useSnapController, type SnapGuideHandle } from './snapControl'
+import { SnapButton, SnapGuide } from './SnapGuide'
 import './shapes.css'
 import './zoom.css'
 
@@ -163,6 +166,8 @@ export const Timeline = memo(
     const px = zoom.fit ? fit : clampScale(zoom.px, fit)
     const pxRef = useRef(px)
     pxRef.current = px
+    const guideRef = useRef<SnapGuideHandle>(null)
+    const snap = useSnapController({ pxRef, scrollerRef, clickRows, guideRef })
     const width = Math.max(viewport, duration * px + 2 * GUTTER)
 
     /* ---------- viewport, scroll and render window ---------- */
@@ -332,7 +337,9 @@ export const Timeline = memo(
 
     const scrub = (e: ReactPointerEvent): void => {
       player.seek(timeAt(e.clientX))
-      track(e, (ev) => player.seek(timeAt(ev.clientX)))
+      // The press goes exactly where it is; moving on snaps (once past a small slop).
+      const s = snap.begin(e, { noPlayhead: true, slopPx: SNAP.scrubSlopPx })
+      track(e, (ev) => player.seek(s.at(ev, timeAt(ev.clientX))))
     }
 
     /* ---------- clip track ---------- */
@@ -343,13 +350,15 @@ export const Timeline = memo(
     const onClipTrackDown = (e: ReactPointerEvent): void => {
       if (e.button !== 0) return
       if (e.shiftKey || e.altKey) {
-        const anchor = timeAt(e.clientX)
+        // Shift+drag ranges snap, both ends; Alt+drag ranges never do.
+        const s = e.shiftKey && !e.altKey ? snap.begin(e) : null
+        const anchor = s ? s.at(e.nativeEvent, timeAt(e.clientX)) : timeAt(e.clientX)
         setDraftRange({ start: anchor, end: anchor })
         let last: Range = { start: anchor, end: anchor }
         track(
           e,
           (ev) => {
-            const t = timeAt(ev.clientX)
+            const t = s ? s.at(ev, timeAt(ev.clientX)) : timeAt(ev.clientX)
             last = { start: Math.min(anchor, t), end: Math.max(anchor, t) }
             setDraftRange(last)
           },
@@ -383,12 +392,15 @@ export const Timeline = memo(
       const initial = clips
       const from = edge === 'start' ? initial[0].start : initial[initial.length - 1].end
       const sx = e.clientX
+      // Only targets the trim can reach; the playhead follows the trimmed edge, so it is none.
+      const limit = edge === 'start' ? { min: 0, max: initial[initial.length - 1].end - MIN_CLIP } : { min: initial[0].start + MIN_CLIP, max: duration }
+      const s = snap.begin(e, { exclude: [{ owner: `trim:${edge}` }], noPlayhead: true })
       store.beginGesture()
       track(
         e,
         (ev) => {
-          const dt = (ev.clientX - sx) / pxRef.current
-          const next = edge === 'start' ? setTrimStart(initial, from + dt) : setTrimEnd(initial, from + dt, duration)
+          const t = s.at(ev, from + (ev.clientX - sx) / pxRef.current, limit)
+          const next = edge === 'start' ? setTrimStart(initial, t) : setTrimEnd(initial, t, duration)
           store.update((p) => ({ ...p, clips: next }), `trim-${edge}`)
           const b = keptBounds(next)
           player.seek(edge === 'start' ? b.start : b.end)
@@ -414,11 +426,12 @@ export const Timeline = memo(
       const bounds = zoomDragBounds(zooms, z.id, duration)
       const initial = { start: z.start, end: z.end }
       const sx = e.clientX
+      const s = snap.begin(e, { exclude: [{ owner: `zoom:${z.id}` }] })
       store.beginGesture()
       track(
         e,
         (ev) => {
-          const times = dragZoomTimes(initial, mode, (ev.clientX - sx) / pxRef.current, bounds)
+          const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragZoomTimes(initial, mode, d, bounds))
           store.update((p) => ({ ...p, zooms: p.zooms.map((x) => (x.id === z.id ? { ...x, ...times, auto: false } : x)) }), `zoom-drag:${z.id}`)
         },
         () => store.endGesture(),
@@ -432,11 +445,12 @@ export const Timeline = memo(
       const mode = dragMode(e)
       const initial = { start: a.start, end: a.end }
       const sx = e.clientX
+      const s = snap.begin(e, { exclude: [{ owner: `annotation:${a.id}` }] })
       store.beginGesture()
       track(
         e,
         (ev) => {
-          const times = dragAnnotationTimes(initial, mode, (ev.clientX - sx) / pxRef.current, duration)
+          const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragAnnotationTimes(initial, mode, d, duration))
           store.update((p) => ({ ...p, annotations: p.annotations.map((x) => (x.id === a.id ? { ...x, ...times } : x)) }), `annotation-drag:${a.id}`)
         },
         (moved) => {
@@ -455,11 +469,12 @@ export const Timeline = memo(
       const initial = { start: item.start, end: item.end }
       const sx = e.clientX
       const key = `${item.type}-drag:${item.id}`
+      const s = snap.begin(e, { exclude: [{ owner: `${item.type}:${item.id}` }] })
       store.beginGesture()
       track(
         e,
         (ev) => {
-          const times = dragShapeTimes(initial, mode, (ev.clientX - sx) / pxRef.current, duration)
+          const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragShapeTimes(initial, mode, d, duration))
           if (item.type === 'shape') store.update((p) => ({ ...p, shapes: (p.shapes ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
           else store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
         },
@@ -532,8 +547,9 @@ export const Timeline = memo(
       <div className="timeline">
         <div className="tl-head">
           <span className="tl-hint">
-            Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add
+            Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while dragging to place freely
           </span>
+          <SnapButton />
           <div className="tl-zoom" role="group" aria-label="Timeline zoom">
             <button className="btn ghost icon-btn" onClick={() => setScale(px / ZOOM_STEP)} disabled={zoom.fit} title={withShortcut('Zoom out timeline', keymap.timelineZoomOut)} aria-label="Zoom out timeline">
               <EditorIcon name="minus" size={16} />
@@ -766,10 +782,11 @@ export const Timeline = memo(
                 {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
               </div>
 
-              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
-              <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
-              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} />
+              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
+              <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
+              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
 
+              <SnapGuide ref={guideRef} />
               <div className="playhead" ref={playheadRef} onPointerDown={(e) => e.button === 0 && scrub(e)} />
             </div>
           </div>

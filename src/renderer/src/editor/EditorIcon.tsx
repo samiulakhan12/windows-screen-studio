@@ -14,6 +14,7 @@ const PATHS: Record<string, string> = {
   plus: 'M12 5v14M5 12h14',
   minus: 'M5 12h14',
   fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  magnet: 'M6 3v8a6 6 0 0 0 12 0V3h-4v8a2 2 0 0 1-4 0V3zM6 7h4M14 7h4',
   crosshair: 'M12 2v5M12 17v5M2 12h5M17 12h5M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   restore: 'M4 11a8 8 0 1 1 2.3 5.7M4 5v6h6',
   check: 'M5 12l5 5 9-10',
