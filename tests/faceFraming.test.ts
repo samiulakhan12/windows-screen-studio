@@ -34,6 +34,49 @@ const either =
   (x: number, y: number): boolean =>
     shapes.some((s) => s(x, y))
 
+/**
+ * The same head and neck, but the shoulders widen row by row from the neck (16 wide at y 76)
+ * to 120 wide at y 100, as a real segmentation mask does, instead of in one step.
+ */
+const slopedPerson =
+  (cx = 166) =>
+  (x: number, y: number): boolean => {
+    if (((x - cx) / 20) ** 2 + ((y - 48) / 26) ** 2 <= 1) return true
+    if (y >= 48 && y < 76 && Math.abs(x - cx) <= 8) return true
+    if (y >= 76) return Math.abs(x - cx) <= 8 + Math.min(1, (y - 76) / 24) * 52
+    return false
+  }
+
+/**
+ * A real mask: what the bundled person segmentation made of the e2e camera fixture
+ * (tests/e2e/camera-fixtures.cjs, the person at 0.62 of a 640 x 360 picture, scaled to 256 x 144:
+ * hair from y 0.12, eyes at 0.34, chin at 0.55, 0.19 wide; shoulders from 0.6 down). Rows as
+ * "y:x0-x1,..." runs of person pixels (alpha >= 128, x1 exclusive).
+ */
+const REAL_MASK =
+  '18:153-163,164-165 19:149-167 20:147-169 21:146-171 22:144-172 23:143-174 24:140-174 25:139-176 26:138-177 27:138-178 28:138-179 29:137-179 30:137-179 ' +
+  '31:137-179 32:137-179 33:137-180 34:137-180 35:135-179,180-181 36:135-179,180-181 37:135-176,178-179,180-181 38:135-176,178-179,180-181 39:135-177,180-181 ' +
+  '40:135-177,180-181,182-183 41:135-178,180-181,182-183 42:135-178,180-181,182-183 43:135-178,180-181,182-183 44:135-178,180-181,182-183 45:135-178 46:135-178 ' +
+  '47:135-180 48:135-136,137-181 49:136-181 50:136-182 51:136-183 52:136-184 53:136-183 54:136-183 55:136-183 56:136-182 57:136-181 58:137-181 59:137-179,180-181 ' +
+  '60:137-178,180-181 61:137-178 62:138-178 63:138-178 64:140-178 65:141-178 66:141-177 67:142-177 68:142-175,176-177 69:142-175 70:144-174 71:145-173 72:146-172 ' +
+  '73:146-171 74:146-170 75:147-169 76:147-169 77:147-169 78:147-169 79:147-169 80:147-169 81:147-169 82:147-169 83:147-169 84:147-169 85:147-170 86:146-171 ' +
+  '87:146-173 88:141-144,145-146,147-173,174-175 89:140-178 90:137-181 91:131-132,135-184 92:131-187 93:128-189 94:125-194 95:122-197 96:116-200 97:113-203 ' +
+  '98:112-203 99:109-207 100:109-209 101:108-209 102:107-209 103:106-211 104:105-211 105:105-211 106:104-213 107:103-213 108:103-214 109:103-215 110:103-215 ' +
+  '111:103-215 112:103-215 113:103-215 114:103-215 115:103-215 116:103-215 117:103-215 118:103-215 119:103-215 120:103-104,105-215 121:105-214 122:105-215 ' +
+  '123:103-215 124:103-215 125:103-215 126:103-215 127:102-215 128:102-215 129:102-215 130:102-215 131:102-215 132:102-215 133:102-215 134:101-215 135:101-215 ' +
+  '136:101-213,214-215 137:101-213,214-215 138:101-213,214-215 139:101-213,214-215 140:101-213,214-215 141:101-213,214-215 142:100-213 143:101-210'
+
+/** A mask (W x H) of "y:x0-x1,..." runs. */
+function maskOfRuns(text: string): Uint8ClampedArray {
+  const rows = new Map(
+    text.split(' ').map((row) => {
+      const [y, runs] = row.split(':')
+      return [Number(y), runs.split(',').map((r) => r.split('-').map(Number))] as const
+    })
+  )
+  return mask((x, y) => (rows.get(Math.floor(y)) ?? []).some(([x0, x1]) => x >= x0 && x < x1))
+}
+
 const box = faceBoxOfMask(mask(person()), W, H)
 
 describe('faceBoxOfMask', () => {
@@ -87,6 +130,30 @@ describe('faceBoxOfMask', () => {
     const b = faceBoxOfMask(mask(person(96), 192, 144), 192, 144)
     expect(b!.cx).toBeCloseTo(0.5, 2)
     expect(Math.abs(b!.w - 39 / 192)).toBeLessThanOrEqual(0.01)
+  })
+
+  it('finds shoulders that widen gradually from the neck', () => {
+    // Measured against the row above, no row of the slope is 1.6x wider: the head would be
+    // taken as 0.2 of the height tall and the eyes put on the forehead (0.24).
+    const b = faceBoxOfMask(mask(slopedPerson()), W, H)
+    expect(b).not.toBeNull()
+    expect(Math.abs(b!.cx - box!.cx)).toBeLessThanOrEqual(0.005)
+    expect(Math.abs(b!.eyeY - 0.33)).toBeLessThanOrEqual(0.02)
+    expect(b!.h).toBeGreaterThan(FACE.headRows + 1 / H)
+  })
+
+  it('puts the eyes where they are in a real segmentation mask', () => {
+    const b = faceBoxOfMask(maskOfRuns(REAL_MASK), W, H)
+    expect(b).not.toBeNull()
+    expect(Math.abs(b!.cx - 0.62)).toBeLessThanOrEqual(0.01)
+    expect(Math.abs(b!.w - 0.19)).toBeLessThanOrEqual(0.02)
+    // The drawn eyes are at 0.34 (0.216 when the shoulders were missed).
+    expect(Math.abs(b!.eyeY - 0.34)).toBeLessThanOrEqual(0.03)
+    // The framing of the e2e test (camera only: cap 1.3) and of the worked example (cropY about 0.40).
+    const f = framingFromFaces(Array.from({ length: 8 }, () => b), 640, 360, FACE.largeCameraZoom)!
+    expect(f.zoom).toBe(1.3)
+    expect(Math.abs(f.cropX - 0.62)).toBeLessThanOrEqual(0.01)
+    expect(Math.abs(f.cropY - 0.4)).toBeLessThanOrEqual(0.03)
   })
 })
 

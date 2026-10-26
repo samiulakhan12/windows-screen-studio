@@ -10,7 +10,7 @@ const fx = require('./render-fixtures.cjs')
 /* ---------- the camera fixture: a person the segmentation model recognises ---------- */
 
 /**
- * Draws a person (hair, face with eyes, brows, nose and mouth, neck, shoulders in a shirt) in
+ * Draws a person (hair, face with eyes, brows, nose and mouth, neck, shoulders in a dark shirt) in
  * front of a detailed background of fine stripes, with a red marker left of the person and a
  * blue one right of it (mirroring swaps them). `cx`: where the person stands across the picture
  * (0..1, default the middle); `markers: false` leaves the markers out. Runs in the app's page;
@@ -44,24 +44,33 @@ function drawPerson(W, H, opts = {}) {
     g.ellipse(x, y, rx, ry, 0, a0, a1)
     g.fill()
   }
+  // Shoulders in a dark shirt: from the base of the neck down the slope of the shoulders to round
+  // shoulder tips, then the arms. The segmentation model takes this for the person, as it does a
+  // real person's clothes (a flat green shirt on the stripes passed for background: the mask
+  // was a head on a neck, which no real camera gives).
   g.save()
   g.beginPath()
-  g.moveTo(cx - S * 0.42, H)
-  g.quadraticCurveTo(cx - S * 0.4, H * 0.68, cx - S * 0.12, H * 0.64)
-  g.lineTo(cx + S * 0.12, H * 0.64)
-  g.quadraticCurveTo(cx + S * 0.4, H * 0.68, cx + S * 0.42, H)
+  g.moveTo(cx - S * 0.4, H)
+  g.lineTo(cx - S * 0.39, H * 0.78)
+  g.quadraticCurveTo(cx - S * 0.38, H * 0.7, cx - S * 0.3, H * 0.675)
+  g.quadraticCurveTo(cx - S * 0.15, H * 0.64, cx - S * 0.09, H * 0.6)
+  g.lineTo(cx + S * 0.09, H * 0.6)
+  g.quadraticCurveTo(cx + S * 0.15, H * 0.64, cx + S * 0.3, H * 0.675)
+  g.quadraticCurveTo(cx + S * 0.38, H * 0.7, cx + S * 0.39, H * 0.78)
+  g.lineTo(cx + S * 0.4, H)
   g.closePath()
-  g.fillStyle = '#2d6a4f'
+  g.fillStyle = '#1f2a44'
   g.fill()
   g.clip()
-  g.fillStyle = '#f1f5f9'
+  g.fillStyle = 'rgba(0, 0, 0, 0.18)'
+  for (const s of [-1, 1]) g.fillRect(cx + s * S * 0.34 - S * 0.06, H * 0.76, S * 0.12, H * 0.24)
+  g.fillStyle = '#d9a37e'
   g.beginPath()
-  g.moveTo(cx - S * 0.08, H * 0.64)
-  g.lineTo(cx, H * 0.74)
-  g.lineTo(cx + S * 0.08, H * 0.64)
+  g.moveTo(cx - S * 0.09, H * 0.6)
+  g.lineTo(cx, H * 0.72)
+  g.lineTo(cx + S * 0.09, H * 0.6)
   g.closePath()
   g.fill()
-  for (let i = 0; i < 3; i++) ellipse(cx, H * (0.79 + i * 0.07), S * 0.012, S * 0.012, '#1b4332')
   g.restore()
   g.fillStyle = '#d9a37e'
   g.fillRect(cx - S * 0.06, H * 0.5, S * 0.12, H * 0.16)
@@ -102,8 +111,8 @@ function drawPerson(W, H, opts = {}) {
  */
 async function personVideo(seconds, { cx = 0.5, markers = true } = {}) {
   fs.mkdirSync(fx.MEDIA_CACHE, { recursive: true })
-  // The middle, with markers, keeps the name it always had (the cache of earlier runs).
-  const variant = cx === 0.5 && markers ? 'person-v3' : `person-v3-cx${cx}${markers ? '' : '-plain'}`
+  // A new name whenever the drawing changes, so no earlier run's cached video is used.
+  const variant = cx === 0.5 && markers ? 'person-v4' : `person-v4-cx${cx}${markers ? '' : '-plain'}`
   const file = path.join(fx.MEDIA_CACHE, `${variant}-640x360-30-${seconds}s.mp4`)
   if (fs.existsSync(file)) return file
   const png = path.join(fx.MEDIA_CACHE, `${variant}.png`)
