@@ -1,4 +1,5 @@
 import type { ExportCapabilities, FfmpegVideoEncoder } from '../api/export'
+import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
 import type { AspectRatio, ExportFormat, Project } from '../types'
 import type { ExportOptions } from './exportPresets'
@@ -48,11 +49,12 @@ export function exportProject<P extends Pick<Project, 'style'>>(project: P, opti
   return aspectRatio === project.style.aspectRatio ? project : { ...project, style: { ...project.style, aspectRatio } }
 }
 
-/** Effective export size and rate, with whether the size was capped. */
+/** Effective export size and rate, with whether the size was capped. 'auto' follows the recording as shown (its crop). */
 export function exportSize(project: Project, settings: ExportOptions): ExportSize {
   const gif = settings.format === 'gif'
   const height = gif ? Math.min(settings.resolution, GIF_MAX_HEIGHT) : settings.resolution
-  let size = outputSize(exportAspect(project, settings), project.width, project.height, height)
+  const shown = visibleSize(project)
+  let size = outputSize(exportAspect(project, settings), shown.width, shown.height, height)
   if (settings.maxWidth && size.width > settings.maxWidth) {
     const k = settings.maxWidth / size.width
     size = { width: Math.max(2, settings.maxWidth - (settings.maxWidth % 2)), height: even(size.height * k) }
