@@ -1,4 +1,5 @@
 import { CaptionTrack, CaptionTrackLabel } from './CaptionTrack'
+import { ClipWaveform, useWaveformHint } from './ClipWaveform'
 import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
 import { TitleTrack, TitleTrackLabel } from './TitleTrack'
 import {
@@ -574,7 +575,7 @@ export const Timeline = memo(
                 ))}
               </div>
 
-              <div className="tl-track clip-track" onPointerDown={onClipTrackDown} title="Click to move the playhead, Shift+drag to select a range to cut">
+              <div className="tl-track clip-track" onPointerDown={onClipTrackDown} title={`Click to move the playhead, Shift+drag to select a range to cut${useWaveformHint()}`}>
                 {clips
                   .filter((c) => overlaps(c, win))
                   .map((c) => {
@@ -593,6 +594,7 @@ export const Timeline = memo(
                       </div>
                     )
                   })}
+                <ClipWaveform px={px} win={win} duration={duration} />
                 {gaps.map((g) => (
                   <GapBlock
                     key={`${g.kind}:${g.start}`}
