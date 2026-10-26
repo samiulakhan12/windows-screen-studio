@@ -756,6 +756,7 @@ What the implementation does where it differs from, or adds to, the sections abo
 - `pause()` during a hold keeps `time` on the held frame (the element can sit up to 1 ms off it).
 - New getter `heldFreeze` (the id being held); the timeline's progress fill reads it.
 - `PreviewAudio.frame()` is unchanged: `startStem` does nothing while a hold is held, which covers `play`, `apply` and the drift loop. On leaving, the player calls `hold(h, h.length)` **before** `jump`, so the stems start again.
+- With E-08 merged: a hold's clock runs at `|viewRate|` (never 0 while playing); resuming a paused hold re-applies the viewing rate of the clip under it and starts the soundtrack only when it is audible; starting reverse playback leaves any hold.
 - `FreezeStills` takes an optional `onReady` (the paused player redraws) and stops asking for stills once its hidden video fails. A still that is not ready yet is not logged.
 
 **UI**
@@ -768,6 +769,7 @@ What the implementation does where it differs from, or adds to, the sections abo
 
 **Tests**
 - The `readFreezes`, command and key cases of §10 are in the frozen `tests/editingWinsContracts.test.ts`, so they are not repeated. `tests/freezeData.test.ts` covers `correctProjectMedia`.
+- `tests/previewFreeze.test.ts` drives the player with stand-ins (videos, sound, stills, clock): holds, preview speed, pause and play inside a hold, seek and reverse, the end hold, continue stills, and no change without freezes. It covers what the e2e cannot time under Xvfb.
 - `tests/audioPlan.test.ts` also renders two holds through ffmpeg: silence on the hold frames, and each tick after a hold within 20 ms of where the video shows it.
 
 **Docs:** `docs/FEATURES.md` and `docs/ROADMAP.md` (§9) are left to the lead (editing-wins.md decision 4).
