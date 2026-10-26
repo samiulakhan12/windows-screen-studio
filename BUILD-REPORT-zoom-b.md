@@ -237,4 +237,9 @@ The existing `autoZoomTrack`, `zoom`, `zoomCamera`, `smartSpeed`, `clickSound`, 
 - `npm run build`: exit 0. The only warning is the existing chunk-size one; there is no
   circular-import warning.
 - E2E (`xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/run-all.cjs zoom cursor editor`,
-  after installing `openbox`): running; results below when finished.
+  after installing `openbox`): **5/5 e2e files passed, 28 PASS, 0 FAIL**, exit 0.
+  - The files were `audit-editor`, `cursor` (styles, halo, click effects, click sounds in export
+    and preview, tilt and trail, custom cursor), `editor-defaults`, `editor` (14 tests) and
+    `zoom` (region, pull back and connected zooms, easing and regenerating auto zoom).
+  - Only this subset was run, as asked. The full suite (including the recording e2e files that
+    stray detection at finalize could affect) was not run here.
