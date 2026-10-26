@@ -186,7 +186,7 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       const f = summary.framing
       const face = f?.status === 'framed' ? `face centred (${zoomText(f.zoom)})` : ''
       const what = cameraWords(summary.camera)
-      const body = !changed ? 'already directed' : what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || 'nothing to change'
+      const body = !changed ? (what.length ? 'already directed' : 'nothing to change') : what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || 'nothing to change'
       // Why the face was not framed (not found, unavailable); nothing when it was not asked for.
       const why = f && f.status !== 'framed' ? framingLine(f, false)?.text : null
       return `Camera: ${body}${why ? `. ${why}` : ''}`

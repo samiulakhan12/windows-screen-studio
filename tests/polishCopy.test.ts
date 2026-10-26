@@ -78,8 +78,13 @@ describe('summary lines', () => {
   })
 
   it('unchanged steps say why nothing changed', () => {
-    const s = summary(['style', 'zoom', 'silences', 'director'].map((x) => unchanged(x as PolishStepResult['step'])), { zooms: { auto: 10, kept: 2 }, style: 'Studio' })
+    const s = summary(['style', 'zoom', 'silences', 'director'].map((x) => unchanged(x as PolishStepResult['step'])), {
+      zooms: { auto: 10, kept: 2 },
+      camera: { intro: true, outro: false, hidden: 0, moves: 0 },
+      style: 'Studio'
+    })
     expect(polishResultLines(s).map((l) => l.text)).toEqual(['Style: already Studio', 'Auto zoom: already on · 12 zooms', 'No silences of 1.0 s or more', 'Camera: already directed'])
+    expect(polishResultLines(summary([unchanged('director')]))[0].text).toBe('Camera: nothing to change')
     expect(polishResultLines(summary([unchanged('silences')], { silenceAction: 4 }))[0].text).toBe('No silences of 1.0 s or more to speed up')
   })
 
