@@ -2,7 +2,7 @@
 
 Part of Wave 6, "Easier editing". The shared rules for this wave (file ownership, the shared files, merge order and the keymap) are in [editing-wins.md](editing-wins.md).
 
-Status: design (reviewed). Roadmap item: `docs/ROADMAP.md` "Easier editing", E-04 (size S).
+Status: implemented (branch `w6-e04`). Roadmap item: `docs/ROADMAP.md` "Easier editing", E-04 (size S). Where the build differs from the first design, this document has been updated; the list is in [§13](#13-changes-made-while-building-it).
 
 The clip track shows the recording's sound as a waveform. You can see where you talk and where the pauses are, so a Shift+drag range, a split or a trim lands in a pause and not in the middle of a word.
 
@@ -52,7 +52,7 @@ It changes nothing in `project.json`, the preview, the export or the undo histor
   - `Project.id`, `Project.hasAudio`, `Project.clips` and `Project.duration`.
   - `Project.audioStems`. When a stem file is missing, the editor's copy has no `audioStems` (`openedWithoutStems`), so the waveform falls back to the mix by itself.
   - `Project.audio`, through `audioLook`.
-- **View preference.** `localStorage['editor-waveform']` is `'off'` when hidden. Anything else, a missing key or a storage error means shown. Every read and write is wrapped in try/catch, as in `CommandPalette.loadRecent` / `saveRecent`.
+- **View preference.** `localStorage['editor-waveform']` is `'off'` when hidden (`'on'` once shown again). Anything else, a missing key or a storage error means shown. Every read and write is wrapped in try/catch, as in `CommandPalette.loadRecent` / `saveRecent`. A value storage refuses to keep is held in memory for the session, as `snapPref` does, so the toggle still works.
 - **Style presets and "Save as default style"** do not carry it. It is a viewing preference, not a look of the video.
 
 New pure module `src/shared/audio/waveform.ts`:
@@ -121,8 +121,8 @@ Cost is O(columns + windows in range). At fit on a 1 h recording that is 72,000 
 
 **4.5 Pauses: `pauseRanges(activity, duration, minLength = WAVEFORM.minPause)`**
 
-- **Gaps kept.** The gaps of `mergeRanges(activity)` inside `[0, duration]` with length ≥ `minLength − 1e-9`, including a leading and a trailing gap.
-- **Nothing heard.** If `activity` is empty, return `[]`, as `findSilences` does: "Nothing when nothing is heard at all". This also covers a muted recording, since `sourceActivity` returns `[]` when no source is heard.
+- **Gaps kept.** The gaps of `mergeRanges(activity)`, clipped to `[0, duration]`, with length ≥ `minLength − 1e-9`, including a leading and a trailing gap.
+- **Nothing heard.** If no activity is left inside `[0, duration]`, return `[]`, as `findSilences` does: "Nothing when nothing is heard at all". This also covers a muted recording, since `sourceActivity` returns `[]` when no source is heard.
 - **Null activity.** If `sourceActivity` returns `null` (levels missing), no pauses are drawn.
 - **Short gaps.** `detectActivity` already joins gaps shorter than `ACTIVITY.hold` (0.5 s), so the shaded bands are whole pauses.
 - **Where they differ from Remove silences** (decision 10):
@@ -150,7 +150,7 @@ Cost is O(columns + windows in range). At fit on a 1 h recording that is 72,000 
    - `up`: from `c − max(h·A, 0.5)` to `c`.
    - `down`: from `c` to `c + max(h·A, 0.5)`.
    - Fill with `--wave-mix`, `--wave-mic` or `--wave-system`, or `--wave-muted` when the lane is muted.
-5. **Cuts and trims.** For each gap from `timelineGaps(clips, duration)` (`shared/editor/clips.ts`) that overlaps `win`, set `globalCompositeOperation = 'destination-out'` and `fillRect` at `globalAlpha = 1 − WAVEFORM.gapAlpha`. Then reset to `source-over`. The gap's hatching, painted below, shows through.
+5. **Cuts and trims.** For each gap from `timelineGaps(clips, duration)` (`shared/editor/clips.ts`) that overlaps `win`, set `globalCompositeOperation = 'destination-out'` and `fillRect` with an opaque fill at `globalAlpha = 1 − WAVEFORM.gapAlpha`. Then reset to `source-over`. The fill must be opaque: `destination-out` removes the fill's alpha times `globalAlpha`, so the last lane's colour (alpha 0.78) would leave 45% instead of 30%. The gap's hatching, painted below, shows through.
 6. **Speed badges.** `.speed-badge` lives inside `.clip-block`. A selected block (`z-index: 1`) and a hovered block (`filter: brightness`) are stacking contexts, so no z-index on the badge can lift it above the canvas. Instead, `draw()` clears the badge's box: for every clip with `c.speed !== 1 && (c.end − c.start)·px > 28` (the same condition `Timeline` uses), `clearRect((c.start − win.start)·px + 4, 1, 46, 19)`.
 7. **Bookkeeping.** Set `canvas.dataset.draws = String(++draws)` imperatively. There is no React state, so drawing never re-renders.
 
@@ -196,19 +196,20 @@ Cost is O(columns + windows in range). At fit on a 1 h recording that is 72,000 
 ## 5. UI and copy
 
 - **Where.** `<ClipWaveform px={px} win={win} duration={duration} />` goes inside `.clip-track` in `src/renderer/src/editor/Timeline.tsx`, right after the `clips.filter(...).map(...)` block.
-  - It reads `id`, `hasAudio`, `audioStems`, `audio`, `clips` and `duration` itself with `useSyncExternalStore(store.subscribe, …)`, as `Timeline` does for `shapes` and as `LayoutTrack` does.
+  - It reads `id`, `hasAudio`, `audioStems`, `audio` and `clips` itself with `useSyncExternalStore(store.subscribe, …)`, as `Timeline` does for `shapes` and as `LayoutTrack` does. `duration` comes from its props.
   - It sets `data-testid="clip-waveform"`, `data-state`, `data-sources` (`"mix"`, `"mic,system"`, …), `data-pauses` (`"3.50-7.50;…"`, source seconds to 2 decimals), `data-from` (`win.start`), `data-px` and `data-draws`.
 - **Styles.** In the new `src/renderer/src/editor/waveform.css`, imported by `ClipWaveform.tsx`. Selectors use two classes because `editor.css` loads later (see the note at the top of `captions.css`).
   ```css
   .tl-track.clip-track { --wave-mix: rgba(240,237,255,.78); --wave-mic: rgba(240,237,255,.82);
     --wave-system: rgba(253,186,116,.85); --wave-muted: rgba(255,255,255,.22); --wave-pause: rgba(5,5,10,.32); }
-  .clip-track .clip-wave { position:absolute; top:0; bottom:0; pointer-events:none; z-index:1; }
+  .clip-track .clip-wave { position:absolute; top:0; height:100%; pointer-events:none; z-index:1; }
   ```
+  `height: 100%`, not `bottom: 0`: an absolutely positioned canvas is a replaced element, so `top` and `bottom` do not stretch it and it would take its device-pixel height. Its `left` and `width` are set inline.
   Orange is used for the system sound because it contrasts with `--track-clip` (#6d4aff) and `--track-clip-fast` (#0ea5c6) (`styles.css`). There is no light theme in the renderer.
 - **Tooltip.** The `.clip-track` `title` becomes `` `Click to move the playhead, Shift+drag to select a range to cut${useWaveformHint()}` ``. `useWaveformHint` reads a small module-level status store that `ClipWaveform` publishes to (state, stems or mix, any lane muted), with `useSyncExternalStore`. `Timeline` re-renders only when that status changes.
   - mix, ready: ` · Waveform: the recording's sound; darker stretches are pauses`
   - stems, ready: ` · Waveform: microphone above the line, system sound below; darker stretches are pauses`
-  - any lane muted: append ` (grey: muted)`
+  - any lane muted (ready only): append ` (grey: muted)`
   - loading: ` · Reading the sound for the waveform…`
   - error: ` · The waveform could not read the sound`
   - none or hidden: `''`
@@ -222,7 +223,7 @@ Cost is O(columns + windows in range). At fit on a 1 h recording that is 72,000 
 |---|---|---|---|---|---|
 | `toggleWaveform` | Audio waveform on the timeline | Timeline | `toggle: true` | `sound wave levels audio pauses silence talk show hide` | none |
 
-- **`src/shared/editor/commands.ts`.** Add the entry after `timelineFit`. `DEFAULT_KEYMAP` (`shortcuts.ts`) spreads `COMMAND_IDS.map(id => [id, []])`, so **`shortcuts.ts` needs no change**.
+- **`src/shared/editor/commands.ts`.** The entry after `timelineFit` was added by the wave's contracts commit (`482c370`), with the rest of the wave's commands. `DEFAULT_KEYMAP` (`shortcuts.ts`) spreads `COMMAND_IDS.map(id => [id, []])`, so **`shortcuts.ts` needs no change**.
 - **`src/renderer/src/views/Editor.tsx`**, in the `commands` `useMemo`:
   ```ts
   toggleWaveform: () => {
@@ -281,11 +282,12 @@ Edits made while looking at the waveform stay the existing single steps:
   - one import line;
   - one JSX line inside `.clip-track`, after the clip-block `.map`;
   - the `.clip-track` `title` expression.
-- `src/shared/editor/commands.ts` (**SHARED** with every E-feature that adds commands): one entry after `timelineFit`.
-- `src/renderer/src/views/Editor.tsx` (**SHARED**): one import line, one handler in the `commands` map, one line in `unavailable` and one in `on` in `paletteEntries`.
-- `tests/commands.test.ts` (**SHARED**): one new `describe` block at the end.
-- `docs/FEATURES.md`: one bullet next to "Zoomable, scrollable timeline".
-- `docs/ROADMAP.md`: mark E-04 done.
+- `src/renderer/src/views/Editor.tsx` (**SHARED**): one import line, the handler in the E-04 group of the `commands` map, and two statements in `paletteEntries`, after the `unavailable` and `on` literals (`unavailable.toggleWaveform = …`, `on.toggleWaveform = …`), so no line of the literals changes.
+
+Changed by others (editing-wins.md):
+
+- `src/shared/editor/commands.ts`: the entry after `timelineFit` is in the contracts commit. `tests/commands.test.ts` is contracts-only in this wave (editing-wins.md §2), so the command's tests are a `describe` block in `tests/waveform.test.ts`.
+- `docs/FEATURES.md` (one bullet next to "Zoomable, scrollable timeline") and `docs/ROADMAP.md` (E-04 done) are edited by the lead after the merge (editing-wins.md decision 4).
 
 **Not touched:**
 
@@ -341,11 +343,11 @@ Edits made while looking at the waveform stay the existing single steps:
   - For clips `[clip(0,12)]` and for `[clip(0,6), clip(6,12,2)]`: every part of `findSilences(act, clips, { minLength: 1, padding: 0.25 })` has `[start − 0.25, end + 0.25]` inside a pause range (±1e-6).
   - Muting the recording (`audio.muted:true`) gives `sourceActivity` → `[]`, and then `pauseRanges` → `[]`.
 
-**Unit: `tests/commands.test.ts`** (new `describe('audio waveform command')`):
+**Unit: the command** (`describe('audio waveform command')` in `tests/waveform.test.ts`; `tests/commands.test.ts` is contracts-only in this wave):
 
 - `commandInfo('toggleWaveform')` has category `'Timeline'`, title `'Audio waveform on the timeline'` and `toggle: true`.
 - It is in `PALETTE_COMMANDS`.
-- `titles('waveform')[0]` is its title. `titles` is the file's existing helper over `searchCommands(PALETTE_COMMANDS, q)`.
+- `titles('waveform')[0]` is its title. `titles` is a helper over `searchCommands(PALETTE_COMMANDS, q)`, as in `tests/commands.test.ts`.
 - `titles('pauses')` contains it. `smartSpeed` also has "pauses" in its keywords, so this is not checked as first.
 - `DEFAULT_KEYMAP.toggleWaveform` deep-equals `[]`.
 
@@ -362,7 +364,7 @@ Scenario, "waveform shows talk and pauses, follows a cut, costs nothing during p
    - "Talk": `id: 'rec-talk'`, 12 s, 640×360, 30 fps, `audio:true`, with `screen.mp4` replaced by a symlink to `talkSilenceTalk()`.
    - "Silent": `id: 'rec-silent'`, `audio:false`.
    - Launch, wait for `.home`, and `f.openProject(win, 'Talk')`.
-2. **Ready.** Wait for `[data-testid="clip-waveform"][data-state="ready"]` (30 s). Assert `data-sources === 'mix'` and that `data-pauses` parses to one range ≈ 3.5–7.5 (±0.15).
+2. **Ready.** Wait for `[data-testid="clip-waveform"][data-state="ready"]` (30 s). Assert `data-sources === 'mix'` and that `data-pauses` parses to one range ≈ 3.5–7.5 (±0.15), and that the clip track's tooltip ends with the mix hint.
 3. **Pixels.** In `win.evaluate`, let `r = canvas.width / canvas.clientWidth` and `x = round((t − data-from)·data-px·r)`. A pixel is lit when R > 150 and A > 100. This keeps out the dark pause band, which has alpha about 82.
    - At t = 2.0 s, lit pixels span more than 50% of the height.
    - At t = 5.5 s, they span less than 10%, and the pixel 3·r rows from the top has A > 40 and R < 60 (the pause band).
@@ -370,16 +372,16 @@ Scenario, "waveform shows talk and pauses, follows a cut, costs nothing during p
    - Shift+drag on `.clip-track` from x(1.0) to x(2.5), as in `editor.e2e.cjs`.
    - Wait for `[data-testid="range-selection"]`, then press Delete.
    - Wait for one `.gap-block.cut`.
-   - Assert that the mean alpha of the column at t = 1.75 is less than 0.5 × the alpha at t = 3.0.
+   - Assert that the mean alpha of the column at t = 1.75 is 0.3 × the alpha at t = 3.0 (±0.08). A looser "under 0.5×" missed the translucent-fill bug of §4.6 step 5 (it gave 0.46×).
 5. **Playback.** Read `data-draws`. Press Space, wait 1.5 s, press Space. Assert `data-draws` is unchanged. At fit the timeline does not scroll.
 6. **Undo.** Press Ctrl+Z. Assert no `.gap-block.cut` remains and `data-pauses` is unchanged. This runs before reopening, because a reopened editor starts a new history.
 7. **Hide.**
    - Press Ctrl+K, type "waveform", press Enter.
-   - Wait for `.notice:has-text("Audio waveform off")` and assert there is no canvas.
+   - Before Enter, the palette shows the toggle "On". Wait for `.notice:has-text("Audio waveform off")` and assert there is no canvas and no hint in the tooltip.
    - Click `button[aria-label="Back to recordings"]`, then `f.openProject(win, 'Talk')`. Assert still no canvas (`localStorage`).
    - Toggle it back on through the palette and wait for `ready`.
 8. **No sound.**
-   - Go back and open "Silent". Assert there is no `[data-testid="clip-waveform"]`.
+   - Go back and open "Silent". Assert there is no `[data-testid="clip-waveform"]` and the tooltip is as before.
    - Press Ctrl+K and type "waveform". Assert the first `.palette-item` is `.unavailable`, with title "This recording has no sound".
 
 ## 11. Risks
@@ -406,3 +408,14 @@ Scenario, "waveform shows talk and pauses, follows a cut, costs nothing during p
 - Reflecting volume and normalisation in the shape, and a sample-peak mode for music-heavy recordings.
 - A waveform in the Clip panel's Silences list.
 - Fixing `measureLevels`' comment, and returning an empty envelope for files without an audio stream (`src/main/audioAnalysis.ts`).
+
+## 13. Changes made while building it
+
+- **Commands.** `commands.ts` was not touched here: the contracts commit added the entry. The command's unit tests live in `tests/waveform.test.ts`, because `tests/commands.test.ts` is contracts-only in this wave (§9, §10).
+- **`Editor.tsx`.** The two palette lines are statements after the `unavailable` and `on` literals, so no existing line changes (§9).
+- **Gap fade.** The `destination-out` fill is opaque; with the lane's translucent colour still set it removed 55% instead of 70% (§4.6 step 5). The e2e check is tightened to 0.3× ± 0.08 (§10).
+- **Canvas height.** `height: 100%` instead of `bottom: 0` (§5).
+- **Preference.** A value storage refuses is kept in memory for the session; `'on'` is written when shown (§3).
+- **Pauses.** Activity is clipped to `[0, duration]` before the "nothing heard" check, so sound only past the end shades nothing (§4.5).
+- **Hint.** ` (grey: muted)` is added to the ready hint only (§5). `duration` comes from props (§5).
+- **Checked by hand, not in the e2e test.** With both stems and a 2× clip: the microphone above the line in lavender, the system sound below in orange, the speed badge's box clear, and muting the system sound turns its lane grey and adds "(grey: muted)" to the tooltip (one redraw).
