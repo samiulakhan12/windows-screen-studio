@@ -58,6 +58,7 @@ import {
   notesStatus,
   onNotesChange,
   prepareRecordingNotes,
+  recordingNotesRect,
   setNotesRecording,
   showNotes
 } from './notes/notesWindow'
@@ -89,6 +90,7 @@ import {
   hideToolbar,
   isToolbarVisible,
   prepareToolbar,
+  raiseToolbar,
   sendToolbarLevel,
   sendToolbarStatus,
   showToolbar,
@@ -330,6 +332,12 @@ function refreshToolbarStatus(): void {
   if (!active || lastStatus.state === 'idle') return
   lastStatus = toolbarStatus(lastStatus)
   sendToolbarStatus(lastStatus)
+}
+
+/** Something about the speaker notes changed: the bar shows it, and stays above them (they were just shown, or moved). */
+function notesChanged(): void {
+  refreshToolbarStatus()
+  raiseToolbar()
 }
 
 /** Auto-pause for the recording that just started, when it is switched on. */
@@ -592,10 +600,12 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   bubbleLook = await bubbleLookOfDefaults()
   grant = { id: request.sourceId, name: source.name, systemAudio: request.systemAudio }
   const regionRect = region && source.display ? regionToRect(region, source.display.bounds) : null
-  prepareToolbar(source.display, regionRect)
   marks = 0
-  // The speaker notes first: a rehearsal window closes (releasing its hotkeys) before any hotkey is registered.
+  // The speaker notes first: a rehearsal window closes (releasing its hotkeys) before any hotkey
+  // is registered, and the bar is placed where the notes cannot hide its buttons.
   notesNotice = prepareNotes(source, regionRect, dir)
+  const notesRect = recordingNotesRect()
+  prepareToolbar(source.display, regionRect, notesRect ? [notesRect] : [])
   hotkeyProblems = registerHotkeys(settings.hotkeys)
   stopShortcut = !settings.hotkeys.stop || !!registered.stop
   lastStatus = toolbarStatus({ state: 'idle', elapsed: 0 })
@@ -793,10 +803,12 @@ function setStatus(token: string, status: RecorderStatusUpdate): void {
         s.phase = 'recording'
       }
       sendToolbarStatus(lastStatus)
-      // The notes first, so the bar ends up above them.
+      // The notes first, then the bar, raised above them. Notes whose page is still loading show
+      // later, and their first show raises the bar again (notesChanged).
       showNotes()
       setNotesRecording(status.state)
       showToolbar()
+      raiseToolbar()
       const main = getMainWindow()
       if (main?.isVisible()) main.hide()
       return
@@ -1070,7 +1082,7 @@ export function registerRecordingIpc(): void {
   ipcMain.handle('settings:savePreset', (_e, preset: unknown): AppSettings => appSettings().savePreset(preset))
   ipcMain.handle('settings:deletePreset', (_e, id: unknown): AppSettings => appSettings().deletePreset(id))
   ipcMain.handle('settings:checkHotkey', (_e, action: AnyHotkeyAction, accelerator: string) => checkHotkey(action, accelerator))
-  onNotesChange(refreshToolbarStatus)
+  onNotesChange(notesChanged)
 
   // Desktop icons that a crashed session left hidden come back now.
   void icons.restore()

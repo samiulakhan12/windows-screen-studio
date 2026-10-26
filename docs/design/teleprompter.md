@@ -107,17 +107,27 @@ spelling hint for transcription (NW-09).
 
 **Recording.**
 
-1. `prepare()` (after `prepareToolbar`): the notes are **used** when
-   `showWhileRecording && hasNotesText(text)`. Then:
+1. `prepare()` (before `prepareToolbar`, and before any hotkey is registered): the notes are
+   **used** when `showWhileRecording && hasNotesText(text)`. Then:
    - the rehearsal window, if open, is closed;
    - the window's rectangle is computed; `notesAllowed` (§2.10) decides whether it may be shown;
    - if allowed: the `'record'` window is created hidden and protected, the notes hotkeys are
      registered, the store is held (§2.11), and `script.txt` is written to the recording
      folder when `keepWithRecording` (async; a failure is logged, never fatal);
    - if refused: `CapturePlan.notesNotice` says why; no window, no hotkeys.
-2. Each `'countdown'` status: `showNotes()` **before** `showToolbar()` (the bar ends up above it),
-   then `setNotesRecording('countdown')`. `showNotes` is idempotent (countdown statuses arrive
-   every second) and waits for `ready-to-show` if the page is still loading. The page shows the
+
+   Then the bar is placed clear of the notes: `prepareToolbar(display, area, [recordingNotesRect()])`
+   skips each of its usual spots (below the area, above it, the bottom centre) that would be under
+   the notes, and else goes just below or just above them. Otherwise the 600 DIP bar lands under the
+   560 DIP notes for many areas (an area that reaches the bottom of the screen and starts less than
+   about 330 DIP from the top puts the bar just above it, where the notes sit) and its buttons
+   cannot be reached.
+2. Each `'countdown'` status: `showNotes()`, then `setNotesRecording('countdown')`, then
+   `showToolbar()` and `raiseToolbar()` (`moveTop()` on the bar, which never activates it), so the
+   bar ends up above the notes. `showNotes` is idempotent (countdown statuses arrive every second)
+   and waits for `ready-to-show` if the page is still loading; on the first take that is usual, so
+   the notes show after the bar, and their first show tells `onNotesChange`, which raises the bar
+   again (it does so on every notes change, a drag included). The page shows the
    top of the text, still, with the chip "Starts with the recording". The view's `take`
    increases once per recording.
 3. The first `'recording'` status: the page starts scrolling when `autoStart` is on (default).

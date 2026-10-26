@@ -1,3 +1,4 @@
+import { rectsOverlap } from '../../shared/notes/placement'
 import { isUsableRegion } from '../../shared/recording/regionGeometry'
 import type { NormRect } from '../../shared/types'
 import type { Rect } from './trackMath'
@@ -30,12 +31,16 @@ export function regionToRect(region: NormRect, bounds: Rect): Rect {
 
 /**
  * Where the floating toolbar goes: bottom-centre of the work area, or just below
- * (else above) a recorded region so it does not cover what is being recorded.
+ * (else above) a recorded region so it does not cover what is being recorded. Never
+ * under anything in `keepClear` (the speaker notes, which would hide its buttons):
+ * a spot that overlaps one is skipped, and when the bottom-centre does too, the bar
+ * goes just below (else above) it. When nothing is clear, the first choice stands.
  */
 export function toolbarPosition(
   workArea: Rect,
   size: { width: number; height: number },
   avoid: Rect | null = null,
+  keepClear: readonly Rect[] = [],
   margin = 24
 ): { x: number; y: number } {
   const clampX = (x: number): number => Math.round(Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - size.width))
@@ -43,13 +48,19 @@ export function toolbarPosition(
     x: clampX(workArea.x + (workArea.width - size.width) / 2),
     y: Math.round(workArea.y + workArea.height - size.height - margin)
   }
-  if (!avoid) return fallback
-  const x = clampX(avoid.x + (avoid.width - size.width) / 2)
-  const below = avoid.y + avoid.height + 12
-  if (below + size.height <= workArea.y + workArea.height) return { x, y: Math.round(below) }
-  const above = avoid.y - size.height - 12
-  if (above >= workArea.y) return { x, y: Math.round(above) }
-  return fallback
+  /** Just below `r`, then just above it, where the work area has room. */
+  const beside = (r: Rect, x: number): { x: number; y: number }[] => {
+    const out: { x: number; y: number }[] = []
+    const below = r.y + r.height + 12
+    if (below + size.height <= workArea.y + workArea.height) out.push({ x, y: Math.round(below) })
+    const above = r.y - size.height - 12
+    if (above >= workArea.y) out.push({ x, y: Math.round(above) })
+    return out
+  }
+  const spots = [...(avoid ? beside(avoid, clampX(avoid.x + (avoid.width - size.width) / 2)) : []), fallback]
+  for (const r of keepClear) spots.push(...beside(r, fallback.x))
+  const clear = (p: { x: number; y: number }): boolean => !keepClear.some((r) => rectsOverlap({ ...p, ...size }, r))
+  return spots.find(clear) ?? spots[0]
 }
 
 export const pointInRect = (p: { x: number; y: number }, r: Rect): boolean =>

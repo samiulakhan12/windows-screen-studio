@@ -17,7 +17,9 @@ const h = vi.hoisted(() => {
     order: [] as string[],
     statuses: [] as any[],
     trackerOpts: null as any,
-    idle: null as any
+    idle: null as any,
+    /** What prepareToolbar() was given last. */
+    toolbarArgs: null as unknown[] | null
   }
 })
 
@@ -59,8 +61,12 @@ vi.mock('../src/main/windows', () => ({
 }))
 vi.mock('../src/main/recording/toolbarWindow', () => ({
   isToolbarSender: (wc: { id: number }) => wc.id === BAR.id,
-  prepareToolbar: () => void h.order.push('prepareToolbar'),
+  prepareToolbar: (...args: unknown[]) => {
+    h.order.push('prepareToolbar')
+    h.toolbarArgs = args
+  },
   showToolbar: () => void h.order.push('showToolbar'),
+  raiseToolbar: () => void h.order.push('raiseToolbar'),
   hideToolbar: () => undefined,
   closeToolbar: () => void h.order.push('closeToolbar'),
   sendToolbarStatus: (s: unknown) => void h.statuses.push(s),
@@ -147,6 +153,8 @@ const win = vi.hoisted(() => ({
   next: { shown: true } as { shown: boolean; notice?: string },
   status: null as null | { shown: boolean; playing: boolean },
   playing: false,
+  /** Where the prepared recording's notes window shows. */
+  rect: null as null | { x: number; y: number; width: number; height: number },
   area: vi.fn((_p: unknown, _at: number) => false),
   prepareRecordingNotes: vi.fn((_plan: unknown, _dir: string) => {
     h.order.push('prepareNotes')
@@ -172,6 +180,7 @@ vi.mock('../src/main/notes/notesWindow', async () => {
     notesSettingsNow: () => notesStore().get(),
     onNotesChange: (l: () => void) => win.listeners.push(l),
     notesStatus: () => win.status,
+    recordingNotesRect: () => win.rect,
     notesPlaying: () => win.playing,
     notesAreaContains: (p: unknown, at: number) => win.area(p, at),
     notesHotkeyLabels: () => (win.status ? { notesToggle: 'Ctrl + Shift + F7' } : {}),
@@ -337,14 +346,26 @@ describe('the recording hooks (recordingIpc)', async () => {
     await invoke('recording:cancel', home, token, false)
   }
 
-  it('prepare: the notes after the bar and before any hotkey; the screen as what is captured', async () => {
+  it('prepare: the notes before the bar and before any hotkey; the screen as what is captured', async () => {
     win.next = { shown: true }
     const plan = await start()
-    expect(h.order.indexOf('prepareToolbar')).toBeLessThan(h.order.indexOf('prepareNotes'))
+    expect(h.order.indexOf('prepareNotes')).toBeLessThan(h.order.indexOf('prepareToolbar'))
     expect(h.order.indexOf('prepareNotes')).toBeLessThan(h.order.indexOf('register(Ctrl+Shift+2)'))
     expect(win.prepareRecordingNotes).toHaveBeenLastCalledWith({ kind: 'screen', display: expect.objectContaining({ id: 1 }), captured: { x: 0, y: 0, width: 1920, height: 1080 } }, h.userData)
     expect(plan.notesNotice).toBeUndefined()
     await end(plan.token)
+  })
+
+  it('prepare: the bar is placed clear of the notes', async () => {
+    win.rect = { x: 680, y: 8, width: 560, height: 240 }
+    const plan = await start({ region: { x: 0, y: 0.125, w: 1, h: 0.875 } })
+    expect(h.toolbarArgs).toEqual([expect.objectContaining({ id: 1 }), { x: 0, y: 135, width: 1920, height: 945 }, [{ x: 680, y: 8, width: 560, height: 240 }]])
+    await end(plan.token)
+    // Without notes there is nothing to keep clear of.
+    win.rect = null
+    const again = await start()
+    expect(h.toolbarArgs).toEqual([expect.objectContaining({ id: 1 }), null, []])
+    await end(again.token)
   })
 
   it('prepare: an area is captured by its rectangle; the notice reaches the plan', async () => {
@@ -364,7 +385,7 @@ describe('the recording hooks (recordingIpc)', async () => {
     const { token } = await start()
     h.order.length = 0
     await status(token, 'countdown')
-    expect(h.order).toEqual(['showNotes', 'notes:countdown', 'showToolbar'])
+    expect(h.order).toEqual(['showNotes', 'notes:countdown', 'showToolbar', 'raiseToolbar'])
     expect(h.statuses.at(-1)).toMatchObject({
       notes: { shown: true, playing: false },
       hotkeys: { stop: 'Ctrl + Shift + 2', notesToggle: 'Ctrl + Shift + F7' },
@@ -381,6 +402,10 @@ describe('the recording hooks (recordingIpc)', async () => {
     win.listeners.forEach((l) => l())
     expect(h.statuses.length).toBe(sent + 1)
     expect(h.statuses.at(-1).notes).toEqual({ shown: false, playing: false })
+    // Notes shown (or moved) after the bar: the bar goes back above them.
+    h.order.length = 0
+    win.listeners.forEach((l) => l())
+    expect(h.order).toEqual(['raiseToolbar'])
     await end(token)
     win.status = null
   })

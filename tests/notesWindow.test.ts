@@ -239,6 +239,36 @@ describe('the recording window', () => {
     expect(calls(win).filter((c) => c === 'showInactive')).toHaveLength(1)
   })
 
+  it('shown after the bar once its page loaded, it tells the bar (which goes back above it); only when it is shown', () => {
+    notes.prepareRecordingNotes(screenPlan(), recDir)
+    const win = last()
+    const changed = vi.fn()
+    const off = notes.onNotesChange(changed)
+    notes.showNotes()
+    expect(changed).not.toHaveBeenCalled()
+    win.emit('ready-to-show')
+    expect(win.visible).toBe(true)
+    expect(changed).toHaveBeenCalledTimes(1)
+    // Countdown statuses arrive every second: nothing new is shown.
+    notes.showNotes()
+    notes.showNotes()
+    expect(changed).toHaveBeenCalledTimes(1)
+    off()
+  })
+
+  it("where the recording's notes show, for the bar to keep clear of", () => {
+    expect(notes.recordingNotesRect()).toBeNull()
+    startRecording()
+    expect(notes.recordingNotesRect()).toEqual(DEFAULT_RECT)
+    notes.toggleNotesShown()
+    expect(notes.recordingNotesRect()).toBeNull()
+    notes.endRecordingNotes(true)
+    expect(notes.recordingNotesRect()).toBeNull()
+    notes.endRecordingNotes(false)
+    notes.openRehearsal()
+    expect(notes.recordingNotesRect()).toBeNull()
+  })
+
   it('is put back where it belongs when Electron misplaced it on the first show (mixed DPI)', () => {
     notes.prepareRecordingNotes(screenPlan(), recDir)
     const win = last()

@@ -327,7 +327,8 @@ function create(mode: NotesMode, rect: Rect, locked: boolean, plan: RecordingNot
 function reveal(n: NotesWin): void {
   if (!alive(n)) return
   n.showWhenReady = false
-  if (!n.win.isVisible()) {
+  const showing = !n.win.isVisible()
+  if (showing) {
     if (n.mode === 'rehearse') n.win.show()
     else n.win.showInactive()
   }
@@ -339,6 +340,9 @@ function reveal(n: NotesWin): void {
     if (off > BOUNDS_TOLERANCE) n.win.setBounds(n.rect)
   }
   areaNow(n.win.getBounds())
+  // While recording the bar is put back above them (on the first take they usually show after
+  // it, once their page has loaded).
+  if (showing && n.mode === 'record') notify()
 }
 
 /** Shows when ready (or at once when it is). */
@@ -457,6 +461,12 @@ export function prepareRecordingNotes(plan: RecordingNotesPlan, recordingDir: st
   sendView()
   notify()
   return { shown: true }
+}
+
+/** Where the prepared recording's notes window shows (DIP), for the bar to keep clear of; null without one. */
+export function recordingNotesRect(): Rect | null {
+  const n = current
+  return alive(n) && n.mode === 'record' && recordingOn && n.shown ? { ...n.rect } : null
 }
 
 /** Shows the prepared window without activating it (idempotent; waits for ready-to-show). */
