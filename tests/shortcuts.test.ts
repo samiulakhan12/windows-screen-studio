@@ -202,6 +202,15 @@ describe('default keymap: every key the editor always had', () => {
     })
   }
 
+  it('gives the smarter auto zoom commands no default key (I stays free)', () => {
+    for (const id of ['toggleClickAtPlayhead', 'findStrayClicks', 'useAllClicks', 'toggleStraighten', 'straightenRange', 'recordedPathRange'] as const) {
+      expect(DEFAULT_KEYMAP[id], id).toEqual([])
+    }
+    expect(run(K, ev('i', 'KeyI'))).toBeNull()
+    // They can still be bound, like any other command.
+    expect(run(addBinding(K, 'toggleClickAtPlayhead', 'I'), ev('i', 'KeyI'))).toBe('toggleClickAtPlayhead')
+  })
+
   it('has no conflicts and only valid, non-reserved shortcuts', () => {
     expect(findConflicts(DEFAULT_KEYMAP).size).toBe(0)
     for (const id of COMMAND_IDS) {

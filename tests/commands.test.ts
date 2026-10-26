@@ -41,6 +41,36 @@ describe('command registry', () => {
   })
 })
 
+describe('smarter auto zoom commands', () => {
+  const NEW: [CommandId, string, string][] = [
+    ['toggleClickAtPlayhead', 'Zoom', 'Ignore or use the click at the playhead'],
+    ['findStrayClicks', 'Zoom', 'Find stray clicks'],
+    ['useAllClicks', 'Zoom', 'Use all ignored clicks again'],
+    ['toggleStraighten', 'Effects', 'Straighten cursor moves'],
+    ['straightenRange', 'Edit', 'Straighten cursor in selected range'],
+    ['recordedPathRange', 'Edit', 'Keep recorded cursor path in selected range']
+  ]
+
+  it('are in the palette with their titles and categories', () => {
+    const ids = PALETTE_COMMANDS.map((c) => c.id)
+    for (const [id, category, title] of NEW) {
+      expect(ids, id).toContain(id)
+      expect(commandInfo(id).category, id).toBe(category)
+      expect(commandInfo(id).title, id).toBe(title)
+    }
+    // Only the option is a toggle: the palette shows whether it is on.
+    expect(NEW.filter(([id]) => commandInfo(id).toggle).map(([id]) => id)).toEqual(['toggleStraighten'])
+  })
+
+  it('are found by what people type', () => {
+    expect(titles('stray')[0]).toBe('Find stray clicks')
+    expect(titles('ignore click')[0]).toBe('Ignore or use the click at the playhead')
+    expect(titles('straighten')).toEqual(expect.arrayContaining(['Straighten cursor moves', 'Straighten cursor in selected range']))
+    expect(titles('use all clicks')[0]).toBe('Use all ignored clicks again')
+    expect(titles('recorded path')[0]).toBe('Keep recorded cursor path in selected range')
+  })
+})
+
 describe('fuzzyMatch', () => {
   it('matches subsequences, ignoring case, and returns the matched positions', () => {
     expect(fuzzyMatch('spl', 'Split clip at playhead')?.indices).toEqual([0, 1, 2])

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { pathSummary } from '../../../../shared/editor/inputEdits'
 import { LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
+import type { ClickRow } from '../../../../shared/engine/inputData'
 import { mediaUrl } from '../../../../shared/mediaUrl'
 import { CURSOR_STYLE_SCALE, cursorLook, type CursorLook } from '../../../../shared/render/cursorFx'
 import type { ClickStyle, CursorStyle, CursorTrack, Project } from '../../../../shared/types'
@@ -8,6 +10,7 @@ import { drawCursorSprite, type SpriteTheme } from '../../render/cursorSprites'
 import { useEditor } from '../context'
 import { pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
+import type { InputActions } from '../Inspector'
 import './cursorPanel.css'
 
 const L = LOOK_LIMITS
@@ -35,7 +38,21 @@ const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message
 
 /* ---------- Cursor ---------- */
 
-export function CursorPanel({ project, cursor: track }: { project: Project; cursor: CursorTrack }): JSX.Element {
+export function CursorPanel({
+  project,
+  cursor: track,
+  recorded,
+  clickRows,
+  input
+}: {
+  project: Project
+  /** The input as edited (what is drawn). */
+  cursor: CursorTrack
+  /** cursor.json as recorded (what straightening and the click counts read). */
+  recorded: CursorTrack
+  clickRows: ClickRow[]
+  input: InputActions
+}): JSX.Element {
   const { store, player } = useEditor()
   const { cursor } = project
   const look = cursorLook(cursor)
@@ -48,7 +65,11 @@ export function CursorPanel({ project, cursor: track }: { project: Project; curs
   const smoothAvailable = track.valid && !inVideo
   const smoothOn = smoothAvailable && cursor.show
   const clicksOn = track.valid && cursor.clickEffect
-  const clickCount = track.valid ? track.clicks.length : 0
+  const clickCount = clickRows.length
+  const ignoredCount = clickRows.filter((r) => r.ignored).length
+  const straighten = smoothAvailable && !!project.inputEdits?.straighten
+  // Only worked out while the option is on (the hint shows it).
+  const paths = useMemo(() => (straighten ? pathSummary(recorded, project) : null), [straighten, recorded, project])
 
   // Custom image: picking copies it into the project folder as cursor.<ext>.
   const [busy, setBusy] = useState(false)
@@ -175,7 +196,17 @@ export function CursorPanel({ project, cursor: track }: { project: Project; curs
         />
       </Section>
 
-      <Section title="Clicks" aside={track.valid ? <span className="small">{clickCount === 1 ? '1 click' : `${clickCount} clicks`}</span> : undefined}>
+      <Section
+        title="Clicks"
+        aside={
+          track.valid ? (
+            <span className="small" title="Ignore or use clicks in Zoom › Auto zoom, or select a click on the timeline" data-testid="cursor-click-count">
+              {clickCount === 1 ? '1 click' : `${clickCount} clicks`}
+              {ignoredCount > 0 ? ` · ${ignoredCount} ignored` : ''}
+            </span>
+          ) : undefined
+        }
+      >
         <Toggle label="Click effect" checked={clicksOn} disabled={!track.valid} onChange={(v) => set({ clickEffect: v })} />
         <div className="click-styles" role="radiogroup" aria-label="Click effect style">
           {CLICK_STYLES.map((s) => (
@@ -210,6 +241,18 @@ export function CursorPanel({ project, cursor: track }: { project: Project; curs
 
       <Section title="Motion">
         <Slider label="Smoothing" value={cursor.smoothing} {...L.smoothing} step={0.05} format={pctFmt} disabled={!smoothOn} onChange={(v) => set({ smoothing: v }, 'cursor.smoothing')} />
+        <Toggle
+          label="Straighten moves"
+          title="Replaces wobbly moves between two resting points with a straight, smooth glide. The recording itself is not changed."
+          checked={smoothOn && straighten}
+          disabled={!smoothOn}
+          onChange={(v) => input.setStraighten(v)}
+        />
+        {smoothOn && paths && (
+          <p className="hint" data-testid="straighten-summary">
+            {paths.straightened} of {paths.moves} {paths.moves === 1 ? 'move' : 'moves'} straightened. Drags, loops and moves across a click keep their recorded path.
+          </p>
+        )}
         <Toggle label="Hide when idle" checked={smoothOn && cursor.hideWhenIdle} disabled={!smoothOn} onChange={(v) => set({ hideWhenIdle: v })} />
         <Toggle label="Tilt while moving" title="Leans the cursor a few degrees in the direction it moves" checked={smoothOn && look.tilt} disabled={!smoothOn} onChange={(v) => set({ tilt: v })} />
         <Toggle label="Motion trail" title="A short fading trail behind a fast-moving cursor" checked={smoothOn && look.trail} disabled={!smoothOn} onChange={(v) => set({ trail: v })} />

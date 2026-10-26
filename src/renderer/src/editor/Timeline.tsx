@@ -35,7 +35,9 @@ import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { formatLevel } from '../../../shared/editor/zoomEdit'
-import type { Annotation, ClickEvent, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
+import type { ClickRow } from '../../../shared/engine/inputData'
+import type { ScrollSession } from '../../../shared/engine/scroll'
+import type { Annotation, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
@@ -43,7 +45,7 @@ import { releaseFocus } from './focus'
 import { useKeymap } from './keymapContext'
 import { addShapeAt, revealItem } from './playheadItems'
 import { followPointer } from './pointer'
-import type { Selection } from './selection'
+import { clickState, clickTooltip, type Selection } from './selection'
 import { ShapeIcon } from './shapeIcons'
 import './shapes.css'
 import './zoom.css'
@@ -61,7 +63,14 @@ interface Props {
   /** Project zoom style: transitions and which zooms pan into the next one. */
   zoomStyle?: ZoomStyle
   annotations: Annotation[]
-  clicks: ClickEvent[]
+  /** Every recorded in-video click with its ignore state: selectable markers on the clip track. */
+  clickRows: ClickRow[]
+  /** Straightened cursor moves: thin bars along the bottom of the clip track. */
+  pathBars?: readonly { t0: number; t1: number }[]
+  /** Long scrolls auto zoom zooms out for: faint bands on the zoom track. */
+  scrollBands?: readonly ScrollSession[]
+  /** Selects a click (and shows it on the preview). */
+  onSelectClick: (ms: number) => void
   /** The recording's cursor: an arrow added on the shapes track points at it. */
   cursor?: CursorTrack
   selection: Selection
@@ -131,7 +140,7 @@ function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
  */
 export const Timeline = memo(
   forwardRef<TimelineHandle, Props>(function Timeline(props, ref) {
-    const { duration, clips, zooms, annotations, clicks, selection, onSelect } = props
+    const { duration, clips, zooms, annotations, clickRows, selection, onSelect } = props
     const { store, player } = useEditor()
     const keymap = useKeymap()
     const scrollerRef = useRef<HTMLDivElement>(null)
@@ -357,6 +366,15 @@ export const Timeline = memo(
       scrub(e)
     }
 
+    /** A click marker: selects the click (no scrub, no range); Shift+drag still selects a range. */
+    const onClickMarkerDown = (row: ClickRow) => (e: ReactPointerEvent) => {
+      if (e.button !== 0 || e.shiftKey || e.altKey) return
+      e.preventDefault()
+      e.stopPropagation()
+      releaseFocus()
+      props.onSelectClick(row.ms)
+    }
+
     const onTrimDown = (edge: 'start' | 'end') => (e: ReactPointerEvent) => {
       if (e.button !== 0) return
       const initial = clips
@@ -500,7 +518,10 @@ export const Timeline = memo(
     const itemLaneMap = useMemo(() => itemLanes(items), [items])
     const visibleItems = items.filter((it) => overlaps(it, win) || it.id === selId)
     const itemLaneH = 100 / itemLaneMap.count
-    const visibleClicks = clicks.filter((c) => c.t >= win.start && c.t <= win.end)
+    const visibleClicks = clickRows.filter((r) => r.click.t >= win.start && r.click.t <= win.end)
+    const selectedClick = selection?.kind === 'click' ? selection.ms : null
+    const visibleBars = (props.pathBars ?? []).filter((m) => overlaps({ start: m.t0, end: m.t1 }, win))
+    const visibleBands = (props.scrollBands ?? []).filter((b) => overlaps(b, win))
     const kept = keptBounds(clips)
     const laneH = 100 / lanes.count
 
@@ -579,9 +600,31 @@ export const Timeline = memo(
                     onRestore={props.onRestore}
                   />
                 ))}
-                {visibleClicks.map((c, i) => (
-                  <span key={i} className="click-marker" style={{ left: c.t * px }} />
+                {visibleBars.map((m) => (
+                  <span
+                    key={`path:${m.t0}`}
+                    className="path-bar"
+                    data-testid="path-bar"
+                    data-start={m.t0}
+                    data-end={m.t1}
+                    style={{ left: m.t0 * px, width: Math.max(2, (m.t1 - m.t0) * px) }}
+                  />
                 ))}
+                {visibleClicks.map((r, i) => {
+                  const state = clickState(r)
+                  return (
+                    <span
+                      key={`${r.ms}:${i}`}
+                      className={`click-marker ${r.click.button === 'left' ? '' : 'minor'} ${selectedClick === r.ms ? 'selected' : ''}`}
+                      data-click-ms={r.ms}
+                      data-state={state}
+                      data-button={r.click.button}
+                      style={{ left: r.click.t * px }}
+                      title={clickTooltip(r)}
+                      onPointerDown={onClickMarkerDown(r)}
+                    />
+                  )
+                })}
                 <div className="trim-handle start" style={{ left: kept.start * px }} onPointerDown={onTrimDown('start')} title="Drag to trim the start" />
                 <div className="trim-handle end" style={{ left: kept.end * px }} onPointerDown={onTrimDown('end')} title="Drag to trim the end" />
                 {range && (
@@ -601,6 +644,17 @@ export const Timeline = memo(
               </div>
 
               <div className="tl-track zoom-track" onPointerDown={onBackgroundDown('zoom')} title="Double-click to add a zoom">
+                {visibleBands.map((b) => (
+                  <span
+                    key={`scroll:${b.start}`}
+                    className="scroll-band"
+                    data-testid="scroll-band"
+                    data-start={b.start}
+                    data-end={b.end}
+                    style={{ left: b.start * px, width: Math.max(2, (b.end - b.start) * px) }}
+                    title={`Scrolling ${formatTime(b.start)} – ${formatTime(b.end)}: auto zoom shows the whole page while it moves`}
+                  />
+                ))}
                 {links
                   .filter((l) => overlaps({ start: l.from.end - 1, end: l.to.start + 1 }, win))
                   .map(({ from, to }) => (

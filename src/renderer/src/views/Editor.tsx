@@ -8,6 +8,7 @@ import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
+import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
@@ -25,25 +26,29 @@ import {
   shortcutLabel,
   withShortcut,
   zoomLevelKeysHint,
+  undoHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
-import { DEFAULT_EFFECTS } from '../../../shared/engine/project'
+import { planCursorPath } from '../../../shared/engine/cursorPath'
+import { clickRows } from '../../../shared/engine/inputData'
+import { DEFAULT_EFFECTS, formatTime } from '../../../shared/engine/project'
+import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
 import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
-import { focusPathFor, insertZoom, isUsableClick, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
-import type { CameraLayout, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
+import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
+import type { CameraLayout, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
 import { EditorContext, type EditorServices } from '../editor/context'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
-import { Inspector, type InspectorTab } from '../editor/Inspector'
+import { Inspector, type InputActions, type InspectorTab } from '../editor/Inspector'
 import { KeymapContext } from '../editor/keymapContext'
 import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
@@ -72,6 +77,33 @@ interface Session {
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; session: Session }
 
 const METADATA_TIMEOUT_MS = 20000
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** How a reason a cursor move keeps its recorded path is counted: [one, many]. */
+const KEPT_NOUN: Record<keyof PathSummary['kept'], [string, string]> = {
+  drag: ['drag', 'drags'],
+  'drag-guess': ['possible drag', 'possible drags'],
+  click: ['move across a click', 'moves across a click'],
+  scroll: ['move while scrolling', 'moves while scrolling'],
+  'off-frame': ['move outside the video', 'moves outside the video'],
+  short: ['very quick move', 'very quick moves'],
+  long: ['long move', 'long moves'],
+  small: ['tiny move', 'tiny moves'],
+  wobbly: ['winding move', 'winding moves'],
+  gesture: ['loop', 'loops']
+}
+
+/** " (1 drag, 1 move across a click)", or "" when no move was kept for a reason. */
+function keptReasons(summary: PathSummary): string {
+  const parts = (Object.keys(KEPT_NOUN) as (keyof PathSummary['kept'])[])
+    .filter((k) => (summary.kept[k] ?? 0) > 0)
+    .map((k) => {
+      const n = summary.kept[k]!
+      return `${n} ${KEPT_NOUN[k][n === 1 ? 0 : 1]}`
+    })
+  return parts.length ? ` (${parts.join(', ')})` : ''
+}
 
 /** Resolves once the video's duration and size are known (or after a timeout); rejects if it cannot load. */
 function whenMetadata(v: HTMLVideoElement): Promise<void> {
@@ -199,7 +231,19 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const recorded = data.cursor
   const { inputEdits, capture, width, height } = project
   const cursor = useMemo(() => effectiveTrack(recorded, { inputEdits, capture, width, height }), [recorded, inputEdits, capture, width, height])
-  const clicks = useMemo(() => cursor.clicks.filter(isUsableClick), [cursor])
+  // Every recorded click, with its ignore state: the timeline markers and the click lists.
+  const rows = useMemo(() => clickRows(recorded, inputEdits), [recorded, inputEdits])
+  // What the timeline explains: the straightened moves (only when Flown draws the cursor) and the
+  // long scrolls auto zoom zooms out for.
+  const straighten = !!inputEdits?.straighten
+  const paths = inputEdits?.paths
+  const pathBars = useMemo(
+    () => (recorded.valid && !capture.cursorInVideo && (straighten || paths) ? planCursorPath(recorded, { aspect: width / height, straighten, paths: paths ?? [] }).straightened : []),
+    [recorded, capture.cursorInVideo, straighten, paths, width, height]
+  )
+  const { zoomSettings, autoZoom } = project
+  const autoSettings = useMemo(() => zoomSettingsOf({ zoomSettings, autoZoom }).auto, [zoomSettings, autoZoom])
+  const scrollBands = useMemo(() => scrollBreaks(cursor, autoSettings), [cursor, autoSettings])
 
   const [rawSelection, setRawSelection] = useState<Selection>(null)
   const [revealSeq, setRevealSeq] = useState(0)
@@ -299,6 +343,56 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const latest = useRef({ selection, pickFocus, exporting, dialog, keymap, shortcuts })
   latest.current = { selection, pickFocus, exporting, dialog, keymap, shortcuts }
+
+  /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
+  const input = useMemo((): InputActions => {
+    const at = (ms: number): string => formatTime(ms / 1000)
+    const range = (r: { start: number; end: number }): string => `${formatTime(r.start)} – ${formatTime(r.end)}`
+    const undo = (): string => undoHint(latest.current.keymap)
+    return {
+      setIgnored: (keys, ignore) => {
+        const before = store.state
+        store.update((p) => setClicksIgnored(p, recorded, ignore ? { ignore: keys.map((ms) => ({ ms })) } : { use: keys }))
+        if (store.state === before || keys.length === 0) return
+        if (keys.length > 1) showNotice(ignore ? `Ignored ${plural(keys.length, 'click')}${undo()}` : `${plural(keys.length, 'click')} used again`)
+        else showNotice(ignore ? `Click at ${at(keys[0])} ignored: no zoom, effect or sound${undo()}` : `Click at ${at(keys[0])} used again`)
+      },
+      findStray: () => {
+        let added = 0
+        store.update((p) => {
+          const r = ignoreStrayClicks(p, recorded)
+          added = r.added.length
+          return r.project
+        })
+        showNotice(added ? `Ignored ${plural(added, 'stray click')}${undo()}` : 'No stray clicks found')
+      },
+      useAll: () => {
+        const n = clickRows(recorded, store.state.inputEdits).filter((r) => r.ignored).length
+        if (!n) return showNotice('No click is ignored')
+        store.update((p) => useAllClicks(p, recorded))
+        showNotice(n === 1 ? 'The ignored click is used again' : `All ${n} ignored clicks are used again`)
+      },
+      setStraighten: (on) => store.update((p) => setStraighten(p, on)),
+      setPathRange: (r, mode) => {
+        if (mode === 'straight') {
+          // Painting a range that straightens nothing would only add an undo step: say why instead.
+          const next = setPathRange(store.state, r, 'straight')
+          const summary = pathSummary(recorded, next, r)
+          if (!summary.straightened) return showNotice(`No cursor move here can be straightened${keptReasons(summary)}`)
+          store.update((p) => setPathRange(p, r, 'straight'))
+          return showNotice(`Straightened ${plural(summary.straightened, 'cursor move')} in ${range(r)}`)
+        }
+        store.update((p) => setPathRange(p, r, mode))
+        showNotice(mode === 'recorded' ? `Kept the recorded cursor path in ${range(r)}` : `The cursor path in ${range(r)} follows Straighten moves again`)
+      },
+      selectClick: (ms) => {
+        setSelection({ kind: 'click', ms })
+        // Just past the click, so its effect shows on the preview (never into a cut).
+        const t = ms / 1000 + 0.15
+        if (clipAt(store.state.clips, t)) player.seek(t)
+      }
+    }
+  }, [recorded, store, player, showNotice, setSelection])
 
   const actions = useMemo(() => {
     const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
@@ -451,7 +545,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: p.transcript.segments.filter((s) => s.id !== sel.id) } } : p))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
-        else return
+        else if (sel.kind === 'click') {
+          // Delete on a click ignores it; the click stays selected, so the Zoom panel shows its new state.
+          const row = clickRows(recorded, store.state.inputEdits).find((r) => r.ms === sel.ms)
+          if (row?.ignored) return showNotice('This click is already ignored: use it again in the Zoom panel')
+          return input.setIgnored([sel.ms], true)
+        } else return
         setSelection(null)
       },
       undo: (): void => {
@@ -464,7 +563,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       goToStart: (): void => player.seek(keptBounds(store.state.clips).start),
       goToEnd: (): void => player.seek(keptBounds(store.state.clips).end)
     }
-  }, [cursor, data.webcamUrl, player, store, showNotice, setSelection])
+  }, [cursor, recorded, input, data.webcamUrl, player, store, showNotice, setSelection])
 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
@@ -502,6 +601,14 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
     const showTab = (t: InspectorTab) => (): void => setTab(t)
+    /** The cursor path range commands: the selected range straightened, or kept as recorded. */
+    const pathRangeCommand = (mode: PathMode): void => {
+      const sel = latest.current.selection
+      if (!cursor.valid) return showNotice('This recording has no cursor data')
+      if (store.state.capture.cursorInVideo) return showNotice('The recorded cursor is in the video')
+      if (sel?.kind !== 'range') return showNotice('Select a range first: Shift+drag on the clip track')
+      input.setPathRange(sel, mode)
+    }
     return {
       play: actions.togglePlay,
       goToStart: actions.goToStart,
@@ -566,6 +673,30 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         store.update((q) => ({ ...q, cursor: { ...q.cursor, clickEffect: !p.cursor.clickEffect } }))
         turned('Click effects', !p.cursor.clickEffect)
       },
+      toggleStraighten: () => {
+        const p = store.state
+        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is in the video' : 'This recording has no cursor data')
+        const on = !p.inputEdits?.straighten
+        input.setStraighten(on)
+        turned('Straighten moves', on)
+      },
+      straightenRange: () => pathRangeCommand('straight'),
+      recordedPathRange: () => pathRangeCommand('recorded'),
+      toggleClickAtPlayhead: () => {
+        if (!recorded.valid) return showNotice('This recording has no cursor data')
+        const p = store.state
+        const row = clickAtPlayhead(clickRows(recorded, p.inputEdits), p.zooms, player.time)
+        if (!row) return showNotice('No click near the playhead')
+        input.setIgnored([row.ms], !row.ignored)
+      },
+      findStrayClicks: () => {
+        if (!recorded.valid) return showNotice('This recording has no cursor data')
+        input.findStray()
+      },
+      useAllClicks: () => {
+        if (!recorded.valid) return showNotice('This recording has no cursor data')
+        input.useAll()
+      },
       toggleMotionBlur: () => {
         const was = store.state.effects.motionBlur
         if (was > 0) lastMotionBlur.current = was
@@ -617,7 +748,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       about: () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'about' } })),
       commandPalette: () => setDialog('palette')
     }
-  }, [actions, cursor.valid, data.webcamUrl, openExport, showNotice, store])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
 
@@ -651,7 +782,20 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       nextChapter: nextChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
       prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet',
       toggleCaptions: p.transcript?.segments.length ? null : 'No captions yet',
-      exportCaptions: p.transcript?.segments.length ? null : 'No captions yet'
+      exportCaptions: p.transcript?.segments.length ? null : 'No captions yet',
+      toggleClickAtPlayhead: cursor.valid ? null : noCursor,
+      findStrayClicks: cursor.valid ? null : noCursor,
+      useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
+      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor
+    }
+    for (const k of ['straightenRange', 'recordedPathRange'] as const) {
+      unavailable[k] = !cursor.valid
+        ? noCursor
+        : p.capture.cursorInVideo
+          ? 'The recorded cursor is in the video'
+          : selection?.kind === 'range'
+            ? null
+            : 'Select a range first: Shift+drag on the clip track'
     }
     for (const k of ['layoutDefault', 'layoutCameraOnly', 'layoutScreenOnly', 'layoutSideBySide', 'layoutCameraLarge'] as const) {
       unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
@@ -660,6 +804,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const on: Partial<Record<CommandId, boolean>> = {
       toggleCursor: smoothCursor && p.cursor.show,
       toggleClickEffects: cursor.valid && p.cursor.clickEffect,
+      toggleStraighten: smoothCursor && !!p.inputEdits?.straighten,
       toggleMotionBlur: p.effects.motionBlur > 0,
       toggleKeystrokes: p.effects.keystrokes.show,
       toggleWebcam: !!data.webcamUrl && p.webcam.show,
@@ -667,7 +812,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     }
     return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
-  }, [dialog, project, selection, keymap, cursor.valid, data.webcamUrl, store, player])
+  }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player])
 
   const goBack = async (): Promise<void> => {
     if (leaving) return
@@ -841,6 +986,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             revealSeq={revealSeq}
             onSelect={setSelection}
             cursor={cursor}
+            recorded={recorded}
+            clickRows={rows}
+            input={input}
             hasWebcam={!!data.webcamUrl}
             pickFocus={pickFocus}
             onPickFocus={setPickFocus}
@@ -862,7 +1010,10 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           zooms={project.zooms}
           zoomStyle={zoomStyleOf(project)}
           annotations={project.annotations}
-          clicks={clicks}
+          clickRows={rows}
+          pathBars={pathBars}
+          scrollBands={scrollBands}
+          onSelectClick={input.selectClick}
           cursor={cursor}
           selection={selection}
           onSelect={setSelection}
