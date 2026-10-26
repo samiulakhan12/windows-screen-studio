@@ -1,5 +1,5 @@
 import { cursorOverWindow, hiddenPoint, insideWindow, mapPointToWindowVideo, poseAt, type Size, type WindowPose } from '../../shared/recording/windowGeometry'
-import type { ClickEvent, CursorSample, CursorShape, CursorShapeEvent, CursorTrack, KeyEvent, NormRect } from '../../shared/types'
+import type { ClickEvent, CursorSample, CursorShape, CursorShapeEvent, CursorTrack, KeyEvent, NormRect, ScrollEvent } from '../../shared/types'
 
 /** A paused interval in epoch ms. */
 export interface PauseSpan {
@@ -17,7 +17,13 @@ export interface Rect {
 /** Cursor and input events as captured: epoch ms and DIP screen coordinates. */
 export interface RawTrack {
   samples: { at: number; x: number; y: number }[]
-  clicks: { at: number; x: number; y: number; button: ClickEvent['button'] }[]
+  /** `up`: when the button was released, when that was seen. */
+  clicks: { at: number; x: number; y: number; button: ClickEvent['button']; up?: number }[]
+  /**
+   * Mouse-wheel input: signed notches (+ = right / down). Absent from tracks captured before
+   * scrolling was recorded.
+   */
+  scrolls?: { at: number; x: number; y: number; dx: number; dy: number }[]
   keys: { at: number; label: string }[]
   /** Instants of typing key presses (which keys is never recorded). */
   typing?: number[]
@@ -270,7 +276,7 @@ export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTra
     if (pointToScreen) {
       // Into the rectangles' space before anything is interpolated between positions.
       const conv = <T extends { x: number; y: number }>(p: T): T => ({ ...p, ...pointToScreen({ x: p.x, y: p.y }) })
-      raw = { ...raw, samples: raw.samples.map(conv), clicks: raw.clicks.map(conv) }
+      raw = { ...raw, samples: raw.samples.map(conv), clicks: raw.clicks.map(conv), ...(raw.scrolls ? { scrolls: raw.scrolls.map(conv) } : {}) }
     }
   } else {
     const b = raw.bounds
@@ -300,19 +306,34 @@ export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTra
   const inside = timed.filter((s) => s.t >= 0 && s.t <= end)
   // The last position seen before the start is where the cursor was at t = 0.
   if (before && (inside.length === 0 || inside[0].t > 0)) inside.unshift({ ...before, t: 0 })
+  /** Where an input event lands in the video at its source time; null when it is not recorded content. */
+  const placeEvent = (e: { at: number; x: number; y: number }): { t: number; x: number; y: number } | null => {
+    if (!recorded(e.at)) return null
+    // Input on other monitors, outside the area or the window cannot be zoomed into.
+    const p = place.click(e.x, e.y, e.at)
+    const t = time(e.at)
+    return p && t >= 0 && t <= end ? { t, ...p } : null
+  }
   const clicks: ClickEvent[] = []
   for (const c of raw.clicks) {
-    if (!recorded(c.at)) continue
-    // Clicks on other monitors, outside the area or the window cannot be zoomed into.
-    const p = place.click(c.x, c.y, c.at)
-    const t = time(c.at)
-    if (p && t >= 0 && t <= end) clicks.push({ t, button: c.button, ...p })
+    const e = placeEvent(c)
+    if (e) clicks.push({ t: e.t, button: c.button, x: e.x, y: e.y, ...(c.up !== undefined ? { up: time(c.up) } : {}) })
   }
   clicks.sort(byT)
-  return { samples: holdSamples(inside), clicks, keys, shapes, ...input, scale: raw.scale, valid: true }
+  // Scrolling is placed exactly like clicks; [] when it was captured and none happened.
+  const scrolls: Pick<CursorTrack, 'scrolls'> = {}
+  if (raw.scrolls) {
+    const out: ScrollEvent[] = []
+    for (const s of raw.scrolls) {
+      const e = placeEvent(s)
+      if (e) out.push({ ...e, dx: s.dx, dy: s.dy })
+    }
+    scrolls.scrolls = out.sort(byT)
+  }
+  return { samples: holdSamples(inside), clicks, keys, shapes, ...input, ...scrolls, scale: raw.scale, valid: true }
 }
 
-/** Applies the final duration: clicks, keys and shapes up to it; samples get a little slack. */
+/** Applies the final duration: clicks, keys, shapes and scrolls up to it; samples get a little slack. */
 export function clampTrack(track: CursorTrack, duration: number): CursorTrack {
   return {
     ...track,
@@ -321,6 +342,7 @@ export function clampTrack(track: CursorTrack, duration: number): CursorTrack {
     keys: (track.keys ?? []).filter((k) => k.t <= duration),
     shapes: (track.shapes ?? []).filter((s) => s.t <= duration),
     ...(track.marks ? { marks: track.marks.filter((m) => m.t <= duration) } : {}),
-    ...(track.typing ? { typing: track.typing.filter((b) => b.t <= duration).map((b) => ({ t: b.t, end: Math.min(b.end, duration) })) } : {})
+    ...(track.typing ? { typing: track.typing.filter((b) => b.t <= duration).map((b) => ({ t: b.t, end: Math.min(b.end, duration) })) } : {}),
+    ...(track.scrolls ? { scrolls: track.scrolls.filter((s) => s.t <= duration) } : {})
   }
 }

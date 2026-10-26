@@ -9,8 +9,10 @@
 //   (a) native window capture: helper video without the cursor, smooth cursor on
 //   (b) Chromium window capture + watcher: cursor in the video, effects still work
 //   (c) nothing can follow the window: no cursor data, and the user is told so
-//   (d) another window covers part of the recorded one: a click on it is ignored and the
-//       cursor is hidden there
+//   (d) another window covers part of the recorded one: a click or a wheel on it is ignored
+//       and the cursor is hidden there
+// Mouse-wheel scrolling is mapped through the window like clicks: kept inside it (before and
+// after it moves), dropped outside it and over a covering window.
 // Every auto zoom must frame its click: the camera (the editor's own cameraAt) is checked at
 // each click.
 // Run: xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/recording-window.e2e.cjs
@@ -42,6 +44,7 @@ const helperEnv = (native) => ({
 const COVER_SUPPORTED = !REAL_HELPER || fs.readFileSync(HELPER_SCRIPT, 'utf8').includes('cursorOver')
 const TITLE = 'SSW-TESTWIN'
 const COVER_TITLE = 'SSW-COVER'
+const OUTSIDE_TITLE = 'SSW-OUTSIDE'
 const START = { x: 300, y: 200 }
 
 /** The editor's zoom camera (src/shared/engine/zoom.ts), bundled on its own for this process. */
@@ -295,23 +298,43 @@ async function watchNotices(win) {
 
 const near = (c, x, y) => Math.abs(c.x - x) <= 0.02 && Math.abs(c.y - y) <= 0.02
 
+/** Where the wheel is turned inside the window, before and after it moves (window fractions). */
+const WHEEL_BEFORE = { x: 0.5, y: 0.75 }
+const WHEEL_AFTER = { x: 0.25, y: 0.75 }
+
 /**
  * Records the test window: moves the cursor over it, clicks at a quarter across / half down,
- * clicks outside it, moves it, clicks at three quarters across / a quarter down, and stops.
- * `during` runs while the recording is still going (before the window is moved). The two
- * clicks are far enough apart to get an auto zoom each.
+ * scrolls 2 notches down at WHEEL_BEFORE, clicks outside it and scrolls over another window
+ * outside it, moves it, clicks at three quarters across / a quarter down, scrolls 2 notches up
+ * at WHEEL_AFTER, and stops. `during` runs while the recording is still going (before the
+ * window is moved). The two clicks are far enough apart to get an auto zoom each; the scrolls
+ * are short (they hold). The outside wheel is over a window: on the bare desktop it would make
+ * openbox switch desktops, hiding the recorded window.
  */
 async function recordWithInput(app, win, xid, { during } = {}) {
+  const outside = await startTestWindow({ title: OUTSIDE_TITLE, geometry: '30x6+1550+40' })
+  try {
+    return await recordWithInputBeside(app, win, xid, geometry(outside.xid), { during })
+  } finally {
+    outside.kill()
+  }
+}
+
+async function recordWithInputBeside(app, win, xid, o, { during }) {
   const g0 = geometry(xid)
+  const [ox, oy] = [Math.round(o.x + o.width / 2), Math.round(o.y + o.height / 2)]
+  h.assert(ox > 1100 && oy < 300, `the outside window is away from the recorded one: ${JSON.stringify(o)}`)
   const tb = await r.startRecording(app, win)
   const at = (g, fx, fy) => [Math.round(g.x + fx * g.width), Math.round(g.y + fy * g.height)]
   const [ax, ay] = at(g0, 0.25, 0.5)
-  await r.xinput(`g ${g0.x + 20} ${g0.y + 20} ${ax} ${ay} 0.6; s 0.2; c ${ax} ${ay}; s 0.6; g ${ax} ${ay} 1800 100 0.4; c 1800 100; s 1.0`)
+  const [wx, wy] = at(g0, WHEEL_BEFORE.x, WHEEL_BEFORE.y)
+  await r.xinput(`g ${g0.x + 20} ${g0.y + 20} ${ax} ${ay} 0.6; s 0.2; c ${ax} ${ay}; s 0.2; w ${wx} ${wy} 2; s 0.2; g ${wx} ${wy} 1800 100 0.4; c 1800 100; s 0.2; w ${ox} ${oy} 3; s 0.6`)
   if (during) await during()
   const g1 = await moveWindow(xid, g0.x + 260, g0.y + 140)
   await h.sleep(400)
   const [bx, by] = at(g1, 0.75, 0.25)
-  await r.xinput(`g 1800 100 ${bx} ${by} 0.6; s 0.3; c ${bx} ${by}; s 1.2`)
+  const [vx, vy] = at(g1, WHEEL_AFTER.x, WHEEL_AFTER.y)
+  await r.xinput(`g ${ox} ${oy} ${bx} ${by} 0.6; s 0.3; c ${bx} ${by}; s 0.2; w ${vx} ${vy} -2; s 1.0`)
   await tb.click('button.stop')
   await win.waitForSelector('.editor canvas', { timeout: 120000 })
   return { g0, g1 }
@@ -335,8 +358,31 @@ function assertWindowCursor(project, cursor) {
   h.assert(near(b, 0.75, 0.25), `second click (window moved) at three quarters across, a quarter down: ${JSON.stringify(b)}`)
   h.assert(cursor.clicks.every((c) => c.t > 0 && c.t < project.duration), 'click times inside the recording')
   assertZoomsFrameClicks(project, cursor)
+  assertWindowScrolls(cursor)
   // A sample on the outside click's spot exists, mapped outside the video (not drawn there).
   h.assert(cursor.samples.some((s) => s.x > 1 || s.y < 0), 'positions outside the window are kept, outside 0..1')
+}
+
+const nearWheel = (s, p) => Math.abs(s.x - p.x) <= 0.01 && Math.abs(s.y - p.y) <= 0.01
+
+/**
+ * Scrolling mapped into the moving window like the clicks: 2 notches down before the move, 2
+ * up after it, each at its spot; the 3 notches outside the window are dropped. Releases are
+ * recorded for the clicks.
+ */
+function assertWindowScrolls(cursor) {
+  const scrolls = cursor.scrolls
+  console.log(`  scrolls ${JSON.stringify(scrolls)}`)
+  h.assert(Array.isArray(scrolls), 'scrolling was recorded')
+  const [a, b] = cursor.clicks
+  const before = scrolls.filter((s) => s.t > a.t && s.t < b.t)
+  const after = scrolls.filter((s) => s.t > b.t)
+  const sum = (list) => list.reduce((n, s) => n + s.dy, 0)
+  h.assert(before.length + after.length === scrolls.length, `no scroll before the first click: ${JSON.stringify(scrolls)}`)
+  h.assert(sum(before) === 2 && before.every((s) => s.dy > 0 && nearWheel(s, WHEEL_BEFORE)), `2 notches down at (${WHEEL_BEFORE.x}, ${WHEEL_BEFORE.y}) before the move, none from outside the window: ${JSON.stringify(before)}`)
+  h.assert(sum(after) === -2 && after.every((s) => s.dy < 0 && nearWheel(s, WHEEL_AFTER)), `2 notches up at (${WHEEL_AFTER.x}, ${WHEEL_AFTER.y}) after the move: ${JSON.stringify(after)}`)
+  h.assert(scrolls.every((s) => s.dx === 0 && s.t < cursor.clicks[1].t + 1), 'vertical scrolling at the expected times')
+  h.assert(cursor.clicks.every((c) => Number.isFinite(c.up) && c.up - c.t > 0.03 && c.up - c.t < 0.3), `click releases recorded: ${JSON.stringify(cursor.clicks)}`)
 }
 
 /**
@@ -512,6 +558,7 @@ const nativeVideoSize = (dir) =>
       const { project, cursor } = readRecording(home)
       h.assert(project.capture.method === 'chromium' && project.capture.cursorInVideo === true && project.capture.target === 'window', `capture ${JSON.stringify(project.capture)}`)
       h.assert(!cursor.valid && cursor.samples.length === 0 && cursor.clicks.length === 0, 'no cursor data, as before')
+      h.assert(!('scrolls' in cursor), 'no scrolling data without cursor data')
       h.assert(project.zooms.length === 0, 'no auto zooms')
       const told = await notices()
       h.assert(told.some((n) => /could not be followed on screen.*auto zoom, click highlights and the smooth cursor are unavailable/.test(n)), `the user was told: ${JSON.stringify(told)}`)
@@ -547,7 +594,8 @@ const nativeVideoSize = (dir) =>
         const tb = await r.startRecording(app, win)
         // In over the covering window from the bottom right, click on it; then over to the
         // recorded window's visible part, click there.
-        await r.xinput(`m 1800 1000; s 0.3; g 1800 1000 ${sx} ${sy} 0.5; s 0.5; c ${sx} ${sy}; s 0.6; g ${sx} ${sy} ${ax} ${ay} 0.5; s 0.3; c ${ax} ${ay}; s 1.5`)
+        // A wheel on the covering window is dropped too; one on the recorded window is kept.
+        await r.xinput(`m 1800 1000; s 0.3; g 1800 1000 ${sx} ${sy} 0.5; s 0.5; c ${sx} ${sy}; s 0.1; w ${sx} ${sy} 2; s 0.3; g ${sx} ${sy} ${ax} ${ay} 0.5; s 0.3; c ${ax} ${ay}; s 0.2; w ${ax} ${ay} 1; s 1.2`)
         await tb.click('button.stop')
         await win.waitForSelector('.editor canvas', { timeout: 120000 })
 
@@ -555,6 +603,11 @@ const nativeVideoSize = (dir) =>
         h.assert(project.capture.method === 'native' && project.capture.target === 'window', `capture ${JSON.stringify(project.capture)}`)
         console.log(`  covering window's spot at (${spot.x.toFixed(3)}, ${spot.y.toFixed(3)}); clicks ${JSON.stringify(cursor.clicks)}`)
         h.assert(cursor.clicks.length === 1 && near(cursor.clicks[0], 0.25, 0.5), `only the click on the recorded window is kept: ${JSON.stringify(cursor.clicks)}`)
+        console.log(`  scrolls ${JSON.stringify(cursor.scrolls)}`)
+        h.assert(
+          cursor.scrolls.length === 1 && cursor.scrolls[0].dy === 1 && nearWheel(cursor.scrolls[0], { x: 0.25, y: 0.5 }) && cursor.scrolls[0].t > cursor.clicks[0].t,
+          `only the wheel on the recorded window is kept, not the one on the covering window: ${JSON.stringify(cursor.scrolls)}`
+        )
         const onSpot = cursor.samples.filter((s) => Math.abs(s.x - spot.x) < 0.03 && Math.abs(s.y - spot.y) < 0.03)
         h.assert(onSpot.length === 0, `no cursor drawn on the recorded window where the other one covers it: ${JSON.stringify(onSpot.slice(0, 3))}`)
         h.assert(cursor.samples.some((s) => near(s, 0.25, 0.5)), 'the cursor is shown over the recorded window')

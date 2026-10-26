@@ -171,6 +171,31 @@ describe('windowCursorMapping (physical rectangles, DIP cursor)', () => {
     }
   })
 
+  it('maps scrolls through pointToScreen exactly like clicks on a window straddling a 100% and a 150% monitor', () => {
+    const { mapping } = windowCursorMapping([rect(T0 - 10, 1500, 100, 1200, 800)], { width: 1200, height: 800 }, mixed, 'win32')
+    const xs = [1510, 1700, 1919, 1921, 2100, 2690]
+    const dip = (x: number, y: number) => mixed.screenToDipPoint({ x, y })
+    const track = buildCursorTrack(
+      {
+        samples: [{ at: T0, ...dip(1600, 300) }],
+        clicks: xs.map((x, i) => ({ at: T0 + 100 * i, ...dip(x, 500), button: 'left' as const, up: T0 + 100 * i + 40 })),
+        scrolls: xs.map((x, i) => ({ at: T0 + 100 * i + 50, ...dip(x, 500), dx: 0, dy: i % 2 ? -1 : 1 })),
+        keys: [],
+        bounds: null,
+        scale: 1
+      },
+      { startedAt: T0, pauses: [], duration: 1, region: null, window: mapping }
+    )
+    expect(track.scrolls).toHaveLength(xs.length)
+    track.scrolls!.forEach((s, i) => {
+      expect(s.x).toBeCloseTo(track.clicks[i].x, 9)
+      expect(s.y).toBeCloseTo(track.clicks[i].y, 9)
+      expect(s.x).toBeCloseTo((xs[i] - 1500) / 1200, 2)
+      expect(s.dy).toBe(i % 2 ? -1 : 1)
+      expect(track.clicks[i].up! - track.clicks[i].t).toBeCloseTo(0.04, 9)
+    })
+  })
+
   it('looks up the cursor size on the monitor holding most of the window', () => {
     expect(windowCursorMapping([rect(T0, 100, 100, 1200, 800)], { width: 1200, height: 800 }, mixed, 'win32').scale).toBe(1)
     expect(windowCursorMapping([rect(T0, 1800, 100, 1200, 800)], { width: 1200, height: 800 }, mixed, 'win32').scale).toBe(1.5)

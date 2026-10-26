@@ -15,7 +15,7 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { CursorTracker, type HookModule } from '../src/main/cursorTracker'
+import { CursorTracker, type HookModule, type TrackerOptions } from '../src/main/cursorTracker'
 import { buildCursorTrack, type PauseSpan } from '../src/main/recording/trackMath'
 import { cursorAt, cursorOpacity } from '../src/shared/engine/cursor'
 
@@ -134,6 +134,192 @@ describe('CursorTracker', () => {
     expect(raw.clicks.map((c) => [c.x, c.y, c.button])).toEqual([[2000, 1000, 'left']])
     expect(raw.keys.map((k) => k.label)).toEqual(['Enter'])
     expect(hook.state.started).toBe(1)
+  })
+})
+
+describe('CursorTracker: wheel scrolling', () => {
+  const wheel = (time: number, rotation: number, over: Record<string, unknown> = {}) => ({ time, x: 200, y: 100, rotation, amount: 3, direction: 3, ctrlKey: false, metaKey: false, ...over })
+  const start = (opts: Partial<TrackerOptions> = {}) => {
+    const hook = fakeHook()
+    const t = new CursorTracker(() => hook.mod, false)
+    t.start({ ...options, ...opts })
+    return { hook, t }
+  }
+
+  it('stores a wheel event in DIP with its signed notches on y', () => {
+    const { hook, t } = start()
+    hook.emit('wheel', wheel(1000, 1))
+    const raw = t.collect()
+    expect(raw.scrolls).toHaveLength(1)
+    expect(raw.scrolls![0]).toMatchObject({ x: 100, y: 50, dx: 0, dy: 1 })
+  })
+
+  it('merges events under 50 ms apart on the same axis, taking the new position; 60 ms apart stays separate', () => {
+    const { hook, t } = start()
+    hook.emit('wheel', wheel(1000, 1))
+    hook.emit('wheel', wheel(1030, 2, { x: 220, y: 120 })) // 30 ms later: merged
+    hook.emit('wheel', wheel(1090, 1)) // 90 ms after the stored event (60 ms after the last one): separate
+    hook.emit('wheel', wheel(1139, 1)) // 49 ms: merged
+    hook.emit('wheel', wheel(1189, 1)) // 50 ms after the stored event: not under 50, separate
+    const raw = t.collect()
+    expect(raw.scrolls!.map((s) => [s.x, s.y, s.dx, s.dy])).toEqual([
+      [110, 60, 0, 3],
+      [100, 50, 0, 2],
+      [100, 50, 0, 1]
+    ])
+    // The merged event keeps the time of its first wheel event.
+    expect(raw.scrolls![1].at - raw.scrolls![0].at).toBe(90)
+  })
+
+  it('puts horizontal wheel notches on dx, and never merges across axes or opposite signs', () => {
+    const { hook, t } = start()
+    hook.emit('wheel', wheel(1000, -2, { direction: 4 }))
+    hook.emit('wheel', wheel(1010, -1, { direction: 4 })) // same axis, same sign: merged
+    hook.emit('wheel', wheel(1020, 1)) // vertical: separate
+    hook.emit('wheel', wheel(1030, -1)) // opposite sign: separate
+    hook.emit('wheel', wheel(1040, 0)) // a sub-notch step goes with anything
+    hook.emit('wheel', wheel(1045, -1))
+    const raw = t.collect()
+    expect(raw.scrolls!.map((s) => [s.dx, s.dy])).toEqual([
+      [-3, 0],
+      [0, 1],
+      [0, -2]
+    ])
+  })
+
+  it('a sub-notch or malformed rotation is stored as 0 notches (still scrolling)', () => {
+    const { hook, t } = start()
+    hook.emit('wheel', wheel(1000, 0))
+    hook.emit('wheel', wheel(1100, Number.NaN))
+    hook.emit('wheel', { time: 1200, x: 200, y: 100 })
+    const raw = t.collect()
+    expect(raw.scrolls!.map((s) => [s.dx, s.dy])).toEqual([
+      [0, 0],
+      [0, 0],
+      [0, 0]
+    ])
+  })
+
+  it('drops Ctrl+wheel and Meta+wheel (app zoom) and a wheel over the toolbar, but reports activity for every wheel event', () => {
+    const onActivity = vi.fn()
+    const { hook, t } = start({ onActivity })
+    hook.emit('wheel', wheel(1000, 1, { ctrlKey: true }))
+    hook.emit('wheel', wheel(1100, 1, { metaKey: true }))
+    hook.emit('wheel', wheel(1200, 1, { x: 1000, y: 900 })) // (500, 450): the toolbar
+    hook.emit('wheel', wheel(1300, 1))
+    expect(onActivity).toHaveBeenCalledTimes(4)
+    const raw = t.collect()
+    expect(raw.scrolls).toHaveLength(1)
+    expect(raw.scrolls![0]).toMatchObject({ x: 100, y: 50, dy: 1 })
+  })
+
+  it('stores no scrolling for a keys-only capture, but still reports activity', () => {
+    const onActivity = vi.fn()
+    const { hook, t } = start({ display: null, onActivity })
+    hook.emit('wheel', wheel(1000, 1))
+    expect(onActivity).toHaveBeenCalledTimes(1)
+    expect(t.collect().scrolls).toEqual([])
+  })
+
+  it('records scrolling in global DIP for a window whose position is known', () => {
+    const { hook, t } = start({ display: null, global: true })
+    hook.emit('wheel', wheel(1000, -1, { x: 4000, y: 2000 }))
+    expect(t.collect().scrolls!.map((s) => [s.x, s.y, s.dy])).toEqual([[2000, 1000, -1]])
+  })
+
+  it('snapshots and start() reset the scrolls; a checkpoint keeps them', () => {
+    const { hook, t } = start()
+    hook.emit('wheel', wheel(1000, 2))
+    expect(t.snapshot().scrolls).toHaveLength(1)
+    hook.emit('wheel', wheel(1200, 1))
+    expect(t.snapshot().scrolls).toHaveLength(2)
+    t.start(options)
+    expect(t.snapshot().scrolls).toEqual([])
+    t.stop()
+  })
+})
+
+describe('CursorTracker: button releases', () => {
+  const start = () => {
+    const hook = fakeHook()
+    const t = new CursorTracker(() => hook.mod, false)
+    t.start(options)
+    return { hook, t }
+  }
+
+  it('pairs each stored press with its release (epoch ms), per button', () => {
+    const { hook, t } = start()
+    hook.emit('mousedown', { time: 1000, x: 200, y: 100, button: 1 })
+    hook.emit('mousedown', { time: 1050, x: 300, y: 100, button: 2 })
+    hook.emit('mouseup', { time: 1080, x: 300, y: 100, button: 1 })
+    hook.emit('mouseup', { time: 1500, x: 300, y: 100, button: 2 })
+    hook.emit('mousedown', { time: 2000, x: 200, y: 100, button: 1 }) // never released
+    const raw = t.collect()
+    expect(raw.clicks).toHaveLength(3)
+    expect(raw.clicks[0].up! - raw.clicks[0].at).toBe(80)
+    expect(raw.clicks[1].up! - raw.clicks[1].at).toBe(450)
+    expect(raw.clicks[2].up).toBeUndefined()
+    expect('up' in raw.clicks[2]).toBe(false)
+  })
+
+  it('a release after a dropped toolbar press pairs with nothing, not with an earlier click', () => {
+    const { hook, t } = start()
+    hook.emit('mousedown', { time: 1000, x: 200, y: 100, button: 1 })
+    hook.emit('mousedown', { time: 1100, x: 1000, y: 900, button: 1 }) // the toolbar: dropped (its release was missed)
+    hook.emit('mouseup', { time: 1200, x: 1000, y: 900, button: 1 })
+    hook.emit('mouseup', { time: 1300, x: 1000, y: 900, button: 1 }) // a stray second release
+    const raw = t.collect()
+    expect(raw.clicks).toHaveLength(1)
+    expect(raw.clicks[0].up).toBeUndefined()
+  })
+
+  it('a release without any press, or of another button, pairs with nothing', () => {
+    const { hook, t } = start()
+    hook.emit('mouseup', { time: 900, x: 200, y: 100, button: 1 })
+    hook.emit('mousedown', { time: 1000, x: 200, y: 100, button: 1 })
+    hook.emit('mouseup', { time: 1100, x: 200, y: 100, button: 3 })
+    const raw = t.collect()
+    expect(raw.clicks[0].up).toBeUndefined()
+  })
+
+  it('stores no presses or releases for a keys-only capture', () => {
+    const hook = fakeHook()
+    const t = new CursorTracker(() => hook.mod, false)
+    t.start({ ...options, display: null })
+    hook.emit('mousedown', { time: 1000, x: 200, y: 100, button: 1 })
+    hook.emit('mouseup', { time: 1100, x: 200, y: 100, button: 1 })
+    expect(t.collect().clicks).toEqual([])
+  })
+
+  it('stop() removes the release and wheel listeners with the others', () => {
+    const emitter = new EventEmitter()
+    const mod = {
+      uIOhook: {
+        on: (event: string, cb: (...a: unknown[]) => void) => emitter.on(event, cb),
+        removeAllListeners: (event?: string) => emitter.removeAllListeners(event),
+        start: () => undefined,
+        stop: () => undefined
+      }
+    } as unknown as HookModule
+    const t = new CursorTracker(() => mod, false)
+    t.start(options)
+    expect(emitter.listenerCount('mouseup')).toBe(1)
+    expect(emitter.listenerCount('wheel')).toBe(1)
+    t.stop()
+    expect(emitter.eventNames()).toEqual([])
+  })
+
+  it('releases and scrolls go through buildCursorTrack on the pause-adjusted clock', () => {
+    const { hook, t } = start()
+    hook.emit('mousedown', { time: 1000, x: 200, y: 100, button: 1 })
+    hook.emit('mouseup', { time: 1250, x: 200, y: 100, button: 1 })
+    hook.emit('wheel', { time: 1500, x: 600, y: 300, rotation: 3, amount: 3, direction: 3, ctrlKey: false, metaKey: false })
+    const raw = t.collect()
+    const startedAt = raw.clicks[0].at - 1000
+    const track = buildCursorTrack(raw, { startedAt, pauses: [], duration: 5, region: null })
+    expect(track.clicks[0].t).toBeCloseTo(1, 9)
+    expect(track.clicks[0].up).toBeCloseTo(1.25, 9)
+    expect(track.scrolls).toEqual([{ t: 1.5, x: 0.3, y: 0.3, dx: 0, dy: 3 }])
   })
 })
 

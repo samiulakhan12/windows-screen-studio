@@ -197,7 +197,29 @@ describe('CursorTracker: marks, typing and activity', () => {
     const t = new CursorTracker(() => hook.mod, true)
     t.start(base)
     expect(hook.listeners('mousemove')).toBe(0)
+    // Recording the pointer listens to the wheel (scrolling) and releases, once each.
+    expect(hook.listeners('wheel')).toBe(1)
+    expect(hook.listeners('mouseup')).toBe(1)
+    t.stop()
+    // Keys only, without auto-pause: no mouse listener at all.
+    t.start({ ...base, display: null })
+    expect(hook.listeners('mousedown')).toBe(0)
+    expect(hook.listeners('mouseup')).toBe(0)
     expect(hook.listeners('wheel')).toBe(0)
+    t.stop()
+  })
+
+  it('a wheel reports activity once whether or not it is stored, also while paused (auto-pause unchanged)', () => {
+    const hook = fakeHook()
+    const t = new CursorTracker(() => hook.mod, false)
+    const onActivity = vi.fn()
+    t.start({ ...base, onActivity })
+    expect(hook.listeners('wheel')).toBe(1)
+    hook.emit('wheel', { time: 1, x: 10, y: 10, rotation: 1, direction: 3, ctrlKey: false, metaKey: false })
+    hook.emit('wheel', { time: 100, x: 10, y: 10, rotation: 1, direction: 3, ctrlKey: true, metaKey: false })
+    t.setPaused(true)
+    hook.emit('wheel', { time: 200, x: 10, y: 10, rotation: 1, direction: 3, ctrlKey: false, metaKey: false })
+    expect(onActivity).toHaveBeenCalledTimes(3)
     t.stop()
   })
 

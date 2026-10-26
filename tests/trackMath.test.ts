@@ -428,3 +428,114 @@ describe('buildCursorTrack for a window: bars, drags and covering windows', () =
     expect(inVideo(track.samples[0])).toBe(true)
   })
 })
+
+describe('buildCursorTrack: scrolling and releases', () => {
+  const wheel = (at: number, x: number, y: number, dy = 1, dx = 0) => ({ at, x, y, dx, dy })
+
+  it('places scrolls like clicks: normalised, sorted, after the end and outside the display dropped', () => {
+    const track = buildCursorTrack(
+      raw({ scrolls: [wheel(T0 + 1500, 250, 125, -2), wheel(T0 + 1000, 500, 250, 3), wheel(T0 + 1200, 1500, 250), wheel(T0 + 2500, 500, 250), wheel(T0 - 100, 500, 250)] }),
+      { startedAt: T0, pauses: [], duration: 2, region: null }
+    )
+    expect(track.scrolls).toEqual([
+      { t: 1, x: 0.5, y: 0.5, dx: 0, dy: 3 },
+      { t: 1.5, x: 0.25, y: 0.25, dx: 0, dy: -2 }
+    ])
+  })
+
+  it('remaps scrolls into a recorded region and drops those outside it', () => {
+    const region = { x: 0.5, y: 0.5, w: 0.5, h: 0.5 }
+    const track = buildCursorTrack(raw({ scrolls: [wheel(T0 + 200, 750, 375, 0, -1), wheel(T0 + 300, 100, 100)] }), { startedAt: T0, pauses: [], duration: 1, region })
+    expect(track.scrolls).toEqual([{ t: 0.2, x: 0.5, y: 0.5, dx: -1, dy: 0 }])
+  })
+
+  it('drops scrolls made while paused and maps the others across the pause', () => {
+    const pauses = [{ from: T0 + 1000, to: T0 + 3000 }]
+    const track = buildCursorTrack(raw({ scrolls: [wheel(T0 + 500, 500, 250), wheel(T0 + 2000, 500, 250), wheel(T0 + 3500, 500, 250)] }), { startedAt: T0, pauses, duration: 5, region: null })
+    expect(track.scrolls!.map((s) => s.t)).toEqual([0.5, 1.5])
+  })
+
+  it('a raw track without scrolls gives no key; [] stays []; the invalid track has none', () => {
+    const o = { startedAt: T0, pauses: [], duration: 2, region: null }
+    expect('scrolls' in buildCursorTrack(raw({}), o)).toBe(false)
+    expect(buildCursorTrack(raw({ scrolls: [] }), o).scrolls).toEqual([])
+    const invalid = buildCursorTrack(raw({ bounds: null, scrolls: [wheel(T0 + 100, 1, 1)] }), o)
+    expect(invalid.valid).toBe(false)
+    expect('scrolls' in invalid).toBe(false)
+  })
+
+  it('maps releases to source time (also across a pause); clicks without one get no key', () => {
+    const pauses = [{ from: T0 + 1500, to: T0 + 2500 }]
+    const track = buildCursorTrack(
+      raw({
+        clicks: [
+          { at: T0 + 500, x: 500, y: 250, button: 'left', up: T0 + 620 },
+          { at: T0 + 1000, x: 500, y: 250, button: 'left', up: T0 + 3000 }, // held through the pause
+          { at: T0 + 3500, x: 500, y: 250, button: 'right' }
+        ]
+      }),
+      { startedAt: T0, pauses, duration: 5, region: null }
+    )
+    expect(track.clicks.map((c) => c.up)).toEqual([0.62, 2, undefined])
+    expect('up' in track.clicks[2]).toBe(false)
+  })
+
+  it('clampTrack drops scrolls after the final duration and keeps an absent key absent', () => {
+    const track = buildCursorTrack(raw({ scrolls: [wheel(T0 + 1000, 500, 250), wheel(T0 + 2300, 500, 250)] }), { startedAt: T0, pauses: [], duration: 2, region: null, slack: 1 })
+    expect(track.scrolls).toHaveLength(2)
+    expect(clampTrack(track, 2).scrolls!.map((s) => s.t)).toEqual([1])
+    expect(clampTrack(track, 2.5).scrolls).toHaveLength(2)
+    const old = buildCursorTrack(raw({}), { startedAt: T0, pauses: [], duration: 2, region: null })
+    expect('scrolls' in clampTrack(old, 2)).toBe(false)
+  })
+})
+
+describe('buildCursorTrack for a window: scrolling and releases', () => {
+  type R = { at: number; x: number; y: number; width: number; height: number; minimized?: boolean; cursorOver?: boolean }
+  const rect = (at: number, x: number, y: number, extra: Partial<R> = {}): R => ({ at, x, y, width: 800, height: 400, ...extra })
+  const build = (r: Partial<RawTrack>, rects: R[], pauses: { from: number; to: number }[] = []) =>
+    buildCursorTrack(raw({ bounds: null, scale: 1, ...r }), { startedAt: T0, pauses, duration: 10, region: null, window: windowMapping(rects, (x) => x, { width: 800, height: 400 }) })
+  const close = (p: { x: number; y: number }, x: number, y: number): boolean => Math.abs(p.x - x) < 1e-9 && Math.abs(p.y - y) < 1e-9
+
+  it('maps scrolls through the window before and after it moves, dropping those outside it', () => {
+    const track = build(
+      {
+        scrolls: [
+          { at: T0 + 1000, x: 300, y: 150, dx: 0, dy: 2 }, // (200, 100) into the window at (100, 50): a quarter
+          { at: T0 + 1500, x: 1300, y: 150, dx: 0, dy: 1 }, // outside the window: dropped
+          { at: T0 + 3500, x: 700, y: 650, dx: 0, dy: -1 } // the moved window's centre
+        ]
+      },
+      [rect(T0 - 500, 100, 50), rect(T0 + 2000, 300, 450)]
+    )
+    expect(track.scrolls).toHaveLength(2)
+    expect(close(track.scrolls![0], 0.25, 0.25)).toBe(true)
+    expect(close(track.scrolls![1], 0.5, 0.5)).toBe(true)
+    expect(track.scrolls!.map((s) => [s.t, s.dy])).toEqual([
+      [1, 2],
+      [3.5, -1]
+    ])
+  })
+
+  it('drops scrolls over a covering window (cursorOver false), while minimised and while paused', () => {
+    const track = build(
+      {
+        scrolls: [
+          { at: T0 + 500, x: 500, y: 250, dx: 0, dy: 1 },
+          { at: T0 + 1500, x: 500, y: 250, dx: 0, dy: 1 }, // covered
+          { at: T0 + 2500, x: 500, y: 250, dx: 0, dy: 1 }, // minimised
+          { at: T0 + 3500, x: 500, y: 250, dx: 0, dy: 1 }, // paused
+          { at: T0 + 4500, x: 500, y: 250, dx: 0, dy: 1 }
+        ]
+      },
+      [rect(T0 - 500, 100, 50), rect(T0 + 1000, 100, 50, { cursorOver: false }), rect(T0 + 2000, -32000, -32000, { minimized: true }), rect(T0 + 3000, 100, 50, { cursorOver: true })],
+      [{ from: T0 + 3200, to: T0 + 4000 }]
+    )
+    expect(track.scrolls!.map((s) => s.t)).toEqual([0.5, 3.7])
+  })
+
+  it('keeps release times of window clicks', () => {
+    const track = build({ clicks: [{ at: T0 + 1000, x: 500, y: 250, button: 'left', up: T0 + 1400 }] }, [rect(T0 - 500, 100, 50)])
+    expect(track.clicks[0].up).toBeCloseTo(1.4, 9)
+  })
+})
