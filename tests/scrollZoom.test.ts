@@ -325,6 +325,43 @@ describe('auto zoom while scrolling: variants', () => {
     expect(spans(zs)).toEqual([[1.1, 3.35]])
   })
 
+  it('a second long scroll starting before the landing: the camera stays out and lands after it', () => {
+    // 3-7 s, a 0.9 s pause (more than the 0.8 s join, less than 0.2 + lead-in), then 7.9-10 s.
+    const track = scrollTrack([A], [...MAIN, ...wheels(7.9, 10)])
+    expect(scrollBreaks(track, auto('zoom-out')).map((b) => [b.start, b.end])).toEqual([
+      [3, 7],
+      [7.9, 10]
+    ])
+    const zs = autoZoomsForTrack(track, D, auto('zoom-out'))
+    expect(spans(zs)).toEqual([
+      [1.1, 3.35],
+      [10.2, 12.9]
+    ])
+    expect(anchorOf(zs[1])).toEqual({ t: 11.1, x: 0.5, y: 0.5 })
+    const focus = focusPathFor(track.samples, D)
+    for (const t of [7.5, 8, 8.5, 9, 9.9]) expect(cameraAt(zs, t, focus).scale).toBe(1)
+    expect(cameraAt(zs, 11.1, focus).scale).toBeCloseTo(DEFAULT_AUTO_ZOOM.scale, 9)
+    // A 1.3 s pause leaves room to land in between: the first landing is bounded by the second scroll, which lands too.
+    expect(spans(autoZoomsForTrack(scrollTrack([A], [...MAIN, ...wheels(8.3, 10)]), D, auto('zoom-out')))).toEqual([
+      [1.1, 3.35],
+      [7.2, 8.65],
+      [10.2, 12.9]
+    ])
+  })
+
+  it('a short scroll after a long one does not keep the zoom from before it in (long hold)', () => {
+    const settings = { ...auto('zoom-out'), hold: 3 }
+    // A 17-notch long scroll right after A, then a 2-notch scroll at 4.7-4.8 s.
+    const track = scrollTrack([A], [...wheels(2.2, 3.8), ...wheels(4.7, 4.8)])
+    expect(scrollBreaks(track, settings).map((b) => [b.start, b.end])).toEqual([[2.2, 3.8]])
+    const zs = autoZoomsForTrack(track, D, settings)
+    expect(spans(zs)).toEqual([
+      [1.1, 2.55],
+      [4, 7.9]
+    ])
+    expect(cameraAt(zs, 3, focusPathFor(track.samples, D)).scale).toBe(1)
+  })
+
   it('a zoom is never clustered or merged across a break', () => {
     // Clicks 3 s apart cluster today; with a long scroll between them they are two zooms.
     const track = scrollTrack([click(2), click(4.9)], wheels(2.5, 4.4))

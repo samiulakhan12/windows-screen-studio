@@ -844,7 +844,10 @@
   outline-offset: -1px;
 }
 
+/* Above the click markers (z-index 2, 3 when selected), which reach into its lower edge. */
 .gap-restore {
+  position: relative;
+  z-index: 4;
   width: 20px;
   height: 20px;
   padding: 0;

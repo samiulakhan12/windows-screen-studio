@@ -160,6 +160,23 @@ describe('setClicksIgnored and rebaseAutoZooms (the §4.3 example)', () => {
     ])
   })
 
+  it('a deleted zoom stays deleted when its own clicks change', () => {
+    const deleted = { ...base, zooms: [base.zooms[1], manual] }
+    for (const ms of [4000, 2000]) {
+      const next = setClicksIgnored(deleted, recorded, { ignore: [{ ms }] })
+      expect(next.inputEdits).toEqual({ ignoredClicks: [{ ms }] })
+      expect(next.zooms).toEqual(deleted.zooms)
+      // Using it again brings nothing back either.
+      expect(setClicksIgnored(next, recorded, { use: [ms] }).zooms).toEqual(deleted.zooms)
+    }
+    // After Remove all, ignoring a click adds nothing; a lone click used again still gets its zoom.
+    const none = { ...base, zooms: [] }
+    expect(setClicksIgnored(none, recorded, { ignore: [{ ms: 4000 }] }).zooms).toEqual([])
+    const lone = track([click(2, 0.3, 0.3), click(15, 0.6, 0.6)])
+    const off = { ...setClicksIgnored(project({ zooms: autoZoomsForTrack(lone, 20) }), lone, { ignore: [{ ms: 15000 }] }), zooms: [] }
+    expect(spans(setClicksIgnored(off, lone, { use: [15000] }).zooms)).toEqual([[14.1, 16.8]])
+  })
+
   it('zooms the user edited (auto: false) are never touched, and nothing new overlaps them', () => {
     const edited = { ...base.zooms[0], auto: false, end: 6 }
     const p = { ...base, zooms: [edited, base.zooms[1], manual] }
@@ -195,6 +212,14 @@ describe('setClicksIgnored and rebaseAutoZooms (the §4.3 example)', () => {
     const next = setClicksIgnored(p, recorded, { ignore: [{ ms: 4000 }] })
     // stale4 goes (its click is ignored); stale2 keeps its length until Regenerate, so [1.1, 3.8] would overlap it and is not added.
     expect(next.zooms.map((z) => z.id)).toEqual(['s2', base.zooms[1].id, 'm'])
+    // An older zoom for both clicks, anchored at 2: ignoring 2 drops it, and the zoom for 4 takes its place.
+    const stale24: ZoomSegment = { id: 's24', start: 1, end: 6.5, scale: 1.8, focus: { mode: 'cursor' }, auto: true, anchor: { t: 2, x: 0.3, y: 0.3 } }
+    const replaced = setClicksIgnored({ ...base, zooms: [stale24, base.zooms[1], manual] }, recorded, { ignore: [{ ms: 2000 }] })
+    expect(spans(replaced.zooms)).toEqual([
+      [3.1, 5.8],
+      [8.1, 10.8],
+      [12, 15]
+    ])
   })
 
   it('keeps the other edits (and their arrays) and orders the list; an emptied list and edits are removed', () => {
@@ -373,6 +398,21 @@ describe('pathSummary', () => {
     expect(pathSummary(recorded, kept)).toEqual({ moves: 2, straightened: 0, kept: { click: 1 } })
     const forced = setPathRange(project(), { start: 3, end: 5 }, 'straight')
     expect(pathSummary(recorded, forced, { start: 3, end: 5 })).toEqual({ moves: 1, straightened: 0, kept: { click: 1 } })
+  })
+
+  it('shares the effective track plan: ignoring a click after many summaries keeps the same samples array', () => {
+    const on = setStraighten(project(), true)
+    const samples = effectiveTrack(recorded, on).samples
+    expect(samples).not.toBe(recorded.samples)
+    // The Cursor tab recomputes the summary on every project change.
+    let p = on
+    for (let i = 0; i < 6; i++) {
+      p = { ...p, name: `Test ${i}` }
+      expect(pathSummary(recorded, p).straightened).toBe(1)
+    }
+    const ignored = setClicksIgnored(p, recorded, { ignore: [{ ms: 4300 }] })
+    expect(ignored.inputEdits?.ignoredClicks).toEqual([{ ms: 4300 }])
+    expect(effectiveTrack(recorded, ignored).samples).toBe(samples)
   })
 
   it('is all zero with the cursor in the video or without cursor data', () => {

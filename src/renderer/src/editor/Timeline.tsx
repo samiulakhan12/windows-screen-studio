@@ -33,7 +33,7 @@ import { orPress, shortcutLabel, withShortcut } from '../../../shared/editor/sho
 import { clamp } from '../../../shared/engine/math'
 import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
-import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
+import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomSettingsOf, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { formatLevel } from '../../../shared/editor/zoomEdit'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { ScrollSession } from '../../../shared/engine/scroll'
@@ -155,6 +155,8 @@ export const Timeline = memo(
     // Shapes and spotlights come straight from the store: only a change to them re-renders the timeline.
     const shapes = useSyncExternalStore(store.subscribe, () => store.state.shapes) ?? NO_SHAPES
     const spotlights = useSyncExternalStore(store.subscribe, () => store.state.spotlights) ?? NO_SPOTLIGHTS
+    // Whether right clicks start auto zooms: what the click markers' tooltips promise.
+    const rightClicks = useSyncExternalStore(store.subscribe, () => zoomSettingsOf(store.state).auto.rightClicks)
 
     const fit = fitScale(viewport - 2 * GUTTER, duration)
     const px = zoom.fit ? fit : clampScale(zoom.px, fit)
@@ -620,7 +622,7 @@ export const Timeline = memo(
                       data-state={state}
                       data-button={r.click.button}
                       style={{ left: r.click.t * px }}
-                      title={clickTooltip(r)}
+                      title={clickTooltip(r, keymap.deleteSelection, rightClicks)}
                       onPointerDown={onClickMarkerDown(r)}
                     />
                   )

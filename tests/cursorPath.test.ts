@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildCursorTrack, type RawTrack } from '../src/main/recording/trackMath'
 import { cursorAt } from '../src/shared/engine/cursor'
-import { cursorMoves, minJerk, moveAt, PATH, planCursorPath, straightenSamples, type CursorMove } from '../src/shared/engine/cursorPath'
+import { cursorMoves, minJerk, moveAt, NO_PATHS as SHARED_NO_PATHS, PATH, planCursorPath, straightenSamples, type CursorMove } from '../src/shared/engine/cursorPath'
 import type { ClickEvent, CursorSample, CursorTrack, PathRange, ScrollEvent } from '../src/shared/types'
 
 const ASPECT = 16 / 9
@@ -137,6 +137,9 @@ describe('the worked example (§5.6)', () => {
     const ctx = { aspect: ASPECT, straighten: true, paths: NO_PATHS }
     expect(planCursorPath(t, ctx)).toBe(planCursorPath(t, { ...ctx }))
     expect(planCursorPath(t, ctx).samples).not.toBe(planCursorPath(t, { ...ctx, straighten: false }).samples)
+    // Every empty paths array is the same: a caller passing a new [] neither misses nor pushes the others out.
+    for (let i = 0; i < 6; i++) expect(planCursorPath(t, { ...ctx, paths: [] })).toBe(planCursorPath(t, ctx))
+    expect(planCursorPath(t, { ...ctx, paths: SHARED_NO_PATHS })).toBe(planCursorPath(t, ctx))
   })
 })
 

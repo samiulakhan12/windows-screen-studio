@@ -7,7 +7,7 @@
  * in the same new project, so one undo step restores both. Pure.
  */
 import { cursorAt } from '../engine/cursor'
-import { pathModeAt, planCursorPath, type MoveReason } from '../engine/cursorPath'
+import { NO_PATHS, pathModeAt, planCursorPath, type MoveReason } from '../engine/cursorPath'
 import { clickKey, paintPathRange, type ClickRow } from '../engine/inputData'
 import { effectiveTrack } from '../engine/inputTrack'
 import { SCROLL, scrollBreaks } from '../engine/scroll'
@@ -244,7 +244,7 @@ export interface PathSummary {
 export function pathSummary(recorded: CursorTrack, p: Project, range?: { start: number; end: number }): PathSummary {
   const out: PathSummary = { moves: 0, straightened: 0, kept: {} }
   if (!recorded.valid || p.capture.cursorInVideo) return out
-  const paths = p.inputEdits?.paths ?? []
+  const paths = p.inputEdits?.paths ?? NO_PATHS
   const plan = planCursorPath(recorded, { aspect: p.width / p.height, straighten: p.inputEdits?.straighten === true, paths })
   const done = new Set(plan.straightened)
   const lo = range ? Math.min(range.start, range.end) : -Infinity

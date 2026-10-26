@@ -237,7 +237,10 @@ It never runs live.
 - **Also drop** an auto zoom with a click anchor (`until` undefined) whose `clickKey(anchor.t)`
   is in `dropAnchors`. This covers zooms made by an older generator, which `before` no longer
   reproduces.
-- **Add**, with a new id, every zoom of `after` that matches none in `before` and overlaps no kept zoom.
+- **Add**, with a new id, every zoom of `after` that matches none in `before`, overlaps no kept zoom,
+  and overlaps only `before` zooms that overlap a zoom dropped by the two rules above. A `before`
+  zoom the user deleted is not in `zooms`, so nothing drops for it and its stretch stays clear.
+  An `after` zoom that overlaps no `before` zoom (a lone click used again) is added.
 - Sort by start. Return `zooms` itself if nothing changed.
 
 Why this is sound: every user edit turns a zoom into `auto: false` (`zoomEdit.ts`, the timeline,
@@ -251,6 +254,8 @@ clicks at 2, 4 and 9, and a manual zoom `m` at [12, 15]:
 - The result: [1.1, 5.8] is replaced by [1.1, 3.8]. The 9 s zoom keeps its object and id, and `m` is kept.
 - If the user had deleted the 9 s zoom earlier, it stays deleted.
 - Using 4 again restores [1.1, 5.8].
+- If the user had deleted [1.1, 5.8] instead, ignoring 4 (or 2) adds nothing: only [8.1, 10.8]
+  and `m` remain. The same holds after **Remove all**.
 
 "Regenerate" and the auto settings keep their full regeneration (`regenerateAutoZooms` with the
 effective track), so ignored clicks stay ignored there too.
@@ -428,7 +433,10 @@ Breaks are processed in time order. Each break B gets a landing event when all o
 
 - some zoom event, landings included, has `t1` in [B.start − hold, B.start], so a zoom was in when scrolling began;
 - no click, mark or typing event starts in [B.end, B.end + 1.5];
-- `L = B.end + 0.2 + leadIn ≤ duration`.
+- `L = B.end + 0.2 + leadIn ≤ duration`;
+- the next break, if any, starts after L. Otherwise B gets no landing and the next break counts
+  as zoomed in (its first condition holds), so the camera stays out through both and lands after
+  the second.
 
 The landing event is `{ t0: L, t1: L, anchor: { t: L, x: B.last.x, y: B.last.y } }`. Its range
 starts at `L − leadIn = B.end + 0.2`, so it zooms in once the page has settled, then hands back
@@ -440,7 +448,7 @@ to the cursor 0.3 s after L, like a click zoom.
 no break overlaps (cur.last, e.t0).
 
 **b. Holds.** Holds are applied in time order, interleaved with the events. A hold [h0, h1] with
-`cur.start ≤ h0 ≤ cur.end` sets:
+`cur.start ≤ h0 ≤ cur.end`, and no break overlapping (cur.last, h0), sets:
 
 - `cur.end = max(cur.end, h1 + hold)`;
 - `cur.last = max(cur.last, h1)`.
@@ -486,6 +494,13 @@ In `zoom-out` mode, A's zoom starts leaving at 2.65 s.
   The click's range is bounded to [5.1, 5.35], shorter than 1.4, so it is dropped. The click still shows its effect and sound.
   - The first break gets no landing, because the click starts within 1.5 s of its end.
   - The second break gets a landing at 8.1 → [7.2, 9.9]: the click at 5.0 counts as a zoom event that ended when this scroll began.
+- A second long scroll from 7.9 to 10.0 s (a 0.9 s pause, over the 0.8 s join): the first
+  landing (8.1) would be inside it, so there is none; the camera stays at scale 1 through both
+  and lands at 11.1 → [10.2, 12.9]. With a 1.3 s pause (8.3–10.0 s) the first landing fits:
+  [7.2, 8.65], then [10.2, 12.9].
+- With **Hold after** 3.0, a long scroll at 2.2–3.8 s and a 2-notch scroll at 4.7–4.8 s: the
+  short scroll is across the break from A, so it does not keep A in. The zooms are [1.1, 2.55]
+  and the landing [4.0, 7.9].
 
 ### 6.6 Smart speed (`src/shared/editor/smartSpeed.ts`)
 
@@ -583,6 +598,10 @@ marker. Today only left clicks show; ripples and sounds play for every button.
 **Marker tooltips**
 
 - Used: "Left click at 0:04.2 · select it and press Delete to ignore it (no zoom, click effect or sound)".
+  - The key is the first one bound to **Delete selection** in the keymap. With none bound it
+    reads "select it to ignore it in the Zoom panel".
+  - A click that cannot start an automatic zoom (a middle click, or a right click with Auto zoom ›
+    Right clicks off) says "(no click effect or sound)".
 - Ignored: "Ignored click at 0:04.2 · select it to use it again".
 - Stray: "Ignored automatically at 0:04.2: <reason> · select it to use it again". The reason is one of:
   - `start`: "the first moment of the recording, usually the click that focuses the app";
@@ -603,6 +622,9 @@ marker. Today only left clicks show; ripples and sounds play for every button.
 - Title "Selected click", aside "Left click · 0:04.2".
 - Used: "Used: it can start an automatic zoom, shows the click effect, plays the click sound and
   counts as activity for smart speed." Button **Ignore click** (shows the Delete shortcut).
+  - For a click that cannot start an automatic zoom (a middle click, or a right click with Right
+    clicks off): "Used: it shows the click effect, plays the click sound and counts as activity
+    for smart speed." A right click adds "Turn on Auto zoom › Right clicks to zoom for it too."
 - Ignored: "Ignored: no zoom, click effect or sound, and smart speed does not count it." A stray
   click adds the reason sentence. Button **Use click**.
 - Hint: "Only automatic zooms change; zooms you added or edited stay as they are."
@@ -622,7 +644,9 @@ because the zoom is gone.
 
 - Summary: "14 left clicks (2 ignored) · 1 typing burst · 2 long scrolls detected. …".
 - `hasInput` uses the **recorded** clicks, so ignoring every click does not grey the section out.
-  The copy then reads "All 14 clicks are ignored".
+  The copy then reads "All 14 left clicks are ignored." ("The only left click is ignored." for
+  one), a sentence of its own before the other counts: "All 14 left clicks are ignored. 1 typing
+  burst detected. …".
 - A disclosure **Recorded clicks · 14 · 2 ignored**, scrolling at a max height of 240 px, styled
   like the smart speed parts list:
   - one row per click: a time button (selects and seeks), the button kind, the state, and an
@@ -837,6 +861,8 @@ needs them. Changing a frozen file or an exported signature goes through the lea
 - Every §6.5 example, exact ranges and anchors, in all three modes.
 - `cameraAt(5.0).scale === 1` in the main example.
 - Typing overlapping a scroll gives no break.
+- Two long scrolls 0.9 s apart: no landing inside the second, one after it.
+- A short scroll across a break from a zoom (Hold after 3.0) does not keep that zoom in.
 - **Golden parity:** every fixture of `autoZoomTrack.test.ts` and `zoom.test.ts`, with `scrolls`
   absent, `[]`, and with scrolls under `'ignore'`, deep-equals today's output (ids stripped).
 
@@ -849,12 +875,14 @@ needs them. Changing a frozen file or an exported signature goes through the lea
   - manual zooms untouched;
   - auto zoom off leaves zooms alone;
   - nothing changed returns the same object;
-  - the stale-anchor fallback.
+  - the stale-anchor fallback;
+  - a deleted zoom stays deleted when its own clicks are ignored or used (and after Remove all).
 - `ignoreStrayClicks`, `useAllClicks`.
 - `clickAtPlayhead`: zoom anchor first, then nearest within 1 s.
 - `zoomCause` for all four kinds.
 - `setStraighten` and `setPathRange`: key removal, identity when unchanged.
-- `pathSummary` counts.
+- `pathSummary` counts; it shares the effective track's cached plan, so ignoring a click after
+  any number of summaries keeps the same `samples` array.
 
 **B: `tests/smartSpeed.test.ts`**
 
@@ -918,6 +946,13 @@ needs them. Changing a frozen file or an exported signature goes through the lea
    - Choose **Hold**: `scrolling: 'hold'` is saved and the camera is zoomed in at 5.0 s. Ctrl+Z.
    - A second project without `scrolls`: the chips are disabled with the hint, and Regenerate
      gives exactly [1.1, 3.8] and [11.1, 13.8].
+4. **"click markers: under the restore button of a cut, copy that fits the click"**
+   - A left click at 4.0 s inside a cut [3.5, 4.5], and a middle click at 8.0 s.
+   - The cut's restore button is on top at its lower edge, over the click's marker: a press
+     there restores the cut and selects no click (`.gap-restore` has z-index 4).
+   - The tooltips: "press Delete … (no zoom, click effect or sound)" for the left click, "(no
+     click effect or sound)" for the middle one, whose Selected click text promises no zoom.
+   - Ignoring the left click: the summary starts "The only left click is ignored. Changing these settings".
 
 **A: recording e2e**
 

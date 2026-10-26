@@ -172,8 +172,8 @@ const NO_SCROLL: ScrollShape = { breaks: [], holds: [] }
  * joined to the clicks around it by a pan.
  * Scrolling: no zoom clusters, merges or lasts across a break (it ends SCROLL.outBy after the
  * break starts and starts SCROLL.rest after it ends, and is dropped when that leaves less than
- * two transitions); a hold starting inside a zoom keeps it in. Without breaks and holds the
- * arithmetic is exactly what it was before scrolling was recorded.
+ * two transitions); a hold starting inside a zoom, with no break before it, keeps it in.
+ * Without breaks and holds the arithmetic is exactly what it was before scrolling was recorded.
  */
 function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions, typingScale = o.scale, scroll: ScrollShape = NO_SCROLL): ZoomSegment[] {
   const sorted = [...events].sort((a, b) => a.t0 - b.t0)
@@ -187,7 +187,8 @@ function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptio
     for (; h < holds.length && holds[h].start < before; h++) {
       const cur = ranges[ranges.length - 1]
       const hold = holds[h]
-      if (cur && cur.start <= hold.start && hold.start <= cur.end) {
+      // Like clustering: a hold on the far side of a break does not keep the zoom in.
+      if (cur && cur.start <= hold.start && hold.start <= cur.end && !breakBetween(cur.last, hold.start)) {
         cur.end = Math.max(cur.end, hold.end + o.hold)
         cur.last = Math.max(cur.last, hold.end)
       }
@@ -408,8 +409,9 @@ const NO_SCROLL_PLAN: ScrollZoomPlan = { breaks: [], holds: [], landings: [] }
  * session is a break, every other one a hold; a break gets a landing when a zoom event (landings
  * included) ended within `hold` before it began, no click, mark or typing starts within
  * SCROLL.landSkip after it, and the landing, SCROLL.rest + leadIn after its last wheel event,
- * is inside the recording. 'hold': every session is a hold. 'ignore', no scroll data, or auto
- * zoom off: nothing.
+ * is inside the recording. When the next break starts at or before that landing, there is none:
+ * the next break counts as zoomed in instead, so the camera lands after it. 'hold': every
+ * session is a hold. 'ignore', no scroll data, or auto zoom off: nothing.
  */
 function planScroll(track: CursorTrack, settings: AutoZoomSettings, input: AutoZoomInput, duration: number): ScrollZoomPlan {
   const mode = settings.scrolling ?? 'zoom-out'
@@ -428,12 +430,19 @@ function planScroll(track: CursorTrack, settings: AutoZoomSettings, input: AutoZ
   }
   const landings: ScrollZoomPlan['landings'] = []
   const EPS = 1e-9
-  for (const b of breaks) {
-    const zoomedIn = [...events, ...landings].some((e) => e.t1 >= b.start - o.hold - EPS && e.t1 <= b.start + EPS)
+  // Set when the previous break's landing would have been inside this break: still waiting to land.
+  let carried = false
+  breaks.forEach((b, i) => {
+    const zoomedIn = carried || [...events, ...landings].some((e) => e.t1 >= b.start - o.hold - EPS && e.t1 <= b.start + EPS)
+    carried = false
     const busy = events.some((e) => e.t0 >= b.end - EPS && e.t0 <= b.end + SCROLL.landSkip + EPS)
+    if (!zoomedIn || busy) return
     const t = b.end + SCROLL.rest + o.leadIn
-    if (zoomedIn && !busy && t <= duration) landings.push({ t0: t, t1: t, anchor: { t, x: b.last.x, y: b.last.y } })
-  }
+    const next = breaks[i + 1]
+    // The next long scroll starts before the camera would be back in: land after that one instead.
+    if (next && next.start <= t + EPS) carried = true
+    else if (t <= duration) landings.push({ t0: t, t1: t, anchor: { t, x: b.last.x, y: b.last.y } })
+  })
   return { breaks, holds, landings }
 }
 
@@ -918,8 +927,9 @@ export function regenerateAutoZooms(
  *    `before` and matches none of `after`;
  *  - also drop an auto zoom whose click anchor (anchor.until undefined) has its clickKey(anchor.t)
  *    in `dropAnchors` (zooms from an older generator, which `before` no longer reproduces);
- *  - add (with a new id) every zoom of `after` that matches none of `before` and overlaps no
- *    kept zoom;
+ *  - add (with a new id) every zoom of `after` that matches none of `before`, overlaps no kept
+ *    zoom, and overlaps only zooms of `before` that overlap a zoom dropped by the rules above
+ *    (one the user deleted is not there to drop, so its stretch stays clear);
  *  - sorted by start. Returns `zooms` itself when nothing changes.
  * CONTRACT: used by shared/editor/inputEdits.ts setClicksIgnored (one undo step with the edit).
  */
@@ -931,8 +941,12 @@ export function rebaseAutoZooms(zooms: ZoomSegment[], before: ZoomSegment[], aft
     const a = z.anchor
     return !(a && typeof a.until !== 'number' && drop.has(clickKey(a.t)))
   })
+  const overlaps = (a: ZoomSegment, b: ZoomSegment): boolean => a.start < b.end && a.end > b.start
+  // A zoom of `before` that overlaps none of the removed ones was deleted by the user: keep its stretch clear.
+  const removed = zooms.filter((z) => !kept.includes(z))
   const added = after
-    .filter((a) => !before.some((b) => sameZoom(a, b)) && !kept.some((k) => a.start < k.end && a.end > k.start))
+    .filter((a) => !before.some((b) => sameZoom(a, b)) && !kept.some((k) => overlaps(a, k)))
+    .filter((a) => before.every((b) => !overlaps(a, b) || removed.some((z) => overlaps(z, b))))
     .map((a) => ({ ...a, id: newZoomId() }))
   if (kept.length === zooms.length && added.length === 0) return zooms
   return [...kept, ...added].sort((a, b) => a.start - b.start)
