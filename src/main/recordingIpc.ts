@@ -235,12 +235,20 @@ function startTracker(s: ActiveRecording): void {
   })
 }
 
+/**
+ * Whether `p` was over the speaker notes or the recording bar at `at` (epoch ms). Neither is in a
+ * window recording's video, so a cursor over them stays on the recorded window beneath.
+ */
+function overOwnWindow(p: Point, at: number): boolean {
+  return toolbarAreas().some((r) => pointInRect(p, r)) || notesAreaContains(p, at)
+}
+
 /** Where a recorded window's cursor positions go in its video; null without its rectangle. */
 async function windowTrackMapping(s: ActiveRecording, raw: RawTrack): Promise<WindowMapping | null> {
   const { mapping, scale } = windowCursorMapping(await s.windowRects(), { width: s.manifest.width, height: s.manifest.height }, screen)
   // The drawn cursor is as large as the real one on the window's monitor.
   if (scale) raw.scale = scale
-  return mapping
+  return mapping && { ...mapping, ownAt: overOwnWindow }
 }
 
 /** Pause/resume hotkey: resumes a paused recording (also one paused by auto-pause), else pauses. */

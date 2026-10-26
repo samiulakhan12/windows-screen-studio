@@ -422,6 +422,67 @@ describe('buildCursorTrack for a window: bars, drags and covering windows', () =
     expect(inVideo(sampleAt(track, 2.5))).toBe(true)
   })
 
+  it("keeps the cursor on the recorded window over the app's own windows (the speaker notes), which the video does not show", () => {
+    // The notes sit over the window's top centre from 1 s to 3 s; the helper reports the cursor off the window there.
+    const notes = { x: 420, y: 8, width: 560, height: 240 }
+    const asked: { x: number; y: number; at: number }[] = []
+    const ownAt = (p: { x: number; y: number }, at: number): boolean => {
+      asked.push({ ...p, at })
+      return at >= T0 + 1000 && at < T0 + 3000 && p.x >= notes.x && p.x < notes.x + notes.width && p.y >= notes.y && p.y < notes.y + notes.height
+    }
+    const rects = [
+      rect(T0 - 500, 100, 0),
+      rect(T0 + 1400, 100, 0, 1280, 720, { cursorOver: false }),
+      rect(T0 + 2600, 100, 0, 1280, 720, { cursorOver: true }),
+      rect(T0 + 3400, 100, 0, 1280, 720, { cursorOver: false })
+    ]
+    const track = buildCursorTrack(
+      raw({
+        bounds: null,
+        scale: 1,
+        samples: [
+          { at: T0 + 500, x: 740, y: 360 }, // over the window
+          { at: T0 + 1500, x: 700, y: 100 }, // over the notes
+          { at: T0 + 2000, x: 1200, y: 600 }, // over a chat window covering the recorded one
+          { at: T0 + 2500, x: 700, y: 100 }, // over the notes again
+          { at: T0 + 3500, x: 700, y: 100 } // the notes are gone: over another window there
+        ]
+      }),
+      { startedAt: T0, pauses: [], duration: 10, region: null, window: { ...windowMapping(rects, (x) => x, { width: 1280, height: 720 })!, ownAt } }
+    )
+    expect(sampleAt(track, 1.5).x).toBeCloseTo(600 / 1280, 9)
+    expect(sampleAt(track, 1.5).y).toBeCloseTo(100 / 720, 9)
+    expect(inVideo(sampleAt(track, 2.5))).toBe(true)
+    // Standing still over the notes when the helper reported it off the window: still on it.
+    expect(inVideo(sampleAt(track, 1.4))).toBe(true)
+    // Other windows still hide it.
+    expect(inVideo(sampleAt(track, 2))).toBe(false)
+    expect(inVideo(sampleAt(track, 3.5))).toBe(false)
+    // Asked only where the helper said the cursor was off the window.
+    expect(asked.some((a) => a.at === T0 + 500)).toBe(false)
+  })
+
+  it('asks about its own windows with the position as captured (DIP), before it is converted for the rectangles', () => {
+    // Physical pixels are twice the DIP: the window is at (200, 0), 2560 x 1440 physical.
+    const notesDip = { x: 210, y: 4, width: 280, height: 120 }
+    const asked: { x: number; y: number }[] = []
+    const ownAt = (p: { x: number; y: number }): boolean => {
+      asked.push({ x: p.x, y: p.y })
+      return p.x >= notesDip.x && p.x < notesDip.x + notesDip.width && p.y >= notesDip.y && p.y < notesDip.y + notesDip.height
+    }
+    const mapping = windowMapping([rect(T0 - 500, 200, 0, 2560, 1440, { cursorOver: false })], (x) => x, { width: 1280, height: 720 })!
+    const track = buildCursorTrack(raw({ bounds: null, scale: 1, samples: [{ at: T0 + 500, x: 350, y: 50 }] }), {
+      startedAt: T0,
+      pauses: [],
+      duration: 10,
+      region: null,
+      window: { ...mapping, pointToScreen: (p) => ({ x: p.x * 2, y: p.y * 2 }), ownAt }
+    })
+    expect(asked).toContainEqual({ x: 350, y: 50 })
+    expect(sampleAt(track, 0.5).x).toBeCloseTo((700 - 200) / 2560, 9)
+    expect(sampleAt(track, 0.5).y).toBeCloseTo(100 / 1440, 9)
+  })
+
   it('treats a missing cursorOver (older helpers) as over the window', () => {
     const track = build({ samples: [{ at: T0 + 500, x: 740, y: 360 }], clicks: [{ at: T0 + 600, x: 740, y: 360, button: 'left' }] }, [rect(T0 - 500, 100, 0)])
     expect(track.clicks).toHaveLength(1)

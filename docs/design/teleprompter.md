@@ -306,7 +306,12 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
 - **Click effects, auto zoom, click sounds, smart speed** are built from recorded clicks, typing
   and scrolls only, so they inherit this.
 - **Cursor positions** over the notes are kept (dropping them would make the cursor jump); the
-  video shows the app beneath, as with the bar today.
+  video shows the app beneath, as with the bar. In a window recording the capture helper reports
+  the cursor as off the recorded window while it is over the notes or the bar (each is a window of
+  its own), which would hide it past the video's edge; `writeTrack` gives the window mapping
+  `ownAt(p, at)` (the bar's places, or `notesAreaContains(p, at)`, with the position as captured,
+  in DIP), and `buildCursorTrack` keeps such positions on the recorded window. Other windows
+  covering it still hide the cursor.
 - **Keystrokes.** The notes accelerators are in `ignoreKeys`; the window cannot receive typing
   (not focusable).
 - **Window picker.** `sources:list` already removes every live app window by its media source id

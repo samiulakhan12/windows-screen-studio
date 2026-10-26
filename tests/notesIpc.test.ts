@@ -19,7 +19,11 @@ const h = vi.hoisted(() => {
     trackerOpts: null as any,
     idle: null as any,
     /** What prepareToolbar() was given last. */
-    toolbarArgs: null as unknown[] | null
+    toolbarArgs: null as unknown[] | null,
+    /** A window recording: where its window was (windowCursorMapping), what the tracker saw, and the track written. */
+    windowMapping: null as any,
+    rawTrack: null as any,
+    cursorTrack: null as any
   }
 })
 
@@ -31,7 +35,13 @@ vi.mock('electron', () => ({
   },
   // What recordingIpc uses.
   BrowserWindow: { getAllWindows: () => [] },
-  desktopCapturer: { getSources: async () => [{ id: 'screen:1:0', name: 'Screen 1', display_id: '1', thumbnail: { isEmpty: () => true } }] },
+  desktopCapturer: {
+    getSources: async (o?: { types?: string[] }) =>
+      [
+        { id: 'screen:1:0', name: 'Screen 1', display_id: '1', thumbnail: { isEmpty: () => true } },
+        { id: 'window:5:0', name: 'Browser', display_id: '', thumbnail: { isEmpty: () => true } }
+      ].filter((s) => !o?.types || o.types.includes(s.id.split(':')[0]))
+  },
   dialog: {},
   globalShortcut: {
     register: (a: string) => {
@@ -87,6 +97,9 @@ vi.mock('../src/main/cursorTracker', () => ({
     }
     setPaused() {}
     mark() {}
+    collect() {
+      return h.rawTrack ?? { samples: [], clicks: [], keys: [], bounds: null, scale: 1 }
+    }
   }
 }))
 vi.mock('../src/main/recording/idleDetector', () => ({
@@ -116,7 +129,7 @@ vi.mock('../src/main/recording/nativeVideo', () => ({
   stopNativeVideo: () => undefined,
   stopWindowWatch: () => undefined
 }))
-vi.mock('../src/main/recording/finalize', async () => ({ ...(await import('../src/main/recording/errors')), processRecording: () => undefined }))
+vi.mock('../src/main/recording/finalize', async () => ({ ...(await import('../src/main/recording/errors')), processRecording: async (m: { id: string }) => ({ id: m.id }) }))
 vi.mock('../src/main/recording/proxyRunner', () => ({ isCancelled: () => false, killAllFfmpeg: () => undefined }))
 vi.mock('../src/main/recording/regionWindow', () => ({
   pickRegionOnDisplay: async () => {
@@ -129,13 +142,16 @@ vi.mock('../src/main/recording/windowCapture', () => ({
   watchForChromium: async () => ({ watch: null }),
   WINDOW_NO_EFFECTS: 'no effects',
   windowCaptureSupport: async () => ({}),
-  windowCursorMapping: () => ({ mapping: null, scale: null })
+  windowCursorMapping: () => ({ mapping: h.windowMapping, scale: null })
 }))
 vi.mock('../src/main/styleDefaults', () => ({ loadStyleDefaults: async () => null }))
 vi.mock('../src/main/projects', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/main/projects')>()),
   createProjectDir: async () => ({ id: 'r1', dir: h.userData }),
   writeManifest: async () => undefined,
+  writeCursor: async (_id: string, track: unknown) => {
+    h.cursorTrack = track
+  },
   deleteProject: async () => undefined,
   projectsRoot: () => h.userData
 }))
@@ -441,6 +457,37 @@ describe('the recording hooks (recordingIpc)', async () => {
     h.idle.callbacks.onIdle()
     expect(commands()).toEqual(['pause'])
     await end(token)
+  })
+
+  it('a window recording keeps the cursor on the window over the notes and the bar, where the helper says it is off the window', async () => {
+    const T = Date.now()
+    const R = { x: 0, y: 0, width: 1920, height: 1080 }
+    // The helper reports the cursor off the recorded window for the whole take.
+    h.windowMapping = { poses: [{ at: T - 1000, dip: R, physical: R, cursorOver: false }], out: { width: 1920, height: 1080 } }
+    h.rawTrack = {
+      samples: [
+        { at: T + 500, x: 960, y: 100 }, // over the notes
+        { at: T + 1500, x: 50, y: 1010 }, // over the bar (toolbarAreas)
+        { at: T + 2500, x: 960, y: 700 } // over another window
+      ],
+      clicks: [],
+      keys: [],
+      bounds: null,
+      scale: 1
+    }
+    win.area.mockImplementation((p, at) => at === T + 500 && (p as { y: number }).y < 300)
+    const { token } = await start({ sourceId: 'window:5:0' })
+    await invoke('recording:started', home, token, { method: 'chromium', startedAt: T, width: 1920, height: 1080, hasAudio: false, hasWebcam: false, webcamFps: 30 })
+    await expect(invoke('recording:save', home, token, { startedAt: T, duration: 5, webcamOffset: 0, audioOffset: 0 })).resolves.toBe('r1')
+    const at = (t: number) => h.cursorTrack.samples.find((s: { t: number }) => Math.abs(s.t - t) < 1e-6)
+    expect(win.area).toHaveBeenCalledWith(expect.objectContaining({ x: 960, y: 100 }), T + 500)
+    expect(at(0.5).x).toBeCloseTo(0.5, 9)
+    expect(at(0.5).y).toBeCloseTo(100 / 1080, 9)
+    expect(at(1.5).x).toBeCloseTo(50 / 1920, 9)
+    expect(at(2.5).y).toBeGreaterThan(1)
+    win.area.mockImplementation(() => false)
+    h.windowMapping = null
+    h.rawTrack = null
   })
 
   it('a restarted take that cannot be prepared closes the notes window kept for it', async () => {
