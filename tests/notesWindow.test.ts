@@ -352,6 +352,14 @@ describe('the recording window', () => {
     expect(notes.notesSettingsNow().placement).toMatchObject({ displayId: '1' })
   })
 
+  it("a 'moved' that is only our own setBounds() saves no placement", () => {
+    const win = startRecording()
+    h.displays = [{ id: 1, bounds: { x: 0, y: 0, width: 1280, height: 720 }, workArea: { x: 0, y: 0, width: 1280, height: 680 } }]
+    h.screenEvents.get('display-metrics-changed')!()
+    win.emit('moved')
+    expect(notes.notesSettingsNow().placement).toBeNull()
+  })
+
   it('reports drive the bar and auto-pause: playing only while shown and not at the end', () => {
     startRecording()
     const changed = vi.fn()
