@@ -4,17 +4,28 @@
  * director) over inputs a renderer runner collected first, so the whole polish is one undo step.
  * The project schema does not change; the options are an app preference ('polish').
  *
- * Contracts commit: types, POLISH_STEPS, DEFAULT_POLISH_OPTIONS, readPolishOptions,
- * polishKeepRanges and pickTranscriber are implemented; planPolish, polishAvailability and
- * autoZoomHasInput are filled by E-01 (TODO(E-01) below). Only E-01's dialog calls them.
+ * Each step is the function its panel already calls, with the panel's rule for what it keeps:
+ * the Auto zoom toggle (automatic zooms are made only when auto zoom is off), the Clip panel's
+ * Remove silences with its defaults (title cards and freeze frames kept), the Captions tab's
+ * transcript write (never replacing captions), the Camera tab's Direct again with its saved
+ * options, and a style preset. Auto zoom and the director see the recording through the crop
+ * (crop.ts regenerateInFrame / cropView), and nothing here writes the crop or the freezes.
  */
 import type { AiProviderInfo } from '../api/ai'
+import { activitySources } from '../audio/settings'
 import type { DirectorSpeech } from '../audio/speech'
+import { captionsOf } from '../captions/settings'
+import { cropView, regenerateInFrame } from '../engine/crop'
+import { directorSettingsOf } from '../engine/directorData'
+import { freezeKeepRanges, planOf, videoDuration } from '../engine/freeze'
+import { effectiveTrack } from '../engine/inputTrack'
+import { isZoomClick, zoomSettingsOf } from '../engine/zoom'
 import type { FramingOutcome } from '../render/faceFraming'
+import { viewingTime } from '../render/overlays'
 import type { CursorTrack, Project, Transcript } from '../types'
-import type { DirectorPlan } from './cameraDirector'
-import { SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
-import type { PresetLook } from './stylePresets'
+import { applyDirectorPlan, planDirector, type DirectorPlan } from './cameraDirector'
+import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
+import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 
 export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'director'
 /** Run order (decision 2); the dialog lists rows in this order too. */
@@ -82,6 +93,8 @@ export interface PolishInput {
   sound: TimeRange[] | null
   /** A transcript fetched for this run (readTranscript), or null. */
   transcript: Transcript | null
+  /** The provider gave more than MAX_CAPTIONS captions, so the ones after `transcript`'s last were left out. */
+  transcriptLeftOut?: boolean
   /** loadDirectorSpeech(project with this run's transcript, …).speech; null when unknown. */
   speech: DirectorSpeech | null
   /** Face framing for the director; { status: 'skipped' } when not measured. */
@@ -106,7 +119,10 @@ export interface PolishStepResult {
 export interface PolishSummary {
   /** One per POLISH_STEPS entry, in order. */
   steps: PolishStepResult[]
-  /** Output seconds the video got shorter: max(0, outputDuration(before) − outputDuration(after)). */
+  /**
+   * Seconds the video got shorter: max(0, videoDuration(before) − videoDuration(after)), which is
+   * outputDuration without freeze frames (freeze.ts: a pause freeze adds its hold to the video).
+   */
   saved: number
   /** Silences acted on, and how. */
   silences: number
@@ -119,6 +135,8 @@ export interface PolishSummary {
   framing: FramingOutcome | null
   /** Captions written (0 unless the captions step changed the project). */
   captions: number
+  /** With captions left out (PolishInput.transcriptLeftOut): the output second the written ones stop at, else null. */
+  captionsLeftOutAfter: number | null
   /** Name of the preset applied or matched, or null. */
   style: string | null
 }
@@ -140,12 +158,116 @@ export interface PolishContext {
   transcribing: boolean
 }
 
-/** The polished project and what each step did. Pure and synchronous; input.project itself when nothing changes. */
+/** The Clip panel's Remove silences defaults: pauses of 1.0 s or more, 0.25 s kept next to the sound. */
+const SILENCES = { minLength: SILENCE_LENGTH.default, padding: SILENCE_PADDING.default }
+
+/**
+ * The polished project and what each step did, the steps run in POLISH_STEPS order (design §4.1).
+ * Pure and synchronous. Each step keeps the project object when it changes nothing, so
+ * input.project itself comes back when nothing changes (store.update then adds no undo step) and
+ * polishing a polished project again changes nothing.
+ */
 export function planPolish(input: PolishInput, options: PolishOptions): PolishResult {
-  // TODO(E-01): design §4.1.
-  void input
-  void options
-  throw new Error('planPolish: not implemented yet (E-01)')
+  const base = input.project
+  let p = base
+  const steps: PolishStepResult[] = []
+  const summary: PolishSummary = {
+    steps,
+    saved: 0,
+    silences: 0,
+    silenceAction: options.silenceAction,
+    zooms: { auto: 0, kept: 0 },
+    camera: { intro: false, outro: false, hidden: 0, moves: 0 },
+    framing: null,
+    captions: 0,
+    captionsLeftOutAfter: null,
+    style: null
+  }
+  let directorPlan: DirectorPlan | null = null
+  /** The step ran: `next` is `p` itself when it changed nothing. */
+  const ran = (step: PolishStep, next: Project): void => {
+    steps.push({ step, status: next === p ? 'unchanged' : 'changed' })
+    p = next
+  }
+  const skip = (step: PolishStep, reason: PolishSkip, error?: string): void => {
+    steps.push(error ? { step, status: 'skipped', reason, error } : { step, status: 'skipped', reason })
+  }
+
+  // Style: a preset's look. The aspect ratio, the crop and each zoom's own settings stay.
+  const preset = input.preset
+  if (!options.styleId) skip('style', 'off')
+  else if (!preset) skip('style', 'no-preset')
+  else if (presetMatches(p, preset.look)) {
+    summary.style = preset.name
+    ran('style', p)
+  } else {
+    const next = applyPreset(p, preset.look)
+    if (next !== p) summary.style = preset.name
+    ran('style', next)
+  }
+
+  // Auto zoom, the toggle's rule: turned on when it is off. While it is on, the zooms already are
+  // the automatic ones without those you removed, so they are left exactly as they are.
+  if (!options.zoom) skip('zoom', 'off')
+  else if (!autoZoomHasInput(input.recorded)) skip('zoom', 'no-input')
+  else if (zoomSettingsOf(p).auto.enabled) ran('zoom', p)
+  else {
+    const settings = zoomSettingsOf(p)
+    const auto = { ...settings.auto, enabled: true }
+    // Zooms you made or edited (auto: false) are kept; automatic ones over them are not added.
+    const { zooms } = regenerateInFrame(p.zooms, effectiveTrack(input.recorded, p), p, auto)
+    ran('zoom', { ...p, autoZoom: true, zoomSettings: { ...settings, auto }, zooms })
+  }
+
+  // Remove silences, as the Clip panel's: a silence across a cut is acted on at both sides of it.
+  if (!options.silences) skip('silences', 'off')
+  else if (!p.hasAudio) skip('silences', 'no-sound')
+  else if (activitySources(p).length === 0) skip('silences', 'muted')
+  else if (input.sound === null) skip('silences', 'not-measured')
+  else if (input.sound.length === 0) skip('silences', 'nothing-heard')
+  else {
+    const plan = planSilences(input.sound, p.clips, SILENCES, options.silenceAction, polishKeepRanges(p))
+    const clips = plan.parts.length ? applySmartSpeed(p.clips, plan.parts.flatMap((x) => x.pieces), options.silenceAction) : p.clips
+    if (clips !== p.clips) summary.silences = plan.parts.length
+    ran('silences', clips === p.clips ? p : { ...p, clips })
+  }
+
+  // Captions: the Captions tab's write. A transcript already there holds your edits: never replaced.
+  if (!options.captions) skip('captions', 'off')
+  else if (p.transcript) skip('captions', 'has-captions')
+  else if (!p.hasAudio) skip('captions', 'no-sound')
+  else if (input.blocked?.captions) skip('captions', input.blocked.captions, input.errors?.captions)
+  else if (!input.transcript) skip('captions', 'failed', input.errors?.captions)
+  else {
+    const transcript = input.transcript
+    ran('captions', { ...p, transcript, captions: { ...captionsOf(p), show: true } })
+    summary.captions = transcript.segments.length
+    const last = transcript.segments[transcript.segments.length - 1]
+    // The clips are final here: only remove silences changes them, and it ran.
+    if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = viewingTime(p.clips, last.end)
+  }
+
+  // Camera director, last: it plans in output seconds on the final clips, finds the demo from the
+  // final zooms and their style, and listens to speech the transcript refined. Direct again:
+  // only its own earlier segments are replaced.
+  if (!options.director) skip('director', 'off')
+  else if (input.blocked?.director) skip('director', input.blocked.director)
+  // Without a camera to show (layoutsApply), applying would still write Project.director.
+  else if (!p.hasWebcam) skip('director', 'no-camera')
+  else if (!p.webcam.show) skip('director', 'camera-hidden')
+  else {
+    const view = cropView(p, effectiveTrack(input.recorded, p))
+    const plan = planDirector({ project: view.project, cursor: view.cursor, speech: input.speech, newId: input.newId }, directorSettingsOf(p))
+    directorPlan = plan
+    const count = (kind: DirectorPlan['parts'][number]['kind']): number => plan.parts.filter((x) => x.kind === kind).length
+    summary.camera = { intro: count('intro') > 0, outro: count('outro') > 0, hidden: count('hidden'), moves: count('corner') }
+    summary.framing = input.framing
+    ran('director', applyDirectorPlan(p, plan, input.framing))
+  }
+
+  summary.zooms = { auto: p.zooms.filter((z) => z.auto).length, kept: p.zooms.filter((z) => !z.auto).length }
+  summary.saved = Math.max(0, videoDuration(base.clips, planOf(base)) - videoDuration(p.clips, planOf(p)))
+  return { project: p, summary, directorPlan }
 }
 
 const MAX_ID = 64
@@ -172,28 +294,43 @@ export function readPolishOptions(raw: unknown): PolishOptions {
   }
 }
 
-/** Which rows are disabled, and why (null: available). The same rules as planPolish (design §4.2). */
+/**
+ * Which rows are disabled, and why (null: available). The same rules as planPolish (design §4.2);
+ * the director's is directUnavailable's. While `ctx.transcribers` is null the Captions row is
+ * available here and the dialog shows it as still looking.
+ */
 export function polishAvailability(project: Project, recorded: CursorTrack, ctx: PolishContext): Record<PolishStep, PolishSkip | null> {
-  // TODO(E-01): design §4.2.
-  void project
-  void recorded
-  void ctx
-  return { style: null, zoom: null, silences: null, captions: null, director: null }
+  const captions = (): PolishSkip | null => {
+    if (project.transcript) return 'has-captions'
+    if (!project.hasAudio) return 'no-sound'
+    if (ctx.transcribing) return 'busy'
+    return ctx.transcribers?.length === 0 ? 'no-provider' : null
+  }
+  return {
+    style: null,
+    zoom: autoZoomHasInput(recorded) ? null : 'no-input',
+    silences: !project.hasAudio ? 'no-sound' : activitySources(project).length === 0 ? 'muted' : null,
+    captions: captions(),
+    director: !ctx.hasCameraFile || !project.hasWebcam ? 'no-camera' : !project.webcam.show ? 'camera-hidden' : null
+  }
 }
 
 /**
- * Source ranges remove silences keeps as they are: the title cards, as ClipPanel's `keep`.
- * TODO(E-01): append freezeKeepRanges(project.freezes) (engine/freeze.ts, E-11).
+ * Source ranges remove silences keeps as they are: the title cards, as ClipPanel's `keep`, and
+ * the freeze frames (a pause freeze is silent: without this it would be cut).
  */
 export function polishKeepRanges(project: Project): TimeRange[] {
-  return (project.titles ?? []).map(({ start, end }) => ({ start, end }))
+  return [...(project.titles ?? []).map(({ start, end }) => ({ start, end })), ...freezeKeepRanges(project.freezes)]
 }
 
-/** Whether auto zoom has anything to zoom on in the recorded track (ZoomPanel's hasInput). */
+/**
+ * Whether auto zoom has anything to zoom on in the recorded track: ZoomPanel's hasInput, which
+ * counts the recorded clicks (ignored ones too, right clicks too) and typing only with cursor
+ * data, and zoom-here marks always.
+ */
 export function autoZoomHasInput(recorded: CursorTrack): boolean {
-  // TODO(E-01): a zoom click (isZoomClick(c, true)), a typing burst on a valid track, or a mark.
-  void recorded
-  return false
+  if ((recorded.marks?.length ?? 0) > 0) return true
+  return recorded.valid && (recorded.clicks.some((c) => isZoomClick(c, true)) || (recorded.typing?.length ?? 0) > 0)
 }
 
 /** The provider captions are made with: the remembered one if it can still transcribe, else the first that can, else null. */

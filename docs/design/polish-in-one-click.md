@@ -2,7 +2,7 @@
 
 Part of Wave 6, "Easier editing". The shared rules for this wave (file ownership, the shared files, merge order and the keymap) are in [editing-wins.md](editing-wins.md).
 
-Status: design. Roadmap item: `docs/ROADMAP.md` › Easier editing › E-01. This section will also be saved as `docs/design/polish-in-one-click.md`.
+Status: implemented on `w6-e01` (section 13 lists where the build differs from the first draft). Roadmap item: `docs/ROADMAP.md` › Easier editing › E-01.
 
 The editor can already do every part of this. Today it takes five separate clicks in four tabs, and each click is its own undo step:
 
@@ -27,7 +27,7 @@ E-01 adds no new editing logic. It puts these step functions into one pure plann
 - **One click runs it.** Pressing **Polish** runs the selected steps and shows live progress for each one, for example "Transcribing… Part 2 of 3" or "Finding your face… 5/12".
   - You can skip the slow parts (captions, face framing) or cancel the whole run.
   - Nothing changes until everything has finished.
-- **One undo step.** The edit is applied as **one undo step**, then a summary appears. For example: "Polished: the video is 1:12.0 shorter · Cut 9 silences · Auto zoom turned on: 12 zooms · Camera: intro, 1 bubble move, 2 hidden, outro · 63 captions · Style: Studio". It has **Undo polish** and **Done** buttons.
+- **One undo step.** The edit is applied as **one undo step**, then a summary appears. For example: "Polished: the video is 1:12.0 shorter", then one line per step: "Style: Studio", "Auto zoom turned on: 12 zooms", "Cut 9 silences: 1:12.0 shorter", "Captions: 63 captions", "Camera: intro, 1 bubble move, 2 hidden, outro". It has **Undo polish** and **Done** buttons.
 - **Your objects are kept.** Polish keeps:
   - zooms you added or edited, and automatic zooms you removed stay removed;
   - camera blocks you placed or changed, and camera positions recorded from the live bubble;
@@ -49,7 +49,7 @@ E-01 adds no new editing logic. It puts these step functions into one pure plann
 | 4 | Captions are async, slow and can fail | They are **awaited before committing**. The Captions row has a **Skip** button (`cancelTranscription()`), and **Cancel** stops everything. A failure becomes a skipped step with its error text, and the rest still applies. | Rejected: committing first and adding captions later. That makes two undo steps, and the director would plan without the transcript-refined speech. Rejected: aborting the whole polish when captions fail, because a network error would throw away cheap local work. |
 | 5 | Apply, then summarise | Polish applies the edit when the run finishes, then shows the summary with **Undo polish**. | That is what "one click" means. Rejected: a review screen before applying. Reviewing each decision is E-02 (Review mode). A paid transcript is never thrown away by an extra confirmation. |
 | 6 | Existing captions | Never replaced. The step is skipped with "This video already has captions; they are kept". | The transcript holds the user's text edits. `GenerateSection.start()` asks (`window.confirm`) before replacing a transcript, and polish has no such confirm. |
-| 7 | Auto zoom rule | **The Auto zoom toggle's rule.** If auto zoom is off, polish turns it on: `regenerateAutoZooms(p.zooms, effectiveTrack, duration, { ...auto, enabled: true })`, then writes `autoZoom: true` and `zoomSettings.auto.enabled: true`, as `setAuto({ enabled: true })` does. If auto zoom is already on, the zooms are left exactly as they are. | Finalize already generated the automatic zooms (`src/main/recording/finalize.ts` sets `project.zooms = autoZoomsForTrack(…)`). Input edits rebase them (`inputEdits.ts` → `rebaseAutoZooms`), and settings changes regenerate them (`setAuto`). So while auto zoom is on, the zooms already are the automatic ones, minus the ones you removed. Rejected: **Regenerate** on every polish. It brings back every automatic zoom you deleted, including all of them after "Remove all zooms", which keeps `autoZoom` on. That breaks "keep my edits". Refreshing zooms on purpose stays the Zoom tab's Regenerate (see Later). |
+| 7 | Auto zoom rule | **The Auto zoom toggle's rule.** If auto zoom is off, polish turns it on: `regenerateInFrame(p.zooms, effectiveTrack, p, { ...auto, enabled: true })` (E-10's crop-aware `regenerateAutoZooms`, `src/shared/engine/crop.ts`), then writes `autoZoom: true` and `zoomSettings.auto.enabled: true`, as `setAuto({ enabled: true })` does. If auto zoom is already on, the zooms are left exactly as they are. | Finalize already generated the automatic zooms (`src/main/recording/finalize.ts` sets `project.zooms = autoZoomsForTrack(…)`). Input edits rebase them (`inputEdits.ts` → `rebaseAutoZooms`), and settings changes regenerate them (`setAuto`). So while auto zoom is on, the zooms already are the automatic ones, minus the ones you removed. Rejected: **Regenerate** on every polish. It brings back every automatic zoom you deleted, including all of them after "Remove all zooms", which keeps `autoZoom` on. That breaks "keep my edits". Refreshing zooms on purpose stays the Zoom tab's Regenerate (see Later). |
 | 8 | Silences rule | `planSilences` with the Clip panel defaults: `SILENCE_LENGTH.default` 1.0 s and `SILENCE_PADDING.default` 0.25 s. The action is chosen in the dialog: Cut (default), 2×, 4× or 8×. The keep ranges are the title cards, as `ClipPanel` builds `keep`, plus E-11 freeze frames. | This is exactly the Clip panel's "Remove silences", so the parts the panel lists are the parts polish cuts. Rejected: idle-parts mode, which needs `window.api.detectStill` (ffmpeg freezedetect over the whole recording). It is slow on long recordings and is not in the roadmap text. Rejected: also keeping text callouts and shapes. A long blur or label would block every cut under it, and the panel would disagree with polish. |
 | 9 | Director rule | The project's saved or default options (`directorSettingsOf(project)`), including `frameFace`, which `directorMayFrame` already turns off when you framed the camera yourself. This is **Direct again**: `planDirector` drops only the director's own segments (`withoutDirected`) and keeps yours. The face is measured as `direct()` measures it. | The Camera tab owns these options, and repeating them in the dialog would mean two places to keep in sync. Unlike zooms, the director must plan again after cuts: its intro, outro and hide rules are measured in output seconds. |
 | 10 | Style step | A **style preset** (built-in or one of yours), applied with `applyPreset`. The default is "Keep the current look". | `applyPreset` changes only `PresetStyle` (`STYLE_KEYS`), `PresetCursor`, the zoom style and the tilt. It keeps the aspect ratio, cursor visibility, a custom cursor image and each zoom's own settings. Rejected: `applyStyleDefaults`. It also overwrites `webcam`, setting `show: project.hasWebcam`, which would show a hidden camera and undo the director's framing. It also overwrites `effects` and `watermark`, and it was written for new recordings. |
@@ -128,6 +128,8 @@ export interface PolishInput {
   sound: TimeRange[] | null
   /** A transcript fetched for this run (readTranscript), or null. */
   transcript: Transcript | null
+  /** The provider gave more than MAX_CAPTIONS captions, so the ones after `transcript`'s last were left out. */
+  transcriptLeftOut?: boolean
   /** loadDirectorSpeech(project with this run's transcript, …).speech; null when unknown. */
   speech: DirectorSpeech | null
   /** Face framing for the director; { status: 'skipped' } when not measured. */
@@ -152,7 +154,7 @@ export interface PolishStepResult {
 export interface PolishSummary {
   /** One per POLISH_STEPS entry, in order. */
   steps: PolishStepResult[]
-  /** Output seconds the video got shorter: max(0, outputDuration(before) − outputDuration(after)). */
+  /** Seconds the video got shorter: max(0, videoDuration(before) − videoDuration(after)) (outputDuration without freezes). */
   saved: number
   /** Silences acted on, and how. */
   silences: number
@@ -165,6 +167,8 @@ export interface PolishSummary {
   framing: FramingOutcome | null
   /** Captions written (0 unless the captions step changed the project). */
   captions: number
+  /** With captions left out (transcriptLeftOut): the output second the written ones stop at, else null. */
+  captionsLeftOutAfter: number | null
   /** Name of the preset applied or matched, or null. */
   style: string | null
 }
@@ -227,7 +231,7 @@ Setup: `base = input.project`, `before = outputDuration(base.clips)`, `p = base`
    - If `zoomSettingsOf(p).auto.enabled`, the result is `'unchanged'`. The zooms are already the automatic ones minus what you removed (decision 7).
    - Otherwise:
      - `auto = { ...zoomSettingsOf(p).auto, enabled: true }`
-     - `r = regenerateAutoZooms(p.zooms, effectiveTrack(input.recorded, p), p.duration, auto)`
+     - `r = regenerateInFrame(p.zooms, effectiveTrack(input.recorded, p), p, auto)`: `regenerateAutoZooms` with the clicks outside the crop left out and the anchors clamped into it (E-10). Without a crop it is exactly `regenerateAutoZooms(…, p.duration, auto)`.
      - `p = { ...p, autoZoom: true, zoomSettings: { ...zoomSettingsOf(p), auto }, zooms: r.zooms }` → `'changed'`.
 
      Zooms with `auto: false` are kept, and new automatic zooms that overlap them are dropped.
@@ -257,14 +261,17 @@ Setup: `base = input.project`, `before = outputDuration(base.clips)`, `p = base`
 
      These two checks are `layoutsApply` (`src/shared/engine/layout.ts`). They are needed: for such a project `planDirector` returns an empty plan, but `applyDirectorPlan` still writes `project.director`, which would be a change that does nothing.
    - Otherwise:
-     - `plan = planDirector({ project: p, cursor: effectiveTrack(input.recorded, p), speech: input.speech, newId: input.newId }, directorSettingsOf(p))`
-     - `next = applyDirectorPlan(p, plan, input.framing)`. The result is `'changed'` when `next !== p`, otherwise `'unchanged'`.
+     - `view = cropView(p, effectiveTrack(input.recorded, p))` (E-10: the project and track as drawn, as `DirectorSection`'s `inputFor` builds them).
+     - `plan = planDirector({ project: view.project, cursor: view.cursor, speech: input.speech, newId: input.newId }, directorSettingsOf(p))`
+     - `next = applyDirectorPlan(p, plan, input.framing)`, on the real `p`: it writes only layouts, `director` and the camera framing, none of which has screen coordinates. The result is `'changed'` when `next !== p`, otherwise `'unchanged'`.
      - `summary.camera` counts `plan.parts` by kind: `intro`, `outro`, `hidden`, and `corner` (bubble moves).
      - `summary.framing = input.framing`, and `directorPlan = plan`.
 
-At the end, `summary.saved = Math.max(0, before − outputDuration(p.clips))`. If no step changed anything, `p === base`.
+At the end, `summary.saved = Math.max(0, videoDuration(base.clips, planOf(base)) − videoDuration(p.clips, planOf(p)))` (`src/shared/engine/freeze.ts`): the length of the exported video, pause freezes included, as E-11 asks. Without freezes it is `outputDuration`. If no step changed anything, `p === base`.
 
-**`polishKeepRanges(project): TimeRange[]`** is `(project.titles ?? []).map(({ start, end }) => ({ start, end }))`. That is the list `ClipPanel` builds as `keep`. When E-11 lands, its freeze ranges are appended through the export E-11 provides (4.6).
+**`polishKeepRanges(project): TimeRange[]`** is the title cards, `(project.titles ?? []).map(({ start, end }) => ({ start, end }))` (the list `ClipPanel` builds as `keep`), followed by `freezeKeepRanges(project.freezes)` (E-11: `[at − 0.25, at + 0.25]` per freeze).
+
+**`autoZoomHasInput(recorded)`** is ZoomPanel's `hasInput`: a mark, or, on a valid track only, a click that passes `isZoomClick(c, true)` or a typing burst. ZoomPanel counts clicks through `clickRows`, which is empty without cursor data; recorded invalid tracks have no clicks anyway.
 
 **`pickTranscriber(providers, remembered): AiProviderInfo | null`** filters the providers to those with `transcriptionModel`. It returns the one whose id is `remembered`, otherwise the first one, otherwise `null`.
 
@@ -325,7 +332,7 @@ The dialog reads the providers (`window.api.listAiProviders()`) and the options 
      - The call never rejects, because a failed source is left out.
      - Then `sound = sourceActivity(p, levels)`, which is null when a source is missing.
    - **(b) Captions**, only when the row is available and selected:
-     - Call the new `fetchTranscript(projectId, p.duration, { providerId, source: 'auto' })`. It runs the existing transcription job, so `transcriptionJob()`, `onTranscribeProgress` and `cancelTranscription()` behave as in the Captions tab. It **does not write to the store**.
+     - Call the new `fetchTranscript(projectId, p.duration, { providerId, source: 'auto' })`. It runs the existing transcription job, so `transcriptionJob()`, `onTranscribeProgress` and `cancelTranscription()` behave as in the Captions tab. It **does not write to the store**. The job ends when it resolves; an error stays on the job, so the Captions tab shows it too.
      - `{ transcript }` → `input.transcript`.
      - `{ error }` → `blocked.captions = 'failed'` with `errors.captions`. This includes "No speech was found in this recording", which `transcribe()` already throws.
      - `{ cancelled }` → `'cancelled'`.
@@ -390,7 +397,7 @@ So preview and export match by construction. No function in `compositor.ts`, `pl
 - **Face framing unavailable** (no WebGL, or the segmenter failed): the outcome is `'unavailable'`. `applyDirectorPlan` writes everything except the framing, and the summary line uses `framingLine` ("Face framing is unavailable: … The rest of the camera track was directed.").
 - **An automatic camera block you deleted** comes back. This is Direct again's rule, and `AUTO_LAYOUT_HINT` already tells you to change a block instead of deleting it.
 - **Long recordings.** `planPolish` runs twice (probe, then commit). Its most expensive step, `planDirector`, already runs live in the Camera tab (`safePlan`, debounced).
-- **Transcript size** is capped at `MAX_CAPTIONS` = 5000 by `readTranscript`. `fetchTranscript` returns the same `notice` text that `transcribe()` builds today, and the summary shows it.
+- **Transcript size** is capped at `MAX_CAPTIONS` = 5000 by `readTranscript`. `fetchTranscript` says whether captions were left out (`leftOut`), the runner passes it as `PolishInput.transcriptLeftOut`, and `planPolish` sets `summary.captionsLeftOutAfter` to the output second the kept captions end at, on the **polished** clips. The captions line then adds the same sentence `transcribe()` shows.
 - **A transcription already running** from the Captions tab disables the Captions row (`'busy'`). If that job finishes during the run, its own `transcribe()` writes its own undo step before polish's. The commit then plans from that project and skips captions with `'has-captions'`.
 
 ### 4.6 How it interacts with the other wave features
@@ -398,9 +405,9 @@ So preview and export match by construction. No function in `compositor.ts`, `pl
 - **E-04 waveform:** no dependency. If E-04 reads levels through `loadAudioAnalysis`, a polish run warms its cache. Cuts made by polish are ordinary gaps.
 - **E-05 snapping:** no change. Cut edges made by polish are ordinary cuts, so they become snap targets. Freeze frames (E-11) remain targets.
 - **E-08 J/K/L and preview speed:** no interaction. Preview speed is player state, not project data, and silences are measured on the output timeline whatever the playback rate. Keys are checked in section 6.
-- **E-10 crop:** polish must keep the crop. It does, as long as E-10 does not add its crop field to `PresetStyle` / `STYLE_KEYS` in `stylePresets.ts`, and does not route it through `applyStyleDefaults`. If E-10 changes how zoom or director coordinates map onto the cropped frame, that mapping belongs to E-10. Polish only calls `regenerateAutoZooms` and `planDirector`.
+- **E-10 crop:** polish keeps the crop: no step writes `crop`, and `applyPreset` does not carry it (it is not in `STYLE_KEYS`). Auto zoom goes through `regenerateInFrame` and the director plans on `cropView(p, track)`, so clicks the crop hides make no zoom and the bubble avoids the cursor where the cropped video draws it. The mapping itself belongs to E-10. Tested: the crop object is carried through unchanged.
 - **E-11 freeze frame:** a freeze with the sound paused is silent, so without a keep range the silence step would cut it.
-  - **Contract:** E-11 exports `freezeKeepRanges(project): TimeRange[]` in source seconds (the source range each freeze holds), and `polishKeepRanges` appends it.
+  - **Contract:** E-11 exports `freezeKeepRanges(freezes): { start, end }[]` in source seconds (0.25 s each side of every anchor; it takes the freeze list, not the project), and `polishKeepRanges` appends `freezeKeepRanges(project.freezes)`. Tested: the freezes are carried through unchanged and their anchors are never cut.
   - `ClipPanel`'s silences need the same, and wiring that is E-11's job.
   - If E-11 inserts output time with no source range, it must also keep that time out of `rangeGaps` in `findSilences` and out of `rangesToOutput`. E-11 owns that change.
 
@@ -426,19 +433,19 @@ So preview and export match by construction. No function in `compositor.ts`, `pl
 - Title: **Polish in one click**
 - Lead: "Runs the automatic edits in one go. Zooms, camera changes and captions you made are kept, and it is all one undo step."
 
-Rows (`data-testid="polish-row-<step>"`):
+Rows (`data-testid="polish-row-<step>"`, `data-available`) appear in run order (`POLISH_STEPS`: Style, Auto zoom, Remove silences, Captions, Camera director), as the running view and the summary do; the table below lists them by importance:
 
 | Row | Control | Hint when available | Disabled text (`polishSkipText`) |
 |---|---|---|---|
 | Remove silences | Checkbox, plus "Silence action" chips Cut / 2× / 4× / 8×. Labels and titles are copied into `polishCopy.ts` from ClipPanel's file-local `SILENCE_ACTION_TITLE` ("Remove pauses from the video", "Play pauses twice as fast", …). | "Cuts pauses of 1.0 s or more, keeping a quarter second next to the sound." | "This recording has no sound" · "The sound is muted: turn it on in the Audio tab" |
 | Auto zoom | Checkbox | Off: "Turns auto zoom on. Zooms you added or edited are kept." On: "Auto zoom is on: your zooms stay as they are." | "No clicks were captured" |
-| Captions | Checkbox, plus a provider select (`aria-label="Transcription provider"`), shown only with two or more capable providers | "The sound is sent to <provider label> with your key and billed to your account." The label is `AiProviderInfo.label` or the kind name, as `providerLabel` builds it. | "This video already has captions; they are kept" · "This recording has no sound" · "Captions are being made in the Captions tab" · "Add an AI provider that can transcribe (OpenAI or Gemini)", with an **Add an AI provider** button that dispatches `OPEN_SETTINGS_EVENT` (`src/renderer/src/settings/SettingsButton.tsx`) with `{ section: 'ai' }` |
+| Captions | Checkbox, plus a provider select (`aria-label="Transcription provider"`), shown only with two or more capable providers | "The sound is sent to <provider label> with your key and billed to your account." The label is `AiProviderInfo.label` or the kind name, as `providerLabel` builds it. | "This video already has captions; they are kept" · "This recording has no sound" · "A transcription is already running in the Captions tab" · "Add an AI provider that can transcribe (OpenAI or Gemini)", with an **Add an AI provider** button that closes this dialog and dispatches `OPEN_SETTINGS_EVENT` (`src/renderer/src/settings/SettingsButton.tsx`) with `{ section: 'ai' }` |
 | Camera director | Checkbox | "Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept." | "This recording has no camera" · "Show the camera first" |
 | Style | Select (`aria-label="Style preset"`): "Keep the current look", the built-in names, then a "Your presets" `<optgroup>` read with `getPref('stylePresets')` through `parseUserPresets` | "Changes the background, card, cursor look and zoom style. The aspect ratio and crop stay." | none |
 
 - A disabled row shows its checkbox unchecked and disabled, without changing the remembered option.
 - Footer: **Cancel** · **Polish** (primary).
-- **Polish** is disabled, with the title "Choose at least one step", when no available row is selected and Style is "Keep the current look". It is also disabled while the options are being read.
+- **Polish** is disabled, with the title "Choose at least one step", when no available row is selected and Style is "Keep the current look". It is also disabled while the options, the AI providers and your presets are being read. A remembered preset that no longer exists shows as "Keep the current look" and runs as `styleId: null`.
 
 **Running view.** The same rows, each with a state and a text:
 
@@ -468,18 +475,19 @@ Footer: **Cancel**.
 | Captions, changed | "Captions: 63 captions" (plus the `MAX_CAPTIONS` notice when given) |
 | Captions, `failed` | "Captions not made: <error>. Try again in the Captions tab." |
 | Captions, `cancelled` | "Captions: skipped" |
-| Any other skip | its `polishSkipText` |
+| Any other skip | the step's label, then its `polishSkipText` with a lower-case first letter: "Auto zoom: no clicks were captured", "Captions: skipped", "Remove silences: not selected", "Style: the current look is kept" |
 | Director, changed | "Camera: intro, 1 bubble move, 2 hidden, outro", using the same words as `directedNotice`, followed by "; face centred (1.25×)" or, when not framed, `framingLine(summary.framing, false)?.text` |
-| Director, unchanged | "Camera: already directed" |
+| Director, unchanged | "Camera: already directed", or "Camera: nothing to change" when the plan has no part |
+| Director, framing not done | the line goes on with `framingLine(summary.framing, false)?.text`: "Camera: intro, outro. No one was found in the camera picture, so the framing was left as it was." |
 | Style, changed | "Style: Studio" |
 | Style, unchanged | "Style: already Studio" |
 | Footnote | "All of this is one undo step." |
 
 Footer: **Undo polish** · **Done**.
 
-- **Undo polish** calls `store.undo()`. It is enabled only while `store.state === after`. Otherwise its title is "The video changed since".
+- **Undo polish** calls `store.undo()` and closes the dialog with the notice "Polish undone". It is enabled only while `store.state === after`; otherwise its title is "The video changed since". It is not shown when nothing changed.
 
-**Notice when the dialog closes**, through Editor's `showNotice`: `polishNotice(summary, changed, undoHint(keymap))`. For example: "Polished: 1:12.0 shorter · 9 silences cut · auto zoom on · 4 camera changes · 63 captions · Style: Studio · Ctrl + Z to undo". Only the steps that changed something are listed. When the clips changed, Editor also calls `setSelection(null)`, as `SmartSpeed.apply()` does with `onSelect(null)`.
+**Notice when the dialog closes**, through Editor's `showNotice`: `polishNotice(summary, changed, undoHint(keymap))`. For example: "Polished: 1:12.0 shorter · Studio style · auto zoom on · 9 silences cut · 63 captions · 5 camera changes, face centred · Ctrl + Z to undo". Only the steps that changed something are listed, in run order. When the clips changed, Editor also calls `setSelection(null)`, as `SmartSpeed.apply()` does with `onSelect(null)`.
 
 ---
 
@@ -540,12 +548,12 @@ Conflicts checked:
 | | | `function polishResultLines(summary: PolishSummary): { step: PolishStep; status: PolishStepResult['status']; text: string }[]` |
 | | | `function polishHeadline(summary: PolishSummary, changed: boolean): string` |
 | | | `function polishNotice(summary: PolishSummary, changed: boolean, undo: string): string` |
-| `src/renderer/src/editor/captionItems.ts` | | `type FetchedTranscript = { transcript: Transcript; notice?: string } \| { error: string } \| { cancelled: true }` |
+| `src/renderer/src/editor/captionItems.ts` | | `type FetchedTranscript = { transcript: Transcript; leftOut: boolean } \| { error: string } \| { cancelled: true }` |
 | | | `function fetchTranscript(projectId: string, duration: number, options: TranscribeOptions): Promise<FetchedTranscript>` (`transcribe()` becomes this plus its existing `store.update`; its behaviour does not change) |
 | `src/renderer/src/editor/polishRunner.ts` | | `type PolishRowState = { phase: 'waiting' \| 'working' \| 'done' \| 'skipped'; text: string; canSkip?: boolean }` |
 | | | `interface PolishRun { done: Promise<{ before: Project; after: Project; result: PolishResult } \| null>; cancel(): void; skipCaptions(): void; skipFace(): void }` |
 | | | `function runPolish(services: EditorServices, recorded: CursorTrack, options: PolishOptions, ctx: { hasCameraFile: boolean; providerId: string \| null; userPresets: readonly StylePreset[] }, onProgress: (rows: Record<PolishStep, PolishRowState>) => void): PolishRun` |
-| `src/renderer/src/editor/PolishDialog.tsx` | | `function PolishDialog(props: { recorded: CursorTrack; hasCameraFile: boolean; onClose: () => void; onDone: (r: { changed: boolean; clipsChanged: boolean; summary: PolishSummary }) => void }): JSX.Element` |
+| `src/renderer/src/editor/PolishDialog.tsx` | | `function PolishDialog(props: { recorded: CursorTrack; hasCameraFile: boolean; onClose: (notice?: string) => void; onDone: (r: { changed: boolean; clipsChanged: boolean; summary: PolishSummary }) => void }): JSX.Element` |
 | `src/shared/api/prefs.ts` | | `PrefKey` gains `'polish'`; `PREF_KEYS` gains `'polish'` |
 | `src/shared/editor/commands.ts` | | `CommandId` gains `'polish'` (through `COMMAND_LIST`) |
 
@@ -559,24 +567,22 @@ Conflicts checked:
 - `src/shared/editor/polishCopy.ts`: every string in section 5. It is pure and tested.
 - `src/renderer/src/editor/polishRunner.ts`: async collection (levels, transcript, speech, face), cancel and skip, and the commit.
 - `src/renderer/src/editor/PolishDialog.tsx` and `src/renderer/src/editor/polish.css`: the dialog's three views.
-- `tests/polish.test.ts`, `tests/polishCopy.test.ts` and `tests/e2e/one-click-polish.e2e.cjs`. The existing `tests/e2e/polish.e2e.cjs` belongs to an earlier "polish features" wave and is not touched. `run-all.cjs` picks up every `*.e2e.cjs` by itself.
+- `tests/polish.test.ts`, `tests/polishCopy.test.ts`, `tests/fetchTranscript.test.ts` and `tests/e2e/one-click-polish.e2e.cjs`. The existing `tests/e2e/polish.e2e.cjs` belongs to an earlier "polish features" wave and is not touched. `run-all.cjs` picks up every `*.e2e.cjs` by itself.
 - `docs/design/polish-in-one-click.md`: this section.
 
 **Modify:**
 
-- `src/renderer/src/editor/captionItems.ts`: split `transcribe()` into `fetchTranscript()` (job, progress, `readTranscript`, the empty-transcript error, the `MAX_CAPTIONS` notice text) and the store write. The job, `generation`, progress and cancel behaviour are unchanged.
+- `src/renderer/src/editor/captionItems.ts`: split `transcribe()` into `fetchTranscript()` (job, progress, `readTranscript`, the empty-transcript error, whether captions were left out) and the store write with its `MAX_CAPTIONS` notice. The job, `generation`, progress and cancel behaviour are unchanged.
 - **SHARED** `src/renderer/src/views/Editor.tsx`, four small regions only:
+  - two imports (`PolishDialog`, and `POLISH_BUTTON_TITLE` / `polishNotice` from `polishCopy.ts`);
   - the `dialog` state union;
-  - one `polish` entry in the `commands` `useMemo` map;
+  - the `polish` entry in the `commands` `useMemo` map (E-01's no-op group of the contracts commit);
   - one title-bar `<button>` before Export;
-  - one `{dialog === 'polish' && <PolishDialog …/>}` line next to the palette and shortcuts dialogs, whose `onDone` calls `showNotice` and `setSelection(null)`.
+  - one `{dialog === 'polish' && <PolishDialog …/>}` block next to the palette and shortcuts dialogs, whose `onClose` shows its notice and whose `onDone` calls `showNotice` and `setSelection(null)`.
 
   E-08, E-10 and E-11 add their own entries to the same map.
-- **SHARED** `src/shared/editor/commands.ts`: one `COMMAND_LIST` entry after `smartSpeed`.
-- **SHARED** `src/shared/editor/shortcuts.ts`: one `DEFAULT_KEYMAP` line, `polish: ['Shift+P']`.
-- **SHARED** `src/shared/api/prefs.ts`: the `'polish'` key in both the type and `PREF_KEYS`. It is additive; another feature adding a key appends next to it.
-- **SHARED** `tests/commands.test.ts` and `tests/shortcuts.test.ts`: new `it(...)` blocks only.
-- `docs/FEATURES.md`: one bullet under editing. `docs/ROADMAP.md`: the E-01 status only.
+- In the wave's contracts commit (frozen, not changed by this workstream): the `COMMAND_LIST` entry after `smartSpeed` in `src/shared/editor/commands.ts`, `polish: ['Shift+P']` in `src/shared/editor/shortcuts.ts`, and the `'polish'` key in `src/shared/api/prefs.ts`. `tests/editingWinsContracts.test.ts` checks them.
+- `docs/FEATURES.md` and `docs/ROADMAP.md` are updated by the lead after the merge (editing-wins.md decision 4).
 
 **Not touched:**
 
@@ -633,6 +639,7 @@ Cases:
    - A look of `{style:{}, cursor:{}, zoom:{}}`: `'unchanged'`, and the project is kept (`toBe`).
 10. **Idempotent.** `planPolish` on its own output, with the same inputs and every step on (the case 6 fixture plus Studio), returns that output itself (`toBe`). Every step is `'unchanged'` or `'skipped'`, and `saved` is 0.
 11. **All off** returns `input.project` itself.
+11a. **Crop and freezes** (E-10, E-11; their mappings are identity stubs on this branch, so this checks what polish itself guarantees): with `crop` and two `freezes` set and every step on, `project.crop` and `project.freezes` come back as the same objects, both freeze anchors (in silent stretches) are still in the clips, and without the freezes the same run cuts them. `polishKeepRanges` lists the title cards, then `[at − 0.25, at + 0.25]` per freeze, and a freeze in the 12 s fixture's pause splits its cut in two.
 12. **`readPolishOptions`:**
     - `null`, `[]` and `'x'` → defaults;
     - `{ silenceAction: 3 }` → `'cut'`;
@@ -651,6 +658,8 @@ Cases:
     - the remembered id is capable → that one;
     - the remembered id is gone → the first capable one.
 
+**`tests/fetchTranscript.test.ts`** (the main process stubbed as in `tests/captionItems.test.ts`, which still covers `transcribe()`): the transcript comes back with the job ended and nothing written; `leftOut` over `MAX_CAPTIONS`; a failure (and "No speech was found") is returned and stays on the job; a cancel resolves `{ cancelled }`, also for a late answer and for the main process's "Cancelled."; a job already running is left alone.
+
 **`tests/polishCopy.test.ts`:**
 
 - `polishHeadline` for `saved` 3.5 → "Polished: the video is 3.5 s shorter", for 72 → "Polished: the video is 1:12.0 shorter", and for 0 with changes → "Polished".
@@ -659,7 +668,7 @@ Cases:
 - `transcribePhaseText({ phase: 'uploading', done: 1, total: 3 }, false)` → "Sending the sound… Part 2 of 3.".
 - `polishNotice` lists only the changed steps and ends with the undo hint.
 
-**`tests/commands.test.ts` / `tests/shortcuts.test.ts`:**
+**Commands and keys:** the keys are covered by `tests/editingWinsContracts.test.ts`. The palette search (`titles('polish')[0]`, "magic") is tested in `tests/polish.test.ts`, so the shared `tests/commands.test.ts` and `tests/shortcuts.test.ts` are not touched. What was planned:
 
 - `polish` is in `PALETTE_COMMANDS`.
 - `titles('polish')[0] === 'Polish in one click…'` (the file's `titles` helper over `searchCommands`), and `titles('magic')` contains it.
@@ -689,16 +698,16 @@ The `openSeeded` media swap and `waitSaved` (`.save-state[data-state="saved"]`) 
 
    Then:
    - swap `screen.mp4` for the burst media;
-   - patch `project.json` to `autoZoom: false` and `director: { intro: 'camera-only', corners: 'auto', hideAfter: 10, frameFace: false }`, so auto zoom is turned on and no WebGL face pass runs.
+   - patch `project.json` to `autoZoom: false` and `director: { intro: 'camera-only', corners: 'auto', hideAfter: 10, frameFace: false }`, so auto zoom is turned on and no WebGL face pass runs. `autoZoom: false` works because `seedProject` writes no `zoomSettings`: `zoomSettingsOf` lets `zoomSettings.auto.enabled` win over `autoZoom`.
 
    `seedProject` writes `autoZoom: true` and no `director` by itself.
-3. **Launch.** Start `startMockAi({ ffmpeg })` as `ai.e2e.cjs` does, and launch with `env: mockAiEnv(mock.url)`. Add the provider with `api(win, 'saveAiProvider', { kind: 'openai', label: 'OpenAI', apiKey: 'sk-e2e-polish-0001' })`. Then `f.openProject`, `waitSaved`, and snapshot `before = h.readProject(…)`.
+3. **Launch.** Start `startMockAi({ ffmpeg })` as `ai.e2e.cjs` does, and launch with `env: mockAiEnv(mock.url)`. Add the provider with `api(win, 'saveAiProvider', { kind: 'openai', label: 'OpenAI', apiKey: 'sk-e2e-polish-0001' })`. Then `f.openProject`, rename the recording (its own undo step, so the snapshot is the saved, migrated project, with `tilt` and `layouts` filled in) and snapshot `before = h.readProject(…)` once it is saved.
 4. **Open and run.**
    - With focus outside text fields, press `Shift+P` and wait for `.polish-dialog[role="dialog"]`.
    - The rows silences, zoom, captions and director are checked.
    - Pick "Studio" in `select[aria-label="Style preset"]` and click **Polish**.
    - Wait up to 60 s for `[data-testid="polish-summary"]`.
-   - The `data-status` of `polish-line-silences`, `polish-line-zoom` and `polish-line-captions` is `changed`. `polish-line-director` is `changed` or `unchanged`, not `skipped`.
+   - The `data-status` of `polish-line-style`, `polish-line-silences`, `polish-line-zoom` and `polish-line-captions` is `changed`. `polish-line-director` is `changed` or `unchanged`, not `skipped` (on this 12 s recording the director finds nothing to change: "Camera: nothing to change").
 5. **Check `project.json`** after `waitSaved`:
    - **Clips:** at least 2. The output is 4.3–6.4 s shorter than 12 s. The expected cut is ≈ 5.35 s: `[3.45, 7.75]` = 4.3 s plus the unpadded tail `[10.95, 12]` = 1.05 s.
    - **Zooms:** `zm` deep-equals the seeded zoom. The automatic zooms cover 2.2 and 8.6, and none overlaps `zm`. `autoZoom` is true.
@@ -734,12 +743,12 @@ The `openSeeded` media swap and `waitSaved` (`.save-state[data-state="saved"]`) 
 3. **A pause you restored can be cut again**, because restored ranges are not recorded. Undo brings it back (see Later).
 4. **A deleted automatic camera block comes back.** This is Direct again's rule. The block hint already says to change a block to keep it. Automatic *zooms* you deleted do not come back (decision 7).
 5. **Fresh recordings already have auto zoom on**, so the zoom step usually reads "already on". This is intended: finalize made the automatic zooms, and Regenerate stays in the Zoom tab.
-6. **E-11 freeze frames would be cut as silences** unless E-11 provides `freezeKeepRanges`. This is a contract in 4.6, and `polishKeepRanges` is the one place that collects keep ranges.
-7. **The E-10 crop would be lost** if E-10 puts it in `PresetStyle`. Contract: the crop stays out of `STYLE_KEYS`. Test 9 adds a crop assertion once E-10's field exists.
+6. **E-11 freeze frames would be cut as silences** without their keep ranges. `polishKeepRanges` is the one place that collects keep ranges, and it adds `freezeKeepRanges` (4.6, tested in case 11a).
+7. **The E-10 crop would be lost** if E-10 put it in `PresetStyle`. Contract: the crop stays out of `STYLE_KEYS`. Case 11a checks the crop is carried through a full polish, the style step included.
 8. **Face framing needs WebGL.** When it is unavailable, the director still applies and the summary says why. The e2e test turns `frameFace` off, and `camera-director.e2e.cjs` already covers framing.
 9. **Planning against a changed project.** The commit plans again from `store.state`, as `direct()` does, so edits during the wait are not lost. The probe's face sample times can be slightly off for the final plan, exactly as in `DirectorSection`.
-10. **Merge conflicts in shared files** (`Editor.tsx`, `commands.ts`, `shortcuts.ts`, `prefs.ts`). Every edit is a single line or a single entry, in the regions named in section 9.
-11. **Stale remembered options** (a deleted preset, a removed provider). `readPolishOptions` validates them, a missing preset is reported as `'no-preset'`, and `pickTranscriber` falls back to the first provider that can transcribe.
+10. **Merge conflicts in shared files** (`Editor.tsx`, `captionItems.ts`). Every edit is small and in the regions named in section 9; `commands.ts`, `shortcuts.ts` and `prefs.ts` were done in the contracts commit.
+11. **Stale remembered options** (a deleted preset, a removed provider). `readPolishOptions` validates them, the dialog shows a missing preset as "Keep the current look" (the planner would report `'no-preset'`), and `pickTranscriber` falls back to the first provider that can transcribe.
 
 ---
 
@@ -760,3 +769,19 @@ The `openSeeded` media swap and `waitSaved` (`.save-state[data-state="saved"]`) 
 - **Showing polish's framing outcome in the Camera tab:** a small `DirectorSection` export that records the outcome for the `Project.director` polish wrote.
 
 ---
+
+## 13. As built (differences from the first draft)
+
+- **Crop and freezes (E-10, E-11).** Auto zoom calls `regenerateInFrame` and the director plans on `cropView` (4.1, 4.6). `polishKeepRanges` appends `freezeKeepRanges(project.freezes)`; E-11's function takes the freeze list, not the project. `summary.saved` uses `videoDuration` with `planOf` (freeze-frame.md asks polish to report it). On this branch both features are identity stubs, so the unit tests check what polish guarantees: the crop and freezes are carried through and freeze anchors are kept.
+- **Captions left out.** `FetchedTranscript` carries `leftOut: boolean` instead of a ready `notice`: the notice names the output time where the kept captions stop, and that time depends on the polished clips, which only the planner knows. `PolishInput.transcriptLeftOut` and `PolishSummary.captionsLeftOutAfter` were added for it.
+- **`fetchTranscript`** resolves `{ error }` at once, and leaves the job alone, when a transcription is already running. It ends the job itself on success; an error stays on the job, as with `transcribe()`.
+- **Row order.** The options, running and summary views all list the steps in `POLISH_STEPS` order (the contract's comment), not in the order of the table in section 5.
+- **Summary lines of skipped steps** start with the step's name ("Auto zoom: no clicks were captured"), because a line like "Not selected" or "No clicks were captured" does not say which step it is about in the summary. The failed-captions line keeps its own wording. 'off' reads "Not selected" ("The current look is kept" for Style).
+- **Camera lines.** "Camera: nothing to change" when the plan has no part (changed or not: the first run on a project only saves the options), and the reason the face was not framed follows the line.
+- **Notice.** "Studio style" rather than "Style: Studio" in the middle of the list, the steps in run order, and the camera as a number of changes (intro + outro + hidden + bubble moves), with ", face centred" when framed.
+- **Undo polish** closes the dialog with the notice "Polish undone" instead of staying open with a disabled button. `PolishDialog`'s `onClose` therefore takes an optional notice (also "Polish cancelled: nothing was changed" when a run is cancelled; Cancel in the options view closes without a notice).
+- **Add an AI provider** closes the polish dialog before opening Settings: two modal dialogs would both trap Tab and handle Esc.
+- **The runner** measures only the sound the chosen, available steps need (`activitySources` for silences, `speechLevelSource` for the director), reads `frameFace` from the probe plan's settings (the `directorSettingsOf` the plan was made with), and catches a face-framing failure as `'unavailable'` as `direct()` does. The director's speech is measured on the full track: only times matter there.
+- **Copy additions** in `polishCopy.ts`: the dialog's title, lead, footnote and notices, `polishHint` (the silences hint follows the chosen action: "Plays pauses of 1.0 s or more 4× as fast, …"), `providerName` and `transcriberLabel` (copied from the Captions tab), `polishFailed`. 'busy' reads "A transcription is already running in the Captions tab".
+- **Shared files.** Only `Editor.tsx` (the regions in section 9) and `captionItems.ts` were changed. The command, key and preference were already in the contracts commit, and the palette search test lives in `tests/polish.test.ts`, so `commands.ts`, `shortcuts.ts`, `prefs.ts`, `tests/commands.test.ts` and `tests/shortcuts.test.ts` are untouched. `docs/FEATURES.md` and `docs/ROADMAP.md` are left to the lead.
+- **E2E.** The test renames the recording first, so the snapshot it compares the undo with is the saved, migrated project; and it relies on `seedProject` writing no `zoomSettings` for `autoZoom: false` to turn auto zoom off.

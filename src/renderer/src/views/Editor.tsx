@@ -13,6 +13,7 @@ import { EditStore } from '../../../shared/editor/editStore'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
 import { mediaLength } from '../../../shared/editor/mediaLength'
+import { POLISH_BUTTON_TITLE, polishNotice } from '../../../shared/editor/polishCopy'
 import { UNTITLED, withSavedName } from '../../../shared/editor/projectName'
 import {
   chordFromEvent,
@@ -55,6 +56,7 @@ import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
+import { PolishDialog } from '../editor/PolishDialog'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
@@ -262,7 +264,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const [notice, setNotice] = useState<string | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
-  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | null>(null)
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
   const [directorRequest, setDirectorRequest] = useState(0)
 
@@ -767,8 +769,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       about: () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'about' } })),
       commandPalette: () => setDialog('palette'),
 
-      // E-01 polish (filled by the E-01 workstream)
-      polish: () => showNotice('Coming soon'),
+      // E-01 polish
+      polish: () => setDialog('polish'),
 
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
       toggleWaveform: () => {
@@ -1012,6 +1014,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
             <EditorIcon name="keyboard" />
           </button>
+          <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
+            <EditorIcon name="sparkle" size={16} /> Polish
+          </button>
           <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
             <Icon name="download" size={16} /> Export
           </button>
@@ -1097,6 +1102,21 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         )}
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
+        {dialog === 'polish' && (
+          <PolishDialog
+            recorded={recorded}
+            hasCameraFile={!!data.webcamUrl}
+            onClose={(message) => {
+              setDialog(null)
+              if (message) showNotice(message)
+            }}
+            onDone={({ changed, clipsChanged, summary }) => {
+              setDialog(null)
+              showNotice(polishNotice(summary, changed, undoHint(keymap)))
+              if (clipsChanged) setSelection(null)
+            }}
+          />
+        )}
       </div>
     </EditorProviders>
   )
