@@ -15,6 +15,7 @@ import {
   useAllClicks,
   zoomCause
 } from '../src/shared/editor/inputEdits'
+import { planCursorPath } from '../src/shared/engine/cursorPath'
 import { clickRows } from '../src/shared/engine/inputData'
 import { effectiveTrack } from '../src/shared/engine/inputTrack'
 import { createProject } from '../src/shared/engine/project'
@@ -466,6 +467,20 @@ describe('pathSummary', () => {
     const ignored = setClicksIgnored(p, recorded, { ignore: [{ ms: 4300 }] })
     expect(ignored.inputEdits?.ignoredClicks).toEqual([{ ms: 4300 }])
     expect(effectiveTrack(recorded, ignored).samples).toBe(samples)
+  })
+
+  it('a range edit plans the path once: the check before it and the edit share the plan', () => {
+    const p = project()
+    const r = { start: 0, end: 2 }
+    // The editor paints the range to count what it straightens, then paints it again in store.update.
+    const checked = setPathRange(p, r, 'straight')
+    expect(pathSummary(recorded, checked, r).straightened).toBe(1)
+    const stored = setPathRange(p, r, 'straight')
+    expect(stored.inputEdits?.paths).not.toBe(checked.inputEdits?.paths)
+    const samples = effectiveTrack(recorded, stored).samples
+    const plan = (q: Project) => planCursorPath(recorded, { aspect: q.width / q.height, straighten: false, paths: q.inputEdits?.paths ?? [] })
+    expect(plan(stored)).toBe(plan(checked))
+    expect(samples).toBe(plan(checked).samples)
   })
 
   it('is all zero with the cursor in the video or without cursor data', () => {

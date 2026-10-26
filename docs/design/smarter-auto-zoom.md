@@ -895,7 +895,9 @@ needs them. Changing a frozen file or an exported signature goes through the lea
 - `zoomCause` for all four kinds.
 - `setStraighten` and `setPathRange`: key removal, identity when unchanged.
 - `pathSummary` counts; it shares the effective track's cached plan, so ignoring a click after
-  any number of summaries keeps the same `samples` array.
+  any number of summaries keeps the same `samples` array, and a range edit plans the path once
+  (the plan cache compares path ranges by contents, so the range the editor checks before the
+  edit and the one it stores share the plan).
 
 **B: `tests/smartSpeed.test.ts`**
 
