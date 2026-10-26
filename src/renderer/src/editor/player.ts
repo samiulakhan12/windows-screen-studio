@@ -33,6 +33,21 @@ export class PreviewPlayer {
   time = 0
   playing = false
 
+  /** Anything moving: playing forward, or (E-08) shuttling in reverse. */
+  get moving(): boolean {
+    return this.playing
+  }
+
+  /** Signed viewing rate: preview speed × shuttle level, 0 when stopped (E-08); 1 until then. */
+  get viewRate(): number {
+    return 1
+  }
+
+  /** Seconds into the pause freeze being held (E-11); 0 until then. */
+  get holdElapsed(): number {
+    return 0
+  }
+
   private project: Project
 
   /** One proxy frame (proxies run at the recording's frame rate, 30 or 60 fps); used to look ahead at cut points. */

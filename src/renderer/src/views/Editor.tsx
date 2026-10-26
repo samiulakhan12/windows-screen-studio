@@ -746,7 +746,32 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       export: openExport,
       shortcuts: () => setDialog('shortcuts'),
       about: () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'about' } })),
-      commandPalette: () => setDialog('palette')
+      commandPalette: () => setDialog('palette'),
+
+      // E-01 polish (filled by the E-01 workstream)
+      polish: () => showNotice('Coming soon'),
+
+      // E-04 waveform (filled by the E-04 workstream)
+      toggleWaveform: () => showNotice('Coming soon'),
+
+      // E-05 snapping (filled by the E-05 workstream)
+      toggleSnapping: () => showNotice('Coming soon'),
+
+      // E-08 shuttle and preview speed (filled by the E-08 workstream)
+      shuttleReverse: () => showNotice('Coming soon'),
+      shuttlePause: () => showNotice('Coming soon'),
+      shuttleForward: () => showNotice('Coming soon'),
+      previewSpeedUp: () => showNotice('Coming soon'),
+      previewSpeedDown: () => showNotice('Coming soon'),
+
+      // E-10 crop (filled by the E-10 workstream)
+      cropRecording: () => showNotice('Coming soon'),
+      resetCrop: () => showNotice('Coming soon'),
+      cropTaskbar: () => showNotice('Coming soon'),
+
+      // E-11 freeze frame (filled by the E-11 workstream)
+      freezeFrame: () => showNotice('Coming soon'),
+      toggleFreezeSound: () => showNotice('Coming soon')
     }
   }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store])
   const commandsRef = useRef(commands)

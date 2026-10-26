@@ -391,6 +391,24 @@ export interface Chapter {
   title: string
 }
 
+/** What the recording's sound does while a freeze frame holds (E-11). */
+export type FreezeSound = 'pause' | 'continue'
+
+/** A freeze frame: the picture holds the frame at source second `at`. */
+export interface Freeze {
+  id: string
+  /** Source seconds of the held frame (a source frame start, whole ms). */
+  at: number
+  /** Seconds the picture holds in the exported video: 0.5..30, in tenths. */
+  length: number
+  /**
+   * 'pause': `length` seconds are inserted into the video at `at`; the recording waits (silent),
+   * music plays on. 'continue': nothing is inserted; the picture stays on `at` for the next
+   * `length` seconds of the video while the recording's sound, the camera and captions play on.
+   */
+  sound: FreezeSound
+}
+
 /**
  * A kept piece of the recording, in source seconds. The output video is the
  * clips played back to back, each at its own speed; gaps between clips are cuts.
@@ -582,6 +600,14 @@ export interface Project {
   /** Webcam start offset relative to screen start (seconds). */
   webcamOffset: number
   capture: CaptureInfo
+  /**
+   * The part of the recorded video that is shown, normalised (0..1) to the video frame
+   * (screen.mp4, already cut to capture.region). Absent = the whole frame; a crop covering the
+   * whole frame is never stored. Every other normalised position (cursor.json, zoom focus and
+   * anchors, shapes, spotlights) stays relative to the WHOLE frame. Rendering reads the project
+   * through shared/engine/crop.ts cropView().
+   */
+  crop?: NormRect
   /** Kept ranges of the recording (trim + cuts + speed). Never empty. */
   clips: Clip[]
   zooms: ZoomSegment[]
@@ -609,6 +635,8 @@ export interface Project {
   tilt?: TiltSettings
   titles?: TitleCard[]
   chapters?: Chapter[]
+  /** Freeze frames, sorted by `at`. Absent: none (every project from before E-11). */
+  freezes?: Freeze[]
   /** What was said, from a transcription provider (edited by the user). */
   transcript?: Transcript
   captions?: CaptionSettings

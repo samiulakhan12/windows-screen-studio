@@ -4,7 +4,7 @@ import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/
 import { layoutMoving, sceneContentRect, type Rect } from '../../../shared/engine/layout'
 import { toOutput } from '../../../shared/engine/outputPoint'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
-import type { CursorTrack, Project } from '../../../shared/types'
+import type { CursorTrack, NormRect, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
@@ -25,6 +25,8 @@ export interface RenderScene {
   cursorPath: SmoothedTrack
   /** Heavier-smoothed path the zoom camera follows. */
   focusPath: SmoothedTrack
+  /** The crop of each decoded screen frame that is drawn (E-10: cropOf; the view's positions are relative to it); absent = all of it. Unused until E-10 lands. */
+  crop?: NormRect
 }
 
 /** A decoded frame and its display size. */
@@ -81,7 +83,12 @@ export function drawFrame(
   t: number,
   scene: RenderScene,
   src: RenderSources,
-  options: DrawOptions = DEFAULT_OPTIONS
+  options: DrawOptions = DEFAULT_OPTIONS,
+  /**
+   * Source time of the sound at this frame (E-11 freeze frames): while the picture holds `t`, the
+   * burned-in captions and the animated background follow it. Defaults to `t`; unused until E-11 lands.
+   */
+  _soundTime: number = t
 ): void {
   const { project, cursor } = scene
   const { style } = project
