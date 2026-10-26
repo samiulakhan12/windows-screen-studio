@@ -6,6 +6,7 @@
 import { keptBounds, outputToSource } from '../engine/timeline'
 import { clamp } from '../engine/math'
 import type { Clip } from '../types'
+import { outputTimeAt } from './clips'
 
 /** Speeds the preview can play at; the exported video is never affected. */
 export const PREVIEW_SPEEDS = [0.5, 1, 1.5, 2] as const
@@ -96,4 +97,31 @@ export function reversePosition(clips: Clip[], fromOut: number, elapsed: number,
   const out = fromOut - elapsed * rate
   if (out <= 0) return { time: keptBounds(clips).start, out: 0, done: true }
   return { time: outputToSource(clips, out).time, out, done: false }
+}
+
+/** Whether a playhead at source time `t` shows the edit's first frame: there is nothing to play backwards. */
+export function atOutputStart(clips: Clip[], t: number): boolean {
+  return outputTimeAt(clips, t) <= 1e-3
+}
+
+/**
+ * The shuttle badge's tooltip for the keys bound to it (labels such as "J"; null when unbound, and
+ * that part is left out): "J plays backwards, K pauses, L plays forward; press again to go faster.
+ * Hold K and tap J or L to step one frame. No sound in reverse or above 4×."
+ */
+export function shuttleHint(keys: { reverse: string | null; pause: string | null; forward: string | null }): string {
+  const { reverse, pause, forward } = keys
+  const roles = [reverse && `${reverse} plays backwards`, pause && `${pause} pauses`, forward && `${forward} plays forward`].filter(Boolean)
+  const steps = [reverse, forward].filter(Boolean).join(' or ')
+  const out: string[] = []
+  if (roles.length) out.push(`${roles.join(', ')}${reverse || forward ? '; press again to go faster' : ''}.`)
+  if (pause && steps) out.push(`Hold ${pause} and tap ${steps} to step one frame.`)
+  out.push(`No sound in reverse or above ${formatRate(AUDIBLE_RATES.max)}.`)
+  return out.join(' ')
+}
+
+/** The speed menu's tooltip, naming the keys that change it (left out when unbound). */
+export function previewSpeedHint(slower: string | null, faster: string | null): string {
+  const keys = [slower && `${slower} slower`, faster && `${faster} faster`].filter(Boolean).join(', ')
+  return `Preview speed: play the preview faster or slower to review it${keys ? ` (${keys})` : ''}. The exported video keeps its own speed.`
 }

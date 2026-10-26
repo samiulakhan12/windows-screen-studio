@@ -112,6 +112,10 @@ export class PreviewAudio {
   private readonly requested = new Set<AudioSource>()
   private playing = false
   private speed = 1
+  /** Output seconds per wall second: the preview speed and shuttle (E-08); fades, ducking and music follow it. */
+  private view = 1
+  /** Sound off while the preview plays too fast or slow to be heard (E-08); the video plays on, muted. */
+  private silent = false
   /** Audio-clock time and output time the scheduled automation starts from. */
   private anchor: { ctx: number; out: number; until: number } | null = null
   /** What the scheduled automation was made from; it is scheduled again only when that changes. */
@@ -219,7 +223,7 @@ export class PreviewAudio {
   /** No graph: the video element plays its own track at up to 100% (as earlier versions did). */
   private applyElementOnly(): void {
     const { volume, muted } = this.look
-    this.screen.muted = !this.project.hasAudio || muted || volume <= 0
+    this.screen.muted = this.silent || !this.project.hasAudio || muted || volume <= 0
     this.screen.volume = clamp(volume, 0, 1)
   }
 
@@ -234,9 +238,9 @@ export class PreviewAudio {
       // From now on the video's track plays through the graph only.
       ctx.createMediaElementSource(this.screen).connect(screen)
       screen.connect(rec).connect(limiter).connect(master).connect(ctx.destination)
-      this.screen.muted = false
+      this.screen.muted = this.silent
       this.screen.volume = 1
-      if (!this.playing) void ctx.suspend()
+      if (!this.playing && !this.silent) void ctx.suspend()
       this.graph = { ctx, screen, rec, limiter, master }
     } catch (err) {
       // Without Web Audio the preview plays the video's own track; the export applies everything.
@@ -427,7 +431,7 @@ export class PreviewAudio {
     while (i < keys.length && keys[i].t <= out) i++
     for (; i < keys.length; i++) {
       const k = keys[i]
-      param.linearRampToValueAtTime(k.gain, now + (k.t - out))
+      param.linearRampToValueAtTime(k.gain, now + (k.t - out) / this.view)
       // One keyframe past the horizon keeps the last ramp going until the next top-up.
       if (k.t > out + HORIZON) break
     }
@@ -491,7 +495,7 @@ export class PreviewAudio {
     if (!g) return
     // Hold every curve where it is (nothing more is scheduled while paused).
     this.schedule()
-    void g.ctx.suspend()
+    if (!this.silent) void g.ctx.suspend()
   }
 
   /** The video jumped (a cut, or a seek while playing) to source time `t`. */
@@ -510,6 +514,30 @@ export class PreviewAudio {
     for (const stem of this.activeStems()) stem.el.playbackRate = speed
   }
 
+  /** The viewing rate changed (preview speed or shuttle, E-08): output time now moves at `rate` per second. */
+  setView(rate: number): void {
+    if (rate === this.view) return
+    this.view = rate
+    if (!this.graph || !this.playing) return
+    this.schedule()
+    this.syncMusic(false)
+  }
+
+  /**
+   * Sound off (or back on) while the preview plays too fast or slow to hear; the player pauses
+   * the soundtrack meanwhile. The video plays on muted. With a graph its clock runs on the
+   * graph's, so the context keeps running (suspended, it would stall the video).
+   */
+  setSilent(on: boolean): void {
+    if (this.silent === on) return
+    this.silent = on
+    const g = this.graph
+    if (!g) return this.applyElementOnly()
+    this.screen.muted = on
+    if (on) void g.ctx.resume()
+    else if (!this.playing) void g.ctx.suspend()
+  }
+
   /** Called for every video frame while playing: keeps the elements and the automation on time. */
   frame(): void {
     const g = this.graph
@@ -524,7 +552,7 @@ export class PreviewAudio {
     this.syncMusic(false, t)
     const out = this.outputAt(t)
     const a = this.anchor
-    if (!a || out > a.until - 5 || Math.abs(a.out + (g.ctx.currentTime - a.ctx) - out) > ANCHOR_DRIFT) this.schedule()
+    if (!a || out > a.until - 5 || Math.abs(a.out + (g.ctx.currentTime - a.ctx) * this.view - out) > ANCHOR_DRIFT) this.schedule()
   }
 
   private activeStems(): Source[] {
@@ -556,9 +584,9 @@ export class PreviewAudio {
     if (m.loop && d) drift = ((drift + d / 2) % d + d) % d - d / 2
     if (hard || Math.abs(drift) > MUSIC_SEEK) {
       music.el.currentTime = want
-      music.el.playbackRate = 1
+      music.el.playbackRate = this.view
     } else {
-      setRate(music.el, nudge(drift, MUSIC_NUDGE))
+      setRate(music.el, this.view * nudge(drift, MUSIC_NUDGE))
     }
     if (music.el.paused) void music.el.play().catch(() => undefined)
   }

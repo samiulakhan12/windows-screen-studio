@@ -102,7 +102,7 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
     let last = ''
     const update = (): void => {
       const t = displayTime(project.clips, player.time)
-      if (player.playing || !itemVisibleAt(item.item, t)) {
+      if (player.moving || !itemVisibleAt(item.item, t)) {
         if (last !== 'none') setView(null)
         last = 'none'
         return

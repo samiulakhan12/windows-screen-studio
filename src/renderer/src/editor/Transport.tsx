@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { useKeymap } from './keymapContext'
+import { PreviewSpeedControl } from './PreviewSpeed'
 
 interface Props {
   clips: Clip[]
@@ -56,6 +57,7 @@ export const Transport = memo(function Transport({ clips, freezes, notice, onTog
         <Icon name={playing ? 'pause' : 'play'} />
       </button>
       <span className="timecode" ref={timeRef} title="Position / length of the exported video" />
+      <PreviewSpeedControl />
       <div className="notice-slot" role="status" aria-live="polite">
         {notice && <span className="notice">{notice}</span>}
       </div>
