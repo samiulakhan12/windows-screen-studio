@@ -172,7 +172,8 @@ const NO_SCROLL: ScrollShape = { breaks: [], holds: [] }
  * joined to the clicks around it by a pan.
  * Scrolling: no zoom clusters, merges or lasts across a break (it ends SCROLL.outBy after the
  * break starts and starts SCROLL.rest after it ends, and is dropped when that leaves less than
- * two transitions); a hold starting inside a zoom, with no break before it, keeps it in.
+ * two transitions); a hold starting inside a zoom (its lead-in included), with no break before
+ * it, keeps it in.
  * Without breaks and holds the arithmetic is exactly what it was before scrolling was recorded.
  */
 function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptions, typingScale = o.scale, scroll: ScrollShape = NO_SCROLL): ZoomSegment[] {
@@ -202,7 +203,14 @@ function zoomsFromEvents(events: ZoomEvent[], duration: number, o: AutoZoomOptio
       cur.end = Math.max(cur.end, e.t1 + o.hold)
       cur.events.push(e)
     } else {
-      ranges.push({ start: e.t0 - o.leadIn, end: e.t1 + o.hold, first: e.t0, last: e.t1, events: [e] })
+      const r = { start: e.t0 - o.leadIn, end: e.t1 + o.hold, first: e.t0, last: e.t1, events: [e] }
+      ranges.push(r)
+      // Holds that started in its lead-in came before it existed (a scroll just before a landing): they count too.
+      for (let k = h - 1; k >= 0 && holds[k].start >= r.start; k--) {
+        if (breakBetween(holds[k].start, e.t0)) continue
+        r.end = Math.max(r.end, holds[k].end + o.hold)
+        r.last = Math.max(r.last, holds[k].end)
+      }
     }
   }
   applyHolds(Infinity)
@@ -930,24 +938,38 @@ export function regenerateAutoZooms(
  *  - add (with a new id) every zoom of `after` that matches none of `before`, overlaps no kept
  *    zoom, and overlaps only zooms of `before` that overlap a zoom dropped by the rules above
  *    (one the user deleted is not there to drop, so its stretch stays clear);
+ *  - a zoom of `after` that is not added for overlapping a kept zoom or a zoom of `before` the
+ *    user deleted keeps the zooms it overlaps that only the first rule dropped, so a zoom the
+ *    user kept is never removed for a replacement that is not added; repeated until no more are
+ *    kept (a zoom kept this way can hold back another zoom of `after`);
  *  - sorted by start. Returns `zooms` itself when nothing changes.
  * CONTRACT: used by shared/editor/inputEdits.ts setClicksIgnored (one undo step with the edit).
  */
 export function rebaseAutoZooms(zooms: ZoomSegment[], before: ZoomSegment[], after: ZoomSegment[], dropAnchors: readonly number[] = []): ZoomSegment[] {
   const drop = new Set(dropAnchors)
-  const kept = zooms.filter((z) => {
+  const stale = (z: ZoomSegment): boolean => {
+    const a = z.anchor
+    return !!a && typeof a.until !== 'number' && drop.has(clickKey(a.t))
+  }
+  let kept = zooms.filter((z) => {
     if (!z.auto) return true
     if (before.some((b) => sameZoom(z, b)) && !after.some((a) => sameZoom(z, a))) return false
-    const a = z.anchor
-    return !(a && typeof a.until !== 'number' && drop.has(clickKey(a.t)))
+    return !stale(z)
   })
   const overlaps = (a: ZoomSegment, b: ZoomSegment): boolean => a.start < b.end && a.end > b.start
-  // A zoom of `before` that overlaps none of the removed ones was deleted by the user: keep its stretch clear.
-  const removed = zooms.filter((z) => !kept.includes(z))
-  const added = after
-    .filter((a) => !before.some((b) => sameZoom(a, b)) && !kept.some((k) => overlaps(a, k)))
-    .filter((a) => before.every((b) => !overlaps(a, b) || removed.some((z) => overlaps(z, b))))
-    .map((a) => ({ ...a, id: newZoomId() }))
+  const fresh = after.filter((a) => !before.some((b) => sameZoom(a, b)))
+  let held: ZoomSegment[] = []
+  for (;;) {
+    // Held back: a zoom over a kept one, or over a zoom of `before` that overlaps none of the
+    // removed ones (the user deleted it: keep its stretch clear)...
+    const removed = zooms.filter((z) => !kept.includes(z))
+    held = fresh.filter((a) => kept.some((k) => overlaps(a, k)) || before.some((b) => overlaps(a, b) && !removed.some((z) => overlaps(z, b))))
+    // ... and keep the zooms a held-back zoom would have replaced.
+    const back = removed.filter((z) => !stale(z) && held.some((a) => overlaps(a, z)))
+    if (back.length === 0) break
+    kept = zooms.filter((z) => kept.includes(z) || back.includes(z))
+  }
+  const added = fresh.filter((a) => !held.includes(a)).map((a) => ({ ...a, id: newZoomId() }))
   if (kept.length === zooms.length && added.length === 0) return zooms
   return [...kept, ...added].sort((a, b) => a.start - b.start)
 }
