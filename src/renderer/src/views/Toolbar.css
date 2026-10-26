@@ -180,7 +180,8 @@
 }
 
 .rec-bar .tb-btn.mic.muted,
-.rec-bar .tb-btn.camera.off {
+.rec-bar .tb-btn.camera.off,
+.rec-bar .tb-btn.notes.off {
   color: var(--danger-text);
   background: var(--danger-soft);
 }
@@ -208,6 +209,22 @@
   height: 22px;
   margin: 0 3px;
   background: var(--rb-line);
+}
+
+/* The notes button: a small static dot while the notes scroll (no animation). */
+.rec-bar .tb-btn.notes {
+  position: relative;
+}
+
+.rec-bar .rb-notes-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-text);
+  box-shadow: 0 0 0 1.5px var(--rb-bg);
 }
 
 /* Red fills behind white labels are darkened to reach 4.5:1 (the record red itself is lighter). */

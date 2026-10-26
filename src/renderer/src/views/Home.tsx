@@ -10,6 +10,7 @@ import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChang
 import { CameraPreview, Keys, RecordingOptions } from '../recorder/RecordingOptions'
 import { BrandLogo } from '../components/BrandLogo'
 import { RecordingPresets } from '../recorder/RecordingPresets'
+import { NotesCard } from '../notes/NotesCard'
 import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
 import { hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
 import {
@@ -935,6 +936,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 </div>
               </div>
             </div>
+            <NotesCard disabled={!idle} />
             <RecordingPresets
               presets={presets}
               active={activePreset}

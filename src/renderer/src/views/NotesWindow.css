@@ -1,0 +1,267 @@
+/*
+ * The speaker notes window (its own opaque, always-on-top window; see NotesWindow.tsx and
+ * docs/design/teleprompter.md, "Notes window"). Every rule is scoped to .notes-window or the
+ * notes page's body. Nothing animates: the text column moves only by the transform the page
+ * writes (at most 30 times a second), on its own compositor layer.
+ */
+
+:root:has(> body.notes-body) {
+  background: var(--surface-0);
+}
+
+/* No CSS animation or transition at all in this page, whatever the shared rules say. */
+body.notes-body *,
+body.notes-body *::before,
+body.notes-body *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.notes-window {
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-0);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-1);
+  user-select: none;
+}
+
+/* ---------- the text ---------- */
+.notes-window .nw-text {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  contain: strict;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  cursor: default;
+}
+
+/* Its top sits on the reading line (30 % of the text area) at position 0. */
+.notes-window .nw-column {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  padding: 0 20px;
+  will-change: transform;
+  contain: layout paint;
+}
+
+.notes-window .nw-block {
+  position: relative;
+  margin: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.notes-window .nw-block.gap {
+  margin-top: 0.5em;
+}
+
+.notes-window .nw-block.bullet {
+  padding-left: 1.3em;
+}
+
+.notes-window .nw-marker {
+  position: absolute;
+  left: 0;
+  width: 1.1em;
+  color: var(--text-2);
+  text-align: left;
+}
+
+/* Cues: never read aloud (--text-2: 7.5:1 on --surface-0, 4.7:1 under the strongest dimming). */
+.notes-window .nw-cue {
+  font-style: italic;
+  color: var(--text-2);
+}
+
+/* What was read: a static gradient above the reading line. */
+.notes-window .nw-dim {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(14, 14, 17, 0.25), rgba(14, 14, 17, 0));
+}
+
+.notes-window .nw-line {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--border-strong);
+  pointer-events: none;
+}
+
+.notes-window .nw-line-marker {
+  position: absolute;
+  left: 5px;
+  top: -9px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--accent-text);
+}
+
+.notes-window .nw-empty {
+  position: absolute;
+  inset: 30% 20px auto;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+  color: var(--text-2);
+}
+
+.notes-window .nw-restart {
+  position: absolute;
+  left: 20px;
+  bottom: 10px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: var(--weight-semibold) var(--text-sm) / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.notes-window .nw-restart:hover {
+  background: var(--surface-3);
+}
+
+/* ---------- the strip ---------- */
+.notes-window .nw-strip {
+  flex: none;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 6px;
+  border-top: 1px solid var(--border-subtle);
+  font: var(--weight-regular) var(--text-sm) / var(--leading-tight) var(--font-sans);
+  white-space: nowrap;
+  -webkit-app-region: drag;
+}
+
+.notes-window .nw-strip button,
+.notes-window .nw-grip,
+.notes-window .nw-warn,
+.notes-window .nw-lock {
+  -webkit-app-region: no-drag;
+}
+
+.notes-window .nw-btn {
+  flex: none;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.notes-window .nw-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.notes-window .nw-btn:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+
+.notes-window .nw-btn.nw-play[aria-pressed='true'] {
+  color: var(--accent-text);
+}
+
+.notes-window .nw-font {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.notes-window .nw-font-sign {
+  font-size: var(--text-xs);
+  margin-left: 1px;
+}
+
+.notes-window .nw-speed {
+  flex: none;
+  min-width: 52px;
+  text-align: center;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes-window .nw-sep {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--border-default);
+}
+
+/* Muted status (--text-3: 5.7:1 on --surface-0); it gives way first when the window is narrow. */
+.notes-window .nw-status {
+  flex: 1;
+  min-width: 0;
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-3);
+}
+
+.notes-window .nw-warn {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--warning);
+  color: #111114;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.notes-window .nw-grip,
+.notes-window .nw-lock {
+  flex: none;
+  width: 24px;
+  height: 30px;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 2px 2px 0;
+  color: var(--text-3);
+}
+
+.notes-window .nw-grip {
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.notes-window .nw-lock {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: help;
+}

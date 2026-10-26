@@ -79,7 +79,8 @@ const CONFIRMS: Record<Confirm, { question: string; detail: string; action: stri
 
 /**
  * Floating, always-on-top recording bar (excluded from the capture): a compact pill with the
- * recording dot and timer, the microphone's level and mute, the camera bubble's show/hide, pause
+ * recording dot and timer, the microphone's level and mute, the camera bubble's show/hide, the
+ * speaker notes' show/hide (with a dot while they scroll), pause
  * or resume, restart and discard (each confirmed first) and Stop. Drag it by any empty part.
  * During the countdown it counts down 3-2-1 with a Cancel button.
  */
@@ -228,7 +229,19 @@ export function Toolbar(): JSX.Element | null {
           <RecIcon name={camShown ? 'camera' : 'camera-off'} />
         </button>
       )}
-      {(status.mic || status.camera) && <span className="rb-sep" aria-hidden="true" />}
+      {status.notes && (
+        <button
+          className={`tb-btn notes ${status.notes.shown ? '' : 'off'}`}
+          aria-pressed={status.notes.shown}
+          aria-label={status.notes.shown ? 'Hide notes' : 'Show notes'}
+          title={status.notes.shown ? 'Hide your notes (they are never in the recording)' : 'Show your notes'}
+          onClick={() => void window.api.toggleNotesShown().catch((err: unknown) => console.warn('Could not show or hide the notes:', err))}
+        >
+          <RecIcon name={status.notes.shown ? 'notes' : 'notes-off'} />
+          {status.notes.playing && status.notes.shown && <span className="rb-notes-dot" aria-hidden="true" />}
+        </button>
+      )}
+      {(status.mic || status.camera || status.notes) && <span className="rb-sep" aria-hidden="true" />}
       <button className="tb-btn pause" title={withKey(paused ? 'Resume' : 'Pause', keys.pause)} aria-label={paused ? 'Resume' : 'Pause'} onClick={send(paused ? 'resume' : 'pause')}>
         <RecIcon name={paused ? 'play' : 'pause'} />
       </button>

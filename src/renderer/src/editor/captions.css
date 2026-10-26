@@ -380,3 +380,48 @@
 .captions-suggestion .row {
   gap: 6px;
 }
+
+/* "Your script": the speaker notes read while recording (folded by default). */
+.captions-script-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.captions-script-head:hover {
+  color: var(--text-1);
+}
+
+.captions-script-chevron {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.captions-script-chevron.open {
+  transform: rotate(90deg);
+}
+
+.captions-script-text {
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.captions-script-actions {
+  gap: 6px;
+}

@@ -1,0 +1,261 @@
+/*
+ * Speaker notes on Home: the "Speaker notes" group of the record panel and the Notes dialog
+ * (docs/design/teleprompter.md, "Home" and "Notes dialog"). Colours, type and radii come from
+ * the design tokens in styles.css.
+ */
+
+/* ---------- Home: the group ---------- */
+.notes-card {
+  gap: var(--space-2);
+}
+
+.notes-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.notes-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-1);
+}
+
+.notes-card-label .icon {
+  color: var(--text-2);
+}
+
+.notes-summary {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notes-card-actions .btn[aria-pressed='true'] {
+  border-color: var(--accent-500);
+  color: var(--accent-text);
+}
+
+.notes-older {
+  margin: 0;
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  color: var(--warning-text);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.notes-error {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: var(--text-sm);
+}
+
+/* ---------- the dialog ---------- */
+.modal.notes-modal {
+  width: min(860px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+}
+
+.notes-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--space-5);
+  min-height: 0;
+  overflow-y: auto;
+  /* Room for focus rings at the edges of the scroller. */
+  margin: 0 -6px;
+  padding: 0 6px 2px;
+}
+
+@media (max-width: 760px) {
+  .notes-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.notes-script,
+.notes-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.notes-text-field > span {
+  color: var(--text-1);
+}
+
+.notes-textarea {
+  min-height: 300px;
+  resize: vertical;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-0);
+  color: var(--text-1);
+  font: var(--weight-regular) var(--text-md) / var(--leading-normal) var(--font-sans);
+  user-select: text;
+}
+
+.notes-textarea::placeholder {
+  color: var(--text-3);
+}
+
+.notes-textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.notes-textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.notes-count-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: -4px;
+  font-size: var(--text-sm);
+}
+
+.notes-count {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes-saved {
+  color: var(--text-3);
+}
+
+.notes-saved.error {
+  color: var(--danger-text);
+}
+
+.notes-draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.notes-draft-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notes-draft-provider {
+  max-width: 220px;
+  background-color: var(--surface-1);
+}
+
+.notes-draft-busy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-1);
+}
+
+.notes-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-4);
+  border-top-color: var(--accent-text);
+  animation: spin 0.8s linear infinite;
+}
+
+/* Under reduced motion the spinner stands still. */
+@media (prefers-reduced-motion: reduce) {
+  .notes-spinner {
+    animation: none;
+  }
+}
+
+.notes-draft-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.notes-ok {
+  color: var(--success-text);
+}
+
+.notes-warn {
+  color: var(--warning-text);
+}
+
+.notes-subtitle {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.notes-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notes-settings .toggle > span {
+  font-size: var(--text-md);
+}
+
+.notes-settings .slider {
+  font-size: var(--text-md);
+}
+
+.notes-position {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px var(--space-2);
+}
+
+.notes-position-label {
+  grid-column: 1 / -1;
+}
+
+.notes-position-value {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.btn.notes-small {
+  height: var(--control-sm);
+  padding: 0 10px;
+  font-size: var(--text-sm);
+}
+
+.notes-hotkeys .hotkey-field {
+  background: var(--surface-2);
+}
+
+.notes-foot {
+  align-items: center;
+}
+
+.notes-foot-msg {
+  margin-right: auto;
+}
