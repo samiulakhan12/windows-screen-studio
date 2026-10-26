@@ -91,6 +91,7 @@ const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
   title: 'text',
   chapter: 'text',
   caption: 'captions',
+  freeze: 'clip',
   click: 'zoom'
 }
 

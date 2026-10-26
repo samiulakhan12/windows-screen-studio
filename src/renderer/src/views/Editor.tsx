@@ -8,6 +8,7 @@ import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
+import { FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze } from '../../../shared/editor/freezeEdit'
 import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
@@ -48,6 +49,7 @@ import { EditorContext, type EditorServices } from '../editor/context'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
+import { addFreezeAt, freezeTarget, toggleFreezeSound } from '../editor/freezeItems'
 import { Inspector, type InputActions, type InspectorTab } from '../editor/Inspector'
 import { KeymapContext } from '../editor/keymapContext'
 import { showLayout } from '../editor/LayoutTrack'
@@ -499,6 +501,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       addText: (): void => addTextAt(player.time),
       addTitle: (): void => void addTitleAt({ store, player }, { onSelect: setSelection }),
       addChapter: (): void => void addChapterAt({ store, player }, { onSelect: setSelection, onNotice: showNotice }),
+      freezeFrame: (): void => addFreezeAt({ store, player }, { onSelect: setSelection, onNotice: showNotice }),
+      toggleFreezeSound: (): void => toggleFreezeSound({ store, player }, latest.current.selection, { onSelect: setSelection, onNotice: showNotice }),
       goToChapter,
       setLayout,
       split: (): void => {
@@ -543,6 +547,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else if (sel.kind === 'chapter') store.update((p) => ({ ...p, chapters: (p.chapters ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'caption')
           store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: p.transcript.segments.filter((s) => s.id !== sel.id) } } : p))
+        else if (sel.kind === 'freeze') store.update((p) => removeFreeze(p, sel.id))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else if (sel.kind === 'click') {
@@ -769,9 +774,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       resetCrop: () => showNotice('Coming soon'),
       cropTaskbar: () => showNotice('Coming soon'),
 
-      // E-11 freeze frame (filled by the E-11 workstream)
-      freezeFrame: () => showNotice('Coming soon'),
-      toggleFreezeSound: () => showNotice('Coming soon')
+      // E-11 freeze frame
+      freezeFrame: actions.freezeFrame,
+      toggleFreezeSound: actions.toggleFreezeSound
     }
   }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store])
   const commandsRef = useRef(commands)
@@ -792,6 +797,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const smoothCursor = cursor.valid && !p.capture.cursorInVideo
     const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, t)
     const edited = p.clips.length > 1 || p.clips[0].start > 0 || p.clips[0].end < p.duration || p.clips[0].speed !== 1
+    const freezeRefused = freezeRefusal(p, t)?.refused
     const unavailable: Partial<Record<CommandId, string | null>> = {
       undo: store.canUndo ? null : 'Nothing to undo',
       redo: store.canRedo ? null : 'Nothing to redo',
@@ -811,7 +817,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
-      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor
+      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor,
+      freezeFrame: freezeRefused ? FREEZE_REFUSAL_TEXT[freezeRefused] : null,
+      toggleFreezeSound: freezeTarget(p, selection, t) ? null : 'Select a freeze frame first'
     }
     for (const k of ['straightenRange', 'recordedPathRange'] as const) {
       unavailable[k] = !cursor.valid
@@ -994,6 +1002,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             />
             <Transport
               clips={project.clips}
+              freezes={project.freezes}
               notice={notice}
               onTogglePlay={actions.togglePlay}
               onSplit={actions.split}
