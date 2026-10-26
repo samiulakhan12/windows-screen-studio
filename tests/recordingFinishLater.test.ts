@@ -35,6 +35,7 @@ const align = vi.hoisted(() => ({ lag: 0.004 }))
 vi.mock('../src/main/recording/stemAlign', () => ({ measureStemLag: async () => align.lag }))
 
 import * as projects from '../src/main/projects'
+import { ON_TIMESTAMPS } from '../src/main/proxyArgs'
 import { processRecording } from '../src/main/recording/finalize'
 import { expectedStems, setExpectedStems, settleStems } from '../src/main/recording/stems'
 import type { StemKind } from '../src/shared/audio/settings'
@@ -203,7 +204,7 @@ describe('encoder fallback still works for real failures', () => {
     const [video, mux] = runner.calls
     expect(output(video)).toMatch(/screen\.video\.mp4$/)
     expect(video).toContain('-an')
-    expect(mux[mux.indexOf('-af') + 1]).toBe('adelay=250:all=1,apad,atrim=end=2.500000')
+    expect(mux[mux.indexOf('-af') + 1]).toBe(`${ON_TIMESTAMPS},adelay=250:all=1,apad,atrim=end=2.500000`)
     expect(output(mux)).toMatch(/screen\.mp4$/)
     expect(project.duration).toBeCloseTo(2.5)
     expect(project.hasAudio).toBe(true)
@@ -237,7 +238,7 @@ describe('microphone and system sound kept on their own (stems)', () => {
     const [, mic, system] = runner.calls
     expect(mic[mic.indexOf('-i') + 1]).toMatch(/mic\.webm$/)
     // The timestamps' 20 ms plus the 4 ms the sound itself showed.
-    expect(mic[mic.indexOf('-af') + 1]).toBe('adelay=24:all=1,apad,atrim=end=2.500000')
+    expect(mic[mic.indexOf('-af') + 1]).toBe(`${ON_TIMESTAMPS},adelay=24:all=1,apad,atrim=end=2.500000`)
     expect(output(mic)).toMatch(/mic\.m4a$/)
     expect(output(system)).toMatch(/system\.m4a$/)
     expect(project.audioStems).toEqual({ mic: true, system: true })

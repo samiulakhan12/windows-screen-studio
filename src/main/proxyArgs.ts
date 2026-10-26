@@ -16,6 +16,14 @@ export interface ProxyOptions {
   faststart?: boolean
 }
 
+/**
+ * Puts every recorded sound sample at its timestamp. A MediaRecorder track has a gap where the
+ * recorder dropped a packet (60 ms of Opus, under load); encoded as is, the samples after it
+ * move up into the gap, so the track ends that much short of the video and runs early from the
+ * gap on. Gaps over 20 ms become silence; the recorder's few ms of jitter are left alone.
+ */
+export const ON_TIMESTAMPS = 'aresample=async=1:min_hard_comp=0.02'
+
 /** A separately recorded audio file (native capture) whose timeline starts `offset` seconds after the video's. */
 export interface ExternalAudio {
   input: string
@@ -111,7 +119,7 @@ export function proxyArgs(input: string, output: string, withAudio: boolean, opt
     '-r', String(fps),
     ...encoderArgs(encoder, bitrate),
     '-g', '15',
-    ...(withAudio ? ['-c:a', 'aac', '-b:a', '192k'] : ['-an']),
+    ...(withAudio ? ['-af', ON_TIMESTAMPS, '-c:a', 'aac', '-b:a', '192k'] : ['-an']),
     ...(options.progress ? ['-progress', 'pipe:1', '-nostats'] : []),
     ...(options.faststart === false ? [] : ['-movflags', '+faststart']),
     output
@@ -120,12 +128,13 @@ export function proxyArgs(input: string, output: string, withAudio: boolean, opt
 
 /**
  * Adds separately recorded audio to a finished video proxy (stream copy). The audio is
- * shifted by its offset, padded with silence and cut at `duration` (the video's exact
- * length, from its frame count), so no track outlasts the video: the file's duration is
- * the video's, and the editor never plays frozen frames after the last one.
+ * placed on its timestamps (ON_TIMESTAMPS), shifted by its offset, padded with silence and cut
+ * at `duration` (the video's exact length, from its frame count), so no track outlasts the
+ * video: the file's duration is the video's, and the editor never plays frozen frames after
+ * the last one.
  */
 export function muxAudioArgs(video: string, output: string, audio: ExternalAudio, duration: number | null, progress = true): string[] {
-  const filters: string[] = []
+  const filters: string[] = [ON_TIMESTAMPS]
   if (audio.offset > 0) filters.push(`adelay=${Math.round(audio.offset * 1000)}:all=1`)
   if (duration !== null && duration > 0) filters.push('apad', `atrim=end=${duration.toFixed(6)}`)
   return [
@@ -138,7 +147,7 @@ export function muxAudioArgs(video: string, output: string, audio: ExternalAudio
     '-map', '0:v:0',
     '-map', '1:a:0?',
     '-c:v', 'copy',
-    ...(filters.length > 0 ? ['-af', filters.join(',')] : []),
+    '-af', filters.join(','),
     '-c:a', 'aac',
     '-b:a', '192k',
     ...(progress ? ['-progress', 'pipe:1', '-nostats'] : []),
@@ -149,12 +158,13 @@ export function muxAudioArgs(video: string, output: string, audio: ExternalAudio
 
 /**
  * One recorded sound source (a stem: the microphone or the system sound) as an AAC file on
- * the screen proxy's timeline: shifted by its offset like the native mixed track
- * (muxAudioArgs), padded with silence and cut at `duration`, so source second t of the stem
- * is source second t of the video, and the editor and the export treat it like the proxy's track.
+ * the screen proxy's timeline: placed on its timestamps (ON_TIMESTAMPS) and shifted by its
+ * offset like the native mixed track (muxAudioArgs), padded with silence and cut at
+ * `duration`, so source second t of the stem is source second t of the video, and the editor
+ * and the export treat it like the proxy's track.
  */
 export function stemArgs(input: string, output: string, offset: number, duration: number | null): string[] {
-  const filters: string[] = []
+  const filters: string[] = [ON_TIMESTAMPS]
   if (offset > 0) filters.push(`adelay=${Math.round(offset * 1000)}:all=1`)
   if (duration !== null && duration > 0) filters.push('apad', `atrim=end=${duration.toFixed(6)}`)
   return [
@@ -165,7 +175,7 @@ export function stemArgs(input: string, output: string, offset: number, duration
     '-i', input,
     '-map', '0:a:0',
     '-vn',
-    ...(filters.length > 0 ? ['-af', filters.join(',')] : []),
+    '-af', filters.join(','),
     '-c:a', 'aac',
     '-b:a', '160k',
     '-ar', '48000',

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { stemLag } from '../../shared/audio/align'
 import { ffmpegPath } from '../ffmpeg'
+import { ON_TIMESTAMPS } from '../proxyArgs'
 import { cancelledError } from './proxyRunner'
 
 /** Analysis rate and the stretch decoded from each file (the stems' offset does not change over time). */
@@ -39,7 +40,8 @@ function decode(input: string[], filters: string[], signal?: AbortSignal): Promi
  * stem, a mixed sound that does not contain it); the timestamps are then all there is.
  */
 export async function measureStemLag(raw: string, proxy: string, offset: number, signal?: AbortSignal): Promise<number> {
-  const stem = await decode([...(offset < 0 ? ['-ss', (-offset).toFixed(3)] : []), '-i', raw], offset > 0 ? [`adelay=${Math.round(offset * 1000)}:all=1`] : [], signal)
+  const placed = [ON_TIMESTAMPS, ...(offset > 0 ? [`adelay=${Math.round(offset * 1000)}:all=1`] : [])]
+  const stem = await decode([...(offset < 0 ? ['-ss', (-offset).toFixed(3)] : []), '-i', raw], placed, signal)
   const mix = await decode(['-i', proxy], [], signal)
   const match = stemLag(stem, mix, RATE)
   return match ? match.lag / RATE : 0

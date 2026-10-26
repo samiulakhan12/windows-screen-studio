@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
-import { cropFilter, muxAudioArgs, proxyArgs, regionPixels, stemArgs } from '../src/main/proxyArgs'
+import { cropFilter, muxAudioArgs, ON_TIMESTAMPS, proxyArgs, regionPixels, stemArgs } from '../src/main/proxyArgs'
 import { fitContent } from '../src/shared/recording/windowGeometry'
 
 const arg = (args: string[], flag: string): string | undefined => args[args.indexOf(flag) + 1]
@@ -68,17 +68,18 @@ describe('muxAudioArgs', () => {
     expect(later.join(' ')).toContain('-i v.mp4 -i a.webm')
     expect(later.join(' ')).toContain('-map 0:v:0 -map 1:a:0?')
     expect(arg(later, '-c:v')).toBe('copy')
-    expect(arg(later, '-af')).toBe('adelay=250:all=1,apad,atrim=end=2.500000')
+    expect(arg(later, '-af')).toBe(`${ON_TIMESTAMPS},adelay=250:all=1,apad,atrim=end=2.500000`)
     expect(later.at(-1)).toBe('o.mp4')
     const earlier = muxAudioArgs('v.mp4', 'o.mp4', { input: 'a.webm', offset: -0.4 }, 3)
     expect(earlier.join(' ')).toContain('-ss 0.400 -i a.webm')
-    expect(arg(earlier, '-af')).toBe('apad,atrim=end=3.000000')
+    expect(arg(earlier, '-af')).toBe(`${ON_TIMESTAMPS},apad,atrim=end=3.000000`)
     expect(earlier).toContain('aac')
   })
 
   it('leaves the audio untrimmed when the video length is unknown', () => {
     const args = muxAudioArgs('v.mp4', 'o.mp4', { input: 'a.webm', offset: 0 }, null)
-    expect(args).not.toContain('-af')
+    // Still placed on its timestamps (see 'recorded sound with a dropped packet').
+    expect(arg(args, '-af')).toBe(ON_TIMESTAMPS)
   })
 })
 
@@ -203,7 +204,7 @@ describe.skipIf(!haveFfmpeg)('proxy filters (real ffmpeg)', () => {
 describe('stemArgs', () => {
   it('shifts a stem like the mixed sound, pads and cuts it to the video, as AAC only', () => {
     const later = stemArgs('mic.webm', 'mic.m4a', 0.25, 2.5)
-    expect(arg(later, '-af')).toBe('adelay=250:all=1,apad,atrim=end=2.500000')
+    expect(arg(later, '-af')).toBe(`${ON_TIMESTAMPS},adelay=250:all=1,apad,atrim=end=2.500000`)
     expect(later).not.toContain('-ss')
     expect(later.join(' ')).toContain('-map 0:a:0 -vn')
     expect(arg(later, '-c:a')).toBe('aac')
@@ -211,7 +212,7 @@ describe('stemArgs', () => {
     const earlier = stemArgs('system.webm', 'system.m4a', -0.5, null)
     expect(arg(earlier, '-ss')).toBe('0.500')
     expect(earlier.indexOf('-ss')).toBeLessThan(earlier.indexOf('-i'))
-    expect(earlier).not.toContain('-af')
+    expect(arg(earlier, '-af')).toBe(ON_TIMESTAMPS)
   })
 
   it('makes a stem exactly as long as the video with ffmpeg', () => {
@@ -230,5 +231,64 @@ describe('stemArgs', () => {
     const peak = (a: number, b: number): number => Math.max(...Array.from(s.subarray(a * 48, b * 48), Math.abs))
     expect(peak(0, 80)).toBeLessThan(0.01)
     expect(peak(150, 400)).toBeGreaterThan(0.05)
+  })
+})
+
+describe.skipIf(!haveFfmpeg)('recorded sound with a dropped packet (real ffmpeg)', () => {
+  const run = (args: string[]): void => void execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', ...args])
+
+  /** The first audio stream of `file`, mono at 48 kHz. */
+  const decode = (file: string): Float32Array => {
+    const pcm = execFileSync(ffmpeg, ['-v', 'error', '-i', file, '-map', '0:a:0', '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })
+    return new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4)
+  }
+  const onset = (s: Float32Array): number => s.findIndex((v) => Math.abs(v) > 0.1) / 48000
+
+  /**
+   * A MediaRecorder-like Opus track in WebM (60 ms packets) with a beep at 1.5 s, and packet 10
+   * (0.6-0.66 s) dropped, as the recorder does under load: the timestamps jump over it.
+   * `video` adds a picture stream (the Chromium screen recording with its mixed sound).
+   */
+  const gapped = (dir: string, video = false): string => {
+    const tone = path.join(dir, 'tone.wav')
+    run(['-f', 'lavfi', '-i', 'aevalsrc=0.5*between(t\\,1.5\\,1.7)*sin(2*PI*500*t):s=48000:d=2.4', tone])
+    const whole = path.join(dir, video ? 'whole-av.webm' : 'whole.webm')
+    run([
+      ...(video ? ['-f', 'lavfi', '-i', 'color=gray:size=320x240:rate=30:duration=2.4'] : []),
+      '-i', tone,
+      ...(video ? ['-c:v', 'libvpx', '-b:v', '200k'] : []),
+      '-c:a', 'libopus', '-frame_duration', '60', whole
+    ])
+    const out = path.join(dir, video ? 'gapped-av.webm' : 'gapped.webm')
+    run(['-i', whole, '-map', '0', '-c', 'copy', '-bsf:a', 'noise=drop=eq(n\\,10)', out])
+    return out
+  }
+
+  it('keeps a stem as long as the video, with the sound after the gap on time', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-gap-'))
+    const out = path.join(dir, 'mic.m4a')
+    execFileSync(ffmpeg, stemArgs(gapped(dir), out, 0, 2.4), { stdio: 'ignore' })
+    const s = decode(out)
+    // Encoded as is, the stem was 60 ms short and the beep 60 ms early.
+    expect(s.length / 48000).toBeGreaterThanOrEqual(2.4)
+    expect(Math.abs(onset(s) - 1.5)).toBeLessThan(0.01)
+  })
+
+  it("keeps the native recording's sound on time after the gap", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-gap-'))
+    const video = path.join(dir, 'video.mp4')
+    run(['-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=30:duration=2.4', '-c:v', 'libx264', video])
+    const out = path.join(dir, 'screen.mp4')
+    execFileSync(ffmpeg, muxAudioArgs(video, out, { input: gapped(dir), offset: 0 }, 2.4, false), { stdio: 'ignore' })
+    const s = decode(out)
+    expect(s.length / 48000).toBeGreaterThanOrEqual(2.4)
+    expect(Math.abs(onset(s) - 1.5)).toBeLessThan(0.01)
+  })
+
+  it("keeps a Chromium recording's mixed sound on time after the gap", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ssw-gap-'))
+    const out = path.join(dir, 'screen.mp4')
+    execFileSync(ffmpeg, proxyArgs(gapped(dir, true), out, true, { fps: 30 }), { stdio: 'ignore' })
+    expect(Math.abs(onset(decode(out)) - 1.5)).toBeLessThan(0.01)
   })
 })
