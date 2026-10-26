@@ -71,9 +71,9 @@ const RECT = { x: 0, y: 0, w: 960, h: 540 }
 let drafts: CropDraft[] = []
 
 /** The overlay for `draft`, rendered with its effects run; its elements, flattened. */
-function render(draft: CropDraft): El[] {
+function render(draft: CropDraft, rect = RECT): El[] {
   hooks = { i: 0 }
-  const tree = CropEditor({ recorded: RECORDED, rect: RECT, draft, onDraft: (d: CropDraft) => drafts.push(d), onDone: () => undefined })
+  const tree = CropEditor({ recorded: RECORDED, rect, draft, onDraft: (d: CropDraft) => drafts.push(d), onDone: () => undefined })
   hooks = null
   const run = effects
   effects = []
@@ -128,5 +128,17 @@ describe('CropEditor: a drag', () => {
     pointer('pointermove', 600, 270)
     pointer('pointerup', 600, 270)
     expect(drafts).toHaveLength(1)
+  })
+})
+
+describe('CropEditor: a free resize', () => {
+  it('keeps an edge it does not drag, even when the magnet would reach the frame edge (a hidden taskbar stays hidden)', () => {
+    // A small preview: 170 px for 1080 recorded px, so the 8 px magnet is wider than the 48 px taskbar.
+    const draft: CropDraft = { rect: { x: 0, y: 0, w: 1, h: 1032 / 1080 }, aspect: 'free' }
+    grab(render(draft, { x: 0, y: 0, w: 320, h: 170 }), 'w', 0, 80)
+    pointer('pointermove', 20, 80)
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].rect.x).toBeGreaterThan(0)
+    expect(drafts[0].rect.h).toBeCloseTo(1032 / 1080, 9)
   })
 })

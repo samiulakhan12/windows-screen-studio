@@ -605,11 +605,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       // in the crop's view; without cursor data, its centre), inside the part of the recording that
       // is shown.
       const c = scene.crop ?? null
-      if (!cursor.valid) return fromCrop(c, { x: 0.5, y: 0.5 })
+      // The stored crop, not the scene's: the crop tool shows the whole frame while it is open.
+      if (!cursor.valid) return fromCrop(cropOf(project), { x: 0.5, y: 0.5 })
       const p = clampIntoCrop(c, zoom.anchor ?? fromCrop(c, focusPath.at((zoom.start + zoom.end) / 2)))
       return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
     },
-    [cursor.valid, focusPath, scene.crop]
+    [cursor.valid, focusPath, scene.crop, project]
   )
 
   const onBackgroundImage = useCallback(async () => {
