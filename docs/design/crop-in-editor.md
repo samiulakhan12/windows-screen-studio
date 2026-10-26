@@ -2,7 +2,7 @@
 
 Part of Wave 6, "Easier editing". The shared rules for this wave (file ownership, the shared files, merge order and the keymap) are in [editing-wins.md](editing-wins.md).
 
-Status: design (reviewed). Roadmap item: `docs/ROADMAP.md` E-10 (listed as S–M; this design is closer to M, see the phasing in [Risks](#11-risks)). Checked against branch `feat-w6-editing-wins`.
+Status: implemented on `w6-e10` (where the code differs from the first draft, the text below follows the code; the differences are listed in [Implementation notes](#13-implementation-notes)). Roadmap item: `docs/ROADMAP.md` E-10 (listed as S–M; this design is closer to M, see the phasing in [Risks](#11-risks)). Checked against branch `feat-w6-editing-wins`.
 
 ## 1. What the user gets
 
@@ -25,7 +25,7 @@ Status: design (reviewed). Roadmap item: `docs/ROADMAP.md` E-10 (listed as S–M
 | 5 | Reading pixels | Copy the crop out of each decoded frame 1:1 into a reused canvas (`cropFrame`), then draw from that copy. Smoothing stays as today: the single draw uses `'high'`; motion-blur sub-frames draw from the copy with `'low'`, as the motion-blur branch already does with `rgbCopy`. Rejected: `drawImage` with a source rectangle on the video. Rejected: forcing `'low'` for every cropped draw. | The canvas spec lets filtering use pixels outside the source rectangle, so the edge of the hidden taskbar would bleed into the card, and mipmapped `'high'` downscales read even wider. The copy also stops privacy blur from pulling in hidden pixels. Forcing `'low'` would alias text when a 4K crop is drawn into a 1080p card, and cropped projects would look softer or shimmer compared with uncropped ones. |
 | 6 | Zoom levels | Relative to the visible frame: 2× shows half the crop's width. Region zooms keep framing the same content, so their level readout changes (e.g. 2.5× becomes 2×). | `zoomTargetScale` derives a region's level from its rectangle, and the camera now reads the view rectangle. Levels relative to the full frame would aim part of a narrow crop's view outside the crop, and `clampCamera` would fight it. |
 | 7 | Input under the hidden part | Treated like input outside the video. In view space: the cursor is not drawn (`inVideo`, `frameContext.ts`), ripples are skipped (`cursorLayer.ts:164`), `soundingClicks` filters `inVideo` (`clickSound.ts:97`), and `focusPathFor` clamps to the crop. For auto zoom, hidden clicks are filtered out in full space (decision 8). Smart speed (`inputGaps`), `findStrayClicks` and `planCursorPath` still read the full track. | Without this, zooms would aim at the crop edge and sounds would play with no visible click. Activity is still activity, and leaving smart speed alone is one less change. |
-| 8 | Auto zooms when the crop changes | `rebaseAutoZooms(p.zooms, before, after)`, with `before` and `after` from `autoZoomsInFrame` for the old and new crop, in the same undo step. `autoZoomsInFrame` **removes clicks outside the crop and clamps the resulting anchors into it, all in full-frame coordinates**. It does not map the track into view space and back. Rejected: regenerate everything. Rejected: leave the zooms alone. | Regenerating brings back zooms the user deleted. Leaving them keeps zooms aimed at hidden clicks. Mapping into view space and back is not exact: `sameFocus` (`zoom.ts`) compares fixed focus with `===`, so a 1-ulp round-trip error makes `rebaseAutoZooms` replace every fixed-focus auto zoom (recordings with `track.valid === false`) with a copy under a new id and count it as removed. Filtering and clamping leave points inside the crop bit-identical. `zoomsFromEvents` uses no spatial distances, so the result is the same as generating in view space. |
+| 8 | Auto zooms when the crop changes | `rebaseAutoZooms(p.zooms, before, after)`, with `before` and `after` from `autoZoomsInFrame` for the old and new crop, in the same undo step. `autoZoomsInFrame` **removes clicks outside the crop and clamps the resulting anchors into it, all in full-frame coordinates**. It does not map the track into view space and back. Rejected: regenerate everything. Rejected: leave the zooms alone. | Regenerating brings back zooms the user deleted. Leaving them keeps zooms aimed at hidden clicks. Mapping into view space and back is not exact: `sameFocus` (`zoom.ts`) compares fixed focus with `===`, so a 1-ulp round-trip error makes `rebaseAutoZooms` replace every fixed-focus auto zoom (recordings with `track.valid === false`) with a copy under a new id and count it as removed. Filtering and clamping leave points inside the crop bit-identical. The only spatial test of the generator, `near` (`SAME_FIELD`, joining a click into a field with the typing there), is then measured on the recording rather than on the view, which is the better measure anyway. |
 | 9 | Time | One rectangle for the whole recording. | Keyframed or per-clip crop is listed under Later. |
 | 10 | Editing model | A draft held in the Editor and applied on Done as one keyless `store.update`. Rejected: live store updates coalesced by key. | The tool shows the full frame, so live updates show nothing new. A draft gives Cancel for free and exactly one undo step. `EditStore.update` already returns early when `next === prev`, so an unchanged Done adds no step. |
 | 11 | Preview while cropping | Full frame, through the existing `player.setNoZoom(true)`, whose `unzoomedScene` drops zooms and tilt. The camera is hidden by `webcam.show = false` in the crop-mode copy, which also turns off layouts (`layoutsApply`). The output shape is the full frame's. | This reuses what region picking already uses. You can see both what you are cutting away and what you could bring back. |
@@ -195,13 +195,14 @@ Example: a 1280×720 recording with a 48 px taskbar gives `c = {0, 0, 1, 0.93333
 | `ExportPreview.tsx:34-35` | same swap | same fix | 2 lines |
 | `cameraShownAt` source size: `player.ts:260`, `exporter.ts:394`, `exporter.ts:491` | `videoWidth` / `screenFrame.width` (full frame) | `croppedFrameSize(scene.crop ?? null, fw, fh, scene.project)` | 3 sites |
 | ExportDialog upscale and very-wide notes (`ExportDialog.tsx:429, 435, 475, 479`) | `project.width/height` | `visibleSize(project)` | 4 expressions |
-| `PreviewStage`: output size (139), `vw/vh` (195–196), `useSceneRect` (197), `useStageView` `cameraAt` / `visibleCursorAt` (111–115), `editItem` (209/213), region label and camera (360, 437) | `project` prop | `view = scene?.project ?? project`, `crop = scene?.crop ?? null`; cap stays the real `project.height` | see 4.6 |
+| `PreviewStage`: output size (139), `vw/vh` (195–196), `useSceneRect` (197), `useStageView` `cameraAt` / `visibleCursorAt` (111–115), `editItem` (209/213), region label and camera (360, 437) | `project` prop | `drawn = scene?.project ?? project`, `crop = scene?.crop ?? null`; cap stays the real `project.height` | see 4.6 |
 | `CameraPanel.tsx:117-119` camera box preview | `project.width/height` | `visibleSize(project)` | 1 line |
 | `playheadItems.ts:75,86` `addShapeAt`/`addSpotlightAt` (`shapeForPlayhead` aspect, `arrowToward`, `0.24/aspect`, `cursorPosFor`) | `store.state`, full cursor | build against `cropView(p, cursor)`, store `geometryFromCrop(c, item)` | 2 functions |
 | `ShapesPanel.tsx:60,253-254` region spotlight placed at the cursor | `cursorPosFor(project, cursor)`, clamp to [0, 1] | position from the view, clamp in view, then `geometryFromCrop` | 2 lines |
 | `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view) | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))` | 1 line |
-| ZoomPanel level readout (176), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; build `regionAround` in view, then write `rectFromCrop`; sliders write through `fromCrop` | about 6 lines (**193–200 and 273 missed by the draft**) |
-| `Timeline.tsx:675` zoom block level label (`zoomTargetScale(z)`) | full-frame region | `zoomTargetScale(zoomInView(cropOf(project), z))` | 1 line, SHARED (**missed by the draft**) |
+| ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop` | about 8 lines (**193–200 and 273 missed by the draft**) |
+| `Editor.tsx` zoom level keys 0–4 (`setZoomLevelKey`, `setZoomLevel`) | full-frame region | `setZoomLevelInView(cropOf(q), z, level)` | 1 line (**missed by the draft**: with a crop that is not the frame's shape, a region resized in the full frame frames another level in the view) |
+| `Timeline.tsx:675` zoom block level label (`zoomTargetScale(z)`) | full-frame region | `zoomTargetScale(zoomInView(crop ? cropOf(store.state) : null, z))`, with `crop` read by one `useSyncExternalStore` (the memoised timeline has no project prop) | 2 lines, SHARED (**missed by the draft**) |
 | Webcam picture, framing, face framing, camera masks | camera space | — | none |
 | Home library thumbnails (`Home.tsx:186`, a raw frame of `screen.mp4`) | — | stay uncropped (teleprompter-owned file; they already ignore style and zoom) | none |
 
@@ -269,19 +270,20 @@ Director:
 
 ### 4.6 Editing on the preview (writing view-space edits back)
 
-`PreviewStage` reads geometry only from `view = scene?.project ?? project`:
+`PreviewStage` reads geometry only from `drawn = scene?.project ?? project` (the view):
 
-- `pickZoom` and `editItem` are looked up by id in `view.zooms`, `view.shapes` and `view.spotlights`.
-- `out = outputSize(view.style.aspectRatio, view.width, view.height, project.height)`.
-- `vw/vh = croppedFrameSize(crop, player.screen.videoWidth, player.screen.videoHeight, view)`.
-- `useSceneRect(view, …)`, and `useStageView(player, view, scene, item)`.
+- `pickZoom` and `editItem` are looked up by id in `drawn.zooms`, `drawn.shapes` and `drawn.spotlights`.
+- `out = outputSize(drawn.style.aspectRatio, drawn.width, drawn.height, project.height)`.
+- `vw/vh = croppedFrameSize(crop, player.screen.videoWidth, player.screen.videoHeight, drawn)`.
+- `useSceneRect(drawn, …)`, and `useStageView(player, drawn, scene, item)`.
+- While the crop tool is open (`cropTool`), the other overlays (focus pick, text handle, shape editor) are not shown.
 
 All writes go through `c = scene?.crop ?? null`. Every patch they send is absolute geometry computed from the view item's initial value (`moveLine`, `setLineEnd`, `drawnGeometry`, `drawnBox`, `resizeAround`), never a delta, so mapping each patch is correct.
 
 | Write (PreviewStage.tsx) | Change |
 |---|---|
 | `updateShape` (525) / `updateSpotlight` (529) | patch → `geometryFromCrop(c, patch)`. Partial patches work because x and w map independently. |
-| `setRegion(id, box)` (255) | `setZoomRegion(z, rectFromCrop(c, box))`. `normalizeRegion` then runs in full space, where the region is never smaller than in view. |
+| `setRegion(id, box)` (255) | `setZoomRegionInView(c, z, box)`: `setZoomRegion` on the view zoom, then `zoomFromView`. `normalizeRegion` runs in view space, so the region stays inside the crop and the view's maximum level (5×) is reachable; in full space a crop half the frame wide could not zoom past 2.5×. |
 | Fixed focus pick (294; clamped to [0, 1] in view, i.e. inside the crop) | `fromCrop(c, {x, y})` |
 | Annotation position (507) | output space, no change |
 
@@ -306,7 +308,8 @@ Everything works in recorded pixels `W×H`, so ratios are pixel ratios. `MIN = (
 
 **`snapCrop(r, size, magnet, ratio)`** runs after every step:
 
-- An edge within `magnet` of 0 or 1 snaps to it. `magnet = { x: 8 / rect.w, y: 8 / rect.h }`, i.e. 8 screen px of the overlay.
+- Free: an edge within `magnet` of 0 or 1 snaps to it. `magnet = { x: 8 / rect.w, y: 8 / rect.h }`, i.e. 8 screen px of the overlay.
+- With a ratio, the magnet moves the whole box instead, so its shape stays. The tool passes the box's own ratio for a move (a move never resizes), and no magnet for a locked resize (its anchor corner must stay; the drag already stops at the frame's edge).
 - Edges are then rounded to whole pixels.
 - With a lock, `w` is rounded and `h = round(w/R)` (±1 px).
 
@@ -330,13 +333,13 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 **Hide browser bar** (`browserBarCrop`):
 
 - `cut = 88·s/p.height`.
-- Offered for screens, for windows, and for areas with `region.y === 0`. The top edge moves to `cut`.
+- Offered for screens, for windows, and for areas with `region.y === 0`, when `cut ≤ 0.25` (as for the taskbar: on a short recording the bar would be a large part of it). The top edge moves to `cut`.
 - Example: 1920×1080 at s = 1 gives `y = 0.081481`.
 
 ### 4.9 Applying: `setCrop(p, crop, track)` returns `CropOutcome`
 
 1. `c' = crop ? readCrop(crop, p.width, p.height) : undefined`.
-2. If `c'` equals `p.crop` (both absent, or every field within 1e-9), return `{ project: p, removedAutoZooms: 0, restoredAutoZooms: 0, outside: zeros }`.
+2. If `c'` draws the same pixels as `p.crop` (`cropOf` of both, both null or every field within 1e-9), return `{ project: p, removedAutoZooms: 0, restoredAutoZooms: 0, outside: zeros }`. Comparing snapped crops also treats a sub-pixel difference (a hand-edited value, the tool's whole-pixel draft) as unchanged.
 3. Otherwise `next = { ...p, crop: c' }`, with the key removed when `c'` is undefined.
 4. If `track` is given and `zoomSettingsOf(p).auto.enabled`:
    - `next.zooms = rebaseAutoZooms(p.zooms, autoZoomsInFrame(track, p, auto), autoZoomsInFrame(track, next, auto))`.
@@ -410,7 +413,8 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 **While the tool is open:**
 
 - The selection is cleared. Playback and scrubbing work.
-- Undo, Redo, opening Export and leaving the editor all close the tool without applying.
+- Undo, Redo (the `actions` the title bar and the shortcuts share), opening Export and leaving the editor all close the tool without applying.
+- `C` while the tool is open keeps the draft. From the palette, **Show the whole recording** and **Crop out the taskbar** change the draft while the tool is open, as its bar does.
 - The Editor sets `player.setNoZoom(!!pickZoom || !!cropDraft)`, combined into the existing effect at `Editor.tsx:294`.
 
 ---
@@ -489,7 +493,11 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 | | `cropNotice` | `(o: CropOutcome) => string` |
 | `src/renderer/src/render/compositor.ts` | `RenderScene.crop` | `crop?: NormRect` |
 | `src/renderer/src/render/frameContext.ts` | `FrameContext.sourceH` | `sourceH?: number` |
-| `src/renderer/src/editor/CropEditor.tsx` | `CropEditor` | `(props: { recorded: { width: number; height: number }; rect: Rect; draft: CropDraft; capture: CaptureInfo; scale: number \| undefined; onDraft: (d: CropDraft) => void; onDone: () => void; onCancel: () => void }) => JSX.Element` |
+| `src/shared/engine/crop.ts` (added) | `zoomFromView`, `CropView` | `(crop: NormRect \| null, z: ZoomSegment) => ZoomSegment` (inverse of `zoomInView`); `{ project: P; cursor: CursorTrack; crop: NormRect \| null }` |
+| `src/shared/editor/cropEdit.ts` (added) | `setZoomLevelInView`, `setZoomRegionInView` | `(crop: NormRect \| null, z: ZoomSegment, level: number) => ZoomSegment`; `(crop, z, region: { x; y; w; h }) => ZoomSegment` (exactly `setZoomLevel` / `setZoomRegion` without a crop) |
+| `src/renderer/src/editor/CropEditor.tsx` | `CropTool` | `{ draft: CropDraft; onDraft: (d: CropDraft) => void; onDone: () => void }` (`PreviewStage`'s `cropTool` prop) |
+| | `CropEditor` | `(props: { recorded: { width: number; height: number }; rect: Rect } & CropTool) => JSX.Element` (the overlay, mounted by `PreviewStage`) |
+| | `CropBar` | `(props: { recorded: { width: number; height: number }; capture: CaptureInfo; scale: number \| undefined; onCancel: () => void } & CropTool) => JSX.Element` (the bar, rendered by `Editor.tsx` between `PreviewStage` and `Transport`) |
 | `src/renderer/src/editor/panels/CropRow.tsx` | `CropRow` | `(props: { project: Project; onCrop: (action: 'edit' \| 'reset') => void }) => JSX.Element` |
 
 ---
@@ -500,7 +508,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 
 - `src/shared/engine/crop.ts`: snapping, mapping, sanitiser, view and memoisation, and the crop-aware auto zoom wrappers.
 - `src/shared/editor/cropEdit.ts`: drag, aspect, snap, presets, `setCrop`, `outsideCrop` and the notice copy.
-- `src/renderer/src/editor/CropEditor.tsx` and `src/renderer/src/editor/crop.css`: the overlay and its bar.
+- `src/renderer/src/editor/CropEditor.tsx` and `src/renderer/src/editor/crop.css`: the overlay (`CropEditor`) and its bar (`CropBar`).
 - `src/renderer/src/editor/panels/CropRow.tsx`: the Style › Frame row.
 - Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
 
@@ -536,7 +544,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 - `src/renderer/src/editor/panels/ShapesPanel.tsx`: `cursorPos` (60) and spotlight placement (253–254) through the view.
 - `src/renderer/src/editor/panels/StylePanel.tsx`: `<CropRow>` in the Frame section, plus an `onCrop` prop.
 - `src/renderer/src/editor/Inspector.tsx` (**SHARED**): pass `onCrop` to `StylePanel` at line 131, and add `InspectorProps.onCrop`.
-- `docs/FEATURES.md` (one Editor bullet), `docs/ROADMAP.md` (E-10 status), `docs/IMPLEMENTATION.md` (one sentence: "layout reads the recording's size through `visibleSize`; geometry for drawing comes from `cropView`").
+- Left to the lead (editing-wins.md decision 4): `docs/FEATURES.md` (one Editor bullet), `docs/ROADMAP.md` (E-10 status), `docs/IMPLEMENTATION.md` (one sentence: "layout reads the recording's size through `visibleSize`; geometry for drawing comes from `cropView`").
 
 **Not touched** (teleprompter team): `src/main/**` (including `recording/finalize.ts` and `projects.ts`), `recordingIpc.ts`, `src/shared/recording/**`, `Home.tsx` (library thumbnails stay uncropped), `Toolbar.tsx`, `src/renderer/src/recorder/**` and the AI script code.
 
@@ -694,3 +702,18 @@ The fixture is built inline into the test home with ffmpeg: `color=c=0x808080:s=
 - A view-only spotlight read path, so very large spotlights on tight crops are not clamped.
 
 ---
+
+---
+
+## 13. Implementation notes
+
+Where the code differs from the first draft of this design (the sections above already follow the code):
+
+- **The bar is its own component.** `CropEditor.tsx` exports the overlay (`CropEditor`, mounted by `PreviewStage` through a `cropTool` prop) and the bar (`CropBar`, rendered by `Editor.tsx` in `.stage` between the preview and the transport). Inside `PreviewStage`'s `.canvas-wrap` the bar would either cover the bottom of the recording (the taskbar being cropped) or need the stage's layout restructured.
+- **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed).
+- **Undo and Redo** clear the draft in `Editor.tsx`'s `actions.undo` / `actions.redo` (two lines outside the regions listed in §9), so the title bar buttons and the shortcuts both close the tool.
+- **`setCrop`** compares snapped crops (§4.9 step 2). **`cropNotice`** reports a zoom both removed and added (a merged zoom split around a hidden click) as adjusted: "1 automatic zoom was adjusted."
+- **`outsideCrop`**: a region zoom, shape or region spotlight is outside when its box shares no area with the crop; a cursor-following zoom when its anchor (click or field) is outside.
+- **Small-area hint** shows only when the draft crops something: a recording itself under 720 px tall gets no hint.
+- **`player.moving`** is not read. While the tool is open the preview shows the whole recording unzoomed and flat, so the box is right during playback too; nothing in the tool depends on movement.
+- **Tests.** The blur case of `compositorCrop.test.ts` compares the scratch draws of the blur (their sizes follow the blur radius), since `blurPlan` always filters with its target radius. `crop.e2e.cjs` also checks that the open tool shows the part it cuts away, that the shape stored before the crop is untouched by it, and that moving a shape on the cropped preview stores a move in the whole frame (not a resize).
