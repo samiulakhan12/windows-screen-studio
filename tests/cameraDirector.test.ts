@@ -846,16 +846,23 @@ describe('performance', () => {
     const cursor: CursorTrack = { samples, clicks, valid: true }
     const speech: DirectorSpeech = { source: 'mic', refined: false, ranges }
     const settings = { ...directorSettingsOf(p), corners: 'auto' as const }
-    const t0 = performance.now()
-    const first = planDirector({ project: p, cursor, speech }, settings)
-    const t1 = performance.now()
-    const second = planDirector({ project: p, cursor, speech }, settings)
-    const t2 = performance.now()
-    expect(first.parts.length).toBeGreaterThan(10)
-    expect(second.layouts.map((s) => [s.start, s.end, s.layout, s.corner])).toEqual(first.layouts.map((s) => [s.start, s.end, s.layout, s.corner]))
-    expect(t1 - t0).toBeLessThan(1000)
-    // The corner costs are cached: re-planning is cheaper.
-    expect(t2 - t1).toBeLessThan(t1 - t0)
-    console.info(`30-minute plan: first ${(t1 - t0).toFixed(0)} ms (paths and costs built), again ${(t2 - t1).toFixed(0)} ms`)
+    const timed = (c: CursorTrack): { plan: ReturnType<typeof planDirector>; ms: number } => {
+      const t = performance.now()
+      const plan = planDirector({ project: p, cursor: c, speech }, settings)
+      return { plan, ms: performance.now() - t }
+    }
+    const first = timed(cursor)
+    const again = [timed(cursor), timed(cursor), timed(cursor)]
+    // A copy of the samples is another track to the cache: its paths are built again.
+    const fresh = [1, 2, 3].map(() => timed({ ...cursor, samples: samples.slice() }))
+    const corners = (r: { plan: ReturnType<typeof planDirector> }): unknown[] => r.plan.layouts.map((s) => [s.start, s.end, s.layout, s.corner])
+    expect(first.plan.parts.length).toBeGreaterThan(10)
+    for (const r of [...again, ...fresh]) expect(corners(r)).toEqual(corners(first))
+    expect(first.ms).toBeLessThan(1000)
+    // The paths are cached: re-planning is cheaper. The best of three on each side, so a pause
+    // of the test machine (a collection, another test file) during one run does not decide it.
+    const best = (rs: { ms: number }[]): number => Math.min(...rs.map((r) => r.ms))
+    expect(best(again)).toBeLessThan(best(fresh) * 0.7)
+    console.info(`30-minute plan: first ${first.ms.toFixed(0)} ms, built again ${best(fresh).toFixed(0)} ms, cached ${best(again).toFixed(0)} ms`)
   })
 })
