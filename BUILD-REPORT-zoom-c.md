@@ -1,8 +1,10 @@
 # Build report: smarter auto zoom, workstream C (UI)
 
 Branch `feat-w5-zoom-c`, from `5dbaccb` (design and contracts). Spec: `docs/design/smarter-auto-zoom.md` §8.
-Workstream B (`origin/feat-w5-zoom-b`, `20b9aa9`) was merged into this branch, as the task asked, to
-run the end-to-end tests against the real logic. So this branch carries B's commits as well as C's.
+Workstream B (`origin/feat-w5-zoom-b`, `20b9aa9`) and then workstream A (`origin/feat-w5-zoom-a`,
+`85ab636`) were merged into this branch, as the task and the lead asked, to run every test against
+the real logic and recording. So this branch carries A's and B's commits as well as C's. Neither
+merge had conflicts.
 
 ## What was built
 
@@ -115,7 +117,8 @@ track, `clickRows` and the actions to the Inspector and the Timeline, next to th
    Recorded clicks list (buttons, natural tab order), Delete on a selected click, and the palette
    commands.
 6. **`toggleClickAtPlayhead` flips the click without selecting it**, so the open tab does not change.
-7. **B is merged into this branch** (the task's instruction). The spec suggested a local test branch.
+7. **B and A are merged into this branch** (the task's and the lead's instruction). The spec suggested a
+   local test branch.
 
 ## Tests
 
@@ -158,4 +161,6 @@ Run on Linux under Xvfb (`-screen 0 1920x1080x24`).
     `smart-zoom.e2e.cjs`, as expected while B's operations were stubs. Every existing file passed with
     the clickable markers, including recording-input, -region and -window, polish, zoom, editor and
     commands. Three checks skip as always without Wine or a Windows package.
-  - **After merging B:** FULL_SUITE_RESULT
+  - **After merging B and A** (`85ab636`; the build of this branch): **41/41 files passed** (185 PASS
+    lines, exit 0), smart-zoom 3/3 included. The same three checks skip.
+- After merging A as well: `npm run typecheck` is clean, and vitest passes 126 files, 1700 tests.
