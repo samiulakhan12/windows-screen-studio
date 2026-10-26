@@ -11,6 +11,7 @@ import {
   KEPT_POSITIONS_HINT,
   LEAD,
   NOTE_TEXT,
+  noteText,
   OWNERSHIP_HINT,
   partLabel,
   partTimes,
@@ -388,7 +389,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
 
         {shownNotes.map((n) => (
           <p key={n} className="hint director-note" data-testid="director-note" data-note={n}>
-            {NOTE_TEXT[n]}
+            {noteText(n, plan?.settings ?? settings)}
           </p>
         ))}
 

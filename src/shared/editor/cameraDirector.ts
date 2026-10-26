@@ -97,7 +97,7 @@ export type DirectorNote =
   | 'all-yours'
   /** No intro or outro, never hidden and the bubble kept home: the options leave nothing to direct. */
   | 'options-off'
-  /** Nothing to change: no part, and no earlier automatic change to remove (the options allow some). */
+  /** Nothing to change: no part, and no earlier automatic change to remove (the options allow some; its copy gives the reasons of those that are on). */
   | 'nothing'
 
 /** A stretch of the output timeline by what it shows, for the panel's plan strip. */

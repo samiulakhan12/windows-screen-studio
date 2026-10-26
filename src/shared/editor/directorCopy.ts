@@ -8,7 +8,7 @@ import type { DirectorNote, DirectorPart, DirectorPlan, DirectorReason } from '.
 import type { DirectorSpeech } from '../audio/speech'
 import type { FramingOutcome } from '../render/faceFraming'
 import { formatTime } from '../engine/project'
-import type { CameraLayout, Corner } from '../types'
+import type { CameraLayout, Corner, DirectorSettings } from '../types'
 
 const CORNER_WORDS: Record<Corner, string> = {
   'top-left': 'top left',
@@ -126,6 +126,23 @@ export const NOTE_TEXT: Record<DirectorNote, string | null> = {
   'all-yours': 'Your own camera changes cover the whole video: nothing left to direct.',
   'options-off': 'The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.',
   nothing: 'Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.'
+}
+
+/**
+ * What a note says for a plan made with `settings`: "nothing to change" gives only the reasons of
+ * the options that are on (NOTE_TEXT.nothing when all three are), as one turned off is the reason
+ * for its part. The other notes do not depend on the options.
+ */
+export function noteText(note: DirectorNote, settings: Pick<DirectorSettings, 'intro' | 'hideAfter' | 'corners'>): string | null {
+  if (note !== 'nothing') return NOTE_TEXT[note]
+  const why = [
+    settings.intro !== 'off' ? 'no talking before or after the demo' : '',
+    settings.hideAfter > 0 ? 'no long silences' : '',
+    settings.corners === 'auto' ? 'the cursor never came near the camera' : ''
+  ].filter(Boolean)
+  if (!why.length) return 'Nothing to change.'
+  const last = why.pop()!
+  return `Nothing to change: ${why.length ? `${why.join(', ')}${why.length > 1 ? ',' : ''} and ${last}` : last}.`
 }
 
 /** The lead text of the section. */

@@ -149,7 +149,7 @@ automatically, remembering deleted automatic changes.
 | kept-positions | "Your camera positions are kept." |
 | all-yours | "Your own camera changes cover the whole video: nothing left to direct." |
 | options-off | No part because the options turn everything off (intro and outro Off, hide Never, the bubble not moved): "The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track." |
-| nothing | No part and no earlier automatic change to remove (the diff shows a removal instead), the options allowing some: "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." Not shown while the sound is measured or when it could not be. |
+| nothing | No part and no earlier automatic change to remove (the diff shows a removal instead), the options allowing some: "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." with only the reasons of the options that are on (`noteText`): "no talking before or after the demo" while the intro and outro are on, "no long silences" while hiding is on (not Never), "the cursor never came near the camera" while the bubble moves; one option on gives one reason ("Nothing to change: the cursor never came near the camera."), two are joined with "and" ("Nothing to change: no long silences and the cursor never came near the camera."). Not shown while the sound is measured or when it could not be. |
 
 Framing outcome (`data-testid="director-framing"`, `data-status`), the outcome of the last Apply,
 shown while the project still has both the layouts and the options that Apply wrote (an undo hides

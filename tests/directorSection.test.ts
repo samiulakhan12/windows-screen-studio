@@ -328,6 +328,28 @@ describe('options that leave nothing to direct on a directed project (ui-dir-2, 
   })
 })
 
+describe('options that leave some changes possible, nothing to change (ui-dir-6)', () => {
+  // The clicks of the e2e recording, made mid-screen: the cursor never goes near the camera (bottom right).
+  const MIDDLE: CursorTrack = { ...STILL, clicks: CURSOR.clicks.map((c) => ({ ...c, x: 0.5, y: 0.5 })) }
+
+  it('gives only the reasons of the options that are on', async () => {
+    recorded = MIDDLE
+    // The talking before and after the demo and the long silences give an intro, an outro and hidden parts...
+    store.state = e2eProject({ director: { intro: 'camera-only', hideAfter: 10, corners: 'auto', frameFace: false } })
+    render()
+    await flush()
+    let out = render()
+    expect(byId(out, 'director-part').map((e) => e.props['data-kind'])).toEqual(['intro', 'hidden', 'hidden', 'outro'])
+    // ...but Intro Off and Hide Never leave only the bubble moves, and the cursor gives none.
+    store.state = e2eProject({ director: { intro: 'off', hideAfter: 0, corners: 'auto', frameFace: false } })
+    out = render()
+    expect(byId(out, 'director-part')).toEqual([])
+    expect(notesOf(out)).toEqual(['nothing'])
+    const note = one(out, 'director-note')!
+    expect(textOf(note.props.children)).toBe('Nothing to change: the cursor never came near the camera.')
+  })
+})
+
 /* ---------- never directed, nothing to do ---------- */
 
 describe('a project never directed with nothing to do (ui-dir-3)', () => {

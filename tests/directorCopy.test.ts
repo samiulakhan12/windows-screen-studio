@@ -11,6 +11,7 @@ import {
   framingLine,
   keptLine,
   NOTE_TEXT,
+  noteText,
   partLabel,
   partLine,
   partTimes,
@@ -102,6 +103,23 @@ describe('the sound status and the notes', () => {
     expect(NOTE_TEXT.transcript).toBeNull()
     expect(NOTE_TEXT['options-off']).toBe('The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.')
     for (const n of ['no-sound', 'no-speech', 'no-input', 'no-demo', 'kept-positions'] as const) expect(NOTE_TEXT[n]).toMatch(/\.$/)
+  })
+
+  it('"nothing to change" gives only the reasons of the options that are on', () => {
+    const on = { intro: 'camera-only', hideAfter: 10, corners: 'auto' } as const
+    expect(noteText('nothing', on)).toBe(NOTE_TEXT.nothing)
+    expect(noteText('nothing', { ...on, intro: 'camera-large' })).toBe(NOTE_TEXT.nothing)
+    // Intro and outro Off, hide Never: only the bubble moves could have changed something.
+    expect(noteText('nothing', { intro: 'off', hideAfter: 0, corners: 'auto' })).toBe('Nothing to change: the cursor never came near the camera.')
+    expect(noteText('nothing', { intro: 'camera-only', hideAfter: 0, corners: 'keep' })).toBe('Nothing to change: no talking before or after the demo.')
+    expect(noteText('nothing', { intro: 'off', hideAfter: 5, corners: 'keep' })).toBe('Nothing to change: no long silences.')
+    expect(noteText('nothing', { intro: 'off', hideAfter: 20, corners: 'auto' })).toBe('Nothing to change: no long silences and the cursor never came near the camera.')
+    expect(noteText('nothing', { intro: 'camera-large', hideAfter: 10, corners: 'keep' })).toBe('Nothing to change: no talking before or after the demo and no long silences.')
+    // All three off is the options-off note; should "nothing" come anyway, it gives no reason.
+    expect(noteText('nothing', { intro: 'off', hideAfter: 0, corners: 'keep' })).toBe('Nothing to change.')
+    // The other notes do not depend on the options.
+    expect(noteText('all-yours', { intro: 'off', hideAfter: 0, corners: 'auto' })).toBe(NOTE_TEXT['all-yours'])
+    expect(noteText('mixed-sound', on)).toBeNull()
   })
 
   it('says what a plan uses when the sound could not be measured (dir-plan-6)', () => {
