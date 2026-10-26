@@ -47,7 +47,7 @@ export function drawPrivacyLayer(fc: FrameContext): void {
     const b = fc.toOut(box.x + box.w, box.y + box.h)
     const out = { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y }
     if (!(out.w >= 0.5 && out.h >= 0.5)) continue
-    const done = fc.screen && (s.kind === 'blur' ? drawBlurred(fc.ctx, fc.screen, box, out, s.strength) : drawPixelated(fc.ctx, fc.screen, box, out, s.strength))
+    const done = fc.screen && (s.kind === 'blur' ? drawBlurred(fc.ctx, fc.screen, box, out, s.strength, fc.sourceH) : drawPixelated(fc.ctx, fc.screen, box, out, s.strength, fc.sourceH))
     if (!done) {
       fc.ctx.save()
       fc.ctx.fillStyle = PRIVACY_FALLBACK
@@ -152,8 +152,9 @@ function blurBox(img: FrameImage, box: Box, sigma: number): Blurred | null {
   return { canvas: soft.canvas, sx: plan.margin, sy: plan.margin, sw: bw * d, sh: bh * d }
 }
 
-function drawBlurred(ctx: Ctx, img: FrameImage, box: Box, out: Box, strength: number): boolean {
-  const b = blurBox(img, box, blurSigma(strength, img.height))
+/** `sourceH`: height of the whole recording frame (`img` can be a crop of it), which the strength is relative to. */
+function drawBlurred(ctx: Ctx, img: FrameImage, box: Box, out: Box, strength: number, sourceH = img.height): boolean {
+  const b = blurBox(img, box, blurSigma(strength, sourceH))
   if (!b) return false
   ctx.drawImage(b.canvas, b.sx, b.sy, b.sw, b.sh, out.x, out.y, out.w, out.h)
   return true
@@ -164,8 +165,8 @@ function drawBlurred(ctx: Ctx, img: FrameImage, box: Box, out: Box, strength: nu
  * from a blurred copy so cells are stable from frame to frame, then scaled up without smoothing.
  * The grid is laid out on the content, so it moves and scales with it.
  */
-function drawPixelated(ctx: Ctx, img: FrameImage, box: Box, out: Box, strength: number): boolean {
-  const cell = pixelCell(strength, img.height)
+function drawPixelated(ctx: Ctx, img: FrameImage, box: Box, out: Box, strength: number, sourceH = img.height): boolean {
+  const cell = pixelCell(strength, sourceH)
   const { cols, rows } = pixelGrid(box.w * img.width, box.h * img.height, cell)
   const b = blurBox(img, box, cell * 0.5)
   const mosaic = b && ensure('mosaic', cols, rows)
