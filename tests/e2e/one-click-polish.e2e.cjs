@@ -4,7 +4,8 @@
 // one Polish cuts the silences, turns auto zoom on (keeping your zoom), makes the captions,
 // directs the camera and applies the Studio style. It is one undo step: one Ctrl+Z gives every
 // field back, Ctrl+Shift+Z brings it all back, and the export is as long as the polished clips.
-// Cancel writes nothing; Skip on the Captions row goes on without captions.
+// Cancel writes nothing; Skip on the Captions row goes on without captions. A sound file ffmpeg
+// cannot read skips only Remove silences, with its reason on the row while the rest goes on.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -43,6 +44,16 @@ function wordsVideo() {
     '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
     tmp
   ])
+  fs.renameSync(tmp, file)
+  return file
+}
+
+/** The sound of wordsVideo alone, as a microphone stem (cached). */
+function wordsAudio() {
+  const file = path.join(fx.MEDIA_CACHE, `polish-words-${SECONDS}s.m4a`)
+  if (fs.existsSync(file)) return file
+  const tmp = file.replace(/\.m4a$/, '.part.m4a')
+  execFileSync(FF, ['-v', 'error', '-y', '-i', wordsVideo(), '-vn', '-c:a', 'copy', tmp])
   fs.renameSync(tmp, file)
   return file
 }
@@ -226,6 +237,41 @@ async function main() {
       h.assert((await line(win, 'silences').getAttribute('data-status')) === 'changed', 'the silences are still cut')
       await win.click('.polish-dialog .modal-foot button:has-text("Done")')
       const p = await savedWhen(home, id, (q) => q.clips.length >= 2, 'the polish without captions saved')
+      h.assert(!p.transcript, 'no captions')
+    }))
+
+    await test('a sound that cannot be measured skips only the silences', fx.withHome('polish-unmeasured', async (ctx, home) => {
+      const id = seed(home)
+      // Stems: a microphone ffmpeg can read, and a system sound file it cannot (a copy cut short).
+      const dir = path.join(h.projectsRoot(home), id)
+      fs.symlinkSync(wordsAudio(), path.join(dir, 'mic.m4a'))
+      fs.writeFileSync(path.join(dir, 'system.m4a'), 'not a sound file')
+      const file = path.join(dir, 'project.json')
+      fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), audioStems: { mic: true, system: true } }, null, 2))
+      const { win } = await open(ctx, home, mock, 'slow-e2e-0002')
+      await waitSaved(win)
+      const before = h.readProject(home, id)
+
+      await openDialog(win)
+      await win.selectOption('select[aria-label="Style preset"]', 'studio')
+      await win.click('.polish-dialog .modal-foot button.primary:has-text("Polish")')
+      // The row gives the reason while the transcription goes on.
+      await f.waitFor(async () => (await row(win, 'silences').getAttribute('data-phase').catch(() => null)) === 'skipped', 'the silences skipped', 30000)
+      const said = await row(win, 'silences').textContent()
+      h.assert(said.includes('The sound could not be measured, so nothing was cut'), `the silences row says why: ${said}`)
+      await f.waitFor(async () => /Sending the sound|Transcribing/.test((await row(win, 'captions').textContent().catch(() => '')) || ''), 'the transcription running', 30000)
+      h.assert((await dialog(win).getAttribute('data-view')) === 'running', 'the run goes on')
+      if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'polish-unmeasured.png') })
+      await row(win, 'captions').locator('button:has-text("Skip")').click()
+      await win.waitForSelector('[data-testid="polish-summary"]', { timeout: 30000 })
+      const lines = await win.$$eval('[data-testid^="polish-line-"]', (els) => els.map((e) => `${e.dataset.status}: ${e.textContent}`))
+      h.assert((await line(win, 'silences').getAttribute('data-status')) === 'skipped', `silences skipped: ${lines}`)
+      h.assert((await line(win, 'silences').textContent()).includes('the sound could not be measured'), `the summary says why: ${lines}`)
+      for (const step of ['style', 'zoom']) h.assert((await line(win, step).getAttribute('data-status')) === 'changed', `${step} changed: ${lines}`)
+      await win.click('.polish-dialog .modal-foot button:has-text("Done")')
+      const p = await savedWhen(home, id, (q) => q.autoZoom === true, 'the polish saved')
+      h.assert(same(p.clips, before.clips), `nothing was cut: ${JSON.stringify(p.clips)}`)
+      h.assert(same(p.style.background, { type: 'wallpaper', id: 'violet-mesh' }), `Studio background: ${JSON.stringify(p.style.background)}`)
       h.assert(!p.transcript, 'no captions')
     }))
   } finally {

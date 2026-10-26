@@ -25,7 +25,10 @@ import { loadDirectorSpeech, measureFraming } from './directorAnalysis'
 export type PolishRowState = { phase: 'waiting' | 'working' | 'done' | 'skipped'; text: string; canSkip?: boolean }
 
 export interface PolishRun {
-  /** The committed polish (`after` is `before` when nothing changed), or null when cancelled. Rejects when planning failed: nothing was written. */
+  /**
+   * The committed polish (`after` is `before` when nothing changed), or null when cancelled.
+   * Rejects when the run failed: nothing was written, and the run is stopped as by cancel().
+   */
   done: Promise<{ before: Project; after: Project; result: PolishResult } | null>
   /** Stops everything (the transcription too, when this run started it); nothing is written. */
   cancel(): void
@@ -97,10 +100,17 @@ export function runPolish(
     if (sources.size === 0) return null
     if (runs('silences')) setRow('silences', { phase: 'working', text: 'Measuring the sound…' })
     if (runs('director')) setRow('director', { phase: 'working', text: applyingLabel({ listening: true, done: 0, total: 0 }) })
-    // Never rejects: a source that cannot be measured is left out (sourceActivity is then null).
-    const levels = await loadAudioAnalysis(start.id, [...sources])
-    if (runs('silences')) setRow('silences', WAITING)
-    return runs('silences') ? sourceActivity(start, levels) : null
+    // A source that cannot be measured is left out (sourceActivity is then null).
+    const levels = await loadAudioAnalysis(start.id, [...sources]).catch((err: unknown) => {
+      console.warn('Could not measure the sound:', err)
+      return {}
+    })
+    if (!runs('silences')) return null
+    // Not measured: only the silences are skipped (the director asks for its own source again, and
+    // falls back to the transcript when that fails too).
+    const sound = sourceActivity(start, levels)
+    setRow('silences', sound ? WAITING : { phase: 'skipped', text: polishSkipText('silences', 'not-measured') })
+    return sound
   }
 
   /** The transcript, through the Captions tab's job (its progress shown on the row). */
@@ -157,7 +167,8 @@ export function runPolish(
       setRow('captions', { phase: 'skipped', text: polishSkipText('captions', 'cancelled') })
     }
 
-    // 2. The director's speech: the levels are cached by now, and this run's transcript refines it.
+    // 2. The director's speech: from the levels measured above (asked for again if they failed), refined
+    // by this run's transcript.
     let speech: DirectorSpeech | null = null
     if (runs('director')) {
       setRow('director', { phase: 'working', text: applyingLabel({ listening: true, done: 0, total: 0 }) })
@@ -193,14 +204,19 @@ export function runPolish(
     return { before, after: store.state, result }
   }
 
+  const cancel = (): void => {
+    if (run.signal.aborted) return
+    run.abort()
+    face.abort()
+    if (transcribing) cancelTranscription()
+  }
   return {
-    done: Promise.race([work(), aborted]),
-    cancel: () => {
-      if (run.signal.aborted) return
-      run.abort()
-      face.abort()
-      if (transcribing) cancelTranscription()
-    },
+    // A run that fails stops as a cancelled one does: its transcription ends and its rows no longer change.
+    done: Promise.race([work(), aborted]).catch((err: unknown) => {
+      cancel()
+      throw err
+    }),
+    cancel,
     skipCaptions: () => {
       if (transcribing) cancelTranscription()
     },
