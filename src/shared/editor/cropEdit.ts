@@ -159,11 +159,12 @@ export function fitCropAspect(r: NormRect, ratio: number, size: { width: number;
 
 /**
  * `r` with edges near the frame's edges snapped to them, then rounded to whole pixels (and to
- * `ratio`). Free, each edge within `magnet` (normalised) of the frame's edge snaps to it. With a
+ * `ratio`). Free, each edge within `magnet` (normalised) of the frame's edge snaps to it: with a
+ * `handle`, only the edges it moves, so a thin cut on another edge (a hidden taskbar) stays. With a
  * ratio, the magnet moves the whole rectangle instead, so its shape stays, and the height follows
  * the rounded width (±1 px).
  */
-export function snapCrop(r: NormRect, size: { width: number; height: number }, magnet: { x: number; y: number }, ratio: number | null): NormRect {
+export function snapCrop(r: NormRect, size: { width: number; height: number }, magnet: { x: number; y: number }, ratio: number | null, handle?: RegionHandle): NormRect {
   const { width: W, height: H } = size
   if (!(W > 0 && H > 0)) return r
   let x0 = r.x
@@ -179,10 +180,11 @@ export function snapCrop(r: NormRect, size: { width: number; height: number }, m
     const y = clamp(Math.round((y0 + sy) * H), 0, H - h)
     return { x: x / W, y: y / H, w: w / W, h: h / H }
   }
-  if (x0 < magnet.x) x0 = 0
-  if (1 - x1 < magnet.x) x1 = 1
-  if (y0 < magnet.y) y0 = 0
-  if (1 - y1 < magnet.y) y1 = 1
+  const moves = (edge: 'n' | 's' | 'e' | 'w'): boolean => !handle || handle === 'move' || handle.includes(edge)
+  if (moves('w') && x0 < magnet.x) x0 = 0
+  if (moves('e') && 1 - x1 < magnet.x) x1 = 1
+  if (moves('n') && y0 < magnet.y) y0 = 0
+  if (moves('s') && 1 - y1 < magnet.y) y1 = 1
   const px0 = clamp(Math.round(x0 * W), 0, W - 1)
   const px1 = clamp(Math.round(x1 * W), px0 + 1, W)
   const py0 = clamp(Math.round(y0 * H), 0, H - 1)

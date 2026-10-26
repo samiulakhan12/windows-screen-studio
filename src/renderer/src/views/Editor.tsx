@@ -419,7 +419,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [recorded, store, player, showNotice, setSelection])
 
   const actions = useMemo(() => {
-    const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
+    const newZoomFocus = (): ZoomFocus => {
+      if (cursor.valid) return { mode: 'cursor' }
+      // The centre of the part of the recording that is shown, stored in the whole frame.
+      const at = fromCrop(cropOf(store.state), { x: 0.5, y: 0.5 })
+      return { mode: 'fixed', x: at.x, y: at.y }
+    }
 
     // Zooms and text go on the frame the preview shows at `t` (in a cut, the next kept one), like
     // shapes (playheadItems.ts): placed at a cut's source time they would never be seen.
@@ -596,14 +601,16 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
-      if (!cursor.valid) return { x: 0.5, y: 0.5 }
       // An auto zoom's own click, else where the camera would be in its middle (the focus path is
-      // in the crop's view), inside the part of the recording that is shown.
+      // in the crop's view; without cursor data, its centre), inside the part of the recording that
+      // is shown.
       const c = scene.crop ?? null
+      // The stored crop, not the scene's: the crop tool shows the whole frame while it is open.
+      if (!cursor.valid) return fromCrop(cropOf(project), { x: 0.5, y: 0.5 })
       const p = clampIntoCrop(c, zoom.anchor ?? fromCrop(c, focusPath.at((zoom.start + zoom.end) / 2)))
       return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
     },
-    [cursor.valid, focusPath, scene.crop]
+    [cursor.valid, focusPath, scene.crop, project]
   )
 
   const onBackgroundImage = useCallback(async () => {
@@ -675,8 +682,16 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const applyCrop = useCallback(() => cropActions.done(cropRef.current), [cropActions])
   const applyCropRef = useRef(applyCrop)
   applyCropRef.current = applyCrop
-  const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: setCropDraft, onDone: applyCrop } : null), [cropDraft, applyCrop])
-  const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : cropActions.reset()), [cropActions])
+  // A draft counts only while the tool is open: nothing late (a drag still held) opens it again.
+  const editCropDraft = useCallback((d: CropDraft) => setCropDraft((cur) => (cur ? d : cur)), [])
+  const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: editCropDraft, onDone: applyCrop } : null), [cropDraft, editCropDraft, applyCrop])
+  // Reset (the panel's or the palette's): while the tool is open it changes the draft, as its bar
+  // does, and Done applies it.
+  const resetCrop = useCallback(() => {
+    if (cropRef.current) setCropDraft({ rect: { ...FULL_FRAME }, aspect: 'free' })
+    else cropActions.reset()
+  }, [cropActions])
+  const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : resetCrop()), [cropActions, resetCrop])
 
   /* ---------- commands (palette and shortcuts) ---------- */
 
@@ -871,10 +886,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
       // E-10 crop: while the tool is open, Reset and the taskbar preset change the draft, as its bar does.
       cropRecording: cropActions.open,
-      resetCrop: () => {
-        if (cropRef.current) setCropDraft({ rect: { ...FULL_FRAME }, aspect: 'free' })
-        else cropActions.reset()
-      },
+      resetCrop,
       cropTaskbar: () => {
         const draft = cropRef.current
         if (!draft) return cropActions.taskbar()
@@ -887,7 +899,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       freezeFrame: actions.freezeFrame,
       toggleFreezeSound: actions.toggleFreezeSound
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
 
@@ -1141,7 +1153,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
                 draft={cropDraft}
                 capture={project.capture}
                 scale={recorded.scale}
-                onDraft={setCropDraft}
+                onDraft={editCropDraft}
                 onDone={applyCrop}
                 onCancel={cropActions.cancel}
               />

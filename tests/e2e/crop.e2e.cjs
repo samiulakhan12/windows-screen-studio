@@ -2,7 +2,9 @@
 // taskbar (a red band along the bottom of a grey recording) with one preset and one undo step;
 // the preview and an Auto export show none of it, with no red bleeding in at the cut edge, and
 // take the cropped shape; the tool shows the whole recording again while it is open; Undo, Esc
-// and the C shortcut behave; items stay where they were stored.
+// (also in the middle of a drag) and the C shortcut behave; items stay where they were stored;
+// without cursor data, zooms look at the centre of the part shown; the panel's Reset while the
+// tool is open resets its draft.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -55,6 +57,8 @@ h.run(
   'crop: hide the taskbar, preview and export it, undo, and the keyboard',
   fx.withHome('crop', async (ctx, home) => {
     const shape = { id: 's1', start: 0, end: 4, kind: 'rect', x: 0.2, y: 0.5, w: 0.3, h: 0.2, color: '#00ff00', strokeWidth: 6, fill: false, opacity: 1, strength: 0.5 }
+    // Follows the cursor, but the recording has no cursor data (after the exported frames).
+    const follow = { id: 'zc', start: 3.2, end: 3.9, scale: 2, focus: { mode: 'cursor' }, auto: false }
     const id = fx.seedProject(home, {
       id: 'rec-crop',
       name: 'Crop test',
@@ -64,7 +68,7 @@ h.run(
       cursor: { samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }
     })
     const file = path.join(h.projectsRoot(home), id, 'project.json')
-    fs.writeFileSync(file, JSON.stringify({ ...h.readProject(home, id), shapes: [shape] }, null, 2))
+    fs.writeFileSync(file, JSON.stringify({ ...h.readProject(home, id), shapes: [shape], zooms: [follow] }, null, 2))
 
     const { app, win, logs } = await h.launch({ home })
     ctx.app = app
@@ -170,5 +174,52 @@ h.run(
     const near = (a, want, tol) => Math.abs(a - want) <= tol
     h.assert(near(moved.w, shape.w, 1e-9) && near(moved.h, shape.h, 1e-9), `the shape keeps its size (${moved.w} × ${moved.h})`)
     h.assert(near(moved.x - shape.x, (40 * shape.w) / b.w, 0.004) && near(moved.y - shape.y, (30 * shape.h) / b.h, 0.004), `moved by the drag (${moved.x - shape.x}, ${moved.y - shape.y})`)
+
+    // 8. Esc while a handle is still held closes the tool for good: moving on does not open it again.
+    await win.keyboard.press('c')
+    await win.waitForSelector('[data-testid=crop-editor]', { timeout: 5000 })
+    const grip = await win.$eval('[data-testid=crop-handle-n]', (el) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    })
+    await win.mouse.move(grip.x, grip.y)
+    await win.mouse.down()
+    await win.mouse.move(grip.x, grip.y + 30, { steps: 4 })
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid=crop-editor]', { state: 'detached', timeout: 5000 })
+    await win.mouse.move(grip.x, grip.y + 60, { steps: 4 })
+    await win.mouse.up()
+    await h.sleep(300)
+    h.assert((await win.$('[data-testid=crop-editor]')) === null, 'the tool stays closed after Esc in the middle of a drag')
+    h.assert(JSON.stringify(h.readProject(home, id).crop) === JSON.stringify(saved), 'Esc in the middle of a drag applies nothing')
+
+    // 9. Without cursor data, zooms look at the centre of the part shown (stored in the whole frame:
+    // y = 0.5 × 672/720), not at the whole frame's centre: a new zoom (Z), and a cursor zoom set to
+    // a fixed point.
+    const centred = (focus) => focus.mode === 'fixed' && Math.abs(focus.x - 0.5) < 1e-9 && Math.abs(focus.y - 336 / 720) < 1e-9
+    await win.keyboard.press('Home')
+    await win.keyboard.press('z')
+    const added = await f.waitFor(() => h.readProject(home, id).zooms.find((z) => z.id !== follow.id) ?? null, 'the new zoom')
+    h.assert(centred(added.focus), `a new zoom looks at the centre of the crop (got ${JSON.stringify(added.focus)})`)
+    await win.click(`.zoom-seg[data-zoom="${follow.id}"]`)
+    await win.click('[aria-label="Zoom focus"] .chip:has-text("Fixed point")')
+    const fixed = await f.waitFor(() => {
+      const z = h.readProject(home, id).zooms.find((x) => x.id === follow.id)
+      return z.focus.mode === 'fixed' ? z : null
+    }, 'the cursor zoom set to a fixed point')
+    h.assert(centred(fixed.focus), `a cursor zoom set to a fixed point looks at the centre of the crop (got ${JSON.stringify(fixed.focus)})`)
+
+    // 10. Reset in Style › Frame while the tool is open resets its draft, as the bar's Reset does; Done applies it.
+    await win.click('.insp-tabs button[title="Style"]')
+    await win.click('[data-testid=crop-edit]')
+    await win.waitForSelector('[data-testid=crop-editor]', { timeout: 5000 })
+    await win.click('[data-testid=crop-row-reset]')
+    const whole = await win.textContent('[data-testid=crop-size]')
+    h.assert(whole.trim() === '1280 × 720 px', `Reset in the panel resets the open tool's draft (got ${whole})`)
+    await win.click('[data-testid=crop-done]')
+    await win.waitForSelector('[data-testid=crop-editor]', { state: 'detached', timeout: 5000 })
+    await f.waitFor(() => !('crop' in h.readProject(home, id)), 'the crop reset by Done')
+    await h.sleep(1000)
+    h.assert(!('crop' in h.readProject(home, id)), 'the reset stays')
   })
 )

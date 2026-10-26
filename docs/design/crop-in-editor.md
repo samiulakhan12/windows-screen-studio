@@ -199,8 +199,9 @@ Example: a 1280×720 recording with a 48 px taskbar gives `c = {0, 0, 1, 0.93333
 | `CameraPanel.tsx:117-119` camera box preview | `project.width/height` | `visibleSize(project)` | 1 line |
 | `playheadItems.ts:75,86` `addShapeAt`/`addSpotlightAt` (`shapeForPlayhead` aspect, `arrowToward`, `0.24/aspect`, `cursorPosFor`) | `store.state`, full cursor | build against `cropView(p, cursor)`, store `geometryFromCrop(c, item)` | 2 functions |
 | `ShapesPanel.tsx:60,253-254` region spotlight placed at the cursor | `cursorPosFor(project, cursor)`, clamp to [0, 1] | position from the view, clamp in view, then `geometryFromCrop` | 2 lines |
-| `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view) | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))` | 1 line |
-| ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop` | about 8 lines (**193–200 and 273 missed by the draft**) |
+| `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view); `(0.5, 0.5)` without cursor data | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))`; without cursor data `fromCrop(c, (0.5, 0.5))`, the crop's centre | 2 lines |
+| `Editor.tsx` `newZoomFocus` (Z, the transport's and the timeline's Add zoom), without cursor data | fixed `(0.5, 0.5)`, the whole frame's centre | fixed at `fromCrop(cropOf(p), (0.5, 0.5))`, the crop's centre | 1 line (**missed by the draft**: on a lopsided crop the new zoom aimed outside the part shown and the camera stopped at the crop's edge) |
+| ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop`; a switch to Fixed point or Follow cursor stores the level shown as `scale` (a region zoom's stored `scale` is its level where it was drawn, which a crop made since changes) | about 8 lines (**193–200 and 273 missed by the draft**) |
 | `Editor.tsx` zoom level keys 0–4 (`setZoomLevelKey`, `setZoomLevel`) | full-frame region | `setZoomLevelInView(cropOf(q), z, level)` | 1 line (**missed by the draft**: with a crop that is not the frame's shape, a region resized in the full frame frames another level in the view) |
 | `Timeline.tsx:675` zoom block level label (`zoomTargetScale(z)`) | full-frame region | `zoomTargetScale(zoomInView(crop ? cropOf(store.state) : null, z))`, with `crop` read by one `useSyncExternalStore` (the memoised timeline has no project prop) | 2 lines, SHARED (**missed by the draft**) |
 | Webcam picture, framing, face framing, camera masks | camera space | — | none |
@@ -306,9 +307,9 @@ Everything works in recorded pixels `W×H`, so ratios are pixel ratios. `MIN = (
 
 **`fitCropAspect(r, R, size)`** runs when you pick a lock chip. It returns the largest rectangle of ratio `R` inside `r`, around `r`'s centre. Example: 1920×1032 with 16:9 gives 1835×1032 at x ≈ 42. "Original" uses `R = W/H`.
 
-**`snapCrop(r, size, magnet, ratio)`** runs after every step:
+**`snapCrop(r, size, magnet, ratio, handle?)`** runs after every step:
 
-- Free: an edge within `magnet` of 0 or 1 snaps to it. `magnet = { x: 8 / rect.w, y: 8 / rect.h }`, i.e. 8 screen px of the overlay.
+- Free: an edge within `magnet` of 0 or 1 snaps to it. `magnet = { x: 8 / rect.w, y: 8 / rect.h }`, i.e. 8 screen px of the overlay. The tool passes the dragged `handle`, and only the edges it moves snap: an edge left a few pixels from the frame's edge (a hidden taskbar, under 8 overlay px in a small window) stays when another edge is dragged. Without a handle, every edge snaps.
 - With a ratio, the magnet moves the whole box instead, so its shape stays. The tool passes the box's own ratio for a move (a move never resizes), and no magnet for a locked resize (its anchor corner must stay; the drag already stops at the frame's edge).
 - Edges are then rounded to whole pixels.
 - With a lock, `w` is rounded and `h = round(w/R)` (±1 px).
@@ -414,7 +415,8 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 
 - The selection is cleared. Playback and scrubbing work.
 - Undo, Redo (the `actions` the title bar and the shortcuts share), opening Export and leaving the editor all close the tool without applying.
-- `C` while the tool is open keeps the draft. From the palette, **Show the whole recording** and **Crop out the taskbar** change the draft while the tool is open, as its bar does.
+- A drag still held when the tool closes (Esc, Enter, Undo, Export) ends with it: `CropEditor` stops following the pointer when it unmounts, and the Editor takes a draft only while the tool is open, so moving on never opens the tool again (nor hands Export the crop tool's scene).
+- `C` while the tool is open keeps the draft. From the palette, **Show the whole recording** and **Crop out the taskbar** change the draft while the tool is open, as its bar does. So does **Reset** in Style › Frame (one handler with the palette's): Done then applies the whole recording, instead of re-applying the old draft over a reset already made.
 - The Editor sets `player.setNoZoom(!!pickZoom || !!cropDraft)`, combined into the existing effect at `Editor.tsx:294`.
 
 ---
@@ -448,7 +450,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 ## 7. Undo
 
 - **Done** is one step: the crop and the rebased auto zooms, in one keyless `store.update((p) => setCrop(p, rect, cursor).project)`. Keyless updates never merge (`History.push`).
-- **Reset** (panel or palette) is one step. **Crop out the taskbar** from the palette is one step.
+- **Reset** (panel or palette) is one step. **Crop out the taskbar** from the palette is one step. While the tool is open, both change only the draft, and Done is the one step.
 - Dragging, aspect chips and presets inside the tool change only the draft and add no step.
 - Esc adds no step. Done with an unchanged rectangle returns the same object, which `EditStore.update` ignores (`next === prev`).
 - Undo restores the previous crop and zooms exactly, from the history snapshot.
@@ -486,7 +488,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 | | `cropRatio` | `(a: CropAspect, width: number, height: number) => number \| null` |
 | | `dragCrop` | `(r: NormRect, handle: RegionHandle, dx: number, dy: number, size: { width: number; height: number }, ratio: number \| null) => NormRect` |
 | | `fitCropAspect` | `(r: NormRect, ratio: number, size: { width: number; height: number }) => NormRect` |
-| | `snapCrop` | `(r: NormRect, size: { width: number; height: number }, magnet: { x: number; y: number }, ratio: number \| null) => NormRect` |
+| | `snapCrop` | `(r: NormRect, size: { width: number; height: number }, magnet: { x: number; y: number }, ratio: number \| null, handle?: RegionHandle) => NormRect` |
 | | `taskbarCrop` / `browserBarCrop` | `(r: NormRect, p: Pick<Project, 'capture' \| 'width' \| 'height'>, scale: number \| undefined) => NormRect \| null` |
 | | `outsideCrop` | `(p: Project, crop: NormRect \| null) => OutsideCount` |
 | | `setCrop` | `(p: Project, crop: NormRect \| null, track: CursorTrack \| null) => CropOutcome` |
@@ -510,7 +512,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 - `src/shared/editor/cropEdit.ts`: drag, aspect, snap, presets, `setCrop`, `outsideCrop` and the notice copy.
 - `src/renderer/src/editor/CropEditor.tsx` and `src/renderer/src/editor/crop.css`: the overlay (`CropEditor`) and its bar (`CropBar`).
 - `src/renderer/src/editor/panels/CropRow.tsx`: the Style › Frame row.
-- Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
+- Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/cropEditor.test.ts`, `tests/zoomPanelCrop.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
 
 **Modify**
 
@@ -602,7 +604,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 
 - `dragCrop`: the free, `move`, locked-corner (1:1 → `{0,0,0.5625,1}`) and locked-edge (16:9 `n` → `{0.2,0.15,0.6,0.6}`) cases from 4.7. The result is never smaller than 64 px.
 - `fitCropAspect`: 1920×1032 with 16:9 gives a width within 1 px of 1835, height 1032, centred.
-- `snapCrop`: an edge 5 px from the right with an 8 px magnet snaps to 1. All values land on whole pixels.
+- `snapCrop`: an edge 5 px from the right with an 8 px magnet snaps to 1. All values land on whole pixels. With a handle, only the edges it moves snap: dragging `w` keeps a taskbar cut that is inside the magnet.
 - `taskbarCrop`:
   - h = 1032/1080;
   - h = 0.95 at s = 1.5;
@@ -638,6 +640,16 @@ Same harness as `compositorBounds.test.ts`: `recordingContext`, a stubbed `Path2
 - No crop: equal to `outputSize(aspect, w, h, res)` for 10 recording sizes.
 - A 1920×64 crop at 2160 → `capped: true`, long side 4096.
 
+**`tests/cropEditor.test.ts`** (the overlay without a DOM, React's hooks swapped as in `captionsPanel.test.ts`)
+
+- A drag writes the draft while the pointer moves and stops listening on release.
+- A drag still held when the overlay unmounts writes no more drafts and leaves no window listeners.
+
+**`tests/zoomPanelCrop.test.ts`** (the Zoom tab called as a function, as `captionsPanel.test.ts` does)
+
+- A region zoom framed at 5× before a crop to the left half shows 2.5×; switching it to Fixed point or Follow cursor keeps 2.5×.
+- A region framed at 1.25× while cropped shows 2.5× once the crop is reset; switching it to Fixed point keeps 2.5×.
+
 **Existing:** `tests/commands.test.ts` (unique ids, known categories) and `tests/shortcuts.test.ts` must pass, with no conflicts between default keys.
 
 **E2E: `tests/e2e/crop.e2e.cjs`**
@@ -660,6 +672,9 @@ The fixture is built inline into the test home with ffmpeg: `color=c=0x808080:s=
    - In the bottom 4 rows (columns 8 to width−8), every pixel has `r − g < 30`, so there is no edge bleed.
 6. Close the dialog (Esc). Press Ctrl+Z, then `waitFor` until `crop` is absent from project.json.
 7. Press `C`: `[data-testid=crop-editor]` is visible. Press Esc: it closes, and project.json is unchanged after 1 s.
+8. Press `C`, hold the top handle and drag, press Esc, then move on and release: the tool stays closed and the crop is unchanged.
+9. The recording has no cursor data (`valid: false`), and a seeded zoom follows the cursor. Home, then `Z`: the new zoom is fixed at the crop's centre, `(0.5, 336/720)`. The seeded zoom set to **Fixed point** in the Zoom panel lands there too.
+10. Style › Frame › **Edit…**, then the row's **Reset** while the tool is open: the tool's size reads 1280 × 720 px and project.json keeps the crop; Done removes it, and it stays removed.
 
 ---
 
@@ -711,7 +726,7 @@ Where the code differs from the first draft of this design (the sections above a
 
 - **Style › Frame without a crop** shows only a link in the section's header instead of a row with a hint: a row moved the Padding slider below the fold of the default window, which `editor.e2e.cjs` drags without scrolling. With a crop the row shows as designed.
 - **The bar is its own component.** `CropEditor.tsx` exports the overlay (`CropEditor`, mounted by `PreviewStage` through a `cropTool` prop) and the bar (`CropBar`, rendered by `Editor.tsx` in `.stage` between the preview and the transport). Inside `PreviewStage`'s `.canvas-wrap` the bar would either cover the bottom of the recording (the taskbar being cropped) or need the stage's layout restructured.
-- **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed).
+- **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed). `zoomInView`/`zoomFromView` keep `scale`, so a region zoom's stored `scale` is its level in the frame it was framed in; the Zoom panel's switch from Region to Fixed point or Follow cursor therefore writes the level it shows (`tests/zoomPanelCrop.test.ts`).
 - **Undo and Redo** clear the draft in `Editor.tsx`'s `actions.undo` / `actions.redo` (two lines outside the regions listed in §9), so the title bar buttons and the shortcuts both close the tool.
 - **`setCrop`** compares snapped crops (§4.9 step 2). **`cropNotice`** reports a zoom both removed and added (a merged zoom split around a hidden click) as adjusted: "1 automatic zoom was adjusted."
 - **`outsideCrop`**: a region zoom, shape or region spotlight is outside when its box shares no area with the crop; a cursor-following zoom when its anchor (click or field) is outside.
