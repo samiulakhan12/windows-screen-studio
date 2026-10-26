@@ -6,11 +6,12 @@
  * the compositor, the camera and the layers keep their code. Without a crop every function here
  * returns its input (the same object), so projects without a crop are drawn exactly as before.
  *
- * Implemented and frozen (contracts commit): MIN_CROP_PX, FULL_FRAME, PixelRect, readCrop, cropOf,
- * and the pixel sizes (cropPixels, croppedFrameSize, visibleSize). The mappings are the identity
- * until E-10 lands (TODO(E-10) below); they are already exact without a crop.
+ * Every mapping uses the crop snapped to the project's pixels (cropOf), so the geometry and the
+ * pixels the compositor copies out of each frame agree exactly. Mapped arrays are memoised per
+ * source array and crop, so an edit that does not touch them keeps them (and every cache keyed on
+ * them) warm. readCrop and cropOf are frozen contracts (docs/design/editing-wins.md §4).
  */
-import type { AutoZoomSettings, CursorTrack, NormRect, Project, ZoomSegment } from '../types'
+import type { AutoZoomSettings, ClickEvent, CursorSample, CursorTrack, NormRect, Project, ScrollEvent, Shape, Spotlight, ZoomFocus, ZoomSegment } from '../types'
 import { clamp } from './math'
 import { autoZoomsForTrack, regenerateAutoZooms } from './zoom'
 
@@ -114,99 +115,232 @@ export function visibleSize(p: Pick<Project, 'crop' | 'width' | 'height'>): { wi
 
 const inUnit = (p: { x: number; y: number }): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
 
+// A full-frame coordinate in view space and back. Every mapping goes through these, so a point is
+// tested (inCrop) exactly where the view draws it.
+const viewX = (c: NormRect, x: number): number => (x - c.x) / c.w
+const viewY = (c: NormRect, y: number): number => (y - c.y) / c.h
+const fullX = (c: NormRect, x: number): number => c.x + x * c.w
+const fullY = (c: NormRect, y: number): number => c.y + y * c.h
+
 /** Whether a full-frame point is shown (exactly the view's own inVideo test after toCrop). */
 export function inCrop(crop: NormRect | null, p: { x: number; y: number }): boolean {
-  // TODO(E-10): inUnit(toCrop(crop, p)) with a crop.
-  void crop
-  return inUnit(p)
+  return inUnit(toCrop(crop, p))
 }
 
 /** A full-frame point moved into the crop (the same object when it is already inside). */
 export function clampIntoCrop<T extends { x: number; y: number }>(crop: NormRect | null, p: T): T {
-  // TODO(E-10): clamp x into [c.x, c.x + c.w] and y into [c.y, c.y + c.h].
-  void crop
-  return p
+  if (!crop) return p
+  const x = clamp(p.x, crop.x, crop.x + crop.w)
+  const y = clamp(p.y, crop.y, crop.y + crop.h)
+  return x === p.x && y === p.y ? p : { ...p, x, y }
 }
 
 /** A full-frame point in view space: ((x − c.x) / c.w, (y − c.y) / c.h). No crop: the same object. */
 export function toCrop(crop: NormRect | null, p: { x: number; y: number }): { x: number; y: number } {
-  // TODO(E-10): map with a crop.
-  void crop
-  return p
+  return crop ? { x: viewX(crop, p.x), y: viewY(crop, p.y) } : p
 }
 
 /** A view-space point in the full frame (the inverse of toCrop). No crop: the same object. */
 export function fromCrop(crop: NormRect | null, p: { x: number; y: number }): { x: number; y: number } {
-  // TODO(E-10): map with a crop.
-  void crop
-  return p
+  return crop ? { x: fullX(crop, p.x), y: fullY(crop, p.y) } : p
 }
 
 /** A full-frame rectangle in view space (negative w/h of lines and arrows map too). No crop: the same object. */
 export function rectToCrop<R extends NormRect>(crop: NormRect | null, r: R): R {
-  // TODO(E-10): x' = (x − c.x) / c.w, w' = w / c.w (and y, h).
-  void crop
-  return r
+  if (!crop) return r
+  return { ...r, x: viewX(crop, r.x), y: viewY(crop, r.y), w: r.w / crop.w, h: r.h / crop.h }
 }
 
 /** A view-space rectangle in the full frame (the inverse of rectToCrop). No crop: the same object. */
 export function rectFromCrop<R extends NormRect>(crop: NormRect | null, r: R): R {
-  // TODO(E-10): map with a crop.
-  void crop
-  return r
+  if (!crop) return r
+  return { ...r, x: fullX(crop, r.x), y: fullY(crop, r.y), w: r.w * crop.w, h: r.h * crop.h }
 }
 
 /** A view-space geometry patch (any of x, y, w, h) in the full frame; x and w map independently. No crop: the same object. */
 export function geometryFromCrop<T extends Partial<NormRect>>(crop: NormRect | null, patch: T): T {
-  // TODO(E-10): map each present field with a crop.
-  void crop
-  return patch
+  if (!crop) return patch
+  const out: Partial<NormRect> = { ...patch }
+  if (patch.x !== undefined) out.x = fullX(crop, patch.x)
+  if (patch.y !== undefined) out.y = fullY(crop, patch.y)
+  if (patch.w !== undefined) out.w = patch.w * crop.w
+  if (patch.h !== undefined) out.h = patch.h * crop.h
+  return out as T
+}
+
+/** `z` with its fixed point, region and anchor mapped one way (`view`: into view space); the same object when it has none. */
+function mapZoom(c: NormRect, z: ZoomSegment, view: boolean): ZoomSegment {
+  const f = z.focus
+  if (f.mode === 'cursor' && !z.anchor) return z
+  const point = view ? (p: { x: number; y: number }) => toCrop(c, p) : (p: { x: number; y: number }) => fromCrop(c, p)
+  const focus: ZoomFocus = f.mode === 'fixed' ? { mode: 'fixed', ...point(f) } : f.mode === 'region' ? (view ? rectToCrop(c, f) : rectFromCrop(c, f)) : f
+  const out: ZoomSegment = { ...z, focus }
+  if (z.anchor) out.anchor = { ...z.anchor, ...point(z.anchor) }
+  return out
 }
 
 /** A zoom in view space: fixed point, region and anchor mapped; scale, times and `until` kept. No crop: the same object. */
 export function zoomInView(crop: NormRect | null, z: ZoomSegment): ZoomSegment {
-  // TODO(E-10): map focus and anchor with a crop.
-  void crop
-  return z
+  return crop ? mapZoom(crop, z, true) : z
 }
+
+/** A view-space zoom in the full frame (the inverse of zoomInView), for edits made in the view. No crop: the same object. */
+export function zoomFromView(crop: NormRect | null, z: ZoomSegment): ZoomSegment {
+  return crop ? mapZoom(crop, z, false) : z
+}
+
+/**
+ * Where a region spotlight none of the view shows is put in view space. readSpotlight keeps it as
+ * it is (a far-off one would be clamped back into view), and it lights nothing the view shows, so
+ * everything shown is dimmed, as it should be.
+ */
+const OFF_VIEW = { x: 1.5, y: 1.5, w: 0.005, h: 0.005 }
+
+/** A spotlight in view space: position mapped, size scaled (cursor mode uses only the size). */
+function spotlightInView(c: NormRect, s: Spotlight): Spotlight {
+  const v = rectToCrop(c, s)
+  if (s.mode !== 'region') return v
+  // Its lit area, widened by the half of its soft edge that lies outside it (spotlightFeather).
+  const f = Number.isFinite(s.feather) ? clamp(s.feather, 0, 1) : 0.4
+  const mx = (f * Math.abs(v.w)) / 4
+  const my = (f * Math.abs(v.h)) / 4
+  const x0 = Math.min(v.x, v.x + v.w) - mx
+  const x1 = Math.max(v.x, v.x + v.w) + mx
+  const y0 = Math.min(v.y, v.y + v.h) - my
+  const y1 = Math.max(v.y, v.y + v.h) + my
+  return x1 <= 0 || x0 >= 1 || y1 <= 0 || y0 >= 1 ? { ...v, ...OFF_VIEW } : v
+}
+
+const cropKey = (c: NormRect): string => `${c.x},${c.y},${c.w},${c.h}`
+
+type Mapped<T> = WeakMap<T[], { key: string; out: T[] }>
+
+/** `list` mapped into the view of the crop `key` names, memoised per source array (for its latest crop). */
+function mapped<T>(cache: Mapped<T>, list: T[], key: string, map: (v: T) => T): T[] {
+  const hit = cache.get(list)
+  if (hit && hit.key === key) return hit.out
+  const out = list.map(map)
+  cache.set(list, { key, out })
+  return out
+}
+
+const zoomViews: Mapped<ZoomSegment> = new WeakMap()
+const shapeViews: Mapped<Shape> = new WeakMap()
+const spotlightViews: Mapped<Spotlight> = new WeakMap()
+const projectViews = new WeakMap<object, CroppableProject>()
 
 /** What cropProject reads and writes. */
 export type CroppableProject = Pick<Project, 'width' | 'height' | 'zooms' | 'shapes' | 'spotlights' | 'crop'>
 
 /**
  * The project as drawn: the crop's pixel size, zooms, shapes and spotlights in view space, and no
- * `crop` key; everything else shared. No crop: `p` itself.
+ * `crop` key; everything else shared. No crop: `p` itself. Memoised per project object, and each
+ * mapped list per source list, so an edit elsewhere keeps the mapped lists.
  */
 export function cropProject<P extends CroppableProject>(p: P): P {
-  // TODO(E-10): build the memoised view when cropOf(p) is not null.
-  return p
+  const c = cropOf(p)
+  if (!c) return p
+  const hit = projectViews.get(p)
+  if (hit) return hit as P
+  const key = cropKey(c)
+  const { crop: _crop, ...rest } = p
+  const { width, height } = visibleSize(p)
+  const view = {
+    ...rest,
+    width,
+    height,
+    zooms: mapped(zoomViews, p.zooms, key, (z) => mapZoom(c, z, true)),
+    ...(p.shapes ? { shapes: mapped(shapeViews, p.shapes, key, (s) => rectToCrop(c, s)) } : {}),
+    ...(p.spotlights ? { spotlights: mapped(spotlightViews, p.spotlights, key, (s) => spotlightInView(c, s)) } : {})
+  } as unknown as P
+  projectViews.set(p, view)
+  return view
 }
 
-/** The cursor track in view space (samples, clicks, scrolls); memoised per array. No crop: `track` itself. */
+const sampleViews: Mapped<CursorSample> = new WeakMap()
+const clickViews: Mapped<ClickEvent> = new WeakMap()
+const scrollViews: Mapped<ScrollEvent> = new WeakMap()
+const trackViews = new WeakMap<CursorTrack, { key: string; out: CursorTrack }>()
+
+/**
+ * The cursor track in view space (samples, clicks and scrolls; keys, typing, marks, shapes, scale
+ * and valid shared); memoised per array. No crop: `track` itself.
+ */
 export function cropTrack(track: CursorTrack, crop: NormRect | null): CursorTrack {
-  // TODO(E-10): map with a crop.
-  void crop
-  return track
+  if (!crop) return track
+  const key = cropKey(crop)
+  const hit = trackViews.get(track)
+  if (hit && hit.key === key) return hit.out
+  const out: CursorTrack = {
+    ...track,
+    samples: mapped(sampleViews, track.samples, key, (s) => ({ t: s.t, x: viewX(crop, s.x), y: viewY(crop, s.y) })),
+    clicks: mapped(clickViews, track.clicks, key, (k) => ({ ...k, x: viewX(crop, k.x), y: viewY(crop, k.y) }))
+  }
+  if (track.scrolls) out.scrolls = mapped(scrollViews, track.scrolls, key, (e) => ({ ...e, x: viewX(crop, e.x), y: viewY(crop, e.y) }))
+  trackViews.set(track, { key, out })
+  return out
 }
 
-/** The single entry point the scene is built from: the project and track as drawn, and the snapped crop. */
-export function cropView<P extends CroppableProject>(p: P, track: CursorTrack): { project: P; cursor: CursorTrack; crop: NormRect | null } {
-  // TODO(E-10): memoise per (project, track) once the view is not the identity.
+/** The view of a project and its track: what cropView returns. */
+export interface CropView<P> {
+  project: P
+  cursor: CursorTrack
+  crop: NormRect | null
+}
+
+const views = new WeakMap<object, { track: CursorTrack; view: CropView<CroppableProject> }>()
+
+/**
+ * The single entry point the scene is built from: the project and track as drawn, and the snapped
+ * crop. Memoised per (project, track). No crop: the project and the track themselves.
+ */
+export function cropView<P extends CroppableProject>(p: P, track: CursorTrack): CropView<P> {
+  const hit = views.get(p)
+  if (hit && hit.track === track) return hit.view as CropView<P>
   const crop = cropOf(p)
-  return { project: cropProject(p), cursor: cropTrack(track, crop), crop }
+  const view: CropView<P> = { project: cropProject(p), cursor: cropTrack(track, crop), crop }
+  views.set(p, { track, view })
+  return view
+}
+
+const shownClicks: Mapped<ClickEvent> = new WeakMap()
+
+/** `track` without the clicks the crop hides, in full-frame coordinates (the same object when it hides none). */
+function shownTrack(track: CursorTrack, c: NormRect): CursorTrack {
+  const key = cropKey(c)
+  let hit = shownClicks.get(track.clicks)
+  if (!hit || hit.key !== key) {
+    hit = { key, out: track.clicks.filter((k) => inCrop(c, k)) }
+    shownClicks.set(track.clicks, hit)
+  }
+  return hit.out.length === track.clicks.length ? track : { ...track, clicks: hit.out }
+}
+
+/**
+ * An automatic zoom aimed into the crop: its anchor (typing places, marks and scroll landings can
+ * lie outside), and the fixed focus a track without cursor data copies from it, clamped. The same
+ * object when both are inside, so rebaseAutoZooms matches zooms across crops exactly.
+ */
+function aimIntoCrop(c: NormRect, z: ZoomSegment): ZoomSegment {
+  const anchor = z.anchor && clampIntoCrop(c, z.anchor)
+  const focus = z.focus.mode === 'fixed' ? clampIntoCrop(c, z.focus) : z.focus
+  if (anchor === z.anchor && focus === z.focus) return z
+  return anchor ? { ...z, focus, anchor } : { ...z, focus }
 }
 
 /**
  * The automatic zooms for `track` in the cropped frame: clicks outside the crop dropped and
- * anchors clamped into it, all in full-frame coordinates. No crop: exactly autoZoomsForTrack.
+ * anchors clamped into it, all in full-frame coordinates (never mapped into view space and back,
+ * which is not exact). No crop: exactly autoZoomsForTrack.
  */
 export function autoZoomsInFrame(
   track: CursorTrack,
   p: Pick<Project, 'crop' | 'width' | 'height' | 'duration'>,
   settings: AutoZoomSettings
 ): ZoomSegment[] {
-  // TODO(E-10): filter hidden clicks and clamp anchors when cropOf(p) is not null.
-  return autoZoomsForTrack(track, p.duration, settings)
+  const c = cropOf(p)
+  if (!c) return autoZoomsForTrack(track, p.duration, settings)
+  return autoZoomsForTrack(shownTrack(track, c), p.duration, settings).map((z) => aimIntoCrop(c, z))
 }
 
 /** regenerateAutoZooms in the cropped frame (automatic zooms as autoZoomsInFrame; manual zooms the same objects). */
@@ -216,6 +350,8 @@ export function regenerateInFrame(
   p: Pick<Project, 'crop' | 'width' | 'height' | 'duration'>,
   settings?: AutoZoomSettings
 ): ReturnType<typeof regenerateAutoZooms> {
-  // TODO(E-10): hidden clicks out and auto anchors clamped when cropOf(p) is not null.
-  return regenerateAutoZooms(zooms, track, p.duration, settings)
+  const c = cropOf(p)
+  if (!c) return regenerateAutoZooms(zooms, track, p.duration, settings)
+  const r = regenerateAutoZooms(zooms, shownTrack(track, c), p.duration, settings)
+  return { ...r, zooms: r.zooms.map((z) => (z.auto ? aimIntoCrop(c, z) : z)) }
 }
