@@ -240,21 +240,22 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 
 Added 25 October 2026. These make everyday editing faster. Each was checked against the code at
 commit `f17cd98`, and the editor does not have it yet. E-01, E-04, E-05, E-08, E-10 and E-11 are
-`next`: they follow the camera director, smarter auto zoom and the teleprompter. The rest are `planned`.
+`shipped` (Wave 6): see [FEATURES.md](FEATURES.md) and `docs/design/editing-wins.md`, which links the six
+designs. The rest are `planned`.
 
 | Id | Feature | What it does | Size |
 |---|---|---|---|
-| E-01 (next) | **Polish in one click** | Runs remove silences, auto zoom, the camera director (NW-08), captions (if a provider is set) and your style preset in one go. Shows a summary of what changed (time saved, zooms, cuts, camera changes), all in one undo step. | S–M |
+| E-01 (shipped, Wave 6) | **Polish in one click** | Runs remove silences, auto zoom, the camera director (NW-08), captions (if a provider is set) and your style preset in one go. Shows a summary of what changed (time saved, zooms, cuts, camera changes), all in one undo step. | S–M |
 | E-02 | **Review mode** | Steps through every automatic decision (each zoom, cut, camera change, removed filler) with Keep / Remove, like reviewing tracked changes. | M |
 | E-03 | **Brand kit** | Your logo, colours, fonts, intro and outro title cards and style, saved once; every new recording starts with them. | S–M |
-| E-04 (next) | **Audio waveform on the timeline** | Shows where you talk and where the pauses are, so cuts land in the right place. | S |
-| E-05 (next) | **Snapping** | Segment edges and the playhead snap to cuts, clicks, chapter flags and other segments while dragging (hold Alt to turn it off). | S |
+| E-04 (shipped, Wave 6) | **Audio waveform on the timeline** | Shows where you talk and where the pauses are, so cuts land in the right place. | S |
+| E-05 (shipped, Wave 6) | **Snapping** | Segment edges and the playhead snap to cuts, clicks, chapter flags and other segments while dragging (hold Alt to turn it off). | S |
 | E-06 | **Select several items** | Shift-click or drag a box to select zooms, text and shapes together, then move, delete, copy or paste them; paste one item's look onto another. | M |
 | E-07 | **Filmstrip on the clip track** | Small frames along the clip track, to find a moment by sight. | S–M |
-| E-08 (next) | **J / K / L playback and preview speed** | Reverse, pause and forward from the keyboard (tap again to go faster), and play the preview at 1.5× or 2× to review long recordings quickly. | S |
+| E-08 (shipped, Wave 6) | **J / K / L playback and preview speed** | Reverse, pause and forward from the keyboard (tap again to go faster), and play the preview at 1.5× or 2× to review long recordings quickly. | S |
 | E-09 | **Nudge by one frame** | Arrow keys move the selected item one frame, Shift + arrow ten frames. | S |
-| E-10 (next) | **Crop the recording in the editor** | Hide the taskbar, browser tabs or a screen edge after recording. Today the area can only be chosen before recording. | S–M |
-| E-11 (next) | **Freeze frame** | Hold a frame for a few seconds so viewers can read something, with the sound paused or continuing. | S |
+| E-10 (shipped, Wave 6) | **Crop the recording in the editor** | Hide the taskbar, browser tabs or a screen edge after recording. Today the area can only be chosen before recording. | S–M |
+| E-11 (shipped, Wave 6) | **Freeze frame** | Hold a frame for a few seconds so viewers can read something, with the sound paused or continuing. | S |
 | E-12 | **Versions** | Save named versions of an edit ("Before captions", "v1 for client") and go back to any of them. | S–M |
 | E-13 | **Re-record one part** | Record only the part that went wrong and drop it in place. Builds on multiple takes (LT-01). | L |
 
