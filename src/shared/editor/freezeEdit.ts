@@ -4,9 +4,11 @@
  * changes), so each is one undo step through store.update.
  */
 import { clamp } from '../engine/math'
-import { DEFAULT_FREEZE_SOUND, FREEZE, FREEZE_EPS, MAX_FREEZES, newFreezeId, planOf } from '../engine/freeze'
-import { clipIndexAt, outputToSource, sourceToOutput } from '../engine/timeline'
+import { anchorEdit, atEditEnd, DEFAULT_FREEZE_SOUND, FREEZE, FREEZE_EPS, MAX_FREEZES, newFreezeId, planOf } from '../engine/freeze'
+import { clipIndexAt, outputToSource } from '../engine/timeline'
 import type { Clip, Freeze, FreezeSound, Project } from '../types'
+
+export { atEditEnd }
 
 /** Why a freeze was not added: the playhead is in a cut, a freeze is there, the picture is already frozen there, the limit. */
 export type FreezeRefusal = 'cut' | 'taken' | 'frozen' | 'full'
@@ -21,26 +23,21 @@ export const FREEZE_REFUSAL_TEXT: Record<FreezeRefusal, string> = {
 
 /** Proxy frame rate when the project does not say (the player uses the same). */
 const SOURCE_FPS = 60
-/** A playhead this close to the edit's end (s) freezes the end. */
-const END_SNAP = 1e-3
 /** Seconds of the edit before and after the frozen moment that a text added on a freeze shows. */
 const TEXT_AROUND = 0.5
 
 /** A length in tenths within FREEZE.min..max. */
 const tenths = (v: number): number => clamp(Math.round(v * 10) / 10, FREEZE.min, FREEZE.max)
 
-/** True when source time `at` is the edit's end (a freeze there holds the last frame). */
-export const atEditEnd = (clips: Clip[], at: number): boolean => Math.abs(at - clips[clips.length - 1].end) < 1e-6
-
 /**
  * The anchor of the frame under the playhead `t`: the start of its source frame, rounded up to whole
  * ms (project.json keeps anchors in whole ms) and never before its clip; the edit's end when `t` is
- * within 1 ms of it. Null when `t` is in a cut (or trimmed off).
+ * within 1 ms of it (atEditEnd: rounded to whole ms on the next load, it is still the end). Null
+ * when `t` is in a cut (or trimmed off).
  */
 function anchorAt(p: Pick<Project, 'clips' | 'capture'>, t: number): number | null {
   const { clips } = p
-  const last = clips[clips.length - 1]
-  if (Math.abs(t - last.end) <= END_SNAP) return last.end
+  if (atEditEnd(clips, t)) return clips[clips.length - 1].end
   const i = clipIndexAt(clips, t)
   if (i < 0) return null
   const c = clips[i]
@@ -62,7 +59,7 @@ export function freezeRefusal(p: Project, t: number): { refused: FreezeRefusal; 
   const freezes = p.freezes ?? []
   const near = freezeNear(freezes, at)
   if (near) return { refused: 'taken', id: near.id }
-  const e = sourceToOutput(p.clips, at)
+  const e = anchorEdit(p.clips, at)
   const still = e === null ? undefined : planOf(p).stills.find((s) => e >= s.editStart && e < s.editEnd)
   if (still) return { refused: 'frozen', id: still.id }
   if (freezes.length >= MAX_FREEZES) return { refused: 'full' }
@@ -131,7 +128,7 @@ export function removeFreeze(p: Project, id: string): Project {
 
 /** Source range of a text that shows through the whole freeze ("Add text on the freeze"); null when it is inactive. */
 export function freezeTextRange(clips: Clip[], f: Freeze): { start: number; end: number } | null {
-  const e = sourceToOutput(clips, f.at)
+  const e = anchorEdit(clips, f.at)
   if (e === null) return null
   return { start: outputToSource(clips, Math.max(0, e - TEXT_AROUND)).time, end: outputToSource(clips, e + TEXT_AROUND).time }
 }

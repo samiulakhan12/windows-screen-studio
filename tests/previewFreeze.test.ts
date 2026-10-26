@@ -333,6 +333,26 @@ describe('a pause freeze in the preview', () => {
     expect(position()).toBe(11)
   })
 
+  it('a freeze at a trimmed edit end, read back from project.json in whole ms, holds the same last frame', () => {
+    // The edit ends at 9.9994 (a trim leaves the pointer's time); the anchor stored there loads as 9.999.
+    const { screen, camera, player } = setUp([freeze('e', 9.999, 1)], [{ id: 'c', start: 0, end: 9.9994, speed: 1 }])
+    player.play()
+    playOn(screen, 9.99)
+    expect(player.heldFreeze).toBe('e')
+    // The last frame, as the paused end shows it (frameTimeFor(last.end)), not the frame under the anchor.
+    const last = 9.9994 - 1 / 240
+    expect(player.time).toBeCloseTo(last, 9)
+    expect(screen.currentTime).toBeCloseTo(last, 9)
+    screen.land()
+    camera.land()
+    frame()
+    expect(draws.at(-1)).toMatchObject({ t: player.time, blur: 1 })
+    clock += 1100
+    frame()
+    expect(player.playing).toBe(false)
+    expect(player.heldFreeze).toBeNull()
+  })
+
   it('starts the playback when the playhead is on its frame', () => {
     const { screen, player } = setUp([freeze('f', 2)])
     player.seek(2)

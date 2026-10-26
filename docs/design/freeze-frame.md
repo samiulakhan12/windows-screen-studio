@@ -151,9 +151,9 @@ export function planOf(p: Pick<Project, 'clips' | 'freezes'>): FreezePlan // NO_
 
 How the plan is built:
 
-1. Sort the freezes by `at`. For each one, `e = sourceToOutput(clips, at)`. If `e` is `null`, the freeze is inactive because its frame is cut.
+1. Sort the freezes by `at`. For each one, `e = sourceToOutput(clips, at)`, or `outputDuration(clips)` when `|at − last.end| ≤ 1 ms` (see §13). If `e` is `null`, the freeze is inactive because its frame is cut.
 2. Walk the active freezes in edit order.
-   - A pause freeze becomes `{ edit: e, start: e + addedSoFar, length, end: |at − last.end| < 1e-6 }`, and then `addedSoFar += length`.
+   - A pause freeze becomes `{ edit: e, start: e + addedSoFar, length, end: |at − last.end| ≤ 1 ms }`, and then `addedSoFar += length`.
    - A continue freeze becomes a still with `editStart = e` and `editEnd = min(e + length, nextActiveEdit, outputDuration(clips))`. A still shorter than 0.05 s goes to `inactive`. This always happens at `last.end`, where the span is empty.
 
 ### 4.2 Time maps (all in `freeze.ts`, pure)
@@ -742,6 +742,7 @@ What the implementation does where it differs from, or adds to, the sections abo
 - `videoFrames`: a hold at the edit's end repeats the last exported frame's `times` **and** `pictures`, so a continue freeze that runs to the end keeps its still through the end hold instead of jumping to the live last frame.
 - `freezeAtPlayhead`: the anchor is `ceil(max(clip.start, k / fps) · 1000) / 1000`. The design's `max(clip.start, ceil(…))` could store a non-whole-ms `clip.start`, which `readFreezes` would round into the cut before it on the next load. If that rounding reaches the clip's end (a clip ending less than 1 ms after the frame start), the clip's last whole ms is used.
 - `setFreezeSound(p, id, 'continue')` returns `p` for a freeze at the edit's end ("Nothing plays after the end of the video").
+- An anchor within 1 ms of `last.end` is the edit's end (`atEditEnd` and `anchorEdit` in `freeze.ts`, the same 1 ms as the playhead's snap to the end and `soundPieces`): `freezePlan`, `freezeRefusal`, `freezeTextRange` and `setFreezeSound` read it so. A freeze made at the end stores `last.end`, which after a trim or a cut is rarely whole ms, and `readFreezes` rounds it on the next load, past the end or into the last frame. Without the tolerance that freeze came back inactive, or as a hold before the last frame. `readFreezes` is unchanged: it does not see the clips. The preview's end hold shows `frameTimeFor(last.end)` whichever way the anchor was rounded.
 - New exports in `freezeEdit.ts`: `freezeRefusal(p, t)` (the refusal without building a project; the Clip panel button and the palette use it), `freezeIdAt(p, t)` (the freeze the playhead is on), `FREEZE_REFUSAL_TEXT` and `atEditEnd(clips, at)`.
 - `soundPieces` gives each hold to the clip that contains its frame, so a hold where two clips touch (a split with different speeds) is used once. Holds in a cut are dropped.
 

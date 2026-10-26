@@ -2,6 +2,7 @@
 // refusals, and each edit returning the same project when it changes nothing.
 import { describe, expect, it } from 'vitest'
 import {
+  atEditEnd,
   freezeAtPlayhead,
   freezeIdAt,
   freezeRefusal,
@@ -11,9 +12,10 @@ import {
   setFreezeLength,
   setFreezeSound
 } from '../src/shared/editor/freezeEdit'
-import { MAX_FREEZES } from '../src/shared/engine/freeze'
+import { freezePlan, MAX_FREEZES, videoDuration } from '../src/shared/engine/freeze'
 import { readFreezes } from '../src/shared/engine/freezeData'
-import { createProject } from '../src/shared/engine/project'
+import { createProject, migrateProject } from '../src/shared/engine/project'
+import { outputDuration, setTrimEnd } from '../src/shared/engine/timeline'
 import type { Clip, Freeze, Project } from '../src/shared/types'
 
 const base = (clips: Clip[] = [{ id: 'a', start: 0, end: 10, speed: 1 }], fps = 60): Project => ({
@@ -139,5 +141,35 @@ describe('edits', () => {
     expect(freezeTextRange([{ id: 'a', start: 0, end: 10, speed: 1 }], freeze('f', 4))).toEqual({ start: 3.5, end: 4.5 })
     expect(freezeTextRange(cutClips, freeze('f', 3.8))).toEqual({ start: 3.3, end: 6.3 })
     expect(freezeTextRange(cutClips, freeze('f', 5))).toBeNull()
+  })
+})
+
+describe('a freeze at the end of a trimmed edit, saved and reopened', () => {
+  // The trim handle leaves the pointer's time, so an edit rarely ends on a whole ms; project.json
+  // keeps anchors in whole ms (readFreezes rounds them on load), up or down.
+  const trimmed = (end: number): Project => ({ ...base(), clips: setTrimEnd(base().clips, end, 10) })
+  const reopened = (p: Project): Project => migrateProject(JSON.parse(JSON.stringify(p)))
+
+  it.each([8.7346, 8.7344])('still holds the last frame with the sound paused (edit end %s)', (end) => {
+    const { project, f } = added(trimmed(end), end)
+    const again = reopened(project)
+    expect(again.freezes).toHaveLength(1)
+    for (const p of [project, again]) {
+      const plan = freezePlan(p.clips, p.freezes)
+      expect(plan.inactive).toEqual([])
+      expect(plan.holds).toEqual([expect.objectContaining({ id: f.id, edit: outputDuration(p.clips), end: true })])
+      expect(videoDuration(p.clips, plan)).toBeCloseTo(end + 3, 9)
+      const g = p.freezes![0]
+      expect(atEditEnd(p.clips, g.at)).toBe(true)
+      expect(setFreezeSound(p, f.id, 'continue')).toBe(p)
+      expect(freezeTextRange(p.clips, g)).toEqual({ start: expect.closeTo(end - 0.5, 9), end })
+      expect(freezeRefusal(p, end)).toEqual({ refused: 'taken', id: f.id })
+    }
+  })
+
+  it('the end of a still running to the edit end can still be frozen', () => {
+    const p = { ...trimmed(8.7344), freezes: [freeze('k', 7, 3, 'continue')] }
+    expect(freezeRefusal(p, 8.7344)).toBeNull()
+    expect(freezeRefusal(reopened(added(p, 8.7344).project), 8.7344)).toMatchObject({ refused: 'taken' })
   })
 })

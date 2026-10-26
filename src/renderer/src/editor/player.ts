@@ -824,7 +824,7 @@ export class PreviewPlayer {
    * length. The playhead stays on the frame.
    */
   private startHold(h: Hold): void {
-    const s = this.frameTimeFor(h.at)
+    const s = h.end ? this.heldTime(h) : this.frameTimeFor(h.at)
     // Set first: pausing the screen fires 'pause', and no frame callback may run meanwhile.
     this.hold = { h, elapsed: 0, t0: performance.now() }
     this.passed = null
@@ -842,9 +842,12 @@ export class PreviewPlayer {
     this.emit()
   }
 
-  /** Source time a hold shows: its frame, or for one at the edit's end the last frame (as the paused end shows it). */
+  /**
+   * Source time a hold shows: its frame, or for one at the edit's end the last frame (as the paused
+   * end shows it, whichever side of the edit's end its whole-ms anchor fell).
+   */
   private heldTime(h: Hold): number {
-    return h.end ? this.frameTimeFor(h.at) : h.at
+    return h.end ? this.frameTimeFor(keptBounds(this.project.clips).end) : h.at
   }
 
   /** Playing again while paused in a hold: the music plays on (the stems wait), the hold's clock goes on. */

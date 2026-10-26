@@ -69,8 +69,26 @@ const frozen = <T>(list: T[]): T[] => Object.freeze(list) as T[]
 const MIN_STILL = 0.05
 /** Edit or video times closer than this are the same moment. */
 const EPS = 1e-9
+/**
+ * An anchor this close to the edit's end (source s) is the end: project.json keeps anchors in whole
+ * ms and an edit's end often is not (a trim leaves the pointer's time), so a stored end anchor comes
+ * back up to half a ms off it. The playhead's snap to the end (freezeEdit) and the export's sound
+ * (audioPlan HOLD_SNAP) use the same 1 ms.
+ */
+const END_SNAP = 1e-3
 
 const clipLength = (c: Clip): number => (c.end - c.start) / c.speed
+
+/** True when anchor `at` is the edit's end (within END_SNAP): a freeze there holds the last frame. */
+export function atEditEnd(clips: readonly Clip[], at: number): boolean {
+  return Math.abs(at - clips[clips.length - 1].end) <= END_SNAP
+}
+
+/** Edit second of anchor `at`: the edit's end for one at it (atEditEnd), null when its frame is cut. */
+export function anchorEdit(clips: readonly Clip[], at: number): number | null {
+  const list = clips as Clip[]
+  return atEditEnd(list, at) ? outputDuration(list) : sourceToOutput(list, at)
+}
 
 /** The plan of a project without freezes (every map is the identity for it). */
 export const NO_FREEZES: FreezePlan = Object.freeze({ holds: frozen<Hold>([]), stills: frozen<Still>([]), added: 0, inactive: frozen<string>([]) })
@@ -78,18 +96,18 @@ export const NO_FREEZES: FreezePlan = Object.freeze({ holds: frozen<Hold>([]), s
 /**
  * The plan for `freezes` on `clips` (docs/design/freeze-frame.md §4.1): a freeze whose frame is cut
  * is inactive; the active ones in edit order become holds (pause: each inserted at its edit time,
- * after the holds before it) and stills (continue: the span ends at the next active freeze, at the
- * end of the video, or after its length, whichever comes first; a span under MIN_STILL is inactive).
+ * after the holds before it; one at the edit's end, atEditEnd, holds the last frame) and stills
+ * (continue: the span ends at the next active freeze, at the end of the video, or after its length,
+ * whichever comes first; a span under MIN_STILL is inactive).
  */
 export function freezePlan(clips: readonly Clip[], freezes: readonly Freeze[] | undefined): FreezePlan {
   if (!freezes || freezes.length === 0 || clips.length === 0) return NO_FREEZES
   const list = clips as Clip[]
   const total = outputDuration(list)
-  const lastEnd = list[list.length - 1].end
   const inactive: string[] = []
   const active: { f: Freeze; edit: number }[] = []
   for (const f of [...freezes].sort((a, b) => a.at - b.at)) {
-    const edit = sourceToOutput(list, f.at)
+    const edit = anchorEdit(list, f.at)
     if (edit === null) inactive.push(f.id)
     else active.push({ f, edit })
   }
@@ -99,7 +117,7 @@ export function freezePlan(clips: readonly Clip[], freezes: readonly Freeze[] | 
   let added = 0
   active.forEach(({ f, edit }, i) => {
     if (f.sound === 'pause') {
-      holds.push({ id: f.id, at: f.at, edit, start: edit + added, length: f.length, end: Math.abs(f.at - lastEnd) < 1e-6 })
+      holds.push({ id: f.id, at: f.at, edit, start: edit + added, length: f.length, end: atEditEnd(list, f.at) })
       added += f.length
       return
     }
