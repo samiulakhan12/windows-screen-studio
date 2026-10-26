@@ -1,0 +1,55 @@
+/* The preview speed menu and the J/K/L shuttle badge, in the transport (PreviewSpeed.tsx). */
+
+.preview-speed {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-2);
+}
+
+.preview-speed .icon {
+  position: absolute;
+  left: 8px;
+  pointer-events: none;
+}
+
+.preview-speed select {
+  height: var(--control-sm);
+  padding: 0 24px 0 27px;
+  background-position: right 7px center;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+
+/* Not 1×: the accent outline, so a faster or slower preview is not forgotten. */
+.preview-speed[data-changed='true'] {
+  color: var(--accent-text);
+}
+
+.preview-speed[data-changed='true'] select {
+  border-color: var(--accent-500);
+  background-color: var(--accent-softer);
+}
+
+/* In a narrow window the badge gives way (truncated), never the edit tools. */
+.shuttle-slot {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+.shuttle-badge {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
