@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { notesAllowed, notesBounds, placementOf, rectsOverlap, type NotesDisplay } from '../src/shared/notes/placement'
+import { capturedNow, notesAllowed, notesBounds, placementOf, rectsOverlap, type NotesDisplay } from '../src/shared/notes/placement'
 
 const D1: NotesDisplay = { id: '1', bounds: { x: 0, y: 0, width: 1920, height: 1080 }, workArea: { x: 0, y: 0, width: 1920, height: 1040 }, primary: true }
 const D2: NotesDisplay = { id: '2', bounds: { x: 1920, y: 0, width: 1707, height: 960 }, workArea: { x: 1920, y: 0, width: 1707, height: 920 }, primary: false }
@@ -89,5 +89,25 @@ describe('rectsOverlap and notesAllowed', () => {
     expect(notesAllowed({ excluded: false, kind: 'area', notes, captured: { x: 0, y: 300, width: 800, height: 600 } })).toBe(true)
     expect(notesAllowed({ excluded: false, kind: 'area', notes, captured: { x: 0, y: 100, width: 800, height: 600 } })).toBe(false)
     expect(notesAllowed({ excluded: false, kind: 'screen', notes, captured: null })).toBe(false)
+  })
+})
+
+describe('capturedNow', () => {
+  const was = { id: '2', bounds: { x: 1920, y: 0, width: 1920, height: 1080 } }
+
+  it('a recorded screen follows its display when the layout changes', () => {
+    // D1 removed: D2 becomes the primary display at (0, 0).
+    const alone: NotesDisplay = { id: '2', bounds: { x: 0, y: 0, width: 1920, height: 1080 }, workArea: { x: 0, y: 0, width: 1920, height: 1040 }, primary: true }
+    expect(capturedNow([alone], was, was.bounds)).toEqual({ x: 0, y: 0, width: 1920, height: 1080 })
+  })
+
+  it('a recorded area keeps its share of the display through a resolution or scaling change', () => {
+    const area = { x: 1920 + 480, y: 270, width: 960, height: 540 }
+    const scaled: NotesDisplay = { id: '2', bounds: { x: 1920, y: 0, width: 1280, height: 720 }, workArea: { x: 1920, y: 0, width: 1280, height: 680 }, primary: false }
+    expect(capturedNow([D1, scaled], was, area)).toEqual({ x: 1920 + 320, y: 180, width: 640, height: 360 })
+  })
+
+  it('null when the recorded display is gone', () => {
+    expect(capturedNow([D1], was, was.bounds)).toBeNull()
   })
 })

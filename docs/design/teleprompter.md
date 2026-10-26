@@ -107,17 +107,27 @@ spelling hint for transcription (NW-09).
 
 **Recording.**
 
-1. `prepare()` (after `prepareToolbar`): the notes are **used** when
-   `showWhileRecording && hasNotesText(text)`. Then:
+1. `prepare()` (before `prepareToolbar`, and before any hotkey is registered): the notes are
+   **used** when `showWhileRecording && hasNotesText(text)`. Then:
    - the rehearsal window, if open, is closed;
    - the window's rectangle is computed; `notesAllowed` (§2.10) decides whether it may be shown;
    - if allowed: the `'record'` window is created hidden and protected, the notes hotkeys are
      registered, the store is held (§2.11), and `script.txt` is written to the recording
      folder when `keepWithRecording` (async; a failure is logged, never fatal);
    - if refused: `CapturePlan.notesNotice` says why; no window, no hotkeys.
-2. Each `'countdown'` status: `showNotes()` **before** `showToolbar()` (the bar ends up above it),
-   then `setNotesRecording('countdown')`. `showNotes` is idempotent (countdown statuses arrive
-   every second) and waits for `ready-to-show` if the page is still loading. The page shows the
+
+   Then the bar is placed clear of the notes: `prepareToolbar(display, area, [recordingNotesRect()])`
+   skips each of its usual spots (below the area, above it, the bottom centre) that would be under
+   the notes, and else goes just below or just above them. Otherwise the 600 DIP bar lands under the
+   560 DIP notes for many areas (an area that reaches the bottom of the screen and starts less than
+   about 330 DIP from the top puts the bar just above it, where the notes sit) and its buttons
+   cannot be reached.
+2. Each `'countdown'` status: `showNotes()`, then `setNotesRecording('countdown')`, then
+   `showToolbar()` and `raiseToolbar()` (`moveTop()` on the bar, which never activates it), so the
+   bar ends up above the notes. `showNotes` is idempotent (countdown statuses arrive every second)
+   and waits for `ready-to-show` if the page is still loading; on the first take that is usual, so
+   the notes show after the bar, and their first show tells `onNotesChange`, which raises the bar
+   again (it does so on every notes change, a drag included). The page shows the
    top of the text, still, with the chip "Starts with the recording". The view's `take`
    increases once per recording.
 3. The first `'recording'` status: the page starts scrolling when `autoStart` is on (default).
@@ -129,7 +139,10 @@ spelling hint for transcription (NW-09).
 6. Stop, cancel, a recorder crash: `endRecordingUi(restarting)` calls
    `endRecordingNotes(restarting)`: the hotkeys are released, the store is released (one write),
    and the window is destroyed, or, when restarting, hidden and kept for the next take (which
-   starts at the top: new `take`).
+   starts at the top: new `take`). The kept window holds no hotkeys (`notesSettingsChanged`
+   registers them only for a rehearsal or a recording), and when the next take cannot be
+   prepared (`recording:prepare` fails, e.g. the recorded window is gone) it is closed
+   (`discardKeptNotes`).
 7. The main window closing: `closeRecordingWindows()` also closes the notes window (otherwise
    `window-all-closed` never fires). Quitting: `disposeRecording()` releases the store.
 
@@ -156,7 +169,9 @@ Options, both modes:
 
 Right after construction, before `loadRoute`: `setContentProtection(true)` (both modes; it also
 hides the notes from screen sharing) and `setAlwaysOnTop(true, 'screen-saver')`. No parent window.
-`render-process-gone` reloads the route and sends the view again. `backgroundThrottling: false`
+`render-process-gone` reloads the route and sends the view again; it also forgets the page's last
+report (`{ playing: false, ended: false, block: 0 }`, and the bar is told), because the reloaded
+page starts from that idle report and sends only changes. `backgroundThrottling: false`
 keeps the step timer exact; because of it the Page Visibility API does not report hiding, so the
 page relies on `NotesView.shown`.
 
@@ -183,7 +198,7 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
 - After the first show main reads `getBounds()` back and sets the bounds again if they differ by
   more than 1 DIP (Electron has misapplied sizes across monitors with different scaling).
 - `screen` `'display-removed'` and `'display-metrics-changed'` while a window is open: placed
-  again with `notesBounds`.
+  again with `notesBounds` (a locked window is checked against the capture first, §2.10).
 - Text sizes are CSS px = DIP, so the text keeps its physical size per monitor; the page reads
   `devicePixelRatio` on every step.
 
@@ -291,7 +306,12 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
 - **Click effects, auto zoom, click sounds, smart speed** are built from recorded clicks, typing
   and scrolls only, so they inherit this.
 - **Cursor positions** over the notes are kept (dropping them would make the cursor jump); the
-  video shows the app beneath, as with the bar today.
+  video shows the app beneath, as with the bar. In a window recording the capture helper reports
+  the cursor as off the recorded window while it is over the notes or the bar (each is a window of
+  its own), which would hide it past the video's edge; `writeTrack` gives the window mapping
+  `ownAt(p, at)` (the bar's places, or `notesAreaContains(p, at)`, with the position as captured,
+  in DIP), and `buildCursorTrack` keeps such positions on the recorded window. Other windows
+  covering it still hide the cursor.
 - **Keystrokes.** The notes accelerators are in `ignoreKeys`; the window cannot receive typing
   (not focusable).
 - **Window picker.** `sources:list` already removes every live app window by its media source id
@@ -320,6 +340,13 @@ gains "While your notes scroll, Flown counts that as activity."
 - When allowed only because they do not overlap, the window is **locked** for the recording:
   `movable: false`, the grip hidden, `NotesView.locked: true`, so it cannot be dragged or grown
   into the capture.
+- A display change during the recording places a locked window again (§2.3) only after checking
+  it against what is recorded **as it is now**: `capturedNow` finds the same share of the recorded
+  display on the current displays (it may have moved, been rescaled or become the primary at
+  (0, 0)). When the new place overlaps it, or the recorded display is gone, the window is hidden
+  (`hide()`, closing its `AreaHistory` span) before it moves, and **blocked**: the bar's button and
+  the notes hotkeys do not show it again until a later change puts it clear. The next take checks
+  again from scratch.
 - Rehearsal always works.
 - The recording bar has the same limitation today (it is protected, so it is recorded as a black
   bar on those builds); the Home warning says so for both.
@@ -371,8 +398,9 @@ gains "While your notes scroll, Flown counts that as activity."
   followed by the notes.
 - **Answer**: 1 to 300 paragraphs; each cleaned (control characters removed, leading `#`, `-`,
   `*`, `•` and `1.` markers removed, trimmed), empty ones dropped; joined with a blank line; at most
-  6 × the notes' length + 2,000 characters. Anything else throws `AiOutputError` ("The AI's answer
-  could not be used (…). Nothing was changed; try again.").
+  6 × the notes' length + 2,000 characters, and never more than `NOTES_TEXT_MAX` (50,000): saving
+  would cut a longer script short and "Restore my notes" would go with it. Anything else throws
+  `AiOutputError` ("The AI's answer could not be used (…). Nothing was changed; try again.").
 - **Renderer**: the draft replaces the text only if the text is unchanged since the request
   (else the stale message); "Restore my notes" brings the previous text back until the next edit
   or until the dialog closes. Only the notes text is sent, only on that click.

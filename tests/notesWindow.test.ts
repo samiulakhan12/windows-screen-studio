@@ -239,6 +239,36 @@ describe('the recording window', () => {
     expect(calls(win).filter((c) => c === 'showInactive')).toHaveLength(1)
   })
 
+  it('shown after the bar once its page loaded, it tells the bar (which goes back above it); only when it is shown', () => {
+    notes.prepareRecordingNotes(screenPlan(), recDir)
+    const win = last()
+    const changed = vi.fn()
+    const off = notes.onNotesChange(changed)
+    notes.showNotes()
+    expect(changed).not.toHaveBeenCalled()
+    win.emit('ready-to-show')
+    expect(win.visible).toBe(true)
+    expect(changed).toHaveBeenCalledTimes(1)
+    // Countdown statuses arrive every second: nothing new is shown.
+    notes.showNotes()
+    notes.showNotes()
+    expect(changed).toHaveBeenCalledTimes(1)
+    off()
+  })
+
+  it("where the recording's notes show, for the bar to keep clear of", () => {
+    expect(notes.recordingNotesRect()).toBeNull()
+    startRecording()
+    expect(notes.recordingNotesRect()).toEqual(DEFAULT_RECT)
+    notes.toggleNotesShown()
+    expect(notes.recordingNotesRect()).toBeNull()
+    notes.endRecordingNotes(true)
+    expect(notes.recordingNotesRect()).toBeNull()
+    notes.endRecordingNotes(false)
+    notes.openRehearsal()
+    expect(notes.recordingNotesRect()).toBeNull()
+  })
+
   it('is put back where it belongs when Electron misplaced it on the first show (mixed DPI)', () => {
     notes.prepareRecordingNotes(screenPlan(), recDir)
     const win = last()
@@ -266,6 +296,22 @@ describe('the recording window', () => {
     const sent = views(win).length
     win.webContents.events.get('did-finish-load')()
     expect(views(win).length).toBe(sent + 1)
+  })
+
+  it('forgets what the crashed page reported: the reloaded page starts paused and reports only changes', () => {
+    const win = startRecording()
+    notes.setNotesRecording('recording')
+    notes.setNotesReport({ playing: true, ended: false, block: 3 })
+    expect(notes.notesPlaying()).toBe(true)
+    const changed = vi.fn()
+    const off = notes.onNotesChange(changed)
+    win.webContents.events.get('render-process-gone')()
+    expect(changed).toHaveBeenCalled()
+    // Auto-pause works again, and the bar's scrolling dot goes off.
+    expect(notes.notesPlaying()).toBe(false)
+    expect(notes.notesStatus()).toEqual({ shown: true, playing: false })
+    expect(notes.notesWindowInfo()).toMatchObject({ playing: false })
+    off()
   })
 
   it('follows the recording: countdown, recording, paused; one new take per recording', () => {
@@ -297,6 +343,45 @@ describe('the recording window', () => {
     expect(win.destroyed).toBe(true)
     expect(h.shortcuts.size).toBe(0)
     expect(notes.notesStatus()).toBeNull()
+  })
+
+  it('a window kept hidden for a restart never takes the notes hotkeys, whatever changes on Home', () => {
+    const win = startRecording()
+    notes.endRecordingNotes(true)
+    // Home: the notes or a recording option change (each calls notesSettingsChanged()).
+    notesStore().update({ text: 'Intro, changed' })
+    notes.notesSettingsChanged()
+    expect(h.shortcuts.size).toBe(0)
+    expect(notes.notesHotkeyLabels()).toEqual({})
+    expect(win.visible).toBe(false)
+    // The next take takes them again.
+    notes.prepareRecordingNotes(screenPlan(), recDir)
+    expect(last()).toBe(win)
+    expect(h.shortcuts.size).toBe(3)
+  })
+
+  it('the window kept for a restart is closed when the next take cannot be prepared', () => {
+    const win = startRecording()
+    notes.endRecordingNotes(true)
+    notes.discardKeptNotes()
+    expect(win.destroyed).toBe(true)
+    expect(notes.notesWindowInfo()).toBeNull()
+    expect(h.shortcuts.size).toBe(0)
+    notes.notesSettingsChanged()
+    expect(h.shortcuts.size).toBe(0)
+    expect(commands(win)).toEqual([])
+  })
+
+  it('discarding a kept window leaves a rehearsal and a running recording alone', () => {
+    notes.openRehearsal()
+    const rehearsal = last()
+    notes.discardKeptNotes()
+    expect(rehearsal.destroyed).toBe(false)
+    notes.closeRehearsal()
+    const win = startRecording()
+    notes.discardKeptNotes()
+    expect(win.destroyed).toBe(false)
+    expect(h.shortcuts.size).toBe(3)
   })
 
   it('the bar hides and shows it; a hotkey while hidden only shows it again', () => {
@@ -435,6 +520,72 @@ describe('older Windows', () => {
   it('rehearsal still works', () => {
     expect(notes.openRehearsal()).toBe(true)
     expect(last().options.movable).toBe(true)
+  })
+
+  const D2 = { id: 2, bounds: { x: 1920, y: 0, width: 1920, height: 1080 }, workArea: { x: 1920, y: 0, width: 1920, height: 1040 } }
+
+  it('moved onto what is recorded by a display change: hidden first, and neither the bar nor a hotkey shows them again', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(30_000)
+    h.displays = [D1, D2]
+    // Recording D1 with the notes on D2: allowed, locked.
+    setNotes({ placement: { displayId: '2', x: 0.5, y: 0 } })
+    const win = startRecording()
+    expect(win.visible).toBe(true)
+    expect(win.bounds).toEqual({ x: 2600, y: 0, width: 560, height: 240 })
+    // D2 is unplugged: the default place on D1 is over the recorded screen.
+    vi.setSystemTime(31_000)
+    h.displays = [D1]
+    h.screenEvents.get('display-removed')!()
+    expect(win.visible).toBe(false)
+    expect(win.bounds).toEqual(DEFAULT_RECT)
+    const c = calls(win)
+    expect(c.lastIndexOf('hide')).toBeLessThan(c.lastIndexOf('setBounds'))
+    expect(notes.notesStatus()).toEqual({ shown: false, playing: false })
+    notes.toggleNotesShown()
+    h.shortcuts.get('Ctrl+Shift+F7')!()
+    h.shortcuts.get('Ctrl+Shift+F8')!()
+    notes.showNotes()
+    expect(win.visible).toBe(false)
+    expect(commands(win)).toEqual([])
+    // Where they were before is not theirs any more once hidden.
+    expect(notes.notesAreaContains({ x: 2700, y: 20 }, 40_000)).toBe(false)
+    // The next take checks again from scratch.
+    notes.endRecordingNotes(true)
+    h.displays = [D1, D2]
+    notes.prepareRecordingNotes(screenPlan(), recDir)
+    expect(last()).toBe(win)
+    notes.showNotes()
+    expect(win.visible).toBe(true)
+    expect(win.bounds).toEqual({ x: 2600, y: 0, width: 560, height: 240 })
+  })
+
+  it('what is recorded is found again on the displays as they are now', () => {
+    // D1 is primary at (0, 0) with the notes at their default place; D2, at x = 1920, is recorded.
+    h.displays = [D1, D2]
+    const win = startRecording({ kind: 'screen', display: D2 as never, captured: D2.bounds })
+    expect(win.visible).toBe(true)
+    // D1 goes away: D2 becomes the primary display at (0, 0), and the notes move onto it.
+    h.displays = [{ ...D2, bounds: D1.bounds, workArea: D1.workArea }]
+    h.screenEvents.get('display-removed')!()
+    expect(win.bounds).toEqual(DEFAULT_RECT)
+    expect(win.visible).toBe(false)
+    notes.toggleNotesShown()
+    expect(win.visible).toBe(false)
+  })
+
+  it('a display change that keeps them clear of what is recorded leaves them as they were', () => {
+    h.displays = [D1, D2]
+    const win = startRecording({ kind: 'screen', display: D2 as never, captured: D2.bounds })
+    // The taskbar moves to the top of D1: the notes move down on D1, still off D2.
+    h.displays = [{ ...D1, workArea: { x: 0, y: 40, width: 1920, height: 1040 } }, D2]
+    h.screenEvents.get('display-metrics-changed')!()
+    expect(win.bounds).toEqual({ ...DEFAULT_RECT, y: 48 })
+    expect(win.visible).toBe(true)
+    notes.toggleNotesShown()
+    expect(win.visible).toBe(false)
+    notes.toggleNotesShown()
+    expect(win.visible).toBe(true)
   })
 })
 

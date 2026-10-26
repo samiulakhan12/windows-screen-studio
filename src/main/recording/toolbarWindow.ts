@@ -41,12 +41,12 @@ function create(): BrowserWindow {
 
 /**
  * Creates (hidden) and positions the toolbar before the countdown, so its page has
- * loaded by the time the first status arrives.
+ * loaded by the time the first status arrives. `keepClear`: the speaker notes' place.
  */
-export function prepareToolbar(display: Display | null, avoid: Rect | null): void {
+export function prepareToolbar(display: Display | null, avoid: Rect | null, keepClear: readonly Rect[] = []): void {
   if (!toolbar) toolbar = create()
   const target = display ?? screen.getPrimaryDisplay()
-  const { x, y } = toolbarPosition(target.workArea, SIZE, avoid)
+  const { x, y } = toolbarPosition(target.workArea, SIZE, avoid, keepClear)
   toolbar.setBounds({ x, y, ...SIZE })
   occupied.length = 0
   occupied.push(toolbar.getBounds())
@@ -54,6 +54,11 @@ export function prepareToolbar(display: Display | null, avoid: Rect | null): voi
 
 export function showToolbar(): void {
   if (toolbar && !toolbar.isVisible()) toolbar.showInactive()
+}
+
+/** Puts the shown toolbar above the other always-on-top windows (the speaker notes), without activating it. */
+export function raiseToolbar(): void {
+  if (toolbar && !toolbar.isDestroyed() && toolbar.isVisible()) toolbar.moveTop()
 }
 
 export function hideToolbar(): void {

@@ -40,6 +40,7 @@ vi.mock('../src/main/ai/transcribe', () => ({
 import { cancelScriptDraft, draftScript, registerAiIpc } from '../src/main/aiIpc'
 import { SCRIPT_DRAFT_MAX_NOTES } from '../src/shared/api/ai'
 import { AiOutputError } from '../src/shared/captions/transcriptText'
+import { cleanNotesText, NOTES_TEXT_MAX } from '../src/shared/notes/notes'
 import {
   runScriptDraft,
   SCRIPT_EFFORT,
@@ -99,6 +100,21 @@ describe('validateScriptAnswer', () => {
     const tooLong = 'x'.repeat(SCRIPT_LIMITS.growth * notes.length + SCRIPT_LIMITS.growthExtra + 1)
     expect(() => validateScriptAnswer({ paragraphs: [tooLong] }, notes)).toThrow(/far longer/)
     expect(validateScriptAnswer({ paragraphs: [tooLong.slice(1)] }, notes)).toHaveLength(tooLong.length - 1)
+  })
+
+  it('never returns more than the notes can hold: saving would cut it short and lose "Restore my notes"', () => {
+    // 12,000 characters of bullets may grow to 74,000, but the notes hold NOTES_TEXT_MAX.
+    const bullets = 'x'.repeat(12_000)
+    const paragraph = 'y'.repeat(998)
+    const answer = (count: number, extra = '') => ({ paragraphs: [...Array<string>(count).fill(paragraph), ...(extra ? [extra] : [])] })
+    // 50 paragraphs of 998 + 49 blank-line joins = 49,998 characters; one more character joined by a blank line: 50,001.
+    expect(validateScriptAnswer(answer(50), bullets)).toHaveLength(49_998)
+    expect(validateScriptAnswer(answer(50), bullets)).toBe(cleanNotesText(validateScriptAnswer(answer(50), bullets)))
+    expect(() => validateScriptAnswer(answer(50, 'z'), bullets)).toThrow(AiOutputError)
+    expect(() => validateScriptAnswer(answer(50, 'z'), bullets)).toThrow(/longer than the 50,000 characters your notes can hold/)
+    expect(NOTES_TEXT_MAX).toBe(50_000)
+    // Exactly the limit is kept whole.
+    expect(validateScriptAnswer({ paragraphs: ['w'.repeat(NOTES_TEXT_MAX)] }, bullets)).toHaveLength(NOTES_TEXT_MAX)
   })
 
   it('cleans each paragraph and joins them with a blank line', () => {

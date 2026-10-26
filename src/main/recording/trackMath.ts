@@ -51,6 +51,13 @@ export interface WindowMapping {
    * two of them can only be mapped exactly in physical pixels.
    */
   pointToScreen?: (p: { x: number; y: number }) => { x: number; y: number }
+  /**
+   * Whether a captured position (as captured: DIP, before pointToScreen) was over one of the
+   * app's own windows at epoch ms `at` (the speaker notes, the recording bar). The helper then
+   * reports the cursor as off the recorded window, but those windows are kept out of the
+   * capture: the video shows the recorded window there, so the cursor stays on it.
+   */
+  ownAt?: (p: { x: number; y: number }, at: number) => boolean
 }
 
 export interface TrackOptions {
@@ -160,7 +167,8 @@ type Point = { x: number; y: number }
  * monitor, outside the area or the window, or on another window covering it).
  */
 interface Placement {
-  point(x: number, y: number, at: number): Point | null
+  /** `own`: whether the position was over one of the app's own windows (asked only when it matters). */
+  point(x: number, y: number, at: number, own?: () => boolean): Point | null
   click(x: number, y: number, at: number): Point | null
   /**
    * Instants at which the recorded content moved on screen (a window was moved, resized
@@ -192,12 +200,13 @@ function windowPlacement({ poses, out }: WindowMapping): Placement {
   return {
     // Also the instants the cursor went over or off a window covering the recorded one.
     moves: poses.slice(1).map((p) => p.at),
-    point: (x, y, t) => {
+    point: (x, y, t, own) => {
       const pose = at(t)
       // Outside the window the cursor maps outside the video (the compositor hides it there).
       const p = mapPointToWindowVideo({ x, y }, pose, out)
-      // Over another window covering the recorded one: not on the recorded content either.
-      return p && !cursorOverWindow(pose) ? hiddenPoint(p) : p
+      // Over another window covering the recorded one: not on the recorded content either,
+      // unless that is one of the app's own windows, which the video does not show.
+      return p && !cursorOverWindow(pose) && !own?.() ? hiddenPoint(p) : p
     },
     click: (x, y, t) => {
       const pose = at(t)
@@ -269,10 +278,13 @@ export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTra
   }
   const invalid: CursorTrack = { samples: [], clicks: [], keys, shapes, ...input, scale: raw.scale, valid: false }
   let place: Placement
+  /** Whether a captured position (before any conversion) was over one of the app's own windows. */
+  let ownAt: (p: Point, at: number) => boolean = () => false
   if (o.window !== undefined && o.window !== null) {
     const { poses, out, pointToScreen } = o.window
     if (poses.length === 0 || !(out.width > 0 && out.height > 0)) return invalid
     place = windowPlacement(o.window)
+    if (o.window.ownAt) ownAt = o.window.ownAt
     if (pointToScreen) {
       // Into the rectangles' space before anything is interpolated between positions.
       const conv = <T extends { x: number; y: number }>(p: T): T => ({ ...p, ...pointToScreen({ x: p.x, y: p.y }) })
@@ -285,20 +297,25 @@ export function buildCursorTrack(captured: RawTrack, o: TrackOptions): CursorTra
   }
 
   const timed: CursorSample[] = []
-  const add = (x: number, y: number, at: number): void => {
+  /** `from`: the position as captured (before any conversion), for ownAt. */
+  const add = (x: number, y: number, at: number, from: Point): void => {
     // Positions while a recorded window is minimised are not in the video: dropped.
-    const p = place.point(x, y, at)
+    const p = place.point(x, y, at, () => ownAt(from, at))
     if (p) timed.push({ t: time(at), ...p })
   }
-  for (const s of raw.samples) if (recorded(s.at)) add(s.x, s.y, s.at)
+  // `raw.samples` are `captured.samples` converted one by one, in the same order.
+  raw.samples.forEach((s, i) => {
+    if (recorded(s.at)) add(s.x, s.y, s.at, captured.samples[i])
+  })
   if (place.moves) {
     // Where the content moved under the cursor (and after each pause, when it may have
     // moved meanwhile), add the cursor's position there: samples are only taken when the
     // cursor itself moves.
     const screenAt = rawPositionAt(raw.samples)
+    const capturedAt = rawPositionAt(captured.samples)
     for (const at of [...place.moves, ...o.pauses.map((p) => p.to)]) {
       const c = recorded(at) ? screenAt(at) : null
-      if (c) add(c.x, c.y, at)
+      if (c) add(c.x, c.y, at, capturedAt(at) ?? c)
     }
   }
   timed.sort(byT)
