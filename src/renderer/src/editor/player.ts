@@ -790,13 +790,31 @@ export class PreviewPlayer {
 
   /* ---------- freeze frames (E-11) ---------- */
 
-  /** A new freeze plan: a hold in progress or just left is let go (playback goes on from its frame); the stills follow. */
+  /**
+   * A new freeze plan; the stills follow. While playing, a hold in progress is let go as when it runs
+   * out (playback goes on past its frame, or ends after one at the edit's end), and one just left
+   * stays left: an edit never holds that frame again. Paused, or when that freeze moved or went, it
+   * is a seek (play then starts a hold on the frame from its beginning).
+   */
   private replan(): void {
     const plan = planOf(this.project)
     if (plan === this.plan) return
     this.plan = plan
-    if (this.hold || this.passed) this.seek(this.time)
     this.prepareStills()
+    const left = this.hold?.h ?? this.passed
+    if (!left) return
+    // The same freeze on the same frame (its length, or the edit around it, may have changed).
+    const h = this.playing ? plan.holds.find((x) => x.id === left.id && x.at === left.at) : undefined
+    if (!h) return this.seek(this.time)
+    if (!this.hold) {
+      this.passed = h
+      this.sound.hold(h, h.length)
+      return
+    }
+    cancelAnimationFrame(this.holdRaf)
+    this.holdRaf = 0
+    this.hold.h = h
+    this.leaveHold()
   }
 
   /** Makes the stills of the continue freezes ahead (the cache exists only once there are some). */

@@ -395,6 +395,83 @@ describe('a pause freeze in the preview', () => {
   })
 })
 
+describe('an edit during a pause freeze', () => {
+  /** The Transport's position in `p`. */
+  const positionIn = (p: Project, player: Player): number => videoTimeAt(p.clips, planOf(p), player.time) + player.holdElapsed
+
+  /** Plays 2 s into a 3 s freeze at 2 s. */
+  function holding(freezes = [freeze('f', 2)]) {
+    const set = setUp(freezes)
+    set.player.play()
+    playOn(set.screen, 2)
+    set.screen.land()
+    set.camera.land()
+    clock += 2000
+    frame()
+    expect(set.player.holdElapsed).toBeCloseTo(2, 9)
+    sound.length = 0
+    return set
+  }
+
+  it('lets it go: playback goes on past its frame and does not hold it again', () => {
+    const { screen, player, project: p } = holding()
+    // The Clip panel's "Hold for" slider: each step is a new freezes list.
+    const longer = { ...p, freezes: [freeze('f', 2, 3.5)] }
+    player.setProject(longer)
+    expect(player.heldFreeze).toBeNull()
+    expect(player.playing).toBe(true)
+    expect(screen.paused).toBe(false)
+    // As when a hold runs out: the Transport reads the end of the (new) hold, the stems go on from the frame.
+    expect(positionIn(longer, player)).toBe(5.5)
+    expect(sound).toEqual(['hold f 3.5', 'jump 2 1'])
+    // The next frames: not held again.
+    frame()
+    playOn(screen, 1 / 60)
+    expect(player.heldFreeze).toBeNull()
+    expect(sound).not.toContain('hold f 0')
+    expect(positionIn(longer, player)).toBeGreaterThan(5.5)
+  })
+
+  it('an edit elsewhere lets it go too; one just after it leaves it left', () => {
+    const { screen, player, project: p } = holding([freeze('f', 2), freeze('g', 20)])
+    const other = { ...p, freezes: [freeze('f', 2), freeze('g', 20, 1)] }
+    player.setProject(other)
+    expect(player.heldFreeze).toBeNull()
+    expect(positionIn(other, player)).toBe(5)
+    // Still on the frame just left: another edit keeps it left.
+    const again = { ...other, clips: [{ id: 'c', start: 0, end: 50, speed: 1 }] }
+    player.setProject(again)
+    frame()
+    expect(player.heldFreeze).toBeNull()
+    expect(positionIn(again, player)).toBeGreaterThanOrEqual(5)
+    playOn(screen, 1 / 60)
+    expect(player.heldFreeze).toBeNull()
+    expect(sound).not.toContain('hold f 0')
+  })
+
+  it('a freeze at the edit end ends playback; paused in a hold, an edit leaves it and play starts it again', () => {
+    const end = setUp([freeze('e', 10, 3)], [{ id: 'c', start: 0, end: 10, speed: 1 }])
+    end.player.play()
+    playOn(end.screen, 9.99)
+    expect(end.player.heldFreeze).toBe('e')
+    end.player.setProject({ ...end.project, freezes: [freeze('e', 10, 4)] })
+    expect(end.player.playing).toBe(false)
+    expect(end.player.heldFreeze).toBeNull()
+    expect(end.player.time).toBe(10)
+
+    const { screen, player, project: p } = holding()
+    player.pause()
+    player.setProject({ ...p, freezes: [freeze('f', 2, 4)] })
+    expect(player.heldFreeze).toBeNull()
+    expect(player.time).toBe(2)
+    screen.land()
+    player.play()
+    frame()
+    expect(player.heldFreeze).toBe('f')
+    expect(player.holdElapsed).toBe(0)
+  })
+})
+
 describe('a continue freeze in the preview', () => {
   it('draws its still over its span, sharp, while the sound and the clock go on', () => {
     const { screen, player } = setUp([freeze('k', 2, 1.5, 'continue')])
