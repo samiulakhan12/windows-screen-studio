@@ -15,6 +15,7 @@ import { nativeCaptureTimeouts } from '../src/main/nativeCapture'
 import { defaultStartTimeoutMs, nativeAvailable, startNativeVideo, stopNativeVideo, type NativeCaptureApi } from '../src/main/recording/nativeVideo'
 import { ActiveRecording } from '../src/main/recording/session'
 import { buildCursorTrack } from '../src/main/recording/trackMath'
+import { useAllClicks } from '../src/shared/editor/inputEdits'
 import { windowMapping } from '../src/main/recording/windowCapture'
 
 const T0 = 1_700_000_000_000
@@ -293,7 +294,11 @@ describe.skipIf(!haveFfmpeg || !ffprobe)('processRecording (real ffmpeg)', () =>
       [0.25, 0.25],
       [0.75, 0.75]
     ])
-    expect(project.zooms.length).toBeGreaterThan(0)
+    // In a 2 s recording both clicks are stray (the first 0.6 s, and the last 0.6 s with nothing
+    // after): they start out ignored, so no auto zoom yet; using them again brings their zooms.
+    expect(project.inputEdits).toEqual({ ignoredClicks: [{ ms: 500, stray: 'start' }, { ms: 1500, stray: 'end' }] })
+    expect(project.zooms).toEqual([])
+    expect(useAllClicks(project, cursor).zooms.length).toBeGreaterThan(0)
   }, 60000)
 
   it('processes a Chromium WebM, probing the real duration', async () => {

@@ -6,6 +6,9 @@
  * editor to show and count them. Pure.
  */
 import type { AutoZoomSettings, CursorTrack, ScrollEvent } from '../types'
+import { scrollZoomPlan } from './zoom'
+
+const EPS = 1e-9
 
 export const SCROLL = {
   /** Wheel events at most this far apart (seconds) are one session. */
@@ -43,10 +46,28 @@ export interface ScrollSession {
  * the next session). [] without scroll data.
  */
 export function scrollSessions(scrolls: readonly ScrollEvent[] | undefined, splits: readonly number[] = []): ScrollSession[] {
-  // Stub until workstream B lands: no scrolling.
-  void scrolls
-  void splits
-  return []
+  if (!scrolls || scrolls.length === 0) return []
+  const events = scrolls.filter((e) => Number.isFinite(e.t)).sort((a, b) => a.t - b.t)
+  const cuts = splits.filter(Number.isFinite).sort((a, b) => a - b)
+  const out: ScrollSession[] = []
+  let cur: ScrollSession | null = null
+  let c = 0
+  for (const e of events) {
+    // Cuts at or before the previous event are behind us; one in (previous, e] starts a new session.
+    while (cur && c < cuts.length && cuts[c] <= cur.end) c++
+    const cut = !!cur && c < cuts.length && cuts[c] <= e.t
+    const notches = Math.abs(e.dx) + Math.abs(e.dy)
+    if (cur && !cut && e.t - cur.end <= SCROLL.join + EPS) {
+      cur.end = e.t
+      cur.notches += notches
+      cur.count++
+      cur.last = { x: e.x, y: e.y }
+    } else {
+      cur = { start: e.t, end: e.t, notches, count: 1, last: { x: e.x, y: e.y } }
+      out.push(cur)
+    }
+  }
+  return out
 }
 
 /** A session long enough to zoom out for. */
@@ -59,8 +80,5 @@ export const isLongScroll = (s: ScrollSession): boolean => s.end - s.start >= SC
  * data, or when auto zoom is off. For the editor's summary and the zoom track's scroll bands.
  */
 export function scrollBreaks(track: CursorTrack, settings: AutoZoomSettings): ScrollSession[] {
-  // Stub until workstream B lands.
-  void track
-  void settings
-  return []
+  return scrollZoomPlan(track, settings).breaks
 }
