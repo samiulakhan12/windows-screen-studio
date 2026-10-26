@@ -328,6 +328,28 @@ describe('options that leave nothing to direct on a directed project (ui-dir-2, 
   })
 })
 
+describe('options that leave some changes possible, nothing to change (ui-dir-6)', () => {
+  // The clicks of the e2e recording, made mid-screen: the cursor never goes near the camera (bottom right).
+  const MIDDLE: CursorTrack = { ...STILL, clicks: CURSOR.clicks.map((c) => ({ ...c, x: 0.5, y: 0.5 })) }
+
+  it('gives only the reasons of the options that are on', async () => {
+    recorded = MIDDLE
+    // The talking before and after the demo and the long silences give an intro, an outro and hidden parts...
+    store.state = e2eProject({ director: { intro: 'camera-only', hideAfter: 10, corners: 'auto', frameFace: false } })
+    render()
+    await flush()
+    let out = render()
+    expect(byId(out, 'director-part').map((e) => e.props['data-kind'])).toEqual(['intro', 'hidden', 'hidden', 'outro'])
+    // ...but Intro Off and Hide Never leave only the bubble moves, and the cursor gives none.
+    store.state = e2eProject({ director: { intro: 'off', hideAfter: 0, corners: 'auto', frameFace: false } })
+    out = render()
+    expect(byId(out, 'director-part')).toEqual([])
+    expect(notesOf(out)).toEqual(['nothing'])
+    const note = one(out, 'director-note')!
+    expect(textOf(note.props.children)).toBe('Nothing to change: the cursor never came near the camera.')
+  })
+})
+
 /* ---------- never directed, nothing to do ---------- */
 
 describe('a project never directed with nothing to do (ui-dir-3)', () => {
@@ -408,6 +430,44 @@ describe('the framing outcome follows the project (ui-dir-4)', () => {
     store.state = before
     out = render()
     expect(one(out, 'director-framing-unavailable')).toBeUndefined()
+  })
+
+  it('a Direct again that wrote only the layouts: an undo shows the outcome of the Apply before, a redo its own', async () => {
+    player.webcam = CAMERA
+    framingReply = () => Promise.resolve(FRAMED)
+    render()
+    await flush()
+    let out = render()
+    ;(apply(out).props.onClick as () => void)()
+    await flush()
+    out = render()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
+    // One automatic segment deleted by hand: the framing is still the one that Apply measured.
+    const gone = store.state.layouts!.find((s) => s.auto)!.id
+    store.update((p) => ({ ...p, layouts: p.layouts!.filter((s) => s.id !== gone) }))
+    const deleted = store.state
+    out = render()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
+    // Direct again while face framing is unavailable: the segment is back, the options and the framing are the same.
+    framingReply = () => Promise.resolve({ status: 'unavailable', reason: 'WebGL is not available' })
+    ;(apply(out).props.onClick as () => void)()
+    await flush()
+    out = render()
+    const again = store.state
+    expect(again.layouts).not.toBe(deleted.layouts)
+    expect(again.webcam).toBe(deleted.webcam)
+    expect(again.director).toEqual(deleted.director)
+    expect(one(out, 'director-framing-unavailable')).toBeDefined()
+    // Ctrl+Z: the project before that Apply, with the first Apply's line.
+    store.state = deleted
+    out = render()
+    expect(one(out, 'director-framing-unavailable')).toBeUndefined()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
+    // Ctrl+Y
+    store.state = again
+    out = render()
+    expect(one(out, 'director-framing-unavailable')).toBeDefined()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face framing is unavailable: WebGL is not available. The rest of the camera track was directed.')
   })
 })
 

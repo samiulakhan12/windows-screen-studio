@@ -97,7 +97,7 @@ export type DirectorNote =
   | 'all-yours'
   /** No intro or outro, never hidden and the bubble kept home: the options leave nothing to direct. */
   | 'options-off'
-  /** Nothing to change: no part, and no earlier automatic change to remove (the options allow some). */
+  /** Nothing to change: no part, and no earlier automatic change to remove (the options allow some; its copy gives the reasons of those that are on). */
   | 'nothing'
 
 /** A stretch of the output timeline by what it shows, for the panel's plan strip. */
@@ -423,7 +423,9 @@ export const framingNearWebcam = (f: Framing, w: { zoom?: number; cropX?: number
  * with `framed`; and, for a 'framed' outcome while the director may frame (the option on), the
  * webcam's zoom, cropX and cropY (unless framingNearWebcam). `framed` is the framing written
  * now, else kept only while the webcam still shows it. Returns `project` itself when nothing
- * changes, so store.update adds no undo step.
+ * changes, so store.update adds no undo step; else Project.director is a new object (also when
+ * only the layouts changed), so it tells the Apply that wrote the project (the section shows
+ * that Apply's framing outcome).
  */
 export function applyDirectorPlan(project: Project, plan: DirectorPlan, framing: FramingOutcome): Project {
   const layouts = sameList(project.layouts ?? [], plan.layouts) ? project.layouts : plan.layouts
@@ -441,7 +443,7 @@ export function applyDirectorPlan(project: Project, plan: DirectorPlan, framing:
   const director: DirectorSettings = framed ? { ...options, framed: { ...framed } } : options
   const sameDirector = sameSettings(project.director, director)
   if (layouts === project.layouts && webcam === project.webcam && sameDirector) return project
-  return { ...project, layouts: layouts ?? [], webcam, director: sameDirector ? project.director : director }
+  return { ...project, layouts: layouts ?? [], webcam, director }
 }
 
 /**

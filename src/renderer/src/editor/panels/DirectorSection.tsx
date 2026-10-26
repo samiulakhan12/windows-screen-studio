@@ -11,6 +11,7 @@ import {
   KEPT_POSITIONS_HINT,
   LEAD,
   NOTE_TEXT,
+  noteText,
   OWNERSHIP_HINT,
   partLabel,
   partTimes,
@@ -47,16 +48,20 @@ type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'onSelect'
  * What the section keeps for the editor session (keyed by its store), so switching tabs never
  * measures the sound again and an Apply started before switching tabs is still shown: the speech
  * (and the sound it was measured for), the palette request handled last, the framing outcome of
- * the last Apply (and the Project.director it wrote), and the Apply running now (with its progress).
+ * each Apply (by the Project.director it wrote), and the Apply running now (with its progress).
  */
 interface Session {
   speech: SpeechResult | null
   speechKey: string
   pending: Promise<SpeechResult> | null
   request: number
-  outcome: FramingOutcome | null
-  /** The Project.director that Apply wrote: the outcome shows only while the project has it (undo hides it, redo shows it again). */
-  outcomeFor: DirectorSettings | undefined
+  /**
+   * The framing outcome of each Apply by the Project.director it wrote (a new object whenever it
+   * changed the project, also only its layouts): the project shows the outcome of the Apply that
+   * wrote its director, so an undo shows the one of the Apply before (none before the first), a
+   * redo the undone one again. Remove forgets them all.
+   */
+  outcomes: WeakMap<DirectorSettings, FramingOutcome>
   busy: { listening: boolean; done: number; total: number } | null
   listeners: Set<() => void>
   /** Bumped on every change, for useSyncExternalStore. */
@@ -136,7 +141,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   const keymap = useKeymap()
   const session = useMemo<Session>(() => {
     let s = sessions.get(store)
-    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcome: null, outcomeFor: undefined, busy: null, listeners: new Set(), version: 0 }))
+    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcomes: new WeakMap(), busy: null, listeners: new Set(), version: 0 }))
     return s
   }, [store])
   const subscribe = useCallback(
@@ -194,8 +199,9 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   const directed = hasDirectorChanges(project)
   const mayFrame = directorMayFrame(project.webcam, project.director)
   const framedByDirector = !framingUntouched(project.webcam) && framingIsDirectors(project.webcam, project.director)
+  // The outcome of the Apply that wrote the project's options (none after undoing the first Apply, or after Remove).
+  const lastOutcome = project.director ? (session.outcomes.get(project.director) ?? null) : null
   // A framing measured within FACE.nearZoom / nearCrop of the camera's: Apply left the camera as it was, which shows it.
-  const lastOutcome = session.outcome
   const measuredAsShown = lastOutcome?.status === 'framed' && framingNearWebcam(lastOutcome, project.webcam)
   const framingShown = framedByDirector || measuredAsShown
   // Framing still to do: the option is on and the camera does not show the director's framing yet.
@@ -249,8 +255,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
         const before = store.state
         store.update((p) => applyDirectorPlan(p, planDirector(inputFor(p), chosen), outcome))
         const after = store.state
-        session.outcome = outcome
-        session.outcomeFor = after.director
+        if (after.director) session.outcomes.set(after.director, outcome)
         const parts = planDirector(inputFor(after), chosen).parts
         const removed = (before.layouts ?? []).some((s) => s.auto) && !(after.layouts ?? []).some((s) => s.auto)
         onNotice(directedNotice(parts, outcome, after !== before, undoHint(keymap), removed))
@@ -272,8 +277,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
       onNotice(`The automatic changes could not be removed: ${errorText(err)}`)
       return
     }
-    session.outcome = null
-    session.outcomeFor = undefined
+    session.outcomes = new WeakMap()
     emit(session)
     onSelect(null)
     onNotice(removedNotice(store.state !== before, undoHint(keymap)))
@@ -307,9 +311,8 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   // The summary, also with no part when applying would remove the director's earlier segments (the diff says so).
   const summarised = !!plan && !hidden && (plan.parts.length > 0 || plan.diff.removed > 0)
   const state = busy ? 'applying' : measuring ? 'measuring' : upToDate ? 'up-to-date' : 'ready'
-  // The outcome of the last Apply while the project still has what it wrote (not after an undo, or a framing by hand).
-  const framing =
-    lastOutcome && project.director === session.outcomeFor && (lastOutcome.status !== 'framed' || framingShown) ? framingLine(lastOutcome, !mayFrame && !settings.frameFace) : null
+  // That outcome, "framed" only while the camera shows it (not after a framing by hand).
+  const framing = lastOutcome && (lastOutcome.status !== 'framed' || framingShown) ? framingLine(lastOutcome, !mayFrame && !settings.frameFace) : null
   const selectPart = (part: DirectorPart): void => {
     // Applied and unchanged: its segment is in the project, so select it; else show where it would be.
     const id = part.ids.find((i) => store.state.layouts?.some((s) => s.id === i))
@@ -381,7 +384,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
 
         {shownNotes.map((n) => (
           <p key={n} className="hint director-note" data-testid="director-note" data-note={n}>
-            {NOTE_TEXT[n]}
+            {noteText(n, plan?.settings ?? settings)}
           </p>
         ))}
 

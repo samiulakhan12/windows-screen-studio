@@ -244,6 +244,10 @@ describe('the demo span', () => {
     expect(demoSpan(track({ samples }), [], clips, DEFAULT_ZOOM_STYLE)).toEqual({ start: 8, end: 8.5 })
     // Input after it (a shortcut at 47.9) makes it part of the demo again.
     expect(demoSpan({ ...stop, keys: [{ t: 47.9, label: 'Ctrl+S' }] }, [], clips, DEFAULT_ZOOM_STYLE)).toEqual({ start: 8, end: 47.9 })
+    // So does a click inside it (at 47.2): the move starts before that click, and the demo ends with the move, not the click.
+    const clickInMove = demoSpan({ ...stop, clicks: [...stop.clicks, { t: 47.2, x: 0.75, y: 0.94, button: 'left' }] }, [], clips, DEFAULT_ZOOM_STYLE)
+    expect(clickInMove?.start).toBe(8)
+    expect(clickInMove?.end).toBeCloseTo(47.5, 6)
     // Earlier in the video, the same move counts.
     expect(demoSpan(stop, [], ONE, DEFAULT_ZOOM_STYLE)?.end).toBeCloseTo(47.5, 6)
   })
