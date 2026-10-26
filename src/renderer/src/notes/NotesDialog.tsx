@@ -179,9 +179,7 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
               />
             </label>
             <div className="notes-count-row">
-              <span className="notes-count" aria-live="polite">
-                {countLine(words, settings.wpm)}
-              </span>
+              <span className="notes-count">{countLine(words, settings.wpm)}</span>
               <span className={`notes-saved ${status.kind}`} role={status.kind === 'error' ? 'alert' : undefined}>
                 {status.kind === 'saved' ? NOTES_COPY.saved : status.kind === 'error' ? NOTES_COPY.couldNotSave(status.message) : ''}
               </span>
@@ -226,8 +224,8 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
               format={(v) => `${v} px`}
               onSave={(fontSize) => save({ fontSize })}
             />
-            <NotesSlider label={NOTES_COPY.width} value={settings.width} min={NOTES_WIDTH.min} max={NOTES_WIDTH.max} step={10} format={(v) => `${v}`} onSave={(width) => save({ width })} />
-            <NotesSlider label={NOTES_COPY.height} value={settings.height} min={NOTES_HEIGHT.min} max={NOTES_HEIGHT.max} step={10} format={(v) => `${v}`} onSave={(height) => save({ height })} />
+            <NotesSlider label={NOTES_COPY.width} value={settings.width} min={NOTES_WIDTH.min} max={NOTES_WIDTH.max} step={10} format={(v) => `${v} px`} onSave={(width) => save({ width })} />
+            <NotesSlider label={NOTES_COPY.height} value={settings.height} min={NOTES_HEIGHT.min} max={NOTES_HEIGHT.max} step={10} format={(v) => `${v} px`} onSave={(height) => save({ height })} />
             <p className="hint">{NOTES_COPY.sizeHint}</p>
             <div className="notes-position">
               <span className="notes-position-label">{NOTES_COPY.position}</span>
