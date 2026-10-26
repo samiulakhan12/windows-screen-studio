@@ -9,6 +9,7 @@ import { registerBrandIpc } from './brandIpc'
 import { registerCaptionsIpc } from './captionsIpc'
 import { disposeExport, registerExportIpc } from './exportIpc'
 import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
+import { registerNotesIpc } from './notes/notesIpc'
 import { registerPrefsIpc } from './prefsIpc'
 import { projectsRoot, setLegacyProjectRoots } from './projects'
 import { registerProjectsIpc } from './projectsIpc'
@@ -44,6 +45,8 @@ if (!app.requestSingleInstanceLock()) {
     registerBrandIpc()
     handleMediaProtocol()
     registerRecordingIpc()
+    // Speaker notes (teleprompter): Home, the notes window and the recording bar.
+    registerNotesIpc()
     registerProjectsIpc()
     registerAssetIpc()
     registerAnalysisIpc()

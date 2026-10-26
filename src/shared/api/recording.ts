@@ -1,7 +1,7 @@
 import type { StemKind } from '../audio/settings'
 import type { CaptureSource, Corner, NormRect, RecordingStatus } from '../types'
 import type { BubbleSize } from '../recording/cameraBubble'
-import type { HotkeyAction, HotkeyCheck } from '../recording/hotkeys'
+import type { AnyHotkeyAction, HotkeyCheck } from '../recording/hotkeys'
 import type { AppSettings, RecordingPresetInput, RecordingSettingsPatch } from '../recording/settings'
 
 /**
@@ -38,6 +38,8 @@ export interface CapturePlan {
   hotkeyProblems?: string[]
   /** Something the user should know about this recording (e.g. a window recorded without cursor effects). */
   notice?: string
+  /** Why the speaker notes stay hidden during this recording (older Windows would record them). */
+  notesNotice?: string
 }
 
 /** What window recordings get on this PC (the hint on Home). */
@@ -134,8 +136,8 @@ export interface ToolbarStatus extends RecordingStatus {
   stopShortcut?: boolean
   /** Paused by auto-pause (no input for a while); the next input resumes. */
   idle?: boolean
-  /** Labels of the hotkeys that work during this recording ("Ctrl + Shift + 2"). */
-  hotkeys?: Partial<Record<HotkeyAction, string>>
+  /** Labels of the hotkeys that work during this recording ("Ctrl + Shift + 2"), the notes' too. */
+  hotkeys?: Partial<Record<AnyHotkeyAction, string>>
   /** Hotkeys that could not be registered, as messages. */
   hotkeyProblems?: string[]
   /** "Zoom here" marks made so far (the toolbar acknowledges each one). */
@@ -144,6 +146,8 @@ export interface ToolbarStatus extends RecordingStatus {
   mic?: { muted: boolean }
   /** The live camera bubble is open (`shown`: not hidden from the recording bar). */
   camera?: { shown: boolean }
+  /** The speaker notes are open for this recording (`shown`: not hidden from the bar; `playing`: scrolling). */
+  notes?: { shown: boolean; playing: boolean }
 }
 
 /**
@@ -198,10 +202,11 @@ export interface RecordingApi {
   saveRecordingPreset(preset: RecordingPresetInput): Promise<AppSettings>
   deleteRecordingPreset(id: string): Promise<AppSettings>
   /**
-   * Whether `accelerator` can be the hotkey for `action`: valid, not used by another of the
-   * app's hotkeys, and (when no recording runs) not already taken by another app.
+   * Whether `accelerator` can be the hotkey for `action` (a recording or a notes hotkey): valid,
+   * not used by another of the app's hotkeys, and (when no recording runs) not already taken by
+   * another app.
    */
-  checkHotkey(action: HotkeyAction, accelerator: string): Promise<HotkeyCheck>
+  checkHotkey(action: AnyHotkeyAction, accelerator: string): Promise<HotkeyCheck>
   /**
    * Asks to show the live camera bubble for recording `token`: on yes, the page opens it with
    * window.open('about:blank', grant.name) and shows its own camera stream there.

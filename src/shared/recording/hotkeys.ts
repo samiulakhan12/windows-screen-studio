@@ -16,6 +16,40 @@ export const DEFAULT_HOTKEYS: Hotkeys = { stop: 'Ctrl+Shift+2', pause: 'Ctrl+Shi
 
 export const HOTKEY_NAMES: Record<HotkeyAction, string> = { stop: 'Stop', pause: 'Pause / resume', mark: 'Zoom here' }
 
+/*
+ * Speaker notes hotkeys (docs/design/teleprompter.md). They are stored with the notes
+ * (userData/notes.json), not in RecordingSettings.hotkeys, and are taken globally only while a
+ * notes window is open (rehearsal or a recording with notes). A recording hotkey always wins a
+ * clash: sanitizeNotesHotkeys() gives the notes action its default, or no hotkey.
+ */
+export type NotesHotkeyAction = 'notesToggle' | 'notesBack' | 'notesForward'
+
+export type NotesHotkeys = Record<NotesHotkeyAction, string>
+
+/** Every action that can have a hotkey: the recording's and the notes'. */
+export type AnyHotkeyAction = HotkeyAction | NotesHotkeyAction
+
+export const NOTES_HOTKEY_ACTIONS: readonly NotesHotkeyAction[] = ['notesToggle', 'notesBack', 'notesForward']
+
+/** Next to the recording defaults (Ctrl+Shift+F9 / F10), equally rare in apps. */
+export const DEFAULT_NOTES_HOTKEYS: NotesHotkeys = { notesToggle: 'Ctrl+Shift+F7', notesBack: 'Ctrl+Shift+F6', notesForward: 'Ctrl+Shift+F8' }
+
+export const NOTES_HOTKEY_NAMES: Record<NotesHotkeyAction, string> = {
+  notesToggle: 'Notes: play / pause',
+  notesBack: 'Notes: back',
+  notesForward: 'Notes: forward'
+}
+
+export const isNotesHotkeyAction = (v: unknown): v is NotesHotkeyAction => typeof v === 'string' && (NOTES_HOTKEY_ACTIONS as readonly string[]).includes(v)
+
+export const isAnyHotkeyAction = (v: unknown): v is AnyHotkeyAction =>
+  isNotesHotkeyAction(v) || (typeof v === 'string' && (HOTKEY_ACTIONS as readonly string[]).includes(v))
+
+/** The name of any hotkey action, for messages ("Notes: back"). */
+export function anyHotkeyName(action: AnyHotkeyAction): string {
+  return isNotesHotkeyAction(action) ? NOTES_HOTKEY_NAMES[action] : HOTKEY_NAMES[action]
+}
+
 type Modifier = 'Ctrl' | 'Alt' | 'Shift' | 'Super'
 const MODIFIER_ORDER: readonly Modifier[] = ['Ctrl', 'Alt', 'Shift', 'Super']
 /** How the keystroke overlay (src/main/recording/keystrokes.ts) names each modifier. */
@@ -222,6 +256,31 @@ export function sanitizeHotkeys(raw: unknown): Hotkeys {
     const check = validateHotkey(v)
     let wanted = check.ok ? check.accelerator : DEFAULT_HOTKEYS[action]
     if (used.has(wanted)) wanted = DEFAULT_HOTKEYS[action]
+    if (used.has(wanted)) wanted = ''
+    out[action] = wanted
+    if (wanted) used.add(wanted)
+  }
+  return out
+}
+
+/**
+ * Valid, distinct notes hotkeys, none of them equal to an accelerator in `taken` (the recording
+ * hotkeys, which win any clash). Same rules as sanitizeHotkeys: '' means no hotkey; anything
+ * invalid or taken falls back to the default, or to no hotkey when the default is taken too.
+ */
+export function sanitizeNotesHotkeys(raw: unknown, taken: readonly string[] = []): NotesHotkeys {
+  const value = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<NotesHotkeyAction, unknown>>
+  const out = { ...DEFAULT_NOTES_HOTKEYS }
+  const used = new Set(taken.map((a) => normalizeHotkey(a)).filter((a): a is string => !!a))
+  for (const action of NOTES_HOTKEY_ACTIONS) {
+    const v = value[action]
+    if (v === '') {
+      out[action] = ''
+      continue
+    }
+    const check = validateHotkey(v)
+    let wanted = check.ok ? check.accelerator : DEFAULT_NOTES_HOTKEYS[action]
+    if (used.has(wanted)) wanted = DEFAULT_NOTES_HOTKEYS[action]
     if (used.has(wanted)) wanted = ''
     out[action] = wanted
     if (wanted) used.add(wanted)

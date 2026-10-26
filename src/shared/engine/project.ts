@@ -6,6 +6,7 @@ import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
 import { readDirectorSettings } from './directorData'
+import { readProjectScript } from '../notes/notes'
 import { readLayouts, readWebcam } from './webcamData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
@@ -127,7 +128,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
@@ -155,6 +156,8 @@ export function migrateProject(raw: unknown): Project {
     ...optional('captions', readCaptionSettings(captions)),
     // The camera director's options, sanitised (absent: never directed).
     ...optional('director', readDirectorSettings(director)),
+    // The speaker notes read while recording, cleaned (absent: recorded without notes).
+    ...optional('script', readProjectScript(script)),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

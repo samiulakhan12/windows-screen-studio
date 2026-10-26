@@ -61,6 +61,20 @@ export type AiTextResult =
   | { task: 'chapters'; chapters: { t: number; title: string }[] }
   | { task: 'title' | 'summary'; text: string }
 
+/** "Draft script" (speaker notes): the presenter's notes or bullet points, sent only on that click. */
+export interface ScriptDraftRequest {
+  /** 1 to SCRIPT_DRAFT_MAX_NOTES characters, not only white space. */
+  notes: string
+}
+
+/** A script to read aloud: paragraphs separated by a blank line, covering the notes' points in order. */
+export interface ScriptDraftResult {
+  text: string
+}
+
+/** Longest notes "Draft script" sends (characters). */
+export const SCRIPT_DRAFT_MAX_NOTES = 20_000
+
 export interface AiApi {
   listAiProviders(): Promise<AiProviderInfo[]>
   saveAiProvider(input: AiProviderInput): Promise<AiProviderInfo>
@@ -72,6 +86,13 @@ export interface AiApi {
   cancelTranscription(projectId: string): Promise<void>
   onTranscribeProgress(listener: (progress: TranscribeProgress) => void): () => void
   aiText(providerId: string, request: AiTextRequest): Promise<AiTextResult>
+  /**
+   * Turns notes or bullet points into a script to read aloud with provider `providerId`. One
+   * draft runs at a time: a new one cancels the one before. Rejects with a message to show.
+   */
+  draftScript(providerId: string, request: ScriptDraftRequest): Promise<ScriptDraftResult>
+  /** Stops the draft in progress (it then rejects); nothing when none runs. */
+  cancelScriptDraft(): Promise<void>
 }
 
 /** What each kind of provider is called, can do and uses by default (shown in Settings). */

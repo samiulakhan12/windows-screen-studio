@@ -612,6 +612,16 @@ export interface Project {
   /** What was said, from a transcription provider (edited by the user). */
   transcript?: Transcript
   captions?: CaptionSettings
+  /** The speaker notes read while recording (kept when "Keep a copy with the recording" was on). */
+  script?: ProjectScript
+}
+
+/**
+ * The speaker notes a recording was made with (docs/design/teleprompter.md). Plain text, at most
+ * NOTES_TEXT_MAX (src/shared/notes/notes.ts). Not a Transcript: it has no timings.
+ */
+export interface ProjectScript {
+  text: string
 }
 
 export interface ProjectSummary {
