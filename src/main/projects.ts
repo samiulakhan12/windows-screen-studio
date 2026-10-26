@@ -4,7 +4,8 @@ import path from 'node:path'
 import { APP_NAME } from '../shared/brand'
 import type { UnfinishedRecording } from '../shared/api/recording'
 import { migrateCursor, migrateProject } from '../shared/engine/project'
-import type { CursorTrack, NormRect, Project, ProjectSummary } from '../shared/types'
+import { cleanNotesText, NOTES_TEXT_MAX, readProjectScript } from '../shared/notes/notes'
+import type { CursorTrack, NormRect, Project, ProjectScript, ProjectSummary } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 
 /** Where recordings are kept: Videos\Flown. */
@@ -179,6 +180,42 @@ export const RAW = {
   webcam: 'webcam.webm',
   audio: 'audio.webm'
 } as const
+
+/**
+ * The speaker notes read during the recording (UTF-8), written when it is prepared and kept with
+ * it: finalize copies it into project.json `script`. Not in RAW, so never removed as an intermediate.
+ */
+export const SCRIPT_FILE = 'script.txt'
+
+/** Writes the speaker notes into recording folder `dir` (script.txt). */
+export async function writeScriptFile(dir: string, text: string): Promise<void> {
+  await fs.writeFile(path.join(dir, SCRIPT_FILE), cleanNotesText(text), 'utf8')
+}
+
+/**
+ * The speaker notes kept in recording folder `dir`, cleaned and capped (readProjectScript);
+ * undefined when there is none. Reads at most what NOTES_TEXT_MAX characters can take in UTF-8.
+ */
+export async function readScriptFile(dir: string): Promise<ProjectScript | undefined> {
+  let handle: Awaited<ReturnType<typeof fs.open>>
+  try {
+    handle = await fs.open(path.join(dir, SCRIPT_FILE), 'r')
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') console.warn('Could not read the speaker notes kept with the recording:', err)
+    return undefined
+  }
+  try {
+    // 3 bytes per UTF-16 unit at most, plus one partial character that is cut away anyway.
+    const buffer = Buffer.alloc(3 * NOTES_TEXT_MAX + 3)
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
+    return readProjectScript({ text: buffer.subarray(0, bytesRead).toString('utf8') })
+  } catch (err) {
+    console.warn('Could not read the speaker notes kept with the recording:', err)
+    return undefined
+  } finally {
+    await handle.close().catch(() => undefined)
+  }
+}
 
 const MANIFEST = 'recording.json'
 
