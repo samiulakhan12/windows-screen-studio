@@ -109,8 +109,9 @@ export function sourceLine(state: SourceState): string | null {
   }
 }
 
-/** The sound could not be measured (shown with Try again). */
-export const SOUND_FAILED = 'The sound could not be measured: the plan uses the mouse and keyboard only.'
+/** The sound could not be measured (shown with Try again); `fromCaptions`: the captions' word timings still gave the speech. */
+export const soundFailed = (fromCaptions: boolean): string =>
+  fromCaptions ? "The sound could not be measured: the plan uses your captions' word timings." : 'The sound could not be measured: the plan uses the mouse and keyboard only.'
 
 /** What each note says; null for the notes the sound status line already covers. */
 export const NOTE_TEXT: Record<DirectorNote, string | null> = {
@@ -123,6 +124,7 @@ export const NOTE_TEXT: Record<DirectorNote, string | null> = {
   'no-demo': 'Nothing happens on screen that the director can see (no clicks, scrolling, typing or zooms), so it cannot tell the intro from the demo.',
   'kept-positions': 'Your camera positions are kept.',
   'all-yours': 'Your own camera changes cover the whole video: nothing left to direct.',
+  'options-off': 'The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.',
   nothing: 'Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.'
 }
 
@@ -169,9 +171,11 @@ export function framingLine(outcome: FramingOutcome, userFraming: boolean): { st
 
 /**
  * The notice after applying: "Camera directed: intro, 1 bubble move, 2 hidden, outro; face
- * centred (1.25×)" followed by `undo` (undoHint), or "Nothing to change" when the project did not change.
+ * centred (1.25×)" followed by `undo` (undoHint), or "Nothing to change" when the project did not
+ * change. With no part and no framing: "earlier automatic changes removed" when the director's
+ * segments went (`removed`), else "options saved" (only the options were written).
  */
-export function directedNotice(parts: readonly Pick<DirectorPart, 'kind'>[], outcome: FramingOutcome, changed: boolean, undo: string): string {
+export function directedNotice(parts: readonly Pick<DirectorPart, 'kind'>[], outcome: FramingOutcome, changed: boolean, undo: string, removed: boolean): string {
   if (!changed) return 'Nothing to change'
   const count = (k: DirectorPart['kind']): number => parts.filter((p) => p.kind === k).length
   const what: string[] = []
@@ -180,7 +184,7 @@ export function directedNotice(parts: readonly Pick<DirectorPart, 'kind'>[], out
   if (count('hidden')) what.push(`${count('hidden')} hidden`)
   if (count('outro')) what.push('outro')
   const face = outcome.status === 'framed' ? `face centred (${zoomText(outcome.zoom)})` : ''
-  const body = what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || 'earlier automatic changes removed'
+  const body = what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || (removed ? 'earlier automatic changes removed' : 'options saved')
   return `Camera directed: ${body}${undo}`
 }
 

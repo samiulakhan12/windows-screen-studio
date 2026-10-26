@@ -103,7 +103,8 @@ automatically, remembering deleted automatic changes.
 5. **Summary** (`data-testid="director-summary"`, `data-state` = `measuring | ready | applying |
    up-to-date`): "4 changes · camera on screen 58% of the video"; second line when relevant
    "Keeps 1 layout change and 2 camera positions of yours"; on a re-run "+2 new · 1 removed · 3
-   unchanged".
+   unchanged". With no change left it shows only when Direct again would remove the director's
+   earlier segments ("0 changes · …", "+0 new · 5 removed · 0 unchanged").
 6. **Options** (a draft until applied; saved in the project when applied):
    - Chips "Intro and outro": Camera only | Large camera | Off (`data-testid="director-intro"`).
    - Chips "Hide the camera when silent for": 5 s | 10 s | 20 s | Never (`director-hide`).
@@ -113,8 +114,11 @@ automatically, remembering deleted automatic changes.
    - Toggle "Centre my face" (`director-face`). When the framing is the user's it starts off,
      with the hint "You framed the camera yourself; turn this on to let the director frame it."
 7. Primary button (`director-apply`, sparkle icon): **"Direct camera"**; **"Direct again"** once the
-   project has the director's changes; disabled **"Up to date"** when the plan equals the track
-   and there is no framing to do. Ghost button **"Remove automatic changes"**
+   project has the director's changes; disabled **"Up to date"** when the plan equals the track,
+   there is no framing to do and the options shown are the saved ones (for a project never
+   directed, the options it resolves to). No framing is left to do when the camera shows the
+   director's framing, or when the last Apply measured one within 0.05 zoom and 0.01 crop of the
+   camera's (and so left it as it was). Ghost button **"Remove automatic changes"**
    (`director-remove`), shown when the director's changes are in the project.
 8. Hint under the buttons: "Changing a block made by the director makes it yours: Direct again
    keeps it. Direct again brings back automatic changes you deleted; turn off what made them above."
@@ -125,7 +129,9 @@ automatically, remembering deleted automatic changes.
   face… 7/12".
 - One `store.update` writes layouts, framing and options: one Ctrl+Z.
 - Notice: "Camera directed: intro, 1 bubble move, 2 hidden, outro; face centred (1.25×)" plus
-  the undo hint (undoHint(keymap)). "Nothing to change" when the update is a no-op.
+  the undo hint (undoHint(keymap)). "Nothing to change" when the update is a no-op. With no part
+  and no framing: "Camera directed: earlier automatic changes removed" when the director's
+  segments went, else "Camera directed: options saved" (only the options were written).
 - The section then reads "Up to date", the Framing pad shows the new box.
 
 ### States and copy (`data-testid="director-note"`, `data-note`)
@@ -133,8 +139,8 @@ automatically, remembering deleted automatic changes.
 | Note | Copy |
 |---|---|
 | camera-hidden | "The camera is hidden: show it to direct it." (button disabled; the palette says "Show the camera first") |
-| no-sound | "No microphone was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face." |
-| (sound failed) | callout "The sound could not be measured: the plan uses the mouse and keyboard only." with **Try again** |
+| no-sound | "No microphone was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face." Shown only once the measurement finished and found no sound and no captions: not while measuring (the status line speaks), not when it failed (the callout below). |
+| (sound failed) | callout "The sound could not be measured: the plan uses the mouse and keyboard only." with **Try again**; when the captions gave the speech: "The sound could not be measured: the plan uses your captions' word timings." |
 | no-speech | "No talking was heard, so the camera stays on throughout and there is no intro or outro." |
 | mixed-sound | (the status line above) |
 | transcript | (the status line above) |
@@ -142,9 +148,12 @@ automatically, remembering deleted automatic changes.
 | no-demo | "Nothing happens on screen that the director can see (no clicks, scrolling, typing or zooms), so it cannot tell the intro from the demo." |
 | kept-positions | "Your camera positions are kept." |
 | all-yours | "Your own camera changes cover the whole video: nothing left to direct." |
-| nothing | "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." |
+| options-off | No part because the options turn everything off (intro and outro Off, hide Never, the bubble not moved): "The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track." |
+| nothing | No part and no earlier automatic change to remove (the diff shows a removal instead), the options allowing some: "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." Not shown while the sound is measured or when it could not be. |
 
-Framing outcome (`data-testid="director-framing"`, `data-status`):
+Framing outcome (`data-testid="director-framing"`, `data-status`), the outcome of the last Apply,
+shown while the project still has the options that Apply saved (an undo hides it, a redo brings it
+back); "framed" only while the camera shows that framing:
 
 | Status | Copy |
 |---|---|
@@ -470,7 +479,8 @@ drawn the same either way).
 const outcome = settings.frameFace
   ? await measureFraming(webcamUrl, faceSampleTimes(plan.cameraShown, speech?.ranges ?? null, webcamOffset, cameraDuration), plan.framingCap, { onProgress, signal })
   : { status: 'skipped' }
-store.update((p) => applyDirectorPlan(p, planDirector({ ...input, project: p }, settings), outcome))
+// The cursor with the latest project's input edits: a click ignored while the face is measured counts.
+store.update((p) => applyDirectorPlan(p, planDirector({ project: p, cursor: effectiveTrack(recorded, p), speech }, settings), outcome))
 ```
 
 applyDirectorPlan writes the layouts; `director` = settings with `framed`; for a 'framed' outcome
@@ -871,11 +881,12 @@ stubbed modules (their bodies and private helpers are free).
   unchanged), `docs/FEATURES.md`, `docs/ROADMAP.md` (NW-08 shipped; no separate face model needed).
 - **Builds**: section 2. The section keeps a per-store analysis (like ClipPanel's `analyses`
   WeakMap): speech loaded on mount (loadDirectorSpeech), the draft options from
-  directorSettingsOf, the live plan (planDirector, debounced 150 ms; cursorPath/focusPath from the
-  editor's scene or built once with useMemo), the strip, the list, the options, the buttons.
+  directorSettingsOf, the live plan (planDirector, debounced 150 ms; cursorPath/focusPath left to
+  planDirector, which builds them once per recording and caches them, so opening the tab again
+  reuses them and their corner costs), the strip, the list, the options, the buttons.
   Apply: measureFraming (when Centre my face is on) on faceSampleTimes(plan.cameraShown, …,
   `player.webcam.duration`), then one `store.update` recomputing the plan from the fresh project
-  (section 4, Apply), the notice with undoHint, the outcome line. Remove: one `store.update(clearDirected)`.
+  and its input edits (section 4, Apply), the notice with undoHint, the outcome line. Remove: one `store.update(clearDirected)`.
   The palette request applies at once. Unavailable reasons in the palette. Timeline marking.
 - **Verify**: typecheck, vitest (directorCopy plus all). Against the stubs the section shows an
   empty plan ("Nothing to change") and framing 'unavailable', enough to build and style it. The e2e

@@ -16,6 +16,7 @@ import {
   partTimes,
   reasonText,
   removedNotice,
+  soundFailed,
   sourceLine,
   sourceState,
   summaryLine,
@@ -99,7 +100,13 @@ describe('the sound status and the notes', () => {
     expect(NOTE_TEXT['all-yours']).toBe('Your own camera changes cover the whole video: nothing left to direct.')
     expect(NOTE_TEXT['mixed-sound']).toBeNull()
     expect(NOTE_TEXT.transcript).toBeNull()
+    expect(NOTE_TEXT['options-off']).toBe('The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.')
     for (const n of ['no-sound', 'no-speech', 'no-input', 'no-demo', 'kept-positions'] as const) expect(NOTE_TEXT[n]).toMatch(/\.$/)
+  })
+
+  it('says what a plan uses when the sound could not be measured (dir-plan-6)', () => {
+    expect(soundFailed(false)).toBe('The sound could not be measured: the plan uses the mouse and keyboard only.')
+    expect(soundFailed(true)).toBe("The sound could not be measured: the plan uses your captions' word timings.")
   })
 })
 
@@ -122,13 +129,20 @@ describe('the notices', () => {
   const undo = undoHint(DEFAULT_KEYMAP)
   it('names what was directed, with the undo hint', () => {
     const framed = { status: 'framed', zoom: 1.25, cropX: 0.62, cropY: 0.4, found: 12, sampled: 12, steady: true } as const
-    expect(directedNotice(F1, framed, true, undo)).toBe(`Camera directed: intro, 1 bubble move, 2 hidden, outro; face centred (1.25×)${undo}`)
+    expect(directedNotice(F1, framed, true, undo, false)).toBe(`Camera directed: intro, 1 bubble move, 2 hidden, outro; face centred (1.25×)${undo}`)
     expect(undo).toMatch(/to undo$/)
-    expect(directedNotice(F1.slice(2, 3), { status: 'skipped' }, true, '')).toBe('Camera directed: 1 bubble move')
-    expect(directedNotice([], framed, true, '')).toBe('Camera directed: face centred (1.25×)')
-    expect(directedNotice(F1, framed, false, undo)).toBe('Nothing to change')
+    expect(directedNotice(F1.slice(2, 3), { status: 'skipped' }, true, '', false)).toBe('Camera directed: 1 bubble move')
+    expect(directedNotice([], framed, true, '', true)).toBe('Camera directed: face centred (1.25×)')
+    expect(directedNotice(F1, framed, false, undo, false)).toBe('Nothing to change')
     expect(removedNotice(true, '')).toBe('Automatic camera changes removed')
     expect(removedNotice(false, undo)).toBe('No automatic changes to remove')
+  })
+
+  it('says the earlier automatic changes were removed only when they were; else that the options were saved (ui-dir-3)', () => {
+    for (const outcome of [{ status: 'skipped' }, { status: 'not-found', found: 0, sampled: 12 }, { status: 'unavailable', reason: 'no WebGL' }] as const) {
+      expect(directedNotice([], outcome, true, '', true)).toBe('Camera directed: earlier automatic changes removed')
+      expect(directedNotice([], outcome, true, '', false)).toBe('Camera directed: options saved')
+    }
   })
 })
 

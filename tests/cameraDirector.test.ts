@@ -420,6 +420,28 @@ describe('without sound or cursor', () => {
     expect(plan.upToDate).toBe(true)
   })
 
+  it('does not say nothing to change when the plan removes the director\'s earlier segments (dir-plan-5)', () => {
+    const p = e2eProject()
+    const directed = applyDirectorPlan(p, direct(p), SKIPPED)
+    const plan = direct(directed, { speech: null, cursor: { ...CURSOR, samples: CURSOR.samples.map((s) => ({ ...s, x: 0.5, y: 0.5 })), clicks: [] } })
+    expect(plan.parts).toEqual([])
+    expect(plan.diff).toEqual({ added: 0, removed: 5, unchanged: 0 })
+    expect(plan.upToDate).toBe(false)
+    expect(plan.notes).toEqual(['no-sound', 'no-demo'])
+  })
+
+  it('says the options are all off, not nothing to change, when they leave nothing to direct (dir-plan-5)', () => {
+    const off = { intro: 'off', hideAfter: 0, corners: 'keep' } as const
+    const p = e2eProject()
+    const fresh = direct(p, {}, off)
+    expect(fresh.parts).toEqual([])
+    expect(fresh.upToDate).toBe(true)
+    expect(fresh.notes).toEqual(['options-off'])
+    const again = direct(applyDirectorPlan(p, direct(p), SKIPPED), {}, off)
+    expect(again.diff).toEqual({ added: 0, removed: 5, unchanged: 0 })
+    expect(again.notes).toEqual(['options-off'])
+  })
+
   it('says when the user\'s own changes cover the video', () => {
     const plan = direct(e2eProject({ layouts: [seg('mine', 0, 47, 'side-by-side')] }))
     expect(plan.notes).toContain('all-yours')

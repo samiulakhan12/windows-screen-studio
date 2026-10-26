@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { applyDirectorPlan, clearDirected, planDirector, type DirectorInput, type DirectorPart, type DirectorPlan, type DirectorStripItem } from '../../../../shared/editor/cameraDirector'
+import { applyDirectorPlan, clearDirected, framingNearWebcam, planDirector, type DirectorInput, type DirectorPart, type DirectorPlan, type DirectorStripItem } from '../../../../shared/editor/cameraDirector'
 import {
   applyingLabel,
   applyLabel,
@@ -16,7 +16,7 @@ import {
   partTimes,
   reasonText,
   removedNotice,
-  SOUND_FAILED,
+  soundFailed,
   sourceLine,
   sourceState,
   summaryLine,
@@ -24,10 +24,9 @@ import {
 } from '../../../../shared/editor/directorCopy'
 import type { EditStore } from '../../../../shared/editor/editStore'
 import { undoHint } from '../../../../shared/editor/shortcuts'
-import { SmoothedTrack } from '../../../../shared/engine/cursor'
 import { directorMayFrame, directorSettingsOf, framingIsDirectors, framingUntouched, hasCameraPositions, hasDirectorChanges } from '../../../../shared/engine/directorData'
+import { effectiveTrack } from '../../../../shared/engine/inputTrack'
 import { outputDuration, outputToSource } from '../../../../shared/engine/timeline'
-import { focusPathFor } from '../../../../shared/engine/zoom'
 import { faceSampleTimes, type FramingOutcome } from '../../../../shared/render/faceFraming'
 import type { CursorTrack, DirectorHideAfter, DirectorSettings, Project } from '../../../../shared/types'
 import { loadDirectorSpeech, measureFraming, type SpeechResult } from '../directorAnalysis'
@@ -42,13 +41,13 @@ import { CornerGlyph, showLayout } from '../LayoutTrack'
 import type { PreviewPlayer } from '../player'
 import './director.css'
 
-type Props = Pick<InspectorProps, 'project' | 'cursor' | 'onSelect' | 'onNotice' | 'directorRequest'>
+type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'onSelect' | 'onNotice' | 'directorRequest'>
 
 /**
  * What the section keeps for the editor session (keyed by its store), so switching tabs never
  * measures the sound again and an Apply started before switching tabs is still shown: the speech
  * (and the sound it was measured for), the palette request handled last, the framing outcome of
- * the last Apply, and the Apply running now (with its progress).
+ * the last Apply (and the Project.director it wrote), and the Apply running now (with its progress).
  */
 interface Session {
   speech: SpeechResult | null
@@ -56,6 +55,8 @@ interface Session {
   pending: Promise<SpeechResult> | null
   request: number
   outcome: FramingOutcome | null
+  /** The Project.director that Apply wrote: the outcome shows only while the project has it (undo hides it, redo shows it again). */
+  outcomeFor: DirectorSettings | undefined
   busy: { listening: boolean; done: number; total: number } | null
   listeners: Set<() => void>
   /** Bumped on every change, for useSyncExternalStore. */
@@ -130,12 +131,12 @@ const seekOutput = (player: PreviewPlayer, project: Project, o: number): void =>
  * Apply measures the face, then writes the plan recomputed from the latest project in one
  * store.update (one undo step).
  */
-export function DirectorSection({ project, cursor, onSelect, onNotice, directorRequest = 0 }: Props): JSX.Element {
+export function DirectorSection({ project, cursor, recorded, onSelect, onNotice, directorRequest = 0 }: Props): JSX.Element {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const session = useMemo<Session>(() => {
     let s = sessions.get(store)
-    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcome: null, busy: null, listeners: new Set(), version: 0 }))
+    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcome: null, outcomeFor: undefined, busy: null, listeners: new Set(), version: 0 }))
     return s
   }, [store])
   const subscribe = useCallback(
@@ -166,9 +167,8 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
   const settings = draft ?? resolved
   const choose = (patch: Partial<DirectorSettings>): void => setDraft({ ...settings, ...patch })
 
-  // The paths the planner maps the cursor and the zoom camera with (as the editor's scene builds them).
-  const cursorPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, project.cursor.smoothing), [cursor.samples, project.duration, project.cursor.smoothing])
-  const focusPath = useMemo(() => focusPathFor(cursor.samples, project.duration), [cursor.samples, project.duration])
+  // The planner builds the cursor and focus paths itself, cached per recording: opening the tab
+  // again reuses them and the corner costs cached for them.
   const hidden = !project.webcam.show
   const speechNow = speech?.speech ?? null
 
@@ -182,21 +182,26 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
     }
     const run = (): void => {
       planRef.current = { project, settings }
-      setPlan(safePlan({ project, cursor, cursorPath, focusPath, speech: speechNow }, settings))
+      setPlan(safePlan({ project, cursor, speech: speechNow }, settings))
     }
     // The first plan at once, so the section never opens empty.
     if (!planRef.current) return run()
     const timer = window.setTimeout(run, 150)
     return () => window.clearTimeout(timer)
     // `settings` is a new object every render: its fields decide.
-  }, [hidden, project, cursor, cursorPath, focusPath, speechNow, settings.intro, settings.corners, settings.hideAfter, settings.frameFace])
+  }, [hidden, project, cursor, speechNow, settings.intro, settings.corners, settings.hideAfter, settings.frameFace])
 
   const directed = hasDirectorChanges(project)
   const mayFrame = directorMayFrame(project.webcam, project.director)
   const framedByDirector = !framingUntouched(project.webcam) && framingIsDirectors(project.webcam, project.director)
+  // A framing measured within FACE.nearZoom / nearCrop of the camera's: Apply left the camera as it was, which shows it.
+  const lastOutcome = session.outcome
+  const measuredAsShown = lastOutcome?.status === 'framed' && framingNearWebcam(lastOutcome, project.webcam)
+  const framingShown = framedByDirector || measuredAsShown
   // Framing still to do: the option is on and the camera does not show the director's framing yet.
-  const framingTodo = settings.frameFace && !framedByDirector
-  const upToDate = !!plan && plan.upToDate && !framingTodo && sameSettings(saved, settings)
+  const framingTodo = settings.frameFace && !framingShown
+  // A project never directed compares with the options it resolves to: unchanged, applying would only save them.
+  const upToDate = !!plan && plan.upToDate && !framingTodo && sameSettings(saved ?? resolved, settings)
 
   /* ---------- apply ---------- */
 
@@ -223,7 +228,8 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
         setBusy({ listening: true, done: 0, total: 0 })
         const heard = await speechFor(session, store.state, cursor)
         const sp = heard.speech
-        const inputFor = (p: Project): DirectorInput => ({ project: p, cursor, cursorPath, focusPath, speech: sp })
+        // The input with the input edits of the project planned (a click ignored meanwhile counts).
+        const inputFor = (p: Project): DirectorInput => ({ project: p, cursor: effectiveTrack(recorded, p), speech: sp })
         setBusy({ listening: false, done: 0, total: 0 })
         let outcome: FramingOutcome = { status: 'skipped' }
         const video = player.webcam
@@ -244,8 +250,10 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
         store.update((p) => applyDirectorPlan(p, planDirector(inputFor(p), chosen), outcome))
         const after = store.state
         session.outcome = outcome
+        session.outcomeFor = after.director
         const parts = planDirector(inputFor(after), chosen).parts
-        onNotice(directedNotice(parts, outcome, after !== before, undoHint(keymap)))
+        const removed = (before.layouts ?? []).some((s) => s.auto) && !(after.layouts ?? []).some((s) => s.auto)
+        onNotice(directedNotice(parts, outcome, after !== before, undoHint(keymap), removed))
       } catch (err) {
         console.error('camera director: directing failed', err)
         onNotice(`The camera could not be directed: ${errorText(err)}`)
@@ -253,7 +261,7 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
         setBusy(null)
       }
     },
-    [session, store, player, cursor, cursorPath, focusPath, onNotice, keymap]
+    [session, store, player, cursor, recorded, onNotice, keymap]
   )
 
   const remove = (): void => {
@@ -265,6 +273,7 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
       return
     }
     session.outcome = null
+    session.outcomeFor = undefined
     emit(session)
     onSelect(null)
     onNotice(removedNotice(store.state !== before, undoHint(keymap)))
@@ -286,11 +295,21 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
   const source = sourceState(speechNow, measuring)
   const failed = !measuring && !!speech?.failed
   const noSpeechKnown = !measuring && !speechNow
+  // The recording has no sound (measured, nothing failed, no captions). Still measuring, or failed,
+  // is not "no sound": the plan made without speech then says nothing about the talking.
+  const soundKnownAbsent = !measuring && !!speech && !speech.failed && !speechNow
+  const speechUnknown = !speechNow && !soundKnownAbsent
   const notes = hidden ? (['camera-hidden'] as const) : (plan?.notes ?? [])
-  const shownNotes = [...new Set(notes)].filter((n) => NOTE_TEXT[n] && !(n === 'nothing' && plan && plan.parts.length > 0))
+  const shownNotes = [...new Set(notes)].filter(
+    (n) => NOTE_TEXT[n] && !(n === 'nothing' && plan && plan.parts.length > 0) && !(speechUnknown && (n === 'no-sound' || n === 'nothing'))
+  )
   const kept = plan ? keptLine(plan.kept) : null
+  // The summary, also with no part when applying would remove the director's earlier segments (the diff says so).
+  const summarised = !!plan && !hidden && (plan.parts.length > 0 || plan.diff.removed > 0)
   const state = busy ? 'applying' : measuring ? 'measuring' : upToDate ? 'up-to-date' : 'ready'
-  const framing = session.outcome ? framingLine(session.outcome, !mayFrame && !settings.frameFace) : null
+  // The outcome of the last Apply while the project still has what it wrote (not after an undo, or a framing by hand).
+  const framing =
+    lastOutcome && project.director === session.outcomeFor && (lastOutcome.status !== 'framed' || framingShown) ? framingLine(lastOutcome, !mayFrame && !settings.frameFace) : null
   const selectPart = (part: DirectorPart): void => {
     // Applied and unchanged: its segment is in the project, so select it; else show where it would be.
     const id = part.ids.find((i) => store.state.layouts?.some((s) => s.id === i))
@@ -315,7 +334,7 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
           <p className="callout" role="alert" data-testid="director-sound-failed">
             <EditorIcon name="alert" size={16} />
             <span>
-              {SOUND_FAILED}{' '}
+              {soundFailed(!!speechNow)}{' '}
               <button className="link" onClick={() => void speechFor(session, store.state, cursor)}>
                 Try again
               </button>
@@ -345,20 +364,20 @@ export function DirectorSection({ project, cursor, onSelect, onNotice, directorR
                 <span className="director-glyph face" aria-hidden="true">
                   <Icon name="camera" size={14} />
                 </span>
-                <span className="director-part-text">{faceLine(framedByDirector ? { zoom: project.webcam.zoom ?? 1 } : null)}</span>
+                <span className="director-part-text">{faceLine(framingShown ? { zoom: project.webcam.zoom ?? 1 } : null)}</span>
               </li>
             )}
           </ul>
         )}
 
-        {plan && !hidden && plan.parts.length > 0 && (
+        {plan && summarised && (
           <div className="director-summary" data-testid="director-summary" data-state={state}>
             <span>{summaryLine(plan)}</span>
             {kept && <span className="muted">{kept}</span>}
             {directed && <span className="muted">{diffLine(plan.diff)}</span>}
           </div>
         )}
-        {(!plan || hidden || plan.parts.length === 0) && <span className="director-summary empty" data-testid="director-summary" data-state={state} hidden />}
+        {!summarised && <span className="director-summary empty" data-testid="director-summary" data-state={state} hidden />}
 
         {shownNotes.map((n) => (
           <p key={n} className="hint director-note" data-testid="director-note" data-note={n}>

@@ -95,7 +95,9 @@ export type DirectorNote =
   | 'kept-positions'
   /** The user's own layout changes cover nearly all the video (95% or more). */
   | 'all-yours'
-  /** Nothing to change. */
+  /** No intro or outro, never hidden and the bubble kept home: the options leave nothing to direct. */
+  | 'options-off'
+  /** Nothing to change: no part, and no earlier automatic change to remove (the options allow some). */
   | 'nothing'
 
 /** A stretch of the output timeline by what it shows, for the panel's plan strip. */
@@ -285,7 +287,11 @@ export function planDirector(input: DirectorInput, settings: DirectorSettings): 
 
   if (positions.length && settings.corners === 'keep') notes.push('kept-positions')
   if (total > 0 && lengthOf(lockedRanges) >= ALL_YOURS * total) notes.push('all-yours')
-  if (!parts.length) notes.push('nothing')
+  // No part: the options turned everything off, or there is nothing to change unless applying
+  // would still remove the director's earlier segments (the diff then says so).
+  const diff = diffOf(layouts, current)
+  if (!parts.length && settings.intro === 'off' && settings.hideAfter === 0 && settings.corners === 'keep') notes.push('options-off')
+  else if (!parts.length && diff.removed === 0) notes.push('nothing')
 
   return {
     layouts,
@@ -293,7 +299,7 @@ export function planDirector(input: DirectorInput, settings: DirectorSettings): 
     settings,
     kept: { changes: locked.length, positions: positions.length },
     notes,
-    diff: diffOf(layouts, current),
+    diff,
     upToDate,
     cameraShare: total > 0 ? lengthOf(rangesToOutput(cameraShown, clips)) / total : 0,
     framingCap: large ? FACE.largeCameraZoom : FACE.maxZoom,
@@ -404,11 +410,20 @@ export function spliceDirected(base: readonly LayoutSegment[], runs: readonly Di
 }
 
 /**
+ * Whether a measured framing is within FACE.nearZoom / nearCrop of the webcam's: applying leaves
+ * the webcam as it is then (it already shows that framing).
+ */
+export const framingNearWebcam = (f: Framing, w: { zoom?: number; cropX?: number; cropY?: number }): boolean =>
+  Math.abs(f.zoom - (w.zoom ?? 1)) <= FACE.nearZoom + 1e-9 &&
+  Math.abs(f.cropX - (w.cropX ?? 0.5)) <= FACE.nearCrop + 1e-9 &&
+  Math.abs(f.cropY - (w.cropY ?? 0.5)) <= FACE.nearCrop + 1e-9
+
+/**
  * The project with `plan` applied, as one edit: its layouts; Project.director = plan.settings
  * with `framed`; and, for a 'framed' outcome while the director may frame (the option on), the
- * webcam's zoom, cropX and cropY (unless within FACE.nearZoom / nearCrop of the current ones).
- * `framed` is the framing written now, else kept only while the webcam still shows it. Returns
- * `project` itself when nothing changes, so store.update adds no undo step.
+ * webcam's zoom, cropX and cropY (unless framingNearWebcam). `framed` is the framing written
+ * now, else kept only while the webcam still shows it. Returns `project` itself when nothing
+ * changes, so store.update adds no undo step.
  */
 export function applyDirectorPlan(project: Project, plan: DirectorPlan, framing: FramingOutcome): Project {
   const layouts = sameList(project.layouts ?? [], plan.layouts) ? project.layouts : plan.layouts
@@ -416,11 +431,7 @@ export function applyDirectorPlan(project: Project, plan: DirectorPlan, framing:
   const was = framingIsDirectors(webcam, project.director) ? project.director?.framed : undefined
   let framed: Framing | undefined = was
   if (framing.status === 'framed' && plan.settings.frameFace) {
-    const near =
-      Math.abs(framing.zoom - (webcam.zoom ?? 1)) <= FACE.nearZoom + 1e-9 &&
-      Math.abs(framing.cropX - (webcam.cropX ?? 0.5)) <= FACE.nearCrop + 1e-9 &&
-      Math.abs(framing.cropY - (webcam.cropY ?? 0.5)) <= FACE.nearCrop + 1e-9
-    if (!near) {
+    if (!framingNearWebcam(framing, webcam)) {
       webcam = { ...webcam, zoom: framing.zoom, cropX: framing.cropX, cropY: framing.cropY }
       framed = { zoom: framing.zoom, cropX: framing.cropX, cropY: framing.cropY }
     }
