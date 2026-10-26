@@ -106,7 +106,8 @@ export function runPolish(
       return {}
     })
     if (!runs('silences')) return null
-    // Not measured: only the silences are skipped (the director's speech falls back to the transcript).
+    // Not measured: only the silences are skipped (the director asks for its own source again, and
+    // falls back to the transcript when that fails too).
     const sound = sourceActivity(start, levels)
     setRow('silences', sound ? WAITING : { phase: 'skipped', text: polishSkipText('silences', 'not-measured') })
     return sound
@@ -166,7 +167,8 @@ export function runPolish(
       setRow('captions', { phase: 'skipped', text: polishSkipText('captions', 'cancelled') })
     }
 
-    // 2. The director's speech: the levels are cached by now, and this run's transcript refines it.
+    // 2. The director's speech: from the levels measured above (asked for again if they failed), refined
+    // by this run's transcript.
     let speech: DirectorSpeech | null = null
     if (runs('director')) {
       setRow('director', { phase: 'working', text: applyingLabel({ listening: true, done: 0, total: 0 }) })
