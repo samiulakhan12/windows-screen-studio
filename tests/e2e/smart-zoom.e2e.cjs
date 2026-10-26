@@ -265,11 +265,20 @@ async function exportMp4(app, win, name, out) {
   await win.click('.modal button:has-text("Done")')
 }
 
-/** A PNG screenshot of an element, kept under 300 KB (docs/screenshots). */
+/**
+ * A PNG screenshot for docs/screenshots (kept under 300 KB): the inspector with `selector`
+ * scrolled into view, or the element itself when it is not in the inspector (the timeline).
+ */
 async function shot(win, selector, name) {
   if (!SHOTS) return
   const file = path.join(SHOTS, name)
-  await win.locator(selector).first().screenshot({ path: file })
+  const el = win.locator(selector).first()
+  const inInspector = await el.evaluate((e) => {
+    e.scrollIntoView({ block: 'end' })
+    return !!e.closest('.inspector')
+  })
+  await h.sleep(200)
+  await (inInspector ? win.locator('.inspector') : el).screenshot({ path: file })
   console.log(`  screenshot ${file} (${Math.round(fs.statSync(file).size / 1024)} KB)`)
 }
 
@@ -348,7 +357,7 @@ async function main() {
     const summary = await win.textContent('[data-testid="recorded-clicks"] > summary')
     h.assert(summary.trim() === 'Recorded clicks · 3 · 1 ignored', `list summary: ${summary}`)
     h.assert((await win.textContent('[data-testid="auto-zoom-summary"]')).startsWith('3 left clicks (1 ignored)'), 'the auto zoom summary counts the ignored click')
-    await shot(win, '.insp-section:has([data-testid="recorded-clicks"])', 'smart-zoom-recorded-clicks.png')
+    await shot(win, '[data-testid="recorded-clicks"] .zoom-actions', 'smart-zoom-recorded-clicks.png')
 
     // A selected auto zoom says what it was made for; "Ignore this click" removes it.
     await win.click(`.zoom-seg[data-zoom="${zoom9.id}"]`)
@@ -501,7 +510,7 @@ async function main() {
     for (let k = 0; k <= 40; k++) scrolls.push({ t: +(3 + k / 10).toFixed(2), x: 0.5, y: 0.5, dx: 0, dy: 1 })
     const look = { show: false, size: 1.4, smoothing: 0.5, clickEffect: false, hideWhenIdle: false }
     const id = fx.seedProject(home, { id: 'rec-scroll', name: 'Scrolling', media, seconds: 20, style: STYLE, capture: NATIVE, cursor: track(samples, clicks, { scrolls }), cursorSettings: look })
-    const oldId = fx.seedProject(home, { id: 'rec-noscroll', name: 'Before scrolling', media, seconds: 20, style: STYLE, capture: NATIVE, cursor: track(samples, clicks), cursorSettings: look })
+    const oldId = fx.seedProject(home, { id: 'rec-noscroll', name: 'Older recording', media, seconds: 20, style: STYLE, capture: NATIVE, cursor: track(samples, clicks), cursorSettings: look })
     const { app, win, logs } = await h.launch({ home })
     ctx.app = app
     ctx.logs = logs
@@ -544,7 +553,7 @@ async function main() {
     // A recording made before scrolling was captured.
     await win.click('header .btn.ghost >> nth=0')
     await win.waitForSelector('.project-open', { timeout: 30000 })
-    await fx.openProject(win, 'Before scrolling')
+    await fx.openProject(win, 'Older recording')
     await win.click('.insp-tabs button:has-text("Zoom")')
     await win.click('button:has-text("Regenerate")')
     p = await saved(home, oldId, (q) => autoOf(q).length === 2, 'two automatic zooms')
