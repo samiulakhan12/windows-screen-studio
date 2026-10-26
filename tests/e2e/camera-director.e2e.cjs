@@ -49,6 +49,16 @@ function micAudio() {
   return file
 }
 
+/** The grey screen with the voice as its (mixed) sound, as a recording with sound always has it. */
+function screenWithSound() {
+  const file = path.join(fx.MEDIA_CACHE, `director-screen-${SECONDS}s.mp4`)
+  if (fs.existsSync(file)) return file
+  const tmp = `${file}.part.mp4`
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', fx.solidVideo({ seconds: SECONDS }), '-i', micAudio(), '-map', '0:v', '-map', '1:a', '-c', 'copy', '-shortest', '-movflags', '+faststart', tmp])
+  fs.renameSync(tmp, file)
+  return file
+}
+
 /** cursor.json: a sample every 0.1 s at the middle until 8.0, then to (0.92, 0.9) by 8.5, held; left clicks there at 13-25 s. */
 function directorCursor() {
   const samples = []
@@ -64,7 +74,7 @@ function directorCursor() {
 /** Seeds the director's recording; `sound: false` leaves out the sound, `camera: false` the camera. */
 async function seedDirector(home, { id, name, sound = true, camera = true, layouts = [], webcam = {} }) {
   const cam = camera ? await personVideo(SECONDS, { cx: 0.62, markers: false }) : null
-  fx.seedProject(home, { id, name, media: fx.solidVideo({ seconds: SECONDS }), seconds: SECONDS, webcam: cam, audio: sound, style: BLACK, cursor: directorCursor() })
+  fx.seedProject(home, { id, name, media: sound ? screenWithSound() : fx.solidVideo({ seconds: SECONDS }), seconds: SECONDS, webcam: cam, audio: sound, style: BLACK, cursor: directorCursor() })
   const dir = path.join(h.projectsRoot(home), id)
   const file = path.join(dir, 'project.json')
   const p = JSON.parse(fs.readFileSync(file, 'utf8'))
@@ -267,7 +277,8 @@ async function main() {
     console.log(`  layouts: ${layoutsText(p.layouts)}; framing ${p.webcam.zoom} ${p.webcam.cropX} ${p.webcam.cropY}`)
     expectLayouts(p.layouts, F1, 'directed')
     const { zoom, cropX, cropY } = p.webcam
-    h.assert(zoom >= 1.1 && zoom <= 1.3 && cropX >= 0.56 && cropX <= 0.68 && cropY >= 0.3 && cropY <= 0.5, `the face is centred: zoom ${zoom}, crop ${cropX}, ${cropY}`)
+    // Checked at the end, so the preview, undo and export are measured whatever the framing came to.
+    const framingOk = zoom >= 1.1 && zoom <= 1.3 && cropX >= 0.56 && cropX <= 0.68 && cropY >= 0.3 && cropY <= 0.5
     h.assert(JSON.stringify(p.director.framed) === JSON.stringify({ zoom, cropX, cropY }), `director.framed is the framing (${JSON.stringify(p.director.framed)})`)
     h.assert((await win.$$('.layout-seg[data-auto="true"]')).length === 5, 'five automatic blocks on the camera track')
     const status = await win.$eval('[data-testid="director-framing"]', (e) => e.dataset.status)
@@ -304,6 +315,7 @@ async function main() {
     h.assert(inBl.n > 50 && brGray.share > 0.98, 'the bubble is bottom left, the bottom right is the screen')
     const outro = F.at(41)
     h.assert(countIn(outro, FRAME, isGray).share < 0.02 && countIn(outro, FRAME, isSkin).n > 500, 'the outro shows the full camera')
+    h.assert(framingOk, `the face is centred: zoom ${zoom} in [1.1, 1.3], cropX ${cropX} in [0.56, 0.68], cropY ${cropY} in [0.3, 0.5]`)
   }))
 
   await test('Direct again keeps a block changed by hand', fx.withHome('director-again', async (ctx, home) => {
