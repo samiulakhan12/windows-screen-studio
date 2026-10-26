@@ -151,10 +151,12 @@ automatically, remembering deleted automatic changes.
 | options-off | No part because the options turn everything off (intro and outro Off, hide Never, the bubble not moved): "The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track." |
 | nothing | No part and no earlier automatic change to remove (the diff shows a removal instead), the options allowing some: "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." with only the reasons of the options that are on (`noteText`): "no talking before or after the demo" while the intro and outro are on, "no long silences" while hiding is on (not Never), "the cursor never came near the camera" while the bubble moves; one option on gives one reason ("Nothing to change: the cursor never came near the camera."), two are joined with "and" ("Nothing to change: no long silences and the cursor never came near the camera."). Not shown while the sound is measured or when it could not be. |
 
-Framing outcome (`data-testid="director-framing"`, `data-status`), the outcome of the last Apply,
-shown while the project still has both the layouts and the options that Apply wrote (an undo hides
-it, a redo brings it back; a Direct again may change only one of them, so both are compared, and a
-layout change made by hand also hides it); "framed" only while the camera shows that framing:
+Framing outcome (`data-testid="director-framing"`, `data-status`), the outcome of the Apply that
+wrote the project's options: the section keeps each Apply's outcome by the `Project.director` it
+wrote, a new object whenever that Apply changed the project, also when it changed only the layouts
+(a Direct again putting back a deleted automatic segment). So an undo shows the outcome of the
+Apply before it (none before the first Apply; Remove forgets them all), a redo the undone one again, and
+edits by hand keep it; "framed" only while the camera shows that framing:
 
 | Status | Copy |
 |---|---|
@@ -487,7 +489,8 @@ store.update((p) => applyDirectorPlan(p, planDirector({ project: p, cursor: effe
 applyDirectorPlan writes the layouts; `director` = settings with `framed`; for a 'framed' outcome
 (the option on) the webcam's zoom, cropX and cropY unless within 0.05 zoom and 0.01 crop of the
 current ones; `framed` = the framing written now, else kept only while the webcam still shows it.
-It returns the same project when nothing changes.
+It returns the same project when nothing changes; else `director` is a new object, also when only
+the layouts changed, so it tells the Apply that wrote the project (the framing outcome above).
 
 clearDirected ("Remove automatic changes"): withoutDirected; zoom, cropX, cropY removed only while
 the framing is still the director's; `director.framed` dropped (the options stay).

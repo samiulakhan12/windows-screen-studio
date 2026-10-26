@@ -556,6 +556,17 @@ describe('applying and removing', () => {
     expect(again.webcam).toBe(nudged.webcam)
   })
 
+  it('writes a new director (equal options) when only the layouts change, so it tells that Apply', () => {
+    const p = e2eProject()
+    const applied = applyDirectorPlan(p, direct(p), SKIPPED)
+    const gone = applied.layouts!.find((s) => s.auto)
+    const deleted = { ...applied, layouts: applied.layouts!.filter((s) => s !== gone) }
+    const again = applyDirectorPlan(deleted, direct(deleted), SKIPPED)
+    expect(again.layouts).toEqual(applied.layouts)
+    expect(again.director).toEqual(applied.director)
+    expect(again.director).not.toBe(applied.director)
+  })
+
   it('returns the same project when nothing changes', () => {
     const p = e2eProject()
     const applied = applyDirectorPlan(p, direct(p), SKIPPED)

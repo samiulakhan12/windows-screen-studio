@@ -432,7 +432,7 @@ describe('the framing outcome follows the project (ui-dir-4)', () => {
     expect(one(out, 'director-framing-unavailable')).toBeUndefined()
   })
 
-  it('a Direct again that wrote only the layouts: its outcome goes with an undo and is back after redo', async () => {
+  it('a Direct again that wrote only the layouts: an undo shows the outcome of the Apply before, a redo its own', async () => {
     player.webcam = CAMERA
     framingReply = () => Promise.resolve(FRAMED)
     render()
@@ -442,28 +442,31 @@ describe('the framing outcome follows the project (ui-dir-4)', () => {
     await flush()
     out = render()
     expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
-    // One automatic segment deleted by hand.
+    // One automatic segment deleted by hand: the framing is still the one that Apply measured.
     const gone = store.state.layouts!.find((s) => s.auto)!.id
     store.update((p) => ({ ...p, layouts: p.layouts!.filter((s) => s.id !== gone) }))
     const deleted = store.state
     out = render()
-    // Direct again while face framing is unavailable: the segment is back, the options and the framing stay.
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
+    // Direct again while face framing is unavailable: the segment is back, the options and the framing are the same.
     framingReply = () => Promise.resolve({ status: 'unavailable', reason: 'WebGL is not available' })
     ;(apply(out).props.onClick as () => void)()
     await flush()
     out = render()
     const again = store.state
     expect(again.layouts).not.toBe(deleted.layouts)
-    expect(again.director).toBe(deleted.director)
+    expect(again.webcam).toBe(deleted.webcam)
+    expect(again.director).toEqual(deleted.director)
     expect(one(out, 'director-framing-unavailable')).toBeDefined()
-    // Ctrl+Z: the project before that Apply, which it did not direct.
+    // Ctrl+Z: the project before that Apply, with the first Apply's line.
     store.state = deleted
     out = render()
     expect(one(out, 'director-framing-unavailable')).toBeUndefined()
-    expect(one(out, 'director-framing')).toBeUndefined()
+    expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face centred (1.25×).')
     // Ctrl+Y
     store.state = again
     out = render()
+    expect(one(out, 'director-framing-unavailable')).toBeDefined()
     expect(textOf(one(out, 'director-framing')?.props.children)).toBe('Face framing is unavailable: WebGL is not available. The rest of the camera track was directed.')
   })
 })
