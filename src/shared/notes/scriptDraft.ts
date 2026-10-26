@@ -12,12 +12,16 @@
  */
 import { SCRIPT_DRAFT_MAX_NOTES, type ScriptDraftRequest, type ScriptDraftResult } from '../api/ai'
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
+import { NOTES_TEXT_MAX } from './notes'
 
 export const SCRIPT_LIMITS = {
   notesMax: SCRIPT_DRAFT_MAX_NOTES,
   /** Most paragraphs an answer may have. */
   paragraphsMax: 300,
-  /** An answer may be at most growth × the notes' length + growthExtra characters. */
+  /**
+   * An answer may be at most growth × the notes' length + growthExtra characters, and never more
+   * than the notes can hold (NOTES_TEXT_MAX).
+   */
   growth: 6,
   growthExtra: 2000
 } as const
@@ -77,7 +81,8 @@ function cleanParagraph(raw: string): string {
 /**
  * The script from an answer: paragraphs cleaned (control characters, leading list markers and
  * '#'), empty ones dropped, joined by a blank line. Throws AiOutputError when there is no
- * paragraph, more than SCRIPT_LIMITS.paragraphsMax, or more text than the limit for `notes`.
+ * paragraph, more than SCRIPT_LIMITS.paragraphsMax, more text than the limit for `notes`, or more
+ * than NOTES_TEXT_MAX (saving would cut the script short, and "Restore my notes" would go with it).
  */
 export function validateScriptAnswer(answer: unknown, notes: string): string {
   const list = answer && typeof answer === 'object' && !Array.isArray(answer) ? (answer as { paragraphs?: unknown }).paragraphs : undefined
@@ -88,6 +93,7 @@ export function validateScriptAnswer(answer: unknown, notes: string): string {
   if (paragraphs.length === 0) throw new AiOutputError('no paragraphs')
   const text = paragraphs.join('\n\n')
   if (text.length > SCRIPT_LIMITS.growth * notes.length + SCRIPT_LIMITS.growthExtra) throw new AiOutputError('the script came back far longer than the notes')
+  if (text.length > NOTES_TEXT_MAX) throw new AiOutputError(`the script came back longer than the ${NOTES_TEXT_MAX.toLocaleString('en-US')} characters your notes can hold`)
   return text
 }
 

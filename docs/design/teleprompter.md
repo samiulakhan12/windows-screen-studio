@@ -371,8 +371,9 @@ gains "While your notes scroll, Flown counts that as activity."
   followed by the notes.
 - **Answer**: 1 to 300 paragraphs; each cleaned (control characters removed, leading `#`, `-`,
   `*`, `•` and `1.` markers removed, trimmed), empty ones dropped; joined with a blank line; at most
-  6 × the notes' length + 2,000 characters. Anything else throws `AiOutputError` ("The AI's answer
-  could not be used (…). Nothing was changed; try again.").
+  6 × the notes' length + 2,000 characters, and never more than `NOTES_TEXT_MAX` (50,000): saving
+  would cut a longer script short and "Restore my notes" would go with it. Anything else throws
+  `AiOutputError` ("The AI's answer could not be used (…). Nothing was changed; try again.").
 - **Renderer**: the draft replaces the text only if the text is unchanged since the request
   (else the stale message); "Restore my notes" brings the previous text back until the next edit
   or until the dialog closes. Only the notes text is sent, only on that click.
