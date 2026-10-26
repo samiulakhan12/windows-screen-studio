@@ -291,7 +291,14 @@ function create(mode: NotesMode, rect: Rect, locked: boolean, captured: Rect | n
     if (current === n) dispose(n)
   })
   win.webContents.on('render-process-gone', () => {
-    if (!win.isDestroyed()) loadRoute(win, '/notes')
+    if (win.isDestroyed()) return
+    // The reloaded page starts from its own idle report and sends only changes: the bar and
+    // auto-pause must not go on thinking the notes scroll.
+    if (current === n) {
+      report = { playing: false, ended: false, block: 0 }
+      notify()
+    }
+    loadRoute(win, '/notes')
   })
   // A (re)loaded page gets the view again.
   win.webContents.on('did-finish-load', () => {

@@ -159,7 +159,9 @@ Options, both modes:
 
 Right after construction, before `loadRoute`: `setContentProtection(true)` (both modes; it also
 hides the notes from screen sharing) and `setAlwaysOnTop(true, 'screen-saver')`. No parent window.
-`render-process-gone` reloads the route and sends the view again. `backgroundThrottling: false`
+`render-process-gone` reloads the route and sends the view again; it also forgets the page's last
+report (`{ playing: false, ended: false, block: 0 }`, and the bar is told), because the reloaded
+page starts from that idle report and sends only changes. `backgroundThrottling: false`
 keeps the step timer exact; because of it the Page Visibility API does not report hiding, so the
 page relies on `NotesView.shown`.
 

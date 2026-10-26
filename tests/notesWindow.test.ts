@@ -268,6 +268,22 @@ describe('the recording window', () => {
     expect(views(win).length).toBe(sent + 1)
   })
 
+  it('forgets what the crashed page reported: the reloaded page starts paused and reports only changes', () => {
+    const win = startRecording()
+    notes.setNotesRecording('recording')
+    notes.setNotesReport({ playing: true, ended: false, block: 3 })
+    expect(notes.notesPlaying()).toBe(true)
+    const changed = vi.fn()
+    const off = notes.onNotesChange(changed)
+    win.webContents.events.get('render-process-gone')()
+    expect(changed).toHaveBeenCalled()
+    // Auto-pause works again, and the bar's scrolling dot goes off.
+    expect(notes.notesPlaying()).toBe(false)
+    expect(notes.notesStatus()).toEqual({ shown: true, playing: false })
+    expect(notes.notesWindowInfo()).toMatchObject({ playing: false })
+    off()
+  })
+
   it('follows the recording: countdown, recording, paused; one new take per recording', () => {
     const win = startRecording()
     const first = views(win).at(-1)
