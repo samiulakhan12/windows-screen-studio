@@ -22,6 +22,7 @@ import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/ti
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
 import { cursorLook } from '../../../shared/render/cursorFx'
+import { frameSeekTime } from '../../../shared/render/frameTiming'
 import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type DrawOptions, type FrameImage, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
@@ -824,15 +825,19 @@ export class PreviewPlayer {
    * length. The playhead stays on the frame.
    */
   private startHold(h: Hold): void {
-    const s = h.end ? this.heldTime(h) : this.frameTimeFor(h.at)
+    // The middle of the held frame, as the export and FreezeStills seek: a seek to a frame's start can
+    // show the frame before (Chromium truncates it to whole µs: 2.05 s seeks 2.049999 s).
+    const s = h.end ? this.heldTime(h) : frameSeekTime(h.at, 1 / this.frame)
+    const played = !this.screen.paused
     // Set first: pausing the screen fires 'pause', and no frame callback may run meanwhile.
     this.hold = { h, elapsed: 0, t0: performance.now() }
     this.passed = null
     this.time = this.heldTime(h)
     this.cancelFrame()
-    if (!this.screen.paused) this.screen.pause()
+    if (played) this.screen.pause()
     if (this.webcam && !this.webcam.paused) this.webcam.pause()
-    if (Math.abs(this.screen.currentTime - s) > 1e-3) this.screen.currentTime = s
+    // A playing element can show a frame decoded ahead of its time: it seeks even when it is there.
+    if (played || Math.abs(this.screen.currentTime - s) > 1e-3) this.screen.currentTime = s
     // Forced: the camera's drift tolerance would hold a different face than the export.
     this.syncWebcam(this.time, true)
     this.sound.hold(h, 0)

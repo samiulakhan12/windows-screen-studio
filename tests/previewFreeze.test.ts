@@ -228,7 +228,9 @@ describe('a pause freeze in the preview', () => {
     expect(screen.paused && camera.paused).toBe(true)
     expect(player.time).toBe(2)
     expect(sound).toEqual(['hold f 0'])
-    // Drawn on its frame, sharp, once the camera's forced seek to it lands.
+    // Drawn on its frame, sharp, once the seeks to it land (the screen's to the middle of the frame).
+    expect(screen.currentTime).toBeCloseTo(120.5 / 60, 12)
+    screen.land()
     camera.land()
     draws.length = 0
     clock += 1000
@@ -244,13 +246,14 @@ describe('a pause freeze in the preview', () => {
     expect(screen.paused).toBe(false)
     expect(sound.slice(-2)).toEqual(['hold f 3', 'jump 2 1'])
     expect(position()).toBe(5)
-    // The next frame is the held one again: not held twice. Past it, video time counts the hold.
+    // The next frame is the held one again: not held twice. Past it, video time counts the hold
+    // (the element plays on from the middle of the held frame).
     frame()
     expect(player.heldFreeze).toBeNull()
     playOn(screen, 1 / 60)
     expect(player.holdElapsed).toBe(0)
     expect(sound.at(-1)).toBe('hold none')
-    expect(position()).toBeCloseTo(5 + 1 / 60, 9)
+    expect(position()).toBeCloseTo(121.5 / 60 + 3, 9)
   })
 
   it('lasts length / |viewing rate| of wall clock at a faster preview speed', () => {
@@ -351,6 +354,34 @@ describe('a pause freeze in the preview', () => {
     frame()
     expect(player.playing).toBe(false)
     expect(player.heldFreeze).toBeNull()
+  })
+
+  it('holds the middle of its frame, as the export and the stills decode it', () => {
+    // 2.05 s is the start of frame 123 at 60 fps; Chromium seeks it as 2.049999 s and shows frame 122.
+    const { screen, camera, player } = setUp([freeze('f', 2.05)])
+    player.play()
+    playOn(screen, 2.04)
+    expect(player.heldFreeze).toBe('f')
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+    // The playhead, the overlays and the sound stay on the anchor.
+    expect(player.time).toBe(2.05)
+    screen.land()
+    camera.land()
+    frame()
+    expect(draws.at(-1)).toMatchObject({ t: 2.05, blur: 1, sound: 2.05 })
+  })
+
+  it('seeks its frame even when the element paused next to it (a playing element can show a frame ahead)', () => {
+    const { screen, player } = setUp([freeze('f', 2.05)])
+    player.seek(2.04)
+    screen.land()
+    frame()
+    player.play()
+    // The first frame decoded after starting is past the anchor, in the middle of its frame.
+    playOn(screen, 123.5 / 60 - 2.04)
+    expect(player.heldFreeze).toBe('f')
+    expect(screen.seeking).toBe(true)
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
   })
 
   it('starts the playback when the playhead is on its frame', () => {
