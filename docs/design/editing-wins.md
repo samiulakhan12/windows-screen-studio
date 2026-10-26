@@ -1,7 +1,7 @@
 # Easier editing, Wave 6 (E-01, E-04, E-05, E-08, E-10, E-11)
 
-Status: design and contracts on `feat-w6-editing-wins`; implementation in six parallel
-workstreams (see [Work split](#5-work-split)). Roadmap: `docs/ROADMAP.md`, "Easier editing".
+Status: shipped on `feat-w6-editing-wins` (six workstreams merged, reviewed and fixed; see
+[As merged](#6-as-merged)). Roadmap: `docs/ROADMAP.md`, "Easier editing".
 
 This wave adds six editing features. Each has its own design, reviewed against the code:
 
@@ -131,3 +131,58 @@ projects, the whole vitest suite, `npm run build`, and the whole e2e suite.
 **After the merge:** the lead updates `docs/FEATURES.md` (one Editor bullet per feature),
 `docs/ROADMAP.md` (the six rows shipped) and `docs/IMPLEMENTATION.md` (crop view and video
 time).
+
+---
+
+## 6. As merged
+
+Each design's own "As built" section lists its deviations. This section records what happened
+at integration.
+
+**Merge order.** E-04, E-05, E-08, E-01, E-11 (with `w6-e08` merged into it by its author), then
+E-10. E-01 merged before E-10 and E-11 because the contracts made their functions callable; its
+tests that guard the crop and the freezes ran again on the full merge.
+
+**Conflicts resolved by the lead.**
+- `Editor.tsx`: palette `unavailable` entries of E-04, E-08, E-10 and E-11, and the imports, kept side by side.
+- `exporter.ts`: the camera-mask test sizes the camera through the crop (`croppedFrameSize`, E-10)
+  at the picture's time (`pictures[i]`, E-11).
+- `ExportDialog.tsx`: E-10's visible recording size is named `visible`, since E-11's `shown` is the
+  frame at the slider.
+- `player.ts`: imports.
+- After E-05 and E-11 met, `Timeline.tsx` passes the snapping controller to `<FreezeMarks>`.
+
+**Review.** Two independent review passes ran on the merged code, each finding checked by a
+skeptic before it counted. Fourteen findings were confirmed and fixed, each with a test that fails
+without the fix:
+- E-05: a drag that snaps an item back onto its own values added an empty undo step and cleared
+  redo (`sameSpan` / `sameClips`).
+- E-08: at viewing rate 16 the music's drift nudge asked Chromium for a rate above 16, which throws.
+- E-10:
+  - a crop drag still held when the tool closed reopened it, and could put the crop tool's scene
+    into an export;
+  - switching a region zoom to a point kept a stale level;
+  - zooms without cursor data aimed at the full frame's centre;
+  - a free resize snapped edges it did not drag;
+  - Reset in Style › Frame with the tool open was undone by Done.
+- E-11:
+  - an end freeze became inactive after reopening a trimmed project (now any anchor within 1 ms of
+    the edit's end is the end hold, as the export's sound already treated it);
+  - text added on an end freeze faded out during the hold;
+  - the preview could hold the frame before the anchor;
+  - an edit during a hold restarted it;
+  - a drag snapped to a cut's start did nothing.
+- E-01: a sound that could not be measured failed the whole run and left its transcription running.
+
+**Verification on the final merge:** both `tsc` projects, the whole vitest suite, `npm run build`
+and the whole e2e suite under `xvfb-run -a -s "-screen 0 1920x1080x24"` (the recording suites
+need a screen at least 1920×1080). Under load from parallel work, `export.e2e` "30 fps webcam" and
+the `audit-*` `/proc` scans can fail on timing; they pass when run alone.
+
+**Not verified here (Windows or real hardware):**
+- Alt's menu-focus behaviour while snapping;
+- reverse playback smoothness and Chromium's sound limits at high rates;
+- DPI-scaled taskbar sizes for *Hide taskbar*;
+- the 4K export cost of the cropped high-quality draw;
+- preview holds under real playback timing.
+
