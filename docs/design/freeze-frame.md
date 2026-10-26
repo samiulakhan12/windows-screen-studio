@@ -2,7 +2,7 @@
 
 Part of Wave 6, "Easier editing". The shared rules for this wave (file ownership, the shared files, merge order and the keymap) are in [editing-wins.md](editing-wins.md).
 
-Status: design, reviewed. Roadmap item: `docs/ROADMAP.md` E-11 ("Hold a frame for a few seconds so viewers can read something, with the sound paused or continuing"). The roadmap lists the size as S. **Size M.** The preview clock (player and preview audio) and the split audio graph cannot be made smaller than that. What v1 leaves out to stay at M is listed in §12.
+Status: implemented on `w6-e11`; where the build differs from the text below, §13 "As built" says how and why. Roadmap item: `docs/ROADMAP.md` E-11 ("Hold a frame for a few seconds so viewers can read something, with the sound paused or continuing"). The roadmap lists the size as S. **Size M.** The preview clock (player and preview audio) and the split audio graph cannot be made smaller than that. What v1 leaves out to stay at M is listed in §12.
 
 Checked against branch `feat-w6-editing-wins`. Code read for this design:
 - Engine and editor: `src/shared/engine/timeline.ts`, `src/shared/editor/clips.ts`, `src/shared/editor/smartSpeed.ts`, `src/shared/editor/annotations.ts`, `src/shared/editor/commands.ts`, `src/shared/editor/shortcuts.ts`, `src/shared/engine/project.ts`, `src/shared/engine/backgrounds.ts`.
@@ -362,8 +362,8 @@ The compositor draws the hold at `at`, so the burned-in caption active at `at` i
 
 `freezeAtPlayhead(p, t, init?)`:
 - Anchor: `fps = p.capture?.fps ?? 60`.
-  - If `t ≥ last.end − 1 ms`, then `at = last.end`.
-  - Otherwise `k = floor(t · fps + 1e-6)` and `at = max(clip.start, ceil(k / fps · 1000) / 1000)`.
+  - If `|t − last.end| ≤ 1 ms`, then `at = last.end`. A playhead in the trimmed-off end is in a cut.
+  - Otherwise `k = floor(t · fps + 1e-6)` and `at = ceil(max(clip.start, k / fps) · 1000) / 1000` (whole ms even when the clip starts between two ms; see §13).
 - It is refused, in this order:
   1. `'cut'`: `clipIndexAt(clips, t) < 0` and `t` is not at `last.end`;
   2. `'taken'`: a freeze is within `FREEZE_EPS`; that freeze's id is returned so it can be selected;
@@ -722,6 +722,7 @@ Scenario:
 - Copy and paste of freezes (E-06), and multi-select delete.
 - Remembering the last sound mode as an editor preference.
 - A preview-hold e2e (timing-sensitive under Xvfb).
+- The caption row times in `CaptionsPanel.tsx` in video time (`videoTimeAt`). That file belongs to the teleprompter work in this wave, which allowed only the `subtitleFile(…)` call (editing-wins.md decision 2), so the rows still show edit time.
 - **Interactions with the other features in this wave:**
   - **E-05** snaps freeze edges and drags to `freezeSnapTargets`, and adds freeze anchors to its own targets.
   - **E-01** polish passes `freezeKeepRanges` to smart speed and remove silences, and reports `videoDuration` before and after.
@@ -730,3 +731,43 @@ Scenario:
   - **E-08** scales hold time by the preview rate, and reverse playback skips holds.
 
 ---
+
+---
+
+## 13. As built
+
+What the implementation does where it differs from, or adds to, the sections above.
+
+**Engine and edits**
+- `videoFrames`: a hold at the edit's end repeats the last exported frame's `times` **and** `pictures`, so a continue freeze that runs to the end keeps its still through the end hold instead of jumping to the live last frame.
+- `freezeAtPlayhead`: the anchor is `ceil(max(clip.start, k / fps) · 1000) / 1000`. The design's `max(clip.start, ceil(…))` could store a non-whole-ms `clip.start`, which `readFreezes` would round into the cut before it on the next load. If that rounding reaches the clip's end (a clip ending less than 1 ms after the frame start), the clip's last whole ms is used.
+- `setFreezeSound(p, id, 'continue')` returns `p` for a freeze at the edit's end ("Nothing plays after the end of the video").
+- New exports in `freezeEdit.ts`: `freezeRefusal(p, t)` (the refusal without building a project; the Clip panel button and the palette use it), `freezeIdAt(p, t)` (the freeze the playhead is on), `FREEZE_REFUSAL_TEXT` and `atEditEnd(clips, at)`.
+- `soundPieces` gives each hold to the clip that contains its frame, so a hold where two clips touch (a split with different speeds) is used once. Holds in a cut are dropped.
+
+**Export**
+- `ThumbnailInput` gains `held?: boolean` next to `soundTime`: a pause hold has `soundTime === time` but is still drawn with `blurSamples: 1`. `ExportPreview` gets the same two props, and both seek the camera to `soundTime` (the camera is live in a still, as in the export).
+- The Export dialog's Frame slider shows, inside a hold at the edit's end, the edit's last frame (`outputToSource(clips, editLength − 1 ms)`), as the export does.
+
+**Preview (`player.ts`, `previewAudio.ts`)**
+- Entering a hold uses a window `[holdFrom, t + playbackRate · frame)` instead of `[t − ε, t + speed · frame)` plus a "passed" id check. `holdFrom` is where the previous frame's look-ahead ended (a hold is never skipped when frames drop), `from − frame / 2` after play and seek, and just past `at` after leaving a hold. `screen.playbackRate` is the element rate, so the window stays right once E-08's preview speed lands.
+- `passed` keeps the `Hold`. `holdElapsed` returns its length while the playhead's edit time is not past the hold's (`!(h.edit < edit − 1e-9)`, the complement of `editToVideo`'s test), instead of `|time − at| < frame / 2`, which counted the hold twice for a frame just after `at`. `PreviewAudio.outputAt` adds the held time under the same test.
+- During a hold at the edit's end, `player.time` is `frameTimeFor(last.end)`. `videoTimeAt` of the edit's end is already the video's end, so the Transport (`videoTimeAt + holdElapsed`) would otherwise show past the end. Finishing clears the hold, so the end reads as the video's length.
+- `pause()` during a hold keeps `time` on the held frame (the element can sit up to 1 ms off it).
+- New getter `heldFreeze` (the id being held); the timeline's progress fill reads it.
+- `PreviewAudio.frame()` is unchanged: `startStem` does nothing while a hold is held, which covers `play`, `apply` and the drift loop. On leaving, the player calls `hold(h, h.length)` **before** `jump`, so the stems start again.
+- `FreezeStills` takes an optional `onReady` (the paused player redraws) and stops asking for stills once its hidden video fails. A still that is not ready yet is not logged.
+
+**UI**
+- New `src/renderer/src/editor/freezeItems.ts`: `addFreezeAt`, `toggleFreezeSound`, `freezeTarget` and `addTextOnFreeze`, shared by the Clip panel and the commands, like `titleItems.ts`.
+- `FreezeMarks` reads `freezes` from the store, as the timeline reads shapes, so `Timeline.tsx` only adds the element. Its `snap` prop is optional. Today `Timeline.tsx` does not pass it, because E-05's controller is not on this branch. After the merge the element needs `snap={snap}`. Moves begin `{ exclude: [{ owner: 'freeze:' + id }], noPlayhead: true }`, and so do continue-edge drags; a pause block's edge is not a source time and is not snapped.
+- A plain click on a block selects it and moves the playhead to its frame. A cut freeze's diamond is `data-testid="freeze-inactive"`.
+- Labels use the app's pause and speaker icons instead of the `⏸` character.
+- The smart speed note names what it keeps: "Title cards stay…", "Freeze frames stay…" or "Title cards and freeze frames stay…".
+- `CaptionsPanel.tsx` gets one import line (`planOf`) besides the `subtitleFile` call.
+
+**Tests**
+- The `readFreezes`, command and key cases of §10 are in the frozen `tests/editingWinsContracts.test.ts`, so they are not repeated. `tests/freezeData.test.ts` covers `correctProjectMedia`.
+- `tests/audioPlan.test.ts` also renders two holds through ffmpeg: silence on the hold frames, and each tick after a hold within 20 ms of where the video shows it.
+
+**Docs:** `docs/FEATURES.md` and `docs/ROADMAP.md` (§9) are left to the lead (editing-wins.md decision 4).
