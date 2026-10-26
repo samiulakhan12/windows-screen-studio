@@ -46,7 +46,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 7. **NW-13**: publishing copy pack.
 8. **NW-15 + X-03**: auto-update and a diagnostics bundle.
 
-**Agreed order (25 October 2026):** NW-08 camera director and NW-03 smarter auto zoom (in progress), then NW-02
+**Agreed order (25 October 2026):** NW-08 camera director (in progress) and NW-03 smarter auto zoom (shipped), then NW-02
 teleprompter, then the quick editing wins E-01 polish in one click, E-04 waveform, E-05 snapping, E-08 J/K/L
 and preview speed, E-10 crop the recording, E-11 freeze frame.
 
@@ -97,7 +97,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Screen Studio, Loom, FocuSee, Riverside, Descript.
 
 ### NW-03 · Better auto zoom input: ignore stray clicks, straighten cursor paths, follow scrolling
-**Editing · M · in progress (Wave 5)**
+**Editing · M · shipped (Wave 5)**: see [FEATURES.md](FEATURES.md) (Ignore stray clicks, Straighten cursor moves, Follow scrolling) and `docs/design/smarter-auto-zoom.md`.
 
 - **What:**
   - Mark a click as "ignore" so it no longer triggers a zoom or click effect.
