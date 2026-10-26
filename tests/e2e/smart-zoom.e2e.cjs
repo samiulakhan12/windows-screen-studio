@@ -382,6 +382,58 @@ async function main() {
     h.assert(onsets.length === 1 && near(onsets[0], 4.0, 0.03), 'exactly one click sound, at 4 s')
   }))
 
+  await test('click markers: under the restore button of a cut, copy that fits the click', fx.withHome('smart-zoom-markers', async (ctx, home) => {
+    const media = fx.solidVideo({ seconds: 16 })
+    // A left click in the middle of a cut (3.5-4.5 s), and a middle click at 8 s.
+    const clicks = [
+      { t: 4.0, x: 0.5, y: 0.5, button: 'left' },
+      { t: 8.0, x: 0.5, y: 0.5, button: 'middle' }
+    ]
+    const cursor = track([{ t: 0, x: 0.5, y: 0.5 }, { t: 16, x: 0.5, y: 0.5 }], clicks, { scrolls: [] })
+    const clips = [
+      { id: 'c0', start: 0, end: 3.5, speed: 1 },
+      { id: 'c1', start: 4.5, end: 16, speed: 1 }
+    ]
+    fx.seedProject(home, { id: 'rec-markers', name: 'Markers', media, seconds: 16, style: GRAY_STYLE, capture: NATIVE, cursor, clips })
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await fx.openProject(win, 'Markers')
+
+    // The click's marker sits under the lower edge of the cut's restore button: a press there restores the cut.
+    const button = await boxOf(win, '.gap-block.cut .gap-restore')
+    const marker = await boxOf(win, '.click-marker[data-click-ms="4000"]')
+    const px = marker.x
+    const py = button.top + button.h - 2
+    h.assert(near(px, button.x, 3) && py > marker.top, `the marker ${JSON.stringify(marker)} is under the button ${JSON.stringify(button)}`)
+    const hit = await win.evaluate(([x, y]) => {
+      const el = document.elementFromPoint(x, y)
+      return el?.closest('.gap-restore') ? 'restore' : (el?.className ?? 'nothing')
+    }, [px, py])
+    h.assert(hit === 'restore', `the restore button is on top at its lower edge (found ${hit})`)
+    await win.mouse.click(px, py)
+    await f.waitFor(async () => (await win.$$('.gap-block.cut')).length === 0, 'cut restored')
+    h.assert(!(await win.$('.click-marker.selected')), 'no click was selected')
+
+    // Tooltips name the Delete key, and promise no zoom only for a click that can start one.
+    const tip4 = await win.getAttribute('.click-marker[data-click-ms="4000"]', 'title')
+    h.assert(tip4 === 'Left click at 0:04.0 · select it and press Delete to ignore it (no zoom, click effect or sound)', `left click tooltip: ${tip4}`)
+    const tip8 = await win.getAttribute('.click-marker[data-click-ms="8000"]', 'title')
+    h.assert(tip8 === 'Middle click at 0:08.0 · select it and press Delete to ignore it (no click effect or sound)', `middle click tooltip: ${tip8}`)
+    await win.click('.click-marker[data-click-ms="8000"]')
+    await win.waitForSelector('[data-testid="selected-click"][data-state="used"]', { timeout: 5000 })
+    const used = await win.$eval('[data-testid="selected-click"] .hint', (el) => el.textContent)
+    h.assert(used === 'Used: it shows the click effect, plays the click sound and counts as activity for smart speed.', `selected middle click: ${used}`)
+
+    // Ignoring the only left click: the summary says so in a sentence of its own.
+    await win.click('.click-marker[data-click-ms="4000"]')
+    await win.waitForSelector('.click-marker[data-click-ms="4000"].selected', { timeout: 5000 })
+    await win.keyboard.press('Delete')
+    await win.waitForSelector('.click-marker[data-click-ms="4000"][data-state="ignored"]', { timeout: 5000 })
+    const summary = await win.textContent('[data-testid="auto-zoom-summary"]')
+    h.assert(summary.startsWith('The only left click is ignored. Changing these settings regenerates'), `auto zoom summary: ${summary}`)
+  }))
+
   await test('straightened moves: straight in preview and export, ranges override, undo', fx.withHome('smart-zoom-straighten', async (ctx, home) => {
     const media = fx.solidVideo({ seconds: 3 })
     // The design's worked example (§5.6) with a 0.05 wobble: rest at A, a wavy move, rest at B.

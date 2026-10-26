@@ -7,7 +7,7 @@
  * changed. Pure.
  */
 import type { ClickEvent, CursorSample, CursorTrack, IgnoredClick, PathRange, Project } from '../types'
-import { planCursorPath } from './cursorPath'
+import { NO_PATHS, planCursorPath } from './cursorPath'
 import { clickKey } from './inputData'
 
 /** What effectiveTrack reads from the project. */
@@ -59,7 +59,6 @@ export function effectiveTrack(recorded: CursorTrack, ctx: InputContext): Cursor
 }
 
 const NONE_IGNORED: IgnoredClick[] = []
-const NO_PATHS: PathRange[] = []
 
 const trackCache = new WeakMap<
   CursorTrack,
@@ -68,7 +67,7 @@ const trackCache = new WeakMap<
     clicks: ClickEvent[]
     scrolls: CursorTrack['scrolls']
     ignored: IgnoredClick[]
-    paths: PathRange[]
+    paths: readonly PathRange[]
     straighten: boolean
     aspect: number
     inVideo: boolean

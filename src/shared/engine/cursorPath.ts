@@ -348,7 +348,7 @@ export interface PathPlan {
  * end): 'recorded' keeps it, 'straight' straightens it when `manual` is null; outside every
  * range the automatic option (`straighten`) straightens it when `auto` is null. Then replaces
  * the chosen moves (straightenSamples). Cached like cursorMoves, plus straighten and the paths
- * array (by identity).
+ * array (by identity; every empty array is the same, but pass NO_PATHS when there are none).
  */
 export function planCursorPath(track: CursorTrack, ctx: { aspect: number; straighten: boolean; paths: readonly PathRange[] }): PathPlan {
   const moves = cursorMoves(track, ctx.aspect)
@@ -359,7 +359,7 @@ export function planCursorPath(track: CursorTrack, ctx: { aspect: number; straig
     planCache.set(moves, entries)
   }
   const straighten = !!ctx.straighten
-  const hit = entries.find((e) => e.samples === track.samples && e.straighten === straighten && e.paths === ctx.paths)
+  const hit = entries.find((e) => e.samples === track.samples && e.straighten === straighten && samePathsArray(e.paths, ctx.paths))
   if (hit) return hit.plan
   const straightened = moves.filter((m) => {
     const mode = pathModeAt(ctx.paths, (m.t0 + m.t1) / 2)
@@ -374,6 +374,14 @@ export function planCursorPath(track: CursorTrack, ctx: { aspect: number; straig
 }
 
 const planCache = new WeakMap<CursorMove[], { samples: CursorSample[]; straighten: boolean; paths: readonly PathRange[]; plan: PathPlan }[]>()
+
+/**
+ * The path ranges of a project without any: one shared array, so every caller (the effective
+ * track, the path summary, the timeline's bars) finds the same cached plan.
+ */
+export const NO_PATHS: readonly PathRange[] = []
+
+const samePathsArray = (a: readonly PathRange[], b: readonly PathRange[]): boolean => a === b || (a.length === 0 && b.length === 0)
 
 /** The mode of the path range containing `t` (start <= t < end), or null outside every range. */
 export function pathModeAt(paths: readonly PathRange[], t: number): PathRange['mode'] | null {

@@ -31,7 +31,7 @@ import {
 } from '../../../shared/editor/shortcuts'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
-import { planCursorPath } from '../../../shared/engine/cursorPath'
+import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
 import { clickRows } from '../../../shared/engine/inputData'
 import { DEFAULT_EFFECTS, formatTime } from '../../../shared/engine/project'
 import { scrollBreaks } from '../../../shared/engine/scroll'
@@ -238,7 +238,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const straighten = !!inputEdits?.straighten
   const paths = inputEdits?.paths
   const pathBars = useMemo(
-    () => (recorded.valid && !capture.cursorInVideo && (straighten || paths) ? planCursorPath(recorded, { aspect: width / height, straighten, paths: paths ?? [] }).straightened : []),
+    () => (recorded.valid && !capture.cursorInVideo && (straighten || paths) ? planCursorPath(recorded, { aspect: width / height, straighten, paths: paths ?? NO_PATHS }).straightened : []),
     [recorded, capture.cursorInVideo, straighten, paths, width, height]
   )
   const { zoomSettings, autoZoom } = project

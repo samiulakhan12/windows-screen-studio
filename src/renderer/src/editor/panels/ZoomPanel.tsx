@@ -35,7 +35,7 @@ import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InputActions, InspectorProps } from '../Inspector'
-import { clickKind, clickState, STRAY_REASON_TEXT } from '../selection'
+import { autoZoomFoundText, clickKind, clickState, STRAY_REASON_TEXT, usedClickText } from '../selection'
 import { useKeymap } from '../keymapContext'
 import { ShortcutKeys } from '../ShortcutKeys'
 import '../zoom.css'
@@ -77,7 +77,7 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
       {zoom ? (
         <SelectedZoom {...props} zoom={zoom} />
       ) : click ? (
-        <SelectedClick row={click} input={props.input} />
+        <SelectedClick row={click} input={props.input} rightClicks={zoomSettingsOf(project).auto.rightClicks} />
       ) : (
         <p className="hint">
           Select a zoom on the timeline to edit it{keymap.addZoom[0] ? `, or press ${shortcutLabel(keymap.addZoom[0])} to add one at the playhead` : ''}.
@@ -99,14 +99,14 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
 }
 
 /** A click selected on the timeline (or in the recorded clicks list): ignore it or use it again. */
-function SelectedClick({ row, input }: { row: ClickRow; input: InputActions }): JSX.Element {
+function SelectedClick({ row, input, rightClicks }: { row: ClickRow; input: InputActions; rightClicks: boolean }): JSX.Element {
   const keymap = useKeymap()
   const state = clickState(row)
   return (
     <Section title="Selected click" aside={<span className="muted small">{`${clickKind(row.click.button)} · ${formatTime(row.click.t)}`}</span>}>
       <div className="selected-click" data-testid="selected-click" data-state={state}>
         {state === 'used' ? (
-          <p className="hint">Used: it can start an automatic zoom, shows the click effect, plays the click sound and counts as activity for smart speed.</p>
+          <p className="hint">{usedClickText(row.click, rightClicks)}</p>
         ) : (
           <p className="hint">
             Ignored: no zoom, click effect or sound, and smart speed does not count it.
@@ -399,24 +399,11 @@ function AutoZoomSection({
     onNotice(`Removed ${plural(n, 'zoom')}${undoHint(keymap)}`)
   }
 
-  const clickWord = auto.rightClicks ? 'click' : 'left click'
-  const sources = [
-    found.clicks > 0 &&
-      (found.ignored === found.clicks
-        ? found.clicks === 1
-          ? `The only ${clickWord} is ignored`
-          : `All ${found.clicks} ${clickWord}s are ignored`
-        : `${plural(found.clicks, clickWord)}${found.ignored ? ` (${found.ignored} ignored)` : ''}`),
-    found.typing > 0 && plural(found.typing, 'typing burst'),
-    found.marks > 0 && plural(found.marks, 'zoom mark'),
-    found.scrolls > 0 && plural(found.scrolls, 'long scroll')
-  ].filter(Boolean)
-
   return (
     <Section title="Auto zoom" aside={<span className="muted small">{plural(autoCount, 'automatic zoom')}</span>}>
       <p className="hint" data-testid="auto-zoom-summary">
         {hasInput
-          ? `${sources.length ? sources.join(' · ') : 'No usable input'} detected. Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.`
+          ? `${autoZoomFoundText(found, auto.rightClicks)} Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.`
           : `${orPress('No clicks were captured, so add zooms yourself: double-click the zoom track', keymap.addZoom)}.`}
       </p>
       <Toggle label="Auto zoom" checked={auto.enabled} disabled={!hasInput} onChange={(enabled) => setAuto({ enabled })} />
