@@ -1,7 +1,7 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { AUTO_TITLE_SUFFIX } from '../../../shared/editor/directorCopy'
 import { addLayoutAt, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
-import type { SnapExclude } from '../../../shared/editor/snapping'
+import { sameSpan, type SnapExclude } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
@@ -159,7 +159,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
       e,
       (ev) => {
         const times = session.span(ev, initial, mode, (ev.clientX - sx) / px, (d) => dragLayoutTimes(initial, mode, d, bounds))
-        store.update((p) => ({ ...p, layouts: dragLayout(p.layouts, s.id, times, around) }), `layout-drag:${s.id}`)
+        store.update((p) => (sameSpan(p.layouts?.find((x) => x.id === s.id), times) ? p : { ...p, layouts: dragLayout(p.layouts, s.id, times, around) }), `layout-drag:${s.id}`)
       },
       (moved) => {
         store.endGesture()

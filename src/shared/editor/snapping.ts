@@ -302,6 +302,19 @@ export function snapAt(index: SnapIndex, t: number, view: SnapView, limit?: { mi
   return { t: r.target ? r.target.t : t, target: r.target }
 }
 
+/**
+ * Whether a dragged item already has the span a move would write. A snapped drag often lands back on
+ * the item's own values; its update then returns the same project, so it adds no undo step and keeps redo.
+ */
+export function sameSpan(cur: Span | undefined, times: Span): boolean {
+  return !!cur && cur.start === times.start && cur.end === times.end
+}
+
+/** Whether a trim drag would write the clips the project already has (same ranges and speeds). */
+export function sameClips(cur: readonly Clip[], next: readonly Clip[]): boolean {
+  return cur.length === next.length && cur.every((c, i) => c.start === next[i].start && c.end === next[i].end && c.speed === next[i].speed)
+}
+
 /** The guide's text: "Cut · 0:04.0". */
 export function snapLabel(target: SnapTarget): string {
   return `${target.label} · ${formatTime(target.t)}`

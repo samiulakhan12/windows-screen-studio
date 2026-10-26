@@ -1,6 +1,7 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { itemLanes } from '../../../shared/editor/shapes'
 import { orPress } from '../../../shared/editor/shortcuts'
+import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { dragTitleTimes, TITLE_STYLES } from '../../../shared/editor/titles'
 import { clamp } from '../../../shared/engine/math'
@@ -84,7 +85,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
       e,
       (ev) => {
         const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragTitleTimes(initial, mode, d, duration))
-        store.update((p) => ({ ...p, titles: (p.titles ?? []).map((x) => (x.id === card.id ? { ...x, ...times } : x)) }), `title-drag:${card.id}`)
+        store.update((p) => (sameSpan(p.titles?.find((x) => x.id === card.id), times) ? p : { ...p, titles: (p.titles ?? []).map((x) => (x.id === card.id ? { ...x, ...times } : x)) }), `title-drag:${card.id}`)
       },
       (moved) => {
         store.endGesture()
@@ -105,7 +106,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
       e,
       (ev) => {
         const t = s.at(ev, clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration), { min: 0, max: duration })
-        store.update((p) => ({ ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, t } : x)) }), `chapter-drag:${c.id}`)
+        store.update((p) => (p.chapters?.find((x) => x.id === c.id)?.t === t ? p : { ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, t } : x)) }), `chapter-drag:${c.id}`)
       },
       (moved) => {
         store.endGesture()

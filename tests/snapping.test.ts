@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dragAnnotationTimes } from '../src/shared/editor/annotations'
+import { EditStore } from '../src/shared/editor/editStore'
 import { createShape, createSpotlight } from '../src/shared/editor/shapes'
 import {
   buildSnapIndex,
@@ -7,6 +8,8 @@ import {
   projectFreezeTargets,
   projectSnapSegments,
   projectSnapSources,
+  sameClips,
+  sameSpan,
   snapAt,
   snapLabel,
   snapPoints,
@@ -311,5 +314,46 @@ describe('snapLabel', () => {
     expect(snapLabel({ t: 12, kind: 'chapter', label: 'Chapter · Intro' })).toBe('Chapter · Intro · 0:12.0')
     const idx = buildSnapIndex(F({ chapters: [chapter('h1', 12.09)] }))
     expect(snapLabel(at(idx, 12.09))).toBe('Chapter · 0:12.0')
+  })
+})
+
+describe('sameSpan and sameClips (a drag that lands on the current values adds no undo step)', () => {
+  it('sameSpan compares exact edges and is false for a missing item', () => {
+    expect(sameSpan({ start: 3, end: 4 }, { start: 3, end: 4 })).toBe(true)
+    expect(sameSpan({ start: 3, end: 4 }, { start: 3, end: 4.001 })).toBe(false)
+    expect(sameSpan(undefined, { start: 3, end: 4 })).toBe(false)
+  })
+
+  it('sameClips compares ranges and speeds, clip by clip', () => {
+    const a: Clip[] = [
+      { id: 'a', start: 0, end: 4, speed: 1 },
+      { id: 'b', start: 5, end: 9, speed: 2 }
+    ]
+    expect(sameClips(a, a.map((c) => ({ ...c, id: c.id + '2' })))).toBe(true)
+    expect(sameClips(a, [a[0]])).toBe(false)
+    expect(sameClips(a, [a[0], { ...a[1], end: 8.5 }])).toBe(false)
+    expect(sameClips(a, [a[0], { ...a[1], speed: 1 }])).toBe(false)
+  })
+
+  it('a snapped drag back onto the item keeps redo; a real move still records one step', () => {
+    let now = 0
+    const store = new EditStore({ zooms: [{ id: 'z', start: 3, end: 4 }], n: 0 }, 200, 800, () => now)
+    store.update((p) => ({ ...p, n: 1 }))
+    store.undo()
+    expect(store.canRedo).toBe(true)
+    const drag = (times: { start: number; end: number }): void =>
+      store.update((p) => (sameSpan(p.zooms.find((z) => z.id === 'z'), times) ? p : { ...p, zooms: p.zooms.map((z) => (z.id === 'z' ? { ...z, ...times } : z)) }), 'zoom-drag:z')
+    store.beginGesture()
+    drag({ start: 3, end: 4 })
+    store.endGesture()
+    expect(store.canRedo).toBe(true)
+    expect(store.canUndo).toBe(false)
+    now += 1000
+    store.beginGesture()
+    drag({ start: 3, end: 5 })
+    store.endGesture()
+    expect(store.state.zooms[0].end).toBe(5)
+    expect(store.canUndo).toBe(true)
+    expect(store.canRedo).toBe(false)
   })
 })

@@ -18,7 +18,7 @@ import {
 import { annotationLanes, dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { timelineGaps, type Gap } from '../../../shared/editor/clips'
 import { dragShapeTimes, isPrivacyKind, itemLanes, shapeLabel } from '../../../shared/editor/shapes'
-import { SNAP } from '../../../shared/editor/snapping'
+import { sameClips, sameSpan, SNAP } from '../../../shared/editor/snapping'
 import {
   clampScale,
   fitScale,
@@ -405,7 +405,7 @@ export const Timeline = memo(
         (ev) => {
           const t = s.at(ev, from + (ev.clientX - sx) / pxRef.current, limit)
           const next = edge === 'start' ? setTrimStart(initial, t) : setTrimEnd(initial, t, duration)
-          store.update((p) => ({ ...p, clips: next }), `trim-${edge}`)
+          store.update((p) => (sameClips(p.clips, next) ? p : { ...p, clips: next }), `trim-${edge}`)
           const b = keptBounds(next)
           player.seek(edge === 'start' ? b.start : b.end)
         },
@@ -436,7 +436,11 @@ export const Timeline = memo(
         e,
         (ev) => {
           const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragZoomTimes(initial, mode, d, bounds))
-          store.update((p) => ({ ...p, zooms: p.zooms.map((x) => (x.id === z.id ? { ...x, ...times, auto: false } : x)) }), `zoom-drag:${z.id}`)
+          store.update((p) => {
+            const cur = p.zooms.find((x) => x.id === z.id)
+            if (cur && !cur.auto && sameSpan(cur, times)) return p
+            return { ...p, zooms: p.zooms.map((x) => (x.id === z.id ? { ...x, ...times, auto: false } : x)) }
+          }, `zoom-drag:${z.id}`)
         },
         () => store.endGesture(),
         3
@@ -455,7 +459,7 @@ export const Timeline = memo(
         e,
         (ev) => {
           const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragAnnotationTimes(initial, mode, d, duration))
-          store.update((p) => ({ ...p, annotations: p.annotations.map((x) => (x.id === a.id ? { ...x, ...times } : x)) }), `annotation-drag:${a.id}`)
+          store.update((p) => (sameSpan(p.annotations.find((x) => x.id === a.id), times) ? p : { ...p, annotations: p.annotations.map((x) => (x.id === a.id ? { ...x, ...times } : x)) }), `annotation-drag:${a.id}`)
         },
         (moved) => {
           store.endGesture()
@@ -479,8 +483,8 @@ export const Timeline = memo(
         e,
         (ev) => {
           const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragShapeTimes(initial, mode, d, duration))
-          if (item.type === 'shape') store.update((p) => ({ ...p, shapes: (p.shapes ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
-          else store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
+          if (item.type === 'shape') store.update((p) => (sameSpan(p.shapes?.find((x) => x.id === item.id), times) ? p : { ...p, shapes: (p.shapes ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
+          else store.update((p) => (sameSpan(p.spotlights?.find((x) => x.id === item.id), times) ? p : { ...p, spotlights: (p.spotlights ?? []).map((x) => (x.id === item.id ? { ...x, ...times } : x)) }), key)
         },
         (moved) => {
           store.endGesture()

@@ -3,6 +3,7 @@ import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, keyIndexAt, type Keyf
 import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
 import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
 import { analysisSources, editLoudness, heardLevels, musicDucking, sourceActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
+import { MAX_ELEMENT_RATE, MIN_ELEMENT_RATE } from '../../../shared/editor/shuttle'
 import { editToVideo, NO_FREEZES, planOf, videoDuration, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { clamp } from '../../../shared/engine/math'
 import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
@@ -607,9 +608,10 @@ export class PreviewAudio {
   }
 }
 
-/** Sets an element's speed only when it changes (each change resamples). */
+/** Sets an element's speed only when it changes (each change resamples), within Chromium's range (outside it the setter throws). */
 function setRate(el: HTMLMediaElement, rate: number): void {
-  if (Math.abs(el.playbackRate - rate) > 1e-4) el.playbackRate = rate
+  const r = clamp(rate, MIN_ELEMENT_RATE, MAX_ELEMENT_RATE)
+  if (Math.abs(el.playbackRate - r) > 1e-4) el.playbackRate = r
 }
 
 /** Speed factor that closes a drift of `drift` seconds over about two seconds (none below `dead`). */
