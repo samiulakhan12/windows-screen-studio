@@ -1,7 +1,7 @@
 import { BrowserWindow, screen, type BrowserWindowConstructorOptions, type Rectangle } from 'electron'
-import os from 'node:os'
 import { bubbleBounds, DEFAULT_BUBBLE_SIZE, nearestCorner, type BubbleSize } from '../../shared/recording/cameraBubble'
 import type { Corner } from '../../shared/types'
+import { captureExclusionSupported } from './captureExclusion'
 
 /**
  * The live camera bubble shown while recording. Its window is opened by the recorder's own page
@@ -21,13 +21,9 @@ const SNAP_STEPS = 12
 /**
  * Windows 10 2004 (build 19041) is the first to keep a window out of screen captures entirely
  * (WDA_EXCLUDEFROMCAPTURE). Older versions would record it as a black square, so they get no
- * bubble. Other platforms: macOS excludes it, Linux has no exclusion (development and tests only).
+ * bubble. The rule lives in captureExclusion.ts (the speaker notes use it too).
  */
-export function bubbleSupported(platform = process.platform, release = os.release()): boolean {
-  if (platform !== 'win32') return true
-  const [major, , build] = release.split('.').map(Number)
-  return major > 10 || (major === 10 && build >= 19041)
-}
+export { captureExclusionSupported as bubbleSupported }
 
 interface BubbleState {
   token: string
@@ -91,7 +87,7 @@ export function allowBubble(
   shownChanged: () => void
 ): boolean {
   closeBubble()
-  if (!bubbleSupported()) return false
+  if (!captureExclusionSupported()) return false
   state = { token, corner, size: DEFAULT_BUBBLE_SIZE, area, shown: true }
   allowed = true
   onCorner = cornerChanged

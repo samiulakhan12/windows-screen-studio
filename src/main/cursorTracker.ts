@@ -95,8 +95,12 @@ export interface TrackerOptions {
    * stored for it. Keep it cheap: it runs for every input event.
    */
   onActivity?: () => void
-  /** True for points over the app's own windows (the toolbar): such clicks are dropped. */
-  isOwnPoint: (p: Point) => boolean
+  /**
+   * True for points over the app's own windows (the toolbar, the speaker notes): such clicks and
+   * wheel events are dropped. `at` is when the event happened (epoch ms): hook events arrive late,
+   * and a window may have moved or hidden since.
+   */
+  isOwnPoint: (p: Point, at: number) => boolean
   /** Shortcut labels never recorded (the app's own hotkeys). */
   ignoreKeys: string[]
 }
@@ -245,7 +249,7 @@ export class CursorTracker {
         const button = e.button as number
         // A new press of this button: an earlier unreleased one can no longer pair.
         this.pressed.delete(button)
-        if (opts.isOwnPoint(p)) return
+        if (opts.isOwnPoint(p, this.clock.toEpoch(tick))) return
         if (BUTTONS[button]) this.pressed.set(button, this.clicks.length)
         this.clicks.push({ tick, x: p.x, y: p.y, button: BUTTONS[button] ?? 'left' })
       })
@@ -257,7 +261,7 @@ export class CursorTracker {
         if (e.ctrlKey || e.metaKey) return
         const tick = observe(e.time)
         const p = hookPointToDip(e)
-        if (opts.isOwnPoint(p)) return
+        if (opts.isOwnPoint(p, this.clock.toEpoch(tick))) return
         this.addWheel(tick, p, Number.isFinite(e.rotation) ? e.rotation : 0, e.direction === WHEEL_HORIZONTAL)
       })
     }

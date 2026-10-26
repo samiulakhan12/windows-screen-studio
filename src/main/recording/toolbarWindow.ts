@@ -1,10 +1,10 @@
-import { BrowserWindow, screen, type Display, type Rectangle } from 'electron'
+import { BrowserWindow, screen, type Display, type Rectangle, type WebContents } from 'electron'
 import type { ToolbarStatus } from '../../shared/api/recording'
 import { loadRoute, preloadPath } from '../windows'
 import { toolbarPosition } from './placement'
 import type { Rect } from './trackMath'
 
-const SIZE = { width: 560, height: 64 }
+const SIZE = { width: 600, height: 64 }
 
 let toolbar: BrowserWindow | null = null
 /** Every place the toolbar occupied during this recording (clicks there are not content). */
@@ -73,6 +73,12 @@ export function sendToolbarLevel(level: number): void {
 
 export function toolbarAreas(): readonly Rectangle[] {
   return occupied
+}
+
+/** Whether `wc` is the recording bar's page (its notes button may show or hide the notes). */
+export function isToolbarSender(wc: WebContents): boolean {
+  const own = toolbar && !toolbar.isDestroyed() ? toolbar.webContents : null
+  return !!own && !own.isDestroyed() && own.id === wc.id
 }
 
 export function isToolbarVisible(): boolean {

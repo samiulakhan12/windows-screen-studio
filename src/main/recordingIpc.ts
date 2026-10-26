@@ -36,22 +36,30 @@ import { APP_NAME } from '../shared/brand'
 import { isBubbleSize, isCorner } from '../shared/recording/cameraBubble'
 import { MIN_SIZE } from '../shared/recording/regionGeometry'
 import { PROCESSING_DEFERRED } from '../shared/recording/errors'
-import {
-  HOTKEY_ACTIONS,
-  HOTKEY_NAMES,
-  hotkeyLabel,
-  normalizeHotkey,
-  validateHotkey,
-  type HotkeyAction,
-  type HotkeyCheck,
-  type Hotkeys
-} from '../shared/recording/hotkeys'
+import { HOTKEY_ACTIONS, HOTKEY_NAMES, hotkeyLabel, type AnyHotkeyAction, type HotkeyAction, type HotkeyCheck, type Hotkeys } from '../shared/recording/hotkeys'
 import { DEFAULT_RECORDING_SETTINGS, type AppSettings, type RecordingSettings, type RecordingSettingsPatch } from '../shared/recording/settings'
 import type { CaptureSource, Corner, NormRect, WebcamSettings } from '../shared/types'
 import { appSettings } from './appSettings'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
 import * as nativeModule from './nativeCapture'
+import { checkAnyHotkey } from './notes/notesIpc'
+import { notesStore } from './notes/notesStore'
+import {
+  closeNotes,
+  endRecordingNotes,
+  hideNotesWhilePicking,
+  notesAreaContains,
+  notesHotkeyLabels,
+  notesHotkeyProblems,
+  notesPlaying,
+  notesSettingsChanged,
+  notesStatus,
+  onNotesChange,
+  prepareRecordingNotes,
+  setNotesRecording,
+  showNotes
+} from './notes/notesWindow'
 import type { NativeEndedInfo } from './nativeCapture'
 import * as projects from './projects'
 import {
@@ -85,7 +93,7 @@ import {
   showToolbar,
   toolbarAreas
 } from './recording/toolbarWindow'
-import { buildCursorTrack, type RawTrack, type WindowMapping } from './recording/trackMath'
+import { buildCursorTrack, type RawTrack, type Rect, type WindowMapping } from './recording/trackMath'
 import { friendlyMessage, nativeEndedMessage, rendererGoneDialog } from './recording/userMessages'
 import { planWindowCapture, watchForChromium, WINDOW_NO_EFFECTS, windowCaptureSupport, windowCursorMapping, type WindowRoute } from './recording/windowCapture'
 import { isAppUrl } from './security'
@@ -111,6 +119,8 @@ let stopShortcut = false
 let registered: Partial<Hotkeys> = {}
 /** Messages about hotkeys that could not be registered. */
 let hotkeyProblems: string[] = []
+/** Why the speaker notes stay hidden during the recording being prepared (older Windows). */
+let notesNotice: string | undefined
 /** Auto-pause: watches for input while recording; null when off. */
 let idle: IdleDetector | null = null
 /** The recorder was told to pause because of inactivity (cleared when it records again). */
@@ -197,9 +207,15 @@ async function resolveSource(sourceId: string): Promise<{ name: string; display:
 /** Windows that are not being torn down (a closing window's webContents may already be gone). */
 const liveWindows = (): BrowserWindow[] => BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && !w.webContents.isDestroyed())
 
-function isOwnPoint(p: Point): boolean {
+/**
+ * Whether `p` is over one of the app's windows, so a click or wheel there is not content. `at`
+ * (epoch ms) is when the event happened: the speaker notes move and hide, so where they were
+ * then is what counts.
+ */
+function isOwnPoint(p: Point, at: number): boolean {
   if (toolbarAreas().some((r) => pointInRect(p, r))) return true
-  return liveWindows().some((w) => w.isVisible() && !w.isMinimized() && pointInRect(p, w.getBounds()))
+  if (liveWindows().some((w) => w.isVisible() && !w.isMinimized() && pointInRect(p, w.getBounds()))) return true
+  return notesAreaContains(p, at)
 }
 
 function startTracker(s: ActiveRecording): void {
@@ -210,8 +226,8 @@ function startTracker(s: ActiveRecording): void {
     global: s.windowId !== null && (s.manifest.method === 'native' || s.watchesWindow),
     captureKeys,
     isOwnPoint,
-    // The app's own hotkeys are never recorded as keystrokes.
-    ignoreKeys: Object.values(registered).map((a) => hotkeyLabel(a)),
+    // The app's own hotkeys (the speaker notes' too) are never recorded as keystrokes.
+    ignoreKeys: [...Object.values(registered).map((a) => hotkeyLabel(a)), ...Object.values(notesHotkeyLabels())],
     ...(options.autoPause ? { onActivity: () => idle?.activity() } : {})
   })
 }
@@ -291,18 +307,28 @@ function hotkeyLabels(): Partial<Record<HotkeyAction, string>> {
 }
 
 function toolbarStatus(update: Pick<ToolbarStatus, 'state' | 'elapsed' | 'starting'>): ToolbarStatus {
+  const notes = notesStatus()
+  const problems = notes ? [...hotkeyProblems, ...notesHotkeyProblems()] : hotkeyProblems
   return {
     state: update.state,
     elapsed: update.elapsed,
     stopShortcut,
-    hotkeys: hotkeyLabels(),
-    ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
+    hotkeys: notes ? { ...hotkeyLabels(), ...notesHotkeyLabels() } : hotkeyLabels(),
+    ...(problems.length ? { hotkeyProblems: problems } : {}),
     ...(marks ? { marks } : {}),
     ...(update.starting ? { starting: true } : {}),
     ...(update.state === 'paused' && autoPaused ? { idle: true } : {}),
     ...(micStatus ? { mic: micStatus } : {}),
-    ...(bubbleStatus() ? { camera: bubbleStatus()! } : {})
+    ...(bubbleStatus() ? { camera: bubbleStatus()! } : {}),
+    ...(notes ? { notes } : {})
   }
+}
+
+/** The recording bar shows what changed about the speaker notes (hidden, scrolling). */
+function refreshToolbarStatus(): void {
+  if (!active || lastStatus.state === 'idle') return
+  lastStatus = toolbarStatus(lastStatus)
+  sendToolbarStatus(lastStatus)
 }
 
 /** Auto-pause for the recording that just started, when it is switched on. */
@@ -317,6 +343,11 @@ function startIdleDetection(): void {
   idle = new IdleDetector(options.idleSeconds * 1000, {
     onIdle: () => {
       if (active?.phase !== 'recording') return
+      // Reading aloud makes no input: while the notes scroll, that counts as activity.
+      if (notesPlaying()) {
+        idle?.activity()
+        return
+      }
       autoPaused = true
       forwardCommand('pause')
     },
@@ -337,6 +368,7 @@ function stopIdleDetection(): void {
 /** `restarting`: a new recording follows at once, so the main window stays hidden. */
 function endRecordingUi(restarting = false): void {
   unregisterHotkeys()
+  endRecordingNotes(restarting)
   stopIdleDetection()
   closeBubble()
   bubbleMoves = []
@@ -558,8 +590,11 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
   bubbleMoves = []
   bubbleLook = await bubbleLookOfDefaults()
   grant = { id: request.sourceId, name: source.name, systemAudio: request.systemAudio }
-  prepareToolbar(source.display, region && source.display ? regionToRect(region, source.display.bounds) : null)
+  const regionRect = region && source.display ? regionToRect(region, source.display.bounds) : null
+  prepareToolbar(source.display, regionRect)
   marks = 0
+  // The speaker notes first: a rehearsal window closes (releasing its hotkeys) before any hotkey is registered.
+  notesNotice = prepareNotes(source, regionRect, dir)
   hotkeyProblems = registerHotkeys(settings.hotkeys)
   stopShortcut = !settings.hotkeys.stop || !!registered.stop
   lastStatus = toolbarStatus({ state: 'idle', elapsed: 0 })
@@ -572,7 +607,20 @@ async function prepare(request: RecordingRequest): Promise<CapturePlan> {
     fps: settings.fps,
     countdown: settings.countdown,
     ...(hotkeyProblems.length ? { hotkeyProblems } : {}),
-    ...(notice ? { notice } : {})
+    ...(notice ? { notice } : {}),
+    ...(notesNotice ? { notesNotice } : {})
+  }
+}
+
+/** The speaker notes of the recording being prepared; returns why they stay hidden, if they do. Never fails the recording. */
+function prepareNotes(source: { kind: 'screen' | 'window'; display: Display | null }, regionRect: Rect | null, dir: string): string | undefined {
+  try {
+    const kind = source.kind === 'window' ? 'window' : regionRect ? 'area' : 'screen'
+    const captured = kind === 'window' ? null : (regionRect ?? source.display?.bounds ?? null)
+    return prepareRecordingNotes({ kind, display: source.display, captured }, dir).notice
+  } catch (err) {
+    console.warn('Could not prepare the speaker notes:', err)
+    return undefined
   }
 }
 
@@ -744,6 +792,9 @@ function setStatus(token: string, status: RecorderStatusUpdate): void {
         s.phase = 'recording'
       }
       sendToolbarStatus(lastStatus)
+      // The notes first, so the bar ends up above them.
+      showNotes()
+      setNotesRecording(status.state)
       showToolbar()
       const main = getMainWindow()
       if (main?.isVisible()) main.hide()
@@ -757,6 +808,7 @@ function setStatus(token: string, status: RecorderStatusUpdate): void {
       }
       // A pause by hand stays until resumed by hand; an automatic one ends with the next input.
       if (!autoPaused) idle?.stop()
+      setNotesRecording('paused')
       break
     case 'processing':
     case 'idle':
@@ -888,7 +940,9 @@ async function pickRegion(sourceId: string): Promise<RegionSelection | null> {
   const source = await resolveSource(sourceId)
   if (source.kind !== 'screen' || !source.display) throw new RecordingError('Areas can only be selected on a screen.')
   const display = source.display
-  const pick = await pickRegionOnDisplay(display)
+  // The area overlay is at the same level as a rehearsal window: it goes away meanwhile.
+  const showNotesAgain = hideNotesWhilePicking()
+  const pick = await pickRegionOnDisplay(display).finally(showNotesAgain)
   if (!pick.region) {
     if (pick.rejected) throw new RecordingError(`The selected area is too small (at least ${MIN_SIZE} × ${MIN_SIZE}). Select a larger area.`)
     return null
@@ -1003,11 +1057,17 @@ export function registerRecordingIpc(): void {
     if (process.platform === 'win32') await shell.openExternal(`ms-settings:privacy-${kind === 'camera' ? 'webcam' : 'microphone'}`)
   })
   ipcMain.handle('settings:get', (): AppSettings => appSettings().get())
-  ipcMain.handle('settings:updateRecording', (_e, patch: RecordingSettingsPatch): AppSettings => appSettings().updateRecording(patch))
+  ipcMain.handle('settings:updateRecording', (_e, patch: RecordingSettingsPatch): AppSettings => {
+    const settings = appSettings().updateRecording(patch)
+    // A recording hotkey wins a clash with a notes hotkey: an open notes window takes the new set.
+    notesSettingsChanged()
+    return settings
+  })
   // Validated by the store: a malformed preset is repaired field by field, a nameless one refused.
   ipcMain.handle('settings:savePreset', (_e, preset: unknown): AppSettings => appSettings().savePreset(preset))
   ipcMain.handle('settings:deletePreset', (_e, id: unknown): AppSettings => appSettings().deletePreset(id))
-  ipcMain.handle('settings:checkHotkey', (_e, action: HotkeyAction, accelerator: string) => checkHotkey(action, accelerator))
+  ipcMain.handle('settings:checkHotkey', (_e, action: AnyHotkeyAction, accelerator: string) => checkHotkey(action, accelerator))
+  onNotesChange(refreshToolbarStatus)
 
   // Desktop icons that a crashed session left hidden come back now.
   void icons.restore()
@@ -1019,30 +1079,22 @@ function fromApp(e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolea
 }
 
 /**
- * Whether `accelerator` can be the hotkey for `action`: valid, distinct from the other recording
- * hotkeys and, outside a recording, free (registered and released at once to find out).
+ * Whether `accelerator` can be the hotkey for `action` (a recording or a speaker notes hotkey):
+ * valid, distinct from the other five and, outside a recording, free (registered and released at
+ * once to find out).
  */
-function checkHotkey(action: HotkeyAction, accelerator: string): HotkeyCheck {
-  if (!HOTKEY_ACTIONS.includes(action)) return { ok: false, message: 'Unknown hotkey.' }
-  const check = validateHotkey(accelerator)
-  if (!check.ok) return check
-  const current = appSettings().recording.hotkeys
-  for (const other of HOTKEY_ACTIONS) {
-    if (other !== action && normalizeHotkey(current[other]) === check.accelerator) {
-      return { ok: false, message: `${hotkeyLabel(check.accelerator)} is already the hotkey for ${HOTKEY_NAMES[other]}.` }
+function checkHotkey(action: AnyHotkeyAction, accelerator: string): HotkeyCheck {
+  return checkAnyHotkey(action, accelerator, {
+    recording: appSettings().recording.hotkeys,
+    notes: notesStore().get().hotkeys,
+    // During a recording the app holds its own hotkeys; the next recording reports a clash.
+    busy: !!active,
+    tryRegister: (a) => {
+      if (!globalShortcut.register(a, () => undefined)) return false
+      globalShortcut.unregister(a)
+      return true
     }
-  }
-  // During a recording the app holds its own hotkeys; the next recording reports a clash.
-  if (active || normalizeHotkey(current[action]) === check.accelerator) return check
-  const label = hotkeyLabel(check.accelerator)
-  try {
-    if (!globalShortcut.register(check.accelerator, () => undefined)) return { ok: false, message: `${label} is already used by another app.` }
-    globalShortcut.unregister(check.accelerator)
-    return check
-  } catch (err) {
-    console.warn(`Could not test ${check.accelerator}:`, err)
-    return { ok: false, message: `${label} cannot be used as a hotkey.` }
-  }
+  })
 }
 
 /** Recovery and quit protection for the window that runs the recorder. */
@@ -1105,6 +1157,8 @@ export function focusApp(): void {
 /** Called when the main window closes. */
 export function closeRecordingWindows(): void {
   closeToolbar()
+  // Otherwise window-all-closed never fires.
+  closeNotes()
 }
 
 export function disposeRecording(): void {
@@ -1113,6 +1167,8 @@ export function disposeRecording(): void {
   stopCheckpoints()
   globalShortcut.unregisterAll()
   stopIdleDetection()
+  // Changes to the notes held during a recording are written now.
+  notesStore().release()
   icons.restoreSync()
   tracker.stop()
   active?.killNative()
