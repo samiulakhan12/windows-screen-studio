@@ -65,7 +65,7 @@ the spec states it.
 
 ## Tests
 
-Unit (`tests/directorCopy.test.ts`, 9 tests): the rows of the plan (labels each part with its layout, times
+Unit (`tests/directorCopy.test.ts`, 10 tests): the rows of the plan (labels each part with its layout, times
 and reason; names the face framing before and after applying); the summary (counts, kept, diff; button
 labels); the sound status and the notes; the framing outcome; the notices; the palette command (Camera
 command without a default shortcut, found by "direct"; unavailable reasons).
