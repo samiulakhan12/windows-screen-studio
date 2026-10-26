@@ -1,8 +1,9 @@
 # Build report: teleprompter workstream B (renderer UI)
 
-Branch `feat-tp-b`, from `cfeaac5` (design and contracts). Workstream A (`feat-tp-a`, `612d4e1`)
-was merged in for integration (`0037c4d`, no conflicts; nothing in A's or the frozen files was
-changed). Spec: `docs/design/teleprompter.md`.
+Branch `feat-tp-b`, from `cfeaac5` (design and contracts). Workstream A (`feat-tp-a`) was merged
+in for integration twice: `612d4e1` (`0037c4d`) and then `c754bb9` with A's unit tests and report
+(`d48e974`). No conflicts; nothing in A's or the frozen files was changed. Spec:
+`docs/design/teleprompter.md`.
 
 ## What was built
 
@@ -161,15 +162,17 @@ header; the deviations above).
 
 ## Verification
 
-All run on the integrated branch (B + A at `612d4e1`), Linux, Node 22, Xvfb 1920×1080 with openbox.
+Linux, Node 22, Xvfb 1920×1080 with openbox.
 
 | Check | Result |
 |---|---|
-| `npm run typecheck` (node and web) | clean |
-| `npx vitest run --testTimeout=60000` | 141 files, 1990 tests passed (last three runs). The first full run after the UI commit reported "1 failed file, 140 passed" with no failing test listed (a file that did not load, under load); it did not recur in the next runs. |
-| `npm run build` | built (only the existing chunk-size warning) |
-| `xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/run-all.cjs teleprompter` | 6/6 tests passed, `1/1 e2e files passed` (on the final build) |
-| `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (full suite) | `43/43 e2e files passed`, 198 PASS lines, 0 FAIL (before the last two cosmetic dialog tweaks: no `aria-live` on the word count, "px" on the width / height values; the teleprompter file was run again after them) |
+| `npm run typecheck` (node and web), final integration with A at `c754bb9` | clean |
+| `npx vitest run --testTimeout=60000`, final integration | 2086 tests passed (A's unit tests included) |
+| `npm run build`, final integration | built (only the existing chunk-size warning) |
+| `run-all.cjs teleprompter recording-input recording-options camera-live recording.e2e ai.e2e audit-security ui.e2e smoke` (the spec's integration list), final integration | `10/10 e2e files passed`, 42 PASS, 0 FAIL (the `recording.e2e` filter also picks `audit-recording`) |
+| `xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/run-all.cjs teleprompter` | 6/6 tests, `1/1 e2e files passed` (passed on every run since the test fixes, on each build) |
+| `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (full suite), integration with A at `612d4e1` | `43/43 e2e files passed`, 198 PASS, 0 FAIL. A's later commits change only tests, docs and two lines in `notesWindow.ts` (programmatic moves are not saved as a place); the full suite was not run again after them, the integration list above was. |
+| vitest before A's tests | 1990 passed; once, the first full run after the UI commit reported "1 failed file, 140 passed" with no failing test listed (a file that did not load under load); it did not recur in the four later runs. |
 
 Logged by the e2e on every run: `first shown: the bar, then the notes` (deviation 1) and
 `notes window dragged while recording: {680, 8, 560, 240} -> {680, 8, 560, 240}` (deviation 2).
@@ -178,11 +181,6 @@ Not run here (Windows-unverified, §7.4): focus never taken on Windows, capture 
 and Chromium video and in screen sharing, Alt+Tab / taskbar, dragging the recording window,
 saving the place on `'moved'`, mixed-DPI placement, the wheel over an inactive window, the
 older-Windows black box, CPU and dropped frames with the notes scrolling.
-
-For the lead: `feat-tp-a` at `612d4e1` has no unit tests of its own yet (§7.1:
-`notesPlacement`, `ownAreas`, `scriptDraft`, `notesStore`, `notesWindow`, `notesIpc`,
-`captureExclusion`, the `cursorTracker` extension); the vitest count above has only B's and the
-contracts' notes tests.
 
 Screenshots: `docs/screenshots/teleprompter-notes-window.png` (rehearsal window, 32 KB),
 `teleprompter-home-card.png` (Home's record panel with the group, 49 KB),
