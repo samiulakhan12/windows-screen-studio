@@ -1,6 +1,6 @@
 /**
  * When the person talks, for the camera director (docs/design/camera-director.md, step 4): from
- * the level envelope of the microphone stem (or the mixed track when the recording kept no stem),
+ * the level envelope of the microphone stem (or the mixed track when the recording kept no stems),
  * with keyboard and mouse noise removed, sentence pauses joined and blips dropped; optionally
  * refined by the transcript's word timings. Source seconds throughout. Pure.
  */
@@ -43,11 +43,15 @@ export interface DirectorSpeech {
 
 /**
  * The recorded sound the director listens to: the microphone stem when the recording kept one
- * (stemsOf), else the mixed track when it has sound, else none. The edit's mute and volume are
- * ignored on purpose: a muted microphone still tells when the person talks.
+ * (stemsOf); none when it kept stems without one (stems are a complete set, so no microphone was
+ * recorded and the mixed track is PC sound only); else, without stems, the mixed track when it has
+ * sound, else none. The edit's mute and volume are ignored on purpose: a muted microphone still
+ * tells when the person talks.
  */
 export function speechLevelSource(project: Pick<Project, 'hasAudio' | 'audioStems'>): 'mic' | 'mix' | null {
-  if (stemsOf(project).includes('mic')) return 'mic'
+  const stems = stemsOf(project)
+  if (stems.includes('mic')) return 'mic'
+  if (stems.length > 0) return null
   return project.hasAudio ? 'mix' : null
 }
 

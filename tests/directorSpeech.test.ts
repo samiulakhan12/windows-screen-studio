@@ -206,9 +206,13 @@ describe('speechLevelSource', () => {
     expect(speechLevelSource({ hasAudio: true, audioStems: { mic: true, system: false } })).toBe('mic')
   })
 
-  it('listens to the mixed track when there is sound but no microphone stem', () => {
+  it('listens to the mixed track when there is sound but the recording kept no stems', () => {
     expect(speechLevelSource({ hasAudio: true })).toBe('mix')
-    expect(speechLevelSource({ hasAudio: true, audioStems: { mic: false, system: true } })).toBe('mix')
+    expect(speechLevelSource({ hasAudio: true, audioStems: { mic: false, system: false } })).toBe('mix')
+  })
+
+  it('has nothing to listen to when the stems hold no microphone: the mixed track is PC sound only', () => {
+    expect(speechLevelSource({ hasAudio: true, audioStems: { mic: false, system: true } })).toBeNull()
   })
 
   it('has nothing to listen to without sound', () => {

@@ -19,7 +19,10 @@ import { createVideo, seekedFrame, seekToFrame, WEBCAM_PROXY_FPS, whenReady } fr
 
 /** The director's speech for a project. */
 export interface SpeechResult {
-  /** Null when the recording has no sound and no transcript, or nothing could be measured. */
+  /**
+   * Null when there is no sound to listen to (speechLevelSource: none recorded, or PC sound only)
+   * and no transcript, or nothing could be measured.
+   */
   speech: DirectorSpeech | null
   /** The recording has sound but it could not be measured (the panel offers Try again). */
   failed: boolean

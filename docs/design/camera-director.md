@@ -133,13 +133,13 @@ automatically, remembering deleted automatic changes.
 | Note | Copy |
 |---|---|
 | camera-hidden | "The camera is hidden: show it to direct it." (button disabled; the palette says "Show the camera first") |
-| no-sound | "No sound was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face." |
+| no-sound | "No microphone was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face." |
 | (sound failed) | callout "The sound could not be measured: the plan uses the mouse and keyboard only." with **Try again** |
 | no-speech | "No talking was heard, so the camera stays on throughout and there is no intro or outro." |
 | mixed-sound | (the status line above) |
 | transcript | (the status line above) |
 | no-input | "This recording has no mouse or keyboard data: the director hides the camera in silences and frames your face, but cannot keep the bubble clear of the cursor." |
-| no-demo | "Nothing happens on screen that the director can see (no clicks, typing or zooms), so it cannot tell the intro from the demo." |
+| no-demo | "Nothing happens on screen that the director can see (no clicks, scrolling, typing or zooms), so it cannot tell the intro from the demo." |
 | kept-positions | "Your camera positions are kept." |
 | all-yours | "Your own camera changes cover the whole video: nothing left to direct." |
 | nothing | "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." |
@@ -215,6 +215,13 @@ Ownership rules (committed, real code):
   survives "Direct again", while the corner pieces around it are re-planned.
 - `removeLayout`: a cut-out with no stay pieces around it (it covered the position whole) becomes
   the corner-only position again (same id, no marks). With pieces, `stayAround` joins them as before.
+- `releaseCutOuts` (layouts.ts): when a piece of a camera position (manual corner-only in corner C)
+  is removed (`removeLayout`) or changed into something else (`updateLayout`, so also the in-place
+  changes of `setLayoutAt` and `setCornerAt`: another layout, another corner, the default corner),
+  walk from each of its edges across touching auto cut-outs in C. A chain that reaches no other
+  piece of the position loses `cutOut` (keeps `auto`, drawn the same): it is an automatic change
+  like any other, which withoutDirected drops, instead of coming back as a camera position the
+  user removed. A chain that reaches another piece stays a cut-out of it.
 - `directorData.ts`: `framingUntouched`, `framingIsDirectors` (within 1e-4 of `framed`),
   `directorMayFrame`, `hasCameraPositions` (manual corner-only segments), `hasDirectorChanges`,
   `directorSettingsOf` (saved options; for a never-directed project the defaults with
@@ -273,8 +280,10 @@ Both mapped to output with rangesToOutput.
 
 ### Step 4. Speech S (workstream B produces it; output ranges here)
 
-- Source (speechLevelSource): the mic stem when the recording kept one, else the mixed track when
-  it has sound. Requested by name, so a muted microphone still counts.
+- Source (speechLevelSource): the mic stem when the recording kept one; none when it kept stems
+  without one (stems are a complete set, so no microphone was recorded and the mixed track is PC
+  sound only: the transcript alone, else null); else, without stems, the mixed track when it has
+  sound. Requested by name, so a muted microphone still counts.
 - speechFromLevels: detectActivity (ACTIVITY unchanged: threshold = clamp(10th-percentile floor
   + 12 dB, −50, −32) dBFS, hold 0.5 s, minimum 0.12 s); drop a range at least 80% inside recorded
   input padded (typing bursts ±0.3 s, clicks ±0.15 s, keys ±0.15 s): keyboard and mouse noise;
@@ -293,11 +302,16 @@ Events, source times mapped with sourceToOutput (events in cuts dropped):
 
 - clicks of any button inside the frame (0..1), keys and "zoom here" marks: instants;
 - typing bursts [t, end];
+- scroll sessions (scrollSessions of the wheel events inside the frame): [start, end], a single
+  wheel event an instant;
 - every zoom (manual or auto): [start, end − zoomTransition(z, style)];
 - cursor sweeps: a move (consecutive samples each more than 0.004 from the one before; a rest of
-  up to 0.25 s does not end it) whose path covers at least 0.35 (normalised, positions clamped
-  to 0..1) within some 2.0 s of it; span from the sample before its first moving sample to its
-  last moving sample.
+  up to 0.25 s does not end it) whose path covers at least 0.35 (normalised; only steps with both
+  samples inside the frame move, so time off it, such as another monitor or a covering window, is
+  a rest) within some 2.0 s of it; span from the sample before its first moving sample to its
+  last moving sample. A sweep that starts at or after the end of every other event and ends in the
+  last 2.0 s of the output (DEMO.endEdge) does not count: it is the mouse going to stop the
+  recording (the stop click itself is a stray 'end' click, left out of the effective track).
 
 Cursor-track events count only when `cursor.valid` (else note `no-input`; zooms still count).
 demo.start = earliest event start, demo.end = latest event end. No events: no intro or outro,
@@ -432,10 +446,11 @@ state form the plan (and the strip).
 Walk the segments in start order: drop free auto segments; join each maximal run of touching
 (|Δ| ≤ 1e-6) segments that are either manual corner-only in corner C or auto cut-outs in corner
 C, and that holds at least one cut-out, into one corner-only C segment, with the id of its first
-manual piece, else of its first cut-out; marks stripped. Nothing else is merged. Hence
-withoutDirected(spliceDirected(base, runs)) equals base, ids included (when base has no two
-touching positions in the same corner, which recordings never make; such a pair is drawn the
-same either way).
+manual piece, else of its first cut-out; marks stripped (cut-outs whose piece the user removed or
+changed were released by `releaseCutOuts`, so are dropped as free auto segments). Nothing else is
+merged. Hence withoutDirected(spliceDirected(base, runs)) equals base, ids included (when base
+has no two touching positions in the same corner, which recordings never make; such a pair is
+drawn the same either way).
 
 ### Step 14. Plan outputs
 
@@ -530,7 +545,7 @@ Committed with real code (frozen):
 | `src/shared/engine/project.ts` | migrateProject sanitises `director` |
 | `src/shared/engine/outputPoint.ts` | `toOutput(rect, cam)`: the compositor's source → output mapping |
 | `src/renderer/src/render/compositor.ts` | `toOut: toOutput(rect, cam)` (same numbers) |
-| `src/shared/editor/layouts.ts` | byHand; updateLayout and dragLayout claim; removeLayout gives a whole cut-out back |
+| `src/shared/editor/layouts.ts` | byHand; updateLayout and dragLayout claim; removeLayout gives a whole cut-out back; releaseCutOuts |
 | `src/shared/editor/layoutCommands.ts` | setLayoutAt and setCornerAt claim in-place changes |
 | `tests/directorContracts.test.ts` | the above |
 
@@ -614,7 +629,8 @@ auto corner; removeLayout gives cut-outs back; toOutput equals the compositor fo
   mic + the same transcript → unchanged, not refined; no levels → transcript words joined;
   neither → null.
 - transcriptSpeech: words when present, caption times otherwise; null without captions.
-- speechLevelSource: mic with a mic stem; mix with sound and no stem; null without sound.
+- speechLevelSource: mic with a mic stem; mix with sound and no stems; null with stems but no mic
+  stem (PC sound only); null without sound.
 
 **tests/faceFraming.test.ts** (B)
 
@@ -646,6 +662,12 @@ callbacks, abort → 'skipped', frames closed.
 - No events → demoSpan null. A sweep (0.5, 0.5) → (0.92, 0.9) over 8.0-8.5 → demo.start 8.0 →
   with speech ending at 6.0, introEnd = min(7.0, 6.5) = 6.5.
 - Zooms count as events (over [start, end − transition]); events in cuts are dropped.
+- Scroll sessions count (wheel 8-18 s and clicks at 20, 26 → demo {8, 26}; wheel 30-40 after
+  them → demo.end 40); wheel events outside the frame do not.
+- The e2e cursor plus a move to the taskbar over 47.0-47.5 (T = 48) → demo {8, 25}, outro
+  [33.7, 48] kept; a shortcut at 47.9 after it makes it count again.
+- Movement off the frame (x = 1.6, y 0.2 → 0.8 over 2-3 s) plus a click at 9 → demo {9, 9}, the
+  spoken intro kept.
 - MIN_SHOWN: a 2 s bubble gap without speech between two hidden parts is absorbed; with 2 s of
   speech it grows to 4 s.
 - Cuts and speed: clips [{0, 10, ×1}, {15, 30, ×2}]: a hidden part needs 10 s of output silence (20
@@ -685,6 +707,13 @@ speech {source: 'mic', ranges [[0.5, 6], [17, 22], [34, 46.5]]}; ids 'a1', 'a2',
   [27, 33.7] {auto, cutOut, TL, id 'rec1b'}; camera-only [33.7, 48] {auto, cutOut, TL}.
   withoutDirected(result) deep-equals the base, ids included. kept = {changes: 1, positions: 2}.
 - Sliver: a hidden part starting 0.3 s into a position gives a cut-out from the position's start.
+- Removed position: base rec1 TL [10, 24] → cut-outs [10, 16.2] and [23, 24] around rec1
+  [16.2, 23]; deleting rec1 → withoutDirected gives [] (no 1 s position at 23-24 comes back) and
+  Direct again keeps no position; resetting or moving its corner → only rec1 [16.2, 23] comes
+  back; a cut-out between two pieces goes back to the one left.
+- Demo: the stop move to the taskbar keeps F1 exactly; scrolling before the first click (wheel
+  5-30 s, click at 35, talking throughout) → intro [0, 4]; after the last click (clicks 6 and 10,
+  wheel 12-40) → outro from 41.5.
 - Hand edit: the bubble block trimmed by hand to [16.2, 22.0] (byHand) → re-plan keeps it; the
   hidden part becomes [22.0, 33.7] (the 1 s gap joins it); nothing overlaps it.
 - Idempotence: applying, then planning again → upToDate, diff {added 0, removed 0}, same ids;

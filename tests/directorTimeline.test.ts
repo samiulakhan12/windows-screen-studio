@@ -209,6 +209,61 @@ describe('the demo span', () => {
     expect(slow!.end).toBeCloseTo(18, 6)
   })
 
+  it('counts scroll sessions of in-frame wheel events, so a demo can start or end with scrolling', () => {
+    const wheel = (from: number, to: number, x = 0.5): CursorTrack['scrolls'] =>
+      Array.from({ length: Math.round((to - from) / 0.25) + 1 }, (_, i) => ({ t: from + i * 0.25, x, y: 0.5, dx: 0, dy: -1 }))
+    expect(demoSpan(track({ scrolls: wheel(8, 18), clicks: clicksAt(20, 26) }), [], ONE, DEFAULT_ZOOM_STYLE)).toEqual({ start: 8, end: 26 })
+    expect(demoSpan(track({ scrolls: wheel(30, 40), clicks: clicksAt(20, 26) }), [], ONE, DEFAULT_ZOOM_STYLE)).toEqual({ start: 20, end: 40 })
+    // One wheel event is an instant; wheel events outside the frame, or without valid input, do not count.
+    expect(demoSpan(track({ scrolls: wheel(12, 12) }), [], ONE, DEFAULT_ZOOM_STYLE)).toEqual({ start: 12, end: 12 })
+    expect(demoSpan(track({ scrolls: wheel(8, 18, 1.4), clicks: clicksAt(20) }), [], ONE, DEFAULT_ZOOM_STYLE)).toEqual({ start: 20, end: 20 })
+    expect(demoSpan(track({ valid: false, scrolls: wheel(8, 18) }), [], ONE, DEFAULT_ZOOM_STYLE)).toBeNull()
+  })
+
+  it('does not count the move to stop the recording at the end (the e2e recording)', () => {
+    // 48 s; the move into the demo at 8.0-8.5, clicks at 13-25, then the mouse goes to the
+    // taskbar over 47.0-47.5 (its click at 47.8 is a stray 'end' one, not in the effective track).
+    const clips: Clip[] = [{ id: 'c', start: 0, end: 48, speed: 1 }]
+    const samples = []
+    for (let i = 0; i <= 480; i++) {
+      const t = i / 10
+      const k = Math.min(1, Math.max(0, (t - 8) / 0.5))
+      const j = Math.min(1, Math.max(0, (t - 47) / 0.5))
+      samples.push({ t, x: 0.5 + 0.42 * k - 0.42 * j, y: 0.5 + 0.4 * k + 0.09 * j })
+    }
+    const stop = track({ samples, clicks: [13, 16, 19, 22, 25].map((t) => ({ t, x: 0.92, y: 0.9, button: 'left' as const })) })
+    const demo = demoSpan(stop, [], clips, DEFAULT_ZOOM_STYLE)
+    expect(demo).toEqual({ start: 8, end: 25 })
+    const speech = ranges([
+      [0.5, 6],
+      [17, 22],
+      [34, 46.5]
+    ])
+    expectRange(planTimeline({ total: 48, speech, demo, locked: [], intro: true, hideAfter: 10 }).outro, 33.7, 48)
+    // Without any other event the move into the demo still counts, the one at the end does not.
+    expect(demoSpan(track({ samples }), [], clips, DEFAULT_ZOOM_STYLE)).toEqual({ start: 8, end: 8.5 })
+    // Input after it (a shortcut at 47.9) makes it part of the demo again.
+    expect(demoSpan({ ...stop, keys: [{ t: 47.9, label: 'Ctrl+S' }] }, [], clips, DEFAULT_ZOOM_STYLE)).toEqual({ start: 8, end: 47.9 })
+    // Earlier in the video, the same move counts.
+    expect(demoSpan(stop, [], ONE, DEFAULT_ZOOM_STYLE)?.end).toBeCloseTo(47.5, 6)
+  })
+
+  it('does not count movement off the recorded frame as a sweep', () => {
+    // While talking (0.5-6), the mouse moves on another monitor (x = 1.6) from y 0.2 to 0.8 over 2-3 s.
+    const samples = Array.from({ length: 101 }, (_, i) => {
+      const t = i / 10
+      return { t, x: 1.6, y: 0.2 + 0.6 * Math.min(1, Math.max(0, t - 2)) }
+    })
+    const demo = demoSpan(track({ samples, clicks: clicksAt(9) }), [], ONE, DEFAULT_ZOOM_STYLE)
+    expect(demo).toEqual({ start: 9, end: 9 })
+    expectRange(findIntro(ranges([[0.5, 6]]), demo!, []), 0, 6.5)
+    // Just past the right edge (over a covering window), or one jump off the frame: no sweep either.
+    const edge = samples.map((p) => ({ ...p, x: 1.001 }))
+    expect(demoSpan(track({ samples: edge }), [], ONE, DEFAULT_ZOOM_STYLE)).toBeNull()
+    const jump = Array.from({ length: 31 }, (_, i) => ({ t: i / 10, x: i < 15 ? 0.5 : 1.6, y: 0.5 }))
+    expect(demoSpan(track({ samples: jump }), [], ONE, DEFAULT_ZOOM_STYLE)).toBeNull()
+  })
+
   it('drops events inside cuts and maps the rest to output time', () => {
     const clips: Clip[] = [
       { id: 'a', start: 0, end: 10, speed: 1 },
