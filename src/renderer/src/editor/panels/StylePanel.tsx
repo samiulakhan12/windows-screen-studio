@@ -10,7 +10,7 @@ import type { Background, DeviceFrame, DeviceFrameKind, Project, ShadowStyle } f
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
-import { CropRow } from './CropRow'
+import { CropLink, CropRow } from './CropRow'
 import { PresetsSection } from './StylePresets'
 import { animatedThumb, frameThumb, wallpaperThumb } from './styleThumbs'
 import { WatermarkSection } from './WatermarkSection'
@@ -83,7 +83,7 @@ export function StylePanel({
     <>
       <PresetsSection project={project} onNotice={onNotice} />
 
-      <Section title="Frame">
+      <Section title="Frame" aside={<CropLink project={project} onCrop={onCrop} />}>
         <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
         <CropRow project={project} onCrop={onCrop} />
       </Section>

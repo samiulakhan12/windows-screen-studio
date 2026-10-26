@@ -375,10 +375,10 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 
 ## 5. UI and copy
 
-**Style › Frame** (`src/renderer/src/editor/panels/StylePanel.tsx`, the `<Section title="Frame">` at line 74, under the *Aspect ratio* chips) gets a new row component, `panels/CropRow.tsx`:
+**Style › Frame** (`src/renderer/src/editor/panels/StylePanel.tsx`, the `<Section title="Frame">` at line 74) gets `panels/CropRow.tsx`:
 
-- Uncropped: label **Crop**, button **Crop recording…** (tooltip "Choose the part of the recording to show (C)"), and the hint "Hide the taskbar, browser tabs or an edge."
-- Cropped: "**1920 × 1032** of 1920 × 1080", with buttons **Edit…** and **Reset** (tooltip "Show the whole recording").
+- Uncropped: a **Crop recording…** link in the section's header (`CropLink`, the `aside` of the section; tooltip "Choose the part of the recording to show: hide the taskbar, browser tabs or an edge (C)"). It takes no room, so nothing below it moves for a project without a crop.
+- Cropped: a row under the *Aspect ratio* chips (`CropRow`): label **Crop** with buttons **Edit…** and **Reset** (tooltip "Show the whole recording"), and the line "**1920 × 1032** of 1920 × 1080".
 
 **Crop tool** (`src/renderer/src/editor/CropEditor.tsx` + `crop.css`), mounted by `PreviewStage` in place of the other overlays while a draft exists:
 
@@ -498,7 +498,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 | `src/renderer/src/editor/CropEditor.tsx` | `CropTool` | `{ draft: CropDraft; onDraft: (d: CropDraft) => void; onDone: () => void }` (`PreviewStage`'s `cropTool` prop) |
 | | `CropEditor` | `(props: { recorded: { width: number; height: number }; rect: Rect } & CropTool) => JSX.Element` (the overlay, mounted by `PreviewStage`) |
 | | `CropBar` | `(props: { recorded: { width: number; height: number }; capture: CaptureInfo; scale: number \| undefined; onCancel: () => void } & CropTool) => JSX.Element` (the bar, rendered by `Editor.tsx` between `PreviewStage` and `Transport`) |
-| `src/renderer/src/editor/panels/CropRow.tsx` | `CropRow` | `(props: { project: Project; onCrop: (action: 'edit' \| 'reset') => void }) => JSX.Element` |
+| `src/renderer/src/editor/panels/CropRow.tsx` | `CropLink`, `CropRow` | `(props: { project: Project; onCrop: (action: 'edit' \| 'reset') => void }) => JSX.Element \| null` (the header link without a crop, the row with one) |
 
 ---
 
@@ -709,6 +709,7 @@ The fixture is built inline into the test home with ffmpeg: `color=c=0x808080:s=
 
 Where the code differs from the first draft of this design (the sections above already follow the code):
 
+- **Style › Frame without a crop** shows only a link in the section's header instead of a row with a hint: a row moved the Padding slider below the fold of the default window, which `editor.e2e.cjs` drags without scrolling. With a crop the row shows as designed.
 - **The bar is its own component.** `CropEditor.tsx` exports the overlay (`CropEditor`, mounted by `PreviewStage` through a `cropTool` prop) and the bar (`CropBar`, rendered by `Editor.tsx` in `.stage` between the preview and the transport). Inside `PreviewStage`'s `.canvas-wrap` the bar would either cover the bottom of the recording (the taskbar being cropped) or need the stage's layout restructured.
 - **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed).
 - **Undo and Redo** clear the draft in `Editor.tsx`'s `actions.undo` / `actions.redo` (two lines outside the regions listed in §9), so the title bar buttons and the shortcuts both close the tool.
