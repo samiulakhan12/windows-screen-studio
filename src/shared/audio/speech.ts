@@ -3,12 +3,11 @@
  * the level envelope of the microphone stem (or the mixed track when the recording kept no stem),
  * with keyboard and mouse noise removed, sentence pauses joined and blips dropped; optionally
  * refined by the transcript's word timings. Source seconds throughout. Pure.
- *
- * CONTRACT (workstream B): signatures and constants are frozen; bodies are to be written.
  */
 import type { CursorTrack, Project, Transcript } from '../types'
-import type { Range } from './activity'
+import { detectActivity, mergeRanges, type Range } from './activity'
 import type { AudioLevels } from './loudness'
+import { stemsOf } from './settings'
 
 /**
  * Speech from levels: sound found by detectActivity (ACTIVITY unchanged); a range at least
@@ -48,7 +47,8 @@ export interface DirectorSpeech {
  * ignored on purpose: a muted microphone still tells when the person talks.
  */
 export function speechLevelSource(project: Pick<Project, 'hasAudio' | 'audioStems'>): 'mic' | 'mix' | null {
-  return notImplemented(project)
+  if (stemsOf(project).includes('mic')) return 'mic'
+  return project.hasAudio ? 'mix' : null
 }
 
 /**
@@ -57,7 +57,9 @@ export function speechLevelSource(project: Pick<Project, 'hasAudio' | 'audioStem
  * and filtered (SPEECH).
  */
 export function speechFromLevels(levels: AudioLevels, track: CursorTrack | null): Range[] {
-  return notImplemented(levels, track)
+  const noise = track?.valid ? inputNoise(track) : []
+  const heard = detectActivity(levels).filter((r) => covered(r, noise) < SPEECH.noiseShare * (r.end - r.start))
+  return mergeRanges(heard, SPEECH.join).filter((r) => r.end - r.start >= SPEECH.minUtterance)
 }
 
 /**
@@ -65,7 +67,14 @@ export function speechFromLevels(levels: AudioLevels, track: CursorTrack | null)
  * counts whole), joined across SPEECH.transcriptGap; null without a transcript or captions.
  */
 export function transcriptSpeech(transcript: Pick<Transcript, 'segments'> | undefined): Range[] | null {
-  return notImplemented(transcript)
+  const segments = transcript?.segments ?? []
+  const said: Range[] = []
+  for (const seg of segments) {
+    const words = (seg.words ?? []).filter((w) => timed(w.start, w.end))
+    if (words.length > 0) for (const w of words) said.push({ start: w.start, end: w.end })
+    else if (timed(seg.start, seg.end)) said.push({ start: seg.start, end: seg.end })
+  }
+  return said.length > 0 ? mergeRanges(said, SPEECH.transcriptGap) : null
 }
 
 /**
@@ -76,11 +85,49 @@ export function transcriptSpeech(transcript: Pick<Transcript, 'segments'> | unde
  * when neither is known.
  */
 export function refineSpeech(levels: { source: 'mic' | 'mix'; ranges: readonly Range[] } | null, transcript: Pick<Transcript, 'segments'> | undefined): DirectorSpeech | null {
-  return notImplemented(levels, transcript)
+  const words = transcriptSpeech(transcript)
+  if (!levels) return words ? { ranges: mergeRanges(words, SPEECH.join), source: 'transcript', refined: false } : null
+  const ranges = mergeRanges(levels.ranges)
+  if (levels.source === 'mic' || !words) return { ranges, source: levels.source, refined: false }
+  const near = mergeRanges(words.map((w) => ({ start: w.start - SPEECH.transcriptPad, end: w.end + SPEECH.transcriptPad })))
+  return { ranges: intersect(ranges, near), source: 'mix', refined: true }
 }
 
-/** Placeholder of the contract; the implementation replaces every call. */
-function notImplemented(...args: unknown[]): never {
-  void args
-  throw new Error('not implemented')
+/** Times (source seconds, sorted, separate) when typing, clicking or a shortcut makes noise. */
+function inputNoise(track: CursorTrack): Range[] {
+  const noise: Range[] = []
+  for (const b of track.typing ?? []) if (timed(b.t, b.end, true)) noise.push({ start: b.t - SPEECH.typingPad, end: b.end + SPEECH.typingPad })
+  for (const c of track.clicks) if (Number.isFinite(c.t)) noise.push({ start: c.t - SPEECH.clickPad, end: c.t + SPEECH.clickPad })
+  for (const k of track.keys ?? []) if (Number.isFinite(k.t)) noise.push({ start: k.t - SPEECH.keyPad, end: k.t + SPEECH.keyPad })
+  return mergeRanges(noise)
+}
+
+/** Seconds of `r` inside sorted, separate `ranges`. */
+function covered(r: Range, ranges: readonly Range[]): number {
+  let sum = 0
+  for (const x of ranges) {
+    if (x.start >= r.end) break
+    sum += Math.max(0, Math.min(r.end, x.end) - Math.max(r.start, x.start))
+  }
+  return sum
+}
+
+/** The parts of sorted, separate `a` inside sorted, separate `b`. */
+function intersect(a: readonly Range[], b: readonly Range[]): Range[] {
+  const out: Range[] = []
+  let j = 0
+  for (const r of a) {
+    while (j < b.length && b[j].end <= r.start) j++
+    for (let k = j; k < b.length && b[k].start < r.end; k++) {
+      const s = Math.max(r.start, b[k].start)
+      const e = Math.min(r.end, b[k].end)
+      if (e > s) out.push({ start: s, end: e })
+    }
+  }
+  return out
+}
+
+/** A finite time span (one that may be empty when `instant`). */
+function timed(start: number, end: number, instant = false): boolean {
+  return Number.isFinite(start) && Number.isFinite(end) && (instant ? end >= start : end > start)
 }

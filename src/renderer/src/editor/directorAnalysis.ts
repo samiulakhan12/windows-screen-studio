@@ -7,13 +7,15 @@
  *   <video> of their own (the preview's camera is never seeked), segmented by the bundled person
  *   segmenter (segmentPicture), the head found in each mask and one framing made of them
  *   (faceFraming.ts). Cached per camera file and sample times for the editor session.
- *
- * CONTRACT (workstream B): signatures are frozen; bodies are to be written. The stubs resolve to
- * "nothing known" so the Camera panel can be built against them.
  */
-import type { DirectorSpeech } from '../../../shared/audio/speech'
-import type { FramingOutcome } from '../../../shared/render/faceFraming'
+import type { Range } from '../../../shared/audio/activity'
+import type { AudioLevels } from '../../../shared/audio/loudness'
+import { refineSpeech, speechFromLevels, speechLevelSource, type DirectorSpeech } from '../../../shared/audio/speech'
+import { faceBoxOfMask, framingFromFaces, type FaceBox, type FramingOutcome } from '../../../shared/render/faceFraming'
 import type { CursorTrack, Project } from '../../../shared/types'
+import { ensureSegmenter, segmentPicture, segmenterState } from '../render/segmentation/personSegmenter'
+import { loadAudioAnalysis } from './audioAnalysis'
+import { createVideo, seekedFrame, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
 
 /** The director's speech for a project. */
 export interface SpeechResult {
@@ -23,6 +25,17 @@ export interface SpeechResult {
   failed: boolean
 }
 
+/** Speech ranges of one envelope with one track's input as noise (the levels are shared for the session). */
+const speechCache = new WeakMap<AudioLevels, WeakMap<CursorTrack, Range[]>>()
+
+function speechOf(levels: AudioLevels, cursor: CursorTrack): Range[] {
+  let byTrack = speechCache.get(levels)
+  if (!byTrack) speechCache.set(levels, (byTrack = new WeakMap()))
+  let ranges = byTrack.get(cursor)
+  if (!ranges) byTrack.set(cursor, (ranges = speechFromLevels(levels, cursor)))
+  return ranges
+}
+
 /**
  * Speech of `project` for the director: the levels of speechLevelSource(project) (requested by
  * name, so a muted source still counts), speechFromLevels with `cursor`'s input as noise, then
@@ -30,15 +43,72 @@ export interface SpeechResult {
  * call (loadAudioAnalysis drops it from its cache).
  */
 export async function loadDirectorSpeech(project: Pick<Project, 'id' | 'hasAudio' | 'audioStems' | 'transcript'>, cursor: CursorTrack): Promise<SpeechResult> {
-  void project
-  void cursor
-  return { speech: null, failed: false }
+  const source = speechLevelSource(project)
+  if (!source) return { speech: refineSpeech(null, project.transcript), failed: false }
+  let levels: AudioLevels | undefined
+  try {
+    levels = (await loadAudioAnalysis(project.id, [source]))[source]
+  } catch (err) {
+    console.warn(`Could not measure the ${source} sound for the camera director:`, err)
+  }
+  // The source exists (the project says so), so missing levels mean the measurement failed:
+  // the transcript, when there is one, still tells when the person talks.
+  if (!levels) return { speech: refineSpeech(null, project.transcript), failed: true }
+  return { speech: refineSpeech({ source, ranges: speechOf(levels, cursor) }, project.transcript), failed: false }
 }
 
 /** How far face framing has got: pictures segmented of those sampled. */
 export interface FaceProgress {
   done: number
   total: number
+}
+
+/** Longest wait for one seek of the camera, ms; that picture is skipped after it. */
+const SEEK_TIMEOUT = 3000
+/** Longest wait for the camera video to load, ms. */
+const LOAD_TIMEOUT = 10000
+/** Camera files and sample times measured in this editor session, and how many are kept. */
+const CACHE_SIZE = 8
+
+interface Measured {
+  faces: (FaceBox | null)[]
+  camW: number
+  camH: number
+}
+
+const measured = new Map<string, Measured>()
+
+class Aborted extends Error {}
+
+/** `promise`, or a rejection after `ms` or when `signal` aborts (Aborted). */
+function bounded<T>(promise: Promise<T>, ms: number, signal: AbortSignal | undefined): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = Number.isFinite(ms) ? setTimeout(() => finish(() => reject(new Error('timed out'))), ms) : undefined
+    const onAbort = (): void => finish(() => reject(new Aborted()))
+    const finish = (then: () => void): void => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+      then()
+    }
+    if (signal?.aborted) return onAbort()
+    signal?.addEventListener('abort', onAbort)
+    promise.then(
+      (v) => finish(() => resolve(v)),
+      (err: unknown) => finish(() => reject(err))
+    )
+  })
+}
+
+function outcomeOf(m: Measured, maxZoom: number): FramingOutcome {
+  const found = m.faces.filter((f) => f !== null).length
+  const framing = framingFromFaces(m.faces, m.camW, m.camH, maxZoom)
+  if (!framing) return { status: 'not-found', found, sampled: m.faces.length }
+  return { status: 'framed', ...framing }
+}
+
+const unavailable = (fallback: string): FramingOutcome => {
+  const state = segmenterState()
+  return { status: 'unavailable', reason: state.status === 'failed' ? state.reason : fallback }
 }
 
 /**
@@ -56,9 +126,72 @@ export async function measureFraming(
   maxZoom: number,
   options: { onProgress?: (p: FaceProgress) => void; signal?: AbortSignal } = {}
 ): Promise<FramingOutcome> {
-  void webcamUrl
-  void cameraTimes
-  void maxZoom
-  void options
-  return { status: 'unavailable', reason: 'face framing is not built yet' }
+  const { onProgress, signal } = options
+  if (signal?.aborted) return { status: 'skipped' }
+  const times = cameraTimes.filter((t) => Number.isFinite(t))
+  const key = `${webcamUrl}\u0000${times.join(',')}`
+  const known = measured.get(key)
+  if (known) {
+    onProgress?.({ done: times.length, total: times.length })
+    return outcomeOf(known, maxZoom)
+  }
+  let video: HTMLVideoElement | null = null
+  try {
+    if (!(await bounded(ensureSegmenter(), Infinity, signal))) return unavailable('person detection could not start')
+    if (times.length === 0) return { status: 'not-found', found: 0, sampled: 0 }
+    onProgress?.({ done: 0, total: times.length })
+    video = createVideo(webcamUrl)
+    video.muted = true
+    const loaded = await bounded(whenReady(video), LOAD_TIMEOUT, signal).then(
+      () => true,
+      (err: unknown) => {
+        if (err instanceof Aborted) throw err
+        return false
+      }
+    )
+    const camW = video.videoWidth
+    const camH = video.videoHeight
+    if (!loaded || !(camW > 0 && camH > 0)) return { status: 'unavailable', reason: 'the camera video could not be read' }
+    const faces: (FaceBox | null)[] = []
+    for (const t of times) {
+      faces.push(await faceAt(video, t, signal))
+      if (segmenterState().status === 'failed') return unavailable('person detection stopped working')
+      onProgress?.({ done: faces.length, total: times.length })
+    }
+    const result: Measured = { faces, camW, camH }
+    measured.set(key, result)
+    while (measured.size > CACHE_SIZE) measured.delete(measured.keys().next().value as string)
+    return outcomeOf(result, maxZoom)
+  } catch (err) {
+    if (err instanceof Aborted) return { status: 'skipped' }
+    console.warn('Face framing failed:', err)
+    return unavailable(err instanceof Error ? err.message : String(err))
+  } finally {
+    if (video) {
+      video.removeAttribute('src')
+      video.load()
+    }
+  }
+}
+
+/** The head in the camera picture at camera time `t`, or null (not found, the seek timed out, no mask). */
+async function faceAt(video: HTMLVideoElement, t: number, signal: AbortSignal | undefined): Promise<FaceBox | null> {
+  try {
+    await bounded(seekToFrame(video, t, WEBCAM_PROXY_FPS), SEEK_TIMEOUT, signal)
+  } catch (err) {
+    if (err instanceof Aborted) throw err
+    return null
+  }
+  const shown = await seekedFrame(video, t, WEBCAM_PROXY_FPS)
+  const frame = shown?.frame ?? null
+  try {
+    if (signal?.aborted) throw new Aborted()
+    const width = frame ? frame.displayWidth : video.videoWidth
+    const height = frame ? frame.displayHeight : video.videoHeight
+    if (!(width > 0 && height > 0)) return null
+    const mask = await bounded(segmentPicture(frame ?? video, width, height), Infinity, signal)
+    return mask ? faceBoxOfMask(mask.pixels.data, mask.pixels.width, mask.pixels.height) : null
+  } finally {
+    frame?.close()
+  }
 }
