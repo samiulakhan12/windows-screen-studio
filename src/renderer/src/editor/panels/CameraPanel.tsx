@@ -28,11 +28,11 @@ const pxFmt = (v: number): string => (v > 0 ? `${Math.round(v)} px` : 'Off')
 const offPct = (v: number): string => (v > 0 ? pctFmt(v) : 'Off')
 const zoomFmt = (v: number): string => `${v.toFixed(1)}×`
 
-type Props = Pick<InspectorProps, 'project' | 'cursor' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice' | 'directorRequest'>
+type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice' | 'directorRequest'>
 
 /* ---------- Camera ---------- */
 
-export function CameraPanel({ project, cursor, hasWebcam, selection, onSelect, onNotice, directorRequest }: Props): JSX.Element {
+export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, onSelect, onNotice, directorRequest }: Props): JSX.Element {
   const { store } = useEditor()
   const { webcam } = project
   const look = webcamLook(webcam)
@@ -41,7 +41,7 @@ export function CameraPanel({ project, cursor, hasWebcam, selection, onSelect, o
   return (
     <>
       {!hasWebcam && <p className="hint">This recording has no camera. Pick a camera on the home screen before recording.</p>}
-      {hasWebcam && <DirectorSection project={project} cursor={cursor} onSelect={onSelect} onNotice={onNotice} directorRequest={directorRequest} />}
+      {hasWebcam && <DirectorSection project={project} cursor={cursor} recorded={recorded} onSelect={onSelect} onNotice={onNotice} directorRequest={directorRequest} />}
       <Section title="Camera">
         <Toggle label="Show camera" checked={hasWebcam && webcam.show} disabled={!hasWebcam} onChange={(v) => set({ show: v })} />
         <Slider label="Size" value={webcam.size} {...L.webcamSize} step={0.01} format={pctFmt} disabled={off} onChange={(v) => set({ size: v }, 'webcam.size')} />
