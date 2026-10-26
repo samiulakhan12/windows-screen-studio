@@ -106,7 +106,8 @@ export function stayAround(layouts: LayoutSegment[], seg: LayoutSegment): { befo
  * The layouts without segment `id`. A change cut out of a camera position gives its time back to
  * it: the pieces join again, keeping the first one's id. A change the camera director cut out of
  * a camera position it covered whole (LayoutSegment.cutOut, no pieces left around it) becomes
- * that camera position again.
+ * that camera position again. A piece of a camera position takes along the director's cut-outs
+ * that only it held (releaseCutOuts).
  */
 export function removeLayout(layouts: LayoutSegment[] | undefined, id: string): LayoutSegment[] {
   const list = layouts ?? []
@@ -120,7 +121,42 @@ export function removeLayout(layouts: LayoutSegment[] | undefined, id: string): 
     const position: LayoutSegment = { id: seg.id, start: seg.start, end: seg.end, layout: 'default', corner: seg.corner }
     return [...rest, position].sort((a, b) => a.start - b.start)
   }
-  return rest
+  return releaseCutOuts(rest, seg)
+}
+
+/**
+ * `layouts` after `was`, a piece of a camera position of the user's (a manual corner-only
+ * segment), was removed or stopped being one (another layout or corner): the camera director's
+ * cut-outs only it held lose their `cutOut` mark. Walking from each edge of `was` across touching
+ * cut-outs in its corner, a chain that reaches no other piece of the position becomes automatic
+ * changes like any other, which "Remove automatic changes" and "Direct again" drop
+ * (withoutDirected) instead of bringing back as a camera position the user removed. Drawn the
+ * same; `layouts` itself when nothing is released.
+ */
+export function releaseCutOuts(layouts: LayoutSegment[], was: LayoutSegment): LayoutSegment[] {
+  const piece = (s: LayoutSegment): boolean => cornerOnly(s) && !s.auto && s.corner === was.corner
+  if (!piece(was) || layouts.some((s) => s.id === was.id && piece(s))) return layouts
+  const cut = (s: LayoutSegment): boolean => !!s.auto && !!s.cutOut && s.corner === was.corner
+  const near = (a: number, b: number): boolean => Math.abs(a - b) <= 1e-6
+  const release = new Set<LayoutSegment>()
+  for (const back of [true, false]) {
+    // The segment of a kind touching `edge` on this side of `was`.
+    const at = (edge: number, is: (s: LayoutSegment) => boolean): LayoutSegment | undefined => layouts.find((s) => is(s) && near(back ? s.end : s.start, edge))
+    const chain: LayoutSegment[] = []
+    let edge = back ? was.start : was.end
+    for (let next = at(edge, cut); next && !chain.includes(next); next = at(edge, cut)) {
+      chain.push(next)
+      edge = back ? next.start : next.end
+    }
+    if (!at(edge, piece)) chain.forEach((s) => release.add(s))
+  }
+  if (!release.size) return layouts
+  return layouts.map((s) => {
+    if (!release.has(s)) return s
+    const { cutOut: _cutOut, ...rest } = s
+    void _cutOut
+    return rest
+  })
 }
 
 /** A new layout segment starting at `t`, clamped to the recording. */
@@ -283,7 +319,14 @@ export function dragLayoutTimes(
   return { start, end }
 }
 
-/** The layouts with segment `id` changed by `patch` (an edit by hand: it becomes the user's, byHand), kept in order. */
+/**
+ * The layouts with segment `id` changed by `patch` (an edit by hand: it becomes the user's, byHand),
+ * kept in order. A piece of a camera position changed into something else releases the director's
+ * cut-outs only it held (releaseCutOuts).
+ */
 export function updateLayout(layouts: LayoutSegment[] | undefined, id: string, patch: Partial<Omit<LayoutSegment, 'id' | 'auto' | 'cutOut'>>): LayoutSegment[] {
-  return (layouts ?? []).map((s) => (s.id === id ? byHand({ ...s, ...patch }) : s)).sort((a, b) => a.start - b.start)
+  const list = layouts ?? []
+  const was = list.find((s) => s.id === id)
+  const out = list.map((s) => (s.id === id ? byHand({ ...s, ...patch }) : s)).sort((a, b) => a.start - b.start)
+  return was ? releaseCutOuts(out, was) : out
 }

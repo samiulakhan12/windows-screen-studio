@@ -6,12 +6,17 @@
  * after cuts and speed changes), so minimum lengths are what the viewer sees. Pure.
  */
 import { mergeRanges, rangesToOutput, type Range } from '../audio/activity'
-import { sourceToOutput } from '../engine/timeline'
+import { scrollSessions } from '../engine/scroll'
+import { outputDuration, sourceToOutput } from '../engine/timeline'
 import { zoomTransition, type ZoomStyle } from '../engine/zoom'
 import type { Clip, CursorTrack, ZoomSegment } from '../types'
 
-/** Fast cursor sweeps count as deliberate input: a path at least `sweepLength` (normalised) long within `sweepWindow` seconds. */
-export const DEMO = { sweepWindow: 2.0, sweepLength: 0.35 } as const
+/**
+ * Fast cursor sweeps count as deliberate input: a path at least `sweepLength` (normalised) long
+ * within `sweepWindow` seconds. A sweep after every other event that ends in the last `endEdge`
+ * seconds of the edit is the mouse going to stop the recording, not the demo.
+ */
+export const DEMO = { sweepWindow: 2.0, sweepLength: 0.35, endEdge: 2.0 } as const
 
 /**
  * The intro ends `lead` s before the first action (snapped into a pause of at least `minPause`
@@ -47,9 +52,11 @@ export interface DemoSpan {
 /**
  * The demo span of a recording (output seconds), or null when nothing deliberate happens. Events,
  * mapped through the clips (events inside cuts are dropped): in-frame clicks of any button, keys,
- * "zoom here" marks, typing bursts [t, end], every zoom (manual or auto) over
- * [start, end - zoomTransition(z, style)], and cursor sweeps (DEMO). Cursor-derived events
- * (clicks, keys, typing, sweeps) count only when `track.valid`.
+ * "zoom here" marks, typing bursts [t, end], scroll sessions of in-frame wheel events
+ * [start, end], every zoom (manual or auto) over [start, end - zoomTransition(z, style)], and
+ * cursor sweeps (DEMO) except those after every other event ending in the last DEMO.endEdge
+ * seconds of the edit (the move to stop the recording, whose click is a stray 'end' one).
+ * Cursor-derived events (clicks, keys, typing, scrolls, sweeps) count only when `track.valid`.
  */
 export function demoSpan(track: CursorTrack, zooms: readonly ZoomSegment[], clips: readonly Clip[], style: ZoomStyle): DemoSpan | null {
   const events: Range[] = []
@@ -69,7 +76,13 @@ export function demoSpan(track: CursorTrack, zooms: readonly ZoomSegment[], clip
     for (const c of track.clicks) if (inUnit(c.x) && inUnit(c.y)) instant(c.t)
     for (const k of track.keys ?? []) instant(k.t)
     for (const b of track.typing ?? []) span(b.t, b.end)
+    for (const s of scrollSessions((track.scrolls ?? []).filter((e) => inUnit(e.x) && inUnit(e.y)))) span(s.start, s.end)
+    // Sweeps last: one after every other event that reaches the end of the edit is the move to stop the recording.
+    const others = events.reduce((at, e) => Math.max(at, e.end), -Infinity)
+    const tail = outputDuration(clips as Clip[]) - DEMO.endEdge
+    const first = events.length
     for (const s of cursorSweeps(track.samples)) span(s.start, s.end)
+    for (let i = events.length - 1; i >= first; i--) if (events[i].start >= others - 1e-9 && events[i].end > tail + 1e-9) events.splice(i, 1)
   }
   if (!events.length) return null
   let start = Infinity
@@ -212,7 +225,6 @@ const ONSET_ROOM = 1.0
 
 const inUnit = (v: number): boolean => v >= 0 && v <= 1
 const mid = (r: Range): number => (r.start + r.end) / 2
-const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
 
 /** Whether sorted `ranges` overlap [a, b]. */
 const meets = (ranges: readonly Range[], a: number, b: number): boolean => ranges.some((r) => r.start < b && r.end > a)
@@ -276,7 +288,9 @@ function intersect(a: readonly Range[], b: readonly Range[]): Range[] {
 /**
  * Fast cursor sweeps (source seconds): moves (samples each more than SWEEP_EPS from the one
  * before, rests up to SWEEP_REST included) whose path covers DEMO.sweepLength within some
- * DEMO.sweepWindow, from the sample before the move to its last moving sample.
+ * DEMO.sweepWindow, from the sample before the move to its last moving sample. Only steps with
+ * both samples inside the frame move: time off it (another monitor, outside the recorded region or
+ * window, a covering window) is a rest, as the viewer sees no movement there.
  */
 function cursorSweeps(samples: CursorTrack['samples']): Range[] {
   const out: Range[] = []
@@ -291,7 +305,8 @@ function cursorSweeps(samples: CursorTrack['samples']): Range[] {
   for (let i = 1; i < samples.length; i++) {
     const a = samples[i - 1]
     const b = samples[i]
-    const len = Math.hypot(clamp01(b.x) - clamp01(a.x), clamp01(b.y) - clamp01(a.y))
+    if (!(inUnit(a.x) && inUnit(a.y) && inUnit(b.x) && inUnit(b.y))) continue
+    const len = Math.hypot(b.x - a.x, b.y - a.y)
     if (!(len > SWEEP_EPS)) continue
     if (first >= 0 && a.t - samples[last].t > SWEEP_REST + 1e-9) flush()
     if (first < 0) first = i - 1

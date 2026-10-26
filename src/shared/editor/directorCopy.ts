@@ -115,12 +115,12 @@ export const SOUND_FAILED = 'The sound could not be measured: the plan uses the 
 /** What each note says; null for the notes the sound status line already covers. */
 export const NOTE_TEXT: Record<DirectorNote, string | null> = {
   'camera-hidden': 'The camera is hidden: show it to direct it.',
-  'no-sound': 'No sound was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face.',
+  'no-sound': 'No microphone was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face.',
   'no-speech': 'No talking was heard, so the camera stays on throughout and there is no intro or outro.',
   'mixed-sound': null,
   transcript: null,
   'no-input': 'This recording has no mouse or keyboard data: the director hides the camera in silences and frames your face, but cannot keep the bubble clear of the cursor.',
-  'no-demo': 'Nothing happens on screen that the director can see (no clicks, typing or zooms), so it cannot tell the intro from the demo.',
+  'no-demo': 'Nothing happens on screen that the director can see (no clicks, scrolling, typing or zooms), so it cannot tell the intro from the demo.',
   'kept-positions': 'Your camera positions are kept.',
   'all-yours': 'Your own camera changes cover the whole video: nothing left to direct.',
   nothing: 'Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.'

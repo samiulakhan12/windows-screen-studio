@@ -1,7 +1,7 @@
 import { cornered } from '../engine/layout'
 import { CORNER_NAMES } from '../recording/cameraBubble'
 import type { CameraLayout, Corner, LayoutSegment, Project } from '../types'
-import { addLayoutAt, byHand, cornerOnly, layoutSegmentAt, layoutTimeAt, type LayoutEdit } from './layouts'
+import { addLayoutAt, cornerOnly, layoutSegmentAt, layoutTimeAt, updateLayout, type LayoutEdit } from './layouts'
 
 /*
  * The editor's "camera layout at the playhead" commands, and the Camera panel's layout picker
@@ -40,7 +40,7 @@ export function setLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number
     if (here.layout === layout) return { ok: false, reason: 'same', id: here.id }
     const r = cornerOnly(here) ? addLayoutAt(project, layout, t) : null
     if (r?.ok) return { ok: true, layouts: r.layouts, id: r.segment.id, added: true }
-    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? byHand({ ...s, layout }) : s)), id: here.id, added: false }
+    return { ok: true, layouts: updateLayout(layouts, here.id, { layout }), id: here.id, added: false }
   }
   if (layout === 'default') return { ok: false, reason: 'same', id: null }
   const r = addLayoutAt(project, layout, t)
@@ -76,7 +76,7 @@ export function setCornerAt(project: LayoutEdit & Pick<Project, 'webcam'>, corne
   if (here) {
     if (!cornered(here.layout)) return { ok: false, reason: 'no-corner', id: here.id }
     if ((here.corner ?? project.webcam.corner) === corner) return { ok: false, reason: 'same', id: here.id }
-    return { ok: true, layouts: layouts.map((s) => (s.id === here.id ? byHand({ ...s, corner }) : s)), id: here.id, added: false }
+    return { ok: true, layouts: updateLayout(layouts, here.id, { corner }), id: here.id, added: false }
   }
   if (corner === project.webcam.corner) return { ok: false, reason: 'same', id: null }
   const r = addLayoutAt(project, 'default', t, corner)

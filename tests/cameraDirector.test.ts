@@ -3,7 +3,8 @@ import type { Range } from '../src/shared/audio/activity'
 import type { DirectorSpeech } from '../src/shared/audio/speech'
 import { applyDirectorPlan, clearDirected, planDirector, spliceDirected, withoutDirected, type DirectorInput, type DirectorPlan } from '../src/shared/editor/cameraDirector'
 import { INTRO, OUTRO } from '../src/shared/editor/directorTimeline'
-import { cornerOnly, dragLayout } from '../src/shared/editor/layouts'
+import { setCornerAt } from '../src/shared/editor/layoutCommands'
+import { cornerOnly, dragLayout, removeLayout, updateLayout } from '../src/shared/editor/layouts'
 import { SmoothedTrack } from '../src/shared/engine/cursor'
 import { directorSettingsOf } from '../src/shared/engine/directorData'
 import { layoutRamps } from '../src/shared/engine/layout'
@@ -161,6 +162,44 @@ describe('F1: the e2e recording with default settings', () => {
   })
 })
 
+describe('the demo, as the person ends and scrolls through it', () => {
+  it('keeps the outro when the mouse goes to the taskbar to stop the recording', () => {
+    // The e2e cursor, then a move to (0.5, 0.99) over 47.0-47.5; the stop click at 47.8 is a
+    // stray 'end' one, which the effective track the director gets leaves out.
+    const samples = CURSOR.samples.map((p) => {
+      const j = Math.min(1, Math.max(0, (p.t - 47) / 0.5))
+      return { ...p, x: p.x - 0.42 * j, y: p.y + 0.09 * j }
+    })
+    const plan = direct(e2eProject(), { cursor: { ...CURSOR, samples } })
+    expectLayouts(plan.layouts, F1)
+    expect(plan.parts.map((x) => x.kind)).toEqual(['intro', 'hidden', 'corner', 'hidden', 'outro'])
+  })
+
+  // 60 s, talking throughout, the cursor still; wheel events every 0.25 s.
+  const talking: DirectorSpeech = { source: 'mic', refined: false, ranges: [{ start: 0.3, end: 59.5 }] }
+  const still: CursorSample[] = Array.from({ length: 601 }, (_, i) => ({ t: i / 10, x: 0.5, y: 0.5 }))
+  const wheel = (from: number, to: number): NonNullable<CursorTrack['scrolls']> =>
+    Array.from({ length: Math.round((to - from) / 0.25) + 1 }, (_, i) => ({ t: from + i * 0.25, x: 0.5, y: 0.5, dx: 0, dy: -1 }))
+  const click = (t: number): CursorTrack['clicks'][number] => ({ t, x: 0.5, y: 0.5, button: 'left' })
+  const sixty = (): Project => e2eProject({ duration: 60, clips: [{ id: 'c', start: 0, end: 60, speed: 1 }] })
+
+  it('does not cover scrolling before the first click with the intro', () => {
+    const cursor: CursorTrack = { samples: still, clicks: [click(35)], scrolls: wheel(5, 30), valid: true }
+    const plan = direct(sixty(), { cursor, speech: talking })
+    const intro = plan.parts.find((x) => x.kind === 'intro')!
+    expect(intro.outStart).toBe(0)
+    expect(intro.outEnd).toBeCloseTo(4, 6)
+  })
+
+  it('does not cover scrolling after the last click with the outro', () => {
+    const cursor: CursorTrack = { samples: still, clicks: [click(6), click(10)], scrolls: wheel(12, 40), valid: true }
+    const plan = direct(sixty(), { cursor, speech: talking })
+    const outro = plan.parts.find((x) => x.kind === 'outro')!
+    expect(outro.outStart).toBeCloseTo(41.5, 6)
+    expect(outro.outEnd).toBe(60)
+  })
+})
+
 function expectRangesClose(got: readonly Range[], want: [number, number][]): void {
   expect(got.length).toBe(want.length)
   want.forEach(([a, b], i) => {
@@ -211,6 +250,54 @@ describe('F4: recorded camera positions are cut, kept and given back whole', () 
 
   it('shows the camera positions it keeps as the user\'s in the strip', () => {
     expect(plan.strip.map((s) => s.state)).toEqual(['intro', 'hidden', 'yours', 'hidden', 'outro'])
+  })
+})
+
+describe('a camera position removed or changed after directing', () => {
+  const rec1 = seg('rec1', 10, 24, 'default', { corner: 'top-left' })
+  const p = e2eProject({ layouts: [rec1] })
+  const applied = applyDirectorPlan(p, direct(p), SKIPPED)
+
+  it('cuts the hidden parts out of it and keeps its visible piece', () => {
+    expectLayouts(
+      applied.layouts!.filter((s) => s.corner === 'top-left'),
+      [
+        seg('a5', 10, 16.2, 'screen-only', { corner: 'top-left', auto: true, cutOut: true }),
+        seg('rec1', 16.2, 23, 'default', { corner: 'top-left' }),
+        seg('a6', 23, 24, 'screen-only', { corner: 'top-left', auto: true, cutOut: true })
+      ]
+    )
+  })
+
+  it('takes the cut-outs only it held along when its piece is deleted: nothing comes back', () => {
+    const deleted = { ...applied, layouts: removeLayout(applied.layouts, 'rec1') }
+    // Drawn the same: the cut-outs stay, as automatic changes.
+    const drawn = (list: LayoutSegment[]): unknown[] => list.map((s) => [s.start, s.end, s.layout, s.corner])
+    expect(drawn(deleted.layouts)).toEqual(drawn(applied.layouts!.filter((s) => s.id !== 'rec1')))
+    expect(deleted.layouts.some((s) => s.cutOut)).toBe(false)
+    expect(withoutDirected(deleted.layouts)).toEqual([])
+    expect(clearDirected(deleted).layouts).toEqual([])
+    const again = direct(deleted, { newId: counter('b') }, { hideAfter: 0 })
+    expect(again.kept).toEqual({ changes: 0, positions: 0 })
+    expect(again.notes).not.toContain('kept-positions')
+    expect(again.layouts.some((s) => s.corner === 'top-left')).toBe(false)
+  })
+
+  it('does the same when its corner is reset or moved by hand', () => {
+    const reset = updateLayout(applied.layouts, 'rec1', { corner: undefined })
+    expect(withoutDirected(reset)).toEqual([seg('rec1', 16.2, 23, 'default')])
+    const moved = setCornerAt({ ...applied, layouts: applied.layouts }, 'top-right', 20)
+    expect(moved.ok && withoutDirected(moved.layouts)).toEqual([seg('rec1', 16.2, 23, 'default', { corner: 'top-right' })])
+    // Changing only its times keeps it a piece of the position, and the cut-outs with it.
+    expect(updateLayout(applied.layouts, 'rec1', { end: 22.5 }).filter((s) => s.cutOut).length).toBe(2)
+  })
+
+  it('gives a cut-out between two pieces to the piece that is left', () => {
+    const base = [seg('P', 10, 40, 'default', { corner: 'top-left' })]
+    const cut = spliceDirected(base, [{ start: 20, end: 30, layout: 'screen-only' }], counter())
+    expect(cut.map((s) => s.id)).toEqual(['P', 'a2', 'a1'])
+    expect(withoutDirected(removeLayout(cut, 'a1'))).toEqual([seg('P', 10, 30, 'default', { corner: 'top-left' })])
+    expect(withoutDirected(removeLayout(cut, 'P'))).toEqual([seg('a1', 20, 40, 'default', { corner: 'top-left' })])
   })
 })
 
