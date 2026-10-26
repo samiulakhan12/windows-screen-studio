@@ -15,9 +15,22 @@ interface HookKeyEvent extends KeyInput {
   time: number
 }
 
+/** uiohook's wheel event: `rotation` is signed notches (+ = down / right), `direction` 3 = vertical, 4 = horizontal. */
+interface HookWheelEvent {
+  time: number
+  x: number
+  y: number
+  rotation: number
+  amount: number
+  direction: number
+  ctrlKey: boolean
+  metaKey: boolean
+}
+
 export type HookModule = {
   uIOhook: {
-    on(event: 'mousedown' | 'mousemove' | 'wheel', cb: (e: HookMouseEvent) => void): void
+    on(event: 'mousedown' | 'mouseup' | 'mousemove', cb: (e: HookMouseEvent) => void): void
+    on(event: 'wheel', cb: (e: HookWheelEvent) => void): void
     on(event: 'keydown' | 'keyup', cb: (e: HookKeyEvent) => void): void
     removeAllListeners(event?: string): void
     start(): void
@@ -40,10 +53,14 @@ function loadHook(): HookModule | null {
   return hook
 }
 
-const HOOK_EVENTS = ['mousedown', 'mousemove', 'wheel', 'keydown', 'keyup']
+const HOOK_EVENTS = ['mousedown', 'mouseup', 'mousemove', 'wheel', 'keydown', 'keyup']
 /** How often the cursor is checked for movement when only auto-pause needs to know (ms). */
 const ACTIVITY_POLL_MS = 250
 const BUTTONS: Record<number, ClickEvent['button']> = { 1: 'left', 2: 'right', 3: 'middle' }
+/** Wheel events less than this far apart (hook ms) on the same axis are stored as one. */
+const WHEEL_MERGE_MS = 50
+/** uiohook's horizontal wheel direction (WheelDirection.HORIZONTAL). */
+const WHEEL_HORIZONTAL = 4
 
 /**
  * Where cursor positions come from. Windows (and macOS) report the cursor reliably
@@ -102,7 +119,11 @@ export class CursorTracker {
   private clock = new HookClock()
   private samples: { at: number; x: number; y: number }[] = []
   private moves: { tick: number; x: number; y: number }[] = []
-  private clicks: { tick: number; x: number; y: number; button: ClickEvent['button'] }[] = []
+  private clicks: { tick: number; x: number; y: number; button: ClickEvent['button']; upTick?: number }[] = []
+  /** Index in `clicks` of the stored press of each button (1–3) not released yet. */
+  private pressed = new Map<number, number>()
+  /** Wheel input: signed notches on one axis per event (merged within WHEEL_MERGE_MS). */
+  private scrolls: { tick: number; x: number; y: number; horizontal: boolean; notches: number }[] = []
   private keys: { tick: number; label: string }[] = []
   /** Hook ticks of typing key presses (only the instants, never the keys). */
   private typing: number[] = []
@@ -138,6 +159,8 @@ export class CursorTracker {
     this.samples = []
     this.moves = []
     this.clicks = []
+    this.pressed = new Map()
+    this.scrolls = []
     this.keys = []
     this.typing = []
     this.marks = []
@@ -219,8 +242,33 @@ export class CursorTracker {
         if (!pointer) return
         const tick = observe(e.time)
         const p = hookPointToDip(e)
+        const button = e.button as number
+        // A new press of this button: an earlier unreleased one can no longer pair.
+        this.pressed.delete(button)
         if (opts.isOwnPoint(p)) return
-        this.clicks.push({ tick, x: p.x, y: p.y, button: BUTTONS[e.button as number] ?? 'left' })
+        if (BUTTONS[button]) this.pressed.set(button, this.clicks.length)
+        this.clicks.push({ tick, x: p.x, y: p.y, button: BUTTONS[button] ?? 'left' })
+      })
+      // The wheel also counts as activity (auto-pause), whether or not it is stored.
+      uIOhook.on('wheel', (e) => {
+        activity?.()
+        if (!pointer) return
+        // Ctrl/Meta + wheel zooms the app under the cursor; it does not scroll.
+        if (e.ctrlKey || e.metaKey) return
+        const tick = observe(e.time)
+        const p = hookPointToDip(e)
+        if (opts.isOwnPoint(p)) return
+        this.addWheel(tick, p, Number.isFinite(e.rotation) ? e.rotation : 0, e.direction === WHEEL_HORIZONTAL)
+      })
+    }
+    if (pointer) {
+      uIOhook.on('mouseup', (e) => {
+        const tick = observe(e.time)
+        const button = e.button as number
+        const i = this.pressed.get(button)
+        if (i === undefined) return
+        this.pressed.delete(button)
+        if (this.clicks[i]) this.clicks[i].upTick = tick
       })
     }
     // Where the cursor is polled (Windows), motion events are not needed: polling sees movement.
@@ -236,7 +284,6 @@ export class CursorTracker {
         else this.moves.push({ tick, x: p.x, y: p.y })
       })
     }
-    if (activity) uIOhook.on('wheel', () => activity())
     if (opts.captureKeys) {
       const filter = new KeystrokeFilter(new Set(opts.ignoreKeys))
       this.keyFilter = filter
@@ -263,6 +310,21 @@ export class CursorTracker {
       console.warn('Failed to start the input hook:', err)
       for (const e of HOOK_EVENTS) uIOhook.removeAllListeners(e)
     }
+  }
+
+  /**
+   * Stores wheel notches at `tick`: merged into the last stored event when that one is less
+   * than WHEEL_MERGE_MS older, on the same axis and not scrolling the other way (0, a
+   * sub-notch step, goes with anything); the merged event keeps its time and takes the new
+   * position.
+   */
+  private addWheel(tick: number, p: Point, notches: number, horizontal: boolean): void {
+    const last = this.scrolls[this.scrolls.length - 1]
+    if (last && tick - last.tick < WHEEL_MERGE_MS && last.horizontal === horizontal && last.notches * notches >= 0) {
+      Object.assign(last, { x: p.x, y: p.y, notches: last.notches + notches })
+      return
+    }
+    this.scrolls.push({ tick, x: p.x, y: p.y, horizontal, notches })
   }
 
   /** Pauses cursor polling (hook events are filtered by time later). */
@@ -317,7 +379,8 @@ export class CursorTracker {
     const still = last && this.stillSince !== null && this.stillSince > last.at ? [{ at: this.stillSince, x: last.x, y: last.y }] : []
     return {
       samples: [...this.samples, ...still, ...this.moves.map((m) => ({ at: at(m.tick), x: m.x, y: m.y }))].sort((a, b) => a.at - b.at),
-      clicks: this.clicks.map((c) => ({ at: at(c.tick), x: c.x, y: c.y, button: c.button })),
+      clicks: this.clicks.map((c) => ({ at: at(c.tick), x: c.x, y: c.y, button: c.button, ...(c.upTick !== undefined ? { up: at(c.upTick) } : {}) })),
+      scrolls: this.scrolls.map((s) => ({ at: at(s.tick), x: s.x, y: s.y, dx: s.horizontal ? s.notches : 0, dy: s.horizontal ? 0 : s.notches })),
       keys: this.keys.map((k) => ({ at: at(k.tick), label: k.label })),
       typing: this.typing.map(at),
       marks: [...this.marks],

@@ -1,5 +1,7 @@
 # Real X11 input for e2e tests (libXtst), so global hooks see genuine OS events.
-# Usage: xinput.py script "m X Y; c X Y; g X0 Y0 X1 Y1 SECS; k ctrl+shift+s; s SECS"
+# Usage: xinput.py script "m X Y; c X Y; g X0 Y0 X1 Y1 SECS; d X0 Y0 X1 Y1 SECS; w X Y N [GAP]; k ctrl+shift+s; s SECS"
+#   d: drag (press at X0 Y0, glide to X1 Y1 over SECS, release)
+#   w: wheel at X Y, |N| notches: X button 5 (down) for N > 0, button 4 (up) for N < 0, GAP s apart (default 0.08)
 import ctypes
 import sys
 import time
@@ -40,6 +42,32 @@ def glide(x0, y0, x1, y1, secs):
         time.sleep(secs / n)
 
 
+def drag(x0, y0, x1, y1, secs):
+    move(x0, y0)
+    time.sleep(0.05)
+    xtst.XTestFakeButtonEvent(d, 1, 1, 0)
+    x11.XFlush(d)
+    time.sleep(0.05)
+    glide(x0, y0, x1, y1, secs)
+    time.sleep(0.05)
+    xtst.XTestFakeButtonEvent(d, 1, 0, 0)
+    x11.XFlush(d)
+
+
+def wheel(x, y, n, gap=0.08):
+    move(x, y)
+    time.sleep(0.05)
+    button = 5 if n > 0 else 4
+    for i in range(abs(n)):
+        if i:
+            time.sleep(gap)
+        xtst.XTestFakeButtonEvent(d, button, 1, 0)
+        x11.XFlush(d)
+        time.sleep(0.03)
+        xtst.XTestFakeButtonEvent(d, button, 0, 0)
+        x11.XFlush(d)
+
+
 def key(combo):
     codes = [x11.XKeysymToKeycode(d, x11.XStringToKeysym(NAMES.get(k, k).encode())) for k in combo.split('+')]
     for c in codes:
@@ -62,6 +90,10 @@ for part in sys.argv[2].split(';') if sys.argv[1] == 'script' else []:
         click(a[1], a[2])
     elif a[0] == 'g':
         glide(*[float(v) for v in a[1:6]])
+    elif a[0] == 'd':
+        drag(*[float(v) for v in a[1:6]])
+    elif a[0] == 'w':
+        wheel(a[1], a[2], int(a[3]), float(a[4]) if len(a) > 4 else 0.08)
     elif a[0] == 'k':
         key(a[1])
     elif a[0] == 's':
