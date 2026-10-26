@@ -368,3 +368,57 @@ describe('CursorTracker polling (perf-3)', () => {
     }
   })
 })
+
+describe('CursorTracker: own windows are judged at the time of the event', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('isOwnPoint gets the epoch time the hook clock gives the event, not its delivery time', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const T = 1_700_000_000_000
+    vi.setSystemTime(T)
+    const hook = fakeHook()
+    const seen: { p: { x: number; y: number }; at: number }[] = []
+    const t = new CursorTracker(() => hook.mod, false)
+    t.start({
+      ...options,
+      isOwnPoint: (p, at) => {
+        seen.push({ p, at })
+        return false
+      }
+    })
+    // Delivered at once: the hook clock's origin.
+    hook.emit('mousedown', { time: 5000, x: 200, y: 100, button: 1 })
+    // Happened 100 ms later, delivered 300 ms later (a late batch).
+    vi.setSystemTime(T + 300)
+    hook.emit('mousedown', { time: 5100, x: 200, y: 100, button: 1 })
+    hook.emit('wheel', { time: 5150, x: 200, y: 100, rotation: 1, amount: 3, direction: 3, ctrlKey: false, metaKey: false })
+    expect(seen.map((s) => s.at - T)).toHaveLength(3)
+    expect(Math.abs(seen[0].at - T)).toBeLessThanOrEqual(5)
+    expect(Math.abs(seen[1].at - (T + 100))).toBeLessThanOrEqual(5)
+    expect(Math.abs(seen[2].at - (T + 150))).toBeLessThanOrEqual(5)
+    expect(seen[0].p).toEqual({ x: 100, y: 50 })
+    t.collect()
+  })
+
+  it('a click and a wheel where a window was when they happened are dropped, even when delivered after it left', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const T = 1_700_000_000_000
+    vi.setSystemTime(T)
+    const hook = fakeHook()
+    const t = new CursorTracker(() => hook.mod, false)
+    // The notes covered everything until T + 50.
+    t.start({ ...options, isOwnPoint: (_p, at) => at < T + 50 })
+    hook.emit('mousedown', { time: 5000, x: 200, y: 100, button: 1 })
+    vi.setSystemTime(T + 400)
+    // Happened at T + 20 (over the notes), delivered at T + 400 (after they hid).
+    hook.emit('mousedown', { time: 5020, x: 300, y: 100, button: 1 })
+    hook.emit('wheel', { time: 5030, x: 300, y: 100, rotation: 1, amount: 3, direction: 3, ctrlKey: false, metaKey: false })
+    // Happened at T + 200: content.
+    hook.emit('mousedown', { time: 5200, x: 400, y: 100, button: 1 })
+    hook.emit('wheel', { time: 5210, x: 400, y: 100, rotation: 1, amount: 3, direction: 3, ctrlKey: false, metaKey: false })
+    const raw = t.collect()
+    // Only the events at T + 200 (400 physical px = 200 DIP); the first click, at T, was over the notes too.
+    expect(raw.clicks.map((c) => c.x)).toEqual([200])
+    expect(raw.scrolls!.map((s) => s.x)).toEqual([200])
+  })
+})

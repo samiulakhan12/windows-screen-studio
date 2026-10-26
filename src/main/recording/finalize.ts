@@ -279,6 +279,9 @@ export async function processRecording(
     // Every source of the mixed sound (a complete set): `false` means that source was not recorded.
     if (stems.length > 0) project.audioStems = { mic: stems.includes('mic'), system: stems.includes('system') }
     project = await withStyleDefaults(project)
+    // The speaker notes read while recording (script.txt, when they were kept with it).
+    const script = await projects.readScriptFile(dir)
+    if (script) project.script = script
     // Where the live camera bubble was moved while recording (when the camera follows it).
     if (webcamOk) {
       const camera = bubbleCamera(manifest, duration, project.webcam.corner)

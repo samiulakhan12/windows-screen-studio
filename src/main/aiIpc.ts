@@ -8,8 +8,9 @@
 import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron'
 import os from 'node:os'
 import path from 'node:path'
-import type { AiTextRequest, AiTextResult, TranscribeProgress } from '../shared/api/ai'
+import type { AiTextRequest, AiTextResult, ScriptDraftResult, TranscribeProgress } from '../shared/api/ai'
 import { runTextTask, validateTextRequest } from '../shared/captions/transcriptText'
+import { runScriptDraft, SCRIPT_EFFORT, validateScriptRequest } from '../shared/notes/scriptDraft'
 import { AiProviderStore, type SecretBox } from './ai/keyStore'
 import { clientFor } from './ai/providers'
 import { stopAllTranscriptions, stopTranscription, sweepTranscribeTemp, transcribeProject } from './ai/transcribe'
@@ -45,6 +46,33 @@ export async function aiText(providerId: unknown, raw: unknown): Promise<AiTextR
   } finally {
     textCalls.delete(controller)
   }
+}
+
+/** The script draft in progress (one at a time: a new one, or Cancel, stops it). */
+let scriptDraft: AbortController | null = null
+
+/** Turns the presenter's notes into a script to read aloud with provider `providerId` ("Draft script"). */
+export async function draftScript(providerId: unknown, raw: unknown): Promise<ScriptDraftResult> {
+  const request = validateScriptRequest(raw)
+  scriptDraft?.abort()
+  const controller = new AbortController()
+  scriptDraft = controller
+  textCalls.add(controller)
+  try {
+    const { info, apiKey } = providers().get(providerId)
+    const client = await clientFor(info, apiKey)
+    controller.signal.throwIfAborted()
+    return await runScriptDraft(request, (prompt) => client.json(prompt, { signal: controller.signal, effort: SCRIPT_EFFORT }))
+  } finally {
+    textCalls.delete(controller)
+    if (scriptDraft === controller) scriptDraft = null
+  }
+}
+
+/** Stops the script draft in progress, if any. */
+export function cancelScriptDraft(): void {
+  scriptDraft?.abort()
+  scriptDraft = null
 }
 
 /** Checks provider `id`'s key with a tiny request; never throws. */
@@ -95,6 +123,14 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:text', (e, providerId: unknown, request: unknown) => {
     fromApp(e)
     return aiText(providerId, request)
+  })
+  ipcMain.handle('ai:draftScript', (e, providerId: unknown, request: unknown) => {
+    fromApp(e)
+    return draftScript(providerId, request)
+  })
+  ipcMain.handle('ai:cancelScriptDraft', (e) => {
+    fromApp(e)
+    cancelScriptDraft()
   })
   // Requests and ffmpeg must not outlive the app, nor their temporary files.
   void sweepTranscribeTemp(os.tmpdir())
