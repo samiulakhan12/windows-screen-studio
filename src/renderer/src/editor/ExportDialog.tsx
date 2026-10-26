@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { pictureTime, planOf, videoDuration, videoTimeAt, videoToSource } from '../../../shared/engine/freeze'
 import { styleContentRect } from '../../../shared/engine/layout'
-import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
+import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { hasSoundtrack } from '../../../shared/audio/settings'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../../../shared/render/chapters'
@@ -248,14 +249,17 @@ export function ExportDialog(props: Props): JSX.Element {
   const [targetDraft, setTargetDraft] = useState<string>(() => (options.targetSizeMB ? String(options.targetSizeMB) : ''))
   const { project } = props
   const clips = project.clips
-  const length = outputDuration(clips)
+  // Seconds of the exported video: the edit and its pause freezes.
+  const plan = planOf(project)
+  const length = videoDuration(clips, plan)
   // The thumbnail and preview frame, in output seconds: the playhead when the dialog opens.
-  const [frameAt, setFrameAt] = useState(() => {
-    const t = editor?.player.time ?? clips[0].start
-    const playable = playableFrom(clips, t)
-    return Math.min(length, Math.max(0, sourceToOutput(clips, playable?.time ?? t) ?? 0))
-  })
-  const frameSource = outputToSource(clips, Math.min(frameAt, Math.max(0, length - 1e-3))).time
+  const [frameAt, setFrameAt] = useState(() => Math.min(length, videoTimeAt(clips, plan, editor?.player.time ?? clips[0].start)))
+  // Its sound's source time (a freeze at the edit's end holds the edit's last frame), the picture
+  // drawn there (a freeze's frame), and whether it is frozen (drawn sharp, as the export does).
+  const shown = videoToSource(clips, plan, Math.min(frameAt, Math.max(0, length - 1e-3)))
+  const frameSound = shown.hold?.end ? outputToSource(clips, Math.max(0, outputDuration(clips) - 1e-3)).time : shown.time
+  const frameSource = pictureTime(clips, plan, frameSound)
+  const frameHeld = !!shown.hold || plan.stills.some((s) => s.at === frameSource)
   const abort = useRef<AbortController | null>(null)
   const primary = useRef<HTMLButtonElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -270,7 +274,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const hasClickSounds = useMemo(() => !!clickSoundJob(project, props.scene.cursor, clips), [project, props.scene.cursor, clips])
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
-  const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips), [project.chapters, clips])
+  const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips, plan), [project.chapters, clips, plan])
 
   useEffect(() => {
     let live = true
@@ -407,7 +411,7 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!file) return
     setThumb({ kind: 'busy' })
     try {
-      const shot = await renderThumbnail({ ...source, settings: options, time: frameSource })
+      const shot = await renderThumbnail({ ...source, settings: options, time: frameSource, soundTime: frameSound, held: frameHeld })
       await window.api.saveThumbnail(file, shot.png)
       setThumb({ kind: 'saved', path: file, width: shot.width, height: shot.height })
     } catch (err) {
@@ -521,7 +525,7 @@ export function ExportDialog(props: Props): JSX.Element {
             <div className="export-body">
               <aside className="export-side">
                 <div className={`export-preview ${audioOnly ? 'audio-only' : ''}`}>
-                  <ExportPreview {...source} options={options} time={frameSource} box={{ width: 236, height: 236 }} />
+                  <ExportPreview {...source} options={options} time={frameSource} soundTime={frameSound} held={frameHeld} box={{ width: 236, height: 236 }} />
                   {audioOnly && <span className="export-preview-badge">Audio only</span>}
                 </div>
                 <label className="export-frame">

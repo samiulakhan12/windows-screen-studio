@@ -86,9 +86,9 @@ export function drawFrame(
   options: DrawOptions = DEFAULT_OPTIONS,
   /**
    * Source time of the sound at this frame (E-11 freeze frames): while the picture holds `t`, the
-   * burned-in captions and the animated background follow it. Defaults to `t`; unused until E-11 lands.
+   * burned-in captions and the animated background follow it. Defaults to `t`.
    */
-  _soundTime: number = t
+  soundTime: number = t
 ): void {
   const { project, cursor } = scene
   const { style } = project
@@ -115,7 +115,7 @@ export function drawFrame(
   const spec: CardSpec = { style, rect: card, radius: radius * shrink, k: k * shrink, title: frame?.kind === 'browser' ? frameTitle(style, project.name) : '' }
   const geom = cardGeometry(spec)
   // Animated backgrounds run on output time, so they flow on smoothly across cuts.
-  const bgTime = isAnimated(style.background) ? animationTime(project.clips, t) : 0
+  const bgTime = isAnimated(style.background) ? animationTime(project.clips, soundTime) : 0
   // With the 3D tilt on, the card and everything on it is painted on a canvas of its own (`c`)
   // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
   const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom, vw, vh)
@@ -206,7 +206,7 @@ export function drawFrame(
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)
-  drawCaptionsLayer(top)
+  drawCaptionsLayer(soundTime === t ? top : { ...top, t: soundTime })
   drawTitleCardsLayer(top)
   drawWatermarkLayer(top)
   ctx.restore()

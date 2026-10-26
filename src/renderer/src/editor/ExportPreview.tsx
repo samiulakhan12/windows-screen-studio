@@ -15,6 +15,10 @@ interface Props {
   options: ExportOptions
   /** Source (recording) seconds of the frame to show. */
   time: number
+  /** Source seconds of its sound (the camera, captions and background follow it): a freeze frame's picture differs (E-11). */
+  soundTime?: number
+  /** Inside a freeze frame: drawn sharp, as the export draws it. */
+  held?: boolean
   /** Largest size of the picture in CSS pixels. */
   box: { width: number; height: number }
 }
@@ -27,7 +31,7 @@ interface Props {
 export function ExportPreview(props: Props): JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null)
   const media = useRef<{ screen: HTMLVideoElement; webcam: HTMLVideoElement | null } | null>(null)
-  const [frameTime, setFrameTime] = useState<number | null>(null)
+  const [frameTime, setFrameTime] = useState<{ t: number; sound: number } | null>(null)
   // The camera's background blur: redraw when a frame's person mask arrives.
   const [masks, setMasks] = useState(0)
   useEffect(() => onCameraMasksChanged(() => setMasks((n) => n + 1)), [])
@@ -59,12 +63,13 @@ export function ExportPreview(props: Props): JSX.Element {
     const m = media.current
     if (!m) return
     const t = props.time
-    const camT = t - props.project.webcamOffset
+    const sound = props.soundTime ?? t
+    const camT = sound - props.project.webcamOffset
     void (async () => {
       try {
         await whenReady(m.screen)
         await Promise.all([seekToFrame(m.screen, t, SCREEN_PROXY_FPS), m.webcam ? whenReady(m.webcam).then(() => seekToFrame(m.webcam!, Math.max(0, camT), WEBCAM_PROXY_FPS)) : null])
-        if (live) setFrameTime(t)
+        if (live) setFrameTime({ t, sound })
       } catch {
         // The preview is a convenience: the export reports real failures.
       }
@@ -72,7 +77,7 @@ export function ExportPreview(props: Props): JSX.Element {
     return () => {
       live = false
     }
-  }, [props.time, props.project.webcamOffset, props.screenUrl, props.webcamUrl])
+  }, [props.time, props.soundTime, props.project.webcamOffset, props.screenUrl, props.webcamUrl])
 
   useEffect(() => {
     const c = canvas.current
@@ -85,8 +90,8 @@ export function ExportPreview(props: Props): JSX.Element {
     if (c.height !== h) c.height = h
     const ctx = c.getContext('2d', { alpha: false })
     if (!ctx) return
-    drawFrame(ctx, w, h, frameTime, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: 4 })
-  }, [frameTime, scene, props.background, css.width, css.height, size.fps, masks])
+    drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound)
+  }, [frameTime, scene, props.background, props.held, css.width, css.height, size.fps, masks])
 
   return <canvas ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
 }
