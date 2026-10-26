@@ -646,7 +646,7 @@ export const Timeline = memo(
                     />
                   )
                 })}
-                <FreezeMarks px={px} win={win} duration={duration} clips={clips} selection={selection} onSelect={onSelect} />
+                <FreezeMarks px={px} win={win} duration={duration} clips={clips} selection={selection} onSelect={onSelect} snap={snap} />
                 <div className="trim-handle start" style={{ left: kept.start * px }} onPointerDown={onTrimDown('start')} title="Drag to trim the start" />
                 <div className="trim-handle end" style={{ left: kept.end * px }} onPointerDown={onTrimDown('end')} title="Drag to trim the end" />
                 {range && (
