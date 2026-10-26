@@ -73,6 +73,11 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
     if (draft.kind === 'done' && text !== draft.after) setDraft({ kind: 'idle' })
   }, [text, draft])
 
+  // A provider was added: the explanation has done its job.
+  useEffect(() => {
+    if (chosen && draft.kind === 'explain') setDraft({ kind: 'idle' })
+  }, [chosen, draft.kind])
+
   // Leaving cancels a draft still under way.
   useEffect(
     () => () => {
