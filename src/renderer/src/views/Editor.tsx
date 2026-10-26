@@ -29,6 +29,7 @@ import {
   undoHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
+import { atOutputStart, formatRate, nextPreviewSpeed, type ShuttleKey } from '../../../shared/editor/shuttle'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
@@ -599,6 +600,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   /* ---------- commands (palette and shortcuts) ---------- */
 
   const lastMotionBlur = useRef(store.state.effects.motionBlur || DEFAULT_EFFECTS.motionBlur)
+  /** The `code` of the pause key (K) while it is held down: J and L then step one frame. */
+  const pauseHeld = useRef<string | null>(null)
   const commands = useMemo((): Record<CommandId, () => void> => {
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
@@ -610,6 +613,20 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       if (store.state.capture.cursorInVideo) return showNotice('The recorded cursor is in the video')
       if (sel?.kind !== 'range') return showNotice('Select a range first: Shift+drag on the clip track')
       input.setPathRange(sel, mode)
+    }
+    /** J, K and L: a frame step instead while K is held. */
+    const shuttle = (key: ShuttleKey): void => {
+      const held = pauseHeld.current !== null
+      if (key === 'reverse' && !held && !player.reversing && atOutputStart(store.state.clips, player.time)) return showNotice('At the start: nothing to play backwards')
+      const { frameStep } = player.shuttle(key, held)
+      if (frameStep) actions.step(frameStep / 30)
+    }
+    /** > and <: the next preview speed (nothing is written to the project). */
+    const previewSpeed = (step: 1 | -1): void => {
+      const next = nextPreviewSpeed(player.previewSpeed, step)
+      if (next === null) return showNotice(`The preview already plays at its ${step > 0 ? 'fastest' : 'slowest'} speed (${formatRate(player.previewSpeed)})`)
+      player.setPreviewSpeed(next)
+      showNotice(`Preview speed ${formatRate(next)} (the export is not affected)`)
     }
     return {
       play: actions.togglePlay,
@@ -764,12 +781,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       // E-05 snapping: an editor preference, not an edit (no undo step)
       toggleSnapping: () => turned('Snapping', snapPref.toggle()),
 
-      // E-08 shuttle and preview speed (filled by the E-08 workstream)
-      shuttleReverse: () => showNotice('Coming soon'),
-      shuttlePause: () => showNotice('Coming soon'),
-      shuttleForward: () => showNotice('Coming soon'),
-      previewSpeedUp: () => showNotice('Coming soon'),
-      previewSpeedDown: () => showNotice('Coming soon'),
+      // E-08 shuttle and preview speed
+      shuttleReverse: () => shuttle('reverse'),
+      shuttlePause: () => shuttle('pause'),
+      shuttleForward: () => shuttle('forward'),
+      previewSpeedUp: () => previewSpeed(1),
+      previewSpeedDown: () => previewSpeed(-1),
 
       // E-10 crop (filled by the E-10 workstream)
       cropRecording: () => showNotice('Coming soon'),
@@ -834,6 +851,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     }
     for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
     unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
+    if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = `Already the fastest preview speed (${formatRate(player.previewSpeed)})`
+    if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = `Already the slowest preview speed (${formatRate(player.previewSpeed)})`
     const on: Partial<Record<CommandId, boolean>> = {
       toggleSnapping: snapPref.get(),
       toggleCursor: smoothCursor && p.cursor.show,
@@ -914,20 +933,28 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         blurActiveControl()
         spaceDown = true
       }
+      if (id === 'shuttlePause' && !e.repeat) pauseHeld.current = e.code
       if (e.repeat && !commandInfo(id).repeat) return
       commandsRef.current[id]()
     }
     const onKeyUp = (e: KeyboardEvent): void => {
+      if (e.code === pauseHeld.current) pauseHeld.current = null
       if (spaceDown && (e.code === 'Space' || e.key === ' ')) {
         e.preventDefault()
         spaceDown = false
       }
     }
+    // A key up lost to another window (Alt+Tab) must not leave the pause key held.
+    const onBlur = (): void => {
+      pauseHeld.current = null
+    }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
     }
   }, [setSelection])
 

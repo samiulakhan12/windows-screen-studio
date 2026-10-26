@@ -32,6 +32,8 @@ vi.mock('../src/renderer/src/editor/previewAudio', () => ({
     pause() {}
     jump() {}
     setRate() {}
+    setView() {}
+    setSilent() {}
     frame() {}
     fadeAt() {
       return 1
