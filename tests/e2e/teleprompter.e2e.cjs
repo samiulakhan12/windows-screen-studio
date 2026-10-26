@@ -132,6 +132,19 @@ const countWrites = (page) =>
   })
 const writes = (page) => page.evaluate(() => window.__writes)
 
+/** The notes window's box against the page's viewport (it should fill it exactly). */
+const windowBox = (page) =>
+  page.evaluate(() => {
+    const b = document.querySelector('.notes-window').getBoundingClientRect()
+    return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, width: innerWidth, height: innerHeight }
+  })
+const fills = (b) => b.left === 0 && b.top === 0 && b.right === b.width && b.bottom === b.height
+
+/** A keydown as another keyboard layout sends it (`key` the character, `code` the key's place). */
+const keyDown = (page, init) => page.evaluate((i) => window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...i })), init)
+
+const savedNotes = (win) => win.evaluate(() => window.api.getNotes()).then((s) => s.settings)
+
 /** Screen coordinates of the centre of `selector` in the notes window. */
 async function notesPoint(app, page, selector) {
   const w = await notesWindow(app)
@@ -172,12 +185,15 @@ async function main() {
       await win.waitForSelector('.notes-saved.saved', { timeout: 5000 })
       const count = await win.textContent('.notes-count')
       h.assert(count.startsWith(`${FIXTURE_WORDS} words · about `), `the count shows the fixture's words: ${count}`)
+      h.assert((await win.getAttribute('.notes-count', 'aria-live')) === null, 'the count is not a live region (it changes with every word)')
       // Tab stays inside the dialog; Esc closes it and the focus goes back to the button.
       for (let i = 0; i < 40; i++) await win.keyboard.press('Tab')
       h.assert(await win.evaluate(() => !!document.activeElement?.closest('.notes-modal')), 'Tab stays inside the dialog')
       await win.keyboard.press('Escape')
       await win.waitForSelector('.notes-modal', { state: 'detached' })
-      h.assert(await win.evaluate(() => document.activeElement?.textContent?.includes('Edit notes')), 'focus is back on the card')
+      // The dialog was opened from "Add notes…", which became "Edit notes…" with the first word typed.
+      const back = await win.evaluate(() => ({ opener: !!document.activeElement?.matches('.notes-card button[aria-haspopup="dialog"]'), text: document.activeElement?.textContent }))
+      h.assert(back.opener && back.text === 'Edit notes…', `focus is back on the card's button: ${JSON.stringify(back)}`)
       const summary = await win.textContent('.notes-summary')
       h.assert(summary === `${FIXTURE_WORDS} words · about 31 s at 130 words a minute`, `the card's summary: ${summary}`)
       h.assert((await (await win.evaluate(() => window.api.getNotes())).settings.text) === FIXTURE, 'the text was saved')
@@ -190,6 +206,8 @@ async function main() {
         const w = await notesWindow(app)
         return w && w.visible ? w : null
       }, { what: 'rehearsal window shown' })
+      const box = await windowBox(page)
+      h.assert(fills(box), `the notes fill their window (the dialog's .notes-body rule does not reach the page's body): ${JSON.stringify(box)}`)
       h.assert(nw.url.endsWith('#/notes') && nw.onTop && nw.focusable === true, `rehearsal window: ${JSON.stringify(nw)}`)
       const ev = (await events(app)).filter((e) => e.id === nw.id)
       const protectedAt = ev.findIndex((e) => e.name === 'setContentProtection' && e.on === true)
@@ -221,11 +239,51 @@ async function main() {
       h.assert((await page.textContent('.nw-status')) === 'End of notes', 'status End of notes')
       await page.click('.nw-restart')
       await r.until(async () => (await dataOf(page)).block === 0 && (await columnY(page)) === 0, { what: 'Back to start' })
+      // The end stops the scrolling: back at the top it stays still, and one Space plays again.
+      await page.keyboard.press('Space')
+      await r.until(async () => (await dataOf(page)).playing, { what: 'playing before the end' })
+      await page.keyboard.press('End')
+      await r.until(async () => (await dataOf(page)).ended && !(await dataOf(page)).playing, { what: 'the end reached while playing' })
+      await page.keyboard.press('Home')
+      await r.until(async () => !(await dataOf(page)).ended && (await columnY(page)) === 0, { what: 'Home from the end' })
+      await h.sleep(1000)
+      const still = { y: await columnY(page), ...(await dataOf(page)), status: await page.textContent('.nw-status') }
+      h.assert(still.y === 0 && !still.playing && still.status === 'Rehearsing: not recording', `still at the top after the end: ${JSON.stringify(still)}`)
+      await page.keyboard.press('Space')
+      await r.until(async () => (await dataOf(page)).playing && (await columnY(page)) > 2, { what: 'one Space plays after the end', timeout: 1500 })
+      await page.keyboard.press('Space')
+      await r.until(async () => !(await dataOf(page)).playing, { what: 'paused after the end' })
+      await page.keyboard.press('Home')
+      await r.until(async () => (await columnY(page)) === 0, { what: 'back at the top' })
       // Speed and text size from the keyboard are saved.
       await page.keyboard.press('Equal')
-      await r.until(async () => (await win.evaluate(() => window.api.getNotes())).settings.wpm === 140, { what: 'speed +10 saved' })
+      await r.until(async () => (await savedNotes(win)).wpm === 140, { what: 'speed +10 saved' })
       await page.keyboard.press('Control+Minus')
-      await r.until(async () => (await win.evaluate(() => window.api.getNotes())).settings.fontSize === 30, { what: 'text size -2 saved' })
+      await r.until(async () => (await savedNotes(win)).fontSize === 30, { what: 'text size -2 saved' })
+      // The characters count, not the keys' places: + and - on a German keyboard (BracketRight,
+      // Slash); its dead key in the place of the US = does nothing.
+      await keyDown(page, { key: '+', code: 'BracketRight' })
+      await r.until(async () => (await savedNotes(win)).wpm === 150, { what: 'speed +10 from a German +' })
+      await keyDown(page, { key: 'Dead', code: 'Equal' })
+      await keyDown(page, { key: '-', code: 'Slash', ctrlKey: true })
+      await r.until(async () => (await savedNotes(win)).fontSize === 28, { what: 'text size -2 from a German Ctrl + -' })
+      h.assert((await savedNotes(win)).wpm === 150, 'a dead key changes nothing')
+      await keyDown(page, { key: '-', code: 'Slash' })
+      await keyDown(page, { key: '+', code: 'BracketRight', ctrlKey: true })
+      await r.until(async () => {
+        const s = await savedNotes(win)
+        return s.wpm === 140 && s.fontSize === 30
+      }, { what: 'speed -10 and text size +2 from a German keyboard' })
+      // A button clicked with the mouse gives the focus back (just after its click), so Space
+      // still plays and pauses instead of pressing it again.
+      await page.click('.nw-btn[aria-label="Larger text"]')
+      await r.until(async () => (await savedNotes(win)).fontSize === 32, { what: 'text size +2 from its button' })
+      await r.until(() => page.evaluate(() => !document.activeElement?.closest('button')), { what: 'the clicked button gives the focus back', timeout: 3000 })
+      await page.keyboard.press('Space')
+      await r.until(async () => (await dataOf(page)).playing, { what: 'Space plays after a click on a button' })
+      h.assert((await savedNotes(win)).fontSize === 32, 'Space did not press the button again')
+      await page.keyboard.press('Space')
+      await r.until(async () => !(await dataOf(page)).playing, { what: 'Space pauses after a click on a button' })
       h.assert((await page.evaluate(() => document.getAnimations().length)) === 0, 'no animations in the notes page')
 
       // Dragging the strip moves the window and saves where it was left; the grip resizes it.
@@ -245,6 +303,11 @@ async function main() {
       h.assert(!!(await win.evaluate(() => window.api.getNotes())).settings.placement, 'where it was left is saved')
       const resized = (await notesWindow(app)).bounds
       h.assert(Math.abs(resized.x - dragged.x) <= 1 && Math.abs(resized.y - dragged.y) <= 1 && resized.width === 660 && resized.height === 300, `the grip keeps the top-left: ${JSON.stringify(resized)}`)
+      // Wider than the dialog's two-column breakpoint (760), the notes still fill the window.
+      await page.evaluate(() => window.api.setNotesLook({ width: 800 }))
+      await r.until(() => page.evaluate(() => window.innerWidth === 800), { what: 'notes window 800 DIP wide' })
+      const wide = await windowBox(page)
+      h.assert(fills(wide), `the notes fill an 800 DIP window: ${JSON.stringify(wide)}`)
 
       // Esc closes the window (and so its page, before the key is released).
       await page.keyboard.press('Escape').catch(() => undefined)
@@ -274,6 +337,7 @@ async function main() {
       h.assert(nw.focusable === false && nw.focused === false && nw.onTop, `the recording's notes window: ${JSON.stringify(nw)}`)
       await page.waitForSelector('.nw-block')
       h.assert((await page.textContent('.nw-status')) === 'Starts with the recording', 'countdown status')
+      h.assert(await page.$('.nw-play[aria-pressed="true"][aria-label="Pause scrolling"]'), 'the play button shows that the text will start with the recording')
       h.assert((await dataOf(page)).block === 0 && !(await dataOf(page)).playing, 'still at the top during the countdown')
       h.assert((await page.evaluate(() => document.getAnimations().length)) === 0, 'no animations')
       const ev = await events(app)
@@ -488,6 +552,18 @@ async function main() {
         await r.xinput('k ctrl+shift+F10')
         f = await fits()
         h.assert(f.fits, `the bar fits with "Paused (idle)": ${JSON.stringify(f)}`)
+        // The narrowest notes window keeps every control, the "!", × and the grip inside it.
+        await page.evaluate(() => window.api.setNotesLook({ width: 320 }))
+        await r.until(() => page.evaluate(() => window.innerWidth === 320), { what: 'notes window 320 DIP wide' })
+        const strip = await page.evaluate(() =>
+          ['.nw-warn', '.nw-close', '.nw-grip, .nw-lock', '.nw-btn[aria-label="Larger text"]'].map((sel) => {
+            const el = document.querySelector(sel)
+            const b = el.getBoundingClientRect()
+            const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)
+            return { sel, left: Math.round(b.left), right: Math.round(b.right), inside: b.right <= innerWidth && !!hit && el.contains(hit) }
+          })
+        )
+        h.assert(strip.every((x) => x.inside), `the strip fits 320 DIP: ${JSON.stringify(strip)}`)
         await tb.click('button.discard')
         await tb.waitForSelector('.toolbar.confirm.discard')
         await tb.click('.tb-text-btn.danger')
@@ -562,6 +638,8 @@ async function main() {
         h.assert(sent && JSON.stringify(sent.json).includes('Open Settings'), 'only on the click, with the notes')
         await win.click('button:has-text("Restore my notes")')
         h.assert((await win.inputValue('.notes-modal textarea')) === bullets, 'Restore my notes brings the bullets back')
+        // The pressed button went away: the focus stays in the dialog, on Draft script.
+        h.assert(await win.evaluate(() => document.activeElement?.classList.contains('notes-draft-btn')), 'focus on Draft script after Restore my notes')
         await r.until(async () => (await win.evaluate(() => window.api.getNotes())).settings.text === bullets, { what: 'the restored notes saved' })
 
         // Stale: a slow provider, and typing meanwhile.
@@ -572,6 +650,7 @@ async function main() {
         await win.selectOption('.notes-draft-provider', slowId)
         await win.click('.notes-draft-btn')
         await win.waitForSelector('.notes-draft-busy')
+        h.assert(await win.evaluate(() => !!document.activeElement?.closest('.notes-draft') && document.activeElement.textContent === 'Cancel'), 'focus on Cancel while drafting')
         await win.focus('.notes-modal textarea')
         await win.keyboard.press('Control+End')
         await win.keyboard.type(' now')
@@ -587,6 +666,10 @@ async function main() {
         await h.sleep(4500)
         h.assert((await win.inputValue('.notes-modal textarea')) === typed, 'Cancel leaves the notes unchanged')
         h.assert(!(await win.$('text=Script drafted from your notes')), 'no draft after Cancel')
+        // Cancel went away with the focus on it: Esc still closes the dialog.
+        h.assert(await win.evaluate(() => document.activeElement?.classList.contains('notes-draft-btn')), 'focus on Draft script after Cancel')
+        await win.keyboard.press('Escape')
+        await win.waitForSelector('.notes-modal', { state: 'detached', timeout: 3000 })
       })
     } finally {
       await ai.close()

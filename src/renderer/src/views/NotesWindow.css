@@ -156,6 +156,17 @@ body.notes-body *::after {
   -webkit-app-region: drag;
 }
 
+/* Back to A+. Too narrow a window clips these (with room for the focus ring), never × or the grip. */
+.notes-window .nw-controls {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+
 .notes-window .nw-strip button,
 .notes-window .nw-grip,
 .notes-window .nw-warn,
@@ -264,4 +275,23 @@ body.notes-body *::after {
   justify-content: center;
   padding: 0;
   cursor: help;
+}
+
+/* The narrowest windows (NOTES_WIDTH.min is 320): a tighter strip, so every control still fits. */
+@media (max-width: 359px) {
+  .notes-window .nw-sep {
+    display: none;
+  }
+
+  .notes-window .nw-speed {
+    min-width: 0;
+  }
+
+  .notes-window .nw-status {
+    margin-left: 0;
+  }
+
+  .notes-window .nw-btn {
+    min-width: 24px;
+  }
 }

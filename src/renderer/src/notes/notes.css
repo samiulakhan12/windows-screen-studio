@@ -67,7 +67,8 @@
   max-height: calc(100vh - 48px);
 }
 
-.notes-body {
+/* Scoped to the dialog: the notes window's page has a body.notes-body of its own. */
+.notes-modal .notes-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: var(--space-5);
@@ -79,7 +80,7 @@
 }
 
 @media (max-width: 760px) {
-  .notes-body {
+  .notes-modal .notes-body {
     grid-template-columns: minmax(0, 1fr);
   }
 }

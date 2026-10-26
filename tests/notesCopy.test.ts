@@ -12,14 +12,16 @@ describe('notes copy', () => {
   })
 
   it('names every state of the window', () => {
-    const r = { mode: 'record' as const, playing: false, ended: false }
+    const r = { mode: 'record' as const, playing: false, ended: false, want: true }
     expect(notesStatus({ ...r, recording: 'countdown' })).toBe('Starts with the recording')
+    // The countdown says what happens when the recording starts: autoStart off, or paused in it.
+    expect(notesStatus({ ...r, recording: 'countdown', want: false })).toBe('Starts when you press play')
     expect(notesStatus({ ...r, recording: 'recording', playing: true })).toBe('Scrolling')
     expect(notesStatus({ ...r, recording: 'recording' })).toBe('Paused')
     expect(notesStatus({ ...r, recording: 'paused' })).toBe('Recording paused')
     expect(notesStatus({ ...r, recording: 'recording', ended: true })).toBe('End of notes')
-    expect(notesStatus({ mode: 'rehearse', recording: null, playing: false, ended: false })).toBe('Rehearsing: not recording')
-    expect(notesStatus({ mode: 'rehearse', recording: null, playing: true, ended: false })).toBe('Scrolling')
+    expect(notesStatus({ mode: 'rehearse', recording: null, playing: false, ended: false, want: false })).toBe('Rehearsing: not recording')
+    expect(notesStatus({ mode: 'rehearse', recording: null, playing: true, ended: false, want: true })).toBe('Scrolling')
   })
 
   it('titles the buttons with their hotkeys', () => {

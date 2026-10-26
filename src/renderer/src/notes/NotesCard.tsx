@@ -66,25 +66,22 @@ export function NotesCard({ disabled }: { disabled: boolean }): JSX.Element | nu
               onChange={(e) => void notes.update({ showWhileRecording: e.target.checked }).then(setError)}
             />
           </label>
-          <div className="notes-card-actions">
-            <button type="button" className="btn" disabled={disabled} aria-haspopup="dialog" onClick={open}>
-              {NOTES_COPY.edit}
-            </button>
-            <button type="button" className="btn" disabled={disabled} aria-pressed={rehearsing} onClick={() => void notes.rehearse(!rehearsing).then(setRehearseError)}>
-              {rehearsing ? NOTES_COPY.stopRehearsing : NOTES_COPY.rehearse}
-            </button>
-          </div>
         </>
       ) : (
-        <>
-          <p className="hint">{NOTES_COPY.emptyHint}</p>
-          <div className="notes-card-actions">
-            <button type="button" className="btn" disabled={disabled} aria-haspopup="dialog" onClick={open}>
-              {NOTES_COPY.add}
-            </button>
-          </div>
-        </>
+        <p className="hint">{NOTES_COPY.emptyHint}</p>
       )}
+      {/* One open button whatever the text: typing the first word or clearing the text in the
+          dialog keeps it, so the focus can go back to it. */}
+      <div className="notes-card-actions">
+        <button type="button" className="btn" disabled={disabled} aria-haspopup="dialog" onClick={open}>
+          {has ? NOTES_COPY.edit : NOTES_COPY.add}
+        </button>
+        {has && (
+          <button type="button" className="btn" disabled={disabled} aria-pressed={rehearsing} onClick={() => void notes.rehearse(!rehearsing).then(setRehearseError)}>
+            {rehearsing ? NOTES_COPY.stopRehearsing : NOTES_COPY.rehearse}
+          </button>
+        )}
+      </div>
       {!state.support.hiddenFromCapture && (
         <p className="notes-older" role="note">
           {NOTES_COPY.olderWindows}
@@ -93,6 +90,12 @@ export function NotesCard({ disabled }: { disabled: boolean }): JSX.Element | nu
       {error && (
         <p className="notes-error" role="alert">
           {NOTES_COPY.saveFailed(error)}
+        </p>
+      )}
+      {/* The text could not be saved (the dialog shows it while open; the next flush tries again). */}
+      {dialog === false && notes.saveStatus.kind === 'error' && (
+        <p className="notes-error notes-text-error" role="alert">
+          {NOTES_COPY.saveFailed(notes.saveStatus.message)}
         </p>
       )}
       {rehearseError && (

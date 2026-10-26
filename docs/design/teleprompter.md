@@ -118,9 +118,13 @@ spelling hint for transcription (NW-09).
 2. Each `'countdown'` status: `showNotes()` **before** `showToolbar()` (the bar ends up above it),
    then `setNotesRecording('countdown')`. `showNotes` is idempotent (countdown statuses arrive
    every second) and waits for `ready-to-show` if the page is still loading. The page shows the
-   top of the text, still, with the chip "Starts with the recording". The view's `take`
-   increases once per recording.
-3. The first `'recording'` status: the page starts scrolling when `autoStart` is on (default).
+   top of the text, still, with the chip "Starts with the recording" (or "Starts when you press
+   play" when it will not). The view's `take` increases once per recording.
+   Play / pause during the countdown (button or hotkey) sets what happens when it starts: the
+   choice starts as `autoStart` and each press flips it; the button shows it (Pause while the
+   text will start, `aria-pressed`).
+3. The first `'recording'` status: the page starts scrolling when `autoStart` is on (default),
+   unless the presenter chose otherwise during the countdown.
 4. `'paused'` (by hand or by auto-pause): the page pauses and remembers whether it was scrolling;
    the next `'recording'` resumes it if it was. Status "Recording paused".
 5. The bar's notes button hides the window (`hide()`) or shows it again (`showInactive()`).
@@ -222,7 +226,8 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
   30 writes a second whatever the speed. No `requestAnimationFrame`, no React render per step.
 - **No timer** while paused, hidden, at the end, or with an empty text.
 - **End.** Scrolling stops when the end of the last block reaches the reading line: status "End of
-  notes" and a [Back to start] button.
+  notes" and a [Back to start] button. The clock stops there too, so moving back afterwards
+  (Home, ↑, Page Up, Back, the wheel, [Back to start]) leaves the text still until play.
 - **Back / forward** (hotkeys, buttons, ↑/↓): back = the current block's start when more than one
   line height past it, else the previous block's start; forward = the next block's start (the end
   from the last). The move glides over 150 ms on the same step timer (at most 5 writes), instant
@@ -240,7 +245,9 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
 - **Strip** (bottom, 32 DIP, `role="toolbar"`): drag area with buttons `no-drag`:
   Back · Play/Pause · Forward · `130 wpm` with − / + (±10) · A− / A+ (±2 px) · status text ·
   hotkey problem marker (!) · × (hide while recording, close while rehearsing). A lock icon
-  replaces the grip when the window is locked (§2.10).
+  replaces the grip when the window is locked (§2.10). When the window is narrow the status gives
+  way first; under 360 DIP the separators go and the strip tightens, so it fits the 320 minimum
+  with the !; narrower still, Back to A+ are clipped, never ×, the grip or the lock.
 - **Resize grip** at the bottom-right corner: pointer capture, `screenX/screenY` deltas, at most
   one `setNotesLook({ width, height })` per animation frame while dragging (the bubble's pattern);
   main clamps and moves the window. Hidden when locked.
@@ -249,7 +256,11 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
   (held during a recording); Home sees them through `notes:state`.
 - **Rehearsal keyboard** (window focused): Space play/pause · ↑ / ↓ back / forward · Page Up /
   Page Down ∓⅔ of the text area · Home / End top / end · − / = (and numpad − / +) speed ∓10 ·
-  Ctrl + − / Ctrl + = text size ∓2 · Esc close. The notes hotkeys work too (globally).
+  Ctrl + − / Ctrl + = text size ∓2 · Esc close. The notes hotkeys work too (globally). − and =
+  match the character typed (`-` or `_`, `=` or `+`; numpad − / + by key), so they work on every
+  keyboard layout. A strip button pressed with the mouse gives the focus back after its click
+  (the editor's `installFocusRelease`), so Space stays play/pause; a button reached with Tab keeps
+  Space.
 
 ### 2.7 Hotkeys
 
@@ -330,7 +341,9 @@ gains "While your notes scroll, Flown counts that as activity."
   with `sanitizeNotesSettings(raw, recordingHotkeys)`; missing, unreadable or malformed means
   defaults field by field.
 - Every change is written with `writeFileAtomicSync` (temporary file + rename, retried).
-- Home sends the text 500 ms after typing stops (and on blur and dialog close).
+- Home sends the text 500 ms after typing stops (and on blur and dialog close). A text that could
+  not be saved is kept and sent again by the next of these (and by Rehearse and leaving Home),
+  unless it was typed over meanwhile.
 - **During a recording the store is held**: changes from the window (speed, size, drag) stay in
   memory and are written once by `release()` at the end of the recording or on quit, so no
   synchronous write (up to ~75 ms on a locked file) lands on the main thread mid-recording.
@@ -561,7 +574,8 @@ Its own `rec-group` in the record panel, between the "Audio and camera" group an
 (`Home.tsx`), `disabled={!idle}` like the other options. `src/renderer/src/notes/NotesCard.tsx`.
 
 - **No text**: label "Speaker notes"; hint "Add a script or bullet points to read while you
-  record. Only you see them: they stay out of the video."; button [Add notes…].
+  record. Only you see them: they stay out of the video."; button [Add notes…] (the same button
+  as [Edit notes…], relabelled, so the focus can return to it after the first word is typed).
 - **With text**: summary "312 words · about 2 min 24 s at 130 words a minute"; toggle "Show while
   recording"; buttons [Edit notes…] and [Rehearse] (reads [Stop rehearsing] while the rehearsal
   window is open, `aria-pressed`).
@@ -569,7 +583,8 @@ Its own `rec-group` in the record panel, between the "Audio and camera" group an
   version of Windows your notes would show in the video as a black box (the recording bar does
   too). They appear only when they are outside what you record, and never in a window recording.
   Windows 10 version 2004 or later keeps them out of the video."
-- Errors from `updateNotes` show inline: "Could not save your notes: {message}".
+- Errors from `updateNotes` show inline: "Could not save your notes: {message}"; a text that could
+  not be saved shows it too once the dialog is closed (the dialog says "Could not save" while open).
 
 ### 5.2 Notes dialog (`NotesDialog.tsx`)
 
@@ -591,7 +606,9 @@ Left column:
   - Empty notes: disabled, title "Write a few bullet points first."
   - Over 20,000 characters: disabled, "Draft script works on up to 20,000 characters of notes."
   - Busy: "Drafting…" with a spinner (static under reduced motion) and [Cancel]; the textarea
-    stays editable.
+    stays editable. When the focused button goes away (Draft script or Try again while busy,
+    Cancel, Restore my notes), the focus moves to [Cancel] or [Draft script], so it stays in the
+    dialog and Esc still closes it.
   - Done: "Script drafted from your notes. Read it through before you record." [Restore my notes].
   - Stale: "Your notes changed while the script was drafted, so the draft was not used. Try again."
   - Error: the provider's message (the existing `ipcMessage` path) and [Try again].
@@ -621,8 +638,8 @@ Footer: [Rehearse] and [Done].
   `--border-strong` line; above it a static gradient from `--surface-0` at 25 % opacity (top) to
   transparent (reading line) dims what was read.
 - Strip as in §2.6. Status text (`aria-live="polite"`, changes only): "Starts with the
-  recording", "Scrolling", "Paused", "Recording paused", "End of notes", "Rehearsing: not
-  recording".
+  recording", "Starts when you press play" (countdown, autoStart off or paused during it),
+  "Scrolling", "Paused", "Recording paused", "End of notes", "Rehearsing: not recording".
 - Every button has an `aria-label` and a title with its hotkey: "Back (Ctrl + Shift + F6)",
   "Start scrolling (Ctrl + Shift + F7)" / "Pause scrolling (…)", "Forward (…)", "Slower",
   "Faster", "Smaller text", "Larger text", "Hide notes (they are never recorded)" while recording,
@@ -796,9 +813,14 @@ current notes are not empty and differ, the latter asks inline "Replace your cur
   a new view): countdown → top and paused; first recording with autoStart → playing, without →
   paused; paused → paused and remembered; recording again → resumes only if it was playing;
   `shown: false` → paused and remembered, `true` → resumes; a new `take` → top; rehearse →
-  paused at the top.
+  paused at the top; during the countdown `want` follows `autoStart` until a press, and one
+  pause pressed then (autoStart on) keeps the recording's text still.
 - `tests/notesCopy.test.ts` (new pure `src/shared/notes/notesCopy.ts`): the summary line, the
   status texts, button titles with and without hotkeys.
+- `tests/notesCard.test.ts` (Home's card and `useNotes` with React's hooks swapped for a shim): a
+  failed text save is sent again by the next flush, never over a newer edit, and shows on the card
+  once the dialog is closed; the open button keeps its place when the first word is typed or the
+  text is cleared.
 
 ### 7.3 End to end: `tests/e2e/teleprompter.e2e.cjs` (B; runs at integration)
 
@@ -810,10 +832,13 @@ Xvfb with the window manager, as `camera-live.e2e.cjs`; real input with `r.xinpu
    a window whose URL ends with `#/notes`, `isAlwaysOnTop()`, `isFocusable() === true`, protected
    before its first show; `getSources(['window'])` has neither its `getMediaSourceId()` nor its
    title. Space starts scrolling (the column's transform y grows within 1.5 s); Esc closes it and
-   the main window is focused.
+   the main window is focused. Also: the count has no `aria-live`; closing the dialog opened from
+   [Add notes…] focuses the card's button; the notes fill their window at 560 and 800 DIP; after
+   the end while playing, Home leaves the text still and one Space plays; +/- with a German
+   layout's `code`s change speed and text size; Space after a mouse click on A+ plays.
 2. **Recording.** Countdown 3. During the countdown the notes window is visible, `isFocusable()`
    false, not focused, protected before its first `showInactive`, shown before the bar, its page
-   `document.getAnimations().length === 0`. After the start the y grows; a `MutationObserver` on
+   `document.getAnimations().length === 0`, its play button pressed (the text starts with it). After the start the y grows; a `MutationObserver` on
    the column's `style` counts at most 93 writes over 3 s.
 3. **Real input.** Click the notes' Pause button and body; wheel 3 notches over the text;
    `k ctrl+shift+F7` (y still for 1 s), `k ctrl+shift+F8` then `k ctrl+shift+F6` (`data-block`
@@ -829,14 +854,16 @@ Xvfb with the window manager, as `camera-live.e2e.cjs`; real input with `r.xinpu
 5. **Restart** from the bar: the same notes window id, the next countdown at the top
    (`data-block="0"`).
 6. **Hotkey clash.** `xgrabkey.py` holds ctrl+shift+F7: the bar's problem tooltip and the notes
-   window's ! name "Notes: play / pause"; F6 and F8 still work.
+   window's ! name "Notes: play / pause"; F6 and F8 still work. At 320 DIP the !, ×, the grip and
+   A+ are inside the window.
 7. **Older Windows** (`__SSW_CAPTURE_EXCLUSION__ = false`): the Home warning; recording the only
    screen → no notes window and the notice is listed; rehearsal still opens.
 8. **Draft script** (`ai-mock-server.cjs` with `SSW_AI_BASE_URL_ANTHROPIC`, as `ai.e2e.cjs`; B adds
    a branch for `SCRIPT_SYSTEM_START` answering one paragraph per line "Point: {line}."): with no
    provider the explanation and [Add an AI provider] opens `.settings-backdrop`; with a mock key the
    text is replaced in order, [Restore my notes] brings the bullets back; a slow mock and typing
-   meanwhile → the stale message and the text unchanged; [Cancel] → unchanged.
+   meanwhile → the stale message and the text unchanged; [Cancel] → unchanged. The focus is on
+   [Cancel] while busy and on [Draft script] after Restore my notes and Cancel; Esc then closes.
 9. **Editor.** Open the project of step 3 → Captions tab → "Your script": [Copy script] puts the
    text on the clipboard; [Use as notes again] → `getNotes()` text equals it.
 10. **Recording bar**: with the notes, camera and mic buttons and every transient label,

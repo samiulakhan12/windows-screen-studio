@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { SCRIPT_DRAFT_MAX_NOTES, type AiProviderInfo } from '../../../shared/api/ai'
 import { hasNotesText } from '../../../shared/notes/notes'
 import { NOTES_COPY } from '../../../shared/notes/notesCopy'
@@ -129,6 +129,16 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
   }
 
   const busy = draft.kind === 'busy'
+
+  // The focused button went away (Draft script and Cancel take turns, Restore my notes goes): the
+  // one there now takes the focus, so it stays in the dialog (Esc still closes it).
+  const draftButton = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  useLayoutEffect(() => {
+    if (document.activeElement && document.activeElement !== document.body) return
+    ;(busy ? cancelButton : draftButton).current?.focus()
+  }, [draft.kind, busy])
+
   const blockedTitle = empty ? NOTES_COPY.draftEmpty : tooLong ? NOTES_COPY.draftTooLong : undefined
   return (
     <div className="notes-draft" data-state={draft.kind}>
@@ -138,12 +148,12 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
             <span className="notes-draft-busy" role="status">
               <span className="notes-spinner" aria-hidden="true" /> {NOTES_COPY.drafting}
             </span>
-            <button type="button" className="btn" onClick={cancel}>
+            <button ref={cancelButton} type="button" className="btn" onClick={cancel}>
               {NOTES_COPY.cancel}
             </button>
           </>
         ) : (
-          <button type="button" className="btn notes-draft-btn" disabled={disabled || empty || tooLong} title={blockedTitle} onClick={() => void start()}>
+          <button ref={draftButton} type="button" className="btn notes-draft-btn" disabled={disabled || empty || tooLong} title={blockedTitle} onClick={() => void start()}>
             <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
             </svg>

@@ -179,6 +179,7 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
               />
             </label>
             <div className="notes-count-row">
+              {/* Not a live region: it changes with nearly every word typed. */}
               <span className="notes-count">{countLine(words, settings.wpm)}</span>
               <span className={`notes-saved ${status.kind}`} role={status.kind === 'error' ? 'alert' : undefined}>
                 {status.kind === 'saved' ? NOTES_COPY.saved : status.kind === 'error' ? NOTES_COPY.couldNotSave(status.message) : ''}
