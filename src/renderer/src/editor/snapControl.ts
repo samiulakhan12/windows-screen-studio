@@ -3,13 +3,23 @@
  * Timeline, with a stable identity. Each drag handler calls `begin` once at pointerdown; the
  * session then snaps each move (shared/editor/snapping.ts), unless snapping is off or Alt is held,
  * tracks the target holding the edge and moves the guide.
- *
- * Contracts commit: the snapping preference is implemented; the controller's sessions return
- * their inputs unchanged until E-05 lands (TODO(E-05) below), so every drag behaves as before.
  */
-import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import type { ClickRow } from '../../../shared/engine/inputData'
-import type { DragMode, SnapExclude, SnapTarget, Span } from '../../../shared/editor/snapping'
+import {
+  buildSnapIndex,
+  projectFreezeTargets,
+  projectSnapSources,
+  snapAt,
+  snapSpan,
+  type DragMode,
+  type SnapExclude,
+  type SnapIndex,
+  type SnapTarget,
+  type SnapView,
+  type Span
+} from '../../../shared/editor/snapping'
+import { useEditor, type EditorServices } from './context'
 
 /** localStorage key of the snapping toggle: '0' off, anything else (or nothing) on. */
 export const SNAP_PREF_KEY = 'editor-snapping'
@@ -80,22 +90,116 @@ export interface SnapGuideHandle {
   hide(): void
 }
 
-/** A session that snaps nothing. */
-const PASS_THROUGH_SESSION: SnapSession = {
-  span: (_ev, _initial, _mode, dt, resolve) => resolve(dt),
-  at: (_ev, t) => t
-}
+/** Space before 0 s: the .tl-content padding (Timeline.tsx GUTTER). */
+const GUTTER = 10
 
-const PASS_THROUGH: SnapController = { begin: () => PASS_THROUGH_SESSION }
-
-/** The Timeline's snapping controller, built once (refs keep it current). */
-export function useSnapController(deps: {
+interface SnapDeps {
   pxRef: RefObject<number>
   scrollerRef: RefObject<HTMLDivElement>
   clickRows: readonly ClickRow[]
   guideRef: RefObject<SnapGuideHandle>
-}): SnapController {
-  // TODO(E-05): index at begin, Alt and the toggle gate, the current target, the guide.
-  void deps
-  return PASS_THROUGH
+}
+
+/** A controller reading its dependencies through `deps()` at each press and move. */
+function createSnapController(deps: () => SnapDeps & EditorServices): SnapController {
+  // One drag at a time: a new press ends the session before it.
+  let endActive: (() => void) | null = null
+
+  return {
+    begin(e, spec = {}) {
+      endActive?.()
+      const { store, player, clickRows, guideRef } = deps()
+      const on = snapPref.get()
+      const index: SnapIndex | null = on
+        ? buildSnapIndex(
+            projectSnapSources(store.state, clickRows, {
+              // A moving playhead cannot be caught; scrubbing and trimming move it themselves.
+              playhead: spec.noPlayhead || player.moving ? null : player.time,
+              layouts: store.state.hasWebcam && player.webcam !== null,
+              freezes: projectFreezeTargets(store.state, spec.exclude)
+            }),
+            spec.exclude
+          )
+        : null
+      const sx = e.clientX
+      const id = e.pointerId
+      const slop = spec.slopPx ?? 0
+      let current: SnapTarget | null = null
+      let open = true
+      let freed = slop <= 0
+
+      const hide = (): void => {
+        current = null
+        guideRef.current?.hide()
+      }
+      // Releasing Alt alone could move focus to the window menu (docs/design/snapping.md risk 1).
+      const onKey = (ev: KeyboardEvent): void => {
+        if (ev.key === 'Alt') ev.preventDefault()
+      }
+      const end = (ev?: PointerEvent): void => {
+        if (!open || (ev && ev.pointerId !== id)) return
+        open = false
+        if (endActive === end) endActive = null
+        hide()
+        window.removeEventListener('pointerup', end, true)
+        window.removeEventListener('pointercancel', end, true)
+        window.removeEventListener('keydown', onKey, true)
+        window.removeEventListener('keyup', onKey, true)
+      }
+      window.addEventListener('pointerup', end, true)
+      window.addEventListener('pointercancel', end, true)
+      window.addEventListener('keydown', onKey, true)
+      window.addEventListener('keyup', onKey, true)
+      endActive = end
+
+      /** The view of this move, or null while it goes unsnapped (off, Alt, within the slop, ended). */
+      const viewOf = (ev: PointerEvent): SnapView | null => {
+        if (!freed && Math.abs(ev.clientX - sx) >= slop) freed = true
+        if (!index || !open || ev.altKey || !freed) return null
+        const { pxRef, scrollerRef } = deps()
+        const px = pxRef.current ?? 0
+        const el = scrollerRef.current
+        // Only the part of the timeline on screen catches: the timeline does not scroll during a drag.
+        const visible = el && px > 0 ? { start: (el.scrollLeft - GUTTER) / px, end: (el.scrollLeft + el.clientWidth - GUTTER) / px } : null
+        return { pxPerSec: px, current, visible }
+      }
+      const show = (target: SnapTarget | null, pxPerSec: number): void => {
+        current = target
+        if (target) guideRef.current?.show(target.t, pxPerSec, target)
+        else guideRef.current?.hide()
+      }
+
+      return {
+        span(ev, initial, mode, dt, resolve) {
+          const view = viewOf(ev)
+          if (!index || !view) {
+            hide()
+            return resolve(dt)
+          }
+          const r = snapSpan(index, initial, mode, dt, view, resolve)
+          show(r.target, view.pxPerSec)
+          return r.times
+        },
+        at(ev, t, limit) {
+          const view = viewOf(ev)
+          if (!index || !view) {
+            hide()
+            return t
+          }
+          const r = snapAt(index, t, view, limit)
+          show(r.target, view.pxPerSec)
+          return r.t
+        }
+      }
+    }
+  }
+}
+
+/** The Timeline's snapping controller, built once (refs keep it current). */
+export function useSnapController(deps: SnapDeps): SnapController {
+  const services = useEditor()
+  const ref = useRef({ ...deps, ...services })
+  ref.current = { ...deps, ...services }
+  const [controller] = useState(() => createSnapController(() => ref.current))
+  return controller
 }

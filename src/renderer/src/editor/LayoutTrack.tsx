@@ -1,6 +1,7 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { AUTO_TITLE_SUFFIX } from '../../../shared/editor/directorCopy'
 import { addLayoutAt, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
+import type { SnapExclude } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
@@ -14,6 +15,7 @@ import { LayoutGlyph } from './layoutGlyphs'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
+import type { SnapController } from './snapControl'
 import './camera.css'
 
 export interface TrackSlotProps {
@@ -29,6 +31,8 @@ export interface TrackSlotProps {
    * as on every track (the timeline does not scroll after the playhead while it is dragged).
    */
   scrub: (e: ReactPointerEvent) => void
+  /** The timeline's snapping: each drag begins a session at pointerdown and snaps its moves. */
+  snap: SnapController
 }
 
 /** Layout a double-click on the track adds (the Camera panel then shows the others). */
@@ -72,7 +76,7 @@ const useHasCamera = (): boolean => {
  * segment, labelled with its layout and shaded where it animates in and out. Click selects (and
  * shows it on the preview), drag moves, the edges trim, a double-click on free time adds one.
  */
-export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: TrackSlotProps): JSX.Element | null {
+export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element | null {
   const { store, player } = useEditor()
   const hasCamera = useHasCamera()
   const layouts = useSyncExternalStore(store.subscribe, () => store.state.layouts) ?? NO_LAYOUTS
@@ -145,11 +149,16 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub }: T
     const around = stayAround(store.state.layouts ?? [], s)
     const initial = { start: s.start, end: s.end }
     const sx = e.clientX
+    // Its own edges and the pieces' edges that follow them are not targets.
+    const exclude: SnapExclude[] = [{ owner: `layout:${s.id}` }]
+    if (around.before) exclude.push({ owner: `layout:${around.before.id}`, edge: 'end' })
+    if (around.after) exclude.push({ owner: `layout:${around.after.id}`, edge: 'start' })
+    const session = snap.begin(e, { exclude })
     store.beginGesture()
     drag(
       e,
       (ev) => {
-        const times = dragLayoutTimes(initial, mode, (ev.clientX - sx) / px, bounds)
+        const times = session.span(ev, initial, mode, (ev.clientX - sx) / px, (d) => dragLayoutTimes(initial, mode, d, bounds))
         store.update((p) => ({ ...p, layouts: dragLayout(p.layouts, s.id, times, around) }), `layout-drag:${s.id}`)
       },
       (moved) => {

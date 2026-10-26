@@ -27,7 +27,7 @@ const styleLabel = (style: TitleCardStyle): string => TITLE_STYLES.find((s) => s
  * the text track, flags drag to move a chapter, a click selects (and shows it on the preview),
  * a double-click on empty space adds a title card, or a chapter in the flag strip.
  */
-export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: TrackSlotProps): JSX.Element {
+export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element {
   const services = useEditor()
   const { store, player } = services
   const keymap = useKeymap()
@@ -78,11 +78,12 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: Tr
     const mode = dragMode(e)
     const initial = { start: card.start, end: card.end }
     const sx = e.clientX
+    const s = snap.begin(e, { exclude: [{ owner: `title:${card.id}` }] })
     store.beginGesture()
     track(
       e,
       (ev) => {
-        const times = dragTitleTimes(initial, mode, (ev.clientX - sx) / pxRef.current, duration)
+        const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragTitleTimes(initial, mode, d, duration))
         store.update((p) => ({ ...p, titles: (p.titles ?? []).map((x) => (x.id === card.id ? { ...x, ...times } : x)) }), `title-drag:${card.id}`)
       },
       (moved) => {
@@ -98,11 +99,12 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: Tr
     if (e.button !== 0) return
     onSelect({ kind: 'chapter', id: c.id })
     const sx = e.clientX
+    const s = snap.begin(e, { exclude: [{ owner: `chapter:${c.id}` }] })
     store.beginGesture()
     track(
       e,
       (ev) => {
-        const t = clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration)
+        const t = s.at(ev, clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration), { min: 0, max: duration })
         store.update((p) => ({ ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, t } : x)) }), `chapter-drag:${c.id}`)
       },
       (moved) => {
