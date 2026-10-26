@@ -520,7 +520,11 @@ so the same frame gives the same mask), every VideoFrame closed, the element rel
    and hands at the edges).
 3. Top: the first row with at least max(2, 0.015·W) person pixels in that band; below 0.6·H: null.
 4. Shoulders: from 0.1·H below the top, the first of 3 consecutive rows each wider than 1.6 × the
-   widest row above it; none found: the head is 0.2·H tall.
+   head's width: the widest row above it, up to the chin (the first 3 consecutive rows each
+   narrower than 0.8 × the widest above them). A real mask widens from the neck into the shoulders
+   row by row, so measured against the widest row just above, no shoulder row ever stands out (the
+   head would always be the 0.2·H fallback, the eyes on the forehead). None found: the head is
+   0.2·H tall.
 5. Head width = the 80th percentile of the row widths from the top to the shoulders; height =
    min(shoulders − top, 1.4 × width); centre x = median of those rows' centres; eyes = top +
    0.45 × height. Normalised by the mask size (the mask keeps the camera's shape).
@@ -536,10 +540,13 @@ about 42% down the visible part. Crops rounded to 4 decimals.
 webcam is 1280×720; a 1.3× crop of it fills 1080p at about 1.95× upscaling).
 
 **Worked example** (the e2e camera): a person drawn at 0.62 of a 640×360 picture, hair about 122 px
-wide. width ≈ 0.18-0.19 → zoom ≈ 0.42·360/118 ≈ 1.28 → 1.25-1.3 (cap 1.3, camera only is used);
-cropX ≈ 0.62; eyes ≈ 0.33 → cropY ≈ 0.40. In camera only at 1280×720 the visible part is about
-500 px of 640, clamped at the picture's right edge: the face lands about 0.5 across (mirrored
-about 630 px) instead of 486 px without framing.
+wide, eyes at 0.34, shoulders in a dark shirt from 0.6 down (the segmentation sees them, as it sees
+a real person's clothes; a flat green shirt on the striped background was taken for background,
+leaving a head on a neck). The mask (kept in tests/faceFraming.test.ts): width ≈ 0.175-0.19 →
+zoom ≈ 0.42·360/113 ≈ 1.34 → 1.3 (cap 1.3, camera only is used); cropX ≈ 0.62; shoulders where
+the slope passes 1.6 × the head; eyes ≈ 0.32 → cropY ≈ 0.38-0.40. In camera only at 1280×720 the
+visible part is about 500 px of 640, clamped at the picture's right edge: the face lands about
+0.5 across (mirrored about 630 px) instead of 486 px without framing.
 
 ---
 
@@ -649,6 +656,10 @@ auto corner; removeLayout gives cut-outs back; toOutput equals the compositor fo
   ± 0.01, eyeY 0.33 ± 0.02.
 - framingFromFaces(12 × that box, 1280, 720, 1.6): zoom 1.55 ± 0.05, cropX 0.648 ± 0.01, cropY
   0.38 ± 0.02, steady; cap 1.3 → 1.3.
+- The same person with shoulders widening row by row from the neck (16 wide at y 76 to 120 at
+  y 100): eyeY 0.33 ± 0.02, not the 0.2·H fallback. The real mask the bundled segmentation makes
+  of the e2e camera (as row runs): cx 0.62 ± 0.01, w 0.19 ± 0.02, eyeY 0.34 ± 0.03; framed at
+  640×360 with cap 1.3: zoom 1.3, cropY 0.40 ± 0.03.
 - Empty mask, 1% coverage → null; a blob only below 0.6·H → null; a chair-back blob at the far
   left does not move cx; 12 faces with 4 found (< 40%) → null; cx alternating 0.4 / 0.7 → zoom ≤
   1.25, not steady; a head 0.4 wide → zoom 1.

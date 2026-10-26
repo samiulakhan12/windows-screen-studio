@@ -118,15 +118,29 @@ async function main() {
     await win.waitForSelector('.fps-picker .chip.active:has-text("30 fps")')
 
     const tb = await r.startRecording(app, win)
-    const t0 = Date.now()
+    const recDir = r.activeDir(home)
     const released = await win.evaluate(() => ({
       gone: !document.querySelector('.camera-preview'),
       ended: window.__preview.getVideoTracks().every((t) => t.readyState === 'ended')
     }))
     h.assert(released.gone && released.ended, `preview released when recording starts: ${JSON.stringify(released)}`)
     await r.xinput('g 300 300 1500 800 2.5; s 1')
+    const clicked = Date.now()
     await tb.click('button.stop')
-    const wall = (Date.now() - t0) / 1000
+    // Written once every recorder has stopped, with the recording's own start (its first frame,
+    // on this machine's clock). The toolbar shows its stop button up to half a second after that
+    // start, more under load, so time measured from the button is no measure of the recording.
+    const stopped = await r.until(
+      () => {
+        try {
+          const m = JSON.parse(fs.readFileSync(path.join(recDir, 'recording.json'), 'utf8'))
+          return m.status === 'processing' ? { startedAt: m.startedAt, at: Date.now() } : null
+        } catch {
+          return null // mid-write
+        }
+      },
+      { interval: 10, what: 'the stopped recording' }
+    )
     await win.waitForSelector('.editor canvas', { timeout: 120000 })
 
     const [id] = h.listProjects(home)
@@ -135,10 +149,14 @@ async function main() {
     h.assert(project.hasWebcam, 'the camera was free for the recording')
     h.assert(project.capture.fps === 30, `project records 30 fps (${project.capture.fps})`)
     const screen = frames(path.join(pdir, 'screen.mp4'))
-    console.log(`30 fps: proxy ${JSON.stringify(screen)}, duration ${project.duration.toFixed(3)} s (wall ${wall.toFixed(2)} s)`)
+    // The recording ran from its start at least until the stop click began, and at most until its
+    // stopped manifest was seen; the constant-rate video can differ from that by one frame.
+    const atLeast = (clicked - stopped.startedAt) / 1000 - 1 / 30
+    const atMost = (stopped.at - stopped.startedAt) / 1000 + 1 / 30
+    console.log(`30 fps: proxy ${JSON.stringify(screen)}, duration ${project.duration.toFixed(3)} s (recorded ${atLeast.toFixed(3)}-${atMost.toFixed(3)} s)`)
     h.assert(screen.rate === '30/1', `screen proxy at 30 fps (${screen.rate})`)
     h.assert(Math.abs(screen.count / 30 - project.duration) < 0.05, `duration ${project.duration} matches ${screen.count} frames at 30 fps`)
-    h.assert(project.duration > 2.5 && project.duration < wall + 0.5, `duration ${project.duration} (wall ${wall})`)
+    h.assert(project.duration >= atLeast && project.duration <= atMost, `duration ${project.duration} is the time recorded (${atLeast.toFixed(3)}-${atMost.toFixed(3)} s)`)
     const cursor = readCursor(home, id)
     h.assert(cursor.samples.length > 20, 'cursor recorded')
 

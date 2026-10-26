@@ -14,8 +14,10 @@ import { mergeRanges, type Range } from '../audio/activity'
  * - head top: the first row with at least max(2, `topRow` * width) person pixels in that band;
  *   below `maxTop` of the height it is only shoulders or a hand.
  * - shoulders: from `minHead` of the height below the top, the first of `shoulderRows` rows in a
- *   row each wider than `shoulder` x the widest row above it; without them the head is
- *   `headRows` of the height tall.
+ *   row each wider than `shoulder` x the head's width: the widest row above it, up to the chin
+ *   (the first `shoulderRows` rows in a row each narrower than `chin` x the widest above them;
+ *   masks widen into the shoulders gradually, so rows below the chin do not count); without
+ *   them the head is `headRows` of the height tall.
  * - head width: the `widthPercentile` of the row widths between the top and the shoulders (a
  *   median would read a round head too narrow); its height at most `headRatio` x its width;
  *   centre: the median of those rows' centres; the eyes `eye` of the way down the head.
@@ -37,6 +39,7 @@ export const FACE = {
   minHead: 0.1,
   shoulder: 1.6,
   shoulderRows: 3,
+  chin: 0.8,
   headRows: 0.2,
   widthPercentile: 0.8,
   headRatio: 1.4,
@@ -115,19 +118,27 @@ export function faceBoxOfMask(rgba: ArrayLike<number>, width: number, height: nu
   for (let y = 0; y < H && top < 0; y++) if (widths[y] >= minRow) top = y
   if (top < 0 || top > FACE.maxTop * H) return null
 
-  // Shoulders: the first rows clearly wider than everything above them (the head).
+  // Shoulders: the first rows clearly wider than the head. The head's width is the widest row
+  // above its chin (the first rows clearly narrower than it): a real mask widens from the neck
+  // into the shoulders row by row, so measured against the row above, the shoulders never stand out.
   let shoulders = -1
   let widest = 0
+  let chin = false
   for (let y = top; y < H; y++) {
     if (y >= top + FACE.minHead * H && y + FACE.shoulderRows <= H) {
       let wide = true
-      for (let k = 0; k < FACE.shoulderRows && wide; k++) wide = widths[y + k] > FACE.shoulder * widest
+      let narrow = true
+      for (let k = 0; k < FACE.shoulderRows; k++) {
+        wide = wide && widths[y + k] > FACE.shoulder * widest
+        narrow = narrow && widths[y + k] < FACE.chin * widest
+      }
       if (wide) {
         shoulders = y
         break
       }
+      if (narrow) chin = true
     }
-    widest = Math.max(widest, widths[y])
+    if (!chin) widest = Math.max(widest, widths[y])
   }
   if (shoulders < 0) shoulders = Math.min(H, Math.round(top + FACE.headRows * H))
 
