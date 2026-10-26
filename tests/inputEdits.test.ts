@@ -177,6 +177,59 @@ describe('setClicksIgnored and rebaseAutoZooms (the §4.3 example)', () => {
     expect(spans(setClicksIgnored(off, lone, { use: [15000] }).zooms)).toEqual([[14.1, 16.8]])
   })
 
+  it('a zoom the user kept survives when its replacement is held back by one they deleted or made', () => {
+    const three = track([click(2, 0.3, 0.3), click(5, 0.4, 0.4), click(8, 0.6, 0.6)])
+    const all = project({ zooms: autoZoomsForTrack(three, 20) })
+    expect(spans(all.zooms)).toEqual([[1.1, 9.8]])
+    const split = setClicksIgnored(all, three, { ignore: [{ ms: 5000 }] })
+    expect(spans(split.zooms)).toEqual([
+      [1.1, 3.8],
+      [7.1, 9.8]
+    ])
+    // Delete either half, then use 5 again: the merged [1.1, 9.8] would cover the deleted half, so
+    // it is not added, and the half the user kept stays (same object); the deleted stretch stays clear.
+    for (const keep of [1, 0]) {
+      const deleted = { ...split, zooms: [split.zooms[keep]] }
+      const used = setClicksIgnored(deleted, three, { use: [5000] })
+      expect(used.inputEdits).toBeUndefined()
+      expect(used.zooms).toBe(deleted.zooms)
+      // Ignoring 5 once more changes nothing either.
+      expect(setClicksIgnored(used, three, { ignore: [{ ms: 5000 }] }).zooms).toBe(deleted.zooms)
+    }
+    // A zoom the user made between the halves holds the merge back the same way: both halves stay.
+    const made: ZoomSegment = { id: 'm', start: 4.5, end: 6, scale: 2, focus: { mode: 'cursor' }, auto: false }
+    const gap = { ...split, zooms: [split.zooms[0], made, split.zooms[1]] }
+    expect(setClicksIgnored(gap, three, { use: [5000] }).zooms).toBe(gap.zooms)
+    // A zoom deleted elsewhere does not hold the merge back.
+    const four = track([...three.clicks, click(15, 0.6, 0.6)])
+    const parts = setClicksIgnored(project({ zooms: autoZoomsForTrack(four, 20) }), four, { ignore: [{ ms: 5000 }] })
+    expect(spans(parts.zooms)).toEqual([
+      [1.1, 3.8],
+      [7.1, 9.8],
+      [14.1, 16.8]
+    ])
+    const merged = setClicksIgnored({ ...parts, zooms: parts.zooms.slice(0, 2) }, four, { use: [5000] })
+    expect(spans(merged.zooms)).toEqual([[1.1, 9.8]])
+  })
+
+  it('rebaseAutoZooms: a kept zoom holds back the next replacement too', () => {
+    const seg = (start: number, end: number, t: number): ZoomSegment => ({ id: `z${t}`, start, end, scale: 2, focus: { mode: 'cursor' }, auto: true, anchor: { t, x: 0.5, y: 0.5 } })
+    // `before` has A, B and C; `after` replaces A and B with X, and B and C with Y.
+    const [a, b, c] = [seg(1, 3, 2), seg(4, 9, 5), seg(10, 12, 11)]
+    const after = [seg(1, 6, 2), seg(7, 12, 8)]
+    for (const zooms of [
+      [b, c],
+      [a, b],
+      [a, c]
+    ]) {
+      expect(rebaseAutoZooms(zooms, [a, b, c], after)).toBe(zooms)
+    }
+    expect(spans(rebaseAutoZooms([a, b, c], [a, b, c], after))).toEqual([
+      [1, 6],
+      [7, 12]
+    ])
+  })
+
   it('zooms the user edited (auto: false) are never touched, and nothing new overlaps them', () => {
     const edited = { ...base.zooms[0], auto: false, end: 6 }
     const p = { ...base, zooms: [edited, base.zooms[1], manual] }

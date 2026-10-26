@@ -241,6 +241,10 @@ It never runs live.
   and overlaps only `before` zooms that overlap a zoom dropped by the two rules above. A `before`
   zoom the user deleted is not in `zooms`, so nothing drops for it and its stretch stays clear.
   An `after` zoom that overlaps no `before` zoom (a lone click used again) is added.
+- **Keep back**: an `after` zoom that is not added because it overlaps a kept zoom or a `before`
+  zoom the user deleted keeps the zooms it overlaps that only the first rule dropped, so a zoom
+  the user kept is never removed for a replacement that is not added. Repeat until nothing more
+  is kept, since a zoom kept this way can hold back the next `after` zoom.
 - Sort by start. Return `zooms` itself if nothing changed.
 
 Why this is sound: every user edit turns a zoom into `auto: false` (`zoomEdit.ts`, the timeline,
@@ -256,6 +260,12 @@ clicks at 2, 4 and 9, and a manual zoom `m` at [12, 15]:
 - Using 4 again restores [1.1, 5.8].
 - If the user had deleted [1.1, 5.8] instead, ignoring 4 (or 2) adds nothing: only [8.1, 10.8]
   and `m` remain. The same holds after **Remove all**.
+
+With clicks at 2, 5 and 8 the generator makes one zoom, [1.1, 9.8]; with 5 ignored it makes
+[1.1, 3.8] and [7.1, 9.8]. If the user deletes [1.1, 3.8] and then uses 5 again, the merged
+[1.1, 9.8] would cover the deleted stretch, so it is not added, and [7.1, 9.8] stays (same
+object). The same holds the other way round, with [7.1, 9.8] deleted. A zoom the user made
+between the two halves, say [4.5, 6], holds the merge back the same way, and both halves stay.
 
 "Regenerate" and the auto settings keep their full regeneration (`regenerateAutoZooms` with the
 effective track), so ignored clicks stay ignored there too.
@@ -876,7 +886,10 @@ needs them. Changing a frozen file or an exported signature goes through the lea
   - auto zoom off leaves zooms alone;
   - nothing changed returns the same object;
   - the stale-anchor fallback;
-  - a deleted zoom stays deleted when its own clicks are ignored or used (and after Remove all).
+  - a deleted zoom stays deleted when its own clicks are ignored or used (and after Remove all);
+  - a kept zoom survives when the merge that would replace it covers a deleted one (clicks 2, 5
+    and 8, either half deleted) or one the user made, and a chain of such merges keeps every
+    kept zoom.
 - `ignoreStrayClicks`, `useAllClicks`.
 - `clickAtPlayhead`: zoom anchor first, then nearest within 1 s.
 - `zoomCause` for all four kinds.
