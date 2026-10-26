@@ -152,8 +152,9 @@ automatically, remembering deleted automatic changes.
 | nothing | No part and no earlier automatic change to remove (the diff shows a removal instead), the options allowing some: "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera." Not shown while the sound is measured or when it could not be. |
 
 Framing outcome (`data-testid="director-framing"`, `data-status`), the outcome of the last Apply,
-shown while the project still has the options that Apply saved (an undo hides it, a redo brings it
-back); "framed" only while the camera shows that framing:
+shown while the project still has both the layouts and the options that Apply wrote (an undo hides
+it, a redo brings it back; a Direct again may change only one of them, so both are compared, and a
+layout change made by hand also hides it); "framed" only while the camera shows that framing:
 
 | Status | Copy |
 |---|---|

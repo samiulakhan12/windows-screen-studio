@@ -47,7 +47,8 @@ type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'onSelect'
  * What the section keeps for the editor session (keyed by its store), so switching tabs never
  * measures the sound again and an Apply started before switching tabs is still shown: the speech
  * (and the sound it was measured for), the palette request handled last, the framing outcome of
- * the last Apply (and the Project.director it wrote), and the Apply running now (with its progress).
+ * the last Apply (and the layouts and Project.director it wrote), and the Apply running now (with
+ * its progress).
  */
 interface Session {
   speech: SpeechResult | null
@@ -55,7 +56,11 @@ interface Session {
   pending: Promise<SpeechResult> | null
   request: number
   outcome: FramingOutcome | null
-  /** The Project.director that Apply wrote: the outcome shows only while the project has it (undo hides it, redo shows it again). */
+  /**
+   * The layouts and the Project.director that Apply wrote: the outcome shows only while the project
+   * has both (undo hides it, redo shows it again). Both, as a Direct again may write only one.
+   */
+  outcomeLayouts: Project['layouts']
   outcomeFor: DirectorSettings | undefined
   busy: { listening: boolean; done: number; total: number } | null
   listeners: Set<() => void>
@@ -136,7 +141,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   const keymap = useKeymap()
   const session = useMemo<Session>(() => {
     let s = sessions.get(store)
-    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcome: null, outcomeFor: undefined, busy: null, listeners: new Set(), version: 0 }))
+    if (!s) sessions.set(store, (s = { speech: null, speechKey: '', pending: null, request: 0, outcome: null, outcomeLayouts: undefined, outcomeFor: undefined, busy: null, listeners: new Set(), version: 0 }))
     return s
   }, [store])
   const subscribe = useCallback(
@@ -250,6 +255,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
         store.update((p) => applyDirectorPlan(p, planDirector(inputFor(p), chosen), outcome))
         const after = store.state
         session.outcome = outcome
+        session.outcomeLayouts = after.layouts
         session.outcomeFor = after.director
         const parts = planDirector(inputFor(after), chosen).parts
         const removed = (before.layouts ?? []).some((s) => s.auto) && !(after.layouts ?? []).some((s) => s.auto)
@@ -273,6 +279,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
       return
     }
     session.outcome = null
+    session.outcomeLayouts = undefined
     session.outcomeFor = undefined
     emit(session)
     onSelect(null)
@@ -308,8 +315,8 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
   const summarised = !!plan && !hidden && (plan.parts.length > 0 || plan.diff.removed > 0)
   const state = busy ? 'applying' : measuring ? 'measuring' : upToDate ? 'up-to-date' : 'ready'
   // The outcome of the last Apply while the project still has what it wrote (not after an undo, or a framing by hand).
-  const framing =
-    lastOutcome && project.director === session.outcomeFor && (lastOutcome.status !== 'framed' || framingShown) ? framingLine(lastOutcome, !mayFrame && !settings.frameFace) : null
+  const wrote = project.layouts === session.outcomeLayouts && project.director === session.outcomeFor
+  const framing = lastOutcome && wrote && (lastOutcome.status !== 'framed' || framingShown) ? framingLine(lastOutcome, !mayFrame && !settings.frameFace) : null
   const selectPart = (part: DirectorPart): void => {
     // Applied and unchanged: its segment is in the project, so select it; else show where it would be.
     const id = part.ids.find((i) => store.state.layouts?.some((s) => s.id === i))
