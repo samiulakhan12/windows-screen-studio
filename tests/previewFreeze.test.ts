@@ -228,7 +228,9 @@ describe('a pause freeze in the preview', () => {
     expect(screen.paused && camera.paused).toBe(true)
     expect(player.time).toBe(2)
     expect(sound).toEqual(['hold f 0'])
-    // Drawn on its frame, sharp, once the camera's forced seek to it lands.
+    // Drawn on its frame, sharp, once the seeks to it land (the screen's to the middle of the frame).
+    expect(screen.currentTime).toBeCloseTo(120.5 / 60, 12)
+    screen.land()
     camera.land()
     draws.length = 0
     clock += 1000
@@ -244,13 +246,14 @@ describe('a pause freeze in the preview', () => {
     expect(screen.paused).toBe(false)
     expect(sound.slice(-2)).toEqual(['hold f 3', 'jump 2 1'])
     expect(position()).toBe(5)
-    // The next frame is the held one again: not held twice. Past it, video time counts the hold.
+    // The next frame is the held one again: not held twice. Past it, video time counts the hold
+    // (the element plays on from the middle of the held frame).
     frame()
     expect(player.heldFreeze).toBeNull()
     playOn(screen, 1 / 60)
     expect(player.holdElapsed).toBe(0)
     expect(sound.at(-1)).toBe('hold none')
-    expect(position()).toBeCloseTo(5 + 1 / 60, 9)
+    expect(position()).toBeCloseTo(121.5 / 60 + 3, 9)
   })
 
   it('lasts length / |viewing rate| of wall clock at a faster preview speed', () => {
@@ -333,6 +336,54 @@ describe('a pause freeze in the preview', () => {
     expect(position()).toBe(11)
   })
 
+  it('a freeze at a trimmed edit end, read back from project.json in whole ms, holds the same last frame', () => {
+    // The edit ends at 9.9994 (a trim leaves the pointer's time); the anchor stored there loads as 9.999.
+    const { screen, camera, player } = setUp([freeze('e', 9.999, 1)], [{ id: 'c', start: 0, end: 9.9994, speed: 1 }])
+    player.play()
+    playOn(screen, 9.99)
+    expect(player.heldFreeze).toBe('e')
+    // The last frame, as the paused end shows it (frameTimeFor(last.end)), not the frame under the anchor.
+    const last = 9.9994 - 1 / 240
+    expect(player.time).toBeCloseTo(last, 9)
+    expect(screen.currentTime).toBeCloseTo(last, 9)
+    screen.land()
+    camera.land()
+    frame()
+    expect(draws.at(-1)).toMatchObject({ t: player.time, blur: 1 })
+    clock += 1100
+    frame()
+    expect(player.playing).toBe(false)
+    expect(player.heldFreeze).toBeNull()
+  })
+
+  it('holds the middle of its frame, as the export and the stills decode it', () => {
+    // 2.05 s is the start of frame 123 at 60 fps; Chromium seeks it as 2.049999 s and shows frame 122.
+    const { screen, camera, player } = setUp([freeze('f', 2.05)])
+    player.play()
+    playOn(screen, 2.04)
+    expect(player.heldFreeze).toBe('f')
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+    // The playhead, the overlays and the sound stay on the anchor.
+    expect(player.time).toBe(2.05)
+    screen.land()
+    camera.land()
+    frame()
+    expect(draws.at(-1)).toMatchObject({ t: 2.05, blur: 1, sound: 2.05 })
+  })
+
+  it('seeks its frame even when the element paused next to it (a playing element can show a frame ahead)', () => {
+    const { screen, player } = setUp([freeze('f', 2.05)])
+    player.seek(2.04)
+    screen.land()
+    frame()
+    player.play()
+    // The first frame decoded after starting is past the anchor, in the middle of its frame.
+    playOn(screen, 123.5 / 60 - 2.04)
+    expect(player.heldFreeze).toBe('f')
+    expect(screen.seeking).toBe(true)
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+  })
+
   it('starts the playback when the playhead is on its frame', () => {
     const { screen, player } = setUp([freeze('f', 2)])
     player.seek(2)
@@ -341,6 +392,108 @@ describe('a pause freeze in the preview', () => {
     player.play()
     frame()
     expect(player.heldFreeze).toBe('f')
+  })
+})
+
+describe('an edit during a pause freeze', () => {
+  /** The Transport's position in `p`. */
+  const positionIn = (p: Project, player: Player): number => videoTimeAt(p.clips, planOf(p), player.time) + player.holdElapsed
+
+  /** Plays 2 s into a 3 s freeze at 2 s. */
+  function holding(freezes = [freeze('f', 2)]) {
+    const set = setUp(freezes)
+    set.player.play()
+    playOn(set.screen, 2)
+    set.screen.land()
+    set.camera.land()
+    clock += 2000
+    frame()
+    expect(set.player.holdElapsed).toBeCloseTo(2, 9)
+    sound.length = 0
+    return set
+  }
+
+  it('lets it go: playback goes on past its frame and does not hold it again', () => {
+    const { screen, player, project: p } = holding()
+    // The Clip panel's "Hold for" slider: each step is a new freezes list.
+    const longer = { ...p, freezes: [freeze('f', 2, 3.5)] }
+    player.setProject(longer)
+    expect(player.heldFreeze).toBeNull()
+    expect(player.playing).toBe(true)
+    expect(screen.paused).toBe(false)
+    // As when a hold runs out: the Transport reads the end of the (new) hold, the stems go on from the frame.
+    expect(positionIn(longer, player)).toBe(5.5)
+    expect(sound).toEqual(['hold f 3.5', 'jump 2 1'])
+    // The next frames: not held again.
+    frame()
+    playOn(screen, 1 / 60)
+    expect(player.heldFreeze).toBeNull()
+    expect(sound).not.toContain('hold f 0')
+    expect(positionIn(longer, player)).toBeGreaterThan(5.5)
+  })
+
+  it('an edit elsewhere lets it go too; one just after it leaves it left', () => {
+    const { screen, player, project: p } = holding([freeze('f', 2), freeze('g', 20)])
+    const other = { ...p, freezes: [freeze('f', 2), freeze('g', 20, 1)] }
+    player.setProject(other)
+    expect(player.heldFreeze).toBeNull()
+    expect(positionIn(other, player)).toBe(5)
+    // Still on the frame just left: another edit keeps it left.
+    const again = { ...other, clips: [{ id: 'c', start: 0, end: 50, speed: 1 }] }
+    player.setProject(again)
+    frame()
+    expect(player.heldFreeze).toBeNull()
+    expect(positionIn(again, player)).toBeGreaterThanOrEqual(5)
+    playOn(screen, 1 / 60)
+    expect(player.heldFreeze).toBeNull()
+    expect(sound).not.toContain('hold f 0')
+  })
+
+  it('a freeze at the edit end ends playback; paused in a hold, an edit leaves it and play starts it again', () => {
+    const end = setUp([freeze('e', 10, 3)], [{ id: 'c', start: 0, end: 10, speed: 1 }])
+    end.player.play()
+    playOn(end.screen, 9.99)
+    expect(end.player.heldFreeze).toBe('e')
+    end.player.setProject({ ...end.project, freezes: [freeze('e', 10, 4)] })
+    expect(end.player.playing).toBe(false)
+    expect(end.player.heldFreeze).toBeNull()
+    expect(end.player.time).toBe(10)
+
+    const { screen, player, project: p } = holding()
+    player.pause()
+    player.setProject({ ...p, freezes: [freeze('f', 2, 4)] })
+    expect(player.heldFreeze).toBeNull()
+    expect(player.time).toBe(2)
+    screen.land()
+    player.play()
+    frame()
+    expect(player.heldFreeze).toBe('f')
+    expect(player.holdElapsed).toBe(0)
+  })
+})
+
+describe('paused on a pause freeze', () => {
+  it('an edit or a seek to its anchor keeps the screen on the middle of its frame, not the frame before', () => {
+    // 2.05 s is the start of frame 123 at 60 fps; a seek to exactly 2.05 shows frame 122 in Chromium.
+    const { screen, player, project: p } = setUp([freeze('f', 2.05)])
+    player.play()
+    playOn(screen, 2.04)
+    expect(player.heldFreeze).toBe('f')
+    screen.land()
+    player.pause()
+    player.setProject({ ...p, freezes: [freeze('f', 2.05, 4)] })
+    expect(player.time).toBe(2.05)
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+    // A click on the block or "Add text on the freeze": a seek to the anchor.
+    screen.land()
+    player.seek(1)
+    screen.land()
+    player.seek(2.05)
+    expect(screen.currentTime).toBeCloseTo(123.5 / 60, 12)
+    // Anywhere else, scrubbing is as before.
+    screen.land()
+    player.seek(2.5)
+    expect(screen.currentTime).not.toBeCloseTo(123.5 / 60, 6)
   })
 })
 

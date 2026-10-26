@@ -151,9 +151,9 @@ export function planOf(p: Pick<Project, 'clips' | 'freezes'>): FreezePlan // NO_
 
 How the plan is built:
 
-1. Sort the freezes by `at`. For each one, `e = sourceToOutput(clips, at)`. If `e` is `null`, the freeze is inactive because its frame is cut.
+1. Sort the freezes by `at`. For each one, `e = sourceToOutput(clips, at)`, or `outputDuration(clips)` when `|at − last.end| ≤ 1 ms` (see §13). If `e` is `null`, the freeze is inactive because its frame is cut.
 2. Walk the active freezes in edit order.
-   - A pause freeze becomes `{ edit: e, start: e + addedSoFar, length, end: |at − last.end| < 1e-6 }`, and then `addedSoFar += length`.
+   - A pause freeze becomes `{ edit: e, start: e + addedSoFar, length, end: |at − last.end| ≤ 1 ms }`, and then `addedSoFar += length`.
    - A continue freeze becomes a still with `editStart = e` and `editEnd = min(e + length, nextActiveEdit, outputDuration(clips))`. A still shorter than 0.05 s goes to `inactive`. This always happens at `last.end`, where the span is empty.
 
 ### 4.2 Time maps (all in `freeze.ts`, pure)
@@ -374,11 +374,12 @@ The compositor draws the hold at `at`, so the burned-in caption active at `at` i
 Other operations:
 - `setFreezeLength(p, id, v)` rounds to 0.1 and clamps to [0.5, 30]. It returns `p` itself when nothing changes.
 - `setFreezeSound(p, id, s)` changes the mode.
-- `moveFreeze(p, id, t)` snaps the same way. It returns `p` when the new `at` is cut or taken.
+- `moveFreeze(p, id, t)` snaps the same way. It returns `p` when the new `at` is cut or taken. A `t` exactly on a clip's end with a cut after it (the "Cut" target a drag snaps to, E-05) is in no clip, so it takes that clip's last frame.
 - `removeFreeze(p, id)` removes the `freezes` key when the list becomes empty.
 - `freezeTextRange(clips, f)` returns `{ start: outputToSource(clips, max(0, e − 0.5)).time, end: outputToSource(clips, e + 0.5).time }`, or `null` when the freeze is inactive.
   - "Add text on the freeze" uses it through `createAnnotation(start, p.duration, { end })` (`annotations.ts`).
   - The text is past its `ANNOTATION_FADE` (0.15 s) fade-in before the picture stops, so it shows through the whole freeze.
+  - Near the edit's end the range is cut at the end, so the hold would repeat a moment of the text's fade-out. A text running to the edit's end therefore does not fade out there while a pause freeze holds one of the edit's last 0.15 s (§13).
 
 How other features treat freezes:
 - **Cuts, splits, trims, speed changes** (`timeline.ts`, `clips.ts`): untouched. A freeze whose frame is cut is inactive. A continue span is measured in edit time, so speed changes keep its length.
@@ -742,8 +743,10 @@ What the implementation does where it differs from, or adds to, the sections abo
 - `videoFrames`: a hold at the edit's end repeats the last exported frame's `times` **and** `pictures`, so a continue freeze that runs to the end keeps its still through the end hold instead of jumping to the live last frame.
 - `freezeAtPlayhead`: the anchor is `ceil(max(clip.start, k / fps) · 1000) / 1000`. The design's `max(clip.start, ceil(…))` could store a non-whole-ms `clip.start`, which `readFreezes` would round into the cut before it on the next load. If that rounding reaches the clip's end (a clip ending less than 1 ms after the frame start), the clip's last whole ms is used.
 - `setFreezeSound(p, id, 'continue')` returns `p` for a freeze at the edit's end ("Nothing plays after the end of the video").
+- An anchor within 1 ms of `last.end` is the edit's end (`atEditEnd` and `anchorEdit` in `freeze.ts`, the same 1 ms as the playhead's snap to the end and `soundPieces`): `freezePlan`, `freezeRefusal`, `freezeTextRange` and `setFreezeSound` read it so. A freeze made at the end stores `last.end`, which after a trim or a cut is rarely whole ms, and `readFreezes` rounds it on the next load, past the end or into the last frame. Without the tolerance that freeze came back inactive, or as a hold before the last frame. `readFreezes` is unchanged: it does not see the clips. The preview's end hold shows `frameTimeFor(last.end)` whichever way the anchor was rounded.
 - New exports in `freezeEdit.ts`: `freezeRefusal(p, t)` (the refusal without building a project; the Clip panel button and the palette use it), `freezeIdAt(p, t)` (the freeze the playhead is on), `FREEZE_REFUSAL_TEXT` and `atEditEnd(clips, at)`.
 - `soundPieces` gives each hold to the clip that contains its frame, so a hold where two clips touch (a split with different speeds) is used once. Holds in a cut are dropped.
+- `noFadeOutFrom(clips, plan, fade)` (`freeze.ts`), read by `drawAnnotations` (`textOverlays.ts`): when a pause freeze holds a moment of the edit's last `ANNOTATION_FADE` seconds, a text ending at the edit's end (within 1 ms) does not fade out there. Otherwise "Add text on the freeze" on a freeze at the end gives the text `[e − 0.5, last.end]`, and every held frame draws it at the opacity of the moment it repeats: 22 % in a 30 fps export, 11 % at 60 fps, 3 % in the preview. Without such a hold, texts fade out at the end as before.
 
 **Export**
 - `ThumbnailInput` gains `held?: boolean` next to `soundTime`: a pause hold has `soundTime === time` but is still drawn with `blurSamples: 1`. `ExportPreview` gets the same two props, and both seek the camera to `soundTime` (the camera is live in a still, as in the export).
@@ -754,7 +757,9 @@ What the implementation does where it differs from, or adds to, the sections abo
 - `passed` keeps the `Hold`. `holdElapsed` returns its length while the playhead's edit time is not past the hold's (`!(h.edit < edit − 1e-9)`, the complement of `editToVideo`'s test), instead of `|time − at| < frame / 2`, which counted the hold twice for a frame just after `at`. `PreviewAudio.outputAt` adds the held time under the same test.
 - During a hold at the edit's end, `player.time` is `frameTimeFor(last.end)`. `videoTimeAt` of the edit's end is already the video's end, so the Transport (`videoTimeAt + holdElapsed`) would otherwise show past the end. Finishing clears the hold, so the end reads as the video's length.
 - `pause()` during a hold keeps `time` on the held frame (the element can sit up to 1 ms off it).
+- Entering a pause hold seeks the screen to the **middle** of the held frame (`frameSeekTime(at, fps)`), as the export's element path and `FreezeStills` do, not to `frameTimeFor(at)`. Anchors are frame starts, and Chromium truncates a seek to whole µs: 2.05 s is 2.0499999… as a double and seeks 2.049999 s, which shows the frame before (Decision 13's "both pick frame `k`" did not hold for such anchors). It seeks whenever the element was playing, even when it already sits there, since a playing element can show a frame decoded ahead of its time. `time` stays `at`, and playback goes on from the middle of the frame. An end hold still seeks `frameTimeFor(last.end)`.
 - New getter `heldFreeze` (the id being held); the timeline's progress fill reads it.
+- A new plan during playback (any change to the clips or the freezes, for example the "Hold for" slider dragged while the hold plays) lets a hold in progress go as when it runs out: the Transport reads its end, and playback goes on past its frame, or ends after an end hold. A hold just left stays left. A plain seek would enter the same hold again from 0 on the next frame. Paused, the change is a seek, as §4.6 says, and play starts the hold from its beginning.
 - `PreviewAudio.frame()` is unchanged: `startStem` does nothing while a hold is held, which covers `play`, `apply` and the drift loop. On leaving, the player calls `hold(h, h.length)` **before** `jump`, so the stems start again.
 - With E-08 merged: a hold's clock runs at `|viewRate|` (never 0 while playing); resuming a paused hold re-applies the viewing rate of the clip under it and starts the soundtrack only when it is audible; starting reverse playback leaves any hold.
 - `FreezeStills` takes an optional `onReady` (the paused player redraws) and stops asking for stills once its hidden video fails. A still that is not ready yet is not logged.

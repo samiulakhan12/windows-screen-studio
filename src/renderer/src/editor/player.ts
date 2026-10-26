@@ -22,6 +22,7 @@ import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/ti
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
 import { cursorLook } from '../../../shared/render/cursorFx'
+import { frameSeekTime } from '../../../shared/render/frameTiming'
 import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type DrawOptions, type FrameImage, type RenderScene } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
@@ -273,7 +274,10 @@ export class PreviewPlayer {
       this.syncWebcam(from.time, true)
       if (held) this.goOn()
     } else {
-      this.seekVideo(this.frameTimeFor(displayTime(clips, this.time)))
+      // On a pause freeze's anchor (a paused edit in its hold, a click on its block, text added on
+      // it): the middle of its frame, as the hold and the export show it, not the frame before.
+      const anchor = this.plan.holds.some((h) => !h.end && h.at === this.time)
+      this.seekVideo(anchor ? frameSeekTime(this.time, 1 / this.frame) : this.frameTimeFor(displayTime(clips, this.time)))
     }
     this.emit()
   }
@@ -789,13 +793,31 @@ export class PreviewPlayer {
 
   /* ---------- freeze frames (E-11) ---------- */
 
-  /** A new freeze plan: a hold in progress or just left is let go (playback goes on from its frame); the stills follow. */
+  /**
+   * A new freeze plan; the stills follow. While playing, a hold in progress is let go as when it runs
+   * out (playback goes on past its frame, or ends after one at the edit's end), and one just left
+   * stays left: an edit never holds that frame again. Paused, or when that freeze moved or went, it
+   * is a seek (play then starts a hold on the frame from its beginning).
+   */
   private replan(): void {
     const plan = planOf(this.project)
     if (plan === this.plan) return
     this.plan = plan
-    if (this.hold || this.passed) this.seek(this.time)
     this.prepareStills()
+    const left = this.hold?.h ?? this.passed
+    if (!left) return
+    // The same freeze on the same frame (its length, or the edit around it, may have changed).
+    const h = this.playing ? plan.holds.find((x) => x.id === left.id && x.at === left.at) : undefined
+    if (!h) return this.seek(this.time)
+    if (!this.hold) {
+      this.passed = h
+      this.sound.hold(h, h.length)
+      return
+    }
+    cancelAnimationFrame(this.holdRaf)
+    this.holdRaf = 0
+    this.hold.h = h
+    this.leaveHold()
   }
 
   /** Makes the stills of the continue freezes ahead (the cache exists only once there are some). */
@@ -824,15 +846,19 @@ export class PreviewPlayer {
    * length. The playhead stays on the frame.
    */
   private startHold(h: Hold): void {
-    const s = this.frameTimeFor(h.at)
+    // The middle of the held frame, as the export and FreezeStills seek: a seek to a frame's start can
+    // show the frame before (Chromium truncates it to whole µs: 2.05 s seeks 2.049999 s).
+    const s = h.end ? this.heldTime(h) : frameSeekTime(h.at, 1 / this.frame)
+    const played = !this.screen.paused
     // Set first: pausing the screen fires 'pause', and no frame callback may run meanwhile.
     this.hold = { h, elapsed: 0, t0: performance.now() }
     this.passed = null
     this.time = this.heldTime(h)
     this.cancelFrame()
-    if (!this.screen.paused) this.screen.pause()
+    if (played) this.screen.pause()
     if (this.webcam && !this.webcam.paused) this.webcam.pause()
-    if (Math.abs(this.screen.currentTime - s) > 1e-3) this.screen.currentTime = s
+    // A playing element can show a frame decoded ahead of its time: it seeks even when it is there.
+    if (played || Math.abs(this.screen.currentTime - s) > 1e-3) this.screen.currentTime = s
     // Forced: the camera's drift tolerance would hold a different face than the export.
     this.syncWebcam(this.time, true)
     this.sound.hold(h, 0)
@@ -842,9 +868,12 @@ export class PreviewPlayer {
     this.emit()
   }
 
-  /** Source time a hold shows: its frame, or for one at the edit's end the last frame (as the paused end shows it). */
+  /**
+   * Source time a hold shows: its frame, or for one at the edit's end the last frame (as the paused
+   * end shows it, whichever side of the edit's end its whole-ms anchor fell).
+   */
   private heldTime(h: Hold): number {
-    return h.end ? this.frameTimeFor(h.at) : h.at
+    return h.end ? this.frameTimeFor(keptBounds(this.project.clips).end) : h.at
   }
 
   /** Playing again while paused in a hold: the music plays on (the stems wait), the hold's clock goes on. */
