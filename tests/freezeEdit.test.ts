@@ -12,6 +12,7 @@ import {
   setFreezeLength,
   setFreezeSound
 } from '../src/shared/editor/freezeEdit'
+import { buildSnapIndex, projectFreezeTargets, projectSnapSources, snapAt } from '../src/shared/editor/snapping'
 import { freezePlan, MAX_FREEZES, videoDuration } from '../src/shared/engine/freeze'
 import { readFreezes } from '../src/shared/engine/freezeData'
 import { createProject, migrateProject } from '../src/shared/engine/project'
@@ -127,6 +128,29 @@ describe('edits', () => {
     expect(moveFreeze(p, 'a', 2.005)).toBe(p)
     // Past the other one: still sorted.
     expect(moveFreeze(p, 'a', 9).freezes!.map((f) => f.id)).toEqual(['b', 'a'])
+  })
+
+  it('move: onto a cut, the last frame before it (a clip ends where the cut starts, in no clip)', () => {
+    const at = (q: Project, t: number): number => moveFreeze(q, 'a', t).freezes!.find((f) => f.id === 'a')!.at
+    expect(at(p, 4)).toBe(3.984)
+    expect(at(p, 6)).toBe(6)
+    expect(at(p, 10)).toBe(10)
+    expect(at({ ...base(cutClips, 30), freezes: [freeze('a', 2)] }, 4)).toBe(3.967)
+    // A split: its edge is the next clip's first frame.
+    const split = { ...base([{ id: 'a', start: 0, end: 4, speed: 1 }, { id: 'b', start: 4, end: 10, speed: 2 }]), freezes: [freeze('a', 2)] }
+    expect(at(split, 4)).toBe(4)
+  })
+
+  it('move: a drag snapped to a cut (E-05) lands on the last frame before it', () => {
+    const q = { ...base([{ id: 'a', start: 0, end: 3, speed: 1 }, { id: 'b', start: 5, end: 10, speed: 1 }]), freezes: [freeze('f', 1)] }
+    // As FreezeMarks begins the drag: the dragged freeze is no target.
+    const exclude = [{ owner: 'freeze:f' }]
+    const idx = buildSnapIndex(projectSnapSources(q, [], { playhead: null, layouts: false, freezes: projectFreezeTargets(q, exclude) }), exclude)
+    for (const raw of [2.65, 2.8, 2.99]) {
+      const snapped = snapAt(idx, raw, { pxPerSec: 20, current: null }, { min: 0, max: q.duration })
+      expect(snapped).toMatchObject({ t: 3, target: { label: 'Cut' } })
+      expect(moveFreeze(q, 'f', snapped.t).freezes![0].at).toBe(2.984)
+    }
   })
 
   it('remove: no freezes key once the last one is gone', () => {

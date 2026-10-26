@@ -374,7 +374,7 @@ The compositor draws the hold at `at`, so the burned-in caption active at `at` i
 Other operations:
 - `setFreezeLength(p, id, v)` rounds to 0.1 and clamps to [0.5, 30]. It returns `p` itself when nothing changes.
 - `setFreezeSound(p, id, s)` changes the mode.
-- `moveFreeze(p, id, t)` snaps the same way. It returns `p` when the new `at` is cut or taken.
+- `moveFreeze(p, id, t)` snaps the same way. It returns `p` when the new `at` is cut or taken. A `t` exactly on a clip's end with a cut after it (the "Cut" target a drag snaps to, E-05) is in no clip, so it takes that clip's last frame.
 - `removeFreeze(p, id)` removes the `freezes` key when the list becomes empty.
 - `freezeTextRange(clips, f)` returns `{ start: outputToSource(clips, max(0, e − 0.5)).time, end: outputToSource(clips, e + 0.5).time }`, or `null` when the freeze is inactive.
   - "Add text on the freeze" uses it through `createAnnotation(start, p.duration, { end })` (`annotations.ts`).

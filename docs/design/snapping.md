@@ -308,6 +308,7 @@ Not covered (all in Later):
 - **Targets inside cut or trimmed ranges:** they are drawn there and remain valid targets.
 - **Trim start snapped to a cut's start:** `setTrimStart` drops the earlier clip and starts the next one there. That is today's behaviour for any value past `clip.end − MIN_CLIP`; snapping does not change it.
 - **Chapter dropped on a cut start:** it maps through `outputChapters` (`render/chapters.ts`) exactly like a chapter placed there by hand.
+- **Freeze frame dropped on a cut start:** the clip's end is in no clip (ends are exclusive), so `moveFreeze` (E-11) takes that clip's last frame, the nearest frame to the guide.
 - **Range snapped to clip edges:** `cutRange` gets exact edges, so it leaves no sliver. This is the same reason `setRangeSpeed` (`editor/clips.ts`) has its own internal snap.
 
 ### 4.7 Preview equals export

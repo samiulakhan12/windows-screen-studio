@@ -108,9 +108,13 @@ export function setFreezeSound(p: Project, id: string, sound: FreezeSound): Proj
   return patchFreeze(p, id, { sound })
 }
 
-/** The freeze moved to the frame at `t` (the same project when that frame is cut or taken). */
+/**
+ * The freeze moved to the frame at `t` (the same project when that frame is cut or taken). A clip's
+ * end with a cut after it, where a drag snaps to the cut, is in no clip: it takes that clip's last frame.
+ */
 export function moveFreeze(p: Project, id: string, t: number): Project {
-  const at = anchorAt(p, t)
+  const cutEdge = clipIndexAt(p.clips, t) < 0 && p.clips.some((c) => c.end === t)
+  const at = anchorAt(p, cutEdge ? t - 1e-6 : t)
   if (at === null || freezeNear(p.freezes ?? [], at, id)) return p
   return patchFreeze(p, id, { at })
 }
