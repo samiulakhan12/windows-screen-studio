@@ -14,7 +14,7 @@
 import { BrowserWindow, globalShortcut, screen, type Display, type Point, type WebContents } from 'electron'
 import type { NotesCommand, NotesMode, NotesRecordingState, NotesReport, NotesView, NotesWindowInfo } from '../../shared/api/notes'
 import { applyNotesPatch, hasNotesText, NOTES_HEIGHT, NOTES_WIDTH, type NotesLookPatch, type NotesSettings, type NotesSettingsPatch } from '../../shared/notes/notes'
-import { notesAllowed, notesBounds, placementOf, rectsOverlap, type CaptureKind, type NotesDisplay } from '../../shared/notes/placement'
+import { capturedNow, notesAllowed, notesBounds, placementOf, rectsOverlap, type CaptureKind, type NotesDisplay } from '../../shared/notes/placement'
 import { hotkeyLabel, NOTES_HOTKEY_ACTIONS, NOTES_HOTKEY_NAMES, type NotesHotkeyAction } from '../../shared/recording/hotkeys'
 import { AreaHistory } from '../../shared/recording/ownAreas'
 import type { Rect } from '../../shared/recording/windowGeometry'
@@ -62,10 +62,15 @@ interface NotesWin {
   everShown: boolean
   /** Older Windows: cannot be moved or resized during this recording. */
   locked: boolean
+  /**
+   * Older Windows: the displays changed and the notes would now sit on what is recorded, so
+   * they stay hidden (neither the bar's button nor a hotkey shows them) until a change puts them clear.
+   */
+  blocked: boolean
   /** Where the window was put (DIP). */
   rect: Rect
-  /** What the recording captures (older Windows: the notes must stay off it). */
-  captured: Rect | null
+  /** What the recording captures, and on which display (older Windows: the notes must stay off it). */
+  plan: RecordingNotesPlan | null
   /** The last view sent, to send only changes. */
   sentView: string
 }
@@ -232,20 +237,29 @@ function watchDisplays(): void {
 function placeAgain(): void {
   const n = current
   if (!alive(n)) return
-  const { rect } = notesBounds(notesDisplays(), notesSettingsNow())
+  const displays = notesDisplays()
+  const { rect } = notesBounds(displays, notesSettingsNow())
+  // Older Windows: never shown over what is recorded, found again on the displays as they are
+  // now (the recorded display may have moved or been removed). Hidden before it moves.
+  if (n.locked && recordingOn) {
+    const display = n.plan?.display
+    const was = n.plan?.captured
+    const captured = display && was ? capturedNow(displays, { id: String(display.id), bounds: display.bounds }, was) : null
+    n.blocked = !captured || rectsOverlap(rect, captured)
+    if (n.blocked) {
+      const wasShown = n.shown
+      n.shown = false
+      hide(n)
+      if (wasShown) notify()
+    }
+  }
   n.rect = rect
   n.win.setBounds(rect)
-  // Older Windows: never moved onto what is recorded.
-  if (n.locked && n.captured && rectsOverlap(rect, n.captured) && n.shown) {
-    n.shown = false
-    n.win.hide()
-    notify()
-  }
   if (n.win.isVisible()) areaNow(rect)
   sendView()
 }
 
-function create(mode: NotesMode, rect: Rect, locked: boolean, captured: Rect | null): NotesWin {
+function create(mode: NotesMode, rect: Rect, locked: boolean, plan: RecordingNotesPlan | null): NotesWin {
   watchDisplays()
   const win = new BrowserWindow({
     ...rect,
@@ -271,7 +285,7 @@ function create(mode: NotesMode, rect: Rect, locked: boolean, captured: Rect | n
   // Before the route loads, so the page is never captured (and hidden from screen sharing).
   win.setContentProtection(true)
   win.setAlwaysOnTop(true, 'screen-saver')
-  const n: NotesWin = { win, mode, ready: false, showWhenReady: false, shown: true, everShown: false, locked, rect, captured, sentView: '' }
+  const n: NotesWin = { win, mode, ready: false, showWhenReady: false, shown: true, everShown: false, locked, blocked: false, rect, plan, sentView: '' }
   win.once('ready-to-show', () => {
     n.ready = true
     if (n.showWhenReady && current === n) reveal(n)
@@ -423,13 +437,14 @@ export function prepareRecordingNotes(plan: RecordingNotesPlan, recordingDir: st
   if (alive(kept) && kept.mode === 'record' && kept.locked === locked) {
     n = kept
     n.locked = locked
-    n.captured = plan.captured
+    n.plan = plan
     n.shown = true
+    n.blocked = false
     n.rect = rect
     n.win.setBounds(rect)
   } else {
     if (kept) dispose(kept)
-    n = create('record', rect, locked, plan.captured)
+    n = create('record', rect, locked, plan)
     current = n
   }
   take++
@@ -500,6 +515,8 @@ export function toggleNotesShown(): void {
 }
 
 function setShown(n: NotesWin, shown: boolean): void {
+  // Older Windows: they would show over what is recorded (placeAgain).
+  if (shown && n.blocked) return
   n.shown = shown
   if (shown) {
     // Only once the recording shows it (the countdown); before that it stays hidden.

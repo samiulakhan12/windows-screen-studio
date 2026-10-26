@@ -491,6 +491,72 @@ describe('older Windows', () => {
     expect(notes.openRehearsal()).toBe(true)
     expect(last().options.movable).toBe(true)
   })
+
+  const D2 = { id: 2, bounds: { x: 1920, y: 0, width: 1920, height: 1080 }, workArea: { x: 1920, y: 0, width: 1920, height: 1040 } }
+
+  it('moved onto what is recorded by a display change: hidden first, and neither the bar nor a hotkey shows them again', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(30_000)
+    h.displays = [D1, D2]
+    // Recording D1 with the notes on D2: allowed, locked.
+    setNotes({ placement: { displayId: '2', x: 0.5, y: 0 } })
+    const win = startRecording()
+    expect(win.visible).toBe(true)
+    expect(win.bounds).toEqual({ x: 2600, y: 0, width: 560, height: 240 })
+    // D2 is unplugged: the default place on D1 is over the recorded screen.
+    vi.setSystemTime(31_000)
+    h.displays = [D1]
+    h.screenEvents.get('display-removed')!()
+    expect(win.visible).toBe(false)
+    expect(win.bounds).toEqual(DEFAULT_RECT)
+    const c = calls(win)
+    expect(c.lastIndexOf('hide')).toBeLessThan(c.lastIndexOf('setBounds'))
+    expect(notes.notesStatus()).toEqual({ shown: false, playing: false })
+    notes.toggleNotesShown()
+    h.shortcuts.get('Ctrl+Shift+F7')!()
+    h.shortcuts.get('Ctrl+Shift+F8')!()
+    notes.showNotes()
+    expect(win.visible).toBe(false)
+    expect(commands(win)).toEqual([])
+    // Where they were before is not theirs any more once hidden.
+    expect(notes.notesAreaContains({ x: 2700, y: 20 }, 40_000)).toBe(false)
+    // The next take checks again from scratch.
+    notes.endRecordingNotes(true)
+    h.displays = [D1, D2]
+    notes.prepareRecordingNotes(screenPlan(), recDir)
+    expect(last()).toBe(win)
+    notes.showNotes()
+    expect(win.visible).toBe(true)
+    expect(win.bounds).toEqual({ x: 2600, y: 0, width: 560, height: 240 })
+  })
+
+  it('what is recorded is found again on the displays as they are now', () => {
+    // D1 is primary at (0, 0) with the notes at their default place; D2, at x = 1920, is recorded.
+    h.displays = [D1, D2]
+    const win = startRecording({ kind: 'screen', display: D2 as never, captured: D2.bounds })
+    expect(win.visible).toBe(true)
+    // D1 goes away: D2 becomes the primary display at (0, 0), and the notes move onto it.
+    h.displays = [{ ...D2, bounds: D1.bounds, workArea: D1.workArea }]
+    h.screenEvents.get('display-removed')!()
+    expect(win.bounds).toEqual(DEFAULT_RECT)
+    expect(win.visible).toBe(false)
+    notes.toggleNotesShown()
+    expect(win.visible).toBe(false)
+  })
+
+  it('a display change that keeps them clear of what is recorded leaves them as they were', () => {
+    h.displays = [D1, D2]
+    const win = startRecording({ kind: 'screen', display: D2 as never, captured: D2.bounds })
+    // The taskbar moves to the top of D1: the notes move down on D1, still off D2.
+    h.displays = [{ ...D1, workArea: { x: 0, y: 40, width: 1920, height: 1040 } }, D2]
+    h.screenEvents.get('display-metrics-changed')!()
+    expect(win.bounds).toEqual({ ...DEFAULT_RECT, y: 48 })
+    expect(win.visible).toBe(true)
+    notes.toggleNotesShown()
+    expect(win.visible).toBe(false)
+    notes.toggleNotesShown()
+    expect(win.visible).toBe(true)
+  })
 })
 
 describe('rehearsal', () => {

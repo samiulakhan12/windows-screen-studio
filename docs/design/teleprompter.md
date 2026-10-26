@@ -188,7 +188,7 @@ creates it again at the same bounds (100–300 ms, paid in `prepare` before the 
 - After the first show main reads `getBounds()` back and sets the bounds again if they differ by
   more than 1 DIP (Electron has misapplied sizes across monitors with different scaling).
 - `screen` `'display-removed'` and `'display-metrics-changed'` while a window is open: placed
-  again with `notesBounds`.
+  again with `notesBounds` (a locked window is checked against the capture first, §2.10).
 - Text sizes are CSS px = DIP, so the text keeps its physical size per monitor; the page reads
   `devicePixelRatio` on every step.
 
@@ -325,6 +325,13 @@ gains "While your notes scroll, Flown counts that as activity."
 - When allowed only because they do not overlap, the window is **locked** for the recording:
   `movable: false`, the grip hidden, `NotesView.locked: true`, so it cannot be dragged or grown
   into the capture.
+- A display change during the recording places a locked window again (§2.3) only after checking
+  it against what is recorded **as it is now**: `capturedNow` finds the same share of the recorded
+  display on the current displays (it may have moved, been rescaled or become the primary at
+  (0, 0)). When the new place overlaps it, or the recorded display is gone, the window is hidden
+  (`hide()`, closing its `AreaHistory` span) before it moves, and **blocked**: the bar's button and
+  the notes hotkeys do not show it again until a later change puts it clear. The next take checks
+  again from scratch.
 - Rehearsal always works.
 - The recording bar has the same limitation today (it is protected, so it is recorded as a black
   bar on those builds); the Home warning says so for both.

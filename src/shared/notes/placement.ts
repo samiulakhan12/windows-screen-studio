@@ -97,6 +97,25 @@ export function rectsOverlap(a: Rect, b: Rect): boolean {
 }
 
 /**
+ * What a recording captures, on the displays as they are now: `captured` was that share of the
+ * recorded display `was` (its id, and its bounds when `captured` was found), so it is the same
+ * share of that display now (a resolution, scaling or layout change moves and scales it). null
+ * when the display is gone.
+ */
+export function capturedNow(displays: readonly NotesDisplay[], was: { id: string; bounds: Rect }, captured: Rect): Rect | null {
+  const now = displays.find((d) => d.id === was.id)?.bounds
+  if (!now) return null
+  const sx = now.width / was.bounds.width
+  const sy = now.height / was.bounds.height
+  return {
+    x: now.x + (captured.x - was.bounds.x) * sx,
+    y: now.y + (captured.y - was.bounds.y) * sy,
+    width: captured.width * sx,
+    height: captured.height * sy
+  }
+}
+
+/**
  * Whether the notes may be shown during a recording. Where the PC keeps them out of the capture
  * (`excluded`): always. Otherwise never for a window recording (the window can move under them),
  * and for a screen or an area only when the notes do not overlap what is captured (`captured`:
