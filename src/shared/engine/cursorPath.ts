@@ -8,6 +8,7 @@
  * aspect = project width / height (at 1080p, 0.001 is about 1 px). Pure and deterministic.
  */
 import type { ClickEvent, CursorSample, CursorTrack, PathRange, ScrollEvent } from '../types'
+import { lowerIndex } from './math'
 
 export const PATH = {
   /** Samples staying within this distance of a rest's first sample belong to the rest. */
@@ -103,7 +104,12 @@ const EPS = 1e-9
 
 type Pt = { x: number; y: number }
 
-const dist = (p: Pt, q: Pt, A: number): number => Math.hypot((p.x - q.x) * A, p.y - q.y)
+const dist2 = (p: Pt, q: Pt, A: number): number => {
+  const dx = (p.x - q.x) * A
+  const dy = p.y - q.y
+  return dx * dx + dy * dy
+}
+const dist = (p: Pt, q: Pt, A: number): number => Math.sqrt(dist2(p, q, A))
 
 /** Distance (video heights) from p to the segment a-b. */
 function segmentDist(p: Pt, a: Pt, b: Pt, A: number): number {
@@ -114,7 +120,9 @@ function segmentDist(p: Pt, a: Pt, b: Pt, A: number): number {
   const dy = b.y - a.y
   const len2 = dx * dx + dy * dy
   const k = len2 > 0 ? Math.min(1, Math.max(0, ((px - ax) * dx + (p.y - a.y) * dy) / len2)) : 0
-  return Math.hypot(px - (ax + dx * k), p.y - (a.y + dy * k))
+  const ex = px - (ax + dx * k)
+  const ey = p.y - (a.y + dy * k)
+  return Math.sqrt(ex * ex + ey * ey)
 }
 
 /** The rests of `samples` as [first, last] index pairs (see cursorMoves). Cached per samples array and aspect. */
@@ -128,9 +136,10 @@ function restsOf(samples: CursorSample[], A: number): [number, number][] {
   if (hit) return hit.rests
   const rests: [number, number][] = []
   const n = samples.length
+  const r2 = PATH.restRadius * PATH.restRadius
   for (let i = 0; i < n; ) {
     let j = i
-    while (j + 1 < n && dist(samples[j + 1], samples[i], A) <= PATH.restRadius) j++
+    while (j + 1 < n && dist2(samples[j + 1], samples[i], A) <= r2) j++
     if (samples[j].t - samples[i].t >= PATH.restMin - EPS) {
       rests.push([i, j])
       i = j + 1
@@ -179,8 +188,61 @@ const offFrame = (s: Pt): boolean => !(s.x >= 0 && s.x <= 1 && s.y >= 0 && s.y <
 /** A release time that can be trusted (ClickEvent.up). */
 const releaseOf = (c: ClickEvent): number | null => (typeof c.up === 'number' && Number.isFinite(c.up) && c.up >= c.t ? c.up : null)
 
+/** Sorted event times for the per-move checks (binary searches, not scans: an hour has thousands of moves). */
+interface InputIndex {
+  /** Every click and scroll event. */
+  clicks: { t: number }[]
+  scrolls: { t: number }[]
+  /** Clicks with a trusted release, by time, with the latest release up to each one. */
+  held: { t: number; up: number }[]
+  maxUp: number[]
+  /** Clicks without a trusted release. */
+  unheld: { t: number }[]
+}
+
+function indexInput(clicks: readonly ClickEvent[], scrolls: readonly ScrollEvent[]): InputIndex {
+  const byT = (a: { t: number }, b: { t: number }): number => a.t - b.t
+  const finiteT = (e: { t: number }): boolean => Number.isFinite(e.t)
+  const held: { t: number; up: number }[] = []
+  const unheld: { t: number }[] = []
+  for (const c of clicks) {
+    if (!finiteT(c)) continue
+    const up = releaseOf(c)
+    if (up === null) unheld.push({ t: c.t })
+    else held.push({ t: c.t, up })
+  }
+  held.sort(byT)
+  unheld.sort(byT)
+  const maxUp: number[] = []
+  held.forEach((h, i) => maxUp.push(Math.max(h.up, i > 0 ? maxUp[i - 1] : -Infinity)))
+  return {
+    clicks: clicks.filter(finiteT).map((c) => ({ t: c.t })).sort(byT),
+    scrolls: scrolls.filter(finiteT).map((e) => ({ t: e.t })).sort(byT),
+    held,
+    maxUp,
+    unheld
+  }
+}
+
+/** Some event with lo < t < hi (`items` sorted). */
+function anyInside(items: { t: number }[], lo: number, hi: number): boolean {
+  const i = lowerIndex(items, lo) + 1
+  return i < items.length && items[i].t < hi
+}
+
+/** A press held into [t0, t1]: min(up, t1) - max(c.t, t0) > PATH.dragOverlap. */
+function heldInto(ix: InputIndex, t0: number, t1: number): boolean {
+  // Only presses before t1 - dragOverlap can overlap enough; walk back while some earlier release reaches far enough.
+  for (let i = lowerIndex(ix.held, t1 - PATH.dragOverlap); i >= 0 && ix.maxUp[i] > t0 + PATH.dragOverlap; i--) {
+    const h = ix.held[i]
+    if (Math.min(h.up, t1) - Math.max(h.t, t0) > PATH.dragOverlap) return true
+  }
+  return false
+}
+
 function findMoves(samples: CursorSample[], clicks: readonly ClickEvent[], scrolls: readonly ScrollEvent[], A: number): CursorMove[] {
   const rests = restsOf(samples, A)
+  const ix = indexInput(clicks, scrolls)
   const moves: CursorMove[] = []
   for (let k = 0; k + 1 < rests.length; k++) {
     const i0 = rests[k][1]
@@ -199,19 +261,13 @@ function findMoves(samples: CursorSample[], clicks: readonly ClickEvent[], scrol
     const wobble = L > 0 ? far / L : far > 0 ? Infinity : 0
     let hard: MoveReason | null = null
     if (off) hard = 'off-frame'
-    else if (clicks.some((c) => c.t > t0 && c.t < t1)) hard = 'click'
-    else if (scrolls.some((s) => s.t > t0 && s.t < t1)) hard = 'scroll'
-    else if (
-      clicks.some((c) => {
-        const up = releaseOf(c)
-        return up !== null && Math.min(up, t1) - Math.max(c.t, t0) > PATH.dragOverlap
-      })
-    )
-      hard = 'drag'
+    else if (anyInside(ix.clicks, t0, t1)) hard = 'click'
+    else if (anyInside(ix.scrolls, t0, t1)) hard = 'scroll'
+    else if (heldInto(ix, t0, t1)) hard = 'drag'
     const length = t1 - t0
     let auto: MoveReason | null = hard
     if (!auto) {
-      if (clicks.some((c) => releaseOf(c) === null && c.t >= t0 - PATH.dragGuess && c.t <= t0)) auto = 'drag-guess'
+      if (anyInside(ix.unheld, t0 - PATH.dragGuess - EPS, t0 + EPS)) auto = 'drag-guess'
       else if (length < PATH.minSeconds) auto = 'short'
       else if (length > PATH.maxSeconds) auto = 'long'
       else if (L < PATH.minChord) auto = 'small'
