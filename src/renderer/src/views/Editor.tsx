@@ -684,7 +684,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   // A draft counts only while the tool is open: nothing late (a drag still held) opens it again.
   const editCropDraft = useCallback((d: CropDraft) => setCropDraft((cur) => (cur ? d : cur)), [])
   const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: editCropDraft, onDone: applyCrop } : null), [cropDraft, editCropDraft, applyCrop])
-  const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : cropActions.reset()), [cropActions])
+  // Reset (the panel's or the palette's): while the tool is open it changes the draft, as its bar
+  // does, and Done applies it.
+  const resetCrop = useCallback(() => {
+    if (cropRef.current) setCropDraft({ rect: { ...FULL_FRAME }, aspect: 'free' })
+    else cropActions.reset()
+  }, [cropActions])
+  const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : resetCrop()), [cropActions, resetCrop])
 
   /* ---------- commands (palette and shortcuts) ---------- */
 
@@ -879,10 +885,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
       // E-10 crop: while the tool is open, Reset and the taskbar preset change the draft, as its bar does.
       cropRecording: cropActions.open,
-      resetCrop: () => {
-        if (cropRef.current) setCropDraft({ rect: { ...FULL_FRAME }, aspect: 'free' })
-        else cropActions.reset()
-      },
+      resetCrop,
       cropTaskbar: () => {
         const draft = cropRef.current
         if (!draft) return cropActions.taskbar()
@@ -895,7 +898,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       freezeFrame: actions.freezeFrame,
       toggleFreezeSound: actions.toggleFreezeSound
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
 

@@ -3,7 +3,8 @@
 // the preview and an Auto export show none of it, with no red bleeding in at the cut edge, and
 // take the cropped shape; the tool shows the whole recording again while it is open; Undo, Esc
 // (also in the middle of a drag) and the C shortcut behave; items stay where they were stored;
-// without cursor data, zooms look at the centre of the part shown.
+// without cursor data, zooms look at the centre of the part shown; the panel's Reset while the
+// tool is open resets its draft.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -207,5 +208,18 @@ h.run(
       return z.focus.mode === 'fixed' ? z : null
     }, 'the cursor zoom set to a fixed point')
     h.assert(centred(fixed.focus), `a cursor zoom set to a fixed point looks at the centre of the crop (got ${JSON.stringify(fixed.focus)})`)
+
+    // 10. Reset in Style › Frame while the tool is open resets its draft, as the bar's Reset does; Done applies it.
+    await win.click('.insp-tabs button[title="Style"]')
+    await win.click('[data-testid=crop-edit]')
+    await win.waitForSelector('[data-testid=crop-editor]', { timeout: 5000 })
+    await win.click('[data-testid=crop-row-reset]')
+    const whole = await win.textContent('[data-testid=crop-size]')
+    h.assert(whole.trim() === '1280 × 720 px', `Reset in the panel resets the open tool's draft (got ${whole})`)
+    await win.click('[data-testid=crop-done]')
+    await win.waitForSelector('[data-testid=crop-editor]', { state: 'detached', timeout: 5000 })
+    await f.waitFor(() => !('crop' in h.readProject(home, id)), 'the crop reset by Done')
+    await h.sleep(1000)
+    h.assert(!('crop' in h.readProject(home, id)), 'the reset stays')
   })
 )

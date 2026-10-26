@@ -416,7 +416,7 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 - The selection is cleared. Playback and scrubbing work.
 - Undo, Redo (the `actions` the title bar and the shortcuts share), opening Export and leaving the editor all close the tool without applying.
 - A drag still held when the tool closes (Esc, Enter, Undo, Export) ends with it: `CropEditor` stops following the pointer when it unmounts, and the Editor takes a draft only while the tool is open, so moving on never opens the tool again (nor hands Export the crop tool's scene).
-- `C` while the tool is open keeps the draft. From the palette, **Show the whole recording** and **Crop out the taskbar** change the draft while the tool is open, as its bar does.
+- `C` while the tool is open keeps the draft. From the palette, **Show the whole recording** and **Crop out the taskbar** change the draft while the tool is open, as its bar does. So does **Reset** in Style › Frame (one handler with the palette's): Done then applies the whole recording, instead of re-applying the old draft over a reset already made.
 - The Editor sets `player.setNoZoom(!!pickZoom || !!cropDraft)`, combined into the existing effect at `Editor.tsx:294`.
 
 ---
@@ -450,7 +450,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 ## 7. Undo
 
 - **Done** is one step: the crop and the rebased auto zooms, in one keyless `store.update((p) => setCrop(p, rect, cursor).project)`. Keyless updates never merge (`History.push`).
-- **Reset** (panel or palette) is one step. **Crop out the taskbar** from the palette is one step.
+- **Reset** (panel or palette) is one step. **Crop out the taskbar** from the palette is one step. While the tool is open, both change only the draft, and Done is the one step.
 - Dragging, aspect chips and presets inside the tool change only the draft and add no step.
 - Esc adds no step. Done with an unchanged rectangle returns the same object, which `EditStore.update` ignores (`next === prev`).
 - Undo restores the previous crop and zooms exactly, from the history snapshot.
@@ -674,6 +674,7 @@ The fixture is built inline into the test home with ffmpeg: `color=c=0x808080:s=
 7. Press `C`: `[data-testid=crop-editor]` is visible. Press Esc: it closes, and project.json is unchanged after 1 s.
 8. Press `C`, hold the top handle and drag, press Esc, then move on and release: the tool stays closed and the crop is unchanged.
 9. The recording has no cursor data (`valid: false`), and a seeded zoom follows the cursor. Home, then `Z`: the new zoom is fixed at the crop's centre, `(0.5, 336/720)`. The seeded zoom set to **Fixed point** in the Zoom panel lands there too.
+10. Style › Frame › **Edit…**, then the row's **Reset** while the tool is open: the tool's size reads 1280 × 720 px and project.json keeps the crop; Done removes it, and it stays removed.
 
 ---
 
