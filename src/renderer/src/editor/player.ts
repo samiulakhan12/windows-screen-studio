@@ -15,6 +15,7 @@ import {
   type ShuttleStep
 } from '../../../shared/editor/shuttle'
 import { pictureTime, planOf, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
+import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
@@ -430,7 +431,8 @@ export class PreviewPlayer {
     const { canvas, scene } = this
     if (!canvas || !scene) return false
     const p = scene.project
-    return cameraShownAt(p, canvas.width, canvas.height, this.screen.videoWidth || p.width, this.screen.videoHeight || p.height, t)
+    const shown = croppedFrameSize(scene.crop ?? null, this.screen.videoWidth, this.screen.videoHeight, p)
+    return cameraShownAt(p, canvas.width, canvas.height, shown.width, shown.height, t)
   }
 
   /**

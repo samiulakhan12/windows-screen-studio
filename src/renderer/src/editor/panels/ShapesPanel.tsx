@@ -16,6 +16,7 @@ import {
   STROKE_LIMITS
 } from '../../../../shared/editor/shapes'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
+import { cropOf, cropView, geometryFromCrop, rectToCrop } from '../../../../shared/engine/crop'
 import { clamp } from '../../../../shared/engine/math'
 import { formatTime } from '../../../../shared/engine/project'
 import type { Clip, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
@@ -56,8 +57,9 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
   const spot = selection?.kind === 'spotlight' ? (spotlights.find((s) => s.id === selection.id) ?? null) : null
   const selId = selection && 'id' in selection ? selection.id : null
 
-  /** Where viewers see the cursor at source time `t` (what a cursor spotlight follows), when it is over the recording. */
-  const cursorPos = (t: number): { x: number; y: number } | null => cursorPosFor(project, cursor, t)
+  /** Where viewers see the cursor at source time `t` (what a cursor spotlight follows), when it is over the recording (its crop's view). */
+  const view = cropView(project, cursor)
+  const cursorPos = (t: number): { x: number; y: number } | null => cursorPosFor(view.project, view.cursor, t)
 
   const addShape = (kind: ShapeKind): void => void addShapeAt(services, kind, cursor, { onSelect: props.onSelect })
   const addSpotlight = (mode: Spotlight['mode']): void => void addSpotlightAt(services, mode, { onSelect: props.onSelect })
@@ -249,9 +251,11 @@ function SelectedSpotlight({
   const setMode = (mode: Spotlight['mode']): void => {
     if (mode === spot.mode) return
     if (mode === 'region') {
-      // Stay where the cursor spotlight is now instead of jumping to its old box.
+      // Stay where the cursor spotlight is now instead of jumping to its old box (placed in the crop's view).
       const at = cursorPos(itemVisibleAt(spot, player.time) ? player.time : spot.start)
-      set(at ? { mode, x: clamp(at.x - spot.w / 2, 0, 1 - spot.w), y: clamp(at.y - spot.h / 2, 0, 1 - spot.h) } : { mode })
+      const crop = cropOf(project)
+      const size = rectToCrop(crop, spot)
+      set(at ? { mode, ...geometryFromCrop(crop, { x: clamp(at.x - size.w / 2, 0, 1 - size.w), y: clamp(at.y - size.h / 2, 0, 1 - size.h) }) } : { mode })
     } else {
       set({ mode })
     }

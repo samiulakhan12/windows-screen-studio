@@ -1,5 +1,6 @@
 import { displayTime } from '../../../shared/editor/clips'
 import { revealKeptTime, shapeForPlayhead, spotlightForPlayhead } from '../../../shared/editor/shapes'
+import { cropOf, cropProject, cropTrack, geometryFromCrop } from '../../../shared/engine/crop'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { speedAt } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, visibleCursorAt } from '../../../shared/render/shapes'
@@ -70,12 +71,15 @@ function anchor(clips: Clip[], t: number): { t: number; speed: number } {
 /**
  * Adds a shape of `kind` fully shown at the playhead (see shapeForPlayhead: it starts one fade
  * earlier and stays inside the kept part; an arrow points at the cursor when `cursor` says where
- * it is), selects it and moves the playhead as little as needed to show it.
+ * it is), selects it and moves the playhead as little as needed to show it. It is placed in the
+ * part of the recording that is shown (built in the crop's view, stored in the full frame).
  */
 export function addShapeAt({ store, player }: EditorServices, kind: ShapeKind, cursor: CursorTrack | null, opts: AddOptions): Shape {
   const p = store.state
   const { t, speed } = anchor(p.clips, opts.at ?? player.time)
-  const s = shapeForPlayhead(kind, t, p, cursor ? cursorPosFor(p, cursor, t) : null, speed)
+  const crop = cropOf(p)
+  const view = cropProject(p)
+  const s = geometryFromCrop(crop, shapeForPlayhead(kind, t, view, cursor ? cursorPosFor(view, cropTrack(cursor, crop), t) : null, speed))
   store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
   opts.onSelect({ kind: 'shape', id: s.id })
   revealItem(player, p.clips, s, kind, t)
@@ -86,7 +90,7 @@ export function addShapeAt({ store, player }: EditorServices, kind: ShapeKind, c
 export function addSpotlightAt({ store, player }: EditorServices, mode: Spotlight['mode'], opts: AddOptions): Spotlight {
   const p = store.state
   const { t, speed } = anchor(p.clips, opts.at ?? player.time)
-  const s = spotlightForPlayhead(mode, t, p, speed)
+  const s = geometryFromCrop(cropOf(p), spotlightForPlayhead(mode, t, cropProject(p), speed))
   store.update((q) => ({ ...q, spotlights: [...(q.spotlights ?? []), s] }))
   opts.onSelect({ kind: 'spotlight', id: s.id })
   revealItem(player, p.clips, s, 'spotlight', t)

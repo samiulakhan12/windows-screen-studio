@@ -35,6 +35,8 @@ export interface InspectorProps {
   /** Where a cursor-following zoom currently looks, so switching it to a fixed point keeps the view. */
   focusFor: (zoom: ZoomSegment) => { x: number; y: number }
   onBackgroundImage: () => void
+  /** Opens the crop tool ('edit'), or shows the whole recording again ('reset'). */
+  onCrop: (action: 'edit' | 'reset') => void
   onNotice: (message: string) => void
   onAddText: () => void
   onSplit: () => void
@@ -129,7 +131,7 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
         ))}
       </nav>
       <div className="insp-body" data-tab={tab}>
-        {tab === 'style' && <StylePanel project={props.project} onBackgroundImage={props.onBackgroundImage} onNotice={props.onNotice} />}
+        {tab === 'style' && <StylePanel project={props.project} onBackgroundImage={props.onBackgroundImage} onNotice={props.onNotice} onCrop={props.onCrop} />}
         {tab === 'cursor' && <CursorPanel project={props.project} cursor={props.cursor} recorded={props.recorded} clickRows={props.clickRows} input={props.input} />}
         {tab === 'zoom' && <ZoomPanel {...props} />}
         {tab === 'clip' && <ClipPanel {...props} />}
