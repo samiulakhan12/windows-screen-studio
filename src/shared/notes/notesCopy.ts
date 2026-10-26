@@ -103,12 +103,14 @@ export interface NotesStatusInput {
   recording: NotesRecordingState | null
   playing: boolean
   ended: boolean
+  /** The presenter wants it to scroll (during the countdown: it starts with the recording). */
+  want: boolean
 }
 
 /** The notes window's status text (announced politely when it changes). */
 export function notesStatus(s: NotesStatusInput): string {
   if (s.mode === 'record') {
-    if (s.recording === 'countdown') return 'Starts with the recording'
+    if (s.recording === 'countdown') return s.want ? 'Starts with the recording' : 'Starts when you press play'
     if (s.recording === 'paused' && !s.playing) return 'Recording paused'
   }
   if (s.ended) return 'End of notes'

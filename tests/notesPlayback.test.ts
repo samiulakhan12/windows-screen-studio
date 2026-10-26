@@ -72,6 +72,28 @@ describe('notes playback', () => {
     expect(applyView(p, rec({ recording: 'recording', autoStart: false })).state.playing).toBe(true)
   })
 
+  it('lets a pause pressed during the countdown win over autoStart', () => {
+    // The page's toggle flips `want` during the countdown: with autoStart on, one press holds the text.
+    let p = run(rec())[0].state
+    expect(p.want).toBe(true)
+    p = choosePlaying(p, !p.want)
+    expect(p.want).toBe(false)
+    p = applyView(p, rec()).state
+    expect(p.want).toBe(false)
+    expect(applyView(p, rec({ recording: 'recording' })).state.playing).toBe(false)
+  })
+
+  it('shows during the countdown whether the text will start (autoStart, until a press)', () => {
+    expect(run(rec())[0].state.want).toBe(true)
+    expect(run(rec({ autoStart: false }))[0].state.want).toBe(false)
+    // The setting changed during the countdown: followed until the presenter chooses.
+    expect(run(rec(), rec({ autoStart: false }))[1].state.want).toBe(false)
+    let p = run(rec({ autoStart: false }))[0].state
+    p = choosePlaying(p, !p.want)
+    expect(applyView(p, rec({ autoStart: false })).state.want).toBe(true)
+    expect(applyView(p, rec({ recording: 'recording', autoStart: false })).state.playing).toBe(true)
+  })
+
   it('lets the presenter scroll during a paused recording', () => {
     let p = run(rec(), rec({ recording: 'recording' }), rec({ recording: 'paused' }))[2].state
     p = choosePlaying(p, true)

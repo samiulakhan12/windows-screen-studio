@@ -60,6 +60,8 @@ export function applyView(prev: Playback | null, input: PlaybackInput): Playback
 
   if (rec === 'countdown') {
     if (base.recording !== 'countdown') toTop = true
+    // What happens when it starts: autoStart until the presenter presses play or pause.
+    if (!started && !chosen) want = input.autoStart
     playing = false
   } else if (rec === 'recording') {
     duringPause = false

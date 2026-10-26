@@ -18,6 +18,7 @@ import { NOTES_FONT, NOTES_HEIGHT, NOTES_WIDTH, NOTES_WPM, hasNotesText } from '
 import { NOTES_COPY, notesButtonTitles, notesStatus, speedShort } from '../../../shared/notes/notesCopy'
 import { applyView, choosePlaying, reachedEnd, type Playback } from '../../../shared/notes/playback'
 import { ScrollClock, SCROLL, blockAt, endPosition, rateAt, snap, stepDelayMs, stepTarget, type BlockBox } from '../../../shared/notes/scroll'
+import { installFocusRelease } from '../editor/focus'
 import { RecIcon } from './recordingIcons'
 import './NotesWindow.css'
 
@@ -134,6 +135,8 @@ class NotesScroller {
       this.root.dataset.block = String(block)
     }
     const ended = this.clock.endedAt(now)
+    // The end stops the clock itself, so a later move (Home, Back, the wheel) leaves it still.
+    if (ended && this.clock.playing) this.clock.pause(now)
     this.report({ playing: this.clock.playing && !ended && !this.empty, ended, block })
     if (gliding) {
       this.timer = setTimeout(() => this.render(), 1000 / SCROLL.maxWritesPerSecond)
@@ -233,6 +236,8 @@ export function NotesWindow(): JSX.Element {
   /** Changes made here (speed, text size) shown at once, until main sends them back in a view. */
   const [look, setLook] = useState<NotesLookPatch>({})
   const [scroll, setScroll] = useState<ScrollState>({ playing: false, ended: false })
+  /** Whether the presenter wants it to scroll (shown during the countdown: it starts with the recording or not). */
+  const [want, setWant] = useState(false)
   const rootRef = useRef<HTMLElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const columnRef = useRef<HTMLDivElement>(null)
@@ -250,6 +255,7 @@ export function NotesWindow(): JSX.Element {
 
   const applyPlaying = useCallback((p: Playback) => {
     playback.current = p
+    setWant(p.want)
     scroller.current?.setPlaying(p.playing)
   }, [])
 
@@ -413,6 +419,10 @@ export function NotesWindow(): JSX.Element {
     }
   }, [])
 
+  // A button pressed with the mouse gives the focus back, so Space stays play / pause (a button
+  // reached with Tab keeps it).
+  useEffect(() => (mode === 'rehearse' ? installFocusRelease() : undefined), [mode])
+
   // The rehearsal keyboard (the recording window never has focus).
   useEffect(() => {
     if (mode !== 'rehearse') return
@@ -421,10 +431,13 @@ export function NotesWindow(): JSX.Element {
       if (!s || e.altKey || e.metaKey) return
       const onButton = e.target instanceof HTMLElement && e.target.closest('button')
       const area = areaRef.current?.clientHeight ?? 0
+      // The characters, so − and + work on every keyboard layout (a dead key is 'Dead').
+      const minus = e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract'
+      const plus = e.key === '+' || e.key === '=' || e.code === 'NumpadAdd'
       let handled = true
       if (e.ctrlKey) {
-        if (e.code === 'Minus' || e.code === 'NumpadSubtract') changeFont(-NOTES_FONT.step)
-        else if (e.code === 'Equal' || e.code === 'NumpadAdd') changeFont(NOTES_FONT.step)
+        if (minus) changeFont(-NOTES_FONT.step)
+        else if (plus) changeFont(NOTES_FONT.step)
         else handled = false
       } else if (e.key === ' ' || e.code === 'Space') {
         if (onButton) return
@@ -435,8 +448,8 @@ export function NotesWindow(): JSX.Element {
       else if (e.key === 'PageDown') s.moveBy((2 / 3) * area)
       else if (e.key === 'Home') s.moveTo(0)
       else if (e.key === 'End') s.toEnd()
-      else if (e.code === 'Minus' || e.code === 'NumpadSubtract') changeWpm(-NOTES_WPM.step)
-      else if (e.code === 'Equal' || e.code === 'NumpadAdd') changeWpm(NOTES_WPM.step)
+      else if (minus) changeWpm(-NOTES_WPM.step)
+      else if (plus) changeWpm(NOTES_WPM.step)
       else if (e.key === 'Escape') window.api.dismissNotes()
       else handled = false
       if (handled) e.preventDefault()
@@ -447,8 +460,10 @@ export function NotesWindow(): JSX.Element {
 
   const empty = !hasNotesText(text)
   const recording = view?.mode === 'record' ? view.recording : null
-  const status = notesStatus({ mode, recording, playing: scroll.playing, ended: scroll.ended })
-  const titles = notesButtonTitles(view?.hotkeys ?? {}, mode, scroll.playing)
+  const status = notesStatus({ mode, recording, playing: scroll.playing, ended: scroll.ended, want })
+  // During the countdown the button shows what happens when the recording starts.
+  const on = recording === 'countdown' ? want : scroll.playing
+  const titles = notesButtonTitles(view?.hotkeys ?? {}, mode, on)
   const problems = view?.problems ?? []
   const locked = view?.locked === true
 
@@ -478,40 +493,42 @@ export function NotesWindow(): JSX.Element {
         )}
       </div>
       <div className="nw-strip" role="toolbar" aria-label="Notes controls">
-        <button type="button" className="nw-btn" aria-label="Back" title={titles.back} disabled={empty} onClick={() => scroller.current?.step('back')}>
-          <RecIcon name="step-back" size={14} />
-        </button>
-        <button
-          type="button"
-          className="nw-btn nw-play"
-          aria-label={scroll.playing ? 'Pause scrolling' : 'Start scrolling'}
-          aria-pressed={scroll.playing}
-          title={titles.toggle}
-          disabled={empty}
-          onClick={toggle}
-        >
-          <RecIcon name={scroll.playing ? 'pause' : 'play'} size={14} />
-        </button>
-        <button type="button" className="nw-btn" aria-label="Forward" title={titles.forward} disabled={empty} onClick={() => scroller.current?.step('forward')}>
-          <RecIcon name="step-forward" size={14} />
-        </button>
-        <span className="nw-sep" aria-hidden="true" />
-        <button type="button" className="nw-btn" aria-label="Slower" title={titles.slower} disabled={wpm <= NOTES_WPM.min} onClick={() => changeWpm(-NOTES_WPM.step)}>
-          <RecIcon name="minus" size={12} />
-        </button>
-        <span className="nw-speed" aria-label={`Speed ${wpm} words a minute`}>
-          {speedShort(wpm)}
-        </span>
-        <button type="button" className="nw-btn" aria-label="Faster" title={titles.faster} disabled={wpm >= NOTES_WPM.max} onClick={() => changeWpm(NOTES_WPM.step)}>
-          <RecIcon name="plus" size={12} />
-        </button>
-        <span className="nw-sep" aria-hidden="true" />
-        <button type="button" className="nw-btn nw-font" aria-label="Smaller text" title={titles.smaller} disabled={fontSize <= NOTES_FONT.min} onClick={() => changeFont(-NOTES_FONT.step)}>
-          A<span className="nw-font-sign">−</span>
-        </button>
-        <button type="button" className="nw-btn nw-font" aria-label="Larger text" title={titles.larger} disabled={fontSize >= NOTES_FONT.max} onClick={() => changeFont(NOTES_FONT.step)}>
-          A<span className="nw-font-sign">+</span>
-        </button>
+        <div className="nw-controls">
+          <button type="button" className="nw-btn" aria-label="Back" title={titles.back} disabled={empty} onClick={() => scroller.current?.step('back')}>
+            <RecIcon name="step-back" size={14} />
+          </button>
+          <button
+            type="button"
+            className="nw-btn nw-play"
+            aria-label={on ? 'Pause scrolling' : 'Start scrolling'}
+            aria-pressed={on}
+            title={titles.toggle}
+            disabled={empty}
+            onClick={toggle}
+          >
+            <RecIcon name={on ? 'pause' : 'play'} size={14} />
+          </button>
+          <button type="button" className="nw-btn" aria-label="Forward" title={titles.forward} disabled={empty} onClick={() => scroller.current?.step('forward')}>
+            <RecIcon name="step-forward" size={14} />
+          </button>
+          <span className="nw-sep" aria-hidden="true" />
+          <button type="button" className="nw-btn" aria-label="Slower" title={titles.slower} disabled={wpm <= NOTES_WPM.min} onClick={() => changeWpm(-NOTES_WPM.step)}>
+            <RecIcon name="minus" size={12} />
+          </button>
+          <span className="nw-speed" aria-label={`Speed ${wpm} words a minute`}>
+            {speedShort(wpm)}
+          </span>
+          <button type="button" className="nw-btn" aria-label="Faster" title={titles.faster} disabled={wpm >= NOTES_WPM.max} onClick={() => changeWpm(NOTES_WPM.step)}>
+            <RecIcon name="plus" size={12} />
+          </button>
+          <span className="nw-sep" aria-hidden="true" />
+          <button type="button" className="nw-btn nw-font" aria-label="Smaller text" title={titles.smaller} disabled={fontSize <= NOTES_FONT.min} onClick={() => changeFont(-NOTES_FONT.step)}>
+            A<span className="nw-font-sign">−</span>
+          </button>
+          <button type="button" className="nw-btn nw-font" aria-label="Larger text" title={titles.larger} disabled={fontSize >= NOTES_FONT.max} onClick={() => changeFont(NOTES_FONT.step)}>
+            A<span className="nw-font-sign">+</span>
+          </button>
+        </div>
         <span className="nw-status" aria-live="polite">
           {status}
         </span>

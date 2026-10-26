@@ -64,6 +64,8 @@ export function useNotes(): NotesController {
     if (text === null) return
     pending.current = null
     const edit = edits.current
+    // Trying again after a failure: its message goes until this answers.
+    if (live.current) setSaveStatus((s) => (s.kind === 'error' ? { kind: 'idle' } : s))
     try {
       accept(await window.api.updateNotes({ text }))
       if (!live.current) return
@@ -71,6 +73,8 @@ export function useNotes(): NotesController {
       if (edit === edits.current) setLocal(null)
     } catch (err) {
       console.warn('Could not save the speaker notes:', err)
+      // Kept for the next flush (blur, close, Rehearse, leaving Home), unless typed over since.
+      if (edit === edits.current) pending.current = text
       if (live.current) setSaveStatus({ kind: 'error', message: ipcMessage(err) })
     }
   }, [accept])
