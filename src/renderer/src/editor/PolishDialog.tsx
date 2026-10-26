@@ -178,7 +178,7 @@ export function PolishDialog(props: {
         : polishHint(step, { silenceAction: options?.silenceAction ?? 'cut', autoZoomOn: zoomSettingsOf(project).auto.enabled, provider })
     const disabled = !ready || loading || !!why
     return (
-      <li key={step} className={`polish-row ${disabled && step !== 'style' ? 'unavailable' : ''}`} data-testid={`polish-row-${step}`} data-available={!loading && !why}>
+      <li key={step} className="polish-row" data-testid={`polish-row-${step}`} data-available={!loading && !why}>
         {step === 'style' ? (
           <label className="polish-style">
             <span>{label}</span>

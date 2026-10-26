@@ -567,7 +567,7 @@ Conflicts checked:
 - `src/shared/editor/polishCopy.ts`: every string in section 5. It is pure and tested.
 - `src/renderer/src/editor/polishRunner.ts`: async collection (levels, transcript, speech, face), cancel and skip, and the commit.
 - `src/renderer/src/editor/PolishDialog.tsx` and `src/renderer/src/editor/polish.css`: the dialog's three views.
-- `tests/polish.test.ts`, `tests/polishCopy.test.ts` and `tests/e2e/one-click-polish.e2e.cjs`. The existing `tests/e2e/polish.e2e.cjs` belongs to an earlier "polish features" wave and is not touched. `run-all.cjs` picks up every `*.e2e.cjs` by itself.
+- `tests/polish.test.ts`, `tests/polishCopy.test.ts`, `tests/fetchTranscript.test.ts` and `tests/e2e/one-click-polish.e2e.cjs`. The existing `tests/e2e/polish.e2e.cjs` belongs to an earlier "polish features" wave and is not touched. `run-all.cjs` picks up every `*.e2e.cjs` by itself.
 - `docs/design/polish-in-one-click.md`: this section.
 
 **Modify:**
@@ -657,6 +657,8 @@ Cases:
     - a Claude-only list → `null`;
     - the remembered id is capable → that one;
     - the remembered id is gone → the first capable one.
+
+**`tests/fetchTranscript.test.ts`** (the main process stubbed as in `tests/captionItems.test.ts`, which still covers `transcribe()`): the transcript comes back with the job ended and nothing written; `leftOut` over `MAX_CAPTIONS`; a failure (and "No speech was found") is returned and stays on the job; a cancel resolves `{ cancelled }`, also for a late answer and for the main process's "Cancelled."; a job already running is left alone.
 
 **`tests/polishCopy.test.ts`:**
 
