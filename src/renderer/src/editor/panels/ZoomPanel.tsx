@@ -199,13 +199,14 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
 
   const setFocusMode = (mode: 'cursor' | 'fixed' | 'region'): void => {
     if (mode === focus.mode) return
-    // Keep looking where the zoom looks now instead of jumping to the centre.
+    // Keep looking where the zoom looks now instead of jumping to the centre, at the level shown: a
+    // region zoom's stored scale is its level in the frame it was drawn in, not in the crop's view.
     const f = focus.mode === 'region' ? { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2 } : focus.mode === 'fixed' ? focus : toCrop(crop, props.focusFor(zoom))
     if (mode === 'cursor') {
-      setZoom({ focus: { mode: 'cursor' } })
+      setZoom({ focus: { mode: 'cursor' }, scale: level })
       props.onPickFocus(false)
     } else if (mode === 'fixed') {
-      setZoom({ focus: fixedAt(f.x, f.y) })
+      setZoom({ focus: fixedAt(f.x, f.y), scale: level })
     } else {
       const region = regionAround(f.x, f.y, level >= 1.05 ? level : 2)
       patch((z) => zoomFromView(crop, setZoomLevel({ ...zoomInView(crop, z), focus: region }, level >= 1.05 ? level : 2)))

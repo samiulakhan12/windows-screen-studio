@@ -200,7 +200,7 @@ Example: a 1280×720 recording with a 48 px taskbar gives `c = {0, 0, 1, 0.93333
 | `playheadItems.ts:75,86` `addShapeAt`/`addSpotlightAt` (`shapeForPlayhead` aspect, `arrowToward`, `0.24/aspect`, `cursorPosFor`) | `store.state`, full cursor | build against `cropView(p, cursor)`, store `geometryFromCrop(c, item)` | 2 functions |
 | `ShapesPanel.tsx:60,253-254` region spotlight placed at the cursor | `cursorPosFor(project, cursor)`, clamp to [0, 1] | position from the view, clamp in view, then `geometryFromCrop` | 2 lines |
 | `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view) | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))` | 1 line |
-| ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop` | about 8 lines (**193–200 and 273 missed by the draft**) |
+| ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop`; a switch to Fixed point or Follow cursor stores the level shown as `scale` (a region zoom's stored `scale` is its level where it was drawn, which a crop made since changes) | about 8 lines (**193–200 and 273 missed by the draft**) |
 | `Editor.tsx` zoom level keys 0–4 (`setZoomLevelKey`, `setZoomLevel`) | full-frame region | `setZoomLevelInView(cropOf(q), z, level)` | 1 line (**missed by the draft**: with a crop that is not the frame's shape, a region resized in the full frame frames another level in the view) |
 | `Timeline.tsx:675` zoom block level label (`zoomTargetScale(z)`) | full-frame region | `zoomTargetScale(zoomInView(crop ? cropOf(store.state) : null, z))`, with `crop` read by one `useSyncExternalStore` (the memoised timeline has no project prop) | 2 lines, SHARED (**missed by the draft**) |
 | Webcam picture, framing, face framing, camera masks | camera space | — | none |
@@ -511,7 +511,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 - `src/shared/editor/cropEdit.ts`: drag, aspect, snap, presets, `setCrop`, `outsideCrop` and the notice copy.
 - `src/renderer/src/editor/CropEditor.tsx` and `src/renderer/src/editor/crop.css`: the overlay (`CropEditor`) and its bar (`CropBar`).
 - `src/renderer/src/editor/panels/CropRow.tsx`: the Style › Frame row.
-- Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/cropEditor.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
+- Tests: `tests/crop.test.ts`, `tests/cropEdit.test.ts`, `tests/cropEditor.test.ts`, `tests/zoomPanelCrop.test.ts`, `tests/compositorCrop.test.ts`, `tests/exportCrop.test.ts` and `tests/e2e/crop.e2e.cjs`. `run-all.cjs` picks up `*.e2e.cjs` by itself.
 
 **Modify**
 
@@ -644,6 +644,11 @@ Same harness as `compositorBounds.test.ts`: `recordingContext`, a stubbed `Path2
 - A drag writes the draft while the pointer moves and stops listening on release.
 - A drag still held when the overlay unmounts writes no more drafts and leaves no window listeners.
 
+**`tests/zoomPanelCrop.test.ts`** (the Zoom tab called as a function, as `captionsPanel.test.ts` does)
+
+- A region zoom framed at 5× before a crop to the left half shows 2.5×; switching it to Fixed point or Follow cursor keeps 2.5×.
+- A region framed at 1.25× while cropped shows 2.5× once the crop is reset; switching it to Fixed point keeps 2.5×.
+
 **Existing:** `tests/commands.test.ts` (unique ids, known categories) and `tests/shortcuts.test.ts` must pass, with no conflicts between default keys.
 
 **E2E: `tests/e2e/crop.e2e.cjs`**
@@ -718,7 +723,7 @@ Where the code differs from the first draft of this design (the sections above a
 
 - **Style › Frame without a crop** shows only a link in the section's header instead of a row with a hint: a row moved the Padding slider below the fold of the default window, which `editor.e2e.cjs` drags without scrolling. With a crop the row shows as designed.
 - **The bar is its own component.** `CropEditor.tsx` exports the overlay (`CropEditor`, mounted by `PreviewStage` through a `cropTool` prop) and the bar (`CropBar`, rendered by `Editor.tsx` in `.stage` between the preview and the transport). Inside `PreviewStage`'s `.canvas-wrap` the bar would either cover the bottom of the recording (the taskbar being cropped) or need the stage's layout restructured.
-- **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed).
+- **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed). `zoomInView`/`zoomFromView` keep `scale`, so a region zoom's stored `scale` is its level in the frame it was framed in; the Zoom panel's switch from Region to Fixed point or Follow cursor therefore writes the level it shows (`tests/zoomPanelCrop.test.ts`).
 - **Undo and Redo** clear the draft in `Editor.tsx`'s `actions.undo` / `actions.redo` (two lines outside the regions listed in §9), so the title bar buttons and the shortcuts both close the tool.
 - **`setCrop`** compares snapped crops (§4.9 step 2). **`cropNotice`** reports a zoom both removed and added (a merged zoom split around a hidden click) as adjusted: "1 automatic zoom was adjusted."
 - **`outsideCrop`**: a region zoom, shape or region spotlight is outside when its box shares no area with the crop; a cursor-following zoom when its anchor (click or field) is outside.
