@@ -1618,3 +1618,6 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
   a visible reason (`otherDownload`, `downloadBusyLine`), and `downloadThenCaptions` leaves the
   running download's intent alone. The refusal itself is not shown in the card: with the buttons
   blocked it only follows a click on a state not yet updated, and it is logged.
+- **UI-2** A resumed job showed "about 1 s left" throughout: the baseline of the time left was the
+  first cached part, so the later cached parts counted as work done in no time. `LocalRunning`
+  starts it again whenever `resumed` changes, so only this run's work sets the speed.

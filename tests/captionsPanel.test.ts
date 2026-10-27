@@ -617,6 +617,40 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(has(out, KEPT)).toBe(false)
   })
 
+  it('a resumed job counts its time left from the last part taken from the earlier run (UI-2)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    store.state = { ...store.state, duration: 3600, clips: [{ id: 'c', start: 0, end: 3600, speed: 1 }] }
+    let out = await show()
+    let clock = 1_000_000
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock)
+    try {
+      click(out, 'Generate captions')
+      const line = (seconds: number, p: Partial<TranscribeProgress>): void => {
+        clock = 1_000_000 + seconds * 1000
+        progress!({ projectId: 'p1', phase: 'transcribing', done: 0, total: 6, ...p })
+        out = render(m.panel)
+      }
+      // Six parts of 600 s; the first three come from the cache, each within a fraction of a second.
+      line(0, { phase: 'loading', fraction: 0 })
+      line(0.5, { done: 0, fraction: 1 / 6, resumed: 1 })
+      line(0.7, { done: 1, fraction: 1 / 6, resumed: 1 })
+      line(0.8, { done: 1, fraction: 2 / 6, resumed: 2 })
+      line(1.0, { done: 2, fraction: 2 / 6, resumed: 2 })
+      line(1.1, { done: 2, fraction: 3 / 6, resumed: 3 })
+      line(1.3, { done: 3, fraction: 3 / 6, resumed: 3 })
+      expect(has(out, 'Continuing: 3 of 6 parts were already done.')).toBe(true)
+      // Then this PC makes each part in 240 s: after 60 s, 720 - 60 = 660 s are left (11 min; the
+      // smoothed estimate rounds up to whole minutes).
+      for (let k = 1; k <= 3; k++) line(1.3 + 20 * k, { done: 3, fraction: 3 / 6 + ((20 * k) / 240) * (1 / 6), resumed: 3 })
+      const left = out.filter((e) => e.type === 'span' && e.props.className === 'hint').map((e) => textOf(e.props.children))
+      expect(left).toHaveLength(1)
+      expect(left[0]).toMatch(/^about 1[12] min left$/)
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   it('no-model goes back to the consent card', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))

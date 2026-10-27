@@ -541,13 +541,15 @@ export function LocalRunning({ job, duration }: { job: TranscriptionJob; duratio
     const timer = setInterval(() => setNow((n) => n + 1), 1000)
     return () => clearInterval(timer)
   }, [])
-  // The time left from the work done since the first progress of this run (parts taken from an
-  // earlier run would make the speed look infinite), updated when the share moves.
-  const timing = useRef<{ f0: number; t0: number; share: number; left: number | null; at: number } | null>(null)
+  // The time left from the work done since the last part taken from an earlier run (each comes in
+  // a fraction of a second and would make the speed look infinite: the start moves with `resumed`),
+  // updated when the share moves.
+  const timing = useRef<{ f0: number; t0: number; share: number; left: number | null; at: number; resumed: number } | null>(null)
   if (share !== null && phase === 'transcribing') {
     const now = Date.now()
+    const resumed = p?.resumed ?? 0
     const t = timing.current
-    if (!t) timing.current = { f0: share, t0: now, share, left: null, at: now }
+    if (!t || resumed !== t.resumed) timing.current = { f0: share, t0: now, share, left: null, at: now, resumed }
     else if (share !== t.share && t.f0 < 1) {
       const done = (share - t.f0) / (1 - t.f0)
       const left = nextTimeLeft(t.left === null ? null : Math.max(0, t.left - (now - t.at) / 1000), (now - t.t0) / 1000, done)
