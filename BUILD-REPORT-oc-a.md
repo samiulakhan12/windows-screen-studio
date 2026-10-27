@@ -168,6 +168,15 @@ MinGW DLLs.
 The base ratio matches `COMPAT_FACTOR` (4.3). Both builds give the same words; peak memory is
 reported under wine (240 MB for tiny on 17 s).
 
+## After merging the editing-wins wave
+
+The lead asked for `origin/ccr-b6df7cf7-yked87` (a3f0730 and c5287b1) to be merged before the final
+verification; it touches none of workstream A's files. Re-run on the merged tree: `npm ci`, both
+typechecks, `npm run notices -- --check` (unchanged, 136,431 bytes), `npx vitest run
+--testTimeout=60000` (**171 files, 2,429 tests passed**), `npm run test:native` (10 passed),
+`WINEDEBUG=-all SSW_REQUIRE_NATIVE=1 npm run dist:win` (verify-dist **all checks passed**, speech
+payload unchanged, installer 118.5 MB, installed 445.2 MB) and the packaging e2e (**1/1 passed**).
+
 ## Not verified here
 
 Real Windows (§10.5): the process mitigations' effect (`Get-ProcessMitigation`), the parent
