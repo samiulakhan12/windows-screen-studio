@@ -55,6 +55,14 @@ const log = (entry) => {
   if (env.FAKE_HELPER_LOG) fs.appendFileSync(env.FAKE_HELPER_LOG, JSON.stringify({ t: Date.now(), ...entry }) + '\n')
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+/**
+ * Resolves once Date.now() has reached `epochMs`. Timers count whole milliseconds of the
+ * monotonic clock, so sleep(ms) can end up to a millisecond short of `ms` by Date.now(), the
+ * clock of the helper's timestamps and durations.
+ */
+async function sleepUntil(epochMs) {
+  for (let left = epochMs - Date.now(); left > 0; left = epochMs - Date.now()) await sleep(left)
+}
 const hang = () => new Promise(() => setInterval(() => undefined, 1000))
 // The real helper's container: moov first, then one moof/mdat per key frame (1 s GOP).
 const FRAGMENTED = ['-movflags', '+frag_keyframe+empty_moov+default_base_moof']
@@ -625,11 +633,12 @@ async function record() {
     }
   })()
 
-  // The *-early modes: the helper ends on its own (monitor unplugged, encoder failure, crash).
+  // The *-early modes: the helper ends on its own (monitor unplugged, encoder failure, crash),
+  // FAKE_HELPER_END_AFTER_MS after "started" by the clock its duration is measured with.
   const END = Symbol('end')
   const endsEarly = ['close-early', 'error-early', 'crash-early'].includes(mode)
   const endAfter = Number(env.FAKE_HELPER_END_AFTER_MS || 200)
-  const ended = endsEarly ? sleep(endAfter).then(() => END) : new Promise(() => undefined)
+  const ended = endsEarly ? sleepUntil(startedAt + endAfter).then(() => END) : new Promise(() => undefined)
 
   // Active time bookkeeping, as in the real helper: pauses are cut out of the video.
   let active = 0
