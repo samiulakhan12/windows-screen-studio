@@ -447,10 +447,14 @@ function GenerateSection({
     const share = p && p.total > 0 && p.done > 0 ? Math.min(1, p.done / p.total) : null
     return (
       <Section title="Generating captions">
-        <div className="captions-progress" role="status" aria-live="polite">
+        {/* Not a live region itself (docs/design/offline-captions.md §7.7): the hidden one says the phase. */}
+        <div className="captions-progress">
           <span className="captions-phase">
             {phase}
             {p && p.total > 1 ? ` Part ${Math.min(p.done + 1, p.total)} of ${p.total}.` : ''}
+          </span>
+          <span className="sr-only" aria-live="polite">
+            {phase}
           </span>
           <div className={`captions-bar ${share === null ? 'busy' : ''}`}>
             <span style={share === null ? undefined : { width: `${Math.round(share * 100)}%` }} />

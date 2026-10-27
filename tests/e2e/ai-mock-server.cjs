@@ -410,8 +410,8 @@ function startMockAi({ ffmpeg, hfFiles = {} }) {
     rec.range = req.headers.range || null
     // A fault: { cut, flip, slow, status } or its short form ('flip', 'slow', 404, 403).
     const fault = given && typeof given === 'object' ? given : given === 'flip' ? { flip: true } : given === 'slow' ? { slow: true } : given ? { status: Number(given) } : {}
-    if (fault.status === 404 || !file || req.method !== 'GET') return json(res, 404, { error: 'Entry not found' })
-    if (fault.status) return json(res, fault.status, { error: 'Refused' })
+    if (fault.status) return json(res, fault.status, { error: fault.status === 404 ? 'Entry not found' : 'Refused' })
+    if (!file || req.method !== 'GET') return json(res, 404, { error: 'Entry not found' })
     const size = fs.statSync(file).size
     const m = /^bytes=(\d+)-$/.exec(req.headers.range || '')
     const from = m ? Number(m[1]) : 0

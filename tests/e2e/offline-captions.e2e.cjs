@@ -157,8 +157,12 @@ async function previewDuck(win, ts) {
   for (const list of byParam.values()) {
     const ramps = list.filter((c) => c.name === 'linearRampToValueAtTime')
     if (!ramps.some((c) => Math.abs(c.value - (1 - MUSIC.ducking)) < 0.01)) continue
-    // The last schedule from 0: its setValueAtTime, then its ramps.
-    const start = list.map((c, i) => [c, i]).filter(([c]) => c.name === 'setValueAtTime').pop()
+    // The last schedule made while playing: a setValueAtTime followed by its ramps (a pause sets the value alone).
+    const start = list
+      .map((c, i) => [c, i])
+      .filter(([c, i]) => c.name === 'setValueAtTime' && list[i + 1]?.name === 'linearRampToValueAtTime')
+      .pop()
+    if (!start) continue
     const keys = list.slice(start[1] + 1).filter((c) => c.name === 'linearRampToValueAtTime').map((c) => ({ t: c.time - start[0].time, g: c.value }))
     const at = (t) => {
       let prev = { t: 0, g: start[0].value }
@@ -297,7 +301,13 @@ function processesWith(needle) {
     await f.waitFor(async () => (await section.locator('[data-model="whisper-tiny"]').getAttribute('data-state')) === 'downloading', 'the row downloads')
     await h.sleep(1500)
     await section.locator('[data-model="whisper-tiny"] button:has-text("Cancel")').click()
-    await f.waitFor(async () => /Stopped at \d+ of 44 MB/.test(await section.locator('[data-model="whisper-tiny"]').textContent()), 'Settings shows "Stopped at …"', 15000)
+    const row = section.locator('[data-model="whisper-tiny"]')
+    await f.waitFor(async () => {
+      const text = await row.textContent()
+      return /Stopped at \d+ of 44 MB/.test(text) || `${await row.getAttribute('data-state')}: ${text.slice(-160)}`.startsWith('#')
+    }, 'Settings shows "Stopped at …"', 15000).catch(async (err) => {
+      throw new Error(`${err.message}; the row: ${await row.getAttribute('data-state')} ${await row.textContent()}`)
+    })
     mock.hf.fault = null
     await section.locator('[data-model="whisper-tiny"] button:has-text("Continue")').click()
     await f.waitFor(async () => (await section.locator('[data-model="whisper-tiny"]').getAttribute('data-state')) === 'installed', 'Continue completes it', 60000)

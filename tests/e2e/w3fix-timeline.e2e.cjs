@@ -11,6 +11,7 @@ const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
+const sp = require('./speech-fixtures.cjs')
 
 const MEDIA_CACHE = path.join(os.tmpdir(), 'ssw-e2e-media')
 const GUTTER = 10 // .tl-content padding (Timeline.tsx GUTTER)
@@ -157,12 +158,16 @@ const seeks = (win) => win.evaluate(() => window.__videos.find((x) => /screen/.t
 
 async function main() {
   await test('silences: a title card over a pause is kept, and the panel says why', async (ctx) => {
+    // The speech detector runs on this sound: it must be there, so nothing passes silently on the fallback.
+    sp.requireSpeechAssets({ model: false })
     // The pause runs 3.5–7.5 s; a lower third covers 4–7 s of it.
     const card = { id: 'card', start: 4, end: 7, title: 'Part two', style: 'lower-third', background: 'blur' }
     const { home, id, win } = await openSeeded(ctx, 'w3fix-silences', { name: 'Talk', seconds: 12, width: 640, height: 360, fps: 30, audio: true, video: talkSilenceTalk() }, { titles: [card] })
     await win.click('.insp-tabs button:has-text("Clip")')
     await win.click('.chips[aria-label="Smart speed mode"] .chip:has-text("Silences")')
     // What is left of the pause next to the card (0.5 s each side) is under the 1 s minimum.
+    // The mixed track goes through the union of the speech detector and the level (the tone is not speech: today's ranges).
+    await win.waitForSelector('[data-testid="silence-detector"][data-detector="mixed"]', { timeout: 30000 })
     await f.waitFor(async () => (await win.$('.smart-summary')) && (await win.textContent('.smart-summary')).includes('No pauses of 1.0 s'), 'no pause listed over the card', 30000)
     await win.waitForSelector('[data-testid="smart-speed-titles"]')
     // A shorter minimum and less padding find the silence on each side of the card, never under it.

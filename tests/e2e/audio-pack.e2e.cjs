@@ -8,6 +8,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync, spawn } = require('node:child_process')
 const h = require('./helpers.cjs')
+const sp = require('./speech-fixtures.cjs')
 const fx = require('./render-fixtures.cjs')
 const r = require('./recordingHelpers.cjs')
 
@@ -245,6 +246,8 @@ async function installFakeHelper(app) {
 
 async function main() {
   await test('audio pack: music loops, fades and ducks under the recording, on the output timeline (M4A and MP4)', fx.withHome('ap-music', async (ctx, home) => {
+    // The speech detector runs on this sound: it must be there, so nothing passes silently on the fallback.
+    sp.requireSpeechAssets({ model: false })
     // The recording "speaks" (1 kHz) from 2 to 3.5 s and from 6 to 7 s; 4.5-5.5 s is cut.
     const media = videoWithSound('speech', 9, toneGraph(1000, 0.25, 'between(t,2,3.5)+between(t,6,7)'))
     const musicFile = audioOnly('music-3s', 3, toneGraph(440, 0.125))
@@ -315,6 +318,8 @@ async function main() {
   }))
 
   await test('audio pack: per-source volume and mute of the microphone and system stems change the export; the preview keeps them on time', fx.withHome('ap-stems', async (ctx, home) => {
+    // The speech detector runs on this sound: it must be there, so nothing passes silently on the fallback.
+    sp.requireSpeechAssets({ model: false })
     const beeps = micBeeps
     const media = stemsMixMedia()
     const mic = audioOnly('stem-mic-beeps', 6, beeps)
