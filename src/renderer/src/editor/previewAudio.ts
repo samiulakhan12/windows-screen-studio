@@ -443,11 +443,14 @@ export class PreviewAudio {
   /**
    * Output (video) time of source time `t`: its edit time past the pause freezes, plus the time
    * held in one at its frame (editToVideo leaves a hold AT a time out) until the playhead moves on.
+   * Inside a hold it is the hold's start plus the time held, whatever `t` is: the screen waits in
+   * the middle of the held frame, past the anchor, where editToVideo already counts the whole hold.
    */
   private outputAt(t: number): number {
     const edit = this.editAt(t)
     if (this.plan === NO_FREEZES) return edit
     const held = this.held
+    if (held && held.elapsed < held.h.length) return held.h.start + held.elapsed
     return editToVideo(this.plan, edit) + (held && !(held.h.edit < edit - 1e-9) ? held.elapsed : 0)
   }
 
