@@ -246,6 +246,9 @@ function SelectedSpotlight({
 }): JSX.Element {
   const { store, player } = useEditor()
   const id = spot.id
+  // Its size as the preview draws it (in the crop's view); edits are stored in the full frame.
+  const crop = cropOf(project)
+  const size = rectToCrop(crop, spot)
   const set = (patch: Partial<Spotlight>, key?: string): void =>
     store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), key)
   const setMode = (mode: Spotlight['mode']): void => {
@@ -253,8 +256,6 @@ function SelectedSpotlight({
     if (mode === 'region') {
       // Stay where the cursor spotlight is now instead of jumping to its old box (placed in the crop's view).
       const at = cursorPos(itemVisibleAt(spot, player.time) ? player.time : spot.start)
-      const crop = cropOf(project)
-      const size = rectToCrop(crop, spot)
       set(at ? { mode, ...geometryFromCrop(crop, { x: clamp(at.x - size.w / 2, 0, 1 - size.w), y: clamp(at.y - size.h / 2, 0, 1 - size.h) }) } : { mode })
     } else {
       set({ mode })
@@ -287,12 +288,17 @@ function SelectedSpotlight({
       {spot.mode === 'cursor' && (
         <Slider
           label="Size"
-          value={spot.h}
+          value={size.h}
           min={0.06}
           max={1}
           step={0.01}
           format={pctFmt}
-          onChange={(h) => set({ h, w: clamp((spot.w / spot.h) * h, 0.04, 2) }, `spot-size:${id}`)}
+          onChange={(h) => {
+            // Keeps the spot's shape in the view: the height stops where the width reaches its limits.
+            const ratio = size.w / size.h
+            const k = Math.min(clamp(h, 0.04 / ratio, 2 / ratio), 2)
+            set(geometryFromCrop(crop, { h: k, w: ratio * k }), `spot-size:${id}`)
+          }}
         />
       )}
       <p className="hint">{spot.mode === 'cursor' ? 'Follows the cursor. Drag its corners on the preview to resize it.' : 'Drag the lit area on the preview to move it, its handles to resize it.'}</p>
