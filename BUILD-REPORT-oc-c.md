@@ -153,7 +153,7 @@ branch `ccr-b6df7cf7-yked87` at `d0dff61` (A and B merged, editing-wins review f
 
 ## Verification
 
-Setup: `npm ci`; xvfb present (openbox could not be installed: apt failed; not needed);
+Setup: `npm ci`; xvfb present; openbox installed late (it needed `apt-get update` first);
 Rust 1.97, cmake, clang present. Host helper: `npm run build:speech-host` (A's script, after the
 second merge) → `native/bin/ssw-speech` (1689 KB); `npm run fetch:test-speech` → the pinned
 `ggml-tiny-q8_0.bin` matches. (Before A's scripts landed I built the same crate with
