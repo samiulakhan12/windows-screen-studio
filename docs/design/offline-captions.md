@@ -1859,9 +1859,10 @@ and the Bangla model downloaded On this PC is the default even when a key provid
 Bangla only", without a radio (it is never the model for new captions) and without "Recommended";
 facts, status and actions as the other rows (Download 539 MB, Cancel, Continue, Delete, Remove,
 the blocked reason); purpose "Bangla only: used whenever the spoken language is Bengali, never for
-other languages. Far fewer mistakes in Bangla than the other models."; licence line "Bengali.AI
-Whisper medium by the tugstugi team (Apache-2.0 licence), fine-tuned from OpenAI Whisper,
-converted by WinShades · huggingface.co/winshades/bengaliai-whisper-medium-ggml (11cf5cb)".
+other languages. Far fewer mistakes in Bangla than the other models."; licence line (from the
+catalog's licence) "Bengali.AI Whisper medium (Apache-2.0 licence) by Bengali.AI (the tugstugi
+team), fine-tuned from OpenAI Whisper; converted to ggml by WinShades ·
+huggingface.co/winshades/bengaliai-whisper-medium-ggml (11cf5cb)".
 
 **Polish in one click** uses the Bangla model when the Captions tab's Spoken language is Bengali
 (this session) and the model is downloaded and allowed here, passing `language: 'bn'`; its
