@@ -529,8 +529,10 @@
   white-space: nowrap;
 }
 
-/* The ring on the Captions tab while a download or a job of this project runs. */
+/* The ring on the Captions tab while a download or a job of this project runs. Its display wins
+   over the compact rail's, which hides the tab labels (every span in a tab button, editor.css). */
 .insp-tabs button span.captions-job-badge {
+  display: block;
   position: absolute;
   top: 4px;
   right: 6px;

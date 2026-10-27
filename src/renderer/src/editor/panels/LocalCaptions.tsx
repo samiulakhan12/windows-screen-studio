@@ -14,8 +14,10 @@ import {
   deletePartLabel,
   diskLine,
   downloadAgainLabel,
+  downloadBusyLine,
   downloadButton,
   downloadFailed,
+  downloadSpaceNeeded,
   downloadingLine,
   estimateLine,
   heardLine,
@@ -45,7 +47,9 @@ import {
   keptParts,
   loadSpeechState,
   modelView,
-  onSpeechRead
+  offered,
+  onSpeechRead,
+  otherDownload
 } from '../speechState'
 
 /*
@@ -70,8 +74,8 @@ function useCatchFocus(ref: RefObject<HTMLElement>, key: unknown): void {
 /** Seconds this PC is expected to take for `view` on a recording of `seconds`. */
 export const estimateFor = (state: SpeechState, view: SpeechModelView, seconds: number): number => estimateSeconds(view, seconds, state.engine.threads, view.measured, state.engine.build)
 
-/** The chips shown: Fast, Standard, Accurate, and Most accurate only once downloaded and allowed here. */
-const chipModels = (state: SpeechState): SpeechModelView[] => state.models.filter((m) => m.tier !== 'best' || (m.allowed && m.status.state === 'installed'))
+/** The chips shown: Fast, Standard, Accurate, and Most accurate only once downloaded and allowed here (speechState.offered). */
+const chipModels = (state: SpeechState, chosen: SpeechModelId): SpeechModelView[] => state.models.filter((m) => offered(m, chosen))
 
 /* ---------- quality ---------- */
 
@@ -81,7 +85,7 @@ const chipModels = (state: SpeechState): SpeechModelView[] => state.models.filte
  * chooses for this app session only: it never changes the default model.
  */
 export function LocalQuality({ state, model, project, chipsRef }: { state: SpeechState; model: SpeechModelId; project: Pick<Project, 'duration'>; chipsRef: RefObject<HTMLDivElement> }): JSX.Element {
-  const models = chipModels(state)
+  const models = chipModels(state, model)
   const view = modelView(state, model)
   const estimate = view ? estimateFor(state, view, project.duration) : 0
   const pick = (id: SpeechModelId): void => {
@@ -91,7 +95,9 @@ export function LocalQuality({ state, model, project, chipsRef }: { state: Speec
   const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
     if (!step) return
+    // Handled here: the editor's window keydown handler would also step the playhead on Left and Right.
     e.preventDefault()
+    e.stopPropagation()
     const i = Math.max(0, models.findIndex((m) => m.id === model))
     const next = models[(i + step + models.length) % models.length]
     pick(next.id)
@@ -135,14 +141,17 @@ export function LocalQuality({ state, model, project, chipsRef }: { state: Speec
 
 export type LocalState = 'no-sound' | 'needs-model' | 'downloading' | 'verifying' | 'stopped' | 'download-failed' | 'ready' | 'cancelled' | 'error'
 
-/** The block's state for the chosen model (running and done are shown by the Generate section itself). */
-export function localState(view: SpeechModelView, project: Pick<Project, 'id' | 'hasAudio'>, job: TranscriptionJob | null): LocalState {
+/**
+ * The block's state for the chosen model and spoken `language` ('' detects); running and done are
+ * shown by the Generate section itself.
+ */
+export function localState(view: SpeechModelView, project: Pick<Project, 'id' | 'hasAudio'>, job: TranscriptionJob | null, language = ''): LocalState {
   if (!project.hasAudio) return 'no-sound'
   const code = job?.error ? localErrorCode(job.error) : null
   if (job?.error && code !== 'no-model') return 'error'
   switch (view.status.state) {
     case 'installed':
-      return (keptParts(project.id)?.kept ?? 0) > 0 ? 'cancelled' : 'ready'
+      return (keptParts(project.id, view.id, language)?.kept ?? 0) > 0 ? 'cancelled' : 'ready'
     case 'downloading':
       return 'downloading'
     case 'verifying':
@@ -158,11 +167,10 @@ export function localState(view: SpeechModelView, project: Pick<Project, 'id' | 
 
 const online = (): boolean => typeof navigator === 'undefined' || navigator.onLine !== false
 
-/** Space a download of `view` still needs: the bytes to fetch and 64 MB. */
+/** Space a download of `view` still needs: the bytes to fetch and the spare the main process keeps. */
 const spaceNeeded = (view: SpeechModelView): number => {
   const s = view.status
-  const have = s.state === 'stopped' || s.state === 'failed' || s.state === 'downloading' ? s.received : 0
-  return Math.max(0, view.bytes - have) + 64e6
+  return downloadSpaceNeeded(view.id, s.state === 'stopped' || s.state === 'failed' || s.state === 'downloading' ? s.received : 0)
 }
 
 /**
@@ -182,7 +190,8 @@ export function LocalAction({
   focusRequest,
   chipsRef,
   onUseProvider,
-  onStart
+  onStart,
+  confirmReplace
 }: {
   state: SpeechState
   model: SpeechModelId
@@ -197,13 +206,15 @@ export function LocalAction({
   onUseProvider: (id: string) => void
   /** Starts captions with the downloaded `model` (asks before replacing captions); false when the user said no. */
   onStart: (model: SpeechModelId) => void
+  /** Asks before captions replace the current ones (true when there are none); a download that makes captions asks at the click. */
+  confirmReplace: () => boolean
 }): JSX.Element | null {
   const intent = useSyncExternalStore(onSpeechRead, () => captionsIntent(project.id))
   const [, setTick] = useState(0)
   const primaryRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const view = modelView(state, model)
-  const ls = view ? localState(view, project, job) : 'needs-model'
+  const ls = view ? localState(view, project, job, options.language) : 'needs-model'
   const estimate = view ? estimateFor(state, view, project.duration) : 0
   const lm = localModel(state)
 
@@ -230,8 +241,20 @@ export function LocalAction({
 
   if (!view) return null
   const download = (id: SpeechModelId = model): void => {
+    if (otherDownload(state, id) || !confirmReplace()) return
     clearTranscriptionError()
     void downloadThenCaptions(project.id, id, { ...options, providerId: LOCAL_TRANSCRIBER_ID, model: id })
+  }
+  // While another model downloads, the buttons that download `id` are aria-disabled with this line.
+  const busyProps = (id: SpeechModelId): { 'aria-disabled'?: 'true'; 'aria-describedby'?: string } =>
+    otherDownload(state, id) ? { 'aria-disabled': 'true', 'aria-describedby': 'local-download-why' } : {}
+  const busyLine = (id: SpeechModelId): ReactNode => {
+    const busy = otherDownload(state, id)
+    return busy ? (
+      <p className="hint warn" id="local-download-why">
+        {downloadBusyLine(busy.id, id)}
+      </p>
+    ) : null
   }
   const cancelDownload = (discard = false): void => {
     dropIntent(project.id)
@@ -271,7 +294,8 @@ export function LocalAction({
       const button = downloadButton(view.id)
       const lacksSpace = state.disk.free !== null && state.disk.free < spaceNeeded(view)
       const offline = !online()
-      const blocked = lacksSpace || offline
+      const busy = !!otherDownload(state, view.id)
+      const blocked = lacksSpace || offline || busy
       const other = lm.installed && lm.model !== view.id ? lm.model : null
       return box(
         <div className="local-card">
@@ -298,7 +322,8 @@ export function LocalAction({
               </button>
             )}
           </div>
-          {lacksSpace && (
+          {busyLine(view.id)}
+          {!busy && lacksSpace && (
             <p className="hint warn" id="local-download-why">
               {diskLine(view.id, state.disk.free!)}{' '}
               <button type="button" className="link" onClick={() => loadSpeechState(true)}>
@@ -306,7 +331,7 @@ export function LocalAction({
               </button>
             </p>
           )}
-          {!lacksSpace && offline && (
+          {!busy && !lacksSpace && offline && (
             <p className="hint warn" id="local-download-why">
               {SPEECH_COPY.offline(sizeOf(view.id))}
             </p>
@@ -377,13 +402,14 @@ export function LocalAction({
           </h4>
           <p>{stoppedLine(s)}</p>
           <div className="local-actions">
-            <button ref={primaryRef} type="button" className="btn primary" onClick={() => download()}>
+            <button ref={primaryRef} type="button" className="btn primary" {...busyProps(view.id)} onClick={() => download()}>
               {continueDownload}
             </button>
             <button type="button" className="btn ghost" onClick={() => cancelDownload(true)}>
               {deletePartLabel(s.received)}
             </button>
           </div>
+          {busyLine(view.id)}
         </div>,
         cloud
       )
@@ -392,26 +418,21 @@ export function LocalAction({
     case 'download-failed': {
       const s = view.status as Extract<SpeechModelView['status'], { state: 'failed' }>
       const failed = downloadFailed(view.id, s, state.disk.free)
+      // One button whatever it does, so the focus stays on it when Check again finds room and it becomes Try again.
+      const action =
+        failed.action === 'try-again'
+          ? { label: SPEECH_COPY.tryAgain, run: () => download() }
+          : failed.action === 'check-again'
+            ? { label: SPEECH_COPY.checkAgain, run: () => loadSpeechState(true) }
+            : { label: SPEECH_COPY.chooseAnother, run: () => chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus() }
       return box(
         <div className="local-card">
           <div className="captions-error" role="alert">
             <p>{failed.text}</p>
             <div className="local-actions">
-              {failed.action === 'try-again' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => download()}>
-                  {SPEECH_COPY.tryAgain}
-                </button>
-              )}
-              {failed.action === 'check-again' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => loadSpeechState(true)}>
-                  {SPEECH_COPY.checkAgain}
-                </button>
-              )}
-              {failed.action === 'choose-tier' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()}>
-                  {SPEECH_COPY.chooseAnother}
-                </button>
-              )}
+              <button ref={primaryRef} type="button" className="btn" {...(failed.action === 'try-again' ? busyProps(view.id) : {})} onClick={action.run}>
+                {action.label}
+              </button>
               {failed.action === 'choose-tier' && capable.length > 0 && (
                 <button type="button" className="btn ghost" onClick={() => onUseProvider(capable[0].id)}>
                   {SPEECH_COPY.useProvider}
@@ -419,6 +440,7 @@ export function LocalAction({
               )}
             </div>
           </div>
+          {failed.action === 'try-again' && busyLine(view.id)}
         </div>,
         cloud
       )
@@ -434,7 +456,7 @@ export function LocalAction({
             <p>Captions could not be made: {job!.error}</p>
             <div className="local-actions">
               {code === 'damaged' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => download(failedModel)}>
+                <button ref={primaryRef} type="button" className="btn" {...busyProps(failedModel)} onClick={() => download(failedModel)}>
                   {downloadAgainLabel(failedModel)}
                 </button>
               )}
@@ -461,13 +483,14 @@ export function LocalAction({
               </button>
             </div>
           </div>
+          {code === 'damaged' && busyLine(failedModel)}
         </>
       )
     }
 
     case 'ready':
     case 'cancelled': {
-      const kept = ls === 'cancelled' ? keptParts(project.id) : null
+      const kept = ls === 'cancelled' ? keptParts(project.id, view.id, options.language) : null
       const memory = memoryWarning(view.id, state.memory.free)
       return box(
         <>
@@ -518,13 +541,15 @@ export function LocalRunning({ job, duration }: { job: TranscriptionJob; duratio
     const timer = setInterval(() => setNow((n) => n + 1), 1000)
     return () => clearInterval(timer)
   }, [])
-  // The time left from the work done since the first progress of this run (parts taken from an
-  // earlier run would make the speed look infinite), updated when the share moves.
-  const timing = useRef<{ f0: number; t0: number; share: number; left: number | null; at: number } | null>(null)
+  // The time left from the work done since the last part taken from an earlier run (each comes in
+  // a fraction of a second and would make the speed look infinite: the start moves with `resumed`),
+  // updated when the share moves.
+  const timing = useRef<{ f0: number; t0: number; share: number; left: number | null; at: number; resumed: number } | null>(null)
   if (share !== null && phase === 'transcribing') {
     const now = Date.now()
+    const resumed = p?.resumed ?? 0
     const t = timing.current
-    if (!t) timing.current = { f0: share, t0: now, share, left: null, at: now }
+    if (!t || resumed !== t.resumed) timing.current = { f0: share, t0: now, share, left: null, at: now, resumed }
     else if (share !== t.share && t.f0 < 1) {
       const done = (share - t.f0) / (1 - t.f0)
       const left = nextTimeLeft(t.left === null ? null : Math.max(0, t.left - (now - t.at) / 1000), (now - t.t0) / 1000, done)

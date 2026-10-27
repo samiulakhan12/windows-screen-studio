@@ -148,6 +148,20 @@ function Row({
   const whyId = `speech-why-${m.id}`
   const inUseId = `speech-inuse-${m.id}`
   const failed = s.state === 'failed' ? downloadFailed(m.id, s, state.disk.free) : null
+  // Focus never falls to the page when the row's buttons change (§7.7): after a change of state, of
+  // the failure's button or of the Remove question (not on mount), the row's action takes the
+  // focus if it fell to the body, else its status line (Checking… has no button).
+  const actionRef = useRef<HTMLButtonElement>(null)
+  const statusRef = useRef<HTMLParagraphElement>(null)
+  const shown = `${s.state}:${failed?.action ?? ''}:${asking}`
+  const lastShown = useRef(shown)
+  useEffect(() => {
+    if (lastShown.current === shown) return
+    lastShown.current = shown
+    const active = document.activeElement
+    if (active && active !== document.body) return
+    ;(actionRef.current ?? statusRef.current)?.focus({ preventScroll: true })
+  }, [shown])
 
   return (
     <div className="speech-model" data-model={m.id} data-state={s.state}>
@@ -169,7 +183,7 @@ function Row({
       <p className="speech-purpose">{tierPurpose(m.tier, true)}</p>
       <p className="speech-licence">{SPEECH_COPY.licenceLine}</p>
       {status && s.state !== 'installed' && (
-        <p className={`speech-status ${s.state === 'failed' || s.state === 'damaged' ? 'error' : ''}`} data-testid="speech-status">
+        <p className={`speech-status ${s.state === 'failed' || s.state === 'damaged' ? 'error' : ''}`} data-testid="speech-status" ref={statusRef} tabIndex={-1}>
           {status}
         </p>
       )}
@@ -207,6 +221,7 @@ function Row({
         <div className="speech-actions">
           {(s.state === 'missing' || (s.state === 'failed' && failed?.action !== 'check-again')) && (
             <button
+              ref={actionRef}
               type="button"
               className="btn settings-small"
               aria-label={blocked ? dl.name : s.state === 'failed' ? `${SPEECH_COPY.tryAgain}: ${dl.name}` : dl.name}
@@ -218,18 +233,18 @@ function Row({
             </button>
           )}
           {failed?.action === 'check-again' && (
-            <button type="button" className="btn settings-small" onClick={() => loadSpeechState(true)}>
+            <button ref={actionRef} type="button" className="btn settings-small" onClick={() => loadSpeechState(true)}>
               {SPEECH_COPY.checkAgain}
             </button>
           )}
           {s.state === 'downloading' && (
-            <button type="button" className="btn ghost settings-small" onClick={() => act(window.api.cancelSpeechDownload(m.id))}>
+            <button ref={actionRef} type="button" className="btn ghost settings-small" onClick={() => act(window.api.cancelSpeechDownload(m.id))}>
               {SPEECH_COPY.cancel}
             </button>
           )}
           {s.state === 'stopped' && (
             <>
-              <button type="button" className="btn settings-small" onClick={download}>
+              <button ref={actionRef} type="button" className="btn settings-small" onClick={download}>
                 {SPEECH_COPY.continue}
               </button>
               <button type="button" className="btn ghost settings-small" onClick={() => act(window.api.cancelSpeechDownload(m.id, true))}>
@@ -238,13 +253,14 @@ function Row({
             </>
           )}
           {s.state === 'damaged' && (
-            <button type="button" className="btn settings-small" aria-label={`${SPEECH_COPY.downloadAgain}: ${dl.name}`} onClick={download}>
+            <button ref={actionRef} type="button" className="btn settings-small" aria-label={`${SPEECH_COPY.downloadAgain}: ${dl.name}`} onClick={download}>
               {SPEECH_COPY.downloadAgain}
             </button>
           )}
           {installed && (
             <>
               <button
+                ref={actionRef}
                 type="button"
                 className="btn ghost danger settings-small"
                 data-focus-key={`speech-remove:${m.id}`}

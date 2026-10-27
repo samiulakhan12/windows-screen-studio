@@ -42,12 +42,21 @@ const focused: El[] = []
 const runs: ReturnType<typeof deferred<unknown>>[] = []
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** What the main process answers; the speech state rejects by default, as before workstream B's handlers exist. */
-const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: () => Promise<void> } = {
+const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: (id: string) => Promise<void>; confirm: boolean } = {
   providers: () => Promise.resolve([OPENAI]),
   speech: () => Promise.reject(new Error("Error invoking remote method 'speech:state': Error: No handler registered for 'speech:state'")),
-  download: () => Promise.resolve()
+  download: () => Promise.resolve(),
+  confirm: true
 }
-const calls: { transcribe: unknown[]; setDefault: string[]; download: string[]; cancelDownload: unknown[] } = { transcribe: [], setDefault: [], download: [], cancelDownload: [] }
+const calls: { transcribe: unknown[]; setDefault: string[]; download: string[]; cancelDownload: unknown[]; confirm: string[] } = {
+  transcribe: [],
+  setDefault: [],
+  download: [],
+  cancelDownload: [],
+  confirm: []
+}
+/** The job's progress listener (the main process's progress lines go to it). */
+let progress: ((p: TranscribeProgress) => void) | null = null
 vi.stubGlobal('window', {
   api: {
     listAiProviders: () => replies.providers(),
@@ -59,7 +68,7 @@ vi.stubGlobal('window', {
     },
     downloadSpeechModel: (id: string) => {
       calls.download.push(id)
-      return replies.download()
+      return replies.download(id)
     },
     cancelSpeechDownload: (...args: unknown[]) => {
       calls.cancelDownload.push(args)
@@ -71,9 +80,18 @@ vi.stubGlobal('window', {
       runs.push(d)
       return d.promise
     },
-    onTranscribeProgress: (_l: (p: TranscribeProgress) => void) => () => undefined
+    onTranscribeProgress: (l: (p: TranscribeProgress) => void) => {
+      progress = l
+      return () => {
+        if (progress === l) progress = null
+      }
+    },
+    cancelTranscription: () => Promise.resolve()
   },
-  confirm: () => true,
+  confirm: (question: string) => {
+    calls.confirm.push(question)
+    return replies.confirm
+  },
   addEventListener: () => undefined,
   removeEventListener: () => undefined
 })
@@ -87,6 +105,12 @@ vi.stubGlobal(
 )
 
 let store: { state: Record<string, unknown>; update: (fn: (p: Record<string, unknown>) => Record<string, unknown>) => void }
+const editor = {
+  get store() {
+    return store
+  },
+  player: {}
+}
 
 vi.doMock('react', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -124,8 +148,8 @@ vi.doMock('react', async (importOriginal) => ({
     })
   },
   useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => get(),
-  // useEditor() is the only context the rendered components read.
-  useContext: () => ({ store, player: {} })
+  // useEditor() is the only context the rendered components read: one object, as a provider gives.
+  useContext: () => editor
 }))
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
@@ -297,9 +321,11 @@ describe('CaptionsPanel: captions on this PC', () => {
     calls.setDefault.length = 0
     calls.download.length = 0
     calls.cancelDownload.length = 0
+    calls.confirm.length = 0
     focused.length = 0
     replies.providers = () => Promise.resolve([OPENAI])
     replies.download = () => Promise.resolve()
+    replies.confirm = true
     store.state = { ...store.state, duration: 1200, clips: [{ id: 'c', start: 0, end: 1200, speed: 1 }] }
   })
   const show = async (): Promise<El[]> => {
@@ -385,6 +411,34 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(has(out, 'Runs on this PC: nothing is uploaded and it costs nothing.')).toBe(true)
   })
 
+  it('a chosen Most accurate that is removed or damaged falls back to a listed chip: one is always checked (UI-10)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'installed' } } }))
+    let out = await show()
+    ;(chips(out)[3].props.onClick as () => void)()
+    out = render(m.panel)
+    expect(local(out)?.props['data-model']).toBe('whisper-turbo')
+    // Settings removes turbo (the main process moves the default to an installed model).
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    ;(m.speech as unknown as { loadSpeechState(force: boolean): void }).loadSpeechState(true)
+    await flush()
+    out = render(m.panel)
+    const checked = (o: El[]): El[] => chips(o).filter((c) => c.props['aria-checked'])
+    expect(checked(out).map((c) => [c.props['data-model'], c.props.tabIndex])).toEqual([['whisper-base', 0]])
+    expect(local(out)?.props['data-model']).toBe('whisper-base')
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(buttons(out).some((b) => b.startsWith('Download'))).toBe(false)
+  })
+
+  it('a damaged Most accurate as the default falls back the same way (UI-10)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-turbo', statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'damaged' } } }))
+    const out = await show()
+    expect(chips(out).filter((c) => c.props['aria-checked']).map((c) => c.props['data-model'])).toEqual(['whisper-base'])
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(buttons(out).some((b) => b.startsWith('Download'))).toBe(false)
+  })
+
   it('needs-model with another model downloaded offers "Make them now with …", which makes captions with it', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-tiny', statuses: { 'whisper-tiny': { state: 'installed' } } }))
@@ -397,6 +451,45 @@ describe('CaptionsPanel: captions on this PC', () => {
     click(out, 'Make them now with Fast (downloaded)')
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-tiny', source: 'auto' }])
     expect(calls.download).toEqual([])
+    // It selected that chip (UI-7): Regenerate reopens on Fast, ready, not on Accurate's download.
+    runs[runs.length - 1].resolve({ provider: 'local', model: 'whisper-tiny', language: 'en', createdAt: 'x', segments: [{ id: 't1', start: 1, end: 2, text: 'hi' }] })
+    await flush()
+    out = render(m.panel)
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-tiny')
+    expect(local(out)?.props['data-state']).toBe('ready')
+    store.state = { ...store.state, transcript: undefined }
+  })
+
+  it('"Make them now with …" leaves the chip alone when the user keeps the captions (UI-7)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-tiny', statuses: { 'whisper-tiny': { state: 'installed' } } }))
+    store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] } }
+    let out = await show()
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    ;(chips(out)[2].props.onClick as () => void)()
+    out = render(m.panel)
+    replies.confirm = false
+    click(out, 'Make them now with Fast (downloaded)')
+    out = render(m.panel)
+    expect(calls.transcribe).toEqual([])
+    expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-small')
+    store.state = { ...store.state, transcript: undefined }
+  })
+
+  it('arrow keys on the Quality chips choose a chip and go no further: the playhead does not step (UI-5)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState())
+    let out = await show()
+    const group = out.find((e) => e.props.role === 'radiogroup')!
+    const stopped: string[] = []
+    ;(group.props.onKeyDown as (e: unknown) => void)({ key: 'ArrowRight', preventDefault: () => stopped.push('default'), stopPropagation: () => stopped.push('propagation') })
+    // The editor's window keydown handler steps the playhead on Left and Right: the event must not reach it.
+    expect(stopped).toEqual(['default', 'propagation'])
+    out = render(m.panel)
+    expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-small')
   })
 
   it('the compatible build and an estimate longer than the recording each get a line', async () => {
@@ -472,6 +565,89 @@ describe('CaptionsPanel: captions on this PC', () => {
       click(out, button)
       out = render(m.panel)
       expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-tiny')
+    }
+  })
+
+  it('a download that failed for lack of space: Check again while it is short, then Try again downloads (UI-1)', async () => {
+    replies.providers = () => Promise.resolve([])
+    const failed: Status = { state: 'failed', received: 0, total: 60e6, error: 'disk', message: '' }
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': failed }, disk: { free: 10e6, used: 0 } }))
+    let out = await show()
+    expect(local(out)?.props['data-state']).toBe('download-failed')
+    expect(has(out, 'Not enough free space: the model needs 60 MB and the disk has 10 MB free.')).toBe(true)
+    // The main process keeps the failure until a new download starts: once the disk has room, the
+    // button that read the state again becomes one that downloads.
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': failed }, disk: { free: 50e9, used: 0 } }))
+    click(out, 'Check again')
+    await flush()
+    out = render(m.panel)
+    expect(has(out, 'There was not enough free space: the model needs 60 MB. The disk now has 50 GB free.')).toBe(true)
+    expect(buttons(out)).not.toContain('Check again')
+    click(out, 'Try again')
+    expect(calls.download).toEqual(['whisper-base'])
+  })
+
+  it('"N of M parts are kept" only for the tier and language whose parts were kept (UI-9)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-tiny': { state: 'installed' } } }))
+    let out = await show()
+    click(out, 'Generate captions')
+    progress!({ projectId: 'p1', phase: 'transcribing', done: 3, total: 6, fraction: 0.55 })
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('running')
+    click(out, 'Cancel')
+    await flush()
+    out = render(m.panel)
+    const KEPT = 'Stopped. 3 of 6 parts are kept: Generate captions continues from there.'
+    expect(local(out)?.props['data-state']).toBe('cancelled')
+    expect(has(out, KEPT)).toBe(true)
+    // The parts are cached for Standard and the language asked for: another tier starts from scratch.
+    ;(chips(out)[0].props.onClick as () => void)()
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(has(out, KEPT)).toBe(false)
+    ;(chips(out)[1].props.onClick as () => void)()
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('cancelled')
+    // So does another spoken language.
+    const language = out.find((e) => e.props['aria-label'] === 'Spoken language')!
+    ;(language.props.onChange as (e: unknown) => void)({ target: { value: 'de' } })
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(has(out, KEPT)).toBe(false)
+  })
+
+  it('a resumed job counts its time left from the last part taken from the earlier run (UI-2)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    store.state = { ...store.state, duration: 3600, clips: [{ id: 'c', start: 0, end: 3600, speed: 1 }] }
+    let out = await show()
+    let clock = 1_000_000
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock)
+    try {
+      click(out, 'Generate captions')
+      const line = (seconds: number, p: Partial<TranscribeProgress>): void => {
+        clock = 1_000_000 + seconds * 1000
+        progress!({ projectId: 'p1', phase: 'transcribing', done: 0, total: 6, ...p })
+        out = render(m.panel)
+      }
+      // Six parts of 600 s; the first three come from the cache, each within a fraction of a second.
+      line(0, { phase: 'loading', fraction: 0 })
+      line(0.5, { done: 0, fraction: 1 / 6, resumed: 1 })
+      line(0.7, { done: 1, fraction: 1 / 6, resumed: 1 })
+      line(0.8, { done: 1, fraction: 2 / 6, resumed: 2 })
+      line(1.0, { done: 2, fraction: 2 / 6, resumed: 2 })
+      line(1.1, { done: 2, fraction: 3 / 6, resumed: 3 })
+      line(1.3, { done: 3, fraction: 3 / 6, resumed: 3 })
+      expect(has(out, 'Continuing: 3 of 6 parts were already done.')).toBe(true)
+      // Then this PC makes each part in 240 s: after 60 s, 720 - 60 = 660 s are left (11 min; the
+      // smoothed estimate rounds up to whole minutes).
+      for (let k = 1; k <= 3; k++) line(1.3 + 20 * k, { done: 3, fraction: 3 / 6 + ((20 * k) / 240) * (1 / 6), resumed: 3 })
+      const left = out.filter((e) => e.type === 'span' && e.props.className === 'hint').map((e) => textOf(e.props.children))
+      expect(left).toHaveLength(1)
+      expect(left[0]).toMatch(/^about 1[12] min left$/)
+    } finally {
+      now.mockRestore()
     }
   })
 
@@ -551,6 +727,79 @@ describe('CaptionsPanel: captions on this PC', () => {
     out = render(m.panel, host('p1'))
     expect(calls.setDefault).toEqual(['whisper-base'])
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-base', source: 'auto' }])
+  })
+
+  it('download, then captions asks before replacing captions, like every other Regenerate (UI-8)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    store.state = { ...store.state, transcript: { provider: 'local', model: 'whisper-base', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] } }
+    let out = await show()
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    ;(chips(out)[2].props.onClick as () => void)()
+    out = render(m.panel)
+    replies.confirm = false
+    click(out, 'Download 190 MB and make captions')
+    expect(calls.confirm).toHaveLength(1)
+    expect(calls.download).toEqual([])
+    replies.confirm = true
+    click(out, 'Download 190 MB and make captions')
+    expect(calls.confirm).toHaveLength(2)
+    expect(calls.download).toEqual(['whisper-small'])
+    store.state = { ...store.state, transcript: undefined }
+  })
+
+  it('while one model downloads, another tier cannot be downloaded: the first one still makes captions (UI-3)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState())
+    const dl = deferred<void>()
+    replies.download = () => dl.promise
+    render(m.panel, host('p1'))
+    await flush()
+    let out = render(m.panel, host('p1'))
+    click(out, 'Download 60 MB and make captions')
+    // The main process says it is downloading; the user picks Fast.
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'downloading', received: 20e6, total: 60e6, bytesPerSecond: 0 } } }))
+    ;(m.speech as unknown as { loadSpeechState(force: boolean): void }).loadSpeechState(true)
+    await flush()
+    out = render(m.panel, host('p1'))
+    ;(chips(out)[0].props.onClick as () => void)()
+    out = render(m.panel, host('p1'))
+    const button = byTest(out, 'local-download')[0]
+    expect(button.props['aria-disabled']).toBe('true')
+    expect(button.props['aria-describedby']).toBe('local-download-why')
+    const why = out.find((e) => e.props.id === 'local-download-why')
+    expect(textOf(why?.props.children)).toBe('Standard (Whisper base) is downloading, and one speech model downloads at a time: download Fast once it is done.')
+    click(out, 'Download 44 MB and make captions')
+    expect(calls.download).toEqual(['whisper-base'])
+    // Standard's "then make captions" still stands.
+    dl.resolve()
+    await flush()
+    await flush()
+    expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-base', source: 'auto' }])
+  })
+
+  it('download, then captions keeps the pending intent when another model is downloading (UI-3)', async () => {
+    const speech = m.speech as unknown as {
+      loadSpeechState(force: boolean): void
+      downloadThenCaptions(projectId: string, model: string, options: unknown): Promise<void>
+      captionsIntent(projectId: string): { model: string } | null
+    }
+    replies.speech = () => Promise.resolve(speechState())
+    speech.loadSpeechState(true)
+    await flush()
+    replies.download = () => new Promise(() => undefined)
+    void speech.downloadThenCaptions('p1', 'whisper-base', { providerId: 'local' })
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'downloading', received: 0, total: 60e6, bytesPerSecond: 0 } } }))
+    speech.loadSpeechState(true)
+    await flush()
+    // The main process would refuse it: the intent of the running download is not replaced.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    void speech.downloadThenCaptions('p1', 'whisper-tiny', { providerId: 'local' })
+    await flush()
+    warn.mockRestore()
+    expect(calls.download).toEqual(['whisper-base'])
+    expect(speech.captionsIntent('p1')?.model).toBe('whisper-base')
   })
 
   it('download, then captions: nothing starts once the editor closed', async () => {

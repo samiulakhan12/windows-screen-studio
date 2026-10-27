@@ -31,6 +31,7 @@ describe('the Captions tab names a model by its tier first', () => {
       namesTierFirst(copy.downloadButton(id).label)
       namesTierFirst(copy.downloadButton(id).name)
       namesTierFirst(copy.useInstalledLabel(id))
+      namesTierFirst(copy.downloadBusyLine(id, 'whisper-base'))
       namesTierFirst(copy.downloadingLine(id, { state: 'downloading', received: 21e6, total: 60e6, bytesPerSecond: 4.2e6 }))
       namesTierFirst(copy.downloadFailed(id, { state: 'failed', received: 0, total: 0, error: 'missing', message: '' }, null).text)
       namesTierFirst(copy.memoryWarning(id, 1e6) ?? '')
@@ -79,6 +80,7 @@ describe('every state has its copy', () => {
     expect(copy.stoppedLine({ received: 21e6, total: 60e6 })).toBe('Download stopped at 21 of 60 MB.')
     expect(copy.deletePartLabel(21e6)).toBe('Delete the 21 MB downloaded')
     expect(copy.continueDownload).toBe('Continue download and make captions')
+    expect(copy.downloadBusyLine('whisper-base', 'whisper-tiny')).toBe('Standard (Whisper base) is downloading, and one speech model downloads at a time: download Fast once it is done.')
   })
 
   it('every download failure', () => {
@@ -95,7 +97,22 @@ describe('every state has its copy', () => {
       action: 'choose-tier'
     })
     expect(fail('mismatch').text).toBe('The speech model could not be downloaded: The downloaded file was not the expected one, so it was deleted and not used.')
-    expect(fail('disk')).toEqual({ text: 'The speech model could not be downloaded: Not enough free space: the model needs 60 MB and the disk has 1.0 GB free.', action: 'check-again' })
+    // Still too little space: Check again reads it again; once there is room, Try again downloads (UI-1).
+    expect(copy.downloadFailed('whisper-base', { state: 'failed', received: 0, total: 60e6, error: 'disk', message: '' }, 50e6)).toEqual({
+      text: 'The speech model could not be downloaded: Not enough free space: the model needs 60 MB and the disk has 50 MB free.',
+      action: 'check-again'
+    })
+    expect(fail('disk')).toEqual({
+      text: 'The speech model could not be downloaded: There was not enough free space: the model needs 60 MB. The disk now has 1.0 GB free.',
+      action: 'try-again'
+    })
+    // What is already here counts: 40 of 60 MB received needs 20 MB and the spare.
+    expect(copy.downloadFailed('whisper-base', { state: 'failed', received: 40e6, total: 60e6, error: 'disk', message: '' }, 100e6).action).toBe('try-again')
+    // The free space cannot be read: reading it again would not help, so Try again.
+    expect(copy.downloadFailed('whisper-base', { state: 'failed', received: 0, total: 60e6, error: 'disk', message: '' }, null)).toEqual({
+      text: 'The speech model could not be downloaded: Not enough free space: the model needs 60 MB.',
+      action: 'try-again'
+    })
     expect(fail('other', 0, undefined, 'Boom.').text).toBe('The speech model could not be downloaded: Boom.')
     for (const e of ['network', 'http', 'refused', 'mismatch', 'other'] as const) expect(fail(e).action).toBe('try-again')
   })

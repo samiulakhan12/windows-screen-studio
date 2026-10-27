@@ -1,8 +1,9 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import type { TranscribeOptions } from '../../../shared/api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechModelView, type SpeechState } from '../../../shared/api/speech'
-import { speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
+import { DEFAULT_SPEECH_MODEL, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
 import { badgeTitle, readyNotice, SPEECH_COPY } from '../../../shared/speech/speechCopy'
+import { localModel } from '../../../shared/speech/transcriber'
 import type { Transcript } from '../../../shared/types'
 import { cancelTranscription, ipcMessage, onTranscriptionJob, transcribe, transcriptionJob } from './captionItems'
 import type { EditorServices } from './context'
@@ -89,14 +90,35 @@ export function useSpeechState(): SpeechRead {
 export const availableState = (r: SpeechRead): SpeechState | null => (r.status === 'ready' && r.state.engine.available ? r.state : null)
 
 /** The view of model `id`. */
-export const modelView = (state: SpeechState, id: SpeechModelId): SpeechModelView | null => state.models.find((m) => m.id === id) ?? null
+export const modelView = (state: Pick<SpeechState, 'models'>, id: SpeechModelId): SpeechModelView | null => state.models.find((m) => m.id === id) ?? null
+
+/** The model other than `id` that is downloading or being checked, or null: the main process downloads one at a time. */
+export const otherDownload = (state: Pick<SpeechState, 'models'>, id: SpeechModelId): SpeechModelView | null =>
+  state.models.find((m) => m.id !== id && (m.status.state === 'downloading' || m.status.state === 'verifying')) ?? null
 
 /* ---------- the quality chosen for this session ---------- */
 
 let sessionModel: SpeechModelId | null = null
 
-/** The model of the Captions tab's quality chips: the session's choice, else the default model. Never changes the default. */
-export const chosenModel = (state: Pick<SpeechState, 'defaultModel'>): SpeechModelId => sessionModel ?? state.defaultModel
+/**
+ * Whether the quality chips offer `m`: every tier but Most accurate, which only once downloaded
+ * and allowed here, or while it is `chosen` and downloading (Download again of a damaged one).
+ */
+export const offered = (m: SpeechModelView, chosen: SpeechModelId): boolean =>
+  m.tier !== 'best' || (m.allowed && (m.status.state === 'installed' || (m.id === chosen && (m.status.state === 'downloading' || m.status.state === 'verifying'))))
+
+/**
+ * The model of the Captions tab's quality chips: the first the chips offer of the session's
+ * choice, the default model and localModel's pick, else the catalog default (a removed or damaged
+ * Most accurate is not offered, so one listed chip is always checked). Never changes the default.
+ */
+export function chosenModel(state: Pick<SpeechState, 'defaultModel' | 'models'>): SpeechModelId {
+  for (const id of [sessionModel, state.defaultModel, localModel(state).model]) {
+    const m = id ? modelView(state, id) : null
+    if (m && offered(m, m.id)) return m.id
+  }
+  return DEFAULT_SPEECH_MODEL
+}
 
 export function chooseModel(id: SpeechModelId): void {
   if (!speechModel(id)) return
@@ -138,6 +160,13 @@ export function dropIntent(projectId: string): void {
  * Never starts captions for another project. A failure while another tab is open gives a notice.
  */
 export async function downloadThenCaptions(projectId: string, model: SpeechModelId, options: TranscribeOptions): Promise<void> {
+  // The main process would refuse it while another model downloads: that download keeps its intent
+  // (the Captions tab does not offer this; a click on a stale state is dropped here).
+  const busy = read.status === 'ready' ? otherDownload(read.state, model) : null
+  if (busy) {
+    console.warn(`The speech model ${model} was not downloaded: ${busy.id} is downloading.`)
+    return
+  }
   intents.set(projectId, { model, options: { ...options, providerId: LOCAL_TRANSCRIBER_ID, model } })
   sessionModel = model
   emit()
@@ -177,7 +206,8 @@ export interface LocalRun {
 }
 
 const runs = new Map<string, LocalRun>()
-const kept = new Map<string, { kept: number; parts: number }>()
+/** Parts kept by a Cancel, with the model and language ('' detects) they were made with: the part cache's key. */
+const kept = new Map<string, { kept: number; parts: number; model: string; language: string }>()
 
 /** The run that made `transcript` in this session, or null (the transcript stores neither detection nor time). */
 export function localRun(projectId: string, transcript: Pick<Transcript, 'provider' | 'createdAt'> | undefined): LocalRun | null {
@@ -185,8 +215,14 @@ export function localRun(projectId: string, transcript: Pick<Transcript, 'provid
   return run && transcript?.provider === 'local' && transcript.createdAt === run.createdAt ? run : null
 }
 
-/** Parts kept by the last Cancel of project `projectId` (shown until the next run), or null. */
-export const keptParts = (projectId: string): { kept: number; parts: number } | null => kept.get(projectId) ?? null
+/**
+ * Parts kept by the last Cancel of project `projectId` (shown until the next run), or null. Only
+ * a run with the same `model` and `language` ('' detects) reuses them: the cache is keyed by both.
+ */
+export function keptParts(projectId: string, model: string, language = ''): { kept: number; parts: number } | null {
+  const rec = kept.get(projectId)
+  return rec && rec.model === model && rec.language === language ? rec : null
+}
 
 /**
  * Makes captions on this PC (captionItems.transcribe, one undo step). When it ends while another
@@ -214,7 +250,8 @@ export async function startLocalCaptions(services: EditorServices, options: Tran
 /** Cancel of a job on this PC: remembers how many parts were finished, so the tab can say they are kept. */
 export function cancelLocalCaptions(): void {
   const job = transcriptionJob()
-  if (job?.running && job.local && job.progress && job.progress.total > 0) kept.set(job.projectId, { kept: Math.min(job.progress.done, job.progress.total), parts: job.progress.total })
+  if (job?.running && job.local && job.progress && job.progress.total > 0)
+    kept.set(job.projectId, { kept: Math.min(job.progress.done, job.progress.total), parts: job.progress.total, model: job.local.model, language: job.local.language })
   cancelTranscription()
   emit()
 }

@@ -850,7 +850,10 @@ done summary.
   its state: "Fast · 44 MB", "Standard · Downloaded", "Accurate · 190 MB" (accessible names "Fast,
   44 megabyte download", "Standard, downloaded"); nothing depends on a title tooltip. A chip is
   the choice **for this app session only** (kept like `remembered.provider`, starting at
-  `defaultModel`); it never calls `setDefaultSpeechModel`. Under the chips: the chosen tier's
+  `defaultModel`); it never calls `setDefaultSpeechModel`. A choice the chips no longer list (Most
+  accurate removed in Settings, or a damaged Most accurate default) falls back to the default
+  model, else `localModel`'s pick, else Standard, so one listed chip is always checked
+  (`speechState.offered`, also kept while its own Download again runs). Under the chips: the chosen tier's
   purpose ("Quickest; for slower PCs. Less accurate with accents and noise." / "Recommended for
   most recordings." / "More accurate, also for other languages; about 3.7 times slower than
   Standard." / "Most accurate, but slower than playing the recording on most PCs."), then
@@ -874,14 +877,14 @@ done summary.
 |---|---|
 | `checking` | "Checking this PC…" (§7.1). |
 | `no-sound` | The recording has no sound: today's "This recording has no sound to transcribe." No download is offered. |
-| `needs-model` | Title "Make captions on this PC". Body: "Free and private: the sound never leaves this PC, and no key or account is needed. Flown first downloads the speech model for {Tier (Model)} once ({size}, from Hugging Face) and checks it before use. Then this {duration} recording takes {estimate}." The only primary button: "Download {size} and make captions" (accessible name "Download {Tier} ({Model}), {size in words}, and make captions"). **When another model is downloaded** (`localModel`), a secondary button "Make them now with {its tier} (downloaded)" (`data-testid="local-use-installed"`; selects that chip and starts). Small print, plain text (no link: no open-URL channel): "Whisper by OpenAI, MIT licence · huggingface.co/ggerganov/whisper.cpp". **No key provider that can transcribe:** today's key block is not shown; under the card one secondary link, "Prefer the cloud? Use your own OpenAI or Gemini key…" (opens Settings at `ai`); "Your providers could not be read: {error}" and [Check again] appear only when reading the providers failed. **Blocked download:** not enough space: the button is `aria-disabled="true"` (it keeps focus) and a visible line linked by `aria-describedby` says "Not enough free space: the model needs {size} and the disk has {free} free." with [Check again]; offline (`navigator.onLine` false, checked before the request): "This PC is offline. Connect to download the speech model ({size}); once downloaded, captions work offline." |
+| `needs-model` | Title "Make captions on this PC". Body: "Free and private: the sound never leaves this PC, and no key or account is needed. Flown first downloads the speech model for {Tier (Model)} once ({size}, from Hugging Face) and checks it before use. Then this {duration} recording takes {estimate}." The only primary button: "Download {size} and make captions" (accessible name "Download {Tier} ({Model}), {size in words}, and make captions"). **When another model is downloaded** (`localModel`), a secondary button "Make them now with {its tier} (downloaded)" (`data-testid="local-use-installed"`; selects that chip and starts). Small print, plain text (no link: no open-URL channel): "Whisper by OpenAI, MIT licence · huggingface.co/ggerganov/whisper.cpp". **No key provider that can transcribe:** today's key block is not shown; under the card one secondary link, "Prefer the cloud? Use your own OpenAI or Gemini key…" (opens Settings at `ai`); "Your providers could not be read: {error}" and [Check again] appear only when reading the providers failed. **Blocked download:** not enough space: the button is `aria-disabled="true"` (it keeps focus) and a visible line linked by `aria-describedby` says "Not enough free space: the model needs {size} and the disk has {free} free." with [Check again]; offline (`navigator.onLine` false, checked before the request): "This PC is offline. Connect to download the speech model ({size}); once downloaded, captions work offline."; another model downloading or being checked (the main process downloads one at a time): "{Tier (Model)} is downloading, and one speech model downloads at a time: download {Tier} once it is done.", which also blocks [Continue download and make captions], [Try again] and [Download again]. |
 | `downloading` | "Downloading {Tier (Model)}… 21 of 60 MB · 4.2 MB/s · about 10 s left", a bar, [Cancel]. Note: "Captions start as soon as it is here. You can keep editing." While `retrying`: "The connection dropped: trying again ({attempt} of {of})…". |
 | `verifying` | "Checking the download…". Focus moves to the card's heading (`tabIndex=-1`) as Cancel disappears, never to the body. Then the model becomes the default (§3.1) and captions start by themselves (the click asked for captions). |
 | `stopped` | "Download stopped at 21 of 60 MB." [Continue download and make captions] [Delete the 21 MB downloaded]. |
-| `download-failed` (role=alert) | "The speech model could not be downloaded: {reason}". `network`: "Flown could not reach huggingface.co. Check the internet connection; the {received} already here are kept." (nothing received: "Flown could not reach huggingface.co. Check the internet connection.") [Try again]. `http`: "Hugging Face answered with an error (HTTP {status}). Try again later." [Try again]. `refused`: "Hugging Face or your network refused the download (HTTP 403). A proxy or firewall may be blocking it." [Try again]. `missing`: "{Tier (Model)} is no longer where this version of Flown downloads it from. Updating Flown fixes this." [Choose another tier] (focuses the chips), plus [Use an AI provider instead] when a key provider can transcribe. `mismatch`: "The downloaded file was not the expected one, so it was deleted and not used." [Try again]. `disk`: "Not enough free space: the model needs {size} and the disk has {free} free." [Check again]. `other`: "{message}" [Try again]. |
+| `download-failed` (role=alert) | "The speech model could not be downloaded: {reason}". `network`: "Flown could not reach huggingface.co. Check the internet connection; the {received} already here are kept." (nothing received: "Flown could not reach huggingface.co. Check the internet connection.") [Try again]. `http`: "Hugging Face answered with an error (HTTP {status}). Try again later." [Try again]. `refused`: "Hugging Face or your network refused the download (HTTP 403). A proxy or firewall may be blocking it." [Try again]. `missing`: "{Tier (Model)} is no longer where this version of Flown downloads it from. Updating Flown fixes this." [Choose another tier] (focuses the chips), plus [Use an AI provider instead] when a key provider can transcribe. `mismatch`: "The downloaded file was not the expected one, so it was deleted and not used." [Try again]. `disk`: "Not enough free space: the model needs {size} and the disk has {free} free." [Check again] while the disk is still too full; once it has room (or its free space cannot be read) "There was not enough free space: the model needs {size}. The disk now has {free} free." [Try again], the same button, so focus stays on it (the main process keeps the failure until a new download starts). `other`: "{message}" [Try again]. |
 | `ready` | The chips, language, sound, [Generate captions]. Hint (replacing the billing sentence for local): "Runs on this PC: nothing is uploaded and it costs nothing." Memory warning (role=status), only for Accurate and Most accurate when free memory < `memoryNeedMB`: "{Tier} needs about {need} of free memory; this PC has {free} free right now. Close other apps or choose {quicker tier}." |
 | `running` | Phase: "Loading the speech model…" / "Preparing the sound…" / "Making captions on this PC… {at} of {duration}" / "Finishing…" / "Stopping…"; then "about {left} left" or "Working out the time left…"; a bar; "Heard: “{preview}”" (one muted line, ellipsis); after a resume "Continuing: 3 of 6 parts were already done."; note "You can keep editing. Closing this recording stops the captions; Generate captions continues from there next time." [Cancel]. `data-part` and `data-parts` carry the part in progress (1-based) and the count, for tests. The visible block has no `role=status` or `aria-live` (it changes every second); a hidden announcer speaks phase changes and every 25 % (§7.7). |
-| `cancelled` | After Cancel, when at least one part finished: "Stopped. 3 of 6 parts are kept: Generate captions continues from there." above the `ready` controls; with none finished, plain `ready`. |
+| `cancelled` | After Cancel, when at least one part finished: "Stopped. 3 of 6 parts are kept: Generate captions continues from there." above the `ready` controls; with none finished, or with another tier or spoken language chosen than the stopped run's (the part cache is keyed by both), plain `ready`. |
 | `done` | Right after a run (this session): "{n} captions made on this PC with {Model} ({language}, detected) in {took}. Nothing was uploaded." with the link "Not {language}?" (opens the form with Spoken language focused) only when the language was detected; with a chosen language "({language})" and no link. Reopened later (the transcript stores neither detection nor time): "{n} captions made on this PC with {Model} ({language})." On Fast or Standard with a language other than English: "Smaller models make more mistakes in languages other than English. If these captions need many fixes, try Accurate." |
 | `error` (role=alert, inside the existing "Captions could not be made: {message}" box) | `{message}` is the main process's `localErrorMessage`; the button comes from `localErrorCode(message)`: `damaged` → [Download again ({size})] (downloads the same model, then makes captions); `memory` → [Use {quicker tier}] (selects that chip; none for Fast); `crashed`, `stalled` → [Generate captions again]; `no-model` → back to `needs-model`; `unavailable`, `protocol`, `language`, `blocked` → none. Any other message (`null`) is shown as today ("No speech was found in this recording", "This recording has no sound to transcribe."). |
 
@@ -989,7 +992,9 @@ button. Failure: "The third-party notices could not be shown: {message}".
   default (§3.1); captions start only if that project's editor is still open and the intent still
   pending. Closing that editor drops the intent (`stopAnalyses` has run, and nothing would stop a
   job started then) but lets the download finish; the next open shows `ready` and never starts
-  captions by itself. Captions never start for another project.
+  captions by itself. Captions never start for another project. When the project already has
+  captions, the click on a button that downloads and then makes captions asks the replace
+  question of every Regenerate first; a yes carries to the end of the download.
 - An export started meanwhile runs at normal priority; the running state may show "Exporting now
   slows the captions down." (cut first if time is short).
 
@@ -1007,7 +1012,9 @@ button. Failure: "The third-party notices could not be shown: {message}".
   frees 190 megabytes").
 - Focus never falls to the body when a focused button disappears: Download → Cancel → (verifying)
   the card's heading (`tabIndex=-1`) → Cancel (running) → (done) Regenerate captions…; an inline
-  Remove question takes focus, Esc cancels it.
+  Remove question takes focus, Esc cancels it. In Settings a row whose buttons change passes the
+  focus to its new action (Download → Cancel → Continue …), to its status line while "Checking…"
+  (`tabIndex=-1`), and after a confirmed Remove to the row's Remove, then its Download.
 - A control that cannot act now is `aria-disabled="true"` (still focusable, so the "Generate
   captions" command can focus it), with its reason as visible text linked by `aria-describedby`;
   never a `disabled` button with the reason in a title.
@@ -1665,3 +1672,40 @@ Code review of the merged feature, native engine and build (fixed unless noted):
 - **NATIVE-04** The Rust standard library was not credited (§8): `resources/notices/22-rust-std.txt`.
 - **NATIVE-05** A required build on Windows always failed (§6.1): usable prebuilt speech helpers
   in `native/bin` are reused.
+
+Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
+
+- **INT-T3** Polish's Captions row said "Finishing…" while the speech model loaded:
+  `transcribePhaseText` maps `loading` to `phaseLine('loading')` ("Loading the speech model…").
+- **UI-4** The ring was hidden on the compact rail, whose rule hides every span in a tab button:
+  the ring's rule sets `display: block` and wins on specificity (a stylesheet test checks both).
+- **UI-5** Arrow keys on the Quality chips also stepped the playhead (the editor's window keydown
+  handler): the chips' handler stops the event's propagation after choosing a chip.
+- **UI-1** After a disk-full failure Check again could never get out (main keeps the failure until
+  a new download): `downloadFailed` offers [Try again] once the re-read free space covers the
+  download (`downloadSpaceNeeded`, the main process's 64 MiB spare) or cannot be read.
+- **UI-7** "Make them now with {tier} (downloaded)" started without selecting that chip, so
+  Regenerate reopened on the tier that is not downloaded: `startLocal` selects the model it runs,
+  after the replace question (a "no" leaves the chip alone).
+- **UI-8** Download-then-captions replaced existing captions without the replace question every
+  other Regenerate asks: `LocalAction` gets `confirmReplace` and its download buttons ask at the
+  click.
+- **UI-9** "N of M parts are kept" showed for any tier and language, though the part cache is keyed
+  by both: the kept record stores the run's model and language and `localState` matches them.
+  Not the Sound chip: the job does not carry its source (`captionItems.ts`), and a changed source
+  only makes the line promise parts that are then made again, as before.
+- **UI-10** A chosen Most accurate that was removed or damaged left no chip checked (Tab skipped
+  the group) and offered its 574 MB download: `chosenModel` falls back to a model the chips offer,
+  by one predicate (`offered`) that `chipModels` uses too. The session choice itself is kept, so
+  the chip comes back if that model is downloaded again.
+- **UI-3** While one model downloaded, another tier's card offered its download, which replaced
+  the first one's intent before the main process refused it: the download buttons are blocked with
+  a visible reason (`otherDownload`, `downloadBusyLine`), and `downloadThenCaptions` leaves the
+  running download's intent alone. The refusal itself is not shown in the card: with the buttons
+  blocked it only follows a click on a state not yet updated, and it is logged.
+- **UI-2** A resumed job showed "about 1 s left" throughout: the baseline of the time left was the
+  first cached part, so the later cached parts counted as work done in no time. `LocalRunning`
+  starts it again whenever `resumed` changes, so only this run's work sets the speed.
+- **UI-6** Settings rows let the focus fall to the body when Download became Cancel, Cancel became
+  Continue, or a confirmed Remove closed its question: each row catches it on a change of what it
+  shows (not on mount) and gives it to its action, else its status line.
