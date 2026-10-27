@@ -128,6 +128,18 @@ export function LocalQuality({
     chooseModel(id, language)
     clearTranscriptionError()
   }
+  // "Choose Bengali" removes itself: the focus goes to the checked chip (the Bangla model's), once it is drawn.
+  const [focusChip, setFocusChip] = useState(0)
+  useEffect(() => {
+    if (focusChip) chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()
+  }, [focusChip, chipsRef])
+  const chooseBengali = (): void => {
+    setSpokenLanguage('bn')
+    // The Bangla model, even when another chip was picked for Bengali earlier this session: that is what the line offers.
+    chooseModel(BANGLA_MODEL, 'bn')
+    clearTranscriptionError()
+    setFocusChip((n) => n + 1)
+  }
   const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
     if (!step) return
@@ -170,7 +182,7 @@ export function LocalQuality({
               {bangla.kind === 'detect' && (
                 <>
                   {' '}
-                  <button type="button" className="link" onClick={() => setSpokenLanguage('bn')}>
+                  <button type="button" className="link" onClick={chooseBengali}>
                     {SPEECH_COPY.chooseBengali}
                   </button>
                 </>
@@ -253,8 +265,11 @@ export function LocalAction({
   focusRequest: number
   chipsRef: RefObject<HTMLDivElement>
   onUseProvider: (id: string) => void
-  /** Starts captions with the downloaded `model` (asks before replacing captions); false when the user said no. */
-  onStart: (model: SpeechModelId) => void
+  /**
+   * Starts captions with the downloaded `model` (asks before replacing captions), in `language`
+   * when given (it becomes the Spoken language), else in the Spoken language.
+   */
+  onStart: (model: SpeechModelId, language?: string) => void
   /** Asks before captions replace the current ones (true when there are none); a download that makes captions asks at the click. */
   confirmReplace: () => boolean
 }): JSX.Element | null {
@@ -292,7 +307,11 @@ export function LocalAction({
   const download = (id: SpeechModelId = model): void => {
     if (otherDownload(state, id) || !confirmReplace()) return
     clearTranscriptionError()
-    void downloadThenCaptions(project.id, id, { ...options, providerId: LOCAL_TRANSCRIBER_ID, model: id })
+    // A model made for one language (the Bangla model, from its error card) makes captions in it,
+    // whatever the Spoken language became since: the form says so too.
+    const language = ownLanguage(id, options.language)
+    if (language !== options.language) setSpokenLanguage(language ?? '')
+    void downloadThenCaptions(project.id, id, { ...options, ...(language ? { language } : {}), providerId: LOCAL_TRANSCRIBER_ID, model: id })
   }
   // While another model downloads, the buttons that download `id` are aria-disabled with this line.
   const busyProps = (id: SpeechModelId): { 'aria-disabled'?: 'true'; 'aria-describedby'?: string } =>
@@ -523,7 +542,7 @@ export function LocalAction({
                 </button>
               )}
               {(code === 'crashed' || code === 'stalled') && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => onStart(failedModel)}>
+                <button ref={primaryRef} type="button" className="btn" onClick={() => onStart(failedModel, ownLanguage(failedModel, options.language))}>
                   {SPEECH_COPY.generateAgain}
                 </button>
               )}
@@ -562,6 +581,17 @@ export function LocalAction({
 }
 
 const sizeOf = (id: SpeechModelId): string => sizeWords(speechModel(id)!.bytes)
+
+/**
+ * The language captions with `id` are made in: a model made for one language (the Bangla model)
+ * always uses its own, keeping `spoken` when it already names it ("bn-BD"); the others use
+ * `spoken` ('' or undefined detects).
+ */
+export function ownLanguage(id: SpeechModelId, spoken: string | undefined): string | undefined {
+  const own = speechModel(id)?.language
+  if (!own) return spoken
+  return spoken && spoken.trim().split('-')[0].toLowerCase() === own ? spoken : own
+}
 
 /* ---------- running ---------- */
 
@@ -653,20 +683,23 @@ export function banglaOfferApplies(state: Pick<SpeechState, 'models' | 'engine'>
 }
 
 /**
- * The offer under that summary: why the Bangla model is better, and one button that downloads it
- * and makes the captions again ("Download Bangla model (539 MB) and make captions"), or makes them
- * again once it is here.
+ * The offer under that summary: why the Bangla model is better, and one button that follows the
+ * model's status: it downloads it and makes the captions again ("Download Bangla model (539 MB)
+ * and make captions"; a stopped or failed download continues), makes them again once it is here,
+ * and only shows the download while one runs or is checked (started in Settings or from another
+ * recording: nothing here would start captions when it ends, so nothing is promised).
  */
 export function BanglaOffer({ state, onUse }: { state: SpeechState; onUse: () => void }): JSX.Element | null {
   const bangla = modelView(state, BANGLA_MODEL)
   if (!bangla) return null
   const installed = bangla.status.state === 'installed'
+  const busy = bangla.status.state === 'downloading' || bangla.status.state === 'verifying'
   const button = downloadButton(bangla.id)
   return (
-    <div className="local-bangla-offer" data-testid="bangla-offer">
+    <div className="local-bangla-offer" data-testid="bangla-offer" data-state={bangla.status.state}>
       <p className="hint">{SPEECH_COPY.banglaOffer}</p>
-      <button type="button" className="btn primary" data-testid="bangla-offer-button" aria-label={installed ? undefined : button.name} onClick={onUse}>
-        <EditorIcon name="captions" size={15} /> {installed ? SPEECH_COPY.banglaAgain : button.label}
+      <button type="button" className="btn primary" data-testid="bangla-offer-button" aria-label={installed || busy ? undefined : button.name} onClick={onUse}>
+        <EditorIcon name="captions" size={15} /> {installed ? SPEECH_COPY.banglaAgain : busy ? SPEECH_COPY.banglaShowDownload : button.label}
       </button>
     </div>
   )

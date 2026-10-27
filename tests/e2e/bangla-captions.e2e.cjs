@@ -5,7 +5,8 @@
 // Bangla chip and the recommendation; other languages never do; the summary of captions detected
 // as Bengali offers it; Settings lists it as "Bangla only" without a radio. The run path: a
 // verified record for the stand-in (the state a finished download leaves in speech.json) makes the
-// tab ready and Polish name the Bangla model; Generate runs the real helper through a logging
+// tab ready and Polish name the Bangla model ("Choose Bengali" by keyboard leaves the focus on the
+// Bangla chip); Generate runs the real helper through a logging
 // wrapper with --lang bn --max-chunk 20 --no-timestamps, the helper refuses the stand-in as a
 // damaged model, and the tab offers to download it again. The real model's accuracy is the opt-in benchmark
 // (npm run bench:bangla). A missing helper fails, never skips.
@@ -19,6 +20,8 @@ const sp = require('./speech-fixtures.cjs')
 const { startMockAi, mockAiEnv } = require('./ai-mock-server.cjs')
 
 const PIN = { id: 'whisper-bn-medium', file: 'ggml-bengaliai-whisper-medium-q5_0.bin', bytes: 539_257_671 }
+/** Standard (Whisper base), as a downloaded general model: a sparse stand-in with its verified record (never run here). */
+const BASE = { id: 'whisper-base', file: 'ggml-base-q5_1.bin', bytes: 59_707_625 }
 const BANGLA_FLAC = path.join(h.APP_DIR, 'tests/fixtures/speech/bn-fleurs-blog-18s.flac')
 const SECONDS = 18.84
 
@@ -144,7 +147,7 @@ const speak = (win, code) => win.selectOption('select[aria-label="Spoken languag
       h.assert(text.includes(part), `the recommendation says "${part}": ${text}`)
     const primaries = await win.$$eval('[data-testid="local-captions"] button.primary', (els) => els.map((e) => [e.textContent.trim(), e.getAttribute('aria-label')]))
     h.assert(
-      JSON.stringify(primaries) === JSON.stringify([['Download Bangla model (539 MB) and make captions', 'Download Bangla (Bengali.AI Whisper medium), 539 megabytes, and make captions']]),
+      JSON.stringify(primaries) === JSON.stringify([['Download Bangla model (539 MB) and make captions', 'Download Bangla model (Bengali.AI Whisper medium), 539 megabytes, and make captions']]),
       `one primary action: ${JSON.stringify(primaries)}`
     )
     h.assert(hfRequests(mock).length === 0, 'nothing is downloaded before the click')
@@ -235,11 +238,16 @@ const speak = (win, code) => win.selectOption('select[aria-label="Spoken languag
     await first.app.close()
     ctx.app = null
     fs.mkdirSync(dir, { recursive: true })
-    const file = path.join(dir, PIN.file)
-    fs.writeFileSync(file, '')
-    fs.truncateSync(file, PIN.bytes)
-    const stat = fs.statSync(file)
-    fs.writeFileSync(path.join(dir, 'speech.json'), JSON.stringify({ version: 1, defaultModel: 'whisper-base', verified: { [PIN.id]: { bytes: stat.size, mtimeMs: stat.mtimeMs } }, measured: {} }))
+    // Standard is downloaded too, so the card is 'ready' before and after "Choose Bengali" (its focus must still move).
+    const verified = {}
+    for (const m of [PIN, BASE]) {
+      const file = path.join(dir, m.file)
+      fs.writeFileSync(file, '')
+      fs.truncateSync(file, m.bytes)
+      const stat = fs.statSync(file)
+      verified[m.id] = { bytes: stat.size, mtimeMs: stat.mtimeMs }
+    }
+    fs.writeFileSync(path.join(dir, 'speech.json'), JSON.stringify({ version: 1, defaultModel: 'whisper-base', verified, measured: {} }))
     // The real helper, through a wrapper that logs its arguments (the helper's environment is minimal: absolute paths).
     const log = path.join(home, 'helper-args.log')
     const wrapper = path.join(home, 'logging-helper.sh')
@@ -248,15 +256,23 @@ const speak = (win, code) => win.selectOption('select[aria-label="Spoken languag
     await f.openProject(win, 'Bangla')
     await openTab(win, 'Captions')
 
-    // Detect automatically: the general tier, with the line that offers Bengali in one click.
-    await waitState(win, 'needs-model')
+    // Detect automatically: the general tier (downloaded), with the line that offers Bengali in one click.
+    await waitState(win, 'ready')
+    h.assert((await checkedChip(win)) === BASE.id, `Standard for Detect automatically: ${await checkedChip(win)}`)
     const hint = win.locator('[data-testid="bangla-hint"][data-kind="detect"]')
     await hint.waitFor({ timeout: 10000 })
     h.assert((await hint.textContent()).includes('Speaking Bangla? Choose Bengali to use the Bangla model.'), 'the detect line')
-    await hint.locator('button:has-text("Choose Bengali")').click()
+    // By keyboard: the link removes itself and the card stays 'ready', so the focus goes to the checked Bangla chip.
+    await hint.locator('button:has-text("Choose Bengali")').focus()
+    await win.keyboard.press('Enter')
     await f.waitFor(async () => (await checkedChip(win)) === PIN.id, 'Bengali uses the Bangla model by default')
     h.assert((await chipTexts(win)).includes('Bangla · Downloaded'), `its chip reads Downloaded: ${await chipTexts(win)}`)
     await waitState(win, 'ready')
+    await f.waitFor(
+      async () => (await win.evaluate(() => (document.activeElement && document.activeElement !== document.body ? document.activeElement.getAttribute('data-model') : 'body'))) === PIN.id,
+      'the focus is on the checked Bangla chip, not the page',
+      5000
+    )
 
     // Polish in one click names it for the captions.
     await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())

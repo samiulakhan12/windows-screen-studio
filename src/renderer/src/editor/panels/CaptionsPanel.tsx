@@ -354,9 +354,11 @@ function GenerateSection({
 
   const confirmReplace = (): boolean =>
     !hasTranscript || window.confirm('Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).')
-  // On this PC with a downloaded model (a chip, or "Make them now with …", which selects it).
+  // On this PC with a downloaded model (a chip, or "Make them now with …", which selects it), in
+  // `spoken`, which becomes the Spoken language (a Bangla run again from its error card).
   const startLocal = (id: SpeechModelId, asked = true, spoken = language): void => {
     if (mine?.running || (asked && !confirmReplace())) return
+    if (spoken !== language) setLanguage(spoken)
     chooseModel(id, spoken)
     clearTranscriptionError()
     const options: TranscribeOptions = { providerId: LOCAL_TRANSCRIBER_ID, model: id, source: stems ? source : 'auto' }
@@ -368,19 +370,24 @@ function GenerateSection({
   // The Bangla model offered under the summary of captions detected as Bengali (§14.4): Bengali
   // becomes the Spoken language, the form opens (the download shows there) and it starts; a
   // download that cannot start now (another one runs, offline, no space) leaves the form saying why.
+  // While the Bangla model downloads or is checked (BanglaOffer then says "Show…"), the form only
+  // shows that download: nothing starts or is replaced, so nothing is asked.
   const takeBanglaOffer = (): void => {
-    if (mine?.running || !local || !confirmReplace()) return
+    if (mine?.running || !local) return
     const bangla = modelView(local, BANGLA_MODEL)
     if (!bangla) return
+    const busy = bangla.status.state === 'downloading' || bangla.status.state === 'verifying'
+    if (!busy && !confirmReplace()) return
     setLanguage('bn')
     setProvider(LOCAL_TRANSCRIBER_ID)
     setOpen(true)
     if (bangla.status.state === 'installed') return startLocal(bangla.id, false, 'bn')
     chooseModel(bangla.id, 'bn')
     clearTranscriptionError()
+    if (busy) return
     const lacksSpace = local.disk.free !== null && local.disk.free < downloadSpaceNeeded(bangla.id, 'received' in bangla.status ? bangla.status.received : 0)
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false
-    if (otherDownload(local, bangla.id) || lacksSpace || offline || bangla.status.state === 'downloading' || bangla.status.state === 'verifying') return
+    if (otherDownload(local, bangla.id) || lacksSpace || offline) return
     void downloadThenCaptions(project.id, bangla.id, { providerId: LOCAL_TRANSCRIBER_ID, model: bangla.id, source: stems ? source : 'auto', language: 'bn' })
   }
   const start = (): void => {
@@ -601,6 +608,8 @@ function GenerateSection({
                 className="link"
                 onClick={() => {
                   setProvider(LOCAL_TRANSCRIBER_ID)
+                  // The Bangla model, even when another chip was picked for Bengali earlier this session: the link names it.
+                  chooseModel(BANGLA_MODEL, language)
                   clearTranscriptionError()
                 }}
               >
@@ -625,8 +634,8 @@ function GenerateSection({
                   setProvider(id)
                   clearTranscriptionError()
                 }}
-                onStart={(id) => {
-                  if (speechModel(id)) startLocal(id)
+                onStart={(id, spoken) => {
+                  if (speechModel(id)) startLocal(id, true, spoken ?? language)
                 }}
                 confirmReplace={confirmReplace}
               />

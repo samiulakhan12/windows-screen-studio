@@ -208,7 +208,9 @@ describe('the Bangla model (docs/design/offline-captions.md §14.4)', () => {
     expect(copy.consentBody(bn, 1200, 1724)).toBe(
       'Recommended for Bangla: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. Free and private: it runs on this PC and works offline once downloaded; the sound never leaves this PC. Flown first downloads it once (539 MB, from Hugging Face) and checks it before use. Then this 20 min recording takes about 29 min.'
     )
-    expect(copy.downloadButton(bn)).toEqual({ label: 'Download Bangla model (539 MB) and make captions', name: 'Download Bangla (Bengali.AI Whisper medium), 539 megabytes, and make captions' })
+    expect(copy.downloadButton(bn)).toEqual({ label: 'Download Bangla model (539 MB) and make captions', name: 'Download Bangla model (Bengali.AI Whisper medium), 539 megabytes, and make captions' })
+    // WCAG 2.5.3 Label in Name: the visible words before the bracket start the accessible name, so a voice command works.
+    expect(copy.downloadButton(bn).name.startsWith(copy.downloadButton(bn).label.split(' (')[0])).toBe(true)
     expect(copy.smallPrint(bn)).toBe('Bengali.AI Whisper medium, Apache-2.0 licence · huggingface.co/winshades/bengaliai-whisper-medium-ggml')
     expect(copy.smallPrint('whisper-base')).toBe(copy.SPEECH_COPY.smallPrint)
   })
@@ -225,6 +227,9 @@ describe('the Bangla model (docs/design/offline-captions.md §14.4)', () => {
     )
     expect(copy.SPEECH_COPY.banglaOffer).toContain('works offline once downloaded')
     expect(copy.SPEECH_COPY.banglaAgain).toBe('Make them again with Bangla (downloaded)')
+    expect(copy.SPEECH_COPY.banglaShowDownload).toBe("Show the Bangla model's download")
+    // Key users are told only what was measured (§14.1); no provider was measured on Bangla.
+    expect(copy.SPEECH_COPY.banglaForKeyUsers).toBe('For Bangla, the Bangla model on this PC is free and works offline: it gets about 4 in 5 words right (no punctuation).')
     expect(copy.SPEECH_COPY.readyHintBangla).toBe('Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.')
   })
 

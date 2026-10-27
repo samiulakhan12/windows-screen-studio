@@ -122,8 +122,14 @@ export const SPEECH_COPY = {
   banglaOffer:
     'Bangla captions: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. It runs on this PC and works offline once downloaded.',
   banglaAgain: 'Make them again with Bangla (downloaded)',
-  /** Bengali chosen with an AI provider: the Bangla model on this PC is offered, never switched to by itself. */
-  banglaForKeyUsers: 'For Bangla, the Bangla model on this PC makes far fewer mistakes, free and offline.',
+  /** The offer while the Bangla model downloads or is checked (started elsewhere): it only shows that download. */
+  banglaShowDownload: "Show the Bangla model's download",
+  /**
+   * Bengali chosen with an AI provider: the Bangla model on this PC is offered, never switched to
+   * by itself. Only what was measured (§14.1: about 4 in 5 words right, no punctuation); no
+   * provider was measured on Bangla, so it is not compared with one.
+   */
+  banglaForKeyUsers: 'For Bangla, the Bangla model on this PC is free and works offline: it gets about 4 in 5 words right (no punctuation).',
   useBanglaModel: 'Use the Bangla model',
   readyHintBangla: 'Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.'
 } as const
@@ -198,7 +204,10 @@ export function downloadButton(id: SpeechModelId): { label: string; name: string
   const spec = speechModel(id)!
   return {
     label: isLanguageModel(spec) ? `Download ${tierName(id)} model (${sizeWords(spec.bytes)}) and make captions` : `Download ${sizeWords(spec.bytes)} and make captions`,
-    name: `Download ${tierName(id)} (${spec.name}), ${sizeSpoken(spec.bytes)}, and make captions`
+    // The visible words come first, in order (WCAG 2.5.3 Label in Name: "Download Bangla model …" works as a voice command).
+    name: isLanguageModel(spec)
+      ? `Download ${tierName(id)} model (${spec.name}), ${sizeSpoken(spec.bytes)}, and make captions`
+      : `Download ${tierName(id)} (${spec.name}), ${sizeSpoken(spec.bytes)}, and make captions`
   }
 }
 

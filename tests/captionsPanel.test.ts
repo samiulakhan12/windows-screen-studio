@@ -173,11 +173,40 @@ function walk(node: unknown, path: string, out: El[]): void {
     hooks = null
     return walk(child, `${path}/${el.type.name}`, out)
   }
-  // A ref object gets a stand-in element, so effects that focus it are seen.
+  // A ref object gets a stand-in element, so effects that focus it are seen; its querySelector
+  // finds `[attribute="value"]` among the elements it holds in the latest render.
   const ref = (node as { ref?: { current?: unknown } | null }).ref
-  if (ref && typeof ref === 'object' && !ref.current) ref.current = { focus: () => focused.push(el), querySelector: () => null, scrollIntoView: () => undefined }
+  if (ref && typeof ref === 'object') {
+    if (!ref.current) {
+      const stand: { el: El; focus: () => void; querySelector: (sel: string) => unknown; scrollIntoView: () => void } = {
+        el,
+        focus: () => focused.push(stand.el),
+        querySelector: (sel) => {
+          const match = /^\[([\w-]+)="([^"]*)"\]$/.exec(sel)
+          const found = match ? descendants(stand.el).find((d) => String(d.props[match[1]]) === match[2]) : undefined
+          return found ? { focus: () => focused.push(found) } : null
+        },
+        scrollIntoView: () => undefined
+      }
+      ref.current = stand
+    } else if (typeof ref.current === 'object' && ref.current && 'el' in ref.current) (ref.current as { el: El }).el = el
+  }
   out.push(el)
   walk(el.props.children, path, out)
+}
+
+/** The host elements under `el` (its children, theirs, …), as a querySelector would search them. */
+function descendants(el: El): El[] {
+  const found: El[] = []
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(visit)
+    if (!node || typeof node !== 'object' || !('props' in node)) return
+    const child = node as El
+    if (typeof child.type === 'string') found.push(child)
+    visit(child.props.children)
+  }
+  visit(el.props.children)
+  return found
 }
 
 /** The tab for the project in the store, rendered until its state and effects settle. */
@@ -295,7 +324,7 @@ function speechState(over: Partial<SpeechState> & { statuses?: Partial<Record<Sp
 interface Mods {
   panel: (props: unknown) => unknown
   items: { requestCaptions(r: { kind: 'generate' }): void; clearTranscriptionError(): void }
-  speech: { useCaptionsHost(projectId: string, onNotice: (m: string) => void, open: boolean): unknown }
+  speech: { useCaptionsHost(projectId: string, onNotice: (m: string) => void, open: boolean): unknown; captionsIntent(projectId: string): { model: string; options: unknown } | null; spokenLanguage(): string }
 }
 
 /** Fresh modules: the module-level stores (speech state, session choice, intents, remembered choices) start empty. */
@@ -563,6 +592,7 @@ describe('CaptionsPanel: captions on this PC', () => {
     ['crashed', localErrorMessage('crashed', { part: 2, parts: 3 }), 'Generate captions again'],
     ['stalled', localErrorMessage('stalled'), 'Generate captions again'],
     ['protocol', localErrorMessage('protocol'), null],
+    ['outdated', localErrorMessage('outdated', { model: 'whisper-base' }), null],
     ['other', 'No speech was found in this recording', null]
   ])('a local error (%s) offers the button localErrorCode chooses', async (_code, message, button) => {
     replies.providers = () => Promise.resolve([])
@@ -900,11 +930,11 @@ describe('CaptionsPanel: the Bangla model', () => {
     expect(has(out, 'Then this 20 min recording takes about 29 min.')).toBe(true)
     const primaries = out.filter((e) => e.type === 'button' && String(e.props.className).includes('primary'))
     expect(primaries.map((b) => textOf(b.props.children).trim())).toEqual(['Download Bangla model (539 MB) and make captions'])
-    expect(primaries[0].props['aria-label']).toBe('Download Bangla (Bengali.AI Whisper medium), 539 megabytes, and make captions')
+    expect(primaries[0].props['aria-label']).toBe('Download Bangla model (Bengali.AI Whisper medium), 539 megabytes, and make captions')
     // The downloaded general model is still offered, as for every tier.
     expect(buttons(out)).toContain('Make them now with Standard (downloaded)')
     expect(has(out, 'Bengali.AI Whisper medium, Apache-2.0 licence · huggingface.co/winshades/bengaliai-whisper-medium-ggml')).toBe(true)
-    // The general "Smaller models…" line is replaced by the Bangla model's own.
+    // With the Bangla chip checked there is no small-tier warning at all (the case where a small tier is picked for Bengali is the next test's).
     expect(has(out, 'Smaller models make more mistakes')).toBe(false)
     for (const other of ['en', 'hi', '']) {
       out = speak(out, other)
@@ -953,6 +983,8 @@ describe('CaptionsPanel: the Bangla model', () => {
     expect(checked(out)).toBe('whisper-base')
     expect(banglaLine(out)?.props['data-kind']).toBe('choose')
     expect(textOf(banglaLine(out)!.props.children)).toBe('For Bangla, choose Bangla: it makes far fewer mistakes.')
+    // Instead of the general "Smaller models…" line, not besides it: one line says what to choose.
+    expect(has(out, 'Smaller models make more mistakes')).toBe(false)
     out = speak(out, 'en')
     ;(chips(out).find((c) => c.props['data-model'] === 'whisper-tiny')!.props.onClick as () => void)()
     out = render(m.panel)
@@ -982,12 +1014,59 @@ describe('CaptionsPanel: the Bangla model', () => {
     expect(checked(out)).toBe('whisper-base')
     expect(banglaLine(out)?.props['data-kind']).toBe('detect')
     expect(textOf(banglaLine(out)!.props.children)).toContain('Speaking Bangla? Choose Bengali to use the Bangla model.')
+    focused.length = 0
     click(out, 'Choose Bengali')
     out = render(m.panel)
     expect(out.find((e) => e.props['aria-label'] === 'Spoken language')!.props.value).toBe('bn')
     expect(checked(out)).toBe(BN)
+    // The link removed itself and the card stayed 'ready': the focus goes to the checked Bangla chip, never to the page.
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(banglaLine(out)).toBeUndefined()
+    expect(focused.map((e) => e.props['data-model'])).toEqual([BN])
     click(out, 'Generate captions')
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: BN, source: 'auto', language: 'bn' }])
+  })
+
+  it('"Choose Bengali" and "Use the Bangla model" choose the Bangla model even after another chip was picked for Bengali', async () => {
+    replies.providers = () => Promise.resolve([OPENAI])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    let out = speak(await show(), 'bn')
+    // On this PC is chosen by itself only once the Bangla model is here: pick it, then Standard for Bengali ("Make them now with …").
+    ;(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: 'local' } })
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('needs-model')
+    click(out, 'Make them now with Standard (downloaded)')
+    expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-base', source: 'auto', language: 'bn' }])
+    runs[runs.length - 1].resolve({ provider: 'local', model: 'whisper-base', language: 'bn', createdAt: 'x', segments: [{ id: 't1', start: 1, end: 2, text: 'কিছু' }] })
+    await flush()
+    out = render(m.panel)
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    ;(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: 'o' } })
+    out = render(m.panel)
+    expect(byTest(out, 'bangla-key-hint')).toHaveLength(1)
+    click(out, 'Use the Bangla model')
+    out = render(m.panel)
+    expect(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.value).toBe('local')
+    expect(checked(out)).toBe(BN)
+    expect([local(out)?.props['data-model'], local(out)?.props['data-state']]).toEqual([BN, 'needs-model'])
+    expect(banglaLine(out)).toBeUndefined()
+
+    // "Choose Bengali" (Detect automatically, the Bangla model here) after Standard was picked for Bengali.
+    m = await fresh()
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, [BN]: { state: 'installed' } } }))
+    store.state = { ...store.state, transcript: undefined }
+    for (const list of cells.values()) for (const c of list) c.cleanup?.()
+    cells.clear()
+    out = speak(await show(), 'bn')
+    ;(chips(out).find((c) => c.props['data-model'] === 'whisper-base')!.props.onClick as () => void)()
+    out = speak(render(m.panel), '')
+    expect(banglaLine(out)?.props['data-kind']).toBe('detect')
+    click(out, 'Choose Bengali')
+    out = render(m.panel)
+    expect(checked(out)).toBe(BN)
+    expect(banglaLine(out)).toBeUndefined()
   })
 
   it('with a key provider and Bengali: the provider stays, with one link to the Bangla model on this PC', async () => {
@@ -998,7 +1077,9 @@ describe('CaptionsPanel: the Bangla model', () => {
     out = speak(out, 'bn')
     expect(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.value).toBe('o')
     expect(local(out)).toBeUndefined()
-    expect(textOf(byTest(out, 'bangla-key-hint')[0].props.children)).toContain('For Bangla, the Bangla model on this PC makes far fewer mistakes, free and offline.')
+    // Only what was measured: no provider was measured on Bangla, so none is compared with it.
+    expect(textOf(byTest(out, 'bangla-key-hint')[0].props.children)).toContain('For Bangla, the Bangla model on this PC is free and works offline: it gets about 4 in 5 words right (no punctuation).')
+    expect(textOf(byTest(out, 'bangla-key-hint')[0].props.children)).not.toContain('fewer mistakes')
     click(out, 'Use the Bangla model')
     out = render(m.panel)
     expect(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.value).toBe('local')
@@ -1029,7 +1110,7 @@ describe('CaptionsPanel: the Bangla model', () => {
     expect(has(out, 'Smaller models make more mistakes')).toBe(false)
     const button = byTest(out, 'bangla-offer-button')[0]
     expect(textOf(button.props.children).trim()).toBe('Download Bangla model (539 MB) and make captions')
-    expect(button.props['aria-label']).toBe('Download Bangla (Bengali.AI Whisper medium), 539 megabytes, and make captions')
+    expect(button.props['aria-label']).toBe('Download Bangla model (Bengali.AI Whisper medium), 539 megabytes, and make captions')
     ;(button.props.onClick as () => void)()
     expect(calls.confirm).toHaveLength(1)
     expect(calls.download).toEqual([BN])
@@ -1050,10 +1131,107 @@ describe('CaptionsPanel: the Bangla model', () => {
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: BN, source: 'auto', language: 'bn' }])
     expect(calls.download).toEqual([])
     for (const other of [{ ...t, model: BN }, { ...t, language: 'en' }, { ...t, provider: 'openai', model: 'whisper-1' }]) {
+      // A tab drawn from scratch: the earlier one's form and hook state would hide the summary that holds the offer.
+      for (const list of cells.values()) for (const c of list) c.cleanup?.()
+      cells.clear()
       m = await fresh()
       store.state = { ...store.state, transcript: other }
       out = await show()
+      // The summary is drawn (the offer's place), and the offer is not in it.
+      expect(sections(out)).toContain('Generate')
+      if (other.provider === 'local') expect(local(out)?.props['data-state']).toBe('done')
+      else expect(has(out, '1 captions by')).toBe(true)
       expect(byTest(out, 'bangla-offer')).toEqual([])
     }
+  })
+
+  it('while the Bangla model downloads (started elsewhere), the offer only shows that download: no replace question, nothing promised', async () => {
+    const downloading: Status = { state: 'downloading', received: 100e6, total: 539_257_671, bytesPerSecond: 5e6 }
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, [BN]: downloading } }))
+    store.state = { ...store.state, transcript: { provider: 'local', model: 'whisper-base', language: 'bn', createdAt: 'x', segments: [{ id: 't1', start: 1, end: 2, text: 'কিছু' }] } }
+    let out = await show()
+    const button = byTest(out, 'bangla-offer-button')[0]
+    expect(textOf(button.props.children).trim()).toBe("Show the Bangla model's download")
+    expect(button.props['aria-label']).toBeUndefined()
+    ;(button.props.onClick as () => void)()
+    expect(calls.confirm).toEqual([])
+    expect(calls.download).toEqual([])
+    out = render(m.panel)
+    expect(sections(out)).toContain('Regenerate captions')
+    expect(out.find((e) => e.props['aria-label'] === 'Spoken language')!.props.value).toBe('bn')
+    expect([local(out)?.props['data-model'], local(out)?.props['data-state']]).toEqual([BN, 'downloading'])
+    // No "Captions start as soon as it is here": no captions were asked for.
+    expect(has(out, 'Captions start as soon as it is here')).toBe(false)
+    // Checking the download: the same.
+    m = await fresh()
+    for (const list of cells.values()) for (const c of list) c.cleanup?.()
+    cells.clear()
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, [BN]: { state: 'verifying' } } }))
+    out = await show()
+    expect(textOf(byTest(out, 'bangla-offer-button')[0].props.children).trim()).toBe("Show the Bangla model's download")
+    // Stopped: the click continues the download and makes the captions, as its label says.
+    m = await fresh()
+    for (const list of cells.values()) for (const c of list) c.cleanup?.()
+    cells.clear()
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, [BN]: { state: 'stopped', received: 100e6, total: 539_257_671 } } }))
+    out = await show()
+    const stopped = byTest(out, 'bangla-offer-button')[0]
+    expect(textOf(stopped.props.children).trim()).toBe('Download Bangla model (539 MB) and make captions')
+    ;(stopped.props.onClick as () => void)()
+    expect(calls.confirm).toHaveLength(1)
+    expect(calls.download).toEqual([BN])
+  })
+
+  it('a failed Bangla run is retried in Bangla, whatever the Spoken language became since (its error card)', async () => {
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, [BN]: { state: 'installed' } } }))
+    let out = speak(await show(), 'bn')
+    click(out, 'Generate captions')
+    expect(calls.transcribe).toEqual([{ providerId: 'local', model: BN, source: 'auto', language: 'bn' }])
+    runs[runs.length - 1].reject(new Error(`Error invoking remote method 'ai:transcribe': Error: ${localErrorMessage('crashed', { part: 1, parts: 2 })}`))
+    await flush()
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('error')
+    // The user picks English (perhaps to try a general model): the Bangla run's card stays.
+    out = speak(out, 'en')
+    expect(local(out)?.props['data-state']).toBe('error')
+    click(out, 'Generate captions again')
+    // Main would refuse Bangla in English ("makes captions in Bangla only"): it runs in Bangla, and the form says so.
+    expect(calls.transcribe[1]).toEqual({ providerId: 'local', model: BN, source: 'auto', language: 'bn' })
+    expect(m.speech.spokenLanguage()).toBe('bn')
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('running')
+
+    // A damaged Bangla model, then Detect automatically: Download again downloads it and makes the captions in Bangla.
+    runs[runs.length - 1].reject(new Error(localErrorMessage('damaged', { model: BN })))
+    await flush()
+    out = speak(render(m.panel), '')
+    expect(local(out)?.props['data-state']).toBe('error')
+    click(out, 'Download again (539 MB)')
+    expect(calls.download).toEqual([BN])
+    out = render(m.panel)
+    expect(out.find((e) => e.props['aria-label'] === 'Spoken language')!.props.value).toBe('bn')
+    expect(m.speech.captionsIntent('p1')?.options).toEqual({ providerId: 'local', model: BN, source: 'auto', language: 'bn' })
+  })
+})
+
+describe('banglaOfferApplies: the offer under the summary (offline-captions §14.4)', () => {
+  const BN = 'whisper-bn-medium'
+  it('only for captions made on this PC in Bengali with another model, where the Bangla model is allowed and the engine runs', async () => {
+    const LOCAL_CAPTIONS = '../src/renderer/src/editor/panels/LocalCaptions'
+    const { banglaOfferApplies } = (await import(/* @vite-ignore */ LOCAL_CAPTIONS)) as {
+      banglaOfferApplies(state: SpeechState | null, t: { provider: string; model: string; language?: string } | undefined): boolean
+    }
+    const state = speechState()
+    const t = { provider: 'local', model: 'whisper-base', language: 'bn' }
+    expect(banglaOfferApplies(state, t)).toBe(true)
+    expect(banglaOfferApplies(state, { ...t, language: 'bn-BD' })).toBe(true)
+    expect(banglaOfferApplies(state, { ...t, model: BN })).toBe(false)
+    expect(banglaOfferApplies(state, { ...t, language: 'en' })).toBe(false)
+    expect(banglaOfferApplies(state, { ...t, language: undefined })).toBe(false)
+    expect(banglaOfferApplies(state, { ...t, provider: 'openai', model: 'whisper-1' })).toBe(false)
+    expect(banglaOfferApplies({ ...state, models: state.models.map((v) => (v.id === BN ? { ...v, allowed: false } : v)) }, t)).toBe(false)
+    expect(banglaOfferApplies({ ...state, engine: { ...state.engine, available: false } }, t)).toBe(false)
+    expect(banglaOfferApplies(null, t)).toBe(false)
+    expect(banglaOfferApplies(state, undefined)).toBe(false)
   })
 })
