@@ -4,7 +4,7 @@
  * main process reads it. native/speech implements the other side. Every line is untrusted
  * input: it is size-capped, parsed, checked field by field, and dropped when malformed.
  */
-import type { RawTranscript } from '../captions/transcriptParse'
+import { cleanText, languageCode, type RawSegment, type RawTranscript, type RawWord } from '../captions/transcriptParse'
 
 export const SIDECAR = {
   /** Longest line read, bytes; a longer one is a protocol violation (the helper is killed). */
@@ -168,15 +168,100 @@ export interface SidecarError {
 
 export type SidecarEvent = SidecarCpu | SidecarReady | SidecarSpeech | SidecarProgress | SidecarSegment | SidecarResult | SidecarVad | SidecarCancelled | SidecarError
 
+const ERROR_CODES: readonly SidecarErrorCode[] = ['args', 'model', 'audio', 'language', 'memory', 'cpu', 'internal']
+const BUILDS = ['standard', 'compatible', 'host'] as const
+/** Most words read from one segment line, and most characters of a word or a text. */
+const MAX_WORDS = 400
+const MAX_TEXT = 2000
+const MAX_WORD_TEXT = 200
+
+type Obj = Record<string, unknown>
+const isObject = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+const time = (v: unknown): v is number => finite(v) && v >= 0
+const bool = (v: unknown): v is boolean => typeof v === 'boolean'
+const str = (v: unknown, max = MAX_TEXT): v is string => typeof v === 'string' && v.length <= max
+
+function readWord(w: unknown): SidecarWord | null {
+  if (!isObject(w) || !str(w.text, MAX_WORD_TEXT) || !time(w.start) || !time(w.end) || !finite(w.prob)) return null
+  // A word whose times are reversed is dropped (the rest of its segment is kept).
+  if (w.end < w.start) return null
+  return { text: w.text, start: w.start, end: w.end, prob: Math.min(1, Math.max(0, w.prob)) }
+}
+
+function readEvent(o: Obj): SidecarEvent | null {
+  switch (o.type) {
+    case 'cpu':
+      if (!bool(o.sse42) || !bool(o.avx) || !bool(o.avx2) || !bool(o.fma) || !bool(o.f16c) || !bool(o.bmi2) || !finite(o.logical) || o.logical < 0) return null
+      return { type: 'cpu', sse42: o.sse42, avx: o.avx, avx2: o.avx2, fma: o.fma, f16c: o.f16c, bmi2: o.bmi2, logical: Math.floor(o.logical) }
+    case 'vad':
+      if (!time(o.audio_s) || !finite(o.frame) || o.frame <= 0 || !finite(o.n) || o.n < 0 || !Number.isInteger(o.n) || typeof o.probs !== 'string' || !time(o.detect_ms)) return null
+      return { type: 'vad', audio_s: o.audio_s, frame: o.frame, n: o.n, probs: o.probs, detect_ms: o.detect_ms }
+    case 'ready':
+      if (!str(o.model, 200) || !bool(o.multilingual) || !str(o.dtw, 200) || !BUILDS.includes(o.build as (typeof BUILDS)[number]) || !str(o.system)) return null
+      return { type: 'ready', model: o.model, multilingual: o.multilingual, dtw: o.dtw, build: o.build as SidecarReady['build'], system: o.system }
+    case 'speech': {
+      if (!Array.isArray(o.segments)) return null
+      const segments: [number, number][] = []
+      for (const s of o.segments) {
+        if (!Array.isArray(s) || s.length !== 2 || !time(s[0]) || !time(s[1]) || s[1] < s[0]) return null
+        segments.push([s[0], s[1]])
+      }
+      return { type: 'speech', segments }
+    }
+    case 'progress':
+      if (!finite(o.percent) || !time(o.at)) return null
+      return { type: 'progress', percent: Math.min(100, Math.max(0, o.percent)), at: o.at }
+    case 'segment': {
+      if (!time(o.start) || !time(o.end) || o.end < o.start || !str(o.text) || !Array.isArray(o.words)) return null
+      const words: SidecarWord[] = []
+      for (const w of o.words) {
+        const word = readWord(w)
+        if (word && words.length < MAX_WORDS) words.push(word)
+      }
+      return { type: 'segment', start: o.start, end: o.end, text: o.text, words }
+    }
+    case 'result': {
+      const t = o.timing
+      if (typeof o.language !== 'string' || o.language.length > 32 || !time(o.language_s) || !time(o.duration) || !isObject(t)) return null
+      if (!finite(t.load_ms) || !finite(t.vad_ms) || !finite(t.asr_ms) || !finite(t.rtf) || !finite(t.peak_rss_mb)) return null
+      return {
+        type: 'result',
+        language: o.language,
+        language_s: o.language_s,
+        duration: o.duration,
+        timing: { load_ms: t.load_ms, vad_ms: t.vad_ms, asr_ms: t.asr_ms, rtf: t.rtf, peak_rss_mb: t.peak_rss_mb }
+      }
+    }
+    case 'cancelled':
+      if (!time(o.done_until)) return null
+      return { type: 'cancelled', done_until: o.done_until }
+    case 'error':
+      if (!ERROR_CODES.includes(o.code as SidecarErrorCode) || !str(o.message)) return null
+      return { type: 'error', code: o.code as SidecarErrorCode, message: o.message }
+    default:
+      return null
+  }
+}
+
 /**
  * One stdout line read: the event when it is valid JSON of a known type with every field of
  * the right kind (finite numbers, strings, words with ordered times), else null. Lines longer
  * than SIDECAR.lineMax are null. Unknown types are null (ignored), never an error.
  */
 export function readSidecarLine(line: string): SidecarEvent | null {
-  void line
-  throw new Error('readSidecarLine: not implemented yet (workstream B)')
+  if (typeof line !== 'string' || Buffer.byteLength(line, 'utf8') > SIDECAR.lineMax) return null
+  let parsed: unknown
+  try {
+    // JSON.parse rejects NaN and Infinity, which are not JSON.
+    parsed = JSON.parse(line)
+  } catch {
+    return null
+  }
+  return isObject(parsed) ? readEvent(parsed) : null
 }
+
+const round = (t: number): number => Math.round(t * 1000) / 1000
 
 /**
  * The segments of one run as the transcript of a part (seconds from the part's start, inside
@@ -186,8 +271,39 @@ export function readSidecarLine(line: string): SidecarEvent | null {
  * is the result's; '' and 'auto' are left out (never stored or counted by mergeParts).
  */
 export function localTranscript(segments: readonly SidecarSegment[], language: string | undefined, partSeconds: number): RawTranscript {
-  void segments
-  void language
-  void partSeconds
-  throw new Error('localTranscript: not implemented yet (workstream B)')
+  const limit = Number.isFinite(partSeconds) && partSeconds > 0 ? partSeconds : 0
+  const clamp = (t: number): number => round(Math.min(limit, Math.max(0, Number.isFinite(t) ? t : 0)))
+  const ordered = [...segments].sort((a, b) => a.start - b.start)
+  const out: RawSegment[] = []
+  let last = 0
+  for (const seg of ordered) {
+    const words: RawWord[] = []
+    for (const w of seg.words) {
+      if (words.length >= MAX_WORDS) break
+      const text = cleanText(typeof w.text === 'string' ? w.text : '', MAX_WORD_TEXT)
+      if (!text) continue
+      const start = Math.max(clamp(Math.min(w.start, w.end)), last)
+      const end = Math.max(clamp(Math.max(w.start, w.end)), start)
+      words.push({ text, start, end })
+      last = end
+    }
+    let start: number
+    let end: number
+    let text: string
+    if (words.length > 0) {
+      start = words[0].start
+      end = words[words.length - 1].end
+      text = words.map((w) => w.text).join(' ')
+    } else {
+      // A segment without words (the helper always sends them; kept for safety) keeps its own text and times.
+      text = cleanText(seg.text, MAX_TEXT)
+      start = Math.max(clamp(Math.min(seg.start, seg.end)), last)
+      end = Math.max(clamp(Math.max(seg.start, seg.end)), start)
+      if (text) last = end
+    }
+    if (!text) continue
+    out.push({ start, end, text, ...(words.length ? { words } : {}) })
+  }
+  const code = language && language !== 'auto' ? languageCode(language) : undefined
+  return { ...(code ? { language: code } : {}), segments: out }
 }

@@ -1,6 +1,7 @@
 import { execFileSync, type ChildProcess } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 
@@ -35,6 +36,7 @@ vi.mock('electron', () => ({
 import { detectStill, freezeDetectArgs, parseFreezeLog, registerAnalysisIpc } from '../src/main/analysisIpc'
 
 const projectsRoot = path.join(h.root, 'videos', 'Flown')
+const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }
 
 /** A 16 s test pattern that freezes from 3 s to 9 s and from 11 s to the end, with a key frame every 15 frames like a proxy. */
 function seed(id: string, opts: { project?: unknown; fps?: number } = {}): string {
@@ -124,8 +126,17 @@ describe('detectStill', () => {
   it('is reachable over IPC, and analyses each file version once', async () => {
     const handler = h.handlers.get('projects:detectStill')!
     const runs = h.spawned.length
-    expect(await handler({}, 'rec-still', 1)).toHaveLength(2)
-    expect(await handler({}, 'rec-still', 3)).toHaveLength(2)
+    expect(await handler(appEvent, 'rec-still', 1)).toHaveLength(2)
+    expect(await handler(appEvent, 'rec-still', 3)).toHaveLength(2)
+    expect(h.spawned.length).toBe(runs)
+  })
+
+  it('accepts only the app page as the sender of detectStill and stopAnalysis', async () => {
+    const runs = h.spawned.length
+    for (const evil of [{}, { senderFrame: { url: 'https://example.com/' } }, { senderFrame: { url: pathToFileURL('/tmp/evil.html').href } }]) {
+      expect(() => h.handlers.get('projects:detectStill')!(evil, 'rec-still', 1)).toThrow('Not allowed')
+      expect(() => h.handlers.get('projects:stopAnalysis')!(evil, 'rec-still')).toThrow('Not allowed')
+    }
     expect(h.spawned.length).toBe(runs)
   })
 

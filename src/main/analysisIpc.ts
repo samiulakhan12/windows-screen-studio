@@ -9,7 +9,7 @@
  * can say so and try again. A project's analysis stops when its editor closes or before it is
  * deleted (see ProjectProcesses).
  */
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -19,6 +19,7 @@ import { stopAudioAnalysisFor } from './audioAnalysis'
 import { ffmpegPath } from './ffmpeg'
 import { ProjectProcesses } from './projectProcesses'
 import { projectDir } from './projects'
+import { isAppUrl } from './security'
 
 /** Shortest still stretch looked for: longer minimums are filtered from the same result. */
 const DETECT_MIN = 0.5
@@ -188,8 +189,18 @@ export async function stopAnalyses(id: string): Promise<void> {
 }
 
 export function registerAnalysisIpc(): void {
-  ipcMain.handle('projects:detectStill', (_e, id: unknown, minSeconds: unknown) => detectStill(id, minSeconds))
-  ipcMain.handle('projects:stopAnalysis', (_e, id: unknown) => (typeof id === 'string' ? stopAnalyses(id) : undefined))
+  // Only the app's own page may start or stop work on a project's files.
+  const fromApp = (e: IpcMainInvokeEvent): void => {
+    if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
+  }
+  ipcMain.handle('projects:detectStill', (e, id: unknown, minSeconds: unknown) => {
+    fromApp(e)
+    return detectStill(id, minSeconds)
+  })
+  ipcMain.handle('projects:stopAnalysis', (e, id: unknown) => {
+    fromApp(e)
+    return typeof id === 'string' ? stopAnalyses(id) : undefined
+  })
   // An analysis must not outlive the app.
   app.on('will-quit', () => running.stopAll())
 }

@@ -13,6 +13,10 @@
  *    hour) and transcribed; the results are shifted to source seconds and merged
  *    (transcriptMerge). The editor maps them through cuts.
  *
+ * "On this PC" (providerId LOCAL_TRANSCRIBER_ID, speech/localClient.ts) runs the same pipeline with
+ * the speech helper instead of a provider: no key, parts as lossless 16 kHz WAV, progress inside
+ * each part, and finished parts cached in the project so a stopped job continues.
+ *
  * Progress is sent per phase and part. One job runs per project; cancelling it (or closing its
  * editor, or deleting the project: see stopAnalyses) aborts the requests, kills ffmpeg and
  * removes the temporary files before it resolves. Quitting removes them synchronously (nothing
@@ -23,20 +27,23 @@ import { createReadStream, promises as fs, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { AI_PROVIDER_KINDS, type TranscribeOptions, type TranscribeProgress } from '../../shared/api/ai'
+import { LOCAL_TRANSCRIBER_ID } from '../../shared/api/speech'
 import { detectActivity } from '../../shared/audio/activity'
 import { LevelMeter } from '../../shared/audio/loudness'
 import { mergeParts } from '../../shared/captions/transcriptMerge'
 import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { planParts, secondsForBytes, silencesBetween, type TranscriptPart } from '../../shared/captions/transcriptPlan'
+import { speechModel } from '../../shared/speech/catalog'
 import type { Transcript } from '../../shared/types'
 import { removeSyncWithRetries } from '../exportCleanup'
 import { describeFfmpegError, ffmpegPath } from '../ffmpeg'
 import { ProjectProcesses } from '../projectProcesses'
 import { projectDir, readProject } from '../projects'
+import { localSpeechClient, PART_CACHE_DIR } from '../speech/localClient'
 import { testLimit } from './endpoints'
 import type { AiProviderStore } from './keyStore'
 import { clientFor } from './providers'
-import type { AiClient } from './types'
+import type { AiClient, PartProgress } from './types'
 import { cancelled } from './request'
 
 const RATE = 16000
@@ -62,7 +69,7 @@ const processes = new ProjectProcesses()
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** TranscribeOptions from the renderer, checked; throws a message to show. */
-export function validateTranscribeOptions(raw: unknown): Required<Pick<TranscribeOptions, 'providerId' | 'source'>> & Pick<TranscribeOptions, 'language'> {
+export function validateTranscribeOptions(raw: unknown): Required<Pick<TranscribeOptions, 'providerId' | 'source'>> & Pick<TranscribeOptions, 'language' | 'model'> {
   if (!isObject(raw) || typeof raw.providerId !== 'string' || raw.providerId.length > 64) throw new Error('Choose an AI provider for the transcription.')
   const source = raw.source === undefined ? 'auto' : raw.source
   if (!SOURCES.includes(source as (typeof SOURCES)[number])) throw new Error('Invalid sound source.')
@@ -71,7 +78,13 @@ export function validateTranscribeOptions(raw: unknown): Required<Pick<Transcrib
     if (typeof raw.language !== 'string' || !LANGUAGE_RE.test(raw.language.trim())) throw new Error('The language must be a code such as "en" or "pt-BR".')
     language = raw.language.trim()
   }
-  return { providerId: raw.providerId, source: source as TranscribeOptions['source'] & string, ...(language ? { language } : {}) }
+  // The speech model: a catalog id, for On this PC only (providers use their own setting).
+  let model: string | undefined
+  if (raw.providerId === LOCAL_TRANSCRIBER_ID && raw.model !== undefined && raw.model !== null) {
+    if (!speechModel(raw.model)) throw new Error('Unknown speech model.')
+    model = raw.model as string
+  }
+  return { providerId: raw.providerId, source: source as TranscribeOptions['source'] & string, ...(language ? { language } : {}), ...(model ? { model } : {}) }
 }
 
 /** Runs ffmpeg for project `id`; rejects as cancelled when `signal` aborts (ffmpeg is killed). */
@@ -125,6 +138,16 @@ export function partArgs(pcm: string, start: number, seconds: number, output: st
   ]
 }
 
+/** Arguments writing [start, start + seconds) of the decoded PCM as a 16 kHz mono 16-bit WAV (On this PC: no lossy step). */
+export function wavPartArgs(pcm: string, start: number, seconds: number, output: string): string[] {
+  return [
+    '-v', 'error', '-nostdin', '-y',
+    '-f', 's16le', '-ar', String(RATE), '-ac', '1',
+    '-ss', start.toFixed(3), '-t', seconds.toFixed(3), '-i', pcm,
+    '-c:a', 'pcm_s16le', '-f', 'wav', output
+  ]
+}
+
 /** Quiet stretches of the decoded sound (seconds), from its levels as measured for ducking. */
 async function silencesOf(pcm: string, duration: number, signal: AbortSignal): Promise<{ start: number; end: number }[]> {
   const meter = new LevelMeter(RATE, 1)
@@ -163,6 +186,30 @@ export async function transcribeProject(store: AiProviderStore, projectId: unkno
   const dir = projectDir(projectId)
   const options = validateTranscribeOptions(rawOptions)
   if (jobs.has(projectId)) throw new Error('This recording is already being transcribed.')
+  if (options.providerId === LOCAL_TRANSCRIBER_ID) {
+    // On this PC: no key; the client rejects with the shared sentences when the engine or the model is not ready (it never downloads).
+    const controller = new AbortController()
+    const job: Job = { controller, done: Promise.resolve() }
+    const run = localSpeechClient(options.model, { projectDir: dir, processes, owner: projectId }).then(async (client) => {
+      try {
+        const transcript = await runJob(projectId, dir, options, 'local', client.model ?? '', client, controller.signal, progress, (tmp) => (job.tmp = tmp))
+        // Merged: the finished parts are no longer needed.
+        await fs.rm(path.join(dir, PART_CACHE_DIR), { recursive: true, force: true }).catch(() => undefined)
+        // .cache itself only when nothing else is kept there (the speech detector's results).
+        await fs.rmdir(path.dirname(path.join(dir, PART_CACHE_DIR))).catch(() => undefined)
+        return transcript
+      } finally {
+        client.dispose?.()
+      }
+    })
+    job.done = run.catch(() => undefined)
+    jobs.set(projectId, job)
+    try {
+      return await run
+    } finally {
+      if (jobs.get(projectId) === job) jobs.delete(projectId)
+    }
+  }
   const { info, apiKey } = store.get(options.providerId)
   if (!AI_PROVIDER_KINDS[info.kind].canTranscribe) {
     throw new Error(
@@ -193,7 +240,7 @@ async function runJob(
   progress: (p: TranscribeProgress) => void,
   onTemp: (dir: string) => void
 ): Promise<Transcript> {
-  const send = (phase: TranscribeProgress['phase'], done: number, total: number): void => progress({ projectId: id, phase, done, total })
+  const send = (phase: TranscribeProgress['phase'], done: number, total: number, extra: Partial<TranscribeProgress> = {}): void => progress({ projectId: id, phase, done, total, ...extra })
   const project = await readProject(id).catch(() => {
     throw new Error('This recording could not be read (it may have been moved or deleted).')
   })
@@ -215,21 +262,39 @@ async function runJob(
     const parts = planParts(duration, silences, { maxSeconds })
 
     const results: { part: TranscriptPart; transcript: RawTranscript }[] = []
+    const wav = client.input === 'wav'
+    // On this PC: how far the whole job is (seconds of finished parts plus the running part's share), and parts reused.
+    let finished = 0
+    let resumed = 0
+    let loaded = false
     for (const part of parts) {
       if (signal.aborted) throw cancelled()
-      send('transcribing', part.index, parts.length)
-      const file = path.join(tmp, `part-${part.index}.mp3`)
       const seconds = part.end - part.start
-      await runFfmpeg(partArgs(pcm, part.start, seconds, file), id, signal, 60_000 + seconds * 1000)
-      const bytes = (await fs.stat(file)).size
+      if (wav) send(loaded ? 'transcribing' : 'loading', part.index, parts.length, { fraction: Math.min(1, finished / duration), at: part.start, ...(resumed ? { resumed } : {}) })
+      else send('transcribing', part.index, parts.length)
+      const file = path.join(tmp, `part-${part.index}.${wav ? 'wav' : 'mp3'}`)
+      await runFfmpeg((wav ? wavPartArgs : partArgs)(pcm, part.start, seconds, file), id, signal, 60_000 + seconds * 1000)
+      const bytes = (await fs.stat(file).catch(() => null))?.size ?? 0
+      if (bytes === 0) throw new Error('The sound of the recording could not be read.')
+      const onProgress = (p: PartProgress): void => {
+        if (p.cached) resumed++
+        if (p.phase === 'transcribing') loaded = true
+        send(p.phase === 'loading' && !loaded ? 'loading' : 'transcribing', part.index, parts.length, {
+          fraction: Math.min(1, (finished + Math.min(1, Math.max(0, p.fraction)) * seconds) / duration),
+          at: part.start + Math.min(seconds, p.at ?? 0),
+          ...(p.preview ? { preview: p.preview } : {}),
+          ...(resumed ? { resumed } : {})
+        })
+      }
       const transcript = await client.transcribe!(
-        { file, mimeType: 'audio/mpeg', bytes, seconds },
-        { language: options.language, signal, onUpload: () => send('uploading', part.index, parts.length) }
+        { file, mimeType: wav ? 'audio/wav' : 'audio/mpeg', bytes, seconds },
+        { language: options.language, signal, onUpload: () => send('uploading', part.index, parts.length), part: { index: part.index, count: parts.length }, ...(wav ? { onProgress } : {}) }
       )
+      finished += seconds
       results.push({ part, transcript })
       await fs.rm(file, { force: true })
     }
-    send('finishing', parts.length, parts.length)
+    send('finishing', parts.length, parts.length, wav ? { fraction: 1, at: duration, ...(resumed ? { resumed } : {}) } : {})
     const merged = mergeParts(results, duration)
     return {
       ...(options.language ?? merged.language ? { language: options.language ?? merged.language } : {}),
