@@ -45,7 +45,7 @@ function test(name, body) {
  */
 function micAudio() {
   fs.mkdirSync(fx.MEDIA_CACHE, { recursive: true })
-  const file = path.join(fx.MEDIA_CACHE, `director-mic-speech-${SECONDS}s.m4a`)
+  const file = path.join(fx.MEDIA_CACHE, `director-mic-speech-v2-${SECONDS}s.m4a`)
   if (fs.existsSync(file)) return file
   const tmp = `${file}.part.m4a`
   // [input, from, to (in the clip), at (in the recording)]: JFK speaks from 0.32 s, LibriSpeech from 0.58 s.
@@ -57,7 +57,9 @@ function micAudio() {
   ]
   const graph = [
     ...pieces.map(([i, a, b, at], k) => `[${i}:a]atrim=${a}:${b},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=mono,adelay=${Math.round(at * 1000)}:all=1[p${k}]`),
-    `${pieces.map((_, k) => `[p${k}]`).join('')}amix=inputs=${pieces.length}:normalize=0,apad=whole_dur=${SECONDS},atrim=0:${SECONDS}[out]`
+    // Over 48 s of silence, so the track is as long as the video.
+    `aevalsrc=0:s=48000:d=${SECONDS}[base]`,
+    `[base]${pieces.map((_, k) => `[p${k}]`).join('')}amix=inputs=${pieces.length + 1}:normalize=0:duration=first[out]`
   ].join(';')
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', sp.JFK, '-i', sp.LS, '-filter_complex', graph, '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', tmp])
   fs.renameSync(tmp, file)
@@ -66,7 +68,7 @@ function micAudio() {
 
 /** The grey screen with the voice as its (mixed) sound, as a recording with sound always has it. */
 function screenWithSound() {
-  const file = path.join(fx.MEDIA_CACHE, `director-screen-speech-${SECONDS}s.mp4`)
+  const file = path.join(fx.MEDIA_CACHE, `director-screen-speech-v2-${SECONDS}s.mp4`)
   if (fs.existsSync(file)) return file
   const tmp = `${file}.part.mp4`
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', fx.solidVideo({ seconds: SECONDS }), '-i', micAudio(), '-map', '0:v', '-map', '1:a', '-c', 'copy', '-shortest', '-movflags', '+faststart', tmp])

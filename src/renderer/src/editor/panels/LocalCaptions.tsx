@@ -512,15 +512,27 @@ export function LocalRunning({ job, duration }: { job: TranscriptionJob; duratio
   const p = job.progress
   const phase = phaseOf(job)
   const share = p ? (p.fraction ?? (p.total > 0 && p.done > 0 ? p.done / p.total : null)) : null
-  const left = useRef<number | null>(null)
   const [, setNow] = useState(0)
-  // The time left moves with the progress and also with the clock (a long part reports rarely).
+  // The clock: the time left counts down between progress lines (a long part reports rarely).
   useEffect(() => {
     const timer = setInterval(() => setNow((n) => n + 1), 1000)
     return () => clearInterval(timer)
   }, [])
-  const elapsed = job.startedAt ? (Date.now() - job.startedAt) / 1000 : 0
-  left.current = share !== null && phase === 'transcribing' ? nextTimeLeft(left.current, elapsed, share) : left.current
+  // The time left from the work done since the first progress of this run (parts taken from an
+  // earlier run would make the speed look infinite), updated when the share moves.
+  const timing = useRef<{ f0: number; t0: number; share: number; left: number | null; at: number } | null>(null)
+  if (share !== null && phase === 'transcribing') {
+    const now = Date.now()
+    const t = timing.current
+    if (!t) timing.current = { f0: share, t0: now, share, left: null, at: now }
+    else if (share !== t.share && t.f0 < 1) {
+      const done = (share - t.f0) / (1 - t.f0)
+      const left = nextTimeLeft(t.left === null ? null : Math.max(0, t.left - (now - t.at) / 1000), (now - t.t0) / 1000, done)
+      timing.current = { ...t, share, left, at: now }
+    }
+  }
+  const t = timing.current
+  const left = { current: t && t.left !== null ? Math.max(0, t.left - (Date.now() - t.at) / 1000) : null }
   const cancelRef = useRef<HTMLButtonElement>(null)
   useCatchFocus(cancelRef, phase)
   const quarter = share === null ? 0 : Math.floor(Math.min(1, share) * 4)

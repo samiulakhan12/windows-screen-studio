@@ -567,3 +567,15 @@
     opacity: 0.5;
   }
 }
+
+/* Long button labels ("Download 60 MB and make captions") wrap inside the narrow panel. */
+.local-actions .btn {
+  max-width: 100%;
+  height: auto;
+  min-height: var(--control-md);
+  padding-top: 5px;
+  padding-bottom: 5px;
+  white-space: normal;
+  text-align: left;
+  line-height: var(--leading-tight);
+}
