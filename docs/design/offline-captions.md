@@ -641,7 +641,9 @@ checked with `speechModel()`, booleans with `=== true`.
 
 Times are seconds from the start of the audio, three decimals. Exit codes: 0 ok, 1 error,
 2 cancelled. With `--stdin-control`, a `cancel` line or the end of stdin cancels at the next
-checkpoint. `segment` lines are printed after each chunk (whisper.cpp 1.8.3's segment callback
+checkpoint. With `--parent-pid N`, a process N already gone (or, on Windows, ending) cancels at
+once with its `cancelled` line; on Linux N must be the helper's parent (else error `args`), whose
+death kills the helper (`PR_SET_PDEATHSIG`). `segment` lines are printed after each chunk (whisper.cpp 1.8.3's segment callback
 passes a wrong count with DTW and is not used) and carry **final word times**: the result line
 carries no words, so the segment lines are everything main gets, and nothing changes a word
 after its line is printed. While `transcribe` works, its control thread prints a `progress` line

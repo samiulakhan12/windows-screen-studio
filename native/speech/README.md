@@ -33,8 +33,9 @@ language detection).
 
 `cargo test` (Linux) covers the arguments, the WAV reader, the chunk plan, word forming on token
 tables, the per-chunk refinement against the recorded run in `tests/data/`, the language-chunk
-choice, the heartbeat timer, JSON escaping, the windowed detector against a whole-buffer run and the
-loader at a non-ASCII path. The tests against the built helper are `tests/native/*.spec.ts`
+choice, the heartbeat timer, JSON escaping, the windowed detector against a whole-buffer run, the
+loader at a non-ASCII path and the parent watch's lines against the built helper
+(`tests/parent_watch.rs`). The tests against the built helper are `tests/native/*.spec.ts`
 (`npm run test:native`) and `scripts/smoke-speech-wine.sh`; see `docs/BUILDING.md`.
 
 ## Building

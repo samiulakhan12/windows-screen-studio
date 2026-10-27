@@ -8,7 +8,9 @@
 //!                         [--threads N] [--low-priority] [--stdin-control] [--parent-pid N]
 //!
 //! Exit codes: 0 ok, 1 error (an `error` line), 2 cancelled (a `cancelled` line). With
-//! --stdin-control a `cancel` line or the end of stdin cancels at the next checkpoint.
+//! --stdin-control a `cancel` line or the end of stdin cancels at the next checkpoint. With
+//! --parent-pid N a process N already gone (or, on Windows, ending) cancels at once; on Linux N
+//! must be the helper's parent (else error `args`), whose death kills the helper.
 
 mod args;
 mod chunks;
