@@ -4,7 +4,7 @@
  * project (engine/project.ts) and for what a provider returns (the Captions tab), like
  * engine/titleData.ts for title cards.
  */
-import type { AiProviderKind, CaptionSegment, CaptionWord, Transcript } from '../types'
+import type { CaptionSegment, CaptionWord, Transcript } from '../types'
 
 /** Shortest caption kept, seconds. */
 export const MIN_CAPTION = 0.05
@@ -15,7 +15,7 @@ export const MAX_CAPTIONS = 5000
 /** Most word timings one caption keeps. */
 const MAX_WORDS = 400
 
-const KINDS: AiProviderKind[] = ['openai', 'gemini', 'anthropic']
+const KINDS: Transcript['provider'][] = ['openai', 'gemini', 'anthropic', 'local']
 const LANGUAGE = /^[a-z]{2,3}(-[a-z0-9]{1,8})*$/i
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -103,7 +103,7 @@ export function readTranscript(raw: unknown, duration = Infinity): Transcript | 
   const r = raw as Partial<Record<keyof Transcript, unknown>>
   if (!Array.isArray(r.segments)) return undefined
   const t: Transcript = {
-    provider: KINDS.includes(r.provider as AiProviderKind) ? (r.provider as AiProviderKind) : 'openai',
+    provider: KINDS.includes(r.provider as Transcript['provider']) ? (r.provider as Transcript['provider']) : 'openai',
     model: typeof r.model === 'string' ? r.model.slice(0, 200) : '',
     createdAt: typeof r.createdAt === 'string' ? r.createdAt.slice(0, 64) : '',
     segments: readCaptionSegments(r.segments, duration)

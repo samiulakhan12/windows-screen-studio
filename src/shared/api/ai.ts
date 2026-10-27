@@ -29,19 +29,31 @@ export interface AiProviderInput {
 }
 
 export interface TranscribeOptions {
+  /** A provider's id, or LOCAL_TRANSCRIBER_ID ('local', api/speech.ts) for captions made on this PC. */
   providerId: string
   /** Spoken language hint (BCP-47); absent = detect. */
   language?: string
   /** Which sound to send: the microphone track when the recording kept it apart, else the mixed sound. */
   source?: 'auto' | 'mic' | 'mixed'
+  /** On this PC only: the speech model (a catalog id, speech/catalog.ts); absent = the default model. Ignored for providers. */
+  model?: string
 }
 
 export interface TranscribeProgress {
   projectId: string
-  phase: 'extracting' | 'uploading' | 'transcribing' | 'finishing'
+  /** 'loading': on this PC, the speech model is being loaded (before the first part). */
+  phase: 'extracting' | 'loading' | 'uploading' | 'transcribing' | 'finishing'
   /** Parts done of `total` (long recordings are sent in parts). */
   done: number
   total: number
+  /** On this PC: share of the whole job done, 0..1 (providers send none: the parts tell). */
+  fraction?: number
+  /** On this PC: source seconds transcribed so far. */
+  at?: number
+  /** On this PC: the newest words heard, at most 120 characters. */
+  preview?: string
+  /** On this PC: parts reused from an earlier run that was cancelled or failed. */
+  resumed?: number
 }
 
 export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'

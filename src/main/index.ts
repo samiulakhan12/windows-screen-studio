@@ -15,6 +15,7 @@ import { projectsRoot, setLegacyProjectRoots } from './projects'
 import { registerProjectsIpc } from './projectsIpc'
 import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp, registerRecordingIpc } from './recordingIpc'
 import { registerSecurity } from './security'
+import { registerSpeechIpc } from './speech/speechIpc'
 import { createMainWindow } from './windows'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
@@ -52,6 +53,7 @@ if (!app.requestSingleInstanceLock()) {
     registerAnalysisIpc()
     registerPrefsIpc()
     registerAiIpc()
+    registerSpeechIpc()
     registerCaptionsIpc()
     registerExportIpc()
     openMainWindow()

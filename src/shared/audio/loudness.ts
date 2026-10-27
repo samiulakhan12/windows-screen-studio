@@ -6,6 +6,8 @@
  * loudness for the preview's normalisation) is computed from that envelope.
  */
 
+import type { Range } from './activity'
+
 /** Loudness the export normalises to (ffmpeg loudnorm): integrated, true peak and range. */
 export const LOUDNESS_TARGET = { integrated: -16, truePeak: -1.5, range: 11 } as const
 
@@ -18,6 +20,12 @@ export interface AudioLevels {
   window: number
   /** Window i covers [i * window, (i + 1) * window) of the source. */
   power: Float32Array
+  /**
+   * Where someone speaks, found by the bundled speech detector (vad.ts; source seconds, sorted,
+   * separate). Only on the voice source (the microphone stem, or the mixed track of a recording
+   * without stems) and only when the detector ran; absent: the level decides (activity.ts).
+   */
+  speech?: Range[]
 }
 
 interface Biquad {
