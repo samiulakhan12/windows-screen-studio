@@ -8,6 +8,25 @@ fn main() {
     let os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     println!("cargo:rerun-if-changed=build.rs");
+    // Which build this is, for the `ready` line and the CPUID check at the start of main:
+    // SSW_SPEECH_BUILD when set (scripts/build-native.mjs sets it), else derived from the ggml
+    // flags the build uses (a cross build forces AVX2 on for the standard build).
+    println!("cargo:rerun-if-env-changed=SSW_SPEECH_BUILD");
+    println!("cargo:rerun-if-env-changed=GGML_AVX2");
+    let build = std::env::var("SSW_SPEECH_BUILD").unwrap_or_else(|_| {
+        if os != "windows" {
+            "host".into()
+        } else if std::env::var("GGML_AVX2").map(|v| v == "ON").unwrap_or(false) {
+            "standard".into()
+        } else {
+            "compatible".into()
+        }
+    });
+    assert!(
+        ["standard", "compatible", "host"].contains(&build.as_str()),
+        "SSW_SPEECH_BUILD must be standard, compatible or host"
+    );
+    println!("cargo:rustc-env=SSW_SPEECH_BUILD={build}");
     if os != "windows" {
         return;
     }
