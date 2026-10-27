@@ -326,6 +326,13 @@ describe('planPolish: captions', () => {
     // The last caption ends at 9.8 s of the recording: 3.5 s of the pause before it are cut.
     expect(r.summary.captionsLeftOutAfter).toBeCloseTo(9.8 - 3.5, 6)
   })
+
+  it('says it in video time: past the pause freezes before it, as the Transport and the subtitle files', () => {
+    const freezes: Freeze[] = [{ id: 'f', at: 2, length: 3, sound: 'pause' }]
+    const r = planPolish(input12({ project: project12({ freezes }), transcript: transcript(9), transcriptLeftOut: true }), { ...NONE, captions: true })
+    // The last caption ends at 9.8 s of the recording; the 3 s hold at 2 s plays before it.
+    expect(r.summary.captionsLeftOutAfter).toBeCloseTo(9.8 + 3, 6)
+  })
 })
 
 describe('planPolish: style', () => {

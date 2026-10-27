@@ -18,11 +18,10 @@ import type { DirectorSpeech } from '../audio/speech'
 import { captionsOf } from '../captions/settings'
 import { cropView, regenerateInFrame } from '../engine/crop'
 import { directorSettingsOf } from '../engine/directorData'
-import { freezeKeepRanges, planOf, videoDuration } from '../engine/freeze'
+import { freezeKeepRanges, planOf, videoDuration, videoTimeAt } from '../engine/freeze'
 import { effectiveTrack } from '../engine/inputTrack'
 import { isZoomClick, zoomSettingsOf } from '../engine/zoom'
 import type { FramingOutcome } from '../render/faceFraming'
-import { viewingTime } from '../render/overlays'
 import type { CursorTrack, Project, Transcript } from '../types'
 import { applyDirectorPlan, planDirector, type DirectorPlan } from './cameraDirector'
 import type { SpeechModelId } from '../speech/catalog'
@@ -140,7 +139,7 @@ export interface PolishSummary {
   framing: FramingOutcome | null
   /** Captions written (0 unless the captions step changed the project). */
   captions: number
-  /** With captions left out (PolishInput.transcriptLeftOut): the output second the written ones stop at, else null. */
+  /** With captions left out (PolishInput.transcriptLeftOut): the video second (past the pause freezes) the written ones stop at, else null. */
   captionsLeftOutAfter: number | null
   /** Name of the preset applied or matched, or null. */
   style: string | null
@@ -251,7 +250,7 @@ export function planPolish(input: PolishInput, options: PolishOptions): PolishRe
     summary.captions = transcript.segments.length
     const last = transcript.segments[transcript.segments.length - 1]
     // The clips are final here: only remove silences changes them, and it ran.
-    if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = viewingTime(p.clips, last.end)
+    if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = videoTimeAt(p.clips, planOf(p), last.end)
   }
 
   // Camera director, last: it plans in output seconds on the final clips, finds the demo from the

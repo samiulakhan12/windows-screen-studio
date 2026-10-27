@@ -355,7 +355,8 @@ The compositor draws the hold at `at`, so the burned-in caption active at `at` i
 - `CaptionsPanel.tsx`: `subtitleFile(segments, p.clips, f, planOf(p))`.
 - Positions shown to the user use `videoTimeAt(clips, planOf(p), t)` instead of `viewingTime`, so they match the Transport and the YouTube timestamps:
   - `TextPanel.tsx`: the chapter rows and the item `at` label;
-  - `CaptionsPanel.tsx`: the caption row times.
+  - `CaptionsPanel.tsx`: the caption row times;
+  - `captionItems.ts` `transcribe()` and `planPolish` (`summary.captionsLeftOutAfter`): the time in "the captions after X were left out".
 - With `NO_FREEZES`, every map is the identity and every output is byte-identical.
 
 ### 4.8 Edits (`src/shared/editor/freezeEdit.ts`)
@@ -726,7 +727,6 @@ Scenario:
 - Copy and paste of freezes (E-06), and multi-select delete.
 - Remembering the last sound mode as an editor preference.
 - A preview-hold e2e (timing-sensitive under Xvfb).
-- The caption row times in `CaptionsPanel.tsx` in video time (`videoTimeAt`). That file belongs to the teleprompter work in this wave, which allowed only the `subtitleFile(…)` call (editing-wins.md decision 2), so the rows still show edit time.
 - **Interactions with the other features in this wave:**
   - **E-05** snaps freeze edges and drags to `freezeSnapTargets`, and adds freeze anchors to its own targets.
   - **E-01** polish passes `freezeKeepRanges` to smart speed and remove silences, and reports `videoDuration` before and after.
