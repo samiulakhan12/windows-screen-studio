@@ -22,7 +22,7 @@ export interface FrameContext {
   cursor: CursorTrack
   /** Cursor-following focus path, or null when the recording has no cursor data. */
   focus: SmoothedTrack | null
-  /** Recorded video size in pixels. */
+  /** Drawn (cropped) video size in pixels. */
   vw: number
   vh: number
   /** Where the recording card is drawn (output px) and its corner radius. */
@@ -30,8 +30,10 @@ export interface FrameContext {
   radius: number
   /** Zoom camera at t. */
   cam: Camera
-  /** The recording's frame at t (null before the first frame is decoded). */
+  /** The recording's frame at t, as drawn (the crop's copy; null before the first frame is decoded). */
   screen: FrameImage | null
+  /** Height (px) of the whole decoded recording frame; privacy blur/pixelate strength is relative to it. Absent = screen.height. */
+  sourceH?: number
   /** Motion-blur shutter of this frame (privacy shapes cover everything its sub-frames show). */
   options?: Required<DrawOptions>
   /** The project's background image (a title card with the project's background paints it). */

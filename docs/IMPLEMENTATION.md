@@ -60,6 +60,16 @@ and export), processing and every auto zoom regeneration read the track only thr
 (`docs/design/smarter-auto-zoom.md`). Older recordings have no scroll or release data and no
 `inputEdits`, and behave exactly as before.
 
+Two more edits of the recording are data in `project.json` (Wave 6, `docs/design/editing-wins.md`).
+A **crop** (`Project.crop`, a rectangle normalised to the full recorded frame) is applied when frames
+are drawn, never by re-encoding: every stored position stays relative to the full frame, and
+`shared/engine/crop.ts` `cropView()` gives the scene, the cursor track and the director their view of
+the cropped picture; layout and export sizes read the recording's size through `visibleSize`.
+**Freeze frames** (`Project.freezes`, anchored in source time) add a layer over the clip timeline:
+`shared/engine/freeze.ts` maps edit (output) time to **video time**, which includes the inserted
+holds. Only the player clock, export frames and sound, subtitle and chapter times and the displayed
+times read video time; overlays, snapping, smart speed and the director keep using source and edit time.
+
 Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
 names from `productName`). The app was called "Screen Studio for Windows" before; on the first
 start as Flown `src/main/brandMigration.ts` renames the old userData folder (before the

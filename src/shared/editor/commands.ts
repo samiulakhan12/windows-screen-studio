@@ -39,6 +39,11 @@ const COMMAND_LIST = [
   { id: 'jumpForward', title: 'Forward one second', category: 'Playback', keywords: 'skip ahead', repeat: true },
   { id: 'nextChapter', title: 'Go to next chapter', category: 'Playback', keywords: 'chapter marker section skip jump forward', repeat: true },
   { id: 'prevChapter', title: 'Go to previous chapter', category: 'Playback', keywords: 'chapter marker section skip jump back', repeat: true },
+  { id: 'shuttleReverse', title: 'Play backwards (again: faster)', category: 'Playback', keywords: 'reverse rewind backwards shuttle j' },
+  { id: 'shuttlePause', title: 'Pause', category: 'Playback', keywords: 'stop hold shuttle k' },
+  { id: 'shuttleForward', title: 'Play forward (again: faster)', category: 'Playback', keywords: 'fast forward shuttle speed l' },
+  { id: 'previewSpeedUp', title: 'Faster preview speed', category: 'Playback', keywords: 'playback rate review quick 1.5x 2x' },
+  { id: 'previewSpeedDown', title: 'Slower preview speed', category: 'Playback', keywords: 'playback rate slow motion 0.5x' },
 
   { id: 'undo', title: 'Undo', category: 'Edit', keywords: 'revert back', repeat: true },
   { id: 'redo', title: 'Redo', category: 'Edit', keywords: 'again', repeat: true },
@@ -47,8 +52,13 @@ const COMMAND_LIST = [
   { id: 'cutRange', title: 'Cut selected range', category: 'Edit', keywords: 'remove delete trim range' },
   { id: 'restoreAll', title: 'Restore the whole recording', category: 'Edit', keywords: 'undo cuts trims speed reset uncut' },
   { id: 'smartSpeed', title: 'Smart speed: find idle parts', category: 'Edit', keywords: 'speed up skip pauses still inactivity fast forward silence auto cut' },
+  { id: 'polish', title: 'Polish in one click…', category: 'Edit', keywords: 'auto magic clean up remove silences auto zoom camera director captions subtitles style preset one click' },
   { id: 'straightenRange', title: 'Straighten cursor in selected range', category: 'Edit', keywords: 'cursor path straight line glide smooth wobble mouse range' },
   { id: 'recordedPathRange', title: 'Keep recorded cursor path in selected range', category: 'Edit', keywords: 'cursor path as recorded original wobble mouse range' },
+  { id: 'cropRecording', title: 'Crop the recording…', category: 'Edit', keywords: 'crop trim edge taskbar tabs hide area frame region cut' },
+  { id: 'resetCrop', title: 'Show the whole recording (reset crop)', category: 'Edit', keywords: 'crop uncrop full frame reset' },
+  { id: 'cropTaskbar', title: 'Crop out the taskbar', category: 'Edit', keywords: 'crop hide taskbar bottom windows' },
+  { id: 'toggleFreezeSound', title: 'Freeze frame: pause or keep the sound', category: 'Edit', keywords: 'freeze hold audio continue silence voice' },
 
   { id: 'addZoom', title: 'Add zoom at playhead', category: 'Add', keywords: 'magnify scale camera' },
   { id: 'addText', title: 'Add text at playhead', category: 'Add', keywords: 'annotation title caption label' },
@@ -63,6 +73,7 @@ const COMMAND_LIST = [
   { id: 'addCursorSpotlight', title: 'Add cursor spotlight', category: 'Add', keywords: 'focus dim darken follow pointer mouse' },
   { id: 'addTitle', title: 'Add title card at playhead', category: 'Add', keywords: 'intro heading lower third slide caption text' },
   { id: 'addChapter', title: 'Add chapter at playhead', category: 'Add', keywords: 'marker section bookmark youtube timestamps' },
+  { id: 'freezeFrame', title: 'Freeze frame at playhead', category: 'Add', keywords: 'hold still pause picture extend frame read freeze' },
 
   { id: 'zoomLevel0', title: 'Pull back selected zoom (0.75×)', category: 'Zoom', keywords: 'level scale out background' },
   { id: 'zoomLevel1', title: 'Zoom level 1.25×', category: 'Zoom', keywords: 'level scale selected' },
@@ -105,6 +116,8 @@ const COMMAND_LIST = [
   { id: 'timelineZoomIn', title: 'Zoom timeline in', category: 'Timeline', keywords: 'magnify scale wider', repeat: true },
   { id: 'timelineZoomOut', title: 'Zoom timeline out', category: 'Timeline', keywords: 'shrink scale narrower', repeat: true },
   { id: 'timelineFit', title: 'Fit timeline to window', category: 'Timeline', keywords: 'whole recording all reset zoom' },
+  { id: 'toggleWaveform', title: 'Audio waveform on the timeline', category: 'Timeline', keywords: 'sound wave levels audio pauses silence talk show hide', toggle: true },
+  { id: 'toggleSnapping', title: 'Snapping', category: 'Timeline', keywords: 'snap magnet align edges cuts clicks chapters playhead stick toggle', toggle: true },
 
   { id: 'export', title: 'Export…', category: 'General', keywords: 'render save mp4 gif video share' },
   { id: 'shortcuts', title: 'Keyboard shortcuts…', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },

@@ -1,0 +1,22 @@
+/* The audio waveform on the clip track (ClipWaveform.tsx). Two classes each: editor.css loads after this file. */
+
+/* Lavender for the mix and the microphone, orange for the system sound: both read on the clip
+   colours (--track-clip, --track-clip-fast). Pauses darken the track; muted sound is grey. */
+.tl-track.clip-track {
+  --wave-mix: rgba(240, 237, 255, 0.78);
+  --wave-mic: rgba(240, 237, 255, 0.82);
+  --wave-system: rgba(253, 186, 116, 0.85);
+  --wave-muted: rgba(255, 255, 255, 0.22);
+  --wave-pause: rgba(5, 5, 10, 0.32);
+}
+
+/* Over the clip and gap blocks (z-index auto), under the path bars, click markers, trim handles,
+   range selection and playhead. A canvas takes its pixel size unless its CSS size is set: its
+   left and width are set inline, its height here. */
+.clip-track .clip-wave {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}

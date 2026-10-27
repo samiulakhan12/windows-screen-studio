@@ -5,6 +5,7 @@ import { CORNER_NAMES } from '../../../../shared/recording/cameraBubble'
 import { AUTO_LAYOUT_HINT } from '../../../../shared/editor/directorCopy'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
+import { visibleSize } from '../../../../shared/engine/crop'
 import { cameraSourceRect, layoutGeometry, outputSize } from '../../../../shared/engine/layout'
 import { formatTime } from '../../../../shared/engine/project'
 import { DEFAULT_WEBCAM_BORDER, framingAt, WEBCAM_LIMITS, webcamLook } from '../../../../shared/engine/webcamData'
@@ -114,9 +115,10 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
   const camH = video?.videoHeight || 9
   const padH = Math.round((PAD_W * camH) / camW)
   // The shape of the camera in the layout at the playhead (on the frame the preview shows) decides how much of the picture shows.
-  const out = outputSize(project.style.aspectRatio, project.width, project.height, 1080)
+  const shown = visibleSize(project)
+  const out = outputSize(project.style.aspectRatio, shown.width, shown.height, 1080)
   const layout = useSyncExternalStore(player.subscribe, () => layoutAt(project, layoutTimeAt(project, player.time)))
-  const box = layoutGeometry(layout, project, out.width, out.height, project.width, project.height).camera.rect
+  const box = layoutGeometry(layout, project, out.width, out.height, shown.width, shown.height).camera.rect
   const src = cameraSourceRect(camW, camH, Math.max(1, box.w), Math.max(1, box.h), look)
   const fx = src.x / camW
   const fw = src.w / camW

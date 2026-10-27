@@ -8,7 +8,7 @@
  * are cut to the exact length of their video and kept on its frames, click sounds keep the
  * recording's channels at full level on each side, and sources mixed together are made stereo.
  */
-import type { ClickSounds, ExportJob } from '../api/export'
+import type { ClickSounds, ExportJob, SoundHold } from '../api/export'
 import { duckExpression, fitFades } from '../audio/automation'
 import { LOUDNESS_TARGET } from '../audio/loudness'
 import { musicEnd, STEM_KINDS, type StemKind } from '../audio/settings'
@@ -99,6 +99,8 @@ export interface RecordingPart {
   /** Noise reduction strength 0..1 (on the stems marked `denoise`, or on the mixed track). */
   noiseReduction?: number
   normalize?: boolean
+  /** Pause freezes (E-11): silence of `length` seconds before source second `at`. */
+  holds?: SoundHold[]
 }
 
 /** Background music in the graph. */
@@ -132,17 +134,67 @@ export function clipSampleBounds(clips: Clip[], rate = AUDIO_RATE): number[] {
   return [0, ...clips.map((c) => Math.round((t += (c.end - c.start) / c.speed) * rate))]
 }
 
-/** audioFilterGraph for the recording with its stems, noise reduction and normalisation. */
+/** A piece of the recording's sound: a clip, or the part of one after a pause freeze, with the seconds of silence in front of it. */
+export interface SoundPiece {
+  start: number
+  end: number
+  speed: number
+  /** Seconds of silence before it (the pause freezes at its start). */
+  hold: number
+}
+
+/** Holds closer than this (source s) to a clip's start go in front of it; this close to the edit's end, after it. */
+const HOLD_SNAP = 1e-3
+
+/**
+ * The clips split at every pause freeze (E-11): a hold at a clip's start goes in front of that clip,
+ * a hold inside one splits it there, and the holds at the edit's end are the `tail` (seconds of
+ * silence after the last piece). Holds whose frame is cut are not in the sound (nor in the video).
+ */
+export function soundPieces(clips: readonly Clip[], holds: readonly SoundHold[]): { pieces: SoundPiece[]; tail: number } {
+  const last = clips[clips.length - 1]
+  let tail = 0
+  // Each hold in the clip that shows its frame (adjacent clips share their edge).
+  const inside: SoundHold[][] = clips.map(() => [])
+  for (const h of [...holds].sort((a, b) => a.at - b.at)) {
+    if (h.at >= last.end - HOLD_SNAP && h.at <= last.end + HOLD_SNAP) tail += h.length
+    else inside[clips.findIndex((c) => h.at >= c.start && h.at < c.end)]?.push(h)
+  }
+  const pieces: SoundPiece[] = []
+  clips.forEach((c, i) => {
+    let piece: SoundPiece = { start: c.start, end: c.end, speed: c.speed, hold: 0 }
+    for (const h of inside[i]) {
+      if (h.at - piece.start >= HOLD_SNAP) {
+        pieces.push({ ...piece, end: h.at })
+        piece = { start: h.at, end: c.end, speed: c.speed, hold: 0 }
+      }
+      piece.hold += h.length
+    }
+    pieces.push(piece)
+  })
+  return { pieces, tail }
+}
+
+/** clipSampleBounds of sound pieces: each starts where the video shows its silence, then its sound. */
+export function pieceSampleBounds(pieces: readonly SoundPiece[], rate = AUDIO_RATE): number[] {
+  let t = 0
+  return [0, ...pieces.map((p) => Math.round((t += p.hold + (p.end - p.start) / p.speed) * rate))]
+}
+
+/** audioFilterGraph for the recording with its stems, noise reduction, normalisation and pause freezes. */
 export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout'): string {
-  const { clips } = rec
+  // Pause freezes split the clips at their frames (without any, each clip is one piece).
+  const holds = rec.holds ?? []
+  const clips: readonly SoundPiece[] = holds.length > 0 ? soundPieces(rec.clips, holds).pieces : rec.clips.map((c) => ({ ...c, hold: 0 }))
   const n = clips.length
   const parts: string[] = []
   const denoise = rec.noiseReduction && rec.noiseReduction > 0 ? `,${denoiseFilter(rec.noiseReduction)}` : ''
   // atempo never returns exactly len/speed seconds (tens of ms off per clip), and concat would
-  // carry each error into every later clip. So an edit with re-timed clips works at the export's
-  // rate and cuts every clip to the exact samples the video gives it.
-  const retimed = clips.some((c) => Math.abs(c.speed - 1) > 1e-6)
-  const bounds = retimed ? clipSampleBounds(clips) : []
+  // carry each error into every later clip. So an edit with re-timed clips (or with holds, whose
+  // silence must end on a frame) works at the export's rate and cuts every clip to the exact
+  // samples the video gives it.
+  const retimed = holds.length > 0 || clips.some((c) => Math.abs(c.speed - 1) > 1e-6)
+  const bounds = retimed ? pieceSampleBounds(clips) : []
   const resample = retimed ? `aresample=${AUDIO_RATE}:async=1:first_pts=0` : 'aresample=async=1:first_pts=0'
   let head: string
   const stems = rec.stems ?? []
@@ -160,8 +212,10 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
   clips.forEach((c, i) => {
     const len = c.end - c.start
     const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${retimeFilters(c.speed)}` : ''
+    // A pause freeze: silence in front, in whole samples (holds are in tenths of a second).
+    const hold = c.hold > 0 ? `,adelay=delays=${Math.round(c.hold * AUDIO_RATE)}S:all=1` : ''
     const exact = retimed ? `,apad=whole_len=${bounds[i + 1] - bounds[i]},atrim=end_sample=${bounds[i + 1] - bounds[i]}` : ''
-    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${exact}[c${i}]`)
+    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${hold}${exact}[c${i}]`)
   })
   const joined = n > 1 ? `${clips.map((_, i) => `[c${i}]`).join('')}concat=n=${n}:v=0:a=1,` : '[c0]'
   const normalize = rec.normalize ? `${NORMALIZE_FILTERS},` : ''
@@ -298,8 +352,8 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
   let next = first
   let audio: RecordingPart | undefined
   if (job.audio && job.audio.clips.length > 0) {
-    const { clips, volume, noiseReduction, normalize } = job.audio
-    const extras = { ...(noiseReduction && noiseReduction > 0 ? { noiseReduction } : {}), ...(normalize ? { normalize: true } : {}) }
+    const { clips, volume, noiseReduction, normalize, holds } = job.audio
+    const extras = { ...(noiseReduction && noiseReduction > 0 ? { noiseReduction } : {}), ...(normalize ? { normalize: true } : {}), ...(holds?.length ? { holds } : {}) }
     const wanted = STEM_KINDS.filter((k) => job.audio?.stems?.[k] !== undefined)
     if (wanted.length > 0) {
       const stems: StemPart[] = []

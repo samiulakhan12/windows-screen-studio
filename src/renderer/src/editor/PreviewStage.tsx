@@ -13,15 +13,18 @@ import {
   shapeBounds,
   shapeLabel
 } from '../../../shared/editor/shapes'
-import { dragRegion, formatLevel, regionFromPoints, setZoomRegion, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
+import { setZoomRegionInView } from '../../../shared/editor/cropEdit'
+import { dragRegion, formatLevel, regionFromPoints, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
+import { croppedFrameSize, fromCrop, geometryFromCrop } from '../../../shared/engine/crop'
 import { outputSize, type Rect } from '../../../shared/engine/layout'
 import { useSceneRect } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
 import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
-import type { Annotation, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
+import type { Annotation, NormRect, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
 import { cardRect, type RenderScene } from '../render/compositor'
 import { holdGesture, useEditor } from './context'
+import { CropEditor, type CropTool } from './CropEditor'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
@@ -40,6 +43,8 @@ interface Props {
   scene?: RenderScene
   selection?: Selection
   onSelect?: (sel: Selection) => void
+  /** The crop tool, while the crop is edited: it replaces the other overlays (the preview shows the whole recording). */
+  cropTool?: CropTool | null
 }
 
 interface Box {
@@ -102,7 +107,7 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
     let last = ''
     const update = (): void => {
       const t = displayTime(project.clips, player.time)
-      if (player.playing || !itemVisibleAt(item.item, t)) {
+      if (player.moving || !itemVisibleAt(item.item, t)) {
         if (last !== 'none') setView(null)
         last = 'none'
         return
@@ -131,12 +136,18 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
  * Overlays: picking a zoom's focus point, moving the selected text, and editing the selected
  * shape or spotlight.
  */
-export const PreviewStage = memo(function PreviewStage({ project, pickZoom, selectedAnnotation, onTogglePlay, onExitPick, scene, selection, onSelect }: Props): JSX.Element {
+export const PreviewStage = memo(function PreviewStage({ project, pickZoom: picking, selectedAnnotation, onTogglePlay, onExitPick, scene, selection, onSelect, cropTool }: Props): JSX.Element {
   const { store, player } = useEditor()
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [box, setBox] = useState<Box>({ w: 0, h: 0 })
-  const out = outputSize(project.style.aspectRatio, project.width, project.height, project.height)
+  // Geometry comes from the project as drawn (cropped: the crop's view and size); edits are
+  // mapped back into the full frame through `crop`. The backing store's cap stays the recording's own height.
+  const drawn = scene?.project ?? project
+  const crop = scene?.crop ?? null
+  const out = outputSize(drawn.style.aspectRatio, drawn.width, drawn.height, project.height)
+  // The zoom whose focus is picked, as the preview shows it.
+  const pickZoom = useMemo(() => (picking ? (drawn.zooms.find((z) => z.id === picking.id) ?? picking) : null), [picking, drawn.zooms])
 
   useEffect(() => () => player.setFlat(false), [player])
 
@@ -192,9 +203,8 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   }, [player, out.width, out.height])
 
   // Source-space rectangle of the recording inside the frame (what drawFrame computes).
-  const vw = player.screen.videoWidth || project.width
-  const vh = player.screen.videoHeight || project.height
-  const rect = useSceneRect(project, box.w, box.h, vw, vh)
+  const { width: vw, height: vh } = croppedFrameSize(crop, player.screen.videoWidth, player.screen.videoHeight, drawn)
+  const rect = useSceneRect(drawn, box.w, box.h, vw, vh)
 
   /** Normalised source position under a pointer (the preview shows the unzoomed frame while picking). */
   const sourceAt = (clientX: number, clientY: number, el: HTMLElement): { x: number; y: number } => {
@@ -204,18 +214,18 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
 
   // The selected shape or spotlight, edited on the preview through the camera at the playhead.
   const editItem = useMemo<EditItem | null>(() => {
-    if (pickZoom || !selection) return null
+    if (pickZoom || cropTool || !selection) return null
     if (selection.kind === 'shape') {
-      const item = (project.shapes ?? []).find((s) => s.id === selection.id)
+      const item = (drawn.shapes ?? []).find((s) => s.id === selection.id)
       return item ? { type: 'shape', item } : null
     }
     if (selection.kind === 'spotlight') {
-      const item = (project.spotlights ?? []).find((s) => s.id === selection.id)
+      const item = (drawn.spotlights ?? []).find((s) => s.id === selection.id)
       return item ? { type: 'spotlight', item } : null
     }
     return null
-  }, [pickZoom, selection, project.shapes, project.spotlights])
-  const view = useStageView(player, project, scene, editItem)
+  }, [pickZoom, cropTool, selection, drawn.shapes, drawn.spotlights])
+  const view = useStageView(player, drawn, scene, editItem)
   const mapping = view ? mappingFor(view.cam, rect) : null
 
   // Handles are laid out on the flat frame: the 3D tilt is left out while the preview shows
@@ -241,8 +251,8 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
         if (!drew && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) return
         drew = true
         const b = at(ev)
-        if (type === 'shape') updateShape(store, item.id, drawnGeometry(item.kind, a, b))
-        else updateSpotlight(store, item.id, drawnBox(a, b))
+        if (type === 'shape') updateShape(store, crop, item.id, drawnGeometry(item.kind, a, b))
+        else updateSpotlight(store, crop, item.id, drawnBox(a, b))
       },
       (ev) => {
         // A plain click still plays or pauses.
@@ -253,7 +263,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
   }
 
   const setRegion = (id: string, box: RegionBox): void => {
-    store.update((p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === id ? setZoomRegion(z, box) : z)) }), `zoom-region:${id}`)
+    store.update((p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === id ? setZoomRegionInView(crop, z, box) : z)) }), `zoom-region:${id}`)
   }
 
   /**
@@ -288,15 +298,14 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
     (clientX: number, clientY: number, el: HTMLElement): void => {
       if (!pickZoom) return
       const r = el.getBoundingClientRect()
-      const x = clamp((clientX - r.left - rect.x) / rect.w, 0, 1)
-      const y = clamp((clientY - r.top - rect.y) / rect.h, 0, 1)
+      const { x, y } = fromCrop(crop, { x: clamp((clientX - r.left - rect.x) / rect.w, 0, 1), y: clamp((clientY - r.top - rect.y) / rect.h, 0, 1) })
       const id = pickZoom.id
       store.update(
         (p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === id ? { ...z, focus: { mode: 'fixed', x, y }, auto: false } : z)) }),
         `zoom-focus:${id}`
       )
     },
-    [pickZoom, rect.x, rect.y, rect.w, rect.h, store]
+    [pickZoom, crop, rect.x, rect.y, rect.w, rect.h, store]
   )
 
   const onOverlayDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
@@ -343,8 +352,9 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom, sele
         >
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
-          {!pickZoom && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} box={box} />}
-          {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} onDone={() => onSelect?.(null)} />}
+          {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} box={box} />}
+          {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} onDone={() => onSelect?.(null)} />}
+          {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
         </div>
       </div>
     </div>
@@ -522,11 +532,14 @@ function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Bo
 
 type Store = ReturnType<typeof useEditor>['store']
 
-function updateShape(store: Store, id: string, patch: Partial<Shape>): void {
+/** Stores a geometry patch made on the preview: it is in the crop's view (`crop`), stored in the full frame. */
+function updateShape(store: Store, crop: NormRect | null, id: string, view: Partial<Shape>): void {
+  const patch = geometryFromCrop(crop, view)
   store.update((p) => ({ ...p, shapes: (p.shapes ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), `shape-geom:${id}`)
 }
 
-function updateSpotlight(store: Store, id: string, patch: Partial<Spotlight>): void {
+function updateSpotlight(store: Store, crop: NormRect | null, id: string, view: Partial<Spotlight>): void {
+  const patch = geometryFromCrop(crop, view)
   store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), `spot-geom:${id}`)
 }
 
@@ -538,7 +551,7 @@ const BOX_HANDLES: RegionHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
  * arrow or line, or the lit area around the cursor (resized from its corners). Drags are
  * mapped through the camera at the playhead, so they work the same zoomed in.
  */
-function ShapeEditor({ edit, view, mapping, onDone }: { edit: EditItem; view: StageView; mapping: Mapping; onDone: () => void }): JSX.Element {
+function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; view: StageView; mapping: Mapping; crop: NormRect | null; onDone: () => void }): JSX.Element {
   const { store } = useEditor()
   const { type, item } = edit
 
@@ -566,13 +579,13 @@ function ShapeEditor({ edit, view, mapping, onDone }: { edit: EditItem; view: St
     const moveEnd = (end: 'start' | 'end') =>
       drag((dx, dy) => {
         const from = end === 'start' ? { x: initial.x, y: initial.y } : { x: initial.x + initial.w, y: initial.y + initial.h }
-        updateShape(store, item.id, setLineEnd(initial, end, { x: from.x + dx, y: from.y + dy }))
+        updateShape(store, crop, item.id, setLineEnd(initial, end, { x: from.x + dx, y: from.y + dy }))
       })
     body = (
       <>
         <svg className="shape-lines" aria-hidden="true">
           <line className="guide" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
-          <line className="hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} onPointerDown={drag((dx, dy) => updateShape(store, item.id, moveLine(initial, dx, dy)))} data-testid="shape-line" />
+          <line className="hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} onPointerDown={drag((dx, dy) => updateShape(store, crop, item.id, moveLine(initial, dx, dy)))} data-testid="shape-line" />
         </svg>
         <span className="shape-end" data-end="start" style={{ left: a.x, top: a.y }} onPointerDown={moveEnd('start')} title="Drag to move this end" />
         <span className="shape-end" data-end="end" style={{ left: b.x, top: b.y }} onPointerDown={moveEnd('end')} title={item.kind === 'arrow' ? 'Drag to move the arrowhead' : 'Drag to move this end'} />
@@ -586,9 +599,9 @@ function ShapeEditor({ edit, view, mapping, onDone }: { edit: EditItem; view: St
     const initial = { x: area.x, y: area.y, w: area.w, h: area.h }
     const resize = (handle: RegionHandle) =>
       drag((dx, dy, ev) => {
-        if (follows) updateSpotlight(store, item.id, resizeAround(initial, handle, dx, dy))
-        else if (type === 'spotlight') updateSpotlight(store, item.id, dragShapeBox(initial, handle, dx, dy, ev.shiftKey))
-        else updateShape(store, item.id, dragShapeBox(initial, handle, dx, dy, ev.shiftKey))
+        if (follows) updateSpotlight(store, crop, item.id, resizeAround(initial, handle, dx, dy))
+        else if (type === 'spotlight') updateSpotlight(store, crop, item.id, dragShapeBox(initial, handle, dx, dy, ev.shiftKey))
+        else updateShape(store, crop, item.id, dragShapeBox(initial, handle, dx, dy, ev.shiftKey))
       })
     const round = (type === 'spotlight' && item.shape === 'ellipse') || (type === 'shape' && item.kind === 'ellipse')
     body = (

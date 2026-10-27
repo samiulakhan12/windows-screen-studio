@@ -52,9 +52,15 @@ describe('splitBlocks', () => {
     const line = 'Open the settings and click Add user. [pause]\n'
     const big = line.repeat(Math.ceil(50_000 / line.length)).slice(0, 50_000)
     splitBlocks(big.slice(0, 1000))
-    const t = performance.now()
-    const blocks = splitBlocks(big)
-    const ms = performance.now() - t
+    // The best of five runs, so a pause of the test machine during one run does not decide it
+    // (one run takes 7 to 23 ms under load; a splitter that is quadratic in the text takes seconds).
+    let ms = Infinity
+    let blocks: ReturnType<typeof splitBlocks> = []
+    for (let i = 0; i < 5; i++) {
+      const t = performance.now()
+      blocks = splitBlocks(big)
+      ms = Math.min(ms, performance.now() - t)
+    }
     expect(blocks.length).toBeGreaterThan(1000)
     expect(ms).toBeLessThan(30)
   })

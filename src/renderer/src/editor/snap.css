@@ -1,0 +1,52 @@
+/* ---------- Snapping (E-05): the guide line, its label and the magnet button ---------- */
+
+/* Above the track blocks and click markers (z-index 1-4), below the playhead (6). Placed with
+   transform like the playhead; left = GUTTER in Timeline.tsx. */
+.snap-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--accent-400);
+  pointer-events: none;
+  z-index: 5;
+  will-change: transform;
+}
+
+/* A pill at the top of the ruler, right of the line (left of it with .flip, near the right edge).
+   On --accent-500, not -400, so white text keeps AA contrast. */
+.snap-label {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-500);
+  color: var(--text-on-accent);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  line-height: 14px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.snap-label.flip {
+  left: auto;
+  right: 4px;
+}
+
+/* Next to the zoom buttons: .tl-head spaces its children apart. */
+.tl-head .btn.tl-snap {
+  margin-left: auto;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-md);
+}
+
+.tl-head .btn.tl-snap[aria-pressed='true'] {
+  color: var(--accent-text);
+}
