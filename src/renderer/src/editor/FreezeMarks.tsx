@@ -1,10 +1,9 @@
-import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { moveFreeze, setFreezeLength } from '../../../shared/editor/freezeEdit'
+import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type MutableRefObject, type PointerEvent as ReactPointerEvent } from 'react'
+import { canMoveFreeze, moveFreeze, setFreezeLength, setStillEnd, stillEndsAt } from '../../../shared/editor/freezeEdit'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import { outputToSourceRanges } from '../../../shared/editor/smartSpeed'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { planOf, type Hold, type Still } from '../../../shared/engine/freeze'
-import { viewingTime } from '../../../shared/render/overlays'
 import type { Clip, Freeze } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
@@ -25,6 +24,8 @@ interface Props {
   onSelect: (sel: Selection) => void
   /** The timeline's snapping (E-05): moved anchors and continue ends snap; without it values pass straight through. */
   snap?: SnapController
+  /** The timeline's drag flag: set while a freeze is dragged, so the timeline does not scroll after the playhead. */
+  dragging?: MutableRefObject<boolean>
 }
 
 const NO_FREEZES: Freeze[] = []
@@ -40,7 +41,7 @@ const seconds = (v: number): string => `${v.toFixed(1)} s`
  * it holds the picture over; one whose frame is cut is a hollow diamond in the gap. The body moves a
  * freeze, the right edge sets its length; each drag is one undo step.
  */
-export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap }: Props): JSX.Element | null {
+export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap, dragging }: Props): JSX.Element | null {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const freezes = useSyncExternalStore(store.subscribe, () => store.state.freezes) ?? NO_FREEZES
@@ -78,6 +79,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     const sx = e.clientX
     let moved = false
     store.beginGesture()
+    if (dragging) dragging.current = true
     followPointer(
       e,
       (ev) => {
@@ -86,6 +88,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
         apply((ev.clientX - sx) / px, ev)
       },
       () => {
+        if (dragging) dragging.current = false
         store.endGesture()
         // A plain click shows the frozen frame.
         if (!moved) player.seek(f.at)
@@ -98,10 +101,11 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     // Shift or Alt+drag still selects a range on the clip track.
     if (e.button !== 0 || e.shiftKey || e.altKey) return
     onSelect({ kind: 'freeze', id: f.id })
-    // The playhead follows the anchor during this drag, so it is no target.
+    // The playhead follows the anchor during this drag, so it is no target; nor is a frame moveFreeze refuses.
     const session = snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true })
+    const limit = { min: 0, max: duration, accept: (t: number) => canMoveFreeze(store.state, f.id, t) }
     drag(e, f, (dt, ev) => {
-      const t = session ? session.at(ev, f.at + dt, { min: 0, max: duration }) : f.at + dt
+      const t = session ? session.at(ev, f.at + dt, limit) : f.at + dt
       store.update((p) => moveFreeze(p, f.id, t), `freeze-move:${f.id}`)
       const at = store.state.freezes?.find((x) => x.id === f.id)?.at
       if (at !== undefined) player.seek(at)
@@ -114,13 +118,11 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     onSelect({ kind: 'freeze', id: f.id })
     const from = still ? outputToSourceRanges(clips, still.editStart, still.editEnd).at(-1)?.end ?? f.at : 0
     const session = still ? snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true }) : undefined
+    // Lengths are tenths: the edge snaps only where the still then really ends.
+    const limit = { min: f.at, max: duration, accept: (t: number) => stillEndsAt(store.state, f.id, t) }
     drag(e, f, (dt, ev) => {
-      let length = f.length + dt
-      if (still) {
-        const t = session ? session.at(ev, from + dt, { min: f.at, max: duration }) : from + dt
-        length = viewingTime(clips, t) - still.editStart
-      }
-      store.update((p) => setFreezeLength(p, f.id, length), `freeze-length:${f.id}`)
+      const t = session ? session.at(ev, from + dt, limit) : from + dt
+      store.update((p) => (still ? setStillEnd(p, f.id, t) : setFreezeLength(p, f.id, f.length + dt)), `freeze-length:${f.id}`)
     })
   }
 

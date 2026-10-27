@@ -4,6 +4,7 @@ import { EditStore } from '../src/shared/editor/editStore'
 import { createShape, createSpotlight } from '../src/shared/editor/shapes'
 import {
   buildSnapIndex,
+  chapterSnapLimit,
   dragPoints,
   projectFreezeTargets,
   projectSnapSegments,
@@ -23,6 +24,7 @@ import { freezePlan, freezeSnapTargets, planOf } from '../src/shared/engine/free
 import type { ClickRow } from '../src/shared/engine/inputData'
 import { createProject } from '../src/shared/engine/project'
 import { dragZoomTimes } from '../src/shared/engine/zoom'
+import { outputChapters } from '../src/shared/render/chapters'
 import type { Chapter, Clip, Freeze } from '../src/shared/types'
 
 const clip = (id: string, start: number, end: number, speed = 1): Clip => ({ id, start, end, speed })
@@ -239,6 +241,17 @@ describe('snapPoints', () => {
     expect(snapPoints(idx, [11.95], view(at(idx, 12)), { min: 0, max: 11.9 }).target).toBeNull()
   })
 
+  it('ignores targets the limit does not accept, the current one included: the nearest accepted one wins', () => {
+    const two = buildSnapIndex(F({ clicks: [4.06] }))
+    const noCut = { min: 0, max: 15, accept: (t: number) => t !== 4 }
+    expect(snapPoints(two, [4.01], view()).target).toMatchObject({ label: 'Cut', t: 4 })
+    expect(snapPoints(two, [4.01], view(), noCut).target).toMatchObject({ label: 'Click', t: 4.06 })
+    expect(snapPoints(two, [3.95], view(), noCut).target).toBeNull()
+    // A target held from an earlier move lets go once the limit no longer accepts it.
+    expect(snapPoints(two, [3.95], view(at(two, 4)), noCut).target).toBeNull()
+    expect(snapAt(two, 3.95, view(), noCut)).toEqual({ t: 3.95, target: null })
+  })
+
   it('follows the worked example (a zoom moved by its middle onto a cut)', () => {
     const zidx = buildSnapIndex(sources([clip('c0', 0, 4), clip('c1', 6, 12)], 12))
     const initial = { start: 1, end: 2 }
@@ -305,6 +318,61 @@ describe('snapSpan and snapAt', () => {
     for (let i = 0; i < 1000; i++) snapPoints(big, [i * 0.6 + 0.01, i * 0.6 + 0.5], view())
     expect(big.times.length).toBe(20002)
     expect(Date.now() - begin).toBeLessThan(250)
+  })
+})
+
+describe('chapterSnapLimit (a chapter flag snaps only where the export keeps it)', () => {
+  // A 10-minute recording at fit (8 px is about 4.4 s), chapters Intro 0, Middle 300, Outro 590.
+  const fit = { pxPerSec: 1.83, current: null }
+  const project = (clips: Clip[]): { duration: number; clips: Clip[]; chapters: Chapter[] } => ({
+    duration: 600,
+    clips,
+    chapters: [chapter('i', 0, 'Intro'), chapter('m', 300, 'Middle'), chapter('o', 590, 'Outro')]
+  })
+  /** As TitleTrack begins a drag of chapter `id`: its own flag is no target. */
+  const indexFor = (p: ReturnType<typeof project>, id: string): SnapIndex =>
+    buildSnapIndex(sources(p.clips, p.duration, { chapters: p.chapters, clicks: [450, 300.05] }), [{ owner: `chapter:${id}` }])
+  const titlesWith = (p: ReturnType<typeof project>, id: string, t: number): string[] =>
+    outputChapters(
+      p.chapters.map((c) => (c.id === id ? { ...c, t } : c)),
+      p.clips
+    ).map((c) => c.title)
+
+  it('never at the end of the video, where the export leaves the chapter out', () => {
+    const p = project([clip('c0', 0, 600)])
+    const idx = indexFor(p, 'o')
+    expect(snapAt(idx, 596.5, fit, { min: 0, max: 600 })).toMatchObject({ t: 600, target: { label: 'End' } })
+    expect(titlesWith(p, 'o', 600)).toEqual(['Intro', 'Middle'])
+    expect(snapAt(idx, 596.5, fit, chapterSnapLimit(p, 'o'))).toEqual({ t: 596.5, target: null })
+    expect(titlesWith(p, 'o', 596.5)).toEqual(['Intro', 'Middle', 'Outro'])
+  })
+
+  it('never at a trimmed end either', () => {
+    const p = project([clip('c0', 0, 550)])
+    const idx = indexFor(p, 'o')
+    expect(snapAt(idx, 547, fit, { min: 0, max: 600 })).toMatchObject({ t: 550, target: { label: 'Trim' } })
+    expect(snapAt(idx, 547, fit, chapterSnapLimit(p, 'o'))).toEqual({ t: 547, target: null })
+  })
+
+  it('never onto another chapter (or within 0.1 s of it), where the export merges the two', () => {
+    const p = project([clip('c0', 0, 600)])
+    const idx = indexFor(p, 'o')
+    expect(snapAt(idx, 303, fit, { min: 0, max: 600 })).toMatchObject({ t: 300, target: { label: 'Chapter · Middle' } })
+    expect(titlesWith(p, 'o', 300)).toEqual(['Intro', 'Outro'])
+    // Middle's flag and the click 0.05 s after it are both refused.
+    const limit = chapterSnapLimit(p, 'o')
+    expect(snapAt(idx, 303, fit, limit)).toEqual({ t: 303, target: null })
+    expect([300, 300.05, 300.2].map((t) => limit.accept!(t))).toEqual([false, false, true])
+    expect(titlesWith(p, 'o', 303)).toEqual(['Intro', 'Middle', 'Outro'])
+  })
+
+  it('still snaps to targets the export keeps it at', () => {
+    const p = project([clip('c0', 0, 200), clip('c1', 260, 600)])
+    const idx = indexFor(p, 'o')
+    const limit = chapterSnapLimit(p, 'o')
+    expect(snapAt(idx, 452, fit, limit)).toMatchObject({ t: 450, target: { label: 'Click' } })
+    expect(snapAt(idx, 202, fit, limit)).toMatchObject({ t: 200, target: { label: 'Cut' } })
+    expect(titlesWith(p, 'o', 200)).toEqual(['Intro', 'Outro', 'Middle'])
   })
 })
 
