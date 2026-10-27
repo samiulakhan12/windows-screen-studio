@@ -1176,6 +1176,10 @@ pattern, `'local'` surviving `readTranscript`, and the `pickTranscriber` / `loca
   error buttons chosen by `localErrorCode`; the cloud error link; the summary for local, with
   "Not {language}?" only after a detection; download-then-captions not starting when the editor
   closed or for another project.
+- `tests/captionsBadge.test.ts`: the Captions tab's badge through `useCaptionsHost`: `download`
+  with its share while this project's download runs (also while it waits to try again),
+  `verify` while it is checked or installed with the intent pending, none for another project, a
+  download without the intent or after it failed.
 - `tests/speechCopy.test.ts`: every reason and state has copy; sizes and times inserted; every
   Captions-tab string that names a model also names its tier.
 
@@ -1596,3 +1600,7 @@ Review of the merged build, fixed (one line each):
   sound alone) and `guard` ("…on the microphone") for a recording without stems. It now returns
   null without a heard voice source (no line) and `mixed` for the mixed track under the guard
   (§3.6, §7.4); `tests/voice.test.ts`.
+- **The badge e2e** (INT-T4): §10.3 item 2 passed through "or the retry request was made" even
+  without a badge. The retry now stays slow until the badge shows `data-phase="download"` with no
+  alternative, "trying again" is caught by an observer in the page instead of a 100 ms poll, and
+  `tests/captionsBadge.test.ts` covers the download and verify phases of `useCaptionsHost`.
