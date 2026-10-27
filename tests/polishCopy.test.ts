@@ -13,6 +13,9 @@ import {
   transcriberLabel,
   transcribePhaseText
 } from '../src/shared/editor/polishCopy'
+import { applyPreset, BUILT_IN_PRESETS, type StylePreset } from '../src/shared/editor/stylePresets'
+import { frameOf } from '../src/shared/engine/deviceFrames'
+import { createProject } from '../src/shared/engine/project'
 
 /** What the Polish dialog and its notice say (docs/design/polish-in-one-click.md §5). */
 
@@ -158,6 +161,30 @@ describe('rows and progress', () => {
     expect(polishHint('captions', state)).toBe('The sound is sent to Gemini with your key and billed to your account.')
     expect(providerName({ label: 'Work key', kind: 'openai' })).toBe('Work key')
     expect(transcriberLabel({ label: '', kind: 'openai', transcriptionModel: 'whisper-1' })).toBe('OpenAI · whisper-1')
+  })
+
+  it('the Style hint names the device frame and the 3D tilt, which a preset changes too (E-01-3)', () => {
+    const state = { silenceAction: 'cut' as const, autoZoomOn: false, provider: null }
+    expect(polishHint('style', state)).toBe('Changes the background, card, device frame, 3D tilt, cursor look and zoom style. The aspect ratio and crop stay.')
+    // The Style step is applyPreset: Laptop showcase puts a laptop around the video and tilts it, Studio turns the tilt off.
+    const preset = (id: string): StylePreset['look'] => BUILT_IN_PRESETS.find((p) => p.id === id)!.look
+    const plain = createProject({
+      id: 'p1',
+      name: 'p1',
+      duration: 12,
+      width: 1280,
+      height: 720,
+      hasWebcam: false,
+      hasAudio: true,
+      webcamOffset: 0,
+      zooms: [],
+      cursorValid: false,
+      capture: { method: 'chromium', cursorInVideo: false, region: null }
+    })
+    const showcase = applyPreset(plain, preset('showcase'))
+    expect(frameOf(showcase.style)?.kind).toBe('laptop')
+    expect(showcase.tilt?.enabled).toBe(true)
+    expect(applyPreset(showcase, preset('studio')).tilt?.enabled).toBe(false)
   })
 
   it('disabled rows say why', () => {
