@@ -12,6 +12,7 @@ const esbuild = require('esbuild')
 const h = require('./helpers.cjs')
 const fx = require('./render-fixtures.cjs')
 const f = require('./editor-fixtures.cjs')
+const sp = require('./speech-fixtures.cjs')
 
 const SHOTS = process.env.SSW_E2E_SHOTS || null
 const W = 1920
@@ -47,8 +48,8 @@ const captions = (extra = {}) => ({ show: true, preset: 'boxed', position: 'bott
 const STYLE = { background: { type: 'color', color: '#00a040' }, padding: 0.08, cornerRadius: 12, shadow: 0, aspectRatio: 'auto' }
 const NO_FX = { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } }
 
-async function launch(ctx, home) {
-  const { app, win, logs } = await h.launch({ home })
+async function launch(ctx, home, env = {}) {
+  const { app, win, logs } = await h.launch({ home, env })
   ctx.app = app
   ctx.logs = logs
   await win.waitForSelector('.home', { timeout: 30000 })
@@ -414,9 +415,10 @@ async function main() {
     await saved(home, id, (q) => q.captions?.show === true, 'and shows them again')
   }))
 
+  // Without the speech helper (SSW_SPEECH_HELPER=/nonexistent) the key block and its text are exactly as before captions on this PC.
   await test('captions: Generate with no provider, with only Claude, and the error from a provider that fails', fx.withHome('captions-generate', async (ctx, home) => {
     f.seedProject(home, { id: 'rec-gen', name: 'Generate', seconds: 4, audio: true })
-    const { app, win } = await launch(ctx, home)
+    const { app, win } = await launch(ctx, home, { SSW_SPEECH_HELPER: '/nonexistent' })
     await f.openProject(win, 'Generate')
     await win.evaluate(() => {
       window.__settingsOpened = []
@@ -497,6 +499,34 @@ async function main() {
     await win.waitForSelector('button:has-text("Generate captions")')
     await new Promise((r) => setTimeout(r, 300))
     h.assert(!(await win.isVisible('.captions-error')), 'a cancel is not shown as an error')
+  }))
+
+  await test('captions: with the speech helper built, no provider means the consent card and one cloud link; On this PC is listed first', fx.withHome('captions-local', async (ctx, home) => {
+    sp.requireSpeechAssets({ model: false })
+    f.seedProject(home, { id: 'rec-local', name: 'Local', seconds: 4, audio: true })
+    const { app, win } = await launch(ctx, home)
+    await f.openProject(win, 'Local')
+    await win.evaluate(() => {
+      window.__settingsOpened = []
+      window.addEventListener('ssw:open-settings', (e) => window.__settingsOpened.push(e.detail))
+    })
+    await runCommand(win, 'generate captions', 'Generate captions')
+    await win.waitForSelector('[data-testid="local-captions"][data-state="needs-model"]', { timeout: 20000 })
+    h.assert(!(await win.$('.captions-empty:has-text("Add an AI provider")')), 'no key block when the providers were read')
+    await win.click('button:has-text("Prefer the cloud? Use your own OpenAI or Gemini key…")')
+    const opened = await win.evaluate(() => window.__settingsOpened)
+    h.assert(opened.length === 1 && opened[0].section === 'ai', `the cloud link opens the AI settings: ${JSON.stringify(opened)}`)
+    await win.click('.settings-modal button:has-text("Done")')
+    // A provider that can transcribe: the list offers On this PC first; the key provider stays chosen.
+    await app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('ai:listProviders')
+      ipcMain.handle('ai:listProviders', () => [{ id: 'p-openai', kind: 'openai', label: 'My OpenAI', model: 'text-model', transcriptionModel: 'speech-model', maskedKey: '…wxyz', createdAt: '' }])
+    })
+    await win.evaluate(() => window.dispatchEvent(new Event('ssw:ai-providers-changed')))
+    await win.waitForSelector('select[aria-label="Transcription provider"]')
+    const options = await win.$$eval('select[aria-label="Transcription provider"] option', (els) => els.map((e) => e.textContent))
+    h.assert(options[0] === 'On this PC (free, private)' && options.length === 2 && options[1].includes('My OpenAI'), `On this PC first: ${options}`)
+    h.assert((await win.$eval('select[aria-label="Transcription provider"]', (e) => e.value)) === 'p-openai', 'the key provider stays chosen')
   }))
 
   await test('captions: AI tools apply a result only when it matches the captions, in one undo step', fx.withHome('captions-ai', async (ctx, home) => {

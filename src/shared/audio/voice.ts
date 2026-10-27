@@ -6,7 +6,8 @@
  * soundtrack.ts sourceActivity (remove silences, smart speed, music ducking). Source seconds.
  * Pure. Constants and signatures frozen; bodies by workstream C.
  */
-import type { Range } from './activity'
+import { ACTIVITY, detectActivity, mergeRanges, type Range } from './activity'
+import { activitySources } from './settings'
 import type { AudioAnalysis } from './soundtrack'
 import type { Project } from '../types'
 
@@ -33,28 +34,44 @@ export type SoundDetector = 'speech' | 'mixed' | 'guard' | 'level'
 
 /** `speech` extended by VOICE into the `energy` ranges that touch it. */
 export function withTails(speech: readonly Range[], energy: readonly Range[]): Range[] {
-  void speech
-  void energy
-  throw new Error('withTails: not implemented yet (workstream C)')
+  const sound = mergeRanges(energy)
+  const out: Range[] = []
+  for (const r of mergeRanges(speech)) {
+    let start = r.start
+    let end = r.end
+    // Only the level-based sound that overlaps or touches this speech, and never past its own
+    // edge: energy ranges are separate, so a tail stops at the first gap.
+    for (const e of sound) {
+      if (e.start > r.end + 1e-9) break
+      if (e.end < r.start - 1e-9) continue
+      if (e.end > end) end = Math.max(end, Math.min(e.end, r.end + VOICE.tail))
+      if (e.start < start) start = Math.min(start, Math.max(e.start, r.start - VOICE.lead))
+    }
+    out.push({ start: Math.max(0, start), end })
+  }
+  return mergeRanges(out)
 }
 
 /** Sound of a voice source: withTails, joined across ACTIVITY.hold, at least ACTIVITY.minLength long. */
 export function speechActivity(speech: readonly Range[], energy: readonly Range[]): Range[] {
-  void speech
-  void energy
-  throw new Error('speechActivity: not implemented yet (workstream C)')
+  return mergeRanges(withTails(speech, energy), ACTIVITY.hold).filter((r) => r.end - r.start >= ACTIVITY.minLength)
 }
+
+const total = (ranges: readonly Range[]): number => ranges.reduce((s, r) => s + Math.max(0, r.end - r.start), 0)
 
 /** False when the trust guard applies (VAD_TRUST). */
 export function trustSpeech(speech: readonly Range[], energy: readonly Range[]): boolean {
-  void speech
-  void energy
-  throw new Error('trustSpeech: not implemented yet (workstream C)')
+  return !(total(speech) < VAD_TRUST.minSpeech && total(energy) >= VAD_TRUST.minSound)
 }
 
 /** The detector sourceActivity used for `project` with `analysis`; null while levels are missing or without sound. */
 export function soundDetector(project: Pick<Project, 'hasAudio' | 'audioStems' | 'audio'>, analysis: AudioAnalysis): SoundDetector | null {
-  void project
-  void analysis
-  throw new Error('soundDetector: not implemented yet (workstream C)')
+  const sources = activitySources(project)
+  if (sources.length === 0) return null
+  const levels = sources.map((s) => analysis[s])
+  if (levels.some((l) => !l)) return null
+  const voiced = sources.map((s, i) => ({ source: s, levels: levels[i]! })).filter((v) => v.levels.speech)
+  if (voiced.length === 0) return 'level'
+  if (voiced.some((v) => !trustSpeech(v.levels.speech!, detectActivity(v.levels)))) return 'guard'
+  return voiced.some((v) => v.source === 'mix') ? 'mixed' : 'speech'
 }

@@ -1,5 +1,9 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { AUDIO_LIMITS, audioLook, DEFAULT_MUSIC, recordingMix, SOURCE_FILES, STEM_KINDS, stemsOf, type StemKind } from '../../../../shared/audio/settings'
+import { activitySources, AUDIO_LIMITS, audioLook, DEFAULT_MUSIC, recordingMix, SOURCE_FILES, STEM_KINDS, stemsOf, type StemKind } from '../../../../shared/audio/settings'
+import type { AudioAnalysis } from '../../../../shared/audio/soundtrack'
+import { soundDetector, type SoundDetector } from '../../../../shared/audio/voice'
+import { DUCKING_VOICE_HINT } from '../../../../shared/speech/speechCopy'
+import { loadAudioAnalysis } from '../audioAnalysis'
 import { LOUDNESS_TARGET } from '../../../../shared/audio/loudness'
 import { formatTime } from '../../../../shared/engine/project'
 import { mediaUrl } from '../../../../shared/mediaUrl'
@@ -150,6 +154,24 @@ function missingFiles(kinds: readonly StemKind[]): string {
 
 /* ---------- Music ---------- */
 
+/**
+ * What the music ducks under (soundDetector), once the levels the preview's ducking reads are
+ * measured (shared with it through loadAudioAnalysis); null until then or when `active` is false.
+ */
+function useSoundDetector(project: Project, active: boolean): SoundDetector | null {
+  const [analysis, setAnalysis] = useState<AudioAnalysis | null>(null)
+  const sources = activitySources(project).join(',')
+  useEffect(() => {
+    if (!active || !sources) return setAnalysis(null)
+    let live = true
+    void loadAudioAnalysis(project.id, sources.split(',') as ReturnType<typeof activitySources>).then((a) => live && setAnalysis(a))
+    return () => {
+      live = false
+    }
+  }, [active, project.id, sources])
+  return analysis ? soundDetector(project, analysis) : null
+}
+
 function MusicSection(props: {
   project: Project
   music: MusicSettings | null
@@ -159,6 +181,7 @@ function MusicSection(props: {
   setMusic: (patch: Partial<MusicSettings>, key?: string) => void
 }): JSX.Element {
   const { project, music, setMusic } = props
+  const detector = useSoundDetector(project, !!music && music.ducking > 0 && props.canDuck)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [version, setVersion] = useState(() => Date.now())
@@ -247,7 +270,11 @@ function MusicSection(props: {
             onChange={(v) => setMusic({ ducking: v }, 'audio.music.ducking')}
           />
           <p className="hint">
-            {props.canDuck ? 'How far the music dips while the recording has sound.' : 'The recording is silent, so the music keeps its volume throughout.'}
+            {props.canDuck
+              ? detector === 'speech'
+                ? DUCKING_VOICE_HINT
+                : 'How far the music dips while the recording has sound.'
+              : 'The recording is silent, so the music keeps its volume throughout.'}
           </p>
           <Toggle label="Loop" title="Repeat the music when it is shorter than the video" checked={music.loop} onChange={(v) => setMusic({ loop: v })} />
           <Slider label="Fade in" value={music.fadeIn} {...AUDIO_LIMITS.musicFade} step={0.1} format={secondsFmt} onChange={(v) => setMusic({ fadeIn: v }, 'audio.music.fadeIn')} />

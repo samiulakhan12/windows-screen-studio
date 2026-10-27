@@ -6,6 +6,8 @@
  */
 import type { AiProviderInfo, TranscribeProgress } from '../api/ai'
 import { MAX_CAPTIONS } from '../captions/captionData'
+import { SPEECH_COPY } from '../speech/speechCopy'
+import { CAPTIONS_SKIPPED_NO_MODEL } from '../speech/transcriber'
 import { formatTime } from '../engine/project'
 import { framingLine, zoomText } from './directorCopy'
 import { POLISH_STEPS, type PolishSkip, type PolishStep, type PolishStepResult, type PolishSummary } from './polish'
@@ -71,7 +73,7 @@ const minSilence = `${SILENCE_LENGTH.default.toFixed(1)} s`
 /** What the dialog says under an available row. */
 export function polishHint(
   step: PolishStep,
-  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null }
+  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean }
 ): string {
   switch (step) {
     case 'style':
@@ -83,6 +85,7 @@ export function polishHint(
       return `${action === 'cut' ? 'Cuts' : 'Plays'} pauses of ${minSilence} or more${action === 'cut' ? '' : ` ${action}× as fast`}, keeping a quarter second next to the sound.`
     }
     case 'captions':
+      if (state.local) return SPEECH_COPY.readyHint
       return `The sound is sent to ${state.provider ? providerName(state.provider) : 'the provider'} with your key and billed to your account.`
     case 'director':
       return 'Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept.'
@@ -108,6 +111,8 @@ export function polishSkipText(step: PolishStep, reason: PolishSkip, error?: str
       return 'This video already has captions; they are kept'
     case 'no-provider':
       return 'Add an AI provider that can transcribe (OpenAI or Gemini)'
+    case 'no-model':
+      return CAPTIONS_SKIPPED_NO_MODEL
     case 'busy':
       return 'A transcription is already running in the Captions tab'
     case 'failed': {
@@ -160,7 +165,7 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
   const changed = r.status === 'changed'
   if (r.status === 'skipped') {
     const text = polishSkipText(r.step, r.reason ?? 'off', r.error)
-    return r.step === 'captions' && r.reason === 'failed' ? text : `${polishStepLabel(r.step)}: ${lowerFirst(text)}`
+    return r.step === 'captions' && (r.reason === 'failed' || r.reason === 'no-model') ? text : `${polishStepLabel(r.step)}: ${lowerFirst(text)}`
   }
   switch (r.step) {
     case 'style':

@@ -57,20 +57,41 @@ export function estimateSeconds(
  * (TIME_LEFT.smoothing); it never goes up by less than TIME_LEFT.minRise seconds (no jitter).
  */
 export function nextTimeLeft(prev: number | null, elapsedSeconds: number, fraction: number): number | null {
-  void prev
-  void elapsedSeconds
-  void fraction
-  throw new Error('nextTimeLeft: not implemented yet (workstream C)')
+  if (!Number.isFinite(elapsedSeconds) || !Number.isFinite(fraction) || fraction <= 0) return null
+  const f = Math.min(1, fraction)
+  if (f < TIME_LEFT.minFraction && elapsedSeconds < TIME_LEFT.minSeconds) return null
+  const raw = Math.max(0, (Math.max(0, elapsedSeconds) * (1 - f)) / f)
+  if (prev === null || !Number.isFinite(prev)) return raw
+  const next = prev + (raw - prev) * TIME_LEFT.smoothing
+  // A small rise is jitter: the time left stays; a real slowdown (TIME_LEFT.minRise or more) shows.
+  if (next > prev && next - prev < TIME_LEFT.minRise) return prev
+  return Math.max(0, next)
 }
+
+/** Rounds up, ignoring floating-point dust just above a whole step. */
+const ceilTo = (value: number, step: number): number => Math.ceil(value / step - 1e-9) * step
 
 /** "under 1 min", "about 1½ min" (half minutes up to 3 min), "about 38 min", "about 1 h 10 min" (whole minutes, rounded up). */
 export function durationWords(seconds: number): string {
-  void seconds
-  throw new Error('durationWords: not implemented yet (workstream C)')
+  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0
+  if (s < 60) return 'under 1 min'
+  const minutes = s / 60
+  if (minutes <= 3) {
+    const half = ceilTo(minutes, 0.5)
+    const whole = Math.floor(half)
+    return `about ${whole}${half > whole ? '½' : ''} min`
+  }
+  const m = ceilTo(minutes, 1)
+  if (m < 60) return `about ${m} min`
+  const h = Math.floor(m / 60)
+  const rest = m - h * 60
+  return rest ? `about ${h} h ${rest} min` : `about ${h} h`
 }
 
 /** Decimal megabytes as Flown shows sizes: "44 MB", "574 MB", "1.2 GB". */
 export function sizeWords(bytes: number): string {
-  void bytes
-  throw new Error('sizeWords: not implemented yet (workstream C)')
+  const b = Number.isFinite(bytes) ? Math.max(0, bytes) : 0
+  if (b < 999.5e6) return `${Math.round(b / 1e6)} MB`
+  const gb = b / 1e9
+  return gb < 9.95 ? `${gb.toFixed(1)} GB` : `${Math.round(gb)} GB`
 }

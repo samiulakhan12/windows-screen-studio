@@ -32,6 +32,12 @@ import { Chips, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
+import { LOCAL_TRANSCRIBER_ID } from '../../../../shared/api/speech'
+import { speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
+import { doneLine, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
+import { pickTranscriber } from '../../../../shared/speech/transcriber'
+import { availableState, chosenModel, localRun, modelView, startLocalCaptions, useSpeechState } from '../speechState'
+import { isSmallTier, LocalAction, LocalQuality, LocalRunning } from './LocalCaptions'
 import '../captions.css'
 
 /* ---------- Captions and transcript ---------- */
@@ -274,10 +280,7 @@ function CaptionsIntro(): JSX.Element {
     <Section title="Captions">
       <div className="captions-intro">
         <EditorIcon name="captions" size={28} />
-        <p>
-          Captions put what you say on the video, so it is understood with the sound off. An AI provider of your choice writes them from the recording&apos;s
-          sound; you can then fix the text, restyle them, translate them and export them as subtitles.
-        </p>
+        <p>{SPEECH_COPY.intro}</p>
       </div>
     </Section>
   )
@@ -305,7 +308,21 @@ function GenerateSection({
   const [language, setLanguage] = useState(remembered.language)
   const [source, setSource] = useState<TranscribeOptions['source']>(remembered.source)
   const [open, setOpen] = useState(false)
-  const chosen = capable.find((p) => p.id === provider) ?? capable[0] ?? null
+  // Captions on this PC: until both reads finish only "Checking this PC…" shows; a failed read of
+  // the speech state counts as unavailable (keys only, exactly as before).
+  const speech = useSpeechState()
+  const local = availableState(speech)
+  const checking = providers === null || speech.status === 'loading'
+  const choice = checking ? null : pickTranscriber(providers, speech.status === 'ready' ? speech.state : null, provider)
+  const localChosen = !!local && choice?.kind === 'local'
+  const model: SpeechModelId | null = local ? chosenModel(local) : null
+  const localReady = !!local && !!model && modelView(local, model)?.status.state === 'installed'
+  const [focusLocal, setFocusLocal] = useState(0)
+  const [focusLanguage, setFocusLanguage] = useState(0)
+  const chipsRef = useRef<HTMLDivElement>(null)
+  const languageRef = useRef<HTMLSelectElement>(null)
+  const regenerateRef = useRef<HTMLButtonElement>(null)
+  const chosen = choice?.kind === 'key' ? (capable.find((p) => p.id === choice.providerId) ?? null) : localChosen ? null : (capable.find((p) => p.id === provider) ?? capable[0] ?? null)
   const stems = project.audioStems
   const hasTranscript = !!project.transcript
   const mine = job && job.projectId === project.id ? job : null
@@ -318,9 +335,22 @@ function GenerateSection({
     remembered.source = source
   }, [provider, language, source])
 
+  const confirmReplace = (): boolean =>
+    !hasTranscript || window.confirm('Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).')
+  // On this PC with a downloaded model (a chip, or "Make them now with …", which selects it).
+  const startLocal = (id: SpeechModelId): void => {
+    if (mine?.running || !confirmReplace()) return
+    clearTranscriptionError()
+    const options: TranscribeOptions = { providerId: LOCAL_TRANSCRIBER_ID, model: id, source: stems ? source : 'auto' }
+    if (language) options.language = language
+    void startLocalCaptions(services, options).then((ok) => {
+      if (ok) setOpen(false)
+    })
+  }
   const start = (): void => {
+    if (localChosen && model) return startLocal(model)
     if (!chosen || mine?.running) return
-    if (hasTranscript && !window.confirm('Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).')) return
+    if (!confirmReplace()) return
     clearTranscriptionError()
     const options: TranscribeOptions = { providerId: chosen.id, source: stems ? source : 'auto' }
     if (language) options.language = language
@@ -335,20 +365,59 @@ function GenerateSection({
   // The "Generate captions" command: starts right away when it can, else shows what is missing.
   const handled = useRef(0)
   useEffect(() => {
-    if (!request || request === handled.current || providers === null) return
+    if (!request || request === handled.current || checking) return
     handled.current = request
     setOpen(true)
-    if (capable.length && project.hasAudio && !hasTranscript) startRef.current()
+    // On this PC it starts only with the chosen quality downloaded: it never starts a download.
+    const now = localChosen ? localReady : capable.length > 0
+    if (now && project.hasAudio && !hasTranscript) startRef.current()
+    else if (localChosen) setFocusLocal((n) => n + 1)
     else (capable.length ? generateRef : addRef).current?.focus()
-  }, [request, providers, capable.length, project.hasAudio, hasTranscript])
+  }, [request, checking, localChosen, localReady, capable.length, project.hasAudio, hasTranscript])
+
+  // "Not English?": the form, with Spoken language focused.
+  useEffect(() => {
+    if (focusLanguage) languageRef.current?.focus()
+  }, [focusLanguage])
+  // When a run ends, Cancel goes away: focus moves to "Regenerate captions…", never to the page.
+  const summaryShown = hasTranscript && !open && !mine?.running && !mine?.error
+  useEffect(() => {
+    if (!summaryShown || typeof document === 'undefined') return
+    const active = document.activeElement
+    if (!active || active === document.body) regenerateRef.current?.focus({ preventScroll: true })
+  }, [summaryShown])
 
   if (hasTranscript && !open && !mine?.running && !mine?.error) {
+    const t = project.transcript!
+    const languageName = t.language ? (CAPTION_LANGUAGES.find((l) => l.code === t.language)?.name ?? t.language) : null
+    const run = t.provider === 'local' ? localRun(project.id, t) : null
     return (
       <Section title="Generate">
-        <p className="hint">
-          {project.transcript!.segments.length} captions by {TRANSCRIBER_NAMES[project.transcript!.provider]}
-          {project.transcript!.language ? ` (${CAPTION_LANGUAGES.find((l) => l.code === project.transcript!.language)?.name ?? project.transcript!.language})` : ''}.
-        </p>
+        {t.provider === 'local' ? (
+          <div className="local-captions" data-testid="local-captions" data-state="done">
+            <p className="hint" data-testid="local-summary">
+              {doneLine({ count: t.segments.length, model: t.model, language: languageName, detected: run?.detected, took: run?.took })}{' '}
+              {run?.detected && languageName && (
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => {
+                    setOpen(true)
+                    setFocusLanguage((n) => n + 1)
+                  }}
+                >
+                  {notLanguage(languageName)}
+                </button>
+              )}
+            </p>
+            {isSmallTier(t.model) && t.language && t.language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHintDone}</p>}
+          </div>
+        ) : (
+          <p className="hint">
+            {t.segments.length} captions by {TRANSCRIBER_NAMES[t.provider]}
+            {languageName ? ` (${languageName})` : ''}.
+          </p>
+        )}
         {mine?.notice && (
           <div className="captions-suggestion" role="status">
             <p className="hint warn">{mine.notice}</p>
@@ -357,9 +426,17 @@ function GenerateSection({
             </button>
           </div>
         )}
-        <button className="btn" onClick={() => setOpen(true)}>
+        <button ref={regenerateRef} className="btn" onClick={() => setOpen(true)}>
           <Icon name="refresh" size={15} /> Regenerate captions…
         </button>
+      </Section>
+    )
+  }
+
+  if (mine?.running && mine.local) {
+    return (
+      <Section title="Generating captions">
+        <LocalRunning job={mine} duration={project.duration} />
       </Section>
     )
   }
@@ -371,10 +448,14 @@ function GenerateSection({
     const share = p && p.total > 0 && p.done > 0 ? Math.min(1, p.done / p.total) : null
     return (
       <Section title="Generating captions">
-        <div className="captions-progress" role="status" aria-live="polite">
+        {/* Not a live region itself (docs/design/offline-captions.md §7.7): the hidden one says the phase. */}
+        <div className="captions-progress">
           <span className="captions-phase">
             {phase}
             {p && p.total > 1 ? ` Part ${Math.min(p.done + 1, p.total)} of ${p.total}.` : ''}
+          </span>
+          <span className="sr-only" aria-live="polite">
+            {phase}
           </span>
           <div className={`captions-bar ${share === null ? 'busy' : ''}`}>
             <span style={share === null ? undefined : { width: `${Math.round(share * 100)}%` }} />
@@ -387,10 +468,21 @@ function GenerateSection({
     )
   }
 
-  const none = providers !== null && capable.length === 0
+  if (checking) {
+    return (
+      <Section title={hasTranscript ? 'Regenerate captions' : 'Generate captions'}>
+        <p className="hint" data-testid="local-captions" data-state="checking">
+          {SPEECH_COPY.checking}
+        </p>
+      </Section>
+    )
+  }
+
+  const none = providers !== null && capable.length === 0 && !local
+  const smallTier = localChosen && !!model && isSmallTier(model)
   return (
     <Section title={hasTranscript ? 'Regenerate captions' : 'Generate captions'}>
-      {providers === null && <p className="hint">Looking for your AI providers…</p>}
+      {speech.status === 'ready' && !speech.state.engine.available && <p className="hint">{unavailableLine(speech.state.engine.reason)}</p>}
       {none && (
         <div className="captions-empty">
           <p>
@@ -407,21 +499,35 @@ function GenerateSection({
           </button>
         </div>
       )}
-      {capable.length > 0 && (
+      {(capable.length > 0 || local) && (
         <>
-          <label className="field">
-            <span>Provider</span>
-            <select className="captions-select" aria-label="Transcription provider" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)}>
-              {capable.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {providerLabel(p, true)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {capable.length > 0 ? (
+            <label className="field">
+              <span>Provider</span>
+              <select
+                className="captions-select"
+                aria-label="Transcription provider"
+                value={localChosen ? LOCAL_TRANSCRIBER_ID : (chosen?.id ?? '')}
+                onChange={(e) => {
+                  setProvider(e.target.value)
+                  clearTranscriptionError()
+                }}
+              >
+                {local && <option value={LOCAL_TRANSCRIBER_ID}>{SPEECH_COPY.localOption}</option>}
+                {capable.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {providerLabel(p, true)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="hint local-only">{SPEECH_COPY.localOnly}</p>
+          )}
+          {localChosen && model && project.hasAudio && <LocalQuality state={local!} model={model} project={project} chipsRef={chipsRef} />}
           <label className="field">
             <span>Spoken language</span>
-            <select className="captions-select" aria-label="Spoken language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <select ref={languageRef} className="captions-select" aria-label="Spoken language" value={language} onChange={(e) => setLanguage(e.target.value)}>
               <option value="">Detect automatically</option>
               {CAPTION_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -445,23 +551,69 @@ function GenerateSection({
               />
             </div>
           )}
-          {!project.hasAudio && <p className="hint warn">This recording has no sound to transcribe.</p>}
-          <div className="row start captions-actions">
-            <button ref={generateRef} className="btn primary" disabled={!project.hasAudio} onClick={start}>
-              <EditorIcon name="captions" size={15} /> {hasTranscript ? 'Regenerate' : 'Generate captions'}
-            </button>
-            {hasTranscript && (
-              <button className="btn ghost" onClick={() => setOpen(false)}>
-                Close
-              </button>
-            )}
-          </div>
-          <p className="hint">The recording&apos;s sound is sent to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'} with your key; it is billed to your account.</p>
+          {smallTier && language && language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHint}</p>}
+          {localChosen && model ? (
+            <>
+              <LocalAction
+                state={local!}
+                model={model}
+                project={project}
+                job={mine}
+                options={{ source: stems ? source : 'auto', ...(language ? { language } : {}) }}
+                capable={capable}
+                listError={listError}
+                reload={reload}
+                focusRequest={focusLocal}
+                chipsRef={chipsRef}
+                onUseProvider={(id) => {
+                  setProvider(id)
+                  clearTranscriptionError()
+                }}
+                onStart={(id) => {
+                  if (speechModel(id)) startLocal(id)
+                }}
+              />
+              {hasTranscript && (
+                <button className="btn ghost" onClick={() => setOpen(false)}>
+                  Close
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {!project.hasAudio && <p className="hint warn">This recording has no sound to transcribe.</p>}
+              <div className="row start captions-actions">
+                <button ref={generateRef} className="btn primary" disabled={!project.hasAudio} onClick={start}>
+                  <EditorIcon name="captions" size={15} /> {hasTranscript ? 'Regenerate' : 'Generate captions'}
+                </button>
+                {hasTranscript && (
+                  <button className="btn ghost" onClick={() => setOpen(false)}>
+                    Close
+                  </button>
+                )}
+              </div>
+              <p className="hint">The recording&apos;s sound is sent to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'} with your key; it is billed to your account.</p>
+            </>
+          )}
         </>
       )}
-      {mine?.error && (
+      {mine?.error && !localChosen && (
         <div className="captions-error" role="alert">
           <p>Captions could not be made: {mine.error}</p>
+          {local && !mine.local && (
+            <p data-testid="cloud-error-local">
+              {SPEECH_COPY.cloudErrorOffer}{' '}
+              <button
+                className="link"
+                onClick={() => {
+                  setProvider(LOCAL_TRANSCRIBER_ID)
+                  clearTranscriptionError()
+                }}
+              >
+                {SPEECH_COPY.useLocal}
+              </button>
+            </p>
+          )}
           <button className="link" onClick={clearTranscriptionError}>
             Dismiss
           </button>

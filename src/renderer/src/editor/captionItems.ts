@@ -2,6 +2,7 @@ import { MAX_CAPTIONS, readTranscript } from '../../../shared/captions/captionDa
 import { captionAlpha } from '../../../shared/captions/layout'
 import { captionsOf } from '../../../shared/captions/settings'
 import type { TranscribeOptions, TranscribeProgress } from '../../../shared/api/ai'
+import { LOCAL_TRANSCRIBER_ID } from '../../../shared/api/speech'
 import { formatTime } from '../../../shared/engine/project'
 import { playableFrom } from '../../../shared/engine/timeline'
 import { viewingTime } from '../../../shared/render/overlays'
@@ -67,6 +68,10 @@ export interface TranscriptionJob {
   running: boolean
   /** Cancelled, waiting for the main process to stop it. */
   stopping?: boolean
+  /** When the job started (Date.now()): the time left and the time it took. */
+  startedAt?: number
+  /** On this PC: the model and the spoken language asked for ('' = detect). */
+  local?: { model: string; language: string }
 }
 
 let job: TranscriptionJob | null = null
@@ -109,7 +114,8 @@ export type FetchedTranscript = { transcript: Transcript; leftOut: boolean } | {
 export async function fetchTranscript(projectId: string, duration: number, options: TranscribeOptions): Promise<FetchedTranscript> {
   if (job?.running) return { error: 'A transcription is already running' }
   const mine = ++generation
-  setJob({ projectId, progress: null, error: null, running: true })
+  const local = options.providerId === LOCAL_TRANSCRIBER_ID ? { model: options.model ?? '', language: options.language ?? '' } : undefined
+  setJob({ projectId, progress: null, error: null, running: true, startedAt: Date.now(), ...(local ? { local } : {}) })
   const off = window.api.onTranscribeProgress((progress) => {
     if (mine === generation && progress.projectId === projectId && job?.running) setJob({ ...job, progress })
   })
@@ -129,7 +135,7 @@ export async function fetchTranscript(projectId: string, duration: number, optio
       setJob(null)
       return { cancelled: true }
     }
-    setJob({ projectId, progress: null, error: message, running: false })
+    setJob({ projectId, progress: null, error: message, running: false, ...(local ? { local } : {}) })
     return { error: message }
   } finally {
     off()

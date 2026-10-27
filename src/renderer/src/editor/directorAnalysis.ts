@@ -57,7 +57,8 @@ export async function loadDirectorSpeech(project: Pick<Project, 'id' | 'hasAudio
   // The source exists (the project says so), so missing levels mean the measurement failed:
   // the transcript, when there is one, still tells when the person talks.
   if (!levels) return { speech: refineSpeech(null, project.transcript), failed: true }
-  return { speech: refineSpeech({ source, ranges: speechOf(levels, cursor) }, project.transcript), failed: false }
+  // The status line names the speech detector when it ran; without it the result is exactly today's.
+  return { speech: refineSpeech({ source, ranges: speechOf(levels, cursor), ...(levels.speech ? { detector: 'speech' as const } : {}) }, project.transcript), failed: false }
 }
 
 /** How far face framing has got: pictures segmented of those sampled. */

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AI_PROVIDER_KINDS, type AiProviderInfo } from '../../../shared/api/ai'
 import { ProviderForm } from './ProviderForm'
 import { canDo, ipcMessage } from './providerText'
+import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
 
 type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
 type Mode = { kind: 'list' } | { kind: 'add' } | { kind: 'edit'; provider: AiProviderInfo }
@@ -9,9 +10,10 @@ type Mode = { kind: 'list' } | { kind: 'add' } | { kind: 'edit'; provider: AiPro
 /**
  * The AI providers the user added with their own API keys: list, add, edit, test, remove. Keys
  * are typed here and sent once to the main process, which encrypts and keeps them; this page
- * only ever gets them back masked. `onChanged` runs after a provider was saved or removed.
+ * only ever gets them back masked. `onChanged` runs after a provider was saved or removed;
+ * `autoFocus` (Settings opened at the AI providers) focuses "+ Add provider".
  */
-export function AiProvidersSection({ onChanged }: { onChanged?: () => void } = {}): JSX.Element {
+export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?: () => void; autoFocus?: boolean } = {}): JSX.Element {
   const [providers, setProviders] = useState<AiProviderInfo[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
@@ -95,6 +97,7 @@ export function AiProvidersSection({ onChanged }: { onChanged?: () => void } = {
         Use your own API key for auto captions and transcript tools. <strong>Transcription</strong> works with OpenAI or Google Gemini. All three providers can
         clean up and translate a transcript and suggest chapters, a title or a summary for it; Anthropic Claude cannot transcribe (the Claude API does not accept sound).
       </p>
+      <p className="hint">{SPEECH_COPY.aiProvidersNoKey}</p>
       <p className="settings-privacy">
         <span aria-hidden="true">🔒</span> Keys are stored encrypted on this PC and are only sent to the provider you pick.
       </p>
@@ -210,7 +213,7 @@ export function AiProvidersSection({ onChanged }: { onChanged?: () => void } = {
             </ul>
           )}
           <div>
-            <button type="button" className="btn" ref={addRef} autoFocus onClick={() => setMode({ kind: 'add' })}>
+            <button type="button" className="btn" ref={addRef} autoFocus={autoFocus} onClick={() => setMode({ kind: 'add' })}>
               + Add provider
             </button>
           </div>

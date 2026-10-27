@@ -9,6 +9,11 @@
  *   Gemini     <url>/gemini:     GET /v1beta/models/{m}, POST /v1beta/models/{m}:generateContent,
  *              resumable POST /upload/v1beta/files, GET + DELETE /v1beta/files/{id}
  *   Anthropic  <url>/anthropic:  GET /v1/models/{id}, POST /v1/messages?beta=true (SSE stream)
+ *   Speech     <url>/hf/{file}:  the speech model downloads (point the app at it with
+ *              SSW_SPEECH_MODEL_BASE_URL = `${url}/hf/`): serves `hf.files[file]` with Range/206
+ *              and faults (`hf.faults`, used once each in order, or `hf.fault` on every request):
+ *              { cut: N } closes the connection after N bytes, 'flip' changes one byte, 404, 403,
+ *              'slow' (about 1 MB/s). docs/design/offline-captions.md §10.3.
  *
  * Transcription answers come from the sound itself: the fixtures play tone bursts whose pitch
  * says which word they are (400 + 150 * k Hz is "Word k"), so a transcript's text and times can
@@ -157,8 +162,10 @@ function geminiTranscript(ffmpeg, file) {
 }
 
 /** Starts the mock on a free port: { url, requests, close() }. `ffmpeg` decodes uploaded sound. */
-function startMockAi({ ffmpeg }) {
+function startMockAi({ ffmpeg, hfFiles = {} }) {
   const requests = []
+  /** The speech model route's files (name → path) and faults. */
+  const hfState = { files: { ...hfFiles }, faults: [], fault: null }
   const hits = new Map()
   const uploads = new Map()
   const files = new Map()
@@ -394,6 +401,59 @@ function startMockAi({ ffmpeg }) {
     return error(404, 'not_found_error', `Unknown route ${req.method} ${route}`)
   }
 
+  /** GET /hf/{file}: a model download, with Range and the faults of hfState. */
+  async function hf(req, res, route, body, rec) {
+    const name = route.replace(/^\/+/, '')
+    const file = hfState.files[name]
+    const given = hfState.faults.length ? hfState.faults.shift() : hfState.fault
+    rec.fault = given
+    rec.range = req.headers.range || null
+    // A fault: { cut, flip, slow, status } or its short form ('flip', 'slow', 404, 403).
+    const fault = given && typeof given === 'object' ? given : given === 'flip' ? { flip: true } : given === 'slow' ? { slow: true } : given ? { status: Number(given) } : {}
+    if (fault.status) return json(res, fault.status, { error: fault.status === 404 ? 'Entry not found' : 'Refused' })
+    if (!file || req.method !== 'GET') return json(res, 404, { error: 'Entry not found' })
+    const size = fs.statSync(file).size
+    const m = /^bytes=(\d+)-$/.exec(req.headers.range || '')
+    const from = m ? Number(m[1]) : 0
+    if (from >= size) {
+      res.writeHead(416, { 'content-range': `bytes */${size}` })
+      return res.end()
+    }
+    const headers = { 'content-type': 'application/octet-stream', 'content-length': String(size - from), 'accept-ranges': 'bytes' }
+    if (from > 0) res.writeHead(206, { ...headers, 'content-range': `bytes ${from}-${size - 1}/${size}` })
+    else res.writeHead(200, headers)
+    const cut = Number.isFinite(fault.cut) ? fault.cut : Infinity
+    const flipAt = fault.flip ? Math.floor(size / 2) : -1
+    const slow = !!fault.slow
+    const fd = fs.openSync(file, 'r')
+    try {
+      const chunk = Buffer.alloc(slow ? 64 * 1024 : 1024 * 1024)
+      let pos = from
+      let sent = 0
+      while (pos < size) {
+        if (req.socket.destroyed) return
+        const n = fs.readSync(fd, chunk, 0, Math.min(chunk.length, size - pos, cut - sent), pos)
+        if (n <= 0) break
+        const out = Buffer.from(chunk.subarray(0, n))
+        if (flipAt >= pos && flipAt < pos + n) out[flipAt - pos] ^= 0xff
+        const more = res.write(out)
+        pos += n
+        sent += n
+        if (sent >= cut) {
+          // The connection drops mid-file.
+          await new Promise((r) => setTimeout(r, 50))
+          req.socket.destroy()
+          return
+        }
+        if (!more) await new Promise((r) => res.once('drain', r))
+        if (slow) await new Promise((r) => setTimeout(r, 60))
+      }
+      res.end()
+    } finally {
+      fs.closeSync(fd)
+    }
+  }
+
   const server = http.createServer((req, res) => {
     const chunks = []
     req.on('data', (c) => chunks.push(c))
@@ -404,7 +464,7 @@ function startMockAi({ ffmpeg }) {
       const route = `/${rest.join('/')}`
       const rec = { provider, method: req.method, route, query: u.search, headers: { ...req.headers }, bytes: body.length }
       requests.push(rec)
-      const handler = { openai, gemini, anthropic }[provider]
+      const handler = { openai, gemini, anthropic, hf }[provider]
       // OpenAI's routes are recorded as the SDK names them, without the /v1 of its base URL.
       if (provider === 'openai') rec.route = route.replace(/^\/v1/, '')
       const done = handler ? handler(req, res, rec.route, body, rec) : Promise.resolve(json(res, 404, {}))
@@ -422,6 +482,7 @@ function startMockAi({ ffmpeg }) {
         url,
         requests,
         files,
+        hf: hfState,
         close: () =>
           new Promise((r) => {
             server.closeAllConnections?.()

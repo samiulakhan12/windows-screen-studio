@@ -4,10 +4,11 @@
  * Both call these functions with the same levels, so the music ducks at the same moments.
  */
 import type { Clip, Project } from '../types'
-import { combineLevels, detectActivity, limitRanges, rangesToOutput, type Range } from './activity'
+import { combineLevels, detectActivity, limitRanges, mergeRanges, rangesToOutput, type Range } from './activity'
 import { DUCK_TIMING, duckRanges, MAX_DUCK_RANGES, type DuckShape } from './automation'
 import { integratedLoudness, normalizeGain, type AudioLevels } from './loudness'
 import { activitySources, audioLook, recordingMix, type AudioSource } from './settings'
+import { speechActivity, trustSpeech } from './voice'
 
 /** Measured levels per recorded source (only the ones asked for). */
 export type AudioAnalysis = Partial<Record<AudioSource, AudioLevels>>
@@ -29,7 +30,8 @@ export function analysisSources(project: SoundProject): AudioSource[] {
 
 /**
  * Ranges (SOURCE seconds) where the recording has sound, or null while the levels of a
- * needed source are not known. Empty when the recording is silent or muted. Independent of
+ * needed source are not known. Where the speech detector ran (AudioLevels.speech), the voice
+ * source counts where someone speaks (voice.ts, docs/design/offline-captions.md §3.6). Empty when the recording is silent or muted. Independent of
  * the edit's clips, so the preview finds them once per measurement, not on every trim.
  */
 export function sourceActivity(project: Omit<SoundProject, 'clips'>, analysis: AudioAnalysis): Range[] | null {
@@ -37,8 +39,24 @@ export function sourceActivity(project: Omit<SoundProject, 'clips'>, analysis: A
   if (sources.length === 0) return []
   const levels = sources.map((s) => analysis[s])
   if (levels.some((l) => !l)) return null
-  const combined = combineLevels(levels as AudioLevels[])
-  return combined ? detectActivity(combined) : []
+  // No heard source carries speech: exactly the level-based rule (the fallback, and the regression lock).
+  if (!levels.some((l) => l!.speech)) {
+    const combined = combineLevels(levels as AudioLevels[])
+    return combined ? detectActivity(combined) : []
+  }
+  // With speech: each source by its own rule, joined. The microphone counts where someone
+  // speaks (with tails into its sound), PC sound counts as before (with its own threshold), the
+  // mixed track of a recording without stems counts both, and a source whose speech is too
+  // little against its sound (the trust guard) is judged by its level.
+  const union: Range[] = []
+  sources.forEach((source, i) => {
+    const l = levels[i]!
+    const energy = detectActivity(l)
+    if (!l.speech || !trustSpeech(l.speech, energy)) union.push(...energy)
+    else if (source === 'mix') union.push(...speechActivity(l.speech, energy), ...energy)
+    else union.push(...speechActivity(l.speech, energy))
+  })
+  return mergeRanges(union)
 }
 
 /** sourceActivity on the OUTPUT timeline (through the clips): what the music ducks under. */

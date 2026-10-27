@@ -14,6 +14,7 @@ import { CameraPanel } from './panels/CameraPanel'
 import { AudioPanel } from './panels/AudioPanel'
 import { CaptionsPanel } from './panels/CaptionsPanel'
 import { ShapesPanel } from './panels/ShapesPanel'
+import { useCaptionsHost } from './speechState'
 
 export interface InspectorProps {
   project: Project
@@ -116,6 +117,8 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
   // On a short window the rail scrolls: keep the open tab (also one opened by a selection or a
   // command) in view.
   const railRef = useRef<HTMLElement>(null)
+  // Captions on this PC run for minutes: a ring on the tab while this project's download or job runs.
+  const captionsBadge = useCaptionsHost(props.project.id, props.onNotice, tab === 'captions')
   useLayoutEffect(() => {
     railRef.current?.querySelector<HTMLElement>('button.active')?.scrollIntoView({ block: 'nearest' })
   }, [tab])
@@ -127,6 +130,7 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
           <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)} aria-pressed={tab === t.id} title={t.label}>
             {t.editorIcon ? <EditorIcon name={t.icon} size={17} /> : <Icon name={t.icon} size={17} />}
             <span>{t.label}</span>
+            {t.id === 'captions' && captionsBadge && <span className="captions-job-badge" data-testid="captions-job-badge" data-phase={captionsBadge.phase} title={captionsBadge.title} aria-hidden="true" />}
           </button>
         ))}
       </nav>

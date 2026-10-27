@@ -10,6 +10,7 @@ const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
+const sp = require('./speech-fixtures.cjs')
 const r = require('./recordingHelpers.cjs')
 
 const SHOTS = process.env.SSW_E2E_SHOTS || null
@@ -94,6 +95,8 @@ const typeSlowly = (word) => word.split('').map((c) => `k ${c === ' ' ? 'space' 
 
 async function main() {
   await test('silences: the pause between talk is cut with padding, one undo restores it; no sound explains instead', async (ctx) => {
+    // The speech detector runs on this sound: it must be there, so nothing passes silently on the fallback.
+    sp.requireSpeechAssets({ model: false })
     const { home, id, win } = await openSeeded(ctx, 'silences', { name: 'Talk', seconds: 12, width: 640, height: 360, fps: 30, audio: true, video: talkSilenceTalk() })
     await win.click('.insp-tabs button:has-text("Clip")')
     // Idle parts stay the default mode.
@@ -101,6 +104,8 @@ async function main() {
     await win.click('.chips[aria-label="Smart speed mode"] .chip:has-text("Silences")')
     // The sound is measured at once; one pause of 4 s, less 0.25 s kept next to the voice at each end.
     await win.waitForSelector('.smart-list li', { timeout: 30000 })
+    // The mixed track of a recording without stems: the speech detector's speech joined with any sound (never less than before).
+    await win.waitForSelector('[data-testid="silence-detector"][data-detector="mixed"]', { timeout: 30000 })
     const found = await ranges(win)
     console.log(`silences: ${JSON.stringify(found)}; summary "${await win.textContent('.smart-summary')}"`)
     h.assert(found.length === 1, `one pause: ${JSON.stringify(found)}`)

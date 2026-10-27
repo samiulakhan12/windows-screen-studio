@@ -81,13 +81,16 @@ export function diffLine(diff: DirectorPlan['diff']): string {
 }
 
 /** Which sound the director listens to, for the status line (`data-source`). */
-export type SourceState = 'measuring' | 'mic' | 'mix' | 'mix-refined' | 'transcript' | 'none'
+export type SourceState = 'measuring' | 'mic' | 'mix' | 'mix-voice' | 'mix-refined' | 'transcript' | 'none'
 
-/** The status of the speech measurement: still measuring, or where the speech came from ('none': no speech known). */
+/**
+ * The status of the speech measurement: still measuring, or where the speech came from ('none': no
+ * speech known; 'mix-voice': the mixed track, through the speech detector).
+ */
 export function sourceState(speech: DirectorSpeech | null, measuring: boolean): SourceState {
   if (measuring) return 'measuring'
   if (!speech) return 'none'
-  if (speech.source === 'mix') return speech.refined ? 'mix-refined' : 'mix'
+  if (speech.source === 'mix') return speech.refined ? 'mix-refined' : speech.detector === 'speech' ? 'mix-voice' : 'mix'
   return speech.source
 }
 
@@ -100,6 +103,8 @@ export function sourceLine(state: SourceState): string | null {
       return 'Listening to your microphone.'
     case 'mix':
       return "Listening to the recording's sound (no separate microphone): sounds from your PC count as talking."
+    case 'mix-voice':
+      return "Listening for voices in the recording's sound (no separate microphone): voices from your PC count as talking."
     case 'mix-refined':
       return "Listening to the recording's sound, checked against your captions."
     case 'transcript':

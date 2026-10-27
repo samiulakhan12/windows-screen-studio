@@ -220,3 +220,76 @@ describe('speechLevelSource', () => {
     expect(speechLevelSource({ hasAudio: false, audioStems: { mic: true, system: false } })).toBeNull()
   })
 })
+
+describe('speechFromLevels with the speech detector (offline-captions §3.6)', () => {
+  const withSpeech = (base: AudioLevels, speech: [number, number][]): AudioLevels => ({ ...base, speech: speech.map(([start, end]) => ({ start, end })) })
+
+  it('uses the speech ranges: typing under the talking does not remove it', () => {
+    // Talking from 20 to 23 s while typing: the level path drops it as keyboard noise.
+    const lv = withSpeech(fixture, [
+      [0.5, 7.8],
+      [20.1, 22.9],
+      [52, 59.5]
+    ])
+    expectRanges(speechFromLevels(lv, typing), [
+      [0.5, 7.8],
+      [20.1, 22.9],
+      [52, 59.5]
+    ])
+    expectRanges(speechFromLevels(fixture, typing), [
+      [0.5, 7.8],
+      [52, 59.5]
+    ])
+  })
+
+  it('joins across 1.0 s and drops utterances under 0.6 s', () => {
+    const lv = withSpeech(levels(30, []), [
+      [1, 2],
+      [2.9, 4],
+      [6, 6.5],
+      [10, 11],
+      [12.2, 13]
+    ])
+    expectRanges(speechFromLevels(lv, null), [
+      [1, 4],
+      [10, 11],
+      [12.2, 13]
+    ])
+  })
+
+  it('no speech heard means no talking, whatever the level (no trust guard for the director)', () => {
+    expect(speechFromLevels(withSpeech(fixture, []), null)).toEqual([])
+  })
+
+  it('without speech the output equals the level path exactly (literals)', () => {
+    expectRanges(speechFromLevels(fixture, typing), [
+      [0.5, 7.8],
+      [52, 59.5]
+    ])
+    expect(speechFromLevels({ ...fixture }, typing)).toEqual(speechFromLevels(fixture, typing))
+  })
+
+  it('refineSpeech names the detector, and leaves it out for the transcript alone', () => {
+    expect(refineSpeech({ source: 'mic', ranges: [{ start: 1, end: 2 }], detector: 'speech' }, undefined)).toEqual({
+      ranges: [{ start: 1, end: 2 }],
+      source: 'mic',
+      refined: false,
+      detector: 'speech'
+    })
+    expect(refineSpeech({ source: 'mix', ranges: [{ start: 1, end: 2 }], detector: 'level' }, undefined)?.detector).toBe('level')
+    expect(refineSpeech({ source: 'mix', ranges: [{ start: 1, end: 2 }] }, undefined)).toEqual({ ranges: [{ start: 1, end: 2 }], source: 'mix', refined: false })
+    expect(refineSpeech(null, { segments: [seg('a', 1, 2)] })?.detector).toBeUndefined()
+  })
+})
+
+describe('the director status line with the speech detector', async () => {
+  const { sourceLine, sourceState } = await import('../src/shared/editor/directorCopy')
+  it('the mixed track through the speech detector has its own line; the microphone line stays', () => {
+    expect(sourceState({ ranges: [], source: 'mix', refined: false, detector: 'speech' }, false)).toBe('mix-voice')
+    expect(sourceLine('mix-voice')).toBe("Listening for voices in the recording's sound (no separate microphone): voices from your PC count as talking.")
+    expect(sourceState({ ranges: [], source: 'mix', refined: false, detector: 'level' }, false)).toBe('mix')
+    expect(sourceState({ ranges: [], source: 'mix', refined: false }, false)).toBe('mix')
+    expect(sourceState({ ranges: [], source: 'mic', refined: false, detector: 'speech' }, false)).toBe('mic')
+    expect(sourceLine('mic')).toBe('Listening to your microphone.')
+  })
+})

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { AiProviderInfo } from '../../../shared/api/ai'
-import { DEFAULT_POLISH_OPTIONS, pickTranscriber, polishAvailability, POLISH_STEPS, readPolishOptions, type PolishOptions, type PolishResult, type PolishStep, type PolishSummary } from '../../../shared/editor/polish'
+import { DEFAULT_POLISH_OPTIONS, polishAvailability, polishTranscriber, POLISH_STEPS, readPolishOptions, type PolishOptions, type PolishResult, type PolishStep, type PolishSummary } from '../../../shared/editor/polish'
 import {
   CANCELLED_NOTICE,
   CHANGED_SINCE,
@@ -29,6 +29,9 @@ import { useEditor } from './context'
 import { Chips } from './controls'
 import { EditorIcon } from './EditorIcon'
 import { useModalFocus } from './modalFocus'
+import { LOCAL_TRANSCRIBER_ID } from '../../../shared/api/speech'
+import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
+import { availableState, useSpeechState } from './speechState'
 import { runPolish, type PolishRowState, type PolishRun } from './polishRunner'
 import './polish.css'
 
@@ -99,11 +102,22 @@ export function PolishDialog(props: {
   useEffect(() => () => runRef.current?.cancel(), [])
 
   const capable = (providers ?? []).filter((p) => !!p.transcriptionModel)
-  const available = polishAvailability(project, recorded, { hasCameraFile, transcribers: providers && capable, transcribing: !!job?.running })
-  const provider = providers && options ? pickTranscriber(providers, options.captionsProvider) : null
+  // Captions on this PC (offline-captions §3.8): wait for both the providers and the speech state.
+  const speech = useSpeechState()
+  const local = availableState(speech)
+  const transcriber = providers && options && speech.status !== 'loading' ? polishTranscriber(providers, speech.status === 'ready' ? speech.state : null, options.captionsProvider) : null
+  const chosenId = transcriber && 'providerId' in transcriber ? transcriber.providerId : transcriber?.skip === 'no-model' ? LOCAL_TRANSCRIBER_ID : null
+  const available = polishAvailability(project, recorded, {
+    hasCameraFile,
+    transcribers: providers && speech.status !== 'loading' ? (chosenId ? [{ id: chosenId }] : []) : null,
+    transcribing: !!job?.running,
+    localNotReady: transcriber !== null && 'skip' in transcriber && transcriber.skip === 'no-model'
+  })
+  const provider = chosenId && chosenId !== LOCAL_TRANSCRIBER_ID ? (capable.find((p) => p.id === chosenId) ?? null) : null
+  const choices = [...(local ? [{ id: LOCAL_TRANSCRIBER_ID, label: SPEECH_COPY.localOption }] : []), ...capable.map((p) => ({ id: p.id, label: transcriberLabel(p) }))]
   const presets = [...BUILT_IN_PRESETS, ...(userPresets ?? [])]
   const styleFound = !!options?.styleId && presets.some((p) => p.id === options.styleId)
-  const ready = !!options && providers !== null && userPresets !== null
+  const ready = !!options && providers !== null && userPresets !== null && speech.status !== 'loading'
   /** Whether a row is on: chosen and able to run (a row that cannot run shows unchecked; the remembered option stays). */
   const isOn = (step: PolishStep): boolean => !!options && (step === 'style' ? styleFound : options[step] && !available[step])
   const anything = POLISH_STEPS.some(isOn)
@@ -121,7 +135,8 @@ export function PolishDialog(props: {
     if (!options || !ready || !anything || runRef.current) return
     const chosen: PolishOptions = { ...options, styleId: styleFound ? options.styleId : null }
     window.api.setPref('polish', chosen).catch((err: unknown) => console.warn('The polish options could not be saved:', err))
-    const run = runPolish(services, recorded, chosen, { hasCameraFile, providerId: provider?.id ?? null, userPresets: userPresets ?? [] }, (rows) =>
+    const make = transcriber && 'providerId' in transcriber ? transcriber : null
+    const run = runPolish(services, recorded, chosen, { hasCameraFile, providerId: make?.providerId ?? null, ...(make?.model ? { model: make.model } : {}), userPresets: userPresets ?? [] }, (rows) =>
       setView({ kind: 'running', rows })
     )
     runRef.current = run
@@ -171,13 +186,13 @@ export function PolishDialog(props: {
 
   const optionRow = (step: PolishStep): JSX.Element => {
     const label = polishStepLabel(step)
-    const loading = step === 'captions' && providers === null
+    const loading = step === 'captions' && (providers === null || speech.status === 'loading')
     const why = loading ? null : available[step]
     const hint = loading
       ? LOOKING_FOR_PROVIDERS
       : why
         ? polishSkipText(step, why)
-        : polishHint(step, { silenceAction: options?.silenceAction ?? 'cut', autoZoomOn: zoomSettingsOf(project).auto.enabled, provider })
+        : polishHint(step, { silenceAction: options?.silenceAction ?? 'cut', autoZoomOn: zoomSettingsOf(project).auto.enabled, provider, local: chosenId === LOCAL_TRANSCRIBER_ID })
     const disabled = !ready || loading || !!why
     return (
       <li key={step} className="polish-row" data-testid={`polish-row-${step}`} data-available={!loading && !why}>
@@ -212,11 +227,11 @@ export function PolishDialog(props: {
         {step === 'silences' && !why && options?.silences && (
           <Chips label="Silence action" value={options.silenceAction} onChange={(silenceAction) => set({ silenceAction })} options={[...SILENCE_ACTION_CHIPS]} />
         )}
-        {step === 'captions' && !why && options?.captions && capable.length > 1 && (
-          <select className="polish-provider" aria-label="Transcription provider" value={provider?.id ?? ''} onChange={(e) => set({ captionsProvider: e.target.value })}>
-            {capable.map((p) => (
-              <option key={p.id} value={p.id}>
-                {transcriberLabel(p)}
+        {step === 'captions' && (!why || why === 'no-model') && options?.captions && choices.length > 1 && (
+          <select className="polish-provider" aria-label="Transcription provider" value={chosenId ?? ''} onChange={(e) => set({ captionsProvider: e.target.value })}>
+            {choices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
               </option>
             ))}
           </select>
