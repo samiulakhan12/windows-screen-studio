@@ -14,6 +14,9 @@ export type SpeechModelId = 'whisper-tiny' | 'whisper-base' | 'whisper-small' | 
 /** How the model is offered: quickest to most accurate. */
 export type SpeechTier = 'fast' | 'standard' | 'accurate' | 'best'
 
+/** The tiers as the Captions tab names them (the model's own name follows in brackets once). */
+export const SPEECH_TIER_NAMES: Readonly<Record<SpeechTier, string>> = { fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate' }
+
 export interface SpeechLicense {
   name: 'MIT'
   /** Copyright holder as the licence states it. */
@@ -43,8 +46,13 @@ export interface SpeechModelSpec {
   startMedianMs: number
   /** Longest stretch of a recording one engine run transcribes, seconds (one process per part). */
   partSeconds: number
-  /** Total memory a PC needs before this model may be downloaded, GB (absent: any PC). */
+  /** Total memory a PC needs before this model may be downloaded or used, GB (absent: any PC). */
   minTotalMemGB?: number
+  /**
+   * Not offered where only the compatible build runs (no AVX2): about 4.3 times slower there,
+   * it would take several times the recording's length.
+   */
+  needsStandardBuild?: true
   license: SpeechLicense
 }
 
@@ -118,6 +126,7 @@ export const SPEECH_MODELS: readonly SpeechModelSpec[] = [
     startMedianMs: 45,
     partSeconds: 180,
     minTotalMemGB: 8,
+    needsStandardBuild: true,
     license: WHISPER_LICENSE
   }
 ]
@@ -161,6 +170,20 @@ export function speechModel(id: unknown): SpeechModelSpec | null {
 export function modelUrl(spec: Pick<SpeechModelSpec, 'file'>, base?: string): string {
   const root = base ?? `${SPEECH_MODEL_REPO.host}/${SPEECH_MODEL_REPO.repo}/resolve/${SPEECH_MODEL_REPO.commit}`
   return `${root.replace(/\/+$/, '')}/${spec.file}`
+}
+
+/** Why this PC may not download or use a model: too little memory in all, or a processor that runs only the compatible build. */
+export type SpeechModelBlock = 'memory' | 'processor'
+
+/**
+ * Why this PC may not download or use `spec`, or null when it may. Memory: an "8 GB" PC can
+ * report as little as 7 GB (memory kept by the graphics chip), so the bar is one GB under
+ * minTotalMemGB. Processor: `build` 'compatible' and a model that needs the standard build.
+ */
+export function speechModelBlock(spec: Pick<SpeechModelSpec, 'minTotalMemGB' | 'needsStandardBuild'>, pc: { totalMemBytes: number; build: 'standard' | 'compatible' | 'host' | null }): SpeechModelBlock | null {
+  if (spec.minTotalMemGB !== undefined && !(pc.totalMemBytes >= (spec.minTotalMemGB - 1) * 2 ** 30)) return 'memory'
+  if (spec.needsStandardBuild && pc.build === 'compatible') return 'processor'
+  return null
 }
 
 /** Engine threads for transcription: one core is left for the editor, at most 8 (more barely helps). */

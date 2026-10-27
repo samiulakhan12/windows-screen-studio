@@ -16,13 +16,16 @@ import {
   modelUrl,
   SPEECH_MODEL_REPO,
   SPEECH_MODELS,
+  SPEECH_TIER_NAMES,
   speechModel,
+  speechModelBlock,
   speechThreads,
   VAD_MODEL,
   VAD_THREADS,
   type SpeechModelId
 } from '../src/shared/speech/catalog'
-import { THREAD_SPEED, WINDOWS_FACTOR } from '../src/shared/speech/estimate'
+import { localErrorCode, localErrorMessage, modelBlockReason, quickerModel, tierLabel, UNAVAILABLE_REASONS, type LocalCaptionsError } from '../src/shared/speech/errors'
+import { COMPAT_FACTOR, estimateSeconds, THREAD_SPEED, threadFactor, WINDOWS_FACTOR } from '../src/shared/speech/estimate'
 import { SIDECAR } from '../src/shared/speech/protocol'
 import { canTranscribeNow, CAPTIONS_SKIPPED_NO_MODEL, localModel, pickTranscriber } from '../src/shared/speech/transcriber'
 
@@ -51,6 +54,21 @@ describe('the speech model catalog', () => {
     expect(DEFAULT_SPEECH_MODEL).toBe('whisper-base')
     expect(speechModel('whisper-turbo')?.minTotalMemGB).toBe(8)
     expect(SPEECH_MODELS.filter((m) => m.minTotalMemGB !== undefined).map((m) => m.id)).toEqual(['whisper-turbo'])
+    expect(SPEECH_MODELS.filter((m) => m.needsStandardBuild).map((m) => m.id)).toEqual(['whisper-turbo'])
+  })
+
+  it('keeps Whisper large-v3 turbo off PCs with too little memory or only the compatible build', () => {
+    const turbo = speechModel('whisper-turbo')!
+    const GiB = 2 ** 30
+    // An "8 GB" PC can report 7.4 GB usable; a 6 GB one cannot pass.
+    expect(speechModelBlock(turbo, { totalMemBytes: 7.4 * GiB, build: 'standard' })).toBeNull()
+    expect(speechModelBlock(turbo, { totalMemBytes: 6 * GiB, build: 'standard' })).toBe('memory')
+    expect(speechModelBlock(turbo, { totalMemBytes: Number.NaN, build: 'standard' })).toBe('memory')
+    expect(speechModelBlock(turbo, { totalMemBytes: 16 * GiB, build: 'compatible' })).toBe('processor')
+    expect(speechModelBlock(turbo, { totalMemBytes: 16 * GiB, build: 'host' })).toBeNull()
+    for (const id of ['whisper-tiny', 'whisper-base', 'whisper-small'] as const) expect(speechModelBlock(speechModel(id)!, { totalMemBytes: 2 * GiB, build: 'compatible' })).toBeNull()
+    expect(modelBlockReason('memory', turbo, 4 * GiB)).toBe('Needs about 1.1 GB of memory and a PC with 8 GB in all; this one has 4 GB.')
+    expect(modelBlockReason('processor', turbo, 16 * GiB)).toContain('AVX2')
   })
 
   it('downloads only from the pinned Hugging Face commit (or a test base)', () => {
@@ -90,17 +108,93 @@ describe('the speech model catalog', () => {
 
 describe('frozen constants of the protocol, the speech detector and the estimates', () => {
   it('keeps the values the design gives', () => {
-    expect(SIDECAR).toEqual({ lineMax: 1048576, totalMax: 67108864, exit: { ok: 0, error: 1, cancelled: 2 }, vadFrame: 0.032, maxChunk: 29, previewChars: 120 })
+    expect(SIDECAR).toEqual({ lineMax: 1048576, totalMax: 67108864, exit: { ok: 0, error: 1, cancelled: 2 }, vadFrame: 0.032, maxChunk: 29, previewChars: 120, heartbeat: 15, detectMinSpeech: 10 })
     expect(VAD).toEqual({ threshold: 0.5, negThreshold: 0.35, minSpeech: 0.25, minSilence: 0.1, pad: 0.03, frame: 0.032 })
     expect(VOICE).toEqual({ tail: 0.3, lead: 0.1 })
     expect(VAD_TRUST).toEqual({ minSpeech: 2.0, minSound: 10.0 })
     expect(THREAD_SPEED).toEqual({ 1: 3.21, 2: 1.78, 3: 1.27, 4: 1.0 })
     expect(WINDOWS_FACTOR).toBe(1.3)
+    expect(COMPAT_FACTOR).toBe(4.3)
   })
 
   it('levels without speech ranges are valid as before', () => {
     const levels: AudioLevels = { window: 0.05, power: new Float32Array(4) }
     expect(levels.speech).toBeUndefined()
+  })
+})
+
+describe('time estimates', () => {
+  it('scales by threads as measured, and above 4 threads by (4 / n) ^ 0.7, never below 0.6', () => {
+    expect([1, 2, 3, 4].map(threadFactor)).toEqual([3.21, 1.78, 1.27, 1.0])
+    expect(threadFactor(8)).toBeCloseTo(0.6156, 3)
+    expect(threadFactor(32)).toBe(0.6)
+    expect(threadFactor(0)).toBe(3.21)
+    expect(threadFactor(Number.NaN)).toBe(3.21)
+    expect(threadFactor(3.9)).toBe(1.27)
+  })
+
+  it('gives the design table for 20 minutes on a 4-core PC (3 threads), and slower on the compatible build', () => {
+    const minutes = (id: SpeechModelId, build?: 'standard' | 'compatible'): number => estimateSeconds(speechModel(id)!, 1200, 3, null, build) / 60
+    expect(minutes('whisper-tiny')).toBeCloseTo(1.39, 1)
+    expect(minutes('whisper-base')).toBeCloseTo(2.61, 1)
+    expect(minutes('whisper-small')).toBeCloseTo(9.67, 1)
+    expect(minutes('whisper-turbo')).toBeCloseTo(37.56, 1)
+    expect(minutes('whisper-base', 'compatible')).toBeCloseTo(2.61 * 4.3, 1)
+    expect(minutes('whisper-base', 'standard')).toBeCloseTo(2.61, 1)
+  })
+
+  it("uses this PC's measured speed once known (it already includes the build and Windows)", () => {
+    const base = speechModel('whisper-base')!
+    expect(estimateSeconds(base, 1000, 3, { rtf: 0.2, threads: 3 }, 'compatible')).toBeCloseTo(200, 6)
+    expect(estimateSeconds(base, 1000, 4, { rtf: 0.2, threads: 2 })).toBeCloseTo((1000 * 0.2 * 1.0) / 1.78, 6)
+    expect(estimateSeconds(base, 1000, 3, { rtf: Number.NaN, threads: 3 })).toBeCloseTo(1000 * 0.079 * 1.27 * 1.3, 6)
+  })
+})
+
+describe('the shared error sentences of captions on this PC', () => {
+  const codes: LocalCaptionsError[] = ['unavailable', 'no-model', 'damaged', 'crashed', 'memory', 'stalled', 'protocol', 'language', 'blocked']
+
+  it('name the tier first and the model once', () => {
+    expect(SPEECH_TIER_NAMES).toEqual({ fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate' })
+    expect(tierLabel('whisper-small')).toBe('Accurate (Whisper small)')
+    expect(localErrorMessage('memory', { model: 'whisper-small' })).toBe('This PC ran out of memory for Accurate (Whisper small). Try Standard.')
+    expect(localErrorMessage('memory', { model: 'whisper-tiny' })).toBe('This PC ran out of memory for Fast (Whisper tiny). Close other apps and try again.')
+    expect(quickerModel('whisper-tiny')).toBeNull()
+    expect(localErrorMessage('damaged', { model: 'whisper-base' })).toBe('The speech model for Standard (Whisper base) is damaged or missing, so it was not used. Download it again (60 MB).')
+    expect(localErrorMessage('crashed', { part: 4, parts: 6 })).toBe('The speech engine stopped unexpectedly. The parts already done are kept: Generate captions again continues from part 4 of 6.')
+    expect(localErrorMessage('unavailable', { reason: 'blocked' })).toBe(`Captions on this PC are not available here: ${UNAVAILABLE_REASONS.blocked}.`)
+    for (const code of codes) {
+      for (const m of SPEECH_MODELS) {
+        const text = localErrorMessage(code, { model: m.id })
+        if (text.includes('Whisper')) expect(text).toContain(tierLabel(m.id))
+      }
+    }
+  })
+
+  it('round-trip through an Electron invoke rejection, and nothing else maps to a code', () => {
+    const samples: [LocalCaptionsError, Parameters<typeof localErrorMessage>[1]][] = [
+      ['unavailable', { reason: 'missing' }],
+      ['unavailable', {}],
+      ['no-model', { model: 'whisper-tiny' }],
+      ['damaged', { model: 'whisper-turbo' }],
+      ['crashed', { part: 2, parts: 3 }],
+      ['crashed', {}],
+      ['memory', { model: 'whisper-small' }],
+      ['memory', { model: 'whisper-tiny' }],
+      ['stalled', {}],
+      ['protocol', {}],
+      ['language', { language: 'xx' }],
+      ['blocked', { model: 'whisper-turbo', block: 'processor' }],
+      ['blocked', { model: 'whisper-turbo', block: 'memory' }]
+    ]
+    for (const [code, params] of samples) {
+      const message = localErrorMessage(code, params)
+      expect(localErrorCode(message)).toBe(code)
+      expect(localErrorCode(`Error invoking remote method 'ai:transcribe': Error: ${message}`)).toBe(code)
+    }
+    expect(new Set(codes.map((c) => localErrorMessage(c, { model: 'whisper-base' }))).size).toBe(codes.length)
+    for (const other of ['This recording has no sound to transcribe.', 'Cancelled.', 'OpenAI rejected the API key.', "Error invoking remote method 'ai:transcribe': Error: The transcription was cancelled.", 'No speech was found in this recording', ''])
+      expect(localErrorCode(other)).toBeNull()
   })
 })
 

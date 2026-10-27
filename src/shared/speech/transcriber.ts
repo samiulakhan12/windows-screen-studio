@@ -1,5 +1,5 @@
 /**
- * Which transcriber makes captions when nobody chose one (docs/design/offline-captions.md §3.6):
+ * Which transcriber makes captions when nobody chose one (docs/design/offline-captions.md §3.8):
  * the Captions tab's default and E-01 "Polish in one click". Pure, frozen.
  */
 import type { AiProviderInfo } from '../api/ai'
@@ -16,8 +16,10 @@ export type TranscriberChoice =
 export const CAPTIONS_SKIPPED_NO_MODEL = 'Captions skipped: download a speech model in the Captions tab (free, 60 MB) or add an AI provider.'
 
 /**
- * The model "On this PC" uses: the default model when it is installed, else the first
- * installed model in catalog order, else the default model (not installed).
+ * The model "On this PC" uses without asking (E-01, and the Captions tab's "Make them now with
+ * …" offer): the default model when it is installed, else the first installed model in catalog
+ * order, else the default model (not installed). The Captions tab itself uses its session's
+ * chip choice, which starts as the default model.
  */
 export function localModel(speech: Pick<SpeechState, 'defaultModel' | 'models'>): { model: SpeechModelId; installed: boolean } {
   const installed = (id: SpeechModelId): boolean => speech.models.some((m) => m.id === id && m.status.state === 'installed')
@@ -34,8 +36,10 @@ export function localModel(speech: Pick<SpeechState, 'defaultModel' | 'models'>)
  * 4. On this PC, not ready (the Captions tab offers the download);
  * 5. null: nothing can transcribe here.
  * `providers` and `speech` are null while unknown (not read yet, or failed); a null `speech`
- * means On this PC is unavailable. E-01 transcribes only a key choice or a ready local one,
- * never starting a download.
+ * means On this PC is unavailable (callers wait while either is still loading). E-01
+ * transcribes only a key choice or a ready local one, never starting a download. A remembered
+ * On this PC that is not ready stays chosen even when a key provider exists: the user asked for
+ * nothing to be uploaded, so E-01 skips captions rather than send the sound to a provider.
  */
 export function pickTranscriber(providers: readonly AiProviderInfo[] | null, speech: SpeechState | null, remembered = ''): TranscriberChoice | null {
   const capable = (providers ?? []).filter((p) => !!p.transcriptionModel)

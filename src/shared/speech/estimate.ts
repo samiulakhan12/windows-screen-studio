@@ -1,7 +1,8 @@
 /**
  * How long captions on this PC take, and the words the UI uses for times and sizes
- * (docs/design/offline-captions.md §3.3, §7). Pure. Constants and signatures frozen; bodies by
- * workstream C.
+ * (docs/design/offline-captions.md §3.3, §7). Pure. Constants and signatures frozen;
+ * threadFactor and estimateSeconds are real code (the main process limits a part's run time
+ * with them); the other bodies are workstream C's.
  */
 import type { SpeechModelSpec } from './catalog'
 
@@ -15,26 +16,39 @@ export const THREAD_SPEED: Readonly<Record<1 | 2 | 3 | 4, number>> = { 1: 3.21, 
 /** Windows (measured under wine: Whisper base RTF 0.105 against 0.079 on Linux) until this PC has measured itself. */
 export const WINDOWS_FACTOR = 1.3
 
+/**
+ * The compatible build (no AVX2, FMA or F16C: every SIMD extension off) until this PC has
+ * measured itself: expected about 4.3 times slower (the unforced cross build measured 25.7 s
+ * against 6.0 s for tiny.en under wine).
+ */
+export const COMPAT_FACTOR = 4.3
+
 /** A time left is shown once this share is done or this many seconds have passed. */
 export const TIME_LEFT = { minFraction: 0.1, minSeconds: 15, smoothing: 0.3, minRise: 30 } as const
 
-/** threadFactor(n): processing time with n threads relative to 4 (THREAD_SPEED). */
+/** threadFactor(n): processing time with n threads relative to 4 (THREAD_SPEED); n is floored and at least 1. */
 export function threadFactor(threads: number): number {
-  void threads
-  throw new Error('threadFactor: not implemented yet (workstream C)')
+  const n = Number.isFinite(threads) ? Math.max(1, Math.floor(threads)) : 1
+  if (n <= 4) return THREAD_SPEED[n as 1 | 2 | 3 | 4]
+  return Math.max(0.6, (4 / n) ** 0.7)
 }
 
 /**
- * Seconds to transcribe `audioSeconds` with `spec` on `threads` threads: audio × RTF × thread
- * factor, with the catalog's rtf4 × WINDOWS_FACTOR until `measured` (this PC's RTF at its
- * thread count) is known.
+ * Seconds to transcribe `audioSeconds` with `spec` on `threads` threads. With `measured` (this
+ * PC's RTF at its thread count, which already includes its build and Windows): audio × measured
+ * RTF, scaled from its thread count to `threads`. Without: audio × the catalog's rtf4 × thread
+ * factor × WINDOWS_FACTOR, × COMPAT_FACTOR when `build` is 'compatible'.
  */
-export function estimateSeconds(spec: Pick<SpeechModelSpec, 'rtf4'>, audioSeconds: number, threads: number, measured?: { rtf: number; threads: number } | null): number {
-  void spec
-  void audioSeconds
-  void threads
-  void measured
-  throw new Error('estimateSeconds: not implemented yet (workstream C)')
+export function estimateSeconds(
+  spec: Pick<SpeechModelSpec, 'rtf4'>,
+  audioSeconds: number,
+  threads: number,
+  measured?: { rtf: number; threads: number } | null,
+  build?: 'standard' | 'compatible' | 'host' | null
+): number {
+  const audio = Number.isFinite(audioSeconds) ? Math.max(0, audioSeconds) : 0
+  if (measured && Number.isFinite(measured.rtf) && measured.rtf > 0) return (audio * measured.rtf * threadFactor(threads)) / threadFactor(measured.threads)
+  return audio * spec.rtf4 * threadFactor(threads) * WINDOWS_FACTOR * (build === 'compatible' ? COMPAT_FACTOR : 1)
 }
 
 /**

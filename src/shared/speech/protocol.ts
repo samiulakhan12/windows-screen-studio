@@ -18,7 +18,17 @@ export const SIDECAR = {
   /** Longest chunk the helper hands whisper.cpp, seconds (it encodes 30 s windows). */
   maxChunk: 29,
   /** Longest preview of the words heard that progress carries, characters. */
-  previewChars: 120
+  previewChars: 120,
+  /**
+   * While it works, the helper prints a progress line at least this often, seconds (whisper.cpp
+   * reports progress only once per 30 s window, which can take minutes on a slow processor).
+   */
+  heartbeat: 15,
+  /**
+   * Seconds of speech a language detection must have heard before the app carries the detected
+   * language to the later parts of a recording (SidecarResult.language_s).
+   */
+  detectMinSpeech: 10
 } as const
 
 /** Error codes of `{"type":"error"}` lines. */
@@ -33,17 +43,24 @@ export type SidecarErrorCode =
   | 'language'
   /** Memory ran out. */
   | 'memory'
-  /** The standard build found no AVX2/FMA/F16C before running any ggml code: use the compatible build. */
+  /**
+   * The standard build's own CPUID check found the processor lacking (SidecarCpu): use the
+   * compatible build. A wrong choice can also fault before this check runs (code compiled for
+   * AVX2 may run in static initialisers), so an illegal-instruction exit means the same.
+   */
   | 'cpu'
   | 'internal'
 
 /** `ssw-speech cpu`: what the processor offers (Rust's feature detection; runs no SIMD code). */
 export interface SidecarCpu {
   type: 'cpu'
+  sse42: boolean
   avx: boolean
   avx2: boolean
   fma: boolean
   f16c: boolean
+  /** Some virtual machines and emulators offer AVX2 without BMI2; the standard build needs both. */
+  bmi2: boolean
   /** Logical processors. */
   logical: number
 }
@@ -67,7 +84,10 @@ export interface SidecarSpeech {
   segments: [number, number][]
 }
 
-/** `transcribe`: progress through the audio. */
+/**
+ * `transcribe`: progress through the audio. Printed when whisper.cpp reports progress and, with
+ * the latest values, at least every SIDECAR.heartbeat seconds while the helper works.
+ */
 export interface SidecarProgress {
   type: 'progress'
   /** 0..100 of the audio's speech. */
@@ -85,7 +105,11 @@ export interface SidecarWord {
   prob: number
 }
 
-/** `transcribe`: one finished segment (sent after each chunk), seconds from the start of the audio. */
+/**
+ * `transcribe`: one finished segment (sent after each chunk), seconds from the start of the
+ * audio. Its word times are final: the helper refines each chunk's words before printing them
+ * (docs/design/offline-captions.md §5.2 "Word forming"), and nothing later changes them.
+ */
 export interface SidecarSegment {
   type: 'segment'
   start: number
@@ -97,8 +121,18 @@ export interface SidecarSegment {
 /** `transcribe`: the end of a successful run. */
 export interface SidecarResult {
   type: 'result'
-  /** Detected or forced language code ("en"). */
+  /**
+   * The language the run used ("en"): the one asked for, or the one detected; '' when it was
+   * 'auto' and the audio held no speech to detect it from.
+   */
   language: string
+  /**
+   * Seconds of speech the language detection heard (the first chunk with at least
+   * SIDECAR.detectMinSpeech s of speech, else the chunk with the most); 0 when the language was
+   * given or nothing was detected. The app carries a detected language to later parts only from
+   * a run with language_s >= SIDECAR.detectMinSpeech.
+   */
+  language_s: number
   /** Seconds of audio. */
   duration: number
   timing: { load_ms: number; vad_ms: number; asr_ms: number; rtf: number; peak_rss_mb: number }
@@ -148,7 +182,8 @@ export function readSidecarLine(line: string): SidecarEvent | null {
  * The segments of one run as the transcript of a part (seconds from the part's start, inside
  * [0, partSeconds]): each segment's text is its words joined by single spaces (so the caption
  * layout always finds a timing per word), words with no text are dropped, times are made
- * ordered and monotonic, at most 400 words per segment; probabilities are dropped.
+ * ordered and monotonic, at most 400 words per segment; probabilities are dropped. `language`
+ * is the result's; '' and 'auto' are left out (never stored or counted by mergeParts).
  */
 export function localTranscript(segments: readonly SidecarSegment[], language: string | undefined, partSeconds: number): RawTranscript {
   void segments

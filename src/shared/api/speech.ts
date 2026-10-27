@@ -36,8 +36,10 @@ export type SpeechDownloadError =
   | 'network'
   /** The server answered with an error (`status`). */
   | 'http'
-  /** 403, 404 or 410: the file is not at its pinned address. */
+  /** 404 or 410: the file is no longer at its pinned address (Flown needs an update). */
   | 'missing'
+  /** 403: Hugging Face or the network (a proxy, a regional block) refused the download. */
+  | 'refused'
   /** Size or SHA-256 did not match the pin: the file was deleted. */
   | 'mismatch'
   /** Not enough free space. */
@@ -47,7 +49,8 @@ export type SpeechDownloadError =
 /** Where one model stands on this PC. */
 export type SpeechModelStatus =
   | { state: 'missing' }
-  | { state: 'downloading'; received: number; total: number; bytesPerSecond: number }
+  /** `retrying`: the connection dropped and automatic retry `attempt` of `of` is waiting or running. */
+  | { state: 'downloading'; received: number; total: number; bytesPerSecond: number; retrying?: { attempt: number; of: number } }
   | { state: 'verifying' }
   /** A download was cancelled or the app closed during one: the part already here is kept (Continue or Delete). */
   | { state: 'stopped'; received: number; total: number }
@@ -70,9 +73,12 @@ export interface SpeechModelView {
   status: SpeechModelStatus
   /** A transcription is using it (it cannot be removed now). */
   inUse: boolean
-  /** Whether this PC may download it (Whisper large-v3 turbo needs 8 GB of memory in all). */
+  /**
+   * Whether this PC may download and use it (speechModelBlock: Whisper large-v3 turbo needs
+   * 8 GB of memory in all and a processor that runs the standard build).
+   */
   allowed: boolean
-  /** Why not, when not allowed (a sentence to show). */
+  /** Why not, when not allowed (modelBlockReason, a sentence to show). */
   reason?: string
   /** Processing time / audio time measured on this PC (absent until a part of at least 60 s ran). */
   measured?: { rtf: number; threads: number }
@@ -112,7 +118,13 @@ export interface SpeechState {
   detector: SpeechDetectorInfo
   /** Every catalog model, in catalog order. */
   models: SpeechModelView[]
-  /** The model used for new captions (the Captions tab's chips and Settings both set it). */
+  /**
+   * The model used for new captions and by E-01. Settings sets it (only to a downloaded model);
+   * a download started from the Captions tab makes its model the default once verified; the
+   * first verified download becomes it when the default is not installed; removing the default
+   * makes the first remaining installed model the default. The Captions tab's quality chips
+   * choose for this session only and never change it.
+   */
   defaultModel: SpeechModelId
   /** Free bytes on the drive of the models folder (null when unknown) and bytes the models use. */
   disk: { free: number | null; used: number }
