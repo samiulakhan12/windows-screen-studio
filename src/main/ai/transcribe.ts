@@ -195,6 +195,8 @@ export async function transcribeProject(store: AiProviderStore, projectId: unkno
         const transcript = await runJob(projectId, dir, options, 'local', client.model ?? '', client, controller.signal, progress, (tmp) => (job.tmp = tmp))
         // Merged: the finished parts are no longer needed.
         await fs.rm(path.join(dir, PART_CACHE_DIR), { recursive: true, force: true }).catch(() => undefined)
+        // .cache itself only when nothing else is kept there (the speech detector's results).
+        await fs.rmdir(path.dirname(path.join(dir, PART_CACHE_DIR))).catch(() => undefined)
         return transcript
       } finally {
         client.dispose?.()
