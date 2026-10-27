@@ -275,6 +275,47 @@ requirements of the license of GCC.
 
 ------------------------------------------------------------------------------
 
+Rust standard library (std, core, alloc and the crates it is built with)
+https://github.com/rust-lang/rust
+Statically linked into ssw-capture.exe, ssw-speech.exe and ssw-speech-compat.exe, which are built
+with Rust 1.88 or newer. Besides std, core and alloc, the Rust toolchain builds crates such as
+addr2line, adler2, cfg-if, compiler_builtins, gimli, hashbrown, memchr, miniz_oxide, object,
+rustc-demangle and windows-link into the standard library.
+
+Copyright (c) The Rust Project Developers
+
+The Rust standard library is licensed under the MIT license or the Apache License, Version 2.0,
+at your option; the crates it is built with are under these or similar permissive licences,
+listed in the Rust repository's COPYRIGHT file
+(https://github.com/rust-lang/rust/blob/master/COPYRIGHT). The Apache License text is reproduced
+below with the Rust crates under the same licence. The MIT license:
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------------------------
+
 FFmpeg
 https://ffmpeg.org/
 resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe is a build of FFmpeg for

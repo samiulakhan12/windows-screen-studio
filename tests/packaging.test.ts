@@ -1,5 +1,6 @@
 // Packaging scripts (scripts/lib/*.cjs, electron-builder.config.cjs): pure logic, no Electron needed.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
@@ -645,6 +646,70 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {
       expect(text).toContain(readFileSync(path.join(ROOT, 'resources', 'notices', f), 'utf8').trim().split('\n')[0])
     }
+    // The Rust standard library, statically linked into every helper, is not a cargo dependency.
+    expect(text).toContain('Rust standard library (std, core, alloc and the crates it is built with)')
+    expect(text).toContain('Copyright (c) The Rust Project Developers')
+  })
+
+  /** process.env without PATH (any case) or SSW_REQUIRE_NATIVE, and PATH holding node alone: no cargo. */
+  const withoutCargo = (env: Record<string, string> = {}): NodeJS.ProcessEnv => ({
+    ...Object.fromEntries(Object.entries(process.env).filter(([k]) => k.toUpperCase() !== 'PATH' && k !== 'SSW_REQUIRE_NATIVE')),
+    PATH: path.dirname(process.execPath),
+    ...env
+  })
+
+  it('checks and writes the notices without cargo, keeping the committed Rust crates, except for release builds', async () => {
+    // A copy of what scripts/notices.mjs reads, so the committed file is never touched.
+    const root = tmpDir()
+    for (const p of ['scripts/notices.mjs', 'scripts/lib', 'resources/notices', 'resources/THIRD_PARTY_NOTICES.txt', 'package.json']) {
+      cpSync(path.join(ROOT, p), path.join(root, p), { recursive: true })
+    }
+    symlinkSync(path.join(ROOT, 'node_modules'), path.join(root, 'node_modules'), 'junction')
+    const notices = (args: string[], env = withoutCargo()) => spawnSync(process.execPath, [path.join(root, 'scripts', 'notices.mjs'), ...args], { cwd: root, env, encoding: 'utf8' })
+    const check = notices(['--check'])
+    expect(check.status, check.stderr).toBe(0)
+    expect(check.stderr).toContain("cargo was not found, so the Rust crates' section is kept from resources/THIRD_PARTY_NOTICES.txt unchecked")
+    expect(notices(['--check'], withoutCargo({ SSW_REQUIRE_NATIVE: '1' })).status).toBe(1)
+    // The rest is still generated: a new hand-written entry makes the file stale, and writing it
+    // keeps the Rust crates' section as committed.
+    const file = path.join(root, 'resources', 'THIRD_PARTY_NOTICES.txt')
+    const before = readFileSync(file, 'utf8')
+    writeFileSync(path.join(root, 'resources', 'notices', '99-test.txt'), 'A component added without cargo\n')
+    expect(notices(['--check']).status).toBe(1)
+    const write = notices([])
+    expect(write.status, write.stderr).toBe(0)
+    const after = readFileSync(file, 'utf8')
+    expect(after).toContain('A component added without cargo')
+    const { rustSection } = (await import(pathToFileURL(path.join(ROOT, 'scripts', 'notices.mjs')).href)) as { rustSection(text: string): string | null }
+    expect(rustSection(before)).toMatch(/^={78}\nRust crates compiled into the native helpers/)
+    expect(rustSection(after)).toBe(rustSection(before))
+  })
+
+  it('reuses usable prebuilt speech helpers on a Windows build host, and fails a required build only without them', () => {
+    // build-native.mjs as on Windows (process.platform faked), from a copy of the scripts whose
+    // native/bin holds both helpers; without cargo the capture helper is skipped.
+    const root = tmpDir()
+    cpSync(path.join(ROOT, 'scripts', 'build-native.mjs'), path.join(root, 'scripts', 'build-native.mjs'))
+    cpSync(path.join(ROOT, 'scripts', 'lib'), path.join(root, 'scripts', 'lib'), { recursive: true })
+    const preload = path.join(root, 'win32.cjs')
+    writeFileSync(preload, "Object.defineProperty(process, 'platform', { value: 'win32' })\n")
+    mkdirSync(path.join(root, 'native', 'bin'), { recursive: true })
+    for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), fakePe({}))
+    const build = (env?: Record<string, string>) =>
+      spawnSync(process.execPath, ['-r', preload, path.join(root, 'scripts', 'build-native.mjs')], { cwd: root, env: withoutCargo(env), encoding: 'utf8' })
+    const plain = build()
+    expect(plain.status, plain.stderr).toBe(0)
+    expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-speech.exe and native/bin/ssw-speech-compat.exe (not rebuilt now)')
+    expect(plain.stderr).not.toContain('captions on this PC will be unavailable')
+    // Required: only the capture helper fails here.
+    const required = build({ SSW_REQUIRE_NATIVE: '1' })
+    expect(required.stderr).toContain('ssw-capture.exe: no Rust toolchain found')
+    expect(required.stderr).toContain('1 helper(s) could not be built')
+    rmSync(path.join(root, 'native', 'bin', 'ssw-speech-compat.exe'))
+    const missing = build({ SSW_REQUIRE_NATIVE: '1' })
+    expect(missing.status).toBe(1)
+    expect(missing.stderr).toContain('native/bin/ssw-speech-compat.exe is missing')
+    expect(missing.stderr).toContain('2 helper(s) could not be built')
   })
 })
 

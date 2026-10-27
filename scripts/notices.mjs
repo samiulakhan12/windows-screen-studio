@@ -7,7 +7,10 @@
 //      native/speech for x86_64-pc-windows-gnu, normal dependencies only) with their licence files;
 //   3. the npm packages that ship: the runtime packages in app.asar, the packages Vite bundles into
 //      the app (React, MediaPipe, the AI provider SDKs and what they depend on) and Electron.
-// Packages whose licence texts are identical share one copy of the text.
+// Packages whose licence texts are identical share one copy of the text. Rust is optional for
+// development builds (docs/BUILDING.md): without cargo the Rust crates' section is taken from the
+// committed file, with a warning, and the rest is still generated and checked. Release builds
+// (SSW_REQUIRE_NATIVE=1) need cargo.
 //
 //   npm run notices               # write the file
 //   npm run notices -- --check    # exit 1 when the committed file is not what would be generated
@@ -30,6 +33,8 @@ const BUNDLED = ['react', 'react-dom', '@mediapipe/tasks-vision', '@anthropic-ai
 /** Type declarations: in the dependency trees, but no code of them ships. */
 const TYPES_ONLY = (name) => name.startsWith('@types/') || name === 'undici-types'
 const RULE = '='.repeat(78)
+const RUST_TITLE = 'Rust crates compiled into the native helpers (ssw-capture.exe, ssw-speech.exe, ssw-speech-compat.exe)'
+const NPM_TITLE = 'npm packages in the app (app.asar, and the code Vite bundles into it) and Electron'
 const LICENCE_FILE = /^(licen[cs]e|copying|unlicen[cs]e|notice)([-_.].*)?$/i
 
 const clean = (text) =>
@@ -66,7 +71,9 @@ function crates() {
       encoding: 'utf8',
       maxBuffer: 64 << 20
     })
-    if (r.error || r.status !== 0) throw new Error(`cargo metadata for ${manifest} failed: ${r.error?.message ?? r.stderr.trim().split('\n').pop()}`)
+    if (r.error || r.status !== 0) {
+      throw Object.assign(new Error(`cargo metadata for ${manifest} failed: ${r.error?.message ?? r.stderr.trim().split('\n').pop()}`), { noCargo: r.error?.code === 'ENOENT' })
+    }
     const meta = JSON.parse(r.stdout)
     const byId = new Map(meta.packages.map((p) => [p.id, p]))
     const nodes = new Map(meta.resolve.nodes.map((n) => [n.id, n]))
@@ -143,7 +150,27 @@ function grouped(title, list) {
   return `${RULE}\n${title}\n${RULE}\n\n${parts.join(`\n\n${'-'.repeat(78)}\n\n`)}`
 }
 
-export function generate() {
+/** The Rust crates' section of a notices text made by generate(), or null. */
+export function rustSection(text) {
+  const start = text.indexOf(`${RULE}\n${RUST_TITLE}\n${RULE}\n`)
+  const end = text.indexOf(`\n\n\n${RULE}\n${NPM_TITLE}\n${RULE}\n`)
+  return start >= 0 && end > start ? text.slice(start, end) : null
+}
+
+/**
+ * The notices text. `committed` (the file as it is) supplies the Rust crates' section when cargo
+ * is not installed, unless `required`.
+ */
+export function generate({ committed = '', required = false } = {}) {
+  let rust
+  try {
+    rust = grouped(RUST_TITLE, crates())
+  } catch (err) {
+    const kept = err.noCargo && !required ? rustSection(committed) : null
+    if (!kept) throw err
+    console.warn(`notices: WARNING: cargo was not found, so the Rust crates' section is kept from ${path.relative(root, OUT)} unchecked (install Rust to check it; release builds with SSW_REQUIRE_NATIVE=1 need it).`)
+    rust = kept
+  }
   const hand = readdirSync(HAND)
     .filter((f) => f.endsWith('.txt'))
     .sort()
@@ -156,22 +183,22 @@ from resources/notices/, the Rust crates of the native helpers and the shipped n
   const sections = [
     head,
     `${RULE}\nComponents of the speech engine, the native helpers and the app\n${RULE}\n\n${hand.join(`\n\n${'-'.repeat(78)}\n\n`)}`,
-    grouped('Rust crates compiled into the native helpers (ssw-capture.exe, ssw-speech.exe, ssw-speech-compat.exe)', crates()),
-    grouped('npm packages in the app (app.asar, and the code Vite bundles into it) and Electron', npmPackages())
+    rust,
+    grouped(NPM_TITLE, npmPackages())
   ]
   return `${sections.join('\n\n\n')}\n`
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const committed = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''
   let text
   try {
-    text = generate()
+    text = generate({ committed, required: process.env.SSW_REQUIRE_NATIVE === '1' })
   } catch (err) {
     console.error(`notices: ${err.message}`)
     process.exit(1)
   }
   if (process.argv.includes('--check')) {
-    const committed = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''
     if (committed !== text) {
       console.error(`notices: ${path.relative(root, OUT)} is not up to date (${Buffer.byteLength(committed)} bytes committed, ${Buffer.byteLength(text)} generated). Run npm run notices and commit it.`)
       process.exit(1)

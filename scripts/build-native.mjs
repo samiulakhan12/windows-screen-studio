@@ -16,7 +16,8 @@
 // cross-compile for x86_64-pc-windows-gnu, which needs `rustup target add x86_64-pc-windows-gnu`
 // and the MinGW-w64 linker (x86_64-w64-mingw32-gcc). The speech helper also needs cmake, libclang
 // (bindgen) and the POSIX-thread MinGW (x86_64-w64-mingw32-gcc-posix / g++-posix), and is
-// cross-compiled from Linux or macOS only. Without the capture helper the app records through
+// cross-compiled from Linux or macOS only (on Windows, usable ones already in native/bin are
+// kept, so --require passes with them). Without the capture helper the app records through
 // Chromium (with the OS cursor in the video); without the speech helper captions offer AI
 // providers only and the speech detector falls back to sound levels. So a missing toolchain is
 // not fatal unless --require is given.
@@ -28,7 +29,7 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { checkWindowsExe, readImports } = require('./lib/pe.cjs')
-const { speechHelpers } = require('./lib/packaging.cjs')
+const { speechHelpers, speechHelperStatus } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const crate = path.join(root, 'native')
@@ -167,7 +168,17 @@ function cargoSpeech(label, targetDir, args, env) {
 function buildSpeechWindows() {
   const what = 'the speech helpers (ssw-speech.exe, ssw-speech-compat.exe)'
   if (process.platform === 'win32') {
-    return skip(what, 'they are cross-compiled from Linux or macOS only.', 'Build them on Linux (see docs/BUILDING.md) and copy them to native/bin.', SPEECH_CONSEQUENCE)
+    // Not built here: helpers built on Linux or macOS and copied to native/bin are bundled.
+    const status = speechHelperStatus(root)
+    if (status.every((h) => h.bundle)) {
+      console.warn(`build-native: WARNING: the speech helpers are cross-compiled from Linux or macOS only; reusing the prebuilt ${status.map((h) => h.from).join(' and ')} (not rebuilt now).`)
+      return
+    }
+    const bad = status
+      .filter((h) => !h.bundle)
+      .map((h) => `${h.from} is ${h.present ? `unusable (${h.reason})` : 'missing'}`)
+      .join(', ')
+    return skip(what, `they are cross-compiled from Linux or macOS only, and ${bad}.`, 'Build them on Linux (see docs/BUILDING.md) and copy them to native/bin.', SPEECH_CONSEQUENCE)
   }
   if (!haveCargo(what, SPEECH_CONSEQUENCE) || !haveTarget(what, WIN_TARGET, SPEECH_CONSEQUENCE)) return
   for (const tool of ['x86_64-w64-mingw32-gcc-posix', 'x86_64-w64-mingw32-g++-posix']) {
