@@ -640,8 +640,8 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
   it('commits third-party notices that name what ships, and checks them', () => {
     const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
     expect(packaging.noticesProblems(text)).toEqual([])
-    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe'])
-    expect(packaging.noticesProblems('React and Electron')).toEqual(['only 18 bytes (at least 10 KB expected)', 'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, mingw-w64, FFmpeg, MediaPipe'])
+    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe'])
+    expect(packaging.noticesProblems('React and Electron')).toEqual(['only 18 bytes (at least 10 KB expected)', 'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe'])
     // The hand-written entries are part of it.
     for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {
       expect(text).toContain(readFileSync(path.join(ROOT, 'resources', 'notices', f), 'utf8').trim().split('\n')[0])
@@ -649,6 +649,33 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     // The Rust standard library, statically linked into every helper, is not a cargo dependency.
     expect(text).toContain('Rust standard library (std, core, alloc and the crates it is built with)')
     expect(text).toContain('Copyright (c) The Rust Project Developers')
+  })
+
+  it('credits the Bangla model as the catalog pins it, under the Apache License whose text the notices hold (offline-captions §14)', async () => {
+    const { BANGLA_MODEL, speechModel } = await import('../src/shared/speech/catalog')
+    const bn = speechModel(BANGLA_MODEL)!
+    const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
+    const entry = readFileSync(path.join(ROOT, 'resources', 'notices', '14-bengaliai-whisper.txt'), 'utf8')
+    expect(text).toContain(entry.trim())
+    // Line breaks in the entry do not split what is checked.
+    const flat = entry.replace(/\s+/g, ' ')
+    for (const part of [
+      bn.license.url,
+      `https://huggingface.co/${bn.repo!.repo}`,
+      bn.repo!.commit,
+      bn.file,
+      bn.sha256,
+      '539,257,671 bytes',
+      'Apache License, Version 2.0',
+      'fine-tuned from OpenAI Whisper medium',
+      'nothing was retrained',
+      'It is not part of the installer.'
+    ])
+      expect(flat).toContain(part)
+    expect(bn.license.name).toBe('Apache-2.0')
+    // The full licence text it points to is in the file.
+    expect(text).toMatch(/Apache License\s+Version 2\.0, January 2004/)
+    expect(text).toContain('TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION')
   })
 
   /** process.env without PATH (any case) or SSW_REQUIRE_NATIVE, and PATH holding node alone: no cargo. */

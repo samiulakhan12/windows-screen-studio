@@ -140,7 +140,7 @@ const VAD_PIN = {
 }
 
 /** Names THIRD_PARTY_NOTICES.txt must mention (§6.3), matched without case. */
-const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe']
+const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe']
 
 /** What is wrong with a notices text (empty: fine): at least 10 KB and every NOTICE_NAMES entry. */
 function noticesProblems(text) {
