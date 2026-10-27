@@ -818,7 +818,10 @@ done summary.
   its state: "Fast · 44 MB", "Standard · Downloaded", "Accurate · 190 MB" (accessible names "Fast,
   44 megabyte download", "Standard, downloaded"); nothing depends on a title tooltip. A chip is
   the choice **for this app session only** (kept like `remembered.provider`, starting at
-  `defaultModel`); it never calls `setDefaultSpeechModel`. Under the chips: the chosen tier's
+  `defaultModel`); it never calls `setDefaultSpeechModel`. A choice the chips no longer list (Most
+  accurate removed in Settings, or a damaged Most accurate default) falls back to the default
+  model, else `localModel`'s pick, else Standard, so one listed chip is always checked
+  (`speechState.offered`, also kept while its own Download again runs). Under the chips: the chosen tier's
   purpose ("Quickest; for slower PCs. Less accurate with accents and noise." / "Recommended for
   most recordings." / "More accurate, also for other languages; about 3.7 times slower than
   Standard." / "Most accurate, but slower than playing the recording on most PCs."), then
@@ -1606,3 +1609,7 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
   by both: the kept record stores the run's model and language and `localState` matches them.
   Not the Sound chip: the job does not carry its source (`captionItems.ts`), and a changed source
   only makes the line promise parts that are then made again, as before.
+- **UI-10** A chosen Most accurate that was removed or damaged left no chip checked (Tab skipped
+  the group) and offered its 574 MB download: `chosenModel` falls back to a model the chips offer,
+  by one predicate (`offered`) that `chipModels` uses too. The session choice itself is kept, so
+  the chip comes back if that model is downloaded again.

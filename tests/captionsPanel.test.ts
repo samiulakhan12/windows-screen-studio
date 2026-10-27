@@ -405,6 +405,34 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(has(out, 'Runs on this PC: nothing is uploaded and it costs nothing.')).toBe(true)
   })
 
+  it('a chosen Most accurate that is removed or damaged falls back to a listed chip: one is always checked (UI-10)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'installed' } } }))
+    let out = await show()
+    ;(chips(out)[3].props.onClick as () => void)()
+    out = render(m.panel)
+    expect(local(out)?.props['data-model']).toBe('whisper-turbo')
+    // Settings removes turbo (the main process moves the default to an installed model).
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    ;(m.speech as unknown as { loadSpeechState(force: boolean): void }).loadSpeechState(true)
+    await flush()
+    out = render(m.panel)
+    const checked = (o: El[]): El[] => chips(o).filter((c) => c.props['aria-checked'])
+    expect(checked(out).map((c) => [c.props['data-model'], c.props.tabIndex])).toEqual([['whisper-base', 0]])
+    expect(local(out)?.props['data-model']).toBe('whisper-base')
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(buttons(out).some((b) => b.startsWith('Download'))).toBe(false)
+  })
+
+  it('a damaged Most accurate as the default falls back the same way (UI-10)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-turbo', statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'damaged' } } }))
+    const out = await show()
+    expect(chips(out).filter((c) => c.props['aria-checked']).map((c) => c.props['data-model'])).toEqual(['whisper-base'])
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(buttons(out).some((b) => b.startsWith('Download'))).toBe(false)
+  })
+
   it('needs-model with another model downloaded offers "Make them now with …", which makes captions with it', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-tiny', statuses: { 'whisper-tiny': { state: 'installed' } } }))

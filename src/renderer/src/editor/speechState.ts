@@ -1,8 +1,9 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import type { TranscribeOptions } from '../../../shared/api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechModelView, type SpeechState } from '../../../shared/api/speech'
-import { speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
+import { DEFAULT_SPEECH_MODEL, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
 import { badgeTitle, readyNotice, SPEECH_COPY } from '../../../shared/speech/speechCopy'
+import { localModel } from '../../../shared/speech/transcriber'
 import type { Transcript } from '../../../shared/types'
 import { cancelTranscription, ipcMessage, onTranscriptionJob, transcribe, transcriptionJob } from './captionItems'
 import type { EditorServices } from './context'
@@ -89,14 +90,31 @@ export function useSpeechState(): SpeechRead {
 export const availableState = (r: SpeechRead): SpeechState | null => (r.status === 'ready' && r.state.engine.available ? r.state : null)
 
 /** The view of model `id`. */
-export const modelView = (state: SpeechState, id: SpeechModelId): SpeechModelView | null => state.models.find((m) => m.id === id) ?? null
+export const modelView = (state: Pick<SpeechState, 'models'>, id: SpeechModelId): SpeechModelView | null => state.models.find((m) => m.id === id) ?? null
 
 /* ---------- the quality chosen for this session ---------- */
 
 let sessionModel: SpeechModelId | null = null
 
-/** The model of the Captions tab's quality chips: the session's choice, else the default model. Never changes the default. */
-export const chosenModel = (state: Pick<SpeechState, 'defaultModel'>): SpeechModelId => sessionModel ?? state.defaultModel
+/**
+ * Whether the quality chips offer `m`: every tier but Most accurate, which only once downloaded
+ * and allowed here, or while it is `chosen` and downloading (Download again of a damaged one).
+ */
+export const offered = (m: SpeechModelView, chosen: SpeechModelId): boolean =>
+  m.tier !== 'best' || (m.allowed && (m.status.state === 'installed' || (m.id === chosen && (m.status.state === 'downloading' || m.status.state === 'verifying'))))
+
+/**
+ * The model of the Captions tab's quality chips: the first the chips offer of the session's
+ * choice, the default model and localModel's pick, else the catalog default (a removed or damaged
+ * Most accurate is not offered, so one listed chip is always checked). Never changes the default.
+ */
+export function chosenModel(state: Pick<SpeechState, 'defaultModel' | 'models'>): SpeechModelId {
+  for (const id of [sessionModel, state.defaultModel, localModel(state).model]) {
+    const m = id ? modelView(state, id) : null
+    if (m && offered(m, m.id)) return m.id
+  }
+  return DEFAULT_SPEECH_MODEL
+}
 
 export function chooseModel(id: SpeechModelId): void {
   if (!speechModel(id)) return

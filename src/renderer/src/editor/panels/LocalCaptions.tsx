@@ -46,6 +46,7 @@ import {
   keptParts,
   loadSpeechState,
   modelView,
+  offered,
   onSpeechRead
 } from '../speechState'
 
@@ -71,8 +72,8 @@ function useCatchFocus(ref: RefObject<HTMLElement>, key: unknown): void {
 /** Seconds this PC is expected to take for `view` on a recording of `seconds`. */
 export const estimateFor = (state: SpeechState, view: SpeechModelView, seconds: number): number => estimateSeconds(view, seconds, state.engine.threads, view.measured, state.engine.build)
 
-/** The chips shown: Fast, Standard, Accurate, and Most accurate only once downloaded and allowed here. */
-const chipModels = (state: SpeechState): SpeechModelView[] => state.models.filter((m) => m.tier !== 'best' || (m.allowed && m.status.state === 'installed'))
+/** The chips shown: Fast, Standard, Accurate, and Most accurate only once downloaded and allowed here (speechState.offered). */
+const chipModels = (state: SpeechState, chosen: SpeechModelId): SpeechModelView[] => state.models.filter((m) => offered(m, chosen))
 
 /* ---------- quality ---------- */
 
@@ -82,7 +83,7 @@ const chipModels = (state: SpeechState): SpeechModelView[] => state.models.filte
  * chooses for this app session only: it never changes the default model.
  */
 export function LocalQuality({ state, model, project, chipsRef }: { state: SpeechState; model: SpeechModelId; project: Pick<Project, 'duration'>; chipsRef: RefObject<HTMLDivElement> }): JSX.Element {
-  const models = chipModels(state)
+  const models = chipModels(state, model)
   const view = modelView(state, model)
   const estimate = view ? estimateFor(state, view, project.duration) : 0
   const pick = (id: SpeechModelId): void => {
