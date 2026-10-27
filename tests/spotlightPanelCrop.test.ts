@@ -94,12 +94,17 @@ describe('ShapesPanel: the cursor spotlight Size on a cropped recording', () => 
     expect(shownSize()).toBeCloseTo(0.5, 9)
   })
 
-  it('on a short crop the whole range draws different sizes, up to the picture height', () => {
+  it('on a short crop it keeps its shape over the whole range, up to the picture height', () => {
     store.state = project({ x: 0, y: 0, w: 1, h: 0.3 })
+    const shape = (): number => store.state.spotlights![0].w / store.state.spotlights![0].h
+    const round = shape()
     dragSize(0.06)
-    expect(drawn().h).toBeCloseTo(0.06, 9)
+    // The width reaches its 4 % floor first, so the height stops there instead of squashing the spot.
+    expect(drawn().w).toBeCloseTo(0.04, 9)
+    expect(shape()).toBeCloseTo(round, 9)
     dragSize(1)
     expect(drawn().h).toBeCloseTo(1, 9)
+    expect(shape()).toBeCloseTo(round, 9)
     expect(store.state.spotlights![0].h).toBeCloseTo(0.3, 9)
   })
 

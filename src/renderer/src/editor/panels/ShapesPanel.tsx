@@ -293,7 +293,12 @@ function SelectedSpotlight({
           max={1}
           step={0.01}
           format={pctFmt}
-          onChange={(h) => set(geometryFromCrop(crop, { h, w: clamp((size.w / size.h) * h, 0.04, 2) }), `spot-size:${id}`)}
+          onChange={(h) => {
+            // Keeps the spot's shape in the view: the height stops where the width reaches its limits.
+            const ratio = size.w / size.h
+            const k = Math.min(clamp(h, 0.04 / ratio, 2 / ratio), 2)
+            set(geometryFromCrop(crop, { h: k, w: ratio * k }), `spot-size:${id}`)
+          }}
         />
       )}
       <p className="hint">{spot.mode === 'cursor' ? 'Follows the cursor. Drag its corners on the preview to resize it.' : 'Drag the lit area on the preview to move it, its handles to resize it.'}</p>
