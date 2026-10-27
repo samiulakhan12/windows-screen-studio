@@ -32,6 +32,8 @@ export interface LocalClientDeps {
   vadModel?: string
   cores?: number
   totalMemBytes?: number
+  /** The stall watchdog (default SPEECH_TIMING.stallMs; tests shorten it). */
+  stallMs?: number
 }
 
 /** Folder of finished parts inside a project. */
@@ -46,6 +48,11 @@ export function partCacheKey(partSha256: string, spec: Pick<SpeechModelSpec, 'sh
   return createHash('sha256')
     .update([partSha256, spec.sha256, language || 'auto', engine].join('\n'))
     .digest('hex')
+}
+
+/** How long a part may run: max(10 min, 4 × its estimate for this build, thread count and measured speed), ms. */
+export function partLimitMs(spec: Pick<SpeechModelSpec, 'rtf4'>, seconds: number, threads: number, measured: { rtf: number; threads: number } | null, build: 'standard' | 'compatible' | 'host' | null): number {
+  return Math.max(SPEECH_TIMING.partMinMs, SPEECH_TIMING.partEstimateFactor * estimateSeconds(spec, seconds, threads, measured, build) * 1000)
 }
 
 /** A local failure, as the Captions tab maps it back (localErrorCode). */
@@ -110,8 +117,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
   const cacheDir = path.join(deps.projectDir, PART_CACHE_DIR)
 
   const runPart = async (part: AudioPart, lang: string, threads: number, call: TranscribeCall, exe: string, build: HelperChoice & { build: string }): Promise<PartRun> => {
-    const measured = store.measured(spec.id)
-    const limitMs = Math.max(SPEECH_TIMING.partMinMs, SPEECH_TIMING.partEstimateFactor * estimateSeconds(spec, part.seconds, threads, measured, build.build as 'standard' | 'compatible' | 'host') * 1000)
+    const limitMs = partLimitMs(spec, part.seconds, threads, store.measured(spec.id), build.build as 'standard' | 'compatible' | 'host')
     const args = [
       'transcribe',
       '--model-dir', path.dirname(modelFile),
@@ -125,7 +131,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
     ]
     const started = Date.now()
     call.onProgress?.({ phase: 'loading', fraction: 0 })
-    const run = runHelper(exe, args, { cwd: path.dirname(part.file), stdin: 'control', signal: call.signal, timeoutMs: limitMs, processes: deps.processes, owner: deps.owner })
+    const run = runHelper(exe, args, { cwd: path.dirname(part.file), stdin: 'control', signal: call.signal, timeoutMs: limitMs, stallMs: deps.stallMs, processes: deps.processes, owner: deps.owner })
     const segments: SidecarSegment[] = []
     let result: SidecarResult | null = null
     let fraction = 0
