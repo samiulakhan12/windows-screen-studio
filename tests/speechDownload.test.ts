@@ -1,19 +1,22 @@
 /**
  * Pinned, resumable, verified downloads (src/main/speech/download.ts) against a local HTTP
  * server: Range resume, restarts, the redirect allow-list, the hash check, cancel, stalls with
- * automatic retries, 403/404/5xx, a locked rename, free space and a full disk.
+ * automatic retries, 403/404/5xx, a locked rename, free space and a full disk; cancel and a stall
+ * through electronGet over a stand-in for Electron net.
  */
 import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { EventEmitter } from 'node:events'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
+import { PassThrough } from 'node:stream'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('electron', () => ({ app: { getVersion: () => '0.0.0-test' }, net: {} }))
+vi.mock('electron', () => ({ app: { getVersion: () => '0.0.0-test' }, net: { request: (o: { url: string }) => fakeNetRequest(o) } }))
 
-import { allowDownloadUrl, DownloadFailure, downloadPinned, type DownloadOptions, type HttpGet } from '../src/main/speech/download'
+import { allowDownloadUrl, DownloadFailure, downloadPinned, electronGet, type DownloadOptions, type HttpGet } from '../src/main/speech/download'
 
 const BODY = randomBytes(300_000)
 const SHA = createHash('sha256').update(BODY).digest('hex')
@@ -73,6 +76,18 @@ function handler(req: http.IncomingMessage, res: http.ServerResponse): void {
       }
       return send(from)
     }
+    case 'slow': {
+      // 10 000 bytes every 20 ms (about 0.6 s for the whole body).
+      if (from > 0) res.writeHead(206, { 'content-range': `bytes ${from}-${BODY.length - 1}/${BODY.length}` })
+      else res.writeHead(200, { 'content-length': BODY.length })
+      let at = from
+      const timer = setInterval(() => {
+        res.write(BODY.subarray(at, (at = Math.min(at + 10_000, BODY.length))))
+        if (at === BODY.length) res.end()
+      }, 20)
+      res.on('close', () => clearInterval(timer))
+      return
+    }
     case 'drop': {
       // The first request is closed after 120 000 bytes (a dropped connection).
       if (requests.filter((r) => r.path === '/drop').length === 1) {
@@ -98,6 +113,40 @@ const nodeGet: HttpGet = (url, headers, signal) =>
     })
     req.on('error', reject)
   })
+
+/**
+ * Electron net.request over Node http, as much as electronGet uses: the response is a stream that
+ * keeps bytes until read, and abort() destroys it without an error, as Electron's does, so after
+ * the response has started it emits no end, error or aborted (only close), and the request emits abort.
+ */
+function fakeNetRequest(o: { url: string }): EventEmitter {
+  const headers: Record<string, string> = {}
+  let node: http.ClientRequest | null = null
+  let response: PassThrough | null = null
+  let aborted = false
+  return Object.assign(new EventEmitter(), {
+    setHeader(k: string, v: string): void {
+      headers[k] = v
+    },
+    end(this: EventEmitter): void {
+      node = http.get(o.url, { headers }, (res) => {
+        response = Object.assign(new PassThrough(), { statusCode: res.statusCode, headers: res.headers })
+        res.on('data', (d: Buffer) => aborted || response!.write(d))
+        res.on('end', () => aborted || response!.end())
+        res.on('error', (e) => aborted || response!.destroy(e))
+        this.emit('response', response)
+      })
+      node.on('error', (e) => aborted || this.emit('error', e))
+    },
+    abort(this: EventEmitter): void {
+      if (aborted) return
+      aborted = true
+      node?.destroy()
+      response?.destroy()
+      process.nextTick(() => this.emit('abort'))
+    }
+  })
+}
 
 beforeAll(async () => {
   server = http.createServer(handler)
@@ -201,6 +250,30 @@ describe('downloadPinned', () => {
     expect(statSync(`${dest}.part`).size).toBe(100_000)
     expect(JSON.parse(readFileSync(`${dest}.part.json`, 'utf8'))).toMatchObject({ version: 1, bytes: BODY.length, sha256: SHA, received: 100_000 })
   })
+
+  it('cancel through Electron net while bytes arrive stops as cancelled (not retried), keeping the .part', async () => {
+    const dest = path.join(dir, 'model.bin')
+    const controller = new AbortController()
+    const retries: unknown[] = []
+    const p = downloadPinned(pin('slow'), dest, opts({ get: electronGet(), signal: controller.signal, stallMs: 60_000, onRetry: (r) => retries.push(r) }))
+    await new Promise((r) => setTimeout(r, 150))
+    controller.abort()
+    expect((await fail(p)).kind).toBe('cancelled')
+    expect(retries).toEqual([])
+    const kept = statSync(`${dest}.part`).size
+    expect(kept).toBeGreaterThan(0)
+    expect(kept).toBeLessThan(BODY.length)
+    expect(JSON.parse(readFileSync(`${dest}.part.json`, 'utf8')).received).toBe(kept)
+  }, 5000)
+
+  it('a stall through Electron net retries and resumes', async () => {
+    const dest = path.join(dir, 'model.bin')
+    const retries: unknown[] = []
+    await downloadPinned(pin('cut'), dest, opts({ get: electronGet(), onRetry: (r) => retries.push(r) }))
+    expect(retries[0]).toEqual({ attempt: 1, of: 3 })
+    expect(requests.map((r) => r.range)).toEqual([undefined, 'bytes=100000-'])
+    expect(readFileSync(dest).equals(BODY)).toBe(true)
+  }, 5000)
 
   it('a stall retries and resumes, reporting retrying 1 of 3 meanwhile', async () => {
     const dest = path.join(dir, 'model.bin')
