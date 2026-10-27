@@ -4,8 +4,8 @@ Branch `feat-oc-c`, from `2011f42` (the approved spec `docs/design/offline-capti
 compiled contracts). Workstream C: the renderer, the shared consumers, the UI and the end-to-end
 tests of F-01 (captions on this PC), F-03 (the speech detector) and the minimal model manager of
 F-13. A (`feat-oc-a`, native helper and packaging) and B (`feat-oc-b`, main process) were merged in
-during the work, both times with the base branch's editing-wins wave they had merged (E-01 Polish in
-one click, E-04 waveform, E-05 snapping, E-08 J/K/L, E-10 crop, E-11 freeze frame).
+during the work (with the editing-wins wave they had merged), and at the lead's request the base
+branch `ccr-b6df7cf7-yked87` at `d0dff61` (A and B merged, editing-wins review fixes), cleanly.
 
 ## What I built
 
@@ -139,9 +139,16 @@ one click, E-04 waveform, E-05 snapping, E-08 J/K/L, E-10 crop, E-11 freeze fram
 11. audio-pack's microphone-tone cases pass with today's numbers without a guard assertion: their
     numbers do not depend on the microphone's activity (the ducking case runs on a mixed track, the
     stems case's ducking follows the steady system tone).
-12. Integration note for the editing-wins team: E-01 (`PolishDialog`, `polishRunner`) uses its own
-    key-only `pickTranscriber` from `shared/editor/polish.ts`, not `src/shared/speech/transcriber.ts`,
-    so Polish in one click does not yet offer captions on this PC (§3.8).
+12. **Polish in one click (E-01) wired to captions on this PC**, at the lead's request (§3.8):
+    `polishTranscriber()` in `shared/editor/polish.ts` uses the frozen `speech/transcriber.ts`
+    (`pickTranscriber`, `canTranscribeNow`): On this PC with a downloaded model first; a remembered
+    On this PC without a model skips captions with a new `no-model` reason whose text is
+    `CAPTIONS_SKIPPED_NO_MODEL`, even when a key exists; never a download. `PolishDialog` waits for
+    the speech state too, lists "On this PC (free, private)" in its picker (also while `no-model`,
+    so the user can switch), says "Runs on this PC: nothing is uploaded …" and passes the model;
+    `polishRunner` hands it to `fetchTranscript`. The old key-only `pickTranscriber` of polish.ts is
+    kept (its tests use it). Tests: `tests/polishLocal.test.ts` (7); `one-click-polish.e2e.cjs`
+    passes. The caption-row and "left out after" times in CaptionsPanel were left to the lead.
 13. Commits carry the session line given in the task (`session_01WUGBwQ8vJoqr9176Dsm72x`).
 
 ## Verification
@@ -153,12 +160,27 @@ second merge) → `native/bin/ssw-speech` (1689 KB); `npm run fetch:test-speech`
 `GGML_NATIVE=OFF cargo build --release` and fetched the pinned tiny model with curl, SHA-256 checked.)
 
 - `npm run typecheck`: clean (both projects).
-- `npx vitest run --testTimeout=60000`: **183 files, 2600 tests passed** (after merging A and B).
+- `npx vitest run --testTimeout=60000`: **189 files, 2634 tests passed** (after the final base merge).
 - `npm run build`: ok.
 - `xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/run-all.cjs offline-captions captions ai
-  camera-director audio-pack polish w3fix-timeline` (the filter also matches `one-click-polish`):
-  RESULTS_SET
-- Full suite `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`: RESULTS_FULL
+  camera-director audio-pack polish w3fix-timeline` (the filter also matches `one-click-polish`
+  and `offline-captions`), final build, run together with audit-recording, native and
+  integration-native: **10 of 12 files passed**, 65 tests passed.
+  - `offline-captions`: 12 of 13 pass; **fails: "Settings stops a download ("Stopped at …") and
+    Continue completes it"**, B's cancel bug (deviation 1).
+  - `audio-pack`: two recording cases (a Chromium recording's microphone stem alignment, 0.020 s;
+    crash recovery, 0.445 s) failed in this run; a different one of them failed in each earlier
+    run, and an immediate re-run of `audio-pack` alone passed all 10. They test recording and stem
+    alignment, which C does not touch.
+  - camera-director 7/7, captions 8/8, ai 4/4, one-click-polish 3/3, polish 5/5, w3fix-timeline 4/4.
+- Full suite `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (before the final base merge
+  and the Polish wiring): **45 of 50 files passed**. Failing: offline-captions (the same B bug);
+  audio-pack crash recovery (flaky, see above); `native` and `audit-recording` (quitting during a
+  native recording: `Cannot read properties of undefined (reading '_object')`) and `teleprompter`
+  (window drag): openbox was missing then (apt could not find it until `apt-get update`); with
+  openbox installed, `native` and `audit-recording` passed in the final run above and
+  `teleprompter` passed on its re-run. I did not re-run the whole 50-file suite after the final
+  merge.
 
 Measured on the e2e fixture (tiny on the host build): the words include "americans", "country",
 "apostle", "middle", "classes", "gospel"; every word lies inside the speech, none in the noise; the
