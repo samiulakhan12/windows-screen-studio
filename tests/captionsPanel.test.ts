@@ -990,6 +990,25 @@ describe('CaptionsPanel: the Bangla model', () => {
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: BN, source: 'auto', language: 'bn' }])
   })
 
+  it('with a key provider and Bengali: the provider stays, with one link to the Bangla model on this PC', async () => {
+    replies.providers = () => Promise.resolve([OPENAI])
+    replies.speech = () => Promise.resolve(speechState())
+    let out = await show()
+    expect(byTest(out, 'bangla-key-hint')).toEqual([])
+    out = speak(out, 'bn')
+    expect(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.value).toBe('o')
+    expect(local(out)).toBeUndefined()
+    expect(textOf(byTest(out, 'bangla-key-hint')[0].props.children)).toContain('For Bangla, the Bangla model on this PC makes far fewer mistakes, free and offline.')
+    click(out, 'Use the Bangla model')
+    out = render(m.panel)
+    expect(out.find((e) => e.props['aria-label'] === 'Transcription provider')!.props.value).toBe('local')
+    expect([local(out)?.props['data-model'], local(out)?.props['data-state']]).toEqual([BN, 'needs-model'])
+    expect(byTest(out, 'bangla-key-hint')).toEqual([])
+    expect(calls.download).toEqual([])
+    out = speak(out, 'en')
+    expect(byTest(out, 'bangla-key-hint')).toEqual([])
+  })
+
   it('with a key provider: Bengali uses On this PC once the Bangla model is here, and the key otherwise, as before', async () => {
     replies.providers = () => Promise.resolve([OPENAI])
     replies.speech = () => Promise.resolve(speechState({ statuses: { [BN]: { state: 'installed' } } }))

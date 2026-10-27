@@ -1842,6 +1842,10 @@ and the Bangla model downloaded On this PC is the default even when a key provid
 - **Bengali, not allowed here**: "The Bangla model is not offered on this PC: {modelBlockReason}"
   (for example "Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.");
   the general chips and lines as before.
+- **Bengali with an AI provider chosen** (a key user; nothing switches by itself, as in §7.1):
+  "For Bangla, the Bangla model on this PC makes far fewer mistakes, free and offline." [Use the
+  Bangla model] (`data-testid="bangla-key-hint"`), which chooses On this PC, where the
+  recommendation above shows.
 - **Detect automatically with the Bangla model downloaded**: "Speaking Bangla? Choose Bengali to
   use the Bangla model." [Choose Bengali] (sets the Spoken language). Detection never switches
   models by itself.
@@ -1903,8 +1907,8 @@ holds); `NOTICE_NAMES` gains "Bengali.AI", so verify-dist checks it.
   `quickerModel`; `chunkArgs` and the arguments `localSpeechClient` passes (`--lang bn --max-chunk
   20`, none for the other models); `validateTranscribeOptions`; NFC for Bengali only; the copy;
   the tab's choice by language (the chip only for Bengali and chosen by default, its own session
-  choice, the blocked line, the detect line, the offer in the summary, no `setDefaultSpeechModel`
-  after its download); the Settings row without a radio; Polish's choice and hint; the notices
+  choice, the blocked line, the detect line, the key users' link, the offer in the summary, no
+  `setDefaultSpeechModel` after its download); the Settings row without a radio; Polish's choice and hint; the notices
   entry; the benchmark script's pin equals the catalog's.
 - End to end (`tests/e2e/bangla-captions.e2e.cjs`, no 540 MB download): Bengali shows the Bangla
   chip and the recommendation with its size; the click downloads from the mock (a sparse stand-in

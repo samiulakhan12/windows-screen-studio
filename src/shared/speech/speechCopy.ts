@@ -122,6 +122,9 @@ export const SPEECH_COPY = {
   banglaOffer:
     'Bangla captions: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. It runs on this PC and works offline once downloaded.',
   banglaAgain: 'Make them again with Bangla (downloaded)',
+  /** Bengali chosen with an AI provider: the Bangla model on this PC is offered, never switched to by itself. */
+  banglaForKeyUsers: 'For Bangla, the Bangla model on this PC makes far fewer mistakes, free and offline.',
+  useBanglaModel: 'Use the Bangla model',
   readyHintBangla: 'Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.'
 } as const
 

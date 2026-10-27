@@ -592,6 +592,22 @@ function GenerateSection({
           )}
           {/* For Bengali the Bangla model's own line says what to choose (LocalQuality), where it is allowed. */}
           {smallTier && language && language !== 'en' && !(isBengali(language) && banglaAllowed) && <p className="hint warn">{SPEECH_COPY.languageHint}</p>}
+          {/* Bengali with an AI provider chosen: the Bangla model on this PC is offered (the provider stays until the click). */}
+          {!localChosen && local && banglaAllowed && isBengali(language) && (
+            <p className="hint" data-testid="bangla-key-hint">
+              {SPEECH_COPY.banglaForKeyUsers}{' '}
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  setProvider(LOCAL_TRANSCRIBER_ID)
+                  clearTranscriptionError()
+                }}
+              >
+                {SPEECH_COPY.useBanglaModel}
+              </button>
+            </p>
+          )}
           {localChosen && model ? (
             <>
               <LocalAction
