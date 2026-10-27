@@ -33,9 +33,13 @@
   filter: brightness(1.2);
 }
 
+/* Above the blocks it overlaps (a later pause freeze inside its length), so its body and length
+   handle can be grabbed. Not on .freeze-edge alone: a hovered block's filter makes it a stacking
+   context, which would put its handle back under the next block. */
 .freeze-block.selected {
   outline: 2px solid #ffffff;
   outline-offset: 0;
+  z-index: 1;
 }
 
 /* How far the preview is into the hold (set while it plays). */

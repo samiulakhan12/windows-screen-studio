@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type MutableRefObject, type PointerEvent as ReactPointerEvent } from 'react'
-import { canMoveFreeze, moveFreeze, setFreezeLength, setStillEnd, stillEndsAt } from '../../../shared/editor/freezeEdit'
+import { canMoveFreeze, freezeInactiveReason, moveFreeze, setFreezeLength, setStillEnd, stillEndsAt } from '../../../shared/editor/freezeEdit'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import { outputToSourceRanges } from '../../../shared/editor/smartSpeed'
 import { overlaps } from '../../../shared/editor/timelineScale'
@@ -38,8 +38,9 @@ const seconds = (v: number): string => `${v.toFixed(1)} s`
  * Freeze frames on the clip track (E-11, docs/design/freeze-frame.md §5): a hatched strip along its
  * top edge. A pause freeze adds time the source-time timeline has no room for, so its block is drawn
  * over the footage from its frame, as long as the time it adds; a continue freeze covers the footage
- * it holds the picture over; one whose frame is cut is a hollow diamond in the gap. The body moves a
- * freeze, the right edge sets its length; each drag is one undo step.
+ * it holds the picture over; one not in the video (its frame cut, or a continue freeze with no time to
+ * hold) is a hollow diamond. The body moves a freeze, the right edge sets its length; each drag is
+ * one undo step.
  */
 export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap, dragging }: Props): JSX.Element | null {
   const { store, player } = useEditor()
@@ -188,17 +189,24 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
 
   plan.holds.forEach(holdBlock)
   plan.stills.forEach(stillBlocks)
+  const deleteKey = shortcutLabel(keymap.deleteSelection[0] ?? 'Delete')
   for (const id of plan.inactive) {
     const f = byId.get(id)
     if (!f || ((f.at < win.start || f.at > win.end) && id !== selId)) continue
+    // A frame that is cut, or (keeping the sound) one the video's end or the next freeze leaves no time to hold.
+    const why = freezeInactiveReason({ clips, freezes }, f)
     blocks.push(
       <span
         key={id}
         className={`freeze-mark inactive ${selId === id ? 'selected' : ''}`}
-        data-testid="freeze-inactive"
+        data-testid={why === 'cut' ? 'freeze-inactive' : 'freeze-short'}
         data-freeze={id}
         style={{ left: f.at * px }}
-        title={`Freeze frame in a cut: not in the video. Restore the cut, or select it and press ${shortcutLabel(keymap.deleteSelection[0] ?? 'Delete')}`}
+        title={
+          why === 'cut'
+            ? `Freeze frame in a cut: not in the video. Restore the cut, or select it and press ${deleteKey}`
+            : `Freeze frame with nothing to hold: ${why === 'next' ? 'the next freeze starts' : 'the video ends'} right after it. Pause the sound, or select it and press ${deleteKey}`
+        }
         onPointerDown={onBodyDown(f)}
       />
     )

@@ -6,8 +6,10 @@ import {
   canMoveFreeze,
   freezeAtPlayhead,
   freezeIdAt,
+  freezeInactiveReason,
   freezeRefusal,
   freezeTextRange,
+  freezeVideoTime,
   moveFreeze,
   removeFreeze,
   setFreezeLength,
@@ -17,7 +19,7 @@ import {
 } from '../src/shared/editor/freezeEdit'
 import { outputToSourceRanges } from '../src/shared/editor/smartSpeed'
 import { buildSnapIndex, projectFreezeTargets, projectSnapSources, snapAt, type SnapIndex, type SnapLimit } from '../src/shared/editor/snapping'
-import { freezePlan, MAX_FREEZES, videoDuration } from '../src/shared/engine/freeze'
+import { freezePlan, MAX_FREEZES, planOf, videoDuration, videoTimeAt } from '../src/shared/engine/freeze'
 import { readFreezes } from '../src/shared/engine/freezeData'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { outputDuration, setTrimEnd } from '../src/shared/engine/timeline'
@@ -255,6 +257,34 @@ describe('edits', () => {
     expect(removeFreeze(p, 'nope')).toBe(p)
   })
 
+  it('the video time it starts at: a hold at the end starts where the edit ends, not where the video does', () => {
+    const { project, f } = added(base([{ id: 'a', start: 0, end: 6, speed: 1 }]), 6)
+    expect(videoTimeAt(project.clips, planOf(project), f.at)).toBe(9)
+    expect(freezeVideoTime(project, f)).toBe(6)
+    const q = { ...project, freezes: [freeze('a', 1), freeze('b', 2, 3, 'continue'), { ...f }] }
+    expect(q.freezes.map((g) => freezeVideoTime(q, g))).toEqual([1, 5, 9])
+    expect(videoDuration(q.clips, planOf(q))).toBe(12)
+  })
+
+  it('why it is not in the video: a cut frame, or a continue freeze the end or the next freeze leaves no time to hold', () => {
+    expect(freezeInactiveReason(p, p.freezes[0])).toBeNull()
+    const cut = { ...p, freezes: [...p.freezes, freeze('c', 5)] }
+    expect(freezeInactiveReason(cut, cut.freezes[2])).toBe('cut')
+    // Two frames before the end of a 60 fps minute, with the sound kept playing.
+    const { project, f } = added(long(60), 59.97)
+    expect(f.at).toBe(59.967)
+    const near = setFreezeSound(project, f.id, 'continue')
+    expect(planOf(near).inactive).toEqual([f.id])
+    expect(freezeInactiveReason(near, near.freezes![0])).toBe('end')
+    const end = { ...long(60), freezes: [freeze('e', 60, 3, 'continue')] }
+    expect(freezeInactiveReason(end, end.freezes[0])).toBe('end')
+    // One frame before another freeze.
+    const next = { ...long(60), freezes: [freeze('k', 9.984, 3, 'continue'), freeze('n', 10)] }
+    expect(planOf(next).inactive).toEqual(['k'])
+    expect(freezeInactiveReason(next, next.freezes[0])).toBe('next')
+    expect(freezeInactiveReason(next, next.freezes[1])).toBeNull()
+  })
+
   it('text on a freeze: half a second of the edit on each side of its frame', () => {
     expect(freezeTextRange([{ id: 'a', start: 0, end: 10, speed: 1 }], freeze('f', 4))).toEqual({ start: 3.5, end: 4.5 })
     expect(freezeTextRange(cutClips, freeze('f', 3.8))).toEqual({ start: 3.3, end: 6.3 })
@@ -282,6 +312,8 @@ describe('a freeze at the end of a trimmed edit, saved and reopened', () => {
       expect(setFreezeSound(p, f.id, 'continue')).toBe(p)
       expect(freezeTextRange(p.clips, g)).toEqual({ start: expect.closeTo(end - 0.5, 9), end })
       expect(freezeRefusal(p, end)).toEqual({ refused: 'taken', id: f.id })
+      // The Clip panel's title: where the hold starts, the same before and after the anchor's rounding.
+      expect(freezeVideoTime(p, g)).toBeCloseTo(end, 9)
     }
   })
 

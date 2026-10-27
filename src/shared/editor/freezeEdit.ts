@@ -4,8 +4,8 @@
  * changes), so each is one undo step through store.update.
  */
 import { clamp } from '../engine/math'
-import { anchorEdit, atEditEnd, DEFAULT_FREEZE_SOUND, FREEZE, FREEZE_EPS, freezePlan, MAX_FREEZES, newFreezeId, planOf } from '../engine/freeze'
-import { clipIndexAt, outputToSource } from '../engine/timeline'
+import { anchorEdit, atEditEnd, DEFAULT_FREEZE_SOUND, FREEZE, FREEZE_EPS, freezePlan, MAX_FREEZES, newFreezeId, planOf, videoTimeAt } from '../engine/freeze'
+import { clipIndexAt, outputDuration, outputToSource } from '../engine/timeline'
 import { viewingTime } from '../render/overlays'
 import type { Clip, Freeze, FreezeSound, Project } from '../types'
 import { outputToSourceRanges } from './smartSpeed'
@@ -177,4 +177,24 @@ export function freezeTextRange(clips: Clip[], f: Freeze): { start: number; end:
   const e = anchorEdit(clips, f.at)
   if (e === null) return null
   return { start: outputToSource(clips, Math.max(0, e - TEXT_AROUND)).time, end: outputToSource(clips, e + TEXT_AROUND).time }
+}
+
+/** Video second freeze `f` starts at: its hold's start (an end hold's too, not the video's end), else its frame's. */
+export function freezeVideoTime(p: Pick<Project, 'clips' | 'freezes'>, f: Freeze): number {
+  const plan = planOf(p)
+  return plan.holds.find((h) => h.id === f.id)?.start ?? videoTimeAt(p.clips, plan, f.at)
+}
+
+/**
+ * Why freeze `f` is not in the video, or null when it is: its frame is cut, or it keeps the sound
+ * playing and the video's end or the next freeze comes less than 0.05 s after it, so its still
+ * would hold nothing.
+ */
+export function freezeInactiveReason(p: Pick<Project, 'clips' | 'freezes'>, f: Freeze): 'cut' | 'end' | 'next' | null {
+  if (!planOf(p).inactive.includes(f.id)) return null
+  const e = anchorEdit(p.clips, f.at)
+  if (e === null) return 'cut'
+  const total = outputDuration(p.clips)
+  const next = Math.min(total, ...(p.freezes ?? []).map((g) => anchorEdit(p.clips, g.at)).filter((x): x is number => x !== null && x > e))
+  return next < total ? 'next' : 'end'
 }
