@@ -8,7 +8,8 @@ import { notesApi } from './notes'
 import { prefsApi } from './prefs'
 import { projectsApi } from './projects'
 import { recordingApi } from './recording'
+import { speechApi } from './speech'
 
-const api: StudioApi = { platform: process.platform, ...recordingApi, ...projectsApi, ...exportApi, ...prefsApi, ...aiApi, ...captionsApi, ...brandApi, ...notesApi }
+const api: StudioApi = { platform: process.platform, ...recordingApi, ...projectsApi, ...exportApi, ...prefsApi, ...aiApi, ...captionsApi, ...brandApi, ...notesApi, ...speechApi }
 
 contextBridge.exposeInMainWorld('api', api)

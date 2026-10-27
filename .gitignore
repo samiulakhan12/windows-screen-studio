@@ -14,3 +14,7 @@ native/bin/
 .env
 .env.*
 electron-builder.env
+# Test downloads (the speech model the offline-captions tests use, see tests/fixtures/speech/README.md).
+/.cache/
+# The speech helper crate builds into its own target folder.
+native/speech/target/

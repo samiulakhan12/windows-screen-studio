@@ -1,0 +1,26 @@
+[package]
+name = "ssw-speech"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+description = "Flown speech helper: offline transcription with word timings (whisper.cpp) and the Silero speech detector, as a JSON-lines sidecar."
+publish = false
+
+# Its own workspace root: native/Cargo.toml (ssw-capture) is a separate package.
+[workspace]
+
+[[bin]]
+name = "ssw-speech"
+path = "src/main.rs"
+
+[dependencies]
+# Vendors whisper.cpp 1.8.3 and ggml 0.9.5 (MIT) and builds them with CMake; the crate itself is Unlicense.
+whisper-rs-sys = "=0.15.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

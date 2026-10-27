@@ -65,6 +65,8 @@ export const CAPTION_LANGUAGES: { code: string; name: string }[] = [
 ]
 
 const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
+/** Where a transcript was made, for its summary line ('local': on this PC). */
+const TRANSCRIBER_NAMES: Record<Transcript['provider'], string> = { ...KIND_NAMES, local: 'this PC' }
 
 /** Opens the app settings at the AI providers (the settings dialog listens for it). */
 const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } }))
@@ -343,7 +345,7 @@ function GenerateSection({
     return (
       <Section title="Generate">
         <p className="hint">
-          {project.transcript!.segments.length} captions by {KIND_NAMES[project.transcript!.provider]}
+          {project.transcript!.segments.length} captions by {TRANSCRIBER_NAMES[project.transcript!.provider]}
           {project.transcript!.language ? ` (${CAPTION_LANGUAGES.find((l) => l.code === project.transcript!.language)?.name ?? project.transcript!.language})` : ''}.
         </p>
         {mine?.notice && (

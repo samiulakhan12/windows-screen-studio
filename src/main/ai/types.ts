@@ -21,6 +21,22 @@ export interface TranscribeCall {
   signal: AbortSignal
   /** Called while a part is uploaded on its own before it is transcribed (Gemini's Files API). */
   onUpload?: () => void
+  /** Progress inside the part, from engines that report it (on this PC). */
+  onProgress?: (progress: PartProgress) => void
+}
+
+/** How far one part has got (on this PC). */
+export interface PartProgress {
+  /** 'loading' until the speech model is loaded, then 'transcribing'. */
+  phase: 'loading' | 'transcribing'
+  /** Share of the part done, 0..1. */
+  fraction: number
+  /** Seconds of the part transcribed. */
+  at?: number
+  /** The newest words heard. */
+  preview?: string
+  /** The part came from the cache of an earlier run (nothing was run). */
+  cached?: boolean
 }
 
 /** How hard the model should think about a text task (Claude's effort; others ignore it). */
@@ -35,4 +51,6 @@ export interface AiClient {
   /** Transcribes one part (times from its start); absent for providers that cannot. */
   transcribe?: (part: AudioPart, call: TranscribeCall) => Promise<RawTranscript>
   partLimits?: PartLimits
+  /** How each part is handed over: a 32 kbit/s MP3 (the default) or a 16 kHz mono 16-bit WAV (on this PC: no lossy step). */
+  input?: 'mp3' | 'wav'
 }

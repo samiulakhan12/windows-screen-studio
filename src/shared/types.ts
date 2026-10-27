@@ -332,7 +332,8 @@ export interface CaptionSegment {
 export interface Transcript {
   /** BCP-47 language code when known ("en", "bn", ...). */
   language?: string
-  provider: AiProviderKind
+  /** Where it was made: a provider kind, or 'local' (on this PC, docs/design/offline-captions.md). */
+  provider: AiProviderKind | 'local'
   model: string
   createdAt: string
   segments: CaptionSegment[]
