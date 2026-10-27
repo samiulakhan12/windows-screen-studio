@@ -46,7 +46,7 @@ import { anthropicFailure, claudeAnswerText, claudeRequest } from '../src/main/a
 import { baseUrlOverride } from '../src/main/ai/endpoints'
 import { geminiClient, geminiFailure } from '../src/main/ai/gemini'
 import { callWithRetry } from '../src/main/ai/request'
-import { stopTranscription, sweepTranscribeTemp } from '../src/main/ai/transcribe'
+import { partArgs, stopTranscription, sweepTranscribeTemp, validateTranscribeOptions, wavPartArgs } from '../src/main/ai/transcribe'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { ApiError } from '@google/genai'
 
@@ -346,6 +346,25 @@ describe('transcription', () => {
     utimesSync(other, day, day)
     expect(await sweepTranscribeTemp(dir)).toEqual([old])
     expect(readdirSync(dir).sort()).toEqual(['ssw-transcribe-young', 'unrelated-old'])
+  })
+})
+
+describe('transcription options and part arguments (On this PC)', () => {
+  it('accepts a catalog model for the local provider, rejects an unknown one, ignores model for providers', () => {
+    expect(validateTranscribeOptions({ providerId: 'local', model: 'whisper-base' })).toEqual({ providerId: 'local', source: 'auto', model: 'whisper-base' })
+    expect(validateTranscribeOptions({ providerId: 'local' })).toEqual({ providerId: 'local', source: 'auto' })
+    for (const bad of ['whisper-huge', '../ggml-base.bin', 'https://huggingface.co/x', 7]) expect(() => validateTranscribeOptions({ providerId: 'local', model: bad })).toThrow('Unknown speech model.')
+    expect(validateTranscribeOptions({ providerId: 'aiabc', model: 'whisper-base', language: 'pt-BR' })).toEqual({ providerId: 'aiabc', source: 'auto', language: 'pt-BR' })
+    expect(validateTranscribeOptions({ providerId: 'aiabc', model: 'anything' })).toEqual({ providerId: 'aiabc', source: 'auto' })
+  })
+
+  it('writes WAV parts losslessly with the same cut as the MP3 parts, which are unchanged', () => {
+    expect(wavPartArgs('in.pcm', 12.5, 600, 'part-1.wav')).toEqual([
+      '-v', 'error', '-nostdin', '-y', '-f', 's16le', '-ar', '16000', '-ac', '1', '-ss', '12.500', '-t', '600.000', '-i', 'in.pcm', '-c:a', 'pcm_s16le', '-f', 'wav', 'part-1.wav'
+    ])
+    expect(partArgs('in.pcm', 12.5, 600, 'part-1.mp3')).toEqual([
+      '-v', 'error', '-nostdin', '-y', '-f', 's16le', '-ar', '16000', '-ac', '1', '-ss', '12.500', '-t', '600.000', '-i', 'in.pcm', '-c:a', 'libmp3lame', '-b:a', '32k', 'part-1.mp3'
+    ])
   })
 })
 
