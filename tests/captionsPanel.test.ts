@@ -417,6 +417,32 @@ describe('CaptionsPanel: captions on this PC', () => {
     click(out, 'Make them now with Fast (downloaded)')
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-tiny', source: 'auto' }])
     expect(calls.download).toEqual([])
+    // It selected that chip (UI-7): Regenerate reopens on Fast, ready, not on Accurate's download.
+    runs[runs.length - 1].resolve({ provider: 'local', model: 'whisper-tiny', language: 'en', createdAt: 'x', segments: [{ id: 't1', start: 1, end: 2, text: 'hi' }] })
+    await flush()
+    out = render(m.panel)
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-tiny')
+    expect(local(out)?.props['data-state']).toBe('ready')
+    store.state = { ...store.state, transcript: undefined }
+  })
+
+  it('"Make them now with …" leaves the chip alone when the user keeps the captions (UI-7)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-tiny', statuses: { 'whisper-tiny': { state: 'installed' } } }))
+    store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] } }
+    let out = await show()
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    ;(chips(out)[2].props.onClick as () => void)()
+    out = render(m.panel)
+    replies.confirm = false
+    click(out, 'Make them now with Fast (downloaded)')
+    out = render(m.panel)
+    expect(calls.transcribe).toEqual([])
+    expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-small')
+    store.state = { ...store.state, transcript: undefined }
   })
 
   it('arrow keys on the Quality chips choose a chip and go no further: the playhead does not step (UI-5)', async () => {

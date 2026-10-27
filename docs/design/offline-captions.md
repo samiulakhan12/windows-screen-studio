@@ -1594,3 +1594,6 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
 - **UI-1** After a disk-full failure Check again could never get out (main keeps the failure until
   a new download): `downloadFailed` offers [Try again] once the re-read free space covers the
   download (`downloadSpaceNeeded`, the main process's 64 MiB spare) or cannot be read.
+- **UI-7** "Make them now with {tier} (downloaded)" started without selecting that chip, so
+  Regenerate reopened on the tier that is not downloaded: `startLocal` selects the model it runs,
+  after the replace question (a "no" leaves the chip alone).

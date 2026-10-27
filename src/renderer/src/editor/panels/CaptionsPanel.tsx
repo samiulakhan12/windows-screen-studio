@@ -35,7 +35,7 @@ import { LOCAL_TRANSCRIBER_ID } from '../../../../shared/api/speech'
 import { speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
 import { doneLine, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
 import { pickTranscriber } from '../../../../shared/speech/transcriber'
-import { availableState, chosenModel, localRun, modelView, startLocalCaptions, useSpeechState } from '../speechState'
+import { availableState, chooseModel, chosenModel, localRun, modelView, startLocalCaptions, useSpeechState } from '../speechState'
 import { isSmallTier, LocalAction, LocalQuality, LocalRunning } from './LocalCaptions'
 import '../captions.css'
 
@@ -339,6 +339,7 @@ function GenerateSection({
   // On this PC with a downloaded model (a chip, or "Make them now with …", which selects it).
   const startLocal = (id: SpeechModelId): void => {
     if (mine?.running || !confirmReplace()) return
+    chooseModel(id)
     clearTranscriptionError()
     const options: TranscribeOptions = { providerId: LOCAL_TRANSCRIBER_ID, model: id, source: stems ? source : 'auto' }
     if (language) options.language = language
