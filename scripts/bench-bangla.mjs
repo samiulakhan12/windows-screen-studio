@@ -9,12 +9,13 @@
 //   npm run bench:bangla -- --model <ggml-bengaliai-whisper-medium-q5_0.bin> [--threads N] [--helper P] [--json]
 //
 // The model file must match the catalog's pin (size and SHA-256); any file name works (it is
-// linked under its pinned name in a temporary folder, as the helper takes a name, never a path).
+// placed under its pinned name in a temporary folder, as the helper takes a name, never a path:
+// a hard link, which needs no privilege on Windows, else a symbolic link, else a copy).
 // BANGLA_PIN is a copy of the catalog's entry (src/shared/speech/catalog.ts, whisper-bn-medium);
 // tests/banglaBench.test.ts checks that the two agree, and that benchArgs passes what the app does.
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createReadStream, existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs'
+import { copyFileSync, createReadStream, existsSync, linkSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
@@ -43,9 +44,34 @@ export function benchArgs({ modelDir, audio, vadModel = VAD_MODEL, threads }) {
   return ['transcribe', '--model-dir', modelDir, '--model', BANGLA_PIN.file, '--audio', audio, '--vad-model', vadModel, '--lang', BANGLA_PIN.language, '--max-chunk', String(BANGLA_PIN.maxChunkSeconds), '--no-timestamps', '--threads', String(threads)]
 }
 
+/** A failure to report: thrown, so the temporary folder (which may hold a 539 MB copy) is removed first. */
+class BenchError extends Error {}
+
 function fail(message) {
-  console.error(`bench-bangla: ${message}`)
-  process.exit(1)
+  throw new BenchError(message)
+}
+
+/**
+ * Puts `model` in `dir` under its pinned name and says how: a hard link (no privilege needed, the
+ * same volume only), else a symbolic link (on Windows only with administrator rights or Developer
+ * Mode), else a copy. `ops` replaces the file system calls (tests).
+ */
+export function placeModel(model, dir, ops = { linkSync, symlinkSync, copyFileSync }) {
+  const dest = path.join(dir, BANGLA_PIN.file)
+  const errors = []
+  for (const [how, op] of [
+    ['hard link', ops.linkSync],
+    ['symbolic link', ops.symlinkSync],
+    ['copy', ops.copyFileSync]
+  ]) {
+    try {
+      op(model, dest)
+      return how
+    } catch (err) {
+      errors.push(`${how}: ${err?.code ?? err?.message ?? err}`)
+    }
+  }
+  throw new BenchError(`could not put the model in ${dir} (${errors.join('; ')}). Free some disk space, or pass --model a file on the same drive as ${os.tmpdir()}.`)
 }
 
 function options(argv) {
@@ -81,7 +107,7 @@ async function main() {
 
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'ssw-bench-bangla-'))
   try {
-    symlinkSync(model, path.join(tmp, BANGLA_PIN.file))
+    placeModel(model, tmp)
     const wav = path.join(tmp, 'bn.wav')
     const dec = spawnSync(ffmpeg, ['-v', 'error', '-nostdin', '-y', '-i', FIXTURE, '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-f', 'wav', wav], { encoding: 'utf8' })
     if (dec.status !== 0) fail(`ffmpeg could not decode the fixture: ${dec.stderr}`)
@@ -140,4 +166,9 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main()
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main().catch((err) => {
+    console.error(`bench-bangla: ${err instanceof BenchError ? err.message : (err?.stack ?? err)}`)
+    process.exit(1)
+  })
+}

@@ -1,5 +1,7 @@
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -18,6 +20,7 @@ const bench = (await import(pathToFileURL(path.join(ROOT, 'scripts', 'bench-bang
   FIXTURE: string
   TRANSCRIPT: string
   benchArgs(o: { modelDir: string; audio: string; vadModel?: string; threads: number }): string[]
+  placeModel(model: string, dir: string, ops?: Record<'linkSync' | 'symlinkSync' | 'copyFileSync', (from: string, to: string) => void>): string
 }
 const score = (await import(pathToFileURL(path.join(ROOT, 'scripts', 'lib', 'banglaScore.mjs')).href)) as {
   normaliseBangla(text: string): string
@@ -45,6 +48,51 @@ describe('the Bangla model benchmark', () => {
     const args = bench.benchArgs({ modelDir: '/m', audio: '/a.wav', vadModel: '/v.bin', threads: 4 })
     expect(args).toEqual(['transcribe', '--model-dir', '/m', '--model', bn.file, '--audio', '/a.wav', '--vad-model', '/v.bin', '--lang', bn.language!, ...modelArgs(bn), '--threads', '4'])
     expect(modelArgs(bn)).toEqual(['--max-chunk', '20', '--no-timestamps'])
+  })
+
+  it('places the model without a symbolic link first: a plain Windows account may not make one (EPERM)', () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-bench-place-'))
+    try {
+      const model = path.join(dir, 'any-name.bin')
+      writeFileSync(model, 'model bytes')
+      const into = mkdtempSync(path.join(dir, 'tmp-'))
+      // A hard link on the same volume: the same file, no privilege, no copy.
+      expect(bench.placeModel(model, into)).toBe('hard link')
+      expect(statSync(path.join(into, bench.BANGLA_PIN.file as string)).ino).toBe(statSync(model).ino)
+      // Another drive (EXDEV) and no right to make symbolic links (EPERM, Windows without Developer Mode): a copy.
+      const refuse = (code: string) => (): never => {
+        throw Object.assign(new Error(code), { code })
+      }
+      const tried: string[] = []
+      const copyTo = mkdtempSync(path.join(dir, 'copy-'))
+      const how = bench.placeModel(model, copyTo, {
+        linkSync: () => (tried.push('link'), refuse('EXDEV')()),
+        symlinkSync: () => (tried.push('symlink'), refuse('EPERM')()),
+        copyFileSync: (from, to) => (tried.push('copy'), writeFileSync(to, readFileSync(from)))
+      })
+      expect([how, tried]).toEqual(['copy', ['link', 'symlink', 'copy']])
+      expect(readFileSync(path.join(copyTo, bench.BANGLA_PIN.file as string), 'utf8')).toBe('model bytes')
+      // Nothing works: one clear message, never an uncaught EPERM.
+      expect(() => bench.placeModel(model, copyTo, { linkSync: refuse('EXDEV'), symlinkSync: refuse('EPERM'), copyFileSync: refuse('ENOSPC') })).toThrow(
+        /^could not put the model in .* \(hard link: EXDEV; symbolic link: EPERM; copy: ENOSPC\)\. Free some disk space, or pass --model a file on the same drive as /
+      )
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('reports a wrong model in one line, without a stack trace', () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-bench-wrong-'))
+    try {
+      const model = path.join(dir, 'wrong.bin')
+      writeFileSync(model, 'not the model')
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'bench-bangla.mjs'), '--model', model], { encoding: 'utf8' })
+      expect(r.status).toBe(1)
+      expect(r.stderr.trim()).toBe(`bench-bangla: ${model} is 13 bytes, the pin is ${bench.BANGLA_PIN.bytes}`)
+      expect(existsSync(model)).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('transcribes the committed fixture against its committed transcript', () => {
