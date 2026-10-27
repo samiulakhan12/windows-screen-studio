@@ -108,9 +108,11 @@ export function PolishDialog(props: {
   const isOn = (step: PolishStep): boolean => !!options && (step === 'style' ? styleFound : options[step] && !available[step])
   const anything = POLISH_STEPS.some(isOn)
 
-  // The view's main button takes the focus (the panel itself while the options are read).
+  // The view's main button takes the focus; the panel itself while that button is disabled (the
+  // options are read, or no step can run), as a disabled button does not take it.
   useEffect(() => {
-    ;(mainRef.current ?? boxRef.current)?.focus({ preventScroll: true })
+    const main = mainRef.current
+    ;(main && !main.disabled ? main : boxRef.current)?.focus({ preventScroll: true })
   }, [view.kind, ready])
 
   const set = (patch: Partial<PolishOptions>): void => setOptions((o) => (o ? { ...o, ...patch } : o))

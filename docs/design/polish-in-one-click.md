@@ -429,6 +429,7 @@ So preview and export match by construction. No function in `compositor.ts`, `pl
 - The panel has `role="dialog"`, `aria-modal="true"`, `aria-labelledby="polish-title"` and `className="polish-dialog"`, and uses `useModalFocus(ref, onEsc)`.
 - The panel does **not** use the class `modal`, so the export helpers' `.modal` selectors stay unambiguous.
 - Esc means Cancel in the options and running views, and Done in the summary view.
+- When it opens, and when the view changes, the view's main button (Polish, Cancel or Done) takes the focus. While that button is disabled (the options are being read, or no step can run) the panel takes it instead: a disabled button cannot take the focus, and focus left on the editor's buttons would let Enter click them behind the dialog.
 
 **Options view.**
 
