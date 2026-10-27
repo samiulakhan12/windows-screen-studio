@@ -12,6 +12,7 @@ import { DEFAULT_SPEECH_MODEL, isSpeechModelId, modelUrl, SPEECH_MODELS, speechM
 import { localErrorMessage, modelBlockReason } from '../../shared/speech/errors'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from './download'
+import type { HelperBuild } from './helper'
 
 /** speech.json, as stored. */
 export interface SpeechSettingsFile {
@@ -19,8 +20,8 @@ export interface SpeechSettingsFile {
   defaultModel: SpeechModelId
   /** Files whose SHA-256 matched their pin, with the size and modification time they had then. */
   verified: Partial<Record<SpeechModelId, { bytes: number; mtimeMs: number }>>
-  /** Processing time / audio time measured on this PC (parts of 60 s or more), smoothed. */
-  measured: Partial<Record<SpeechModelId, { rtf: number; threads: number }>>
+  /** Processing time / audio time measured on this PC (speech-dense parts of 60 s or more) by the build that ran, smoothed. */
+  measured: Partial<Record<SpeechModelId, { rtf: number; threads: number; build: HelperBuild }>>
 }
 
 export const SPEECH_DIR = 'speech-models'
@@ -31,6 +32,7 @@ export const STALE_PART_MS = 30 * 24 * 3600_000
 const SETTINGS_MAX = 64 * 1024
 /** Measured speeds outside this are ignored. */
 const RTF_RANGE = [0.005, 20] as const
+const BUILDS: readonly HelperBuild[] = ['standard', 'compatible', 'host']
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -48,9 +50,9 @@ export function sanitizeSpeechSettings(raw: unknown): SpeechSettingsFile {
   }
   if (isObject(raw.measured)) {
     for (const [id, v] of Object.entries(raw.measured)) {
-      if (!isSpeechModelId(id) || !isObject(v) || !finite(v.rtf) || !finite(v.threads)) continue
+      if (!isSpeechModelId(id) || !isObject(v) || !finite(v.rtf) || !finite(v.threads) || !BUILDS.includes(v.build as HelperBuild)) continue
       if (v.rtf < RTF_RANGE[0] || v.rtf > RTF_RANGE[1] || v.threads < 1 || v.threads > 256) continue
-      out.measured[id] = { rtf: v.rtf, threads: Math.floor(v.threads) }
+      out.measured[id] = { rtf: v.rtf, threads: Math.floor(v.threads), build: v.build as HelperBuild }
     }
   }
   return out
@@ -135,8 +137,14 @@ export class SpeechModelStore {
     return this.settings().defaultModel
   }
 
-  measured(id: SpeechModelId): { rtf: number; threads: number } | null {
-    return this.settings().measured[id] ?? null
+  /**
+   * The speed measured with `build` (default: the build running here); null when none was, or it
+   * was another build's (speech.json roams with the Windows profile). With no build known yet, the
+   * last one measured.
+   */
+  measured(id: SpeechModelId, build: HelperBuild | null = this.deps.pc?.().build ?? null): { rtf: number; threads: number } | null {
+    const m = this.settings().measured[id]
+    return m && (!build || m.build === build) ? { rtf: m.rtf, threads: m.threads } : null
   }
 
   /**
@@ -229,12 +237,12 @@ export class SpeechModelStore {
     if (this.settings().verified[id]) this.save((s) => delete s.verified[id])
   }
 
-  /** Blends a measured speed into speech.json (0.5 old, 0.5 new). */
-  recordMeasured(id: SpeechModelId, rtf: number, threads: number): void {
+  /** Blends a speed measured with `build` into speech.json (0.5 old, 0.5 new; another build's is replaced). */
+  recordMeasured(id: SpeechModelId, rtf: number, threads: number, build: HelperBuild): void {
     if (!finite(rtf) || rtf < RTF_RANGE[0] || rtf > RTF_RANGE[1] || !(threads >= 1)) return
-    const old = this.measured(id)
+    const old = this.measured(id, build)
     const blended = old ? 0.5 * old.rtf + 0.5 * rtf : rtf
-    this.save((s) => (s.measured[id] = { rtf: Math.round(blended * 10000) / 10000, threads: Math.floor(threads) }))
+    this.save((s) => (s.measured[id] = { rtf: Math.round(blended * 10000) / 10000, threads: Math.floor(threads), build }))
   }
 
   /** Marks `id` in use while a transcription runs; returns the release function (Remove is refused meanwhile). */

@@ -27,7 +27,7 @@ import { analyzeAudio, stopAudioAnalysisFor } from '../src/main/audioAnalysis'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { ProjectProcesses } from '../src/main/projectProcesses'
 import { resetHelperSelection, type HelperChoice } from '../src/main/speech/helper'
-import { rangesOfEntry, resetSpeechDetector, SPEECH_CACHE_FILE, speechOfFile, speechWritesSettled } from '../src/main/speech/vad'
+import { rangesOfEntry, resetSpeechDetector, SPEECH_CACHE_FILE, speechOfFile, speechWritesSettled, vadLineFits } from '../src/main/speech/vad'
 import { ENGINE_VERSION, VAD_MODEL } from '../src/shared/speech/catalog'
 
 const FAKE = path.resolve(__dirname, 'fixtures/fake-speech-helper.cjs')
@@ -200,6 +200,44 @@ describe('the persisted .cache/speech.json', () => {
     await speechWritesSettled('rec-late')
     expect(existsSync(path.join(dir, '.cache'))).toBe(false)
   })
+})
+
+describe('a recording too long for one detector line (about 7 h)', () => {
+  it('vadLineFits: up to about 25 160 s of sound', () => {
+    expect(vadLineFits(6)).toBe(true)
+    expect(vadLineFits(25_000)).toBe(true)
+    expect(vadLineFits(25_200)).toBe(false)
+    expect(vadLineFits(25_600)).toBe(false)
+  })
+
+  it('gets the level detector without running anything when the project says so', async () => {
+    const dir = seed('rec-long', true)
+    writeFileSync(path.join(dir, 'project.json'), JSON.stringify({ id: 'rec-long', duration: 25_600 }))
+    const out = await analyzeAudio('rec-long', ['mic'])
+    expect(out.mic!.power.length).toBeGreaterThan(100)
+    expect(out.mic!.speech).toBeUndefined()
+    expect(vadCalls()).toBe(0)
+  })
+
+  it('stops a run as soon as the levels show the length, and does not run it again this session', async () => {
+    const dir = seed('rec-long-levels', true)
+    // The helper would only refuse after reading everything: here it never ends on its own.
+    process.env.FAKE_SPEECH_MODE = 'hang'
+    process.env.FAKE_SPEECH_MATCH = '--format'
+    try {
+      const mic = path.join(dir, 'mic.m4a')
+      const st = statSync(mic)
+      const started = Date.now()
+      expect(await speechOfFile('rec-long-levels', 'mic', mic, st, new ProjectProcesses(), Promise.resolve(levelsOf(25_600)))).toBeNull()
+      expect(Date.now() - started).toBeLessThan(10_000)
+      expect(vadCalls()).toBe(1)
+      expect(await speechOfFile('rec-long-levels', 'mic', mic, st, new ProjectProcesses(), Promise.resolve(levelsOf(25_600)))).toBeNull()
+      expect(vadCalls()).toBe(1)
+      expect(existsSync(path.join(dir, SPEECH_CACHE_FILE))).toBe(false)
+    } finally {
+      delete process.env.FAKE_SPEECH_MATCH
+    }
+  }, 20_000)
 })
 
 describe('an illegal instruction in vad', () => {

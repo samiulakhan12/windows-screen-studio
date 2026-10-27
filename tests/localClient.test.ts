@@ -5,10 +5,10 @@
  * back to its code. The last block runs the whole job through transcribeProject (real ffmpeg).
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 
 const h = vi.hoisted(() => ({
@@ -50,7 +50,7 @@ function fakeStore(over: Partial<Record<string, unknown>> = {}) {
   const s = {
     held: 0,
     cleared: [] as string[],
-    learned: [] as { id: string; rtf: number; threads: number }[],
+    learned: [] as { id: string; rtf: number; threads: number; build: string }[],
     defaultModel: () => 'whisper-tiny' as SpeechModelId,
     installedFile: async (id: SpeechModelId) => path.join(h.root, 'models', speechModel(id)!.file),
     measured: () => null,
@@ -59,7 +59,7 @@ function fakeStore(over: Partial<Record<string, unknown>> = {}) {
       return () => s.held--
     },
     clearVerified: (id: string) => s.cleared.push(id),
-    recordMeasured: (id: string, rtf: number, threads: number) => s.learned.push({ id, rtf, threads }),
+    recordMeasured: (id: string, rtf: number, threads: number, build: string) => s.learned.push({ id, rtf, threads, build }),
     ...over
   }
   return s
@@ -95,7 +95,7 @@ const failure = async (p: Promise<unknown>): Promise<string> => {
   throw new Error('expected a failure')
 }
 
-const ENV = ['SSW_SPEECH_HELPER', 'FAKE_SPEECH_MODE', 'FAKE_SPEECH_LOG', 'FAKE_SPEECH_LANG_S', 'FAKE_SPEECH_LANG', 'FAKE_SPEECH_MATCH', 'FAKE_SPEECH_TIMES', 'FAKE_SPEECH_COUNTER']
+const ENV = ['SSW_SPEECH_HELPER', 'FAKE_SPEECH_MODE', 'FAKE_SPEECH_LOG', 'FAKE_SPEECH_LANG_S', 'FAKE_SPEECH_LANG', 'FAKE_SPEECH_MATCH', 'FAKE_SPEECH_TIMES', 'FAKE_SPEECH_COUNTER', 'FAKE_SPEECH_PART_SPEECH']
 beforeEach(() => {
   resetHelperSelection()
   process.env.SSW_SPEECH_HELPER = FAKE
@@ -218,14 +218,19 @@ describe('localSpeechClient', () => {
     expect(transcribeCalls()).toHaveLength(1)
   })
 
-  it('learns this PC’s speed from parts of 60 s or more', async () => {
+  it('learns this PC’s speed, for the build that ran, from parts of 60 s or more that are at least half speech', async () => {
     const store = fakeStore()
     const c = await localSpeechClient('whisper-tiny', deps(store))
     await c.transcribe!(part(wav('short.wav', 5, 1), 5), { signal: signal() })
     expect(store.learned).toEqual([])
+    // Only the detected speech is transcribed: a mostly silent part runs several times faster and teaches nothing.
+    process.env.FAKE_SPEECH_PART_SPEECH = '[[0,11],[40,45]]'
+    await c.transcribe!(part(wav('sparse.wav', 61, 3), 61), { signal: signal() })
+    expect(store.learned).toEqual([])
+    delete process.env.FAKE_SPEECH_PART_SPEECH
     await c.transcribe!(part(wav('long.wav', 61, 2), 61), { signal: signal() })
     expect(store.learned).toHaveLength(1)
-    expect(store.learned[0]).toMatchObject({ id: 'whisper-tiny', threads: 3 })
+    expect(store.learned[0]).toMatchObject({ id: 'whisper-tiny', threads: 3, build: 'host' })
     expect(store.learned[0].rtf).toBeGreaterThan(0)
   })
 
@@ -243,6 +248,20 @@ describe('localSpeechClient', () => {
     })
     expect(localErrorCode(await failure(localSpeechClient('whisper-tiny', deps(missing))))).toBe('no-model')
     expect(missing.held).toBe(0)
+  })
+
+  it('refuses with "part of Flown is missing" when the bundled speech detector model is missing or damaged, never blaming the Whisper model', async () => {
+    const damaged = path.join(h.root, 'silero-damaged.bin')
+    writeFileSync(damaged, readFileSync(VAD).subarray(0, 1000))
+    for (const vadModel of [damaged, path.join(h.root, 'no-such-silero.bin')]) {
+      const store = fakeStore()
+      const message = await failure(localSpeechClient('whisper-tiny', deps(store, { vadModel })))
+      expect(localErrorCode(message)).toBe('unavailable')
+      expect(message).toContain('part of Flown is missing')
+      expect(store.cleared).toEqual([])
+      expect(store.held).toBe(0)
+    }
+    expect(transcribeCalls()).toEqual([])
   })
 
   describe('failures, each a shared sentence', () => {
@@ -301,6 +320,23 @@ describe('localSpeechClient', () => {
       expect(message).toContain("processor cannot run")
     })
 
+    it('a helper that cannot be started → unavailable (missing, blocked), never a crash: no retry, the model still trusted', async () => {
+      const store = fakeStore()
+      const gone = await localSpeechClient('whisper-tiny', deps(store, { helper: async () => ({ exe: path.join(h.root, 'gone', 'ssw-speech'), build: 'standard' }) }))
+      const missing = await failure(gone.transcribe!(part(wav('s0.wav', 2, 1), 2), { signal: signal(), part: { index: 0, count: 2 } }))
+      expect(localErrorCode(missing)).toBe('unavailable')
+      expect(missing).toContain('part of Flown is missing')
+      // A file the system refuses to run (EACCES here; EPERM or UNKNOWN when an antivirus blocks it on Windows).
+      const refused = path.join(h.root, 'ssw-speech-refused')
+      writeFileSync(refused, '#!/bin/sh\n')
+      chmodSync(refused, 0o644)
+      const blocked = await localSpeechClient('whisper-tiny', deps(store, { helper: async () => ({ exe: refused, build: 'standard' }) }))
+      const message = await failure(blocked.transcribe!(part(wav('s1.wav', 2, 2), 2), { signal: signal() }))
+      expect(localErrorCode(message)).toBe('unavailable')
+      expect(message).toContain('Windows or an antivirus blocked the speech engine')
+      expect(store.cleared).toEqual([])
+    })
+
     it('a cancel is "Cancelled.", never a crash or a retry', async () => {
       process.env.FAKE_SPEECH_MODE = 'hang'
       const store = fakeStore()
@@ -315,30 +351,49 @@ describe('localSpeechClient', () => {
 })
 
 describe('a whole job through transcribeProject', () => {
-  it('decodes, cuts WAV parts, runs the helper per part, merges, reports progress and clears the part cache', async () => {
+  // The jobs' temporary folders go to a private TMPDIR: aiProviders.test.ts counts those in the shared one.
+  const tmpBefore = process.env.TMPDIR
+  beforeAll(() => {
+    process.env.TMPDIR = mkdtempSync(path.join(h.root, 'tmp-'))
+  })
+  afterAll(() => {
+    if (tmpBefore === undefined) delete process.env.TMPDIR
+    else process.env.TMPDIR = tmpBefore
+  })
+  const jobTemps = (): string[] => readdirSync(process.env.TMPDIR!).filter((f) => f.startsWith('ssw-transcribe-'))
+
+  /** The model installed (once: a file of the pinned size whose verified record matches it) and a 19 s recording `id`; the ai:transcribe handler. */
+  async function seedJob(id: string) {
     const { registerAiIpc } = await import('../src/main/aiIpc')
     if (!h.handlers.has('ai:transcribe')) registerAiIpc()
-    process.env.SSW_AI_MAX_PART_SECONDS = '8'
-    try {
-      // The model as installed: a file of the pinned size whose verified record matches its size and time.
-      const dir = path.join(h.root, 'userData', 'speech-models')
+    const dir = path.join(h.root, 'userData', 'speech-models')
+    const spec = speechModel('whisper-tiny')!
+    const model = path.join(dir, spec.file)
+    if (!existsSync(model)) {
       mkdirSync(dir, { recursive: true })
-      const spec = speechModel('whisper-tiny')!
-      const model = path.join(dir, spec.file)
       writeFileSync(model, '')
       truncateSync(model, spec.bytes)
       const st = statSync(model)
       writeFileSync(path.join(dir, 'speech.json'), JSON.stringify({ version: 1, defaultModel: 'whisper-tiny', verified: { 'whisper-tiny': { bytes: st.size, mtimeMs: st.mtimeMs } }, measured: {} }))
+    }
 
+    const pdir = path.join(h.root, 'videos', 'Flown', id)
+    mkdirSync(pdir, { recursive: true })
+    const { ffmpegPath } = await import('../src/main/ffmpeg')
+    execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=300:duration=19', '-c:a', 'aac', '-f', 'mp4', path.join(pdir, 'screen.mp4')])
+    writeFileSync(path.join(pdir, 'project.json'), JSON.stringify({ version: 2, id, name: id, createdAt: new Date().toISOString(), duration: 19, width: 1280, height: 720, hasWebcam: false, hasAudio: true, webcamOffset: 0, capture: { method: 'chromium', cursorInVideo: true, region: null }, clips: [{ id: 'c0', start: 0, end: 19, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: { background: { type: 'color', color: '#000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }, cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true }, webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' }, effects: { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } }, audio: { volume: 1, muted: false } }))
+
+    const progress: TranscribeProgress[] = []
+    const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: { isDestroyed: () => false, send: (_c: string, p: TranscribeProgress) => progress.push(p) } }
+    const transcribe = (options: Record<string, unknown>): Promise<unknown> => Promise.resolve(h.handlers.get('ai:transcribe')!(appEvent, id, options))
+    return { pdir, progress, appEvent, transcribe }
+  }
+
+  it('decodes, cuts WAV parts, runs the helper per part, merges, reports progress and clears the part cache', async () => {
+    process.env.SSW_AI_MAX_PART_SECONDS = '8'
+    try {
       const id = 'rec-local'
-      const pdir = path.join(h.root, 'videos', 'Flown', id)
-      mkdirSync(pdir, { recursive: true })
-      const { ffmpegPath } = await import('../src/main/ffmpeg')
-      execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=300:duration=19', '-c:a', 'aac', '-f', 'mp4', path.join(pdir, 'screen.mp4')])
-      writeFileSync(path.join(pdir, 'project.json'), JSON.stringify({ version: 2, id, name: id, createdAt: new Date().toISOString(), duration: 19, width: 1280, height: 720, hasWebcam: false, hasAudio: true, webcamOffset: 0, capture: { method: 'chromium', cursorInVideo: true, region: null }, clips: [{ id: 'c0', start: 0, end: 19, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: { background: { type: 'color', color: '#000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }, cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true }, webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' }, effects: { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } }, audio: { volume: 1, muted: false } }))
-
-      const progress: TranscribeProgress[] = []
-      const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: { isDestroyed: () => false, send: (_c: string, p: TranscribeProgress) => progress.push(p) } }
+      const { pdir, progress, appEvent } = await seedJob(id)
       const transcript = (await h.handlers.get('ai:transcribe')!(appEvent, id, { providerId: 'local', model: 'whisper-tiny' })) as import('../src/shared/types').Transcript
       expect(transcript).toMatchObject({ provider: 'local', model: 'whisper-tiny', language: 'en' })
       const words = transcript.segments.flatMap((s) => s.words ?? [])
@@ -365,6 +420,35 @@ describe('a whole job through transcribeProject', () => {
       expect(transcribeCalls()).toEqual([])
       // An unknown model is refused by the validation.
       expect(await failure(Promise.resolve(h.handlers.get('ai:transcribe')!(appEvent, id, { providerId: 'local', model: '../x' })))).toBe('Unknown speech model.')
+    } finally {
+      delete process.env.SSW_AI_MAX_PART_SECONDS
+    }
+  }, 60_000)
+
+  it('stopEveryTranscription (the page that asked is gone) cancels the job, keeps its finished parts and frees the recording', async () => {
+    const { stopEveryTranscription } = await import('../src/main/ai/transcribe')
+    process.env.SSW_AI_MAX_PART_SECONDS = '8'
+    try {
+      const { pdir, progress, transcribe } = await seedJob('rec-gone')
+      // The second part never finishes on its own.
+      process.env.FAKE_SPEECH_MODE = 'hang'
+      process.env.FAKE_SPEECH_MATCH = 'part-1.wav'
+      const job = transcribe({ providerId: 'local', model: 'whisper-tiny' })
+      job.catch(() => undefined)
+      const cache = path.join(pdir, PART_CACHE_DIR)
+      await vi.waitFor(() => expect(transcribeCalls().some((a) => argOf(a, '--audio').endsWith('part-1.wav'))).toBe(true), { timeout: 20_000 })
+      expect(readdirSync(cache)).toHaveLength(1)
+      await stopEveryTranscription()
+      await expect(job).rejects.toThrow('Cancelled.')
+      expect(readdirSync(cache)).toHaveLength(1)
+      expect(jobTemps()).toEqual([])
+      // Generate again from a new page: not "already being transcribed", and it continues from the finished part.
+      delete process.env.FAKE_SPEECH_MODE
+      progress.length = 0
+      await transcribe({ providerId: 'local', model: 'whisper-tiny' })
+      expect(progress.some((p) => (p.resumed ?? 0) >= 1)).toBe(true)
+      expect(readdirSync(pdir)).not.toContain('.cache')
+      expect(jobTemps()).toEqual([])
     } finally {
       delete process.env.SSW_AI_MAX_PART_SECONDS
     }

@@ -26,8 +26,9 @@ export const SPEECH_TIMING = {
   stallMs: 120_000,
   /**
    * A transcription part may run at most max(partMinMs, partEstimateFactor × estimateSeconds of
-   * the part for this build, thread count and measured speed); over it, the run counts as stalled
-   * (the heartbeat proves only that the process is alive, not that whisper.cpp moves on).
+   * the part for this build and thread count, or with the measured speed when that is slower);
+   * over it, the run counts as stalled (the heartbeat proves only that the process is alive, not
+   * that whisper.cpp moves on).
    */
   partMinMs: 600_000,
   partEstimateFactor: 4,
@@ -165,8 +166,8 @@ let probedCpu: SidecarCpu | null = null
 /** The processor as the probe saw it (null before the probe or in development). */
 export const probedProcessor = (): SidecarCpu | null => probedCpu
 
-/** Why a spawn failed, as the reason Settings shows. */
-function spawnFailure(err: NodeJS.ErrnoException | undefined): SpeechUnavailable {
+/** Why a spawn failed, as the reason Settings and the Captions tab show. */
+export function spawnFailure(err: NodeJS.ErrnoException | undefined): SpeechUnavailable {
   if (err?.code === 'ENOENT') return 'missing'
   if (err?.code === 'EACCES' || err?.code === 'EPERM' || err?.code === 'UNKNOWN') return 'blocked'
   return 'failed'
@@ -431,7 +432,8 @@ export function runHelper(exe: string, args: readonly string[], opts: RunOptions
       if (stoppedByApp) resolve({ kind: 'cancelled', doneUntil: (cancelledLine as { doneUntil: number } | null)?.doneUntil ?? 0 })
       else if (overflow) resolve({ kind: 'protocol', detail: overflow })
       else if (stalled) resolve({ kind: 'stalled' })
-      else if (spawnError && code === null && signal === null) resolve({ kind: 'crash', illegalInstruction: false, detail: (spawnError as Error).message })
+      // Never started (Node then closes with a negative errno as the code): the spawn error, not an exit code.
+      else if (spawnError) resolve({ kind: 'crash', illegalInstruction: false, detail: (spawnError as Error).message })
       else resolve(classifyExit(code, signal, lastError, cancelledLine))
     })
   })

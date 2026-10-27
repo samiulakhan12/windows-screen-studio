@@ -62,9 +62,16 @@ describe('sanitizeSpeechSettings', () => {
       version: 1,
       defaultModel: 'whisper-tiny',
       verified: { 'whisper-tiny': { bytes, mtimeMs: 5 }, 'whisper-base': { bytes: 1, mtimeMs: 5 }, nope: { bytes, mtimeMs: 1 } },
-      measured: { 'whisper-tiny': { rtf: 0.1, threads: 3 }, 'whisper-base': { rtf: 50, threads: 3 }, 'whisper-small': { rtf: 0.001, threads: 3 }, 'whisper-turbo': { rtf: Number.NaN, threads: 3 } }
+      measured: {
+        'whisper-tiny': { rtf: 0.1, threads: 3, build: 'standard' },
+        'whisper-base': { rtf: 50, threads: 3, build: 'standard' },
+        'whisper-small': { rtf: 0.2, threads: 3 },
+        'whisper-turbo': { rtf: Number.NaN, threads: 3, build: 'standard' }
+      }
     })
-    expect(s).toEqual({ version: 1, defaultModel: 'whisper-tiny', verified: { 'whisper-tiny': { bytes, mtimeMs: 5 } }, measured: { 'whisper-tiny': { rtf: 0.1, threads: 3 } } })
+    expect(s).toEqual({ version: 1, defaultModel: 'whisper-tiny', verified: { 'whisper-tiny': { bytes, mtimeMs: 5 } }, measured: { 'whisper-tiny': { rtf: 0.1, threads: 3, build: 'standard' } } })
+    // A speed without the build that measured it is dropped.
+    expect(sanitizeSpeechSettings({ version: 1, measured: { 'whisper-tiny': { rtf: 0.1, threads: 3, build: 'avx512' } } }).measured).toEqual({})
   })
 })
 
@@ -195,14 +202,29 @@ describe('SpeechModelStore', () => {
 
   it('learns the measured speed, blended 0.5 / 0.5, ignoring nonsense', () => {
     const s = store()
-    s.recordMeasured('whisper-base', 0.2, 3)
-    s.recordMeasured('whisper-base', 0.1, 3)
+    s.recordMeasured('whisper-base', 0.2, 3, 'standard')
+    s.recordMeasured('whisper-base', 0.1, 3, 'standard')
     expect(s.measured('whisper-base')).toEqual({ rtf: 0.15, threads: 3 })
-    s.recordMeasured('whisper-base', 99, 3)
-    s.recordMeasured('whisper-base', Number.NaN, 3)
+    s.recordMeasured('whisper-base', 99, 3, 'standard')
+    s.recordMeasured('whisper-base', Number.NaN, 3, 'standard')
     expect(s.measured('whisper-base')).toEqual({ rtf: 0.15, threads: 3 })
     // Kept across store instances (speech.json).
     expect(store().measured('whisper-base')).toEqual({ rtf: 0.15, threads: 3 })
+  })
+
+  it('keeps a measured speed for the build that measured it (speech.json roams with the profile)', async () => {
+    const standard = store()
+    standard.recordMeasured('whisper-base', 0.2, 3, 'standard')
+    const compatible = store({ totalMemBytes: 16 * 2 ** 30, build: 'compatible' as never })
+    // Another build's speed is not this one's: the catalog estimate applies, and the view shows none.
+    expect(compatible.measured('whisper-base')).toBeNull()
+    expect((await compatible.views()).find((v) => v.id === 'whisper-base')!.measured).toBeUndefined()
+    expect((await standard.views()).find((v) => v.id === 'whisper-base')!.measured).toEqual({ rtf: 0.2, threads: 3 })
+    // A speed of the new build replaces it instead of being blended with it.
+    compatible.recordMeasured('whisper-base', 0.8, 3, 'compatible')
+    expect(compatible.measured('whisper-base')).toEqual({ rtf: 0.8, threads: 3 })
+    expect(store().measured('whisper-base')).toBeNull()
+    expect(store().measured('whisper-base', 'compatible')).toEqual({ rtf: 0.8, threads: 3 })
   })
 
   it('a model the engine could not load is hashed again on the next use', async () => {

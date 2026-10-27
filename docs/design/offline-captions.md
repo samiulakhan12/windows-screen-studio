@@ -259,7 +259,9 @@ restart.
 3. **Resume.** Each attempt sends `Range: bytes=<.part size>-` to the **pinned** URL (signed CDN
    addresses expire). 206 with `Content-Range` starting at the .part size and a total equal to the
    pin: append. 200: truncate and start over. 416, or any other total: delete the .part and start
-   over once. The spike measured `206 bytes 1000-1999/147951465`.
+   over once. The spike measured `206 bytes 1000-1999/147951465`. A .part that already holds
+   every byte (an install that failed after the check, such as a rename an antivirus held) sends
+   no request: it is hashed and, when it matches the pin, installed (step 6); otherwise deleted.
 4. **Write and hash.** Bytes stream into `<file>.part` with back-pressure while SHA-256 updates;
    on resume the existing prefix is hashed first (574 MB in about a second). `<file>.part.json`
    records `{ version: 1, id, bytes, sha256, received, updatedAt }`. Progress reaches the renderer
@@ -306,7 +308,9 @@ language?, source })` over `ai:transcribe` (sender check unchanged). The pipelin
    id; ignored for key providers). `transcribeProject` branches on `LOCAL_TRANSCRIBER_ID` before
    `store.get` (no key). `localSpeechClient(model, { projectDir })` rejects with the shared
    sentences of `src/shared/speech/errors.ts`: `localErrorMessage('unavailable', { reason })`
-   when the engine cannot run, `('blocked', { model, block })` when `speechModelBlock` refuses the
+   when the engine cannot run (`missing` also when the bundled speech detector model is missing or
+   fails its check, §3.5: the helper reports that model as error `model` too, which would blame
+   the Whisper model), `('blocked', { model, block })` when `speechModelBlock` refuses the
    model, `('no-model', { model })` when it is not installed and verified. This path never
    downloads. One job per project, as today.
 2. **Decode, as today.** `soundFile` picks the microphone stem when one was kept; ffmpeg decodes
@@ -345,9 +349,12 @@ language?, source })` over `ai:transcribe` (sender check unchanged). The pipelin
    by single spaces, so `captionTokens` always uses the real word timings. Words keep their
    punctuation ("presided,"). After a successful merge the project's `.cache/transcript-parts`
    folder is deleted.
-8. **Speed learning.** For each part of at least 60 s that ran, wall time from spawn to result ÷
-   part seconds is blended into `speech.json` `measured[id]` (0.5 old, 0.5 new) with the thread
-   count, so estimates match this PC.
+8. **Speed learning.** For each part of at least 60 s that ran and whose `speech` line covers at
+   least half of it, wall time from spawn to result ÷ part seconds is blended into `speech.json`
+   `measured[id]` (0.5 old, 0.5 new) with the thread count and the build that ran, so estimates
+   match this PC. Only the detected speech is transcribed, so a mostly silent part would teach a
+   speed several times too fast; a speed of another build (the file roams with the profile) is
+   not used, and the next one of this build replaces it.
 9. **The renderer** is unchanged: `captionItems.transcribe` reads the transcript, reports "No
    speech was found in this recording" for an empty one, and commits one undo step that also
    turns captions on.
@@ -357,8 +364,8 @@ language?, source })` over `ai:transcribe` (sender check unchanged). The pipelin
 Estimate before a run (`estimateSeconds(spec, audio, threads, measured, build)`, real code in
 `estimate.ts` so the Captions tab, Settings and main's time limit agree): audio × `rtf4` ×
 `threadFactor(threads)` × `WINDOWS_FACTOR` (1.3), × `COMPAT_FACTOR` (4.3) on the compatible
-build, until this PC has measured itself; then audio × the measured RTF scaled by thread count
-(it already includes the build and Windows). Thread factors: 1 thread 3.21, 2 threads 1.78,
+build, until this PC has measured itself with this build; then audio × the measured RTF scaled
+by thread count (it already includes the build and Windows). Thread factors: 1 thread 3.21, 2 threads 1.78,
 3 threads 1.27, 4 threads 1.0, more (4/n)^0.7 but at least 0.6. On a 4-core PC (3 threads,
 factor 1.27 × 1.3 = 1.65):
 
@@ -393,6 +400,12 @@ peaked at 524 MB), the main process holds only streams, and the temporary folder
 - **Closing the editor, deleting the project, quitting:** as today (`stopAnalyses`,
   `stopAllTranscriptions`); the helpers are in the same `ProjectProcesses`; `will-quit` also
   kills every helper synchronously (`stopAllSpeech`).
+- **The main window's page dies** (it crashed or was killed; `attachRecorderWindow` reloads Home):
+  the editor never closed, so every transcription is stopped as Cancel does
+  (`stopEveryTranscription`): its result could not reach the dead page, the reloaded page has no
+  Cancel for it, and Generate would be refused as "already being transcribed". Finished parts stay
+  for the next Generate. Level and still analyses go on: their results are kept for the session
+  and the reopened editor reuses them.
 - **The app dies:** the helper sees the end of stdin (exits 0.03 s later) and also watches its
   parent (`--parent-pid`: a wait on the process handle on Windows, `PR_SET_PDEATHSIG` on Linux).
 - **Exit meanings** (`classifyExit`, pure, for runs the app did not abort or kill): 0 with a
@@ -402,16 +415,21 @@ peaked at 524 MB), the main process holds only streams, and the temporary folder
   compatible build and retries the part once; any other crash (0xC0000005, 0xC0000409,
   0xC00000FD, SIGSEGV, SIGABRT, SIGKILL from the out-of-memory killer) clears the model's
   verified record and retries the part once with half the threads; a second crash fails the job
-  with `localErrorMessage('crashed', { part, parts })`, keeping the finished parts.
+  with `localErrorMessage('crashed', { part, parts })`, keeping the finished parts. A helper that
+  cannot be started at all (the spawn's `error`: ENOENT, or EACCES, EPERM and UNKNOWN when Windows
+  or an antivirus refuses it) is no crash: the job fails at once with
+  `localErrorMessage('unavailable', { reason })` (`missing` or `blocked`), the model stays
+  trusted and nothing is retried.
 - **Stall and time limit.** whisper.cpp 1.8.3 calls its progress callback only at the top of each
   30 s window (`src/whisper.cpp` around line 7000), and one window can take minutes: turbo on the
   compatible build at 2 threads about 330 s, before language detection. So the helper's control
   thread prints a `progress` line with the latest percent and `at` whenever 15 s
   (`SIDECAR.heartbeat`) passed without a line. Main then kills the helper as `stalled` when no
   line came for 120 s (`SPEECH_TIMING.stallMs`: the process is frozen or starved), or when a part
-  ran longer than max(10 min, 4 × `estimateSeconds` of the part for this build, thread count and
-  measured speed) (`partMinMs`, `partEstimateFactor`: whisper.cpp does not move on, which a
-  heartbeat cannot show). A stalled part is retried once with the same threads; a second stall
+  ran longer than max(10 min, 4 × `estimateSeconds` of the part for this build and thread count)
+  (`partMinMs`, `partEstimateFactor`: whisper.cpp does not move on, which a heartbeat cannot
+  show). A measured speed only lengthens that limit (when it is slower than the catalog's): one
+  learned on a quieter part or another PC never kills real work. A stalled part is retried once with the same threads; a second stall
   fails the job with `localErrorMessage('stalled')`. `powerMonitor` `resume` resets both timers,
   so sleep never looks like a hang.
 - **Protocol violation:** a line over 1 MB, more than 64 MB of output, or a run that ends without
@@ -435,7 +453,11 @@ pipes into `ssw-speech vad --audio - --format f32le --vad-model <path> --threads
 reads 300 s windows with 2 s of overlap (about 20 MB of samples plus a 15 MB model), runs Silero,
 and prints one `vad` line: 1 byte per 32 ms frame (probability × 255), base64 (about 150 KB per
 hour). Both processes join the `ProjectProcesses` of `audioAnalysis.ts`, so `stopAudioAnalysisFor`
-stops them. Limit: 30 s + 50 ms per second of audio (the measured hour took 9 s).
+stops them. Limit: 30 s + 50 ms per second of audio (the measured hour took 9 s). That line must
+fit in `SIDECAR.lineMax` (`vadLineFits`: about 25,000 s, 7 hours), and the helper refuses a longer
+one only after reading all the sound, so a recording whose `project.duration` is longer gets the
+level detector without running anything, and a run whose levels arrive with such a length is
+stopped then.
 
 **Ranges** (`speechFromProbs`, pure): Silero's hysteresis: speech starts at p ≥ 0.5 and holds while
 p ≥ 0.35; speech under 250 ms is dropped; silences under 100 ms are bridged; each range is padded
@@ -463,7 +485,8 @@ defaults (`VAD`), but windows and rounding differ, so their ranges can differ by
 Nothing compares them; tests use tolerances.
 
 **The model is checked** (size and SHA-256) once per session before first use; a mismatch makes
-the detector unavailable for the session.
+the detector unavailable for the session, and transcription on this PC (which runs the detector
+inside the helper) refuses with `unavailable` (`missing`).
 
 ### 3.6 What counts as sound, per consumer (pure: `soundtrack.ts`, `voice.ts`, `speech.ts`)
 
@@ -505,7 +528,8 @@ microphone stem.
 `speech` is left out, and every consumer behaves exactly as today, when: the helper is missing
 (development without the build, Linux packages), the CPU probe or the spawn fails (Smart App
 Control blocking an unsigned build, antivirus), the model is missing or its hash differs, the
-helper errors, crashes, times out or prints something malformed. Each case logs one warning,
+helper errors, crashes, times out or prints something malformed, the recording is too long for
+one detector line (about 7 hours, §3.5). Each case logs one warning,
 `SpeechState.detector` says why (Settings), and the Clip tab's line says the level was used. A
 definitive failure is remembered for the session (the next start tries again); a stop (editor
 closed) rejects and is not cached, as today.
@@ -562,7 +586,7 @@ stay there: risk 21):**
 |---|---|
 | `speech-models/<file>` | an installed model, exactly the pinned bytes |
 | `speech-models/<file>.part`, `<file>.part.json` | a download that stopped; deleted after 30 days untouched |
-| `speech-models/speech.json` | `{ version: 1, defaultModel, verified: { [id]: { bytes, mtimeMs } }, measured: { [id]: { rtf, threads } } }`, atomic writes; anything malformed falls back to defaults (base, nothing verified, nothing measured); an unknown id becomes the default; `rtf` must be finite in 0.005..20. The default changes only by the rules of §3.1 (Settings, a download from the Captions tab, the first download, removing the default) |
+| `speech-models/speech.json` | `{ version: 1, defaultModel, verified: { [id]: { bytes, mtimeMs } }, measured: { [id]: { rtf, threads, build } } }`, atomic writes; anything malformed falls back to defaults (base, nothing verified, nothing measured); an unknown id becomes the default; `rtf` must be finite in 0.005..20 and `build` one of the helper's builds (a measured speed applies only to its build). The default changes only by the rules of §3.1 (Settings, a download from the Captions tab, the first download, removing the default) |
 
 Unknown files in the folder are ignored and never loaded. `app-settings.json`, prefs and
 `ai-providers.json` are untouched; stored provider ids match `/^ai[a-z0-9]{1,30}$/`
@@ -1582,3 +1606,37 @@ Declined or changed, one line each:
 - "Streamed words equal a whole-run refinement within 50 ms" (review 1): measured 4 of 226 starts
   up to 120 ms apart (the first chunk's median differs) while accuracy is equal or better, so the
   cargo test asks for ≥ 95 % identical and none over 150 ms, and accuracy is gated by the bench.
+
+Code review of the merged feature (main process), one line each:
+
+- **A complete .part downloaded again** (MAIN-2, §3.1 step 3): a verified .part whose rename an
+  antivirus held past the retries was resumed with a Range from its end, and the 416 deleted it;
+  now each attempt hashes a complete .part and installs it without a request. The rename retry
+  window is unchanged.
+- **A blocked helper reported as a crash** (MAIN-3, §3.4): Node closes a child that never started
+  with a negative errno as its code, so runHelper's spawn-error branch never matched and
+  transcription treated a quarantined `ssw-speech.exe` as a crash (re-hash, retry, "stopped
+  unexpectedly"); the spawn error now wins and the part runner maps it to `unavailable`.
+- **A damaged detector model blamed on the Whisper model** (MAIN-4, §3.2 item 1): the helper calls
+  both models' load failures `model`, so a missing `ggml-silero-v6.2.0.bin` showed "damaged …
+  Download it again", whose download found the Whisper file intact; `localSpeechClient` now runs
+  the detector's once-per-session check first (`detectorModelOk`) and refuses with
+  `unavailable` (`missing`).
+- **A learned speed that shortened the kill limit** (MAIN-1, §3.2 item 8, §3.4): a speed learned
+  on a mostly silent part (the helper transcribes only speech: 4.7 to 7.7 times faster measured)
+  or carried by the roaming profile from another PC or build cut a dense part's limit below its
+  real time, so slow PCs failed "stalled" on every Generate. `partLimitMs` now takes the larger of
+  the measured and the catalog estimate for this build; speed is learned only from parts at least
+  half speech, and kept per build.
+- **Recordings over about 7 hours ran the detector in vain** (consumers-02, §3.5): its one result
+  line cannot hold them, which the helper finds only after reading all the sound, and every
+  session repeated that wait before the levels settled; `speechOfFile` now skips the run when
+  `project.duration` does not fit (`vadLineFits`), and `detect` stops it once the levels show
+  such a length.
+- **A job orphaned by a crashed page** (MAIN-5, §3.4): only the editor's dispose stopped a
+  transcription, so after the main window's renderer died the job ran on unseen, Generate on the
+  reopened recording was refused and Remove of its model too, and its finished result went to the
+  dead frame while the part cache was deleted. `attachRecorderWindow`'s `render-process-gone` now
+  stops every transcription (`stopEveryTranscription`, the cancel path, which keeps the parts).
+  Tying jobs to the sender in `aiIpc.ts` (also on navigation) was not done: outside these files,
+  and the main window navigates only on that reload.

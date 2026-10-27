@@ -39,6 +39,7 @@ import { PROCESSING_DEFERRED } from '../shared/recording/errors'
 import { HOTKEY_ACTIONS, HOTKEY_NAMES, hotkeyLabel, type AnyHotkeyAction, type HotkeyAction, type HotkeyCheck, type Hotkeys } from '../shared/recording/hotkeys'
 import { DEFAULT_RECORDING_SETTINGS, type AppSettings, type RecordingSettings, type RecordingSettingsPatch } from '../shared/recording/settings'
 import type { CaptureSource, Corner, NormRect, WebcamSettings } from '../shared/types'
+import { stopEveryTranscription } from './ai/transcribe'
 import { appSettings } from './appSettings'
 import { CursorTracker } from './cursorTracker'
 import { detectH264Encoders } from './hwEncoders'
@@ -1123,6 +1124,9 @@ function checkHotkey(action: AnyHotkeyAction, accelerator: string): HotkeyCheck 
 /** Recovery and quit protection for the window that runs the recorder. */
 export function attachRecorderWindow(win: BrowserWindow): void {
   win.webContents.on('render-process-gone', (_e, details) => {
+    // The editor went with the page, which never closed it: its transcriptions stop as if it had,
+    // so the reloaded page can start them again (finished parts are kept) and none runs unseen.
+    void stopEveryTranscription()
     void (async () => {
       const s = active
       const recording = !!s && s.phase !== 'processing'

@@ -39,6 +39,11 @@ function handler(req: http.IncomingMessage, res: http.ServerResponse): void {
   }
   switch (name) {
     case 'ok':
+      // A range from the end is unsatisfiable, as Hugging Face's CDN answers it.
+      if (from >= BODY.length) {
+        res.writeHead(416, { 'content-range': `bytes */${BODY.length}` })
+        return void res.end()
+      }
       return send(from)
     case 'norange':
       return send(0)
@@ -314,6 +319,34 @@ describe('downloadPinned', () => {
     await downloadPinned(pin('ok'), dest, opts({ rename, renameDelayMs: 1 }))
     expect(tries).toBe(3)
     expect(readFileSync(dest).equals(BODY)).toBe(true)
+  })
+
+  it('a complete .part left by a failed install is verified and installed without a request; a wrong one is fetched again', async () => {
+    const dest = path.join(dir, 'model.bin')
+    // An antivirus holds the new file for longer than the rename retries: the verified .part stays.
+    const locked = async (): Promise<void> => {
+      throw Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' })
+    }
+    const first = await fail(downloadPinned(pin('ok'), dest, opts({ rename: locked, renameAttempts: 2, renameDelayMs: 1 })))
+    expect(first.kind).toBe('other')
+    expect(statSync(`${dest}.part`).size).toBe(BODY.length)
+    // Try again: installed from the .part, no byte fetched again (a Range from the end would get a 416).
+    requests.length = 0
+    let verifying = 0
+    await downloadPinned(pin('ok'), dest, opts({ onVerifying: () => verifying++ }))
+    expect(requests).toEqual([])
+    expect(verifying).toBe(1)
+    expect(readFileSync(dest).equals(BODY)).toBe(true)
+    expect(existsSync(`${dest}.part`) || existsSync(`${dest}.part.json`)).toBe(false)
+    // A complete .part with other bytes is deleted and the whole file fetched again.
+    const other = path.join(dir, 'other.bin')
+    const wrong = Buffer.from(BODY)
+    wrong[10] ^= 1
+    writeFileSync(`${other}.part`, wrong)
+    requests.length = 0
+    await downloadPinned(pin('ok'), other, opts())
+    expect(requests).toEqual([{ path: '/ok', range: undefined }])
+    expect(readFileSync(other).equals(BODY)).toBe(true)
   })
 
   it('too little space is refused before any request; a full disk fails as disk', async () => {
