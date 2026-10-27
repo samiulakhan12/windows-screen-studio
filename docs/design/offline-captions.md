@@ -1582,3 +1582,8 @@ Declined or changed, one line each:
 - "Streamed words equal a whole-run refinement within 50 ms" (review 1): measured 4 of 226 starts
   up to 120 ms apart (the first chunk's median differs) while accuracy is equal or better, so the
   cargo test asks for ≥ 95 % identical and none over 150 ms, and accuracy is gated by the bench.
+
+Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
+
+- **INT-T3** Polish's Captions row said "Finishing…" while the speech model loaded:
+  `transcribePhaseText` maps `loading` to `phaseLine('loading')` ("Loading the speech model…").

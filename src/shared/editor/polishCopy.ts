@@ -6,7 +6,7 @@
  */
 import type { AiProviderInfo, TranscribeProgress } from '../api/ai'
 import { MAX_CAPTIONS } from '../captions/captionData'
-import { SPEECH_COPY } from '../speech/speechCopy'
+import { phaseLine, SPEECH_COPY } from '../speech/speechCopy'
 import { CAPTIONS_SKIPPED_NO_MODEL } from '../speech/transcriber'
 import { formatTime } from '../engine/project'
 import { framingLine, zoomText } from './directorCopy'
@@ -140,11 +140,13 @@ export function transcribePhaseText(progress: TranscribeProgress | null, stoppin
       ? 'Starting…'
       : p.phase === 'extracting'
         ? 'Preparing the sound…'
-        : p.phase === 'uploading'
-          ? 'Sending the sound…'
-          : p.phase === 'transcribing'
-            ? 'Transcribing…'
-            : 'Finishing…'
+        : p.phase === 'loading'
+          ? phaseLine('loading')
+          : p.phase === 'uploading'
+            ? 'Sending the sound…'
+            : p.phase === 'transcribing'
+              ? 'Transcribing…'
+              : 'Finishing…'
   return p && !stopping && p.total > 1 ? `${phase} Part ${Math.min(p.done + 1, p.total)} of ${p.total}.` : phase
 }
 

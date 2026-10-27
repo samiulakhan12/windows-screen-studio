@@ -198,8 +198,11 @@ describe('rows and progress', () => {
   })
 
   it('the Captions row shows the transcription as the Captions tab does', () => {
-    const p = (phase: 'extracting' | 'uploading' | 'transcribing' | 'finishing', done: number, total: number) => ({ projectId: 'p', phase, done, total })
+    const p = (phase: 'extracting' | 'loading' | 'uploading' | 'transcribing' | 'finishing', done: number, total: number) => ({ projectId: 'p', phase, done, total })
     expect(transcribePhaseText(p('uploading', 1, 3), false)).toBe('Sending the sound… Part 2 of 3.')
+    // On this PC the speech model loads before the first part: not "Finishing…" (INT-T3).
+    expect(transcribePhaseText(p('loading', 0, 2), false)).toBe('Loading the speech model… Part 1 of 2.')
+    expect(transcribePhaseText(p('loading', 0, 1), false)).toBe('Loading the speech model…')
     expect(transcribePhaseText(p('transcribing', 0, 1), false)).toBe('Transcribing…')
     expect(transcribePhaseText(p('extracting', 0, 1), false)).toBe('Preparing the sound…')
     expect(transcribePhaseText(p('finishing', 3, 3), false)).toBe('Finishing… Part 3 of 3.')
