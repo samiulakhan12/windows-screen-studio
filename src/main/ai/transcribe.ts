@@ -319,6 +319,14 @@ export async function stopTranscription(id: string): Promise<void> {
   await job?.done
 }
 
+/**
+ * Stops every transcription as stopTranscription does (the page that asked for them is gone, so
+ * no result could be delivered); finished parts of a job on this PC stay for the next Generate.
+ */
+export async function stopEveryTranscription(): Promise<void> {
+  await Promise.all([...jobs.keys()].map((id) => stopTranscription(id)))
+}
+
 /** Stops every transcription and removes its temporary files (the app is quitting: this blocks). */
 export function stopAllTranscriptions(): void {
   for (const job of jobs.values()) job.controller.abort()

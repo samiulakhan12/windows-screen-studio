@@ -5,10 +5,10 @@
  * back to its code. The last block runs the whole job through transcribeProject (real ffmpeg).
  */
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 
 const h = vi.hoisted(() => ({
@@ -351,30 +351,49 @@ describe('localSpeechClient', () => {
 })
 
 describe('a whole job through transcribeProject', () => {
-  it('decodes, cuts WAV parts, runs the helper per part, merges, reports progress and clears the part cache', async () => {
+  // The jobs' temporary folders go to a private TMPDIR: aiProviders.test.ts counts those in the shared one.
+  const tmpBefore = process.env.TMPDIR
+  beforeAll(() => {
+    process.env.TMPDIR = mkdtempSync(path.join(h.root, 'tmp-'))
+  })
+  afterAll(() => {
+    if (tmpBefore === undefined) delete process.env.TMPDIR
+    else process.env.TMPDIR = tmpBefore
+  })
+  const jobTemps = (): string[] => readdirSync(process.env.TMPDIR!).filter((f) => f.startsWith('ssw-transcribe-'))
+
+  /** The model installed (once: a file of the pinned size whose verified record matches it) and a 19 s recording `id`; the ai:transcribe handler. */
+  async function seedJob(id: string) {
     const { registerAiIpc } = await import('../src/main/aiIpc')
     if (!h.handlers.has('ai:transcribe')) registerAiIpc()
-    process.env.SSW_AI_MAX_PART_SECONDS = '8'
-    try {
-      // The model as installed: a file of the pinned size whose verified record matches its size and time.
-      const dir = path.join(h.root, 'userData', 'speech-models')
+    const dir = path.join(h.root, 'userData', 'speech-models')
+    const spec = speechModel('whisper-tiny')!
+    const model = path.join(dir, spec.file)
+    if (!existsSync(model)) {
       mkdirSync(dir, { recursive: true })
-      const spec = speechModel('whisper-tiny')!
-      const model = path.join(dir, spec.file)
       writeFileSync(model, '')
       truncateSync(model, spec.bytes)
       const st = statSync(model)
       writeFileSync(path.join(dir, 'speech.json'), JSON.stringify({ version: 1, defaultModel: 'whisper-tiny', verified: { 'whisper-tiny': { bytes: st.size, mtimeMs: st.mtimeMs } }, measured: {} }))
+    }
 
+    const pdir = path.join(h.root, 'videos', 'Flown', id)
+    mkdirSync(pdir, { recursive: true })
+    const { ffmpegPath } = await import('../src/main/ffmpeg')
+    execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=300:duration=19', '-c:a', 'aac', '-f', 'mp4', path.join(pdir, 'screen.mp4')])
+    writeFileSync(path.join(pdir, 'project.json'), JSON.stringify({ version: 2, id, name: id, createdAt: new Date().toISOString(), duration: 19, width: 1280, height: 720, hasWebcam: false, hasAudio: true, webcamOffset: 0, capture: { method: 'chromium', cursorInVideo: true, region: null }, clips: [{ id: 'c0', start: 0, end: 19, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: { background: { type: 'color', color: '#000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }, cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true }, webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' }, effects: { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } }, audio: { volume: 1, muted: false } }))
+
+    const progress: TranscribeProgress[] = []
+    const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: { isDestroyed: () => false, send: (_c: string, p: TranscribeProgress) => progress.push(p) } }
+    const transcribe = (options: Record<string, unknown>): Promise<unknown> => Promise.resolve(h.handlers.get('ai:transcribe')!(appEvent, id, options))
+    return { pdir, progress, appEvent, transcribe }
+  }
+
+  it('decodes, cuts WAV parts, runs the helper per part, merges, reports progress and clears the part cache', async () => {
+    process.env.SSW_AI_MAX_PART_SECONDS = '8'
+    try {
       const id = 'rec-local'
-      const pdir = path.join(h.root, 'videos', 'Flown', id)
-      mkdirSync(pdir, { recursive: true })
-      const { ffmpegPath } = await import('../src/main/ffmpeg')
-      execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=300:duration=19', '-c:a', 'aac', '-f', 'mp4', path.join(pdir, 'screen.mp4')])
-      writeFileSync(path.join(pdir, 'project.json'), JSON.stringify({ version: 2, id, name: id, createdAt: new Date().toISOString(), duration: 19, width: 1280, height: 720, hasWebcam: false, hasAudio: true, webcamOffset: 0, capture: { method: 'chromium', cursorInVideo: true, region: null }, clips: [{ id: 'c0', start: 0, end: 19, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: { background: { type: 'color', color: '#000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }, cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true }, webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' }, effects: { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } }, audio: { volume: 1, muted: false } }))
-
-      const progress: TranscribeProgress[] = []
-      const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: { isDestroyed: () => false, send: (_c: string, p: TranscribeProgress) => progress.push(p) } }
+      const { pdir, progress, appEvent } = await seedJob(id)
       const transcript = (await h.handlers.get('ai:transcribe')!(appEvent, id, { providerId: 'local', model: 'whisper-tiny' })) as import('../src/shared/types').Transcript
       expect(transcript).toMatchObject({ provider: 'local', model: 'whisper-tiny', language: 'en' })
       const words = transcript.segments.flatMap((s) => s.words ?? [])
@@ -401,6 +420,35 @@ describe('a whole job through transcribeProject', () => {
       expect(transcribeCalls()).toEqual([])
       // An unknown model is refused by the validation.
       expect(await failure(Promise.resolve(h.handlers.get('ai:transcribe')!(appEvent, id, { providerId: 'local', model: '../x' })))).toBe('Unknown speech model.')
+    } finally {
+      delete process.env.SSW_AI_MAX_PART_SECONDS
+    }
+  }, 60_000)
+
+  it('stopEveryTranscription (the page that asked is gone) cancels the job, keeps its finished parts and frees the recording', async () => {
+    const { stopEveryTranscription } = await import('../src/main/ai/transcribe')
+    process.env.SSW_AI_MAX_PART_SECONDS = '8'
+    try {
+      const { pdir, progress, transcribe } = await seedJob('rec-gone')
+      // The second part never finishes on its own.
+      process.env.FAKE_SPEECH_MODE = 'hang'
+      process.env.FAKE_SPEECH_MATCH = 'part-1.wav'
+      const job = transcribe({ providerId: 'local', model: 'whisper-tiny' })
+      job.catch(() => undefined)
+      const cache = path.join(pdir, PART_CACHE_DIR)
+      await vi.waitFor(() => expect(transcribeCalls().some((a) => argOf(a, '--audio').endsWith('part-1.wav'))).toBe(true), { timeout: 20_000 })
+      expect(readdirSync(cache)).toHaveLength(1)
+      await stopEveryTranscription()
+      await expect(job).rejects.toThrow('Cancelled.')
+      expect(readdirSync(cache)).toHaveLength(1)
+      expect(jobTemps()).toEqual([])
+      // Generate again from a new page: not "already being transcribed", and it continues from the finished part.
+      delete process.env.FAKE_SPEECH_MODE
+      progress.length = 0
+      await transcribe({ providerId: 'local', model: 'whisper-tiny' })
+      expect(progress.some((p) => (p.resumed ?? 0) >= 1)).toBe(true)
+      expect(readdirSync(pdir)).not.toContain('.cache')
+      expect(jobTemps()).toEqual([])
     } finally {
       delete process.env.SSW_AI_MAX_PART_SECONDS
     }

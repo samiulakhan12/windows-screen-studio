@@ -400,6 +400,12 @@ peaked at 524 MB), the main process holds only streams, and the temporary folder
 - **Closing the editor, deleting the project, quitting:** as today (`stopAnalyses`,
   `stopAllTranscriptions`); the helpers are in the same `ProjectProcesses`; `will-quit` also
   kills every helper synchronously (`stopAllSpeech`).
+- **The main window's page dies** (it crashed or was killed; `attachRecorderWindow` reloads Home):
+  the editor never closed, so every transcription is stopped as Cancel does
+  (`stopEveryTranscription`): its result could not reach the dead page, the reloaded page has no
+  Cancel for it, and Generate would be refused as "already being transcribed". Finished parts stay
+  for the next Generate. Level and still analyses go on: their results are kept for the session
+  and the reopened editor reuses them.
 - **The app dies:** the helper sees the end of stdin (exits 0.03 s later) and also watches its
   parent (`--parent-pid`: a wait on the process handle on Windows, `PR_SET_PDEATHSIG` on Linux).
 - **Exit meanings** (`classifyExit`, pure, for runs the app did not abort or kill): 0 with a
@@ -1627,3 +1633,10 @@ Code review of the merged feature (main process), one line each:
   session repeated that wait before the levels settled; `speechOfFile` now skips the run when
   `project.duration` does not fit (`vadLineFits`), and `detect` stops it once the levels show
   such a length.
+- **A job orphaned by a crashed page** (MAIN-5, §3.4): only the editor's dispose stopped a
+  transcription, so after the main window's renderer died the job ran on unseen, Generate on the
+  reopened recording was refused and Remove of its model too, and its finished result went to the
+  dead frame while the part cache was deleted. `attachRecorderWindow`'s `render-process-gone` now
+  stops every transcription (`stopEveryTranscription`, the cancel path, which keeps the parts).
+  Tying jobs to the sender in `aiIpc.ts` (also on navigation) was not done: outside these files,
+  and the main window navigates only on that reload.
