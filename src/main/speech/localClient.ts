@@ -17,7 +17,7 @@ import { writeFileAtomicSync } from '../atomicWrite'
 import { cancelled } from '../ai/request'
 import type { AiClient, AudioPart, TranscribeCall } from '../ai/types'
 import type { ProjectProcesses } from '../projectProcesses'
-import { commonArgs, markIllegalInstruction, runHelper, selectHelper, speechHelperPaths, SPEECH_TIMING, type HelperChoice, type SpeechExit } from './helper'
+import { commonArgs, markIllegalInstruction, runHelper, selectHelper, spawnFailure, speechHelperPaths, SPEECH_TIMING, type HelperChoice, type SpeechExit } from './helper'
 import type { SpeechModelStore } from './models'
 
 export interface LocalClientDeps {
@@ -131,7 +131,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
     ]
     const started = Date.now()
     call.onProgress?.({ phase: 'loading', fraction: 0 })
-    const run = runHelper(exe, args, { cwd: path.dirname(part.file), stdin: 'control', signal: call.signal, timeoutMs: limitMs, stallMs: deps.stallMs, processes: deps.processes, owner: deps.owner })
+    let spawnError: NodeJS.ErrnoException | undefined
+    const run = runHelper(exe, args, { cwd: path.dirname(part.file), stdin: 'control', signal: call.signal, timeoutMs: limitMs, stallMs: deps.stallMs, processes: deps.processes, owner: deps.owner, onSpawnError: (e) => (spawnError = e) })
     const segments: SidecarSegment[] = []
     let result: SidecarResult | null = null
     let fraction = 0
@@ -152,6 +153,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       } else if (e.type === 'result') result = e
     }
     const exit = await run.done
+    // The helper never started (gone, or Windows or an antivirus refused it): not a crash, so the model stays trusted and nothing is retried.
+    if (spawnError) throw fail('unavailable', { reason: spawnFailure(spawnError) })
     if (exit.kind !== 'ok') {
       if (exit.kind === 'crash' || exit.kind === 'protocol' || exit.kind === 'stalled') console.warn(`Speech helper (${exit.kind}) on ${path.basename(part.file)}: ${'detail' in exit ? exit.detail : ''} ${run.stderr().trim().split('\n').slice(-2).join(' | ')}`)
       return exit

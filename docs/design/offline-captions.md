@@ -404,7 +404,11 @@ peaked at 524 MB), the main process holds only streams, and the temporary folder
   compatible build and retries the part once; any other crash (0xC0000005, 0xC0000409,
   0xC00000FD, SIGSEGV, SIGABRT, SIGKILL from the out-of-memory killer) clears the model's
   verified record and retries the part once with half the threads; a second crash fails the job
-  with `localErrorMessage('crashed', { part, parts })`, keeping the finished parts.
+  with `localErrorMessage('crashed', { part, parts })`, keeping the finished parts. A helper that
+  cannot be started at all (the spawn's `error`: ENOENT, or EACCES, EPERM and UNKNOWN when Windows
+  or an antivirus refuses it) is no crash: the job fails at once with
+  `localErrorMessage('unavailable', { reason })` (`missing` or `blocked`), the model stays
+  trusted and nothing is retried.
 - **Stall and time limit.** whisper.cpp 1.8.3 calls its progress callback only at the top of each
   30 s window (`src/whisper.cpp` around line 7000), and one window can take minutes: turbo on the
   compatible build at 2 threads about 330 s, before language detection. So the helper's control
@@ -1591,3 +1595,7 @@ Code review of the merged feature (main process), one line each:
   antivirus held past the retries was resumed with a Range from its end, and the 416 deleted it;
   now each attempt hashes a complete .part and installs it without a request. The rename retry
   window is unchanged.
+- **A blocked helper reported as a crash** (MAIN-3, §3.4): Node closes a child that never started
+  with a negative errno as its code, so runHelper's spawn-error branch never matched and
+  transcription treated a quarantined `ssw-speech.exe` as a crash (re-hash, retry, "stopped
+  unexpectedly"); the spawn error now wins and the part runner maps it to `unavailable`.

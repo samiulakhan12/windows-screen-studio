@@ -5,7 +5,7 @@
  * back to its code. The last block runs the whole job through transcribeProject (real ffmpeg).
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -299,6 +299,23 @@ describe('localSpeechClient', () => {
       const { message } = await run('illegal')
       expect(localErrorCode(message)).toBe('unavailable')
       expect(message).toContain("processor cannot run")
+    })
+
+    it('a helper that cannot be started → unavailable (missing, blocked), never a crash: no retry, the model still trusted', async () => {
+      const store = fakeStore()
+      const gone = await localSpeechClient('whisper-tiny', deps(store, { helper: async () => ({ exe: path.join(h.root, 'gone', 'ssw-speech'), build: 'standard' }) }))
+      const missing = await failure(gone.transcribe!(part(wav('s0.wav', 2, 1), 2), { signal: signal(), part: { index: 0, count: 2 } }))
+      expect(localErrorCode(missing)).toBe('unavailable')
+      expect(missing).toContain('part of Flown is missing')
+      // A file the system refuses to run (EACCES here; EPERM or UNKNOWN when an antivirus blocks it on Windows).
+      const refused = path.join(h.root, 'ssw-speech-refused')
+      writeFileSync(refused, '#!/bin/sh\n')
+      chmodSync(refused, 0o644)
+      const blocked = await localSpeechClient('whisper-tiny', deps(store, { helper: async () => ({ exe: refused, build: 'standard' }) }))
+      const message = await failure(blocked.transcribe!(part(wav('s1.wav', 2, 2), 2), { signal: signal() }))
+      expect(localErrorCode(message)).toBe('unavailable')
+      expect(message).toContain('Windows or an antivirus blocked the speech engine')
+      expect(store.cleared).toEqual([])
     })
 
     it('a cancel is "Cancelled.", never a crash or a retry', async () => {

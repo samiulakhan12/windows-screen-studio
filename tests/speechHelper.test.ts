@@ -175,6 +175,16 @@ describe('runHelper with the fake helper', () => {
     expect(await runHelper(FAKE, ['cpu'], { cwd: os.tmpdir(), stdin: 'none', signal: new AbortController().signal }).done).toMatchObject({ kind: 'crash', illegalInstruction: true })
   })
 
+  it('a helper that cannot be started reports the spawn error, whatever close code Node gives', async () => {
+    const errors: string[] = []
+    const run = runHelper(path.join(h.root, 'gone', 'ssw-speech'), ['cpu'], { cwd: os.tmpdir(), stdin: 'none', signal: new AbortController().signal, onSpawnError: (e) => errors.push(e.code ?? '') })
+    expect(await drain(run)).toEqual([])
+    const exit = await run.done
+    expect(errors).toEqual(['ENOENT'])
+    expect(exit).toMatchObject({ kind: 'crash', illegalInstruction: false })
+    expect(exit.kind === 'crash' && exit.detail).toContain('ENOENT')
+  })
+
   it('cancels with "cancel", the end of stdin, then a kill after 2 s; an aborted run is cancelled whatever its exit', async () => {
     const wav = path.join(h.root, 'a.wav')
     writeFileSync(wav, Buffer.alloc(44 + 32000 * 3))
