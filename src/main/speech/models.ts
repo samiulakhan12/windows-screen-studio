@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto'
 import { createReadStream, mkdirSync, promises as fs, readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { SpeechModelStatus, SpeechModelView } from '../../shared/api/speech'
-import { DEFAULT_SPEECH_MODEL, isSpeechModelId, modelUrl, SPEECH_MODELS, speechModel, speechModelBlock, type SpeechModelId, type SpeechModelSpec } from '../../shared/speech/catalog'
+import { DEFAULT_SPEECH_MODEL, isLanguageModel, isSpeechModelId, modelUrl, SPEECH_MODELS, speechModel, speechModelBlock, type SpeechModelId, type SpeechModelSpec } from '../../shared/speech/catalog'
 import { localErrorMessage, modelBlockReason } from '../../shared/speech/errors'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from './download'
@@ -37,11 +37,15 @@ const BUILDS: readonly HelperBuild[] = ['standard', 'compatible', 'host']
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
-/** speech.json from anything: an unknown default becomes DEFAULT_SPEECH_MODEL, odd entries are dropped. */
+/**
+ * speech.json from anything: an unknown default becomes DEFAULT_SPEECH_MODEL, and so does a model
+ * made for one language (the Bangla model is never the default: other languages would use it);
+ * odd entries are dropped.
+ */
 export function sanitizeSpeechSettings(raw: unknown): SpeechSettingsFile {
   const out: SpeechSettingsFile = { version: 1, defaultModel: DEFAULT_SPEECH_MODEL, verified: {}, measured: {} }
   if (!isObject(raw) || raw.version !== 1) return out
-  if (isSpeechModelId(raw.defaultModel)) out.defaultModel = raw.defaultModel
+  if (isSpeechModelId(raw.defaultModel) && !isLanguageModel(speechModel(raw.defaultModel))) out.defaultModel = raw.defaultModel
   if (isObject(raw.verified)) {
     for (const [id, v] of Object.entries(raw.verified)) {
       const spec = speechModel(id)
@@ -263,7 +267,7 @@ export class SpeechModelStore {
   /**
    * Downloads `id` (continuing a stopped download); resolves once installed and verified.
    * Rejects with a message ('Cancelled.' when cancelled). The first verified model becomes the
-   * default when the default is not installed.
+   * default when the default is not installed; a model made for one language never does.
    */
   async download(id: unknown): Promise<void> {
     const spec = speechModel(id)
@@ -312,7 +316,7 @@ export class SpeechModelStore {
       const installedDefault = (await this.check(speechModel(this.defaultModel())!)) === 'installed'
       this.save((s) => {
         s.verified[spec.id] = { bytes: stat.size, mtimeMs: stat.mtimeMs }
-        if (!installedDefault || s.defaultModel === spec.id) s.defaultModel = spec.id
+        if (!isLanguageModel(spec) && (!installedDefault || s.defaultModel === spec.id)) s.defaultModel = spec.id
       })
     })()
     active.done = run.then(
@@ -373,7 +377,7 @@ export class SpeechModelStore {
     if (next === spec.id) {
       next = DEFAULT_SPEECH_MODEL
       for (const m of SPEECH_MODELS) {
-        if (m.id !== spec.id && (await this.check(m)) === 'installed') {
+        if (m.id !== spec.id && !isLanguageModel(m) && (await this.check(m)) === 'installed') {
           next = m.id
           break
         }
@@ -386,10 +390,11 @@ export class SpeechModelStore {
     this.changed()
   }
 
-  /** The model used for new captions: only an installed one. */
+  /** The model used for new captions: only an installed one, never a model made for one language. */
   async setDefault(id: unknown): Promise<void> {
     const spec = speechModel(id)
     if (!spec) throw new Error('Unknown speech model.')
+    if (isLanguageModel(spec)) throw new Error(`${spec.name} makes captions in one language only, so it cannot be the model for new captions.`)
     if ((await this.check(spec)) !== 'installed') throw new Error('Only a downloaded speech model can be the default.')
     this.save((s) => (s.defaultModel = spec.id))
     this.changed()

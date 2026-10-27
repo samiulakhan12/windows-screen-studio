@@ -95,7 +95,7 @@ describe('speech IPC', () => {
     const state = (await invoke('speech:state', appEvent)) as SpeechState
     expect(state.engine).toMatchObject({ available: true, build: 'host', threads: 3 })
     expect(state.detector.available).toBe(true)
-    expect(state.models.map((m) => m.id)).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'])
+    expect(state.models.map((m) => m.id)).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo', 'whisper-bn-medium'])
     expect(state.models.every((m) => m.status.state === 'missing' && !m.inUse)).toBe(true)
     expect(state.defaultModel).toBe('whisper-base')
     expect(state.disk.used).toBe(0)
@@ -139,7 +139,7 @@ describe('speech IPC', () => {
     await new Promise((r) => setTimeout(r, CHANGED_EVERY_MS + 300))
     expect(h.sent.length).toBe(1)
     expect(h.sent.every((s) => s.url === APP_URL && s.channel === 'speech:changed')).toBe(true)
-    expect((h.sent[0].state as SpeechState).models).toHaveLength(4)
+    expect((h.sent[0].state as SpeechState).models).toHaveLength(5)
     h.windows = []
   })
 })

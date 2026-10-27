@@ -12,7 +12,7 @@ import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { ENGINE_VERSION, speechModel, speechModelBlock, speechThreads, type SpeechModelSpec } from '../../shared/speech/catalog'
 import { localErrorMessage, type LocalCaptionsError, type LocalErrorParams } from '../../shared/speech/errors'
 import { estimateSeconds } from '../../shared/speech/estimate'
-import { localTranscript, readSidecarLine, SIDECAR, type SidecarResult, type SidecarSegment } from '../../shared/speech/protocol'
+import { chunkArgs, localTranscript, readSidecarLine, SIDECAR, type SidecarResult, type SidecarSegment } from '../../shared/speech/protocol'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { cancelled } from '../ai/request'
 import type { AiClient, AudioPart, TranscribeCall } from '../ai/types'
@@ -134,6 +134,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       '--audio', part.file,
       '--vad-model', vadModel,
       '--lang', lang,
+      // The model's own chunk length (the Bangla model: 20 s), else the helper's default.
+      ...chunkArgs(spec),
       '--threads', String(threads),
       '--stdin-control',
       ...commonArgs()
@@ -176,7 +178,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
 
   const transcribe = async (part: AudioPart, call: TranscribeCall): Promise<RawTranscript> => {
     if (call.signal.aborted) throw cancelled()
-    const asked = helperLanguage(call.language)
+    // A model made for one language always runs with it (validateTranscribeOptions refuses another).
+    const asked = spec.language ?? helperLanguage(call.language)
     const lang = asked ?? carried ?? 'auto'
     const partSha256 = createHash('sha256').update(await fs.readFile(part.file)).digest('hex')
     const key = partCacheKey(partSha256, spec, lang, ENGINE_VERSION)

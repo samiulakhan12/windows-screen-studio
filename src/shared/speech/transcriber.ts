@@ -4,7 +4,7 @@
  */
 import type { AiProviderInfo } from '../api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechState } from '../api/speech'
-import type { SpeechModelId } from './catalog'
+import { BANGLA_MODEL, DEFAULT_SPEECH_MODEL, isBengali, isLanguageModel, speechModel, type SpeechModelId } from './catalog'
 
 export type TranscriberChoice =
   /** On this PC with `model`; `ready` when the engine runs here and the model is installed (else a download needs the user's consent first). */
@@ -18,14 +18,29 @@ export const CAPTIONS_SKIPPED_NO_MODEL = 'Captions skipped: download a speech mo
 /**
  * The model "On this PC" uses without asking (E-01, and the Captions tab's "Make them now with
  * …" offer): the default model when it is installed, else the first installed model in catalog
- * order, else the default model (not installed). The Captions tab itself uses its session's
- * chip choice, which starts as the default model.
+ * order, else the default model (not installed). A model made for one language (the Bangla
+ * model) is never picked here: localModelFor picks it for its own language. The Captions tab
+ * itself uses its session's chip choice, which starts as the default model.
  */
 export function localModel(speech: Pick<SpeechState, 'defaultModel' | 'models'>): { model: SpeechModelId; installed: boolean } {
+  const general = (id: SpeechModelId): boolean => !isLanguageModel(speechModel(id))
   const installed = (id: SpeechModelId): boolean => speech.models.some((m) => m.id === id && m.status.state === 'installed')
-  if (installed(speech.defaultModel)) return { model: speech.defaultModel, installed: true }
-  const other = speech.models.find((m) => m.status.state === 'installed')
-  return other ? { model: other.id, installed: true } : { model: speech.defaultModel, installed: false }
+  if (general(speech.defaultModel) && installed(speech.defaultModel)) return { model: speech.defaultModel, installed: true }
+  const other = speech.models.find((m) => general(m.id) && m.status.state === 'installed')
+  return other ? { model: other.id, installed: true } : { model: general(speech.defaultModel) ? speech.defaultModel : DEFAULT_SPEECH_MODEL, installed: false }
+}
+
+/**
+ * The model "On this PC" uses for the spoken `language` ('' detects): the Bangla model for
+ * Bengali once it is downloaded and allowed on this PC (docs/design/offline-captions.md §14),
+ * else localModel's pick. Other languages and detection never use a language model.
+ */
+export function localModelFor(speech: Pick<SpeechState, 'defaultModel' | 'models'>, language = ''): { model: SpeechModelId; installed: boolean } {
+  if (isBengali(language)) {
+    const bangla = speech.models.find((m) => m.id === BANGLA_MODEL)
+    if (bangla?.allowed && bangla.status.state === 'installed') return { model: bangla.id, installed: true }
+  }
+  return localModel(speech)
 }
 
 /**
@@ -40,10 +55,12 @@ export function localModel(speech: Pick<SpeechState, 'defaultModel' | 'models'>)
  * transcribes only a key choice or a ready local one, never starting a download. A remembered
  * On this PC that is not ready stays chosen even when a key provider exists: the user asked for
  * nothing to be uploaded, so E-01 skips captions rather than send the sound to a provider.
+ * `language` (the spoken language, '' detects) picks the model for it (localModelFor): with
+ * Bengali and the Bangla model downloaded, On this PC with it.
  */
-export function pickTranscriber(providers: readonly AiProviderInfo[] | null, speech: SpeechState | null, remembered = ''): TranscriberChoice | null {
+export function pickTranscriber(providers: readonly AiProviderInfo[] | null, speech: SpeechState | null, remembered = '', language = ''): TranscriberChoice | null {
   const capable = (providers ?? []).filter((p) => !!p.transcriptionModel)
-  const local = speech?.engine.available ? localModel(speech) : null
+  const local = speech?.engine.available ? localModelFor(speech, language) : null
   if (remembered === LOCAL_TRANSCRIBER_ID && local) return { kind: 'local', model: local.model, ready: local.installed }
   if (remembered && capable.some((p) => p.id === remembered)) return { kind: 'key', providerId: remembered }
   if (local?.installed) return { kind: 'local', model: local.model, ready: true }

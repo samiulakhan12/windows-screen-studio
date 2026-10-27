@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { localTranscript, readSidecarLine, SIDECAR, type SidecarSegment } from '../src/shared/speech/protocol'
+import { chunkArgs, localTranscript, MAX_CHUNK_RANGE, readSidecarLine, SIDECAR, type SidecarSegment } from '../src/shared/speech/protocol'
 
 const line = (o: unknown): string => JSON.stringify(o)
 const timing = { load_ms: 80, vad_ms: 20, asr_ms: 900, rtf: 0.05, peak_rss_mb: 300 }
@@ -75,5 +75,38 @@ describe('localTranscript', () => {
     expect(localTranscript([], 'english', 1).language).toBe('en')
     expect(localTranscript([], '', 1)).toEqual({ segments: [] })
     expect(localTranscript([], 'auto', 1)).toEqual({ segments: [] })
+  })
+})
+
+describe('Bengali text and the per-model chunk length (docs/design/offline-captions.md §14)', () => {
+  // ো written in two parts (ে U+09C7 + া U+09BE), as whisper's byte tokens can leave it, and composed (U+09CB).
+  const split = 'কোন'
+  const composed = 'কোন'
+  const seg = (text: string): SidecarSegment => ({ type: 'segment', start: 0, end: 1, text, words: [{ text, start: 0, end: 1, prob: 0.9 }] })
+
+  it('puts Bengali words and text in NFC', () => {
+    const t = localTranscript([seg(split)], 'bn', 2)
+    expect(t.segments[0].words![0].text).toBe(composed)
+    expect(t.segments[0].text).toBe(composed)
+    expect(localTranscript([{ ...seg(split), words: [] }], 'bn', 2).segments[0].text).toBe(composed)
+    expect(localTranscript([seg(split)], 'bengali', 2).segments[0].text).toBe(composed)
+  })
+
+  it('keeps every other language exactly as the helper wrote it', () => {
+    // A CJK compatibility ideograph, which NFC would replace (U+F900 → U+8C48).
+    expect(localTranscript([seg('豈')], 'ja', 2).segments[0].text).toBe('豈')
+    expect(localTranscript([seg(split)], 'hi', 2).segments[0].text).toBe(split)
+    expect(localTranscript([seg(split)], 'auto', 2).segments[0].text).toBe(split)
+    expect(localTranscript([seg(split)], '', 2).segments[0].text).toBe(split)
+  })
+
+  it('passes --max-chunk only for a model that sets it, inside the bounds the helper accepts', () => {
+    expect(MAX_CHUNK_RANGE).toEqual({ min: 1, max: 29.5 })
+    expect(chunkArgs({ maxChunkSeconds: 20 })).toEqual(['--max-chunk', '20'])
+    expect(chunkArgs({ maxChunkSeconds: 29.5 })).toEqual(['--max-chunk', '29.5'])
+    expect(chunkArgs({})).toEqual([])
+    for (const bad of [0.5, 30, Number.NaN, Number.POSITIVE_INFINITY]) expect(chunkArgs({ maxChunkSeconds: bad })).toEqual([])
+    // The helper's default stays the frozen SIDECAR.maxChunk.
+    expect(SIDECAR.maxChunk).toBe(29)
   })
 })

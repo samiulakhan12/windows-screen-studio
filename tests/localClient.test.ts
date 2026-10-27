@@ -192,6 +192,30 @@ describe('localSpeechClient', () => {
     expect(argOf(transcribeCalls()[0], '--lang')).toBe('pt')
   })
 
+  it('runs the Bangla model with --lang bn and --max-chunk 20, and only it with --max-chunk (§14)', async () => {
+    process.env.FAKE_SPEECH_LANG = 'bn'
+    const bn = await localSpeechClient('whisper-bn-medium', deps())
+    expect(bn.model).toBe('whisper-bn-medium')
+    expect(bn.partLimits).toEqual({ maxSeconds: 180, maxBytes: Infinity })
+    // Without a language, and with Bengali asked in any form: always bn.
+    await bn.transcribe!(part(wav('b0.wav', 3, 11), 3), { signal: signal() })
+    await bn.transcribe!(part(wav('b1.wav', 3, 12), 3), { signal: signal(), language: 'bn-BD' })
+    const [first, second] = transcribeCalls()
+    expect(first).toEqual([
+      'transcribe', '--model-dir', path.join(h.root, 'models'), '--model', 'ggml-bengaliai-whisper-medium-q5_0.bin', '--audio', path.join(tmp, 'b0.wav'), '--vad-model', VAD,
+      '--lang', 'bn', '--max-chunk', '20', '--threads', '3', '--stdin-control', '--low-priority', '--parent-pid', String(process.pid)
+    ])
+    expect(argOf(second, '--lang')).toBe('bn')
+    // The general models keep the helper's own chunk length.
+    writeFileSync(log, '')
+    for (const id of ['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'] as const) {
+      const c = await localSpeechClient(id, deps())
+      await c.transcribe!(part(wav(`g-${id}.wav`, 2, 13), 2), { signal: signal(), language: 'bn' })
+      c.dispose!()
+    }
+    expect(transcribeCalls().map((a) => [argOf(a, '--lang'), a.includes('--max-chunk')])).toEqual(Array(4).fill(['bn', false]))
+  })
+
   it('a resumed job takes finished parts from the cache and makes the same language choice', async () => {
     process.env.FAKE_SPEECH_LANG = 'fr'
     process.env.FAKE_SPEECH_LANG_S = '15'

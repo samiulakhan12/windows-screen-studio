@@ -268,11 +268,16 @@ const round = (t: number): number => Math.round(t * 1000) / 1000
  * [0, partSeconds]): each segment's text is its words joined by single spaces (so the caption
  * layout always finds a timing per word), words with no text are dropped, times are made
  * ordered and monotonic, at most 400 words per segment; probabilities are dropped. `language`
- * is the result's; '' and 'auto' are left out (never stored or counted by mergeParts).
+ * is the result's; '' and 'auto' are left out (never stored or counted by mergeParts). Bengali
+ * text is put in Unicode NFC (whisper's byte tokens can leave a vowel sign in two parts, ে + া
+ * for ো); every other language is kept exactly as the helper wrote it.
  */
 export function localTranscript(segments: readonly SidecarSegment[], language: string | undefined, partSeconds: number): RawTranscript {
   const limit = Number.isFinite(partSeconds) && partSeconds > 0 ? partSeconds : 0
   const clamp = (t: number): number => round(Math.min(limit, Math.max(0, Number.isFinite(t) ? t : 0)))
+  const code = language && language !== 'auto' ? languageCode(language) : undefined
+  const nfc = code?.split('-')[0] === 'bn'
+  const clean = (v: string, max: number): string => cleanText(nfc ? v.normalize('NFC') : v, max)
   const ordered = [...segments].sort((a, b) => a.start - b.start)
   const out: RawSegment[] = []
   let last = 0
@@ -280,7 +285,7 @@ export function localTranscript(segments: readonly SidecarSegment[], language: s
     const words: RawWord[] = []
     for (const w of seg.words) {
       if (words.length >= MAX_WORDS) break
-      const text = cleanText(typeof w.text === 'string' ? w.text : '', MAX_WORD_TEXT)
+      const text = clean(typeof w.text === 'string' ? w.text : '', MAX_WORD_TEXT)
       if (!text) continue
       const start = Math.max(clamp(Math.min(w.start, w.end)), last)
       const end = Math.max(clamp(Math.max(w.start, w.end)), start)
@@ -296,7 +301,7 @@ export function localTranscript(segments: readonly SidecarSegment[], language: s
       text = words.map((w) => w.text).join(' ')
     } else {
       // A segment without words (the helper always sends them; kept for safety) keeps its own text and times.
-      text = cleanText(seg.text, MAX_TEXT)
+      text = clean(seg.text, MAX_TEXT)
       start = Math.max(clamp(Math.min(seg.start, seg.end)), last)
       end = Math.max(clamp(Math.max(seg.start, seg.end)), start)
       if (text) last = end
@@ -304,6 +309,23 @@ export function localTranscript(segments: readonly SidecarSegment[], language: s
     if (!text) continue
     out.push({ start, end, text, ...(words.length ? { words } : {}) })
   }
-  const code = language && language !== 'auto' ? languageCode(language) : undefined
   return { ...(code ? { language: code } : {}), segments: out }
+}
+
+/**
+ * The chunk lengths the helper accepts for `--max-chunk`, seconds (native/speech args.rs). Its
+ * default is SIDECAR.maxChunk.
+ */
+export const MAX_CHUNK_RANGE = { min: 1, max: 29.5 } as const
+
+/**
+ * The `transcribe` arguments for a model that sets its own chunk length
+ * (SpeechModelSpec.maxChunkSeconds: the Bangla model makes fewer mistakes with 20 s chunks):
+ * `['--max-chunk', '20']`; none for the others, which keep the helper's SIDECAR.maxChunk. A value
+ * the helper would refuse is never passed.
+ */
+export function chunkArgs(spec: { maxChunkSeconds?: number }): string[] {
+  const s = spec.maxChunkSeconds
+  if (s === undefined || !Number.isFinite(s) || s < MAX_CHUNK_RANGE.min || s > MAX_CHUNK_RANGE.max) return []
+  return ['--max-chunk', String(s)]
 }

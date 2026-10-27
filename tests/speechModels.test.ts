@@ -34,7 +34,7 @@ let requests: string[] = []
 /** Serves each model's test bytes by file name (Range ignored: always 200). */
 const get: HttpGet = async (url) => {
   requests.push(url)
-  const id = (['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'] as const).find((i) => url.endsWith(speechModel(i)!.file))!
+  const id = (['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo', 'whisper-bn-medium'] as const).find((i) => url.endsWith(speechModel(i)!.file))!
   const b = h.body(id)
   return { status, headers: {}, body: (async function* () {
     if (status === 200) yield b
@@ -134,6 +134,29 @@ describe('SpeechModelStore', () => {
     expect(settingsFile().defaultModel).toBe('whisper-base')
   })
 
+  it('never makes the Bangla model the default: its download, setDefault, removing the default, speech.json (§14)', async () => {
+    const s = store()
+    // Downloaded first, with no default installed: it is installed but the default stays base.
+    await s.download('whisper-bn-medium')
+    expect(requests[0]).toBe('http://127.0.0.1:1/hf/ggml-bengaliai-whisper-medium-q5_0.bin')
+    expect(await s.installedFile('whisper-bn-medium')).toBe(file('whisper-bn-medium'))
+    expect(s.defaultModel()).toBe('whisper-base')
+    expect(settingsFile().defaultModel).toBe('whisper-base')
+    expect((settingsFile().verified as Record<string, unknown>)['whisper-bn-medium']).toBeTruthy()
+    await expect(s.setDefault('whisper-bn-medium')).rejects.toThrow('Bengali.AI Whisper medium makes captions in one language only, so it cannot be the model for new captions.')
+    // The next general download still becomes the default.
+    await s.download('whisper-tiny')
+    expect(s.defaultModel()).toBe('whisper-tiny')
+    // Removing the default skips it.
+    await s.remove('whisper-tiny')
+    expect(s.defaultModel()).toBe('whisper-base')
+    expect(await stateOf(s, 'whisper-bn-medium')).toBe('installed')
+    // A speech.json that names it (never written by Flown) reads as base.
+    expect(sanitizeSpeechSettings({ version: 1, defaultModel: 'whisper-bn-medium' }).defaultModel).toBe('whisper-base')
+    const bytes = speechModel('whisper-bn-medium')!.bytes
+    expect(sanitizeSpeechSettings({ version: 1, verified: { 'whisper-bn-medium': { bytes, mtimeMs: 3 } } }).verified).toEqual({ 'whisper-bn-medium': { bytes, mtimeMs: 3 } })
+  })
+
   it('refuses to remove a model in use until it is released', async () => {
     install('whisper-base')
     const s = store()
@@ -198,6 +221,12 @@ describe('SpeechModelStore', () => {
     expect(small.reason).toMatch(/^Needs about 1\.1 GB of memory and a PC with 8 GB in all; this one has 4 GB\.$/)
     await expect(store({ totalMemBytes: 4 * 2 ** 30, build: 'standard' }).download('whisper-turbo')).rejects.toThrow(/Needs about/)
     expect((await store().views()).every((v) => v.allowed)).toBe(true)
+    // The Bangla model is gated like turbo (§14).
+    const bnCompat = (await store({ totalMemBytes: 16 * 2 ** 30, build: 'compatible' as never }).views()).find((v) => v.id === 'whisper-bn-medium')!
+    expect(bnCompat).toMatchObject({ allowed: false, reason: "Too slow for this PC's processor: it needs one with AVX2 (most PCs from 2013 on)." })
+    const bnSmall = (await store({ totalMemBytes: 4 * 2 ** 30, build: 'standard' }).views()).find((v) => v.id === 'whisper-bn-medium')!
+    expect(bnSmall).toMatchObject({ allowed: false, reason: 'Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.' })
+    await expect(store({ totalMemBytes: 4 * 2 ** 30, build: 'standard' }).download('whisper-bn-medium')).rejects.toThrow(/Needs about 1\.3 GB/)
   })
 
   it('learns the measured speed, blended 0.5 / 0.5, ignoring nonsense', () => {

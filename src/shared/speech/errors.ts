@@ -7,7 +7,7 @@
  * its tier first ("Accurate (Whisper small)"), so every sentence here does. Pure, frozen.
  */
 import type { SpeechUnavailable } from '../api/speech'
-import { memoryNeedMB, SPEECH_MODELS, SPEECH_TIER_NAMES, speechModel, type SpeechModelBlock, type SpeechModelId, type SpeechModelSpec } from './catalog'
+import { isLanguageModel, memoryNeedMB, SPEECH_MODELS, SPEECH_TIER_NAMES, speechModel, type SpeechModelBlock, type SpeechModelId, type SpeechModelSpec } from './catalog'
 
 /** Why a transcription on this PC failed. */
 export type LocalCaptionsError =
@@ -56,10 +56,14 @@ export function tierLabel(id: SpeechModelId): string {
   return `${SPEECH_TIER_NAMES[spec.tier]} (${spec.name})`
 }
 
-/** The next quicker model of the catalog, or null for the quickest. */
+/**
+ * The next quicker model of the catalog, or null for the quickest. A model made for one language
+ * (the Bangla model) has none: the others make most of its language's words wrong.
+ */
 export function quickerModel(id: SpeechModelId): SpeechModelSpec | null {
-  const i = SPEECH_MODELS.findIndex((m) => m.id === id)
-  return i > 0 ? SPEECH_MODELS[i - 1] : null
+  const general = SPEECH_MODELS.filter((m) => !isLanguageModel(m))
+  const i = general.findIndex((m) => m.id === id)
+  return i > 0 ? general[i - 1] : null
 }
 
 /** The sentence for `code` (shown after "Captions could not be made: "). */
