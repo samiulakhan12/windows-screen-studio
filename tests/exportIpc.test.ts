@@ -295,6 +295,19 @@ describe('export clean-up in the main process', () => {
   })
 })
 
+describe('export:analyzeAudio', () => {
+  const appEvent = { senderFrame: { url: require('node:url').pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }
+
+  it('accepts only the app page as the sender (it starts the speech helper)', async () => {
+    for (const evil of [{}, { senderFrame: { url: 'https://example.com/' } }, { senderFrame: { url: 'file:///tmp/evil.html' } }]) {
+      await expect(invoke('export:analyzeAudio', evil, 'p1', ['mic'])).rejects.toThrow('Not allowed')
+    }
+    await expect(invoke('export:analyzeAudio', appEvent, 42, ['mic'])).rejects.toThrow('Invalid project.')
+    // The app page gets the sources that exist (none here).
+    expect(await invoke('export:analyzeAudio', appEvent, 'p1', ['mic', 'mix'])).toEqual({})
+  })
+})
+
 describe('batch exports, size targets and thumbnails in the main process', () => {
   const finishAll = async (): Promise<ExportFinish> => {
     h.autoExit = true

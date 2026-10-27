@@ -26,6 +26,18 @@ src/main/               Electron main process
   exportIpc.ts, exportArgs.ts, exportJob.ts, exportClipboard.ts, ffmpeg.ts, hwEncoders.ts
                           export encoder processes, safe temp output, clipboard, GPU encoder detection
   mediaProtocol.ts        studio-media:// with Range support for <video>
+  ai/                     AI providers (keys, transcription pipeline, text tasks); transcribe.ts also runs
+                          "On this PC" (providerId 'local') with lossless WAV parts
+  speech/                 captions on this PC and the speech detector (docs/design/offline-captions.md):
+                          helper.ts (ssw-speech as a child process: build choice from the `cpu` probe,
+                          minimal environment, line caps, cancel, stall watchdog and time limit, exits),
+                          download.ts (pinned, resumable, SHA-256-verified downloads from Hugging Face only),
+                          models.ts (userData/speech-models and speech.json: status, trust on every use,
+                          default-model rules, measured speed), localClient.ts (one helper run per part,
+                          part cache in <project>/.cache/transcript-parts, language carry-over, retries,
+                          the shared failure sentences), vad.ts (the speech detector on mic/mix sound,
+                          kept in <project>/.cache/speech.json), service.ts (the store and SpeechState),
+                          speechIpc.ts (speech:* handlers, throttled speech:changed)
 src/preload/            contextBridge `window.api`, one file per area (typed in src/shared/api/*)
 src/shared/             pure, unit-tested logic shared by main, renderer and tests
   types.ts                project schema v2 (clips, annotations, effects, audio, capture info)
@@ -39,7 +51,8 @@ src/renderer/src/       React UI
   editor/                 player, preview stage, timeline, inspector, transport, export dialog, exporter
   render/                 compositor, static layer cache, text/keystroke overlays, cursor sprites,
                           frame sources (WebCodecs decoder / seek fallback), encoder sinks
-native/                 Rust helper ssw-capture.exe (WGC capture, MF H.264, protocol over stdin/stdout)
+native/                 Rust helper ssw-capture.exe (WGC capture, MF H.264, protocol over stdin/stdout);
+                          native/speech: ssw-speech (whisper.cpp + Silero VAD sidecar)
 scripts/                build-native, predist checks, verify-dist, icon renderer
 tests/                  vitest unit tests; tests/e2e Playwright tests of the built app
 ```
@@ -121,6 +134,8 @@ on the next start; whatever cannot be moved stays where it is and is still used 
 ## Testing
 * `npm test`: vitest unit tests for engine, timeline, editor operations, recording maths, export and
   proxy arguments, MP4 demuxer, overlays, native client protocol (with a fake helper) and packaging.
+  The speech main process is tested against `tests/fixtures/fake-speech-helper.cjs` (through
+  `SSW_SPEECH_HELPER`, unpackaged only) and a local HTTP server for downloads.
 * `npm run test:e2e` (after `npm run build`, under `xvfb-run` on Linux): Playwright drives the real
   app. It records with fake camera/microphone devices and real X11 input, and covers the native path
   through a helper process that speaks the real protocol. Editor flows, frame-accurate export, A/V

@@ -6,6 +6,7 @@ import type { ChildProcess } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const h = vi.hoisted(() => ({
@@ -109,7 +110,7 @@ describe('analyses reading a project', () => {
     const before = h.spawned.length
     const still = settled(detectStill('rec-close', 3))
     await spawnedSoon(before + 1)
-    await h.handlers.get('projects:stopAnalysis')!(null, 'rec-close')
+    await h.handlers.get('projects:stopAnalysis')!({ senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }, 'rec-close')
     expect(running(h.spawned[before])).toBe(false)
     expect(await still).toEqual({ ok: false, error: 'the analysis was stopped' })
     // A failed (stopped) analysis is not kept: the next request runs it again.
