@@ -14,10 +14,11 @@ import type { Range } from '../../shared/audio/activity'
 import type { AudioLevels } from '../../shared/audio/loudness'
 import { decodeProbs, speechFromProbs, VAD } from '../../shared/audio/vad'
 import { ENGINE_VERSION, VAD_MODEL, VAD_THREADS } from '../../shared/speech/catalog'
-import type { SidecarVad } from '../../shared/speech/protocol'
+import { SIDECAR, type SidecarVad } from '../../shared/speech/protocol'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { ffmpegPath } from '../ffmpeg'
 import type { ProjectProcesses } from '../projectProcesses'
+import { readProject } from '../projects'
 import { commonArgs, markIllegalInstruction, runHelper, selectHelper, speechHelperPaths, SPEECH_TIMING, type HelperChoice } from './helper'
 import { sha256File } from './models'
 
@@ -29,6 +30,15 @@ const CACHE_MAX = 10 << 20
 const LENGTH_SLACK = 2
 /** Before the length is known: a limit for the longest recording (4 h). */
 const UNKNOWN_SECONDS = 4 * 3600
+/** Bytes of a `vad` line besides its probabilities (type, audio_s, frame, n, detect_ms), with room to spare. */
+const VAD_LINE_FIELDS = 256
+
+/**
+ * Whether the `vad` line for `seconds` of sound fits in SIDECAR.lineMax (base64 of one byte per
+ * frame): up to about 7 hours. The helper refuses a longer line only after reading all the sound,
+ * so a longer recording gets the level detector without running it.
+ */
+export const vadLineFits = (seconds: number): boolean => 4 * Math.ceil((Math.ceil(seconds / VAD.frame) + 2) / 3) + VAD_LINE_FIELDS <= SIDECAR.lineMax
 
 export interface SpeechCacheEntry {
   size: number
@@ -193,9 +203,17 @@ async function detect(exe: string, vadModel: string, file: string, projectId: st
     processes,
     owner: projectId
   })
-  // Once the length is known, the limit is 30 s + 50 ms per second of audio.
+  // Once the length is known, the limit is 30 s + 50 ms per second of audio; a length whose line cannot fit stops the run.
+  let tooLong = false
   levels.then(
-    (l) => run.limit(SPEECH_TIMING.vadBaseMs + SPEECH_TIMING.vadPerSecondMs * l.power.length * l.window),
+    (l) => {
+      const seconds = l.power.length * l.window
+      if (vadLineFits(seconds)) run.limit(SPEECH_TIMING.vadBaseMs + SPEECH_TIMING.vadPerSecondMs * seconds)
+      else {
+        tooLong = true
+        controller.abort()
+      }
+    },
     () => undefined
   )
   let vad: SidecarVad | null = null
@@ -204,6 +222,7 @@ async function detect(exe: string, vadModel: string, file: string, projectId: st
   if (ffmpeg.exitCode === null && ffmpeg.signalCode === null) ffmpeg.kill('SIGKILL')
   await ffmpegClosed
   processes.delete(ffmpeg)
+  if (tooLong) return { failed: 'the recording is too long for one speech detector line' }
   if (exit.kind === 'cancelled') return { stopped: true }
   if ((exit.kind === 'crash' && exit.illegalInstruction) || (exit.kind === 'error' && exit.code === 'cpu')) return { illegal: true }
   if (exit.kind === 'ok' && vad) return { vad }
@@ -231,6 +250,13 @@ export async function speechOfFile(projectId: string, source: 'mic' | 'mix', fil
   }
   const key = `${file}|${stat.size}|${stat.mtimeMs}`
   if (failedFiles.has(key)) return null
+  // Too long for one detector line by the recording's length: the level detector, without running anything.
+  const recorded = (await readProject(projectId).catch(() => null))?.duration
+  if (recorded !== undefined && !vadLineFits(recorded)) {
+    console.warn(`Speech detector skipped on ${path.basename(file)}: ${Math.round(recorded)} s is too long for it; sound levels are used.`)
+    failedFiles.add(key)
+    return null
+  }
   const helper = await ready().catch((err) => {
     detector = { available: false, reason: 'the speech engine did not start' }
     console.warn(`Speech detector unavailable: ${err instanceof Error ? err.message : String(err)}`)

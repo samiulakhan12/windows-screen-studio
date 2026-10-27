@@ -447,7 +447,11 @@ pipes into `ssw-speech vad --audio - --format f32le --vad-model <path> --threads
 reads 300 s windows with 2 s of overlap (about 20 MB of samples plus a 15 MB model), runs Silero,
 and prints one `vad` line: 1 byte per 32 ms frame (probability × 255), base64 (about 150 KB per
 hour). Both processes join the `ProjectProcesses` of `audioAnalysis.ts`, so `stopAudioAnalysisFor`
-stops them. Limit: 30 s + 50 ms per second of audio (the measured hour took 9 s).
+stops them. Limit: 30 s + 50 ms per second of audio (the measured hour took 9 s). That line must
+fit in `SIDECAR.lineMax` (`vadLineFits`: about 25,000 s, 7 hours), and the helper refuses a longer
+one only after reading all the sound, so a recording whose `project.duration` is longer gets the
+level detector without running anything, and a run whose levels arrive with such a length is
+stopped then.
 
 **Ranges** (`speechFromProbs`, pure): Silero's hysteresis: speech starts at p ≥ 0.5 and holds while
 p ≥ 0.35; speech under 250 ms is dropped; silences under 100 ms are bridged; each range is padded
@@ -518,7 +522,8 @@ microphone stem.
 `speech` is left out, and every consumer behaves exactly as today, when: the helper is missing
 (development without the build, Linux packages), the CPU probe or the spawn fails (Smart App
 Control blocking an unsigned build, antivirus), the model is missing or its hash differs, the
-helper errors, crashes, times out or prints something malformed. Each case logs one warning,
+helper errors, crashes, times out or prints something malformed, the recording is too long for
+one detector line (about 7 hours, §3.5). Each case logs one warning,
 `SpeechState.detector` says why (Settings), and the Clip tab's line says the level was used. A
 definitive failure is remembered for the session (the next start tries again); a stop (editor
 closed) rejects and is not cached, as today.
@@ -1617,3 +1622,8 @@ Code review of the merged feature (main process), one line each:
   real time, so slow PCs failed "stalled" on every Generate. `partLimitMs` now takes the larger of
   the measured and the catalog estimate for this build; speed is learned only from parts at least
   half speech, and kept per build.
+- **Recordings over about 7 hours ran the detector in vain** (consumers-02, §3.5): its one result
+  line cannot hold them, which the helper finds only after reading all the sound, and every
+  session repeated that wait before the levels settled; `speechOfFile` now skips the run when
+  `project.duration` does not fit (`vadLineFits`), and `detect` stops it once the levels show
+  such a length.
