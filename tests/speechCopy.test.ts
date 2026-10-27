@@ -198,3 +198,47 @@ describe('every state has its copy', () => {
     expect(copy.SPEECH_COPY.noticesFailed('Not found.')).toBe('The third-party notices could not be shown: Not found')
   })
 })
+
+describe('the Bangla model (docs/design/offline-captions.md §14.4)', () => {
+  const bn: SpeechModelId = 'whisper-bn-medium'
+
+  it('recommends it with why, that it works offline, its size and the time for this recording', () => {
+    expect(copy.consentTitle(bn)).toBe('Make Bangla captions on this PC')
+    expect(copy.consentTitle('whisper-base')).toBe('Make captions on this PC')
+    expect(copy.consentBody(bn, 1200, 1724)).toBe(
+      'Recommended for Bangla: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. Free and private: it runs on this PC and works offline once downloaded; the sound never leaves this PC. Flown first downloads it once (539 MB, from Hugging Face) and checks it before use. Then this 20 min recording takes about 29 min.'
+    )
+    expect(copy.downloadButton(bn)).toEqual({ label: 'Download Bangla model (539 MB) and make captions', name: 'Download Bangla (Bengali.AI Whisper medium), 539 megabytes, and make captions' })
+    expect(copy.smallPrint(bn)).toBe('Bengali.AI Whisper medium, Apache-2.0 licence · huggingface.co/winshades/bengaliai-whisper-medium-ggml')
+    expect(copy.smallPrint('whisper-base')).toBe(copy.SPEECH_COPY.smallPrint)
+  })
+
+  it('its chip, purpose and the lines around it', () => {
+    expect(copy.chipLabel(view(bn))).toEqual({ label: 'Bangla · 539 MB', name: 'Bangla, 539 megabyte download' })
+    expect(copy.chipLabel(view(bn, { state: 'installed' }))).toEqual({ label: 'Bangla · Downloaded', name: 'Bangla, downloaded' })
+    expect(copy.tierPurpose('bangla')).toBe('Made for Bangla: far fewer mistakes than the other tiers, which get most Bangla words wrong.')
+    expect(copy.tierPurpose('bangla', true)).toBe('Bangla only: used whenever the spoken language is Bengali, never for other languages. Far fewer mistakes in Bangla than the other models.')
+    expect(copy.SPEECH_COPY.banglaHint).toBe('For Bangla, choose Bangla: it makes far fewer mistakes.')
+    expect(copy.SPEECH_COPY.banglaDetect).toBe('Speaking Bangla? Choose Bengali to use the Bangla model.')
+    expect(copy.banglaBlockedLine('Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.')).toBe(
+      'The Bangla model is not offered on this PC: Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.'
+    )
+    expect(copy.SPEECH_COPY.banglaOffer).toContain('works offline once downloaded')
+    expect(copy.SPEECH_COPY.banglaAgain).toBe('Make them again with Bangla (downloaded)')
+    expect(copy.SPEECH_COPY.readyHintBangla).toBe('Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.')
+  })
+
+  it('warns about memory without offering a quicker tier, and names it in Settings as Bangla only', () => {
+    expect(copy.memoryWarning(bn, 900e6)).toBe('Bangla needs about 1.3 GB of free memory; this PC has 900 MB free right now. Close other apps first.')
+    expect(copy.memoryWarning(bn, 2e9)).toBeNull()
+    expect(copy.memoryWarning('whisper-small', 300e6)).toBe('Accurate needs about 626 MB of free memory; this PC has 300 MB free right now. Close other apps or choose Standard.')
+    expect(copy.rowTitle(view(bn))).toBe('Bengali.AI Whisper medium · Bangla only')
+    expect(copy.rowTitle(view('whisper-turbo'))).toBe('Whisper large-v3 turbo · Most accurate')
+    expect(copy.licenceLine(bn)).toBe(
+      'Bengali.AI Whisper medium (Apache-2.0 licence) by Bengali.AI (the tugstugi team), fine-tuned from OpenAI Whisper; converted to ggml by WinShades · huggingface.co/winshades/bengaliai-whisper-medium-ggml (11cf5cb)'
+    )
+    expect(copy.licenceLine('whisper-base')).toBe(copy.SPEECH_COPY.licenceLine)
+    expect(copy.rowDownload(view(bn))).toEqual({ label: 'Download 539 MB', name: 'Download Bengali.AI Whisper medium, 539 megabytes' })
+    expect(copy.downloadingLine(bn, { state: 'downloading', received: 21e6, total: 539e6, bytesPerSecond: 0 })).toBe('Downloading Bangla (Bengali.AI Whisper medium)… 21 of 539 MB')
+  })
+})

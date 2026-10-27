@@ -73,7 +73,8 @@ const minSilence = `${SILENCE_LENGTH.default.toFixed(1)} s`
 /** What the dialog says under an available row. */
 export function polishHint(
   step: PolishStep,
-  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean }
+  /** `bangla`: On this PC makes the captions with the Bangla model (Bengali chosen in the Captions tab). */
+  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean; bangla?: boolean }
 ): string {
   switch (step) {
     case 'style':
@@ -85,7 +86,7 @@ export function polishHint(
       return `${action === 'cut' ? 'Cuts' : 'Plays'} pauses of ${minSilence} or more${action === 'cut' ? '' : ` ${action}× as fast`}, keeping a quarter second next to the sound.`
     }
     case 'captions':
-      if (state.local) return SPEECH_COPY.readyHint
+      if (state.local) return state.bangla ? SPEECH_COPY.readyHintBangla : SPEECH_COPY.readyHint
       return `The sound is sent to ${state.provider ? providerName(state.provider) : 'the provider'} with your key and billed to your account.`
     case 'director':
       return 'Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept.'

@@ -9,7 +9,7 @@
 import type { SpeechDownloadError, SpeechModelStatus, SpeechModelView, SpeechState } from '../api/speech'
 import type { SoundDetector } from '../audio/voice'
 import { formatTime } from '../engine/project'
-import { memoryNeedMB, SPEECH_MODEL_REPO, SPEECH_TIER_NAMES, speechModel, type SpeechModelId, type SpeechTier } from './catalog'
+import { isLanguageModel, memoryNeedMB, SPEECH_MODEL_REPO, SPEECH_TIER_NAMES, speechModel, type SpeechModelId, type SpeechTier } from './catalog'
 import { localErrorMessage, modelBlockReason, quickerModel, tierLabel, UNAVAILABLE_REASONS } from './errors'
 import { durationWords, sizeWords } from './estimate'
 
@@ -113,8 +113,37 @@ export const SPEECH_COPY = {
   noticesFailed: (message: string): string => `The third-party notices could not be shown: ${message.replace(/[.\s]+$/, '')}`,
   /** The editor's notices while another tab is open. */
   jobFailedNotice: 'Captions could not be made: open the Captions tab for details.',
-  downloadFailedNotice: 'The speech model could not be downloaded: open the Captions tab for details.'
+  downloadFailedNotice: 'The speech model could not be downloaded: open the Captions tab for details.',
+  /** The Bangla model (docs/design/offline-captions.md §14). */
+  banglaConsentTitle: 'Make Bangla captions on this PC',
+  banglaHint: 'For Bangla, choose Bangla: it makes far fewer mistakes.',
+  banglaDetect: 'Speaking Bangla? Choose Bengali to use the Bangla model.',
+  chooseBengali: 'Choose Bengali',
+  banglaOffer:
+    'Bangla captions: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. It runs on this PC and works offline once downloaded.',
+  banglaAgain: 'Make them again with Bangla (downloaded)',
+  readyHintBangla: 'Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.'
 } as const
+
+/** "The Bangla model is not offered on this PC: Needs about 1.3 GB of memory …". */
+export const banglaBlockedLine = (reason: string): string => `The Bangla model is not offered on this PC: ${reason}`
+
+/** The consent card's title for `id` (the Bangla model's names its language). */
+export const consentTitle = (id: SpeechModelId): string => (isLanguageModel(speechModel(id)) ? SPEECH_COPY.banglaConsentTitle : SPEECH_COPY.consentTitle)
+
+/** The consent card's small print: where the model comes from and its licence. */
+export function smallPrint(id: SpeechModelId): string {
+  const spec = speechModel(id)!
+  if (!spec.repo) return SPEECH_COPY.smallPrint
+  return `${spec.name}, ${spec.license.name} licence · huggingface.co/${spec.repo.repo}`
+}
+
+/** Settings' licence line of a model (the Whisper models share SPEECH_COPY.licenceLine). */
+export function licenceLine(id: SpeechModelId): string {
+  const spec = speechModel(id)!
+  if (!spec.repo) return SPEECH_COPY.licenceLine
+  return `${spec.name} (${spec.license.name} licence) by ${spec.license.holder} · huggingface.co/${spec.repo.repo} (${spec.repo.commit.slice(0, 7)})`
+}
 
 /** The purpose of each tier, under the chips (`settings`: Settings' wording for Most accurate). */
 export function tierPurpose(tier: SpeechTier, settings = false): string {
@@ -127,6 +156,10 @@ export function tierPurpose(tier: SpeechTier, settings = false): string {
       return 'More accurate, also for other languages; about 3.7 times slower than Standard.'
     case 'best':
       return settings ? 'Most accurate, but slower than real time on most PCs.' : 'Most accurate, but slower than playing the recording on most PCs.'
+    case 'bangla':
+      return settings
+        ? 'Bangla only: used whenever the spoken language is Bengali, never for other languages. Far fewer mistakes in Bangla than the other models.'
+        : 'Made for Bangla: far fewer mistakes than the other tiers, which get most Bangla words wrong.'
   }
 }
 
@@ -148,17 +181,20 @@ export function estimateLine(m: Pick<SpeechModelView, 'bytes' | 'status'>, secon
 /** "Slower than playing the recording: about 38 min for this one." */
 export const slowerLine = (seconds: number): string => `Slower than playing the recording: ${durationWords(seconds)} for this one.`
 
-/** The consent card's body. */
+/** The consent card's body (for the Bangla model: why it is recommended for Bangla). */
 export function consentBody(id: SpeechModelId, recordingSeconds: number, estimate: number): string {
   const spec = speechModel(id)!
-  return `Free and private: the sound never leaves this PC, and no key or account is needed. Flown first downloads the speech model for ${tierLabel(id)} once (${sizeWords(spec.bytes)}, from Hugging Face) and checks it before use. Then this ${lengthWords(recordingSeconds)} recording takes ${durationWords(estimate)}.`
+  const then = `Then this ${lengthWords(recordingSeconds)} recording takes ${durationWords(estimate)}.`
+  if (isLanguageModel(spec))
+    return `Recommended for Bangla: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. Free and private: it runs on this PC and works offline once downloaded; the sound never leaves this PC. Flown first downloads it once (${sizeWords(spec.bytes)}, from Hugging Face) and checks it before use. ${then}`
+  return `Free and private: the sound never leaves this PC, and no key or account is needed. Flown first downloads the speech model for ${tierLabel(id)} once (${sizeWords(spec.bytes)}, from Hugging Face) and checks it before use. ${then}`
 }
 
-/** The consent card's one primary button: visible text and accessible name. */
+/** The consent card's one primary button: visible text and accessible name ("Download Bangla model (539 MB) and make captions" for the Bangla model). */
 export function downloadButton(id: SpeechModelId): { label: string; name: string } {
   const spec = speechModel(id)!
   return {
-    label: `Download ${sizeWords(spec.bytes)} and make captions`,
+    label: isLanguageModel(spec) ? `Download ${tierName(id)} model (${sizeWords(spec.bytes)}) and make captions` : `Download ${sizeWords(spec.bytes)} and make captions`,
     name: `Download ${tierName(id)} (${spec.name}), ${sizeSpoken(spec.bytes)}, and make captions`
   }
 }
@@ -233,14 +269,17 @@ export function downloadFailed(id: SpeechModelId, status: Extract<SpeechModelSta
   return { text: `The speech model could not be downloaded: ${reason.text}`, action: reason.action }
 }
 
-/** The memory warning of Accurate and Most accurate, or null when there is enough free memory. */
+/** The memory warning of Accurate, Most accurate and Bangla, or null when there is enough free memory. */
 export function memoryWarning(id: SpeechModelId, freeBytes: number): string | null {
   const spec = speechModel(id)!
-  if (spec.tier !== 'accurate' && spec.tier !== 'best') return null
+  if (spec.tier !== 'accurate' && spec.tier !== 'best' && spec.tier !== 'bangla') return null
   const need = memoryNeedMB(spec) * 1e6
   if (!(freeBytes < need)) return null
   const quicker = quickerModel(id)
-  return `${tierName(id)} needs about ${sizeWords(need)} of free memory; this PC has ${sizeWords(freeBytes)} free right now. Close other apps or choose ${quicker ? SPEECH_TIER_NAMES[quicker.tier] : 'a quicker tier'}.`
+  const what = `${tierName(id)} needs about ${sizeWords(need)} of free memory; this PC has ${sizeWords(freeBytes)} free right now.`
+  // The Bangla model has no quicker tier: the others get most Bangla words wrong.
+  if (isLanguageModel(spec)) return `${what} Close other apps first.`
+  return `${what} Close other apps or choose ${quicker ? SPEECH_TIER_NAMES[quicker.tier] : 'a quicker tier'}.`
 }
 
 /** The running job's phase. */
@@ -312,8 +351,8 @@ export const unavailableLine = (reason: keyof typeof UNAVAILABLE_REASONS | undef
 
 /* ---------- Settings ---------- */
 
-/** "Whisper base · Standard". */
-export const rowTitle = (m: Pick<SpeechModelView, 'name' | 'tier'>): string => `${m.name} · ${SPEECH_TIER_NAMES[m.tier]}`
+/** "Whisper base · Standard"; "Bengali.AI Whisper medium · Bangla only" for the Bangla model. */
+export const rowTitle = (m: Pick<SpeechModelView, 'name' | 'tier'>): string => `${m.name} · ${SPEECH_TIER_NAMES[m.tier]}${m.tier === 'bangla' ? ' only' : ''}`
 
 /** "60 MB download · about 1 min per 10 minutes of recording on this PC · about 399 MB of memory". */
 export function rowFacts(m: SpeechModelView, per10Seconds: number): string {

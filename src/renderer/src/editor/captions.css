@@ -520,6 +520,19 @@
   margin: 0;
 }
 
+/* The Bangla model offered under the summary of captions in Bengali (offline-captions.md §14.4). */
+.local-bangla-offer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.local-bangla-offer .hint {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* "Heard: …": one muted line, cut with an ellipsis. */
 .local-heard {
   margin: 0;

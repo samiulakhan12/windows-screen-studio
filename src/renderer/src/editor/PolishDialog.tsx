@@ -30,8 +30,9 @@ import { Chips } from './controls'
 import { EditorIcon } from './EditorIcon'
 import { useModalFocus } from './modalFocus'
 import { LOCAL_TRANSCRIBER_ID } from '../../../shared/api/speech'
+import { BANGLA_MODEL } from '../../../shared/speech/catalog'
 import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
-import { availableState, useSpeechState } from './speechState'
+import { availableState, onSpeechRead, spokenLanguage, useSpeechState } from './speechState'
 import { runPolish, type PolishRowState, type PolishRun } from './polishRunner'
 import './polish.css'
 
@@ -105,7 +106,9 @@ export function PolishDialog(props: {
   // Captions on this PC (offline-captions §3.8): wait for both the providers and the speech state.
   const speech = useSpeechState()
   const local = availableState(speech)
-  const transcriber = providers && options && speech.status !== 'loading' ? polishTranscriber(providers, speech.status === 'ready' ? speech.state : null, options.captionsProvider) : null
+  // The Captions tab's spoken language this session: Bengali uses the Bangla model once it is downloaded (§14.4).
+  const spoken = useSyncExternalStore(onSpeechRead, spokenLanguage)
+  const transcriber = providers && options && speech.status !== 'loading' ? polishTranscriber(providers, speech.status === 'ready' ? speech.state : null, options.captionsProvider, spoken) : null
   const chosenId = transcriber && 'providerId' in transcriber ? transcriber.providerId : transcriber?.skip === 'no-model' ? LOCAL_TRANSCRIBER_ID : null
   const available = polishAvailability(project, recorded, {
     hasCameraFile,
@@ -136,8 +139,12 @@ export function PolishDialog(props: {
     const chosen: PolishOptions = { ...options, styleId: styleFound ? options.styleId : null }
     window.api.setPref('polish', chosen).catch((err: unknown) => console.warn('The polish options could not be saved:', err))
     const make = transcriber && 'providerId' in transcriber ? transcriber : null
-    const run = runPolish(services, recorded, chosen, { hasCameraFile, providerId: make?.providerId ?? null, ...(make?.model ? { model: make.model } : {}), userPresets: userPresets ?? [] }, (rows) =>
-      setView({ kind: 'running', rows })
+    const run = runPolish(
+      services,
+      recorded,
+      chosen,
+      { hasCameraFile, providerId: make?.providerId ?? null, ...(make?.model ? { model: make.model } : {}), ...(make?.language ? { language: make.language } : {}), userPresets: userPresets ?? [] },
+      (rows) => setView({ kind: 'running', rows })
     )
     runRef.current = run
     run.done.then(
@@ -192,7 +199,13 @@ export function PolishDialog(props: {
       ? LOOKING_FOR_PROVIDERS
       : why
         ? polishSkipText(step, why)
-        : polishHint(step, { silenceAction: options?.silenceAction ?? 'cut', autoZoomOn: zoomSettingsOf(project).auto.enabled, provider, local: chosenId === LOCAL_TRANSCRIBER_ID })
+        : polishHint(step, {
+            silenceAction: options?.silenceAction ?? 'cut',
+            autoZoomOn: zoomSettingsOf(project).auto.enabled,
+            provider,
+            local: chosenId === LOCAL_TRANSCRIBER_ID,
+            bangla: !!transcriber && 'model' in transcriber && transcriber.model === BANGLA_MODEL
+          })
     const disabled = !ready || loading || !!why
     return (
       <li key={step} className="polish-row" data-testid={`polish-row-${step}`} data-available={!loading && !why}>

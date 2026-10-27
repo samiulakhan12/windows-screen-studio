@@ -24,7 +24,7 @@ import { isZoomClick, zoomSettingsOf } from '../engine/zoom'
 import type { FramingOutcome } from '../render/faceFraming'
 import type { CursorTrack, Project, Transcript } from '../types'
 import { applyDirectorPlan, planDirector, type DirectorPlan } from './cameraDirector'
-import type { SpeechModelId } from '../speech/catalog'
+import { speechModel, type SpeechModelId } from '../speech/catalog'
 import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../speech/transcriber'
 import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
@@ -340,8 +340,11 @@ export function autoZoomHasInput(recorded: CursorTrack): boolean {
   return recorded.valid && (recorded.clicks.some((c) => isZoomClick(c, true)) || (recorded.typing?.length ?? 0) > 0)
 }
 
-/** What Polish makes captions with: a key provider, or On this PC with its model; or why it cannot. */
-export type PolishTranscriber = { providerId: string; model?: SpeechModelId } | { skip: 'no-model' | 'no-provider' }
+/**
+ * What Polish makes captions with: a key provider, or On this PC with its model (and, for a model
+ * made for one language, that language); or why it cannot.
+ */
+export type PolishTranscriber = { providerId: string; model?: SpeechModelId; language?: string } | { skip: 'no-model' | 'no-provider' }
 
 /**
  * The transcriber for Polish (docs/design/offline-captions.md §3.8), by the frozen
@@ -349,13 +352,17 @@ export type PolishTranscriber = { providerId: string; model?: SpeechModelId } | 
  * first key provider that can transcribe, else On this PC not ready. A choice that cannot transcribe
  * now (On this PC without a model) skips captions with 'no-model', even when a key provider exists:
  * nothing is uploaded against the user's choice, and Polish never starts a download. `speech` null:
- * On this PC is unavailable (its state could not be read).
+ * On this PC is unavailable (its state could not be read). `language` is the Captions tab's spoken
+ * language this session ('' detects): with Bengali and the Bangla model downloaded, On this PC
+ * makes the captions with it, in Bengali (§14.4); otherwise no language is passed, as before.
  */
-export function polishTranscriber(providers: readonly AiProviderInfo[], speech: SpeechState | null, remembered: string | null): PolishTranscriber {
-  const choice = pickSpeechTranscriber(providers, speech, remembered ?? '')
+export function polishTranscriber(providers: readonly AiProviderInfo[], speech: SpeechState | null, remembered: string | null, language = ''): PolishTranscriber {
+  const choice = pickSpeechTranscriber(providers, speech, remembered ?? '', language)
   if (!choice) return { skip: 'no-provider' }
   if (!canTranscribeNow(choice)) return { skip: 'no-model' }
-  return choice.kind === 'key' ? { providerId: choice.providerId } : { providerId: LOCAL_TRANSCRIBER_ID, model: choice.model }
+  if (choice.kind === 'key') return { providerId: choice.providerId }
+  const only = speechModel(choice.model)?.language
+  return { providerId: LOCAL_TRANSCRIBER_ID, model: choice.model, ...(only ? { language: only } : {}) }
 }
 
 /** The provider captions are made with: the remembered one if it can still transcribe, else the first that can, else null. */

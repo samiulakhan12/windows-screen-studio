@@ -57,6 +57,13 @@
   margin: 0;
 }
 
+/* A row without a radio (the Bangla model is never the model for new captions) keeps the titles aligned. */
+.speech-radio-gap {
+  display: inline-block;
+  flex: none;
+  width: 13px;
+}
+
 .speech-badge {
   padding: 1px 7px;
   border-radius: var(--radius-pill);

@@ -32,11 +32,24 @@ import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import { LOCAL_TRANSCRIBER_ID } from '../../../../shared/api/speech'
-import { speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
-import { doneLine, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
+import { BANGLA_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
+import { doneLine, downloadSpaceNeeded, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
 import { pickTranscriber } from '../../../../shared/speech/transcriber'
-import { availableState, chooseModel, chosenModel, localRun, modelView, startLocalCaptions, useSpeechState } from '../speechState'
-import { isSmallTier, LocalAction, LocalQuality, LocalRunning } from './LocalCaptions'
+import {
+  availableState,
+  chooseModel,
+  chosenModel,
+  downloadThenCaptions,
+  localRun,
+  modelView,
+  onSpeechRead,
+  otherDownload,
+  setSpokenLanguage,
+  spokenLanguage,
+  startLocalCaptions,
+  useSpeechState
+} from '../speechState'
+import { BanglaOffer, banglaOfferApplies, isSmallTier, LocalAction, LocalQuality, LocalRunning } from './LocalCaptions'
 import '../captions.css'
 
 /* ---------- Captions and transcript ---------- */
@@ -77,10 +90,12 @@ const TRANSCRIBER_NAMES: Record<Transcript['provider'], string> = { ...KIND_NAME
 /** Opens the app settings at the AI providers (the settings dialog listens for it). */
 const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } }))
 
-/** Choices remembered for this session (the tab is unmounted while another one is open). */
-const remembered: { provider: string; language: string; source: TranscribeOptions['source']; textProvider: string; translateTo: string; format: SubtitleFormat } = {
+/**
+ * Choices remembered for this session (the tab is unmounted while another one is open). The
+ * spoken language is kept in speechState.ts (spokenLanguage), which Polish reads too.
+ */
+const remembered: { provider: string; source: TranscribeOptions['source']; textProvider: string; translateTo: string; format: SubtitleFormat } = {
   provider: '',
-  language: '',
   source: 'auto',
   textProvider: '',
   translateTo: 'en',
@@ -304,7 +319,9 @@ function GenerateSection({
   const job = useSyncExternalStore(onTranscriptionJob, transcriptionJob)
   const capable = useMemo(() => (providers ?? []).filter((p) => !!p.transcriptionModel), [providers])
   const [provider, setProvider] = useState(remembered.provider)
-  const [language, setLanguage] = useState(remembered.language)
+  // The Spoken language, kept for the session in speechState (Polish reads it too).
+  const language = useSyncExternalStore(onSpeechRead, spokenLanguage)
+  const setLanguage = setSpokenLanguage
   const [source, setSource] = useState<TranscribeOptions['source']>(remembered.source)
   const [open, setOpen] = useState(false)
   // Captions on this PC: until both reads finish only "Checking this PC…" shows; a failed read of
@@ -312,9 +329,11 @@ function GenerateSection({
   const speech = useSpeechState()
   const local = availableState(speech)
   const checking = providers === null || speech.status === 'loading'
-  const choice = checking ? null : pickTranscriber(providers, speech.status === 'ready' ? speech.state : null, provider)
+  // The spoken language picks the model for it: Bengali uses the Bangla model once it is downloaded.
+  const choice = checking ? null : pickTranscriber(providers, speech.status === 'ready' ? speech.state : null, provider, language)
   const localChosen = !!local && choice?.kind === 'local'
-  const model: SpeechModelId | null = local ? chosenModel(local) : null
+  const model: SpeechModelId | null = local ? chosenModel(local, language) : null
+  const banglaAllowed = !!local && !!modelView(local, BANGLA_MODEL)?.allowed
   const localReady = !!local && !!model && modelView(local, model)?.status.state === 'installed'
   const [focusLocal, setFocusLocal] = useState(0)
   const [focusLanguage, setFocusLanguage] = useState(0)
@@ -330,22 +349,39 @@ function GenerateSection({
 
   useEffect(() => {
     remembered.provider = provider
-    remembered.language = language
     remembered.source = source
-  }, [provider, language, source])
+  }, [provider, source])
 
   const confirmReplace = (): boolean =>
     !hasTranscript || window.confirm('Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).')
   // On this PC with a downloaded model (a chip, or "Make them now with …", which selects it).
-  const startLocal = (id: SpeechModelId): void => {
-    if (mine?.running || !confirmReplace()) return
-    chooseModel(id)
+  const startLocal = (id: SpeechModelId, asked = true, spoken = language): void => {
+    if (mine?.running || (asked && !confirmReplace())) return
+    chooseModel(id, spoken)
     clearTranscriptionError()
     const options: TranscribeOptions = { providerId: LOCAL_TRANSCRIBER_ID, model: id, source: stems ? source : 'auto' }
-    if (language) options.language = language
+    if (spoken) options.language = spoken
     void startLocalCaptions(services, options).then((ok) => {
       if (ok) setOpen(false)
     })
+  }
+  // The Bangla model offered under the summary of captions detected as Bengali (§14.4): Bengali
+  // becomes the Spoken language, the form opens (the download shows there) and it starts; a
+  // download that cannot start now (another one runs, offline, no space) leaves the form saying why.
+  const takeBanglaOffer = (): void => {
+    if (mine?.running || !local || !confirmReplace()) return
+    const bangla = modelView(local, BANGLA_MODEL)
+    if (!bangla) return
+    setLanguage('bn')
+    setProvider(LOCAL_TRANSCRIBER_ID)
+    setOpen(true)
+    if (bangla.status.state === 'installed') return startLocal(bangla.id, false, 'bn')
+    chooseModel(bangla.id, 'bn')
+    clearTranscriptionError()
+    const lacksSpace = local.disk.free !== null && local.disk.free < downloadSpaceNeeded(bangla.id, 'received' in bangla.status ? bangla.status.received : 0)
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false
+    if (otherDownload(local, bangla.id) || lacksSpace || offline || bangla.status.state === 'downloading' || bangla.status.state === 'verifying') return
+    void downloadThenCaptions(project.id, bangla.id, { providerId: LOCAL_TRANSCRIBER_ID, model: bangla.id, source: stems ? source : 'auto', language: 'bn' })
   }
   const start = (): void => {
     if (localChosen && model) return startLocal(model)
@@ -391,6 +427,8 @@ function GenerateSection({
     const t = project.transcript!
     const languageName = t.language ? (CAPTION_LANGUAGES.find((l) => l.code === t.language)?.name ?? t.language) : null
     const run = t.provider === 'local' ? localRun(project.id, t) : null
+    // Captions in Bengali made with another model: the Bangla model is offered instead of the "Smaller models…" line.
+    const offerBangla = banglaOfferApplies(local, t)
     return (
       <Section title="Generate">
         {t.provider === 'local' ? (
@@ -410,7 +448,8 @@ function GenerateSection({
                 </button>
               )}
             </p>
-            {isSmallTier(t.model) && t.language && t.language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHintDone}</p>}
+            {!offerBangla && isSmallTier(t.model) && t.language && t.language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHintDone}</p>}
+            {offerBangla && local && <BanglaOffer state={local} onUse={takeBanglaOffer} />}
           </div>
         ) : (
           <p className="hint">
@@ -524,7 +563,7 @@ function GenerateSection({
           ) : (
             <p className="hint local-only">{SPEECH_COPY.localOnly}</p>
           )}
-          {localChosen && model && project.hasAudio && <LocalQuality state={local!} model={model} project={project} chipsRef={chipsRef} />}
+          {localChosen && model && project.hasAudio && <LocalQuality state={local!} model={model} project={project} chipsRef={chipsRef} language={language} />}
           <label className="field">
             <span>Spoken language</span>
             <select ref={languageRef} className="captions-select" aria-label="Spoken language" value={language} onChange={(e) => setLanguage(e.target.value)}>
@@ -551,7 +590,8 @@ function GenerateSection({
               />
             </div>
           )}
-          {smallTier && language && language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHint}</p>}
+          {/* For Bengali the Bangla model's own line says what to choose (LocalQuality), where it is allowed. */}
+          {smallTier && language && language !== 'en' && !(isBengali(language) && banglaAllowed) && <p className="hint warn">{SPEECH_COPY.languageHint}</p>}
           {localChosen && model ? (
             <>
               <LocalAction
