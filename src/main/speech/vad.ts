@@ -43,15 +43,33 @@ export interface SpeechCacheEntry {
 
 /** The detector's state for this session (Settings' line). */
 let detector: { available: boolean; reason?: string } | null = null
-let modelCheck: Promise<boolean> | null = null
+/** The detector model's check, per file. */
+const modelChecks = new Map<string, Promise<boolean>>()
 
 /** Test hooks: forget the session's checks; replace how the helper is chosen. */
 let chooseHelper: () => Promise<HelperChoice> = selectHelper
 export function resetSpeechDetector(choose: () => Promise<HelperChoice> = selectHelper): void {
   detector = null
-  modelCheck = null
+  modelChecks.clear()
   failedFiles.clear()
   chooseHelper = choose
+}
+
+/**
+ * Whether the speech detector model `file` matches its pin (size and SHA-256), checked once per
+ * session. Transcription needs it too: the helper reports a detector model it cannot load as
+ * error `model`, which would blame the Whisper model.
+ */
+export function detectorModelOk(file: string): Promise<boolean> {
+  let check = modelChecks.get(file)
+  if (!check) {
+    check = (async () => {
+      const stat = await fs.stat(file).catch(() => null)
+      return !!stat?.isFile() && stat.size === VAD_MODEL.bytes && (await sha256File(file).catch(() => '')) === VAD_MODEL.sha256
+    })()
+    modelChecks.set(file, check)
+  }
+  return check
 }
 
 /** Whether the detector can run: the helper runs here and the bundled model matches its pin (checked once per session). */
@@ -61,11 +79,7 @@ async function ready(): Promise<{ exe: string; vadModel: string } | null> {
     detector = { available: false, reason: 'the speech helper is not part of this build' }
     return null
   }
-  modelCheck ??= (async () => {
-    const stat = await fs.stat(paths.vadModel).catch(() => null)
-    return !!stat?.isFile() && stat.size === VAD_MODEL.bytes && (await sha256File(paths.vadModel).catch(() => '')) === VAD_MODEL.sha256
-  })()
-  if (!(await modelCheck)) {
+  if (!(await detectorModelOk(paths.vadModel))) {
     detector = { available: false, reason: 'its model is missing or damaged' }
     return null
   }

@@ -245,6 +245,20 @@ describe('localSpeechClient', () => {
     expect(missing.held).toBe(0)
   })
 
+  it('refuses with "part of Flown is missing" when the bundled speech detector model is missing or damaged, never blaming the Whisper model', async () => {
+    const damaged = path.join(h.root, 'silero-damaged.bin')
+    writeFileSync(damaged, readFileSync(VAD).subarray(0, 1000))
+    for (const vadModel of [damaged, path.join(h.root, 'no-such-silero.bin')]) {
+      const store = fakeStore()
+      const message = await failure(localSpeechClient('whisper-tiny', deps(store, { vadModel })))
+      expect(localErrorCode(message)).toBe('unavailable')
+      expect(message).toContain('part of Flown is missing')
+      expect(store.cleared).toEqual([])
+      expect(store.held).toBe(0)
+    }
+    expect(transcribeCalls()).toEqual([])
+  })
+
   describe('failures, each a shared sentence', () => {
     const run = async (mode: string, extra: Record<string, string> = {}, store = fakeStore(), clientDeps: Partial<LocalClientDeps> = {}): Promise<{ message: string; store: ReturnType<typeof fakeStore> }> => {
       process.env.FAKE_SPEECH_MODE = mode

@@ -19,6 +19,7 @@ import type { AiClient, AudioPart, TranscribeCall } from '../ai/types'
 import type { ProjectProcesses } from '../projectProcesses'
 import { commonArgs, markIllegalInstruction, runHelper, selectHelper, spawnFailure, speechHelperPaths, SPEECH_TIMING, type HelperChoice, type SpeechExit } from './helper'
 import type { SpeechModelStore } from './models'
+import { detectorModelOk } from './vad'
 
 export interface LocalClientDeps {
   /** The project's folder (its .cache holds finished parts). */
@@ -109,7 +110,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
   if (block) throw fail('blocked', { model: spec.id, block })
   const modelFile = await store.installedFile(spec.id)
   const vadModel = deps.vadModel ?? speechHelperPaths()?.vadModel
-  if (!vadModel) throw fail('unavailable', { reason: 'missing' })
+  // A missing or damaged detector model is part of Flown missing, never the Whisper model's fault (the helper calls both `model`).
+  if (!vadModel || !(await detectorModelOk(vadModel))) throw fail('unavailable', { reason: 'missing' })
   const release = store.hold(spec.id)
   const baseThreads = speechThreads(deps.cores ?? os.cpus().length)
   /** A detected language heard long enough (language_s >= detectMinSpeech) is used for every later part. */

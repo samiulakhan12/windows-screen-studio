@@ -308,7 +308,9 @@ language?, source })` over `ai:transcribe` (sender check unchanged). The pipelin
    id; ignored for key providers). `transcribeProject` branches on `LOCAL_TRANSCRIBER_ID` before
    `store.get` (no key). `localSpeechClient(model, { projectDir })` rejects with the shared
    sentences of `src/shared/speech/errors.ts`: `localErrorMessage('unavailable', { reason })`
-   when the engine cannot run, `('blocked', { model, block })` when `speechModelBlock` refuses the
+   when the engine cannot run (`missing` also when the bundled speech detector model is missing or
+   fails its check, §3.5: the helper reports that model as error `model` too, which would blame
+   the Whisper model), `('blocked', { model, block })` when `speechModelBlock` refuses the
    model, `('no-model', { model })` when it is not installed and verified. This path never
    downloads. One job per project, as today.
 2. **Decode, as today.** `soundFile` picks the microphone stem when one was kept; ffmpeg decodes
@@ -469,7 +471,8 @@ defaults (`VAD`), but windows and rounding differ, so their ranges can differ by
 Nothing compares them; tests use tolerances.
 
 **The model is checked** (size and SHA-256) once per session before first use; a mismatch makes
-the detector unavailable for the session.
+the detector unavailable for the session, and transcription on this PC (which runs the detector
+inside the helper) refuses with `unavailable` (`missing`).
 
 ### 3.6 What counts as sound, per consumer (pure: `soundtrack.ts`, `voice.ts`, `speech.ts`)
 
@@ -1599,3 +1602,8 @@ Code review of the merged feature (main process), one line each:
   with a negative errno as its code, so runHelper's spawn-error branch never matched and
   transcription treated a quarantined `ssw-speech.exe` as a crash (re-hash, retry, "stopped
   unexpectedly"); the spawn error now wins and the part runner maps it to `unavailable`.
+- **A damaged detector model blamed on the Whisper model** (MAIN-4, §3.2 item 1): the helper calls
+  both models' load failures `model`, so a missing `ggml-silero-v6.2.0.bin` showed "damaged …
+  Download it again", whose download found the Whisper file intact; `localSpeechClient` now runs
+  the detector's once-per-session check first (`detectorModelOk`) and refuses with
+  `unavailable` (`missing`).
