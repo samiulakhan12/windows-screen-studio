@@ -405,11 +405,13 @@ function startMockAi({ ffmpeg, hfFiles = {} }) {
   async function hf(req, res, route, body, rec) {
     const name = route.replace(/^\/+/, '')
     const file = hfState.files[name]
-    const fault = hfState.faults.length ? hfState.faults.shift() : hfState.fault
-    rec.fault = fault
+    const given = hfState.faults.length ? hfState.faults.shift() : hfState.fault
+    rec.fault = given
     rec.range = req.headers.range || null
-    if (fault === 404 || fault === '404' || !file || req.method !== 'GET') return json(res, 404, { error: 'Entry not found' })
-    if (fault === 403 || fault === '403') return json(res, 403, { error: 'Forbidden' })
+    // A fault: { cut, flip, slow, status } or its short form ('flip', 'slow', 404, 403).
+    const fault = given && typeof given === 'object' ? given : given === 'flip' ? { flip: true } : given === 'slow' ? { slow: true } : given ? { status: Number(given) } : {}
+    if (fault.status === 404 || !file || req.method !== 'GET') return json(res, 404, { error: 'Entry not found' })
+    if (fault.status) return json(res, fault.status, { error: 'Refused' })
     const size = fs.statSync(file).size
     const m = /^bytes=(\d+)-$/.exec(req.headers.range || '')
     const from = m ? Number(m[1]) : 0
@@ -420,9 +422,9 @@ function startMockAi({ ffmpeg, hfFiles = {} }) {
     const headers = { 'content-type': 'application/octet-stream', 'content-length': String(size - from), 'accept-ranges': 'bytes' }
     if (from > 0) res.writeHead(206, { ...headers, 'content-range': `bytes ${from}-${size - 1}/${size}` })
     else res.writeHead(200, headers)
-    const cut = fault && typeof fault === 'object' && Number.isFinite(fault.cut) ? fault.cut : Infinity
-    const flipAt = fault === 'flip' ? Math.floor(size / 2) : -1
-    const slow = fault === 'slow'
+    const cut = Number.isFinite(fault.cut) ? fault.cut : Infinity
+    const flipAt = fault.flip ? Math.floor(size / 2) : -1
+    const slow = !!fault.slow
     const fd = fs.openSync(file, 'r')
     try {
       const chunk = Buffer.alloc(slow ? 64 * 1024 : 1024 * 1024)

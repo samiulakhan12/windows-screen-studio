@@ -145,6 +145,7 @@ async function main() {
       const intro = await d.textContent()
       h.assert(/Keys are stored encrypted on this PC and are only sent to the provider you pick\./.test(intro), 'privacy note shown')
       h.assert(/Claude cannot\s+transcribe \(the Claude API does not accept sound\)/.test(intro), 'explains why Claude cannot transcribe')
+      h.assert(intro.includes('No key? Captions can also be made on this PC, free and offline (see Captions on this PC below).'), 'points to captions on this PC')
       h.assert(await win.evaluate(() => document.activeElement?.textContent === '+ Add provider'), 'focus starts inside the dialog')
 
       // The form: OpenAI by default, key hidden until shown, default models.

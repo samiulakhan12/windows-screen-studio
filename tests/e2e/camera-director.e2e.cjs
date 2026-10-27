@@ -17,6 +17,7 @@ const h = require('./helpers.cjs')
 const fx = require('./render-fixtures.cjs')
 const f = require('./editor-fixtures.cjs')
 const { personVideo } = require('./camera-fixtures.cjs')
+const sp = require('./speech-fixtures.cjs')
 
 /** Screenshots of the section and the directed timeline (docs/screenshots/director-*.png) when set to a folder. */
 const SHOTS = process.env.SSW_DIRECTOR_SHOTS || null
@@ -37,21 +38,35 @@ function test(name, body) {
 
 /* ---------- fixtures ---------- */
 
-/** The microphone: talking over 0.5-6, 17-22 and 34-46.5 s (a warbling 180 Hz voice), silent elsewhere. */
+/**
+ * The microphone: real speech (the committed JFK and LibriSpeech clips, tests/fixtures/speech) over
+ * about 0.5-6, 17-22 and 34-46.5 s, silent elsewhere. The speech detector hears it as speech (a
+ * tone would not be), so the director plans from the voice (docs/design/offline-captions.md §10.4).
+ */
 function micAudio() {
   fs.mkdirSync(fx.MEDIA_CACHE, { recursive: true })
-  const file = path.join(fx.MEDIA_CACHE, `director-mic-${SECONDS}s.m4a`)
+  const file = path.join(fx.MEDIA_CACHE, `director-mic-speech-${SECONDS}s.m4a`)
   if (fs.existsSync(file)) return file
   const tmp = `${file}.part.m4a`
-  const expr = `0.5*(between(t,0.5,6)+between(t,17,22)+between(t,34,46.5))*(0.6+0.4*sin(2*PI*4*t))*sin(2*PI*180*t)`
-  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `aevalsrc='${expr}':s=48000:d=${SECONDS}`, '-c:a', 'aac', '-b:a', '128k', tmp])
+  // [input, from, to (in the clip), at (in the recording)]: JFK speaks from 0.32 s, LibriSpeech from 0.58 s.
+  const pieces = [
+    [0, 0, 5.82, 0.18],
+    [1, 0, 5.5, 16.42],
+    [0, 0, 11, 33.68],
+    [1, 0.58, 1.78, 45.3]
+  ]
+  const graph = [
+    ...pieces.map(([i, a, b, at], k) => `[${i}:a]atrim=${a}:${b},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=mono,adelay=${Math.round(at * 1000)}:all=1[p${k}]`),
+    `${pieces.map((_, k) => `[p${k}]`).join('')}amix=inputs=${pieces.length}:normalize=0,apad=whole_dur=${SECONDS},atrim=0:${SECONDS}[out]`
+  ].join(';')
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', sp.JFK, '-i', sp.LS, '-filter_complex', graph, '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', tmp])
   fs.renameSync(tmp, file)
   return file
 }
 
 /** The grey screen with the voice as its (mixed) sound, as a recording with sound always has it. */
 function screenWithSound() {
-  const file = path.join(fx.MEDIA_CACHE, `director-screen-${SECONDS}s.mp4`)
+  const file = path.join(fx.MEDIA_CACHE, `director-screen-speech-${SECONDS}s.mp4`)
   if (fs.existsSync(file)) return file
   const tmp = `${file}.part.mp4`
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', fx.solidVideo({ seconds: SECONDS }), '-i', micAudio(), '-map', '0:v', '-map', '1:a', '-c', 'copy', '-shortest', '-movflags', '+faststart', tmp])
@@ -257,6 +272,8 @@ async function shot(locator, name) {
 
 async function main() {
   await test('Direct: the plan before applying, preview equals export, the face centred, one undo step', fx.withHome('director-direct', async (ctx, home) => {
+    // The plan comes from the speech detector: it must be there (never a silent fallback to the level).
+    sp.requireSpeechAssets({ model: false })
     await seedDirector(home, { id: 'dir-a', name: 'Director A' })
     const { app, win, logs } = await h.launch({ home, args: WEBGL })
     ctx.app = app
@@ -434,6 +451,19 @@ async function main() {
     h.assert(p.layouts.length === 1, `exactly one change (${layoutsText(p.layouts)})`)
     const s = p.layouts[0]
     h.assert(s.auto && s.layout === 'default' && s.corner === 'bottom-left' && near(s.start, 7.5, 0.5) && near(s.end, 48, 0.01), `the bubble bottom left from about 7.5 s to the end (${fmt(s)})`)
+  }))
+
+  await test('Without the speech detector the level decides, as before: the same plan from the microphone', fx.withHome('director-level', async (ctx, home) => {
+    await seedDirector(home, { id: 'dir-l', name: 'Director L' })
+    const { app, win, logs } = await h.launch({ home, args: WEBGL, env: { SSW_SPEECH_HELPER: '/nonexistent' } })
+    ctx.app = app
+    ctx.logs = logs
+    await fx.openProject(win, 'Director L')
+    await openCameraTab(win)
+    const plan = await planOf(win, 5)
+    console.log(`  plan (level): ${plan.parts.map((p) => p.text).join(' | ')}`)
+    h.assert(plan.parts.map((p) => p.kind).join(',') === 'intro,hidden,corner,hidden,outro', `the plan's parts (${plan.parts.map((p) => p.kind)})`)
+    h.assert((await win.$eval('[data-testid="director-source"]', (e) => e.dataset.source)) === 'mic', 'it listens to the microphone')
   }))
 
   await test('No WebGL: face framing is unavailable, the rest is directed', fx.withHome('director-nowebgl', async (ctx, home) => {
