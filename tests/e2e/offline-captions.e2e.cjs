@@ -258,7 +258,7 @@ function processesWith(needle) {
     await f.waitFor(() => readJson(path.join(dir, 'speech.json'))?.defaultModel === 'whisper-tiny', 'a download from the Captions tab becomes the default', 15000)
   }))
 
-  await test('offline captions: a damaged download, 404, 403; Settings stops and continues a download; closing the editor lets it finish without starting captions', fx.withHome('oc-failures', async (ctx, home) => {
+  await test('offline captions: a damaged download, 404, 403; closing the editor lets a download finish without starting captions', fx.withHome('oc-failures', async (ctx, home) => {
     sp.seedSpeechProject(home, { name: 'Failures' })
     const { app, win } = await launch(ctx, home, mock)
     const dir = await modelsDir(app)
@@ -290,47 +290,44 @@ function processesWith(needle) {
     await win.click('[data-testid="local-download"]')
     await f.waitFor(async () => (await win.textContent('[data-testid="local-captions"]')).includes('Hugging Face or your network refused the download (HTTP 403)'), 'the refused copy', 20000)
 
-    // Settings: a slow download, Cancel → "Stopped at …", Continue completes it.
-    await win.click('[data-testid="local-captions"] ~ * button:has-text("Manage speech models…"), button:has-text("Manage speech models…")')
-    const section = win.locator('[data-testid="speech-models"]')
-    await section.waitFor()
+    // Closed during a download (Standard, tried again after the 403): the download finishes, and reopening shows ready without starting captions.
+    mock.hf.files[BASE.file] = baseModel()
     mock.hf.fault = 'slow'
-    // The row still shows the 404 (Download failed: …) with Try again.
-    h.assert((await section.locator('[data-model="whisper-tiny"]').textContent()).includes('Download failed: '), 'the row shows the failure')
-    await section.locator('[data-model="whisper-tiny"] .speech-actions button:has-text("Try again")').click()
-    await f.waitFor(async () => (await section.locator('[data-model="whisper-tiny"]').getAttribute('data-state')) === 'downloading', 'the row downloads')
-    await h.sleep(1500)
-    await section.locator('[data-model="whisper-tiny"] button:has-text("Cancel")').click()
-    const row = section.locator('[data-model="whisper-tiny"]')
-    await f.waitFor(async () => {
-      const text = await row.textContent()
-      return /Stopped at \d+ of 44 MB/.test(text) || `${await row.getAttribute('data-state')}: ${text.slice(-160)}`.startsWith('#')
-    }, 'Settings shows "Stopped at …"', 15000).catch(async (err) => {
-      throw new Error(`${err.message}; the row: ${await row.getAttribute('data-state')} ${await row.textContent()}`)
-    })
-    mock.hf.fault = null
-    await section.locator('[data-model="whisper-tiny"] button:has-text("Continue")').click()
-    await f.waitFor(async () => (await section.locator('[data-model="whisper-tiny"]').getAttribute('data-state')) === 'installed', 'Continue completes it', 60000)
-    if (SHOTS) await section.screenshot({ path: path.join(SHOTS, 'offline-captions-settings.png') })
-    await win.click('.settings-modal button:has-text("Done")')
-    // Remove it again for the next case (no question: straight through the API).
-    await win.evaluate(() => window.api.removeSpeechModel('whisper-tiny'))
-
-    // Closed during a download: the download finishes, and reopening shows ready without starting captions.
-    await waitState(win, 'needs-model')
-    await win.click('[data-testid="local-model"] [role="radio"]:has-text("Fast")')
-    mock.hf.fault = 'slow'
-    await win.click('[data-testid="local-download"]')
+    await win.click('[data-testid="local-captions"] button:has-text("Try again")')
     await waitState(win, 'downloading')
     await closeEditor(win)
     mock.hf.fault = null
-    await f.waitFor(() => fs.existsSync(path.join(dir, sp.TEST_MODEL.file)), 'the download finishes after the editor closed', 120000)
+    await f.waitFor(() => fs.existsSync(path.join(dir, BASE.file)), 'the download finishes after the editor closed', 120000)
     await h.sleep(1000)
     await f.openProject(win, 'Failures')
     await openTab(win, 'Captions')
     await waitState(win, 'ready')
     await h.sleep(2000)
     h.assert((await cardState(win)) === 'ready' && !h.readProject(home, 'rec-speech').transcript, 'no captions started by themselves')
+  }))
+
+  await test('offline captions: Settings stops a download ("Stopped at …") and Continue completes it', fx.withHome('oc-stop', async (ctx, home) => {
+    sp.seedSpeechProject(home, { name: 'Stop' })
+    const { win } = await launch(ctx, home, mock)
+    await f.openProject(win, 'Stop')
+    await openTab(win, 'Captions')
+    await waitState(win, 'needs-model')
+    await win.click('button:has-text("Manage speech models…")')
+    const section = win.locator('[data-testid="speech-models"]')
+    await section.waitFor()
+    mock.hf.fault = 'slow'
+    await section.locator('[data-model="whisper-tiny"] button:has-text("Download 44 MB")').click()
+    await f.waitFor(async () => (await section.locator('[data-model="whisper-tiny"]').getAttribute('data-state')) === 'downloading', 'the row downloads')
+    await h.sleep(1500)
+    await section.locator('[data-model="whisper-tiny"] button:has-text("Cancel")').click()
+    const row = section.locator('[data-model="whisper-tiny"]')
+    await f.waitFor(async () => /Stopped at \d+ of 44 MB/.test(await row.textContent()), 'Settings shows "Stopped at …"', 15000).catch(async (err) => {
+      throw new Error(`${err.message}; the row: ${await row.getAttribute('data-state')} ${await row.textContent()}`)
+    })
+    mock.hf.fault = null
+    await section.locator('[data-model="whisper-tiny"] button:has-text("Continue")').click()
+    await f.waitFor(async () => (await section.locator('[data-model="whisper-tiny"]').getAttribute('data-state')) === 'installed', 'Continue completes it', 60000)
+    if (SHOTS) await section.screenshot({ path: path.join(SHOTS, 'offline-captions-settings.png') })
   }))
 
   await test('offline captions: Generate makes captions with real word timings; badge and notice on another tab; one undo removes them', fx.withHome('oc-generate', async (ctx, home) => {
