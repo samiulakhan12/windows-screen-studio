@@ -4,16 +4,30 @@
 // name or publisher in its file properties is caught before it ships. Works on any OS: it reads the asar header and the PE resources directly.
 //   node scripts/verify-dist.mjs [dist directory]      (default: dist)
 // Exits 1 on a problem. Prints the install and installer sizes.
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { brotliCompressSync, constants as zlib } from 'node:zlib'
 
 const require = createRequire(import.meta.url)
 const { readAsarHeader, listAsar } = require('./lib/asar.cjs')
-const { checkWindowsExe, parsePe, readIconGroups, readVersionStrings } = require('./lib/pe.cjs')
+const { checkWindowsExe, parsePe, readIconGroups, readImports, readVersionStrings } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
-const { FFMPEG_EXE, nativeHelper, nativeHelperStatus, runtimePackages, signedFiles } = require('./lib/packaging.cjs')
+const {
+  FFMPEG_EXE,
+  nativeHelper,
+  nativeHelperStatus,
+  noticesProblems,
+  runtimePackages,
+  signedFiles,
+  SPEECH_BUDGET,
+  SPEECH_IMPORTS,
+  speechHelperStatus,
+  unexpectedSpeechImports,
+  VAD_PIN
+} = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const distDir = path.resolve(root, process.argv[2] ?? 'dist')
@@ -114,6 +128,61 @@ if (existsSync(helperOut)) {
   fail(`${nativeHelper().from} is usable but resources/${nativeHelper().to} was not packaged`)
 } else {
   note(`native capture helper not bundled${helper.present ? ` (${nativeHelper().from}: ${helper.reason})` : ''}: recordings use Chromium capture (OS cursor in the video)`)
+}
+
+// 4b. Speech: the two helpers (x64, system DLLs only), the speech detector model (its pin), the
+// notices, and the speech payload's budget (docs/design/offline-captions.md §6.3).
+const resources = path.join(unpacked, 'resources')
+const payload = []
+for (const h of speechHelperStatus()) {
+  const out = path.join(resources, h.to)
+  if (!existsSync(out)) {
+    if (h.bundle) fail(`${h.from} is usable but resources/${h.to} was not packaged`)
+    else if (process.env.SSW_REQUIRE_NATIVE === '1') fail(`the speech helper resources/${h.to} is missing and SSW_REQUIRE_NATIVE=1 (${h.present ? h.reason : 'not built'})`)
+    else note(`speech helper resources/${h.to} not bundled${h.present ? ` (${h.from}: ${h.reason})` : ''}: captions on this PC unavailable, the speech detector falls back to sound levels`)
+    continue
+  }
+  const check = checkWindowsExe(out)
+  if (!check.ok) {
+    fail(`resources/${h.to}: ${check.reason}`)
+    continue
+  }
+  const imports = readImports(readFileSync(out))
+  const bad = unexpectedSpeechImports(imports)
+  if (bad.length) fail(`resources/${h.to} imports ${bad.join(', ')}; only ${SPEECH_IMPORTS.join(', ')} are allowed`)
+  else ok(`speech helper (${h.build}): resources/${h.to} (${Math.round(check.size / 1024)} KB), imports ${imports.join(', ')}`)
+  payload.push(out)
+}
+const vadFile = path.join(resources, 'speech', VAD_PIN.file)
+if (!existsSync(vadFile)) fail(`resources/speech/${VAD_PIN.file} is missing`)
+else {
+  const buf = readFileSync(vadFile)
+  const hash = createHash('sha256').update(buf).digest('hex')
+  if (buf.length !== VAD_PIN.bytes || hash !== VAD_PIN.sha256) fail(`resources/speech/${VAD_PIN.file} is not the pinned model (${buf.length} bytes, SHA-256 ${hash})`)
+  else ok(`speech detector model: resources/speech/${VAD_PIN.file}, SHA-256 matches the pin`)
+  payload.push(vadFile)
+}
+const modelMd = path.join(resources, 'speech', 'MODEL.md')
+if (!existsSync(modelMd)) fail('resources/speech/MODEL.md is missing')
+else payload.push(modelMd)
+const noticesFile = path.join(resources, 'THIRD_PARTY_NOTICES.txt')
+if (!existsSync(noticesFile)) fail('resources/THIRD_PARTY_NOTICES.txt is missing')
+else {
+  const problems = noticesProblems(readFileSync(noticesFile, 'utf8'))
+  if (problems.length) fail(`resources/THIRD_PARTY_NOTICES.txt ${problems.join('; ')}`)
+  else ok(`third-party notices: resources/THIRD_PARTY_NOTICES.txt (${mb(statSync(noticesFile).size)})`)
+  payload.push(noticesFile)
+}
+{
+  // Compressed the way an installer would: one solid stream, brotli quality 11 with a 16 MB window.
+  const brotli = (buf) => brotliCompressSync(buf, { params: { [zlib.BROTLI_PARAM_QUALITY]: 11, [zlib.BROTLI_PARAM_LGWIN]: 24, [zlib.BROTLI_PARAM_SIZE_HINT]: buf.length } }).length
+  const files = payload.map((f) => ({ name: path.relative(resources, f).split(path.sep).join('/'), buf: readFileSync(f) }))
+  for (const f of files) note(`speech payload: ${f.name} ${f.buf.length} B raw, ${brotli(f.buf)} B brotli`)
+  const raw = files.reduce((t, f) => t + f.buf.length, 0)
+  const packed = brotli(Buffer.concat(files.map((f) => f.buf)))
+  const line = `speech payload: ${files.length} files, ${raw} B installed (budget ${SPEECH_BUDGET.installed} B), ${packed} B brotli-compressed (budget ${SPEECH_BUDGET.compressed} B)`
+  if (raw > SPEECH_BUDGET.installed || packed > SPEECH_BUDGET.compressed) fail(line)
+  else ok(line)
 }
 
 // 5. Our icon is embedded in the app exe and the installer (F33).

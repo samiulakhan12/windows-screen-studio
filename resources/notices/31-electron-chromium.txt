@@ -1,0 +1,6 @@
+Electron and Chromium
+https://www.electronjs.org/ and https://www.chromium.org/
+Flown runs on Electron, which includes Chromium, Node.js and their third-party components. The
+Electron licence (MIT) is reproduced below with the other packages. The licences of Chromium and
+of every component it includes are installed with Flown as LICENSES.chromium.html, next to
+Flown.exe, and Electron's own LICENSE file is installed there too.

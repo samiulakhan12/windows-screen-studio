@@ -90,7 +90,7 @@ mod os {
         unsafe { prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0) };
         // The parent may have died before the call above.
         if unsafe { getppid() } as u32 != pid {
-            std::process::exit(crate::protocol::EXIT_CANCELLED);
+            crate::protocol::hard_exit(crate::protocol::EXIT_CANCELLED);
         }
     }
 
@@ -185,7 +185,7 @@ mod os {
             let err = unsafe { GetLastError() };
             if err == ERROR_INVALID_PARAMETER {
                 // No such process: the parent is already gone.
-                std::process::exit(crate::protocol::EXIT_CANCELLED);
+                crate::protocol::hard_exit(crate::protocol::EXIT_CANCELLED);
             }
             super::log(&format!("parent watch: cannot open process {pid} (error {err})"));
             return;
@@ -193,7 +193,7 @@ mod os {
         let h = h as usize;
         std::thread::spawn(move || {
             unsafe { WaitForSingleObject(h as Handle, INFINITE) };
-            std::process::exit(crate::protocol::EXIT_CANCELLED);
+            crate::protocol::hard_exit(crate::protocol::EXIT_CANCELLED);
         });
     }
 
