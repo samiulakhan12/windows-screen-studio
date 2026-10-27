@@ -92,6 +92,10 @@ export const availableState = (r: SpeechRead): SpeechState | null => (r.status =
 /** The view of model `id`. */
 export const modelView = (state: Pick<SpeechState, 'models'>, id: SpeechModelId): SpeechModelView | null => state.models.find((m) => m.id === id) ?? null
 
+/** The model other than `id` that is downloading or being checked, or null: the main process downloads one at a time. */
+export const otherDownload = (state: Pick<SpeechState, 'models'>, id: SpeechModelId): SpeechModelView | null =>
+  state.models.find((m) => m.id !== id && (m.status.state === 'downloading' || m.status.state === 'verifying')) ?? null
+
 /* ---------- the quality chosen for this session ---------- */
 
 let sessionModel: SpeechModelId | null = null
@@ -156,6 +160,13 @@ export function dropIntent(projectId: string): void {
  * Never starts captions for another project. A failure while another tab is open gives a notice.
  */
 export async function downloadThenCaptions(projectId: string, model: SpeechModelId, options: TranscribeOptions): Promise<void> {
+  // The main process would refuse it while another model downloads: that download keeps its intent
+  // (the Captions tab does not offer this; a click on a stale state is dropped here).
+  const busy = read.status === 'ready' ? otherDownload(read.state, model) : null
+  if (busy) {
+    console.warn(`The speech model ${model} was not downloaded: ${busy.id} is downloading.`)
+    return
+  }
   intents.set(projectId, { model, options: { ...options, providerId: LOCAL_TRANSCRIBER_ID, model } })
   sessionModel = model
   emit()

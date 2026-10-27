@@ -169,6 +169,10 @@ export const useInstalledLabel = (id: SpeechModelId): string => `Make them now w
 /** Not enough space for a download. */
 export const diskLine = (id: SpeechModelId, free: number): string => `Not enough free space: the model needs ${sizeWords(speechModel(id)!.bytes)} and the disk has ${sizeWords(free)} free.`
 
+/** Why `id` cannot be downloaded now: the main process downloads one speech model at a time. */
+export const downloadBusyLine = (busy: SpeechModelId, id: SpeechModelId): string =>
+  `${tierLabel(busy)} is downloading, and one speech model downloads at a time: download ${tierName(id)} once it is done.`
+
 /** Free space a download of `id` needs: the bytes not here yet and the 64 MiB the main process keeps spare (download.ts). */
 export const downloadSpaceNeeded = (id: SpeechModelId, received = 0): number => Math.max(0, speechModel(id)!.bytes - received) + 64 * 2 ** 20
 

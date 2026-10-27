@@ -105,6 +105,12 @@ vi.stubGlobal(
 )
 
 let store: { state: Record<string, unknown>; update: (fn: (p: Record<string, unknown>) => Record<string, unknown>) => void }
+const editor = {
+  get store() {
+    return store
+  },
+  player: {}
+}
 
 vi.doMock('react', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -142,8 +148,8 @@ vi.doMock('react', async (importOriginal) => ({
     })
   },
   useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => get(),
-  // useEditor() is the only context the rendered components read.
-  useContext: () => ({ store, player: {} })
+  // useEditor() is the only context the rendered components read: one object, as a provider gives.
+  useContext: () => editor
 }))
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
@@ -707,6 +713,59 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(calls.confirm).toHaveLength(2)
     expect(calls.download).toEqual(['whisper-small'])
     store.state = { ...store.state, transcript: undefined }
+  })
+
+  it('while one model downloads, another tier cannot be downloaded: the first one still makes captions (UI-3)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState())
+    const dl = deferred<void>()
+    replies.download = () => dl.promise
+    render(m.panel, host('p1'))
+    await flush()
+    let out = render(m.panel, host('p1'))
+    click(out, 'Download 60 MB and make captions')
+    // The main process says it is downloading; the user picks Fast.
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'downloading', received: 20e6, total: 60e6, bytesPerSecond: 0 } } }))
+    ;(m.speech as unknown as { loadSpeechState(force: boolean): void }).loadSpeechState(true)
+    await flush()
+    out = render(m.panel, host('p1'))
+    ;(chips(out)[0].props.onClick as () => void)()
+    out = render(m.panel, host('p1'))
+    const button = byTest(out, 'local-download')[0]
+    expect(button.props['aria-disabled']).toBe('true')
+    expect(button.props['aria-describedby']).toBe('local-download-why')
+    const why = out.find((e) => e.props.id === 'local-download-why')
+    expect(textOf(why?.props.children)).toBe('Standard (Whisper base) is downloading, and one speech model downloads at a time: download Fast once it is done.')
+    click(out, 'Download 44 MB and make captions')
+    expect(calls.download).toEqual(['whisper-base'])
+    // Standard's "then make captions" still stands.
+    dl.resolve()
+    await flush()
+    await flush()
+    expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-base', source: 'auto' }])
+  })
+
+  it('download, then captions keeps the pending intent when another model is downloading (UI-3)', async () => {
+    const speech = m.speech as unknown as {
+      loadSpeechState(force: boolean): void
+      downloadThenCaptions(projectId: string, model: string, options: unknown): Promise<void>
+      captionsIntent(projectId: string): { model: string } | null
+    }
+    replies.speech = () => Promise.resolve(speechState())
+    speech.loadSpeechState(true)
+    await flush()
+    replies.download = () => new Promise(() => undefined)
+    void speech.downloadThenCaptions('p1', 'whisper-base', { providerId: 'local' })
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'downloading', received: 0, total: 60e6, bytesPerSecond: 0 } } }))
+    speech.loadSpeechState(true)
+    await flush()
+    // The main process would refuse it: the intent of the running download is not replaced.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    void speech.downloadThenCaptions('p1', 'whisper-tiny', { providerId: 'local' })
+    await flush()
+    warn.mockRestore()
+    expect(calls.download).toEqual(['whisper-base'])
+    expect(speech.captionsIntent('p1')?.model).toBe('whisper-base')
   })
 
   it('download, then captions: nothing starts once the editor closed', async () => {

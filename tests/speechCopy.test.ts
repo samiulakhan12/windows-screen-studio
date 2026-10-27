@@ -31,6 +31,7 @@ describe('the Captions tab names a model by its tier first', () => {
       namesTierFirst(copy.downloadButton(id).label)
       namesTierFirst(copy.downloadButton(id).name)
       namesTierFirst(copy.useInstalledLabel(id))
+      namesTierFirst(copy.downloadBusyLine(id, 'whisper-base'))
       namesTierFirst(copy.downloadingLine(id, { state: 'downloading', received: 21e6, total: 60e6, bytesPerSecond: 4.2e6 }))
       namesTierFirst(copy.downloadFailed(id, { state: 'failed', received: 0, total: 0, error: 'missing', message: '' }, null).text)
       namesTierFirst(copy.memoryWarning(id, 1e6) ?? '')
@@ -79,6 +80,7 @@ describe('every state has its copy', () => {
     expect(copy.stoppedLine({ received: 21e6, total: 60e6 })).toBe('Download stopped at 21 of 60 MB.')
     expect(copy.deletePartLabel(21e6)).toBe('Delete the 21 MB downloaded')
     expect(copy.continueDownload).toBe('Continue download and make captions')
+    expect(copy.downloadBusyLine('whisper-base', 'whisper-tiny')).toBe('Standard (Whisper base) is downloading, and one speech model downloads at a time: download Fast once it is done.')
   })
 
   it('every download failure', () => {

@@ -14,6 +14,7 @@ import {
   deletePartLabel,
   diskLine,
   downloadAgainLabel,
+  downloadBusyLine,
   downloadButton,
   downloadFailed,
   downloadSpaceNeeded,
@@ -47,7 +48,8 @@ import {
   loadSpeechState,
   modelView,
   offered,
-  onSpeechRead
+  onSpeechRead,
+  otherDownload
 } from '../speechState'
 
 /*
@@ -239,9 +241,20 @@ export function LocalAction({
 
   if (!view) return null
   const download = (id: SpeechModelId = model): void => {
-    if (!confirmReplace()) return
+    if (otherDownload(state, id) || !confirmReplace()) return
     clearTranscriptionError()
     void downloadThenCaptions(project.id, id, { ...options, providerId: LOCAL_TRANSCRIBER_ID, model: id })
+  }
+  // While another model downloads, the buttons that download `id` are aria-disabled with this line.
+  const busyProps = (id: SpeechModelId): { 'aria-disabled'?: 'true'; 'aria-describedby'?: string } =>
+    otherDownload(state, id) ? { 'aria-disabled': 'true', 'aria-describedby': 'local-download-why' } : {}
+  const busyLine = (id: SpeechModelId): ReactNode => {
+    const busy = otherDownload(state, id)
+    return busy ? (
+      <p className="hint warn" id="local-download-why">
+        {downloadBusyLine(busy.id, id)}
+      </p>
+    ) : null
   }
   const cancelDownload = (discard = false): void => {
     dropIntent(project.id)
@@ -281,7 +294,8 @@ export function LocalAction({
       const button = downloadButton(view.id)
       const lacksSpace = state.disk.free !== null && state.disk.free < spaceNeeded(view)
       const offline = !online()
-      const blocked = lacksSpace || offline
+      const busy = !!otherDownload(state, view.id)
+      const blocked = lacksSpace || offline || busy
       const other = lm.installed && lm.model !== view.id ? lm.model : null
       return box(
         <div className="local-card">
@@ -308,7 +322,8 @@ export function LocalAction({
               </button>
             )}
           </div>
-          {lacksSpace && (
+          {busyLine(view.id)}
+          {!busy && lacksSpace && (
             <p className="hint warn" id="local-download-why">
               {diskLine(view.id, state.disk.free!)}{' '}
               <button type="button" className="link" onClick={() => loadSpeechState(true)}>
@@ -316,7 +331,7 @@ export function LocalAction({
               </button>
             </p>
           )}
-          {!lacksSpace && offline && (
+          {!busy && !lacksSpace && offline && (
             <p className="hint warn" id="local-download-why">
               {SPEECH_COPY.offline(sizeOf(view.id))}
             </p>
@@ -387,13 +402,14 @@ export function LocalAction({
           </h4>
           <p>{stoppedLine(s)}</p>
           <div className="local-actions">
-            <button ref={primaryRef} type="button" className="btn primary" onClick={() => download()}>
+            <button ref={primaryRef} type="button" className="btn primary" {...busyProps(view.id)} onClick={() => download()}>
               {continueDownload}
             </button>
             <button type="button" className="btn ghost" onClick={() => cancelDownload(true)}>
               {deletePartLabel(s.received)}
             </button>
           </div>
+          {busyLine(view.id)}
         </div>,
         cloud
       )
@@ -414,7 +430,7 @@ export function LocalAction({
           <div className="captions-error" role="alert">
             <p>{failed.text}</p>
             <div className="local-actions">
-              <button ref={primaryRef} type="button" className="btn" onClick={action.run}>
+              <button ref={primaryRef} type="button" className="btn" {...(failed.action === 'try-again' ? busyProps(view.id) : {})} onClick={action.run}>
                 {action.label}
               </button>
               {failed.action === 'choose-tier' && capable.length > 0 && (
@@ -424,6 +440,7 @@ export function LocalAction({
               )}
             </div>
           </div>
+          {failed.action === 'try-again' && busyLine(view.id)}
         </div>,
         cloud
       )
@@ -439,7 +456,7 @@ export function LocalAction({
             <p>Captions could not be made: {job!.error}</p>
             <div className="local-actions">
               {code === 'damaged' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => download(failedModel)}>
+                <button ref={primaryRef} type="button" className="btn" {...busyProps(failedModel)} onClick={() => download(failedModel)}>
                   {downloadAgainLabel(failedModel)}
                 </button>
               )}
@@ -466,6 +483,7 @@ export function LocalAction({
               </button>
             </div>
           </div>
+          {code === 'damaged' && busyLine(failedModel)}
         </>
       )
     }
