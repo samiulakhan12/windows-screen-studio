@@ -167,7 +167,7 @@ export interface PolishSummary {
   framing: FramingOutcome | null
   /** Captions written (0 unless the captions step changed the project). */
   captions: number
-  /** With captions left out (transcriptLeftOut): the output second the written ones stop at, else null. */
+  /** With captions left out (transcriptLeftOut): the video second (past the pause freezes) the written ones stop at, else null. */
   captionsLeftOutAfter: number | null
   /** Name of the preset applied or matched, or null. */
   style: string | null
@@ -399,7 +399,7 @@ So preview and export match by construction. No function in `compositor.ts`, `pl
 - **Face framing unavailable** (no WebGL, or the segmenter failed): the outcome is `'unavailable'`. `applyDirectorPlan` writes everything except the framing, and the summary line uses `framingLine` ("Face framing is unavailable: … The rest of the camera track was directed.").
 - **An automatic camera block you deleted** comes back. This is Direct again's rule, and `AUTO_LAYOUT_HINT` already tells you to change a block instead of deleting it.
 - **Long recordings.** `planPolish` runs twice (probe, then commit). Its most expensive step, `planDirector`, already runs live in the Camera tab (`safePlan`, debounced).
-- **Transcript size** is capped at `MAX_CAPTIONS` = 5000 by `readTranscript`. `fetchTranscript` says whether captions were left out (`leftOut`), the runner passes it as `PolishInput.transcriptLeftOut`, and `planPolish` sets `summary.captionsLeftOutAfter` to the output second the kept captions end at, on the **polished** clips. The captions line then adds the same sentence `transcribe()` shows.
+- **Transcript size** is capped at `MAX_CAPTIONS` = 5000 by `readTranscript`. `fetchTranscript` says whether captions were left out (`leftOut`), the runner passes it as `PolishInput.transcriptLeftOut`, and `planPolish` sets `summary.captionsLeftOutAfter` to the video second the kept captions end at (`videoTimeAt`, so past the pause freezes, as the Transport), on the **polished** clips. The captions line then adds the same sentence `transcribe()` shows.
 - **A transcription already running** from the Captions tab disables the Captions row (`'busy'`). If that job finishes during the run, its own `transcribe()` writes its own undo step before polish's. The commit then plans from that project and skips captions with `'has-captions'`.
 
 ### 4.6 How it interacts with the other wave features
@@ -784,7 +784,7 @@ The `openSeeded` media swap and `waitSaved` (`.save-state[data-state="saved"]`) 
 ## 13. As built (differences from the first draft)
 
 - **Crop and freezes (E-10, E-11).** Auto zoom calls `regenerateInFrame` and the director plans on `cropView` (4.1, 4.6). `polishKeepRanges` appends `freezeKeepRanges(project.freezes)`; E-11's function takes the freeze list, not the project. `summary.saved` uses `videoDuration` with `planOf` (freeze-frame.md asks polish to report it). On this branch both features are identity stubs, so the unit tests check what polish guarantees: the crop and freezes are carried through and freeze anchors are kept.
-- **Captions left out.** `FetchedTranscript` carries `leftOut: boolean` instead of a ready `notice`: the notice names the output time where the kept captions stop, and that time depends on the polished clips, which only the planner knows. `PolishInput.transcriptLeftOut` and `PolishSummary.captionsLeftOutAfter` were added for it.
+- **Captions left out.** `FetchedTranscript` carries `leftOut: boolean` instead of a ready `notice`: the notice names the video time where the kept captions stop, and that time depends on the polished clips, which only the planner knows. `PolishInput.transcriptLeftOut` and `PolishSummary.captionsLeftOutAfter` were added for it.
 - **`fetchTranscript`** resolves `{ error }` at once, and leaves the job alone, when a transcription is already running. It ends the job itself on success; an error stays on the job, as with `transcribe()`.
 - **Row order.** The options, running and summary views all list the steps in `POLISH_STEPS` order (the contract's comment), not in the order of the table in section 5.
 - **Summary lines of skipped steps** start with the step's name ("Auto zoom: no clicks were captured"), because a line like "Not selected" or "No clicks were captured" does not say which step it is about in the summary. The failed-captions line keeps its own wording. 'off' reads "Not selected" ("The current look is kept" for Style).

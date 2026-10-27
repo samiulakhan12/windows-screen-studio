@@ -8,9 +8,8 @@ import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../..
 import { displayTime } from '../../../../shared/editor/clips'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
-import { planOf } from '../../../../shared/engine/freeze'
+import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
-import { viewingTime } from '../../../../shared/render/overlays'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
 import type { CaptionPreset, CaptionSegment, CaptionSettings, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -746,6 +745,8 @@ function TranscriptSection({
   const keymap = useKeymap()
   const segments = transcript.segments
   const clips = project.clips
+  // Row times in video time (past the pause freezes), as the Transport and the subtitle files.
+  const plan = planOf(project)
   const listRef = useRef<HTMLOListElement>(null)
   const [find, setFind] = useState('')
   const [replace, setReplace] = useState('')
@@ -875,6 +876,7 @@ function TranscriptSection({
       <ol className="caption-list" ref={listRef}>
         {shown.map((s, k) => {
           const isLast = shownPage * PAGE + k === segments.length - 1
+          const at = formatTime(videoTimeAt(clips, plan, s.start))
           return (
             <li
               key={s.id}
@@ -882,12 +884,12 @@ function TranscriptSection({
               className={`caption-row ${selectedId === s.id ? 'selected' : ''} ${currentId === s.id ? 'current' : ''} ${find && matchIds.has(s.id) ? 'match' : ''}`}
             >
               <button className="caption-time" title="Go to this caption" onClick={() => go(s.id)}>
-                {formatTime(viewingTime(clips, s.start))}
+                {at}
               </button>
               <textarea
                 className="caption-text"
                 rows={Math.min(4, Math.max(1, Math.ceil(s.text.length / 34)))}
-                aria-label={`Caption at ${formatTime(viewingTime(clips, s.start))}`}
+                aria-label={`Caption at ${at}`}
                 value={s.text}
                 onFocus={() => selectedId !== s.id && onSelect({ kind: 'caption', id: s.id })}
                 onChange={(e) => setText(s.id, e.target.value)}
