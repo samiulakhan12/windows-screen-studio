@@ -430,6 +430,25 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(buttons(out).some((b) => b.startsWith('Download'))).toBe(false)
   })
 
+  it('a chosen Most accurate whose Download again fails or stops keeps its error or Continue card', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'installed' } } }))
+    let out = await show()
+    ;(chips(out)[3].props.onClick as () => void)()
+    const reload = async (turbo: object): Promise<El[]> => {
+      replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': turbo } }))
+      ;(m.speech as unknown as { loadSpeechState(force: boolean): void }).loadSpeechState(true)
+      await flush()
+      return render(m.panel)
+    }
+    const total = 574_041_195
+    out = await reload({ state: 'failed', received: 20_000_000, total, error: 'network', message: 'reset' })
+    expect([local(out)?.props['data-model'], local(out)?.props['data-state']]).toEqual(['whisper-turbo', 'download-failed'])
+    expect(chips(out).filter((c) => c.props['aria-checked']).map((c) => c.props['data-model'])).toEqual(['whisper-turbo'])
+    out = await reload({ state: 'stopped', received: 20_000_000, total })
+    expect([local(out)?.props['data-model'], local(out)?.props['data-state']]).toEqual(['whisper-turbo', 'stopped'])
+  })
+
   it('a damaged Most accurate as the default falls back the same way (UI-10)', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ defaultModel: 'whisper-turbo', statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'damaged' } } }))

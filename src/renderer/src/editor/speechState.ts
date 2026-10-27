@@ -100,12 +100,16 @@ export const otherDownload = (state: Pick<SpeechState, 'models'>, id: SpeechMode
 
 let sessionModel: SpeechModelId | null = null
 
+/** The states of a download the user started, which the Captions tab keeps showing for its model. */
+const ATTEMPT: ReadonlySet<SpeechModelView['status']['state']> = new Set(['downloading', 'verifying', 'stopped', 'failed'])
+
 /**
  * Whether the quality chips offer `m`: every tier but Most accurate, which only once downloaded
- * and allowed here, or while it is `chosen` and downloading (Download again of a damaged one).
+ * and allowed here, or while it is `chosen` and its download runs, stopped or failed (Download
+ * again of a damaged one), so the tab keeps its progress, Continue or error with Try again.
  */
 export const offered = (m: SpeechModelView, chosen: SpeechModelId): boolean =>
-  m.tier !== 'best' || (m.allowed && (m.status.state === 'installed' || (m.id === chosen && (m.status.state === 'downloading' || m.status.state === 'verifying'))))
+  m.tier !== 'best' || (m.allowed && (m.status.state === 'installed' || (m.id === chosen && ATTEMPT.has(m.status.state))))
 
 /**
  * The model of the Captions tab's quality chips: the first the chips offer of the session's
