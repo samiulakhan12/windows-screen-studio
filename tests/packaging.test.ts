@@ -58,7 +58,10 @@ const packaging = require('../scripts/lib/packaging.cjs') as {
   runtimePackages(rootDir?: string): string[]
   foreignPrebuilds(rootDir?: string): string[]
   speechHelpers(): { from: string; to: string; build: string }[]
-  speechHelperStatus(rootDir?: string): { from: string; to: string; build: string; bundle: boolean; present: boolean; reason?: string; size?: number }[]
+  speechHelperStatus(rootDir?: string): { from: string; to: string; build: string; bundle: boolean; present: boolean; reason?: string; size?: number; missingOptions?: string[] }[]
+  SPEECH_HELPER_OPTIONS: string[]
+  missingSpeechOptions(buf: Buffer): string[]
+  staleSpeechHelper(from: string, missing: string[]): string
   speechResources(rootDir?: string): { from: string; to: string; filter: string[] }[]
   noticesResource(): { from: string; to: string; filter: string[] }
   noticesProblems(text: string): string[]
@@ -621,6 +624,31 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     expect(packaging.SIGN_EXTS).toEqual(['.node'])
   })
 
+  it('refuses a speech helper built from older sources: it must know every option the catalog’s models pass (offline-captions §14.3)', async () => {
+    const { SPEECH_MODELS } = await import('../src/shared/speech/catalog')
+    const { modelArgs } = await import('../src/shared/speech/protocol')
+    // Every option a model passes, so a new one cannot be added without the check.
+    expect([...packaging.SPEECH_HELPER_OPTIONS].sort()).toEqual([...new Set(SPEECH_MODELS.flatMap((m) => modelArgs(m)).filter((a) => a.startsWith('--')))].sort())
+    const current = Buffer.concat([fakePe({}), Buffer.from('--model-dir--model--audio--max-chunk--no-timestamps--verbose', 'latin1')])
+    // Flown 0.4.0's helper parsed --max-chunk (a debug option then) but not --no-timestamps.
+    const old = Buffer.concat([fakePe({}), Buffer.from('--model-dir--model--audio--max-chunk--verbose', 'latin1')])
+    expect(packaging.missingSpeechOptions(current)).toEqual([])
+    expect(packaging.missingSpeechOptions(old)).toEqual(['--no-timestamps'])
+    const root = tmpDir()
+    mkdirSync(path.join(root, 'native/bin'), { recursive: true })
+    writeFileSync(path.join(root, 'native/bin/ssw-speech.exe'), current)
+    writeFileSync(path.join(root, 'native/bin/ssw-speech-compat.exe'), old)
+    expect(packaging.speechHelperStatus(root).map((h) => [h.bundle, h.missingOptions])).toEqual([
+      [true, []],
+      [true, ['--no-timestamps']]
+    ])
+    expect(packaging.staleSpeechHelper('native/bin/ssw-speech-compat.exe', ['--no-timestamps'])).toBe(
+      'native/bin/ssw-speech-compat.exe was built from older sources: it does not know --no-timestamps, which this version of Flown passes (the Bangla model), so every Bangla caption run would fail. Rebuild it (npm run build:native) or copy in the helpers built from this commit.'
+    )
+    // predist and verify-dist refuse it.
+    for (const script of ['predist.mjs', 'verify-dist.mjs']) expect(readFileSync(path.join(ROOT, 'scripts', script), 'utf8')).toContain('staleSpeechHelper(')
+  })
+
   it('allows only system DLLs in the speech helpers (bcryptprimitives for Rust, never psapi)', () => {
     expect(packaging.SPEECH_IMPORTS).toEqual(['KERNEL32.dll', 'ADVAPI32.dll', 'msvcrt.dll', 'ntdll.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll'])
     expect(packaging.unexpectedSpeechImports(['kernel32.dll', 'ADVAPI32.dll', 'bcryptprimitives.dll'])).toEqual([])
@@ -640,8 +668,8 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
   it('commits third-party notices that name what ships, and checks them', () => {
     const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
     expect(packaging.noticesProblems(text)).toEqual([])
-    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe'])
-    expect(packaging.noticesProblems('React and Electron')).toEqual(['only 18 bytes (at least 10 KB expected)', 'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, mingw-w64, FFmpeg, MediaPipe'])
+    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe'])
+    expect(packaging.noticesProblems('React and Electron')).toEqual(['only 18 bytes (at least 10 KB expected)', 'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe'])
     // The hand-written entries are part of it.
     for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {
       expect(text).toContain(readFileSync(path.join(ROOT, 'resources', 'notices', f), 'utf8').trim().split('\n')[0])
@@ -649,6 +677,33 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     // The Rust standard library, statically linked into every helper, is not a cargo dependency.
     expect(text).toContain('Rust standard library (std, core, alloc and the crates it is built with)')
     expect(text).toContain('Copyright (c) The Rust Project Developers')
+  })
+
+  it('credits the Bangla model as the catalog pins it, under the Apache License whose text the notices hold (offline-captions §14)', async () => {
+    const { BANGLA_MODEL, speechModel } = await import('../src/shared/speech/catalog')
+    const bn = speechModel(BANGLA_MODEL)!
+    const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
+    const entry = readFileSync(path.join(ROOT, 'resources', 'notices', '14-bengaliai-whisper.txt'), 'utf8')
+    expect(text).toContain(entry.trim())
+    // Line breaks in the entry do not split what is checked.
+    const flat = entry.replace(/\s+/g, ' ')
+    for (const part of [
+      bn.license.url,
+      `https://huggingface.co/${bn.repo!.repo}`,
+      bn.repo!.commit,
+      bn.file,
+      bn.sha256,
+      '539,257,671 bytes',
+      'Apache License, Version 2.0',
+      'fine-tuned from OpenAI Whisper medium',
+      'nothing was retrained',
+      'It is not part of the installer.'
+    ])
+      expect(flat).toContain(part)
+    expect(bn.license.name).toBe('Apache-2.0')
+    // The full licence text it points to is in the file.
+    expect(text).toMatch(/Apache License\s+Version 2\.0, January 2004/)
+    expect(text).toContain('TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION')
   })
 
   /** process.env without PATH (any case) or SSW_REQUIRE_NATIVE, and PATH holding node alone: no cargo. */
@@ -694,9 +749,15 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     const preload = path.join(root, 'win32.cjs')
     writeFileSync(preload, "Object.defineProperty(process, 'platform', { value: 'win32' })\n")
     mkdirSync(path.join(root, 'native', 'bin'), { recursive: true })
+    const current = Buffer.concat([fakePe({}), Buffer.from(packaging.SPEECH_HELPER_OPTIONS.join(''), 'latin1')])
     for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), fakePe({}))
     const build = (env?: Record<string, string>) =>
       spawnSync(process.execPath, ['-r', preload, path.join(root, 'scripts', 'build-native.mjs')], { cwd: root, env: withoutCargo(env), encoding: 'utf8' })
+    // Helpers from older sources (without --no-timestamps) are not reused: a required build fails.
+    const stale = build({ SSW_REQUIRE_NATIVE: '1' })
+    expect(stale.status).toBe(1)
+    expect(stale.stderr).toContain('native/bin/ssw-speech.exe is from older sources (it does not know --max-chunk, --no-timestamps)')
+    for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), current)
     const plain = build()
     expect(plain.status, plain.stderr).toBe(0)
     expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-speech.exe and native/bin/ssw-speech-compat.exe (not rebuilt now)')

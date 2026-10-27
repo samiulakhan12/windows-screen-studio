@@ -373,6 +373,18 @@ describe('transcription options and part arguments (On this PC)', () => {
     expect(validateTranscribeOptions({ providerId: 'aiabc', model: 'anything' })).toEqual({ providerId: 'aiabc', source: 'auto' })
   })
 
+  it('the Bangla model makes captions in Bangla only (§14)', () => {
+    expect(validateTranscribeOptions({ providerId: 'local', model: 'whisper-bn-medium', language: 'bn' })).toEqual({ providerId: 'local', source: 'auto', model: 'whisper-bn-medium', language: 'bn' })
+    expect(validateTranscribeOptions({ providerId: 'local', model: 'whisper-bn-medium', language: 'bn-BD' }).language).toBe('bn-BD')
+    // Without a language, main uses the model's own.
+    expect(validateTranscribeOptions({ providerId: 'local', model: 'whisper-bn-medium' })).toEqual({ providerId: 'local', source: 'auto', model: 'whisper-bn-medium' })
+    for (const other of ['en', 'hi', 'pt-BR']) {
+      expect(() => validateTranscribeOptions({ providerId: 'local', model: 'whisper-bn-medium', language: other })).toThrow('Bangla (Bengali.AI Whisper medium) makes captions in Bangla only.')
+    }
+    // The general models take any language, as before.
+    expect(validateTranscribeOptions({ providerId: 'local', model: 'whisper-small', language: 'bn' }).language).toBe('bn')
+  })
+
   it('writes WAV parts losslessly with the same cut as the MP3 parts, which are unchanged', () => {
     expect(wavPartArgs('in.pcm', 12.5, 600, 'part-1.wav')).toEqual([
       '-v', 'error', '-nostdin', '-y', '-f', 's16le', '-ar', '16000', '-ac', '1', '-ss', '12.500', '-t', '600.000', '-i', 'in.pcm', '-c:a', 'pcm_s16le', '-f', 'wav', 'part-1.wav'

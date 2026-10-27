@@ -1,7 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import type { TranscribeOptions } from '../../../shared/api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechModelView, type SpeechState } from '../../../shared/api/speech'
-import { DEFAULT_SPEECH_MODEL, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
+import { BANGLA_MODEL, DEFAULT_SPEECH_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
 import { badgeTitle, readyNotice, SPEECH_COPY } from '../../../shared/speech/speechCopy'
 import { localModel } from '../../../shared/speech/transcriber'
 import type { Transcript } from '../../../shared/types'
@@ -96,37 +96,65 @@ export const modelView = (state: Pick<SpeechState, 'models'>, id: SpeechModelId)
 export const otherDownload = (state: Pick<SpeechState, 'models'>, id: SpeechModelId): SpeechModelView | null =>
   state.models.find((m) => m.id !== id && (m.status.state === 'downloading' || m.status.state === 'verifying')) ?? null
 
+/* ---------- the spoken language chosen for this session ---------- */
+
+/** The Captions tab's Spoken language ('' detects), kept for the app session; Polish reads it too. */
+let language = ''
+
+export const spokenLanguage = (): string => language
+
+/** Sets the Spoken language for this session (the Captions tab's select, "Choose Bengali", the Bangla offer). */
+export function setSpokenLanguage(code: string): void {
+  const next = typeof code === 'string' ? code : ''
+  if (next === language) return
+  language = next
+  emit()
+}
+
 /* ---------- the quality chosen for this session ---------- */
 
 let sessionModel: SpeechModelId | null = null
+/** The chip picked while the Spoken language was Bengali (its own choice: the Bangla model unless another was picked). */
+let sessionBangla: SpeechModelId | null = null
 
 /** The states of a download the user started, which the Captions tab keeps showing for its model. */
 const ATTEMPT: ReadonlySet<SpeechModelView['status']['state']> = new Set(['downloading', 'verifying', 'stopped', 'failed'])
 
 /**
- * Whether the quality chips offer `m`: every tier but Most accurate, which only once downloaded
- * and allowed here, or while it is `chosen` and its download runs, stopped or failed (Download
- * again of a damaged one), so the tab keeps its progress, Continue or error with Try again.
+ * Whether the quality chips offer `m` for the spoken language `spoken` ('' detects): every tier
+ * but Most accurate, which only once downloaded and allowed here, or while it is `chosen` and its
+ * download runs, stopped or failed (Download again of a damaged one), so the tab keeps its
+ * progress, Continue or error with Try again. A model made for one language (the Bangla model) is
+ * offered only for that language, and only where it is allowed.
  */
-export const offered = (m: SpeechModelView, chosen: SpeechModelId): boolean =>
-  m.tier !== 'best' || (m.allowed && (m.status.state === 'installed' || (m.id === chosen && ATTEMPT.has(m.status.state))))
+export const offered = (m: SpeechModelView, chosen: SpeechModelId, spoken = language): boolean => {
+  const only = speechModel(m.id)?.language
+  if (only) return m.allowed && isBengali(spoken) && only === 'bn'
+  return m.tier !== 'best' || (m.allowed && (m.status.state === 'installed' || (m.id === chosen && ATTEMPT.has(m.status.state))))
+}
 
 /**
- * The model of the Captions tab's quality chips: the first the chips offer of the session's
- * choice, the default model and localModel's pick, else the catalog default (a removed or damaged
- * Most accurate is not offered, so one listed chip is always checked). Never changes the default.
+ * The model of the Captions tab's quality chips for the spoken language `spoken`: the first the
+ * chips offer of the session's choice, the default model and localModel's pick, else the catalog
+ * default (a removed or damaged Most accurate is not offered, so one listed chip is always
+ * checked). For Bengali the Bangla model comes first, unless another chip was picked for Bengali
+ * this session. Never changes the default.
  */
-export function chosenModel(state: Pick<SpeechState, 'defaultModel' | 'models'>): SpeechModelId {
-  for (const id of [sessionModel, state.defaultModel, localModel(state).model]) {
+export function chosenModel(state: Pick<SpeechState, 'defaultModel' | 'models'>, spoken = language): SpeechModelId {
+  const general = [sessionModel, state.defaultModel, localModel(state).model]
+  for (const id of isBengali(spoken) ? [sessionBangla, BANGLA_MODEL, ...general] : general) {
     const m = id ? modelView(state, id) : null
-    if (m && offered(m, m.id)) return m.id
+    if (m && offered(m, m.id, spoken)) return m.id
   }
   return DEFAULT_SPEECH_MODEL
 }
 
-export function chooseModel(id: SpeechModelId): void {
-  if (!speechModel(id)) return
-  sessionModel = id
+/** The chip `id` for this session: Bengali keeps its own choice; a model made for one language is never the choice for others. */
+export function chooseModel(id: SpeechModelId, spoken = language): void {
+  const spec = speechModel(id)
+  if (!spec) return
+  if (isBengali(spoken)) sessionBangla = id
+  else if (!spec.language) sessionModel = id
   emit()
 }
 
@@ -159,7 +187,8 @@ export function dropIntent(projectId: string): void {
 
 /**
  * Downloads `model` after the user's click on a button that named it and its size, then makes
- * it the default (the user picked that tier and agreed to its download) and makes captions with
+ * it the default (the user picked that tier and agreed to its download; never a model made for
+ * one language, such as the Bangla model) and makes captions with
  * `options`, only if project `projectId`'s editor is still open and the intent still pending.
  * Never starts captions for another project. A failure while another tab is open gives a notice.
  */
@@ -172,8 +201,7 @@ export async function downloadThenCaptions(projectId: string, model: SpeechModel
     return
   }
   intents.set(projectId, { model, options: { ...options, providerId: LOCAL_TRANSCRIBER_ID, model } })
-  sessionModel = model
-  emit()
+  chooseModel(model, options.language ?? '')
   try {
     await window.api.downloadSpeechModel(model)
   } catch (err) {
@@ -187,10 +215,13 @@ export async function downloadThenCaptions(projectId: string, model: SpeechModel
     if (message !== 'Cancelled.') console.warn(`The speech model ${model} could not be downloaded:`, message)
     return
   }
-  try {
-    await window.api.setDefaultSpeechModel(model)
-  } catch (err) {
-    console.warn(`The speech model ${model} could not be made the default:`, err)
+  // A model made for one language (the Bangla model) never becomes the default: other languages would use it.
+  if (!speechModel(model)?.language) {
+    try {
+      await window.api.setDefaultSpeechModel(model)
+    } catch (err) {
+      console.warn(`The speech model ${model} could not be made the default:`, err)
+    }
   }
   const intent = intents.get(projectId)
   if (!intent || intent.model !== model) return

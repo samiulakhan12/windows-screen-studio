@@ -7,7 +7,7 @@
  * its tier first ("Accurate (Whisper small)"), so every sentence here does. Pure, frozen.
  */
 import type { SpeechUnavailable } from '../api/speech'
-import { memoryNeedMB, SPEECH_MODELS, SPEECH_TIER_NAMES, speechModel, type SpeechModelBlock, type SpeechModelId, type SpeechModelSpec } from './catalog'
+import { isLanguageModel, memoryNeedMB, SPEECH_MODELS, SPEECH_TIER_NAMES, speechModel, type SpeechModelBlock, type SpeechModelId, type SpeechModelSpec } from './catalog'
 
 /** Why a transcription on this PC failed. */
 export type LocalCaptionsError =
@@ -29,6 +29,12 @@ export type LocalCaptionsError =
   | 'language'
   /** The model may not be used on this PC (`block`, speechModelBlock). */
   | 'blocked'
+  /**
+   * The speech helper refused the app's own arguments (its error code `args`): it is not the one
+   * built with this version of Flown, for example an older one that lacks `--no-timestamps`, which
+   * the Bangla model needs. Reinstalling Flown brings the matching one.
+   */
+  | 'outdated'
 
 export interface LocalErrorParams {
   model?: SpeechModelId
@@ -56,10 +62,14 @@ export function tierLabel(id: SpeechModelId): string {
   return `${SPEECH_TIER_NAMES[spec.tier]} (${spec.name})`
 }
 
-/** The next quicker model of the catalog, or null for the quickest. */
+/**
+ * The next quicker model of the catalog, or null for the quickest. A model made for one language
+ * (the Bangla model) has none: the others make most of its language's words wrong.
+ */
 export function quickerModel(id: SpeechModelId): SpeechModelSpec | null {
-  const i = SPEECH_MODELS.findIndex((m) => m.id === id)
-  return i > 0 ? SPEECH_MODELS[i - 1] : null
+  const general = SPEECH_MODELS.filter((m) => !isLanguageModel(m))
+  const i = general.findIndex((m) => m.id === id)
+  return i > 0 ? general[i - 1] : null
 }
 
 /** The sentence for `code` (shown after "Captions could not be made: "). */
@@ -89,6 +99,8 @@ export function localErrorMessage(code: LocalCaptionsError, params: LocalErrorPa
       return `The speech model does not know the language “${params.language ?? ''}”. Choose another spoken language, or Detect automatically.`
     case 'blocked':
       return params.block === 'memory' ? `${label} needs a PC with ${spec.minTotalMemGB ?? 8} GB of memory in all.` : `${label} is too slow for this PC's processor. Choose a quicker tier.`
+    case 'outdated':
+      return `The speech engine in this copy of Flown does not match this version, so it cannot run ${label}. Reinstall Flown to fix it.`
   }
 }
 
@@ -101,7 +113,8 @@ const PATTERNS: readonly [LocalCaptionsError, RegExp][] = [
   ['stalled', /^The speech engine stopped responding and was closed\./],
   ['protocol', /^The speech engine returned something unexpected\./],
   ['language', /^The speech model does not know the language /],
-  ['blocked', /^\S.* \(.+\) (is too slow for this PC's processor\.|needs a PC with \d+ GB of memory in all\.)/]
+  ['blocked', /^\S.* \(.+\) (is too slow for this PC's processor\.|needs a PC with \d+ GB of memory in all\.)/],
+  ['outdated', /^The speech engine in this copy of Flown does not match this version, so it cannot run /]
 ]
 
 /**

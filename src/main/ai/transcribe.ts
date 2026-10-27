@@ -34,6 +34,7 @@ import { mergeParts } from '../../shared/captions/transcriptMerge'
 import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { planParts, secondsForBytes, silencesBetween, type TranscriptPart } from '../../shared/captions/transcriptPlan'
 import { speechModel } from '../../shared/speech/catalog'
+import { tierLabel } from '../../shared/speech/errors'
 import type { Transcript } from '../../shared/types'
 import { removeSyncWithRetries } from '../exportCleanup'
 import { describeFfmpegError, ffmpegPath } from '../ffmpeg'
@@ -81,7 +82,10 @@ export function validateTranscribeOptions(raw: unknown): Required<Pick<Transcrib
   // The speech model: a catalog id, for On this PC only (providers use their own setting).
   let model: string | undefined
   if (raw.providerId === LOCAL_TRANSCRIBER_ID && raw.model !== undefined && raw.model !== null) {
-    if (!speechModel(raw.model)) throw new Error('Unknown speech model.')
+    const spec = speechModel(raw.model)
+    if (!spec) throw new Error('Unknown speech model.')
+    // A model made for one language (the Bangla model) never makes captions in another one.
+    if (spec.language && language && language.split('-')[0].toLowerCase() !== spec.language) throw new Error(`${tierLabel(spec.id)} makes captions in Bangla only.`)
     model = raw.model as string
   }
   return { providerId: raw.providerId, source: source as TranscribeOptions['source'] & string, ...(language ? { language } : {}), ...(model ? { model } : {}) }

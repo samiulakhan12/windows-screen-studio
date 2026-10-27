@@ -63,6 +63,23 @@ describe('polishTranscriber', () => {
     expect(polishTranscriber([openai], speech([], false), null)).toEqual({ providerId: 'ai1' })
     expect(polishTranscriber([claude], null, null)).toEqual({ skip: 'no-provider' })
   })
+
+  it('Bengali chosen in the Captions tab and the Bangla model downloaded: On this PC with it, in Bengali (§14.4)', () => {
+    const both = speech(['whisper-base', 'whisper-bn-medium'])
+    expect(polishTranscriber([], both, null, 'bn')).toEqual({ providerId: 'local', model: 'whisper-bn-medium', language: 'bn' })
+    expect(polishTranscriber([openai], speech(['whisper-bn-medium']), null, 'bn')).toEqual({ providerId: 'local', model: 'whisper-bn-medium', language: 'bn' })
+    expect(polishTranscriber([], both, 'local', 'bn-BD')).toEqual({ providerId: 'local', model: 'whisper-bn-medium', language: 'bn' })
+    // Another language or detection: the general model and no language, exactly as before.
+    for (const language of ['', 'en', 'hi']) expect(polishTranscriber([], both, null, language)).toEqual({ providerId: 'local', model: 'whisper-base' })
+    expect(polishTranscriber([], both, null)).toEqual({ providerId: 'local', model: 'whisper-base' })
+    // The Bangla model alone never makes captions in another language: skipped for the model, or the key.
+    expect(polishTranscriber([], speech(['whisper-bn-medium']), null, '')).toEqual({ skip: 'no-model' })
+    expect(polishTranscriber([openai], speech(['whisper-bn-medium']), null, 'en')).toEqual({ providerId: 'ai1' })
+    // Bengali without the Bangla model: as before (the general model, no language passed).
+    expect(polishTranscriber([], speech(['whisper-base']), null, 'bn')).toEqual({ providerId: 'local', model: 'whisper-base' })
+    // A remembered key provider still wins.
+    expect(polishTranscriber([openai], both, 'ai1', 'bn')).toEqual({ providerId: 'ai1' })
+  })
 })
 
 describe('the Captions row with On this PC', () => {
@@ -90,5 +107,8 @@ describe('the Captions row with On this PC', () => {
   it('says nothing is uploaded when it runs on this PC', () => {
     expect(polishHint('captions', { silenceAction: 'cut', autoZoomOn: true, provider: null, local: true })).toBe('Runs on this PC: nothing is uploaded and it costs nothing.')
     expect(polishHint('captions', { silenceAction: 'cut', autoZoomOn: true, provider: openai })).toContain('My OpenAI')
+    expect(polishHint('captions', { silenceAction: 'cut', autoZoomOn: true, provider: null, local: true, bangla: true })).toBe(
+      'Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.'
+    )
   })
 })

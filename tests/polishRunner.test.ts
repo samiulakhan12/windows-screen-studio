@@ -28,15 +28,16 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 }
 
 const analyzeAudio = vi.fn<(id: string, sources: AudioSource[]) => Promise<AudioAnalysis>>()
-const calls = { transcribe: [] as ReturnType<typeof deferred<unknown>>[], cancel: [] as { projectId: string; done: ReturnType<typeof deferred<void>> }[] }
+const calls = { transcribe: [] as ReturnType<typeof deferred<unknown>>[], options: [] as unknown[], cancel: [] as { projectId: string; done: ReturnType<typeof deferred<void>> }[] }
 const listeners = new Set<(p: TranscribeProgress) => void>()
 const progress = (p: TranscribeProgress): void => listeners.forEach((l) => l(p))
 vi.stubGlobal('window', {
   api: {
     analyzeAudio,
-    transcribe: () => {
+    transcribe: (_projectId: string, options: unknown) => {
       const d = deferred<unknown>()
       calls.transcribe.push(d)
+      calls.options.push(options)
       return d.promise
     },
     cancelTranscription: (projectId: string) => {
@@ -70,7 +71,7 @@ interface Runner {
     services: { store: EditStore<Project>; player: { webcam: null } },
     recorded: CursorTrack,
     options: PolishOptions,
-    ctx: { hasCameraFile: boolean; providerId: string | null; userPresets: readonly never[] },
+    ctx: { hasCameraFile: boolean; providerId: string | null; model?: string; language?: string; userPresets: readonly never[] },
     onProgress: (rows: Rows) => void
   ): Run
 }
@@ -88,6 +89,7 @@ beforeEach(async () => {
   vi.resetModules()
   analyzeAudio.mockReset()
   calls.transcribe.length = 0
+  calls.options.length = 0
   calls.cancel.length = 0
   listeners.clear()
   hooks.sourceActivity = sourceActivity
@@ -221,5 +223,25 @@ describe('runPolish', () => {
     await flush()
     expect(rows).toHaveLength(seen)
     expect(store.state).toBe(before)
+  })
+
+  it('makes captions with the Bangla model in Bengali when it is the choice; others get no language, as before (§14.4)', async () => {
+    analyzeAudio.mockResolvedValue({ mic: talking(), system: talking() })
+    const store = new EditStore(project())
+    const run = runner.runPolish({ store, player: { webcam: null } }, NO_INPUT, OPTIONS, { ...CTX, providerId: 'local', model: 'whisper-bn-medium', language: 'bn' }, () => undefined)
+    await flush()
+    expect(calls.options).toEqual([{ providerId: 'local', source: 'auto', model: 'whisper-bn-medium', language: 'bn' }])
+    run.cancel()
+    await run.done
+    // The cancelled job ends (the main process answers), so the next run may transcribe.
+    calls.transcribe[0].reject(new Error("Error invoking remote method 'ai:transcribe': Cancelled."))
+    calls.cancel[0].done.resolve()
+    await flush()
+    calls.options.length = 0
+    const general = runner.runPolish({ store, player: { webcam: null } }, NO_INPUT, OPTIONS, { ...CTX, providerId: 'local', model: 'whisper-base' }, () => undefined)
+    await flush()
+    expect(calls.options).toEqual([{ providerId: 'local', source: 'auto', model: 'whisper-base' }])
+    general.cancel()
+    await general.done
   })
 })

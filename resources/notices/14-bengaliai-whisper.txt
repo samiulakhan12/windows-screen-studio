@@ -1,0 +1,16 @@
+Bengali.AI Whisper medium for Bangla (the Bangla speech model, ggml conversion by WinShades)
+https://huggingface.co/bengaliAI/tugstugi_bengaliai-asr_whisper-medium (revision
+da605cc1bd2f60a18d8e440e977ddfa921a88e63): the tugstugi team's first-place model of the Bengali.AI
+speech recognition competition, fine-tuned from OpenAI Whisper medium (MIT licence, see the OpenAI
+Whisper entry). Copyright the Bengali.AI authors and the tugstugi team.
+
+The file Flown downloads when you ask it to (the Bangla model, used only for Bengali captions) is
+ggml-bengaliai-whisper-medium-q5_0.bin from https://huggingface.co/winshades/bengaliai-whisper-medium-ggml
+at commit 11cf5cbd282e0e46a761093939952f74906ddce1 (539,257,671 bytes, SHA-256
+2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605), checked against its SHA-256
+before use. It is a modified version, as its card states: the weights were converted to the ggml
+format with whisper.cpp's models/convert-h5-to-ggml.py at 16-bit precision and compressed to q5_0
+with whisper-quantize; nothing was retrained. It is not part of the installer.
+
+Licensed under the Apache License, Version 2.0, whose full text is reproduced below with the npm
+packages under the same licence.

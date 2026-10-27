@@ -306,6 +306,9 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
         p.token_timestamps = !use_dtw;
         p.language = lang_c.as_ptr();
         p.detect_language = false;
+        // A model fine-tuned without timestamp tokens (the Bangla model) garbles the first word of a
+        // chunk when made to start with one; word times come from DTW either way.
+        p.no_timestamps = a.no_timestamps;
         if a.beam > 1 {
             p.beam_search.beam_size = a.beam;
         }

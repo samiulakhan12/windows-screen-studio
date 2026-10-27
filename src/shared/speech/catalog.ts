@@ -9,16 +9,19 @@
  * 1.3 times slower (WINDOWS_FACTOR in estimate.ts).
  */
 
-export type SpeechModelId = 'whisper-tiny' | 'whisper-base' | 'whisper-small' | 'whisper-turbo'
+export type SpeechModelId = 'whisper-tiny' | 'whisper-base' | 'whisper-small' | 'whisper-turbo' | 'whisper-bn-medium'
 
-/** How the model is offered: quickest to most accurate. */
-export type SpeechTier = 'fast' | 'standard' | 'accurate' | 'best'
+/**
+ * How the model is offered: quickest to most accurate, and 'bangla' for the model made for
+ * Bangla only (docs/design/offline-captions.md §14).
+ */
+export type SpeechTier = 'fast' | 'standard' | 'accurate' | 'best' | 'bangla'
 
 /** The tiers as the Captions tab names them (the model's own name follows in brackets once). */
-export const SPEECH_TIER_NAMES: Readonly<Record<SpeechTier, string>> = { fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate' }
+export const SPEECH_TIER_NAMES: Readonly<Record<SpeechTier, string>> = { fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate', bangla: 'Bangla' }
 
 export interface SpeechLicense {
-  name: 'MIT'
+  name: 'MIT' | 'Apache-2.0'
   /** Copyright holder as the licence states it. */
   holder: string
   /** Where the licence and the source can be read. */
@@ -53,6 +56,22 @@ export interface SpeechModelSpec {
    * it would take several times the recording's length.
    */
   needsStandardBuild?: true
+  /**
+   * The one language this model makes captions in (a whisper code). It always runs with this
+   * language, is used only when the spoken language is this one, and is never the default model
+   * (absent: a multilingual model, offered for every language).
+   */
+  language?: 'bn'
+  /** Longest chunk the helper hands whisper.cpp for this model, seconds (absent: SIDECAR.maxChunk). */
+  maxChunkSeconds?: number
+  /**
+   * Decode without timestamp tokens (`--no-timestamps`): a model fine-tuned without them (the
+   * Bangla model) garbles the first word of most chunks when made to start with one. Word times
+   * come from DTW either way.
+   */
+  noTimestamps?: true
+  /** Where the file comes from (absent: SPEECH_MODEL_REPO). */
+  repo?: { repo: string; commit: string }
   license: SpeechLicense
 }
 
@@ -69,7 +88,10 @@ const WHISPER_LICENSE: SpeechLicense = {
   url: 'https://huggingface.co/ggerganov/whisper.cpp'
 }
 
-/** The offered models, quickest first. All are multilingual, so "Detect automatically" always works. */
+/**
+ * The offered models: the multilingual ones quickest first (so "Detect automatically" always
+ * works with them), then the ones made for one language (`language`).
+ */
 export const SPEECH_MODELS: readonly SpeechModelSpec[] = [
   {
     id: 'whisper-tiny',
@@ -128,11 +150,47 @@ export const SPEECH_MODELS: readonly SpeechModelSpec[] = [
     minTotalMemGB: 8,
     needsStandardBuild: true,
     license: WHISPER_LICENSE
+  },
+  {
+    // Bangla only (docs/design/offline-captions.md §14): measured on 59 FLEURS bn_in test clips,
+    // long-form with 20 s chunks and no timestamp tokens: WER 18.3 %, CER 6.6 % (large-v3 turbo
+    // with Bengali: 98 %).
+    id: 'whisper-bn-medium',
+    tier: 'bangla',
+    name: 'Bengali.AI Whisper medium',
+    file: 'ggml-bengaliai-whisper-medium-q5_0.bin',
+    bytes: 539_257_671,
+    sha256: '2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605',
+    rtf4: 0.87,
+    ramMB: 1200,
+    wer: 0.183,
+    startMedianMs: 40,
+    partSeconds: 180,
+    minTotalMemGB: 8,
+    needsStandardBuild: true,
+    language: 'bn',
+    maxChunkSeconds: 20,
+    noTimestamps: true,
+    repo: { repo: 'winshades/bengaliai-whisper-medium-ggml', commit: '11cf5cbd282e0e46a761093939952f74906ddce1' },
+    license: {
+      name: 'Apache-2.0',
+      holder: 'Bengali.AI (the tugstugi team), fine-tuned from OpenAI Whisper; converted to ggml by WinShades',
+      url: 'https://huggingface.co/bengaliAI/tugstugi_bengaliai-asr_whisper-medium'
+    }
   }
 ]
 
 /** The model offered first and used when nothing else was chosen. */
 export const DEFAULT_SPEECH_MODEL: SpeechModelId = 'whisper-base'
+
+/** The model made for Bangla. */
+export const BANGLA_MODEL: SpeechModelId = 'whisper-bn-medium'
+
+/** Whether `spec` makes captions in one language only (never the default model, never for another language). */
+export const isLanguageModel = (spec: Pick<SpeechModelSpec, 'language'> | null | undefined): boolean => !!spec?.language
+
+/** Whether a spoken language code ("bn", "bn-BD", any case) is Bengali. */
+export const isBengali = (language: string | null | undefined): boolean => typeof language === 'string' && language.trim().split('-')[0].toLowerCase() === 'bn'
 
 /**
  * The speech detector shipped in the installer (resources/speech/, see its MODEL.md): Silero
@@ -166,9 +224,10 @@ export function speechModel(id: unknown): SpeechModelSpec | null {
   return isSpeechModelId(id) ? SPEECH_MODELS.find((m) => m.id === id)! : null
 }
 
-/** The pinned download address of `spec`; `base` replaces the repository (tests only, never in a packaged app). */
-export function modelUrl(spec: Pick<SpeechModelSpec, 'file'>, base?: string): string {
-  const root = base ?? `${SPEECH_MODEL_REPO.host}/${SPEECH_MODEL_REPO.repo}/resolve/${SPEECH_MODEL_REPO.commit}`
+/** The pinned download address of `spec` (its own repository, else SPEECH_MODEL_REPO); `base` replaces the repository (tests only, never in a packaged app). */
+export function modelUrl(spec: Pick<SpeechModelSpec, 'file' | 'repo'>, base?: string): string {
+  const from = spec.repo ?? SPEECH_MODEL_REPO
+  const root = base ?? `${SPEECH_MODEL_REPO.host}/${from.repo}/resolve/${from.commit}`
   return `${root.replace(/\/+$/, '')}/${spec.file}`
 }
 

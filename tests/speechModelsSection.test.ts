@@ -234,3 +234,41 @@ describe('Settings › Captions on this PC: focus never falls to the page (UI-6)
     }
   })
 })
+
+describe('Settings › Captions on this PC: the Bangla model (docs/design/offline-captions.md §14.4)', () => {
+  beforeEach(async () => {
+    for (const list of cells.values()) for (const c of list) c.cleanup?.()
+    cells.clear()
+    effects = []
+    focused.length = 0
+    reply = speechState()
+    render()
+    await flush()
+  })
+  const row = (out: El[], id: string): El[] => {
+    const start = out.findIndex((e) => e.props['data-model'] === id && e.props.className === 'speech-model')
+    const next = out.findIndex((e, i) => i > start && e.props.className === 'speech-model')
+    return out.slice(start, next < 0 ? undefined : next)
+  }
+  const radios = (els: El[]): El[] => els.filter((e) => e.type === 'input' && e.props.type === 'radio')
+
+  it('lists it last as "Bangla only", with its size, purpose and licence, and no radio: it is never the model for new captions', () => {
+    let out = render()
+    expect(out.filter((e) => e.props.className === 'speech-model').map((e) => e.props['data-model'])).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo', 'whisper-bn-medium'])
+    const bn = row(out, 'whisper-bn-medium')
+    expect(bn.some((e) => e.type === 'strong' && textOf(e.props.children) === 'Bengali.AI Whisper medium · Bangla only')).toBe(true)
+    expect(radios(bn)).toEqual([])
+    expect(bn.some((e) => textOf(e.props.children) === 'Recommended')).toBe(false)
+    expect(bn.some((e) => e.props.className === 'speech-purpose' && textOf(e.props.children).startsWith('Bangla only: used whenever the spoken language is Bengali, never for other languages.'))).toBe(true)
+    expect(bn.some((e) => e.props.className === 'speech-licence' && textOf(e.props.children).includes('Apache-2.0 licence') && textOf(e.props.children).includes('(11cf5cb)'))).toBe(true)
+    // The general rows keep their radios and their licence line.
+    expect(radios(row(out, 'whisper-base'))).toHaveLength(1)
+    expect(row(out, 'whisper-base').some((e) => e.props.className === 'speech-licence' && textOf(e.props.children).startsWith('Whisper by OpenAI (MIT licence)'))).toBe(true)
+    click(bn, 'Download 539 MB')
+    out = push(speechState({ 'whisper-bn-medium': { state: 'installed' } }))
+    const installed = row(out, 'whisper-bn-medium')
+    expect(radios(installed)).toEqual([])
+    expect(installed.some((e) => textOf(e.props.children) === 'Downloaded')).toBe(true)
+    expect(installed.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Remove')).toBe(true)
+  })
+})

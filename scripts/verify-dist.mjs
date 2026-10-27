@@ -17,14 +17,17 @@ const { checkWindowsExe, parsePe, readIconGroups, readImports, readVersionString
 const { parseIco } = require('./lib/ico.cjs')
 const {
   FFMPEG_EXE,
+  missingSpeechOptions,
   nativeHelper,
   nativeHelperStatus,
   noticesProblems,
   runtimePackages,
   signedFiles,
   SPEECH_BUDGET,
+  SPEECH_HELPER_OPTIONS,
   SPEECH_IMPORTS,
   speechHelperStatus,
+  staleSpeechHelper,
   unexpectedSpeechImports,
   VAD_PIN
 } = require('./lib/packaging.cjs')
@@ -147,10 +150,13 @@ for (const h of speechHelperStatus()) {
     fail(`resources/${h.to}: ${check.reason}`)
     continue
   }
-  const imports = readImports(readFileSync(out))
+  const exe = readFileSync(out)
+  const imports = readImports(exe)
   const bad = unexpectedSpeechImports(imports)
+  const stale = missingSpeechOptions(exe)
   if (bad.length) fail(`resources/${h.to} imports ${bad.join(', ')}; only ${SPEECH_IMPORTS.join(', ')} are allowed`)
-  else ok(`speech helper (${h.build}): resources/${h.to} (${Math.round(check.size / 1024)} KB), imports ${imports.join(', ')}`)
+  else if (stale.length) fail(staleSpeechHelper(`resources/${h.to}`, stale))
+  else ok(`speech helper (${h.build}): resources/${h.to} (${Math.round(check.size / 1024)} KB), imports ${imports.join(', ')}, knows ${SPEECH_HELPER_OPTIONS.join(' ')}`)
   payload.push(out)
 }
 const vadFile = path.join(resources, 'speech', VAD_PIN.file)

@@ -264,15 +264,72 @@ export function readSidecarLine(line: string): SidecarEvent | null {
 const round = (t: number): number => Math.round(t * 1000) / 1000
 
 /**
+ * The longest caption localTranscript makes from a segment when asked to cut them (`split`, for a
+ * model that writes one segment per chunk: SpeechModelSpec.noTimestamps, the Bangla model, whose
+ * segments run up to 20 s and 35 words): seconds from its first word's start to its last word's
+ * end, and words. `minWords` is the fewest words a cut leaves on either side when it can.
+ */
+export const CAPTION_LIMITS = { seconds: 7, words: 14, minWords: 3 } as const
+
+/** A word that ends a sentence (Latin punctuation, the Bengali dari and double dari, closing quotes after them). */
+const SENTENCE_END = /[.!?।॥]["'’”)\]]*$/u
+
+/**
+ * `words` (ordered and monotonic, as localTranscript makes them) cut into captions of at most
+ * CAPTION_LIMITS.seconds and CAPTION_LIMITS.words. Each cut goes where the speaker paused longest
+ * (a sentence end counts as half a second more), nearer the middle when the pauses are alike
+ * (by up to 0.15 s), and leaves at least CAPTION_LIMITS.minWords words on each side when the
+ * caption has twice that many; a caption that fits is kept whole, and a single word is never cut.
+ * Every word is kept, in order.
+ */
+export function captionPieces<W extends { text: string; start: number; end: number }>(words: readonly W[]): W[][] {
+  const out: W[][] = []
+  const cut = (list: readonly W[]): void => {
+    const n = list.length
+    if (n === 0) return
+    const span = list[n - 1].end - list[0].start
+    if (n < 2 || (span <= CAPTION_LIMITS.seconds && n <= CAPTION_LIMITS.words)) {
+      out.push([...list])
+      return
+    }
+    const keep = Math.max(1, Math.min(CAPTION_LIMITS.minWords, Math.floor(n / 2)))
+    let best = keep
+    let bestScore = -Infinity
+    for (let k = keep; k <= n - keep; k++) {
+      const pause = Math.max(0, list[k].start - list[k - 1].end)
+      const sentence = SENTENCE_END.test(list[k - 1].text) ? 0.5 : 0
+      const off = span > 0 ? Math.abs((list[k].start - list[0].start) / span - 0.5) : Math.abs(k / n - 0.5)
+      const score = pause + sentence - 0.3 * off
+      if (score > bestScore) {
+        bestScore = score
+        best = k
+      }
+    }
+    cut(list.slice(0, best))
+    cut(list.slice(best))
+  }
+  cut(words)
+  return out
+}
+
+/**
  * The segments of one run as the transcript of a part (seconds from the part's start, inside
  * [0, partSeconds]): each segment's text is its words joined by single spaces (so the caption
  * layout always finds a timing per word), words with no text are dropped, times are made
  * ordered and monotonic, at most 400 words per segment; probabilities are dropped. `language`
- * is the result's; '' and 'auto' are left out (never stored or counted by mergeParts).
+ * is the result's; '' and 'auto' are left out (never stored or counted by mergeParts). Bengali
+ * text is put in Unicode NFC (whisper's byte tokens can leave a vowel sign in two parts, ে + া
+ * for ো); every other language is kept exactly as the helper wrote it. With `split` (a model that
+ * writes one segment per chunk, SpeechModelSpec.noTimestamps), a segment with words longer than
+ * CAPTION_LIMITS becomes several captions (captionPieces), each with its own words, text and
+ * times; the Whisper models' segments are kept as the helper made them.
  */
-export function localTranscript(segments: readonly SidecarSegment[], language: string | undefined, partSeconds: number): RawTranscript {
+export function localTranscript(segments: readonly SidecarSegment[], language: string | undefined, partSeconds: number, opts: { split?: boolean } = {}): RawTranscript {
   const limit = Number.isFinite(partSeconds) && partSeconds > 0 ? partSeconds : 0
   const clamp = (t: number): number => round(Math.min(limit, Math.max(0, Number.isFinite(t) ? t : 0)))
+  const code = language && language !== 'auto' ? languageCode(language) : undefined
+  const nfc = code?.split('-')[0] === 'bn'
+  const clean = (v: string, max: number): string => cleanText(nfc ? v.normalize('NFC') : v, max)
   const ordered = [...segments].sort((a, b) => a.start - b.start)
   const out: RawSegment[] = []
   let last = 0
@@ -280,30 +337,53 @@ export function localTranscript(segments: readonly SidecarSegment[], language: s
     const words: RawWord[] = []
     for (const w of seg.words) {
       if (words.length >= MAX_WORDS) break
-      const text = cleanText(typeof w.text === 'string' ? w.text : '', MAX_WORD_TEXT)
+      const text = clean(typeof w.text === 'string' ? w.text : '', MAX_WORD_TEXT)
       if (!text) continue
       const start = Math.max(clamp(Math.min(w.start, w.end)), last)
       const end = Math.max(clamp(Math.max(w.start, w.end)), start)
       words.push({ text, start, end })
       last = end
     }
-    let start: number
-    let end: number
-    let text: string
     if (words.length > 0) {
-      start = words[0].start
-      end = words[words.length - 1].end
-      text = words.map((w) => w.text).join(' ')
-    } else {
-      // A segment without words (the helper always sends them; kept for safety) keeps its own text and times.
-      text = cleanText(seg.text, MAX_TEXT)
-      start = Math.max(clamp(Math.min(seg.start, seg.end)), last)
-      end = Math.max(clamp(Math.max(seg.start, seg.end)), start)
-      if (text) last = end
+      for (const piece of opts.split ? captionPieces(words) : [words])
+        out.push({ start: piece[0].start, end: piece[piece.length - 1].end, text: piece.map((w) => w.text).join(' '), words: piece })
+      continue
     }
+    // A segment without words (the helper always sends them; kept for safety) keeps its own text and times.
+    const text = clean(seg.text, MAX_TEXT)
+    const start = Math.max(clamp(Math.min(seg.start, seg.end)), last)
+    const end = Math.max(clamp(Math.max(seg.start, seg.end)), start)
     if (!text) continue
-    out.push({ start, end, text, ...(words.length ? { words } : {}) })
+    last = end
+    out.push({ start, end, text })
   }
-  const code = language && language !== 'auto' ? languageCode(language) : undefined
   return { ...(code ? { language: code } : {}), segments: out }
+}
+
+/**
+ * The chunk lengths the helper accepts for `--max-chunk`, seconds (native/speech args.rs). Its
+ * default is SIDECAR.maxChunk.
+ */
+export const MAX_CHUNK_RANGE = { min: 1, max: 29.5 } as const
+
+/**
+ * The `transcribe` arguments for a model that sets its own chunk length
+ * (SpeechModelSpec.maxChunkSeconds: the Bangla model makes fewer mistakes with 20 s chunks):
+ * `['--max-chunk', '20']`; none for the others, which keep the helper's SIDECAR.maxChunk. A value
+ * the helper would refuse is never passed.
+ */
+export function chunkArgs(spec: { maxChunkSeconds?: number }): string[] {
+  const s = spec.maxChunkSeconds
+  if (s === undefined || !Number.isFinite(s) || s < MAX_CHUNK_RANGE.min || s > MAX_CHUNK_RANGE.max) return []
+  return ['--max-chunk', String(s)]
+}
+
+/**
+ * Every `transcribe` argument a model sets for itself: its chunk length (chunkArgs) and
+ * `--no-timestamps` for a model that decodes without timestamp tokens
+ * (SpeechModelSpec.noTimestamps). The Bangla model: `['--max-chunk', '20', '--no-timestamps']`;
+ * the Whisper models: none.
+ */
+export function modelArgs(spec: { maxChunkSeconds?: number; noTimestamps?: true }): string[] {
+  return [...chunkArgs(spec), ...(spec.noTimestamps === true ? ['--no-timestamps'] : [])]
 }

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SpeechModelView, SpeechState } from '../../../shared/api/speech'
-import { DEFAULT_SPEECH_MODEL, type SpeechModelId } from '../../../shared/speech/catalog'
+import { DEFAULT_SPEECH_MODEL, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
 import {
   blockedLine,
   detectorLine,
   diskFooter,
   downloadFailed,
   engineLine,
+  licenceLine,
   removeName,
   removeQuestion,
   rowDownload,
@@ -163,25 +164,31 @@ function Row({
     ;(actionRef.current ?? statusRef.current)?.focus({ preventScroll: true })
   }, [shown])
 
+  // A model made for one language (the Bangla model) is never the model for new captions: no radio.
+  const oneLanguage = !!speechModel(m.id)?.language
   return (
     <div className="speech-model" data-model={m.id} data-state={s.state}>
       <label className="speech-model-head">
-        <input
-          type="radio"
-          name="speech-default"
-          value={m.id}
-          checked={state.defaultModel === m.id && installed}
-          disabled={!installed}
-          aria-label={rowTitle(m)}
-          onChange={() => act(window.api.setDefaultSpeechModel(m.id))}
-        />
+        {oneLanguage ? (
+          <span className="speech-radio-gap" aria-hidden="true" />
+        ) : (
+          <input
+            type="radio"
+            name="speech-default"
+            value={m.id}
+            checked={state.defaultModel === m.id && installed}
+            disabled={!installed}
+            aria-label={rowTitle(m)}
+            onChange={() => act(window.api.setDefaultSpeechModel(m.id))}
+          />
+        )}
         <strong>{rowTitle(m)}</strong>
         {m.id === DEFAULT_SPEECH_MODEL && <span className="speech-badge">{SPEECH_COPY.recommended}</span>}
         {installed && <span className="speech-badge ok">{SPEECH_COPY.downloaded}</span>}
       </label>
       <p className="speech-facts">{rowFacts(m, estimateFor(state, m, 600))}</p>
       <p className="speech-purpose">{tierPurpose(m.tier, true)}</p>
-      <p className="speech-licence">{SPEECH_COPY.licenceLine}</p>
+      <p className="speech-licence">{licenceLine(m.id)}</p>
       {status && s.state !== 'installed' && (
         <p className={`speech-status ${s.state === 'failed' || s.state === 'damaged' ? 'error' : ''}`} data-testid="speech-status" ref={statusRef} tabIndex={-1}>
           {status}

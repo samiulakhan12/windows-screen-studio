@@ -12,7 +12,7 @@ import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { ENGINE_VERSION, speechModel, speechModelBlock, speechThreads, type SpeechModelSpec } from '../../shared/speech/catalog'
 import { localErrorMessage, type LocalCaptionsError, type LocalErrorParams } from '../../shared/speech/errors'
 import { estimateSeconds } from '../../shared/speech/estimate'
-import { localTranscript, readSidecarLine, SIDECAR, type SidecarResult, type SidecarSegment } from '../../shared/speech/protocol'
+import { localTranscript, modelArgs, readSidecarLine, SIDECAR, type SidecarResult, type SidecarSegment } from '../../shared/speech/protocol'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { cancelled } from '../ai/request'
 import type { AiClient, AudioPart, TranscribeCall } from '../ai/types'
@@ -79,6 +79,13 @@ interface CachedPart {
   transcript: RawTranscript
 }
 
+/**
+ * How localTranscript forms captions for `spec`: a model that decodes without timestamp tokens
+ * (the Bangla model) writes one segment per chunk of up to 20 s, so its segments are cut into
+ * captions at the pauses (protocol.ts captionPieces); the Whisper models' segments are kept.
+ */
+export const captionSplit = (spec: Pick<SpeechModelSpec, 'noTimestamps'>): { split: boolean } => ({ split: spec.noTimestamps === true })
+
 /** A cached part read back as untrusted input (size cap, the same checks as live output); null when unusable. */
 export async function readCachedPart(file: string, expect: { spec: SpeechModelSpec; partSha256: string; seconds: number }): Promise<{ transcript: RawTranscript; language: string; languageSeconds: number } | null> {
   const stat = await fs.stat(file).catch(() => null)
@@ -100,7 +107,8 @@ export async function readCachedPart(file: string, expect: { spec: SpeechModelSp
     if (event?.type !== 'segment') return null
     lines.push(event)
   }
-  return { transcript: localTranscript(lines, raw.language, expect.seconds), language: raw.language, languageSeconds: raw.languageSeconds }
+  // A part kept before captions were cut (the Bangla model's 20 s segments) is cut as it is read.
+  return { transcript: localTranscript(lines, raw.language, expect.seconds, captionSplit(expect.spec)), language: raw.language, languageSeconds: raw.languageSeconds }
 }
 
 /** `heard`: seconds of speech the helper's detector found in the part (the audio it transcribed). */
@@ -134,6 +142,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       '--audio', part.file,
       '--vad-model', vadModel,
       '--lang', lang,
+      // The model's own arguments (the Bangla model: 20 s chunks, no timestamp tokens), else none.
+      ...modelArgs(spec),
       '--threads', String(threads),
       '--stdin-control',
       ...commonArgs()
@@ -176,7 +186,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
 
   const transcribe = async (part: AudioPart, call: TranscribeCall): Promise<RawTranscript> => {
     if (call.signal.aborted) throw cancelled()
-    const asked = helperLanguage(call.language)
+    // A model made for one language always runs with it (validateTranscribeOptions refuses another).
+    const asked = spec.language ?? helperLanguage(call.language)
     const lang = asked ?? carried ?? 'auto'
     const partSha256 = createHash('sha256').update(await fs.readFile(part.file)).digest('hex')
     const key = partCacheKey(partSha256, spec, lang, ENGINE_VERSION)
@@ -200,7 +211,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       if ('error' in choice) throw fail('unavailable', { reason: choice.error })
       const r = await runPart(part, lang, threads, call, choice.exe, choice.build)
       if (r.kind === 'done') {
-        const transcript = localTranscript(r.segments, r.result.language, part.seconds)
+        const transcript = localTranscript(r.segments, r.result.language, part.seconds, captionSplit(spec))
         const language = r.result.language === 'auto' ? '' : r.result.language
         const entry: CachedPart = { version: 1, model: spec.id, modelSha256: spec.sha256, language, languageSeconds: r.result.language_s, engine: ENGINE_VERSION, partSha256, transcript }
         try {
@@ -230,6 +241,12 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
           throw fail('damaged', { model: spec.id })
         }
         if (r.code === 'language') throw fail('language', { language: call.language ?? lang })
+        if (r.code === 'args') {
+          // The helper refused the app's own arguments: it is not the one built with this version of
+          // Flown (an older one bundled by mistake lacks --no-timestamps, which the Bangla model needs).
+          console.warn(`Speech helper refused the arguments for ${spec.id}: ${r.message}`)
+          throw fail('outdated', { model: spec.id })
+        }
         if (r.code !== 'internal') throw fail('protocol')
       }
       if (r.kind === 'protocol') throw fail('protocol')

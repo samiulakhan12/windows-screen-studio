@@ -9,6 +9,7 @@
 //   FAKE_SPEECH_CPU        JSON merged into the cpu line (default: everything true, 4 logical)
 //   FAKE_SPEECH_MODE       ok (default) | crash | illegal | stall | hang | memory | model | language
 //                          | cpu-error | internal | garbage | overflow | no-result | slow-cancel | silent
+//                          | old (Flown 0.4.0's helper: refuses --no-timestamps as an unknown argument)
 //                          A mode can be limited to calls whose arguments contain FAKE_SPEECH_MATCH, and
 //                          to the first FAKE_SPEECH_TIMES calls (counted in FAKE_SPEECH_COUNTER, a file).
 //   FAKE_SPEECH_LANG       the language a transcription detects (default en)
@@ -56,6 +57,10 @@ function common() {
     process.stdout.write('x'.repeat((1 << 20) + 10))
     setInterval(() => {}, 1000)
     return true
+  }
+  if (mode === 'old' && args.includes('--no-timestamps')) {
+    out({ type: 'error', code: 'args', message: 'unknown argument --no-timestamps' })
+    process.exit(1)
   }
   for (const [m, code] of [['memory', 'memory'], ['model', 'model'], ['language', 'language'], ['cpu-error', 'cpu'], ['internal', 'internal']]) {
     if (mode === m) {

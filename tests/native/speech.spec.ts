@@ -400,6 +400,39 @@ describe('ssw-speech (host build)', () => {
     expect(one(unknown, 'error').code).toBe('language')
   })
 
+  it('decodes without timestamp tokens with --no-timestamps and in chunks of --max-chunk seconds (the Bangla model’s arguments, offline-captions §14.3), word times as before', async () => {
+    const segmentsOf = (r: Run): { start: number; end: number; words: { text: string; start: number; end: number }[] }[] =>
+      r.lines.filter((l) => l.type === 'segment') as unknown as { start: number; end: number; words: { text: string; start: number; end: number }[] }[]
+    const audio = wav('jfk-nots.wav', jfk)
+    const plain = await helper(transcribeArgs(audio, ['--lang', 'en']))
+    const nots = await helper(transcribeArgs(audio, ['--lang', 'en', '--no-timestamps']))
+    for (const r of [plain, nots]) expect(r.code, r.stderr).toBe(0)
+    const duration = one(nots, 'result').duration as number
+    // The flag reached whisper.cpp: a segment decoded without timestamp tokens ends where its 30 s
+    // decode window ends, past the 11 s clip; with them, inside it.
+    for (const s of segmentsOf(plain)) expect(s.end).toBeLessThanOrEqual(duration + 0.1)
+    expect(segmentsOf(nots)).toHaveLength(1)
+    expect(segmentsOf(nots)[0].end).toBeGreaterThan(duration + 5)
+    // The same words, with DTW word times that are monotonic and inside the audio.
+    expect(wordsOf(nots).map((w) => norm(w.text))).toEqual(wordsOf(plain).map((w) => norm(w.text)))
+    const words = wordsOf(nots)
+    for (let i = 0; i < words.length; i++) {
+      expect(words[i].start).toBeGreaterThanOrEqual(i ? words[i - 1].end : 0)
+      expect(words[i].end).toBeLessThanOrEqual(duration)
+    }
+
+    // Without timestamp tokens each chunk is one segment, so the chunks show: --max-chunk 10 makes
+    // segments whose words span at most 10 s, where the default 29 s chunks hold more.
+    const long = wav('long-nots.wav', concat(jfk, silence(0.5), ls, silence(0.5), jfk, silence(0.5), ls))
+    const chunked = await helper(transcribeArgs(long, ['--lang', 'en', '--no-timestamps', '--max-chunk', '10']))
+    const whole = await helper(transcribeArgs(long, ['--lang', 'en', '--no-timestamps']))
+    for (const r of [chunked, whole]) expect(r.code, r.stderr).toBe(0)
+    const span = (s: { words: { start: number; end: number }[] }): number => (s.words.length ? s.words[s.words.length - 1].end - s.words[0].start : 0)
+    expect(segmentsOf(chunked).length).toBeGreaterThan(segmentsOf(whole).length)
+    for (const s of segmentsOf(chunked)) expect(span(s)).toBeLessThanOrEqual(10.1)
+    expect(Math.max(...segmentsOf(whole).map(span))).toBeGreaterThan(15)
+  })
+
   it('cancels through stdin within 5 s', async () => {
     const long = concat(...Array.from({ length: 12 }, () => concat(jfk, silence(0.5), ls, silence(0.5))))
     let sent = 0

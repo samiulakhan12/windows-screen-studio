@@ -4,8 +4,13 @@
 //!   ssw-speech cpu
 //!   ssw-speech vad --vad-model P --audio <wav|-> [--format f32le] [--threads 1] [--low-priority] [--parent-pid N]
 //!   ssw-speech transcribe --model-dir D --model F --audio W --vad-model P [--lang auto|xx] [--threads N]
-//!                         [--low-priority] [--stdin-control] [--parent-pid N]
-//!   debug only: --dtw auto|off|<preset>, --beam N, --prompt S, --max-chunk S, --verbose
+//!                         [--max-chunk S] [--no-timestamps] [--low-priority] [--stdin-control] [--parent-pid N]
+//!   debug only: --dtw auto|off|<preset>, --beam N, --prompt S, --verbose
+//!
+//! `--max-chunk S` (1..29.5 s, default 29) is the longest chunk handed to whisper.cpp, and
+//! `--no-timestamps` decodes without timestamp tokens (word times come from DTW either way); the
+//! app passes them for a model that asks for them (the Bangla model: 20 s and no timestamp tokens,
+//! docs/design/offline-captions.md §14).
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -41,6 +46,7 @@ pub struct Args {
     pub beam: i32,
     pub prompt: Option<String>,
     pub max_chunk: f64,
+    pub no_timestamps: bool,
     pub verbose: bool,
 }
 
@@ -87,6 +93,7 @@ pub fn parse(argv: Vec<OsString>) -> Result<Args, Failure> {
         beam: 0,
         prompt: None,
         max_chunk: 29.0,
+        no_timestamps: false,
         verbose: false,
     };
     let mut format: Option<String> = None;
@@ -182,6 +189,10 @@ pub fn parse(argv: Vec<OsString>) -> Result<Args, Failure> {
             "--max-chunk" => {
                 flag_ok(&[Transcribe])?;
                 a.max_chunk = number!()
+            }
+            "--no-timestamps" => {
+                flag_ok(&[Transcribe])?;
+                a.no_timestamps = true
             }
             "--verbose" => a.verbose = true,
             _ => return Err(bad(format!("unknown argument {key}"))),
@@ -341,6 +352,38 @@ mod tests {
             "EN!",
         ]);
         assert_eq!(lang.unwrap_err().code, Code::Language);
+    }
+
+    #[test]
+    fn reads_max_chunk_for_transcribe_within_its_bounds() {
+        let base = ["transcribe", "--model-dir", "d", "--model", "m.bin", "--audio", "a.wav", "--vad-model", "v"];
+        let with = |s: &str| {
+            let mut v = base.to_vec();
+            v.extend(["--max-chunk", s]);
+            p(&v)
+        };
+        assert_eq!(p(&base).unwrap().max_chunk, 29.0);
+        assert_eq!(with("20").unwrap().max_chunk, 20.0);
+        assert_eq!(with("1").unwrap().max_chunk, 1.0);
+        assert_eq!(with("29.5").unwrap().max_chunk, 29.5);
+        for bad in ["0.5", "30", "NaN", "inf", "x", "-20"] {
+            assert_eq!(with(bad).unwrap_err().code, Code::Args, "{bad}");
+        }
+        let vad = p(&["vad", "--vad-model", "m", "--audio", "-", "--max-chunk", "20"]);
+        assert_eq!(vad.unwrap_err().code, Code::Args);
+    }
+
+    #[test]
+    fn reads_no_timestamps_for_transcribe_only() {
+        let base = ["transcribe", "--model-dir", "d", "--model", "m.bin", "--audio", "a.wav", "--vad-model", "v"];
+        assert!(!p(&base).unwrap().no_timestamps);
+        let mut on = base.to_vec();
+        on.push("--no-timestamps");
+        assert!(p(&on).unwrap().no_timestamps);
+        on.push("--no-timestamps");
+        assert_eq!(p(&on).unwrap_err().code, Code::Args, "given twice");
+        let vad = p(&["vad", "--vad-model", "m", "--audio", "-", "--no-timestamps"]);
+        assert_eq!(vad.unwrap_err().code, Code::Args);
     }
 
     #[test]

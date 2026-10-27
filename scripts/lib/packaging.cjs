@@ -83,19 +83,42 @@ function speechHelpers() {
 }
 
 /**
+ * The `transcribe` options the app passes for a catalog model (src/shared/speech/protocol.ts
+ * modelArgs: the Bangla model's `--max-chunk 20 --no-timestamps`). Flown 0.4.0's helper does not
+ * know `--no-timestamps` and refuses it as an unknown argument, so a helper built from older
+ * sources (native/bin is not in git, and build-native.mjs reuses what it finds there on Windows)
+ * would fail every Bangla run. The helper's argument parser compares each option as a literal,
+ * so a helper built from these sources holds every one of these strings; tests/packaging.test.ts
+ * checks this list against the catalog.
+ */
+const SPEECH_HELPER_OPTIONS = ['--max-chunk', '--no-timestamps']
+
+/** The options of SPEECH_HELPER_OPTIONS that the helper executable `buf` does not hold (an older build). */
+function missingSpeechOptions(buf) {
+  return SPEECH_HELPER_OPTIONS.filter((o) => !buf.includes(Buffer.from(o, 'latin1')))
+}
+
+/**
  * Whether each speech helper can be bundled, like nativeHelperStatus: a helper that is not a
  * complete x64 Windows executable is left out with a warning (captions then offer AI providers
- * only and the speech detector falls back to sound levels), never fatal.
- * @returns {{ from: string, to: string, build: string, bundle: boolean, present: boolean, reason?: string, size?: number }[]}
+ * only and the speech detector falls back to sound levels), never fatal. `missingOptions`: the
+ * options of SPEECH_HELPER_OPTIONS a usable helper lacks (built from older sources), which
+ * predist and verify-dist refuse to ship.
+ * @returns {{ from: string, to: string, build: string, bundle: boolean, present: boolean, reason?: string, size?: number, missingOptions?: string[] }[]}
  */
 function speechHelperStatus(rootDir = ROOT) {
   return speechHelpers().map((h) => {
     const file = path.join(rootDir, h.from)
     if (!fs.existsSync(file)) return { ...h, bundle: false, present: false }
     const check = checkWindowsExe(file)
-    return check.ok ? { ...h, bundle: true, present: true, size: check.size } : { ...h, bundle: false, present: true, reason: check.reason }
+    if (!check.ok) return { ...h, bundle: false, present: true, reason: check.reason }
+    return { ...h, bundle: true, present: true, size: check.size, missingOptions: missingSpeechOptions(fs.readFileSync(file)) }
   })
 }
+
+/** Why a speech helper that lacks `missing` (missingSpeechOptions) must not ship. */
+const staleSpeechHelper = (from, missing) =>
+  `${from} was built from older sources: it does not know ${missing.join(', ')}, which this version of Flown passes (the Bangla model), so every Bangla caption run would fail. Rebuild it (npm run build:native) or copy in the helpers built from this commit.`
 
 /**
  * The DLLs the speech helpers may import (§6.3): system DLLs only. bcryptprimitives
@@ -140,7 +163,7 @@ const VAD_PIN = {
 }
 
 /** Names THIRD_PARTY_NOTICES.txt must mention (§6.3), matched without case. */
-const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe']
+const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe']
 
 /** What is wrong with a notices text (empty: fine): at least 10 KB and every NOTICE_NAMES entry. */
 function noticesProblems(text) {
@@ -270,6 +293,9 @@ module.exports = {
   nativeHelperStatus,
   speechHelpers,
   speechHelperStatus,
+  SPEECH_HELPER_OPTIONS,
+  missingSpeechOptions,
+  staleSpeechHelper,
   speechResources,
   noticesResource,
   noticesProblems,

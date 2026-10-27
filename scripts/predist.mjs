@@ -25,7 +25,7 @@ const require = createRequire(import.meta.url)
 const { checkWindowsExe } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
 const { loadBuilderEnv, resolveWindowsSigning } = require('./lib/signing.cjs')
-const { FFMPEG_EXE, nativeHelper, speechHelperStatus, VAD_PIN } = require('./lib/packaging.cjs')
+const { FFMPEG_EXE, nativeHelper, speechHelperStatus, staleSpeechHelper, VAD_PIN } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const failures = []
@@ -133,7 +133,9 @@ function buildNativeHelper() {
 function checkSpeech() {
   const required = process.env.SSW_REQUIRE_NATIVE === '1'
   for (const h of speechHelperStatus(root)) {
-    if (h.bundle) log(`speech helper OK (${h.from}, ${h.build}, ${Math.round(h.size / 1024)} KB) -> resources/${h.to}`)
+    // A helper from older sources would ship and fail every Bangla run: never, whether or not native helpers are required.
+    if (h.bundle && h.missingOptions.length) fail(staleSpeechHelper(h.from, h.missingOptions))
+    else if (h.bundle) log(`speech helper OK (${h.from}, ${h.build}, ${Math.round(h.size / 1024)} KB) -> resources/${h.to}`)
     else {
       const msg = h.present
         ? `${h.from} is not a usable x64 Windows executable (${h.reason}), so it is left out of the package. Rebuild it (npm run build:native).`

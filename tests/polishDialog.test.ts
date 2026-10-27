@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SpeechState } from '../src/shared/api/speech'
 import { createProject } from '../src/shared/engine/project'
+import { SPEECH_MODELS, type SpeechModelId } from '../src/shared/speech/catalog'
 import type { CursorTrack, Project } from '../src/shared/types'
 
 /*
@@ -37,11 +39,15 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 /** The dialog's reads (options, presets, providers) wait for this; `remembered` is the 'polish' preference. */
 let gate = deferred()
 let remembered: unknown = null
+/** The speech state the main process answers; null: no handler (On this PC unavailable, as in the focus tests). */
+let speechReply: SpeechState | null = null
 vi.stubGlobal('window', {
   api: {
     getPref: (key: string) => gate.promise.then(() => (key === 'polish' ? remembered : null)),
     setPref: () => Promise.resolve(),
-    listAiProviders: () => gate.promise.then(() => [])
+    listAiProviders: () => gate.promise.then(() => []),
+    getSpeechState: () => (speechReply ? Promise.resolve(speechReply) : Promise.reject(new Error('No handler registered for speech:state'))),
+    onSpeechState: () => () => undefined
   },
   addEventListener: () => undefined,
   removeEventListener: () => undefined
@@ -62,7 +68,15 @@ const project: Project = createProject({
   cursorValid: false,
   capture: { method: 'chromium', cursorInVideo: false, region: null }
 })
-const store = { state: project, subscribe: () => () => undefined, getSnapshot: () => project }
+/** The project the dialog polishes (a test may give it sound). */
+let current: Project = project
+const store = {
+  get state() {
+    return current
+  },
+  subscribe: () => () => undefined,
+  getSnapshot: () => current
+}
 
 vi.doMock('react', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -110,6 +124,7 @@ vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () =>
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const DIALOG = '../src/renderer/src/editor/PolishDialog'
+const SPEECH_STATE = '../src/renderer/src/editor/speechState'
 const { PolishDialog } = (await import(/* @vite-ignore */ DIALOG)) as { PolishDialog: (props: unknown) => unknown }
 
 const NO_INPUT: CursorTrack = { samples: [], clicks: [], keys: [], valid: false }
@@ -170,6 +185,8 @@ beforeEach(() => {
   focused = null
   gate = deferred()
   remembered = null
+  speechReply = null
+  current = project
 })
 
 describe('Polish dialog: the focus when it opens (E-01-2)', () => {
@@ -191,5 +208,47 @@ describe('Polish dialog: the focus when it opens (E-01-2)', () => {
     expect(button?.props.disabled).toBe(true)
     expect(button?.props.title).toBe('Choose at least one step')
     expect(focused).toBe('panel')
+  })
+})
+
+describe('Polish dialog: the Bangla model (docs/design/offline-captions.md §14.4)', () => {
+  const state = (installed: SpeechModelId[]): SpeechState => ({
+    engine: { available: true, build: 'standard', threads: 3 },
+    detector: { available: true },
+    models: SPEECH_MODELS.map((m) => ({
+      id: m.id,
+      tier: m.tier,
+      name: m.name,
+      bytes: m.bytes,
+      rtf4: m.rtf4,
+      ramMB: m.ramMB,
+      wer: m.wer,
+      partSeconds: m.partSeconds,
+      license: m.license,
+      status: { state: installed.includes(m.id) ? 'installed' : 'missing' },
+      inUse: false,
+      allowed: true
+    })),
+    defaultModel: 'whisper-base',
+    disk: { free: 1e11, used: 0 },
+    memory: { total: 16e9, free: 8e9 },
+    cores: 4
+  })
+  const captionsHint = (out: El[]): string => textOf(out.find((e) => e.props['data-testid'] === 'polish-row-captions')?.props.children)
+
+  it('with Bengali chosen in the Captions tab and the Bangla model downloaded, the Captions row says it uses it', async () => {
+    const speech = (await import(/* @vite-ignore */ SPEECH_STATE)) as { setSpokenLanguage(code: string): void; loadSpeechState(force?: boolean): void }
+    current = { ...project, hasAudio: true }
+    speechReply = state(['whisper-base', 'whisper-bn-medium'])
+    speech.loadSpeechState(true)
+    gate.resolve()
+    speech.setSpokenLanguage('bn')
+    render()
+    await flush()
+    await flush()
+    expect(captionsHint(render())).toContain('Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.')
+    speech.setSpokenLanguage('en')
+    expect(captionsHint(render())).toContain('Runs on this PC: nothing is uploaded and it costs nothing.')
+    speech.setSpokenLanguage('')
   })
 })

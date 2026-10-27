@@ -9,8 +9,11 @@ import { VAD } from '../src/shared/audio/vad'
 import { VAD_TRUST, VOICE } from '../src/shared/audio/voice'
 import { readTranscript } from '../src/shared/captions/captionData'
 import {
+  BANGLA_MODEL,
   DEFAULT_SPEECH_MODEL,
   ENGINE_VERSION,
+  isBengali,
+  isLanguageModel,
   isSpeechModelId,
   memoryNeedMB,
   modelUrl,
@@ -27,7 +30,7 @@ import {
 import { localErrorCode, localErrorMessage, modelBlockReason, quickerModel, tierLabel, UNAVAILABLE_REASONS, type LocalCaptionsError } from '../src/shared/speech/errors'
 import { COMPAT_FACTOR, estimateSeconds, THREAD_SPEED, threadFactor, WINDOWS_FACTOR } from '../src/shared/speech/estimate'
 import { SIDECAR } from '../src/shared/speech/protocol'
-import { canTranscribeNow, CAPTIONS_SKIPPED_NO_MODEL, localModel, pickTranscriber } from '../src/shared/speech/transcriber'
+import { canTranscribeNow, CAPTIONS_SKIPPED_NO_MODEL, localModel, localModelFor, pickTranscriber } from '../src/shared/speech/transcriber'
 
 const ROOT = path.resolve(__dirname, '..')
 const sha256 = (file: string): string => createHash('sha256').update(fs.readFileSync(file)).digest('hex')
@@ -37,24 +40,60 @@ const PINS: Record<SpeechModelId, { file: string; bytes: number; sha256: string 
   'whisper-tiny': { file: 'ggml-tiny-q8_0.bin', bytes: 43537433, sha256: 'c2085835d3f50733e2ff6e4b41ae8a2b8d8110461e18821b09a15c40c42d1cca' },
   'whisper-base': { file: 'ggml-base-q5_1.bin', bytes: 59707625, sha256: '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898' },
   'whisper-small': { file: 'ggml-small-q5_1.bin', bytes: 190085487, sha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb' },
-  'whisper-turbo': { file: 'ggml-large-v3-turbo-q5_0.bin', bytes: 574041195, sha256: '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2' }
+  'whisper-turbo': { file: 'ggml-large-v3-turbo-q5_0.bin', bytes: 574041195, sha256: '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2' },
+  // §14: the Bangla model, a third-party ggml conversion pinned by commit.
+  'whisper-bn-medium': { file: 'ggml-bengaliai-whisper-medium-q5_0.bin', bytes: 539257671, sha256: '2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605' }
 }
 
 describe('the speech model catalog', () => {
   it('pins each model by file, size and SHA-256, quickest first, with base as the default', () => {
-    expect(SPEECH_MODELS.map((m) => m.id)).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'])
-    expect(SPEECH_MODELS.map((m) => m.tier)).toEqual(['fast', 'standard', 'accurate', 'best'])
+    expect(SPEECH_MODELS.map((m) => m.id)).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo', 'whisper-bn-medium'])
+    expect(SPEECH_MODELS.map((m) => m.tier)).toEqual(['fast', 'standard', 'accurate', 'best', 'bangla'])
     for (const m of SPEECH_MODELS) {
       expect({ file: m.file, bytes: m.bytes, sha256: m.sha256 }).toEqual(PINS[m.id])
       expect(m.file).toMatch(/^[A-Za-z0-9._-]+$/)
-      expect(m.license.name).toBe('MIT')
+      expect(m.license.name).toBe(m.language ? 'Apache-2.0' : 'MIT')
       expect(m.partSeconds).toBeGreaterThan(0)
       expect(m.rtf4).toBeGreaterThan(0)
     }
     expect(DEFAULT_SPEECH_MODEL).toBe('whisper-base')
     expect(speechModel('whisper-turbo')?.minTotalMemGB).toBe(8)
-    expect(SPEECH_MODELS.filter((m) => m.minTotalMemGB !== undefined).map((m) => m.id)).toEqual(['whisper-turbo'])
-    expect(SPEECH_MODELS.filter((m) => m.needsStandardBuild).map((m) => m.id)).toEqual(['whisper-turbo'])
+    expect(SPEECH_MODELS.filter((m) => m.minTotalMemGB !== undefined).map((m) => m.id)).toEqual(['whisper-turbo', 'whisper-bn-medium'])
+    expect(SPEECH_MODELS.filter((m) => m.needsStandardBuild).map((m) => m.id)).toEqual(['whisper-turbo', 'whisper-bn-medium'])
+    // The multilingual models are the only ones without a language; none of them sets its own chunks, timestamps or repository.
+    expect(SPEECH_MODELS.filter((m) => !m.language).map((m) => m.id)).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'])
+    expect(SPEECH_MODELS.filter((m) => m.maxChunkSeconds !== undefined || m.repo !== undefined || m.noTimestamps !== undefined).map((m) => m.id)).toEqual(['whisper-bn-medium'])
+  })
+
+  it('pins the Bangla model: Bangla only, 20 s chunks, its own repository commit, Apache-2.0, gated like turbo (§14)', () => {
+    const bn = speechModel(BANGLA_MODEL)!
+    expect(BANGLA_MODEL).toBe('whisper-bn-medium')
+    expect(bn).toMatchObject({ tier: 'bangla', name: 'Bengali.AI Whisper medium', language: 'bn', maxChunkSeconds: 20, noTimestamps: true, minTotalMemGB: 8, needsStandardBuild: true, partSeconds: 180 })
+    expect(bn).toMatchObject({ rtf4: 0.87, ramMB: 1200, wer: 0.183, startMedianMs: 40 })
+    expect(bn.repo).toEqual({ repo: 'winshades/bengaliai-whisper-medium-ggml', commit: '11cf5cbd282e0e46a761093939952f74906ddce1' })
+    expect(bn.license).toEqual({
+      name: 'Apache-2.0',
+      holder: 'Bengali.AI (the tugstugi team), fine-tuned from OpenAI Whisper; converted to ggml by WinShades',
+      url: 'https://huggingface.co/bengaliAI/tugstugi_bengaliai-asr_whisper-medium'
+    })
+    expect(modelUrl(bn)).toBe('https://huggingface.co/winshades/bengaliai-whisper-medium-ggml/resolve/11cf5cbd282e0e46a761093939952f74906ddce1/ggml-bengaliai-whisper-medium-q5_0.bin')
+    // The test base replaces its repository too.
+    expect(modelUrl(bn, 'http://127.0.0.1:4321/hf/')).toBe('http://127.0.0.1:4321/hf/ggml-bengaliai-whisper-medium-q5_0.bin')
+    expect(memoryNeedMB(bn)).toBe(1262)
+    expect(isLanguageModel(bn)).toBe(true)
+    expect(SPEECH_MODELS.filter(isLanguageModel).map((m) => m.id)).toEqual([BANGLA_MODEL])
+    const GiB = 2 ** 30
+    expect(speechModelBlock(bn, { totalMemBytes: 7.4 * GiB, build: 'standard' })).toBeNull()
+    expect(speechModelBlock(bn, { totalMemBytes: 6 * GiB, build: 'standard' })).toBe('memory')
+    expect(speechModelBlock(bn, { totalMemBytes: 16 * GiB, build: 'compatible' })).toBe('processor')
+    expect(modelBlockReason('memory', bn, 4 * GiB)).toBe('Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.')
+    // On a 4-core Windows PC (3 threads): about 29 min for a 20-minute recording, slower than it.
+    expect(Math.round(estimateSeconds(bn, 1200, 3) / 60)).toBe(29)
+  })
+
+  it('reads a Bengali spoken language in any form', () => {
+    for (const yes of ['bn', 'BN', 'bn-BD', ' bn-IN ']) expect(isBengali(yes)).toBe(true)
+    for (const no of ['', 'en', 'hi', 'bng', 'b', null, undefined]) expect(isBengali(no)).toBe(false)
   })
 
   it('keeps Whisper large-v3 turbo off PCs with too little memory or only the compatible build', () => {
@@ -102,7 +141,7 @@ describe('the speech model catalog', () => {
   it('has the committed speech fixtures with their recorded hashes', () => {
     const dir = path.join(ROOT, 'tests', 'fixtures', 'speech')
     const readme = fs.readFileSync(path.join(dir, 'README.md'), 'utf8')
-    for (const name of ['jfk-16k.flac', 'ls-1272-128104-0000.flac']) expect(readme).toContain(sha256(path.join(dir, name)))
+    for (const name of ['jfk-16k.flac', 'ls-1272-128104-0000.flac', 'bn-fleurs-blog-18s.flac', 'bn-fleurs-blog-18s.txt']) expect(readme).toContain(sha256(path.join(dir, name)))
   })
 })
 
@@ -152,10 +191,17 @@ describe('time estimates', () => {
 })
 
 describe('the shared error sentences of captions on this PC', () => {
-  const codes: LocalCaptionsError[] = ['unavailable', 'no-model', 'damaged', 'crashed', 'memory', 'stalled', 'protocol', 'language', 'blocked']
+  const codes: LocalCaptionsError[] = ['unavailable', 'no-model', 'damaged', 'crashed', 'memory', 'stalled', 'protocol', 'language', 'blocked', 'outdated']
 
   it('name the tier first and the model once', () => {
-    expect(SPEECH_TIER_NAMES).toEqual({ fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate' })
+    expect(SPEECH_TIER_NAMES).toEqual({ fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate', bangla: 'Bangla' })
+    expect(tierLabel('whisper-bn-medium')).toBe('Bangla (Bengali.AI Whisper medium)')
+    // The Bangla model has no quicker tier (the others get most Bangla words wrong); turbo's is still small.
+    expect(quickerModel('whisper-bn-medium')).toBeNull()
+    expect(quickerModel('whisper-turbo')?.id).toBe('whisper-small')
+    expect(localErrorMessage('memory', { model: 'whisper-bn-medium' })).toBe('This PC ran out of memory for Bangla (Bengali.AI Whisper medium). Close other apps and try again.')
+    expect(localErrorCode(localErrorMessage('no-model', { model: 'whisper-bn-medium' }))).toBe('no-model')
+    expect(localErrorCode(localErrorMessage('blocked', { model: 'whisper-bn-medium', block: 'processor' }))).toBe('blocked')
     expect(tierLabel('whisper-small')).toBe('Accurate (Whisper small)')
     expect(localErrorMessage('memory', { model: 'whisper-small' })).toBe('This PC ran out of memory for Accurate (Whisper small). Try Standard.')
     expect(localErrorMessage('memory', { model: 'whisper-tiny' })).toBe('This PC ran out of memory for Fast (Whisper tiny). Close other apps and try again.')
@@ -163,6 +209,10 @@ describe('the shared error sentences of captions on this PC', () => {
     expect(localErrorMessage('damaged', { model: 'whisper-base' })).toBe('The speech model for Standard (Whisper base) is damaged or missing, so it was not used. Download it again (60 MB).')
     expect(localErrorMessage('crashed', { part: 4, parts: 6 })).toBe('The speech engine stopped unexpectedly. The parts already done are kept: Generate captions again continues from part 4 of 6.')
     expect(localErrorMessage('unavailable', { reason: 'blocked' })).toBe(`Captions on this PC are not available here: ${UNAVAILABLE_REASONS.blocked}.`)
+    // A helper that refuses the app's arguments (an older one bundled by mistake) says so, never "something unexpected".
+    expect(localErrorMessage('outdated', { model: 'whisper-bn-medium' })).toBe(
+      'The speech engine in this copy of Flown does not match this version, so it cannot run Bangla (Bengali.AI Whisper medium). Reinstall Flown to fix it.'
+    )
     for (const code of codes) {
       for (const m of SPEECH_MODELS) {
         const text = localErrorMessage(code, { model: m.id })
@@ -185,7 +235,8 @@ describe('the shared error sentences of captions on this PC', () => {
       ['protocol', {}],
       ['language', { language: 'xx' }],
       ['blocked', { model: 'whisper-turbo', block: 'processor' }],
-      ['blocked', { model: 'whisper-turbo', block: 'memory' }]
+      ['blocked', { model: 'whisper-turbo', block: 'memory' }],
+      ['outdated', { model: 'whisper-bn-medium' }]
     ]
     for (const [code, params] of samples) {
       const message = localErrorMessage(code, params)
@@ -237,7 +288,7 @@ describe('pickTranscriber', () => {
   const gemini: AiProviderInfo = { id: 'aigem1', kind: 'gemini', label: 'My Gemini', model: 'm', transcriptionModel: 'g', maskedKey: '…2', createdAt: '' }
   const textOnly: AiProviderInfo = { id: 'aitext1', kind: 'anthropic', label: 'Text only', model: 'm', maskedKey: '…3', createdAt: '' }
 
-  const state = (installed: SpeechModelId[] = [], opts: { available?: boolean; defaultModel?: SpeechModelId } = {}): SpeechState => ({
+  const state = (installed: SpeechModelId[] = [], opts: { available?: boolean; defaultModel?: SpeechModelId; blocked?: SpeechModelId[] } = {}): SpeechState => ({
     engine: { available: opts.available ?? true, build: 'host', threads: 3 },
     detector: { available: true },
     models: SPEECH_MODELS.map((m) => ({
@@ -252,7 +303,7 @@ describe('pickTranscriber', () => {
       license: m.license,
       status: (installed.includes(m.id) ? { state: 'installed' } : { state: 'missing' }) as SpeechModelStatus,
       inUse: false,
-      allowed: true
+      allowed: !opts.blocked?.includes(m.id)
     })),
     defaultModel: opts.defaultModel ?? DEFAULT_SPEECH_MODEL,
     disk: { free: 1e10, used: 0 },
@@ -284,6 +335,37 @@ describe('pickTranscriber', () => {
     expect(pickTranscriber([textOnly], state(['whisper-base'], { available: false }))).toBeNull()
     expect(pickTranscriber([openai], null)).toEqual({ kind: 'key', providerId: 'aiopen1' })
     expect(pickTranscriber(null, null)).toBeNull()
+  })
+
+  it('never picks the Bangla model without Bengali, even when it is the only model or named the default (§14)', () => {
+    const bn = state(['whisper-bn-medium'])
+    expect(localModel(bn)).toEqual({ model: 'whisper-base', installed: false })
+    expect(localModel(state(['whisper-bn-medium', 'whisper-small']))).toEqual({ model: 'whisper-small', installed: true })
+    // A default that names it (never written by Flown) is not used.
+    expect(localModel(state(['whisper-bn-medium'], { defaultModel: 'whisper-bn-medium' }))).toEqual({ model: 'whisper-base', installed: false })
+    for (const language of ['', 'en', 'hi', 'auto']) {
+      expect(localModelFor(bn, language)).toEqual({ model: 'whisper-base', installed: false })
+      expect(pickTranscriber([], bn, '', language)).toEqual({ kind: 'local', model: 'whisper-base', ready: false })
+      expect(pickTranscriber([openai], bn, '', language)).toEqual({ kind: 'key', providerId: 'aiopen1' })
+    }
+    // Without a language, exactly as before.
+    expect(pickTranscriber([openai], bn)).toEqual({ kind: 'key', providerId: 'aiopen1' })
+  })
+
+  it('uses the Bangla model for Bengali once it is downloaded and allowed here, else as before (§14)', () => {
+    const both = state(['whisper-base', 'whisper-bn-medium'])
+    expect(localModelFor(both, 'bn')).toEqual({ model: 'whisper-bn-medium', installed: true })
+    expect(localModelFor(both, 'bn-BD')).toEqual({ model: 'whisper-bn-medium', installed: true })
+    expect(localModelFor(both, 'en')).toEqual({ model: 'whisper-base', installed: true })
+    // Bengali with the Bangla model: On this PC even when a key provider exists (an installed model, step 2).
+    expect(pickTranscriber([openai], state(['whisper-bn-medium']), '', 'bn')).toEqual({ kind: 'local', model: 'whisper-bn-medium', ready: true })
+    expect(canTranscribeNow(pickTranscriber([], state(['whisper-bn-medium']), '', 'bn'))).toBe(true)
+    // Not downloaded, or not allowed on this PC: the general model, as before.
+    expect(localModelFor(state(['whisper-base']), 'bn')).toEqual({ model: 'whisper-base', installed: true })
+    expect(localModelFor(state(['whisper-base', 'whisper-bn-medium'], { blocked: ['whisper-bn-medium'] }), 'bn')).toEqual({ model: 'whisper-base', installed: true })
+    expect(pickTranscriber([openai], state([]), '', 'bn')).toEqual({ kind: 'key', providerId: 'aiopen1' })
+    // The remembered key provider still wins.
+    expect(pickTranscriber([openai], state(['whisper-bn-medium']), 'aiopen1', 'bn')).toEqual({ kind: 'key', providerId: 'aiopen1' })
   })
 
   it('E-01 transcribes only what needs no consent', () => {

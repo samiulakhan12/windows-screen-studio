@@ -36,7 +36,8 @@ import { helperLanguage, localSpeechClient, PART_CACHE_DIR, partCacheKey, type L
 import type { SpeechModelStore } from '../src/main/speech/models'
 import type { PartProgress } from '../src/main/ai/types'
 import { ENGINE_VERSION, speechModel, type SpeechModelId } from '../src/shared/speech/catalog'
-import { localErrorCode } from '../src/shared/speech/errors'
+import { CAPTION_LIMITS } from '../src/shared/speech/protocol'
+import { localErrorCode, localErrorMessage } from '../src/shared/speech/errors'
 
 const FAKE = path.resolve(__dirname, 'fixtures/fake-speech-helper.cjs')
 const VAD = path.resolve(__dirname, '../resources/speech/ggml-silero-v6.2.0.bin')
@@ -192,6 +193,67 @@ describe('localSpeechClient', () => {
     expect(argOf(transcribeCalls()[0], '--lang')).toBe('pt')
   })
 
+  it('runs the Bangla model with --lang bn, --max-chunk 20 and --no-timestamps, and only it with them (§14)', async () => {
+    process.env.FAKE_SPEECH_LANG = 'bn'
+    const bn = await localSpeechClient('whisper-bn-medium', deps())
+    expect(bn.model).toBe('whisper-bn-medium')
+    expect(bn.partLimits).toEqual({ maxSeconds: 180, maxBytes: Infinity })
+    // Without a language, and with Bengali asked in any form: always bn.
+    await bn.transcribe!(part(wav('b0.wav', 3, 11), 3), { signal: signal() })
+    await bn.transcribe!(part(wav('b1.wav', 3, 12), 3), { signal: signal(), language: 'bn-BD' })
+    const [first, second] = transcribeCalls()
+    expect(first).toEqual([
+      'transcribe', '--model-dir', path.join(h.root, 'models'), '--model', 'ggml-bengaliai-whisper-medium-q5_0.bin', '--audio', path.join(tmp, 'b0.wav'), '--vad-model', VAD,
+      '--lang', 'bn', '--max-chunk', '20', '--no-timestamps', '--threads', '3', '--stdin-control', '--low-priority', '--parent-pid', String(process.pid)
+    ])
+    expect(argOf(second, '--lang')).toBe('bn')
+    // The general models keep the helper's own chunk length.
+    writeFileSync(log, '')
+    for (const id of ['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'] as const) {
+      const c = await localSpeechClient(id, deps())
+      await c.transcribe!(part(wav(`g-${id}.wav`, 2, 13), 2), { signal: signal(), language: 'bn' })
+      c.dispose!()
+    }
+    expect(transcribeCalls().map((a) => [argOf(a, '--lang'), a.includes('--max-chunk'), a.includes('--no-timestamps')])).toEqual(Array(4).fill(['bn', false, false]))
+  })
+
+  it('cuts the Bangla model’s chunk-long segments into captions of at most 7 s and 14 words, live and from a part cached before; the Whisper models’ segments are kept', async () => {
+    process.env.FAKE_SPEECH_LANG = 'bn'
+    // The fake writes one word a second in two segments of 15 words over 14.4 s each, as the Bangla model writes one segment per chunk.
+    const file = wav('long-bn.wav', 30, 31)
+    const bn = await localSpeechClient('whisper-bn-medium', deps())
+    const live = await bn.transcribe!(part(file, 30), { signal: signal() })
+    const check = (t: Awaited<ReturnType<NonNullable<typeof bn.transcribe>>>): void => {
+      expect(t.segments.length).toBeGreaterThan(2)
+      for (const s of t.segments) {
+        expect(s.end - s.start).toBeLessThanOrEqual(CAPTION_LIMITS.seconds)
+        expect(s.words!.length).toBeLessThanOrEqual(CAPTION_LIMITS.words)
+        // Words, text and times stay in step.
+        expect(s.text).toBe(s.words!.map((w) => w.text).join(' '))
+        expect([s.start, s.end]).toEqual([s.words![0].start, s.words![s.words!.length - 1].end])
+      }
+      expect(t.segments.flatMap((s) => s.words!.map((w) => w.text))).toEqual(Array.from({ length: 30 }, (_, i) => `w${i}`))
+    }
+    check(live)
+    // A part cached before captions were cut (two 14.4 s segments) is cut as it is read.
+    const dir = path.join(projectDir, PART_CACHE_DIR)
+    const [cached] = readdirSync(dir)
+    const entry = JSON.parse(readFileSync(path.join(dir, cached), 'utf8'))
+    const words = Array.from({ length: 30 }, (_, i) => ({ text: `w${i}`, start: i, end: i + 0.4 }))
+    entry.transcript.segments = [words.slice(0, 15), words.slice(15)].map((w) => ({ start: w[0].start, end: w[w.length - 1].end, text: w.map((x) => x.text).join(' '), words: w }))
+    writeFileSync(path.join(dir, cached), JSON.stringify(entry))
+    writeFileSync(log, '')
+    const again = await localSpeechClient('whisper-bn-medium', deps())
+    const read = await again.transcribe!(part(file, 30), { signal: signal() })
+    expect(transcribeCalls()).toHaveLength(0)
+    check(read)
+    expect(read).toEqual(live)
+    // A Whisper model: the helper's two segments, as before.
+    const tiny = await localSpeechClient('whisper-tiny', deps())
+    const general = await tiny.transcribe!(part(wav('long-en.wav', 30, 32), 30), { signal: signal() })
+    expect(general.segments.map((s) => s.words!.length)).toEqual([15, 15])
+  })
+
   it('a resumed job takes finished parts from the cache and makes the same language choice', async () => {
     process.env.FAKE_SPEECH_LANG = 'fr'
     process.env.FAKE_SPEECH_LANG_S = '15'
@@ -307,6 +369,26 @@ describe('localSpeechClient', () => {
       const { message } = await run('stall', {}, fakeStore(), { stallMs: 300 })
       expect(localErrorCode(message)).toBe('stalled')
       expect(transcribeCalls().map((a) => argOf(a, '--threads'))).toEqual(['3', '3'])
+    })
+
+    it('a helper that refuses the app’s arguments (0.4.0’s, without --no-timestamps) → outdated, not protocol; no retry, the model still trusted', async () => {
+      process.env.FAKE_SPEECH_MODE = 'old'
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      try {
+        const store = fakeStore()
+        const bn = await localSpeechClient('whisper-bn-medium', deps(store))
+        const message = await failure(bn.transcribe!(part(wav('old-bn.wav', 2, 21), 2), { signal: signal() }))
+        expect(localErrorCode(message)).toBe('outdated')
+        expect(message).toBe(localErrorMessage('outdated', { model: 'whisper-bn-medium' }))
+        expect(transcribeCalls()).toHaveLength(1)
+        expect(store.cleared).toEqual([])
+        expect(warn.mock.calls.some((c) => String(c[0]).includes('unknown argument --no-timestamps'))).toBe(true)
+        // The same helper still runs the Whisper models, which pass no new argument.
+        const tiny = await localSpeechClient('whisper-tiny', deps())
+        expect((await tiny.transcribe!(part(wav('old-tiny.wav', 2, 22), 2), { signal: signal() })).segments.length).toBeGreaterThan(0)
+      } finally {
+        warn.mockRestore()
+      }
     })
 
     it('garbage, overflow or no result → protocol', async () => {

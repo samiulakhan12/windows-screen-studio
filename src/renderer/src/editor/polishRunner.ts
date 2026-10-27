@@ -54,7 +54,7 @@ export function runPolish(
   services: EditorServices,
   recorded: CursorTrack,
   options: PolishOptions,
-  ctx: { hasCameraFile: boolean; providerId: string | null; model?: string; userPresets: readonly StylePreset[] },
+  ctx: { hasCameraFile: boolean; providerId: string | null; model?: string; language?: string; userPresets: readonly StylePreset[] },
   onProgress: (rows: Record<PolishStep, PolishRowState>) => void
 ): PolishRun {
   const { store, player } = services
@@ -122,7 +122,8 @@ export function runPolish(
     }
     const off = onTranscriptionJob(show)
     try {
-      const fetching = fetchTranscript(start.id, start.duration, { providerId: ctx.providerId, source: 'auto', ...(ctx.model ? { model: ctx.model } : {}) })
+      // `language` only with a model made for one language (the Bangla model): otherwise detected, as before.
+      const fetching = fetchTranscript(start.id, start.duration, { providerId: ctx.providerId, source: 'auto', ...(ctx.model ? { model: ctx.model } : {}), ...(ctx.language ? { language: ctx.language } : {}) })
       // fetchTranscript starts its job at once (none was running: the row is not 'busy').
       transcribing = !!transcriptionJob()?.running
       show()

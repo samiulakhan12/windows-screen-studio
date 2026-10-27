@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import type { AiProviderInfo, TranscribeOptions } from '../../../../shared/api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechModelView, type SpeechState } from '../../../../shared/api/speech'
-import { speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
+import { BANGLA_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
 import { localErrorCode, quickerModel } from '../../../../shared/speech/errors'
 import { estimateSeconds, nextTimeLeft, sizeWords } from '../../../../shared/speech/estimate'
 import {
   announceLine,
+  banglaBlockedLine,
   barText,
   cancelledLine,
   chipLabel,
   consentBody,
+  consentTitle,
   continueDownload,
   deletePartLabel,
   diskLine,
@@ -27,6 +29,7 @@ import {
   resumedLine,
   retryingLine,
   slowerLine,
+  smallPrint,
   SPEECH_COPY,
   stoppedLine,
   tierPurpose,
@@ -35,7 +38,7 @@ import {
   type LocalPhase
 } from '../../../../shared/speech/speechCopy'
 import { localModel } from '../../../../shared/speech/transcriber'
-import type { Project } from '../../../../shared/types'
+import type { Project, Transcript } from '../../../../shared/types'
 import { clearTranscriptionError, type TranscriptionJob } from '../captionItems'
 import { EditorIcon } from '../EditorIcon'
 import {
@@ -49,7 +52,8 @@ import {
   modelView,
   offered,
   onSpeechRead,
-  otherDownload
+  otherDownload,
+  setSpokenLanguage
 } from '../speechState'
 
 /*
@@ -74,23 +78,67 @@ function useCatchFocus(ref: RefObject<HTMLElement>, key: unknown): void {
 /** Seconds this PC is expected to take for `view` on a recording of `seconds`. */
 export const estimateFor = (state: SpeechState, view: SpeechModelView, seconds: number): number => estimateSeconds(view, seconds, state.engine.threads, view.measured, state.engine.build)
 
-/** The chips shown: Fast, Standard, Accurate, and Most accurate only once downloaded and allowed here (speechState.offered). */
-const chipModels = (state: SpeechState, chosen: SpeechModelId): SpeechModelView[] => state.models.filter((m) => offered(m, chosen))
+/**
+ * The chips shown: Fast, Standard, Accurate, Most accurate only once downloaded and allowed here,
+ * and Bangla only for Bengali where it is allowed (speechState.offered).
+ */
+const chipModels = (state: SpeechState, chosen: SpeechModelId, language: string): SpeechModelView[] => state.models.filter((m) => offered(m, chosen, language))
+
+/**
+ * The Bangla model's line under the chips (docs/design/offline-captions.md §14.4), or null:
+ * Bengali with another chip picked ('choose'), Bengali where it is not allowed ('blocked', with
+ * the reason), or Detect automatically with it downloaded ('detect').
+ */
+export function banglaLine(state: Pick<SpeechState, 'models'>, model: SpeechModelId, language: string): { kind: 'choose' | 'blocked' | 'detect'; text: string } | null {
+  const bangla = modelView(state, BANGLA_MODEL)
+  if (!bangla) return null
+  if (isBengali(language)) {
+    if (!bangla.allowed) return { kind: 'blocked', text: banglaBlockedLine(bangla.reason ?? '') }
+    return model !== bangla.id ? { kind: 'choose', text: SPEECH_COPY.banglaHint } : null
+  }
+  return !language && bangla.allowed && bangla.status.state === 'installed' ? { kind: 'detect', text: SPEECH_COPY.banglaDetect } : null
+}
 
 /* ---------- quality ---------- */
 
 /**
  * The "Quality" radio group (visible labels carry the size or "Downloaded"), the tier's
- * purpose, the estimate for this recording, the slow-PC lines and the link to Settings. A chip
- * chooses for this app session only: it never changes the default model.
+ * purpose, the estimate for this recording, the slow-PC lines, the Bangla model's line and the
+ * link to Settings. A chip chooses for this app session only: it never changes the default model.
  */
-export function LocalQuality({ state, model, project, chipsRef }: { state: SpeechState; model: SpeechModelId; project: Pick<Project, 'duration'>; chipsRef: RefObject<HTMLDivElement> }): JSX.Element {
-  const models = chipModels(state, model)
+export function LocalQuality({
+  state,
+  model,
+  project,
+  chipsRef,
+  language = ''
+}: {
+  state: SpeechState
+  model: SpeechModelId
+  project: Pick<Project, 'duration'>
+  chipsRef: RefObject<HTMLDivElement>
+  /** The spoken language ('' detects): the Bangla chip only for Bengali. */
+  language?: string
+}): JSX.Element {
+  const models = chipModels(state, model, language)
   const view = modelView(state, model)
   const estimate = view ? estimateFor(state, view, project.duration) : 0
+  const bangla = banglaLine(state, model, language)
   const pick = (id: SpeechModelId): void => {
-    chooseModel(id)
+    chooseModel(id, language)
     clearTranscriptionError()
+  }
+  // "Choose Bengali" removes itself: the focus goes to the checked chip (the Bangla model's), once it is drawn.
+  const [focusChip, setFocusChip] = useState(0)
+  useEffect(() => {
+    if (focusChip) chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()
+  }, [focusChip, chipsRef])
+  const chooseBengali = (): void => {
+    setSpokenLanguage('bn')
+    // The Bangla model, even when another chip was picked for Bengali earlier this session: that is what the line offers.
+    chooseModel(BANGLA_MODEL, 'bn')
+    clearTranscriptionError()
+    setFocusChip((n) => n + 1)
   }
   const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
@@ -128,6 +176,19 @@ export function LocalQuality({ state, model, project, chipsRef }: { state: Speec
           </p>
           {state.engine.build === 'compatible' && <p className="hint warn">{SPEECH_COPY.compatibleBuild}</p>}
           {estimate > project.duration && project.duration > 0 && <p className="hint warn">{slowerLine(estimate)}</p>}
+          {bangla && (
+            <p className={`hint ${bangla.kind === 'detect' ? '' : 'warn'}`} data-testid="bangla-hint" data-kind={bangla.kind}>
+              {bangla.text}
+              {bangla.kind === 'detect' && (
+                <>
+                  {' '}
+                  <button type="button" className="link" onClick={chooseBengali}>
+                    {SPEECH_COPY.chooseBengali}
+                  </button>
+                </>
+              )}
+            </p>
+          )}
           <button type="button" className="link" onClick={() => openSettings('speech')}>
             {SPEECH_COPY.manageModels}
           </button>
@@ -204,8 +265,11 @@ export function LocalAction({
   focusRequest: number
   chipsRef: RefObject<HTMLDivElement>
   onUseProvider: (id: string) => void
-  /** Starts captions with the downloaded `model` (asks before replacing captions); false when the user said no. */
-  onStart: (model: SpeechModelId) => void
+  /**
+   * Starts captions with the downloaded `model` (asks before replacing captions), in `language`
+   * when given (it becomes the Spoken language), else in the Spoken language.
+   */
+  onStart: (model: SpeechModelId, language?: string) => void
   /** Asks before captions replace the current ones (true when there are none); a download that makes captions asks at the click. */
   confirmReplace: () => boolean
 }): JSX.Element | null {
@@ -243,7 +307,11 @@ export function LocalAction({
   const download = (id: SpeechModelId = model): void => {
     if (otherDownload(state, id) || !confirmReplace()) return
     clearTranscriptionError()
-    void downloadThenCaptions(project.id, id, { ...options, providerId: LOCAL_TRANSCRIBER_ID, model: id })
+    // A model made for one language (the Bangla model, from its error card) makes captions in it,
+    // whatever the Spoken language became since: the form says so too.
+    const language = ownLanguage(id, options.language)
+    if (language !== options.language) setSpokenLanguage(language ?? '')
+    void downloadThenCaptions(project.id, id, { ...options, ...(language ? { language } : {}), providerId: LOCAL_TRANSCRIBER_ID, model: id })
   }
   // While another model downloads, the buttons that download `id` are aria-disabled with this line.
   const busyProps = (id: SpeechModelId): { 'aria-disabled'?: 'true'; 'aria-describedby'?: string } =>
@@ -300,7 +368,7 @@ export function LocalAction({
       return box(
         <div className="local-card">
           <h4 ref={headingRef} tabIndex={-1}>
-            {SPEECH_COPY.consentTitle}
+            {consentTitle(view.id)}
           </h4>
           <p>{consentBody(view.id, project.duration, estimate)}</p>
           <div className="local-actions">
@@ -336,7 +404,7 @@ export function LocalAction({
               {SPEECH_COPY.offline(sizeOf(view.id))}
             </p>
           )}
-          <p className="local-small">{SPEECH_COPY.smallPrint}</p>
+          <p className="local-small">{smallPrint(view.id)}</p>
         </div>,
         cloud
       )
@@ -349,7 +417,7 @@ export function LocalAction({
       return box(
         <div className="local-card">
           <h4 ref={headingRef} tabIndex={-1}>
-            {SPEECH_COPY.consentTitle}
+            {consentTitle(view.id)}
           </h4>
           <p className="captions-phase">{downloadingLine(view.id, s)}</p>
           <div
@@ -381,7 +449,7 @@ export function LocalAction({
       return box(
         <div className="local-card">
           <h4 ref={headingRef} tabIndex={-1}>
-            {SPEECH_COPY.consentTitle}
+            {consentTitle(view.id)}
           </h4>
           <p className="captions-phase">{SPEECH_COPY.verifying}</p>
           <div className="captions-bar busy" role="progressbar" aria-label={SPEECH_COPY.downloadBar} aria-valuetext={SPEECH_COPY.verifying}>
@@ -398,7 +466,7 @@ export function LocalAction({
       return box(
         <div className="local-card">
           <h4 ref={headingRef} tabIndex={-1}>
-            {SPEECH_COPY.consentTitle}
+            {consentTitle(view.id)}
           </h4>
           <p>{stoppedLine(s)}</p>
           <div className="local-actions">
@@ -474,7 +542,7 @@ export function LocalAction({
                 </button>
               )}
               {(code === 'crashed' || code === 'stalled') && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => onStart(failedModel)}>
+                <button ref={primaryRef} type="button" className="btn" onClick={() => onStart(failedModel, ownLanguage(failedModel, options.language))}>
                   {SPEECH_COPY.generateAgain}
                 </button>
               )}
@@ -513,6 +581,17 @@ export function LocalAction({
 }
 
 const sizeOf = (id: SpeechModelId): string => sizeWords(speechModel(id)!.bytes)
+
+/**
+ * The language captions with `id` are made in: a model made for one language (the Bangla model)
+ * always uses its own, keeping `spoken` when it already names it ("bn-BD"); the others use
+ * `spoken` ('' or undefined detects).
+ */
+export function ownLanguage(id: SpeechModelId, spoken: string | undefined): string | undefined {
+  const own = speechModel(id)?.language
+  if (!own) return spoken
+  return spoken && spoken.trim().split('-')[0].toLowerCase() === own ? spoken : own
+}
 
 /* ---------- running ---------- */
 
@@ -587,6 +666,40 @@ export function LocalRunning({ job, duration }: { job: TranscriptionJob; duratio
       </div>
       <button ref={cancelRef} type="button" className="btn" onClick={cancelLocalCaptions} disabled={!!job.stopping}>
         {SPEECH_COPY.cancel}
+      </button>
+    </div>
+  )
+}
+
+/* ---------- the Bangla model offered after a run ---------- */
+
+/**
+ * Whether the summary of `transcript` offers the Bangla model: captions made on this PC in
+ * Bengali with another model, and the Bangla model allowed here (docs/design/offline-captions.md §14.4).
+ */
+export function banglaOfferApplies(state: Pick<SpeechState, 'models' | 'engine'> | null, transcript: Pick<Transcript, 'provider' | 'model' | 'language'> | undefined): boolean {
+  const bangla = state?.engine.available ? modelView(state, BANGLA_MODEL) : null
+  return !!bangla?.allowed && transcript?.provider === 'local' && isBengali(transcript.language) && !speechModel(transcript.model)?.language
+}
+
+/**
+ * The offer under that summary: why the Bangla model is better, and one button that follows the
+ * model's status: it downloads it and makes the captions again ("Download Bangla model (539 MB)
+ * and make captions"; a stopped or failed download continues), makes them again once it is here,
+ * and only shows the download while one runs or is checked (started in Settings or from another
+ * recording: nothing here would start captions when it ends, so nothing is promised).
+ */
+export function BanglaOffer({ state, onUse }: { state: SpeechState; onUse: () => void }): JSX.Element | null {
+  const bangla = modelView(state, BANGLA_MODEL)
+  if (!bangla) return null
+  const installed = bangla.status.state === 'installed'
+  const busy = bangla.status.state === 'downloading' || bangla.status.state === 'verifying'
+  const button = downloadButton(bangla.id)
+  return (
+    <div className="local-bangla-offer" data-testid="bangla-offer" data-state={bangla.status.state}>
+      <p className="hint">{SPEECH_COPY.banglaOffer}</p>
+      <button type="button" className="btn primary" data-testid="bangla-offer-button" aria-label={installed || busy ? undefined : button.name} onClick={onUse}>
+        <EditorIcon name="captions" size={15} /> {installed ? SPEECH_COPY.banglaAgain : busy ? SPEECH_COPY.banglaShowDownload : button.label}
       </button>
     </div>
   )
