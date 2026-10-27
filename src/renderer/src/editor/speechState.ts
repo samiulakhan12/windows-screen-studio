@@ -26,7 +26,9 @@ let reading = false
 let watching = false
 const listeners = new Set<() => void>()
 
+/** Tells the subscribers; the snapshot is a new object, so a change of the chip or an intent re-renders too. */
 const emit = (): void => {
+  read = { ...read }
   for (const l of [...listeners]) l()
 }
 
