@@ -1587,3 +1587,5 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
 
 - **INT-T3** Polish's Captions row said "Finishing…" while the speech model loaded:
   `transcribePhaseText` maps `loading` to `phaseLine('loading')` ("Loading the speech model…").
+- **UI-4** The ring was hidden on the compact rail, whose rule hides every span in a tab button:
+  the ring's rule sets `display: block` and wins on specificity (a stylesheet test checks both).
