@@ -97,22 +97,29 @@ These are the defaults; every one can be changed in the Shortcuts dialog (`Ctrl+
 | Key | Action |
 | --- | --- |
 | `Space` | Play / pause |
-| `←` / `→` | Step 1/30 s (hold `Shift` for one second) |
+| `J` / `K` / `L` | Play backwards / pause / play forward (press `J` or `L` again for 2×, 4×, 8×; hold `K` and tap `J` / `L` to step one frame) |
+| `<` / `>` | Slower / faster preview speed (0.5×–2×; the export is not affected) |
+| `←` / `→` | Step 1/30 s |
+| `Shift+←` / `Shift+→` | Back / forward one second |
 | `Home` / `End` | Go to the start / end |
 | `S` | Split the clip at the playhead |
+| `C` | Crop the recording (`Enter` applies, `Esc` cancels) |
+| `F` | Freeze the frame at the playhead |
 | `Z` | Add a zoom at the playhead |
 | `1`–`4` / `0` | Set the selected zoom's level (1.25×, 1.5×, 2×, 3×) / pull back to 0.75× |
 | `T` | Add text at the playhead |
 | `Shift+T` | Add a title card at the playhead |
 | `M` | Add a chapter at the playhead |
 | `Shift+PageDown` / `Shift+PageUp` | Next / previous chapter |
+| `Shift+P` | Polish in one click |
 | `Ctrl+K` (`Ctrl+Shift+P`) | Command palette: search and run any command |
 | `Ctrl+E` | Export |
 | `Ctrl+/` | Shortcuts: rebind any command, reset to defaults |
-| `Delete` / `Backspace` | Delete the selection (clip → cut, zoom, text, or a Shift-dragged range) |
+| `Delete` / `Backspace` | Delete the selection (clip → cut, zoom, text, freeze frame, or a Shift-dragged range) |
 | `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z`) | Undo / redo |
-| `+` / `-`, `Ctrl`+wheel | Zoom the timeline in / out |
-| `Esc` | Clear the selection, or close the export dialog |
+| `+` / `-` (`=` / `_`), `Ctrl`+wheel | Zoom the timeline in / out |
+| `N` | Snapping on / off (hold `Alt` while dragging to place an item freely) |
+| `Esc` | Clear the selection, cancel the crop tool, or close the export dialog |
 | Double-click a zoom or text track | Add a zoom / text there |
 | `Shift`+drag on the clip track | Select a range to cut or re-time |
 

@@ -429,6 +429,7 @@ So preview and export match by construction. No function in `compositor.ts`, `pl
 - The panel has `role="dialog"`, `aria-modal="true"`, `aria-labelledby="polish-title"` and `className="polish-dialog"`, and uses `useModalFocus(ref, onEsc)`.
 - The panel does **not** use the class `modal`, so the export helpers' `.modal` selectors stay unambiguous.
 - Esc means Cancel in the options and running views, and Done in the summary view.
+- When it opens, and when the view changes, the view's main button (Polish, Cancel or Done) takes the focus. While that button is disabled (the options are being read, or no step can run) the panel takes it instead: a disabled button cannot take the focus, and focus left on the editor's buttons would let Enter click them behind the dialog.
 
 **Options view.**
 
@@ -443,7 +444,7 @@ Rows (`data-testid="polish-row-<step>"`, `data-available`) appear in run order (
 | Auto zoom | Checkbox | Off: "Turns auto zoom on. Zooms you added or edited are kept." On: "Auto zoom is on: your zooms stay as they are." | "No clicks were captured" |
 | Captions | Checkbox, plus a provider select (`aria-label="Transcription provider"`), shown only with two or more capable providers | "The sound is sent to <provider label> with your key and billed to your account." The label is `AiProviderInfo.label` or the kind name, as `providerLabel` builds it. | "This video already has captions; they are kept" · "This recording has no sound" · "A transcription is already running in the Captions tab" · "Add an AI provider that can transcribe (OpenAI or Gemini)", with an **Add an AI provider** button that closes this dialog and dispatches `OPEN_SETTINGS_EVENT` (`src/renderer/src/settings/SettingsButton.tsx`) with `{ section: 'ai' }` |
 | Camera director | Checkbox | "Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept." | "This recording has no camera" · "Show the camera first" |
-| Style | Select (`aria-label="Style preset"`): "Keep the current look", the built-in names, then a "Your presets" `<optgroup>` read with `getPref('stylePresets')` through `parseUserPresets` | "Changes the background, card, cursor look and zoom style. The aspect ratio and crop stay." | none |
+| Style | Select (`aria-label="Style preset"`): "Keep the current look", the built-in names, then a "Your presets" `<optgroup>` read with `getPref('stylePresets')` through `parseUserPresets` | "Changes the background, card, device frame, 3D tilt, cursor look and zoom style. The aspect ratio and crop stay." | none |
 
 - A disabled row shows its checkbox unchecked and disabled, without changing the remembered option.
 - Footer: **Cancel** · **Polish** (primary).
