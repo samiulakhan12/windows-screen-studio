@@ -10,6 +10,8 @@
 import { freezePlan, freezeSnapTargets, planOf } from '../engine/freeze'
 import type { ClickRow } from '../engine/inputData'
 import { formatTime } from '../engine/project'
+import { chapterInVideo, MIN_CHAPTER_GAP } from '../render/chapters'
+import { viewingTime } from '../render/overlays'
 import type { Chapter, Clip, Project } from '../types'
 import { timelineGaps } from './clips'
 import { shapeLabel } from './shapes'
@@ -90,6 +92,16 @@ export interface SnapView {
   current: SnapTarget | null
   /** Source seconds; null = no limit. */
   visible?: { start: number; end: number } | null
+}
+
+/**
+ * Where a point drag may snap: inside [min, max], and only where `accept` (when given) says the
+ * drag's edit really puts the point, so no guide shows on a target the edit refuses or moves off.
+ */
+export interface SnapLimit {
+  min: number
+  max: number
+  accept?: (t: number) => boolean
 }
 
 export interface SnapResult {
@@ -233,7 +245,7 @@ interface Candidate {
 }
 
 /** The target nearest (in pixels) to any of `points`, with hysteresis and the tie rules; nothing caught: delta 0. */
-export function snapPoints(index: SnapIndex, points: readonly number[], view: SnapView, limit?: { min: number; max: number }): SnapResult {
+export function snapPoints(index: SnapIndex, points: readonly number[], view: SnapView, limit?: SnapLimit): SnapResult {
   const none: SnapResult = { delta: 0, target: null, point: -1 }
   const px = view.pxPerSec
   if (!(px > 0) || !Number.isFinite(px)) return none
@@ -241,7 +253,7 @@ export function snapPoints(index: SnapIndex, points: readonly number[], view: Sn
   const leave = SNAP.leavePx / px
   const tie = SNAP.tiePx / px
   const visible = view.visible ?? null
-  const allowed = (t: number): boolean => !limit || (t >= limit.min && t <= limit.max)
+  const allowed = (t: number): boolean => !limit || (t >= limit.min && t <= limit.max && (!limit.accept || limit.accept(t)))
   const current = view.current && allowed(view.current.t) ? view.current : null
   const cands: Candidate[] = []
   let held: Candidate | null = null
@@ -296,10 +308,27 @@ export function snapSpan(
   return { times: edge === 'start' ? { start: t, end: t + len } : { start: t - len, end: t }, target: r.target }
 }
 
-/** A point drag snapped (targets outside `limit` ignored). */
-export function snapAt(index: SnapIndex, t: number, view: SnapView, limit?: { min: number; max: number }): { t: number; target: SnapTarget | null } {
+/** A point drag snapped (targets outside `limit`, or that it does not accept, ignored). */
+export function snapAt(index: SnapIndex, t: number, view: SnapView, limit?: SnapLimit): { t: number; target: SnapTarget | null } {
   const r = snapPoints(index, [t], view, limit)
   return { t: r.target ? r.target.t : t, target: r.target }
+}
+
+/**
+ * A chapter flag's drag limit: only where the export keeps the chapter (render/chapters
+ * outputChapters), so a flag never snaps to the video's end or onto another chapter, where the
+ * export would leave it out or merge the two.
+ */
+export function chapterSnapLimit(p: Pick<Project, 'duration' | 'clips' | 'chapters'>, id: string): SnapLimit {
+  const others = (p.chapters ?? []).filter((c) => c.id !== id).map((c) => viewingTime(p.clips, c.t))
+  return {
+    min: 0,
+    max: p.duration,
+    accept: (t) => {
+      const edit = viewingTime(p.clips, t)
+      return chapterInVideo(p.clips, t) && others.every((o) => Math.abs(o - edit) >= MIN_CHAPTER_GAP)
+    }
+  }
 }
 
 /**

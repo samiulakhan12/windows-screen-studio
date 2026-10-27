@@ -1,7 +1,7 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { itemLanes } from '../../../shared/editor/shapes'
 import { orPress } from '../../../shared/editor/shortcuts'
-import { sameSpan } from '../../../shared/editor/snapping'
+import { chapterSnapLimit, sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { dragTitleTimes, TITLE_STYLES } from '../../../shared/editor/titles'
 import { clamp } from '../../../shared/engine/math'
@@ -101,11 +101,13 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
     onSelect({ kind: 'chapter', id: c.id })
     const sx = e.clientX
     const s = snap.begin(e, { exclude: [{ owner: `chapter:${c.id}` }] })
+    // Snaps only where the export keeps the chapter: not at the video's end, not onto another chapter.
+    const limit = chapterSnapLimit(store.state, c.id)
     store.beginGesture()
     track(
       e,
       (ev) => {
-        const t = s.at(ev, clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration), { min: 0, max: duration })
+        const t = s.at(ev, clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration), limit)
         store.update((p) => (p.chapters?.find((x) => x.id === c.id)?.t === t ? p : { ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, t } : x)) }), `chapter-drag:${c.id}`)
       },
       (moved) => {

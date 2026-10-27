@@ -4,9 +4,11 @@
  * changes), so each is one undo step through store.update.
  */
 import { clamp } from '../engine/math'
-import { anchorEdit, atEditEnd, DEFAULT_FREEZE_SOUND, FREEZE, FREEZE_EPS, MAX_FREEZES, newFreezeId, planOf } from '../engine/freeze'
-import { clipIndexAt, outputToSource } from '../engine/timeline'
+import { anchorEdit, atEditEnd, DEFAULT_FREEZE_SOUND, FREEZE, FREEZE_EPS, freezePlan, MAX_FREEZES, newFreezeId, planOf, videoTimeAt } from '../engine/freeze'
+import { clipIndexAt, outputDuration, outputToSource } from '../engine/timeline'
+import { viewingTime } from '../render/overlays'
 import type { Clip, Freeze, FreezeSound, Project } from '../types'
+import { outputToSourceRanges } from './smartSpeed'
 
 export { atEditEnd }
 
@@ -101,6 +103,36 @@ export function setFreezeLength(p: Project, id: string, length: number): Project
   return Number.isFinite(length) ? patchFreeze(p, id, { length: tenths(length) }) : p
 }
 
+/** Source second the still of continue freeze `id` ends at (its right edge on the timeline), or null when it holds nothing. */
+function stillEnd(p: Pick<Project, 'clips' | 'freezes'>, id: string): number | null {
+  const s = freezePlan(p.clips, p.freezes).stills.find((x) => x.id === id)
+  return s ? (outputToSourceRanges(p.clips, s.editStart, s.editEnd).at(-1)?.end ?? null) : null
+}
+
+const endsAt = (p: Project, id: string, t: number): boolean => Math.abs((stillEnd(p, id) ?? Infinity) - t) <= 1e-9
+
+/**
+ * Continue freeze `id` with its still ending at source second `t` (its right edge dragged there):
+ * of the two lengths in tenths around it, one that ends the still exactly at `t` (on the grid, or
+ * cut short there by the next freeze or the video's end), else the nearest.
+ */
+export function setStillEnd(p: Project, id: string, t: number): Project {
+  const f = p.freezes?.find((x) => x.id === id)
+  const e = f ? anchorEdit(p.clips, f.at) : null
+  if (e === null || !Number.isFinite(t)) return p
+  const length = viewingTime(p.clips, t) - e
+  for (const tenth of [Math.floor(length * 10 + 1e-6) / 10, Math.ceil(length * 10 - 1e-6) / 10]) {
+    const q = setFreezeLength(p, id, tenth)
+    if (endsAt(q, id, t)) return q
+  }
+  return setFreezeLength(p, id, length)
+}
+
+/** Whether setStillEnd ends the still exactly at `t`: the only places its edge drag snaps to. */
+export function stillEndsAt(p: Project, id: string, t: number): boolean {
+  return endsAt(setStillEnd(p, id, t), id, t)
+}
+
 /** The freeze's sound mode ('continue' is refused at the edit's end, where nothing plays on). */
 export function setFreezeSound(p: Project, id: string, sound: FreezeSound): Project {
   const f = p.freezes?.find((x) => x.id === id)
@@ -113,10 +145,20 @@ export function setFreezeSound(p: Project, id: string, sound: FreezeSound): Proj
  * end with a cut after it, where a drag snaps to the cut, is in no clip: it takes that clip's last frame.
  */
 export function moveFreeze(p: Project, id: string, t: number): Project {
+  const at = movedAnchor(p, id, t)
+  return at === null ? p : patchFreeze(p, id, { at })
+}
+
+/** Whether moveFreeze takes freeze `id` to the frame at `t` (not cut, not taken): the only places its drag snaps to. */
+export function canMoveFreeze(p: Project, id: string, t: number): boolean {
+  return movedAnchor(p, id, t) !== null
+}
+
+/** The anchor moveFreeze gives freeze `id` for `t`, or null when that frame is cut or another freeze has it. */
+function movedAnchor(p: Project, id: string, t: number): number | null {
   const cutEdge = clipIndexAt(p.clips, t) < 0 && p.clips.some((c) => c.end === t)
   const at = anchorAt(p, cutEdge ? t - 1e-6 : t)
-  if (at === null || freezeNear(p.freezes ?? [], at, id)) return p
-  return patchFreeze(p, id, { at })
+  return at === null || freezeNear(p.freezes ?? [], at, id) ? null : at
 }
 
 /** The project without the freeze (no `freezes` key when it was the last). */
@@ -135,4 +177,24 @@ export function freezeTextRange(clips: Clip[], f: Freeze): { start: number; end:
   const e = anchorEdit(clips, f.at)
   if (e === null) return null
   return { start: outputToSource(clips, Math.max(0, e - TEXT_AROUND)).time, end: outputToSource(clips, e + TEXT_AROUND).time }
+}
+
+/** Video second freeze `f` starts at: its hold's start (an end hold's too, not the video's end), else its frame's. */
+export function freezeVideoTime(p: Pick<Project, 'clips' | 'freezes'>, f: Freeze): number {
+  const plan = planOf(p)
+  return plan.holds.find((h) => h.id === f.id)?.start ?? videoTimeAt(p.clips, plan, f.at)
+}
+
+/**
+ * Why freeze `f` is not in the video, or null when it is: its frame is cut, or it keeps the sound
+ * playing and the video's end or the next freeze comes less than 0.05 s after it, so its still
+ * would hold nothing.
+ */
+export function freezeInactiveReason(p: Pick<Project, 'clips' | 'freezes'>, f: Freeze): 'cut' | 'end' | 'next' | null {
+  if (!planOf(p).inactive.includes(f.id)) return null
+  const e = anchorEdit(p.clips, f.at)
+  if (e === null) return 'cut'
+  const total = outputDuration(p.clips)
+  const next = Math.min(total, ...(p.freezes ?? []).map((g) => anchorEdit(p.clips, g.at)).filter((x): x is number => x !== null && x > e))
+  return next < total ? 'next' : 'end'
 }

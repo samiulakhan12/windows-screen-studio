@@ -15,6 +15,7 @@ import {
   type DragMode,
   type SnapExclude,
   type SnapIndex,
+  type SnapLimit,
   type SnapTarget,
   type SnapView,
   type Span
@@ -75,8 +76,8 @@ export interface SnapBegin {
 export interface SnapSession {
   /** A span drag: `resolve` is the drag helper with its bounds (it still clamps). */
   span(ev: PointerEvent, initial: Span, mode: DragMode, dt: number, resolve: (dt: number) => Span): Span
-  /** A point drag (trim edge, range end, chapter, scrub); targets outside `limit` are ignored. */
-  at(ev: PointerEvent, t: number, limit?: { min: number; max: number }): number
+  /** A point drag (trim edge, range end, chapter, freeze, scrub); targets outside `limit`, or that it does not accept, are ignored. */
+  at(ev: PointerEvent, t: number, limit?: SnapLimit): number
 }
 
 /** The timeline's snapping controller (stable identity). */

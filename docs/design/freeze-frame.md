@@ -154,7 +154,7 @@ How the plan is built:
 1. Sort the freezes by `at`. For each one, `e = sourceToOutput(clips, at)`, or `outputDuration(clips)` when `|at − last.end| ≤ 1 ms` (see §13). If `e` is `null`, the freeze is inactive because its frame is cut.
 2. Walk the active freezes in edit order.
    - A pause freeze becomes `{ edit: e, start: e + addedSoFar, length, end: |at − last.end| ≤ 1 ms }`, and then `addedSoFar += length`.
-   - A continue freeze becomes a still with `editStart = e` and `editEnd = min(e + length, nextActiveEdit, outputDuration(clips))`. A still shorter than 0.05 s goes to `inactive`. This always happens at `last.end`, where the span is empty.
+   - A continue freeze becomes a still with `editStart = e` and `editEnd = min(e + length, nextActiveEdit, outputDuration(clips))`. A still shorter than 0.05 s goes to `inactive`. This happens at `last.end`, where the span is empty, and for a continue freeze on the last few frames before the end or one frame before the next freeze.
 
 ### 4.2 Time maps (all in `freeze.ts`, pure)
 
@@ -420,8 +420,10 @@ Every block calls `stopPropagation` on pointer-down, so the clip track's `onClip
   - Label `3.0 s` with a speaker glyph.
   - Tooltip: "Freeze frame: the picture holds for 3.0 s while the sound plays on".
 - **Inactive** freeze (frame cut): a hollow 8 px diamond at `at` in the gap. Tooltip: "Freeze frame in a cut: not in the video. Restore the cut, or select it and press Delete".
+- A continue freeze that is inactive although its frame is kept (the video's end or the next freeze comes less than 0.05 s after it, §4.1) is the same diamond, with `data-testid="freeze-short"` and the tooltip "Freeze frame with nothing to hold: the video ends right after it. Pause the sound, or select it and press Delete" (or "the next freeze starts right after it"). `freezeInactiveReason(p, f)` (`freezeEdit.ts`) tells the cases apart.
+- The selected block is drawn above the blocks it overlaps (`z-index: 1`), so a pause block that a later freeze's block covers can still be dragged by its body and its edge once selected.
 - **Dragging:**
-  - The edge sets the length. Pause: `initial + dx / px`. Continue: `viewingTime(clips, source at pointer) − editStart`. Both snap to 0.1 s.
+  - The edge sets the length. Pause: `initial + dx / px`. Continue: `viewingTime(clips, source at pointer) − editStart` (`setStillEnd`). Both snap to 0.1 s. A continue edge that E-05 snaps to a target takes whichever tenth on either side of it ends the still exactly there.
   - The body moves `at`, through `moveFreeze`.
   - Both run inside `store.beginGesture()` … `endGesture()`, and the playhead follows `at`.
 - Pointer-down selects `{ kind: 'freeze', id }`.
@@ -440,7 +442,7 @@ When no freeze is selected:
 - Hint: "Holds the picture so viewers can read it."
 - The button is disabled with a reason, using the refusal texts below.
 
-When a freeze is selected, a section titled `Freeze frame at 0:12.4` (video time):
+When a freeze is selected, a section titled `Freeze frame at 0:12.4`: the video time it starts at (`freezeVideoTime`). For a pause freeze this is its hold's start, so a freeze at the end reads the edit's end, not the video's:
 - Slider `Hold for`: 0.5 to 30 s, step 0.1, value text `3.0 s`.
 - Chips `Sound` (`data-testid="freeze-sound"`):
   - `Pause the sound`, titled "Adds the time to the video. The recording waits; music keeps playing."
@@ -450,6 +452,7 @@ When a freeze is selected, a section titled `Freeze frame at 0:12.4` (video time
   - continue: "The screen holds for 3.0 s. The camera and captions keep moving."
   - continue, shortened: "Holds for 1.2 s: the next freeze starts there." / "Holds for 1.2 s: the video ends there."
   - inactive: "This frame is cut out of the video, so the freeze is not shown."
+  - inactive although the frame is kept (continue): "Nothing plays after the end of the video, so the picture is not held." at the very end, else "The video ends right after this frame, so the picture is not held." or "The next freeze starts right after this frame, so the picture is not held."
 - Buttons:
   - `Add text on the freeze`;
   - `Delete freeze` (danger), titled `withShortcut('Remove this freeze frame', keymap.deleteSelection)`.
@@ -744,7 +747,7 @@ What the implementation does where it differs from, or adds to, the sections abo
 - `freezeAtPlayhead`: the anchor is `ceil(max(clip.start, k / fps) · 1000) / 1000`. The design's `max(clip.start, ceil(…))` could store a non-whole-ms `clip.start`, which `readFreezes` would round into the cut before it on the next load. If that rounding reaches the clip's end (a clip ending less than 1 ms after the frame start), the clip's last whole ms is used.
 - `setFreezeSound(p, id, 'continue')` returns `p` for a freeze at the edit's end ("Nothing plays after the end of the video").
 - An anchor within 1 ms of `last.end` is the edit's end (`atEditEnd` and `anchorEdit` in `freeze.ts`, the same 1 ms as the playhead's snap to the end and `soundPieces`): `freezePlan`, `freezeRefusal`, `freezeTextRange` and `setFreezeSound` read it so. A freeze made at the end stores `last.end`, which after a trim or a cut is rarely whole ms, and `readFreezes` rounds it on the next load, past the end or into the last frame. Without the tolerance that freeze came back inactive, or as a hold before the last frame. `readFreezes` is unchanged: it does not see the clips. The preview's end hold shows `frameTimeFor(last.end)` whichever way the anchor was rounded.
-- New exports in `freezeEdit.ts`: `freezeRefusal(p, t)` (the refusal without building a project; the Clip panel button and the palette use it), `freezeIdAt(p, t)` (the freeze the playhead is on), `FREEZE_REFUSAL_TEXT` and `atEditEnd(clips, at)`.
+- New exports in `freezeEdit.ts`: `freezeRefusal(p, t)` (the refusal without building a project; the Clip panel button and the palette use it), `freezeIdAt(p, t)` (the freeze the playhead is on), `FREEZE_REFUSAL_TEXT` and `atEditEnd(clips, at)`. Then, for the drags and the Clip panel (§5): `canMoveFreeze`, `setStillEnd`, `stillEndsAt`, `freezeVideoTime` and `freezeInactiveReason`.
 - `soundPieces` gives each hold to the clip that contains its frame, so a hold where two clips touch (a split with different speeds) is used once. Holds in a cut are dropped.
 - `noFadeOutFrom(clips, plan, fade)` (`freeze.ts`), read by `drawAnnotations` (`textOverlays.ts`): when a pause freeze holds a moment of the edit's last `ANNOTATION_FADE` seconds, a text ending at the edit's end (within 1 ms) does not fade out there. Otherwise "Add text on the freeze" on a freeze at the end gives the text `[e − 0.5, last.end]`, and every held frame draws it at the opacity of the moment it repeats: 22 % in a 30 fps export, 11 % at 60 fps, 3 % in the preview. Without such a hold, texts fade out at the end as before.
 
@@ -766,7 +769,7 @@ What the implementation does where it differs from, or adds to, the sections abo
 
 **UI**
 - New `src/renderer/src/editor/freezeItems.ts`: `addFreezeAt`, `toggleFreezeSound`, `freezeTarget` and `addTextOnFreeze`, shared by the Clip panel and the commands, like `titleItems.ts`.
-- `FreezeMarks` reads `freezes` from the store, as the timeline reads shapes, so `Timeline.tsx` only adds the element. Its `snap` prop is optional. Today `Timeline.tsx` does not pass it, because E-05's controller is not on this branch. After the merge the element needs `snap={snap}`. Moves begin `{ exclude: [{ owner: 'freeze:' + id }], noPlayhead: true }`, and so do continue-edge drags; a pause block's edge is not a source time and is not snapped.
+- `FreezeMarks` reads `freezes` from the store, as the timeline reads shapes, so `Timeline.tsx` only adds the element. Its `snap` prop is optional. Today `Timeline.tsx` does not pass it, because E-05's controller is not on this branch. After the merge the element needs `snap={snap}`. Moves begin `{ exclude: [{ owner: 'freeze:' + id }], noPlayhead: true }`, and so do continue-edge drags; a pause block's edge is not a source time and is not snapped. Each passes a `limit` whose `accept` keeps the snap to places the edit really takes: a move only to frames `moveFreeze` accepts (`canMoveFreeze`: not cut, not another freeze's frame), a continue edge only where its still then ends exactly (`stillEndsAt`: a target a whole number of tenths after the frame, or the next freeze or the video's end, which cut the still short). `FreezeMarks` also gets the timeline's `dragging` ref and sets it for the length of a drag, so the timeline does not scroll after the playhead that a move seeks.
 - A plain click on a block selects it and moves the playhead to its frame. A cut freeze's diamond is `data-testid="freeze-inactive"`.
 - Labels use the app's pause and speaker icons instead of the `⏸` character.
 - The smart speed note names what it keeps: "Title cards stay…", "Freeze frames stay…" or "Title cards and freeze frames stay…".
