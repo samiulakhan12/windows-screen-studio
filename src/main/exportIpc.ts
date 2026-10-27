@@ -12,6 +12,7 @@ import { batchFileOk, freeBatchPath, isPng, moveIntoPlace, partialPath, resolveS
 import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
 import { detectH264Encoders } from './hwEncoders'
 import * as projects from './projects'
+import { isAppUrl } from './security'
 import { getMainWindow } from './windows'
 
 interface ActiveExport {
@@ -213,7 +214,12 @@ export function registerExportIpc(): void {
     }
   })
 
-  ipcMain.handle('export:analyzeAudio', (_e, projectId: string, sources: unknown) => analyzeAudio(projectId, sources))
+  ipcMain.handle('export:analyzeAudio', (e, projectId: unknown, sources: unknown) => {
+    // It starts the speech helper: only the app's own page may ask.
+    if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
+    if (typeof projectId !== 'string') throw new Error('Invalid project.')
+    return analyzeAudio(projectId, sources)
+  })
 
   ipcMain.handle('export:start', async (e, projectId: string, requested: ExportJob) => {
     const approved = !!requested?.outputPath && (requested.outputPath === approvedExportPath || batchPaths.has(requested.outputPath))

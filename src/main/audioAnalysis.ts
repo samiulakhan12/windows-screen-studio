@@ -3,7 +3,8 @@
  * system.m4a): ffmpeg decodes the audio at a low rate and the level meter of
  * shared/audio/loudness measures it as it streams in, so an hour-long recording costs a few
  * seconds and constant memory. The renderer turns the levels into ducking ranges and the
- * preview's loudness gain. A project's measurements stop when its editor closes or before it
+ * preview's loudness gain. The microphone stem (or the mixed track of a recording without one)
+ * also gets the speech detector's ranges (speech/vad.ts). A project's measurements stop when its editor closes or before it
  * is deleted (see ProjectProcesses).
  */
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -14,6 +15,7 @@ import { SOURCE_FILES, type AudioSource } from '../shared/audio/settings'
 import { ffmpegPath } from './ffmpeg'
 import { ProjectProcesses } from './projectProcesses'
 import * as projects from './projects'
+import { speechOfFile } from './speech/vad'
 
 /** Decoding rate and layout: plenty for speech and loudness, cheap to measure. */
 const RATE = 16000
@@ -71,11 +73,25 @@ export function measureLevels(file: string, owner = ''): Promise<AudioLevels> {
   })
 }
 
-function cachedLevels(id: string, file: string, stat: { size: number; mtimeMs: number }): Promise<AudioLevels> {
-  const key = `${file}|${stat.size}|${stat.mtimeMs}`
+/**
+ * Levels of `file`, with the speech detector's ranges when `speech` names its source: both run
+ * at once, and the result settles only once the detector has succeeded or definitively failed
+ * (then without `speech`), so every reader sees one settled object. A stop rejects.
+ */
+export async function levelsWithSpeech(id: string, file: string, stat: { size: number; mtimeMs: number }, speech: 'mic' | 'mix' | null): Promise<AudioLevels> {
+  const levels = measureLevels(file, id)
+  if (!speech) return levels
+  levels.catch(() => undefined)
+  const ranges = speechOfFile(id, speech, file, stat, running, levels)
+  const [l, s] = await Promise.all([levels, ranges])
+  return s ? { ...l, speech: s } : l
+}
+
+function cachedLevels(id: string, file: string, stat: { size: number; mtimeMs: number }, speech: 'mic' | 'mix' | null): Promise<AudioLevels> {
+  const key = `${file}|${stat.size}|${stat.mtimeMs}|${speech ?? ''}`
   let levels = cache.get(key)
   if (!levels) {
-    levels = measureLevels(file, id)
+    levels = levelsWithSpeech(id, file, stat, speech)
     cache.set(key, levels)
     // A failure is not remembered: the next request tries again.
     levels.catch(() => cache.delete(key))
@@ -90,6 +106,8 @@ export async function analyzeAudio(id: string, sources: unknown): Promise<Partia
   const wanted = Array.isArray(sources) ? [...new Set(sources.filter((s): s is AudioSource => SOURCES.includes(s as AudioSource)))] : []
   const out: Partial<Record<AudioSource, AudioLevels>> = {}
   const generation = running.generation(id)
+  // The speech detector runs on the voice: the microphone stem, or the mixed track of a recording without one.
+  const hasMic = (await fs.stat(path.join(dir, SOURCE_FILES.mic)).catch(() => null))?.isFile() === true
   // One at a time: decoding is light, but exports and the preview share the CPU.
   for (const source of wanted) {
     const file = path.join(dir, SOURCE_FILES[source])
@@ -97,7 +115,8 @@ export async function analyzeAudio(id: string, sources: unknown): Promise<Partia
     if (!stat?.isFile()) continue
     // Stopped meanwhile (the editor closed, the project is being deleted): nothing more is read.
     if (running.generation(id) !== generation) throw new Error('The sound measurement was stopped.')
-    out[source] = await cachedLevels(id, file, stat)
+    const speech = source === 'mic' ? 'mic' : source === 'mix' && !hasMic ? 'mix' : null
+    out[source] = await cachedLevels(id, file, stat, speech)
   }
   return out
 }

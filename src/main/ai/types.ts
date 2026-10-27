@@ -23,6 +23,8 @@ export interface TranscribeCall {
   onUpload?: () => void
   /** Progress inside the part, from engines that report it (on this PC). */
   onProgress?: (progress: PartProgress) => void
+  /** Which part this is (0-based) of how many (on this PC: the failure message names it). */
+  part?: { index: number; count: number }
 }
 
 /** How far one part has got (on this PC). */
@@ -53,4 +55,8 @@ export interface AiClient {
   partLimits?: PartLimits
   /** How each part is handed over: a 32 kbit/s MP3 (the default) or a 16 kHz mono 16-bit WAV (on this PC: no lossy step). */
   input?: 'mp3' | 'wav'
+  /** The model the transcript names (on this PC: the catalog id). */
+  model?: string
+  /** Lets go of what the client holds (on this PC: the model, so Remove works again); called once the job ends. */
+  dispose?: () => void
 }
