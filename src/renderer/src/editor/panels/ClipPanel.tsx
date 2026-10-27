@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { activitySources, type AudioSource } from '../../../../shared/audio/settings'
 import { sourceActivity, type AudioAnalysis } from '../../../../shared/audio/soundtrack'
+import { soundDetector } from '../../../../shared/audio/voice'
+import { detectorStatus, IDLE_VOICE_HINT, SILENCES_VOICE_HINT } from '../../../../shared/speech/speechCopy'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../../shared/editor/clips'
 import type { EditStore } from '../../../../shared/editor/editStore'
 import { pathSummary } from '../../../../shared/editor/inputEdits'
@@ -374,6 +376,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const { hasAudio, audioStems, audio } = project
   const heardNeeded = analysed || mode === 'silence'
   const sound = useMemo(() => (heardNeeded ? sourceActivity({ hasAudio, audioStems, audio }, levels) : null), [heardNeeded, hasAudio, audioStems, audio, levels])
+  // What counts as sound: the speech detector (the voice), or the level (docs/design/offline-captions.md §3.6).
+  const detector = useMemo(() => soundDetector({ hasAudio, audioStems, audio }, levels), [hasAudio, audioStems, audio, levels])
   // Title cards are content however still and silent the time under them is: never sped up or cut.
   const titles = project.titles
   const keep = useMemo(() => (titles ?? []).map(({ start, end }) => ({ start, end })), [titles])
@@ -422,7 +426,9 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         </div>
         {mode === 'idle' ? (
           <>
-            <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and you did not move, click, scroll or type.</p>
+            <p className="hint">
+              {detector === 'speech' ? IDLE_VOICE_HINT : 'Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and you did not move, click, scroll or type.'}
+            </p>
             {keep.length > 0 && <TitlesKept />}
             {!cursor.valid && <p className="hint">This recording has no mouse or keyboard data, so only the picture decides.</p>}
             <span className="field-label">Idle for at least</span>
@@ -481,7 +487,14 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
           </>
         ) : (
           <>
-            <p className="hint">Cuts or speeds up the pauses where nothing is heard, keeping a little of the silence next to the sound so no word is clipped.</p>
+            <p className="hint">
+              {detector === 'speech' ? SILENCES_VOICE_HINT : 'Cuts or speeds up the pauses where nothing is heard, keeping a little of the silence next to the sound so no word is clipped.'}
+            </p>
+            {detector && sources.length > 0 && (
+              <p className="hint silence-detector" data-testid="silence-detector" data-detector={detector}>
+                {detectorStatus(detector, sources.includes('system'))}
+              </p>
+            )}
             {keep.length > 0 && <TitlesKept />}
             {!hasAudio ? (
               <p className="callout silence-callout" data-testid="silence-unavailable">

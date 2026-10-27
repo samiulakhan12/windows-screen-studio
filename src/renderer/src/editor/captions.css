@@ -425,3 +425,145 @@
 .captions-script-actions {
   gap: 6px;
 }
+
+/* ---------- Captions on this PC (docs/design/offline-captions.md §7) ---------- */
+
+.local-captions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.local-only {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.local-chips {
+  flex-wrap: wrap;
+}
+
+.local-quality-notes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.local-quality-notes .hint {
+  margin: 0;
+}
+
+/* The consent card and the download: one card, the heading takes focus while the download is checked. */
+.local-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  box-shadow: var(--highlight-top);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-1);
+}
+
+.local-card h4 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.local-card h4:focus {
+  outline: none;
+}
+
+.local-card h4:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-xs);
+}
+
+.local-card p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.local-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* aria-disabled keeps the button focusable (the command can focus it); it only looks and acts disabled. */
+.local-actions .btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.local-small {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+.local-cloud {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.local-cloud .hint {
+  margin: 0;
+}
+
+/* "Heard: …": one muted line, cut with an ellipsis. */
+.local-heard {
+  margin: 0;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The ring on the Captions tab while a download or a job of this project runs. */
+.insp-tabs button span.captions-job-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  max-width: none;
+  border-radius: 50%;
+  border: 2px solid var(--accent-text);
+  border-right-color: transparent;
+  animation: captions-badge-spin 1s linear infinite;
+}
+
+.insp-tabs button span.captions-job-badge[data-phase='verify'] {
+  border-color: var(--success-text);
+  border-right-color: transparent;
+}
+
+@keyframes captions-badge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insp-tabs button span.captions-job-badge {
+    animation: none;
+    border-right-color: var(--accent-text);
+  }
+
+  .captions-bar.busy span {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

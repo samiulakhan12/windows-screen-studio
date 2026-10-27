@@ -41,7 +41,8 @@ export interface DirectorSpeech {
   refined: boolean
   /**
    * What found the speech in the levels: 'speech' the bundled speech detector, 'level' the sound
-   * level (today's rule). Absent when the speech came from the transcript alone.
+   * level (today's rule). Absent when the caller did not say (the level, as before) or the speech
+   * came from the transcript alone.
    */
   detector?: 'speech' | 'level'
 }
