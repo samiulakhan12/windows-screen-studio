@@ -169,6 +169,9 @@ export const useInstalledLabel = (id: SpeechModelId): string => `Make them now w
 /** Not enough space for a download. */
 export const diskLine = (id: SpeechModelId, free: number): string => `Not enough free space: the model needs ${sizeWords(speechModel(id)!.bytes)} and the disk has ${sizeWords(free)} free.`
 
+/** Free space a download of `id` needs: the bytes not here yet and the 64 MiB the main process keeps spare (download.ts). */
+export const downloadSpaceNeeded = (id: SpeechModelId, received = 0): number => Math.max(0, speechModel(id)!.bytes - received) + 64 * 2 ** 20
+
 /** "Downloading Standard (Whisper base)… 21 of 60 MB · 4.2 MB/s · about 10 s left". */
 export function downloadingLine(id: SpeechModelId, status: Extract<SpeechModelStatus, { state: 'downloading' }>): string {
   const parts = [`Downloading ${tierLabel(id)}… ${ofMB(status.received, status.total)}`]
@@ -211,8 +214,14 @@ export function downloadFailed(id: SpeechModelId, status: Extract<SpeechModelSta
         return { text: `${tierLabel(id)} is no longer where this version of Flown downloads it from. Updating Flown fixes this.`, action: 'choose-tier' }
       case 'mismatch':
         return { text: 'The downloaded file was not the expected one, so it was deleted and not used.', action: 'try-again' }
-      case 'disk':
-        return { text: free === null ? `Not enough free space: the model needs ${sizeWords(speechModel(id)!.bytes)}.` : diskLine(id, free), action: 'check-again' }
+      case 'disk': {
+        // The main process keeps this failure until a new download starts: Check again only while
+        // the disk is still too full, then Try again (also when the free space cannot be read).
+        const size = sizeWords(speechModel(id)!.bytes)
+        if (free === null) return { text: `Not enough free space: the model needs ${size}.`, action: 'try-again' }
+        if (free < downloadSpaceNeeded(id, status.received)) return { text: diskLine(id, free), action: 'check-again' }
+        return { text: `There was not enough free space: the model needs ${size}. The disk now has ${sizeWords(free)} free.`, action: 'try-again' }
+      }
       default:
         return { text: status.message || 'Something went wrong.', action: 'try-again' }
     }

@@ -16,6 +16,7 @@ import {
   downloadAgainLabel,
   downloadButton,
   downloadFailed,
+  downloadSpaceNeeded,
   downloadingLine,
   estimateLine,
   heardLine,
@@ -160,11 +161,10 @@ export function localState(view: SpeechModelView, project: Pick<Project, 'id' | 
 
 const online = (): boolean => typeof navigator === 'undefined' || navigator.onLine !== false
 
-/** Space a download of `view` still needs: the bytes to fetch and 64 MB. */
+/** Space a download of `view` still needs: the bytes to fetch and the spare the main process keeps. */
 const spaceNeeded = (view: SpeechModelView): number => {
   const s = view.status
-  const have = s.state === 'stopped' || s.state === 'failed' || s.state === 'downloading' ? s.received : 0
-  return Math.max(0, view.bytes - have) + 64e6
+  return downloadSpaceNeeded(view.id, s.state === 'stopped' || s.state === 'failed' || s.state === 'downloading' ? s.received : 0)
 }
 
 /**
@@ -394,26 +394,21 @@ export function LocalAction({
     case 'download-failed': {
       const s = view.status as Extract<SpeechModelView['status'], { state: 'failed' }>
       const failed = downloadFailed(view.id, s, state.disk.free)
+      // One button whatever it does, so the focus stays on it when Check again finds room and it becomes Try again.
+      const action =
+        failed.action === 'try-again'
+          ? { label: SPEECH_COPY.tryAgain, run: () => download() }
+          : failed.action === 'check-again'
+            ? { label: SPEECH_COPY.checkAgain, run: () => loadSpeechState(true) }
+            : { label: SPEECH_COPY.chooseAnother, run: () => chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus() }
       return box(
         <div className="local-card">
           <div className="captions-error" role="alert">
             <p>{failed.text}</p>
             <div className="local-actions">
-              {failed.action === 'try-again' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => download()}>
-                  {SPEECH_COPY.tryAgain}
-                </button>
-              )}
-              {failed.action === 'check-again' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => loadSpeechState(true)}>
-                  {SPEECH_COPY.checkAgain}
-                </button>
-              )}
-              {failed.action === 'choose-tier' && (
-                <button ref={primaryRef} type="button" className="btn" onClick={() => chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()}>
-                  {SPEECH_COPY.chooseAnother}
-                </button>
-              )}
+              <button ref={primaryRef} type="button" className="btn" onClick={action.run}>
+                {action.label}
+              </button>
               {failed.action === 'choose-tier' && capable.length > 0 && (
                 <button type="button" className="btn ghost" onClick={() => onUseProvider(capable[0].id)}>
                   {SPEECH_COPY.useProvider}

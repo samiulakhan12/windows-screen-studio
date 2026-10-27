@@ -508,6 +508,25 @@ describe('CaptionsPanel: captions on this PC', () => {
     }
   })
 
+  it('a download that failed for lack of space: Check again while it is short, then Try again downloads (UI-1)', async () => {
+    replies.providers = () => Promise.resolve([])
+    const failed: Status = { state: 'failed', received: 0, total: 60e6, error: 'disk', message: '' }
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': failed }, disk: { free: 10e6, used: 0 } }))
+    let out = await show()
+    expect(local(out)?.props['data-state']).toBe('download-failed')
+    expect(has(out, 'Not enough free space: the model needs 60 MB and the disk has 10 MB free.')).toBe(true)
+    // The main process keeps the failure until a new download starts: once the disk has room, the
+    // button that read the state again becomes one that downloads.
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': failed }, disk: { free: 50e9, used: 0 } }))
+    click(out, 'Check again')
+    await flush()
+    out = render(m.panel)
+    expect(has(out, 'There was not enough free space: the model needs 60 MB. The disk now has 50 GB free.')).toBe(true)
+    expect(buttons(out)).not.toContain('Check again')
+    click(out, 'Try again')
+    expect(calls.download).toEqual(['whisper-base'])
+  })
+
   it('no-model goes back to the consent card', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
