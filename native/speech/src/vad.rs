@@ -47,6 +47,19 @@ impl VadModel {
         Ok(m)
     }
 
+    /// `open` for `transcribe`, where error `model` means the Whisper model (the app clears its
+    /// verified record and offers to download it again). The detector model ships with the app
+    /// and is checked against its pin before it is passed, so one that cannot be loaded is a bad
+    /// argument: error `args`, naming it.
+    pub fn open_beside_whisper(path: &Path, threads: i32) -> Result<VadModel, Failure> {
+        VadModel::open(path, threads).map_err(|f| match f.code {
+            Code::Model => {
+                Failure::new(Code::Args, format!("--vad-model is not a usable speech detector model ({})", f.message))
+            }
+            _ => f,
+        })
+    }
+
     /// One probability per 512 samples (the last frame zero-padded).
     pub fn detect(&self, pcm: &[f32]) -> Result<Vec<f32>, Failure> {
         if pcm.is_empty() {
@@ -65,15 +78,17 @@ impl VadModel {
     }
 
     /// Speech ranges of the last `detect`, seconds (the design's VAD constants: threshold 0.5,
-    /// speech of at least 250 ms, silences of at least 100 ms, 30 ms padding). A range longer
-    /// than `max_speech` is split, preferably in a pause, so a chunk fits whisper's 30 s window.
-    pub fn segments(&self, max_speech: f32) -> Result<Vec<(f64, f64)>, Failure> {
+    /// speech of at least 250 ms, silences of at least 100 ms, 30 ms padding). A range can be
+    /// longer than a chunk: chunks::plan cuts it at its quietest frame. whisper.cpp's
+    /// `max_speech_duration_s` stays off: it cuts at whatever frame passes the limit (mid-word),
+    /// and its merge of gaps under 200 ms joins the pieces again.
+    pub fn segments(&self) -> Result<Vec<(f64, f64)>, Failure> {
         let mut p = unsafe { sys::whisper_vad_default_params() };
         p.threshold = 0.5;
         p.min_speech_duration_ms = 250;
         p.min_silence_duration_ms = 100;
         p.speech_pad_ms = 30;
-        p.max_speech_duration_s = max_speech;
+        p.max_speech_duration_s = f32::MAX;
         let segs = unsafe { sys::whisper_vad_segments_from_probs(self.0, p) };
         if segs.is_null() {
             return Err(Failure::new(Code::Internal, "the speech detector's segments failed"));
@@ -360,5 +375,12 @@ mod tests {
         std::fs::write(&cut, &bytes[..bytes.len() - 10]).unwrap();
         assert_eq!(VadModel::open(&cut, 1).err().unwrap().code, Code::Model);
         assert_eq!(VadModel::open(&dir.join("missing.bin"), 1).err().unwrap().code, Code::Model);
+        // Beside a Whisper model, error `model` would send the app after the wrong file.
+        for bad in [cut.clone(), dir.join("missing.bin")] {
+            let f = VadModel::open_beside_whisper(&bad, 1).err().unwrap();
+            assert_eq!(f.code, Code::Args, "{bad:?}");
+            assert!(f.message.starts_with("--vad-model is not a usable speech detector model ("), "{}", f.message);
+        }
+        assert!(VadModel::open_beside_whisper(&copy, 1).is_ok());
     }
 }
