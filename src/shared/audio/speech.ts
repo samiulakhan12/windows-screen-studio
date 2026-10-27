@@ -39,6 +39,11 @@ export interface DirectorSpeech {
   source: SpeechSource
   /** True when the transcript's words removed sound of the mixed track that was not speech. */
   refined: boolean
+  /**
+   * What found the speech in the levels: 'speech' the bundled speech detector, 'level' the sound
+   * level (today's rule). Absent when the speech came from the transcript alone.
+   */
+  detector?: 'speech' | 'level'
 }
 
 /**
@@ -56,11 +61,16 @@ export function speechLevelSource(project: Pick<Project, 'hasAudio' | 'audioStem
 }
 
 /**
- * Speech ranges (source seconds) from a level envelope: activity, minus keyboard and mouse noise
+ * Speech ranges (source seconds) from a level envelope. With `levels.speech` (the speech
+ * detector ran): those ranges joined across SPEECH.join and at least SPEECH.minUtterance long.
+ * Otherwise: activity, minus keyboard and mouse noise
  * (`track`'s typing bursts, clicks and keys; none when `track` is null or not valid), joined
  * and filtered (SPEECH).
  */
 export function speechFromLevels(levels: AudioLevels, track: CursorTrack | null): Range[] {
+  // The speech detector heard the voice itself: typing under it is still talking, so no input
+  // noise is taken out, and no trust guard (a microphone with typing and no voice means no talking).
+  if (levels.speech) return mergeRanges(levels.speech, SPEECH.join).filter((r) => r.end - r.start >= SPEECH.minUtterance)
   const noise = track?.valid ? inputNoise(track) : []
   const heard = detectActivity(levels).filter((r) => covered(r, noise) < SPEECH.noiseShare * (r.end - r.start))
   return mergeRanges(heard, SPEECH.join).filter((r) => r.end - r.start >= SPEECH.minUtterance)
@@ -88,13 +98,17 @@ export function transcriptSpeech(transcript: Pick<Transcript, 'segments'> | unde
  * remove real speech). Without levels: the transcript alone, joined across SPEECH.join. Null
  * when neither is known.
  */
-export function refineSpeech(levels: { source: 'mic' | 'mix'; ranges: readonly Range[] } | null, transcript: Pick<Transcript, 'segments'> | undefined): DirectorSpeech | null {
+export function refineSpeech(
+  levels: { source: 'mic' | 'mix'; ranges: readonly Range[]; detector?: 'speech' | 'level' } | null,
+  transcript: Pick<Transcript, 'segments'> | undefined
+): DirectorSpeech | null {
   const words = transcriptSpeech(transcript)
   if (!levels) return words ? { ranges: mergeRanges(words, SPEECH.join), source: 'transcript', refined: false } : null
   const ranges = mergeRanges(levels.ranges)
-  if (levels.source === 'mic' || !words) return { ranges, source: levels.source, refined: false }
+  const detector = levels.detector ? { detector: levels.detector } : {}
+  if (levels.source === 'mic' || !words) return { ranges, source: levels.source, refined: false, ...detector }
   const near = mergeRanges(words.map((w) => ({ start: w.start - SPEECH.transcriptPad, end: w.end + SPEECH.transcriptPad })))
-  return { ranges: intersect(ranges, near), source: 'mix', refined: true }
+  return { ranges: intersect(ranges, near), source: 'mix', refined: true, ...detector }
 }
 
 /** Times (source seconds, sorted, separate) when typing, clicking or a shortcut makes noise. */

@@ -2,6 +2,7 @@ import { MAX_CAPTIONS, readTranscript } from '../../../shared/captions/captionDa
 import { captionAlpha } from '../../../shared/captions/layout'
 import { captionsOf } from '../../../shared/captions/settings'
 import type { TranscribeOptions, TranscribeProgress } from '../../../shared/api/ai'
+import { LOCAL_TRANSCRIBER_ID } from '../../../shared/api/speech'
 import { formatTime } from '../../../shared/engine/project'
 import { playableFrom } from '../../../shared/engine/timeline'
 import { viewingTime } from '../../../shared/render/overlays'
@@ -67,6 +68,10 @@ export interface TranscriptionJob {
   running: boolean
   /** Cancelled, waiting for the main process to stop it. */
   stopping?: boolean
+  /** When the job started (Date.now()): the time left and the time it took. */
+  startedAt?: number
+  /** On this PC: the model and the spoken language asked for ('' = detect). */
+  local?: { model: string; language: string }
 }
 
 let job: TranscriptionJob | null = null
@@ -101,7 +106,8 @@ export async function transcribe({ store }: EditorServices, options: TranscribeO
   const projectId = store.state.id
   if (job?.running) return false
   const mine = ++generation
-  setJob({ projectId, progress: null, error: null, running: true })
+  const local = options.providerId === LOCAL_TRANSCRIBER_ID ? { model: options.model ?? '', language: options.language ?? '' } : undefined
+  setJob({ projectId, progress: null, error: null, running: true, startedAt: Date.now(), ...(local ? { local } : {}) })
   const off = window.api.onTranscribeProgress((progress) => {
     if (mine === generation && progress.projectId === projectId && job?.running) setJob({ ...job, progress })
   })
@@ -123,7 +129,7 @@ export async function transcribe({ store }: EditorServices, options: TranscribeO
   } catch (err) {
     if (mine !== generation) return false
     const message = ipcMessage(err)
-    setJob(isCancel(message) ? null : { projectId, progress: null, error: message, running: false })
+    setJob(isCancel(message) ? null : { projectId, progress: null, error: message, running: false, ...(local ? { local } : {}) })
     return false
   } finally {
     off()
