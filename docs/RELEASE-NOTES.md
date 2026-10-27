@@ -8,7 +8,8 @@
   Bangla words right, where the other models get most of them wrong. Once downloaded, Bengali
   uses it, including in Polish in one click; other languages never do, and existing settings,
   projects and other languages behave exactly as before. It needs an 8 GB PC with AVX2 and takes
-  about as long as the recording or longer; its captions have no punctuation.
+  about as long as the recording or longer; its captions have no punctuation and are cut at the
+  speaker's pauses into short ones (at most 7 s).
 - **Captions on this PC** (F-01): free, private captions with exact word timings from a Whisper
   model that runs on your PC, with no key, no upload and no cost. The model (60 MB for Standard)
   is downloaded once, after you click a button that names its size. Captions keep working after

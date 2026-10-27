@@ -79,6 +79,13 @@ interface CachedPart {
   transcript: RawTranscript
 }
 
+/**
+ * How localTranscript forms captions for `spec`: a model that decodes without timestamp tokens
+ * (the Bangla model) writes one segment per chunk of up to 20 s, so its segments are cut into
+ * captions at the pauses (protocol.ts captionPieces); the Whisper models' segments are kept.
+ */
+export const captionSplit = (spec: Pick<SpeechModelSpec, 'noTimestamps'>): { split: boolean } => ({ split: spec.noTimestamps === true })
+
 /** A cached part read back as untrusted input (size cap, the same checks as live output); null when unusable. */
 export async function readCachedPart(file: string, expect: { spec: SpeechModelSpec; partSha256: string; seconds: number }): Promise<{ transcript: RawTranscript; language: string; languageSeconds: number } | null> {
   const stat = await fs.stat(file).catch(() => null)
@@ -100,7 +107,8 @@ export async function readCachedPart(file: string, expect: { spec: SpeechModelSp
     if (event?.type !== 'segment') return null
     lines.push(event)
   }
-  return { transcript: localTranscript(lines, raw.language, expect.seconds), language: raw.language, languageSeconds: raw.languageSeconds }
+  // A part kept before captions were cut (the Bangla model's 20 s segments) is cut as it is read.
+  return { transcript: localTranscript(lines, raw.language, expect.seconds, captionSplit(expect.spec)), language: raw.language, languageSeconds: raw.languageSeconds }
 }
 
 /** `heard`: seconds of speech the helper's detector found in the part (the audio it transcribed). */
@@ -203,7 +211,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       if ('error' in choice) throw fail('unavailable', { reason: choice.error })
       const r = await runPart(part, lang, threads, call, choice.exe, choice.build)
       if (r.kind === 'done') {
-        const transcript = localTranscript(r.segments, r.result.language, part.seconds)
+        const transcript = localTranscript(r.segments, r.result.language, part.seconds, captionSplit(spec))
         const language = r.result.language === 'auto' ? '' : r.result.language
         const entry: CachedPart = { version: 1, model: spec.id, modelSha256: spec.sha256, language, languageSeconds: r.result.language_s, engine: ENGINE_VERSION, partSha256, transcript }
         try {
