@@ -119,11 +119,18 @@ export function electronGet(): HttpGet {
             failed = new Error('The connection was closed.')
             poke()
           })
-          for (;;) {
-            if (queue.length) yield queue.shift()!
-            else if (failed) throw failed
-            else if (done) return
-            else await new Promise<void>((r) => (wake = r))
+          // After request.abort() (cancel or stall) the response emits none of the above: the signal ends the body.
+          signal.addEventListener('abort', poke, { once: true })
+          try {
+            for (;;) {
+              if (signal.aborted) throw new Error('aborted')
+              if (queue.length) yield queue.shift()!
+              else if (failed) throw failed
+              else if (done) return
+              else await new Promise<void>((r) => (wake = r))
+            }
+          } finally {
+            signal.removeEventListener('abort', poke)
           }
         })()
         resolve({ status: response.statusCode, headers: lower(response.headers), body })
