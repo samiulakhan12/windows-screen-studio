@@ -234,6 +234,17 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
   }
   const writeMeta = (received: number, id = dest): Promise<void> =>
     fs.writeFile(meta, JSON.stringify({ version: 1, id: id.replace(/^.*[\\/]/, ''), bytes: pin.bytes, sha256: pin.sha256, received, updatedAt: new Date().toISOString() })).catch(() => undefined)
+  /** The verified .part becomes the model: fsync, the rename (retried while a lock holds the new file), its record deleted. */
+  const install = async (): Promise<void> => {
+    const fd = await fs.open(part, 'r+')
+    try {
+      await fd.sync()
+    } finally {
+      await fd.close()
+    }
+    await renameWithRetries(part, dest, opts)
+    await fs.rm(meta, { force: true })
+  }
 
   let restarted = false
   let attempt = 0
@@ -254,6 +265,19 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
     try {
       have = await sizeOf(part)
       if (have > pin.bytes) {
+        await fs.rm(part, { force: true })
+        have = 0
+      }
+      // Every byte is here already (the install failed after the check, e.g. a rename an antivirus
+      // held): verified and installed without a request, whose Range from the end would get a 416.
+      if (have === pin.bytes) {
+        opts.onVerifying?.()
+        const hash = createHash('sha256')
+        await hashPrefix(part, hash)
+        if (hash.digest('hex') === pin.sha256) {
+          await install()
+          return
+        }
         await fs.rm(part, { force: true })
         have = 0
       }
@@ -353,14 +377,7 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
         await fs.rm(meta, { force: true })
         throw new DownloadFailure('mismatch', 'The downloaded file was not the expected one, so it was deleted.')
       }
-      const fd = await fs.open(part, 'r+')
-      try {
-        await fd.sync()
-      } finally {
-        await fd.close()
-      }
-      await renameWithRetries(part, dest, opts)
-      await fs.rm(meta, { force: true })
+      await install()
       return
     } catch (err) {
       if (!(err instanceof Retryable)) {

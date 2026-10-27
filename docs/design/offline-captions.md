@@ -259,7 +259,9 @@ restart.
 3. **Resume.** Each attempt sends `Range: bytes=<.part size>-` to the **pinned** URL (signed CDN
    addresses expire). 206 with `Content-Range` starting at the .part size and a total equal to the
    pin: append. 200: truncate and start over. 416, or any other total: delete the .part and start
-   over once. The spike measured `206 bytes 1000-1999/147951465`.
+   over once. The spike measured `206 bytes 1000-1999/147951465`. A .part that already holds
+   every byte (an install that failed after the check, such as a rename an antivirus held) sends
+   no request: it is hashed and, when it matches the pin, installed (step 6); otherwise deleted.
 4. **Write and hash.** Bytes stream into `<file>.part` with back-pressure while SHA-256 updates;
    on resume the existing prefix is hashed first (574 MB in about a second). `<file>.part.json`
    records `{ version: 1, id, bytes, sha256, received, updatedAt }`. Progress reaches the renderer
@@ -1582,3 +1584,10 @@ Declined or changed, one line each:
 - "Streamed words equal a whole-run refinement within 50 ms" (review 1): measured 4 of 226 starts
   up to 120 ms apart (the first chunk's median differs) while accuracy is equal or better, so the
   cargo test asks for ≥ 95 % identical and none over 150 ms, and accuracy is gated by the bench.
+
+Code review of the merged feature (main process), one line each:
+
+- **A complete .part downloaded again** (MAIN-2, §3.1 step 3): a verified .part whose rename an
+  antivirus held past the retries was resumed with a Range from its end, and the 416 deleted it;
+  now each attempt hashes a complete .part and installs it without a request. The rename retry
+  window is unchanged.
