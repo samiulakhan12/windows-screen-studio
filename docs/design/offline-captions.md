@@ -1604,3 +1604,6 @@ Review of the merged build, fixed (one line each):
   without a badge. The retry now stays slow until the badge shows `data-phase="download"` with no
   alternative, "trying again" is caught by an observer in the page instead of a 100 ms poll, and
   `tests/captionsBadge.test.ts` covers the download and verify phases of `useCaptionsHost`.
+- **Docs** (INT-T6): FEATURES, README, RELEASE-NOTES, ROADMAP and IMPLEMENTATION described Polish
+  captions as needing a provider, captions as key-only, F-01/F-03 with planned builds and sizes
+  (Vulkan, 142/466 MB, 2.3 MB), and the guard as applying to the director; they now match the code.
