@@ -4,6 +4,7 @@
  * transcription pipeline with real ffmpeg (sound picked, decoded, split in pauses, sent, merged),
  * the text tasks with each provider, error messages, retries and cancelling.
  */
+import { EventEmitter } from 'node:events'
 import Anthropic from '@anthropic-ai/sdk'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
@@ -57,7 +58,7 @@ const { startMockAi, mockAiEnv, burstAudioArgs } = req('./e2e/ai-mock-server.cjs
   burstAudioArgs: (starts: number[], seconds: number) => string[]
 }
 
-const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: { isDestroyed: () => false, send: vi.fn() } }
+const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: Object.assign(new EventEmitter(), { isDestroyed: () => false, send: vi.fn() }) }
 const call = <T>(channel: string, ...args: unknown[]): Promise<T> => Promise.resolve(h.handlers.get(channel)!(appEvent, ...args) as T)
 /** The IPC error as the renderer sees its message. */
 const failure = async (p: Promise<unknown>): Promise<string> => {
@@ -318,6 +319,20 @@ describe('transcription', () => {
     expect(transcribeTemps()).toEqual([])
     // The editor closing or the project being deleted stops it the same way (stopAnalyses calls this).
     await stopTranscription('rec-words')
+  }, 60_000)
+
+  it('a reload or navigation of the page that asked stops its job as Cancel does', async () => {
+    const slow = providers['Slow OpenAI'] ?? (await add('Slow OpenAI', 'openai', 'slow-openai-key-1'))
+    let started!: () => void
+    const transcribing = new Promise<void>((r) => (started = r))
+    appEvent.sender.send = vi.fn((_c: string, p: TranscribeProgress) => p.phase === 'transcribing' && started())
+    const run = call<Transcript>('ai:transcribe', 'rec-words', { providerId: slow.id })
+    await transcribing
+    appEvent.sender.emit('did-navigate')
+    expect(await failure(run)).toBe('Cancelled.')
+    expect(transcribeTemps()).toEqual([])
+    // Nothing is left listening on the page once the job has ended.
+    expect(['did-navigate', 'destroyed', 'render-process-gone'].map((n) => appEvent.sender.listenerCount(n))).toEqual([0, 0, 0])
   }, 60_000)
 
   it('removes the temporary files at once when the app quits mid-transcription', async () => {

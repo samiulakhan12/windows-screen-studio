@@ -260,7 +260,7 @@ describe('CaptionsPanel: after a run the summary shows, with its notice (AI-8)',
 
 /* ---------- captions on this PC (docs/design/offline-captions.md §7.1-7.2, §7.6) ---------- */
 
-import type { SpeechModelView, SpeechState } from '../src/shared/api/speech'
+import type { SpeechModelStatus, SpeechModelView, SpeechState } from '../src/shared/api/speech'
 import { SPEECH_MODELS, type SpeechModelId } from '../src/shared/speech/catalog'
 import { localErrorMessage } from '../src/shared/speech/errors'
 
@@ -435,7 +435,7 @@ describe('CaptionsPanel: captions on this PC', () => {
     replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': { state: 'installed' } } }))
     let out = await show()
     ;(chips(out)[3].props.onClick as () => void)()
-    const reload = async (turbo: object): Promise<El[]> => {
+    const reload = async (turbo: SpeechModelStatus): Promise<El[]> => {
       replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-turbo': turbo } }))
       ;(m.speech as unknown as { loadSpeechState(force: boolean): void }).loadSpeechState(true)
       await flush()

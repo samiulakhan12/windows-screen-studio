@@ -1664,8 +1664,9 @@ Code review of the merged feature (main process), one line each:
   reopened recording was refused and Remove of its model too, and its finished result went to the
   dead frame while the part cache was deleted. `attachRecorderWindow`'s `render-process-gone` now
   stops every transcription (`stopEveryTranscription`, the cancel path, which keeps the parts).
-  Tying jobs to the sender in `aiIpc.ts` (also on navigation) was not done: outside these files,
-  and the main window navigates only on that reload.
+  Then a reload (Ctrl+R keeps the renderer, so no `render-process-gone`) still left the job running:
+  `ai:transcribe` now also ties the job to the page that asked (`did-navigate`, `destroyed`,
+  `render-process-gone` stop it the same way, like an export's owner).
 
 Code review of the merged feature, native engine and build (fixed unless noted):
 

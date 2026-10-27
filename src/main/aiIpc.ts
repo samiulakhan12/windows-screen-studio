@@ -108,13 +108,24 @@ export function registerAiIpc(): void {
     fromApp(e)
     return testAiProvider(id)
   })
-  ipcMain.handle('ai:transcribe', (e, projectId: unknown, options: unknown) => {
+  ipcMain.handle('ai:transcribe', async (e, projectId: unknown, options: unknown) => {
     fromApp(e)
     const sender = e.sender
     const progress = (p: TranscribeProgress): void => {
       if (!sender.isDestroyed()) sender.send('ai:transcribeProgress', p)
     }
-    return transcribeProject(providers(), projectId, options, progress)
+    // The job belongs to the page that asked: a reload, a navigation (in-page route changes are
+    // 'did-navigate-in-page') or a dead page stops it as Cancel does, which keeps the parts made.
+    const gone = (): void => {
+      if (typeof projectId === 'string') void stopTranscription(projectId)
+    }
+    const events = ['did-navigate', 'destroyed', 'render-process-gone'] as const
+    for (const name of events) sender.once(name as 'destroyed', gone)
+    try {
+      return await transcribeProject(providers(), projectId, options, progress)
+    } finally {
+      for (const name of events) sender.removeListener(name as 'destroyed', gone)
+    }
   })
   ipcMain.handle('ai:cancelTranscription', (e, projectId: unknown) => {
     fromApp(e)
