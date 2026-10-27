@@ -5,6 +5,7 @@
  * back to its code. The last block runs the whole job through transcribeProject (real ffmpeg).
  */
 import { execFileSync } from 'node:child_process'
+import { EventEmitter } from 'node:events'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -384,7 +385,7 @@ describe('a whole job through transcribeProject', () => {
     writeFileSync(path.join(pdir, 'project.json'), JSON.stringify({ version: 2, id, name: id, createdAt: new Date().toISOString(), duration: 19, width: 1280, height: 720, hasWebcam: false, hasAudio: true, webcamOffset: 0, capture: { method: 'chromium', cursorInVideo: true, region: null }, clips: [{ id: 'c0', start: 0, end: 19, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: { background: { type: 'color', color: '#000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' }, cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true }, webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' }, effects: { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } }, audio: { volume: 1, muted: false } }))
 
     const progress: TranscribeProgress[] = []
-    const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: { isDestroyed: () => false, send: (_c: string, p: TranscribeProgress) => progress.push(p) } }
+    const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href }, sender: Object.assign(new EventEmitter(), { isDestroyed: () => false, send: (_c: string, p: TranscribeProgress) => progress.push(p) }) }
     const transcribe = (options: Record<string, unknown>): Promise<unknown> => Promise.resolve(h.handlers.get('ai:transcribe')!(appEvent, id, options))
     return { pdir, progress, appEvent, transcribe }
   }
