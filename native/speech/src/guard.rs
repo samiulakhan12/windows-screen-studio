@@ -69,10 +69,12 @@ mod os {
         fn prctl(option: c_int, arg2: u64, arg3: u64, arg4: u64, arg5: u64) -> c_int;
         fn getppid() -> c_int;
         fn getrusage(who: c_int, usage: *mut [i64; 18]) -> c_int;
+        fn kill(pid: c_int, sig: c_int) -> c_int;
     }
     const PR_SET_PDEATHSIG: c_int = 1;
     const PR_SET_NO_NEW_PRIVS: c_int = 38;
     const SIGKILL: u64 = 9;
+    const EPERM: i32 = 1;
 
     pub fn lower_priority() {
         // Before any other thread exists: on Linux the nice value is per thread, and the
@@ -88,10 +90,25 @@ mod os {
 
     pub fn watch_parent(pid: u32) {
         unsafe { prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0) };
-        // The parent may have died before the call above.
+        // The parent may have died before the call above (this process then has another one),
+        // or `pid` was never the parent: a process that lives on is a wrong argument, since its
+        // death would go unnoticed.
         if unsafe { getppid() } as u32 != pid {
-            crate::protocol::hard_exit(crate::protocol::EXIT_CANCELLED);
+            if exists(pid) {
+                crate::protocol::fail(crate::protocol::Failure::new(
+                    crate::protocol::Code::Args,
+                    format!("--parent-pid {pid} is not this helper's parent"),
+                ));
+            }
+            super::parent_gone();
         }
+    }
+
+    /// Whether process `pid` exists: signal 0 sends nothing, EPERM is another user's process.
+    fn exists(pid: u32) -> bool {
+        let Ok(p) = c_int::try_from(pid) else { return false };
+        let rc = unsafe { kill(p, 0) };
+        rc == 0 || std::io::Error::last_os_error().raw_os_error() == Some(EPERM)
     }
 
     pub fn peak_rss_bytes() -> u64 {
@@ -185,7 +202,7 @@ mod os {
             let err = unsafe { GetLastError() };
             if err == ERROR_INVALID_PARAMETER {
                 // No such process: the parent is already gone.
-                crate::protocol::hard_exit(crate::protocol::EXIT_CANCELLED);
+                super::parent_gone();
             }
             super::log(&format!("parent watch: cannot open process {pid} (error {err})"));
             return;
@@ -193,7 +210,7 @@ mod os {
         let h = h as usize;
         std::thread::spawn(move || {
             unsafe { WaitForSingleObject(h as Handle, INFINITE) };
-            crate::protocol::hard_exit(crate::protocol::EXIT_CANCELLED);
+            super::parent_gone();
         });
     }
 
@@ -236,6 +253,14 @@ pub fn set_verbose(on: bool) {
 
 pub fn verbose() -> bool {
     VERBOSE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// The parent is gone: the run is cancelled as when the app ends stdin (a `cancelled` line, exit
+/// code 2), never a silent exit, which the app would count as a crash. After the run's last line
+/// it does nothing: that run is ending with its own exit code.
+#[cfg_attr(not(any(target_os = "linux", windows)), allow(dead_code))]
+fn parent_gone() {
+    crate::protocol::cancel_now()
 }
 
 /// A diagnostic for the app's log (stderr; never part of the protocol).
