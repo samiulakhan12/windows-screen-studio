@@ -980,7 +980,9 @@ button. Failure: "The third-party notices could not be shown: {message}".
   frees 190 megabytes").
 - Focus never falls to the body when a focused button disappears: Download → Cancel → (verifying)
   the card's heading (`tabIndex=-1`) → Cancel (running) → (done) Regenerate captions…; an inline
-  Remove question takes focus, Esc cancels it.
+  Remove question takes focus, Esc cancels it. In Settings a row whose buttons change passes the
+  focus to its new action (Download → Cancel → Continue …), to its status line while "Checking…"
+  (`tabIndex=-1`), and after a confirmed Remove to the row's Remove, then its Download.
 - A control that cannot act now is `aria-disabled="true"` (still focusable, so the "Generate
   captions" command can focus it), with its reason as visible text linked by `aria-describedby`;
   never a `disabled` button with the reason in a title.
@@ -1621,3 +1623,6 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
 - **UI-2** A resumed job showed "about 1 s left" throughout: the baseline of the time left was the
   first cached part, so the later cached parts counted as work done in no time. `LocalRunning`
   starts it again whenever `resumed` changes, so only this run's work sets the speed.
+- **UI-6** Settings rows let the focus fall to the body when Download became Cancel, Cancel became
+  Continue, or a confirmed Remove closed its question: each row catches it on a change of what it
+  shows (not on mount) and gives it to its action, else its status line.
