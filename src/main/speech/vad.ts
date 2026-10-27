@@ -215,14 +215,18 @@ export async function speechOfFile(projectId: string, source: 'mic' | 'mix', fil
   }
   const key = `${file}|${stat.size}|${stat.mtimeMs}`
   if (failedFiles.has(key)) return null
-  const helper = await ready()
+  const helper = await ready().catch((err) => {
+    detector = { available: false, reason: 'the speech engine did not start' }
+    console.warn(`Speech detector unavailable: ${err instanceof Error ? err.message : String(err)}`)
+    return null
+  })
   if (!helper) return null
   if (processes.generation(projectId) !== generation) throw new Error(STOPPED)
   let r = await detect(helper.exe, helper.vadModel, file, projectId, processes, levels)
   if ('illegal' in r) {
     // The standard build faulted: the compatible one for the session, and the detector stays on.
     markIllegalInstruction()
-    const again = await ready()
+    const again = await ready().catch(() => null)
     if (!again || again.exe === helper.exe) {
       console.warn('Speech detector: the speech helper cannot run on this processor; sound levels are used.')
       detector = { available: false, reason: "this PC's processor cannot run the speech engine" }
