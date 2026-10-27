@@ -1,7 +1,9 @@
 # Build report: offline captions, workstream B (main process)
 
 Branch `feat-oc-b`, from `2011f42` (contracts). Spec: `docs/design/offline-captions.md` §3, §4, §5, §9, §10, §12.
-Workstream A's branch (`feat-oc-a`, `5515b32`) is merged in for the end-to-end check.
+Merged in: workstream A's branch (`feat-oc-a`, `5515b32`) for the end-to-end check, and, at the
+lead's request, the base branch with the editing-wins wave (`ccr-b6df7cf7-yked87` at `a3f0730`,
+clean merge; `docs/IMPLEMENTATION.md` keeps both sides).
 
 ## What I built
 
@@ -51,4 +53,46 @@ Workstream A's branch (`feat-oc-a`, `5515b32`) is merged in for the end-to-end c
 
 ## Verification
 
-(see the end of this file for the full command output summary)
+All on the merged tree (`20f7b72` plus this report), Linux container, Node from the repo's toolchain.
+
+| Step | Result |
+|---|---|
+| `npm ci` | ok |
+| `npm run typecheck` (node + web) | clean |
+| `npx vitest run --testTimeout=60000` | 179 files, **2519 passed, 1 failed**: `tests/notesBlocks.test.ts` "splits 50,000 characters quickly" (a 30 ms wall-clock budget, measured 33.9 ms under full-suite load; passes alone 3/3; not B's code; the lead reports it fixed on the base branch, `c5287b1`). Before the base merge: 158 files, 2232 passed, 0 failed. |
+| `npm run build` | ok |
+| Full e2e: `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` | **49/49 e2e files passed** (206 PASS lines, exit 0). Run without a helper in `native/bin` (the state of the base branch), so the speech detector falls back and every existing flow behaves as before. In an earlier, stopped run on the pre-merge tree, one case failed once: audio-pack "a recording interrupted by a crash keeps its microphone track when recovered" (9 vs 8 sound bursts, decoded straight from the recorded files: the recording path, which B does not touch); it passed in the full run above. |
+| A's host build | `cd native/speech && GGML_NATIVE=OFF cargo build --release` (1 min 12 s; A's branch had no `build:speech-host` script yet), copied to `native/bin/ssw-speech` (gitignored). `ssw-speech cpu` and `vad` on the JFK fixture behave as the protocol says. |
+| Real helper end to end | A Playwright script driving the built app (`npm run build`) with the real host helper, `HOME` in a temp folder, `SSW_SPEECH_MODEL_BASE_URL` pointing at a local server serving the pinned `ggml-tiny-q8_0.bin` (fetched once from its pinned Hugging Face URL; SHA-256 matched `c2085835…`), `SSW_AI_MAX_PART_SECONDS=12`, and a project whose `mic.m4a` is 1 s silence, JFK, 4 s brown noise, LibriSpeech, 2 s silence. Output below. **PASS.** |
+
+```
+getSpeechState {"engine":{"available":true,"build":"host","threads":3},"detector":{"available":true},"defaultModel":"whisper-base","models":[["whisper-tiny","missing",true],["whisper-base","missing",true],["whisper-small","missing",true],["whisper-turbo","missing",true]]} 173 ms
+transcribe without a model: Error invoking remote method 'ai:transcribe': Error: Standard (Whisper base) is not downloaded yet: download it in the Captions tab (60 MB, free). -> no-model
+downloadSpeechModel('whisper-tiny') resolved in 211 ms; speech:changed x1: downloading
+requests: [ '/hf/ggml-tiny-q8_0.bin  Flown/0.3.0' ]
+installed: installed default: whisper-tiny sha256 ok: true
+transcribe local: 5784 ms, provider local, model whisper-tiny, language en, 5 segments, 39 words
+text: And so my fellow Americans ask not what your country can do for you, ask what you can do for your | country. | Mr. Quilter is the apostle of the middle classes, | and we are glad to welcome his | gospel.
+phases: extracting,loading,transcribing,finishing last: {"projectId":"rec-speech","phase":"finishing","done":3,"total":3,"fraction":1,"at":23.86} previews: 8
+words inside the noise (12.6-15.5 s): []
+analyzeAudio speech (mic): [{"start":1.282,"end":3.294},{"start":4.258,"end":4.862},{"start":4.93,"end":5.438},{"start":6.37,"end":8.67},{"start":9.154,"end":11.582},{"start":16.546,"end":21.534}] mix speech: undefined
+.cache/speech.json entries: [ 'mic' ]
+a language the model does not know: … The speech model does not know the language “xx”. Choose another spoken language, or Detect automatically. -> language
+damaged model: … The speech model for Fast (Whisper tiny) is damaged or missing, so it was not used. Download it again (44 MB). -> damaged
+bad ids: [ "… speech:download': Error: Unknown speech model." ×3 ]
+PASS workstream B with the real speech helper
+```
+
+What this shows: the first `getSpeechState` runs the probe (173 ms); a download through the test hook
+installs the pinned file and makes it the default; a 3-part local job on the real helper hears the
+JFK and LibriSpeech words and nothing in the noise, with the `loading` phase, fractions, previews and
+the part cache cleared after the merge; the detector gives speech on the microphone stem only and
+persists it; failed jobs' messages map back to `no-model`, `language` and `damaged` with
+`localErrorCode`; paths and URLs are refused as ids. The script lives outside the repository (it is
+a manual check; C owns `tests/e2e/offline-captions.e2e.cjs`).
+
+**Not run:** `npm run dev` with devtools (the same calls were made through Playwright on the built
+app instead); a real Hugging Face download through Electron `net` (the container's proxy; the
+download path was exercised against the local server, and `electronGet` is covered only by
+typecheck); a real cancel and a real crash of the native helper inside the app (both covered with
+the fake helper); anything on Windows (§10.5).
