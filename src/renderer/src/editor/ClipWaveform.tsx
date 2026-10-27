@@ -9,6 +9,7 @@ import { overlaps } from '../../../shared/editor/timelineScale'
 import type { Clip } from '../../../shared/types'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { useEditor } from './context'
+import { useDevicePixelRatio } from './devicePixelRatio'
 import { useWaveformShown } from './waveformPref'
 import './waveform.css'
 
@@ -78,6 +79,8 @@ interface Scene {
   pauses: readonly Range[]
   gaps: readonly Gap[]
   clips: readonly Clip[]
+  /** devicePixelRatio, which a move to a monitor with another scale factor changes. */
+  dpr: number
 }
 
 function readColours(el: HTMLElement): Colours {
@@ -89,7 +92,7 @@ function readColours(el: HTMLElement): Colours {
 function draw(canvas: HTMLCanvasElement, s: Scene, colours: Colours): void {
   const cssW = Math.max(0, (s.win.end - s.win.start) * s.px)
   const cssH = canvas.parentElement?.clientHeight ?? 0
-  const r = Math.min(window.devicePixelRatio || 1, MAX_CANVAS_PX / Math.max(1, cssW))
+  const r = Math.min(s.dpr, MAX_CANVAS_PX / Math.max(1, cssW))
   // Resizing also clears it.
   canvas.width = Math.round(cssW * r)
   canvas.height = Math.round(cssH * r)
@@ -213,7 +216,8 @@ export const ClipWaveform = memo(function ClipWaveform({ px, win, duration }: { 
   }, [analysis, activityKey, duration])
   const gaps = useMemo(() => timelineGaps(clips, duration), [clips, duration])
 
-  /* Drawing: only when something it shows changes (no React state, so it never re-renders). */
+  /* Drawing: only when something it shows or the scale factor changes (no React state, so it never re-renders). */
+  const dpr = useDevicePixelRatio()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const draws = useRef(0)
   const colours = useRef<{ el: HTMLElement; values: Colours } | null>(null)
@@ -222,9 +226,9 @@ export const ClipWaveform = memo(function ClipWaveform({ px, win, duration }: { 
     if (!canvas || state === 'none') return
     if (colours.current?.el !== canvas) colours.current = { el: canvas, values: readColours(canvas) }
     const withLevels = lanes.map((lane) => ({ lane, levels: analysis?.[lane.source] }))
-    draw(canvas, { px, win, state, lanes: withLevels, ref, pauses, gaps, clips }, colours.current.values)
+    draw(canvas, { px, win, state, lanes: withLevels, ref, pauses, gaps, clips, dpr }, colours.current.values)
     canvas.dataset.draws = String(++draws.current)
-  }, [px, win, analysis, ref, lanes, pauses, gaps, clips, state])
+  }, [px, win, analysis, ref, lanes, pauses, gaps, clips, state, dpr])
 
   const hintText = hintFor(state, lanes)
   useEffect(() => publishHint(hintText), [hintText])
