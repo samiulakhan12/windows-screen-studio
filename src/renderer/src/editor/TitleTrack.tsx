@@ -1,6 +1,7 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { itemLanes } from '../../../shared/editor/shapes'
 import { orPress } from '../../../shared/editor/shortcuts'
+import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { dragTitleTimes, TITLE_STYLES } from '../../../shared/editor/titles'
 import { clamp } from '../../../shared/engine/math'
@@ -27,7 +28,7 @@ const styleLabel = (style: TitleCardStyle): string => TITLE_STYLES.find((s) => s
  * the text track, flags drag to move a chapter, a click selects (and shows it on the preview),
  * a double-click on empty space adds a title card, or a chapter in the flag strip.
  */
-export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: TrackSlotProps): JSX.Element {
+export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element {
   const services = useEditor()
   const { store, player } = services
   const keymap = useKeymap()
@@ -78,12 +79,13 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: Tr
     const mode = dragMode(e)
     const initial = { start: card.start, end: card.end }
     const sx = e.clientX
+    const s = snap.begin(e, { exclude: [{ owner: `title:${card.id}` }] })
     store.beginGesture()
     track(
       e,
       (ev) => {
-        const times = dragTitleTimes(initial, mode, (ev.clientX - sx) / pxRef.current, duration)
-        store.update((p) => ({ ...p, titles: (p.titles ?? []).map((x) => (x.id === card.id ? { ...x, ...times } : x)) }), `title-drag:${card.id}`)
+        const times = s.span(ev, initial, mode, (ev.clientX - sx) / pxRef.current, (d) => dragTitleTimes(initial, mode, d, duration))
+        store.update((p) => (sameSpan(p.titles?.find((x) => x.id === card.id), times) ? p : { ...p, titles: (p.titles ?? []).map((x) => (x.id === card.id ? { ...x, ...times } : x)) }), `title-drag:${card.id}`)
       },
       (moved) => {
         store.endGesture()
@@ -98,12 +100,13 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub }: Tr
     if (e.button !== 0) return
     onSelect({ kind: 'chapter', id: c.id })
     const sx = e.clientX
+    const s = snap.begin(e, { exclude: [{ owner: `chapter:${c.id}` }] })
     store.beginGesture()
     track(
       e,
       (ev) => {
-        const t = clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration)
-        store.update((p) => ({ ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, t } : x)) }), `chapter-drag:${c.id}`)
+        const t = s.at(ev, clamp(c.t + (ev.clientX - sx) / pxRef.current, 0, duration), { min: 0, max: duration })
+        store.update((p) => (p.chapters?.find((x) => x.id === c.id)?.t === t ? p : { ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, t } : x)) }), `chapter-drag:${c.id}`)
       },
       (moved) => {
         store.endGesture()

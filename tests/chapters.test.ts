@@ -8,6 +8,7 @@ import { isExportTempFile } from '../src/main/exportCleanup'
 import { tempStem, validateJob } from '../src/main/exportJob'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
+import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
 import { chapterInVideo, formatTimestamp, MAX_CHAPTERS, outputChapters, youtubeChapters } from '../src/shared/render/chapters'
 import type { Chapter, Clip } from '../src/shared/types'
 
@@ -63,6 +64,21 @@ describe('outputChapters: source chapters on the edited video', () => {
   it('never returns more than MAX_CHAPTERS', () => {
     const many = Array.from({ length: MAX_CHAPTERS + 50 }, (_, i) => ch(i * 0.2, `C${i}`))
     expect(outputChapters(many, [clip(0, 10_000)])).toHaveLength(MAX_CHAPTERS)
+  })
+
+  it('moves chapters after a pause freeze later by its length; one exactly at it starts with it (E-11)', () => {
+    const clips = [clip(0, 10)]
+    const plan = freezePlan(clips, [{ id: 'f', at: 2, length: 3, sound: 'pause' }])
+    expect(outputChapters([ch(0, 'Intro'), ch(2, 'Frozen'), ch(5, 'After')], clips, plan)).toEqual([
+      { start: 0, title: 'Intro' },
+      { start: 2, title: 'Frozen' },
+      { start: 8, title: 'After' }
+    ])
+    // The end rule stays in the edit: a chapter at its very end is left out even with a hold there.
+    const end = freezePlan(clips, [{ id: 'e', at: 10, length: 3, sound: 'pause' }])
+    expect(outputChapters([ch(9.95, 'Last')], clips, end)).toEqual([])
+    const chapters = [ch(0, 'A'), ch(4, 'B'), ch(15, 'C')]
+    expect(outputChapters(chapters, [clip(0, 10), clip(12, 20, 2)], NO_FREEZES)).toEqual(outputChapters(chapters, [clip(0, 10), clip(12, 20, 2)]))
   })
 })
 

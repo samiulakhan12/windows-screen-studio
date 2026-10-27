@@ -20,6 +20,7 @@ import {
   type SmartSpeedPart,
   type TimeRange
 } from '../../../../shared/editor/smartSpeed'
+import { freezeKeepRanges, planOf, videoDuration } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration, SPEED_PRESETS } from '../../../../shared/engine/timeline'
 import { stripIpcPrefix } from '../../../../shared/recording/errors'
@@ -31,6 +32,7 @@ import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import { FirstShortcut } from '../ShortcutKeys'
+import { FreezeSection } from './FreezeSection'
 import './clipPanel.css'
 import './silences.css'
 
@@ -43,7 +45,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
   const keymap = useKeymap()
   const { project, selection } = props
   const { clips } = project
-  const length = outputDuration(clips)
+  // The exported video's length: the edit and its pause freezes.
+  const length = videoDuration(clips, planOf(project))
   const clipIndex = selection?.kind === 'clip' ? clips.findIndex((c) => c.id === selection.id) : -1
   const clip = clipIndex >= 0 ? clips[clipIndex] : null
   const edited = clips.length > 1 || clips[0].start > 0 || clips[0].end < project.duration || clips[0].speed !== 1
@@ -139,6 +142,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
           </p>
         </Section>
       )}
+      <FreezeSection {...props} />
       <SmartSpeed {...props} />
       {edited && (
         <button
@@ -374,9 +378,10 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const { hasAudio, audioStems, audio } = project
   const heardNeeded = analysed || mode === 'silence'
   const sound = useMemo(() => (heardNeeded ? sourceActivity({ hasAudio, audioStems, audio }, levels) : null), [heardNeeded, hasAudio, audioStems, audio, levels])
-  // Title cards are content however still and silent the time under them is: never sped up or cut.
-  const titles = project.titles
-  const keep = useMemo(() => (titles ?? []).map(({ start, end }) => ({ start, end })), [titles])
+  // Title cards are content however still and silent the time under them is, and a freeze frame
+  // holds its frame however still and silent it is: never sped up or cut.
+  const { titles, freezes } = project
+  const keep = useMemo(() => [...(titles ?? []).map(({ start, end }) => ({ start, end })), ...freezeKeepRanges(freezes)], [titles, freezes])
   const idlePlan = useMemo(
     () => (mode === 'idle' && still ? planSmartSpeed({ still, inactive, sound, keep, clips: project.clips, duration: project.duration }, minIdle, action) : null),
     [mode, still, inactive, sound, keep, project.clips, project.duration, minIdle, action]
@@ -423,7 +428,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         {mode === 'idle' ? (
           <>
             <p className="hint">Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and you did not move, click, scroll or type.</p>
-            {keep.length > 0 && <TitlesKept />}
+            {keep.length > 0 && <TitlesKept titles={!!titles?.length} freezes={!!freezes?.length} />}
             {!cursor.valid && <p className="hint">This recording has no mouse or keyboard data, so only the picture decides.</p>}
             <span className="field-label">Idle for at least</span>
             <Chips label="Minimum idle length" value={minIdle} onChange={(v) => choose({ minIdle: v })} options={MIN_IDLE_CHOICES.map((s) => ({ value: s, label: `${s} s` }))} />
@@ -482,7 +487,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         ) : (
           <>
             <p className="hint">Cuts or speeds up the pauses where nothing is heard, keeping a little of the silence next to the sound so no word is clipped.</p>
-            {keep.length > 0 && <TitlesKept />}
+            {keep.length > 0 && <TitlesKept titles={!!titles?.length} freezes={!!freezes?.length} />}
             {!hasAudio ? (
               <p className="callout silence-callout" data-testid="silence-unavailable">
                 <EditorIcon name="mute" size={16} />
@@ -584,11 +589,12 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   )
 }
 
-/** Why the time under a title card is never listed. */
-function TitlesKept(): JSX.Element {
+/** Why the time under a title card or at a freeze frame is never listed. */
+function TitlesKept({ titles, freezes }: { titles: boolean; freezes: boolean }): JSX.Element {
+  const what = titles && freezes ? 'Title cards and freeze frames stay' : freezes ? 'Freeze frames stay' : 'Title cards stay'
   return (
     <p className="hint" data-testid="smart-speed-titles">
-      Title cards stay as they are: the time they are on screen is never sped up or cut.
+      {what} as they are: the time they are on screen is never sped up or cut.
     </p>
   )
 }

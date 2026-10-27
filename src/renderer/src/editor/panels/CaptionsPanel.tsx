@@ -8,6 +8,7 @@ import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../..
 import { displayTime } from '../../../../shared/editor/clips'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
+import { planOf } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { viewingTime } from '../../../../shared/render/overlays'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
@@ -968,7 +969,7 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
     if (!segments.length) return onNotice('There are no captions to export')
     setSaving(true)
     try {
-      const file = await window.api.saveCaptions(p.name, f, subtitleFile(segments, p.clips, f))
+      const file = await window.api.saveCaptions(p.name, f, subtitleFile(segments, p.clips, f, planOf(p)))
       if (file) onNotice(`Captions saved: ${file}`)
     } catch (err) {
       onNotice(`The captions could not be saved: ${ipcMessage(err)}`)

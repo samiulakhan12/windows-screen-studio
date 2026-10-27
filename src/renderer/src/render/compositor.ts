@@ -1,10 +1,11 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
+import { croppedFrameSize, cropPixels } from '../../../shared/engine/crop'
 import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/deviceFrames'
 import { layoutMoving, sceneContentRect, type Rect } from '../../../shared/engine/layout'
 import { toOutput } from '../../../shared/engine/outputPoint'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
-import type { CursorTrack, Project } from '../../../shared/types'
+import type { CursorTrack, NormRect, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
@@ -25,6 +26,8 @@ export interface RenderScene {
   cursorPath: SmoothedTrack
   /** Heavier-smoothed path the zoom camera follows. */
   focusPath: SmoothedTrack
+  /** The crop of each decoded screen frame that is drawn (cropOf; the view's positions are relative to it); absent = all of it. */
+  crop?: NormRect
 }
 
 /** A decoded frame and its display size. */
@@ -81,15 +84,24 @@ export function drawFrame(
   t: number,
   scene: RenderScene,
   src: RenderSources,
-  options: DrawOptions = DEFAULT_OPTIONS
+  options: DrawOptions = DEFAULT_OPTIONS,
+  /**
+   * Source time of the sound at this frame (E-11 freeze frames): while the picture holds `t`, the
+   * burned-in captions and the animated background follow it. Defaults to `t`.
+   */
+  soundTime: number = t
 ): void {
   const { project, cursor } = scene
   const { style } = project
   const opts = { ...DEFAULT_OPTIONS, ...options }
   const k = Math.min(w, h) / 1080
-  const screen = screenImage(src)
-  const vw = screen?.width || src.screen.videoWidth || project.width
-  const vh = screen?.height || src.screen.videoHeight || project.height
+  const full = screenImage(src)
+  // A crop is drawn from a 1:1 copy of its pixels (cropFrame), so nothing outside it is ever sampled.
+  const crop = scene.crop ?? null
+  const screen = full && crop ? cropFrame(ctx, full, crop) : full
+  const shown = croppedFrameSize(crop, src.screen.videoWidth, src.screen.videoHeight, project)
+  const vw = screen?.width || shown.width
+  const vh = screen?.height || shown.height
 
   ctx.save()
   const rect = sceneContentRect(project, w, h, vw, vh, t)
@@ -108,7 +120,7 @@ export function drawFrame(
   const spec: CardSpec = { style, rect: card, radius: radius * shrink, k: k * shrink, title: frame?.kind === 'browser' ? frameTitle(style, project.name) : '' }
   const geom = cardGeometry(spec)
   // Animated backgrounds run on output time, so they flow on smoothly across cuts.
-  const bgTime = isAnimated(style.background) ? animationTime(project.clips, t) : 0
+  const bgTime = isAnimated(style.background) ? animationTime(project.clips, soundTime) : 0
   // With the 3D tilt on, the card and everything on it is painted on a canvas of its own (`c`)
   // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
   const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom, vw, vh)
@@ -144,14 +156,13 @@ export function drawFrame(
       // Average the sub-frames: sample k is blended in with weight 1/(k+1). The largest view
       // goes first, so a shrinking card never averages in the black well at its edge.
       if (samples.some((s) => s.scale < 1)) samples.sort((a, b) => b.scale - a.scale)
-      // Each draw of a video frame converts it to RGB again (costly without a GPU): convert it once.
-      // Bilinear from that copy matches the video draws (the averaging softens them anyway); a
-      // canvas source with 'high' would take the slow cubic path.
-      const rgb = rgbCopy(c, screen, vw, vh)
-      if (rgb) {
-        image = rgb
-        c.imageSmoothingQuality = 'low'
-      }
+      // Each draw of a video frame converts it to RGB again (costly without a GPU): convert it once
+      // (a crop's copy is one already). Bilinear from that copy matches the video draws (the
+      // averaging softens them anyway); a canvas source with 'high' would take the slow cubic path.
+      const copied = screen !== full
+      const rgb = copied ? null : rgbCopy(c, screen, vw, vh)
+      if (rgb) image = rgb
+      if (rgb || copied) c.imageSmoothingQuality = 'low'
       samples.forEach((s, i) => {
         c.globalAlpha = 1 / (i + 1)
         drawView(s)
@@ -176,6 +187,7 @@ export function drawFrame(
     radius: frame ? screenCornerRadius(frame, rect, radius) : radius,
     cam,
     screen,
+    sourceH: full?.height,
     options: opts,
     background: src.background,
     // Normalised source coordinates -> output pixels, through the camera (as the camera director measures them).
@@ -199,10 +211,37 @@ export function drawFrame(
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)
-  drawCaptionsLayer(top)
+  drawCaptionsLayer(soundTime === t ? top : { ...top, t: soundTime })
   drawTitleCardsLayer(top)
   drawWatermarkLayer(top)
   ctx.restore()
+}
+
+const cropCopies = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
+
+/**
+ * The crop's pixels of `frame` copied 1:1 into a reused canvas (per target), or null without a
+ * DOM (the frame is then treated as not decoded yet). Drawing from the copy keeps every sample
+ * inside the crop: filtering a source rectangle may read pixels beyond it (the edge of a hidden
+ * taskbar would bleed into the card), and privacy blur would pull them in.
+ */
+function cropFrame(target: CanvasRenderingContext2D, frame: FrameImage, crop: NormRect): FrameImage | null {
+  if (typeof document === 'undefined') return null
+  const px = cropPixels(crop, frame.width, frame.height)
+  let canvas = cropCopies.get(target)
+  if (!canvas) {
+    canvas = document.createElement('canvas')
+    cropCopies.set(target, canvas)
+  }
+  if (canvas.width !== px.w || canvas.height !== px.h) {
+    canvas.width = px.w
+    canvas.height = px.h
+  }
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) return null
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(frame.image, px.x, px.y, px.w, px.h, 0, 0, px.w, px.h)
+  return { image: canvas, width: px.w, height: px.h }
 }
 
 const rgbCopies = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()

@@ -1,6 +1,8 @@
 import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { pictureTime, planOf, videoDuration, videoTimeAt, videoToSource } from '../../../shared/engine/freeze'
+import { visibleSize } from '../../../shared/engine/crop'
 import { styleContentRect } from '../../../shared/engine/layout'
-import { outputDuration, outputToSource, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
+import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { hasSoundtrack } from '../../../shared/audio/settings'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../../../shared/render/chapters'
@@ -248,14 +250,17 @@ export function ExportDialog(props: Props): JSX.Element {
   const [targetDraft, setTargetDraft] = useState<string>(() => (options.targetSizeMB ? String(options.targetSizeMB) : ''))
   const { project } = props
   const clips = project.clips
-  const length = outputDuration(clips)
+  // Seconds of the exported video: the edit and its pause freezes.
+  const plan = planOf(project)
+  const length = videoDuration(clips, plan)
   // The thumbnail and preview frame, in output seconds: the playhead when the dialog opens.
-  const [frameAt, setFrameAt] = useState(() => {
-    const t = editor?.player.time ?? clips[0].start
-    const playable = playableFrom(clips, t)
-    return Math.min(length, Math.max(0, sourceToOutput(clips, playable?.time ?? t) ?? 0))
-  })
-  const frameSource = outputToSource(clips, Math.min(frameAt, Math.max(0, length - 1e-3))).time
+  const [frameAt, setFrameAt] = useState(() => Math.min(length, videoTimeAt(clips, plan, editor?.player.time ?? clips[0].start)))
+  // Its sound's source time (a freeze at the edit's end holds the edit's last frame), the picture
+  // drawn there (a freeze's frame), and whether it is frozen (drawn sharp, as the export does).
+  const shown = videoToSource(clips, plan, Math.min(frameAt, Math.max(0, length - 1e-3)))
+  const frameSound = shown.hold?.end ? outputToSource(clips, Math.max(0, outputDuration(clips) - 1e-3)).time : shown.time
+  const frameSource = pictureTime(clips, plan, frameSound)
+  const frameHeld = !!shown.hold || plan.stills.some((s) => s.at === frameSource)
   const abort = useRef<AbortController | null>(null)
   const primary = useRef<HTMLButtonElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -270,7 +275,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const hasClickSounds = useMemo(() => !!clickSoundJob(project, props.scene.cursor, clips), [project, props.scene.cursor, clips])
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
-  const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips), [project.chapters, clips])
+  const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips, plan), [project.chapters, clips, plan])
 
   useEffect(() => {
     let live = true
@@ -407,7 +412,7 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!file) return
     setThumb({ kind: 'busy' })
     try {
-      const shot = await renderThumbnail({ ...source, settings: options, time: frameSource })
+      const shot = await renderThumbnail({ ...source, settings: options, time: frameSource, soundTime: frameSound, held: frameHeld })
       await window.api.saveThumbnail(file, shot.png)
       setThumb({ kind: 'saved', path: file, width: shot.width, height: shot.height })
     } catch (err) {
@@ -422,17 +427,18 @@ export function ExportDialog(props: Props): JSX.Element {
   }
 
   // Honest size info: the real output size of each choice (very wide or tall recordings
-  // are limited on their long side), and whether the recording is drawn larger than it was captured.
+  // are limited on their long side), and whether the recording (as shown: its crop) is drawn larger than it was captured.
   const sizeFor = (height: number): ExportSize => exportSize(project, { ...options, resolution: height as ExportSettings['resolution'] })
+  const visible = visibleSize(project)
   const upscaled = (height: number): boolean => {
     const d = sizeFor(height)
-    return styleContentRect(d.width, d.height, project.width, project.height, drawn.style).h > project.height * 1.05
+    return styleContentRect(d.width, d.height, visible.width, visible.height, drawn.style).h > visible.height * 1.05
   }
   const resolutionOptions = RESOLUTIONS.filter((r) => !gif || r <= GIF_MAX_HEIGHT).map((r) => {
     const d = sizeFor(r)
     const notes = [`${d.width}×${d.height}`]
     if (d.capped) notes.push(`limited to ${MAX_EXPORT_SIDE} px on the long side`)
-    if (upscaled(r)) notes.push(`larger than the recording (${project.width}×${project.height}): it will be upscaled`)
+    if (upscaled(r)) notes.push(`larger than the recording (${visible.width}×${visible.height}): it will be upscaled`)
     return { value: r, label: RESOLUTION_LABELS[r], className: upscaled(r) ? 'upscale' : '', title: notes.join('; ') }
   })
   const projectAspect = project.style.aspectRatio
@@ -472,11 +478,11 @@ export function ExportDialog(props: Props): JSX.Element {
     warnings.push({
       key: 'capped',
       cls: 'export-capped',
-      text: `This recording is very ${project.width >= project.height ? 'wide' : 'tall'}, so the video is limited to ${MAX_EXPORT_SIDE} pixels on its long side.`
+      text: `This recording is very ${visible.width >= visible.height ? 'wide' : 'tall'}, so the video is limited to ${MAX_EXPORT_SIDE} pixels on its long side.`
     })
   }
   if (!audioOnly && upscaled(resolution)) {
-    warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${project.width}×${project.height}): the video is upscaled and may look soft.` })
+    warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${visible.width}×${visible.height}): the video is upscaled and may look soft.` })
   }
   if (!audioOnly && project.transcript?.segments.length) warnings.push({ key: 'captions', cls: 'export-captions', text: `Captions are drawn on the video when Show captions is on (now ${project.captions?.show === false ? 'off' : 'on'}, in the Captions tab, where Export captions saves them as SRT or VTT).` })
   if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: 'Long GIFs get very large; MP4 is better for clips over 30 s.' })
@@ -521,7 +527,7 @@ export function ExportDialog(props: Props): JSX.Element {
             <div className="export-body">
               <aside className="export-side">
                 <div className={`export-preview ${audioOnly ? 'audio-only' : ''}`}>
-                  <ExportPreview {...source} options={options} time={frameSource} box={{ width: 236, height: 236 }} />
+                  <ExportPreview {...source} options={options} time={frameSource} soundTime={frameSound} held={frameHeld} box={{ width: 236, height: 236 }} />
                   {audioOnly && <span className="export-preview-badge">Audio only</span>}
                 </div>
                 <label className="export-frame">
