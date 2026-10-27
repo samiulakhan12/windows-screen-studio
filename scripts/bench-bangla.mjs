@@ -2,8 +2,9 @@
 // Opt-in benchmark of the Bangla model (docs/design/offline-captions.md §14), not a test: it needs
 // the 539 MB model, which is never committed or fetched by the tests. It transcribes the committed
 // Bangla fixture (tests/fixtures/speech/bn-fleurs-blog-18s.flac, 18.84 s, FLEURS, CC BY 4.0) with
-// the speech helper and the arguments the app passes for this model (--lang bn --max-chunk 20),
-// then prints WER, CER, the real-time factor and the peak memory against the fixture's transcript.
+// the speech helper and the arguments the app passes for this model (--lang bn --max-chunk 20
+// --no-timestamps), then prints WER, CER, the real-time factor and the peak memory against the
+// fixture's transcript.
 //
 //   npm run bench:bangla -- --model <ggml-bengaliai-whisper-medium-q5_0.bin> [--threads N] [--helper P] [--json]
 //
