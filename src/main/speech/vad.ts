@@ -174,6 +174,8 @@ async function detect(exe: string, vadModel: string, file: string, projectId: st
     stdin: ffmpeg.stdout!,
     signal: controller.signal,
     timeoutMs: SPEECH_TIMING.vadBaseMs + SPEECH_TIMING.vadPerSecondMs * UNKNOWN_SECONDS,
+    // `vad` prints one line, at the end: only its overall limit applies, not the transcription's stall rule.
+    stallMs: SPEECH_TIMING.vadBaseMs + SPEECH_TIMING.vadPerSecondMs * UNKNOWN_SECONDS,
     processes,
     owner: projectId
   })
