@@ -118,7 +118,13 @@ struct Out {
     last_line: Instant,
     percent: i32,
     at: f64,
+    /// The last line (result or error) is out: nothing may follow it.
+    closed: bool,
+    /// Seconds of audio whose segment lines are all out (for a `cancelled` line).
+    done_until: f64,
 }
+
+const FRESH: fn() -> Out = || Out { last_line: Instant::now(), percent: 0, at: 0.0, closed: false, done_until: 0.0 };
 
 static OUT: Mutex<Option<Out>> = Mutex::new(None);
 
@@ -126,23 +132,58 @@ fn out() -> std::sync::MutexGuard<'static, Option<Out>> {
     OUT.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Prints one line. Lines and the heartbeat share one lock, so they never interleave. A stdout
-/// that cannot be written (the app is gone) ends the helper.
-pub fn emit(line: &str) {
-    let mut g = out();
-    let s = g.get_or_insert(Out { last_line: Instant::now(), percent: 0, at: 0.0 });
-    s.last_line = Instant::now();
+fn write_line(line: &str) {
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
     if lock.write_all(line.as_bytes()).and_then(|_| lock.write_all(b"\n")).and_then(|_| lock.flush()).is_err() {
-        std::process::exit(EXIT_ERROR);
+        hard_exit(EXIT_ERROR);
     }
+}
+
+/// Prints one line. Lines, the heartbeat and a cancel share one lock, so they never interleave,
+/// and nothing is printed after the last line. A stdout that cannot be written (the app is gone)
+/// ends the helper.
+pub fn emit(line: &str) {
+    let mut g = out();
+    let s = g.get_or_insert_with(FRESH);
+    if s.closed {
+        return;
+    }
+    s.last_line = Instant::now();
+    write_line(line);
+}
+
+/// Prints the run's last line (`result` or `error`): a cancel or a heartbeat after it is ignored.
+pub fn last(line: &str) {
+    let mut g = out();
+    let s = g.get_or_insert_with(FRESH);
+    if s.closed {
+        return;
+    }
+    write_line(line);
+    s.closed = true;
+}
+
+/// Records that the segment lines up to `t` seconds of the audio are out.
+pub fn note_done_until(t: f64) {
+    out().get_or_insert_with(FRESH).done_until = t;
+}
+
+extern "C" {
+    /// The C runtime's _exit (glibc and msvcrt): ends the process without running atexit
+    /// handlers or C++ static destructors, which must not run while engine threads still compute.
+    fn _exit(code: i32) -> !;
+}
+
+/// Ends the process now, from any thread (stdout is flushed after every line).
+pub fn hard_exit(code: i32) -> ! {
+    unsafe { _exit(code) }
 }
 
 /// Records the progress the heartbeat repeats (without printing).
 pub fn note_progress(percent: i32, at: f64) {
     let mut g = out();
-    let s = g.get_or_insert(Out { last_line: Instant::now(), percent: 0, at: 0.0 });
+    let s = g.get_or_insert_with(FRESH);
     s.percent = percent;
     s.at = at;
 }
@@ -168,7 +209,7 @@ pub fn heartbeat_due(last_line: Instant, now: Instant) -> bool {
 pub fn start_heartbeat() {
     {
         let mut g = out();
-        let s = g.get_or_insert(Out { last_line: Instant::now(), percent: 0, at: 0.0 });
+        let s = g.get_or_insert_with(FRESH);
         s.last_line = Instant::now();
     }
     std::thread::spawn(|| loop {
@@ -189,13 +230,24 @@ pub fn error_line(f: &Failure) -> String {
 
 /// Prints the error line and exits with code 1.
 pub fn fail(f: Failure) -> ! {
-    emit(&error_line(&f));
-    std::process::exit(EXIT_ERROR);
+    last(&error_line(&f));
+    hard_exit(EXIT_ERROR);
 }
 
-pub fn cancelled(done_until: f64) -> ! {
-    emit(&format!("{{\"type\":\"cancelled\",\"done_until\":{}}}", num(done_until)));
-    std::process::exit(EXIT_CANCELLED);
+/// Cancels the run at once, from the control thread or a checkpoint: prints the `cancelled` line
+/// (with the end of the audio whose segment lines are out) and exits with code 2. The helper
+/// writes no files, so nothing is left half done; whisper.cpp checks its abort flag only between
+/// encoder passes (about a second each on a slow processor) and never during language detection.
+/// Does nothing after the last line: a run that has ended is not cancelled.
+pub fn cancel_now() {
+    let mut g = out();
+    let s = g.get_or_insert_with(FRESH);
+    if s.closed {
+        return;
+    }
+    write_line(&format!("{{\"type\":\"cancelled\",\"done_until\":{}}}", num(s.done_until)));
+    s.closed = true;
+    hard_exit(EXIT_CANCELLED);
 }
 
 /// A word of a `segment` line.

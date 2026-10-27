@@ -3,7 +3,7 @@
 'use strict'
 
 const { resolveWindowsSigning } = require('./scripts/lib/signing.cjs')
-const { appFiles, nativeHelper, nativeHelperResource, nativeHelperStatus, SIGN_EXTS } = require('./scripts/lib/packaging.cjs')
+const { appFiles, nativeHelper, nativeHelperResource, nativeHelperStatus, noticesResource, SIGN_EXTS, speechHelperStatus, speechResources } = require('./scripts/lib/packaging.cjs')
 
 const signing = resolveWindowsSigning(process.env, { projectDir: __dirname })
 for (const w of signing.warnings) console.warn(`  • code signing: ${w}`)
@@ -15,6 +15,11 @@ const helperStatus = nativeHelperStatus()
 if (helperStatus.bundle) console.log(`  • native capture helper: bundling ${helper.from} -> resources/${helper.to}`)
 else if (helperStatus.present) console.warn(`  • native capture helper: NOT bundled, ${helper.from} is unusable (${helperStatus.reason})`)
 else console.log('  • native capture helper: not built (the app falls back to Chromium capture)')
+for (const h of speechHelperStatus()) {
+  if (h.bundle) console.log(`  • speech helper (${h.build}): bundling ${h.from} -> resources/${h.to}`)
+  else if (h.present) console.warn(`  • speech helper (${h.build}): NOT bundled, ${h.from} is unusable (${h.reason})`)
+  else console.log(`  • speech helper (${h.build}): not built (captions on this PC unavailable, the speech detector falls back to sound levels)`)
+}
 
 /**
  * The NSIS product GUID electron-builder derived from the app's first appId
@@ -39,8 +44,9 @@ module.exports = {
   files: appFiles(),
   asarUnpack: ['node_modules/ffmpeg-static/ffmpeg.exe*', 'node_modules/uiohook-napi/**'],
   // Directory form on purpose: electron-builder copies a single-file `from` without its signing
-  // transformer, so a file entry would ship the helper unsigned in signed builds.
-  extraResources: helperStatus.bundle ? [nativeHelperResource()] : [],
+  // transformer, so a file entry would ship the helpers unsigned in signed builds. The speech
+  // helpers, the speech detector model and the notices live outside app.asar (docs/design/offline-captions.md §6.2).
+  extraResources: [...(helperStatus.bundle ? [nativeHelperResource()] : []), ...speechResources(), noticesResource()],
   // The UI is English-only: Chromium's other 54 locale packs are ~50 MB of dead weight.
   electronLanguages: ['en-US'],
   compression: 'maximum',

@@ -1,8 +1,9 @@
 // Packaging scripts (scripts/lib/*.cjs, electron-builder.config.cjs): pure logic, no Electron needed.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { APP_USER_MODEL_ID } from '../src/shared/brand'
 
@@ -25,6 +26,7 @@ const ico = require('../scripts/lib/ico.cjs') as {
 }
 const pe = require('../scripts/lib/pe.cjs') as {
   parsePe(buf: Buffer): { machine: string; truncated: boolean; signed: boolean; rawEnd: number }
+  readImports(buf: Buffer): string[]
   readResources(buf: Buffer): { type: number | null; id: number | null; lang: number | null; data: Buffer }[]
   readIconGroups(buf: Buffer): { id: number | null; images: { width: number; height: number; bitCount: number; data: Buffer | null }[] }[]
   readVersionStrings(buf: Buffer): Record<string, string>
@@ -54,6 +56,16 @@ const packaging = require('../scripts/lib/packaging.cjs') as {
   installOnlyPackages(rootDir?: string): string[]
   runtimePackages(rootDir?: string): string[]
   foreignPrebuilds(rootDir?: string): string[]
+  speechHelpers(): { from: string; to: string; build: string }[]
+  speechHelperStatus(rootDir?: string): { from: string; to: string; build: string; bundle: boolean; present: boolean; reason?: string; size?: number }[]
+  speechResources(rootDir?: string): { from: string; to: string; filter: string[] }[]
+  noticesResource(): { from: string; to: string; filter: string[] }
+  noticesProblems(text: string): string[]
+  NOTICE_NAMES: string[]
+  VAD_PIN: { file: string; bytes: number; sha256: string }
+  SPEECH_IMPORTS: string[]
+  SPEECH_BUDGET: { compressed: number; installed: number }
+  unexpectedSpeechImports(names: string[]): string[]
 }
 const asar = require('../scripts/lib/asar.cjs') as {
   parseAsarHeader(buf: Buffer): unknown
@@ -171,6 +183,57 @@ function fakePe(opts: {
   buf.writeUInt32LE(rawSize, sec + 16)
   buf.writeUInt32LE(sectionRaw, sec + 20)
   rsrc.copy(buf, sectionRaw)
+  return buf
+}
+
+/**
+ * A minimal PE32+ image whose one section holds an import directory (IMAGE_IMPORT_DESCRIPTORs and
+ * the DLL names) and, optionally, a delay-load directory.
+ */
+function fakePeWithImports(dlls: string[], delayed: string[] = []): Buffer {
+  const rva = 0x1000
+  const raw = 0x200
+  const descriptors = 20 * (dlls.length + 1)
+  const delayAt = descriptors
+  const delaySize = delayed.length ? 32 * (delayed.length + 1) : 0
+  let namesAt = delayAt + delaySize
+  const section = Buffer.alloc(namesAt + [...dlls, ...delayed].reduce((n, d) => n + d.length + 1, 0) + 16)
+  dlls.forEach((d, i) => {
+    section.writeUInt32LE(rva + namesAt, i * 20 + 12)
+    section.writeUInt32LE(rva + 0x10, i * 20 + 16) // a FirstThunk, so the entry is not all zeros
+    section.write(d, namesAt, 'latin1')
+    namesAt += d.length + 1
+  })
+  delayed.forEach((d, i) => {
+    section.writeUInt32LE(1, delayAt + i * 32)
+    section.writeUInt32LE(rva + namesAt, delayAt + i * 32 + 4)
+    section.write(d, namesAt, 'latin1')
+    namesAt += d.length + 1
+  })
+  const rawSize = (section.length + 0x1ff) & ~0x1ff
+  const buf = Buffer.alloc(raw + rawSize)
+  buf.write('MZ', 0, 'latin1')
+  buf.writeUInt32LE(0x40, 0x3c)
+  buf.write('PE\0\0', 0x40, 'latin1')
+  buf.writeUInt16LE(0x8664, 0x44)
+  buf.writeUInt16LE(1, 0x46)
+  buf.writeUInt16LE(240, 0x54)
+  const opt = 0x58
+  buf.writeUInt16LE(0x20b, opt)
+  buf.writeUInt32LE(16, opt + 108)
+  buf.writeUInt32LE(rva, opt + 112 + 1 * 8)
+  buf.writeUInt32LE(descriptors, opt + 112 + 1 * 8 + 4)
+  if (delayed.length) {
+    buf.writeUInt32LE(rva + delayAt, opt + 112 + 13 * 8)
+    buf.writeUInt32LE(delaySize, opt + 112 + 13 * 8 + 4)
+  }
+  const sec = opt + 240
+  buf.write('.idata', sec, 'latin1')
+  buf.writeUInt32LE(section.length, sec + 8)
+  buf.writeUInt32LE(rva, sec + 12)
+  buf.writeUInt32LE(rawSize, sec + 16)
+  buf.writeUInt32LE(raw, sec + 20)
+  section.copy(buf, raw)
   return buf
 }
 
@@ -339,6 +402,13 @@ describe('pe', () => {
     tampered[exe.length - 1] ^= 1
     expect(pe.checkWindowsExe(file('tampered.exe', tampered), { pin })).toMatchObject({ ok: false, reason: /SHA-256 differs/ })
     expect(pe.checkWindowsExe(file('longer.exe', Buffer.concat([exe, Buffer.alloc(512, 1)])), { pin })).toMatchObject({ ok: false, reason: /SHA-256 differs/ })
+  })
+
+  it('reads the DLLs an executable imports, delay-loaded ones included', () => {
+    expect(pe.readImports(fakePeWithImports(['KERNEL32.dll', 'ntdll.dll', 'KERNEL32.dll']))).toEqual(['KERNEL32.dll', 'ntdll.dll'])
+    expect(pe.readImports(fakePeWithImports(['msvcrt.dll'], ['psapi.dll']))).toEqual(['msvcrt.dll', 'psapi.dll'])
+    expect(pe.readImports(fakePeWithImports([]))).toEqual([])
+    expect(pe.readImports(fakePe({}))).toEqual([])
   })
 
   it('pins the ffmpeg.exe of the release ffmpeg-static downloads', () => {
@@ -517,6 +587,67 @@ describe('packaging', () => {
   })
 })
 
+describe('speech packaging (docs/design/offline-captions.md §6)', () => {
+  it('maps both speech helpers where the main process looks for them', () => {
+    expect(packaging.speechHelpers()).toEqual([
+      { from: 'native/bin/ssw-speech.exe', to: 'native/ssw-speech.exe', build: 'standard' },
+      { from: 'native/bin/ssw-speech-compat.exe', to: 'native/ssw-speech-compat.exe', build: 'compatible' }
+    ])
+  })
+
+  it('bundles each speech helper only when it is a complete x64 executable, in directory form', () => {
+    const root = tmpDir()
+    expect(packaging.speechHelperStatus(root).map((h) => [h.bundle, h.present])).toEqual([
+      [false, false],
+      [false, false]
+    ])
+    // Without helpers the model and its MODEL.md still ship (the detector's fallback is the app's).
+    expect(packaging.speechResources(root)).toEqual([{ from: 'resources/speech', to: 'speech', filter: ['ggml-silero-v6.2.0.bin', 'MODEL.md'] }])
+    mkdirSync(path.join(root, 'native/bin'), { recursive: true })
+    writeFileSync(path.join(root, 'native/bin/ssw-speech.exe'), fakePe({}))
+    writeFileSync(path.join(root, 'native/bin/ssw-speech-compat.exe'), fakePe({ machine: 0x14c }))
+    const [standard, compat] = packaging.speechHelperStatus(root)
+    expect(standard).toMatchObject({ bundle: true, present: true, build: 'standard' })
+    expect(compat).toMatchObject({ bundle: false, present: true, reason: 'built for x86, not x64' })
+    expect(packaging.speechResources(root)[0]).toEqual({ from: 'native/bin', to: 'native', filter: ['ssw-speech.exe'] })
+    writeFileSync(path.join(root, 'native/bin/ssw-speech-compat.exe'), fakePe({}))
+    expect(packaging.speechResources(root)).toEqual([
+      { from: 'native/bin', to: 'native', filter: ['ssw-speech.exe', 'ssw-speech-compat.exe'] },
+      { from: 'resources/speech', to: 'speech', filter: ['ggml-silero-v6.2.0.bin', 'MODEL.md'] }
+    ])
+    expect(packaging.noticesResource()).toEqual({ from: 'resources', to: '.', filter: ['THIRD_PARTY_NOTICES.txt'] })
+    // Every .exe is signed already: nothing new for signExts.
+    expect(packaging.SIGN_EXTS).toEqual(['.node'])
+  })
+
+  it('allows only system DLLs in the speech helpers (bcryptprimitives for Rust, never psapi)', () => {
+    expect(packaging.SPEECH_IMPORTS).toEqual(['KERNEL32.dll', 'ADVAPI32.dll', 'msvcrt.dll', 'ntdll.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll'])
+    expect(packaging.unexpectedSpeechImports(['kernel32.dll', 'ADVAPI32.dll', 'bcryptprimitives.dll'])).toEqual([])
+    expect(packaging.unexpectedSpeechImports(['KERNEL32.dll', 'PSAPI.DLL', 'libstdc++-6.dll', 'libwinpthread-1.dll'])).toEqual(['PSAPI.DLL', 'libstdc++-6.dll', 'libwinpthread-1.dll'])
+    expect(packaging.SPEECH_BUDGET).toEqual({ compressed: 3.5e6, installed: 10e6 })
+  })
+
+  it('pins the shipped speech detector model like the catalog, and the test model like the catalog', async () => {
+    const { VAD_MODEL, speechModel, modelUrl } = await import('../src/shared/speech/catalog')
+    expect(packaging.VAD_PIN).toEqual({ file: VAD_MODEL.file, bytes: VAD_MODEL.bytes, sha256: VAD_MODEL.sha256 })
+    const script = pathToFileURL(path.join(ROOT, 'scripts', 'fetch-test-speech.mjs')).href
+    const { TEST_MODEL } = (await import(script)) as { TEST_MODEL: Record<string, unknown> }
+    const tiny = speechModel('whisper-tiny')!
+    expect(TEST_MODEL).toEqual({ id: tiny.id, file: tiny.file, bytes: tiny.bytes, sha256: tiny.sha256, url: modelUrl(tiny) })
+  })
+
+  it('commits third-party notices that name what ships, and checks them', () => {
+    const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
+    expect(packaging.noticesProblems(text)).toEqual([])
+    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe'])
+    expect(packaging.noticesProblems('React and Electron')).toEqual(['only 18 bytes (at least 10 KB expected)', 'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, mingw-w64, FFmpeg, MediaPipe'])
+    // The hand-written entries are part of it.
+    for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {
+      expect(text).toContain(readFileSync(path.join(ROOT, 'resources', 'notices', f), 'utf8').trim().split('\n')[0])
+    }
+  })
+})
+
 describe('electron-builder.config.cjs', () => {
   function loadConfig(): Record<string, any> {
     const file = require.resolve('../electron-builder.config.cjs')
@@ -572,7 +703,13 @@ describe('electron-builder.config.cjs', () => {
     for (const f of [config.win.icon, config.nsis.installerIcon, config.nsis.uninstallerIcon, config.nsis.installerSidebar]) {
       expect(existsSync(path.join(ROOT, f))).toBe(true)
     }
-    expect(config.extraResources).toEqual(packaging.nativeHelperStatus().bundle ? [packaging.nativeHelperResource()] : [])
+    expect(config.extraResources).toEqual([
+      ...(packaging.nativeHelperStatus().bundle ? [packaging.nativeHelperResource()] : []),
+      ...packaging.speechResources(),
+      packaging.noticesResource()
+    ])
+    // Nothing of the speech feature goes into app.asar or asarUnpack.
+    expect(config.asarUnpack).toEqual(['node_modules/ffmpeg-static/ffmpeg.exe*', 'node_modules/uiohook-napi/**'])
   })
 
   it('signs the uiohook-napi .node besides every .exe', () => {

@@ -70,6 +70,93 @@ function nativeHelperStatus(rootDir = ROOT) {
   return check.ok ? { bundle: true, present: true, size: check.size } : { bundle: false, present: true, reason: check.reason }
 }
 
+/**
+ * The speech helpers (scripts/build-native.mjs, docs/design/offline-captions.md §2.4): the
+ * standard build (AVX2 and friends) and the compatible one (any x64 processor). `to` is where
+ * src/main/speech/helper.ts looks: process.resourcesPath/native/<file>.
+ */
+function speechHelpers() {
+  return [
+    { from: 'native/bin/ssw-speech.exe', to: 'native/ssw-speech.exe', build: 'standard' },
+    { from: 'native/bin/ssw-speech-compat.exe', to: 'native/ssw-speech-compat.exe', build: 'compatible' }
+  ]
+}
+
+/**
+ * Whether each speech helper can be bundled, like nativeHelperStatus: a helper that is not a
+ * complete x64 Windows executable is left out with a warning (captions then offer AI providers
+ * only and the speech detector falls back to sound levels), never fatal.
+ * @returns {{ from: string, to: string, build: string, bundle: boolean, present: boolean, reason?: string, size?: number }[]}
+ */
+function speechHelperStatus(rootDir = ROOT) {
+  return speechHelpers().map((h) => {
+    const file = path.join(rootDir, h.from)
+    if (!fs.existsSync(file)) return { ...h, bundle: false, present: false }
+    const check = checkWindowsExe(file)
+    return check.ok ? { ...h, bundle: true, present: true, size: check.size } : { ...h, bundle: false, present: true, reason: check.reason }
+  })
+}
+
+/**
+ * The DLLs the speech helpers may import (§6.3): system DLLs only. bcryptprimitives
+ * comes from Rust's HashMap seeding (ProcessPrng); peak memory uses K32GetProcessMemoryInfo
+ * from kernel32, so psapi.dll never appears. Compared without case.
+ */
+const SPEECH_IMPORTS = ['KERNEL32.dll', 'ADVAPI32.dll', 'msvcrt.dll', 'ntdll.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll']
+
+/** The imports of `names` that are not on SPEECH_IMPORTS. */
+function unexpectedSpeechImports(names) {
+  const allowed = SPEECH_IMPORTS.map((n) => n.toLowerCase())
+  return names.filter((n) => !allowed.includes(n.toLowerCase()))
+}
+
+/**
+ * The speech payload budget (§6.3): both helpers, the speech detector model, its MODEL.md and
+ * the notices file, at most 3.5 MB brotli-compressed (quality 11, 16 MB window) and 10 MB installed.
+ */
+const SPEECH_BUDGET = { compressed: 3.5e6, installed: 10e6 }
+
+/**
+ * The extraResources entries of the speech feature, in directory form (so the signing
+ * transformer applies to the helpers): the usable helpers next to the capture helper, and the
+ * speech detector model with its MODEL.md.
+ */
+function speechResources(rootDir = ROOT) {
+  const helpers = speechHelperStatus(rootDir).filter((h) => h.bundle)
+  const out = []
+  if (helpers.length) out.push({ from: 'native/bin', to: 'native', filter: helpers.map((h) => path.posix.basename(h.from)) })
+  out.push({ from: 'resources/speech', to: 'speech', filter: ['ggml-silero-v6.2.0.bin', 'MODEL.md'] })
+  return out
+}
+
+/**
+ * The speech detector model that ships (resources/speech/, see MODEL.md): a copy of the pin in
+ * src/shared/speech/catalog.ts VAD_MODEL, which tests/packaging.test.ts compares with it.
+ */
+const VAD_PIN = {
+  file: 'ggml-silero-v6.2.0.bin',
+  bytes: 885098,
+  sha256: '2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987'
+}
+
+/** Names THIRD_PARTY_NOTICES.txt must mention (§6.3), matched without case. */
+const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe']
+
+/** What is wrong with a notices text (empty: fine): at least 10 KB and every NOTICE_NAMES entry. */
+function noticesProblems(text) {
+  const out = []
+  if (Buffer.byteLength(text) < 10 * 1024) out.push(`only ${Buffer.byteLength(text)} bytes (at least 10 KB expected)`)
+  const lower = text.toLowerCase()
+  const missing = NOTICE_NAMES.filter((n) => !lower.includes(n.toLowerCase()))
+  if (missing.length) out.push(`does not name ${missing.join(', ')}`)
+  return out
+}
+
+/** The third-party notices (scripts/notices.mjs), shown from About: resources/THIRD_PARTY_NOTICES.txt. */
+function noticesResource() {
+  return { from: 'resources', to: '.', filter: ['THIRD_PARTY_NOTICES.txt'] }
+}
+
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'))
@@ -181,6 +268,16 @@ module.exports = {
   nativeHelper,
   nativeHelperResource,
   nativeHelperStatus,
+  speechHelpers,
+  speechHelperStatus,
+  speechResources,
+  noticesResource,
+  noticesProblems,
+  NOTICE_NAMES,
+  VAD_PIN,
+  SPEECH_IMPORTS,
+  SPEECH_BUDGET,
+  unexpectedSpeechImports,
   installOnlyPackages,
   runtimePackages,
   foreignPrebuilds,

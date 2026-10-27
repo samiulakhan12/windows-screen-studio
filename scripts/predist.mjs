@@ -5,11 +5,16 @@
 //      Windows one is fetched here (and a corrupt, wrong-architecture or unknown file is replaced).
 //      It is signed with the release certificate, so only the build pinned in
 //      scripts/lib/packaging.cjs (FFMPEG_EXE, by SHA-256) is accepted.
-//   2. The native capture helper is built with scripts/build-native.mjs when that script exists.
-//      It is optional (the app falls back to Chromium capture) unless SSW_REQUIRE_NATIVE=1.
+//   2. The native helpers are built with scripts/build-native.mjs when that script exists: the
+//      capture helper and the two speech helpers. They are optional (the app falls back to
+//      Chromium capture, AI providers and the level-based detector) unless SSW_REQUIRE_NATIVE=1,
+//      which release builds set.
+//   2b. The speech detector model matches its pin, and resources/THIRD_PARTY_NOTICES.txt is what
+//      scripts/notices.mjs generates now.
 //   3. The icon files exist (npm run icons).
 //   4. The code-signing environment is consistent (unsigned builds are fine).
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -19,7 +24,7 @@ const require = createRequire(import.meta.url)
 const { checkWindowsExe } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
 const { loadBuilderEnv, resolveWindowsSigning } = require('./lib/signing.cjs')
-const { FFMPEG_EXE, nativeHelper } = require('./lib/packaging.cjs')
+const { FFMPEG_EXE, nativeHelper, speechHelperStatus, VAD_PIN } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const failures = []
@@ -92,7 +97,7 @@ function buildNativeHelper() {
     const r = spawnSync(process.execPath, [script, ...(required ? ['--require'] : [])], { cwd: root, stdio: 'inherit' })
     if (r.status !== 0) {
       if (required) {
-        fail('the native capture helper is required (SSW_REQUIRE_NATIVE=1) but could not be built.')
+        fail('the native helpers are required (SSW_REQUIRE_NATIVE=1) but could not all be built.')
         return
       }
       warn(`scripts/build-native.mjs failed (${r.error?.message ?? `exit code ${r.status}`}).`)
@@ -123,6 +128,32 @@ function buildNativeHelper() {
   log(`native helper OK (${nativeHelper().from}, ${Math.round(check.size / 1024)} KB) -> resources/${nativeHelper().to}`)
 }
 
+// 2b. Speech helpers, the speech detector model, the notices -----------------------------------
+function checkSpeech() {
+  const required = process.env.SSW_REQUIRE_NATIVE === '1'
+  for (const h of speechHelperStatus(root)) {
+    if (h.bundle) log(`speech helper OK (${h.from}, ${h.build}, ${Math.round(h.size / 1024)} KB) -> resources/${h.to}`)
+    else {
+      const msg = h.present
+        ? `${h.from} is not a usable x64 Windows executable (${h.reason}), so it is left out of the package. Rebuild it (npm run build:native).`
+        : `${h.from} is not built: captions on this PC are unavailable and the speech detector falls back to sound levels.`
+      if (required) fail(msg)
+      else warn(msg)
+    }
+  }
+  const model = path.join(root, 'resources', 'speech', VAD_PIN.file)
+  try {
+    const buf = readFileSync(model)
+    const hash = createHash('sha256').update(buf).digest('hex')
+    if (buf.length !== VAD_PIN.bytes || hash !== VAD_PIN.sha256) fail(`resources/speech/${VAD_PIN.file} is not the pinned speech detector model (SHA-256 ${hash}).`)
+    else log(`speech detector model OK (resources/speech/${VAD_PIN.file}, SHA-256 matches the pin)`)
+  } catch (err) {
+    fail(`resources/speech/${VAD_PIN.file} is unreadable (${err.code ?? err.message}).`)
+  }
+  const r = spawnSync(process.execPath, [path.join(root, 'scripts', 'notices.mjs'), '--check'], { cwd: root, stdio: 'inherit' })
+  if (r.status !== 0) fail('resources/THIRD_PARTY_NOTICES.txt is not up to date (or could not be generated): run npm run notices and commit it.')
+}
+
 // 3. Icons --------------------------------------------------------------------------------
 function checkIcons() {
   const ico = path.join(root, 'build', 'icon.ico')
@@ -148,6 +179,7 @@ function checkSigning() {
 
 ensureFfmpeg()
 buildNativeHelper()
+checkSpeech()
 checkIcons()
 checkSigning()
 if (failures.length) {

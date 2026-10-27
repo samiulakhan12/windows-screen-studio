@@ -1,0 +1,6 @@
+MediaPipe Tasks Vision (@mediapipe/tasks-vision) and its person segmentation model
+https://github.com/google-ai-edge/mediapipe
+Bundled into the app for the camera's background blur (its WebAssembly runtime and the
+selfie_segmenter model run on this PC). Copyright The MediaPipe Authors. Licensed under the
+Apache License, Version 2.0, whose full text is reproduced below with the npm packages under
+the same licence.

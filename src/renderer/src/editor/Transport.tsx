@@ -1,16 +1,18 @@
 import { memo, useEffect, useRef, useSyncExternalStore } from 'react'
-import { outputTimeAt } from '../../../shared/editor/clips'
 import { withShortcut } from '../../../shared/editor/shortcuts'
+import { planOf, videoDuration, videoTimeAt } from '../../../shared/engine/freeze'
 import { formatTime } from '../../../shared/engine/project'
-import { outputDuration } from '../../../shared/engine/timeline'
-import type { Clip } from '../../../shared/types'
+import type { Clip, Freeze } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { useKeymap } from './keymapContext'
+import { PreviewSpeedControl } from './PreviewSpeed'
 
 interface Props {
   clips: Clip[]
+  /** Freeze frames (E-11): pause ones make the video longer. */
+  freezes?: Freeze[]
   notice: string | null
   onTogglePlay: () => void
   onSplit: () => void
@@ -27,7 +29,7 @@ export function usePlaying(): boolean {
  * Play button, output timecode and edit tools. The timecode is written straight
  * to the DOM from the player, so playback never re-renders React components.
  */
-export const Transport = memo(function Transport({ clips, notice, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
+export const Transport = memo(function Transport({ clips, freezes, notice, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
   const { player } = useEditor()
   const keymap = useKeymap()
   const playing = usePlaying()
@@ -35,9 +37,11 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
 
   useEffect(() => {
     let last = ''
-    const total = formatTime(outputDuration(clips))
+    // In seconds of the exported video: a pause freeze adds its time, and counts while the preview holds it.
+    const plan = planOf({ clips, freezes })
+    const total = formatTime(videoDuration(clips, plan))
     const render = (): void => {
-      const text = `${formatTime(outputTimeAt(clips, player.time))} / ${total}`
+      const text = `${formatTime(videoTimeAt(clips, plan, player.time) + player.holdElapsed)} / ${total}`
       if (text !== last && timeRef.current) {
         last = text
         timeRef.current.textContent = text
@@ -45,7 +49,7 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
     }
     render()
     return player.subscribe(render)
-  }, [clips, player])
+  }, [clips, freezes, player])
 
   return (
     <div className="transport">
@@ -53,6 +57,7 @@ export const Transport = memo(function Transport({ clips, notice, onTogglePlay, 
         <Icon name={playing ? 'pause' : 'play'} />
       </button>
       <span className="timecode" ref={timeRef} title="Position / length of the exported video" />
+      <PreviewSpeedControl />
       <div className="notice-slot" role="status" aria-live="polite">
         {notice && <span className="notice">{notice}</span>}
       </div>

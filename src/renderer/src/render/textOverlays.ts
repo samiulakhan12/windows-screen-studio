@@ -1,5 +1,6 @@
 import type { CursorTrack, Project } from '../../../shared/types'
-import { ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
+import { noFadeOutFrom, planOf } from '../../../shared/engine/freeze'
+import { ANNOTATION_FADE, ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
 import { captionBlockAt } from './captionsLayer'
 
 type Ctx = CanvasRenderingContext2D
@@ -11,8 +12,10 @@ type Ctx = CanvasRenderingContext2D
 export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, project: Project): void {
   if (project.annotations.length === 0) return
   const speed = speedAt(project.clips, t)
+  // A pause freeze holding the edit's last moments (E-11): a text running to the end does not fade out there.
+  const steady = noFadeOutFrom(project.clips, planOf(project), ANNOTATION_FADE)
   for (const a of project.annotations) {
-    const alpha = annotationAlpha(a, t, speed)
+    const alpha = annotationAlpha(a.end >= steady ? { ...a, end: a.end + ANNOTATION_FADE * speed } : a, t, speed)
     if (alpha <= 0.002 || !a.text.trim()) continue
     const m = annotationMetrics(a, w, h)
     const lines = a.text.split('\n')

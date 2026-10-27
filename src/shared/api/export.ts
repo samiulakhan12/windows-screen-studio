@@ -50,6 +50,12 @@ export interface ClickSounds {
   volume: number
 }
 
+/** A pause freeze in the export's sound: `length` seconds of silence before source second `at`. */
+export interface SoundHold {
+  at: number
+  length: number
+}
+
 /** The recording's sound in an export. */
 export interface RecordingSound {
   /** Kept clips (source seconds): cut and re-timed like the video. */
@@ -65,6 +71,8 @@ export interface RecordingSound {
   noiseReduction?: number
   /** Loudness normalisation to about -16 LUFS (EBU R128). */
   normalize?: boolean
+  /** Pause freezes, sorted by `at` (absent or empty: none). */
+  holds?: SoundHold[]
 }
 
 /** Background music in an export: plays on the output timeline from its start, ignoring cuts. */

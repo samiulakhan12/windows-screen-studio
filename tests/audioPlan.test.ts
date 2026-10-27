@@ -12,7 +12,21 @@ import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import { DUCK_TIMING } from '../src/shared/audio/automation'
 import { atempoChain } from '../src/shared/engine/timeline'
-import { atempoLead, clipSampleBounds, DENOISE_LATENCY, denoiseFilter, musicGraph, NORMALIZE_FILTERS, planSoundtrack, recordingGraph, soundtrackGraph, STEREO } from '../src/shared/render/audioPlan'
+import {
+  atempoLead,
+  clipSampleBounds,
+  DENOISE_LATENCY,
+  denoiseFilter,
+  musicGraph,
+  NORMALIZE_FILTERS,
+  pieceSampleBounds,
+  planSoundtrack,
+  recordingGraph,
+  soundPieces,
+  soundtrackGraph,
+  STEREO,
+  type RecordingPart
+} from '../src/shared/render/audioPlan'
 import type { Clip } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -137,6 +151,79 @@ describe('recording graph', () => {
   it('a single stem needs no mixing', () => {
     const g = recordingGraph({ clips: [clip(0, 4)], volume: 1, input: '3:a', stems: [{ input: '3:a', gain: 0.5, denoise: false }] }, 4)
     expect(g.startsWith('[3:a]aresample=async=1:first_pts=0,volume=0.5[s0]')).toBe(true)
+  })
+})
+
+describe('pause freezes (E-11)', () => {
+  // The design's worked example: [0,4) at 1x and [6,10) at 2x, a 3 s pause freeze at source 2 (a 9 s video).
+  const clips = [clip(0, 4), clip(6, 10, 2)]
+  const holds = [{ at: 2, length: 3 }]
+
+  it('without holds, every graph is exactly the one made before', () => {
+    const parts: RecordingPart[] = [
+      { clips: [clip(0, 4)], volume: 1, input: '1:a' },
+      { clips: [clip(0, 2), clip(3, 5), clip(6, 7)], volume: 0.8, input: '1:a' },
+      { clips: [clip(0, 2), clip(3, 5, 2), clip(6, 7, 0.5)], volume: 0.8, input: '1:a', noiseReduction: 0.5, normalize: true },
+      { clips: [clip(0, 2), clip(3, 5, 2)], volume: 0.9, input: '1:a', stems: [{ input: '1:a', gain: 1.5, denoise: true }, { input: '2:a', gain: 1, denoise: false }], noiseReduction: 0.5 },
+      { clips: [clip(0, 4)], volume: 1, input: '3:a', stems: [{ input: '3:a', gain: 0.5, denoise: false }] }
+    ]
+    for (const rec of parts) expect(recordingGraph({ ...rec, holds: [] }, 7)).toBe(recordingGraph(rec, 7))
+    const job = m4a(5, { audio: { clips: [clip(0, 2), clip(3, 6)], volume: 1 } })
+    const files = { mix: '/p/screen.mp4' }
+    expect(planSoundtrack({ ...job, audio: { ...job.audio!, holds: [] } }, files, 0)).toEqual(planSoundtrack(job, files, 0))
+  })
+
+  it('splits the clips at each hold and puts the silence in front of the piece after it', () => {
+    const { pieces, tail } = soundPieces(clips, holds)
+    expect(pieces).toEqual([
+      { start: 0, end: 2, speed: 1, hold: 0 },
+      { start: 2, end: 4, speed: 1, hold: 3 },
+      { start: 6, end: 10, speed: 2, hold: 0 }
+    ])
+    expect(tail).toBe(0)
+    expect(pieceSampleBounds(pieces)).toEqual([0, 96000, 336000, 432000])
+    // At a clip's start: in front of it (once, also where two clips touch); at the edit's end: after it; in a cut: nowhere.
+    expect(soundPieces([clip(0, 2), clip(2, 4, 2)], [{ at: 2, length: 1 }]).pieces.map((p) => p.hold)).toEqual([0, 1])
+    expect(soundPieces(clips, [{ at: 6, length: 1 }, { at: 10, length: 2.5 }, { at: 5, length: 1 }])).toEqual({
+      pieces: [
+        { start: 0, end: 4, speed: 1, hold: 0 },
+        { start: 6, end: 10, speed: 2, hold: 1 }
+      ],
+      tail: 2.5
+    })
+  })
+
+  it('takes the sample-exact path with an adelay of the hold in samples', () => {
+    const g = recordingGraph({ clips, volume: 1, input: '1:a', holds }, 9)
+    expect(g.startsWith('[1:a]aresample=48000:async=1:first_pts=0,asplit=3[s0][s1][s2]')).toBe(true)
+    expect(g).toContain('[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,apad=whole_len=96000,atrim=end_sample=96000[c0]')
+    expect(g).toContain('[s1]atrim=start=2:end=4,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,adelay=delays=144000S:all=1,apad=whole_len=240000,atrim=end_sample=240000[c1]')
+    expect(g).toContain(`[s2]atrim=start=6:end=10,asetpts=PTS-STARTPTS,apad=whole_dur=4,atrim=end=4,${retimed(2)},apad=whole_len=96000,atrim=end_sample=96000[c2]`)
+    expect(g).toMatch(/concat=n=3:v=0:a=1,apad=whole_dur=9,atrim=end=9\[aout\]$/)
+  })
+
+  it('a hold at the edit end is the padding at the end', () => {
+    const { tail } = soundPieces(clips, [{ at: 10, length: 3 }])
+    expect(tail).toBe(3)
+    const g = recordingGraph({ clips, volume: 1, input: '1:a', holds: [{ at: 10, length: 3 }] }, 9)
+    expect(g).not.toContain('adelay=delays=144000S')
+    expect(g).toMatch(/apad=whole_dur=9,atrim=end=9\[aout\]$/)
+  })
+
+  it('passes the holds on with the stems and with the mixed track', () => {
+    const job = m4a(9, { audio: { clips, volume: 1, holds } })
+    expect(planSoundtrack(job, { mix: '/p/screen.mp4' }, 0).graph).toContain('adelay=delays=144000S:all=1')
+    const stems = m4a(9, { audio: { clips, volume: 1, holds, stems: { mic: 1, system: 1 } } })
+    expect(planSoundtrack(stems, { mix: null, stems: { mic: '/p/mic.m4a', system: '/p/system.m4a' } }, 0).graph).toContain('adelay=delays=144000S:all=1')
+  })
+
+  it('the most freezes a project keeps build a graph that goes into a script file', () => {
+    const many = Array.from({ length: 200 }, (_, i) => ({ at: i * 0.5 + 0.25, length: 0.5 }))
+    const job: ExportJob = m4a(200, { audio: { clips: [clip(0, 100)], volume: 1, holds: many } })
+    const g = planSoundtrack(job, { mix: '/p/screen.mp4' }, 0).graph!
+    expect(g.match(/adelay=delays=24000S/g)).toHaveLength(200)
+    const plan = ffmpegPlan(job, { audioInput: '/p/screen.mp4', output: '/tmp/o.m4a', tempStem: '/tmp/s' })
+    expect(plan.capture).toContain('-filter_complex_script')
   })
 })
 
@@ -497,5 +584,20 @@ describe('soundtrack graphs with ffmpeg', () => {
       expect(out.level(0.5, 3.5, 0)).toBeCloseTo(0.5 * level, 4)
       expect(out.level(0.5, 3.5, 1)).toBeCloseTo(0.5 * level, 4)
     }
+  })
+
+  it('pause freezes: silence on the hold frames, and the sound after each one exactly where the video shows it', () => {
+    // A tick at source 1, 3 and 7; clips [0,4) at 1x and [6,10) at 2x; holds of 3 s at source 2
+    // and 1.5 s at source 6 (a clip's start). The video: 6 s of edit plus 4.5 s of holds.
+    const src = ticks('holds.m4a', [1, 3, 7], 10)
+    const holds = [{ at: 2, length: 3 }, { at: 6, length: 1.5 }]
+    const out = render(m4a(10.5, { audio: { clips: [clip(0, 4), clip(6, 10, 2)], volume: 1, holds } }), { mix: src })
+    expect(out.length).toBe(10.5 * RATE)
+    // Source 1 at 1 s; source 3 after the first hold, at 1 + 2 + 3; source 7 after both, at 4 + 0.5 + 4.5.
+    const found = onsets(out, 0.05).map((i) => i / RATE)
+    expect(found).toHaveLength(3)
+    ;[1, 6, 9].forEach((t, i) => expect(Math.abs(found[i] - t), `tick ${i} at ${found[i]} s`).toBeLessThan(0.02))
+    expect(rms(out, 2.05, 4.95)).toBeLessThan(1e-4)
+    expect(rms(out, 7.05, 8.45)).toBeLessThan(1e-4)
   })
 })

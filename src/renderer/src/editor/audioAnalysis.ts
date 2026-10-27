@@ -24,9 +24,11 @@ export async function loadAudioAnalysis(projectId: string, sources: readonly Aud
       one.catch(() => cache.delete(k))
     }
   }
+  // Taken before the first await: a failed request drops its sources from the cache meanwhile.
+  const pending = sources.map((s) => [s, cache.get(key(projectId, s)) ?? Promise.resolve(null)] as const)
   const out: AudioAnalysis = {}
-  for (const s of sources) {
-    const levels = await cache.get(key(projectId, s))!.catch((err: unknown) => {
+  for (const [s, one] of pending) {
+    const levels = await one.catch((err: unknown) => {
       console.warn(`Could not measure the ${s} sound:`, err)
       return null
     })

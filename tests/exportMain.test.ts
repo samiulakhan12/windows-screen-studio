@@ -72,6 +72,17 @@ describe('validateJob', () => {
     expect(() => validateJob({ ...job, audio: { volume: 1, clips: [{ id: 'a', start: 0, end: 1, speed: 100 }] } })).toThrow()
     expect(() => validateJob({ ...job, format: 'gif', video: { kind: 'h264', color: { primaries: 1, transfer: 1, matrix: 1, fullRange: false } } })).toThrow()
   })
+  it('accepts pause freezes in the sound within their limits (E-11)', () => {
+    const audio = (holds: unknown): ExportJob => ({ ...job, audio: { volume: 1, clips: [{ id: 'a', start: 0, end: 10, speed: 1 }], holds: holds as never } })
+    expect(() => validateJob(audio([{ at: 2, length: 3 }, { at: 10, length: 30 }]))).not.toThrow()
+    expect(() => validateJob(audio(Array.from({ length: 200 }, (_, i) => ({ at: i / 20, length: 0.5 }))))).not.toThrow()
+    expect(() => validateJob(audio([{ at: 2, length: 31 }]))).toThrow()
+    expect(() => validateJob(audio([{ at: 2, length: 0.2 }]))).toThrow()
+    expect(() => validateJob(audio([{ at: -1, length: 3 }]))).toThrow()
+    expect(() => validateJob(audio([null]))).toThrow()
+    expect(() => validateJob(audio('2:3'))).toThrow()
+    expect(() => validateJob(audio(Array.from({ length: 201 }, (_, i) => ({ at: i / 20, length: 0.5 }))))).toThrow()
+  })
 })
 
 describe('toIpcError', () => {

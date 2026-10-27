@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
+import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
 import type { CaptionSegment, Clip } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -96,6 +97,19 @@ describe('subtitle files', () => {
   it('makes the file in output time after a cut', () => {
     const srt = subtitleFile([seg('a', 1, 2, 'one'), seg('b', 6, 7, 'two')], [clip(0, 3), clip(5, 10)], 'srt')
     expect(srt).toContain('2\n00:00:04,000 --> 00:00:05,000\ntwo\n')
+  })
+
+  it('stretches a caption across a pause freeze; one starting at it shows through it, one ending at it ends before (E-11)', () => {
+    const clips = [clip(0, 10)]
+    const plan = freezePlan(clips, [{ id: 'f', at: 2, length: 3, sound: 'pause' }])
+    const file = (s: CaptionSegment): string => subtitleFile([s], clips, 'srt', plan)
+    expect(file(seg('a', 1, 3, 'across'))).toContain('00:00:01,000 --> 00:00:06,000')
+    expect(file(seg('a', 2, 2.5, 'at'))).toContain('00:00:02,000 --> 00:00:05,500')
+    expect(file(seg('a', 1, 2, 'before'))).toContain('00:00:01,000 --> 00:00:02,000')
+    const segments = [seg('a', 1, 2, 'one'), seg('b', 6, 7, 'two')]
+    for (const f of ['srt', 'vtt', 'txt'] as const) {
+      expect(subtitleFile(segments, [clip(0, 3), clip(5, 10)], f, NO_FREEZES)).toBe(subtitleFile(segments, [clip(0, 3), clip(5, 10)], f))
+    }
   })
 
   it('leaves out empty captions (an emptied caption brought back by Undo; CAP-7)', () => {

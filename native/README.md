@@ -18,6 +18,10 @@ Why it exists:
 The Electron side is `src/main/nativeCapture.ts`. When the helper is missing or `probe`
 fails, the app records through Chromium as before.
 
+The speech helper (`ssw-speech`, offline captions and the speech detector) is a separate crate in
+[`speech/`](speech/README.md); `scripts/build-native.mjs` builds both, and `docs/BUILDING.md`
+("The speech helper") lists its toolchain and checks.
+
 ## Requirements
 
 | | |

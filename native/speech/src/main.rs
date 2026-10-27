@@ -60,6 +60,7 @@ fn start_control_thread() {
             }
         }
         ABORT.store(true, Ordering::Relaxed);
+        protocol::cancel_now();
     });
 }
 
@@ -209,7 +210,7 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
     let pcm = wav::read_wav(audio)?;
     let audio_s = pcm.len() as f64 / wav::SAMPLE_RATE as f64;
     if ABORT.load(Ordering::Relaxed) {
-        protocol::cancelled(0.0);
+        protocol::cancel_now();
     }
 
     let t_load = Instant::now();
@@ -273,7 +274,7 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
             None => (String::new(), 0.0),
             Some((i, heard)) => {
                 if ABORT.load(Ordering::Relaxed) {
-                    protocol::cancelled(0.0);
+                    protocol::cancel_now();
                 }
                 (lang::detect(e.ctx, e.st, slice(plan[i]), a.threads)?, heard)
             }
@@ -284,10 +285,9 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
 
     let mut progress = Progress { chunk_start: 0.0, chunk_len: 0.0, done: 0.0, total, last: 0 };
     let mut refiner = words::Refiner::default();
-    let mut done_until = 0.0;
     for &(c0, c1) in &plan {
         if ABORT.load(Ordering::Relaxed) {
-            protocol::cancelled(done_until);
+            protocol::cancel_now();
         }
         let strategy = if a.beam > 1 {
             sys::whisper_sampling_strategy_WHISPER_SAMPLING_BEAM_SEARCH
@@ -319,7 +319,7 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
         let pcm_c = slice((c0, c1));
         let rc = unsafe { sys::whisper_full_with_state(e.ctx, e.st, p, pcm_c.as_ptr(), pcm_c.len() as c_int) };
         if ABORT.load(Ordering::Relaxed) {
-            protocol::cancelled(done_until);
+            protocol::cancel_now();
         }
         if rc != 0 {
             return Err(Failure::new(Code::Internal, format!("transcription failed ({rc})")));
@@ -331,14 +331,14 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
             emit(&protocol::segment_line(s));
         }
         progress.done += c1 - c0;
-        done_until = c1;
+        protocol::note_done_until(c1);
         let pct = progress.percent(0.0);
         progress.last = pct;
         protocol::progress(pct, c1);
     }
     let asr_ms = t_asr.elapsed().as_secs_f64() * 1000.0;
     let rtf = if audio_s > 0.0 { (asr_ms + vad_ms) / 1000.0 / audio_s } else { 0.0 };
-    emit(&format!(
+    protocol::last(&format!(
         "{{\"type\":\"result\",\"language\":{},\"language_s\":{},\"duration\":{},\"timing\":{{\"load_ms\":{},\"vad_ms\":{},\"asr_ms\":{},\"rtf\":{:.4},\"peak_rss_mb\":{}}}}}",
         protocol::esc(&language),
         num(language_s),

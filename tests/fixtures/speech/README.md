@@ -24,3 +24,8 @@ These files are used by tests only and are not shipped in the app.
 The Whisper model the tests transcribe with is not committed (43.5 MB): `npm run
 fetch:test-speech` downloads the catalog's `whisper-tiny` (ggml-tiny-q8_0.bin) once from its pinned
 address into `.cache/test-speech/` (or `SSW_TEST_SPEECH_CACHE`), checks its SHA-256 and reuses it.
+
+Who uses them: `tests/native/speech.spec.ts` (`npm run test:native`, decoded with ffmpeg-static),
+`scripts/smoke-speech-wine.sh` and the offline captions end-to-end test. The native tests join JFK
+and the LibriSpeech clip where a language detection must hear 10 s of speech: JFK alone holds
+about 7.9 s of it.

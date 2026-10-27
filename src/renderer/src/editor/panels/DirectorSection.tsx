@@ -25,6 +25,7 @@ import {
 } from '../../../../shared/editor/directorCopy'
 import type { EditStore } from '../../../../shared/editor/editStore'
 import { undoHint } from '../../../../shared/editor/shortcuts'
+import { cropView } from '../../../../shared/engine/crop'
 import { directorMayFrame, directorSettingsOf, framingIsDirectors, framingUntouched, hasCameraPositions, hasDirectorChanges } from '../../../../shared/engine/directorData'
 import { effectiveTrack } from '../../../../shared/engine/inputTrack'
 import { outputDuration, outputToSource } from '../../../../shared/engine/timeline'
@@ -189,7 +190,8 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
     }
     const run = (): void => {
       planRef.current = { project, settings }
-      setPlan(safePlan({ project, cursor, speech: speechNow }, settings))
+      // Measured where the cropped recording draws clicks: the project and input as drawn.
+      setPlan(safePlan({ ...cropView(project, cursor), speech: speechNow }, settings))
     }
     // The first plan at once, so the section never opens empty.
     if (!planRef.current) return run()
@@ -238,7 +240,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
         const heard = await speechFor(session, store.state, cursor)
         const sp = heard.speech
         // The input with the input edits of the project planned (a click ignored meanwhile counts).
-        const inputFor = (p: Project): DirectorInput => ({ project: p, cursor: effectiveTrack(recorded, p), speech: sp })
+        const inputFor = (p: Project): DirectorInput => ({ ...cropView(p, effectiveTrack(recorded, p)), speech: sp })
         setBusy({ listening: false, done: 0, total: 0 })
         let outcome: FramingOutcome = { status: 'skipped' }
         const video = player.webcam

@@ -1,3 +1,4 @@
+import { clampFreezes } from '../engine/freezeData'
 import { clamp } from '../engine/math'
 import { clampZooms } from '../engine/zoom'
 import {
@@ -165,7 +166,8 @@ export function correctProjectMedia(project: Project, media: { duration: number;
       ...(project.spotlights && { spotlights: clampTimed(project.spotlights, d) }),
       ...(project.titles && { titles: clampTimed(project.titles, d) }),
       ...(project.layouts && { layouts: clampTimed(project.layouts, d) }),
-      ...(project.chapters && { chapters: project.chapters.map((c) => (c.t > d ? { ...c, t: d } : c)) })
+      ...(project.chapters && { chapters: project.chapters.map((c) => (c.t > d ? { ...c, t: d } : c)) }),
+      ...(project.freezes && { freezes: clampFreezes(project.freezes, d) })
     }
   }
   return next
