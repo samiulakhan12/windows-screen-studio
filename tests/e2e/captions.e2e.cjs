@@ -295,6 +295,28 @@ async function main() {
     h.assert(fr.count(above, BOX).n < 100 && fr.count({ x: 0, y: H - 160, w: W, h: 140 }, BOX).n > 2000, 'without a caption the keys are at the bottom')
   }))
 
+  await test('captions: Bangla is drawn left to right with joined letters, karaoke lights its first word on the left (export)', fx.withHome('captions-bangla', async (ctx, home) => {
+    const media = fx.solidVideo({ seconds: 4 })
+    // Conjuncts (ছাত্রছাত্রীদের) and vowel signs (উন্নতিও) must stay joined; Bangla reads left to right.
+    const bangla = 'ব্লগ ছাত্রছাত্রীদের লেখার উন্নতিও করতে পারে'
+    const words = bangla.split(' ').map((text, i) => ({ text, start: 1 + i * 0.4, end: 1.35 + i * 0.4 }))
+    fx.seedProject(home, { id: 'rec-bn', name: 'Bangla', media, seconds: 4, style: STYLE, effects: NO_FX })
+    addItems(home, 'rec-bn', { transcript: transcript([seg('s1', 1, 3.4, bangla, words)], { language: 'bn', provider: 'local', model: 'whisper-bn-medium' }), captions: captions({ preset: 'karaoke', highlightColor: '#22d3ee' }) })
+    const { app, win } = await launch(ctx, home)
+    await fx.openProject(win, 'Bangla')
+    const out = path.join(home, 'bn.mp4')
+    await exportOpen(app, win, out)
+    shot(out, 36, 'captions-bangla-36')
+    // At 1.2 s the first word is lit, and it is left of the centre (the Arabic case is the mirror image).
+    const bottom = band(captions())
+    const cyan = near(hex('#22d3ee'), 40)
+    const pill = frameOf(out, 36).count(bottom, cyan)
+    h.assert(pill.n > 200 && pill.x < W / 2 - 40, `the first Bangla word is lit on the left (${pill.n} pixels at x ${Math.round(pill.x)})`)
+    // The whole sentence is one caption box across the middle, not cut into letters.
+    const box = frameOf(out, 36).count(bottom, BOX)
+    h.assert(box.n > 2000 && Math.abs((box.minX + box.maxX) / 2 - W / 2) < 60, `one caption box in the middle (${box.n} pixels, ${box.minX}-${box.maxX})`)
+  }))
+
   await test('captions: editing the text in the Captions tab changes the render (export)', fx.withHome('captions-edit', async (ctx, home) => {
     const media = fx.solidVideo({ seconds: 2 })
     fx.seedProject(home, { id: 'rec-edit', name: 'Edit', media, seconds: 2, style: STYLE, effects: NO_FX })
