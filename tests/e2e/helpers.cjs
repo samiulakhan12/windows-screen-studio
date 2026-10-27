@@ -12,9 +12,23 @@ const path = require('node:path')
 const APP_DIR = path.resolve(__dirname, '../..')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/** The HOMEs made by tempHome, removed when the test file passes (kept for a look when it fails). */
+const homes = []
+process.on('exit', (code) => {
+  if (code !== 0 || process.env.SSW_E2E_KEEP_HOMES) return
+  for (const dir of homes) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+    } catch {
+      // A file still held open; the next run's tmp clean-up is not ours to do.
+    }
+  }
+})
+
 /** Fresh HOME so recordings land in a throwaway Videos folder. */
 function tempHome(name) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `ssw-e2e-${name}-`))
+  homes.push(dir)
   return dir
 }
 
