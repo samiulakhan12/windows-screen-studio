@@ -16,6 +16,7 @@
 //   FAKE_SPEECH_LOG        a file each call appends its arguments to (one JSON line)
 //   FAKE_SPEECH_SPEECH     JSON [[start, end], …] seconds of speech `vad` reports (default [[1, 3]])
 //   FAKE_SPEECH_AUDIO_S    audio_s `vad` reports (default: the samples it read)
+//   FAKE_SPEECH_PART_SPEECH JSON [[start, end], …] the speech line of `transcribe` reports (default: the whole part)
 'use strict'
 const fs = require('node:fs')
 
@@ -123,7 +124,7 @@ if (cmd === 'cpu') {
     else setInterval(() => {}, 1000)
     return
   }
-  out({ type: 'speech', segments: [[0, Math.max(0, seconds)]] })
+  out({ type: 'speech', segments: env.FAKE_SPEECH_PART_SPEECH ? JSON.parse(env.FAKE_SPEECH_PART_SPEECH) : [[0, Math.max(0, seconds)]] })
   // One word per second: "w<second>" from the part's start.
   const words = []
   for (let t = 0; t + 0.5 <= seconds; t += 1) words.push({ text: `w${Math.round(t)}`, start: +t.toFixed(3), end: +(t + 0.4).toFixed(3), prob: 0.9 })

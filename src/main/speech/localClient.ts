@@ -17,7 +17,7 @@ import { writeFileAtomicSync } from '../atomicWrite'
 import { cancelled } from '../ai/request'
 import type { AiClient, AudioPart, TranscribeCall } from '../ai/types'
 import type { ProjectProcesses } from '../projectProcesses'
-import { commonArgs, markIllegalInstruction, runHelper, selectHelper, spawnFailure, speechHelperPaths, SPEECH_TIMING, type HelperChoice, type SpeechExit } from './helper'
+import { commonArgs, markIllegalInstruction, runHelper, selectHelper, spawnFailure, speechHelperPaths, SPEECH_TIMING, type HelperBuild, type HelperChoice, type SpeechExit } from './helper'
 import type { SpeechModelStore } from './models'
 import { detectorModelOk } from './vad'
 
@@ -41,8 +41,9 @@ export interface LocalClientDeps {
 export const PART_CACHE_DIR = path.join('.cache', 'transcript-parts')
 /** Largest cached part read back. */
 const PART_CACHE_MAX = 8 << 20
-/** Parts at least this long teach the store this PC's speed. */
+/** Parts at least this long, with detected speech in at least this share of them, teach the store this PC's speed. */
 const LEARN_MIN_SECONDS = 60
+const LEARN_MIN_SPEECH = 0.5
 
 /** Cache key of a finished part: its WAV's SHA-256, the model's SHA-256, the language asked for and ENGINE_VERSION. */
 export function partCacheKey(partSha256: string, spec: Pick<SpeechModelSpec, 'sha256'>, language: string | undefined, engine: string): string {
@@ -51,9 +52,14 @@ export function partCacheKey(partSha256: string, spec: Pick<SpeechModelSpec, 'sh
     .digest('hex')
 }
 
-/** How long a part may run: max(10 min, 4 × its estimate for this build, thread count and measured speed), ms. */
+/**
+ * How long a part may run: max(10 min, 4 × its estimate for this build and thread count), ms. A
+ * measured speed only lengthens it: one learned on a quieter recording or another PC must never
+ * kill real work.
+ */
 export function partLimitMs(spec: Pick<SpeechModelSpec, 'rtf4'>, seconds: number, threads: number, measured: { rtf: number; threads: number } | null, build: 'standard' | 'compatible' | 'host' | null): number {
-  return Math.max(SPEECH_TIMING.partMinMs, SPEECH_TIMING.partEstimateFactor * estimateSeconds(spec, seconds, threads, measured, build) * 1000)
+  const estimate = Math.max(estimateSeconds(spec, seconds, threads, measured, build), estimateSeconds(spec, seconds, threads, null, build))
+  return Math.max(SPEECH_TIMING.partMinMs, SPEECH_TIMING.partEstimateFactor * estimate * 1000)
 }
 
 /** A local failure, as the Captions tab maps it back (localErrorCode). */
@@ -97,7 +103,8 @@ export async function readCachedPart(file: string, expect: { spec: SpeechModelSp
   return { transcript: localTranscript(lines, raw.language, expect.seconds), language: raw.language, languageSeconds: raw.languageSeconds }
 }
 
-type PartRun = { kind: 'done'; segments: SidecarSegment[]; result: SidecarResult; wallMs: number } | SpeechExit
+/** `heard`: seconds of speech the helper's detector found in the part (the audio it transcribed). */
+type PartRun = { kind: 'done'; segments: SidecarSegment[]; result: SidecarResult; wallMs: number; heard: number } | SpeechExit
 
 /** The client for model `modelId` (absent: the default model); rejects with a message when the engine or the model is not ready. */
 export async function localSpeechClient(modelId: string | undefined, deps: LocalClientDeps): Promise<AiClient> {
@@ -118,8 +125,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
   let carried: string | undefined
   const cacheDir = path.join(deps.projectDir, PART_CACHE_DIR)
 
-  const runPart = async (part: AudioPart, lang: string, threads: number, call: TranscribeCall, exe: string, build: HelperChoice & { build: string }): Promise<PartRun> => {
-    const limitMs = partLimitMs(spec, part.seconds, threads, store.measured(spec.id), build.build as 'standard' | 'compatible' | 'host')
+  const runPart = async (part: AudioPart, lang: string, threads: number, call: TranscribeCall, exe: string, build: HelperBuild): Promise<PartRun> => {
+    const limitMs = partLimitMs(spec, part.seconds, threads, store.measured(spec.id, build), build)
     const args = [
       'transcribe',
       '--model-dir', path.dirname(modelFile),
@@ -140,8 +147,10 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
     let fraction = 0
     let at = 0
     let preview: string | undefined
+    let heard = 0
     for await (const e of run.events) {
       if (e.type === 'ready') call.onProgress?.({ phase: 'transcribing', fraction: 0 })
+      else if (e.type === 'speech') heard = e.segments.reduce((sum, [start, end]) => sum + end - start, 0)
       else if (e.type === 'progress') {
         fraction = Math.max(fraction, e.percent / 100)
         at = Math.min(part.seconds, Math.max(at, e.at))
@@ -162,7 +171,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       return exit
     }
     if (!result) return { kind: 'protocol', detail: 'the run ended without a result' }
-    return { kind: 'done', segments, result, wallMs: Date.now() - started }
+    return { kind: 'done', segments, result, wallMs: Date.now() - started, heard }
   }
 
   const transcribe = async (part: AudioPart, call: TranscribeCall): Promise<RawTranscript> => {
@@ -189,7 +198,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
     const where = call.part ? { part: call.part.index + 1, parts: call.part.count } : {}
     for (;;) {
       if ('error' in choice) throw fail('unavailable', { reason: choice.error })
-      const r = await runPart(part, lang, threads, call, choice.exe, choice)
+      const r = await runPart(part, lang, threads, call, choice.exe, choice.build)
       if (r.kind === 'done') {
         const transcript = localTranscript(r.segments, r.result.language, part.seconds)
         const language = r.result.language === 'auto' ? '' : r.result.language
@@ -201,7 +210,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
           console.warn(`Could not keep a finished caption part: ${err instanceof Error ? err.message : String(err)}`)
         }
         learn(language, r.result.language_s)
-        if (part.seconds >= LEARN_MIN_SECONDS) store.recordMeasured(spec.id, r.wallMs / 1000 / part.seconds, threads)
+        // Only the speech is transcribed: a mostly silent part would teach a speed several times too fast.
+        if (part.seconds >= LEARN_MIN_SECONDS && r.heard >= LEARN_MIN_SPEECH * part.seconds) store.recordMeasured(spec.id, r.wallMs / 1000 / part.seconds, threads, choice.build)
         return transcript
       }
       if (r.kind === 'cancelled' || call.signal.aborted) throw cancelled()

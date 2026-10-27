@@ -349,9 +349,12 @@ language?, source })` over `ai:transcribe` (sender check unchanged). The pipelin
    by single spaces, so `captionTokens` always uses the real word timings. Words keep their
    punctuation ("presided,"). After a successful merge the project's `.cache/transcript-parts`
    folder is deleted.
-8. **Speed learning.** For each part of at least 60 s that ran, wall time from spawn to result ÷
-   part seconds is blended into `speech.json` `measured[id]` (0.5 old, 0.5 new) with the thread
-   count, so estimates match this PC.
+8. **Speed learning.** For each part of at least 60 s that ran and whose `speech` line covers at
+   least half of it, wall time from spawn to result ÷ part seconds is blended into `speech.json`
+   `measured[id]` (0.5 old, 0.5 new) with the thread count and the build that ran, so estimates
+   match this PC. Only the detected speech is transcribed, so a mostly silent part would teach a
+   speed several times too fast; a speed of another build (the file roams with the profile) is
+   not used, and the next one of this build replaces it.
 9. **The renderer** is unchanged: `captionItems.transcribe` reads the transcript, reports "No
    speech was found in this recording" for an empty one, and commits one undo step that also
    turns captions on.
@@ -361,8 +364,8 @@ language?, source })` over `ai:transcribe` (sender check unchanged). The pipelin
 Estimate before a run (`estimateSeconds(spec, audio, threads, measured, build)`, real code in
 `estimate.ts` so the Captions tab, Settings and main's time limit agree): audio × `rtf4` ×
 `threadFactor(threads)` × `WINDOWS_FACTOR` (1.3), × `COMPAT_FACTOR` (4.3) on the compatible
-build, until this PC has measured itself; then audio × the measured RTF scaled by thread count
-(it already includes the build and Windows). Thread factors: 1 thread 3.21, 2 threads 1.78,
+build, until this PC has measured itself with this build; then audio × the measured RTF scaled
+by thread count (it already includes the build and Windows). Thread factors: 1 thread 3.21, 2 threads 1.78,
 3 threads 1.27, 4 threads 1.0, more (4/n)^0.7 but at least 0.6. On a 4-core PC (3 threads,
 factor 1.27 × 1.3 = 1.65):
 
@@ -417,9 +420,10 @@ peaked at 524 MB), the main process holds only streams, and the temporary folder
   thread prints a `progress` line with the latest percent and `at` whenever 15 s
   (`SIDECAR.heartbeat`) passed without a line. Main then kills the helper as `stalled` when no
   line came for 120 s (`SPEECH_TIMING.stallMs`: the process is frozen or starved), or when a part
-  ran longer than max(10 min, 4 × `estimateSeconds` of the part for this build, thread count and
-  measured speed) (`partMinMs`, `partEstimateFactor`: whisper.cpp does not move on, which a
-  heartbeat cannot show). A stalled part is retried once with the same threads; a second stall
+  ran longer than max(10 min, 4 × `estimateSeconds` of the part for this build and thread count)
+  (`partMinMs`, `partEstimateFactor`: whisper.cpp does not move on, which a heartbeat cannot
+  show). A measured speed only lengthens that limit (when it is slower than the catalog's): one
+  learned on a quieter part or another PC never kills real work. A stalled part is retried once with the same threads; a second stall
   fails the job with `localErrorMessage('stalled')`. `powerMonitor` `resume` resets both timers,
   so sleep never looks like a hang.
 - **Protocol violation:** a line over 1 MB, more than 64 MB of output, or a run that ends without
@@ -571,7 +575,7 @@ stay there: risk 21):**
 |---|---|
 | `speech-models/<file>` | an installed model, exactly the pinned bytes |
 | `speech-models/<file>.part`, `<file>.part.json` | a download that stopped; deleted after 30 days untouched |
-| `speech-models/speech.json` | `{ version: 1, defaultModel, verified: { [id]: { bytes, mtimeMs } }, measured: { [id]: { rtf, threads } } }`, atomic writes; anything malformed falls back to defaults (base, nothing verified, nothing measured); an unknown id becomes the default; `rtf` must be finite in 0.005..20. The default changes only by the rules of §3.1 (Settings, a download from the Captions tab, the first download, removing the default) |
+| `speech-models/speech.json` | `{ version: 1, defaultModel, verified: { [id]: { bytes, mtimeMs } }, measured: { [id]: { rtf, threads, build } } }`, atomic writes; anything malformed falls back to defaults (base, nothing verified, nothing measured); an unknown id becomes the default; `rtf` must be finite in 0.005..20 and `build` one of the helper's builds (a measured speed applies only to its build). The default changes only by the rules of §3.1 (Settings, a download from the Captions tab, the first download, removing the default) |
 
 Unknown files in the folder are ignored and never loaded. `app-settings.json`, prefs and
 `ai-providers.json` are untouched; stored provider ids match `/^ai[a-z0-9]{1,30}$/`
@@ -1607,3 +1611,9 @@ Code review of the merged feature (main process), one line each:
   Download it again", whose download found the Whisper file intact; `localSpeechClient` now runs
   the detector's once-per-session check first (`detectorModelOk`) and refuses with
   `unavailable` (`missing`).
+- **A learned speed that shortened the kill limit** (MAIN-1, §3.2 item 8, §3.4): a speed learned
+  on a mostly silent part (the helper transcribes only speech: 4.7 to 7.7 times faster measured)
+  or carried by the roaming profile from another PC or build cut a dense part's limit below its
+  real time, so slow PCs failed "stalled" on every Generate. `partLimitMs` now takes the larger of
+  the measured and the catalog estimate for this build; speed is learned only from parts at least
+  half speech, and kept per build.

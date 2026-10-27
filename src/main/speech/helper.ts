@@ -26,8 +26,9 @@ export const SPEECH_TIMING = {
   stallMs: 120_000,
   /**
    * A transcription part may run at most max(partMinMs, partEstimateFactor × estimateSeconds of
-   * the part for this build, thread count and measured speed); over it, the run counts as stalled
-   * (the heartbeat proves only that the process is alive, not that whisper.cpp moves on).
+   * the part for this build and thread count, or with the measured speed when that is slower);
+   * over it, the run counts as stalled (the heartbeat proves only that the process is alive, not
+   * that whisper.cpp moves on).
    */
   partMinMs: 600_000,
   partEstimateFactor: 4,

@@ -50,7 +50,7 @@ function fakeStore(over: Partial<Record<string, unknown>> = {}) {
   const s = {
     held: 0,
     cleared: [] as string[],
-    learned: [] as { id: string; rtf: number; threads: number }[],
+    learned: [] as { id: string; rtf: number; threads: number; build: string }[],
     defaultModel: () => 'whisper-tiny' as SpeechModelId,
     installedFile: async (id: SpeechModelId) => path.join(h.root, 'models', speechModel(id)!.file),
     measured: () => null,
@@ -59,7 +59,7 @@ function fakeStore(over: Partial<Record<string, unknown>> = {}) {
       return () => s.held--
     },
     clearVerified: (id: string) => s.cleared.push(id),
-    recordMeasured: (id: string, rtf: number, threads: number) => s.learned.push({ id, rtf, threads }),
+    recordMeasured: (id: string, rtf: number, threads: number, build: string) => s.learned.push({ id, rtf, threads, build }),
     ...over
   }
   return s
@@ -95,7 +95,7 @@ const failure = async (p: Promise<unknown>): Promise<string> => {
   throw new Error('expected a failure')
 }
 
-const ENV = ['SSW_SPEECH_HELPER', 'FAKE_SPEECH_MODE', 'FAKE_SPEECH_LOG', 'FAKE_SPEECH_LANG_S', 'FAKE_SPEECH_LANG', 'FAKE_SPEECH_MATCH', 'FAKE_SPEECH_TIMES', 'FAKE_SPEECH_COUNTER']
+const ENV = ['SSW_SPEECH_HELPER', 'FAKE_SPEECH_MODE', 'FAKE_SPEECH_LOG', 'FAKE_SPEECH_LANG_S', 'FAKE_SPEECH_LANG', 'FAKE_SPEECH_MATCH', 'FAKE_SPEECH_TIMES', 'FAKE_SPEECH_COUNTER', 'FAKE_SPEECH_PART_SPEECH']
 beforeEach(() => {
   resetHelperSelection()
   process.env.SSW_SPEECH_HELPER = FAKE
@@ -218,14 +218,19 @@ describe('localSpeechClient', () => {
     expect(transcribeCalls()).toHaveLength(1)
   })
 
-  it('learns this PC’s speed from parts of 60 s or more', async () => {
+  it('learns this PC’s speed, for the build that ran, from parts of 60 s or more that are at least half speech', async () => {
     const store = fakeStore()
     const c = await localSpeechClient('whisper-tiny', deps(store))
     await c.transcribe!(part(wav('short.wav', 5, 1), 5), { signal: signal() })
     expect(store.learned).toEqual([])
+    // Only the detected speech is transcribed: a mostly silent part runs several times faster and teaches nothing.
+    process.env.FAKE_SPEECH_PART_SPEECH = '[[0,11],[40,45]]'
+    await c.transcribe!(part(wav('sparse.wav', 61, 3), 61), { signal: signal() })
+    expect(store.learned).toEqual([])
+    delete process.env.FAKE_SPEECH_PART_SPEECH
     await c.transcribe!(part(wav('long.wav', 61, 2), 61), { signal: signal() })
     expect(store.learned).toHaveLength(1)
-    expect(store.learned[0]).toMatchObject({ id: 'whisper-tiny', threads: 3 })
+    expect(store.learned[0]).toMatchObject({ id: 'whisper-tiny', threads: 3, build: 'host' })
     expect(store.learned[0].rtf).toBeGreaterThan(0)
   })
 

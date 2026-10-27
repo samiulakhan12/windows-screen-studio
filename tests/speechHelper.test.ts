@@ -142,6 +142,16 @@ describe('partLimitMs', () => {
     expect(partLimitMs(base, 600, 1, null, 'compatible')).toBeCloseTo(600 * 0.079 * 3.21 * 1.3 * 4.3 * 4 * 1000, 0)
     expect(partLimitMs(base, 600, 4, { rtf: 1, threads: 4 }, 'compatible')).toBe(600 * 4 * 1000)
   })
+
+  it('never lets a measured speed shorten the limit below the estimate for this build', () => {
+    const base = speechModel('whisper-base')!
+    // The compatible build, 1 thread: a dense 600 s part needs about 600 × 0.079 × 3.21 × 1.3 × 4.3 s.
+    const catalog = partLimitMs(base, 600, 1, null, 'compatible')
+    expect(catalog).toBeCloseTo(600 * 0.079 * 3.21 * 1.3 * 4.3 * 4 * 1000, 0)
+    // A speed learned on a mostly silent recording, or carried from a faster PC, is ignored for the limit.
+    expect(partLimitMs(base, 600, 1, { rtf: 0.18, threads: 1 }, 'compatible')).toBe(catalog)
+    expect(partLimitMs(base, 600, 1, { rtf: 0.13, threads: 3 }, 'compatible')).toBe(catalog)
+  })
 })
 
 describe('runHelper with the fake helper', () => {
