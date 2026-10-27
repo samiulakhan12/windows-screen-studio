@@ -316,7 +316,7 @@ Everything works in recorded pixels `W×H`, so ratios are pixel ratios. `MIN = (
 
 ### 4.8 Quick presets
 
-Presets move one edge of the current draft, and the lock becomes Free. Inputs:
+Presets move one edge of the current draft, and the lock becomes Free. They only move it inward: a draft that already cuts at least as much on that side comes back as it is, so a preset never shows again what the crop hides (from the palette, **Crop out the taskbar** then says "The taskbar is already cropped out"). Inputs:
 
 - `s = track.scale`.
 - `region = capture.region ?? {0,0,1,1}`.
@@ -325,7 +325,7 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 **Hide taskbar** (`taskbarCrop`):
 
 - `cut = (region.y + region.h − 1)/region.h + 48·s/p.height`.
-- Offered when `target ≠ 'window'` and `0 < cut ≤ 0.25`. The bottom edge moves to `1 − cut`.
+- Offered when `target ≠ 'window'` and `0 < cut ≤ 0.25`. The bottom edge moves up to `1 − cut`; one already higher stays (`bottom = min(r.y + r.h, 1 − cut)`).
 - Screen 1920×1080 at s = 1: 48 px, `h = 1032/1080`.
 - Screen 2560×1440 at s = 1.5: 72 px, `h = 0.95`.
 - Area `{0, 0.5, 0.5, 0.5}` recorded at 960×540, s = 1: `cut = 0.0889`.
@@ -334,7 +334,7 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 **Hide browser bar** (`browserBarCrop`):
 
 - `cut = 88·s/p.height`.
-- Offered for screens, for windows, and for areas with `region.y === 0`, when `cut ≤ 0.25` (as for the taskbar: on a short recording the bar would be a large part of it). The top edge moves to `cut`.
+- Offered for screens, for windows, and for areas with `region.y === 0`, when `cut ≤ 0.25` (as for the taskbar: on a short recording the bar would be a large part of it). The top edge moves down to `cut`; one already lower stays (`top = max(r.y, cut)`).
 - Example: 1920×1080 at s = 1 gives `y = 0.081481`.
 
 ### 4.9 Applying: `setCrop(p, crop, track)` returns `CropOutcome`
@@ -611,8 +611,9 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
   - area cut 0.0889;
   - top-left area → null;
   - window → null;
-  - the draft's other edges are unchanged.
-- `browserBarCrop`: 1920×1080 → y = 0.081481.
+  - the draft's other edges are unchanged;
+  - a draft cropped to the top half keeps its bottom edge at 540 px, and `setCrop` with the result returns the same project.
+- `browserBarCrop`: 1920×1080 → y = 0.081481. A draft cropped to the bottom half keeps its top edge at 540 px.
 - `setCrop`:
   - an unchanged crop returns the same project object;
   - a whole-frame crop removes the key;

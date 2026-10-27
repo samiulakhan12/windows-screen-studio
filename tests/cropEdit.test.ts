@@ -200,8 +200,25 @@ describe('presets', () => {
     const draft = { x: 0.1, y: 0.2, w: 0.6, h: 0.8 }
     const r = taskbarCrop(draft, project(), 1)!
     expect(r).toEqual({ x: 0.1, y: 0.2, w: 0.6, h: expect.closeTo(1032 / 1080 - 0.2, 12) })
-    const b = browserBarCrop(draft, project(), 1)!
-    expect(b).toEqual({ x: 0.1, y: expect.closeTo(88 / 1080, 12), w: 0.6, h: expect.closeTo(1 - 88 / 1080, 12) })
+    const b = browserBarCrop({ x: 0.1, y: 0, w: 0.6, h: 0.9 }, project(), 1)!
+    expect(b).toEqual({ x: 0.1, y: expect.closeTo(88 / 1080, 12), w: 0.6, h: expect.closeTo(0.9 - 88 / 1080, 12) })
+  })
+
+  it('never widens a crop that already cuts further in', () => {
+    const p = project()
+    const inPx = (r: NormRect): NormRect => snapCrop(r, HD, { x: 0, y: 0 }, null)
+    // Cropped to the top half (a mail window hidden below): Hide taskbar keeps the bottom edge at 540 px.
+    const topHalf: NormRect = { x: 0, y: 0, w: 1, h: 0.5 }
+    expect(inPx(taskbarCrop(topHalf, p, 1)!)).toEqual(topHalf)
+    // So the palette's "Crop out the taskbar" changes nothing (and says it is already cropped out).
+    const cropped = project({ crop: topHalf })
+    expect(setCrop(cropped, inPx(taskbarCrop(cropOf(cropped)!, cropped, 1)!), track()).project).toBe(cropped)
+    // Cropped to the bottom half: Hide browser bar keeps the top edge at 540 px.
+    const bottomHalf: NormRect = { x: 0, y: 0.5, w: 1, h: 0.5 }
+    expect(inPx(browserBarCrop(bottomHalf, p, 1)!)).toEqual(bottomHalf)
+    // An edge between the frame's and the bar's still moves in to the bar.
+    expect(taskbarCrop({ x: 0, y: 0, w: 1, h: 1060 / 1080 }, p, 1)!.h).toBeCloseTo(1032 / 1080, 12)
+    expect(browserBarCrop({ x: 0, y: 40 / 1080, w: 1, h: 1040 / 1080 }, p, 1)!.y).toBeCloseTo(88 / 1080, 12)
   })
 
   it('Hide browser bar moves the top edge below the tabs and address bar', () => {
