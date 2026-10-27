@@ -91,7 +91,9 @@ export function LocalQuality({ state, model, project, chipsRef }: { state: Speec
   const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
     if (!step) return
+    // Handled here: the editor's window keydown handler would also step the playhead on Left and Right.
     e.preventDefault()
+    e.stopPropagation()
     const i = Math.max(0, models.findIndex((m) => m.id === model))
     const next = models[(i + step + models.length) % models.length]
     pick(next.id)

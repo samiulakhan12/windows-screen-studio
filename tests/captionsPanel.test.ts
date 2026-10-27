@@ -42,12 +42,21 @@ const focused: El[] = []
 const runs: ReturnType<typeof deferred<unknown>>[] = []
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** What the main process answers; the speech state rejects by default, as before workstream B's handlers exist. */
-const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: () => Promise<void> } = {
+const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: (id: string) => Promise<void>; confirm: boolean } = {
   providers: () => Promise.resolve([OPENAI]),
   speech: () => Promise.reject(new Error("Error invoking remote method 'speech:state': Error: No handler registered for 'speech:state'")),
-  download: () => Promise.resolve()
+  download: () => Promise.resolve(),
+  confirm: true
 }
-const calls: { transcribe: unknown[]; setDefault: string[]; download: string[]; cancelDownload: unknown[] } = { transcribe: [], setDefault: [], download: [], cancelDownload: [] }
+const calls: { transcribe: unknown[]; setDefault: string[]; download: string[]; cancelDownload: unknown[]; confirm: string[] } = {
+  transcribe: [],
+  setDefault: [],
+  download: [],
+  cancelDownload: [],
+  confirm: []
+}
+/** The job's progress listener (the main process's progress lines go to it). */
+let progress: ((p: TranscribeProgress) => void) | null = null
 vi.stubGlobal('window', {
   api: {
     listAiProviders: () => replies.providers(),
@@ -59,7 +68,7 @@ vi.stubGlobal('window', {
     },
     downloadSpeechModel: (id: string) => {
       calls.download.push(id)
-      return replies.download()
+      return replies.download(id)
     },
     cancelSpeechDownload: (...args: unknown[]) => {
       calls.cancelDownload.push(args)
@@ -71,9 +80,18 @@ vi.stubGlobal('window', {
       runs.push(d)
       return d.promise
     },
-    onTranscribeProgress: (_l: (p: TranscribeProgress) => void) => () => undefined
+    onTranscribeProgress: (l: (p: TranscribeProgress) => void) => {
+      progress = l
+      return () => {
+        if (progress === l) progress = null
+      }
+    },
+    cancelTranscription: () => Promise.resolve()
   },
-  confirm: () => true,
+  confirm: (question: string) => {
+    calls.confirm.push(question)
+    return replies.confirm
+  },
   addEventListener: () => undefined,
   removeEventListener: () => undefined
 })
@@ -297,9 +315,11 @@ describe('CaptionsPanel: captions on this PC', () => {
     calls.setDefault.length = 0
     calls.download.length = 0
     calls.cancelDownload.length = 0
+    calls.confirm.length = 0
     focused.length = 0
     replies.providers = () => Promise.resolve([OPENAI])
     replies.download = () => Promise.resolve()
+    replies.confirm = true
     store.state = { ...store.state, duration: 1200, clips: [{ id: 'c', start: 0, end: 1200, speed: 1 }] }
   })
   const show = async (): Promise<El[]> => {
@@ -397,6 +417,19 @@ describe('CaptionsPanel: captions on this PC', () => {
     click(out, 'Make them now with Fast (downloaded)')
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-tiny', source: 'auto' }])
     expect(calls.download).toEqual([])
+  })
+
+  it('arrow keys on the Quality chips choose a chip and go no further: the playhead does not step (UI-5)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState())
+    let out = await show()
+    const group = out.find((e) => e.props.role === 'radiogroup')!
+    const stopped: string[] = []
+    ;(group.props.onKeyDown as (e: unknown) => void)({ key: 'ArrowRight', preventDefault: () => stopped.push('default'), stopPropagation: () => stopped.push('propagation') })
+    // The editor's window keydown handler steps the playhead on Left and Right: the event must not reach it.
+    expect(stopped).toEqual(['default', 'propagation'])
+    out = render(m.panel)
+    expect(chips(out).find((c) => c.props['aria-checked'])?.props['data-model']).toBe('whisper-small')
   })
 
   it('the compatible build and an estimate longer than the recording each get a line', async () => {
