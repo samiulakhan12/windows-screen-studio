@@ -505,7 +505,6 @@ export class PreviewPlayer {
     this.time = t
     this.syncWebcam(t, false)
     this.leavePassed(t)
-    this.sound.frame()
     this.draw(t)
     // Clicks land on their frames at the element's rate; none while the sound is off.
     if (this.audible) this.playClicks(t, rate === clip.speed ? clip : { ...clip, speed: rate })
@@ -513,6 +512,9 @@ export class PreviewPlayer {
     this.emit()
     // A pause freeze whose frame comes before the next decoded frame: hold it there (E-11).
     if (this.holdAhead(t)) return
+    // Then the soundtrack: on a frame that holds, the element's clock can be past the anchor, which
+    // video time counts after the whole hold (the hold's ticks keep it on time instead).
+    this.sound.frame()
     // Jump before the next decoded frame would land in a cut (or past the end).
     if (t + rate * this.frame >= clip.end - 1e-4) this.leaveClip(clips, i)
     if (this.playing) this.scheduleFrame()

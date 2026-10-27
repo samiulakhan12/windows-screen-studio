@@ -204,26 +204,33 @@ const scaleOf = (scale: number | undefined): number => (typeof scale === 'number
 /** Most of the recording's height a preset cuts off: more is not a bar. */
 const MAX_CUT = 0.25
 
-/** The draft with its bottom edge above the Windows taskbar, or null when the recording does not show it. */
+/**
+ * The draft with its bottom edge above the Windows taskbar, or null when the recording does not
+ * show it. The edge only moves up: a draft cut higher already comes back as it is.
+ */
 export function taskbarCrop(r: NormRect, p: Pick<Project, 'capture' | 'width' | 'height'>, scale: number | undefined): NormRect | null {
   const { region, target } = captured(p)
   if (target === 'window' || !(p.height > 0) || !(region.h > 0)) return null
   // The taskbar's height in video pixels, less the part of the screen below the recorded area.
   const cut = (region.y + region.h - 1) / region.h + (TASKBAR_DIP * scaleOf(scale)) / p.height
   if (!(cut > 0 && cut <= MAX_CUT)) return null
-  const bottom = 1 - cut
+  const bottom = Math.min(r.y + r.h, 1 - cut)
   const top = Math.min(r.y, bottom - minSide(p.height) / p.height)
   return { x: r.x, y: Math.max(0, top), w: r.w, h: bottom - Math.max(0, top) }
 }
 
-/** The draft with its top edge below a maximised browser's tabs and address bar, or null when not offered. */
+/**
+ * The draft with its top edge below a maximised browser's tabs and address bar, or null when not
+ * offered. The edge only moves down: a draft cut lower already comes back as it is.
+ */
 export function browserBarCrop(r: NormRect, p: Pick<Project, 'capture' | 'width' | 'height'>, scale: number | undefined): NormRect | null {
   const { region, target } = captured(p)
   if ((target === 'area' && region.y !== 0) || !(p.height > 0)) return null
   const cut = (BROWSER_BAR_DIP * scaleOf(scale)) / p.height
   if (!(cut > 0 && cut <= MAX_CUT)) return null
-  const bottom = Math.max(r.y + r.h, cut + minSide(p.height) / p.height)
-  return { x: r.x, y: cut, w: r.w, h: Math.min(1, bottom) - cut }
+  const top = Math.max(r.y, cut)
+  const bottom = Math.max(r.y + r.h, top + minSide(p.height) / p.height)
+  return { x: r.x, y: top, w: r.w, h: Math.min(1, bottom) - top }
 }
 
 /** True when the rectangle and the crop share no area (lines and arrows: their bounds). */

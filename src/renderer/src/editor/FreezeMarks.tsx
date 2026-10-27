@@ -1,10 +1,9 @@
-import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { moveFreeze, setFreezeLength } from '../../../shared/editor/freezeEdit'
+import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type MutableRefObject, type PointerEvent as ReactPointerEvent } from 'react'
+import { canMoveFreeze, freezeInactiveReason, moveFreeze, setFreezeLength, setStillEnd, stillEndsAt } from '../../../shared/editor/freezeEdit'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import { outputToSourceRanges } from '../../../shared/editor/smartSpeed'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { planOf, type Hold, type Still } from '../../../shared/engine/freeze'
-import { viewingTime } from '../../../shared/render/overlays'
 import type { Clip, Freeze } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
@@ -25,6 +24,8 @@ interface Props {
   onSelect: (sel: Selection) => void
   /** The timeline's snapping (E-05): moved anchors and continue ends snap; without it values pass straight through. */
   snap?: SnapController
+  /** The timeline's drag flag: set while a freeze is dragged, so the timeline does not scroll after the playhead. */
+  dragging?: MutableRefObject<boolean>
 }
 
 const NO_FREEZES: Freeze[] = []
@@ -37,10 +38,11 @@ const seconds = (v: number): string => `${v.toFixed(1)} s`
  * Freeze frames on the clip track (E-11, docs/design/freeze-frame.md §5): a hatched strip along its
  * top edge. A pause freeze adds time the source-time timeline has no room for, so its block is drawn
  * over the footage from its frame, as long as the time it adds; a continue freeze covers the footage
- * it holds the picture over; one whose frame is cut is a hollow diamond in the gap. The body moves a
- * freeze, the right edge sets its length; each drag is one undo step.
+ * it holds the picture over; one not in the video (its frame cut, or a continue freeze with no time to
+ * hold) is a hollow diamond. The body moves a freeze, the right edge sets its length; each drag is
+ * one undo step.
  */
-export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap }: Props): JSX.Element | null {
+export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap, dragging }: Props): JSX.Element | null {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const freezes = useSyncExternalStore(store.subscribe, () => store.state.freezes) ?? NO_FREEZES
@@ -78,6 +80,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     const sx = e.clientX
     let moved = false
     store.beginGesture()
+    if (dragging) dragging.current = true
     followPointer(
       e,
       (ev) => {
@@ -86,6 +89,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
         apply((ev.clientX - sx) / px, ev)
       },
       () => {
+        if (dragging) dragging.current = false
         store.endGesture()
         // A plain click shows the frozen frame.
         if (!moved) player.seek(f.at)
@@ -98,10 +102,11 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     // Shift or Alt+drag still selects a range on the clip track.
     if (e.button !== 0 || e.shiftKey || e.altKey) return
     onSelect({ kind: 'freeze', id: f.id })
-    // The playhead follows the anchor during this drag, so it is no target.
+    // The playhead follows the anchor during this drag, so it is no target; nor is a frame moveFreeze refuses.
     const session = snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true })
+    const limit = { min: 0, max: duration, accept: (t: number) => canMoveFreeze(store.state, f.id, t) }
     drag(e, f, (dt, ev) => {
-      const t = session ? session.at(ev, f.at + dt, { min: 0, max: duration }) : f.at + dt
+      const t = session ? session.at(ev, f.at + dt, limit) : f.at + dt
       store.update((p) => moveFreeze(p, f.id, t), `freeze-move:${f.id}`)
       const at = store.state.freezes?.find((x) => x.id === f.id)?.at
       if (at !== undefined) player.seek(at)
@@ -114,13 +119,11 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     onSelect({ kind: 'freeze', id: f.id })
     const from = still ? outputToSourceRanges(clips, still.editStart, still.editEnd).at(-1)?.end ?? f.at : 0
     const session = still ? snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true }) : undefined
+    // Lengths are tenths: the edge snaps only where the still then really ends.
+    const limit = { min: f.at, max: duration, accept: (t: number) => stillEndsAt(store.state, f.id, t) }
     drag(e, f, (dt, ev) => {
-      let length = f.length + dt
-      if (still) {
-        const t = session ? session.at(ev, from + dt, { min: f.at, max: duration }) : from + dt
-        length = viewingTime(clips, t) - still.editStart
-      }
-      store.update((p) => setFreezeLength(p, f.id, length), `freeze-length:${f.id}`)
+      const t = session ? session.at(ev, from + dt, limit) : from + dt
+      store.update((p) => (still ? setStillEnd(p, f.id, t) : setFreezeLength(p, f.id, f.length + dt)), `freeze-length:${f.id}`)
     })
   }
 
@@ -186,17 +189,24 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
 
   plan.holds.forEach(holdBlock)
   plan.stills.forEach(stillBlocks)
+  const deleteKey = shortcutLabel(keymap.deleteSelection[0] ?? 'Delete')
   for (const id of plan.inactive) {
     const f = byId.get(id)
     if (!f || ((f.at < win.start || f.at > win.end) && id !== selId)) continue
+    // A frame that is cut, or (keeping the sound) one the video's end or the next freeze leaves no time to hold.
+    const why = freezeInactiveReason({ clips, freezes }, f)
     blocks.push(
       <span
         key={id}
         className={`freeze-mark inactive ${selId === id ? 'selected' : ''}`}
-        data-testid="freeze-inactive"
+        data-testid={why === 'cut' ? 'freeze-inactive' : 'freeze-short'}
         data-freeze={id}
         style={{ left: f.at * px }}
-        title={`Freeze frame in a cut: not in the video. Restore the cut, or select it and press ${shortcutLabel(keymap.deleteSelection[0] ?? 'Delete')}`}
+        title={
+          why === 'cut'
+            ? `Freeze frame in a cut: not in the video. Restore the cut, or select it and press ${deleteKey}`
+            : `Freeze frame with nothing to hold: ${why === 'next' ? 'the next freeze starts' : 'the video ends'} right after it. Pause the sound, or select it and press ${deleteKey}`
+        }
         onPointerDown={onBodyDown(f)}
       />
     )

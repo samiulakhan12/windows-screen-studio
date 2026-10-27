@@ -3,17 +3,23 @@
 import { describe, expect, it } from 'vitest'
 import {
   atEditEnd,
+  canMoveFreeze,
   freezeAtPlayhead,
   freezeIdAt,
+  freezeInactiveReason,
   freezeRefusal,
   freezeTextRange,
+  freezeVideoTime,
   moveFreeze,
   removeFreeze,
   setFreezeLength,
-  setFreezeSound
+  setFreezeSound,
+  setStillEnd,
+  stillEndsAt
 } from '../src/shared/editor/freezeEdit'
-import { buildSnapIndex, projectFreezeTargets, projectSnapSources, snapAt } from '../src/shared/editor/snapping'
-import { freezePlan, MAX_FREEZES, videoDuration } from '../src/shared/engine/freeze'
+import { outputToSourceRanges } from '../src/shared/editor/smartSpeed'
+import { buildSnapIndex, projectFreezeTargets, projectSnapSources, snapAt, type SnapIndex, type SnapLimit } from '../src/shared/editor/snapping'
+import { freezePlan, MAX_FREEZES, planOf, videoDuration, videoTimeAt } from '../src/shared/engine/freeze'
 import { readFreezes } from '../src/shared/engine/freezeData'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { outputDuration, setTrimEnd } from '../src/shared/engine/timeline'
@@ -40,6 +46,21 @@ const cutClips: Clip[] = [
   { id: 'a', start: 0, end: 4, speed: 1 },
   { id: 'b', start: 6, end: 10, speed: 1 }
 ]
+
+/** A recording of `end` seconds kept whole, or cut into `clips`. */
+const long = (end: number, clips: Clip[] = [{ id: 'a', start: 0, end, speed: 1 }]): Project => ({ ...base(clips), duration: end })
+
+/** As FreezeMarks begins a drag of freeze `id` (it is no target), plus `clicks`. */
+const dragIndex = (p: Project, id: string, clicks: number[] = []): SnapIndex => {
+  const exclude = [{ owner: `freeze:${id}` }]
+  return buildSnapIndex({ ...projectSnapSources(p, [], { playhead: null, layouts: false, freezes: projectFreezeTargets(p, exclude) }), clicks }, exclude)
+}
+
+/** Source second the still of `id` ends at on the timeline (its right edge), as FreezeMarks draws it. */
+const stillEndOf = (p: Project, id: string): number | undefined => {
+  const s = freezePlan(p.clips, p.freezes).stills.find((x) => x.id === id)
+  return s && outputToSourceRanges(p.clips, s.editStart, s.editEnd).at(-1)?.end
+}
 
 /** The project and freeze of a successful freezeAtPlayhead. */
 function added(p: Project, t: number, init?: Parameters<typeof freezeAtPlayhead>[2]): { project: Project; f: Freeze } {
@@ -143,14 +164,89 @@ describe('edits', () => {
 
   it('move: a drag snapped to a cut (E-05) lands on the last frame before it', () => {
     const q = { ...base([{ id: 'a', start: 0, end: 3, speed: 1 }, { id: 'b', start: 5, end: 10, speed: 1 }]), freezes: [freeze('f', 1)] }
-    // As FreezeMarks begins the drag: the dragged freeze is no target.
-    const exclude = [{ owner: 'freeze:f' }]
-    const idx = buildSnapIndex(projectSnapSources(q, [], { playhead: null, layouts: false, freezes: projectFreezeTargets(q, exclude) }), exclude)
+    const idx = dragIndex(q, 'f')
+    // As FreezeMarks limits the drag.
+    const limit: SnapLimit = { min: 0, max: q.duration, accept: (t) => canMoveFreeze(q, 'f', t) }
     for (const raw of [2.65, 2.8, 2.99]) {
-      const snapped = snapAt(idx, raw, { pxPerSec: 20, current: null }, { min: 0, max: q.duration })
+      const snapped = snapAt(idx, raw, { pxPerSec: 20, current: null }, limit)
       expect(snapped).toMatchObject({ t: 3, target: { label: 'Cut' } })
       expect(moveFreeze(q, 'f', snapped.t).freezes![0].at).toBe(2.984)
     }
+    // Inside the cut no frame takes it.
+    expect(canMoveFreeze(q, 'f', 4)).toBe(false)
+    expect(canMoveFreeze(q, 'f', 5)).toBe(true)
+  })
+
+  it('move: a drag never snaps onto a frame moveFreeze refuses, so a freeze can be dropped next to another (E-05)', () => {
+    // A 10-minute recording at fit: 8 px is about 4 s. B is dragged left towards A.
+    const q = { ...long(600), freezes: [freeze('A', 100), freeze('B', 110)] }
+    const idx = dragIndex(q, 'B')
+    const view = { pxPerSec: 1.93, current: null }
+    expect(snapAt(idx, 98, view, { min: 0, max: 600 })).toMatchObject({ t: 100, target: { label: 'Freeze frame' } })
+    expect(moveFreeze(q, 'B', 100)).toBe(q)
+    const limit: SnapLimit = { min: 0, max: 600, accept: (t) => canMoveFreeze(q, 'B', t) }
+    for (const raw of [104, 102, 98, 96]) {
+      expect(snapAt(idx, raw, view, limit)).toEqual({ t: raw, target: null })
+      expect(moveFreeze(q, 'B', raw).freezes!.find((f) => f.id === 'B')!.at).toBe(raw)
+    }
+    // A catch from before lets go as well.
+    expect(snapAt(idx, 101, { ...view, current: idx.targets.find((x) => x.t === 100)! }, limit).target).toBeNull()
+  })
+
+  describe('length of a continue freeze from its right edge (E-05 snaps it only where the still really ends)', () => {
+    const view = { pxPerSec: 400, current: null }
+    const limitFor = (p: Project, id: string): SnapLimit => ({ min: p.freezes!.find((f) => f.id === id)!.at, max: p.duration, accept: (t) => stillEndsAt(p, id, t) })
+
+    it('not to a click between tenths: the length is stored in tenths, so the still would end past the guide', () => {
+      const p = { ...long(20), freezes: [freeze('k', 2.017, 3, 'continue')] }
+      const idx = dragIndex(p, 'k', [5.37, 5.917])
+      expect(snapAt(idx, 5.36, view, { min: 2.017, max: 20 })).toMatchObject({ t: 5.37, target: { label: 'Click' } })
+      expect(stillEndOf(setStillEnd(p, 'k', 5.37), 'k')).toBeCloseTo(5.417, 9)
+      expect(snapAt(idx, 5.36, view, limitFor(p, 'k'))).toEqual({ t: 5.36, target: null })
+      expect(setStillEnd(p, 'k', 5.36).freezes![0].length).toBe(3.3)
+      // A click a whole number of tenths after the frame: the still ends exactly on it.
+      const on = snapAt(idx, 5.91, view, limitFor(p, 'k'))
+      expect(on).toMatchObject({ t: 5.917, target: { label: 'Click' } })
+      expect(stillEndOf(setStillEnd(p, 'k', on.t), 'k')).toBeCloseTo(5.917, 9)
+    })
+
+    it('not to a cut it would hold past into the next clip', () => {
+      const clips: Clip[] = [
+        { id: 'a', start: 0, end: 8, speed: 1 },
+        { id: 'b', start: 10, end: 20, speed: 1 }
+      ]
+      const p = { ...long(20, clips), freezes: [freeze('k', 2.017, 3, 'continue')] }
+      expect(snapAt(dragIndex(p, 'k'), 7.99, view, { min: 2.017, max: 20 })).toMatchObject({ t: 8, target: { label: 'Cut' } })
+      expect(stillEndOf(setStillEnd(p, 'k', 8), 'k')).toBeCloseTo(10.017, 9)
+      expect(snapAt(dragIndex(p, 'k'), 7.99, view, limitFor(p, 'k'))).toEqual({ t: 7.99, target: null })
+      // From a frame a whole number of tenths before it, it ends on the cut.
+      const q = { ...p, freezes: [freeze('k', 2, 3, 'continue')] }
+      const on = snapAt(dragIndex(q, 'k'), 7.99, view, limitFor(q, 'k'))
+      expect(on).toMatchObject({ t: 8, target: { label: 'Cut' } })
+      expect(stillEndOf(setStillEnd(q, 'k', on.t), 'k')).toBe(8)
+    })
+
+    it('to the next freeze or the end of the video, where the still is cut short exactly', () => {
+      const p = { ...long(20), freezes: [freeze('k', 2.06, 3, 'continue'), freeze('n', 6)] }
+      const on = snapAt(dragIndex(p, 'k'), 5.99, view, limitFor(p, 'k'))
+      expect(on).toMatchObject({ t: 6, target: { label: 'Freeze frame' } })
+      // 3.94 s to it: the nearest tenth, 3.9, would end before it; 4.0 is cut short there.
+      const q = setStillEnd(p, 'k', on.t)
+      expect(q.freezes![0].length).toBe(4)
+      expect(stillEndOf(q, 'k')).toBe(6)
+      const end = { ...long(20), freezes: [freeze('k', 17.06, 3, 'continue')] }
+      const last = snapAt(dragIndex(end, 'k'), 19.99, view, limitFor(end, 'k'))
+      expect(last).toMatchObject({ t: 20, target: { label: 'End' } })
+      expect(stillEndOf(setStillEnd(end, 'k', last.t), 'k')).toBe(20)
+    })
+
+    it('not past the longest freeze', () => {
+      const p = { ...long(60), freezes: [freeze('k', 2, 3, 'continue')] }
+      const idx = dragIndex(p, 'k', [40])
+      expect(snapAt(idx, 39.99, { pxPerSec: 100, current: null }, { min: 2, max: 60 })).toMatchObject({ t: 40 })
+      expect(snapAt(idx, 39.99, { pxPerSec: 100, current: null }, limitFor(p, 'k'))).toEqual({ t: 39.99, target: null })
+      expect(setStillEnd(p, 'k', 40).freezes![0].length).toBe(30)
+    })
   })
 
   it('remove: no freezes key once the last one is gone', () => {
@@ -159,6 +255,34 @@ describe('edits', () => {
     const none = removeFreeze(one, 'b')
     expect('freezes' in none).toBe(false)
     expect(removeFreeze(p, 'nope')).toBe(p)
+  })
+
+  it('the video time it starts at: a hold at the end starts where the edit ends, not where the video does', () => {
+    const { project, f } = added(base([{ id: 'a', start: 0, end: 6, speed: 1 }]), 6)
+    expect(videoTimeAt(project.clips, planOf(project), f.at)).toBe(9)
+    expect(freezeVideoTime(project, f)).toBe(6)
+    const q = { ...project, freezes: [freeze('a', 1), freeze('b', 2, 3, 'continue'), { ...f }] }
+    expect(q.freezes.map((g) => freezeVideoTime(q, g))).toEqual([1, 5, 9])
+    expect(videoDuration(q.clips, planOf(q))).toBe(12)
+  })
+
+  it('why it is not in the video: a cut frame, or a continue freeze the end or the next freeze leaves no time to hold', () => {
+    expect(freezeInactiveReason(p, p.freezes[0])).toBeNull()
+    const cut = { ...p, freezes: [...p.freezes, freeze('c', 5)] }
+    expect(freezeInactiveReason(cut, cut.freezes[2])).toBe('cut')
+    // Two frames before the end of a 60 fps minute, with the sound kept playing.
+    const { project, f } = added(long(60), 59.97)
+    expect(f.at).toBe(59.967)
+    const near = setFreezeSound(project, f.id, 'continue')
+    expect(planOf(near).inactive).toEqual([f.id])
+    expect(freezeInactiveReason(near, near.freezes![0])).toBe('end')
+    const end = { ...long(60), freezes: [freeze('e', 60, 3, 'continue')] }
+    expect(freezeInactiveReason(end, end.freezes[0])).toBe('end')
+    // One frame before another freeze.
+    const next = { ...long(60), freezes: [freeze('k', 9.984, 3, 'continue'), freeze('n', 10)] }
+    expect(planOf(next).inactive).toEqual(['k'])
+    expect(freezeInactiveReason(next, next.freezes[0])).toBe('next')
+    expect(freezeInactiveReason(next, next.freezes[1])).toBeNull()
   })
 
   it('text on a freeze: half a second of the edit on each side of its frame', () => {
@@ -188,6 +312,8 @@ describe('a freeze at the end of a trimmed edit, saved and reopened', () => {
       expect(setFreezeSound(p, f.id, 'continue')).toBe(p)
       expect(freezeTextRange(p.clips, g)).toEqual({ start: expect.closeTo(end - 0.5, 9), end })
       expect(freezeRefusal(p, end)).toEqual({ refused: 'taken', id: f.id })
+      // The Clip panel's title: where the hold starts, the same before and after the anchor's rounding.
+      expect(freezeVideoTime(p, g)).toBeCloseTo(end, 9)
     }
   })
 

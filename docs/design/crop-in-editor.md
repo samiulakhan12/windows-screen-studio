@@ -199,6 +199,7 @@ Example: a 1280×720 recording with a 48 px taskbar gives `c = {0, 0, 1, 0.93333
 | `CameraPanel.tsx:117-119` camera box preview | `project.width/height` | `visibleSize(project)` | 1 line |
 | `playheadItems.ts:75,86` `addShapeAt`/`addSpotlightAt` (`shapeForPlayhead` aspect, `arrowToward`, `0.24/aspect`, `cursorPosFor`) | `store.state`, full cursor | build against `cropView(p, cursor)`, store `geometryFromCrop(c, item)` | 2 functions |
 | `ShapesPanel.tsx:60,253-254` region spotlight placed at the cursor | `cursorPosFor(project, cursor)`, clamp to [0, 1] | position from the view, clamp in view, then `geometryFromCrop` | 2 lines |
+| `ShapesPanel.tsx` cursor spotlight **Size** slider | `spot.h` (full frame) | shows `rectToCrop(c, spot).h`, the share of the crop's height the preview lights; writes `geometryFromCrop(c, {h, w})` with the view's shape kept | 2 lines (**missed by the draft**: on a top-half crop a spot read 24% while lighting 48% of the picture, and under a 0.5-high crop the top of the range was clamped by `readSpotlight`) |
 | `Editor.tsx:572` `focusFor` (feeds the ZoomPanel focus-mode switch) | `zoom.anchor` (full) ?? `focusPath.at()` (now view); `(0.5, 0.5)` without cursor data | `zoom.anchor` clamped by `clampIntoCrop`, else `fromCrop(c, focusPath.at(...))`; without cursor data `fromCrop(c, (0.5, 0.5))`, the crop's centre | 2 lines |
 | `Editor.tsx` `newZoomFocus` (Z, the transport's and the timeline's Add zoom), without cursor data | fixed `(0.5, 0.5)`, the whole frame's centre | fixed at `fromCrop(cropOf(p), (0.5, 0.5))`, the crop's centre | 1 line (**missed by the draft**: on a lopsided crop the new zoom aimed outside the part shown and the camera stopped at the crop's edge) |
 | ZoomPanel level readout (176), level presets and slider (`setZoomLevel`), mode switch to region (193–200, `regionAround(f.x, f.y, level)`), Focus X/Y sliders (263–264), "Frames X × Y" text (273) | full-frame zoom | read `zoomInView(c, zoom)`; levels through `setZoomLevelInView`; build the region in view and write it back with `zoomFromView`; sliders write through `fromCrop`; a switch to Fixed point or Follow cursor stores the level shown as `scale` (a region zoom's stored `scale` is its level where it was drawn, which a crop made since changes) | about 8 lines (**193–200 and 273 missed by the draft**) |
@@ -316,7 +317,7 @@ Everything works in recorded pixels `W×H`, so ratios are pixel ratios. `MIN = (
 
 ### 4.8 Quick presets
 
-Presets move one edge of the current draft, and the lock becomes Free. Inputs:
+Presets move one edge of the current draft, and the lock becomes Free. They only move it inward: a draft that already cuts at least as much on that side comes back as it is, so a preset never shows again what the crop hides (from the palette, **Crop out the taskbar** then says "The taskbar is already cropped out"). Inputs:
 
 - `s = track.scale`.
 - `region = capture.region ?? {0,0,1,1}`.
@@ -325,7 +326,7 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 **Hide taskbar** (`taskbarCrop`):
 
 - `cut = (region.y + region.h − 1)/region.h + 48·s/p.height`.
-- Offered when `target ≠ 'window'` and `0 < cut ≤ 0.25`. The bottom edge moves to `1 − cut`.
+- Offered when `target ≠ 'window'` and `0 < cut ≤ 0.25`. The bottom edge moves up to `1 − cut`; one already higher stays (`bottom = min(r.y + r.h, 1 − cut)`).
 - Screen 1920×1080 at s = 1: 48 px, `h = 1032/1080`.
 - Screen 2560×1440 at s = 1.5: 72 px, `h = 0.95`.
 - Area `{0, 0.5, 0.5, 0.5}` recorded at 960×540, s = 1: `cut = 0.0889`.
@@ -334,7 +335,7 @@ Presets move one edge of the current draft, and the lock becomes Free. Inputs:
 **Hide browser bar** (`browserBarCrop`):
 
 - `cut = 88·s/p.height`.
-- Offered for screens, for windows, and for areas with `region.y === 0`, when `cut ≤ 0.25` (as for the taskbar: on a short recording the bar would be a large part of it). The top edge moves to `cut`.
+- Offered for screens, for windows, and for areas with `region.y === 0`, when `cut ≤ 0.25` (as for the taskbar: on a short recording the bar would be a large part of it). The top edge moves down to `cut`; one already lower stays (`top = max(r.y, cut)`).
 - Example: 1920×1080 at s = 1 gives `y = 0.081481`.
 
 ### 4.9 Applying: `setCrop(p, crop, track)` returns `CropOutcome`
@@ -543,7 +544,7 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
 - `src/renderer/src/editor/panels/ZoomPanel.tsx`: `regenerateInFrame` (385, 391); level readout (176); region switch (193–200); sliders (263–264); "Frames" text (273).
 - `src/renderer/src/editor/panels/DirectorSection.tsx`: `cropView` in `inputFor` (241) and in the live `safePlan` input (192).
 - `src/renderer/src/editor/panels/CameraPanel.tsx`: `visibleSize` (117–119).
-- `src/renderer/src/editor/panels/ShapesPanel.tsx`: `cursorPos` (60) and spotlight placement (253–254) through the view.
+- `src/renderer/src/editor/panels/ShapesPanel.tsx`: `cursorPos` (60), spotlight placement (253–254) and the cursor spotlight's Size slider through the view.
 - `src/renderer/src/editor/panels/StylePanel.tsx`: `<CropRow>` in the Frame section, plus an `onCrop` prop.
 - `src/renderer/src/editor/Inspector.tsx` (**SHARED**): pass `onCrop` to `StylePanel` at line 131, and add `InspectorProps.onCrop`.
 - Left to the lead (editing-wins.md decision 4): `docs/FEATURES.md` (one Editor bullet), `docs/ROADMAP.md` (E-10 status), `docs/IMPLEMENTATION.md` (one sentence: "layout reads the recording's size through `visibleSize`; geometry for drawing comes from `cropView`").
@@ -611,8 +612,9 @@ Enter and Esc are handled in `Editor.tsx`'s `onKeyDown` (around line 868), not a
   - area cut 0.0889;
   - top-left area → null;
   - window → null;
-  - the draft's other edges are unchanged.
-- `browserBarCrop`: 1920×1080 → y = 0.081481.
+  - the draft's other edges are unchanged;
+  - a draft cropped to the top half keeps its bottom edge at 540 px, and `setCrop` with the result returns the same project.
+- `browserBarCrop`: 1920×1080 → y = 0.081481. A draft cropped to the bottom half keeps its top edge at 540 px.
 - `setCrop`:
   - an unchanged crop returns the same project object;
   - a whole-frame crop removes the key;
@@ -727,6 +729,7 @@ Where the code differs from the first draft of this design (the sections above a
 - **Style › Frame without a crop** shows only a link in the section's header instead of a row with a hint: a row moved the Padding slider below the fold of the default window, which `editor.e2e.cjs` drags without scrolling. With a crop the row shows as designed.
 - **The bar is its own component.** `CropEditor.tsx` exports the overlay (`CropEditor`, mounted by `PreviewStage` through a `cropTool` prop) and the bar (`CropBar`, rendered by `Editor.tsx` in `.stage` between the preview and the transport). Inside `PreviewStage`'s `.canvas-wrap` the bar would either cover the bottom of the recording (the taskbar being cropped) or need the stage's layout restructured.
 - **Zoom levels and regions edited in the view.** `setZoomLevelInView` and `setZoomRegionInView` (`cropEdit.ts`) resize and normalise a region zoom in the crop's view and store it with `zoomFromView` (`crop.ts`). They are used by the Zoom panel, the preview's region editor and the zoom level keys 0–4 (`Editor.tsx` `setZoomLevelKey`, which the draft missed). `zoomInView`/`zoomFromView` keep `scale`, so a region zoom's stored `scale` is its level in the frame it was framed in; the Zoom panel's switch from Region to Fixed point or Follow cursor therefore writes the level it shows (`tests/zoomPanelCrop.test.ts`).
+- **The cursor spotlight's Size in the view.** The Shapes panel's Size slider shows the spotlight's height as a share of the crop's height (what the preview lights, and what the preview's corner handles resize through `resizeAround`) and writes it back with `geometryFromCrop`, keeping its shape in the view; its range, 6% to 100%, is of the picture shown (`tests/spotlightPanelCrop.test.ts`).
 - **Undo and Redo** clear the draft in `Editor.tsx`'s `actions.undo` / `actions.redo` (two lines outside the regions listed in §9), so the title bar buttons and the shortcuts both close the tool.
 - **`setCrop`** compares snapped crops (§4.9 step 2). **`cropNotice`** reports a zoom both removed and added (a merged zoom split around a hidden click) as adjusted: "1 automatic zoom was adjusted."
 - **`outsideCrop`**: a region zoom, shape or region spotlight is outside when its box shares no area with the crop; a cursor-following zoom when its anchor (click or field) is outside.

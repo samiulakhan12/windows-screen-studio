@@ -1,7 +1,16 @@
 import { useSyncExternalStore } from 'react'
-import { atEditEnd, FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze, setFreezeLength, setFreezeSound } from '../../../../shared/editor/freezeEdit'
+import {
+  atEditEnd,
+  freezeInactiveReason,
+  FREEZE_REFUSAL_TEXT,
+  freezeRefusal,
+  freezeVideoTime,
+  removeFreeze,
+  setFreezeLength,
+  setFreezeSound
+} from '../../../../shared/editor/freezeEdit'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
-import { FREEZE, planOf, videoDuration, videoTimeAt } from '../../../../shared/engine/freeze'
+import { FREEZE, planOf, videoDuration } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration } from '../../../../shared/engine/timeline'
 import type { Freeze, FreezeSound, Project } from '../../../../shared/types'
@@ -52,7 +61,12 @@ function freezeHint(project: Project, f: Freeze): string {
   const plan = planOf(project)
   if (plan.holds.some((h) => h.id === f.id)) return `Adds ${seconds(f.length)} to the video (now ${formatTime(videoDuration(clips, plan))}).`
   const still = plan.stills.find((s) => s.id === f.id)
-  if (!still) return f.sound === 'continue' && atEditEnd(clips, f.at) ? 'Nothing plays after the end of the video, so the picture is not held.' : 'This frame is cut out of the video, so the freeze is not shown.'
+  if (!still) {
+    const why = freezeInactiveReason(project, f)
+    if (why === 'cut') return 'This frame is cut out of the video, so the freeze is not shown.'
+    if (why === 'next') return 'The next freeze starts right after this frame, so the picture is not held.'
+    return atEditEnd(clips, f.at) ? 'Nothing plays after the end of the video, so the picture is not held.' : 'The video ends right after this frame, so the picture is not held.'
+  }
   const held = still.editEnd - still.editStart
   if (held >= f.length - 1e-6) return `The screen holds for ${seconds(f.length)}. The camera and captions keep moving.`
   const why = still.editEnd >= outputDuration(clips) - 1e-6 ? 'the video ends there' : 'the next freeze starts there'
@@ -69,7 +83,7 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
   const atEnd = atEditEnd(clips, f.at)
   const setSound = (sound: FreezeSound): void => store.update((p) => setFreezeSound(p, f.id, sound))
   return (
-    <Section title={`Freeze frame at ${formatTime(videoTimeAt(clips, plan, f.at))}`}>
+    <Section title={`Freeze frame at ${formatTime(freezeVideoTime(project, f))}`}>
       <Slider
         label="Hold for"
         value={f.length}

@@ -44,7 +44,7 @@ Snapping only chooses the numbers that an existing drag writes. It adds nothing 
 | 8 | Own edges | Excluded by owner key: `zoom:<id>`, `annotation:<id>`, `shape:<id>`, `spotlight:<id>`, `title:<id>`, `caption:<id>`, `layout:<id>`, `chapter:<id>`, `trim:start`, `trim:end`. A layout drag also excludes the shared edges of its `stayAround` neighbours (the `before` end and the `after` start), because `dragLayout` moves those edges with it. | An edge must never snap to itself or to an edge that follows it. |
 | 9 | Playhead as target | Only when the player is not moving at pointerdown (`player.moving === false`: not playing and, once E-08 lands, not shuttling in reverse). It is never a target for a scrub, which moves the playhead itself, or for a trim drag, which seeks the playhead to the edge (`Timeline.tsx:393`). | A moving target cannot be caught reliably. |
 | 10 | Where snapping applies | The pure `snapSpan` snaps the **raw `dt`** and then calls the unchanged helper (`dragZoomTimes`, `dragAnnotationTimes`, `dragShapeTimes`, `dragTitleTimes`, `dragCaptionTimes` or `dragLayoutTimes`), which still clamps. **Rejected:** a snap parameter on six helpers in five modules. | No helper or helper test changes. Bounds and minimum lengths behave as they do now. |
-| 11 | Snap lost to a clamp | If the clamp moves the snapped edge off its target (a neighbour bound, a minimum length), `snapSpan` returns the **unsnapped** result `resolve(dt)`. It shows no guide and clears the current target. Point drags take a `limit` and ignore targets outside it. | The edge never jumps to a place the pointer did not ask for. The guide shows only when the edge really sits on the target. |
+| 11 | Snap lost to a clamp | If the clamp moves the snapped edge off its target (a neighbour bound, a minimum length), `snapSpan` returns the **unsnapped** result `resolve(dt)`. It shows no guide and clears the current target. Point drags take a `limit` (`SnapLimit`) and ignore targets outside `[min, max]`. Its optional `accept(t)` also turns away targets the drag's edit would refuse or would not put the point on exactly: a freeze frame onto another freeze's frame or into a cut, a continue freeze's edge between tenths, a chapter at the video's end or onto another chapter (§4.5). The nearest accepted target wins instead. | The edge never jumps to a place the pointer did not ask for. The guide shows only when the edge really sits on the target. |
 | 12 | Exactness | The snapped edge is written as `target.t` exactly. In a move, the other edge is `target.t ± (initial.end − initial.start)`, the same length the helpers keep (`end = start + len`). A point drag returns `target.t`. | `start + (dt + delta)` is not always `T` in floating point. Visibility tests are half-open, as in `titleVisibleAt`'s `t >= start && t < end`. `exportFrameTimes` samples `c.start` exactly whenever a frame falls on a clip's output start. A title snapped to a clip start must then show on that frame in both preview and export. |
 | 13 | Scrubbing | The press seeks exactly as today. Snapping starts once the pointer has moved **3 px** from the press, and stays on for the rest of the scrub. | A click on the ruler goes where you clicked, and scrubbing still finds cuts and chapters, also back near the press point. |
 | 14 | Turning it off | Alt (live, `ev.altKey`) plus a persistent toggle. **Rejected:** Ctrl, because Ctrl+wheel zooms the timeline. **Rejected:** Shift, because Shift+drag selects a range. | Alt is the convention the roadmap names. The app is Windows only, so macOS Option is not a concern. |
@@ -209,8 +209,8 @@ Then the build:
 The steps:
 
 1. Set `enter = 8 / px`, `leave = 12 / px`, `tie = 0.5 / px`.
-2. Skip points outside `view.visible`. For each remaining point `p`, binary-search `times` for targets in `[p − enter, p + enter]`, skipping targets outside `limit` (when given). Each becomes a candidate with distance `|t − p|`.
-3. If `view.current` is set and within `limit`, find its smallest distance to any point. If that is at most `leave`, it is a candidate too, even beyond `enter`.
+2. Skip points outside `view.visible`. For each remaining point `p`, binary-search `times` for targets in `[p − enter, p + enter]`, skipping targets outside `limit` or not accepted by `limit.accept` (when given). Each becomes a candidate with distance `|t − p|`.
+3. If `view.current` is set, within `limit` and accepted, find its smallest distance to any point. If that is at most `leave`, it is a candidate too, even beyond `enter`.
 4. Choose the smallest distance. Among candidates within `tie` of it, prefer the current target, then the lower `SNAP_PRIORITY`, then the lower point index, then the earlier `t`.
 5. Return `{ delta: target.t − p, target, point }`, or `{ delta: 0, target: null, point: -1 }` when there is no candidate.
 
@@ -284,7 +284,7 @@ Pressing or releasing Alt changes nothing until the next pointer move. The guide
 | Alt+drag range | `onClipTrackDown`, Alt branch | none | unchanged: never snaps |
 | Scrub (ruler, playhead, empty track space on all tracks) | `scrub` | `{ noPlayhead: true, slopPx: SNAP.scrubSlopPx }` | the press seeks `timeAt(e.clientX)` unsnapped as today; each move `player.seek(s.at(ev, timeAt(ev.clientX)))` |
 | Title card | `TitleTrack.tsx` `onTitleDown` | `title:<id>` | `… (d) => dragTitleTimes(initial, mode, d, duration)` |
-| Chapter flag | `TitleTrack.tsx` `onChapterDown` | `chapter:<id>` | `t = s.at(ev, clamp(c.t + raw, 0, duration), { min: 0, max: duration })` |
+| Chapter flag | `TitleTrack.tsx` `onChapterDown` | `chapter:<id>` | `t = s.at(ev, clamp(c.t + raw, 0, duration), chapterSnapLimit(store.state, c.id))`: `{ min: 0, max: duration }`, accepting only times where `outputChapters` keeps the chapter (`chapterInVideo`, and at least `MIN_CHAPTER_GAP` of edit time from every other chapter) |
 | Caption | `CaptionTrack.tsx` `onCaptionDown` | `caption:<id>` | `… (d) => dragCaptionTimes(initial, mode, d, bounds)`; `retimeWords(seg, times)` unchanged (its 1e-9 length test still sees a move) |
 | Camera layout | `LayoutTrack.tsx` `onSegmentDown` | `layout:<id>`, plus `{owner:'layout:'+around.before.id, edge:'end'}` and `{owner:'layout:'+around.after.id, edge:'start'}` when present | `… (d) => dragLayoutTimes(initial, mode, d, bounds)`; `dragLayout(p.layouts, s.id, times, around)` unchanged |
 
@@ -305,7 +305,8 @@ Not covered (all in Later):
 - **Item shorter than the threshold:** both edges are candidates, and the nearer one wins.
 - **The clamp undoes the snap:** the result is unsnapped and no guide shows (#11). A trim drag never shows a guide at an unreachable target, because of its `limit`.
 - **`stayAround` neighbours:** their moving edges are excluded (#8).
-- **Targets inside cut or trimmed ranges:** they are drawn there and remain valid targets.
+- **Targets inside cut or trimmed ranges:** they are drawn there and remain valid targets, except for a drag whose `limit.accept` refuses them (a freeze frame cannot move into a cut; a chapter past the trimmed end is left out of the export).
+- **Targets the edit would refuse or move off:** a point drag's `limit.accept` turns them away, so the guide never shows on them (#11). A chapter is not snapped to the video's end or onto another chapter, where `outputChapters` would drop or merge it. A moved freeze is not snapped onto another freeze's frame, which `moveFreeze` refuses. A continue freeze's edge is snapped only where its still then ends exactly, since its length is stored in tenths.
 - **Trim start snapped to a cut's start:** `setTrimStart` drops the earlier clip and starts the next one there. That is today's behaviour for any value past `clip.end − MIN_CLIP`; snapping does not change it.
 - **Chapter dropped on a cut start:** it maps through `outputChapters` (`render/chapters.ts`) exactly like a chapter placed there by hand.
 - **Freeze frame dropped on a cut start:** the clip's end is in no clip (ends are exclusive), so `moveFreeze` (E-11) takes that clip's last frame, the nearest frame to the guide.
@@ -407,14 +408,16 @@ These are committed first as types and stubs that pass values through, so the ap
 | 〃 | `projectSnapSources` | `(p: Project, rows: readonly ClickRow[], opts: { playhead: number \| null; layouts: boolean; freezes?: readonly number[] }) => SnapSources` |
 | 〃 | `buildSnapIndex` | `(src: SnapSources, exclude?: readonly SnapExclude[]) => SnapIndex` |
 | 〃 | `dragPoints` | `(initial: Span, mode: DragMode, dt: number) => number[]` |
-| 〃 | `snapPoints` | `(index: SnapIndex, points: readonly number[], view: SnapView, limit?: { min: number; max: number }) => SnapResult` |
+| 〃 | `SnapLimit` | `{ min: number; max: number; accept?: (t: number) => boolean }` (`accept` added after the review, #11) |
+| 〃 | `snapPoints` | `(index: SnapIndex, points: readonly number[], view: SnapView, limit?: SnapLimit) => SnapResult` |
 | 〃 | `snapSpan` | `(index: SnapIndex, initial: Span, mode: DragMode, dt: number, view: SnapView, resolve: (dt: number) => Span) => { times: Span; target: SnapTarget \| null }` |
-| 〃 | `snapAt` | `(index: SnapIndex, t: number, view: SnapView, limit?: { min: number; max: number }) => { t: number; target: SnapTarget \| null }` |
+| 〃 | `snapAt` | `(index: SnapIndex, t: number, view: SnapView, limit?: SnapLimit) => { t: number; target: SnapTarget \| null }` |
+| 〃 | `chapterSnapLimit` | `(p: Pick<Project, 'duration' \| 'clips' \| 'chapters'>, id: string) => SnapLimit` (a chapter drag's limit, §4.5) |
 | 〃 | `snapLabel` | `(target: SnapTarget) => string` |
 | `src/renderer/src/editor/snapControl.ts` | `SNAP_PREF_KEY` | `'editor-snapping'` |
 | 〃 | `snapPref` | `{ get(): boolean; set(on: boolean): void; toggle(): boolean; subscribe(l: () => void): () => void }` |
 | 〃 | `SnapBegin` | `{ exclude?: readonly SnapExclude[]; noPlayhead?: boolean; slopPx?: number }` |
-| 〃 | `SnapSession` | `{ span(ev: PointerEvent, initial: Span, mode: DragMode, dt: number, resolve: (dt: number) => Span): Span; at(ev: PointerEvent, t: number, limit?: { min: number; max: number }): number }` |
+| 〃 | `SnapSession` | `{ span(ev: PointerEvent, initial: Span, mode: DragMode, dt: number, resolve: (dt: number) => Span): Span; at(ev: PointerEvent, t: number, limit?: SnapLimit): number }` |
 | 〃 | `SnapController` | `{ begin(e: ReactPointerEvent, spec?: SnapBegin): SnapSession }` (stable identity) |
 | 〃 | `useSnapController` | `(deps: { pxRef: RefObject<number>; scrollerRef: RefObject<HTMLDivElement>; clickRows: readonly ClickRow[]; guideRef: RefObject<SnapGuideHandle> }) => SnapController` |
 | 〃 | `SnapGuideHandle` | `{ show(t: number, pxPerSec: number, target: SnapTarget): void; hide(): void }` (declared here by the contracts commit; `SnapGuide.tsx` imports it) |
@@ -465,7 +468,7 @@ These are committed first as types and stubs that pass values through, so the ap
 **Interaction with the parallel features**
 
 - **E-11 Freeze frame.** Freeze frames are `freeze` targets, from E-11's `freezeSnapTargets(clips, plan)` in `engine/freeze.ts` (a stub returning `[]` until E-11 lands). E-05 wires it in already (`projectFreezeTargets`, §4.1), so nothing in `snapControl.ts` changes when E-11 merges.
-  - E-11's `FreezeMarks` drag calls `snap.begin(e, { exclude: [{ owner: 'freeze:' + id }] })` and then `session.at(ev, t, limit)`. The exclusion plans the freeze targets without the dragged freeze. Because the playhead follows `at` during that drag, passing `noPlayhead: true` as well keeps the playhead's press-time position from catching the anchor.
+  - E-11's `FreezeMarks` drag calls `snap.begin(e, { exclude: [{ owner: 'freeze:' + id }] })` and then `session.at(ev, t, limit)`. The exclusion plans the freeze targets without the dragged freeze. Because the playhead follows `at` during that drag, passing `noPlayhead: true` as well keeps the playhead's press-time position from catching the anchor. Its limits accept only what the edit takes (`canMoveFreeze` for a move, `stillEndsAt` for a continue edge, `freezeEdit.ts`). It also sets the timeline's `dragging` ref for the length of the drag, so its seeks do not scroll the timeline (#18).
 - **E-04 Waveform.** It adds no targets. The guide (z-index 5) draws above the waveform. Snapping to pause edges is in Later.
 - **E-08 J/K/L.** The playhead is a target only while the player is not moving (`player.moving`, a contracts getter that E-08 extends to reverse shuttling).
 - **E-10 Crop.** No interaction; crop is spatial.
@@ -504,6 +507,8 @@ Common fixture `F`: clips `[{c0, 0–4, 1×}, {c1, 6–10, 1×}, {c2, 10–12, 2
 20. **`snapSpan` clamp fallback.** Case 18 with bounds `{lower: 0, upper: 3.95}` gives `{ start: 2.95, end: 3.95 }` (the unsnapped clamp) and `target = null`.
 21. **`snapAt` limit.** In F, `snapAt(idx, 11.95, view, { min: 0, max: 11.9 })` returns `{ t: 11.95, target: null }`. Without the limit, it returns 12 (Trim).
 22. **Scale.** Building with 20 000 click targets, then 1 000 `snapPoints` calls, finishes in under 250 ms. The bound is generous on purpose, as with the `Date.now()` bounds in `analysisIpc.test.ts`.
+23. **`accept`.** In F with a click at 4.06, a limit that refuses 4 makes the point 4.01 catch the click instead of Cut 4, and a held Cut 4 lets go.
+24. **Chapter limit.** A 600 s recording at fit with chapters at 0, 300 and 590: dragging the last one to 596.5 does not snap to End (or to a trimmed end), and 303 does not snap onto the chapter at 300; `outputChapters` keeps all three. A click and a cut still catch it. The freeze drags' limits are tested with `canMoveFreeze` and `stillEndsAt` in `freezeEdit.test.ts`.
 
 Existing tests that must stay unchanged and green:
 

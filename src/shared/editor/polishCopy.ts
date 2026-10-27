@@ -75,7 +75,7 @@ export function polishHint(
 ): string {
   switch (step) {
     case 'style':
-      return 'Changes the background, card, cursor look and zoom style. The aspect ratio and crop stay.'
+      return 'Changes the background, card, device frame, 3D tilt, cursor look and zoom style. The aspect ratio and crop stay.'
     case 'zoom':
       return state.autoZoomOn ? 'Auto zoom is on: your zooms stay as they are.' : 'Turns auto zoom on. Zooms you added or edited are kept.'
     case 'silences': {
