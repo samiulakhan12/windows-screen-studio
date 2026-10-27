@@ -250,14 +250,14 @@ fn cmd_transcribe(a: &Args) -> Result<(), Failure> {
 
     // Speech ranges of the part (one thread: more only add synchronisation).
     let t_vad = Instant::now();
-    let detector = vad::VadModel::open(a.vad_model.as_ref().unwrap(), 1)?;
-    detector.detect(&pcm)?;
-    let speech = detector.segments((a.max_chunk - 2.0 * chunks::PAD - 0.5) as f32)?;
+    let detector = vad::VadModel::open_beside_whisper(a.vad_model.as_ref().unwrap(), 1)?;
+    let probs = detector.detect(&pcm)?;
+    let speech = detector.segments()?;
     drop(detector);
     let vad_ms = t_vad.elapsed().as_secs_f64() * 1000.0;
     emit(&protocol::speech_line(&speech));
     let plan: Vec<(f64, f64)> =
-        chunks::plan(&speech, audio_s, a.max_chunk).into_iter().filter(|(s, e)| e - s >= 0.1).collect();
+        chunks::plan(&speech, &probs, audio_s, a.max_chunk).into_iter().filter(|(s, e)| e - s >= 0.1).collect();
     let total: f64 = plan.iter().map(|(s, e)| e - s).sum();
     protocol::progress(0, 0.0);
 

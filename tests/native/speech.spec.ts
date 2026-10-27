@@ -435,6 +435,14 @@ describe('ssw-speech (host build)', () => {
       expect(r.code, name).toBe(SIDECAR.exit.error)
       expect(one(r, 'error').code, name).toBe('model')
     }
+    // A broken speech detector model is never error `model`, which the app reads as a damaged
+    // Whisper model (it clears that model's record and offers to download it again).
+    writeFileSync(path.join(dir, 'vad-cut.bin'), readFileSync(VAD).subarray(0, 400_000))
+    for (const vad of [path.join(dir, 'vad-cut.bin'), path.join(dir, 'vad-missing.bin')]) {
+      const r = await helper(transcribeArgs(wav('jfk-cut.wav', jfk)).map((a) => (a === VAD ? vad : a)))
+      expect(r.code, vad).toBe(SIDECAR.exit.error)
+      expect(one(r, 'error'), vad).toMatchObject({ code: 'args', message: expect.stringMatching(/^--vad-model is not a usable speech detector model \(/) })
+    }
     const narrow = await helper(transcribeArgs(wav('narrow.wav', jfk.subarray(0, 8000 * 2), 8000)))
     expect(narrow.code).toBe(SIDECAR.exit.error)
     expect(one(narrow, 'error').code).toBe('audio')

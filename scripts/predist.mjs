@@ -10,7 +10,8 @@
 //      Chromium capture, AI providers and the level-based detector) unless SSW_REQUIRE_NATIVE=1,
 //      which release builds set.
 //   2b. The speech detector model matches its pin, and resources/THIRD_PARTY_NOTICES.txt is what
-//      scripts/notices.mjs generates now.
+//      scripts/notices.mjs generates now (without cargo it keeps the committed Rust crates' section
+//      with a warning, unless SSW_REQUIRE_NATIVE=1).
 //   3. The icon files exist (npm run icons).
 //   4. The code-signing environment is consistent (unsigned builds are fine).
 import { spawnSync } from 'node:child_process'

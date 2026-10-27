@@ -317,7 +317,7 @@ mod tests {
             .collect();
         // The helper's own chunk plan groups the segment lines (each chunk's segments start
         // inside it).
-        let chunks = crate::chunks::plan(&speech, audio_s, 29.0);
+        let chunks = crate::chunks::plan(&speech, &[], audio_s, 29.0);
         assert_eq!(chunks.len(), 5);
         let mut groups: Vec<Vec<Segment>> = vec![Vec::new(); chunks.len()];
         for s in segs {
