@@ -40,7 +40,7 @@ It changes nothing in `project.json`, the preview, the export or the undo histor
 | 8 | Vertical scale | dB, linear over the 45 dB below a reference. The reference is the 99th-percentile power of the loudest source and is shared by all lanes. | A fixed dBFS scale makes quiet microphones look flat. Scaling each lane separately would make system hum look as loud as speech. |
 | 9 | Volume, mute, normalisation | The shape ignores volume, normalisation and noise reduction. A lane whose gain is 0 is drawn grey. Gain is 0 when the source, the master or both are muted or at volume 0: the `trackGain` / `recordingMix` rule in `settings.ts`. | Volume changes how loud the sound is, not where the speech is. Grey shows the content while saying "not heard". |
 | 10 | Pause shading | Pauses are the gaps, inside `[0, duration]` and at least `SILENCE_LENGTH.min` (0.5 s) long, of `sourceActivity(project, analysis)` (`shared/audio/soundtrack.ts`). That is the same activity (`activitySources` → `combineLevels` → `detectActivity`) that `ClipPanel` hands to `planSilences` and that the preview and export duck music under. | One detector. **It is not Remove silences' plan.** `findSilences` (`smartSpeed.ts`) measures a pause's length in output time (through cuts and speed), uses the panel's minimum (default 1 s), counts title cards as sound and takes padding off each end. The shading shows where the sound is quiet. The Silences list shows what will be cut. **Rejected:** following the Silences panel's minimum, which is `ClipPanel` component state. |
-| 11 | Drawing | One canvas covering the timeline's render window `win`, redrawn in `useLayoutEffect` only when the levels, `px`, `win`, the clips, the lanes or the pauses change. | No per-frame or per-playhead work. This is the same rule as `placePlayhead`, which moves the playhead by transform without a React render. **Rejected:** SVG or DOM bars, which would be thousands of nodes at fit. |
+| 11 | Drawing | One canvas covering the timeline's render window `win`, redrawn in `useLayoutEffect` only when the levels, `px`, `win`, the clips, the lanes, the pauses or the display's scale factor change. | No per-frame or per-playhead work. This is the same rule as `placePlayhead`, which moves the playhead by transform without a React render. **Rejected:** SVG or DOM bars, which would be thousands of nodes at fit. |
 | 12 | Show/hide | A per-user view preference in `localStorage['editor-waveform']`, on by default. Palette command `toggleWaveform`, no default key. | It is not part of the video, so there is no project field and no migration. `localStorage` already holds editor view state (`CommandPalette` `editor-recent-commands`, `ExportDialog` `readJson`/`writeJson`). **Rejected:** a `PrefKey` in `editor-prefs.json`. It only needs a line in `src/shared/api/prefs.ts` `PREF_KEYS`, but it is read asynchronously, so the first paint would flash, and the file is shared. |
 | 13 | When to measure | After mount, in `requestIdleCallback` (timeout 1500 ms), and only while the waveform is shown. | It does not compete with the first decode. `analyzeAudio` already measures one source at a time. |
 
@@ -154,12 +154,13 @@ Cost is O(columns + windows in range). At fit on a 1 h recording that is 72,000 
 6. **Speed badges.** `.speed-badge` lives inside `.clip-block`. A selected block (`z-index: 1`) and a hovered block (`filter: brightness`) are stacking contexts, so no z-index on the badge can lift it above the canvas. Instead, `draw()` clears the badge's box: for every clip with `c.speed !== 1 && (c.end − c.start)·px > 28` (the same condition `Timeline` uses), `clearRect((c.start − win.start)·px + 4, 1, 46, 19)`.
 7. **Bookkeeping.** Set `canvas.dataset.draws = String(++draws)` imperatively. There is no React state, so drawing never re-renders.
 
-**When it redraws.** Only in `useLayoutEffect([px, win, levels, ref, lanes, pauses, gaps, clips, shown, status])`.
+**When it redraws.** Only in `useLayoutEffect([px, win, levels, ref, lanes, pauses, gaps, clips, shown, status, dpr])`.
 
 - Playback, scrubbing and the playhead never re-render it. `Timeline`'s player subscription only moves `playheadRef` by transform.
 - A Shift+drag re-renders `Timeline` (`setDraftRange`), but `ClipWaveform` is `memo` with unchanged props.
 - A trim drag (`onTrimDown`: `store.beginGesture`, one `store.update` per move) gives one redraw per move, up to 16k columns × 2 lanes, a few ms.
 - Colours are read once per mount with `getComputedStyle(canvas).getPropertyValue('--wave-…')`.
+- A window dragged to a monitor with another scale factor changes `devicePixelRatio` without a resize, so `px` and `win` stay the same. `dpr` comes from `useDevicePixelRatio` (`devicePixelRatio.ts`, the `matchMedia('(resolution: Ndppx)')` listener `PreviewStage` also uses), which renders it again once, and the canvas is redrawn at the new ratio.
 
 **4.7 States** (`data-state` on the canvas, and published to the hint store of §5)
 
@@ -272,8 +273,10 @@ Edits made while looking at the waveform stay the existing single steps:
 - `src/shared/audio/waveform.ts`: lanes, reference, heights, columns and pauses (pure).
 - `src/renderer/src/editor/ClipWaveform.tsx`: idle-time loading through `loadAudioAnalysis`, the canvas, `draw()`, the status store and `useWaveformHint`.
 - `src/renderer/src/editor/waveformPref.ts`: the per-user show/hide preference.
+- `src/renderer/src/editor/devicePixelRatio.ts`: `useDevicePixelRatio`, the display's scale factor (§4.6).
 - `src/renderer/src/editor/waveform.css`: colour tokens and canvas placement.
 - `tests/waveform.test.ts`: unit tests.
+- `tests/clipWaveform.test.ts`: the canvas redrawn at a new scale factor, rendered without a DOM.
 - `tests/e2e/waveform.e2e.cjs`: the end-to-end scenario. `run-all.cjs` picks up every `*.e2e.cjs`.
 
 **Modify:**
@@ -351,6 +354,8 @@ Changed by others (editing-wins.md):
 - `titles('pauses')` contains it. `smartSpeed` also has "pauses" in its keywords, so this is not checked as first.
 - `DEFAULT_KEYMAP.toggleWaveform` deep-equals `[]`.
 
+**Unit: `tests/clipWaveform.test.ts`.** `ClipWaveform` called as a function with React's hooks stubbed (as in `tests/cropEditor.test.ts`), a stub canvas and a `matchMedia` that fires `change` when a resolution query's match flips. At ratio 1 the ready canvas is 300 × 40 for 30 s at 10 px/s. A move to a 2× monitor asks for a render and redraws it at 600 × 80 (one more draw); a further move to 1.5× gives 450 × 60. Taken off the timeline, it leaves no listener.
+
 **End to end: `tests/e2e/waveform.e2e.cjs`.** It reuses:
 
 - `h.tempHome`, `h.launch`, `h.sleep`, `h.assert`, `h.run`, `h.projectsRoot` (`helpers.cjs`);
@@ -418,4 +423,5 @@ Scenario, "waveform shows talk and pauses, follows a cut, costs nothing during p
 - **Preference.** A value storage refuses is kept in memory for the session; `'on'` is written when shown (§3).
 - **Pauses.** Activity is clipped to `[0, duration]` before the "nothing heard" check, so sound only past the end shades nothing (§4.5).
 - **Hint.** ` (grey: muted)` is added to the ready hint only (§5). `duration` comes from props (§5).
+- **Scale factor.** Moving the window to a monitor with another scale factor left the canvas at the old ratio (soft at a higher one) until a zoom, a scroll or an edit. It now redraws when `devicePixelRatio` changes (§4.6, `tests/clipWaveform.test.ts`).
 - **Checked by hand, not in the e2e test.** With both stems and a 2× clip: the microphone above the line in lavender, the system sound below in orange, the speed badge's box clear, and muting the system sound turns its lane grey and adds "(grey: muted)" to the tooltip (one redraw).
