@@ -69,7 +69,7 @@ describe('the speech model catalog', () => {
     const bn = speechModel(BANGLA_MODEL)!
     expect(BANGLA_MODEL).toBe('whisper-bn-medium')
     expect(bn).toMatchObject({ tier: 'bangla', name: 'Bengali.AI Whisper medium', language: 'bn', maxChunkSeconds: 20, noTimestamps: true, minTotalMemGB: 8, needsStandardBuild: true, partSeconds: 180 })
-    expect(bn).toMatchObject({ rtf4: 0.87, ramMB: 1200, wer: 0.222, startMedianMs: 40 })
+    expect(bn).toMatchObject({ rtf4: 0.87, ramMB: 1200, wer: 0.183, startMedianMs: 40 })
     expect(bn.repo).toEqual({ repo: 'winshades/bengaliai-whisper-medium-ggml', commit: '11cf5cbd282e0e46a761093939952f74906ddce1' })
     expect(bn.license).toEqual({
       name: 'Apache-2.0',

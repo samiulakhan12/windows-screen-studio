@@ -1755,24 +1755,34 @@ on 59 clips (12.5 min) of FLEURS `bn_in` test, several speakers:
 
 | Decision | Choice | Why |
 |---|---|---|
-| Model | `bengaliAI/tugstugi_bengaliai-asr_whisper-medium` (1st place in the Bengali.AI speech recognition competition): Whisper medium (769M parameters, 24 + 24 layers, 80 mels, vocabulary 51865), Apache-2.0 | Per clip WER 18.5 %, CER 5.8 %; long-form (the clips joined, as in a recording) WER 24.8 % with the default 29 s chunks, **22.2 % with 20 s chunks** (CER 9.2 %). Same engine, DTW and word forming as the other models: no new code path in the helper. |
+| Model | `bengaliAI/tugstugi_bengaliai-asr_whisper-medium` (1st place in the Bengali.AI speech recognition competition): Whisper medium (769M parameters, 24 + 24 layers, 80 mels, vocabulary 51865), Apache-2.0 | Long-form (the 59 clips joined, as in a recording) with the app's arguments (`--lang bn --max-chunk 20 --no-timestamps`): **WER 18.3 %, CER 6.6 %** (208 word edits in 1,137 words; median per clip 16.7 %). With timestamp tokens: 24.8 % with the default 29 s chunks, 22.2 % with 20 s chunks (CER 9.2 %); per clip 18.5 % (CER 5.8 %). Same engine, DTW and word forming as the other models: no new code path in the helper. |
 | File | `ggml-bengaliai-whisper-medium-q5_0.bin` from `huggingface.co/winshades/bengaliai-whisper-medium-ggml` at commit `11cf5cbd282e0e46a761093939952f74906ddce1`, 539,257,671 bytes, SHA-256 `2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605` | A ready ggml conversion (conversion and q5_0 only, as its card lists; its Apache-2.0 LICENSE ships with it). q8_0 (823 MB) is not better (22.6 %). |
 | Id, tier | `whisper-bn-medium`, tier `bangla` ("Bangla"), `language: 'bn'` | A tier id like the others (§1 "Model ids"): a pin can change without touching transcripts. |
-| Chunks | `maxChunkSeconds: 20`, passed as `--max-chunk 20` | 24.8 % → 22.2 % WER long-form. `--max-chunk` (1..29.5 s) existed as a debug option; it becomes a supported per-model argument (§14.3). |
+| Chunks | `maxChunkSeconds: 20`, passed as `--max-chunk 20` | 24.8 % → 22.2 % WER long-form (with timestamp tokens). `--max-chunk` (1..29.5 s) existed as a debug option; it becomes a supported per-model argument (§14.3). |
+| Timestamp tokens | `noTimestamps: true`, passed as `--no-timestamps` (`whisper_full_params.no_timestamps`) | The model was fine-tuned without timestamp tokens; made to start with one, it garbles the first word of most chunks (38 of the 59 single clips began with a dangling vowel sign such as "াত্র"). Long-form WER 22.2 % → **18.3 %**, CER 9.2 % → 6.6 %; on six single clips 21.8 % → 13.7 %, the committed fixture 19.2 % → 0. Word times come from DTW either way (below). The Whisper models keep timestamp tokens. |
 | Language | always `--lang bn`; used only when the spoken language is Bengali | Fine-tuned on Bangla only: its own language detection cannot be trusted, and it must never make captions in another language. |
-| Speed, memory | `rtf4` 0.87 (long-form, 20 s chunks; 1.2 on single short clips), `ramMB` 1200 (peak RSS about 1.2 GB), load 0.4-0.7 s, `partSeconds` 180 (as turbo) | On a 4-core Windows PC (3 threads, × 1.65) a 20-minute recording takes about 29 min (`estimateSeconds`): slower than the recording, which the tab says before starting (§7.1). |
+| Speed, memory | `rtf4` 0.87 (long-form with the app's arguments: 0.866 transcribing, 0.869 with the speech detector; the 18.8 s fixture alone 0.89; 1.2 on single short clips with timestamp tokens), `ramMB` 1200 (peak RSS 1,202 MB), load 0.4-0.7 s from a warm disk cache (22-25 s on the first read of the 539 MB after the container restarted), `partSeconds` 180 (as turbo) | On a 4-core Windows PC (3 threads, × 1.65) a 20-minute recording takes about 29 min (`estimateSeconds`): slower than the recording, which the tab says before starting (§7.1). |
 | Gating | `minTotalMemGB: 8`, `needsStandardBuild: true` (as turbo) | `memoryNeedMB` 1,262 MB; the compatible build is about 4.3 times slower (`COMPAT_FACTOR`): about 6 times the recording's length. |
-| Word timings | unchanged (DTW preset MEDIUM from the header) | Word starts 91-93 % within 200 ms of forced alignment, median 40 ms, monotonic, no overlaps. |
+| Word timings | unchanged (DTW preset MEDIUM from the header), checked again without timestamp tokens | Long-form with the app's arguments, against a CTC forced alignment of the references: 991 of 1,143 words matched, word starts **92.9 % within 200 ms, median 40 ms, p90 130 ms** (with timestamp tokens: 91.2 %, 40 ms, 160 ms); monotonic, no overlaps, no word past the audio's end, 1 zero-length word (12 with timestamp tokens), median word 0.50 s, none over 1.5 s. |
 | Text | Bengali transcripts are NFC-normalised (`localTranscript`) | Byte tokens can leave a vowel sign in two parts (ে + া for ো). Other languages are left exactly as before (NFC would also change CJK compatibility ideographs). The model writes no punctuation. |
 | Hosting | the third-party file, pinned by commit, size and SHA-256 | If it disappears, downloads fail cleanly with `missing`; Qbexel can re-host the same bytes (same SHA-256) under its own Hugging Face account and change one repository in the catalog. |
+
+The final measurement (after `--no-timestamps`) ran the helper built from this branch once over
+the 59 clips joined into one 808.4 s file (1 s gaps), exactly as `localSpeechClient` calls it:
+`ssw-speech transcribe --model ggml-bengaliai-whisper-medium-q5_0.bin --vad-model
+ggml-silero-v6.2.0.bin --lang bn --max-chunk 20 --no-timestamps --threads 4`; each word was
+scored against the clip holding its midpoint, with the normalisation of
+`scripts/lib/banglaScore.mjs` (NFC, digits, punctuation to spaces, combining marks kept). Wall
+time 728 s, transcription 699.7 s. The catalog's `wer` is 0.183. `npm run bench:bangla` on the
+committed fixture: WER 0 % (26 words), CER 0 %, RTF 0.889, peak memory 1,104 MB.
 
 ### 14.2 Data model (additive) and old data
 
 - `catalog.ts`: `SpeechModelId` and `SpeechTier` gain `'whisper-bn-medium'` and `'bangla'`
   (`SPEECH_TIER_NAMES.bangla = 'Bangla'`); `SpeechModelSpec` gains optional `language` (the one
   language a model makes captions in), `maxChunkSeconds`, `noTimestamps` and `repo` (`{ repo,
-  commit }`, absent: `SPEECH_MODEL_REPO`); `SpeechLicense.name` widens to `'MIT' | 'Apache-2.0'`. The entry is last in
-  `SPEECH_MODELS`. New: `isLanguageModel(spec)`, `BANGLA_MODEL`, `isBengali(language)`.
+  commit }`, absent: `SPEECH_MODEL_REPO`); `SpeechLicense.name` widens to `'MIT' | 'Apache-2.0'`.
+  The entry is last in `SPEECH_MODELS`. New: `isLanguageModel(spec)`, `BANGLA_MODEL`, `isBengali(language)`.
   `modelUrl` uses the model's own repository (the test base still replaces it).
 - **Never the default model.** `defaultModel` (speech.json, Settings' radios, E-01, the chips'
   fallback) only ever names a general model: `sanitizeSpeechSettings` maps a language model to
@@ -1915,8 +1925,8 @@ holds); `NOTICE_NAMES` gains "Bengali.AI", so verify-dist checks it.
   `--max-chunk` and `--no-timestamps`; `validateTranscribeOptions`; NFC for Bengali only; the copy;
   the tab's choice by language (the chip only for Bengali and chosen by default, its own session
   choice, the blocked line, the detect line, the key users' link, the offer in the summary, no
-  `setDefaultSpeechModel` after its download); the Settings row without a radio; Polish's choice and hint; the notices
-  entry; the benchmark script's pin equals the catalog's.
+  `setDefaultSpeechModel` after its download); the Settings row without a radio; Polish's choice
+  and hint; the notices entry; the benchmark script's pin and arguments equal the catalog's.
 - End to end (`tests/e2e/bangla-captions.e2e.cjs`, no 540 MB download): Bengali shows the Bangla
   chip and the recommendation with its size; the click downloads from the mock (a sparse stand-in
   of the pinned size, served slowly); Cancel keeps the part, Delete removes it; English shows no
@@ -1924,10 +1934,10 @@ holds); `NOTICE_NAMES` gains "Bengali.AI", so verify-dist checks it.
   lists the row "Bangla only" without a radio. The run path: a verified record for a sparse
   stand-in (the state a finished download leaves) makes the tab ready; Generate starts the real
   helper through a logging wrapper with `--model ggml-bengaliai-whisper-medium-q5_0.bin --lang bn
-  --max-chunk 20 --no-timestamps`, the helper refuses the stand-in as a damaged model, and the tab offers
-  "Download again (539 MB)". The pin is never bypassed, so a real Bangla run is not faked in the
-  suite.
+  --max-chunk 20 --no-timestamps`, the helper refuses the stand-in as a damaged model, and the tab
+  offers "Download again (539 MB)". The pin is never bypassed, so a real Bangla run is not faked
+  in the suite.
 - Opt-in benchmark (not a test): `npm run bench:bangla -- --model <file>` runs the real model
   through the helper with the app's arguments on the committed fixture
   `tests/fixtures/speech/bn-fleurs-blog-18s.flac` (18.8 s, FLEURS, CC BY 4.0) and prints WER, CER
-  and the RTF.
+  and the RTF (last run: WER 0 %, CER 0 %, RTF 0.889, §14.1).

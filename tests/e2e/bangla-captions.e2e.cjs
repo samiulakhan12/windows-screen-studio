@@ -6,8 +6,8 @@
 // as Bengali offers it; Settings lists it as "Bangla only" without a radio. The run path: a
 // verified record for the stand-in (the state a finished download leaves in speech.json) makes the
 // tab ready and Polish name the Bangla model; Generate runs the real helper through a logging
-// wrapper with --lang bn --max-chunk 20 --no-timestamps, the helper refuses the stand-in as a damaged model, and
-// the tab offers to download it again. The real model's accuracy is the opt-in benchmark
+// wrapper with --lang bn --max-chunk 20 --no-timestamps, the helper refuses the stand-in as a
+// damaged model, and the tab offers to download it again. The real model's accuracy is the opt-in benchmark
 // (npm run bench:bangla). A missing helper fails, never skips.
 const fs = require('node:fs')
 const path = require('node:path')

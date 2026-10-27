@@ -153,7 +153,8 @@ export const SPEECH_MODELS: readonly SpeechModelSpec[] = [
   },
   {
     // Bangla only (docs/design/offline-captions.md §14): measured on 59 FLEURS bn_in test clips,
-    // long-form with 20 s chunks: WER 22.2 %, CER 9.2 % (large-v3 turbo with Bengali: 98 %).
+    // long-form with 20 s chunks and no timestamp tokens: WER 18.3 %, CER 6.6 % (large-v3 turbo
+    // with Bengali: 98 %).
     id: 'whisper-bn-medium',
     tier: 'bangla',
     name: 'Bengali.AI Whisper medium',
@@ -162,7 +163,7 @@ export const SPEECH_MODELS: readonly SpeechModelSpec[] = [
     sha256: '2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605',
     rtf4: 0.87,
     ramMB: 1200,
-    wer: 0.222,
+    wer: 0.183,
     startMedianMs: 40,
     partSeconds: 180,
     minTotalMemGB: 8,
