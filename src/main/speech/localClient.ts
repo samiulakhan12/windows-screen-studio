@@ -12,7 +12,7 @@ import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { ENGINE_VERSION, speechModel, speechModelBlock, speechThreads, type SpeechModelSpec } from '../../shared/speech/catalog'
 import { localErrorMessage, type LocalCaptionsError, type LocalErrorParams } from '../../shared/speech/errors'
 import { estimateSeconds } from '../../shared/speech/estimate'
-import { chunkArgs, localTranscript, readSidecarLine, SIDECAR, type SidecarResult, type SidecarSegment } from '../../shared/speech/protocol'
+import { localTranscript, modelArgs, readSidecarLine, SIDECAR, type SidecarResult, type SidecarSegment } from '../../shared/speech/protocol'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { cancelled } from '../ai/request'
 import type { AiClient, AudioPart, TranscribeCall } from '../ai/types'
@@ -134,8 +134,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       '--audio', part.file,
       '--vad-model', vadModel,
       '--lang', lang,
-      // The model's own chunk length (the Bangla model: 20 s), else the helper's default.
-      ...chunkArgs(spec),
+      // The model's own arguments (the Bangla model: 20 s chunks, no timestamp tokens), else none.
+      ...modelArgs(spec),
       '--threads', String(threads),
       '--stdin-control',
       ...commonArgs()

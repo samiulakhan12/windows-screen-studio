@@ -64,6 +64,12 @@ export interface SpeechModelSpec {
   language?: 'bn'
   /** Longest chunk the helper hands whisper.cpp for this model, seconds (absent: SIDECAR.maxChunk). */
   maxChunkSeconds?: number
+  /**
+   * Decode without timestamp tokens (`--no-timestamps`): a model fine-tuned without them (the
+   * Bangla model) garbles the first word of most chunks when made to start with one. Word times
+   * come from DTW either way.
+   */
+  noTimestamps?: true
   /** Where the file comes from (absent: SPEECH_MODEL_REPO). */
   repo?: { repo: string; commit: string }
   license: SpeechLicense
@@ -163,6 +169,7 @@ export const SPEECH_MODELS: readonly SpeechModelSpec[] = [
     needsStandardBuild: true,
     language: 'bn',
     maxChunkSeconds: 20,
+    noTimestamps: true,
     repo: { repo: 'winshades/bengaliai-whisper-medium-ggml', commit: '11cf5cbd282e0e46a761093939952f74906ddce1' },
     license: {
       name: 'Apache-2.0',

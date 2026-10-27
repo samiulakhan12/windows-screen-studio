@@ -4,7 +4,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { BANGLA_MODEL, modelUrl, speechModel } from '../src/shared/speech/catalog'
-import { chunkArgs } from '../src/shared/speech/protocol'
+import { modelArgs } from '../src/shared/speech/protocol'
 
 /*
  * The opt-in benchmark of the Bangla model (scripts/bench-bangla.mjs, docs/design/offline-captions.md
@@ -28,14 +28,23 @@ const score = (await import(pathToFileURL(path.join(ROOT, 'scripts', 'lib', 'ban
 describe('the Bangla model benchmark', () => {
   it('pins the model as the catalog does', () => {
     const bn = speechModel(BANGLA_MODEL)!
-    expect(bench.BANGLA_PIN).toEqual({ id: bn.id, file: bn.file, bytes: bn.bytes, sha256: bn.sha256, url: modelUrl(bn), language: bn.language, maxChunkSeconds: bn.maxChunkSeconds })
+    expect(bench.BANGLA_PIN).toEqual({
+      id: bn.id,
+      file: bn.file,
+      bytes: bn.bytes,
+      sha256: bn.sha256,
+      url: modelUrl(bn),
+      language: bn.language,
+      maxChunkSeconds: bn.maxChunkSeconds,
+      noTimestamps: bn.noTimestamps
+    })
   })
 
-  it('runs the helper with the language and chunk length the app passes for the model', () => {
+  it('runs the helper with the language and the arguments the app passes for the model', () => {
     const bn = speechModel(BANGLA_MODEL)!
     const args = bench.benchArgs({ modelDir: '/m', audio: '/a.wav', vadModel: '/v.bin', threads: 4 })
-    expect(args).toEqual(['transcribe', '--model-dir', '/m', '--model', bn.file, '--audio', '/a.wav', '--vad-model', '/v.bin', '--lang', bn.language!, ...chunkArgs(bn), '--threads', '4'])
-    expect(chunkArgs(bn)).toEqual(['--max-chunk', '20'])
+    expect(args).toEqual(['transcribe', '--model-dir', '/m', '--model', bn.file, '--audio', '/a.wav', '--vad-model', '/v.bin', '--lang', bn.language!, ...modelArgs(bn), '--threads', '4'])
+    expect(modelArgs(bn)).toEqual(['--max-chunk', '20', '--no-timestamps'])
   })
 
   it('transcribes the committed fixture against its committed transcript', () => {

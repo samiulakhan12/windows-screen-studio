@@ -645,8 +645,9 @@ checked with `speechModel()`, booleans with `=== true`.
 - `ssw-speech vad --vad-model P --audio <wav|-> [--format f32le] [--threads 1] [--low-priority]
   [--parent-pid N]`
 - `ssw-speech transcribe --model-dir D --model F --audio W --vad-model P [--lang auto|xx]
-  [--threads N] [--max-chunk S] [--low-priority] [--stdin-control] [--parent-pid N]`
-  (`--max-chunk`, 1..29.5 s, default `SIDECAR.maxChunk`: per model since §14.3)
+  [--threads N] [--max-chunk S] [--no-timestamps] [--low-priority] [--stdin-control]
+  [--parent-pid N]` (`--max-chunk`, 1..29.5 s, default `SIDECAR.maxChunk`, and `--no-timestamps`,
+  decoding without timestamp tokens: per model since §14.3)
 - Debug only: `--dtw auto|off|<preset>`, `--beam N`, `--prompt S`, `--verbose`.
 - `F` must match `[A-Za-z0-9._-]+`; Rust joins it to `D`, so there is no path traversal. Models and
   the VAD model are opened by Rust (`std::fs::File`, Unicode paths) and handed to whisper.cpp
@@ -1769,8 +1770,8 @@ on 59 clips (12.5 min) of FLEURS `bn_in` test, several speakers:
 
 - `catalog.ts`: `SpeechModelId` and `SpeechTier` gain `'whisper-bn-medium'` and `'bangla'`
   (`SPEECH_TIER_NAMES.bangla = 'Bangla'`); `SpeechModelSpec` gains optional `language` (the one
-  language a model makes captions in), `maxChunkSeconds` and `repo` (`{ repo, commit }`, absent:
-  `SPEECH_MODEL_REPO`); `SpeechLicense.name` widens to `'MIT' | 'Apache-2.0'`. The entry is last in
+  language a model makes captions in), `maxChunkSeconds`, `noTimestamps` and `repo` (`{ repo,
+  commit }`, absent: `SPEECH_MODEL_REPO`); `SpeechLicense.name` widens to `'MIT' | 'Apache-2.0'`. The entry is last in
   `SPEECH_MODELS`. New: `isLanguageModel(spec)`, `BANGLA_MODEL`, `isBengali(language)`.
   `modelUrl` uses the model's own repository (the test base still replaces it).
 - **Never the default model.** `defaultModel` (speech.json, Settings' radios, E-01, the chips'
@@ -1801,10 +1802,15 @@ on 59 clips (12.5 min) of FLEURS `bn_in` test, several speakers:
   `pickTranscriber` gains an optional 4th parameter `language` (default '': today's behaviour
   exactly); `api/speech.ts`: the licence type only.
 - `protocol.ts` (§5.2): `SIDECAR` is unchanged; new `MAX_CHUNK_RANGE = { min: 1, max: 29.5 }` (the
-  helper's own bounds) and `chunkArgs(spec)`: `['--max-chunk', '20']` for a model that sets
-  `maxChunkSeconds`, `[]` otherwise (the helper's default stays `SIDECAR.maxChunk`, 29 s);
+  helper's own bounds), `chunkArgs(spec)`: `['--max-chunk', '20']` for a model that sets
+  `maxChunkSeconds`, `[]` otherwise (the helper's default stays `SIDECAR.maxChunk`, 29 s), and
+  `modelArgs(spec)`: `chunkArgs` plus `--no-timestamps` for a model that sets `noTimestamps`
+  (the Bangla model: `['--max-chunk', '20', '--no-timestamps']`, the Whisper models: none);
   `localTranscript` NFC-normalises Bengali text. The helper's usage line lists `--max-chunk S` as a
-  supported `transcribe` option instead of "debug only", with a cargo test of its bounds.
+  supported `transcribe` option instead of "debug only", and gains `--no-timestamps`
+  (`whisper_full_params.no_timestamps`), each with a cargo test. The helper's output for the
+  Whisper models is unchanged, so `ENGINE_VERSION` stays; a model's own arguments are fixed by its
+  catalog entry, whose SHA-256 is in the part cache key.
 - `polish.ts`: `polishTranscriber(providers, speech, remembered, language?)` returns
   `{ providerId, model?, language? }`; `language` is set only for a language model.
 
@@ -1873,7 +1879,7 @@ huggingface.co/winshades/bengaliai-whisper-medium-ggml (11cf5cb)".
 Captions row says "Runs on this PC with the Bangla model: nothing is uploaded and it costs
 nothing." Otherwise it behaves as before (no language passed, the general model).
 
-**Main**: `localSpeechClient` passes the model's language (`--lang bn`) and `chunkArgs(spec)`;
+**Main**: `localSpeechClient` passes the model's language (`--lang bn`) and `modelArgs(spec)`;
 everything else (parts, cache, retries, the time limit from `estimateSeconds`, speed learning) is
 the common path.
 
@@ -1901,11 +1907,12 @@ holds); `NOTICE_NAMES` gains "Bengali.AI", so verify-dist checks it.
 ### 14.6 Tests
 
 - Unit, each failing without its code: the catalog pin (id, tier, file, bytes, SHA-256, the
-  repository and commit URL, Apache-2.0, `language`, `maxChunkSeconds`, gating, last in the
-  catalog); the default rules (sanitize, download, remove and setDefault never make a language
-  model the default); `localModel`, `localModelFor`, `pickTranscriber` with a language,
-  `quickerModel`; `chunkArgs` and the arguments `localSpeechClient` passes (`--lang bn --max-chunk
-  20`, none for the other models); `validateTranscribeOptions`; NFC for Bengali only; the copy;
+  repository and commit URL, Apache-2.0, `language`, `maxChunkSeconds`, `noTimestamps`, gating,
+  last in the catalog); the default rules (sanitize, download, remove and setDefault never make a
+  language model the default); `localModel`, `localModelFor`, `pickTranscriber` with a language,
+  `quickerModel`; `chunkArgs`, `modelArgs` and the arguments `localSpeechClient` passes (`--lang bn
+  --max-chunk 20 --no-timestamps`, none of them for the other models); cargo tests of
+  `--max-chunk` and `--no-timestamps`; `validateTranscribeOptions`; NFC for Bengali only; the copy;
   the tab's choice by language (the chip only for Bengali and chosen by default, its own session
   choice, the blocked line, the detect line, the key users' link, the offer in the summary, no
   `setDefaultSpeechModel` after its download); the Settings row without a radio; Polish's choice and hint; the notices
@@ -1917,7 +1924,7 @@ holds); `NOTICE_NAMES` gains "Bengali.AI", so verify-dist checks it.
   lists the row "Bangla only" without a radio. The run path: a verified record for a sparse
   stand-in (the state a finished download leaves) makes the tab ready; Generate starts the real
   helper through a logging wrapper with `--model ggml-bengaliai-whisper-medium-q5_0.bin --lang bn
-  --max-chunk 20`, the helper refuses the stand-in as a damaged model, and the tab offers
+  --max-chunk 20 --no-timestamps`, the helper refuses the stand-in as a damaged model, and the tab offers
   "Download again (539 MB)". The pin is never bypassed, so a real Bangla run is not faked in the
   suite.
 - Opt-in benchmark (not a test): `npm run bench:bangla -- --model <file>` runs the real model

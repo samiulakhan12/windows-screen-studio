@@ -27,7 +27,8 @@ export const BANGLA_PIN = {
   sha256: '2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605',
   url: 'https://huggingface.co/winshades/bengaliai-whisper-medium-ggml/resolve/11cf5cbd282e0e46a761093939952f74906ddce1/ggml-bengaliai-whisper-medium-q5_0.bin',
   language: 'bn',
-  maxChunkSeconds: 20
+  maxChunkSeconds: 20,
+  noTimestamps: true
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -38,7 +39,7 @@ const HELPER = path.join(root, 'native', 'bin', process.platform === 'win32' ? '
 
 /** The helper's `transcribe` arguments, as src/main/speech/localClient.ts builds them for the Bangla model (no --stdin-control: nothing cancels here). */
 export function benchArgs({ modelDir, audio, vadModel = VAD_MODEL, threads }) {
-  return ['transcribe', '--model-dir', modelDir, '--model', BANGLA_PIN.file, '--audio', audio, '--vad-model', vadModel, '--lang', BANGLA_PIN.language, '--max-chunk', String(BANGLA_PIN.maxChunkSeconds), '--threads', String(threads)]
+  return ['transcribe', '--model-dir', modelDir, '--model', BANGLA_PIN.file, '--audio', audio, '--vad-model', vadModel, '--lang', BANGLA_PIN.language, '--max-chunk', String(BANGLA_PIN.maxChunkSeconds), '--no-timestamps', '--threads', String(threads)]
 }
 
 function fail(message) {
@@ -112,7 +113,7 @@ async function main() {
       fixture: path.relative(root, FIXTURE),
       audioSeconds: result.duration,
       threads: o.threads,
-      arguments: `--lang ${BANGLA_PIN.language} --max-chunk ${BANGLA_PIN.maxChunkSeconds}`,
+      arguments: `--lang ${BANGLA_PIN.language} --max-chunk ${BANGLA_PIN.maxChunkSeconds} --no-timestamps`,
       language: result.language,
       wer: Math.round(score.wer * 1000) / 10,
       cer: Math.round(score.cer * 1000) / 10,

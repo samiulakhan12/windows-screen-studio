@@ -6,7 +6,7 @@
 // as Bengali offers it; Settings lists it as "Bangla only" without a radio. The run path: a
 // verified record for the stand-in (the state a finished download leaves in speech.json) makes the
 // tab ready and Polish name the Bangla model; Generate runs the real helper through a logging
-// wrapper with --lang bn --max-chunk 20, the helper refuses the stand-in as a damaged model, and
+// wrapper with --lang bn --max-chunk 20 --no-timestamps, the helper refuses the stand-in as a damaged model, and
 // the tab offers to download it again. The real model's accuracy is the opt-in benchmark
 // (npm run bench:bangla). A missing helper fails, never skips.
 const fs = require('node:fs')
@@ -226,7 +226,7 @@ const speak = (win, code) => win.selectOption('select[aria-label="Spoken languag
     h.assert((await row.locator('button:has-text("Download 539 MB")').count()) === 1, 'its download names its size')
   }))
 
-  await test('Bangla model: once verified, Bengali uses it (tab and Polish); Generate runs the helper with --lang bn --max-chunk 20, which refuses the stand-in as damaged', fx.withHome('bn-run', async (ctx, home) => {
+  await test('Bangla model: once verified, Bengali uses it (tab and Polish); Generate runs the helper with --lang bn --max-chunk 20 --no-timestamps, which refuses the stand-in as damaged', fx.withHome('bn-run', async (ctx, home) => {
     seedBangla(home)
     // The models folder as a finished download leaves it: the file and its verified record. The
     // stand-in is sparse, so it costs no disk; the engine will refuse it, as it should.
@@ -278,6 +278,7 @@ const speak = (win, code) => win.selectOption('select[aria-label="Spoken languag
       h.assert(args.includes(`--model ${PIN.file}`), `the Bangla model: ${args}`)
       h.assert(args.includes('--lang bn'), `in Bengali: ${args}`)
       h.assert(args.includes('--max-chunk 20'), `with 20 s chunks: ${args}`)
+      h.assert(args.includes('--no-timestamps'), `without timestamp tokens: ${args}`)
     }
     // The engine could not load it: the verified record is cleared, so the next use hashes it again.
     await f.waitFor(() => !readJson(path.join(dir, 'speech.json'))?.verified?.[PIN.id], 'the verified record is cleared', 10000)

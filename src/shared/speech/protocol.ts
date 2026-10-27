@@ -329,3 +329,13 @@ export function chunkArgs(spec: { maxChunkSeconds?: number }): string[] {
   if (s === undefined || !Number.isFinite(s) || s < MAX_CHUNK_RANGE.min || s > MAX_CHUNK_RANGE.max) return []
   return ['--max-chunk', String(s)]
 }
+
+/**
+ * Every `transcribe` argument a model sets for itself: its chunk length (chunkArgs) and
+ * `--no-timestamps` for a model that decodes without timestamp tokens
+ * (SpeechModelSpec.noTimestamps). The Bangla model: `['--max-chunk', '20', '--no-timestamps']`;
+ * the Whisper models: none.
+ */
+export function modelArgs(spec: { maxChunkSeconds?: number; noTimestamps?: true }): string[] {
+  return [...chunkArgs(spec), ...(spec.noTimestamps === true ? ['--no-timestamps'] : [])]
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chunkArgs, localTranscript, MAX_CHUNK_RANGE, readSidecarLine, SIDECAR, type SidecarSegment } from '../src/shared/speech/protocol'
+import { chunkArgs, localTranscript, MAX_CHUNK_RANGE, modelArgs, readSidecarLine, SIDECAR, type SidecarSegment } from '../src/shared/speech/protocol'
 
 const line = (o: unknown): string => JSON.stringify(o)
 const timing = { load_ms: 80, vad_ms: 20, asr_ms: 900, rtf: 0.05, peak_rss_mb: 300 }
@@ -108,5 +108,12 @@ describe('Bengali text and the per-model chunk length (docs/design/offline-capti
     for (const bad of [0.5, 30, Number.NaN, Number.POSITIVE_INFINITY]) expect(chunkArgs({ maxChunkSeconds: bad })).toEqual([])
     // The helper's default stays the frozen SIDECAR.maxChunk.
     expect(SIDECAR.maxChunk).toBe(29)
+  })
+
+  it("passes every argument a model sets for itself: its chunk length and --no-timestamps", () => {
+    expect(modelArgs({ maxChunkSeconds: 20, noTimestamps: true })).toEqual(['--max-chunk', '20', '--no-timestamps'])
+    expect(modelArgs({ noTimestamps: true })).toEqual(['--no-timestamps'])
+    expect(modelArgs({ maxChunkSeconds: 20 })).toEqual(['--max-chunk', '20'])
+    expect(modelArgs({})).toEqual([])
   })
 })

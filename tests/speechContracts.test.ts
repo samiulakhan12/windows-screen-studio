@@ -60,15 +60,15 @@ describe('the speech model catalog', () => {
     expect(speechModel('whisper-turbo')?.minTotalMemGB).toBe(8)
     expect(SPEECH_MODELS.filter((m) => m.minTotalMemGB !== undefined).map((m) => m.id)).toEqual(['whisper-turbo', 'whisper-bn-medium'])
     expect(SPEECH_MODELS.filter((m) => m.needsStandardBuild).map((m) => m.id)).toEqual(['whisper-turbo', 'whisper-bn-medium'])
-    // The multilingual models are the only ones without a language; none of them sets its own chunks or repository.
+    // The multilingual models are the only ones without a language; none of them sets its own chunks, timestamps or repository.
     expect(SPEECH_MODELS.filter((m) => !m.language).map((m) => m.id)).toEqual(['whisper-tiny', 'whisper-base', 'whisper-small', 'whisper-turbo'])
-    expect(SPEECH_MODELS.filter((m) => m.maxChunkSeconds !== undefined || m.repo !== undefined).map((m) => m.id)).toEqual(['whisper-bn-medium'])
+    expect(SPEECH_MODELS.filter((m) => m.maxChunkSeconds !== undefined || m.repo !== undefined || m.noTimestamps !== undefined).map((m) => m.id)).toEqual(['whisper-bn-medium'])
   })
 
   it('pins the Bangla model: Bangla only, 20 s chunks, its own repository commit, Apache-2.0, gated like turbo (§14)', () => {
     const bn = speechModel(BANGLA_MODEL)!
     expect(BANGLA_MODEL).toBe('whisper-bn-medium')
-    expect(bn).toMatchObject({ tier: 'bangla', name: 'Bengali.AI Whisper medium', language: 'bn', maxChunkSeconds: 20, minTotalMemGB: 8, needsStandardBuild: true, partSeconds: 180 })
+    expect(bn).toMatchObject({ tier: 'bangla', name: 'Bengali.AI Whisper medium', language: 'bn', maxChunkSeconds: 20, noTimestamps: true, minTotalMemGB: 8, needsStandardBuild: true, partSeconds: 180 })
     expect(bn).toMatchObject({ rtf4: 0.87, ramMB: 1200, wer: 0.222, startMedianMs: 40 })
     expect(bn.repo).toEqual({ repo: 'winshades/bengaliai-whisper-medium-ggml', commit: '11cf5cbd282e0e46a761093939952f74906ddce1' })
     expect(bn.license).toEqual({
