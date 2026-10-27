@@ -177,7 +177,8 @@ export interface LocalRun {
 }
 
 const runs = new Map<string, LocalRun>()
-const kept = new Map<string, { kept: number; parts: number }>()
+/** Parts kept by a Cancel, with the model and language ('' detects) they were made with: the part cache's key. */
+const kept = new Map<string, { kept: number; parts: number; model: string; language: string }>()
 
 /** The run that made `transcript` in this session, or null (the transcript stores neither detection nor time). */
 export function localRun(projectId: string, transcript: Pick<Transcript, 'provider' | 'createdAt'> | undefined): LocalRun | null {
@@ -185,8 +186,14 @@ export function localRun(projectId: string, transcript: Pick<Transcript, 'provid
   return run && transcript?.provider === 'local' && transcript.createdAt === run.createdAt ? run : null
 }
 
-/** Parts kept by the last Cancel of project `projectId` (shown until the next run), or null. */
-export const keptParts = (projectId: string): { kept: number; parts: number } | null => kept.get(projectId) ?? null
+/**
+ * Parts kept by the last Cancel of project `projectId` (shown until the next run), or null. Only
+ * a run with the same `model` and `language` ('' detects) reuses them: the cache is keyed by both.
+ */
+export function keptParts(projectId: string, model: string, language = ''): { kept: number; parts: number } | null {
+  const rec = kept.get(projectId)
+  return rec && rec.model === model && rec.language === language ? rec : null
+}
 
 /**
  * Makes captions on this PC (captionItems.transcribe, one undo step). When it ends while another
@@ -214,7 +221,8 @@ export async function startLocalCaptions(services: EditorServices, options: Tran
 /** Cancel of a job on this PC: remembers how many parts were finished, so the tab can say they are kept. */
 export function cancelLocalCaptions(): void {
   const job = transcriptionJob()
-  if (job?.running && job.local && job.progress && job.progress.total > 0) kept.set(job.projectId, { kept: Math.min(job.progress.done, job.progress.total), parts: job.progress.total })
+  if (job?.running && job.local && job.progress && job.progress.total > 0)
+    kept.set(job.projectId, { kept: Math.min(job.progress.done, job.progress.total), parts: job.progress.total, model: job.local.model, language: job.local.language })
   cancelTranscription()
   emit()
 }

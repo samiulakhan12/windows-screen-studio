@@ -138,14 +138,17 @@ export function LocalQuality({ state, model, project, chipsRef }: { state: Speec
 
 export type LocalState = 'no-sound' | 'needs-model' | 'downloading' | 'verifying' | 'stopped' | 'download-failed' | 'ready' | 'cancelled' | 'error'
 
-/** The block's state for the chosen model (running and done are shown by the Generate section itself). */
-export function localState(view: SpeechModelView, project: Pick<Project, 'id' | 'hasAudio'>, job: TranscriptionJob | null): LocalState {
+/**
+ * The block's state for the chosen model and spoken `language` ('' detects); running and done are
+ * shown by the Generate section itself.
+ */
+export function localState(view: SpeechModelView, project: Pick<Project, 'id' | 'hasAudio'>, job: TranscriptionJob | null, language = ''): LocalState {
   if (!project.hasAudio) return 'no-sound'
   const code = job?.error ? localErrorCode(job.error) : null
   if (job?.error && code !== 'no-model') return 'error'
   switch (view.status.state) {
     case 'installed':
-      return (keptParts(project.id)?.kept ?? 0) > 0 ? 'cancelled' : 'ready'
+      return (keptParts(project.id, view.id, language)?.kept ?? 0) > 0 ? 'cancelled' : 'ready'
     case 'downloading':
       return 'downloading'
     case 'verifying':
@@ -208,7 +211,7 @@ export function LocalAction({
   const primaryRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const view = modelView(state, model)
-  const ls = view ? localState(view, project, job) : 'needs-model'
+  const ls = view ? localState(view, project, job, options.language) : 'needs-model'
   const estimate = view ? estimateFor(state, view, project.duration) : 0
   const lm = localModel(state)
 
@@ -468,7 +471,7 @@ export function LocalAction({
 
     case 'ready':
     case 'cancelled': {
-      const kept = ls === 'cancelled' ? keptParts(project.id) : null
+      const kept = ls === 'cancelled' ? keptParts(project.id, view.id, options.language) : null
       const memory = memoryWarning(view.id, state.memory.free)
       return box(
         <>

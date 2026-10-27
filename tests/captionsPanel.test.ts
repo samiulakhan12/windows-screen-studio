@@ -553,6 +553,36 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(calls.download).toEqual(['whisper-base'])
   })
 
+  it('"N of M parts are kept" only for the tier and language whose parts were kept (UI-9)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' }, 'whisper-tiny': { state: 'installed' } } }))
+    let out = await show()
+    click(out, 'Generate captions')
+    progress!({ projectId: 'p1', phase: 'transcribing', done: 3, total: 6, fraction: 0.55 })
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('running')
+    click(out, 'Cancel')
+    await flush()
+    out = render(m.panel)
+    const KEPT = 'Stopped. 3 of 6 parts are kept: Generate captions continues from there.'
+    expect(local(out)?.props['data-state']).toBe('cancelled')
+    expect(has(out, KEPT)).toBe(true)
+    // The parts are cached for Standard and the language asked for: another tier starts from scratch.
+    ;(chips(out)[0].props.onClick as () => void)()
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(has(out, KEPT)).toBe(false)
+    ;(chips(out)[1].props.onClick as () => void)()
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('cancelled')
+    // So does another spoken language.
+    const language = out.find((e) => e.props['aria-label'] === 'Spoken language')!
+    ;(language.props.onChange as (e: unknown) => void)({ target: { value: 'de' } })
+    out = render(m.panel)
+    expect(local(out)?.props['data-state']).toBe('ready')
+    expect(has(out, KEPT)).toBe(false)
+  })
+
   it('no-model goes back to the consent card', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
