@@ -26,9 +26,10 @@ export const VAD_TRUST = { minSpeech: 2.0, minSound: 10.0 } as const
 
 /**
  * Which detector decided what counts as sound, for the hint in the Clip tab:
- * 'speech' every voice source used the speech detector; 'mixed' a recording without stems
- * (speech joined with any sound of the mixed track); 'guard' the trust guard used the level of
- * a source; 'level' the speech detector did not run (today's detector).
+ * 'speech' the microphone used the speech detector; 'mixed' a recording without stems
+ * (speech joined with any sound of the mixed track, also under the trust guard); 'guard' the
+ * trust guard used the level of the microphone; 'level' the speech detector did not run on the
+ * voice source (today's detector).
  */
 export type SoundDetector = 'speech' | 'mixed' | 'guard' | 'level'
 
@@ -64,14 +65,23 @@ export function trustSpeech(speech: readonly Range[], energy: readonly Range[]):
   return !(total(speech) < VAD_TRUST.minSpeech && total(energy) >= VAD_TRUST.minSound)
 }
 
-/** The detector sourceActivity used for `project` with `analysis`; null while levels are missing or without sound. */
+/**
+ * The detector sourceActivity used for `project` with `analysis`; null while levels are missing,
+ * without sound, or when no voice source is heard (the microphone muted, or only PC sound
+ * recorded: every sound counts as before, and no detector is there to name).
+ */
 export function soundDetector(project: Pick<Project, 'hasAudio' | 'audioStems' | 'audio'>, analysis: AudioAnalysis): SoundDetector | null {
   const sources = activitySources(project)
   if (sources.length === 0) return null
   const levels = sources.map((s) => analysis[s])
   if (levels.some((l) => !l)) return null
-  const voiced = sources.map((s, i) => ({ source: s, levels: levels[i]! })).filter((v) => v.levels.speech)
-  if (voiced.length === 0) return 'level'
-  if (voiced.some((v) => !trustSpeech(v.levels.speech!, detectActivity(v.levels)))) return 'guard'
-  return voiced.some((v) => v.source === 'mix') ? 'mixed' : 'speech'
+  // The speech detector listens to the voice source only (the system stem never carries speech).
+  const i = sources.findIndex((s) => s !== 'system')
+  if (i < 0) return null
+  const voice = levels[i]!
+  if (!voice.speech) return 'level'
+  // The mixed track counts its sound either way, and a recording without stems has no
+  // microphone to name: the guard is told only for the microphone.
+  if (sources[i] === 'mix') return 'mixed'
+  return trustSpeech(voice.speech, detectActivity(voice)) ? 'speech' : 'guard'
 }

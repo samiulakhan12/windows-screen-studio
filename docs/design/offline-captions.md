@@ -485,7 +485,10 @@ same signature and null rules:
 - `combineLevels` keeps returning the one envelope for one source; speech is always read per
   source before combining.
 - `soundDetector(project, analysis)` says which rule ran (`speech`, `mixed`, `guard`, `level`) for
-  the Clip tab's status line.
+  the Clip tab's status line: `level` when the voice source (mic stem, or the mixed track without
+  stems) is heard without `speech`; `guard` only for the mic stem (a recording without stems says
+  `mixed`: its sound counts either way and it has no microphone to name); null when no voice
+  source is heard (the mic muted or at 0, or PC sound alone), so the line is hidden.
 
 **Smart speed** keeps its signature; idle still needs a still picture and no input
 (`smartSpeed.ts` `findIdleRanges`), so silent typing is never sped up.
@@ -916,7 +919,9 @@ applies only when opened at `ai`).
     track.";
   - `guard`: "No speech was found on the microphone, so sound levels are used.";
   - `level`: "Listening for any sound: the speech detector is not available, so typing counts as
-    sound too."
+    sound too.";
+  - no line when no voice source is heard (the microphone muted or at 0, or PC sound alone): every
+    sound counts as before and no detector ran.
 - Silences hint (voice case): "Cuts or speeds up the pauses in your talking, keeping a little of
   the silence next to the sound so no word is clipped." Smart speed hint (voice case): "…the
   picture stays still, you are not talking and your PC plays no sound, and you did not move,
@@ -1150,7 +1155,8 @@ pattern, `'local'` surviving `readTranscript`, and the `pickTranscriber` / `loca
   and 15 s, smoothing, no rise under 30 s); `durationWords` and `sizeWords` rounding.
 - `tests/voice.test.ts`: `withTails` caps (0.3 / 0.1) and never crosses a gap; clatter not
   touching speech is dropped; `trustSpeech` false for 1.5 s of speech in 12 s of sound;
-  `soundDetector` labels.
+  `soundDetector` labels (`mixed` also under the guard; null with the microphone muted or at 0
+  and for PC sound alone).
 - `tests/soundtrackSpeech.test.ts`: without speech, `sourceActivity` deep-equals today's output on
   three literal envelopes (the regression lock); mic speech + system level = union; mix without
   stems = speech ∪ level, a superset of today's; muted gives []; missing levels give null; the
@@ -1582,3 +1588,11 @@ Declined or changed, one line each:
 - "Streamed words equal a whole-run refinement within 50 ms" (review 1): measured 4 of 226 starts
   up to 120 ms apart (the first chunk's median differs) while accuracy is equal or better, so the
   cargo test asks for ≥ 95 % identical and none over 150 ms, and accuracy is gated by the bench.
+
+Review of the merged build, fixed (one line each):
+
+- **Clip tab status line** (consumers-01): `soundDetector` said `level` ("the speech detector is
+  not available, so typing counts") when no voice source was heard (the mic muted or at 0, or PC
+  sound alone) and `guard` ("…on the microphone") for a recording without stems. It now returns
+  null without a heard voice source (no line) and `mixed` for the mixed track under the guard
+  (§3.6, §7.4); `tests/voice.test.ts`.
