@@ -5,6 +5,7 @@ import { MAX_DUCK_RANGES } from '../shared/audio/automation'
 import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
 import { MAX_CHAPTERS } from '../shared/render/chapters'
+import { FREEZE, MAX_FREEZES } from '../shared/engine/freeze'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
 import { FfmpegFailure } from './ffmpeg'
 import { HARDWARE_ENCODERS } from './hwEncoders'
@@ -125,7 +126,9 @@ function validRecording(a: RecordingSound): boolean {
         Object.keys(stems).length > 0 &&
         Object.entries(stems).every(([k, g]) => (STEM_KINDS as string[]).includes(k) && isNum(g, 0, 2)))) &&
     (a.noiseReduction === undefined || isNum(a.noiseReduction, 0, 1)) &&
-    (a.normalize === undefined || isBool(a.normalize))
+    (a.normalize === undefined || isBool(a.normalize)) &&
+    (a.holds === undefined ||
+      (Array.isArray(a.holds) && a.holds.length <= MAX_FREEZES && a.holds.every((h) => isNum(h?.at, 0, 1e7) && isNum(h.length, FREEZE.min, FREEZE.max))))
   )
 }
 

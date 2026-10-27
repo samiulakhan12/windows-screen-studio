@@ -1,0 +1,94 @@
+/* Freeze frames on the clip track (E-11): a hatched strip along its top edge, above the waveform
+   and the click markers (which sit along the bottom edge), below the trim handles. */
+.freeze-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.freeze-block {
+  position: absolute;
+  top: 0;
+  height: 12px;
+  box-sizing: border-box;
+  border-radius: var(--radius-xs);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-500) 70%, transparent) 0 3px, color-mix(in srgb, var(--accent-500) 22%, transparent) 3px 6px);
+  pointer-events: auto;
+  cursor: grab;
+  overflow: hidden;
+}
+
+/* A pause freeze adds time: a dashed outline and a solid bar at its frame. */
+.freeze-block.pause {
+  border: 1px dashed var(--accent-text);
+  border-left: 3px solid var(--accent-text);
+}
+
+.freeze-block.continue {
+  border: 1px solid color-mix(in srgb, var(--accent-text) 70%, transparent);
+}
+
+.freeze-block:hover {
+  filter: brightness(1.2);
+}
+
+.freeze-block.selected {
+  outline: 2px solid #ffffff;
+  outline-offset: 0;
+}
+
+/* How far the preview is into the hold (set while it plays). */
+.freeze-progress {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--hold-progress, 0) * 100%);
+  background: color-mix(in srgb, var(--accent-text) 55%, transparent);
+  pointer-events: none;
+}
+
+.freeze-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  font-size: 9.5px;
+  line-height: 10px;
+  font-weight: var(--weight-semibold);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The length handle on the right edge. */
+.freeze-edge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--accent-text);
+  cursor: ew-resize;
+}
+
+/* A freeze whose frame is cut: a hollow diamond in the gap. */
+.freeze-mark.inactive {
+  position: absolute;
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--accent-text);
+  transform: rotate(45deg);
+  pointer-events: auto;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.freeze-mark.inactive.selected {
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}

@@ -6,12 +6,13 @@
  * (the edit store then adds no undo step). Ignoring or using clicks updates the automatic zooms
  * in the same new project, so one undo step restores both. Pure.
  */
+import { autoZoomsInFrame } from '../engine/crop'
 import { cursorAt } from '../engine/cursor'
 import { NO_PATHS, pathModeAt, planCursorPath, type MoveReason } from '../engine/cursorPath'
 import { clickKey, paintPathRange, type ClickRow } from '../engine/inputData'
 import { effectiveTrack } from '../engine/inputTrack'
 import { SCROLL, scrollBreaks } from '../engine/scroll'
-import { autoZoomsForTrack, rebaseAutoZooms, zoomSettingsOf } from '../engine/zoom'
+import { rebaseAutoZooms, zoomSettingsOf } from '../engine/zoom'
 import type { AutoZoomSettings, ClickEvent, CursorTrack, IgnoredClick, InputEdits, PathMode, PathRange, Project, ZoomSegment } from '../types'
 
 export const STRAY = {
@@ -91,7 +92,7 @@ function strayReason(c: ClickEvent, track: CursorTrack, duration: number, A: num
  * the clicks whose keys are in `change.use` again. An entry for a click already ignored replaces
  * it. When auto zoom is on (zoomSettingsOf(p).auto.enabled), the automatic zooms are updated in
  * the same project with rebaseAutoZooms(p.zooms, before, after, newly ignored keys), where before
- * and after are autoZoomsForTrack(effectiveTrack(recorded, p / next), p.duration, auto). Arrays
+ * and after are autoZoomsInFrame(effectiveTrack(recorded, p / next), p / next, auto). Arrays
  * the change does not touch (inputEdits.paths, ...) keep their identity; an empty ignoredClicks
  * list and an empty inputEdits are removed. `p` itself when no click changes state.
  */
@@ -116,8 +117,8 @@ export function setClicksIgnored(p: Project, recorded: CursorTrack, change: { ig
   const next = withInputEdits(p, inputEdits)
   const auto = zoomSettingsOf(p).auto
   if (!auto.enabled) return next
-  const was = autoZoomsForTrack(effectiveTrack(recorded, p), p.duration, auto)
-  const now = autoZoomsForTrack(effectiveTrack(recorded, next), p.duration, auto)
+  const was = autoZoomsInFrame(effectiveTrack(recorded, p), p, auto)
+  const now = autoZoomsInFrame(effectiveTrack(recorded, next), next, auto)
   const newly = list.filter((e) => !before.has(e.ms)).map((e) => e.ms)
   const zooms = rebaseAutoZooms(p.zooms, was, now, newly)
   return zooms === p.zooms ? next : { ...next, zooms }

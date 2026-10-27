@@ -7,12 +7,15 @@ import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
+import { cropNotice, setCrop, setZoomLevelInView, snapCrop, taskbarCrop, type CropDraft } from '../../../shared/editor/cropEdit'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
+import { FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze } from '../../../shared/editor/freezeEdit'
 import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
 import { mediaLength } from '../../../shared/editor/mediaLength'
+import { POLISH_BUTTON_TITLE, polishNotice } from '../../../shared/editor/polishCopy'
 import { UNTITLED, withSavedName } from '../../../shared/editor/projectName'
 import {
   chordFromEvent,
@@ -29,6 +32,8 @@ import {
   undoHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
+import { atOutputStart, formatRate, nextPreviewSpeed, type ShuttleKey } from '../../../shared/editor/shuttle'
+import { clampIntoCrop, cropOf, cropView, fromCrop, FULL_FRAME, type CropView } from '../../../shared/engine/crop'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
@@ -38,32 +43,37 @@ import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
-import { setZoomLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
+import { ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
-import type { CameraLayout, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
+import type { CameraLayout, NormRect, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
 import { EditorContext, type EditorServices } from '../editor/context'
+import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
+import { addFreezeAt, freezeTarget, toggleFreezeSound } from '../editor/freezeItems'
 import { Inspector, type InputActions, type InspectorTab } from '../editor/Inspector'
 import { KeymapContext } from '../editor/keymapContext'
 import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
+import { PolishDialog } from '../editor/PolishDialog'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
 import { validSelection, type Selection } from '../editor/selection'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
+import { snapPref } from '../editor/snapControl'
 import { addChapterAt, addTitleAt } from '../editor/titleItems'
 import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
+import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 import type { RenderScene } from '../render/compositor'
 import '../editor/editor.css'
 
@@ -259,7 +269,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const [notice, setNotice] = useState<string | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
-  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | null>(null)
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
   const [directorRequest, setDirectorRequest] = useState(0)
 
@@ -285,9 +295,23 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   /* ---------- scene + preview ---------- */
 
-  const cursorPath = useMemo(() => new SmoothedTrack(cursor.samples, project.duration, project.cursor.smoothing), [cursor.samples, project.duration, project.cursor.smoothing])
-  const focusPath = useMemo(() => focusPathFor(cursor.samples, project.duration), [cursor.samples, project.duration])
-  const scene: RenderScene = useMemo(() => ({ project, cursor, cursorPath, focusPath }), [project, cursor, cursorPath, focusPath])
+  // The crop being edited (the crop tool is open); Done applies it as one undo step.
+  const [cropDraft, setCropDraft] = useState<CropDraft | null>(null)
+  const cropping = !!cropDraft
+  // What is drawn: the project and input as shown (cropView: positions relative to the crop, its
+  // pixel size). While the crop tool is open, the whole recording without the camera (nor camera
+  // layouts); setNoZoom below leaves zooms and the tilt out.
+  const drawn = useMemo((): CropView<Project> => {
+    if (!cropping) return cropView(project, cursor)
+    const { crop: _crop, ...whole } = project
+    return { project: { ...whole, webcam: { ...project.webcam, show: false } }, cursor, crop: null }
+  }, [cropping, project, cursor])
+  const cursorPath = useMemo(() => new SmoothedTrack(drawn.cursor.samples, project.duration, project.cursor.smoothing), [drawn.cursor.samples, project.duration, project.cursor.smoothing])
+  const focusPath = useMemo(() => focusPathFor(drawn.cursor.samples, project.duration), [drawn.cursor.samples, project.duration])
+  const scene: RenderScene = useMemo(
+    () => ({ project: drawn.project, cursor: drawn.cursor, cursorPath, focusPath, ...(drawn.crop ? { crop: drawn.crop } : {}) }),
+    [drawn, cursorPath, focusPath]
+  )
 
   useEffect(() => player.setProject(project), [player, project])
   useEffect(() => player.setScene(scene, background), [player, scene, background])
@@ -295,9 +319,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const pickZoom =
     pickFocus && selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id && z.focus.mode !== 'cursor') ?? null) : null
   useEffect(() => {
-    player.setNoZoom(!!pickZoom)
+    player.setNoZoom(!!pickZoom || cropping)
     if (pickFocus && !pickZoom) setPickFocus(false)
-  }, [player, pickFocus, pickZoom])
+  }, [player, pickFocus, pickZoom, cropping])
   // Picking applies to the zoom it was started for; selecting anything else ends it.
   const selectedZoomId = selection?.kind === 'zoom' ? selection.id : null
   useEffect(() => setPickFocus(false), [selectedZoomId])
@@ -395,7 +419,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [recorded, store, player, showNotice, setSelection])
 
   const actions = useMemo(() => {
-    const newZoomFocus = (): ZoomFocus => (cursor.valid ? { mode: 'cursor' } : { mode: 'fixed', x: 0.5, y: 0.5 })
+    const newZoomFocus = (): ZoomFocus => {
+      if (cursor.valid) return { mode: 'cursor' }
+      // The centre of the part of the recording that is shown, stored in the whole frame.
+      const at = fromCrop(cropOf(store.state), { x: 0.5, y: 0.5 })
+      return { mode: 'fixed', x: at.x, y: at.y }
+    }
 
     // Zooms and text go on the frame the preview shows at `t` (in a cut, the next kept one), like
     // shapes (playheadItems.ts): placed at a cut's source time they would never be seen.
@@ -458,7 +487,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         showNotice(keys ? `Select a zoom first: ${keys}` : 'Select a zoom first')
         return
       }
-      store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevel(x, level) : x)) }))
+      store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevelInView(cropOf(q), x, level) : x)) }))
       if (sel?.kind !== 'zoom') setSelection({ kind: 'zoom', id: z.id })
     }
 
@@ -499,6 +528,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       addText: (): void => addTextAt(player.time),
       addTitle: (): void => void addTitleAt({ store, player }, { onSelect: setSelection }),
       addChapter: (): void => void addChapterAt({ store, player }, { onSelect: setSelection, onNotice: showNotice }),
+      freezeFrame: (): void => addFreezeAt({ store, player }, { onSelect: setSelection, onNotice: showNotice }),
+      toggleFreezeSound: (): void => toggleFreezeSound({ store, player }, latest.current.selection, { onSelect: setSelection, onNotice: showNotice }),
       goToChapter,
       setLayout,
       split: (): void => {
@@ -543,6 +574,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else if (sel.kind === 'chapter') store.update((p) => ({ ...p, chapters: (p.chapters ?? []).filter((s) => s.id !== sel.id) }))
         else if (sel.kind === 'caption')
           store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: p.transcript.segments.filter((s) => s.id !== sel.id) } } : p))
+        else if (sel.kind === 'freeze') store.update((p) => removeFreeze(p, sel.id))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else if (sel.kind === 'click') {
@@ -554,9 +586,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         setSelection(null)
       },
       undo: (): void => {
+        setCropDraft(null)
         if (!store.undo()) showNotice('Nothing to undo')
       },
       redo: (): void => {
+        setCropDraft(null)
         if (!store.redo()) showNotice('Nothing to redo')
       },
       step: (delta: number): void => player.seek(stepOutput(store.state.clips, player.time, delta)),
@@ -567,12 +601,16 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const focusFor = useCallback(
     (zoom: ZoomSegment) => {
-      if (!cursor.valid) return { x: 0.5, y: 0.5 }
-      // An auto zoom's own click, else where the camera would be in its middle.
-      const p = zoom.anchor ?? focusPath.at((zoom.start + zoom.end) / 2)
+      // An auto zoom's own click, else where the camera would be in its middle (the focus path is
+      // in the crop's view; without cursor data, its centre), inside the part of the recording that
+      // is shown.
+      const c = scene.crop ?? null
+      // The stored crop, not the scene's: the crop tool shows the whole frame while it is open.
+      if (!cursor.valid) return fromCrop(cropOf(project), { x: 0.5, y: 0.5 })
+      const p = clampIntoCrop(c, zoom.anchor ?? fromCrop(c, focusPath.at((zoom.start + zoom.end) / 2)))
       return { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }
     },
-    [cursor.valid, focusPath]
+    [cursor.valid, focusPath, scene.crop, project]
   )
 
   const onBackgroundImage = useCallback(async () => {
@@ -591,12 +629,75 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     player.pause()
     releaseFocus()
     setPickFocus(false)
+    setCropDraft(null)
     setExporting(true)
   }, [player])
+
+  /* ---------- crop ---------- */
+
+  const cropActions = useMemo(() => {
+    /** Applies `rect` (null: the whole recording) as one undo step, rebasing the automatic zooms; false when nothing changes. */
+    const apply = (rect: NormRect | null): boolean => {
+      const p = store.state
+      const outcome = setCrop(p, rect, effectiveTrack(recorded, p))
+      if (outcome.project === p) return false
+      store.update(() => outcome.project)
+      showNotice(cropNotice(outcome))
+      return true
+    }
+    /** The draft (or, without one, the crop) with the taskbar cut off; null when the recording does not show it. */
+    const withoutTaskbar = (r: NormRect): NormRect | null => {
+      const p = store.state
+      const cut = taskbarCrop(r, p, recorded.scale)
+      return cut && snapCrop(cut, p, { x: 0, y: 0 }, null)
+    }
+    return {
+      /** Opens the crop tool on the current crop. */
+      open: (): void => {
+        setSelection(null)
+        setPickFocus(false)
+        setCropDraft((d) => d ?? { rect: cropOf(store.state) ?? { ...FULL_FRAME }, aspect: 'free' })
+      },
+      cancel: (): void => setCropDraft(null),
+      /** Applies the draft (Done, Enter, a double-click on the box). */
+      done: (draft: CropDraft | null): void => {
+        setCropDraft(null)
+        if (draft) apply(draft.rect)
+      },
+      reset: (): void => {
+        if (!cropOf(store.state)) return showNotice('The recording is not cropped')
+        apply(null)
+      },
+      taskbar: (): void => {
+        const r = withoutTaskbar(cropOf(store.state) ?? FULL_FRAME)
+        if (!r) return showNotice('This recording does not show the taskbar')
+        if (!apply(r)) showNotice('The taskbar is already cropped out')
+      },
+      withoutTaskbar
+    }
+  }, [store, recorded, showNotice, setSelection])
+  // The draft and its actions, for the keyboard and the stage.
+  const cropRef = useRef(cropDraft)
+  cropRef.current = cropDraft
+  const applyCrop = useCallback(() => cropActions.done(cropRef.current), [cropActions])
+  const applyCropRef = useRef(applyCrop)
+  applyCropRef.current = applyCrop
+  // A draft counts only while the tool is open: nothing late (a drag still held) opens it again.
+  const editCropDraft = useCallback((d: CropDraft) => setCropDraft((cur) => (cur ? d : cur)), [])
+  const cropTool = useMemo((): CropTool | null => (cropDraft ? { draft: cropDraft, onDraft: editCropDraft, onDone: applyCrop } : null), [cropDraft, editCropDraft, applyCrop])
+  // Reset (the panel's or the palette's): while the tool is open it changes the draft, as its bar
+  // does, and Done applies it.
+  const resetCrop = useCallback(() => {
+    if (cropRef.current) setCropDraft({ rect: { ...FULL_FRAME }, aspect: 'free' })
+    else cropActions.reset()
+  }, [cropActions])
+  const onCrop = useCallback((action: 'edit' | 'reset') => (action === 'edit' ? cropActions.open() : resetCrop()), [cropActions, resetCrop])
 
   /* ---------- commands (palette and shortcuts) ---------- */
 
   const lastMotionBlur = useRef(store.state.effects.motionBlur || DEFAULT_EFFECTS.motionBlur)
+  /** The `code` of the pause key (K) while it is held down: J and L then step one frame. */
+  const pauseHeld = useRef<string | null>(null)
   const commands = useMemo((): Record<CommandId, () => void> => {
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
@@ -608,6 +709,20 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       if (store.state.capture.cursorInVideo) return showNotice('The recorded cursor is in the video')
       if (sel?.kind !== 'range') return showNotice('Select a range first: Shift+drag on the clip track')
       input.setPathRange(sel, mode)
+    }
+    /** J, K and L: a frame step instead while K is held. */
+    const shuttle = (key: ShuttleKey): void => {
+      const held = pauseHeld.current !== null
+      if (key === 'reverse' && !held && !player.reversing && atOutputStart(store.state.clips, player.time)) return showNotice('At the start: nothing to play backwards')
+      const { frameStep } = player.shuttle(key, held)
+      if (frameStep) actions.step(frameStep / 30)
+    }
+    /** > and <: the next preview speed (nothing is written to the project). */
+    const previewSpeed = (step: 1 | -1): void => {
+      const next = nextPreviewSpeed(player.previewSpeed, step)
+      if (next === null) return showNotice(`The preview already plays at its ${step > 0 ? 'fastest' : 'slowest'} speed (${formatRate(player.previewSpeed)})`)
+      player.setPreviewSpeed(next)
+      showNotice(`Preview speed ${formatRate(next)} (the export is not affected)`)
     }
     return {
       play: actions.togglePlay,
@@ -746,9 +861,45 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       export: openExport,
       shortcuts: () => setDialog('shortcuts'),
       about: () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'about' } })),
-      commandPalette: () => setDialog('palette')
+      commandPalette: () => setDialog('palette'),
+
+      // E-01 polish
+      polish: () => setDialog('polish'),
+
+      // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
+      toggleWaveform: () => {
+        if (!store.state.hasAudio) return showNotice('This recording has no sound')
+        const on = !waveformShown()
+        setWaveformShown(on)
+        turned('Audio waveform', on)
+      },
+
+      // E-05 snapping: an editor preference, not an edit (no undo step)
+      toggleSnapping: () => turned('Snapping', snapPref.toggle()),
+
+      // E-08 shuttle and preview speed
+      shuttleReverse: () => shuttle('reverse'),
+      shuttlePause: () => shuttle('pause'),
+      shuttleForward: () => shuttle('forward'),
+      previewSpeedUp: () => previewSpeed(1),
+      previewSpeedDown: () => previewSpeed(-1),
+
+      // E-10 crop: while the tool is open, Reset and the taskbar preset change the draft, as its bar does.
+      cropRecording: cropActions.open,
+      resetCrop,
+      cropTaskbar: () => {
+        const draft = cropRef.current
+        if (!draft) return cropActions.taskbar()
+        const rect = cropActions.withoutTaskbar(draft.rect)
+        if (rect) setCropDraft({ rect, aspect: 'free' })
+        else showNotice('This recording does not show the taskbar')
+      },
+
+      // E-11 freeze frame
+      freezeFrame: actions.freezeFrame,
+      toggleFreezeSound: actions.toggleFreezeSound
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
 
@@ -767,6 +918,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const smoothCursor = cursor.valid && !p.capture.cursorInVideo
     const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, t)
     const edited = p.clips.length > 1 || p.clips[0].start > 0 || p.clips[0].end < p.duration || p.clips[0].speed !== 1
+    const freezeRefused = freezeRefusal(p, t)?.refused
     const unavailable: Partial<Record<CommandId, string | null>> = {
       undo: store.canUndo ? null : 'Nothing to undo',
       redo: store.canRedo ? null : 'Nothing to redo',
@@ -786,7 +938,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
-      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor
+      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor,
+      freezeFrame: freezeRefused ? FREEZE_REFUSAL_TEXT[freezeRefused] : null,
+      toggleFreezeSound: freezeTarget(p, selection, t) ? null : 'Select a freeze frame first',
+      resetCrop: cropOf(p) || cropDraft ? null : 'The recording is not cropped',
+      cropTaskbar: taskbarCrop(cropDraft?.rect ?? cropOf(p) ?? FULL_FRAME, p, recorded.scale) ? null : 'This recording does not show the taskbar'
     }
     for (const k of ['straightenRange', 'recordedPathRange'] as const) {
       unavailable[k] = !cursor.valid
@@ -801,7 +957,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
     }
     for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
+    unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
+    if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = `Already the fastest preview speed (${formatRate(player.previewSpeed)})`
+    if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = `Already the slowest preview speed (${formatRate(player.previewSpeed)})`
     const on: Partial<Record<CommandId, boolean>> = {
+      toggleSnapping: snapPref.get(),
       toggleCursor: smoothCursor && p.cursor.show,
       toggleClickEffects: cursor.valid && p.cursor.clickEffect,
       toggleStraighten: smoothCursor && !!p.inputEdits?.straighten,
@@ -810,9 +970,10 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleWebcam: !!data.webcamUrl && p.webcam.show,
       toggleCaptions: !!p.transcript?.segments.length && captionsOf(p).show
     }
+    on.toggleWaveform = p.hasAudio && waveformShown()
     return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
-  }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player])
+  }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale])
 
   const goBack = async (): Promise<void> => {
     if (leaving) return
@@ -865,6 +1026,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         }
         return
       }
+      // The crop tool: Esc closes it without applying, Enter applies it (a focused button takes Enter itself).
+      if (cropRef.current && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey && !(target instanceof HTMLButtonElement)))) {
+        e.preventDefault()
+        if (e.key === 'Escape') setCropDraft(null)
+        else if (!e.repeat) applyCropRef.current()
+        return
+      }
       if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (L.pickFocus) setPickFocus(false)
         else setSelection(null)
@@ -879,20 +1047,28 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         blurActiveControl()
         spaceDown = true
       }
+      if (id === 'shuttlePause' && !e.repeat) pauseHeld.current = e.code
       if (e.repeat && !commandInfo(id).repeat) return
       commandsRef.current[id]()
     }
     const onKeyUp = (e: KeyboardEvent): void => {
+      if (e.code === pauseHeld.current) pauseHeld.current = null
       if (spaceDown && (e.code === 'Space' || e.key === ' ')) {
         e.preventDefault()
         spaceDown = false
       }
     }
+    // A key up lost to another window (Alt+Tab) must not leave the pause key held.
+    const onBlur = (): void => {
+      pauseHeld.current = null
+    }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
     }
   }, [setSelection])
 
@@ -950,6 +1126,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
           <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
             <EditorIcon name="keyboard" />
           </button>
+          <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
+            <EditorIcon name="sparkle" size={16} /> Polish
+          </button>
           <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
             <Icon name="download" size={16} /> Export
           </button>
@@ -966,9 +1145,22 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
               scene={scene}
               selection={selection}
               onSelect={setSelection}
+              cropTool={cropTool}
             />
+            {cropDraft && (
+              <CropBar
+                recorded={{ width: project.width, height: project.height }}
+                draft={cropDraft}
+                capture={project.capture}
+                scale={recorded.scale}
+                onDraft={editCropDraft}
+                onDone={applyCrop}
+                onCancel={cropActions.cancel}
+              />
+            )}
             <Transport
               clips={project.clips}
+              freezes={project.freezes}
               notice={notice}
               onTogglePlay={actions.togglePlay}
               onSplit={actions.split}
@@ -994,6 +1186,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             onPickFocus={setPickFocus}
             focusFor={focusFor}
             onBackgroundImage={onBackgroundImage}
+            onCrop={onCrop}
             onNotice={showNotice}
             onAddText={actions.addText}
             onSplit={actions.split}
@@ -1035,6 +1228,21 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         )}
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
+        {dialog === 'polish' && (
+          <PolishDialog
+            recorded={recorded}
+            hasCameraFile={!!data.webcamUrl}
+            onClose={(message) => {
+              setDialog(null)
+              if (message) showNotice(message)
+            }}
+            onDone={({ changed, clipsChanged, summary }) => {
+              setDialog(null)
+              showNotice(polishNotice(summary, changed, undoHint(keymap)))
+              if (clipsChanged) setSelection(null)
+            }}
+          />
+        )}
       </div>
     </EditorProviders>
   )

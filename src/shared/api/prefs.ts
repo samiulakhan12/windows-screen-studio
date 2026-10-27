@@ -1,5 +1,5 @@
 /** Editor preferences kept in userData/editor-prefs.json, by key. */
-export type PrefKey = 'stylePresets' | 'shortcuts'
+export type PrefKey = 'stylePresets' | 'shortcuts' | 'polish'
 
 export interface PrefsApi {
   /** The stored value of `key`, or null when nothing was saved. */
@@ -8,4 +8,4 @@ export interface PrefsApi {
   setPref(key: PrefKey, value: unknown): Promise<void>
 }
 
-export const PREF_KEYS: readonly PrefKey[] = ['stylePresets', 'shortcuts']
+export const PREF_KEYS: readonly PrefKey[] = ['stylePresets', 'shortcuts', 'polish']

@@ -6,6 +6,8 @@ import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
 import { readDirectorSettings } from './directorData'
+import { readCrop } from './crop'
+import { readFreezes } from './freezeData'
 import { readProjectScript } from '../notes/notes'
 import { readLayouts, readWebcam } from './webcamData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
@@ -128,7 +130,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, crop, freezes, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
@@ -136,6 +138,8 @@ export function migrateProject(raw: unknown): Project {
     version: 2,
     duration,
     capture: p.capture ?? { method: 'chromium', cursorInVideo: true, region: null },
+    // The part of the recording that is shown, clipped and checked (absent: the whole frame).
+    ...optional('crop', readCrop(crop, p.width, p.height)),
     clips: normalizeClips(clips, duration),
     zooms: objects(p.zooms),
     // Ignored clicks and straightened cursor paths, cleaned (absent: the input as recorded).
@@ -149,6 +153,8 @@ export function migrateProject(raw: unknown): Project {
     webcam: readWebcam(p.webcam, !!p.hasWebcam),
     titles: readItems(p.titles, (t) => readTitleCard(t, duration)),
     chapters: readItems(p.chapters, (c) => readChapter(c, duration)),
+    // Freeze frames inside the recording, sorted, one per frame (absent: none).
+    ...optional('freezes', readFreezes(freezes, duration)),
     // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.
     tilt: readTilt(p.tilt),
     // Captions inside the recording, sorted, with unique ids; their look sanitised (absent = defaults).

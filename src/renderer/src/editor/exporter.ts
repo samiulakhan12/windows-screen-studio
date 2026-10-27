@@ -1,8 +1,9 @@
 import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
+import { editToVideo, planOf, videoFrames } from '../../../shared/engine/freeze'
+import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
-import { exportFrameTimes } from '../../../shared/engine/timeline'
 import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
@@ -76,11 +77,13 @@ const abortError = (): DOMException => new DOMException('Export cancelled', 'Abo
 
 /**
  * The input as this export draws it: a copy of the project with the export's aspect
- * ratio (the saved project is never touched), and the cursor's images loaded.
+ * ratio (the saved project is never touched), and the cursor's images loaded. The scene keeps
+ * the project as drawn (cropped: the view), with the same aspect ratio.
  */
 async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 'aspect'> }>(input: T): Promise<T> {
   const project = exportProject(input.project, input.settings)
-  const scene = project === input.project ? input.scene : { ...input.scene, project }
+  const drawn = input.scene.project === input.project ? project : exportProject(input.scene.project, input.settings)
+  const scene = drawn === input.scene.project ? input.scene : { ...input.scene, project: drawn }
   await prepareCursorAssets(project, projectMediaUrl(project.id))
   await prepareStyleAssets(project, projectMediaUrl(project.id))
   return { ...input, project, scene }
@@ -90,24 +93,27 @@ type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fad
 
 /**
  * The soundtrack parts of a job: the edited recording (the mixed track, or the stems with
- * their own gains), its cleanup, the click sounds, the music with the same ducking ranges the
- * preview uses, and the fades. A project without the newer settings gets exactly the job of
- * earlier versions.
+ * their own gains), its cleanup and its pause freezes, the click sounds, the music with the same
+ * ducking ranges the preview uses, and the fades. A project without the newer settings gets
+ * exactly the job of earlier versions.
  */
 async function soundOf(input: ExportSource, format: ExportOptions['format']): Promise<SoundParts> {
   const { project } = input
   if (format === 'gif') return {}
   const look = audioLook(project.audio)
   const mix = recordingMix(project, { denoise: true })
+  const plan = planOf(project)
   let audio: RecordingSound | undefined
   if (mix.kind !== 'none') {
     audio = { clips: project.clips, volume: mix.volume }
     if (mix.kind === 'stems') audio.stems = mix.stems
     if (look.noiseReduction > 0) audio.noiseReduction = look.noiseReduction
     if (look.normalize) audio.normalize = true
+    if (plan.holds.length > 0) audio.holds = plan.holds.map((h) => ({ at: h.at, length: h.length }))
   }
   const job = clickSoundJob(project, input.scene.cursor, project.clips)
-  const clicks = job && job.times.length > 0 && job.volume > 0 ? { times: job.times, volume: job.volume } : undefined
+  // In video time: a click exactly at a pause freeze sounds when the freeze starts.
+  const clicks = job && job.times.length > 0 && job.volume > 0 ? { times: job.times.map((t) => editToVideo(plan, t)), volume: job.volume } : undefined
   const music = await musicOf(input)
   return {
     audio,
@@ -123,8 +129,11 @@ async function musicOf({ project }: ExportSource): Promise<MusicSound | undefine
   const m = audioLook(project.audio).music
   if (!m || m.volume <= 0) return undefined
   const sources = analysisSources(project)
-  const activity = m.ducking > 0 ? soundActivity(project, sources.length > 0 ? await loadAudioAnalysis(project.id, sources) : {}) : null
-  if (m.ducking > 0 && activity === null) console.warn('The recording\'s sound could not be measured: the music is exported without ducking.')
+  const edited = m.ducking > 0 ? soundActivity(project, sources.length > 0 ? await loadAudioAnalysis(project.id, sources) : {}) : null
+  if (m.ducking > 0 && edited === null) console.warn('The recording\'s sound could not be measured: the music is exported without ducking.')
+  // The music plays on the video's clock: speech around a pause freeze stays ducked across it.
+  const plan = planOf(project)
+  const activity = edited && plan.holds.length > 0 ? edited.map((r) => ({ start: editToVideo(plan, r.start), end: editToVideo(plan, r.end) })) : edited
   const duck = musicDucking(project, activity)
   return {
     file: m.path,
@@ -140,7 +149,7 @@ async function musicOf({ project }: ExportSource): Promise<MusicSound | undefine
 /** The chapters written into the file (every format but GIF), in output seconds. */
 function chaptersOf(project: Project, format: ExportOptions['format']): Pick<ExportJob, 'chapters'> {
   if (format === 'gif') return {}
-  const chapters = outputChapters(project.chapters ?? [], project.clips)
+  const chapters = outputChapters(project.chapters ?? [], project.clips, planOf(project))
   return chapters.length ? { chapters } : {}
 }
 
@@ -158,7 +167,10 @@ interface JobPlan {
   width: number
   height: number
   fps: number
+  /** Source time of each frame's sound (and camera), `pictures` the screen frame drawn, `held` frames inside a freeze (videoFrames). */
   times: number[]
+  pictures: number[]
+  held: Uint8Array | null
   sound: SoundParts
   rate: Pick<ExportJob, 'bitrate' | 'maxBytes'>
   chapters: Pick<ExportJob, 'chapters'>
@@ -166,10 +178,10 @@ interface JobPlan {
 
 async function planJob(input: ExportInput): Promise<JobPlan> {
   const { width, height, fps } = exportDimensions(input.project, input.settings)
-  const times = exportFrameTimes(input.project.clips, fps)
+  const { times, pictures, held } = videoFrames(input.project.clips, planOf(input.project), fps)
   const sound = await soundOf(input, input.settings.format)
   const rate = rateOf(input.settings, times.length, { width, height, fps }, !!(sound.audio || sound.clicks || sound.music))
-  return { width, height, fps, times, sound, rate, chapters: chaptersOf(input.project, input.settings.format) }
+  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(input.project, input.settings.format) }
 }
 
 /**
@@ -210,7 +222,7 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
 /** M4A: the edited soundtrack (and click sounds) only; ffmpeg does all the work. */
 async function exportAudio(input: ExportInput): Promise<ExportResult> {
   const { project, settings, signal } = input
-  const frames = exportFrameTimes(project.clips, AUDIO_ONLY_FPS).length
+  const frames = videoFrames(project.clips, planOf(project), AUDIO_ONLY_FPS).times.length
   const encoder = routeLabel({ video: 'none' }, settings.format)
   const report = (phase: ExportProgress['phase']): void => input.onProgress({ phase, frame: 0, frames, fps: 0, eta: null, encoder, detail: phase === 'finalizing' ? 'Encoding the audio…' : undefined })
   report('preparing')
@@ -339,14 +351,15 @@ async function renderAll(
   notice: string | undefined
 ): Promise<Omit<ExportResult, 'encoder' | 'seconds'>> {
   const { project, settings, signal } = input
-  const { width, height, fps, times } = plan
+  const { width, height, fps, times, pictures, held } = plan
   const encoder = routeLabel(route, settings.format)
   const report = (p: Omit<ExportProgress, 'encoder' | 'frames' | 'notice'>): void => input.onProgress({ ...p, frames: times.length, encoder, notice })
   report({ phase: 'preparing', frame: 0, fps: 0, eta: null })
 
   const useWebcam = !!input.webcamUrl && project.webcam.show && project.hasWebcam
   const videos: HTMLVideoElement[] = []
-  const screen = await openSource(input.screenUrl, times, caps, videos, SCREEN_PROXY_FPS)
+  // The screen shows the pictures (a freeze's still); the camera follows the sound's clock.
+  const screen = await openSource(input.screenUrl, pictures, caps, videos, SCREEN_PROXY_FPS)
   let camera: FrameSource | null = null
   // drawFrame wants an element even when it draws decoded frames; this one is never shown.
   const placeholder = document.createElement('video')
@@ -388,10 +401,15 @@ async function renderAll(
     sink = makeSink(canvas, ctx, startJob, base)
 
     const options = { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES }
+    // A frozen frame is drawn sharp: a hold on a moving zoom would otherwise show a smeared still.
+    const frozen = { ...options, blurSamples: 1 }
     const sources = { screen: placeholder, webcam: null, background: input.background }
-    // Person masks only for frames that show the camera (drawWebcamLayer's own test, same sizes as drawFrame).
-    const masked = (i: number, screenFrame: FrameImage | null): boolean =>
-      !!masks && cameraShownAt(input.scene.project, width, height, screenFrame?.width || input.scene.project.width, screenFrame?.height || input.scene.project.height, times[i])
+    // Person masks only for frames that show the camera (drawWebcamLayer's own test, same sizes as drawFrame; the layout is drawn at the picture's time).
+    const masked = (i: number, screenFrame: FrameImage | null): boolean => {
+      if (!masks) return false
+      const shown = croppedFrameSize(input.scene.crop ?? null, screenFrame?.width ?? 0, screenFrame?.height ?? 0, input.scene.project)
+      return cameraShownAt(input.scene.project, width, height, shown.width, shown.height, pictures[i])
+    }
     // The next camera frame and its mask, made while this frame is encoded (errors surface on its own get).
     let ahead: Promise<unknown> | null = null
     const cameraFrame = async (i: number): Promise<FrameImage | null> => {
@@ -409,7 +427,7 @@ async function renderAll(
       // The person mask of the camera frame, before drawing (drawFrame never waits); quick when made ahead.
       if (masked(i, screenFrame)) await masks!.prepare(webcamFrame)
       const b = performance.now()
-      drawFrame(ctx, width, height, times[i], input.scene, { ...sources, screenFrame, webcamFrame }, options)
+      drawFrame(ctx, width, height, pictures[i], input.scene, { ...sources, screenFrame, webcamFrame }, held?.[i] ? frozen : options, times[i])
       // The canvas holds the pixels now: let the sources start on the next frame.
       screen.next()
       camera?.next()
@@ -460,6 +478,10 @@ export interface ThumbnailInput extends ExportSource {
   settings: ExportOptions
   /** Source (recording) time of the frame. */
   time: number
+  /** Source time of the sound (camera, captions, background) when it differs from `time`: a freeze frame's picture (E-11). */
+  soundTime?: number
+  /** Inside a freeze frame: drawn sharp, as the export draws it. */
+  held?: boolean
 }
 
 /**
@@ -475,11 +497,12 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
   const caps = await window.api.exportCapabilities()
   const videos: HTMLVideoElement[] = []
   const t = raw.time
+  const soundTime = raw.soundTime ?? t
   const screen = await openSource(input.screenUrl, [t], caps, videos, SCREEN_PROXY_FPS)
   let camera: FrameSource | null = null
   let drawn: CanvasRenderingContext2D | null = null
   try {
-    if (input.webcamUrl && project.webcam.show && project.hasWebcam) camera = await openSource(input.webcamUrl, [t - project.webcamOffset], caps, videos, WEBCAM_PROXY_FPS)
+    if (input.webcamUrl && project.webcam.show && project.hasWebcam) camera = await openSource(input.webcamUrl, [soundTime - project.webcamOffset], caps, videos, WEBCAM_PROXY_FPS)
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
@@ -488,10 +511,11 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     drawn = ctx
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
     // Segmentation is loaded only when the frame shows the camera.
-    const shown = cameraShownAt(input.scene.project, width, height, screenFrame?.width || project.width, screenFrame?.height || project.height, t)
+    const drawnSize = croppedFrameSize(input.scene.crop ?? null, screenFrame?.width ?? 0, screenFrame?.height ?? 0, input.scene.project)
+    const shown = cameraShownAt(input.scene.project, width, height, drawnSize.width, drawnSize.height, t)
     await (await cameraMasks(project, !!camera && shown))?.prepare(webcamFrame)
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
-    drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES })
+    drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: raw.held ? 1 : EXPORT_BLUR_SAMPLES }, soundTime)
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) throw new Error('Could not encode the thumbnail')
     return { png: new Uint8Array(await blob.arrayBuffer()), width, height }
