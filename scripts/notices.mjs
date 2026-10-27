@@ -173,12 +173,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (process.argv.includes('--check')) {
     const committed = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''
     if (committed !== text) {
-      console.error(`notices: ${path.relative(root, OUT)} is not up to date (${committed.length} bytes committed, ${text.length} generated). Run npm run notices and commit it.`)
+      console.error(`notices: ${path.relative(root, OUT)} is not up to date (${Buffer.byteLength(committed)} bytes committed, ${Buffer.byteLength(text)} generated). Run npm run notices and commit it.`)
       process.exit(1)
     }
-    console.log(`notices: ${path.relative(root, OUT)} is up to date (${text.length} bytes)`)
+    console.log(`notices: ${path.relative(root, OUT)} is up to date (${Buffer.byteLength(text)} bytes)`)
   } else {
     writeFileSync(OUT, text)
-    console.log(`notices: wrote ${path.relative(root, OUT)} (${text.length} bytes)`)
+    console.log(`notices: wrote ${path.relative(root, OUT)} (${Buffer.byteLength(text)} bytes)`)
   }
 }

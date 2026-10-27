@@ -2,7 +2,7 @@
 
 This page covers everything between a source checkout and a Windows installer you can hand out:
 the toolchain, `npm run dist:win`, what ends up in the package, the app icon, the optional native
-capture helper and code signing.
+helpers (screen capture and speech) and code signing.
 
 ## Requirements
 
@@ -12,7 +12,11 @@ capture helper and code signing.
 | npm | the one that comes with Node | the lockfile is `package-lock.json` (v3) |
 | Windows 10 2004+ or 11, x64 | | to run the app and the installer |
 | Wine 64- and 32-bit (Linux/macOS only) | any recent | electron-builder runs `rcedit` under Wine to put the icon and version info into the `.exe` |
-| Rust (optional) | stable, see `native/README.md` | builds the native capture helper `ssw-capture.exe` |
+| Rust (optional) | **1.88+**, with `rustup target add x86_64-pc-windows-gnu`; see `native/README.md` | builds the native capture helper `ssw-capture.exe` and the speech helper `ssw-speech` |
+| MinGW-w64, POSIX threads (optional; Linux/macOS) | `x86_64-w64-mingw32-gcc-posix`, `g++-posix` (Ubuntu: `apt install mingw-w64`) | links the Windows helpers; the speech helper needs the POSIX-thread variant |
+| cmake (optional) | **3.28+** | builds whisper.cpp inside the speech helper |
+| clang and libclang (optional) | 18 (Ubuntu: `apt install clang libclang-dev`, or set `LIBCLANG_PATH`) | bindgen reads whisper.cpp's header |
+| Wine 64-bit (optional) | any recent | `scripts/smoke-speech-wine.sh` runs the Windows speech helpers |
 
 The first `npm run dist:win` downloads Electron for Windows, NSIS, electron-builder's signing tools
 and, when you are not on Windows, the Windows `ffmpeg.exe` (about 30 MB). Later builds use the caches.
@@ -26,6 +30,11 @@ npm test             # unit tests (vitest)
 npm run typecheck
 npm run build        # compile main, preload and renderer into out/
 xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e   # end-to-end tests of the built app (Linux)
+
+# the speech helper (captions on this PC, the speech detector); see "The speech helper" below
+npm run build:speech-host   # native/bin/ssw-speech for this machine (development and tests)
+npm run fetch:test-speech   # the test model (43.5 MB) into .cache/test-speech/, checked
+npm run test:native         # the helper's tests (tests/native/*.spec.ts)
 ```
 
 ## Building the installer
@@ -47,10 +56,15 @@ that fails:
      the release certificate, so only the build pinned by SHA-256 in `scripts/lib/packaging.cjs`
      (`FFMPEG_EXE`) is accepted: any other file is replaced, and a download that does not match
      stops the build. Update the pin when ffmpeg-static's `binary-release-tag` changes.
-   - **Native capture helper.** If `scripts/build-native.mjs` exists, predist runs it
-     (`npm run build:native` does the same on its own). Without a Rust toolchain, or if the build
-     fails, this is only a warning: the app then records through Chromium, with the OS cursor in
-     the video. Set `SSW_REQUIRE_NATIVE=1` to make a missing helper an error (release builds).
+   - **Native helpers.** If `scripts/build-native.mjs` exists, predist runs it
+     (`npm run build:native` does the same on its own): the capture helper and the two speech
+     helpers. Without a Rust toolchain, or if a build fails, this is only a warning: the app then
+     records through Chromium, with the OS cursor in the video, captions offer AI providers only
+     and the speech detector falls back to sound levels. Set `SSW_REQUIRE_NATIVE=1` to make a
+     missing helper an error (release builds).
+   - **Speech detector model and notices.** `resources/speech/ggml-silero-v6.2.0.bin` must match
+     its pin, and `resources/THIRD_PARTY_NOTICES.txt` must be what `npm run notices` generates now
+     (`scripts/notices.mjs --check`; it needs `cargo` for the crates' licences).
    - **Icons** (`build/icon.ico` with 16-256 px, `build/installerSidebar.bmp`).
    - **Code signing variables** (see below; unsigned is fine).
 2. **`electron-vite build`** compiles the app into `out/`.
@@ -65,7 +79,13 @@ that fails:
    `ffmpeg.exe` is missing, not x64 or not the pinned build, if other platforms' binaries or
    locales slipped in, if `build/icon.ico` lacks a Windows size or the exe or the installer does
    not carry it, if their file properties do not name Flown and Qbexel (CompanyName, ProductName,
-   FileDescription, LegalCopyright, read from the version resource), or if signing
+   FileDescription, LegalCopyright, read from the version resource), if a speech helper is not an
+   x64 executable or imports anything but KERNEL32, ADVAPI32, msvcrt, ntdll,
+   api-ms-win-core-synch-l1-2-0 and bcryptprimitives, if the speech detector model is not the
+   pinned one, if `THIRD_PARTY_NOTICES.txt` is missing, under 10 KB or does not name whisper.cpp,
+   ggml, Silero VAD, OpenAI Whisper, mingw-w64, FFmpeg, Electron, React and MediaPipe, if the speech
+   payload (both helpers, the model and its MODEL.md, the notices) exceeds 3.5 MB brotli-compressed
+   (quality 11, 16 MB window) or 10 MB installed, or if signing
    was required but the installer or any `.exe` or `.node` file in `win-unpacked` is unsigned. It ends with the installer and install sizes.
 
 On Linux, keep Wine's console noise down with `WINEDEBUG=-all npm run dist:win`.
@@ -80,6 +100,9 @@ On Linux, keep Wine's console noise down with `WINEDEBUG=-all npm run dist:win`.
 | `resources/app.asar.unpacked/node_modules/ffmpeg-static/` | `ffmpeg.exe` with its `LICENSE` and `README` (the GPL requires them) |
 | `resources/app.asar.unpacked/node_modules/uiohook-napi/prebuilds/win32-x64/` | the global mouse hook (no other platforms' prebuilds) |
 | `resources/native/ssw-capture.exe` | the native capture helper, when it was built |
+| `resources/native/ssw-speech.exe`, `ssw-speech-compat.exe` | the speech helper (standard build for AVX2 processors, compatible build for any x64 processor), when they were built |
+| `resources/speech/ggml-silero-v6.2.0.bin`, `MODEL.md` | the speech detector model (885 KB, pinned by SHA-256) |
+| `resources/THIRD_PARTY_NOTICES.txt` | the third-party notices, shown from About (`npm run notices`) |
 
 The source tree, tests, docs, configs and the packages `ffmpeg-static` needs only to *download*
 ffmpeg (`@derhuerst/http-basic`, `https-proxy-agent`, ... and their own nested `node_modules`) are
@@ -107,8 +130,9 @@ the release tag in `node_modules/ffmpeg-static/package.json` (`b6.1.1` today) fr
 `node_modules/ffmpeg-static/ffmpeg.exe`, or point `FFMPEG_BINARIES_URL` at a mirror. Either way the
 file must match the SHA-256 pin.
 
-The native helper cross-compiles too (`rustup target add x86_64-pc-windows-gnu` and MinGW-w64);
-see `native/README.md`.
+The native helpers cross-compile too (`rustup target add x86_64-pc-windows-gnu` and MinGW-w64;
+the speech helper also cmake, libclang and the POSIX-thread MinGW); see `native/README.md` and
+"The speech helper" below. The speech helpers are only cross-compiled from Linux or macOS.
 
 ## The app icon
 
@@ -235,6 +259,47 @@ app finds it there in development and at `resources/native/ssw-capture.exe` when
 `npm run dist:win` builds and bundles it automatically when it can. It is only bundled if it is a
 complete x64 Windows executable; a broken file is left out with a warning.
 
+## The speech helper
+
+`native/speech` (Rust around whisper.cpp 1.8.3, `native/speech/README.md`) is the sidecar behind
+captions on this PC and the speech detector (`docs/design/offline-captions.md`). `npm run
+build:native` builds it twice for Windows x64, each in its own target folder (whisper-rs-sys's build
+script ignores changed environment variables):
+
+| Build | Output | ggml flags |
+| --- | --- | --- |
+| Standard | `native/bin/ssw-speech.exe` | `GGML_NATIVE=OFF`, `GGML_SSE42/AVX/AVX2/FMA/F16C/BMI2=ON` (a cross build turns them all off otherwise: about 7.5 times slower) |
+| Compatible | `native/bin/ssw-speech-compat.exe` | `GGML_NATIVE=OFF`, every x86 extension off (any x64 processor) |
+| Host | `native/bin/ssw-speech` (`npm run build:speech-host`) | `GGML_NATIVE=OFF` on a native build (development, the native and end-to-end tests) |
+
+The Windows builds use the POSIX-thread MinGW for C, C++ and the linker,
+`CMAKE_PROJECT_INCLUDE=native/speech/compat/mingw_lib_prefix.cmake` and the forced include
+`native/speech/compat/mingw_compat.h`, and link libstdc++, libgcc and winpthreads statically, so
+the exes need only system DLLs. Each takes about a minute from clean; `cargo` caches the rest.
+
+Tests and checks:
+
+```bash
+(cd native/speech && cargo test && cargo clippy --all-targets -- -D warnings)
+npm run build:speech-host && npm run fetch:test-speech && npm run test:native
+scripts/smoke-speech-wine.sh   # both Windows exes under wine: imports, cpu, vad, transcribe, cancel
+SSW_SPEECH_CLIP=clip.wav scripts/smoke-speech-wine.sh   # ... and their speed on a longer WAV
+npm run notices -- --check
+```
+
+`npm run fetch:test-speech` downloads the catalog's `whisper-tiny` from its pinned Hugging Face
+address into `.cache/test-speech/` (`SSW_TEST_SPEECH_CACHE` overrides) and checks its SHA-256; the
+speech detector model and the speech fixtures are committed. The word-timing benchmark
+(`native/speech/bench/eval_stream.py`, base q5_1 on the 105.7 s LibriSpeech clip from
+`bench/fetch_speech.py`) is manual. CI caches `~/.cargo`, `native/speech/target` and
+`.cache/test-speech`.
+
+`THIRD_PARTY_NOTICES.txt` is generated by `npm run notices` from `resources/notices/*.txt`
+(hand-written: whisper.cpp and ggml, Silero VAD, the Whisper weights, the MinGW-w64 and GCC
+runtimes, FFmpeg, Chromium, MediaPipe), `cargo metadata` of both crates (normal dependencies for
+x86_64-pc-windows-gnu) and the npm packages that ship or are bundled; commit it after a dependency
+change.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -245,3 +310,7 @@ complete x64 Windows executable; a broken file is left out with a warning.
 | `Running as root without --no-sandbox is not supported` | `npm run icons` already passes `--no-sandbox`; add it when you start Electron yourself as root |
 | `verify-dist: FAIL app.asar contains files that must not ship` | something bypassed `electron-builder.config.cjs`; build with `npm run dist:win` |
 | SmartScreen warning after installing | the build is unsigned, see "Code signing" |
+| `build-native: the POSIX-thread MinGW ... is missing` | `apt install mingw-w64` (the `-posix` compilers come with it); the win32-thread GCC fails with `__mingwthr_key_dtor` |
+| `build-native: libclang is missing` | `apt install clang libclang-dev`, or set `LIBCLANG_PATH` to the folder holding `libclang.so` |
+| `predist: ERROR: resources/THIRD_PARTY_NOTICES.txt is not up to date` | run `npm run notices` and commit the file |
+| `smoke-speech-wine.sh` cannot open a non-ASCII path | it sets `LANG=C.UTF-8`; wine mangles paths under a non-UTF-8 locale |

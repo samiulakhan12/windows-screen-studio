@@ -8,25 +8,38 @@ speaks JSON lines on stdout; it is never a Node addon and never loads into the a
 Design and the frozen protocol: `docs/design/offline-captions.md` (§2 engine and builds, §5.2 the
 sidecar protocol, §6 packaging). That document is authoritative.
 
-## State of this folder
+## Layout
 
-This is the **starting point copied from the spike** that chose the engine (word timings with DTW,
-VAD chunking, the MinGW static-link fixes, measured in the design document §2). Workstream A of the
-design brings it in line with the frozen protocol:
+The crate implements the frozen protocol line for line (`cpu | vad | transcribe`):
 
-- subcommands `cpu | vad | transcribe` (the spike has `info | vad | transcribe`);
-- `vad` prints one probability per 32 ms frame (base64 of `uint8`), not ranges, and works in
-  300 s windows with 2 s of overlap;
-- `--model-dir D --model F` (F a bare catalog file name), models and the VAD model opened by Rust
-  and passed to whisper.cpp through `whisper_model_loader` (non-ASCII paths on Windows);
-- error lines carry a `code`; `--parent-pid`; Windows process mitigations; a CPUID check before
-  any ggml code in the standard build;
-- split into modules (`protocol.rs`, `wav.rs`, `loader.rs`, `vad.rs`, `chunks.rs`, `words.rs`,
-  `guard.rs`) with `cargo test` coverage.
+| Module | What |
+| --- | --- |
+| `main.rs` | subcommands, the engine glue (whisper.cpp through raw FFI), the stdin control thread |
+| `args.rs` | the command line, read with `args_os` (paths stay UTF-16 clean on Windows); model names `[A-Za-z0-9._-]+` |
+| `protocol.rs` | JSON lines (escaping, lossy UTF-8, finite numbers), the 15 s heartbeat, the last-line and cancel rules |
+| `wav.rs` | 16 kHz mono WAV (s16 or f32) and f32le on stdin; anything else is error `audio` |
+| `loader.rs` | models opened by Rust and handed to whisper.cpp through `whisper_model_loader` (non-ASCII paths); a cut file is error `model`; the model header (kind, DTW preset) |
+| `vad.rs` | the speech detector: probabilities in 300 s windows with 2 s of overlap; whisper.cpp's own segments for `transcribe` |
+| `chunks.rs` | speech packed into chunks of at most 29 s with their 0.25 s padding, never past the middle of a gap |
+| `words.rs` | word forming from DTW token times and the per-chunk refinement (pull-in with the running median, onset snap, monotonic across chunk joins) |
+| `lang.rs` | the language detected once, on the first chunk with 10 s of speech, else the one with the most |
+| `guard.rs` | below-normal priority, the parent watch, Windows mitigations, `PR_SET_NO_NEW_PRIVS`/`PR_SET_PDEATHSIG`, the CPU probe and the standard build's CPUID check, peak memory |
 
-`scripts/build-native.mjs` does not build this crate yet; workstream A adds it.
+A `cancel` line or the end of stdin (with `--stdin-control`) ends the run at once from the control
+thread: the `cancelled` line carries the end of the last chunk whose segment lines are out, and the
+process exits with code 2 through `_exit` (the helper writes no files, so nothing is left half
+done; whisper.cpp itself checks its abort flag only between encoder passes, and never during
+language detection).
 
-## Building (what the spike proved)
+`cargo test` (Linux) covers the arguments, the WAV reader, the chunk plan, word forming on token
+tables, the per-chunk refinement against the recorded run in `tests/data/`, the language-chunk
+choice, the heartbeat timer, JSON escaping, the windowed detector against a whole-buffer run and the
+loader at a non-ASCII path. The tests against the built helper are `tests/native/*.spec.ts`
+(`npm run test:native`) and `scripts/smoke-speech-wine.sh`; see `docs/BUILDING.md`.
+
+## Building
+
+`scripts/build-native.mjs` does all of this (`npm run build:native`, `npm run build:speech-host`).
 
 - **Linux (tests):** `GGML_NATIVE=OFF cargo build --release` (59 s from clean, 1.62 MiB). With
   NATIVE off on a non-cross build, ggml enables SSE4.2, AVX, AVX2, FMA, F16C and BMI2.
@@ -54,3 +67,14 @@ from Hugging Face), `fetch_speech.py` (the 105.7 s LibriSpeech clip, CC-BY-4.0, 
 forced-aligned word times from the HF datasets-server), `bench.py` (wall, CPU, peak RSS),
 `eval_words.py` (WER and word-timing error), `eval_long.py`, `worst.py`, `cancel_test.py`,
 `run_all.sh`, `build-win.sh`.
+
+The word-timing gate (workstream A, §10.2) runs on the helper's own lines:
+
+```bash
+python3 -I bench/fetch_speech.py /tmp/bench 105          # clip.wav and truth.json (105.7 s)
+../bin/ssw-speech transcribe --model-dir <dir with ggml-base-q5_1.bin> --model ggml-base-q5_1.bin \
+  --audio /tmp/bench/clip.wav --vad-model ../../resources/speech/ggml-silero-v6.2.0.bin --threads 4 > run.jsonl
+python3 -I bench/eval_stream.py /tmp/bench/truth.json run.jsonl
+```
+
+Pass: `segment_words` start median at most 50 ms and at least 90 % within 200 ms.
