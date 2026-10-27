@@ -3,7 +3,8 @@
 ## Stack
 Electron 44 (main + preload + renderer) · React 18 · TypeScript · electron-vite · Vitest ·
 Playwright (end-to-end) · ffmpeg (`ffmpeg-static`) · `uiohook-napi` (global mouse/keyboard hook) ·
-Rust (`native/`, the Windows capture helper) · electron-builder (NSIS installer).
+Rust (`native/`: the Windows capture helper, and `native/speech`, the speech sidecar on whisper.cpp
+and Silero VAD) · electron-builder (NSIS installer).
 
 ## Layout
 ```
@@ -140,6 +141,7 @@ on the next start; whatever cannot be moved stays where it is and is still used 
   app. It records with fake camera/microphone devices and real X11 input, and covers the native path
   through a helper process that speaks the real protocol. Editor flows, frame-accurate export, A/V
   sync after cuts and speed changes, colours, cancel safety, clipboard, overlays and packaging are
-  covered too.
-* `cargo test` / `cargo clippy` in `native/`; `npm run dist:win` runs `verify-dist` on the package.
+  covered too. Captions on this PC and the speech detector run the host build of the speech sidecar
+  with a small Whisper model served by the mock server (`tests/e2e/offline-captions.e2e.cjs`).
+* `cargo test` / `cargo clippy` in `native/` and `native/speech`; `npm run dist:win` runs `verify-dist` on the package.
 * Windows-only behaviour that cannot run here is listed in the README and in `native/README.md`.

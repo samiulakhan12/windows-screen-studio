@@ -83,9 +83,22 @@ describe('soundDetector', () => {
   it('guard: the trust guard used the level', () => {
     expect(soundDetector(stems, { mic: levels(20, [[0, 12, -20]], [r(1, 2)]), system })).toBe('guard')
   })
+  it('mixed also under the trust guard: a recording without stems has no microphone to name', () => {
+    const typing = levels(70, [[0, 60, -20]], [r(1, 2)])
+    expect(trustSpeech(typing.speech!, [r(0, 60)])).toBe(false)
+    expect(soundDetector(mixed, { mix: typing })).toBe('mixed')
+  })
   it('level: the speech detector did not run', () => {
     expect(soundDetector(stems, { mic: levels(20, [[1, 6, -20]]), system })).toBe('level')
     expect(soundDetector(mixed, { mix: levels(20, [[1, 6, -20]]) })).toBe('level')
+  })
+  it('null when no voice source is heard: only PC sound counts, as before, and no detector is named', () => {
+    const quiet = (mic: { volume: number; muted: boolean }): P => ({ ...stems, audio: { volume: 1, muted: false, mic } })
+    expect(soundDetector(quiet({ volume: 1, muted: true }), { mic: voice, system })).toBeNull()
+    expect(soundDetector(quiet({ volume: 0, muted: false }), { mic: voice, system })).toBeNull()
+    expect(soundDetector(quiet({ volume: 1, muted: true }), { mic: levels(20, [[1, 6, -20]]), system })).toBeNull()
+    // A recording of PC sound without a microphone (stems are a complete set).
+    expect(soundDetector({ ...stems, audioStems: { mic: false, system: true } }, { system })).toBeNull()
   })
   it('null while levels are missing, or without sound', () => {
     expect(soundDetector(stems, { mic: voice })).toBeNull()

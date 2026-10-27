@@ -240,14 +240,29 @@ function processesWith(needle) {
     await waitState(win, 'needs-model')
     await win.click('[data-testid="local-model"] [role="radio"]:has-text("Fast")')
     const from = hfRequests(mock).length
+    // The first request drops at 20 MB; the retry runs slowly (about 20 s), so the download is
+    // still running when the Clip tab opens.
     mock.hf.faults.push({ cut: 20000000 })
     mock.hf.fault = 'slow'
+    // "trying again" shows only for the 2 s wait before the retry: an observer in the page sees it
+    // however late a poll would come.
+    await win.evaluate(() => {
+      const watch = new MutationObserver(() => {
+        if (!document.querySelector('[data-testid="local-captions"]')?.textContent?.includes('trying again (1 of 3)')) return
+        window.__sawRetry = true
+        watch.disconnect()
+      })
+      watch.observe(document.body, { childList: true, subtree: true, characterData: true })
+    })
     await win.click('[data-testid="local-download"]')
-    await f.waitFor(async () => (await win.textContent('[data-testid="local-captions"]').catch(() => '')).includes('trying again (1 of 3)'), 'the retry is shown', 30000)
-    mock.hf.fault = null
-    // The Clip tab: the ring on the Captions tab shows the download.
-    await openTab(win, 'Clip')
-    await f.waitFor(async () => (await win.getAttribute('[data-testid="captions-job-badge"]', 'data-phase').catch(() => null)) === 'download' || hfRequests(mock).length > from + 1, 'the badge shows the download', 15000)
+    await f.waitFor(() => win.evaluate(() => window.__sawRetry === true), 'the retry is shown', 30000)
+    try {
+      // The Clip tab: the ring on the Captions tab shows the download, and nothing else passes.
+      await openTab(win, 'Clip')
+      await f.waitFor(async () => (await win.getAttribute('[data-testid="captions-job-badge"]', 'data-phase', { timeout: 500 }).catch(() => null)) === 'download', 'the badge shows the download', 15000)
+    } finally {
+      mock.hf.fault = null
+    }
     await openTab(win, 'Captions')
     await f.waitFor(async () => ['verifying', 'running', 'done'].includes(await cardState(win)) || !!(await win.$('[data-testid="local-summary"]')), 'the download completes', 120000)
     const reqs = hfRequests(mock).slice(from)

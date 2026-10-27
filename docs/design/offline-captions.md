@@ -512,7 +512,10 @@ same signature and null rules:
 - `combineLevels` keeps returning the one envelope for one source; speech is always read per
   source before combining.
 - `soundDetector(project, analysis)` says which rule ran (`speech`, `mixed`, `guard`, `level`) for
-  the Clip tab's status line.
+  the Clip tab's status line: `level` when the voice source (mic stem, or the mixed track without
+  stems) is heard without `speech`; `guard` only for the mic stem (a recording without stems says
+  `mixed`: its sound counts either way and it has no microphone to name); null when no voice
+  source is heard (the mic muted or at 0, or PC sound alone), so the line is hidden.
 
 **Smart speed** keeps its signature; idle still needs a still picture and no input
 (`smartSpeed.ts` `findIdleRanges`), so silent typing is never sped up.
@@ -951,7 +954,9 @@ applies only when opened at `ai`).
     track.";
   - `guard`: "No speech was found on the microphone, so sound levels are used.";
   - `level`: "Listening for any sound: the speech detector is not available, so typing counts as
-    sound too."
+    sound too.";
+  - no line when no voice source is heard (the microphone muted or at 0, or PC sound alone): every
+    sound counts as before and no detector ran.
 - Silences hint (voice case): "Cuts or speeds up the pauses in your talking, keeping a little of
   the silence next to the sound so no word is clipped." Smart speed hint (voice case): "…the
   picture stays still, you are not talking and your PC plays no sound, and you did not move,
@@ -1190,7 +1195,8 @@ pattern, `'local'` surviving `readTranscript`, and the `pickTranscriber` / `loca
   and 15 s, smoothing, no rise under 30 s); `durationWords` and `sizeWords` rounding.
 - `tests/voice.test.ts`: `withTails` caps (0.3 / 0.1) and never crosses a gap; clatter not
   touching speech is dropped; `trustSpeech` false for 1.5 s of speech in 12 s of sound;
-  `soundDetector` labels.
+  `soundDetector` labels (`mixed` also under the guard; null with the microphone muted or at 0
+  and for PC sound alone).
 - `tests/soundtrackSpeech.test.ts`: without speech, `sourceActivity` deep-equals today's output on
   three literal envelopes (the regression lock); mic speech + system level = union; mix without
   stems = speech ∪ level, a superset of today's; muted gives []; missing levels give null; the
@@ -1210,6 +1216,10 @@ pattern, `'local'` surviving `readTranscript`, and the `pickTranscriber` / `loca
   error buttons chosen by `localErrorCode`; the cloud error link; the summary for local, with
   "Not {language}?" only after a detection; download-then-captions not starting when the editor
   closed or for another project.
+- `tests/captionsBadge.test.ts`: the Captions tab's badge through `useCaptionsHost`: `download`
+  with its share while this project's download runs (also while it waits to try again),
+  `verify` while it is checked or installed with the intent pending, none for another project, a
+  download without the intent or after it failed.
 - `tests/speechCopy.test.ts`: every reason and state has copy; sizes and times inserted; every
   Captions-tab string that names a model also names its tier.
 
@@ -1709,3 +1719,18 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
 - **UI-6** Settings rows let the focus fall to the body when Download became Cancel, Cancel became
   Continue, or a confirmed Remove closed its question: each row catches it on a change of what it
   shows (not on mount) and gives it to its action, else its status line.
+
+Review of the merged build, fixed (one line each):
+
+- **Clip tab status line** (consumers-01): `soundDetector` said `level` ("the speech detector is
+  not available, so typing counts") when no voice source was heard (the mic muted or at 0, or PC
+  sound alone) and `guard` ("…on the microphone") for a recording without stems. It now returns
+  null without a heard voice source (no line) and `mixed` for the mixed track under the guard
+  (§3.6, §7.4); `tests/voice.test.ts`.
+- **The badge e2e** (INT-T4): §10.3 item 2 passed through "or the retry request was made" even
+  without a badge. The retry now stays slow until the badge shows `data-phase="download"` with no
+  alternative, "trying again" is caught by an observer in the page instead of a 100 ms poll, and
+  `tests/captionsBadge.test.ts` covers the download and verify phases of `useCaptionsHost`.
+- **Docs** (INT-T6): FEATURES, README, RELEASE-NOTES, ROADMAP and IMPLEMENTATION described Polish
+  captions as needing a provider, captions as key-only, F-01/F-03 with planned builds and sizes
+  (Vulkan, 142/466 MB, 2.3 MB), and the guard as applying to the director; they now match the code.

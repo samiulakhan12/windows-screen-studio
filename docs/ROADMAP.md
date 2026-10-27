@@ -21,7 +21,7 @@ AI features keep the current model: the user brings their own key, there is no F
 | Date | What happens | What it affects |
 |---|---|---|
 | **6 January 2027** | OpenAI removes `tts-1`, `tts-1-hd` and `gpt-4o-mini-tts`. OpenAI names `gpt-realtime-2.1-mini` as the replacement. | Nothing shipped. LT-04 (voiceover) should be built on Gemini TTS. |
-| **26 February 2027** | OpenAI removes `whisper-1`, `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`. OpenAI names `gpt-transcribe` and `gpt-live-transcribe` as replacements. | **Shipped feature.** `whisper-1` is Flown's default OpenAI transcription model (`src/shared/api/ai.ts`), and `src/main/ai/openai.ts` relies on its word timestamps. Third-party write-ups say the replacements return no word timings. Check the current OpenAI docs before building **NW-09**. |
+| **26 February 2027** | OpenAI removes `whisper-1`, `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`. OpenAI names `gpt-transcribe` and `gpt-live-transcribe` as replacements. | **Shipped feature.** `whisper-1` is Flown's default OpenAI transcription model (`src/shared/api/ai.ts`), and `src/main/ai/openai.ts` relies on its word timestamps. Third-party write-ups say the replacements return no word timings. Check the current OpenAI docs before building **NW-09**. Captions on this PC (F-01, shipped) do not depend on it. |
 
 Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/deprecations), checked 25 October 2026.
 
@@ -29,7 +29,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 
 | | OpenAI | Gemini | Claude | On the PC (no key) |
 |---|---|---|---|---|
-| Transcribe audio | yes (models above retire Feb 2027) | yes, with word times and speaker labels | **no** (no audio input) | possible with Whisper (LT-20) |
+| Transcribe audio | yes (models above retire Feb 2027) | yes, with word times and speaker labels | **no** (no audio input) | yes, with word times: Whisper on the PC (F-01, shipped) |
 | Text tasks (clean-up, translate, chapters, titles, summaries, copy) | yes | yes | yes; a 1M-token context fits very long transcripts | small local models through NW-14 |
 | Look at frames or video | images | whole video or frames, with bounding boxes | images, up to 600 per request | Windows OCR for text (LT-05) |
 | Speech (voiceover, dubbing) | until Jan 2027 | yes (Gemini TTS) | **no** | no |
@@ -37,7 +37,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 
 ## Suggested Wave 5
 
-1. **NW-09 + LT-20**: transcription that survives the OpenAI shutdown. This has a deadline.
+1. **NW-09 + LT-20**: transcription that survives the OpenAI shutdown. This has a deadline. (LT-20 shipped with F-01, captions on this PC; NW-09 is still planned.)
 2. **NW-04 + NW-01**: transcript editing, then filler and retake removal. They share one review screen.
 3. **NW-02**: teleprompter and speaker notes (shipped in 0.3.0).
 4. **NW-03**: better auto zoom input.
@@ -61,7 +61,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Works with:**
   - Gemini: text, word times and speakers.
   - Any OpenAI-compatible Whisper host through NW-14. Groq's `whisper-large-v3` returns word timestamps.
-  - On-device Whisper (LT-20).
+  - On-device Whisper (LT-20, shipped with F-01).
   - Optionally ElevenLabs, for forced alignment and speakers.
   - Not Claude.
 - **Builds on:** `defaultTranscriptionModel` in `src/shared/api/ai.ts`; `src/main/ai/openai.ts` (`timestamp_granularities`); `src/main/ai/gemini.ts`, which already asks for per-word times; the separate mic and system stems, which give a two-speaker split with no AI.
@@ -245,7 +245,7 @@ designs. The rest are `planned`.
 
 | Id | Feature | What it does | Size |
 |---|---|---|---|
-| E-01 (shipped, Wave 6) | **Polish in one click** | Runs remove silences, auto zoom, the camera director (NW-08), captions (if a provider is set) and your style preset in one go. Shows a summary of what changed (time saved, zooms, cuts, camera changes), all in one undo step. | S–M |
+| E-01 (shipped, Wave 6) | **Polish in one click** | Runs remove silences, auto zoom, the camera director (NW-08), captions (on this PC once a speech model is downloaded, else with a provider that can transcribe) and your style preset in one go. Shows a summary of what changed (time saved, zooms, cuts, camera changes), all in one undo step. | S–M |
 | E-02 | **Review mode** | Steps through every automatic decision (each zoom, cut, camera change, removed filler) with Keep / Remove, like reviewing tracked changes. | M |
 | E-03 | **Brand kit** | Your logo, colours, fonts, intro and outro title cards and style, saved once; every new recording starts with them. | S–M |
 | E-04 (shipped, Wave 6) | **Audio waveform on the timeline** | Shows where you talk and where the pauses are, so cuts land in the right place. | S |
@@ -267,7 +267,9 @@ Researched 26 October 2026. Each item automates work with no paid API call and n
 AI that runs on the user's PC, features built into Windows or Electron, or plain rules. A reviewer
 checked each one against the code and the roadmap, and checked licences and sizes on the web.
 Sizes and speeds marked "about" are estimates to benchmark. Large models are optional downloads,
-fetched only when the user turns the feature on (see F-13). All are `planned`.
+fetched only when the user turns the feature on (see F-13). All are `planned` except F-01 and F-03
+(shipped) and a minimal F-13 (shipped with F-01). Their rows keep the research; what shipped is in
+`docs/design/offline-captions.md` §2.
 
 Quality trade-off: on-device models are free and private, but small language and vision models
 write plainer text than OpenAI, Gemini or Claude, and are weaker on rare languages. Paid providers
@@ -277,9 +279,9 @@ stay available as the premium option.
 
 | Id | Feature | What it automates | How it is free | Size | Serves |
 |---|---|---|---|---|---|
-| F-01 | **Offline captions with exact word timings** · *shipped*: see [FEATURES.md](FEATURES.md) (Captions on this PC) and `docs/design/offline-captions.md` | Captions, karaoke and transcript editing with no key, no upload and no cost; keeps working after OpenAI's 26 Feb 2027 shutdown | whisper.cpp (MIT) in a Rust sidecar (whisper-rs, Unlicense), CPU and Vulkan builds; models on demand: base 142 MB, small 466 MB, large-v3-turbo q5 574 MB; Silero VAD built in; DTW word times (needs flash attention off). Optional faster English/European engine: Parakeet TDT 0.6B v3 (CC-BY-4.0, attribution) via sherpa-onnx | L | LT-20, NW-09, NW-01, NW-04 |
+| F-01 | **Offline captions with exact word timings** · *shipped*: see [FEATURES.md](FEATURES.md) (Captions on this PC) and `docs/design/offline-captions.md` | Captions, karaoke and transcript editing with no key, no upload and no cost; keeps working after OpenAI's 26 Feb 2027 shutdown | Shipped: whisper.cpp 1.8.3 (MIT) in a Rust sidecar (whisper-rs-sys, Unlicense), a standard (AVX2) and a compatible CPU build; models on demand: tiny q8_0 44 MB, base q5_1 60 MB (the default), small q5_1 190 MB, large-v3-turbo q5_0 574 MB; Silero VAD built in; DTW word times (flash attention off). Later: a Vulkan build and Parakeet TDT 0.6B v3 (CC-BY-4.0, attribution) via sherpa-onnx as a faster English/European engine | L | LT-20, NW-09, NW-01, NW-04 |
 | F-02 | **After-recording autopilot and naming templates** | Each recording preset runs steps when you stop: style, remove silences, captions, export to a folder, copy, notify; names like `{app} - {preset} - {date} #{n}` | Plain app code reusing finalize, smart speed and batch export; needs a hidden export window (new) and a saved approved folder | M–L | E-01 |
-| F-03 | **Neural speech detector** · *shipped*: see [FEATURES.md](FEATURES.md) (Speech detector) | Remove silences, smart speed, music ducking and the camera director react to real speech, not keyboard clatter or fans | Silero VAD (MIT LICENSE file; record the release), 2.3 MB, shipped in the installer; under 1 ms per 30 ms chunk on one core | S | Silences, smart speed, NW-08, NW-01 |
+| F-03 | **Neural speech detector** · *shipped*: see [FEATURES.md](FEATURES.md) (Speech detector) | Remove silences, smart speed, music ducking and the camera director react to real speech, not keyboard clatter or fans | Shipped: Silero VAD v6.2.0 (MIT) in ggml format, 885 KB, in the installer, run by the speech sidecar on one thread (about 400 times real time) | S | Silences, smart speed, NW-08, NW-01 |
 | F-04 | **"On this PC" AI provider** | Titles, chapters, summaries, clean-up, translate, copy pack and script drafts with no key | llama.cpp via node-llama-cpp (MIT) in a utility process (CPU 33 MB or Vulkan 74 MB runtime); Qwen3.5 2B (1.3 GB) or 4B (2.7 GB), Apache-2.0, on demand; JSON-schema output. Label it "good for drafts" | L | NW-14, NW-13, X-02, NW-02 |
 | F-05 | **Fillers and retakes found offline** | Suggested cuts for "um", repeats and abandoned takes, reviewed in one list | Fillers from F-01 verbatim transcripts plus word lists; retakes from sentence similarity (all-MiniLM-L6-v2 Apache-2.0 about 23 MB quantised, or multilingual-e5-small MIT about 118 MB) via transformers.js | M | NW-01, NW-04 |
 | F-06 | **Know what was clicked** | Auto zoom frames the whole button or dialog, typing zooms aim at the text box, empty-space clicks are flagged stray, guides say "Click 'Export'" without AI | Windows UI Automation (built in since Windows 7) in a new long-running helper subcommand, queried at mouse-down with timeouts; never reads text fields, skips password boxes | M | NW-03, LT-03, LT-07, LT-15 |
@@ -326,7 +328,7 @@ stay available as the premium option.
 
 | Id | Feature | What it does | Works with | Size |
 |---|---|---|---|---|
-| LT-20 | **Offline transcription on the PC** · *shipped with F-01* | Captions with word timings from a Whisper model on the user's PC: no key, no cost, no upload. The reviewer suggests pulling it into the next wave with NW-09. | whisper.cpp or ONNX | L |
+| LT-20 | **Offline transcription on the PC** · *shipped with F-01* | Captions with word timings from a Whisper model on the user's PC: no key, no cost, no upload. The reviewer suggests pulling it into the next wave with NW-09. | whisper.cpp (shipped) | L |
 | LT-02 | **Highlight clips and short versions** | Finds the best 15–90 s moments, or makes "a 60-second version about billing". Each result is saved as a copy of the project, framed and captioned. Needs X-04, and works best after NW-05. | OpenAI, Gemini or Claude (Claude for very long transcripts); Gemini can also judge the video | M |
 | LT-03 | **Step-by-step guide or bug report** | For each click: a styled frame with a highlight ring and a numbered instruction. Exports Markdown, HTML or PDF. A bug-report template writes steps to reproduce. Build with LT-07. | Vision + text with OpenAI, Gemini or Claude; a no-AI mode uses clicks and keys only | M |
 | LT-04 | **AI voiceover and dubbed languages** | Narration from a script or the edited captions, timed to each caption, then spoken tracks in other languages. | Gemini TTS (main), ElevenLabs optional; not Claude; OpenAI TTS retires Jan 2027 | L |
