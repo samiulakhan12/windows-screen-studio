@@ -1,0 +1,8 @@
+FFmpeg
+https://ffmpeg.org/
+resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe is a build of FFmpeg for
+Windows x64 distributed by the ffmpeg-static project (release b6.1.1). It is licensed under the
+GNU General Public License version 3; its full licence text (ffmpeg.exe.LICENSE) and build notes
+(ffmpeg.exe.README) are installed next to it, and its source code is available from
+https://ffmpeg.org/download.html and https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1.
+Flown runs ffmpeg.exe as a separate program to record, decode and export sound and video.

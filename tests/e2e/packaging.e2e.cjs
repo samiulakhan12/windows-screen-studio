@@ -75,6 +75,10 @@ async function packagedOutput() {
   const r = spawnSync(process.execPath, [path.join(h.APP_DIR, 'scripts', 'verify-dist.mjs')], { encoding: 'utf8' })
   process.stdout.write(r.stdout.replace(/^(?=.)/gm, '  '))
   h.assert(r.status === 0, `verify-dist exit code ${r.status}\n${r.stderr}`)
+  // The speech section ran: the model's pin, the notices and the payload budget are always checked.
+  for (const line of ['speech detector model: resources/speech/ggml-silero-v6.2.0.bin', 'third-party notices: resources/THIRD_PARTY_NOTICES.txt', 'speech payload: ']) {
+    h.assert(r.stdout.includes(line), `verify-dist checked "${line.trim()}"`)
+  }
 }
 
 ;(async () => {

@@ -13,7 +13,8 @@ const RT_VERSION = 16
  * Parses the headers of a PE file.
  * @param {Buffer} buf whole file
  * @returns {{ machine: string, sections: {name: string, virtualAddress: number, virtualSize: number, rawOffset: number, rawSize: number}[],
- *   rawEnd: number, truncated: boolean, signed: boolean, certOffset: number, resourceRva: number, resourceSize: number }}
+ *   rawEnd: number, truncated: boolean, signed: boolean, certOffset: number, resourceRva: number, resourceSize: number,
+ *   importRva: number, delayImportRva: number }}
  */
 function parsePe(buf) {
   if (buf.length < 64 || buf.toString('latin1', 0, 2) !== 'MZ') throw new Error('not a Windows executable (no MZ header)')
@@ -49,6 +50,8 @@ function parsePe(buf) {
   const security = dir(4)
   if (security.size) rawEnd = Math.max(rawEnd, security.rva + security.size)
   const resource = dir(2)
+  const imports = dir(1)
+  const delayImports = dir(13)
   return {
     machine: MACHINES[machineId] || `0x${machineId.toString(16)}`,
     sections,
@@ -57,7 +60,9 @@ function parsePe(buf) {
     signed: security.size > 0 && security.rva + security.size <= buf.length,
     certOffset: security.size ? security.rva : 0,
     resourceRva: resource.rva,
-    resourceSize: resource.size
+    resourceSize: resource.size,
+    importRva: imports.rva,
+    delayImportRva: delayImports.rva
   }
 }
 
@@ -169,6 +174,44 @@ function readVersionStrings(buf) {
   return out
 }
 
+/** The NUL-terminated ASCII string at `rva`. */
+function readCString(buf, info, rva) {
+  const at = rvaToOffset(info, rva)
+  const end = buf.indexOf(0, at)
+  if (end === -1 || end - at > 255) throw new Error(`bad import name at RVA 0x${rva.toString(16)}`)
+  return buf.toString('latin1', at, end)
+}
+
+/**
+ * The DLLs an executable loads at start (the import directory) and on first use (the delay-load
+ * directory), as their names are written ("KERNEL32.dll"), in table order, without duplicates.
+ * @param {Buffer} buf whole file
+ * @returns {string[]}
+ */
+function readImports(buf, info = parsePe(buf)) {
+  const names = []
+  const add = (n) => {
+    if (!names.includes(n)) names.push(n)
+  }
+  if (info.importRva) {
+    // IMAGE_IMPORT_DESCRIPTOR: 20 bytes, the name's RVA at 12; a zeroed one ends the table.
+    for (let at = rvaToOffset(info, info.importRva); at + 20 <= buf.length; at += 20) {
+      const name = buf.readUInt32LE(at + 12)
+      if (!name && !buf.readUInt32LE(at) && !buf.readUInt32LE(at + 16)) break
+      if (name) add(readCString(buf, info, name))
+    }
+  }
+  if (info.delayImportRva) {
+    // ImgDelayDescr: 32 bytes, the name's RVA at 4.
+    for (let at = rvaToOffset(info, info.delayImportRva); at + 32 <= buf.length; at += 32) {
+      const name = buf.readUInt32LE(at + 4)
+      if (!name) break
+      add(readCString(buf, info, name))
+    }
+  }
+  return names
+}
+
 /**
  * SHA-256 of a PE file's first `length` bytes with the two header fields Authenticode signing
  * rewrites (the checksum and the certificate table entry) read as zeros. Signing only pads the
@@ -224,4 +267,4 @@ function checkWindowsExe(file, { minBytes = 0, pin = null, fs = require('node:fs
   return { ok: true, size: buf.length, signed: info.signed }
 }
 
-module.exports = { parsePe, readResources, readIconGroups, readVersionStrings, checkWindowsExe, peContentHash, RT_ICON, RT_GROUP_ICON, RT_VERSION }
+module.exports = { parsePe, readImports, readResources, readIconGroups, readVersionStrings, checkWindowsExe, peContentHash, RT_ICON, RT_GROUP_ICON, RT_VERSION }
