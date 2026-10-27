@@ -321,6 +321,8 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
       } catch (err) {
         await new Promise<void>((r) => out.end(r))
         if (err instanceof DownloadFailure) throw err
+        // What arrived stays for Continue (or the automatic retry), recorded beside it.
+        await writeMeta(received)
         if (opts.signal.aborted) throw cancelled()
         throw new Retryable(stalled ? 'No data arrived for a minute.' : err instanceof Error ? err.message : String(err))
       }
