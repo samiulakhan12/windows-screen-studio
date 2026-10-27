@@ -12,6 +12,7 @@
  * (crop.ts regenerateInFrame / cropView), and nothing here writes the crop or the freezes.
  */
 import type { AiProviderInfo } from '../api/ai'
+import { LOCAL_TRANSCRIBER_ID, type SpeechState } from '../api/speech'
 import { activitySources } from '../audio/settings'
 import type { DirectorSpeech } from '../audio/speech'
 import { captionsOf } from '../captions/settings'
@@ -24,6 +25,8 @@ import type { FramingOutcome } from '../render/faceFraming'
 import { viewingTime } from '../render/overlays'
 import type { CursorTrack, Project, Transcript } from '../types'
 import { applyDirectorPlan, planDirector, type DirectorPlan } from './cameraDirector'
+import type { SpeechModelId } from '../speech/catalog'
+import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../speech/transcriber'
 import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 
@@ -72,6 +75,8 @@ export type PolishSkip =
   | 'has-captions'
   /** no AI provider can transcribe */
   | 'no-provider'
+  /** On this PC is the choice and its speech model is not downloaded (CAPTIONS_SKIPPED_NO_MODEL): nothing is uploaded instead */
+  | 'no-model'
   /** a transcription job is already running (Captions tab) */
   | 'busy'
   /** the provider failed (PolishInput.errors.captions) */
@@ -156,6 +161,8 @@ export interface PolishContext {
   transcribers: readonly Pick<AiProviderInfo, 'id'>[] | null
   /** transcriptionJob()?.running for this project. */
   transcribing: boolean
+  /** On this PC is the choice but no speech model is downloaded (polishTranscriber): captions are skipped. */
+  localNotReady?: boolean
 }
 
 /** The Clip panel's Remove silences defaults: pauses of 1.0 s or more, 0.25 s kept next to the sound. */
@@ -304,6 +311,7 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
     if (project.transcript) return 'has-captions'
     if (!project.hasAudio) return 'no-sound'
     if (ctx.transcribing) return 'busy'
+    if (ctx.localNotReady) return 'no-model'
     return ctx.transcribers?.length === 0 ? 'no-provider' : null
   }
   return {
@@ -331,6 +339,24 @@ export function polishKeepRanges(project: Project): TimeRange[] {
 export function autoZoomHasInput(recorded: CursorTrack): boolean {
   if ((recorded.marks?.length ?? 0) > 0) return true
   return recorded.valid && (recorded.clicks.some((c) => isZoomClick(c, true)) || (recorded.typing?.length ?? 0) > 0)
+}
+
+/** What Polish makes captions with: a key provider, or On this PC with its model; or why it cannot. */
+export type PolishTranscriber = { providerId: string; model?: SpeechModelId } | { skip: 'no-model' | 'no-provider' }
+
+/**
+ * The transcriber for Polish (docs/design/offline-captions.md §3.8), by the frozen
+ * speech/transcriber.ts: the remembered choice, else On this PC with a downloaded model, else the
+ * first key provider that can transcribe, else On this PC not ready. A choice that cannot transcribe
+ * now (On this PC without a model) skips captions with 'no-model', even when a key provider exists:
+ * nothing is uploaded against the user's choice, and Polish never starts a download. `speech` null:
+ * On this PC is unavailable (its state could not be read).
+ */
+export function polishTranscriber(providers: readonly AiProviderInfo[], speech: SpeechState | null, remembered: string | null): PolishTranscriber {
+  const choice = pickSpeechTranscriber(providers, speech, remembered ?? '')
+  if (!choice) return { skip: 'no-provider' }
+  if (!canTranscribeNow(choice)) return { skip: 'no-model' }
+  return choice.kind === 'key' ? { providerId: choice.providerId } : { providerId: LOCAL_TRANSCRIBER_ID, model: choice.model }
 }
 
 /** The provider captions are made with: the remembered one if it can still transcribe, else the first that can, else null. */
