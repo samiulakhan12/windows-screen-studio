@@ -4,8 +4,11 @@
 //!   ssw-speech cpu
 //!   ssw-speech vad --vad-model P --audio <wav|-> [--format f32le] [--threads 1] [--low-priority] [--parent-pid N]
 //!   ssw-speech transcribe --model-dir D --model F --audio W --vad-model P [--lang auto|xx] [--threads N]
-//!                         [--low-priority] [--stdin-control] [--parent-pid N]
-//!   debug only: --dtw auto|off|<preset>, --beam N, --prompt S, --max-chunk S, --verbose
+//!                         [--max-chunk S] [--low-priority] [--stdin-control] [--parent-pid N]
+//!   debug only: --dtw auto|off|<preset>, --beam N, --prompt S, --verbose
+//!
+//! `--max-chunk S` (1..29.5 s, default 29) is the longest chunk handed to whisper.cpp; the app
+//! passes it for a model that sets its own (the Bangla model: 20 s, docs/design/offline-captions.md §14).
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -341,6 +344,25 @@ mod tests {
             "EN!",
         ]);
         assert_eq!(lang.unwrap_err().code, Code::Language);
+    }
+
+    #[test]
+    fn reads_max_chunk_for_transcribe_within_its_bounds() {
+        let base = ["transcribe", "--model-dir", "d", "--model", "m.bin", "--audio", "a.wav", "--vad-model", "v"];
+        let with = |s: &str| {
+            let mut v = base.to_vec();
+            v.extend(["--max-chunk", s]);
+            p(&v)
+        };
+        assert_eq!(p(&base).unwrap().max_chunk, 29.0);
+        assert_eq!(with("20").unwrap().max_chunk, 20.0);
+        assert_eq!(with("1").unwrap().max_chunk, 1.0);
+        assert_eq!(with("29.5").unwrap().max_chunk, 29.5);
+        for bad in ["0.5", "30", "NaN", "inf", "x", "-20"] {
+            assert_eq!(with(bad).unwrap_err().code, Code::Args, "{bad}");
+        }
+        let vad = p(&["vad", "--vad-model", "m", "--audio", "-", "--max-chunk", "20"]);
+        assert_eq!(vad.unwrap_err().code, Code::Args);
     }
 
     #[test]

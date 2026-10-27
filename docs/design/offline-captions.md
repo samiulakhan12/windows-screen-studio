@@ -645,8 +645,9 @@ checked with `speechModel()`, booleans with `=== true`.
 - `ssw-speech vad --vad-model P --audio <wav|-> [--format f32le] [--threads 1] [--low-priority]
   [--parent-pid N]`
 - `ssw-speech transcribe --model-dir D --model F --audio W --vad-model P [--lang auto|xx]
-  [--threads N] [--low-priority] [--stdin-control] [--parent-pid N]`
-- Debug only: `--dtw auto|off|<preset>`, `--beam N`, `--prompt S`, `--max-chunk S`, `--verbose`.
+  [--threads N] [--max-chunk S] [--low-priority] [--stdin-control] [--parent-pid N]`
+  (`--max-chunk`, 1..29.5 s, default `SIDECAR.maxChunk`: per model since §14.3)
+- Debug only: `--dtw auto|off|<preset>`, `--beam N`, `--prompt S`, `--verbose`.
 - `F` must match `[A-Za-z0-9._-]+`; Rust joins it to `D`, so there is no path traversal. Models and
   the VAD model are opened by Rust (`std::fs::File`, Unicode paths) and handed to whisper.cpp
   through `whisper_model_loader` (`whisper_init_with_params_no_state`,
