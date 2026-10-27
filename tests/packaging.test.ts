@@ -58,7 +58,10 @@ const packaging = require('../scripts/lib/packaging.cjs') as {
   runtimePackages(rootDir?: string): string[]
   foreignPrebuilds(rootDir?: string): string[]
   speechHelpers(): { from: string; to: string; build: string }[]
-  speechHelperStatus(rootDir?: string): { from: string; to: string; build: string; bundle: boolean; present: boolean; reason?: string; size?: number }[]
+  speechHelperStatus(rootDir?: string): { from: string; to: string; build: string; bundle: boolean; present: boolean; reason?: string; size?: number; missingOptions?: string[] }[]
+  SPEECH_HELPER_OPTIONS: string[]
+  missingSpeechOptions(buf: Buffer): string[]
+  staleSpeechHelper(from: string, missing: string[]): string
   speechResources(rootDir?: string): { from: string; to: string; filter: string[] }[]
   noticesResource(): { from: string; to: string; filter: string[] }
   noticesProblems(text: string): string[]
@@ -621,6 +624,31 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     expect(packaging.SIGN_EXTS).toEqual(['.node'])
   })
 
+  it('refuses a speech helper built from older sources: it must know every option the catalog’s models pass (offline-captions §14.3)', async () => {
+    const { SPEECH_MODELS } = await import('../src/shared/speech/catalog')
+    const { modelArgs } = await import('../src/shared/speech/protocol')
+    // Every option a model passes, so a new one cannot be added without the check.
+    expect([...packaging.SPEECH_HELPER_OPTIONS].sort()).toEqual([...new Set(SPEECH_MODELS.flatMap((m) => modelArgs(m)).filter((a) => a.startsWith('--')))].sort())
+    const current = Buffer.concat([fakePe({}), Buffer.from('--model-dir--model--audio--max-chunk--no-timestamps--verbose', 'latin1')])
+    // Flown 0.4.0's helper parsed --max-chunk (a debug option then) but not --no-timestamps.
+    const old = Buffer.concat([fakePe({}), Buffer.from('--model-dir--model--audio--max-chunk--verbose', 'latin1')])
+    expect(packaging.missingSpeechOptions(current)).toEqual([])
+    expect(packaging.missingSpeechOptions(old)).toEqual(['--no-timestamps'])
+    const root = tmpDir()
+    mkdirSync(path.join(root, 'native/bin'), { recursive: true })
+    writeFileSync(path.join(root, 'native/bin/ssw-speech.exe'), current)
+    writeFileSync(path.join(root, 'native/bin/ssw-speech-compat.exe'), old)
+    expect(packaging.speechHelperStatus(root).map((h) => [h.bundle, h.missingOptions])).toEqual([
+      [true, []],
+      [true, ['--no-timestamps']]
+    ])
+    expect(packaging.staleSpeechHelper('native/bin/ssw-speech-compat.exe', ['--no-timestamps'])).toBe(
+      'native/bin/ssw-speech-compat.exe was built from older sources: it does not know --no-timestamps, which this version of Flown passes (the Bangla model), so every Bangla caption run would fail. Rebuild it (npm run build:native) or copy in the helpers built from this commit.'
+    )
+    // predist and verify-dist refuse it.
+    for (const script of ['predist.mjs', 'verify-dist.mjs']) expect(readFileSync(path.join(ROOT, 'scripts', script), 'utf8')).toContain('staleSpeechHelper(')
+  })
+
   it('allows only system DLLs in the speech helpers (bcryptprimitives for Rust, never psapi)', () => {
     expect(packaging.SPEECH_IMPORTS).toEqual(['KERNEL32.dll', 'ADVAPI32.dll', 'msvcrt.dll', 'ntdll.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll'])
     expect(packaging.unexpectedSpeechImports(['kernel32.dll', 'ADVAPI32.dll', 'bcryptprimitives.dll'])).toEqual([])
@@ -721,9 +749,15 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     const preload = path.join(root, 'win32.cjs')
     writeFileSync(preload, "Object.defineProperty(process, 'platform', { value: 'win32' })\n")
     mkdirSync(path.join(root, 'native', 'bin'), { recursive: true })
+    const current = Buffer.concat([fakePe({}), Buffer.from(packaging.SPEECH_HELPER_OPTIONS.join(''), 'latin1')])
     for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), fakePe({}))
     const build = (env?: Record<string, string>) =>
       spawnSync(process.execPath, ['-r', preload, path.join(root, 'scripts', 'build-native.mjs')], { cwd: root, env: withoutCargo(env), encoding: 'utf8' })
+    // Helpers from older sources (without --no-timestamps) are not reused: a required build fails.
+    const stale = build({ SSW_REQUIRE_NATIVE: '1' })
+    expect(stale.status).toBe(1)
+    expect(stale.stderr).toContain('native/bin/ssw-speech.exe is from older sources (it does not know --max-chunk, --no-timestamps)')
+    for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), current)
     const plain = build()
     expect(plain.status, plain.stderr).toBe(0)
     expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-speech.exe and native/bin/ssw-speech-compat.exe (not rebuilt now)')

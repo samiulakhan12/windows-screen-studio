@@ -241,6 +241,12 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
           throw fail('damaged', { model: spec.id })
         }
         if (r.code === 'language') throw fail('language', { language: call.language ?? lang })
+        if (r.code === 'args') {
+          // The helper refused the app's own arguments: it is not the one built with this version of
+          // Flown (an older one bundled by mistake lacks --no-timestamps, which the Bangla model needs).
+          console.warn(`Speech helper refused the arguments for ${spec.id}: ${r.message}`)
+          throw fail('outdated', { model: spec.id })
+        }
         if (r.code !== 'internal') throw fail('protocol')
       }
       if (r.kind === 'protocol') throw fail('protocol')

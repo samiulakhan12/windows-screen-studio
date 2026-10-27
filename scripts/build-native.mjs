@@ -170,13 +170,15 @@ function buildSpeechWindows() {
   if (process.platform === 'win32') {
     // Not built here: helpers built on Linux or macOS and copied to native/bin are bundled.
     const status = speechHelperStatus(root)
-    if (status.every((h) => h.bundle)) {
+    // Usable, and built from these sources (an older helper lacks an option the app now passes, such as --no-timestamps).
+    const current = (h) => h.bundle && !h.missingOptions.length
+    if (status.every(current)) {
       console.warn(`build-native: WARNING: the speech helpers are cross-compiled from Linux or macOS only; reusing the prebuilt ${status.map((h) => h.from).join(' and ')} (not rebuilt now).`)
       return
     }
     const bad = status
-      .filter((h) => !h.bundle)
-      .map((h) => `${h.from} is ${h.present ? `unusable (${h.reason})` : 'missing'}`)
+      .filter((h) => !current(h))
+      .map((h) => (h.bundle ? `${h.from} is from older sources (it does not know ${h.missingOptions.join(', ')})` : `${h.from} is ${h.present ? `unusable (${h.reason})` : 'missing'}`))
       .join(', ')
     return skip(what, `they are cross-compiled from Linux or macOS only, and ${bad}.`, 'Build them on Linux (see docs/BUILDING.md) and copy them to native/bin.', SPEECH_CONSEQUENCE)
   }

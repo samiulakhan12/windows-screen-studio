@@ -63,7 +63,10 @@ that fails:
      and the speech detector falls back to sound levels. Set `SSW_REQUIRE_NATIVE=1` to make a
      missing helper an error (release builds). On Windows the speech helpers are not built: the
      ones you built on Linux or macOS and copied to `native/bin` are bundled (with a warning that
-     they were not rebuilt), also with `SSW_REQUIRE_NATIVE=1`.
+     they were not rebuilt), also with `SSW_REQUIRE_NATIVE=1`. Helpers built from older sources
+     (one without an option the app passes, such as `--no-timestamps` for the Bangla model) are
+     never bundled: predist and verify-dist fail with "… was built from older sources". Copy in the
+     helpers built from the same commit.
    - **Speech detector model and notices.** `resources/speech/ggml-silero-v6.2.0.bin` must match
      its pin, and `resources/THIRD_PARTY_NOTICES.txt` must be what `npm run notices` generates now
      (`scripts/notices.mjs --check`). It lists the Rust crates with `cargo`; without `cargo` it
@@ -137,7 +140,7 @@ file must match the SHA-256 pin.
 The native helpers cross-compile too (`rustup target add x86_64-pc-windows-gnu` and MinGW-w64;
 the speech helper also cmake, libclang and the POSIX-thread MinGW); see `native/README.md` and
 "The speech helper" below. The speech helpers are only cross-compiled from Linux or macOS; to
-package on Windows, copy both exes into `native/bin` first.
+package on Windows, copy both exes, built from the same commit, into `native/bin` first.
 
 ## The app icon
 

@@ -37,7 +37,7 @@ import type { SpeechModelStore } from '../src/main/speech/models'
 import type { PartProgress } from '../src/main/ai/types'
 import { ENGINE_VERSION, speechModel, type SpeechModelId } from '../src/shared/speech/catalog'
 import { CAPTION_LIMITS } from '../src/shared/speech/protocol'
-import { localErrorCode } from '../src/shared/speech/errors'
+import { localErrorCode, localErrorMessage } from '../src/shared/speech/errors'
 
 const FAKE = path.resolve(__dirname, 'fixtures/fake-speech-helper.cjs')
 const VAD = path.resolve(__dirname, '../resources/speech/ggml-silero-v6.2.0.bin')
@@ -369,6 +369,26 @@ describe('localSpeechClient', () => {
       const { message } = await run('stall', {}, fakeStore(), { stallMs: 300 })
       expect(localErrorCode(message)).toBe('stalled')
       expect(transcribeCalls().map((a) => argOf(a, '--threads'))).toEqual(['3', '3'])
+    })
+
+    it('a helper that refuses the app’s arguments (0.4.0’s, without --no-timestamps) → outdated, not protocol; no retry, the model still trusted', async () => {
+      process.env.FAKE_SPEECH_MODE = 'old'
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      try {
+        const store = fakeStore()
+        const bn = await localSpeechClient('whisper-bn-medium', deps(store))
+        const message = await failure(bn.transcribe!(part(wav('old-bn.wav', 2, 21), 2), { signal: signal() }))
+        expect(localErrorCode(message)).toBe('outdated')
+        expect(message).toBe(localErrorMessage('outdated', { model: 'whisper-bn-medium' }))
+        expect(transcribeCalls()).toHaveLength(1)
+        expect(store.cleared).toEqual([])
+        expect(warn.mock.calls.some((c) => String(c[0]).includes('unknown argument --no-timestamps'))).toBe(true)
+        // The same helper still runs the Whisper models, which pass no new argument.
+        const tiny = await localSpeechClient('whisper-tiny', deps())
+        expect((await tiny.transcribe!(part(wav('old-tiny.wav', 2, 22), 2), { signal: signal() })).segments.length).toBeGreaterThan(0)
+      } finally {
+        warn.mockRestore()
+      }
     })
 
     it('garbage, overflow or no result → protocol', async () => {

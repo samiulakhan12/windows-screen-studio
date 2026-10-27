@@ -191,7 +191,7 @@ describe('time estimates', () => {
 })
 
 describe('the shared error sentences of captions on this PC', () => {
-  const codes: LocalCaptionsError[] = ['unavailable', 'no-model', 'damaged', 'crashed', 'memory', 'stalled', 'protocol', 'language', 'blocked']
+  const codes: LocalCaptionsError[] = ['unavailable', 'no-model', 'damaged', 'crashed', 'memory', 'stalled', 'protocol', 'language', 'blocked', 'outdated']
 
   it('name the tier first and the model once', () => {
     expect(SPEECH_TIER_NAMES).toEqual({ fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate', bangla: 'Bangla' })
@@ -209,6 +209,10 @@ describe('the shared error sentences of captions on this PC', () => {
     expect(localErrorMessage('damaged', { model: 'whisper-base' })).toBe('The speech model for Standard (Whisper base) is damaged or missing, so it was not used. Download it again (60 MB).')
     expect(localErrorMessage('crashed', { part: 4, parts: 6 })).toBe('The speech engine stopped unexpectedly. The parts already done are kept: Generate captions again continues from part 4 of 6.')
     expect(localErrorMessage('unavailable', { reason: 'blocked' })).toBe(`Captions on this PC are not available here: ${UNAVAILABLE_REASONS.blocked}.`)
+    // A helper that refuses the app's arguments (an older one bundled by mistake) says so, never "something unexpected".
+    expect(localErrorMessage('outdated', { model: 'whisper-bn-medium' })).toBe(
+      'The speech engine in this copy of Flown does not match this version, so it cannot run Bangla (Bengali.AI Whisper medium). Reinstall Flown to fix it.'
+    )
     for (const code of codes) {
       for (const m of SPEECH_MODELS) {
         const text = localErrorMessage(code, { model: m.id })
@@ -231,7 +235,8 @@ describe('the shared error sentences of captions on this PC', () => {
       ['protocol', {}],
       ['language', { language: 'xx' }],
       ['blocked', { model: 'whisper-turbo', block: 'processor' }],
-      ['blocked', { model: 'whisper-turbo', block: 'memory' }]
+      ['blocked', { model: 'whisper-turbo', block: 'memory' }],
+      ['outdated', { model: 'whisper-bn-medium' }]
     ]
     for (const [code, params] of samples) {
       const message = localErrorMessage(code, params)
