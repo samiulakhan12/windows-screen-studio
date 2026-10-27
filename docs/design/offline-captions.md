@@ -1735,3 +1735,186 @@ Review of the merged build, fixed (one line each):
 - **Docs** (INT-T6): FEATURES, README, RELEASE-NOTES, ROADMAP and IMPLEMENTATION described Polish
   captions as needing a provider, captions as key-only, F-01/F-03 with planned builds and sizes
   (Vulkan, 142/466 MB, 2.3 MB), and the guard as applying to the director; they now match the code.
+
+---
+
+## 14. Bangla model
+
+Status: built on `feat/bangla-model` after 0.4.0. The owner asked for better Bangla captions on
+this PC, offline and free. The shipped models are unusable for Bangla (large-v3 turbo with
+`--lang bn`: WER 98 %, CER 72 %; it mixes in Hindi and English), so a Bangla-only model joins the
+catalog. Everything below is additive: other languages, existing users, settings and projects
+behave exactly as before.
+
+### 14.1 Decisions and numbers
+
+Measured in this container with the app's own helper (`native/bin/ssw-speech`, 4 threads, AVX2)
+on 59 clips (12.5 min) of FLEURS `bn_in` test, several speakers:
+
+| Decision | Choice | Why |
+|---|---|---|
+| Model | `bengaliAI/tugstugi_bengaliai-asr_whisper-medium` (1st place in the Bengali.AI speech recognition competition): Whisper medium (769M parameters, 24 + 24 layers, 80 mels, vocabulary 51865), Apache-2.0 | Per clip WER 18.5 %, CER 5.8 %; long-form (the clips joined, as in a recording) WER 24.8 % with the default 29 s chunks, **22.2 % with 20 s chunks** (CER 9.2 %). Same engine, DTW and word forming as the other models: no new code path in the helper. |
+| File | `ggml-bengaliai-whisper-medium-q5_0.bin` from `huggingface.co/winshades/bengaliai-whisper-medium-ggml` at commit `11cf5cbd282e0e46a761093939952f74906ddce1`, 539,257,671 bytes, SHA-256 `2c64c7f1e2c8f2417ed1fe5b78c7238933c00a2cdc2ef33e7087a95475256605` | A ready ggml conversion (conversion and q5_0 only, as its card lists; its Apache-2.0 LICENSE ships with it). q8_0 (823 MB) is not better (22.6 %). |
+| Id, tier | `whisper-bn-medium`, tier `bangla` ("Bangla"), `language: 'bn'` | A tier id like the others (§1 "Model ids"): a pin can change without touching transcripts. |
+| Chunks | `maxChunkSeconds: 20`, passed as `--max-chunk 20` | 24.8 % → 22.2 % WER long-form. `--max-chunk` (1..29.5 s) existed as a debug option; it becomes a supported per-model argument (§14.3). |
+| Language | always `--lang bn`; used only when the spoken language is Bengali | Fine-tuned on Bangla only: its own language detection cannot be trusted, and it must never make captions in another language. |
+| Speed, memory | `rtf4` 0.87 (long-form, 20 s chunks; 1.2 on single short clips), `ramMB` 1200 (peak RSS about 1.2 GB), load 0.4-0.7 s, `partSeconds` 180 (as turbo) | On a 4-core Windows PC (3 threads, × 1.65) a 20-minute recording takes about 29 min (`estimateSeconds`): slower than the recording, which the tab says before starting (§7.1). |
+| Gating | `minTotalMemGB: 8`, `needsStandardBuild: true` (as turbo) | `memoryNeedMB` 1,262 MB; the compatible build is about 4.3 times slower (`COMPAT_FACTOR`): about 6 times the recording's length. |
+| Word timings | unchanged (DTW preset MEDIUM from the header) | Word starts 91-93 % within 200 ms of forced alignment, median 40 ms, monotonic, no overlaps. |
+| Text | Bengali transcripts are NFC-normalised (`localTranscript`) | Byte tokens can leave a vowel sign in two parts (ে + া for ো). Other languages are left exactly as before (NFC would also change CJK compatibility ideographs). The model writes no punctuation. |
+| Hosting | the third-party file, pinned by commit, size and SHA-256 | If it disappears, downloads fail cleanly with `missing`; Qbexel can re-host the same bytes (same SHA-256) under its own Hugging Face account and change one repository in the catalog. |
+
+### 14.2 Data model (additive) and old data
+
+- `catalog.ts`: `SpeechModelId` and `SpeechTier` gain `'whisper-bn-medium'` and `'bangla'`
+  (`SPEECH_TIER_NAMES.bangla = 'Bangla'`); `SpeechModelSpec` gains optional `language` (the one
+  language a model makes captions in), `maxChunkSeconds` and `repo` (`{ repo, commit }`, absent:
+  `SPEECH_MODEL_REPO`); `SpeechLicense.name` widens to `'MIT' | 'Apache-2.0'`. The entry is last in
+  `SPEECH_MODELS`. New: `isLanguageModel(spec)`, `BANGLA_MODEL`, `isBengali(language)`.
+  `modelUrl` uses the model's own repository (the test base still replaces it).
+- **Never the default model.** `defaultModel` (speech.json, Settings' radios, E-01, the chips'
+  fallback) only ever names a general model: `sanitizeSpeechSettings` maps a language model to
+  base, a finished download of one never becomes the default, removing the default picks the next
+  general model, `setDefault` refuses it, `localModel` and `quickerModel` skip it, and the Captions
+  tab does not call `setDefaultSpeechModel` after its download. So "Detect automatically",
+  English and every other language never use it.
+- `speech.json` keeps its shape (`verified` and `measured` accept the new id like any catalog
+  id). Flown 0.4.0 reading a newer speech.json drops the unknown id and ignores the unknown file
+  in the folder (§4). A Bangla transcript is `{ provider: 'local', model: 'whisper-bn-medium',
+  language: 'bn' }`; 0.4.0 shows the id where the name would be, nothing else changes. Projects and
+  settings written before load unchanged.
+- The part cache key already holds the model's SHA-256 and the language, so Bangla parts never
+  mix with others; `ENGINE_VERSION` is unchanged (the helper's output did not change).
+- Renderer session state (`speechState.ts`): the Captions tab's Spoken language moves into this
+  module (`spokenLanguage()`, `setSpokenLanguage()`; session-only, as before) so Polish reads the
+  same choice; Bengali has its own session chip choice (picking Standard for Bengali does not
+  change the choice for other languages, and the reverse).
+- `TranscribeOptions` is unchanged. `validateTranscribeOptions` refuses a language model with
+  another language ("Bangla (Bengali.AI Whisper medium) makes captions in Bangla only."); without
+  a language, main uses the model's own.
+
+### 14.3 Frozen contracts extended (additively; recorded here)
+
+- `catalog.ts` (above); `errors.ts`: `quickerModel` returns null for a language model;
+  `transcriber.ts`: `localModel` skips language models, new `localModelFor(speech, language)`,
+  `pickTranscriber` gains an optional 4th parameter `language` (default '': today's behaviour
+  exactly); `api/speech.ts`: the licence type only.
+- `protocol.ts` (§5.2): `SIDECAR` is unchanged; new `MAX_CHUNK_RANGE = { min: 1, max: 29.5 }` (the
+  helper's own bounds) and `chunkArgs(spec)`: `['--max-chunk', '20']` for a model that sets
+  `maxChunkSeconds`, `[]` otherwise (the helper's default stays `SIDECAR.maxChunk`, 29 s);
+  `localTranscript` NFC-normalises Bengali text. The helper's usage line lists `--max-chunk S` as a
+  supported `transcribe` option instead of "debug only", with a cargo test of its bounds.
+- `polish.ts`: `polishTranscriber(providers, speech, remembered, language?)` returns
+  `{ providerId, model?, language? }`; `language` is set only for a language model.
+
+### 14.4 Behaviour, UI and copy
+
+**The model for a spoken language** (`localModelFor`, pure): with the spoken language Bengali
+(`bn` or `bn-*`) and the Bangla model installed and allowed here, the Bangla model; otherwise
+`localModel`'s pick, as before. `pickTranscriber(…, language)` uses it, so with Bengali chosen
+and the Bangla model downloaded On this PC is the default even when a key provider exists (step 2,
+"an installed model"); without it nothing changes.
+
+**The Captions tab** (On this PC chosen):
+
+- The chips gain **"Bangla · 539 MB"** / **"Bangla · Downloaded"** (accessible names "Bangla, 539
+  megabyte download" / "Bangla, downloaded") only while the Spoken language is Bengali and the
+  model is allowed here. For Bengali it is the chosen chip unless the user picked another one for
+  Bengali this session. Its purpose line: "Made for Bangla: far fewer mistakes than the other
+  tiers, which get most Bangla words wrong."
+- **The recommendation** is the `needs-model` card for the Bangla model. Title "Make Bangla
+  captions on this PC"; body "Recommended for Bangla: the Bangla model gets about 4 in 5 words
+  right, where the other tiers get most Bangla words wrong. Free and private: it runs on this PC
+  and works offline once downloaded; the sound never leaves this PC. Flown first downloads it once
+  (539 MB, from Hugging Face) and checks it before use. Then this {length} recording takes
+  {estimate}."; the one primary button **"Download Bangla model (539 MB) and make captions"**
+  (accessible name "Download Bangla (Bengali.AI Whisper medium), 539 megabytes, and make
+  captions"); "Make them now with {tier} (downloaded)" when a general model is downloaded, as
+  today; small print "Bengali.AI Whisper medium, Apache-2.0 licence ·
+  huggingface.co/winshades/bengaliai-whisper-medium-ggml". The size is the exact file's (539 MB,
+  `sizeWords`), like every size in the app. Downloading, stopped (Cancel keeps the part; Delete),
+  verifying, the failures and the disk and offline lines are §7.2's, naming "Bangla (Bengali.AI
+  Whisper medium)". Once verified, captions start with `--lang bn`; the model does not become the
+  default (§14.2).
+- **Bengali with another chip picked**: "For Bangla, choose Bangla: it makes far fewer mistakes."
+  (`data-testid="bangla-hint"`) instead of the general "Smaller models…" line.
+- **Bengali, not allowed here**: "The Bangla model is not offered on this PC: {modelBlockReason}"
+  (for example "Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.");
+  the general chips and lines as before.
+- **Detect automatically with the Bangla model downloaded**: "Speaking Bangla? Choose Bengali to
+  use the Bangla model." [Choose Bengali] (sets the Spoken language). Detection never switches
+  models by itself.
+- **The last local run detected Bengali** (the summary of a local transcript in `bn` made with a
+  general model, the Bangla model allowed here; `data-testid="bangla-offer"`): "Bangla captions:
+  the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words
+  wrong. It runs on this PC and works offline once downloaded." with one button, **"Download
+  Bangla model (539 MB) and make captions"**, or "Make them again with Bangla (downloaded)" once
+  it is here. The click asks the replace question, sets the Spoken language to Bengali, opens the
+  form (where the download shows) and starts. For Bengali it replaces the "Smaller models…" line.
+- The memory warning covers the Bangla tier: "Bangla needs about 1.3 GB of free memory; this PC
+  has {free} free right now. Close other apps first."
+
+**Settings › Captions on this PC**: a row after the general models, "Bengali.AI Whisper medium ·
+Bangla only", without a radio (it is never the model for new captions) and without "Recommended";
+facts, status and actions as the other rows (Download 539 MB, Cancel, Continue, Delete, Remove,
+the blocked reason); purpose "Bangla only: used whenever the spoken language is Bengali, never for
+other languages. Far fewer mistakes in Bangla than the other models."; licence line "Bengali.AI
+Whisper medium by the tugstugi team (Apache-2.0 licence), fine-tuned from OpenAI Whisper,
+converted by WinShades · huggingface.co/winshades/bengaliai-whisper-medium-ggml (11cf5cb)".
+
+**Polish in one click** uses the Bangla model when the Captions tab's Spoken language is Bengali
+(this session) and the model is downloaded and allowed here, passing `language: 'bn'`; its
+Captions row says "Runs on this PC with the Bangla model: nothing is uploaded and it costs
+nothing." Otherwise it behaves as before (no language passed, the general model).
+
+**Main**: `localSpeechClient` passes the model's language (`--lang bn`) and `chunkArgs(spec)`;
+everything else (parts, cache, retries, the time limit from `estimateSeconds`, speed learning) is
+the common path.
+
+**Notices**: `resources/notices/14-bengaliai-whisper.txt` names the model, its source revision
+(`da605cc1bd2f60a18d8e440e977ddfa921a88e63`), the converted file's repository, commit and SHA-256,
+the converter's changes and the Apache License 2.0 (whose full text the notices file already
+holds); `NOTICE_NAMES` gains "Bengali.AI", so verify-dist checks it.
+
+### 14.5 Risks
+
+1. **Speed**: slower than real time on most 4-core PCs (about 29 min for 20 min); shown before
+   starting (the estimate and the slow-PC line), resumable by parts, gated off the compatible
+   build.
+2. **Third-party hosting**: pinned; a vanished file fails as `missing`; re-hosting the same bytes
+   under Qbexel's account is a one-line repository change.
+3. **Bangla only**: English phrases inside a Bengali recording come out in Bangla script or are
+   dropped; the summary names the model.
+4. **No punctuation**, as the model was trained; Fix text with an AI provider can add it.
+5. **Measured on read speech** (FLEURS): conversational and noisy recordings will do worse.
+6. **Windows** speed and memory are not measured (as §9 risk 3).
+7. **The Spoken language is per session**, as before: after a restart a Bengali user chooses
+   Bengali again (the "Speaking Bangla?" line offers it in one click); Polish uses the Bangla model
+   only after that choice.
+
+### 14.6 Tests
+
+- Unit, each failing without its code: the catalog pin (id, tier, file, bytes, SHA-256, the
+  repository and commit URL, Apache-2.0, `language`, `maxChunkSeconds`, gating, last in the
+  catalog); the default rules (sanitize, download, remove and setDefault never make a language
+  model the default); `localModel`, `localModelFor`, `pickTranscriber` with a language,
+  `quickerModel`; `chunkArgs` and the arguments `localSpeechClient` passes (`--lang bn --max-chunk
+  20`, none for the other models); `validateTranscribeOptions`; NFC for Bengali only; the copy;
+  the tab's choice by language (the chip only for Bengali and chosen by default, its own session
+  choice, the blocked line, the detect line, the offer in the summary, no `setDefaultSpeechModel`
+  after its download); the Settings row without a radio; Polish's choice and hint; the notices
+  entry; the benchmark script's pin equals the catalog's.
+- End to end (`tests/e2e/bangla-captions.e2e.cjs`, no 540 MB download): Bengali shows the Bangla
+  chip and the recommendation with its size; the click downloads from the mock (a sparse stand-in
+  of the pinned size, served slowly); Cancel keeps the part, Delete removes it; English shows no
+  Bangla chip; a project whose local captions were detected as Bengali shows the offer; Settings
+  lists the row "Bangla only" without a radio. The run path: a verified record for a sparse
+  stand-in (the state a finished download leaves) makes the tab ready; Generate starts the real
+  helper through a logging wrapper with `--model ggml-bengaliai-whisper-medium-q5_0.bin --lang bn
+  --max-chunk 20`, the helper refuses the stand-in as a damaged model, and the tab offers
+  "Download again (539 MB)". The pin is never bypassed, so a real Bangla run is not faked in the
+  suite.
+- Opt-in benchmark (not a test): `npm run bench:bangla -- --model <file>` runs the real model
+  through the helper with the app's arguments on the committed fixture
+  `tests/fixtures/speech/bn-fleurs-blog-18s.flac` (18.8 s, FLEURS, CC BY 4.0) and prints WER, CER
+  and the RTF.
