@@ -22,6 +22,7 @@ import {
   type SmartSpeedPart,
   type TimeRange
 } from '../../../../shared/editor/smartSpeed'
+import { cropOf } from '../../../../shared/engine/crop'
 import { freezeKeepRanges, planOf, videoDuration } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration, SPEED_PRESETS } from '../../../../shared/engine/timeline'
@@ -202,13 +203,20 @@ function CursorPathField(props: InspectorProps & { range: { start: number; end: 
 /**
  * Still-picture analysis of the open recording and the measured levels of its sound, kept for
  * the editor session (keyed by its store) so switching tabs never runs them again; also which
- * smart speed request was handled. A failed analysis is not kept: Find tries again.
+ * smart speed request was handled. A failed analysis is not kept: Find tries again. Only the
+ * picture inside the crop counts, so the analysis (and the one running) names the crop it looked
+ * inside: after the crop changes it is not used, and Find looks again.
  */
 interface Analysis {
-  still: TimeRange[] | null
-  pending: Promise<TimeRange[]> | null
+  still: InCrop<TimeRange[]> | null
+  pending: InCrop<Promise<TimeRange[]>> | null
   levels: AudioAnalysis
   request: number
+}
+/** Still parts, or the analysis finding them, inside the crop `crop` names (cropKey). */
+interface InCrop<T> {
+  crop: string
+  ranges: T
 }
 const analyses = new WeakMap<EditStore<Project>, Analysis>()
 
@@ -270,7 +278,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   const [minSilence, setMinSilence] = useState(lastChoice.minSilence)
   const [padding, setPadding] = useState(lastChoice.padding)
   const [silenceAction, setSilenceAction] = useState<SmartSpeedAction>(lastChoice.silenceAction)
-  const [still, setStill] = useState<TimeRange[] | null>(analysis.still)
+  const [found, setFound] = useState(analysis.still)
   const [levels, setLevels] = useState<AudioAnalysis>(analysis.levels)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
@@ -288,6 +296,11 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
   }, [])
 
   const projectId = project.id
+  // The part cropped away is not seen: whatever moves there, the picture shown can be still.
+  const { crop: projectCrop, width, height } = project
+  const crop = useMemo(() => cropOf({ crop: projectCrop, width, height }), [projectCrop, width, height])
+  const cropKey = crop ? `${crop.x},${crop.y},${crop.w},${crop.h}` : ''
+  const still = found?.crop === cropKey ? found.ranges : null
   // Sources whose sound counts (a muted one does not): someone talking over a still screen is not idle.
   const sourcesKey = activitySources(project).join(',')
   const sources = useMemo(() => (sourcesKey ? (sourcesKey.split(',') as AudioSource[]) : []), [sourcesKey])
@@ -302,14 +315,19 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
     async (): Promise<void> => {
       setBusy(true)
       setFailure(null)
-      analysis.pending ??= window.api.detectStill(projectId, STILL_DETECT_MIN).finally(() => {
-        analysis.pending = null
-      })
+      // One running for another crop looks at other pixels: not waited for.
+      let pending = analysis.pending
+      if (pending?.crop !== cropKey) {
+        const ranges: Promise<TimeRange[]> = window.api.detectStill(projectId, STILL_DETECT_MIN, crop).finally(() => {
+          if (analysis.pending?.ranges === ranges) analysis.pending = null
+        })
+        pending = analysis.pending = { crop: cropKey, ranges }
+      }
       try {
-        const [ranges] = await Promise.all([analysis.pending, measure()])
-        analysis.still = ranges
+        const [ranges] = await Promise.all([pending.ranges, measure()])
+        analysis.still = { crop: pending.crop, ranges }
         if (!alive.current) return
-        setStill(ranges)
+        setFound(analysis.still)
         setSkipped(new Set())
       } catch (err) {
         // Shown next to the button, which tries again.
@@ -318,7 +336,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         if (alive.current) setBusy(false)
       }
     },
-    [analysis, projectId, measure]
+    [analysis, projectId, crop, cropKey, measure]
   )
 
   /** Measures the sound for the Silences mode (cheap, and kept for the editor session like the idle analysis). */
@@ -347,8 +365,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
 
   // An analysis started before switching tabs: wait for it here.
   useEffect(() => {
-    if (analysis.pending && !analysis.still) void find()
-  }, [analysis, find])
+    if (analysis.pending?.crop === cropKey && analysis.still?.crop !== cropKey) void find()
+  }, [analysis, cropKey, find])
 
   // Silences only need the sound measured, which takes moments: done as soon as the mode is shown
   // (and again for a source turned on later). A failure waits for Try again.
@@ -365,8 +383,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
     lastChoice = { ...lastChoice, mode: 'idle' }
     setMode('idle')
     boxRef.current?.scrollIntoView({ block: 'nearest' })
-    if (!analysis.still && !analysis.pending) void find()
-  }, [request, analysis, find])
+    if (analysis.still?.crop !== cropKey && analysis.pending?.crop !== cropKey) void find()
+  }, [request, analysis, cropKey, find])
 
   // Input stretches depend on the recording only: worked out once, after the first analysis,
   // so edits (a trim drag) only redo the cheap part below.

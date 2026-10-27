@@ -1,7 +1,7 @@
 import type { StemKind } from '../audio/settings'
 import type { SaveMeta, SyncSaveResult } from '../editor/autosave'
 import type { StyleDefaults } from '../editor/styleDefaults'
-import type { CursorTrack, Project, ProjectSummary } from '../types'
+import type { CursorTrack, NormRect, Project, ProjectSummary } from '../types'
 
 export interface LoadedProject {
   project: Project
@@ -37,8 +37,11 @@ export interface ProjectsApi {
   pickAsset(projectId: string, kind: AssetKind): Promise<{ url: string; path: string } | null>
   /** studio-media URL of a project asset file, or null when it is missing. */
   assetUrl(projectId: string, file: string): Promise<string | null>
-  /** Stretches (source seconds) of at least `minSeconds` where the recorded picture does not change. */
-  detectStill(projectId: string, minSeconds: number): Promise<StillRange[]>
+  /**
+   * Stretches (source seconds) of at least `minSeconds` where the recorded picture does not change,
+   * inside `crop` (the editor's crop, cropOf) when one is given: the part cropped away does not count.
+   */
+  detectStill(projectId: string, minSeconds: number, crop?: NormRect | null): Promise<StillRange[]>
   /** Stops the analyses reading the project's files (still detection, sound levels): its editor closed. */
   stopAnalysis(projectId: string): Promise<void>
   /** URL of a background image stored in the project folder, or null if it is missing. */

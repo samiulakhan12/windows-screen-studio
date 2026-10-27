@@ -1,9 +1,10 @@
 /**
  * Analysis of a recording for smart editing: stretches where the picture does not change
- * (ffmpeg freezedetect on the screen proxy). Used by smart speed to suggest speed-ups and cuts.
+ * (ffmpeg freezedetect on the screen proxy, inside the editor's crop: the part cropped away is
+ * not seen, so it does not count). Used by smart speed to suggest speed-ups and cuts.
  *
- * The proxy is decoded once per file version and the result kept, so changing the minimum
- * length in the editor never decodes it again. A run that hangs is killed after a time
+ * The proxy is decoded once per file version and crop and the result kept, so changing the
+ * minimum length in the editor never decodes it again. A run that hangs is killed after a time
  * proportional to the recording's length. A request that names no project finds nothing; an
  * analysis that cannot run or fails is reported with its reason (and not kept), so the editor
  * can say so and try again. A project's analysis stops when its editor closes or before it is
@@ -14,11 +15,13 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { StillRange } from '../shared/api/projects'
+import type { NormRect } from '../shared/types'
 import { stopTranscription } from './ai/transcribe'
 import { stopAudioAnalysisFor } from './audioAnalysis'
 import { ffmpegPath } from './ffmpeg'
 import { ProjectProcesses } from './projectProcesses'
 import { projectDir } from './projects'
+import { cropFilter } from './proxyArgs'
 import { isAppUrl } from './security'
 
 /** Shortest still stretch looked for: longer minimums are filtered from the same result. */
@@ -28,16 +31,17 @@ const MAX_SECONDS = 3600
 const NOISE = '-50dB'
 /** Seconds between key frames of a 60 fps proxy (see proxyArgs). */
 const KEY_INTERVAL = 0.25
-/** Kept results (project files analysed). */
+/** Kept results (project files analysed, each crop apart). */
 const CACHE_SIZE = 8
 
 /**
  * ffmpeg arguments: the first video stream at 10 fps and 320 px wide is plenty to see change.
  * With `keyFramesOnly` only the key frames are decoded and compared (every 0.25 s in a 60 fps
  * proxy, see proxyArgs): decoding the frames fps=10 then drops was most of the work, about 9x
- * as much. fps=10 is left out then, as its copies of each key frame would look still.
+ * as much. fps=10 is left out then, as its copies of each key frame would look still. With a
+ * `crop` (normalised, as the editor shows it) only the picture inside it is compared.
  */
-export function freezeDetectArgs(file: string, minSeconds = DETECT_MIN, keyFramesOnly = false): string[] {
+export function freezeDetectArgs(file: string, minSeconds = DETECT_MIN, keyFramesOnly = false, crop: NormRect | null = null): string[] {
   return [
     '-hide_banner',
     '-nostdin',
@@ -46,13 +50,25 @@ export function freezeDetectArgs(file: string, minSeconds = DETECT_MIN, keyFrame
     '-i', file,
     '-map', '0:v:0',
     '-an', '-sn', '-dn',
-    '-vf', `${keyFramesOnly ? '' : 'fps=10,'}scale=320:-2:flags=area,freezedetect=n=${NOISE}:d=${+minSeconds.toFixed(3)}`,
+    '-vf', `${keyFramesOnly ? '' : 'fps=10,'}${crop ? `${cropFilter(crop)},` : ''}scale=320:-2:flags=area,freezedetect=n=${NOISE}:d=${+minSeconds.toFixed(3)}`,
     '-f', 'null',
     '-'
   ]
 }
 
 const num = (s: string | undefined): number => (s === undefined ? NaN : Number(s))
+
+/**
+ * The crop a request names (cropOf in the editor): a rectangle of finite numbers inside the
+ * frame, or null (the whole picture) for none and for anything else.
+ */
+function requestedCrop(crop: unknown): NormRect | null {
+  if (!crop || typeof crop !== 'object') return null
+  const { x, y, w, h } = crop as Partial<Record<keyof NormRect, unknown>>
+  if (typeof x !== 'number' || typeof y !== 'number' || typeof w !== 'number' || typeof h !== 'number') return null
+  if (!(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 1 + 1e-6 && y + h <= 1 + 1e-6)) return null
+  return { x, y, w, h }
+}
 
 /**
  * Still stretches from ffmpeg's log, relative to the start of the video. A freeze still
@@ -82,11 +98,11 @@ export function parseFreezeLog(log: string, fallbackEnd = NaN, endEarly = 0): St
 const running = new ProjectProcesses()
 
 /** Runs ffmpeg on `file` of project `id`: its log, or why it failed, was killed or took longer than `timeoutMs`. */
-function runFreezeDetect(file: string, id: string, timeoutMs: number, keyFramesOnly: boolean): Promise<{ log: string } | { error: string }> {
+function runFreezeDetect(file: string, id: string, timeoutMs: number, keyFramesOnly: boolean, crop: NormRect | null): Promise<{ log: string } | { error: string }> {
   return new Promise((resolve) => {
     let proc: ChildProcess
     try {
-      proc = spawn(ffmpegPath(), freezeDetectArgs(file, DETECT_MIN, keyFramesOnly), { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+      proc = spawn(ffmpegPath(), freezeDetectArgs(file, DETECT_MIN, keyFramesOnly, crop), { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
     } catch (err) {
       resolve({ error: `ffmpeg could not be started (${err instanceof Error ? err.message : String(err)})` })
       return
@@ -129,11 +145,11 @@ function runFreezeDetect(file: string, id: string, timeoutMs: number, keyFramesO
 const cache = new Map<string, Promise<StillRange[]>>()
 
 /**
- * Stretches of at least `minSeconds` where screen.mp4 of project `id` barely changes; none for
- * an `id` that is not a project id. Rejects with a short reason when the analysis cannot run
- * or fails.
+ * Stretches of at least `minSeconds` where screen.mp4 of project `id` barely changes inside
+ * `crop` (the whole picture without one); none for an `id` that is not a project id. Rejects
+ * with a short reason when the analysis cannot run or fails.
  */
-export async function detectStill(id: unknown, minSeconds: unknown): Promise<StillRange[]> {
+export async function detectStill(id: unknown, minSeconds: unknown, crop?: unknown): Promise<StillRange[]> {
   let dir: string
   try {
     if (typeof id !== 'string') return []
@@ -143,6 +159,7 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
   }
   const generation = running.generation(id)
   const min = typeof minSeconds === 'number' && Number.isFinite(minSeconds) ? Math.min(Math.max(minSeconds, DETECT_MIN), MAX_SECONDS) : DETECT_MIN
+  const inside = requestedCrop(crop)
   const file = path.join(dir, 'screen.mp4')
   const stat = await fs.stat(file).catch(() => null)
   if (!stat?.isFile()) throw new Error('the video file is missing')
@@ -156,14 +173,15 @@ export async function detectStill(id: unknown, minSeconds: unknown): Promise<Sti
   } catch {
     // The length printed by ffmpeg is used instead.
   }
-  const key = `${id}\n${stat.size}\n${stat.mtimeMs}`
+  // Each crop is analysed apart: what changes outside it does not count inside it.
+  const key = `${id}\n${stat.size}\n${stat.mtimeMs}\n${inside ? cropFilter(inside) : ''}`
   let result = cache.get(key)
   if (!result) {
     // Stopped while the file was being looked at (the editor closed, the project is being deleted).
     if (running.generation(id) !== generation) throw new Error('the analysis was stopped')
     // About a minute, plus as long again as the recording: decoding is far faster than real time.
     const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
-    const run = runFreezeDetect(file, id, timeoutMs, keyFramesOnly).then((r) => {
+    const run = runFreezeDetect(file, id, timeoutMs, keyFramesOnly, inside).then((r) => {
       if ('log' in r) return parseFreezeLog(r.log, duration, keyFramesOnly ? KEY_INTERVAL : 0)
       // A failure is not kept: the next request runs the analysis again.
       if (cache.get(key) === run) cache.delete(key)
@@ -193,9 +211,9 @@ export function registerAnalysisIpc(): void {
   const fromApp = (e: IpcMainInvokeEvent): void => {
     if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
   }
-  ipcMain.handle('projects:detectStill', (e, id: unknown, minSeconds: unknown) => {
+  ipcMain.handle('projects:detectStill', (e, id: unknown, minSeconds: unknown, crop: unknown) => {
     fromApp(e)
-    return detectStill(id, minSeconds)
+    return detectStill(id, minSeconds, crop)
   })
   ipcMain.handle('projects:stopAnalysis', (e, id: unknown) => {
     fromApp(e)

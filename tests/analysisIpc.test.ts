@@ -34,20 +34,25 @@ vi.mock('electron', () => ({
 }))
 
 import { detectStill, freezeDetectArgs, parseFreezeLog, registerAnalysisIpc } from '../src/main/analysisIpc'
+import { cropFilter } from '../src/main/proxyArgs'
 
 const projectsRoot = path.join(h.root, 'videos', 'Flown')
 const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }
 
-/** A 16 s test pattern that freezes from 3 s to 9 s and from 11 s to the end, with a key frame every 15 frames like a proxy. */
-function seed(id: string, opts: { project?: unknown; fps?: number } = {}): string {
+/**
+ * A 16 s test pattern that freezes from 3 s to 9 s and from 11 s to the end, with a key frame every 15 frames like a proxy.
+ * With `movingRight`, a pattern that never rests is put on its right, as wide as it.
+ */
+function seed(id: string, opts: { project?: unknown; fps?: number; movingRight?: boolean } = {}): string {
   const f = (opts.fps ?? 30) / 30
   const dir = path.join(projectsRoot, id)
   mkdirSync(dir, { recursive: true })
   execFileSync(ffmpegPath(), [
     '-v', 'error', '-y',
     '-f', 'lavfi', '-i', `testsrc2=size=320x180:rate=${30 * f}`,
+    ...(opts.movingRight ? ['-f', 'lavfi', '-i', `testsrc2=size=320x180:rate=${30 * f}`] : []),
     '-t', '16',
-    '-filter_complex', `[0:v]split[a][b];[a][b]freezeframes=first=${90 * f}:last=${270 * f}:replace=${90 * f}[c];[c]split[d][e];[d][e]freezeframes=first=${330 * f}:last=${480 * f - 1}:replace=${330 * f}`,
+    '-filter_complex', `[0:v]split[a][b];[a][b]freezeframes=first=${90 * f}:last=${270 * f}:replace=${90 * f}[c];[c]split[d][e];[d][e]freezeframes=first=${330 * f}:last=${480 * f - 1}:replace=${330 * f}${opts.movingRight ? '[l];[l][1:v]hstack' : ''}`,
     '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p',
     path.join(dir, 'screen.mp4')
   ])
@@ -102,6 +107,11 @@ describe('parseFreezeLog', () => {
     expect(keys.indexOf('-skip_frame')).toBeLessThan(keys.indexOf('-i'))
     expect(keys.join(' ')).toContain('-skip_frame nokey -i C:\\rec\\screen.mp4')
     expect(keys.join(' ')).toMatch(/-vf scale=320:-2:flags=area,freezedetect=n=-50dB:d=2 /)
+    // The editor's crop is cut out before the picture is scaled down.
+    const crop = { x: 0.25, y: 0, w: 0.5, h: 1 }
+    expect(freezeDetectArgs('C:\\rec\\screen.mp4', 2, false, crop).join(' ')).toContain(`-vf fps=10,${cropFilter(crop)},scale=320:-2:flags=area,freezedetect=`)
+    expect(freezeDetectArgs('C:\\rec\\screen.mp4', 2, true, crop).join(' ')).toContain(`-vf ${cropFilter(crop)},scale=320:-2:flags=area,freezedetect=`)
+    expect(freezeDetectArgs('C:\\rec\\screen.mp4', 2, true, null)).toEqual(keys)
   })
 })
 
@@ -129,6 +139,30 @@ describe('detectStill', () => {
     expect(await handler(appEvent, 'rec-still', 1)).toHaveLength(2)
     expect(await handler(appEvent, 'rec-still', 3)).toHaveLength(2)
     expect(h.spawned.length).toBe(runs)
+  })
+
+  it('looks inside the crop only, and analyses each crop once', async () => {
+    // The left half freezes like rec-still; the right half never rests.
+    seed('rec-crop', { movingRight: true })
+    const runs = h.spawned.length
+    const left = { x: 0, y: 0, w: 0.5, h: 1 }
+    expect(await detectStill('rec-crop', 1)).toEqual([])
+    const ranges = await detectStill('rec-crop', 1, left)
+    expect(ranges).toHaveLength(2)
+    expect(ranges[0].start).toBeCloseTo(3, 0)
+    expect(ranges[0].end).toBeCloseTo(9, 0)
+    expect(ranges[1].start).toBeCloseTo(11, 0)
+    expect(ranges[1].end).toBeCloseTo(16, 0)
+    expect(await detectStill('rec-crop', 1, { x: 0.5, y: 0, w: 0.5, h: 1 })).toEqual([])
+    expect(h.spawned.length).toBe(runs + 3)
+    expect(h.spawned[runs + 1].spawnargs.join(' ')).toContain(`${cropFilter(left)},scale=`)
+    // Asked again, over IPC too: kept for each crop.
+    expect(await h.handlers.get('projects:detectStill')!(appEvent, 'rec-crop', 3, left)).toHaveLength(2)
+    expect(await detectStill('rec-crop', 1, { ...left })).toHaveLength(2)
+    // Anything but a rectangle of numbers inside the frame is no crop: the whole picture, analysed already.
+    const bad: unknown[] = [null, 'left', [0, 0, 0.5, 1], { x: 0, y: 0, w: 0.5 }, { ...left, h: Number.NaN }, { ...left, w: Infinity }, { ...left, x: '0' }, { ...left, x: -0.1 }, { ...left, x: 0.6 }, { ...left, w: 0 }, { ...left, y: 0.5 }]
+    for (const crop of bad) expect(await detectStill('rec-crop', 1, crop), JSON.stringify(crop)).toEqual([])
+    expect(h.spawned.length).toBe(runs + 3)
   })
 
   it('accepts only the app page as the sender of detectStill and stopAnalysis', async () => {
