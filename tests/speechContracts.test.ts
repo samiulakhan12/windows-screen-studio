@@ -141,7 +141,7 @@ describe('the speech model catalog', () => {
   it('has the committed speech fixtures with their recorded hashes', () => {
     const dir = path.join(ROOT, 'tests', 'fixtures', 'speech')
     const readme = fs.readFileSync(path.join(dir, 'README.md'), 'utf8')
-    for (const name of ['jfk-16k.flac', 'ls-1272-128104-0000.flac']) expect(readme).toContain(sha256(path.join(dir, name)))
+    for (const name of ['jfk-16k.flac', 'ls-1272-128104-0000.flac', 'bn-fleurs-blog-18s.flac', 'bn-fleurs-blog-18s.txt']) expect(readme).toContain(sha256(path.join(dir, name)))
   })
 })
 
