@@ -184,7 +184,8 @@ export function LocalAction({
   focusRequest,
   chipsRef,
   onUseProvider,
-  onStart
+  onStart,
+  confirmReplace
 }: {
   state: SpeechState
   model: SpeechModelId
@@ -199,6 +200,8 @@ export function LocalAction({
   onUseProvider: (id: string) => void
   /** Starts captions with the downloaded `model` (asks before replacing captions); false when the user said no. */
   onStart: (model: SpeechModelId) => void
+  /** Asks before captions replace the current ones (true when there are none); a download that makes captions asks at the click. */
+  confirmReplace: () => boolean
 }): JSX.Element | null {
   const intent = useSyncExternalStore(onSpeechRead, () => captionsIntent(project.id))
   const [, setTick] = useState(0)
@@ -232,6 +235,7 @@ export function LocalAction({
 
   if (!view) return null
   const download = (id: SpeechModelId = model): void => {
+    if (!confirmReplace()) return
     clearTranscriptionError()
     void downloadThenCaptions(project.id, id, { ...options, providerId: LOCAL_TRANSCRIBER_ID, model: id })
   }

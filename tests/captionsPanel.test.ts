@@ -631,6 +631,26 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-base', source: 'auto' }])
   })
 
+  it('download, then captions asks before replacing captions, like every other Regenerate (UI-8)', async () => {
+    replies.providers = () => Promise.resolve([])
+    replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
+    store.state = { ...store.state, transcript: { provider: 'local', model: 'whisper-base', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] } }
+    let out = await show()
+    click(out, 'Regenerate captions…')
+    out = render(m.panel)
+    ;(chips(out)[2].props.onClick as () => void)()
+    out = render(m.panel)
+    replies.confirm = false
+    click(out, 'Download 190 MB and make captions')
+    expect(calls.confirm).toHaveLength(1)
+    expect(calls.download).toEqual([])
+    replies.confirm = true
+    click(out, 'Download 190 MB and make captions')
+    expect(calls.confirm).toHaveLength(2)
+    expect(calls.download).toEqual(['whisper-small'])
+    store.state = { ...store.state, transcript: undefined }
+  })
+
   it('download, then captions: nothing starts once the editor closed', async () => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState())

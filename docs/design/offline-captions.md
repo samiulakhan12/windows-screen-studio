@@ -957,7 +957,9 @@ button. Failure: "The third-party notices could not be shown: {message}".
   default (§3.1); captions start only if that project's editor is still open and the intent still
   pending. Closing that editor drops the intent (`stopAnalyses` has run, and nothing would stop a
   job started then) but lets the download finish; the next open shows `ready` and never starts
-  captions by itself. Captions never start for another project.
+  captions by itself. Captions never start for another project. When the project already has
+  captions, the click on a button that downloads and then makes captions asks the replace
+  question of every Regenerate first; a yes carries to the end of the download.
 - An export started meanwhile runs at normal priority; the running state may show "Exporting now
   slows the captions down." (cut first if time is short).
 
@@ -1597,3 +1599,6 @@ Code review of the built feature, the captions UI (`fix/oc-ui`), one line each:
 - **UI-7** "Make them now with {tier} (downloaded)" started without selecting that chip, so
   Regenerate reopened on the tier that is not downloaded: `startLocal` selects the model it runs,
   after the replace question (a "no" leaves the chip alone).
+- **UI-8** Download-then-captions replaced existing captions without the replace question every
+  other Regenerate asks: `LocalAction` gets `confirmReplace` and its download buttons ask at the
+  click.

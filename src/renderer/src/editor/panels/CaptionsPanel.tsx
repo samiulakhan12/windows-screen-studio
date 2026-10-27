@@ -572,6 +572,7 @@ function GenerateSection({
                 onStart={(id) => {
                   if (speechModel(id)) startLocal(id)
                 }}
+                confirmReplace={confirmReplace}
               />
               {hasTranscript && (
                 <button className="btn ghost" onClick={() => setOpen(false)}>
