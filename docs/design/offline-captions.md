@@ -222,7 +222,11 @@ DLLs were rejected (a DLL search surface, `.dll` would join `SIGN_EXTS`, more fi
 - The sidecar runs the speech detector on the part itself and packs speech into chunks of at most
   29 s (`SIDECAR.maxChunk`), split in silences, each padded by 0.25 s but never past the middle of a
   gap; each chunk is transcribed with `whisper_full_with_state` and its offset added. Never
-  `whisper_full`'s own VAD: its token and DTW times stay in compressed time.
+  `whisper_full`'s own VAD: its token and DTW times stay in compressed time. Speech that runs on
+  past a chunk is cut at its quietest frame: the lowest detector probability in the 8 s before
+  the limit, at least 1 s before the speech ends (`chunks::plan`). whisper.cpp's
+  `max_speech_duration_s` is not used: it cuts at whatever frame passes the limit, and its merge
+  of gaps under 200 ms joins the pieces again.
 - **Language** with `--lang auto`: after the speech detector and the chunk plan, the helper
   detects the language once, on the first chunk that holds at least `SIDECAR.detectMinSpeech`
   (10 s) of speech, else on the chunk with the most speech (`whisper_pcm_to_mel_with_state` and
@@ -643,7 +647,9 @@ Times are seconds from the start of the audio, three decimals. Exit codes: 0 ok,
 2 cancelled. With `--stdin-control`, a `cancel` line or the end of stdin cancels at the next
 checkpoint. With `--parent-pid N`, a process N already gone (or, on Windows, ending) cancels at
 once with its `cancelled` line; on Linux N must be the helper's parent (else error `args`), whose
-death kills the helper (`PR_SET_PDEATHSIG`). `segment` lines are printed after each chunk (whisper.cpp 1.8.3's segment callback
+death kills the helper (`PR_SET_PDEATHSIG`). In `transcribe`, error `model` always means the
+Whisper model: a `--vad-model` that cannot be loaded is error `args` (main passes only the
+pin-checked detector model, §3.1). `segment` lines are printed after each chunk (whisper.cpp 1.8.3's segment callback
 passes a wrong count with DTW and is not used) and carry **final word times**: the result line
 carries no words, so the segment lines are everything main gets, and nothing changes a word
 after its line is printed. While `transcribe` works, its control thread prints a `progress` line
@@ -725,7 +731,8 @@ prob = mean token probability. On the spike's own segment lines this gives base 
   (59 s from clean on Linux here).
 - Missing cmake, libclang or the posix MinGW warns and skips the speech helpers (captions offer
   keys only; the detector falls back), unless `--require` or `SSW_REQUIRE_NATIVE=1`, which release
-  builds set.
+  builds set. On a Windows build host the speech helpers are not built; usable ones already in
+  `native/bin` (built on Linux or macOS) are reused with a warning, also under `--require`.
 
 ### 6.2 `electron-builder.config.cjs` and `scripts/lib/packaging.cjs`
 
@@ -756,7 +763,8 @@ that is not a complete x64 PE is left out with a warning, never fatal, like the 
   3.5 MB compressed or 10 MB installed. It prints the whole installer's size but no longer
   compares it with a baseline, so the editing-wins merge cannot trip it.
 - `predist` builds the helpers (required for releases), checks the model hash and that the notices
-  file is fresh (`scripts/notices.mjs --check`).
+  file is fresh (`scripts/notices.mjs --check`; without `cargo` the committed Rust crates' section
+  is kept with a warning and the rest is checked, except under `SSW_REQUIRE_NATIVE=1`).
 
 ### 6.4 Installer growth
 
@@ -991,6 +999,7 @@ button. Failure: "The third-party notices could not be shown: {message}".
 | whisper.cpp 1.8.3, ggml 0.9.5 | MIT, "Copyright (c) 2023-2024 The ggml authors" | compiled into both helpers | the notice in THIRD_PARTY_NOTICES.txt |
 | whisper-rs-sys 0.15.0 | Unlicense | compiled in | none; credited |
 | Other Rust crates of both helpers (`cargo metadata`; the capture helper's `windows` crate, MIT/Apache-2.0) | as declared | compiled in | their licence texts |
+| Rust standard library (std, core, alloc and the crates the toolchain builds into it) | MIT OR Apache-2.0, "Copyright (c) The Rust Project Developers" | statically linked into all three helpers | the notice (hand-written; `cargo metadata` does not list it) |
 | mingw-w64 runtime (winpthreads) | MIT-style / ZPL | statically linked | its notice |
 | libstdc++, libgcc | GPL-3.0 with the GCC Runtime Library Exception | statically linked | the exception permits it; noted |
 | Silero VAD v6.2.0 (ggml conversion, ggml-org/whisper-vad@9ffd54a1) | MIT, "Copyright (c) 2020-present Silero Team" | in the installer | the notice, the release and the file's SHA-256 (also resources/speech/MODEL.md) |
@@ -1177,9 +1186,9 @@ pattern, `'local'` surviving `readTranscript`, and the `pickTranscriber` / `loca
 
 - **`cargo test` in `native/speech`** (Linux): argument parsing (`args_os`, unknown flags, model
   names outside `[A-Za-z0-9._-]` rejected); the WAV reader (s16, f32; 44.1 kHz or stereo → `audio`);
-  chunk packing (≤ 29 s, padding never past mid-gap); word forming from synthetic token tables (a
-  code point split across tokens, the end at the last letter token, the start pull-in, the onset
-  snap, monotonic output across a chunk join); **per-chunk refinement against the recorded run**
+  chunk packing (≤ 29 s, padding never past mid-gap, long speech cut at its quietest frame); word
+  forming from synthetic token tables (a code point split across tokens, the end at the last
+  letter token, the start pull-in, the onset snap, monotonic output across a chunk join); **per-chunk refinement against the recorded run**
   `native/speech/tests/data/spike-base-q5_1-clip.jsonl` (the spike's unrefined segment lines,
   fed chunk by chunk): at least 95 % of the words equal the file's whole-run `result.words`
   (±1 ms) and none is more than 150 ms apart (measured: 222 of 226 equal, at most 120 ms); the
@@ -1582,3 +1591,19 @@ Declined or changed, one line each:
 - "Streamed words equal a whole-run refinement within 50 ms" (review 1): measured 4 of 226 starts
   up to 120 ms apart (the first chunk's median differs) while accuracy is equal or better, so the
   cargo test asks for ≥ 95 % identical and none over 150 ms, and accuracy is gated by the bench.
+
+Code review of the merged feature, native engine and build (fixed unless noted):
+
+- **NATIVE-01** Long speech cut mid-word (§2.5): whisper.cpp's `max_speech_duration_s` never kept
+  its split, so ranges over 28.5 s were cut at fixed points. `chunks::plan` now cuts at the
+  quietest frame of the detector's own probabilities and whisper.cpp's option is off; cargo test
+  `long_speech_is_cut_where_the_detector_heard_the_least`.
+- **NATIVE-02 / INT-T2** `dist:win` failed without cargo (§6.3): `notices.mjs` keeps the committed
+  Rust crates' section with a warning when cargo is missing, unless `SSW_REQUIRE_NATIVE=1`; the
+  rest is still generated and checked (tests/packaging.test.ts).
+- **NATIVE-03** A broken detector model read as a damaged Whisper model (§5.2): `transcribe`
+  reports it as error `args` naming `--vad-model` (no protocol change); the main-side pin check
+  is MAIN-4.
+- **NATIVE-04** The Rust standard library was not credited (§8): `resources/notices/22-rust-std.txt`.
+- **NATIVE-05** A required build on Windows always failed (§6.1): usable prebuilt speech helpers
+  in `native/bin` are reused.
