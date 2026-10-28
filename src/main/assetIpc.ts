@@ -222,21 +222,26 @@ async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { 
  */
 export async function importAsset(id: string, kind: AssetKind, src: string): Promise<PickedAsset> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
-  const spec = ASSET_SPECS[kind]
   projects.projectDir(id)
+  const ext = await checkAssetFile(kind, src)
+  const name = path.basename(src)
+  // Overlays and fonts are small enough to read whole (25 MB at most): hashed from memory.
+  return { ...(await store(id, kind, ext, DEDUPED.has(kind) ? await fs.readFile(src) : { file: src })), name }
+}
+
+/**
+ * Checks file `src` as a `kind` asset (extension, size, then content) without copying it, and
+ * returns its extension (lower case). Throws the reason it is refused.
+ */
+export async function checkAssetFile(kind: AssetKind, src: string): Promise<string> {
+  if (!isKind(kind)) throw new Error('Unknown asset kind')
+  const spec = ASSET_SPECS[kind]
   const ext = extOf(src)
   if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
   const st = await fs.stat(src)
   if (!st.isFile()) throw new Error(`Choose ${spec.formats}.`)
   const tooBig = sizeProblem(kind, ext, st.size)
   if (tooBig) throw new Error(tooBig)
-  const name = path.basename(src)
-  if (DEDUPED.has(kind)) {
-    // Small enough to read whole (25 MB at most): checked and hashed from memory.
-    const data = await fs.readFile(src)
-    checkHead(kind, data, ext)
-    return { ...(await store(id, kind, ext, data)), name }
-  }
   const handle = await fs.open(src, 'r')
   try {
     const head = Buffer.alloc(4096)
@@ -245,7 +250,7 @@ export async function importAsset(id: string, kind: AssetKind, src: string): Pro
   } finally {
     await handle.close()
   }
-  return { ...(await store(id, kind, ext, { file: src })), name }
+  return ext
 }
 
 /** Kinds that can arrive as bytes (a dropped or pasted image, a dropped font). */

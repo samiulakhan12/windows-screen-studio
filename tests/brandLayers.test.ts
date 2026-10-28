@@ -67,10 +67,11 @@ vi.stubGlobal('Image', FakeImage)
 
 // Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
 type Layer = (fc: unknown) => void
-const { drawTitleCardsLayer } = (await import(/* @vite-ignore */ '../src/renderer/src/render/titleCardLayer')) as { drawTitleCardsLayer: Layer }
-const { drawCaptionsLayer } = (await import(/* @vite-ignore */ '../src/renderer/src/render/captionsLayer')) as { drawCaptionsLayer: Layer }
-const { drawAnnotations } = (await import(/* @vite-ignore */ '../src/renderer/src/render/textOverlays')) as { drawAnnotations: (ctx: unknown, w: number, h: number, t: number, p: Project) => void }
-const overlays = (await import(/* @vite-ignore */ '../src/renderer/src/render/overlayLayer')) as {
+const RENDER = '../src/renderer/src/render/'
+const { drawTitleCardsLayer } = (await import(/* @vite-ignore */ `${RENDER}titleCardLayer`)) as { drawTitleCardsLayer: Layer }
+const { drawCaptionsLayer } = (await import(/* @vite-ignore */ `${RENDER}captionsLayer`)) as { drawCaptionsLayer: Layer }
+const { drawAnnotations } = (await import(/* @vite-ignore */ `${RENDER}textOverlays`)) as { drawAnnotations: (ctx: unknown, w: number, h: number, t: number, p: Project) => void }
+const overlays = (await import(/* @vite-ignore */ `${RENDER}overlayLayer`)) as {
   drawOverlaysLayer: Layer
   preloadOverlay: (id: string, o: Partial<ImageOverlay>) => Promise<number>
 }
