@@ -1,7 +1,7 @@
 // Clean voice's stems as the editor sees them (src/renderer/src/editor/voiceStems.ts,
 // docs/design/clean-voice.md §4.4), with a fake API.
 import { describe, expect, it } from 'vitest'
-import { VOICE_CANCELLED, type VoiceApi, type VoiceProgress, type VoiceStemStatus } from '../src/shared/api/voice'
+import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceApi, type VoiceProgress, type VoiceStemStatus } from '../src/shared/api/voice'
 import type { VoiceSource } from '../src/shared/audio/voiceClean'
 import type { VoiceStrength } from '../src/shared/types'
 
@@ -120,6 +120,21 @@ describe('VoiceStems', () => {
     expect(f.calls.prepare).toBe(2)
     f.finish(FILE)
     await expect(again).resolves.toBe(FILE)
+  })
+
+  it('a render replaced by another strength is made again when wanted again (undo back to it)', async () => {
+    const f = fakeApi()
+    const s = new VoiceStems(f.api)
+    s.want('p', 'mic', 'normal')
+    await tick()
+    // Main stops it for Strong.
+    f.fail(VOICE_REPLACED)
+    await tick()
+    expect(s.get('p', 'mic', 'normal')).toEqual({ state: 'checking' })
+    s.want('p', 'mic', 'normal')
+    await tick()
+    expect(f.calls.prepare).toBe(2)
+    expect(s.get('p', 'mic', 'normal')).toEqual({ state: 'working', progress: 0 })
   })
 
   it('a failure is shown with its reason and not retried until asked', async () => {

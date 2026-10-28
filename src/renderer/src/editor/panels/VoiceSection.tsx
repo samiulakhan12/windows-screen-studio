@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { VOICE_STRENGTHS, voiceLook, voiceSourceOf, voiceTarget } from '../../../../shared/audio/voiceClean'
 import { STRENGTH_HINTS, STRENGTH_NAMES, VOICE_COPY } from '../../../../shared/audio/voiceCopy'
 import type { Project, VoiceSettings } from '../../../../shared/types'
@@ -62,6 +62,9 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
   )
 }
 
+/** Clicks this soon after the button changed meaning are ignored. */
+const DOUBLE_CLICK_MS = 400
+
 /**
  * Where the cleaned voice stands. The one action button stays the same element whatever it does
  * (Cancel, Clean now, Try again, Hear the original), so the keyboard focus stays on it when the
@@ -98,11 +101,21 @@ function VoiceStatus(props: {
           : state.state === 'ready'
             ? { label: VOICE_COPY.original, run: () => props.onOriginal(!original) }
             : null
+  // The button changes meaning under the pointer (Clean now → Cancel): a double click must not undo its first click.
+  const changedAt = useRef(0)
+  useEffect(() => {
+    changedAt.current = performance.now()
+  }, [state.state])
+  // Screen readers hear each change of state, not every step of the percentage (that is on the bar).
+  const spoken = state.state === 'working' ? VOICE_COPY.cleaning : text
   return (
     <div className={`voice-status ${state.state}`} data-testid="voice-status" data-state={state.state}>
-      <p className={`hint ${state.state === 'failed' ? 'error' : ''}`} role="status" aria-live="polite">
+      <p className={`hint ${state.state === 'failed' ? 'error' : ''}`} aria-hidden="true">
         {text}
       </p>
+      <span className="sr-only" role="status" aria-live="polite">
+        {spoken}
+      </span>
       {state.state === 'working' && (
         <div className="voice-bar" role="progressbar" aria-label={VOICE_COPY.toggle} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
           <span style={{ width: `${percent}%` }} />
@@ -113,7 +126,9 @@ function VoiceStatus(props: {
           type="button"
           className={`btn voice-action ${state.state === 'ready' && original ? 'active' : ''}`}
           aria-pressed={state.state === 'ready' ? original : undefined}
-          onClick={action.run}
+          onClick={() => {
+            if (performance.now() - changedAt.current >= DOUBLE_CLICK_MS) action.run()
+          }}
         >
           {action.label}
         </button>

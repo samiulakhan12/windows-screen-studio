@@ -12,7 +12,7 @@ import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project } from '../../../shared/types'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio } from './media'
-import { voiceStems } from './voiceStems'
+import { voiceStems, type VoiceStemState } from './voiceStems'
 
 /** Seconds of gain automation scheduled ahead of the playhead; more is added as playback gets there. */
 const HORIZON = 30
@@ -24,6 +24,8 @@ const MUSIC_SEEK = 0.3
 const MUSIC_NUDGE = 0.08
 /** Largest speed correction of a drifting element (inaudible with pitch preserved). */
 const MAX_NUDGE = 0.04
+/** How often a cleaned file that failed to load is loaded again once the store finds it again. */
+const MAX_VOICE_RETRIES = 2
 /** Automation is re-anchored when the video and the audio clock disagree by more than this. */
 const ANCHOR_DRIFT = 0.05
 
@@ -112,7 +114,9 @@ export class PreviewAudio {
   /** The stems' elements, and Clean voice's cleaned stem ('voice', see cleanVoice). */
   private readonly stems = new Map<StemKind | 'voice', Source>()
   /** What the 'voice' element plays: its file and the recorded sound it stands in for. */
-  private voice: { file: string; target: VoiceSource } | null = null
+  private voice: { file: string; target: VoiceSource; entry: VoiceStemState } | null = null
+  /** Times each cleaned file failed to load (a file found again is loaded again, a few times at most). */
+  private readonly voiceFailures = new Map<string, number>()
   /** Unsubscribes from the stems store; set once the project first uses Clean voice. */
   private offVoice: (() => void) | null = null
   private music: Music | null = null
@@ -245,7 +249,7 @@ export class PreviewAudio {
    * the project needs (made when missing); null while it is not ready, while "Hear the original"
    * is on, and when Clean voice is off or has nothing to clean.
    */
-  private cleanVoice(): { file: string; target: VoiceSource } | null {
+  private cleanVoice(): { file: string; target: VoiceSource; entry: VoiceStemState } | null {
     const p = this.project
     const target = voiceTarget(p)
     if (!target) return null
@@ -256,13 +260,15 @@ export class PreviewAudio {
     store.want(p.id, target, strength)
     if (store.isOriginal(p.id)) return null
     const s = store.get(p.id, target, strength)
-    return s.state === 'ready' ? { file: s.file, target } : null
+    return s.state === 'ready' ? { file: s.file, target, entry: s } : null
   }
 
   /** The cleaned voice's element for `clean` (made, replaced or removed); null when there is none or it failed to load. */
-  private ensureVoice(g: Graph, clean: { file: string; target: VoiceSource } | null): { target: VoiceSource } | null {
+  private ensureVoice(g: Graph, clean: { file: string; target: VoiceSource; entry: VoiceStemState } | null): { target: VoiceSource } | null {
     const current = this.voice
-    if (current && (!clean || clean.file !== current.file)) this.disposeVoice()
+    // A failed element is replaced once the store has found its file again (made again, same name).
+    const retry = !!clean && !!current && this.stems.get('voice')?.failed === true && clean.entry !== current.entry && (this.voiceFailures.get(clean.file) ?? 0) <= MAX_VOICE_RETRIES
+    if (current && (!clean || clean.file !== current.file || retry)) this.disposeVoice()
     if (!clean) return null
     if (!this.voice) {
       const el = createAudio(mediaUrl(this.project.id, clean.file))
@@ -275,6 +281,7 @@ export class PreviewAudio {
       el.addEventListener('error', () => {
         if (this.stems.get('voice') !== src) return
         src.failed = true
+        this.voiceFailures.set(clean.file, (this.voiceFailures.get(clean.file) ?? 0) + 1)
         console.warn('The cleaned voice could not be played in the preview; it plays the original.')
         // Gone from the folder: checked again (and made again) by the store.
         voiceStems().forget(this.project.id, clean.target, strength)

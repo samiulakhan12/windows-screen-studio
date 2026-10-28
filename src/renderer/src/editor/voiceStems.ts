@@ -5,7 +5,7 @@
  * but never again after the user stopped it or it failed; the panel's buttons and the export
  * make it whatever happened before (`prepare`).
  */
-import { VOICE_CANCELLED, type VoiceApi } from '../../../shared/api/voice'
+import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceApi } from '../../../shared/api/voice'
 import type { VoiceSource } from '../../../shared/audio/voiceClean'
 import type { VoiceStrength } from '../../../shared/types'
 
@@ -98,7 +98,14 @@ export class VoiceStems {
       },
       (err: unknown) => {
         const message = ipcMessage(err)
-        if (live()) this.set(key, message === VOICE_CANCELLED ? { state: 'stopped' } : { state: 'failed', message })
+        if (live()) {
+          // Replaced by a request for another strength: not the user's Cancel, so whoever wants this
+          // stem again (an undo back to it) checks and makes it again.
+          if (message === VOICE_REPLACED) {
+            this.entries.delete(key)
+            this.emit()
+          } else this.set(key, message === VOICE_CANCELLED ? { state: 'stopped' } : { state: 'failed', message })
+        }
         throw new Error(message)
       }
     )

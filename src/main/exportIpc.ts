@@ -234,7 +234,7 @@ export function registerExportIpc(): void {
     const tempPath = partialPath(finalPath)
     // The stems the recording kept: a missing one may only fall back to the mixed sound when that sounds the same.
     const recorded = await projects.readProject(projectId).then(stemsOf, () => [])
-    const sound = await cleanVoiceInputs(await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists, recorded), projectId)
+    const sound = await cleanVoiceInputs(await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists, recorded), projectId, requested)
     const { job } = sound
     const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.

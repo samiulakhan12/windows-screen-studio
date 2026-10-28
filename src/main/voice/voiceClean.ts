@@ -12,7 +12,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { VOICE_CANCELLED, type VoiceProgress, type VoiceStemStatus } from '../../shared/api/voice'
+import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceProgress, type VoiceStemStatus } from '../../shared/api/voice'
 import { SOURCE_FILES } from '../../shared/audio/settings'
 import {
   isVoiceStrength,
@@ -122,6 +122,8 @@ interface Job {
   promise: Promise<string>
   proc: ChildProcess | null
   cancelled: boolean
+  /** Stopped for a newer request of the same project (not by the user). */
+  replaced?: boolean
   /** Resolves once the job's ffmpeg has exited and its part file is gone. */
   settled: Promise<void>
 }
@@ -168,22 +170,26 @@ export class VoiceCleaner {
     const args = checked(source, strength)
     const at = await this.locate(id, args.source, args.strength)
     if (!at) throw new Error(args.source === 'mic' ? VOICE_COPY.missingMic : VOICE_COPY.missingMix)
-    const running = this.jobs.get(at.id)
-    if (running && running.key === at.key && !running.cancelled) return running.promise
-    if (running) await this.cancel(at.id)
     const file = voiceFileName(at.key)
     const final = path.join(at.dir, file)
-    if (await exists(final)) {
-      // Used again: the newest, so pruning keeps it.
-      const now = new Date()
-      await fs.utimes(final, now, now).catch(() => undefined)
-      return file
+    for (;;) {
+      const running = this.jobs.get(at.id)
+      if (running && running.key === at.key && !running.cancelled) return running.promise
+      // A stem already made never stops another render (the export asking for this one while the
+      // user waits for another strength).
+      if (await exists(final)) {
+        // Used again: the newest, so pruning keeps it.
+        const now = new Date()
+        await fs.utimes(final, now, now).catch(() => undefined)
+        return file
+      }
+      // Looked at again after every wait: requests waiting on the same cancel must not each start one.
+      const other = this.jobs.get(at.id)
+      if (other && other.key === at.key && !other.cancelled) return other.promise
+      if (!other) return this.start(at.id, at.dir, at.input, at.key, args.source, args.strength)
+      other.replaced = true
+      await this.cancel(at.id)
     }
-    // Another request may have started this render while the folder was being looked at.
-    const again = this.jobs.get(at.id)
-    if (again && again.key === at.key && !again.cancelled) return again.promise
-    if (again) await this.cancel(at.id)
-    return this.start(at.id, at.dir, at.input, at.key, args.source, args.strength)
   }
 
   private start(id: string, dir: string, input: string, key: string, source: VoiceSource, strength: VoiceStrength): Promise<string> {
@@ -216,13 +222,13 @@ export class VoiceCleaner {
     const modelDir = this.deps.modelDir()
     await ensureVoiceModels(modelDir, this.deps.modelTexts)
     await removeParts(dir)
-    if (job.cancelled) throw new Error(VOICE_CANCELLED)
+    if (job.cancelled) throw new Error(stopped(job))
     try {
       await this.run(job, input, part, modelDir, (p) => {
         job.progress = p
         send(p)
       })
-      if (job.cancelled) throw new Error(VOICE_CANCELLED)
+      if (job.cancelled) throw new Error(stopped(job))
       await fs.rename(part, path.join(dir, file))
     } catch (err) {
       await fs.rm(part, { force: true }).catch(() => undefined)
@@ -277,7 +283,7 @@ export class VoiceCleaner {
       proc.on('close', (code, signal) => {
         clearTimeout(timer)
         job.proc = null
-        if (job.cancelled) return reject(new Error(VOICE_CANCELLED))
+        if (job.cancelled) return reject(new Error(stopped(job)))
         if (code === 0) return resolve()
         if (timedOut) return reject(new Error(VOICE_COPY.tooLong))
         const last = log.trim().split('\n').pop() ?? ''
@@ -305,6 +311,9 @@ export class VoiceCleaner {
     }
   }
 }
+
+/** Why a cancelled job stopped: the user (or the editor closing), or a newer request. */
+const stopped = (job: Job): string => (job.replaced ? VOICE_REPLACED : VOICE_CANCELLED)
 
 /** Removes part files a stopped render left in `dir`. */
 async function removeParts(dir: string): Promise<void> {

@@ -18,8 +18,11 @@ export const VOICE_CHANNELS = {
   progress: 'voice:progress'
 } as const
 
-/** The message a render stopped by Cancel (or by a newer request of the same project) rejects with. */
+/** The message a render stopped by Cancel (or by the editor closing) rejects with. */
 export const VOICE_CANCELLED = 'Cleaning stopped.'
+
+/** The message a render stopped for a newer request of the same project (another strength) rejects with. */
+export const VOICE_REPLACED = 'Cleaning was replaced by a newer request.'
 
 /** Where the stem of a project, source and strength stands in the main process. */
 export type VoiceStemStatus =

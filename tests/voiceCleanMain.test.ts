@@ -41,7 +41,7 @@ import { ensureVoiceModels, parseDuration, parseProgress, voiceCleanArgs, VoiceC
 import { cleanVoiceInputs, registerVoiceIpc } from '../src/main/voice/voiceIpc'
 import generalModel from '../src/main/voice/model/cb.rnnn?raw'
 import speechModel from '../src/main/voice/model/sh.rnnn?raw'
-import { VOICE_CANCELLED, VOICE_CHANNELS, type VoiceProgress } from '../src/shared/api/voice'
+import { VOICE_CANCELLED, VOICE_CHANNELS, VOICE_REPLACED, type VoiceProgress } from '../src/shared/api/voice'
 import type { ExportJob } from '../src/shared/api/export'
 import { VOICE_ENGINE, VOICE_FILE_RE, VOICE_MODEL_IDS, VOICE_PART_RE, voiceGraph } from '../src/shared/audio/voiceClean'
 import { VOICE_COPY } from '../src/shared/audio/voiceCopy'
@@ -293,9 +293,45 @@ describe('running renders', () => {
     const { c } = cleaner()
     const first = c.ensure('switch', 'mic', 'strong')
     const second = c.ensure('switch', 'mic', 'light')
-    await expect(first).rejects.toThrow(VOICE_CANCELLED)
+    await expect(first).rejects.toThrow(VOICE_REPLACED)
     const file = await second
     expect(files(dir).filter((f) => f.startsWith('voice-'))).toEqual([file])
+  }, 60_000)
+
+  it('quick changes of strength leave one render, which Cancel stops', async () => {
+    const dir = seed('quick', 120)
+    const { c, runs } = cleaner()
+    const a = c.ensure('quick', 'mic', 'normal')
+    await new Promise((r) => setTimeout(r, 50))
+    // Light, Strong, then Normal again: each request replaces the one before.
+    const b = c.ensure('quick', 'mic', 'light')
+    const d = c.ensure('quick', 'mic', 'strong')
+    const e = c.ensure('quick', 'mic', 'normal')
+    const later = Promise.allSettled([b, d, e])
+    await expect(a).rejects.toThrow(VOICE_REPLACED)
+    await new Promise((r) => setTimeout(r, 300))
+    await c.cancel('quick')
+    const results = await later
+    expect(results.every((r) => r.status === 'rejected')).toBe(true)
+    // Every ffmpeg that started has exited: nothing is left running or written.
+    expect(h.spawned.every((p) => p.exitCode !== null || p.signalCode !== null)).toBe(true)
+    expect(files(dir).filter((f) => f.startsWith('voice-'))).toEqual([])
+    expect(runs()).toBeLessThanOrEqual(3)
+  }, 60_000)
+
+  it('asking for a stem that is already made never stops another render', async () => {
+    seed('keep', 120)
+    const { c } = cleaner()
+    const quick = cleaner().c
+    // Light is made first (by another cleaner, so this one only finds the file).
+    const light = await quick.ensure('keep', 'mic', 'light')
+    const strong = c.ensure('keep', 'mic', 'strong')
+    strong.catch(() => undefined)
+    await new Promise((r) => setTimeout(r, 200))
+    expect(await c.ensure('keep', 'mic', 'light')).toBe(light)
+    expect((await c.status('keep', 'mic', 'strong')).state).toBe('working')
+    await c.cancel('keep')
+    await expect(strong).rejects.toThrow(VOICE_CANCELLED)
   }, 60_000)
 
   it('stopAll kills every render', async () => {
@@ -325,7 +361,7 @@ describe('IPC and export', () => {
     expect(h.appEvents.has('will-quit')).toBe(true)
   })
 
-  const job = (voice?: unknown): ExportJob =>
+  const job = (voice?: unknown, stems?: Record<string, number>): ExportJob =>
     ({
       width: 0,
       height: 0,
@@ -334,7 +370,7 @@ describe('IPC and export', () => {
       format: 'm4a',
       quality: 'high',
       video: { kind: 'none' },
-      audio: { clips: [{ id: 'a', start: 0, end: 3, speed: 1 }], volume: 1, ...(voice === undefined ? {} : { voice }) },
+      audio: { clips: [{ id: 'a', start: 0, end: 3, speed: 1 }], volume: 1, ...(stems ? { stems } : {}), ...(voice === undefined ? {} : { voice }) },
       outputPath: '/videos/out.m4a'
     }) as ExportJob
 
@@ -347,22 +383,30 @@ describe('IPC and export', () => {
   it('puts the cleaned stem in place of the microphone stem, or of the mixed track', async () => {
     const dir = path.join(h.root, 'videos', 'Flown', 'exp')
     const ensure = vi.fn(async (_id: unknown, source: unknown, strength: unknown) => `voice-${source === 'mic' ? 'a' : 'b'}${strength === 'strong' ? 'c' : 'd'}00000000000000.m4a`)
-    const stems: SoundInputs = { job: job('strong'), audioInput: path.join(dir, 'screen.mp4'), stems: { mic: path.join(dir, 'mic.m4a'), system: path.join(dir, 'system.m4a') } }
-    expect(await cleanVoiceInputs(stems, 'exp', { ensure })).toEqual({ ...stems, stems: { mic: path.join(dir, 'voice-ac00000000000000.m4a'), system: path.join(dir, 'system.m4a') } })
+    const stems: SoundInputs = { job: job('strong', { mic: 1, system: 1 }), audioInput: path.join(dir, 'screen.mp4'), stems: { mic: path.join(dir, 'mic.m4a'), system: path.join(dir, 'system.m4a') } }
+    expect(await cleanVoiceInputs(stems, 'exp', undefined, { ensure })).toEqual({ ...stems, stems: { mic: path.join(dir, 'voice-ac00000000000000.m4a'), system: path.join(dir, 'system.m4a') } })
     expect(ensure).toHaveBeenLastCalledWith('exp', 'mic', 'strong')
     const mixed: SoundInputs = { job: job('normal'), audioInput: path.join(dir, 'screen.mp4') }
-    expect(await cleanVoiceInputs(mixed, 'exp', { ensure })).toEqual({ ...mixed, audioInput: path.join(dir, 'voice-bd00000000000000.m4a') })
+    expect(await cleanVoiceInputs(mixed, 'exp', undefined, { ensure })).toEqual({ ...mixed, audioInput: path.join(dir, 'voice-bd00000000000000.m4a') })
     expect(ensure).toHaveBeenLastCalledWith('exp', 'mix', 'normal')
   })
 
   it('leaves a job without Clean voice, or without a microphone stem, untouched', async () => {
     const ensure = vi.fn(async () => 'voice-0000000000000000.m4a')
-    const plain: SoundInputs = { job: job(), audioInput: '/p/screen.mp4', stems: { mic: '/p/mic.m4a' } }
-    expect(await cleanVoiceInputs(plain, 'exp', { ensure })).toBe(plain)
-    const systemOnly: SoundInputs = { job: job('normal'), audioInput: '/p/screen.mp4', stems: { system: '/p/system.m4a' } }
-    expect(await cleanVoiceInputs(systemOnly, 'exp', { ensure })).toBe(systemOnly)
+    const plain: SoundInputs = { job: job(undefined, { mic: 1 }), audioInput: '/p/screen.mp4', stems: { mic: '/p/mic.m4a' } }
+    expect(await cleanVoiceInputs(plain, 'exp', undefined, { ensure })).toBe(plain)
+    const systemOnly: SoundInputs = { job: job('normal', { system: 1 }), audioInput: '/p/screen.mp4', stems: { system: '/p/system.m4a' } }
+    expect(await cleanVoiceInputs(systemOnly, 'exp', undefined, { ensure })).toBe(systemOnly)
     const silent: SoundInputs = { job: { ...job('normal'), audio: undefined }, audioInput: null }
-    expect(await cleanVoiceInputs(silent, 'exp', { ensure })).toBe(silent)
+    expect(await cleanVoiceInputs(silent, 'exp', undefined, { ensure })).toBe(silent)
+    expect(ensure).not.toHaveBeenCalled()
+  })
+
+  it('cleans nothing when the stems were dropped for a missing file (the preview plays the mixed sound then)', async () => {
+    const ensure = vi.fn(async () => 'voice-0000000000000000.m4a')
+    const requested = job('normal', { mic: 1, system: 1 })
+    const fellBack: SoundInputs = { job: job('normal'), audioInput: '/p/screen.mp4' }
+    expect(await cleanVoiceInputs(fellBack, 'exp', requested, { ensure })).toBe(fellBack)
     expect(ensure).not.toHaveBeenCalled()
   })
 
@@ -370,6 +414,6 @@ describe('IPC and export', () => {
     const ensure = vi.fn(async () => {
       throw new Error(VOICE_COPY.missingMic)
     })
-    await expect(cleanVoiceInputs({ job: job('normal'), audioInput: '/p/screen.mp4', stems: { mic: '/p/mic.m4a' } }, 'exp', { ensure })).rejects.toThrow(`${VOICE_COPY.failed} ${VOICE_COPY.missingMic}`)
+    await expect(cleanVoiceInputs({ job: job('normal', { mic: 1 }), audioInput: '/p/screen.mp4', stems: { mic: '/p/mic.m4a' } }, 'exp', undefined, { ensure })).rejects.toThrow(`${VOICE_COPY.failed} ${VOICE_COPY.missingMic}`)
   })
 })

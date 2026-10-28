@@ -10,6 +10,7 @@ export const VOICE_COPY = {
   noMic: 'The microphone is muted or was not recorded, so there is no voice to clean.',
   strength: 'Strength',
   checking: 'Checking your voice…',
+  cleaning: 'Cleaning your voice…',
   working: (percent: number): string => `Cleaning your voice… ${percent}%`,
   cancel: 'Cancel',
   ready: 'Your voice is clean. The preview and the export use it.',

@@ -8,6 +8,7 @@ import path from 'node:path'
 import { VOICE_CHANNELS, type VoiceProgress } from '../../shared/api/voice'
 import { isVoiceStrength } from '../../shared/audio/voiceClean'
 import { VOICE_COPY } from '../../shared/audio/voiceCopy'
+import type { ExportJob } from '../../shared/api/export'
 import type { SoundInputs } from '../exportJob'
 import { ffmpegPath } from '../ffmpeg'
 import { projectDir } from '../projects'
@@ -35,15 +36,20 @@ export const voiceCleaner = new VoiceCleaner({
 export const stopVoiceClean = (id: string): Promise<void> => voiceCleaner.cancel(id).catch(() => undefined)
 
 /**
- * The export's sound files with the cleaned voice in place of what it was made from (§4.6): the
- * microphone stem when the job mixes stems with one, the mixed track when it mixes none. A job
- * without `voice` is returned unchanged. The stem is made here if it is somehow not there yet.
+ * The export's sound files with the cleaned voice in place of what it was made from (§4.6), as
+ * the editor chose it in `requested`: the microphone stem when the job mixes stems with one, the
+ * mixed track when it mixes none. A job without `voice` is returned unchanged. When the stems
+ * were dropped because a file went missing (resolveSoundInputs: the mixed track then plays every
+ * source), nothing is cleaned, as the preview then plays the mixed sound as recorded; the mixed
+ * track, with the PC's sound and any music in it, is never cleaned in place of a microphone. The
+ * stem is made here if it is somehow not there yet.
  */
-export async function cleanVoiceInputs(sound: SoundInputs, projectId: string, cleaner: Pick<VoiceCleaner, 'ensure'> = voiceCleaner): Promise<SoundInputs> {
-  const strength = sound.job.audio?.voice
+export async function cleanVoiceInputs(sound: SoundInputs, projectId: string, requested: ExportJob = sound.job, cleaner: Pick<VoiceCleaner, 'ensure'> = voiceCleaner): Promise<SoundInputs> {
+  const strength = requested.audio?.voice
   if (strength === undefined) return sound
   if (!isVoiceStrength(strength)) throw new Error('Invalid export settings')
-  const source = sound.stems ? (sound.stems.mic ? 'mic' : null) : sound.audioInput ? 'mix' : null
+  const asked = requested.audio?.stems
+  const source = asked ? (asked.mic !== undefined && sound.stems?.mic ? 'mic' : null) : sound.audioInput ? 'mix' : null
   if (!source) return sound
   const file = await cleaner.ensure(projectId, source, strength).catch((err: unknown) => {
     throw new Error(`${VOICE_COPY.failed} ${err instanceof Error ? err.message : String(err)}`)
