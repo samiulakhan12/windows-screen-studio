@@ -4,6 +4,7 @@ import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
 import { onCameraMasksChanged } from '../render/segmentation/cameraMasks'
+import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { createVideo, SCREEN_PROXY_FPS, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
 
 interface Props {
@@ -35,6 +36,9 @@ export function ExportPreview(props: Props): JSX.Element {
   // The camera's background blur: redraw when a frame's person mask arrives.
   const [masks, setMasks] = useState(0)
   useEffect(() => onCameraMasksChanged(() => setMasks((n) => n + 1)), [])
+  // Images, GIFs, fonts and the logo load in the background: redraw when one arrives.
+  const [assets, setAssets] = useState(0)
+  useEffect(() => onStyleAssetsChanged(() => setAssets((n) => n + 1)), [])
   const project = useMemo(() => exportProject(props.project, { aspect: props.options.aspect }), [props.project, props.options.aspect])
   // The scene keeps the project as drawn (cropped: the view), with the export's aspect ratio.
   const drawn = useMemo(
@@ -96,7 +100,7 @@ export function ExportPreview(props: Props): JSX.Element {
     const ctx = c.getContext('2d', { alpha: false })
     if (!ctx) return
     drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound)
-  }, [frameTime, scene, props.background, props.held, css.width, css.height, size.fps, masks])
+  }, [frameTime, scene, props.background, props.held, css.width, css.height, size.fps, masks, assets])
 
   return <canvas ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
 }
