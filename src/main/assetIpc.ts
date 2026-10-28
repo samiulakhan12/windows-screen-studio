@@ -8,7 +8,7 @@
  * use at once) and an identical file is stored once (docs/design/brand-kit.md §2).
  */
 import { createHash } from 'node:crypto'
-import { dialog, ipcMain } from 'electron'
+import { clipboard, dialog, ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { AssetKind, PickedAsset } from '../shared/api/projects'
@@ -291,6 +291,21 @@ async function prunePicks(id: string, kind: AssetKind, dir: string, picked: stri
   }
 }
 
+/** The system clipboard's image as PNG bytes (Chromium offers a copied picture as image/png), or null. */
+async function clipboardPng(): Promise<Uint8Array | null> {
+  try {
+    for (const item of await clipboard.read()) {
+      if (!item.types.includes('image/png')) continue
+      const blob = await item.getType('image/png')
+      if (!(blob instanceof Blob) || blob.size === 0 || blob.size > OVERLAY_MAX_BYTES) return null
+      return new Uint8Array(await blob.arrayBuffer())
+    }
+  } catch (err) {
+    console.warn('The clipboard could not be read:', err)
+  }
+  return null
+}
+
 export function registerAssetIpc(): void {
   ipcMain.handle('projects:pickAsset', async (_e, id: unknown, kind: unknown) => {
     if (typeof id !== 'string' || !isKind(kind)) return null
@@ -306,6 +321,15 @@ export function registerAssetIpc(): void {
     })
     if (result.canceled || !result.filePaths[0]) return null
     return importAsset(id, kind, result.filePaths[0])
+  })
+
+  // Ctrl+V in the editor (docs/design/brand-kit.md §4.5): the image on the system clipboard, by its
+  // fingerprint (SHA-256 of its PNG) and, when asked, its PNG bytes. Only the app's page may ask.
+  ipcMain.handle('projects:clipboardImage', async (e, withBytes: unknown) => {
+    if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
+    const png = await clipboardPng()
+    if (!png) return null
+    return withBytes === true ? { hash: sha256(png), png } : { hash: sha256(png) }
   })
 
   ipcMain.handle('projects:importAssetData', (e, id: unknown, kind: unknown, name: unknown, bytes: unknown) => {

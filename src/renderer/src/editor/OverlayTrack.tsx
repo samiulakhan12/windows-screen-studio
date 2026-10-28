@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { dragOverlayTimes, overlayLabel } from '../../../shared/editor/overlays'
+import { itemKey } from '../../../shared/editor/multiSelect'
 import { itemLanes } from '../../../shared/editor/shapes'
 import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
@@ -9,6 +10,7 @@ import type { ImageOverlay } from '../../../shared/types'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
+import { useGroup } from './groupContext'
 import type { TrackSlotProps } from './LayoutTrack'
 import { ipcMessage, pickOverlay, showOverlay } from './overlayItems'
 import { followPointer } from './pointer'
@@ -23,9 +25,10 @@ const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
  * Timeline track of image overlays and stickers: blocks move and trim like text, a click selects
  * one (and shows it on the preview), a double-click on empty space opens "Add image…" there.
  */
-export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element {
+export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, snap, multi }: TrackSlotProps): JSX.Element {
   const services = useEditor()
   const { store, player } = services
+  const group = useGroup()
   // Straight from the store, so only a change to them re-renders the track.
   const overlays = useSyncExternalStore(store.subscribe, () => store.state.overlays) ?? NO_OVERLAYS
   const pxRef = useRef(px)
@@ -50,6 +53,7 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
 
   const onOverlayDown = (o: ImageOverlay) => (e: ReactPointerEvent) => {
     if (e.button !== 0) return
+    if (multi?.press(e, itemKey('overlay', o.id), dragMode(e))) return
     e.preventDefault()
     e.stopPropagation()
     releaseFocus()
@@ -88,6 +92,7 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
   // A double-click on empty track space is two quick pointerdowns at the same spot (as the other tracks).
   const lastDown = useRef({ at: 0, x: 0 })
   const onBackgroundDown = (e: ReactPointerEvent): void => {
+    if (multi?.background(e, 'images')) return
     if (e.button !== 0) return
     const d = lastDown.current
     const second = e.timeStamp - d.at < 450 && Math.abs(e.clientX - d.x) < 6
@@ -102,6 +107,15 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
     onSelect(null)
     scrub(e)
   }
+
+  /** Classes and tooltip ends of blocks in the group (E-06). */
+  const groupSize = group.group.keys.length
+  const memberClass = (id: string): string => {
+    const key = itemKey('overlay', id)
+    return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
+  }
+  const groupHint = (id: string): string =>
+    group.keys.has(itemKey('overlay', id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
 
   const visible = overlays.filter((o) => overlaps(o, win) || o.id === selId)
   const laneH = 100 / lanes.count
@@ -118,10 +132,10 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
             data-overlay={o.id}
             data-start={o.start}
             data-end={o.end}
-            className={`seg overlay-seg ${o.sticker ? 'sticker' : ''} ${selId === o.id ? 'selected' : ''}`}
+            className={`seg overlay-seg ${o.sticker ? 'sticker' : ''} ${selId === o.id ? 'selected' : ''}${memberClass(o.id)}`}
             style={{ left: o.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
             onPointerDown={onOverlayDown(o)}
-            title={`${name} · ${formatTime(o.start)} – ${formatTime(o.end)}`}
+            title={`${name} · ${formatTime(o.start)} – ${formatTime(o.end)}${groupHint(o.id)}`}
           >
             <span className="edge left" />
             {w > 22 && lanes.count <= 2 && (

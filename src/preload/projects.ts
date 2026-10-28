@@ -18,6 +18,7 @@ export const projectsApi: ProjectsApi = {
   pickCursorImage: (id) => ipcRenderer.invoke('projects:pickCursorImage', id),
   pickAsset: (id, kind) => ipcRenderer.invoke('projects:pickAsset', id, kind),
   importAssetData: (id, kind, name, bytes) => ipcRenderer.invoke('projects:importAssetData', id, kind, name, bytes),
+  clipboardImage: (withBytes) => ipcRenderer.invoke('projects:clipboardImage', withBytes),
   assetUrl: (id, file) => ipcRenderer.invoke('projects:assetUrl', id, file),
   detectStill: (id, minSeconds, crop) => ipcRenderer.invoke('projects:detectStill', id, minSeconds, crop),
   stopAnalysis: (id) => ipcRenderer.invoke('projects:stopAnalysis', id),

@@ -98,3 +98,36 @@ export async function addOverlayFile(services: EditorServices, file: File, opts:
   })
   return addPickedOverlay(services, picked, opts)
 }
+
+/* ---------- Ctrl+V: the system clipboard's image, or the copied items ---------- */
+
+/** The clipboard image's fingerprint when items were last copied (null: there was none). */
+let imageAtItemCopy: Promise<string | null> | null = null
+
+/** Called when items are copied (Ctrl+C, Ctrl+X): an image already on the clipboard is then older than them. */
+export function noteItemCopy(): void {
+  imageAtItemCopy = window.api.clipboardImage(false).then(
+    (r) => r?.hash ?? null,
+    () => null
+  )
+}
+
+/**
+ * Ctrl+V's image part: adds the system clipboard's image at the playhead when there is one and it
+ * is newer than the copied items (`itemsCopied`), that is, it was not already on the clipboard when
+ * they were copied. Resolves null when the items are to be pasted instead. Rejects with a readable
+ * message when the image cannot be added.
+ */
+export async function pasteClipboardImage(services: EditorServices, opts: AddOverlayOptions, itemsCopied: boolean): Promise<ImageOverlay | null> {
+  const now = await window.api.clipboardImage(false).catch(() => null)
+  if (!now) return null
+  if (itemsCopied && imageAtItemCopy && (await imageAtItemCopy) === now.hash) return null
+  checkRoom(services)
+  const full = await window.api.clipboardImage(true)
+  if (!full?.png) return null
+  if (full.png.byteLength > OVERLAY_MAX_BYTES) throw new Error(`The pasted image is too large (${Math.round(full.png.byteLength / 1e6)} MB; ${Math.round(OVERLAY_MAX_BYTES / 1e6)} MB at most).`)
+  const picked = await window.api.importAssetData(services.store.state.id, 'overlay', 'Pasted image.png', full.png).catch((err: unknown) => {
+    throw new Error(ipcMessage(err))
+  })
+  return addPickedOverlay(services, picked, opts)
+}

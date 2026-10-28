@@ -28,7 +28,8 @@ import { holdGesture, useEditor } from './context'
 import { topmostHit, toggleKey, type ItemKey, type KeyRect } from '../../../shared/editor/multiSelect'
 import { useGroup } from './groupContext'
 import { CropEditor, type CropTool } from './CropEditor'
-import { OverlayEditor } from './OverlayEditor'
+import { overlayBounds, OverlayEditor } from './OverlayEditor'
+import { overlayVisibleAt } from '../../../shared/render/imageOverlays'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
@@ -725,6 +726,8 @@ function previewBoxes(drawn: Project, scene: RenderScene, rect: Rect, box: Box, 
     out.push({ key, x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) })
   }
   for (const a of [...drawn.annotations].reverse()) if (annotationVisibleAt(a, t)) out.push({ key: `annotation:${a.id}`, ...textBox(a, box) })
+  // Images are drawn over shapes and under text: their rotated box's bounds, in preview pixels.
+  for (const o of [...(drawn.overlays ?? [])].reverse()) if (overlayVisibleAt(o, t)) out.push({ key: `overlay:${o.id}`, ...overlayBounds(o, box) })
   const shapes = [...(drawn.shapes ?? [])].reverse().filter((s) => itemVisibleAt(s, t))
   for (const s of shapes) if (!isPrivacyKind(s.kind)) mapped(`shape:${s.id}`, shapeBounds(s))
   for (const s of shapes) if (isPrivacyKind(s.kind)) mapped(`shape:${s.id}`, shapeBounds(s))

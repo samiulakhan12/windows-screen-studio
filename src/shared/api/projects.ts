@@ -40,6 +40,8 @@ export interface ProjectsApi {
    * or 'font'); `name` gives its extension and the name shown. Rejects with a readable message.
    */
   importAssetData(projectId: string, kind: AssetKind, name: string, bytes: Uint8Array): Promise<PickedAsset>
+  /** The image on the system clipboard: its fingerprint, and its PNG bytes with `withBytes`; null without one. */
+  clipboardImage(withBytes: boolean): Promise<{ hash: string; png?: Uint8Array } | null>
   /** studio-media URL of a project asset file, or null when it is missing. */
   assetUrl(projectId: string, file: string): Promise<string | null>
   /**

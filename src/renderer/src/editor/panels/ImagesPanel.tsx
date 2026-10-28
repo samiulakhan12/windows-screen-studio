@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { itemKey } from '../../../../shared/editor/multiSelect'
 import { overlayLabel, resetOverlayShape, sizeForAspect } from '../../../../shared/editor/overlays'
 import { OVERLAY_LIMITS } from '../../../../shared/engine/overlayData'
 import { formatTime } from '../../../../shared/engine/project'
@@ -12,6 +13,7 @@ import { pctFmt, Section, Slider } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { addSticker, ipcMessage, OVERLAY_FORMATS_TEXT, pickOverlay, showOverlay } from '../overlayItems'
+import { useListSelect } from '../listSelect'
 import '../overlays.css'
 
 /* ---------- Images: overlays and stickers (docs/design/brand-kit.md §5) ---------- */
@@ -152,6 +154,7 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
 
 function ImageList({ project, selectedId, onSelect }: { project: Project; selectedId: string | null; onSelect: InspectorProps['onSelect'] }): JSX.Element | null {
   const { player } = useEditor()
+  const list = useListSelect()
   const overlays = project.overlays ?? []
   if (!overlays.length) return null
   return (
@@ -163,11 +166,16 @@ function ImageList({ project, selectedId, onSelect }: { project: Project; select
           .map((o) => (
             <li key={o.id}>
               <button
-                aria-current={o.id === selectedId ? 'true' : undefined}
-                onClick={() => {
-                  onSelect({ kind: 'overlay', id: o.id })
-                  showOverlay(player, project.clips, o)
-                }}
+                data-overlay-item={o.id}
+                className={selectedId === o.id || list.member(itemKey('overlay', o.id)) ? 'active' : ''}
+                {...list.row(
+                  itemKey('overlay', o.id),
+                  () => {
+                    onSelect({ kind: 'overlay', id: o.id })
+                    showOverlay(player, project.clips, o)
+                  },
+                  selectedId === o.id
+                )}
               >
                 <span className="muted">{formatTime(o.start, false)}</span> {overlayLabel(o)}
               </button>

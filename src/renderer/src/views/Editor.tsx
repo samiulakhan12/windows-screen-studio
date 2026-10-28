@@ -79,6 +79,7 @@ import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { snapPref } from '../editor/snapControl'
 import { addChapterAt, addTitleAt } from '../editor/titleItems'
 import { OverlayDropZone } from '../editor/OverlayDropZone'
+import { ipcMessage, noteItemCopy, pasteClipboardImage } from '../editor/overlayItems'
 import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
@@ -822,6 +823,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       const clip = copyGroupItems(store.state, keys)
       if (!clip) return null
       itemClipboard.set(clip)
+      noteItemCopy()
       return keys
     }
     const copySelectedItems = (): void => {
@@ -841,13 +843,20 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       setSelection(null)
       showNotice(removedNotice('Cut', keys.length, undo()))
     }
-    const pasteClipboard = (): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+    const pasteItemsNow = (): void => {
       const clip = itemClipboard.get()
       if (!clip) return showNotice(nothingCopiedNotice(keyLabel('copyItems') || null))
       let r: PasteResult | null = null
       store.update((p) => (r = pasteGroupItems(p, clip, player.time)).project)
       if (r) pasted(r, clip.items.length)
+    }
+    // An image on the system clipboard that is newer than the copied items is added as an image (brand kit, NW-12).
+    const pasteClipboard = (): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
+      void pasteClipboardImage({ store, player }, { onSelect: setSelection }, !!itemClipboard.get()).then(
+        (o) => (o ? showNotice(`Added ${o.name ?? 'the pasted image'} at the playhead`) : pasteItemsNow()),
+        (err: unknown) => showNotice(ipcMessage(err))
+      )
     }
     const duplicateSelected = (): void => {
       if (cropRef.current) return showNotice('Close the crop tool first')

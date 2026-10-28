@@ -53,6 +53,8 @@ function listOf(p: Project, kind: GroupKind): readonly Timed[] {
       return p.shapes ?? []
     case 'spotlight':
       return p.spotlights ?? []
+    case 'overlay':
+      return p.overlays ?? []
     case 'title':
       return p.titles ?? []
     case 'chapter':
@@ -260,7 +262,7 @@ function withTimes<T extends { id: string; start: number; end: number }>(list: r
 
 /**
  * The group moved by `delta` from its press times (`plan.initial`), in one project: text, shapes,
- * spotlights, title cards and chapters by exactly `delta`, zooms too (made yours: `auto: false`), and
+ * spotlights, images, title cards and chapters by exactly `delta`, zooms too (made yours: `auto: false`), and
  * freezes through moveFreeze (each anchor on a frame start). With `exact` (a snapped edge), every
  * member edge equal to `exact.from` is written as `exact.to`. The same project when nothing changes.
  * O(n) per call: the plan's keys are parsed once.
@@ -287,6 +289,11 @@ export function moveGroup(p: Project, plan: GroupMovePlan, delta: number, exact?
   if (spotlights && q.spotlights) {
     const next = retimed(q.spotlights, spotlights, delta, exact)
     if (next !== q.spotlights) q = { ...q, spotlights: next }
+  }
+  const overlays = to.get('overlay')
+  if (overlays && q.overlays) {
+    const next = retimed(q.overlays, overlays, delta, exact)
+    if (next !== q.overlays) q = { ...q, overlays: next }
   }
   const titles = to.get('title')
   if (titles && q.titles) {
@@ -365,7 +372,7 @@ export function setGroupLength(p: Project, keys: readonly ItemKey[], length: num
     const times =
       k.kind === 'zoom'
         ? dragZoomTimes(initial, 'end', dt, zoomDragBounds(q.zooms, k.id, q.duration))
-        : k.kind === 'annotation'
+        : k.kind === 'annotation' || k.kind === 'overlay'
           ? dragAnnotationTimes(initial, 'end', dt, q.duration)
           : k.kind === 'title'
             ? dragTitleTimes(initial, 'end', dt, q.duration)
@@ -376,6 +383,7 @@ export function setGroupLength(p: Project, keys: readonly ItemKey[], length: num
     else if (k.kind === 'annotation') q = { ...q, annotations: withTimes(q.annotations, k.id, times) }
     else if (k.kind === 'shape') q = { ...q, shapes: withTimes(q.shapes ?? [], k.id, times) }
     else if (k.kind === 'spotlight') q = { ...q, spotlights: withTimes(q.spotlights ?? [], k.id, times) }
+    else if (k.kind === 'overlay') q = { ...q, overlays: withTimes(q.overlays ?? [], k.id, times) }
     else q = { ...q, titles: withTimes(q.titles ?? [], k.id, times) }
   }
   return { project: q, clamped }

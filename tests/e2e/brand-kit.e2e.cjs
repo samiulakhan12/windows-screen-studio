@@ -502,6 +502,68 @@ async function main() {
   )
 
   await test(
+    'brand kit: images join a multi-select group, take one opacity as one undo step; Ctrl+V pastes a newer clipboard image, else the copied items',
+    fx.withHome('bk-group', async (ctx, home) => {
+      const media = fx.solidVideo({ seconds: 8 })
+      fx.seedProject(home, {
+        id: 'rec-group',
+        name: 'Group',
+        media,
+        seconds: 8,
+        style: STYLE,
+        effects: NO_FX,
+        annotations: [{ id: 't1', start: 1, end: 3, text: 'Hello', x: 0.5, y: 0.8, size: 0.05, style: 'pill' }]
+      })
+      png(path.join(h.projectsRoot(home), 'rec-group', 'overlay-1.png'), 'red')
+      const base = { file: 'overlay-1.png', x: 0.3, y: 0.3, w: 0.2, h: 0.1, rotation: 0, fadeIn: 0, fadeOut: 0 }
+      addItems(home, 'rec-group', {
+        overlays: [
+          { id: 'o1', start: 1, end: 3, opacity: 0.5, ...base },
+          { id: 'o2', start: 4, end: 6, opacity: 0.8, ...base, x: 0.7 }
+        ]
+      })
+      const { app, win } = await launch(ctx, home)
+      await fx.openProject(win, 'Group')
+
+      // Ctrl+click two images and the text on the timeline: one group with an Images section.
+      await win.click('[data-overlay="o1"]')
+      await win.click('[data-overlay="o2"]', { modifiers: ['Control'] })
+      await win.click('[data-annotation="t1"]', { modifiers: ['Control'] })
+      await win.waitForSelector('[data-testid="selection-panel"] h3:has-text("3 items selected")', { timeout: 10000 })
+      await win.waitForSelector('[data-testid="selection-panel"] h3:has-text("Images (2)")')
+      if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'brand-kit-group.png') })
+      const opacity = win.locator('[data-testid="selection-panel"] section:has(h3:has-text("Images")) .slider:has-text("Opacity") input')
+      await opacity.focus()
+      await win.keyboard.press('Home')
+      const both = await saved(home, 'rec-group', (q) => q.overlays.every((o) => Math.abs(o.opacity - 0.05) < 1e-6), 'both images take the opacity')
+      h.assert(both.annotations[0].text === 'Hello' && both.annotations[0].size === 0.05, 'the text is left as it was')
+      await win.locator('.tl-hint').click()
+      await win.keyboard.press('Control+z')
+      await saved(home, 'rec-group', (q) => q.overlays[0].opacity === 0.5 && q.overlays[1].opacity === 0.8, 'one undo puts both opacities back')
+
+      // A real Ctrl+V: an image already on the clipboard when items are copied is older than them, so the items paste.
+      const writeClipboardImage = (file) =>
+        app.evaluate(async ({ clipboard, ClipboardItem }, b64) => {
+          await clipboard.write([new ClipboardItem({ 'image/png': new Blob([Buffer.from(b64, 'base64')], { type: 'image/png' }) })])
+        }, fs.readFileSync(file).toString('base64'))
+      await writeClipboardImage(png(path.join(home, 'blue.png'), 'blue', '80x80'))
+      await win.click('[data-overlay="o1"]')
+      await win.click('[data-overlay="o2"]', { modifiers: ['Control'] })
+      await win.waitForSelector('[data-testid="selection-panel"] h3:has-text("2 items selected")', { timeout: 10000 })
+      await win.keyboard.press('Control+c')
+      await win.keyboard.press('Control+v')
+      await saved(home, 'rec-group', (q) => q.overlays.length === 4 && q.overlays.every((o) => o.file === 'overlay-1.png'), 'Ctrl+V pastes the copied images')
+      // A newer clipboard image wins over the copied items.
+      await writeClipboardImage(png(path.join(home, 'green.png'), 'green', '90x60'))
+      await win.keyboard.press('Control+v')
+      const p = await saved(home, 'rec-group', (q) => q.overlays.length === 5, 'Ctrl+V adds the newer clipboard image', 15000)
+      const added = p.overlays[4]
+      h.assert(added.name === 'Pasted image.png' && added.file === 'overlay-2.png', `pasted image: ${JSON.stringify(added)}`)
+      h.assert(Math.abs(added.w / added.h - 1.5) < 0.01, "with the pasted image's own shape")
+    })
+  )
+
+  await test(
     'brand kit: Settings › Brand kit saves colours, the intro and Apply to new recordings',
     fx.withHome('bk-settings', async (ctx, home) => {
       const { app, win } = await launch(ctx, home)
