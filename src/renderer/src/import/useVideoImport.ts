@@ -35,7 +35,8 @@ export function useVideoImport(onOpen: (projectId: string) => void, onFinished: 
     () =>
       window.api.onImportProgress((p) => {
         if (!running.current) return
-        setView((v) => ({ kind: 'running', fileName: p.fileName, stage: p.stage, progress: p.progress, startedAt: v.kind === 'running' && v.fileName === p.fileName ? v.startedAt : performance.now() }))
+        // The time left counts from when the copy started, not from the checks before it.
+        setView((v) => ({ kind: 'running', fileName: p.fileName, stage: p.stage, progress: p.progress, startedAt: v.kind === 'running' && v.stage === 'converting' ? v.startedAt : performance.now() }))
       }),
     []
   )

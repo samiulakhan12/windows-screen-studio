@@ -55,7 +55,25 @@
 }
 
 .import-modal .progress-bar.unknown {
-  opacity: 0.45;
+  width: 30%;
+  animation: import-indeterminate 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes import-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .import-modal .progress-bar.unknown {
+    animation: none;
+    width: 100%;
+    background: repeating-linear-gradient(45deg, var(--accent) 0 8px, var(--accent-text) 8px 16px);
+  }
 }
 
 .import-notes {

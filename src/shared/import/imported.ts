@@ -33,6 +33,9 @@ export function importedSource(project: Pick<Project, 'source'> | null | undefin
 
 export const isImported = (project: Pick<Project, 'source'> | null | undefined): boolean => importedSource(project) !== null
 
+/** "This recording has no cursor data", in the words that fit the project. */
+export const noCursorText = (project: Pick<Project, 'source'> | null | undefined): string => (isImported(project) ? IMPORTED_COPY.noCursor : 'This recording has no cursor data')
+
 /** What the editor says about features an imported video cannot have. */
 export const IMPORTED_COPY = {
   cursor: 'This video was imported, so Flown has no cursor data for it. The smooth cursor, click effects and click sounds are off; a cursor in the video stays as it was.',

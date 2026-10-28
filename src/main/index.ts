@@ -9,7 +9,7 @@ import { registerBrandIpc } from './brandIpc'
 import { registerBrandKitIpc } from './brandKitIpc'
 import { registerCaptionsIpc } from './captionsIpc'
 import { disposeExport, registerExportIpc } from './exportIpc'
-import { registerImportIpc } from './importVideo'
+import { disposeImport, registerImportIpc } from './importVideo'
 import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
 import { registerNotesIpc } from './notes/notesIpc'
 import { registerPrefsIpc } from './prefsIpc'
@@ -72,6 +72,7 @@ if (!app.requestSingleInstanceLock()) {
     if (event.defaultPrevented) return
     disposeRecording()
     disposeExport()
+    disposeImport()
   })
 
   app.on('window-all-closed', () => {

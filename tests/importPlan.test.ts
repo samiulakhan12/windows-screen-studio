@@ -135,7 +135,9 @@ describe('planImport', () => {
     expect(plan(probe([stream({ width: 1920, height: 1080, rotation: 180 })])).size).toEqual({ width: 1920, height: 1080 })
     expect(plan(probe([stream({ width: 641, height: 361 })])).size).toEqual({ width: 640, height: 360 })
     expect(displaySize({ width: 720, height: 576, sar: 16 / 15, rotation: 0 })).toEqual({ width: 768, height: 576 })
-    expect(plan(probe([stream({ width: 720, height: 576, sar: 16 / 15 })])).size).toEqual({ width: 768, height: 576 })
+    const dv = plan(probe([stream({ width: 720, height: 576, sar: 16 / 15 })]))
+    expect(dv.size).toEqual({ width: 768, height: 576 })
+    expect(dv.preFilters).toEqual(['scale=w=trunc(iw*sar/2)*2:h=ih', 'setsar=1'])
   })
 
   it('fits larger-than-4K pictures inside 3840 × 2160 either way, with a note', () => {

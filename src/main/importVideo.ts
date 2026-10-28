@@ -6,7 +6,7 @@
  * crash is removed at the next start (import.json without project.json).
  */
 import { BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ImportProgress, ImportResult } from '../shared/api/import'
@@ -72,6 +72,9 @@ class Cancelled extends Error {}
 /** A refusal or failure with the sentence the user reads. */
 class ImportRefused extends Error {}
 
+/** Probe and decode-test processes still running (the encode is killAllFfmpeg's). */
+const probes = new Set<ChildProcess>()
+
 /** Runs ffmpeg and returns its exit code and output (stdout and stderr, capped), killed after `timeoutMs`. */
 export function runCapture(args: string[], opts: { timeoutMs: number; signal?: AbortSignal }): Promise<{ code: number | null; log: string; timedOut: boolean }> {
   return new Promise((resolve, reject) => {
@@ -80,6 +83,7 @@ export function runCapture(args: string[], opts: { timeoutMs: number; signal?: A
       return
     }
     const proc = spawn(ffmpegPath(), args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+    probes.add(proc)
     let log = ''
     let timedOut = false
     const add = (d: Buffer): void => {
@@ -96,6 +100,7 @@ export function runCapture(args: string[], opts: { timeoutMs: number; signal?: A
     }
     opts.signal?.addEventListener('abort', onAbort, { once: true })
     const done = (): void => {
+      probes.delete(proc)
       clearTimeout(timer)
       opts.signal?.removeEventListener('abort', onAbort)
     }
@@ -113,7 +118,7 @@ export function runCapture(args: string[], opts: { timeoutMs: number; signal?: A
 
 /** The checks made before ffmpeg reads the file (§7). */
 export async function checkImportFile(file: unknown): Promise<{ ok: true; bytes: number; fileName: string } | { ok: false; error: string }> {
-  if (typeof file !== 'string' || file.length === 0 || file.length > 4096 || file.includes('\0') || !path.isAbsolute(file)) return { ok: false, error: IMPORT_COPY.cannotOpen }
+  if (typeof file !== 'string' || file.length === 0 || file.length > 4096 || file.includes('\0') || /[\r\n]/.test(file) || !path.isAbsolute(file)) return { ok: false, error: IMPORT_COPY.cannotOpen }
   const fileName = path.basename(file)
   if (!importableExtension(fileName)) return { ok: false, error: IMPORT_COPY.extension }
   let stat
@@ -168,7 +173,8 @@ export async function probeFile(file: string, signal?: AbortSignal): Promise<Pro
 
 /** Decodes the first frame (and a second of the sound): whether the bundled ffmpeg can read them. */
 export async function decodeTest(file: string, video: number, audio: number | null, signal?: AbortSignal): Promise<boolean> {
-  const args = ['-hide_banner', '-nostdin', '-v', 'error', '-xerror', '-i', file, '-map', `0:${video}`, ...(audio !== null ? ['-map', `0:${audio}`] : []), '-frames:v', '1', '-t', '1', '-progress', 'pipe:1', '-nostats', '-f', 'null', '-']
+  // No -xerror: a file that starts mid-GOP logs decode errors before its first good frame.
+  const args = ['-hide_banner', '-nostdin', '-v', 'error', '-i', file, '-map', `0:${video}`, ...(audio !== null ? ['-map', `0:${audio}`] : []), '-frames:v', '1', '-t', '1', '-progress', 'pipe:1', '-nostats', '-f', 'null', '-']
   const r = await runCapture(args, { timeoutMs: DECODE_TIMEOUT_MS, signal })
   const frames = Math.max(0, ...[...r.log.matchAll(/^frame=\s*(\d+)/gm)].map((m) => Number(m[1])))
   return r.code === 0 && !r.timedOut && frames >= 1
@@ -316,6 +322,8 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     report('finishing', 1)
     const duration = run.frames ? run.frames / plan.fps : 0
     if (!(duration > 0)) throw new ImportRefused(IMPORT_COPY.unreadable)
+    // A file that did not say how long it is (live WebM) is measured here.
+    if (duration < IMPORT_LIMITS.minSeconds) throw new ImportRefused(IMPORT_COPY.tooShort)
     const notes = [...plan.notes]
     if (plan.duration === null && duration >= IMPORT_LIMITS.maxSeconds - 1) notes.push(IMPORT_COPY.noteCapped)
     await fs.rename(part, path.join(dir, 'screen.mp4'))
@@ -362,6 +370,13 @@ async function runFor(sender: WebContents, file: unknown): Promise<ImportResult>
   if (active) return { ok: false, fileName: typeof file === 'string' ? path.basename(file) : null, error: IMPORT_COPY.busy }
   const controller = new AbortController()
   active = controller
+  // The page that asked is gone (reloaded, closed): nobody can see or cancel the import, so stop it.
+  const stop = (): void => controller.abort()
+  const onNavigate = (e: Electron.Event<Electron.WebContentsDidStartNavigationEventParams>): void => {
+    if (e.isMainFrame && !e.isSameDocument) stop()
+  }
+  sender.on('did-start-navigation', onNavigate)
+  sender.once('destroyed', stop)
   try {
     return await importVideo(file, {
       signal: controller.signal,
@@ -371,7 +386,18 @@ async function runFor(sender: WebContents, file: unknown): Promise<ImportResult>
     })
   } finally {
     active = null
+    if (!sender.isDestroyed()) {
+      sender.off('did-start-navigation', onNavigate)
+      sender.off('destroyed', stop)
+    }
   }
+}
+
+/** Stops a running import and its ffmpeg processes (the app is quitting); its folder is swept at the next start. */
+export function disposeImport(): void {
+  active?.abort()
+  for (const proc of probes) proc.kill('SIGKILL')
+  probes.clear()
 }
 
 export function registerImportIpc(): void {

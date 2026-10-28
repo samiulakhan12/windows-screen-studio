@@ -49,6 +49,15 @@ beforeAll(() => {
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=60', '-f', 'lavfi', '-i', 'sine', '-f', 'lavfi', '-i', 'sine=f=880', '-t', '1', '-map', '0', '-map', '1', '-map', '2', '-c:v', 'libx264', '-c:a', 'aac', at('tracks.mkv'))
   ff('-i', at('odd.mov'), '-c', 'copy', '-encryption_scheme', 'cenc-aes-ctr', '-encryption_key', '76a6c65c5ea762046bd749a2e632ccbb', '-encryption_kid', 'a7e61c373e219033c21091fa607bf3b8', at('protected.mp4'))
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-t', '0.2', '-c:v', 'libx264', at('blink.mp4'))
+  // DV-style anamorphic PAL (720 x 576 shown as 768 x 576) and a 10-bit HDR (PQ) phone clip.
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=720x576:rate=25', '-t', '1', '-vf', 'setsar=16/15', '-c:v', 'libx264', at('anamorphic.mkv'))
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30', '-t', '1', '-pix_fmt', 'yuv420p10le', '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc', '-c:v', 'libx265', '-x265-params', 'log-level=error', at('hdr.mp4'))
+  // Live WebM (as streamed by a browser recorder): no length in the file.
+  const live = (seconds: string, name: string): void => {
+    writeFileSync(at(name), execFileSync(ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-t', seconds, '-c:v', 'libvpx', '-f', 'webm', '-live', '1', 'pipe:1'], { maxBuffer: 64 * 1024 * 1024 }))
+  }
+  live('0.3', 'live-short.webm')
+  live('2', 'live.webm')
   writeFileSync(at('notes.mp4'), 'x'.repeat(4096))
   writeFileSync(at('tiny.mp4'), 'x')
   writeFileSync(at('clip.avi'), 'x'.repeat(4096))
@@ -70,6 +79,7 @@ describe('checkImportFile', () => {
     expect(await checkImportFile(42)).toEqual({ ok: false, error: IMPORT_COPY.cannotOpen })
     expect(await checkImportFile('odd.mov')).toEqual({ ok: false, error: IMPORT_COPY.cannotOpen })
     expect(await checkImportFile(`${at('odd.mov')}\0`)).toEqual({ ok: false, error: IMPORT_COPY.cannotOpen })
+    expect(await checkImportFile(path.join(media, 'a\nStream #0:9: Video: h264.mp4'))).toEqual({ ok: false, error: IMPORT_COPY.cannotOpen })
     expect(await checkImportFile(at('clip.avi'))).toEqual({ ok: false, error: IMPORT_COPY.extension })
     expect(await checkImportFile(at('missing.mp4'))).toEqual({ ok: false, error: IMPORT_COPY.cannotOpen })
     mkdirSync(at('folder.mp4'), { recursive: true })
@@ -146,6 +156,35 @@ describe('importVideo', () => {
     const copy = describeVideo(path.join(library, r.projectId, 'screen.mp4'))
     expect(copy).toMatch(/360x640/)
     expect(copy).not.toMatch(/rotation/)
+  }, 60_000)
+
+  it('measures a video that does not say how long it is, and refuses one too short', async () => {
+    const r = await importVideo(at('live.webm'), { deps })
+    expect(r).toMatchObject({ ok: true, notes: [] })
+    if (r.ok) expect(readJson(r.projectId, 'project.json').duration).toBeCloseTo(2, 1)
+    rmSync(library, { recursive: true, force: true })
+    expect(await importVideo(at('live-short.webm'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.tooShort })
+    expect(folders()).toEqual([])
+  }, 60_000)
+
+  it('widens non-square pixels instead of adding bars', async () => {
+    const r = await importVideo(at('anamorphic.mkv'), { deps })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(readJson(r.projectId, 'project.json')).toMatchObject({ width: 768, height: 576 })
+    // The first and last 8 columns of the first frame: picture, not black bars.
+    const edges = execFileSync(ffmpegPath(), ['-v', 'error', '-i', path.join(library, r.projectId, 'screen.mp4'), '-frames:v', '1', '-vf', 'crop=8:576:0:0,format=gray', '-f', 'rawvideo', '-'])
+    const mean = edges.reduce((a, b) => a + b, 0) / edges.length
+    expect(mean).toBeGreaterThan(40)
+    expect(describeVideo(path.join(library, r.projectId, 'screen.mp4'))).toMatch(/768x576 \[SAR 1:1/)
+  }, 60_000)
+
+  it('tone-maps an HDR video to an 8-bit editing copy, with a note', async () => {
+    const r = await importVideo(at('hdr.mp4'), { deps })
+    expect(r).toMatchObject({ ok: true, notes: [IMPORT_COPY.noteHdr] })
+    if (!r.ok) return
+    expect(readJson(r.projectId, 'project.json').source).toMatchObject({ videoCodec: 'hevc', hdr: true })
+    expect(describeVideo(path.join(library, r.projectId, 'screen.mp4'))).toMatch(/Video: h264 \(High\).*yuv420p\(/)
   }, 60_000)
 
   it('imports VP9 WebM without sound, and 60 fps with the first of several sound tracks', async () => {

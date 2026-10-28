@@ -34,7 +34,7 @@ export function ImportDialog({ importer }: { importer: VideoImporter }): JSX.Ele
 function ImportDialogBox({ importer, view }: { importer: VideoImporter; view: Exclude<ImportView, { kind: 'idle' }> }): JSX.Element {
   const boxRef = useRef<HTMLDivElement>(null)
   // Esc cancels a running import, and closes the dialog afterwards.
-  useModalFocus(boxRef, view.kind === 'running' ? importer.cancel : importer.close)
+  useModalFocus(boxRef, view.kind === 'running' ? (view.stage === 'finishing' ? () => undefined : importer.cancel) : importer.close)
   const elapsed = useElapsed(view)
   const title = view.kind === 'running' ? `Importing ${shown(view.fileName)}` : view.kind === 'done' ? `Imported ${shown(view.fileName)}` : `Could not import ${shown(view.fileName)}`
   return (
@@ -51,7 +51,7 @@ function ImportDialogBox({ importer, view }: { importer: VideoImporter; view: Ex
             {view.stage !== 'checking' && (
               <>
                 <div className="progress" role="progressbar" aria-label="Import progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={view.progress === null ? undefined : Math.round(view.progress * 100)}>
-                  <div className={`progress-bar ${view.progress === null ? 'unknown' : ''}`} style={{ width: `${Math.round((view.progress ?? 1) * 100)}%` }} />
+                  <div className={`progress-bar ${view.progress === null ? 'unknown' : ''}`} style={view.progress === null ? undefined : { width: `${Math.round(view.progress * 100)}%` }} />
                 </div>
                 {view.progress !== null && (
                   <p className="muted import-eta">
@@ -62,7 +62,8 @@ function ImportDialogBox({ importer, view }: { importer: VideoImporter; view: Ex
             )}
             <p className="hint">Your file is not changed: Flown makes its own copy to edit.</p>
             <footer className="modal-foot">
-              <button className="btn" autoFocus onClick={importer.cancel}>
+              {/* Too late to stop once the project is being written: it opens. */}
+              <button className="btn" autoFocus disabled={view.stage === 'finishing'} onClick={importer.cancel}>
                 Cancel
               </button>
             </footer>

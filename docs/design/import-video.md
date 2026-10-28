@@ -199,7 +199,7 @@ project has no `source` key). Readers never trust the stored value: `importedSou
 | File | When |
 |---|---|
 | `import.json` | Written first; `{ version: 1, startedAt, fileName }`. Removed when the project is written. A folder holding it and no `project.json` is a cancelled or crashed import (§4.6). |
-| `screen.mp4` | The proxy (§2.1). Written as `screen.mp4.part` and renamed when ffmpeg succeeded. |
+| `screen.mp4` | The proxy (§2.1). Written as `screen.part.mp4` (ffmpeg picks the format by extension) and renamed when ffmpeg succeeded. |
 | `cursor.json` | The empty track `{ samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }`. |
 | `project.json` | Written last. |
 | brand kit files | When the brand kit applies to new projects (`applyStyleDefaults`). |
@@ -217,7 +217,12 @@ project has no `source` key). Readers never trust the stored value: `importedSou
 4. **Decode test**: `-map 0:<video> [-map 0:<audio>] -frames:v 1 -t 1 -f null -`, 60 s limit.
    If it fails with the audio stream mapped, it is run again without: success means the sound
    cannot be read, so the import goes on without sound and with a note. Failure without audio is
-   a refusal (§5.3, *unreadable*, or *DRM* when the log says the stream is encrypted).
+   a refusal with the codec sentence (§5.3). DRM is found before this, by the probe (encrypted
+   codec tags, ffmpeg's messages) and by a scan of the first and last 8 MB of an MP4/MOV for a
+   protected sample entry (`sinf` with `frma`): ffmpeg shows a CENC-encrypted track with its
+   original codec and merely fails to decode it. The test decode does not use `-xerror` (files
+   that start mid-GOP log errors before their first good frame); it passes when a frame was
+   decoded and ffmpeg exited cleanly.
 5. **Space**: `fs.statfs` on the projects folder; refused when free space is below the plan's
    estimate (§5.2).
 6. **Folder**: `projects.createProjectDir()` (the same never-reused `rec-…` ids as recordings),
@@ -226,7 +231,7 @@ project has no `source` key). Readers never trust the stored value: `importedSou
    with the video and audio maps pointed at the chosen streams, the plan's pre-filters (yadif,
    tone-map) placed first in `-vf`, and `-t 14400` when the duration is unknown; through
    `encodeWithFallback` (the first working GPU encoder, then libx264), like a recording. Progress
-   is frames ÷ (duration × fps). The output goes to `screen.mp4.part`, renamed to `screen.mp4`.
+   is frames ÷ (duration × fps). The output goes to `screen.part.mp4`, renamed to `screen.mp4`.
 8. **Project**: `createProject` with the frame-count duration (`frames / fps`, like `finalize.ts`),
    the proxy's size and `hasAudio`; then `applyStyleDefaults` (the saved look and the brand kit,
    like a recording); then `autoZoom: false`, `zoomSettings.auto.enabled: false`, `zooms: []`,
@@ -267,7 +272,7 @@ per second.
 ### 4.6 Leftovers
 
 At start-up (`registerImportIpc`) and before each import, `sweepAbandonedImports()` removes every
-folder in the projects root (and legacy roots) whose name matches the project id pattern and that
+folder in the current projects root (imports never go to a legacy root) whose name matches the project id pattern and that
 holds `import.json` but no `project.json`, after checking it is a directory and not a link. A
 folder with a `project.json` is never removed, even if `import.json` survived (the project
 opens; the marker is removed on the next sweep).
@@ -277,9 +282,9 @@ opens; the marker is removed on the next sweep).
 `importedSource(project)` non-null:
 - **Cursor tab**: the callout reads *This video was imported, so Flown has no cursor data for it.
   The smooth cursor, click effects and click sounds are off; a cursor in the video stays as it
-  was.* (`data-testid="cursor-imported"`). The controls stay disabled as for any invalid track.
+  was.* (`data-testid="cursor-not-recorded"` with `data-imported`). The controls stay disabled as for any invalid track.
 - **Zoom tab**, Auto zoom: *This video was imported, so there are no clicks or typing to zoom on.
-  Add zooms yourself: double-click the zoom track (or press Z).* (`data-testid="auto-zoom-imported"`,
+  Add zooms yourself: double-click the zoom track (or press Z).* (`data-testid="auto-zoom-summary"` with `data-imported`,
   with the real shortcut through `orPress`). Manual zooms with a fixed or region focus work as
   today; *Follow cursor* is disabled with its existing title.
 - **Effects tab**, Keyboard shortcuts: *This video was imported, so no keyboard shortcuts were
@@ -288,7 +293,8 @@ opens; the marker is removed on the next sweep).
   recording has no camera. Pick a camera on the home screen before recording.*). The director
   shows only with a camera file, so it never shows.
 - **Command palette and shortcuts** that need cursor data: the reason reads *This video was
-  imported, so it has no cursor data* instead of *This recording has no cursor data*.
+  imported, so it has no cursor data* instead of *This recording has no cursor data*
+  (`noCursorText(project)`).
 - Polish in one click: unchanged; auto zoom is skipped with *No clicks were captured*, the
   director with *This recording has no camera*.
 
@@ -310,9 +316,9 @@ opens; the marker is removed on the next sweep).
 
 `proxyBitrate = clamp(w × h × fps × 0.15, 4 Mbit/s, 40 Mbit/s)` (the bitrate `proxyArgs` gives the
 Media Foundation encoder: 9.3 Mbit/s at 1080p30, 37 Mbit/s at 4K30), so
-`needed = proxyBitrate ÷ 8 × duration × 1.25 + 512 MB` (sound and margin). 1 h 1080p30 → 5.7 GB;
-1 h 4K30 → 21.3 GB. Unknown duration: `needed = 2 × fileBytes + 512 MB`. Refused when free space is
-smaller: *There is not enough free space for this video: it needs about 5.7 GB and 2.1 GB is free.*
+`needed = proxyBitrate ÷ 8 × duration × 1.25 + 512 MB` (sound and margin; sizes in binary GB, as
+Explorer shows them). 1 h 1080p30 → 5.4 GB; 1 h 4K30 → 20.0 GB. Unknown duration: `needed = 2 × fileBytes + 512 MB`. Refused when free space is
+smaller: *There is not enough free space for this video: it needs about 5.4 GB and 2.1 GB is free.*
 
 ### 5.3 Refusals (exact copy)
 
@@ -351,10 +357,11 @@ smaller: *There is not enough free space for this video: it needs about 5.7 GB a
   title *Open a video made with another app as a new project*. In `.home-section-head` of Recent
   recordings. Disabled while not idle.
 - **Empty library**: the existing empty state gets one more line: *Or import a video made with
-  another app.* (inside `ImportDropZone`, which wraps the section's content).
+  another app: use Import video or drop it here.* (inside `ImportDropZone`, which wraps the
+  section's content).
 - **Drop zone** (`ImportDropZone.tsx`): wraps the library section. `dragenter`/`dragover` with
   `Files` in `dataTransfer.types` shows an overlay (dashed `--accent` border on `--accent-softer`,
-  text *Drop a video to import it* and *MP4, MOV, MKV or WebM* in `--text-1`/`--text-2`). Only
+  text *Drop a video to import it* in `--accent-text` and *MP4, MOV, MKV or WebM* in `--text-2`). Only
   file drags are accepted (`preventDefault` only then), so text drags and the app's other drags
   are unaffected; the window-level guard against navigating to a dropped file stays as it is.
 - **Dialog** (`ImportDialog.tsx`), `role="dialog"`, `aria-modal`, labelled by its title, focus
@@ -369,7 +376,7 @@ smaller: *There is not enough free space for this video: it needs about 5.7 GB a
   - refused or failed: title *Could not import "screen-capture"*; the message (`role="alert"`);
     **Close** (focused).
   - cancelled: the dialog closes.
-- **Contrast** (WCAG AA, tokens on `--surface-overlay` ≈ `#0e0e11`): `--text-1` and `--text-2`
+- **Contrast** (WCAG AA; the modal is on `--surface-1` `#141418`, ratios below on `#0e0e11`, all within 0.6 of those on `--surface-1`): `--text-1` and `--text-2`
   (17.6 : 1 and 7.5 : 1) for body text, `--warning-text` (#fcd34d, 13.4 : 1) for notes,
   `--danger-text` (#fb7185, 7.2 : 1) for the error, `--accent-text` (#9d94ff, 7.5 : 1; 7.1 : 1 on
   `--surface-1` behind the drop zone) for the drop zone's heading; the progress fill uses
@@ -431,7 +438,6 @@ New:
 - `src/preload/import.ts` — `importApi`.
 - `src/renderer/src/import/{ImportButton,ImportDropZone,ImportDialog}.tsx`, `useVideoImport.ts`,
   `import.css`.
-- `src/renderer/src/editor/ImportedNote.tsx` — the one-line explanation component the panels use.
 - `tests/importProbe.test.ts`, `tests/importPlan.test.ts`, `tests/importMain.test.ts`,
   `tests/importedProject.test.ts`, `tests/e2e/import-video.e2e.cjs`.
 

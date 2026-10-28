@@ -162,7 +162,7 @@ export interface ImportPlan {
 export type PlanResult = { ok: true; plan: ImportPlan } | { ok: false; error: string }
 
 /** HDR to SDR BT.709 with zscale and tonemap (§2.5). */
-export const TONE_MAP_FILTERS = ['zscale=t=linear:npl=100', 'format=gbrpf32le', 'zscale=p=bt709', 'tonemap=tonemap=hable:desat=0', 'zscale=t=bt709:m=bt709:r=tv']
+export const TONE_MAP_FILTERS = ['zscale=t=linear:npl=100', 'format=gbrpf32le', 'zscale=p=bt709', 'tonemap=tonemap=hable:desat=0', 'zscale=t=bt709:m=bt709:r=tv', 'format=yuv420p']
 
 /**
  * What to import from a probed file, or why it cannot be. `toneMap`: the bundled ffmpeg has the
@@ -192,6 +192,9 @@ export function planImport(probe: ProbeInfo, ctx: { toneMap: boolean }): PlanRes
   const hdr = video.transfer !== null
   const preFilters: string[] = []
   if (video.interlaced) preFilters.push('yadif')
+  // Square pixels first: proxyArgs' fit scales the stored pixels and ignores their aspect.
+  // (after ffmpeg's autorotate, so the expression reads the upright frame and its aspect).
+  if (video.sar && Math.abs(video.sar - 1) > 1e-3) preFilters.push('scale=w=trunc(iw*sar/2)*2:h=ih', 'setsar=1')
   if (hdr) {
     if (ctx.toneMap) preFilters.push(...TONE_MAP_FILTERS)
     notes.push(ctx.toneMap ? IMPORT_COPY.noteHdr : IMPORT_COPY.noteHdrPale)
