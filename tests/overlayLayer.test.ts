@@ -1,15 +1,22 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
+import { OVERLAYS_MAX_BYTES } from '../src/shared/render/imageOverlays'
 import type { ImageOverlay, Project } from '../src/shared/types'
 
 /*
  * Decoding image overlays (docs/design/brand-kit.md §4) from a fake project folder. URLs are
  * matched without their ?v=; a file in `missing` cannot be read, any other loads. As in Chromium,
  * an SVG with HTML in it (here: a URL with "html") taints every canvas it is drawn into, and a
- * tainted canvas cannot be read back (getImageData, VideoFrame).
+ * tainted canvas cannot be read back (getImageData, VideoFrame). A GIF's file (`gifs`) declares its
+ * size, frame count and file length; the fake decoder and createImageBitmap count the bitmap bytes
+ * alive and the decoders open at once.
  */
 
 const missing = new Set<string>()
+/** Natural size of a still, by URL (400 x 200 when not listed). */
+const sizes = new Map<string, [number, number]>()
+const gifs = new Map<string, { width: number; height: number; frames: number; fileBytes?: number }>()
+const live = { bytes: 0, peakBytes: 0, decoders: 0, peakDecoders: 0, reads: 0 }
 const path = (url: string): string => url.split('?')[0]
 const urlOf = (projectId: string, file: string): string => `studio-media://project/${projectId}/${file}`
 
@@ -23,6 +30,7 @@ class FakeImage {
   decoding = ''
   set src(url: string) {
     this.tainted = url.includes('html')
+    ;[this.naturalWidth, this.naturalHeight] = sizes.get(path(url)) ?? [400, 200]
     setTimeout(() => (missing.has(path(url)) ? this.onerror?.() : this.onload?.()), 0)
   }
 }
@@ -49,6 +57,52 @@ function fakeCanvas(): Record<string, unknown> {
 
 vi.stubGlobal('document', { createElement: () => fakeCanvas() })
 vi.stubGlobal('Image', FakeImage)
+vi.stubGlobal('fetch', async (url: string) => {
+  const gif = gifs.get(path(url))
+  if (!gif) return { ok: false, status: 404 }
+  // GIF header with the logical screen size; the fake decoder reads the frame count from bytes 10..11.
+  const bytes = new Uint8Array(16)
+  bytes.set([...'GIF89a'].map((c) => c.charCodeAt(0)))
+  bytes.set([gif.width & 255, gif.width >> 8, gif.height & 255, gif.height >> 8, gif.frames & 255, gif.frames >> 8], 6)
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: (name: string) => (name.toLowerCase() === 'content-length' ? String(gif.fileBytes ?? bytes.length) : null) },
+    arrayBuffer: async () => {
+      live.reads++
+      return bytes.buffer
+    }
+  }
+})
+vi.stubGlobal(
+  'ImageDecoder',
+  class {
+    tracks: { ready: Promise<void>; selectedTrack: { frameCount: number } }
+    completed = Promise.resolve()
+    width: number
+    height: number
+    constructor({ data }: { data: ArrayBuffer }) {
+      const b = new Uint8Array(data)
+      this.width = b[6] | (b[7] << 8)
+      this.height = b[8] | (b[9] << 8)
+      this.tracks = { ready: Promise.resolve(), selectedTrack: { frameCount: b[10] | (b[11] << 8) } }
+      live.peakDecoders = Math.max(live.peakDecoders, ++live.decoders)
+    }
+    async decode(): Promise<unknown> {
+      await new Promise((r) => setTimeout(r, 0))
+      return { image: { displayWidth: this.width, displayHeight: this.height, duration: 100_000, close() {} } }
+    }
+    close(): void {
+      live.decoders--
+    }
+  }
+)
+vi.stubGlobal('createImageBitmap', async (_image: unknown, o: { resizeWidth: number; resizeHeight: number }) => {
+  const bytes = o.resizeWidth * o.resizeHeight * 4
+  live.bytes += bytes
+  live.peakBytes = Math.max(live.peakBytes, live.bytes)
+  return { width: o.resizeWidth, height: o.resizeHeight, close: () => (live.bytes -= bytes) }
+})
 vi.spyOn(console, 'warn').mockImplementation(() => {})
 
 // Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
@@ -136,5 +190,54 @@ describe('SVGs with HTML in them (they taint the canvas)', () => {
     const p = project('p4c', { watermark: { show: true, kind: 'image', path: 'watermark-2.svg', position: 'bottom-right', size: 0.1, margin: 0.03, opacity: 1 } })
     await watermarks.prepareStyleAssets(p, (file) => urlOf('p4c', `html-${file}`))
     expect(exportable(watermarks.drawWatermarkLayer, p)).toBe(true)
+  })
+})
+
+describe('memory of the decoded pictures', () => {
+  const TOO_MANY = 'This video has too many large images to show this one too.'
+  const states = (projectId: string, p: Project): string[] => (p.overlays ?? []).map((o) => overlays.overlayStatus(projectId, o).state)
+
+  it('many small GIFs that decode large stay within the budget, one decoding at a time', async () => {
+    // 720 x 720, 100 frames: a few KB on disk, about 207 MB decoded (under the 200 MiB a GIF may take).
+    const list = Array.from({ length: 100 }, (_, i) => overlay(`g${i}`, `overlay-${i + 1}.gif`))
+    for (const o of list) gifs.set(urlOf('p1', o.file!), { width: 720, height: 720, frames: 100 })
+    const p = project('p1', { overlays: list })
+    await overlays.prepareOverlays(p)
+    expect(live.peakBytes).toBeLessThanOrEqual(OVERLAYS_MAX_BYTES)
+    expect(live.peakDecoders).toBe(1)
+    const ready = states('p1', p).filter((s) => s === 'ready').length
+    expect(ready).toBe(Math.floor(OVERLAYS_MAX_BYTES / (720 * 720 * 4 * 100)))
+    expect(overlays.missingOverlays(p)).toHaveLength(100 - ready)
+    expect(overlays.overlayStatus('p1', list[99])).toEqual({ state: 'failed', error: TOO_MANY })
+  })
+
+  it('stills count too, and another project gets the whole budget again', async () => {
+    // 2048 x 2048: 16 MiB each, so 64 fit.
+    const list = Array.from({ length: 70 }, (_, i) => overlay(`s${i}`, `overlay-${i + 1}.png`))
+    for (const o of list) sizes.set(urlOf('p2', o.file!), [2048, 2048])
+    const p = project('p2', { overlays: list })
+    await overlays.prepareOverlays(p)
+    expect(states('p2', p).filter((s) => s === 'ready')).toHaveLength(OVERLAYS_MAX_BYTES / (2048 * 2048 * 4))
+    expect(overlays.overlayStatus('p2', list[69])).toEqual({ state: 'failed', error: TOO_MANY })
+    // Opening another project forgets these pictures (and their bytes).
+    sizes.set(urlOf('p3', 'overlay-1.png'), [2048, 2048])
+    await expect(overlays.preloadOverlay('p3', { file: 'overlay-1.png' })).resolves.toBe(1)
+  })
+
+  it('GIFs still waiting to decode when another project opens are skipped', async () => {
+    const list = [1, 2, 3].map((n) => overlay(`q${n}`, `overlay-${n}.gif`))
+    for (const o of list) gifs.set(urlOf('q1', o.file!), { width: 100, height: 100, frames: 2 })
+    gifs.set(urlOf('q2', 'overlay-1.gif'), { width: 100, height: 100, frames: 2 })
+    const reads = live.reads
+    void overlays.prepareOverlays(project('q1', { overlays: list }))
+    await expect(overlays.preloadOverlay('q2', { file: 'overlay-1.gif' })).resolves.toBe(1)
+    expect(live.reads - reads).toBe(1)
+  })
+
+  it('a GIF file larger than images may be (put in the folder by hand) is refused before it is read', async () => {
+    gifs.set(urlOf('p5', 'overlay-1.gif'), { width: 100, height: 100, frames: 2, fileBytes: 300 * 1024 * 1024 })
+    const reads = live.reads
+    await expect(overlays.preloadOverlay('p5', { file: 'overlay-1.gif' })).rejects.toThrow('This image is too large (25 MB at most).')
+    expect(live.reads).toBe(reads)
   })
 })
