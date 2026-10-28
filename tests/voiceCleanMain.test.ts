@@ -4,7 +4,7 @@
 // and refuses anything but the app's own requests.
 import { execFileSync, spawnSync, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
@@ -219,14 +219,22 @@ describe('making the stem', () => {
     expect(kept).not.toContain(made[0])
   }, 30_000)
 
-  it('cleans the mixed track of a recording without stems', async () => {
+  it('cleans the mixed track of a recording without stems, on its timestamps', async () => {
     const dir = projectDir('mixed')
     mkdirSync(dir, { recursive: true })
-    execFileSync(ff, ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=10', '-i', LS, '-t', '3', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-shortest', path.join(dir, 'screen.mp4')])
+    // The sound starts 0.5 s into the video, as a proxy's track can.
+    execFileSync(ff, ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=10', '-itsoffset', '0.5', '-i', LS, '-t', '4', '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-ar', '48000', path.join(dir, 'screen.mp4')])
     const { c } = cleaner()
     const file = await c.ensure('mixed', 'mix', 'normal')
-    expect(existsSync(path.join(dir, file))).toBe(true)
-    expect(samples(path.join(dir, file)).length / RATE).toBeCloseTo(3, 1)
+    const out = samples(path.join(dir, file))
+    // What the export reads of the mixed track: the same placement.
+    const ref = spawnSync(ff, ['-v', 'error', '-i', path.join(dir, 'screen.mp4'), '-vn', '-af', 'aresample=48000:async=1:first_pts=0', '-ac', '1', '-f', 'f32le', '-'], { maxBuffer: 1 << 28 }).stdout
+    const src = new Float32Array(ref.buffer.slice(ref.byteOffset, ref.byteOffset + ref.length))
+    expect(Math.abs(out.length - src.length)).toBeLessThanOrEqual(1024)
+    expect(Math.abs(lagOf(src, out))).toBeLessThanOrEqual(1)
+    let lead = 0
+    for (let i = 0; i < 0.45 * RATE; i++) lead = Math.max(lead, Math.abs(out[i]))
+    expect(lead).toBeLessThan(1e-3)
   }, 30_000)
 
   it('says what is missing', async () => {

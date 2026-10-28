@@ -93,7 +93,8 @@ export const voicePasses = (strength: VoiceStrength): number => PASSES[strength]
  * The ffmpeg filter graph that cleans input 0's audio (any channel layout, every channel apart)
  * into [voice]. The sound is padded by the passes' delay first and that much is dropped from the
  * start after, so the cleaned sound lies on the source's own samples and nothing is lost at the
- * end. arnndn works in whole 10 ms frames and returns a little more than it was given: mixing the
+ * end. The sound is placed on its timestamps from 0 (a track that starts late gets silence first),
+ * as the export reads the recording (audioPlan recordingGraph). arnndn works in whole 10 ms frames and returns a little more than it was given: mixing the
  * result with the source at weight 0 until the shorter ends cuts it to exactly the source's
  * samples (the weighted sum is the cleaned sound, unchanged).
  */
@@ -102,7 +103,7 @@ export function voiceGraph(strength: VoiceStrength): string {
   const delay = passes * VOICE_PASS_DELAY
   const pass = `arnndn=m=${VOICE_ENGINE.model}${mix < 1 ? `:mix=${mix}` : ''}`
   const clean = [`apad=pad_len=${delay}`, ...Array.from({ length: passes }, () => pass), `atrim=start_sample=${delay}`, 'asetpts=PTS-STARTPTS'].join(',')
-  return `[0:a:0]aresample=${VOICE_RATE},asplit[src][ref];[src]${clean}[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`
+  return `[0:a:0]aresample=${VOICE_RATE}:async=1:first_pts=0,asplit[src][ref];[src]${clean}[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`
 }
 
 /** Cleaned files in a project folder: voice-<16 hex digits of their key>.m4a. */

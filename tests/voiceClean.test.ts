@@ -116,7 +116,7 @@ describe('withCleanVoice', () => {
 
 describe('voiceGraph (§4.2)', () => {
   const graph = (clean: string): string =>
-    `[0:a:0]aresample=48000,asplit[src][ref];[src]${clean}[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`
+    `[0:a:0]aresample=48000:async=1:first_pts=0,asplit[src][ref];[src]${clean}[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`
 
   it('pads and trims the passes delay, and ends with the source', () => {
     expect(voiceGraph('normal')).toBe(graph('apad=pad_len=480,arnndn=m=sh.rnnn,atrim=start_sample=480,asetpts=PTS-STARTPTS'))

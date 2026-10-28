@@ -173,7 +173,7 @@ All three work at 48 kHz on every channel of the source, with the model file nam
 | Strong | `arnndn=m=sh.rnnn,arnndn=m=sh.rnnn` | −26 dB |
 
 Delay: each pass delays by exactly 480 samples (`VOICE_PASS_DELAY`). The graph (`voiceGraph`) is
-`[0:a:0]aresample=48000,asplit[src][ref];[src]apad=pad_len=<480·passes>,<arnndn…>,atrim=start_sample=<480·passes>,asetpts=PTS-STARTPTS[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`:
+`[0:a:0]aresample=48000:async=1:first_pts=0,asplit[src][ref];[src]apad=pad_len=<480·passes>,<arnndn…>,atrim=start_sample=<480·passes>,asetpts=PTS-STARTPTS[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`:
 the cleaned sound starts on the source's first sample and nothing is lost at the end. arnndn works
 in whole 10 ms frames and returns up to 480 samples more than it was given; mixing with the source
 at weight 0 until the shorter one ends cuts the result to exactly the source's samples without
