@@ -342,6 +342,10 @@ Deviations from the text above, and what changed when "select several items" (E-
 - **The export dialog** also lists images that cannot be shown (missing file), not only fonts.
 - **Add font…** is a button beside the Font menu, not the menu's last entry: on Windows the arrow
   keys change a closed menu, so looking through the fonts from the keyboard opened the file dialog.
+- **Limits on paste and apply**: paste and duplicate stop at 200 images (`image-full`, "1 image
+  would go past the limit of 200"), and *Apply brand kit* adds no font past a project's 20 (a kit
+  font that does not fit is left out, nothing uses it, and the notice names it). So a project never
+  holds more than it keeps when it is opened again.
 - **Multi-select (E-06)**: `overlay` is a `GroupKind` on its own `images` track
   (`shared/editor/multiSelect.ts`); look class `image` with the fields Position X/Y, Size (each
   image keeps its shape), Rotation, Opacity, Fade in, Fade out (`groupEdit.ts`; all but the position
