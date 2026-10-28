@@ -101,7 +101,9 @@ async function main() {
     h.assert(ids.length === 1, `one imported project: ${ids}`)
     const id = ids[0]
     const dir = path.join(h.projectsRoot(home), id)
-    h.assert(fs.readdirSync(dir).sort().join() === 'cursor.json,project.json,screen.mp4', `project files: ${fs.readdirSync(dir)}`)
+    // What the import wrote (the editor may already have started its own .cache folder).
+    const files = fs.readdirSync(dir).filter((n) => !n.startsWith('.'))
+    h.assert(files.sort().join() === 'cursor.json,project.json,screen.mp4', `project files: ${files}`)
     const project = h.readProject(home, id)
     h.assert(project.name === 'Phone clip', `name ${project.name}`)
     h.assert(project.width === 360 && project.height === 640, `upright size ${project.width}x${project.height}`)

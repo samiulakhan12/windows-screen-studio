@@ -481,4 +481,29 @@ dependencies.
 
 ## 13. As built
 
-(Filled in when the build is done.)
+Built as designed, with these differences and additions (most from the adversarial review):
+
+- **Non-square pixels** are widened to square before proxyArgs' fit (`scale=w=trunc(iw*sar/2)*2:h=ih,setsar=1`
+  in the plan's pre-filters): the fit scales stored pixels and would otherwise pad an anamorphic
+  picture with bars. Tested on the pixels of a DV-style 720 × 576 SAR 16:15 file.
+- **Tone-map** ends in `format=yuv420p`, so zscale (not swscale's BT.601 default) converts to
+  BT.709 YUV. Tested end to end on a 10-bit HEVC PQ file.
+- **DRM**: besides codec tags and ffmpeg's messages, the first and last 8 MB of an MP4/MOV are
+  scanned for a protected sample entry (`sinf` box whose first child is `frma`); ffmpeg reports a
+  CENC-encrypted track as plain `avc1` (tested with a file ffmpeg itself encrypted).
+- **Decode test** without `-xerror`: a frame decoded and a clean exit is the test.
+- **Unknown length**: measured from the copy's frame count; under 0.5 s is refused then (tested
+  with a live WebM).
+- **Quit and reload**: `disposeImport()` (from `will-quit`) stops the import and the probe
+  processes; an import whose page reloads or closes is cancelled (`did-start-navigation` of the
+  main frame, `destroyed`), so nobody is left with a stuck "Another video is being imported".
+- **Paths** with a line break are refused (they could forge lines in ffmpeg's log).
+- **Dialog**: Cancel is disabled (and Esc does nothing) while the project is written
+  (*Finishing…*); the bar of an unknown length is an animated indeterminate bar (stripes with
+  reduced motion); the time left counts from the start of the copy.
+- **Shortcut notices** in the editor read *This video was imported, so it has no cursor data*
+  through `noCursorText(project)`; the panel titles (*No cursor data in this recording*) are
+  unchanged, as they stay true.
+- `src/renderer/src/editor/ImportedNote.tsx` was not needed: each panel uses one condition and
+  `IMPORTED_COPY`.
+- `ImportDeps.decodes` was added as a seam so the sound-less fallback is tested in main.
