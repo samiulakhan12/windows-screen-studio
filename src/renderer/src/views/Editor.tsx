@@ -759,6 +759,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const lastMotionBlur = useRef(store.state.effects.motionBlur || DEFAULT_EFFECTS.motionBlur)
   /** The `code` of the pause key (K) while it is held down: J and L then step one frame. */
   const pauseHeld = useRef<string | null>(null)
+  /** What the Paste items key (Ctrl+V) runs: a newer clipboard image first (set with the commands). */
+  const pasteKeyRef = useRef<() => void>(() => {})
   const commands = useMemo((): Record<CommandId, () => void> => {
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
@@ -844,13 +846,15 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       showNotice(removedNotice('Cut', keys.length, undo()))
     }
     const pasteItemsNow = (): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
       const clip = itemClipboard.get()
       if (!clip) return showNotice(nothingCopiedNotice(keyLabel('copyItems') || null))
       let r: PasteResult | null = null
       store.update((p) => (r = pasteGroupItems(p, clip, player.time)).project)
       if (r) pasted(r, clip.items.length)
     }
-    // An image on the system clipboard that is newer than the copied items is added as an image (brand kit, NW-12).
+    // The key only: an image on the system clipboard that is newer than the copied items is added as
+    // an image (brand kit, NW-12). The palette's "Paste items at playhead" always pastes the items.
     const pasteClipboard = (): void => {
       if (cropRef.current) return showNotice('Close the crop tool first')
       void pasteClipboardImage({ store, player }, { onSelect: setSelection }, !!itemClipboard.get()).then(
@@ -858,6 +862,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         (err: unknown) => showNotice(ipcMessage(err))
       )
     }
+    pasteKeyRef.current = pasteClipboard
     const duplicateSelected = (): void => {
       if (cropRef.current) return showNotice('Close the crop tool first')
       const keys = selectedKeys()
@@ -1101,7 +1106,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       selectAll,
       copyItems: copySelectedItems,
       cutItems: cutSelectedItems,
-      pasteItems: pasteClipboard,
+      pasteItems: pasteItemsNow,
       duplicateItems: duplicateSelected,
       copyLook: copyItemLook,
       pasteLook: pasteItemLook
@@ -1287,7 +1292,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       }
       if (run === 'shuttlePause' && !e.repeat) pauseHeld.current = e.code
       if (e.repeat && !commandInfo(run).repeat) return
-      commandsRef.current[run]()
+      if (run === 'pasteItems') pasteKeyRef.current()
+      else commandsRef.current[run]()
     }
     const onKeyUp = (e: KeyboardEvent): void => {
       if (e.code === pauseHeld.current) pauseHeld.current = null
