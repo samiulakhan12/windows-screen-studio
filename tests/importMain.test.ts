@@ -364,4 +364,32 @@ describe('sweepAbandonedImports', () => {
     // A finished project keeps its folder; only its stale marker goes.
     expect(readdirSync(path.join(library, 'rec-2'))).toEqual(['project.json'])
   })
+
+  it('keeps the marker while a file in the folder cannot be removed yet, so the next sweep removes it', async () => {
+    mkdirSync(path.join(library, 'rec-6'), { recursive: true })
+    for (const f of [IMPORT_MARKER, 'screen.part.mp4']) writeFileSync(path.join(library, 'rec-6', f), '{}')
+    const locked = path.join(library, 'rec-6', 'screen.part.mp4')
+    const busy = (): Error => Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+    const rm = fsSync.promises.rm
+    // The partial copy is held (an antivirus scan, OneDrive). Like Node, removing its folder
+    // removes everything else in it, then fails.
+    const spy = vi.spyOn(fsSync.promises, 'rm').mockImplementation(async (target, options) => {
+      const t = String(target)
+      if (t === locked) throw busy()
+      if (options?.recursive && locked.startsWith(t + path.sep)) {
+        for (const name of readdirSync(t)) if (path.join(t, name) !== locked) await rm(path.join(t, name), options)
+        throw busy()
+      }
+      return rm(target, options)
+    })
+    try {
+      expect(await sweepAbandonedImports()).toEqual([])
+    } finally {
+      spy.mockRestore()
+    }
+    expect(readdirSync(path.join(library, 'rec-6')).sort()).toEqual([IMPORT_MARKER, 'screen.part.mp4'])
+    // Released: the next sweep (the next start or import) removes the folder.
+    expect(await sweepAbandonedImports()).toEqual(['rec-6'])
+    expect(folders()).toEqual([])
+  })
 })

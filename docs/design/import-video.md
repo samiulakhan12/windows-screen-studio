@@ -290,7 +290,9 @@ At start-up (`registerImportIpc`) and before each import, `sweepAbandonedImports
 folder in the current projects root (imports never go to a legacy root) whose name matches the project id pattern and that
 holds `import.json` but no `project.json`, after checking it is a directory and not a link. A
 folder with a `project.json` is never removed, even if `import.json` survived (the project
-opens; the marker is removed on the next sweep).
+opens; the marker is removed on the next sweep). The sweep and the clean-up after a cancel or a
+failure remove `import.json` last: when a file cannot be removed yet (held by an antivirus scan or
+OneDrive), the folder keeps its marker and the next sweep tries again.
 
 ### 4.7 The editor with an imported project
 

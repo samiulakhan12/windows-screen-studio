@@ -181,6 +181,23 @@ export async function decodeTest(file: string, video: number, audio: number | nu
   return r.code === 0 && !r.timedOut && frames >= 1
 }
 
+/**
+ * Removes an import's folder, its marker last. fs.rm of the folder removes every entry it can,
+ * the marker too, even when another one fails (a file an antivirus scan or OneDrive still
+ * holds); the folder would then never be swept again. Here the marker stays until the rest is gone.
+ */
+async function removeImportDir(dir: string): Promise<void> {
+  let names: string[]
+  try {
+    names = await fs.readdir(dir)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return
+    throw err
+  }
+  for (const name of names) if (name !== IMPORT_MARKER) await fs.rm(path.join(dir, name), { recursive: true, force: true, maxRetries: 3 })
+  await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
+}
+
 /** Removes folders of imports that never finished: import.json and no project.json (§4.6). */
 export async function sweepAbandonedImports(skip?: string): Promise<string[]> {
   const root = projects.projectsRoot()
@@ -200,7 +217,7 @@ export async function sweepAbandonedImports(skip?: string): Promise<string[]> {
       await fs.rm(path.join(dir, IMPORT_MARKER), { force: true }).catch(() => undefined)
       continue
     }
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }).then(
+    await removeImportDir(dir).then(
       () => removed.push(e.name),
       (err) => console.warn('Could not remove an unfinished import:', dir, err)
     )
@@ -354,7 +371,7 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     await fs.rm(path.join(dir, IMPORT_MARKER), { force: true }).catch(() => undefined)
     return { ok: true, projectId: created.id, fileName: checked.fileName, notes }
   } catch (err) {
-    if (dir) await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }).catch((e) => console.warn('Could not remove the unfinished import', dir, e))
+    if (dir) await removeImportDir(dir).catch((e) => console.warn('Could not remove the unfinished import', dir, e))
     if (err instanceof Cancelled || signal?.aborted) return { ok: false, cancelled: true, fileName }
     if (err instanceof ImportRefused) return { ok: false, fileName, error: err.message }
     console.error('Import failed:', err)
