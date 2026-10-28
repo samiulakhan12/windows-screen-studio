@@ -1,19 +1,26 @@
 /**
- * Picking a user file into a project folder ("assets"): the watermark image and background
- * music, copied in so the project folder stays self-contained and served to the renderer by
- * studio-media://. Each pick gets a new name (watermark-<n>.<ext>, music-<n>.<ext>) and the
- * latest few are kept: a pick never overwrites or deletes the file in use, so undo can go back
- * to it and a file the renderer cannot decode changes nothing.
+ * Picking a user file into a project folder ("assets"): the watermark image, background music,
+ * image overlays and fonts, copied in so the project folder stays self-contained and served to
+ * the renderer by studio-media://. Each pick gets a new name (watermark-<n>.<ext>,
+ * music-<n>.<ext>, overlay-<n>.<ext>, font-<n>.<ext>): a pick never overwrites or deletes the file
+ * in use, so undo can go back to it and a file the renderer cannot decode changes nothing. The
+ * latest few logo and music picks are kept; overlays and fonts are never removed (several are in
+ * use at once) and an identical file is stored once (docs/design/brand-kit.md §2).
  */
+import { createHash } from 'node:crypto'
 import { dialog, ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { AssetKind } from '../shared/api/projects'
+import type { AssetKind, PickedAsset } from '../shared/api/projects'
 import { MUSIC_FILE_RE, nextMusicFile, staleMusicFiles } from '../shared/audio/settings'
+import { OVERLAY_FILE_RE, OVERLAY_MAX_BYTES, OVERLAY_SVG_MAX_BYTES } from '../shared/engine/overlayData'
+import { nextPickFile, type PickedFiles } from '../shared/engine/picks'
 import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
+import { checkFont, FONT_FILE_RE, FONT_MAX_BYTES } from '../shared/render/fonts'
 import type { Project } from '../shared/types'
 import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
+import { isAppUrl } from './security'
 import { getMainWindow } from './windows'
 
 interface AssetSpec {
@@ -30,29 +37,37 @@ interface AssetSpec {
 const starts = (head: Buffer, ...bytes: number[]): boolean => bytes.every((b, i) => head[i] === b)
 const ascii = (head: Buffer, from: number, to: number): string => head.subarray(from, to).toString('latin1')
 
-type ImageType = 'png' | 'jpg' | 'webp' | 'svg'
-const IMAGE_NAMES: Record<ImageType, string> = { png: 'a PNG', jpg: 'a JPG', webp: 'a WebP', svg: 'an SVG' }
+type ImageType = 'png' | 'jpg' | 'webp' | 'svg' | 'gif'
+const IMAGE_NAMES: Record<ImageType, string> = { png: 'a PNG', jpg: 'a JPG', webp: 'a WebP', svg: 'an SVG', gif: 'a GIF' }
 
-/** The image format the first bytes of a file show: PNG, JPEG, WebP or SVG, else null. */
+/** The image format the first bytes of a file show: PNG, JPEG, WebP, GIF or SVG, else null. */
 export function imageType(head: Buffer): ImageType | null {
   if (starts(head, 0x89, 0x50, 0x4e, 0x47)) return 'png'
   if (starts(head, 0xff, 0xd8, 0xff)) return 'jpg'
   if (ascii(head, 0, 4) === 'RIFF' && ascii(head, 8, 12) === 'WEBP') return 'webp'
+  if (ascii(head, 0, 6) === 'GIF87a' || ascii(head, 0, 6) === 'GIF89a') return 'gif'
   return /<svg[\s>]/i.test(head.toString('utf8')) ? 'svg' : null
 }
 
-export const looksLikeImage = (head: Buffer): boolean => imageType(head) !== null
+/** A PNG, JPEG, WebP or SVG image (the formats a logo can be). */
+export const looksLikeImage = (head: Buffer): boolean => {
+  const type = imageType(head)
+  return type !== null && type !== 'gif'
+}
 
 /**
  * An image is decoded as the type its extension is served as (an SVG strictly, with nosniff),
- * so its content must be that type: a PNG named logo.svg would never show.
+ * so its content must be that type: a PNG named logo.svg would never show. `allowed` are the
+ * types the asset may be; anything else reads as "not one of `formats`".
  */
-function checkImage(head: Buffer, ext: string): string | null {
-  const type = imageType(head)
-  if (!type) return `This file could not be read as ${ASSET_SPECS.watermark.formats}.`
-  const named = ext === 'jpeg' ? 'jpg' : ext
-  return type === named ? null : `This file is named .${ext} but holds ${IMAGE_NAMES[type]} image: rename it to .${type} and choose it again.`
-}
+const checkImageOf =
+  (allowed: readonly ImageType[], formats: string) =>
+  (head: Buffer, ext: string): string | null => {
+    const type = imageType(head)
+    if (!type || !allowed.includes(type)) return `This file could not be read as ${formats}.`
+    const named = ext === 'jpeg' ? 'jpg' : ext
+    return type === named ? null : `This file is named .${ext} but holds ${IMAGE_NAMES[type]} image: rename it to .${type} and choose it again.`
+  }
 
 /** MP3, M4A/AAC, WAV, Ogg/Opus or FLAC. */
 export function looksLikeAudio(head: Buffer): boolean {
@@ -64,14 +79,33 @@ export function looksLikeAudio(head: Buffer): boolean {
   return ascii(head, 0, 4) === 'fLaC'
 }
 
+const LOGO_FORMATS = 'a PNG, JPG, WebP or SVG image'
+const OVERLAY_FORMATS = 'a PNG, JPG, WebP, SVG or GIF image'
+
 export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
   watermark: {
     title: 'Choose watermark or logo',
     filterName: 'Images',
     extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'],
     maxBytes: WATERMARK_MAX_BYTES,
-    formats: 'a PNG, JPG, WebP or SVG image',
-    check: checkImage
+    formats: LOGO_FORMATS,
+    check: checkImageOf(['png', 'jpg', 'webp', 'svg'], LOGO_FORMATS)
+  },
+  overlay: {
+    title: 'Add an image',
+    filterName: 'Images',
+    extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'],
+    maxBytes: OVERLAY_MAX_BYTES,
+    formats: OVERLAY_FORMATS,
+    check: checkImageOf(['png', 'jpg', 'webp', 'svg', 'gif'], OVERLAY_FORMATS)
+  },
+  font: {
+    title: 'Add a font',
+    filterName: 'Fonts',
+    extensions: ['ttf', 'otf', 'woff2'],
+    maxBytes: FONT_MAX_BYTES,
+    formats: 'a TTF, OTF or WOFF2 font',
+    check: checkFont
   },
   music: {
     title: 'Choose background music',
@@ -84,8 +118,11 @@ export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
   }
 }
 
+/** SVGs are text and drawn by rasterising them: a bigger one is not a logo or sticker. */
+const SVG_MAX_BYTES: Partial<Record<AssetKind, number>> = { overlay: OVERLAY_SVG_MAX_BYTES }
+
 /** Asset files the media protocol may serve. */
-export const isAssetFile = (file: string): boolean => WATERMARK_FILE_RE.test(file) || MUSIC_FILE_RE.test(file)
+export const isAssetFile = (file: string): boolean => WATERMARK_FILE_RE.test(file) || MUSIC_FILE_RE.test(file) || OVERLAY_FILE_RE.test(file) || FONT_FILE_RE.test(file)
 
 const isKind = (kind: unknown): kind is AssetKind => typeof kind === 'string' && Object.prototype.hasOwnProperty.call(ASSET_SPECS, kind)
 
@@ -97,40 +134,78 @@ interface Picks {
   /** The pick a saved project uses. */
   saved: (p: Project) => string | undefined
 }
+// pickNumber reads the number from the first group, "-<n>".
+const OVERLAY_PICKS: PickedFiles = { base: 'overlay', re: /^overlay(-[1-9][0-9]{0,8})\.(png|jpg|webp|svg|gif)$/i, keep: Infinity }
+const FONT_PICKS: PickedFiles = { base: 'font', re: /^font(-[1-9][0-9]{0,8})\.(ttf|otf|woff2)$/i, keep: Infinity }
 const PICKS: Record<AssetKind, Picks> = {
   watermark: { next: nextWatermarkFile, stale: staleWatermarkFiles, saved: (p) => p.watermark?.path },
-  music: { next: nextMusicFile, stale: staleMusicFiles, saved: (p) => p.audio?.music?.path }
+  music: { next: nextMusicFile, stale: staleMusicFiles, saved: (p) => p.audio?.music?.path },
+  // Never removed: several are in use at once, and undo can bring any of them back.
+  overlay: { next: (existing, ext) => nextPickFile(OVERLAY_PICKS, existing, ext), stale: () => [], saved: () => undefined },
+  font: { next: (existing, ext) => nextPickFile(FONT_PICKS, existing, ext), stale: () => [], saved: () => undefined }
+}
+
+/** Kinds stored once per content: an identical file already in the folder is used again. */
+const DEDUPED: ReadonlySet<AssetKind> = new Set(['overlay', 'font'])
+
+const sha256 = (data: Uint8Array): string => createHash('sha256').update(data).digest('hex')
+
+/** The files of each deduplicated kind. */
+const DEDUPED_RE: Partial<Record<AssetKind, RegExp>> = { overlay: OVERLAY_FILE_RE, font: FONT_FILE_RE }
+
+/** A file of `kind` in `dir` with exactly these bytes and extension, or null. */
+async function sameFile(dir: string, kind: AssetKind, ext: string, data: Buffer): Promise<string | null> {
+  const re = DEDUPED_RE[kind]
+  if (!re) return null
+  const want = sha256(data)
+  for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
+    if (!re.test(name) || path.extname(name).slice(1).toLowerCase() !== ext) continue
+    const file = path.join(dir, name)
+    const st = await fs.stat(file).catch(() => null)
+    if (!st?.isFile() || st.size !== data.length) continue
+    if (sha256(await fs.readFile(file)) === want) return name
+  }
+  return null
+}
+
+/** Why `size` bytes of `kind` with extension `ext` are refused, or null. */
+function sizeProblem(kind: AssetKind, ext: string, size: number): string | null {
+  const spec = ASSET_SPECS[kind]
+  if (size === 0) return 'This file is empty.'
+  const max = ext === 'svg' ? (SVG_MAX_BYTES[kind] ?? spec.maxBytes) : spec.maxBytes
+  if (size > max) return `The file is too large (${Math.max(1, Math.round(size / 1e6))} MB; ${Math.round(max / 1e6)} MB at most).`
+  return null
+}
+
+/** The extension a file name gives, lower case, as stored (jpeg -> jpg). */
+const extOf = (name: string): string => path.extname(name).slice(1).toLowerCase()
+const storedExt = (ext: string): string => (ext === 'jpeg' ? 'jpg' : ext)
+
+/** Checks the first bytes of `kind` with extension `ext`; throws the reason when refused. */
+function checkHead(kind: AssetKind, head: Buffer, ext: string): void {
+  const problem = ASSET_SPECS[kind].check(head.subarray(0, 4096), ext)
+  if (problem) throw new Error(problem)
 }
 
 /**
- * Copies `src` into project `id` as its `kind` asset. The file is checked first (type by
- * extension and content, size) and copied under a temporary name, so a failure leaves the
- * earlier pick in place. Every pick gets a new name.
+ * Stores checked content as a new `kind` file of project `id` (or the identical one already
+ * there, for overlays and fonts): written under a temporary name, then renamed, so a failure
+ * leaves the folder as it was. `data` is the content, or a file to copy (large music).
  */
-export async function importAsset(id: string, kind: AssetKind, src: string): Promise<{ url: string; path: string }> {
-  if (!isKind(kind)) throw new Error('Unknown asset kind')
+async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { file: string }): Promise<PickedAsset> {
   const spec = ASSET_SPECS[kind]
   const dir = projects.projectDir(id)
-  const ext = path.extname(src).slice(1).toLowerCase()
-  if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
-  const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error(`Choose ${spec.formats}.`)
-  if (st.size === 0) throw new Error('This file is empty.')
-  if (st.size > spec.maxBytes) throw new Error(`The file is too large (${Math.round(st.size / 1e6)} MB; ${Math.round(spec.maxBytes / 1e6)} MB at most).`)
-  const handle = await fs.open(src, 'r')
-  try {
-    const head = Buffer.alloc(4096)
-    const { bytesRead } = await handle.read(head, 0, head.length, 0)
-    const problem = spec.check(head.subarray(0, bytesRead), ext)
-    if (problem) throw new Error(problem)
-  } finally {
-    await handle.close()
+  const stored = storedExt(ext)
+  if (DEDUPED.has(kind) && Buffer.isBuffer(data)) {
+    const same = await sameFile(dir, kind, stored, data)
+    if (same) return { url: mediaUrl(id, same), path: same }
   }
-  const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), ext)
+  const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), stored)
   if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
   const tmp = path.join(dir, `.${name}.part`)
   try {
-    await fs.copyFile(src, tmp)
+    if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
+    else await fs.copyFile(data.file, tmp)
     await fs.rename(tmp, path.join(dir, name))
   } catch (err) {
     await fs.rm(tmp, { force: true }).catch(() => undefined)
@@ -138,6 +213,62 @@ export async function importAsset(id: string, kind: AssetKind, src: string): Pro
   }
   await prunePicks(id, kind, dir, name)
   return { url: mediaUrl(id, name), path: name }
+}
+
+/**
+ * Copies `src` into project `id` as its `kind` asset. The file is checked first (type by
+ * extension and content, size) and copied under a temporary name, so a failure leaves the
+ * earlier pick in place. Every pick gets a new name (an identical overlay or font is reused).
+ */
+export async function importAsset(id: string, kind: AssetKind, src: string): Promise<PickedAsset> {
+  if (!isKind(kind)) throw new Error('Unknown asset kind')
+  const spec = ASSET_SPECS[kind]
+  projects.projectDir(id)
+  const ext = extOf(src)
+  if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
+  const st = await fs.stat(src)
+  if (!st.isFile()) throw new Error(`Choose ${spec.formats}.`)
+  const tooBig = sizeProblem(kind, ext, st.size)
+  if (tooBig) throw new Error(tooBig)
+  const name = path.basename(src)
+  if (DEDUPED.has(kind)) {
+    // Small enough to read whole (25 MB at most): checked and hashed from memory.
+    const data = await fs.readFile(src)
+    checkHead(kind, data, ext)
+    return { ...(await store(id, kind, ext, data)), name }
+  }
+  const handle = await fs.open(src, 'r')
+  try {
+    const head = Buffer.alloc(4096)
+    const { bytesRead } = await handle.read(head, 0, head.length, 0)
+    checkHead(kind, head.subarray(0, bytesRead), ext)
+  } finally {
+    await handle.close()
+  }
+  return { ...(await store(id, kind, ext, { file: src })), name }
+}
+
+/** Kinds that can arrive as bytes (a dropped or pasted image, a dropped font). */
+const DATA_KINDS: ReadonlySet<AssetKind> = new Set(['overlay', 'font'])
+
+/**
+ * Stores `bytes` (a file dropped on or pasted into the editor) as a `kind` asset of project
+ * `id`. `name` only gives the extension and the name shown; it is never used as a path. The
+ * same checks as a picked file, the size first.
+ */
+export async function importAssetData(id: string, kind: AssetKind, name: string, bytes: Uint8Array): Promise<PickedAsset> {
+  if (!isKind(kind) || !DATA_KINDS.has(kind)) throw new Error('Unknown asset kind')
+  const spec = ASSET_SPECS[kind]
+  if (!(bytes instanceof Uint8Array)) throw new Error(`Choose ${spec.formats}.`)
+  projects.projectDir(id)
+  const shown = path.basename(String(name).replace(/\\/g, '/')).slice(0, 200)
+  const ext = extOf(shown)
+  if (!spec.extensions.includes(ext)) throw new Error(kind === 'overlay' ? 'Only PNG, JPG, WebP, SVG and GIF images can be added.' : `Choose ${spec.formats}.`)
+  const tooBig = sizeProblem(kind, ext, bytes.byteLength)
+  if (tooBig) throw new Error(tooBig)
+  const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  checkHead(kind, data, ext)
+  return { ...(await store(id, kind, ext, data)), name: shown }
 }
 
 /**
@@ -151,7 +282,7 @@ async function prunePicks(id: string, kind: AssetKind, dir: string, picked: stri
     if (typeof saved === 'string') keep.add(saved)
     for (const name of PICKS[kind].stale(await fs.readdir(dir), keep)) await fs.rm(path.join(dir, name), { force: true })
   } catch (err) {
-    console.warn(`Could not remove earlier ${kind === 'music' ? 'music' : 'logo'} picks:`, err)
+    console.warn(`Could not remove earlier ${kind} picks:`, err)
   }
 }
 
@@ -170,6 +301,12 @@ export function registerAssetIpc(): void {
     })
     if (result.canceled || !result.filePaths[0]) return null
     return importAsset(id, kind, result.filePaths[0])
+  })
+
+  ipcMain.handle('projects:importAssetData', (e, id: unknown, kind: unknown, name: unknown, bytes: unknown) => {
+    if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
+    if (typeof id !== 'string' || !isKind(kind) || typeof name !== 'string' || !(bytes instanceof Uint8Array)) throw new Error('Choose an image.')
+    return importAssetData(id, kind, name, bytes)
   })
 
   ipcMain.handle('projects:assetUrl', async (_e, id: unknown, file: unknown): Promise<string | null> => {
