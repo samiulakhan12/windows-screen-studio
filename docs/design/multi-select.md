@@ -107,7 +107,7 @@ ranges and recorded clicks stay one at a time. Section 3 gives the reasons.
 | C22 | A pasted zoom over an existing zoom | Skipped | `insertZoom` fit | **New rule (§4.11).** The pasted zoom keeps its start; it is shortened to the free gap if the gap is at least 1 s, else skipped. | `insertZoom` grows backwards (`zoom.ts:794-814`) and would move the start, breaking the relative times. |
 | C23 | Freeze frames in a group move | Interval within its own clip, plus an acceptance test | `moveFreeze` across cuts, stuck at the last valid position | **A's interval.** The acceptance test is B's ordered `canMoveFreeze`/`moveFreeze` sequence. | One convex interval: the group never jumps over a cut. No new export from `freezeEdit.ts`. |
 | C24 | Snap points | The outer edges, plus the grabbed item's | The grabbed item's first, then the outer edges | **B's order, A's exactness rule** | On a tie the grabbed item's edge wins, because it has the lower point index (`snapPoints`). |
-| C25 | Where Duplicate goes | At the group's end | At the end (a freeze's end is `at + length`) | **B**, plus a 1 s minimum offset | A group of only chapters would otherwise land on itself. |
+| C25 | Where Duplicate goes | At the group's end | At the end (a freeze's end is `at + length`) | **B**, plus a 1 s minimum offset. A freeze ends at its frame, or at the end of a continue freeze's still, not at `at + length` (§4.11). | A group of only chapters would otherwise land on itself. A hold is seconds of the exported video, not of the recording: counted as source time, it moved pastes and duplicates back onto other frames or into a cut. |
 | C26 | Modules | Four modules | One `itemGroup.ts` | **A** | Smaller files, and builders can work in parallel. |
 | C27 | Selection state | `ItemGroup { keys, anchor, stamp }` | `GroupState { items, anchor, track }` | **A** | Keys are `${kind}:${id}`, the snapping owner key, so selection, snapping exclusion and lookups share one key. The "active track" lives in the Timeline (`lastTrack()`). |
 | C28 | How components read the group | Props | React context | **Context for reading** (`GroupContext`, whose default is a no-op), **plus the Timeline's gesture controller passed to the tracks as a prop** (as `snap` is) | No `Inspector` or `PreviewStage` prop drilling. Without a provider, everything behaves as today. |
@@ -679,8 +679,10 @@ items · Ctrl+Z to undo".
 **Copy (`copyItems`, `Ctrl+C`)** works on the group, or on a single groupable selection.
 - It stores deep copies (`structuredClone`) in the item clipboard:
   - `origin` = the selection's start (smallest `start` / `t` / `at`);
-  - `span` = the selection's end minus `origin`. The end is the largest `end`, `t` or
-    `at + length` (for a freeze).
+  - `span` = the selection's end minus `origin`: the part that must fit before the video's end.
+    The end is the largest `end`, `t` or `at`. A freeze counts as its frame: its `length` is
+    seconds of the exported video that the recording does not have, and the timeline cuts its
+    block short at the end, so it never has to fit.
   - It also stores the `projectId`.
 - Notice: "Copied 4 items".
 - With nothing selected: "Select items to copy".
@@ -712,8 +714,11 @@ items · Ctrl+Z to undo".
 - **Another project in the same window:** works. Positions are normalised, so text and shapes
   land in the same place. Freezes are skipped (they hold a frame of their own recording).
 
-**Duplicate (`duplicateItems`, `Ctrl+D`)** pastes a fresh copy at `origin + max(span, 1)`, with
-the same clamp and the same rules. It leaves the item clipboard untouched.
+**Duplicate (`duplicateItems`, `Ctrl+D`)** pastes a fresh copy at `origin + max(reach − origin, 1)`,
+with the same clamp and the same rules. `reach` is `origin + span`, or the end of a continue
+freeze's still (the footage it holds the picture over, from `planOf`) when that is later, so the
+copy is not refused as frozen. A pause freeze adds no footage: alone it is duplicated 1 s later.
+It leaves the item clipboard untouched.
 - The copies become the selection, so pressing it again builds a series.
 - The Shapes panel's own Duplicate button keeps its same-time, offset-on-screen copy
   (`ShapesPanel.tsx:216-221`).
@@ -1438,11 +1443,18 @@ Each rule above has at least one case. Fixture `P20`: duration 20 s, clips `[0�
   - a different `projectId` → `freeze-other-recording`.
 - C6. Duplicate:
   - pastes at `origin + span`;
-  - a single freeze lands at `at + length`;
+  - a single pause freeze lands 1 s later; a continue freeze lands at the end of its still;
   - a group of only chapters lands 1 s later;
   - repeated duplicates make a series.
 - C7. Each paste and duplicate is one store update; the result's keys are the pasted items.
 - C8. `pasteNotice` wording for full, partial, moved-back and shortened pastes.
+- C9. A freeze is its frame, not its hold (P20):
+  - duplicated near the end (18 s with a 2 s hold, a continue freeze at 17.5 s with 3 s, the last
+    frame's hold at 20 s), it is never moved back over or before the original, and never into the
+    middle of the video;
+  - a copied 3 s freeze pastes at 19 s, where the playhead is (`span` 0);
+  - a freeze at 6 s with a 3 s hold is duplicated at 7 s, before the cut at 8 s;
+  - text 5–6 s plus a freeze at 6 s pastes at 17 s unchanged; the text alone still has to fit.
 
 **`tests/multiSelectKeys.test.ts`**
 - K1. The seven ids are in `PALETTE_COMMANDS` with their titles and category `Edit`, right after
@@ -1722,6 +1734,9 @@ Built on `feat/multi-select` in the order of §13 (screenshot: `docs/screenshots
 - **A text block's tooltip stays its text**, without the " · Ctrl+click to select several" hint
   (§5.1): `editor.e2e` reads it as the item's text, and existing tests are not changed. The other
   blocks carry the hint.
+- **A freeze's extent is its frame** (C25, §4.11, C9). The first build ended a freeze at
+  `at + length`, so a hold near the end or before a cut moved pastes and duplicates back, refused
+  them, or added a hold in the middle of the video.
 - **The e2e file** runs the 17 scenarios of §10.2 in five launches. Scenario 9 drags `a1` and `s2`
   until `a1`'s end meets the cut at 8: with the seed, the group's start would otherwise tie with
   the freeze frame at 5 at every whole-second delta.

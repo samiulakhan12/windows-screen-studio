@@ -6,7 +6,7 @@
  *
  * Every item keeps its distance to the others: the copy's start (`origin`) goes to the paste time.
  */
-import { MAX_FREEZES } from '../engine/freeze'
+import { MAX_FREEZES, planOf } from '../engine/freeze'
 import { clamp } from '../engine/math'
 import { formatTime } from '../engine/project'
 import { MIN_NEW_ZOOM, newZoomId, zoomAt } from '../engine/zoom'
@@ -17,6 +17,7 @@ import { displayTime } from './clips'
 import { freezeAtPlayhead } from './freezeEdit'
 import { itemKey, KIND_WORDS, parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
 import { newShapeId, newSpotlightId } from './shapes'
+import { outputToSourceRanges } from './smartSpeed'
 import { chapterNear, createChapter, newTitleId } from './titles'
 
 export type ClipItem =
@@ -34,7 +35,11 @@ export interface ItemClipboard {
   projectId: string
   /** The copied items' start (smallest start, t or at). */
   origin: number
-  /** Their end (largest end, t or at + length) minus `origin`. */
+  /**
+   * Their end (largest end, t or at) minus `origin`: the part that has to fit before the video's end.
+   * A freeze counts as its frame: its hold is video time the recording does not have, and the
+   * timeline cuts its block short at the end.
+   */
   span: number
   items: readonly ClipItem[]
 }
@@ -67,13 +72,16 @@ export interface PasteResult {
 /** A duplicate goes at least this far after the original (a group of chapters only would land on itself). */
 export const DUPLICATE_MIN_OFFSET = 1
 
-/** An item's start and end on the timeline; a freeze ends where the time it holds ends (at + length). */
+/**
+ * An item's start and end in source seconds; a chapter and a freeze are a point (a freeze holds
+ * its frame for `length` seconds of the exported video, not of the recording).
+ */
 function extent(c: ClipItem): { start: number; end: number } {
   switch (c.kind) {
     case 'chapter':
       return { start: c.item.t, end: c.item.t }
     case 'freeze':
-      return { start: c.item.at, end: c.item.at + c.item.length }
+      return { start: c.item.at, end: c.item.at }
     default:
       return { start: c.item.start, end: c.item.end }
   }
@@ -240,11 +248,26 @@ export function pasteItems(p: Project, clip: ItemClipboard, playhead: number): P
   return place(p, clip, at, at < want - 1e-9)
 }
 
-/** A fresh copy of `keys` right after themselves (at least DUPLICATE_MIN_OFFSET later), with paste's rules; the clipboard is not used. */
+/**
+ * Source second up to which freeze `id` holds the picture in `p`: the end of a continue freeze's
+ * still (the footage it covers on the timeline), else its anchor (a pause freeze adds video time
+ * and covers no footage; an inactive freeze shows nothing).
+ */
+function freezeReach(p: Project, f: Freeze): number {
+  const still = planOf(p).stills.find((s) => s.id === f.id)
+  return still ? Math.max(f.at, outputToSourceRanges(p.clips, still.editStart, still.editEnd).at(-1)?.end ?? f.at) : f.at
+}
+
+/**
+ * A fresh copy of `keys` right after themselves (at least DUPLICATE_MIN_OFFSET later; after a
+ * continue freeze's still, where the copy is not refused as frozen), with paste's rules; the
+ * clipboard is not used.
+ */
 export function duplicateItems(p: Project, keys: readonly ItemKey[]): PasteResult {
   const clip = copyItems(p, keys)
   if (!clip) return { project: p, keys: [], at: 0, movedBack: false, shortened: 0, skipped: [] }
-  const want = clip.origin + Math.max(clip.span, DUPLICATE_MIN_OFFSET)
+  const reach = Math.max(clip.origin + clip.span, ...clip.items.map((c) => (c.kind === 'freeze' ? freezeReach(p, c.item) : -Infinity)))
+  const want = clip.origin + Math.max(reach - clip.origin, DUPLICATE_MIN_OFFSET)
   const at = clamp(want, 0, Math.max(0, p.duration - clip.span))
   return place(p, clip, at, at < want - 1e-9)
 }

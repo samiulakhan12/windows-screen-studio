@@ -107,9 +107,11 @@ describe('C6: duplicate', () => {
     expect(r.project.zooms[1]).toMatchObject({ start: 3, end: 4 })
     expect(r.project.annotations[1]).toMatchObject({ start: 3.5, end: 5 })
   })
-  it('a single freeze lands at at + length; a group of chapters lands 1 s later', () => {
-    const p = p20({ freezes: [freeze('f1', 2, { length: 2 })], chapters: [chapter('h1', 3), chapter('h2', 3.5)] })
-    expect(duplicateItems(p, ['freeze:f1']).project.freezes!.map((f) => f.at)).toEqual([2, 4])
+  it('a pause freeze lands 1 s later, a continue freeze after its still; a group of chapters lands 1 s later', () => {
+    const p = p20({ freezes: [freeze('f1', 2, { length: 2 }), freeze('f2', 12, { length: 3, sound: 'continue' })], chapters: [chapter('h1', 3), chapter('h2', 3.5)] })
+    expect(duplicateItems(p, ['freeze:f1']).project.freezes!.map((f) => f.at)).toEqual([2, 3, 12])
+    // The still of f2 holds the picture over 12-15: a copy inside it would be refused as frozen.
+    expect(duplicateItems(p, ['freeze:f2']).project.freezes!.map((f) => f.at)).toEqual([2, 12, 15])
     const c = duplicateItems(p, ['chapter:h1', 'chapter:h2'])
     expect(c.project.chapters!.map((x) => x.t)).toEqual([3, 3.5, 4, 4.5])
   })
@@ -122,6 +124,56 @@ describe('C6: duplicate', () => {
       keys = r.keys
     }
     expect(p.annotations.map((a) => a.start)).toEqual([1, 2, 3, 4])
+  })
+})
+
+describe('C9: a freeze is its frame, not its hold (the hold is video time the recording does not have)', () => {
+  const ats = (r: PasteResult): number[] => r.project.freezes!.map((f) => f.at)
+  it('a duplicate near the end is not moved back over the original', () => {
+    // A 2 s hold at 18 s: the copy goes 1 s later, not back onto the original.
+    const a = p20({ freezes: [freeze('f1', 18, { length: 2 })] })
+    const ra = duplicateItems(a, ['freeze:f1'])
+    expect(ats(ra)).toEqual([18, 19])
+    expect(ra.movedBack).toBe(false)
+    // A continue freeze at 17.5 s holds to the end: the copy holds the last frame, after the original.
+    const b = p20({ freezes: [freeze('f1', 17.5, { length: 3, sound: 'continue' })] })
+    const rb = duplicateItems(b, ['freeze:f1'])
+    expect(ats(rb)).toEqual([17.5, 20])
+    expect(rb.project.freezes![1]).toMatchObject({ sound: 'pause', length: 3 })
+    // The last frame's hold has nowhere later to go: nothing is added in the middle of the video.
+    const c = p20({ freezes: [freeze('f1', 20, { length: 3 })] })
+    const rc = duplicateItems(c, ['freeze:f1'])
+    expect(rc.keys).toEqual([])
+    expect(rc.project).toBe(c)
+    expect(rc.skipped).toEqual([{ kind: 'freeze', why: 'freeze-taken' }])
+  })
+  it('a freeze pastes on the frame at the playhead, even within one hold of the end', () => {
+    const p = p20({ freezes: [freeze('f1', 2, { length: 3 })] })
+    const clip = copyItems(p, ['freeze:f1'])!
+    expect([clip.origin, clip.span]).toEqual([2, 0])
+    const r = pasteItems(p, clip, 19)
+    expect(r.at).toBe(19)
+    expect(r.movedBack).toBe(false)
+    expect(ats(r)).toEqual([2, 19])
+    expect(ats(pasteItems(p, clip, 20))).toEqual([2, 20])
+  })
+  it('a freeze just before a cut is duplicated before the cut', () => {
+    const p = p20({ freezes: [freeze('f1', 6, { length: 3 })] })
+    const r = duplicateItems(p, ['freeze:f1'])
+    expect(r.skipped).toEqual([])
+    expect(ats(r)).toEqual([6, 7])
+  })
+  it('a freeze in a group does not move the paste back', () => {
+    const p = p20({ annotations: [text('a1', 5, 6)], freezes: [freeze('f1', 6, { length: 3 })] })
+    const clip = copyItems(p, ['annotation:a1', 'freeze:f1'])!
+    expect([clip.origin, clip.span]).toEqual([5, 1])
+    const r = pasteItems(p, clip, 17)
+    expect(r.at).toBe(17)
+    expect(r.movedBack).toBe(false)
+    expect(r.project.annotations[1]).toMatchObject({ start: 17, end: 18 })
+    expect(ats(r)).toEqual([6, 18])
+    // The text still has to fit before the end.
+    expect(pasteItems(p, clip, 19.5).at).toBe(19)
   })
 })
 
