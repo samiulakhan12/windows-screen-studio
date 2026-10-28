@@ -7,6 +7,7 @@ import { orPress, shortcutLabel, undoHint, withShortcut, zoomLevelKeysHint } fro
 import { ZOOM_EASINGS } from '../../../../shared/engine/easing'
 import { cropOf, fromCrop, regenerateInFrame, toCrop, zoomFromView, zoomInView } from '../../../../shared/engine/crop'
 import { formatTime } from '../../../../shared/engine/project'
+import { itemKey } from '../../../../shared/editor/multiSelect'
 import {
   isZoomClick,
   MAX_TRANSITION,
@@ -38,6 +39,8 @@ import { EditorIcon } from '../EditorIcon'
 import type { InputActions, InspectorProps } from '../Inspector'
 import { autoZoomFoundText, clickKind, clickState, STRAY_REASON_TEXT, usedClickText } from '../selection'
 import { useKeymap } from '../keymapContext'
+import { useListSelect } from '../listSelect'
+import { LookButtons } from '../LookButtons'
 import { ShortcutKeys } from '../ShortcutKeys'
 import '../zoom.css'
 
@@ -306,6 +309,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
         title={next ? 'Move straight to the next zoom instead of zooming out in between' : 'There is no zoom after this one'}
         onChange={toggleConnect}
       />
+      <LookButtons itemKey={itemKey('zoom', zoom.id)} />
       <button
         className="btn ghost danger"
         onClick={() => {
@@ -384,6 +388,7 @@ function AutoZoomSection({
   const auto = settings.auto
   const found = inputSummary(cursor, rows, auto)
   const autoCount = project.zooms.filter((z) => z.auto).length
+  const list = useListSelect()
   // The recorded clicks count, so ignoring every click does not turn auto zoom off here.
   const hasInput = rows.some((r) => isZoomClick(r.click, true)) || found.typing > 0 || found.marks > 0
   const scrollsRecorded = recorded.valid && recorded.scrolls !== undefined
@@ -411,7 +416,26 @@ function AutoZoomSection({
   }
 
   return (
-    <Section title="Auto zoom" aside={<span className="muted small">{plural(autoCount, 'automatic zoom')}</span>}>
+    <Section
+      title="Auto zoom"
+      aside={
+        <span className="muted small">
+          {plural(autoCount, 'automatic zoom')}
+          {autoCount > 1 && (
+            <>
+              {' · '}
+              <button
+                className="link small"
+                onClick={() => list.selectAll(project.zooms.filter((z) => z.auto).map((z) => itemKey('zoom', z.id)))}
+                title="Select the automatic zooms to edit or move them together"
+              >
+                Select them
+              </button>
+            </>
+          )}
+        </span>
+      }
+    >
       <p className="hint" data-testid="auto-zoom-summary">
         {hasInput
           ? `${autoZoomFoundText(found, auto.rightClicks)} Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.`

@@ -11,6 +11,7 @@ import {
   projectFreezeTargets,
   projectSnapSources,
   snapAt,
+  snapGroup,
   snapSpan,
   type DragMode,
   type SnapExclude,
@@ -70,6 +71,11 @@ export interface SnapBegin {
   noPlayhead?: boolean
   /** Snapping starts once the pointer has moved this far from the press (px); default 0. */
   slopPx?: number
+  /**
+   * A group drag (E-06): the members' keys (`${kind}:${id}`). Their own edges, chapters and freeze
+   * frames are never targets, so the group does not snap to itself.
+   */
+  group?: readonly string[]
 }
 
 /** One drag's snapping: each move's raw values in, the values to write out. */
@@ -78,6 +84,18 @@ export interface SnapSession {
   span(ev: PointerEvent, initial: Span, mode: DragMode, dt: number, resolve: (dt: number) => Span): Span
   /** A point drag (trim edge, range end, chapter, freeze, scrub); targets outside `limit`, or that it does not accept, are ignored. */
   at(ev: PointerEvent, t: number, limit?: SnapLimit): number
+  /**
+   * A group drag (E-06): `points` (the grabbed item's edges, then the group's outer ones) moved by
+   * the raw `dt`, limited by `clamp` and checked by `accept`; returns the delta to write and, when an
+   * edge snapped, the edge's initial value and the target it is written as.
+   */
+  group(
+    ev: PointerEvent,
+    points: readonly number[],
+    dt: number,
+    clamp: (d: number) => number,
+    accept?: (d: number) => boolean
+  ): { delta: number; exact: { from: number; to: number } | null }
 }
 
 /** The timeline's snapping controller (stable identity). */
@@ -111,14 +129,22 @@ function createSnapController(deps: () => SnapDeps & EditorServices): SnapContro
       endActive?.()
       const { store, player, clickRows, guideRef } = deps()
       const on = snapPref.get()
-      const index: SnapIndex | null = on
+      // A group's members are left out by owner key, through a Set (a group can hold hundreds of items).
+      const members = spec.group ? new Set(spec.group) : null
+      const freezeExcludes = members ? [...(spec.exclude ?? []), ...[...members].filter((k) => k.startsWith('freeze:')).map((owner) => ({ owner }))] : spec.exclude
+      const sources = on
+        ? projectSnapSources(store.state, clickRows, {
+            // A moving playhead cannot be caught; scrubbing and trimming move it themselves.
+            playhead: spec.noPlayhead || player.moving ? null : player.time,
+            layouts: store.state.hasWebcam && player.webcam !== null,
+            freezes: projectFreezeTargets(store.state, freezeExcludes)
+          })
+        : null
+      const index: SnapIndex | null = sources
         ? buildSnapIndex(
-            projectSnapSources(store.state, clickRows, {
-              // A moving playhead cannot be caught; scrubbing and trimming move it themselves.
-              playhead: spec.noPlayhead || player.moving ? null : player.time,
-              layouts: store.state.hasWebcam && player.webcam !== null,
-              freezes: projectFreezeTargets(store.state, spec.exclude)
-            }),
+            members
+              ? { ...sources, segments: sources.segments.filter((x) => !members.has(x.owner)), chapters: sources.chapters.filter((c) => !members.has(`chapter:${c.id}`)) }
+              : sources,
             spec.exclude
           )
         : null
@@ -190,6 +216,16 @@ function createSnapController(deps: () => SnapDeps & EditorServices): SnapContro
           const r = snapAt(index, t, view, limit)
           show(r.target, view.pxPerSec)
           return r.t
+        },
+        group(ev, points, dt, clamp, accept) {
+          const view = viewOf(ev)
+          if (!index || !view) {
+            hide()
+            return { delta: clamp(dt), exact: null }
+          }
+          const r = snapGroup(index, points, dt, view, clamp, accept)
+          show(r.target, view.pxPerSec)
+          return { delta: r.delta, exact: r.exact }
         }
       }
     }

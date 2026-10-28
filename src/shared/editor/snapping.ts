@@ -308,6 +308,35 @@ export function snapSpan(
   return { times: edge === 'start' ? { start: t, end: t + len } : { start: t - len, end: t }, target: r.target }
 }
 
+/**
+ * A group move (E-06, docs/design/multi-select.md §4.8): `points` are the edges that snap (the
+ * grabbed item's, then the group's outer ones), `dt` the raw delta, `clamp` the group's block
+ * limits and `accept` its freeze frames' check. Unsnapped (the clamped raw delta, no target) when
+ * nothing catches, when the clamp moves the snapped point off its target, or when `accept` refuses.
+ * `exact` names the snapped point's initial value and the target it is written as.
+ */
+export function snapGroup(
+  index: SnapIndex,
+  points: readonly number[],
+  dt: number,
+  view: SnapView,
+  clamp: (d: number) => number,
+  accept?: (d: number) => boolean
+): { delta: number; target: SnapTarget | null; exact: { from: number; to: number } | null } {
+  const none = { delta: clamp(dt), target: null, exact: null }
+  const r = snapPoints(
+    index,
+    points.map((x) => x + dt),
+    view
+  )
+  if (!r.target) return none
+  const d = clamp(dt + r.delta)
+  const t = r.target.t
+  // A block limit moved the snapped point off its target, or a freeze frame refuses it: the drag goes where the pointer says.
+  if (Math.abs(points[r.point] + d - t) > SNAP.exactS || (accept && !accept(d))) return none
+  return { delta: d, target: r.target, exact: { from: points[r.point], to: t } }
+}
+
 /** A point drag snapped (targets outside `limit`, or that it does not accept, ignored). */
 export function snapAt(index: SnapIndex, t: number, view: SnapView, limit?: SnapLimit): { t: number; target: SnapTarget | null } {
   const r = snapPoints(index, [t], view, limit)

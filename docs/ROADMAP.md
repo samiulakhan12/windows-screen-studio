@@ -241,7 +241,8 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 Added 25 October 2026. These make everyday editing faster. Each was checked against the code at
 commit `f17cd98`, and the editor does not have it yet. E-01, E-04, E-05, E-08, E-10 and E-11 are
 `shipped` (Wave 6): see [FEATURES.md](FEATURES.md) and `docs/design/editing-wins.md`, which links the six
-designs. The rest are `planned`.
+designs. E-06 is `shipped` (after 0.5.0): see [FEATURES.md](FEATURES.md) and `docs/design/multi-select.md`.
+The rest are `planned`.
 
 | Id | Feature | What it does | Size |
 |---|---|---|---|
@@ -250,7 +251,7 @@ designs. The rest are `planned`.
 | E-03 | **Brand kit** | Your logo, colours, fonts, intro and outro title cards and style, saved once; every new recording starts with them. | S–M |
 | E-04 (shipped, Wave 6) | **Audio waveform on the timeline** | Shows where you talk and where the pauses are, so cuts land in the right place. | S |
 | E-05 (shipped, Wave 6) | **Snapping** | Segment edges and the playhead snap to cuts, clicks, chapter flags and other segments while dragging (hold Alt to turn it off). | S |
-| E-06 | **Select several items** | Shift-click or drag a box to select zooms, text and shapes together, then move, delete, copy or paste them; paste one item's look onto another. | M |
+| E-06 (shipped) | **Select several items** | Ctrl/Shift-click or drag a box to select zooms, text, shapes, spotlights, title cards, chapters and freeze frames together, edit what they share, move, delete, copy, paste or duplicate them; copy one item's look onto others. | M |
 | E-07 | **Filmstrip on the clip track** | Small frames along the clip track, to find a moment by sight. | S–M |
 | E-08 (shipped, Wave 6) | **J / K / L playback and preview speed** | Reverse, pause and forward from the keyboard (tap again to go faster), and play the preview at 1.5× or 2× to review long recordings quickly. | S |
 | E-09 | **Nudge by one frame** | Arrow keys move the selected item one frame, Shift + arrow ten frames. | S |

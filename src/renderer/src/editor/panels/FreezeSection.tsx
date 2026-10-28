@@ -21,6 +21,7 @@ import { EditorIcon } from '../EditorIcon'
 import { addFreezeAt, addTextOnFreeze } from '../freezeItems'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
+import { LookButtons } from '../LookButtons'
 
 const seconds = (v: number): string => `${v.toFixed(1)} s`
 
@@ -113,6 +114,7 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
       <p className="hint" data-testid="freeze-hint">
         {freezeHint(project, f)}
       </p>
+      <LookButtons itemKey={`freeze:${f.id}`} />
       <div className="row start">
         <button className="btn" disabled={!active} onClick={() => addTextOnFreeze(services, f, onSelect)} title="A text that shows through the whole freeze">
           <EditorIcon name="text" size={16} /> Add text on the freeze

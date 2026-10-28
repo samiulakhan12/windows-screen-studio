@@ -2,6 +2,16 @@
 
 ## Next release
 
+- **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
+  the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
+  `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move
+  them all with their spacing kept. The Inspector's new *Selection* view edits what they share
+  (zoom level, text size, shape colour, title card style, freeze length, …) with *Mixed* where they
+  differ, and moves them or sets their length. `Delete`, `Ctrl+X` / `Ctrl+C` / `Ctrl+V` (pasted at
+  the playhead), `Ctrl+D` to duplicate, and `Ctrl+Shift+C` / `Ctrl+Shift+V` to copy one item's look
+  onto others. Every group action is one undo step. Zooms, text, shapes, blur, spotlights, title
+  cards, chapters and freeze frames can be selected together; captions, camera layouts, clips and
+  clicks stay one at a time. Existing projects open, preview and export exactly as before.
 - **Bangla captions on this PC**: a Bangla-only speech model (Bengali.AI's Whisper medium, 539 MB,
   free, works offline once downloaded). Choose *Bengali* as the spoken language and the Captions
   tab recommends it: *Download Bangla model (539 MB) and make captions*. It gets about 4 in 5

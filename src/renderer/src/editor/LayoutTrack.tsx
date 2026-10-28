@@ -15,6 +15,7 @@ import { LayoutGlyph } from './layoutGlyphs'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
+import type { MultiSelect } from './multiSelectControl'
 import type { SnapController } from './snapControl'
 import './camera.css'
 
@@ -33,6 +34,8 @@ export interface TrackSlotProps {
   scrub: (e: ReactPointerEvent) => void
   /** The timeline's snapping: each drag begins a session at pointerdown and snaps its moves. */
   snap: SnapController
+  /** The timeline's multi-select controller (E-06): Ctrl/Shift presses on blocks and empty space. */
+  multi?: MultiSelect
 }
 
 /** Layout a double-click on the track adds (the Camera panel then shows the others). */
@@ -76,7 +79,7 @@ const useHasCamera = (): boolean => {
  * segment, labelled with its layout and shaded where it animates in and out. Click selects (and
  * shows it on the preview), drag moves, the edges trim, a double-click on free time adds one.
  */
-export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element | null {
+export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, snap, multi }: TrackSlotProps): JSX.Element | null {
   const { store, player } = useEditor()
   const hasCamera = useHasCamera()
   const layouts = useSyncExternalStore(store.subscribe, () => store.state.layouts) ?? NO_LAYOUTS
@@ -116,6 +119,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
   }
 
   const onBackgroundDown = (e: ReactPointerEvent): void => {
+    if (multi?.background(e, null)) return
     if (e.button !== 0) return
     // A double-click is two quick pointerdowns at the same spot (as on the other tracks).
     const d = lastDown.current
@@ -139,6 +143,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
   }
 
   const onSegmentDown = (s: LayoutSegment) => (e: ReactPointerEvent<HTMLElement>) => {
+    if (multi?.refuse(e, 'layout')) return
     if (e.button !== 0) return
     onSelect({ kind: 'layout', id: s.id })
     const r = e.currentTarget.getBoundingClientRect()

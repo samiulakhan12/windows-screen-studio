@@ -52,6 +52,10 @@ const KIND_DEFAULTS: Record<ShapeKind, Partial<Shape>> = {
 
 let idCounter = 0
 const newId = (prefix: string): string => `${prefix}${Date.now().toString(36)}${(idCounter++).toString(36)}`
+/** A fresh shape id (pasted and duplicated shapes, E-06). */
+export const newShapeId = (): string => newId('s')
+/** A fresh spotlight id (pasted and duplicated spotlights, E-06). */
+export const newSpotlightId = (): string => newId('l')
 
 /** Times of a new item at `t`: DEFAULT_SHAPE_LENGTH long, moved back to keep that length near the end. */
 function newItemTimes(t: number, duration: number): { start: number; end: number } {
