@@ -74,16 +74,68 @@ Branch `feat-brand-kit`, from `9dadfbb` (`ccr-b6df7cf7-yked87`, Flown 0.5.0). De
   Windows separators and look-alike names.
 - IPC: the new handlers accept calls from the app's page only (`isAppUrl`).
 
-## Merge notes (multi-select)
+## Multi-select (E-06) merged in, and images as a kind
 
-Shared editor files changed by small additive lines only:
-`selection.ts` (+3: the `overlay` kind and its case), `Inspector.tsx` (+6/−1: tab, mapping, render
-line), `Timeline.tsx` (+3: label and track), `Editor.tsx` (+3: import, `Delete` case,
-`<OverlayDropZone>`), `TextPanel.tsx` (+5/−2: two `<FontPicker>`s, brand colours in two pickers),
-`CaptionsPanel.tsx` (+2), `StylePanel.tsx` (+2). `commands.ts` and `shortcuts.ts` are not touched.
-If multi-select binds `Ctrl+V` and calls `preventDefault` on the key, the paste event never fires:
-paste an image only when its own clipboard holds no items.
+At the lead's request `ccr-b6df7cf7-yked87` (with E-06 at `b7d5b68`) was merged into this branch
+(`8ca3e2f`). Three conflicts, both sides kept: the Images tab inside the multi-select Inspector, the
+Images track with the tracks' new `multi` prop, both release notes. Then, following
+`docs/design/multi-select.md`:
+
+- `overlay` is a `GroupKind` on its own `images` track (`multiSelect.ts`); look class `image` with
+  Position X/Y, Size (each image keeps its shape), Rotation, Opacity, Fade in and Fade out
+  (`groupEdit.ts`, all but the position are its look); group move and Length (`groupMove.ts`);
+  copy, paste and duplicate, where an image *file* pastes only into its own recording and a sticker
+  anywhere (`groupClipboard.ts`, skip reason `image-other-recording`); the Images track, the
+  preview's Ctrl+click (the rotated box's bounds), box selection and the Images list take part.
+- A pasted copy of the kit's intro or outro drops its `brand` mark, so applying the kit again keeps it.
+- **Ctrl+V**: multi-select's *Paste items* cancels the key's default, so the browser's `paste` event
+  (which my image paste listened to) never fired for a real Ctrl+V. Ctrl+V now first reads the system
+  clipboard's image in main (`projects:clipboardImage`, app page only): it is added as an image when
+  it was not already on the clipboard when items were last copied (SHA-256 fingerprint taken at
+  Ctrl+C / Ctrl+X); otherwise the items paste as before.
+- Two multi-select unit tests pin the list of kinds and tracks; they now include `overlay` / `images`.
+
+Layout fixes found by the e2e suite after the merge (each was caused by this branch):
+- the Images track shows once a project has an image, like the caption and camera tracks (an
+  always-present row pushed the Style tab's Padding below the fold of the default window);
+- *Apply brand kit* sits after Watermark in the Style tab, not at its top (same reason);
+- the compact Inspector rail gives each tab 3 px of padding instead of 5, so eleven tabs fit the
+  minimum window (1040 × 680) without scrolling;
+- `editor.e2e` clicked `button:has-text("Image")` for the background's *Image…* button, which now
+  also matched the Images tab: the selector is scoped to `.insp-body button:has-text("Image…")`;
+  `ui.e2e`'s list of tabs includes Images.
 
 ## Tests
 
-VERIFICATION_PLACEHOLDER
+New unit tests (vitest), each failing without its code (the font-key cache test was checked by
+removing the font from the key):
+
+| File | What |
+|---|---|
+| `tests/imageOverlays.test.ts` | geometry (shorter-side sizing, rotated resize, Shift keeps aspect, limits, rotation and 15° snap), fades in output time, GIF delays and looping, GIF memory and size caps, GIF header size, stickers carry no script/text/external refs, reading stored overlays/fonts/brand, old projects keep no new fields |
+| `tests/brandFonts.test.ts` | TTF/OTF/WOFF2 sniffing and mismatches, file-name regex, font stacks and fallbacks |
+| `tests/brandLayers.test.ts` | title, caption and text layers draw with the brand font; widths measured with another font are not reused; overlays drawn rotated about their centre at their box with their alpha |
+| `tests/overlayAssetsMain.test.ts` | overlay and font assets: names, dedup by content, size limits (25 MB, SVG 2 MB, fonts 15 MB), content checks, dropped names never used as paths, media protocol regex |
+| `tests/brandKit.test.ts` | `sanitizeBrandKit`, `applyBrandKit` (all parts, re-apply replaces intro/outro, fonts chosen by hand kept, clashing ids, missing files left out, one undo step), intro/outro times |
+| `tests/brandKitMain.test.ts` | the kit on disk: adding checked files, saving removes unused files, copying into a project, new recordings with and without *Apply to new recordings* |
+| `tests/overlayMultiSelect.test.ts` | images in a group: track and words, Images section and Mixed, one opacity for all as one undo step, size keeps shape, copy/paste look, move/length/delete, clipboard rules, brand mark dropped on paste |
+
+End to end, `tests/e2e/brand-kit.e2e.cjs` (6 tests): preview vs export pixels for a rotated PNG and
+a GIF (four GIF frames, frame-exact), a brand font in captions (same layout in preview and export,
+different from the default font, one undo), Apply brand kit (preview vs export of logo and intro, one
+`Ctrl+Z` restores the project exactly, redo), drop and paste (SVG with `<script>` and `onload` drawn,
+never run; dragging the box moves it as one undo step; Delete), images in a multi-select group (one
+opacity, one undo) and real `Ctrl+V` (copied items vs a newer clipboard image), Settings › Brand kit.
+The test font is a printable-ASCII subset of DejaVu Sans Mono (`tests/fixtures/fonts`, license beside it).
+
+## Verification (final state of the branch)
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | passes |
+| `npx vitest run --testTimeout=60000` | **210 files, 2,912 tests passed.** Two earlier full runs failed one test, `groupMove.test.ts › G-PERF` (a 250 ms wall-clock limit; 300 ms here under full parallel load). The base branch fails it the same way in this container (322 ms), and benchmarking `moveGroup` alone shows no difference between this branch and the base (medians 79–83 ms vs 79–84 ms). The test was not changed. |
+| `npm run build` | passes |
+| e2e group `brand-kit style-pack titles shapes captions export editor` (13 files by name match) | 12/13 files passed; both failures were in `editor.e2e` and caused by this branch (Padding below the fold, the `Image` selector). After the fixes `editor`, `audit-editor` and `brand-kit`: 3/3 files, 22 tests passed. |
+| full e2e `npm run test:e2e` (53 files) | **51/53 files, 233 tests passed, 2 failed**: `ui.e2e` (the rail at the minimum window, caused by the Images tab; fixed) and `audio-pack` (a Chromium recording's mic stem 20 ms ahead of the mixed sound, recording code this branch does not touch). Re-run once after the fix: `ui.e2e` and `audio-pack` 2/2 files passed (the stem was aligned exactly). The speech sidecar was built (`npm run build:speech-host`) and the test model fetched for `bangla-captions` and `offline-captions`, which passed. |
+
+Screenshots: `docs/screenshots/brand-kit-{applied,settings,images-panel,overlays-editor,overlays-export,group,font-picker}.png` (all under 130 KB).
