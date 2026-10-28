@@ -1,0 +1,110 @@
+/* The apps' safe zones over the preview (SafeZoneOverlay.tsx, docs/design/vertical-video.md §2.8, §7).
+   DOM over the canvas, under the preview's handles; never drawn on a canvas. */
+
+.safe-zones {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.safe-zones-paint {
+  position: absolute;
+  inset: 0;
+}
+
+/* The union of the covered areas: one even shade, a 135° hatch and a 1 px dashed edge (3:1 and
+   more on light and dark video). */
+.safe-zones-shade {
+  fill: var(--scrim);
+}
+
+.safe-zones-hatch line {
+  stroke: color-mix(in srgb, var(--warning) 28%, transparent);
+  stroke-width: 1.5;
+}
+
+.safe-zones-edge {
+  stroke: var(--warning);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  shape-rendering: crispEdges;
+}
+
+/* One element per box (an app's three, or the nine of All three); the paint is the union above. */
+.safe-zone-box {
+  position: absolute;
+}
+
+/* Labels: --text-1 on --surface-overlay (above 15:1), inside the area they name. */
+.safe-zone-label {
+  position: absolute;
+  display: flex;
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.safe-zone-label[data-side='top'] {
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.safe-zone-label[data-side='bottom'] {
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.safe-zone-label[data-side='right'] {
+  align-items: center;
+  justify-content: center;
+}
+
+.safe-zone-chip {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  color: var(--text-1);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* The button column is narrow: its label runs down it. */
+.safe-zone-label[data-side='right'] .safe-zone-chip {
+  writing-mode: vertical-rl;
+  padding: 7px 2px;
+}
+
+/* ---------- The transport's toggle and app menu, and the legend under the preview ---------- */
+
+.safe-zones-control {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.safe-zones-control .btn[aria-pressed='true'] {
+  color: var(--accent-text);
+  border-color: var(--accent-500);
+  background-color: var(--accent-softer);
+}
+
+.safe-zones-control select {
+  height: var(--control-sm);
+  font-size: var(--text-sm);
+  color: var(--text-1);
+}
+
+.safe-zones-legend {
+  margin: 0;
+  padding: 0 var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
