@@ -2,6 +2,7 @@
  * What the editor says about selecting several items and acting on them (E-06,
  * docs/design/multi-select.md §5.6). Pure, so the wording is tested in one place.
  */
+import { commandInfo } from './commands'
 import type { StopReason } from './groupMove'
 import { groupLabel, type ItemKey } from './multiSelect'
 
@@ -55,4 +56,18 @@ export function selectAllNotice(scope: 'track' | 'all' | 'none', keys: readonly 
 /** "Deleted 5 items" / "Cut 5 items", with the undo hint. */
 export function removedNotice(verb: 'Deleted' | 'Cut', n: number, undo: string): string {
   return `${verb} ${n} item${n === 1 ? '' : 's'}${undo}`
+}
+
+/**
+ * Why there is no look to paste (Paste look's disabled reason and the notice), naming the key that
+ * copies one: `copyKey` is its label from the user's keymap ("Ctrl + Shift + C"), null when the
+ * command has none, and then the item's Copy look button is named instead.
+ */
+export function copyLookFirst(copyKey: string | null): string {
+  return copyKey ? `Copy a look first: select one item and press ${copyKey}` : 'Copy a look first: select one item and press its Copy look button'
+}
+
+/** Ctrl+V with nothing copied: `copyKey` is the label of the key that copies items, null when there is none (then the palette command is named). */
+export function nothingCopiedNotice(copyKey: string | null): string {
+  return copyKey ? `Nothing copied yet: select items and press ${copyKey}` : `Nothing copied yet: select items and run "${commandInfo('copyItems').title}" from the command palette`
 }

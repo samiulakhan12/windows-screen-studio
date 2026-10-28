@@ -287,7 +287,7 @@ without a modifier returns false, and today's double-click add, clear and scrub 
      - Blocks are found by `[data-zoom], [data-annotation], [data-shape], [data-spotlight], [data-title], [data-chapter], [data-freeze]`.
      - The pieces of one continue freeze (`FreezeMarks.tsx:165-186`) are merged by key.
    - Content-relative rectangles do not change when the timeline scrolls, so they are never read
-     again during the box.
+     again during the box. The wheel cannot zoom or scroll the timeline meanwhile (Limits).
 3. On each move, the pointer is mapped into `.tl-content` coordinates and the box is the
    rectangle from the press point to the pointer.
    - Hits: `rectsHit(rects, box)` gives every key whose rectangle **intersects** the box. Touching
@@ -303,6 +303,10 @@ without a modifier returns false, and today's double-click add, clear and scrub 
 **Limits.**
 - Only what is on screen can be boxed: the timeline does not scroll during drags
   (`Timeline.tsx:208`, snapping.md D18).
+- While a box is drawn, or a press the controller took is held (a group click or drag),
+  `multi.busy()` is true and the timeline's wheel handler does nothing: Ctrl+wheel does not zoom
+  and the wheel does not scroll. Otherwise the stored rectangles, and a group drag's pixels-to-
+  seconds scale, would no longer match the blocks.
 - The box may extend over the clip row (for freezes) and the ruler. Blocks of captions, layouts,
   clips and clicks are never hit.
 - Hidden layout and caption tracks are not hit either, since their blocks are not groupable.
@@ -403,10 +407,12 @@ Rows of members get `.active` and `aria-pressed="true"`.
 A toggle from a list row does **not** open the Selection view (`selectKeys(…, { reveal: false })`),
 so focus stays on the row and the next row can be toggled.
 
-**Where the lists show.** These lists are on screen while nothing or a group is selected. That is
-true of every list in group mode, because `selection === null` there. They are not shown while a
-single text item or title card is selected: `TextPanel` then returns the single editor
-(`TextPanel.tsx:42-43`). The shapes list stays visible below a selected shape.
+**Where the lists show.** These lists are always on screen in their tabs: in group mode
+(`selection === null`), and below a single selected item's editor. The selected text item, title
+card or chapter's editor goes above the lists, as a selected shape's does in the Shapes tab, and
+the list's row of the single selected item is marked as pressed. Each list keeps its place in the
+panel, so the first Ctrl+click or Ctrl+Space on a row (which leaves one item selected, and opens
+its editor above) keeps the row and its focus, and the next row can be toggled.
 
 **The keyboard path to any subset** therefore does not depend on these lists:
 1. `Ctrl+A` selects the track (or everything).
@@ -511,7 +517,8 @@ data still moves.
   `groupReveal` counter changes.
   - The counter goes up on each `selectKeys(keys, anchor)` that leaves 2 or more items, unless
     the call passes `{ reveal: false }`.
-  - Inspector list rows and the Selection view's own buttons pass `{ reveal: false }`.
+  - Inspector list rows and the Selection view's own buttons pass `{ reveal: false }`. The view's
+    buttons that leave one item (Leave out, or "Only text (1)") reveal it instead (item 3).
   - Timeline clicks, boxes, the preview, Ctrl+A, paste and duplicate reveal.
 - Clicking any tab sets it false and shows that tab; the group stays.
 - The view renders only while a group exists, so it disappears with the group.
@@ -522,7 +529,9 @@ data still moves.
 1. **Header.** `<Section title="5 items selected">` with `role="status" aria-live="polite"`.
    - A summary line, for example "3 zooms · 2 text items", and the span "0:12.4 – 1:45.0".
    - One narrowing button per kind present: "Only zooms (3)", "Only text (2)", and so on. Each
-     selects only those items (tooltip "Select only the zooms").
+     selects only those items (tooltip "Select only the zooms"). Two or more stay in the view; a
+     button for one item gives the single selection, revealed as Leave out does (item 3), with
+     the keyboard on that item's tab button (§5.2).
 2. **Actions** (each tooltip carries its shortcut through `withShortcut(text, commandKeys(keymap, id))`):
    - Duplicate (`Ctrl+D`);
    - Copy (`Ctrl+C`);
@@ -710,7 +719,10 @@ items · Ctrl+Z to undo".
   - "Pasted 6 items at 0:52.0 (moved back so they fit)" when `P` was clamped;
   - "Pasted 4 of 6: 1 zoom is already there, 1 freeze frame is in a cut";
   - "… · 1 zoom was shortened to fit".
-- **Empty clipboard:** "Nothing copied yet: select items and press Ctrl+C".
+- **Empty clipboard:** "Nothing copied yet: select items and press Ctrl+C", naming the key that
+  copies items for this user (`commandKeys`). When another command has taken Ctrl+C and Copy has
+  no key, it reads 'Nothing copied yet: select items and run "Copy selected items" from the
+  command palette' (`nothingCopiedNotice`).
 - **Another project in the same window:** works. Positions are normalised, so text and shapes
   land in the same place. Freezes are skipped (they hold a frame of their own recording).
 
@@ -746,7 +758,9 @@ It leaves the item clipboard untouched.
   - "… · 2 items are not shapes, left as they were";
   - "Nothing to paste the box look onto";
   - "Already has this look" (the same project comes back, so no undo step).
-- With no look held: "Copy a look first: select one item and press Ctrl+Shift+C".
+- With no look held: "Copy a look first: select one item and press Ctrl+Shift+C", naming the
+  user's key for Copy look; without one: "… select one item and press its Copy look button"
+  (`copyLookFirst`). The notice and the Selection view's disabled Paste look say the same.
 
 **Look buttons (`LookButtons`)** go in the single-item sections: SelectedZoom, SelectedText,
 SelectedTitle, SelectedShape, SelectedSpotlight and the freeze section.
@@ -832,8 +846,12 @@ It has `aria-pressed` reflecting `showGroup`, title "Selection (5 items)", and t
 
 **Body.** As §4.9.
 
-**Focus.** After Delete or Cut from the panel, focus moves to the open tab's rail button. The
-Selection button disappears, and this keeps focus from being lost.
+**Focus.** A change that takes away the view or rail button holding the keyboard puts focus on
+the open tab's rail button (`keepInspectorFocus`, `inspectorFocus.ts`): Delete or Ctrl+X with focus in
+the Selection view (the key or its Delete button), Esc there, Ctrl+A or a list's "Select all" /
+"Select them" from a list (the Selection view then opens, and its Selection button has the
+keyboard), and a narrowing button or Leave out that leaves one item (that item's tab button).
+Focus that stays on a control, or that was outside the Inspector, is left alone.
 
 ### 5.3 Preview
 
@@ -873,7 +891,7 @@ Every notice goes through `showNotice` into the Transport's polite live region
   - "Deleted 5 items · Ctrl+Z to undo" / "Cut 5 items · Ctrl+Z to undo"
   - "Copied 4 items" / "Select items to copy"
   - "Pasted 6 items" / "Pasted 6 items at 0:52.0 (moved back so they fit)" / "Pasted 4 of 6: 1 zoom is already there, 1 freeze frame is in a cut"
-  - "Nothing copied yet: select items and press Ctrl+C"
+  - "Nothing copied yet: select items and press Ctrl+C" (the user's key, §4.11)
   - "Duplicated 3 items"
 - **Looks:**
   - "Copied the box look" / "Select one item to copy its look"
@@ -1194,6 +1212,8 @@ export const DUPLICATE_MIN_OFFSET = 1
     /** First line of an empty-space handler: true when Shift or Ctrl started a box (or a modifier click that does nothing). */
     background(e: ReactPointerEvent, track: ItemTrack | null): boolean
     lastTrack(): ItemTrack | null
+    /** True while a box is drawn or a press it took is held: the timeline's wheel waits (§4.3). */
+    busy(): boolean
   }
   export function useMultiSelect(deps: { snap: SnapController; pxRef: RefObject<number>; dragging: MutableRefObject<boolean>; contentRef: RefObject<HTMLDivElement>; boxRef: RefObject<HTMLDivElement> }): MultiSelect
   ```
@@ -1210,6 +1230,8 @@ export const DUPLICATE_MIN_OFFSET = 1
 - **`editor/panels/SelectionPanel.tsx`**:
   `export function SelectionPanel(props: InspectorProps & { onCommand: (id: CommandId) => void }): JSX.Element`.
   Its buttons run the same command handlers as the keys, so each action has one implementation.
+- **`editor/inspectorFocus.ts`**: `export function keepInspectorFocus(): void`, called just
+  before a change that can take away the Inspector view holding the keyboard (§5.2).
 - **`editor/multiSelect.css`**: `.in-group`, `.anchor`, `.tl-marquee`, `.tl-selcount`,
   `.group-outline`, `.mixed`, and the Selection panel's rules.
 
@@ -1241,6 +1263,7 @@ Insertions only. Every edit is a guard line, a prop or a class.
   - `multi={multi}` on the three track slots (`Timeline.tsx:794-796`) and on `<FreezeMarks>` (`Timeline.tsx:656`);
   - `<div className="tl-marquee" ref={boxRef} hidden />` next to `<SnapGuide>` (`Timeline.tsx:798`);
   - the count chip in `.tl-head` (`Timeline.tsx:560`) and the hint text (`Timeline.tsx:557-559`);
+  - `if (multi.busy())` at the top of the wheel handler: no zoom or scroll during a box or group press (§4.3);
   - the clip-block, gap, waveform and click-marker render bodies are untouched.
 - **`LayoutTrack.tsx`**:
   - `TrackSlotProps.multi?: MultiSelect` (`LayoutTrack.tsx:21-36`);
@@ -1272,6 +1295,7 @@ Insertions only. Every edit is a guard line, a prop or a class.
   - the Ctrl/Meta early return in `AnnotationHandle.onDown` and the `ShapeEditor` drag start.
 - **Panels** (one line per spot):
   - **TextPanel:**
+    - the lists render below a selected text item or title card, each in its place (§4.7);
     - the text list rows (81-101);
     - the title list (161-182);
     - the chapter time buttons (382-395);
@@ -1292,7 +1316,7 @@ Insertions only. Every edit is a guard line, a prop or a class.
   - the `GroupContext` provider around the editor body;
   - the group branches of `deleteSelection`, `setZoomLevelKey` and `toggleFreezeSound` (481-492, 532, 565-587);
   - the seven handlers in `commands`, a `Record<CommandId, …>` that the compiler requires (701-901);
-  - the standard keys in `onKeyDown` (1041);
+  - the standard keys in `onKeyDown` (1041), and `keepInspectorFocus` before Esc clears;
   - palette `unavailable` entries and `commandKeys` for its shortcuts (922-974);
   - `onCommand` and `groupReveal` on `<Inspector>` (1171).
 - **`README.md`**: §6.
@@ -1500,6 +1524,10 @@ scenario 9.
    - the Selection view shows "3 items selected" with sections "Zooms (2)" and "Text (1)".
    - Ctrl+click a1 again → 2.
    - Esc → none, and the chip is hidden.
+   - With z1, z2 and a1 selected again: Space twice (play, pause), a click on the ruler, `=` and
+     `-` (timeline zoom), and a click on the Style tab each leave "3 selected" (risk 1).
+   - From the Selection button, focus "Only text (1)" and press Enter → a1 alone, the Text tab
+     edits it, and the keyboard is on the Text tab's rail button.
 2. **Shift+click run:** click s1, Shift+click s3 → s1, s2, s3 selected (one track, by start).
 3. **Group drag:** select z1, a1 and h1; drag z1's middle by +1 s of pixels.
    - Once saved, all three moved by the same delta (equal within 1e-9), and that delta is
@@ -1521,6 +1549,7 @@ scenario 9.
    - captions, clips and clicks are never included;
    - `.tl-marquee` is hidden after release;
    - Ctrl+drag a second box over t1 adds t1 → 7;
+   - Ctrl+wheel while a Ctrl+box is held does not change the timeline's scale;
    - a Shift+click without moving on empty space keeps the selection and does not move the playhead;
    - Esc during a box restores the previous selection.
 7. **Ctrl+A and Delete:**
@@ -1552,13 +1581,25 @@ scenario 9.
     - Ctrl+click on empty preview → the player is still paused;
     - a plain click on a1's outline → a single selection with `.annotation-handle`.
 13. **Crop:** with a crop applied, the group zoom level 2× → each selected block's `data-scale` is 2.
-14. **Keyboard only**, in a fresh launch with no timeline press:
-    - palette "Open Text settings", then Ctrl+A → a1 and a2 selected, and the Selection view is open;
+    The same launch stores the user's keys with Ctrl+C on Copy look: with z1 and z3 selected,
+    the Selection view's disabled Paste look says "… press Ctrl + C", and Ctrl+V with nothing
+    copied names the palette's "Copy selected items".
+14. **Keyboard only**, in a fresh launch with no timeline press. Every control is reached with
+    Tab or Shift+Tab presses (checked against `document.activeElement`), never focused by the
+    test:
+    - palette "Open Text settings"; with nothing selected, Tab to a1's row, Ctrl+Space → a1's
+      editor opens above the list and focus stays on the row; Tab → a2's row, Ctrl+Space → 2
+      selected, focus still on the row, and no Selection view; Esc;
+    - Ctrl+A → a1 and a2 selected, the Selection view is open, and its rail button has the keyboard;
     - Ctrl+A again → every item (11);
     - Tab to "Leave out" on z1's row, Enter → 10, and focus is on the next row's button;
-    - open the Shapes tab from the rail with the keyboard, Tab to s1's row, Ctrl+Space → s1 left
+    - Shift+Tab to the Shapes tab on the rail, Enter, Tab to s1's row, Ctrl+Space → s1 left
       out (9), and focus stays on the row;
-    - Delete → 9 items gone; one Ctrl+Z → back; Esc → none. All without the mouse.
+    - Delete → 9 items gone; one Ctrl+Z → back; Esc → none;
+    - Ctrl+A → the 3 shapes; Tab to "+1 s" in the Selection view, Ctrl+X → cut, and the keyboard
+      is on the Shapes tab's rail button; one Ctrl+Z;
+    - Tab to the list's "Select all", Enter → 3 selected with the keyboard on the Selection
+      button; Esc → none, and the keyboard is on the Shapes tab's button. All without the mouse.
 15. **Refusal:**
     - with 3 items selected, Ctrl+click a clip block → the notice "Clips and cuts are selected one
       at a time", and still 3 selected;
@@ -1604,7 +1645,8 @@ As editing-wins.md §5:
 1. **Two selection states drift apart.** Only two writers exist (`setSelection`, `selectKeys`),
    and the invariants live in the pure reducer. `validGroup` runs on every render. Every older
    `setSelection` call clears the group through the changed callback, so no call site is missed.
-   - E2e checks that the group survives playback, ruler scrubbing, timeline zoom and tab switches.
+   - E2e checks that the group survives playback, a click on the ruler, the timeline zoom keys and
+     a tab switch (§10.2 scenario 1).
    - Audit every `onSelect` and `setSelection` in an effect: `playheadItems`, `freezeItems`,
      `titleItems`, the panels. An effect calling them would clear a group unexpectedly.
 2. **Electron's default menu.** `src/main` sets no `Menu`, so its Edit roles carry Ctrl+A/C/X/V.
@@ -1734,6 +1776,15 @@ Built on `feat/multi-select` in the order of §13 (screenshot: `docs/screenshots
 - **A text block's tooltip stays its text**, without the " · Ctrl+click to select several" hint
   (§5.1): `editor.e2e` reads it as the item's text, and existing tests are not changed. The other
   blocks carry the hint.
+- **The Text tab's lists stay below a selected text item or title card** (§4.7). The first build
+  showed only the single editor there, so the first Ctrl+click or Ctrl+Space on a row from an
+  empty selection replaced the list, and the next row could not be toggled.
+- **Focus** (§5.2) moved from the Selection view's Delete button into `keepInspectorFocus`, called
+  by the commands (Delete, Ctrl+X, Esc, Ctrl+A), the lists' "Select all" and the narrowing
+  buttons; "Only <kind> (1)" now reveals its item, as Leave out does.
+- **The wheel waits for a box or group press** (`MultiSelect.busy()`, §4.3).
+- **Clipboard hints follow the keymap** (`copyLookFirst`, `nothingCopiedNotice` in
+  `multiSelectCopy.ts`): they named Ctrl+Shift+C and Ctrl+C even when the user had moved them.
 - **A freeze's extent is its frame** (C25, §4.11, C9). The first build ended a freeze at
   `at + length`, so a hold near the end or before a cut moved pastes and duplicates back, refused
   them, or added a hold in the middle of the video.

@@ -308,6 +308,11 @@ export const Timeline = memo(
       const el = scrollerRef.current
       if (!el) return
       const onWheel = (e: WheelEvent): void => {
+        // E-06: not while a box is drawn or a group is dragged (they read the blocks at this scale and scroll).
+        if (multi.busy()) {
+          e.preventDefault()
+          return
+        }
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault()
           const r = el.getBoundingClientRect()
@@ -320,7 +325,7 @@ export const Timeline = memo(
       }
       el.addEventListener('wheel', onWheel, { passive: false })
       return () => el.removeEventListener('wheel', onWheel)
-    }, [setScale])
+    }, [setScale, multi])
 
     /* ---------- pointer helpers ---------- */
 

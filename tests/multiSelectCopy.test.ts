@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GROUP_KINDS, itemKey, type ItemKey } from '../src/shared/editor/multiSelect'
-import { movedNotice, REFUSAL_TEXT, removedNotice, selectAllNotice, stopNotice } from '../src/shared/editor/multiSelectCopy'
+import { copyLookFirst, movedNotice, nothingCopiedNotice, REFUSAL_TEXT, removedNotice, selectAllNotice, stopNotice } from '../src/shared/editor/multiSelectCopy'
 
 /* What the editor says about groups (docs/design/multi-select.md §5.6), and the selection's single-item keys (§4.1, M1). */
 
@@ -64,5 +64,11 @@ describe('notices', () => {
   it('delete and cut count the items, with the undo hint', () => {
     expect(removedNotice('Deleted', 5, ' · Ctrl + Z to undo')).toBe('Deleted 5 items · Ctrl + Z to undo')
     expect(removedNotice('Cut', 1, '')).toBe('Cut 1 item')
+  })
+  it('the hints for an empty clipboard name the user\'s key, or a way without one', () => {
+    expect(copyLookFirst('Alt + C')).toBe('Copy a look first: select one item and press Alt + C')
+    expect(copyLookFirst(null)).toBe('Copy a look first: select one item and press its Copy look button')
+    expect(nothingCopiedNotice('Ctrl + C')).toBe('Nothing copied yet: select items and press Ctrl + C')
+    expect(nothingCopiedNotice(null)).toBe('Nothing copied yet: select items and run "Copy selected items" from the command palette')
   })
 })

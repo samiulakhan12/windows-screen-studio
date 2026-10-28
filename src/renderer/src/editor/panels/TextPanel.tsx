@@ -42,14 +42,16 @@ export function TextPanel(props: InspectorProps): JSX.Element {
   const card = selection?.kind === 'title' ? ((project.titles ?? []).find((c) => c.id === selection.id) ?? null) : null
   const chapter = selection?.kind === 'chapter' ? ((project.chapters ?? []).find((c) => c.id === selection.id) ?? null) : null
 
-  if (ann) return <SelectedText {...props} />
-  if (card) return <SelectedTitle project={project} card={card} onSelect={props.onSelect} />
-
+  // The lists stay below a selected item, each in the same place (E-06, multi-select.md §4.7): a
+  // Ctrl+click or Ctrl+Space on a row that leaves one item selected keeps the row, and its focus,
+  // so the next row can be added.
   return (
     <>
+      {ann && <SelectedText {...props} />}
+      {card && <SelectedTitle project={project} card={card} onSelect={props.onSelect} />}
       {chapter && <SelectedChapter project={project} chapter={chapter} onSelect={props.onSelect} />}
-      <TextSection {...props} />
-      <TitlesSection project={project} onSelect={props.onSelect} />
+      <TextSection {...props} selectedId={ann?.id ?? null} />
+      <TitlesSection project={project} selectedId={card?.id ?? null} onSelect={props.onSelect} />
       <ChaptersSection project={project} selectedId={chapter?.id ?? null} onSelect={props.onSelect} onNotice={props.onNotice} />
     </>
   )
@@ -67,7 +69,7 @@ function PressOr({ accelerators }: { accelerators: readonly string[] }): JSX.Ele
 
 /* ---------- text annotations ---------- */
 
-function TextSection(props: InspectorProps): JSX.Element {
+function TextSection({ selectedId, ...props }: InspectorProps & { selectedId: string | null }): JSX.Element {
   const { player } = useEditor()
   const keymap = useKeymap()
   const list = useListSelect()
@@ -92,11 +94,15 @@ function TextSection(props: InspectorProps): JSX.Element {
                 <li key={a.id}>
                   <button
                     data-text-item={a.id}
-                    className={list.member(itemKey('annotation', a.id)) ? 'active' : ''}
-                    {...list.row(itemKey('annotation', a.id), () => {
-                      props.onSelect({ kind: 'annotation', id: a.id })
-                      player.seek(a.start + Math.min(0.5, (a.end - a.start) / 2))
-                    })}
+                    className={selectedId === a.id || list.member(itemKey('annotation', a.id)) ? 'active' : ''}
+                    {...list.row(
+                      itemKey('annotation', a.id),
+                      () => {
+                        props.onSelect({ kind: 'annotation', id: a.id })
+                        player.seek(a.start + Math.min(0.5, (a.end - a.start) / 2))
+                      },
+                      selectedId === a.id
+                    )}
                   >
                     <span className="muted">{formatTime(a.start, false)}</span> {a.text || 'Text'}
                   </button>
@@ -151,7 +157,7 @@ function SelectedText(props: InspectorProps): JSX.Element {
 
 /* ---------- title cards ---------- */
 
-function TitlesSection({ project, onSelect }: { project: Project; onSelect: (sel: Selection) => void }): JSX.Element {
+function TitlesSection({ project, selectedId, onSelect }: { project: Project; selectedId: string | null; onSelect: (sel: Selection) => void }): JSX.Element {
   const services = useEditor()
   const keymap = useKeymap()
   const list = useListSelect()
@@ -178,11 +184,15 @@ function TitlesSection({ project, onSelect }: { project: Project; onSelect: (sel
               <li key={c.id}>
                 <button
                   data-title-item={c.id}
-                  className={list.member(itemKey('title', c.id)) ? 'active' : ''}
-                  {...list.row(itemKey('title', c.id), () => {
-                    onSelect({ kind: 'title', id: c.id })
-                    showTitle(services.player, project.clips, c)
-                  })}
+                  className={selectedId === c.id || list.member(itemKey('title', c.id)) ? 'active' : ''}
+                  {...list.row(
+                    itemKey('title', c.id),
+                    () => {
+                      onSelect({ kind: 'title', id: c.id })
+                      showTitle(services.player, project.clips, c)
+                    },
+                    selectedId === c.id
+                  )}
                 >
                   <TitleStyleIcon style={c.style} size={15} />
                   <span>{c.title.trim() || c.subtitle?.trim() || 'Title'}</span>

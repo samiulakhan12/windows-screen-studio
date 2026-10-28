@@ -10,8 +10,8 @@ const f = require('./editor-fixtures.cjs')
 
 const GUTTER = 10 // .tl-content padding (Timeline.tsx GUTTER)
 
-/** Seeds a project, applies `patch` to its project.json, launches the app and opens it (as snapping.e2e.cjs). */
-async function openSeeded(ctx, tag, opts, patch = {}, { snapping = false } = {}) {
+/** Seeds a project, applies `patch` to its project.json, launches the app and opens it (as snapping.e2e.cjs); `shortcuts` is stored as the user's keys first. */
+async function openSeeded(ctx, tag, opts, patch = {}, { snapping = false, shortcuts = null } = {}) {
   const home = h.tempHome(tag)
   const id = f.seedProject(home, opts)
   const file = path.join(h.projectsRoot(home), id, 'project.json')
@@ -22,6 +22,7 @@ async function openSeeded(ctx, tag, opts, patch = {}, { snapping = false } = {})
   await win.waitForSelector('.home', { timeout: 30000 })
   // Snapping is off unless a scenario is about it (snapping.md §10).
   await win.evaluate((on) => localStorage.setItem('editor-snapping', on ? '1' : '0'), snapping)
+  if (shortcuts) await win.evaluate((value) => window.api.setPref('shortcuts', value), shortcuts)
   await f.openProject(win, opts.name)
   return { home, id, win }
 }
@@ -95,6 +96,32 @@ const waitNotice = (win, text, what) => f.waitFor(async () => (await notice(win)
 const waitCount = (win, n, what) => f.waitFor(async () => (n === null ? (await count(win)) === null : (await count(win)) === `${n} selected`), what)
 
 const ctrlClick = (win, selector) => win.click(selector, { modifiers: ['Control'] })
+const pxOf = (win) => win.$eval('.tl-content', (el) => Number(el.dataset.pxPerSec))
+const playing = (win) => win.$eval('.transport button[data-playing]', (b) => b.dataset.playing)
+
+/** Whether the focused element matches `selector` (and, with `text`, has that text). */
+const focusIs = (win, selector, text = null) =>
+  win.evaluate(([sel, t]) => {
+    const el = document.activeElement
+    return !!el && el !== document.body && el.matches(sel) && (t === null || el.textContent.trim() === t)
+  }, [selector, text])
+
+/** Presses Tab (Shift+Tab with `back`) until the focused element matches: the keyboard-only path reaches it. */
+async function tabTo(win, selector, { text = null, back = false, max = 160 } = {}) {
+  for (let i = 0; i < max; i++) {
+    if (await focusIs(win, selector, text)) return
+    await win.keyboard.press(back ? 'Shift+Tab' : 'Tab')
+  }
+  throw new Error(`${back ? 'Shift+Tab' : 'Tab'} never reached ${selector}${text ? ` "${text}"` : ''}`)
+}
+
+/** Waits until the keyboard is on the open tab's rail button, `title` (the Selection button when it is "selection"). */
+const waitTabFocus = (win, title, what) =>
+  f.waitFor(
+    () => (title === 'selection' ? focusIs(win, '.insp-tabs [data-testid="selection-tab"].active') : focusIs(win, `.insp-tabs button.active[title="${title}"]`)),
+    `${what}: the keyboard is on the ${title} rail button`,
+    3000
+  )
 
 /** A click at a point with a modifier held (mouse.click has no modifiers option). */
 async function modClick(win, x, y, key) {
@@ -154,6 +181,42 @@ async function main() {
     await win.keyboard.press('Escape')
     await waitCount(win, null, 'Esc clears the chip')
     h.assert((await members(win)).length === 0, 'Esc clears the group')
+
+    // Risk 1: the group survives playback, a click on the ruler, the timeline zoom keys and a tab switch.
+    await win.click('[data-zoom="z1"]')
+    await ctrlClick(win, '[data-zoom="z2"]')
+    await ctrlClick(win, '[data-annotation="a1"]')
+    await waitCount(win, 3, 'z1, z2 and a1 again')
+    await win.keyboard.press('Space')
+    await f.waitFor(async () => (await playing(win)) === 'true', 'Space plays')
+    await h.sleep(300)
+    await win.keyboard.press('Space')
+    await f.waitFor(async () => (await playing(win)) === 'false', 'Space pauses')
+    await waitCount(win, 3, 'the group survives playback')
+    const ruler1 = await rectOf(win, '.tl-ruler')
+    await win.mouse.click(await xForTime(win, 10.5), ruler1.y + ruler1.h / 2)
+    await h.sleep(200)
+    await waitCount(win, 3, 'the group survives a click on the ruler')
+    await win.keyboard.press('=')
+    await f.waitFor(async () => (await pxOf(win)) > px * 1.05, 'the timeline zooms in')
+    await waitCount(win, 3, 'the group survives the timeline zooming in')
+    await win.keyboard.press('-')
+    await f.waitFor(async () => Math.abs((await pxOf(win)) - px) < px * 0.01, 'and back out')
+    await waitCount(win, 3, 'the group survives the timeline zooming out')
+    await win.click('.insp-tabs button[title="Style"]')
+    await win.waitForSelector('.insp-body[data-tab="style"]')
+    await waitCount(win, 3, 'the group survives a tab switch')
+    await win.click('[data-testid="selection-tab"]')
+    await win.waitForSelector('[data-testid="selection-panel"]')
+    // "Only text (1)" from the keyboard: a1 alone, edited in the Text tab, with the keyboard on that tab's rail button.
+    await win.focus('[data-testid="selection-panel"] button:has-text("Only text (1)")')
+    await win.keyboard.press('Enter')
+    await waitCount(win, null, 'one item is left')
+    await win.waitForSelector('.text-seg.selected[data-annotation="a1"]')
+    await win.waitForSelector('.insp-body[data-tab="text"] .text-field')
+    h.assert((await win.$eval('.insp-body .text-field', (e) => e.value)) === 'First', 'the Text tab edits a1')
+    await waitTabFocus(win, 'Text', 'Only text (1)')
+    await win.keyboard.press('Escape')
 
     // 2. Shift+click: a run on one track, by start (the three shapes sit in three lanes).
     await win.click('[data-shape="s1"]')
@@ -270,6 +333,17 @@ async function main() {
     await release(win)
     await win.keyboard.up('Control')
     await waitCount(win, 7, 'Ctrl+box adds t1')
+    // The wheel neither zooms nor scrolls the timeline while a box is drawn: the box reads the blocks once (§4.3).
+    const pxBox = await pxOf(win)
+    await win.keyboard.down('Control')
+    await dragHold(win, { x: await xForTime(win, 17.6), y: titleLane.y + titleLane.h / 2 }, { x: await xForTime(win, 18.6), y: titleLane.y + titleLane.h / 2 + 2 })
+    await win.mouse.wheel(0, -400)
+    await h.sleep(250)
+    const pxWheel = await pxOf(win)
+    await release(win)
+    await win.keyboard.up('Control')
+    h.assert(pxWheel === pxBox, `Ctrl+wheel during a box does not zoom the timeline (${pxBox} -> ${pxWheel})`)
+    await waitCount(win, 7, 'the empty box adds nothing')
     // A Shift+click without moving on empty space keeps the selection and the playhead.
     const ph = await playheadTime(win)
     await modClick(win, await xForTime(win, 9), zoomTrack.y + zoomTrack.h / 2, 'Shift')
@@ -462,7 +536,9 @@ async function main() {
       { id: 'z2', start: 4, end: 5, scale: 3, focus: { mode: 'region', x: 0.3, y: 0.3, w: 0.25, h: 0.25 }, auto: true },
       { id: 'z3', start: 12, end: 14, scale: 1.25, focus: { mode: 'fixed', x: 0.4, y: 0.4 }, auto: false }
     ]
-    const { home, id, win } = await openSeeded(ctx, 'ms-crop', { ...SEED, name: 'CropTest', zooms }, { crop })
+    // The user gave Ctrl+C to Copy look (§4.12, §5.6): the hints follow the keymap.
+    const shortcuts = { version: 1, bindings: { copyLook: ['Ctrl+C'] } }
+    const { home, id, win } = await openSeeded(ctx, 'ms-crop', { ...SEED, name: 'CropTest', zooms }, { crop }, { shortcuts })
     // 13. With a crop, 2× on the group: every selected block's level (as seen) is 2.
     await win.click('[data-zoom="z1"]')
     await win.keyboard.press('Control+a')
@@ -475,6 +551,19 @@ async function main() {
     h.assert(p.crop && p.crop.x === 0.1, 'the crop is kept')
     await win.keyboard.press('Control+z')
     await saved(home, id, (q) => q.zooms.find((z) => z.id === 'z1').scale === 1.5 && q.zooms.find((z) => z.id === 'z2').auto, 'one undo')
+    await win.keyboard.press('Escape')
+
+    // With Ctrl+C on Copy look, Paste look names it, and Ctrl+V with nothing copied names the palette (Copy has no key left).
+    await win.click('[data-zoom="z1"]')
+    await ctrlClick(win, '[data-zoom="z3"]')
+    await waitCount(win, 2, 'z1 and z3')
+    await win.waitForSelector('[data-testid="selection-panel"]')
+    const pasteLook = await win.$eval('[data-testid="selection-panel"] button:has-text("Paste look")', (b) => ({ disabled: b.disabled, title: b.title }))
+    h.assert(pasteLook.disabled && pasteLook.title === 'Copy a look first: select one item and press Ctrl + C', `Paste look names the user's key (${JSON.stringify(pasteLook)})`)
+    await win.keyboard.press('Control+v')
+    await waitNotice(win, 'Nothing copied yet: select items and run "Copy selected items" from the command palette', 'Ctrl+V with nothing copied')
+    const errors = ctx.logs.filter((l) => l.includes('[pageerror]') || l.includes('[console.error]'))
+    h.assert(errors.length === 0, `no page errors: ${errors.join(' | ')}`)
   })
 
   await h.run('multi-select: the keyboard-only path', async (ctx) => {
@@ -485,23 +574,41 @@ async function main() {
     await win.keyboard.type('Open Text settings')
     await win.keyboard.press('Enter')
     await win.waitForSelector('.insp-body[data-tab="text"]')
+    // From nothing selected, Ctrl+Space on two rows of "Text in this video": the first row's item opens
+    // above the list, the list and the focus stay, and the next row joins it (§4.7).
+    await tabTo(win, '[data-text-item="a1"]')
+    await win.keyboard.press('Control+Space')
+    await win.waitForSelector('.insp-body[data-tab="text"] .text-field')
+    h.assert(await focusIs(win, '[data-text-item="a1"]'), 'focus stays on the first row')
+    h.assert((await win.$eval('[data-text-item="a1"]', (b) => b.getAttribute('aria-pressed'))) === 'true', 'the row shows it is selected')
+    await win.keyboard.press('Tab')
+    h.assert(await focusIs(win, '[data-text-item="a2"]'), 'Tab goes on to the next row')
+    await win.keyboard.press('Control+Space')
+    await waitCount(win, 2, 'Ctrl+Space on two rows selects both')
+    h.assert(JSON.stringify(await members(win)) === JSON.stringify(['annotation:a1', 'annotation:a2']), `both rows ${await members(win)}`)
+    h.assert(await focusIs(win, '[data-text-item="a2"]'), 'focus stays on the second row')
+    h.assert(!(await win.$('[data-testid="selection-panel"]')), 'a list toggle does not open the Selection view')
+    await win.keyboard.press('Escape')
+    await waitCount(win, null, 'Esc clears the two')
+    // Ctrl+A: the text items, with the Selection view open in place of the list and the keyboard on its rail button.
     await win.keyboard.press('Control+a')
     await waitCount(win, 2, 'Ctrl+A: the text items')
     h.assert(JSON.stringify(await members(win)) === JSON.stringify(['annotation:a1', 'annotation:a2']), `text items ${await members(win)}`)
     await win.waitForSelector('[data-testid="selection-panel"]')
+    await waitTabFocus(win, 'selection', 'Ctrl+A from a list row')
     await win.keyboard.press('Control+a')
     await waitCount(win, 11, 'Ctrl+A again: every item')
-    // Leave out z1 from the Selection view; the keyboard moves to the next row's button.
-    await win.focus('button[aria-label^="Leave out Zoom 2× at 0:01.0"]')
+    // Tab to Leave out z1 in the Selection view; the keyboard moves to the next row's button.
+    await tabTo(win, 'button[aria-label^="Leave out Zoom 2× at 0:01.0"]')
     await win.keyboard.press('Enter')
     await waitCount(win, 10, 'z1 left out')
     const focused = await win.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')
     h.assert(focused.startsWith('Leave out First at 0:01.0'), `focus on the next row (${focused})`)
-    // The Shapes tab from the rail, then Ctrl+Space on s1's row leaves it out; focus stays there.
-    await win.focus('.insp-tabs button[title="Shapes"]')
+    // Shift+Tab back to the Shapes tab on the rail, then Tab to s1's row: Ctrl+Space leaves it out; focus stays there.
+    await tabTo(win, '.insp-tabs button[title="Shapes"]', { back: true })
     await win.keyboard.press('Enter')
     await win.waitForSelector('[data-shape-item="s1"][aria-pressed="true"]')
-    await win.focus('[data-shape-item="s1"]')
+    await tabTo(win, '[data-shape-item="s1"]')
     await win.keyboard.press('Control+Space')
     await waitCount(win, 9, 's1 left out with Ctrl+Space')
     h.assert((await win.evaluate(() => document.activeElement?.dataset?.shapeItem)) === 's1', 'focus stays on the row')
@@ -514,6 +621,26 @@ async function main() {
     await saved(home, id, (p) => p.annotations.length === 2 && p.zooms.length === 3 && p.shapes.length === 3 && p.freezes.length === 1, 'one undo brings them back')
     await win.keyboard.press('Escape')
     await waitCount(win, null, 'Esc clears')
+    // Ctrl+X with the keyboard in the Selection view: the keyboard goes to the open tab's rail button (§5.2).
+    await win.keyboard.press('Control+a')
+    await waitCount(win, 3, 'Ctrl+A: the shapes')
+    await waitTabFocus(win, 'selection', 'Ctrl+A from the Shapes list')
+    await tabTo(win, 'button[aria-label="Move the selection 1 second later"]')
+    await win.keyboard.press('Control+x')
+    await saved(home, id, (p) => p.shapes.length === 0, 'Ctrl+X cuts the three shapes')
+    await waitTabFocus(win, 'Shapes', 'Ctrl+X in the Selection view')
+    await win.keyboard.press('Control+z')
+    await saved(home, id, (p) => p.shapes.length === 3, 'one undo brings them back')
+    // "Select all" in the list's header from the keyboard opens the Selection view with the keyboard on its
+    // button; Esc there goes back to the tab's button.
+    await tabTo(win, '.insp-body[data-tab="shapes"] button.link', { text: 'Select all' })
+    await win.keyboard.press('Enter')
+    await waitCount(win, 3, '"Select all" selects the shapes')
+    await win.waitForSelector('[data-testid="selection-panel"]')
+    await waitTabFocus(win, 'selection', '"Select all"')
+    await win.keyboard.press('Escape')
+    await waitCount(win, null, 'Esc clears the shapes')
+    await waitTabFocus(win, 'Shapes', 'Esc on the Selection button')
     const errors = ctx.logs.filter((l) => l.includes('[pageerror]') || l.includes('[console.error]'))
     h.assert(errors.length === 0, `no page errors: ${errors.join(' | ')}`)
   })

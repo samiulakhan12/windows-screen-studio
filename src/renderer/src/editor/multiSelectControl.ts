@@ -47,6 +47,12 @@ export interface MultiSelect {
   background(e: ReactPointerEvent, track: ItemTrack | null): boolean
   /** The track of the last press any of these saw (the clip track counts as freezes; captions and layouts as none). */
   lastTrack(): ItemTrack | null
+  /**
+   * True while a press this controller took is held (a box, or a group click or drag): the box reads
+   * the blocks' rectangles once and a group drag converts pixels at the scale it started with, so
+   * the timeline must not zoom or scroll until the button is released.
+   */
+  busy(): boolean
 }
 
 interface Deps {
@@ -136,6 +142,7 @@ function plainClick({ store, player }: EditorServices, key: ItemKey): void {
 
 function createMultiSelect(get: () => Current): MultiSelect {
   let last: ItemTrack | null = null
+  let held = false
   /** Each group drag's undo merge key is its own. */
   let drags = 0
 
@@ -191,6 +198,7 @@ function createMultiSelect(get: () => Current): MultiSelect {
     has: (key) => get().group.keys.has(key),
     isAnchor: (key) => get().group.group.anchor === key,
     lastTrack: () => last,
+    busy: () => held,
 
     press(e, key, mode) {
       const parsed = parseItemKey(key)
@@ -204,6 +212,7 @@ function createMultiSelect(get: () => Current): MultiSelect {
       if (!toggle && !extend && (!member || mode !== 'move')) return false
       take(e)
       d.dragging.current = true
+      held = true
       // What a drag moves: the group, with the pressed item added when it is not in it yet.
       const dragKeys = member ? [...d.group.group.keys] : unionKeys(baseKeys(d.group), [key])
       const session = d.snap.begin(e, { group: dragKeys })
@@ -221,6 +230,7 @@ function createMultiSelect(get: () => Current): MultiSelect {
         },
         () => {
           get().dragging.current = false
+          held = false
           if (drag) return drag.end()
           const now = get()
           const g = now.group
@@ -261,6 +271,7 @@ function createMultiSelect(get: () => Current): MultiSelect {
       const box = d.boxRef.current
       if (!content || !box) return true
       d.dragging.current = true
+      held = true
       const before = { keys: baseKeys(d.group), anchor: d.group.group.anchor ?? d.group.single, selection: d.selection }
       const base = toggle ? before.keys : []
       const c0 = content.getBoundingClientRect()
@@ -273,6 +284,7 @@ function createMultiSelect(get: () => Current): MultiSelect {
 
       const finish = (): void => {
         done = true
+        held = false
         box.hidden = true
         get().dragging.current = false
         window.removeEventListener('keydown', onKey, true)
@@ -296,7 +308,7 @@ function createMultiSelect(get: () => Current): MultiSelect {
           if (done) return
           if (!rects && Math.max(Math.abs(ev.clientX - e.clientX), Math.abs(ev.clientY - e.clientY)) <= SLOP) return
           if (!rects) {
-            // Read once: content-relative rectangles do not change while the timeline cannot scroll.
+            // Read once: content-relative rectangles do not change while the timeline cannot zoom or scroll (busy()).
             rects = blockRects(content)
             starts = new Map(projectItems(get().store.state).map((x) => [x.key, x.start]))
             box.hidden = false

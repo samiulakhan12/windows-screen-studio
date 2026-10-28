@@ -15,7 +15,7 @@ import { EditStore } from '../../../shared/editor/editStore'
 import { copyItems as copyGroupItems, duplicateItems as duplicateGroupItems, pasteItems as pasteGroupItems, pasteNotice, type PasteResult } from '../../../shared/editor/groupClipboard'
 import { applyField, copyLook, deleteItems, GROUP_FIELDS, LOOK_CLASS_WORDS, lookClassOf, pasteLook, type FieldCtx } from '../../../shared/editor/groupEdit'
 import { countOf, NO_GROUP, parseItemKey, projectItems, selectAllStep, trackOfKind, validGroup, type ItemGroup, type ItemKey, type ItemTrack } from '../../../shared/editor/multiSelect'
-import { removedNotice, selectAllNotice } from '../../../shared/editor/multiSelectCopy'
+import { copyLookFirst, nothingCopiedNotice, removedNotice, selectAllNotice } from '../../../shared/editor/multiSelectCopy'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
 import { mediaLength } from '../../../shared/editor/mediaLength'
@@ -60,6 +60,7 @@ import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
+import { keepInspectorFocus } from '../editor/inspectorFocus'
 import { addFreezeAt, freezeTarget, toggleFreezeSound } from '../editor/freezeItems'
 import { itemClipboard, lookClipboard } from '../editor/itemClipboard'
 import { Inspector, type InputActions, type InspectorTab } from '../editor/Inspector'
@@ -610,6 +611,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else showNotice('Select a range first: Shift+drag on the clip track')
       },
       deleteSelection: (): void => {
+        // The panel that had the keyboard may go with what it showed (§5.2).
+        keepInspectorFocus()
         const group = latest.current.group
         if (group.keys.length >= 2) {
           // E-06: every selected item, in one undo step.
@@ -801,7 +804,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       const parsed = anchor ? parseItemKey(anchor) : null
       const track = parsed ? trackOfKind(parsed.kind) : (timelineRef.current?.lastTrack() ?? TAB_TRACK[L.tab] ?? null)
       const r = selectAllStep(items, selectedKeys(), track)
-      if (r.scope !== 'none') selectKeys(r.keys, anchor && r.keys.includes(anchor) ? anchor : r.keys[0])
+      if (r.scope !== 'none') {
+        // The Selection view opens in place of the panel that may have the keyboard (§5.2).
+        keepInspectorFocus()
+        selectKeys(r.keys, anchor && r.keys.includes(anchor) ? anchor : r.keys[0])
+      }
       showNotice(selectAllNotice(r.scope, r.keys, keyLabel('selectAll') || null))
     }
     const copySelected = (): ItemKey[] | null => {
@@ -827,6 +834,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       }
       const keys = copySelected()
       if (!keys) return
+      keepInspectorFocus()
       store.update((p) => deleteItems(p, keys))
       setSelection(null)
       showNotice(removedNotice('Cut', keys.length, undo()))
@@ -834,7 +842,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const pasteClipboard = (): void => {
       if (cropRef.current) return showNotice('Close the crop tool first')
       const clip = itemClipboard.get()
-      if (!clip) return showNotice(`Nothing copied yet: select items and press ${keyLabel('copyItems') || 'Ctrl + C'}`)
+      if (!clip) return showNotice(nothingCopiedNotice(keyLabel('copyItems') || null))
       let r: PasteResult | null = null
       store.update((p) => (r = pasteGroupItems(p, clip, player.time)).project)
       if (r) pasted(r, clip.items.length)
@@ -861,7 +869,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     const pasteItemLook = (): void => {
       if (cropRef.current) return showNotice('Close the crop tool first')
       const look = lookClipboard.get()
-      if (!look) return showNotice(`Copy a look first: select one item and press ${keyLabel('copyLook') || 'Ctrl + Shift + C'}`)
+      if (!look) return showNotice(copyLookFirst(keyLabel('copyLook') || null))
       const keys = selectedKeys()
       const name = look.label.toLowerCase()
       if (!keys.length) return showNotice(`Select items to paste the ${name} look onto`)
@@ -1244,7 +1252,10 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       }
       if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (L.pickFocus) setPickFocus(false)
-        else setSelection(null)
+        else {
+          keepInspectorFocus()
+          setSelection(null)
+        }
         return
       }
       // E-06: Ctrl+A/C/X/V run their standard commands when the keymap has nothing for them; Ctrl+C

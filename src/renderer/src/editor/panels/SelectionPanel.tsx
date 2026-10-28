@@ -4,7 +4,7 @@ import type { CommandId } from '../../../../shared/editor/commands'
 import { applyField, fieldItems, fieldsFor, fieldValue, LOOK_CLASS_WORDS, lookClassOf, type FieldCtx, type GroupField, type LookClass } from '../../../../shared/editor/groupEdit'
 import { setGroupLength, setGroupStart } from '../../../../shared/editor/groupMove'
 import { countOf, GROUP_KINDS, groupLabel, kindCounts, KIND_WORDS, projectItems, toggleKey, type GroupKind, type ItemEntry, type ItemKey } from '../../../../shared/editor/multiSelect'
-import { movedNotice } from '../../../../shared/editor/multiSelectCopy'
+import { copyLookFirst, movedNotice } from '../../../../shared/editor/multiSelectCopy'
 import { shapeLabel } from '../../../../shared/editor/shapes'
 import { commandKeys, shortcutLabel, withShortcut } from '../../../../shared/editor/shortcuts'
 import { formatLevel, ZOOM_LEVEL_PRESETS } from '../../../../shared/editor/zoomEdit'
@@ -16,6 +16,7 @@ import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
+import { keepInspectorFocus } from '../inspectorFocus'
 import { useGroup } from '../groupContext'
 import type { InspectorProps } from '../Inspector'
 import { useLookClipboard } from '../itemClipboard'
@@ -115,10 +116,19 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
     setFocusRow(null)
   }, [focusRow, entries])
 
+  /**
+   * Selects `only` from this view: a group stays in it; one item is the single selection, revealed
+   * as if it had been clicked (its own tab opens), with the keyboard on that tab's rail button.
+   */
+  const narrowTo = (only: readonly ItemKey[], anchor: ItemKey | null): void => {
+    if (only.length >= 2) return G.select(only, anchor, { reveal: false })
+    keepInspectorFocus()
+    G.select(only, anchor)
+  }
+
   const leaveOut = (key: ItemKey, index: number): void => {
     const r = toggleKey(keys, null, key, G.group.anchor)
-    // Down to one item: the single selection, revealed as if it had been clicked.
-    if (r.keys.length < 2) return G.select(r.keys, r.anchor)
+    if (r.keys.length < 2) return narrowTo(r.keys, r.anchor)
     G.select(r.keys, r.anchor, { reveal: false })
     setFocusRow(index)
   }
@@ -150,7 +160,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
   }
 
   const pasteLookWhy =
-    !look ? 'Copy a look first: select one item and press Ctrl + Shift + C' : keys.some((k) => lookClassOf(project, k) === look.cls) ? null : `The copied look is for ${LOOK_CLASS_WORDS[look.cls][1]}`
+    !look ? copyLookFirst(commandKeys(keymap, 'copyLook').map(shortcutLabel)[0] ?? null) : keys.some((k) => lookClassOf(project, k) === look.cls) ? null : `The copied look is for ${LOOK_CLASS_WORDS[look.cls][1]}`
   const autoZooms = keys.filter((k) => k.startsWith('zoom:') && project.zooms.find((z) => `zoom:${z.id}` === k)?.auto).length
 
   return (
@@ -169,7 +179,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
                   title={`Select only the ${KIND_WORDS[kind][1]}`}
                   onClick={() => {
                     const only = keys.filter((k) => k.startsWith(`${kind}:`))
-                    G.select(only, only.includes(G.group.anchor as ItemKey) ? G.group.anchor : only[0], { reveal: false })
+                    narrowTo(only, only.includes(G.group.anchor as ItemKey) ? G.group.anchor : only[0])
                   }}
                 >
                   Only {KIND_WORDS[kind][1].replace(/ items$/, '')} ({counts[kind]})
@@ -198,11 +208,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
           </button>
           <button
             className="btn ghost danger"
-            onClick={() => {
-              onCommand('deleteSelection')
-              // The Selection button goes away with the group: keep the keyboard on the open tab's button.
-              window.setTimeout(() => document.querySelector<HTMLButtonElement>('.insp-tabs button.active')?.focus(), 0)
-            }}
+            onClick={() => onCommand('deleteSelection')}
             title={withShortcut('Delete the selected items', keymap.deleteSelection)}
           >
             <Icon name="trash" size={15} /> Delete

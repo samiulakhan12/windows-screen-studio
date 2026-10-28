@@ -7,6 +7,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { extendTo, projectItems, toggleKey, type ItemKey } from '../../../shared/editor/multiSelect'
 import { useEditor } from './context'
+import { keepInspectorFocus } from './inspectorFocus'
 import { useGroup } from './groupContext'
 
 export interface ListRowProps {
@@ -47,6 +48,10 @@ export function useListSelect(): { member: (key: ItemKey) => boolean; row: (key:
         else extend(key)
       }
     }),
-    selectAll: (keys) => group.select(keys, keys[0] ?? null)
+    selectAll: (keys) => {
+      // The Selection view replaces the list whose button was pressed: the keyboard goes to its rail button.
+      keepInspectorFocus()
+      group.select(keys, keys[0] ?? null)
+    }
   }
 }
