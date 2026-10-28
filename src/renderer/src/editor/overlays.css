@@ -162,6 +162,23 @@
   pointer-events: none;
 }
 
+/* Where the spot above is cut off or under the hint: below the box, else inside its bottom edge
+   (OverlayEditor's rotateHandlePlace; the 28 px and 14 px match its ROTATE_REACH and ROTATE_RADIUS). */
+.overlay-rotate.below {
+  top: auto;
+  bottom: -28px;
+}
+
+.overlay-rotate.below::after {
+  top: auto;
+  bottom: 12px;
+}
+
+.overlay-rotate.inside {
+  top: auto;
+  bottom: 14px;
+}
+
 /* ---------- Dropping a file on the editor ---------- */
 .overlay-drop {
   position: fixed;

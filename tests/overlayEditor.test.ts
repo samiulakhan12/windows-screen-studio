@@ -164,3 +164,46 @@ describe('OverlayEditor: Shift held before the press', () => {
     expect(current().w).toBe(0.2)
   })
 })
+
+describe('OverlayEditor: the rotate handle stays where it can be grabbed', () => {
+  const place = (): string => {
+    const cls = render().find(rotateHandle)!.props.className as string
+    return cls.includes('below') ? 'below' : cls.includes('inside') ? 'inside' : 'above'
+  }
+
+  it('sits above the box in the middle of the frame', () => {
+    expect(place()).toBe('above')
+  })
+
+  it('near the top of the frame (cut off, or under the hint), sits below the box and turns the image the way it is dragged', () => {
+    // A logo in a top corner: its box top is 15 px from the frame top, centre (100, 40).
+    project = { overlays: [overlay({ x: 0.1, y: 0.08, w: 0.1, h: 0.1 })] } as unknown as Project
+    expect(place()).toBe('below')
+    // A logo at the top centre whose handle above would sit under the hint.
+    project = { overlays: [overlay({ y: 0.15, w: 0.1, h: 0.1 })] } as unknown as Project
+    expect(place()).toBe('below')
+    project = { overlays: [overlay({ x: 0.1, y: 0.08, w: 0.1, h: 0.1 })] } as unknown as Project
+    expect(press(rotateHandle, 100, 86)).toBe(true)
+    // Straight below the centre is no turn at all (not half a turn).
+    pointer('pointermove', 100, 90)
+    expect(current().rotation).toBe(0)
+    // Its bottom swung to the right: a quarter turn anticlockwise.
+    pointer('pointermove', 150, 40)
+    expect(current().rotation).toBe(-90)
+  })
+
+  it('on an image as tall as the frame, sits inside its bottom edge', () => {
+    project = { overlays: [overlay({ w: 0.5, h: 1 })] } as unknown as Project
+    expect(place()).toBe('inside')
+    expect(press(rotateHandle, 500, 479)).toBe(true)
+    pointer('pointermove', 500, 490)
+    expect(current().rotation).toBe(0)
+  })
+
+  it('turned a quarter, goes by the box: its top faces right, so at the right edge of the frame the handle moves to the left', () => {
+    project = { overlays: [overlay({ x: 0.95, rotation: 90, w: 0.1, h: 0.1 })] } as unknown as Project
+    expect(place()).toBe('below')
+    project = { overlays: [overlay({ x: 0.5, rotation: 90, w: 0.1, h: 0.1 })] } as unknown as Project
+    expect(place()).toBe('above')
+  })
+})

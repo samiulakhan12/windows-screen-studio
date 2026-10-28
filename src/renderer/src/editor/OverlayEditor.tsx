@@ -20,11 +20,35 @@ export function overlayBounds(o: ImageOverlay, box: { w: number; h: number }): {
   return { x: b.cx - w / 2, y: b.cy - h / 2, w, h }
 }
 
+/** The rotate handle's centre, out from the box's edge, and its radius (overlays.css). */
+const ROTATE_REACH = 21
+const ROTATE_RADIUS = 7
+/** The top of the preview, where the hint ("<name> · drag to place it · Done") covers the handles. */
+const HINT_BAND = 48
+
+/**
+ * Where the rotate handle goes on a box (preview px): above it, else below it when that spot is
+ * off the preview or under the hint (a logo in a top corner), else just inside its bottom edge (an
+ * image as tall as the frame). `along` is the handle's centre from the box's, down the box's own axis.
+ */
+function rotateHandlePlace(b: { cx: number; cy: number; h: number; angle: number }, frame: { w: number; h: number }): { place: 'above' | 'below' | 'inside'; along: number } {
+  const fits = (along: number): boolean => {
+    const x = b.cx - Math.sin(b.angle) * along
+    const y = b.cy + Math.cos(b.angle) * along
+    return x >= ROTATE_RADIUS && x <= frame.w - ROTATE_RADIUS && y >= HINT_BAND && y <= frame.h - ROTATE_RADIUS
+  }
+  const out = b.h / 2 + ROTATE_REACH
+  if (fits(-out)) return { place: 'above', along: -out }
+  if (fits(out)) return { place: 'below', along: out }
+  return { place: 'inside', along: b.h / 2 - ROTATE_REACH }
+}
+
 /**
  * Handles for the selected image overlay on the preview, exactly where the compositor draws it
  * (the same overlayBox, rotated about its centre): drag the box to move it, a handle to resize
- * (Shift keeps its shape), the round handle above it to rotate (Shift: 15° steps). With the box
- * focused, the arrow keys move it by one pixel (Shift: ten). Shown while the playhead is inside it.
+ * (Shift keeps its shape), the round handle above it (below it near the top of the frame) to
+ * rotate (Shift: 15° steps). With the box focused, the arrow keys move it by one pixel (Shift:
+ * ten). Shown while the playhead is inside it.
  */
 export function OverlayEditor({ project, selection, box, onDone }: { project: Project; selection: Selection | undefined; box: { w: number; h: number }; onDone: () => void }): JSX.Element | null {
   const { store, player } = useEditor()
@@ -56,10 +80,16 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
     followPointer(e, (ev) => apply(ev.clientX - sx, ev.clientY - sy, ev))
   }
 
+  const handle = rotateHandlePlace(b, frame)
   const rotate = (e: ReactPointerEvent<HTMLElement>): void => {
     const stage = (e.currentTarget.closest('.overlay-editor') as HTMLElement).getBoundingClientRect()
     const centre = { x: stage.left + b.cx, y: stage.top + b.cy }
-    drag((_dx, _dy, ev) => set({ rotation: rotationToward(centre, { x: ev.clientX, y: ev.clientY }, ev.shiftKey) }, 'overlay-rotation'))(e)
+    // A handle below the centre points at the image's bottom: its mirror through the centre at the top.
+    const flip = handle.along > 0
+    drag((_dx, _dy, ev) => {
+      const at = flip ? { x: 2 * centre.x - ev.clientX, y: 2 * centre.y - ev.clientY } : { x: ev.clientX, y: ev.clientY }
+      set({ rotation: rotationToward(centre, at, ev.shiftKey) }, 'overlay-rotation')
+    })(e)
   }
 
   const onKey = (e: ReactKeyboardEvent<HTMLElement>): void => {
@@ -94,7 +124,12 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
             onPointerDown={drag((dx, dy, ev) => set(resizeOverlay(o, h, dx, dy, frame, ev.shiftKey), 'overlay-geom'))}
           />
         ))}
-        <span className="overlay-rotate" data-testid="overlay-rotate" title="Drag to rotate (Shift: 15° steps)" onPointerDown={rotate} />
+        <span
+          className={handle.place === 'above' ? 'overlay-rotate' : `overlay-rotate ${handle.place}`}
+          data-testid="overlay-rotate"
+          title="Drag to rotate (Shift: 15° steps)"
+          onPointerDown={rotate}
+        />
       </div>
       <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
         {label} · drag to place it ·{' '}
