@@ -88,6 +88,19 @@ describe('image overlays and fonts as project assets', () => {
     expect((await importAssetData(id, 'overlay', 'ok.svg', SVG)).path).toBe('overlay-1.svg')
   })
 
+  it('stores images added at the same time one after the other, each under its own name', async () => {
+    const id = folder()
+    const images = [1, 2, 3, 4].map((i) => Buffer.concat([PNG, Buffer.alloc(256 * 1024, i)]))
+    const picked = await Promise.all(images.map((data, i) => importAssetData(id, 'overlay', `${i}.png`, data)))
+    expect(picked.map((p) => p.path).sort()).toEqual(['overlay-1.png', 'overlay-2.png', 'overlay-3.png', 'overlay-4.png'])
+    picked.forEach((p, i) => expect(readFileSync(path.join(projectDir(id), p.path)).equals(images[i]), p.path).toBe(true))
+    // The same image pasted twice in a row is stored once.
+    const again = Buffer.concat([PNG, Buffer.alloc(256 * 1024, 9)])
+    const twice = await Promise.all([importAssetData(id, 'overlay', 'a.png', again), importAssetData(id, 'overlay', 'b.png', again)])
+    expect(twice.map((p) => p.path)).toEqual(['overlay-5.png', 'overlay-5.png'])
+    expect(listed(id)).toEqual(['overlay-1.png', 'overlay-2.png', 'overlay-3.png', 'overlay-4.png', 'overlay-5.png'])
+  })
+
   it('never uses the dropped name as a path', async () => {
     const id = folder()
     const r = await importAssetData(id, 'overlay', '..\\..\\..\\evil\\x.png', PNG)

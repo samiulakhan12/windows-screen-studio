@@ -187,32 +187,52 @@ function checkHead(kind: AssetKind, head: Buffer, ext: string): void {
   if (problem) throw new Error(problem)
 }
 
+/** The last import queued for each project folder (it never rejects). */
+const folderQueue = new Map<string, Promise<unknown>>()
+
+/**
+ * Runs `job` once the earlier ones for folder `dir` are done: an import picks its file name from
+ * what the folder holds, so two at once (a drop, then Ctrl+V) would write the same file.
+ */
+function inFolder<T>(dir: string, job: () => Promise<T>): Promise<T> {
+  const run = (folderQueue.get(dir) ?? Promise.resolve()).then(job)
+  const done = run.catch(() => undefined)
+  folderQueue.set(dir, done)
+  void done.then(() => {
+    if (folderQueue.get(dir) === done) folderQueue.delete(dir)
+  })
+  return run
+}
+
 /**
  * Stores checked content as a new `kind` file of project `id` (or the identical one already
  * there, for overlays and fonts): written under a temporary name, then renamed, so a failure
- * leaves the folder as it was. `data` is the content, or a file to copy (large music).
+ * leaves the folder as it was. `data` is the content, or a file to copy (large music). Imports
+ * into one project run one at a time.
  */
 async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { file: string }): Promise<PickedAsset> {
   const spec = ASSET_SPECS[kind]
   const dir = projects.projectDir(id)
   const stored = storedExt(ext)
-  if (DEDUPED.has(kind) && Buffer.isBuffer(data)) {
-    const same = await sameFile(dir, kind, stored, data)
-    if (same) return { url: mediaUrl(id, same), path: same }
-  }
-  const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), stored)
-  if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
-  const tmp = path.join(dir, `.${name}.part`)
-  try {
-    if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
-    else await fs.copyFile(data.file, tmp)
-    await fs.rename(tmp, path.join(dir, name))
-  } catch (err) {
-    await fs.rm(tmp, { force: true }).catch(() => undefined)
-    throw err
-  }
-  await prunePicks(id, kind, dir, name)
-  return { url: mediaUrl(id, name), path: name }
+  return inFolder(dir, async () => {
+    if (DEDUPED.has(kind) && Buffer.isBuffer(data)) {
+      const same = await sameFile(dir, kind, stored, data)
+      if (same) return { url: mediaUrl(id, same), path: same }
+    }
+    const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), stored)
+    if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
+    const tmp = path.join(dir, `.${name}.part`)
+    try {
+      if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
+      else await fs.copyFile(data.file, tmp)
+      await fs.rename(tmp, path.join(dir, name))
+    } catch (err) {
+      await fs.rm(tmp, { force: true }).catch(() => undefined)
+      throw err
+    }
+    await prunePicks(id, kind, dir, name)
+    return { url: mediaUrl(id, name), path: name }
+  })
 }
 
 /**
