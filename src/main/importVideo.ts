@@ -354,6 +354,7 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     if (err instanceof Cancelled || signal?.aborted) return { ok: false, cancelled: true, fileName }
     if (err instanceof ImportRefused) return { ok: false, fileName, error: err.message }
     console.error('Import failed:', err)
+    if ((err as NodeJS.ErrnoException)?.code === 'ENOSPC') return { ok: false, fileName, error: IMPORT_COPY.diskFull }
     return { ok: false, fileName, error: IMPORT_COPY.failed(err instanceof Error ? err.message.slice(0, 160) : '') }
   }
 }

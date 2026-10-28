@@ -482,7 +482,8 @@ dependencies.
 - **Long imports** block Home for their length → progress, time left and Cancel; a "finish
   later" queue is left for later.
 - **Disk estimate** can be low for very noisy camera footage at CRF 17 → 25 % margin plus 512 MB;
-  a full disk mid-encode fails cleanly (*Your disk is full…*) and removes the folder.
+  a full disk mid-encode fails cleanly (*Your disk is full…*, from ffmpeg's *No space left on
+  device*, whatever its last log line) and removes the folder; the next encoder is not tried.
 - **HDR tone-map** look differs from the phone's own → a note says the colours were converted.
 - **Drag and drop** of a file from a zip or a virtual folder gives an empty path → *That file
   could not be opened.*

@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import fsSync from 'node:fs'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -303,6 +304,20 @@ describe('importVideo', () => {
       }
     })
     expect(r).toEqual({ ok: false, cancelled: true, fileName: 'odd.mov' })
+    expect(folders()).toEqual([])
+  }, 30_000)
+
+  it('says the disk is full when the project cannot be written', async () => {
+    const write = fsSync.writeFileSync
+    const spy = vi.spyOn(fsSync, 'writeFileSync').mockImplementation((file, ...rest) => {
+      if (String(file).endsWith('cursor.json.tmp')) throw Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' })
+      return write(file, ...rest)
+    })
+    try {
+      expect(await importVideo(at('odd.mov'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.diskFull })
+    } finally {
+      spy.mockRestore()
+    }
     expect(folders()).toEqual([])
   }, 30_000)
 

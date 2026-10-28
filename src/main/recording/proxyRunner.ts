@@ -67,6 +67,12 @@ export function parseInputHasAudio(log: string): boolean {
   return /Stream #0:\d+[^\n]*?: Audio: /.test(section)
 }
 
+/**
+ * ffmpeg's own report of a full disk ("[out#0/mp4 @ …] Error writing trailer: No space left on
+ * device"): a message of one of its components, never the input's name or its metadata.
+ */
+export const DISK_FULL_RE = /^\[[^\]]+\][^\n]*No space left on device/m
+
 /** Last meaningful log line, e.g. "Invalid data found when processing input". */
 export function summarizeFfmpegLog(log: string): string {
   const lines = log
@@ -134,6 +140,11 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
         return
       }
       console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${log}`)
+      // The log's last line is then an encoder's statistics ("Qavg: 435.6"), not the reason.
+      if (DISK_FULL_RE.test(log)) {
+        reject(new FfmpegError('No space left on device', 'ENOSPC'))
+        return
+      }
       reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(log) || `exit code ${code}`, null))
     })
   })

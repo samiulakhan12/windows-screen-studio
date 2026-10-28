@@ -197,6 +197,13 @@ describe('encoder fallback still works for real failures', () => {
     expect(existsSync(path.join(dir, 'recording.json'))).toBe(false)
   })
 
+  it('does not encode again in software when the disk is full', async () => {
+    const { m } = await setup()
+    runner.steps = [async () => Promise.reject(new FfmpegError('No space left on device', 'ENOSPC')), succeed(150)]
+    await expect(processRecording(m, () => undefined)).rejects.toThrow('Your disk is full. Free some space and try again.')
+    expect(runner.calls).toHaveLength(1)
+  })
+
   it('adds native audio in a second step, cut to the video frame count', async () => {
     const { m } = await setup({ method: 'native', hasAudio: true, audioOffset: 0.25 })
     runner.steps = [succeed(150), succeed(150)]
