@@ -15,7 +15,7 @@ import type { AssetKind, PickedAsset } from '../shared/api/projects'
 import { MUSIC_FILE_RE, nextMusicFile, staleMusicFiles } from '../shared/audio/settings'
 import { OVERLAY_FILE_RE, OVERLAY_MAX_BYTES, OVERLAY_SVG_MAX_BYTES } from '../shared/engine/overlayData'
 import { nextPickFile, type PickedFiles } from '../shared/engine/picks'
-import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
+import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES, watermarkPickNumber } from '../shared/engine/watermark'
 import { checkFont, FONT_FILE_RE, FONT_MAX_BYTES } from '../shared/render/fonts'
 import type { Project } from '../shared/types'
 import { mediaUrl } from './mediaProtocol'
@@ -153,13 +153,26 @@ const sha256 = (data: Uint8Array): string => createHash('sha256').update(data).d
 /** The files of each deduplicated kind. */
 const DEDUPED_RE: Partial<Record<AssetKind, RegExp>> = { overlay: OVERLAY_FILE_RE, font: FONT_FILE_RE }
 
-/** A file of `kind` in `dir` with exactly these bytes and extension, or null. */
-async function sameFile(dir: string, kind: AssetKind, ext: string, data: Buffer): Promise<string | null> {
+/**
+ * The files of `existing` a new `kind` file with the same content is stored as instead: any
+ * overlay or font and, with `reuseLatest`, the latest logo pick. Only the latest: picks are removed
+ * oldest number first, so an older logo made the one in use again could be removed by the next
+ * picks while undo still goes back to it.
+ */
+function reusable(kind: AssetKind, existing: readonly string[], reuseLatest: boolean): string[] {
   const re = DEDUPED_RE[kind]
-  if (!re) return null
+  if (re) return existing.filter((name) => re.test(name))
+  if (kind !== 'watermark' || !reuseLatest) return []
+  const latest = existing.reduce((n, name) => Math.max(n, watermarkPickNumber(name)), -1)
+  return latest < 0 ? [] : existing.filter((name) => watermarkPickNumber(name) === latest)
+}
+
+/** The one of `names` in `dir` with exactly these bytes and extension, or null. */
+async function sameFile(dir: string, names: readonly string[], ext: string, data: Buffer): Promise<string | null> {
+  if (!names.length) return null
   const want = sha256(data)
-  for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
-    if (!re.test(name) || path.extname(name).slice(1).toLowerCase() !== ext) continue
+  for (const name of names) {
+    if (path.extname(name).slice(1).toLowerCase() !== ext) continue
     const file = path.join(dir, name)
     const st = await fs.stat(file).catch(() => null)
     if (!st?.isFile() || st.size !== data.length) continue
@@ -206,20 +219,21 @@ function inFolder<T>(dir: string, job: () => Promise<T>): Promise<T> {
 
 /**
  * Stores checked content as a new `kind` file of project `id` (or the identical one already
- * there, for overlays and fonts): written under a temporary name, then renamed, so a failure
- * leaves the folder as it was. `data` is the content, or a file to copy (large music). Imports
- * into one project run one at a time.
+ * there, for overlays and fonts, and with `reuseLatest` the latest logo pick): written under a
+ * temporary name, then renamed, so a failure leaves the folder as it was. `data` is the content,
+ * or a file to copy (large music). Imports into one project run one at a time.
  */
-async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { file: string }): Promise<PickedAsset> {
+async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { file: string }, reuseLatest = false): Promise<PickedAsset> {
   const spec = ASSET_SPECS[kind]
   const dir = projects.projectDir(id)
   const stored = storedExt(ext)
   return inFolder(dir, async () => {
-    if (DEDUPED.has(kind) && Buffer.isBuffer(data)) {
-      const same = await sameFile(dir, kind, stored, data)
+    const existing = await fs.readdir(dir).catch(() => [] as string[])
+    if (Buffer.isBuffer(data)) {
+      const same = await sameFile(dir, reusable(kind, existing, reuseLatest), stored, data)
       if (same) return { url: mediaUrl(id, same), path: same }
     }
-    const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), stored)
+    const name = PICKS[kind].next(existing, stored)
     if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
     const tmp = path.join(dir, `.${name}.part`)
     try {
@@ -238,15 +252,17 @@ async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { 
 /**
  * Copies `src` into project `id` as its `kind` asset. The file is checked first (type by
  * extension and content, size) and copied under a temporary name, so a failure leaves the
- * earlier pick in place. Every pick gets a new name (an identical overlay or font is reused).
+ * earlier pick in place. Every pick gets a new name (an identical overlay or font is reused, and
+ * with `reuseLatest` a logo identical to the latest logo pick).
  */
-export async function importAsset(id: string, kind: AssetKind, src: string): Promise<PickedAsset> {
+export async function importAsset(id: string, kind: AssetKind, src: string, { reuseLatest = false } = {}): Promise<PickedAsset> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
   projects.projectDir(id)
   const ext = await checkAssetFile(kind, src)
   const name = path.basename(src)
-  // Overlays and fonts are small enough to read whole (25 MB at most): hashed from memory.
-  return { ...(await store(id, kind, ext, DEDUPED.has(kind) ? await fs.readFile(src) : { file: src })), name }
+  // Overlays, fonts and logos are small enough to read whole (25 MB at most): hashed from memory.
+  const whole = DEDUPED.has(kind) || reuseLatest
+  return { ...(await store(id, kind, ext, whole ? await fs.readFile(src) : { file: src }, reuseLatest)), name }
 }
 
 /**

@@ -17,7 +17,8 @@ vi.mock('electron', () => ({
 const { brandKitDir, loadBrandKitSync, readBrandFile, saveBrandKit } = await import('../src/main/brandKit')
 const { addBrandFile, copyKitIntoProject } = await import('../src/main/brandKitFiles')
 const { applyStyleDefaults } = await import('../src/main/styleDefaults')
-const { projectDir } = await import('../src/main/projects')
+const { importAsset } = await import('../src/main/assetIpc')
+const { projectDir, writeProject } = await import('../src/main/projects')
 const { createProject } = await import('../src/shared/engine/project')
 
 afterAll(() => rmSync(h.root, { recursive: true, force: true }))
@@ -122,6 +123,28 @@ describe('the brand kit on disk', () => {
     // Applying again reuses the identical font file.
     const again = await copyKitIntoProject('rec-apply', file)
     expect(again.files.fonts[kit.fonts[0].id]).toBe('font-1.ttf')
+  })
+
+  it('applying an unchanged kit again reuses its logo copy, so the logo used before stays for undo', async () => {
+    const file = kitFile()
+    await fullKit(file)
+    const p = newProject('rec-reapply')
+    const own = Buffer.concat([PNG, Buffer.from([7])])
+    writeFileSync(path.join(projectDir('rec-reapply'), 'watermark-1.png'), own)
+    // Autosave: the saved project uses `logo`.
+    const uses = (logo: string) => writeProject({ ...p, watermark: { show: true, kind: 'image', path: logo, position: 'top-left', size: 0.1, opacity: 1, margin: 0 } })
+    const logos = () => readdirSync(projectDir('rec-reapply')).filter((f) => f.startsWith('watermark')).sort()
+    await uses('watermark-1.png')
+    for (let i = 0; i < 6; i++) {
+      const { files } = await copyKitIntoProject('rec-reapply', file)
+      expect(files.logo).toBe('watermark-2.png')
+      await uses(files.logo!)
+    }
+    expect(logos()).toEqual(['watermark-1.png', 'watermark-2.png'])
+    expect(readFileSync(path.join(projectDir('rec-reapply'), 'watermark-1.png'))).toEqual(own)
+    // Only the latest pick is reused: older picks are removed first, so undo could lose one made current again.
+    expect((await importAsset('rec-reapply', 'watermark', src('other.png', own))).path).toBe('watermark-3.png')
+    expect((await copyKitIntoProject('rec-reapply', file)).files.logo).toBe('watermark-4.png')
   })
 })
 

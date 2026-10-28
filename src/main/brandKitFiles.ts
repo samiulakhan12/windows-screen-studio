@@ -40,8 +40,10 @@ export async function addBrandFile(kind: 'logo' | 'font', src: string, file = br
 
 /**
  * Copies the kit's logo and fonts into project `id` (as watermark-<n> and font-<n>, an identical
- * font reused) and returns the saved kit with where each file went. A file that cannot be copied
- * is left out of `files` (that part of the kit is then not applied).
+ * font reused) and returns the saved kit with where each file went. The latest logo pick is reused
+ * when it is the kit's logo, so applying an unchanged kit again does not push the logos used before
+ * out of the few picks kept for undo. A file that cannot be copied is left out of `files` (that
+ * part of the kit is then not applied).
  */
 export async function copyKitIntoProject(id: string, file = brandKitFile()): Promise<BrandKitFiles> {
   projectDir(id)
@@ -50,7 +52,7 @@ export async function copyKitIntoProject(id: string, file = brandKitFile()): Pro
   const files: BrandFiles = { fonts: {} }
   if (kit.logo) {
     try {
-      files.logo = (await importAsset(id, 'watermark', path.join(dir, kit.logo.file))).path
+      files.logo = (await importAsset(id, 'watermark', path.join(dir, kit.logo.file), { reuseLatest: true })).path
     } catch (err) {
       console.warn('The brand kit logo could not be copied into the project:', err)
     }
