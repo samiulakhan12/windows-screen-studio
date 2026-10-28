@@ -162,7 +162,7 @@ is added.
 
 With `'mix'` the PC's sound is cleaned too; the panel says so (§5). The system stem is never cleaned.
 
-### 4.2 Strengths (`voiceFilter(strength)`)
+### 4.2 Strengths (`voiceGraph(strength)`)
 
 All three work at 48 kHz on every channel of the source, with the model file named `sh.rnnn`:
 
@@ -172,12 +172,12 @@ All three work at 48 kHz on every channel of the source, with the model file nam
 | Normal | `arnndn=m=sh.rnnn` | −19 dB |
 | Strong | `arnndn=m=sh.rnnn,arnndn=m=sh.rnnn` | −26 dB |
 
-Delay: each pass delays by exactly 480 samples (`VOICE_PASS_DELAY`). The chain is
-`aresample=48000,apad=pad_len=<480·passes>,<arnndn…>,atrim=start_sample=<480·passes>,asetpts=PTS-STARTPTS`:
+Delay: each pass delays by exactly 480 samples (`VOICE_PASS_DELAY`). The graph (`voiceGraph`) is
+`[0:a:0]aresample=48000,asplit[src][ref];[src]apad=pad_len=<480·passes>,<arnndn…>,atrim=start_sample=<480·passes>,asetpts=PTS-STARTPTS[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`:
 the cleaned sound starts on the source's first sample and nothing is lost at the end. arnndn works
-in whole 10 ms frames, so the file can be up to 480 samples longer than the source; the extra is
-the tail of the padding (near silence) and every reader already trims the recording to the video's
-length (`recordingGraph`'s `atrim`, the preview's clip bounds).
+in whole 10 ms frames and returns up to 480 samples more than it was given; mixing with the source
+at weight 0 until the shorter one ends cuts the result to exactly the source's samples without
+changing them (checked: identical samples, identical length, also after the AAC round trip).
 
 ### 4.3 Making the stem (main, `src/main/voice/voiceClean.ts`)
 
@@ -185,7 +185,7 @@ length (`recordingGraph`'s `atrim`, the preview's clip bounds).
   from `SOURCE_FILES`), stats it, computes the key; if `voice-<key>.m4a` exists, returns its name at
   once. Otherwise starts ffmpeg (argument list, no shell, `cwd` = the model folder so the filter
   names the model by its bare file name and no path needs escaping):
-  `-hide_banner -nostdin -nostats -y -i <source> -map 0:a:0 -vn -af <chain> -c:a aac -b:a 160k
+  `-hide_banner -nostdin -nostats -y -i <source> -filter_complex <graph> -map [voice] -c:a aac -b:a 160k
   -ar 48000 -movflags +faststart -progress pipe:1 <part>`, then renames the part into place and
   prunes (§3.3).
 - **One render per project.** A request for the same key joins the running one (one ffmpeg, one
@@ -254,7 +254,7 @@ about 0.4 dB quieter, §2.2); the export measures the real mix, as today.
   mixes stems with a microphone; the mixed track when it mixes no stems), calls `ensureVoiceStem`
   (made there if it is somehow missing, so the export can never use a stale or wrong file), and
   replaces that one input path. `audioPlan.ts`'s graph is unchanged: the cleaned file has the
-  source's timeline, channels and length, so cutting, re-timing, freezes, gains, noise reduction,
+  source's timeline, channels and exact length, so cutting, re-timing, freezes, gains, noise reduction,
   normalisation, music, clicks and fades apply exactly as to the original.
 - `validRecording` accepts `voice` only as one of the three strengths.
 
@@ -341,7 +341,7 @@ New:
   `VOICE_STRENGTHS`, `DEFAULT_VOICE`, `voiceLook(audio): VoiceSettings`,
   `type VoiceSource = 'mic' | 'mix'`, `voiceTarget(project): VoiceSource | null`,
   `withCleanVoice(mix: RecordingMix, project): RecordingMix`, `VOICE_ENGINE`, `VOICE_PASS_DELAY`,
-  `voicePasses(strength)`, `voiceFilter(strength): string`, `VOICE_FILE_RE`, `voiceFileName(key)`,
+  `voicePasses(strength)`, `voiceGraph(strength): string`, `VOICE_FILE_RE`, `voiceFileName(key)`,
   `voicePartName(key)`, `voiceKeyInput(…)`, `VOICE_KEEP`, `staleVoiceFiles(files: {name, mtime}[], keep: string): string[]`.
 - `src/shared/audio/voiceCopy.ts`: the strings of §5.
 - `src/shared/api/voice.ts`: `VOICE_CHANNELS`, `VoiceStemStatus`, `VoiceProgress`, `VoiceApi`,
@@ -395,7 +395,7 @@ Additive lines in shared files:
 
 Unit (vitest), each failing without its code:
 - `voiceLook` defaults and sanitising; `voiceTarget` for every row of §4.1; `withCleanVoice` keeps
-  every other case unchanged and forces stems at unity; `voiceFilter` strings and pass counts;
+  every other case unchanged and forces stems at unity; `voiceGraph` strings and pass counts;
   `VOICE_FILE_RE` accepts only `voice-<16 hex>.m4a`; `staleVoiceFiles` keeps 3 and the current one;
   key input changes with each of its parts.
 - Main, with the real ffmpeg: the cleaned file starts on the source's samples (cross-correlation lag

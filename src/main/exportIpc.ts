@@ -13,6 +13,7 @@ import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
 import { detectH264Encoders } from './hwEncoders'
 import * as projects from './projects'
 import { isAppUrl } from './security'
+import { cleanVoiceInputs } from './voice/voiceIpc'
 import { getMainWindow } from './windows'
 
 interface ActiveExport {
@@ -233,7 +234,7 @@ export function registerExportIpc(): void {
     const tempPath = partialPath(finalPath)
     // The stems the recording kept: a missing one may only fall back to the mixed sound when that sounds the same.
     const recorded = await projects.readProject(projectId).then(stemsOf, () => [])
-    const sound = await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists, recorded)
+    const sound = await cleanVoiceInputs(await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists, recorded), projectId)
     const { job } = sound
     const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.
