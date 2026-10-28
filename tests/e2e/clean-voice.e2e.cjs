@@ -233,7 +233,10 @@ async function main() {
     // The preview does not start it again by itself.
     await h.sleep(1500)
     h.assert((await status(win)) === 'stopped', 'stopped stays stopped')
-    await win.keyboard.press('Enter')
+    // A double click on Clean now starts it and does not cancel it again (the button turns into Cancel).
+    await action.dblclick()
+    await h.sleep(800)
+    h.assert((await status(win)) !== 'stopped', 'the second click of a double click is ignored')
     await waitStatus(win, 'working', 5000)
     await waitStatus(win, 'ready', 180000)
     h.assert(voiceFiles(dir).length === 1 && partFiles(dir).length === 0, 'Clean now made the stem')

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import { VOICE_STRENGTHS, voiceLook, voiceSourceOf, voiceTarget } from '../../../../shared/audio/voiceClean'
 import { STRENGTH_HINTS, STRENGTH_NAMES, VOICE_COPY } from '../../../../shared/audio/voiceCopy'
 import type { Project, VoiceSettings } from '../../../../shared/types'
@@ -62,9 +62,6 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
   )
 }
 
-/** Clicks this soon after the button changed meaning are ignored. */
-const DOUBLE_CLICK_MS = 400
-
 /**
  * Where the cleaned voice stands. The one action button stays the same element whatever it does
  * (Cancel, Clean now, Try again, Hear the original), so the keyboard focus stays on it when the
@@ -101,11 +98,6 @@ function VoiceStatus(props: {
           : state.state === 'ready'
             ? { label: VOICE_COPY.original, run: () => props.onOriginal(!original) }
             : null
-  // The button changes meaning under the pointer (Clean now → Cancel): a double click must not undo its first click.
-  const changedAt = useRef(0)
-  useEffect(() => {
-    changedAt.current = performance.now()
-  }, [state.state])
   // Screen readers hear each change of state, not every step of the percentage (that is on the bar).
   const spoken = state.state === 'working' ? VOICE_COPY.cleaning : text
   return (
@@ -126,8 +118,10 @@ function VoiceStatus(props: {
           type="button"
           className={`btn voice-action ${state.state === 'ready' && original ? 'active' : ''}`}
           aria-pressed={state.state === 'ready' ? original : undefined}
-          onClick={() => {
-            if (performance.now() - changedAt.current >= DOUBLE_CLICK_MS) action.run()
+          onClick={(e) => {
+            // The button changes meaning under the pointer (Clean now → Cancel): the second click of a
+            // double click must not undo the first. Keyboard presses (detail 0) always count.
+            if (e.detail < 2) action.run()
           }}
         >
           {action.label}
