@@ -7,6 +7,7 @@ import type { ExportFormat } from '../shared/types'
 import { MAX_CHAPTERS } from '../shared/render/chapters'
 import { FREEZE, MAX_FREEZES } from '../shared/engine/freeze'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
+import { MAX_CUT_FADE } from '../shared/render/cutFades'
 import { FfmpegFailure } from './ffmpeg'
 import { HARDWARE_ENCODERS } from './hwEncoders'
 
@@ -128,7 +129,8 @@ function validRecording(a: RecordingSound): boolean {
     (a.noiseReduction === undefined || isNum(a.noiseReduction, 0, 1)) &&
     (a.normalize === undefined || isBool(a.normalize)) &&
     (a.holds === undefined ||
-      (Array.isArray(a.holds) && a.holds.length <= MAX_FREEZES && a.holds.every((h) => isNum(h?.at, 0, 1e7) && isNum(h.length, FREEZE.min, FREEZE.max))))
+      (Array.isArray(a.holds) && a.holds.length <= MAX_FREEZES && a.holds.every((h) => isNum(h?.at, 0, 1e7) && isNum(h.length, FREEZE.min, FREEZE.max)))) &&
+    (a.cutFade === undefined || isNum(a.cutFade, 0, MAX_CUT_FADE))
   )
 }
 

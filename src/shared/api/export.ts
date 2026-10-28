@@ -73,6 +73,8 @@ export interface RecordingSound {
   normalize?: boolean
   /** Pause freezes, sorted by `at` (absent or empty: none). */
   holds?: SoundHold[]
+  /** Seconds of fade out before and fade in after every cut (NW-06); absent: none (earlier jobs). */
+  cutFade?: number
 }
 
 /** Background music in an export: plays on the output timeline from its start, ignoring cuts. */

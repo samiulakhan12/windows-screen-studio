@@ -15,6 +15,7 @@ import { musicEnd, STEM_KINDS, type StemKind } from '../audio/settings'
 import { atempoChain, atempoStages } from '../engine/timeline'
 import type { Clip } from '../types'
 import { clickSoundSource } from './clickSound'
+import { cutFadeFilters, pieceCutFades } from './cutFades'
 
 /** Sample rate of every soundtrack the export writes (Opus requires 48 kHz; AAC is fine with it). */
 export const AUDIO_RATE = 48000
@@ -101,6 +102,8 @@ export interface RecordingPart {
   normalize?: boolean
   /** Pause freezes (E-11): silence of `length` seconds before source second `at`. */
   holds?: SoundHold[]
+  /** Seconds of fade out before and fade in after every cut (NW-06, cutFades.ts); absent: none. */
+  cutFade?: number
 }
 
 /** Background music in the graph. */
@@ -209,13 +212,17 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
     head = `${stems.map((_, i) => `[m${i}]`).join('')}amix=inputs=${stems.length}:duration=longest:dropout_transition=0:normalize=0`
   }
   parts.push(`${head}${n > 1 ? `,asplit=${n}${clips.map((_, i) => `[s${i}]`).join('')}` : '[s0]'}`)
+  const edges = rec.cutFade && rec.cutFade > 0 ? pieceCutFades(clips) : null
   clips.forEach((c, i) => {
     const len = c.end - c.start
     const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${retimeFilters(c.speed)}` : ''
+    // Smooth cuts (NW-06): on the piece's own sound, before its pause-freeze silence.
+    const soundLength = retimed ? (bounds[i + 1] - bounds[i] - Math.round(c.hold * AUDIO_RATE)) / AUDIO_RATE : len
+    const fades = edges ? cutFadeFilters(edges[i], soundLength, rec.cutFade ?? 0) : ''
     // A pause freeze: silence in front, in whole samples (holds are in tenths of a second).
     const hold = c.hold > 0 ? `,adelay=delays=${Math.round(c.hold * AUDIO_RATE)}S:all=1` : ''
     const exact = retimed ? `,apad=whole_len=${bounds[i + 1] - bounds[i]},atrim=end_sample=${bounds[i + 1] - bounds[i]}` : ''
-    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${hold}${exact}[c${i}]`)
+    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${fades}${hold}${exact}[c${i}]`)
   })
   const joined = n > 1 ? `${clips.map((_, i) => `[c${i}]`).join('')}concat=n=${n}:v=0:a=1,` : '[c0]'
   const normalize = rec.normalize ? `${NORMALIZE_FILTERS},` : ''
@@ -352,8 +359,8 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
   let next = first
   let audio: RecordingPart | undefined
   if (job.audio && job.audio.clips.length > 0) {
-    const { clips, volume, noiseReduction, normalize, holds } = job.audio
-    const extras = { ...(noiseReduction && noiseReduction > 0 ? { noiseReduction } : {}), ...(normalize ? { normalize: true } : {}), ...(holds?.length ? { holds } : {}) }
+    const { clips, volume, noiseReduction, normalize, holds, cutFade } = job.audio
+    const extras = { ...(noiseReduction && noiseReduction > 0 ? { noiseReduction } : {}), ...(normalize ? { normalize: true } : {}), ...(holds?.length ? { holds } : {}), ...(cutFade && cutFade > 0 ? { cutFade } : {}) }
     const wanted = STEM_KINDS.filter((k) => job.audio?.stems?.[k] !== undefined)
     if (wanted.length > 0) {
       const stems: StemPart[] = []

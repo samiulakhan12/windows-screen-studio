@@ -1,0 +1,167 @@
+/* Edit by text: the Transcript tab (docs/design/edit-by-text.md §5). */
+
+.transcript-tools {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.transcript-count {
+  font-weight: var(--weight-regular);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.transcript-pager {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.transcript-words {
+  max-height: 460px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 6px 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-1);
+  font-size: var(--text-md);
+  line-height: 1.75;
+  user-select: none;
+  cursor: text;
+}
+
+.transcript-words:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.transcript-para {
+  margin: 0 0 6px;
+}
+
+.transcript-time {
+  display: inline-block;
+  min-width: 38px;
+  margin-right: 4px;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.tw {
+  padding: 1px 2px;
+  margin-right: 1px;
+  border-radius: var(--radius-xs);
+}
+
+.tw:hover {
+  background: var(--surface-3);
+}
+
+.tw.cut {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.tw.suggested {
+  text-decoration: underline dotted var(--warning);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.tw.cut.suggested {
+  text-decoration: line-through;
+}
+
+.tw.current {
+  box-shadow: inset 0 -2px 0 var(--track-caption);
+}
+
+.tw.selected {
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+
+.tw.selected.cut {
+  color: var(--text-2);
+}
+
+.transcript-words:focus-visible .tw.focus {
+  outline: 1px solid var(--accent-text);
+}
+
+/* The review list. */
+
+.review-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.review-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  padding: 2px 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.review-text:hover {
+  background: var(--surface-3);
+}
+
+.review-text:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
+.review-kind {
+  color: var(--warning-text);
+  font-weight: var(--weight-semibold);
+}
+
+.review-time {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.review-quote {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+
+.review-context {
+  color: var(--text-3);
+}
+
+.review-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}

@@ -9,6 +9,7 @@ import { clamp } from '../../../shared/engine/math'
 import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project } from '../../../shared/types'
+import { CUT_FADE, cutFadeAhead, editHasCuts } from '../../../shared/render/cutFades'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio } from './media'
 
@@ -35,6 +36,8 @@ interface Graph {
   limiter: WaveShaperNode
   /** Fades of the whole soundtrack. */
   master: GainNode
+  /** Smooth cuts (NW-06): the recording's sound fades out before each cut and in after it. */
+  cut: GainNode
 }
 
 interface Source {
@@ -135,6 +138,9 @@ export class PreviewAudio {
   private warnedStems = false
   private limiting = false
   private disposed = false
+  /** Smooth cuts: the clip end whose fade out is scheduled and when it reaches silence (audio clock), and a fade in owed after a jump. */
+  private cutFadeOut: { at: number; until: number } | null = null
+  private cutFadeIn = false
   /** Called when a stem's file turns out to be missing (the Audio panel says so). */
   onStemFailed: (() => void) | null = null
 
@@ -191,7 +197,8 @@ export class PreviewAudio {
   private apply(): void {
     if (this.disposed) return
     const p = this.project
-    if (!this.graph && !needsAudioGraph(p)) return this.applyElementOnly()
+    // An edit with cuts plays through the graph too, for the fades at its cuts (NW-06).
+    if (!this.graph && !needsAudioGraph(p) && !(p.hasAudio && editHasCuts(p.clips))) return this.applyElementOnly()
     const g = this.ensureGraph()
     if (!g) return this.applyElementOnly()
     const look = this.look
@@ -236,13 +243,14 @@ export class PreviewAudio {
       const rec = ctx.createGain()
       const limiter = ctx.createWaveShaper()
       const master = ctx.createGain()
+      const cut = ctx.createGain()
       // From now on the video's track plays through the graph only.
       ctx.createMediaElementSource(this.screen).connect(screen)
-      screen.connect(rec).connect(limiter).connect(master).connect(ctx.destination)
+      screen.connect(rec).connect(cut).connect(limiter).connect(master).connect(ctx.destination)
       this.screen.muted = this.silent
       this.screen.volume = 1
       if (!this.playing && !this.silent) void ctx.suspend()
-      this.graph = { ctx, screen, rec, limiter, master }
+      this.graph = { ctx, screen, rec, limiter, master, cut }
     } catch (err) {
       // Without Web Audio the preview plays the video's own track; the export applies everything.
       console.warn('Sound effects are not available in the preview:', err)
@@ -486,6 +494,7 @@ export class PreviewAudio {
     const g = this.graph
     if (!g) return
     void g.ctx.resume()
+    this.resetCutFade(g)
     for (const stem of this.activeStems()) this.startStem(stem, t)
     this.syncMusic(true, t)
     this.schedule()
@@ -497,6 +506,7 @@ export class PreviewAudio {
     this.music?.el.pause()
     const g = this.graph
     if (!g) return
+    this.resetCutFade(g)
     // Hold every curve where it is (nothing more is scheduled while paused).
     this.schedule()
     if (!this.silent) void g.ctx.suspend()
@@ -506,6 +516,12 @@ export class PreviewAudio {
   jump(t: number, speed: number): void {
     this.speed = speed
     if (!this.graph || !this.playing) return
+    // Silent across the jump; the first frame after it fades the sound back in.
+    this.cutFadeOut = null
+    this.cutFadeIn = true
+    const cut = this.graph.cut.gain
+    cut.cancelScheduledValues(0)
+    cut.setValueAtTime(0, this.graph.ctx.currentTime)
     for (const stem of this.activeStems()) this.startStem(stem, t)
     // The music runs on through cuts (output time is continuous); only a real seek moves it.
     this.syncMusic(false, t)
@@ -554,9 +570,47 @@ export class PreviewAudio {
       else setRate(stem.el, this.speed * nudge(drift, STEM_NUDGE))
     }
     this.syncMusic(false, t)
+    this.cutFadeStep(g, t)
     const out = this.outputAt(t)
     const a = this.anchor
     if (!a || out > a.until - 5 || Math.abs(a.out + (g.ctx.currentTime - a.ctx) * this.view - out) > ANCHOR_DRIFT) this.schedule()
+  }
+
+  /**
+   * Smooth cuts (NW-06, docs/design/edit-by-text.md §4.9), once per video frame: after a jump the
+   * sound fades in over CUT_FADE; before the jump over a cut it fades out to silence at the jump
+   * (cutFadeAhead), once per cut. A fade out that no jump followed (the edit changed) fades back in.
+   */
+  private cutFadeStep(g: Graph, t: number): void {
+    const param = g.cut.gain
+    const now = g.ctx.currentTime
+    const fade = CUT_FADE / Math.max(this.view, 1e-3)
+    if (this.cutFadeIn) {
+      this.cutFadeIn = false
+      param.cancelScheduledValues(0)
+      param.setValueAtTime(0, now)
+      param.linearRampToValueAtTime(1, now + fade)
+      return
+    }
+    const ahead = cutFadeAhead(this.project.clips, t, this.screen.playbackRate, CUT_FADE)
+    const clip = ahead === null ? null : this.project.clips.find((c) => t >= c.start && t < c.end)
+    if (clip && ahead !== null && this.cutFadeOut?.at !== clip.end) {
+      param.cancelScheduledValues(0)
+      param.setValueAtTime(param.value, now)
+      param.setValueAtTime(1, now + Math.max(0, ahead - fade))
+      param.linearRampToValueAtTime(0, now + ahead)
+      this.cutFadeOut = { at: clip.end, until: now + ahead }
+    } else if (this.cutFadeOut && !clip && now > this.cutFadeOut.until + 0.05) {
+      this.resetCutFade(g)
+    }
+  }
+
+  /** Full sound at once, nothing scheduled (play, pause, a fade out no jump followed). */
+  private resetCutFade(g: Graph): void {
+    this.cutFadeOut = null
+    this.cutFadeIn = false
+    g.cut.gain.cancelScheduledValues(0)
+    g.cut.gain.setValueAtTime(1, g.ctx.currentTime)
   }
 
   private activeStems(): Source[] {
