@@ -3,14 +3,15 @@ import { Icon } from '../components/Icon'
 import { useModalFocus } from '../editor/modalFocus'
 import { AboutSection } from './AboutSection'
 import { AiProvidersSection } from './AiProvidersSection'
+import { BrandKitSection } from './BrandKitSection'
 import { SpeechModelsSection } from './SpeechModelsSection'
 import './settings.css'
 
-export type SettingsSection = 'ai' | 'speech' | 'about'
+export type SettingsSection = 'ai' | 'speech' | 'brand' | 'about'
 
 /**
  * App settings: the AI providers (the user's own API keys for transcription and text tasks),
- * captions on this PC (the speech models) and About. A modal dialog: Tab stays inside, Esc closes it (after closing a form or question
+ * captions on this PC (the speech models), the brand kit and About. A modal dialog: Tab stays inside, Esc closes it (after closing a form or question
  * inside first), and focus goes back to where it was. Keys pressed inside stay inside, so the
  * editor's shortcuts never act behind it.
  */
@@ -44,6 +45,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
         <div className="settings-body">
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
+          <BrandKitSection reveal={section === 'brand'} />
           <AboutSection reveal={section === 'about'} />
         </div>
         <footer className="modal-foot">

@@ -10,7 +10,7 @@ import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
 import type { TrackSlotProps } from './LayoutTrack'
-import { ipcMessage, pickOverlay } from './overlayItems'
+import { ipcMessage, pickOverlay, showOverlay } from './overlayItems'
 import { followPointer } from './pointer'
 import './overlays.css'
 
@@ -80,7 +80,7 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
       () => {
         store.endGesture()
         // A plain click also moves the playhead into the image, so it shows on the preview.
-        if (!moved && (player.time < o.start || player.time >= o.end)) player.seek(o.start + Math.min(0.5, (o.end - o.start) / 2))
+        if (!moved) showOverlay(player, store.state.clips, o)
       }
     )
   }

@@ -11,7 +11,7 @@ import { useEditor } from '../context'
 import { pctFmt, Section, Slider } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
-import { addSticker, ipcMessage, OVERLAY_FORMATS_TEXT, pickOverlay } from '../overlayItems'
+import { addSticker, ipcMessage, OVERLAY_FORMATS_TEXT, pickOverlay, showOverlay } from '../overlayItems'
 import '../overlays.css'
 
 /* ---------- Images: overlays and stickers (docs/design/brand-kit.md §5) ---------- */
@@ -166,7 +166,7 @@ function ImageList({ project, selectedId, onSelect }: { project: Project; select
                 aria-current={o.id === selectedId ? 'true' : undefined}
                 onClick={() => {
                   onSelect({ kind: 'overlay', id: o.id })
-                  if (player.time < o.start || player.time >= o.end) player.seek(o.start + Math.min(0.5, (o.end - o.start) / 2))
+                  showOverlay(player, project.clips, o)
                 }}
               >
                 <span className="muted">{formatTime(o.start, false)}</span> {overlayLabel(o)}

@@ -2,7 +2,10 @@ import type { PickedAsset } from '../../../shared/api/projects'
 import { displayTime } from '../../../shared/editor/clips'
 import { createOverlay, type OverlaySource } from '../../../shared/editor/overlays'
 import { MAX_OVERLAYS, OVERLAY_MAX_BYTES } from '../../../shared/engine/overlayData'
-import type { ImageOverlay } from '../../../shared/types'
+import { outputToSource } from '../../../shared/engine/timeline'
+import { overlayAlpha } from '../../../shared/render/imageOverlays'
+import { viewingTime } from '../../../shared/render/overlays'
+import type { ImageOverlay, Project } from '../../../shared/types'
 import { preloadOverlay } from '../render/overlayLayer'
 import type { EditorServices } from './context'
 import type { Selection } from './selection'
@@ -31,7 +34,17 @@ function checkRoom({ store }: EditorServices): void {
   if ((store.state.overlays?.length ?? 0) >= MAX_OVERLAYS) throw new Error(`This video already has ${MAX_OVERLAYS} images.`)
 }
 
-/** Adds `source` at the playhead (or `opts.at`), selects it and moves the playhead into it when it is not shown. */
+/**
+ * Moves the playhead to where `o` is fully shown (just past its fade-in), unless the preview
+ * already shows it so: a new overlay starts at the playhead, where it is still invisible.
+ */
+export function showOverlay(player: EditorServices['player'], clips: Project['clips'], o: ImageOverlay): void {
+  if (overlayAlpha(o, player.time, clips) >= o.opacity - 1e-6) return
+  const at = outputToSource(clips, viewingTime(clips, o.start) + o.fadeIn).time
+  player.seek(Math.min(Math.max(at, o.start), o.end - 1e-3))
+}
+
+/** Adds `source` at the playhead (or `opts.at`), selects it and moves the playhead to where it shows. */
 async function add(services: EditorServices, source: OverlaySource, url: string | undefined, opts: AddOverlayOptions): Promise<ImageOverlay> {
   checkRoom(services)
   const { store, player } = services
@@ -41,7 +54,7 @@ async function add(services: EditorServices, source: OverlaySource, url: string 
   const o = createOverlay(t, p.duration, source, aspect)
   store.update((q) => ({ ...q, overlays: [...(q.overlays ?? []), o] }))
   opts.onSelect({ kind: 'overlay', id: o.id })
-  if (player.time < o.start || player.time >= o.end) player.seek(o.start)
+  showOverlay(player, p.clips, o)
   return o
 }
 
