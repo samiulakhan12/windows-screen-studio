@@ -1,0 +1,12 @@
+/* ---------- Font menu of text, title cards and captions, with "Add font…" beside it ---------- */
+
+.font-picker-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.font-picker-row > .field {
+  flex: 1;
+  min-width: 0;
+}

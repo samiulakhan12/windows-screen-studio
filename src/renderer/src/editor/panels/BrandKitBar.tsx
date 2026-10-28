@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { applyBrandKit, brandKitIsEmpty, type BrandFiles, type BrandKit } from '../../../../shared/editor/brandKit'
+import { applyBrandKit, brandFontsLeftOut, brandKitIsEmpty, type BrandFiles, type BrandKit } from '../../../../shared/editor/brandKit'
 import { mediaUrl } from '../../../../shared/mediaUrl'
+import { MAX_PROJECT_FONTS } from '../../../../shared/render/fonts'
 import { shortcutLabel } from '../../../../shared/editor/shortcuts'
 import type { Project } from '../../../../shared/types'
 import { preloadProjectFont } from '../../render/fontLoader'
@@ -69,11 +70,13 @@ export function BrandKitBar({ project, onNotice }: { project: Project; onNotice:
         else left.push(f.name)
       }
       const before = store.state
+      const full = brandFontsLeftOut(before, saved, usable)
       store.update((p) => applyBrandKit(p, saved, usable))
       player.invalidate()
       if (store.state === before) return onNotice('Your brand kit is empty: set it up in Settings › Brand kit')
       const undo = keymap.undo[0] ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''
-      onNotice(left.length ? `Brand kit applied without ${left.join(', ')} (could not be read)${undo}` : `Brand kit applied${undo}`)
+      const without = [left.length ? `${left.join(', ')} (could not be read)` : '', full.length ? `${full.join(', ')} (the video already has ${MAX_PROJECT_FONTS} fonts)` : ''].filter(Boolean)
+      onNotice(without.length ? `Brand kit applied without ${without.join(', ')}${undo}` : `Brand kit applied${undo}`)
     } catch (err) {
       onNotice(`The brand kit could not be applied: ${ipcMessage(err)}`)
     } finally {

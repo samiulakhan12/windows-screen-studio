@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyBrandKit, brandCardTimes, brandKitIsEmpty, sanitizeBrandKit, type BrandKit } from '../src/shared/editor/brandKit'
+import { applyBrandKit, brandCardTimes, brandFontsLeftOut, brandKitIsEmpty, sanitizeBrandKit, shownBrandKit, type BrandKit } from '../src/shared/editor/brandKit'
 import { EditStore } from '../src/shared/editor/editStore'
 import { BUILT_IN_PRESETS } from '../src/shared/editor/stylePresets'
+import { readFonts } from '../src/shared/engine/overlayData'
 import { createProject } from '../src/shared/engine/project'
+import { MAX_PROJECT_FONTS } from '../src/shared/render/fonts'
 import type { Clip, Project } from '../src/shared/types'
 
 function project(extra: Partial<Project> = {}): Project {
@@ -64,6 +66,22 @@ describe('reading a stored brand kit', () => {
   })
 })
 
+describe('the kit Settings shows after a save', () => {
+  it('keeps a card whose title is being retyped, though the stored kit leaves it out until it has text', () => {
+    const edited: BrandKit = { ...KIT, intro: { title: '', style: 'big', background: 'blur', length: 6 } }
+    const stored = sanitizeBrandKit(edited)
+    expect(stored.intro).toBeUndefined()
+    const shown = shownBrandKit(stored, edited)
+    expect(shown.intro).toEqual(edited.intro)
+    expect(shown.outro).toEqual(stored.outro)
+    // A card switched off stays off.
+    const off: BrandKit = { ...KIT, intro: undefined }
+    expect(shownBrandKit(sanitizeBrandKit(off), off).intro).toBeUndefined()
+    // Otherwise the stored kit is shown as it is.
+    expect(shownBrandKit(stored, stored)).toEqual(stored)
+  })
+})
+
 describe('applying the brand kit', () => {
   it('applies the preset, logo, fonts, intro and outro and keeps the colours', () => {
     const p = applyBrandKit(project(), KIT, FILES)
@@ -119,6 +137,23 @@ describe('applying the brand kit', () => {
     expect(p.brand?.headingFont).toBe(heading.id)
     expect(p.brand?.bodyFont).toBe('zz')
     expect(p.fonts).toHaveLength(3)
+  })
+
+  it('adds no font past the project limit: the fonts that do not fit are not used, so reopening loses none', () => {
+    const mine = Array.from({ length: MAX_PROJECT_FONTS - 1 }, (_, i) => ({ id: `m${i}`, name: `Mine ${i}`, file: `font-${i + 10}.ttf` }))
+    const before = project({ fonts: mine })
+    expect(brandFontsLeftOut(before, KIT, FILES)).toEqual(['Body'])
+    const p = applyBrandKit(before, KIT, FILES)
+    expect(p.fonts).toHaveLength(MAX_PROJECT_FONTS)
+    expect(readFonts(p.fonts)).toEqual(p.fonts)
+    expect(p.fonts!.at(-1)?.id).toBe('kh')
+    expect(p.captions?.font).toBeUndefined()
+    expect(p.brand).toEqual({ colors: ['#123456', '#abcdef'], headingFont: 'kh' })
+    // A kit font whose file the project already has still fits.
+    const same = project({ fonts: [...mine, { id: 'zz', name: 'Same', file: 'font-2.woff2' }] })
+    expect(brandFontsLeftOut(same, KIT, FILES)).toEqual(['Heading'])
+    expect(applyBrandKit(same, KIT, FILES).captions?.font).toBe('zz')
+    expect(brandFontsLeftOut(project(), KIT, FILES)).toEqual([])
   })
 
   it('leaves out the parts whose files were not copied', () => {

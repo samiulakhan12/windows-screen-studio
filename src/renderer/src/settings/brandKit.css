@@ -7,6 +7,16 @@
   gap: var(--space-2);
 }
 
+.brand-kit h3:focus {
+  outline: none;
+}
+
+.brand-kit h3:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-xs);
+}
+
 .brand-saved {
   font-family: var(--font-sans);
   font-size: var(--text-sm);

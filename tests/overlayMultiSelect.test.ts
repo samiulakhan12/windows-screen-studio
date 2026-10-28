@@ -4,6 +4,7 @@ import { applyField, copyLook, deleteItems, fieldsFor, fieldValue, GROUP_FIELDS,
 import { groupMovePlan, moveGroup, setGroupLength } from '../src/shared/editor/groupMove'
 import { EditStore } from '../src/shared/editor/editStore'
 import { groupLabel, projectItems, selectAllStep, validGroup, type ItemKey } from '../src/shared/editor/multiSelect'
+import { MAX_OVERLAYS, readOverlays } from '../src/shared/engine/overlayData'
 import { DEFAULT_ZOOM_STYLE } from '../src/shared/engine/zoom'
 import type { ImageOverlay, Project } from '../src/shared/types'
 import { p20, text, title } from './groupFixture'
@@ -110,6 +111,19 @@ describe('overlays in a group', () => {
     expect(other.skipped).toEqual([{ kind: 'overlay', why: 'image-other-recording' }])
     expect(pasteNotice(other, 2)).toBe('Pasted 1 of 2: 1 image is from another recording')
     expect(duplicateItems(p, [K('overlay:o1')]).project.overlays).toHaveLength(3)
+  })
+
+  it('paste and duplicate stop at the image limit and say so, so reopening the project loses none', () => {
+    const p = withImages(Array.from({ length: MAX_OVERLAYS - 1 }, (_, i) => img(`o${i}`, 2, 4, i % 2 ? { sticker: 'star', file: undefined } : {})))
+    const dup = duplicateItems(p, [K('overlay:o0'), K('overlay:o1')])
+    expect(dup.keys).toHaveLength(1)
+    expect(dup.skipped).toEqual([{ kind: 'overlay', why: 'image-full' }])
+    expect(pasteNotice(dup, 2, 'Duplicated')).toBe(`Duplicated 1 of 2: 1 image would go past the limit of ${MAX_OVERLAYS}`)
+    expect(dup.project.overlays).toHaveLength(MAX_OVERLAYS)
+    expect(readOverlays(dup.project.overlays)).toHaveLength(MAX_OVERLAYS)
+    const full = pasteItems(dup.project, copyItems(p, [K('overlay:o1')])!, 10)
+    expect(full.project).toBe(dup.project)
+    expect(pasteNotice(full, 1)).toBe(`Nothing pasted: 1 image would go past the limit of ${MAX_OVERLAYS}`)
   })
 
   it("a pasted copy of the brand kit's intro is the user's (applying the kit again keeps it)", () => {
