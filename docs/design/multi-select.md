@@ -1711,6 +1711,11 @@ Built on `feat/multi-select` in the order of §13 (screenshot: `docs/screenshots
 - **`TitleTrack` and `FreezeMarks` read the group with `useGroup()`**: `FreezeMarks` is memoised
   and must re-render when the group changes. Neither is rendered by a unit test with a mocked
   `useContext`.
+- **The Shapes panel's list is its own component** (`ShapeList`): `tests/spotlightPanelCrop.test.ts`
+  calls `ShapesPanel` and `SelectedSpotlight` as plain functions with only `useEditor` and
+  `useKeymap` mocked, so those two may call no other hook (risk 9 also covers these, and
+  `zoomPanelCrop.test.ts` for `ZoomPanel` and `SelectedZoom`). The group hooks live in
+  `ShapeList`, `LookButtons` and the Zoom panel's Auto zoom section, which those tests do not call.
 - **A freeze's length handle** with Ctrl held counts as the block's middle (C9); with Shift it
   still sets the length, as before.
 - **The Selection view's Zoom level** has the preset chips above the slider, as the Zoom panel does.

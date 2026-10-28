@@ -51,9 +51,7 @@ const ADD_COMMAND: Record<ShapeKind, CommandId> = {
 
 export function ShapesPanel(props: InspectorProps): JSX.Element {
   const services = useEditor()
-  const { player } = services
   const keymap = useKeymap()
-  const list = useListSelect()
   const { project, selection, cursor } = props
   const shapes = project.shapes ?? []
   const spotlights = project.spotlights ?? []
@@ -123,45 +121,54 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
       </Section>
 
       {items.length > 0 ? (
-        <Section
-          title={`In this video (${items.length})`}
-          aside={
-            items.length > 1 ? (
-              <button className="link small" onClick={() => list.selectAll(items.map(({ type, item }) => itemKey(type, item.id)))} title={`Select all ${items.length} shapes and spotlights to edit them together`}>
-                Select all
-              </button>
-            ) : undefined
-          }
-        >
-          <ul className="item-list shape-list">
-            {items.slice(0, 200).map(({ type, item }) => {
-              const key = itemKey(type, item.id)
-              const selected = selId === item.id || list.member(key)
-              return (
-                <li key={item.id}>
-                  <button
-                    className={selected ? 'active' : ''}
-                    data-shape-item={item.id}
-                    {...list.row(key, () => {
-                      props.onSelect({ kind: type, id: item.id })
-                      revealItem(player, project.clips, item, type === 'spotlight' ? 'spotlight' : (item as Shape).kind)
-                    }, selId === item.id)}
-                  >
-                    <ShapeIcon name={type === 'shape' ? (item as Shape).kind : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
-                    <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
-                    <span className="muted">
-                      {formatTime(item.start, false)} – {formatTime(item.end, false)}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </Section>
+        <ShapeList project={project} items={items} selId={selId} onSelect={props.onSelect} />
       ) : (
         <p className="hint">Added items appear on the shapes track of the timeline: drag them to change when they show, and drag them on the preview to place them.</p>
       )}
     </>
+  )
+}
+
+/** Every shape and spotlight, in time order: a click selects one; Ctrl/Shift and the keyboard select several (E-06). */
+function ShapeList({ project, items, selId, onSelect }: { project: Project; items: Item[]; selId: string | null; onSelect: InspectorProps['onSelect'] }): JSX.Element {
+  const { player } = useEditor()
+  const list = useListSelect()
+  return (
+    <Section
+      title={`In this video (${items.length})`}
+      aside={
+        items.length > 1 ? (
+          <button className="link small" onClick={() => list.selectAll(items.map(({ type, item }) => itemKey(type, item.id)))} title={`Select all ${items.length} shapes and spotlights to edit them together`}>
+            Select all
+          </button>
+        ) : undefined
+      }
+    >
+      <ul className="item-list shape-list">
+        {items.slice(0, 200).map(({ type, item }) => {
+          const key = itemKey(type, item.id)
+          const selected = selId === item.id || list.member(key)
+          return (
+            <li key={item.id}>
+              <button
+                className={selected ? 'active' : ''}
+                data-shape-item={item.id}
+                {...list.row(key, () => {
+                  onSelect({ kind: type, id: item.id })
+                  revealItem(player, project.clips, item, type === 'spotlight' ? 'spotlight' : (item as Shape).kind)
+                }, selId === item.id)}
+              >
+                <ShapeIcon name={type === 'shape' ? (item as Shape).kind : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
+                <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
+                <span className="muted">
+                  {formatTime(item.start, false)} – {formatTime(item.end, false)}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </Section>
   )
 }
 
