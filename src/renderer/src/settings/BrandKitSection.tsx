@@ -76,7 +76,8 @@ function useKitFont(font: ProjectFont): 'loading' | 'ready' | 'missing' {
 /**
  * Settings › Brand kit (E-03, docs/design/brand-kit.md §5): the logo, colours, fonts, intro and
  * outro, style preset and "Apply to new recordings", in one place. Every change is saved at once
- * (text after a short pause); the editor's "Apply brand kit" reads the saved kit.
+ * (text after a short pause); the editor's "Apply brand kit" reads the saved kit. `reveal`
+ * (Settings opened at `brand`) focuses its heading, so keys stay in the dialog, and scrolls it into view.
  */
 export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.Element {
   const [kit, setKit] = useState<BrandKit | null>(null)
@@ -85,6 +86,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
   const [saved, setSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [color, setColor] = useState('#6252fc')
   const ref = useRef<HTMLElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
   const timer = useRef(0)
   const pending = useRef<BrandKit | null>(null)
 
@@ -95,6 +97,9 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
       () => setPresets([])
     )
   }, [])
+  useEffect(() => {
+    if (reveal) headingRef.current?.focus({ preventScroll: true })
+  }, [reveal])
   useEffect(() => {
     if (reveal && kit) ref.current?.scrollIntoView({ block: 'nearest' })
   }, [reveal, kit])
@@ -154,7 +159,9 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
   if (!kit) {
     return (
       <section className="settings-section brand-kit" aria-labelledby="settings-brand-title" ref={ref}>
-        <h3 id="settings-brand-title">Brand kit</h3>
+        <h3 id="settings-brand-title" ref={headingRef} tabIndex={-1}>
+          Brand kit
+        </h3>
         {error ? (
           <p className="callout" role="alert">
             {error}
@@ -175,7 +182,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
 
   return (
     <section className="settings-section brand-kit" aria-labelledby="settings-brand-title" ref={ref} data-testid="brand-kit-section">
-      <h3 id="settings-brand-title">
+      <h3 id="settings-brand-title" ref={headingRef} tabIndex={-1}>
         Brand kit
         <span className="brand-saved" role="status">
           {saved === 'saving' ? 'Saving…' : saved === 'saved' ? 'Saved' : ''}
