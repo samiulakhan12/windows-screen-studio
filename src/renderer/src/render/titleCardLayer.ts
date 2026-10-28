@@ -3,9 +3,8 @@ import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '..
 import { TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
 import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
-import { fontStack } from '../../../shared/render/fonts'
 import type { Project } from '../../../shared/types'
-import { fontGeneration } from './fontLoader'
+import { fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
 import { paintBackgroundLayer } from './staticLayer'
 
@@ -18,7 +17,7 @@ const MEASURE_PX = 100
 const widths = new Map<string, number>()
 
 /** The font stack of a card: its brand font, else the title font. */
-const cardFont = (project: Pick<Project, 'fonts'>, card: TitleCard): string => fontStack(project.fonts, card.font, TITLE_FONT)
+const cardFont = (project: Pick<Project, 'id' | 'fonts'>, card: TitleCard): string => projectFontStack(project, card.font, TITLE_FONT)
 
 /** A cache key part for a font: the stack and the font generation (widths measured while it loaded are dropped). */
 const fontKey = (font: string): string => `${fontGeneration()}|${font}`

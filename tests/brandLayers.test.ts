@@ -128,7 +128,10 @@ describe('brand fonts in the text layers', () => {
 
   it('captions use the captions font; widths measured with it differ from the default', () => {
     const transcript = { provider: 'local' as const, model: 'm', createdAt: '', segments: [{ id: 's', start: 0, end: 3, text: 'Hello brand world' }] }
-    const withFont = project({ transcript, captions: { show: true, preset: 'clean', position: 'bottom', size: 0.05, color: '#ffffff', highlightColor: '#facc15', background: 'none', maxLines: 2, font: 'f1' } })
+    const withFont = project({
+      transcript,
+      captions: { show: true, preset: 'clean', position: 'bottom', size: 0.05, color: '#ffffff', highlightColor: '#facc15', background: 'none', maxLines: 2, font: 'f1' }
+    })
     drawCaptionsLayer(frame(withFont, 1))
     expect(fontsUsed(/FlownFont-f1/).length).toBeGreaterThan(0)
     calls.length = 0

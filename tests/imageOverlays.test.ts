@@ -196,9 +196,14 @@ describe('reading stored overlays, fonts and the brand', () => {
   })
 
   it('reads fonts with safe files and ids only', () => {
-    expect(readFonts([{ id: 'f1', name: ' Brand ', file: 'font-1.ttf' }, { id: 'f1', name: 'dup', file: 'font-2.ttf' }, { id: 'f2', file: '../x.ttf' }, { id: 'a b', file: 'font-3.otf' }])).toEqual([
-      { id: 'f1', name: 'Brand', file: 'font-1.ttf' }
-    ])
+    expect(
+      readFonts([
+        { id: 'f1', name: ' Brand ', file: 'font-1.ttf' },
+        { id: 'f1', name: 'dup', file: 'font-2.ttf' },
+        { id: 'f2', file: '../x.ttf' },
+        { id: 'a b', file: 'font-3.otf' }
+      ])
+    ).toEqual([{ id: 'f1', name: 'Brand', file: 'font-1.ttf' }])
     expect(readFonts(undefined)).toBeUndefined()
   })
 
@@ -208,7 +213,18 @@ describe('reading stored overlays, fonts and the brand', () => {
   })
 
   it('leaves a project from before overlays without any of the new fields', () => {
-    const old = { version: 2, id: 'p', name: 'Old', duration: 10, width: 1280, height: 720, clips: [{ id: 'c', start: 0, end: 10, speed: 1 }], annotations: [], titles: [{ id: 't', start: 0, end: 2, title: 'Hi', style: 'centered', background: 'blur' }], captions: { show: true } }
+    const old = {
+      version: 2,
+      id: 'p',
+      name: 'Old',
+      duration: 10,
+      width: 1280,
+      height: 720,
+      clips: [{ id: 'c', start: 0, end: 10, speed: 1 }],
+      annotations: [],
+      titles: [{ id: 't', start: 0, end: 2, title: 'Hi', style: 'centered', background: 'blur' }],
+      captions: { show: true }
+    }
     const p = migrateProject(old)
     expect('overlays' in p).toBe(false)
     expect('fonts' in p).toBe(false)

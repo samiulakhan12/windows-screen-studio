@@ -20,7 +20,8 @@ const PATHS: Record<string, string> = {
   check: 'M5 12l5 5 9-10',
   alert: 'M12 3l10 18H2zM12 10v5M12 18v.01',
   keyboard: 'M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10',
-  shapes: 'M3 11h9v10H3zM16 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10z'
+  shapes: 'M3 11h9v10H3zM16 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
+  image: 'M3 5h18v14H3zM8.5 8a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM21 15l-5-5L5 19'
 }
 
 export function EditorIcon({ name, size = 18 }: { name: string; size?: number }): JSX.Element {

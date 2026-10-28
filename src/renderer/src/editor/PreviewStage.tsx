@@ -25,6 +25,7 @@ import type { Annotation, NormRect, Project, Shape, Spotlight, ZoomSegment } fro
 import { cardRect, type RenderScene } from '../render/compositor'
 import { holdGesture, useEditor } from './context'
 import { CropEditor, type CropTool } from './CropEditor'
+import { OverlayEditor } from './OverlayEditor'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
@@ -353,6 +354,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
           {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} box={box} />}
+          {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
         </div>

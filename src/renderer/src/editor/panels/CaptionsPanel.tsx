@@ -28,6 +28,7 @@ import {
 } from '../captionItems'
 import { useEditor } from '../context'
 import { Chips, Section, Slider, Toggle } from '../controls'
+import { FontPicker } from './FontPicker'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
@@ -725,6 +726,7 @@ function LookSection({ project }: { project: Project }): JSX.Element {
           { value: 'top', label: 'Top' }
         ]}
       />
+      <FontPicker project={project} value={s.font} apply={(p, font) => ({ ...p, captions: { ...captionsOf(p), font } })} />
       <Slider label="Size" value={s.size} min={CAPTION_SIZE.min} max={CAPTION_SIZE.max} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(size) => set({ size }, 'caption-size')} />
       <div className="field">
         <span>Text colour</span>

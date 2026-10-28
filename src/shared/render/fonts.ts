@@ -73,7 +73,12 @@ export function fontNameFromFile(file: string): string {
 }
 
 /** A font name as stored: one line, trimmed, at most FONT_NAME_MAX characters. */
-export const cleanFontName = (name: string): string => name.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, FONT_NAME_MAX).trim()
+export const cleanFontName = (name: string): string =>
+  name
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .trim()
+    .slice(0, FONT_NAME_MAX)
+    .trim()
 
 let idCounter = 0
 export const newFontId = (): string => `f${Date.now().toString(36)}${(idCounter++).toString(36)}`

@@ -64,4 +64,3 @@ export async function copyKitIntoProject(id: string, file = brandKitFile()): Pro
   }
   return { kit, files }
 }
-

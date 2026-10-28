@@ -2,6 +2,7 @@ import { CaptionTrack, CaptionTrackLabel } from './CaptionTrack'
 import { ClipWaveform, useWaveformHint } from './ClipWaveform'
 import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
 import { TitleTrack, TitleTrackLabel } from './TitleTrack'
+import { OverlayTrack, OverlayTrackLabel } from './OverlayTrack'
 import {
   forwardRef,
   memo,
@@ -585,6 +586,7 @@ export const Timeline = memo(
             <div className="tl-label shape-label" title="Shapes, blur and spotlights">
               <EditorIcon name="shapes" size={16} />
             </div>
+            <OverlayTrackLabel />
             <TitleTrackLabel />
             <CaptionTrackLabel />
             <LayoutTrackLabel />
@@ -791,6 +793,7 @@ export const Timeline = memo(
                 {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
               </div>
 
+              <OverlayTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
               <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
               <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
               <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />

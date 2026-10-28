@@ -7,7 +7,7 @@
  * Text layers cache measured widths and drawn sprites: they put fontGeneration() in their keys,
  * so everything measured while a font was still loading is measured again once it is ready.
  */
-import { fontFamily, fontOf } from '../../../shared/render/fonts'
+import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project, ProjectFont } from '../../../shared/types'
 import { notifyStyleAssetsChanged } from './watermarkLayer'
@@ -79,6 +79,17 @@ function entryOf(projectId: string, font: ProjectFont, url?: string): Entry | nu
   if (typeof FontFace === 'undefined' || typeof document === 'undefined') return null
   switchProject(projectId)
   return entries.get(keyOf(projectId, font)) ?? load(projectId, font, url ?? mediaUrl(projectId, font.file))
+}
+
+/**
+ * The font stack text with font `id` draws with (shared fontStack), starting to load the font
+ * the first time it is asked for: the preview draws with the default font until it is ready,
+ * then repaints. The export waits for it first (prepareProjectFonts).
+ */
+export function projectFontStack(project: Pick<Project, 'id' | 'fonts'>, id: unknown, fallback: string): string {
+  const font = fontOf(project.fonts, id)
+  if (font) entryOf(project.id, font)
+  return fontStack(project.fonts, id, fallback)
 }
 
 /** Starts loading every font of the project (cached: a second call costs nothing). */

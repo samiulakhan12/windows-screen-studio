@@ -34,7 +34,19 @@ function src(name: string, data: Buffer): string {
 }
 function newProject(id: string) {
   mkdirSync(projectDir(id), { recursive: true })
-  return createProject({ id, name: id, duration: 20, width: 1280, height: 720, hasWebcam: false, hasAudio: false, webcamOffset: 0, zooms: [], cursorValid: true, capture: { method: 'native', cursorInVideo: false, region: null } })
+  return createProject({
+    id,
+    name: id,
+    duration: 20,
+    width: 1280,
+    height: 720,
+    hasWebcam: false,
+    hasAudio: false,
+    webcamOffset: 0,
+    zooms: [],
+    cursorValid: true,
+    capture: { method: 'native', cursorInVideo: false, region: null }
+  })
 }
 
 async function fullKit(file: string) {

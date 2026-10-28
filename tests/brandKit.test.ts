@@ -104,7 +104,16 @@ describe('applying the brand kit', () => {
   })
 
   it('reuses a project font with the same file, and gives a clashing id a new one', () => {
-    const p = applyBrandKit(project({ fonts: [{ id: 'kh', name: 'Other', file: 'font-7.ttf' }, { id: 'zz', name: 'Same', file: 'font-2.woff2' }] }), KIT, FILES)
+    const p = applyBrandKit(
+      project({
+        fonts: [
+          { id: 'kh', name: 'Other', file: 'font-7.ttf' },
+          { id: 'zz', name: 'Same', file: 'font-2.woff2' }
+        ]
+      }),
+      KIT,
+      FILES
+    )
     const heading = p.fonts!.find((f) => f.file === 'font-1.ttf')!
     expect(heading.id).not.toBe('kh')
     expect(p.brand?.headingFont).toBe(heading.id)

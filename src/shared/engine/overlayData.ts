@@ -34,7 +34,11 @@ const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFi
 const num = (v: unknown, l: { min: number; max: number }, d: number): number => (finite(v) ? clamp(v, l.min, l.max) : d)
 
 /** An overlay name as stored and shown: one line, at most OVERLAY_NAME_MAX characters. */
-export const cleanOverlayName = (name: string): string => name.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, OVERLAY_NAME_MAX)
+export const cleanOverlayName = (name: string): string =>
+  name
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .trim()
+    .slice(0, OVERLAY_NAME_MAX)
 
 /** Angle in -180..180 (an angle of 190 is -170). */
 export function normalizeAngle(deg: number): number {

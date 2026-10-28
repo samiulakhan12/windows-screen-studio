@@ -132,8 +132,7 @@ export function sanitizeBrandKit(raw: unknown): BrandKit {
 }
 
 /** True when applying the kit would change nothing (nothing set up yet). */
-export const brandKitIsEmpty = (kit: BrandKit): boolean =>
-  !kit.logo && !kit.colors.length && !kit.fonts.length && !kit.intro && !kit.outro && !kit.preset
+export const brandKitIsEmpty = (kit: BrandKit): boolean => !kit.logo && !kit.colors.length && !kit.fonts.length && !kit.intro && !kit.outro && !kit.preset
 
 /** The kit's files as copied into a project: the logo's project file, and each kit font's. */
 export interface BrandFiles {

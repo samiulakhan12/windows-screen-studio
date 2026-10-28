@@ -48,8 +48,7 @@ export function overlayAlpha(o: Pick<ImageOverlay, 'start' | 'end' | 'opacity' |
 }
 
 /** Milliseconds of the overlay's own clock at source time `t` (output time since its start). */
-export const overlayClockMs = (o: Pick<ImageOverlay, 'start'>, t: number, clips: Clip[]): number =>
-  Math.max(0, (viewingTime(clips, t) - viewingTime(clips, o.start)) * 1000)
+export const overlayClockMs = (o: Pick<ImageOverlay, 'start'>, t: number, clips: Clip[]): number => Math.max(0, (viewingTime(clips, t) - viewingTime(clips, o.start)) * 1000)
 
 /** Frame delays at or under this many milliseconds play as GIF_SHORT_DELAY_MS, as browsers do. */
 export const GIF_MIN_DELAY_MS = 10

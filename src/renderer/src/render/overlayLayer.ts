@@ -25,9 +25,7 @@ import { notifyStyleAssetsChanged } from './watermarkLayer'
 
 /* ---------- decoding ---------- */
 
-export type DecodedOverlay =
-  | { kind: 'still'; source: CanvasImageSource; width: number; height: number }
-  | { kind: 'gif'; frames: ImageBitmap[]; timing: GifTiming; width: number; height: number }
+export type DecodedOverlay = { kind: 'still'; source: CanvasImageSource; width: number; height: number } | { kind: 'gif'; frames: ImageBitmap[]; timing: GifTiming; width: number; height: number }
 
 interface Entry {
   image: DecodedOverlay | null
@@ -216,7 +214,10 @@ export async function preloadOverlay(projectId: string, o: Pick<ImageOverlay, 'f
 }
 
 /** What the panel says about an overlay's picture: decoding, ready (with its aspect) or why it cannot be shown. */
-export function overlayStatus(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>): { state: 'loading' } | { state: 'ready'; aspect: number; frames: number } | { state: 'failed'; error: string } {
+export function overlayStatus(
+  projectId: string,
+  o: Pick<ImageOverlay, 'file' | 'sticker'>
+): { state: 'loading' } | { state: 'ready'; aspect: number; frames: number } | { state: 'failed'; error: string } {
   const e = entryOf(projectId, o)
   if (!e) return { state: 'loading' }
   if (e.image) return { state: 'ready', aspect: e.image.width / e.image.height, frames: e.image.kind === 'gif' ? e.image.frames.length : 1 }

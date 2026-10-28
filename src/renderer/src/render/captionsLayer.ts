@@ -2,8 +2,7 @@ import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
 import { luminance } from '../../../shared/editor/titles'
 import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
-import { fontStack } from '../../../shared/render/fonts'
-import { fontGeneration } from './fontLoader'
+import { fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
 
 type Ctx = CanvasRenderingContext2D
@@ -15,7 +14,7 @@ const MEASURE_PX = 100
 const widths = new Map<string, number>()
 
 /** The captions' font stack: their brand font, else the caption font. */
-const captionFont = (project: Pick<Project, 'fonts'>, settings: CaptionSettings): string => fontStack(project.fonts, settings.font, CAPTION_FONT)
+const captionFont = (project: Pick<Project, 'id' | 'fonts'>, settings: CaptionSettings): string => projectFontStack(project, settings.font, CAPTION_FONT)
 
 /** A cache key part for a font: the stack and the font generation (widths measured while it loaded are dropped). */
 const fontKey = (font: string): string => `${fontGeneration()}|${font}`

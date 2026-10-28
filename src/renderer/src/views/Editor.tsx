@@ -69,6 +69,7 @@ import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { snapPref } from '../editor/snapControl'
 import { addChapterAt, addTitleAt } from '../editor/titleItems'
+import { OverlayDropZone } from '../editor/OverlayDropZone'
 import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
@@ -575,6 +576,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else if (sel.kind === 'caption')
           store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: p.transcript.segments.filter((s) => s.id !== sel.id) } } : p))
         else if (sel.kind === 'freeze') store.update((p) => removeFreeze(p, sel.id))
+        else if (sel.kind === 'overlay') store.update((p) => ({ ...p, overlays: (p.overlays ?? []).filter((o) => o.id !== sel.id) }))
         else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else if (sel.kind === 'click') {
@@ -1226,6 +1228,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             onClose={() => setExporting(false)}
           />
         )}
+        <OverlayDropZone onSelect={setSelection} onNotice={showNotice} />
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
         {dialog === 'polish' && (
