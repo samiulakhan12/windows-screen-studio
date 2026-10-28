@@ -39,6 +39,8 @@ export const TITLE_TEXT_COLORS = ['#ffffff', '#14141c', '#facc15', '#a5f3fc', '#
 
 let idCounter = 0
 const newId = (prefix: string): string => `${prefix}${Date.now().toString(36)}${(idCounter++).toString(36)}`
+/** A fresh title card id (pasted and duplicated cards, E-06). */
+export const newTitleId = (): string => newId('c')
 
 /** A new title card starting at `t` (or ending at the recording's end when `t` is too late to fit it). */
 export function createTitleCard(t: number, duration: number, init: Partial<Omit<TitleCard, 'id'>> = {}): TitleCard {

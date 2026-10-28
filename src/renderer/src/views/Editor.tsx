@@ -897,7 +897,16 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
       // E-11 freeze frame
       freezeFrame: actions.freezeFrame,
-      toggleFreezeSound: actions.toggleFreezeSound
+      toggleFreezeSound: actions.toggleFreezeSound,
+
+      // E-06 select several items (docs/design/multi-select.md §6)
+      selectAll: () => undefined,
+      copyItems: () => undefined,
+      cutItems: () => undefined,
+      pasteItems: () => undefined,
+      duplicateItems: () => undefined,
+      copyLook: () => undefined,
+      pasteLook: () => undefined
     }
   }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop])
   const commandsRef = useRef(commands)

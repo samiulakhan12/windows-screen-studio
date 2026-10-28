@@ -60,6 +60,9 @@ export const DEFAULT_KEYMAP: Keymap = Object.freeze({
   timelineZoomIn: ['Plus', '='],
   timelineZoomOut: ['-', '_'],
   toggleSnapping: ['N'],
+  duplicateItems: ['Ctrl+D'],
+  copyLook: ['Ctrl+Shift+C'],
+  pasteLook: ['Ctrl+Shift+V'],
   export: ['Ctrl+E'],
   shortcuts: ['Ctrl+/'],
   about: [],
@@ -329,6 +332,40 @@ export function matchShortcut(index: ShortcutIndex, chord: Chord): CommandId | n
   const exact = index.get(formatChord(chord))
   if (exact) return exact
   return chord.shift ? (index.get(formatChord({ ...chord, shift: false })) ?? null) : null
+}
+
+/*
+ * Standard edit keys (E-06, docs/design/multi-select.md §6): Ctrl+A, C, X and V keep the meaning
+ * every Windows user knows, for timeline items. They are not keymap bindings: the editor runs them
+ * only when the keymap has nothing for the chord, so a user who binds one of them to another
+ * command takes it over, and matchShortcut never returns them.
+ */
+
+/** Edit keys every Windows user knows; matched only when the keymap has nothing for the chord. */
+export const STANDARD_EDIT_KEYS: Readonly<Record<'Ctrl+A' | 'Ctrl+C' | 'Ctrl+X' | 'Ctrl+V', CommandId>> = Object.freeze({
+  'Ctrl+A': 'selectAll',
+  'Ctrl+C': 'copyItems',
+  'Ctrl+X': 'cutItems',
+  'Ctrl+V': 'pasteItems'
+})
+
+/** The standard command of a chord: exact match only (Ctrl+Shift+C is never Ctrl+C). */
+export function standardEditCommand(chord: Chord): CommandId | null {
+  const key = formatChord(chord)
+  return Object.prototype.hasOwnProperty.call(STANDARD_EDIT_KEYS, key) ? STANDARD_EDIT_KEYS[key as keyof typeof STANDARD_EDIT_KEYS] : null
+}
+
+/** The standard key of command `id` ("Ctrl+C" for copyItems), or null. */
+export function standardKeyOf(id: CommandId): string | null {
+  return (Object.keys(STANDARD_EDIT_KEYS) as (keyof typeof STANDARD_EDIT_KEYS)[]).find((k) => STANDARD_EDIT_KEYS[k] === id) ?? null
+}
+
+/** A command's keys for labels: its keymap bindings, then its standard key (if any). */
+export function commandKeys(keymap: Keymap, id: CommandId): string[] {
+  const own = keymap[id] ?? []
+  const standard = standardKeyOf(id)
+  // The standard key works only while no command has it in the keymap.
+  return standard && !own.includes(standard) && !commandForShortcut(keymap, standard) ? [...own, standard] : [...own]
 }
 
 /** Keys a focused slider uses itself: a shortcut on them waits until the slider loses focus. */
