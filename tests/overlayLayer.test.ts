@@ -118,6 +118,7 @@ const overlays = (await import(/* @vite-ignore */ `${RENDER}overlayLayer`)) as {
 }
 const watermarks = (await import(/* @vite-ignore */ `${RENDER}watermarkLayer`)) as {
   preloadWatermarkImage: (projectId: string, file: string, url?: string) => Promise<void>
+  checkKitLogo: (file: string, bytes: Uint8Array | null) => Promise<void>
   prepareStyleAssets: (p: Project, url: (file: string) => string) => Promise<void>
   drawWatermarkLayer: (fc: unknown) => void
 }
@@ -190,6 +191,21 @@ describe('SVGs with HTML in them (they taint the canvas)', () => {
     const p = project('p4c', { watermark: { show: true, kind: 'image', path: 'watermark-2.svg', position: 'bottom-right', size: 0.1, margin: 0.03, opacity: 1 } })
     await watermarks.prepareStyleAssets(p, (file) => urlOf('p4c', `html-${file}`))
     expect(exportable(watermarks.drawWatermarkLayer, p)).toBe(true)
+  })
+
+  it('as the brand kit logo are refused when picked in Settings', async () => {
+    // Settings reads the picked file's bytes into a blob: URL (here named after what it holds).
+    const made = vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:html-logo').mockReturnValueOnce('blob:plain-logo')
+    const revoked = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const bytes = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    await expect(watermarks.checkKitLogo('logo-1.svg', bytes)).rejects.toThrow(/HTML/)
+    await expect(watermarks.checkKitLogo('logo-2.svg', bytes)).resolves.toBeUndefined()
+    await expect(watermarks.checkKitLogo('logo-3.svg', null)).rejects.toThrow('This image could not be read.')
+    await expect(watermarks.checkKitLogo('logo-4.png', bytes)).resolves.toBeUndefined()
+    expect(made).toHaveBeenCalledTimes(2)
+    expect(revoked).toHaveBeenCalledTimes(2)
+    made.mockRestore()
+    revoked.mockRestore()
   })
 })
 

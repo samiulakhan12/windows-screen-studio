@@ -5,6 +5,7 @@ import { TITLE_BACKGROUNDS, TITLE_STYLES } from '../../../shared/editor/titles'
 import { WATERMARK_LIMITS } from '../../../shared/engine/watermark'
 import { cleanFontName, fontFamily } from '../../../shared/render/fonts'
 import type { ProjectFont } from '../../../shared/types'
+import { checkKitLogo } from '../render/watermarkLayer'
 import { BRAND_KIT_CHANGED_EVENT } from './brandKitEvents'
 import './brandKit.css'
 
@@ -140,9 +141,10 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
     try {
       const added = await window.api.pickBrandFile(kind)
       if (!added) return
-      if (kind === 'logo')
+      if (kind === 'logo') {
+        await checkKitLogo(added.file, await window.api.brandFile(added.file))
         update({ logo: { ...DEFAULT_BRAND_LOGO, ...(kit.logo ? { position: kit.logo.position, size: kit.logo.size, opacity: kit.logo.opacity, margin: kit.logo.margin } : {}), file: added.file } })
-      else if (added.font) {
+      } else if (added.font) {
         const fonts = [...kit.fonts, added.font]
         update({ fonts, headingFont: kit.headingFont ?? added.font.id, bodyFont: kit.bodyFont ?? added.font.id })
       }
