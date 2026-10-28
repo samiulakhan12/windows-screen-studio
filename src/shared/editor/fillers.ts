@@ -36,7 +36,7 @@ const LISTS: Record<FillerLanguage, FillerList> = {
 export function fillerLanguage(language?: string): FillerLanguage {
   if (!language) return 'en'
   const base = language.toLowerCase().split('-')[0]
-  return base in LISTS ? (base as FillerLanguage) : 'other'
+  return Object.hasOwn(LISTS, base) ? (base as FillerLanguage) : 'other'
 }
 
 /** Whether these words (normalised) are fillers in any context. */

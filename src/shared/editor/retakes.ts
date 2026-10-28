@@ -108,6 +108,10 @@ export function findRetakes(words: readonly TranscriptWord[], language?: string)
       for (let m = 0; m < n && same; m++) same = keys[idx[k + m]] === keys[idx[k + n + m]]
       if (!same) continue
       if (n === 1 && DOUBLES.has(keys[idx[k]])) continue
+      // Never across a sentence's end ("... the store. The store was closed").
+      let ends = false
+      for (let m = 0; m < n && !ends; m++) ends = SENTENCE_END.test(words[idx[k + m]].text)
+      if (ends) continue
       if (words[idx[k + n]].start - words[idx[k + n - 1]].end > STUTTER_GAP) continue
       found = n
       break

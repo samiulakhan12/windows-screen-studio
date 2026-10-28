@@ -53,6 +53,10 @@ describe('fillers', () => {
     expect(fillerLanguage(undefined)).toBe('en')
     expect(fillerLanguage('en-GB')).toBe('en')
     expect(fillerLanguage('ja')).toBe('other')
+    // Not a list of an object's own: no prototype lookups.
+    expect(fillerLanguage('__proto__')).toBe('other')
+    expect(fillerLanguage('constructor')).toBe('other')
+    expect(findFillers(say('um'), 'constructor')).toEqual([[0, 0]])
     const w = say('er um like')
     // "er" is a German word ("he"): only the shared sounds in other languages.
     expect(texts(w, findFillers(w, 'de'))).toEqual(['um'])

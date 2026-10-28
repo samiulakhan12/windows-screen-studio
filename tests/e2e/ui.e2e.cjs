@@ -22,7 +22,7 @@ function addItems(home, id, extra) {
   fs.writeFileSync(file, JSON.stringify({ ...p, ...extra }, null, 2))
 }
 
-const TABS = ['Style', 'Cursor', 'Zoom', 'Clip', 'Text', 'Captions', 'Shapes', 'Images', 'Effects', 'Camera', 'Audio']
+const TABS = ['Style', 'Cursor', 'Zoom', 'Clip', 'Text', 'Captions', 'Transcript', 'Shapes', 'Images', 'Effects', 'Camera', 'Audio']
 
 /** A recording with every timeline lane: camera (layouts), captions, text, shapes and titles. */
 function seedFull(home) {
@@ -138,7 +138,7 @@ const COLOR_FNS = `
       }
     })
     h.assert(rail.overflow <= 0, `the rail fits without scrolling at ${min.join('x')} (${rail.overflow}px over)`)
-    h.assert(rail.tabs.map((t) => t.title).join() === TABS.join(), `eleven tabs: ${rail.tabs.map((t) => t.title)}`)
+    h.assert(rail.tabs.map((t) => t.title).join() === TABS.join(), `twelve tabs: ${rail.tabs.map((t) => t.title)}`)
     for (const t of rail.tabs) h.assert(t.inside && t.hit, `${t.title} is fully shown and on top: ${JSON.stringify(t)}`)
     for (const name of TABS) {
       await win.click(`.insp-tabs button[title="${name}"]`)

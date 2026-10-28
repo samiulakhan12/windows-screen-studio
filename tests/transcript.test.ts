@@ -211,6 +211,18 @@ describe('cutWords and restoreWords', () => {
     expect(cutFlags(words, back)).toEqual([false, true, false, true, false])
   })
 
+  it('never leaves a clip shorter than MIN_CLIP when restoring one short word', () => {
+    const w = wordsAt([
+      [1, 1.5],
+      [1.5, 1.52],
+      [1.52, 2]
+    ])
+    const cut = cutWords(full, w, [[0, 2]], 10)
+    const back = restoreWords(cut, w, 1, 1, 10)
+    expect(back.every((c) => c.end - c.start >= 0.1 - 1e-9)).toBe(true)
+    expect(cutFlags(w, back)[1]).toBe(false)
+  })
+
   it('never cuts the whole video', () => {
     const one = wordsAt([[0.2, 9.8]])
     expect(cutWords(full, one, [[0, 0]], 10)).toBe(full)

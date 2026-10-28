@@ -553,9 +553,9 @@ async function main() {
       .replace('[c1];', ',apad=whole_len=48000,atrim=end_sample=48000[c1];')
       .replace('[c2];', ',apad=whole_len=96000,atrim=end_sample=96000[c2];')
       // Smooth cuts (NW-06): the sound fades out over 10 ms before each cut and in over 10 ms after it.
-      .replace(',apad=whole_len=96000,atrim=end_sample=96000[c0];', ',afade=t=out:st=1.99:d=0.01,apad=whole_len=96000,atrim=end_sample=96000[c0];')
-      .replace(',apad=whole_len=48000,atrim=end_sample=48000[c1];', ',afade=t=in:st=0:d=0.01,afade=t=out:st=0.99:d=0.01,apad=whole_len=48000,atrim=end_sample=48000[c1];')
-      .replace(',apad=whole_len=96000,atrim=end_sample=96000[c2];', ',afade=t=in:st=0:d=0.01,apad=whole_len=96000,atrim=end_sample=96000[c2];')
+      .replace('atrim=end_sample=96000[c0];', 'atrim=end_sample=96000,afade=t=out:st=1.99:d=0.01[c0];')
+      .replace('atrim=end_sample=48000[c1];', 'atrim=end_sample=48000,afade=t=in:st=0:d=0.01,afade=t=out:st=0.99:d=0.01[c1];')
+      .replace('atrim=end_sample=96000[c2];', 'atrim=end_sample=96000,afade=t=in:st=0:d=0.01[c2];')
     const encode = (graph, file) =>
       // prettier-ignore
       execFileSync(FF, ['-y', '-hide_banner', '-loglevel', 'error', '-nostats', '-nostdin', '-vn', '-i', path.join(dir, 'screen.mp4'), '-filter_complex', graph, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-movflags', '+faststart', '-f', 'ipod', file])

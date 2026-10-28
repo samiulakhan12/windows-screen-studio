@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
-import { cutFlags, cutWords, restoreWords, transcriptWords, wordIndexAt, type TranscriptWord } from '../../../../shared/editor/transcript'
+import { cutFlags, cutWords, restoreWords, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
 import { applySuggestions, refreshSuggestions, reviewSuggestions, SUGGESTION_LABELS, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
 import {
   clickSelection,
@@ -129,25 +129,38 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     if (!span) return
     const [a, b] = span
     const before = store.state.clips
-    const kept = flags.slice(a, b + 1).filter((f) => !f).length
-    if (kept === 0) return onNotice('Already cut. Press Restore to bring it back')
+    if (flags.slice(a, b + 1).every((f) => f)) return onNotice('Already cut. Press Restore to bring it back')
+    const range = wordsRange(words, a, b, store.state.duration)
     const next = cutWords(before, words, [[a, b]], store.state.duration)
-    if (next === before) return onNotice('That would cut the whole video')
-    if (sameClips(next, before)) return
+    if (sameClips(next, before)) {
+      const all = before.every((c) => c.start >= range.start - 1e-9 && c.end <= range.end + 1e-9)
+      return onNotice(all ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
+    }
     store.update((p) => ({ ...p, clips: cutWords(p.clips, words, [[a, b]], p.duration) }))
-    onNotice(`Cut ${plural(kept, 'word')} (${seconds(outputDuration(before) - outputDuration(next))})`)
+    // Counted from the result: a short word left between two cuts goes with them (no clip is that short).
+    const after = cutFlags(words, next)
+    const newly = after.reduce((n, f, i) => n + (f && !flags[i] ? 1 : 0), 0)
+    const saved = seconds(outputDuration(before) - outputDuration(next))
+    onNotice(newly > 0 ? `Cut ${plural(newly, 'word')} (${saved})` : `Cut ${saved}`)
   }
 
   const restore = (): void => {
     if (!span) return
     const [a, b] = span
-    const count = flags.slice(a, b + 1).filter((f) => f).length
-    if (count === 0) return
+    if (flags.slice(a, b + 1).every((f) => !f)) return
     const before = store.state.clips
     const next = restoreWords(before, words, a, b, store.state.duration)
     if (sameClips(next, before)) return
     store.update((p) => ({ ...p, clips: restoreWords(p.clips, words, a, b, p.duration) }))
-    onNotice(`Restored ${plural(count, 'word')}`)
+    const after = cutFlags(words, next)
+    const back = flags.reduce((n, f, i) => n + (f && !after[i] ? 1 : 0), 0)
+    onNotice(`Restored ${plural(back, 'word')}`)
+  }
+
+  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there). */
+  const refocus = (fn: () => void) => (): void => {
+    fn()
+    listRef.current?.focus({ preventScroll: true })
   }
 
   const find = (): void => {
@@ -233,7 +246,7 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     if (plain && SELECTION_KEYS.includes(e.key)) {
       own()
       setSel(moveSelection(sel, e.key as SelectionKey, e.shiftKey, words))
-    } else if (plain && !e.shiftKey && (e.key === 'Delete' || e.key === 'Backspace')) {
+    } else if (plain && (e.key === 'Delete' || e.key === 'Backspace')) {
       own()
       cut()
     } else if (plain && !e.shiftKey && e.key === 'Enter') {
@@ -278,8 +291,16 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
   useEffect(() => {
     if (focus >= 0) setPage(pageOfWord(focus))
   }, [focus, pageOfWord])
+  // While playing, the page turns when the word being said moves onto another page (Earlier and
+  // Later stay where they were put until then).
+  const followed = useRef(-1)
   useEffect(() => {
-    if (playing && current >= 0) setPage(pageOfWord(current))
+    if (!playing || current < 0) return
+    const p = pageOfWord(current)
+    if (p !== followed.current) {
+      followed.current = p
+      setPage(p)
+    }
   }, [playing, current, pageOfWord])
   const shownPage = Math.min(page, pages - 1)
   const shown = paragraphs.slice(shownPage * PAGE, shownPage * PAGE + PAGE)
@@ -302,10 +323,10 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     <div className="transcript-panel">
       <Section title="Transcript" aside={<span className="hint transcript-count">{`${plural(words.length, 'word')} · ${cutCount} cut`}</span>}>
         <div className="row start transcript-tools">
-          <button className="btn small" onClick={cut} disabled={!canCut} title="Cut the selected words (Delete)">
+          <button className="btn small" onClick={refocus(cut)} disabled={!canCut} title="Cut the selected words (Delete)">
             <EditorIcon name="scissors" size={14} /> Cut
           </button>
-          <button className="btn small" onClick={restore} disabled={!canRestore} title="Bring the selected words back">
+          <button className="btn small" onClick={refocus(restore)} disabled={!canRestore} title="Bring the selected words back">
             <EditorIcon name="restore" size={14} /> Restore
           </button>
           <button className="btn small" onClick={find} data-testid="transcript-find">

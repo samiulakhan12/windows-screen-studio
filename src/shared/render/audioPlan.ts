@@ -216,13 +216,15 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
   clips.forEach((c, i) => {
     const len = c.end - c.start
     const tempo = Math.abs(c.speed - 1) > 1e-6 ? `,${retimeFilters(c.speed)}` : ''
-    // Smooth cuts (NW-06): on the piece's own sound, before its pause-freeze silence.
-    const soundLength = retimed ? (bounds[i + 1] - bounds[i] - Math.round(c.hold * AUDIO_RATE)) / AUDIO_RATE : len
-    const fades = edges ? cutFadeFilters(edges[i], soundLength, rec.cutFade ?? 0) : ''
+    // Smooth cuts (NW-06): last, on the piece's exact samples (atempo's output is a little off its
+    // length), after its pause-freeze silence.
+    const silence = retimed ? Math.round(c.hold * AUDIO_RATE) : 0
+    const soundLength = retimed ? (bounds[i + 1] - bounds[i] - silence) / AUDIO_RATE : len
+    const fades = edges ? cutFadeFilters(edges[i], soundLength, rec.cutFade ?? 0, silence / AUDIO_RATE) : ''
     // A pause freeze: silence in front, in whole samples (holds are in tenths of a second).
     const hold = c.hold > 0 ? `,adelay=delays=${Math.round(c.hold * AUDIO_RATE)}S:all=1` : ''
     const exact = retimed ? `,apad=whole_len=${bounds[i + 1] - bounds[i]},atrim=end_sample=${bounds[i + 1] - bounds[i]}` : ''
-    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${fades}${hold}${exact}[c${i}]`)
+    parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${hold}${exact}${fades}[c${i}]`)
   })
   const joined = n > 1 ? `${clips.map((_, i) => `[c${i}]`).join('')}concat=n=${n}:v=0:a=1,` : '[c0]'
   const normalize = rec.normalize ? `${NORMALIZE_FILTERS},` : ''

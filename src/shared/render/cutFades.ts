@@ -10,8 +10,8 @@ import type { Clip } from '../types'
 /** Seconds of fade out before, and of fade in after, every cut. */
 export const CUT_FADE = 0.01
 
-/** The preview proxy's frame (60 fps): the player jumps over a cut one frame before the clip's end. */
-export const PREVIEW_FRAME = 1 / 60
+/** The preview's display refresh assumed before a callback interval has been measured. */
+export const DISPLAY_RATE = 60
 
 /** Largest cutFade an export job may ask for (main validates it). */
 export const MAX_CUT_FADE = 0.05
@@ -34,15 +34,16 @@ export function pieceCutFades(pieces: readonly { start: number; end: number }[])
 }
 
 /**
- * The afade filters (each with a leading comma) for a piece `length` output seconds long: in at
- * its start and out at its end, each min(fade, length / 2) long; '' when it has none.
+ * The afade filters (each with a leading comma) for a piece whose sound is `length` output seconds
+ * long and starts `offset` seconds in (after a pause freeze's silence): in at the sound's start and
+ * out at its end, each min(fade, length / 2) long; '' when it has none.
  */
-export function cutFadeFilters(edges: { fadeIn: boolean; fadeOut: boolean }, length: number, fade: number): string {
+export function cutFadeFilters(edges: { fadeIn: boolean; fadeOut: boolean }, length: number, fade: number, offset = 0): string {
   const d = Math.min(fade, Math.max(0, length) / 2)
   if (!(d > 0)) return ''
   let out = ''
-  if (edges.fadeIn) out += `,afade=t=in:st=0:d=${sec(d)}`
-  if (edges.fadeOut) out += `,afade=t=out:st=${sec(length - d)}:d=${sec(d)}`
+  if (edges.fadeIn) out += `,afade=t=in:st=${sec(offset)}:d=${sec(d)}`
+  if (edges.fadeOut) out += `,afade=t=out:st=${sec(offset + length - d)}:d=${sec(d)}`
   return out
 }
 
@@ -50,17 +51,22 @@ export function cutFadeFilters(edges: { fadeIn: boolean; fadeOut: boolean }, len
 export const editHasCuts = (clips: readonly Clip[]): boolean => clips.some((c, i) => i > 0 && c.start - clips[i - 1].end > EPS)
 
 /**
- * Preview: wall seconds from now until the sound must be silent because the player jumps over a
- * cut, while playing source time `t` at element rate `rate`; null when the clip under `t` does not
- * end in a cut (it is the last one, or the next one continues it) or the jump is further away than
- * the fade and two frames. The player jumps when the next frame would reach the clip's end, so one
- * frame before it.
+ * Preview (docs/design/edit-by-text.md §4.9): wall seconds from now until the player jumps over the
+ * cut at the end of the clip under source time `t`, when the fade out has to be scheduled now; else
+ * null. The player jumps at the first video frame callback whose time is within one proxy frame
+ * (`rate × frame`) of the clip's end; callbacks come every `step` source seconds (measured; 0 when
+ * not known yet: one proxy frame, or one display refresh when that is longer). The fade is scheduled
+ * at the last callback that still leaves `fade` wall seconds before the jump; it ends at the jump.
+ * Null too when the clip does not end in a cut (the last one, or the next continues it) or nothing plays.
  */
-export function cutFadeAhead(clips: readonly Clip[], t: number, rate: number, fade = CUT_FADE): number | null {
+export function cutFadeAhead(clips: readonly Clip[], t: number, rate: number, frame: number, step: number, fade = CUT_FADE): number | null {
   const i = clipIndexAt(clips as Clip[], t)
-  if (i < 0 || i >= clips.length - 1 || !(rate > 0)) return null
+  if (i < 0 || i >= clips.length - 1 || !(rate > 0) || !(frame > 0)) return null
   if (clips[i + 1].start - clips[i].end <= EPS) return null
-  const wall = (clips[i].end - t) / rate - PREVIEW_FRAME
-  if (wall > fade + 2 * PREVIEW_FRAME) return null
-  return Math.max(0, wall)
+  const s = step > 0 ? step : Math.max(frame, rate / DISPLAY_RATE)
+  const callbacks = Math.max(0, Math.ceil((clips[i].end - rate * frame - t) / s - 1e-9))
+  const wall = (callbacks * s) / rate
+  // The next callback would still leave the whole fade: wait for it.
+  if (wall - s / rate >= fade - 1e-9) return null
+  return wall
 }

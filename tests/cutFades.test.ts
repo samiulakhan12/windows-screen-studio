@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import { AUDIO_RATE, pieceSampleBounds, planSoundtrack, recordingGraph, soundPieces } from '../src/shared/render/audioPlan'
-import { CUT_FADE, cutFadeAhead, cutFadeFilters, editHasCuts, pieceCutFades, PREVIEW_FRAME } from '../src/shared/render/cutFades'
+import { CUT_FADE, cutFadeAhead, cutFadeFilters, editHasCuts, pieceCutFades } from '../src/shared/render/cutFades'
 import type { Clip } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -37,6 +37,8 @@ describe('fade filters', () => {
     expect(cutFadeFilters({ fadeIn: false, fadeOut: true }, 0.012, 0.01)).toBe(',afade=t=out:st=0.006:d=0.006')
     expect(cutFadeFilters({ fadeIn: false, fadeOut: false }, 2, 0.01)).toBe('')
     expect(cutFadeFilters({ fadeIn: true, fadeOut: true }, 0, 0.01)).toBe('')
+    // After a pause freeze's silence of `offset` seconds.
+    expect(cutFadeFilters({ fadeIn: true, fadeOut: true }, 2, 0.01, 1)).toBe(',afade=t=in:st=1:d=0.01,afade=t=out:st=2.99:d=0.01')
   })
 })
 
@@ -49,23 +51,19 @@ describe('recordingGraph with cutFade', () => {
     expect(base).not.toContain('afade')
   })
 
-  it('fades the recording at every cut, after the re-timing and before a pause freeze', () => {
+  it('fades the recording at every cut, last, on the exact samples and after a pause freeze', () => {
     const plain = [clip(0, 2), clip(3, 5)]
     const g = recordingGraph({ clips: plain, volume: 1, input: '1:a', cutFade: CUT_FADE }, 4)
     expect(g).toContain('[s0]atrim=start=0:end=2,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,afade=t=out:st=1.99:d=0.01[c0]')
     expect(g).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,afade=t=in:st=0:d=0.01[c1]')
-    // A re-timed edit: lengths from the exact samples the video gives each piece, less its hold.
+    // A re-timed edit: on the exact samples the video gives each piece (atempo's output is a little
+    // off), the fade in after the freeze's silence.
     const holds = [{ at: 3, length: 1 }]
     const r = recordingGraph({ clips, volume: 1, input: '1:a', cutFade: CUT_FADE, holds }, 8)
-    const pieces = soundPieces(clips, holds).pieces
-    const bounds = pieceSampleBounds(pieces)
-    const sound1 = (bounds[2] - bounds[1] - AUDIO_RATE) / AUDIO_RATE
-    expect(r).toMatch(new RegExp(`\\[c1\\]`))
-    // The piece after the cut fades in, then the freeze's silence goes in front; it continues into the 2x piece, so no fade out.
-    expect(r).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,afade=t=in:st=0:d=0.01,adelay=delays=48000S:all=1')
-    // The 2x piece fades out over its exact sound length.
-    expect(r).toContain(`atrim=start_sample=500,asetpts=PTS-STARTPTS,afade=t=out:st=${+((bounds[3] - bounds[2]) / AUDIO_RATE - 0.01).toFixed(6)}:d=0.01,apad`)
-    expect(sound1).toBeCloseTo(2, 6)
+    const bounds = pieceSampleBounds(soundPieces(clips, holds).pieces)
+    expect(bounds[2] - bounds[1]).toBe(3 * AUDIO_RATE)
+    expect(r).toContain('[s1]atrim=start=3:end=5,asetpts=PTS-STARTPTS,apad=whole_dur=2,atrim=end=2,adelay=delays=48000S:all=1,apad=whole_len=144000,atrim=end_sample=144000,afade=t=in:st=1:d=0.01[c1]')
+    expect(r).toContain('atrim=start_sample=500,asetpts=PTS-STARTPTS,apad=whole_len=24000,atrim=end_sample=24000,afade=t=out:st=0.49:d=0.01[c2]')
     // The speed split (5..6 at 2x continues 3..5): no fade between them.
     expect((r.match(/afade=t=in/g) ?? []).length).toBe(2)
     expect((r.match(/afade=t=out/g) ?? []).length).toBe(2)
@@ -81,23 +79,42 @@ describe('recordingGraph with cutFade', () => {
 
 describe('the preview: when to fade out', () => {
   const clips = [clip(0, 2), clip(3, 5), clip(5, 6, 2)]
+  const F60 = 1 / 60
+  const F30 = 1 / 30
 
-  it('is silent at the jump, one frame before the clip ends', () => {
-    expect(cutFadeAhead(clips, 1.98, 1)).toBeCloseTo(0.02 - PREVIEW_FRAME)
-    expect(cutFadeAhead(clips, 1.99, 2)).toBe(0)
+  it('fades out at the last callback that leaves the whole fade, ending at the jump (60 fps)', () => {
+    // The jump comes at the callback within one frame of the end: two callbacks ahead is too early.
+    expect(cutFadeAhead(clips, 2 - 3 * F60, 1, F60, 0)).toBeNull()
+    expect(cutFadeAhead(clips, 2 - 2 * F60, 1, F60, 0)).toBeCloseTo(F60)
+    // At the jump's own callback: silent now.
+    expect(cutFadeAhead(clips, 2 - F60, 1, F60, 0)).toBe(0)
   })
 
-  it('starts within the fade and two frames of the jump only', () => {
-    const far = 2 - (PREVIEW_FRAME + CUT_FADE + 2 * PREVIEW_FRAME) - 0.001
-    expect(cutFadeAhead(clips, far, 1)).toBeNull()
-    expect(cutFadeAhead(clips, far + 0.002, 1)).not.toBeNull()
+  it('follows the recording frame rate (30 fps) and the measured callback step', () => {
+    expect(cutFadeAhead(clips, 2 - 2 * F30, 1, F30, 0)).toBeCloseTo(F30)
+    expect(cutFadeAhead(clips, 2 - 3 * F30, 1, F30, 0)).toBeNull()
+    // Between frames: the jump is at the next callback, one frame on.
+    expect(cutFadeAhead(clips, 0.9453 + 1, 1, F30, 0)).toBeCloseTo(F30)
+    // Callbacks measured 1/120 s apart at 2x (1/240 s of wall time each): it waits for the third before the jump.
+    const at = (k: number): number => 2 - 2 * F60 - k / 120
+    expect(cutFadeAhead(clips, at(4), 2, F60, 1 / 120)).toBeNull()
+    expect(cutFadeAhead(clips, at(3), 2, F60, 1 / 120)).toBeCloseTo(3 / 240)
+  })
+
+  it('starts earlier when the fade is longer in wall time (slow preview speed)', () => {
+    // 0.5x: callbacks 1/30 s apart in wall time, so a 20 ms fade starts at the callback before the jump.
+    const at = (k: number): number => 2 - 0.5 * F60 - k * F60
+    expect(cutFadeAhead(clips, at(1), 0.5, F60, 0, 0.02)).toBeCloseTo(F30)
+    expect(cutFadeAhead(clips, at(2), 0.5, F60, 0, 0.02)).toBeNull()
+    // A fade longer than a callback interval starts two callbacks ahead.
+    expect(cutFadeAhead(clips, 2 - 3 * F60, 1, F60, 0, 0.025)).toBeCloseTo(2 * F60)
   })
 
   it('does nothing where the next clip continues, at the end, in a cut, or when stopped', () => {
-    expect(cutFadeAhead(clips, 4.99, 1)).toBeNull()
-    expect(cutFadeAhead(clips, 5.99, 2)).toBeNull()
-    expect(cutFadeAhead(clips, 2.5, 1)).toBeNull()
-    expect(cutFadeAhead(clips, 1.99, 0)).toBeNull()
+    expect(cutFadeAhead(clips, 4.99, 1, F60, 0)).toBeNull()
+    expect(cutFadeAhead(clips, 5.99, 2, F60, 0)).toBeNull()
+    expect(cutFadeAhead(clips, 2.5, 1, F60, 0)).toBeNull()
+    expect(cutFadeAhead(clips, 1.99, 0, F60, 0)).toBeNull()
   })
 })
 

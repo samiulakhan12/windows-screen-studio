@@ -112,6 +112,10 @@ describe('retakes', () => {
     expect(spans(say('I, um, I said so'))).toEqual(['repeat: I, um,'])
   })
 
+  it('never takes a stutter across the end of a sentence', () => {
+    expect(spans(say('I went to the store. The store was closed.'))).toEqual([])
+  })
+
   it('skips words often doubled on purpose', () => {
     expect(spans(say('I know that that is true'))).toEqual([])
     expect(spans(say('it is very very good'))).toEqual([])
