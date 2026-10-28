@@ -7,7 +7,7 @@ import { countOf, GROUP_KINDS, groupLabel, kindCounts, KIND_WORDS, projectItems,
 import { movedNotice } from '../../../../shared/editor/multiSelectCopy'
 import { shapeLabel } from '../../../../shared/editor/shapes'
 import { commandKeys, shortcutLabel, withShortcut } from '../../../../shared/editor/shortcuts'
-import { formatLevel } from '../../../../shared/editor/zoomEdit'
+import { formatLevel, ZOOM_LEVEL_PRESETS } from '../../../../shared/editor/zoomEdit'
 import { cropOf, zoomInView } from '../../../../shared/engine/crop'
 import { formatTime } from '../../../../shared/engine/project'
 import { zoomStyleOf, zoomTargetScale } from '../../../../shared/engine/zoom'
@@ -320,7 +320,7 @@ function FieldRow({
   }
   if (!shared) return null
   if (c.type === 'slider') {
-    return (
+    const slider = (
       <MixedSlider
         label={label}
         value={shared.value as number}
@@ -331,6 +331,17 @@ function FieldRow({
         format={c.format}
         onChange={(v) => onWrite(field, targets, v, 'drag')}
       />
+    )
+    if (field.id !== 'zoom.level') return slider
+    // The level presets, as in the Zoom panel (one click: one undo step).
+    const preset = shared.mixed ? null : (ZOOM_LEVEL_PRESETS.find((p) => Math.abs(p.value - (shared.value as number)) < 1e-3)?.value ?? null)
+    return (
+      <>
+        <div className="zoom-chips-fill">
+          <MixedChips label="Zoom level presets" value={preset} mixed={shared.mixed} options={ZOOM_LEVEL_PRESETS.map((p) => ({ value: p.value, label: p.label, title: p.title }))} onChange={(v) => onWrite(field, targets, v)} />
+        </div>
+        {slider}
+      </>
     )
   }
   if (c.type === 'chips') {
