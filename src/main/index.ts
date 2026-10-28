@@ -18,6 +18,9 @@ import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp
 import { registerSecurity } from './security'
 import { registerSpeechIpc } from './speech/speechIpc'
 import { createMainWindow } from './windows'
+import { disposeJobs, registerJobsIpc, setTaskbarPort } from './longJobs'
+import { electronTaskbarPort } from './longJobsPort'
+import { registerExportBundleIpc } from './exportBundle'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -58,6 +61,10 @@ if (!app.requestSingleInstanceLock()) {
     registerSpeechIpc()
     registerCaptionsIpc()
     registerExportIpc()
+    // Hands-off long jobs (docs/design/hands-off.md): taskbar, notifications, keep-awake, sleep.
+    setTaskbarPort(electronTaskbarPort())
+    registerJobsIpc()
+    registerExportBundleIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()
@@ -70,6 +77,7 @@ if (!app.requestSingleInstanceLock()) {
     if (event.defaultPrevented) return
     disposeRecording()
     disposeExport()
+    disposeJobs()
   })
 
   app.on('window-all-closed', () => {
