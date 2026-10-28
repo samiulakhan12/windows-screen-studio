@@ -106,9 +106,11 @@ export function fontState(project: Pick<Project, 'id' | 'fonts'>, id: unknown): 
 
 /**
  * Loads a font newly copied into the project before the project uses it. Rejects when it
- * cannot be read (the project is then left unchanged).
+ * cannot be read (the project is then left unchanged). A font that failed before is read again:
+ * its file may be back under the same name.
  */
 export async function preloadProjectFont(projectId: string, font: ProjectFont, url?: string): Promise<void> {
+  if (entries.get(keyOf(projectId, font))?.state === 'missing') entries.delete(keyOf(projectId, font))
   const entry = entryOf(projectId, font, url)
   if (!entry) return
   await entry.done

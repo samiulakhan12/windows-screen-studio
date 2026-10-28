@@ -29,12 +29,30 @@ const images = new Map<string, ImageEntry>()
 const imageKey = (projectId: string, file: string): string => `${projectId}/${file}`
 let imageVersion = 0
 
+/**
+ * Whether drawing `img` taints a canvas, as an SVG with HTML in it does (<foreignObject>, as
+ * draw.io and Mermaid write labels): no export could then read its frames back.
+ */
+export function taintsCanvas(img: HTMLImageElement): boolean {
+  const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d')
+  ctx?.drawImage(img, 0, 0, 1, 1)
+  try {
+    ctx?.getImageData(0, 0, 1, 1)
+    return false
+  } catch {
+    return true
+  }
+}
+
+const HTML_SVG = "This SVG has HTML text in it, which can't be drawn into a video: save it as a PNG and choose it again."
+
 function decode(url: string, svg: boolean): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.decoding = 'async'
     img.onload = () => {
+      if (svg && taintsCanvas(img)) return reject(new Error(HTML_SVG))
       const w = img.naturalWidth
       const h = img.naturalHeight
       // An SVG without a size has no natural size: draw it square.
@@ -95,6 +113,24 @@ export async function preloadWatermarkImage(projectId: string, file: string, url
   if (!image) throw new Error('This image could not be read')
   images.set(imageKey(projectId, file), { image, failed: false, done: Promise.resolve() })
   notifyStyleAssetsChanged()
+}
+
+/**
+ * Rejects with a readable message when a logo picked for the brand kit (kit file `file`, read as
+ * `bytes`) could not be drawn into a video: an SVG with HTML in it would be left out of every new
+ * recording. Settings has no project to load it from, so it is checked from its bytes.
+ */
+export async function checkKitLogo(file: string, bytes: Uint8Array | null): Promise<void> {
+  if (!/\.svg$/i.test(file)) return
+  if (!bytes) throw new Error('This image could not be read.')
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/svg+xml' }))
+  try {
+    await decode(url, true)
+  } catch (err) {
+    throw err instanceof Error && err.message === HTML_SVG ? err : new Error('This image could not be read.')
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 /* ---------- drawing ---------- */

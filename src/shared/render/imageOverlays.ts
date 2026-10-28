@@ -97,6 +97,8 @@ export const GIF_MAX_SIDE = 720
 export const GIF_MAX_BYTES = 200 * 1024 * 1024
 /** Most frames a GIF may have. */
 export const GIF_MAX_FRAMES = 1500
+/** The decoded pictures of all the images together (RGBA bytes): an image past it is left out. */
+export const OVERLAYS_MAX_BYTES = 1024 * 1024 * 1024
 /** Static images are kept at most this long on their long side (SVGs are rasterised at it). */
 export const IMAGE_MAX_SIDE = 2048
 /** Images larger than this are refused before they become part of a project. */

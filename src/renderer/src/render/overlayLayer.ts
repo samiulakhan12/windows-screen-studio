@@ -4,6 +4,7 @@
  * window, same cache) and the same pure timing, so they draw the same pixels; a GIF shows the
  * frame gifFrameAt picks for the frame's time, never whatever an <img> element happens to show.
  */
+import { OVERLAY_MAX_BYTES } from '../../../shared/engine/overlayData'
 import { mediaUrl } from '../../../shared/mediaUrl'
 import {
   gifFrameAt,
@@ -17,16 +18,18 @@ import {
   overlayBox,
   overlayClockMs,
   overlayVisibleAt,
+  OVERLAYS_MAX_BYTES,
   type GifTiming
 } from '../../../shared/render/imageOverlays'
 import { stickerOf, stickerUrl } from '../../../shared/render/stickers'
 import type { ImageOverlay, Project } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
-import { notifyStyleAssetsChanged } from './watermarkLayer'
+import { notifyStyleAssetsChanged, taintsCanvas } from './watermarkLayer'
 
 /* ---------- decoding ---------- */
 
-export type DecodedOverlay = { kind: 'still'; source: CanvasImageSource; width: number; height: number } | { kind: 'gif'; frames: ImageBitmap[]; timing: GifTiming; width: number; height: number }
+/** A decoded picture; `bytes` is what its pixels take (counted in `held`). */
+export type DecodedOverlay = { kind: 'still'; source: CanvasImageSource; width: number; height: number; bytes: number } | { kind: 'gif'; frames: ImageBitmap[]; timing: GifTiming; width: number; height: number; bytes: number }
 
 interface Entry {
   image: DecodedOverlay | null
@@ -37,24 +40,77 @@ interface Entry {
 
 const cache = new Map<string, Entry>()
 let currentProject: string | null = null
+/** The overlays of the project last drawn or checked, and the keys of their pictures (null: none yet). */
+let inUse: { overlays: readonly ImageOverlay[]; keys: Set<string> } | null = null
+/** Bytes the decoded pictures take (and the GIF being decoded will): at most OVERLAYS_MAX_BYTES. */
+let held = 0
+/** GIFs decode one at a time: each holds its whole file and a decoder until its frames are made. */
+let gifQueue: Promise<unknown> = Promise.resolve()
 
 const STICKER_SIDE = 512
 
 /** Cache key of what an overlay shows: a sticker is the same in every project. */
 const keyOf = (projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>): string => (o.sticker ? `sticker:${o.sticker}` : `${projectId}/${o.file}`)
 
+const NO_ROOM = 'This video has too many large images to show this one too.'
+
+/**
+ * Counts `bytes` a picture is about to take. When the pictures together would pass
+ * OVERLAYS_MAX_BYTES, those the project no longer uses make room first; refused when still too many.
+ */
+function hold(bytes: number): number {
+  if (held + bytes > OVERLAYS_MAX_BYTES) dropUnused()
+  if (held + bytes > OVERLAYS_MAX_BYTES) throw new Error(NO_ROOM)
+  held += bytes
+  return bytes
+}
+
 function release(e: Entry): void {
+  if (e.image) held -= e.image.bytes
   if (e.image?.kind === 'gif') for (const f of e.image.frames) f.close()
+}
+
+/** Forgets the pictures of images deleted or undone (undo decodes them again). Whether there were any. */
+function dropUnused(): boolean {
+  if (!inUse) return false
+  let dropped = false
+  for (const [key, e] of cache) {
+    if (!e.image || inUse.keys.has(key)) continue
+    release(e)
+    cache.delete(key)
+    dropped = true
+  }
+  return dropped
 }
 
 /** Forgets the pictures of other projects (one editor is open at a time). */
 function switchProject(projectId: string): void {
   if (currentProject === projectId) return
   currentProject = projectId
+  inUse = null
   for (const [key, e] of cache) {
     if (key.startsWith('sticker:') || key.startsWith(`${projectId}/`)) continue
     release(e)
     cache.delete(key)
+  }
+}
+
+const NONE: readonly ImageOverlay[] = []
+
+/**
+ * Notes the overlays `project` uses (when drawn or checked). An image refused for lack of room is
+ * decoded again once images the project no longer uses have given their room back.
+ */
+function use(project: Pick<Project, 'id' | 'overlays'>): void {
+  switchProject(project.id)
+  const overlays = project.overlays ?? NONE
+  if (inUse?.overlays === overlays) return
+  inUse = { overlays, keys: new Set(overlays.map((o) => keyOf(project.id, o))) }
+  const refused = new Map(overlays.filter((o) => cache.get(keyOf(project.id, o))?.error === NO_ROOM).map((o) => [keyOf(project.id, o), o]))
+  if (!refused.size || !dropUnused()) return
+  for (const [key, o] of refused) {
+    cache.delete(key)
+    entryOf(project.id, o)
   }
 }
 
@@ -70,7 +126,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 /** `source` drawn into a canvas `w` x `h` (high quality): the one raster preview and export share. */
-function raster(source: CanvasImageSource, w: number, h: number): HTMLCanvasElement {
+function raster(source: CanvasImageSource, w: number, h: number): DecodedOverlay {
   const c = document.createElement('canvas')
   c.width = Math.max(1, Math.round(w))
   c.height = Math.max(1, Math.round(h))
@@ -79,18 +135,19 @@ function raster(source: CanvasImageSource, w: number, h: number): HTMLCanvasElem
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(source, 0, 0, c.width, c.height)
-  return c
+  return { kind: 'still', source: c, width: w, height: h, bytes: hold(c.width * c.height * 4) }
 }
 
 /** An SVG (a file or a sticker) rasterised once at IMAGE_MAX_SIDE (or `side`) on its long side; square without a size. */
 async function decodeSvg(url: string, side = IMAGE_MAX_SIDE): Promise<DecodedOverlay> {
   const img = await loadImage(url)
+  if (taintsCanvas(img)) throw new Error("This SVG has HTML text in it, which can't be drawn into a video: save it as a PNG and add it again.")
   const w = img.naturalWidth
   const h = img.naturalHeight
   const aspect = w > 0 && h > 0 ? w / h : 1
   const rw = aspect >= 1 ? side : side * aspect
   const rh = aspect >= 1 ? side / aspect : side
-  return { kind: 'still', source: raster(img, rw, rh), width: rw, height: rh }
+  return raster(img, rw, rh)
 }
 
 /** A PNG, JPEG or WebP, refused when too large to show, kept at most IMAGE_MAX_SIDE on its long side. */
@@ -101,7 +158,7 @@ async function decodeStill(url: string): Promise<DecodedOverlay> {
   const problem = imageSizeProblem(w, h)
   if (problem) throw new Error(problem)
   const s = Math.min(1, IMAGE_MAX_SIDE / Math.max(w, h))
-  return { kind: 'still', source: raster(img, w * s, h * s), width: w * s, height: h * s }
+  return raster(img, w * s, h * s)
 }
 
 /** Every frame of a GIF, composited, scaled to gifScale, with its delay. A one-frame GIF is a still. */
@@ -109,13 +166,18 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
   if (typeof ImageDecoder === 'undefined') throw new Error('This GIF could not be read.')
   const res = await fetch(url)
   if (!res.ok) throw new Error('This image could not be read.')
+  // Main checks the size of a file it adds, not of one put in the project folder by hand.
+  const fileTooLarge = `This image is too large (${OVERLAY_MAX_BYTES / 2 ** 20} MB at most).`
+  if (Number(res.headers.get('content-length')) > OVERLAY_MAX_BYTES) throw new Error(fileTooLarge)
   const data = await res.arrayBuffer()
+  if (data.byteLength > OVERLAY_MAX_BYTES) throw new Error(fileTooLarge)
   const screen = gifScreenSize(new Uint8Array(data, 0, Math.min(16, data.byteLength)))
   if (!screen) throw new Error('This GIF could not be read.')
   const tooLarge = imageSizeProblem(screen.width, screen.height)
   if (tooLarge) throw new Error(tooLarge)
   const decoder = new ImageDecoder({ data, type: 'image/gif' })
   const frames: ImageBitmap[] = []
+  let bytes = 0
   try {
     await decoder.tracks.ready
     await decoder.completed
@@ -125,7 +187,8 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
     const delays: number[] = []
     let width = 0
     let height = 0
-    let scale = 1
+    let resizeWidth = 1
+    let resizeHeight = 1
     for (let i = 0; i < count; i++) {
       const { image } = await decoder.decode({ frameIndex: i, completeFramesOnly: true })
       try {
@@ -134,34 +197,38 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
           height = image.displayHeight
           const problem = imageSizeProblem(width, height)
           if (problem) throw new Error(problem)
-          scale = gifScale(width, height, count)
+          const scale = gifScale(width, height, count)
+          resizeWidth = Math.max(1, Math.round(width * scale))
+          resizeHeight = Math.max(1, Math.round(height * scale))
+          // Held for every frame before the first is made: other pictures decode meanwhile.
+          bytes = hold(resizeWidth * resizeHeight * 4 * count)
         }
         delays.push((image.duration ?? 0) / 1000)
-        frames.push(
-          await createImageBitmap(image, {
-            resizeWidth: Math.max(1, Math.round(width * scale)),
-            resizeHeight: Math.max(1, Math.round(height * scale)),
-            resizeQuality: 'high'
-          })
-        )
+        frames.push(await createImageBitmap(image, { resizeWidth, resizeHeight, resizeQuality: 'high' }))
       } finally {
         image.close()
       }
     }
-    if (frames.length === 1) return { kind: 'still', source: frames[0], width, height }
-    return { kind: 'gif', frames, timing: gifTiming(delays), width, height }
+    if (frames.length === 1) return { kind: 'still', source: frames[0], width, height, bytes }
+    return { kind: 'gif', frames, timing: gifTiming(delays), width, height, bytes }
   } catch (err) {
     for (const f of frames) f.close()
+    held -= bytes
     throw err instanceof Error && /GIF|image/.test(err.message) ? err : new Error('This GIF could not be read.')
   } finally {
     decoder.close()
   }
 }
 
-function decode(o: Pick<ImageOverlay, 'file' | 'sticker'>, url: string): Promise<DecodedOverlay> {
+/** Decodes `o`'s picture; a GIF waits for its turn, and is skipped when no longer `wanted` by then (another project opened). */
+function decode(o: Pick<ImageOverlay, 'file' | 'sticker'>, url: string, wanted: () => boolean): Promise<DecodedOverlay> {
   if (o.sticker) return decodeSvg(url, STICKER_SIDE)
   const ext = (o.file ?? '').split('.').pop()?.toLowerCase()
-  if (ext === 'gif') return decodeGif(url)
+  if (ext === 'gif') {
+    const gif = gifQueue.then(() => (wanted() ? decodeGif(url) : Promise.reject(new Error('This GIF is no longer shown.'))))
+    gifQueue = gif.catch(() => undefined)
+    return gif
+  }
   if (ext === 'svg') return decodeSvg(url)
   return decodeStill(url)
 }
@@ -187,7 +254,7 @@ function entryOf(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, u
     entry.error = 'This image could not be read.'
     return entry
   }
-  entry.done = decode(o, src).then(
+  entry.done = decode(o, src, () => cache.get(key) === entry).then(
     (image) => {
       if (cache.get(key) !== entry) return release({ image, error: null, done: entry.done })
       entry.image = image
@@ -206,9 +273,11 @@ function entryOf(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, u
 /**
  * Decodes an image newly copied into the project before the project uses it, and returns its
  * aspect (width / height). Rejects with a readable message when it cannot be shown; a failed
- * attempt is forgotten, so nothing points at it.
+ * attempt is forgotten, so nothing points at it. An image that failed before is read again: its
+ * file may be back under the same name.
  */
 export async function preloadOverlay(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, url?: string): Promise<number> {
+  if (cache.get(keyOf(projectId, o))?.error) cache.delete(keyOf(projectId, o))
   const entry = entryOf(projectId, o, url)
   if (!entry) return 1
   await entry.done
@@ -233,11 +302,13 @@ export function overlayStatus(
 
 /** Overlays whose picture cannot be shown (a missing or unreadable file): left out of the video. */
 export function missingOverlays(project: Pick<Project, 'id' | 'overlays'>): ImageOverlay[] {
+  use(project)
   return (project.overlays ?? []).filter((o) => !!entryOf(project.id, o)?.error)
 }
 
 /** Waits for the pictures of every overlay (export: before the first frame). Never rejects. */
 export async function prepareOverlays(project: Pick<Project, 'id' | 'overlays'>): Promise<void> {
+  use(project)
   const waits: Promise<void>[] = []
   for (const o of project.overlays ?? []) {
     const e = entryOf(project.id, o)
@@ -260,6 +331,7 @@ function pictureAt(image: DecodedOverlay, o: ImageOverlay, t: number, project: P
  * when it arrives; the export waits for it in prepareOverlays).
  */
 export function drawOverlaysLayer(fc: FrameContext): void {
+  use(fc.project)
   const overlays = fc.project.overlays
   if (!overlays?.length) return
   const { ctx, w, h, t, project } = fc
