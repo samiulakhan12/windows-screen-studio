@@ -63,6 +63,9 @@ beforeAll(() => {
   writeFileSync(at('clip.avi'), 'x'.repeat(4096))
   // A WebM named .mp4: accepted, ffmpeg reads the content.
   ff('-i', at('vp9.webm'), '-c', 'copy', '-f', 'webm', at('webm-named.mp4'))
+  // A stream-copy trim of a recording with 2 s between keyframes: the picture starts 1.6 s after the sound.
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', 'sine', '-t', '6', '-c:v', 'libx264', '-g', '60', '-c:a', 'aac', at('gop.mp4'))
+  ff('-i', at('gop.mp4'), '-ss', '0.4', '-c', 'copy', at('trimmed.mp4'))
   // Frames at 0, 1, 2 and 60 s, and a header that says 3 s (a crafted or damaged file).
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', "setpts='if(eq(N,3),60,N)/TB'", '-fps_mode', 'passthrough', '-c:v', 'libx264', at('gap.mkv'))
   const gap = readFileSync(at('gap.mkv'))
@@ -112,6 +115,11 @@ describe('probe, decode test and protection scan', () => {
     expect(await decodeTest(at('odd.mov'), 0, 1)).toBe(true)
     // There is no stream 5: ffmpeg refuses the map.
     expect(await decodeTest(at('odd.mov'), 5, null)).toBe(false)
+  })
+
+  it('decodes a picture that starts more than a second after the sound', async () => {
+    expect(await decodeTest(at('trimmed.mp4'), 0, 1)).toBe(true)
+    expect(await decodeTest(at('trimmed.mp4'), 0, null)).toBe(true)
   })
 
   it('finds a protected track in an encrypted MP4 only', async () => {
@@ -172,6 +180,12 @@ describe('importVideo', () => {
     rmSync(library, { recursive: true, force: true })
     expect(await importVideo(at('live-short.webm'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.tooShort })
     expect(folders()).toEqual([])
+  }, 60_000)
+
+  it('imports a stream-copy trim whose picture starts after its sound', async () => {
+    const r = await importVideo(at('trimmed.mp4'), { deps })
+    expect(r).toMatchObject({ ok: true, notes: [] })
+    if (r.ok) expect(readJson(r.projectId, 'project.json')).toMatchObject({ hasAudio: true, source: { videoCodec: 'h264', audioCodec: 'aac' } })
   }, 60_000)
 
   it('cuts the copy near the stated length when the header understates it', async () => {

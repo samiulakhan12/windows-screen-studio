@@ -214,7 +214,8 @@ project has no `source` key). Readers never trust the stored value: `importedSou
 2. **Probe**: `ffmpeg -hide_banner -nostdin -i <file>`, 30 s time limit, log capped at 256 KB.
    `parseProbe(log)` → `ProbeInfo`.
 3. **Plan**: `planImport(probe, { bytes, tonemap })` → refusal or `ImportPlan` (pure, §5).
-4. **Decode test**: `-map 0:<video> [-map 0:<audio>] -frames:v 1 -t 1 -f null -`, 60 s limit.
+4. **Decode test**: `-map 0:<video> [-map 0:<audio>] -frames:v 1 -f null -`, 60 s limit (no
+   `-t`: the picture of a stream-copy trim can start seconds after its sound).
    If it fails with the audio stream mapped, it is run again without: success means the sound
    cannot be read, so the import goes on without sound and with a note. Failure without audio is
    a refusal with the codec sentence (§5.3). DRM is found before this, by the probe (encrypted

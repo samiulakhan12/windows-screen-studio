@@ -171,10 +171,11 @@ export async function probeFile(file: string, signal?: AbortSignal): Promise<Pro
   return r.timedOut ? { opened: false, container: null, duration: null, streams: [], encrypted: false } : parseProbe(r.log)
 }
 
-/** Decodes the first frame (and a second of the sound): whether the bundled ffmpeg can read them. */
+/** Decodes the first frame (and the sound up to it): whether the bundled ffmpeg can read them. */
 export async function decodeTest(file: string, video: number, audio: number | null, signal?: AbortSignal): Promise<boolean> {
-  // No -xerror: a file that starts mid-GOP logs decode errors before its first good frame.
-  const args = ['-hide_banner', '-nostdin', '-v', 'error', '-i', file, '-map', `0:${video}`, ...(audio !== null ? ['-map', `0:${audio}`] : []), '-frames:v', '1', '-t', '1', '-progress', 'pipe:1', '-nostats', '-f', 'null', '-']
+  // No -xerror: a file that starts mid-GOP logs decode errors before its first good frame. No
+  // time limit: the picture of a stream-copy trim can start seconds after its sound.
+  const args = ['-hide_banner', '-nostdin', '-v', 'error', '-i', file, '-map', `0:${video}`, ...(audio !== null ? ['-map', `0:${audio}`] : []), '-frames:v', '1', '-progress', 'pipe:1', '-nostats', '-f', 'null', '-']
   const r = await runCapture(args, { timeoutMs: DECODE_TIMEOUT_MS, signal })
   const frames = Math.max(0, ...[...r.log.matchAll(/^frame=\s*(\d+)/gm)].map((m) => Number(m[1])))
   return r.code === 0 && !r.timedOut && frames >= 1
