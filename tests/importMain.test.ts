@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import fsSync from 'node:fs'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -76,6 +76,8 @@ beforeAll(() => {
   for (const [layout, name] of [['5.1.4', 'surround.mov'], ['4.0', 'quad.mov']]) {
     ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', `anullsrc=channel_layout=${layout}:sample_rate=48000`, '-t', '1', '-c:v', 'libx264', '-c:a', 'pcm_s16le', at(name))
   }
+  // Ten seconds of video, cut in half by a test while it is imported.
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', 'sine', '-t', '10', '-c:v', 'libx264', '-c:a', 'aac', at('ten.mkv'))
   // Frames at 0, 1, 2 and 60 s, and a header that says 3 s (a crafted or damaged file).
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', "setpts='if(eq(N,3),60,N)/TB'", '-fps_mode', 'passthrough', '-c:v', 'libx264', at('gap.mkv'))
   const gap = readFileSync(at('gap.mkv'))
@@ -320,6 +322,23 @@ describe('importVideo', () => {
     }
     expect(folders()).toEqual([])
   }, 30_000)
+
+  it('refuses a video that was cut short while it was copied', async () => {
+    copyFileSync(at('ten.mkv'), at('shrinks.mkv'))
+    const size = statSync(at('shrinks.mkv')).size
+    let cut = false
+    const r = await importVideo(at('shrinks.mkv'), {
+      deps,
+      onProgress: (p) => {
+        if (p.stage !== 'converting' || cut) return
+        cut = true
+        truncateSync(at('shrinks.mkv'), Math.floor(size / 2))
+      }
+    })
+    expect(cut).toBe(true)
+    expect(r).toMatchObject({ ok: false, error: IMPORT_COPY.incomplete })
+    expect(folders()).toEqual([])
+  }, 60_000)
 
   it('removes the folder when the encode fails', async () => {
     const r = await importVideo(at('odd.mov'), { deps: { ...deps, encoders: async () => ['h264_nvenc' as const] } })

@@ -46,6 +46,7 @@ export const IMPORT_COPY = {
   busy: 'Another video is being imported. Wait for it to finish.',
   several: 'Drop one video at a time.',
   diskFull: 'Your disk is full. Free some space and try again.',
+  incomplete: 'The video could not be read to the end (it changed, or its drive was disconnected). Try again.',
   failed: (detail: string) => `The video could not be converted${detail ? ` (${detail})` : ''}.`,
   noteTracks: (n: number) => `This video has ${n} sound tracks; Flown uses the first one.`,
   noteNoSound: 'The sound in this video could not be read, so it was imported without sound.',

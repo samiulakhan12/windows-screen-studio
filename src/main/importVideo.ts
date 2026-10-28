@@ -117,7 +117,7 @@ export function runCapture(args: string[], opts: { timeoutMs: number; signal?: A
 }
 
 /** The checks made before ffmpeg reads the file (§7). */
-export async function checkImportFile(file: unknown): Promise<{ ok: true; bytes: number; fileName: string } | { ok: false; error: string }> {
+export async function checkImportFile(file: unknown): Promise<{ ok: true; bytes: number; mtimeMs: number; fileName: string } | { ok: false; error: string }> {
   if (typeof file !== 'string' || file.length === 0 || file.length > 4096 || file.includes('\0') || /[\r\n]/.test(file) || !path.isAbsolute(file)) return { ok: false, error: IMPORT_COPY.cannotOpen }
   const fileName = path.basename(file)
   if (!importableExtension(fileName)) return { ok: false, error: IMPORT_COPY.extension }
@@ -144,7 +144,7 @@ export async function checkImportFile(file: unknown): Promise<{ ok: true; bytes:
     return { ok: false, error: IMPORT_COPY.cannotOpen }
   }
   if (!sniffContainer(head)) return { ok: false, error: IMPORT_COPY.notVideo(extensionOf(fileName)) }
-  return { ok: true, bytes: stat.size, fileName }
+  return { ok: true, bytes: stat.size, mtimeMs: stat.mtimeMs, fileName }
 }
 
 const SCAN_BYTES = 8 * 1024 * 1024
@@ -320,6 +320,10 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
       throw new ImportRefused(encodeError(err))
     })
     stop()
+    // ffmpeg ends the copy without an error where the file ends: one cut short or rewritten
+    // meanwhile, or on a drive or share that went away, would make a shorter project.
+    const after = await fs.stat(input).catch(() => null)
+    if (!after || after.size !== checked.bytes || after.mtimeMs !== checked.mtimeMs) throw new ImportRefused(IMPORT_COPY.incomplete)
     report('finishing', 1)
     const duration = run.frames ? run.frames / plan.fps : 0
     if (!(duration > 0)) throw new ImportRefused(IMPORT_COPY.unreadable)

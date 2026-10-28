@@ -238,6 +238,9 @@ project has no `source` key). Readers never trust the stored value: `importedSou
    header can understate, and a constant rate fills every gap with frames; through
    `encodeWithFallback` (the first working GPU encoder, then libx264), like a recording. Progress
    is frames ÷ (duration × fps). The output goes to `screen.part.mp4`, renamed to `screen.mp4`.
+   ffmpeg ends the copy without an error where the file ends, so the file is checked again
+   afterwards: if it is gone, or its size or modification time changed (cut short, rewritten,
+   its drive or share disconnected), the import is refused rather than saved shorter.
 8. **Project**: `createProject` with the frame-count duration (`frames / fps`, like `finalize.ts`),
    the proxy's size and `hasAudio`; then `applyStyleDefaults` (the saved look and the brand kit,
    like a recording); then `autoZoom: false`, `zoomSettings.auto.enabled: false`, `zooms: []`,
@@ -356,6 +359,7 @@ smaller: *There is not enough free space for this video: it needs about 5.4 GB a
 | Busy | *Another video is being imported. Wait for it to finish.* |
 | Several files dropped | *Drop one video at a time.* |
 | Encoder failed | *The video could not be converted (<ffmpeg's last line>).* / disk full: *Your disk is full. Free some space and try again.* |
+| File gone or changed during the copy | *The video could not be read to the end (it changed, or its drive was disconnected). Try again.* |
 
 ### 5.4 Notes (shown after an import that succeeded with something to say)
 
