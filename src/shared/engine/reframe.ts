@@ -276,6 +276,16 @@ export function planFollow(project: FollowProject, track: CursorTrack): FollowPl
 
 /** The follow plan, cached by the identities and values it depends on (§8.1). */
 export function followPlanFor(project: FollowProject, track: CursorTrack): FollowPlan {
+  // Every frame asks with the same drawn project and track: answer that without building the key.
+  const last = lastPlans.get(project)
+  if (last && last.track === track) return last.plan
+  const plan = cachedPlan(project, track)
+  lastPlans.set(project, { track, plan })
+  return plan
+}
+
+/** followPlanFor by the identities and values the plan depends on. */
+function cachedPlan(project: FollowProject, track: CursorTrack): FollowPlan {
   const refs = [project.clips, project.zooms, project.layouts, project.shapes, project.spotlights, track.clicks, track.typing, track.scrolls]
   const key = JSON.stringify([
     project.width,
@@ -1132,3 +1142,4 @@ function segmentsOf(moves: Move[], start: Pt, total: number): FollowSegment[] {
 
 const PLAN_CACHE_SIZE = 4
 const planCache = new WeakMap<object, { refs: readonly unknown[]; key: string; plan: FollowPlan }[]>()
+const lastPlans = new WeakMap<object, { track: CursorTrack; plan: FollowPlan }>()
