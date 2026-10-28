@@ -1,6 +1,7 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { itemLanes } from '../../../shared/editor/shapes'
 import { orPress } from '../../../shared/editor/shortcuts'
+import { itemKey } from '../../../shared/editor/multiSelect'
 import { chapterSnapLimit, sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { dragTitleTimes, TITLE_STYLES } from '../../../shared/editor/titles'
@@ -9,6 +10,7 @@ import { formatTime } from '../../../shared/engine/project'
 import type { Chapter, TitleCard, TitleCardStyle } from '../../../shared/types'
 import { useEditor } from './context'
 import { releaseFocus } from './focus'
+import { useGroup } from './groupContext'
 import { useKeymap } from './keymapContext'
 import type { TrackSlotProps } from './LayoutTrack'
 import { followPointer } from './pointer'
@@ -28,10 +30,11 @@ const styleLabel = (style: TitleCardStyle): string => TITLE_STYLES.find((s) => s
  * the text track, flags drag to move a chapter, a click selects (and shows it on the preview),
  * a double-click on empty space adds a title card, or a chapter in the flag strip.
  */
-export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element {
+export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap, multi }: TrackSlotProps): JSX.Element {
   const services = useEditor()
   const { store, player } = services
   const keymap = useKeymap()
+  const group = useGroup()
   // Straight from the store, so only a change to them re-renders the track.
   const titles = useSyncExternalStore(store.subscribe, () => store.state.titles) ?? NO_TITLES
   const chapters = useSyncExternalStore(store.subscribe, () => store.state.chapters) ?? NO_CHAPTERS
@@ -75,6 +78,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
 
   const onTitleDown = (card: TitleCard) => (e: ReactPointerEvent) => {
     if (e.button !== 0) return
+    if (multi?.press(e, itemKey('title', card.id), dragMode(e))) return
     onSelect({ kind: 'title', id: card.id })
     const mode = dragMode(e)
     const initial = { start: card.start, end: card.end }
@@ -98,6 +102,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
 
   const onChapterDown = (c: Chapter) => (e: ReactPointerEvent) => {
     if (e.button !== 0) return
+    if (multi?.press(e, itemKey('chapter', c.id), 'move')) return
     onSelect({ kind: 'chapter', id: c.id })
     const sx = e.clientX
     const s = snap.begin(e, { exclude: [{ owner: `chapter:${c.id}` }] })
@@ -130,6 +135,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
   }
 
   const onBackgroundDown = (lane: 'title' | 'chapter') => (e: ReactPointerEvent) => {
+    if (multi?.background(e, lane === 'title' ? 'titles' : 'chapters')) return
     if (e.button !== 0) return
     if (isSecondClick(e, lane)) {
       e.preventDefault()
@@ -141,6 +147,15 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
     onSelect(null)
     scrub(e)
   }
+
+  /** Classes and tooltip ends of blocks in the group (E-06). */
+  const groupSize = group.group.keys.length
+  const memberClass = (kind: 'title' | 'chapter', id: string): string => {
+    const key = itemKey(kind, id)
+    return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
+  }
+  const groupHint = (kind: 'title' | 'chapter', id: string): string =>
+    group.keys.has(itemKey(kind, id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
 
   const visibleTitles = titles.filter((c) => overlaps(c, win) || c.id === selId)
   const visibleChapters = chapters.filter((c) => (c.t >= win.start - 2 && c.t <= win.end) || c.id === selId)
@@ -154,10 +169,10 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
             key={c.id}
             data-chapter={c.id}
             data-t={c.t}
-            className={`chapter-flag ${selId === c.id ? 'selected' : ''}`}
+            className={`chapter-flag ${selId === c.id ? 'selected' : ''}${memberClass('chapter', c.id)}`}
             style={{ left: c.t * px }}
             onPointerDown={onChapterDown(c)}
-            title={`${c.title || 'Chapter'} · ${formatTime(c.t)} · drag to move`}
+            title={`${c.title || 'Chapter'} · ${formatTime(c.t)} · drag to move${groupHint('chapter', c.id)}`}
           >
             <span className="chapter-name">{c.title || 'Chapter'}</span>
           </div>
@@ -175,10 +190,10 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
               data-title={c.id}
               data-start={c.start}
               data-end={c.end}
-              className={`seg title-seg ${c.style} ${selId === c.id ? 'selected' : ''}`}
+              className={`seg title-seg ${c.style} ${selId === c.id ? 'selected' : ''}${memberClass('title', c.id)}`}
               style={{ left: c.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onTitleDown(c)}
-              title={`${name} · ${styleLabel(c.style)} · ${formatTime(c.start)} – ${formatTime(c.end)}`}
+              title={`${name} · ${styleLabel(c.style)} · ${formatTime(c.start)} – ${formatTime(c.end)}${groupHint('title', c.id)}`}
             >
               <span className="edge left" />
               {w > 22 && lanes.count <= 2 && (

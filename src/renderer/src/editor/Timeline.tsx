@@ -38,6 +38,7 @@ import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, MIN_CLIP, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomSettingsOf, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { formatLevel } from '../../../shared/editor/zoomEdit'
+import { itemKey, type GroupKind, type ItemTrack } from '../../../shared/editor/multiSelect'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { ScrollSession } from '../../../shared/engine/scroll'
 import type { Annotation, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
@@ -46,6 +47,8 @@ import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
 import { FreezeMarks } from './FreezeMarks'
+import { useGroup } from './groupContext'
+import { useMultiSelect } from './multiSelectControl'
 import { useKeymap } from './keymapContext'
 import { addShapeAt, revealItem } from './playheadItems'
 import { followPointer } from './pointer'
@@ -53,6 +56,7 @@ import { clickState, clickTooltip, type Selection } from './selection'
 import { ShapeIcon } from './shapeIcons'
 import { useSnapController, type SnapGuideHandle } from './snapControl'
 import { SnapButton, SnapGuide } from './SnapGuide'
+import './multiSelect.css'
 import './shapes.css'
 import './zoom.css'
 
@@ -60,6 +64,8 @@ export interface TimelineHandle {
   zoomIn(): void
   zoomOut(): void
   fit(): void
+  /** The track of the last press on the timeline (E-06: what Ctrl+A selects); null for none, captions or layouts. */
+  lastTrack(): ItemTrack | null
 }
 
 interface Props {
@@ -172,6 +178,19 @@ export const Timeline = memo(
     pxRef.current = px
     const guideRef = useRef<SnapGuideHandle>(null)
     const snap = useSnapController({ pxRef, scrollerRef, clickRows, guideRef })
+    // E-06: Ctrl/Shift clicks, group drags and the box (docs/design/multi-select.md §4.2-4.3).
+    const boxRef = useRef<HTMLDivElement>(null)
+    const multi = useMultiSelect({ snap, pxRef, dragging, contentRef, boxRef, selection, onSelect })
+    const G = useGroup()
+    const groupSize = G.group.keys.length
+    /** Classes of a block in the group: the outline, the check badge, the anchor's ring. */
+    const memberClass = (kind: GroupKind, id: string): string => {
+      const key = itemKey(kind, id)
+      return G.keys.has(key) ? ` selected in-group${G.group.anchor === key ? ' anchor' : ''}` : ''
+    }
+    /** The end of a groupable block's tooltip. */
+    const groupHint = (kind: GroupKind, id: string): string =>
+      G.keys.has(itemKey(kind, id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize ? '' : ' · Ctrl+click to select several'
     const width = Math.max(viewport, duration * px + 2 * GUTTER)
 
     /* ---------- viewport, scroll and render window ---------- */
@@ -279,9 +298,10 @@ export const Timeline = memo(
       () => ({
         zoomIn: () => setScale(pxRef.current * ZOOM_STEP),
         zoomOut: () => setScale(pxRef.current / ZOOM_STEP),
-        fit: fitAll
+        fit: fitAll,
+        lastTrack: () => multi.lastTrack()
       }),
-      [setScale, fitAll]
+      [setScale, fitAll, multi]
     )
 
     useEffect(() => {
@@ -352,6 +372,7 @@ export const Timeline = memo(
     const range = draftRange ?? (selection?.kind === 'range' ? selection : null)
 
     const onClipTrackDown = (e: ReactPointerEvent): void => {
+      if (multi.refuse(e, 'clip')) return
       if (e.button !== 0) return
       if (e.shiftKey || e.altKey) {
         // Shift+drag ranges snap, both ends; Alt+drag ranges never do.
@@ -384,6 +405,7 @@ export const Timeline = memo(
 
     /** A click marker: selects the click (no scrub, no range); Shift+drag still selects a range. */
     const onClickMarkerDown = (row: ClickRow) => (e: ReactPointerEvent) => {
+      if (multi.refuse(e, 'click')) return
       if (e.button !== 0 || e.shiftKey || e.altKey) return
       e.preventDefault()
       e.stopPropagation()
@@ -425,6 +447,7 @@ export const Timeline = memo(
 
     const onZoomDown = (z: ZoomSegment) => (e: ReactPointerEvent) => {
       if (e.button !== 0) return
+      if (multi.press(e, itemKey('zoom', z.id), dragMode(e))) return
       onSelect({ kind: 'zoom', id: z.id })
       const mode = dragMode(e)
       const bounds = zoomDragBounds(zooms, z.id, duration)
@@ -449,6 +472,7 @@ export const Timeline = memo(
 
     const onAnnotationDown = (a: Annotation) => (e: ReactPointerEvent) => {
       if (e.button !== 0) return
+      if (multi.press(e, itemKey('annotation', a.id), dragMode(e))) return
       onSelect({ kind: 'annotation', id: a.id })
       const mode = dragMode(e)
       const initial = { start: a.start, end: a.end }
@@ -472,6 +496,7 @@ export const Timeline = memo(
 
     const onShapeDown = (item: TrackItem) => (e: ReactPointerEvent) => {
       if (e.button !== 0) return
+      if (multi.press(e, itemKey(item.type, item.id), dragMode(e))) return
       onSelect({ kind: item.type, id: item.id })
       const mode = dragMode(e)
       const initial = { start: item.start, end: item.end }
@@ -509,6 +534,7 @@ export const Timeline = memo(
     }
 
     const onBackgroundDown = (kind: 'zoom' | 'text' | 'shape') => (e: ReactPointerEvent) => {
+      if (multi.background(e, kind === 'shape' ? 'shapes' : kind)) return
       if (e.button !== 0) return
       if (isSecondClick(e, kind)) {
         e.preventDefault()
@@ -555,8 +581,19 @@ export const Timeline = memo(
       <div className="timeline">
         <div className="tl-head">
           <span className="tl-hint">
-            Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while dragging to place freely
+            Ctrl+click to select several · Shift+drag to box-select · Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while
+            dragging to place freely
           </span>
+          {groupSize >= 2 && (
+            <span className="tl-selection">
+              <span className="tl-selcount" role="status" aria-live="polite" data-testid="selection-count">
+                {groupSize} selected
+              </span>
+              <button className="btn ghost icon-btn tl-selclear" onClick={() => onSelect(null)} aria-label="Clear selection (Esc)" title="Clear selection (Esc)">
+                <Icon name="x" size={12} />
+              </button>
+            </span>
+          )}
           <SnapButton />
           <div className="tl-zoom" role="group" aria-label="Timeline zoom">
             <button className="btn ghost icon-btn" onClick={() => setScale(px / ZOOM_STEP)} disabled={zoom.fit} title={withShortcut('Zoom out timeline', keymap.timelineZoomOut)} aria-label="Zoom out timeline">
@@ -653,7 +690,7 @@ export const Timeline = memo(
                     />
                   )
                 })}
-                <FreezeMarks px={px} win={win} duration={duration} clips={clips} selection={selection} onSelect={onSelect} snap={snap} dragging={dragging} />
+                <FreezeMarks px={px} win={win} duration={duration} clips={clips} selection={selection} onSelect={onSelect} snap={snap} dragging={dragging} multi={multi} />
                 <div className="trim-handle start" style={{ left: kept.start * px }} onPointerDown={onTrimDown('start')} title="Drag to trim the start" />
                 <div className="trim-handle end" style={{ left: kept.end * px }} onPointerDown={onTrimDown('end')} title="Drag to trim the end" />
                 {range && (
@@ -711,10 +748,10 @@ export const Timeline = memo(
                       data-scale={scale}
                       data-linked-next={tm?.toNext ? 'true' : undefined}
                       data-linked-prev={tm?.fromPrev ? 'true' : undefined}
-                      className={`seg zoom-seg ${selId === z.id ? 'selected' : ''} ${z.auto ? 'auto' : ''} ${scale < 1 ? 'pullback' : ''} ${tm?.toNext ? 'linked-next' : ''} ${tm?.fromPrev ? 'linked-prev' : ''}`}
+                      className={`seg zoom-seg ${selId === z.id ? 'selected' : ''} ${z.auto ? 'auto' : ''} ${scale < 1 ? 'pullback' : ''} ${tm?.toNext ? 'linked-next' : ''} ${tm?.fromPrev ? 'linked-prev' : ''}${memberClass('zoom', z.id)}`}
                       style={{ left: z.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onZoomDown(z)}
-                      title={`${formatTime(z.start)} – ${formatTime(z.end)} · ${formatLevel(scale)}${scale < 1 ? ' pull back' : ''} · ${z.auto ? 'automatic' : 'edited'} zoom${tm?.toNext ? ' · pans to the next zoom' : ''}`}
+                      title={`${formatTime(z.start)} – ${formatTime(z.end)} · ${formatLevel(scale)}${scale < 1 ? ' pull back' : ''} · ${z.auto ? 'automatic' : 'edited'} zoom${tm?.toNext ? ' · pans to the next zoom' : ''}${groupHint('zoom', z.id)}`}
                     >
                       {tm && w > 24 && (
                         <>
@@ -747,10 +784,10 @@ export const Timeline = memo(
                       data-annotation={a.id}
                       data-start={a.start}
                       data-end={a.end}
-                      className={`seg text-seg ${selId === a.id ? 'selected' : ''}`}
+                      className={`seg text-seg ${selId === a.id ? 'selected' : ''}${memberClass('annotation', a.id)}`}
                       style={{ left: a.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onAnnotationDown(a)}
-                      title={a.text}
+                      title={`${a.text}${groupHint('annotation', a.id)}`}
                     >
                       <span className="edge left" />
                       {w > 30 && <span className="seg-label">{a.text || 'Text'}</span>}
@@ -772,10 +809,10 @@ export const Timeline = memo(
                       data-spotlight={it.type === 'spotlight' ? it.id : undefined}
                       data-start={it.start}
                       data-end={it.end}
-                      className={`seg shape-seg ${it.look} ${selId === it.id ? 'selected' : ''}`}
+                      className={`seg shape-seg ${it.look} ${selId === it.id ? 'selected' : ''}${memberClass(it.type, it.id)}`}
                       style={{ left: it.start * px, width: w, top: `${lane * itemLaneH}%`, height: `${itemLaneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onShapeDown(it)}
-                      title={`${it.label} · ${formatTime(it.start)} – ${formatTime(it.end)}`}
+                      title={`${it.label} · ${formatTime(it.start)} – ${formatTime(it.end)}${groupHint(it.type, it.id)}`}
                     >
                       <span className="edge left" />
                       {w > 22 && itemLaneMap.count <= 2 && (
@@ -791,11 +828,12 @@ export const Timeline = memo(
                 {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
               </div>
 
-              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
-              <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
-              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} />
+              <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
+              <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
+              <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
 
               <SnapGuide ref={guideRef} />
+              <div className="tl-marquee" ref={boxRef} data-testid="timeline-marquee" hidden />
               <div className="playhead" ref={playheadRef} onPointerDown={(e) => e.button === 0 && scrub(e)} />
             </div>
           </div>

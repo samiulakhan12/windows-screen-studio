@@ -1,4 +1,5 @@
 import { memo, useLayoutEffect, useRef } from 'react'
+import type { CommandId } from '../../../shared/editor/commands'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { CursorTrack, PathMode, Project, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -48,6 +49,10 @@ export interface InspectorProps {
   smartSpeedRequest?: number
   /** Increments when the camera director command asks the Camera panel to direct the camera. */
   directorRequest?: number
+  /** Increments whenever several items are selected in a way that shows the Selection view (E-06). */
+  groupReveal?: number
+  /** Runs an editor command (the Selection view's buttons run the same handlers as the keys). */
+  onCommand?: (id: CommandId) => void
 }
 
 /** Ignoring and using clicks, straightening the cursor path (shared/editor/inputEdits.ts). */

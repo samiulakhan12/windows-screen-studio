@@ -29,7 +29,7 @@ const useCaptions = (): CaptionSegment[] => {
  * moves the playhead into it, a drag moves it, the edges trim it (never over its neighbours),
  * and a double-click puts the cursor in its text in the Captions tab.
  */
-export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, snap }: TrackSlotProps): JSX.Element | null {
+export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, snap, multi }: TrackSlotProps): JSX.Element | null {
   const { store, player } = useEditor()
   const captions = useCaptions()
   const shown = useSyncExternalStore(store.subscribe, () => store.state.captions?.show !== false)
@@ -37,12 +37,14 @@ export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, sn
   if (!store.state.transcript) return null
 
   const onBackgroundDown = (e: ReactPointerEvent): void => {
+    if (multi?.background(e, null)) return
     if (e.button !== 0) return
     onSelect(null)
     scrub(e)
   }
 
   const onCaptionDown = (seg: CaptionSegment) => (e: ReactPointerEvent<HTMLElement>) => {
+    if (multi?.refuse(e, 'caption')) return
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()

@@ -12,6 +12,7 @@ import { directUnavailable } from '../../../shared/editor/directorCopy'
 import { FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze } from '../../../shared/editor/freezeEdit'
 import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
+import { NO_GROUP, validGroup, type ItemGroup, type ItemKey } from '../../../shared/editor/multiSelect'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
 import { mediaLength } from '../../../shared/editor/mediaLength'
@@ -64,7 +65,8 @@ import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { PolishDialog } from '../editor/PolishDialog'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
-import { validSelection, type Selection } from '../editor/selection'
+import { groupKeyOf, selectionOfKey, validSelection, type Selection } from '../editor/selection'
+import { GroupContext, type GroupApi } from '../editor/groupContext'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { snapPref } from '../editor/snapControl'
@@ -223,11 +225,13 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
   return <EditorSession session={state.session} onClose={onClose} />
 }
 
-/** What the editor's components read from context: the session's services and the current shortcuts. */
-function EditorProviders({ services, keymap, children }: { services: EditorServices; keymap: Keymap; children: ReactNode }): JSX.Element {
+/** What the editor's components read from context: the session's services, the current shortcuts and the selected group. */
+function EditorProviders({ services, keymap, group, children }: { services: EditorServices; keymap: Keymap; group: GroupApi; children: ReactNode }): JSX.Element {
   return (
     <EditorContext.Provider value={services}>
-      <KeymapContext.Provider value={keymap}>{children}</KeymapContext.Provider>
+      <KeymapContext.Provider value={keymap}>
+        <GroupContext.Provider value={group}>{children}</GroupContext.Provider>
+      </KeymapContext.Provider>
     </EditorContext.Provider>
   )
 }
@@ -257,11 +261,38 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const [rawSelection, setRawSelection] = useState<Selection>(null)
   const [revealSeq, setRevealSeq] = useState(0)
-  const selection = validSelection(rawSelection, project)
+  // E-06: several items selected together (docs/design/multi-select.md §4.1, §8). Two or more keys,
+  // only while there is no single selection; items that are gone (undo, delete) drop out.
+  const [rawGroup, setRawGroup] = useState<ItemGroup>(NO_GROUP)
+  const [groupReveal, setGroupReveal] = useState(0)
+  const groupStamp = useRef(0)
+  const g0 = useMemo(() => validGroup(rawGroup, project), [rawGroup, project])
+  const collapsed = useMemo(() => (g0.keys.length === 1 ? selectionOfKey(g0.keys[0]) : null), [g0])
+  const selection = collapsed ?? validSelection(rawSelection, project)
+  const group = g0.keys.length >= 2 ? g0 : NO_GROUP
+  // Every selection made the way it always was ends a group.
   const setSelection = useCallback((sel: Selection) => {
     setRawSelection(sel)
+    setRawGroup(NO_GROUP)
     if (sel) setRevealSeq((n) => n + 1)
   }, [])
+  /** Selects items by key: none clears, one is the single selection, two or more a group (shown in the Inspector unless `reveal` is false). */
+  const selectKeys = useCallback(
+    (keys: readonly ItemKey[], anchor: ItemKey | null, opts?: { reveal?: boolean }) => {
+      const unique = [...new Set(keys)]
+      if (unique.length === 0) return setSelection(null)
+      if (unique.length === 1) {
+        if (opts?.reveal !== false) return setSelection(selectionOfKey(unique[0]))
+        setRawSelection(selectionOfKey(unique[0]))
+        setRawGroup(NO_GROUP)
+        return
+      }
+      setRawSelection(null)
+      setRawGroup({ keys: unique, anchor: anchor && unique.includes(anchor) ? anchor : unique[unique.length - 1], stamp: ++groupStamp.current })
+      if (opts?.reveal !== false) setGroupReveal((n) => n + 1)
+    },
+    [setSelection]
+  )
   const [pickFocus, setPickFocus] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -365,8 +396,13 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, pickFocus, exporting, dialog, keymap, shortcuts })
-  latest.current = { selection, pickFocus, exporting, dialog, keymap, shortcuts }
+  const latest = useRef({ selection, group, pickFocus, exporting, dialog, keymap, shortcuts })
+  latest.current = { selection, group, pickFocus, exporting, dialog, keymap, shortcuts }
+
+  // What the timeline, the Inspector and the preview read about the group.
+  const groupKeys = useMemo(() => new Set<string>(group.keys), [group])
+  const singleKey = groupKeyOf(selection)
+  const groupApi = useMemo((): GroupApi => ({ group, keys: groupKeys, single: singleKey, select: selectKeys, notice: showNotice }), [group, groupKeys, singleKey, selectKeys, showNotice])
 
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
   const input = useMemo((): InputActions => {
@@ -1097,7 +1133,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [saver])
 
   return (
-    <EditorProviders services={services} keymap={keymap}>
+    <EditorProviders services={services} keymap={keymap} group={groupApi}>
       <div className="app editor">
         <header className="titlebar">
           <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
@@ -1185,6 +1221,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             project={project}
             selection={selection}
             revealSeq={revealSeq}
+            groupReveal={groupReveal}
             onSelect={setSelection}
             cursor={cursor}
             recorded={recorded}
