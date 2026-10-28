@@ -8,6 +8,7 @@
  */
 import { MAX_FREEZES, planOf } from '../engine/freeze'
 import { clamp } from '../engine/math'
+import { MAX_OVERLAYS } from '../engine/overlayData'
 import { formatTime } from '../engine/project'
 import { MIN_NEW_ZOOM, newZoomId, zoomAt } from '../engine/zoom'
 import { chapterInVideo } from '../render/chapters'
@@ -58,6 +59,7 @@ export type PasteSkip =
   | 'freeze-full'
   | 'freeze-other-recording'
   | 'image-other-recording'
+  | 'image-full'
 
 export interface PasteResult {
   project: Project
@@ -190,6 +192,11 @@ function place(p: Project, clip: ItemClipboard, at: number, movedBack: boolean):
           skipped.push({ kind: c.kind, why: 'image-other-recording' })
           break
         }
+        // A project keeps at most MAX_OVERLAYS (more would be dropped when it is opened again).
+        if ((q.overlays?.length ?? 0) >= MAX_OVERLAYS) {
+          skipped.push({ kind: c.kind, why: 'image-full' })
+          break
+        }
         const item = { ...c.item, id: newOverlayId(), start: c.item.start + offset, end: c.item.end + offset }
         if (outside(item.end)) skipped.push({ kind: c.kind, why: 'outside' })
         else {
@@ -318,6 +325,8 @@ function skipText(kind: GroupKind, why: PasteSkip, n: number): string {
       return `${what} would land where the picture is already frozen`
     case 'freeze-full':
       return `${what} would go past the limit of ${MAX_FREEZES}`
+    case 'image-full':
+      return `${what} would go past the limit of ${MAX_OVERLAYS}`
     case 'freeze-other-recording':
     case 'image-other-recording':
       return `${what} ${is} from another recording`
