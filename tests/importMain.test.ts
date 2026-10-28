@@ -68,6 +68,10 @@ beforeAll(() => {
   ff('-i', at('gop.mp4'), '-ss', '0.4', '-c', 'copy', at('trimmed.mp4'))
   // Sound that starts half a second after the picture (an audio delay in an MKV).
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-itsoffset', '0.5', '-f', 'lavfi', '-i', 'sine=f=1000', '-t', '2', '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-c:a', 'libopus', at('late-sound.mkv'))
+  // A camera file with 5.1.4 PCM sound (10 channels), and one with 4 channels.
+  for (const [layout, name] of [['5.1.4', 'surround.mov'], ['4.0', 'quad.mov']]) {
+    ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', `anullsrc=channel_layout=${layout}:sample_rate=48000`, '-t', '1', '-c:v', 'libx264', '-c:a', 'pcm_s16le', at(name))
+  }
   // Frames at 0, 1, 2 and 60 s, and a header that says 3 s (a crafted or damaged file).
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', "setpts='if(eq(N,3),60,N)/TB'", '-fps_mode', 'passthrough', '-c:v', 'libx264', at('gap.mkv'))
   const gap = readFileSync(at('gap.mkv'))
@@ -198,6 +202,14 @@ describe('importVideo', () => {
     const pcm = execFileSync(ffmpegPath(), ['-v', 'error', '-i', path.join(library, r.projectId, 'screen.mp4'), '-map', '0:a:0', '-vn', '-ac', '1', '-ar', '16000', '-f', 'f32le', '-'], { maxBuffer: 16 * 1024 * 1024 })
     const samples = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4)
     expect(samples.findIndex((v) => Math.abs(v) > 0.05) / 16000).toBeCloseTo(0.5, 1)
+  }, 60_000)
+
+  it('turns surround sound into stereo', async () => {
+    for (const name of ['surround.mov', 'quad.mov']) {
+      const r = await importVideo(at(name), { deps })
+      expect(r, name).toMatchObject({ ok: true })
+      if (r.ok) expect(describeVideo(path.join(library, r.projectId, 'screen.mp4'))).toMatch(/Audio: aac.*, stereo,/)
+    }
   }, 60_000)
 
   it('cuts the copy near the stated length when the header understates it', async () => {

@@ -207,7 +207,12 @@ describe('importArgs', () => {
 
   it('starts the sound at 0, padded with silence, when it starts after the picture', () => {
     const args = importArgs(base, { videoStream: 0, audioStream: 1, preFilters: [], duration: 10 })
-    expect(args[args.indexOf('-af') + 1]).toBe(`${ON_TIMESTAMPS}:first_pts=0`)
+    expect(args[args.indexOf('-af') + 1].split(',')[0]).toBe(`${ON_TIMESTAMPS}:first_pts=0`)
+  })
+
+  it('makes the sound mono or stereo, like a recording', () => {
+    const args = importArgs(base, { videoStream: 0, audioStream: 1, preFilters: [], duration: 10 })
+    expect(args[args.indexOf('-af') + 1]).toBe(`${ON_TIMESTAMPS}:first_pts=0,aformat=channel_layouts=stereo|mono`)
   })
 
   it('drops the sound map when there is no sound to use', () => {

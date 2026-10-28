@@ -253,6 +253,9 @@ and holds nothing else). Cancel kills ffmpeg at once (`AbortSignal`, `runFfmpegP
   It starts at 0 (`first_pts=0`): sound that starts after the picture (an audio delay, a
   stream-copy trim) is padded with silence, since the editor's level and speech analysis read the
   track from its first sample.
+- Mono stays mono; more channels are mixed down to stereo (`aformat=channel_layouts=stereo|mono`),
+  as a recording's proxy is: AAC refuses some layouts (5.1.4, 22.2) and the WebM export's Opus
+  others (2.1, 4.0, more than 8 channels).
 - No sound stream: `hasAudio: false` (the Audio tab already says *This recording has no sound.
   You can still add music below.*).
 - No stems: `audioStems` is absent; the editor plays the proxy's track, as for Chromium recordings.

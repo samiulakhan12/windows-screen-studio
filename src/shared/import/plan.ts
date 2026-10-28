@@ -262,9 +262,11 @@ export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'vide
     // Sound that starts after the picture (an audio delay, a stream-copy trim) is padded with
     // silence from 0, as a recording's is: the editor's level and speech analysis read the track
     // from its first sample, and an MP4 would otherwise keep the delay as an edit.
+    // Mono stays mono, more channels become stereo, as in a recording: AAC refuses some layouts
+    // (5.1.4, 22.2) and the WebM export's Opus others (2.1, 4.0, more than 8 channels).
     const af = args.indexOf('-af')
     if (af < 0 || !/(^|,)aresample=[^,]*$/.test(args[af + 1])) throw new Error('proxyArgs no longer ends -af with aresample')
-    args[af + 1] = `${args[af + 1]}:first_pts=0`
+    args[af + 1] = `${args[af + 1]}:first_pts=0,aformat=channel_layouts=stereo|mono`
   } else if (audio >= 0) {
     args.splice(audio, 2)
   }
