@@ -5,6 +5,7 @@
  * behaves exactly as before.
  */
 import { createContext, useContext } from 'react'
+import type { CommandId } from '../../../shared/editor/commands'
 import { NO_GROUP, type ItemGroup, type ItemKey } from '../../../shared/editor/multiSelect'
 
 export interface GroupApi {
@@ -21,6 +22,8 @@ export interface GroupApi {
   select(keys: readonly ItemKey[], anchor: ItemKey | null, opts?: { reveal?: boolean }): void
   /** Shows a notice in the transport's live region. */
   notice(message: string): void
+  /** Runs an editor command (the look buttons and the Selection view run the same handlers as the keys). */
+  command(id: CommandId): void
 }
 
 const NO_KEYS: ReadonlySet<string> = new Set()
@@ -30,7 +33,8 @@ export const NO_GROUP_API: GroupApi = Object.freeze({
   keys: NO_KEYS,
   single: null,
   select: () => undefined,
-  notice: () => undefined
+  notice: () => undefined,
+  command: () => undefined
 })
 
 export const GroupContext = createContext<GroupApi>(NO_GROUP_API)
