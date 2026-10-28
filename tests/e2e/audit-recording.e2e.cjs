@@ -32,12 +32,14 @@ const wiggle = (n) => r.xinput(Array.from({ length: n }, (_, i) => `m ${300 + ((
     const dir = r.activeDir(home)
     h.assert(readJson(path.join(dir, 'recording.json')).method === 'native', 'recorded by the helper')
     await wiggle(12)
-    const exited = new Promise((resolve) => app.process().once('exit', resolve))
+    // Kept before quitting: once the app has exited Playwright disposes it, and app.process() throws.
+    const proc = app.process()
+    const exited = new Promise((resolve) => proc.once('exit', resolve))
     await app.evaluate(({ app: electronApp }) => {
       setTimeout(() => electronApp.quit(), 0)
     })
     await Promise.race([exited, h.sleep(30000)])
-    h.assert(app.process().exitCode !== null || app.process().signalCode !== null, 'the app quit')
+    h.assert(proc.exitCode !== null || proc.signalCode !== null, 'the app quit')
 
     const commands = fs
       .readFileSync(helperLog, 'utf8')

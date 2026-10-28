@@ -329,13 +329,15 @@ async function main() {
       await s.started
     }, out)
     await h.sleep(2000)
-    const exited = new Promise((resolve) => app.process().once('exit', resolve))
+    // Kept before quitting: once the app has exited Playwright disposes it, and app.process() throws.
+    const proc = app.process()
+    const exited = new Promise((resolve) => proc.once('exit', resolve))
     const t0 = Date.now()
     await app.evaluate(({ app: electronApp }) => {
       setTimeout(() => electronApp.quit(), 0)
     })
     await Promise.race([exited, h.sleep(20000)])
-    h.assert(app.process().exitCode !== null || app.process().signalCode !== null, 'the app quit')
+    h.assert(proc.exitCode !== null || proc.signalCode !== null, 'the app quit')
     const lines = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
     const commands = lines.filter((l) => l.stdin && l.stdin !== '<eof>').map((l) => l.stdin.split(' ')[0])
     h.assert(commands.join() === 'stop', `the helper was asked to stop: ${commands}`)
