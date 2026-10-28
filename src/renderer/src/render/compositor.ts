@@ -2,9 +2,10 @@ import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
 import { croppedFrameSize, cropPixels } from '../../../shared/engine/crop'
 import { frameOf, frameTitle, screenCornerRadius } from '../../../shared/engine/deviceFrames'
-import { layoutMoving, sceneContentRect, type Rect } from '../../../shared/engine/layout'
+import { frameCamera, frameView, followGain } from '../../../shared/engine/frameView'
+import { intersectRect, type Rect, type SceneLayout } from '../../../shared/engine/layout'
 import { toOutput } from '../../../shared/engine/outputPoint'
-import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
+import type { Camera } from '../../../shared/engine/zoom'
 import type { CursorTrack, NormRect, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
 import { textArea } from '../../../shared/render/safeZones'
@@ -77,7 +78,9 @@ function webcamImage(src: RenderSources): FrameImage | null {
 
 /**
  * Draws one output frame at recording (source) time `t`. Pure with respect to
- * (t, scene, sources, options): preview and export call the same code.
+ * (t, scene, sources, options): preview and export call the same code. What the frame shows (the
+ * project as drawn, the layout and the camera) comes from frameView, so a view that follows the
+ * action (docs/design/vertical-video.md) is drawn the same way in both.
  */
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
@@ -93,31 +96,35 @@ export function drawFrame(
    */
   soundTime: number = t
 ): void {
-  const { project, cursor } = scene
-  const { style } = project
+  const { cursor } = scene
   const opts = { ...DEFAULT_OPTIONS, ...options }
   const k = Math.min(w, h) / 1080
   const full = screenImage(src)
   // A crop is drawn from a 1:1 copy of its pixels (cropFrame), so nothing outside it is ever sampled.
   const crop = scene.crop ?? null
   const screen = full && crop ? cropFrame(ctx, full, crop) : full
-  const shown = croppedFrameSize(crop, src.screen.videoWidth, src.screen.videoHeight, project)
+  const shown = croppedFrameSize(crop, src.screen.videoWidth, src.screen.videoHeight, scene.project)
   const vw = screen?.width || shown.width
   const vh = screen?.height || shown.height
 
   ctx.save()
-  const rect = sceneContentRect(project, w, h, vw, vh, t)
+  // While following: framed zooms, no device frame or tilt; the recording drawn into the virtual
+  // rectangle around the screen's slot, the camera resting on the follow plan.
+  const { project, layout, cam } = frameView(scene, w, h, vw, vh, t)
+  const { style } = project
+  const rect = layout.screen
+  const slot = layout.follow?.slot
   const radius = style.cornerRadius * k
 
   const focus = cursor.valid ? scene.focusPath : null
-  const zoomStyle = zoomStyleOf(project)
-  const cam = cameraAt(project.zooms, t, focus, zoomStyle)
 
   // Pulled back, or moved by a camera layout change, the card is drawn (shadow, corners, device frame)
   // at its current size over the cached background, cached once it holds still (a layout change
   // stretches its shadow from a sprite: paintStillCard). Otherwise use the cached static layer.
-  const card = cardRect(rect, cam)
-  const shrink = Math.min(1, cam.scale)
+  // Following, the card is what of the recording the slot shows: the slot itself unless pulled
+  // back, at full size (the recording always spans the slot one way or the other).
+  const card = slot ? intersectRect(slot, cardRect(rect, cam)) : cardRect(rect, cam)
+  const shrink = slot ? 1 : Math.min(1, cam.scale)
   const frame = frameOf(style)
   const spec: CardSpec = { style, rect: card, radius: radius * shrink, k: k * shrink, title: frame?.kind === 'browser' ? frameTitle(style, project.name) : '' }
   const geom = cardGeometry(spec)
@@ -127,7 +134,7 @@ export function drawFrame(
   // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
   const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom, vw, vh)
   const c = tilted ? tilted.ctx : ctx
-  const layoutMove = layoutMoving(project, t)
+  const layoutMove = layout.moving
   const moving = cam.scale < 1 || layoutMove
   if (tilted) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
@@ -148,10 +155,10 @@ export function drawFrame(
     c.imageSmoothingQuality = 'high'
     let image = screen.image
     const drawView = (view: Camera): void => {
-      const v = viewSource(view, rect)
+      const v = viewSource(view, rect, slot)
       if (v) c.drawImage(image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
     }
-    const samples = motionSamples(project, t, cam, focus, rect, opts, zoomStyle)
+    const samples = motionSamples(scene, project, layout, t, cam, opts)
     if (samples.length <= 1) {
       drawView(cam)
     } else {
@@ -188,7 +195,10 @@ export function drawFrame(
     rect,
     radius: frame ? screenCornerRadius(frame, rect, radius) : radius,
     cam,
+    layout,
+    following: !!slot,
     textArea: textArea(project, w, h, vw, vh, t),
+    fxGain: slot ? followGain(layout, w, h, vw, vh, style.padding) : 1,
     screen,
     sourceH: full?.height,
     options: opts,
@@ -272,25 +282,21 @@ function rgbCopy(target: CanvasRenderingContext2D, frame: FrameImage, vw: number
  * Cameras to average for motion blur at `t`: one (no blur) while the camera is
  * still, otherwise enough sub-frames across the shutter interval that consecutive
  * samples are at most ~2 px apart. Static frames therefore cost nothing extra.
+ * While following, the view pans without zooms too, and the movement is measured at the
+ * slot's corners (what is shown) rather than the larger virtual rectangle's; every sub-frame
+ * reads the view of the frame's own clip (`at` = t), never the next one's across a cut.
  */
-function motionSamples(
-  project: Project,
-  t: number,
-  cam: Camera,
-  focus: SmoothedTrack | null,
-  rect: Rect,
-  opts: Required<DrawOptions>,
-  style: ZoomStyle
-): Camera[] {
+function motionSamples(scene: RenderScene, project: Project, layout: SceneLayout, t: number, cam: Camera, opts: Required<DrawOptions>): Camera[] {
   const strength = project.effects.motionBlur
-  if (!(strength > 0) || opts.blurSamples <= 1 || project.zooms.length === 0) return [cam]
+  const slot = layout.follow?.slot
+  if (!(strength > 0) || opts.blurSamples <= 1 || (!slot && project.zooms.length === 0)) return [cam]
   // One output frame covers `speed` times more source time on a sped-up clip.
   const shutter = strength * opts.frameInterval * speedAt(project.clips, t)
-  const a = cameraAt(project.zooms, t - shutter / 2, focus, style)
-  const b = cameraAt(project.zooms, t + shutter / 2, focus, style)
-  const n = blurSampleCount(cameraDisplacement(a, b, rect), opts.blurSamples)
+  const a = frameCamera(scene, layout, t - shutter / 2, t)
+  const b = frameCamera(scene, layout, t + shutter / 2, t)
+  const n = blurSampleCount(cameraDisplacement(a, b, layout.screen, slot), opts.blurSamples)
   if (n <= 1) return [cam]
-  return shutterTimes(t, shutter, n).map((st) => cameraAt(project.zooms, st, focus, style))
+  return shutterTimes(t, shutter, n).map((st) => frameCamera(scene, layout, st, t))
 }
 
 /**
@@ -311,15 +317,21 @@ export function cardRect(rect: Rect, cam: Camera): Rect {
  * docs/design/vertical-video.md §8.2); absent, as always.
  */
 export function viewSource(c: Camera, rect: Rect, clip?: Rect): { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number } | null {
-  if (clip !== undefined) throw new Error('not implemented')
   const viewX = c.cx - 0.5 / c.scale
   const viewY = c.cy - 0.5 / c.scale
-  const sx = Math.max(0, viewX)
-  const sy = Math.max(0, viewY)
-  const ex = Math.min(1, viewX + 1 / c.scale)
-  const ey = Math.min(1, viewY + 1 / c.scale)
-  if (ex <= sx || ey <= sy) return null
   const px = c.scale * rect.w
   const py = c.scale * rect.h
+  let sx = Math.max(0, viewX)
+  let sy = Math.max(0, viewY)
+  let ex = Math.min(1, viewX + 1 / c.scale)
+  let ey = Math.min(1, viewY + 1 / c.scale)
+  if (clip) {
+    // The source under the clip's edges (where the output's pixels are), so no more is sampled than is shown.
+    sx = Math.max(sx, viewX + (clip.x - rect.x) / px)
+    sy = Math.max(sy, viewY + (clip.y - rect.y) / py)
+    ex = Math.min(ex, viewX + (clip.x + clip.w - rect.x) / px)
+    ey = Math.min(ey, viewY + (clip.y + clip.h - rect.y) / py)
+  }
+  if (ex <= sx || ey <= sy) return null
   return { sx, sy, sw: ex - sx, sh: ey - sy, dx: rect.x + (sx - viewX) * px, dy: rect.y + (sy - viewY) * py, dw: (ex - sx) * px, dh: (ey - sy) * py }
 }
