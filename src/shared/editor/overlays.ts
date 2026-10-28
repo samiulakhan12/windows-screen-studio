@@ -20,10 +20,16 @@ export const ROTATE_SNAP = 15
 let idCounter = 0
 export const newOverlayId = (): string => `o${Date.now().toString(36)}${(idCounter++).toString(36)}`
 
-/** Width and height (fractions of the shorter side) for an image of `aspect` (w / h) whose long side is `side`. */
+/**
+ * Width and height (fractions of the shorter side) for an image of `aspect` (w / h) whose long side
+ * is `side`. Both sides stay within OVERLAY_LIMITS.side: the long side grows until the short one
+ * reaches the minimum, which a stored side under it is raised to on load (stretching the image).
+ */
 export function sizeForAspect(aspect: number, side: number): { w: number; h: number } {
   const a = aspect > 0 && Number.isFinite(aspect) ? aspect : 1
-  return a >= 1 ? { w: side, h: side / a } : { w: side * a, h: side }
+  const { min, max } = OVERLAY_LIMITS.side
+  const long = clamp(side, Math.min(max, min * Math.max(a, 1 / a)), max)
+  return a >= 1 ? { w: long, h: Math.max(min, long / a) } : { w: Math.max(min, long * a), h: long }
 }
 
 /** What an overlay shows: a project image file (with the name it was imported from) or a built-in sticker. */

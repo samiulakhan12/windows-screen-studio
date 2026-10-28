@@ -94,6 +94,8 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
   const L = OVERLAY_LIMITS
   const side = Math.max(o.w, o.h)
   const aspect = o.w / o.h
+  // The smallest long side that keeps the short side at its minimum (sizeForAspect stops there).
+  const minSide = Math.min(L.side.max, L.side.min * Math.max(aspect, 1 / aspect))
   const setSize = (v: number): void => set(sizeForAspect(aspect, v), `overlay-size:${o.id}`)
   const imageAspect = status.state === 'ready' ? status.aspect : null
   const shaped = imageAspect !== null && Math.abs(aspect - imageAspect) > 0.01
@@ -118,7 +120,7 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
       )}
       <Slider label="Position X" value={o.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `overlay-geom:${o.id}`)} />
       <Slider label="Position Y" value={o.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `overlay-geom:${o.id}`)} />
-      <Slider label="Size" value={side} min={L.side.min} max={L.side.max} step={0.005} format={pctFmt} onChange={setSize} />
+      <Slider label="Size" value={side} min={minSide} max={L.side.max} step={0.005} format={pctFmt} onChange={setSize} />
       <Slider
         label="Rotation"
         value={o.rotation}

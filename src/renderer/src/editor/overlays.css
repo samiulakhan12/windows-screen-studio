@@ -135,11 +135,10 @@
   cursor: nwse-resize;
 }
 
-/* The rotate handle on a stem above the box. */
+/* The rotate handle on a stem above the box (its top is set by OverlayEditor's rotateHandlePlace). */
 .overlay-rotate {
   position: absolute;
   left: 50%;
-  top: -28px;
   width: 14px;
   height: 14px;
   margin-left: -7px;
@@ -160,6 +159,17 @@
   margin-left: -0.75px;
   background: var(--accent-400);
   pointer-events: none;
+}
+
+/* Where the spot above is cut off or under the hint: below the box, its stem going up to it;
+   inside the box, no stem. */
+.overlay-rotate.below::after {
+  top: auto;
+  bottom: 12px;
+}
+
+.overlay-rotate.inside::after {
+  display: none;
 }
 
 /* ---------- Dropping a file on the editor ---------- */

@@ -21,9 +21,12 @@ import { outputSize, type Rect } from '../../../shared/engine/layout'
 import { useSceneRect } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
 import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
+import { ANNOTATION_FONT } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
 import type { Annotation, NormRect, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
 import { cardRect, type RenderScene } from '../render/compositor'
+import { projectFontStack } from '../render/fontLoader'
+import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { holdGesture, useEditor } from './context'
 import { topmostHit, toggleKey, type ItemKey, type KeyRect } from '../../../shared/editor/multiSelect'
 import { useGroup } from './groupContext'
@@ -381,7 +384,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
         >
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
-          {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} box={box} />}
+          {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
@@ -526,18 +529,32 @@ function RegionEditor({
 }
 
 let measureCtx: CanvasRenderingContext2D | null = null
-function textWidth(text: string, px: number, weight: number): number {
+function textWidth(text: string, px: number, weight: number, family: string): number {
   measureCtx ??= document.createElement('canvas').getContext('2d')
   if (!measureCtx) return text.length * px * 0.55
-  measureCtx.font = `${weight} ${px}px 'Segoe UI', system-ui, sans-serif`
+  measureCtx.font = `${weight} ${px}px ${family}`
   return measureCtx.measureText(text).width
+}
+
+/**
+ * Where the compositor draws a text item on the preview, in overlay pixels: measured in the text's
+ * own font, as drawAnnotations does. The text's handle and the multi-select hit boxes use it.
+ */
+export function textBox(a: Annotation, box: Box, project: Pick<Project, 'id' | 'fonts'>): { x: number; y: number; w: number; h: number } {
+  const px = a.size * Math.min(box.w, box.h)
+  const lines = a.text.split('\n')
+  const weight = a.style === 'title' ? 700 : 600
+  const family = projectFontStack(project, a.font, ANNOTATION_FONT)
+  const w = Math.max(...lines.map((l) => textWidth(l || ' ', px, weight, family))) + (a.style === 'pill' ? px * 1.4 : px * 0.4)
+  const h = px * 1.3 * lines.length + (a.style === 'pill' ? px * 0.7 : px * 0.2)
+  return { x: a.x * box.w - w / 2, y: a.y * box.h - h / 2, w, h }
 }
 
 /**
  * Drag handle for the selected text overlay, drawn as an outline where the
  * compositor renders the text. Shown only while the overlay is on screen.
  */
-function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Box }): JSX.Element | null {
+function AnnotationHandle({ annotation, project, box }: { annotation: Annotation; project: Pick<Project, 'id' | 'fonts'>; box: Box }): JSX.Element | null {
   const { store, player } = useEditor()
   const [visible, setVisible] = useState(() => annotationVisibleAt(annotation, player.time))
   useEffect(() => {
@@ -545,13 +562,12 @@ function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Bo
     check()
     return player.subscribe(check)
   }, [annotation, player])
+  // Measured again once the text's font has loaded (until then it draws with the default font).
+  const [, setFontsLoaded] = useState(0)
+  useEffect(() => onStyleAssetsChanged(() => setFontsLoaded((n) => n + 1)), [])
   if (!visible || box.w === 0) return null
 
-  const px = annotation.size * Math.min(box.w, box.h)
-  const lines = annotation.text.split('\n')
-  const weight = annotation.style === 'title' ? 700 : 600
-  const w = Math.max(...lines.map((l) => textWidth(l || ' ', px, weight))) + (annotation.style === 'pill' ? px * 1.4 : px * 0.4)
-  const h = px * 1.3 * lines.length + (annotation.style === 'pill' ? px * 0.7 : px * 0.2)
+  const b = textBox(annotation, box, project)
 
   const onDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0) return
@@ -577,7 +593,7 @@ function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Bo
     <div
       className="annotation-handle"
       title="Drag to move the text"
-      style={{ left: annotation.x * box.w - w / 2, top: annotation.y * box.h - h / 2, width: w, height: h }}
+      style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
       onPointerDown={onDown}
     />
   )
@@ -700,16 +716,6 @@ function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; vi
 
 /* ---------- several items (E-06, docs/design/multi-select.md §4.6) ---------- */
 
-/** Where the compositor draws a text item on the preview (as AnnotationHandle measures it), in overlay pixels. */
-function textBox(a: Annotation, box: Box): { x: number; y: number; w: number; h: number } {
-  const px = a.size * Math.min(box.w, box.h)
-  const lines = a.text.split('\n')
-  const weight = a.style === 'title' ? 700 : 600
-  const w = Math.max(...lines.map((l) => textWidth(l || ' ', px, weight))) + (a.style === 'pill' ? px * 1.4 : px * 0.4)
-  const h = px * 1.3 * lines.length + (a.style === 'pill' ? px * 0.7 : px * 0.2)
-  return { x: a.x * box.w - w / 2, y: a.y * box.h - h / 2, w, h }
-}
-
 /**
  * The items on screen at source time `t`, as boxes in overlay pixels, topmost first in the
  * compositor's order: text, then shapes, then blur and pixelate (each in reverse list order), then
@@ -725,7 +731,7 @@ function previewBoxes(drawn: Project, scene: RenderScene, rect: Rect, box: Box, 
     const c = m.toPx(b.x + b.w, b.y + b.h)
     out.push({ key, x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) })
   }
-  for (const a of [...drawn.annotations].reverse()) if (annotationVisibleAt(a, t)) out.push({ key: `annotation:${a.id}`, ...textBox(a, box) })
+  for (const a of [...drawn.annotations].reverse()) if (annotationVisibleAt(a, t)) out.push({ key: `annotation:${a.id}`, ...textBox(a, box, drawn) })
   // Images are drawn over shapes and under text: their rotated box's bounds, in preview pixels.
   for (const o of [...(drawn.overlays ?? [])].reverse()) if (overlayVisibleAt(o, t)) out.push({ key: `overlay:${o.id}`, ...overlayBounds(o, box) })
   const shapes = [...(drawn.shapes ?? [])].reverse().filter((s) => itemVisibleAt(s, t))
@@ -735,7 +741,7 @@ function previewBoxes(drawn: Project, scene: RenderScene, rect: Rect, box: Box, 
   return out
 }
 
-/** The group's members on screen while the player is paused (re-rendered only when they change). */
+/** The group's members on screen while the player is paused (re-rendered only when they change, as when a text's font loads). */
 function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderScene | undefined, rect: Rect, box: Box, keys: ReadonlySet<string>, enabled: boolean): KeyRect[] {
   const [boxes, setBoxes] = useState<KeyRect[]>([])
   const { x, y, w, h } = rect
@@ -753,7 +759,12 @@ function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderSc
       setBoxes(next)
     }
     update()
-    return player.subscribe(update)
+    const offFonts = onStyleAssetsChanged(update)
+    const offPlayer = player.subscribe(update)
+    return () => {
+      offFonts()
+      offPlayer()
+    }
   }, [player, drawn, scene, x, y, w, h, box, keys, enabled])
   return boxes
 }
