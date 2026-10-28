@@ -82,7 +82,8 @@ honest limit of the measurement (§12). Measures, on 48 kHz mono, after removing
 | `arnndn` bd (recording noise, voice) | −56.8 dBFS | 11.63 dB | 11.39 dB | −0.69 dB |
 | **Light**: `arnndn` sh, `mix=0.75` | **−48.9 dBFS** (−10 dB) | 10.59 dB | 14.03 dB | −0.34 dB |
 | **Normal**: `arnndn` sh | **−57.4 dBFS** (−19 dB) | 11.62 dB | 12.03 dB | −0.43 dB |
-| **Strong**: `arnndn` sh twice | **−64.1 dBFS** (−26 dB) | 12.02 dB | 8.00 dB | −0.43 dB |
+| ~~`arnndn` sh twice~~ (first plan for Strong, dropped: §13) | −64.1 dBFS (−26 dB) | 12.02 dB | 8.00 dB | −0.43 dB |
+| **Strong**: `arnndn` sh, then cb | **−61.8 dBFS** (−23 dB) | 11.55 dB | 8.02 dB | −0.43 dB |
 
 `afftdn` barely touches this noise (2 dB): it is made for steady hiss, not clicks or a wobbling fan.
 RNNoise with the speech-in-recording-noise model (`sh`) removes 19 dB in the pauses and keeps more of
@@ -93,7 +94,7 @@ measurement with the shipped filter strings on every run (§11) and prints the n
 ### 2.3 Decision
 
 **ffmpeg `arnndn` with the `sh.rnnn` model.** It sounds clearly better than what ships today, needs
-no new native build, no download and no new dependency, adds 0.3 MB, and its delay is exact and
+no new native build, no download and no new dependency, adds 0.6 MB (two models), and its delay is exact and
 constant, which is what preview/export parity needs. DeepFilterNet3 is likely better on hard noise
 (babble, reverb), but needs a new signed Rust helper and 8 MB; it stays the follow-up (§12) and the
 design keeps the engine behind one function (`voiceCleanArgs`) and a versioned cache key, so a later
@@ -170,7 +171,7 @@ All three work at 48 kHz on every channel of the source, with the model file nam
 |---|---|---|
 | Light | `arnndn=m=sh.rnnn:mix=0.75` (a quarter of the original kept under the cleaned voice) | −10 dB |
 | Normal | `arnndn=m=sh.rnnn` | −19 dB |
-| Strong | `arnndn=m=sh.rnnn,arnndn=m=sh.rnnn` | −26 dB |
+| Strong | `arnndn=m=sh.rnnn,arnndn=m=cb.rnnn` (the general model second: §13) | −23 dB |
 
 Delay: each pass delays by exactly 480 samples (`VOICE_PASS_DELAY`). The graph (`voiceGraph`) is
 `[0:a:0]aresample=48000:async=1:first_pts=0,asplit[src][ref];[src]apad=pad_len=<480·passes>,<arnndn…>,atrim=start_sample=<480·passes>,asetpts=PTS-STARTPTS[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`:
@@ -293,7 +294,8 @@ progress bar uses `--accent` on `--surface-2`); no new colour, so contrast is th
 text (§11 checks the pairs used against WCAG AA).
 
 Keyboard: every control is a native checkbox or button in tab order; the chips are buttons; Cancel
-and Hear the original are reachable with Tab and work with Space/Enter. Focus stays on the button
+and Hear the original are reachable with Tab and work with Enter (Space plays the video everywhere in the
+editor, by design: `views/Editor.tsx`; the switch, like every toggle in the editor, is a checkbox). Focus stays on the button
 that changed (the status text changes beside it, and the Cancel button is replaced by *Clean now*
 in the same place, which takes the focus when Cancel had it).
 
@@ -413,7 +415,7 @@ Unit (vitest), each failing without its code:
   are not restarted by `want`; `prepare` restarts them; progress updates; the A/B flag.
 - Bench (`tests/voiceBench.test.ts`): the §2.2 clip (speech fixtures plus deterministic fan and
   keyboard noise) through the shipped filters: pause noise down at least 7 / 15 / 20 dB for Light /
-  Normal / Strong, voice level within 1.5 dB, Normal's fwSNRseg not below the input's.
+  Normal / Strong (as built: at least 6 / 10 / 20 dB), every voice kept (LibriSpeech within 1 dB, JFK within 3 dB), fwSNRseg within 3 dB of the input's.
 
 End-to-end (`tests/e2e/clean-voice.e2e.cjs`, the built app under Xvfb, with the speech fixture
 project from `speech-fixtures.cjs`):
@@ -426,7 +428,7 @@ project from `speech-fixtures.cjs`):
   within 2 dB.
 - Cancel during a render leaves no `.part` file, shows *Clean now*.
 - A project without `voice` exports exactly as before (the existing audio e2e tests, unchanged).
-- Keyboard: the switch, the chips and the buttons are reached with Tab and work with Space.
+- Keyboard: the chips and the buttons are reached with Tab and work with Enter.
 - Screenshots of the section: `docs/screenshots/clean-voice-*.png`.
 
 ---
@@ -447,4 +449,29 @@ project from `speech-fixtures.cjs`):
 
 ## 13. As built
 
-(Filled in when the build is done.)
+Built as designed, with these differences:
+
+- **Strong's second pass uses the general model (`cb.rnnn`)**, not the speech model again. The e2e
+  fixture showed two passes of `sh` remove the band-limited, noisy JFK speech entirely (−40 dB):
+  the second pass no longer recognises what the first left as speech. `sh` then `cb` keeps every
+  voice (JFK −0.5 dB, LibriSpeech −0.2 dB) and still takes 23–30 dB off the noise. Both models are
+  bundled (`src/main/voice/model/`, `MODEL.md`), pinned and checked; the cache key covers both hashes.
+  `tests/voiceBench.test.ts` fails with the old Strong (checked).
+- **Exact length**: the graph ends with `amix=duration=shortest` against a zero-weighted copy of the
+  source (§4.2), so the stem has exactly the source's samples (also after the AAC round trip), and
+  `aresample=…:async=1:first_pts=0` places a mixed track that starts late on its timestamps, as the
+  export reads it.
+- **The preview subscribes to the stems store only once a project uses Clean voice**, so projects
+  without it touch nothing new.
+- **Keyboard**: Space plays the video everywhere in the editor (existing rule), so the buttons are
+  used with Enter; the one action button stays the same element across states, so focus stays put
+  (Cancel → Clean now is checked by the e2e test).
+- Measured in the e2e export (speech fixture, M4A, levels as heard on each side): noise stretch
+  −29.1 dBFS plain, −44.3 Normal, −59.0 Strong; speech JFK −17.2 → −17.6 / −17.7 dBFS, LibriSpeech
+  −23.5 → −23.6 / −23.7 dBFS. Bench (`tests/voiceBench.test.ts`, synthetic fan and typing on real
+  speech): pauses −8 / −12 / −23 dB for Light / Normal / Strong, LibriSpeech within 0.4 dB, JFK about
+  −2 dB (its own crowd noise goes too).
+- Not confirmed here (no Windows PC, no microphone): the Windows ffmpeg build (`ffmpeg-static`
+  b6.1.1, which has `arnndn`) running it; file locking when an older stem is pruned while the
+  preview still has it open (pruning skips such a file and retries next time); real-room recordings
+  by ear.

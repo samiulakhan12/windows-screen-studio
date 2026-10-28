@@ -2,6 +2,10 @@
 
 ## Next release
 
+- **Clean voice** (F-08): one switch in the Audio panel removes fan hum, keyboard and mouse clicks
+  and room noise from your microphone, on this PC. Choose Light, Normal or Strong; the cleaned voice
+  is made once (with progress and Cancel) and the preview plays it, with *Hear the original* to
+  compare. The export uses the same cleaned voice. Projects with the switch off are unchanged.
 - **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
   the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
   `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move
