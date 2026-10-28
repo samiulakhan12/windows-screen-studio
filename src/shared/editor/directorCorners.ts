@@ -2,15 +2,20 @@
  * Where the camera bubble goes during the demo (docs/design/camera-director.md, step 10): a cost
  * per corner for how close the cursor, clicks and typing come to a bubble there, measured in
  * OUTPUT pixels exactly as the compositor draws them (sceneContentRect of the default layout,
- * cameraAt with the editor's focus path, toOutput), then a shortest-path search with a minimum
- * stay, so the bubble moves only when it has to and never flaps. Pure and deterministic.
+ * frameCamera with the editor's focus path, toOutput), then a shortest-path search with a minimum
+ * stay, so the bubble moves only when it has to and never flaps. Pure and deterministic. While the
+ * view follows the action (docs/design/vertical-video.md §5.14) the screen is the default layout's
+ * slot, the camera rests on the follow plan, and a point is seen when it is drawn in the slot.
  */
 import { cursorAt, cursorOpacity, type SmoothedTrack } from '../engine/cursor'
-import { outputSize, styleContentRect, webcamRect } from '../engine/layout'
+import { frameCamera, type ViewScene } from '../engine/frameView'
+import { baseView, followGeometry, followLevel, outputSize, styleContentRect, virtualRect, webcamRect, type Rect, type SceneLayout } from '../engine/layout'
 import { toOutput } from '../engine/outputPoint'
+import { followPlanFor } from '../engine/reframe'
+import { followApplies } from '../engine/reframeData'
 import { outputDuration } from '../engine/timeline'
 import { activeWatermark } from '../engine/watermark'
-import { cameraAt, TYPING_CLICK_WINDOW, zoomStyleOf } from '../engine/zoom'
+import { TYPING_CLICK_WINDOW, zoomStyleOf } from '../engine/zoom'
 import type { Corner, CursorTrack, Project } from '../types'
 
 /**
@@ -66,8 +71,15 @@ export function cornerOrder(home: Corner): Corner[] {
   return [home, horizontal, vertical, flip(horizontal, 'y')]
 }
 
-/** What the corner costs depend on (layouts do not: bubble time is always the default layout). */
-export type CornerProject = Pick<Project, 'duration' | 'clips' | 'zooms' | 'zoomSettings' | 'webcam' | 'style' | 'width' | 'height' | 'capture' | 'cursor' | 'watermark'>
+/**
+ * What the corner costs depend on (layouts do not: bubble time is always the default layout).
+ * While the view follows the action they also depend on the follow plan, which reads the layouts,
+ * whether there is a camera, the shapes and the spotlights.
+ */
+export type CornerProject = Pick<
+  Project,
+  'duration' | 'clips' | 'zooms' | 'zoomSettings' | 'webcam' | 'style' | 'width' | 'height' | 'capture' | 'cursor' | 'watermark' | 'hasWebcam' | 'layouts' | 'reframe' | 'shapes' | 'spotlights'
+>
 
 /** Cost per corner at every output grid point (CORNERS_PLAN.grid), already dilated (lookBack, lookAhead). */
 export interface CornerCosts {
@@ -82,6 +94,8 @@ export interface CornerCosts {
  * the screen: styleContentRect (the default layout); each point mapped with
  * toOutput(screen, cameraAt(zooms, t, cursor.valid ? focusPath : null, zoomStyleOf(project))) at
  * the source time of the grid point (outputToSource); a point outside the screen is not seen.
+ * While following: the default layout's slot and virtual rectangle, the camera of frameCamera
+ * (resting on the follow plan), and a point is seen inside the slot.
  * `cursorPath` is the drawn cursor (new SmoothedTrack(samples, duration, cursor.smoothing)) and
  * `focusPath` the zoom camera's (focusPathFor), as the editor builds them. Cached per inputs.
  */
@@ -185,6 +199,9 @@ const objectId = (o: object | null | undefined): number => {
 function costKey(project: CornerProject, track: CursorTrack, cursorPath: SmoothedTrack, focusPath: SmoothedTrack | null): string {
   const style = zoomStyleOf(project)
   const wm = activeWatermark(project)
+  const frame = outputSize(project.style.aspectRatio, project.width, project.height, 1080)
+  // While following, the plan reads more of the project (layouts, shapes...): its identity stands for them.
+  const plan = followApplies(project, frame.width, frame.height, project.width, project.height) ? followPlanFor(project, track) : null
   return JSON.stringify([
     objectId(cursorPath),
     objectId(focusPath),
@@ -204,9 +221,34 @@ function costKey(project: CornerProject, track: CursorTrack, cursorPath: Smoothe
     project.capture.cursorInVideo,
     project.cursor.show,
     project.cursor.hideWhenIdle,
-    wm?.position ?? null
+    wm?.position ?? null,
+    project.reframe ?? null,
+    objectId(plan)
   ])
 }
+
+/**
+ * Where the screen is drawn while measuring (the default layout, as the bubble's) and the scene
+ * the camera is asked with. Following: the default layout's slot, its view and virtual rectangle.
+ */
+function measuredScene(project: CornerProject, track: CursorTrack, focusPath: SmoothedTrack | null, W: number, H: number): { layout: SceneLayout; scene: ViewScene; seen: Rect } {
+  const vw = project.width
+  const vh = project.height
+  const drawn = project as Project
+  if (!followApplies(project, W, H, vw, vh)) {
+    const screen = styleContentRect(W, H, vw, vh, project.style)
+    // Without a focus path the camera follows no cursor (cameraAt with null), as before.
+    const scene: ViewScene = { project: drawn, cursor: focusPath ? track : { ...track, valid: false }, focusPath: focusPath ?? NO_PATH }
+    return { layout: { screen, camera: null, moving: false }, scene, seen: screen }
+  }
+  const g = followGeometry('default', project, W, H, vw, vh)
+  const base = baseView(g.slot, vw, vh, followLevel(project, vw, vh))
+  const layout: SceneLayout = { screen: virtualRect(g.slot, base), camera: g.camera, moving: false, follow: { slot: g.slot, base, band: g.band } }
+  return { layout, scene: { project: drawn, cursor: track, focusPath: focusPath ?? NO_PATH }, seen: g.slot }
+}
+
+/** A path for a scene without one (never read: the camera is then asked without cursor data, or follows the plan). */
+const NO_PATH = { at: (): { x: number; y: number } => ({ x: 0.5, y: 0.5 }) }
 
 interface Box {
   x0: number
@@ -222,7 +264,7 @@ function computeCosts(project: CornerProject, track: CursorTrack, cursorPath: Sm
   const length = Math.max(0, Math.ceil(total / G - 1e-9))
   const raw = CORNER_LIST.map(() => new Float32Array(length))
   const { width: W, height: H } = outputSize(project.style.aspectRatio, project.width, project.height, 1080)
-  const screen = styleContentRect(W, H, project.width, project.height, project.style)
+  const { layout, scene, seen } = measuredScene(project, track, focusPath, W, H)
   const m = Math.min(W, H)
   const pad = CORNERS_PLAN.pad * m
   const falloff = CORNERS_PLAN.falloff * m
@@ -230,8 +272,6 @@ function computeCosts(project: CornerProject, track: CursorTrack, cursorPath: Sm
     const r = webcamRect(W, H, { corner, size: project.webcam.size })
     return { x0: r.x - pad, y0: r.y - pad, x1: r.x + r.w + pad, y1: r.y + r.h + pad }
   })
-  const style = zoomStyleOf(project)
-  const focus = track.valid ? focusPath : null
   const samples = track.samples
   const valid = track.valid && samples.length > 0
   const inUnit = (p: { x: number; y: number }): boolean => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1
@@ -264,11 +304,11 @@ function computeCosts(project: CornerProject, track: CursorTrack, cursorPath: Sm
     const clip = clips[ci]
     const t = Math.min(clip.start + (o - acc) * clip.speed, clip.end)
     if (!valid) continue
-    const map = toOutput(screen, cameraAt(project.zooms, t, focus, style))
+    const map = toOutput(layout.screen, frameCamera(scene, layout, t))
     const add = (x: number, y: number, w: number): void => {
       const q = map(x, y)
-      // Zoomed in, a point outside the view is not seen.
-      if (q.x < screen.x || q.x > screen.x + screen.w || q.y < screen.y || q.y > screen.y + screen.h) return
+      // Zoomed in (or outside the followed view), a point is not seen.
+      if (q.x < seen.x || q.x > seen.x + seen.w || q.y < seen.y || q.y > seen.y + seen.h) return
       for (let c = 0; c < 4; c++) {
         const b = boxes[c]
         const d = Math.hypot(Math.max(b.x0 - q.x, 0, q.x - b.x1), Math.max(b.y0 - q.y, 0, q.y - b.y1))
