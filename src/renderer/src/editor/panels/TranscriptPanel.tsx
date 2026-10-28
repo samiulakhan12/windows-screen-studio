@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
 import { cutFlags, cutWords, restoreWords, transcriptWords, wordIndexAt, type TranscriptWord } from '../../../../shared/editor/transcript'
@@ -354,10 +354,13 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
                 if (i === current) classes.push('current')
                 if (i === focus) classes.push('focus')
                 if (suggested.has(i)) classes.push('suggested')
+                // A space after each word: the line can wrap there.
                 return (
-                  <span key={i} id={`tw-${i}`} data-w={i} role="option" aria-selected={selected} aria-label={flags[i] ? `${w.text}, cut` : w.text} className={classes.join(' ')}>
-                    {w.text}
-                  </span>
+                  <Fragment key={i}>
+                    <span id={`tw-${i}`} data-w={i} role="option" aria-selected={selected} aria-label={flags[i] ? `${w.text}, cut` : w.text} className={classes.join(' ')}>
+                      {w.text}
+                    </span>{' '}
+                  </Fragment>
                 )
               })}
             </p>

@@ -517,7 +517,7 @@ async function main() {
     for (const [i, side] of channels(out).entries()) h.assert(close(amplitude(side, 440, 1, 3), 0.125, 0.015), `channel ${i}: the music at its volume (${amplitude(side, 440, 1, 3)})`)
   }))
 
-  await test('audio pack: an older project (no stems, music or new settings) exports the audio it did before, with re-timed clips now exactly on their video', fx.withHome('ap-legacy', async (ctx, home) => {
+  await test('audio pack: an older project (no stems, music or new settings) exports the audio it did before, with re-timed clips now exactly on their video and fades at its cuts', fx.withHome('ap-legacy', async (ctx, home) => {
     const media = fx.indexedVideo({ seconds: 8, width: 1280, height: 720, beeps: true })
     const clips = [
       { id: 'a', start: 0, end: 2, speed: 1 },
@@ -552,6 +552,10 @@ async function main() {
       .replace('[c0];', ',apad=whole_len=96000,atrim=end_sample=96000[c0];')
       .replace('[c1];', ',apad=whole_len=48000,atrim=end_sample=48000[c1];')
       .replace('[c2];', ',apad=whole_len=96000,atrim=end_sample=96000[c2];')
+      // Smooth cuts (NW-06): the sound fades out over 10 ms before each cut and in over 10 ms after it.
+      .replace(',apad=whole_len=96000,atrim=end_sample=96000[c0];', ',afade=t=out:st=1.99:d=0.01,apad=whole_len=96000,atrim=end_sample=96000[c0];')
+      .replace(',apad=whole_len=48000,atrim=end_sample=48000[c1];', ',afade=t=in:st=0:d=0.01,afade=t=out:st=0.99:d=0.01,apad=whole_len=48000,atrim=end_sample=48000[c1];')
+      .replace(',apad=whole_len=96000,atrim=end_sample=96000[c2];', ',afade=t=in:st=0:d=0.01,apad=whole_len=96000,atrim=end_sample=96000[c2];')
     const encode = (graph, file) =>
       // prettier-ignore
       execFileSync(FF, ['-y', '-hide_banner', '-loglevel', 'error', '-nostats', '-nostdin', '-vn', '-i', path.join(dir, 'screen.mp4'), '-filter_complex', graph, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-movflags', '+faststart', '-f', 'ipod', file])
@@ -562,7 +566,7 @@ async function main() {
     let diff = 0
     for (let i = 0; i < Math.max(a.length, b.length); i++) diff = Math.max(diff, Math.abs((a[i] ?? 9) - (b[i] ?? 9)))
     console.log(`  older project: ${a.length} samples, largest difference from the reference export ${diff}`)
-    h.assert(a.length === b.length && diff < 1e-6, `the export's audio is exactly the earlier graph with exact, on-frame re-timed clips (${a.length} vs ${b.length} samples, max diff ${diff})`)
+    h.assert(a.length === b.length && diff < 1e-6, `the export's audio is exactly the earlier graph with exact, on-frame re-timed clips and fades at its cuts (${a.length} vs ${b.length} samples, max diff ${diff})`)
     // The last clip (0.5x from 3 s) on its own, as the video shows it: where does it start in each export?
     // prettier-ignore
     const alone = execFileSync(FF, ['-v', 'error', '-i', path.join(dir, 'screen.mp4'), '-af', `aresample=48000:async=1:first_pts=0,atrim=start=6:end=7,asetpts=PTS-STARTPTS,apad=whole_dur=1,atrim=end=1,${retimed('41.667', 'atempo=0.5', 2000)},volume=0.8`, '-ac', '1', '-f', 'f32le', '-'], { maxBuffer: 1 << 26 })

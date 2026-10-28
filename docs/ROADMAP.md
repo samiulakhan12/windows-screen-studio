@@ -68,7 +68,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Risks:** Gemini's word times are estimated by the model and can drift, so exact cuts may need a forced-alignment step. OpenAI's diarization model is being retired too.
 
 ### NW-01 · Remove filler words and retakes
-**AI · M · planned**
+**AI · M · shipped (next release, on this PC, no AI call)**: see [FEATURES.md](FEATURES.md) (Remove fillers and retakes) and `docs/design/edit-by-text.md`. Left for later: verbatim transcription requests (a prompt with fillers for `whisper-1`, asking Gemini for them) and meaning-level retakes (F-05 or an AI text task).
 
 - **What:** finds "um", "uh", repeated words, false starts and abandoned sentences and lists them as suggested cuts. The user unticks any to keep, then applies the rest in one undoable step.
 - **Works with:**
@@ -79,7 +79,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Descript, Loom AI, Tella, Camtasia/Audiate.
 
 ### NW-04 · Edit the video by editing the transcript
-**AI · M · planned**
+**AI · M · shipped (next release)**: see [FEATURES.md](FEATURES.md) (Edit by text) and `docs/design/edit-by-text.md`. Left for later: typing to replace words, moving sentences by drag, a command and shortcut for the Transcript tab.
 
 - **What:** select words or sentences in the transcript and press Delete, and that part of the video is cut. Restoring the text brings the video back. The spoken word is highlighted during playback.
 - **Works with:** any transcript with word timings. The edit itself makes no AI call.
@@ -111,7 +111,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Camtasia cursor path editing, Rapidemo "disable accidental clicks".
 
 ### NW-06 · Smooth cuts
-**Editing · M · planned (audio fades: S)**
+**Editing · M · audio fades shipped (next release: 10 ms out and in at every cut, export and preview)**; the video cross-dissolve, per-cut styles and "Smooth all cuts" are still planned (`docs/design/edit-by-text.md` §12).
 
 - **What:** each cut can get a short crossfade, zoom punch-in, slide or dip to colour, and "Smooth all cuts" applies one style to every cut. Ship first: always-on 5–15 ms audio fades at every cut. Today `audioPlan.ts` joins clips with a plain concat, so silence removal can leave clicks.
 - **Builds on:** `Clip` (`{id, start, end, speed}`, no transition field); the compositor's existing blends for zoom and layout transitions.
