@@ -3,6 +3,7 @@
  * highlight and background), and reading stored caption settings. Pure: shared by the Captions
  * tab, the render layer and project loading (engine/project.ts).
  */
+import { readFontId } from '../render/fonts'
 import type { CaptionPreset, CaptionSettings } from '../types'
 
 /** Text height limits, as a fraction of the output's shorter side. */
@@ -82,6 +83,7 @@ export function readCaptionSettings(raw: unknown): CaptionSettings | undefined {
   const r = raw as Partial<Record<keyof CaptionSettings, unknown>>
   const d = DEFAULT_CAPTIONS
   const pick = <T>(v: unknown, list: readonly T[], fallback: T): T => (list.includes(v as T) ? (v as T) : fallback)
+  const font = readFontId(r.font)
   const size = typeof r.size === 'number' && Number.isFinite(r.size) ? Math.min(CAPTION_SIZE.max, Math.max(CAPTION_SIZE.min, r.size)) : d.size
   return {
     show: typeof r.show === 'boolean' ? r.show : d.show,
@@ -91,6 +93,7 @@ export function readCaptionSettings(raw: unknown): CaptionSettings | undefined {
     color: typeof r.color === 'string' && HEX.test(r.color) ? r.color.toLowerCase() : d.color,
     highlightColor: typeof r.highlightColor === 'string' && HEX.test(r.highlightColor) ? r.highlightColor.toLowerCase() : d.highlightColor,
     background: pick(r.background, BACKGROUNDS, d.background),
-    maxLines: r.maxLines === 1 ? 1 : 2
+    maxLines: r.maxLines === 1 ? 1 : 2,
+    ...(font ? { font } : {})
   }
 }

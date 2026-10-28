@@ -8,6 +8,7 @@ import { readChapter, readTitleCard } from './titleData'
 import { readDirectorSettings } from './directorData'
 import { readCrop } from './crop'
 import { readFreezes } from './freezeData'
+import { readBrand, readFonts, readOverlays } from './overlayData'
 import { readProjectScript } from '../notes/notes'
 import { readLayouts, readWebcam } from './webcamData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
@@ -130,7 +131,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, crop, freezes, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, crop, freezes, overlays, fonts, brand, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
@@ -155,6 +156,10 @@ export function migrateProject(raw: unknown): Project {
     chapters: readItems(p.chapters, (c) => readChapter(c, duration)),
     // Freeze frames inside the recording, sorted, one per frame (absent: none).
     ...optional('freezes', readFreezes(freezes, duration)),
+    // Images and stickers that can be shown, fonts with valid files, the brand kit's colours (absent: none).
+    ...optional('overlays', readOverlays(overlays, duration)),
+    ...optional('fonts', readFonts(fonts)),
+    ...optional('brand', readBrand(brand)),
     // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.
     tilt: readTilt(p.tilt),
     // Captions inside the recording, sorted, with unique ids; their look sanitised (absent = defaults).

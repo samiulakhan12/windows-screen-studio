@@ -354,6 +354,8 @@ export interface CaptionSettings {
   background: 'none' | 'box' | 'shadow'
   /** Most lines shown at once. */
   maxLines: 1 | 2
+  /** A ProjectFont id (Project.fonts); absent or unknown = the built-in caption font. */
+  font?: string
 }
 
 /** A 3D tilt of the recording card (degrees), for a perspective "product shot" look. */
@@ -383,6 +385,10 @@ export interface TitleCard {
   background: 'blur' | 'solid' | 'style'
   color?: string
   textColor?: string
+  /** A ProjectFont id (Project.fonts); absent or unknown = the built-in title font. */
+  font?: string
+  /** Set on the intro or outro card the brand kit placed: applying the kit again replaces it. */
+  brand?: 'intro' | 'outro'
 }
 
 /** A named chapter starting at `t` (source seconds). */
@@ -435,6 +441,54 @@ export interface Annotation {
   /** Font size as a fraction of the output frame's shorter side. */
   size: number
   style: AnnotationStyle
+  /** A ProjectFont id (Project.fonts); absent or unknown = the built-in text font. */
+  font?: string
+}
+
+/**
+ * An image, animated GIF or built-in sticker shown between `start` and `end` (source seconds),
+ * over the frame (docs/design/brand-kit.md). Geometry is in the output frame, like annotations:
+ * the zoom camera does not move it, and a change of aspect ratio never stretches it.
+ */
+export interface ImageOverlay {
+  id: string
+  start: number
+  end: number
+  /** Project file overlay-<n>.<png|jpg|webp|svg|gif>; absent for a built-in sticker. */
+  file?: string
+  /** Built-in sticker id (shared/render/stickers.ts); absent for a file. */
+  sticker?: string
+  /** Name shown in the editor (the file it was imported from). */
+  name?: string
+  /** Centre, normalised to the output frame (0..1). */
+  x: number
+  y: number
+  /** Width and height as fractions of the output frame's shorter side. */
+  w: number
+  h: number
+  /** Degrees clockwise, -180..180. */
+  rotation: number
+  /** 0.05..1 */
+  opacity: number
+  /** Fade lengths in output seconds, 0..3. */
+  fadeIn: number
+  fadeOut: number
+}
+
+/** A font file copied into the project folder (font-<n>.<ttf|otf|woff2>). */
+export interface ProjectFont {
+  id: string
+  /** Name shown in the font menus. */
+  name: string
+  file: string
+}
+
+/** What the brand kit left on a project: its colours for the pickers and the fonts new text starts with. */
+export interface ProjectBrand {
+  colors: string[]
+  /** ProjectFont ids. */
+  headingFont?: string
+  bodyFont?: string
 }
 
 export interface KeystrokeSettings {
@@ -625,6 +679,12 @@ export interface Project {
   audio: AudioSettings
   /** Logo or text stamped on every frame. */
   watermark?: WatermarkSettings
+  /** Images, GIFs and stickers over the frame (absent: none, every project from before them). */
+  overlays?: ImageOverlay[]
+  /** Fonts copied into the project, used by text, title cards and captions (absent: none). */
+  fonts?: ProjectFont[]
+  /** Colours and fonts the brand kit left (absent: never applied). */
+  brand?: ProjectBrand
   shapes?: Shape[]
   spotlights?: Spotlight[]
   /** Separate microphone (mic.m4a) and system sound (system.m4a) files kept by the recording. */
