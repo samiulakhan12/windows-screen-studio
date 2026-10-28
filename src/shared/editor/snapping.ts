@@ -323,11 +323,18 @@ export function snapGroup(
   clamp: (d: number) => number,
   accept?: (d: number) => boolean
 ): { delta: number; target: SnapTarget | null; exact: { from: number; to: number } | null } {
-  void index
-  void points
-  void view
-  void accept
-  return { delta: clamp(dt), target: null, exact: null }
+  const none = { delta: clamp(dt), target: null, exact: null }
+  const r = snapPoints(
+    index,
+    points.map((x) => x + dt),
+    view
+  )
+  if (!r.target) return none
+  const d = clamp(dt + r.delta)
+  const t = r.target.t
+  // A block limit moved the snapped point off its target, or a freeze frame refuses it: the drag goes where the pointer says.
+  if (Math.abs(points[r.point] + d - t) > SNAP.exactS || (accept && !accept(d))) return none
+  return { delta: d, target: r.target, exact: { from: points[r.point], to: t } }
 }
 
 /** A point drag snapped (targets outside `limit`, or that it does not accept, ignored). */
