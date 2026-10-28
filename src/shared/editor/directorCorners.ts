@@ -91,11 +91,11 @@ export interface CornerCosts {
 
 /**
  * The corner costs of a project. Output size: outputSize(style.aspectRatio, width, height, 1080);
- * the screen: styleContentRect (the default layout); each point mapped with
- * toOutput(screen, cameraAt(zooms, t, cursor.valid ? focusPath : null, zoomStyleOf(project))) at
- * the source time of the grid point (outputToSource); a point outside the screen is not seen.
- * While following: the default layout's slot and virtual rectangle, the camera of frameCamera
- * (resting on the follow plan), and a point is seen inside the slot.
+ * the screen: styleContentRect (the default layout); each point mapped with toOutput(screen, the
+ * camera of frameCamera: the zooms with the focus path when the cursor is valid, the project's
+ * zoom style) at the source time of the grid point (outputToSource); a point outside the screen
+ * is not seen. While following: the default layout's slot and virtual rectangle, the camera
+ * resting on the follow plan, and a point is seen inside the slot.
  * `cursorPath` is the drawn cursor (new SmoothedTrack(samples, duration, cursor.smoothing)) and
  * `focusPath` the zoom camera's (focusPathFor), as the editor builds them. Cached per inputs.
  */
@@ -237,7 +237,7 @@ function measuredScene(project: CornerProject, track: CursorTrack, focusPath: Sm
   const drawn = project as Project
   if (!followApplies(project, W, H, vw, vh)) {
     const screen = styleContentRect(W, H, vw, vh, project.style)
-    // Without a focus path the camera follows no cursor (cameraAt with null), as before.
+    // Without a focus path the camera follows no cursor, as before.
     const scene: ViewScene = { project: drawn, cursor: focusPath ? track : { ...track, valid: false }, focusPath: focusPath ?? NO_PATH }
     return { layout: { screen, camera: null, moving: false }, scene, seen: screen }
   }
