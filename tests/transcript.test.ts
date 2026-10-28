@@ -239,6 +239,7 @@ describe('wordIndexAt', () => {
   it('finds the word being said, or -1 between words', () => {
     expect(wordIndexAt(words, 0.5)).toBe(-1)
     expect(wordIndexAt(words, 1.2)).toBe(0)
+    expect(wordIndexAt(words, 1.5)).toBe(-1)
     expect(wordIndexAt(words, 1.7)).toBe(-1)
     expect(wordIndexAt(words, 2.1)).toBe(2)
     expect(wordIndexAt(words, 3)).toBe(-1)
