@@ -22,7 +22,7 @@ import {
 import { stickerOf, stickerUrl } from '../../../shared/render/stickers'
 import type { ImageOverlay, Project } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
-import { notifyStyleAssetsChanged } from './watermarkLayer'
+import { notifyStyleAssetsChanged, taintsCanvas } from './watermarkLayer'
 
 /* ---------- decoding ---------- */
 
@@ -85,6 +85,7 @@ function raster(source: CanvasImageSource, w: number, h: number): HTMLCanvasElem
 /** An SVG (a file or a sticker) rasterised once at IMAGE_MAX_SIDE (or `side`) on its long side; square without a size. */
 async function decodeSvg(url: string, side = IMAGE_MAX_SIDE): Promise<DecodedOverlay> {
   const img = await loadImage(url)
+  if (taintsCanvas(img)) throw new Error("This SVG has HTML text in it, which can't be drawn into a video: save it as a PNG and add it again.")
   const w = img.naturalWidth
   const h = img.naturalHeight
   const aspect = w > 0 && h > 0 ? w / h : 1

@@ -29,12 +29,28 @@ const images = new Map<string, ImageEntry>()
 const imageKey = (projectId: string, file: string): string => `${projectId}/${file}`
 let imageVersion = 0
 
+/**
+ * Whether drawing `img` taints a canvas, as an SVG with HTML in it does (<foreignObject>, as
+ * draw.io and Mermaid write labels): no export could then read its frames back.
+ */
+export function taintsCanvas(img: HTMLImageElement): boolean {
+  const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d')
+  ctx?.drawImage(img, 0, 0, 1, 1)
+  try {
+    ctx?.getImageData(0, 0, 1, 1)
+    return false
+  } catch {
+    return true
+  }
+}
+
 function decode(url: string, svg: boolean): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.decoding = 'async'
     img.onload = () => {
+      if (svg && taintsCanvas(img)) return reject(new Error('The SVG has HTML in it'))
       const w = img.naturalWidth
       const h = img.naturalHeight
       // An SVG without a size has no natural size: draw it square.
