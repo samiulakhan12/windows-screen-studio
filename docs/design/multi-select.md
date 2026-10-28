@@ -321,8 +321,8 @@ The command picks a **track** in this order:
    - the chapter strip as `chapters`;
    - the title lane as `titles`;
    - caption and layout tracks count as "no track";
-3. the open Inspector tab: `zoom` → zooms, `text` → text, `shapes` → shapes, `clip` → freezes.
-   Other tabs give no track.
+3. the open Inspector tab: `zoom` → zooms, `text` → text, `shapes` → shapes, `images` → images,
+   `clip` → freezes. Other tabs give no track.
 
 Then:
 - **The track has items and not all of them are selected:** the selection becomes all items of

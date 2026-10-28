@@ -794,7 +794,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       return k ? shortcutLabel(k) : ''
     }
     /** The open tab's track, for Ctrl+A before anything was pressed on the timeline. */
-    const TAB_TRACK: Partial<Record<InspectorTab, ItemTrack>> = { zoom: 'zoom', text: 'text', shapes: 'shapes', clip: 'freezes' }
+    const TAB_TRACK: Partial<Record<InspectorTab, ItemTrack>> = { zoom: 'zoom', text: 'text', shapes: 'shapes', images: 'images', clip: 'freezes' }
     const pasted = (r: PasteResult, total: number, verb?: string): void => {
       if (r.keys.length) selectKeys(r.keys, r.keys[0])
       showNotice(pasteNotice(r, total, verb))
