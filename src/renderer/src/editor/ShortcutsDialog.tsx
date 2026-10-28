@@ -14,6 +14,7 @@ import {
   removeBinding,
   resetCommand,
   shortcutLabel,
+  standardKeyOf,
   takenDefaults,
   type Keymap
 } from '../../../shared/editor/shortcuts'
@@ -95,6 +96,9 @@ function ShortcutRow({
 
   const modified = !isDefaultBinding(keymap, id)
   const defaults = DEFAULT_KEYMAP[id]
+  // E-06: Ctrl+A/C/X/V work for their commands while no command has them in the keymap.
+  const standard = standardKeyOf(id)
+  const standardFree = !!standard && !bindings.includes(standard) && !commandForShortcut(keymap, standard)
   return (
     <li className={`shortcut-row ${capture ? 'capturing' : ''}`} data-command={id} ref={rowRef}>
       <div className="shortcut-line">
@@ -119,6 +123,11 @@ function ShortcutRow({
               </button>
             </span>
           ))}
+          {standardFree && (
+            <span className="shortcut-chip standard" data-standard={standard} title="Standard key · a shortcut you give another command takes it over">
+              <ShortcutKeys accelerator={standard!} />
+            </span>
+          )}
           {capture ? (
             <button
               type="button"

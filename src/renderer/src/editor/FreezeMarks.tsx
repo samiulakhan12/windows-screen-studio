@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type MutableRefObject, type PointerEvent as ReactPointerEvent } from 'react'
 import { canMoveFreeze, freezeInactiveReason, moveFreeze, setFreezeLength, setStillEnd, stillEndsAt } from '../../../shared/editor/freezeEdit'
+import { itemKey } from '../../../shared/editor/multiSelect'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import { outputToSourceRanges } from '../../../shared/editor/smartSpeed'
 import { overlaps } from '../../../shared/editor/timelineScale'
@@ -10,6 +11,8 @@ import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { releaseFocus } from './focus'
 import { useKeymap } from './keymapContext'
+import { useGroup } from './groupContext'
+import type { MultiSelect } from './multiSelectControl'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import type { SnapController } from './snapControl'
@@ -26,6 +29,8 @@ interface Props {
   snap?: SnapController
   /** The timeline's drag flag: set while a freeze is dragged, so the timeline does not scroll after the playhead. */
   dragging?: MutableRefObject<boolean>
+  /** The timeline's multi-select controller (E-06): a Ctrl+press adds a freeze to the selection. */
+  multi?: MultiSelect
 }
 
 const NO_FREEZES: Freeze[] = []
@@ -42,7 +47,7 @@ const seconds = (v: number): string => `${v.toFixed(1)} s`
  * hold) is a hollow diamond. The body moves a freeze, the right edge sets its length; each drag is
  * one undo step.
  */
-export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap, dragging }: Props): JSX.Element | null {
+export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips, selection, onSelect, snap, dragging, multi }: Props): JSX.Element | null {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const freezes = useSyncExternalStore(store.subscribe, () => store.state.freezes) ?? NO_FREEZES
@@ -50,6 +55,15 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
   const boxRef = useRef<HTMLDivElement>(null)
   const byId = useMemo(() => new Map(freezes.map((f) => [f.id, f])), [freezes])
   const selId = selection?.kind === 'freeze' ? selection.id : null
+  // Memoised: read here so the marks re-render when the group changes (E-06).
+  const group = useGroup()
+  const member = (id: string): string => {
+    const key = itemKey('freeze', id)
+    return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
+  }
+  const groupSize = group.group.keys.length
+  const hint = (id: string): string =>
+    group.keys.has(itemKey('freeze', id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
 
   // The held freeze's block fills as it plays (written to the DOM: no re-render per frame).
   useEffect(() => {
@@ -101,6 +115,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
   const onBodyDown = (f: Freeze) => (e: ReactPointerEvent) => {
     // Shift or Alt+drag still selects a range on the clip track.
     if (e.button !== 0 || e.shiftKey || e.altKey) return
+    if (multi?.press(e, itemKey('freeze', f.id), 'move')) return
     onSelect({ kind: 'freeze', id: f.id })
     // The playhead follows the anchor during this drag, so it is no target; nor is a frame moveFreeze refuses.
     const session = snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true })
@@ -116,6 +131,8 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
   /** The right edge: the length (a pause freeze's in the timeline's seconds; a continue freeze's in the video's, to the footage under the pointer). */
   const onEdgeDown = (f: Freeze, still: Still | null) => (e: ReactPointerEvent) => {
     if (e.button !== 0) return
+    // With Ctrl held the whole block counts as its middle: a Ctrl+click never sets the length.
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && multi?.press(e, itemKey('freeze', f.id), 'move')) return
     onSelect({ kind: 'freeze', id: f.id })
     const from = still ? outputToSourceRanges(clips, still.editStart, still.editEnd).at(-1)?.end ?? f.at : 0
     const session = still ? snap?.begin(e, { exclude: [{ owner: `freeze:${f.id}` }], noPlayhead: true }) : undefined
@@ -137,12 +154,12 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     blocks.push(
       <div
         key={h.id}
-        className={`freeze-block pause ${selId === h.id ? 'selected' : ''}`}
+        className={`freeze-block pause ${selId === h.id ? 'selected' : ''}${member(h.id)}`}
         data-testid="freeze-block"
         data-freeze={h.id}
         data-sound="pause"
         style={{ left: Math.min(h.at, duration) * px, width }}
-        title={`Freeze frame: adds ${seconds(h.length)} here, the recording waits. Drag the edge to change${deleteHint}`}
+        title={`Freeze frame: adds ${seconds(h.length)} here, the recording waits. Drag the edge to change${deleteHint}${hint(h.id)}`}
         onPointerDown={onBodyDown(f)}
       >
         <span className="freeze-progress" />
@@ -168,12 +185,12 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
       blocks.push(
         <div
           key={`${s.id}:${i}`}
-          className={`freeze-block continue ${selId === s.id ? 'selected' : ''}`}
+          className={`freeze-block continue ${selId === s.id ? 'selected' : ''}${member(s.id)}`}
           data-testid="freeze-block"
           data-freeze={s.id}
           data-sound="continue"
           style={{ left: r.start * px, width }}
-          title={`Freeze frame: the picture holds for ${seconds(held)} while the sound plays on`}
+          title={`Freeze frame: the picture holds for ${seconds(held)} while the sound plays on${hint(s.id)}`}
           onPointerDown={onBodyDown(f)}
         >
           {i === 0 && width > 40 && (
@@ -198,7 +215,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     blocks.push(
       <span
         key={id}
-        className={`freeze-mark inactive ${selId === id ? 'selected' : ''}`}
+        className={`freeze-mark inactive ${selId === id ? 'selected' : ''}${member(id)}`}
         data-testid={why === 'cut' ? 'freeze-inactive' : 'freeze-short'}
         data-freeze={id}
         style={{ left: f.at * px }}

@@ -59,6 +59,14 @@ const COMMAND_LIST = [
   { id: 'resetCrop', title: 'Show the whole recording (reset crop)', category: 'Edit', keywords: 'crop uncrop full frame reset' },
   { id: 'cropTaskbar', title: 'Crop out the taskbar', category: 'Edit', keywords: 'crop hide taskbar bottom windows' },
   { id: 'toggleFreezeSound', title: 'Freeze frame: pause or keep the sound', category: 'Edit', keywords: 'freeze hold audio continue silence voice' },
+  // E-06 select several items (docs/design/multi-select.md §6): Ctrl+A/C/X/V are standard keys (shortcuts.ts STANDARD_EDIT_KEYS).
+  { id: 'selectAll', title: 'Select all items on the track (again: every item)', category: 'Edit', keywords: 'multi several group many select all track box' },
+  { id: 'copyItems', title: 'Copy selected items', category: 'Edit', keywords: 'multi several group many clipboard duplicate' },
+  { id: 'cutItems', title: 'Cut selected items', category: 'Edit', keywords: 'multi several group many clipboard remove move' },
+  { id: 'pasteItems', title: 'Paste items at playhead', category: 'Edit', keywords: 'multi several group many clipboard insert' },
+  { id: 'duplicateItems', title: 'Duplicate selected items', category: 'Edit', keywords: 'multi several group many copy clone repeat series' },
+  { id: 'copyLook', title: 'Copy look of the selected item', category: 'Edit', keywords: 'multi several group many style format painter appearance' },
+  { id: 'pasteLook', title: 'Paste look onto selected items', category: 'Edit', keywords: 'multi several group many style format painter appearance apply' },
 
   { id: 'addZoom', title: 'Add zoom at playhead', category: 'Add', keywords: 'magnify scale camera' },
   { id: 'addText', title: 'Add text at playhead', category: 'Add', keywords: 'annotation title caption label' },

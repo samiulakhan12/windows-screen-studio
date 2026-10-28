@@ -16,6 +16,7 @@ import {
 } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
+import { itemKey } from '../../../../shared/editor/multiSelect'
 import { chapterInVideo } from '../../../../shared/render/chapters'
 import type { AnnotationStyle, Chapter, Clip, Project, TitleCard } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -24,6 +25,8 @@ import { Chips, pctFmt, Section, Slider } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
+import { useListSelect } from '../listSelect'
+import { LookButtons } from '../LookButtons'
 import type { Selection } from '../selection'
 import { FirstShortcut, ShortcutKeys } from '../ShortcutKeys'
 import { addChapterAt, addTitleAt, showTitle } from '../titleItems'
@@ -40,14 +43,16 @@ export function TextPanel(props: InspectorProps): JSX.Element {
   const card = selection?.kind === 'title' ? ((project.titles ?? []).find((c) => c.id === selection.id) ?? null) : null
   const chapter = selection?.kind === 'chapter' ? ((project.chapters ?? []).find((c) => c.id === selection.id) ?? null) : null
 
-  if (ann) return <SelectedText {...props} />
-  if (card) return <SelectedTitle project={project} card={card} onSelect={props.onSelect} />
-
+  // The lists stay below a selected item, each in the same place (E-06, multi-select.md §4.7): a
+  // Ctrl+click or Ctrl+Space on a row that leaves one item selected keeps the row, and its focus,
+  // so the next row can be added.
   return (
     <>
+      {ann && <SelectedText {...props} />}
+      {card && <SelectedTitle project={project} card={card} onSelect={props.onSelect} />}
       {chapter && <SelectedChapter project={project} chapter={chapter} onSelect={props.onSelect} />}
-      <TextSection {...props} />
-      <TitlesSection project={project} onSelect={props.onSelect} />
+      <TextSection {...props} selectedId={ann?.id ?? null} />
+      <TitlesSection project={project} selectedId={card?.id ?? null} onSelect={props.onSelect} />
       <ChaptersSection project={project} selectedId={chapter?.id ?? null} onSelect={props.onSelect} onNotice={props.onNotice} />
     </>
   )
@@ -65,9 +70,10 @@ function PressOr({ accelerators }: { accelerators: readonly string[] }): JSX.Ele
 
 /* ---------- text annotations ---------- */
 
-function TextSection(props: InspectorProps): JSX.Element {
+function TextSection({ selectedId, ...props }: InspectorProps & { selectedId: string | null }): JSX.Element {
   const { player } = useEditor()
   const keymap = useKeymap()
+  const list = useListSelect()
   const { project } = props
   return (
     <>
@@ -80,7 +86,7 @@ function TextSection(props: InspectorProps): JSX.Element {
         </p>
       </Section>
       {project.annotations.length > 0 && (
-        <Section title={`Text in this video (${project.annotations.length})`}>
+        <Section title={`Text in this video (${project.annotations.length})`} aside={<SelectAllButton keys={project.annotations.map((a) => itemKey('annotation', a.id))} what="text items" />}>
           <ul className="item-list">
             {[...project.annotations]
               .sort((a, b) => a.start - b.start)
@@ -88,10 +94,16 @@ function TextSection(props: InspectorProps): JSX.Element {
               .map((a) => (
                 <li key={a.id}>
                   <button
-                    onClick={() => {
-                      props.onSelect({ kind: 'annotation', id: a.id })
-                      player.seek(a.start + Math.min(0.5, (a.end - a.start) / 2))
-                    }}
+                    data-text-item={a.id}
+                    className={selectedId === a.id || list.member(itemKey('annotation', a.id)) ? 'active' : ''}
+                    {...list.row(
+                      itemKey('annotation', a.id),
+                      () => {
+                        props.onSelect({ kind: 'annotation', id: a.id })
+                        player.seek(a.start + Math.min(0.5, (a.end - a.start) / 2))
+                      },
+                      selectedId === a.id
+                    )}
                   >
                     <span className="muted">{formatTime(a.start, false)}</span> {a.text || 'Text'}
                   </button>
@@ -131,6 +143,7 @@ function SelectedText(props: InspectorProps): JSX.Element {
       <Slider label="Position X" value={ann.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `annotation-pos:${ann.id}`)} />
       <Slider label="Position Y" value={ann.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `annotation-pos:${ann.id}`)} />
       <p className="hint">Tip: drag the text on the preview to place it.</p>
+      <LookButtons itemKey={itemKey('annotation', ann.id)} />
       <button
         className="btn ghost danger"
         onClick={() => {
@@ -146,12 +159,16 @@ function SelectedText(props: InspectorProps): JSX.Element {
 
 /* ---------- title cards ---------- */
 
-function TitlesSection({ project, onSelect }: { project: Project; onSelect: (sel: Selection) => void }): JSX.Element {
+function TitlesSection({ project, selectedId, onSelect }: { project: Project; selectedId: string | null; onSelect: (sel: Selection) => void }): JSX.Element {
   const services = useEditor()
   const keymap = useKeymap()
+  const list = useListSelect()
   const titles = project.titles ?? []
   return (
-    <Section title={titles.length ? `Title cards (${titles.length})` : 'Title cards'}>
+    <Section
+      title={titles.length ? `Title cards (${titles.length})` : 'Title cards'}
+      aside={titles.length > 1 ? <SelectAllButton keys={titles.map((c) => itemKey('title', c.id))} what="title cards" /> : undefined}
+    >
       <div className="title-tools">
         <button className="btn" onClick={() => addTitleAt(services, { onSelect })} title={withShortcut('Add a title card at the playhead', keymap.addTitle)}>
           <TitleStyleIcon style="centered" size={16} /> Add title card
@@ -169,10 +186,15 @@ function TitlesSection({ project, onSelect }: { project: Project; onSelect: (sel
               <li key={c.id}>
                 <button
                   data-title-item={c.id}
-                  onClick={() => {
-                    onSelect({ kind: 'title', id: c.id })
-                    showTitle(services.player, project.clips, c)
-                  }}
+                  className={selectedId === c.id || list.member(itemKey('title', c.id)) ? 'active' : ''}
+                  {...list.row(
+                    itemKey('title', c.id),
+                    () => {
+                      onSelect({ kind: 'title', id: c.id })
+                      showTitle(services.player, project.clips, c)
+                    },
+                    selectedId === c.id
+                  )}
                 >
                   <TitleStyleIcon style={c.style} size={15} />
                   <span>{c.title.trim() || c.subtitle?.trim() || 'Title'}</span>
@@ -230,6 +252,7 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
       </div>
       <TitleOnPreview card={card} clips={project.clips} />
       <p className="hint">Drag the card on the title track to change when it shows; it fades in and out. Long titles wrap and shrink to fit.</p>
+      <LookButtons itemKey={itemKey('title', id)} />
       <button
         className="btn ghost danger"
         title={withShortcut('Delete this title card', keymap.deleteSelection)}
@@ -361,11 +384,15 @@ function ChaptersSection({
   const services = useEditor()
   const { store, player } = services
   const keymap = useKeymap()
+  const list = useListSelect()
   const chapters = sortedChapters(project.chapters ?? [])
   const next = keymap.nextChapter[0]
   const prev = keymap.prevChapter[0]
   return (
-    <Section title={chapters.length ? `Chapters (${chapters.length})` : 'Chapters'}>
+    <Section
+      title={chapters.length ? `Chapters (${chapters.length})` : 'Chapters'}
+      aside={chapters.length > 1 ? <SelectAllButton keys={chapters.map((c) => itemKey('chapter', c.id))} what="chapters" /> : undefined}
+    >
       <div className="title-tools">
         <button className="btn" onClick={() => addChapterAt(services, { onSelect, onNotice })} title={withShortcut('Add a chapter at the playhead', keymap.addChapter)}>
           <EditorIcon name="plus" size={16} /> Add chapter at playhead
@@ -384,14 +411,14 @@ function ChaptersSection({
       {chapters.length > 0 && (
         <ul className="item-list chapter-list">
           {chapters.slice(0, 200).map((c) => (
-            <li key={c.id} className={`chapter-row ${selectedId === c.id ? 'active' : ''}`} data-chapter-item={c.id}>
+            <li key={c.id} className={`chapter-row ${selectedId === c.id || list.member(itemKey('chapter', c.id)) ? 'active' : ''}${list.member(itemKey('chapter', c.id)) ? ' in-group' : ''}`} data-chapter-item={c.id}>
               <button
                 className="chapter-time"
-                title="Go to this chapter"
-                onClick={() => {
+                title="Go to this chapter (Ctrl+click: select several)"
+                {...list.row(itemKey('chapter', c.id), () => {
                   onSelect({ kind: 'chapter', id: c.id })
                   player.seek(c.t)
-                }}
+                })}
               >
                 {formatTime(videoTimeAt(project.clips, planOf(project), c.t), false)}
               </button>
@@ -421,5 +448,16 @@ function ChaptersSection({
         </ul>
       )}
     </Section>
+  )
+}
+
+/** A list header's "Select all": every item of the list together (E-06). */
+function SelectAllButton({ keys, what }: { keys: ReturnType<typeof itemKey>[]; what: string }): JSX.Element | null {
+  const list = useListSelect()
+  if (keys.length < 2) return null
+  return (
+    <button className="link small" onClick={() => list.selectAll(keys)} title={`Select all ${keys.length} ${what} to edit them together`}>
+      Select all
+    </button>
   )
 }

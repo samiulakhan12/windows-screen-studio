@@ -1,8 +1,11 @@
-import { memo, useLayoutEffect, useRef } from 'react'
+import { memo, useLayoutEffect, useRef, useState } from 'react'
+import type { CommandId } from '../../../shared/editor/commands'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { CursorTrack, PathMode, Project, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { EditorIcon } from './EditorIcon'
+import { useGroup } from './groupContext'
+import { SelectionPanel } from './panels/SelectionPanel'
 import type { Selection } from './selection'
 import { StylePanel } from './panels/StylePanel'
 import { CursorPanel } from './panels/CursorPanel'
@@ -49,6 +52,10 @@ export interface InspectorProps {
   smartSpeedRequest?: number
   /** Increments when the camera director command asks the Camera panel to direct the camera. */
   directorRequest?: number
+  /** Increments whenever several items are selected in a way that shows the Selection view (E-06). */
+  groupReveal?: number
+  /** Runs an editor command (the Selection view's buttons run the same handlers as the keys). */
+  onCommand?: (id: CommandId) => void
 }
 
 /** Ignoring and using clicks, straightening the cursor path (shared/editor/inputEdits.ts). */
@@ -126,29 +133,68 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
     railRef.current?.querySelector<HTMLElement>('button.active')?.scrollIntoView({ block: 'nearest' })
   }, [tab])
 
+  // E-06: the Selection view, opened when several items are selected (not from the lists' own
+  // toggles), closed by any tab; it goes away with the group.
+  const group = useGroup()
+  const groupSize = group.group.keys.length
+  const [showGroup, setShowGroup] = useState(false)
+  useLayoutEffect(() => {
+    if (props.groupReveal) setShowGroup(true)
+  }, [props.groupReveal])
+  useLayoutEffect(() => {
+    if (groupSize < 2) setShowGroup(false)
+  }, [groupSize])
+  const groupShown = showGroup && groupSize >= 2
+  const onCommand = props.onCommand ?? group.command
+
   return (
     <aside className="inspector">
       <nav className="insp-tabs" aria-label="Inspector" ref={railRef}>
+        {groupSize >= 2 && (
+          <button
+            className={`selection-tab ${groupShown ? 'active' : ''}`}
+            onClick={() => setShowGroup(true)}
+            aria-pressed={groupShown}
+            title={`Selection (${groupSize} items)`}
+            data-testid="selection-tab"
+          >
+            <EditorIcon name="check" size={17} />
+            <span>Selection</span>
+            <span className="selection-badge" aria-hidden="true">
+              {groupSize}
+            </span>
+          </button>
+        )}
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)} aria-pressed={tab === t.id} title={t.label}>
+          <button
+            key={t.id}
+            className={tab === t.id && !groupShown ? 'active' : ''}
+            onClick={() => {
+              setShowGroup(false)
+              setTab(t.id)
+            }}
+            aria-pressed={tab === t.id && !groupShown}
+            title={t.label}
+          >
             {t.editorIcon ? <EditorIcon name={t.icon} size={17} /> : <Icon name={t.icon} size={17} />}
             <span>{t.label}</span>
             {t.id === 'captions' && captionsBadge && <span className="captions-job-badge" data-testid="captions-job-badge" data-phase={captionsBadge.phase} title={captionsBadge.title} aria-hidden="true" />}
           </button>
         ))}
       </nav>
-      <div className="insp-body" data-tab={tab}>
-        {tab === 'style' && <StylePanel project={props.project} onBackgroundImage={props.onBackgroundImage} onNotice={props.onNotice} onCrop={props.onCrop} />}
-        {tab === 'cursor' && <CursorPanel project={props.project} cursor={props.cursor} recorded={props.recorded} clickRows={props.clickRows} input={props.input} />}
-        {tab === 'zoom' && <ZoomPanel {...props} />}
-        {tab === 'clip' && <ClipPanel {...props} />}
-        {tab === 'text' && <TextPanel {...props} />}
-        {tab === 'captions' && <CaptionsPanel {...props} />}
-        {tab === 'shapes' && <ShapesPanel {...props} />}
-        {tab === 'images' && <ImagesPanel {...props} />}
-        {tab === 'effects' && <EffectsPanel project={props.project} cursor={props.cursor} />}
-        {tab === 'camera' && <CameraPanel {...props} />}
-        {tab === 'audio' && <AudioPanel project={props.project} />}
+      <div className="insp-body" data-tab={groupShown ? 'selection' : tab}>
+        {groupShown && <SelectionPanel {...props} onCommand={onCommand} />}
+        {!groupShown && tab === 'style' && <StylePanel project={props.project} onBackgroundImage={props.onBackgroundImage} onNotice={props.onNotice} onCrop={props.onCrop} />}
+        {!groupShown && tab === 'cursor' && <CursorPanel project={props.project} cursor={props.cursor} recorded={props.recorded} clickRows={props.clickRows} input={props.input} />}
+        {!groupShown && tab === 'zoom' && <ZoomPanel {...props} />}
+        {!groupShown && tab === 'clip' && <ClipPanel {...props} />}
+        {!groupShown && tab === 'text' && <TextPanel {...props} />}
+        {!groupShown && tab === 'captions' && <CaptionsPanel {...props} />}
+        {!groupShown && tab === 'shapes' && <ShapesPanel {...props} />}
+        {!groupShown && tab === 'images' && <ImagesPanel {...props} />}
+        {!groupShown && tab === 'effects' && <EffectsPanel project={props.project} cursor={props.cursor} />}
+        {!groupShown && tab === 'camera' && <CameraPanel {...props} />}
+        {!groupShown && tab === 'audio' && <AudioPanel project={props.project} />}
       </div>
     </aside>
   )

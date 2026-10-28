@@ -33,7 +33,7 @@ the PC (whisper.cpp and Silero VAD), and ffmpeg.
 ## Screenshots
 
 Taken from the built app with seeded projects (`SSW_UI_SHOTS=docs/screenshots` with
-`tests/e2e/ui.e2e.cjs`).
+`tests/e2e/ui.e2e.cjs`, and with `tests/e2e/multi-select.e2e.cjs` for the multi-selection).
 
 | | |
 | --- | --- |
@@ -43,8 +43,8 @@ Taken from the built app with seeded projects (`SSW_UI_SHOTS=docs/screenshots` w
 | **Captions**: generated captions on their own track, styles and position | **Camera**: webcam bubble and camera layouts over time |
 | ![Export dialog](docs/screenshots/export.png) | ![Settings, adding an AI provider](docs/screenshots/settings-ai.png) |
 | **Export**: destination presets, format, resolution and quality | **Settings**: your own OpenAI, Gemini or Claude key for captions and transcript tools |
-| ![Command palette](docs/screenshots/palette.png) | |
-| **Command palette** (`Ctrl+K`): every editor action by name | |
+| ![Command palette](docs/screenshots/palette.png) | ![Several items selected: the Selection view, outlines on the preview, the group on the timeline](docs/screenshots/multi-select.png) |
+| **Command palette** (`Ctrl+K`): every editor action by name | **Select several items**: move them together and edit what they share, with *Mixed* where they differ |
 
 ## Getting started
 
@@ -116,13 +116,19 @@ These are the defaults; every one can be changed in the Shortcuts dialog (`Ctrl+
 | `Ctrl+K` (`Ctrl+Shift+P`) | Command palette: search and run any command |
 | `Ctrl+E` | Export |
 | `Ctrl+/` | Shortcuts: rebind any command, reset to defaults |
-| `Delete` / `Backspace` | Delete the selection (clip → cut, zoom, text, freeze frame, or a Shift-dragged range) |
+| `Delete` / `Backspace` | Delete the selection (clip → cut, zoom, text, freeze frame, or a Shift-dragged range), or every selected item |
 | `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z`) | Undo / redo |
 | `+` / `-` (`=` / `_`), `Ctrl`+wheel | Zoom the timeline in / out |
 | `N` | Snapping on / off (hold `Alt` while dragging to place an item freely) |
 | `Esc` | Clear the selection, cancel the crop tool, or close the export dialog |
 | Double-click a zoom or text track | Add a zoom / text there |
 | `Shift`+drag on the clip track | Select a range to cut or re-time |
+| `Ctrl`+click / `Shift`+click | Select several items / a run of items on one track |
+| `Shift`+drag on a track | Select the items in a box (`Ctrl`+drag adds to the selection) |
+| `Ctrl+A` | Select all items on the track you last used (again: every item) |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste items (pasted at the playhead; the items stay in Flown, not in the Windows clipboard) |
+| `Ctrl+D` | Duplicate the selected items right after themselves |
+| `Ctrl+Shift+C` / `Ctrl+Shift+V` | Copy one item's look / paste it onto the selected items |
 
 ## How it works (short version)
 

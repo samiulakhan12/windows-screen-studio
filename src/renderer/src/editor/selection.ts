@@ -3,6 +3,7 @@ import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import { formatTime } from '../../../shared/engine/project'
 import { isZoomClick } from '../../../shared/engine/zoom'
+import { isGroupKind, parseItemKey, type ItemKey } from '../../../shared/editor/multiSelect'
 import type { ClickEvent, Project, StrayReason } from '../../../shared/types'
 
 /** What the user has selected on the timeline. Times are source seconds. */
@@ -64,6 +65,15 @@ export function validSelection(sel: Selection, project: Project): Selection {
 
 export const selectionKey = (sel: Selection): string =>
   !sel ? '' : 'id' in sel ? `${sel.kind}:${sel.id}` : sel.kind === 'click' ? `click:${sel.ms}` : `${sel.kind}:${sel.start}:${sel.end}`
+
+/** The single selection of a groupable item's key (E-06): `selectionKey(selectionOfKey(k)) === k`. */
+export const selectionOfKey = (k: ItemKey): Selection => {
+  const parsed = parseItemKey(k)
+  return parsed ? { kind: parsed.kind, id: parsed.id } : null
+}
+
+/** The key of a selection that can join a group, or null (clips, gaps, ranges, clicks, captions, layouts). */
+export const groupKeyOf = (s: Selection): ItemKey | null => (s && 'id' in s && isGroupKind(s.kind) ? (`${s.kind}:${s.id}` as ItemKey) : null)
 
 /* ---------- how a recorded click is described (timeline markers, Zoom and Cursor panels) ---------- */
 

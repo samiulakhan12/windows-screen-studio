@@ -19,12 +19,15 @@ import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { cropOf, cropView, geometryFromCrop, rectToCrop } from '../../../../shared/engine/crop'
 import { clamp } from '../../../../shared/engine/math'
 import { formatTime } from '../../../../shared/engine/project'
+import { itemKey } from '../../../../shared/editor/multiSelect'
 import type { Clip, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
+import { useListSelect } from '../listSelect'
+import { LookButtons } from '../LookButtons'
 import { addShapeAt, addSpotlightAt, cursorPosFor, revealItem } from '../playheadItems'
 import { ShapeIcon } from '../shapeIcons'
 import '../shapes.css'
@@ -48,7 +51,6 @@ const ADD_COMMAND: Record<ShapeKind, CommandId> = {
 
 export function ShapesPanel(props: InspectorProps): JSX.Element {
   const services = useEditor()
-  const { player } = services
   const keymap = useKeymap()
   const { project, selection, cursor } = props
   const shapes = project.shapes ?? []
@@ -119,35 +121,54 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
       </Section>
 
       {items.length > 0 ? (
-        <Section title={`In this video (${items.length})`}>
-          <ul className="item-list shape-list">
-            {items.slice(0, 200).map(({ type, item }) => {
-              const selected = selId === item.id
-              return (
-                <li key={item.id}>
-                  <button
-                    className={selected ? 'active' : ''}
-                    data-shape-item={item.id}
-                    onClick={() => {
-                      props.onSelect({ kind: type, id: item.id })
-                      revealItem(player, project.clips, item, type === 'spotlight' ? 'spotlight' : (item as Shape).kind)
-                    }}
-                  >
-                    <ShapeIcon name={type === 'shape' ? (item as Shape).kind : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
-                    <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
-                    <span className="muted">
-                      {formatTime(item.start, false)} – {formatTime(item.end, false)}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </Section>
+        <ShapeList project={project} items={items} selId={selId} onSelect={props.onSelect} />
       ) : (
         <p className="hint">Added items appear on the shapes track of the timeline: drag them to change when they show, and drag them on the preview to place them.</p>
       )}
     </>
+  )
+}
+
+/** Every shape and spotlight, in time order: a click selects one; Ctrl/Shift and the keyboard select several (E-06). */
+function ShapeList({ project, items, selId, onSelect }: { project: Project; items: Item[]; selId: string | null; onSelect: InspectorProps['onSelect'] }): JSX.Element {
+  const { player } = useEditor()
+  const list = useListSelect()
+  return (
+    <Section
+      title={`In this video (${items.length})`}
+      aside={
+        items.length > 1 ? (
+          <button className="link small" onClick={() => list.selectAll(items.map(({ type, item }) => itemKey(type, item.id)))} title={`Select all ${items.length} shapes and spotlights to edit them together`}>
+            Select all
+          </button>
+        ) : undefined
+      }
+    >
+      <ul className="item-list shape-list">
+        {items.slice(0, 200).map(({ type, item }) => {
+          const key = itemKey(type, item.id)
+          const selected = selId === item.id || list.member(key)
+          return (
+            <li key={item.id}>
+              <button
+                className={selected ? 'active' : ''}
+                data-shape-item={item.id}
+                {...list.row(key, () => {
+                  onSelect({ kind: type, id: item.id })
+                  revealItem(player, project.clips, item, type === 'spotlight' ? 'spotlight' : (item as Shape).kind)
+                }, selId === item.id)}
+              >
+                <ShapeIcon name={type === 'shape' ? (item as Shape).kind : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
+                <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
+                <span className="muted">
+                  {formatTime(item.start, false)} – {formatTime(item.end, false)}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </Section>
   )
 }
 
@@ -213,6 +234,7 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
         </>
       )}
       <TimeFields project={project} item={shape} onChange={(times) => set(times, `shape-time:${id}`)} />
+      <LookButtons itemKey={itemKey('shape', id)} />
       <ItemActions
         onDuplicate={() => {
           const copy = duplicateItem(shape)
@@ -303,6 +325,7 @@ function SelectedSpotlight({
       )}
       <p className="hint">{spot.mode === 'cursor' ? 'Follows the cursor. Drag its corners on the preview to resize it.' : 'Drag the lit area on the preview to move it, its handles to resize it.'}</p>
       <TimeFields project={project} item={spot} onChange={(times) => set(times, `spot-time:${id}`)} />
+      <LookButtons itemKey={itemKey('spotlight', id)} />
       <ItemActions
         onDuplicate={() => {
           const copy = duplicateItem(spot)

@@ -6,6 +6,7 @@ import {
   drawnBox,
   drawnGeometry,
   isLineKind,
+  isPrivacyKind,
   itemVisibleAt,
   moveLine,
   resizeAround,
@@ -24,12 +25,15 @@ import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shar
 import type { Annotation, NormRect, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
 import { cardRect, type RenderScene } from '../render/compositor'
 import { holdGesture, useEditor } from './context'
+import { topmostHit, toggleKey, type ItemKey, type KeyRect } from '../../../shared/editor/multiSelect'
+import { useGroup } from './groupContext'
 import { CropEditor, type CropTool } from './CropEditor'
 import { OverlayEditor } from './OverlayEditor'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
+import './multiSelect.css'
 import './shapes.css'
 import './zoom.css'
 
@@ -229,10 +233,14 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
   const view = useStageView(player, drawn, scene, editItem)
   const mapping = view ? mappingFor(view.cam, rect) : null
 
+  // E-06: a group's members on screen are outlined (paused only); Ctrl+click adds or removes items.
+  const group = useGroup()
+  const outlines = useGroupOutlines(player, drawn, scene, rect, box, group.keys, group.group.keys.length >= 2 && !pickZoom && !cropTool)
+
   // Handles are laid out on the flat frame: the 3D tilt is left out while the preview shows
-  // some (a zoom's focus being picked, the selected shape or spotlight being edited). Other
-  // selections, playback and text (always drawn flat) keep the tilt.
-  const editing = !!pickZoom || !!(editItem && view)
+  // some (a zoom's focus being picked, the selected shape or spotlight being edited, a group's
+  // outlines). Other selections, playback and text (always drawn flat) keep the tilt.
+  const editing = !!pickZoom || !!(editItem && view) || outlines.length > 0
   useEffect(() => player.setFlat(editing), [player, editing])
 
   /** Dragging on the preview outside the selected item draws it anew there (not a cursor spotlight). */
@@ -325,6 +333,25 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
       followPointer(e, (ev) => pickAt(ev.clientX, ev.clientY, el))
       return
     }
+    // E-06: Ctrl+click (or Shift+click) on the paused preview adds or removes the item under the
+    // pointer; a miss does nothing (it never plays).
+    if ((e.ctrlKey || e.metaKey || e.shiftKey) && !cropTool && scene && !player.moving) {
+      e.preventDefault()
+      const r = el.getBoundingClientRect()
+      const key = topmostHit(previewBoxes(drawn, scene, rect, box, displayTime(drawn.clips, player.time)), e.clientX - r.left, e.clientY - r.top)
+      const sx = e.clientX
+      const sy = e.clientY
+      followPointer(
+        e,
+        () => undefined,
+        (ev) => {
+          if (!key || ev.type !== 'pointerup' || Math.hypot(ev.clientX - sx, ev.clientY - sy) > CLICK_SLOP) return
+          const next = toggleKey(group.group.keys, group.single, key, group.group.anchor)
+          group.select(next.keys, next.anchor)
+        }
+      )
+      return
+    }
     if (view && redrawItem(e, el)) {
       e.preventDefault()
       return
@@ -357,6 +384,29 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
+          {outlines.map((b) => (
+            <div
+              key={b.key}
+              className="group-outline"
+              data-testid="group-outline"
+              data-key={b.key}
+              style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
+              title="Selected · click to edit it alone, Ctrl+click to leave it out"
+              onPointerDown={(e) => {
+                // With Ctrl or Shift the press goes on to the overlay, which adds or removes items.
+                if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
+                e.preventDefault()
+                e.stopPropagation()
+                releaseFocus(e.target)
+                group.select([b.key], b.key)
+              }}
+            />
+          ))}
+          {outlines.length > 0 && (
+            <div className="pick-hint group-hint" data-testid="group-hint">
+              {outlines.length === 1 ? '1 selected item' : `${outlines.length} selected items`} on screen · Ctrl+click to add or remove
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -504,6 +554,8 @@ function AnnotationHandle({ annotation, box }: { annotation: Annotation; box: Bo
 
   const onDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0) return
+    // Ctrl+press goes on to the preview, which adds or removes items (E-06).
+    if (e.ctrlKey || e.metaKey) return
     e.preventDefault()
     e.stopPropagation()
     releaseFocus(e.target)
@@ -560,6 +612,8 @@ function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; vi
   /** Follows a drag from a handle; `apply` gets the pointer's movement in source units. */
   const drag = (apply: (dx: number, dy: number, ev: PointerEvent) => void) => (e: ReactPointerEvent<Element>) => {
     if (e.button !== 0) return
+    // Ctrl+press goes on to the preview, which adds or removes items (E-06); Shift keeps the shape.
+    if (e.ctrlKey || e.metaKey) return
     e.preventDefault()
     e.stopPropagation()
     releaseFocus(e.target)
@@ -641,4 +695,62 @@ function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; vi
       </div>
     </div>
   )
+}
+
+/* ---------- several items (E-06, docs/design/multi-select.md §4.6) ---------- */
+
+/** Where the compositor draws a text item on the preview (as AnnotationHandle measures it), in overlay pixels. */
+function textBox(a: Annotation, box: Box): { x: number; y: number; w: number; h: number } {
+  const px = a.size * Math.min(box.w, box.h)
+  const lines = a.text.split('\n')
+  const weight = a.style === 'title' ? 700 : 600
+  const w = Math.max(...lines.map((l) => textWidth(l || ' ', px, weight))) + (a.style === 'pill' ? px * 1.4 : px * 0.4)
+  const h = px * 1.3 * lines.length + (a.style === 'pill' ? px * 0.7 : px * 0.2)
+  return { x: a.x * box.w - w / 2, y: a.y * box.h - h / 2, w, h }
+}
+
+/**
+ * The items on screen at source time `t`, as boxes in overlay pixels, topmost first in the
+ * compositor's order: text, then shapes, then blur and pixelate (each in reverse list order), then
+ * region spotlights by their lit area. Shapes and spotlights are mapped through the camera.
+ */
+function previewBoxes(drawn: Project, scene: RenderScene, rect: Rect, box: Box, t: number): KeyRect[] {
+  if (box.w === 0) return []
+  const cam = cameraAt(drawn.zooms, t, scene.cursor.valid ? scene.focusPath : null, zoomStyleOf(drawn))
+  const m = mappingFor(cam, rect)
+  const out: KeyRect[] = []
+  const mapped = (key: ItemKey, b: { x: number; y: number; w: number; h: number }): void => {
+    const a = m.toPx(b.x, b.y)
+    const c = m.toPx(b.x + b.w, b.y + b.h)
+    out.push({ key, x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) })
+  }
+  for (const a of [...drawn.annotations].reverse()) if (annotationVisibleAt(a, t)) out.push({ key: `annotation:${a.id}`, ...textBox(a, box) })
+  const shapes = [...(drawn.shapes ?? [])].reverse().filter((s) => itemVisibleAt(s, t))
+  for (const s of shapes) if (!isPrivacyKind(s.kind)) mapped(`shape:${s.id}`, shapeBounds(s))
+  for (const s of shapes) if (isPrivacyKind(s.kind)) mapped(`shape:${s.id}`, shapeBounds(s))
+  for (const s of drawn.spotlights ?? []) if (s.mode === 'region' && itemVisibleAt(s, t)) mapped(`spotlight:${s.id}`, s)
+  return out
+}
+
+/** The group's members on screen while the player is paused (re-rendered only when they change). */
+function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderScene | undefined, rect: Rect, box: Box, keys: ReadonlySet<string>, enabled: boolean): KeyRect[] {
+  const [boxes, setBoxes] = useState<KeyRect[]>([])
+  const { x, y, w, h } = rect
+  useEffect(() => {
+    if (!enabled || !scene) {
+      setBoxes((b) => (b.length ? [] : b))
+      return
+    }
+    let last = ''
+    const update = (): void => {
+      const next = player.moving ? [] : previewBoxes(drawn, scene, { x, y, w, h }, box, displayTime(drawn.clips, player.time)).filter((b) => keys.has(b.key))
+      const sig = next.map((b) => `${b.key}:${b.x.toFixed(1)},${b.y.toFixed(1)},${b.w.toFixed(1)},${b.h.toFixed(1)}`).join(';')
+      if (sig === last) return
+      last = sig
+      setBoxes(next)
+    }
+    update()
+    return player.subscribe(update)
+  }, [player, drawn, scene, x, y, w, h, box, keys, enabled])
+  return boxes
 }

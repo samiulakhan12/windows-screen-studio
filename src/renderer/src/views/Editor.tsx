@@ -12,6 +12,10 @@ import { directUnavailable } from '../../../shared/editor/directorCopy'
 import { FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze } from '../../../shared/editor/freezeEdit'
 import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
+import { copyItems as copyGroupItems, duplicateItems as duplicateGroupItems, pasteItems as pasteGroupItems, pasteNotice, type PasteResult } from '../../../shared/editor/groupClipboard'
+import { applyField, copyLook, deleteItems, GROUP_FIELDS, LOOK_CLASS_WORDS, lookClassOf, pasteLook, type FieldCtx } from '../../../shared/editor/groupEdit'
+import { countOf, NO_GROUP, parseItemKey, projectItems, selectAllStep, trackOfKind, validGroup, type ItemGroup, type ItemKey, type ItemTrack } from '../../../shared/editor/multiSelect'
+import { copyLookFirst, nothingCopiedNotice, removedNotice, selectAllNotice } from '../../../shared/editor/multiSelectCopy'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
 import { mediaLength } from '../../../shared/editor/mediaLength'
@@ -19,6 +23,7 @@ import { POLISH_BUTTON_TITLE, polishNotice } from '../../../shared/editor/polish
 import { UNTITLED, withSavedName } from '../../../shared/editor/projectName'
 import {
   chordFromEvent,
+  commandKeys,
   DEFAULT_KEYMAP,
   isSliderKey,
   keymapFromPrefs,
@@ -27,6 +32,7 @@ import {
   serializeShortcuts,
   shortcutIndex,
   shortcutLabel,
+  standardEditCommand,
   withShortcut,
   zoomLevelKeysHint,
   undoHint,
@@ -43,7 +49,7 @@ import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
-import { ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
+import { formatLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
 import type { CameraLayout, NormRect, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
@@ -54,7 +60,9 @@ import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
 import { ExportDialog } from '../editor/ExportDialog'
 import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
+import { keepInspectorFocus } from '../editor/inspectorFocus'
 import { addFreezeAt, freezeTarget, toggleFreezeSound } from '../editor/freezeItems'
+import { itemClipboard, lookClipboard } from '../editor/itemClipboard'
 import { Inspector, type InputActions, type InspectorTab } from '../editor/Inspector'
 import { KeymapContext } from '../editor/keymapContext'
 import { showLayout } from '../editor/LayoutTrack'
@@ -64,7 +72,8 @@ import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { PolishDialog } from '../editor/PolishDialog'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
-import { validSelection, type Selection } from '../editor/selection'
+import { groupKeyOf, selectionOfKey, validSelection, type Selection } from '../editor/selection'
+import { GroupContext, type GroupApi } from '../editor/groupContext'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { snapPref } from '../editor/snapControl'
@@ -224,11 +233,13 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
   return <EditorSession session={state.session} onClose={onClose} />
 }
 
-/** What the editor's components read from context: the session's services and the current shortcuts. */
-function EditorProviders({ services, keymap, children }: { services: EditorServices; keymap: Keymap; children: ReactNode }): JSX.Element {
+/** What the editor's components read from context: the session's services, the current shortcuts and the selected group. */
+function EditorProviders({ services, keymap, group, children }: { services: EditorServices; keymap: Keymap; group: GroupApi; children: ReactNode }): JSX.Element {
   return (
     <EditorContext.Provider value={services}>
-      <KeymapContext.Provider value={keymap}>{children}</KeymapContext.Provider>
+      <KeymapContext.Provider value={keymap}>
+        <GroupContext.Provider value={group}>{children}</GroupContext.Provider>
+      </KeymapContext.Provider>
     </EditorContext.Provider>
   )
 }
@@ -258,11 +269,38 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   const [rawSelection, setRawSelection] = useState<Selection>(null)
   const [revealSeq, setRevealSeq] = useState(0)
-  const selection = validSelection(rawSelection, project)
+  // E-06: several items selected together (docs/design/multi-select.md §4.1, §8). Two or more keys,
+  // only while there is no single selection; items that are gone (undo, delete) drop out.
+  const [rawGroup, setRawGroup] = useState<ItemGroup>(NO_GROUP)
+  const [groupReveal, setGroupReveal] = useState(0)
+  const groupStamp = useRef(0)
+  const g0 = useMemo(() => validGroup(rawGroup, project), [rawGroup, project])
+  const collapsed = useMemo(() => (g0.keys.length === 1 ? selectionOfKey(g0.keys[0]) : null), [g0])
+  const selection = collapsed ?? validSelection(rawSelection, project)
+  const group = g0.keys.length >= 2 ? g0 : NO_GROUP
+  // Every selection made the way it always was ends a group.
   const setSelection = useCallback((sel: Selection) => {
     setRawSelection(sel)
+    setRawGroup(NO_GROUP)
     if (sel) setRevealSeq((n) => n + 1)
   }, [])
+  /** Selects items by key: none clears, one is the single selection, two or more a group (shown in the Inspector unless `reveal` is false). */
+  const selectKeys = useCallback(
+    (keys: readonly ItemKey[], anchor: ItemKey | null, opts?: { reveal?: boolean }) => {
+      const unique = [...new Set(keys)]
+      if (unique.length === 0) return setSelection(null)
+      if (unique.length === 1) {
+        if (opts?.reveal !== false) return setSelection(selectionOfKey(unique[0]))
+        setRawSelection(selectionOfKey(unique[0]))
+        setRawGroup(NO_GROUP)
+        return
+      }
+      setRawSelection(null)
+      setRawGroup({ keys: unique, anchor: anchor && unique.includes(anchor) ? anchor : unique[unique.length - 1], stamp: ++groupStamp.current })
+      if (opts?.reveal !== false) setGroupReveal((n) => n + 1)
+    },
+    [setSelection]
+  )
   const [pickFocus, setPickFocus] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -366,8 +404,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, pickFocus, exporting, dialog, keymap, shortcuts })
-  latest.current = { selection, pickFocus, exporting, dialog, keymap, shortcuts }
+  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts })
+  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts }
+
 
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
   const input = useMemo((): InputActions => {
@@ -480,6 +519,15 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
     /** Zoom level commands: level of the selected zoom (else the zoom under the playhead). */
     const setZoomLevelKey = (level: number): void => {
+      const group = latest.current.group
+      if (group.keys.length >= 2) {
+        // E-06: every selected zoom (made yours, as one edit).
+        const zooms = group.keys.filter((k) => k.startsWith('zoom:'))
+        if (!zooms.length) return showNotice('No zoom is selected')
+        const ctx: FieldCtx = { crop: cropOf(store.state), cursorValid: cursor.valid, style: zoomStyleOf(store.state), background: store.state.style.background }
+        store.update((q) => applyField(q, GROUP_FIELDS.find((f) => f.id === 'zoom.level')!, zooms, level, ctx).project)
+        return showNotice(`Zoom level ${formatLevel(level)} for ${countOf(zooms.length, 'zoom')}`)
+      }
       const sel = latest.current.selection
       const p = store.state
       const z = sel?.kind === 'zoom' ? p.zooms.find((x) => x.id === sel.id) : zoomAt(p.zooms, player.time)
@@ -564,6 +612,16 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         else showNotice('Select a range first: Shift+drag on the clip track')
       },
       deleteSelection: (): void => {
+        // The panel that had the keyboard may go with what it showed (§5.2).
+        keepInspectorFocus()
+        const group = latest.current.group
+        if (group.keys.length >= 2) {
+          // E-06: every selected item, in one undo step.
+          const keys = group.keys
+          store.update((p) => deleteItems(p, keys))
+          setSelection(null)
+          return showNotice(removedNotice('Deleted', keys.length, undoHint(latest.current.keymap)))
+        }
         const sel = latest.current.selection
         if (!sel) return
         if (sel.kind === 'zoom') store.update((p) => ({ ...p, zooms: p.zooms.filter((z) => z.id !== sel.id) }))
@@ -719,6 +777,135 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       const { frameStep } = player.shuttle(key, held)
       if (frameStep) actions.step(frameStep / 30)
     }
+    /* E-06: several items (docs/design/multi-select.md §4.4, §4.10-4.13). */
+    const fieldCtx = (): FieldCtx => ({ crop: cropOf(store.state), cursorValid: cursor.valid, style: zoomStyleOf(store.state), background: store.state.style.background, focusFor })
+    /** The selected items: the group, or the single selection when it can join one. */
+    const selectedKeys = (): ItemKey[] => {
+      const L = latest.current
+      if (L.group.keys.length >= 2) return [...L.group.keys]
+      const k = groupKeyOf(L.selection)
+      return k ? [k] : []
+    }
+    const what = 'zooms, text, shapes, spotlights, title cards, chapters and freeze frames'
+    const undo = (): string => undoHint(latest.current.keymap)
+    const keyLabel = (id: CommandId): string => {
+      const k = commandKeys(latest.current.keymap, id)[0]
+      return k ? shortcutLabel(k) : ''
+    }
+    /** The open tab's track, for Ctrl+A before anything was pressed on the timeline. */
+    const TAB_TRACK: Partial<Record<InspectorTab, ItemTrack>> = { zoom: 'zoom', text: 'text', shapes: 'shapes', clip: 'freezes' }
+    const pasted = (r: PasteResult, total: number, verb?: string): void => {
+      if (r.keys.length) selectKeys(r.keys, r.keys[0])
+      showNotice(pasteNotice(r, total, verb))
+    }
+    const selectAll = (): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
+      const L = latest.current
+      const items = projectItems(store.state)
+      const anchor = L.group.anchor ?? groupKeyOf(L.selection)
+      const parsed = anchor ? parseItemKey(anchor) : null
+      const track = parsed ? trackOfKind(parsed.kind) : (timelineRef.current?.lastTrack() ?? TAB_TRACK[L.tab] ?? null)
+      const r = selectAllStep(items, selectedKeys(), track)
+      if (r.scope !== 'none') {
+        // The Selection view opens in place of the panel that may have the keyboard (§5.2).
+        keepInspectorFocus()
+        selectKeys(r.keys, anchor && r.keys.includes(anchor) ? anchor : r.keys[0])
+      }
+      showNotice(selectAllNotice(r.scope, r.keys, keyLabel('selectAll') || null))
+    }
+    const copySelected = (): ItemKey[] | null => {
+      const keys = selectedKeys()
+      if (!keys.length) {
+        showNotice(latest.current.selection ? `Ctrl+C copies ${what}` : 'Select items to copy')
+        return null
+      }
+      const clip = copyGroupItems(store.state, keys)
+      if (!clip) return null
+      itemClipboard.set(clip)
+      return keys
+    }
+    const copySelectedItems = (): void => {
+      const keys = copySelected()
+      if (keys) showNotice(`Copied ${keys.length} item${keys.length === 1 ? '' : 's'}`)
+    }
+    const cutSelectedItems = (): void => {
+      const sel = latest.current.selection
+      if (!selectedKeys().length) {
+        if (sel?.kind === 'clip' || sel?.kind === 'gap' || sel?.kind === 'range') return showNotice(`To cut part of the recording, press ${keyLabel('deleteSelection') || 'Delete'}`)
+        return showNotice(sel ? `Ctrl+X cuts ${what}` : 'Select items to cut')
+      }
+      const keys = copySelected()
+      if (!keys) return
+      keepInspectorFocus()
+      store.update((p) => deleteItems(p, keys))
+      setSelection(null)
+      showNotice(removedNotice('Cut', keys.length, undo()))
+    }
+    const pasteClipboard = (): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
+      const clip = itemClipboard.get()
+      if (!clip) return showNotice(nothingCopiedNotice(keyLabel('copyItems') || null))
+      let r: PasteResult | null = null
+      store.update((p) => (r = pasteGroupItems(p, clip, player.time)).project)
+      if (r) pasted(r, clip.items.length)
+    }
+    const duplicateSelected = (): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
+      const keys = selectedKeys()
+      if (!keys.length) return showNotice(latest.current.selection ? `Ctrl+D duplicates ${what}` : 'Select items to duplicate')
+      let r: PasteResult | null = null
+      store.update((p) => (r = duplicateGroupItems(p, keys)).project)
+      if (r) pasted(r, keys.length, 'Duplicated')
+    }
+    const copyItemLook = (): void => {
+      const L = latest.current
+      if (L.group.keys.length >= 2) return showNotice('Select one item to copy its look')
+      const k = groupKeyOf(L.selection)
+      if (!k) return showNotice(L.selection ? 'This item has no look to copy' : 'Select an item to copy its look')
+      if (k.startsWith('chapter:')) return showNotice('Chapters have no look to copy')
+      const look = copyLook(store.state, k, fieldCtx())
+      if (!look) return
+      lookClipboard.set(look)
+      showNotice(`Copied the ${look.label.toLowerCase()} look`)
+    }
+    const pasteItemLook = (): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
+      const look = lookClipboard.get()
+      if (!look) return showNotice(copyLookFirst(keyLabel('copyLook') || null))
+      const keys = selectedKeys()
+      const name = look.label.toLowerCase()
+      if (!keys.length) return showNotice(`Select items to paste the ${name} look onto`)
+      const before = store.state
+      let r: ReturnType<typeof pasteLook> | null = null
+      store.update((p) => (r = pasteLook(p, keys, look, fieldCtx())).project)
+      const done = r as ReturnType<typeof pasteLook> | null
+      if (!done || done.applied === 0) return showNotice(`Nothing to paste the ${name} look onto`)
+      if (store.state === before) return showNotice('Already has this look')
+      const [one, many] = LOOK_CLASS_WORDS[look.cls]
+      const others = done.other ? ` · ${done.other === 1 ? `1 item is not a ${one}` : `${done.other} items are not ${many}`}, left as they were` : ''
+      showNotice(`Pasted the ${name} look onto ${done.applied} ${done.applied === 1 ? one : many}${others}`)
+    }
+    /** Freeze sound on a group: every selected freeze goes to the opposite of the anchor's (or the first one's). */
+    const toggleGroupFreezeSound = (): void => {
+      const group = latest.current.group
+      if (group.keys.length < 2) return actions.toggleFreezeSound()
+      const freezes = group.keys.filter((k) => k.startsWith('freeze:'))
+      if (!freezes.length) return showNotice('No freeze frame is selected')
+      const lead = group.anchor?.startsWith('freeze:') ? group.anchor : freezes[0]
+      const f = store.state.freezes?.find((x) => `freeze:${x.id}` === lead)
+      if (!f) return
+      const sound = f.sound === 'pause' ? 'continue' : 'pause'
+      let refused = 0
+      store.update((p) => {
+        const r = applyField(p, GROUP_FIELDS.find((x) => x.id === 'freeze.sound')!, freezes, sound, fieldCtx())
+        refused = r.refused
+        return r.project
+      })
+      const n = countOf(freezes.length, 'freeze')
+      const kept = refused ? ` · ${countOf(refused, 'freeze')} at the end ${refused === 1 ? 'keeps' : 'keep'} pausing the sound` : ''
+      showNotice(sound === 'pause' ? `${n}: the recording waits with its sound paused` : `${n}: the sound keeps playing${kept}`)
+    }
+
     /** > and <: the next preview speed (nothing is written to the project). */
     const previewSpeed = (step: 1 | -1): void => {
       const next = nextPreviewSpeed(player.previewSpeed, step)
@@ -899,11 +1086,29 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
       // E-11 freeze frame
       freezeFrame: actions.freezeFrame,
-      toggleFreezeSound: actions.toggleFreezeSound
+      toggleFreezeSound: toggleGroupFreezeSound,
+
+      // E-06 select several items (docs/design/multi-select.md §6)
+      selectAll,
+      copyItems: copySelectedItems,
+      cutItems: cutSelectedItems,
+      pasteItems: pasteClipboard,
+      duplicateItems: duplicateSelected,
+      copyLook: copyItemLook,
+      pasteLook: pasteItemLook
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
+  const runCommand = useCallback((id: CommandId) => commandsRef.current[id](), [])
+
+  // What the timeline, the Inspector and the preview read about the group (E-06).
+  const groupKeys = useMemo(() => new Set<string>(group.keys), [group])
+  const singleKey = groupKeyOf(selection)
+  const groupApi = useMemo(
+    (): GroupApi => ({ group, keys: groupKeys, single: singleKey, select: selectKeys, notice: showNotice, command: runCommand }),
+    [group, groupKeys, singleKey, selectKeys, showNotice, runCommand]
+  )
 
   const closeDialog = useCallback(() => setDialog(null), [])
   const runFromPalette = useCallback((id: CommandId) => {
@@ -925,7 +1130,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       undo: store.canUndo ? null : 'Nothing to undo',
       redo: store.canRedo ? null : 'Nothing to redo',
       split: canSplitAt(p.clips, t) ? null : clipAt(p.clips, t) ? 'Too close to the edge of a clip to split' : 'The playhead is in a cut',
-      deleteSelection: selection && selection.kind !== 'gap' ? null : 'Select something on the timeline first',
+      deleteSelection: (selection && selection.kind !== 'gap') || group.keys.length >= 2 ? null : 'Select something on the timeline first',
       cutRange: selection?.kind === 'range' ? null : 'Select a range first: Shift+drag on the clip track',
       restoreAll: edited ? null : 'Nothing is cut, trimmed or re-timed',
       addCursorSpotlight: cursor.valid ? null : noCursor,
@@ -942,7 +1147,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
       toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor,
       freezeFrame: freezeRefused ? FREEZE_REFUSAL_TEXT[freezeRefused] : null,
-      toggleFreezeSound: freezeTarget(p, selection, t) ? null : 'Select a freeze frame first',
+      toggleFreezeSound: (group.keys.length >= 2 ? group.keys.some((k) => k.startsWith('freeze:')) : !!freezeTarget(p, selection, t)) ? null : 'Select a freeze frame first',
       resetCrop: cropOf(p) || cropDraft ? null : 'The recording is not cropped',
       cropTaskbar: taskbarCrop(cropDraft?.rect ?? cropOf(p) ?? FULL_FRAME, p, recorded.scale) ? null : 'This recording does not show the taskbar'
     }
@@ -958,7 +1163,19 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     for (const k of ['layoutDefault', 'layoutCameraOnly', 'layoutScreenOnly', 'layoutSideBySide', 'layoutCameraLarge'] as const) {
       unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
     }
-    for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const) unavailable[k] = zoomTarget ? null : 'Select a zoom first'
+    for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const)
+      unavailable[k] = (group.keys.length >= 2 ? group.keys.some((x) => x.startsWith('zoom:')) : zoomTarget) ? null : 'Select a zoom first'
+    // E-06: the selection commands.
+    const picked = group.keys.length >= 2 ? group.keys : groupKeyOf(selection) ? [groupKeyOf(selection)!] : []
+    const look = lookClipboard.get()
+    unavailable.selectAll = cropDraft ? 'Close the crop tool first' : projectItems(p).length ? null : 'No items to select yet'
+    unavailable.copyItems = picked.length ? null : 'Select items to copy'
+    unavailable.cutItems = picked.length ? null : 'Select items to cut'
+    unavailable.duplicateItems = picked.length ? null : 'Select items to duplicate'
+    unavailable.pasteItems = itemClipboard.get() ? null : 'Nothing copied yet'
+    unavailable.copyLook =
+      group.keys.length >= 2 ? 'Select one item to copy its look' : picked.length && lookClassOf(p, picked[0]) ? null : 'Select an item to copy its look'
+    unavailable.pasteLook = !look ? 'Copy a look first' : picked.some((k) => lookClassOf(p, k) === look.cls) ? null : `The copied look is for ${LOOK_CLASS_WORDS[look.cls][1]}`
     unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
     if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = `Already the fastest preview speed (${formatRate(player.previewSpeed)})`
     if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = `Already the slowest preview speed (${formatRate(player.previewSpeed)})`
@@ -973,9 +1190,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleCaptions: !!p.transcript?.segments.length && captionsOf(p).show
     }
     on.toggleWaveform = p.hasAudio && waveformShown()
-    return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: keymap[info.id], unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
+    return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: commandKeys(keymap, info.id), unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
-  }, [dialog, project, selection, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale])
+  }, [dialog, project, selection, group, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale])
 
   const goBack = async (): Promise<void> => {
     if (leaving) return
@@ -1037,10 +1254,20 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       }
       if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (L.pickFocus) setPickFocus(false)
-        else setSelection(null)
+        else {
+          keepInspectorFocus()
+          setSelection(null)
+        }
         return
       }
-      if (!chord || !id) return
+      // E-06: Ctrl+A/C/X/V run their standard commands when the keymap has nothing for them; Ctrl+C
+      // and Ctrl+X leave text selected on the page to the system (a hint's text can still be copied).
+      const run = id ?? (chord ? standardEditCommand(chord) : null)
+      if (!chord || !run) return
+      if (!id && (run === 'copyItems' || run === 'cutItems')) {
+        const text = window.getSelection()
+        if (text && !text.isCollapsed) return
+      }
       // A focused slider keeps its own arrow, Home and End keys.
       if (isRangeInput(target) && isSliderKey(chord)) return
       e.preventDefault()
@@ -1049,9 +1276,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         blurActiveControl()
         spaceDown = true
       }
-      if (id === 'shuttlePause' && !e.repeat) pauseHeld.current = e.code
-      if (e.repeat && !commandInfo(id).repeat) return
-      commandsRef.current[id]()
+      if (run === 'shuttlePause' && !e.repeat) pauseHeld.current = e.code
+      if (e.repeat && !commandInfo(run).repeat) return
+      commandsRef.current[run]()
     }
     const onKeyUp = (e: KeyboardEvent): void => {
       if (e.code === pauseHeld.current) pauseHeld.current = null
@@ -1090,7 +1317,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   }, [saver])
 
   return (
-    <EditorProviders services={services} keymap={keymap}>
+    <EditorProviders services={services} keymap={keymap} group={groupApi}>
       <div className="app editor">
         <header className="titlebar">
           <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
@@ -1178,6 +1405,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             project={project}
             selection={selection}
             revealSeq={revealSeq}
+            groupReveal={groupReveal}
+            onCommand={runCommand}
             onSelect={setSelection}
             cursor={cursor}
             recorded={recorded}

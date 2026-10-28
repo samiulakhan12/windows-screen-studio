@@ -585,7 +585,7 @@ For any test that fails, add `await win.evaluate(() => localStorage.setItem('edi
 ## 12. Later (out of scope)
 
 - Snap the position of a double-click add, of keyboard nudges (E-09) and of pasted items.
-- Snap the outer edges of a group drag over a multi-selection (E-06).
+- ~~Snap the outer edges of a group drag over a multi-selection (E-06).~~ Done with E-06: a group drag snaps the grabbed item's edges, then the group's outer edges (`snapGroup`, `docs/design/multi-select.md` §4.8).
 - Snap to pause edges from E-04's audio levels (`audioAnalysis.ts`), to caption word boundaries, to straightened-path bars and to scroll bands.
 - Per-kind snap toggles (clicks, captions, other items) and a threshold setting.
 - When a clamp undoes the best snap, fall back to the next target inside the bounds.

@@ -123,6 +123,17 @@ on the next start; whatever cannot be moved stays where it is and is still used 
    frames)`: cached background/shadow layer, camera from zoom envelopes and a heavily smoothed
    cursor path, motion blur by sampling the camera across the frame interval, cursor sprite,
    ripples, webcam, text and keystroke overlays.
+   **Selecting several items** (E-06, `docs/design/multi-select.md`) is view state, never saved: next
+   to the single selection the editor keeps a group (`ItemGroup`: keys `${kind}:${id}`, the snapping
+   owner keys, an anchor and a stamp), dropped by `validGroup` when undo or a delete removes its
+   items. Components read it through `GroupContext`; the timeline's tracks call one controller
+   (`multiSelectControl.ts`) on the first line of their pointer handlers, so a press without `Ctrl`
+   or `Shift` runs exactly as before. The rules are pure and unit-tested in
+   `src/shared/editor/`: `multiSelect.ts` (keys, toggles, runs, `Ctrl+A`, box hits), `groupMove.ts`
+   (block limits, freeze acceptance, moves from the press times), `groupEdit.ts` (the field table
+   behind the Selection view, Mixed, looks, delete) and `groupClipboard.ts` (copy, paste,
+   duplicate). Each group action is one `store.update` (a drag: one gesture), so one undo step.
+   Copied items and looks live in renderer memory only (`itemClipboard.ts`), never the OS clipboard.
 4. **Export.** Output frame times come from the clips (`exportFrameTimes`). Source frames are decoded
    in order with WebCodecs from the proxy (own MP4 demuxer), with a frame-accurate seek fallback.
    Frames are encoded with WebCodecs (H.264 Annex B chunks to ffmpeg for muxing) or as raw frames to
