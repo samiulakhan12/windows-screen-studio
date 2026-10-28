@@ -350,8 +350,8 @@ Deviations from the text above, and what changed when "select several items" (E-
   Ctrl+click (the rotated box's bounds) and the Images list take part like the other kinds.
 - **Ctrl+V** is multi-select's *Paste items*, whose keydown cancels the browser's `paste` event. So
   Ctrl+V first asks main for the system clipboard's image (`projects:clipboardImage`, the app's page
-  only, `clipboard.read()` image/png ≤ 25 MB): when there is one and it was not already there when
-  items were last copied (a SHA-256 fingerprint taken at Ctrl+C / Ctrl+X), it is added as an image;
-  otherwise the copied items are pasted as before. The `paste` event listener stays for pastes that
-  do not come from that key. An image copied again after items, byte for byte the same as before,
-  counts as older (the items paste).
+  only, `clipboard.read()` image/png; bytes sent up to 25 MB): when there is one and it was not
+  already there when items were last copied (a SHA-256 fingerprint taken at Ctrl+C / Ctrl+X), it is
+  added as an image, or refused as too large; otherwise the copied items are pasted as before. The
+  `paste` event listener stays for pastes that do not come from that key. An image copied again
+  after items, byte for byte the same as before, counts as older (the items paste).

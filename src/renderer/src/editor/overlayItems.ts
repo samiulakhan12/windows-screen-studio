@@ -123,9 +123,10 @@ export async function pasteClipboardImage(services: EditorServices, opts: AddOve
   if (!now) return null
   if (itemsCopied && imageAtItemCopy && (await imageAtItemCopy) === now.hash) return null
   checkRoom(services)
+  // Main sends the size of an image over 25 MB, never its bytes.
   const full = await window.api.clipboardImage(true)
+  if (full && full.size > OVERLAY_MAX_BYTES) throw new Error(`The pasted image is too large (${Math.round(full.size / 1e6)} MB; ${Math.round(OVERLAY_MAX_BYTES / 1e6)} MB at most).`)
   if (!full?.png) return null
-  if (full.png.byteLength > OVERLAY_MAX_BYTES) throw new Error(`The pasted image is too large (${Math.round(full.png.byteLength / 1e6)} MB; ${Math.round(OVERLAY_MAX_BYTES / 1e6)} MB at most).`)
   const picked = await window.api.importAssetData(services.store.state.id, 'overlay', 'Pasted image.png', full.png).catch((err: unknown) => {
     throw new Error(ipcMessage(err))
   })

@@ -15,7 +15,7 @@ import type { AssetKind, PickedAsset } from '../shared/api/projects'
 import { MUSIC_FILE_RE, nextMusicFile, staleMusicFiles } from '../shared/audio/settings'
 import { OVERLAY_FILE_RE, OVERLAY_MAX_BYTES, OVERLAY_SVG_MAX_BYTES } from '../shared/engine/overlayData'
 import { nextPickFile, type PickedFiles } from '../shared/engine/picks'
-import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
+import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES, watermarkPickNumber } from '../shared/engine/watermark'
 import { checkFont, FONT_FILE_RE, FONT_MAX_BYTES } from '../shared/render/fonts'
 import type { Project } from '../shared/types'
 import { mediaUrl } from './mediaProtocol'
@@ -153,13 +153,26 @@ const sha256 = (data: Uint8Array): string => createHash('sha256').update(data).d
 /** The files of each deduplicated kind. */
 const DEDUPED_RE: Partial<Record<AssetKind, RegExp>> = { overlay: OVERLAY_FILE_RE, font: FONT_FILE_RE }
 
-/** A file of `kind` in `dir` with exactly these bytes and extension, or null. */
-async function sameFile(dir: string, kind: AssetKind, ext: string, data: Buffer): Promise<string | null> {
+/**
+ * The files of `existing` a new `kind` file with the same content is stored as instead: any
+ * overlay or font and, with `reuseLatest`, the latest logo pick. Only the latest: picks are removed
+ * oldest number first, so an older logo made the one in use again could be removed by the next
+ * picks while undo still goes back to it.
+ */
+function reusable(kind: AssetKind, existing: readonly string[], reuseLatest: boolean): string[] {
   const re = DEDUPED_RE[kind]
-  if (!re) return null
+  if (re) return existing.filter((name) => re.test(name))
+  if (kind !== 'watermark' || !reuseLatest) return []
+  const latest = existing.reduce((n, name) => Math.max(n, watermarkPickNumber(name)), -1)
+  return latest < 0 ? [] : existing.filter((name) => watermarkPickNumber(name) === latest)
+}
+
+/** The one of `names` in `dir` with exactly these bytes and extension, or null. */
+async function sameFile(dir: string, names: readonly string[], ext: string, data: Buffer): Promise<string | null> {
+  if (!names.length) return null
   const want = sha256(data)
-  for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
-    if (!re.test(name) || path.extname(name).slice(1).toLowerCase() !== ext) continue
+  for (const name of names) {
+    if (path.extname(name).slice(1).toLowerCase() !== ext) continue
     const file = path.join(dir, name)
     const st = await fs.stat(file).catch(() => null)
     if (!st?.isFile() || st.size !== data.length) continue
@@ -187,46 +200,69 @@ function checkHead(kind: AssetKind, head: Buffer, ext: string): void {
   if (problem) throw new Error(problem)
 }
 
+/** The last import queued for each project folder (it never rejects). */
+const folderQueue = new Map<string, Promise<unknown>>()
+
+/**
+ * Runs `job` once the earlier ones for folder `dir` are done: an import picks its file name from
+ * what the folder holds, so two at once (a drop, then Ctrl+V) would write the same file.
+ */
+function inFolder<T>(dir: string, job: () => Promise<T>): Promise<T> {
+  const run = (folderQueue.get(dir) ?? Promise.resolve()).then(job)
+  const done = run.catch(() => undefined)
+  folderQueue.set(dir, done)
+  void done.then(() => {
+    if (folderQueue.get(dir) === done) folderQueue.delete(dir)
+  })
+  return run
+}
+
 /**
  * Stores checked content as a new `kind` file of project `id` (or the identical one already
- * there, for overlays and fonts): written under a temporary name, then renamed, so a failure
- * leaves the folder as it was. `data` is the content, or a file to copy (large music).
+ * there, for overlays and fonts, and with `reuseLatest` the latest logo pick): written under a
+ * temporary name, then renamed, so a failure leaves the folder as it was. `data` is the content,
+ * or a file to copy (large music). Imports into one project run one at a time.
  */
-async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { file: string }): Promise<PickedAsset> {
+async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { file: string }, reuseLatest = false): Promise<PickedAsset> {
   const spec = ASSET_SPECS[kind]
   const dir = projects.projectDir(id)
   const stored = storedExt(ext)
-  if (DEDUPED.has(kind) && Buffer.isBuffer(data)) {
-    const same = await sameFile(dir, kind, stored, data)
-    if (same) return { url: mediaUrl(id, same), path: same }
-  }
-  const name = PICKS[kind].next(await fs.readdir(dir).catch(() => []), stored)
-  if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
-  const tmp = path.join(dir, `.${name}.part`)
-  try {
-    if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
-    else await fs.copyFile(data.file, tmp)
-    await fs.rename(tmp, path.join(dir, name))
-  } catch (err) {
-    await fs.rm(tmp, { force: true }).catch(() => undefined)
-    throw err
-  }
-  await prunePicks(id, kind, dir, name)
-  return { url: mediaUrl(id, name), path: name }
+  return inFolder(dir, async () => {
+    const existing = await fs.readdir(dir).catch(() => [] as string[])
+    if (Buffer.isBuffer(data)) {
+      const same = await sameFile(dir, reusable(kind, existing, reuseLatest), stored, data)
+      if (same) return { url: mediaUrl(id, same), path: same }
+    }
+    const name = PICKS[kind].next(existing, stored)
+    if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
+    const tmp = path.join(dir, `.${name}.part`)
+    try {
+      if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
+      else await fs.copyFile(data.file, tmp)
+      await fs.rename(tmp, path.join(dir, name))
+    } catch (err) {
+      await fs.rm(tmp, { force: true }).catch(() => undefined)
+      throw err
+    }
+    await prunePicks(id, kind, dir, name)
+    return { url: mediaUrl(id, name), path: name }
+  })
 }
 
 /**
  * Copies `src` into project `id` as its `kind` asset. The file is checked first (type by
  * extension and content, size) and copied under a temporary name, so a failure leaves the
- * earlier pick in place. Every pick gets a new name (an identical overlay or font is reused).
+ * earlier pick in place. Every pick gets a new name (an identical overlay or font is reused, and
+ * with `reuseLatest` a logo identical to the latest logo pick).
  */
-export async function importAsset(id: string, kind: AssetKind, src: string): Promise<PickedAsset> {
+export async function importAsset(id: string, kind: AssetKind, src: string, { reuseLatest = false } = {}): Promise<PickedAsset> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
   projects.projectDir(id)
   const ext = await checkAssetFile(kind, src)
   const name = path.basename(src)
-  // Overlays and fonts are small enough to read whole (25 MB at most): hashed from memory.
-  return { ...(await store(id, kind, ext, DEDUPED.has(kind) ? await fs.readFile(src) : { file: src })), name }
+  // Overlays, fonts and logos are small enough to read whole (25 MB at most): hashed from memory.
+  const whole = DEDUPED.has(kind) || reuseLatest
+  return { ...(await store(id, kind, ext, whole ? await fs.readFile(src) : { file: src }, reuseLatest)), name }
 }
 
 /**
@@ -291,14 +327,27 @@ async function prunePicks(id: string, kind: AssetKind, dir: string, picked: stri
   }
 }
 
-/** The system clipboard's image as PNG bytes (Chromium offers a copied picture as image/png), or null. */
-async function clipboardPng(): Promise<Uint8Array | null> {
+/** SHA-256 of `blob`, read a piece at a time. */
+async function blobSha256(blob: Blob): Promise<string> {
+  const hash = createHash('sha256')
+  for await (const chunk of blob.stream()) hash.update(chunk)
+  return hash.digest('hex')
+}
+
+/**
+ * The system clipboard's image (Chromium offers a copied picture as image/png): its fingerprint
+ * (SHA-256 of its PNG), its size and, with `withBytes`, its PNG bytes; null without one. An image
+ * over 25 MB is never read whole and its bytes are never sent: the renderer says it is too large.
+ */
+async function clipboardImage(withBytes: boolean): Promise<{ hash: string; size: number; png?: Uint8Array } | null> {
   try {
     for (const item of await clipboard.read()) {
       if (!item.types.includes('image/png')) continue
       const blob = await item.getType('image/png')
-      if (!(blob instanceof Blob) || blob.size === 0 || blob.size > OVERLAY_MAX_BYTES) return null
-      return new Uint8Array(await blob.arrayBuffer())
+      if (!(blob instanceof Blob) || blob.size === 0) return null
+      if (blob.size > OVERLAY_MAX_BYTES) return { hash: await blobSha256(blob), size: blob.size }
+      const png = new Uint8Array(await blob.arrayBuffer())
+      return withBytes ? { hash: sha256(png), size: png.byteLength, png } : { hash: sha256(png), size: png.byteLength }
     }
   } catch (err) {
     console.warn('The clipboard could not be read:', err)
@@ -324,12 +373,10 @@ export function registerAssetIpc(): void {
   })
 
   // Ctrl+V in the editor (docs/design/brand-kit.md §4.5): the image on the system clipboard, by its
-  // fingerprint (SHA-256 of its PNG) and, when asked, its PNG bytes. Only the app's page may ask.
+  // fingerprint (SHA-256 of its PNG) and size and, when asked, its PNG bytes. Only the app's page may ask.
   ipcMain.handle('projects:clipboardImage', async (e, withBytes: unknown) => {
     if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
-    const png = await clipboardPng()
-    if (!png) return null
-    return withBytes === true ? { hash: sha256(png), png } : { hash: sha256(png) }
+    return clipboardImage(withBytes === true)
   })
 
   ipcMain.handle('projects:importAssetData', (e, id: unknown, kind: unknown, name: unknown, bytes: unknown) => {

@@ -1,20 +1,25 @@
+import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { pathToFileURL } from 'node:url'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
-const h = vi.hoisted(() => ({ root: '' }))
+const h = vi.hoisted(() => ({ root: '', handlers: new Map<string, (...args: unknown[]) => unknown>(), clipboard: [] as Uint8Array[] }))
 h.root = mkdtempSync(path.join(tmpdir(), 'ssw-overlay-assets-'))
 
 vi.mock('electron', () => ({
   app: { getPath: (name: string) => path.join(h.root, name), isPackaged: false, getAppPath: () => h.root },
   dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
-  ipcMain: { handle: () => undefined },
+  ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => h.handlers.set(channel, fn) },
+  // The system clipboard holds each of h.clipboard as a PNG.
+  clipboard: { read: async () => h.clipboard.map((png) => ({ types: ['image/png'], getType: async () => new Blob([png], { type: 'image/png' }) })) },
   BrowserWindow: class {},
   shell: {}
 }))
 
-const { importAsset, importAssetData, imageType, isAssetFile, looksLikeImage } = await import('../src/main/assetIpc')
+const { importAsset, importAssetData, imageType, isAssetFile, looksLikeImage, registerAssetIpc } = await import('../src/main/assetIpc')
+const { OVERLAY_MAX_BYTES } = await import('../src/shared/engine/overlayData')
 const { MEDIA_FILE_RE } = await import('../src/main/mediaProtocol')
 const { projectDir } = await import('../src/main/projects')
 
@@ -88,6 +93,19 @@ describe('image overlays and fonts as project assets', () => {
     expect((await importAssetData(id, 'overlay', 'ok.svg', SVG)).path).toBe('overlay-1.svg')
   })
 
+  it('stores images added at the same time one after the other, each under its own name', async () => {
+    const id = folder()
+    const images = [1, 2, 3, 4].map((i) => Buffer.concat([PNG, Buffer.alloc(256 * 1024, i)]))
+    const picked = await Promise.all(images.map((data, i) => importAssetData(id, 'overlay', `${i}.png`, data)))
+    expect(picked.map((p) => p.path).sort()).toEqual(['overlay-1.png', 'overlay-2.png', 'overlay-3.png', 'overlay-4.png'])
+    picked.forEach((p, i) => expect(readFileSync(path.join(projectDir(id), p.path)).equals(images[i]), p.path).toBe(true))
+    // The same image pasted twice in a row is stored once.
+    const again = Buffer.concat([PNG, Buffer.alloc(256 * 1024, 9)])
+    const twice = await Promise.all([importAssetData(id, 'overlay', 'a.png', again), importAssetData(id, 'overlay', 'b.png', again)])
+    expect(twice.map((p) => p.path)).toEqual(['overlay-5.png', 'overlay-5.png'])
+    expect(listed(id)).toEqual(['overlay-1.png', 'overlay-2.png', 'overlay-3.png', 'overlay-4.png', 'overlay-5.png'])
+  })
+
   it('never uses the dropped name as a path', async () => {
     const id = folder()
     const r = await importAssetData(id, 'overlay', '..\\..\\..\\evil\\x.png', PNG)
@@ -127,5 +145,34 @@ describe('image overlays and fonts as project assets', () => {
       expect(isAssetFile(f), f).toBe(false)
       expect(MEDIA_FILE_RE.test(f), f).toBe(false)
     }
+  })
+})
+
+describe('the clipboard image for Ctrl+V', () => {
+  beforeAll(() => registerAssetIpc())
+  const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }
+  const clipboardImage = (withBytes: unknown, e: unknown = appEvent): Promise<unknown> => Promise.resolve(h.handlers.get('projects:clipboardImage')!(e, withBytes))
+  const sha256 = (data: Uint8Array): string => createHash('sha256').update(data).digest('hex')
+
+  it('gives the image by its fingerprint and size, and its bytes when asked', async () => {
+    h.clipboard = [PNG]
+    expect(await clipboardImage(false)).toEqual({ hash: sha256(PNG), size: PNG.length })
+    expect(await clipboardImage(true)).toEqual({ hash: sha256(PNG), size: PNG.length, png: new Uint8Array(PNG) })
+  })
+
+  it('reports an image over 25 MB by its fingerprint and size, and never sends its bytes', async () => {
+    const big = Buffer.alloc(OVERLAY_MAX_BYTES + 1)
+    PNG.copy(big)
+    h.clipboard = [big]
+    expect(await clipboardImage(false)).toEqual({ hash: sha256(big), size: big.length })
+    expect(await clipboardImage(true)).toEqual({ hash: sha256(big), size: big.length })
+  })
+
+  it('is null without an image, and refused to other pages', async () => {
+    h.clipboard = []
+    expect(await clipboardImage(true)).toBeNull()
+    h.clipboard = [new Uint8Array()]
+    expect(await clipboardImage(true)).toBeNull()
+    await expect(clipboardImage(true, { senderFrame: { url: 'https://example.com/' } })).rejects.toThrow(/Not allowed/)
   })
 })
