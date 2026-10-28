@@ -124,6 +124,7 @@ describe('projectSnapSources and projectSnapSegments', () => {
       { ...createSpotlight('cursor', 7, 20), id: 'p1', start: 7, end: 8 },
       { ...createSpotlight('region', 7, 20), id: 'p2', start: 7.5, end: 8.5 }
     ],
+    overlays: [{ id: 'i1', start: 8.5, end: 9, file: 'overlay-1.png', x: 0.5, y: 0.5, w: 0.2, h: 0.2, rotation: 0, opacity: 1, fadeIn: 0.2, fadeOut: 0.2 }],
     titles: [{ id: 't1', start: 9, end: 10, title: 'Hi', style: 'centered' as const }],
     transcript: { segments: [{ id: 'k1', start: 11, end: 12, text: 'hello' }] },
     layouts: [{ id: 'L0', start: 13, end: 14, layout: 'side-by-side' as const }],
@@ -138,6 +139,7 @@ describe('projectSnapSources and projectSnapSegments', () => {
       { owner: 'shape:s1', label: 'Arrow', start: 5, end: 6 },
       { owner: 'spotlight:p1', label: 'Cursor spotlight', start: 7, end: 8 },
       { owner: 'spotlight:p2', label: 'Spotlight', start: 7.5, end: 8.5 },
+      { owner: 'overlay:i1', label: 'Image', start: 8.5, end: 9 },
       { owner: 'title:t1', label: 'Title card', start: 9, end: 10 },
       { owner: 'caption:k1', label: 'Caption', start: 11, end: 12 },
       { owner: 'layout:L0', label: 'Camera layout', start: 13, end: 14 }

@@ -122,6 +122,7 @@ export function projectSnapSegments(p: Project, opts: { layouts: boolean }): Sna
   add('annotation', 'Text', p.annotations)
   for (const s of p.shapes ?? []) out.push({ owner: `shape:${s.id}`, label: shapeLabel(s.kind), start: s.start, end: s.end })
   for (const s of p.spotlights ?? []) out.push({ owner: `spotlight:${s.id}`, label: s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight', start: s.start, end: s.end })
+  add('overlay', 'Image', p.overlays)
   add('title', 'Title card', p.titles)
   add('caption', 'Caption', p.transcript?.segments)
   if (opts.layouts) add('layout', 'Camera layout', p.layouts)
