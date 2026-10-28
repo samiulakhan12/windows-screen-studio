@@ -39,7 +39,8 @@ function ImportDialogBox({ importer, view }: { importer: VideoImporter; view: Ex
   const title = view.kind === 'running' ? `Importing ${shown(view.fileName)}` : view.kind === 'done' ? `Imported ${shown(view.fileName)}` : `Could not import ${shown(view.fileName)}`
   return (
     <div className="overlay modal-backdrop">
-      <div ref={boxRef} className="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title" data-testid="import-dialog" data-state={view.kind}>
+      {/* The notes describe the dialog, so a screen reader reads them with the title when Open in editor takes the focus. */}
+      <div ref={boxRef} className="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title" aria-describedby={view.kind === 'done' ? 'import-notes' : undefined} data-testid="import-dialog" data-state={view.kind}>
         <header className="modal-head">
           <h2 id="import-title">{title}</h2>
         </header>
@@ -71,7 +72,7 @@ function ImportDialogBox({ importer, view }: { importer: VideoImporter; view: Ex
         )}
         {view.kind === 'done' && (
           <>
-            <ul className="import-notes">
+            <ul id="import-notes" className="import-notes">
               {view.notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}

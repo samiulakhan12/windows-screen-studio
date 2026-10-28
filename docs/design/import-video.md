@@ -386,7 +386,8 @@ smaller: *There is not enough free space for this video: it needs about 5.4 GB a
     *Checking the video…* → *Making an editing copy…* → *Finishing…*; progress bar
     (`role="progressbar"`, `aria-valuenow`); *42 % · About 3 min left*; button **Cancel**
     (focused).
-  - done with notes: title *Imported "screen-capture"*; the notes as a list; **Open in editor**
+  - done with notes: title *Imported "screen-capture"*; the notes as a list, which describes the
+    dialog (`aria-describedby`), so a screen reader reads them with the title; **Open in editor**
     (focused) and **Close**.
   - done without notes: the editor opens at once.
   - refused or failed: title *Could not import "screen-capture"*; the message (`role="alert"`);
