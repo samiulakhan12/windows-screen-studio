@@ -114,6 +114,9 @@ a 5.7K action camera file becomes 3840 × 1920. Chromium's H.264 decoders handle
 - **HDR** (transfer `smpte2084` or `arib-std-b67`): when the bundled ffmpeg has `zscale` and
   `tonemap` (checked once with `-filters`), the picture is tone-mapped to SDR BT.709
   (`zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv`).
+  A picture that tags only its transfer (`unknown/unknown/smpte2084`) gets the BT.2020 primaries
+  and matrix it leaves out first (`setparams=color_primaries=bt2020:colorspace=bt2020nc`), or
+  zscale finds no path to linear light; tags that are present are kept.
   Without them it is imported anyway with the note *This is an HDR video, so its colours may look
   paler in Flown.*
 

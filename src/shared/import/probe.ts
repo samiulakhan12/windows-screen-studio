@@ -18,6 +18,9 @@ export interface ProbeStream {
   pixFmt: string | null
   /** Colour transfer ('smpte2084', 'arib-std-b67'), when the log shows one. */
   transfer: string | null
+  /** Colour primaries and matrix as the log names them ('bt2020', 'bt2020nc'; 'unknown' when untagged), when it shows them apart from the transfer. */
+  primaries: string | null
+  matrix: string | null
   /** Interlaced picture (field order 'top first', 'bottom first', …). */
   interlaced: boolean
   width: number | null
@@ -95,6 +98,12 @@ function parseVideo(stream: ProbeStream, parts: string[]): void {
         if (bit === 'smpte2084' || bit === 'arib-std-b67') stream.transfer = bit
         if (/^(top first|bottom first|top coded first.*|bottom coded first.*|interlaced)$/.test(bit)) stream.interlaced = true
       }
+      // "bt2020nc/bt2020/smpte2084": matrix/primaries/transfer (one name when all three are the same).
+      const tags = inside.split(',').map((b) => /^([\w.-]+)\/([\w.-]+)\/([\w.-]+)$/.exec(b.trim())).find((m) => m !== null)
+      if (tags) {
+        stream.matrix = tags[1]
+        stream.primaries = tags[2]
+      }
       continue
     }
     const size = /^(\d{1,6})x(\d{1,6})(?:\s*\[SAR (\d+):(\d+) DAR \d+:\d+\])?/.exec(part)
@@ -154,6 +163,8 @@ export function parseProbe(log: string): ProbeInfo {
         tag: tag ? tag[1].trim() : null,
         pixFmt: null,
         transfer: null,
+        primaries: null,
+        matrix: null,
         interlaced: false,
         width: null,
         height: null,

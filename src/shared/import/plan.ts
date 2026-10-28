@@ -164,6 +164,18 @@ export type PlanResult = { ok: true; plan: ImportPlan } | { ok: false; error: st
 /** HDR to SDR BT.709 with zscale and tonemap (§2.5). */
 export const TONE_MAP_FILTERS = ['zscale=t=linear:npl=100', 'format=gbrpf32le', 'zscale=p=bt709', 'tonemap=tonemap=hable:desat=0', 'zscale=t=bt709:m=bt709:r=tv', 'format=yuv420p']
 
+const untagged = (v: string | null): boolean => v === null || v === 'unknown' || v === 'reserved'
+
+/**
+ * Sets the primaries and matrix an HDR picture leaves out (some encoders tag only the transfer):
+ * zscale finds no path to linear light without them. HDR10 and HLG are BT.2020 by definition;
+ * a picture tagged otherwise keeps its tags. Empty when nothing is missing.
+ */
+export function hdrTagFilters(video: Pick<ProbeStream, 'primaries' | 'matrix'>): string[] {
+  const set = [...(untagged(video.primaries) ? ['color_primaries=bt2020'] : []), ...(untagged(video.matrix) ? ['colorspace=bt2020nc'] : [])]
+  return set.length > 0 ? [`setparams=${set.join(':')}`] : []
+}
+
 /**
  * What to import from a probed file, or why it cannot be. `toneMap`: the bundled ffmpeg has the
  * zscale and tonemap filters.
@@ -196,7 +208,7 @@ export function planImport(probe: ProbeInfo, ctx: { toneMap: boolean }): PlanRes
   // (after ffmpeg's autorotate, so the expression reads the upright frame and its aspect).
   if (video.sar && Math.abs(video.sar - 1) > 1e-3) preFilters.push('scale=w=trunc(iw*sar/2)*2:h=ih', 'setsar=1')
   if (hdr) {
-    if (ctx.toneMap) preFilters.push(...TONE_MAP_FILTERS)
+    if (ctx.toneMap) preFilters.push(...hdrTagFilters(video), ...TONE_MAP_FILTERS)
     notes.push(ctx.toneMap ? IMPORT_COPY.noteHdr : IMPORT_COPY.noteHdrPale)
   }
   const fps = proxyFpsFor(video.fps)

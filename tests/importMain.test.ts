@@ -52,6 +52,9 @@ beforeAll(() => {
   // DV-style anamorphic PAL (720 x 576 shown as 768 x 576) and a 10-bit HDR (PQ) phone clip.
   ff('-f', 'lavfi', '-i', 'testsrc2=size=720x576:rate=25', '-t', '1', '-vf', 'setsar=16/15', '-c:v', 'libx264', at('anamorphic.mkv'))
   ff('-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30', '-t', '1', '-pix_fmt', 'yuv420p10le', '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc', '-c:v', 'libx265', '-x265-params', 'log-level=error', at('hdr.mp4'))
+  // HDR that tags only the transfer (PQ), or no matrix (HLG).
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30', '-t', '1', '-pix_fmt', 'yuv420p10le', '-color_trc', 'smpte2084', '-c:v', 'libx265', '-x265-params', 'log-level=error', at('pq-untagged.mp4'))
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30', '-t', '1', '-pix_fmt', 'yuv420p10le', '-color_primaries', 'bt2020', '-color_trc', 'arib-std-b67', '-c:v', 'libx265', '-x265-params', 'log-level=error', at('hlg-nomatrix.mkv'))
   // Live WebM (as streamed by a browser recorder): no length in the file.
   const live = (seconds: string, name: string): void => {
     writeFileSync(at(name), execFileSync(ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-t', seconds, '-c:v', 'libvpx', '-f', 'webm', '-live', '1', 'pipe:1'], { maxBuffer: 64 * 1024 * 1024 }))
@@ -236,6 +239,13 @@ describe('importVideo', () => {
     if (!r.ok) return
     expect(readJson(r.projectId, 'project.json').source).toMatchObject({ videoCodec: 'hevc', hdr: true })
     expect(describeVideo(path.join(library, r.projectId, 'screen.mp4'))).toMatch(/Video: h264 \(High\).*yuv420p\(/)
+  }, 60_000)
+
+  it('tone-maps HDR that leaves out its primaries or matrix', async () => {
+    for (const name of ['pq-untagged.mp4', 'hlg-nomatrix.mkv']) {
+      const r = await importVideo(at(name), { deps })
+      expect(r, name).toMatchObject({ ok: true, notes: [IMPORT_COPY.noteHdr] })
+    }
   }, 60_000)
 
   it('imports VP9 WebM without sound, and 60 fps with the first of several sound tracks', async () => {

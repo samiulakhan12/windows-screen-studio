@@ -6,6 +6,7 @@ import {
   etaText,
   gb,
   hasProtectedTrack,
+  hdrTagFilters,
   hitTimeCap,
   importableExtension,
   importArgs,
@@ -28,6 +29,8 @@ const stream = (over: Partial<ProbeStream>): ProbeStream => ({
   tag: 'avc1',
   pixFmt: 'yuv420p',
   transfer: null,
+  primaries: null,
+  matrix: null,
   interlaced: false,
   width: 1920,
   height: 1080,
@@ -166,13 +169,24 @@ describe('planImport', () => {
 
   it('deinterlaces and tone-maps HDR when the filters exist, with a note either way', () => {
     expect(plan(probe([stream({ interlaced: true })])).preFilters).toEqual(['yadif'])
-    const hdr = plan(probe([stream({ transfer: 'smpte2084' })]), true)
+    const hdr = plan(probe([stream({ transfer: 'smpte2084', primaries: 'bt2020', matrix: 'bt2020nc' })]), true)
     expect(hdr).toMatchObject({ hdr: true, toneMapped: true, preFilters: TONE_MAP_FILTERS, notes: [IMPORT_COPY.noteHdr] })
     expect(hdr.source.hdr).toBe(true)
     const pale = plan(probe([stream({ transfer: 'arib-std-b67' })]), false)
     expect(pale).toMatchObject({ hdr: true, toneMapped: false, preFilters: [], notes: [IMPORT_COPY.noteHdrPale] })
     expect(pale.source.hdr).toBe(false)
     expect('hdr' in plan(probe([stream({})])).source).toBe(false)
+  })
+
+  it('sets the BT.2020 primaries and matrix an HDR picture leaves out, before the tone-map', () => {
+    const p = plan(probe([stream({ transfer: 'smpte2084', primaries: 'unknown', matrix: 'unknown' })]), true)
+    expect(p.preFilters).toEqual(['setparams=color_primaries=bt2020:colorspace=bt2020nc', ...TONE_MAP_FILTERS])
+    expect(hdrTagFilters({ primaries: 'bt2020', matrix: 'unknown' })).toEqual(['setparams=colorspace=bt2020nc'])
+    expect(hdrTagFilters({ primaries: 'reserved', matrix: 'bt2020nc' })).toEqual(['setparams=color_primaries=bt2020'])
+    // Tagged otherwise (PQ with P3 primaries): kept.
+    expect(hdrTagFilters({ primaries: 'smpte432', matrix: 'bt709' })).toEqual([])
+    // Without the tone-map filters nothing is added.
+    expect(plan(probe([stream({ transfer: 'smpte2084', primaries: 'unknown', matrix: 'unknown' })]), false).preFilters).toEqual([])
   })
 })
 

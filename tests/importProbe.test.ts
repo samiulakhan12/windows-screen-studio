@@ -58,6 +58,11 @@ describe('parseProbe', () => {
     expect(parseProbe(ROTATED.replace('arib-std-b67', 'smpte2084')).streams[0].transfer).toBe('smpte2084')
   })
 
+  it('reads the colour primaries and matrix, tagged or not', () => {
+    expect(parseProbe(ROTATED).streams[0]).toMatchObject({ matrix: 'bt2020nc', primaries: 'bt2020' })
+    expect(parseProbe(ROTATED.replace('bt2020nc/bt2020/', 'unknown/unknown/')).streams[0]).toMatchObject({ matrix: 'unknown', primaries: 'unknown', transfer: 'arib-std-b67' })
+  })
+
   it('reads an unknown length, a SAR written apart and cover art', () => {
     const w = parseProbe(WEBM)
     expect(w.duration).toBeNull()
