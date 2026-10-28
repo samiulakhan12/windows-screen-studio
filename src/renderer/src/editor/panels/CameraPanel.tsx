@@ -20,6 +20,7 @@ import { LayoutGlyph } from '../layoutGlyphs'
 import { showLayout } from '../LayoutTrack'
 import { DirectorSection } from './DirectorSection'
 import { followPointer } from '../pointer'
+import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import '../camera.css'
 import './cursorPanel.css'
 
@@ -41,7 +42,7 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
   const off = !hasWebcam || !webcam.show
   return (
     <>
-      {!hasWebcam && <p className="hint">This recording has no camera. Pick a camera on the home screen before recording.</p>}
+      {!hasWebcam && <p className="hint">{isImported(project) ? IMPORTED_COPY.camera : 'This recording has no camera. Pick a camera on the home screen before recording.'}</p>}
       {hasWebcam && <DirectorSection project={project} cursor={cursor} recorded={recorded} onSelect={onSelect} onNotice={onNotice} directorRequest={directorRequest} />}
       <Section title="Camera">
         <Toggle label="Show camera" checked={hasWebcam && webcam.show} disabled={!hasWebcam} onChange={(v) => set({ show: v })} />

@@ -86,6 +86,7 @@ import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
 import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 import type { RenderScene } from '../render/compositor'
+import { IMPORTED_COPY, isImported } from '../../../shared/import/imported'
 import '../editor/editor.css'
 
 interface Session {
@@ -1136,7 +1137,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     if (dialog !== 'palette') return []
     const p = project
     const t = player.time
-    const noCursor = 'This recording has no cursor data'
+    const noCursor = isImported(p) ? IMPORTED_COPY.noCursor : 'This recording has no cursor data'
     const smoothCursor = cursor.valid && !p.capture.cursorInVideo
     const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, t)
     const edited = p.clips.length > 1 || p.clips[0].start > 0 || p.clips[0].end < p.duration || p.clips[0].speed !== 1

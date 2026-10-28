@@ -42,6 +42,7 @@ import { useKeymap } from '../keymapContext'
 import { useListSelect } from '../listSelect'
 import { LookButtons } from '../LookButtons'
 import { ShortcutKeys } from '../ShortcutKeys'
+import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import '../zoom.css'
 
 const secFmt = (v: number): string => `${v.toFixed(2)} s`
@@ -436,10 +437,10 @@ function AutoZoomSection({
         </span>
       }
     >
-      <p className="hint" data-testid="auto-zoom-summary">
+      <p className="hint" data-testid="auto-zoom-summary" data-imported={isImported(project) || undefined}>
         {hasInput
           ? `${autoZoomFoundText(found, auto.rightClicks)} Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.`
-          : `${orPress('No clicks were captured, so add zooms yourself: double-click the zoom track', keymap.addZoom)}.`}
+          : `${orPress(isImported(project) ? IMPORTED_COPY.autoZoom : 'No clicks were captured, so add zooms yourself: double-click the zoom track', keymap.addZoom)}.`}
       </p>
       <Toggle label="Auto zoom" checked={auto.enabled} disabled={!hasInput} onChange={(enabled) => setAuto({ enabled })} />
       <div className={`auto-zoom-options ${auto.enabled && hasInput ? '' : 'off'}`}>

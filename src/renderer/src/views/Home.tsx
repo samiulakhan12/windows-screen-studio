@@ -29,6 +29,10 @@ import {
   type RecordingSettingsPatch
 } from '../../../shared/recording/settings'
 import '../recorder/recorder.css'
+import { ImportButton } from '../import/ImportButton'
+import { ImportDialog } from '../import/ImportDialog'
+import { ImportDropZone } from '../import/ImportDropZone'
+import { useVideoImport } from '../import/useVideoImport'
 
 const PREFS_KEY = 'recorder-prefs'
 
@@ -401,6 +405,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     setProjects(list)
     setUnfinished(pending)
   }, [])
+  const importer = useVideoImport(onOpenProject, () => void refreshLibrary())
 
   const refreshDevices = useCallback(async () => {
     try {
@@ -581,7 +586,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   // Screens default to the first one; windows must be picked explicitly.
   const current = visible.some((s) => s.id === selected) ? selected : tab !== 'window' ? (visible[0]?.id ?? null) : null
   const region = tab === 'region' && current ? (prefs.regions[current] ?? null) : null
-  const idle = phase === null && !busy
+  const idle = phase === null && !busy && !importer.busy
   const canStart = idle && !!current && (tab !== 'region' || !!region)
 
   // Live level of the selected microphone, only while Home is idle and on screen.
@@ -817,7 +822,9 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               <h2 className="home-section-title">
                 Recent recordings {projects.length > 0 && <span className="count">{projects.length}</span>}
               </h2>
+              <ImportButton importer={importer} disabled={!idle} />
             </div>
+            <ImportDropZone importer={importer} disabled={!idle} empty={projects.length === 0}>
             {projects.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-state-icon">
@@ -843,6 +850,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 ))}
               </ul>
             )}
+            </ImportDropZone>
           </section>
         </div>
 
@@ -1016,6 +1024,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           )}
         </div>
       )}
+      <ImportDialog importer={importer} />
     </div>
   )
 }

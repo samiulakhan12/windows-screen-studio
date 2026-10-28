@@ -1,0 +1,73 @@
+/* Import a video (docs/design/import-video.md §6). */
+
+.import-drop {
+  position: relative;
+}
+
+.import-drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  background-image: linear-gradient(var(--accent-softer), var(--accent-softer));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.import-drop-overlay strong {
+  color: var(--accent-text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.import-drop-overlay span {
+  color: var(--text-2);
+}
+
+.import-empty-hint {
+  text-align: center;
+  margin-top: var(--space-2);
+}
+
+.import-modal {
+  width: 440px;
+  max-width: calc(100vw - 32px);
+}
+
+.import-modal h2 {
+  overflow-wrap: anywhere;
+}
+
+.import-stage {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.import-eta {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.import-modal .progress-bar.unknown {
+  opacity: 0.45;
+}
+
+.import-notes {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--warning-text);
+}
+
+.import-error {
+  margin: 0;
+  color: var(--danger-text);
+}
