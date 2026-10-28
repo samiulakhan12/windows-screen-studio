@@ -327,5 +327,27 @@ project); drop and paste add an image; an SVG with a script is drawn without run
 
 ## 12. As built
 
-See `BUILD-REPORT-brand-kit.md` for the final list. Deviations from the text above are recorded here
-when the build lands.
+Deviations from the text above, and what changed when "select several items" (E-06) was merged in:
+
+- **GIF delays**: 10 ms or less (and missing) play as 100 ms, as in Chromium (the first draft said
+  under 20 ms).
+- **After adding**, the playhead moves just past the new image's fade-in (`showOverlay`), as title
+  cards do: at the playhead itself the image is still invisible.
+- **A GIF's declared screen size** is read from its header before `ImageDecoder` runs, so a GIF
+  declaring a huge canvas is refused before any frame is allocated.
+- **The export dialog** also lists images that cannot be shown (missing file), not only fonts.
+- **Multi-select (E-06)**: `overlay` is a `GroupKind` on its own `images` track
+  (`shared/editor/multiSelect.ts`); look class `image` with the fields Position X/Y, Size (each
+  image keeps its shape), Rotation, Opacity, Fade in, Fade out (`groupEdit.ts`; all but the position
+  are its look); it moves and takes one length with the group (`groupMove.ts`); copy, paste and
+  duplicate keep it, but an image *file* pastes only into its own recording (`image-other-recording`)
+  while a sticker pastes anywhere (`groupClipboard.ts`); a pasted copy of the kit's intro or outro
+  drops its `brand` mark, so applying the kit again keeps the copy. The Images track, the preview's
+  Ctrl+click (the rotated box's bounds) and the Images list take part like the other kinds.
+- **Ctrl+V** is multi-select's *Paste items*, whose keydown cancels the browser's `paste` event. So
+  Ctrl+V first asks main for the system clipboard's image (`projects:clipboardImage`, the app's page
+  only, `clipboard.read()` image/png ≤ 25 MB): when there is one and it was not already there when
+  items were last copied (a SHA-256 fingerprint taken at Ctrl+C / Ctrl+X), it is added as an image;
+  otherwise the copied items are pasted as before. The `paste` event listener stays for pastes that
+  do not come from that key. An image copied again after items, byte for byte the same as before,
+  counts as older (the items paste).
