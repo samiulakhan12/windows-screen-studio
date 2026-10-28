@@ -335,6 +335,10 @@ Deviations from the text above, and what changed when "select several items" (E-
   cards do: at the playhead itself the image is still invisible.
 - **A GIF's declared screen size** is read from its header before `ImageDecoder` runs, so a GIF
   declaring a huge canvas is refused before any frame is allocated.
+- **The Images track** shows once the project has an image, like the caption and camera tracks: an
+  always-present row cost every project 34 px of preview and pushed the Style tab's Padding below the
+  fold of an 860 px window (editor.e2e). The first image comes from the Images tab, a drop or a paste.
+- **Apply brand kit** sits after Watermark in the Style tab, not at its top, for the same reason.
 - **The export dialog** also lists images that cannot be shown (missing file), not only fonts.
 - **Multi-select (E-06)**: `overlay` is a `GroupKind` on its own `images` track
   (`shared/editor/multiSelect.ts`); look class `image` with the fields Position X/Y, Size (each

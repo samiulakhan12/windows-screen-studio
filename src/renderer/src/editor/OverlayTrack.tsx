@@ -25,7 +25,7 @@ const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
  * Timeline track of image overlays and stickers: blocks move and trim like text, a click selects
  * one (and shows it on the preview), a double-click on empty space opens "Add image…" there.
  */
-export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, snap, multi }: TrackSlotProps): JSX.Element {
+export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, snap, multi }: TrackSlotProps): JSX.Element | null {
   const services = useEditor()
   const { store, player } = services
   const group = useGroup()
@@ -117,6 +117,10 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
   const groupHint = (id: string): string =>
     group.keys.has(itemKey('overlay', id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
 
+  // Like the caption and camera tracks, the row shows once the project has images (the Images tab,
+  // a drop or a paste adds the first one), so projects without them keep the timeline's height.
+  if (overlays.length === 0) return null
+
   const visible = overlays.filter((o) => overlaps(o, win) || o.id === selId)
   const laneH = 100 / lanes.count
 
@@ -148,14 +152,16 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
           </div>
         )
       })}
-      {overlays.length === 0 && <span className="tl-empty">{error ?? 'Double-click to add an image, drop one on the editor, or paste one'}</span>}
-      {overlays.length > 0 && error && <span className="tl-empty overlay-track-error">{error}</span>}
+      {error && <span className="tl-empty overlay-track-error">{error}</span>}
     </div>
   )
 }
 
 /** Its row label in the timeline's label column (the track is always shown). */
-export function OverlayTrackLabel(): JSX.Element {
+export function OverlayTrackLabel(): JSX.Element | null {
+  const { store } = useEditor()
+  const has = useSyncExternalStore(store.subscribe, () => (store.state.overlays?.length ?? 0) > 0)
+  if (!has) return null
   return (
     <div className="tl-label overlay-label" title="Images and stickers">
       <EditorIcon name="image" size={16} />
