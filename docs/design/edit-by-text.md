@@ -1,6 +1,6 @@
 # Edit by text (NW-04), fillers and retakes (NW-01), smooth cuts (NW-06)
 
-Status: design, branch `feat-edit-by-text`, from `ccr-b6df7cf7-yked87` (Flown 0.6.0, commit aeca5c5).
+Status: built on branch `feat-edit-by-text` (see §13 for where the build differs from this spec), from `ccr-b6df7cf7-yked87` (Flown 0.6.0, commit aeca5c5).
 Roadmap: `docs/ROADMAP.md` NW-04 "Edit the video by editing the transcript", NW-01 "Remove filler
 words and retakes", NW-06 "Smooth cuts" (the audio fades it says to ship first).
 
@@ -529,3 +529,42 @@ End to end (`tests/e2e/edit-by-text.e2e.cjs`, Linux, real app):
 - Meaning-level retakes with sentence embeddings on this PC (F-05) or an AI text task.
 - Typing to replace words (overdub) and moving sentences by drag.
 - A command-palette entry and a shortcut for the Transcript tab.
+
+---
+
+## 13. As built
+
+Where the build differs from the sections above, after an adversarial review:
+
+- **Preview fade timing (§4.9).** `PREVIEW_FRAME` is gone. `cutFadeAhead(clips, t, rate, frame,
+  step, fade)` uses the recording's own frame (`1 / capture.fps`, 30 or 60, as the player does),
+  the measured distance between video frame callbacks (`step`; before one is measured, one frame or
+  one 60 Hz refresh, whichever is longer) and the fade in wall time (`CUT_FADE / view`, so a slow
+  preview speed gets a longer ramp). It predicts the callback at which the player jumps and schedules
+  the ramp from the last callback that still leaves the whole fade, so it ends at the jump. Leaving a
+  pause freeze sets the gain straight back (the export joins there without a fade), and an edit
+  while playing resets the gain at once.
+- **Export fade position (§4.8).** The fades come **last** in each piece's chain, after the
+  sample-exact `apad`/`atrim`, with the fade in starting after the pause freeze's silence
+  (`cutFadeFilters(edges, length, fade, offset)`): atempo's output is a little off its length, so a
+  fade before the exact trim could miss the piece's real end.
+- **Counts in the notices** come from the result (`cutFlags` before and after): a short word left
+  between two cuts goes with them (no clip is shorter than `MIN_CLIP`), and the notice counts it.
+  A selection whose range is empty (words of zero length between touching words) says "Too short to
+  cut on its own. Select more words".
+- **Restore** grows a range shorter than `MIN_CLIP` around its middle and normalises the clips, so
+  restoring one short word never leaves a sliver of a clip.
+- **Stutters** never run across a sentence end ("the store. The store").
+- **Language lookup** uses `Object.hasOwn` (a transcript language like `constructor` cannot reach the
+  prototype).
+- **The preview's Web Audio graph** is created for cuts only when the recording is heard
+  (`recordingMix(p).kind !== 'none'`), not for a muted one.
+- **Keys:** `Shift+Delete` / `Shift+Backspace` cut too inside the word list (they never reach the
+  editor's shortcuts there); the Cut and Restore buttons give the focus back to the word list.
+- **Pages** follow playback only when the spoken word moves onto another page, so Earlier and Later
+  work while playing.
+- `normalizeWord` lives in `transcript.ts` (re-exported by `fillers.ts`); `lcsPairs` too.
+- Two existing e2e expectations were updated for intended changes: the Inspector rail now has twelve
+  tabs (`tests/e2e/ui.e2e.cjs`; it still fits at the minimum window size), and the older-project
+  audio reference in `tests/e2e/audio-pack.e2e.cjs` gains the 10 ms fades at its three cuts (the
+  comparison is still exact, below 1e-6).
