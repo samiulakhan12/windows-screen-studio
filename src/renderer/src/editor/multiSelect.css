@@ -210,9 +210,3 @@
   background: var(--accent-500);
   color: #ffffff;
 }
-
-/* List rows that are in the group. */
-.item-list button[aria-pressed='true'],
-.chapter-row.in-group {
-  outline: 1px solid color-mix(in srgb, var(--accent-400) 70%, transparent);
-}

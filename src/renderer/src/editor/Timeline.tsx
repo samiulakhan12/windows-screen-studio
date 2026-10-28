@@ -787,7 +787,7 @@ export const Timeline = memo(
                       className={`seg text-seg ${selId === a.id ? 'selected' : ''}${memberClass('annotation', a.id)}`}
                       style={{ left: a.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onAnnotationDown(a)}
-                      title={`${a.text}${groupHint('annotation', a.id)}`}
+                      title={a.text}
                     >
                       <span className="edge left" />
                       {w > 30 && <span className="seg-label">{a.text || 'Text'}</span>}
