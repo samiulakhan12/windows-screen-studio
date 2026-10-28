@@ -277,7 +277,7 @@
   container: inspector / size;
 }
 
-/* Icon rail: ten tabs with short labels; the full name is in the tooltip. */
+/* Icon rail: eleven tabs with short labels; the full name is in the tooltip. */
 .insp-tabs {
   width: 64px;
   flex: none;
@@ -353,8 +353,9 @@
     padding: 6px;
   }
 
+  /* Eleven tabs fit the minimum window (1040 x 680) without scrolling. */
   .insp-tabs button {
-    padding: 5px 0;
+    padding: 3px 0;
   }
 
   .insp-tabs button span {
