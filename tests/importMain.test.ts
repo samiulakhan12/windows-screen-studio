@@ -157,6 +157,26 @@ describe('importVideo', () => {
     if (mkv.ok) expect(readJson(mkv.projectId, 'project.json')).toMatchObject({ hasAudio: true, capture: { fps: 60 } })
   }, 60_000)
 
+  it('imports without sound, with a note, when only the sound cannot be read', async () => {
+    const tried: (number | null)[] = []
+    const decodes = async (_file: string, _video: number, audio: number | null): Promise<boolean> => {
+      tried.push(audio)
+      return audio === null
+    }
+    const r = await importVideo(at('odd.mov'), { deps: { ...deps, decodes } })
+    expect(tried).toEqual([1, null])
+    expect(r).toMatchObject({ ok: true, notes: [IMPORT_COPY.noteNoSound] })
+    if (!r.ok) return
+    expect(readJson(r.projectId, 'project.json')).toMatchObject({ hasAudio: false, source: { audioCodec: null } })
+    expect(describeVideo(path.join(library, r.projectId, 'screen.mp4'))).not.toMatch(/Audio:/)
+  }, 60_000)
+
+  it('refuses a picture the bundled ffmpeg cannot decode', async () => {
+    const r = await importVideo(at('odd.mov'), { deps: { ...deps, decodes: async () => false } })
+    expect(r).toMatchObject({ ok: false, error: IMPORT_COPY.codec('h264') })
+    expect(folders()).toEqual([])
+  })
+
   it('refuses what cannot be edited, leaving no folder', async () => {
     expect(await importVideo(at('sound.m4a'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.extension })
     expect(await importVideo(at('sound-named.mp4'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.soundOnly })

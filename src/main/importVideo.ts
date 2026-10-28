@@ -44,6 +44,8 @@ export interface ImportDeps {
   toneMap(): Promise<boolean>
   /** H.264 encoders to try in order. */
   encoders(): Promise<H264Encoder[]>
+  /** Whether the bundled ffmpeg decodes these streams (decodeTest). */
+  decodes(file: string, video: number, audio: number | null, signal?: AbortSignal): Promise<boolean>
 }
 
 let toneMapCache: Promise<boolean> | null = null
@@ -60,7 +62,8 @@ export const defaultDeps: ImportDeps = {
     )
     return toneMapCache
   },
-  encoders: async () => [...new Set<H264Encoder>([(await detectH264Encoders())[0], 'libx264'])]
+  encoders: async () => [...new Set<H264Encoder>([(await detectH264Encoders())[0], 'libx264'])],
+  decodes: (file, video, audio, signal) => decodeTest(file, video, audio, signal)
 }
 
 /** The import was stopped on purpose. */
@@ -268,8 +271,8 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     if (!planned.ok) throw new ImportRefused(planned.error)
     const plan = planned.plan
     stop()
-    if (!(await decodeTest(input, plan.videoStream, plan.audioStream, signal))) {
-      if (plan.audioStream === null || !(await decodeTest(input, plan.videoStream, null, signal))) {
+    if (!(await deps.decodes(input, plan.videoStream, plan.audioStream, signal))) {
+      if (plan.audioStream === null || !(await deps.decodes(input, plan.videoStream, null, signal))) {
         const video = probe.streams.find((s) => s.index === plan.videoStream)
         throw new ImportRefused(IMPORT_COPY.codec(video?.codec ?? 'unknown'))
       }

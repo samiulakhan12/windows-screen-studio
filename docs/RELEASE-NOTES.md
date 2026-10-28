@@ -2,6 +2,15 @@
 
 ## Next release
 
+- **Import a video** (NW-07): bring in a video recorded with another app (OBS, Xbox Game Bar,
+  Teams, a phone) as a new project: *Import video* on Home, or drop the file on *Recent
+  recordings*. MP4, MOV, MKV and WebM work, including phone videos that are rotated, HDR or have a
+  variable frame rate. Flown checks the file first and says plainly when it cannot be edited
+  (sound only, copy-protected, too long, an unreadable format), then makes its own editing copy
+  with progress and Cancel; your file is not changed. Backgrounds, the brand kit, captions,
+  silence removal, cuts, text, images, title cards, manual zooms and export all work; auto zoom,
+  cursor effects, click sounds and the shortcut overlay need what Flown records, so they are off
+  and the editor says why. Existing projects open exactly as before.
 - **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
   the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
   `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move
