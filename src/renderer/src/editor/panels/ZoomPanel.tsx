@@ -1,5 +1,6 @@
 import { isCommandId } from '../../../../shared/editor/commands'
 import { setZoomLevelInView } from '../../../../shared/editor/cropEdit'
+import { followsAction, framedLevel } from '../../../../shared/editor/followEdit'
 import { zoomCause } from '../../../../shared/editor/inputEdits'
 import type { ClickRow } from '../../../../shared/engine/inputData'
 import { scrollBreaks } from '../../../../shared/engine/scroll'
@@ -182,6 +183,11 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
   const shown = zoomInView(crop, zoom)
   const focus = shown.focus
   const level = zoomTargetScale(shown)
+  // While the view follows the action (docs/design/vertical-video.md §2.6): a 1× level only moves
+  // the view, and the zoom shows gentler than set.
+  const following = followsAction(project)
+  const framed = following ? framedLevel(project, zoom.id) : null
+  const presets = following ? [{ value: 1, key: '', label: '1×', title: 'Only moves the view, no zoom' }, ...ZOOM_LEVEL_PRESETS] : ZOOM_LEVEL_PRESETS
 
   const patch = (fn: (z: ZoomSegment) => ZoomSegment, key?: string): void => {
     store.update((p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === zoom.id ? fn(z) : z)) }), key)
@@ -241,14 +247,19 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
       <div className="zoom-chips-fill">
         <Chips
           label="Zoom level presets"
-          value={ZOOM_LEVEL_PRESETS.find((p) => Math.abs(p.value - level) < 1e-3)?.value ?? null}
+          value={presets.find((p) => Math.abs(p.value - level) < 1e-3)?.value ?? null}
           onChange={(v) => setLevel(v)}
-          options={ZOOM_LEVEL_PRESETS.map((p) => {
+          options={presets.map((p) => {
             const command = `zoomLevel${p.key}`
             return { value: p.value, label: p.label, title: withShortcut(p.title, isCommandId(command) ? keymap[command] : undefined) }
           })}
         />
       </div>
+      {framed !== null && (
+        <p className="hint" data-testid="zoom-framed-level">
+          In the vertical frame this zoom is {formatLevel(framed)} (zooms are gentler there, and limited so the picture stays sharp).
+        </p>
+      )}
       <Slider
         label={level < 1 ? 'Zoom level · pull back' : 'Zoom level'}
         value={level}

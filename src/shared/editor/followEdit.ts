@@ -6,9 +6,11 @@
  * fixed point changes nothing in a frame that does not follow, so these edits never change how a
  * 16:9 export looks.
  */
-import { fromCrop, toCrop, zoomFromView, zoomInView } from '../engine/crop'
+import { cropProject, fromCrop, toCrop, visibleSize, zoomFromView, zoomInView } from '../engine/crop'
+import { bandSide, outputSize } from '../engine/layout'
 import { clamp } from '../engine/math'
-import { canFollow, withReframe } from '../engine/reframeData'
+import { followLimits, framedZooms } from '../engine/reframe'
+import { canFollow, followApplies, reframeOn, withReframe } from '../engine/reframeData'
 import { DEFAULT_NEW_ZOOM, insertZoom, zoomAt } from '../engine/zoom'
 import type { NormRect, Project, ZoomSegment } from '../types'
 import { dragRegion } from './zoomEdit'
@@ -85,4 +87,53 @@ export function followStatus(project: Project, cursorValid: boolean, vw: number,
   if (!canFollow(project.style.aspectRatio, vw, vh)) return 'unavailable'
   if (project.reframe?.mode !== 'follow') return 'off'
   return cursorValid ? 'following' : 'no-input'
+}
+
+/**
+ * Following turned on (reframeOn: the stored settings with mode 'follow', else the defaults for the
+ * frame) or off (the settings kept with mode 'fit', which draws exactly as before; the same project
+ * when it does not follow), for the section's toggle and the Follow the action command. vw × vh:
+ * the recording as cropped.
+ */
+export function withFollowing(project: Project, on: boolean, vw: number, vh: number): Project {
+  if (!on) return project.reframe && project.reframe.mode !== 'fit' ? { ...project, reframe: { ...project.reframe, mode: 'fit' } } : project
+  const frame = outputSize(project.style.aspectRatio, vw, vh, 1080)
+  return { ...project, reframe: reframeOn(project, frame.width, frame.height) }
+}
+
+/** Keep text clear of app buttons, on or off: it never turns following on (a project without settings gets them with mode 'fit'). */
+export function withAppSafe(project: Project, on: boolean): Project {
+  return withReframe(project, { mode: project.reframe?.mode ?? 'fit', appSafe: on })
+}
+
+/** The project's own frame (its aspect at the canonical 1080 size) and the recording as cropped, as the panels measure it. */
+export function editorFrame(project: Project): { outW: number; outH: number; vw: number; vh: number } {
+  const { width: vw, height: vh } = visibleSize(project)
+  const out = outputSize(project.style.aspectRatio, vw, vh, 1080)
+  return { outW: out.width, outH: out.height, vw, vh }
+}
+
+/** Whether the project's own frame follows the action (the panels' hints: device frame, tilt, zoom levels). */
+export function followsAction(project: Project): boolean {
+  const f = editorFrame(project)
+  return followApplies(project, f.outW, f.outH, f.vw, f.vh)
+}
+
+/** The side of the camera band in the project's own frame while it follows, else null (the Camera tab's hint). */
+export function bandOf(project: Project): 'top' | 'bottom' | null {
+  const f = editorFrame(project)
+  return followApplies(project, f.outW, f.outH, f.vw, f.vh) ? bandSide(project, f.outW, f.outH, f.vw, f.vh) : null
+}
+
+/**
+ * The level zoom `id` shows at in the project's followed frame (§5.12: half strength, capped so the
+ * picture stays sharp, a region framed in the view), or null when the frame does not follow: the
+ * Zoom tab's line about the selected zoom.
+ */
+export function framedLevel(project: Project, id: string): number | null {
+  if (!followsAction(project)) return null
+  const drawn = cropProject(project)
+  const limits = followLimits(drawn)
+  if (!limits) return null
+  return framedZooms(drawn.zooms, limits).find((z) => z.id === id)?.scale ?? null
 }

@@ -1165,3 +1165,40 @@
   line-height: 1.3;
   text-align: center;
 }
+
+/* ---------- Vertical framing (FollowSection.tsx, docs/design/vertical-video.md §2.5) ---------- */
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* "Making a Short?" with its button, in a frame that cannot follow while a 9:16 one could. */
+.framing-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+/* Corners do nothing while the camera is in a band: dimmed, still focusable (aria-disabled). */
+.corner[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Dragging the picture aims the view (paused, following): the preview's pointer says so. */
+.preview-overlay.view-drag {
+  cursor: grab;
+}
+
+.preview-overlay.view-drag.dragging {
+  cursor: grabbing;
+}
