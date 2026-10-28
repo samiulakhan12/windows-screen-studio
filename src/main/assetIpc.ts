@@ -311,14 +311,27 @@ async function prunePicks(id: string, kind: AssetKind, dir: string, picked: stri
   }
 }
 
-/** The system clipboard's image as PNG bytes (Chromium offers a copied picture as image/png), or null. */
-async function clipboardPng(): Promise<Uint8Array | null> {
+/** SHA-256 of `blob`, read a piece at a time. */
+async function blobSha256(blob: Blob): Promise<string> {
+  const hash = createHash('sha256')
+  for await (const chunk of blob.stream()) hash.update(chunk)
+  return hash.digest('hex')
+}
+
+/**
+ * The system clipboard's image (Chromium offers a copied picture as image/png): its fingerprint
+ * (SHA-256 of its PNG), its size and, with `withBytes`, its PNG bytes; null without one. An image
+ * over 25 MB is never read whole and its bytes are never sent: the renderer says it is too large.
+ */
+async function clipboardImage(withBytes: boolean): Promise<{ hash: string; size: number; png?: Uint8Array } | null> {
   try {
     for (const item of await clipboard.read()) {
       if (!item.types.includes('image/png')) continue
       const blob = await item.getType('image/png')
-      if (!(blob instanceof Blob) || blob.size === 0 || blob.size > OVERLAY_MAX_BYTES) return null
-      return new Uint8Array(await blob.arrayBuffer())
+      if (!(blob instanceof Blob) || blob.size === 0) return null
+      if (blob.size > OVERLAY_MAX_BYTES) return { hash: await blobSha256(blob), size: blob.size }
+      const png = new Uint8Array(await blob.arrayBuffer())
+      return withBytes ? { hash: sha256(png), size: png.byteLength, png } : { hash: sha256(png), size: png.byteLength }
     }
   } catch (err) {
     console.warn('The clipboard could not be read:', err)
@@ -344,12 +357,10 @@ export function registerAssetIpc(): void {
   })
 
   // Ctrl+V in the editor (docs/design/brand-kit.md §4.5): the image on the system clipboard, by its
-  // fingerprint (SHA-256 of its PNG) and, when asked, its PNG bytes. Only the app's page may ask.
+  // fingerprint (SHA-256 of its PNG) and size and, when asked, its PNG bytes. Only the app's page may ask.
   ipcMain.handle('projects:clipboardImage', async (e, withBytes: unknown) => {
     if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
-    const png = await clipboardPng()
-    if (!png) return null
-    return withBytes === true ? { hash: sha256(png), png } : { hash: sha256(png) }
+    return clipboardImage(withBytes === true)
   })
 
   ipcMain.handle('projects:importAssetData', (e, id: unknown, kind: unknown, name: unknown, bytes: unknown) => {
