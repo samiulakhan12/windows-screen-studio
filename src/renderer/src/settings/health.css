@@ -1,0 +1,153 @@
+/* ---------- Settings › Storage and Diagnostics (docs/design/hands-off.md) ---------- */
+.health-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.health-report {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-1);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  white-space: pre;
+}
+
+.health-report:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.storage-total {
+  margin: 0;
+  flex: 1;
+  color: var(--text-2);
+}
+
+.storage-total strong {
+  color: var(--text-1);
+}
+
+.storage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.storage-row,
+.storage-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: 6px 10px;
+}
+
+.storage-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: 'name size show' 'meta size show';
+}
+
+.storage-row + .storage-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.storage-row .storage-name {
+  grid-area: name;
+}
+.storage-row .storage-meta {
+  grid-area: meta;
+}
+.storage-row .storage-size {
+  grid-area: size;
+}
+.storage-row .btn {
+  grid-area: show;
+}
+
+.storage-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+}
+
+.storage-meta {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.storage-size {
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.storage-more {
+  align-self: flex-start;
+}
+
+.storage-rule {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-1);
+}
+
+.storage-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-1);
+}
+
+.storage-item {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.storage-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.storage-review h4:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.storage-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.storage-group legend {
+  padding: 0 0 var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.storage-failed {
+  color: var(--danger-text);
+}
