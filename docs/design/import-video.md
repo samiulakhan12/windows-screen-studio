@@ -309,6 +309,9 @@ opens; the marker is removed on the next sweep).
   (`noCursorText(project)`).
 - Polish in one click: unchanged; auto zoom is skipped with *No clicks were captured*, the
   director with *This recording has no camera*.
+- **Export**: the file is first offered as *demo (edited).mp4* (`exportBaseName`), never under the
+  imported video's own name: the save dialog opens in Videos, often where the original is, and
+  one Replace click would overwrite it.
 
 ## 5. Rules with numbers (`src/shared/import/plan.ts`)
 

@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createProject, migrateProject } from '../src/shared/engine/project'
-import { importedSource, isImported, IMPORTED_COPY } from '../src/shared/import/imported'
+import { exportBaseName, importedSource, isImported, IMPORTED_COPY } from '../src/shared/import/imported'
+import { importName } from '../src/shared/import/plan'
+import { safeFileName } from '../src/shared/render/exportPresets'
 import type { ImportedSource, Project } from '../src/shared/types'
 
 const recorded = (): Project =>
@@ -61,6 +65,15 @@ describe('importedSource', () => {
   it('cleans a hand-edited record', () => {
     const s = importedSource({ source: { kind: 'import', fileName: 7, bytes: -1, rotation: 45, fps: 'x', width: 'a', hdr: 'yes' } } as unknown as Project)
     expect(s).toEqual({ kind: 'import', fileName: '', bytes: 0, container: '', videoCodec: '', audioCodec: null, width: 0, height: 0, rotation: 0, fps: null, importedAt: '' })
+  })
+
+  it('never offers an export under the name of the imported video', () => {
+    expect(exportBaseName(recorded())).toBe('Demo')
+    const imported = { ...recorded(), name: importName('C:\\Users\\me\\Videos\\demo.mp4'), source: { ...SOURCE, fileName: 'demo.mp4' } }
+    expect(imported.name).toBe('demo')
+    expect(`${safeFileName(exportBaseName(imported))}.mp4`).toBe('demo (edited).mp4')
+    // The Export dialog offers its file under this name.
+    expect(readFileSync(path.join(__dirname, '../src/renderer/src/editor/ExportDialog.tsx'), 'utf8')).toContain('safeFileName(exportBaseName(project))')
   })
 
   it('has plain explanations for the editor', () => {

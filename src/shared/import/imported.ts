@@ -33,6 +33,13 @@ export function importedSource(project: Pick<Project, 'source'> | null | undefin
 
 export const isImported = (project: Pick<Project, 'source'> | null | undefined): boolean => importedSource(project) !== null
 
+/**
+ * The name an export is first offered under. An imported project is named after its video and
+ * the save dialog opens in Videos, often where that video is: " (edited)" keeps one Replace click
+ * from overwriting the original, of which Flown keeps no copy.
+ */
+export const exportBaseName = (project: Pick<Project, 'name' | 'source'>): string => (isImported(project) ? `${project.name} (edited)` : project.name)
+
 /** "This recording has no cursor data", in the words that fit the project. */
 export const noCursorText = (project: Pick<Project, 'source'> | null | undefined): string => (isImported(project) ? IMPORTED_COPY.noCursor : 'This recording has no cursor data')
 

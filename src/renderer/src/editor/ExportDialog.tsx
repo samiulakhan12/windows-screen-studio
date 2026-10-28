@@ -5,6 +5,7 @@ import { styleContentRect } from '../../../shared/engine/layout'
 import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { hasSoundtrack } from '../../../shared/audio/settings'
+import { exportBaseName } from '../../../shared/import/imported'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportProject, exportSize, LOW_BPP, MAX_EXPORT_SIDE, MB, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
@@ -371,7 +372,7 @@ export function ExportDialog(props: Props): JSX.Element {
     else if (Number.isFinite(mb) && mb >= TARGET_MB_RANGE.min && mb <= TARGET_MB_RANGE.max) set({ targetSizeMB: Math.round(mb * 10) / 10 })
   }
 
-  const baseName = safeFileName(project.name)
+  const baseName = safeFileName(exportBaseName(project))
   const source = { project, scene: props.scene, screenUrl: props.screenUrl, webcamUrl: props.webcamUrl, background: props.background }
 
   const start = async (): Promise<void> => {
