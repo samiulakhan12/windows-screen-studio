@@ -8,7 +8,7 @@ import { EditorIcon } from '../EditorIcon'
 import { ipcMessage } from '../overlayItems'
 import './fontPicker.css'
 
-/** The brand kit's colours first, then `presets` (no repeats): the colour pickers of text and titles. */
+/** The brand kit's colours first, then `presets` (no repeats): the colour pickers of a title card. */
 export function withBrandColors(project: Pick<Project, 'brand'>, presets: readonly string[]): string[] {
   const out = [...(project.brand?.colors ?? [])]
   for (const c of presets) if (!out.includes(c.toLowerCase())) out.push(c)

@@ -244,7 +244,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
             </span>
           )}
         </div>
-        <p className="settings-empty small">The first colour fills the intro and outro cards; all of them show first in the editor's colour pickers.</p>
+        <p className="settings-empty small">The first colour fills the intro and outro cards; all of them show first in a title card's colour pickers.</p>
       </div>
 
       <div className="brand-block">
