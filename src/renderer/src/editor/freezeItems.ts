@@ -3,6 +3,7 @@ import { FREEZE_REFUSAL_TEXT, freezeAtPlayhead, freezeIdAt, freezeTextRange, set
 import type { Freeze, Project } from '../../../shared/types'
 import type { EditorServices } from './context'
 import type { Selection } from './selection'
+import { brandFontFor } from './titleItems'
 
 /*
  * Freeze frames at the playhead (E-11): the one code path for the Clip panel and the editor's
@@ -53,7 +54,7 @@ export function toggleFreezeSound({ store, player }: EditorServices, sel: Select
 export function addTextOnFreeze({ store, player }: EditorServices, f: Freeze, onSelect: (sel: Selection) => void): void {
   const range = freezeTextRange(store.state.clips, f)
   if (!range) return
-  const a = createAnnotation(range.start, store.state.duration, range)
+  const a = createAnnotation(range.start, store.state.duration, { ...range, ...brandFontFor(store.state, 'text') })
   store.update((p) => ({ ...p, annotations: [...p.annotations, a] }))
   onSelect({ kind: 'annotation', id: a.id })
   player.seek(f.at)

@@ -1,8 +1,9 @@
 import { displayTime } from '../../../shared/editor/clips'
 import { chapterNear, createChapter, createTitleCard, nextChapterName, titleTimesAt } from '../../../shared/editor/titles'
 import { chapterInVideo } from '../../../shared/render/chapters'
+import { fontOf } from '../../../shared/render/fonts'
 import { titleShowTime } from '../../../shared/render/titleCards'
-import type { Chapter, Clip, TitleCard } from '../../../shared/types'
+import type { Chapter, Clip, Project, TitleCard } from '../../../shared/types'
 import type { EditorServices } from './context'
 import type { PreviewPlayer } from './player'
 import type { Selection } from './selection'
@@ -27,13 +28,24 @@ export function showTitle(player: PreviewPlayer, clips: Clip[], card: { start: n
 }
 
 /**
+ * The font a new text or title card starts with, as `{ font }` ({} for the default font): the brand
+ * kit's body font, for a title card its heading font (else the body font), while the project still
+ * has that font (docs/design/brand-kit.md §3).
+ */
+export function brandFontFor(p: Pick<Project, 'fonts' | 'brand'>, kind: 'text' | 'title'): { font?: string } {
+  const heading = kind === 'title' ? fontOf(p.fonts, p.brand?.headingFont) : null
+  const font = heading ?? fontOf(p.fonts, p.brand?.bodyFont)
+  return font ? { font: font.id } : {}
+}
+
+/**
  * Adds a title card starting at the playhead (on the frame the preview shows there: in a cut,
  * the next kept one), inside the kept part of the recording, selects it and shows it.
  */
 export function addTitleAt({ store, player }: EditorServices, opts: AddOptions): TitleCard {
   const p = store.state
   const t = displayTime(p.clips, opts.at ?? player.time)
-  const card = createTitleCard(t, p.duration, titleTimesAt(t, p))
+  const card = createTitleCard(t, p.duration, { ...titleTimesAt(t, p), ...brandFontFor(p, 'title') })
   store.update((q) => ({ ...q, titles: [...(q.titles ?? []), card] }))
   opts.onSelect({ kind: 'title', id: card.id })
   showTitle(player, p.clips, card)

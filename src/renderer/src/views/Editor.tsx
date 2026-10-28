@@ -77,7 +77,7 @@ import { GroupContext, type GroupApi } from '../editor/groupContext'
 import { ShortcutKeys } from '../editor/ShortcutKeys'
 import { ShortcutsDialog } from '../editor/ShortcutsDialog'
 import { snapPref } from '../editor/snapControl'
-import { addChapterAt, addTitleAt } from '../editor/titleItems'
+import { addChapterAt, addTitleAt, brandFontFor } from '../editor/titleItems'
 import { OverlayDropZone } from '../editor/OverlayDropZone'
 import { ipcMessage, noteItemCopy, pasteClipboardImage } from '../editor/overlayItems'
 import { requestCaptions } from '../editor/captionItems'
@@ -484,8 +484,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     }
 
     const addTextAt = (t: number): void => {
-      const a = createAnnotation(displayTime(store.state.clips, t), store.state.duration)
-      store.update((p) => ({ ...p, annotations: [...p.annotations, a] }))
+      const p = store.state
+      const a = createAnnotation(displayTime(p.clips, t), p.duration, brandFontFor(p, 'text'))
+      store.update((q) => ({ ...q, annotations: [...q.annotations, a] }))
       setSelection({ kind: 'annotation', id: a.id })
       if (player.time < a.start || player.time >= a.end) player.seek(a.start)
     }
