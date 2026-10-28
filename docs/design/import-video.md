@@ -229,7 +229,9 @@ project has no `source` key). Readers never trust the stored value: `importedSou
    then `import.json`.
 7. **Encode**: `proxyArgs(input, part, withAudio, { fps, size, progress: true, encoder })`
    with the video and audio maps pointed at the chosen streams, the plan's pre-filters (yadif,
-   tone-map) placed first in `-vf`, and `-t 14400` when the duration is unknown; through
+   tone-map) placed first in `-vf`, and `-t` at the stated length plus 2 s (`-t 14400` when the
+   duration is unknown; never more than 4 h): the encode follows the packets' timestamps, which a
+   header can understate, and a constant rate fills every gap with frames; through
    `encodeWithFallback` (the first working GPU encoder, then libx264), like a recording. Progress
    is frames ÷ (duration × fps). The output goes to `screen.part.mp4`, renamed to `screen.mp4`.
 8. **Project**: `createProject` with the frame-count duration (`frames / fps`, like `finalize.ts`),
@@ -306,7 +308,7 @@ opens; the marker is removed on the next sweep).
 |---|---|
 | Extensions | `.mp4 .m4v .mov .mkv .webm` (case-insensitive) |
 | File size | 1 KB ≤ size ≤ 64 GB |
-| Duration | 0.5 s ≤ d ≤ 4 h; unknown (`N/A`, live WebM) accepted, cut at 4 h (`-t 14400`) |
+| Duration | 0.5 s ≤ d ≤ 4 h; unknown (`N/A`, live WebM) accepted, cut at 4 h (`-t 14400`); a known length is cut at d + 2 s |
 | Picture | each side 16 to 16384 px; long ÷ short ≤ 10 |
 | Codecs | whatever the bundled ffmpeg decodes (decode test): H.264, HEVC, VP8, VP9, AV1, ProRes, MPEG-4 … |
 | Proxy rate | 60 when the average rate > 31 fps, else 30 (unknown: 30) |
@@ -349,7 +351,8 @@ smaller: *There is not enough free space for this video: it needs about 5.4 GB a
 - *This is an HDR video; its colours were converted for normal screens.* / *… so its colours may
   look paler in Flown.* (no tone-map filters)
 - *This video was larger than 4K, so the editing copy is 3840 × 1920.*
-- *Only the first 4 hours were imported.* (unknown duration that hit the cap)
+- *Only the first 4 hours were imported.* (the copy reached the 4-hour cap and the file had more
+  than it said)
 
 ## 6. UI and copy
 

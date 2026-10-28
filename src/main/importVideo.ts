@@ -12,7 +12,7 @@ import path from 'node:path'
 import type { ImportProgress, ImportResult } from '../shared/api/import'
 import { createProject } from '../shared/engine/project'
 import { zoomSettingsOf } from '../shared/engine/zoom'
-import { checkFileSize, extensionOf, hasProtectedTrack, importableExtension, importArgs, importName, IMPORT_COPY, IMPORT_EXTENSIONS, IMPORT_LIMITS, planImport, sniffContainer, spaceNeeded, type ImportPlan } from '../shared/import/plan'
+import { checkFileSize, extensionOf, hasProtectedTrack, hitTimeCap, importableExtension, importArgs, importName, IMPORT_COPY, IMPORT_EXTENSIONS, IMPORT_LIMITS, planImport, sniffContainer, spaceNeeded, type ImportPlan } from '../shared/import/plan'
 import { parseProbe, type ProbeInfo } from '../shared/import/probe'
 import type { CursorTrack, Project } from '../shared/types'
 import { ffmpegPath } from './ffmpeg'
@@ -325,7 +325,7 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     // A file that did not say how long it is (live WebM) is measured here.
     if (duration < IMPORT_LIMITS.minSeconds) throw new ImportRefused(IMPORT_COPY.tooShort)
     const notes = [...plan.notes]
-    if (plan.duration === null && duration >= IMPORT_LIMITS.maxSeconds - 1) notes.push(IMPORT_COPY.noteCapped)
+    if (hitTimeCap(plan.duration, duration)) notes.push(IMPORT_COPY.noteCapped)
     await fs.rename(part, path.join(dir, 'screen.mp4'))
 
     let defaults: Awaited<ReturnType<typeof loadStyleDefaults>> = null

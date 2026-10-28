@@ -63,6 +63,13 @@ beforeAll(() => {
   writeFileSync(at('clip.avi'), 'x'.repeat(4096))
   // A WebM named .mp4: accepted, ffmpeg reads the content.
   ff('-i', at('vp9.webm'), '-c', 'copy', '-f', 'webm', at('webm-named.mp4'))
+  // Frames at 0, 1, 2 and 60 s, and a header that says 3 s (a crafted or damaged file).
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', "setpts='if(eq(N,3),60,N)/TB'", '-fps_mode', 'passthrough', '-c:v', 'libx264', at('gap.mkv'))
+  const gap = readFileSync(at('gap.mkv'))
+  // Segment Info › Duration: ID 0x4489, size 8, a big-endian float in milliseconds.
+  const duration = gap.indexOf(Buffer.from([0x44, 0x89, 0x88]))
+  gap.writeDoubleBE(3000, duration + 3)
+  writeFileSync(at('understated.mkv'), gap)
 }, 60_000)
 
 afterAll(() => rmSync(h.root, { recursive: true, force: true }))
@@ -165,6 +172,12 @@ describe('importVideo', () => {
     rmSync(library, { recursive: true, force: true })
     expect(await importVideo(at('live-short.webm'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.tooShort })
     expect(folders()).toEqual([])
+  }, 60_000)
+
+  it('cuts the copy near the stated length when the header understates it', async () => {
+    const r = await importVideo(at('understated.mkv'), { deps })
+    expect(r).toMatchObject({ ok: true, notes: [] })
+    if (r.ok) expect(readJson(r.projectId, 'project.json').duration).toBeLessThanOrEqual(5)
   }, 60_000)
 
   it('widens non-square pixels instead of adding bars', async () => {

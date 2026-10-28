@@ -6,8 +6,10 @@ import {
   etaText,
   gb,
   hasProtectedTrack,
+  hitTimeCap,
   importableExtension,
   importArgs,
+  importCap,
   importName,
   IMPORT_COPY,
   planImport,
@@ -184,7 +186,23 @@ describe('importArgs', () => {
     expect(args.join(' ')).toContain('-map 0:1 -map 0:3')
     expect(args[args.indexOf('-vf') + 1]).toMatch(/^yadif,scale=/)
     expect(args.at(-1)).toBe('out.mp4')
-    expect(args).not.toContain('-t')
+  })
+
+  it('always caps the length: the stated length and 2 s more, at most 4 hours', () => {
+    // The encode follows the packets' timestamps: a header that says 10 s cannot make it run for hours.
+    expect(importArgs(base, { videoStream: 0, audioStream: 1, preFilters: [], duration: 10 }).slice(-3)).toEqual(['-t', '12', 'out.mp4'])
+    expect(importArgs(base, { videoStream: 0, audioStream: 1, preFilters: [], duration: 9.2 }).slice(-3)).toEqual(['-t', '12', 'out.mp4'])
+    expect(importCap(4 * 3600 - 1)).toBe(4 * 3600)
+    expect(importCap(null)).toBe(4 * 3600)
+  })
+
+  it('says the 4-hour cap cut the copy only when the file had more than that', () => {
+    expect(hitTimeCap(null, 4 * 3600)).toBe(true)
+    expect(hitTimeCap(null, 3600)).toBe(false)
+    // A header that understated a longer video, cut at 4 hours.
+    expect(hitTimeCap(4 * 3600 - 2, 4 * 3600)).toBe(true)
+    // A video of just under 4 hours, imported whole.
+    expect(hitTimeCap(4 * 3600 - 0.5, 4 * 3600 - 0.5)).toBe(false)
   })
 
   it('drops the sound map when there is no sound to use', () => {

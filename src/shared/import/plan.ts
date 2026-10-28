@@ -230,9 +230,21 @@ export function planImport(probe: ProbeInfo, ctx: { toneMap: boolean }): PlanRes
 }
 
 /**
+ * Seconds the editing copy is cut at: 4 hours when the file does not say how long it is, else
+ * its stated length and 2 s more (at most 4 hours). The copy follows the packets' timestamps,
+ * which a header can understate by any amount, and a constant rate fills every gap with frames.
+ */
+export const importCap = (duration: number | null): number =>
+  duration === null ? IMPORT_LIMITS.maxSeconds : Math.min(IMPORT_LIMITS.maxSeconds, Math.ceil(duration) + 2)
+
+/** Whether the 4-hour cap cut the copy: it reached the cap, and the file has more than it said. */
+export const hitTimeCap = (duration: number | null, measured: number): boolean =>
+  measured >= IMPORT_LIMITS.maxSeconds - 1 && (duration === null || measured > duration + 1)
+
+/**
  * proxyArgs' arguments turned into the import's: the chosen streams mapped by index (never
- * `0:v:0`, which can be cover art), the plan's filters first, and a 4-hour cap when the length is
- * unknown. Throws when proxyArgs' shape changed, so a test catches it.
+ * `0:v:0`, which can be cover art), the plan's filters first, and the length cap (importCap).
+ * Throws when proxyArgs' shape changed, so a test catches it.
  */
 export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'videoStream' | 'audioStream' | 'preFilters' | 'duration'>): string[] {
   const args = [...base]
@@ -255,7 +267,7 @@ export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'vide
     if (vf < 0) throw new Error('proxyArgs no longer sets -vf')
     args[vf + 1] = [...plan.preFilters, args[vf + 1]].join(',')
   }
-  if (plan.duration === null) args.splice(args.length - 1, 0, '-t', String(IMPORT_LIMITS.maxSeconds))
+  args.splice(args.length - 1, 0, '-t', String(importCap(plan.duration)))
   return args
 }
 
