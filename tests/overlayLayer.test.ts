@@ -224,6 +224,40 @@ describe('memory of the decoded pictures', () => {
     await expect(overlays.preloadOverlay('p3', { file: 'overlay-1.png' })).resolves.toBe(1)
   })
 
+  it('images no longer in the video (deleted or undone) give their room back', async () => {
+    for (let n = 1; n <= 6; n++) gifs.set(urlOf('u1', `overlay-${n}.gif`), { width: 720, height: 720, frames: 100 })
+    const draw = (p: Project): boolean => exportable(overlays.drawOverlaysLayer, p)
+    // Five long GIFs tried one after another, each undone: the video has no images when a sixth is added.
+    for (let n = 1; n <= 5; n++) {
+      await overlays.preloadOverlay('u1', { file: `overlay-${n}.gif` })
+      draw(project('u1', { overlays: [overlay('g', `overlay-${n}.gif`)] }))
+      draw(project('u1', { overlays: [] }))
+    }
+    await expect(overlays.preloadOverlay('u1', { file: 'overlay-6.gif' })).resolves.toBe(1)
+    expect(live.bytes).toBeLessThanOrEqual(OVERLAYS_MAX_BYTES)
+    // Undo brings one back: its picture is decoded again.
+    const back = project('u1', { overlays: [overlay('a', 'overlay-1.gif'), overlay('b', 'overlay-6.gif')] })
+    await overlays.prepareOverlays(back)
+    expect(states('u1', back)).toEqual(['ready', 'ready'])
+  })
+
+  it('an image left out for lack of room shows once other images are deleted', async () => {
+    const list = Array.from({ length: 6 }, (_, i) => overlay(`h${i}`, `overlay-${i + 1}.gif`))
+    for (const o of list) gifs.set(urlOf('u2', o.file!), { width: 720, height: 720, frames: 100 })
+    const p = project('u2', { overlays: list })
+    await overlays.prepareOverlays(p)
+    expect(overlays.overlayStatus('u2', list[5])).toEqual({ state: 'failed', error: TOO_MANY })
+    // Editing the images frees nothing: the one left out is not decoded again on every change.
+    const reads = live.reads
+    await overlays.prepareOverlays(project('u2', { overlays: list.map((o) => ({ ...o, x: 0.4 })) }))
+    expect(live.reads).toBe(reads)
+    // Two others deleted: now it fits.
+    const after = project('u2', { overlays: list.slice(2) })
+    await overlays.prepareOverlays(after)
+    expect(states('u2', after)).toEqual(['ready', 'ready', 'ready', 'ready'])
+    expect(overlays.missingOverlays(after)).toEqual([])
+  })
+
   it('GIFs still waiting to decode when another project opens are skipped', async () => {
     const list = [1, 2, 3].map((n) => overlay(`q${n}`, `overlay-${n}.gif`))
     for (const o of list) gifs.set(urlOf('q1', o.file!), { width: 100, height: 100, frames: 2 })

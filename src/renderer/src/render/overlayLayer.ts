@@ -40,6 +40,8 @@ interface Entry {
 
 const cache = new Map<string, Entry>()
 let currentProject: string | null = null
+/** The overlays of the project last drawn or checked, and the keys of their pictures (null: none yet). */
+let inUse: { overlays: readonly ImageOverlay[]; keys: Set<string> } | null = null
 /** Bytes the decoded pictures take (and the GIF being decoded will): at most OVERLAYS_MAX_BYTES. */
 let held = 0
 /** GIFs decode one at a time: each holds its whole file and a decoder until its frames are made. */
@@ -50,9 +52,15 @@ const STICKER_SIDE = 512
 /** Cache key of what an overlay shows: a sticker is the same in every project. */
 const keyOf = (projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>): string => (o.sticker ? `sticker:${o.sticker}` : `${projectId}/${o.file}`)
 
-/** Counts `bytes` a picture is about to take; refuses it when the pictures together would pass OVERLAYS_MAX_BYTES. */
+const NO_ROOM = 'This video has too many large images to show this one too.'
+
+/**
+ * Counts `bytes` a picture is about to take. When the pictures together would pass
+ * OVERLAYS_MAX_BYTES, those the project no longer uses make room first; refused when still too many.
+ */
 function hold(bytes: number): number {
-  if (held + bytes > OVERLAYS_MAX_BYTES) throw new Error('This video has too many large images to show this one too.')
+  if (held + bytes > OVERLAYS_MAX_BYTES) dropUnused()
+  if (held + bytes > OVERLAYS_MAX_BYTES) throw new Error(NO_ROOM)
   held += bytes
   return bytes
 }
@@ -62,14 +70,47 @@ function release(e: Entry): void {
   if (e.image?.kind === 'gif') for (const f of e.image.frames) f.close()
 }
 
+/** Forgets the pictures of images deleted or undone (undo decodes them again). Whether there were any. */
+function dropUnused(): boolean {
+  if (!inUse) return false
+  let dropped = false
+  for (const [key, e] of cache) {
+    if (!e.image || inUse.keys.has(key)) continue
+    release(e)
+    cache.delete(key)
+    dropped = true
+  }
+  return dropped
+}
+
 /** Forgets the pictures of other projects (one editor is open at a time). */
 function switchProject(projectId: string): void {
   if (currentProject === projectId) return
   currentProject = projectId
+  inUse = null
   for (const [key, e] of cache) {
     if (key.startsWith('sticker:') || key.startsWith(`${projectId}/`)) continue
     release(e)
     cache.delete(key)
+  }
+}
+
+const NONE: readonly ImageOverlay[] = []
+
+/**
+ * Notes the overlays `project` uses (when drawn or checked). An image refused for lack of room is
+ * decoded again once images the project no longer uses have given their room back.
+ */
+function use(project: Pick<Project, 'id' | 'overlays'>): void {
+  switchProject(project.id)
+  const overlays = project.overlays ?? NONE
+  if (inUse?.overlays === overlays) return
+  inUse = { overlays, keys: new Set(overlays.map((o) => keyOf(project.id, o))) }
+  const refused = new Map(overlays.filter((o) => cache.get(keyOf(project.id, o))?.error === NO_ROOM).map((o) => [keyOf(project.id, o), o]))
+  if (!refused.size || !dropUnused()) return
+  for (const [key, o] of refused) {
+    cache.delete(key)
+    entryOf(project.id, o)
   }
 }
 
@@ -261,11 +302,13 @@ export function overlayStatus(
 
 /** Overlays whose picture cannot be shown (a missing or unreadable file): left out of the video. */
 export function missingOverlays(project: Pick<Project, 'id' | 'overlays'>): ImageOverlay[] {
+  use(project)
   return (project.overlays ?? []).filter((o) => !!entryOf(project.id, o)?.error)
 }
 
 /** Waits for the pictures of every overlay (export: before the first frame). Never rejects. */
 export async function prepareOverlays(project: Pick<Project, 'id' | 'overlays'>): Promise<void> {
+  use(project)
   const waits: Promise<void>[] = []
   for (const o of project.overlays ?? []) {
     const e = entryOf(project.id, o)
@@ -288,6 +331,7 @@ function pictureAt(image: DecodedOverlay, o: ImageOverlay, t: number, project: P
  * when it arrives; the export waits for it in prepareOverlays).
  */
 export function drawOverlaysLayer(fc: FrameContext): void {
+  use(fc.project)
   const overlays = fc.project.overlays
   if (!overlays?.length) return
   const { ctx, w, h, t, project } = fc
