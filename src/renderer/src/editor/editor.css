@@ -1202,3 +1202,15 @@
 .preview-overlay.view-drag.dragging {
   cursor: grabbing;
 }
+
+/* The selected shape's handles while following: cut at the slot like the shape (§6.5); only the handles take the pointer. */
+.shape-clip {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shape-clip .shape-box,
+.shape-clip .shape-end {
+  pointer-events: auto;
+}
