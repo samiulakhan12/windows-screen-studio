@@ -236,11 +236,18 @@ describe('G-PERF', () => {
     const shapes = Array.from({ length: 1000 }, (_, i) => shape(`s${i}`, 'rect', (i % 100) * 0.1 + 1, (i % 100) * 0.1 + 2))
     const p = p20({ annotations, shapes })
     const keys = annotations.map((a) => `annotation:${a.id}` as ItemKey)
-    const begin = Date.now()
-    const plan = groupMovePlan(p, keys)
+    // The best of five runs, so a pause of the test machine during one run does not decide it
+    // (one run takes 50 to 100 ms, over 300 ms under load; a move that is quadratic in the items takes seconds).
+    let ms = Infinity
     let q = p
-    for (let i = 0; i < 1000; i++) q = moveGroup(q, plan, (i % 50) * 0.01)
-    expect(Date.now() - begin).toBeLessThan(250)
+    for (let run = 0; run < 5; run++) {
+      const begin = performance.now()
+      const plan = groupMovePlan(p, keys)
+      q = p
+      for (let i = 0; i < 1000; i++) q = moveGroup(q, plan, (i % 50) * 0.01)
+      ms = Math.min(ms, performance.now() - begin)
+    }
+    expect(ms).toBeLessThan(250)
     expect(q.shapes).toBe(p.shapes)
   })
 })
