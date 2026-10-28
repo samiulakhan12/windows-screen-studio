@@ -45,8 +45,8 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
 
   /** Follows a drag from the box or a handle; `apply` gets the pointer's movement in preview pixels. */
   const drag = (apply: (dx: number, dy: number, ev: PointerEvent) => void) => (e: ReactPointerEvent<HTMLElement>) => {
-    // With Ctrl or Shift the press goes on to the preview, which adds or removes items (E-06).
-    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
+    // Ctrl+press goes on to the preview, which adds or removes items (E-06); Shift keeps the shape.
+    if (e.button !== 0 || e.ctrlKey || e.metaKey) return
     e.preventDefault()
     e.stopPropagation()
     releaseFocus(e.target)
