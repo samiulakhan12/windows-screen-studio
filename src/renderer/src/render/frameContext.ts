@@ -30,6 +30,8 @@ export interface FrameContext {
   radius: number
   /** Zoom camera at t. */
   cam: Camera
+  /** Where captions, key presses, the logo and lower-third titles go (safeZones.ts textArea); null: the whole frame, as always. */
+  textArea: Rect | null
   /** The recording's frame at t, as drawn (the crop's copy; null before the first frame is decoded). */
   screen: FrameImage | null
   /** Height (px) of the whole decoded recording frame; privacy blur/pixelate strength is relative to it. Absent = screen.height. */

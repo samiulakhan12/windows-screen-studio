@@ -8,6 +8,7 @@
 import type { Rect } from '../engine/layout'
 import { clamp, easeOutCubic } from '../engine/math'
 import { viewingTime } from '../render/overlays'
+import { TEXT_INSET } from '../render/safeZones'
 import type { CaptionSegment, CaptionSettings, Clip } from '../types'
 import { captionLook, type CaptionLook } from './settings'
 
@@ -287,7 +288,7 @@ function balance(pieces: Piece[], from: number, to: number, maxWidth: number, sp
   return best < 0 ? breakLines(pieces.slice(from, to), maxWidth, space).map(([a, b]) => [a + from, b + from]) : [[from, best], [best, to]]
 }
 
-/** Size of the caption text for `settings` in a `w` x `h` frame, and the widest a line may be. */
+/** Size of the caption text for `settings` in a `w` x `h` frame, and the widest a line may be (inside `area` when given). */
 export function captionMetrics(
   settings: Pick<CaptionSettings, 'size' | 'preset' | 'background'>,
   w: number,
@@ -295,14 +296,16 @@ export function captionMetrics(
   /** The text area (safeZones.ts textArea, output px); absent or null: the whole frame, as always. */
   area?: Rect | null
 ): { px: number; lineHeight: number; maxWidth: number; padX: number; padY: number; safe: number } {
-  if (area) throw new Error('not implemented')
   const look = captionLook(settings.preset)
   const u = Math.min(w, h)
   const px = settings.size * look.scale * u
   const padX = settings.background === 'box' ? px * 0.42 : 0
   const padY = settings.background === 'box' ? px * 0.12 : 0
   const safe = CAPTION_SAFE * u
-  const maxWidth = Math.max(px * 2, Math.min(w * CAPTION_MAX_WIDTH, w - safe * 2) - padX * 2)
+  const full = Math.min(w * CAPTION_MAX_WIDTH, w - safe * 2)
+  // In a text area the lines, still centred on the frame, stay inside it on both sides.
+  const room = area ? Math.min(full, 2 * Math.min(w / 2 - area.x, area.x + area.w - w / 2)) : full
+  const maxWidth = Math.max(px * 2, room - padX * 2)
   return { px, lineHeight: px * look.lineHeight, maxWidth, padX, padY, safe }
 }
 
@@ -320,9 +323,8 @@ export function captionLayout(
   /** The text area (safeZones.ts textArea, output px); absent or null: the whole frame, as always. */
   area?: Rect | null
 ): CaptionLayout {
-  if (area) throw new Error('not implemented')
   const look = captionLook(settings.preset)
-  const m = captionMetrics(settings, w, h)
+  const m = captionMetrics(settings, w, h, area)
   const base = captionTokens(seg)
   const tokens = look.uppercase ? base.map((t) => ({ ...t, text: t.text.toLocaleUpperCase() })) : base
   const width = (s: string): number => measure(s, m.px, look.weight)
@@ -419,7 +421,8 @@ export interface PlacedLine {
 
 /**
  * Where the lines of `chunk` go in a `w` x `h` frame: centred, at the bottom, middle or top
- * inside the safe margins (the bottom a little higher, clear of video players' controls).
+ * inside the safe margins (the bottom a little higher, clear of video players' controls), or of
+ * `area` when given (docs/design/vertical-video.md §6.3).
  */
 export function placeChunk(
   layout: CaptionLayout,
@@ -430,15 +433,21 @@ export function placeChunk(
   /** The text area (safeZones.ts textArea, output px); absent or null: the whole frame, as always. */
   area?: Rect | null
 ): { lines: PlacedLine[]; top: number; height: number } {
-  if (area) throw new Error('not implemented')
   const u = Math.min(w, h)
   const rowH = layout.lineHeight + layout.padY * 2
   const height = chunk.lines.length * rowH
   const margin = CAPTION_SAFE * u
-  const top = position === 'top' ? margin : position === 'middle' ? (h - height) / 2 : h - margin * 1.25 - height
+  const top = area ? areaTop(area, position, height, TEXT_INSET * u) : position === 'top' ? margin : position === 'middle' ? (h - height) / 2 : h - margin * 1.25 - height
   return {
     top,
     height,
     lines: chunk.lines.map((l, i) => ({ x: (w - l.width) / 2, y: top + rowH * (i + 0.5), width: l.width }))
   }
+}
+
+/** Top of `height` px of lines at `position` in a text area: `inset` from its top or bottom, or centred (the area keeps clear of the apps' controls already). */
+function areaTop(area: Rect, position: CaptionSettings['position'], height: number, inset: number): number {
+  if (position === 'top') return area.y + inset
+  if (position === 'middle') return area.y + (area.h - height) / 2
+  return area.y + area.h - inset - height
 }

@@ -7,6 +7,7 @@ import { toOutput } from '../../../shared/engine/outputPoint'
 import { cameraAt, zoomStyleOf, type Camera, type ZoomStyle } from '../../../shared/engine/zoom'
 import type { CursorTrack, NormRect, Project } from '../../../shared/types'
 import { blurSampleCount, cameraDisplacement, shutterTimes, speedAt } from '../../../shared/render/overlays'
+import { textArea } from '../../../shared/render/safeZones'
 import { drawCursorLayer } from './cursorLayer'
 import type { FrameContext } from './frameContext'
 import { cardGeometry, paintBackgroundLayer, paintCardLayer, paintStaticLayer, paintStillCard, roundRectPath, type CardSpec } from './staticLayer'
@@ -187,6 +188,7 @@ export function drawFrame(
     rect,
     radius: frame ? screenCornerRadius(frame, rect, radius) : radius,
     cam,
+    textArea: textArea(project, w, h, vw, vh, t),
     screen,
     sourceH: full?.height,
     options: opts,
@@ -211,7 +213,7 @@ export function drawFrame(
   drawWebcamLayer(top, project.webcam.show ? webcamImage(src) : null)
   drawOverlaysLayer(top)
 
-  drawKeystrokes(ctx, w, h, t, project, cursor)
+  drawKeystrokes(ctx, w, h, t, project, cursor, fc.textArea)
   drawAnnotations(ctx, w, h, t, project)
   drawCaptionsLayer(soundTime === t ? top : { ...top, t: soundTime })
   drawTitleCardsLayer(top)

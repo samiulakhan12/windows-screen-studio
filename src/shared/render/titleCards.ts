@@ -215,7 +215,9 @@ const blockWidth = (b: TextBlock | null): number => (b && b.widths.length ? Math
 
 /**
  * Where the text of `card` goes in a `w` x `h` frame: sizes relative to the frame, wrapped
- * within the title-safe area, and shrunk (title and subtitle together) until it fits.
+ * within the title-safe area, and shrunk (title and subtitle together) until it fits. In a text
+ * area (docs/design/vertical-video.md §6.3) a lower third's band keeps to it: its bottom at the
+ * area's, its left at the area's (or the title-safe margin), no wider than the area.
  */
 export function titleLayout(
   card: Pick<TitleCard, 'title' | 'subtitle' | 'style'>,
@@ -225,15 +227,18 @@ export function titleLayout(
   /** The text area (safeZones.ts textArea, output px) a lower third keeps to; absent or null: the whole frame, as always. */
   area?: Rect | null
 ): TitleLayout {
-  if (area) throw new Error('not implemented')
   const m = METRICS[card.style] ?? METRICS.centered
   const u = Math.min(w, h)
   const safe = TITLE_SAFE * u
   const lower = card.style === 'lower-third'
+  // Centred and big cards wrap to the frame whatever the area.
+  const inArea = lower && area ? area : null
+  const left = inArea ? Math.max(safe, inArea.x) : safe
   // A lower third's text sits in a band with padding and an accent bar; the band stays in the safe area.
   const bandPad = (px: number): { x: number; y: number; accent: number } => ({ x: px * 0.62, y: px * 0.48, accent: Math.max(2, px * 0.09) })
   // On a tall (portrait) frame a lower third may use the whole width.
-  const roomW = lower && w < h ? w - safe * 2 : Math.min(w * m.maxWidth, w - safe * 2)
+  const frameW = lower && w < h ? w - safe * 2 : Math.min(w * m.maxWidth, w - safe * 2)
+  const roomW = inArea ? Math.min(frameW, inArea.x + inArea.w - left) : frameW
   const title = card.title.trim() ? card.title : ''
   const sub = card.subtitle?.trim() ? card.subtitle : ''
 
@@ -258,7 +263,7 @@ export function titleLayout(
     const pad = bandPad(t.lines.length ? t.px : (s?.px ?? m.title * u))
     const bw = width + pad.x * 2 + pad.accent * 2.4
     const bh = height + pad.y * 2
-    band = { x: safe, y: h - safe - bh, w: bw, h: bh, radius: Math.min(bh / 2, pad.y * 1.4), padX: pad.x, padY: pad.y, accent: pad.accent }
+    band = { x: left, y: inArea ? inArea.y + inArea.h - bh : h - safe - bh, w: bw, h: bh, radius: Math.min(bh / 2, pad.y * 1.4), padX: pad.x, padY: pad.y, accent: pad.accent }
   }
   return { title: t, subtitle: s && s.lines.length ? s : null, gap, width, height, band, rise: (lower ? 0.018 : 0.028) * h }
 }
