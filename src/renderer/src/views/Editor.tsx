@@ -284,6 +284,9 @@ function EditorProviders({
   )
 }
 
+/** A checkbox the keyboard moved to (it matches :focus-visible; one focused by the pointer does not). */
+const isKeyboardToggle = (el: Element | null): boolean => el instanceof HTMLInputElement && el.type === 'checkbox' && el.matches(':focus-visible')
+
 /** Following works only in a frame narrower than the recording (docs/design/vertical-video.md §2.11). */
 const FOLLOW_UNAVAILABLE = 'Following works in 9:16, 1:1 and other frames narrower than the recording. Choose one in Style › Frame.'
 /** Hold the view here while the frame could follow but does not. */
@@ -1483,6 +1486,9 @@ function EditorSession({
       }
       // A focused slider keeps its own arrow, Home and End keys.
       if (isRangeInput(target) && isSliderKey(chord)) return
+      // A toggle reached with the keyboard keeps Space, its only key (Follow the action is turned on
+      // so, docs/design/vertical-video.md §11.3); one the pointer left focused does not: Space plays.
+      if (chord.key === 'Space' && !chord.ctrl && !chord.alt && !chord.shift && isKeyboardToggle(target)) return
       e.preventDefault()
       if (chord.key === 'Space') {
         // A focused toggle or button must not also react to Space (on key up).
