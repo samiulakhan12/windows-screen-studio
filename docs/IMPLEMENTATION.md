@@ -27,6 +27,11 @@ src/main/               Electron main process
   exportIpc.ts, exportArgs.ts, exportJob.ts, exportClipboard.ts, ffmpeg.ts, hwEncoders.ts
                           export encoder processes, safe temp output, clipboard, GPU encoder detection
   mediaProtocol.ts        studio-media:// with Range support for <video>
+  longJobs.ts, longJobsPort.ts, appLog.ts, diagnostics.ts, storage*.ts, exportBundle.ts
+                          hands-off jobs and app health (docs/design/hands-off.md): taskbar progress and
+                          buttons, notifications, keep-awake and sleep; the redacted rotating log in
+                          userData/logs; the diagnostics report; the storage scan and Recycle Bin clean-up;
+                          files saved next to an export
   ai/                     AI providers (keys, transcription pipeline, text tasks); transcribe.ts also runs
                           "On this PC" (providerId 'local') with lossless WAV parts
   speech/                 captions on this PC and the speech detector (docs/design/offline-captions.md):

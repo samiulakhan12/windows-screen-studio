@@ -217,7 +217,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Builds on:** the caption presets and the strict-schema text-task pipeline.
 
 ### X-03 · Diagnostics bundle
-**Quality · S · planned**
+**Quality · S · shipped (next release, `feat-hands-off`)**: see [FEATURES.md](FEATURES.md) (Diagnostics) and `docs/design/hands-off.md`. Left for later: crash reports (minidumps) next to the log.
 
 - **What:** "Copy diagnostics" in Settings collects:
   - the Windows build;
@@ -290,8 +290,8 @@ stay available as the premium option.
 | F-08 | **Studio voice** | Removes fan hum, keyboard and room noise; the preview sounds like the export | DeepFilterNet3 (MIT/Apache-2.0, about 8 MB, Rust/tract); render the cleaned stem once and play it in preview; ffmpeg arnndn as the no-download fallback | M | NW-10 |
 | F-09 | **Markers that edit while recording** | Hotkeys for "new chapter here" and "cut that"; the project opens with chapters and suggested cuts. Later, the spoken phrases after recording | Extends today's "zoom here" marks; phase 2 is offline keyword spotting on the mic stem (sherpa-onnx, Apache-2.0, a few MB) | S | NW-01, E-02, chapters |
 | F-10 | **Chapters without AI** | Named chapters from app switches, scene changes and pauses, following YouTube's rules; silent recordings too | Foreground-window log in the helper, ffmpeg scdet, F-03 pauses; names from window titles (reviewed before export, they can be private) | M | Chapters, LT-09, NW-13 |
-| F-11 | **Export bundle and one file per chapter** | SRT/VTT, chapter list, thumbnail and description written next to each export; "01 Intro.mp4", "02 Billing.mp4" in one tick | Reuses subtitle, chapter, thumbnail and batch export code | S | NW-13, LT-02 |
-| F-12 | **Hands-off long jobs** | Taskbar progress, Pause/Stop on the taskbar thumbnail, "Export finished" notification with buttons, PC kept awake, lock pauses, sleep stops cleanly | Electron built-ins: Notification actions, setProgressBar, setThumbarButtons, powerSaveBlocker, powerMonitor | S | NW-11 |
+| F-11 | **Export bundle and one file per chapter** · *shipped* (`docs/design/hands-off.md`); later: a chapter list file for a whole set of parts | SRT/VTT, chapter list, thumbnail and description written next to each export; "01 Intro.mp4", "02 Billing.mp4" in one tick | Reuses subtitle, chapter, thumbnail and batch export code | S | NW-13, LT-02 |
+| F-12 | **Hands-off long jobs** · *shipped* (`docs/design/hands-off.md`): a locked PC keeps working (it is the point of hands-off), sleep pauses and resumes; later: pausing captions between parts. Notification buttons and thumbnail buttons are *Windows-unverified* | Taskbar progress, Pause/Stop on the taskbar thumbnail, "Export finished" notification with buttons, PC kept awake, lock pauses, sleep stops cleanly | Electron built-ins: Notification actions, setProgressBar, setThumbarButtons, powerSaveBlocker, powerMonitor | S | NW-11 |
 | F-13 | **Model manager and hardware check** · *minimal manager shipped with F-01* (the speech models in Settings › Captions on this PC) | One Settings page lists optional models with size and purpose, downloads on demand, resumes, verifies each file, removes with one click | Free hosting on GitHub Releases or Hugging Face, SHA-256 pinned; models under about 20 MB ship in the installer. Pick one ONNX route (sherpa-onnx native for audio) | M | NW-15; needed by F-01, F-04, F-05, F-16, F-21 |
 
 ### Worth doing
@@ -310,7 +310,7 @@ stay available as the premium option.
 | F-23 | **Command line, flown:// links, scheduled and self-stopping recordings** | Stream Deck, AutoHotkey or Task Scheduler can start a preset; recordings stop after N minutes, a file size or N seconds of silence | Protocol handler, second-instance arguments, per-user schtasks; links can never start a recording without confirmation | M |
 | F-24 | **Clean desktop mode and notification guard** | Taskbar auto-hide, plain wallpaper and minimised windows for the session, restored afterwards; warns about notifications | Documented Win32 calls, every change opt-in; Windows has no public Do not disturb switch, so warn and link only | M |
 | F-25 | **Speaker labels on the PC** | Who is speaking in calls and interviews | Mic vs system stems first (free today); then sherpa-onnx diarization (pyannote segmentation MIT, ERes2Net 26.5 MB Apache-2.0) | M |
-| F-26 | **Storage manager with clean-up rules** | Disk use per recording, approved clean-up rules, Recycle Bin instead of permanent delete, move the library | fs.statfs, shell.trashItem; record the last export in project.json | S |
+| F-26 | **Storage manager with clean-up rules** · *shipped* (`docs/design/hands-off.md`): caches, not proxies (the proxies are the recording), last use kept in userData, not project.json; later: move the library | Disk use per recording, approved clean-up rules, Recycle Bin instead of permanent delete, move the library | fs.statfs, shell.trashItem; record the last export in project.json | S |
 
 ### Later
 

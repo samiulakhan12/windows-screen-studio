@@ -2,6 +2,15 @@
 
 ## Next release
 
+- **Hands-off exports and app health** (F-12, X-03, F-26, F-11): long exports show their progress on
+  the taskbar button and can be paused from the export dialog or the taskbar thumbnail; the PC stays
+  awake while they run (a locked screen keeps exporting), and sleep pauses them until the PC wakes.
+  When Flown is in the background, "Export finished" offers Open and Show in folder. *Also save*
+  writes captions (SRT, VTT), a chapter list, the thumbnail and a description next to the video,
+  and *One file per chapter* exports "01 Intro.mp4", "02 Billing.mp4", …. Settings gains
+  **Storage** (disk use per recording, clean-up rules you review, Recycle Bin only) and
+  **Diagnostics** (a report you see before copying it; keys and your own folders are left out).
+  Existing projects and settings open unchanged.
 - **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
   the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
   `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move

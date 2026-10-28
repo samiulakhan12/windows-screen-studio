@@ -151,10 +151,9 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   **caches** (`.cache/`) and the rest; unfinished recordings (no `project.json`) are listed as
   "Unfinished" and are never part of a rule (Home's Unfinished recordings list handles them).
   Free and total disk space come from `fs.statfs`.
-* **Last used** = the latest of: `project.json`'s modification time (every edit autosaves it), the
-  last time the editor opened it, the last time it was exported. Opening and exporting are noted in
-  `userData/storage.json` (`storage:noteOpened` from `Editor.tsx`, one additive line; exports from
-  `jobs:end`). *Rejected:* the file's access time (NTFS often does not update it), and a field in
+* **Last used** = the later of: `project.json`'s modification time (every edit autosaves it) and
+  the last time the editor opened it, noted in `userData/storage.json` (`storage:opened` from
+  `Editor.tsx`, one additive line). An export needs the recording open, so it counts through that. *Rejected:* the file's access time (NTFS often does not update it), and a field in
   `project.json` (would change old projects on open, and the file belongs to the editor's autosave).
 * **Proxies are not offered for deletion**: in Flown they are the recording itself (§1). The roadmap's
   "delete proxies" becomes "delete caches", which Flown rebuilds when needed (transcript parts are
