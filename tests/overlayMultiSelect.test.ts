@@ -4,6 +4,7 @@ import { applyField, copyLook, deleteItems, fieldsFor, fieldValue, GROUP_FIELDS,
 import { groupMovePlan, moveGroup, setGroupLength } from '../src/shared/editor/groupMove'
 import { EditStore } from '../src/shared/editor/editStore'
 import { groupLabel, projectItems, selectAllStep, validGroup, type ItemKey } from '../src/shared/editor/multiSelect'
+import { projectSnapSegments } from '../src/shared/editor/snapping'
 import { MAX_OVERLAYS, readOverlays } from '../src/shared/engine/overlayData'
 import { DEFAULT_ZOOM_STYLE } from '../src/shared/engine/zoom'
 import type { ImageOverlay, Project } from '../src/shared/types'
@@ -41,6 +42,11 @@ describe('overlays in a group', () => {
     ])
     expect(groupLabel([K('overlay:o1'), K('overlay:o2'), K('annotation:t1')])).toBe('1 text item · 2 images')
     expect(selectAllStep(projectItems(p), [], 'images').keys).toEqual(['overlay:o1', 'overlay:o2'])
+    // M1: an image's key is its snapping owner, so the timeline's edges catch on image blocks.
+    expect(projectSnapSegments(p, { layouts: false }).filter((s) => s.owner.startsWith('overlay:'))).toEqual([
+      { owner: 'overlay:o1', label: 'Image', start: 2, end: 4 },
+      { owner: 'overlay:o2', label: 'Image', start: 5, end: 7 }
+    ])
     // A deleted overlay leaves the group.
     expect(validGroup({ keys: [K('overlay:o1'), K('overlay:gone')], anchor: K('overlay:gone'), stamp: 1 }, p).keys).toEqual(['overlay:o1'])
   })
