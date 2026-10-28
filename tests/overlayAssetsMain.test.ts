@@ -86,7 +86,7 @@ describe('image overlays and fonts as project assets', () => {
     const id = folder()
     const big = Buffer.alloc(25 * 1024 * 1024 + 1)
     PNG.copy(big)
-    await expect(importAssetData(id, 'overlay', 'big.png', big)).rejects.toThrow(/The file is too large \(26 MB; 26 MB at most\)/)
+    await expect(importAssetData(id, 'overlay', 'big.png', big)).rejects.toThrow(/The file is too large \(26 MB; 25 MB at most\)/)
     const bigSvg = Buffer.concat([SVG, Buffer.alloc(2 * 1024 * 1024, 32)])
     await expect(importAssetData(id, 'overlay', 'big.svg', bigSvg)).rejects.toThrow(/too large/)
     await expect(importAsset(id, 'overlay', file('big.svg', bigSvg))).rejects.toThrow(/too large/)

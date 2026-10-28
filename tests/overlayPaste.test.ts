@@ -39,7 +39,7 @@ describe('pasting the clipboard image with Ctrl+V', () => {
 
   it('says an image over 25 MB is too large, instead of pasting the copied items', async () => {
     h.image = { hash: 'big', size: 31e6 }
-    await expect(paste(true)).rejects.toThrow(/^The pasted image is too large \(31 MB; \d+ MB at most\)\.$/)
+    await expect(paste(true)).rejects.toThrow(/^The pasted image is too large \(30 MB; 25 MB at most\)\.$/)
     await expect(paste(false)).rejects.toThrow(/too large/)
     expect(h.imported).toBe(0)
   })

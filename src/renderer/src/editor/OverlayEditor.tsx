@@ -47,8 +47,10 @@ function slab(c: number, d: number, min: number, max: number): [number, number] 
  * off the preview or under the hint (a logo in a top corner), else inside the box as near its
  * bottom edge as the preview shows (an image as tall as the frame, or taller). A small box with
  * neither outside spot clear (turned on its side at the top) keeps the handle outside, on the preview.
+ * `stayBelow`: the last turn ended with the handle below, so it stays there while that spot is clear
+ * (placed above again, it would jump across the image, away from where the pointer let go).
  */
-function rotateHandlePlace(b: { cx: number; cy: number; h: number; angle: number }, frame: { w: number; h: number }): RotateHandle {
+function rotateHandlePlace(b: { cx: number; cy: number; h: number; angle: number }, frame: { w: number; h: number }, stayBelow = false): RotateHandle {
   /** The stretch of the box's axis on the preview and under `top`, as `along` values. */
   const span = (top: number): [number, number] => {
     const [x0, x1] = slab(b.cx, -Math.sin(b.angle), ROTATE_RADIUS, frame.w - ROTATE_RADIUS)
@@ -58,6 +60,7 @@ function rotateHandlePlace(b: { cx: number; cy: number; h: number; angle: number
   const on = (t: number, [lo, hi]: [number, number]): boolean => t >= lo && t <= hi
   const out = b.h / 2 + ROTATE_REACH
   const clear = span(HINT_BAND)
+  if (stayBelow && on(out, clear)) return { place: 'below', along: out }
   if (on(-out, clear)) return { place: 'above', along: -out }
   if (on(out, clear)) return { place: 'below', along: out }
   const near = Math.min(clear[1], b.h / 2 - ROTATE_REACH)
@@ -79,6 +82,8 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
   const overlay = selection?.kind === 'overlay' ? ((project.overlays ?? []).find((o) => o.id === selection.id) ?? null) : null
   const [visible, setVisible] = useState(false)
   const [held, setHeld] = useState<RotateHandle | null>(null)
+  /** The image whose last turn ended with the handle below it. */
+  const [turnedBelow, setTurnedBelow] = useState<string | null>(null)
   useEffect(() => {
     if (!overlay) return
     const check = (): void => setVisible(overlayVisibleAt(overlay, player.time))
@@ -107,8 +112,8 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
   }
 
   // While a turn is held the handle keeps its place: placed again as the image turns, it could
-  // jump to the other side of the image, away from the pointer.
-  const handle = held ?? rotateHandlePlace(b, frame)
+  // jump to the other side of the image, away from the pointer. After it, it keeps its side.
+  const handle = held ?? rotateHandlePlace(b, frame, turnedBelow === o.id)
   const rotate = (e: ReactPointerEvent<HTMLElement>): void => {
     const stage = (e.currentTarget.closest('.overlay-editor') as HTMLElement).getBoundingClientRect()
     const centre = { x: stage.left + b.cx, y: stage.top + b.cy }
@@ -119,7 +124,10 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
         const at = flip ? { x: 2 * centre.x - ev.clientX, y: 2 * centre.y - ev.clientY } : { x: ev.clientX, y: ev.clientY }
         set({ rotation: rotationToward(centre, at, ev.shiftKey) }, 'overlay-rotation')
       },
-      (on) => setHeld(on ? handle : null)
+      (on) => {
+        setHeld(on ? handle : null)
+        if (!on) setTurnedBelow(handle.place === 'below' ? o.id : null)
+      }
     )(e)
   }
 

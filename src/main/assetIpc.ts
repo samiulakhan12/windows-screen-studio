@@ -186,7 +186,8 @@ function sizeProblem(kind: AssetKind, ext: string, size: number): string | null 
   const spec = ASSET_SPECS[kind]
   if (size === 0) return 'This file is empty.'
   const max = ext === 'svg' ? (SVG_MAX_BYTES[kind] ?? spec.maxBytes) : spec.maxBytes
-  if (size > max) return `The file is too large (${Math.max(1, Math.round(size / 1e6))} MB; ${Math.round(max / 1e6)} MB at most).`
+  // In the MB (2^20 bytes) the limits are set in, and rounded up, so an image just over 25 MB never reads "25 MB; 25 MB at most".
+  if (size > max) return `The file is too large (${Math.ceil(size / 2 ** 20)} MB; ${max / 2 ** 20} MB at most).`
   return null
 }
 

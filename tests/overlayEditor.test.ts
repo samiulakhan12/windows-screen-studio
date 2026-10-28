@@ -216,7 +216,7 @@ describe('OverlayEditor: the rotate handle stays where it can be grabbed', () =>
     return { x: o.x * 1000 - Math.sin(a) * along, y: o.y * 500 + Math.cos(a) * along }
   }
 
-  it('stays where it was pressed while the image turns, and is placed again once it is let go', () => {
+  it('stays where it was pressed while the image turns, and keeps that side once it is let go', () => {
     // A logo at the top centre: the handle is below it, at (500, 121).
     project = { overlays: [overlay({ y: 0.15, w: 0.1, h: 0.1 })] } as unknown as Project
     expect(place()).toBe('below')
@@ -230,6 +230,16 @@ describe('OverlayEditor: the rotate handle stays where it can be grabbed', () =>
     expect(spot().x).toBeCloseTo(at.x, 6)
     expect(spot().y).toBeCloseTo(at.y, 6)
     pointer('pointerup', at.x, at.y)
+    // Let go, it stays below, under the pointer, so pressing again where it was fine-tunes the turn
+    // (placed above, it would sit on the far side of the image and the press would hit bare preview).
+    expect(place()).toBe('below')
+    expect(spot().x).toBeCloseTo(at.x, 6)
+    expect(spot().y).toBeCloseTo(at.y, 6)
+    // Moved down the frame, where above is clear anyway, it still keeps below while that is clear...
+    project = { overlays: [{ ...current(), y: 0.5 }] } as unknown as Project
+    expect(place()).toBe('below')
+    // ...and goes above once below is cut off by the frame's bottom.
+    project = { overlays: [{ ...current(), y: 0.95, rotation: 0 }] } as unknown as Project
     expect(place()).toBe('above')
   })
 
