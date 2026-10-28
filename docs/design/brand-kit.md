@@ -340,6 +340,8 @@ Deviations from the text above, and what changed when "select several items" (E-
   fold of an 860 px window (editor.e2e). The first image comes from the Images tab, a drop or a paste.
 - **Apply brand kit** sits after Watermark in the Style tab, not at its top, for the same reason.
 - **The export dialog** also lists images that cannot be shown (missing file), not only fonts.
+- **Add font…** is a button beside the Font menu, not the menu's last entry: on Windows the arrow
+  keys change a closed menu, so looking through the fonts from the keyboard opened the file dialog.
 - **Multi-select (E-06)**: `overlay` is a `GroupKind` on its own `images` track
   (`shared/editor/multiSelect.ts`); look class `image` with the fields Position X/Y, Size (each
   image keeps its shape), Rotation, Opacity, Fade in, Fade out (`groupEdit.ts`; all but the position

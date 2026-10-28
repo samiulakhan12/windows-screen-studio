@@ -6,8 +6,7 @@ import { onStyleAssetsChanged } from '../../render/watermarkLayer'
 import { useEditor } from '../context'
 import { EditorIcon } from '../EditorIcon'
 import { ipcMessage } from '../overlayItems'
-
-const ADD = '__add-font__'
+import './fontPicker.css'
 
 /** The brand kit's colours first, then `presets` (no repeats): the colour pickers of text and titles. */
 export function withBrandColors(project: Pick<Project, 'brand'>, presets: readonly string[]): string[] {
@@ -23,9 +22,11 @@ export function fontLabel(font: ProjectFont, state: ReturnType<typeof fontState>
 
 /**
  * The Font menu of a text, a title card or the captions (docs/design/brand-kit.md §5): the default
- * font, the project's fonts, and "Add font…", which copies a TTF, OTF or WOFF2 file into the
- * project and uses it. `apply` returns the project with font `id` (undefined: the default) set
- * where this menu sets it, so adding a font and using it is one undo step.
+ * font and the project's fonts, and beside it "Add font…", which copies a TTF, OTF or WOFF2 file
+ * into the project and uses it. A button, not an entry of the menu: Windows changes a closed menu
+ * on the arrow keys, which would open the file dialog while the user only looks through the fonts.
+ * `apply` returns the project with font `id` (undefined: the default) set where this menu sets it,
+ * so adding a font and using it is one undo step.
  */
 export function FontPicker({
   project,
@@ -48,6 +49,7 @@ export function FontPicker({
   const state = current ? fontState(project, current.id) : null
 
   const addFont = async (): Promise<void> => {
+    if (busy) return
     setBusy(true)
     setError(null)
     try {
@@ -68,27 +70,23 @@ export function FontPicker({
 
   return (
     <div className="font-picker">
-      <label className="field">
-        <span>{label}</span>
-        <select
-          value={current ? current.id : ''}
-          disabled={busy}
-          data-testid="font-picker"
-          onChange={(e) => {
-            const v = e.target.value
-            if (v === ADD) return void addFont()
-            store.update((p) => apply(p, v || undefined))
-          }}
-        >
-          <option value="">Default ({DEFAULT_FONT_LABEL})</option>
-          {fonts.map((f) => (
-            <option key={f.id} value={f.id}>
-              {fontLabel(f, fontState(project, f.id))}
-            </option>
-          ))}
-          <option value={ADD}>Add font…</option>
-        </select>
-      </label>
+      <div className="font-picker-row">
+        <label className="field">
+          <span>{label}</span>
+          <select value={current ? current.id : ''} disabled={busy} data-testid="font-picker" onChange={(e) => store.update((p) => apply(p, e.target.value || undefined))}>
+            <option value="">Default ({DEFAULT_FONT_LABEL})</option>
+            {fonts.map((f) => (
+              <option key={f.id} value={f.id}>
+                {fontLabel(f, fontState(project, f.id))}
+              </option>
+            ))}
+          </select>
+        </label>
+        {/* Not disabled while adding: the button keeps keyboard focus through the file dialog. */}
+        <button type="button" className="btn" data-testid="font-add" title="Add a TTF, OTF or WOFF2 font file" onClick={() => void addFont()}>
+          Add font…
+        </button>
+      </div>
       {busy && <span className="hint">Adding the font…</span>}
       {state === 'missing' && current && (
         <p className="callout" role="status" data-testid="font-missing">
