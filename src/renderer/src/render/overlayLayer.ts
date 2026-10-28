@@ -206,9 +206,11 @@ function entryOf(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, u
 /**
  * Decodes an image newly copied into the project before the project uses it, and returns its
  * aspect (width / height). Rejects with a readable message when it cannot be shown; a failed
- * attempt is forgotten, so nothing points at it.
+ * attempt is forgotten, so nothing points at it. An image that failed before is read again: its
+ * file may be back under the same name.
  */
 export async function preloadOverlay(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, url?: string): Promise<number> {
+  if (cache.get(keyOf(projectId, o))?.error) cache.delete(keyOf(projectId, o))
   const entry = entryOf(projectId, o, url)
   if (!entry) return 1
   await entry.done
