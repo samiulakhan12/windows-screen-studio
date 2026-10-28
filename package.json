@@ -1,7 +1,7 @@
 {
   "name": "flown",
   "productName": "Flown",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Screen recorder and editor for Windows by Qbexel: auto zoom, smooth cursor, backgrounds, webcam and one-click export.",
   "main": "out/main/index.js",
   "license": "MIT",
