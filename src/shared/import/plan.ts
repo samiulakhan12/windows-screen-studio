@@ -259,6 +259,12 @@ export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'vide
   if (plan.audioStream !== null) {
     if (audio < 0) throw new Error('proxyArgs no longer maps 0:a:0?')
     args[audio + 1] = `0:${plan.audioStream}`
+    // Sound that starts after the picture (an audio delay, a stream-copy trim) is padded with
+    // silence from 0, as a recording's is: the editor's level and speech analysis read the track
+    // from its first sample, and an MP4 would otherwise keep the delay as an edit.
+    const af = args.indexOf('-af')
+    if (af < 0 || !/(^|,)aresample=[^,]*$/.test(args[af + 1])) throw new Error('proxyArgs no longer ends -af with aresample')
+    args[af + 1] = `${args[af + 1]}:first_pts=0`
   } else if (audio >= 0) {
     args.splice(audio, 2)
   }

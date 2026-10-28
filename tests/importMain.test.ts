@@ -66,6 +66,8 @@ beforeAll(() => {
   // A stream-copy trim of a recording with 2 s between keyframes: the picture starts 1.6 s after the sound.
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', 'sine', '-t', '6', '-c:v', 'libx264', '-g', '60', '-c:a', 'aac', at('gop.mp4'))
   ff('-i', at('gop.mp4'), '-ss', '0.4', '-c', 'copy', at('trimmed.mp4'))
+  // Sound that starts half a second after the picture (an audio delay in an MKV).
+  ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-itsoffset', '0.5', '-f', 'lavfi', '-i', 'sine=f=1000', '-t', '2', '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-c:a', 'libopus', at('late-sound.mkv'))
   // Frames at 0, 1, 2 and 60 s, and a header that says 3 s (a crafted or damaged file).
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', "setpts='if(eq(N,3),60,N)/TB'", '-fps_mode', 'passthrough', '-c:v', 'libx264', at('gap.mkv'))
   const gap = readFileSync(at('gap.mkv'))
@@ -186,6 +188,16 @@ describe('importVideo', () => {
     const r = await importVideo(at('trimmed.mp4'), { deps })
     expect(r).toMatchObject({ ok: true, notes: [] })
     if (r.ok) expect(readJson(r.projectId, 'project.json')).toMatchObject({ hasAudio: true, source: { videoCodec: 'h264', audioCodec: 'aac' } })
+  }, 60_000)
+
+  it('pads sound that starts after the picture, so its first sample is at 0', async () => {
+    const r = await importVideo(at('late-sound.mkv'), { deps })
+    expect(r).toMatchObject({ ok: true })
+    if (!r.ok) return
+    // Decoded as the editor's level analysis does (from the first sample, no timestamps).
+    const pcm = execFileSync(ffmpegPath(), ['-v', 'error', '-i', path.join(library, r.projectId, 'screen.mp4'), '-map', '0:a:0', '-vn', '-ac', '1', '-ar', '16000', '-f', 'f32le', '-'], { maxBuffer: 16 * 1024 * 1024 })
+    const samples = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4)
+    expect(samples.findIndex((v) => Math.abs(v) > 0.05) / 16000).toBeCloseTo(0.5, 1)
   }, 60_000)
 
   it('cuts the copy near the stated length when the header understates it', async () => {

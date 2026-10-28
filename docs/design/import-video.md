@@ -250,6 +250,9 @@ and holds nothing else). Cancel kills ffmpeg at once (`AbortSignal`, `runFfmpegP
   multi-track, a phone's commentary track), the note says *This video has 3 sound tracks; Flown
   uses the first one.*
 - Sound is placed on its timestamps (`ON_TIMESTAMPS`, as recordings), re-encoded to AAC 192 kbit/s.
+  It starts at 0 (`first_pts=0`): sound that starts after the picture (an audio delay, a
+  stream-copy trim) is padded with silence, since the editor's level and speech analysis read the
+  track from its first sample.
 - No sound stream: `hasAudio: false` (the Audio tab already says *This recording has no sound.
   You can still add music below.*).
 - No stems: `audioStems` is absent; the editor plays the proxy's track, as for Chromium recordings.
