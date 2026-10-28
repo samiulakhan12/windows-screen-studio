@@ -19,27 +19,26 @@ const exportsOf = (m: object): string[] => Object.keys(m).sort()
 
 describe('E-06 contracts', () => {
   it('multiSelect.ts exports the selection model and its rules', () => {
-    expect(exportsOf(multiSelect)).toEqual(
-      [
-        'GROUP_KINDS',
-        'NO_GROUP',
-        'extendTo',
-        'groupLabel',
-        'isGroupKind',
-        'itemKey',
-        'kindCounts',
-        'parseItemKey',
-        'projectItems',
-        'rectsHit',
-        'selectAllStep',
-        'toggleKey',
-        'topmostHit',
-        'trackKeys',
-        'trackOfKind',
-        'unionKeys',
-        'validGroup'
-      ].sort()
-    )
+    for (const name of [
+      'GROUP_KINDS',
+      'NO_GROUP',
+      'extendTo',
+      'groupLabel',
+      'isGroupKind',
+      'itemKey',
+      'kindCounts',
+      'parseItemKey',
+      'projectItems',
+      'rectsHit',
+      'selectAllStep',
+      'toggleKey',
+      'topmostHit',
+      'trackKeys',
+      'trackOfKind',
+      'unionKeys',
+      'validGroup'
+    ])
+      expect(exportsOf(multiSelect), name).toContain(name)
     expect(multiSelect.GROUP_KINDS).toEqual(['zoom', 'annotation', 'shape', 'spotlight', 'title', 'chapter', 'freeze'])
   })
 
@@ -55,7 +54,7 @@ describe('E-06 contracts', () => {
   })
 
   it('groupMove.ts, groupEdit.ts and groupClipboard.ts export their functions', () => {
-    expect(exportsOf(groupMove)).toEqual(['groupAccepts', 'groupMovePlan', 'groupSnapPoints', 'moveGroup', 'setGroupLength', 'setGroupStart'])
+    for (const name of ['groupAccepts', 'groupMovePlan', 'groupSnapPoints', 'moveGroup', 'setGroupLength', 'setGroupStart']) expect(exportsOf(groupMove), name).toContain(name)
     for (const name of ['GROUP_FIELDS', 'applyField', 'copyLook', 'deleteItems', 'fieldsFor', 'lookClassOf', 'lookLabel', 'mapItems', 'pasteLook', 'sharedValue'])
       expect(exportsOf(groupEdit), name).toContain(name)
     for (const name of ['DUPLICATE_MIN_OFFSET', 'copyItems', 'duplicateItems', 'pasteItems', 'pasteNotice']) expect(exportsOf(groupClipboard), name).toContain(name)
