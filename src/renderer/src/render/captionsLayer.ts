@@ -1,6 +1,7 @@
 import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
 import { luminance } from '../../../shared/editor/titles'
+import type { Rect } from '../../../shared/engine/layout'
 import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
 import { fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
@@ -206,7 +207,16 @@ function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number): S
  * Where the caption showing at source time `t` is (its lines with their box padding, px) and at
  * which edge, or null without one: the keystroke overlay keeps clear of it (textOverlays.ts).
  */
-export function captionBlockAt(ctx: Ctx, project: Project, t: number, w: number, h: number): { position: CaptionSettings['position']; top: number; bottom: number } | null {
+export function captionBlockAt(
+  ctx: Ctx,
+  project: Project,
+  t: number,
+  w: number,
+  h: number,
+  /** The text area (shared/render/safeZones.ts textArea); absent or null: the whole frame, as always. */
+  area?: Rect | null
+): { position: CaptionSettings['position']; top: number; bottom: number } | null {
+  if (area) throw new Error('not implemented')
   const shown = shownAt(ctx, project, t, w, h)
   if (!shown) return null
   const { placed, settings } = shown

@@ -63,6 +63,8 @@ export const DEFAULT_KEYMAP: Keymap = Object.freeze({
   duplicateItems: ['Ctrl+D'],
   copyLook: ['Ctrl+Shift+C'],
   pasteLook: ['Ctrl+Shift+V'],
+  holdView: ['R'],
+  toggleSafeZones: ['G'],
   export: ['Ctrl+E'],
   shortcuts: ['Ctrl+/'],
   about: [],

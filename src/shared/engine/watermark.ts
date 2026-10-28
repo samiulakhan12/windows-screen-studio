@@ -86,7 +86,15 @@ export function activeWatermark(project: Pick<Project, 'watermark'>): WatermarkS
  * Where the watermark goes in a w x h frame. `aspect` is the width / height of what is drawn
  * (the image, or the measured text). An image is `size` x the shorter side wide; text is that tall.
  */
-export function watermarkRect(w: number, h: number, wm: Pick<WatermarkSettings, 'kind' | 'size' | 'position' | 'margin'>, aspect: number): Rect {
+export function watermarkRect(
+  w: number,
+  h: number,
+  wm: Pick<WatermarkSettings, 'kind' | 'size' | 'position' | 'margin'>,
+  aspect: number,
+  /** The text area (render/safeZones.ts textArea, output px) the corners keep to; absent or null: the whole frame, as always. */
+  area?: Rect | null
+): Rect {
+  if (area) throw new Error('not implemented')
   const m = Math.min(w, h)
   const a = aspect > 0 && Number.isFinite(aspect) ? aspect : 1
   let bw = wm.kind === 'image' ? wm.size * m : wm.size * m * a

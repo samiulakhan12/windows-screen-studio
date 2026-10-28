@@ -1,0 +1,1366 @@
+[
+  {
+    "name": "16:9",
+    "raw": {
+      "version": 2,
+      "id": "rec-20261012-101500",
+      "name": "Billing demo",
+      "createdAt": "2026-10-12T10:15:00.000Z",
+      "duration": 42.5,
+      "width": 1920,
+      "height": 1080,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0.08,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null,
+        "target": "screen",
+        "fps": 60
+      },
+      "clips": [
+        {
+          "id": "c1",
+          "start": 0.4,
+          "end": 12,
+          "speed": 1
+        },
+        {
+          "id": "c2",
+          "start": 14.2,
+          "end": 30,
+          "speed": 1.5
+        },
+        {
+          "id": "c3",
+          "start": 30,
+          "end": 41.9,
+          "speed": 1
+        }
+      ],
+      "zooms": [
+        {
+          "id": "z1",
+          "start": 2.1,
+          "end": 6.4,
+          "scale": 1.8,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": true,
+          "anchor": {
+            "t": 3,
+            "x": 0.71,
+            "y": 0.32
+          }
+        },
+        {
+          "id": "z2",
+          "start": 16,
+          "end": 21,
+          "scale": 2,
+          "focus": {
+            "mode": "fixed",
+            "x": 0.25,
+            "y": 0.6
+          },
+          "auto": false,
+          "easing": "snappy"
+        },
+        {
+          "id": "z3",
+          "start": 24,
+          "end": 28.5,
+          "scale": 1,
+          "focus": {
+            "mode": "region",
+            "x": 0.1,
+            "y": 0.1,
+            "w": 0.4,
+            "h": 0.3
+          },
+          "auto": false,
+          "transition": 1.2
+        },
+        {
+          "id": "z4",
+          "start": 33,
+          "end": 37,
+          "scale": 0.75,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": false
+        }
+      ],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "inputEdits": {
+        "ignoredClicks": [
+          {
+            "ms": 8123
+          },
+          {
+            "ms": 9050,
+            "stray": "moving"
+          }
+        ],
+        "straighten": true
+      },
+      "annotations": [
+        {
+          "id": "a1",
+          "start": 5,
+          "end": 9,
+          "text": "Open the billing page",
+          "x": 0.5,
+          "y": 0.88,
+          "size": 0.05,
+          "style": "pill"
+        }
+      ],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "auto",
+        "border": {
+          "width": 2,
+          "color": "#ffffff",
+          "glass": true
+        },
+        "shadowStyle": "soft"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle",
+        "border": {
+          "width": 3,
+          "color": "#ffffff"
+        },
+        "mirror": true,
+        "zoom": 1.4,
+        "cropX": 0.52,
+        "cropY": 0.44
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false,
+        "mic": {
+          "volume": 1.2,
+          "muted": false
+        },
+        "system": {
+          "volume": 0.6,
+          "muted": false
+        },
+        "normalize": true,
+        "music": null
+      },
+      "watermark": {
+        "show": true,
+        "kind": "text",
+        "text": "qbexel.com",
+        "position": "bottom-right",
+        "size": 0.03,
+        "opacity": 0.8,
+        "margin": 0.03
+      },
+      "overlays": [
+        {
+          "id": "o1",
+          "start": 1,
+          "end": 6,
+          "file": "overlay-1.png",
+          "name": "logo.png",
+          "x": 0.85,
+          "y": 0.15,
+          "w": 0.2,
+          "h": 0.1,
+          "rotation": 0,
+          "opacity": 1,
+          "fadeIn": 0.3,
+          "fadeOut": 0.3
+        }
+      ],
+      "fonts": [
+        {
+          "id": "f1",
+          "name": "Inter",
+          "file": "font-1.woff2"
+        }
+      ],
+      "brand": {
+        "colors": [
+          "#112233",
+          "#ffcc00"
+        ],
+        "headingFont": "f1"
+      },
+      "shapes": [
+        {
+          "id": "s1",
+          "start": 10,
+          "end": 13,
+          "kind": "arrow",
+          "x": 0.3,
+          "y": 0.3,
+          "w": 0.2,
+          "h": -0.1,
+          "color": "#ef4444",
+          "strokeWidth": 6,
+          "fill": false,
+          "opacity": 1,
+          "strength": 0.5
+        }
+      ],
+      "spotlights": [
+        {
+          "id": "l1",
+          "start": 18,
+          "end": 22,
+          "mode": "region",
+          "x": 0.2,
+          "y": 0.2,
+          "w": 0.3,
+          "h": 0.2,
+          "shape": "rect",
+          "dim": 0.6,
+          "feather": 0.3
+        }
+      ],
+      "audioStems": {
+        "mic": true,
+        "system": true
+      },
+      "layouts": [
+        {
+          "id": "L1",
+          "start": 0.4,
+          "end": 3,
+          "layout": "camera-only",
+          "auto": true
+        },
+        {
+          "id": "L2",
+          "start": 8,
+          "end": 12,
+          "layout": "default",
+          "corner": "top-left",
+          "auto": true
+        },
+        {
+          "id": "L3",
+          "start": 38,
+          "end": 41.9,
+          "layout": "camera-large"
+        }
+      ],
+      "director": {
+        "intro": "camera-only",
+        "corners": "auto",
+        "hideAfter": 10,
+        "frameFace": true,
+        "framed": {
+          "zoom": 1.4,
+          "cropX": 0.52,
+          "cropY": 0.44
+        }
+      },
+      "tilt": {
+        "enabled": false,
+        "rotateX": 8,
+        "rotateY": -12,
+        "perspective": 0.5,
+        "animate": "none"
+      },
+      "titles": [
+        {
+          "id": "t1",
+          "start": 0.4,
+          "end": 3.4,
+          "title": "Billing demo",
+          "subtitle": "Qbexel",
+          "style": "lower-third",
+          "background": "blur"
+        }
+      ],
+      "chapters": [
+        {
+          "id": "ch1",
+          "t": 0.4,
+          "title": "Intro"
+        },
+        {
+          "id": "ch2",
+          "t": 14.2,
+          "title": "Invoices"
+        }
+      ],
+      "freezes": [
+        {
+          "id": "fr1",
+          "at": 11.5,
+          "length": 2,
+          "sound": "pause"
+        }
+      ],
+      "transcript": {
+        "language": "en",
+        "provider": "local",
+        "model": "speech-small",
+        "createdAt": "2026-10-12T10:20:00.000Z",
+        "segments": [
+          {
+            "id": "cap1",
+            "start": 1,
+            "end": 3.2,
+            "text": "Here is the billing page.",
+            "words": [
+              {
+                "text": "Here",
+                "start": 1,
+                "end": 1.3
+              },
+              {
+                "text": "is",
+                "start": 1.3,
+                "end": 1.5
+              }
+            ]
+          },
+          {
+            "id": "cap2",
+            "start": 15,
+            "end": 18,
+            "text": "Invoices are listed by month."
+          }
+        ]
+      },
+      "captions": {
+        "show": true,
+        "preset": "boxed",
+        "position": "bottom",
+        "size": 0.045,
+        "color": "#ffffff",
+        "highlightColor": "#facc15",
+        "background": "box",
+        "maxLines": 2
+      },
+      "script": {
+        "text": "Open billing. Show invoices."
+      }
+    },
+    "keys": [
+      "version",
+      "id",
+      "name",
+      "createdAt",
+      "duration",
+      "width",
+      "height",
+      "hasWebcam",
+      "hasAudio",
+      "webcamOffset",
+      "capture",
+      "clips",
+      "zooms",
+      "autoZoom",
+      "zoomSettings",
+      "annotations",
+      "style",
+      "cursor",
+      "webcam",
+      "effects",
+      "audio",
+      "watermark",
+      "shapes",
+      "spotlights",
+      "layouts",
+      "tilt",
+      "titles",
+      "chapters",
+      "audioStems",
+      "inputEdits",
+      "freezes",
+      "overlays",
+      "fonts",
+      "brand",
+      "transcript",
+      "captions",
+      "director",
+      "script"
+    ],
+    "migrated": {
+      "version": 2,
+      "id": "rec-20261012-101500",
+      "name": "Billing demo",
+      "createdAt": "2026-10-12T10:15:00.000Z",
+      "duration": 42.5,
+      "width": 1920,
+      "height": 1080,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0.08,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null,
+        "target": "screen",
+        "fps": 60
+      },
+      "clips": [
+        {
+          "id": "c1",
+          "start": 0.4,
+          "end": 12,
+          "speed": 1
+        },
+        {
+          "id": "c2",
+          "start": 14.2,
+          "end": 30,
+          "speed": 1.5
+        },
+        {
+          "id": "c3",
+          "start": 30,
+          "end": 41.9,
+          "speed": 1
+        }
+      ],
+      "zooms": [
+        {
+          "id": "z1",
+          "start": 2.1,
+          "end": 6.4,
+          "scale": 1.8,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": true,
+          "anchor": {
+            "t": 3,
+            "x": 0.71,
+            "y": 0.32
+          }
+        },
+        {
+          "id": "z2",
+          "start": 16,
+          "end": 21,
+          "scale": 2,
+          "focus": {
+            "mode": "fixed",
+            "x": 0.25,
+            "y": 0.6
+          },
+          "auto": false,
+          "easing": "snappy"
+        },
+        {
+          "id": "z3",
+          "start": 24,
+          "end": 28.5,
+          "scale": 1,
+          "focus": {
+            "mode": "region",
+            "x": 0.1,
+            "y": 0.1,
+            "w": 0.4,
+            "h": 0.3
+          },
+          "auto": false,
+          "transition": 1.2
+        },
+        {
+          "id": "z4",
+          "start": 33,
+          "end": 37,
+          "scale": 0.75,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": false
+        }
+      ],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [
+        {
+          "id": "a1",
+          "start": 5,
+          "end": 9,
+          "text": "Open the billing page",
+          "x": 0.5,
+          "y": 0.88,
+          "size": 0.05,
+          "style": "pill"
+        }
+      ],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "auto",
+        "border": {
+          "width": 2,
+          "color": "#ffffff",
+          "glass": true
+        },
+        "shadowStyle": "soft"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle",
+        "border": {
+          "width": 3,
+          "color": "#ffffff"
+        },
+        "mirror": true,
+        "zoom": 1.4,
+        "cropX": 0.52,
+        "cropY": 0.44
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false,
+        "mic": {
+          "volume": 1.2,
+          "muted": false
+        },
+        "system": {
+          "volume": 0.6,
+          "muted": false
+        },
+        "normalize": true,
+        "music": null
+      },
+      "watermark": {
+        "show": true,
+        "kind": "text",
+        "text": "qbexel.com",
+        "position": "bottom-right",
+        "size": 0.03,
+        "opacity": 0.8,
+        "margin": 0.03
+      },
+      "shapes": [
+        {
+          "id": "s1",
+          "kind": "arrow",
+          "start": 10,
+          "end": 13,
+          "x": 0.3,
+          "y": 0.3,
+          "w": 0.2,
+          "h": -0.1,
+          "color": "#ef4444",
+          "strokeWidth": 6,
+          "fill": false,
+          "opacity": 1,
+          "strength": 0.5
+        }
+      ],
+      "spotlights": [
+        {
+          "id": "l1",
+          "mode": "region",
+          "start": 18,
+          "end": 22,
+          "x": 0.2,
+          "y": 0.2,
+          "w": 0.3,
+          "h": 0.2,
+          "shape": "rect",
+          "dim": 0.6,
+          "feather": 0.3
+        }
+      ],
+      "layouts": [
+        {
+          "id": "L1",
+          "start": 0.4,
+          "end": 3,
+          "layout": "camera-only",
+          "auto": true
+        },
+        {
+          "id": "L2",
+          "start": 8,
+          "end": 12,
+          "layout": "default",
+          "corner": "top-left",
+          "auto": true
+        },
+        {
+          "id": "L3",
+          "start": 38,
+          "end": 41.9,
+          "layout": "camera-large"
+        }
+      ],
+      "tilt": {
+        "enabled": false,
+        "rotateX": 8,
+        "rotateY": -12,
+        "perspective": 0.5,
+        "animate": "none"
+      },
+      "titles": [
+        {
+          "id": "t1",
+          "start": 0.4,
+          "end": 3.4,
+          "title": "Billing demo",
+          "style": "lower-third",
+          "background": "blur",
+          "subtitle": "Qbexel"
+        }
+      ],
+      "chapters": [
+        {
+          "id": "ch1",
+          "t": 0.4,
+          "title": "Intro"
+        },
+        {
+          "id": "ch2",
+          "t": 14.2,
+          "title": "Invoices"
+        }
+      ],
+      "audioStems": {
+        "mic": true,
+        "system": true
+      },
+      "inputEdits": {
+        "ignoredClicks": [
+          {
+            "ms": 8123
+          },
+          {
+            "ms": 9050,
+            "stray": "moving"
+          }
+        ],
+        "straighten": true
+      },
+      "freezes": [
+        {
+          "id": "fr1",
+          "at": 11.5,
+          "length": 2,
+          "sound": "pause"
+        }
+      ],
+      "overlays": [
+        {
+          "id": "o1",
+          "start": 1,
+          "end": 6,
+          "x": 0.85,
+          "y": 0.15,
+          "w": 0.2,
+          "h": 0.1,
+          "rotation": 0,
+          "opacity": 1,
+          "fadeIn": 0.3,
+          "fadeOut": 0.3,
+          "file": "overlay-1.png",
+          "name": "logo.png"
+        }
+      ],
+      "fonts": [
+        {
+          "id": "f1",
+          "name": "Inter",
+          "file": "font-1.woff2"
+        }
+      ],
+      "brand": {
+        "colors": [
+          "#112233",
+          "#ffcc00"
+        ],
+        "headingFont": "f1"
+      },
+      "transcript": {
+        "provider": "local",
+        "model": "speech-small",
+        "createdAt": "2026-10-12T10:20:00.000Z",
+        "segments": [
+          {
+            "id": "cap1",
+            "start": 1,
+            "end": 3.2,
+            "text": "Here is the billing page.",
+            "words": [
+              {
+                "text": "Here",
+                "start": 1,
+                "end": 1.3
+              },
+              {
+                "text": "is",
+                "start": 1.3,
+                "end": 1.5
+              }
+            ]
+          },
+          {
+            "id": "cap2",
+            "start": 15,
+            "end": 18,
+            "text": "Invoices are listed by month."
+          }
+        ],
+        "language": "en"
+      },
+      "captions": {
+        "show": true,
+        "preset": "boxed",
+        "position": "bottom",
+        "size": 0.045,
+        "color": "#ffffff",
+        "highlightColor": "#facc15",
+        "background": "box",
+        "maxLines": 2
+      },
+      "director": {
+        "intro": "camera-only",
+        "corners": "auto",
+        "hideAfter": 10,
+        "frameFace": true,
+        "framed": {
+          "zoom": 1.4,
+          "cropX": 0.52,
+          "cropY": 0.44
+        }
+      },
+      "script": {
+        "text": "Open billing. Show invoices."
+      }
+    }
+  },
+  {
+    "name": "9:16",
+    "raw": {
+      "version": 2,
+      "id": "rec-20261015-083000",
+      "name": "Short: settings tour",
+      "createdAt": "2026-10-15T08:30:00.000Z",
+      "duration": 18,
+      "width": 2560,
+      "height": 1440,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "chromium",
+        "cursorInVideo": false,
+        "region": {
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1
+        },
+        "target": "area"
+      },
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.95
+      },
+      "clips": [
+        {
+          "id": "c1",
+          "start": 0,
+          "end": 18,
+          "speed": 1
+        }
+      ],
+      "zooms": [
+        {
+          "id": "z1",
+          "start": 3,
+          "end": 8,
+          "scale": 1.8,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": true,
+          "anchor": {
+            "t": 4.2,
+            "x": 0.6,
+            "y": 0.4,
+            "until": 6.5
+          }
+        }
+      ],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.04,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "9:16",
+        "frame": {
+          "kind": "phone",
+          "theme": "dark"
+        }
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.8,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "top-right",
+        "size": 0.3,
+        "shape": "rounded",
+        "backgroundBlur": 0.5
+      },
+      "effects": {
+        "motionBlur": 0.3,
+        "keystrokes": {
+          "show": false,
+          "position": "top",
+          "size": 0.04
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [
+        {
+          "id": "L1",
+          "start": 5,
+          "end": 9,
+          "layout": "side-by-side",
+          "corner": "top-left"
+        }
+      ],
+      "tilt": {
+        "enabled": true,
+        "rotateX": 6,
+        "rotateY": -10,
+        "perspective": 0.4,
+        "animate": "zoom"
+      },
+      "titles": [],
+      "chapters": []
+    },
+    "keys": [
+      "version",
+      "id",
+      "name",
+      "createdAt",
+      "duration",
+      "width",
+      "height",
+      "hasWebcam",
+      "hasAudio",
+      "webcamOffset",
+      "capture",
+      "clips",
+      "zooms",
+      "autoZoom",
+      "zoomSettings",
+      "annotations",
+      "style",
+      "cursor",
+      "webcam",
+      "effects",
+      "audio",
+      "shapes",
+      "spotlights",
+      "layouts",
+      "tilt",
+      "titles",
+      "chapters",
+      "crop"
+    ],
+    "migrated": {
+      "version": 2,
+      "id": "rec-20261015-083000",
+      "name": "Short: settings tour",
+      "createdAt": "2026-10-15T08:30:00.000Z",
+      "duration": 18,
+      "width": 2560,
+      "height": 1440,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "chromium",
+        "cursorInVideo": false,
+        "region": {
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1
+        },
+        "target": "area"
+      },
+      "clips": [
+        {
+          "id": "c1",
+          "start": 0,
+          "end": 18,
+          "speed": 1
+        }
+      ],
+      "zooms": [
+        {
+          "id": "z1",
+          "start": 3,
+          "end": 8,
+          "scale": 1.8,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": true,
+          "anchor": {
+            "t": 4.2,
+            "x": 0.6,
+            "y": 0.4,
+            "until": 6.5
+          }
+        }
+      ],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.04,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "9:16",
+        "frame": {
+          "kind": "phone",
+          "theme": "dark"
+        }
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.8,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "top-right",
+        "size": 0.3,
+        "shape": "rounded",
+        "backgroundBlur": 0.5
+      },
+      "effects": {
+        "motionBlur": 0.3,
+        "keystrokes": {
+          "show": false,
+          "position": "top",
+          "size": 0.04
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [
+        {
+          "id": "L1",
+          "start": 5,
+          "end": 9,
+          "layout": "side-by-side",
+          "corner": "top-left"
+        }
+      ],
+      "tilt": {
+        "enabled": true,
+        "rotateX": 6,
+        "rotateY": -10,
+        "perspective": 0.4,
+        "animate": "zoom"
+      },
+      "titles": [],
+      "chapters": [],
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.95
+      }
+    }
+  },
+  {
+    "name": "1:1",
+    "raw": {
+      "version": 1,
+      "id": "rec-20250601-120000",
+      "name": "  Square post  ",
+      "createdAt": "2025-06-01T12:00:00.000Z",
+      "duration": 12,
+      "width": 1280,
+      "height": 720,
+      "hasWebcam": false,
+      "hasAudio": false,
+      "webcamOffset": 0,
+      "trim": {
+        "start": 0.5,
+        "end": 11
+      },
+      "zooms": [
+        {
+          "id": "z1",
+          "start": 2,
+          "end": 5,
+          "scale": 2,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": true
+        }
+      ],
+      "autoZoom": true,
+      "annotations": [
+        {
+          "id": "a1",
+          "start": 1,
+          "end": 4,
+          "text": "Hello",
+          "x": 0.5,
+          "y": 0.5,
+          "size": 0.06,
+          "style": "title"
+        }
+      ],
+      "style": {
+        "background": {
+          "type": "color",
+          "color": "#202020"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "1:1"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.2,
+        "smoothing": 0.5,
+        "clickEffect": true,
+        "hideWhenIdle": false
+      },
+      "webcam": {
+        "show": false,
+        "corner": "bottom-left",
+        "size": 0.2,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0
+      },
+      "audio": {
+        "volume": 0.8,
+        "muted": true
+      }
+    },
+    "keys": [
+      "version",
+      "id",
+      "name",
+      "createdAt",
+      "duration",
+      "width",
+      "height",
+      "hasWebcam",
+      "hasAudio",
+      "webcamOffset",
+      "zooms",
+      "autoZoom",
+      "annotations",
+      "style",
+      "cursor",
+      "webcam",
+      "effects",
+      "audio",
+      "capture",
+      "clips",
+      "shapes",
+      "spotlights",
+      "layouts",
+      "titles",
+      "chapters",
+      "tilt"
+    ],
+    "migrated": {
+      "version": 2,
+      "id": "rec-20250601-120000",
+      "name": "  Square post  ",
+      "createdAt": "2025-06-01T12:00:00.000Z",
+      "duration": 12,
+      "width": 1280,
+      "height": 720,
+      "hasWebcam": false,
+      "hasAudio": false,
+      "webcamOffset": 0,
+      "zooms": [
+        {
+          "id": "z1",
+          "start": 2,
+          "end": 5,
+          "scale": 2,
+          "focus": {
+            "mode": "cursor"
+          },
+          "auto": true
+        }
+      ],
+      "autoZoom": true,
+      "annotations": [
+        {
+          "id": "a1",
+          "start": 1,
+          "end": 4,
+          "text": "Hello",
+          "x": 0.5,
+          "y": 0.5,
+          "size": 0.06,
+          "style": "title"
+        }
+      ],
+      "style": {
+        "background": {
+          "type": "color",
+          "color": "#202020"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "1:1"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.2,
+        "smoothing": 0.5,
+        "clickEffect": true,
+        "hideWhenIdle": false
+      },
+      "webcam": {
+        "show": false,
+        "corner": "bottom-left",
+        "size": 0.2,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 0.8,
+        "muted": true
+      },
+      "capture": {
+        "method": "chromium",
+        "cursorInVideo": true,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "(generated)",
+          "start": 0.5,
+          "end": 11,
+          "speed": 1
+        }
+      ],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [],
+      "chapters": []
+    }
+  }
+]

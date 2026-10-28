@@ -337,6 +337,17 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
 }
 
 /**
+ * The typing sessions auto zoom finds with `settings`, as autoZoomInput reads them (its zoom
+ * clicks and pause): when each one starts and ends and the place typed into. The view that
+ * follows the action holds on them (docs/design/vertical-video.md §5.6).
+ */
+export function typingSessionsOf(track: CursorTrack, settings: AutoZoomSettings): { t0: number; t1: number; place: { x: number; y: number } }[] {
+  void track
+  void settings
+  throw new Error('not implemented')
+}
+
+/**
  * Auto zoom segments for a whole cursor track: clicks (right clicks too when enabled),
  * typing (see below) and "zoom here" marks (aimed at the cursor). Overlapping results are
  * merged. Every zoom carries an anchor.
@@ -489,6 +500,23 @@ export interface Camera {
 
 const REST: Camera = { scale: 1, cx: 0.5, cy: 0.5 }
 
+/** Anything with a position over time (SmoothedTrack, the follow plan). */
+export interface PathLike {
+  at(t: number): { x: number; y: number }
+}
+
+/**
+ * The followed view a camera of scale 1 shows (docs/design/vertical-video.md §5.12): centred on
+ * (cx, cy), w × h of the recording. Absent everywhere a camera is computed: the whole recording
+ * (w = h = 1), exactly as before.
+ */
+export interface ViewBase {
+  cx: number
+  cy: number
+  w: number
+  h: number
+}
+
 /**
  * How much an auto zoom aims at its anchor rather than at the smoothed cursor at time t. A
  * click: fully until the click, then handing back to the cursor over ANCHOR_RELEASE. Typing
@@ -514,8 +542,13 @@ export function regionScale(r: { w: number; h: number }): number {
   return clamp(1 / Math.max(r.w, r.h, 1e-6), 1, ZOOM_MAX_SCALE)
 }
 
-/** The level a zoom moves to (a region zoom's follows from its rectangle). */
-export function zoomTargetScale(z: Pick<ZoomSegment, 'scale' | 'focus'>): number {
+/**
+ * The level a zoom moves to (a region zoom's follows from its rectangle). `floor`: the lowest
+ * level, below ZOOM_MIN_SCALE for a followed view (docs/design/vertical-video.md §5.12); absent,
+ * ZOOM_MIN_SCALE as always.
+ */
+export function zoomTargetScale(z: Pick<ZoomSegment, 'scale' | 'focus'>, floor?: number): number {
+  if (floor !== undefined) throw new Error('not implemented')
   if (z.focus.mode === 'region') return regionScale(z.focus)
   return clamp(Number.isFinite(z.scale) ? z.scale : 2, ZOOM_MIN_SCALE, ZOOM_MAX_SCALE)
 }
@@ -615,8 +648,9 @@ export function zoomTimings(zooms: ZoomSegment[], style: ZoomStyle = DEFAULT_ZOO
   return out
 }
 
-/** Keeps a camera from showing outside the recording (zoomed in) or the card off the frame (pulled back). */
-export function clampCamera(c: Camera): Camera {
+/** Keeps a camera from showing outside the recording (zoomed in) or the card off the frame (pulled back); `base`: the followed view's size. */
+export function clampCamera(c: Camera, base?: Pick<ViewBase, 'w' | 'h'>): Camera {
+  if (base !== undefined) throw new Error('not implemented')
   const scale = Math.max(0.05, c.scale)
   const half = 0.5 / scale
   const lo = Math.min(half, 1 - half)
@@ -629,7 +663,8 @@ export function clampCamera(c: Camera): Camera {
  * on the point as far as the recording allows. Pulled back, the card shrinks around the
  * point, which stays where it is on screen (the centre shrinks it evenly).
  */
-export function cameraFor(scale: number, fx: number, fy: number): Camera {
+export function cameraFor(scale: number, fx: number, fy: number, base?: Pick<ViewBase, 'w' | 'h'>): Camera {
+  if (base !== undefined) throw new Error('not implemented')
   if (scale >= 1) return clampCamera({ scale, cx: fx, cy: fy })
   return clampCamera({ scale, cx: fx + (0.5 - fx) / scale, cy: fy + (0.5 - fy) / scale })
 }
@@ -644,7 +679,7 @@ function anchoredAim(seg: ZoomSegment, t: number, p: Point): Point {
 }
 
 /** Where a zoom aims at time t. */
-function focusOf(it: PlanItem, t: number, focusTrack: SmoothedTrack | null): { x: number; y: number } {
+function focusOf(it: PlanItem, t: number, focusTrack: PathLike | null): { x: number; y: number } {
   const f = it.seg.focus
   if (f.mode === 'fixed') return { x: f.x, y: f.y }
   if (f.mode === 'region') return { x: f.x + f.w / 2, y: f.y + f.h / 2 }
@@ -653,7 +688,7 @@ function focusOf(it: PlanItem, t: number, focusTrack: SmoothedTrack | null): { x
   return anchoredAim(it.seg, t, focusTrack.at(t))
 }
 
-const targetOf = (it: PlanItem, t: number, focusTrack: SmoothedTrack | null): Camera => {
+const targetOf = (it: PlanItem, t: number, focusTrack: PathLike | null): Camera => {
   const f = focusOf(it, t, focusTrack)
   return cameraFor(it.scale, f.x, f.y)
 }
@@ -661,9 +696,11 @@ const targetOf = (it: PlanItem, t: number, focusTrack: SmoothedTrack | null): Ca
 /**
  * Camera part way (w) from a to b. Between zoomed-in views the centre moves in a straight
  * line; when a pull-back is involved the card position moves linearly instead, so a card
- * shrinking around a point keeps that point still. w may pass 1 (bouncy easing).
+ * shrinking around a point keeps that point still. w may pass 1 (bouncy easing). `base`: the
+ * followed view's size.
  */
-export function blendCameras(a: Camera, b: Camera, w: number): Camera {
+export function blendCameras(a: Camera, b: Camera, w: number, base?: Pick<ViewBase, 'w' | 'h'>): Camera {
+  if (base !== undefined) throw new Error('not implemented')
   let scale = lerp(a.scale, b.scale, w)
   if (a.scale >= 1 && b.scale >= 1) {
     // An overshoot must never show outside the recording.
@@ -707,9 +744,11 @@ function itemAt(plan: ZoomPlan, t: number): number {
  * outside the recording. Each zoom moves in and out over its transition with its easing
  * (defaults from `style`); zooms close enough to be connected pan from one to the next
  * without returning to the full frame. Region zooms frame their rectangle, levels below 1
- * pull back.
+ * pull back. With `base` (a view that follows the action, docs/design/vertical-video.md §5.12)
+ * the camera rests on that view and zooms relative to it; without it, every line runs as before.
  */
-export function cameraAt(zooms: ZoomSegment[], t: number, focusTrack: SmoothedTrack | null, style: ZoomStyle = DEFAULT_ZOOM_STYLE): Camera {
+export function cameraAt(zooms: ZoomSegment[], t: number, focusTrack: PathLike | null, style: ZoomStyle = DEFAULT_ZOOM_STYLE, base?: ViewBase): Camera {
+  if (base !== undefined) throw new Error('not implemented')
   if (zooms.length === 0) return REST
   const plan = planFor(zooms, style)
   const i = itemAt(plan, t)

@@ -185,7 +185,17 @@ function closeSession(s: Session): void {
   else s.saver.dispose()
 }
 
-export function Editor({ projectId, onClose }: { projectId: string; onClose: () => void }): JSX.Element {
+export function Editor({
+  projectId,
+  onClose
+}: {
+  projectId: string
+  onClose: () => void
+  /** Opens another project in place of this one (a copy just made, or its original), with a notice to show there (docs/design/vertical-video.md §9.3). */
+  onOpenProject?: (id: string, notice?: string) => void
+  /** A notice to show once the project is open (after Make a vertical version or Duplicate). */
+  notice?: string
+}): JSX.Element {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
 
   useEffect(() => {
@@ -1110,7 +1120,15 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       pasteItems: pasteItemsNow,
       duplicateItems: duplicateSelected,
       copyLook: copyItemLook,
-      pasteLook: pasteItemLook
+      pasteLook: pasteItemLook,
+
+      // NW-05 vertical video and X-04 duplicate (docs/design/vertical-video.md §2.11)
+      makeVertical: () => undefined,
+      makeSquare: () => undefined,
+      duplicateVideo: () => undefined,
+      toggleFollow: () => undefined,
+      holdView: () => undefined,
+      toggleSafeZones: () => undefined
     }
   }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection])
   const commandsRef = useRef(commands)

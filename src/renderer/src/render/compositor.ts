@@ -305,8 +305,11 @@ export function cardRect(rect: Rect, cam: Camera): Rect {
 /**
  * The part of the source (normalised) a camera shows and where it lands (output px),
  * clipped to the source itself: pulled back, the viewport is larger than the recording.
+ * `clip`: also clipped to this part of the frame (the slot of a view that follows the action,
+ * docs/design/vertical-video.md §8.2); absent, as always.
  */
-export function viewSource(c: Camera, rect: Rect): { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number } | null {
+export function viewSource(c: Camera, rect: Rect, clip?: Rect): { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number } | null {
+  if (clip !== undefined) throw new Error('not implemented')
   const viewX = c.cx - 0.5 / c.scale
   const viewY = c.cy - 0.5 / c.scale
   const sx = Math.max(0, viewX)

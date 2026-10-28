@@ -25,5 +25,13 @@ export const projectsApi: ProjectsApi = {
   backgroundUrl: (id, path) => ipcRenderer.invoke('projects:backgroundUrl', id, path),
   getStyleDefaults: () => ipcRenderer.invoke('styleDefaults:get'),
   saveStyleDefaults: (look) => ipcRenderer.invoke('styleDefaults:save', look),
-  resetStyleDefaults: () => ipcRenderer.invoke('styleDefaults:reset')
+  resetStyleDefaults: () => ipcRenderer.invoke('styleDefaults:reset'),
+  // X-04 duplicate (docs/design/vertical-video.md §4.7), part P4: projects:duplicate, projects:duplicateCancel, projects:duplicateProgress.
+  duplicateProject: () => Promise.reject(new Error('not implemented')),
+  onDuplicateProgress: () => {
+    throw new Error('not implemented')
+  },
+  cancelDuplicate: () => {
+    throw new Error('not implemented')
+  }
 }

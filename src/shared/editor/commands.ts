@@ -91,6 +91,9 @@ const COMMAND_LIST = [
   { id: 'toggleClickAtPlayhead', title: 'Ignore or use the click at the playhead', category: 'Zoom', keywords: 'click stray skip auto zoom ripple sound mouse' },
   { id: 'findStrayClicks', title: 'Find stray clicks', category: 'Zoom', keywords: 'click ignore skip accidental auto zoom mouse' },
   { id: 'useAllClicks', title: 'Use all ignored clicks again', category: 'Zoom', keywords: 'click restore unignore auto zoom mouse' },
+  // NW-05 vertical video (docs/design/vertical-video.md §2.11): the view that follows the action.
+  { id: 'toggleFollow', title: 'Follow the action', category: 'Zoom', keywords: 'vertical portrait tall square 9:16 1:1 crop pan reframe framing cursor short reels tiktok', toggle: true },
+  { id: 'holdView', title: 'Hold the view here', category: 'Zoom', keywords: 'vertical follow framing pan stop keep still aim point' },
 
   { id: 'toggleCursor', title: 'Smooth cursor', category: 'Effects', keywords: 'show hide pointer mouse toggle', toggle: true },
   { id: 'toggleClickEffects', title: 'Click effects', category: 'Effects', keywords: 'ripple ring pulse toggle', toggle: true },
@@ -127,6 +130,11 @@ const COMMAND_LIST = [
   { id: 'toggleWaveform', title: 'Audio waveform on the timeline', category: 'Timeline', keywords: 'sound wave levels audio pauses silence talk show hide', toggle: true },
   { id: 'toggleSnapping', title: 'Snapping', category: 'Timeline', keywords: 'snap magnet align edges cuts clicks chapters playhead stick toggle', toggle: true },
 
+  // NW-05 vertical video and X-04 duplicate (docs/design/vertical-video.md §2.11): copies, and the safe-zone preview.
+  { id: 'makeVertical', title: 'Make a vertical version', category: 'General', keywords: 'duplicate copy portrait tall 9:16 short shorts reels tiktok follow' },
+  { id: 'makeSquare', title: 'Make a square version', category: 'General', keywords: 'duplicate copy 1:1 post instagram follow' },
+  { id: 'duplicateVideo', title: 'Duplicate this video', category: 'General', keywords: 'copy clone project version' },
+  { id: 'toggleSafeZones', title: 'Show safe zones', category: 'General', keywords: 'vertical tiktok reels shorts buttons captions phone app overlay', toggle: true },
   { id: 'export', title: 'Export…', category: 'General', keywords: 'render save mp4 gif video share' },
   { id: 'shortcuts', title: 'Keyboard shortcuts…', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },
   { id: 'about', title: 'About Flown', category: 'General', keywords: 'version qbexel website credits info' },

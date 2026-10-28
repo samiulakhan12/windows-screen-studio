@@ -641,6 +641,44 @@ export interface InputEdits {
   paths?: PathRange[]
 }
 
+/** What a frame narrower than the recording shows (NW-05). */
+export type ReframeMode = 'fit' | 'follow'
+/** Where the camera goes while the view follows the action in a tall frame. */
+export type ReframeCamera = 'top' | 'bottom' | 'bubble'
+/** How readily the view moves (shared/engine/reframe.ts PACE). */
+export type ReframePace = 'calm' | 'balanced' | 'lively'
+
+/**
+ * Following the action in frames narrower than the recording (docs/design/vertical-video.md).
+ * Only takes effect in a frame at least 10% narrower than the drawn recording (reframeData.ts
+ * followApplies); `appSafe` takes effect in any tall frame.
+ */
+export interface ReframeSettings {
+  /** 'fit': the whole recording fitted with background around it, as before; 'follow': crop in and follow. */
+  mode: ReframeMode
+  /** How close the view is: 1 shows the recording's full height (or width), up to 2. */
+  level: number
+  /** Tall frames with a shown camera: a band across the top or bottom, or the bubble. Square frames always use the bubble. */
+  camera: ReframeCamera
+  /** Height of the camera band as a share of the frame inside the padding, 0.2..0.5. */
+  band: number
+  pace: ReframePace
+  /** Tall frames: captions, key presses, the logo and lower-third titles stay clear of the apps' buttons. */
+  appSafe: boolean
+  /**
+   * Where the view rests when there is nothing to follow (no cursor data, or before the first
+   * action), normalised to the WHOLE recorded frame like every stored position (crop.ts maps it
+   * into view space). Absent: the centre of what is shown.
+   */
+  rest?: { x: number; y: number }
+}
+
+/** The project a copy was made from (informational: "Open original"). */
+export interface ProjectCopyOf {
+  id: string
+  name: string
+}
+
 export interface Project {
   version: 2
   id: string
@@ -663,6 +701,10 @@ export interface Project {
    * through shared/engine/crop.ts cropView().
    */
   crop?: NormRect
+  /** Following the action in tall and square frames. Absent: the whole recording is fitted, as before. */
+  reframe?: ReframeSettings
+  /** Set on a copy made by Duplicate, Make a vertical version or Make a square version. */
+  copyOf?: ProjectCopyOf
   /** Kept ranges of the recording (trim + cuts + speed). Never empty. */
   clips: Clip[]
   zooms: ZoomSegment[]

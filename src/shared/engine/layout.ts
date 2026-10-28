@@ -118,15 +118,31 @@ export interface CameraBox {
   opacity: number
 }
 
+/** Size of the followed view at zoom 1, as shares of the recording (view space). */
+export interface ViewSize {
+  w: number
+  h: number
+}
+
+/** While following: the part of the frame the screen fills, the view's size there, and the camera band (if any). */
+export interface FollowGeometry {
+  slot: Rect
+  base: ViewSize
+  band: Rect | null
+}
+
 /** The screen and the camera at one moment. `moving`: the screen's rectangle is animating between layouts. */
 export interface SceneLayout {
+  /** Where the recording is drawn at camera scale 1. While following: the virtual rectangle (larger than the frame). */
   screen: Rect
   camera: CameraBox | null
   moving: boolean
+  /** Set only while following (docs/design/vertical-video.md §5.2). */
+  follow?: FollowGeometry
 }
 
-/** What the layout of a frame depends on (clips and duration only decide where changes animate). */
-export type SceneProject = Pick<Project, 'style' | 'layouts' | 'webcam' | 'hasWebcam'> & Partial<Pick<Project, 'clips' | 'duration'>>
+/** What the layout of a frame depends on (clips and duration only decide where changes animate; reframe whether the view follows the action). */
+export type SceneProject = Pick<Project, 'style' | 'layouts' | 'webcam' | 'hasWebcam'> & Partial<Pick<Project, 'clips' | 'duration' | 'reframe'>>
 
 /** Corner radius of a camera of `shape` drawn in `r`. */
 export function cameraRadius(shape: WebcamSettings['shape'], r: Rect): number {
@@ -426,4 +442,52 @@ export function cameraSourceRect(camW: number, camH: number, boxW: number, boxH:
   const cx = clamp(Number.isFinite(crop.cropX) ? crop.cropX! : 0.5, 0, 1) * camW
   const cy = clamp(Number.isFinite(crop.cropY) ? crop.cropY! : 0.5, 0, 1) * camH
   return { x: clamp(cx - w / 2, 0, camW - w), y: clamp(cy - h / 2, 0, camH - h), w, h }
+}
+
+/* ---------- following the action (docs/design/vertical-video.md §5.2, §5.3) ---------- */
+
+/**
+ * The share of a vw x vh recording a `slot` shows at zoom 1: cover-fitted, divided by the
+ * effective level (base.w = min(1, a_s / a_v) / level, base.h = min(1, a_v / a_s) / level).
+ */
+export function baseView(slot: Rect, vw: number, vh: number, level: number): ViewSize {
+  return notImplemented(slot, vw, vh, level)
+}
+
+/** The slot enlarged about its centre by 1 / base: where the recording is drawn so the camera's view lands on the slot. */
+export function virtualRect(slot: Rect, base: ViewSize): Rect {
+  return notImplemented(slot, base)
+}
+
+/** The overlap of two rectangles (empty, w = h = 0, when they do not meet). */
+export function intersectRect(a: Rect, b: Rect): Rect {
+  return notImplemented(a, b)
+}
+
+/**
+ * Where the screen's slot and the camera are in `layout` while following, standing still: a band
+ * across the top or bottom of a tall frame, or the bubble (§5.3). `band`: the band's rectangle,
+ * null with the bubble or no camera.
+ */
+export function followGeometry(
+  layout: CameraLayout,
+  project: SceneProject,
+  outW: number,
+  outH: number,
+  vw: number,
+  vh: number,
+  corner?: Corner
+): { slot: Rect; camera: CameraBox; band: Rect | null } {
+  return notImplemented(layout, project, outW, outH, vw, vh, corner)
+}
+
+/** The side of the camera band in a followed outW x outH frame, or null (no band: not following, not tall, no camera shown, or the bubble). */
+export function bandSide(project: SceneProject, outW: number, outH: number, vw: number, vh: number): 'top' | 'bottom' | null {
+  return notImplemented(project, outW, outH, vw, vh)
+}
+
+/** Placeholder of the contract; the implementation replaces every call. */
+function notImplemented(...args: unknown[]): never {
+  void args
+  throw new Error('not implemented')
 }

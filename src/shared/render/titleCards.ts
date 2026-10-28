@@ -4,6 +4,7 @@
  * Every size is a fraction of the frame, and widths are measured at one reference size and
  * scaled, so the preview and the export wrap the same words onto the same lines.
  */
+import type { Rect } from '../engine/layout'
 import { clamp, easeOutCubic } from '../engine/math'
 import { keptBounds, outputToSource } from '../engine/timeline'
 import type { Clip, TitleCard, TitleCardStyle } from '../types'
@@ -216,7 +217,15 @@ const blockWidth = (b: TextBlock | null): number => (b && b.widths.length ? Math
  * Where the text of `card` goes in a `w` x `h` frame: sizes relative to the frame, wrapped
  * within the title-safe area, and shrunk (title and subtitle together) until it fits.
  */
-export function titleLayout(card: Pick<TitleCard, 'title' | 'subtitle' | 'style'>, w: number, h: number, measure: MeasureText): TitleLayout {
+export function titleLayout(
+  card: Pick<TitleCard, 'title' | 'subtitle' | 'style'>,
+  w: number,
+  h: number,
+  measure: MeasureText,
+  /** The text area (safeZones.ts textArea, output px) a lower third keeps to; absent or null: the whole frame, as always. */
+  area?: Rect | null
+): TitleLayout {
+  if (area) throw new Error('not implemented')
   const m = METRICS[card.style] ?? METRICS.centered
   const u = Math.min(w, h)
   const safe = TITLE_SAFE * u

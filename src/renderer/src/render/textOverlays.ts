@@ -1,3 +1,4 @@
+import type { Rect } from '../../../shared/engine/layout'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { noFadeOutFrom, planOf } from '../../../shared/engine/freeze'
 import { ANNOTATION_FADE, ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
@@ -62,7 +63,17 @@ export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, proje
  * fading out ~1.2 s after the last press. Presses in quick succession stack in one row.
  * A caption at the same edge keeps its place and the keys move inside it, so neither covers the other.
  */
-export function drawKeystrokes(ctx: Ctx, w: number, h: number, t: number, project: Project, cursor: CursorTrack): void {
+export function drawKeystrokes(
+  ctx: Ctx,
+  w: number,
+  h: number,
+  t: number,
+  project: Project,
+  cursor: CursorTrack,
+  /** The text area (shared/render/safeZones.ts textArea) the keys keep to; absent or null: the whole frame, as always. */
+  area?: Rect | null
+): void {
+  if (area) throw new Error('not implemented')
   const settings = project.effects.keystrokes
   if (!settings.show) return
   const view = keystrokesAt(cursor.keys, project.clips, t)

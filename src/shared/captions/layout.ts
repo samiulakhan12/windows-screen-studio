@@ -5,6 +5,7 @@
  * size and scaled (as shared/render/titleCards.ts does), so the preview and the export break
  * the same words onto the same lines.
  */
+import type { Rect } from '../engine/layout'
 import { clamp, easeOutCubic } from '../engine/math'
 import { viewingTime } from '../render/overlays'
 import type { CaptionSegment, CaptionSettings, Clip } from '../types'
@@ -287,7 +288,14 @@ function balance(pieces: Piece[], from: number, to: number, maxWidth: number, sp
 }
 
 /** Size of the caption text for `settings` in a `w` x `h` frame, and the widest a line may be. */
-export function captionMetrics(settings: Pick<CaptionSettings, 'size' | 'preset' | 'background'>, w: number, h: number): { px: number; lineHeight: number; maxWidth: number; padX: number; padY: number; safe: number } {
+export function captionMetrics(
+  settings: Pick<CaptionSettings, 'size' | 'preset' | 'background'>,
+  w: number,
+  h: number,
+  /** The text area (safeZones.ts textArea, output px); absent or null: the whole frame, as always. */
+  area?: Rect | null
+): { px: number; lineHeight: number; maxWidth: number; padX: number; padY: number; safe: number } {
+  if (area) throw new Error('not implemented')
   const look = captionLook(settings.preset)
   const u = Math.min(w, h)
   const px = settings.size * look.scale * u
@@ -303,7 +311,16 @@ export function captionMetrics(settings: Pick<CaptionSettings, 'size' | 'preset'
  * the safe width, grouped `maxLines` at a time into chunks shown one after the other (timed by
  * the words they start with), two-line chunks evened out.
  */
-export function captionLayout(seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words'>, settings: Pick<CaptionSettings, 'size' | 'preset' | 'background' | 'maxLines'>, w: number, h: number, measure: MeasureText): CaptionLayout {
+export function captionLayout(
+  seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words'>,
+  settings: Pick<CaptionSettings, 'size' | 'preset' | 'background' | 'maxLines'>,
+  w: number,
+  h: number,
+  measure: MeasureText,
+  /** The text area (safeZones.ts textArea, output px); absent or null: the whole frame, as always. */
+  area?: Rect | null
+): CaptionLayout {
+  if (area) throw new Error('not implemented')
   const look = captionLook(settings.preset)
   const m = captionMetrics(settings, w, h)
   const base = captionTokens(seg)
@@ -404,7 +421,16 @@ export interface PlacedLine {
  * Where the lines of `chunk` go in a `w` x `h` frame: centred, at the bottom, middle or top
  * inside the safe margins (the bottom a little higher, clear of video players' controls).
  */
-export function placeChunk(layout: CaptionLayout, chunk: CaptionChunk, position: CaptionSettings['position'], w: number, h: number): { lines: PlacedLine[]; top: number; height: number } {
+export function placeChunk(
+  layout: CaptionLayout,
+  chunk: CaptionChunk,
+  position: CaptionSettings['position'],
+  w: number,
+  h: number,
+  /** The text area (safeZones.ts textArea, output px); absent or null: the whole frame, as always. */
+  area?: Rect | null
+): { lines: PlacedLine[]; top: number; height: number } {
+  if (area) throw new Error('not implemented')
   const u = Math.min(w, h)
   const rowH = layout.lineHeight + layout.padY * 2
   const height = chunk.lines.length * rowH

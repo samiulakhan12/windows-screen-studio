@@ -157,8 +157,11 @@ export interface RectLike {
 /**
  * Largest on-screen movement (output pixels) of the content between two cameras,
  * measured at the corners of the content rectangle, where zooming moves pixels most.
+ * `clip`: measure at the corners of this part of the frame instead (the slot of a view that
+ * follows the action, docs/design/vertical-video.md §8.2); absent, the content's corners.
  */
-export function cameraDisplacement(a: Camera, b: Camera, rect: RectLike): number {
+export function cameraDisplacement(a: Camera, b: Camera, rect: RectLike, clip?: RectLike): number {
+  if (clip !== undefined) throw new Error('not implemented')
   let max = 0
   for (const fx of [0, 1]) {
     for (const fy of [0, 1]) {

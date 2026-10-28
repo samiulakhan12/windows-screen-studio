@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { displayTime } from '../../../shared/editor/clips'
-import { layoutsApply, sceneContentRect, type Rect } from '../../../shared/engine/layout'
+import { layoutsApply, sceneContentRect, type Rect, type SceneLayout } from '../../../shared/engine/layout'
 import type { Project } from '../../../shared/types'
 import { useEditor } from './context'
 
@@ -29,4 +29,21 @@ export function useSceneRect(project: Project, w: number, h: number, vw: number,
   }, [follows, player, project, w, h, vw, vh])
 
   return still ?? moving ?? sceneContentRect(project, w, h, vw, vh, displayTime(project.clips, player.time))
+}
+
+/**
+ * The whole layout of the preview's frame at the playhead (docs/design/vertical-video.md §8.2):
+ * the screen (the virtual rectangle while following), the camera and the follow geometry, as
+ * drawFrame computes them. Re-renders only while a layout change moves the slot, as
+ * useSceneRect does; useSceneRect then reads its screen.
+ *
+ * CONTRACT (part P3): the signature is frozen; the body is to be written.
+ */
+export function useSceneView(project: Project, w: number, h: number, vw: number, vh: number): SceneLayout {
+  void project
+  void w
+  void h
+  void vw
+  void vh
+  throw new Error('not implemented')
 }
