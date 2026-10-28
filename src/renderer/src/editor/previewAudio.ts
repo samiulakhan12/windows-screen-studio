@@ -113,7 +113,8 @@ export class PreviewAudio {
   private readonly stems = new Map<StemKind | 'voice', Source>()
   /** What the 'voice' element plays: its file and the recorded sound it stands in for. */
   private voice: { file: string; target: VoiceSource } | null = null
-  private readonly offVoice: () => void
+  /** Unsubscribes from the stems store; set once the project first uses Clean voice. */
+  private offVoice: (() => void) | null = null
   private music: Music | null = null
   private analysis: AudioAnalysis = {}
   private analysisVersion = 0
@@ -154,8 +155,6 @@ export class PreviewAudio {
     this.plan = planOf(project)
     this.length = videoDuration(project.clips, this.plan)
     this.clipsKey = clipsKeyOf(project)
-    // Clean voice: a stem made or a choice changed (the A/B) applies at once.
-    this.offVoice = voiceStems().subscribe(() => this.apply())
     this.apply()
   }
 
@@ -251,6 +250,8 @@ export class PreviewAudio {
     const target = voiceTarget(p)
     if (!target) return null
     const store = voiceStems()
+    // From now on a stem made or a choice changed (the A/B) applies at once.
+    this.offVoice ??= store.subscribe(() => this.apply())
     const { strength } = voiceLook(p.audio)
     store.want(p.id, target, strength)
     if (store.isOriginal(p.id)) return null
@@ -675,8 +676,10 @@ export class PreviewAudio {
     if (this.disposed) return
     this.disposed = true
     this.playing = false
-    this.offVoice()
-    voiceStems().closeProject(this.project.id)
+    if (this.offVoice) {
+      this.offVoice()
+      voiceStems().closeProject(this.project.id)
+    }
     this.voice = null
     for (const stem of this.stems.values()) {
       stem.el.pause()
