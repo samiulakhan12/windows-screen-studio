@@ -206,4 +206,53 @@ describe('OverlayEditor: the rotate handle stays where it can be grabbed', () =>
     project = { overlays: [overlay({ x: 0.5, rotation: 90, w: 0.1, h: 0.1 })] } as unknown as Project
     expect(place()).toBe('above')
   })
+
+  /** The handle's centre in the preview, from where it is drawn on the (unturned) box. */
+  const spot = (): { x: number; y: number } => {
+    const o = current()
+    const el = render().find(rotateHandle)!
+    const along = (el.props.style as { top: number }).top + 7 - (o.h * 500) / 2
+    const a = (o.rotation * Math.PI) / 180
+    return { x: o.x * 1000 - Math.sin(a) * along, y: o.y * 500 + Math.cos(a) * along }
+  }
+
+  it('stays where it was pressed while the image turns, and is placed again once it is let go', () => {
+    // A logo at the top centre: the handle is below it, at (500, 121).
+    project = { overlays: [overlay({ y: 0.15, w: 0.1, h: 0.1 })] } as unknown as Project
+    expect(place()).toBe('below')
+    expect(press(rotateHandle, 500, 121)).toBe(true)
+    // Turned 60°: the spot above it is now clear of the hint, but the handle stays under the pointer.
+    const a = (60 * Math.PI) / 180
+    const at = { x: 500 - Math.sin(a) * 46, y: 75 + Math.cos(a) * 46 }
+    pointer('pointermove', at.x, at.y)
+    expect(current().rotation).toBe(60)
+    expect(place()).toBe('below')
+    expect(spot().x).toBeCloseTo(at.x, 6)
+    expect(spot().y).toBeCloseTo(at.y, 6)
+    pointer('pointerup', at.x, at.y)
+    expect(place()).toBe('above')
+  })
+
+  it('never sits close to the centre: a small logo turned on its side in a top corner keeps it outside the box', () => {
+    // 50 px, centre (100, 40), its top facing right: both outside spots are in the hint's band.
+    project = { overlays: [overlay({ x: 0.1, y: 0.08, w: 0.1, h: 0.1, rotation: 90 })] } as unknown as Project
+    expect(place()).toBe('above')
+    expect(spot().x).toBeCloseTo(146, 6)
+    expect(spot().y).toBeCloseTo(40, 6)
+    // At the left edge, the spot that is on the preview.
+    project = { overlays: [overlay({ x: 0.03, y: 0.08, w: 0.1, h: 0.1, rotation: -90 })] } as unknown as Project
+    expect(place()).toBe('below')
+    expect(spot().x).toBeCloseTo(76, 6)
+  })
+
+  it('on an image taller than the frame, sits inside it where the preview shows it', () => {
+    // 1000 px tall around y = 250: both its edges are off the preview.
+    project = { overlays: [overlay({ w: 0.5, h: 2 })] } as unknown as Project
+    expect(place()).toBe('inside')
+    expect(spot().x).toBeCloseTo(500, 6)
+    expect(spot().y).toBeCloseTo(493, 6)
+    // The frame-tall image keeps its spot just inside its bottom edge.
+    project = { overlays: [overlay({ w: 0.5, h: 1 })] } as unknown as Project
+    expect(spot().y).toBeCloseTo(479, 6)
+  })
 })
