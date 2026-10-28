@@ -253,3 +253,14 @@ describe('reading stored overlays, fonts and the brand', () => {
     expect('font' in bad.captions!).toBe(false)
   })
 })
+
+describe('GIF header', () => {
+  it('reads the declared screen size before decoding, so a huge canvas is refused first', async () => {
+    const { gifScreenSize } = await import('../src/shared/render/imageOverlays')
+    const head = Uint8Array.from([...'GIF89a'].map((c) => c.charCodeAt(0)).concat([0x40, 0x9c, 0x40, 0x9c]))
+    expect(gifScreenSize(head)).toEqual({ width: 40000, height: 40000 })
+    expect(imageSizeProblem(40000, 40000)).toMatch(/too large/)
+    expect(gifScreenSize(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0]))).toBeNull()
+    expect(gifScreenSize(Uint8Array.from([0x47, 0x49]))).toBeNull()
+  })
+})

@@ -111,6 +111,18 @@ export function gifScale(width: number, height: number, frames: number): number 
   return bytes > GIF_MAX_BYTES ? side * Math.sqrt(GIF_MAX_BYTES / bytes) : side
 }
 
+/**
+ * The logical screen size a GIF's header declares (bytes 6..9, little-endian), or null when the
+ * bytes are not a GIF. Read before decoding, so a GIF declaring a huge canvas is refused before
+ * any frame of that size is allocated.
+ */
+export function gifScreenSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 10) return null
+  const sig = String.fromCharCode(...bytes.subarray(0, 6))
+  if (sig !== 'GIF87a' && sig !== 'GIF89a') return null
+  return { width: bytes[6] | (bytes[7] << 8), height: bytes[8] | (bytes[9] << 8) }
+}
+
 /** Why an image of this many pixels is refused, or null when it may be used. */
 export function imageSizeProblem(width: number, height: number): string | null {
   if (!(width > 0 && height > 0)) return 'This image could not be read.'

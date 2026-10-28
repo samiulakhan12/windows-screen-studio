@@ -116,7 +116,7 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
       )}
       <Slider label="Position X" value={o.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `overlay-geom:${o.id}`)} />
       <Slider label="Position Y" value={o.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `overlay-geom:${o.id}`)} />
-      <Slider label="Size" value={side} min={L.side.min} max={1} step={0.005} format={pctFmt} onChange={setSize} />
+      <Slider label="Size" value={side} min={L.side.min} max={L.side.max} step={0.005} format={pctFmt} onChange={setSize} />
       <Slider
         label="Rotation"
         value={o.rotation}

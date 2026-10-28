@@ -2,6 +2,15 @@
 
 ## Next release
 
+- **Image overlays and stickers** (NW-12): put a logo, a screenshot, an animated GIF or one of 12
+  built-in stickers on the video from the new Images tab, by dropping a file on the editor or by
+  pasting it. Move, resize, rotate, fade and trim it; GIFs play frame-exact in the export.
+- **Brand fonts** (NW-12): text, title cards and captions can use your own TTF, OTF or WOFF2 font,
+  copied into the project so it looks the same on another PC. A missing font is drawn with Segoe UI
+  and the editor says so.
+- **Brand kit** (E-03): save your logo, colours, fonts, intro and outro title cards and a style
+  preset once in Settings › Brand kit, apply them to a video in one click (one undo step), or let
+  every new recording start with them. Projects and settings from earlier versions open unchanged.
 - **Bangla captions on this PC**: a Bangla-only speech model (Bengali.AI's Whisper medium, 539 MB,
   free, works offline once downloaded). Choose *Bengali* as the spoken language and the Captions
   tab recommends it: *Download Bangla model (539 MB) and make captions*. It gets about 4 in 5

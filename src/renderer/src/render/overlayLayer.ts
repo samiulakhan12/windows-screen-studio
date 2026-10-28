@@ -8,6 +8,7 @@ import { mediaUrl } from '../../../shared/mediaUrl'
 import {
   gifFrameAt,
   gifScale,
+  gifScreenSize,
   gifTiming,
   GIF_MAX_FRAMES,
   imageSizeProblem,
@@ -108,7 +109,12 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
   if (typeof ImageDecoder === 'undefined') throw new Error('This GIF could not be read.')
   const res = await fetch(url)
   if (!res.ok) throw new Error('This image could not be read.')
-  const decoder = new ImageDecoder({ data: await res.arrayBuffer(), type: 'image/gif' })
+  const data = await res.arrayBuffer()
+  const screen = gifScreenSize(new Uint8Array(data, 0, Math.min(16, data.byteLength)))
+  if (!screen) throw new Error('This GIF could not be read.')
+  const tooLarge = imageSizeProblem(screen.width, screen.height)
+  if (tooLarge) throw new Error(tooLarge)
+  const decoder = new ImageDecoder({ data, type: 'image/gif' })
   const frames: ImageBitmap[] = []
   try {
     await decoder.tracks.ready
@@ -223,6 +229,11 @@ export function overlayStatus(
   if (e.image) return { state: 'ready', aspect: e.image.width / e.image.height, frames: e.image.kind === 'gif' ? e.image.frames.length : 1 }
   if (e.error) return { state: 'failed', error: e.error }
   return { state: 'loading' }
+}
+
+/** Overlays whose picture cannot be shown (a missing or unreadable file): left out of the video. */
+export function missingOverlays(project: Pick<Project, 'id' | 'overlays'>): ImageOverlay[] {
+  return (project.overlays ?? []).filter((o) => !!entryOf(project.id, o)?.error)
 }
 
 /** Waits for the pictures of every overlay (export: before the first frame). Never rejects. */

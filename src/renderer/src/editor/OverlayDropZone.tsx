@@ -8,6 +8,9 @@ import './overlays.css'
 const typingTarget = (el: Element | null): boolean =>
   !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement).isContentEditable || !!el.closest('[contenteditable="true"]'))
 
+/** A modal dialog is open. */
+const modalOpen = (): boolean => !!document.querySelector('[role="dialog"][aria-modal="true"], .modal')
+
 /** A file being dragged in (not text or a link). */
 const draggingFiles = (e: DragEvent): boolean => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')
 
@@ -52,11 +55,13 @@ export function OverlayDropZone({ onSelect, onNotice }: { onSelect: (sel: Select
       setOver(false)
       if (!draggingFiles(e)) return
       e.preventDefault()
+      // Not behind a dialog (export, palette, settings): the drop was not meant for the video.
+      if (modalOpen()) return
       const file = e.dataTransfer?.files[0]
       if (file) add(file)
     }
     const onPaste = (e: ClipboardEvent): void => {
-      if (typingTarget(document.activeElement) || document.querySelector('[role="dialog"][aria-modal="true"]')) return
+      if (typingTarget(document.activeElement) || modalOpen()) return
       const file = Array.from(e.clipboardData?.files ?? []).find((f) => f.type.startsWith('image/'))
       if (!file) return
       e.preventDefault()

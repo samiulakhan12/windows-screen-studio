@@ -5,18 +5,12 @@ import { shortcutLabel } from '../../../../shared/editor/shortcuts'
 import type { Project } from '../../../../shared/types'
 import { preloadProjectFont } from '../../render/fontLoader'
 import { preloadWatermarkImage } from '../../render/watermarkLayer'
-import { OPEN_SETTINGS_EVENT } from '../../settings/SettingsButton'
+import { BRAND_KIT_CHANGED_EVENT, openBrandKitSettings } from '../../settings/brandKitEvents'
 import { useEditor } from '../context'
 import { Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { useKeymap } from '../keymapContext'
 import { ipcMessage } from '../overlayItems'
-
-/** Dispatched on window when Settings saved the brand kit: the editor reads it again. */
-export const BRAND_KIT_CHANGED_EVENT = 'ssw:brand-kit-changed'
-
-/** Opens Settings at the Brand kit section. */
-export const openBrandKitSettings = (): void => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'brand' } }))
 
 /**
  * "Apply brand kit" at the top of the Style tab (docs/design/brand-kit.md §4.5): copies the kit's

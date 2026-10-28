@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { EditorIcon } from '../editor/EditorIcon'
+import { OPEN_SETTINGS_EVENT } from './brandKitEvents'
 import { SettingsDialog, type SettingsSection } from './SettingsDialog'
 
 /** Opens Settings at a section from anywhere: dispatch `new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'ai' } })`. */
-export const OPEN_SETTINGS_EVENT = 'ssw:open-settings'
+export { OPEN_SETTINGS_EVENT }
 
 /** Dispatched on window after AI providers were added, edited or removed (and when Settings closes): lists of providers re-read then. */
 export const AI_PROVIDERS_CHANGED_EVENT = 'ssw:ai-providers-changed'

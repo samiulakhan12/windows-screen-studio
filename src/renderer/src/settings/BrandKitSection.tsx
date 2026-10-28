@@ -5,7 +5,7 @@ import { TITLE_BACKGROUNDS, TITLE_STYLES } from '../../../shared/editor/titles'
 import { WATERMARK_LIMITS } from '../../../shared/engine/watermark'
 import { cleanFontName, fontFamily } from '../../../shared/render/fonts'
 import type { ProjectFont } from '../../../shared/types'
-import { BRAND_KIT_CHANGED_EVENT } from '../editor/panels/BrandKitBar'
+import { BRAND_KIT_CHANGED_EVENT } from './brandKitEvents'
 import './brandKit.css'
 
 const POSITIONS: { value: BrandLogo['position']; label: string }[] = [

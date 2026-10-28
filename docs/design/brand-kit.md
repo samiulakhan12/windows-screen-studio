@@ -70,7 +70,7 @@ Two other branches are being built at the same time:
 |---|---|---|---|
 | 1 | Where overlays live | `Project.overlays?: ImageOverlay[]`, timed in **source** seconds like annotations; geometry in the **output frame** (centre normalised to the frame, size as a fraction of its shorter side). | Same model as text annotations and the watermark: a sticker stays where it is put when the camera zooms, and a change of aspect ratio never stretches it (both sides scale with the shorter side). |
 | 2 | Draw order | Webcam → **image overlays** → keystrokes → text → captions → title cards → watermark. | Text and captions stay readable over a sticker; a full-frame title card covers it; the logo is on top, as today. |
-| 3 | GIF timing | A GIF plays on **edit (output) time** from the overlay's start: frame = the one whose span contains `viewingTime(t) − viewingTime(start)` modulo the GIF's length. Always loops. Delays under 20 ms count as 100 ms (what browsers do). | Edit time is continuous across cuts and does not jump; it is the clock fades already use. A freeze frame holds the GIF with the picture (edit time stops). |
+| 3 | GIF timing | A GIF plays on **edit (output) time** from the overlay's start: frame = the one whose span contains `viewingTime(t) − viewingTime(start)` modulo the GIF's length. Always loops. Delays of 10 ms or less (and missing ones) count as 100 ms (what Chromium does). | Edit time is continuous across cuts and does not jump; it is the clock fades already use. A freeze frame holds the GIF with the picture (edit time stops). |
 | 4 | GIF decoding | `ImageDecoder` (WebCodecs) decodes every frame once, composited, into bitmaps scaled to at most 720 px on the long side, and smaller when the frames would pass **200 MB** (RGBA). At most **1,500 frames**. | The export draws exactly the decoded frame for its time; nothing depends on an `<img>` element's own clock, which would not be frame-exact. The cap keeps a long GIF from exhausting memory. |
 | 5 | Static images | Decoded once per file, kept at most **2,048 px** on the long side; SVG rasterised once at 2,048 px on the long side (1,024 × 1,024 when it has no size). | One raster for preview and export (same cache in the same window): parity by construction, and drawing a rotated SVG every frame would be slow. |
 | 6 | Image validation | Main: extension in the allowed list, content sniffed (PNG, JPEG, WebP, GIF, SVG) and must match the extension, ≤ **25 MB** (SVG ≤ **2 MB**). Renderer, before the project points at it: it must decode, and at most **8,192 px** a side and **40 megapixels**. | The same checks as other assets (`ASSET_SPECS`), plus a decode check so a decompression bomb or a broken file never becomes part of the project. |
@@ -186,7 +186,7 @@ written atomically (`writeFileAtomicSync`).
 
 ### 4.2 GIF frames (`gifFrameAt`)
 
-Given frame delays `d[i]` (ms, `< 20` → 100), total `T = Σd`, local time `u = (e − e0) mod T`
+Given frame delays `d[i]` (ms, `≤ 10` → 100), total `T = Σd`, local time `u = (e − e0) mod T`
 (ms), the frame is the last `i` with `Σ_{j<i} d[j] ≤ u`. Pure and unit-tested; preview and export
 call it with the same `t`.
 
