@@ -210,11 +210,9 @@ const clampFraction = (v: unknown): number | null => (typeof v === 'number' && N
 function applyUpdate(job: Job, u: Partial<JobUpdate>): void {
   if ('fraction' in u) job.fraction = clampFraction(u.fraction)
   if (typeof u.pausable === 'boolean') job.pausable = u.pausable
-  if (typeof u.paused === 'boolean') {
-    job.paused = u.paused
-    // The page resumed it itself (the dialog's Resume): it is not waiting for the PC any more.
-    if (!u.paused) job.sleepPaused = false
-  }
+  // While paused for sleep the registry owns the state: a progress message sent before the page
+  // got the pause must not mark it running (it would then never be resumed on waking).
+  if (typeof u.paused === 'boolean' && !job.sleepPaused) job.paused = u.paused
 }
 
 async function endJob(job: Job, outcome: JobOutcome): Promise<void> {
