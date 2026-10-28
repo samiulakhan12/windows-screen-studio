@@ -198,6 +198,23 @@ async function removeImportDir(dir: string): Promise<void> {
   await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
 }
 
+/**
+ * Renames the finished copy, retrying a few times like an export (exportJob's moveIntoPlace): on
+ * Windows an antivirus scan, the indexer or OneDrive can hold a file ffmpeg just closed.
+ */
+async function renameCopy(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await fs.rename(from, to)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (attempt >= 5 || (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES')) throw err
+      await new Promise((r) => setTimeout(r, 150 * attempt))
+    }
+  }
+}
+
 /** Removes folders of imports that never finished: import.json and no project.json (§4.6). */
 export async function sweepAbandonedImports(skip?: string): Promise<string[]> {
   const root = projects.projectsRoot()
@@ -348,7 +365,7 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     if (duration < IMPORT_LIMITS.minSeconds) throw new ImportRefused(IMPORT_COPY.tooShort)
     const notes = [...plan.notes]
     if (hitTimeCap(plan.duration, duration)) notes.push(IMPORT_COPY.noteCapped)
-    await fs.rename(part, path.join(dir, 'screen.mp4'))
+    await renameCopy(part, path.join(dir, 'screen.mp4'))
 
     let defaults: Awaited<ReturnType<typeof loadStyleDefaults>> = null
     try {

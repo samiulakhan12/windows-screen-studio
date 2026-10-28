@@ -202,7 +202,7 @@ project has no `source` key). Readers never trust the stored value: `importedSou
 | File | When |
 |---|---|
 | `import.json` | Written first; `{ version: 1, startedAt, fileName }`. Removed when the project is written. A folder holding it and no `project.json` is a cancelled or crashed import (§4.6). |
-| `screen.mp4` | The proxy (§2.1). Written as `screen.part.mp4` (ffmpeg picks the format by extension) and renamed when ffmpeg succeeded. |
+| `screen.mp4` | The proxy (§2.1). Written as `screen.part.mp4` (ffmpeg picks the format by extension) and renamed when ffmpeg succeeded, retried for about 1.5 s while another app (an antivirus scan, OneDrive) holds the new file. |
 | `cursor.json` | The empty track `{ samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }`. |
 | `project.json` | Written last. |
 | brand kit files | When the brand kit applies to new projects (`applyStyleDefaults`). |

@@ -340,6 +340,24 @@ describe('importVideo', () => {
     expect(folders()).toEqual([])
   }, 60_000)
 
+  it('waits for a finished copy that another app holds for a moment', async () => {
+    const rename = fsSync.promises.rename
+    let held = 2
+    // An antivirus scan holds the copy ffmpeg just closed for the first two tries.
+    const spy = vi.spyOn(fsSync.promises, 'rename').mockImplementation(async (from, to) => {
+      if (String(from).endsWith('screen.part.mp4') && held-- > 0) throw Object.assign(new Error('EBUSY: resource busy or locked, rename'), { code: 'EBUSY' })
+      return rename(from, to)
+    })
+    let r
+    try {
+      r = await importVideo(at('odd.mov'), { deps })
+    } finally {
+      spy.mockRestore()
+    }
+    expect(r).toMatchObject({ ok: true })
+    if (r.ok) expect(readdirSync(path.join(library, r.projectId)).sort()).toEqual(['cursor.json', 'project.json', 'screen.mp4'])
+  }, 60_000)
+
   it('removes the folder when the encode fails', async () => {
     const r = await importVideo(at('odd.mov'), { deps: { ...deps, encoders: async () => ['h264_nvenc' as const] } })
     expect(r.ok).toBe(false)
