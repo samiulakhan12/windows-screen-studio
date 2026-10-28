@@ -2,6 +2,8 @@ import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
 import { luminance } from '../../../shared/editor/titles'
 import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
+import { fontStack } from '../../../shared/render/fonts'
+import { fontGeneration } from './fontLoader'
 import type { FrameContext } from './frameContext'
 
 type Ctx = CanvasRenderingContext2D
@@ -12,12 +14,18 @@ type Ctx = CanvasRenderingContext2D
 const MEASURE_PX = 100
 const widths = new Map<string, number>()
 
-function measureOn(ctx: Ctx): MeasureText {
+/** The captions' font stack: their brand font, else the caption font. */
+const captionFont = (project: Pick<Project, 'fonts'>, settings: CaptionSettings): string => fontStack(project.fonts, settings.font, CAPTION_FONT)
+
+/** A cache key part for a font: the stack and the font generation (widths measured while it loaded are dropped). */
+const fontKey = (font: string): string => `${fontGeneration()}|${font}`
+
+function measureOn(ctx: Ctx, font: string): MeasureText {
   return (text, px, weight) => {
-    const key = `${weight}|${text}`
+    const key = `${fontKey(font)}|${weight}|${text}`
     let w = widths.get(key)
     if (w === undefined) {
-      ctx.font = `${weight} ${MEASURE_PX}px ${CAPTION_FONT}`
+      ctx.font = `${weight} ${MEASURE_PX}px ${font}`
       w = ctx.measureText(text).width
       if (widths.size > 5000) widths.clear()
       widths.set(key, w)
@@ -30,6 +38,8 @@ interface CachedLayout {
   w: number
   h: number
   settings: CaptionSettings
+  /** fontKey of the font it was measured with. */
+  font: string
   layout: CaptionLayout
 }
 
@@ -42,13 +52,13 @@ let nextSerial = 1
 const sameLook = (a: CaptionSettings, b: CaptionSettings): boolean =>
   a === b || (a.size === b.size && a.preset === b.preset && a.background === b.background && a.maxLines === b.maxLines)
 
-function layoutOf(ctx: Ctx, seg: CaptionSegment, settings: CaptionSettings, w: number, h: number): CaptionLayout {
+function layoutOf(ctx: Ctx, seg: CaptionSegment, settings: CaptionSettings, w: number, h: number, font: string): CaptionLayout {
   const hit = layouts.get(seg)
-  if (hit && hit.w === w && hit.h === h && sameLook(hit.settings, settings)) return hit.layout
+  if (hit && hit.w === w && hit.h === h && hit.font === fontKey(font) && sameLook(hit.settings, settings)) return hit.layout
   ctx.save()
-  const layout = captionLayout(seg, settings, w, h, measureOn(ctx))
+  const layout = captionLayout(seg, settings, w, h, measureOn(ctx, font))
   ctx.restore()
-  layouts.set(seg, { w, h, settings, layout })
+  layouts.set(seg, { w, h, settings, font: fontKey(font), layout })
   return layout
 }
 
@@ -101,13 +111,13 @@ function spriteOf(key: string, box: { x: number; y: number; w: number; h: number
 /* ---------- drawing ---------- */
 
 /** Draws `chunk` of `layout` at its place, with token `spoken` lit (karaoke), at full opacity. */
-function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings: CaptionSettings, spoken: number, w: number, h: number): void {
+function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings: CaptionSettings, spoken: number, w: number, h: number, fontStackOf: string): void {
   const { look, px, lineHeight, padX, padY, radius } = layout
   const placed = placeChunk(layout, chunk, settings.position, w, h)
   // Dark text gets a light box and outline, so it stays readable too.
   const darkText = luminance(settings.color) < 0.35
   const edge = darkText ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.82)'
-  const font = `${look.weight} ${px}px ${CAPTION_FONT}`
+  const font = `${look.weight} ${px}px ${fontStackOf}`
   c.save()
   c.font = font
   c.textAlign = 'left'
@@ -163,6 +173,8 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
 }
 
 interface Shown {
+  /** The font stack the caption draws with. */
+  font: string
   seg: CaptionSegment
   settings: CaptionSettings
   layout: CaptionLayout
@@ -183,11 +195,12 @@ function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number): S
   const alpha = captionAlpha(segments, i, t, project.clips)
   if (alpha <= 0.002) return null
   const seg = segments[i]
-  const layout = layoutOf(ctx, seg, settings, w, h)
+  const font = captionFont(project, settings)
+  const layout = layoutOf(ctx, seg, settings, w, h, font)
   const ci = chunkIndexAt(layout, t)
   if (ci < 0) return null
   const chunk = layout.chunks[ci]
-  return { seg, settings, layout, ci, chunk, alpha, placed: placeChunk(layout, chunk, settings.position, w, h) }
+  return { font, seg, settings, layout, ci, chunk, alpha, placed: placeChunk(layout, chunk, settings.position, w, h) }
 }
 
 /**
@@ -212,18 +225,18 @@ export function drawCaptionsLayer(fc: FrameContext): void {
   const { ctx, w, h } = fc
   const shown = shownAt(ctx, fc.project, fc.t, w, h)
   if (!shown) return
-  const { seg, settings, layout, ci, chunk, alpha, placed } = shown
+  const { font, seg, settings, layout, ci, chunk, alpha, placed } = shown
   const spoken = layout.look.karaoke ? spokenToken(layout, chunk, fc.t) : -1
   let serial = serials.get(seg)
   if (serial === undefined) serials.set(seg, (serial = nextSerial++))
-  const key = `${serial}|${ci}|${spoken}|${w}x${h}|${settings.preset}|${settings.position}|${settings.size}|${settings.color}|${settings.highlightColor}|${settings.background}|${settings.maxLines}`
+  const key = `${serial}|${ci}|${spoken}|${w}x${h}|${settings.preset}|${settings.position}|${settings.size}|${settings.color}|${settings.highlightColor}|${settings.background}|${settings.maxLines}|${fontKey(font)}`
   // Room for the box padding, the outline, the shadow and glyphs reaching past their line.
   const pad = Math.ceil(layout.px * 0.7 + layout.padX)
   const box = { x: Math.min(...placed.lines.map((l) => l.x)) - pad, y: placed.top - pad, w: chunk.width + pad * 2, h: placed.height + pad * 2 }
   ctx.save()
   ctx.globalAlpha = alpha
-  const sprite = spriteOf(key, box, (c) => paintChunk(c, layout, chunk, settings, spoken, w, h))
+  const sprite = spriteOf(key, box, (c) => paintChunk(c, layout, chunk, settings, spoken, w, h, font))
   if (sprite) ctx.drawImage(sprite.canvas, sprite.x, sprite.y)
-  else paintChunk(ctx, layout, chunk, settings, spoken, w, h)
+  else paintChunk(ctx, layout, chunk, settings, spoken, w, h, font)
   ctx.restore()
 }
