@@ -12,7 +12,7 @@ import { clamp } from '../engine/math'
 import { followLimits, framedZooms } from '../engine/reframe'
 import { canFollow, followApplies, reframeOn, withReframe } from '../engine/reframeData'
 import { DEFAULT_NEW_ZOOM, insertZoom, zoomAt } from '../engine/zoom'
-import type { NormRect, Project, ZoomSegment } from '../types'
+import type { AspectRatio, NormRect, Project, ZoomSegment } from '../types'
 import { dragRegion } from './zoomEdit'
 
 /** A view-space point kept on the recording. */
@@ -136,4 +136,16 @@ export function framedLevel(project: Project, id: string): number | null {
   const limits = followLimits(drawn)
   if (!limits) return null
   return framedZooms(drawn.zooms, limits).find((z) => z.id === id)?.scale ?? null
+}
+
+/**
+ * What the Export dialog suggests (§2.2): 'vertical' when a 9:16 output is chosen (`aspects`: the
+ * preset or aspect of the file, or of any batch item) that could follow a vw × vh recording while
+ * the project does not follow, else 'square' for such a 1:1 output, else null.
+ */
+export function followSuggestion(project: Pick<Project, 'reframe'>, aspects: readonly AspectRatio[], vw: number, vh: number): 'vertical' | 'square' | null {
+  if (project.reframe?.mode === 'follow') return null
+  if (aspects.includes('9:16') && canFollow('9:16', vw, vh)) return 'vertical'
+  if (aspects.includes('1:1') && canFollow('1:1', vw, vh)) return 'square'
+  return null
 }

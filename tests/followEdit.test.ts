@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { dragView, holdViewAt } from '../src/shared/editor/followEdit'
+import { describe, expect, it, vi } from 'vitest'
+import { bandOf, dragView, editorFrame, followsAction, followSuggestion, framedLevel, holdViewAt, withAppSafe, withFollowing } from '../src/shared/editor/followEdit'
 import { fromCrop } from '../src/shared/engine/crop'
 import { createProject } from '../src/shared/engine/project'
 import { DEFAULT_REFRAME } from '../src/shared/engine/reframeData'
@@ -11,6 +11,18 @@ import type { NormRect, Project, ZoomSegment } from '../src/shared/types'
  * dragging the picture moves that point (a region its rectangle), or the rest point without cursor
  * data. Positions are given in view space (after the crop) and stored in the full frame.
  */
+
+// Part P1's band side and view limits, answered here (the panels' helpers only pass them on).
+const engine = vi.hoisted(() => ({ band: vi.fn((): 'top' | 'bottom' | null => 'top'), framed: vi.fn() }))
+vi.mock('../src/shared/engine/layout', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), bandSide: engine.band }))
+vi.mock('../src/shared/engine/reframe', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  followLimits: () => ({ base: { w: 0.3164, h: 1 }, level: 1, mag: 1.78, fit: 0.3164, cap: 1.69 }),
+  framedZooms: (zooms: ZoomSegment[]) => {
+    engine.framed(zooms)
+    return zooms.map((z) => ({ ...z, scale: 1 + (z.scale - 1) / 2 }))
+  }
+}))
 
 const capture = { method: 'native', cursorInVideo: false, region: null, target: 'screen' } as const
 
@@ -161,5 +173,72 @@ describe('dragView (test 55)', () => {
     const f = state.zooms[0].focus
     expect(f.mode === 'fixed' && f.x).toBeCloseTo(0.5, 12)
     expect(history).toHaveLength(2)
+  })
+})
+
+describe('the panels\' helpers', () => {
+  const plain = (aspect: Project['style']['aspectRatio'], reframe?: Partial<NonNullable<Project['reframe']>>): Project => {
+    const p = project()
+    const { reframe: _r, ...rest } = p
+    const out: Project = { ...rest, style: { ...p.style, aspectRatio: aspect } }
+    return reframe ? { ...out, reframe: { ...DEFAULT_REFRAME, ...reframe } } : out
+  }
+
+  it('withFollowing: on writes the settings for the frame, off keeps them with mode fit', () => {
+    const p = frozen(plain('9:16'))
+    const on = withFollowing(p, true, 1920, 1080)
+    expect(on.reframe).toEqual(DEFAULT_REFRAME)
+    expect(withFollowing(on, false, 1920, 1080).reframe).toEqual({ ...DEFAULT_REFRAME, mode: 'fit' })
+    // Not following: off changes nothing.
+    expect(withFollowing(p, false, 1920, 1080)).toBe(p)
+    expect(withFollowing(plain('1:1'), true, 1920, 1080).reframe).toEqual({ ...DEFAULT_REFRAME, camera: 'bubble', appSafe: false })
+    // Turned on again: the settings chosen before.
+    const mine = plain('9:16', { mode: 'fit', pace: 'calm', level: 1.4 })
+    expect(withFollowing(mine, true, 1920, 1080).reframe).toEqual({ ...DEFAULT_REFRAME, pace: 'calm', level: 1.4 })
+  })
+
+  it('withAppSafe never turns following on', () => {
+    expect(withAppSafe(plain('9:16'), true).reframe).toEqual({ ...DEFAULT_REFRAME, mode: 'fit', appSafe: true })
+    expect(withAppSafe(plain('9:16', { mode: 'follow' }), false).reframe).toEqual({ ...DEFAULT_REFRAME, appSafe: false })
+  })
+
+  it('editorFrame and followsAction: the project\'s own frame of the recording as cropped', () => {
+    expect(editorFrame(plain('9:16'))).toEqual({ outW: 1080, outH: 1920, vw: 1920, vh: 1080 })
+    expect(editorFrame({ ...plain('1:1'), crop: { x: 0, y: 0, w: 0.5, h: 1 } })).toEqual({ outW: 1080, outH: 1080, vw: 960, vh: 1080 })
+    expect(followsAction(plain('9:16', { mode: 'follow' }))).toBe(true)
+    expect(followsAction(plain('9:16', { mode: 'fit' }))).toBe(false)
+    expect(followsAction(plain('16:9', { mode: 'follow' }))).toBe(false)
+    // Cropped to a narrow strip, a square frame is no narrower than the recording.
+    expect(followsAction({ ...plain('1:1', { mode: 'follow' }), crop: { x: 0, y: 0, w: 0.5, h: 1 } })).toBe(false)
+  })
+
+  it('bandOf asks for the band only while the frame follows', () => {
+    engine.band.mockClear()
+    expect(bandOf(plain('9:16'))).toBeNull()
+    expect(bandOf(plain('16:9', { mode: 'follow' }))).toBeNull()
+    expect(engine.band).not.toHaveBeenCalled()
+    expect(bandOf(plain('9:16', { mode: 'follow' }))).toBe('top')
+    expect(engine.band).toHaveBeenCalledWith(expect.objectContaining({ reframe: expect.objectContaining({ mode: 'follow' }) }), 1080, 1920, 1920, 1080)
+  })
+
+  it('framedLevel: the level a zoom shows in the followed frame, null when the frame does not follow', () => {
+    const z = zoom('z', 1, 3, { mode: 'cursor' }, { scale: 1.8 })
+    expect(framedLevel({ ...plain('9:16', { mode: 'follow' }), zooms: [z] }, 'z')).toBeCloseTo(1.4, 12)
+    expect(framedLevel({ ...plain('9:16', { mode: 'follow' }), zooms: [z] }, 'other')).toBeNull()
+    engine.framed.mockClear()
+    expect(framedLevel({ ...plain('16:9', { mode: 'follow' }), zooms: [z] }, 'z')).toBeNull()
+    expect(engine.framed).not.toHaveBeenCalled()
+  })
+
+  it('followSuggestion: a vertical version for 9:16, a square one for 1:1, when the project does not follow', () => {
+    expect(followSuggestion({}, ['9:16'], 1920, 1080)).toBe('vertical')
+    expect(followSuggestion({}, ['1:1'], 1920, 1080)).toBe('square')
+    expect(followSuggestion({}, ['1:1', '9:16'], 1920, 1080)).toBe('vertical')
+    expect(followSuggestion({}, ['16:9', '4:3', 'auto'], 1920, 1080)).toBeNull()
+    expect(followSuggestion({ reframe: { ...DEFAULT_REFRAME, mode: 'fit' } }, ['9:16'], 1920, 1080)).toBe('vertical')
+    expect(followSuggestion({ reframe: { ...DEFAULT_REFRAME } }, ['9:16'], 1920, 1080)).toBeNull()
+    // A tall recording: 9:16 cannot follow; a square frame of it cannot either.
+    expect(followSuggestion({}, ['9:16', '1:1'], 1080, 1920)).toBeNull()
+    expect(followSuggestion({}, [], 1920, 1080)).toBeNull()
   })
 })

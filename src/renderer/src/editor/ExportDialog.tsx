@@ -1,7 +1,10 @@
 import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { pictureTime, planOf, videoDuration, videoTimeAt, videoToSource } from '../../../shared/engine/freeze'
-import { visibleSize } from '../../../shared/engine/crop'
+import { followSuggestion } from '../../../shared/editor/followEdit'
+import { cropProject, visibleSize } from '../../../shared/engine/crop'
+import { viewMagnification } from '../../../shared/engine/frameView'
 import { styleContentRect } from '../../../shared/engine/layout'
+import { followApplies } from '../../../shared/engine/reframeData'
 import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import type { ExportCapabilities } from '../../../shared/api/export'
 import { hasSoundtrack } from '../../../shared/audio/settings'
@@ -32,6 +35,7 @@ import { missingOverlays, prepareOverlays } from '../render/overlayLayer'
 import { overlayLabel } from '../../../shared/editor/overlays'
 import { avcConfigs, supportedAvcConfig, vp9Configs } from '../render/encoders'
 import { EditorContext } from './context'
+import { useGroup } from './groupContext'
 import { AspectGlyph, PresetBadge } from './exportIcons'
 import { ExportPreview } from './ExportPreview'
 import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, type BatchJob, type BatchStatus, type ExportProgress, type ExportResult } from './exporter'
@@ -240,6 +244,7 @@ function presetLimit(preset: ExportPreset): { text: string; title: string } | nu
 
 export function ExportDialog(props: Props): JSX.Element {
   const editor = useContext(EditorContext)
+  const group = useGroup()
   const [options, setOptions] = useState<ExportOptions>(() => normalizeOptions(readJson(SETTINGS_KEY, {})))
   const [mode, setMode] = useState<'single' | 'batch'>(() => (readJson<string>(MODE_KEY, 'single') === 'batch' ? 'batch' : 'single'))
   const [batch, setBatch] = useState(loadBatch)
@@ -445,7 +450,16 @@ export function ExportDialog(props: Props): JSX.Element {
   // are limited on their long side), and whether the recording (as shown: its crop) is drawn larger than it was captured.
   const sizeFor = (height: number): ExportSize => exportSize(project, { ...options, resolution: height as ExportSettings['resolution'] })
   const visible = visibleSize(project)
+  // NW-05 (docs/design/vertical-video.md §2.2, §2.9): whether this file follows the action and how
+  // much larger it shows the recording (then every size is larger than recorded: one line says so
+  // instead of a tag on each), and the vertical or square version suggested for a 9:16 or 1:1 output
+  // (the file's, or any batch item's) of a project that does not follow.
+  const follows = !audioOnly && followApplies(drawn, dims.width, dims.height, visible.width, visible.height)
+  const magnify = follows ? viewMagnification(cropProject(drawn), dims.width, dims.height, visible.width, visible.height) : null
+  const chosenAspects = mode === 'single' ? (audioOnly ? [] : [drawn.style.aspectRatio]) : items.filter((it) => it.options.format !== 'm4a').map((it) => exportProject(project, it.options).style.aspectRatio)
+  const suggestion = followSuggestion(project, chosenAspects, visible.width, visible.height)
   const upscaled = (height: number): boolean => {
+    if (follows) return false
     const d = sizeFor(height)
     return styleContentRect(d.width, d.height, visible.width, visible.height, drawn.style).h > visible.height * 1.05
   }
@@ -488,7 +502,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const targetInfo =
     target && !gif ? targetBitrates({ targetMB: target, seconds: length, hasAudio: hasSound, format: options.format, width: dims.width, height: dims.height, fps: dims.fps }) : null
   const limits = preset?.limits
-  const warnings: { key: string; text: string; cls?: string }[] = []
+  const warnings: { key: string; text: string; cls?: string; testid?: string }[] = []
   if (!audioOnly && dims.capped) {
     warnings.push({
       key: 'capped',
@@ -498,6 +512,18 @@ export function ExportDialog(props: Props): JSX.Element {
   }
   if (!audioOnly && upscaled(resolution)) {
     warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${visible.width}×${visible.height}): the video is upscaled and may look soft.` })
+  }
+  if (follows) {
+    warnings.push({ key: 'follow', testid: 'export-follow-on', text: 'The view follows the action: it crops in on your cursor, clicks and typing.' })
+    if (magnify) {
+      const times = (v: number): string => `${v.toFixed(1)}×`
+      const inZooms = times(magnify.zoomed) !== times(magnify.rest) ? ` (up to ${times(magnify.zoomed)} in zooms)` : ''
+      const soft = magnify.rest >= 2
+      const text = `Shows your ${visible.width}×${visible.height} recording at ${times(magnify.rest)} its size${inZooms}.${soft ? ' Small text may look soft. Recording at 1440p or 4K keeps it sharp.' : ''}`
+      warnings.push({ key: 'magnify', testid: 'export-magnify', cls: soft ? 'warn' : '', text })
+    }
+  } else if (!audioOnly && project.reframe?.mode === 'follow') {
+    warnings.push({ key: 'follow', testid: 'export-follow-off', text: 'In this shape the whole screen is shown: following the action applies to tall and square videos.' })
   }
   if (!audioOnly && project.transcript?.segments.length) warnings.push({ key: 'captions', cls: 'export-captions', text: `Captions are drawn on the video when Show captions is on (now ${project.captions?.show === false ? 'off' : 'on'}, in the Captions tab, where Export captions saves them as SRT or VTT).` })
   if (!audioOnly && lostImages.length)
@@ -611,10 +637,28 @@ export function ExportDialog(props: Props): JSX.Element {
                   )}
                   {mode === 'single' &&
                     warnings.map((w) => (
-                      <p key={w.key} className={`hint ${w.cls ?? ''}`}>
+                      <p key={w.key} className={`hint ${w.cls ?? ''}`} data-testid={w.testid}>
                         {w.text}
                       </p>
                     ))}
+                  {suggestion && (
+                    <div className="export-follow-note" data-testid="export-follow-note">
+                      <p className="hint">
+                        {suggestion === 'vertical'
+                          ? 'Your whole screen is shrunk to fit 9:16. A vertical version crops in and follows your cursor.'
+                          : 'Your whole screen is shrunk to fit a square. A square version crops in and follows your cursor.'}
+                      </p>
+                      <button
+                        className="btn small"
+                        onClick={() => {
+                          props.onClose()
+                          group.command(suggestion === 'vertical' ? 'makeVertical' : 'makeSquare')
+                        }}
+                      >
+                        {suggestion === 'vertical' ? 'Make a vertical version' : 'Make a square version'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </aside>
 

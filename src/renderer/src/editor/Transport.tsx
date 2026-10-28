@@ -123,6 +123,8 @@ function SafeZonesControl(): JSX.Element {
   const keymap = useKeymap()
   const choice = useSafeZoneChoice()
   const on = choice !== 'off'
+  // Whether the app menu is being used with the pointer (it then hands the editor's keys back).
+  const byPointer = useRef(false)
   return (
     <span className="safe-zones-control">
       <button
@@ -139,10 +141,13 @@ function SafeZonesControl(): JSX.Element {
           data-testid="safe-zones-platform"
           aria-label="Safe zones of"
           value={choice}
+          onPointerDown={() => (byPointer.current = true)}
+          onKeyDown={() => (byPointer.current = false)}
           onChange={(e) => {
             setSafeZoneChoice(e.target.value as SafeChoice)
-            // A focused select is a text field to the editor's shortcuts: give G, Space, J, K and L back.
-            e.currentTarget.blur()
+            // A focused select is a text field to the editor's shortcuts: picked with the pointer it gives
+            // G, Space, J, K and L back; from the keyboard it keeps the focus, so the arrows go on choosing.
+            if (byPointer.current) e.currentTarget.blur()
           }}
         >
           {PLATFORM_CHOICES.map((c) => (

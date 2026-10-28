@@ -1214,3 +1214,19 @@
 .shape-clip .shape-end {
   pointer-events: auto;
 }
+
+/* The Export dialog's suggestion of a vertical or square version (ExportDialog.tsx, §2.2). */
+.export-follow-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+}
+
+.export-follow-note .hint {
+  margin: 0;
+}
