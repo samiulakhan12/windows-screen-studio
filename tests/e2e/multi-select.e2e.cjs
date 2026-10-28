@@ -517,6 +517,45 @@ async function main() {
     const errors = ctx.logs.filter((l) => l.includes('[pageerror]') || l.includes('[console.error]'))
     h.assert(errors.length === 0, `no page errors: ${errors.join(' | ')}`)
   })
+
+  // SSW_UI_SHOTS=<dir> also writes the README screenshot of a multi-selection (as ui.e2e.cjs does for the others).
+  if (process.env.SSW_UI_SHOTS) {
+    await h.run('multi-select: README screenshot', async (ctx) => {
+      const demo = {
+        name: 'Product demo',
+        seconds: 20,
+        clips: SEED.clips,
+        zooms: [
+          { id: 'z1', start: 1, end: 2.4, scale: 2, focus: { mode: 'cursor' }, auto: false },
+          { id: 'z2', start: 5, end: 6.5, scale: 1.5, focus: { mode: 'cursor' }, auto: true },
+          { id: 'z3', start: 12, end: 14, scale: 2, focus: { mode: 'cursor' }, auto: false }
+        ],
+        annotations: [
+          { id: 'a1', start: 1.5, end: 4, text: 'Click Save', x: 0.5, y: 0.22, size: 0.05, style: 'pill' },
+          { id: 'a2', start: 11, end: 13, text: 'Done!', x: 0.5, y: 0.5, size: 0.08, style: 'title' }
+        ]
+      }
+      const look = (id, kind, x, y, w, hh) => ({ ...shape(id, kind, x, y, w, hh), end: 4.5, strokeWidth: 8 })
+      const { win } = await openSeeded(ctx, 'ms-shot', demo, {
+        shapes: [look('s1', 'rect', 0.08, 0.58, 0.22, 0.24), look('s2', 'arrow', 0.62, 0.15, 0.12, 0.14), look('s3', 'blur', 0.68, 0.6, 0.22, 0.2)],
+        titles: [{ id: 't1', start: 15, end: 17.5, title: 'Thanks for watching', style: 'centered', background: 'blur' }],
+        chapters: [
+          { id: 'h1', t: 6, title: 'Settings' },
+          { id: 'h2', t: 12, title: 'Export' }
+        ],
+        freezes: [{ id: 'f1', at: 7, length: 1.5, sound: 'pause' }]
+      })
+      const ruler = await rectOf(win, '.tl-ruler')
+      await win.mouse.click(await xForTime(win, 3.2), ruler.y + ruler.h / 2)
+      await win.click('[data-shape="s1"]')
+      for (const sel of ['[data-shape="s2"]', '[data-annotation="a1"]', '[data-zoom="z1"]', '[data-chapter="h1"]']) await ctrlClick(win, sel)
+      await f.waitFor(async () => (await win.$$('[data-testid="group-outline"]')).length === 3, 'three outlines')
+      await h.sleep(500)
+      await win.mouse.move(5, 5)
+      fs.mkdirSync(process.env.SSW_UI_SHOTS, { recursive: true })
+      await win.screenshot({ path: path.join(process.env.SSW_UI_SHOTS, 'multi-select.png') })
+    })
+  }
 }
 
 main()

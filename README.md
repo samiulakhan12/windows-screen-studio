@@ -33,7 +33,7 @@ the PC (whisper.cpp and Silero VAD), and ffmpeg.
 ## Screenshots
 
 Taken from the built app with seeded projects (`SSW_UI_SHOTS=docs/screenshots` with
-`tests/e2e/ui.e2e.cjs`).
+`tests/e2e/ui.e2e.cjs`, and with `tests/e2e/multi-select.e2e.cjs` for the multi-selection).
 
 | | |
 | --- | --- |
@@ -43,8 +43,8 @@ Taken from the built app with seeded projects (`SSW_UI_SHOTS=docs/screenshots` w
 | **Captions**: generated captions on their own track, styles and position | **Camera**: webcam bubble and camera layouts over time |
 | ![Export dialog](docs/screenshots/export.png) | ![Settings, adding an AI provider](docs/screenshots/settings-ai.png) |
 | **Export**: destination presets, format, resolution and quality | **Settings**: your own OpenAI, Gemini or Claude key for captions and transcript tools |
-| ![Command palette](docs/screenshots/palette.png) | |
-| **Command palette** (`Ctrl+K`): every editor action by name | |
+| ![Command palette](docs/screenshots/palette.png) | ![Several items selected: the Selection view, outlines on the preview, the group on the timeline](docs/screenshots/multi-select.png) |
+| **Command palette** (`Ctrl+K`): every editor action by name | **Select several items**: move them together and edit what they share, with *Mixed* where they differ |
 
 ## Getting started
 

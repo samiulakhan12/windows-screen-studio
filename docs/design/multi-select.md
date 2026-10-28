@@ -1,6 +1,6 @@
 # Select several items and edit them together (E-06)
 
-Status: designed, not built. Roadmap: `docs/ROADMAP.md` E-06 "Select several items" (size M).
+Status: built on `feat/multi-select` (see §14 for where the build differs from this spec). Roadmap: `docs/ROADMAP.md` E-06 "Select several items" (size M).
 Branch: `feat/multi-select`, from `ccr-b6df7cf7-yked87` (Flown 0.5.0).
 
 The owner asked: "select many items, edit all of them". This feature adds that:
@@ -1678,3 +1678,45 @@ One workstream, on `feat/multi-select`, in this order. Each step is green before
     - `docs/ROADMAP.md` marks the E-06 row shipped;
     - `docs/IMPLEMENTATION.md` describes the selection model;
     - snapping.md §12 marks "outer edges of a group drag" done.
+
+---
+
+## 14. As built
+
+Built on `feat/multi-select` in the order of §13 (screenshot: `docs/screenshots/multi-select.png`). Where the build differs from this spec, and why:
+
+- **Steps 5 and 6 are one commit.** The timeline controller starts the group drag from the same
+  press handler that toggles and extends, so the snapping session (`SnapBegin.group`,
+  `SnapSession.group`) landed with it.
+- **`toggleKey` takes the anchor** as an optional fourth argument. Without it, removing a key that
+  is not the anchor could not keep the anchor (M2).
+- **`extendTo` on another track** (or with no anchor) adds the clicked item and makes it the anchor,
+  as Ctrl does, so the next Shift+click on that track runs from it. On the same track the anchor
+  stays, as specified.
+- **`GroupApi.command(id)`** is added: the look buttons and the Selection view run the editor's
+  command handlers through the context instead of a prop threaded through every panel. The
+  Inspector still takes the optional `onCommand` prop and passes it to `SelectionPanel`.
+- **`GroupField` has two optional members**: `presets(targets)` (a shape colour offers the
+  highlighter colours when every target is a highlighter, E5) and `onlyWhenAll` (a title card's
+  Colour row shows only when every card is solid, E6).
+- **More small exports**, all additive: `KIND_WORDS` and `countOf` (`multiSelect.ts`);
+  `LOOK_CLASSES`, `LOOK_CLASS_WORDS`, `fieldValue` and `fieldItems` (`groupEdit.ts`); an optional
+  verb for `pasteNotice` ("Duplicated 3 items"); `standardKeyOf` (`shortcuts.ts`, used by
+  `commandKeys` and the Shortcuts dialog's fixed chip). The notices of §5.6 are in a new pure
+  module, `multiSelectCopy.ts`, with their own tests. The list rows' Ctrl/Shift clicks and keys are
+  in `renderer/editor/listSelect.ts`.
+- **S1–S4 are in `tests/snapGroup.test.ts`**, a new file, so `tests/snapping.test.ts` is unchanged.
+- **The preview treats Shift+click like Ctrl+click** (toggle): items on the preview have no track
+  order to run along. A cursor spotlight's follow box still takes a Ctrl press for itself.
+- **`TitleTrack` and `FreezeMarks` read the group with `useGroup()`**: `FreezeMarks` is memoised
+  and must re-render when the group changes. Neither is rendered by a unit test with a mocked
+  `useContext`.
+- **A freeze's length handle** with Ctrl held counts as the block's middle (C9); with Shift it
+  still sets the length, as before.
+- **The Selection view's Zoom level** has the preset chips above the slider, as the Zoom panel does.
+- **A text block's tooltip stays its text**, without the " · Ctrl+click to select several" hint
+  (§5.1): `editor.e2e` reads it as the item's text, and existing tests are not changed. The other
+  blocks carry the hint.
+- **The e2e file** runs the 17 scenarios of §10.2 in five launches. Scenario 9 drags `a1` and `s2`
+  until `a1`'s end meets the cut at 8: with the seed, the group's start would otherwise tie with
+  the freeze frame at 5 at every whole-second delta.
