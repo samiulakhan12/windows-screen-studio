@@ -131,6 +131,17 @@ export function sanitizeBrandKit(raw: unknown): BrandKit {
   return kit
 }
 
+/**
+ * The kit Settings shows after saving `edited`: the stored one, except that a card the user is still
+ * editing stays while its title and subtitle are blank (the stored kit leaves such a card out until it
+ * has text), so clearing a title to retype it keeps the card's style, background and length.
+ */
+export function shownBrandKit(stored: BrandKit, edited: BrandKit): BrandKit {
+  const out = { ...stored }
+  for (const which of ['intro', 'outro'] as const) if (!out[which] && edited[which]) out[which] = edited[which]
+  return out
+}
+
 /** True when applying the kit would change nothing (nothing set up yet). */
 export const brandKitIsEmpty = (kit: BrandKit): boolean => !kit.logo && !kit.colors.length && !kit.fonts.length && !kit.intro && !kit.outro && !kit.preset
 

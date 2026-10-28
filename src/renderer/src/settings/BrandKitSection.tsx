@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BRAND_CARD_LENGTH, DEFAULT_BRAND_LOGO, MAX_BRAND_COLORS, MAX_BRAND_FONTS, type BrandCard, type BrandKit, type BrandLogo } from '../../../shared/editor/brandKit'
+import { BRAND_CARD_LENGTH, DEFAULT_BRAND_LOGO, MAX_BRAND_COLORS, MAX_BRAND_FONTS, shownBrandKit, type BrandCard, type BrandKit, type BrandLogo } from '../../../shared/editor/brandKit'
 import { BUILT_IN_PRESETS, parseUserPresets, type StylePreset } from '../../../shared/editor/stylePresets'
 import { TITLE_BACKGROUNDS, TITLE_STYLES } from '../../../shared/editor/titles'
 import { WATERMARK_LIMITS } from '../../../shared/engine/watermark'
@@ -109,7 +109,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
     setSaved('saving')
     try {
       const stored = await window.api.saveBrandKit(next)
-      setKit((k) => (k === next ? stored : k))
+      setKit((k) => (k === next ? shownBrandKit(stored, next) : k))
       setSaved('saved')
       setError(null)
       window.dispatchEvent(new Event(BRAND_KIT_CHANGED_EVENT))

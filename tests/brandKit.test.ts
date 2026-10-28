@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyBrandKit, brandCardTimes, brandFontsLeftOut, brandKitIsEmpty, sanitizeBrandKit, type BrandKit } from '../src/shared/editor/brandKit'
+import { applyBrandKit, brandCardTimes, brandFontsLeftOut, brandKitIsEmpty, sanitizeBrandKit, shownBrandKit, type BrandKit } from '../src/shared/editor/brandKit'
 import { EditStore } from '../src/shared/editor/editStore'
 import { BUILT_IN_PRESETS } from '../src/shared/editor/stylePresets'
 import { readFonts } from '../src/shared/engine/overlayData'
@@ -63,6 +63,22 @@ describe('reading a stored brand kit', () => {
     expect(kit).toEqual({ colors: [], fonts: [], autoApply: false })
     expect(brandKitIsEmpty(kit)).toBe(true)
     expect(sanitizeBrandKit('junk')).toEqual({ colors: [], fonts: [], autoApply: false })
+  })
+})
+
+describe('the kit Settings shows after a save', () => {
+  it('keeps a card whose title is being retyped, though the stored kit leaves it out until it has text', () => {
+    const edited: BrandKit = { ...KIT, intro: { title: '', style: 'big', background: 'blur', length: 6 } }
+    const stored = sanitizeBrandKit(edited)
+    expect(stored.intro).toBeUndefined()
+    const shown = shownBrandKit(stored, edited)
+    expect(shown.intro).toEqual(edited.intro)
+    expect(shown.outro).toEqual(stored.outro)
+    // A card switched off stays off.
+    const off: BrandKit = { ...KIT, intro: undefined }
+    expect(shownBrandKit(sanitizeBrandKit(off), off).intro).toBeUndefined()
+    // Otherwise the stored kit is shown as it is.
+    expect(shownBrandKit(stored, stored)).toEqual(stored)
   })
 })
 
