@@ -76,7 +76,7 @@ export function SafeZoneOverlay(props: { choice: SafeChoice; box: { w: number; h
       <svg className="safe-zones-paint" width={box.w} height={box.h} viewBox={`0 0 ${box.w} ${box.h}`}>
         <defs>
           <pattern id="safe-zones-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
-            <line x1="0" y1="0" x2="0" y2="8" />
+            <line className="safe-zones-hatch-line" x1="0" y1="0" x2="0" y2="8" />
           </pattern>
         </defs>
         <path className="safe-zones-shade" d={area} />

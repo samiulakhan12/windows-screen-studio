@@ -16,6 +16,7 @@ interface Pref {
   useSafeZoneChoice: () => SafeChoice | 'off'
 }
 interface Overlay {
+  SafeZoneOverlay: (props: { choice: SafeChoice; box: { w: number; h: number } }) => unknown
   zoneUnion: (boxes: readonly SafeBox[]) => { cells: { x: number; y: number; w: number; h: number }[]; edges: { x1: number; y1: number; x2: number; y2: number }[] }
   zoneLabels: (choice: SafeChoice, boxes: readonly SafeBox[]) => { box: SafeBox; side: string; text: string }[]
   ALL_LABEL: string
@@ -137,7 +138,7 @@ describe('safe-zone preference (test 57)', () => {
 })
 
 describe('safe-zone overlay geometry', async () => {
-  const { zoneUnion, zoneLabels, ALL_LABEL } = (await import(/* @vite-ignore */ OVERLAY)) as Overlay
+  const { SafeZoneOverlay, zoneUnion, zoneLabels, ALL_LABEL } = (await import(/* @vite-ignore */ OVERLAY)) as Overlay
   const all = (Object.keys(SAFE_ZONES) as SafePlatform[]).flatMap((p) => [...SAFE_ZONES[p].boxes])
   const covered = (cells: { x: number; y: number; w: number; h: number }[], x: number, y: number): number =>
     cells.filter((c) => x > c.x && x < c.x + c.w && y > c.y && y < c.y + c.h).length
@@ -178,5 +179,35 @@ describe('safe-zone overlay geometry', async () => {
     expect(ALL_LABEL).toBe('Buttons and captions (all three)')
     expect(labels.map((l) => l.side).sort()).toEqual(['bottom', 'right', 'top'])
     expect(labels.every((l) => l.text === ALL_LABEL)).toBe(true)
+  })
+
+  it('is DOM over the preview: aria-hidden, one element per box, labels as chips', () => {
+    interface El {
+      type: unknown
+      props: Record<string, unknown>
+    }
+    const flat = (node: unknown, out: El[] = []): El[] => {
+      if (Array.isArray(node)) node.forEach((n) => flat(n, out))
+      else if (node && typeof node === 'object' && 'props' in node) {
+        out.push(node as El)
+        flat((node as El).props.children, out)
+      }
+      return out
+    }
+    const text = (node: unknown): string =>
+      typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node && typeof node === 'object' && 'props' in node ? text((node as El).props.children) : ''
+    const root = SafeZoneOverlay({ choice: 'all', box: { w: 405, h: 720 } }) as El
+    expect(root.props).toMatchObject({ 'data-testid': 'safe-zones', 'data-platform': 'all', 'aria-hidden': 'true' })
+    const els = flat(root)
+    const boxes = els.filter((e) => e.props.className === 'safe-zone-box')
+    expect(boxes).toHaveLength(9)
+    // TikTok's like column: x 0.86, y 0.38 of a 405 × 720 preview.
+    expect(boxes[1].props.style).toEqual({ left: 0.86 * 405, top: 0.38 * 720, width: 0.14 * 405, height: 0.42 * 720 })
+    expect(els.filter((e) => e.props.className === 'safe-zone-chip').map(text)).toEqual([ALL_LABEL, ALL_LABEL, ALL_LABEL])
+    // Nothing is a canvas: the overlay can never reach an export.
+    expect(els.some((e) => e.type === 'canvas')).toBe(false)
+    const tiktok = flat(SafeZoneOverlay({ choice: 'tiktok', box: { w: 405, h: 720 } }))
+    expect(tiktok.filter((e) => e.props.className === 'safe-zone-box')).toHaveLength(3)
+    expect(tiktok.filter((e) => e.props.className === 'safe-zone-chip').map(text)).toEqual(['Tabs and search', 'Like, comment, share', 'Name, caption and sound'])
   })
 })
