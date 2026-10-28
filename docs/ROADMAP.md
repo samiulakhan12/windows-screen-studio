@@ -186,7 +186,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Cap, Adobe Podcast Mic Check, Screen Studio, Loom.
 
 ### NW-12 · Image, logo and sticker overlays, plus brand fonts
-**Editing · M · planned**
+**Editing · M · shipped (next release, `feat-brand-kit`)**: see [FEATURES.md](FEATURES.md) (Image overlays and stickers, Brand fonts) and `docs/design/brand-kit.md`. Left for later: a GIF that plays once and holds (GIFs always loop), WOFF (1) and font collections (`.ttc`), choosing a font weight or style inside a family, a font for the watermark text and the keystroke overlay, and a command and shortcut to add an image (the editor's command list is being reworked on `feat/multi-select`).
 
 - **What:** a timed overlay track for images, GIFs and emoji that can be moved, resized, rotated, faded and trimmed. Captions, titles and annotations can use the user's own font.
 - **Builds on:** `ASSET_SPECS` in `src/main/assetIpc.ts`, which makes a new asset kind cheap; `ShapeKind`; the fixed `CAPTION_FONT`, `TITLE_FONT` and `ANNOTATION_FONT`.
@@ -248,7 +248,7 @@ The rest are `planned`.
 |---|---|---|---|
 | E-01 (shipped, Wave 6) | **Polish in one click** | Runs remove silences, auto zoom, the camera director (NW-08), captions (on this PC once a speech model is downloaded, else with a provider that can transcribe) and your style preset in one go. Shows a summary of what changed (time saved, zooms, cuts, camera changes), all in one undo step. | S–M |
 | E-02 | **Review mode** | Steps through every automatic decision (each zoom, cut, camera change, removed filler) with Keep / Remove, like reviewing tracked changes. | M |
-| E-03 | **Brand kit** | Your logo, colours, fonts, intro and outro title cards and style, saved once; every new recording starts with them. | S–M |
+| E-03 (shipped, `feat-brand-kit`) | **Brand kit** | Your logo, colours, fonts, intro and outro title cards and style, saved once; every new recording starts with them. See [FEATURES.md](FEATURES.md) and `docs/design/brand-kit.md`. Left for later: several named kits, sharing a kit as a file, and new text taking the kit's body font when it is added. | S–M |
 | E-04 (shipped, Wave 6) | **Audio waveform on the timeline** | Shows where you talk and where the pauses are, so cuts land in the right place. | S |
 | E-05 (shipped, Wave 6) | **Snapping** | Segment edges and the playhead snap to cuts, clicks, chapter flags and other segments while dragging (hold Alt to turn it off). | S |
 | E-06 (shipped) | **Select several items** | Ctrl/Shift-click or drag a box to select zooms, text, shapes, spotlights, title cards, chapters and freeze frames together, edit what they share, move, delete, copy, paste or duplicate them; copy one item's look onto others. | M |

@@ -2,6 +2,7 @@ import type { CursorTrack, Project } from '../../../shared/types'
 import { noFadeOutFrom, planOf } from '../../../shared/engine/freeze'
 import { ANNOTATION_FADE, ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
 import { captionBlockAt } from './captionsLayer'
+import { projectFontStack } from './fontLoader'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -20,7 +21,7 @@ export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, proje
     const m = annotationMetrics(a, w, h)
     const lines = a.text.split('\n')
     ctx.save()
-    ctx.font = `${m.weight} ${m.px}px ${ANNOTATION_FONT}`
+    ctx.font = `${m.weight} ${m.px}px ${projectFontStack(project, a.font, ANNOTATION_FONT)}`
     const textW = Math.max(...lines.map((l) => ctx.measureText(l || ' ').width))
     const boxW = textW + m.padX * 2
     const boxH = m.lineHeight * lines.length + m.padY * 2

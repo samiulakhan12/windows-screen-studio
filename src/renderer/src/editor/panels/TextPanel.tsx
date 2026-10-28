@@ -31,6 +31,7 @@ import type { Selection } from '../selection'
 import { FirstShortcut, ShortcutKeys } from '../ShortcutKeys'
 import { addChapterAt, addTitleAt, showTitle } from '../titleItems'
 import { TitleStyleIcon } from '../TitleTrack'
+import { FontPicker, withBrandColors } from './FontPicker'
 import '../shapes.css'
 import '../titles.css'
 
@@ -137,6 +138,7 @@ function SelectedText(props: InspectorProps): JSX.Element {
           { value: 'title', label: 'Title' }
         ]}
       />
+      <FontPicker project={project} value={ann.font} apply={(p, font) => ({ ...p, annotations: p.annotations.map((a) => (a.id === ann.id ? { ...a, font } : a)) })} />
       <Slider label="Size" value={ann.size} min={ANNOTATION_SIZE.min} max={ANNOTATION_SIZE.max} step={0.002} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(v) => set({ size: v }, `annotation-size:${ann.id}`)} />
       <Slider label="Position X" value={ann.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `annotation-pos:${ann.id}`)} />
       <Slider label="Position Y" value={ann.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `annotation-pos:${ann.id}`)} />
@@ -233,6 +235,7 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
           ))}
         </div>
       </div>
+      <FontPicker project={project} value={card.font} apply={(p, font) => ({ ...p, titles: (p.titles ?? []).map((c) => (c.id === id ? { ...c, font } : c)) })} />
       <div className="field">
         <span>Background</span>
         <Chips<TitleCard['background']> label="Background" value={card.background} onChange={(background) => set({ background })} options={TITLE_BACKGROUNDS} />
@@ -240,12 +243,12 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
       {card.background === 'solid' && (
         <div className="field">
           <span>Colour</span>
-          <ColorDots label="Colour" value={titleColorOf(card)} presets={TITLE_COLORS} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey={`title-color:${id}`} />
+          <ColorDots label="Colour" value={titleColorOf(card)} presets={withBrandColors(project, TITLE_COLORS)} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey={`title-color:${id}`} />
         </div>
       )}
       <div className="field">
         <span>Text colour</span>
-        <ColorDots label="Text colour" value={titleTextColorOf(card, project.style.background)} presets={TITLE_TEXT_COLORS} onChange={(textColor, key) => set({ textColor }, key ?? undefined)} mergeKey={`title-text-color:${id}`} />
+        <ColorDots label="Text colour" value={titleTextColorOf(card, project.style.background)} presets={withBrandColors(project, TITLE_TEXT_COLORS)} onChange={(textColor, key) => set({ textColor }, key ?? undefined)} mergeKey={`title-text-color:${id}`} />
       </div>
       <TitleOnPreview card={card} clips={project.clips} />
       <p className="hint">Drag the card on the title track to change when it shows; it fades in and out. Long titles wrap and shrink to fit.</p>

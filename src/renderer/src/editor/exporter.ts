@@ -13,6 +13,8 @@ import { drawFrame, type FrameImage, type RenderScene } from '../render/composit
 import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
+import { prepareProjectFonts } from '../render/fontLoader'
+import { prepareOverlays } from '../render/overlayLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
 import { CameraMaskPreparer } from '../render/segmentation/cameraMasks'
@@ -86,6 +88,8 @@ async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 
   const scene = drawn === input.scene.project ? input.scene : { ...input.scene, project: drawn }
   await prepareCursorAssets(project, projectMediaUrl(project.id))
   await prepareStyleAssets(project, projectMediaUrl(project.id))
+  // Image overlays decoded (a GIF's every frame) and the fonts text uses loaded, before the first frame.
+  await Promise.all([prepareOverlays(project), prepareProjectFonts(project)])
   return { ...input, project, scene }
 }
 

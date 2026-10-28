@@ -39,7 +39,7 @@ describe('E-06 contracts', () => {
       'validGroup'
     ])
       expect(exportsOf(multiSelect), name).toContain(name)
-    expect(multiSelect.GROUP_KINDS).toEqual(['zoom', 'annotation', 'shape', 'spotlight', 'title', 'chapter', 'freeze'])
+    expect(multiSelect.GROUP_KINDS).toEqual(['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze'])
   })
 
   it('NO_GROUP is empty, frozen and has stamp 0', () => {

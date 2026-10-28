@@ -14,6 +14,7 @@ import { applyStyleDefaults as applyLook, sanitizeStyleDefaults, type StyleDefau
 import { plainWatermarkFile, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES } from '../shared/engine/watermark'
 import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
+import { applyBrandKitToNew } from './brandKit'
 import { projectDir } from './projects'
 
 export type { StyleDefaults } from '../shared/editor/styleDefaults'
@@ -108,9 +109,14 @@ export async function saveStyleDefaults(defaults: StyleDefaults | null, file = s
 /**
  * Returns `project` with the saved look applied (see the shared applyStyleDefaults), and
  * copies the saved watermark image into the project's folder. A watermark whose image cannot
- * be copied is left out, so the new recording never points at a missing file.
+ * be copied is left out, so the new recording never points at a missing file. Then the brand
+ * kit, when its "Apply to new recordings" is on (brandKit.ts; docs/design/brand-kit.md §4.6).
  */
-export function applyStyleDefaults(project: Project, defaults: StyleDefaults | null | undefined, file?: string): Project {
+export function applyStyleDefaults(project: Project, defaults: StyleDefaults | null | undefined, file?: string, brandFile?: string): Project {
+  return applyBrandKitToNew(applySavedLook(project, defaults, file), brandFile)
+}
+
+function applySavedLook(project: Project, defaults: StyleDefaults | null | undefined, file?: string): Project {
   const out = applyLook(project, defaults)
   const wm = out.watermark
   if (out === project || !wm || wm === project.watermark || wm.kind !== 'image' || !wm.path) return out

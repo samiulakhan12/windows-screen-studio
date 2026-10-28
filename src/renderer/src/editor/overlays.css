@@ -1,0 +1,191 @@
+/* Image overlays and stickers: their timeline track, the Images panel, the handles on the
+   preview and the drop outline (docs/design/brand-kit.md §5). */
+
+/* ---------- Timeline (two classes each: editor.css loads after this file) ---------- */
+.tl-labels .tl-label.overlay-label {
+  --kind: #fdba74;
+}
+
+.tl-track.overlay-track {
+  background: rgba(255, 255, 255, 0.02);
+  cursor: col-resize;
+}
+
+/* Dark enough for the white 11 px label to reach 4.5:1, also under the hover brightness(1.1). */
+.seg.overlay-seg {
+  bottom: auto;
+  gap: 4px;
+  background: linear-gradient(180deg, #a3360a, #7c2a08);
+  border: 1px solid #fdba74;
+}
+
+.seg.overlay-seg.sticker {
+  background: linear-gradient(180deg, #9a3412, #6f2510);
+}
+
+.seg.overlay-seg .seg-icon {
+  flex: none;
+  display: flex;
+  margin-left: 4px;
+  pointer-events: none;
+}
+
+.seg.overlay-seg .seg-label {
+  padding-left: 0;
+}
+
+.tl-empty.overlay-track-error {
+  color: var(--danger-text);
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+
+/* ---------- Images panel ---------- */
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.sticker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.sticker-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+
+.sticker-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.sticker-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.overlay-name {
+  margin: 0 0 var(--space-2);
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---------- Handles on the preview ---------- */
+.overlay-editor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.overlay-box {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+  border: 1.5px solid var(--accent-400);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  transform-origin: center center;
+}
+
+.overlay-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 2px;
+  background: #ffffff;
+  border: 1.5px solid var(--accent-500);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.overlay-handle[data-handle='n'],
+.overlay-handle[data-handle='s'] {
+  cursor: ns-resize;
+}
+
+.overlay-handle[data-handle='e'],
+.overlay-handle[data-handle='w'] {
+  cursor: ew-resize;
+}
+
+.overlay-handle[data-handle='ne'],
+.overlay-handle[data-handle='sw'] {
+  cursor: nesw-resize;
+}
+
+.overlay-handle[data-handle='nw'],
+.overlay-handle[data-handle='se'] {
+  cursor: nwse-resize;
+}
+
+/* The rotate handle on a stem above the box. */
+.overlay-rotate {
+  position: absolute;
+  left: 50%;
+  top: -28px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid var(--accent-500);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+.overlay-rotate::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 1.5px;
+  height: 15px;
+  margin-left: -0.75px;
+  background: var(--accent-400);
+  pointer-events: none;
+}
+
+/* ---------- Dropping a file on the editor ---------- */
+.overlay-drop {
+  position: fixed;
+  inset: 8px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent-400);
+  border-radius: var(--radius-lg);
+  background: var(--accent-softer);
+  pointer-events: none;
+}
+
+.overlay-drop span {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--shadow-2);
+}
+
+.overlay-editor .pick-hint {
+  pointer-events: auto;
+}

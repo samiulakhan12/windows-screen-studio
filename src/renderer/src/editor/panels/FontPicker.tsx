@@ -1,0 +1,109 @@
+import { useEffect, useState } from 'react'
+import { DEFAULT_FONT_LABEL, fontNameFromFile, fontOf, MAX_PROJECT_FONTS, newFontId } from '../../../../shared/render/fonts'
+import type { Project, ProjectFont } from '../../../../shared/types'
+import { fontState, preloadProjectFont } from '../../render/fontLoader'
+import { onStyleAssetsChanged } from '../../render/watermarkLayer'
+import { useEditor } from '../context'
+import { EditorIcon } from '../EditorIcon'
+import { ipcMessage } from '../overlayItems'
+
+const ADD = '__add-font__'
+
+/** The brand kit's colours first, then `presets` (no repeats): the colour pickers of text and titles. */
+export function withBrandColors(project: Pick<Project, 'brand'>, presets: readonly string[]): string[] {
+  const out = [...(project.brand?.colors ?? [])]
+  for (const c of presets) if (!out.includes(c.toLowerCase())) out.push(c)
+  return out
+}
+
+/** The name a font shows in the menus, saying when it is missing and what draws instead. */
+export function fontLabel(font: ProjectFont, state: ReturnType<typeof fontState>): string {
+  return state === 'missing' ? `${font.name} (missing: drawn with ${DEFAULT_FONT_LABEL})` : font.name
+}
+
+/**
+ * The Font menu of a text, a title card or the captions (docs/design/brand-kit.md §5): the default
+ * font, the project's fonts, and "Add font…", which copies a TTF, OTF or WOFF2 file into the
+ * project and uses it. `apply` returns the project with font `id` (undefined: the default) set
+ * where this menu sets it, so adding a font and using it is one undo step.
+ */
+export function FontPicker({
+  project,
+  value,
+  apply,
+  label = 'Font'
+}: {
+  project: Project
+  value: string | undefined
+  apply: (p: Project, id: string | undefined) => Project
+  label?: string
+}): JSX.Element {
+  const { store } = useEditor()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [, setVersion] = useState(0)
+  useEffect(() => onStyleAssetsChanged(() => setVersion((n) => n + 1)), [])
+  const fonts = project.fonts ?? []
+  const current = fontOf(fonts, value)
+  const state = current ? fontState(project, current.id) : null
+
+  const addFont = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    try {
+      if (fonts.length >= MAX_PROJECT_FONTS) throw new Error(`This video already has ${MAX_PROJECT_FONTS} fonts.`)
+      const picked = await window.api.pickAsset(project.id, 'font')
+      if (!picked) return
+      // The same file (stored once) is the same font.
+      const same = (store.state.fonts ?? []).find((f) => f.file === picked.path)
+      const font: ProjectFont = same ?? { id: newFontId(), name: fontNameFromFile(picked.name ?? picked.path), file: picked.path }
+      await preloadProjectFont(project.id, font, picked.url)
+      store.update((p) => apply(same ? p : { ...p, fonts: [...(p.fonts ?? []), font] }, font.id))
+    } catch (err) {
+      setError(ipcMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="font-picker">
+      <label className="field">
+        <span>{label}</span>
+        <select
+          value={current ? current.id : ''}
+          disabled={busy}
+          data-testid="font-picker"
+          onChange={(e) => {
+            const v = e.target.value
+            if (v === ADD) return void addFont()
+            store.update((p) => apply(p, v || undefined))
+          }}
+        >
+          <option value="">Default ({DEFAULT_FONT_LABEL})</option>
+          {fonts.map((f) => (
+            <option key={f.id} value={f.id}>
+              {fontLabel(f, fontState(project, f.id))}
+            </option>
+          ))}
+          <option value={ADD}>Add font…</option>
+        </select>
+      </label>
+      {busy && <span className="hint">Adding the font…</span>}
+      {state === 'missing' && current && (
+        <p className="callout" role="status" data-testid="font-missing">
+          <EditorIcon name="alert" size={16} />
+          <span>
+            {current.name} could not be loaded, so this text is drawn with {DEFAULT_FONT_LABEL}. Add the font again to use it.
+          </span>
+        </p>
+      )}
+      {error && (
+        <p className="callout" role="alert" data-testid="font-error">
+          <EditorIcon name="alert" size={16} />
+          <span>{error}</span>
+        </p>
+      )}
+    </div>
+  )
+}

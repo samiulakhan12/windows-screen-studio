@@ -3,6 +3,7 @@
  * entries that cannot be shown rejected. One rule for loading a project (project.ts) and for the
  * editor (editor/titles.ts), like shapeData.ts for shapes.
  */
+import { readFontId } from '../render/fonts'
 import type { Chapter, TitleCard, TitleCardStyle } from '../types'
 
 /** Longest title or subtitle kept, in characters. */
@@ -43,6 +44,9 @@ export function readTitleCard(raw: Partial<TitleCard> | null | undefined, durati
   if (typeof raw.subtitle === 'string') card.subtitle = cleanTitle(raw.subtitle)
   if (typeof raw.color === 'string' && HEX_COLOR.test(raw.color)) card.color = raw.color
   if (typeof raw.textColor === 'string' && HEX_COLOR.test(raw.textColor)) card.textColor = raw.textColor
+  const font = readFontId(raw.font)
+  if (font) card.font = font
+  if (raw.brand === 'intro' || raw.brand === 'outro') card.brand = raw.brand
   return card
 }
 

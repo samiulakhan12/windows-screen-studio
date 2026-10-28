@@ -553,9 +553,9 @@ async function main() {
       const p = await corner()
       return p.b > 180 && p.r < 80 && p.g < 80
     }
-    await win.click('button:has-text("Image")')
+    await win.click('.insp-body button:has-text("Image…")')
     await f.waitFor(isRed, 'red background drawn')
-    await win.click('button:has-text("Image")')
+    await win.click('.insp-body button:has-text("Image…")')
     await f.waitFor(isBlue, 'blue background drawn')
     await win.keyboard.press('Control+z')
     await f.waitFor(isRed, 'undo shows the previous image again')

@@ -84,6 +84,17 @@ the cropped picture; layout and export sizes read the recording's size through `
 holds. Only the player clock, export frames and sound, subtitle and chapter times and the displayed
 times read video time; overlays, snapping, smart speed and the director keep using source and edit time.
 
+Image overlays (`Project.overlays`) are timed in source seconds and placed in the **output frame**
+(centre normalised to the frame, size as fractions of its shorter side), like text annotations;
+their files (`overlay-<n>.<ext>`) and fonts (`Project.fonts`, `font-<n>.<ext>`) are copied into the
+project folder by `src/main/assetIpc.ts`, which checks type by content and size and stores an
+identical file once. `render/overlayLayer.ts` decodes each picture once (GIF frames with WebCodecs
+`ImageDecoder`, the frame chosen by output time); `render/fontLoader.ts` registers fonts from their
+bytes with `FontFace` (the CSP is unchanged) and the text layers key their caches by the font. The
+brand kit lives in userData (`brand-kit.json` and `brand-kit/`, `src/main/brandKit.ts`); applying it
+is one pure function (`shared/editor/brandKit.ts`), used by the editor (one undo step) and by
+`applyStyleDefaults` for new recordings (`docs/design/brand-kit.md`).
+
 Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
 names from `productName`). The app was called "Screen Studio for Windows" before; on the first
 start as Flown `src/main/brandMigration.ts` renames the old userData folder (before the

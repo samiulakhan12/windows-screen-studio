@@ -3,6 +3,8 @@ import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '..
 import { TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
 import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
+import type { Project } from '../../../shared/types'
+import { fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
 import { paintBackgroundLayer } from './staticLayer'
 
@@ -14,12 +16,18 @@ type Ctx = CanvasRenderingContext2D
 const MEASURE_PX = 100
 const widths = new Map<string, number>()
 
-function measureOn(ctx: Ctx): MeasureText {
+/** The font stack of a card: its brand font, else the title font. */
+const cardFont = (project: Pick<Project, 'id' | 'fonts'>, card: TitleCard): string => projectFontStack(project, card.font, TITLE_FONT)
+
+/** A cache key part for a font: the stack and the font generation (widths measured while it loaded are dropped). */
+const fontKey = (font: string): string => `${fontGeneration()}|${font}`
+
+function measureOn(ctx: Ctx, font: string): MeasureText {
   return (text, px, weight) => {
-    const key = `${weight}|${text}`
+    const key = `${fontKey(font)}|${weight}|${text}`
     let w = widths.get(key)
     if (w === undefined) {
-      ctx.font = `${weight} ${MEASURE_PX}px ${TITLE_FONT}`
+      ctx.font = `${weight} ${MEASURE_PX}px ${font}`
       w = ctx.measureText(text).width
       if (widths.size > 5000) widths.clear()
       widths.set(key, w)
@@ -30,12 +38,12 @@ function measureOn(ctx: Ctx): MeasureText {
 
 const layouts = new Map<string, TitleLayout>()
 
-function layoutOf(ctx: Ctx, card: TitleCard, w: number, h: number): TitleLayout {
-  const key = JSON.stringify([w, h, card.style, card.title, card.subtitle ?? ''])
+function layoutOf(ctx: Ctx, card: TitleCard, w: number, h: number, font: string): TitleLayout {
+  const key = JSON.stringify([w, h, card.style, card.title, card.subtitle ?? '', fontKey(font)])
   let l = layouts.get(key)
   if (!l) {
     ctx.save()
-    l = titleLayout(card, w, h, measureOn(ctx))
+    l = titleLayout(card, w, h, measureOn(ctx, font))
     ctx.restore()
     if (layouts.size > 64) layouts.clear()
     layouts.set(key, l)
@@ -210,8 +218,8 @@ function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): v
 }
 
 /** Draws the lines of `block` from `top`, at `x` (aligned as `align`). */
-function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign): void {
-  ctx.font = `${block.weight} ${block.px}px ${TITLE_FONT}`
+function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign, font: string): void {
+  ctx.font = `${block.weight} ${block.px}px ${font}`
   ctx.textAlign = align
   ctx.textBaseline = 'middle'
   block.lines.forEach((line, i) => {
@@ -220,17 +228,17 @@ function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: Ca
 }
 
 /** Title and subtitle from `top`; the subtitle a little softer. */
-function drawText(ctx: Ctx, l: TitleLayout, x: number, top: number, align: CanvasTextAlign, color: string, alpha: number): void {
+function drawText(ctx: Ctx, l: TitleLayout, x: number, top: number, align: CanvasTextAlign, color: string, alpha: number, font: string): void {
   ctx.fillStyle = color
   ctx.globalAlpha = alpha
-  drawBlock(ctx, l.title, x, top, align)
+  drawBlock(ctx, l.title, x, top, align, font)
   if (l.subtitle) {
     ctx.globalAlpha = alpha * 0.8
-    drawBlock(ctx, l.subtitle, x, top + l.title.lines.length * l.title.lineHeight + l.gap, align)
+    drawBlock(ctx, l.subtitle, x, top + l.title.lines.length * l.title.lineHeight + l.gap, align, font)
   }
 }
 
-function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout): void {
+function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string): void {
   const { ctx, w, h } = fc
   if (phase.background > 0.002) {
     ctx.save()
@@ -252,10 +260,10 @@ function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: 
       c.shadowBlur = blur
       c.shadowOffsetY = drop
     }
-    drawText(c, l, w / 2, top + rise, 'center', color, alpha)
+    drawText(c, l, w / 2, top + rise, 'center', color, alpha, font)
     c.restore()
   }
-  const key = JSON.stringify(['full', w, h, card.style, card.title, card.subtitle ?? '', color, shadowed])
+  const key = JSON.stringify(['full', w, h, card.style, card.title, card.subtitle ?? '', color, shadowed, fontKey(font)])
   const pad = glyphPad(l) + (shadowed ? Math.ceil(blur * 1.5 + drop) : 0)
   const sprite = spriteOf(key, { x: (w - l.width) / 2, y: top, w: l.width, h: l.height }, pad, (c) => paint(c, 1, 0))
   if (!sprite) {
@@ -268,7 +276,7 @@ function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: 
   ctx.restore()
 }
 
-function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout): void {
+function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string): void {
   const { ctx, w, h } = fc
   const band = l.band
   if (!band || phase.text <= 0.002 || l.height <= 0) return
@@ -297,7 +305,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     c.beginPath()
     c.roundRect(band.x + band.padX, y + band.padY, band.accent, l.height, band.accent / 2)
     c.fill()
-    drawText(c, l, band.x + band.padX + band.accent * 2.4, y + band.padY, 'left', color, alpha)
+    drawText(c, l, band.x + band.padX + band.accent * 2.4, y + band.padY, 'left', color, alpha, font)
     c.restore()
   }
   const y = band.y + phase.rise * l.rise
@@ -318,7 +326,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.stroke()
   }
-  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : ''])
+  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : '', fontKey(font)])
   const pad = glyphPad(l) + (solid ? Math.ceil(blur * 1.5 + drop) : 0)
   const sprite = spriteOf(key, band, pad, (c) => paint(c, 1, band.y))
   if (sprite) drawSprite(ctx, sprite, phase.rise * l.rise)
@@ -343,8 +351,9 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
   // Later cards on top.
   active.sort((a, b) => a.card.start - b.card.start)
   for (const { card, phase } of active) {
-    const l = layoutOf(fc.ctx, card, fc.w, fc.h)
-    if (card.style === 'lower-third') drawLowerThird(fc, card, phase, l)
-    else drawFullFrame(fc, card, phase, l)
+    const font = cardFont(fc.project, card)
+    const l = layoutOf(fc.ctx, card, fc.w, fc.h, font)
+    if (card.style === 'lower-third') drawLowerThird(fc, card, phase, l, font)
+    else drawFullFrame(fc, card, phase, l, font)
   }
 }

@@ -55,7 +55,7 @@ describe('M1: keys', () => {
   })
 
   it('trackOfKind puts shapes and spotlights on one track', () => {
-    expect(GROUP_KINDS.map(trackOfKind)).toEqual(['zoom', 'text', 'shapes', 'shapes', 'titles', 'chapters', 'freezes'])
+    expect(GROUP_KINDS.map(trackOfKind)).toEqual(['zoom', 'text', 'shapes', 'shapes', 'images', 'titles', 'chapters', 'freezes'])
   })
 })
 

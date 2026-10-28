@@ -18,6 +18,7 @@ import { drawCaptionsLayer } from './captionsLayer'
 import { drawTitleCardsLayer } from './titleCardLayer'
 import { drawWatermarkLayer } from './watermarkLayer'
 import { drawWebcamLayer } from './webcamLayer'
+import { drawOverlaysLayer } from './overlayLayer'
 
 export interface RenderScene {
   project: Project
@@ -208,6 +209,7 @@ export function drawFrame(
   }
 
   drawWebcamLayer(top, project.webcam.show ? webcamImage(src) : null)
+  drawOverlaysLayer(top)
 
   drawKeystrokes(ctx, w, h, t, project, cursor)
   drawAnnotations(ctx, w, h, t, project)

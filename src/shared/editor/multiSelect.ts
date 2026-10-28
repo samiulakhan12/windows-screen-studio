@@ -7,7 +7,7 @@
 import type { Project } from '../types'
 
 /** Kinds of items that can be selected together; captions, layouts, clips and clicks stay one at a time (§3). */
-export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'title', 'chapter', 'freeze'] as const
+export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze'] as const
 export type GroupKind = (typeof GROUP_KINDS)[number]
 /** `${kind}:${id}`: the snapping owner key, and what selectionKey() gives for the same item. */
 export type ItemKey = `${GroupKind}:${string}`
@@ -24,7 +24,7 @@ export interface ItemGroup {
 export const NO_GROUP: ItemGroup = Object.freeze({ keys: Object.freeze([]) as readonly ItemKey[], anchor: null, stamp: 0 })
 
 /** The timeline row an item sits on (shapes and spotlights share one). */
-export type ItemTrack = 'zoom' | 'text' | 'shapes' | 'titles' | 'chapters' | 'freezes'
+export type ItemTrack = 'zoom' | 'text' | 'shapes' | 'images' | 'titles' | 'chapters' | 'freezes'
 
 /** One groupable item: points (chapters, freezes) have start === end (a freeze's `at`). */
 export interface ItemEntry {
@@ -54,6 +54,7 @@ const TRACK_OF: Readonly<Record<GroupKind, ItemTrack>> = {
   annotation: 'text',
   shape: 'shapes',
   spotlight: 'shapes',
+  overlay: 'images',
   title: 'titles',
   chapter: 'chapters',
   freeze: 'freezes'
@@ -73,6 +74,7 @@ export function projectItems(p: Project): ItemEntry[] {
   add('annotation', p.annotations)
   add('shape', p.shapes)
   add('spotlight', p.spotlights)
+  add('overlay', p.overlays)
   add('title', p.titles)
   for (const c of p.chapters ?? []) out.push({ key: itemKey('chapter', c.id), kind: 'chapter', id: c.id, track: 'chapters', start: c.t, end: c.t })
   for (const f of p.freezes ?? []) out.push({ key: itemKey('freeze', f.id), kind: 'freeze', id: f.id, track: 'freezes', start: f.at, end: f.at })
@@ -90,6 +92,8 @@ function idsOf(p: Project, kind: GroupKind): readonly { id: string }[] {
       return p.shapes ?? []
     case 'spotlight':
       return p.spotlights ?? []
+    case 'overlay':
+      return p.overlays ?? []
     case 'title':
       return p.titles ?? []
     case 'chapter':
@@ -231,6 +235,7 @@ export const KIND_WORDS: Readonly<Record<GroupKind, readonly [string, string]>> 
   annotation: ['text item', 'text items'],
   shape: ['shape', 'shapes'],
   spotlight: ['spotlight', 'spotlights'],
+  overlay: ['image', 'images'],
   title: ['title card', 'title cards'],
   chapter: ['chapter', 'chapters'],
   freeze: ['freeze frame', 'freeze frames']

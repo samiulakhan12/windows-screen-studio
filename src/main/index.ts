@@ -6,6 +6,7 @@ import { registerAnalysisIpc } from './analysisIpc'
 import { registerAssetIpc } from './assetIpc'
 import { migrateRecordings, migrateUserData } from './brandMigration'
 import { registerBrandIpc } from './brandIpc'
+import { registerBrandKitIpc } from './brandKitIpc'
 import { registerCaptionsIpc } from './captionsIpc'
 import { disposeExport, registerExportIpc } from './exportIpc'
 import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
@@ -44,6 +45,7 @@ if (!app.requestSingleInstanceLock()) {
     app.setAppUserModelId(APP_USER_MODEL_ID) // = appId in electron-builder.config.cjs
     registerSecurity()
     registerBrandIpc()
+    registerBrandKitIpc()
     handleMediaProtocol()
     registerRecordingIpc()
     // Speaker notes (teleprompter): Home, the notes window and the recording bar.

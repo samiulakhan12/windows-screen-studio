@@ -1,0 +1,161 @@
+/* Settings › Brand kit (docs/design/brand-kit.md §5). Text on --surface-2 uses --text-1 / --text-2
+   (both above 4.5:1); swatches carry their hex code as text, so colour is never the only cue. */
+
+.brand-kit h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.brand-saved {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  color: var(--text-2);
+}
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+}
+
+.settings-empty.small {
+  font-size: var(--text-sm);
+}
+
+.brand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-2) var(--space-3);
+}
+
+.brand-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.brand-range-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.brand-logo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-logo-preview {
+  width: 96px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong);
+  /* A checkerboard shows a logo's transparent parts. */
+  background: repeating-conic-gradient(#2a2a32 0% 25%, #1f1f26 0% 50%) 50% / 12px 12px;
+  overflow: hidden;
+}
+
+.brand-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.brand-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.brand-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 2px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-default);
+  background: var(--surface-1);
+}
+
+.brand-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+}
+
+.brand-color-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-1);
+}
+
+.brand-add-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-add-color input[type='color'] {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.brand-fonts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.brand-font {
+  display: grid;
+  grid-template-columns: minmax(0, 160px) 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-font-sample {
+  font-size: var(--text-lg);
+  color: var(--text-1);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.toggle.brand-auto {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+}
+
+/* The editor's callout look (editor.css is not loaded on Home). */
+.brand-kit .callout {
+  margin: 0;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  color: #fde68a;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}

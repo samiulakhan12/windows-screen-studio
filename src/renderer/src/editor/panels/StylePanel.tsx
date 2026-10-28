@@ -10,6 +10,7 @@ import type { Background, DeviceFrame, DeviceFrameKind, Project, ShadowStyle } f
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
+import { BrandKitBar } from './BrandKitBar'
 import { CropLink, CropRow } from './CropRow'
 import { PresetsSection } from './StylePresets'
 import { animatedThumb, frameThumb, wallpaperThumb } from './styleThumbs'
@@ -281,6 +282,8 @@ export function StylePanel({
       </Section>
 
       <WatermarkSection project={project} />
+
+      <BrandKitBar project={project} onNotice={onNotice} />
 
       <StyleDefaultsSection project={project} onNotice={onNotice} />
     </>

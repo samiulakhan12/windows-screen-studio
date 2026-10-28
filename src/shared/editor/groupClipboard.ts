@@ -11,11 +11,12 @@ import { clamp } from '../engine/math'
 import { formatTime } from '../engine/project'
 import { MIN_NEW_ZOOM, newZoomId, zoomAt } from '../engine/zoom'
 import { chapterInVideo } from '../render/chapters'
-import type { Annotation, Chapter, Freeze, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import type { Annotation, Chapter, Freeze, ImageOverlay, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { newAnnotationId } from './annotations'
 import { displayTime } from './clips'
 import { freezeAtPlayhead } from './freezeEdit'
 import { itemKey, KIND_WORDS, parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
+import { newOverlayId } from './overlays'
 import { newShapeId, newSpotlightId } from './shapes'
 import { outputToSourceRanges } from './smartSpeed'
 import { chapterNear, createChapter, newTitleId } from './titles'
@@ -25,6 +26,7 @@ export type ClipItem =
   | { kind: 'annotation'; item: Annotation }
   | { kind: 'shape'; item: Shape }
   | { kind: 'spotlight'; item: Spotlight }
+  | { kind: 'overlay'; item: ImageOverlay }
   | { kind: 'title'; item: TitleCard }
   | { kind: 'chapter'; item: Chapter }
   | { kind: 'freeze'; item: Freeze }
@@ -55,6 +57,7 @@ export type PasteSkip =
   | 'freeze-frozen'
   | 'freeze-full'
   | 'freeze-other-recording'
+  | 'image-other-recording'
 
 export interface PasteResult {
   project: Project
@@ -109,6 +112,10 @@ function clipItemOf(p: Project, key: ItemKey): ClipItem | null {
     case 'spotlight': {
       const item = copy(find(p.spotlights))
       return item && { kind: 'spotlight', item }
+    }
+    case 'overlay': {
+      const item = copy(find(p.overlays))
+      return item && { kind: 'overlay', item }
     }
     case 'title': {
       const item = copy(find(p.titles))
@@ -177,8 +184,25 @@ function place(p: Project, clip: ItemClipboard, at: number, movedBack: boolean):
         }
         break
       }
+      case 'overlay': {
+        // An image is a file of its own recording; a built-in sticker pastes anywhere.
+        if (c.item.file && clip.projectId !== p.id) {
+          skipped.push({ kind: c.kind, why: 'image-other-recording' })
+          break
+        }
+        const item = { ...c.item, id: newOverlayId(), start: c.item.start + offset, end: c.item.end + offset }
+        if (outside(item.end)) skipped.push({ kind: c.kind, why: 'outside' })
+        else {
+          q = { ...q, overlays: [...(q.overlays ?? []), item] }
+          keys.push(itemKey(c.kind, item.id))
+        }
+        break
+      }
       case 'title': {
-        const item = { ...c.item, id: newTitleId(), start: c.item.start + offset, end: c.item.end + offset }
+        // A copy of the brand kit's intro or outro is the user's: applying the kit again keeps it.
+        const { brand: _brand, ...card } = c.item
+        void _brand
+        const item = { ...card, id: newTitleId(), start: c.item.start + offset, end: c.item.end + offset }
         if (outside(item.end)) skipped.push({ kind: c.kind, why: 'outside' })
         else {
           q = { ...q, titles: [...(q.titles ?? []), item] }
@@ -295,6 +319,7 @@ function skipText(kind: GroupKind, why: PasteSkip, n: number): string {
     case 'freeze-full':
       return `${what} would go past the limit of ${MAX_FREEZES}`
     case 'freeze-other-recording':
+    case 'image-other-recording':
       return `${what} ${is} from another recording`
   }
 }

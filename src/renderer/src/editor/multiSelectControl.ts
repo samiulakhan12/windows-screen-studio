@@ -33,6 +33,7 @@ import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import type { SnapController, SnapSession } from './snapControl'
 import { showTitle } from './titleItems'
+import { showOverlay } from './overlayItems'
 
 export type { RefusedKind } from '../../../shared/editor/multiSelectCopy'
 
@@ -77,6 +78,7 @@ const BLOCKS: readonly [attr: string, kind: Parameters<typeof trackOfKind>[0]][]
   ['annotation', 'annotation'],
   ['shape', 'shape'],
   ['spotlight', 'spotlight'],
+  ['overlay', 'overlay'],
   ['title', 'title'],
   ['chapter', 'chapter'],
   ['freeze', 'freeze']
@@ -118,6 +120,11 @@ function plainClick({ store, player }: EditorServices, key: ItemKey): void {
     case 'spotlight': {
       const s = p.spotlights?.find((x) => x.id === k.id)
       if (s) revealItem(player, p.clips, s, 'spotlight')
+      return
+    }
+    case 'overlay': {
+      const o = p.overlays?.find((x) => x.id === k.id)
+      if (o) showOverlay(player, p.clips, o)
       return
     }
     case 'title': {

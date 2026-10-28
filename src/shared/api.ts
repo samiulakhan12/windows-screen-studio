@@ -1,5 +1,6 @@
 import type { AiApi } from './api/ai'
 import type { BrandApi } from './api/brand'
+import type { BrandKitApi } from './api/brandKit'
 import type { CaptionsApi } from './api/captions'
 import type { PrefsApi } from './api/prefs'
 import type { ExportApi } from './api/export'
@@ -14,4 +15,4 @@ export type { NotesApi } from './api/notes'
 export type { RecorderCommand, RecordingApi, SaveRecordingPayload } from './api/recording'
 
 /** API exposed to renderer windows by the preload script as `window.api`. */
-export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & NotesApi & SpeechApi
+export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi

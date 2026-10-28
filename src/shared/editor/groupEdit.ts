@@ -10,20 +10,23 @@ import { fromCrop, toCrop, zoomInView } from '../engine/crop'
 import { ZOOM_EASINGS } from '../engine/easing'
 import { FREEZE } from '../engine/freeze'
 import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomEasing, zoomTargetScale, zoomTransition, type ZoomStyle } from '../engine/zoom'
-import type { Annotation, Background, Chapter, Freeze, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import { OVERLAY_LIMITS } from '../engine/overlayData'
+import { stickerOf } from '../render/stickers'
+import type { Annotation, Background, Chapter, Freeze, ImageOverlay, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { ANNOTATION_SIZE } from './annotations'
 import { setZoomLevelInView } from './cropEdit'
 import { removeFreeze, setFreezeLength, setFreezeSound } from './freezeEdit'
 import { parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
+import { sizeForAspect } from './overlays'
 import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, shapeLabel, STROKE_LIMITS } from './shapes'
 import { TITLE_BACKGROUNDS, TITLE_COLORS, TITLE_STYLES, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
 import { formatLevel } from './zoomEdit'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
-export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'title' | 'freeze'
+export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze'
 
 /** The order sections and looks come in. */
-export const LOOK_CLASSES: readonly LookClass[] = ['zoom', 'text', 'mark', 'privacy', 'spotlight', 'title', 'freeze']
+export const LOOK_CLASSES: readonly LookClass[] = ['zoom', 'text', 'mark', 'privacy', 'spotlight', 'image', 'title', 'freeze']
 
 /** What reads and writes need besides the project: the crop (levels and points are in its view), the zoom style, the background. */
 export interface FieldCtx {
@@ -322,6 +325,71 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     patch: (s, v) => ({ ...s, feather: v as number })
   }),
 
+  // Image overlays (docs/design/brand-kit.md): size keeps each image's own shape (its long side is set).
+  patchField<ImageOverlay>({
+    id: 'image.x',
+    cls: 'image',
+    label: 'Position X',
+    control: { type: 'slider', min: 0, max: 1, step: 0.005, format: pctFmt },
+    look: false,
+    read: (o) => o.x,
+    patch: (o, v) => ({ ...o, x: v as number })
+  }),
+  patchField<ImageOverlay>({
+    id: 'image.y',
+    cls: 'image',
+    label: 'Position Y',
+    control: { type: 'slider', min: 0, max: 1, step: 0.005, format: pctFmt },
+    look: false,
+    read: (o) => o.y,
+    patch: (o, v) => ({ ...o, y: v as number })
+  }),
+  patchField<ImageOverlay>({
+    id: 'image.size',
+    cls: 'image',
+    label: 'Size',
+    control: { type: 'slider', min: OVERLAY_LIMITS.side.min, max: OVERLAY_LIMITS.side.max, step: 0.005, format: pctFmt },
+    look: true,
+    read: (o) => Math.max(o.w, o.h),
+    patch: (o, v) => ({ ...o, ...sizeForAspect(o.w / o.h, v as number) })
+  }),
+  patchField<ImageOverlay>({
+    id: 'image.rotation',
+    cls: 'image',
+    label: 'Rotation',
+    control: { type: 'slider', min: OVERLAY_LIMITS.rotation.min, max: OVERLAY_LIMITS.rotation.max, step: 1, format: (v) => `${Math.round(v)}°` },
+    look: true,
+    read: (o) => o.rotation,
+    patch: (o, v) => ({ ...o, rotation: v as number })
+  }),
+  patchField<ImageOverlay>({
+    id: 'image.opacity',
+    cls: 'image',
+    label: 'Opacity',
+    control: { type: 'slider', min: OVERLAY_LIMITS.opacity.min, max: OVERLAY_LIMITS.opacity.max, step: 0.05, format: pctFmt },
+    look: true,
+    read: (o) => o.opacity,
+    patch: (o, v) => ({ ...o, opacity: v as number })
+  }),
+  patchField<ImageOverlay>({
+    id: 'image.fadeIn',
+    cls: 'image',
+    label: 'Fade in',
+    control: { type: 'slider', min: OVERLAY_LIMITS.fade.min, max: OVERLAY_LIMITS.fade.max, step: 0.1, format: tenthsFmt },
+    look: true,
+    read: (o) => o.fadeIn,
+    patch: (o, v) => ({ ...o, fadeIn: v as number })
+  }),
+  patchField<ImageOverlay>({
+    id: 'image.fadeOut',
+    cls: 'image',
+    label: 'Fade out',
+    control: { type: 'slider', min: OVERLAY_LIMITS.fade.min, max: OVERLAY_LIMITS.fade.max, step: 0.1, format: tenthsFmt },
+    look: true,
+    read: (o) => o.fadeOut,
+    patch: (o, v) => ({ ...o, fadeOut: v as number })
+  }),
+
   patchField<TitleCard>({
     id: 'title.style',
     cls: 'title',
@@ -398,6 +466,7 @@ const KIND_OF: Readonly<Record<LookClass, GroupKind>> = {
   mark: 'shape',
   privacy: 'shape',
   spotlight: 'spotlight',
+  image: 'overlay',
   title: 'title',
   freeze: 'freeze'
 }
@@ -413,6 +482,8 @@ function listOf(p: Project, kind: GroupKind): readonly { id: string }[] {
       return p.shapes ?? []
     case 'spotlight':
       return p.spotlights ?? []
+    case 'overlay':
+      return p.overlays ?? []
     case 'title':
       return p.titles ?? []
     case 'chapter':
@@ -447,6 +518,8 @@ const classOfItem = (kind: GroupKind, item: unknown): LookClass | null => {
       return isPrivacyKind((item as Shape).kind) ? 'privacy' : 'mark'
     case 'spotlight':
       return 'spotlight'
+    case 'overlay':
+      return 'image'
     case 'title':
       return 'title'
     case 'freeze':
@@ -520,6 +593,8 @@ function withList(p: Project, kind: GroupKind, list: unknown[]): Project {
       return { ...p, shapes: list as Shape[] }
     case 'spotlight':
       return { ...p, spotlights: list as Spotlight[] }
+    case 'overlay':
+      return { ...p, overlays: list as ImageOverlay[] }
     case 'title':
       return { ...p, titles: list as TitleCard[] }
     case 'chapter':
@@ -620,6 +695,10 @@ function lookName(kind: GroupKind, item: unknown): string {
       return shapeLabel((item as Shape).kind)
     case 'spotlight':
       return 'Spotlight'
+    case 'overlay': {
+      const o = item as ImageOverlay
+      return o.sticker ? `${stickerOf(o.sticker)?.name ?? 'Sticker'} sticker` : 'Image'
+    }
     case 'title':
       return 'Title card'
     case 'freeze':
@@ -685,6 +764,9 @@ export function lookLabel(look: Look): string {
     case 'spotlight':
       parts.push(v['spotlight.shape'] ? optionLabel('spotlight.shape', v['spotlight.shape']).toLowerCase() : null, num('spotlight.dim') === null ? null : `${pct(num('spotlight.dim'))} dark`)
       break
+    case 'image':
+      parts.push(pct(num('image.opacity')), num('image.rotation') ? `${Math.round(num('image.rotation')!)}°` : null)
+      break
     case 'title':
       parts.push(v['title.style'] ? optionLabel('title.style', v['title.style']) : null, v['title.background'] ? optionLabel('title.background', v['title.background']) : null)
       break
@@ -703,6 +785,7 @@ export const LOOK_CLASS_WORDS: Readonly<Record<LookClass, readonly [string, stri
   mark: ['shape', 'shapes'],
   privacy: ['blur or pixelate area', 'blur or pixelate areas'],
   spotlight: ['spotlight', 'spotlights'],
+  image: ['image', 'images'],
   title: ['title card', 'title cards'],
   freeze: ['freeze frame', 'freeze frames']
 }

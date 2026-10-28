@@ -7,9 +7,9 @@ import { projectDir } from './projects'
 
 export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
 
-/** Project files the renderer may load: the proxies, a background image and a custom cursor image. */
+/** Project files the renderer may load: the proxies, a background image, a custom cursor image, picked assets, image overlays and fonts. */
 export const MEDIA_FILE_RE =
-  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a)$/i
+  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a|overlay-[1-9][0-9]{0,8}\.(png|jpg|webp|svg|gif)|font-[1-9][0-9]{0,8}\.(ttf|otf|woff2))$/i
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.png': 'image/png',
@@ -17,6 +17,10 @@ const MIME: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
+  '.gif': 'image/gif',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+  '.woff2': 'font/woff2',
   '.ico': 'image/x-icon',
   '.cur': 'image/x-icon',
   '.mp3': 'audio/mpeg',
@@ -31,9 +35,16 @@ const MIME: Record<string, string> = {
 // Frames are read back from canvas during export, so media must be CORS-clean.
 const CORS = { 'Access-Control-Allow-Origin': '*' }
 
-/** Extra headers per type: a user's SVG is only ever an image, never a document that runs scripts. */
+/**
+ * Extra headers per type: a user's SVG is only ever an image, never a document that runs scripts;
+ * fonts are read as bytes (FontFace) and never sniffed into another type.
+ */
 const typeHeaders = (type: string): Record<string, string> =>
-  type === 'image/svg+xml' ? { 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:", 'X-Content-Type-Options': 'nosniff' } : {}
+  type === 'image/svg+xml'
+    ? { 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:", 'X-Content-Type-Options': 'nosniff' }
+    : type.startsWith('font/')
+      ? { 'X-Content-Type-Options': 'nosniff' }
+      : {}
 
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
