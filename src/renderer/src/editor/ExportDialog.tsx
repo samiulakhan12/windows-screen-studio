@@ -39,10 +39,11 @@ import { useModalFocus } from './modalFocus'
 import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
 import { writeBundle } from './exportBundleRun'
-import { bundleKinds, chapterParts, normalizeBundle, partFileNames, partProject, perChapterBlocked, type BundleOptions } from '../../../shared/render/exportBundle'
+import { bundleKinds, chapterParts, normalizeBundle, partFileNames, partProject, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import type { BatchExtras } from './exporter'
 import './exportDialog.css'
+import './handsOff.css'
 import './titles.css'
 
 interface Props {
@@ -301,8 +302,8 @@ export function ExportDialog(props: Props): JSX.Element {
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
   const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips, plan), [project.chapters, clips, plan])
-  const bundleHas = { captions: !!project.transcript?.segments.some((seg) => seg.text.trim()), chapters: chapters.length > 0 }
   const parts = useMemo(() => chapterParts(project), [project])
+  const bundleHas = { captions: !!project.transcript?.segments.some((seg) => seg.text.trim()), chapters: chapters.length > 0, stillAcross: stillAcrossChapters(project, parts) }
   const perChapter = bundle.perChapter && !perChapterBlocked(bundleHas, mode) && parts.length > 0
   const partNames = useMemo(() => partFileNames(parts, FORMAT_EXTENSIONS[options.format]), [parts, options.format])
 
@@ -491,7 +492,9 @@ export function ExportDialog(props: Props): JSX.Element {
       setPhase((p) => (p.kind === 'batch' ? { ...p, finished: true } : p))
       const files = statuses.flatMap((s) => (s.state === 'done' ? [s.path] : []))
       const failed = statuses.find((s): s is Extract<BatchStatus, { state: 'failed' }> => s.state === 'failed')
-      void link?.end(files.length ? { kind: 'done', files } : failed ? { kind: 'failed', message: failed.message } : { kind: 'cancelled' })
+      const failures = statuses.filter((s) => s.state === 'failed').length
+      const stopped = statuses.some((s) => s.state === 'cancelled')
+      void link?.end(files.length ? { kind: 'done', files, failed: failures, stopped } : failed ? { kind: 'failed', message: failed.message } : { kind: 'cancelled' })
     }
   }
 
@@ -1136,8 +1139,15 @@ function pausedText(slept: boolean): string {
 }
 
 function PauseButton({ paused, onPause, disabled }: { paused: boolean; onPause: () => void; disabled: boolean }): JSX.Element {
+  // aria-disabled, not disabled: the button flips between files and phases, and a disabled button
+  // would drop the keyboard focus to the page.
   return (
-    <button className="btn export-pause" onClick={onPause} disabled={disabled} title={paused ? 'Carry on with the export' : 'Pause the export; nothing is lost'}>
+    <button
+      className="btn export-pause"
+      onClick={() => !disabled && onPause()}
+      aria-disabled={disabled}
+      title={disabled ? 'Pause is possible while frames are drawn' : paused ? 'Carry on with the export' : 'Pause the export; nothing is lost'}
+    >
       {paused ? 'Resume' : 'Pause'}
     </button>
   )

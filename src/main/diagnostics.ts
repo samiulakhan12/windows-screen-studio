@@ -35,6 +35,8 @@ export interface DiagnosticsDeps {
   jobs: () => string[]
   log: (n: number) => Promise<string[]>
   roots: RedactRoots
+  /** The home folder and account name (redactLine's last guard). */
+  names?: readonly string[]
   now?: () => Date
 }
 
@@ -86,10 +88,10 @@ export async function collectDiagnostics(deps: DiagnosticsDeps, timeoutMs = PART
 }
 
 /** The report's text, every line redacted once more. */
-export function diagnosticsText(report: DiagnosticsReport, roots: RedactRoots): string {
+export function diagnosticsText(report: DiagnosticsReport, roots: RedactRoots, names: readonly string[] = []): string {
   return formatDiagnostics(report)
     .split('\n')
-    .map((l) => redactLine(l, roots))
+    .map((l) => redactLine(l, roots, names))
     .join('\n')
 }
 
@@ -98,6 +100,17 @@ export function appRoots(): RedactRoots {
   const roots: Record<string, string> = { userData: app.getPath('userData'), projects: projectsRoot(), app: app.getAppPath() }
   if (process.resourcesPath) roots.resources = process.resourcesPath
   return roots
+}
+
+/** The home folder and the account name: never in the log or the report, whatever form they take. */
+export function appNames(): string[] {
+  const names = [os.homedir()]
+  try {
+    names.push(os.userInfo().username)
+  } catch {
+    // No account name to add.
+  }
+  return names.filter((n) => typeof n === 'string' && n.length >= 3)
 }
 
 function electronDeps(): DiagnosticsDeps {
@@ -131,7 +144,8 @@ function electronDeps(): DiagnosticsDeps {
     recordings: async () => (await listProjects()).length,
     jobs: () => jobsSnapshot().map((j) => `${j.kind}${j.fraction !== null ? ` ${Math.round(j.fraction * 100)}%` : ''}${j.paused ? ' (paused)' : ''}`),
     log: async (n) => (await appLog()?.recent(n)) ?? [],
-    roots: appRoots()
+    roots: appRoots(),
+    names: appNames()
   }
 }
 
@@ -145,7 +159,7 @@ export function registerDiagnosticsIpc(deps: () => DiagnosticsDeps = electronDep
   ipcMain.handle('diagnostics:collect', async (e) => {
     fromApp(e)
     const d = deps()
-    const text = diagnosticsText(await collectDiagnostics(d), d.roots)
+    const text = diagnosticsText(await collectDiagnostics(d), d.roots, d.names)
     last = { id: `d${++counter}`, text }
     return last
   })

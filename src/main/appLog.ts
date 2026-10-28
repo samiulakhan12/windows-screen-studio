@@ -35,7 +35,9 @@ export class AppLog {
     readonly dir: string,
     private readonly roots: RedactRoots,
     private readonly limits: { maxBytes: number; flushMs: number; lineMax: number } = LOG,
-    private readonly now: () => Date = () => new Date()
+    private readonly now: () => Date = () => new Date(),
+    /** The home folder and the account name, taken out wherever they are left (redactLine). */
+    private readonly names: readonly string[] = []
   ) {}
 
   get file(): string {
@@ -51,7 +53,7 @@ export class AppLog {
       text = String(args[0])
     }
     if (text.length > this.limits.lineMax) text = `${text.slice(0, this.limits.lineMax)}…`
-    this.pending.push(`${this.now().toISOString()} ${LABEL[level]} ${redactLine(text, this.roots)}\n`)
+    this.pending.push(`${this.now().toISOString()} ${LABEL[level]} ${redactLine(text, this.roots, this.names)}\n`)
     if (!this.timer) this.timer = setTimeout(() => void this.flush(), this.limits.flushMs)
   }
 
@@ -134,7 +136,7 @@ export class AppLog {
       .split('\n')
       .filter((l) => l.length > 0)
       .slice(-n)
-      .map((l) => redactLine(l.slice(0, this.limits.lineMax + 64), this.roots))
+      .map((l) => redactLine(l.slice(0, this.limits.lineMax + 64), this.roots, this.names))
   }
 }
 
@@ -147,9 +149,9 @@ export const appLog = (): AppLog | null => current
  * Starts the log in `dir` and tees console.log/info/warn/error into it (the console still prints
  * as before). Call once, as early as possible.
  */
-export function startAppLog(dir: string, roots: RedactRoots): AppLog {
+export function startAppLog(dir: string, roots: RedactRoots, names: readonly string[] = []): AppLog {
   if (current) return current
-  const log = new AppLog(dir, roots)
+  const log = new AppLog(dir, roots, LOG, () => new Date(), names)
   current = log
   for (const level of ['log', 'info', 'warn', 'error'] as Level[]) {
     const original = console[level].bind(console)

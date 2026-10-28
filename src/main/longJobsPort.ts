@@ -35,6 +35,7 @@ const shown = new Set<Notification>()
 export function electronTaskbarPort(): TaskbarPort {
   const trace = tracer()
   let blocker: number | null = null
+  let flashing = false
   return {
     setProgress(state) {
       trace?.('progress', state)
@@ -64,7 +65,12 @@ export function electronTaskbarPort(): TaskbarPort {
       const win = getMainWindow()
       if (!win || win.isDestroyed() || win.isFocused()) return
       win.flashFrame(true)
-      win.once('focus', () => !win.isDestroyed() && win.flashFrame(false))
+      if (flashing) return
+      flashing = true
+      win.once('focus', () => {
+        flashing = false
+        if (!win.isDestroyed()) win.flashFrame(false)
+      })
     },
     notify(copy, handlers) {
       trace?.('notify', copy)

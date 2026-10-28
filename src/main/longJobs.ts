@@ -133,7 +133,8 @@ function refresh(): void {
     lastButtons = bkey
     port.setButtons(buttons, onThumb)
   }
-  const want = jobs.size > 0
+  // A paused job does not keep the PC awake: a paused export may wait for hours.
+  const want = views().some((j) => !j.paused)
   if (want !== awake) {
     awake = want
     port.keepAwake(want)
@@ -308,7 +309,15 @@ function fromApp(e: IpcMainInvokeEvent | IpcMainEvent): boolean {
 
 function validOutcome(raw: unknown): JobOutcome {
   const o = (raw ?? {}) as { kind?: unknown; files?: unknown; message?: unknown }
-  if (o.kind === 'done') return { kind: 'done', files: Array.isArray(o.files) ? o.files.filter((f): f is string => typeof f === 'string').slice(0, 500) : [] }
+  if (o.kind === 'done') {
+    const r = raw as { failed?: unknown; stopped?: unknown }
+    return {
+      kind: 'done',
+      files: Array.isArray(o.files) ? o.files.filter((f): f is string => typeof f === 'string').slice(0, 500) : [],
+      ...(typeof r.failed === 'number' && Number.isInteger(r.failed) && r.failed > 0 ? { failed: Math.min(r.failed, 10_000) } : {}),
+      ...(r.stopped === true ? { stopped: true } : {})
+    }
+  }
   if (o.kind === 'failed') return { kind: 'failed', message: typeof o.message === 'string' ? o.message.slice(0, 2000) : '' }
   return { kind: 'cancelled' }
 }

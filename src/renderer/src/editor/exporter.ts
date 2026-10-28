@@ -21,7 +21,7 @@ import { CameraMaskPreparer } from '../render/segmentation/cameraMasks'
 import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
-import type { PauseGate } from './pauseGate'
+import type { PauseGate } from '../../../shared/jobs/pauseGate'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 

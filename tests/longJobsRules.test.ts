@@ -64,6 +64,12 @@ describe('notificationFor', () => {
     })
   })
 
+  it('says when a batch lost files or stopped early', () => {
+    const files = [{ path: '/v/out/a.mp4', bytes: 1 }, { path: '/v/out/b.mp4', bytes: 1 }]
+    expect(notificationFor('export', { kind: 'done', failed: 1, stopped: true }, files)?.body).toBe('out · 1 failed · stopped early')
+    expect(notificationFor('export', { kind: 'done', failed: 2 }, files.slice(0, 1))?.body).toBe('a.mp4 · 1 KB · 2 failed')
+  })
+
   it('says nothing for cancels, analyses and exports without checked files', () => {
     expect(notificationFor('export', { kind: 'cancelled' }, [])).toBeNull()
     expect(notificationFor('analysis', { kind: 'done' }, [])).toBeNull()

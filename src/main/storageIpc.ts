@@ -24,23 +24,29 @@ const storeOf = (): StorageStore => (store ??= new StorageStore(path.join(app.ge
 
 /** The recording each page has open in the editor. */
 const openBy = new Map<number, string>()
+/** Pages already watched for going away (each once, however often it opens recordings). */
+const watched = new Set<number>()
 const openIds = (): Set<string> => new Set(openBy.values())
 
 const fromApp = (e: IpcMainInvokeEvent | IpcMainEvent): boolean => isAppUrl(e.senderFrame?.url ?? '')
 
 function watchPage(wc: WebContents): void {
-  if (openBy.has(wc.id)) return
-  const gone = (): void => void openBy.delete(wc.id)
-  wc.once('destroyed', gone)
-  wc.once('did-navigate', gone)
-  wc.once('render-process-gone', gone)
+  if (watched.has(wc.id)) return
+  watched.add(wc.id)
+  const id = wc.id
+  wc.on('did-navigate', () => openBy.delete(id))
+  wc.on('render-process-gone', () => openBy.delete(id))
+  wc.once('destroyed', () => {
+    openBy.delete(id)
+    watched.delete(id)
+  })
 }
 
 const trash = (file: string): Promise<void> => shell.trashItem(file)
 
 async function clean(requests: { id: string; action: CleanupAction }[]): Promise<StorageCleanupResult> {
   const s = storeOf()
-  return runCleanup(projectsRoot(), requests, s.rules, s.used, openIds(), Date.now(), { trash, beforeRemove: stopAnalyses })
+  return runCleanup(projectsRoot(), requests, s.rules, s.used, openIds(), Date.now(), { trash, beforeRemove: stopAnalyses, isOpen: (id) => openIds().has(id) })
 }
 
 /** The cache rule by itself, when the user asked for it and nothing else is going on. */

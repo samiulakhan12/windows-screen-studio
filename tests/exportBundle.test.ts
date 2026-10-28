@@ -14,7 +14,8 @@ import {
   partProject,
   perChapterBlocked,
   sidecarBlocked,
-  sidecarName
+  sidecarName,
+  stillAcrossChapters
 } from '../src/shared/render/exportBundle'
 import type { Chapter, Clip, Freeze } from '../src/shared/types'
 
@@ -95,6 +96,16 @@ describe('chapter parts', () => {
     expect(second.freezes?.map((f) => f.id)).toEqual(['f'])
     expect(videoDuration(first.clips, planOf(first)) + videoDuration(second.clips, planOf(second))).toBeCloseTo(12)
     expect('chapters' in second).toBe(false)
+  })
+
+  it('refuses to split inside a still that keeps the sound playing', () => {
+    const clips = [clip('a', 0, 20)]
+    const still: Freeze = { id: 's', at: 8, length: 5, sound: 'continue' } as Freeze
+    const across = { clips, freezes: [still], chapters: [ch(0, 'A'), ch(10, 'B'), ch(15, 'C')] }
+    expect(stillAcrossChapters(across, chapterParts(across))).toBe(true)
+    expect(perChapterBlocked({ captions: false, chapters: true, stillAcross: true }, 'single')).toMatch(/freeze frame/)
+    const clear = { ...across, chapters: [ch(0, 'A'), ch(14, 'B')] }
+    expect(stillAcrossChapters(clear, chapterParts(clear))).toBe(false)
   })
 
   it('keeps captions in each part in its own time', () => {

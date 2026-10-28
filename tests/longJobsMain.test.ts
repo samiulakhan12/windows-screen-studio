@@ -71,6 +71,15 @@ describe('long jobs registry', () => {
     expect(jobsSnapshot()).toEqual([])
   })
 
+  it('lets the PC sleep while every job is paused', () => {
+    const f = fakePort()
+    setTaskbarPort(f.port)
+    const job = beginJob({ kind: 'export', pausable: true, owner: fakeOwner().owner })
+    job.update({ paused: true })
+    job.update({ paused: false })
+    expect(f.calls.filter((c) => c.call === 'awake').map((c) => c.value)).toEqual([true, false, true])
+  })
+
   it('sends taskbar commands to the page that owns the job, and Stop to a main-side job', () => {
     const f = fakePort()
     setTaskbarPort(f.port)

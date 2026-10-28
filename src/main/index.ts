@@ -22,7 +22,7 @@ import { disposeJobs, registerJobsIpc, setTaskbarPort } from './longJobs'
 import { electronTaskbarPort } from './longJobsPort'
 import { registerExportBundleIpc } from './exportBundle'
 import { appLog, startAppLog } from './appLog'
-import { appRoots, registerDiagnosticsIpc } from './diagnostics'
+import { appNames, appRoots, registerDiagnosticsIpc } from './diagnostics'
 import { registerStorageIpc } from './storageIpc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
@@ -36,7 +36,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   // The app's log (X-03): console lines, redacted, in userData/logs (docs/design/hands-off.md).
-  startAppLog(path.join(app.getPath('userData'), 'logs'), appRoots())
+  startAppLog(path.join(app.getPath('userData'), 'logs'), appRoots(), appNames())
   console.info(`${APP_NAME} ${app.getVersion()} starting`)
   app.on('second-instance', focusApp)
 

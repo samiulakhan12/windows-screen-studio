@@ -20,7 +20,8 @@ const MAX_PNG_BYTES = 200 * 1024 * 1024
 
 export interface SidecarDeps {
   isExported: (file: string) => boolean
-  replaced: (file: string) => boolean
+  /** Whether `kind` next to `file` may be replaced (consumed: once per export). */
+  replaced: (file: string, kind: SidecarKind) => boolean
   exists: (file: string) => boolean
 }
 
@@ -35,7 +36,7 @@ export function sidecarTarget(anchor: unknown, kind: unknown, deps: SidecarDeps 
   if (!SIDECAR_KINDS.includes(kind as SidecarKind)) throw new Error('Invalid extra file')
   const name = sidecarName(path.basename(anchor), kind as SidecarKind)
   const dir = path.dirname(anchor)
-  if (deps.replaced(anchor)) return path.join(dir, name)
+  if (deps.replaced(anchor, kind as SidecarKind)) return path.join(dir, name)
   return freeBatchPath(dir, name, deps.exists)
 }
 

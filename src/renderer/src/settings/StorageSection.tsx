@@ -26,6 +26,7 @@ export function StorageSection(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<StorageCleanupResult | null>(null)
   const reviewRef = useRef<HTMLHeadingElement>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
 
   const scan = useCallback(async (): Promise<void> => {
     try {
@@ -67,6 +68,8 @@ export function StorageSection(): JSX.Element {
       setResult(r)
       setPlan(null)
       await scan()
+      // The review (and its focused button) is gone: the result takes the focus.
+      requestAnimationFrame(() => resultRef.current?.focus())
     } catch (err) {
       setError(ipcMessage(err))
     } finally {
@@ -216,7 +219,7 @@ export function StorageSection(): JSX.Element {
             </div>
           )}
           {result && (
-            <div role="status" data-testid="storage-result">
+            <div role="status" data-testid="storage-result" ref={resultRef} tabIndex={-1} className="storage-result">
               <p className="hint">
                 {result.moved.length
                   ? `Moved ${result.moved.length} item${result.moved.length === 1 ? '' : 's'} to the Recycle Bin · freed ${formatBytes(result.freed)}`

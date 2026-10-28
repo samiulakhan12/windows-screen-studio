@@ -87,7 +87,7 @@ export function thumbarButtons(jobs: readonly JobView[], now: number): ThumbButt
 }
 
 /** How a job ended. Files are absolute paths of what an export wrote (checked by main). */
-export type JobOutcome = { kind: 'done'; files?: string[]; label?: string } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
+export type JobOutcome = { kind: 'done'; files?: string[]; label?: string; failed?: number; stopped?: boolean } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
 
 export interface NotificationCopy {
   title: string
@@ -121,6 +121,16 @@ export function notificationFor(kind: JobKind, outcome: JobOutcome, files: reado
   }
   if (kind === 'captions') return { title: 'Captions are ready', body: name || 'Your recording has captions now.', actions: [] }
   if (!files.length) return null
-  if (files.length === 1) return { title: 'Export finished', body: `${fileName(files[0].path)} · ${sizeText(files[0].bytes)}`, actions: ['open', 'show'] }
-  return { title: `${files.length} files exported`, body: folderName(files[0].path), actions: ['show'] }
+  // A batch that stopped early or lost files says so.
+  const failed = outcome.failed ?? 0
+  const more = `${failed > 0 ? ` · ${failed} failed` : ''}${outcome.stopped ? ' · stopped early' : ''}`
+  if (files.length === 1) return { title: 'Export finished', body: `${fileName(files[0].path)} · ${sizeText(files[0].bytes)}${more}`, actions: ['open', 'show'] }
+  return { title: `${files.length} files exported`, body: `${folderName(files[0].path)}${more}`, actions: ['show'] }
+}
+
+/** The taskbar share of an export's progress: frames while rendering, unknown while finalizing. */
+export function progressShare(p: { phase: 'preparing' | 'rendering' | 'finalizing'; frame: number; frames: number } | null): { fraction: number | null; pausable: boolean } {
+  if (!p || p.phase === 'preparing') return { fraction: 0, pausable: false }
+  if (p.phase === 'finalizing') return { fraction: null, pausable: false }
+  return { fraction: p.frames > 0 ? p.frame / p.frames : 0, pausable: true }
 }

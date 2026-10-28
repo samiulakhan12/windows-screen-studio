@@ -22,10 +22,14 @@ function rootPattern(root: string): RegExp | null {
   return new RegExp(`${body}(?=$|[\\\\/\\s"'<>|:;,)\\]])`, 'gi')
 }
 
-/** A path segment that may hold single spaces ("John Smith"): a name never leaks half-redacted. */
-const SEG = `[^\\\\/\\s"'<>|*?:\\r\\n]+(?: [^\\\\/\\s"'<>|*?:\\r\\n]+)*`
-const WIN_PATH = new RegExp(`\\b[A-Za-z]:[\\\\/](?:${SEG}[\\\\/]?)*`, 'g')
-const UNC_PATH = new RegExp(`\\\\\\\\${SEG}(?:\\\\${SEG})*\\\\?`, 'g')
+/**
+ * A path segment that may hold spaces and apostrophes ("John  Smith", "O'Brien"): a name never
+ * leaks half-redacted (a little of the text after a path may go with it). Separators may be doubled,
+ * as util.inspect prints them in logged objects and errors.
+ */
+const SEG = `[^\\\\/\\s"<>|*?:\\r\\n]+(?: +[^\\\\/\\s"<>|*?:\\r\\n]+)*`
+const WIN_PATH = new RegExp(`\\b[A-Za-z]:[\\\\/]+(?:${SEG}[\\\\/]*)*`, 'g')
+const UNC_PATH = new RegExp(`\\\\{2,}${SEG}(?:\\\\+${SEG})*\\\\*`, 'g')
 const POSIX_PATH = /(^|[\s"'(=,[])(\/[^\s"'<>,)\]]+)/g
 const FILE_URL = /file:\/\/\/?(?=[A-Za-z]:|\/)[^\s"')]+/gi
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
@@ -40,8 +44,12 @@ const SECRETS: [RegExp, string][] = [
   [/(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{32,}={0,2}/g, '<secret>']
 ]
 
-/** `line` with secrets, e-mail addresses and paths outside `roots` taken out. */
-export function redactLine(line: string, roots: RedactRoots = {}): string {
+/**
+ * `line` with secrets, e-mail addresses and paths outside `roots` taken out. `names` (the home folder
+ * and the user's account name) are a last guard: wherever they still appear, in any case and with
+ * any separators, they become <path> and <user>.
+ */
+export function redactLine(line: string, roots: RedactRoots = {}, names: readonly string[] = []): string {
   let out = line
   const ordered = Object.entries(roots)
     .filter(([, dir]) => typeof dir === 'string' && dir.length > 0)
@@ -56,5 +64,11 @@ export function redactLine(line: string, roots: RedactRoots = {}): string {
   out = out.replace(POSIX_PATH, (_m, lead: string) => `${lead}<path>`)
   out = out.replace(EMAIL, '<email>')
   for (const [re, to] of SECRETS) out = out.replace(re, to)
+  for (const name of [...names].sort((a, b) => b.length - a.length)) {
+    if (typeof name !== 'string' || name.trim().length < 3) continue
+    // Never inside a <label> the redaction itself wrote.
+    const re = /[\\/]/.test(name) ? rootPattern(name) : new RegExp(`(?<!<[A-Za-z]*)${escape(name.trim())}(?![A-Za-z]*>)`, 'gi')
+    if (re) out = out.replace(re, /[\\/]/.test(name) ? '<path>' : '<user>')
+  }
   return out
 }

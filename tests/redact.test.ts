@@ -42,4 +42,17 @@ describe('redactLine', () => {
     expect(redactLine('sha 3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed')).toBe('sha <secret>')
     expect(redactLine('mail jane.doe@example.org now')).toBe('mail <email> now')
   })
+  it('hides paths as logged objects print them, names with apostrophes and double spaces', () => {
+    const inspected = "Export failed { path: 'C:\\\\Users\\\\John Smith\\\\Videos\\\\Demo.mp4', code: 'EBUSY' }"
+    expect(redactLine(inspected)).not.toMatch(/John|Smith/)
+    expect(redactLine("open C:\\Users\\O'Brien\\Videos\\x.mp4 failed")).not.toMatch(/Brien/)
+    expect(redactLine('open C:\\Users\\John  Smith\\x.mp4')).not.toMatch(/John|Smith/)
+    expect(redactLine("share '\\\\\\\\server\\\\Jane\\\\x.mp4'")).not.toMatch(/Jane|server/)
+  })
+
+  it('takes out the home folder and the account name wherever they are left', () => {
+    const names = ['C:\\Users\\jsmith', 'jsmith']
+    expect(redactLine('user=jsmith in C:\\USERS\\JSMITH', {}, names)).toBe('user=<user> in <path>')
+    expect(redactLine('Hello JSmith, <userData> kept', { userData: 'C:\\x\\Flown' }, ['user', 'jsmith'])).toBe('Hello <user>, <userData> kept')
+  })
 })

@@ -14,6 +14,7 @@ import { detectH264Encoders } from './hwEncoders'
 import * as projects from './projects'
 import { isAppUrl } from './security'
 import { beginJob, setExportedFileCheck } from './longJobs'
+import { SIDECAR_KINDS } from '../shared/render/exportBundle'
 import { getMainWindow } from './windows'
 
 interface ActiveExport {
@@ -41,13 +42,16 @@ const exportedFiles = new Set<string>()
 /** Deletions waiting for a cancelled export's encoder to exit. */
 const cleanups = new Set<Promise<void>>()
 let log: LeftoverLog | null = null
-/** Exported files that replaced a file of the same name (the save dialog asked): their sidecar files may be replaced too (F-11). */
-const replacedFiles = new Set<string>()
+/**
+ * Exported files that replaced a file of the same name (the save dialog asked), with the kinds of
+ * sidecar file that export may still replace (F-11): each once, by the bundle written right after it.
+ */
+const replacedFiles = new Map<string, Set<string>>()
 
 /** Whether `file` was exported in this session (F-11 sidecar files, F-12 notifications). */
 export const isExportedFile = (file: string): boolean => exportedFiles.has(file)
-/** Whether the export of `file` replaced an existing file the user chose to replace. */
-export const replacedExport = (file: string): boolean => replacedFiles.has(file)
+/** Whether `kind` next to `file` may be replaced: its export replaced a file the user chose to replace. Each kind once. */
+export const replacedExport = (file: string, kind: string): boolean => replacedFiles.get(file)?.delete(kind) === true
 
 const CANCELLED = 'The export was cancelled.'
 /** Longest wait for a killed ffmpeg to exit before deleting its files anyway. */
@@ -238,7 +242,7 @@ export function registerExportIpc(): void {
     validateJob(requested)
     void cancelActive()
     const finalPath = requested.outputPath
-    if (finalPath === approvedExportPath && (await fileExists(finalPath))) replacedFiles.add(finalPath)
+    if (finalPath === approvedExportPath && (await fileExists(finalPath))) replacedFiles.set(finalPath, new Set(SIDECAR_KINDS))
     else replacedFiles.delete(finalPath)
     await fs.access(path.dirname(finalPath), fsConstants.W_OK).catch(() => {
       throw new Error(`Could not write to the folder "${path.dirname(finalPath)}". Choose another folder.`)

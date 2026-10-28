@@ -6,7 +6,9 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { JobOutcome } from '../../../shared/jobs/longJobs'
-import { PauseGate } from './pauseGate'
+import { PauseGate } from '../../../shared/jobs/pauseGate'
+
+export { progressShare } from '../../../shared/jobs/longJobs'
 
 /** Most progress messages per second (the taskbar needs no more). */
 const UPDATE_EVERY_MS = 250
@@ -21,7 +23,8 @@ export interface ExportJobHooks {
 
 export class ExportJobLink {
   private fraction: number | null = 0
-  private pausable = true
+  // Pause is offered once frames are drawn (an M4A export never draws any).
+  private pausable = false
   private lastSent = 0
   private ended = false
   private readonly unsubscribe: (() => void)[] = []
@@ -49,7 +52,7 @@ export class ExportJobLink {
   /** Registers the export; null when main could not (the export runs anyway). */
   static async begin(hooks: ExportJobHooks): Promise<ExportJobLink | null> {
     try {
-      const id = await window.api.jobBegin('export', { pausable: true })
+      const id = await window.api.jobBegin('export', { pausable: false })
       return typeof id === 'string' ? new ExportJobLink(id, hooks) : null
     } catch {
       return null
@@ -115,11 +118,4 @@ export function useLongJob(): LongJob {
       } else gate.pause()
     }
   }
-}
-
-/** The taskbar share of an export's progress: frames while rendering, unknown while finalizing. */
-export function progressShare(p: { phase: 'preparing' | 'rendering' | 'finalizing'; frame: number; frames: number } | null): { fraction: number | null; pausable: boolean } {
-  if (!p || p.phase === 'preparing') return { fraction: 0, pausable: false }
-  if (p.phase === 'finalizing') return { fraction: null, pausable: false }
-  return { fraction: p.frames > 0 ? p.frame / p.frames : 0, pausable: true }
 }

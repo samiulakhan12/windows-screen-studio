@@ -135,6 +135,28 @@ describe('clean-up', () => {
     expect(moved).toEqual([])
   })
 
+  it('skips a recording opened while the clean-up runs', async () => {
+    project('rec-old', { days: 200, cache: 100 })
+    const { trash, moved } = trashTo()
+    let open = false
+    const r = await runCleanup(root, [{ id: 'rec-old', action: 'caches' }], { ...RULES, removeDays: null }, {}, new Set(), NOW, {
+      trash,
+      isOpen: () => open
+    })
+    expect(r.moved.length).toBe(1)
+    project('rec-two', { days: 200, cache: 100 })
+    const r2 = await runCleanup(root, [{ id: 'rec-two', action: 'remove' }], RULES, {}, new Set(), NOW, {
+      trash,
+      beforeRemove: async () => {
+        open = true
+      },
+      isOpen: () => open
+    })
+    expect(r2.failed.map((f) => f.reason)).toEqual(['It is open in the editor'])
+    expect(moved.length).toBe(1)
+    expect(existsSync(path.join(root, 'rec-two'))).toBe(true)
+  })
+
   it('reports a Recycle Bin failure and keeps the files (no permanent delete)', async () => {
     project('rec-old', { days: 200 })
     const trash = vi.fn(async () => {

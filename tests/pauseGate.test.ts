@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { PauseGate } from '../src/renderer/src/editor/pauseGate'
-import { progressShare } from '../src/renderer/src/editor/exportJobs'
+import { PauseGate } from '../src/shared/jobs/pauseGate'
+import { progressShare } from '../src/shared/jobs/longJobs'
 
 const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 5))
 

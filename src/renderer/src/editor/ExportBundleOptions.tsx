@@ -30,6 +30,8 @@ export function ExportBundleOptions({
   chapterCount: number
 }): JSX.Element {
   const perBlocked = perChapterBlocked(has, mode)
+  // Why chips are off, as text everyone can read (a disabled button's tooltip is not announced).
+  const reasons = format === 'gif' ? [] : [...new Set(SIDECAR_KINDS.map((k) => sidecarBlocked(k, format, has)).filter((r): r is string => !!r))]
   return (
     <>
       <div className="form-row export-bundle">
@@ -56,6 +58,7 @@ export function ExportBundleOptions({
             })}
           </div>
           <p className="hint">{format === 'gif' ? 'GIFs are saved alone.' : 'Saved next to the video, with the same name.'}</p>
+          {reasons.length > 0 && <p className="hint">{reasons.map((r) => `${r}.`).join(' ')}</p>}
         </div>
       </div>
       <div className="form-row export-bundle">
@@ -74,7 +77,8 @@ export function ExportBundleOptions({
               One file per chapter
             </button>
           </div>
-          {value.perChapter && !perBlocked && <p className="hint">{chapterCount} files into a folder you choose.</p>}
+          {value.perChapter && !perBlocked && <p className="hint">{chapterCount} files into a folder you choose. Music and sound fades start again in each file.</p>}
+          {perBlocked && <p className="hint">{perBlocked}.</p>}
         </div>
       </div>
     </>

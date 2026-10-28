@@ -11,7 +11,11 @@ const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 
 
 let dir = ''
 let video = ''
-const deps = (replaced = false): SidecarDeps => ({ isExported: (f) => f === video, replaced: () => replaced, exists: existsSync })
+const deps = (replaced = false): SidecarDeps => {
+  // Like exportIpc's replacedExport: each kind once.
+  const left = new Set(replaced ? ['srt', 'vtt', 'chapters', 'thumbnail', 'description'] : [])
+  return { isExported: (f) => f === video, replaced: (_f, kind) => left.delete(kind), exists: existsSync }
+}
 
 beforeEach(() => {
   dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-bundle-'))
@@ -37,9 +41,12 @@ describe('sidecar files', () => {
     const file = await writeSidecar(video, 'srt', '1\n00:00:00,000 --> 00:00:01,000\nHi\n', deps())
     expect(file).toBe(path.join(dir, 'Demo (2).srt'))
     expect(readFileSync(path.join(dir, 'Demo.srt'), 'utf8')).toBe('mine')
-    const replaced = await writeSidecar(video, 'srt', '', deps(true))
+    const once = deps(true)
+    const replaced = await writeSidecar(video, 'srt', '', once)
     expect(replaced).toBe(path.join(dir, 'Demo.srt'))
-    expect(readFileSync(replaced, 'utf8')).toBe('﻿')
+    expect(readFileSync(replaced, 'utf8')).toBe('\ufeff')
+    // Only by the bundle of that export: a later write adds a copy instead.
+    expect(await writeSidecar(video, 'srt', '', once)).toBe(path.join(dir, 'Demo (3).srt'))
     expect(readdirSync(dir).some((f) => f.includes('.partial-'))).toBe(false)
   })
 

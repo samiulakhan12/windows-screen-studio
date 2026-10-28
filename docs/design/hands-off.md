@@ -79,8 +79,8 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   walk away; the window is never throttled (§1) and the PC is kept awake (below). *Rejected:* the
   roadmap's first sketch "lock pauses": it would make a locked PC finish nothing, the opposite of
   the feature. The log notes lock and unlock so diagnostics show it.
-* **Keep awake:** `powerSaveBlocker.start('prevent-app-suspension')` while at least one job runs,
-  stopped when none does. It stops idle sleep; it does not keep the display on (the display may turn
+* **Keep awake:** `powerSaveBlocker.start('prevent-app-suspension')` while at least one job runs
+  and is not paused, stopped otherwise (a paused export may wait for hours). It stops idle sleep; it does not keep the display on (the display may turn
   off, which costs nothing). *Rejected:* `prevent-display-sleep`: burns the screen for nothing.
 * **Sleep that happens anyway** (lid closed, battery critical, Start › Sleep): on `suspend` every
   running pausable job is paused (marked *paused for sleep*); on `resume` those jobs are resumed after
@@ -116,9 +116,11 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
 * **Every line is redacted before it is written** (`src/shared/diagnostics/redact.ts`, pure): API
   keys and tokens (`sk-…`, `sk-ant-…`, `AIza…`, `Bearer …`, `key=`/`token=`/`api_key=` values, JWTs,
   hex or base64 runs of 32+ characters) become `<secret>`; e-mail addresses `<email>`; a path inside
-  the app's own folders keeps only its place (`<userData>\logs\main.log`, `<projects>\rec-…\screen.mp4`,
+  the app's own folders keeps only its place (separators may be doubled, as logged objects print
+  them; segments may hold spaces and apostrophes) (`<userData>\logs\main.log`, `<projects>\rec-…\screen.mp4`,
   `<app>\…`, `<temp>\…`); **any other absolute path** (Windows drive, UNC, POSIX) becomes `<path>`.
-  The user name therefore never appears (it is in every home path). File contents are never logged:
+  The user name therefore never appears (it is in every home path); as a last guard the home
+  folder and the account name are replaced literally (any case, any separators) by `<path>` / `<user>`. File contents are never logged:
   only the lines the app already prints, and those never contain file contents.
 * *Rejected:* `electron-log` (a new dependency for 150 lines of code), Crashpad uploads (no
   server, and privacy).
@@ -168,7 +170,8 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
 * **Run:** the page asks for a plan (`storage:plan`), shows it, and sends back the ids the user
   ticked. Main **scans again and recomputes the plan**; only items still in it are removed; paths are
   built by main (`<root>/<id>` or `<root>/<id>/.cache`), checked to be a real directory directly
-  inside the real projects folder (no link anywhere on the way), and the open recording is skipped.
+  inside the real projects folder (no link anywhere on the way), and the open recording is skipped,
+  asked again right before each move (a recording opened during a clean-up stays).
   Each goes to the Recycle Bin with `shell.trashItem`. **There is no permanent-delete fallback**: if the
   Recycle Bin refuses (a network drive, a full bin on some setups), that item is reported as "could not
   be moved to the Recycle Bin" and stays.
@@ -191,8 +194,9 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   from a fixed kind list (the page sends a kind, not a path), validates the content (subtitles with
   `validSubtitle`; text: a string ≤ 1 MiB without NUL; PNG: signature and ≤ 200 MB, as thumbnails
   today) and writes atomically (temp file + rename). **An existing file is never replaced** unless the
-  export itself replaced the video of the same name (the user confirmed that in the save dialog);
-  otherwise " (2)" is added, like batch files. SRT gets a byte order mark, as `captionsIpc.ts` does.
+  export itself replaced the video of the same name (the user confirmed that in the save dialog),
+  and then each kind only once, by that export's own bundle; otherwise " (2)" is added, like batch
+  files. SRT gets a byte order mark, as `captionsIpc.ts` does.
 * Formats: MP4 / MOV / WebM get all of them; M4A gets captions, chapter list and description (no
   thumbnail); GIF gets none ("GIFs are saved alone").
 * **One file per chapter** (single mode only): one export per chapter into a folder, named
@@ -203,6 +207,9 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   exactly as in the full export. The first part starts at 0:00 (what comes before the first chapter
   belongs to it, as YouTube reads chapters). A part has no chapter markers of its own. Background
   music starts again at the start of each part, with its fades (it plays on each file's own clock).
+  Refused (with the reason shown) when a freeze that keeps the sound playing runs across a chapter
+  start: a part cannot begin inside a still, so it would differ from the whole export
+  (`stillAcrossChapters`). Sound fades and the music start again in each part (the dialog says so).
   It runs through `exportBatch` (one added optional field per job: its own source), so the batch
   view shows progress and a cancel keeps the parts already done. The bundle options apply to each
   part (its own SRT, thumbnail at 1 s into the part, description "01 Intro").

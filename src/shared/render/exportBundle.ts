@@ -37,6 +37,8 @@ export function normalizeBundle(raw: unknown): BundleOptions {
 export interface BundleSources {
   captions: boolean
   chapters: boolean
+  /** A freeze frame that keeps the sound playing runs across a chapter start (stillAcrossChapters). */
+  stillAcross?: boolean
 }
 
 /** Labels of the chips, in order. */
@@ -61,6 +63,7 @@ export function sidecarBlocked(kind: SidecarKind, format: ExportFormat, has: Bun
 export function perChapterBlocked(has: BundleSources, mode: 'single' | 'batch'): string | null {
   if (mode === 'batch') return 'One file per chapter works with One file'
   if (!has.chapters) return 'Add chapters first'
+  if (has.stillAcross) return 'A freeze frame that keeps the sound playing runs across a chapter start: move it or the chapter, or export one file'
   return null
 }
 
@@ -94,6 +97,8 @@ export interface ChapterPart {
   /** Video seconds of the whole export. */
   start: number
   end: number
+  /** Edit second where it starts (0 for the first). */
+  editStart: number
   /** The project's clips cut to the range. */
   clips: Clip[]
 }
@@ -131,9 +136,19 @@ export function chapterParts(project: Pick<Project, 'clips' | 'freezes' | 'chapt
     const e0 = i === 0 ? 0 : videoToEdit(plan, start).edit
     const e1 = i + 1 < chapters.length ? videoToEdit(plan, end).edit : Infinity
     const clips = clipsBetween(project.clips, e0, e1)
-    if (clips.length) parts.push({ index: parts.length, title: c.title, start, end, clips })
+    if (clips.length) parts.push({ index: parts.length, title: c.title, start, end, editStart: e0, clips })
   })
   return parts
+}
+
+/**
+ * True when a freeze that keeps the sound playing (a still over a span of the edit) is cut by a
+ * part's start: a part cannot begin inside a still (the engine anchors a still at its own frame), so
+ * that part would show live video where the whole export shows the frozen frame.
+ */
+export function stillAcrossChapters(project: Pick<Project, 'clips' | 'freezes'>, parts: readonly Pick<ChapterPart, 'editStart'>[]): boolean {
+  const { stills } = planOf(project)
+  return parts.slice(1).some((p) => stills.some((s) => p.editStart > s.editStart + 1e-6 && p.editStart < s.editEnd - 1e-6))
 }
 
 /**

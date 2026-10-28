@@ -149,6 +149,8 @@ export interface CleanupDeps {
   trash: (file: string) => Promise<void>
   /** Called before a whole recording goes (stops analyses holding its files open). */
   beforeRemove?: (id: string) => Promise<void>
+  /** Asked again right before each move: a recording opened during the clean-up is skipped. */
+  isOpen?: (id: string) => boolean
 }
 
 /**
@@ -176,7 +178,9 @@ export async function runCleanup(
     if (!item) continue
     try {
       const target = await cleanupTarget(root, item.id, item.action, fsd)
+      if (deps.isOpen?.(item.id)) throw new Error('It is open in the editor')
       if (item.action === 'remove') await deps.beforeRemove?.(item.id)
+      if (deps.isOpen?.(item.id)) throw new Error('It is open in the editor')
       await deps.trash(target)
       result.moved.push(item)
       result.freed += item.bytes

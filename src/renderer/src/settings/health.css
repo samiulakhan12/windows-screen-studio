@@ -148,6 +148,11 @@
   font-size: var(--text-sm);
 }
 
+.storage-result:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
 .storage-failed {
   color: var(--danger-text);
 }
