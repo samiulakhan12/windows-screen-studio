@@ -10,7 +10,7 @@ import { keptBounds, outputDuration, outputToSource } from '../engine/timeline'
 import { cleanTitle } from '../engine/titleData'
 import { DEFAULT_WATERMARK, WATERMARK_LIMITS, WATERMARK_POSITIONS } from '../engine/watermark'
 import { captionsOf } from '../captions/settings'
-import { cleanFontName, FONT_FILE_RE, newFontId, readFontId } from '../render/fonts'
+import { cleanFontName, FONT_FILE_RE, MAX_PROJECT_FONTS, newFontId, readFontId } from '../render/fonts'
 import type { Corner, Project, ProjectFont, TitleCard, TitleCardStyle, WatermarkSettings } from '../types'
 import { applyPreset, presetName, sanitizePresetLook, type PresetLook } from './stylePresets'
 import { createTitleCard } from './titles'
@@ -151,10 +151,15 @@ export function brandCardTimes(clips: Project['clips'], length: number, end: boo
   return { start: outputToSource(clips, total - len).time, end: kept.end }
 }
 
-/** Project fonts after adding the kit's: the same file reuses its font, others get an id of their own. Returns kit id -> project id. */
-function mergeFonts(project: Project, kit: BrandKit, files: BrandFiles): { fonts: ProjectFont[]; ids: Record<string, string> } {
+/**
+ * Project fonts after adding the kit's: the same file reuses its font, others get an id of their
+ * own, up to MAX_PROJECT_FONTS (a project keeps no more when it is opened again). Returns kit id ->
+ * project id, and the names of the kit fonts left out for the limit (they get no id, so nothing uses them).
+ */
+function mergeFonts(project: Project, kit: BrandKit, files: BrandFiles): { fonts: ProjectFont[]; ids: Record<string, string>; full: string[] } {
   const fonts = [...(project.fonts ?? [])]
   const ids: Record<string, string> = {}
+  const full: string[] = []
   for (const f of kit.fonts) {
     const file = files.fonts[f.id]
     if (!file || !FONT_FILE_RE.test(file)) continue
@@ -163,12 +168,19 @@ function mergeFonts(project: Project, kit: BrandKit, files: BrandFiles): { fonts
       ids[f.id] = same.id
       continue
     }
+    if (fonts.length >= MAX_PROJECT_FONTS) {
+      full.push(f.name)
+      continue
+    }
     const id = fonts.some((g) => g.id === f.id) ? newFontId() : f.id
     fonts.push({ id, name: f.name, file })
     ids[f.id] = id
   }
-  return { fonts, ids }
+  return { fonts, ids, full }
 }
+
+/** Names of the kit's fonts that applying it to `project` leaves out, because the project already has MAX_PROJECT_FONTS fonts. */
+export const brandFontsLeftOut = (project: Project, kit: BrandKit, files: BrandFiles): string[] => mergeFonts(project, kit, files).full
 
 /**
  * The project with the brand kit applied (docs/design/brand-kit.md §2 decision 20), in this order:
