@@ -86,6 +86,31 @@ describe('overlay geometry', () => {
   it('resets the shape to the image aspect keeping the long side', () => {
     expect(resetOverlayShape({ w: 0.4, h: 0.4 }, 2)).toEqual({ w: 0.4, h: 0.2 })
   })
+
+  it('keeps the short side at 0.02 or more, so a wide logo is not stretched when the project is opened again', () => {
+    const stored = (s: { w: number; h: number }): { w: number; h: number } => {
+      const o = readOverlay(JSON.parse(JSON.stringify({ ...base, ...s })))!
+      return { w: o.w, h: o.h }
+    }
+    // A 10:1 wordmark made small: the long side stops at 0.2, where the short one reaches 0.02.
+    const small = sizeForAspect(10, 0.15)
+    expect(small.w).toBeCloseTo(0.2, 9)
+    expect(small.h).toBeGreaterThanOrEqual(0.02)
+    expect(small.w / small.h).toBeCloseTo(10, 9)
+    expect(stored(small)).toEqual(small)
+    // Tall the same way; and a new image wider than 17.5:1.
+    const tall = sizeForAspect(0.1, 0.05)
+    expect(tall.h).toBeCloseTo(0.2, 9)
+    expect(stored(tall)).toEqual(tall)
+    const strip = createOverlay(0, 10, { file: 'overlay-1.png' }, 25, 's')
+    expect(strip.w / strip.h).toBeCloseTo(25, 9)
+    expect(stored(strip)).toEqual({ w: strip.w, h: strip.h })
+    // Reset shape on such a logo gives the same size, so it repairs it.
+    expect(resetOverlayShape({ w: 0.15, h: 0.02 }, 10)).toEqual(small)
+    // Past what the limits allow (over 100:1), the stored shape is used from the start.
+    const line = sizeForAspect(400, 1)
+    expect(stored(line)).toEqual(line)
+  })
 })
 
 describe('overlay timing', () => {
