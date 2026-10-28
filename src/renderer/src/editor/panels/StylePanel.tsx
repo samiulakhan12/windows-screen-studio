@@ -82,7 +82,6 @@ export function StylePanel({
 
   return (
     <>
-      <BrandKitBar project={project} onNotice={onNotice} />
       <PresetsSection project={project} onNotice={onNotice} />
 
       <Section title="Frame" aside={<CropLink project={project} onCrop={onCrop} />}>
@@ -283,6 +282,8 @@ export function StylePanel({
       </Section>
 
       <WatermarkSection project={project} />
+
+      <BrandKitBar project={project} onNotice={onNotice} />
 
       <StyleDefaultsSection project={project} onNotice={onNotice} />
     </>

@@ -40,7 +40,7 @@ Branch `feat-brand-kit`, from `9dadfbb` (`ccr-b6df7cf7-yked87`, Flown 0.5.0). De
   a heading and a text font; intro and outro title cards; a style preset (its look copied in);
   *Apply to new recordings*.
 - **Settings › Brand kit** (`settings/BrandKitSection.tsx`) edits all of it and saves every change.
-- **Style tab › Apply brand kit** (`panels/BrandKitBar.tsx`): main copies the kit's files into the
+- **Style tab › Apply brand kit** (after Watermark) (`panels/BrandKitBar.tsx`): main copies the kit's files into the
   project, the renderer decodes the logo and loads the fonts, then `applyBrandKit` runs in **one**
   `store.update`. Applying again replaces the kit's intro and outro instead of adding more.
 - New recordings: `applyStyleDefaults` (already called by `finalize.ts`) now ends with

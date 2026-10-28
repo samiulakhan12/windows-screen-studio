@@ -58,7 +58,7 @@ Two other branches are being built at the same time:
 - **Settings › Brand kit**, one place to set: logo (with position, size, opacity, distance from the
   edge), up to 6 brand colours, up to 6 fonts with a heading and a body font, an intro and an outro
   title card (text, subtitle, style, length), a style preset, and **Apply to new recordings**.
-- **Apply brand kit** in the editor (Style tab, top) applies it to the open project as **one undo
+- **Apply brand kit** in the editor (Style tab, after Watermark) applies it to the open project as **one undo
   step**; `Ctrl+Z` takes all of it back.
 - With *Apply to new recordings* on, every new recording starts with the kit applied.
 
@@ -91,7 +91,7 @@ Two other branches are being built at the same time:
 | 21 | Files of *Apply* | Main copies the kit's logo and fonts into the project first (new names, deduplicated), then the renderer preloads them, then applies the single update. | The update only points at files that exist and decoded, and is one undo step. Undo leaves the copied files (harmless, decision 10). |
 | 22 | New recordings | `applyStyleDefaults` (main) applies the kit after the saved look when *Apply to new recordings* is on, copying files synchronously. | It is already called by `finalize.ts`; the recording side is unchanged. A failure leaves the recording as it was (logged). |
 | 23 | Intro and outro times | Intro: from the first kept moment, `length` output seconds; outro: the last `length` output seconds. Each is at most a third of the kept video; shorter than 0.5 s, it is left out. | A 4 s recording still gets readable cards without covering everything. |
-| 24 | UI placement | New **Images** tab (inspector), new **Images** track (timeline), *Apply brand kit* at the top of the Style tab, **Brand kit** section in Settings. | Each is a new file plus one line in a shared file (§9). |
+| 24 | UI placement | New **Images** tab (inspector), new **Images** track (timeline), *Apply brand kit* in the Style tab (after Watermark), **Brand kit** section in Settings. | Each is a new file plus one line in a shared file (§9). |
 
 ---
 
@@ -207,7 +207,7 @@ the kit is empty. One `store.update` in the editor.
 
 ### 4.5 Editor
 
-- *Apply brand kit* (Style tab top). Disabled with the hint "Set up your brand kit in Settings
+- *Apply brand kit* (Style tab, after Watermark: the tab's first screen keeps its look controls). Disabled with the hint "Set up your brand kit in Settings
   first" when the kit is empty; while copying "Applying…"; after: notice "Brand kit applied ·
   Ctrl+Z to undo". *Edit brand kit…* opens Settings at the Brand kit section.
 - Drop: a file dragged over the editor shows the outline "Drop an image to add it at the
