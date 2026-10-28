@@ -200,6 +200,19 @@ describe('projectCopy (test 59)', () => {
     expect(o.y * H - (o.h * W) / 2).toBeCloseTo(area.y, 6)
   })
 
+  it('keeps texts off the camera band in effect at their start', () => {
+    // With the camera shown, the vertical version puts it in a band on top (§6.3: the area starts under it).
+    const p = deepFreeze(
+      project(1920, 1080, {
+        hasWebcam: true,
+        webcam: { ...project().webcam, show: true },
+        annotations: [text({ y: 0.2 }), text({ id: 'a2', start: 9, end: 12, y: 0.74 })]
+      })
+    )
+    const copy = projectCopy(p, 'vertical', measure)
+    for (const a of copy.annotations) expect(inside(pillBox(a), textArea(copy, W, H, 1920, 1080, a.start)!)).toBe(true)
+  })
+
   it("'square' refits into the whole frame: a text near the right edge of a 16:9 frame comes back in", () => {
     // At x 0.95 of 1080 px its 345.6 px box would end at 1198.8 px.
     const p = deepFreeze(project(1920, 1080, { annotations: [text({ x: 0.95 })] }))
