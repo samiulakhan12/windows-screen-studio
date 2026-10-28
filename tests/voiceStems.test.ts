@@ -2,7 +2,24 @@
 // docs/design/clean-voice.md §4.4), with a fake API.
 import { describe, expect, it } from 'vitest'
 import { VOICE_CANCELLED, type VoiceApi, type VoiceProgress, type VoiceStemStatus } from '../src/shared/api/voice'
-import { VoiceStems } from '../src/renderer/src/editor/voiceStems'
+import type { VoiceSource } from '../src/shared/audio/voiceClean'
+import type { VoiceStrength } from '../src/shared/types'
+
+type State = { state: string; progress?: number; file?: string; message?: string }
+interface Stems {
+  subscribe(l: () => void): () => void
+  get(id: string, source: VoiceSource, strength: VoiceStrength): State
+  want(id: string, source: VoiceSource, strength: VoiceStrength): void
+  prepare(id: string, source: VoiceSource, strength: VoiceStrength): Promise<string>
+  cancel(id: string): Promise<void>
+  forget(id: string, source: VoiceSource, strength: VoiceStrength): void
+  isOriginal(id: string): boolean
+  setOriginal(id: string, on: boolean): void
+  closeProject(id: string): void
+}
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const STEMS = '../src/renderer/src/editor/voiceStems'
+const { VoiceStems } = (await import(/* @vite-ignore */ STEMS)) as { VoiceStems: new (api: VoiceApi) => Stems }
 
 /** A fake main process: renders wait until `finish` / `fail` is called. */
 function fakeApi(initial: VoiceStemStatus = { state: 'missing' }) {

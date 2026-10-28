@@ -37,12 +37,13 @@ vi.mock('electron', () => ({
 }))
 
 import { validateJob, type SoundInputs } from '../src/main/exportJob'
-import { ensureVoiceModel, parseDuration, parseProgress, voiceCleanArgs, VoiceCleaner, voiceKey } from '../src/main/voice/voiceClean'
+import { ensureVoiceModels, parseDuration, parseProgress, voiceCleanArgs, VoiceCleaner, voiceKey } from '../src/main/voice/voiceClean'
 import { cleanVoiceInputs, registerVoiceIpc } from '../src/main/voice/voiceIpc'
-import modelText from '../src/main/voice/model/sh.rnnn?raw'
+import generalModel from '../src/main/voice/model/cb.rnnn?raw'
+import speechModel from '../src/main/voice/model/sh.rnnn?raw'
 import { VOICE_CANCELLED, VOICE_CHANNELS, type VoiceProgress } from '../src/shared/api/voice'
 import type { ExportJob } from '../src/shared/api/export'
-import { VOICE_ENGINE, VOICE_FILE_RE, VOICE_PART_RE, voiceGraph } from '../src/shared/audio/voiceClean'
+import { VOICE_ENGINE, VOICE_FILE_RE, VOICE_MODEL_IDS, VOICE_PART_RE, voiceGraph } from '../src/shared/audio/voiceClean'
 import { VOICE_COPY } from '../src/shared/audio/voiceCopy'
 
 afterAll(() => rmSync(h.root, { recursive: true, force: true }))
@@ -58,12 +59,14 @@ const projectDir = (id: string): string => {
   return path.join(projectsRoot, id)
 }
 
-function cleaner(progress?: (p: VoiceProgress) => void, text = modelText): { c: VoiceCleaner; runs: () => number } {
+const texts = { speech: speechModel, general: generalModel }
+
+function cleaner(progress?: (p: VoiceProgress) => void, modelTexts = texts): { c: VoiceCleaner; runs: () => number } {
   let runs = 0
   const c = new VoiceCleaner({
     projectDir,
     modelDir: () => modelDir,
-    modelText: text,
+    modelTexts,
     ffmpeg: () => {
       runs++
       return ff
@@ -135,28 +138,33 @@ describe('arguments and parsing', () => {
   })
 })
 
-describe('the model', () => {
-  it('is the pinned file, bundled byte for byte', () => {
-    const bytes = readFileSync(path.join(__dirname, '../src/main/voice/model/sh.rnnn'))
-    expect(bytes.length).toBe(VOICE_ENGINE.bytes)
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe(VOICE_ENGINE.sha256)
-    expect(Buffer.from(modelText, 'utf8').equals(bytes)).toBe(true)
-    expect(readFileSync(path.join(__dirname, '../src/main/voice/model/MODEL.md'), 'utf8')).toContain(VOICE_ENGINE.sha256)
+describe('the models', () => {
+  it('are the pinned files, bundled byte for byte', () => {
+    const md = readFileSync(path.join(__dirname, '../src/main/voice/model/MODEL.md'), 'utf8')
+    for (const id of VOICE_MODEL_IDS) {
+      const pin = VOICE_ENGINE.models[id]
+      const bytes = readFileSync(path.join(__dirname, '../src/main/voice/model', pin.file))
+      expect(bytes.length, pin.file).toBe(pin.bytes)
+      expect(createHash('sha256').update(bytes).digest('hex'), pin.file).toBe(pin.sha256)
+      expect(Buffer.from(texts[id], 'utf8').equals(bytes), pin.file).toBe(true)
+      expect(md, pin.file).toContain(pin.sha256)
+    }
   })
 
-  it('is written when missing and written again when damaged', async () => {
+  it('are written when missing and written again when damaged', async () => {
     const dir = path.join(h.root, 'model-check')
-    await ensureVoiceModel(dir, modelText)
-    const file = path.join(dir, VOICE_ENGINE.model)
-    expect(readFileSync(file, 'utf8')).toBe(modelText)
+    await ensureVoiceModels(dir, texts)
+    const file = path.join(dir, VOICE_ENGINE.models.general.file)
+    expect(readFileSync(file, 'utf8')).toBe(generalModel)
     writeFileSync(file, 'rnnoise-nu model file version 1\n0 0 0\n')
-    await ensureVoiceModel(dir, modelText)
-    expect(readFileSync(file, 'utf8')).toBe(modelText)
+    await ensureVoiceModels(dir, texts)
+    expect(readFileSync(file, 'utf8')).toBe(generalModel)
+    expect(readFileSync(path.join(dir, VOICE_ENGINE.models.speech.file), 'utf8')).toBe(speechModel)
   })
 
-  it('refuses a bundled text that is not the pinned model', async () => {
-    await expect(ensureVoiceModel(path.join(h.root, 'model-bad'), modelText.replace('42', '43'))).rejects.toThrow(VOICE_COPY.damagedModel)
-    const { c } = cleaner(undefined, `${modelText} `)
+  it('refuse a bundled text that is not the pinned model', async () => {
+    await expect(ensureVoiceModels(path.join(h.root, 'model-bad'), { ...texts, speech: speechModel.replace('42', '43') })).rejects.toThrow(VOICE_COPY.damagedModel)
+    const { c } = cleaner(undefined, { ...texts, general: `${generalModel} ` })
     seed('badmodel', 2)
     await expect(c.ensure('badmodel', 'mic', 'normal')).rejects.toThrow(VOICE_COPY.damagedModel)
   })

@@ -1,7 +1,7 @@
 /**
  * Clean voice in the main process (docs/design/clean-voice.md §4.3): makes the cleaned stem of a
  * project's microphone (or mixed track) once per source file and strength, with ffmpeg's arnndn
- * and the bundled RNNoise model, and keeps it in the project folder as voice-<key>.m4a.
+ * and the bundled RNNoise models, and keeps it in the project folder as voice-<key>.m4a.
  *
  * One render per project: a request for the same stem joins the running one, a request for
  * another stops it first. Renders report their progress, can be cancelled (the part file goes),
@@ -19,6 +19,7 @@ import {
   staleVoiceFiles,
   VOICE_ENGINE,
   VOICE_FILE_RE,
+  VOICE_MODEL_IDS,
   VOICE_PART_RE,
   VOICE_RATE,
   VOICE_SOURCES,
@@ -26,6 +27,7 @@ import {
   voiceGraph,
   voiceKeyInput,
   voicePartName,
+  type VoiceModelId,
   type VoiceSource
 } from '../../shared/audio/voiceClean'
 import { VOICE_COPY } from '../../shared/audio/voiceCopy'
@@ -83,18 +85,22 @@ export function parseProgress(chunk: string): number | null {
 const sha256 = (data: string | Buffer): string => createHash('sha256').update(data).digest('hex')
 
 /**
- * Makes sure `dir` holds the model exactly as bundled (`text`, checked against its pin first).
- * A missing, damaged or replaced file is written again (atomically).
+ * Makes sure `dir` holds every model exactly as bundled (`texts`, each checked against its pin
+ * first). A missing, damaged or replaced file is written again (atomically).
  */
-export async function ensureVoiceModel(dir: string, text: string): Promise<void> {
-  if (sha256(text) !== VOICE_ENGINE.sha256) throw new Error(VOICE_COPY.damagedModel)
-  const file = path.join(dir, VOICE_ENGINE.model)
-  const current = await fs.readFile(file).catch(() => null)
-  if (current && current.length === VOICE_ENGINE.bytes && sha256(current) === VOICE_ENGINE.sha256) return
-  await fs.mkdir(dir, { recursive: true })
-  const tmp = `${file}.${process.pid}.tmp`
-  await fs.writeFile(tmp, text, 'utf8')
-  await fs.rename(tmp, file)
+export async function ensureVoiceModels(dir: string, texts: Record<VoiceModelId, string>): Promise<void> {
+  for (const id of VOICE_MODEL_IDS) {
+    const pin = VOICE_ENGINE.models[id]
+    const text = texts[id]
+    if (typeof text !== 'string' || sha256(text) !== pin.sha256) throw new Error(VOICE_COPY.damagedModel)
+    const file = path.join(dir, pin.file)
+    const current = await fs.readFile(file).catch(() => null)
+    if (current && current.length === pin.bytes && sha256(current) === pin.sha256) continue
+    await fs.mkdir(dir, { recursive: true })
+    const tmp = `${file}.${process.pid}.tmp`
+    await fs.writeFile(tmp, text, 'utf8')
+    await fs.rename(tmp, file)
+  }
 }
 
 export interface VoiceCleanerDeps {
@@ -102,8 +108,8 @@ export interface VoiceCleanerDeps {
   projectDir(id: string): string
   /** The folder the model is kept in (ffmpeg's working folder). */
   modelDir(): string
-  /** The model as bundled. */
-  modelText: string
+  /** The models as bundled. */
+  modelTexts: Record<VoiceModelId, string>
   ffmpeg(): string
   onProgress?(p: VoiceProgress): void
 }
@@ -208,7 +214,7 @@ export class VoiceCleaner {
     const send = throttle((progress: number) => this.deps.onProgress?.({ projectId: id, source: job.source, strength: job.strength, progress }), PROGRESS_EVERY_MS)
     send(0)
     const modelDir = this.deps.modelDir()
-    await ensureVoiceModel(modelDir, this.deps.modelText)
+    await ensureVoiceModels(modelDir, this.deps.modelTexts)
     await removeParts(dir)
     if (job.cancelled) throw new Error(VOICE_CANCELLED)
     try {

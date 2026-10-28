@@ -63,16 +63,29 @@ export function withCleanVoice(mix: RecordingMix, project: Pick<Project, 'hasAud
   return { kind: 'stems', volume: mix.volume, stems }
 }
 
+/** An RNNoise model file the cleaning uses, pinned by size and SHA-256. */
+export interface VoiceModel {
+  file: string
+  bytes: number
+  sha256: string
+}
+
 /**
- * The engine: ffmpeg's arnndn with RNNoise model `somnolent-hogwash` (rnnoise-models, speech in
- * recording noise). `version` changes whenever the filters below do, so older stems are made again.
+ * The engine: ffmpeg's arnndn with two RNNoise models from rnnoise-models: `somnolent-hogwash`
+ * (speech in recording noise: fans, AC, computers) and, for Strong only, `conjoined-burgers`
+ * (any sound in recording noise; gentler on speech it does not recognise, so a second pass with it
+ * never removes a voice). `version` changes whenever the graph below does, so older stems are made again.
  */
 export const VOICE_ENGINE = {
   version: 1,
-  model: 'sh.rnnn',
-  bytes: 297646,
-  sha256: '70bb6685eb0c2a1d18e2918dca3fbfbd39317010b1802eb1b6ea73a92f3fdec0'
-} as const
+  models: {
+    speech: { file: 'sh.rnnn', bytes: 297646, sha256: '70bb6685eb0c2a1d18e2918dca3fbfbd39317010b1802eb1b6ea73a92f3fdec0' },
+    general: { file: 'cb.rnnn', bytes: 299741, sha256: 'f1357c4e5be9dee8467bead486dfced2d75b640c26ad0b594fa7f102322371d9' }
+  }
+} as const satisfies { version: number; models: Record<string, VoiceModel> }
+
+export type VoiceModelId = keyof typeof VOICE_ENGINE.models
+export const VOICE_MODEL_IDS = Object.keys(VOICE_ENGINE.models) as VoiceModelId[]
 
 /** Sample rate the cleaning works at (RNNoise is trained at 48 kHz). */
 export const VOICE_RATE = 48000
@@ -80,14 +93,21 @@ export const VOICE_RATE = 48000
 /** Samples each arnndn pass delays its output by (one 10 ms frame at 48 kHz), measured. */
 export const VOICE_PASS_DELAY = 480
 
-/** arnndn passes and how much of the cleaned sound is kept (the rest is the original), per strength. */
-const PASSES: Record<VoiceStrength, { passes: number; mix: number }> = {
-  light: { passes: 1, mix: 0.75 },
-  normal: { passes: 1, mix: 1 },
-  strong: { passes: 2, mix: 1 }
+/**
+ * The arnndn passes of each strength: the model, and how much of the cleaned sound it keeps (the
+ * rest is what it was given). Two passes of the speech model would remove a voice it hears badly
+ * (a band-limited or noisy recording), so Strong's second pass uses the general model.
+ */
+const PASSES: Record<VoiceStrength, { model: VoiceModelId; mix: number }[]> = {
+  light: [{ model: 'speech', mix: 0.75 }],
+  normal: [{ model: 'speech', mix: 1 }],
+  strong: [
+    { model: 'speech', mix: 1 },
+    { model: 'general', mix: 1 }
+  ]
 }
 
-export const voicePasses = (strength: VoiceStrength): number => PASSES[strength].passes
+export const voicePasses = (strength: VoiceStrength): number => PASSES[strength].length
 
 /**
  * The ffmpeg filter graph that cleans input 0's audio (any channel layout, every channel apart)
@@ -99,10 +119,10 @@ export const voicePasses = (strength: VoiceStrength): number => PASSES[strength]
  * samples (the weighted sum is the cleaned sound, unchanged).
  */
 export function voiceGraph(strength: VoiceStrength): string {
-  const { passes, mix } = PASSES[strength]
-  const delay = passes * VOICE_PASS_DELAY
-  const pass = `arnndn=m=${VOICE_ENGINE.model}${mix < 1 ? `:mix=${mix}` : ''}`
-  const clean = [`apad=pad_len=${delay}`, ...Array.from({ length: passes }, () => pass), `atrim=start_sample=${delay}`, 'asetpts=PTS-STARTPTS'].join(',')
+  const passes = PASSES[strength]
+  const delay = passes.length * VOICE_PASS_DELAY
+  const filters = passes.map((p) => `arnndn=m=${VOICE_ENGINE.models[p.model].file}${p.mix < 1 ? `:mix=${p.mix}` : ''}`)
+  const clean = [`apad=pad_len=${delay}`, ...filters, `atrim=start_sample=${delay}`, 'asetpts=PTS-STARTPTS'].join(',')
   return `[0:a:0]aresample=${VOICE_RATE}:async=1:first_pts=0,asplit[src][ref];[src]${clean}[clean];[clean][ref]amix=inputs=2:duration=shortest:normalize=0:weights=1 0[voice]`
 }
 
@@ -127,7 +147,8 @@ export const VOICE_PART_RE = /^voice-[0-9a-f]{16}\.part\.m4a$/
  * Any change gives another key, so a stale file is never used.
  */
 export function voiceKeyInput(source: VoiceSource, strength: VoiceStrength, file: { size: number; mtimeMs: number }): string {
-  return JSON.stringify({ engine: VOICE_ENGINE.version, model: VOICE_ENGINE.sha256, strength, source, size: file.size, mtime: Math.floor(file.mtimeMs) })
+  const models = VOICE_MODEL_IDS.map((m) => VOICE_ENGINE.models[m].sha256)
+  return JSON.stringify({ engine: VOICE_ENGINE.version, models, strength, source, size: file.size, mtime: Math.floor(file.mtimeMs) })
 }
 
 /** How many cleaned files a project folder keeps (switching strength and undo then need no new render). */

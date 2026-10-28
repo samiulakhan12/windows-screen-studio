@@ -121,12 +121,12 @@ describe('voiceGraph (§4.2)', () => {
   it('pads and trims the passes delay, and ends with the source', () => {
     expect(voiceGraph('normal')).toBe(graph('apad=pad_len=480,arnndn=m=sh.rnnn,atrim=start_sample=480,asetpts=PTS-STARTPTS'))
     expect(voiceGraph('light')).toBe(graph('apad=pad_len=480,arnndn=m=sh.rnnn:mix=0.75,atrim=start_sample=480,asetpts=PTS-STARTPTS'))
-    expect(voiceGraph('strong')).toBe(graph('apad=pad_len=960,arnndn=m=sh.rnnn,arnndn=m=sh.rnnn,atrim=start_sample=960,asetpts=PTS-STARTPTS'))
+    expect(voiceGraph('strong')).toBe(graph('apad=pad_len=960,arnndn=m=sh.rnnn,arnndn=m=cb.rnnn,atrim=start_sample=960,asetpts=PTS-STARTPTS'))
     expect([voicePasses('light'), voicePasses('normal'), voicePasses('strong')]).toEqual([1, 1, 2])
   })
 
   it('names the model by its bare file name (no path to escape)', () => {
-    expect(VOICE_ENGINE.model).toMatch(/^[a-z]+\.rnnn$/)
+    for (const m of Object.values(VOICE_ENGINE.models)) expect(m.file).toMatch(/^[a-z]+\.rnnn$/)
   })
 })
 
@@ -147,7 +147,7 @@ describe('file names and keys (§3.3)', () => {
 
   it('makes the key from the engine, strength, source and the file as it is now', () => {
     const base = voiceKeyInput('mic', 'normal', { size: 100, mtimeMs: 5.7 })
-    expect(JSON.parse(base)).toEqual({ engine: VOICE_ENGINE.version, model: VOICE_ENGINE.sha256, strength: 'normal', source: 'mic', size: 100, mtime: 5 })
+    expect(JSON.parse(base)).toEqual({ engine: VOICE_ENGINE.version, models: [VOICE_ENGINE.models.speech.sha256, VOICE_ENGINE.models.general.sha256], strength: 'normal', source: 'mic', size: 100, mtime: 5 })
     expect(voiceKeyInput('mic', 'strong', { size: 100, mtimeMs: 5 })).not.toBe(base)
     expect(voiceKeyInput('mix', 'normal', { size: 100, mtimeMs: 5 })).not.toBe(base)
     expect(voiceKeyInput('mic', 'normal', { size: 101, mtimeMs: 5 })).not.toBe(base)

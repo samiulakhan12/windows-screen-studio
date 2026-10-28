@@ -12,7 +12,8 @@ import type { SoundInputs } from '../exportJob'
 import { ffmpegPath } from '../ffmpeg'
 import { projectDir } from '../projects'
 import { isAppUrl } from '../security'
-import modelText from './model/sh.rnnn?raw'
+import generalModel from './model/cb.rnnn?raw'
+import speechModel from './model/sh.rnnn?raw'
 import { VoiceCleaner } from './voiceClean'
 
 function broadcast(p: VoiceProgress): void {
@@ -21,11 +22,11 @@ function broadcast(p: VoiceProgress): void {
   }
 }
 
-/** The app's cleaner: the model is kept in userData/voice, ffmpeg is the bundled one. */
+/** The app's cleaner: the models are kept in userData/voice, ffmpeg is the bundled one. */
 export const voiceCleaner = new VoiceCleaner({
   projectDir,
   modelDir: () => path.join(app.getPath('userData'), 'voice'),
-  modelText,
+  modelTexts: { speech: speechModel, general: generalModel },
   ffmpeg: ffmpegPath,
   onProgress: broadcast
 })
