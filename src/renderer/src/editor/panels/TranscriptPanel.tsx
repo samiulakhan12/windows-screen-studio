@@ -165,10 +165,10 @@ function TranscriptEditor({
     // Nothing changes only when the range is empty (zero-length words between touching ones) or
     // when nothing would be left (cutRange keeps no piece shorter than a clip may be).
     if (sameClips(next, before)) return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
-    // Estimated word times are stored with the cut (one undo step): the words stay cut after an edit of the caption.
+    // Guessed words are marked deleted with the cut, their caption's times stored (one undo step): they stay cut after an edit of the caption.
     store.update((p) => {
       const cut = cutWords(p.clips, words, [[a, b]], p.duration)
-      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut) }
+      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut, [[a, b]]) }
     })
     // Counted from the result: a short word left between two cuts goes with them (no clip is that short).
     const after = cutFlags(words, next)
@@ -214,7 +214,7 @@ function TranscriptEditor({
     }
     store.update((p) => {
       const cut = applySuggestions(p.clips, words, items, p.duration).clips
-      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut) }
+      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut, items.map((s) => [s.first, s.last] as const)) }
     })
     return r.saved
   }

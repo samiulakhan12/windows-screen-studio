@@ -19,8 +19,10 @@ export interface TranscriptWord {
   text: string
   start: number
   end: number
-  /** Its times were shared out from its neighbours' (no timed word matched it). */
+  /** Its times were shared out from its neighbours' (no timed word matched it), or are a stored guess. */
   estimated: boolean
+  /** A guess deleted in the Transcript tab: cut by its middle like a heard word (cutFlags). */
+  deleted?: true
 }
 
 type TimedText = Omit<TranscriptWord, 'index' | 'caption'>
@@ -79,7 +81,7 @@ export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T)
  * shown words are matched to the timed words (longest common subsequence of their normalised
  * forms, so a fixed typo or an added word keeps the rest exact); unmatched words share the time
  * between their matched neighbours by length and are `estimated`, as are words matched to a stored
- * guess (anchorCutWords). Times stay inside the caption.
+ * guess (anchorCutWords), which keep its `deleted` mark. Times stay inside the caption.
  */
 export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const texts = seg.text.split(' ').filter(Boolean)
@@ -95,7 +97,9 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const matched = new Map(pairs)
   for (const [i, j] of pairs) {
     const start = inside(timed[j].start)
-    out[i] = { text: texts[i], start, end: Math.max(start, inside(timed[j].end)), estimated: timed[j].estimated === true }
+    const word: TimedText = { text: texts[i], start, end: Math.max(start, inside(timed[j].end)), estimated: timed[j].estimated === true }
+    if (timed[j].deleted === true) word.deleted = true
+    out[i] = word
   }
   // Runs of unmatched words between matched ones (or the caption's ends). At a caption end, a run
   // that took the place of timed words (retyped) shares their time, not the silence the caption
@@ -141,26 +145,33 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
 
 /**
  * A caption's words as alignCaptionWords times them, to store as its word timings (one per shown
- * word): a guessed time stays marked `estimated`, unless `known(i)` (the i-th word's time is now
- * what a cut was made by).
+ * word): a guessed time stays marked `estimated`, and also `deleted` when it was or `deleted(i)`
+ * (the i-th word was deleted in the Transcript tab).
  */
-export function captionWordTimes(seg: CaptionSegment, known: (i: number) => boolean = () => false): CaptionWord[] {
-  return alignCaptionWords(seg).map(({ text, start, end, estimated }, i) => (estimated && !known(i) ? { text, start, end, estimated } : { text, start, end }))
+export function captionWordTimes(seg: CaptionSegment, deleted: (i: number) => boolean = () => false): CaptionWord[] {
+  return alignCaptionWords(seg).map((w, i) => {
+    const { text, start, end } = w
+    if (!w.estimated) return { text, start, end }
+    return w.deleted || deleted(i) ? { text, start, end, estimated: true, deleted: true } : { text, start, end, estimated: true }
+  })
 }
 
 /**
- * The transcript after a cut made in the Transcript tab (clips `before` to `after`): a caption with
- * an estimated word newly cut gets its words' times stored (captionWordTimes), the cut words' as
- * known, the other guesses still marked `estimated`. The words deleted then stay cut, and out of
- * the subtitle files (outputCues), when the caption's text or times are edited later, and a later
- * timeline cut still never drops a guessed word from them. The same object when nothing is stored.
+ * The transcript after a cut made in the Transcript tab (clips `before` to `after`, the word spans
+ * `spans` being cut): every guess inside the spans, and every other guess the cut newly cuts (a
+ * short word left between two cuts), whose middle is then cut is marked `deleted`, whether or not
+ * an earlier cut had already cut its time; its caption's words get their times stored
+ * (captionWordTimes, the other guesses still guesses). The deleted words then stay cut, in the tab
+ * and out of the subtitle files, when the caption's text or times are edited later, and a later
+ * timeline cut still never drops another guess from them. The same object when nothing is marked.
  */
-export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[]): Transcript | undefined {
+export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[], spans: readonly WordSpan[] = []): Transcript | undefined {
   if (!transcript) return transcript
   const words = transcriptWords(transcript)
   const was = cutFlags(words, before)
   const now = cutFlags(words, after)
-  const fresh = (i: number): boolean => words[i].estimated && now[i] && !was[i]
+  const inSpan = (i: number): boolean => spans.some(([a, b]) => i >= Math.min(a, b) && i <= Math.max(a, b))
+  const fresh = (i: number): boolean => words[i].estimated && !words[i].deleted && now[i] && (!was[i] || inSpan(i))
   let changed = false
   let at = 0
   const segments = transcript.segments.map((seg) => {

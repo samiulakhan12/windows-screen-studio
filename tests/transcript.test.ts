@@ -3,6 +3,7 @@ import { clipIndexAt, outputDuration } from '../src/shared/engine/timeline'
 import {
   alignCaptionWords,
   anchorCutWords,
+  captionWordTimes,
   cutFlags,
   cutWords,
   lcsPairs,
@@ -338,19 +339,22 @@ describe('anchorCutWords', () => {
   const words = transcriptWords(t)
   const at = (text: string): number => words.findIndex((w) => w.text === text)
 
-  it('stores the times of an untimed caption with a word newly cut, as the tab showed them: the cut word known, the others still guesses', () => {
+  it('stores the times of an untimed caption with a word newly cut, as the tab showed them: the cut word marked deleted, the others still guesses', () => {
     const cut = cutWords(full, words, [[at('um,'), at('um,')]], 20)
     const out = anchorCutWords(t, full, cut)!
-    expect(out.segments[0].words).toEqual(alignCaptionWords(t.segments[0]).map(({ text, start, end }) => (text === 'um,' ? { text, start, end } : { text, start, end, estimated: true })))
+    expect(out.segments[0].words).toEqual(
+      alignCaptionWords(t.segments[0]).map(({ text, start, end }) => (text === 'um,' ? { text, start, end, estimated: true, deleted: true } : { text, start, end, estimated: true }))
+    )
     // Nothing else changes: the timed caption and the untouched one stay the same objects.
     expect(out.segments[1]).toBe(t.segments[1])
     expect(out.segments[2]).toBe(t.segments[2])
     expect(sameWords(transcriptWords(out), words)).toBe(true)
-    expect(transcriptWords(out).filter((w) => w.caption === 'a' && !w.estimated).map((w) => w.text)).toEqual(['um,'])
-    // A second word cut there later is known too; the first stays known.
+    expect(transcriptWords(out).filter((w) => w.caption === 'a' && w.deleted).map((w) => w.text)).toEqual(['um,'])
+    expect(transcriptWords(out).every((w) => w.caption !== 'a' || w.estimated)).toBe(true)
+    // A second word cut there later is marked too; the first stays marked.
     const again = cutWords(cut, words, [[at('thnk'), at('thnk')]], 20)
     const out2 = anchorCutWords(out, cut, again)!
-    expect(transcriptWords(out2).filter((w) => w.caption === 'a' && !w.estimated).map((w) => w.text)).toEqual(['um,', 'thnk'])
+    expect(transcriptWords(out2).filter((w) => w.caption === 'a' && w.deleted).map((w) => w.text)).toEqual(['um,', 'thnk'])
     expect(sameWords(transcriptWords(out2), words)).toBe(true)
   })
 
@@ -375,11 +379,11 @@ describe('anchorCutWords', () => {
       { text: 'um,', start: 1.0, end: 1.5 },
       { text: 'I', start: 1.9, end: 2.0 },
       { text: 'think', start: 2.0, end: 2.4 },
-      { text: 'a', start: ws[a].start, end: ws[a].end },
-      { text: 'lot', start: ws[a + 1].start, end: ws[a + 1].end },
+      { text: 'a', start: ws[a].start, end: ws[a].end, estimated: true, deleted: true },
+      { text: 'lot', start: ws[a + 1].start, end: ws[a + 1].end, estimated: true, deleted: true },
       { text: 'works.', start: 3.0, end: 3.6 }
     ])
-    expect(transcriptWords(out).every((w) => !w.estimated)).toBe(true)
+    expect(transcriptWords(out).map((w) => !!w.deleted)).toEqual([false, false, false, false, true, true, false])
     expect(sameWords(transcriptWords(out), ws)).toBe(true)
   })
 
@@ -392,6 +396,40 @@ describe('anchorCutWords', () => {
     const later = cutWords(early, words, [[at('this'), at('this')]], 20)
     expect(anchorCutWords(t, early, later)).toBe(t)
     expect(anchorCutWords(undefined, full, early)).toBeUndefined()
+  })
+
+  it('marks every guess inside the spans being cut whose middle is then cut, also one an earlier cut had already cut', () => {
+    const g = transcript([seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')])
+    const ws = transcriptWords(g)
+    const i = (text: string): number => ws.findIndex((w) => w.text === text)
+    const deleted = (x: Transcript | undefined): string[] => transcriptWords(x).filter((w) => w.deleted).map((w) => w.text)
+    // Smart speed > Silences first: it cuts the pause at 11.85-13.75 s, where "settings and pick a" are guessed.
+    const silences = [clip(0, 11.85), clip(13.75, 30)]
+    // Then "the settings" deleted: both marked, "settings" too though its middle was already cut; "and pick a" not.
+    const cut = cutWords(silences, ws, [[i('the'), i('settings')]], 30)
+    expect(deleted(anchorCutWords(g, silences, cut, [[i('the'), i('settings')]]))).toEqual(['the', 'settings'])
+    // A span wholly inside the earlier cut: the clips do not change, the word is marked all the same.
+    expect(cutWords(silences, ws, [[i('pick'), i('pick')]], 30).map((c) => [c.start, c.end])).toEqual([[0, 11.85], [13.75, 30]])
+    expect(deleted(anchorCutWords(g, silences, silences, [[i('pick'), i('pick')]]))).toEqual(['pick'])
+    // Words of the spans that stay in a clip (a cut refused: it would cut the whole video) are not marked.
+    expect(anchorCutWords(g, [clip(0, 30)], [clip(0, 30)], [[0, ws.length - 1]])).toBe(g)
+  })
+})
+
+describe('captionWordTimes', () => {
+  it('stores heard times as they are, guesses marked, and deleted guesses marked deleted (kept from before, or now)', () => {
+    const s = seg('w', 0, 4, 'So um, I think', [
+      ['So', 0, 0.5],
+      ['think', 3, 4]
+    ])
+    const once = captionWordTimes(s, (i) => i === 1)
+    expect(once.map((w) => [w.text, !!w.estimated, !!w.deleted])).toEqual([
+      ['So', false, false],
+      ['um,', true, true],
+      ['I', true, false],
+      ['think', false, false]
+    ])
+    expect(captionWordTimes({ ...s, words: once }).map((w) => !!w.deleted)).toEqual([false, true, false, false])
   })
 })
 

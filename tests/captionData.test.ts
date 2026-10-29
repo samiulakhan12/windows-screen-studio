@@ -90,6 +90,28 @@ describe('readCaptionSegments', () => {
       { text: 'you', start: 2, end: 3 }
     ])
   })
+
+  it('keeps a word marked deleted in the Transcript tab, and only a real mark; words without marks read as before', () => {
+    const raw = [
+      seg('a', 1, 3, 'hi there you', [
+        { text: 'hi', start: 1, end: 1.5, estimated: true, deleted: true },
+        { text: 'there', start: 1.5, end: 2, estimated: true },
+        { text: 'you', start: 2, end: 3, estimated: true, deleted: 1 } as never
+      ]),
+      seg('b', 4, 5, 'old one', [
+        { text: 'old', start: 4, end: 4.5 },
+        { text: 'one', start: 4.5, end: 5 }
+      ])
+    ]
+    const read = readCaptionSegments(JSON.parse(JSON.stringify(raw)), 10)
+    expect(read[0].words).toEqual([
+      { text: 'hi', start: 1, end: 1.5, estimated: true, deleted: true },
+      { text: 'there', start: 1.5, end: 2, estimated: true },
+      { text: 'you', start: 2, end: 3, estimated: true }
+    ])
+    // Saved again, a caption without marks is byte for byte what it was.
+    expect(JSON.stringify(read[1])).toBe(JSON.stringify(raw[1]))
+  })
 })
 
 describe('readTranscript', () => {
