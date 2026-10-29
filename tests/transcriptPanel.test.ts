@@ -677,6 +677,31 @@ describe('the Transcript tab', () => {
     expect(store.state.clips.length).toBe(2)
   })
 
+  it('Delete on guessed words inside a timeline cut marks them deleted (struck through) without changing the clips', () => {
+    // A caption without word timings across a Smart speed cut of 11.85-13.75 s: its guesses there may still be heard, so not struck.
+    const cutAt = (): Clip[] => [
+      { id: 'c', start: 0, end: 11.85, speed: 1 },
+      { id: 'd', start: 13.75, end: 30, speed: 1 }
+    ]
+    useProject(30, [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and pick a folder for your recordings' }], cutAt())
+    const struck = (): string[] =>
+      render()
+        .filter((e) => e.props.role === 'option' && String(e.props.className).split(' ').includes('cut'))
+        .map((e) => textOf(e.props.children).trim())
+    expect(struck()).toEqual([])
+    const clips = store.state.clips
+    pointerDown(5)
+    press('Delete')
+    // One update: the word marked and its caption's times stored, the clips as they were.
+    expect(store.state.clips).toBe(clips)
+    expect(store.state.transcript!.segments[0].words!.filter((w) => w.deleted).map((w) => w.text)).toEqual(['pick'])
+    expect(struck()).toEqual(['pick'])
+    expect(log.notices).toEqual(['Cut 1 word (0.0 s)'])
+    // Again: it is cut now.
+    press('Delete')
+    expect(log.notices[1]).toBe('Already cut. Press Restore to bring it back')
+  })
+
   it('keeps the review list while the tab is closed, and nothing of it once the editor is gone', async () => {
     const fillers = (): CaptionSegment[] => [
       seg('a', 1, 4, [

@@ -1,7 +1,8 @@
 /**
  * Edit by text (NW-04, docs/design/edit-by-text.md): the transcript as a list of timed words, and
  * word spans as cuts of the video. Cuts are ordinary clips (cutRange / restoreRange, the timeline's
- * own rules); whether a word is cut is derived from the clips, so a cut made anywhere shows here.
+ * own rules); whether a word is cut is derived from the clips, so a cut made anywhere shows here
+ * (a word whose time is a guess only when it is surely cut, or was deleted here: cutFlags).
  * Everything is in source seconds.
  */
 import { clamp } from '../engine/math'
@@ -124,21 +125,66 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
 
 /** Every word of the transcript in order (captions are sorted and never overlap: captionData.ts). */
 export function transcriptWords(transcript: Transcript | undefined): TranscriptWord[] {
+  return captionsWords(transcript?.segments ?? [])
+}
+
+/** Every word of these captions in order, as transcriptWords gives them. */
+export function captionsWords(segments: readonly CaptionSegment[]): TranscriptWord[] {
   const out: TranscriptWord[] = []
-  for (const seg of transcript?.segments ?? []) {
+  for (const seg of segments) {
     for (const w of alignCaptionWords(seg)) out.push({ ...w, index: out.length, caption: seg.id })
   }
   return out
 }
 
-/** For each word, whether it is cut: its middle is in no clip (end-exclusive, like clipIndexAt). One sweep. */
-export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
+/** For each word, whether its middle is in no clip (end-exclusive, like clipIndexAt). One sweep. */
+function middlesCut(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
   const flags = new Array<boolean>(words.length)
   let c = 0
   for (let i = 0; i < words.length; i++) {
     const mid = (words[i].start + words[i].end) / 2
     while (c < clips.length && clips[c].end <= mid) c++
     flags[i] = !(c < clips.length && clips[c].start <= mid)
+  }
+  return flags
+}
+
+/** Whether a clip keeps any moment of [from, to] (clips sorted, end-exclusive). Binary search. */
+function keepsAny(clips: readonly Clip[], from: number, to: number): boolean {
+  let lo = 0
+  let hi = clips.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (clips[mid].end <= from) lo = mid + 1
+    else hi = mid
+  }
+  return lo < clips.length && clips[lo].start <= to
+}
+
+/**
+ * For each word, whether it is cut (docs/design/edit-by-text.md §4.2), the one rule of the Transcript
+ * tab and the subtitle files (outputCues). A word with a heard time (not `estimated`), or a guess
+ * `deleted` in the tab, is cut when its middle is in no clip. Any other guess is cut only when it is
+ * surely cut: its middle is in no clip and no clip keeps anything between the middles of the nearest
+ * heard words before and after it in its caption (the caption's first start or last end where there
+ * is none), so a guess never takes out a word that may still be heard.
+ */
+export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
+  const flags = middlesCut(words, clips)
+  const mid = (w: TranscriptWord): number => (w.start + w.end) / 2
+  const heard = (w: TranscriptWord): boolean => !w.estimated
+  const before = new Array<number>(words.length)
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]
+    const prev = words[i - 1]
+    before[i] = !prev || prev.caption !== w.caption ? w.start : heard(prev) ? mid(prev) : before[i - 1]
+  }
+  let after = 0
+  for (let i = words.length - 1; i >= 0; i--) {
+    const w = words[i]
+    const next = words[i + 1]
+    after = !next || next.caption !== w.caption ? w.end : heard(next) ? mid(next) : after
+    if (flags[i] && w.estimated && !w.deleted) flags[i] = !keepsAny(clips, Math.min(before[i], after), Math.max(before[i], after))
   }
   return flags
 }
@@ -162,14 +208,14 @@ export function captionWordTimes(seg: CaptionSegment, deleted: (i: number) => bo
  * short word left between two cuts), whose middle is then cut is marked `deleted`, whether or not
  * an earlier cut had already cut its time; its caption's words get their times stored
  * (captionWordTimes, the other guesses still guesses). The deleted words then stay cut, in the tab
- * and out of the subtitle files, when the caption's text or times are edited later, and a later
- * timeline cut still never drops another guess from them. The same object when nothing is marked.
+ * and out of the subtitle files (cutFlags), when the caption's text or times are edited later, and
+ * a later timeline cut still never drops another guess. The same object when nothing is marked.
  */
 export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[], spans: readonly WordSpan[] = []): Transcript | undefined {
   if (!transcript) return transcript
   const words = transcriptWords(transcript)
-  const was = cutFlags(words, before)
-  const now = cutFlags(words, after)
+  const was = middlesCut(words, before)
+  const now = middlesCut(words, after)
   const inSpan = (i: number): boolean => spans.some(([a, b]) => i >= Math.min(a, b) && i <= Math.max(a, b))
   const fresh = (i: number): boolean => words[i].estimated && !words[i].deleted && now[i] && (!was[i] || inSpan(i))
   let changed = false

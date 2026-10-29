@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
-import { anchorCutWords, cutFlags, cutWords, restoreWords, sameWords, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
+import { anchorCutWords, cutFlags, cutWords, restoreWords, sameWords, spansSaving, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
 import { applySuggestions, refreshSuggestions, reviewSuggestions, SUGGESTION_LABELS, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
 import {
   clickSelection,
@@ -162,16 +162,20 @@ function TranscriptEditor({
     if (flags.slice(a, b + 1).every((f) => f)) return onNotice('Already cut. Press Restore to bring it back')
     const range = wordsRange(words, a, b, store.state.duration)
     const next = cutWords(before, words, [[a, b]], store.state.duration)
+    const marked = anchorCutWords(transcript, before, next, [[a, b]])
     // Nothing changes only when the range is empty (zero-length words between touching ones) or
-    // when nothing would be left (cutRange keeps no piece shorter than a clip may be).
-    if (sameClips(next, before)) return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
+    // when nothing would be left (cutRange keeps no piece shorter than a clip may be). A range
+    // already wholly cut (guessed words inside a timeline cut, shown kept) only marks its words.
+    if (sameClips(next, before) && (marked === transcript || spansSaving(before, words, [[a, b]], store.state.duration) > 1e-9)) {
+      return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
+    }
     // Guessed words are marked deleted with the cut, their caption's times stored (one undo step): they stay cut after an edit of the caption.
     store.update((p) => {
       const cut = cutWords(p.clips, words, [[a, b]], p.duration)
-      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut, [[a, b]]) }
+      return { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, [[a, b]]) }
     })
-    // Counted from the result: a short word left between two cuts goes with them (no clip is that short).
-    const after = cutFlags(words, next)
+    // Counted from the result (the words as marked): a short word left between two cuts goes with them (no clip is that short).
+    const after = cutFlags(transcriptWords(marked), next)
     const newly = after.reduce((n, f, i) => n + (f && !flags[i] ? 1 : 0), 0)
     const saved = seconds(outputDuration(before) - outputDuration(next))
     onNotice(newly > 0 ? `Cut ${plural(newly, 'word')} (${saved})` : `Cut ${saved}`)

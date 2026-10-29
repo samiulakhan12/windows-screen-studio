@@ -418,6 +418,62 @@ describe('anchorCutWords', () => {
   })
 })
 
+describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by-text.md §4.2)', () => {
+  const struck = (segments: CaptionSegment[], clips: Clip[]): string[] => {
+    const ws = transcriptWords(transcript(segments))
+    const flags = cutFlags(ws, clips)
+    return ws.filter((_, i) => flags[i]).map((w) => w.text)
+  }
+  const cut = (from: number, to: number): Clip[] => [clip(0, from), clip(to, 30)]
+  // "alot" fixed to "a lot" in the Captions tab: "a" and "lot" are guessed between "think" and "works.".
+  const whisper = seg('w', 0.4, 3.8, 'So I think a lot works.', [
+    ['So', 0.4, 0.7],
+    ['I', 1.9, 2.0],
+    ['think', 2.0, 2.4],
+    ['alot', 2.5, 2.9],
+    ['works.', 3.0, 3.6]
+  ])
+
+  it('cuts a guess only when its heard neighbours and everything between their middles are cut', () => {
+    expect(struck([whisper], cut(1.8, 3.7))).toEqual(['I', 'think', 'a', 'lot', 'works.'])
+    expect(struck([whisper], cut(2.1, 3.5))).toEqual(['think', 'a', 'lot', 'works.'])
+    // "think" (middle 2.2 s) still plays: the guesses after it may still be heard.
+    expect(struck([whisper], cut(2.3, 3.5))).toEqual(['works.'])
+    expect(struck([whisper], cut(2.45, 2.95))).toEqual([])
+  })
+
+  it('takes the caption\'s first start or last end where a guess has no heard neighbour: a caption without timings goes only when all of it is cut', () => {
+    const gemini = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
+    expect(struck([gemini], cut(11.85, 13.75))).toEqual([])
+    expect(struck([gemini], cut(10, 16.9))).toEqual([])
+    expect(struck([gemini], cut(9, 18))).toEqual(gemini.text.split(' '))
+    // A word added before the first timed one: from the caption's start to the middle of "So".
+    const added = seg('a', 0.5, 1.4, 'uh So', [['So', 1.0, 1.4]])
+    expect(struck([added], [clip(0.9, 30)])).toEqual([])
+    expect(struck([added], [clip(1.3, 30)])).toEqual(['uh', 'So'])
+  })
+
+  it('cuts a guess deleted in the tab by its middle, and never takes one as a heard neighbour', () => {
+    const g = transcript([seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')])
+    const ws = transcriptWords(g)
+    const i = ws.findIndex((w) => w.text === 'settings')
+    const full = [clip(0, 30)]
+    const marked = anchorCutWords(g, full, cutWords(full, ws, [[i, i]], 30), [[i, i]])!
+    // Only the Silences cut left (the word's own cut restored on the timeline would clear the mark: settleDeletedWords).
+    expect(struck(marked.segments, cut(11.85, 13.75))).toEqual(['settings'])
+    // "a" deleted, "lot" a guess: its neighbours are "think" (still heard at 2.2 s) and "works.", not "a".
+    const deletedA = seg('w', 0.4, 3.8, 'So I think a lot works.')
+    deletedA.words = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'I', start: 1.9, end: 2.0 },
+      { text: 'think', start: 2.0, end: 2.4 },
+      { text: 'a', start: 2.4, end: 2.55, estimated: true, deleted: true },
+      { text: 'works.', start: 3.0, end: 3.6 }
+    ]
+    expect(struck([deletedA], cut(2.4, 3.7))).toEqual(['a', 'works.'])
+  })
+})
+
 describe('captionWordTimes', () => {
   it('stores heard times as they are, guesses marked, and deleted guesses marked deleted (kept from before, or now)', () => {
     const s = seg('w', 0, 4, 'So um, I think', [

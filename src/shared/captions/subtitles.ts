@@ -5,7 +5,7 @@
  * spoken there, as the Transcript tab shows them), and each piece is scaled by its clip's speed. Pure.
  */
 import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
-import { alignCaptionWords } from '../editor/transcript'
+import { captionsWords, cutFlags } from '../editor/transcript'
 import type { CaptionSegment, Clip } from '../types'
 
 export type SubtitleFormat = 'srt' | 'vtt' | 'txt'
@@ -32,10 +32,9 @@ const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c
 /**
  * The captions as they play in the exported video: each one's kept part from its first to its
  * last shown moment (the clips around a cut play back to back, so it stays one cue), scaled by
- * the speed. Its words are timed as the Transcript tab times them (alignCaptionWords), and a word
- * whose middle was cut is left out, as the tab shows it, when its time is known or it was deleted
- * in the tab (a guess marked `deleted`: anchorCutWords). Any other word whose time is a guess
- * (`estimated`) is kept: a guess never takes out a word that is still heard.
+ * the speed. Its words are the Transcript tab's (captionsWords), and the words the tab strikes
+ * through are left out: cutFlags, one rule for both (docs/design/edit-by-text.md §4.2: a heard or
+ * deleted word by its middle, any other guess only when surely cut).
  * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {
@@ -47,8 +46,13 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
     starts.push(acc)
     acc += (c.end - c.start) / c.speed
   }
-  const kept = (s: number): boolean => clips.some((c) => s >= c.start && s < c.end)
+  const words = captionsWords(segments)
+  const cut = cutFlags(words, clips)
+  let at = 0
   for (const seg of segments) {
+    // The caption's words are words[from..at) (as many as alignCaptionWords gives it).
+    const from = at
+    at += seg.text.split(' ').filter(Boolean).length
     if (!seg.text.trim()) continue
     let first: number | null = null
     let last: number | null = null
@@ -61,9 +65,13 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
       last = outOf(c, starts[i], b)
     }
     if (first === null || last === null || last - first < MIN_CUE) continue
-    const words = alignCaptionWords(seg).filter((t) => (t.estimated && !t.deleted) || kept((t.start + t.end) / 2))
-    if (!words.length) continue
-    cues.push({ start: first, end: last, text: words.map((t) => t.text).join(' ') })
+    const text = words
+      .slice(from, at)
+      .filter((_, k) => !cut[from + k])
+      .map((w) => w.text)
+      .join(' ')
+    if (!text) continue
+    cues.push({ start: first, end: last, text })
   }
   // Rounded later to milliseconds: never overlapping.
   for (let i = 1; i < cues.length; i++) if (cues[i].start < cues[i - 1].end) cues[i - 1].end = cues[i].start
