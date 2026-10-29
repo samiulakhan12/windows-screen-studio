@@ -321,11 +321,15 @@ function TranscriptEditor({
   const [page, setPage] = useState(0)
   /** The page shown was turned to with Earlier or Later, not by playback or the selection. */
   const pagedByHand = useRef(false)
-  /** Earlier and Later. A mouse click gives the focus back to the words; from the keyboard it stays on the button, so Enter turns page after page. */
+  /**
+   * Earlier and Later. A mouse click gives the focus back to the words; from the keyboard it stays on
+   * the button, so Enter turns page after page, until the first or last page disables the button
+   * (the focus would fall to the page): then it goes to the words too.
+   */
   const turnPage = (p: number, e: React.MouseEvent): void => {
     setPage(p)
     pagedByHand.current = true
-    if (e.detail > 0) listRef.current?.focus({ preventScroll: true })
+    if (e.detail > 0 || p <= 0 || p >= pages - 1) listRef.current?.focus({ preventScroll: true })
   }
   const focus = sel?.focus ?? -1
   useEffect(() => {

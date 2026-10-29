@@ -433,16 +433,40 @@ describe('the Transcript tab', () => {
     useProject(140, captions(130))
     render()
     const shownWords = (): number[] => render().filter((e) => e.props.role === 'option').map((e) => Number(e.props['data-w']))
-    for (const first of [120, 240, 360]) {
+    for (const first of [120, 240]) {
       click('Later', 0)
       expect(shownWords()[0]).toBe(first)
     }
     click('Earlier', 0)
-    expect(shownWords()[0]).toBe(240)
+    expect(shownWords()[0]).toBe(120)
     expect(log.focused).toEqual([])
     // The arrow keys then start on the page shown.
     press('ArrowRight')
-    expect(selectedWords()).toEqual([240])
+    expect(selectedWords()).toEqual([120])
+  })
+
+  it('Later pressed from the keyboard onto the last page, or Earlier onto the first, gives the focus to the word list, as the button turns disabled', () => {
+    // 130 captions: four pages. Two (45 captions): Later reaches the last page at once.
+    for (const [n, presses] of [
+      [130, 3],
+      [45, 1]
+    ]) {
+      unmount()
+      useProject(140, captions(n))
+      render()
+      log.focused.length = 0
+      for (let k = 1; k <= presses; k++) {
+        click('Later', 0)
+        expect(log.focused, `${n} captions, Later ${k}`).toEqual(k < presses ? [] : ['list'])
+      }
+      expect(button(render(), 'Later').props.disabled).toBe(true)
+      log.focused.length = 0
+      for (let k = 1; k <= presses; k++) {
+        click('Earlier', 0)
+        expect(log.focused, `${n} captions, Earlier ${k}`).toEqual(k < presses ? [] : ['list'])
+      }
+      expect(button(render(), 'Earlier').props.disabled).toBe(true)
+    }
   })
 
   it('Find says what it found', () => {

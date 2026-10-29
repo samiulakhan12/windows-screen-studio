@@ -596,7 +596,8 @@ Where the build differs from the sections above, after an adversarial review:
 - **Keys:** `Shift+Delete` / `Shift+Backspace` cut too inside the word list (they never reach the
   editor's shortcuts there); the Cut, Restore and Find buttons give the focus back to the word
   list, and so do Earlier and Later after a mouse click (pressed from the keyboard they keep it, as
-  the app's other controls do, so Enter turns page after page). Selecting words clears the timeline's selection, so `Delete` pressed with the
+  the app's other controls do, so Enter turns page after page, until the first or last page disables
+  the button: the focus then goes to the word list rather than falling to the page). Selecting words clears the timeline's selection, so `Delete` pressed with the
   focus elsewhere (a review button just clicked) never removes a timeline item the tab hides.
   `Ctrl+A` is read as the editor reads it (`eventKeyName`), so it selects every word on any
   keyboard layout.
