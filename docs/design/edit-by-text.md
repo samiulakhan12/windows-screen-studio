@@ -74,13 +74,18 @@ Buttons above the text: **Cut** (`Delete`), **Restore**, **Find fillers and reta
 - **Chosen: words map to source time ranges, and the range is cut with `cutRange`
   (`src/shared/engine/timeline.ts`)** and restored with `restoreRange`
   (`src/shared/editor/clips.ts`): the same functions the timeline's range cut and gap restore use.
-  The transcript is never changed by a cut, so a cut word is still there to restore, and captions
-  already follow cuts (`outputCues` in `src/shared/captions/subtitles.ts`).
+  A cut never takes a word out of the transcript, so a cut word is still there to restore, and
+  captions already follow cuts (`outputCues` in `src/shared/captions/subtitles.ts`). (A cut of words
+  with guessed times stores those times and a `deleted` mark with them, §4.2 and §4.4.)
 - Rejected: storing "deleted word ids" in the project and deriving clips from them. Two sources of
   truth for one cut (the clip list and the word list) drift as soon as the user trims on the
-  timeline or runs Remove silences; and old projects would need a migration.
-- Word state is **derived**: a word is cut when its middle is not inside any clip. So a cut made on
-  the timeline, by Smart speed or by Remove silences shows struck through in the transcript too.
+  timeline or runs Remove silences; and old projects would need a migration. (The `deleted` mark
+  of §4.2 is not such a list: the clips stay the one source of truth, the mark only says which
+  guessed words the user deleted, and it goes as soon as the clips keep its word.)
+- Word state is **derived** from the clips: a word with a heard time is cut when its middle is not
+  inside any clip. So a cut made on the timeline, by Smart speed or by Remove silences shows struck
+  through in the transcript too. A word whose time is a guess shows struck through only when it is
+  surely cut or the user deleted it here (§4.2), as the subtitle files leave it out.
 
 ### 2.3 Padding: where a cut starts and ends
 
@@ -142,6 +147,7 @@ memory:
 | The word list | Derived from `Project.transcript` (`transcriptWords`), memoised on the transcript object. |
 | Cut or kept, per word | Derived from `Project.clips` (`cutFlags`). |
 | The selection in the transcript | Panel state (indices into the word list), never saved. |
+| A caption's word times after a cut made in the tab | `CaptionSegment.words`, stored by the cut (§4.4 Anchoring), with two optional per-word marks written only when set: `estimated: true` (the time is a guess) and `deleted: true` (a guess the user deleted here, §4.2). Projects without them load and save byte for byte as before. |
 | The fillers and retakes list | Renderer memory per transcript object (`reviewMemory` in the panel, a `WeakMap`), so switching tabs keeps it; gone when the editor closes (with the editor's project). Never saved. |
 
 The export job gains one optional field (`src/shared/api/export.ts`, additive):
@@ -178,7 +184,7 @@ timed words by a longest common subsequence of their normalised forms (§4.5 nor
   caption's own start or end.
 - A caption without any timed words gets every word estimated the same way across the caption.
 - A shown word matched to a stored guess (a timed word marked `estimated`, §4.4 Anchoring) takes
-  its times and stays `estimated`.
+  its times and stays `estimated`; a stored `deleted` mark comes with it (§4.2).
 - A word is at least 0 s long; times stay inside its caption.
 
 `estimated` words work like any other; the panel says "Some word times are estimated: cuts there
@@ -190,16 +196,48 @@ transcript object.
 
 ### 4.2 Cut or kept (`cutFlags`)
 
-A word is cut when its middle, `(start + end) / 2`, is in no clip (`clipIndexAt` semantics:
-`start ≤ t < end`). Computed for all words in one sweep over the sorted words and the sorted clips
-(O(words + clips)).
+A shown word's time is either **heard** (matched to a word timing the provider gave, §4.1) or a
+**guess** (`estimated`: shared out by §4.1, or a stored guess). The Transcript tab and the subtitle
+files decide whether a word is cut by one rule, `cutFlags`, so the words the tab strikes through
+are exactly the words the subtitle files leave out:
+
+1. **Heard.** A word with a heard time is cut when its middle, `(start + end) / 2`, is in no clip
+   (`clipIndexAt` semantics: `start ≤ t < end`).
+2. **Deleted.** A guess the user deleted in this tab carries the mark `deleted: true` (rule 4) and
+   is cut the same way, by the middle of its stored time.
+3. **Other guesses.** Any other guess is cut only when it is surely cut: its middle is in no clip,
+   and no clip keeps anything between the middles of the nearest heard words before and after it
+   in its caption (the start of the caption's first word, or the end of its last, where there is
+   none on that side). Guesses, deleted or not, are never such neighbours. So a guess never takes
+   out a word that may still be heard: a timeline cut or trim, or a Smart speed > Silences cut, over
+   a guessed time leaves the word in (in the tab and in the subtitles) unless its heard neighbours
+   and everything between them are cut too, or its whole caption is.
+4. **Deleting marks the guesses.** Delete (Cut), Remove and Remove all mark, in the same store
+   update as the cut (one undo step, §4.4 Anchoring), every guess inside the spans being cut, and
+   every other guess the cut newly cuts (a short word left between two cuts goes with them), whose
+   middle is then in no clip: whether or not an earlier timeline or Smart speed cut had already cut
+   its time. The caption's word times are stored with the mark, so a later edit of the caption
+   cannot move a deleted word out of the cut. A selection whose range is already wholly cut
+   (guesses inside a timeline cut, shown kept by rule 3) is marked without changing the clips.
+5. **A mark lives only while its word is cut.** Every edit made through the editor's store
+   (`EditStore`'s `settle`, `settleDeletedWords`) clears `deleted` from every stored word whose
+   middle is in a clip after it, in the same undo step: this tab's Restore, Restore the whole
+   recording, timeline edits, Smart speed, deleting several items, moving a caption on its track.
+   The word is then a guess again (rule 3), so a later Silences cut over its guessed time cannot
+   take it out. Undo and redo bring the clips and the marks back together (one history step).
+6. **Captions tab edits keep the marks with the words**, as they keep the times: a text edit (the
+   stored word still matches, §4.1), Merge, Split, Fix captions (the captions' own word timings
+   are kept) and moving or trimming a caption on its track. A word whose own text is retyped no
+   longer matches its stored time and is a new guess.
+7. **Saved** with the project, read back only as `true` (`captionData.ts`), like `estimated`.
 
 Subtitle files (Export captions, and Also save > Captions in every part of One file per chapter)
-leave out the same words: `outputCues` times each caption's words with `alignCaptionWords` and
-drops a word whose middle is cut, whether or not the text still matches its word timings. A word
-whose time is a guess (`estimated`) is kept, so a timeline or Smart speed cut never takes a heard
-word out of the subtitles by a guess. Deleting words here stores their times as known first
-(§4.4 Anchoring), so the deleted words are dropped like any other.
+apply the same rule: `outputCues` takes the captions' words as the tab does (`captionsWords`, the
+words `transcriptWords` gives) and leaves out the words `cutFlags` gives as cut. Burned-in captions and the preview show each
+caption's text as before; neither the marks nor this rule change them.
+
+Computed in one sweep over the sorted words and the sorted clips, plus a binary search for each
+guess whose middle is cut (O(words + guesses × log clips)).
 
 ### 4.3 The range of a word span (`wordsRange`)
 
@@ -223,20 +261,21 @@ span restores exactly the range that cutting it removed.
   left (a single short word between two cuts goes with them, and shows struck through), and the
   last piece of the video is never removed (then nothing changes and the notice says "That would
   cut the whole video").
-- **Anchoring** (`anchorCutWords`): in the same store update, a caption with an estimated word
-  newly cut gets the times of all its shown words stored as its `words` (`captionWordTimes`): the
-  newly cut words as known times, every other estimated word marked `estimated: true` (still a
-  guess). Cut, Remove and Remove all do this. Without it, an edit of the caption's text or times
-  in the Captions tab would share its times out again and could move a deleted word out of the
-  cut. The marks keep the other words guesses, so a later timeline or Smart speed cut still never
-  drops them from the subtitles (§4.2). The mark is saved with the project and read back
-  (`captionData.ts`); projects without it load as before. The review list stays open across this
+- **Anchoring** (`anchorCutWords`): in the same store update, a caption with a guess that the cut
+  marks `deleted` (§4.2 rule 4) gets the times of all its shown words stored as its `words`
+  (`captionWordTimes`): heard words as they are, every guess marked `estimated: true`, the deleted
+  ones `deleted: true` as well. Cut, Remove and Remove all do this. Without it, an edit of the
+  caption's text or times in the Captions tab would share its times out again and could move a
+  deleted word out of the cut. The other guesses stay guesses, so a later timeline or Smart speed
+  cut still never drops them (§4.2 rule 3). The marks are saved with the project and read back
+  (`captionData.ts`); projects without them load as before. The review list stays open across this
   change, and across its undo, because the words and their times are the same.
-  Merge and Split in the Captions tab keep every word's time too (`mergeWithNext`,
+  Merge and Split in the Captions tab keep every word's time and mark too (`mergeWithNext`,
   `splitCaption`): a caption whose timings no longer match its text, or that has none next to one
-  that has them, gets its words' times as this tab has them (`captionWordTimes`, guesses still
-  marked), so a deleted word stays cut and out of the subtitles after them. Fix captions (the AI
-  clean-up) keeps a caption's timings when it changes the number of words, for the same reason.
+  that has them, gets its words' times as this tab has them (`captionWordTimes`, guesses and
+  deletions still marked), so a deleted word stays cut and out of the subtitles after them. Fix
+  captions (the AI clean-up) keeps a caption's timings when it changes the number of words, for the
+  same reason.
 - **Restore** (`restoreWords`): `restoreRange` of the span's range: what is cut inside it comes
   back at 1×, kept parts keep their speed, and neighbours with the same speed merge (the timeline's
   own restore rule).
@@ -439,7 +478,7 @@ quantifiers); retake comparison is bounded (80 tokens per sentence, two candidat
 | Action | Undo steps |
 |---|---|
 | Delete (Cut) on any selection | 1 (`store.update`, no merge key) |
-| Restore | 1 |
+| Restore (the `deleted` marks of the words it brings back cleared with it, §4.2) | 1 |
 | Remove (one suggestion) | 1 |
 | Remove all | 1 |
 | Keep, Find, selecting, seeking | 0 |
@@ -467,14 +506,15 @@ change with cuts.
 New (owned):
 
 - `src/shared/editor/transcript.ts`
-  - `interface TranscriptWord { index; caption; text; start; end; estimated }`
-  - `transcriptWords(transcript?: Transcript): TranscriptWord[]`
+  - `interface TranscriptWord { index; caption; text; start; end; estimated; deleted? }`
+  - `transcriptWords(transcript?: Transcript): TranscriptWord[]`, `captionsWords(segments): TranscriptWord[]`
   - `alignCaptionWords(seg: CaptionSegment): Omit<TranscriptWord, 'index' | 'caption'>[]`
   - `cutFlags(words, clips): boolean[]`
   - `wordsRange(words, first, last, duration): TimeRange`, `MAX_REACH`
   - `cutWords(clips, words, spans, duration): Clip[]`, `restoreWords(clips, words, first, last, duration): Clip[]`
   - `wordIndexAt(words, t): number`, `spanSaving(...)`
-  - `anchorCutWords(transcript, before, after): Transcript | undefined`, `captionWordTimes(seg, known?): CaptionWord[]`, `sameWords(a, b): boolean`
+  - `anchorCutWords(transcript, before, after, spans?): Transcript | undefined`, `captionWordTimes(seg, deleted?): CaptionWord[]`, `sameWords(a, b): boolean`
+  - `settleDeletedWords(next: Project, prev: Project): Project` (the editor store's `settle`, §4.2 rule 5)
 - `src/shared/editor/transcriptSelection.ts`: `interface WordSelection { anchor; focus }`,
   `selectionSpan`, `moveSelection(sel, key, shift, words)`, `clickSelection(sel, index, shift)`.
 - `src/shared/editor/fillers.ts`: `normalizeWord`, `fillerLanguage`, `findFillers(words, language?)`.
@@ -498,6 +538,10 @@ Additive lines in shared files:
 - `src/renderer/src/editor/previewAudio.ts` (the preview's audio path): the `cut` gain node and its
   scheduling.
 - `src/renderer/src/editor/Inspector.tsx`: the tab, its type member, its render line.
+- `src/shared/editor/editStore.ts`: an optional `settle(next, prev)` applied to every state `update`
+  and `replace` make; `src/renderer/src/views/Editor.tsx` passes `settleDeletedWords` (§4.2 rule 5).
+- `src/shared/types.ts`: `CaptionWord.estimated?` and `CaptionWord.deleted?`, read back by
+  `src/shared/captions/captionData.ts`; `src/shared/captions/subtitles.ts` `outputCues` uses `cutFlags` (§4.2).
 - `src/renderer/src/editor/EditorIcon.tsx`: one icon path.
 - Docs: FEATURES, ROADMAP, RELEASE-NOTES, this file.
 
