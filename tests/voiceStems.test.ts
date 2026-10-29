@@ -165,6 +165,28 @@ describe('VoiceStems', () => {
     await expect(Promise.all([a, b])).resolves.toEqual([FILE, FILE])
   })
 
+  it('the export checks a ready stem is still there, and makes it again with progress when it is gone', async () => {
+    const f = fakeApi({ state: 'ready', file: FILE })
+    const s = new VoiceStems(f.api)
+    s.want('p', 'mic', 'normal')
+    await tick()
+    // Still there: the same file, without a render or a flash of another state.
+    const same = s.prepare('p', 'mic', 'normal')
+    expect(s.get('p', 'mic', 'normal')).toEqual({ state: 'ready', file: FILE })
+    await expect(same).resolves.toBe(FILE)
+    expect(f.calls.prepare).toBe(0)
+    // Deleted from the project folder meanwhile.
+    f.setStatus({ state: 'missing' })
+    const again = s.prepare('p', 'mic', 'normal')
+    await tick()
+    expect(f.calls.prepare).toBe(1)
+    expect(s.get('p', 'mic', 'normal')).toEqual({ state: 'working', progress: 0 })
+    const other = 'voice-fedcba9876543210.m4a'
+    f.finish(other)
+    await expect(again).resolves.toBe(other)
+    expect(s.get('p', 'mic', 'normal')).toEqual({ state: 'ready', file: other })
+  })
+
   it('a stem the preview cannot load is checked again', async () => {
     const f = fakeApi({ state: 'ready', file: FILE })
     const s = new VoiceStems(f.api)

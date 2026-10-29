@@ -84,7 +84,19 @@ export class VoiceStems {
   prepare(projectId: string, source: VoiceSource, strength: VoiceStrength): Promise<string> {
     const key = keyOf(projectId, source, strength)
     const current = this.entries.get(key)
-    if (current?.state === 'ready') return Promise.resolve(current.file)
+    // Made earlier in this window: main checks it is still there (it may have been deleted), and
+    // a missing one is made again here, with progress and Cancel, rather than by the export.
+    if (current?.state === 'ready')
+      return this.api.voiceStatus(projectId, source, strength).then(
+        (s) => {
+          if (s.state === 'ready') return s.file
+          if (this.entries.get(key) === current) this.entries.delete(key)
+          return this.prepare(projectId, source, strength)
+        },
+        (err: unknown) => {
+          throw new Error(ipcMessage(err))
+        }
+      )
     const running = this.running.get(key)
     if (running) return running
     this.set(key, { state: 'working', progress: 0 })
