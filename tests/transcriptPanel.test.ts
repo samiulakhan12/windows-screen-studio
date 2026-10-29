@@ -702,6 +702,34 @@ describe('the Transcript tab', () => {
     expect(log.notices[1]).toBe('Already cut. Press Restore to bring it back')
   })
 
+  it('Find lists a filler shown kept whose guessed time a timeline cut covers; Remove and Remove all mark it deleted without changing the clips', () => {
+    // The Smart speed cut of 11.85-13.75 s covers the guess for "um" (12.9-13.2 s), which may still be heard.
+    for (const label of ['Remove', 'Remove all']) {
+      unmount()
+      useProject(30, [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and um pick a folder for your recordings' }], [
+        { id: 'c', start: 0, end: 11.85, speed: 1 },
+        { id: 'd', start: 13.75, end: 30, speed: 1 }
+      ])
+      const struck = (): string[] =>
+        render()
+          .filter((e) => e.props.role === 'option' && String(e.props.className).split(' ').includes('cut'))
+          .map((e) => textOf(e.props.children).trim())
+      const rows = (): number => render().filter((e) => e.type === 'li').length
+      expect(struck()).toEqual([])
+      click('Find fillers and retakes')
+      expect(log.notices.at(-1)).toBe('Found 1 filler or retake')
+      expect(rows()).toBe(1)
+      const clips = store.state.clips
+      click(label)
+      // One update: the word marked and its caption's times stored, the clips as they were.
+      expect(store.state.clips).toBe(clips)
+      expect(store.state.transcript!.segments[0].words!.filter((w) => w.deleted).map((w) => w.text)).toEqual(['um'])
+      expect(struck()).toEqual(['um'])
+      expect(log.notices.at(-1)).toBe('Removed 1 (0.0 s)')
+      expect(rows()).toBe(0)
+    }
+  })
+
   it('keeps the review list while the tab is closed, and nothing of it once the editor is gone', async () => {
     const fillers = (): CaptionSegment[] => [
       seg('a', 1, 4, [

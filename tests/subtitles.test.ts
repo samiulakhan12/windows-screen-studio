@@ -6,6 +6,7 @@ import { validateSegmentsAnswer, validateTextRequest } from '../src/shared/capti
 import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { anchorCutWords, cutFlags, cutWords, restoreWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
+import { applySuggestions, reviewSuggestions } from '../src/shared/editor/transcriptReview'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
 import { cutRange, removeClip, setTrimEnd, setTrimStart, splitAt } from '../src/shared/engine/timeline'
 import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
@@ -384,6 +385,25 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     tabDelete(t, 'the', 'settings')
     silences(t)
     expect(srt(t.state)).toEqual(['Now open and pick a folder for your recordings'])
+  })
+
+  it('after a Silences cut, Find fillers lists a filler whose guessed time it covers, and Remove all takes it out of the tab and the subtitles', () => {
+    const s = open([seg('g', 10, 17, 'Now open the settings and um pick a folder for your recordings')])
+    silences(s)
+    expect(srt(s.state)).toEqual(['Now open the settings and um pick a folder for your recordings'])
+    const found = reviewSuggestions(wordsOf(s.state), s.state.clips, DURATION, 'en')
+    expect(found.map((x) => wordsOf(s.state)[x.first].text)).toEqual(['um'])
+    // Remove all (TranscriptPanel's removeSuggestions): the cut and the marks in one update.
+    const clips = s.state.clips
+    const w = wordsOf(s.state)
+    s.update((p) => {
+      const cut = applySuggestions(p.clips, w, found, p.duration).clips
+      return { ...p, clips: same(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, found.map((x) => [x.first, x.last] as const)) }
+    })
+    expect(s.state.clips).toBe(clips)
+    expect(struck(s.state)).toEqual(['um'])
+    expect(srt(s.state)).toEqual(['Now open the settings and pick a folder for your recordings'])
+    expect(reviewSuggestions(wordsOf(s.state), s.state.clips, DURATION, 'en')).toEqual([])
   })
 
   it('R3: an edited Whisper caption drops the guessed words between cut neighbours, and keeps them while a neighbour plays', () => {

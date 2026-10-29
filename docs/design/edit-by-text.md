@@ -348,11 +348,16 @@ fillers keep the earlier one.
 
 "Find fillers and retakes" builds the list from the current word list and clips: only suggestions
 that save time (`rangeSaving(range, clips, 'cut') ≥ 0.05` s, the Smart speed rule) are listed, so
-words already cut are skipped. Each row: the kind ("Filler", "Retake", "Repeat"), the words in
-quotes (with up to 4 words of context before, dimmed), the time where it plays, and Keep / Remove.
+words already cut are skipped. One that saves nothing is listed too when removing it strikes
+through a word the tab shows kept though its guessed time is already cut (a filler inside a
+Silences cut, §4.2 rule 3): Remove marks the word deleted without changing the clips (rule 4), as
+Delete does, and says "Removed 1 (0.0 s)". Each row: the kind ("Filler", "Retake", "Repeat"), the
+words in quotes (with up to 4 words of context before, dimmed), the time where it plays, and Keep /
+Remove.
 
 - Clicking the row's text moves the playhead to it.
-- **Remove**: cuts that suggestion (one undo step); the row goes.
+- **Remove**: cuts that suggestion and marks its guessed words deleted (§4.2 rule 4; one undo
+  step); the row goes.
 - **Keep**: the row goes; nothing changes; no undo step.
 - **Remove all**: cuts every listed suggestion in one store update (one undo step); the list
   closes; the notice says "Removed 6 (8.2 s)".

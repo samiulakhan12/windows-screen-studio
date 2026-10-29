@@ -23,32 +23,46 @@ export interface EditSuggestion {
   keeps?: readonly number[]
 }
 
-/** Suggestions that would save less (output seconds) are not listed: they are already cut. */
+/**
+ * Suggestions that would save less (output seconds) are not listed: they are already cut (unless
+ * removing them strikes through a word the tab shows kept: worthRemoving).
+ */
 export const MIN_SUGGESTION_SAVING = 0.05
 
 export const SUGGESTION_LABELS: Record<SuggestionKind, string> = { filler: 'Filler', retake: 'Retake', repeat: 'Repeat' }
 
 const idOf = (kind: SuggestionKind, [first, last]: WordSpan): string => `${kind}:${first}-${last}`
 
+/** Each word on the clips: whether the tab shows it cut (cutFlags), and whether its middle is in no clip, its time heard or a guess (middlesCut). */
+interface WordStates {
+  shown: boolean[]
+  middle: boolean[]
+}
+
+const statesOf = (words: readonly TranscriptWord[], clips: readonly Clip[]): WordStates => ({ shown: cutFlags(words, clips), middle: middlesCut(words, clips) })
+
 /**
- * For each word, whether a cut may have taken it out: its middle is in no clip, its time heard or a
- * guess (a guess the tab still shows kept, §4.2 rule 3, included), or the tab shows it cut.
+ * Whether the take a retake or repeat leaves in is still in the edit: a word a cut may have taken
+ * out (its middle cut, a guess the tab still shows kept included, §4.2 rule 3, or shown cut) is not.
+ * When unsure it is not: removing the earlier take would lose every take.
  */
-function takenOut(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
-  const shown = cutFlags(words, clips)
-  return middlesCut(words, clips).map((cut, i) => cut || shown[i])
+const keepsATake = (s: { keeps?: readonly number[] }, w: WordStates): boolean => !s.keeps || s.keeps.some((i) => !w.middle[i] && !w.shown[i])
+
+/**
+ * Whether removing a suggestion that saves `saved` changes the edit: it saves time, or it strikes
+ * through a word the tab shows kept whose time is already cut (a guess inside a timeline or Smart
+ * speed cut, §4.2 rule 3), which Remove marks deleted without changing the clips (rule 4).
+ */
+function worthRemoving(s: { first: number; last: number; saved: number }, w: WordStates): boolean {
+  if (s.saved >= MIN_SUGGESTION_SAVING) return true
+  for (let i = s.first; i <= s.last; i++) if (w.middle[i] && !w.shown[i]) return true
+  return false
 }
 
 /**
- * Whether the take a retake or repeat leaves in is still in the edit (`gone`: takenOut). When unsure
- * it is not: removing the earlier take would lose every take.
- */
-const keepsATake = (s: { keeps?: readonly number[] }, gone: readonly boolean[]): boolean => !s.keeps || s.keeps.some((i) => !gone[i])
-
-/**
  * Fillers and retakes in order, those inside a retake left out (it covers them), each with what it
- * saves on the current clips; ones that save nothing (already cut) are left out, and so are retakes
- * and repeats whose later take is cut.
+ * saves on the current clips; ones that change nothing (already cut: worthRemoving) are left out,
+ * and so are retakes and repeats whose later take is cut.
  */
 export function reviewSuggestions(words: readonly TranscriptWord[], clips: readonly Clip[], duration: number, language?: string): EditSuggestion[] {
   const retakes = findRetakes(words, language)
@@ -61,9 +75,9 @@ export function reviewSuggestions(words: readonly TranscriptWord[], clips: reado
       .map((span) => ({ kind: 'filler' as const, span }))
   ]
   items.sort((a, b) => a.span[0] - b.span[0])
-  const gone = takenOut(words, clips)
+  const states = statesOf(words, clips)
   return items
-    .filter((it) => keepsATake(it, gone))
+    .filter((it) => keepsATake(it, states))
     .map((it) => ({
       id: idOf(it.kind, it.span),
       kind: it.kind,
@@ -72,19 +86,19 @@ export function reviewSuggestions(words: readonly TranscriptWord[], clips: reado
       saved: spansSaving(clips, words, [it.span], duration),
       ...(it.keeps ? { keeps: it.keeps } : {})
     }))
-    .filter((s) => s.saved >= MIN_SUGGESTION_SAVING)
+    .filter((s) => worthRemoving(s, states))
 }
 
 /** The listed suggestions still worth removing on these clips (and whose later take is kept), with what each saves now. */
 export function refreshSuggestions(items: readonly EditSuggestion[], words: readonly TranscriptWord[], clips: readonly Clip[], duration: number): EditSuggestion[] {
-  const gone = takenOut(words, clips)
+  const states = statesOf(words, clips)
   return items
-    .filter((s) => words[s.first] && words[s.last] && keepsATake(s, gone))
+    .filter((s) => words[s.first] && words[s.last] && keepsATake(s, states))
     .map((s) => ({ ...s, saved: spansSaving(clips, words, [[s.first, s.last]], duration) }))
-    .filter((s) => s.saved >= MIN_SUGGESTION_SAVING)
+    .filter((s) => worthRemoving(s, states))
 }
 
-/** The clips with these suggestions cut (one store update), and the output seconds that saves. */
+/** The clips with these suggestions cut (one store update, with anchorCutWords' marks), and the output seconds that saves. */
 export function applySuggestions(clips: Clip[], words: readonly TranscriptWord[], items: readonly EditSuggestion[], duration: number): { clips: Clip[]; saved: number } {
   const spans: WordSpan[] = items.map((s) => [s.first, s.last])
   const next = cutWords(clips, words, spans, duration)

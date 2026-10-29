@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cutRange, outputDuration } from '../src/shared/engine/timeline'
-import { cutFlags, cutWords, transcriptWords, type TranscriptWord } from '../src/shared/editor/transcript'
+import { anchorCutWords, cutFlags, cutWords, transcriptWords, type TranscriptWord } from '../src/shared/editor/transcript'
 import { applySuggestions, refreshSuggestions, reviewSuggestions } from '../src/shared/editor/transcriptReview'
 import type { CaptionSegment, Clip, Transcript } from '../src/shared/types'
 
@@ -51,6 +51,28 @@ describe('the review list', () => {
     // The words kept are not cut.
     expect(flags[words.findIndex((w) => w.text === 'settings.')]).toBe(false)
     expect(reviewSuggestions(words, r.clips, d, 'en')).toEqual([])
+  })
+
+  it('lists a filler shown kept whose guessed time a cut already covers, though it saves nothing: Remove marks it deleted', () => {
+    // A caption without word timings; Smart speed > Silences cut 11.85-13.75 s, over the guess for "um" (12.9-13.2 s).
+    const t = { provider: 'gemini', model: '', createdAt: '', segments: [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and um pick a folder for your recordings' }] } as unknown as Transcript
+    const w = transcriptWords(t)
+    const um = w.findIndex((x) => x.text === 'um')
+    const silences: Clip[] = [
+      { id: 'c', start: 0, end: 11.85, speed: 1 },
+      { id: 'd', start: 13.75, end: 30, speed: 1 }
+    ]
+    expect(cutFlags(w, silences)[um]).toBe(false)
+    const found = reviewSuggestions(w, silences, 30, 'en')
+    expect(found.map((s) => `${s.kind}: ${quote(w, s)} ${s.saved}`)).toEqual(['filler: um 0'])
+    expect(refreshSuggestions(found, w, silences, 30)).toEqual(found)
+    // Removed: the clips as they were, the word marked deleted and struck through; nothing left to list.
+    const r = applySuggestions(silences, w, found, 30)
+    expect(r.clips.map((c) => [c.start, c.end])).toEqual([[0, 11.85], [13.75, 30]])
+    const marked = transcriptWords(anchorCutWords(t, silences, r.clips, [[um, um]]))
+    expect(cutFlags(marked, silences)[um]).toBe(true)
+    expect(reviewSuggestions(marked, silences, 30, 'en')).toEqual([])
+    expect(refreshSuggestions(found, marked, silences, 30)).toEqual([])
   })
 
   it('finds nothing in clean speech', () => {

@@ -209,30 +209,33 @@ function TranscriptEditor({
     onNotice(items.length > 0 ? `Found ${plural(items.length, 'filler or retake', 'fillers and retakes')}` : 'No fillers or retakes found')
   }
 
-  const removeSuggestions = (items: EditSuggestion[]): number => {
+  /** Cuts these suggestions and marks their guessed words deleted (one store update, as Delete does); the output seconds saved, or null when nothing changes. */
+  const removeSuggestions = (items: EditSuggestion[]): number | null => {
     const before = store.state.clips
+    const spans = items.map((s) => [s.first, s.last] as const)
     const r = applySuggestions(before, words, items, store.state.duration)
-    if (r.clips === before || sameClips(r.clips, before)) {
+    // A suggestion already wholly cut (guessed words inside a timeline cut, shown kept) only marks its words.
+    if (sameClips(r.clips, before) && (anchorCutWords(transcript, before, before, spans) === transcript || spansSaving(before, words, spans, store.state.duration) > 1e-9)) {
       onNotice('That would cut the whole video')
-      return 0
+      return null
     }
     store.update((p) => {
       const cut = applySuggestions(p.clips, words, items, p.duration).clips
-      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut, items.map((s) => [s.first, s.last] as const)) }
+      return { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, spans) }
     })
     return r.saved
   }
 
   const removeOne = (s: EditSuggestion): void => {
     const saved = removeSuggestions([s])
-    if (saved > 0) onNotice(`Removed 1 (${seconds(saved)})`)
+    if (saved !== null) onNotice(`Removed 1 (${seconds(saved)})`)
   }
   const keepOne = (s: EditSuggestion): void => setReview((review ?? []).filter((x) => x.id !== s.id))
   const removeAll = (): void => {
     const items = shownReview ?? []
     if (items.length === 0) return
     const saved = removeSuggestions(items)
-    if (saved <= 0) return
+    if (saved === null) return
     setReview(null)
     onNotice(`Removed ${items.length} (${seconds(saved)})`)
   }
