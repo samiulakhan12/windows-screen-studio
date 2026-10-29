@@ -347,6 +347,7 @@ function GenerateSection({
   const mine = job && job.projectId === project.id ? job : null
   const generateRef = useRef<HTMLButtonElement>(null)
   const addRef = useRef<HTMLButtonElement>(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     remembered.provider = provider
@@ -423,6 +424,14 @@ function GenerateSection({
   useEffect(() => {
     if (focusLanguage) languageRef.current?.focus()
   }, [focusLanguage])
+  // A run with a key: its Cancel catches the focus that fell to the page as the run started (Generate went, or the
+  // Transcript tab with Make captions), as Cancel on this PC does.
+  const cloudRunning = !!mine?.running && !mine.local
+  useEffect(() => {
+    if (!cloudRunning || typeof document === 'undefined') return
+    const active = document.activeElement
+    if (!active || active === document.body) cancelRef.current?.focus({ preventScroll: true })
+  }, [cloudRunning])
   // When a run ends, Cancel goes away: focus moves to "Regenerate captions…", never to the page.
   const summaryShown = hasTranscript && !open && !mine?.running && !mine?.error
   useEffect(() => {
@@ -508,7 +517,7 @@ function GenerateSection({
             <span style={share === null ? undefined : { width: `${Math.round(share * 100)}%` }} />
           </div>
         </div>
-        <button className="btn" onClick={cancelTranscription} disabled={!!mine.stopping}>
+        <button ref={cancelRef} className="btn" onClick={cancelTranscription} disabled={!!mine.stopping}>
           Cancel
         </button>
       </Section>

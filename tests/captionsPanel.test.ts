@@ -95,7 +95,9 @@ vi.stubGlobal('window', {
   addEventListener: () => undefined,
   removeEventListener: () => undefined
 })
-vi.stubGlobal('document', { body: {} })
+/** The page: `activeElement` is where the focus is (left out: on the body). */
+const page: { body: object; activeElement?: unknown } = { body: {} }
+vi.stubGlobal('document', page)
 vi.stubGlobal(
   'MutationObserver',
   class {
@@ -352,6 +354,7 @@ describe('CaptionsPanel: captions on this PC', () => {
     calls.cancelDownload.length = 0
     calls.confirm.length = 0
     focused.length = 0
+    delete page.activeElement
     replies.providers = () => Promise.resolve([OPENAI])
     replies.download = () => Promise.resolve()
     replies.confirm = true
@@ -584,6 +587,34 @@ describe('CaptionsPanel: captions on this PC', () => {
     const out = await show()
     expect(calls.transcribe).toEqual([{ providerId: 'local', model: 'whisper-base', source: 'auto' }])
     expect(local(out)?.props['data-state']).toBe('running')
+  })
+
+  it.each([
+    ['a key', [OPENAI], false, true],
+    ['this PC', [], true, true],
+    ['a key and this PC', [OPENAI], true, true],
+    ['a key, the focus on a control', [OPENAI], false, false]
+  ])("Make captions or the command, with %s: once the providers are read, the running job's Cancel takes a focus that fell to the page, and only that", async (_how, providers, onThisPc, onPage) => {
+    const answer = deferred<unknown>()
+    replies.providers = () => answer.promise
+    replies.speech = () =>
+      Promise.resolve(onThisPc ? speechState({ statuses: { 'whisper-base': { state: 'installed' } } }) : speechState({ engine: { available: false, build: null, threads: 1, reason: 'missing' } }))
+    // The Transcript tab's Make captions (its button went with that tab), or the palette's Generate captions.
+    page.activeElement = onPage ? page.body : { control: 'elsewhere' }
+    m.items.requestCaptions({ kind: 'generate' })
+    let out = await show()
+    // Only "Checking this PC…" until the providers are read: nothing to focus, nothing started.
+    expect(local(out)?.props['data-state']).toBe('checking')
+    expect(focused).toEqual([])
+    answer.resolve(providers)
+    await flush()
+    out = render(m.panel)
+    expect(calls.transcribe).toEqual([onThisPc ? { providerId: 'local', model: 'whisper-base', source: 'auto' } : { providerId: 'o', source: 'auto' }])
+    expect(buttons(out)).toContain('Cancel')
+    // The focus ends on Cancel (on this PC the form's Generate captions has it for a moment, as in the app); on a control it stays.
+    const names = focused.map((e) => textOf(e.props.children).trim())
+    if (onPage) expect(names[names.length - 1]).toBe('Cancel')
+    else expect(names).toEqual([])
   })
 
   it.each([
