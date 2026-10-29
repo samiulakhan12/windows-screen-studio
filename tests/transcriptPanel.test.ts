@@ -349,6 +349,40 @@ describe('the Transcript tab', () => {
     }
   })
 
+  it('Keep, Remove, Remove all and Close give the focus back to the word list, as their row or the list goes', () => {
+    // Two fillers, "um" and "uh".
+    const fillers = (): CaptionSegment[] => [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works', 2.3, 2.6],
+        ['uh', 2.9, 3.1],
+        ['fine.', 3.4, 3.8]
+      ])
+    ]
+    const rows = (): number => render().filter((e) => e.type === 'li').length
+    // A mouse click (detail 1), and Enter from the keyboard (detail 0).
+    for (const detail of [1, 0]) {
+      for (const [label, left] of [
+        ['Keep', 1],
+        ['Remove', 1],
+        ['Remove all', 0],
+        ['Close', 0]
+      ] as const) {
+        unmount()
+        useProject(10, fillers())
+        render()
+        click('Find fillers and retakes')
+        expect(rows()).toBe(2)
+        log.focused.length = 0
+        click(label, detail)
+        expect(rows(), label).toBe(left)
+        expect(log.focused, `${label} (detail ${detail})`).toEqual(['list'])
+      }
+    }
+  })
+
   it('the arrow keys start on the page chosen with Earlier and Later', () => {
     // 45 captions of three words: page 1 holds captions 0..39 (words 0..119), page 2 the rest.
     useProject(60, captions(45))

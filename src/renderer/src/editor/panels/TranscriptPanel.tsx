@@ -174,7 +174,7 @@ function TranscriptEditor({
     onNotice(`Restored ${plural(back, 'word')}`)
   }
 
-  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). */
+  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). So do the review list's Keep, Remove, Remove all and Close, whose row or list goes (the focus would fall to the page). */
   const refocus = (fn: () => void) => (): void => {
     fn()
     listRef.current?.focus({ preventScroll: true })
@@ -449,10 +449,10 @@ function TranscriptEditor({
           words={words}
           timeOf={timeOf}
           onGo={goTo}
-          onKeep={keepOne}
-          onRemove={removeOne}
-          onRemoveAll={removeAll}
-          onClose={() => setReview(null)}
+          onKeep={(s) => refocus(() => keepOne(s))()}
+          onRemove={(s) => refocus(() => removeOne(s))()}
+          onRemoveAll={refocus(removeAll)}
+          onClose={refocus(() => setReview(null))}
         />
       )}
     </div>
