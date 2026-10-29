@@ -130,7 +130,8 @@ export const NOTE_TEXT: Record<DirectorNote, string | null> = {
   'kept-positions': 'Your camera positions are kept.',
   'all-yours': 'Your own camera changes cover the whole video: nothing left to direct.',
   'options-off': 'The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.',
-  nothing: 'Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.'
+  nothing: 'Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.',
+  band: 'The camera is in a band while the view follows the action, so it is not moved between corners.'
 }
 
 /**

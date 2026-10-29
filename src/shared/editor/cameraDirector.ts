@@ -19,7 +19,7 @@ import { mergeRanges, rangesToOutput, type Range } from '../audio/activity'
 import { SPEECH, type DirectorSpeech } from '../audio/speech'
 import { SmoothedTrack } from '../engine/cursor'
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
-import { cornered, LAYOUT_TRANSITION, layoutsApply, segmentCorner } from '../engine/layout'
+import { bandSide, cornered, LAYOUT_TRANSITION, layoutsApply, outputSize, segmentCorner } from '../engine/layout'
 import { outputDuration, outputToSource } from '../engine/timeline'
 import { focusPathFor, zoomStyleOf } from '../engine/zoom'
 import { FACE, type FramingOutcome } from '../render/faceFraming'
@@ -31,7 +31,23 @@ import { cornerOnly } from './layouts'
 /** What the director reads of a project. */
 export type DirectorProject = Pick<
   Project,
-  'duration' | 'clips' | 'layouts' | 'webcam' | 'style' | 'zooms' | 'zoomSettings' | 'width' | 'height' | 'hasWebcam' | 'capture' | 'cursor' | 'watermark' | 'director'
+  | 'duration'
+  | 'clips'
+  | 'layouts'
+  | 'webcam'
+  | 'style'
+  | 'zooms'
+  | 'zoomSettings'
+  | 'width'
+  | 'height'
+  | 'hasWebcam'
+  | 'capture'
+  | 'cursor'
+  | 'watermark'
+  | 'director'
+  | 'reframe'
+  | 'shapes'
+  | 'spotlights'
 >
 
 export interface DirectorInput {
@@ -99,6 +115,8 @@ export type DirectorNote =
   | 'options-off'
   /** Nothing to change: no part, and no earlier automatic change to remove (the options allow some; its copy gives the reasons of those that are on). */
   | 'nothing'
+  /** The camera is in a band while the view follows the action (docs/design/vertical-video.md §5.14): the bubble is not moved between corners. */
+  | 'band'
 
 /** A stretch of the output timeline by what it shows, for the panel's plan strip. */
 export interface DirectorStripItem {
@@ -184,10 +202,14 @@ export function planDirector(input: DirectorInput, settings: DirectorSettings): 
     posEdges
   )
 
-  // Step 10: corners in the free bubble time (camera positions keep theirs).
+  // Step 10: corners in the free bubble time (camera positions keep theirs). In a band (the view
+  // follows the action in a tall frame) corners mean nothing: the bubble stays home.
   const free = subtract(timeline.shown, posRanges)
+  const frame = outputSize(project.style.aspectRatio, project.width, project.height, 1080)
+  const band = bandSide(project, frame.width, frame.height, project.width, project.height) !== null
+  if (band) notes.push('band')
   let bubble: Run[]
-  if (settings.corners === 'auto' && cursor.valid && cursor.samples.length > 0 && free.length > 0) {
+  if (settings.corners === 'auto' && cursor.valid && cursor.samples.length > 0 && free.length > 0 && !band) {
     const cursorPath = input.cursorPath ?? smoothedFor(cursor.samples, project.duration, project.cursor.smoothing)
     const focusPath = input.focusPath ?? focusFor(cursor.samples, project.duration)
     const costs = cornerCosts(project, cursor, cursorPath, focusPath)

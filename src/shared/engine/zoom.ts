@@ -281,14 +281,13 @@ export function typingScale(scale: number): number {
   return Math.max(scale, Math.min(scale * 1.2, 2.2))
 }
 
-/** Where a typing burst starting at `t` types into: the last click before it, else the cursor. */
-function typingPlace(track: CursorTrack, t: number, rightClicks: boolean): { x: number; y: number } {
+/** The click a typing burst starting at `t` types into: the last one up to TYPING_CLICK_WINDOW before it, else null (the cursor's place). */
+function typingClick(track: CursorTrack, t: number, rightClicks: boolean): ClickEvent | null {
   let click: ClickEvent | null = null
   for (const c of track.clicks) {
     if (c.t <= t && c.t >= t - TYPING_CLICK_WINDOW && isZoomClick(c, rightClicks) && (!click || c.t >= click.t)) click = c
   }
-  if (click) return { x: click.x, y: click.y }
-  return cursorPlace(track, t)
+  return click
 }
 
 /** The recorded cursor position at `t`, kept on the frame (centre without cursor data). */
@@ -303,6 +302,8 @@ interface TypingSession {
   t1: number
   place: { x: number; y: number }
   click: ClickEvent | null
+  /** The place is the cursor's where the typing began: no click into a field before it. */
+  byCursor: boolean
 }
 
 /**
@@ -330,7 +331,8 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
     let click: ClickEvent | null = null
     for (const c of clicks) if (c.t <= r.t0 && c.t > after && (!click || c.t >= click.t)) click = c
     const into = click && r.t0 - click.t <= TYPING_CLICK_JOIN ? click : null
-    sessions.push({ t0: into ? into.t : r.t0, t1: r.t1, place: into ? { x: into.x, y: into.y } : typingPlace(track, r.t0, rightClicks), click: into })
+    const field = into ?? typingClick(track, r.t0, rightClicks)
+    sessions.push({ t0: into ? into.t : r.t0, t1: r.t1, place: field ? { x: field.x, y: field.y } : cursorPlace(track, r.t0), click: into, byCursor: !field })
     after = r.t1
   }
   return sessions
@@ -338,13 +340,15 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
 
 /**
  * The typing sessions auto zoom finds with `settings`, as autoZoomInput reads them (its zoom
- * clicks and pause): when each one starts and ends and the place typed into. The view that
- * follows the action holds on them (docs/design/vertical-video.md §5.6).
+ * clicks and pause): when each one starts and ends and the place typed into, the click into the
+ * field, else the cursor where the typing began as recorded: outside 0..1 when it was off the
+ * frame, where auto zoom keeps its anchor on the frame. The view that follows the action holds
+ * on them, and on nothing off the frame (docs/design/vertical-video.md §5.6, §5.16).
  */
 export function typingSessionsOf(track: CursorTrack, settings: AutoZoomSettings): { t0: number; t1: number; place: { x: number; y: number } }[] {
-  void track
-  void settings
-  throw new Error('not implemented')
+  const clicks = track.clicks.filter((c) => isZoomClick(c, settings.rightClicks)).sort((a, b) => a.t - b.t)
+  const pause = Math.max(TYPING_PAUSE, Math.max(0, settings.clusterGap))
+  return typingSessions(track, clicks, pause, settings.rightClicks).map((s) => ({ t0: s.t0, t1: s.t1, place: s.byCursor ? (cursorAt(track.samples, s.t0) ?? s.place) : s.place }))
 }
 
 /**
@@ -545,10 +549,11 @@ export function regionScale(r: { w: number; h: number }): number {
 /**
  * The level a zoom moves to (a region zoom's follows from its rectangle). `floor`: the lowest
  * level, below ZOOM_MIN_SCALE for a followed view (docs/design/vertical-video.md §5.12); absent,
- * ZOOM_MIN_SCALE as always.
+ * ZOOM_MIN_SCALE as always. With a floor the zooms are framed ones (reframe.ts framedZooms), whose
+ * `scale` already holds every level, a region's included.
  */
 export function zoomTargetScale(z: Pick<ZoomSegment, 'scale' | 'focus'>, floor?: number): number {
-  if (floor !== undefined) throw new Error('not implemented')
+  if (floor !== undefined) return clamp(Number.isFinite(z.scale) ? z.scale : 2, floor, ZOOM_MAX_SCALE)
   if (z.focus.mode === 'region') return regionScale(z.focus)
   return clamp(Number.isFinite(z.scale) ? z.scale : 2, ZOOM_MIN_SCALE, ZOOM_MAX_SCALE)
 }
@@ -600,7 +605,7 @@ interface ZoomPlan {
   starts: number[]
 }
 
-function buildPlan(zooms: ZoomSegment[], style: ZoomStyle): ZoomPlan {
+function buildPlan(zooms: ZoomSegment[], style: ZoomStyle, floor: number | undefined): ZoomPlan {
   const sorted: ZoomSegment[] = []
   for (const z of zooms.filter((z) => z.end > z.start).sort((a, b) => a.start - b.start)) {
     // A zoom entirely inside an earlier one (only possible in a hand-edited file) is ignored.
@@ -616,19 +621,19 @@ function buildPlan(zooms: ZoomSegment[], style: ZoomStyle): ZoomPlan {
     const len = (next && next.start < seg.end ? next.start : seg.end) - seg.start
     const tr = zoomTransition(seg, style)
     const tin = Math.min(tr, toNext ? len : len / 2)
-    return { seg, scale: zoomTargetScale(seg), easing: zoomEasing(seg, style), tin, tout: toNext ? 0 : Math.min(tr, len / 2), fromPrev, toNext }
+    return { seg, scale: zoomTargetScale(seg, floor), easing: zoomEasing(seg, style), tin, tout: toNext ? 0 : Math.min(tr, len / 2), fromPrev, toNext }
   })
   return { items, starts: items.map((it) => it.seg.start) }
 }
 
-const plans = new WeakMap<ZoomSegment[], { style: ZoomStyle; plan: ZoomPlan }>()
+const plans = new WeakMap<ZoomSegment[], { style: ZoomStyle; floor: number | undefined; plan: ZoomPlan }>()
 
-/** The camera plan for a list of zooms, computed once per list (project states are immutable). */
-function planFor(zooms: ZoomSegment[], style: ZoomStyle): ZoomPlan {
+/** The camera plan for a list of zooms, computed once per list (project states are immutable); `floor` as zoomTargetScale's. */
+function planFor(zooms: ZoomSegment[], style: ZoomStyle, floor?: number): ZoomPlan {
   const hit = plans.get(zooms)
-  if (hit && hit.style.easing === style.easing && hit.style.transition === style.transition) return hit.plan
-  const plan = buildPlan(zooms, style)
-  plans.set(zooms, { style: { easing: style.easing, transition: style.transition }, plan })
+  if (hit && hit.style.easing === style.easing && hit.style.transition === style.transition && hit.floor === floor) return hit.plan
+  const plan = buildPlan(zooms, style, floor)
+  plans.set(zooms, { style: { easing: style.easing, transition: style.transition }, floor, plan })
   return plan
 }
 
@@ -648,9 +653,18 @@ export function zoomTimings(zooms: ZoomSegment[], style: ZoomStyle = DEFAULT_ZOO
   return out
 }
 
-/** Keeps a camera from showing outside the recording (zoomed in) or the card off the frame (pulled back); `base`: the followed view's size. */
+/**
+ * Keeps a camera from showing outside the recording (zoomed in) or the card off the frame (pulled
+ * back); `base`: the followed view's size, whose half (0.5·base/scale) bounds the centre on each
+ * axis (a unit base is the half of 0.5/scale used without one).
+ */
 export function clampCamera(c: Camera, base?: Pick<ViewBase, 'w' | 'h'>): Camera {
-  if (base !== undefined) throw new Error('not implemented')
+  if (base !== undefined) {
+    const scale = Math.max(0.05, c.scale)
+    const hx = (0.5 * base.w) / scale
+    const hy = (0.5 * base.h) / scale
+    return { scale, cx: clamp(c.cx, Math.min(hx, 1 - hx), Math.max(hx, 1 - hx)), cy: clamp(c.cy, Math.min(hy, 1 - hy), Math.max(hy, 1 - hy)) }
+  }
   const scale = Math.max(0.05, c.scale)
   const half = 0.5 / scale
   const lo = Math.min(half, 1 - half)
@@ -661,10 +675,11 @@ export function clampCamera(c: Camera, base?: Pick<ViewBase, 'w' | 'h'>): Camera
 /**
  * Camera that zooms by `scale` towards focus point (fx, fy). Zoomed in, the view is centred
  * on the point as far as the recording allows. Pulled back, the card shrinks around the
- * point, which stays where it is on screen (the centre shrinks it evenly).
+ * point, which stays where it is on screen (the centre shrinks it evenly). With `base` (a
+ * followed view) the view is centred on the point at every scale, as far as the base allows.
  */
 export function cameraFor(scale: number, fx: number, fy: number, base?: Pick<ViewBase, 'w' | 'h'>): Camera {
-  if (base !== undefined) throw new Error('not implemented')
+  if (base !== undefined) return clampCamera({ scale, cx: fx, cy: fy }, base)
   if (scale >= 1) return clampCamera({ scale, cx: fx, cy: fy })
   return clampCamera({ scale, cx: fx + (0.5 - fx) / scale, cy: fy + (0.5 - fy) / scale })
 }
@@ -678,29 +693,30 @@ function anchoredAim(seg: ZoomSegment, t: number, p: Point): Point {
   return a && w > 0 ? { x: lerp(p.x, a.x, w), y: lerp(p.y, a.y, w) } : p
 }
 
-/** Where a zoom aims at time t. */
-function focusOf(it: PlanItem, t: number, focusTrack: PathLike | null): { x: number; y: number } {
+/** Where a zoom aims at time t (`base`: a followed view, whose centre a pull-back aims at). */
+function focusOf(it: PlanItem, t: number, focusTrack: PathLike | null, base?: ViewBase): { x: number; y: number } {
   const f = it.seg.focus
   if (f.mode === 'fixed') return { x: f.x, y: f.y }
   if (f.mode === 'region') return { x: f.x + f.w / 2, y: f.y + f.h / 2 }
   // A cursor-following pull-back stays centred: the whole recording is visible anyway.
-  if (it.scale < 1 || !focusTrack) return { x: 0.5, y: 0.5 }
+  if (it.scale < 1 || !focusTrack) return base ? { x: base.cx, y: base.cy } : { x: 0.5, y: 0.5 }
   return anchoredAim(it.seg, t, focusTrack.at(t))
 }
 
-const targetOf = (it: PlanItem, t: number, focusTrack: PathLike | null): Camera => {
-  const f = focusOf(it, t, focusTrack)
-  return cameraFor(it.scale, f.x, f.y)
+const targetOf = (it: PlanItem, t: number, focusTrack: PathLike | null, base?: ViewBase): Camera => {
+  const f = focusOf(it, t, focusTrack, base)
+  return cameraFor(it.scale, f.x, f.y, base)
 }
 
 /**
  * Camera part way (w) from a to b. Between zoomed-in views the centre moves in a straight
  * line; when a pull-back is involved the card position moves linearly instead, so a card
  * shrinking around a point keeps that point still. w may pass 1 (bouncy easing). `base`: the
- * followed view's size.
+ * followed view's size; the source's edges then move in view units (0.5 − c·scale/base), and
+ * the result is clamped with it.
  */
 export function blendCameras(a: Camera, b: Camera, w: number, base?: Pick<ViewBase, 'w' | 'h'>): Camera {
-  if (base !== undefined) throw new Error('not implemented')
+  if (base !== undefined) return blendInView(a, b, w, base)
   let scale = lerp(a.scale, b.scale, w)
   if (a.scale >= 1 && b.scale >= 1) {
     // An overshoot must never show outside the recording.
@@ -714,10 +730,24 @@ export function blendCameras(a: Camera, b: Camera, w: number, base?: Pick<ViewBa
   return clampCamera({ scale, cx: (0.5 - px) / scale, cy: (0.5 - py) / scale })
 }
 
+/** blendCameras in a followed view of `base` (a unit base gives the same numbers as no base). */
+function blendInView(a: Camera, b: Camera, w: number, base: Pick<ViewBase, 'w' | 'h'>): Camera {
+  let scale = lerp(a.scale, b.scale, w)
+  if (a.scale >= 1 && b.scale >= 1) {
+    scale = Math.max(1, scale)
+    return clampCamera({ scale, cx: lerp(a.cx, b.cx, w), cy: lerp(a.cy, b.cy, w) }, base)
+  }
+  scale = Math.max(0.05, scale)
+  // Left/top edge of the source in view units: 0.5 - c * scale / base.
+  const px = lerp(0.5 - (a.cx * a.scale) / base.w, 0.5 - (b.cx * b.scale) / base.w, w)
+  const py = lerp(0.5 - (a.cy * a.scale) / base.h, 0.5 - (b.cy * b.scale) / base.h, w)
+  return clampCamera({ scale, cx: ((0.5 - px) * base.w) / scale, cy: ((0.5 - py) * base.h) / scale }, base)
+}
+
 /** Eased move from `from` to `to`; overshoot only where it cannot reveal outside the recording. */
-function move(from: Camera, to: Camera, easing: ZoomEasing, x: number): Camera {
+function move(from: Camera, to: Camera, easing: ZoomEasing, x: number, base?: ViewBase): Camera {
   const safe = !(Math.min(from.scale, to.scale) >= 1 && to.scale - BOUNCY_OVERSHOOT * (from.scale - to.scale) < 1)
-  return blendCameras(from, to, ease(easing, x, safe))
+  return blendCameras(from, to, ease(easing, x, safe), base && { w: base.w, h: base.h })
 }
 
 /** Index of the last plan item starting at or before t (-1 if none). */
@@ -748,20 +778,22 @@ function itemAt(plan: ZoomPlan, t: number): number {
  * the camera rests on that view and zooms relative to it; without it, every line runs as before.
  */
 export function cameraAt(zooms: ZoomSegment[], t: number, focusTrack: PathLike | null, style: ZoomStyle = DEFAULT_ZOOM_STYLE, base?: ViewBase): Camera {
-  if (base !== undefined) throw new Error('not implemented')
-  if (zooms.length === 0) return REST
-  const plan = planFor(zooms, style)
+  // Following: the camera rests on the view and every level is relative to it, down to the
+  // level that shows the whole recording.
+  const rest = base ? clampCamera({ scale: 1, cx: base.cx, cy: base.cy }, base) : REST
+  if (zooms.length === 0) return rest
+  const plan = planFor(zooms, style, base && Math.min(base.w, base.h))
   const i = itemAt(plan, t)
-  if (i < 0) return REST
+  if (i < 0) return rest
   const it = plan.items[i]
   const { start, end } = it.seg
-  if (t >= end) return it.toNext ? targetOf(it, t, focusTrack) : REST
-  const target = targetOf(it, t, focusTrack)
+  if (t >= end) return it.toNext ? targetOf(it, t, focusTrack, base) : rest
+  const target = targetOf(it, t, focusTrack, base)
   if (it.tin > 0 && t < start + it.tin) {
-    const from = it.fromPrev ? targetOf(plan.items[i - 1], t, focusTrack) : REST
-    return move(from, target, it.easing, (t - start) / it.tin)
+    const from = it.fromPrev ? targetOf(plan.items[i - 1], t, focusTrack, base) : rest
+    return move(from, target, it.easing, (t - start) / it.tin, base)
   }
-  if (it.tout > 0 && t > end - it.tout) return move(target, REST, it.easing, (t - (end - it.tout)) / it.tout)
+  if (it.tout > 0 && t > end - it.tout) return move(target, rest, it.easing, (t - (end - it.tout)) / it.tout, base)
   return target
 }
 
