@@ -229,7 +229,8 @@ recordings are fixed already, `zoom.ts:367`), *Hold the view here* and drawn sha
   file.
 - While following, the resolution chips lose their per-size "upscaled" tag (it would be on every
   size, `ExportDialog.tsx:448-456`). One line instead (`data-testid="export-magnify"`): "Shows your
-  1920×1080 recording at 1.6× its size (up to 2.3× in zooms)." From 2× on it is a warning and adds
+  1920×1080 recording at 1.6× its size (up to 2.3× in zooms)," measured in the layout that shows
+  the recording largest (`peakMagnification`, §5.12). From 2× on it is a warning and adds
   "Small text may look soft. Recording at 1440p or 4K keeps it sharp."
 - The following note (`data-testid="export-follow-on"`): "The view follows the action: it crops in
   on your cursor, clicks and typing."
@@ -918,7 +919,9 @@ while a layout change narrows the view.
 
 **Effective level and limits** (`followLimits`, computed at the canonical frame, cached per
 project): `mag1` = output px per recorded px of the default layout's slot at level 1
-(`slot.w/(base.w·vw)`); `L = clamp(reframe.level, 1, max(1, MAX_MAGNIFY/mag1))` (the *How close*
+(`slot.w/(base.w·vw)`), or of the whole area when the project has a `'screen-only'` segment and
+the camera sits in a band (the band collapses there, so the recording is drawn larger;
+`peakMagnification`); `L = clamp(reframe.level, 1, max(1, MAX_MAGNIFY/mag1))` (the *How close*
 hint shows when this limits the slider); `mag = mag1·L`; `fit = min(base.w, base.h)` (the whole
 recording in the view); `cap = max(1, MAX_MAGNIFY/mag)`. `MAX_MAGNIFY = 3`, `ZOOM_STRENGTH = 0.5`.
 

@@ -8,7 +8,7 @@
  * CONTRACT: signatures are frozen (docs/design/vertical-video.md §9.0).
  */
 import type { CursorTrack, Project } from '../types'
-import { baseView, followGeometry, followLevel, sceneLayout, styleContentRect, type SceneLayout } from './layout'
+import { followLevel, peakMagnification, sceneLayout, styleContentRect, type SceneLayout } from './layout'
 import { followCentre, followPlanFor, framedZooms, viewLimits } from './reframe'
 import { followApplies } from './reframeData'
 import { cameraAt, zoomStyleOf, type Camera, type PathLike } from './zoom'
@@ -81,12 +81,13 @@ export function narrowBoxZoom(zoom: number, boxAspect: number): number {
   return Number.isFinite(boxAspect) && boxAspect > 0 ? Math.max(1, zoom * Math.min(1, boxAspect)) : zoom
 }
 
-/** Output px per recorded px of a followed outW x outH frame, at rest and in its strongest zoom; null when it does not follow. */
+/**
+ * Output px per recorded px of a followed outW x outH frame, at rest and in its strongest zoom, in
+ * the layout that shows the recording largest; null when it does not follow.
+ */
 export function viewMagnification(project: Project, outW: number, outH: number, vw: number, vh: number): { rest: number; zoomed: number } | null {
   if (!followApplies(project, outW, outH, vw, vh)) return null
-  const slot = followGeometry('default', project, outW, outH, vw, vh).slot
-  const base = baseView(slot, vw, vh, followLevel(project, vw, vh))
-  const rest = slot.w / (base.w * vw)
+  const rest = peakMagnification(project, outW, outH, vw, vh) * followLevel(project, vw, vh)
   const strongest = framedZooms(project.zooms, viewLimits(project)).reduce((s, z) => Math.max(s, z.scale), 1)
   return { rest, zoomed: rest * strongest }
 }

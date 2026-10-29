@@ -16,7 +16,7 @@
 import type { CameraLayout, Clip, Corner, CursorSample, CursorTrack, Project, ReframePace, ZoomSegment } from '../types'
 import { cursorAt } from './cursor'
 import { cursorMoves, PATH } from './cursorPath'
-import { baseView, followGeometry, followLevel, layoutPhaseAt, outputSize, type ViewSize } from './layout'
+import { baseView, followGeometry, followLevel, layoutPhaseAt, outputSize, peakMagnification, type ViewSize } from './layout'
 import { clamp } from './math'
 import { followApplies } from './reframeData'
 import { scrollSessions } from './scroll'
@@ -366,13 +366,17 @@ const limitCache = new WeakMap<object, FollowLimits | null>()
 const anyLimitCache = new WeakMap<object, FollowLimits>()
 const framedCache = new WeakMap<ZoomSegment[], { key: string; out: ZoomSegment[] }>()
 
-/** The limits of a followed view of a vw x vh recording at its canonical frame (outputSize at 1080), in the default layout. */
+/**
+ * The limits of a followed view of a vw x vh recording at its canonical frame (outputSize at
+ * 1080): the view in the default layout, and the magnification (so the cap) in the layout that
+ * shows the recording largest.
+ */
 function limitsAt(project: FollowProject, vw: number, vh: number): FollowLimits {
   const frame = outputSize(project.style.aspectRatio, vw, vh, 1080)
   const slot = followGeometry('default', project, frame.width, frame.height, vw, vh).slot
   const level = followLevel(project, vw, vh)
   const base = baseView(slot, vw, vh, level)
-  const mag = slot.w / (base.w * vw)
+  const mag = peakMagnification(project, frame.width, frame.height, vw, vh) * level
   return { base, level, mag, fit: Math.min(base.w, base.h), cap: Math.max(1, MAX_MAGNIFY / (Number.isFinite(mag) && mag > 0 ? mag : 1)) }
 }
 

@@ -576,19 +576,32 @@ export function bandSide(project: SceneProject, outW: number, outH: number, vw: 
   return camera === 'bubble' ? null : camera
 }
 
+/** Output px per recorded px of `slot` showing a vw x vh recording at level 1 (cover fit). */
+const slotMagnification = (slot: Rect, vw: number, vh: number): number => slot.w / (baseView(slot, vw, vh, 1).w * vw)
+
+/**
+ * Output px per recorded px of a followed outW x outH frame at level 1, in the layout that shows
+ * the recording largest (§5.12): the default layout's slot, or the whole area when a
+ * 'screen-only' segment collapses the camera band. The other layouts give smaller slots.
+ */
+export function peakMagnification(project: SceneProject, outW: number, outH: number, vw: number, vh: number): number {
+  const mag = slotMagnification(followGeometry('default', project, outW, outH, vw, vh).slot, vw, vh)
+  if (!sortedLayouts(project.layouts ?? []).some((s) => s.layout === 'screen-only')) return mag
+  return Math.max(mag, slotMagnification(followGeometry('screen-only', project, outW, outH, vw, vh).slot, vw, vh))
+}
+
 /**
  * The effective level of a followed view of a vw x vh recording (§5.12): the setting, limited so
- * the default layout's slot shows the recording at most MAX_MAGNIFY output px per recorded px.
- * Measured at the canonical frame (outputSize at 1080), never at the size being drawn, so the
- * preview, every export size and the plan agree.
+ * no layout the project uses shows the recording more than MAX_MAGNIFY output px per recorded px
+ * (peakMagnification). Measured at the canonical frame (outputSize at 1080), never at the size
+ * being drawn, so the preview, every export size and the plan agree.
  */
 export function followLevel(project: SceneProject, vw: number, vh: number): number {
   const level = settingsOf(project).level
   const L = Number.isFinite(level) ? clamp(level, REFRAME_LIMITS.level.min, REFRAME_LIMITS.level.max) : DEFAULT_REFRAME.level
   if (!(vw > 0 && vh > 0)) return L
   const frame = outputSize(project.style.aspectRatio, vw, vh, 1080)
-  const slot = followGeometry('default', project, frame.width, frame.height, vw, vh).slot
-  const mag1 = slot.w / (baseView(slot, vw, vh, 1).w * vw)
+  const mag1 = peakMagnification(project, frame.width, frame.height, vw, vh)
   return clamp(L, 1, Math.max(1, MAX_MAGNIFY / mag1))
 }
 

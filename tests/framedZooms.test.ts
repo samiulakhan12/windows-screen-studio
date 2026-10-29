@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
+import { frameView, viewMagnification } from '../src/shared/engine/frameView'
 import { followLimits, framedZooms, MAX_MAGNIFY, ZOOM_STRENGTH, type FollowLimits } from '../src/shared/engine/reframe'
 import { DEFAULT_REFRAME } from '../src/shared/engine/reframeData'
-import type { Project, ReframeSettings, ZoomSegment } from '../src/shared/types'
+import { focusPathFor } from '../src/shared/engine/zoom'
+import type { CursorTrack, LayoutSegment, Project, ReframeSettings, ZoomSegment } from '../src/shared/types'
 
 /*
  * Zooms in a followed frame (docs/design/vertical-video.md §5.12; tests 18, 19): the effective
@@ -58,6 +60,31 @@ describe('followLimits (test 18)', () => {
     const kept = followLimits(project(2160, 0.07, 'bubble', 2))!
     expect(kept.level).toBe(2)
     expect(kept.base.w).toBeCloseTo(0.2954 / 2, 4)
+  })
+
+  it('a band project with a screen-only stretch is measured where the band collapses: never past MAX_MAGNIFY, as the Export dialog says', () => {
+    const cursor: CursorTrack = { samples: Array.from({ length: 601 }, (_, i) => ({ t: i / 60, x: 0.5, y: 0.5 })), clicks: [], valid: true }
+    const layouts: LayoutSegment[] = [{ id: 'l', start: 4, end: 8, layout: 'screen-only' }]
+    for (const [height, level] of [[720, 2], [1080, 2], [1080, 1]]) {
+      const width = (height * 16) / 9
+      const p = { ...project(height, 0.07, 'top', level), layouts, zooms: [z(3, { mode: 'cursor' }, { start: 5, end: 7.5 })] }
+      const scene = { project: p, cursor, focusPath: focusPathFor(cursor.samples, p.duration) }
+      let peak = 0
+      for (const t of [2, 4.5, 6, 6.5, 9]) {
+        const v = frameView(scene, 1080, 1920, width, height, t)
+        peak = Math.max(peak, (v.layout.screen.w * v.cam.scale) / width)
+      }
+      expect(peak, `${height}p, level ${level}`).toBeLessThanOrEqual(MAX_MAGNIFY + 1e-9)
+      // The dialog's numbers are the stretch where the band collapses.
+      const m = viewMagnification(p, 1080, 1920, width, height)!
+      const rest = frameView(scene, 1080, 1920, width, height, 4.5)
+      expect(m.rest).toBeCloseTo((rest.layout.screen.w * rest.cam.scale) / width, 6)
+      expect(m.zoomed).toBeCloseTo(peak, 6)
+    }
+    // Without the stretch the band's own limits are kept (the §5.12 table).
+    const plain = followLimits(project(1080, 0.07, 'top'))!
+    expect(followLimits({ ...project(1080, 0.07, 'top'), layouts: [{ id: 'l', start: 4, end: 8, layout: 'camera-large' }] })).toEqual(plain)
+    expect(plain.cap).toBeCloseTo(2.77, 2)
   })
 
   it('null when the project does not follow; cached per project', () => {
