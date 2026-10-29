@@ -38,8 +38,8 @@ import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, typ
 import { useModalFocus } from './modalFocus'
 import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
-import { writeBundle } from './exportBundleRun'
-import { bundleKinds, chapterParts, normalizeBundle, partFileNames, partProject, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
+import { partSource, writeBundle } from './exportBundleRun'
+import { bundleKinds, chapterParts, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import type { BatchExtras } from './exporter'
 import './exportDialog.css'
@@ -448,11 +448,8 @@ export function ExportDialog(props: Props): JSX.Element {
   const startChapters = async (): Promise<void> => {
     const folder = await window.api.chooseExportFolder()
     if (!folder) return
-    const sources = parts.map((part, i) => {
-      const last = i === parts.length - 1
-      const partOf = partProject(project, part, last)
-      return { ...source, project: partOf, scene: { ...props.scene, project: partProject(props.scene.project, part, last) } }
-    })
+    // Each part's frames and sound come from its own clips; it is drawn with the whole edit's scene.
+    const sources = parts.map((part, i) => partSource(source, part, i === parts.length - 1))
     const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options, source: sources[i] }))
     await runBatch(folder, jobs, (i, path) => {
       const part = sources[i]

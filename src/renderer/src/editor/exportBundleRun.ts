@@ -6,9 +6,19 @@
 import { subtitleFile } from '../../../shared/captions/subtitles'
 import { planOf, videoDuration } from '../../../shared/engine/freeze'
 import { outputChapters } from '../../../shared/render/chapters'
-import { chapterListText, descriptionText, sidecarName, type SidecarKind } from '../../../shared/render/exportBundle'
+import { chapterListText, descriptionText, partProject, sidecarName, type ChapterPart, type SidecarKind } from '../../../shared/render/exportBundle'
 import type { Project } from '../../../shared/types'
 import type { BatchExtras } from './exporter'
+
+/**
+ * What one file per chapter exports for `part`: the part's project (its clips and freezes give the
+ * frames and the sound), drawn with the whole edit's scene. Captions, titles, overlays, the
+ * background's clock and the cursor's loop home then run on the whole edit's clips, so the part
+ * shows the same frames as that range of the whole export.
+ */
+export function partSource<S extends { project: Project }>(source: S, part: ChapterPart, last: boolean): S {
+  return { ...source, project: partProject(source.project, part, last) }
+}
 
 export interface BundleRequest {
   /** The project as this file exports it (a part: its own clips). */
