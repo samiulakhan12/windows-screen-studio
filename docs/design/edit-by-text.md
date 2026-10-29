@@ -582,6 +582,13 @@ Where the build differs from the sections above, after an adversarial review:
   freeze on the first frame after a cut (`fadesInAfterHold`, the export's own `soundPieces` and
   `pieceCutFades`): the export fades the sound in after its silence, and the preview fades in on the
   first frame after the freeze. An edit while playing resets the gain at once.
+- **Preview jump over a transcript cut.** A transcript cut ends in the middle of a pause, so the next
+  clip almost never starts on a frame of the proxy. After the jump, the first video frame callback
+  reports the frame covering the clip's start, whose time is just before it (3.0 s for a clip from
+  3.0125 s at 60 fps). `onVideoFrame` takes a frame less than one proxy frame before the next clip's
+  start as that clip's first frame (drawn at the clip's start, as the export shows it) instead of
+  seeking again, which would restart the fade in and, with the element on the video clock (no sound,
+  a muted recording), loop on the same frame.
 - **Export fade position (§4.8).** The fades come **last** in each piece's chain, after the
   sample-exact `apad`/`atrim`, with the fade in starting after the pause freeze's silence
   (`cutFadeFilters(edges, length, fade, offset)`): atempo's output is a little off its length, so a

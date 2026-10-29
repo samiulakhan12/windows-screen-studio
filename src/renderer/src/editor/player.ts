@@ -483,7 +483,7 @@ export class PreviewPlayer {
   private onVideoFrame = (_now: number, meta?: VideoFrameCallbackMetadata): void => {
     this.frameHandle = 0
     if (!this.playing || this.disposed) return
-    const t = meta ? meta.mediaTime : this.screen.currentTime
+    let t = meta ? meta.mediaTime : this.screen.currentTime
     const clips = this.project.clips
     if (this.jumpTarget !== null) {
       // Frames decoded before the jump landed belong to the cut: never show them.
@@ -493,9 +493,15 @@ export class PreviewPlayer {
       }
       this.jumpTarget = null
     }
-    const i = clipIndexAt(clips, t)
+    let i = clipIndexAt(clips, t)
+    const next = i < 0 ? playableFrom(clips, t) : null
+    // A clip that starts between two frames (a transcript cut) first shows the frame covering its
+    // start, whose time is just before it: that is the clip's first frame, not one to jump from again.
+    if (next && next.time - t < this.frame - 1e-6) {
+      t = next.time
+      i = next.index
+    }
     if (i < 0) {
-      const next = playableFrom(clips, t)
       if (next) this.jumpTo(next.time, next.index)
       else this.finish()
       if (this.playing) this.scheduleFrame()
