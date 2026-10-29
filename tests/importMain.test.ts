@@ -5,7 +5,15 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const h = vi.hoisted(() => ({ root: '' }))
+const h = vi.hoisted(() => ({ root: '', encodeArgs: null as null | ((args: string[]) => string[]) }))
+
+// A test can change the arguments of the encode (the ffmpeg run that writes screen.part.mp4).
+vi.mock('node:child_process', async (importOriginal) => {
+  const cp = await importOriginal<typeof import('node:child_process')>()
+  const spawn = (command: string, args: string[], options: object): unknown =>
+    cp.spawn(command, h.encodeArgs && args.some((a) => a.endsWith('screen.part.mp4')) ? h.encodeArgs(args) : args, options)
+  return { ...cp, spawn }
+})
 
 vi.mock('electron', () => ({
   app: { getPath: (name: string) => require('node:path').join(h.root, name), isPackaged: false, getAppPath: () => h.root },
@@ -336,6 +344,23 @@ describe('importVideo', () => {
       }
     })
     expect(cut).toBe(true)
+    expect(r).toMatchObject({ ok: false, error: IMPORT_COPY.incomplete })
+    expect(folders()).toEqual([])
+  }, 60_000)
+
+  // Reading /proc/self/mem at offset 0 fails with EIO: here, the drive fails half-way through the
+  // file while the file itself stays as it was (a share that dropped and came back, a cloud file
+  // whose download failed). ffmpeg ends the copy there and exits cleanly.
+  it.skipIf(!existsSync('/proc/self/mem'))('refuses a video whose drive failed part-way through the copy', async () => {
+    const bytes = readFileSync(at('ten.mkv'))
+    writeFileSync(at('ten-half.mkv'), bytes.subarray(0, bytes.length >> 1))
+    h.encodeArgs = (args) => args.map((a, i) => (args[i - 1] === '-i' ? `concat:${at('ten-half.mkv')}|/proc/self/mem` : a))
+    let r
+    try {
+      r = await importVideo(at('ten.mkv'), { deps })
+    } finally {
+      h.encodeArgs = null
+    }
     expect(r).toMatchObject({ ok: false, error: IMPORT_COPY.incomplete })
     expect(folders()).toEqual([])
   }, 60_000)

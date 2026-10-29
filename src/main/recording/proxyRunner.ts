@@ -8,6 +8,8 @@ export interface FfmpegRun {
   inputSize: { width: number; height: number } | null
   /** Whether the first input has an audio stream. */
   inputHasAudio: boolean
+  /** Reading an input failed part-way (READ_ERROR_RE): the output holds only what was read before. */
+  readError: boolean
 }
 
 /** An ffmpeg failure with a one-line summary; the full log goes to the console. */
@@ -73,6 +75,14 @@ export function parseInputHasAudio(log: string): boolean {
  */
 export const DISK_FULL_RE = /^\[[^\]]+\][^\n]*No space left on device/m
 
+/**
+ * ffmpeg's report that reading an input failed part-way ("[in#0/mov,mp4,… @ …] Error during
+ * demuxing: Input/output error"; 6.1 also logs "Error retrieving a packet from demuxer"): a drive
+ * or share that went away, a cloud file whose download failed. ffmpeg then ends that input as if
+ * it ended there and exits 0. A damaged file ("Invalid data found…") is not a read error.
+ */
+export const READ_ERROR_RE = /^\[in#\d+[^\]]*\] Error (?:during demuxing|retrieving a packet from demuxer): (?!Invalid data found)/m
+
 /** Last meaningful log line, e.g. "Invalid data found when processing input". */
 export function summarizeFfmpegLog(log: string): string {
   const lines = log
@@ -132,7 +142,7 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
       running.delete(proc)
       signal?.removeEventListener('abort', onAbort)
       if (code === 0) {
-        resolve({ frames, inputSize: parseInputSize(log), inputHasAudio: parseInputHasAudio(log) })
+        resolve({ frames, inputSize: parseInputSize(log), inputHasAudio: parseInputHasAudio(log), readError: READ_ERROR_RE.test(log) })
         return
       }
       if (stopped.has(proc)) {

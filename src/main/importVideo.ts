@@ -354,10 +354,11 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
       throw new ImportRefused(encodeError(err))
     })
     stop()
-    // ffmpeg ends the copy without an error where the file ends: one cut short or rewritten
-    // meanwhile, or on a drive or share that went away, would make a shorter project.
+    // ffmpeg ends the copy without an error where the file ends, or where reading it failed: one
+    // cut short or rewritten meanwhile, or on a drive or share that went away (even for a moment),
+    // would make a shorter project.
     const after = await fs.stat(input).catch(() => null)
-    if (!after || after.size !== checked.bytes || after.mtimeMs !== checked.mtimeMs) throw new ImportRefused(IMPORT_COPY.incomplete)
+    if (run.readError || !after || after.size !== checked.bytes || after.mtimeMs !== checked.mtimeMs) throw new ImportRefused(IMPORT_COPY.incomplete)
     report('finishing', 1)
     const duration = run.frames ? run.frames / plan.fps : 0
     if (!(duration > 0)) throw new ImportRefused(IMPORT_COPY.unreadable)

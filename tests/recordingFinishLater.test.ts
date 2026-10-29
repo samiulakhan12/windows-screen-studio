@@ -42,7 +42,7 @@ import type { StemKind } from '../src/shared/audio/settings'
 import { cancelledError, FfmpegError, isCancelled } from '../src/main/recording/proxyRunner'
 
 const T0 = 1_700_000_000_000
-const done = (frames = 120): FfmpegRun => ({ frames, inputSize: { width: 320, height: 240 }, inputHasAudio: false })
+const done = (frames = 120): FfmpegRun => ({ frames, inputSize: { width: 320, height: 240 }, inputHasAudio: false, readError: false })
 const output = (args: string[]): string => args[args.length - 1]
 
 /** Encodes "successfully": writes the output file and reports `frames`. */
