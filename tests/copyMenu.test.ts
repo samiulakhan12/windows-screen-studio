@@ -127,7 +127,14 @@ const { CopyMenu, CopyProgress } = (await import(/* @vite-ignore */ MENU)) as {
 const { runDuplicate } = (await import(/* @vite-ignore */ FLOW)) as {
   runDuplicate: (
     kind: CopyKind,
-    deps: { project: Project; flush(): Promise<boolean>; confirm(msg: string): boolean; onProgress(p: Progress | null): void; signal: AbortSignal }
+    deps: {
+      project: Project
+      stored: Pick<Project, 'audioStems' | 'hasWebcam'>
+      flush(): Promise<boolean>
+      confirm(msg: string): boolean
+      onProgress(p: Progress | null): void
+      signal: AbortSignal
+    }
   ) => Promise<{ id: string; notice: string } | null>
 }
 const { createProject } = await import('../src/shared/engine/project')
@@ -415,12 +422,14 @@ describe('the progress of a copy (test 65)', () => {
 /* ---------- making the copy ---------- */
 
 describe('runDuplicate (test 65)', () => {
-  const flow = (kind: CopyKind, over: { project?: Project; saved?: boolean; confirm?: boolean } = {}) => {
+  const flow = (kind: CopyKind, over: { project?: Project; stored?: Pick<Project, 'audioStems' | 'hasWebcam'>; saved?: boolean; confirm?: boolean } = {}) => {
     const abort = new AbortController()
     const asked: string[] = []
     const progress: (Progress | null)[] = []
+    const p = over.project ?? project()
     const made = runDuplicate(kind, {
-      project: over.project ?? project(),
+      project: p,
+      stored: over.stored ?? p,
       flush: () => Promise.resolve(over.saved ?? true),
       confirm: (msg) => {
         asked.push(msg)
@@ -454,6 +463,29 @@ describe('runDuplicate (test 65)', () => {
     expect(run.progress).toEqual([{ done: 5, total: 10 }, null])
     expect(api.listeners.size).toBe(0)
     expect(run.asked).toEqual([])
+  })
+
+  it('keeps the stems and the camera the editor opened without while a file was missing, as a save does', async () => {
+    // Opened while system.m4a and webcam.mp4 were missing: the editor's state has neither.
+    const stored = { audioStems: { mic: true, system: true }, hasWebcam: true }
+    for (const kind of ['copy', 'vertical'] as const) {
+      api.calls.length = 0
+      const run = flow(kind, { project: project(), stored })
+      await tick()
+      const [, copy] = api.calls[0]
+      expect(copy.audioStems).toEqual({ mic: true, system: true })
+      expect(copy.hasWebcam).toBe(true)
+      api.pending!.resolve({ id: 'rec-x', name: 'x', linked: true })
+      await run.made
+    }
+    // A recording without them gets none.
+    api.calls.length = 0
+    const run = flow('copy', { project: project(), stored: { hasWebcam: false } })
+    await tick()
+    expect(api.calls[0][1].audioStems).toBeUndefined()
+    expect(api.calls[0][1].hasWebcam).toBe(false)
+    api.pending!.resolve({ id: 'rec-y', name: 'y', linked: true })
+    await run.made
   })
 
   it('says "Made a square version" and "Made a copy"; a blank name is "Untitled recording"', async () => {

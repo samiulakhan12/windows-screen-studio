@@ -525,6 +525,7 @@ function EditorSession({
       try {
         const made = await runDuplicate(kind, {
           project: store.state,
+          stored: data.project,
           flush: () => saver.flush(),
           confirm: (message) => window.confirm(message),
           onProgress: (progress) => setCopy((c) => (c ? { ...c, progress } : c)),
@@ -542,7 +543,7 @@ function EditorSession({
         setCopy(null)
       }
     },
-    [store, player, saver, showNotice, onOpenProject]
+    [data, store, player, saver, showNotice, onOpenProject]
   )
 
   /* ---------- shortcuts (stored in the editor preferences) ---------- */
