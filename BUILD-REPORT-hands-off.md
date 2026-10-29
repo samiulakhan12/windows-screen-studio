@@ -184,7 +184,31 @@ End to end (`tests/e2e/hands-off.e2e.cjs`, the built app under Xvfb), all 5 pass
 
 ## Verification (final state of the branch)
 
-VERIFY_PLACEHOLDER
+Run on Linux under Xvfb, at `a3766f5` plus a CSS-only spacing fix for the two Settings sections.
+
+- `npm run typecheck`: passes.
+- `npx vitest run --testTimeout=60000`: 226 of 227 files, 3025 of 3026 tests pass. The one failure
+  is `groupMove.test.ts › G-PERF`, a 250 ms timing limit in the multi-select tests, which this
+  branch does not touch. It also fails on the base commit `aeca5c5` on this machine (260 ms), so it
+  reflects the machine's speed, not this branch. The same test passed in an earlier run of this
+  session.
+- `npm run build`: passes (only the existing chunk-size warning).
+- `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`: **all 54 files pass**. The container
+  restarted during the run, so it was done in two parts:
+  - **Part 1:** the first 27 files, 128 tests, no failures, `hands-off.e2e.cjs` included.
+  - **Part 2:** the other 27 files (two audit files ran twice). `teleprompter.e2e.cjs` failed once,
+    on dragging the notes window: the fresh container had no `openbox` window manager, which that
+    test starts. After `apt-get install -y openbox` it passed 6 of 6.
+  - `audio-pack` (the known 20 ms microphone-stem flake) passed first time.
+- **Environment set up in this container:**
+  - Electron's binary: `npm ci`'s download hit an undici assertion behind the proxy. It was fetched
+    with curl, checked against `node_modules/electron/checksums.json`, and unpacked as the
+    installer does.
+  - `npm run build:speech-host` and `npm run fetch:test-speech`.
+  - `openbox`.
+
+Screenshots (`docs/screenshots/hands-off-*.png`, each under 240 KB): the export bundle options, the
+per-chapter file list, a paused export, the storage review, the diagnostics report.
 
 ## Needs a real Windows PC
 

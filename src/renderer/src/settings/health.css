@@ -1,4 +1,10 @@
 /* ---------- Settings › Storage and Diagnostics (docs/design/hands-off.md) ---------- */
+.health-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
 .health-actions {
   display: flex;
   align-items: center;
