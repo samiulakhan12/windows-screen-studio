@@ -281,14 +281,13 @@ export function typingScale(scale: number): number {
   return Math.max(scale, Math.min(scale * 1.2, 2.2))
 }
 
-/** Where a typing burst starting at `t` types into: the last click before it, else the cursor. */
-function typingPlace(track: CursorTrack, t: number, rightClicks: boolean): { x: number; y: number } {
+/** The click a typing burst starting at `t` types into: the last one up to TYPING_CLICK_WINDOW before it, else null (the cursor's place). */
+function typingClick(track: CursorTrack, t: number, rightClicks: boolean): ClickEvent | null {
   let click: ClickEvent | null = null
   for (const c of track.clicks) {
     if (c.t <= t && c.t >= t - TYPING_CLICK_WINDOW && isZoomClick(c, rightClicks) && (!click || c.t >= click.t)) click = c
   }
-  if (click) return { x: click.x, y: click.y }
-  return cursorPlace(track, t)
+  return click
 }
 
 /** The recorded cursor position at `t`, kept on the frame (centre without cursor data). */
@@ -303,6 +302,8 @@ interface TypingSession {
   t1: number
   place: { x: number; y: number }
   click: ClickEvent | null
+  /** The place is the cursor's where the typing began: no click into a field before it. */
+  byCursor: boolean
 }
 
 /**
@@ -330,7 +331,8 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
     let click: ClickEvent | null = null
     for (const c of clicks) if (c.t <= r.t0 && c.t > after && (!click || c.t >= click.t)) click = c
     const into = click && r.t0 - click.t <= TYPING_CLICK_JOIN ? click : null
-    sessions.push({ t0: into ? into.t : r.t0, t1: r.t1, place: into ? { x: into.x, y: into.y } : typingPlace(track, r.t0, rightClicks), click: into })
+    const field = into ?? typingClick(track, r.t0, rightClicks)
+    sessions.push({ t0: into ? into.t : r.t0, t1: r.t1, place: field ? { x: field.x, y: field.y } : cursorPlace(track, r.t0), click: into, byCursor: !field })
     after = r.t1
   }
   return sessions
@@ -338,13 +340,15 @@ function typingSessions(track: CursorTrack, clicks: readonly ClickEvent[], pause
 
 /**
  * The typing sessions auto zoom finds with `settings`, as autoZoomInput reads them (its zoom
- * clicks and pause): when each one starts and ends and the place typed into. The view that
- * follows the action holds on them (docs/design/vertical-video.md §5.6).
+ * clicks and pause): when each one starts and ends and the place typed into, the click into the
+ * field, else the cursor where the typing began as recorded: outside 0..1 when it was off the
+ * frame, where auto zoom keeps its anchor on the frame. The view that follows the action holds
+ * on them, and on nothing off the frame (docs/design/vertical-video.md §5.6, §5.16).
  */
 export function typingSessionsOf(track: CursorTrack, settings: AutoZoomSettings): { t0: number; t1: number; place: { x: number; y: number } }[] {
   const clicks = track.clicks.filter((c) => isZoomClick(c, settings.rightClicks)).sort((a, b) => a.t - b.t)
   const pause = Math.max(TYPING_PAUSE, Math.max(0, settings.clusterGap))
-  return typingSessions(track, clicks, pause, settings.rightClicks).map((s) => ({ t0: s.t0, t1: s.t1, place: s.place }))
+  return typingSessions(track, clicks, pause, settings.rightClicks).map((s) => ({ t0: s.t0, t1: s.t1, place: s.byCursor ? (cursorAt(track.samples, s.t0) ?? s.place) : s.place }))
 }
 
 /**

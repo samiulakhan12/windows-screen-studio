@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   anchorWeight,
+  autoZoomsForTrack,
   blendCameras,
   cameraAt,
   cameraFor,
@@ -210,5 +211,15 @@ describe('typingSessionsOf', () => {
     expect(typingSessionsOf(t, auto)[0].place).toEqual({ x: 0.6, y: 0.7 })
     expect(typingSessionsOf(t, { ...auto, rightClicks: true })[0].place).toEqual({ x: 0.3, y: 0.2 })
     expect(typingSessionsOf(t, { ...auto, enabled: false, onTyping: false })).toHaveLength(1)
+  })
+
+  it('without a click into the field, the cursor where typing began as recorded, off the frame too; auto zoom keeps its anchor on the frame', () => {
+    const off = track({ samples: [{ t: 0, x: 0.3, y: 0.6 }, { t: 4, x: 0.3, y: 0.6 }, { t: 4.1, x: 1.3, y: 0.6 }], typing: [{ t: 6, end: 9 }] })
+    expect(typingSessionsOf(off, auto)).toEqual([{ t0: 6, t1: 9, place: { x: 1.3, y: 0.6 } }])
+    expect(autoZoomsForTrack(off, 12, { ...auto, enabled: true, onTyping: true }).find((z) => z.anchor?.t === 6)?.anchor).toMatchObject({ x: 1, y: 0.6 })
+    // A click into the field gives its place, wherever the cursor went.
+    expect(typingSessionsOf({ ...off, clicks: [{ t: 5.5, x: 0.7, y: 0.2, button: 'left' }] }, auto)[0].place).toEqual({ x: 0.7, y: 0.2 })
+    // Without cursor data, the centre, as before.
+    expect(typingSessionsOf({ ...off, samples: [] }, auto)[0].place).toEqual({ x: 0.5, y: 0.5 })
   })
 })

@@ -365,6 +365,22 @@ describe('what holds and what moves the view (tests 29, 31-34)', () => {
     expect(followCentre(plan, 8).x).toBeCloseTo(0.6, 6)
   })
 
+  it('typing with the cursor off the frame and no click into a field: no target, the view stays (test 33)', () => {
+    // A window recording: the cursor rests at 0.3, leaves the window at 4 s and the user types 6-12 s.
+    const path: Path = (t) => (t < 4 ? [0.3, 0.6] : t < 4.1 ? [0.3 + (t - 4) * 10, 0.6] : [1.3, 0.6])
+    const typing = [{ t: 6, end: 9 }, { t: 9.5, end: 12 }]
+    const p = project({}, {}, 16)
+    const plan = planFollow(p, track(samples(16, path), [], { typing }))
+    expect(moves(plan)).toEqual([])
+    expect(followCentre(plan, 14).x).toBeCloseTo(0.3, 6)
+    const att = followAttention(p, track(samples(16, path), [], { typing }))
+    for (let k = 6 * 30; k <= 12 * 30; k++) expect(att.kind[k], `at ${att.o[k]} s`).toBe(0)
+    // With the cursor on the frame where typing began, the typing holds the view there.
+    const inside: Path = (t) => (t < 4 ? [0.3, 0.6] : t < 4.1 ? [0.3 + (t - 4) * 5, 0.6] : t < 9 ? [0.8, 0.6] : [0.2, 0.6])
+    const typed = planFollow(p, track(samples(16, inside), [], { typing }))
+    expect(followCentre(typed, 11).x).toBeCloseTo(0.8, 6)
+  })
+
   it('a rest outside the crop gives no target (test 33)', () => {
     const p = project({ crop: { x: 0.2, y: 0, w: 0.75, h: 1 } })
     const stored = track(samples(12, (t) => (t < 4 ? [0.05, 0.5] : [0.6, 0.5])))
