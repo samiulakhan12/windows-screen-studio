@@ -142,7 +142,7 @@ memory:
 | The word list | Derived from `Project.transcript` (`transcriptWords`), memoised on the transcript object. |
 | Cut or kept, per word | Derived from `Project.clips` (`cutFlags`). |
 | The selection in the transcript | Panel state (indices into the word list), never saved. |
-| The fillers and retakes list | Renderer memory per project id (`reviewMemory` in the panel), so switching tabs keeps it; gone when the editor closes. Never saved. |
+| The fillers and retakes list | Renderer memory per transcript object (`reviewMemory` in the panel, a `WeakMap`), so switching tabs keeps it; gone when the editor closes (with the editor's project). Never saved. |
 
 The export job gains one optional field (`src/shared/api/export.ts`, additive):
 

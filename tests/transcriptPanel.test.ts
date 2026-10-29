@@ -1,3 +1,5 @@
+import v8 from 'node:v8'
+import vm from 'node:vm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
 
@@ -418,5 +420,41 @@ describe('the Transcript tab', () => {
     player.time = 1.65
     render()
     expect(list.scrollTop).toBe(40)
+  })
+
+  it('keeps the review list while the tab is closed, and nothing of it once the editor is gone', async () => {
+    const fillers = (): CaptionSegment[] => [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works.', 2.3, 2.6]
+      ])
+    ]
+    const rows = (): number => render().filter((e) => e.type === 'li').length
+    let gone: WeakRef<object> | null = null
+    ;(() => {
+      useProject(10, fillers())
+      gone = new WeakRef(store.state.transcript!)
+      render()
+      click('Find fillers and retakes')
+      expect(rows()).toBe(1)
+      // Another tab, then back: the list is still there.
+      unmount()
+      expect(rows()).toBe(1)
+      unmount()
+    })()
+    // The editor closes (its project and transcript go); the same project opened again starts afresh.
+    doc.activeElement = null
+    useProject(10, fillers())
+    expect(rows()).toBe(0)
+    unmount()
+    v8.setFlagsFromString('--expose-gc')
+    const gc = vm.runInNewContext('gc') as () => void
+    for (let i = 0; i < 5 && gone!.deref(); i++) {
+      await new Promise((r) => setTimeout(r, 0))
+      gc()
+    }
+    expect(gone!.deref()).toBeUndefined()
   })
 })

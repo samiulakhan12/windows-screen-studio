@@ -36,8 +36,11 @@ const PAGE = 40
 /** Above this share of estimated word times the tab says cuts may be less exact. */
 const ESTIMATED_HINT = 0.1
 
-/** The review list of each project while the editor is open (the tab is unmounted while another is open). */
-const reviewMemory = new Map<string, { transcript: Transcript; items: EditSuggestion[] }>()
+/**
+ * The review list of each transcript while the editor is open (the tab is unmounted while another
+ * is open). Keyed by the transcript object, so it goes with the editor's project when that closes.
+ */
+const reviewMemory = new WeakMap<Transcript, EditSuggestion[]>()
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 const seconds = (s: number): string => `${s.toFixed(1)} s`
@@ -116,23 +119,20 @@ function TranscriptEditor({
 
   /* ---------- the review list ---------- */
 
-  const [review, setReviewState] = useState(() => {
-    const kept = reviewMemory.get(project.id)
-    return kept && kept.transcript === transcript ? kept.items : null
-  })
+  const [review, setReviewState] = useState(() => reviewMemory.get(transcript) ?? null)
   const setReview = (items: EditSuggestion[] | null): void => {
     setReviewState(items)
-    if (items) reviewMemory.set(project.id, { transcript, items })
-    else reviewMemory.delete(project.id)
+    if (items) reviewMemory.set(transcript, items)
+    else reviewMemory.delete(transcript)
   }
   // A new transcript (regenerated captions, an edited caption) makes the list stale.
   const reviewFor = useRef(transcript)
   useEffect(() => {
     if (reviewFor.current === transcript) return
+    reviewMemory.delete(reviewFor.current)
     reviewFor.current = transcript
     setReviewState(null)
-    reviewMemory.delete(project.id)
-  }, [transcript, project.id])
+  }, [transcript])
   // Rows whose words were cut since (a Remove, the timeline, undo) go; undo brings them back.
   const shownReview = useMemo(() => (review ? refreshSuggestions(review, words, clips, project.duration) : null), [review, words, clips, project.duration])
   const suggested = useMemo(() => {
