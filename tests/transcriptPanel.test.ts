@@ -197,10 +197,12 @@ const click = (label: string): void => {
   doc.activeElement = doc.body
 }
 const list = (out = render()): El => out.find((e) => e.props.role === 'listbox')!
-const listStandIn = (): ListStandIn => (cells.get('root/TranscriptPanel.0')?.find((c) => c.current instanceof ListStandIn)?.current as ListStandIn) ?? findStandIn()
-function findStandIn(): ListStandIn {
-  for (const c of [...cells.values()].flat()) if (c.current instanceof ListStandIn) return c.current
-  throw new Error('No word list')
+
+/** A press of the main button on word `i` (focus goes to the list, as the browser would put it there). */
+function pointerDown(i: number, shift = false): void {
+  const target = Object.assign(new FakeElement(), { closest: () => ({ dataset: { w: String(i) } }) })
+  ;(list().props.onPointerDown as (e: unknown) => void)({ button: 0, target, shiftKey: shift, preventDefault: () => undefined })
+  render()
 }
 
 /** A key pressed in the word list; whether the panel kept it from the editor's shortcuts. */
@@ -307,6 +309,32 @@ describe('the Transcript tab', () => {
       render()
       expect(press(key, { ctrl: true, code: 'KeyA' })).toBe(true)
       expect(selectedWords()).toHaveLength(9)
+    }
+  })
+
+  it('a word selection clears the timeline selection, so Delete outside the list never removes a hidden item', () => {
+    useProject(60, captions(3))
+    render()
+    pointerDown(4)
+    expect(selectedWords()).toEqual([4])
+    expect(log.selects).toEqual([null])
+    log.selects.length = 0
+    press('ArrowRight', { shift: true })
+    expect(selectedWords()).toEqual([4, 5])
+    expect(log.selects).toContain(null)
+    log.selects.length = 0
+    press('a', { ctrl: true, code: 'KeyA' })
+    expect(log.selects).toContain(null)
+  })
+
+  it('Find, Earlier and Later give the focus back to the word list', () => {
+    useProject(60, captions(45))
+    render()
+    pointerDown(4)
+    for (const label of ['Later', 'Earlier', 'Find fillers and retakes']) {
+      log.focused.length = 0
+      click(label)
+      expect(log.focused, label).toEqual(['list'])
     }
   })
 })

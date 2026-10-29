@@ -47,10 +47,10 @@ const sameClips = (a: readonly Clip[], b: readonly Clip[]): boolean =>
   a.length === b.length && a.every((c, i) => c.start === b[i].start && c.end === b[i].end && c.speed === b[i].speed)
 
 export function TranscriptPanel(props: InspectorProps & { onOpenCaptions: () => void }): JSX.Element {
-  const { project, onNotice } = props
+  const { project, onNotice, onSelect } = props
   const words = useMemo(() => transcriptWords(project.transcript), [project.transcript])
   if (words.length === 0) return <TranscriptIntro project={project} onOpenCaptions={props.onOpenCaptions} />
-  return <TranscriptEditor project={project} transcript={project.transcript as Transcript} words={words} onNotice={onNotice} />
+  return <TranscriptEditor project={project} transcript={project.transcript as Transcript} words={words} onNotice={onNotice} onSelect={onSelect} />
 }
 
 function TranscriptIntro({ project, onOpenCaptions }: { project: Project; onOpenCaptions: () => void }): JSX.Element {
@@ -75,7 +75,19 @@ function TranscriptIntro({ project, onOpenCaptions }: { project: Project; onOpen
   )
 }
 
-function TranscriptEditor({ project, transcript, words, onNotice }: { project: Project; transcript: Transcript; words: TranscriptWord[]; onNotice: (message: string) => void }): JSX.Element {
+function TranscriptEditor({
+  project,
+  transcript,
+  words,
+  onNotice,
+  onSelect
+}: {
+  project: Project
+  transcript: Transcript
+  words: TranscriptWord[]
+  onNotice: (message: string) => void
+  onSelect: InspectorProps['onSelect']
+}): JSX.Element {
   const { store, player } = useEditor()
   const clips = project.clips
   const flags = useMemo(() => cutFlags(words, clips), [words, clips])
@@ -83,7 +95,12 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
   const estimated = useMemo(() => words.filter((w) => w.estimated).length / words.length > ESTIMATED_HINT, [words])
   const plan = planOf(project)
 
-  const [rawSel, setSel] = useState<WordSelection | null>(null)
+  const [rawSel, setRawSel] = useState<WordSelection | null>(null)
+  /** Selecting words leaves no timeline item selected: Delete with the focus outside the list (on a button just clicked) must not remove a hidden one. */
+  const setSel = (next: WordSelection | null): void => {
+    setRawSel(next)
+    if (next) onSelect(null)
+  }
   const sel = validWordSelection(rawSel, words.length)
   const span = sel ? selectionSpan(sel) : null
   const selectedCut = span ? flags.slice(span[0], span[1] + 1) : []
@@ -157,7 +174,7 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     onNotice(`Restored ${plural(back, 'word')}`)
   }
 
-  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there). */
+  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). */
   const refocus = (fn: () => void) => (): void => {
     fn()
     listRef.current?.focus({ preventScroll: true })
@@ -330,7 +347,7 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
           <button className="btn small" onClick={refocus(restore)} disabled={!canRestore} title="Bring the selected words back">
             <EditorIcon name="restore" size={14} /> Restore
           </button>
-          <button className="btn small" onClick={find} data-testid="transcript-find">
+          <button className="btn small" onClick={refocus(find)} data-testid="transcript-find">
             <EditorIcon name="sparkle" size={14} /> Find fillers and retakes
           </button>
         </div>
@@ -338,13 +355,13 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
         {estimated && <p className="hint">Some word times are estimated: cuts there may be less exact.</p>}
         {pages > 1 && (
           <div className="row transcript-pager">
-            <button className="btn small" disabled={shownPage === 0} onClick={() => setPage(shownPage - 1)}>
+            <button className="btn small" disabled={shownPage === 0} onClick={refocus(() => setPage(shownPage - 1))}>
               Earlier
             </button>
             <span className="hint">
               {shownPage * PAGE + 1}–{Math.min(paragraphs.length, (shownPage + 1) * PAGE)} of {paragraphs.length}
             </span>
-            <button className="btn small" disabled={shownPage >= pages - 1} onClick={() => setPage(shownPage + 1)}>
+            <button className="btn small" disabled={shownPage >= pages - 1} onClick={refocus(() => setPage(shownPage + 1))}>
               Later
             </button>
           </div>

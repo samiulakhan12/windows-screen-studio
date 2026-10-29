@@ -578,7 +578,11 @@ Where the build differs from the sections above, after an adversarial review:
 - **The preview's Web Audio graph** is created for cuts only when the recording is heard
   (`recordingMix(p).kind !== 'none'`), not for a muted one.
 - **Keys:** `Shift+Delete` / `Shift+Backspace` cut too inside the word list (they never reach the
-  editor's shortcuts there); the Cut and Restore buttons give the focus back to the word list.
+  editor's shortcuts there); the Cut, Restore, Find, Earlier and Later buttons give the focus back
+  to the word list. Selecting words clears the timeline's selection, so `Delete` pressed with the
+  focus elsewhere (a review button just clicked) never removes a timeline item the tab hides.
+  `Ctrl+A` is read as the editor reads it (`eventKeyName`), so it selects every word on any
+  keyboard layout.
 - **Pages** follow playback only when the spoken word moves onto another page, so Earlier and Later
   work while playing.
 - `normalizeWord` lives in `transcript.ts` (re-exported by `fillers.ts`); `lcsPairs` too.
