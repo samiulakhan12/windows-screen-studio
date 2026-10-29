@@ -137,7 +137,7 @@ const OFF_GRID: Clip[] = [
 ]
 
 const players: Player[] = []
-function setUp(clips: Clip[], hasAudio: boolean) {
+function setUp(clips: Clip[], hasAudio: boolean, fps = FPS) {
   const p = createProject({
     id: 'p',
     name: 'p',
@@ -149,7 +149,7 @@ function setUp(clips: Clip[], hasAudio: boolean) {
     webcamOffset: 0,
     zooms: [],
     cursorValid: false,
-    capture: { method: 'native', cursorInVideo: false, region: null, fps: FPS }
+    capture: { method: 'native', cursorInVideo: false, region: null, fps }
   })
   p.clips = clips
   const screen = new FakeVideo()
@@ -244,5 +244,74 @@ describe('a clip that starts between two frames', () => {
     v.screen.show(180 / FPS)
     expect(v.screen.seeks).toEqual([3])
     expect(draws).toEqual([3])
+  })
+})
+
+describe('a cut shorter than a frame', () => {
+  // Deleting a short word between touching words: both ends of the cut fall in the same frame, so the
+  // frame covering the next clip's start is also the last frame of the clip before.
+  const cases = [
+    { fps: 60, clips: [{ id: 'a', start: 0, end: 3.005, speed: 1 }, { id: 'b', start: 3.0125, end: 30, speed: 1 }] },
+    { fps: 30, clips: [{ id: 'a', start: 0, end: 3.005, speed: 1 }, { id: 'b', start: 3.025, end: 30, speed: 1 }] }
+  ]
+  for (const { fps, clips } of cases) {
+    for (const hasAudio of [true, false]) {
+      it(`is jumped over once at ${fps} fps, and plays on (${hasAudio ? 'with' : 'without'} sound)`, () => {
+        const v = setUp(clips, hasAudio, fps)
+        const start = clips[1].start
+        seekTo(v, 2.9)
+        v.player.play()
+        v.screen.seeks = []
+        sound.length = 0
+        // The frame at 3.0 s is the first clip's last frame: drawn, then the jump.
+        for (let k = Math.ceil(2.9 * fps); k <= 3 * fps; k++) v.screen.show(k / fps)
+        expect(draws.at(-1)).toBe(3)
+        expect(v.screen.seeks).toEqual([start])
+        // The seek lands on that frame again (it covers the next clip's start): now the clip's first frame.
+        v.screen.show(3)
+        expect(v.screen.seeks).toEqual([start])
+        expect(sound.filter((s) => s.startsWith('jump'))).toEqual([`jump ${start}`])
+        expect(v.player.playing).toBe(true)
+        expect(v.player.time).toBe(start)
+        expect(draws.at(-1)).toBe(start)
+        // And on, frame by frame, with no seek.
+        v.screen.show((3 * fps + 1) / fps)
+        v.screen.show((3 * fps + 2) / fps)
+        expect(v.screen.seeks).toEqual([start])
+        expect(v.player.time).toBe((3 * fps + 2) / fps)
+      })
+    }
+  }
+
+  for (const hasAudio of [true, false]) {
+    it(`plays from the next clip with no jump when Space is pressed with the playhead in the cut (${hasAudio ? 'with' : 'without'} sound)`, () => {
+      const { fps, clips } = cases[0]
+      const v = setUp(clips, hasAudio, fps)
+      // A click on the deleted word: the paused video waits at the next clip's start.
+      seekTo(v, 3.008)
+      expect(v.screen.currentTime).toBe(3.0125)
+      v.player.play()
+      v.screen.show(3)
+      v.screen.show(181 / fps)
+      expect(v.screen.seeks).toEqual([])
+      expect(sound.filter((s) => s.startsWith('jump'))).toEqual([])
+      expect(draws).toEqual([3.0125, 181 / fps])
+      expect(v.player.playing).toBe(true)
+    })
+  }
+
+  it('plays from the next clip with one seek when the playhead is moved into the cut while playing', () => {
+    const { fps, clips } = cases[0]
+    const v = setUp(clips, true, fps)
+    seekTo(v, 1)
+    v.player.play()
+    v.screen.show(1)
+    v.player.seek(3.008)
+    expect(v.screen.seeks).toEqual([3.0125])
+    v.screen.show(3)
+    v.screen.show(181 / fps)
+    expect(v.screen.seeks).toEqual([3.0125])
+    expect(draws.slice(-2)).toEqual([3.0125, 181 / fps])
+    expect(v.player.playing).toBe(true)
   })
 })

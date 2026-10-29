@@ -594,7 +594,11 @@ Where the build differs from the sections above, after an adversarial review:
   3.0125 s at 60 fps). `onVideoFrame` takes a frame less than one proxy frame before the next clip's
   start as that clip's first frame (drawn at the clip's start, as the export shows it) instead of
   seeking again, which would restart the fade in and, with the element on the video clock (no sound,
-  a muted recording), loop on the same frame.
+  a muted recording), loop on the same frame. This holds after a jump, after Play or a seek while
+  playing to a clip's start (`landing`), even when that frame is also the last frame of the clip
+  before: deleting a short word between touching words can make a cut shorter than a frame (clips
+  [0, 3.005] and [3.0125, …] share the frame at 3.0 s). That frame is drawn once as the first clip's
+  last frame and, after the jump, once as the next clip's first.
 - **Export fade position (§4.8).** The fades come **last** in each piece's chain, after the
   sample-exact `apad`/`atrim`, with the fade in starting after the pause freeze's silence
   (`cutFadeFilters(edges, length, fade, offset)`): atempo's output is a little off its length, so a

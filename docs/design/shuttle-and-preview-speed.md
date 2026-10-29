@@ -188,7 +188,7 @@ New private `rev: { fromOut: number; t0: number; rate: number; raf: number } | n
 | `L` at the end | `play()` already restarts from `clips[0].start`. Level 0. |
 | Forward reaches the end | `finish()` → `stopPlaying()` sets `STOPPED`. |
 | 8× clip × "Forward 4×" | The element plays at 16 (capped from 32). The badge shows the viewing rate, "Forward 4× · no sound". |
-| High rates | Chromium drops frames. Frames that land in a cut are never drawn (`onVideoFrame` jumps before drawing), except the one less than a frame before the next clip's start: a clip that starts between two frames (a transcript cut) first shows the frame covering its start, and that is its first frame, not one to jump from again. At an element rate of 16 with a 60 fps proxy, up to 16/60 ≈ 0.27 s at each clip end is skipped while viewing. |
+| High rates | Chromium drops frames. Frames that land in a cut are never drawn (`onVideoFrame` jumps before drawing), except the one less than a frame before the next clip's start: a clip that starts between two frames (a transcript cut) first shows the frame covering its start, and that is its first frame, not one to jump from again (also when a cut shorter than a frame makes it the last frame of the clip before, after a jump, Play or a seek to the clip's start). At an element rate of 16 with a 60 fps proxy, up to 16/60 ≈ 0.27 s at each clip end is skipped while viewing. |
 | Export dialog opens / Back | `openExport` and `goBack` call `player.pause()`, which now also stops reverse. |
 | `K` held and keyup lost (Alt+Tab) | The held flag is cleared on window `blur`. |
 | Auto-repeat | `J`/`L`/`K` have no `repeat`, so holding a key does not escalate (`if (e.repeat && !commandInfo(id).repeat) return` in `Editor.tsx`). |
