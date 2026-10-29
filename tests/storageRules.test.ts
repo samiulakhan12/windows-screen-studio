@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanupPlan, DAY_MS, DEFAULT_RULES, formatBytes, lastUsed, sanitizeRules, usedAgo, type RecordingUsage } from '../src/shared/storage/rules'
+import { cleanupPlan, DAY_MS, DEFAULT_RULES, formatBytes, freedBytes, lastUsed, sanitizeRules, totalBytes, usedAgo, type RecordingUsage } from '../src/shared/storage/rules'
 
 const NOW = Date.parse('2026-10-28T12:00:00Z')
 const ago = (days: number): number => NOW - days * DAY_MS
@@ -64,5 +64,27 @@ describe('cleanupPlan', () => {
   it('formats sizes and ages', () => {
     expect([formatBytes(0), formatBytes(1500), formatBytes(2_400_000), formatBytes(12_400_000_000)]).toEqual(['0 KB', '2 KB', '2 MB', '12.4 GB'])
     expect([usedAgo(NOW, NOW), usedAgo(ago(1), NOW), usedAgo(ago(12), NOW), usedAgo(0, NOW)]).toEqual(['today', 'yesterday', '12 days ago', 'never'])
+  })
+})
+
+describe('files a recording shares with a copy (Duplicate links the media)', () => {
+  // The original and its copy share 4000 bytes of media; one more file of the copy has a name in a recording not listed here.
+  const media = { id: '7:11', bytes: 4000, links: 2, here: 1 }
+  const binned = { id: '7:12', bytes: 500, links: 2, here: 1 }
+  const recordings = [rec('original', { lastUsed: ago(200), bytes: 5000, shared: [media] }), rec('copy', { lastUsed: ago(200), bytes: 4700, shared: [media, binned] })]
+
+  it('takes their bytes once in the total', () => {
+    expect(totalBytes(recordings)).toBe(5000 + 4700 - 4000)
+    expect(totalBytes([rec('plain', { bytes: 300 }), rec('other', { bytes: 200 })])).toBe(500)
+  })
+
+  it('offers each recording at what it frees by itself, and frees the shared bytes only when every name goes', () => {
+    const plan = cleanupPlan(recordings, { cacheDays: null, autoCaches: false, removeDays: 90 }, NOW)
+    expect(plan.map((i) => [i.action, i.id, i.bytes])).toEqual([
+      ['remove', 'original', 1000],
+      ['remove', 'copy', 200]
+    ])
+    expect(freedBytes(plan.slice(0, 1))).toBe(1000)
+    expect(freedBytes(plan)).toBe(1000 + 200 + 4000)
   })
 })

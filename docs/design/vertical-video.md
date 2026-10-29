@@ -568,7 +568,13 @@ the `projects:duplicateProgress` event:
    name: copy.name.trim().slice(0, 120) || 'Untitled recording', copyOf: { id: sourceId, name:
    sourceName } }`. The renderer's `copyOf` and `createdAt` are ignored.
 10. Remove `.copying`; resolve `{ id, name, linked }`.
-11. **Failure or Cancel**: remove the new folder (`fs.rm`, recursive, `maxRetries: 3`) and reject.
+11. **Failure or Cancel**: remove the new folder and reject. It is removed with its `.copying`
+    marker last (each other entry with `fs.rm`, recursive, `maxRetries: 3`, then the folder), as
+    every clean-up below does: a file another program holds (an antivirus scan, the indexer,
+    OneDrive) makes the removal fail part way, and the folder then keeps its marker, so the next
+    copy or the next start removes it. Every other entry is still tried before the failure is
+    reported, so only the held file stays meanwhile (never a half-copied `screen.mp4` listed after
+    it).
     **Crash**: `removeStaleCopies()` removes folders in the current root that hold `.copying` with a
     `startedAt` more than one hour old (or an unreadable marker on a folder modified more than one
     hour ago), and only when they have no `project.json` and no raw recording files (`RAW`,
@@ -633,7 +639,8 @@ export function refitItems(project: Pick<Project, 'annotations' | 'overlays'>, w
 ```
 
 The renderer flow (`src/renderer/src/editor/duplicateFlow.ts`, `runDuplicate`): pause, flush the
-save, build with `projectCopy` (measuring text on a canvas as `captionsLayer.ts` does), call the API
+save, build with `projectCopy` from the project as it is saved (with the stems and camera of the
+project as loaded, §13.5; measuring text on a canvas as `captionsLayer.ts` does), call the API
 with the progress modal, then leave the editor the way **Back** does and open the new id through
 `onOpenProject(id, notice)` (§9, `App.tsx`).
 
@@ -1334,7 +1341,7 @@ Owns:
 | `src/main/projectsIpc.ts` | `projects:duplicate` and `projects:duplicateCancel` handlers with the sender check (§4.7), progress events to the sender. |
 | `src/preload/projects.ts` | `duplicateProject`, `onDuplicateProgress`, `cancelDuplicate`. |
 | `src/renderer/src/editor/CopyMenu.tsx`, `copy.css` (new) | `export function CopyMenu(props: { project: Project; vw: number; vh: number; run(kind: CopyKind): void }): JSX.Element` (the title-bar menu) and `export function CopyProgress(props: { kind: CopyKind; name: string; progress: DuplicateProgress \| null; onCancel(): void }): JSX.Element`. |
-| `src/renderer/src/editor/duplicateFlow.ts` (new) | `export async function runDuplicate(kind: CopyKind, deps: { project: Project; flush(): Promise<boolean>; confirm(msg: string): boolean; onProgress(p: DuplicateProgress \| null): void; signal: AbortSignal }): Promise<{ id: string; notice: string } \| null>`. |
+| `src/renderer/src/editor/duplicateFlow.ts` (new) | `export async function runDuplicate(kind: CopyKind, deps: { project: Project; stored: Pick<Project, 'audioStems' \| 'hasWebcam'>; flush(): Promise<boolean>; confirm(msg: string): boolean; onProgress(p: DuplicateProgress \| null): void; signal: AbortSignal }): Promise<{ id: string; notice: string } \| null>`. |
 | `src/renderer/src/App.tsx` | `Route` gains `notice?: string`; `<Editor key={route.projectId} … onOpenProject={(id, notice) => setRoute({ view: 'editor', projectId: id, notice })} notice={route.notice} />` (the key change remounts the editor). |
 | `tests/e2e/vertical-video.e2e.cjs` (new) | §11.3. |
 | `docs/FEATURES.md`, `docs/ROADMAP.md`, `docs/IMPLEMENTATION.md` | At integration. |
@@ -1857,9 +1864,12 @@ the correct thing and the difference is listed here.
 - E2E: step 10 runs in *Old* before step 5; step 4 also checks that TikTok comes back after
   reopening; step 9 first edits and restores the name so the original's `project.json` is in the
   editor's saved form, then compares without regard to key order.
-- The copy is built from the editor's state (`store.state`), not from the saved form
-  (`withRecordedStems`/`withRecordedCamera`): a project opened while a stem or camera file is
-  missing is copied without `audioStems` or `hasWebcam`, which matches the files the copy gets.
+- The copy is built from the editor's state (`store.state`) in its saved form: `runDuplicate`
+  puts back the stems and camera of the project as loaded (`deps.stored`, with
+  `withRecordedStems`/`withRecordedCamera`, before `projectCopy`). A project opened while a stem or
+  camera file is missing keeps `audioStems` and `hasWebcam` in its copy, as a save does: the user
+  may have put the file back before copying, and otherwise the copy opens without them, shows the
+  same message as the original and uses them again once the file is back.
 
 ### 13.6 Integration
 

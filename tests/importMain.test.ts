@@ -211,6 +211,20 @@ describe('importVideo', () => {
     expect(copy).not.toMatch(/rotation/)
   }, 60_000)
 
+  it("leaves the file's tags and chapters out of the editing copy", async () => {
+    // A phone video: its GPS location, author and comment, and chapters of its own.
+    const meta = at('tags.txt')
+    writeFileSync(meta, ';FFMETADATA1\nartist=Jane Doe\ncomment=Recorded at 12 Elm Street\nlocation=+40.7128-074.0060/\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=1000\ntitle=Secret part\n')
+    ff('-i', at('odd.mov'), '-i', meta, '-map', '0', '-map_metadata', '1', '-map_chapters', '1', '-c', 'copy', at('tagged.mp4'))
+    expect(describeVideo(at('tagged.mp4'))).toMatch(/Jane Doe[\s\S]*Secret part/)
+    const r = await importVideo(at('tagged.mp4'), { deps })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const copy = describeVideo(path.join(library, r.projectId, 'screen.mp4'))
+    expect(copy).toMatch(/Video: h264/)
+    expect(copy).not.toMatch(/Jane Doe|Elm Street|40\.7128|Chapter|Secret part/)
+  }, 60_000)
+
   it('measures a video that does not say how long it is, and refuses one too short', async () => {
     const progress: (number | null)[] = []
     const r = await importVideo(at('live.webm'), { deps, onProgress: (p) => p.stage === 'converting' && progress.push(p.progress) })

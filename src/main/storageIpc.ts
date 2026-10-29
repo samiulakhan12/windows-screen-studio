@@ -8,12 +8,12 @@
 import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import path from 'node:path'
 import type { StorageCleanupResult, StorageOverview } from '../shared/api/storage'
-import { cleanupPlan, DAY_MS, type CleanupAction } from '../shared/storage/rules'
+import { cleanupPlan, DAY_MS, totalBytes, type CleanupAction } from '../shared/storage/rules'
 import { stopAnalyses } from './analysisIpc'
 import { jobsSnapshot } from './longJobs'
-import { projectsRoot } from './projects'
+import { legacyProjectRoots, projectsRoot } from './projects'
 import { isAppUrl } from './security'
-import { diskSpace, runCleanup, scanProjects } from './storage'
+import { diskSpace, nodeFs, runCleanup, scanProjects } from './storage'
 import { StorageStore, STORAGE_FILE } from './storageStore'
 
 /** Wait after start-up before the automatic cache clean-up. */
@@ -55,7 +55,7 @@ let cleaning: Promise<unknown> = Promise.resolve()
 function clean(requests: { id: string; action: CleanupAction }[]): Promise<StorageCleanupResult> {
   const run = cleaning.then(() => {
     const s = storeOf()
-    return runCleanup(projectsRoot(), requests, s.rules, s.used, openIds(), Date.now(), { trash, beforeRemove: stopAnalyses, isOpen: (id) => openIds().has(id) })
+    return runCleanup(projectsRoot(), requests, s.rules, s.used, openIds(), Date.now(), { trash, beforeRemove: stopAnalyses, isOpen: (id) => openIds().has(id), holders: legacyProjectRoots() })
   })
   cleaning = run.catch(() => undefined)
   return run
@@ -68,7 +68,7 @@ async function autoClean(): Promise<void> {
   const last = s.lastAutoClean
   if (!rules.autoCaches || rules.cacheDays === null || (last !== null && Date.now() - last < DAY_MS)) return
   if (jobsSnapshot().length > 0 || openBy.size > 0) return
-  const plan = cleanupPlan(await scanProjects(projectsRoot(), s.used), rules, Date.now(), openIds()).filter((i) => i.action === 'caches')
+  const plan = cleanupPlan(await scanProjects(projectsRoot(), s.used, nodeFs, legacyProjectRoots()), rules, Date.now(), openIds()).filter((i) => i.action === 'caches')
   s.setLastAutoClean()
   if (!plan.length) return
   const r = await clean(plan.map((i) => ({ id: i.id, action: i.action })))
@@ -80,9 +80,9 @@ export function registerStorageIpc(): void {
     if (!fromApp(e)) throw new Error('Not allowed')
     const root = projectsRoot()
     const s = storeOf()
-    const recordings = await scanProjects(root, s.used)
+    const recordings = await scanProjects(root, s.used, nodeFs, legacyProjectRoots())
     const space = await diskSpace(root)
-    return { root, free: space?.free ?? null, total: space?.total ?? null, bytes: recordings.reduce((n, r) => n + r.bytes, 0), recordings, rules: s.rules, now: Date.now() }
+    return { root, free: space?.free ?? null, total: space?.total ?? null, bytes: totalBytes(recordings), recordings, rules: s.rules, now: Date.now() }
   })
   ipcMain.handle('storage:setRules', (e, rules: unknown) => {
     if (!fromApp(e)) throw new Error('Not allowed')
@@ -91,7 +91,7 @@ export function registerStorageIpc(): void {
   ipcMain.handle('storage:plan', async (e) => {
     if (!fromApp(e)) throw new Error('Not allowed')
     const s = storeOf()
-    return cleanupPlan(await scanProjects(projectsRoot(), s.used), s.rules, Date.now(), openIds())
+    return cleanupPlan(await scanProjects(projectsRoot(), s.used, nodeFs, legacyProjectRoots()), s.rules, Date.now(), openIds())
   })
   ipcMain.handle('storage:clean', (e, raw: unknown) => {
     if (!fromApp(e)) throw new Error('Not allowed')

@@ -1,10 +1,18 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
-import { describe, expect, it, vi } from 'vitest'
+import path from 'node:path'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 
-vi.mock('electron', () => ({ ipcMain: { handle: vi.fn(), on: vi.fn() }, app: { getPath: () => os.tmpdir(), isPackaged: false }, clipboard: {}, screen: {}, shell: {} }))
+const h = vi.hoisted(() => ({ root: '' }))
+h.root = mkdtempSync(path.join(os.tmpdir(), 'ssw-diagnostics-'))
+vi.mock('electron', () => ({ ipcMain: { handle: vi.fn(), on: vi.fn() }, app: { getPath: () => h.root, isPackaged: false }, clipboard: {}, screen: {}, shell: {} }))
+afterAll(() => rmSync(h.root, { recursive: true, force: true }))
 
-import { collectDiagnostics, diagnosticsText, partOf, type DiagnosticsDeps } from '../src/main/diagnostics'
+import { collectDiagnostics, diagnosticsText, lastRecordedCapture, partOf, type DiagnosticsDeps } from '../src/main/diagnostics'
 import type { ProbeResult } from '../src/main/nativeCapture'
+import { projectDir, projectsRoot } from '../src/main/projects'
+import { createProject } from '../src/shared/engine/project'
+import type { Project } from '../src/shared/types'
 
 const PROBE: ProbeResult = { supported: true, windowCapture: true, cursorToggle: true, borderToggle: false, hardwareEncoders: ['h264_nvenc'], reason: null }
 
@@ -58,5 +66,46 @@ describe('diagnostics', () => {
   it('times out a slow part', async () => {
     expect(await partOf(() => new Promise(() => undefined), 10)).toEqual({ ok: false, reason: 'timed out' })
     expect(await partOf(async () => 5)).toEqual({ ok: true, value: 5 })
+  })
+})
+
+describe('the last recording', () => {
+  const save = (id: string, createdAt: string, over: Partial<Project> = {}): void => {
+    const p: Project = {
+      ...createProject({
+        id,
+        name: id,
+        duration: 5,
+        width: 1920,
+        height: 1080,
+        hasWebcam: false,
+        hasAudio: true,
+        webcamOffset: 0,
+        zooms: [],
+        cursorValid: true,
+        capture: { method: 'native', cursorInVideo: false, region: null, target: 'window' }
+      }),
+      createdAt,
+      ...over
+    }
+    mkdirSync(projectDir(id), { recursive: true })
+    writeFileSync(path.join(projectDir(id), 'project.json'), JSON.stringify(p))
+  }
+
+  it('is the newest project recorded in Flown, never an imported video or a copy', async () => {
+    rmSync(projectsRoot(), { recursive: true, force: true })
+    expect(await lastRecordedCapture()).toBeNull()
+    save('rec-20261001-100000', '2026-10-01T10:00:00.000Z')
+    // An import's capture is a placeholder: it was never captured.
+    save('rec-20261020-100000', '2026-10-20T10:00:00.000Z', {
+      capture: { method: 'chromium', cursorInVideo: true, region: null, target: 'screen' },
+      source: { kind: 'import', fileName: 'phone.mp4', bytes: 1000, container: 'mov,mp4', videoCodec: 'h264', audioCodec: 'aac', width: 1920, height: 1080, rotation: 0, fps: 30, importedAt: '2026-10-20T10:00:00.000Z' }
+    })
+    // A copy keeps the recording's capture, but its date is when it was made.
+    save('rec-20261025-100000', '2026-10-25T10:00:00.000Z', { copyOf: { id: 'rec-20261001-100000', name: 'rec-20261001-100000' } })
+    expect(await lastRecordedCapture()).toEqual({ capture: { method: 'native', cursorInVideo: false, region: null, target: 'window' }, createdAt: '2026-10-01T10:00:00.000Z' })
+
+    rmSync(projectDir('rec-20261001-100000'), { recursive: true, force: true })
+    expect(await lastRecordedCapture()).toBeNull()
   })
 })

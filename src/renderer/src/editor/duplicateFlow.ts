@@ -5,7 +5,9 @@
  * pauses before, shows CopyProgress meanwhile (it appears after 0.5 s) and opens the copy after.
  */
 import type { DuplicateProgress, DuplicateResult } from '../../../shared/api/projects'
+import { withRecordedStems } from '../../../shared/audio/settings'
 import { projectCopy, type CopyKind, type MeasureText } from '../../../shared/editor/duplicate'
+import { withRecordedCamera } from '../../../shared/engine/webcamData'
 import type { Project } from '../../../shared/types'
 
 /** Every message a failed copy shows starts with this (§2.3). */
@@ -26,16 +28,27 @@ function canvasMeasure(): MeasureText | null {
   }
 }
 
-/** The new project's id and the notice to show there, or null when cancelled or not confirmed. Rejects with the message to show. */
+/**
+ * The new project's id and the notice to show there, or null when cancelled or not confirmed. Rejects with the message to show.
+ * `stored` is the project as loaded (LoadedProject.project): the editor opens it without its stems or camera while one of
+ * their files is missing, and the copy keeps them as a save does, so it uses them too once the file is back.
+ */
 export async function runDuplicate(
   kind: CopyKind,
-  deps: { project: Project; flush(): Promise<boolean>; confirm(msg: string): boolean; onProgress(p: DuplicateProgress | null): void; signal: AbortSignal }
+  deps: {
+    project: Project
+    stored: Pick<Project, 'audioStems' | 'hasWebcam'>
+    flush(): Promise<boolean>
+    confirm(msg: string): boolean
+    onProgress(p: DuplicateProgress | null): void
+    signal: AbortSignal
+  }
 ): Promise<{ id: string; notice: string } | null> {
-  const { project, signal } = deps
+  const { project, stored, signal } = deps
   // The copy is built from the editor's state, so it has the latest edit even when the save failed.
   const saved = await deps.flush()
   if (signal.aborted || (!saved && !deps.confirm(UNSAVED))) return null
-  const copy = projectCopy(project, kind, canvasMeasure())
+  const copy = projectCopy(withRecordedCamera(withRecordedStems(project, stored), stored), kind, canvasMeasure())
   const off = window.api.onDuplicateProgress((p) => {
     if (!signal.aborted) deps.onProgress(p)
   })

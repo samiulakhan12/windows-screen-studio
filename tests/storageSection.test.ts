@@ -210,3 +210,14 @@ describe('Settings › Storage: Home hears of removed recordings', () => {
     expect(dispatched).toEqual([])
   })
 })
+
+describe('Settings › Storage: recordings that share their media with a copy', () => {
+  it('counts the shared media when both go, and says what is shared', async () => {
+    const media = { id: '7:11', bytes: 2_000_000, links: 2, here: 1 }
+    plan = () => Promise.resolve([{ ...item('a', 'remove'), shared: [media] }, { ...item('b', 'remove'), shared: [media] }])
+    const out = await press(/^Review clean-up…$/)
+    const texts = out.map((e) => textOf(e.props.children).trim())
+    expect(out.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Move 2 to the Recycle Bin (2 MB)')).toBe(true)
+    expect(texts.filter((t) => t.endsWith('· 2 MB shared with a copy'))).toHaveLength(2)
+  })
+})

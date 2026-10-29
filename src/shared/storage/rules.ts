@@ -34,6 +34,21 @@ export function sanitizeRules(raw: unknown): StorageRules {
   }
 }
 
+/**
+ * A file of a recording that also has a name (a hard link) in another recording's folder: the media
+ * Duplicate links into a copy. It takes its bytes once, and moving it away frees them only when every
+ * name goes.
+ */
+export interface SharedFile {
+  /** The file on its drive ("<dev>:<ino>"). */
+  id: string
+  bytes: number
+  /** Names the file has in the recordings the library lists (one in the Recycle Bin holds nothing). */
+  links: number
+  /** Of which in this recording's folder. */
+  here: number
+}
+
 /** A recording folder as the scan found it. */
 export interface RecordingUsage {
   /** The folder's name (a project id). */
@@ -50,6 +65,8 @@ export interface RecordingUsage {
   finished: boolean
   /** The folder was larger than the scan counts: sizes are "at least". */
   capped: boolean
+  /** Files counted in `bytes` that also have a name in another recording's folder (absent: none). */
+  shared?: SharedFile[]
 }
 
 /** The latest of the times given (ms or ISO), ignoring missing ones; 0 when none. */
@@ -68,26 +85,65 @@ export interface CleanupItem {
   id: string
   name: string
   action: CleanupAction
-  /** Bytes it frees. */
+  /** Bytes it frees by itself (a file shared with another recording stays). */
   bytes: number
   lastUsed: number
   createdAt: string
+  /** A removed recording's shared files: freed when every recording holding them goes too (freedBytes). */
+  shared?: SharedFile[]
+}
+
+/** Bytes of `files` together. */
+export function sharedBytes(files: readonly SharedFile[] = []): number {
+  return files.reduce((n, f) => n + f.bytes, 0)
+}
+
+/** Bytes the recordings take on the drive: a file shared between them counts once. */
+export function totalBytes(recordings: readonly RecordingUsage[]): number {
+  const seen = new Set<string>()
+  let bytes = 0
+  for (const r of recordings) {
+    bytes += r.bytes
+    for (const f of r.shared ?? []) {
+      if (seen.has(f.id)) bytes -= f.bytes
+      else seen.add(f.id)
+    }
+  }
+  return bytes
+}
+
+/** Bytes moving `items` to the Recycle Bin frees: a shared file's only when all its names go with them. */
+export function freedBytes(items: readonly CleanupItem[]): number {
+  let bytes = 0
+  const names = new Map<string, SharedFile>()
+  for (const i of items) {
+    bytes += i.bytes
+    for (const f of i.shared ?? []) {
+      const known = names.get(f.id)
+      names.set(f.id, known ? { ...known, here: known.here + f.here } : f)
+    }
+  }
+  for (const f of names.values()) if (f.here >= f.links) bytes += f.bytes
+  return bytes
 }
 
 /**
  * What the rules would move to the Recycle Bin now: recordings not used (nor recorded) for
  * removeDays, then the caches of others not used for cacheDays. Unfinished recordings and the
- * ones open in the editor (`open`) are never in it. Largest first within each action.
+ * ones open in the editor (`open`) are never in it. Largest first within each action, by the bytes
+ * each frees by itself.
  */
 export function cleanupPlan(recordings: readonly RecordingUsage[], rules: StorageRules, now: number, open: ReadonlySet<string> = new Set()): CleanupItem[] {
   const eligible = recordings.filter((r) => r.finished && !open.has(r.id))
   const older = (days: number | null, t: number): boolean => days !== null && t > 0 && now - t >= days * DAY_MS
   const item = (r: RecordingUsage, action: CleanupAction, bytes: number): CleanupItem => ({ id: r.id, name: r.name, action, bytes, lastUsed: r.lastUsed, createdAt: r.createdAt })
+  // A removed recording frees its own files; the ones it shares with a recording that stays are kept.
+  const removal = (r: RecordingUsage): CleanupItem => ({ ...item(r, 'remove', r.bytes - sharedBytes(r.shared)), ...(r.shared?.length ? { shared: r.shared } : {}) })
   const removed = eligible.filter((r) => older(rules.removeDays, r.lastUsed) && older(rules.removeDays, Date.parse(r.createdAt) || r.lastUsed))
   const gone = new Set(removed.map((r) => r.id))
   const caches = eligible.filter((r) => !gone.has(r.id) && r.cacheBytes > 0 && older(rules.cacheDays, r.lastUsed))
   const bySize = (a: CleanupItem, b: CleanupItem): number => b.bytes - a.bytes
-  return [...removed.map((r) => item(r, 'remove', r.bytes)).sort(bySize), ...caches.map((r) => item(r, 'caches', r.cacheBytes)).sort(bySize)]
+  return [...removed.map(removal).sort(bySize), ...caches.map((r) => item(r, 'caches', r.cacheBytes)).sort(bySize)]
 }
 
 /** "1.2 GB", "340 MB", "12 KB" */

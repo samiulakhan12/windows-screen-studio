@@ -23,6 +23,11 @@ export function setLegacyProjectRoots(roots: readonly string[]): void {
   legacyRoots = [...roots]
 }
 
+/** The older recordings folders the library also lists (see above). */
+export function legacyProjectRoots(): readonly string[] {
+  return legacyRoots
+}
+
 /** Every folder the library lists, the current one first (it wins when an id is in two). */
 const allRoots = (): string[] => [projectsRoot(), ...legacyRoots]
 

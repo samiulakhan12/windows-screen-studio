@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
-import { cutFlags, cutWords, restoreWords, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
+import { anchorCutWords, cutFlags, cutWords, restoreWords, sameWords, spansSaving, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
 import { applySuggestions, refreshSuggestions, reviewSuggestions, SUGGESTION_LABELS, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
 import {
   clickSelection,
@@ -37,10 +37,17 @@ const PAGE = 40
 const ESTIMATED_HINT = 0.1
 
 /**
- * The review list of each transcript while the editor is open (the tab is unmounted while another
- * is open). Keyed by the transcript object, so it goes with the editor's project when that closes.
+ * The review list while the editor is open (the tab is unmounted while another is open), with the
+ * transcript it was made for. Keyed by the editor's store, so it goes when the editor closes.
  */
-const reviewMemory = new WeakMap<Transcript, EditSuggestion[]>()
+const reviewMemory = new WeakMap<object, { transcript: Transcript; items: EditSuggestion[] }>()
+
+/**
+ * Whether a list made for `made` still fits the transcript of `words`: the same transcript, or one
+ * with the same words at the same times (a cut that stored estimated word times, and its undo).
+ */
+const listFits = (made: Transcript, transcript: Transcript, words: readonly TranscriptWord[]): boolean =>
+  made === transcript || sameWords(transcriptWords(made), words)
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 const seconds = (s: number): string => `${s.toFixed(1)} s`
@@ -58,6 +65,8 @@ export function TranscriptPanel(props: InspectorProps & { onOpenCaptions: () => 
 
 function TranscriptIntro({ project, onOpenCaptions }: { project: Project; onOpenCaptions: () => void }): JSX.Element {
   const make = (): void => {
+    // This tab goes, and the focused button with it. The Captions tab catches the focus once it has read the providers
+    // (the running job's Cancel, or what is missing): nothing may take it before then, or that catch is skipped.
     onOpenCaptions()
     requestCaptions({ kind: 'generate' })
   }
@@ -119,20 +128,23 @@ function TranscriptEditor({
 
   /* ---------- the review list ---------- */
 
-  const [review, setReviewState] = useState(() => reviewMemory.get(transcript) ?? null)
+  const [review, setReviewState] = useState(() => {
+    const kept = reviewMemory.get(store)
+    return kept && listFits(kept.transcript, transcript, words) ? kept.items : null
+  })
   const setReview = (items: EditSuggestion[] | null): void => {
     setReviewState(items)
-    if (items) reviewMemory.set(transcript, items)
-    else reviewMemory.delete(transcript)
+    if (items) reviewMemory.set(store, { transcript, items })
+    else reviewMemory.delete(store)
   }
   // A new transcript (regenerated captions, an edited caption) makes the list stale.
-  const reviewFor = useRef(transcript)
   useEffect(() => {
-    if (reviewFor.current === transcript) return
-    reviewMemory.delete(reviewFor.current)
-    reviewFor.current = transcript
+    const kept = reviewMemory.get(store)
+    if (!kept || kept.transcript === transcript) return
+    if (listFits(kept.transcript, transcript, words)) return void reviewMemory.set(store, { transcript, items: kept.items })
+    reviewMemory.delete(store)
     setReviewState(null)
-  }, [transcript])
+  }, [store, transcript, words])
   // Rows whose words were cut since (a Remove, the timeline, undo) go; undo brings them back.
   const shownReview = useMemo(() => (review ? refreshSuggestions(review, words, clips, project.duration) : null), [review, words, clips, project.duration])
   const suggested = useMemo(() => {
@@ -150,12 +162,20 @@ function TranscriptEditor({
     if (flags.slice(a, b + 1).every((f) => f)) return onNotice('Already cut. Press Restore to bring it back')
     const range = wordsRange(words, a, b, store.state.duration)
     const next = cutWords(before, words, [[a, b]], store.state.duration)
+    const marked = anchorCutWords(transcript, before, next, [[a, b]])
     // Nothing changes only when the range is empty (zero-length words between touching ones) or
-    // when nothing would be left (cutRange keeps no piece shorter than a clip may be).
-    if (sameClips(next, before)) return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
-    store.update((p) => ({ ...p, clips: cutWords(p.clips, words, [[a, b]], p.duration) }))
-    // Counted from the result: a short word left between two cuts goes with them (no clip is that short).
-    const after = cutFlags(words, next)
+    // when nothing would be left (cutRange keeps no piece shorter than a clip may be). A range
+    // already wholly cut (guessed words inside a timeline cut, shown kept) only marks its words.
+    if (sameClips(next, before) && (marked === transcript || spansSaving(before, words, [[a, b]], store.state.duration) > 1e-9)) {
+      return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
+    }
+    // The words are marked deleted with the cut, their caption's times stored (one undo step): they stay cut after an edit of the caption.
+    store.update((p) => {
+      const cut = cutWords(p.clips, words, [[a, b]], p.duration)
+      return { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, [[a, b]]) }
+    })
+    // Counted from the result (the words as marked): a short word left between two cuts goes with them (no clip is that short).
+    const after = cutFlags(transcriptWords(marked), next)
     const newly = after.reduce((n, f, i) => n + (f && !flags[i] ? 1 : 0), 0)
     const saved = seconds(outputDuration(before) - outputDuration(next))
     onNotice(newly > 0 ? `Cut ${plural(newly, 'word')} (${saved})` : `Cut ${saved}`)
@@ -174,7 +194,7 @@ function TranscriptEditor({
     onNotice(`Restored ${plural(back, 'word')}`)
   }
 
-  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). */
+  /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). So do the review list's Keep, Remove, Remove all and Close, whose row or list goes (the focus would fall to the page). */
   const refocus = (fn: () => void) => (): void => {
     fn()
     listRef.current?.focus({ preventScroll: true })
@@ -183,31 +203,39 @@ function TranscriptEditor({
   const find = (): void => {
     const items = reviewSuggestions(words, store.state.clips, store.state.duration, transcript.language)
     setReview(items)
+    // As selecting words does: Delete after a review button (the focus on the page) must not remove a hidden timeline item.
+    onSelect(null)
     // Said either way (the list appears below the words, out of the focus's way).
     onNotice(items.length > 0 ? `Found ${plural(items.length, 'filler or retake', 'fillers and retakes')}` : 'No fillers or retakes found')
   }
 
-  const removeSuggestions = (items: EditSuggestion[]): number => {
+  /** Cuts these suggestions and marks their words deleted (one store update, as Delete does); the output seconds saved, or null when nothing changes. */
+  const removeSuggestions = (items: EditSuggestion[]): number | null => {
     const before = store.state.clips
+    const spans = items.map((s) => [s.first, s.last] as const)
     const r = applySuggestions(before, words, items, store.state.duration)
-    if (r.clips === before || sameClips(r.clips, before)) {
+    // A suggestion already wholly cut (guessed words inside a timeline cut, shown kept) only marks its words.
+    if (sameClips(r.clips, before) && (anchorCutWords(transcript, before, before, spans) === transcript || spansSaving(before, words, spans, store.state.duration) > 1e-9)) {
       onNotice('That would cut the whole video')
-      return 0
+      return null
     }
-    store.update((p) => ({ ...p, clips: applySuggestions(p.clips, words, items, p.duration).clips }))
+    store.update((p) => {
+      const cut = applySuggestions(p.clips, words, items, p.duration).clips
+      return { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, spans) }
+    })
     return r.saved
   }
 
   const removeOne = (s: EditSuggestion): void => {
     const saved = removeSuggestions([s])
-    if (saved > 0) onNotice(`Removed 1 (${seconds(saved)})`)
+    if (saved !== null) onNotice(`Removed 1 (${seconds(saved)})`)
   }
   const keepOne = (s: EditSuggestion): void => setReview((review ?? []).filter((x) => x.id !== s.id))
   const removeAll = (): void => {
     const items = shownReview ?? []
     if (items.length === 0) return
     const saved = removeSuggestions(items)
-    if (saved <= 0) return
+    if (saved === null) return
     setReview(null)
     onNotice(`Removed ${items.length} (${seconds(saved)})`)
   }
@@ -277,9 +305,6 @@ function TranscriptEditor({
       // The page shows the focused word, also when the focus stays where it was (Home on word 0).
       if (next) setPage(pageOfWord(next.focus))
       pagedByHand.current = false
-    } else if (plain && (e.key === 'Delete' || e.key === 'Backspace')) {
-      own()
-      cut()
     } else if (plain && !e.shiftKey && e.key === 'Enter') {
       own()
       if (sel) goTo(sel.focus)
@@ -291,6 +316,18 @@ function TranscriptEditor({
       own()
       setSel(null)
     }
+  }
+
+  /**
+   * Delete and Backspace are the tab's own wherever its focus is (the word list, a toolbar or review
+   * button): they cut the selected words, or do nothing, and never reach the editor's shortcuts,
+   * which would remove a timeline item the tab hides.
+   */
+  const onPanelKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.ctrlKey || e.metaKey || e.altKey || (e.key !== 'Delete' && e.key !== 'Backspace')) return
+    e.preventDefault()
+    e.stopPropagation()
+    cut()
   }
 
   /* ---------- pages and scrolling ---------- */
@@ -375,7 +412,7 @@ function TranscriptEditor({
   const timeOf = (i: number): string => formatTime(videoTimeAt(clips, plan, words[i].start))
 
   return (
-    <div className="transcript-panel">
+    <div className="transcript-panel" onKeyDown={onPanelKeyDown}>
       <Section title="Transcript" aside={<span className="hint transcript-count">{`${plural(words.length, 'word')} · ${cutCount} cut`}</span>}>
         <div className="row start transcript-tools">
           <button className="btn small" onClick={refocus(cut)} disabled={!canCut} title="Cut the selected words (Delete)">
@@ -448,11 +485,15 @@ function TranscriptEditor({
           items={shownReview}
           words={words}
           timeOf={timeOf}
-          onGo={goTo}
-          onKeep={keepOne}
-          onRemove={removeOne}
-          onRemoveAll={removeAll}
-          onClose={() => setReview(null)}
+          onGo={(i) => {
+            // As Find does: a list kept from before a timeline selection must not leave it for Delete on the page.
+            onSelect(null)
+            goTo(i)
+          }}
+          onKeep={(s) => refocus(() => keepOne(s))()}
+          onRemove={(s) => refocus(() => removeOne(s))()}
+          onRemoveAll={refocus(removeAll)}
+          onClose={refocus(() => setReview(null))}
         />
       )}
     </div>

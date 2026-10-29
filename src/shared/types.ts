@@ -316,6 +316,10 @@ export interface CaptionWord {
   text: string
   start: number
   end: number
+  /** Its times are a guess, shared out over the caption (stored with a cut made in the Transcript tab). */
+  estimated?: true
+  /** Deleted in the Transcript tab: cut by its own time while that time is cut, even outside its caption (edit-by-text.md §4.2). */
+  deleted?: true
 }
 
 /** One caption (a sentence or phrase) of the transcript, in source seconds. */

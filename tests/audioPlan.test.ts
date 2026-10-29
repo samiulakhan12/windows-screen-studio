@@ -60,14 +60,19 @@ describe('backwards compatibility', () => {
     clicks: { ...base, clicks: { times: [0.5, 4.9], volume: 1 } },
     m4a: { ...base, format: 'm4a', width: 0, height: 0, fps: 60, frames: 300, video: { kind: 'none' }, audio: { clips: [clips[0]], volume: 1.5 } }
   }
+  /** The earlier arguments with the intended change: no input's tags or chapters (an imported file's). */
+  const untagged = (args: string[]): string[] => {
+    const at = args.lastIndexOf('-movflags')
+    return [...args.slice(0, at), '-map_metadata:g', '-1', '-map_chapters', '-1', ...args.slice(at)]
+  }
   for (const [name, job] of Object.entries(cases)) {
-    it(`a project without stems, music, new settings or re-timed clips exports exactly as before (${name})`, () => {
-      expect(exportArgs(job, io)).toEqual(legacy[name])
+    it(`a project without stems, music, new settings or re-timed clips exports exactly as before, but for its inputs' tags (${name})`, () => {
+      expect(exportArgs(job, io)).toEqual(untagged(legacy[name]))
     })
   }
   it('zero fades, no noise reduction and no normalisation change nothing', () => {
     const job = { ...cases.cuts, fadeIn: 0, fadeOut: 0, audio: { clips: cuts, volume: 0.8, noiseReduction: 0, normalize: false } }
-    expect(exportArgs(job, io)).toEqual(legacy.cuts)
+    expect(exportArgs(job, io)).toEqual(untagged(legacy.cuts))
   })
 
   /**
@@ -91,15 +96,15 @@ describe('backwards compatibility', () => {
   }
   it('re-timed clips change only by being kept on their frames and cut to the exact samples of their video (audio)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 0.8 } }, io)
-    expect(args).not.toEqual(legacy.audio)
-    expect(args).toEqual(fixed(legacy.audio))
+    expect(args).not.toEqual(untagged(legacy.audio))
+    expect(args).toEqual(untagged(fixed(legacy.audio)))
     // 2x: atempo leads by 1/96 s; it gets twice that (in recording time: 1/24 s) of silence first and the first 1/96 s it returns is dropped.
     expect(args.join(' ')).toContain('atrim=end=2,adelay=delays=41.667:all=1,atempo=2,asetpts=PTS-STARTPTS,atrim=start_sample=500,asetpts=PTS-STARTPTS,apad=whole_len=48000,atrim=end_sample=48000[c1]')
     expect(args.join(' ')).toContain('atrim=end=1,adelay=delays=41.667:all=1,atempo=0.5,asetpts=PTS-STARTPTS,atrim=start_sample=2000,asetpts=PTS-STARTPTS,apad=whole_len=96000,atrim=end_sample=96000[c2]')
   })
   it('clicks over the recording change only by keeping its channel layout, at full level on each side (audioClicks)', () => {
     const args = exportArgs({ ...base, audio: { clips, volume: 1 }, clicks: { times: [0.5, 1, 4.2], volume: 0.6 } }, io)
-    expect(args).toEqual(fixed(legacy.audioClicks))
+    expect(args).toEqual(untagged(fixed(legacy.audioClicks)))
     expect(args.join(' ')).toContain(`[clk0]${STEREO},aresample=rematrix_maxval=1[clk];[rec][clk]amix`)
   })
 })

@@ -4,7 +4,9 @@
  * and the bundled RNNoise models, and keeps it in the project folder as voice-<key>.m4a.
  *
  * One render per project: a request for the same stem joins the running one, a request for
- * another stops it first. Renders report their progress, can be cancelled (the part file goes),
+ * another stops it first, unless a newer request has already started, joined or stopped a render
+ * of that project (requests are numbered as made; their checks can finish in another order).
+ * Renders report their progress, can be cancelled (the part file goes),
  * stop after a time proportional to the sound's length, and stop with the project's other work
  * (the editor closed, the project about to be deleted) and at quit.
  */
@@ -168,6 +170,10 @@ const exists = (file: string): Promise<boolean> =>
 
 export class VoiceCleaner {
   private readonly jobs = new Map<string, Job>()
+  /** Requests made so far: each `ensure` takes the next number before it waits for anything. */
+  private requests = 0
+  /** Per project, the newest request that started, joined or stopped a render. */
+  private readonly newest = new Map<string, number>()
 
   constructor(private readonly deps: VoiceCleanerDeps) {}
 
@@ -198,6 +204,8 @@ export class VoiceCleaner {
    */
   async ensure(id: unknown, source: unknown, strength: unknown, remake: unknown = false): Promise<string> {
     const args = checked(source, strength)
+    // Numbered before the first wait: two quick requests can finish their checks in either order.
+    const request = ++this.requests
     const at = await this.locate(id, args.source, args.strength)
     if (!at) throw new Error(args.source === 'mic' ? VOICE_COPY.missingMic : VOICE_COPY.missingMix)
     const file = voiceFileName(at.key)
@@ -210,7 +218,7 @@ export class VoiceCleaner {
     }
     for (;;) {
       const running = this.jobs.get(at.id)
-      if (running && running.key === at.key && !running.cancelled) return running.promise
+      if (running && running.key === at.key && !running.cancelled) return this.join(at.id, running, request)
       // A stem already made never stops another render (the export asking for this one while the
       // user waits for another strength).
       if (await exists(final)) {
@@ -221,11 +229,21 @@ export class VoiceCleaner {
       }
       // Looked at again after every wait: requests waiting on the same cancel must not each start one.
       const other = this.jobs.get(at.id)
-      if (other && other.key === at.key && !other.cancelled) return other.promise
+      if (other && other.key === at.key && !other.cancelled) return this.join(at.id, other, request)
+      // The user's latest choice wins: an older request whose checks finished last never starts a
+      // render or stops the one a newer request started, joined or stopped.
+      if ((this.newest.get(at.id) ?? 0) > request) throw new Error(VOICE_REPLACED)
+      this.newest.set(at.id, request)
       if (!other) return this.start(at.id, at.dir, at.input, at.key, args.source, args.strength)
       other.replaced = true
       await this.cancel(at.id)
     }
+  }
+
+  /** The running render's promise, for request number `request` of project `id`. */
+  private join(id: string, job: Job, request: number): Promise<string> {
+    if (request > (this.newest.get(id) ?? 0)) this.newest.set(id, request)
+    return job.promise
   }
 
   private start(id: string, dir: string, input: string, key: string, source: VoiceSource, strength: VoiceStrength): Promise<string> {

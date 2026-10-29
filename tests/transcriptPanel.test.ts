@@ -34,8 +34,30 @@ const log: { notices: string[]; selects: unknown[]; focused: string[]; scrolledI
 
 class FakeElement {}
 vi.stubGlobal('Element', FakeElement)
-vi.stubGlobal('window', { addEventListener: () => undefined, removeEventListener: () => undefined })
-const doc: { activeElement: unknown; body: object; elementFromPoint: () => null } = { activeElement: null, body: {}, elementFromPoint: () => null }
+/** A focusable element outside the word list (a button), in the Inspector. */
+class FakeHTMLElement extends FakeElement {
+  isConnected = true
+  closest(sel: string): unknown {
+    return sel === '.inspector' ? this : null
+  }
+}
+vi.stubGlobal('HTMLElement', FakeHTMLElement)
+/** Callbacks waiting on window.setTimeout, run by the test. */
+const timers: (() => void)[] = []
+vi.stubGlobal('window', { addEventListener: () => undefined, removeEventListener: () => undefined, setTimeout: (fn: () => void) => timers.push(fn) })
+/** The open tab's button on the Inspector's rail. */
+const railButton = {
+  focus(): void {
+    log.focused.push('rail button')
+    doc.activeElement = railButton
+  }
+}
+const doc: { activeElement: unknown; body: object; elementFromPoint: () => null; querySelector: (sel: string) => unknown } = {
+  activeElement: null,
+  body: {},
+  elementFromPoint: () => null,
+  querySelector: (sel) => (sel === '.inspector .insp-tabs button.active' ? railButton : null)
+}
 vi.stubGlobal('document', doc)
 
 let store: { state: Project; update: (fn: (p: Project) => Project) => void }
@@ -97,7 +119,9 @@ vi.doMock('react', async (importOriginal) => ({
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/editor/panels/TranscriptPanel'
+const ITEMS = '../src/renderer/src/editor/captionItems'
 const { TranscriptPanel } = (await import(/* @vite-ignore */ PANEL)) as { TranscriptPanel: (props: unknown) => unknown }
+const items = (await import(/* @vite-ignore */ ITEMS)) as { takeCaptionsRequest(): unknown }
 
 const RENDERED = new Set(['TranscriptPanel', 'TranscriptEditor', 'TranscriptIntro', 'ReviewSection'])
 
@@ -216,8 +240,11 @@ function pointerDown(i: number, shift = false): void {
   render()
 }
 
-/** A key pressed in the word list; whether the panel kept it from the editor's shortcuts. */
-function press(key: string, mods: { shift?: boolean; ctrl?: boolean; code?: string } = {}): boolean {
+/**
+ * A key pressed on `target` (the word list, a button): its own handler, then the tab's (no element
+ * between has one), as the key bubbles; whether the tab kept it from the editor's shortcuts.
+ */
+function keyDown(target: El, key: string, mods: { shift?: boolean; ctrl?: boolean; code?: string } = {}): boolean {
   let stopped = false
   const e = {
     key,
@@ -229,10 +256,13 @@ function press(key: string, mods: { shift?: boolean; ctrl?: boolean; code?: stri
     preventDefault: () => undefined,
     stopPropagation: () => void (stopped = true)
   }
-  ;(list().props.onKeyDown as (e: unknown) => void)(e)
+  const panel = render().find((el) => el.props.className === 'transcript-panel')!
+  for (const el of [target, panel]) if (!stopped) (el.props.onKeyDown as ((e: unknown) => void) | undefined)?.(e)
   render()
   return stopped
 }
+/** A key pressed in the word list. */
+const press = (key: string, mods: { shift?: boolean; ctrl?: boolean; code?: string } = {}): boolean => keyDown(list(), key, mods)
 
 const selectedWords = (): number[] =>
   render()
@@ -273,6 +303,7 @@ beforeEach(() => {
   playing = false
   player.time = 0
   doc.activeElement = null
+  timers.length = 0
   log.notices.length = 0
   log.selects.length = 0
   log.focused.length = 0
@@ -338,6 +369,59 @@ describe('the Transcript tab', () => {
     expect(log.selects).toContain(null)
   })
 
+  it('Find clears the timeline selection, and Delete on a review or toolbar button stays in the tab', () => {
+    // Two fillers, "um" and "uh".
+    useProject(10, [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works', 2.3, 2.6],
+        ['uh', 2.9, 3.1],
+        ['fine.', 3.4, 3.8]
+      ])
+    ])
+    render()
+    click('Find fillers and retakes')
+    expect(log.selects).toEqual([null])
+    // Tab to a row's buttons (or back to Find) and press Delete or Backspace, meaning "drop this one":
+    // nothing is cut, and the key never reaches the editor (which would delete its hidden selection).
+    const out = render()
+    const goTo = out.find((e) => e.type === 'button' && e.props.title === 'Go to it')!
+    for (const target of [goTo, button(out, 'Keep'), button(out, 'Remove'), button(out, 'Remove all'), button(out, 'Close'), button(out, 'Find fillers and retakes')])
+      for (const key of ['Delete', 'Backspace']) expect(keyDown(target, key), `${key} on ${textOf(target.props.children)}`).toBe(true)
+    expect(store.state.clips).toEqual([{ id: 'c', start: 0, end: 10, speed: 1 }])
+    expect(log.notices).toEqual(['Found 2 fillers and retakes'])
+    expect(render().filter((e) => e.type === 'li')).toHaveLength(2)
+    // With words selected, Delete there cuts them, as in the list.
+    pointerDown(2)
+    expect(keyDown(button(render(), 'Keep'), 'Delete')).toBe(true)
+    expect(log.notices.at(-1)).toMatch(/^Cut 1 word \(/)
+  })
+
+  it('Go to it clears the timeline selection, also on a review list kept from before that selection', () => {
+    useProject(10, [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works.', 2.3, 2.6]
+      ])
+    ])
+    render()
+    click('Find fillers and retakes')
+    // A clip clicked on the timeline (another tab), then the Transcript tab again: the list comes back
+    // without a Find, and the clip stays selected.
+    unmount()
+    log.selects.length = 0
+    const goTo = render().find((e) => e.type === 'button' && e.props.title === 'Go to it')!
+    // A mouse click leaves the focus on the page, where Delete is the editor's.
+    ;(goTo.props.onClick as (e: unknown) => void)({ detail: 1 })
+    render()
+    expect(player.time).toBe(1.5)
+    expect(log.selects).toEqual([null])
+  })
+
   it('Find, Earlier and Later give the focus back to the word list', () => {
     useProject(60, captions(45))
     render()
@@ -347,6 +431,55 @@ describe('the Transcript tab', () => {
       click(label)
       expect(log.focused, label).toEqual(['list'])
     }
+  })
+
+  it('Keep, Remove, Remove all and Close give the focus back to the word list, as their row or the list goes', () => {
+    // Two fillers, "um" and "uh".
+    const fillers = (): CaptionSegment[] => [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works', 2.3, 2.6],
+        ['uh', 2.9, 3.1],
+        ['fine.', 3.4, 3.8]
+      ])
+    ]
+    const rows = (): number => render().filter((e) => e.type === 'li').length
+    // A mouse click (detail 1), and Enter from the keyboard (detail 0).
+    for (const detail of [1, 0]) {
+      for (const [label, left] of [
+        ['Keep', 1],
+        ['Remove', 1],
+        ['Remove all', 0],
+        ['Close', 0]
+      ] as const) {
+        unmount()
+        useProject(10, fillers())
+        render()
+        click('Find fillers and retakes')
+        expect(rows()).toBe(2)
+        log.focused.length = 0
+        click(label, detail)
+        expect(rows(), label).toBe(left)
+        expect(log.focused, `${label} (detail ${detail})`).toEqual(['list'])
+      }
+    }
+  })
+
+  it('Make captions leaves the focus to the Captions tab, whose Cancel catches it once the providers are read', () => {
+    useProject(10, [])
+    // Enter on the button: the focus is on it, in the Inspector.
+    doc.activeElement = new FakeHTMLElement()
+    ;(button(render(), 'Make captions').props.onClick as (e: unknown) => void)({ detail: 0 })
+    expect(items.takeCaptionsRequest()).toEqual({ kind: 'generate' })
+    // The Captions tab replaces this one, and the focused button goes with it. Until the providers are read (an answer
+    // from the main process, a task of its own) that tab shows only "Checking this PC…": timers of 0 ms run first.
+    doc.activeElement = doc.body
+    timers.splice(0).forEach((run) => run())
+    // Then the run starts, and its Cancel catches the focus only where it fell to the page (as useCatchFocus does).
+    if (doc.activeElement === doc.body) log.focused.push('Cancel')
+    expect(log.focused).toEqual(['Cancel'])
   })
 
   it('the arrow keys start on the page chosen with Earlier and Later', () => {
@@ -509,6 +642,92 @@ describe('the Transcript tab', () => {
     player.time = 1.65
     render()
     expect(list.scrollTop).toBe(40)
+  })
+
+  it('Delete and Remove in captions without word timings store their times, and the review list stays, also across undo', () => {
+    // A caption with no word timings (a provider that gives none): every word time is estimated.
+    const untimed = (): CaptionSegment[] => [{ id: 'a', start: 1, end: 4, text: 'So um this works uh fine.' }]
+    const rows = (): number => render().filter((e) => e.type === 'li').length
+    useProject(10, untimed())
+    render()
+    click('Find fillers and retakes')
+    expect(rows()).toBe(2)
+    const before = store.state
+    click('Remove')
+    // The times the cut was made by are kept with it (one store update), and the other row stays.
+    const words = store.state.transcript!.segments[0].words!
+    expect(words.map((w) => w.text)).toEqual(['So', 'um', 'this', 'works', 'uh', 'fine.'])
+    expect(store.state.clips).not.toBe(before.clips)
+    expect(rows()).toBe(1)
+    // Undo with the tab open, and with it closed: the removed row comes back.
+    const removed = store.state
+    store.state = before
+    expect(rows()).toBe(2)
+    store.state = removed
+    expect(rows()).toBe(1)
+    unmount()
+    store.state = before
+    expect(rows()).toBe(2)
+    // Delete on a word does the same.
+    unmount()
+    useProject(10, untimed())
+    pointerDown(3)
+    press('Delete')
+    expect(store.state.transcript!.segments[0].words?.length).toBe(6)
+    expect(store.state.clips.length).toBe(2)
+  })
+
+  it('Delete on guessed words inside a timeline cut marks them deleted (struck through) without changing the clips', () => {
+    // A caption without word timings across a Smart speed cut of 11.85-13.75 s: its guesses there may still be heard, so not struck.
+    const cutAt = (): Clip[] => [
+      { id: 'c', start: 0, end: 11.85, speed: 1 },
+      { id: 'd', start: 13.75, end: 30, speed: 1 }
+    ]
+    useProject(30, [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and pick a folder for your recordings' }], cutAt())
+    const struck = (): string[] =>
+      render()
+        .filter((e) => e.props.role === 'option' && String(e.props.className).split(' ').includes('cut'))
+        .map((e) => textOf(e.props.children).trim())
+    expect(struck()).toEqual([])
+    const clips = store.state.clips
+    pointerDown(5)
+    press('Delete')
+    // One update: the word marked and its caption's times stored, the clips as they were.
+    expect(store.state.clips).toBe(clips)
+    expect(store.state.transcript!.segments[0].words!.filter((w) => w.deleted).map((w) => w.text)).toEqual(['pick'])
+    expect(struck()).toEqual(['pick'])
+    expect(log.notices).toEqual(['Cut 1 word (0.0 s)'])
+    // Again: it is cut now.
+    press('Delete')
+    expect(log.notices[1]).toBe('Already cut. Press Restore to bring it back')
+  })
+
+  it('Find lists a filler shown kept whose guessed time a timeline cut covers; Remove and Remove all mark it deleted without changing the clips', () => {
+    // The Smart speed cut of 11.85-13.75 s covers the guess for "um" (12.9-13.2 s), which may still be heard.
+    for (const label of ['Remove', 'Remove all']) {
+      unmount()
+      useProject(30, [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and um pick a folder for your recordings' }], [
+        { id: 'c', start: 0, end: 11.85, speed: 1 },
+        { id: 'd', start: 13.75, end: 30, speed: 1 }
+      ])
+      const struck = (): string[] =>
+        render()
+          .filter((e) => e.props.role === 'option' && String(e.props.className).split(' ').includes('cut'))
+          .map((e) => textOf(e.props.children).trim())
+      const rows = (): number => render().filter((e) => e.type === 'li').length
+      expect(struck()).toEqual([])
+      click('Find fillers and retakes')
+      expect(log.notices.at(-1)).toBe('Found 1 filler or retake')
+      expect(rows()).toBe(1)
+      const clips = store.state.clips
+      click(label)
+      // One update: the word marked and its caption's times stored, the clips as they were.
+      expect(store.state.clips).toBe(clips)
+      expect(store.state.transcript!.segments[0].words!.filter((w) => w.deleted).map((w) => w.text)).toEqual(['um'])
+      expect(struck()).toEqual(['um'])
+      expect(log.notices.at(-1)).toBe('Removed 1 (0.0 s)')
+      expect(rows()).toBe(0)
+    }
   })
 
   it('keeps the review list while the tab is closed, and nothing of it once the editor is gone', async () => {

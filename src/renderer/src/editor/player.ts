@@ -118,6 +118,8 @@ export class PreviewPlayer {
   private frameHandle = 0
   private pendingSeek: number | null = null
   private jumpTarget: number | null = null
+  /** The clip start the video was just sent to (a jump, or playback from it); see onVideoFrame. */
+  private landing: number | null = null
   private speedSetting: PreviewSpeed = sessionPreviewSpeed
   private shuttleNow: Shuttle = STOPPED
   /**
@@ -270,6 +272,7 @@ export class PreviewPlayer {
       this.holdFrom = from.time - this.frame / 2
       this.setRate(clips[from.index].speed)
       this.jumpTarget = null
+      this.landing = from.time === clips[from.index].start ? from.time : null
       this.clickSounds.restart(from.time)
       this.screen.currentTime = from.time
       this.sound.jump(from.time, this.rateFor(clips[from.index].speed))
@@ -301,6 +304,7 @@ export class PreviewPlayer {
     this.time = from.time
     this.pendingSeek = null
     this.jumpTarget = null
+    this.landing = from.time === clips[from.index].start ? from.time : null
     this.setRate(clips[from.index].speed)
     if (Math.abs(this.screen.currentTime - from.time) > 1e-3) this.screen.currentTime = from.time
     this.syncWebcam(from.time, true)
@@ -483,7 +487,7 @@ export class PreviewPlayer {
   private onVideoFrame = (_now: number, meta?: VideoFrameCallbackMetadata): void => {
     this.frameHandle = 0
     if (!this.playing || this.disposed) return
-    const t = meta ? meta.mediaTime : this.screen.currentTime
+    let t = meta ? meta.mediaTime : this.screen.currentTime
     const clips = this.project.clips
     if (this.jumpTarget !== null) {
       // Frames decoded before the jump landed belong to the cut: never show them.
@@ -493,9 +497,24 @@ export class PreviewPlayer {
       }
       this.jumpTarget = null
     }
-    const i = clipIndexAt(clips, t)
+    const landed = this.landing
+    this.landing = null
+    let i = clipIndexAt(clips, t)
+    // A jump (or playback from a clip's start) lands on the frame covering it, just before it: that
+    // is the clip's first frame, even when it is also the last frame of the clip before (a cut
+    // shorter than a frame, its two ends in the same frame).
+    if (landed !== null && t < landed && landed - t < this.frame - 1e-6) {
+      t = landed
+      i = clipIndexAt(clips, landed)
+    }
+    const next = i < 0 ? playableFrom(clips, t) : null
+    // A clip that starts between two frames (a transcript cut) first shows the frame covering its
+    // start, whose time is just before it: that is the clip's first frame, not one to jump from again.
+    if (next && next.time - t < this.frame - 1e-6) {
+      t = next.time
+      i = next.index
+    }
     if (i < 0) {
-      const next = playableFrom(clips, t)
       if (next) this.jumpTo(next.time, next.index)
       else this.finish()
       if (this.playing) this.scheduleFrame()
@@ -537,6 +556,7 @@ export class PreviewPlayer {
 
   private jumpTo(time: number, index: number): void {
     this.jumpTarget = time
+    this.landing = time
     // Clicks in the cut are skipped; the next clip's clicks play from its start.
     this.clickSounds.restart(time)
     this.setRate(this.project.clips[index].speed)
@@ -560,6 +580,7 @@ export class PreviewPlayer {
     if (!this.rev) this.shuttleNow = STOPPED
     this.cancelFrame()
     this.jumpTarget = null
+    this.landing = null
     if (!this.screen.paused) this.screen.pause()
     if (this.webcam && !this.webcam.paused) this.webcam.pause()
     this.sound.pause()

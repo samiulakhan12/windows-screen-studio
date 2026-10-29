@@ -121,7 +121,11 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   `<app>\…`, `<temp>\…`); **any other absolute path** (Windows drive, UNC, POSIX) becomes `<path>`.
   The user name therefore never appears (it is in every home path); as a last guard the home
   folder and the account name are replaced literally (any case, any separators) by `<path>` / `<user>`. File contents are never logged:
-  only the lines the app already prints, and those never contain file contents.
+  only the lines the app already prints, and those never contain file contents. A failed ffmpeg
+  run logs ffmpeg's report without its `Metadata:` blocks, dropped line by line as ffmpeg writes
+  them, so keeping only the head and tail of a long report never splits a block (`metadataLines`
+  in `src/main/recording/proxyRunner.ts`): an imported phone video's tags (GPS location, make and
+  model, author, comments, chapter titles) are never logged.
 * *Rejected:* `electron-log` (a new dependency for 150 lines of code), Crashpad uploads (no
   server, and privacy).
 * The log is also redacted again when read for diagnostics (defence in depth: a log written by an
@@ -135,8 +139,9 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   vendor and device ids, driver version, plus `getGPUFeatureStatus()`); the detected H.264 encoders
   (`detectH264Encoders`); the capture helper's probe (`probeNativeCapture`: supported, window capture,
   cursor and border toggles, its encoders, reason); the capture method last used (the newest
-  project's `capture.method` and `target`, and whether its cursor is in the video); the number of
-  recordings; and the **last 300 log lines**.
+  project's `capture.method` and `target`, and whether its cursor is in the video; imported videos
+  and copies are passed over, since an import was never captured and a copy is dated when it was
+  made); the number of recordings; and the **last 300 log lines**.
 * Settings › Diagnostics: **Show diagnostics** fetches the text and shows it in a read-only box;
   **Copy diagnostics** then copies exactly that text (main's `clipboard.writeText` of the report it
   made itself, by id; the page never hands main text to copy). **Open log folder** opens
@@ -148,11 +153,21 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   project folders (`rec-…` names, `ID_RE`), each at most **8 levels deep and 20 000 entries**
   (a folder past that is reported as "at least" its counted size). Symbolic links and junctions are
   **never followed** (`lstat`); they count as their own size. Legacy roots (`brandMigration.ts`) are not
-  scanned: they are outside the projects folder and the clean-up must never touch them.
+  listed: they are outside the projects folder and the clean-up must never touch them. They are only
+  read for the names a shared file has there (below).
 * Per recording: name (from `project.json`), created, **last used**, total bytes, of which
   **caches** (`.cache/`) and the rest; unfinished recordings (no `project.json`) are listed as
   "Unfinished" and are never part of a rule (Home's Unfinished recordings list handles them).
   Free and total disk space come from `fs.statfs`.
+* **Files with several names** (Duplicate hard-links the media into a copy, vertical-video.md
+  §4.7) take their bytes once: a file whose link count is above 1 is identified by its drive and
+  file id (`lstat` with bigints, as NTFS ids pass 2^53) and counted once in a folder and once in the
+  total. Each row still shows what its folder holds, with "· 1.9 GB shared with a copy". A removal
+  is offered at the bytes it frees by itself (files with a name in another recording stay), and the
+  review's totals and the result's "freed" count a shared file only when every one of its names
+  goes. Only names in recording folders the library lists count (the projects folder and the legacy
+  roots): once an original is in the Recycle Bin, its copy holds the media alone and is offered at
+  its full size, while an original still in a legacy root keeps holding them.
 * **Last used** = the later of: `project.json`'s modification time (every edit autosaves it) and
   the last time the editor opened it, noted in `userData/storage.json` (`storage:opened` from
   `Editor.tsx`, one additive line). An export needs the recording open, so it counts through that. *Rejected:* the file's access time (NTFS often does not update it), and a field in
@@ -370,7 +385,12 @@ Unit (vitest; each fails without its code):
 * `redact.test.ts` — keys, tokens, e-mails, Windows/UNC/POSIX paths, app roots kept relative.
 * `appLog.test.ts` — rotation at the cap, line cap, buffering, redaction on write.
 * `diagnostics.test.ts` — report with fake probes, timeouts → "unavailable", last-used capture.
-* `storageRules.test.ts` — last used, cache rule, remove rule, open/unfinished excluded, sanitising.
+* `storageRules.test.ts` — last used, cache rule, remove rule, open/unfinished excluded, sanitising,
+  shared files counted once and freed only with every name.
+* `storageDuplicate.test.ts` — after Duplicate, the linked media count once in the total, a removal
+  offers and frees only its own files, a pair removed together frees the media, a copy whose
+  original is in the Recycle Bin is offered at, and frees, its full size, and a copy whose original
+  is in a legacy root frees only its own files.
 * `storageMain.test.ts` — scan sizes, no symlink follow, depth/entry caps, trash plan recomputed,
   paths outside root and links refused, no permanent delete on trash failure, store load/save.
 * `exportBundle.test.ts` — names, kinds per format, chapter parts (cuts, speed, freezes, first at

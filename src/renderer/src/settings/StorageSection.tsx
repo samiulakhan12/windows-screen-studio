@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { StorageCleanupResult, StorageOverview } from '../../../shared/api/storage'
-import { CACHE_DAY_CHOICES, formatBytes, REMOVE_DAY_CHOICES, usedAgo, type CleanupItem, type StorageRules } from '../../../shared/storage/rules'
+import { CACHE_DAY_CHOICES, formatBytes, freedBytes, REMOVE_DAY_CHOICES, sharedBytes, usedAgo, type CleanupItem, type SharedFile, type StorageRules } from '../../../shared/storage/rules'
 import { ipcMessage } from './providerText'
 
 /** Recordings listed before "Show all". */
@@ -10,6 +10,8 @@ const SHOWN = 8
 export const PROJECTS_CHANGED_EVENT = 'ssw:projects-changed'
 
 const keyOf = (i: Pick<CleanupItem, 'id' | 'action'>): string => `${i.action}:${i.id}`
+/** " · 1.9 GB shared with a copy" for files a recording shares with another (Duplicate links its media). */
+const sharedNote = (files: readonly SharedFile[] | undefined): string => (files?.length ? ` · ${formatBytes(sharedBytes(files))} shared with a copy` : '')
 const dateOf = (iso: string): string => {
   const d = new Date(iso)
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
@@ -89,7 +91,7 @@ export function StorageSection(): JSX.Element {
   const rules = overview?.rules
   const list = overview ? (all ? overview.recordings : overview.recordings.slice(0, SHOWN)) : []
   const chosen = plan?.filter((i) => ticked.has(keyOf(i))) ?? []
-  const chosenBytes = chosen.reduce((n, i) => n + i.bytes, 0)
+  const chosenBytes = freedBytes(chosen)
   const groups = plan ? (['remove', 'caches'] as const).map((action) => ({ action, items: plan.filter((i) => i.action === action) })).filter((g) => g.items.length) : []
 
   return (
@@ -124,6 +126,7 @@ export function StorageSection(): JSX.Element {
                   <span className="storage-meta">
                     {r.finished ? `${dateOf(r.createdAt)} · used ${usedAgo(r.lastUsed, overview.now)}` : 'Unfinished'}
                     {r.cacheBytes > 0 ? ` · incl. ${formatBytes(r.cacheBytes)} cache` : ''}
+                    {sharedNote(r.shared)}
                   </span>
                   <span className="storage-size">
                     {r.capped ? 'at least ' : ''}
@@ -191,7 +194,7 @@ export function StorageSection(): JSX.Element {
                   <fieldset key={g.action} className="storage-group">
                     <legend>
                       {g.action === 'remove' ? 'Move to the Recycle Bin' : 'Clear caches'} ({g.items.length} recording{g.items.length === 1 ? '' : 's'},{' '}
-                      {formatBytes(g.items.reduce((n, i) => n + i.bytes, 0))})
+                      {formatBytes(freedBytes(g.items))})
                     </legend>
                     {g.items.map((i) => (
                       <label key={keyOf(i)} className="storage-check storage-item">
@@ -208,6 +211,7 @@ export function StorageSection(): JSX.Element {
                         <span className="storage-name">{i.name}</span>
                         <span className="storage-meta">
                           {dateOf(i.createdAt)} · used {usedAgo(i.lastUsed, overview.now)}
+                          {sharedNote(i.shared)}
                         </span>
                         <span className="storage-size">{formatBytes(i.bytes)}</span>
                       </label>

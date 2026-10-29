@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
+import { readTranscript } from '../src/shared/captions/captionData'
+import { applyTextResult, captionDragBounds, dragCaptionTimes, mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
+import { validateSegmentsAnswer, validateTextRequest } from '../src/shared/captions/transcriptText'
+import { EditStore } from '../src/shared/editor/editStore'
+import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
+import { anchorCutWords, cutFlags, cutWords, restoreWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
+import { applySuggestions, reviewSuggestions } from '../src/shared/editor/transcriptReview'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
-import type { CaptionSegment, Clip } from '../src/shared/types'
+import { cutRange, removeClip, setTrimEnd, setTrimStart, splitAt } from '../src/shared/engine/timeline'
+import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
 const seg = (id: string, start: number, end: number, text: string, words?: CaptionSegment['words']): CaptionSegment => ({ id, start, end, text, ...(words && { words }) })
@@ -58,10 +66,685 @@ describe('outputCues: captions in output time', () => {
     expect(c.text).toBe('keep kept')
   })
 
+  it('leaves out a word deleted in the Transcript tab when the text no longer matches its word timings, or has none', () => {
+    const timed = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.1, end: 1.5 },
+      { text: 'I', start: 2, end: 2.1 },
+      { text: 'think', start: 2.15, end: 2.5 },
+      { text: 'alot', start: 2.6, end: 3 },
+      { text: 'works.', start: 3.1, end: 3.6 }
+    ]
+    // "alot" fixed to "a lot" in the Captions tab (7 words, 6 timings); and a provider that gave no word timings.
+    for (const caption of [seg('a', 0.4, 3.8, 'So um, I think a lot works.', timed), seg('a', 0.4, 3.8, 'So um, I think a lot works.')]) {
+      const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
+      const words = transcriptWords(transcript)
+      const um = words.findIndex((w) => w.text === 'um,')
+      // Deleted as the Transcript tab does it (the cut, and the estimated times stored with it).
+      const clips = cutWords([clip(0, 10)], words, [[um, um]], 10)
+      const segments = anchorCutWords(transcript, [clip(0, 10)], clips)!.segments
+      // What the tab shows after the delete: the words of the transcript it stored.
+      const shown = transcriptWords({ ...transcript, segments })
+      const flags = cutFlags(shown, clips)
+      expect(shown.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
+      const [c] = outputCues(segments, clips)
+      expect(c.text).toBe('So I think a lot works.')
+      expect(subtitleFile(segments, clips, 'srt')).not.toContain('um,')
+    }
+  })
+
+  it('leaves out words with guessed times deleted in the Transcript tab, in a caption with word timings', () => {
+    // "alot" fixed to "a lot" in the Captions tab: "a" and "lot" have guessed times. Both deleted in the tab.
+    const caption = seg('w', 0.4, 3.8, 'So um, I think a lot works.', [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.1, end: 1.5 },
+      { text: 'I', start: 2, end: 2.1 },
+      { text: 'think', start: 2.15, end: 2.5 },
+      { text: 'alot', start: 2.6, end: 3 },
+      { text: 'works.', start: 3.1, end: 3.6 }
+    ])
+    const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
+    const words = transcriptWords(transcript)
+    const a = words.findIndex((w) => w.text === 'a')
+    const clips = cutWords([clip(0, 10)], words, [[a, a + 1]], 10)
+    const segments = anchorCutWords(transcript, [clip(0, 10)], clips)!.segments
+    expect(outputCues(segments, clips)[0].text).toBe('So um, I think works.')
+  })
+
+  it('keeps a word deleted in the Transcript tab out after the caption without word timings is edited', () => {
+    const caption = seg('g', 0.4, 3.8, 'So um, I thnk it works.')
+    const transcript = { provider: 'gemini', model: '', createdAt: '', segments: [caption] } as Transcript
+    const words = transcriptWords(transcript)
+    const um = words.findIndex((w) => w.text === 'um,')
+    const clips = cutWords([clip(0, 10)], words, [[um, um]], 10)
+    const [deleted] = anchorCutWords(transcript, [clip(0, 10)], clips)!.segments
+    expect(outputCues([deleted], clips)[0].text).toBe('So I thnk it works.')
+    // Then, in the Captions tab: a typo fixed, the full stop taken off, the end dragged earlier.
+    for (const [edited, text] of [
+      [withCaptionText(deleted, 'So um, I think it works.'), 'So I think it works.'],
+      [withCaptionText(deleted, 'So um, I thnk it works'), 'So I thnk it works'],
+      [retimeWords(deleted, { start: 0.4, end: 3.6 }), 'So I thnk it works.']
+    ] as const) {
+      const after = transcriptWords({ ...transcript, segments: [edited] })
+      const flags = cutFlags(after, clips)
+      expect(after.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
+      expect(outputCues([edited], clips)[0].text).toBe(text)
+      expect(subtitleFile([edited], clips, 'srt')).not.toContain('um,')
+    }
+  })
+
+  it('keeps a word deleted in the Transcript tab out after its caption is merged or split in the Captions tab', () => {
+    const full = [clip(0, 30)]
+    const tabDelete = (segments: CaptionSegment[], text: string): { segments: CaptionSegment[]; clips: Clip[] } => {
+      const transcript = { provider: 'gemini', model: '', createdAt: '', segments } as Transcript
+      const words = transcriptWords(transcript)
+      const i = words.findIndex((w) => w.text === text)
+      const clips = cutWords(full, words, [[i, i]], 30)
+      return { segments: anchorCutWords(transcript, full, clips)!.segments, clips }
+    }
+    // Captions without word timings; and one with them, "alot" fixed to "a lot" before the delete.
+    const untimed = tabDelete([seg('a', 0.4, 3.8, 'So um, I think it works.'), seg('b', 4, 6, 'Let me show you.')], 'um,')
+    const whisper = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.0, end: 1.5 },
+      { text: 'I', start: 1.9, end: 2.0 },
+      { text: 'think', start: 2.0, end: 2.4 },
+      { text: 'alot', start: 2.5, end: 2.9 },
+      { text: 'works.', start: 3.0, end: 3.6 }
+    ]
+    const next = seg('b', 4, 5, 'Next one.', [
+      { text: 'Next', start: 4, end: 4.4 },
+      { text: 'one.', start: 4.5, end: 4.9 }
+    ])
+    const timed = tabDelete([withCaptionText(seg('a', 0.4, 3.8, 'So um, I think alot works.', whisper), 'So um, I think a lot works.'), next], 'um,')
+    const cases: [CaptionSegment[], Clip[], string[]][] = [
+      [mergeWithNext(untimed.segments, 'a')!, untimed.clips, ['So I think it works. Let me show you.']],
+      [splitCaption(timed.segments, 'a', 2.45)!, timed.clips, ['So I think', 'a lot works.', 'Next one.']],
+      [mergeWithNext(timed.segments, 'a')!, timed.clips, ['So I think a lot works. Next one.']]
+    ]
+    for (const [segments, clips, cues] of cases) {
+      expect(outputCues(segments, clips).map((c) => c.text)).toEqual(cues)
+      const words = transcriptWords({ provider: 'gemini', model: '', createdAt: '', segments })
+      const flags = cutFlags(words, clips)
+      expect(words.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
+    }
+  })
+
+  it('keeps a word deleted in the Transcript tab out after Fix captions changes the number of words', () => {
+    const full = [clip(0, 30)]
+    const whisper = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.0, end: 1.5 },
+      { text: 'I', start: 1.9, end: 2.0 },
+      { text: 'think', start: 2.0, end: 2.4 },
+      { text: 'alot', start: 2.5, end: 2.9 },
+      { text: 'works.', start: 3.0, end: 3.6 }
+    ]
+    // With word timings, and without (every time a guess).
+    for (const caption of [seg('a', 0.4, 3.8, 'So um, I think alot works.', whisper), seg('a', 0.4, 3.8, 'So um, I think alot works.')]) {
+      const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
+      const words = transcriptWords(transcript)
+      const um = words.findIndex((w) => w.text === 'um,')
+      const clips = cutWords(full, words, [[um, um]], 30)
+      const deleted = anchorCutWords(transcript, full, clips)!.segments
+      // The clean-up as it goes: the request checked in the main process, the answer checked there, then applied here.
+      const request = validateTextRequest({ task: 'cleanup', segments: deleted })
+      const answer = validateSegmentsAnswer('cleanup', request.segments, { segments: [{ id: 'a', text: 'So, um, I think a lot works.' }] })
+      const fixed = applyTextResult(deleted, answer)!
+      expect(outputCues(fixed, clips)[0].text).toBe('So, I think a lot works.')
+    }
+  })
+
+  it('keeps every word of a caption without word timings across a timeline cut or trim (a guess never drops a heard word)', () => {
+    // A pause cut by Smart speed > Silences, a trim at the start, and an untimed translation (CAP-6).
+    const cases: [CaptionSegment, Clip[]][] = [
+      [seg('a', 10, 17, 'Now open the settings and pick a folder for your recordings'), [clip(0, 11.85), clip(13.75, 20)]],
+      [seg('b', 0, 5, 'Hi everyone, welcome back to the channel'), [clip(2, 10)]],
+      [seg('c', 0, 3, 'el coche rojo es muy rápido'), [clip(0, 0.9), clip(1.8, 10)]]
+    ]
+    for (const [caption, clips] of cases) expect(outputCues([caption], clips)[0].text).toBe(caption.text)
+  })
+
+  it('keeps the guessed words of a caption without word timings across a timeline cut after one was deleted in the Transcript tab', () => {
+    const transcript = { provider: 'gemini', model: '', createdAt: '', segments: [seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')] } as Transcript
+    const full = [clip(0, 30)]
+    const tabDelete = (clips: Clip[], text: string): { segments: CaptionSegment[]; clips: Clip[] } => {
+      const words = transcriptWords(transcript)
+      const i = words.findIndex((w) => w.text === text)
+      const cut = cutWords(clips, words, [[i, i]], 30)
+      return { segments: anchorCutWords(transcript, clips, cut)!.segments, clips: cut }
+    }
+    // Smart speed > Silences cuts the pause at 11.85-13.75 s, where the guesses put "settings and pick a".
+    const silences = (clips: Clip[]): Clip[] => cutRange(clips, 11.85, 13.75)
+    const deleted = tabDelete(full, 'Now')
+    // "Now" deleted, then the pause cut; the pause cut, then "Now" deleted.
+    for (const { segments, clips } of [{ ...deleted, clips: silences(deleted.clips) }, tabDelete(silences(full), 'Now')]) {
+      expect(outputCues(segments, clips)[0].text).toBe('open the settings and pick a folder for your recordings')
+      // Also after the project is saved and opened again.
+      const reopened = readTranscript(JSON.parse(JSON.stringify({ ...transcript, segments })), 30)!
+      expect(outputCues(reopened.segments, clips)[0].text).toBe('open the settings and pick a folder for your recordings')
+    }
+  })
+
   it('never overlaps and drops slivers', () => {
     const cues = outputCues([seg('a', 1, 2.02, 'a'), seg('b', 2, 3, 'b'), seg('c', 4.99, 5.02, 'tiny')], [clip(0, 5)])
     expect(cues.map((c) => c.text)).toEqual(['a', 'b'])
     expect(cues[0].end).toBeLessThanOrEqual(cues[1].start)
+  })
+})
+
+describe('deleted words: the Transcript tab and the subtitle files agree (edit-by-text.md §4.2)', () => {
+  const DURATION = 30
+  /** An open editor's store, with the editor's own settle. */
+  const open = (segments: CaptionSegment[], provider: Transcript['provider'] = 'gemini'): EditStore<Project> =>
+    new EditStore({ duration: DURATION, clips: [clip(0, DURATION)], transcript: { provider, model: '', createdAt: '', segments } } as unknown as Project, undefined, undefined, undefined, settleDeletedWords)
+  const wordsOf = (p: Project) => transcriptWords(p.transcript)
+  /** The words the tab strikes through. */
+  const struck = (p: Project): string[] => {
+    const w = wordsOf(p)
+    const f = cutFlags(w, p.clips)
+    return w.filter((_, i) => f[i]).map((x) => x.text)
+  }
+  /** The cues of the subtitle file; checked against the tab: it holds exactly the words not struck through. */
+  const srt = (p: Project): string[] => {
+    const cues = outputCues(p.transcript!.segments, p.clips).map((c) => c.text)
+    const w = wordsOf(p)
+    const f = cutFlags(w, p.clips)
+    expect(cues.join(' ').split(' ').filter(Boolean)).toEqual(w.filter((_, i) => !f[i]).map((x) => x.text))
+    const file = subtitleFile(p.transcript!.segments, p.clips, 'srt').replace(/\n/g, ' ')
+    for (const cue of cues) expect(file).toContain(cue)
+    return cues
+  }
+  const marked = (p: Project): string[] => wordsOf(p).filter((w) => w.deleted).map((w) => w.text)
+  const at = (p: Project, text: string): number => {
+    const i = wordsOf(p).findIndex((w) => w.text === text)
+    expect(i).toBeGreaterThanOrEqual(0)
+    return i
+  }
+  const same = (a: Clip[], b: Clip[]): boolean => a.length === b.length && a.every((c, i) => c.start === b[i].start && c.end === b[i].end && c.speed === b[i].speed)
+  /** Delete in the Transcript tab on words `from..to` (TranscriptPanel's cut): the cut and the marks in one update. */
+  const tabDelete = (s: EditStore<Project>, from: string, to = from): void => {
+    const w = wordsOf(s.state)
+    const span = [at(s.state, from), at(s.state, to)] as const
+    s.update((p) => {
+      const cut = cutWords(p.clips, w, [span], p.duration)
+      return { ...p, clips: same(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, [span]) }
+    })
+  }
+  /** Restore in the Transcript tab (the clips only; the store's settle takes the mark off). */
+  const tabRestore = (s: EditStore<Project>, text: string): void => {
+    const w = wordsOf(s.state)
+    const i = at(s.state, text)
+    s.update((p) => ({ ...p, clips: restoreWords(p.clips, w, i, i, p.duration) }))
+  }
+  const restoreAll = (s: EditStore<Project>): void => s.update((p) => ({ ...p, clips: [{ ...p.clips[0], start: 0, end: p.duration, speed: 1 }] }))
+  const timelineCut = (s: EditStore<Project>, from: number, to: number): void => s.update((p) => ({ ...p, clips: cutRange(p.clips, from, to) }))
+  /** Clip tab > Smart speed > Silences, Cut, defaults: with speech at 10-11.6 s and 14-17 s it cuts the pause at 11.85-13.75 s. */
+  const silences = (s: EditStore<Project>): void =>
+    s.update((p) => {
+      const heard = [{ start: 0.5, end: 9.5 }, { start: 10, end: 11.6 }, { start: 14, end: 17 }, { start: 18, end: 29 }]
+      const plan = planSilences(heard, p.clips, { minLength: 1, padding: 0.25 }, 'cut')
+      return { ...p, clips: applySmartSpeed(p.clips, plan.parts.flatMap((part) => part.pieces), 'cut') }
+    })
+  const editCaptions = (s: EditStore<Project>, fn: (segments: CaptionSegment[]) => CaptionSegment[]): void =>
+    s.update((p) => ({ ...p, transcript: { ...p.transcript!, segments: fn(p.transcript!.segments) } }))
+
+  const SENTENCE = 'Now open the settings and pick a folder for your recordings'
+  const gemini = (): CaptionSegment => seg('g', 10, 17, SENTENCE)
+  const whisperWords = (): NonNullable<CaptionSegment['words']> => [
+    { text: 'So', start: 0.4, end: 0.7 },
+    { text: 'um,', start: 1.0, end: 1.5 },
+    { text: 'I', start: 1.9, end: 2.0 },
+    { text: 'think', start: 2.0, end: 2.4 },
+    { text: 'alot', start: 2.5, end: 2.9 },
+    { text: 'works.', start: 3.0, end: 3.6 }
+  ]
+
+  it('R1: a word deleted then brought back (Restore, Restore the whole recording, the timeline) is a guess again, which a Silences cut leaves in', () => {
+    const restores: ((s: EditStore<Project>) => void)[] = [(s) => tabRestore(s, 'settings'), restoreAll, (s) => s.update((p) => ({ ...p, clips: [clip(0, DURATION)] }))]
+    for (const restore of restores) {
+      const s = open([gemini()])
+      tabDelete(s, 'settings')
+      expect(struck(s.state)).toEqual(['settings'])
+      expect(srt(s.state)).toEqual(['Now open the and pick a folder for your recordings'])
+      const deleted = s.state
+      restore(s)
+      expect(marked(s.state)).toEqual([])
+      expect(srt(s.state)).toEqual([SENTENCE])
+      // Undo brings back the cut and the mark together (one step); redo takes both off again.
+      s.undo()
+      expect(s.state).toBe(deleted)
+      s.redo()
+      expect(marked(s.state)).toEqual([])
+      silences(s)
+      expect(struck(s.state)).toEqual([])
+      expect(srt(s.state)).toEqual([SENTENCE])
+    }
+  })
+
+  it('a trim drag that passes over a deleted word and ends with it still cut keeps it deleted; one that ends with it kept brings it back', () => {
+    /** The timeline's trim drag (Timeline.tsx onTrimDown): one gesture, each move worked out from the clips at pointer-down. */
+    const trimDrag = (s: EditStore<Project>, edge: 'start' | 'end', path: number[]): void => {
+      const initial = s.state.clips
+      s.beginGesture()
+      for (const t of path) {
+        const next = edge === 'start' ? setTrimStart(initial, t) : setTrimEnd(initial, t, DURATION)
+        s.update((p) => (same(p.clips, next) ? p : { ...p, clips: next }), `trim-${edge}`)
+      }
+      s.endGesture()
+    }
+    const um = (): CaptionSegment => seg('u', 0.3, 4, 'Um, so today I will show you the settings.')
+    const rest = 'so today I will show you the settings.'
+    // "Um," deleted, then the start handle dragged left past it and back: to where it was, or further right.
+    for (const end of [0, 0.07]) {
+      const s = open([um()])
+      tabDelete(s, 'Um,')
+      const deleted = s.state
+      const from = deleted.clips[0].start
+      trimDrag(s, 'start', [from - 0.2, 0.1, from - 0.1, from + end])
+      expect(s.state.clips[0].start).toBeCloseTo(from + end, 9)
+      expect(marked(s.state)).toEqual(['Um,'])
+      expect(struck(s.state)).toEqual(['Um,'])
+      expect(srt(s.state)).toEqual([rest])
+      // One undo step back to the delete.
+      s.undo()
+      expect(s.state).toBe(deleted)
+    }
+    // Released with it kept: a guess again.
+    const s = open([um()])
+    tabDelete(s, 'Um,')
+    trimDrag(s, 'start', [0.2, 0.4, 0.1])
+    expect(marked(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual(['Um, so today I will show you the settings.'])
+    // The end handle, after the last word deleted.
+    const t = open([seg('t', 26, 29.8, 'Thanks for watching, see you um')])
+    tabDelete(t, 'um')
+    const last = t.state.clips[0].end
+    trimDrag(t, 'end', [last + 0.2, DURATION, last + 0.1, last - 0.05])
+    expect(marked(t.state)).toEqual(['um'])
+    expect(srt(t.state)).toEqual(['Thanks for watching, see you'])
+  })
+
+  it('R2: after a Silences cut, words deleted in the tab are marked though their guessed times were already cut', () => {
+    const s = open([gemini()])
+    silences(s)
+    expect(struck(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual([SENTENCE])
+    tabDelete(s, 'the', 'settings')
+    expect(marked(s.state)).toEqual(['the', 'settings'])
+    expect(struck(s.state)).toEqual(['the', 'settings'])
+    expect(srt(s.state)).toEqual(['Now open and pick a folder for your recordings'])
+    // A word wholly inside the Silences cut: no clip changes, the word is marked and goes.
+    const clips = s.state.clips
+    tabDelete(s, 'pick')
+    expect(s.state.clips).toBe(clips)
+    expect(struck(s.state)).toEqual(['the', 'settings', 'pick'])
+    expect(srt(s.state)).toEqual(['Now open and a folder for your recordings'])
+    // The other order: deleted first, then the Silences cut.
+    const t = open([gemini()])
+    tabDelete(t, 'the', 'settings')
+    silences(t)
+    expect(srt(t.state)).toEqual(['Now open and pick a folder for your recordings'])
+  })
+
+  it('after a Silences cut, Find fillers lists a filler whose guessed time it covers, and Remove all takes it out of the tab and the subtitles', () => {
+    const s = open([seg('g', 10, 17, 'Now open the settings and um pick a folder for your recordings')])
+    silences(s)
+    expect(srt(s.state)).toEqual(['Now open the settings and um pick a folder for your recordings'])
+    const found = reviewSuggestions(wordsOf(s.state), s.state.clips, DURATION, 'en')
+    expect(found.map((x) => wordsOf(s.state)[x.first].text)).toEqual(['um'])
+    // Remove all (TranscriptPanel's removeSuggestions): the cut and the marks in one update.
+    const clips = s.state.clips
+    const w = wordsOf(s.state)
+    s.update((p) => {
+      const cut = applySuggestions(p.clips, w, found, p.duration).clips
+      return { ...p, clips: same(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, found.map((x) => [x.first, x.last] as const)) }
+    })
+    expect(s.state.clips).toBe(clips)
+    expect(struck(s.state)).toEqual(['um'])
+    expect(srt(s.state)).toEqual(['Now open the settings and pick a folder for your recordings'])
+    expect(reviewSuggestions(wordsOf(s.state), s.state.clips, DURATION, 'en')).toEqual([])
+  })
+
+  it('R3: an edited Whisper caption drops the guessed words between cut neighbours, and keeps them while a neighbour plays', () => {
+    const edited = (): EditStore<Project> => open([withCaptionText(seg('w', 0.4, 3.8, 'So I think alot works.', whisperWords().filter((w) => w.text !== 'um,')), 'So I think a lot works.')], 'openai')
+    let s = edited()
+    timelineCut(s, 1.8, 3.7)
+    expect(struck(s.state)).toEqual(['I', 'think', 'a', 'lot', 'works.'])
+    expect(srt(s.state)).toEqual(['So'])
+    s = edited()
+    timelineCut(s, 2.45, 2.95)
+    expect(struck(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual(['So I think a lot works.'])
+    // Not edited: the provider's times only.
+    s = open([seg('w', 0.4, 3.8, 'So I think alot works.', whisperWords().filter((w) => w.text !== 'um,'))], 'openai')
+    timelineCut(s, 1.8, 3.7)
+    expect(srt(s.state)).toEqual(['So'])
+  })
+
+  it('a caption cut away up to its very end, or to a sliver shorter than a cue, is struck through whole and left out', () => {
+    const sentence = (): CaptionSegment => seg('g', 10, 17, SENTENCE)
+    const next = (): CaptionSegment => seg('n', 17, 20, 'Then press Start.')
+    const edits: ((s: EditStore<Project>) => void)[] = [
+      // A range cut on the clip track, snapped to the caption's edges or from before it.
+      (s) => timelineCut(s, 10, 17),
+      (s) => timelineCut(s, 9, 17),
+      // The start trim dragged to the caption's end (it snaps there).
+      (s) => s.update((p) => ({ ...p, clips: setTrimStart(p.clips, 17) })),
+      // Split at the caption's start and end, the clip between removed.
+      (s) => {
+        s.update((p) => ({ ...p, clips: splitAt(splitAt(p.clips, 10), 17) }))
+        s.update((p) => ({ ...p, clips: removeClip(p.clips, p.clips[1].id) }))
+      },
+      // The end of the sentence deleted in the tab (its cut ends where the next caption starts), then the rest cut on the timeline.
+      (s) => {
+        tabDelete(s, 'and', 'recordings')
+        expect(s.state.clips.at(-1)!.start).toBe(17)
+        timelineCut(s, 9.5, 12.6)
+      },
+      // 0.03 s of it left.
+      (s) => timelineCut(s, 10, 16.97)
+    ]
+    for (const edit of edits) {
+      const s = open([sentence(), next()])
+      edit(s)
+      expect(struck(s.state)).toEqual(SENTENCE.split(' '))
+      expect(srt(s.state)).toEqual(['Then press Start.'])
+    }
+    // 0.1 s left: the cue and its guesses stay.
+    const s = open([sentence(), next()])
+    timelineCut(s, 9, 16.9)
+    expect(struck(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual([SENTENCE, 'Then press Start.'])
+    // Heard words: 0.045 s left of the caption ("works." keeps its middle); 0.565 s left of a longer one, a cue with "works.".
+    const yes = (end: number): CaptionSegment => seg('y', 0.4, end, 'Yes works.', [{ text: 'Yes', start: 0.4, end: 0.7 }, { text: 'works.', start: 0.9, end: 0.98 }])
+    const t = open([yes(0.98), next()])
+    t.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
+    expect(struck(t.state)).toEqual(['Yes', 'works.'])
+    expect(srt(t.state)).toEqual(['Then press Start.'])
+    const longer = open([yes(1.5), next()])
+    longer.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
+    expect(struck(longer.state)).toEqual(['Yes'])
+    expect(srt(longer.state)).toEqual(['works.', 'Then press Start.'])
+    // Word timings shorter than a cue, nothing cut: the caption stays.
+    const u = open([seg('h', 5, 5.5, 'Hmm.', [{ text: 'Hmm.', start: 5.2, end: 5.2 }]), next()])
+    timelineCut(u, 7, 8)
+    expect(struck(u.state)).toEqual([])
+    expect(srt(u.state)).toEqual(['Hmm.', 'Then press Start.'])
+  })
+
+  it('a caption is measured on its own time, wider than its words (a Whisper segment): a heard word that plays stays, however the captions are grouped', () => {
+    // Whisper's segment times run past their words (transcriptParse.ts).
+    const captions = (lastEnd = 20.64): CaptionSegment[] => [
+      seg('p', 17, 19.6, 'Okay.', [{ text: 'Okay.', start: 18.9, end: 19.4 }]),
+      seg('c', 20, 21.6, "So that's it.", [
+        { text: 'So', start: 20.1, end: 20.3 },
+        { text: "that's", start: 20.3, end: 20.6 },
+        { text: 'it.', start: 20.6, end: lastEnd }
+      ]),
+      seg('n', 22, 24, 'Next part.', [
+        { text: 'Next', start: 22, end: 22.4 },
+        { text: 'part.', start: 22.4, end: 22.9 }
+      ])
+    ]
+    // "So that's" deleted in the tab: "it." plays, and can be deleted on its own.
+    let s = open(captions(), 'openai')
+    tabDelete(s, 'So', "that's")
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+    tabDelete(s, 'it.')
+    expect(struck(s.state)).toEqual(['So', "that's", 'it.'])
+    expect(srt(s.state)).toEqual(['Okay.', 'Next part.'])
+    // Merged with the next caption, then split again: the same words cut.
+    s = open(captions(), 'openai')
+    tabDelete(s, 'So', "that's")
+    editCaptions(s, (list) => mergeWithNext(list, 'c')!)
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it. Next part.'])
+    editCaptions(s, (list) => splitCaption(list, 'c', 21.8)!)
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+    // At 2x, a 90 ms "it." (45 ms of output) in a 0.5 s cue.
+    s = open(captions(20.69), 'openai')
+    s.update((p) => ({ ...p, clips: [clip(0, DURATION, 2)] }))
+    tabDelete(s, 'So', "that's")
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+    // A timeline cut that keeps the middle of an 80 ms "it.".
+    s = open(captions(20.68), 'openai')
+    s.update((p) => ({ ...p, clips: [clip(0, 19.8), clip(20.64, DURATION)] }))
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+  })
+
+  it('a deleted word stays out after its caption is edited: words that no longer match their timings, or none, a typo, a full stop, the end dragged', () => {
+    for (const caption of [withCaptionText(seg('a', 0.4, 3.8, 'So um, I think alot works.', whisperWords()), 'So um, I think a lot works.'), seg('a', 0.4, 3.8, 'So um, I think a lot works.')]) {
+      const s = open([caption])
+      tabDelete(s, 'um,')
+      expect(struck(s.state)).toEqual(['um,'])
+      expect(srt(s.state)).toEqual(['So I think a lot works.'])
+    }
+    for (const [edit, text] of [
+      [(c: CaptionSegment) => withCaptionText(c, 'So um, I think it works.'), 'So I think it works.'],
+      [(c: CaptionSegment) => withCaptionText(c, 'So um, I thnk it works'), 'So I thnk it works'],
+      [(c: CaptionSegment) => retimeWords(c, { start: 0.4, end: 3.6 }), 'So I thnk it works.']
+    ] as const) {
+      const s = open([seg('g', 0.4, 3.8, 'So um, I thnk it works.')])
+      tabDelete(s, 'um,')
+      editCaptions(s, ([c]) => [edit(c)])
+      expect(marked(s.state)).toEqual(['um,'])
+      expect(struck(s.state)).toEqual(['um,'])
+      expect(srt(s.state)).toEqual([text])
+    }
+  })
+
+  it('a heard word with a guessed time stays in after a timeline cut, a trim or in a translation', () => {
+    const cases: [CaptionSegment, (s: EditStore<Project>) => void][] = [
+      [gemini(), silences],
+      [seg('b', 0, 5, 'Hi everyone, welcome back to the channel'), (s) => s.update((p) => ({ ...p, clips: [clip(2, DURATION)] }))],
+      [seg('c', 0, 3, 'el coche rojo es muy rápido'), (s) => timelineCut(s, 0.9, 1.8)]
+    ]
+    for (const [caption, edit] of cases) {
+      const s = open([caption])
+      edit(s)
+      expect(struck(s.state)).toEqual([])
+      expect(srt(s.state)).toEqual([caption.text])
+    }
+  })
+
+  it('a word deleted before or after a Silences cut keeps the guesses around it in, also after a save', () => {
+    for (const silencesFirst of [false, true]) {
+      const s = open([gemini()])
+      if (silencesFirst) silences(s)
+      tabDelete(s, 'Now')
+      if (!silencesFirst) silences(s)
+      expect(struck(s.state)).toEqual(['Now'])
+      expect(srt(s.state)).toEqual(['open the settings and pick a folder for your recordings'])
+      const reopened = { ...s.state, transcript: readTranscript(JSON.parse(JSON.stringify(s.state.transcript)), DURATION) }
+      expect(marked(reopened)).toEqual(['Now'])
+      expect(srt(reopened)).toEqual(['open the settings and pick a folder for your recordings'])
+    }
+  })
+
+  it('Merge, Split and Fix captions keep the deleted words with their marks', () => {
+    // Captions without word timings: "um," deleted, then the first merged with the next.
+    let s = open([seg('a', 0.4, 3.8, 'So um, I think it works.'), seg('b', 4, 6, 'Let me show you.')])
+    tabDelete(s, 'um,')
+    editCaptions(s, (list) => mergeWithNext(list, 'a')!)
+    expect(marked(s.state)).toEqual(['um,'])
+    expect(struck(s.state)).toEqual(['um,'])
+    expect(srt(s.state)).toEqual(['So I think it works. Let me show you.'])
+    // A Whisper caption, "alot" fixed to "a lot" and then "a" deleted: split, or merged with a timed caption.
+    const next = seg('n', 4, 5, 'Next one.', [
+      { text: 'Next', start: 4, end: 4.4 },
+      { text: 'one.', start: 4.5, end: 4.9 }
+    ])
+    for (const [edit, cues] of [
+      [(list: CaptionSegment[]) => splitCaption(list, 'a', 2.45)!, ['So um, I think', 'lot works.', 'Next one.']],
+      [(list: CaptionSegment[]) => mergeWithNext(list, 'a')!, ['So um, I think lot works. Next one.']]
+    ] as const) {
+      s = open([withCaptionText(seg('a', 0.4, 3.8, 'So um, I think alot works.', whisperWords()), 'So um, I think a lot works.'), next], 'openai')
+      tabDelete(s, 'a')
+      expect(marked(s.state)).toEqual(['a'])
+      editCaptions(s, edit)
+      expect(marked(s.state)).toEqual(['a'])
+      expect(struck(s.state)).toEqual(['a'])
+      expect(srt(s.state)).toEqual(cues)
+    }
+    // Fix captions, which here changes the number of words: the request and the answer checked as in the app.
+    s = open([seg('a', 0.4, 3.8, 'So um, I think alot works.')], 'gemini')
+    tabDelete(s, 'um,')
+    const before = s.state.transcript!.segments
+    const request = validateTextRequest({ task: 'cleanup', segments: before })
+    const answer = validateSegmentsAnswer('cleanup', request.segments, { segments: [{ id: 'a', text: 'So, um, I think a lot works.' }] })
+    editCaptions(s, () => applyTextResult(before, answer)!)
+    expect(marked(s.state)).toEqual(['um,'])
+    expect(srt(s.state)).toEqual(['So, I think a lot works.'])
+  })
+
+  /** Find fillers and retakes, then Remove all (TranscriptPanel's removeSuggestions): the cuts and the marks in one update. */
+  const removeAll = (s: EditStore<Project>): void => {
+    const w = wordsOf(s.state)
+    const found = reviewSuggestions(w, s.state.clips, DURATION, 'en')
+    expect(found.length).toBeGreaterThan(0)
+    s.update((p) => {
+      const cut = applySuggestions(p.clips, w, found, p.duration).clips
+      return { ...p, clips: same(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, found.map((x) => [x.first, x.last] as const)) }
+    })
+  }
+
+  it('a repeat removed in the tab, then taken out of the caption\'s text (by hand or Fix captions): the words left are the take still in the video', () => {
+    const takes = [
+      { text: 'I', start: 2.0, end: 2.1 },
+      { text: 'think', start: 2.1, end: 2.5 },
+      { text: 'I', start: 3.0, end: 3.1 },
+      { text: 'think', start: 3.1, end: 3.5 },
+      { text: 'we', start: 3.6, end: 3.8 },
+      { text: 'should', start: 3.8, end: 4.1 },
+      { text: 'open', start: 4.2, end: 4.5 },
+      { text: 'the', start: 4.5, end: 4.6 },
+      { text: 'settings.', start: 4.6, end: 5.2 }
+    ]
+    const cases: [string, string, string[], CaptionSegment['words']?][] = [
+      ['I think I think we should open the settings.', 'I think we should open the settings.', ['I', 'think']],
+      ['Open the the settings menu now.', 'Open the settings menu now.', ['the']],
+      ['I think I think we should open the settings.', 'I think we should open the settings.', ['I', 'think'], takes]
+    ]
+    for (const [text, cleaned, repeat, words] of cases) {
+      const s = open([seg('g', 2, 6, text, words)], words ? 'openai' : 'gemini')
+      removeAll(s)
+      expect(struck(s.state)).toEqual(repeat)
+      expect(srt(s.state)).toEqual([cleaned])
+      // CaptionsPanel's text edit.
+      editCaptions(s, ([c]) => [withCaptionText(c, cleaned)])
+      expect(struck(s.state)).toEqual([])
+      expect(srt(s.state)).toEqual([cleaned])
+    }
+    // Captions tab > Fix captions drops the stutter (it keeps the word timings, the number of words changed).
+    const s = open([seg('g', 2, 6, 'I think I think we should open the settings.')])
+    removeAll(s)
+    const before = s.state.transcript!.segments
+    const request = validateTextRequest({ task: 'cleanup', segments: before })
+    const answer = validateSegmentsAnswer('cleanup', request.segments, { segments: [{ id: 'g', text: 'I think we should open the settings.' }] })
+    editCaptions(s, () => applyTextResult(before, answer)!)
+    expect(s.state.transcript!.segments[0].words).toBeDefined()
+    expect(struck(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual(['I think we should open the settings.'])
+  })
+
+  it('a dash, "&" or "..." deleted in the tab goes with its words, in the tab and the subtitles, also after Merge', () => {
+    for (const [text, kept] of [
+      ['I - I think we should open the settings.', 'I think we should open the settings.'],
+      ['We need to - we need to open the settings.', 'we need to open the settings.'],
+      ['I think — I think we should um open the settings.', 'I think we should open the settings.'],
+      ['So ... um, I think it works.', 'So I think it works.']
+    ]) {
+      const s = open([seg('g', 2, 8, text)])
+      if (text.startsWith('So')) tabDelete(s, '...', 'um,')
+      else removeAll(s)
+      expect(srt(s.state)).toEqual([kept])
+    }
+    // "Tom & Jerry" deleted: all three struck through, so Delete has nothing left to cut there.
+    const s = open([seg('g', 10, 14, 'I watched Tom & Jerry with my kids today.'), seg('n', 15, 17, 'Then press Start.')])
+    tabDelete(s, 'Tom', 'Jerry')
+    expect(struck(s.state)).toEqual(['Tom', '&', 'Jerry'])
+    expect(srt(s.state)).toEqual(['I watched with my kids today.', 'Then press Start.'])
+    editCaptions(s, (list) => mergeWithNext(list, 'g')!)
+    expect(marked(s.state)).toEqual(['Tom', '&', 'Jerry'])
+    expect(srt(s.state)).toEqual(['I watched with my kids today. Then press Start.'])
+  })
+
+  it('a caption trimmed on its track past a word deleted in the tab keeps the word out, also after a save; Restore brings it back', () => {
+    /** CaptionTrack's drag: one gesture, each move worked out from the caption at pointer-down. */
+    const captionDrag = (s: EditStore<Project>, id: string, mode: 'move' | 'start' | 'end', targets: number[]): void => {
+      const seg0 = s.state.transcript!.segments.find((x) => x.id === id)!
+      const bounds = captionDragBounds(s.state.transcript!.segments, id, DURATION)
+      const initial = { start: seg0.start, end: seg0.end }
+      s.beginGesture()
+      for (const t of targets) {
+        const times = dragCaptionTimes(initial, mode, t - (mode === 'end' ? initial.end : initial.start), bounds)
+        editCaptions(s, (list) => list.map((x) => (x.id === id ? retimeWords(seg0, times) : x)))
+      }
+      s.endGesture()
+    }
+    const heard = [
+      { text: 'Um,', start: 0.3, end: 0.5 },
+      { text: 'so', start: 0.8, end: 1.0 },
+      { text: 'today', start: 1.0, end: 1.4 },
+      { text: 'we', start: 1.4, end: 1.6 },
+      { text: 'look', start: 1.6, end: 1.9 },
+      { text: 'at', start: 1.9, end: 2.0 },
+      { text: 'settings', start: 2.0, end: 2.8 }
+    ]
+    for (const words of [undefined, heard]) {
+      for (const target of ['where the speech starts', 0.9] as const) {
+        const s = open([seg('u', 0.3, 3, 'Um, so today we look at settings', words), seg('b', 3, 6, 'Then press Start.')], words ? 'openai' : 'gemini')
+        tabDelete(s, 'Um,')
+        const to = target === 0.9 ? 0.9 : s.state.clips[0].start
+        captionDrag(s, 'u', 'start', [0.5, to])
+        expect(s.state.transcript!.segments[0].start).toBeCloseTo(to, 9)
+        expect(marked(s.state)).toEqual(['Um,'])
+        expect(struck(s.state)).toEqual(['Um,'])
+        expect(srt(s.state)).toEqual(['so today we look at settings', 'Then press Start.'])
+        const reopened = { ...s.state, transcript: readTranscript(JSON.parse(JSON.stringify(s.state.transcript)), DURATION) }
+        expect(srt(reopened)).toEqual(['so today we look at settings', 'Then press Start.'])
+        tabRestore(s, 'Um,')
+        expect(marked(s.state)).toEqual([])
+        expect(srt(s.state)).toEqual(['Um, so today we look at settings', 'Then press Start.'])
+      }
+    }
+    // The end trimmed past the deleted word and the one after it, which goes to the new end: the same after a save.
+    const e = open(
+      [
+        seg('e', 10, 13, 'See you um bye.', [
+          { text: 'See', start: 10, end: 10.3 },
+          { text: 'you', start: 10.3, end: 10.6 },
+          { text: 'um', start: 11, end: 11.4 },
+          { text: 'bye.', start: 12, end: 12.4 }
+        ]),
+        seg('n', 14, 16, 'Then press Start.')
+      ],
+      'openai'
+    )
+    tabDelete(e, 'um')
+    captionDrag(e, 'e', 'end', [12, 10.7])
+    expect(struck(e.state)).toEqual(['um'])
+    expect(srt(e.state)).toEqual(['See you bye.', 'Then press Start.'])
+    const saved = { ...e.state, transcript: readTranscript(JSON.parse(JSON.stringify(e.state.transcript)), DURATION) }
+    expect(marked(saved)).toEqual(['um'])
+    expect(srt(saved)).toEqual(['See you bye.', 'Then press Start.'])
+    // The end handle, then the next caption moved over the deleted word's time: it plays, the word stays out.
+    const t = open([seg('t', 26, 29.4, 'Thanks for watching, see you um'), seg('b', 29.6, 29.8, 'Bye.')])
+    tabDelete(t, 'um')
+    captionDrag(t, 't', 'end', [29.2, 29])
+    expect(struck(t.state)).toEqual(['um'])
+    expect(srt(t.state)).toEqual(['Thanks for watching, see you', 'Bye.'])
+    captionDrag(t, 'b', 'move', [28.5])
+    expect(t.state.transcript!.segments[1]).toMatchObject({ start: 29, end: 29.2 })
+    expect(wordsOf(t.state).map((w) => w.text)).toEqual(['Thanks', 'for', 'watching,', 'see', 'you', 'um', 'Bye.'])
+    expect(wordsOf(t.state)[5].start).toBeGreaterThan(29.1)
+    expect(struck(t.state)).toEqual(['um'])
+    expect(srt(t.state)).toEqual(['Thanks for watching, see you', 'Bye.'])
   })
 })
 

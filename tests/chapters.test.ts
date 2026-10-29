@@ -154,8 +154,11 @@ describe('chapter metadata in exports', () => {
     expect(withAudio.indexOf('-map_chapters')).toBeLessThan(withAudio.indexOf('-movflags'))
     const m4a = exportArgs({ ...job, format: 'm4a', video: { kind: 'none' }, audio: { clips: [clip(0, 10)], volume: 1 } }, io)
     expect(m4a[m4a.indexOf('-map_chapters') + 1]).toBe('1')
-    // Without a chapters file nothing changes.
-    expect(exportArgs(job, { ...io, chapters: null })).not.toContain('-map_chapters')
+    // Only the project's chapters, and no input's tags (an imported file's), with or without a chapters file.
+    const tail = (args: string[]): string[] => args.slice(args.indexOf('-map_metadata:g'), args.indexOf('-map_metadata:g') + 4)
+    expect(tail(withAudio)).toEqual(['-map_metadata:g', '-1', '-map_chapters', '2'])
+    expect(tail(m4a)).toEqual(['-map_metadata:g', '-1', '-map_chapters', '1'])
+    expect(tail(exportArgs(job, { ...io, chapters: null }))).toEqual(['-map_metadata:g', '-1', '-map_chapters', '-1'])
 
     const plan = ffmpegPlan(job, { audioInput: null, output: '/videos/.out.partial.mp4', tempStem: '/tmp/screen-studio-gif-1' })
     expect(plan.scripts).toEqual([{ path: '/tmp/screen-studio-gif-1.chapters.txt', content: chapterMetadata(job.chapters!, 10) }])
@@ -164,6 +167,7 @@ describe('chapter metadata in exports', () => {
     const twoPass = ffmpegPlan({ ...job, bitrate: { video: 2_000_000, audio: 128_000 } }, { audioInput: null, output: '/o.mp4', tempStem: '/tmp/s' })
     expect(twoPass.capture).not.toContain('-map_chapters')
     expect(twoPass.passes[1][twoPass.passes[1].indexOf('-map_chapters') + 1]).toBe('1')
+    expect(tail(ffmpegPlan({ ...job, chapters: undefined, bitrate: { video: 2_000_000, audio: 128_000 } }, { audioInput: '/p/screen.mp4', output: '/o.mp4', tempStem: '/tmp/s' }).passes[1])).toEqual(['-map_metadata:g', '-1', '-map_chapters', '-1'])
     expect(twoPass.temps).toContain('/tmp/s.chapters.txt')
     // A job without chapters writes no file.
     expect(ffmpegPlan({ ...job, chapters: undefined }, { audioInput: null, output: '/o.mp4', tempStem: '/tmp/s' }).scripts).toEqual([])
@@ -204,23 +208,42 @@ describe('chapter metadata in exports', () => {
     afterAll(() => rmSync(dir, { recursive: true, force: true }))
     const meta = path.join(dir, 'chapters.txt')
     writeFileSync(meta, chapterMetadata([{ start: 0, title: 'Intro' }, { start: 1.5, title: 'Set = up; #2' }], 3)!)
+    // The sound of an imported phone video: its own tags, and chapters from before any cut.
+    const tags = path.join(dir, 'tags.txt')
+    writeFileSync(tags, ';FFMETADATA1\nartist=Jane Doe\nlocation=+40.7128-074.0060/\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=1000\ntitle=Old intro\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=1000\nEND=3000\ntitle=Secret part\n')
     const tone = path.join(dir, 'tone.m4a')
-    execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=d=3', '-c:a', 'aac', tone])
-    const probe = (file: string): { start_time: string; end_time: string; tags: { title: string } }[] =>
-      JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_chapters', '-of', 'json', file]).toString()).chapters
+    execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=d=3', '-i', tags, '-map', '0', '-map_metadata', '1', '-map_chapters', '1', '-c:a', 'aac', tone])
+    const probe = (file: string): { chapters: { start_time: string; end_time: string; tags: { title: string } }[]; tags: Record<string, string> } => {
+      const r = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_chapters', '-show_entries', 'format_tags', '-of', 'json', file]).toString())
+      return { chapters: r.chapters, tags: r.format?.tags ?? {} }
+    }
+    const exported = (format: 'mp4' | 'mov' | 'webm' | 'm4a', chapters: string | null): ReturnType<typeof probe> => {
+      const out = path.join(dir, `out.${format}`)
+      const audioOnly = format === 'm4a'
+      const video: ExportJob['video'] = audioOnly ? { kind: 'none' } : { kind: 'raw', encoder: format === 'webm' ? 'libvpx-vp9' : 'libx264', pixelFormat: 'rgba' }
+      const args = exportArgs({ ...job, width: 320, height: 240, format, frames: 90, video, audio: { clips: [clip(0, 3)], volume: 1 } }, { audioInput: tone, output: out, chapters })
+      // 90 black RGBA frames on stdin.
+      execFileSync(ffmpegPath(), args, { input: audioOnly ? undefined : Buffer.alloc(320 * 240 * 4 * 90), maxBuffer: 1 << 26 })
+      return probe(out)
+    }
+    const noPrivateTags = (found: Record<string, string>): void => {
+      for (const value of Object.values(found)) expect(value).not.toMatch(/Jane Doe|40\.7128/)
+    }
 
     for (const format of ['mp4', 'mov', 'webm', 'm4a'] as const) {
       it(format, () => {
-        const out = path.join(dir, `out.${format}`)
-        const audioOnly = format === 'm4a'
-        const video: ExportJob['video'] = audioOnly ? { kind: 'none' } : { kind: 'raw', encoder: format === 'webm' ? 'libvpx-vp9' : 'libx264', pixelFormat: 'rgba' }
-        const args = exportArgs({ ...job, width: 320, height: 240, format, frames: 90, video, audio: { clips: [clip(0, 3)], volume: 1 } }, { audioInput: tone, output: out, chapters: meta })
-        // 90 black RGBA frames on stdin.
-        execFileSync(ffmpegPath(), args, { input: audioOnly ? undefined : Buffer.alloc(320 * 240 * 4 * 90), maxBuffer: 1 << 26 })
-        expect(probe(out).map((c) => [Number(c.start_time), Number(c.end_time), c.tags.title])).toEqual([
+        const out = exported(format, meta)
+        expect(out.chapters.map((c) => [Number(c.start_time), Number(c.end_time), c.tags.title])).toEqual([
           [0, 1.5, 'Intro'],
           [1.5, 3, 'Set = up; #2']
         ])
+        noPrivateTags(out.tags)
+      }, 30000)
+
+      it(`${format} without chapters of its own takes none, and no tags, from its sound`, () => {
+        const out = exported(format, null)
+        expect(out.chapters).toEqual([])
+        noPrivateTags(out.tags)
       }, 30000)
     }
   })

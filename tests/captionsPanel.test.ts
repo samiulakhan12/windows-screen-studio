@@ -95,7 +95,9 @@ vi.stubGlobal('window', {
   addEventListener: () => undefined,
   removeEventListener: () => undefined
 })
-vi.stubGlobal('document', { body: {} })
+/** The page: `activeElement` is where the focus is (left out: on the body). */
+const page: { body: object; activeElement?: unknown } = { body: {} }
+vi.stubGlobal('document', page)
 vi.stubGlobal(
   'MutationObserver',
   class {
@@ -352,6 +354,7 @@ describe('CaptionsPanel: captions on this PC', () => {
     calls.cancelDownload.length = 0
     calls.confirm.length = 0
     focused.length = 0
+    delete page.activeElement
     replies.providers = () => Promise.resolve([OPENAI])
     replies.download = () => Promise.resolve()
     replies.confirm = true
@@ -587,6 +590,66 @@ describe('CaptionsPanel: captions on this PC', () => {
   })
 
   it.each([
+    ['a key', [OPENAI], false, true],
+    ['this PC', [], true, true],
+    ['a key and this PC', [OPENAI], true, true],
+    ['a key, the focus on a control', [OPENAI], false, false]
+  ])("Make captions or the command, with %s: once the providers are read, the running job's Cancel takes a focus that fell to the page, and only that", async (_how, providers, onThisPc, onPage) => {
+    const answer = deferred<unknown>()
+    replies.providers = () => answer.promise
+    replies.speech = () =>
+      Promise.resolve(onThisPc ? speechState({ statuses: { 'whisper-base': { state: 'installed' } } }) : speechState({ engine: { available: false, build: null, threads: 1, reason: 'missing' } }))
+    // The Transcript tab's Make captions (its button went with that tab), or the palette's Generate captions.
+    page.activeElement = onPage ? page.body : { control: 'elsewhere' }
+    m.items.requestCaptions({ kind: 'generate' })
+    let out = await show()
+    // Only "Checking this PC…" until the providers are read: nothing to focus, nothing started.
+    expect(local(out)?.props['data-state']).toBe('checking')
+    expect(focused).toEqual([])
+    answer.resolve(providers)
+    await flush()
+    out = render(m.panel)
+    expect(calls.transcribe).toEqual([onThisPc ? { providerId: 'local', model: 'whisper-base', source: 'auto' } : { providerId: 'o', source: 'auto' }])
+    expect(buttons(out)).toContain('Cancel')
+    // The focus ends on Cancel (on this PC the form's Generate captions has it for a moment, as in the app); on a control it stays.
+    const names = focused.map((e) => textOf(e.props.children).trim())
+    if (onPage) expect(names[names.length - 1]).toBe('Cancel')
+    else expect(names).toEqual([])
+  })
+
+  it.each([
+    ['cancelled', true],
+    ['failed', true],
+    ['made', true],
+    ['failed, the focus on a control', false]
+  ])("a run with a key, %s: as its Cancel goes, a focus that fell to the page goes to the form's Generate captions (again after Dismiss), or to Regenerate captions… once made", async (how, onPage) => {
+    replies.speech = () => Promise.resolve(speechState({ engine: { available: false, build: null, threads: 1, reason: 'missing' } }))
+    page.activeElement = onPage ? page.body : { control: 'elsewhere' }
+    let out = await show()
+    const names = (): string[] => focused.map((e) => textOf(e.props.children).trim())
+    click(out, 'Generate captions')
+    out = render(m.panel)
+    expect(names()).toEqual(onPage ? ['Cancel'] : [])
+    if (how === 'cancelled') click(out, 'Cancel')
+    else if (how === 'made') runs[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] })
+    else runs[0].reject(new Error('The provider refused the key.'))
+    await flush()
+    out = render(m.panel)
+    expect(buttons(out)).not.toContain('Cancel')
+    const last = names()[names().length - 1]
+    if (!onPage) expect(names()).toEqual([])
+    else expect(last).toBe(how === 'made' ? 'Regenerate captions…' : 'Generate captions')
+    if (!how.startsWith('failed')) return
+    expect(has(out, 'Captions could not be made: The provider refused the key.')).toBe(true)
+    // Dismiss takes itself away: the form's Generate captions catches the focus again.
+    focused.length = 0
+    click(out, 'Dismiss')
+    out = render(m.panel)
+    expect(has(out, 'Captions could not be made')).toBe(false)
+    expect(names()).toEqual(onPage ? ['Generate captions'] : [])
+  })
+
+  it.each([
     ['damaged', localErrorMessage('damaged', { model: 'whisper-base' }), 'Download again (60 MB)'],
     ['memory', localErrorMessage('memory', { model: 'whisper-base' }), 'Use Fast'],
     ['crashed', localErrorMessage('crashed', { part: 2, parts: 3 }), 'Generate captions again'],
@@ -594,7 +657,7 @@ describe('CaptionsPanel: captions on this PC', () => {
     ['protocol', localErrorMessage('protocol'), null],
     ['outdated', localErrorMessage('outdated', { model: 'whisper-base' }), null],
     ['other', 'No speech was found in this recording', null]
-  ])('a local error (%s) offers the button localErrorCode chooses', async (_code, message, button) => {
+  ])('a local error (%s) offers the button localErrorCode chooses, which takes a focus that fell to the page (else Dismiss does)', async (_code, message, button) => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
     let out = await show()
@@ -606,6 +669,15 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(has(out, `Captions could not be made: ${message}`)).toBe(true)
     const offered = buttons(out).filter((b) => b !== 'Dismiss' && !b.includes('·') && b !== 'Manage speech models…')
     expect(offered).toEqual(button ? [button] : [])
+    // Cancel went as the error came: its button has the focus, else Dismiss; once dismissed, Generate captions.
+    const last = (): string => textOf(focused[focused.length - 1]?.props.children).trim()
+    expect(last()).toBe(button ?? 'Dismiss')
+    if (!button) {
+      click(out, 'Dismiss')
+      out = render(m.panel)
+      expect(local(out)?.props['data-state']).toBe('ready')
+      expect(last()).toBe('Generate captions')
+    }
     if (button === 'Download again (60 MB)') {
       click(out, button)
       expect(calls.download).toEqual(['whisper-base'])

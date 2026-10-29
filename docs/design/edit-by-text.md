@@ -74,13 +74,19 @@ Buttons above the text: **Cut** (`Delete`), **Restore**, **Find fillers and reta
 - **Chosen: words map to source time ranges, and the range is cut with `cutRange`
   (`src/shared/engine/timeline.ts`)** and restored with `restoreRange`
   (`src/shared/editor/clips.ts`): the same functions the timeline's range cut and gap restore use.
-  The transcript is never changed by a cut, so a cut word is still there to restore, and captions
-  already follow cuts (`outputCues` in `src/shared/captions/subtitles.ts`).
+  A cut never takes a word out of the transcript, so a cut word is still there to restore, and
+  captions already follow cuts (`outputCues` in `src/shared/captions/subtitles.ts`). (A cut made
+  here stores its words' times and a `deleted` mark with them, §4.2 and §4.4.)
 - Rejected: storing "deleted word ids" in the project and deriving clips from them. Two sources of
   truth for one cut (the clip list and the word list) drift as soon as the user trims on the
-  timeline or runs Remove silences; and old projects would need a migration.
-- Word state is **derived**: a word is cut when its middle is not inside any clip. So a cut made on
-  the timeline, by Smart speed or by Remove silences shows struck through in the transcript too.
+  timeline or runs Remove silences; and old projects would need a migration. (The `deleted` mark
+  of §4.2 is not such a list: the clips stay the one source of truth, the mark only says which
+  words the user deleted, and it goes as soon as the clips keep its word.)
+- Word state is **derived** from the clips: a word with a heard time is cut when its middle is not
+  inside any clip (or no more than a sliver of its caption is kept). So a cut made on the timeline,
+  by Smart speed or by Remove silences shows struck through in the transcript too. A word whose time
+  is a guess shows struck through only when it is surely cut, the user deleted it here, or no more
+  than a sliver of its caption is kept (§4.2), as the subtitle files leave it out.
 
 ### 2.3 Padding: where a cut starts and ends
 
@@ -142,6 +148,7 @@ memory:
 | The word list | Derived from `Project.transcript` (`transcriptWords`), memoised on the transcript object. |
 | Cut or kept, per word | Derived from `Project.clips` (`cutFlags`). |
 | The selection in the transcript | Panel state (indices into the word list), never saved. |
+| A caption's word times after a cut made in the tab | `CaptionSegment.words`, stored by the cut (§4.4 Anchoring), with two optional per-word marks written only when set: `estimated: true` (the time is a guess) and `deleted: true` (a word the user deleted here, §4.2). Projects without them load and save byte for byte as before. |
 | The fillers and retakes list | Renderer memory per transcript object (`reviewMemory` in the panel, a `WeakMap`), so switching tabs keeps it; gone when the editor closes (with the editor's project). Never saved. |
 
 The export job gains one optional field (`src/shared/api/export.ts`, additive):
@@ -168,7 +175,9 @@ untrusted renderer input and every other field is checked there).
 For each caption, in order: its text split on spaces gives the shown words; its `words` (when the
 provider returned timings) give the times. Captions can be edited in the Captions tab (a typo fixed,
 a word added or removed) after the timings were made, so the text's words are **aligned** to the
-timed words by a longest common subsequence of their normalised forms (§4.5 normalisation):
+timed words by a longest common subsequence of their normalised forms (§4.5 normalisation; a word
+with nothing left once normalised, such as a dash, `&` or `...`, matches only a timed word of the
+same text):
 
 - A shown word matched to a timed word takes its times.
 - Unmatched shown words between two matched ones share the time between them in proportion to
@@ -177,20 +186,99 @@ timed words by a longest common subsequence of their normalised forms (§4.5 nor
   caption may hold before or after them; a run with no timed words left there (added) reaches the
   caption's own start or end.
 - A caption without any timed words gets every word estimated the same way across the caption.
-- A word is at least 0 s long; times stay inside its caption.
+- A shown word matched to a stored guess (a timed word marked `estimated`, §4.4 Anchoring) takes
+  its times and stays `estimated`; a stored `deleted` mark comes with its word, heard or a guess
+  (§4.2).
+- Of the longest matchings, the one that pairs the fewest shown words with timed words marked
+  `deleted` is taken, then the one matching earliest. So when the text loses one of two equal
+  words (a repeat removed in this tab, then taken out of the text by hand or by Fix captions), the
+  word left takes the time of the take still in the video, not of the deleted one.
+- A word is at least 0 s long; times stay inside its caption, except a `deleted` word's, which
+  keeps its own (§4.2 rule 6).
 
 `estimated` words work like any other; the panel says "Some word times are estimated: cuts there
 may be less exact" when more than 10 % of the words are estimated.
 
-Each word: `{ index, caption, text, start, end, estimated }` (source seconds). At most
+Each word: `{ index, caption, text, start, end, estimated, deleted?, captionTime }` (source
+seconds; `captionTime` is its caption's own start and end, §4.2). At most
 `MAX_CAPTIONS` (5,000) captions × 400 words exist (`captionData.ts`); the list is built once per
 transcript object.
 
 ### 4.2 Cut or kept (`cutFlags`)
 
-A word is cut when its middle, `(start + end) / 2`, is in no clip (`clipIndexAt` semantics:
-`start ≤ t < end`). Computed for all words in one sweep over the sorted words and the sorted clips
-(O(words + clips)).
+A shown word's time is either **heard** (matched to a word timing the provider gave, §4.1) or a
+**guess** (`estimated`: shared out by §4.1, or a stored guess). The Transcript tab and the subtitle
+files decide whether a word is cut by one rule, `cutFlags`, so the words the tab strikes through
+are exactly the words the subtitle files leave out:
+
+1. **Heard.** A word with a heard time is cut when its middle, `(start + end) / 2`, is in no clip
+   (`clipIndexAt` semantics: `start ≤ t < end`).
+2. **Deleted.** A word the user deleted in this tab carries the mark `deleted: true` (rule 4); a
+   guess with it is cut the same way as a heard word, by the middle of its stored time. (A heard
+   word is cut by its middle anyway; its mark tells an edit of the text which of two equal words
+   was deleted, §4.1.)
+3. **Other guesses.** Any other guess is cut only when it is surely cut: its middle is in no clip,
+   and no clip keeps any of the time between the middles of the nearest heard words before and
+   after it in its caption (the start of the caption's first word, or the end of its last, where
+   there is none on that side; a clip that only touches that time, starting where it ends or ending
+   where it starts, keeps none of it). Guesses, deleted or not, are never such neighbours. So a
+   guess never takes out a word that may still be heard: a timeline cut or trim, or a Smart speed >
+   Silences cut, over a guessed time leaves the word in (in the tab and in the subtitles) unless its
+   heard neighbours and everything between them are cut too, or its whole caption is.
+4. **Deleting marks the words.** Delete (Cut), Remove and Remove all mark, in the same store
+   update as the cut (one undo step, §4.4 Anchoring), every word inside the spans being cut, heard
+   or a guess, and every other word the cut newly cuts (a short word left between two cuts goes
+   with them), whose middle is then in no clip: whether or not an earlier timeline or Smart speed
+   cut had already cut its time. The caption's word times are stored with the mark, so a later
+   edit of the caption cannot move a deleted word out of the cut. A selection whose range is
+   already wholly cut (guesses inside a timeline cut, shown kept by rule 3) is marked without
+   changing the clips.
+5. **A mark lives only while its word is cut.** Every edit made through the editor's store
+   (`EditStore`'s `settle`, `settleDeletedWords`) clears `deleted` from every stored word whose
+   middle is in a clip after it, in the same undo step: this tab's Restore, Restore the whole
+   recording, timeline edits, Smart speed, deleting several items, moving a caption on its track.
+   The word is then not deleted any more, and a guess is a guess again (rule 3), so a later
+   Silences cut over its guessed time cannot take it out. Undo and redo bring the clips and the marks back together (one history step). A
+   drag (a trim handle, a caption on its track) is one edit: it is settled once, when it ends,
+   against the state before it, so a drag that passes over a deleted word and is released with the
+   word still cut keeps the mark (`EditStore` settles a held gesture's run when it closes).
+6. **Captions tab edits keep the marks with the words**, as they keep the times: a text edit (the
+   stored word still matches, §4.1; of two equal words, the one left is the one not deleted),
+   Merge, Split, Fix captions (the captions' own word timings are kept) and moving or trimming a
+   caption on its track. A trim changes when the text shows, not when its words were said: a
+   deleted word keeps its own time, in the cut, when its caption is trimmed past it (`retimeWords`;
+   Split, the word list and loading the project keep that time too, inside the recording), so it
+   stays out of the tab and the subtitles until it is brought back. A move moves it with the
+   other words, into the caption (rule 5). A word cut elsewhere (the timeline, Smart speed) and not
+   deleted here is kept inside its caption like any other, so a trim past it brings it to the
+   caption's new edge, where it shows if that time plays, in the tab and the subtitles alike. A
+   word whose own text is retyped no longer matches its stored time and is a new guess.
+7. **Saved** with the project, read back only as `true` (`captionData.ts`), like `estimated`.
+
+**A sliver of a caption.** Every word of a caption is cut, heard words too, when a cut has reached
+it (one of its words' middles is in no clip) and the clips keep less than `MIN_CUE` (0.05 s of the
+exported video) of the caption's own time, its start to its end (`captionTime`): the subtitle files
+leave out a cue shorter than that, measured on the same time. A caption's time often runs past its
+words (a Whisper segment, a caption dragged longer), so a word whose middle plays in a caption kept
+for longer stays, with its cue, however the captions are grouped (Merge and Split change nothing
+here). A caption with no word's middle cut keeps its words; the one case where the tab and the
+files differ is such a caption that plays for less than `MIN_CUE` all the same (sped up, or a
+caption barely longer than its words cut up to them): the files leave it out, the tab shows its
+words kept, as they are in the video.
+
+**Words out of time order.** A deleted word left outside its trimmed caption can lie after the
+words of the next caption once that caption is moved over its time; `middlesCut` (so `cutFlags`)
+takes words in any order. The playback highlight (§4.10) looks words up in time order, so next to
+such a word it can miss the word being said.
+
+Subtitle files (Export captions, and Also save > Captions in every part of One file per chapter)
+apply the same rule: `outputCues` takes the captions' words as the tab does (`captionsWords`, the
+words `transcriptWords` gives) and leaves out the words `cutFlags` gives as cut. Burned-in captions and the preview show each
+caption's text as before; neither the marks nor this rule change them.
+
+Computed in one sweep over the words and the sorted clips (a word earlier than the one before it
+looks its clip up again), plus a binary search for each guess whose middle is cut and for each
+caption (O(words + (guesses + captions) × log clips + clips)).
 
 ### 4.3 The range of a word span (`wordsRange`)
 
@@ -214,6 +302,24 @@ span restores exactly the range that cutting it removed.
   left (a single short word between two cuts goes with them, and shows struck through), and the
   last piece of the video is never removed (then nothing changes and the notice says "That would
   cut the whole video").
+- **Anchoring** (`anchorCutWords`): in the same store update, a caption with a word that the cut
+  marks `deleted` (§4.2 rule 4) gets the times of all its shown words stored as its `words`
+  (`captionWordTimes`): heard words as they are, every guess marked `estimated: true`, the deleted
+  words `deleted: true` as well. Cut, Remove and Remove all do this. (Burned-in captions show the
+  same text. The karaoke look times a caption's words by its timings when there is one per word,
+  `captionTokens`, so in a caption whose timings did not match its text word for word it then
+  lights each word at the time this tab gives it.) Without it, an edit of the
+  caption's text or times in the Captions tab would share its times out again and could move a
+  deleted word out of the cut. The other guesses stay guesses, so a later timeline or Smart speed
+  cut still never drops them (§4.2 rule 3). The marks are saved with the project and read back
+  (`captionData.ts`); projects without them load as before. The review list stays open across this
+  change, and across its undo, because the words and their times are the same.
+  Merge and Split in the Captions tab keep every word's time and mark too (`mergeWithNext`,
+  `splitCaption`): a caption whose timings no longer match its text, or that has none next to one
+  that has them, gets its words' times as this tab has them (`captionWordTimes`, guesses and
+  deletions still marked), so a deleted word stays cut and out of the subtitles after them. Fix
+  captions (the AI clean-up) keeps a caption's timings when it changes the number of words, for the
+  same reason.
 - **Restore** (`restoreWords`): `restoreRange` of the span's range: what is cut inside it comes
   back at 1×, kept parts keep their speed, and neighbours with the same speed merge (the timeline's
   own restore rule).
@@ -275,11 +381,16 @@ fillers keep the earlier one.
 
 "Find fillers and retakes" builds the list from the current word list and clips: only suggestions
 that save time (`rangeSaving(range, clips, 'cut') ≥ 0.05` s, the Smart speed rule) are listed, so
-words already cut are skipped. Each row: the kind ("Filler", "Retake", "Repeat"), the words in
-quotes (with up to 4 words of context before, dimmed), the time where it plays, and Keep / Remove.
+words already cut are skipped. One that saves nothing is listed too when removing it strikes
+through a word the tab shows kept though its guessed time is already cut (a filler inside a
+Silences cut, §4.2 rule 3): Remove marks the word deleted without changing the clips (rule 4), as
+Delete does, and says "Removed 1 (0.0 s)". Each row: the kind ("Filler", "Retake", "Repeat"), the
+words in quotes (with up to 4 words of context before, dimmed), the time where it plays, and Keep /
+Remove.
 
 - Clicking the row's text moves the playhead to it.
-- **Remove**: cuts that suggestion (one undo step); the row goes.
+- **Remove**: cuts that suggestion and marks its words deleted (§4.2 rule 4; one undo step); the
+  row goes.
 - **Keep**: the row goes; nothing changes; no undo step.
 - **Remove all**: cuts every listed suggestion in one store update (one undo step); the list
   closes; the notice says "Removed 6 (8.2 s)".
@@ -288,7 +399,9 @@ quotes (with up to 4 words of context before, dimmed), the time where it plays, 
   whose words became cut disappears.
 - A retake or repeat is listed only while the later take it leaves in is kept (its first word, or
   that of a take after it that another match would remove in turn): when the user cut the later
-  take, removing the earlier one would lose every take.
+  take, removing the earlier one would lose every take. Here a word counts as cut when its middle
+  is in no clip even if its time is a guess the tab still shows kept (§4.2 rule 3), or when the tab
+  shows it cut (`middlesCut`, `cutFlags`): when unsure, the take counts as cut.
 - None found: "No fillers or retakes found." plus the hint "Some captions leave fillers out. Captions
   made on this PC keep most of them."
 
@@ -364,8 +477,13 @@ No transcript (or every caption deleted):
 
 `Make captions` opens the Captions tab and asks it to generate (`requestCaptions({ kind:
 'generate' })`, the command palette's "Generate captions" path): it starts at once when it can,
-else it shows what is missing (a model to download, a key to add). Without sound: the button is
-disabled and the text says "This recording has no sound to make a transcript from."
+else it shows what is missing (a model to download, a key to add). The button goes with this tab,
+and the focus is on the page while the Captions tab reads the providers ("Checking this PC…"); then
+that tab catches it: the running job's Cancel (on this PC or with a key), else what is missing (the
+download, or Add an AI provider). Make captions moves the focus nowhere itself (no
+`keepInspectorFocus`): a move made before that read would keep Cancel from catching it.
+Without sound: the button is disabled and the text says "This recording has no sound to make a
+transcript from."
 
 With a transcript:
 
@@ -411,7 +529,8 @@ quantifiers); retake comparison is bounded (80 tokens per sentence, two candidat
 | Action | Undo steps |
 |---|---|
 | Delete (Cut) on any selection | 1 (`store.update`, no merge key) |
-| Restore | 1 |
+| Restore (the `deleted` marks of the words it brings back cleared with it, §4.2) | 1 |
+| A trim drag on the timeline (marks of words it brings back cleared when it ends, §4.2 rule 5) | 1 |
 | Remove (one suggestion) | 1 |
 | Remove all | 1 |
 | Keep, Find, selecting, seeking | 0 |
@@ -439,13 +558,15 @@ change with cuts.
 New (owned):
 
 - `src/shared/editor/transcript.ts`
-  - `interface TranscriptWord { index; caption; text; start; end; estimated }`
-  - `transcriptWords(transcript?: Transcript): TranscriptWord[]`
+  - `interface TranscriptWord { index; caption; text; start; end; estimated; deleted?; captionTime? }`
+  - `transcriptWords(transcript?: Transcript): TranscriptWord[]`, `captionsWords(segments): TranscriptWord[]`
   - `alignCaptionWords(seg: CaptionSegment): Omit<TranscriptWord, 'index' | 'caption'>[]`
-  - `cutFlags(words, clips): boolean[]`
+  - `cutFlags(words, clips): boolean[]`, `middlesCut(words, clips): boolean[]` (§4.7), `MIN_CUE` (the shortest cue the subtitle files keep, §4.2; it moved here from `subtitles.ts`)
   - `wordsRange(words, first, last, duration): TimeRange`, `MAX_REACH`
   - `cutWords(clips, words, spans, duration): Clip[]`, `restoreWords(clips, words, first, last, duration): Clip[]`
   - `wordIndexAt(words, t): number`, `spanSaving(...)`
+  - `anchorCutWords(transcript, before, after, spans?): Transcript | undefined`, `captionWordTimes(seg, deleted?): CaptionWord[]`, `sameWords(a, b): boolean`
+  - `settleDeletedWords(next: Project, prev: Project): Project` (the editor store's `settle`, §4.2 rule 5)
 - `src/shared/editor/transcriptSelection.ts`: `interface WordSelection { anchor; focus }`,
   `selectionSpan`, `moveSelection(sel, key, shift, words)`, `clickSelection(sel, index, shift)`.
 - `src/shared/editor/fillers.ts`: `normalizeWord`, `fillerLanguage`, `findFillers(words, language?)`.
@@ -469,6 +590,11 @@ Additive lines in shared files:
 - `src/renderer/src/editor/previewAudio.ts` (the preview's audio path): the `cut` gain node and its
   scheduling.
 - `src/renderer/src/editor/Inspector.tsx`: the tab, its type member, its render line.
+- `src/shared/editor/editStore.ts`: an optional `settle(next, prev)` applied to every state `update`
+  and `replace` make (a held gesture's run once, when it closes); `src/renderer/src/views/Editor.tsx`
+  passes `settleDeletedWords` (§4.2 rule 5).
+- `src/shared/types.ts`: `CaptionWord.estimated?` and `CaptionWord.deleted?`, read back by
+  `src/shared/captions/captionData.ts`; `src/shared/captions/subtitles.ts` `outputCues` uses `cutFlags` (§4.2).
 - `src/renderer/src/editor/EditorIcon.tsx`: one icon path.
 - Docs: FEATURES, ROADMAP, RELEASE-NOTES, this file.
 
@@ -575,6 +701,17 @@ Where the build differs from the sections above, after an adversarial review:
   freeze on the first frame after a cut (`fadesInAfterHold`, the export's own `soundPieces` and
   `pieceCutFades`): the export fades the sound in after its silence, and the preview fades in on the
   first frame after the freeze. An edit while playing resets the gain at once.
+- **Preview jump over a transcript cut.** A transcript cut ends in the middle of a pause, so the next
+  clip almost never starts on a frame of the proxy. After the jump, the first video frame callback
+  reports the frame covering the clip's start, whose time is just before it (3.0 s for a clip from
+  3.0125 s at 60 fps). `onVideoFrame` takes a frame less than one proxy frame before the next clip's
+  start as that clip's first frame (drawn at the clip's start, as the export shows it) instead of
+  seeking again, which would restart the fade in and, with the element on the video clock (no sound,
+  a muted recording), loop on the same frame. This holds after a jump, after Play or a seek while
+  playing to a clip's start (`landing`), even when that frame is also the last frame of the clip
+  before: deleting a short word between touching words can make a cut shorter than a frame (clips
+  [0, 3.005] and [3.0125, …] share the frame at 3.0 s). That frame is drawn once as the first clip's
+  last frame and, after the jump, once as the next clip's first.
 - **Export fade position (§4.8).** The fades come **last** in each piece's chain, after the
   sample-exact `apad`/`atrim`, with the fade in starting after the pause freeze's silence
   (`cutFadeFilters(edges, length, fade, offset)`): atempo's output is a little off its length, so a
@@ -597,10 +734,16 @@ Where the build differs from the sections above, after an adversarial review:
   (`recordingMix(p).kind !== 'none'`), not for a muted one.
 - **Keys:** `Shift+Delete` / `Shift+Backspace` cut too inside the word list (they never reach the
   editor's shortcuts there); the Cut, Restore and Find buttons give the focus back to the word
-  list, and so do Earlier and Later after a mouse click (pressed from the keyboard they keep it, as
+  list, so do the review list's Keep, Remove, Remove all and Close (their row or the list goes, which
+  would drop the focus to the page), and so do Earlier and Later after a mouse click (pressed from the keyboard they keep it, as
   the app's other controls do, so Enter turns page after page, until the first or last page disables
-  the button: the focus then goes to the word list rather than falling to the page). Selecting words clears the timeline's selection, so `Delete` pressed with the
-  focus elsewhere (a review button just clicked) never removes a timeline item the tab hides.
+  the button: the focus then goes to the word list rather than falling to the page). `Delete` and
+  `Backspace` are the tab's own wherever its focus is (a toolbar or review button too): they cut the
+  selected words, or do nothing, and never reach the editor's shortcuts. Selecting words, Find and
+  a review row's quote (go to it) clear the timeline's selection, so `Delete` pressed with the focus
+  elsewhere (on the page after a review button was clicked) never removes a timeline item the tab
+  hides. The quote clears it too because a list kept while the tab was closed comes back after a
+  timeline selection made meanwhile.
   `Ctrl+A` is read as the editor reads it (`eventKeyName`), so it selects every word on any
   keyboard layout.
 - **Pages** follow playback only when the spoken word moves onto another page, so Earlier and Later
@@ -608,7 +751,8 @@ Where the build differs from the sections above, after an adversarial review:
 - **Selected words** carry the `--accent-text` outline of §5 (1 px, inset; 7.6:1 on the list, 6.8:1
   on the `--accent-soft` tint, which alone is 1.13:1 and is dropped in forced colours); the
   keyboard's word gets the wider `--focus-ring`.
-- `normalizeWord` lives in `transcript.ts` (re-exported by `fillers.ts`); `lcsPairs` too.
+- `normalizeWord` lives in `transcript.ts` (re-exported by `fillers.ts`); `lcsPairs` too, which
+  takes an optional `avoid(i, j)` to choose among the longest matchings (§4.1).
 - **The Inspector rail** turns compact below 620 px (was 480 px, sized for ten tabs): twelve
   labelled tabs and the Selection tab need 620 px, and between 480 and 620 px the labelled rail
   scrolled, hiding Audio and cutting "Transcript" short. `ui.e2e.cjs` now checks the labels on a

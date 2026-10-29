@@ -195,7 +195,11 @@ changing them (checked: identical samples, identical length, also after the AAC 
   above.
 - **One render per project.** A request for the same key joins the running one (one ffmpeg, one
   promise). A request for another key of the same project stops the running render first (the
-  user changed the strength mid-way).
+  user changed the strength mid-way). Requests are numbered as they are made, before their file
+  checks, which can finish in another order: an older request never starts a render, or stops one,
+  once a newer request of that project has started, joined or stopped one; it rejects with
+  `VOICE_REPLACED` instead, so the user's latest choice wins (a stem already on disk is still
+  returned).
 - **Progress**: ffmpeg's `out_time_us` over the `Duration:` it prints, 0..1, sent at most 4 times a
   second (`voice:progress`).
 - **Cancel** (`cancelVoiceStem(projectId)`): kills ffmpeg, waits for it to exit, deletes the part
@@ -418,7 +422,8 @@ Unit (vitest), each failing without its code:
   0 within one sample) and is as long as the source within one frame, for every strength; progress
   rises to 1; the cache is reused (no second ffmpeg); a new strength or a touched source makes a new
   file; pruning keeps 3; cancel removes the part file and rejects with `VOICE_CANCELLED`; a second
-  request joins the first; a different key stops the first; a missing source gives the readable
+  request joins the first; a different key stops the first; of two requests the later one wins even
+  when the earlier one's checks finish last; a missing source gives the readable
   error; the model is written, checked and rewritten when damaged; invalid ids, sources and
   strengths are refused; the IPC refuses other senders.
 - Export: `validateJob` accepts the three strengths and refuses others; `cleanVoiceInputs` replaces

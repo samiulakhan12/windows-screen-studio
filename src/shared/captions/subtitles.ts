@@ -2,10 +2,10 @@
  * Subtitle files of the captions, in the exported video's time: SRT, WebVTT and plain text.
  * Captions live in source time; here they go through the clips (as the export does): captions in
  * a cut are dropped, a caption across a cut keeps only what shows (and the words that were
- * spoken there, when the words are known), and each piece is scaled by its clip's speed. Pure.
+ * spoken there, as the Transcript tab shows them), and each piece is scaled by its clip's speed. Pure.
  */
-import { captionTokens } from './layout'
 import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
+import { captionsWords, cutFlags, MIN_CUE } from '../editor/transcript'
 import type { CaptionSegment, Clip } from '../types'
 
 export type SubtitleFormat = 'srt' | 'vtt' | 'txt'
@@ -23,16 +23,16 @@ export interface Cue {
   text: string
 }
 
-/** Shortest cue kept, output seconds (what is left of a caption mostly cut away). */
-export const MIN_CUE = 0.05
-
 /** Output time of source time `s` inside clip `i` that starts at output time `at`. */
 const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c.speed
 
 /**
  * The captions as they play in the exported video: each one's kept part from its first to its
  * last shown moment (the clips around a cut play back to back, so it stays one cue), scaled by
- * the speed. With word timings that still match the text, words whose middle was cut are left out.
+ * the speed. Its words are the Transcript tab's (captionsWords), and the words the tab strikes
+ * through are left out: cutFlags, one rule for both (docs/design/edit-by-text.md §4.2: a heard or
+ * deleted word by its middle, any other guess only when surely cut, every word of a caption kept
+ * for less than MIN_CUE, the shortest cue kept).
  * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {
@@ -44,8 +44,13 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
     starts.push(acc)
     acc += (c.end - c.start) / c.speed
   }
-  const kept = (s: number): boolean => clips.some((c) => s >= c.start && s < c.end)
+  const words = captionsWords(segments)
+  const cut = cutFlags(words, clips)
+  let at = 0
   for (const seg of segments) {
+    // The caption's words are words[from..at) (as many as alignCaptionWords gives it).
+    const from = at
+    at += seg.text.split(' ').filter(Boolean).length
     if (!seg.text.trim()) continue
     let first: number | null = null
     let last: number | null = null
@@ -58,12 +63,12 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
       last = outOf(c, starts[i], b)
     }
     if (first === null || last === null || last - first < MIN_CUE) continue
-    let text = seg.text
-    if (seg.words && seg.words.length === text.split(/\s+/).filter(Boolean).length) {
-      const words = captionTokens(seg).filter((t) => kept((t.start + t.end) / 2))
-      if (!words.length) continue
-      text = words.map((t) => t.text).join(' ')
-    }
+    const text = words
+      .slice(from, at)
+      .filter((_, k) => !cut[from + k])
+      .map((w) => w.text)
+      .join(' ')
+    if (!text) continue
     cues.push({ start: first, end: last, text })
   }
   // Rounded later to milliseconds: never overlapping.

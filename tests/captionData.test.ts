@@ -72,6 +72,77 @@ describe('readCaptionSegments', () => {
       { text: 'there', start: 2, end: 3 }
     ])
   })
+
+  it('keeps a word timing marked as a guess (stored with a cut in the Transcript tab), and only a real mark', () => {
+    const [s] = readCaptionSegments(
+      [
+        seg('a', 1, 3, 'hi there you', [
+          { text: 'hi', start: 1, end: 1.5, estimated: true },
+          { text: 'there', start: 1.5, end: 2 },
+          { text: 'you', start: 2, end: 3, estimated: 'yes' } as never
+        ])
+      ],
+      10
+    )
+    expect(s.words).toEqual([
+      { text: 'hi', start: 1, end: 1.5, estimated: true },
+      { text: 'there', start: 1.5, end: 2 },
+      { text: 'you', start: 2, end: 3 }
+    ])
+  })
+
+  it('keeps a word marked deleted in the Transcript tab, and only a real mark; words without marks read as before', () => {
+    const raw = [
+      seg('a', 1, 3, 'hi there you', [
+        { text: 'hi', start: 1, end: 1.5, estimated: true, deleted: true },
+        { text: 'there', start: 1.5, end: 2, estimated: true },
+        { text: 'you', start: 2, end: 3, estimated: true, deleted: 1 } as never
+      ]),
+      seg('b', 4, 5, 'old one', [
+        { text: 'old', start: 4, end: 4.5 },
+        { text: 'one', start: 4.5, end: 5 }
+      ])
+    ]
+    const read = readCaptionSegments(JSON.parse(JSON.stringify(raw)), 10)
+    expect(read[0].words).toEqual([
+      { text: 'hi', start: 1, end: 1.5, estimated: true, deleted: true },
+      { text: 'there', start: 1.5, end: 2, estimated: true },
+      { text: 'you', start: 2, end: 3, estimated: true }
+    ])
+    // Saved again, a caption without marks is byte for byte what it was.
+    expect(JSON.stringify(read[1])).toBe(JSON.stringify(raw[1]))
+  })
+
+  it('keeps a deleted word at its own time outside its caption (a trim left it there), inside the recording', () => {
+    const [s] = readCaptionSegments(
+      [
+        seg('a', 1, 3, 'um hi there', [
+          { text: 'um', start: 0.4, end: 0.8, estimated: true, deleted: true },
+          { text: 'hi', start: 0.5, end: 1.5 },
+          { text: 'there', start: 2, end: 9, deleted: true }
+        ])
+      ],
+      5
+    )
+    expect(s.words).toEqual([
+      { text: 'um', start: 0.4, end: 0.8, estimated: true, deleted: true },
+      { text: 'hi', start: 1, end: 1.5 },
+      { text: 'there', start: 2, end: 5, deleted: true }
+    ])
+    // The end trimmed past a deleted "um" and the word after it, put at the new end: they keep the text's order.
+    const [t] = readCaptionSegments(
+      [
+        seg('b', 0, 1.9, 'see you um bye', [
+          { text: 'see', start: 1, end: 1.3 },
+          { text: 'you', start: 1.3, end: 1.6 },
+          { text: 'um', start: 2, end: 2.3, deleted: true },
+          { text: 'bye', start: 1.9, end: 1.9 }
+        ])
+      ],
+      5
+    )
+    expect(t.words!.map((w) => w.text)).toEqual(['see', 'you', 'um', 'bye'])
+  })
 })
 
 describe('readTranscript', () => {
@@ -161,6 +232,31 @@ describe('caption editing', () => {
     ])
   })
 
+  it('leaves a word deleted in the Transcript tab where it was said when its caption is trimmed past it, and moves it with a moved caption', () => {
+    const s = seg('a', 0.3, 3, 'Um, so today', [
+      { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+      { text: 'so', start: 0.8, end: 1 },
+      { text: 'today', start: 1, end: 1.4, estimated: true, deleted: true }
+    ])
+    expect(retimeWords(s, { start: 0.9, end: 1.2 }).words).toEqual([
+      { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+      { text: 'so', start: 0.9, end: 1 },
+      { text: 'today', start: 1, end: 1.4, estimated: true, deleted: true }
+    ])
+    expect(retimeWords(s, { start: 1.3, end: 4 }).words).toEqual([
+      { text: 'Um,', start: 1.3, end: 1.6, deleted: true },
+      { text: 'so', start: 1.8, end: 2 },
+      { text: 'today', start: 2, end: 2.4, estimated: true, deleted: true }
+    ])
+    // Split: the halves keep it where it was too.
+    const [c, d] = splitCaption([retimeWords(s, { start: 0.9, end: 3 })], 'a', 0.98)!
+    expect(c.words).toEqual([
+      { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+      { text: 'so', start: 0.9, end: 0.98 }
+    ])
+    expect(d.words).toEqual([{ text: 'today', start: 1, end: 1.4, estimated: true, deleted: true }])
+  })
+
   it('splits at the word spoken there', () => {
     const s = seg('a', 0, 3, 'one two three', [
       { text: 'one', start: 0, end: 1 },
@@ -189,6 +285,34 @@ describe('caption editing', () => {
       ['c', 3, 4, 'three']
     ])
     expect(mergeWithNext([seg('a', 0, 1, 'x')], 'a')).toBeNull()
+  })
+
+  it('keeps every word time when one caption has word timings and the other none, or they no longer match the text', () => {
+    const timed = seg('a', 0, 2, 'one two', [
+      { text: 'one', start: 0.2, end: 0.6 },
+      { text: 'two', start: 1, end: 1.5 }
+    ])
+    // The untimed one's words keep the times they had on their own, marked as guesses.
+    const merged = mergeWithNext([timed, seg('b', 2, 4, 'aa bb')], 'a')!
+    expect(merged[0].words).toEqual([
+      { text: 'one', start: 0.2, end: 0.6 },
+      { text: 'two', start: 1, end: 1.5 },
+      { text: 'aa', start: 2, end: 3, estimated: true },
+      { text: 'bb', start: 3, end: 4, estimated: true }
+    ])
+    expect(mergeWithNext([seg('b', 0, 1, 'aa'), seg('c', 1, 2, 'bb')], 'b')![0].words).toBeUndefined()
+    // "won" fixed to "one too" after the timings were made: the words are split where they were spoken.
+    const edited = seg('a', 0, 3, 'one too three', [
+      { text: 'won', start: 0, end: 0.8 },
+      { text: 'three', start: 2.2, end: 3 }
+    ])
+    const out = splitCaption([edited], 'a', 2)!
+    expect(out.map((x) => x.text)).toEqual(['one too', 'three'])
+    expect(out[0].words).toEqual([
+      { text: 'one', start: 0, end: 1.1, estimated: true },
+      { text: 'too', start: 1.1, end: 2, estimated: true }
+    ])
+    expect(out[1].words).toEqual([{ text: 'three', start: 2.2, end: 3 }])
   })
 
   it('finds and replaces ignoring case, removing captions left empty', () => {

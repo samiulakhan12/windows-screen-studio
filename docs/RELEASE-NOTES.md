@@ -27,8 +27,9 @@
 - **Edit by text** (NW-04): the new *Transcript* tab shows what you said, word by word. Select
   words and press `Delete` to cut them from the video; they stay struck through, and *Restore*
   brings them back. Click a word to go there; the word being said is underlined while the video
-  plays. Every edit is one undo step, and the timeline, preview, captions and export follow. No
-  transcript yet? *Make captions* starts the Captions tab's *Generate captions*.
+  plays. Every edit is one undo step, and the timeline, preview, captions and export follow;
+  subtitle files leave out exactly the words shown struck through. No transcript yet? *Make
+  captions* starts the Captions tab's *Generate captions*.
 - **Remove fillers and retakes** (NW-01): *Find fillers and retakes* lists "um", "uh", "you know",
   repeated words and sentences you said again (keeping the last take). Choose *Keep* or *Remove*
   for each, or *Remove all*. Nothing is cut until you choose, and cuts end in the pauses so words
