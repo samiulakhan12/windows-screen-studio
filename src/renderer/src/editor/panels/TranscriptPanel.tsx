@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
-import { cutFlags, cutWords, restoreWords, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
+import { anchorCutWords, cutFlags, cutWords, restoreWords, sameWords, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
 import { applySuggestions, refreshSuggestions, reviewSuggestions, SUGGESTION_LABELS, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
 import {
   clickSelection,
@@ -37,10 +37,17 @@ const PAGE = 40
 const ESTIMATED_HINT = 0.1
 
 /**
- * The review list of each transcript while the editor is open (the tab is unmounted while another
- * is open). Keyed by the transcript object, so it goes with the editor's project when that closes.
+ * The review list while the editor is open (the tab is unmounted while another is open), with the
+ * transcript it was made for. Keyed by the editor's store, so it goes when the editor closes.
  */
-const reviewMemory = new WeakMap<Transcript, EditSuggestion[]>()
+const reviewMemory = new WeakMap<object, { transcript: Transcript; items: EditSuggestion[] }>()
+
+/**
+ * Whether a list made for `made` still fits the transcript of `words`: the same transcript, or one
+ * with the same words at the same times (a cut that stored estimated word times, and its undo).
+ */
+const listFits = (made: Transcript, transcript: Transcript, words: readonly TranscriptWord[]): boolean =>
+  made === transcript || sameWords(transcriptWords(made), words)
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 const seconds = (s: number): string => `${s.toFixed(1)} s`
@@ -119,20 +126,23 @@ function TranscriptEditor({
 
   /* ---------- the review list ---------- */
 
-  const [review, setReviewState] = useState(() => reviewMemory.get(transcript) ?? null)
+  const [review, setReviewState] = useState(() => {
+    const kept = reviewMemory.get(store)
+    return kept && listFits(kept.transcript, transcript, words) ? kept.items : null
+  })
   const setReview = (items: EditSuggestion[] | null): void => {
     setReviewState(items)
-    if (items) reviewMemory.set(transcript, items)
-    else reviewMemory.delete(transcript)
+    if (items) reviewMemory.set(store, { transcript, items })
+    else reviewMemory.delete(store)
   }
   // A new transcript (regenerated captions, an edited caption) makes the list stale.
-  const reviewFor = useRef(transcript)
   useEffect(() => {
-    if (reviewFor.current === transcript) return
-    reviewMemory.delete(reviewFor.current)
-    reviewFor.current = transcript
+    const kept = reviewMemory.get(store)
+    if (!kept || kept.transcript === transcript) return
+    if (listFits(kept.transcript, transcript, words)) return void reviewMemory.set(store, { transcript, items: kept.items })
+    reviewMemory.delete(store)
     setReviewState(null)
-  }, [transcript])
+  }, [store, transcript, words])
   // Rows whose words were cut since (a Remove, the timeline, undo) go; undo brings them back.
   const shownReview = useMemo(() => (review ? refreshSuggestions(review, words, clips, project.duration) : null), [review, words, clips, project.duration])
   const suggested = useMemo(() => {
@@ -153,7 +163,11 @@ function TranscriptEditor({
     // Nothing changes only when the range is empty (zero-length words between touching ones) or
     // when nothing would be left (cutRange keeps no piece shorter than a clip may be).
     if (sameClips(next, before)) return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
-    store.update((p) => ({ ...p, clips: cutWords(p.clips, words, [[a, b]], p.duration) }))
+    // Estimated word times are stored with the cut (one undo step): the words stay cut after an edit of the caption.
+    store.update((p) => {
+      const cut = cutWords(p.clips, words, [[a, b]], p.duration)
+      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut) }
+    })
     // Counted from the result: a short word left between two cuts goes with them (no clip is that short).
     const after = cutFlags(words, next)
     const newly = after.reduce((n, f, i) => n + (f && !flags[i] ? 1 : 0), 0)
@@ -196,7 +210,10 @@ function TranscriptEditor({
       onNotice('That would cut the whole video')
       return 0
     }
-    store.update((p) => ({ ...p, clips: applySuggestions(p.clips, words, items, p.duration).clips }))
+    store.update((p) => {
+      const cut = applySuggestions(p.clips, words, items, p.duration).clips
+      return { ...p, clips: cut, transcript: anchorCutWords(p.transcript, p.clips, cut) }
+    })
     return r.saved
   }
 

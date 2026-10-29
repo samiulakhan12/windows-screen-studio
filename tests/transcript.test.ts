@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { clipIndexAt, outputDuration } from '../src/shared/engine/timeline'
 import {
   alignCaptionWords,
+  anchorCutWords,
   cutFlags,
   cutWords,
   lcsPairs,
   MAX_REACH,
   normalizeWord,
   restoreWords,
+  sameWords,
   spansSaving,
   transcriptWords,
   wordIndexAt,
@@ -319,6 +321,57 @@ describe('cutWords and restoreWords', () => {
     const cut = cutWords(full, words, [[1, 1]], 10)
     expect(spansSaving(cut, words, [[1, 1]], 10)).toBeCloseTo(0)
     expect(outputDuration(cut)).toBeCloseTo(9)
+  })
+})
+
+describe('anchorCutWords', () => {
+  const full = [clip(0, 20)]
+  // An untimed caption, one with word timings, and an untimed one nothing is cut in.
+  const t = transcript([
+    seg('a', 0.4, 3.8, 'So um, I thnk it works.'),
+    seg('b', 5, 6, 'and this', [
+      ['and', 5, 5.4],
+      ['this', 5.5, 6]
+    ]),
+    seg('c', 8, 10, 'too, um, maybe')
+  ])
+  const words = transcriptWords(t)
+  const at = (text: string): number => words.findIndex((w) => w.text === text)
+
+  it('stores the estimated times of an untimed caption with a word newly cut, as the tab showed them', () => {
+    const cut = cutWords(full, words, [[at('um,'), at('um,')]], 20)
+    const out = anchorCutWords(t, full, cut)!
+    expect(out.segments[0].words).toEqual(alignCaptionWords(t.segments[0]).map(({ text, start, end }) => ({ text, start, end })))
+    // Nothing else changes: the timed caption and the untouched one stay the same objects.
+    expect(out.segments[1]).toBe(t.segments[1])
+    expect(out.segments[2]).toBe(t.segments[2])
+    expect(sameWords(transcriptWords(out), words)).toBe(true)
+    expect(transcriptWords(out).filter((w) => w.caption === 'a').every((w) => !w.estimated)).toBe(true)
+  })
+
+  it('changes nothing when no word of an untimed caption is newly cut', () => {
+    // A timed word cut; a restore; an untimed word already cut on the timeline.
+    const timedCut = cutWords(full, words, [[at('this'), at('this')]], 20)
+    expect(anchorCutWords(t, full, timedCut)).toBe(t)
+    expect(anchorCutWords(t, timedCut, full)).toBe(t)
+    const early = cutWords(full, words, [[at('maybe'), at('maybe')]], 20)
+    const later = cutWords(early, words, [[at('this'), at('this')]], 20)
+    expect(anchorCutWords(t, early, later)).toBe(t)
+    expect(anchorCutWords(undefined, full, early)).toBeUndefined()
+  })
+})
+
+describe('sameWords', () => {
+  it('compares captions, texts and times', () => {
+    const a = wordsAt([
+      [0, 1],
+      [1, 2]
+    ])
+    expect(sameWords(a, a.map((w) => ({ ...w, start: w.start + 1e-9, estimated: true })))).toBe(true)
+    expect(sameWords(a, a.slice(1))).toBe(false)
+    expect(sameWords(a, a.map((w, i) => (i ? { ...w, text: 'x' } : w)))).toBe(false)
+    expect(sameWords(a, a.map((w, i) => (i ? { ...w, end: 2.5 } : w)))).toBe(false)
+    expect(sameWords(a, a.map((w) => ({ ...w, caption: 'b' })))).toBe(false)
   })
 })
 

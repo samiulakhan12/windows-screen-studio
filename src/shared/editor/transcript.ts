@@ -139,6 +139,35 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
 }
 
 /**
+ * The transcript after a cut made in the Transcript tab (clips `before` to `after`): a caption with
+ * no word timing to go by (every word estimated) and a word newly cut gets its estimated times
+ * stored as its word timings, so the words deleted stay cut, and out of the subtitle files
+ * (outputCues), when its text or times are edited later. The same object when nothing is stored.
+ */
+export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[]): Transcript | undefined {
+  if (!transcript) return transcript
+  const words = transcriptWords(transcript)
+  const was = cutFlags(words, before)
+  const now = cutFlags(words, after)
+  const newly = new Set(words.filter((_, i) => now[i] && !was[i]).map((w) => w.caption))
+  let changed = false
+  const segments = transcript.segments.map((seg) => {
+    if (!newly.has(seg.id)) return seg
+    const timed = alignCaptionWords(seg)
+    if (timed.some((t) => !t.estimated)) return seg
+    changed = true
+    return { ...seg, words: timed.map(({ text, start, end }) => ({ text, start, end })) }
+  })
+  return changed ? { ...transcript, segments } : transcript
+}
+
+/** Whether two word lists are the same words of the same captions at the same times (stored estimates read back as they were). */
+export function sameWords(a: readonly TranscriptWord[], b: readonly TranscriptWord[]): boolean {
+  const near = (x: number, y: number): boolean => Math.abs(x - y) < 1e-6
+  return a.length === b.length && a.every((w, i) => w.caption === b[i].caption && w.text === b[i].text && near(w.start, b[i].start) && near(w.end, b[i].end))
+}
+
+/**
  * The source range cutting words `first..last` removes: each end goes into the pause next to it,
  * to its middle, but at most MAX_REACH past the word (MAX_REACH when there is no neighbour), inside
  * [0, duration]. Spans next to each other meet exactly, so cutting words one by one or together is

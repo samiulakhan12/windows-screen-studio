@@ -581,6 +581,39 @@ describe('the Transcript tab', () => {
     expect(list.scrollTop).toBe(40)
   })
 
+  it('Delete and Remove in captions without word timings store their times, and the review list stays, also across undo', () => {
+    // A caption with no word timings (a provider that gives none): every word time is estimated.
+    const untimed = (): CaptionSegment[] => [{ id: 'a', start: 1, end: 4, text: 'So um this works uh fine.' }]
+    const rows = (): number => render().filter((e) => e.type === 'li').length
+    useProject(10, untimed())
+    render()
+    click('Find fillers and retakes')
+    expect(rows()).toBe(2)
+    const before = store.state
+    click('Remove')
+    // The times the cut was made by are kept with it (one store update), and the other row stays.
+    const words = store.state.transcript!.segments[0].words!
+    expect(words.map((w) => w.text)).toEqual(['So', 'um', 'this', 'works', 'uh', 'fine.'])
+    expect(store.state.clips).not.toBe(before.clips)
+    expect(rows()).toBe(1)
+    // Undo with the tab open, and with it closed: the removed row comes back.
+    const removed = store.state
+    store.state = before
+    expect(rows()).toBe(2)
+    store.state = removed
+    expect(rows()).toBe(1)
+    unmount()
+    store.state = before
+    expect(rows()).toBe(2)
+    // Delete on a word does the same.
+    unmount()
+    useProject(10, untimed())
+    pointerDown(3)
+    press('Delete')
+    expect(store.state.transcript!.segments[0].words?.length).toBe(6)
+    expect(store.state.clips.length).toBe(2)
+  })
+
   it('keeps the review list while the tab is closed, and nothing of it once the editor is gone', async () => {
     const fillers = (): CaptionSegment[] => [
       seg('a', 1, 4, [

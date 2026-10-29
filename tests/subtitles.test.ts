@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
-import { cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
+import { retimeWords, withCaptionText } from '../src/shared/captions/edit'
+import { anchorCutWords, cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
 import type { CaptionSegment, Clip, Transcript } from '../src/shared/types'
 
@@ -73,14 +74,47 @@ describe('outputCues: captions in output time', () => {
       const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
       const words = transcriptWords(transcript)
       const um = words.findIndex((w) => w.text === 'um,')
-      // Deleted as the Transcript tab does it.
+      // Deleted as the Transcript tab does it (the cut, and the estimated times stored with it).
       const clips = cutWords([clip(0, 10)], words, [[um, um]], 10)
+      const segments = anchorCutWords(transcript, [clip(0, 10)], clips)!.segments
       const flags = cutFlags(words, clips)
       expect(words.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
-      const [c] = outputCues([caption], clips)
+      const [c] = outputCues(segments, clips)
       expect(c.text).toBe('So I think a lot works.')
-      expect(subtitleFile([caption], clips, 'srt')).not.toContain('um,')
+      expect(subtitleFile(segments, clips, 'srt')).not.toContain('um,')
     }
+  })
+
+  it('keeps a word deleted in the Transcript tab out after the caption without word timings is edited', () => {
+    const caption = seg('g', 0.4, 3.8, 'So um, I thnk it works.')
+    const transcript = { provider: 'gemini', model: '', createdAt: '', segments: [caption] } as Transcript
+    const words = transcriptWords(transcript)
+    const um = words.findIndex((w) => w.text === 'um,')
+    const clips = cutWords([clip(0, 10)], words, [[um, um]], 10)
+    const [deleted] = anchorCutWords(transcript, [clip(0, 10)], clips)!.segments
+    expect(outputCues([deleted], clips)[0].text).toBe('So I thnk it works.')
+    // Then, in the Captions tab: a typo fixed, the full stop taken off, the end dragged earlier.
+    for (const [edited, text] of [
+      [withCaptionText(deleted, 'So um, I think it works.'), 'So I think it works.'],
+      [withCaptionText(deleted, 'So um, I thnk it works'), 'So I thnk it works'],
+      [retimeWords(deleted, { start: 0.4, end: 3.6 }), 'So I thnk it works.']
+    ] as const) {
+      const after = transcriptWords({ ...transcript, segments: [edited] })
+      const flags = cutFlags(after, clips)
+      expect(after.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
+      expect(outputCues([edited], clips)[0].text).toBe(text)
+      expect(subtitleFile([edited], clips, 'srt')).not.toContain('um,')
+    }
+  })
+
+  it('keeps every word of a caption without word timings across a timeline cut or trim (a guess never drops a heard word)', () => {
+    // A pause cut by Smart speed > Silences, a trim at the start, and an untimed translation (CAP-6).
+    const cases: [CaptionSegment, Clip[]][] = [
+      [seg('a', 10, 17, 'Now open the settings and pick a folder for your recordings'), [clip(0, 11.85), clip(13.75, 20)]],
+      [seg('b', 0, 5, 'Hi everyone, welcome back to the channel'), [clip(2, 10)]],
+      [seg('c', 0, 3, 'el coche rojo es muy rápido'), [clip(0, 0.9), clip(1.8, 10)]]
+    ]
+    for (const [caption, clips] of cases) expect(outputCues([caption], clips)[0].text).toBe(caption.text)
   })
 
   it('never overlaps and drops slivers', () => {

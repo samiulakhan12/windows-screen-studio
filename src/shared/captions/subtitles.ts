@@ -33,9 +33,9 @@ const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c
  * The captions as they play in the exported video: each one's kept part from its first to its
  * last shown moment (the clips around a cut play back to back, so it stays one cue), scaled by
  * the speed. Its words are timed as the Transcript tab times them (alignCaptionWords), and a word
- * whose middle was cut is left out, as the tab shows it. In a caption with no word timing to go
- * by (every time shared out), a word is left out only when none of it plays, as when it was
- * deleted in the tab: a guess never takes out a word that is still heard.
+ * whose middle was cut is left out, as the tab shows it. A caption with no word timing to go by
+ * (every time shared out) keeps all its words: a guess never takes out a word that is still heard
+ * (deleting words in the tab stores their times first: anchorCutWords).
  * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {
@@ -48,8 +48,6 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
     acc += (c.end - c.start) / c.speed
   }
   const kept = (s: number): boolean => clips.some((c) => s >= c.start && s < c.end)
-  // Some of a..b plays (its moment, when it has no length).
-  const plays = (a: number, b: number): boolean => (b - a > 1e-9 ? clips.some((c) => Math.min(b, c.end) - Math.max(a, c.start) > 1e-9) : kept(a))
   for (const seg of segments) {
     if (!seg.text.trim()) continue
     let first: number | null = null
@@ -64,8 +62,7 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
     }
     if (first === null || last === null || last - first < MIN_CUE) continue
     const timed = alignCaptionWords(seg)
-    const anchored = timed.some((t) => !t.estimated)
-    const words = timed.filter((t) => (anchored ? kept((t.start + t.end) / 2) : plays(t.start, t.end)))
+    const words = timed.some((t) => !t.estimated) ? timed.filter((t) => kept((t.start + t.end) / 2)) : timed
     if (!words.length) continue
     cues.push({ start: first, end: last, text: words.map((t) => t.text).join(' ') })
   }
