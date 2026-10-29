@@ -142,6 +142,8 @@ async function main() {
 
     // A slider drag is one undo step.
     await win.click('.insp-tabs button:has-text("Style")')
+    // Under Frame and Vertical framing, Padding can be below the visible part of the tab.
+    await (await win.$('.slider:has-text("Padding") input')).scrollIntoViewIfNeeded()
     const thumb = await win.$eval('.slider:has-text("Padding") input', (el) => {
       const r = el.getBoundingClientRect()
       return { x: r.left + r.width * (Number(el.value) / Number(el.max)), y: r.top + r.height / 2, w: r.width }

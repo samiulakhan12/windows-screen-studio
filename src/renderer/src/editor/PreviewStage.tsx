@@ -15,12 +15,15 @@ import {
   shapeLabel
 } from '../../../shared/editor/shapes'
 import { setZoomRegionInView } from '../../../shared/editor/cropEdit'
+import { dragView, holdViewAt } from '../../../shared/editor/followEdit'
 import { dragRegion, formatLevel, regionFromPoints, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
 import { croppedFrameSize, fromCrop, geometryFromCrop } from '../../../shared/engine/crop'
-import { outputSize, type Rect } from '../../../shared/engine/layout'
-import { useSceneRect } from './sceneRect'
+import { frameCamera } from '../../../shared/engine/frameView'
+import { outputSize, type Rect, type SceneLayout } from '../../../shared/engine/layout'
+import { useSceneView } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
-import { cameraAt, cameraFor, zoomStyleOf, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
+import { isTall, withoutFollow } from '../../../shared/engine/reframeData'
+import { cameraFor, zoomAt, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
 import { ANNOTATION_FONT } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
 import type { Annotation, NormRect, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
@@ -36,7 +39,10 @@ import { overlayVisibleAt } from '../../../shared/render/imageOverlays'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
+import { SafeZoneOverlay } from './SafeZoneOverlay'
+import { useSafeZoneChoice } from './safeZonePref'
 import type { Selection } from './selection'
+import { usePlaying } from './Transport'
 import './multiSelect.css'
 import './shapes.css'
 import './zoom.css'
@@ -104,9 +110,11 @@ function mappingFor(cam: Camera, rect: Rect): Mapping {
 
 /**
  * The view while `item` can be edited (paused, playhead inside it), else null. Follows the
- * player, but only re-renders when the camera or cursor actually moved.
+ * player, but only re-renders when the camera or cursor actually moved. `layout`: the preview's
+ * layout at the playhead (useSceneView), which the camera is asked with (frameCamera: the view
+ * that follows the action, or the zoom camera as always).
  */
-function useStageView(player: PreviewPlayer, project: Project, scene: RenderScene | undefined, item: EditItem | null): StageView | null {
+function useStageView(player: PreviewPlayer, project: Project, scene: RenderScene | undefined, layout: SceneLayout, item: EditItem | null): StageView | null {
   const [view, setView] = useState<StageView | null>(null)
   useEffect(() => {
     if (!item || !scene) {
@@ -122,7 +130,7 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
         return
       }
       // The same camera and cursor position the compositor uses for this frame.
-      const cam = cameraAt(project.zooms, t, scene.cursor.valid ? scene.focusPath : null, zoomStyleOf(project))
+      const cam = frameCamera(scene, layout, t)
       const follows = item.type === 'spotlight' && item.item.mode === 'cursor' && scene.cursor.valid
       const cursor = follows ? visibleCursorAt(project, scene.cursor.samples, scene.cursorPath, t) : null
       // The same rule the spotlight layer fades it out by.
@@ -134,7 +142,7 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
     }
     update()
     return player.subscribe(update)
-  }, [player, project, scene, item])
+  }, [player, project, scene, layout, item])
   return view
 }
 
@@ -211,9 +219,16 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     }
   }, [player, out.width, out.height])
 
-  // Source-space rectangle of the recording inside the frame (what drawFrame computes).
+  // Source-space rectangle of the recording inside the frame (what drawFrame computes): while the
+  // view follows the action, the virtual rectangle the camera maps onto the slot. Picking a zoom's
+  // point or region shows the whole recording, fitted, as before (player.setNoZoom draws it so).
   const { width: vw, height: vh } = croppedFrameSize(crop, player.screen.videoWidth, player.screen.videoHeight, drawn)
-  const rect = useSceneRect(drawn, box.w, box.h, vw, vh)
+  const pickMode = !!pickZoom
+  const geometry = useMemo(() => (pickMode ? withoutFollow(drawn) : drawn), [pickMode, drawn])
+  const sceneView = useSceneView(geometry, box.w, box.h, vw, vh)
+  const rect = sceneView.screen
+  // Where the screen shows while following (shape handles are cut there; dragging it aims the view).
+  const slot = sceneView.follow?.slot ?? null
 
   /** Normalised source position under a pointer (the preview shows the unzoomed frame while picking). */
   const sourceAt = (clientX: number, clientY: number, el: HTMLElement): { x: number; y: number } => {
@@ -234,12 +249,19 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     }
     return null
   }, [pickZoom, cropTool, selection, drawn.shapes, drawn.spotlights])
-  const view = useStageView(player, drawn, scene, editItem)
+  const view = useStageView(player, drawn, scene, sceneView, editItem)
   const mapping = view ? mappingFor(view.cam, rect) : null
 
   // E-06: a group's members on screen are outlined (paused only); Ctrl+click adds or removes items.
   const group = useGroup()
-  const outlines = useGroupOutlines(player, drawn, scene, rect, box, group.keys, group.group.keys.length >= 2 && !pickZoom && !cropTool)
+  const outlines = useGroupOutlines(player, drawn, scene, sceneView, box, group.keys, group.group.keys.length >= 2 && !pickZoom && !cropTool)
+
+  // The apps' safe zones over a tall frame (docs/design/vertical-video.md §2.8): DOM only, never drawn.
+  const safeZones = useSafeZoneChoice()
+  // Dragging the picture aims the view (§2.6): paused, following, not while picking or cropping.
+  const playing = usePlaying()
+  const [dragging, setDragging] = useState(false)
+  const canDragView = !!slot && !!scene && !pickZoom && !cropTool && !playing
 
   // Handles are laid out on the flat frame: the 3D tilt is left out while the preview shows
   // some (a zoom's focus being picked, the selected shape or spotlight being edited, a group's
@@ -321,6 +343,50 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     [pickZoom, crop, rect.x, rect.y, rect.w, rect.h, store]
   )
 
+  /**
+   * Dragging the picture while following (§2.6): the content moves with the pointer, like a map,
+   * written as Hold the view here at the dragged centre (the zoom at the playhead moves its point,
+   * a region its rectangle; without cursor data and no zoom, Where the view rests moves). One undo
+   * step per drag; a press that hardly moves still plays or pauses.
+   */
+  const dragViewFrom = (e: ReactPointerEvent<HTMLElement>, el: HTMLElement): boolean => {
+    if (!canDragView || !slot || !scene) return false
+    const r = el.getBoundingClientRect()
+    const px = e.clientX - r.left
+    const py = e.clientY - r.top
+    if (px < slot.x || px > slot.x + slot.w || py < slot.y || py > slot.y + slot.h) return false
+    const t = displayTime(drawn.clips, player.time)
+    const cam = frameCamera(scene, sceneView, t)
+    // Recording units (as drawn) per overlay pixel, through the camera and the virtual rectangle.
+    const ux = 1 / (cam.scale * rect.w)
+    const uy = 1 / (cam.scale * rect.h)
+    const noData = !scene.cursor.valid
+    const sx = e.clientX
+    const sy = e.clientY
+    let from: Project | null = null
+    let moved = false
+    followPointer(
+      e,
+      (ev) => {
+        if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) return
+        if (!moved) {
+          moved = true
+          from = dragStart(store.state, t, { x: cam.cx, y: cam.cy }, crop, noData)
+          if (!from) return group.notice('There is no room for a new zoom here.')
+          holdGesture(store)
+          setDragging(true)
+        }
+        const start = from
+        if (start) store.update(() => dragView(start, t, { x: (ev.clientX - sx) * ux, y: (ev.clientY - sy) * uy }, crop, noData), 'view-drag')
+      },
+      (ev) => {
+        setDragging(false)
+        if (!moved && ev.type === 'pointerup') onTogglePlay()
+      }
+    )
+    return true
+  }
+
   const onOverlayDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0) return
     releaseFocus(e.target)
@@ -342,7 +408,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     if ((e.ctrlKey || e.metaKey || e.shiftKey) && !cropTool && scene && !player.moving) {
       e.preventDefault()
       const r = el.getBoundingClientRect()
-      const key = topmostHit(previewBoxes(drawn, scene, rect, box, displayTime(drawn.clips, player.time)), e.clientX - r.left, e.clientY - r.top)
+      const key = topmostHit(previewBoxes(drawn, scene, sceneView, box, displayTime(drawn.clips, player.time)), e.clientX - r.left, e.clientY - r.top)
       const sx = e.clientX
       const sy = e.clientY
       followPointer(
@@ -357,6 +423,10 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
       return
     }
     if (view && redrawItem(e, el)) {
+      e.preventDefault()
+      return
+    }
+    if (dragViewFrom(e, el)) {
       e.preventDefault()
       return
     }
@@ -376,8 +446,9 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     <div className="canvas-wrap" ref={wrapRef}>
       <div className="canvas-box" style={{ width: box.w, height: box.h }}>
         <canvas ref={canvasRef} className="preview-canvas" />
+        {safeZones !== 'off' && isTall(out.width, out.height) && <SafeZoneOverlay choice={safeZones} box={box} />}
         <div
-          className={`preview-overlay ${pickZoom ? 'picking' : ''}`}
+          className={['preview-overlay', pickZoom && 'picking', canDragView && 'view-drag', dragging && 'dragging'].filter(Boolean).join(' ')}
           onPointerDown={onOverlayDown}
           title={pickZoom ? undefined : 'Click to play or pause'}
           data-testid="preview-overlay"
@@ -386,7 +457,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
           {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
-          {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} onDone={() => onSelect?.(null)} />}
+          {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
           {outlines.map((b) => (
             <div
@@ -622,7 +693,24 @@ const BOX_HANDLES: RegionHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
  * arrow or line, or the lit area around the cursor (resized from its corners). Drags are
  * mapped through the camera at the playhead, so they work the same zoomed in.
  */
-function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; view: StageView; mapping: Mapping; crop: NormRect | null; onDone: () => void }): JSX.Element {
+function ShapeEditor({
+  edit,
+  view,
+  mapping,
+  crop,
+  clip,
+  box,
+  onDone
+}: {
+  edit: EditItem
+  view: StageView
+  mapping: Mapping
+  crop: NormRect | null
+  /** While following: the slot, where the shape is drawn; its handles are cut there (§6.5). */
+  clip: Rect | null
+  box: Box
+  onDone: () => void
+}): JSX.Element {
   const { store } = useEditor()
   const { type, item } = edit
 
@@ -703,7 +791,13 @@ function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; vi
   const label = type === 'shape' ? shapeLabel(item.kind) : item.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight'
   return (
     <div className="shape-editor" data-testid="shape-editor" data-item={item.id}>
-      {body}
+      {clip ? (
+        <div className="shape-clip" style={{ clipPath: `inset(${clip.y}px ${box.w - clip.x - clip.w}px ${box.h - clip.y - clip.h}px ${clip.x}px)` }}>
+          {body}
+        </div>
+      ) : (
+        body
+      )}
       <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
         {label} · {offscreen ? 'the cursor is off the recording here' : `drag to place it${type === 'spotlight' && item.mode === 'cursor' ? '' : ', or drag elsewhere to draw it again'}`} ·{' '}
         <button className="link" onClick={onDone}>
@@ -721,10 +815,10 @@ function ShapeEditor({ edit, view, mapping, crop, onDone }: { edit: EditItem; vi
  * compositor's order: text, then shapes, then blur and pixelate (each in reverse list order), then
  * region spotlights by their lit area. Shapes and spotlights are mapped through the camera.
  */
-function previewBoxes(drawn: Project, scene: RenderScene, rect: Rect, box: Box, t: number): KeyRect[] {
+function previewBoxes(drawn: Project, scene: RenderScene, layout: SceneLayout, box: Box, t: number): KeyRect[] {
   if (box.w === 0) return []
-  const cam = cameraAt(drawn.zooms, t, scene.cursor.valid ? scene.focusPath : null, zoomStyleOf(drawn))
-  const m = mappingFor(cam, rect)
+  const cam = frameCamera(scene, layout, t)
+  const m = mappingFor(cam, layout.screen)
   const out: KeyRect[] = []
   const mapped = (key: ItemKey, b: { x: number; y: number; w: number; h: number }): void => {
     const a = m.toPx(b.x, b.y)
@@ -742,9 +836,8 @@ function previewBoxes(drawn: Project, scene: RenderScene, rect: Rect, box: Box, 
 }
 
 /** The group's members on screen while the player is paused (re-rendered only when they change, as when a text's font loads). */
-function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderScene | undefined, rect: Rect, box: Box, keys: ReadonlySet<string>, enabled: boolean): KeyRect[] {
+function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderScene | undefined, layout: SceneLayout, box: Box, keys: ReadonlySet<string>, enabled: boolean): KeyRect[] {
   const [boxes, setBoxes] = useState<KeyRect[]>([])
-  const { x, y, w, h } = rect
   useEffect(() => {
     if (!enabled || !scene) {
       setBoxes((b) => (b.length ? [] : b))
@@ -752,7 +845,7 @@ function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderSc
     }
     let last = ''
     const update = (): void => {
-      const next = player.moving ? [] : previewBoxes(drawn, scene, { x, y, w, h }, box, displayTime(drawn.clips, player.time)).filter((b) => keys.has(b.key))
+      const next = player.moving ? [] : previewBoxes(drawn, scene, layout, box, displayTime(drawn.clips, player.time)).filter((b) => keys.has(b.key))
       const sig = next.map((b) => `${b.key}:${b.x.toFixed(1)},${b.y.toFixed(1)},${b.w.toFixed(1)},${b.h.toFixed(1)}`).join(';')
       if (sig === last) return
       last = sig
@@ -765,6 +858,19 @@ function useGroupOutlines(player: PreviewPlayer, drawn: Project, scene: RenderSc
       offFonts()
       offPlayer()
     }
-  }, [player, drawn, scene, x, y, w, h, box, keys, enabled])
+  }, [player, drawn, scene, layout, box, keys, enabled])
   return boxes
+}
+
+/* ---------- the view that follows the action (docs/design/vertical-video.md §2.6) ---------- */
+
+/**
+ * The project a drag of the picture starts from: as it is when there is a point to move (a zoom
+ * with a fixed point or a region at `t`, or the rest point without cursor data and no zoom), else
+ * with Hold the view here at the view's `centre` first; null when there is no room for that zoom.
+ */
+function dragStart(p: Project, t: number, centre: Pos, crop: NormRect | null, noData: boolean): Project | null {
+  const z = zoomAt(p.zooms, t)
+  if (z ? z.focus.mode !== 'cursor' : noData) return p
+  return holdViewAt(p, t, centre, crop).project
 }
