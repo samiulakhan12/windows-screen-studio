@@ -3,7 +3,7 @@ import { captionAlpha } from '../src/shared/captions/layout'
 import { animationTime } from '../src/shared/engine/backgrounds'
 import { planOf, videoFrames } from '../src/shared/engine/freeze'
 import { loopHomeWeight } from '../src/shared/render/cursorFx'
-import { chapterParts, stillAcrossChapters } from '../src/shared/render/exportBundle'
+import { chapterParts, chaptersNote, stillAcrossChapters } from '../src/shared/render/exportBundle'
 import { overlayAlpha, overlayClockMs } from '../src/shared/render/imageOverlays'
 import { titlePhase } from '../src/shared/render/titleCards'
 import type { ChapterPart } from '../src/shared/render/exportBundle'
@@ -63,5 +63,46 @@ describe('one file per chapter', () => {
     expect(partThumbnailFrame(second)).toEqual({ time: 20, soundTime: 21, held: true })
     // Without freezes: the live frame 1 s in, with motion blur.
     expect(partThumbnailFrame(sources[1].project)).toEqual({ time: 21, soundTime: 21, held: false })
+  })
+})
+
+describe('one file per chapter: what the export dialog says', () => {
+  interface El {
+    type: unknown
+    props: Record<string, unknown>
+  }
+  type Options = (props: Record<string, unknown>) => unknown
+  // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+  const OPTIONS = '../src/renderer/src/editor/ExportBundleOptions'
+  const elements = (node: unknown, out: El[] = []): El[] => {
+    if (Array.isArray(node)) node.forEach((n) => elements(n, out))
+    else if (node && typeof node === 'object' && 'props' in node) {
+      out.push(node as El)
+      elements((node as El).props.children, out)
+    }
+    return out
+  }
+  const thumbnailTitle = async (perChapter: boolean): Promise<string> => {
+    const { ExportBundleOptions } = (await import(/* @vite-ignore */ OPTIONS)) as { ExportBundleOptions: Options }
+    const tree = ExportBundleOptions({
+      value: { srt: false, vtt: false, chapters: false, thumbnail: true, description: false, perChapter },
+      onChange: () => undefined,
+      format: 'mp4',
+      has: { captions: false, chapters: true },
+      mode: 'single',
+      chapterCount: 3
+    })
+    return String(elements(tree).find((e) => e.props['data-sidecar'] === 'thumbnail')!.props.title)
+  }
+
+  it('says the parts have no chapter markers', () => {
+    expect(chaptersNote(3, false, false)).toBe('3 chapters, written into the file.')
+    expect(chaptersNote(3, false, true)).toBe('3 chapters, one file each (the files have no chapter markers).')
+    expect(chaptersNote(1, true, false)).toBe('1 chapter · GIFs have no chapters, other formats keep them.')
+  })
+
+  it('says each part gets the frame 1 s in as its thumbnail, not the frame chosen above', async () => {
+    expect(await thumbnailTitle(false)).toBe('Save the frame chosen above as a PNG at the export size')
+    expect(await thumbnailTitle(true)).toBe('Save the frame 1 s into each part as a PNG at the export size')
   })
 })

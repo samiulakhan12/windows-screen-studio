@@ -9,6 +9,8 @@ const TITLES: Record<string, string> = {
   thumbnail: 'Save the frame chosen above as a PNG at the export size',
   description: 'Save a description with the title, length and chapters, ready to paste'
 }
+/** One file per chapter: each part's thumbnail is its own frame, not the Frame slider's. */
+const PART_THUMBNAIL_TITLE = 'Save the frame 1 s into each part as a PNG at the export size'
 
 /**
  * "Also save" in the export dialog's settings (F-11): files written next to the video, and one
@@ -47,7 +49,7 @@ export function ExportBundleOptions({
                   className={`chip ${on ? 'active' : ''}`}
                   aria-pressed={on}
                   disabled={!!blocked}
-                  title={blocked ?? TITLES[k]}
+                  title={blocked ?? (k === 'thumbnail' && value.perChapter && !perBlocked ? PART_THUMBNAIL_TITLE : TITLES[k])}
                   data-sidecar={k}
                   onClick={() => onChange({ ...value, [k]: !value[k] })}
                 >

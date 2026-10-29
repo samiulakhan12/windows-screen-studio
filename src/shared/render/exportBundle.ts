@@ -67,6 +67,13 @@ export function perChapterBlocked(has: BundleSources, mode: 'single' | 'batch'):
   return null
 }
 
+/** The export dialog's line on the video's `count` chapters: where they end up. A part has no chapter markers. */
+export function chaptersNote(count: number, gif: boolean, perChapter: boolean): string {
+  const n = `${count} chapter${count === 1 ? '' : 's'}`
+  if (gif) return `${n} · GIFs have no chapters, other formats keep them.`
+  return perChapter ? `${n}, one file each (the files have no chapter markers).` : `${n}, written into the file.`
+}
+
 /**
  * The files saved with each exported file. A part of "one file per chapter" has no chapter list of
  * its own (it is one chapter).

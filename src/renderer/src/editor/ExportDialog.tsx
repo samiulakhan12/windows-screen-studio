@@ -39,7 +39,7 @@ import { useModalFocus } from './modalFocus'
 import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
 import { partSource, partThumbnailFrame, writeBundle } from './exportBundleRun'
-import { bundleKinds, chapterParts, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
+import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import type { BatchExtras } from './exporter'
 import './exportDialog.css'
@@ -187,16 +187,15 @@ async function copyText(text: string): Promise<boolean> {
  * The video's chapters: how many go into the file, and a button that copies them as YouTube
  * timestamps ("0:00 Intro"), saying what YouTube still needs when the list does not qualify.
  */
-function ChapterCopy({ chapters, length, gif }: { chapters: OutputChapter[]; length: number; gif: boolean }): JSX.Element | null {
+function ChapterCopy({ chapters, length, gif, perChapter = false }: { chapters: OutputChapter[]; length: number; gif: boolean; perChapter?: boolean }): JSX.Element | null {
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const yt = useMemo(() => youtubeChapters(chapters, length), [chapters, length])
   useEffect(() => setState('idle'), [yt.text])
   if (!chapters.length) return null
   const copy = async (): Promise<void> => setState((await copyText(yt.text)) ? 'copied' : 'failed')
-  const count = `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`
   return (
     <div className="export-chapters" data-testid="export-chapters">
-      <p className="hint">{gif ? `${count} · GIFs have no chapters, other formats keep them.` : `${count}, written into the file.`}</p>
+      <p className="hint">{chaptersNote(chapters.length, gif, perChapter)}</p>
       <button className="btn small chapter-copy" onClick={() => void copy()} title="Copy the chapters as YouTube timestamps (0:00 Intro…) for the video's description">
         {state === 'copied' ? <Icon name="check" size={14} /> : <CopyIcon />} {state === 'copied' ? 'Copied' : 'Copy chapters'}
       </button>
@@ -651,7 +650,7 @@ export function ExportDialog(props: Props): JSX.Element {
                   </p>
                 )}
                 {thumb.kind === 'failed' && <p className="hint warn">{thumb.message}</p>}
-                <ChapterCopy chapters={chapters} length={length} gif={mode === 'single' && gif} />
+                <ChapterCopy chapters={chapters} length={length} gif={mode === 'single' && gif} perChapter={perChapter} />
 
                 <div className="export-summary">
                   {mode === 'single' ? (
