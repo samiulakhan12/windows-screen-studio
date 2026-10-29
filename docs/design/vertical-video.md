@@ -1705,7 +1705,9 @@ the correct thing and the difference is listed here.
   move ended less than its length before, and the shot's deadline is checked again). A pan shortened
   to end at a cut ends at a `to` clamped for the uncut pan's span. Measured after the fix: 4.57
   views/s² in the reported case, 2.68 for the band coming back during a pan. §5.11's "differ only by
-  pixel rounding or while a layout change narrows the view" holds only with this rule.
+  pixel rounding or while a layout change narrows the view" holds only with this rule. The settle is
+  also measured in the default layout's view on an axis the pan's view covers (whose centre is 0.5
+  there): a pull-back draws the plan's place on that axis, so without it the camera jumped there.
 - **§6.3 text placement margins.** "The area already keeps clear of the apps, so the 16:9 margins of
   `placeChunk` are not added" holds only for edges that come from `COMMON_SAFE` or the band push.
   Where the area's edge is the frame's own edge (*Keep text clear* off, the side away from the

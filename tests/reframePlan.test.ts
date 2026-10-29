@@ -780,6 +780,24 @@ describe('leaving the edge of a narrower view (§5.11)', () => {
       expect(drawnAccel(p, t, 3.6, 9, 240)).toBeLessThanOrEqual(2 * PACE.balanced.maxAccel)
     })
   }
+
+  it('a pull-back that shows the whole height: the plan settles onto the middle before the pan, and the drawn camera never jumps', () => {
+    // How close 2: the unzoomed view is 0.59 of the height, so the plan holds near the top; the
+    // 0.6x pull-back shows the whole height, where the pan's start is the middle.
+    const p = project({ zooms: [{ id: 'z', start: 2, end: 8, scale: 0.6, focus: { mode: 'cursor' }, auto: false }] }, { level: 2 })
+    const t = track(samples(12, flight([0.3, 0.15], [0.8, 0.15], 4, 4.3)))
+    const plan = planFollow(p, t)
+    expectContinuous(plan)
+    const scene = { project: p, cursor: t, focusPath: focusPathFor(t.samples, p.duration) }
+    let prev = frameView(scene, 1080, 1920, p.width, p.height, 3)
+    for (let i = 3 * 60 + 1; i <= 7 * 60; i++) {
+      const v = frameView(scene, 1080, 1920, p.width, p.height, i / 60)
+      // The recording's height on the output, times the change in its centre: output px per frame.
+      const step = Math.abs(v.cam.cy - prev.cam.cy) * v.layout.screen.h * v.cam.scale
+      expect(step, `at ${(i / 60).toFixed(3)} s`).toBeLessThan(20)
+      prev = v
+    }
+  })
 })
 
 describe('smoothness (test 40)', () => {

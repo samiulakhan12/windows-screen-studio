@@ -260,7 +260,7 @@ export function planFollow(project: FollowProject, track: CursorTrack): FollowPl
   const view = viewsOn(grid, project, limits, framed)
   const noData = !input.valid || (input.samples.length === 0 && input.clicks.length === 0)
   const rest = restPoint(project)
-  const plan = new Planner(grid, pace, att, view, noData ? rest : null)
+  const plan = new Planner(grid, pace, att, view, noData ? rest : null, limits.base)
   const shots = plan.shortShots(plan.shots(rest))
   const moves = plan.joined(plan.pans(shots))
   const segments = segmentsOf(moves, shots[0].centre, grid.total)
@@ -822,7 +822,9 @@ class Planner {
     readonly att: Attention,
     readonly view: Views,
     /** Without cursor data: where the view goes back to when nothing calls it elsewhere (a soft target). */
-    readonly rest: Pt | null
+    readonly rest: Pt | null,
+    /** The default layout's view: the unit of a settle on an axis the view covers. */
+    readonly base: ViewSize
   ) {
     this.n = grid.n
   }
@@ -1103,7 +1105,8 @@ class Planner {
       }
       let settle: Move | null = null
       const from = clampIn(vw, vh, held.x, held.y)
-      const ds = this.dist(k0, from.x, from.y, held)
+      // An axis the view covers still counts: a pull-back draws the plan's place there.
+      const ds = Math.max(this.dist(k0, from.x, from.y, held), Math.abs(from.x - held.x) / this.base.w, Math.abs(from.y - held.y) / this.base.h)
       if (ds > 1e-9) {
         const Ds = panDuration(ds, pace)
         const s0 = Math.max(floor, t0 - Ds)
