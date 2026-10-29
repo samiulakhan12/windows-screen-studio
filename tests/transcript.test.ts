@@ -223,6 +223,24 @@ describe('cutWords and restoreWords', () => {
     expect(cutFlags(w, back)[1]).toBe(false)
   })
 
+  it('restores a cut word shorter than MIN_CLIP between touching words, alone or with others', () => {
+    // "I saw a cat": "a" is 0.06 s and its neighbours touch it, so its cut is only 0.06 s long.
+    const w = wordsAt([
+      [1, 1.3],
+      [1.3, 1.6],
+      [1.6, 1.66],
+      [1.66, 2]
+    ])
+    const cut = cutWords(full, w, [[2, 2]], 10)
+    expect(cut.map((c) => [c.start, c.end])).toEqual([
+      [0, 1.6],
+      [1.66, 10]
+    ])
+    expect(cutFlags(w, cut)).toEqual([false, false, true, false])
+    expect(restoreWords(cut, w, 2, 2, 10).map((c) => [c.start, c.end, c.speed])).toEqual([[0, 10, 1]])
+    expect(restoreWords(cut, w, 0, 3, 10).map((c) => [c.start, c.end, c.speed])).toEqual([[0, 10, 1]])
+  })
+
   it('never cuts the whole video', () => {
     const one = wordsAt([[0.2, 9.8]])
     expect(cutWords(full, one, [[0, 0]], 10)).toBe(full)

@@ -7,7 +7,7 @@
 import { clamp } from '../engine/math'
 import { cutRange, MIN_CLIP, normalizeClips } from '../engine/timeline'
 import type { CaptionSegment, Clip, Transcript } from '../types'
-import { restoreRange } from './clips'
+import { restoreRange, timelineGaps } from './clips'
 import { rangeSaving, type TimeRange } from './smartSpeed'
 
 export interface TranscriptWord {
@@ -164,8 +164,10 @@ export function cutWords(clips: Clip[], words: readonly TranscriptWord[], spans:
 
 /**
  * The clips with the range of words `first..last` put back (restoreRange: cut parts at 1x, kept
- * parts as they are). A range shorter than a clip may be (MIN_CLIP) grows around its middle, so
- * restoring one short word never leaves a sliver of a clip.
+ * parts as they are). Cuts that lie inside the range come back whole first, on their own bounds, so
+ * one shorter than MIN_CLIP (a short word between touching ones) joins its neighbours. A range
+ * shorter than a clip may be grows around its middle, so restoring one short word never leaves a
+ * sliver of a clip.
  */
 export function restoreWords(clips: Clip[], words: readonly TranscriptWord[], first: number, last: number, duration: number): Clip[] {
   if (!words[first] || !words[last]) return clips
@@ -175,7 +177,11 @@ export function restoreWords(clips: Clip[], words: readonly TranscriptWord[], fi
   let end = r.end + grow
   if (start < 0) [start, end] = [0, Math.min(duration, end - start)]
   if (end > duration) [start, end] = [Math.max(0, start - (end - duration)), duration]
-  const out = restoreRange(clips, start, end, duration)
+  let out = clips
+  for (const g of timelineGaps(clips, duration)) {
+    if (g.kind === 'cut' && g.start >= start - EPS && g.end <= end + EPS) out = restoreRange(out, g.start, g.end, duration)
+  }
+  out = restoreRange(out, start, end, duration)
   return out === clips ? clips : normalizeClips(out, duration)
 }
 

@@ -552,8 +552,11 @@ Where the build differs from the sections above, after an adversarial review:
   between two cuts goes with them (no clip is shorter than `MIN_CLIP`), and the notice counts it.
   A selection whose range is empty (words of zero length between touching words) says "Too short to
   cut on its own. Select more words".
-- **Restore** grows a range shorter than `MIN_CLIP` around its middle and normalises the clips, so
-  restoring one short word never leaves a sliver of a clip.
+- **Restore** first puts back, on their own bounds, the cuts that lie inside the range (so a cut
+  shorter than `MIN_CLIP`, a short word between touching words, joins its neighbours), then grows a
+  range shorter than `MIN_CLIP` around its middle and normalises the clips, so restoring one short
+  word never leaves a sliver of a clip. When nothing can change, the notice says "Could not restore
+  this here. Use Undo, or restore the cut on the timeline".
 - **Stutters** never run across a sentence end ("the store. The store").
 - **Language lookup** uses `Object.hasOwn` (a transcript language like `constructor` cannot reach the
   prototype).

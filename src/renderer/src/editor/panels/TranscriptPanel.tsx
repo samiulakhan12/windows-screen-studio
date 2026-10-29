@@ -150,7 +150,7 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     if (flags.slice(a, b + 1).every((f) => !f)) return
     const before = store.state.clips
     const next = restoreWords(before, words, a, b, store.state.duration)
-    if (sameClips(next, before)) return
+    if (sameClips(next, before)) return onNotice('Could not restore this here. Use Undo, or restore the cut on the timeline')
     store.update((p) => ({ ...p, clips: restoreWords(p.clips, words, a, b, p.duration) }))
     const after = cutFlags(words, next)
     const back = flags.reduce((n, f, i) => n + (f && !after[i] ? 1 : 0), 0)
