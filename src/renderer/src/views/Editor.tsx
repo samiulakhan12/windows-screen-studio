@@ -442,11 +442,18 @@ function EditorSession({
   /* ---------- notices ---------- */
 
   const noticeTimer = useRef(0)
+  const noticeMs = useRef(4000)
   /** Shows `message` for a few seconds; `opts`: a button in it, an error (role alert), a longer time. */
   const showNotice = useCallback((message: string, opts?: { action?: Notice['action']; alert?: boolean; ms?: number }) => {
     setNotice({ text: message, ...(opts?.action ? { action: opts.action } : {}), ...(opts?.alert ? { alert: true } : {}) })
+    noticeMs.current = opts?.ms ?? 4000
     window.clearTimeout(noticeTimer.current)
-    noticeTimer.current = window.setTimeout(() => setNotice(null), opts?.ms ?? 4000)
+    noticeTimer.current = window.setTimeout(() => setNotice(null), noticeMs.current)
+  }, [])
+  /** A notice with a button (Open original) stays while the pointer is over it or focus is in it, then shows for its time again. */
+  const holdNotice = useCallback((held: boolean) => {
+    window.clearTimeout(noticeTimer.current)
+    if (!held) noticeTimer.current = window.setTimeout(() => setNotice(null), noticeMs.current)
   }, [])
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
@@ -1615,6 +1622,7 @@ function EditorSession({
               notice={notice?.text ?? null}
               noticeAction={notice?.action ?? null}
               noticeAlert={!!notice?.alert}
+              onNoticeHold={holdNotice}
               tall={tall}
               onTogglePlay={actions.togglePlay}
               onSplit={actions.split}

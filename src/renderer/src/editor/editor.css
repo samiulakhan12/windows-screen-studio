@@ -243,6 +243,23 @@
   animation: notice-in var(--dur-med) var(--ease-out);
 }
 
+/* With a button (Open original): a row in which only the message gives way; the button keeps its size and can be pressed. */
+.notice-slot .notice.has-action {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.notice-slot .notice.has-action .notice-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice-slot .notice.has-action .link {
+  flex: none;
+}
+
 @keyframes notice-in {
   from {
     opacity: 0;

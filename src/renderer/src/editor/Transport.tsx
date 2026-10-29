@@ -20,12 +20,55 @@ interface Props {
   /** A button in the notice (Open original after a copy), and whether the notice is an error (role alert). */
   noticeAction?: { label: string; run: () => void } | null
   noticeAlert?: boolean
+  /** A notice with a button stays while the pointer is over it or focus is in it (true), then shows for its time again (false). */
+  onNoticeHold?: (held: boolean) => void
   /** The frame is tall (9:16 and the like): the safe-zone toggle shows (docs/design/vertical-video.md §2.8). */
   tall?: boolean
   onTogglePlay: () => void
   onSplit: () => void
   onAddZoom: () => void
   onAddText: () => void
+}
+
+/**
+ * The notice under the preview. Only its message gives way (an ellipsis, the whole text in its
+ * title): the button after it (Open original) stays whole, so it can be seen and pressed in a
+ * narrow transport row (a 9:16 frame adds the safe-zone control). A notice with a button reports
+ * the pointer over it and focus in it through `onHold`, so it does not go while being used.
+ */
+export function TransportNotice({ text, action, alert, onHold }: { text: string; action?: Props['noticeAction']; alert?: boolean; onHold?: Props['onNoticeHold'] }): JSX.Element {
+  const hold = action && onHold
+  return (
+    <span
+      className={action ? 'notice has-action' : 'notice'}
+      role={alert ? 'alert' : undefined}
+      onMouseEnter={hold ? () => onHold(true) : undefined}
+      onMouseLeave={
+        hold
+          ? (e) => {
+              if (!e.currentTarget.contains(document.activeElement)) onHold(false)
+            }
+          : undefined
+      }
+      onFocus={hold ? () => onHold(true) : undefined}
+      onBlur={
+        hold
+          ? (e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null) && !e.currentTarget.matches(':hover')) onHold(false)
+            }
+          : undefined
+      }
+    >
+      <span className="notice-text" title={text}>
+        {text}
+      </span>
+      {action && (
+        <button className="link" onClick={action.run}>
+          {action.label}
+        </button>
+      )}
+    </span>
+  )
 }
 
 export function usePlaying(): boolean {
@@ -37,7 +80,7 @@ export function usePlaying(): boolean {
  * Play button, output timecode and edit tools. The timecode is written straight
  * to the DOM from the player, so playback never re-renders React components.
  */
-export const Transport = memo(function Transport({ clips, freezes, notice, noticeAction, noticeAlert, tall, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
+export const Transport = memo(function Transport({ clips, freezes, notice, noticeAction, noticeAlert, onNoticeHold, tall, onTogglePlay, onSplit, onAddZoom, onAddText }: Props): JSX.Element {
   const { player } = useEditor()
   const keymap = useKeymap()
   const playing = usePlaying()
@@ -70,19 +113,7 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
         <PreviewSpeedControl />
         {tall && <SafeZonesControl />}
         <div className="notice-slot" role="status" aria-live="polite">
-          {notice && (
-            <span className="notice" role={noticeAlert ? 'alert' : undefined}>
-              {notice}
-              {noticeAction && (
-                <>
-                  {' '}
-                  <button className="link" onClick={noticeAction.run}>
-                    {noticeAction.label}
-                  </button>
-                </>
-              )}
-            </span>
-          )}
+          {notice && <TransportNotice text={notice} action={noticeAction} alert={noticeAlert} onHold={onNoticeHold} />}
         </div>
         <div className="tool-group">
           <button className="btn ghost" onClick={onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>
