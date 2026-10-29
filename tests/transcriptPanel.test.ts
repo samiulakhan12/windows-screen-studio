@@ -337,4 +337,36 @@ describe('the Transcript tab', () => {
       expect(log.focused, label).toEqual(['list'])
     }
   })
+
+  it('the arrow keys start on the page chosen with Earlier and Later', () => {
+    // 45 captions of three words: page 1 holds captions 0..39 (words 0..119), page 2 the rest.
+    useProject(60, captions(45))
+    render()
+    const shownWords = (): number[] => render().filter((e) => e.props.role === 'option').map((e) => Number(e.props['data-w']))
+    // No selection yet: Later, then Right selects the page's first word and the page stays.
+    click('Later')
+    press('ArrowRight')
+    expect(selectedWords()).toEqual([120])
+    expect(shownWords()[0]).toBe(120)
+    // A selection on page 1: Later, then Left selects the page's last word.
+    pointerDown(4)
+    expect(shownWords()[0]).toBe(0)
+    click('Later')
+    press('ArrowLeft')
+    expect(selectedWords()).toEqual([134])
+    expect(shownWords()[0]).toBe(120)
+    // Shift extends the selection from its anchor onto the page shown.
+    pointerDown(130)
+    click('Earlier')
+    press('ArrowDown', { shift: true })
+    expect(list().props['aria-activedescendant']).toBe('tw-0')
+    expect(selectedWords()).toEqual(Array.from({ length: 120 }, (_, i) => i))
+    click('Later')
+    expect(selectedWords()).toEqual(Array.from({ length: 11 }, (_, i) => 120 + i))
+    // Home and End go where they always go; on the page that holds the focus the keys move from it.
+    press('Home')
+    expect(selectedWords()).toEqual([0])
+    press('ArrowRight')
+    expect(selectedWords()).toEqual([1])
+  })
 })

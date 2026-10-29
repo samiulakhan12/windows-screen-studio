@@ -262,7 +262,17 @@ function TranscriptEditor({
     const plain = !e.ctrlKey && !e.metaKey && !e.altKey
     if (plain && SELECTION_KEYS.includes(e.key)) {
       own()
-      setSel(moveSelection(sel, e.key as SelectionKey, e.shiftKey, words))
+      const key = e.key as SelectionKey
+      // On a page turned to with Earlier or Later the arrows start there (its first word, or its
+      // last going back), not from a focus on another page; Shift keeps the anchor.
+      let next: WordSelection | null
+      if (key !== 'Home' && key !== 'End' && shown.length > 0 && (!sel || pageOfWord(sel.focus) !== shownPage)) {
+        const w = key === 'ArrowLeft' || key === 'ArrowUp' ? shown[shown.length - 1].last : shown[0].first
+        next = e.shiftKey && sel ? { anchor: sel.anchor, focus: w } : { anchor: w, focus: w }
+      } else next = moveSelection(sel, key, e.shiftKey, words)
+      setSel(next)
+      // The page shows the focused word, also when the focus stays where it was (Home on word 0).
+      if (next) setPage(pageOfWord(next.focus))
     } else if (plain && (e.key === 'Delete' || e.key === 'Backspace')) {
       own()
       cut()

@@ -341,7 +341,9 @@ scrolled into view unless the word list has the focus; the page follows it (§4.
 
 The text is shown in pages of 40 captions (like the Captions tab's 50-row pages), with Earlier /
 Later. The page follows the current word while playing and the focused word while moving with the
-keys. Selections can span pages (they are word indices).
+keys. On a page turned to with Earlier or Later, the arrow keys start there (its first word; its
+last going Left or Up) rather than from a focus on another page; Shift keeps the anchor, so a
+selection can still be extended across pages. Selections can span pages (they are word indices).
 
 ---
 
