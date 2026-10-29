@@ -192,6 +192,13 @@ A word is cut when its middle, `(start + end) / 2`, is in no clip (`clipIndexAt`
 `start ≤ t < end`). Computed for all words in one sweep over the sorted words and the sorted clips
 (O(words + clips)).
 
+Subtitle files (Export captions, and Also save > Captions in every part of One file per chapter)
+leave out the same words: `outputCues` times each caption's words with `alignCaptionWords` and
+drops a word whose middle is cut, whether or not the text still matches its word timings. In a
+caption with no word timing to go by (every word estimated), a word is dropped only when none of
+it plays, which is what deleting it here does; a timeline cut across such a caption keeps the
+words it only partly covers, so a guess never takes a heard word out of the subtitles.
+
 ### 4.3 The range of a word span (`wordsRange`)
 
 For the words `first..last` (indices), with `prev` = the word before `first` and `next` = the word

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
+import { cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
-import type { CaptionSegment, Clip } from '../src/shared/types'
+import type { CaptionSegment, Clip, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
 const seg = (id: string, start: number, end: number, text: string, words?: CaptionSegment['words']): CaptionSegment => ({ id, start, end, text, ...(words && { words }) })
@@ -56,6 +57,30 @@ describe('outputCues: captions in output time', () => {
     ]
     const [c] = outputCues([seg('a', 1, 6, 'keep gone kept', words)], [clip(0, 3), clip(5, 10)])
     expect(c.text).toBe('keep kept')
+  })
+
+  it('leaves out a word deleted in the Transcript tab when the text no longer matches its word timings, or has none', () => {
+    const timed = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.1, end: 1.5 },
+      { text: 'I', start: 2, end: 2.1 },
+      { text: 'think', start: 2.15, end: 2.5 },
+      { text: 'alot', start: 2.6, end: 3 },
+      { text: 'works.', start: 3.1, end: 3.6 }
+    ]
+    // "alot" fixed to "a lot" in the Captions tab (7 words, 6 timings); and a provider that gave no word timings.
+    for (const caption of [seg('a', 0.4, 3.8, 'So um, I think a lot works.', timed), seg('a', 0.4, 3.8, 'So um, I think a lot works.')]) {
+      const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
+      const words = transcriptWords(transcript)
+      const um = words.findIndex((w) => w.text === 'um,')
+      // Deleted as the Transcript tab does it.
+      const clips = cutWords([clip(0, 10)], words, [[um, um]], 10)
+      const flags = cutFlags(words, clips)
+      expect(words.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
+      const [c] = outputCues([caption], clips)
+      expect(c.text).toBe('So I think a lot works.')
+      expect(subtitleFile([caption], clips, 'srt')).not.toContain('um,')
+    }
   })
 
   it('never overlaps and drops slivers', () => {
