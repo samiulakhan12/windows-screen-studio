@@ -75,6 +75,29 @@ describe('alignCaptionWords', () => {
     expect(w[2]).toMatchObject({ start: 2, end: 3 })
   })
 
+  it('shares a retyped run at a caption end over the timed words it replaced, not the silence after them', () => {
+    // The caption runs to 4 s, the speech to 3 s.
+    const words: [string, number, number][] = [['a', 0.2, 1], ['b', 1.1, 2], ['c', 2.1, 3]]
+    const all = alignCaptionWords(seg('a', 0, 4, 'x y z', words))
+    expect(all.every((x) => x.estimated)).toBe(true)
+    expect(all[0].start).toBeCloseTo(0.2)
+    expect(all[2].end).toBeCloseTo(3)
+    const tail = alignCaptionWords(seg('a', 0, 4, 'a y z', words))
+    expect(tail[0]).toMatchObject({ start: 0.2, end: 1, estimated: false })
+    expect(tail[1].start).toBeCloseTo(1)
+    expect(tail[2].end).toBeCloseTo(3)
+    const head = alignCaptionWords(seg('a', 0, 4, 'x y c', words))
+    expect(head[0].start).toBeCloseTo(0.2)
+    expect(head[1].end).toBeCloseTo(2.1)
+  })
+
+  it('lets a word added at a caption end, past every timed word, reach the caption end', () => {
+    const w = alignCaptionWords(seg('a', 0, 4, 'one two three', [['one', 0.5, 1], ['two', 1.1, 2]]))
+    expect(w[2]).toMatchObject({ start: 2, end: 4, estimated: true })
+    const first = alignCaptionWords(seg('a', 0, 4, 'so one two', [['one', 0.5, 1], ['two', 1.1, 2]]))
+    expect(first[0]).toMatchObject({ start: 0, end: 0.5, estimated: true })
+  })
+
   it('leaves out timed words removed from the text', () => {
     const w = alignCaptionWords(seg('a', 0, 3, 'one three', [['one', 0, 1], ['two', 1, 2], ['three', 2, 3]]))
     expect(w.map((x) => [x.text, x.start, x.end])).toEqual([

@@ -91,11 +91,14 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const pairs = lcsPairs(keyA, keyB, (x, y) => x === y && x !== '')
   const out: TimedText[] = new Array(texts.length)
   const inside = (t: number): number => clamp(t, seg.start, seg.end)
+  const matched = new Map(pairs)
   for (const [i, j] of pairs) {
     const start = inside(timed[j].start)
     out[i] = { text: texts[i], start, end: Math.max(start, inside(timed[j].end)), estimated: false }
   }
-  // Runs of unmatched words between matched ones (or the caption's ends).
+  // Runs of unmatched words between matched ones (or the caption's ends). At a caption end, a run
+  // that took the place of timed words (retyped) shares their time, not the silence the caption
+  // may hold past them; one with no timed words left there (added) reaches the caption's end.
   let i = 0
   while (i < texts.length) {
     if (out[i]) {
@@ -104,8 +107,10 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
     }
     let k = i
     while (k < texts.length && !out[k]) k++
-    const from = i > 0 ? out[i - 1].end : seg.start
-    const to = k < texts.length ? out[k].start : seg.end
+    const jPrev = i > 0 ? matched.get(i - 1)! : -1
+    const jNext = k < texts.length ? matched.get(k)! : timed.length
+    const from = i > 0 ? out[i - 1].end : jNext > 0 ? inside(timed[0].start) : seg.start
+    const to = k < texts.length ? out[k].start : jPrev < timed.length - 1 ? inside(timed[timed.length - 1].end) : seg.end
     spread(texts.slice(i, k), from, Math.max(from, to)).forEach((w, n) => (out[i + n] = w))
     i = k
   }

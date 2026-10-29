@@ -172,7 +172,10 @@ timed words by a longest common subsequence of their normalised forms (§4.5 nor
 
 - A shown word matched to a timed word takes its times.
 - Unmatched shown words between two matched ones share the time between them in proportion to
-  their length in characters, and are marked `estimated`.
+  their length in characters, and are marked `estimated`. A run at a caption's start or end that
+  took the place of timed words (retyped) shares the time of those timed words, not the silence the
+  caption may hold before or after them; a run with no timed words left there (added) reaches the
+  caption's own start or end.
 - A caption without any timed words gets every word estimated the same way across the caption.
 - A word is at least 0 s long; times stay inside its caption.
 
