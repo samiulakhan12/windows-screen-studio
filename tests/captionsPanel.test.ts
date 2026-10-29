@@ -618,6 +618,38 @@ describe('CaptionsPanel: captions on this PC', () => {
   })
 
   it.each([
+    ['cancelled', true],
+    ['failed', true],
+    ['made', true],
+    ['failed, the focus on a control', false]
+  ])("a run with a key, %s: as its Cancel goes, a focus that fell to the page goes to the form's Generate captions (again after Dismiss), or to Regenerate captions… once made", async (how, onPage) => {
+    replies.speech = () => Promise.resolve(speechState({ engine: { available: false, build: null, threads: 1, reason: 'missing' } }))
+    page.activeElement = onPage ? page.body : { control: 'elsewhere' }
+    let out = await show()
+    const names = (): string[] => focused.map((e) => textOf(e.props.children).trim())
+    click(out, 'Generate captions')
+    out = render(m.panel)
+    expect(names()).toEqual(onPage ? ['Cancel'] : [])
+    if (how === 'cancelled') click(out, 'Cancel')
+    else if (how === 'made') runs[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] })
+    else runs[0].reject(new Error('The provider refused the key.'))
+    await flush()
+    out = render(m.panel)
+    expect(buttons(out)).not.toContain('Cancel')
+    const last = names()[names().length - 1]
+    if (!onPage) expect(names()).toEqual([])
+    else expect(last).toBe(how === 'made' ? 'Regenerate captions…' : 'Generate captions')
+    if (!how.startsWith('failed')) return
+    expect(has(out, 'Captions could not be made: The provider refused the key.')).toBe(true)
+    // Dismiss takes itself away: the form's Generate captions catches the focus again.
+    focused.length = 0
+    click(out, 'Dismiss')
+    out = render(m.panel)
+    expect(has(out, 'Captions could not be made')).toBe(false)
+    expect(names()).toEqual(onPage ? ['Generate captions'] : [])
+  })
+
+  it.each([
     ['damaged', localErrorMessage('damaged', { model: 'whisper-base' }), 'Download again (60 MB)'],
     ['memory', localErrorMessage('memory', { model: 'whisper-base' }), 'Use Fast'],
     ['crashed', localErrorMessage('crashed', { part: 2, parts: 3 }), 'Generate captions again'],

@@ -1019,10 +1019,11 @@ button. Failure: "The third-party notices could not be shown: {message}".
   frees 190 megabytes").
 - Focus never falls to the body when a focused button disappears: Download → Cancel → (verifying)
   the card's heading (`tabIndex=-1`) → Cancel (running, also with a key) → (done) Regenerate
-  captions…; an inline Remove question takes focus, Esc cancels it. In Settings a row whose buttons
-  change passes the focus to its new action (Download → Cancel → Continue …), to its status line
-  while "Checking…" (`tabIndex=-1`), and after a confirmed Remove to the row's Remove, then its
-  Download.
+  captions…, (cancelled) Generate captions, (failed) on this PC the error's button, with a key
+  Generate captions, which a dismissed error also passes it to; an inline Remove question takes
+  focus, Esc cancels it. In Settings a row whose buttons change passes the focus to its new action
+  (Download → Cancel → Continue …), to its status line while "Checking…" (`tabIndex=-1`), and after
+  a confirmed Remove to the row's Remove, then its Download.
 - A control that cannot act now is `aria-disabled="true"` (still focusable, so the "Generate
   captions" command can focus it), with its reason as visible text linked by `aria-describedby`;
   never a `disabled` button with the reason in a title.

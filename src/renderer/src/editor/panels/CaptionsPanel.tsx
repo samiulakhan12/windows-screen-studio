@@ -424,14 +424,18 @@ function GenerateSection({
   useEffect(() => {
     if (focusLanguage) languageRef.current?.focus()
   }, [focusLanguage])
-  // A run with a key: its Cancel catches the focus that fell to the page as the run started (Generate went, or the
-  // Transcript tab with Make captions), as Cancel on this PC does.
-  const cloudRunning = !!mine?.running && !mine.local
+  // A run with a key, as on this PC: its Cancel catches the focus that fell to the page as the run started (Generate
+  // went, or the Transcript tab with Make captions); once it is cancelled or failed, or its error is dismissed, the
+  // form's Generate does (none when the summary shows: its Regenerate catches it below).
+  const cloudJob = mine && !mine.local ? (mine.running ? 'running' : mine.error ? 'failed' : null) : null
+  const cloudWas = useRef<typeof cloudJob>(null)
   useEffect(() => {
-    if (!cloudRunning || typeof document === 'undefined') return
+    const was = cloudWas.current
+    cloudWas.current = cloudJob
+    if ((!cloudJob && !was) || typeof document === 'undefined') return
     const active = document.activeElement
-    if (!active || active === document.body) cancelRef.current?.focus({ preventScroll: true })
-  }, [cloudRunning])
+    if (!active || active === document.body) (cloudJob === 'running' ? cancelRef : generateRef).current?.focus({ preventScroll: true })
+  }, [cloudJob])
   // When a run ends, Cancel goes away: focus moves to "Regenerate captions…", never to the page.
   const summaryShown = hasTranscript && !open && !mine?.running && !mine?.error
   useEffect(() => {
