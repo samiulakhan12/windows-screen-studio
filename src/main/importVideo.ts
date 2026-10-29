@@ -20,7 +20,7 @@ import { detectH264Encoders, type H264Encoder } from './hwEncoders'
 import * as projects from './projects'
 import { proxyArgs } from './proxyArgs'
 import { encodeWithFallback } from './recording/finalize'
-import { FfmpegError, isCancelled } from './recording/proxyRunner'
+import { FfmpegError, isCancelled, READ_ERROR_RE } from './recording/proxyRunner'
 import { isAppUrl } from './security'
 import { applyStyleDefaults, loadStyleDefaults } from './styleDefaults'
 
@@ -31,6 +31,7 @@ const PART = 'screen.part.mp4'
 const ID_RE = /^[a-zA-Z0-9_-]+$/
 const PROBE_TIMEOUT_MS = 30_000
 const DECODE_TIMEOUT_MS = 60_000
+const MEASURE_TIMEOUT_MS = 10 * 60_000
 const LOG_CAP = 256 * 1024
 
 /** The cursor track of an imported video: nothing recorded (the editor's "no cursor data"). */
@@ -72,7 +73,7 @@ class Cancelled extends Error {}
 /** A refusal or failure with the sentence the user reads. */
 class ImportRefused extends Error {}
 
-/** Probe and decode-test processes still running (the encode is killAllFfmpeg's). */
+/** Probe, length and decode-test processes still running (the encode is killAllFfmpeg's). */
 const probes = new Set<ChildProcess>()
 
 /** Runs ffmpeg and returns its exit code and output (stdout and stderr, capped), killed after `timeoutMs`. */
@@ -179,6 +180,22 @@ export async function decodeTest(file: string, video: number, audio: number | nu
   const r = await runCapture(args, { timeoutMs: DECODE_TIMEOUT_MS, signal })
   const frames = Math.max(0, ...[...r.log.matchAll(/^frame=\s*(\d+)/gm)].map((m) => Number(m[1])))
   return r.code === 0 && !r.timedOut && frames >= 1
+}
+
+/**
+ * The length of a video stream, from copying its packets to nowhere (no decoding, so about as
+ * fast as the file can be read), for a file that does not say how long it is (a live WebM, an
+ * unfinished MKV). Null when it cannot be told: ffmpeg failed or could not read the file to the
+ * end, or took longer than 10 minutes.
+ */
+export async function measureDuration(file: string, video: number, signal?: AbortSignal): Promise<number | null> {
+  // A single progress report, at the end: the captured output keeps only its first 256 KB.
+  const args = ['-hide_banner', '-nostdin', '-v', 'error', '-i', file, '-map', `0:${video}`, '-c', 'copy', '-stats_period', '3600', '-progress', 'pipe:1', '-nostats', '-f', 'null', '-']
+  const r = await runCapture(args, { timeoutMs: MEASURE_TIMEOUT_MS, signal })
+  if (r.code !== 0 || r.timedOut || READ_ERROR_RE.test(r.log) || !/^progress=end\r?$/m.test(r.log)) return null
+  const us = [...r.log.matchAll(/^out_time_us=(-?\d+)\r?$/gm)].at(-1)?.[1]
+  const seconds = us === undefined ? Number.NaN : Number(us) / 1e6
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
 }
 
 /**
@@ -308,7 +325,16 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     stop()
     const probe = await probeFile(input, signal)
     if (probe.opened && /mp4|mov/.test(probe.container ?? '') && (await scanProtection(input, checked.bytes).catch(() => false))) throw new ImportRefused(IMPORT_COPY.drm)
-    const planned = planImport(probe, { toneMap: probe.streams.some((s) => s.transfer !== null) ? await deps.toneMap() : false })
+    const toneMap = probe.streams.some((s) => s.transfer !== null) ? await deps.toneMap() : false
+    let planned = planImport(probe, { toneMap })
+    if (planned.ok && planned.plan.duration === null) {
+      // A file that does not say how long it is is measured first: the length limit, the space
+      // check, the progress and the length cap need it. Its timestamps can hold any gap, which
+      // the copy's constant rate would fill with frames for up to 4 hours.
+      stop()
+      const measured = await measureDuration(input, planned.plan.videoStream, signal)
+      if (measured !== null) planned = planImport({ ...probe, duration: measured }, { toneMap })
+    }
     if (!planned.ok) throw new ImportRefused(planned.error)
     const plan = planned.plan
     stop()
@@ -362,7 +388,7 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
     report('finishing', 1)
     const duration = run.frames ? run.frames / plan.fps : 0
     if (!(duration > 0)) throw new ImportRefused(IMPORT_COPY.unreadable)
-    // A file that did not say how long it is (live WebM) is measured here.
+    // The copy's own length decides: a stated length can be wrong, and one may not have been measured.
     if (duration < IMPORT_LIMITS.minSeconds) throw new ImportRefused(IMPORT_COPY.tooShort)
     const notes = [...plan.notes]
     if (hitTimeCap(plan.duration, duration)) notes.push(IMPORT_COPY.noteCapped)

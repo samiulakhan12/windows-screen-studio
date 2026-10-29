@@ -25,9 +25,9 @@ vi.mock('electron', () => ({
 }))
 
 h.root = mkdtempSync(path.join(os.tmpdir(), 'ssw-import-'))
-const { importVideo, checkImportFile, sweepAbandonedImports, IMPORT_MARKER, decodeTest, probeFile, scanProtection } = await import('../src/main/importVideo')
+const { importVideo, checkImportFile, sweepAbandonedImports, IMPORT_MARKER, decodeTest, measureDuration, probeFile, scanProtection } = await import('../src/main/importVideo')
 const { ffmpegPath } = await import('../src/main/ffmpeg')
-const { IMPORT_COPY } = await import('../src/shared/import/plan')
+const { IMPORT_COPY, spaceNeeded } = await import('../src/shared/import/plan')
 
 const media = path.join(h.root, 'media')
 const library = path.join(h.root, 'videos', 'Flown')
@@ -70,6 +70,10 @@ beforeAll(() => {
   }
   live('0.3', 'live-short.webm')
   live('2', 'live.webm')
+  // Unfinished MKVs (no length in the file) with frames at 0, 1, 2 s and one far later.
+  for (const [last, name] of [['3000', 'live-gap.mkv'], ['18000', 'live-gap-5h.mkv']]) {
+    writeFileSync(at(name), execFileSync(ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', `setpts='if(eq(N,3),${last},N)/TB'`, '-fps_mode', 'passthrough', '-c:v', 'libx264', '-bf', '0', '-f', 'matroska', 'pipe:1']))
+  }
   writeFileSync(at('notes.mp4'), 'x'.repeat(4096))
   writeFileSync(at('tiny.mp4'), 'x')
   writeFileSync(at('clip.avi'), 'x'.repeat(4096))
@@ -86,6 +90,8 @@ beforeAll(() => {
   }
   // Ten seconds of video, cut in half by a test while it is imported.
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', 'sine', '-t', '10', '-c:v', 'libx264', '-c:a', 'aac', at('ten.mkv'))
+  const ten = readFileSync(at('ten.mkv'))
+  writeFileSync(at('ten-half.mkv'), ten.subarray(0, ten.length >> 1))
   // Frames at 0, 1, 2 and 60 s, and a header that says 3 s (a crafted or damaged file).
   ff('-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-frames:v', '4', '-vf', "setpts='if(eq(N,3),60,N)/TB'", '-fps_mode', 'passthrough', '-c:v', 'libx264', at('gap.mkv'))
   const gap = readFileSync(at('gap.mkv'))
@@ -142,6 +148,18 @@ describe('probe, decode test and protection scan', () => {
     expect(await decodeTest(at('trimmed.mp4'), 0, null)).toBe(true)
   })
 
+  it('measures the length of a video stream from its packets', async () => {
+    expect(await measureDuration(at('live.webm'), 0)).toBeCloseTo(2, 1)
+    expect(await measureDuration(at('live-gap.mkv'), 0)).toBeCloseTo(3000, 0)
+    expect(await measureDuration(at('missing.mkv'), 0)).toBeNull()
+  })
+
+  // Reading /proc/self/mem at offset 0 fails with EIO: the drive fails half-way through the file.
+  it.skipIf(!existsSync('/proc/self/mem'))('cannot tell the length of a video it could not read to the end', async () => {
+    expect(await measureDuration(at('ten-half.mkv'), 0)).toBeCloseTo(5, 0)
+    expect(await measureDuration(`concat:${at('ten-half.mkv')}|/proc/self/mem`, 0)).toBeNull()
+  })
+
   it('finds a protected track in an encrypted MP4 only', async () => {
     expect(await scanProtection(at('protected.mp4'), readFileSync(at('protected.mp4')).length)).toBe(true)
     expect(await scanProtection(at('odd.mov'), readFileSync(at('odd.mov')).length)).toBe(false)
@@ -194,11 +212,23 @@ describe('importVideo', () => {
   }, 60_000)
 
   it('measures a video that does not say how long it is, and refuses one too short', async () => {
-    const r = await importVideo(at('live.webm'), { deps })
+    const progress: (number | null)[] = []
+    const r = await importVideo(at('live.webm'), { deps, onProgress: (p) => p.stage === 'converting' && progress.push(p.progress) })
     expect(r).toMatchObject({ ok: true, notes: [] })
+    // Measured before the copy, so its progress (and the time left) can be shown.
+    expect(progress[0]).toBe(0)
     if (r.ok) expect(readJson(r.projectId, 'project.json').duration).toBeCloseTo(2, 1)
     rmSync(library, { recursive: true, force: true })
     expect(await importVideo(at('live-short.webm'), { deps })).toMatchObject({ ok: false, error: IMPORT_COPY.tooShort })
+    expect(folders()).toEqual([])
+  }, 60_000)
+
+  it('measures the length of a video that does not say it before checking the length and the space', async () => {
+    // The copy would fill the gap up to the last frame (or 4 hours) at a constant rate.
+    const full = { ...deps, freeBytes: async () => 1 }
+    const needed = spaceNeeded({ size: { width: 320, height: 240 }, fps: 30, duration: 3000 }, statSync(at('live-gap.mkv')).size)
+    expect(await importVideo(at('live-gap.mkv'), { deps: full })).toMatchObject({ ok: false, error: IMPORT_COPY.space(needed, 1) })
+    expect(await importVideo(at('live-gap-5h.mkv'), { deps: full })).toMatchObject({ ok: false, error: IMPORT_COPY.tooLong })
     expect(folders()).toEqual([])
   }, 60_000)
 
@@ -352,8 +382,6 @@ describe('importVideo', () => {
   // file while the file itself stays as it was (a share that dropped and came back, a cloud file
   // whose download failed). ffmpeg ends the copy there and exits cleanly.
   it.skipIf(!existsSync('/proc/self/mem'))('refuses a video whose drive failed part-way through the copy', async () => {
-    const bytes = readFileSync(at('ten.mkv'))
-    writeFileSync(at('ten-half.mkv'), bytes.subarray(0, bytes.length >> 1))
     h.encodeArgs = (args) => args.map((a, i) => (args[i - 1] === '-i' ? `concat:${at('ten-half.mkv')}|/proc/self/mem` : a))
     let r
     try {

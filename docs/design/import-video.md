@@ -217,6 +217,14 @@ project has no `source` key). Readers never trust the stored value: `importedSou
 2. **Probe**: `ffmpeg -hide_banner -nostdin -i <file>`, 30 s time limit, log capped at 256 KB.
    `parseProbe(log)` → `ProbeInfo`.
 3. **Plan**: `planImport(probe, { bytes, tonemap })` → refusal or `ImportPlan` (pure, §5).
+   A file that does not say how long it is (`Duration: N/A`: a live WebM, an unfinished MKV) is
+   measured first (`measureDuration`): `-map 0:<video> -c copy -stats_period 3600 -progress
+   pipe:1 -f null -` (no decoding, about as fast as the file can be read), 10 min limit; the
+   final `out_time_us` (the last packet's time, a few frames short when frames are reordered,
+   well within the cap's 2 s) is the length, and the plan is made again with it. So the length
+   limits, the space check, the progress, the time left and the cap apply as to a stated length,
+   and a file whose timestamps jump hours ahead is not padded with frames for hours. When the
+   length cannot be told (ffmpeg failed, a read error, over the time limit), it stays unknown.
 4. **Decode test**: `-map 0:<video> [-map 0:<audio>] -frames:v 1 -f null -`, 60 s limit (no
    `-t`: the picture of a stream-copy trim can start seconds after its sound).
    If it fails with the audio stream mapped, it is run again without: success means the sound
@@ -234,7 +242,7 @@ project has no `source` key). Readers never trust the stored value: `importedSou
 7. **Encode**: `proxyArgs(input, part, withAudio, { fps, size, progress: true, encoder })`
    with the video and audio maps pointed at the chosen streams, the plan's pre-filters (yadif,
    tone-map) placed first in `-vf`, and `-t` at the stated length plus 2 s (`-t 14400` when the
-   duration is unknown; never more than 4 h): the encode follows the packets' timestamps, which a
+   length could not be measured; never more than 4 h): the encode follows the packets' timestamps, which a
    header can understate, and a constant rate fills every gap with frames; through
    `encodeWithFallback` (the first working GPU encoder, then libx264), like a recording. Progress
    is frames ÷ (duration × fps). The output goes to `screen.part.mp4`, renamed to `screen.mp4`.
@@ -285,7 +293,7 @@ by it, so the new project comes first).
 
 `importProgress(frames, plan)` → `{ stage: 'converting', progress: 0..1 }`; `etaSeconds(start,
 now, progress)`: shown after 5 s and 3 % progress, rounded to *About N min left* (N ≥ 1) or *Less
-than a minute left*; hidden when the duration is unknown. Main throttles progress messages to 10
+than a minute left*; hidden when the length is unknown (it could not be measured, §4.1 step 3). Main throttles progress messages to 10
 per second.
 
 ### 4.6 Leftovers
@@ -330,7 +338,7 @@ OneDrive), the folder keeps its marker and the next sweep tries again.
 |---|---|
 | Extensions | `.mp4 .m4v .mov .mkv .webm` (case-insensitive) |
 | File size | 1 KB ≤ size ≤ 64 GB |
-| Duration | 0.5 s ≤ d ≤ 4 h; unknown (`N/A`, live WebM) accepted, cut at 4 h (`-t 14400`); a known length is cut at d + 2 s |
+| Duration | 0.5 s ≤ d ≤ 4 h, stated or measured (`N/A`, live WebM: §4.1 step 3); a known length is cut at d + 2 s; one that could not be measured is accepted and cut at 4 h (`-t 14400`) |
 | Picture | each side 16 to 16384 px; long ÷ short ≤ 10 |
 | Codecs | whatever the bundled ffmpeg decodes (decode test): H.264, HEVC, VP8, VP9, AV1, ProRes, MPEG-4 … |
 | Proxy rate | 60 when the average rate > 31 fps, else 30 (unknown: 30) |
@@ -341,7 +349,7 @@ OneDrive), the folder keeps its marker and the next sweep tries again.
 `proxyBitrate = clamp(w × h × fps × 0.15, 4 Mbit/s, 40 Mbit/s)` (the bitrate `proxyArgs` gives the
 Media Foundation encoder: 9.3 Mbit/s at 1080p30, 37 Mbit/s at 4K30), so
 `needed = proxyBitrate ÷ 8 × duration × 1.25 + 512 MB` (sound and margin; sizes in binary GB, as
-Explorer shows them). 1 h 1080p30 → 5.4 GB; 1 h 4K30 → 20.0 GB. Unknown duration: `needed = 2 × fileBytes + 512 MB`. Refused when free space is
+Explorer shows them). 1 h 1080p30 → 5.4 GB; 1 h 4K30 → 20.0 GB. A length that could not be measured: `needed = 2 × fileBytes + 512 MB`. Refused when free space is
 smaller: *There is not enough free space for this video: it needs about 5.4 GB and 2.1 GB is free.*
 
 ### 5.3 Refusals (exact copy)
@@ -421,8 +429,8 @@ smaller: *There is not enough free space for this video: it needs about 5.4 GB a
   loaded elsewhere cannot make main read files.
 - **ffmpeg runs** with an argument array (no shell), `-nostdin`, `windowsHide`, the file passed as
   one argument after `-i` (a name starting with `-` is safe: it follows `-i`, and the path is
-  absolute so it cannot start with `-`). Probe and decode test have time limits (30 s, 60 s) and
-  output caps; the encode can be cancelled and is killed on quit (`killAllFfmpeg` covers every
+  absolute so it cannot start with `-`). Probe, length measurement and decode test have time
+  limits (30 s, 10 min, 60 s) and output caps; the encode can be cancelled and is killed on quit (`killAllFfmpeg` covers every
   `runFfmpegProgress` process).
 - **Sizes** are checked before any work (§5.1) and the disk before writing (§5.2), so an absurd
   file cannot fill the disk or run for days.
@@ -520,8 +528,10 @@ Built as designed, with these differences and additions (most from the adversari
   scanned for a protected sample entry (`sinf` box whose first child is `frma`); ffmpeg reports a
   CENC-encrypted track as plain `avc1` (tested with a file ffmpeg itself encrypted).
 - **Decode test** without `-xerror`: a frame decoded and a clean exit is the test.
-- **Unknown length**: measured from the copy's frame count; under 0.5 s is refused then (tested
-  with a live WebM).
+- **Unknown length**: measured before the copy from the video's packets (§4.1 step 3), so the
+  length limits and the space check apply; the copy's frame count still gives the project's
+  length and decides the 0.5 s minimum (tested with a live WebM, and with unfinished MKVs whose
+  last frame is at 50 min, refused for space, and at 5 h, refused as too long).
 - **Quit and reload**: `disposeImport()` (from `will-quit`) stops the import and the probe
   processes; an import whose page reloads or closes is cancelled (`did-start-navigation` of the
   main frame, `destroyed`), so nobody is left with a stuck "Another video is being imported".
