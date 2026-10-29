@@ -592,6 +592,10 @@ Where the build differs from the sections above, after an adversarial review:
   on the `--accent-soft` tint, which alone is 1.13:1 and is dropped in forced colours); the
   keyboard's word gets the wider `--focus-ring`.
 - `normalizeWord` lives in `transcript.ts` (re-exported by `fillers.ts`); `lcsPairs` too.
+- **The Inspector rail** turns compact below 620 px (was 480 px, sized for ten tabs): twelve
+  labelled tabs and the Selection tab need 620 px, and between 480 and 620 px the labelled rail
+  scrolled, hiding Audio and cutting "Transcript" short. `ui.e2e.cjs` now checks the labels on a
+  tall window and that the rail never scrolls on the default one.
 - Two existing e2e expectations were updated for intended changes: the Inspector rail now has twelve
   tabs (`tests/e2e/ui.e2e.cjs`; it still fits at the minimum window size), and the older-project
   audio reference in `tests/e2e/audio-pack.e2e.cjs` gains the 10 ms fades at its three cuts (the

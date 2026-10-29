@@ -118,10 +118,23 @@ const COLOR_FNS = `
     await win.waitForSelector('[data-testid="caption-track"]')
     await win.waitForSelector('.layout-seg')
 
-    // The labelled rail on the default window.
+    // The labelled rail where it fits (a tall window); with this project's tall timeline the
+    // default window gets the compact one. Never a rail that scrolls.
+    const railNow = () =>
+      win.evaluate(() => {
+        const nav = document.querySelector('.insp-tabs')
+        return {
+          labelled: [...nav.querySelectorAll('button span')].every((s) => s.getBoundingClientRect().height > 0),
+          overflow: nav.scrollHeight - nav.clientHeight,
+          inspector: document.querySelector('.inspector').getBoundingClientRect().height
+        }
+      })
+    await setSize(app, win, 1360, 1040)
+    const tall = await railNow()
+    h.assert(tall.labelled && tall.overflow <= 0, `tabs carry their labels on a tall window, every one shown: ${JSON.stringify(tall)}`)
     await setSize(app, win, 1360, 860)
-    const labelled = await win.evaluate(() => [...document.querySelectorAll('.insp-tabs button span')].every((s) => s.getBoundingClientRect().height > 0))
-    h.assert(labelled, 'tabs carry their labels on a tall window')
+    const normal = await railNow()
+    h.assert(normal.overflow <= 0, `the rail fits on the default window: ${JSON.stringify(normal)}`)
 
     const min = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getMinimumSize())
     await setSize(app, win, min[0], min[1])
