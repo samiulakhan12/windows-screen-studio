@@ -264,11 +264,12 @@ function TranscriptEditor({
     if (plain && SELECTION_KEYS.includes(e.key)) {
       own()
       const key = e.key as SelectionKey
-      // On a page turned to with Earlier or Later the arrows start there (its first word, or its
-      // last going back), not from a focus on another page; Shift keeps the anchor. A page turned
-      // by playback does not count: the keys move from the selection.
+      // With nothing selected the arrows start on the page shown (its first word, or its last going
+      // back). With a selection they start there only on a page turned to with Earlier or Later, not
+      // from a focus on another page, and Shift keeps the anchor; after a page turned by playback
+      // they move from the selection.
       let next: WordSelection | null
-      if (pagedByHand.current && key !== 'Home' && key !== 'End' && shown.length > 0 && (!sel || pageOfWord(sel.focus) !== shownPage)) {
+      if (key !== 'Home' && key !== 'End' && shown.length > 0 && (!sel || (pagedByHand.current && pageOfWord(sel.focus) !== shownPage))) {
         const w = key === 'ArrowLeft' || key === 'ArrowUp' ? shown[shown.length - 1].last : shown[0].first
         next = e.shiftKey && sel ? { anchor: sel.anchor, focus: w } : { anchor: w, focus: w }
       } else next = moveSelection(sel, key, e.shiftKey, words)

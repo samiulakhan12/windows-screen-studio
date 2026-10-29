@@ -402,6 +402,32 @@ describe('the Transcript tab', () => {
     expect(selectedWords()).toEqual([117])
   })
 
+  it('with nothing selected, the arrow keys start on the page shown, also after playback turned it or Escape cleared the selection', () => {
+    useProject(60, captions(45))
+    const shownWords = (): number[] => render().filter((e) => e.props.role === 'option').map((e) => Number(e.props['data-w']))
+    // Playback runs into caption 41 without a word clicked: the tab turns to page 2.
+    for (const key of ['ArrowRight', 'ArrowLeft']) {
+      unmount()
+      playing = true
+      player.time = 41.35
+      render()
+      playing = false
+      expect(shownWords()[0]).toBe(120)
+      press(key)
+      expect(selectedWords(), key).toEqual([key === 'ArrowRight' ? 120 : 134])
+      expect(shownWords()[0], key).toBe(120)
+    }
+    // A word on page 2, then Escape.
+    unmount()
+    render()
+    pointerDown(125)
+    press('Escape')
+    expect(selectedWords()).toEqual([])
+    press('ArrowRight')
+    expect(selectedWords()).toEqual([120])
+    expect(shownWords()[0]).toBe(120)
+  })
+
   it('Earlier and Later keep the focus when pressed from the keyboard, so Enter turns page after page', () => {
     // 130 captions: four pages.
     useProject(140, captions(130))

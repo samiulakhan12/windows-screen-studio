@@ -345,8 +345,9 @@ Later. The page follows the current word while playing and the focused word whil
 keys. On a page turned to with Earlier or Later, the arrow keys start there (its first word; its
 last going Left or Up) rather than from a focus on another page; Shift keeps the anchor, so a
 selection can still be extended across pages. A page turned by playback does not count: there the
-keys move from the selection, and the page goes back to it. Selections can span pages (they are
-word indices).
+keys move from the selection, and the page goes back to it. With nothing selected (none yet, or
+cleared with Escape) the arrow keys start on the page shown, however it was turned. Selections can
+span pages (they are word indices).
 
 ---
 
