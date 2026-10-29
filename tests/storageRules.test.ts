@@ -68,7 +68,7 @@ describe('cleanupPlan', () => {
 })
 
 describe('files a recording shares with a copy (Duplicate links the media)', () => {
-  // The original and its copy share 4000 bytes of media; one more file of the copy has a name in the Recycle Bin.
+  // The original and its copy share 4000 bytes of media; one more file of the copy has a name in a recording not listed here.
   const media = { id: '7:11', bytes: 4000, links: 2, here: 1 }
   const binned = { id: '7:12', bytes: 500, links: 2, here: 1 }
   const recordings = [rec('original', { lastUsed: ago(200), bytes: 5000, shared: [media] }), rec('copy', { lastUsed: ago(200), bytes: 4700, shared: [media, binned] })]

@@ -161,8 +161,10 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   §4.7) take their bytes once: a file whose link count is above 1 is identified by its drive and
   file id (`lstat` with bigints, as NTFS ids pass 2^53) and counted once in a folder and once in the
   total. Each row still shows what its folder holds, with "· 1.9 GB shared with a copy". A removal
-  is offered at the bytes it frees by itself (files with a name outside it stay), and the review's
-  totals and the result's "freed" count a shared file only when every one of its names goes.
+  is offered at the bytes it frees by itself (files with a name in another recording stay), and the
+  review's totals and the result's "freed" count a shared file only when every one of its names
+  goes. Only names in recording folders count: once an original is in the Recycle Bin, its copy
+  holds the media alone and is offered at its full size.
 * **Last used** = the later of: `project.json`'s modification time (every edit autosaves it) and
   the last time the editor opened it, noted in `userData/storage.json` (`storage:opened` from
   `Editor.tsx`, one additive line). An export needs the recording open, so it counts through that. *Rejected:* the file's access time (NTFS often does not update it), and a field in
@@ -383,7 +385,8 @@ Unit (vitest; each fails without its code):
 * `storageRules.test.ts` — last used, cache rule, remove rule, open/unfinished excluded, sanitising,
   shared files counted once and freed only with every name.
 * `storageDuplicate.test.ts` — after Duplicate, the linked media count once in the total, a removal
-  offers and frees only its own files, and a pair removed together frees the media.
+  offers and frees only its own files, a pair removed together frees the media, and a copy whose
+  original is in the Recycle Bin is offered at, and frees, its full size.
 * `storageMain.test.ts` — scan sizes, no symlink follow, depth/entry caps, trash plan recomputed,
   paths outside root and links refused, no permanent delete on trash failure, store load/save.
 * `exportBundle.test.ts` — names, kinds per format, chapter parts (cuts, speed, freezes, first at

@@ -143,6 +143,15 @@ export async function scanProjects(root: string, used: Readonly<Record<string, s
       ...(size.shared.length ? { shared: size.shared } : {})
     })
   }
+  // Only names in recordings hold a file: one in the Recycle Bin (a removed original) or anywhere
+  // else outside the projects folder keeps no recording's bytes.
+  const held = new Map<string, number>()
+  for (const r of out) for (const f of r.shared ?? []) held.set(f.id, (held.get(f.id) ?? 0) + f.here)
+  for (const r of out) {
+    const shared = r.shared?.map((f) => ({ ...f, links: held.get(f.id) ?? f.here })).filter((f) => f.here < f.links)
+    if (shared?.length) r.shared = shared
+    else delete r.shared
+  }
   return out.sort((a, b) => b.bytes - a.bytes)
 }
 

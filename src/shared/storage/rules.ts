@@ -35,14 +35,15 @@ export function sanitizeRules(raw: unknown): StorageRules {
 }
 
 /**
- * A file of a recording that also has a name (a hard link) outside its folder: the media Duplicate
- * links into a copy. It takes its bytes once, and moving it away frees them only when every name goes.
+ * A file of a recording that also has a name (a hard link) in another recording's folder: the media
+ * Duplicate links into a copy. It takes its bytes once, and moving it away frees them only when every
+ * name goes.
  */
 export interface SharedFile {
   /** The file on its drive ("<dev>:<ino>"). */
   id: string
   bytes: number
-  /** Names the file has on its drive. */
+  /** Names the file has in the recordings scanned (one in the Recycle Bin holds nothing). */
   links: number
   /** Of which in this recording's folder. */
   here: number
@@ -64,7 +65,7 @@ export interface RecordingUsage {
   finished: boolean
   /** The folder was larger than the scan counts: sizes are "at least". */
   capped: boolean
-  /** Files counted in `bytes` that also have a name outside this folder (absent: none). */
+  /** Files counted in `bytes` that also have a name in another recording's folder (absent: none). */
   shared?: SharedFile[]
 }
 

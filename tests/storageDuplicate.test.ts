@@ -106,5 +106,14 @@ describe('Settings › Storage after Duplicate', () => {
     const after = await call<StorageOverview>('storage:scan')
     expect(after.recordings.map((r) => r.id)).toEqual([first.copy])
     expect(after.bytes).toBe(size(first.copy))
+
+    // A name in the Recycle Bin holds nothing: the copy now has the media to itself, so it is
+    // offered at its full size, and removing it frees that.
+    expect(after.recordings[0].shared).toBeUndefined()
+    const last = await call<CleanupItem[]>('storage:plan')
+    expect(last.map((i) => [i.action, i.id, i.bytes, i.shared])).toEqual([['remove', first.copy, size(first.copy), undefined]])
+    const gone = await call<StorageCleanupResult>('storage:clean', [{ id: first.copy, action: 'remove' }])
+    expect(gone.moved.map((i) => i.id)).toEqual([first.copy])
+    expect(gone.freed).toBe(size(first.copy))
   })
 })
