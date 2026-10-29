@@ -226,7 +226,10 @@ are exactly the words the subtitle files leave out:
    middle is in a clip after it, in the same undo step: this tab's Restore, Restore the whole
    recording, timeline edits, Smart speed, deleting several items, moving a caption on its track.
    The word is then a guess again (rule 3), so a later Silences cut over its guessed time cannot
-   take it out. Undo and redo bring the clips and the marks back together (one history step).
+   take it out. Undo and redo bring the clips and the marks back together (one history step). A
+   drag (a trim handle, a caption on its track) is one edit: it is settled once, when it ends,
+   against the state before it, so a drag that passes over a deleted word and is released with the
+   word still cut keeps the mark (`EditStore` settles a held gesture's run when it closes).
 6. **Captions tab edits keep the marks with the words**, as they keep the times: a text edit (the
    stored word still matches, §4.1), Merge, Split, Fix captions (the captions' own word timings
    are kept) and moving or trimming a caption on its track. A word whose own text is retyped no
@@ -487,6 +490,7 @@ quantifiers); retake comparison is bounded (80 tokens per sentence, two candidat
 |---|---|
 | Delete (Cut) on any selection | 1 (`store.update`, no merge key) |
 | Restore (the `deleted` marks of the words it brings back cleared with it, §4.2) | 1 |
+| A trim drag on the timeline (marks of words it brings back cleared when it ends, §4.2 rule 5) | 1 |
 | Remove (one suggestion) | 1 |
 | Remove all | 1 |
 | Keep, Find, selecting, seeking | 0 |
@@ -547,7 +551,8 @@ Additive lines in shared files:
   scheduling.
 - `src/renderer/src/editor/Inspector.tsx`: the tab, its type member, its render line.
 - `src/shared/editor/editStore.ts`: an optional `settle(next, prev)` applied to every state `update`
-  and `replace` make; `src/renderer/src/views/Editor.tsx` passes `settleDeletedWords` (§4.2 rule 5).
+  and `replace` make (a held gesture's run once, when it closes); `src/renderer/src/views/Editor.tsx`
+  passes `settleDeletedWords` (§4.2 rule 5).
 - `src/shared/types.ts`: `CaptionWord.estimated?` and `CaptionWord.deleted?`, read back by
   `src/shared/captions/captionData.ts`; `src/shared/captions/subtitles.ts` `outputCues` uses `cutFlags` (§4.2).
 - `src/renderer/src/editor/EditorIcon.tsx`: one icon path.

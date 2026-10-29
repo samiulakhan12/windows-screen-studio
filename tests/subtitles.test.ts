@@ -7,7 +7,7 @@ import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { anchorCutWords, cutFlags, cutWords, restoreWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
-import { cutRange, removeClip, setTrimStart, splitAt } from '../src/shared/engine/timeline'
+import { cutRange, removeClip, setTrimEnd, setTrimStart, splitAt } from '../src/shared/engine/timeline'
 import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -319,6 +319,49 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
       expect(struck(s.state)).toEqual([])
       expect(srt(s.state)).toEqual([SENTENCE])
     }
+  })
+
+  it('a trim drag that passes over a deleted word and ends with it still cut keeps it deleted; one that ends with it kept brings it back', () => {
+    /** The timeline's trim drag (Timeline.tsx onTrimDown): one gesture, each move worked out from the clips at pointer-down. */
+    const trimDrag = (s: EditStore<Project>, edge: 'start' | 'end', path: number[]): void => {
+      const initial = s.state.clips
+      s.beginGesture()
+      for (const t of path) {
+        const next = edge === 'start' ? setTrimStart(initial, t) : setTrimEnd(initial, t, DURATION)
+        s.update((p) => (same(p.clips, next) ? p : { ...p, clips: next }), `trim-${edge}`)
+      }
+      s.endGesture()
+    }
+    const um = (): CaptionSegment => seg('u', 0.3, 4, 'Um, so today I will show you the settings.')
+    const rest = 'so today I will show you the settings.'
+    // "Um," deleted, then the start handle dragged left past it and back: to where it was, or further right.
+    for (const end of [0, 0.07]) {
+      const s = open([um()])
+      tabDelete(s, 'Um,')
+      const deleted = s.state
+      const from = deleted.clips[0].start
+      trimDrag(s, 'start', [from - 0.2, 0.1, from - 0.1, from + end])
+      expect(s.state.clips[0].start).toBeCloseTo(from + end, 9)
+      expect(marked(s.state)).toEqual(['Um,'])
+      expect(struck(s.state)).toEqual(['Um,'])
+      expect(srt(s.state)).toEqual([rest])
+      // One undo step back to the delete.
+      s.undo()
+      expect(s.state).toBe(deleted)
+    }
+    // Released with it kept: a guess again.
+    const s = open([um()])
+    tabDelete(s, 'Um,')
+    trimDrag(s, 'start', [0.2, 0.4, 0.1])
+    expect(marked(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual(['Um, so today I will show you the settings.'])
+    // The end handle, after the last word deleted.
+    const t = open([seg('t', 26, 29.8, 'Thanks for watching, see you um')])
+    tabDelete(t, 'um')
+    const last = t.state.clips[0].end
+    trimDrag(t, 'end', [last + 0.2, DURATION, last + 0.1, last - 0.05])
+    expect(marked(t.state)).toEqual(['um'])
+    expect(srt(t.state)).toEqual(['Thanks for watching, see you'])
   })
 
   it('R2: after a Silences cut, words deleted in the tab are marked though their guessed times were already cut', () => {

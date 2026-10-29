@@ -88,6 +88,40 @@ describe('EditStore', () => {
     expect(calls.length).toBe(2)
   })
 
+  it('settles a held gesture once, when its run closes, against the state before it, in its own undo step', () => {
+    const calls: [number, number][] = []
+    const s = new EditStore(0, 200, 800, () => 0, (next, prev) => (calls.push([next, prev]), next % 2 ? next + 1 : next))
+    // A drag: every move made from where it started, the states in between as they are.
+    s.beginGesture()
+    s.update(() => 3, 'drag')
+    expect(s.state).toBe(3)
+    s.replace(() => 5)
+    s.update(() => 7, 'drag')
+    expect(s.state).toBe(7)
+    expect(calls).toEqual([])
+    s.endGesture()
+    expect(s.state).toBe(8)
+    expect(calls).toEqual([[7, 0]])
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(0)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(8)
+    // Another edit, or undo, while the gesture is held closes the run first: each settled in its own step.
+    s.beginGesture()
+    s.update(() => 9, 'drag')
+    s.update(() => 11)
+    expect(s.state).toBe(12)
+    s.update(() => 13, 'drag')
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(12)
+    s.endGesture()
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(10)
+    expect(s.redo()).toBe(true)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(14)
+  })
+
   it('a new edit after undo clears redo', () => {
     const { s } = store()
     s.update(() => 1)
