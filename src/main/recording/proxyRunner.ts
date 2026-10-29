@@ -84,13 +84,27 @@ export const DISK_FULL_RE = /^\[[^\]]+\][^\n]*No space left on device/m
 export const READ_ERROR_RE = /^\[in#\d+[^\]]*\] Error (?:during demuxing|retrieving a packet from demuxer): (?!Invalid data found)/m
 
 /**
- * The log without its Metadata blocks: the input's tags (a phone video's GPS location, make and
- * model, an author, comments, chapter titles), which an imported file brings along. This is
+ * A test for the lines of ffmpeg's report, called on each in turn: true for a `Metadata:` header
+ * and the lines indented below it, the input's tags (a phone video's GPS location, make and
+ * model, an author, comments, chapter titles), which an imported file brings along. A line runs
+ * to LF: a tag's CR, U+2028 or U+2029 is not where its line ends.
+ */
+function metadataLines(): (line: string) => boolean {
+  let indent: string | null = null
+  return (line) => {
+    if (indent !== null && line.startsWith(indent) && /^[ \t]/.test(line.slice(indent.length))) return true
+    indent = /^([ \t]*)Metadata:\r?$/.exec(line)?.[1] ?? null
+    return indent !== null
+  }
+}
+
+/**
+ * The log without its Metadata blocks (metadataLines), as runFfmpegProgress keeps it. This is
  * what may be logged or shown: a file's contents are never logged.
  */
 export function withoutMetadata(log: string): string {
-  // A whole line, up to CR or LF: a tag's U+2028 or U+2029 is not where its line ends.
-  return log.replace(/^([ \t]*)Metadata:\r?\n(?:\1[ \t]+[^\r\n]*(?:\r?\n|$))*/gm, '')
+  const isTag = metadataLines()
+  return log.split('\n').filter((line) => !isTag(line)).join('\n')
 }
 
 /** Last meaningful log line, e.g. "Invalid data found when processing input". */
@@ -125,6 +139,12 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
     const onAbort = (): void => stopProcess(proc)
     signal?.addEventListener('abort', onAbort, { once: true })
     let log = ''
+    let lastLine = ''
+    const isTag = metadataLines()
+    const keep = (text: string): void => {
+      // Keep the head (stream info) and a bounded tail (the error).
+      log = log.length < 16000 ? log + text : log.slice(0, 8000) + log.slice(-7000) + text
+    }
     let pending = ''
     let frames: number | null = null
     proc.stdout?.on('data', (d: Buffer) => {
@@ -140,8 +160,13 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
       }
     })
     proc.stderr?.on('data', (d: Buffer) => {
-      // Keep the head (stream info) and a bounded tail (the error).
-      log = log.length < 16000 ? log + d.toString() : log.slice(0, 8000) + log.slice(-7000) + d.toString()
+      // Line by line without the input's tags: cutting a long log must never split a Metadata
+      // block, as the rest of its tags would then be logged.
+      const lines = (lastLine + d.toString()).split('\n')
+      lastLine = lines.pop() ?? ''
+      // A line not ended yet (statistics, a tag of no line breaks) keeps its start and its end.
+      if (lastLine.length > 16000) lastLine = lastLine.slice(0, 8000) + lastLine.slice(-7000)
+      for (const line of lines) if (!isTag(line)) keep(line + '\n')
     })
     proc.on('error', (err: NodeJS.ErrnoException) => {
       running.delete(proc)
@@ -149,6 +174,7 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
       reject(stopped.has(proc) ? cancelledError() : new FfmpegError(err.message, err.code ?? null))
     })
     proc.on('close', (code, exitSignal) => {
+      if (!isTag(lastLine)) keep(lastLine)
       running.delete(proc)
       signal?.removeEventListener('abort', onAbort)
       if (code === 0) {
@@ -159,14 +185,13 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
         reject(cancelledError())
         return
       }
-      const shown = withoutMetadata(log)
-      console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${shown}`)
+      console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${log}`)
       // The log's last line is then an encoder's statistics ("Qavg: 435.6"), not the reason.
       if (DISK_FULL_RE.test(log)) {
         reject(new FfmpegError('No space left on device', 'ENOSPC'))
         return
       }
-      reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(shown) || `exit code ${code}`, null))
+      reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(log) || `exit code ${code}`, null))
     })
   })
 }

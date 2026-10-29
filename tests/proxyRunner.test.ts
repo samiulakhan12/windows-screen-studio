@@ -6,6 +6,24 @@ import { describe, expect, it, vi } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { CANCELLED, DISK_FULL_RE, FfmpegError, isCancelled, killAllFfmpeg, READ_ERROR_RE, runFfmpegProgress, withoutMetadata } from '../src/main/recording/proxyRunner'
 
+/** A report to replay on stderr instead of running ffmpeg: the pieces as the pipe gave them, then the exit code. */
+const replay = vi.hoisted(() => ({ chunks: null as string[] | null, code: 1 }))
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+  const { EventEmitter } = await import('node:events')
+  const spawn = ((...args: Parameters<typeof actual.spawn>) => {
+    const chunks = replay.chunks
+    if (!chunks) return actual.spawn(...args)
+    const proc = Object.assign(new EventEmitter(), { stdout: new EventEmitter(), stderr: new EventEmitter(), kill: () => true })
+    setImmediate(() => {
+      for (const chunk of chunks) proc.stderr.emit('data', Buffer.from(chunk))
+      proc.emit('close', replay.code, null)
+    })
+    return proc
+  }) as typeof actual.spawn
+  return { ...actual, spawn, default: { ...actual, spawn } }
+})
+
 const ffmpeg = ffmpegPath()
 const haveFfmpeg = ffmpeg !== 'ffmpeg' && existsSync(ffmpeg)
 
@@ -165,5 +183,55 @@ describe('the log without its metadata', () => {
     for (const kept of ['Input #0', 'Duration: 00:00:03.00', 'Chapter #0:0: start 0.000000', 'Stream #0:0[0x1](und): Video: h264', 'Side data:', 'rotation of -90.00 degrees', 'Stream #0:1[0x2](und): Audio: aac', 'Stream mapping:', 'OpenEncodeSessionEx failed', 'Conversion failed!']) expect(shown).toContain(kept)
     // What the import reads from the log is unchanged.
     expect(withoutMetadata('no metadata here\n  Stream #0:0: Video: h264')).toBe('no metadata here\n  Stream #0:0: Video: h264')
+  })
+
+  // An imported video with a long description (a caption, lyrics, what a downloader writes): its
+  // report is far over the 16 000 characters kept, so only a head and a tail are kept, and the
+  // pipe splits it anywhere. The first GPU encoder fails; the import goes on with the next one.
+  it('leaves out every tag of a long report, however it is cut and wherever the pipe splits it', async () => {
+    const report = (pad: number): string =>
+      [
+        "Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\\Users\\me\\trip.mov':",
+        '  Metadata:',
+        `    title           : Trip${'x'.repeat(pad)}`,
+        ...Array.from({ length: 900 }, (_, i) => `    ${i ? '' : 'description'}`.padEnd(20) + `: CAPTION${i} alpha bravo charlie`),
+        '    com.apple.quicktime.location.ISO6709: +40.7128-074.0060+010.000/',
+        // A tag of no line breaks, longer than all that is kept.
+        '    comment         : ' + 'Recorded at 12 Elm Street. '.repeat(1500),
+        '  Duration: 00:00:03.00, start: 0.000000, bitrate: 50 kb/s',
+        '  Stream #0:0[0x1](und): Video: h264 (High), yuv420p, 1920x1080, 30 fps (default)',
+        '      Metadata:',
+        '        handler_name    : Core Media Video',
+        'Stream mapping:',
+        '  Stream #0:0 -> #0:0 (h264 (native) -> h264 (h264_nvenc))',
+        '[h264_nvenc @ 0x1] OpenEncodeSessionEx failed: incompatible client key (21): (no details)',
+        'Conversion failed!',
+        ''
+      ].join('\r\n')
+    const pieces = (text: string, size: number): string[] => Array.from({ length: Math.ceil(text.length / size) }, (_, i) => text.slice(i * size, (i + 1) * size))
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const leaked: string[] = []
+    try {
+      for (let pad = 0; pad < 60; pad++) {
+        const text = report(pad)
+        const error = text.indexOf('[h264_nvenc @')
+        // The dump, then the encoder's error in a later read (NVENC takes a moment to fail); or small reads.
+        for (const chunks of [[text.slice(0, error), text.slice(error)], pieces(text, 1000), pieces(text, 4093)]) {
+          errors.mockClear()
+          replay.chunks = chunks
+          const err = await runFfmpegProgress(['-i', 'trip.mov']).catch((e: unknown) => e)
+          replay.chunks = null
+          const logged = errors.mock.calls.flat().join('\n')
+          if (/CAPTION|Trip|40\.7128|ISO6709|Elm Street|Core Media/.test(logged)) leaked.push(`pad ${pad}, ${chunks.length} pieces`)
+          expect(logged).toContain('Stream #0:0[0x1](und): Video: h264')
+          expect(logged).toContain('OpenEncodeSessionEx failed')
+          expect((err as Error).message).toBe('OpenEncodeSessionEx failed: incompatible client key (21): (no details)')
+        }
+      }
+    } finally {
+      replay.chunks = null
+      errors.mockRestore()
+    }
+    expect(leaked).toEqual([])
   })
 })
