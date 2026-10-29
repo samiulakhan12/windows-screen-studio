@@ -482,8 +482,12 @@ export function intersectRect(a: Rect, b: Rect): Rect {
 
 /** 'camera-large' makes the band this much taller than the setting... */
 const LARGE_BAND_GROWTH = 1.6
-/** ...up to this share of the area inside the padding. */
-const LARGE_BAND_MAX = 0.65
+/**
+ * ...up to this share of the area inside the padding: deeper, the text area under a top band is
+ * too short for a key press over a caption, a large caption or a lower third, and they would be
+ * drawn over the camera. The default band (0.32) is not limited by it.
+ */
+const LARGE_BAND_MAX = 0.52
 
 /** The reframe settings a geometry is drawn with (the defaults when absent). */
 const settingsOf = (project: SceneProject): NonNullable<SceneProject['reframe']> => project.reframe ?? DEFAULT_REFRAME

@@ -707,7 +707,7 @@ area.h − bh, area.w, bh }` with radius `card` and opacity 1; the slot is the r
 |---|---|---|
 | `default` | `band(reframe.band, place)` | slot = area; camera = the bubble as `layoutGeometry` draws it (`webcamRect`, `layout.ts:87`, with the segment's corner) |
 | `side-by-side` | `band(reframe.band, place)` | tall frame: `band(reframe.band, top corner ? 'top' : 'bottom')`; other frames: today's `sideBySide` with the screen part as the slot |
-| `camera-large` | `band(min(0.65, 1.6·reframe.band), place)` | slot = area; the large bubble as today |
+| `camera-large` | `band(min(0.52, 1.6·reframe.band), place)` (deeper leaves too little text area under a top band) | slot = area; the large bubble as today |
 | `screen-only` | slot = area; camera = the band collapsed to height 0 at its outer edge, opacity 0 | slot = area; the hidden bubble as today |
 | `camera-only` | camera = area (radius `card`); slot = the `default` slot scaled by `BEHIND_SCALE` (0.5, `layout.ts:110`) about its centre | camera = area; slot = area scaled by 0.5 |
 

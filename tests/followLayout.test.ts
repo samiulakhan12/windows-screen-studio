@@ -85,9 +85,10 @@ describe('the camera band (tests 4-8)', () => {
     expectRect(g.slot, { x: 0, y: 614.4, w: 1080, h: 1305.6 })
   })
 
-  it("'camera-large' takes a taller band, up to 0.65 of the area", () => {
+  it("'camera-large' takes a taller band, up to 0.52 of the area (room for text under it)", () => {
     expect(followGeometry('camera-large', project(), W, H, VW, VH).camera.rect.h).toBeCloseTo(0.512 * 1768.8, 9)
-    expect(followGeometry('camera-large', project({}, { band: 0.5 }), W, H, VW, VH).camera.rect.h).toBeCloseTo(0.65 * 1768.8, 9)
+    expect(followGeometry('camera-large', project({}, { band: 0.4 }), W, H, VW, VH).camera.rect.h).toBeCloseTo(0.52 * 1768.8, 9)
+    expect(followGeometry('camera-large', project({}, { band: 0.5 }), W, H, VW, VH).camera.rect.h).toBeCloseTo(0.52 * 1768.8, 9)
     expect(followGeometry('side-by-side', project(), W, H, VW, VH)).toEqual(followGeometry('default', project(), W, H, VW, VH))
   })
 

@@ -17,6 +17,7 @@ const { captionLayout, captionMetrics, placeChunk } = await import('../src/share
 const { DEFAULT_CAPTIONS } = await import('../src/shared/captions/settings')
 const { watermarkRect } = await import('../src/shared/engine/watermark')
 const { titleLayout, TITLE_SAFE } = await import('../src/shared/render/titleCards')
+const { followGeometry } = await import('../src/shared/engine/layout')
 
 /* ---------- a canvas that records its calls (for the key presses) ---------- */
 
@@ -173,6 +174,40 @@ describe('textArea (test 52)', () => {
 })
 
 /* ---------- test 53: the rules in the area ---------- */
+
+describe('a large camera leaves text its room (§6.3: text never covers the camera)', () => {
+  // The deepest bands Camera size allows, with the large camera of an intro: a key press over a
+  // two-line caption, a caption at the largest size and a two-line lower third all stay below it.
+  for (const padding of [0, 0.07]) {
+    for (const band of [0.32, 0.4, 0.5]) {
+      it(`band ${band}, padding ${padding}`, () => {
+        const p: Project = {
+          ...project({ appSafe: true, band }, { layouts: [{ id: 'l', start: 0, end: 30, layout: 'camera-large' }] }, padding),
+          effects: { motionBlur: 0, keystrokes: { show: true, position: 'bottom', size: 0.035 } },
+          transcript: { provider: 'local', model: 'm', createdAt: '', segments: [{ ...LONG, start: 1, end: 4 }] },
+          captions: caps()
+        }
+        const cameraEnd = (() => {
+          const b = followGeometry('camera-large', p, W, H, 1920, 1080).band!
+          return b.y + b.h
+        })()
+        const a = area(p, 2)!
+        expect(a.y).toBeGreaterThanOrEqual(cameraEnd)
+        const ctx = recordingContext()
+        calls.length = 0
+        drawKeystrokes(ctx, W, H, 2, p, { samples: [], clicks: [], keys: [{ t: 1.9, label: 'Ctrl + S' }], shapes: [], scale: 1, valid: false }, a)
+        const box = calls.find((c) => c.name === 'roundRect')!.args as number[]
+        const caption = captionBlockAt(ctx, p, 2, W, H, a)!
+        expect(caption.top).toBeGreaterThanOrEqual(a.y)
+        expect(box[1]).toBeGreaterThanOrEqual(a.y)
+        const big = captionLayout(LONG, caps({ size: 0.09 }), W, H, measure, a)
+        for (const chunk of big.chunks) expect(placeChunk(big, chunk, 'bottom', W, H, a).top).toBeGreaterThanOrEqual(a.y)
+        const title = titleLayout({ title: 'A much longer title that has to be broken over two lines', subtitle: 'A subtitle long enough to need a second line of its own', style: 'lower-third' }, W, H, measure, a)
+        expect(title.band!.y).toBeGreaterThanOrEqual(a.y)
+      })
+    }
+  }
+})
 
 const measure = (text: string, px: number, weight: number): number => text.length * px * (weight >= 700 ? 0.56 : 0.5)
 const LONG = {
