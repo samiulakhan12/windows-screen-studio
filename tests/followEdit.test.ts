@@ -3,6 +3,7 @@ import { bandOf, dragView, editorFrame, followsAction, followSuggestion, framedL
 import { fromCrop } from '../src/shared/engine/crop'
 import { createProject } from '../src/shared/engine/project'
 import { DEFAULT_REFRAME } from '../src/shared/engine/reframeData'
+import { aimAt, cameraAt, zoomAt, zoomsConnected, zoomStyleOf } from '../src/shared/engine/zoom'
 import type { NormRect, Project, ZoomSegment } from '../src/shared/types'
 
 /*
@@ -67,21 +68,72 @@ describe('holdViewAt (test 54)', () => {
     expect(off.project?.zooms[0].focus).toEqual({ mode: 'fixed', x: 0.5, y: 0 })
   })
 
-  it('is fitted into the free gap like a new zoom, and needs at least 1 s', () => {
-    const next = zoom('n', 6, 10, { mode: 'cursor' })
-    const before = zoom('b', 0, 4.5, { mode: 'cursor' })
-    // Close to the next zoom: it grows backwards into the free space.
-    let r = holdViewAt(project([before, next]), 5, { x: 0.5, y: 0.5 }, null)
-    expect(r.project?.zooms.find((z) => z.id === (r as { zoomId: string }).zoomId)).toMatchObject({ start: 4.5, end: 6 })
+  it('is fitted into the free gap like a new zoom, a connect gap clear of its neighbours, and needs at least 1 s', () => {
+    const at = (r: ReturnType<typeof holdViewAt>): ZoomSegment | undefined => (r.project ? r.project.zooms.find((z) => z.id === (r as { zoomId: string }).zoomId) : undefined)
+    const before = zoom('b', 0, 3, { mode: 'cursor' })
+    const next = zoom('n', 8, 12, { mode: 'cursor' })
+    // Close to the next zoom: it grows backwards into the free space, ending 0.7 s (the transition) before it.
+    let r = holdViewAt(project([before, next]), 6, { x: 0.5, y: 0.5 }, null)
+    expect(at(r)?.start).toBeCloseTo(4.3, 12)
+    expect(at(r)?.end).toBeCloseTo(7.3, 12)
+    // Right after a zoom: no room until 0.7 s after it, from where it starts.
+    expect(holdViewAt(project([before, next]), 3.2, { x: 0.5, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    expect(holdViewAt(project([before, next]), 3, { x: 0.5, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    r = holdViewAt(project([before, next]), 3.7, { x: 0.5, y: 0.5 }, null)
+    expect(at(r)?.start).toBeCloseTo(3.7, 12)
+    expect(at(r)?.end).toBeCloseTo(6.7, 12)
+    // A neighbour's own longer transition (2 s) keeps it further away: (0.7 + 2) / 2.
+    r = holdViewAt(project([before, zoom('n', 9, 12, { mode: 'cursor' }, { transition: 2 })]), 6, { x: 0.5, y: 0.5 }, null)
+    expect(at(r)?.end).toBeCloseTo(7.65, 12)
+    // So does the project's (1.5 s): the hold starts 1.5 s after the zoom before it at the earliest.
+    const slow = project([before], { zoomSettings: { ...project().zoomSettings!, transition: 1.5 } })
+    expect(holdViewAt(slow, 4.4, { x: 0.5, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    expect(at(holdViewAt(slow, 4.5, { x: 0.5, y: 0.5 }, null))?.start).toBeCloseTo(4.5, 12)
     // 1.1 s of room is enough.
-    r = holdViewAt(project([zoom('b', 0, 4.5, { mode: 'cursor' }), zoom('n', 5.6, 10, { mode: 'cursor' })]), 5, { x: 0.5, y: 0.5 }, null)
+    r = holdViewAt(project([before, zoom('n', 5.5, 10, { mode: 'cursor' })]), 4, { x: 0.5, y: 0.5 }, null)
     expect(r.project?.zooms).toHaveLength(3)
+    expect(at(r)?.start).toBeCloseTo(3.7, 12)
+    expect(at(r)?.end).toBeCloseTo(4.8, 12)
     // 0.8 s is not.
-    r = holdViewAt(project([zoom('b', 0, 4.6, { mode: 'cursor' }), zoom('n', 5.4, 10, { mode: 'cursor' })]), 5, { x: 0.5, y: 0.5 }, null)
+    r = holdViewAt(project([before, zoom('n', 5.2, 10, { mode: 'cursor' })]), 4, { x: 0.5, y: 0.5 }, null)
     expect(r).toEqual({ project: null, reason: 'no-room' })
     // Near the end of the recording.
     r = holdViewAt(project(), 19.5, { x: 0.5, y: 0.5 }, null)
     expect(r.project?.zooms[0]).toMatchObject({ start: 17, end: 20 })
+  })
+
+  it('never joins a neighbouring zoom, so a frame that does not follow (a 16:9 file) looks exactly as before', () => {
+    // A 2× zoom at a fixed point, a cursor zoom, and one with a long transition that pans straight
+    // into the zoom before it (connected across 4 s).
+    const fixed = zoom('a', 2, 5, { mode: 'fixed', x: 0.2, y: 0.2 })
+    const cursor = zoom('c', 9, 12, { mode: 'cursor' })
+    const long = zoom('l', 9, 12, { mode: 'fixed', x: 0.8, y: 0.7 }, { transition: 10 })
+    const track = { at: (t: number) => ({ x: 0.3 + 0.02 * t, y: 0.6 - 0.01 * t }) }
+    let made = 0
+    for (const zooms of [[fixed], [fixed, cursor], [cursor], [fixed, long], [zoom('p', 2, 5, { mode: 'cursor' }, { scale: 0.7 }), cursor]]) {
+      const p = project(zooms)
+      const style = zoomStyleOf(p)
+      for (const t of [0, 1, 4.99, 5, 5.3, 5.69, 5.7, 6, 7.5, 8.3, 8.31, 8.9, 12, 12.5, 13, 19.9]) {
+        const r = holdViewAt(p, t, { x: 0.7, y: 0.5 }, null)
+        if (!r.project || zoomAt(zooms, t)) continue
+        made++
+        const held = r.project.zooms
+        const i = held.findIndex((z) => z.id === r.zoomId)
+        const hold = held[i]
+        expect(t >= hold.start && t < hold.end, `the hold covers the playhead (${t} in ${hold.start}..${hold.end})`).toBe(true)
+        if (i > 0) expect(zoomsConnected(held[i - 1], hold, style)).toBe(false)
+        if (i + 1 < held.length) expect(zoomsConnected(hold, held[i + 1], style)).toBe(false)
+        for (let s = 0; s <= 20; s += 0.05) {
+          expect(cameraAt(held, s, track, style), `camera at ${s.toFixed(2)} s, held at ${t} s`).toEqual(cameraAt(zooms, s, track, style))
+          expect(aimAt(held, s, track, style), `aim at ${s.toFixed(2)} s, held at ${t} s`).toEqual(aimAt(zooms, s, track, style))
+        }
+      }
+    }
+    // Room was found away from the zooms (not refused everywhere): at 0, 1, 5.7, 6, 7.5 and so on.
+    expect(made).toBeGreaterThanOrEqual(20)
+    // The case that used to join: just after the 2× zoom, where it would have panned into the hold.
+    expect(holdViewAt(project([fixed]), 5, { x: 0.7, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    expect(holdViewAt(project([fixed, long]), 6, { x: 0.7, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
   })
 
   it('inside a zoom that follows the cursor: its focus fixed at the centre, times and level kept', () => {

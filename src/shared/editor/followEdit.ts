@@ -2,16 +2,17 @@
  * Steering the view that follows the action (docs/design/vertical-video.md §2.6): Hold the view
  * here (a 1× zoom with a fixed point, or the zoom at the playhead fixed), dragging the picture,
  * and the state the Vertical framing section shows. Pure: each edit is one project out (one
- * store.update), positions in full-frame coordinates (through crop.ts fromCrop). A 1× zoom with a
- * fixed point changes nothing in a frame that does not follow, so these edits never change how a
- * 16:9 export looks.
+ * store.update), positions in full-frame coordinates (through crop.ts fromCrop). A new hold is a 1×
+ * zoom with a fixed point that never joins a neighbouring zoom, so it changes nothing in a frame
+ * that does not follow (a 16:9 file); fixing or moving the point of a zoom that is there already
+ * changes that zoom in every frame, as editing it in the Zoom tab does.
  */
 import { cropProject, fromCrop, toCrop, visibleSize, zoomFromView, zoomInView } from '../engine/crop'
 import { bandSide, outputSize } from '../engine/layout'
 import { clamp } from '../engine/math'
 import { followLimits, framedZooms } from '../engine/reframe'
 import { canFollow, followApplies, reframeOn, withReframe } from '../engine/reframeData'
-import { DEFAULT_NEW_ZOOM, insertZoom, zoomAt } from '../engine/zoom'
+import { connectGap, DEFAULT_NEW_ZOOM, insertZoom, zoomAt, zoomStyleOf } from '../engine/zoom'
 import type { AspectRatio, NormRect, Project, ZoomSegment } from '../types'
 import { dragRegion } from './zoomEdit'
 
@@ -29,6 +30,11 @@ function withZoom(p: Project, id: string, next: ZoomSegment): Project {
  * zoom's focus fixed there (a region keeps its rectangle, so the project is returned as it is). The
  * zoom is no longer automatic, so regenerating auto zooms keeps it. `crop`: the project's crop
  * (cropOf), null without.
+ *
+ * The new zoom keeps a connect gap (zoom.ts connectGap) from the zooms on either side: joined to
+ * one, the camera of a frame that does not follow would pan from that zoom into the hold (or break
+ * a pan between the two) instead of zooming out where it did. A playhead within that gap of a zoom
+ * has no room.
  */
 export function holdViewAt(
   project: Project,
@@ -42,9 +48,17 @@ export function holdViewAt(
     if (z.focus.mode === 'region') return { project, zoomId: z.id }
     return { project: withZoom(project, z.id, { ...z, focus: { mode: 'fixed', x: at.x, y: at.y }, auto: false }), zoomId: z.id }
   }
-  const r = insertZoom(project.zooms, t, project.duration, { lead: 0, length: DEFAULT_NEW_ZOOM, scale: 1, focus: { mode: 'fixed', x: at.x, y: at.y } })
+  const options = { lead: 0, length: DEFAULT_NEW_ZOOM, scale: 1, focus: { mode: 'fixed' as const, x: at.x, y: at.y } }
+  // Each zoom widened by its connect gap with the new one: the free gap left is where the hold
+  // cannot join it (the gap is the same on both sides, the average of the two transitions).
+  const style = zoomStyleOf(project)
+  const fresh: ZoomSegment = { id: '', start: t, end: t + DEFAULT_NEW_ZOOM, scale: 1, focus: options.focus, auto: false }
+  const kept = project.zooms.map((o) => ({ ...o, start: o.start - connectGap(o, fresh, style), end: o.end + connectGap(o, fresh, style) }))
+  const r = insertZoom(kept, t, project.duration, options)
   if (!r.ok) return { project: null, reason: 'no-room' }
-  return { project: { ...project, zooms: r.zooms }, zoomId: r.id }
+  const hold = r.zooms.find((o) => o.id === r.id)
+  if (!hold) return { project: null, reason: 'no-room' }
+  return { project: { ...project, zooms: [...project.zooms, hold].sort((a, b) => a.start - b.start) }, zoomId: r.id }
 }
 
 /**
