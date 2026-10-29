@@ -134,8 +134,18 @@ describe('file names and texts', () => {
     const clips = [clip('a', 0, 75)]
     const chapters = outputChapters([ch(0, 'Intro'), ch(30, 'Billing')], clips)
     expect(chapterListText(chapters, 75)).toBe('0:00 Intro\n0:30 Billing\n')
-    expect(descriptionText('Demo', 75, chapters)).toBe('Demo\n\nLength: 1:15\n\nChapters\n0:00 Intro\n0:30 Billing\n')
-    expect(descriptionText('01 Intro', 30, [], { index: 0, count: 2, of: 'Demo' })).toBe('01 Intro\n\nPart 1 of 2 of Demo\nLength: 0:30\n')
+    expect(descriptionText('Demo', 75, chapters)).toBe('Demo\n\nLength: 1 min 15 s\n\nChapters\n0:00 Intro\n0:30 Billing\n')
+    expect(descriptionText('01 Intro', 30, [], { index: 0, count: 2, of: 'Demo' })).toBe('01 Intro\n\nPart 1 of 2 of Demo\nLength: 30 s\n')
+    expect(descriptionText('Long', 3725.9, [])).toBe('Long\n\nLength: 1 h 2 min 5 s\n')
+    expect(descriptionText('Two', 120, [])).toBe('Two\n\nLength: 2 min\n')
+    expect(descriptionText('Blank', 0.4, [])).toBe('Blank\n\nLength: 0 s\n')
+  })
+
+  it('puts no timestamp before the chapters, so YouTube reads 0:00 as the first one', () => {
+    const clips = [clip('a', 0, 52)]
+    const chapters = outputChapters([ch(0, 'Intro'), ch(19, 'Billing'), ch(39, 'End')], clips)
+    const text = descriptionText('Demo', 52, chapters)
+    expect(text.match(/\b\d+:\d{2}\b/g)).toEqual(['0:00', '0:19', '0:39'])
     expect(chapterListText([], 10)).toBe('')
   })
 })

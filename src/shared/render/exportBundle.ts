@@ -6,7 +6,7 @@
  */
 import { planOf, videoDuration, videoToEdit } from '../engine/freeze'
 import type { Clip, ExportFormat, Project } from '../types'
-import { outputChapters, youtubeChapters, formatTimestamp, type OutputChapter } from './chapters'
+import { outputChapters, youtubeChapters, type OutputChapter } from './chapters'
 
 export type SidecarKind = 'srt' | 'vtt' | 'chapters' | 'thumbnail' | 'description'
 
@@ -203,13 +203,28 @@ export function chapterListText(chapters: readonly OutputChapter[], length: numb
 }
 
 /**
+ * A length in words ("1 min 15 s", "1 h 2 min"), whole seconds as the chapter timestamps count them.
+ * Never "m:ss": YouTube makes chapters only when the description's first timestamp is 0:00.
+ */
+function lengthInWords(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds + 1e-6))
+  const units: [number, string][] = [
+    [Math.floor(s / 3600), 'h'],
+    [Math.floor((s % 3600) / 60), 'min'],
+    [s % 60, 's']
+  ]
+  const words = units.filter(([n]) => n > 0).map(([n, unit]) => `${n} ${unit}`)
+  return words.length ? words.join(' ') : '0 s'
+}
+
+/**
  * The description file: the title, the length, and the chapters as YouTube timestamps (paste it
  * into the video's description). A part says which part of which video it is.
  */
 export function descriptionText(title: string, length: number, chapters: readonly OutputChapter[], part?: { index: number; count: number; of: string }): string {
   const lines = [title.trim() || 'Untitled', '']
   if (part) lines.push(`Part ${part.index + 1} of ${part.count} of ${part.of.trim() || 'the video'}`)
-  lines.push(`Length: ${formatTimestamp(length, length >= 3600)}`)
+  lines.push(`Length: ${lengthInWords(length)}`)
   const list = chapters.length ? youtubeChapters(chapters, length).text : ''
   if (list) lines.push('', 'Chapters', list)
   return `${lines.join('\n')}\n`

@@ -105,7 +105,7 @@ const run = async () => {
       const chapters = fs.readFileSync(path.join(out, 'Demo - chapters.txt'), 'utf8')
       h.assert(chapters === '0:00 Intro\n0:02 Billing: part/1\n0:04 End\n', `chapter list: ${JSON.stringify(chapters)}`)
       const desc = fs.readFileSync(path.join(out, 'Demo - description.txt'), 'utf8')
-      h.assert(desc.startsWith('Demo\n\nLength: 0:06\n\nChapters\n0:00 Intro'), `description: ${JSON.stringify(desc)}`)
+      h.assert(desc.startsWith('Demo\n\nLength: 6 s\n\nChapters\n0:00 Intro'), `description: ${JSON.stringify(desc)}`)
       const png = fx.probe(path.join(out, 'Demo - thumbnail.png')).streams[0]
       h.assert(png.width === 1280 && png.height === 720, `thumbnail at the export size: ${png.width}x${png.height}`)
       h.assert(fs.readdirSync(out).every((f) => !f.includes('.partial-')), 'no partial files left')
@@ -178,7 +178,7 @@ const run = async () => {
       const srt2 = fs.readFileSync(path.join(out, '02 Billing- part-1.srt'), 'utf8')
       h.assert(srt2 === '﻿1\n00:00:00,500 --> 00:00:01,500\nAbout billing\n', `part 2 captions in its own time: ${JSON.stringify(srt2)}`)
       const desc = fs.readFileSync(path.join(out, '03 End - description.txt'), 'utf8')
-      h.assert(desc.startsWith('03 End\n\nPart 3 of 3 of Demo\nLength: 0:02'), `part description: ${JSON.stringify(desc)}`)
+      h.assert(desc.startsWith('03 End\n\nPart 3 of 3 of Demo\nLength: 2 s'), `part description: ${JSON.stringify(desc)}`)
       h.assert(!fs.readdirSync(out).some((f) => f.includes('chapters.txt')), 'a part has no chapter list')
       const t = await trace(app)
       const note = t.find((e) => e.call === 'notify')
