@@ -105,7 +105,7 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
   return (
     <>
       {tall && <SafeZonesLegend />}
-      <div className="transport">
+      <div className={tall ? 'transport tall' : 'transport'}>
         <button className="btn round" onClick={onTogglePlay} title={withShortcut(playing ? 'Pause' : 'Play', keymap.play)} aria-label={playing ? 'Pause' : 'Play'} data-playing={playing}>
           <Icon name={playing ? 'pause' : 'play'} />
         </button>

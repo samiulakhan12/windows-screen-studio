@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { DEFAULT_KEYMAP } from '../src/shared/editor/shortcuts'
 
 /*
  * The notice under the preview and its button (docs/design/vertical-video.md §2.1, §2.3): after
@@ -24,11 +25,30 @@ type El = ReactElement<{
 }>
 interface Notice {
   TransportNotice: (props: { text: string; action?: { label: string; run: () => void } | null; alert?: boolean; onHold?: (held: boolean) => void }) => unknown
+  Transport: { type: (props: Record<string, unknown>) => unknown }
 }
+
+// The transport row is called as a function, with React's hooks swapped for a few lines and its
+// contexts (the editor's player, the keymap) answered here, as tests/followSection.test.ts does.
+const player = { time: 0, holdElapsed: 0, subscribe: () => () => undefined, getPlaying: () => false }
+vi.doMock('react', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useRef: (init: unknown) => ({ current: init }),
+  useEffect: () => undefined,
+  useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => get(),
+  useContext: () => ({ ...DEFAULT_KEYMAP, player })
+}))
 
 // A .tsx module: imported by path, as the Node typecheck of tests/ does not compile JSX.
 const TRANSPORT = '../src/renderer/src/editor/Transport'
-const { TransportNotice } = (await import(/* @vite-ignore */ TRANSPORT)) as Notice
+const { TransportNotice, Transport } = (await import(/* @vite-ignore */ TRANSPORT)) as Notice
+
+/** The transport row (its own elements; components inside it are not called). */
+function transportRow(props: Record<string, unknown>): El {
+  const noop = (): void => undefined
+  const out = Transport.type({ clips: [], notice: null, onTogglePlay: noop, onSplit: noop, onAddZoom: noop, onAddText: noop, ...props }) as El
+  return elements(out.props.children).find((e) => /\btransport\b/.test(e.props.className ?? ''))!
+}
 
 const kids = (node: ReactNode): ReactNode[] => (Array.isArray(node) ? node.flatMap(kids) : [node])
 const elements = (node: ReactNode): El[] => kids(node).filter((n): n is El => isValidElement(n))
@@ -119,6 +139,21 @@ const values = (selector: string, prop: string): string[] =>
   [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
     .filter((m) => m[1].split(',').map((s) => s.trim()).includes(selector))
     .flatMap((m) => [...m[2].matchAll(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`, 'g'))].map((d) => d[1].trim()))
+
+describe('a tall frame\'s transport row wraps in a narrow window (editor.css)', () => {
+  it('only a tall frame\'s row (with the safe-zone control) is marked to wrap', () => {
+    expect(transportRow({ tall: true }).props.className).toBe('transport tall')
+    expect(transportRow({ tall: false }).props.className).toBe('transport')
+    expect(transportRow({}).props.className).toBe('transport')
+  })
+
+  it('it wraps, keeping the notice wide enough to read; other rows lay out as before', () => {
+    expect(values('.transport.tall', 'flex-wrap')).toEqual(['wrap'])
+    expect(values('.transport.tall .notice-slot', 'flex')).toEqual(['1 0 160px'])
+    expect(values('.transport', 'flex-wrap')).toEqual([])
+    expect(values('.notice-slot', 'flex')).toEqual(['1'])
+  })
+})
 
 describe('only the message gives way (editor.css)', () => {
   it('a notice is the one-line pill as before; one with a button is a row that does not clip it', () => {
