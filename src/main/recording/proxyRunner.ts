@@ -12,7 +12,7 @@ export interface FfmpegRun {
   readError: boolean
 }
 
-/** An ffmpeg failure with a one-line summary; the full log goes to the console. */
+/** An ffmpeg failure with a one-line summary; the log, without the input's metadata, goes to the console. */
 export class FfmpegError extends Error {
   constructor(
     message: string,
@@ -83,6 +83,15 @@ export const DISK_FULL_RE = /^\[[^\]]+\][^\n]*No space left on device/m
  */
 export const READ_ERROR_RE = /^\[in#\d+[^\]]*\] Error (?:during demuxing|retrieving a packet from demuxer): (?!Invalid data found)/m
 
+/**
+ * The log without its Metadata blocks: the input's tags (a phone video's GPS location, make and
+ * model, an author, comments, chapter titles), which an imported file brings along. This is
+ * what may be logged or shown: a file's contents are never logged.
+ */
+export function withoutMetadata(log: string): string {
+  return log.replace(/^([ \t]*)Metadata:\r?\n(?:\1[ \t]+.*(?:\r?\n|$))*/gm, '')
+}
+
 /** Last meaningful log line, e.g. "Invalid data found when processing input". */
 export function summarizeFfmpegLog(log: string): string {
   const lines = log
@@ -149,13 +158,14 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
         reject(cancelledError())
         return
       }
-      console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${log}`)
+      const shown = withoutMetadata(log)
+      console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${shown}`)
       // The log's last line is then an encoder's statistics ("Qavg: 435.6"), not the reason.
       if (DISK_FULL_RE.test(log)) {
         reject(new FfmpegError('No space left on device', 'ENOSPC'))
         return
       }
-      reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(log) || `exit code ${code}`, null))
+      reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(shown) || `exit code ${code}`, null))
     })
   })
 }

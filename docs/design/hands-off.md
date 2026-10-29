@@ -121,7 +121,10 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   `<app>\…`, `<temp>\…`); **any other absolute path** (Windows drive, UNC, POSIX) becomes `<path>`.
   The user name therefore never appears (it is in every home path); as a last guard the home
   folder and the account name are replaced literally (any case, any separators) by `<path>` / `<user>`. File contents are never logged:
-  only the lines the app already prints, and those never contain file contents.
+  only the lines the app already prints, and those never contain file contents. A failed ffmpeg
+  run logs ffmpeg's report without its `Metadata:` blocks (`withoutMetadata` in
+  `src/main/recording/proxyRunner.ts`): an imported phone video's tags (GPS location, make and
+  model, author, comments, chapter titles) are never logged.
 * *Rejected:* `electron-log` (a new dependency for 150 lines of code), Crashpad uploads (no
   server, and privacy).
 * The log is also redacted again when read for diagnostics (defence in depth: a log written by an
