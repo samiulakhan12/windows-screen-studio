@@ -44,9 +44,21 @@ function watchPage(wc: WebContents): void {
 
 const trash = (file: string): Promise<void> => shell.trashItem(file)
 
-async function clean(requests: { id: string; action: CleanupAction }[]): Promise<StorageCleanupResult> {
-  const s = storeOf()
-  return runCleanup(projectsRoot(), requests, s.rules, s.used, openIds(), Date.now(), { trash, beforeRemove: stopAnalyses, isOpen: (id) => openIds().has(id) })
+/** The clean-up running now: the next one waits for it. */
+let cleaning: Promise<unknown> = Promise.resolve()
+
+/**
+ * Runs clean-ups one at a time (Settings', the automatic one, Settings' again after it was closed
+ * and opened). Each scans again when it starts, so it skips what an earlier one already moved
+ * instead of reporting it as failed.
+ */
+function clean(requests: { id: string; action: CleanupAction }[]): Promise<StorageCleanupResult> {
+  const run = cleaning.then(() => {
+    const s = storeOf()
+    return runCleanup(projectsRoot(), requests, s.rules, s.used, openIds(), Date.now(), { trash, beforeRemove: stopAnalyses, isOpen: (id) => openIds().has(id) })
+  })
+  cleaning = run.catch(() => undefined)
+  return run
 }
 
 /** The cache rule by itself, when the user asked for it and nothing else is going on. */
