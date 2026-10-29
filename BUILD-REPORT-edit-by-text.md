@@ -72,7 +72,26 @@ No new dependencies.
 
 ## Verification
 
-VERIFICATION
+On the final code (this branch's head), Linux, Xvfb without a window manager:
+
+- `npm run typecheck`: passes.
+- `npx vitest run --testTimeout=60000`: 3022 of 3023 tests pass (221 of 222 files). The one failure is
+  `tests/groupMove.test.ts` › G-PERF (a 250 ms timing limit, measured 260–290 ms here); it fails the
+  same way on the base commit aeca5c5 on this machine and is not touched by this branch.
+- `npm run build`: passes.
+- `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (the full suite, after
+  `npm run build:speech-host` and `npm run fetch:test-speech`): 51 of 54 files pass, 226 tests pass.
+  The three failing files:
+  - `teleprompter.e2e.cjs` › "notes: … dragged by its strip": fails identically on base aeca5c5 here
+    (no window manager to move the window; `openbox` is not installable in this container).
+  - `camera-live.e2e.cjs` › "the live camera bubble …" (a recording's duration vs a 2.5 s pause):
+    passed on the re-run and in the first full run; recording timing, not touched by this branch.
+  - `bangla-captions.e2e.cjs` › "Bengali shows its chip … the click downloads it": failed in the full
+    run and once more in a re-run of two files, then passed twice run alone, and passes on base. The
+    assertion reads the mock server's request log the moment the progress text appears, so it is a
+    race under load; this branch does not touch the Captions tab, speech or downloads.
+  - `edit-by-text.e2e.cjs`: 4 of 4 pass. `audio-pack.e2e.cjs`: 10 of 10 pass (its known 20 ms
+    microphone-stem flake did not show on the final run). `ui.e2e.cjs`: 5 of 5 pass.
 
 ## Needs a real Windows PC
 
