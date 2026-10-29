@@ -235,7 +235,8 @@ span restores exactly the range that cutting it removed.
   Merge and Split in the Captions tab keep every word's time too (`mergeWithNext`,
   `splitCaption`): a caption whose timings no longer match its text, or that has none next to one
   that has them, gets its words' times as this tab has them (`captionWordTimes`, guesses still
-  marked), so a deleted word stays cut and out of the subtitles after them.
+  marked), so a deleted word stays cut and out of the subtitles after them. Fix captions (the AI
+  clean-up) keeps a caption's timings when it changes the number of words, for the same reason.
 - **Restore** (`restoreWords`): `restoreRange` of the span's range: what is cut inside it comes
   back at 1×, kept parts keep their speed, and neighbours with the same speed merge (the timeline's
   own restore rule).

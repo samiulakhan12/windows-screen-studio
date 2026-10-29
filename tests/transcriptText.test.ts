@@ -48,7 +48,7 @@ describe('batchSegments', () => {
 })
 
 describe('validateSegmentsAnswer', () => {
-  it('takes the new text and keeps ids and times; cleaned words keep their times when the count matches', () => {
+  it('takes the new text and keeps ids and times; cleaned words keep their times (respelled when the count matches)', () => {
     const out = validateSegmentsAnswer('cleanup', segs, {
       segments: [
         { id: 't1', text: 'Hello world, this is' },
@@ -67,9 +67,9 @@ describe('validateSegmentsAnswer', () => {
       { text: 'this', start: 1.4, end: 1.8 },
       { text: 'is', start: 1.8, end: 2.25 }
     ])
-    // A different word count: the timings no longer match the text.
+    // A different word count: the timings stay as they were (the editor lines them up with the text).
     const fewer = validateSegmentsAnswer('cleanup', segs.slice(0, 1), { segments: [{ id: 't1', text: 'Hello world' }] })
-    expect(fewer[0].words).toBeUndefined()
+    expect(fewer[0].words).toEqual(segs[0].words)
     // Translations never keep word timings.
     expect(validateSegmentsAnswer('translate', segs.slice(0, 1), { segments: [{ id: 't1', text: 'Hola mundo esto es' }] })[0].words).toBeUndefined()
   })

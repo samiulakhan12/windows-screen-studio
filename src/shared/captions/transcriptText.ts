@@ -159,13 +159,14 @@ export function batchSegments(segments: readonly CaptionSegment[], maxCount = BA
 }
 
 /**
- * Word timings for cleaned text: kept (with the new spelling) when it has as many words as were
- * timed, else dropped, as they would no longer match what is shown.
+ * Word timings for cleaned text: with the new spelling when it has as many words as were timed,
+ * else as they were (the Transcript tab and the subtitle files line them up with the text:
+ * alignCaptionWords), so a word deleted by its time stays deleted.
  */
 function retimeWords(words: readonly CaptionWord[] | undefined, text: string): CaptionWord[] | undefined {
   if (!words?.length) return undefined
   const tokens = text.split(' ').filter(Boolean)
-  if (tokens.length !== words.length) return undefined
+  if (tokens.length !== words.length) return [...words]
   return words.map((w, i) => ({ ...w, text: tokens[i] }))
 }
 

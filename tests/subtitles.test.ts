@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
 import { readTranscript } from '../src/shared/captions/captionData'
-import { mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
+import { applyTextResult, mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
+import { validateSegmentsAnswer, validateTextRequest } from '../src/shared/captions/transcriptText'
 import { anchorCutWords, cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
 import { cutRange } from '../src/shared/engine/timeline'
@@ -161,6 +162,31 @@ describe('outputCues: captions in output time', () => {
       const words = transcriptWords({ provider: 'gemini', model: '', createdAt: '', segments })
       const flags = cutFlags(words, clips)
       expect(words.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
+    }
+  })
+
+  it('keeps a word deleted in the Transcript tab out after Fix captions changes the number of words', () => {
+    const full = [clip(0, 30)]
+    const whisper = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.0, end: 1.5 },
+      { text: 'I', start: 1.9, end: 2.0 },
+      { text: 'think', start: 2.0, end: 2.4 },
+      { text: 'alot', start: 2.5, end: 2.9 },
+      { text: 'works.', start: 3.0, end: 3.6 }
+    ]
+    // With word timings, and without (every time a guess).
+    for (const caption of [seg('a', 0.4, 3.8, 'So um, I think alot works.', whisper), seg('a', 0.4, 3.8, 'So um, I think alot works.')]) {
+      const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
+      const words = transcriptWords(transcript)
+      const um = words.findIndex((w) => w.text === 'um,')
+      const clips = cutWords(full, words, [[um, um]], 30)
+      const deleted = anchorCutWords(transcript, full, clips)!.segments
+      // The clean-up as it goes: the request checked in the main process, the answer checked there, then applied here.
+      const request = validateTextRequest({ task: 'cleanup', segments: deleted })
+      const answer = validateSegmentsAnswer('cleanup', request.segments, { segments: [{ id: 'a', text: 'So, um, I think a lot works.' }] })
+      const fixed = applyTextResult(deleted, answer)!
+      expect(outputCues(fixed, clips)[0].text).toBe('So, I think a lot works.')
     }
   })
 
