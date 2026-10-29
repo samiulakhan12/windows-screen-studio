@@ -423,6 +423,7 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
   })
 
   it('a caption cut away up to its very end, or to a sliver shorter than a cue, is struck through whole and left out', () => {
+    const sentence = (): CaptionSegment => seg('g', 10, 17, SENTENCE)
     const next = (): CaptionSegment => seg('n', 17, 20, 'Then press Start.')
     const edits: ((s: EditStore<Project>) => void)[] = [
       // A range cut on the clip track, snapped to the caption's edges or from before it.
@@ -445,23 +446,23 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
       (s) => timelineCut(s, 10, 16.97)
     ]
     for (const edit of edits) {
-      const s = open([gemini(), next()])
+      const s = open([sentence(), next()])
       edit(s)
       expect(struck(s.state)).toEqual(SENTENCE.split(' '))
       expect(srt(s.state)).toEqual(['Then press Start.'])
     }
     // 0.1 s left: the cue and its guesses stay.
-    const s = open([gemini(), next()])
+    const s = open([sentence(), next()])
     timelineCut(s, 9, 16.9)
     expect(struck(s.state)).toEqual([])
     expect(srt(s.state)).toEqual([SENTENCE, 'Then press Start.'])
     // Heard words: 0.045 s left of the words, more of the caption after them.
-    const t = open([seg('y', 0.4, 1.5, 'Yes works.', [{ text: 'Yes', start: 0.4, end: 0.7 }, { text: 'works.', start: 0.9, end: 0.98 }]), next()], 'openai')
+    const t = open([seg('y', 0.4, 1.5, 'Yes works.', [{ text: 'Yes', start: 0.4, end: 0.7 }, { text: 'works.', start: 0.9, end: 0.98 }]), next()])
     t.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
     expect(struck(t.state)).toEqual(['Yes', 'works.'])
     expect(srt(t.state)).toEqual(['Then press Start.'])
     // Word timings shorter than a cue, nothing cut: the caption stays.
-    const u = open([seg('h', 5, 5.5, 'Hmm.', [{ text: 'Hmm.', start: 5.2, end: 5.2 }]), next()], 'openai')
+    const u = open([seg('h', 5, 5.5, 'Hmm.', [{ text: 'Hmm.', start: 5.2, end: 5.2 }]), next()])
     timelineCut(u, 7, 8)
     expect(struck(u.state)).toEqual([])
     expect(srt(u.state)).toEqual(['Hmm.', 'Then press Start.'])

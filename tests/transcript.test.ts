@@ -454,12 +454,12 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
   })
 
   it('takes a clip that only touches that time as keeping none of it: a caption cut up to its very end, the next one right after it', () => {
-    const gemini = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
+    const untimed = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
     const next = seg('n', 17, 20, 'Then press Start.')
     // A range cut snapped to the caption's edges, or from before it; a start trim to its end.
-    for (const clips of [cut(10, 17), cut(9, 17), [clip(17, 30)]]) expect(struck([gemini, next], clips)).toEqual(gemini.text.split(' '))
+    for (const clips of [cut(10, 17), cut(9, 17), [clip(17, 30)]]) expect(struck([untimed, next], clips)).toEqual(untimed.text.split(' '))
     // From the end of a caption before it: the clip that ends where it starts keeps none of it either.
-    expect(struck([seg('p', 8, 10, 'First.'), gemini], cut(10, 17.5))).toEqual(gemini.text.split(' '))
+    expect(struck([seg('p', 8, 10, 'First.'), untimed], cut(10, 17.5))).toEqual(untimed.text.split(' '))
     // Words added after "world" (cut), up to the caption's end where the next clip starts: surely cut, while "Hello" plays.
     const added = seg('h', 10, 12, 'Hello world, I said', [
       ['Hello', 10, 10.5],
@@ -469,12 +469,12 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
   })
 
   it('cuts every word of a caption a cut reached and its clips keep less than MIN_CUE of (output seconds), heard words too: the subtitle files leave it out', () => {
-    const gemini = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
-    expect(struck([gemini], cut(10, 16.97))).toEqual(gemini.text.split(' '))
-    expect(struck([gemini], [clip(0, 10), clip(16.92, 30, 2)])).toEqual(gemini.text.split(' '))
+    const untimed = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
+    expect(struck([untimed], cut(10, 16.97))).toEqual(untimed.text.split(' '))
+    expect(struck([untimed], [clip(0, 10), clip(16.92, 30, 2)])).toEqual(untimed.text.split(' '))
     // 0.1 s kept, or 0.06 s at 1x: a guess there may still be heard.
-    expect(struck([gemini], cut(10, 16.9))).toEqual([])
-    expect(struck([gemini], [clip(0, 10), clip(16.94, 30)])).toEqual([])
+    expect(struck([untimed], cut(10, 16.9))).toEqual([])
+    expect(struck([untimed], [clip(0, 10), clip(16.94, 30)])).toEqual([])
     // "works." keeps its middle (0.94 s) in the 0.045 s left of its caption's words.
     const yes = seg('y', 0.4, 1.5, 'Yes works.', [
       ['Yes', 0.4, 0.7],

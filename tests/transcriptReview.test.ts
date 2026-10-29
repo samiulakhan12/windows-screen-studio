@@ -55,7 +55,7 @@ describe('the review list', () => {
 
   it('lists a filler shown kept whose guessed time a cut already covers, though it saves nothing: Remove marks it deleted', () => {
     // A caption without word timings; Smart speed > Silences cut 11.85-13.75 s, over the guess for "um" (12.9-13.2 s).
-    const t = { provider: 'gemini', model: '', createdAt: '', segments: [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and um pick a folder for your recordings' }] } as unknown as Transcript
+    const t = { provider: 'local', model: '', createdAt: '', segments: [{ id: 'g', start: 10, end: 17, text: 'Now open the settings and um pick a folder for your recordings' }] } as unknown as Transcript
     const w = transcriptWords(t)
     const um = w.findIndex((x) => x.text === 'um')
     const silences: Clip[] = [
@@ -109,7 +109,7 @@ describe('retakes and repeats whose later take is cut', () => {
 
   it('takes a later take as cut when its first word\'s middle is (a guess the tab may still show kept), or when the tab shows it cut', () => {
     // Captions without word timings: every time a guess.
-    const untimed = (segments: CaptionSegment[]): TranscriptWord[] => transcriptWords({ provider: 'gemini', model: '', createdAt: '', segments } as unknown as Transcript)
+    const untimed = (segments: CaptionSegment[]): TranscriptWord[] => transcriptWords({ provider: 'local', model: '', createdAt: '', segments } as unknown as Transcript)
     const w = untimed([
       { id: 'a', start: 10, end: 12, text: 'So the first thing you do.' },
       { id: 'b', start: 12.5, end: 17, text: 'So the first thing you do is open the settings.' }
