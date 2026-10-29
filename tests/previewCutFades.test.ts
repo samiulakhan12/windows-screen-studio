@@ -89,6 +89,8 @@ type Sound = {
   jump(t: number, speed: number): void
   hold(h: Hold | null, elapsed: number): void
   frame(frameTime?: number): void
+  setRate(speed: number): void
+  setView(rate: number): void
   dispose(): void
 }
 const { PreviewAudio } = (await import(/* @vite-ignore */ AUDIO)) as {
@@ -159,7 +161,7 @@ describe('the fade out before a cut in the preview', () => {
       expect(ramps, what).toHaveLength(1)
       expect(ramps[0][2], what).toBeCloseTo(jumpAt - ctx.baseLatency, 9)
       // The whole fade, from full sound.
-      const from = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
+      const from = cut.gain.ops.filter(([op, v]) => op !== 'cancel' && v === 1).at(-1)!
       expect(ramps[0][2] - from[2], what).toBeCloseTo(CUT_FADE, 9)
     }
   })
@@ -183,9 +185,172 @@ describe('the fade out before a cut in the preview', () => {
       const ramps = cut.gain.ops.filter(([op, v]) => op === 'ramp' && v === 0)
       expect(ramps, `from frame ${k0}`).toHaveLength(1)
       expect(ramps[0][2], `from frame ${k0}`).toBeLessThanOrEqual(jumpAt + 1e-9)
-      const from = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
+      const from = cut.gain.ops.filter(([op, v]) => op !== 'cancel' && v === 1).at(-1)!
       expect(ramps[0][2] - from[2], `from frame ${k0}`).toBeCloseTo(CUT_FADE, 9)
     }
+  })
+})
+
+/**
+ * The cut gain as Chromium renders it: the audio clock moves a render buffer at a time, each buffer
+ * is rendered from what is scheduled when it renders, and `value` is the last value rendered (it
+ * does not follow what is scheduled ahead of the clock). Web Audio's rules for setValueAtTime and
+ * linearRampToValueAtTime.
+ */
+class RenderedParam {
+  private events: { ramp: boolean; v: number; t: number }[] = []
+  private last = 1
+  /** Every sample rendered. */
+  readonly samples: number[] = []
+  get value(): number {
+    return this.last
+  }
+  cancelScheduledValues(t: number): void {
+    this.events = this.events.filter((e) => e.t < t)
+  }
+  setValueAtTime(v: number, t: number): void {
+    this.add({ ramp: false, v, t })
+  }
+  linearRampToValueAtTime(v: number, t: number): void {
+    this.add({ ramp: true, v, t })
+  }
+  /** Renders the samples from audio-clock time `from` to `to`. */
+  render(from: number, to: number, rate: number): void {
+    for (let n = Math.round(from * rate); n < Math.round(to * rate); n++) this.samples.push((this.last = this.at(n / rate)))
+  }
+  /** After the events already at its time. */
+  private add(e: { ramp: boolean; v: number; t: number }): void {
+    const i = this.events.findIndex((o) => o.t > e.t)
+    this.events.splice(i < 0 ? this.events.length : i, 0, e)
+  }
+  private at(time: number): number {
+    let v = this.last
+    let from = -Infinity
+    for (const e of this.events) {
+      if (e.t <= time) {
+        v = e.v
+        from = e.t
+      } else return e.ramp && from > -Infinity ? v + ((e.v - v) * (time - from)) / (e.t - from) : v
+    }
+    return v
+  }
+}
+
+describe('the cut gain as rendered', () => {
+  /**
+   * Plays at preview speed `view` from `start` (60 fps, a 60 Hz display, clips at speed 1), the
+   * player jumping over the cuts, and a seek while playing at callback `seek.at`. The audio clock
+   * runs a buffer of `buffer` samples at `rate` at a time, `phase` seconds off the callbacks.
+   * Returns the cut gain's largest rise from one sample to the next, its largest fall away from the
+   * seek (which stops the sound dead whatever the gain), and the gain rendered and where the jumps over cuts came.
+   */
+  function render(o: { clips: Clip[]; view: number; start: number; buffer: number; rate: number; phase: number; seek?: { at: number; to: number } }) {
+    const { screen, sound, ctx, cut } = setUp(project(o.clips))
+    const param = new RenderedParam()
+    ;(cut as { gain: unknown }).gain = param
+    const length = o.buffer / o.rate
+    ctx.baseLatency = length
+    const clock = (wall: number) => Math.floor((wall + o.phase) / length) * length
+    ctx.currentTime = clock(0)
+    screen.playbackRate = o.view
+    sound.setRate(o.view)
+    sound.setView(o.view)
+    sound.play(o.start, o.view)
+    let t = o.start
+    let landing: number | null = o.start
+    let seekAt = Infinity
+    const jumps: number[] = []
+    for (let k = 1; k < 60; k++) {
+      const now = clock(k / 60)
+      param.render(ctx.currentTime, now, o.rate)
+      ctx.currentTime = now
+      t = landing ?? t + o.view / 60
+      landing = null
+      if (k === o.seek?.at) {
+        seekAt = param.samples.length
+        screen.currentTime = landing = o.seek.to
+        sound.jump(o.seek.to, o.view)
+        continue
+      }
+      const i = o.clips.findIndex((c) => t >= c.start && t < c.end)
+      if (i < 0 || i === o.clips.length - 1) break
+      screen.currentTime = t
+      sound.frame(t)
+      if (t + o.view / 60 >= o.clips[i].end - JUMP_SLACK) {
+        jumps.push(param.samples.length)
+        screen.currentTime = landing = o.clips[i + 1].start
+        sound.jump(landing, o.view)
+      }
+    }
+    let rise = 0
+    let fall = 0
+    param.samples.forEach((v, n) => {
+      if (n === 0) return
+      rise = Math.max(rise, v - param.samples[n - 1])
+      if (n < seekAt || n > seekAt + o.buffer) fall = Math.max(fall, param.samples[n - 1] - v)
+    })
+    return { rise, fall, gain: param.samples, jumps }
+  }
+
+  const buffers = [
+    { buffer: 1024, rate: 44100 },
+    { buffer: 2048, rate: 48000 }
+  ]
+
+  it('never steps when a short clip between cuts plays at a fast preview speed', () => {
+    // At 2x a 0.1 to 0.25 s clip lasts 50 to 125 ms: its fade out is due a frame or two after the
+    // fade in that follows the jump into it. At 4x a 0.1 s clip has two frames, the second jumps.
+    const steps: string[] = []
+    for (const { buffer, rate } of buffers) {
+      for (const view of [2, 4]) {
+        for (let i = 0; i <= 15; i++) {
+          const end = 3.1 + i / 100
+          const clips = [
+            { id: 'a', start: 0, end: 2, speed: 1 },
+            { id: 'b', start: 3, end, speed: 1 },
+            { id: 'c', start: 5, end: 20, speed: 1 }
+          ]
+          for (let p = 0; p < 8; p++) {
+            const { rise, fall } = render({ clips, view, start: 1.6, buffer, rate, phase: ((p + 0.5) / 8) * (buffer / rate) })
+            if (rise > 0.5 || fall > 0.5) steps.push(`${view}x, ${buffer}@${rate}, clip to ${end.toFixed(2)}, phase ${p}/8: up ${rise.toFixed(2)}, down ${fall.toFixed(2)}`)
+          }
+        }
+      }
+    }
+    expect(steps).toEqual([])
+  })
+
+  it('never steps when a seek while playing lands just before a cut', () => {
+    // At 1x, 30 to 120 ms before it (a click on a word in the transcript): the fade out is due soon after the fade in.
+    const steps: string[] = []
+    const clips = [
+      { id: 'a', start: 0, end: 10, speed: 1 },
+      { id: 'b', start: 12, end: 20, speed: 1 }
+    ]
+    for (const { buffer, rate } of buffers) {
+      for (let i = 0; i <= 18; i++) {
+        const to = 10 - (30 + 5 * i) / 1000
+        for (let p = 0; p < 8; p++) {
+          const { rise, fall } = render({ clips, view: 1, start: 1, buffer, rate, phase: ((p + 0.5) / 8) * (buffer / rate), seek: { at: 5, to } })
+          if (rise > 0.5 || fall > 0.5) steps.push(`${buffer}@${rate}, seek to ${to.toFixed(3)}, phase ${p}/8: up ${rise.toFixed(2)}, down ${fall.toFixed(2)}`)
+        }
+      }
+    }
+    expect(steps).toEqual([])
+  })
+
+  it('still fades a short clip in and out when there is room for both', () => {
+    const clips = [
+      { id: 'a', start: 0, end: 2, speed: 1 },
+      { id: 'b', start: 3, end: 3.25, speed: 1 },
+      { id: 'c', start: 5, end: 20, speed: 1 }
+    ]
+    // At 2x it lasts 125 ms: full sound between the fades.
+    const { rise, fall, gain, jumps } = render({ clips, view: 2, start: 1.6, buffer: 1024, rate: 44100, phase: 0.01 })
+    expect(jumps).toHaveLength(2)
+    expect(Math.max(...gain.slice(jumps[0], jumps[1]))).toBe(1)
+    expect(rise).toBeLessThan(0.01)
+    expect(fall).toBeLessThan(0.01)
   })
 })
 

@@ -142,6 +142,11 @@ export class PreviewAudio {
   /** Smooth cuts: the clip end whose fade out is scheduled and when it reaches silence (audio clock), and a fade in owed after a jump. */
   private cutFadeOut: { at: number; until: number } | null = null
   private cutFadeIn = false
+  /**
+   * What is scheduled on the cut gain (audio-clock seconds): a fade out starts from where a fade in
+   * still under way has got to. The param's own value is the last one rendered, up to a buffer behind.
+   */
+  private cutKeys: Keyframe[] = []
   /** The source time of the last video frame callback, to measure how far apart they come. */
   private lastFrameAt: number | null = null
   /** Called when a stem's file turns out to be missing (the Audio panel says so). */
@@ -531,8 +536,10 @@ export class PreviewAudio {
       this.cutFadeIn = true
       this.lastFrameAt = null
       const cut = this.graph.cut.gain
+      const now = this.graph.ctx.currentTime
       cut.cancelScheduledValues(0)
-      cut.setValueAtTime(0, this.graph.ctx.currentTime)
+      cut.setValueAtTime(0, now)
+      this.cutKeys = [{ t: now, gain: 0 }]
     }
     for (const stem of this.activeStems()) this.startStem(stem, t)
     // The music runs on through cuts (output time is continuous); only a real seek moves it.
@@ -609,21 +616,27 @@ export class PreviewAudio {
     const step = this.lastFrameAt !== null && t - this.lastFrameAt > 1e-4 && t - this.lastFrameAt < 0.25 ? t - this.lastFrameAt : 0
     this.lastFrameAt = t
     if (this.cutFadeIn) {
+      // A cut already near gets its fade out on this frame too, after the fade in.
       this.cutFadeIn = false
       param.cancelScheduledValues(0)
       param.setValueAtTime(0, now)
       param.linearRampToValueAtTime(1, now + fade)
-      return
+      this.cutKeys = [{ t: now, gain: 0 }, { t: now + fade, gain: 1 }]
     }
     const jump = cutFadeAhead(this.project.clips, t, this.screen.playbackRate, 1 / (this.project.capture?.fps ?? SCREEN_PROXY_FPS), step, fade + lead)
     const clip = jump === null ? null : this.project.clips.find((c) => t >= c.start && t < c.end)
     if (clip && jump !== null && this.cutFadeOut?.at !== clip.end) {
       // The lead never shortens the ramp below the fade (a step is the click this avoids): only a jump closer than that does.
       const ahead = Math.max(jump - lead, Math.min(jump, fade))
+      const start = now + Math.max(0, ahead - fade)
+      // The sound as scheduled until the fade out starts (a fade in under way runs on), then down from
+      // where it got to: never a step, which is the click this avoids.
+      const was = this.cutKeys
+      const keys = [{ t: now, gain: gainAt(was, now) }, ...was.filter((k) => k.t > now && k.t < start), { t: start, gain: gainAt(was, start) }, { t: now + ahead, gain: 0 }]
       param.cancelScheduledValues(0)
-      param.setValueAtTime(param.value, now)
-      param.setValueAtTime(1, now + Math.max(0, ahead - fade))
-      param.linearRampToValueAtTime(0, now + ahead)
+      param.setValueAtTime(keys[0].gain, now)
+      for (const k of keys.slice(1)) param.linearRampToValueAtTime(k.gain, k.t)
+      this.cutKeys = keys
       this.cutFadeOut = { at: clip.end, until: now + jump }
     } else if (this.cutFadeOut && !clip && now > this.cutFadeOut.until + 0.05) {
       this.resetCutFade(g)
@@ -637,6 +650,7 @@ export class PreviewAudio {
     this.lastFrameAt = null
     g.cut.gain.cancelScheduledValues(0)
     g.cut.gain.setValueAtTime(1, g.ctx.currentTime)
+    this.cutKeys = [{ t: g.ctx.currentTime, gain: 1 }]
   }
 
   private activeStems(): Source[] {

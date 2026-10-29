@@ -562,7 +562,12 @@ Where the build differs from the sections above, after an adversarial review:
   preview is therefore silent for that buffer before a cut (transcript cuts end in a pause); the
   export fades over exactly `CUT_FADE`. When the jump is nearer than the fade and that buffer
   (playing started just before a cut, a short clip at a fast preview speed), the ramp keeps its
-  whole length and ends nearer the jump instead: never a step to silence. Leaving a
+  whole length and ends nearer the jump instead: never a step to silence. The fade out starts from
+  the gain as scheduled (`previewAudio` keeps what it scheduled; the param's `value` is the last
+  value rendered, up to a buffer behind): a fade in still under way after a jump (a short clip at a
+  fast preview speed, a seek while playing just before a cut) runs on until the fade out starts, and
+  the fade out goes down from where it got to, never a step up from silence. The first frame after a
+  jump, which starts the fade in, also starts the fade out when the cut is already that near. Leaving a
   pause freeze sets the gain straight back (the export joins there without a fade), except for a
   freeze on the first frame after a cut (`fadesInAfterHold`, the export's own `soundPieces` and
   `pieceCutFades`): the export fades the sound in after its silence, and the preview fades in on the
