@@ -361,7 +361,9 @@ quotes (with up to 4 words of context before, dimmed), the time where it plays, 
   whose words became cut disappears.
 - A retake or repeat is listed only while the later take it leaves in is kept (its first word, or
   that of a take after it that another match would remove in turn): when the user cut the later
-  take, removing the earlier one would lose every take.
+  take, removing the earlier one would lose every take. Here a word counts as cut when its middle
+  is in no clip even if its time is a guess the tab still shows kept (§4.2 rule 3), or when the tab
+  shows it cut (`middlesCut`, `cutFlags`): when unsure, the take counts as cut.
 - None found: "No fillers or retakes found." plus the hint "Some captions leave fillers out. Captions
   made on this PC keep most of them."
 
@@ -521,7 +523,7 @@ New (owned):
   - `interface TranscriptWord { index; caption; text; start; end; estimated; deleted? }`
   - `transcriptWords(transcript?: Transcript): TranscriptWord[]`, `captionsWords(segments): TranscriptWord[]`
   - `alignCaptionWords(seg: CaptionSegment): Omit<TranscriptWord, 'index' | 'caption'>[]`
-  - `cutFlags(words, clips): boolean[]`, `MIN_CUE` (the shortest cue the subtitle files keep, §4.2; it moved here from `subtitles.ts`)
+  - `cutFlags(words, clips): boolean[]`, `middlesCut(words, clips): boolean[]` (§4.7), `MIN_CUE` (the shortest cue the subtitle files keep, §4.2; it moved here from `subtitles.ts`)
   - `wordsRange(words, first, last, duration): TimeRange`, `MAX_REACH`
   - `cutWords(clips, words, spans, duration): Clip[]`, `restoreWords(clips, words, first, last, duration): Clip[]`
   - `wordIndexAt(words, t): number`, `spanSaving(...)`

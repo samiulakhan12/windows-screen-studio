@@ -137,8 +137,11 @@ export function captionsWords(segments: readonly CaptionSegment[]): TranscriptWo
   return out
 }
 
-/** For each word, whether its middle is in no clip (end-exclusive, like clipIndexAt). One sweep. */
-function middlesCut(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
+/**
+ * For each word, whether its middle is in no clip (end-exclusive, like clipIndexAt), whether its time
+ * is heard or a guess (cutFlags is what the tab shows). One sweep.
+ */
+export function middlesCut(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
   const flags = new Array<boolean>(words.length)
   let c = 0
   for (let i = 0; i < words.length; i++) {

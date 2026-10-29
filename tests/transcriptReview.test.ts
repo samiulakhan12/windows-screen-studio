@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { outputDuration } from '../src/shared/engine/timeline'
-import { cutFlags, cutWords, type TranscriptWord } from '../src/shared/editor/transcript'
+import { cutRange, outputDuration } from '../src/shared/engine/timeline'
+import { cutFlags, cutWords, transcriptWords, type TranscriptWord } from '../src/shared/editor/transcript'
 import { applySuggestions, refreshSuggestions, reviewSuggestions } from '../src/shared/editor/transcriptReview'
-import type { Clip } from '../src/shared/types'
+import type { CaptionSegment, Clip, Transcript } from '../src/shared/types'
 
 /** Words 0.1 s apart; "|" before a word is a 1 s pause. */
 function say(text: string): TranscriptWord[] {
@@ -83,6 +83,36 @@ describe('retakes and repeats whose later take is cut', () => {
     const clips = cutOut(w, 2, 1)
     expect(reviewSuggestions(w, clips, d, 'en')).toEqual([])
     expect(refreshSuggestions(found, w, clips, d)).toEqual([])
+  })
+
+  it('takes a later take as cut when its first word\'s middle is (a guess the tab may still show kept), or when the tab shows it cut', () => {
+    // Captions without word timings: every time a guess.
+    const untimed = (segments: CaptionSegment[]): TranscriptWord[] => transcriptWords({ provider: 'gemini', model: '', createdAt: '', segments } as unknown as Transcript)
+    const w = untimed([
+      { id: 'a', start: 10, end: 12, text: 'So the first thing you do.' },
+      { id: 'b', start: 12.5, end: 17, text: 'So the first thing you do is open the settings.' }
+    ])
+    const found = reviewSuggestions(w, full(d), d, 'en')
+    expect(rows(w, found)).toEqual(['retake: So the first thing you do.'])
+    // The later take cut on the timeline: its guesses still show kept (the rest of its caption plays), but removing the first would lose both.
+    const clips = cutRange(full(d), 12.45, 14.45)
+    expect(cutFlags(w, clips).some(Boolean)).toBe(false)
+    expect(reviewSuggestions(w, clips, d, 'en')).toEqual([])
+    expect(refreshSuggestions(found, w, clips, d)).toEqual([])
+    // A repeat whose second "the" is cut so.
+    const r = untimed([{ id: 'r', start: 10, end: 14, text: 'Open the the settings menu now please' }])
+    const repeats = reviewSuggestions(r, full(d), d, 'en')
+    expect(rows(r, repeats)).toEqual(['repeat: the'])
+    const cut = cutRange(full(d), r[2].start - 0.05, r[2].end + 0.05)
+    expect(cutFlags(r, cut).some(Boolean)).toBe(false)
+    expect(reviewSuggestions(r, cut, d, 'en')).toEqual([])
+    expect(refreshSuggestions(repeats, r, cut, d)).toEqual([])
+    // Heard times: a later take whose caption keeps only 0.04 s, around its first word's middle, is struck through whole.
+    const h = say('Today we will look at the export dialog. |Today we are going to look at the export dialog.').map((x, i) => ({ ...x, caption: i < 8 ? 'a' : 'b' }))
+    const mid = (h[8].start + h[8].end) / 2
+    const sliver = [{ id: 'a', start: 0, end: h[7].end + 0.5, speed: 1 }, { id: 'b', start: mid - 0.02, end: mid + 0.02, speed: 1 }]
+    expect(cutFlags(h, sliver).slice(8).every(Boolean)).toBe(true)
+    expect(reviewSuggestions(h, sliver, d, 'en')).toEqual([])
   })
 
   it('keeps a retake listed while a later take than the next one is kept (three takes)', () => {

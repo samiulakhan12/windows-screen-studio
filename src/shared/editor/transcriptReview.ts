@@ -5,7 +5,7 @@
  */
 import { findFillers } from './fillers'
 import { findRetakes, type RetakeKind } from './retakes'
-import { cutFlags, cutWords, spansSaving, type TranscriptWord, type WordSpan } from './transcript'
+import { cutFlags, cutWords, middlesCut, spansSaving, type TranscriptWord, type WordSpan } from './transcript'
 import { outputDuration } from '../engine/timeline'
 import type { Clip } from '../types'
 
@@ -30,8 +30,20 @@ export const SUGGESTION_LABELS: Record<SuggestionKind, string> = { filler: 'Fill
 
 const idOf = (kind: SuggestionKind, [first, last]: WordSpan): string => `${kind}:${first}-${last}`
 
-/** Whether the take a retake or repeat leaves in is still in the edit (cut, removing it would lose every take). */
-const keepsATake = (s: { keeps?: readonly number[] }, cut: readonly boolean[]): boolean => !s.keeps || s.keeps.some((i) => !cut[i])
+/**
+ * For each word, whether a cut may have taken it out: its middle is in no clip, its time heard or a
+ * guess (a guess the tab still shows kept, §4.2 rule 3, included), or the tab shows it cut.
+ */
+function takenOut(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
+  const shown = cutFlags(words, clips)
+  return middlesCut(words, clips).map((cut, i) => cut || shown[i])
+}
+
+/**
+ * Whether the take a retake or repeat leaves in is still in the edit (`gone`: takenOut). When unsure
+ * it is not: removing the earlier take would lose every take.
+ */
+const keepsATake = (s: { keeps?: readonly number[] }, gone: readonly boolean[]): boolean => !s.keeps || s.keeps.some((i) => !gone[i])
 
 /**
  * Fillers and retakes in order, those inside a retake left out (it covers them), each with what it
@@ -49,9 +61,9 @@ export function reviewSuggestions(words: readonly TranscriptWord[], clips: reado
       .map((span) => ({ kind: 'filler' as const, span }))
   ]
   items.sort((a, b) => a.span[0] - b.span[0])
-  const cut = cutFlags(words, clips)
+  const gone = takenOut(words, clips)
   return items
-    .filter((it) => keepsATake(it, cut))
+    .filter((it) => keepsATake(it, gone))
     .map((it) => ({
       id: idOf(it.kind, it.span),
       kind: it.kind,
@@ -65,9 +77,9 @@ export function reviewSuggestions(words: readonly TranscriptWord[], clips: reado
 
 /** The listed suggestions still worth removing on these clips (and whose later take is kept), with what each saves now. */
 export function refreshSuggestions(items: readonly EditSuggestion[], words: readonly TranscriptWord[], clips: readonly Clip[], duration: number): EditSuggestion[] {
-  const cut = cutFlags(words, clips)
+  const gone = takenOut(words, clips)
   return items
-    .filter((s) => words[s.first] && words[s.last] && keepsATake(s, cut))
+    .filter((s) => words[s.first] && words[s.last] && keepsATake(s, gone))
     .map((s) => ({ ...s, saved: spansSaving(clips, words, [[s.first, s.last]], duration) }))
     .filter((s) => s.saved >= MIN_SUGGESTION_SAVING)
 }
