@@ -22,7 +22,7 @@ export interface TranscriptWord {
   end: number
   /** Its times were shared out from its neighbours' (no timed word matched it), or are a stored guess. */
   estimated: boolean
-  /** A guess deleted in the Transcript tab: cut by its middle like a heard word (cutFlags). */
+  /** Deleted in the Transcript tab: cut by its middle, a guess too (cutFlags). */
   deleted?: true
   /** Its caption's own time (captionsWords gives it; else taken as its caption's words' time): what is left of the caption (cutFlags). */
   captionTime?: TimeRange
@@ -185,7 +185,7 @@ export const MIN_CUE = 0.05
 
 /**
  * For each word, whether it is cut (docs/design/edit-by-text.md §4.2), the one rule of the Transcript
- * tab and the subtitle files (outputCues). A word with a heard time (not `estimated`), or a guess
+ * tab and the subtitle files (outputCues). A word with a heard time (not `estimated`), or a word
  * `deleted` in the tab, is cut when its middle is in no clip. Any other guess is cut only when it is
  * surely cut: its middle is in no clip and no clip keeps any of the time between the middles of the
  * nearest heard words before and after it in its caption (the caption's first start or last end
@@ -229,25 +229,27 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
 
 /**
  * A caption's words as alignCaptionWords times them, to store as its word timings (one per shown
- * word): a guessed time stays marked `estimated`, and also `deleted` when it was or `deleted(i)`
- * (the i-th word was deleted in the Transcript tab).
+ * word): a guessed time stays marked `estimated`, and a word stays marked `deleted` when it was,
+ * or gets the mark when `deleted(i)` (the i-th word was deleted in the Transcript tab).
  */
 export function captionWordTimes(seg: CaptionSegment, deleted: (i: number) => boolean = () => false): CaptionWord[] {
   return alignCaptionWords(seg).map((w, i) => {
     const { text, start, end } = w
-    if (!w.estimated) return { text, start, end }
-    return w.deleted || deleted(i) ? { text, start, end, estimated: true, deleted: true } : { text, start, end, estimated: true }
+    const mark = w.deleted === true || deleted(i)
+    if (!w.estimated) return mark ? { text, start, end, deleted: true } : { text, start, end }
+    return mark ? { text, start, end, estimated: true, deleted: true } : { text, start, end, estimated: true }
   })
 }
 
 /**
  * The transcript after a cut made in the Transcript tab (clips `before` to `after`, the word spans
- * `spans` being cut): every guess inside the spans, and every other guess the cut newly cuts (a
- * short word left between two cuts), whose middle is then cut is marked `deleted`, whether or not
- * an earlier cut had already cut its time; its caption's words get their times stored
- * (captionWordTimes, the other guesses still guesses). The deleted words then stay cut, in the tab
- * and out of the subtitle files (cutFlags), when the caption's text or times are edited later, and
- * a later timeline cut still never drops another guess. The same object when nothing is marked.
+ * `spans` being cut): every word inside the spans, and every other word the cut newly cuts (a
+ * short word left between two cuts), whose middle is then cut is marked `deleted`, heard or a
+ * guess, whether or not an earlier cut had already cut its time; its caption's words get their
+ * times stored (captionWordTimes, the other guesses still guesses). The deleted words then stay
+ * cut, in the tab and out of the subtitle files (cutFlags), when the caption's text or times are
+ * edited later, and a later timeline cut still never drops another guess. The same object when
+ * nothing is marked.
  */
 export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[], spans: readonly WordSpan[] = []): Transcript | undefined {
   if (!transcript) return transcript
@@ -255,7 +257,7 @@ export function anchorCutWords(transcript: Transcript | undefined, before: reado
   const was = middlesCut(words, before)
   const now = middlesCut(words, after)
   const inSpan = (i: number): boolean => spans.some(([a, b]) => i >= Math.min(a, b) && i <= Math.max(a, b))
-  const fresh = (i: number): boolean => words[i].estimated && !words[i].deleted && now[i] && (!was[i] || inSpan(i))
+  const fresh = (i: number): boolean => !words[i].deleted && now[i] && (!was[i] || inSpan(i))
   let changed = false
   let at = 0
   const segments = transcript.segments.map((seg) => {
@@ -275,9 +277,10 @@ export function anchorCutWords(transcript: Transcript | undefined, before: reado
 /**
  * The project after an edit (`prev` before it) with the `deleted` mark taken off every stored word
  * whose middle is in a clip: a mark lives only while its word is cut (edit-by-text.md §4.2), so a
- * word brought back (Restore, Restore the whole recording, the timeline, a caption moved) is a
- * guess again, which a later cut over its guessed time cannot take out. The editor store's
- * `settle`: part of the edit's own undo step. The same object when nothing changes.
+ * word brought back (Restore, Restore the whole recording, the timeline, a caption moved) is not
+ * deleted any more, and a guess is a guess again, which a later cut over its guessed time cannot
+ * take out. The editor store's `settle`: part of the edit's own undo step. The same object when
+ * nothing changes.
  */
 export function settleDeletedWords(next: Project, prev: Project): Project {
   if (!next.transcript || (next.clips === prev.clips && next.transcript === prev.transcript)) return next

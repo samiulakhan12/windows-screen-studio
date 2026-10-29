@@ -318,7 +318,7 @@ export interface CaptionWord {
   end: number
   /** Its times are a guess, shared out over the caption (stored with a cut made in the Transcript tab). */
   estimated?: true
-  /** A guess deleted in the Transcript tab: cut by its own time while that time is cut (edit-by-text.md §4.2). */
+  /** Deleted in the Transcript tab: cut by its own time while that time is cut (edit-by-text.md §4.2). */
   deleted?: true
 }
 

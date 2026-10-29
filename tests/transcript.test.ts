@@ -389,14 +389,27 @@ describe('anchorCutWords', () => {
     expect(sameWords(transcriptWords(out), ws)).toBe(true)
   })
 
-  it('changes nothing when no word of an untimed caption is newly cut', () => {
-    // A timed word cut; a restore; an untimed word already cut on the timeline.
+  it('marks a heard word cut in the tab too, its caption\'s timings otherwise as they were', () => {
+    const cut = cutWords(full, words, [[at('this'), at('this')]], 20)
+    const out = anchorCutWords(t, full, cut, [[at('this'), at('this')]])!
+    expect(out.segments[1].words).toEqual([
+      { text: 'and', start: 5, end: 5.4 },
+      { text: 'this', start: 5.5, end: 6, deleted: true }
+    ])
+    expect(out.segments[0]).toBe(t.segments[0])
+    expect(out.segments[2]).toBe(t.segments[2])
+    expect(sameWords(transcriptWords(out), words)).toBe(true)
+    // Cut by its middle as before.
+    expect(cutFlags(transcriptWords(out), cut)).toEqual(cutFlags(words, cut))
+  })
+
+  it('changes nothing when no word is newly cut', () => {
+    // A restore; a word already cut on the timeline, outside the spans.
     const timedCut = cutWords(full, words, [[at('this'), at('this')]], 20)
-    expect(anchorCutWords(t, full, timedCut)).toBe(t)
     expect(anchorCutWords(t, timedCut, full)).toBe(t)
     const early = cutWords(full, words, [[at('maybe'), at('maybe')]], 20)
-    const later = cutWords(early, words, [[at('this'), at('this')]], 20)
-    expect(anchorCutWords(t, early, later)).toBe(t)
+    expect(anchorCutWords(t, early, early)).toBe(t)
+    expect(anchorCutWords(t, early, early, [[at('and'), at('and')]])).toBe(t)
     expect(anchorCutWords(undefined, full, early)).toBeUndefined()
   })
 
@@ -538,6 +551,9 @@ describe('captionWordTimes', () => {
       ['think', false, false]
     ])
     expect(captionWordTimes({ ...s, words: once }).map((w) => !!w.deleted)).toEqual([false, true, false, false])
+    // A heard word deleted keeps its time, marked.
+    expect(captionWordTimes(s, (i) => i === 0)[0]).toEqual({ text: 'So', start: 0, end: 0.5, deleted: true })
+    expect(captionWordTimes({ ...s, words: captionWordTimes(s, (i) => i === 3) })[3]).toEqual({ text: 'think', start: 3, end: 4, deleted: true })
   })
 })
 

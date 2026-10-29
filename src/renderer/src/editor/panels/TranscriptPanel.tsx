@@ -169,7 +169,7 @@ function TranscriptEditor({
     if (sameClips(next, before) && (marked === transcript || spansSaving(before, words, [[a, b]], store.state.duration) > 1e-9)) {
       return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
     }
-    // Guessed words are marked deleted with the cut, their caption's times stored (one undo step): they stay cut after an edit of the caption.
+    // The words are marked deleted with the cut, their caption's times stored (one undo step): they stay cut after an edit of the caption.
     store.update((p) => {
       const cut = cutWords(p.clips, words, [[a, b]], p.duration)
       return { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, [[a, b]]) }
@@ -209,7 +209,7 @@ function TranscriptEditor({
     onNotice(items.length > 0 ? `Found ${plural(items.length, 'filler or retake', 'fillers and retakes')}` : 'No fillers or retakes found')
   }
 
-  /** Cuts these suggestions and marks their guessed words deleted (one store update, as Delete does); the output seconds saved, or null when nothing changes. */
+  /** Cuts these suggestions and marks their words deleted (one store update, as Delete does); the output seconds saved, or null when nothing changes. */
   const removeSuggestions = (items: EditSuggestion[]): number | null => {
     const before = store.state.clips
     const spans = items.map((s) => [s.first, s.last] as const)
