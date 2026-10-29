@@ -136,6 +136,7 @@ describe('the log without its metadata', () => {
       "Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\\Users\\me\\phone.mov':",
       '  Metadata:',
       '    major_brand     : qt  ',
+      '    title           : Trip\u2028notes',
       '    com.apple.quicktime.location.ISO6709: +40.7128-074.0060+010.000/',
       '    com.apple.quicktime.make: Apple',
       '    comment         : first line',
@@ -147,6 +148,7 @@ describe('the log without its metadata', () => {
       '        title           : Secret part',
       '  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p, 1920x1080, 30 fps (default)',
       '      Metadata:',
+      '        title           : Front\u2029camera',
       '        handler_name    : Core Media Video',
       '      Side data:',
       '        displaymatrix: rotation of -90.00 degrees',
@@ -159,7 +161,7 @@ describe('the log without its metadata', () => {
       'Conversion failed!'
     ].join('\r\n')
     const shown = withoutMetadata(log)
-    for (const tag of ['ISO6709', '+40.7128', 'Apple', 'first line', 'second line', 'Secret part', 'Core Media', 'Metadata:']) expect(shown).not.toContain(tag)
+    for (const tag of ['ISO6709', '+40.7128', 'Apple', 'first line', 'second line', 'Secret part', 'Core Media', 'Metadata:', 'notes', 'camera']) expect(shown).not.toContain(tag)
     for (const kept of ['Input #0', 'Duration: 00:00:03.00', 'Chapter #0:0: start 0.000000', 'Stream #0:0[0x1](und): Video: h264', 'Side data:', 'rotation of -90.00 degrees', 'Stream #0:1[0x2](und): Audio: aac', 'Stream mapping:', 'OpenEncodeSessionEx failed', 'Conversion failed!']) expect(shown).toContain(kept)
     // What the import reads from the log is unchanged.
     expect(withoutMetadata('no metadata here\n  Stream #0:0: Video: h264')).toBe('no metadata here\n  Stream #0:0: Video: h264')

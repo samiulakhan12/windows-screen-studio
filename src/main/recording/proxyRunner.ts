@@ -89,7 +89,8 @@ export const READ_ERROR_RE = /^\[in#\d+[^\]]*\] Error (?:during demuxing|retriev
  * what may be logged or shown: a file's contents are never logged.
  */
 export function withoutMetadata(log: string): string {
-  return log.replace(/^([ \t]*)Metadata:\r?\n(?:\1[ \t]+.*(?:\r?\n|$))*/gm, '')
+  // A whole line, up to CR or LF: a tag's U+2028 or U+2029 is not where its line ends.
+  return log.replace(/^([ \t]*)Metadata:\r?\n(?:\1[ \t]+[^\r\n]*(?:\r?\n|$))*/gm, '')
 }
 
 /** Last meaningful log line, e.g. "Invalid data found when processing input". */
