@@ -10,7 +10,10 @@ import type { VoiceSource } from '../audio/voiceClean'
 export const VOICE_CHANNELS = {
   /** invoke (projectId, source, strength) → VoiceStemStatus */
   status: 'voice:status',
-  /** invoke (projectId, source, strength) → the cleaned file's name once made; rejects with a sentence, or VOICE_CANCELLED */
+  /**
+   * invoke (projectId, source, strength, remake) → the cleaned file's name once made; rejects with a
+   * sentence, or VOICE_CANCELLED. `remake` true: the editor could not play the file there, so it is made again.
+   */
   prepare: 'voice:prepare',
   /** invoke (projectId) → void, once the project's render has stopped and its part file is gone */
   cancel: 'voice:cancel',
@@ -40,7 +43,7 @@ export interface VoiceProgress {
 
 export interface VoiceApi {
   voiceStatus(projectId: string, source: VoiceSource, strength: VoiceStrength): Promise<VoiceStemStatus>
-  prepareVoice(projectId: string, source: VoiceSource, strength: VoiceStrength): Promise<string>
+  prepareVoice(projectId: string, source: VoiceSource, strength: VoiceStrength, remake?: boolean): Promise<string>
   cancelVoice(projectId: string): Promise<void>
   onVoiceProgress(listener: (p: VoiceProgress) => void): () => void
 }

@@ -212,6 +212,20 @@ describe('making the stem', () => {
     expect(await c.status('again', 'mic', 'normal')).toEqual({ state: 'ready', file: d })
   }, 30_000)
 
+  it('is made again when the editor could not play it, although its file is there', async () => {
+    const dir = seed('remake', 2)
+    const { c, runs } = cleaner()
+    const file = await c.ensure('remake', 'mic', 'normal')
+    writeFileSync(path.join(dir, file), 'not a sound file')
+    // Only exactly true asks for that; otherwise the file there is used as it is.
+    expect(await c.ensure('remake', 'mic', 'normal', 'yes')).toBe(file)
+    expect(runs()).toBe(1)
+    expect(await c.ensure('remake', 'mic', 'normal', true)).toBe(file)
+    expect(runs()).toBe(2)
+    expect(samples(path.join(dir, file)).length).toBe(samples(path.join(dir, 'mic.m4a')).length)
+    expect(files(dir).filter((f) => VOICE_PART_RE.test(f))).toEqual([])
+  }, 30_000)
+
   it('keeps the three newest stems', async () => {
     const dir = seed('prune', 2)
     const { c } = cleaner()
@@ -360,6 +374,20 @@ describe('IPC and export', () => {
     await expect(h.handlers.get(VOICE_CHANNELS.status)!(appEvent, 'ipc', 'mic', 'normal')).resolves.toEqual({ state: 'missing' })
     expect(h.appEvents.has('will-quit')).toBe(true)
   })
+
+  it('makes a stem again when the page asks with exactly true', async () => {
+    registerVoiceIpc()
+    const dir = path.join(h.root, 'videos', 'Flown', 'ipcremake')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(path.join(dir, 'mic.m4a'), readFileSync(path.join(seed('ipcremake-src', 2), 'mic.m4a')))
+    const prepare = h.handlers.get(VOICE_CHANNELS.prepare)!
+    const file = (await prepare(appEvent, 'ipcremake', 'mic', 'normal')) as string
+    writeFileSync(path.join(dir, file), 'x')
+    expect(await prepare(appEvent, 'ipcremake', 'mic', 'normal', 'true')).toBe(file)
+    expect(readFileSync(path.join(dir, file), 'utf8')).toBe('x')
+    expect(await prepare(appEvent, 'ipcremake', 'mic', 'normal', true)).toBe(file)
+    expect(readFileSync(path.join(dir, file)).length).toBeGreaterThan(1000)
+  }, 30_000)
 
   const job = (voice?: unknown, stems?: Record<string, number>): ExportJob =>
     ({

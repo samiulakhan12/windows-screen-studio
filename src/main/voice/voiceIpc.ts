@@ -75,9 +75,9 @@ export function registerVoiceIpc(): void {
     fromApp(e)
     return voiceCleaner.status(id, source, strength)
   })
-  ipcMain.handle(VOICE_CHANNELS.prepare, (e, id: unknown, source: unknown, strength: unknown) => {
+  ipcMain.handle(VOICE_CHANNELS.prepare, (e, id: unknown, source: unknown, strength: unknown, remake: unknown) => {
     fromApp(e)
-    return voiceCleaner.ensure(id, source, strength)
+    return voiceCleaner.ensure(id, source, strength, remake)
   })
   ipcMain.handle(VOICE_CHANNELS.cancel, (e, id: unknown) => {
     fromApp(e)

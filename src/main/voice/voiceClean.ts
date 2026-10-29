@@ -191,13 +191,23 @@ export class VoiceCleaner {
     return (await exists(path.join(at.dir, file))) ? { state: 'ready', file } : { state: 'missing' }
   }
 
-  /** The cleaned stem's file name in the project folder, made first when it is not there. */
-  async ensure(id: unknown, source: unknown, strength: unknown): Promise<string> {
+  /**
+   * The cleaned stem's file name in the project folder, made first when it is not there. With
+   * `remake` exactly true (the editor could not play the file) the file there is deleted and made
+   * again, unless a render of it is running.
+   */
+  async ensure(id: unknown, source: unknown, strength: unknown, remake: unknown = false): Promise<string> {
     const args = checked(source, strength)
     const at = await this.locate(id, args.source, args.strength)
     if (!at) throw new Error(args.source === 'mic' ? VOICE_COPY.missingMic : VOICE_COPY.missingMix)
     const file = voiceFileName(at.key)
     const final = path.join(at.dir, file)
+    const making = this.jobs.get(at.id)
+    if (remake === true && !(making && making.key === at.key && !making.cancelled)) {
+      await fs.rm(final, { force: true }).catch(() => {
+        throw new Error(VOICE_COPY.locked)
+      })
+    }
     for (;;) {
       const running = this.jobs.get(at.id)
       if (running && running.key === at.key && !running.cancelled) return running.promise
