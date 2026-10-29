@@ -4,7 +4,7 @@
 // and refuses anything but the app's own requests.
 import { execFileSync, spawnSync, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { mkdirSync, promises as fsp, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
@@ -312,19 +312,53 @@ describe('running renders', () => {
     expect(files(dir).filter((f) => f.startsWith('voice-'))).toEqual([file])
   }, 60_000)
 
+  it('the later of two requests wins, whichever finishes its checks first', async () => {
+    const dir = seed('order', 20)
+    const mic = path.join(dir, 'mic.m4a')
+    const realStat = fsp.stat
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    let holding = true
+    // The first request's look at the microphone file finishes last (the thread pool may do that),
+    // after the second request's render has started.
+    const stat = vi.spyOn(fsp, 'stat').mockImplementation((async (file: string, opts?: { bigint?: boolean }) => {
+      if (holding && file === mic) {
+        holding = false
+        await held
+      }
+      return realStat(file, opts)
+    }) as typeof fsp.stat)
+    try {
+      const { c, runs } = cleaner((p) => p.strength === 'light' && release())
+      // Strong, then Light: the user's latest choice is Light.
+      const [first, second] = await Promise.allSettled([c.ensure('order', 'mic', 'strong'), c.ensure('order', 'mic', 'light')])
+      expect(first.status === 'rejected' && (first.reason as Error).message).toBe(VOICE_REPLACED)
+      expect(second.status).toBe('fulfilled')
+      const file = (second as PromiseFulfilledResult<string>).value
+      expect(await c.status('order', 'mic', 'light')).toEqual({ state: 'ready', file })
+      expect(files(dir).filter((f) => f.startsWith('voice-'))).toEqual([file])
+      expect(runs()).toBe(1)
+    } finally {
+      stat.mockRestore()
+    }
+  }, 60_000)
+
   it('quick changes of strength leave one render, which Cancel stops', async () => {
     const dir = seed('quick', 120)
     const { c, runs } = cleaner()
     const a = c.ensure('quick', 'mic', 'normal')
     await new Promise((r) => setTimeout(r, 50))
-    // Light, Strong, then Normal again: each request replaces the one before.
+    // Light, Strong, then Normal again: the last choice wins. Light and Strong are replaced, and the
+    // render left is Normal's (the first one, which the last request joined, or a new one).
     const b = c.ensure('quick', 'mic', 'light')
     const d = c.ensure('quick', 'mic', 'strong')
     const e = c.ensure('quick', 'mic', 'normal')
-    const later = Promise.allSettled([b, d, e])
-    await expect(a).rejects.toThrow(VOICE_REPLACED)
-    await new Promise((r) => setTimeout(r, 300))
+    const later = Promise.allSettled([a, b, d, e])
+    await expect(b).rejects.toThrow(VOICE_REPLACED)
+    await expect(d).rejects.toThrow(VOICE_REPLACED)
+    await vi.waitFor(async () => expect((await c.status('quick', 'mic', 'normal')).state).toBe('working'), { timeout: 5000 })
     await c.cancel('quick')
+    await expect(e).rejects.toThrow(VOICE_CANCELLED)
     const results = await later
     expect(results.every((r) => r.status === 'rejected')).toBe(true)
     // Every ffmpeg that started has exited: nothing is left running or written.
