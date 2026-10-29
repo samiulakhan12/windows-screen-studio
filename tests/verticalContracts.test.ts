@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import os from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ app: { getPath: () => os.tmpdir() } }))
@@ -269,6 +271,24 @@ describe('every export of §9 exists with its arity (test 66)', () => {
       ['CopyProgress', 1, 1]
     ])
     expectExports(await load('../src/renderer/src/editor/duplicateFlow'), [['runDuplicate', 2, 2]])
+  })
+
+  it('the compositor, shapesLayer, PreviewStage and directorCorners get their camera from frameCamera, never cameraAt (§8.1)', () => {
+    const files = ['src/renderer/src/render/compositor.ts', 'src/renderer/src/render/shapesLayer.ts', 'src/renderer/src/editor/PreviewStage.tsx', 'src/shared/editor/directorCorners.ts']
+    // A call, or an import that would allow one; a comment naming it is fine.
+    const call = /\bcameraAt\s*\(/
+    const imported = /import\s*\{[^}]*\bcameraAt\b[^}]*\}\s*from/
+    const code = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    for (const file of files) {
+      const src = code(readFileSync(join(__dirname, '..', file), 'utf8'))
+      expect(call.test(src), `${file} calls cameraAt`).toBe(false)
+      expect(imported.test(src), `${file} imports cameraAt`).toBe(false)
+      expect(src, `${file} uses frameCamera or frameView`).toMatch(/\bframe(Camera|View)\b/)
+    }
+    // The check itself finds a direct call and an import, and ignores a comment.
+    expect(call.test(code('const cam = cameraAt (zooms, t, null)'))).toBe(true)
+    expect(imported.test(code("import { cameraFor, cameraAt } from './zoom'"))).toBe(true)
+    expect(call.test(code('// Same camera as cameraAt(zooms): the viewport stays inside'))).toBe(false)
   })
 })
 
