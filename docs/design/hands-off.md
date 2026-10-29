@@ -135,8 +135,9 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   vendor and device ids, driver version, plus `getGPUFeatureStatus()`); the detected H.264 encoders
   (`detectH264Encoders`); the capture helper's probe (`probeNativeCapture`: supported, window capture,
   cursor and border toggles, its encoders, reason); the capture method last used (the newest
-  project's `capture.method` and `target`, and whether its cursor is in the video); the number of
-  recordings; and the **last 300 log lines**.
+  project's `capture.method` and `target`, and whether its cursor is in the video; imported videos
+  and copies are passed over, since an import was never captured and a copy is dated when it was
+  made); the number of recordings; and the **last 300 log lines**.
 * Settings › Diagnostics: **Show diagnostics** fetches the text and shows it in a read-only box;
   **Copy diagnostics** then copies exactly that text (main's `clipboard.writeText` of the report it
   made itself, by id; the page never hands main text to copy). **Open log folder** opens

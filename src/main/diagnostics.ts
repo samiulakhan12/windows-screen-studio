@@ -9,6 +9,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import { formatDiagnostics, gpuDevice, type DiagnosticsReport, type Part } from '../shared/diagnostics/report'
 import { redactLine, type RedactRoots } from '../shared/diagnostics/redact'
+import { isImported } from '../shared/import/imported'
 import type { CaptureInfo } from '../shared/types'
 import { appLog } from './appLog'
 import { detectH264Encoders } from './hwEncoders'
@@ -113,6 +114,20 @@ export function appNames(): string[] {
   return names.filter((n) => typeof n === 'string' && n.length >= 3)
 }
 
+/**
+ * How the newest recording was made, and when. Imported videos and copies (Duplicate, Make a
+ * vertical or square version) are passed over: an import was never captured (its capture is a
+ * placeholder), and a copy's date is when it was made, not recorded. Null when there is none.
+ */
+export async function lastRecordedCapture(): Promise<{ capture: CaptureInfo; createdAt: string } | null> {
+  for (const s of await listProjects()) {
+    const p = await readProject(s.id).catch(() => null)
+    if (!p || isImported(p) || p.copyOf) continue
+    return { capture: p.capture, createdAt: p.createdAt }
+  }
+  return null
+}
+
 function electronDeps(): DiagnosticsDeps {
   return {
     app: () => ({ name: app.getName(), version: app.getVersion(), electron: process.versions.electron ?? '', chrome: process.versions.chrome ?? '', node: process.versions.node, packaged: app.isPackaged }),
@@ -135,12 +150,7 @@ function electronDeps(): DiagnosticsDeps {
     },
     encoders: () => detectH264Encoders(),
     probe: () => probeNativeCapture(),
-    lastCapture: async () => {
-      const newest = (await listProjects())[0]
-      if (!newest) return null
-      const p = await readProject(newest.id)
-      return { capture: p.capture, createdAt: p.createdAt }
-    },
+    lastCapture: lastRecordedCapture,
     recordings: async () => (await listProjects()).length,
     jobs: () => jobsSnapshot().map((j) => `${j.kind}${j.fraction !== null ? ` ${Math.round(j.fraction * 100)}%` : ''}${j.paused ? ' (paused)' : ''}`),
     log: async (n) => (await appLog()?.recent(n)) ?? [],
