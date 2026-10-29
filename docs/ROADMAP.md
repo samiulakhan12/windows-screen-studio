@@ -42,7 +42,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 3. **NW-02**: teleprompter and speaker notes (shipped in 0.3.0).
 4. **NW-03**: better auto zoom input.
 5. **NW-06**: smooth cuts. Ship the audio fades first.
-6. **NW-07**: import an existing video (shipped in the next release).
+6. **NW-07**: import an existing video (shipped in 0.7.0).
 7. **NW-13**: publishing copy pack.
 8. **NW-15 + X-03**: auto-update and a diagnostics bundle.
 
@@ -68,7 +68,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Risks:** Gemini's word times are estimated by the model and can drift, so exact cuts may need a forced-alignment step. OpenAI's diarization model is being retired too.
 
 ### NW-01 · Remove filler words and retakes
-**AI · M · shipped (next release, on this PC, no AI call)**: see [FEATURES.md](FEATURES.md) (Remove fillers and retakes) and `docs/design/edit-by-text.md`. Left for later: verbatim transcription requests (a prompt with fillers for `whisper-1`, asking Gemini for them) and meaning-level retakes (F-05 or an AI text task).
+**AI · M · shipped (0.7.0, on this PC, no AI call)**: see [FEATURES.md](FEATURES.md) (Remove fillers and retakes) and `docs/design/edit-by-text.md`. Left for later: verbatim transcription requests (a prompt with fillers for `whisper-1`, asking Gemini for them) and meaning-level retakes (F-05 or an AI text task).
 
 - **What:** finds "um", "uh", repeated words, false starts and abandoned sentences and lists them as suggested cuts. The user unticks any to keep, then applies the rest in one undoable step.
 - **Works with:**
@@ -79,7 +79,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Descript, Loom AI, Tella, Camtasia/Audiate.
 
 ### NW-04 · Edit the video by editing the transcript
-**AI · M · shipped (next release)**: see [FEATURES.md](FEATURES.md) (Edit by text) and `docs/design/edit-by-text.md`. Left for later: typing to replace words, moving sentences by drag, a command and shortcut for the Transcript tab.
+**AI · M · shipped (0.7.0)**: see [FEATURES.md](FEATURES.md) (Edit by text) and `docs/design/edit-by-text.md`. Left for later: typing to replace words, moving sentences by drag, a command and shortcut for the Transcript tab. Known issue in 0.7.0, for 0.7.1: in four multi-step cases a word deleted in the Transcript tab shows again in the saved captions file (SRT/VTT) while the video stays cut: its caption trimmed and then moved on the caption track; trimmed, grown back over the word and the project reopened (two variants); or merged with a caption whose words were retyped (`docs/design/edit-by-text.md` §13).
 
 - **What:** select words or sentences in the transcript and press Delete, and that part of the video is cut. Restoring the text brings the video back. The spoken word is highlighted during playback.
 - **Works with:** any transcript with word timings. The edit itself makes no AI call.
@@ -111,7 +111,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Camtasia cursor path editing, Rapidemo "disable accidental clicks".
 
 ### NW-06 · Smooth cuts
-**Editing · M · audio fades shipped (next release: 10 ms out and in at every cut, export and preview)**; the video cross-dissolve, per-cut styles and "Smooth all cuts" are still planned (`docs/design/edit-by-text.md` §12).
+**Editing · M · audio fades shipped (0.7.0: 10 ms out and in at every cut, export and preview)**; the video cross-dissolve, per-cut styles and "Smooth all cuts" are still planned (`docs/design/edit-by-text.md` §12).
 
 - **What:** each cut can get a short crossfade, zoom punch-in, slide or dip to colour, and "Smooth all cuts" applies one style to every cut. Ship first: always-on 5–15 ms audio fades at every cut. Today `audioPlan.ts` joins clips with a plain concat, so silence removal can leave clicks.
 - **Builds on:** `Clip` (`{id, start, end, speed}`, no transition field); the compositor's existing blends for zoom and layout transitions.
@@ -119,7 +119,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Descript, Camtasia, Cap, Tella.
 
 ### NW-07 · Import an existing video
-**Editing · M · shipped (next release)** · see [FEATURES.md](FEATURES.md) (Import a video) and `docs/design/import-video.md`
+**Editing · M · shipped (0.7.0)** · see [FEATURES.md](FEATURES.md) (Import a video) and `docs/design/import-video.md`
 
 - **Shipped:** *Import video* and drag and drop on Home; MP4, MOV, MKV and WebM; probe, test decode, size, length, DRM and disk checks with plain refusals; an editing copy at 30 or 60 fps (variable rates made constant), upright, at most 3840 × 2160, HDR tone-mapped; no cursor data, and the editor says what that turns off.
 - **Left for later:** remuxing files that already meet the editing-copy rules instead of re-encoding; keeping 24, 25 and 50 fps; choosing among several sound tracks; importing a separate camera file; AVI, WMV and MTS; several files at once; F-28 (auto zoom from the picture).
@@ -167,7 +167,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Tella Auto Layouts, Riverside, Descript, Screen Studio.
 
 ### NW-10 · Studio voice with live preview
-**AI · M · partly shipped (next release)**: *Clean voice* (the RNNoise denoiser, rendered once and played in the preview as exported) shipped; see [FEATURES.md](FEATURES.md) and `docs/design/clean-voice.md`. Left for later: the "studio voice" preset (EQ, compressor, de-esser), recording the microphone raw when Clean voice will be used, and DeepFilterNet3 as a better engine.
+**AI · M · partly shipped (0.7.0)**: *Clean voice* (the RNNoise denoiser, rendered once and played in the preview as exported) shipped; see [FEATURES.md](FEATURES.md) and `docs/design/clean-voice.md`. Left for later: the "studio voice" preset (EQ, compressor, de-esser), recording the microphone raw when Clean voice will be used, and DeepFilterNet3 as a better engine.
 
 - **What:** a neural speech denoiser (RNNoise) that removes keyboard noise and fans, plus a "studio voice" preset (EQ, compressor, de-esser). The user hears the result while editing, not only after export.
 - **Works with:** runs on the PC with no key. An ElevenLabs Voice Isolator key is optional for hard cases. OpenAI, Gemini and Claude offer no audio clean-up.
@@ -189,7 +189,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Cap, Adobe Podcast Mic Check, Screen Studio, Loom.
 
 ### NW-12 · Image, logo and sticker overlays, plus brand fonts
-**Editing · M · shipped (next release, `feat-brand-kit`)**: see [FEATURES.md](FEATURES.md) (Image overlays and stickers, Brand fonts) and `docs/design/brand-kit.md`. Left for later: a GIF that plays once and holds (GIFs always loop), WOFF (1) and font collections (`.ttc`), choosing a font weight or style inside a family, a font for the watermark text and the keystroke overlay, and a command and shortcut to add an image (the editor's command list is being reworked on `feat/multi-select`).
+**Editing · M · shipped (0.6.0, `feat-brand-kit`)**: see [FEATURES.md](FEATURES.md) (Image overlays and stickers, Brand fonts) and `docs/design/brand-kit.md`. Left for later: a GIF that plays once and holds (GIFs always loop), WOFF (1) and font collections (`.ttc`), choosing a font weight or style inside a family, a font for the watermark text and the keystroke overlay, and a command and shortcut to add an image (the editor's command list is being reworked on `feat/multi-select`).
 
 - **What:** a timed overlay track for images, GIFs and emoji that can be moved, resized, rotated, faded and trimmed. Captions, titles and annotations can use the user's own font.
 - **Builds on:** `ASSET_SPECS` in `src/main/assetIpc.ts`, which makes a new asset kind cheap; `ShapeKind`; the fixed `CAPTION_FONT`, `TITLE_FONT` and `ANNOTATION_FONT`.
@@ -197,7 +197,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Cap, Tella, ScreenPal, Camtasia.
 
 ### NW-05 · Vertical video that follows the action, with a safe-zone preview
-**Editing · M · shipped (next release)**: see [FEATURES.md](FEATURES.md) (Vertical video that follows the action, Safe-zone preview), `docs/design/vertical-video.md` and `docs/screenshots/vertical-video-*.png`. **Before release:** compare the safe-zone table with TikTok, Reels and Shorts on a phone and record the date in each platform's `checked` field (`src/shared/render/safeZones.ts`). Left for later (the design's §12): a Framing track with *Frame here* and *Whole screen* blocks and ticks that say why the view moved; following picture changes in recordings without cursor data; pulling back while travelling on long pans; following in frames wider than the recording, and a camera band in square frames; carrying following in style presets, the default style and Polish; re-anchoring texts to the content they point at; captions at the seam between band and screen; more platforms and per-preset placement in the safe-zone table, refreshed without a release (with NW-15); an opt-in screen-description hint from the user's own AI key; incremental plan rebuilds while dragging on very long recordings.
+**Editing · M · shipped (0.7.0)**: see [FEATURES.md](FEATURES.md) (Vertical video that follows the action, Safe-zone preview), `docs/design/vertical-video.md` and `docs/screenshots/vertical-video-*.png`. **Before release:** compare the safe-zone table with TikTok, Reels and Shorts on a phone and record the date in each platform's `checked` field (`src/shared/render/safeZones.ts`). Left for later (the design's §12): a Framing track with *Frame here* and *Whole screen* blocks and ticks that say why the view moved; following picture changes in recordings without cursor data; pulling back while travelling on long pans; following in frames wider than the recording, and a camera band in square frames; carrying following in style presets, the default style and Polish; re-anchoring texts to the content they point at; captions at the seam between band and screen; more platforms and per-preset placement in the safe-zone table, refreshed without a release (with NW-15); an opt-in screen-description hint from the user's own AI key; incremental plan rebuilds while dragging on very long recordings.
 
 - **What:** for 9:16 and 1:1, the view crops in and follows the cursor, clicks and typing instead of shrinking the whole desktop. The camera moves to a band at the top or bottom. A toggle shows where TikTok, Reels and Shorts buttons cover the video.
 - **Works with:** runs on the PC from recorded cursor data. Gemini or Claude vision could be added later.
@@ -220,7 +220,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Builds on:** the caption presets and the strict-schema text-task pipeline.
 
 ### X-03 · Diagnostics bundle
-**Quality · S · shipped (next release, `feat-hands-off`)**: see [FEATURES.md](FEATURES.md) (Diagnostics) and `docs/design/hands-off.md`. Left for later: crash reports (minidumps) next to the log.
+**Quality · S · shipped (0.7.0, `feat-hands-off`)**: see [FEATURES.md](FEATURES.md) (Diagnostics) and `docs/design/hands-off.md`. Left for later: crash reports (minidumps) next to the log.
 
 - **What:** "Copy diagnostics" in Settings collects:
   - the Windows build;
@@ -233,7 +233,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Why:** the app has no log file or crash reporting yet, and several Windows paths have not been run on a real PC.
 
 ### X-04 · Duplicate project and single-file project
-**Editing · S · Duplicate shipped (next release); single-file project planned**: Duplicate, Make a vertical version and Make a square version are in the editor (see [FEATURES.md](FEATURES.md) and `docs/design/vertical-video.md` §4.7). Still planned: Duplicate from the Home library, "Save as one .flown file" (both can reuse `src/main/projectCopy.ts`'s list of the files a project holds), and removing half-made copies at start-up rather than only at the next copy. Hard links on NTFS and the OneDrive check are *Windows-unverified*.
+**Editing · S · Duplicate shipped (0.7.0); single-file project planned**: Duplicate, Make a vertical version and Make a square version are in the editor (see [FEATURES.md](FEATURES.md) and `docs/design/vertical-video.md` §4.7). Still planned: Duplicate from the Home library, "Save as one .flown file" (both can reuse `src/main/projectCopy.ts`'s list of the files a project holds), and removing half-made copies at start-up rather than only at the next copy. Hard links on NTFS and the OneDrive check are *Windows-unverified*.
 
 - **What:** "Duplicate" makes a vertical or short cut without touching the original; LT-02 and NW-05 need it. "Save as one .flown file" moves a project to another PC or a teammate.
 
@@ -290,7 +290,7 @@ stay available as the premium option.
 | F-05 | **Fillers and retakes found offline** | Suggested cuts for "um", repeats and abandoned takes, reviewed in one list | Fillers from F-01 verbatim transcripts plus word lists; retakes from sentence similarity (all-MiniLM-L6-v2 Apache-2.0 about 23 MB quantised, or multilingual-e5-small MIT about 118 MB) via transformers.js | M | NW-01, NW-04 |
 | F-06 | **Know what was clicked** | Auto zoom frames the whole button or dialog, typing zooms aim at the text box, empty-space clicks are flagged stray, guides say "Click 'Export'" without AI | Windows UI Automation (built in since Windows 7) in a new long-running helper subcommand, queried at mouse-down with timeouts; never reads text fields, skips password boxes | M | NW-03, LT-03, LT-07, LT-15 |
 | F-07 | **Auto-blur passwords, emails, keys and card numbers** | Blur suggestions to review, instead of scrubbing the video | UIA password-box rectangles; Windows.Media.Ocr (officially needs package identity) with PaddleOCR PP-OCRv5 ONNX (Apache-2.0, about 20 MB) as a real fallback; Luhn and key-prefix patterns | M–L | LT-05 |
-| F-08 | **Studio voice** (Clean voice shipped next release, with ffmpeg arnndn and bundled RNNoise models; DeepFilterNet3 left for later, `docs/design/clean-voice.md` §2) | Removes fan hum, keyboard and room noise; the preview sounds like the export | DeepFilterNet3 (MIT/Apache-2.0, about 8 MB, Rust/tract); render the cleaned stem once and play it in preview; ffmpeg arnndn as the no-download fallback | M | NW-10 |
+| F-08 | **Studio voice** (Clean voice shipped in 0.7.0, with ffmpeg arnndn and bundled RNNoise models; DeepFilterNet3 left for later, `docs/design/clean-voice.md` §2) | Removes fan hum, keyboard and room noise; the preview sounds like the export | DeepFilterNet3 (MIT/Apache-2.0, about 8 MB, Rust/tract); render the cleaned stem once and play it in preview; ffmpeg arnndn as the no-download fallback | M | NW-10 |
 | F-09 | **Markers that edit while recording** | Hotkeys for "new chapter here" and "cut that"; the project opens with chapters and suggested cuts. Later, the spoken phrases after recording | Extends today's "zoom here" marks; phase 2 is offline keyword spotting on the mic stem (sherpa-onnx, Apache-2.0, a few MB) | S | NW-01, E-02, chapters |
 | F-10 | **Chapters without AI** | Named chapters from app switches, scene changes and pauses, following YouTube's rules; silent recordings too | Foreground-window log in the helper, ffmpeg scdet, F-03 pauses; names from window titles (reviewed before export, they can be private) | M | Chapters, LT-09, NW-13 |
 | F-11 | **Export bundle and one file per chapter** · *shipped* (`docs/design/hands-off.md`); later: a chapter list file for a whole set of parts | SRT/VTT, chapter list, thumbnail and description written next to each export; "01 Intro.mp4", "02 Billing.mp4" in one tick | Reuses subtitle, chapter, thumbnail and batch export code | S | NW-13, LT-02 |

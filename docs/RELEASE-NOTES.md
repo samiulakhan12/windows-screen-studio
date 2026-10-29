@@ -1,6 +1,6 @@
 # Release notes
 
-## Next release
+## 0.7.0
 
 - **Import a video** (NW-07): bring in a video recorded with another app (OBS, Xbox Game Bar,
   Teams, a phone) as a new project: *Import video* on Home, or drop the file on *Recent
@@ -63,6 +63,18 @@
   cannot link, they are copied, with progress, Cancel and a free-space check. Existing projects,
   including 9:16 and 1:1 ones, open, preview and export exactly as before until following is
   turned on.
+
+### Known issues
+
+- In four multi-step cases a word deleted in the *Transcript* tab shows again in the captions file
+  that *Also save* writes (SRT, VTT), although the video stays cut: its caption trimmed and then
+  moved on the caption track; trimmed, grown back over the word and the project reopened; or
+  merged with a caption whose words were retyped. Planned for 0.7.1.
+- *Make captions* in the *Transcript* tab after every caption was deleted leaves the keyboard focus
+  on the page when only an AI key (or no provider) is set; press `Tab` to reach the form.
+
+## 0.6.0 and earlier
+
 - **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
   the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
   `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move

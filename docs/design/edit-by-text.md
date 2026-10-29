@@ -761,3 +761,12 @@ Where the build differs from the sections above, after an adversarial review:
   tabs (`tests/e2e/ui.e2e.cjs`; it still fits at the minimum window size), and the older-project
   audio reference in `tests/e2e/audio-pack.e2e.cjs` gains the 10 ms fades at its three cuts (the
   comparison is still exact, below 1e-6).
+- **Known issues in 0.7.0** (found by the last cross-feature check, left for 0.7.1): a word deleted
+  in the tab can show again in the captions file (SRT, VTT) while the video stays cut when (1) its
+  caption is trimmed past it and then moved (`retimeWords` clamps the deleted word onto the
+  caption's new edge, and the store's settle clears its mark); (2, 3) the caption is trimmed past it,
+  later grown back over its time and the project reopened (`readWords` sorts by the clamped time, so
+  the stored order and the alignment disagree); (4) its caption is merged with one whose word
+  timings no longer match a retyped text (`timingsOf` passes them on, and the leftover timed word
+  pairs with the deleted twin). Each needs several steps; the video and the burned-in captions are
+  right in all four.
