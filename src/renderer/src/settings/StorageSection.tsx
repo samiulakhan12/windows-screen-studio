@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { StorageCleanupResult, StorageOverview } from '../../../shared/api/storage'
 import { CACHE_DAY_CHOICES, formatBytes, REMOVE_DAY_CHOICES, usedAgo, type CleanupItem, type StorageRules } from '../../../shared/storage/rules'
 import { ipcMessage } from './providerText'
@@ -26,7 +26,10 @@ export function StorageSection(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<StorageCleanupResult | null>(null)
   const reviewRef = useRef<HTMLHeadingElement>(null)
+  const reviewButtonRef = useRef<HTMLButtonElement>(null)
   const resultRef = useRef<HTMLDivElement>(null)
+  // After a render that removed or disabled the focused control: focus on `ref`, never the page.
+  const focusLater = (ref: RefObject<HTMLElement>): void => void requestAnimationFrame(() => ref.current?.focus())
 
   const scan = useCallback(async (): Promise<void> => {
     try {
@@ -52,9 +55,10 @@ export function StorageSection(): JSX.Element {
       const items = await window.api.storagePlan()
       setPlan(items)
       setTicked(new Set(items.map(keyOf)))
-      requestAnimationFrame(() => reviewRef.current?.focus())
+      focusLater(reviewRef)
     } catch (err) {
       setError(ipcMessage(err))
+      focusLater(reviewButtonRef)
     } finally {
       setBusy(false)
     }
@@ -69,9 +73,10 @@ export function StorageSection(): JSX.Element {
       setPlan(null)
       await scan()
       // The review (and its focused button) is gone: the result takes the focus.
-      requestAnimationFrame(() => resultRef.current?.focus())
+      focusLater(resultRef)
     } catch (err) {
       setError(ipcMessage(err))
+      focusLater(reviewRef)
     } finally {
       setBusy(false)
     }
@@ -165,7 +170,7 @@ export function StorageSection(): JSX.Element {
             touched.
           </p>
           <div className="health-actions">
-            <button type="button" className="btn settings-small" onClick={() => void review()} disabled={busy}>
+            <button type="button" ref={reviewButtonRef} className="btn settings-small" onClick={() => void review()} disabled={busy}>
               Review clean-up…
             </button>
           </div>
@@ -212,7 +217,14 @@ export function StorageSection(): JSX.Element {
                     Move {chosen.length} to the Recycle Bin ({formatBytes(chosenBytes)})
                   </button>
                 )}
-                <button type="button" className="btn ghost settings-small" onClick={() => setPlan(null)}>
+                <button
+                  type="button"
+                  className="btn ghost settings-small"
+                  onClick={() => {
+                    setPlan(null)
+                    focusLater(reviewButtonRef)
+                  }}
+                >
                   {plan.length ? 'Cancel' : 'Close'}
                 </button>
               </div>
