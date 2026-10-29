@@ -16,6 +16,7 @@ import { EffectsPanel } from './panels/EffectsPanel'
 import { CameraPanel } from './panels/CameraPanel'
 import { AudioPanel } from './panels/AudioPanel'
 import { CaptionsPanel } from './panels/CaptionsPanel'
+import { TranscriptPanel } from './panels/TranscriptPanel'
 import { ShapesPanel } from './panels/ShapesPanel'
 import { ImagesPanel } from './panels/ImagesPanel'
 import { useCaptionsHost } from './speechState'
@@ -74,7 +75,7 @@ export interface InputActions {
   selectClick: (ms: number) => void
 }
 
-export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'captions' | 'shapes' | 'images' | 'effects' | 'camera' | 'audio'
+export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'captions' | 'transcript' | 'shapes' | 'images' | 'effects' | 'camera' | 'audio'
 type Tab = InspectorTab
 
 const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
@@ -84,6 +85,7 @@ const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
   { id: 'clip', label: 'Clip', icon: 'scissors', editorIcon: true },
   { id: 'text', label: 'Text', icon: 'text', editorIcon: true },
   { id: 'captions', label: 'Captions', icon: 'captions', editorIcon: true },
+  { id: 'transcript', label: 'Transcript', icon: 'transcript', editorIcon: true },
   { id: 'shapes', label: 'Shapes', icon: 'shapes', editorIcon: true },
   { id: 'images', label: 'Images', icon: 'image', editorIcon: true },
   { id: 'effects', label: 'Effects', icon: 'sparkle', editorIcon: true },
@@ -190,6 +192,7 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
         {!groupShown && tab === 'clip' && <ClipPanel {...props} />}
         {!groupShown && tab === 'text' && <TextPanel {...props} />}
         {!groupShown && tab === 'captions' && <CaptionsPanel {...props} />}
+        {!groupShown && tab === 'transcript' && <TranscriptPanel {...props} onOpenCaptions={() => setTab('captions')} />}
         {!groupShown && tab === 'shapes' && <ShapesPanel {...props} />}
         {!groupShown && tab === 'images' && <ImagesPanel {...props} />}
         {!groupShown && tab === 'effects' && <EffectsPanel project={props.project} cursor={props.cursor} />}

@@ -21,6 +21,7 @@ import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
 import { CameraMaskPreparer } from '../render/segmentation/cameraMasks'
 import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
+import { CUT_FADE } from '../../../shared/render/cutFades'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
 import type { PauseGate } from '../../../shared/jobs/pauseGate'
@@ -123,6 +124,8 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
     if (look.normalize) audio.normalize = true
     if (plan.holds.length > 0) audio.holds = plan.holds.map((h) => ({ at: h.at, length: h.length }))
     if (voice) audio.voice = voice
+    // Smooth cuts (NW-06): a short fade at every cut (no change to an edit without cuts).
+    audio.cutFade = CUT_FADE
   }
   const job = clickSoundJob(project, input.scene.cursor, project.clips)
   // In video time: a click exactly at a pause freeze sounds when the freeze starts.

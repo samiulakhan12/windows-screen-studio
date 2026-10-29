@@ -24,6 +24,18 @@
   and room noise from your microphone, on this PC. Choose Light, Normal or Strong; the cleaned voice
   is made once (with progress and Cancel) and the preview plays it, with *Hear the original* to
   compare. The export uses the same cleaned voice. Projects with the switch off are unchanged.
+- **Edit by text** (NW-04): the new *Transcript* tab shows what you said, word by word. Select
+  words and press `Delete` to cut them from the video; they stay struck through, and *Restore*
+  brings them back. Click a word to go there; the word being said is underlined while the video
+  plays. Every edit is one undo step, and the timeline, preview, captions and export follow. No
+  transcript yet? *Make captions* starts the Captions tab's *Generate captions*.
+- **Remove fillers and retakes** (NW-01): *Find fillers and retakes* lists "um", "uh", "you know",
+  repeated words and sentences you said again (keeping the last take). Choose *Keep* or *Remove*
+  for each, or *Remove all*. Nothing is cut until you choose, and cuts end in the pauses so words
+  are not clipped. Found on your PC, with no AI call.
+- **Smooth cuts** (NW-06): the sound now fades out and back in over 10 ms at every cut, so cuts
+  no longer click. **Existing projects with cuts sound slightly different at their next export**
+  (only right at the cuts).
 - **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
   the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
   `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move

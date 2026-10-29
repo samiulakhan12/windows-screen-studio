@@ -22,6 +22,7 @@ import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/ti
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
 import { cursorLook } from '../../../shared/render/cursorFx'
+import { JUMP_SLACK } from '../../../shared/render/cutFades'
 import { frameSeekTime } from '../../../shared/render/frameTiming'
 import type { Clip, Project } from '../../../shared/types'
 import { drawFrame, type DrawOptions, type FrameImage, type RenderScene } from '../render/compositor'
@@ -514,9 +515,9 @@ export class PreviewPlayer {
     if (this.holdAhead(t)) return
     // Then the soundtrack: on a frame that holds, the element's clock can be past the anchor, which
     // video time counts after the whole hold (the hold's ticks keep it on time instead).
-    this.sound.frame()
+    this.sound.frame(t)
     // Jump before the next decoded frame would land in a cut (or past the end).
-    if (t + rate * this.frame >= clip.end - 1e-4) this.leaveClip(clips, i)
+    if (t + rate * this.frame >= clip.end - JUMP_SLACK) this.leaveClip(clips, i)
     if (this.playing) this.scheduleFrame()
   }
 

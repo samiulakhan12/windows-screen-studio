@@ -100,6 +100,15 @@ brand kit lives in userData (`brand-kit.json` and `brand-kit/`, `src/main/brandK
 is one pure function (`shared/editor/brandKit.ts`), used by the editor (one undo step) and by
 `applyStyleDefaults` for new recordings (`docs/design/brand-kit.md`).
 
+**Edit by text** (NW-04, NW-01, NW-06, `docs/design/edit-by-text.md`) adds nothing to
+`project.json`: the Transcript tab derives a word list from `Project.transcript`
+(`shared/editor/transcript.ts`, aligning edited caption text to its word timings), and a deleted
+word span is an ordinary cut of `Project.clips` (`cutRange`, padded to the middle of the pauses);
+whether a word is cut is derived from the clips. Fillers and retakes are found on this PC from the
+words (`fillers.ts`, `retakes.ts`) as a review list. Every cut gets 10 ms audio fades:
+`render/cutFades.ts` gives the export's `afade` filters (`RecordingSound.cutFade`, opt-in per job)
+and the preview's ramp timing on a `cut` gain node in `previewAudio.ts`.
+
 Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
 names from `productName`). The app was called "Screen Studio for Windows" before; on the first
 start as Flown `src/main/brandMigration.ts` renames the old userData folder (before the

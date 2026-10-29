@@ -75,6 +75,8 @@ export interface RecordingSound {
   holds?: SoundHold[]
   /** Clean voice (docs/design/clean-voice.md): the cleaned stem replaces the microphone stem, or the mixed track without stems. */
   voice?: VoiceStrength
+  /** Seconds of fade out before and fade in after every cut (NW-06); absent: none (earlier jobs). */
+  cutFade?: number
 }
 
 /** Background music in an export: plays on the output timeline from its start, ignoring cuts. */
