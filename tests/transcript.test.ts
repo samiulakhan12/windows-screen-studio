@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { clipIndexAt, outputDuration } from '../src/shared/engine/timeline'
+import { retimeWords } from '../src/shared/captions/edit'
+import { clipIndexAt, cutRange, outputDuration } from '../src/shared/engine/timeline'
 import {
   alignCaptionWords,
   anchorCutWords,
@@ -11,13 +12,14 @@ import {
   normalizeWord,
   restoreWords,
   sameWords,
+  settleDeletedWords,
   spansSaving,
   transcriptWords,
   wordIndexAt,
   wordsRange,
   type TranscriptWord
 } from '../src/shared/editor/transcript'
-import type { CaptionSegment, Clip, Transcript } from '../src/shared/types'
+import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1, id = `c${start}`): Clip => ({ id, start, end, speed })
 
@@ -430,6 +432,40 @@ describe('captionWordTimes', () => {
       ['think', false, false]
     ])
     expect(captionWordTimes({ ...s, words: once }).map((w) => !!w.deleted)).toEqual([false, true, false, false])
+  })
+})
+
+describe('settleDeletedWords', () => {
+  const g = transcript([seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings'), seg('h', 20, 22, 'Thanks.')])
+  const ws = transcriptWords(g)
+  const i = ws.findIndex((w) => w.text === 'settings')
+  const full = [clip(0, 30)]
+  const cutClips = cutWords(full, ws, [[i, i]], 30)
+  const deleted: Project = { duration: 30, clips: cutClips, transcript: anchorCutWords(g, full, cutClips, [[i, i]]) } as unknown as Project
+  const marks = (p: Project): string[] => transcriptWords(p.transcript).filter((w) => w.deleted).map((w) => w.text)
+
+  it('takes the mark off a deleted word whose middle plays after an edit, and only then', () => {
+    expect(marks(deleted)).toEqual(['settings'])
+    // Restored (the tab's Restore, Restore the whole recording, the timeline): a guess again, still `estimated`.
+    const restored = settleDeletedWords({ ...deleted, clips: full }, deleted)
+    expect(marks(restored)).toEqual([])
+    expect(restored.transcript!.segments[0].words!.every((w) => w.estimated)).toBe(true)
+    expect(restored.transcript!.segments[1]).toBe(deleted.transcript!.segments[1])
+    // Still cut after another edit (a Silences cut over it): the mark stays, the same object.
+    const silences = { ...deleted, clips: cutRange(cutClips, 11.85, 13.75) }
+    expect(settleDeletedWords(silences, deleted)).toBe(silences)
+    // Its caption moved on the track so that the word plays: the mark goes too.
+    const moved = { ...deleted, transcript: { ...g, segments: [retimeWords(deleted.transcript!.segments[0], { start: 14, end: 21 }), g.segments[1]] } }
+    expect(marks(settleDeletedWords(moved, deleted))).toEqual([])
+  })
+
+  it('changes nothing when neither the clips nor the transcript changed, or there is no mark', () => {
+    const stale = { ...deleted, clips: full }
+    expect(settleDeletedWords(stale, stale)).toBe(stale)
+    const plain = { duration: 30, clips: full, transcript: g } as unknown as Project
+    expect(settleDeletedWords({ ...plain, clips: cutClips }, plain).transcript).toBe(g)
+    const none = { duration: 30, clips: full } as unknown as Project
+    expect(settleDeletedWords({ ...none, clips: cutClips }, none).transcript).toBeUndefined()
   })
 })
 

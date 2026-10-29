@@ -55,6 +55,7 @@ import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
+import { settleDeletedWords } from '../../../shared/editor/transcript'
 import { formatLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
@@ -178,7 +179,8 @@ async function openSession(projectId: string): Promise<Session> {
   // Likewise without its camera when the camera file is missing (its layouts then leave the screen be).
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
-  const store = new EditStore(project)
+  // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2).
+  const store = new EditStore(project, undefined, undefined, undefined, settleDeletedWords)
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),

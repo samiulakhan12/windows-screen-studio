@@ -10,6 +10,10 @@ import { History } from '../engine/history'
  * pointer gesture is open (`beginGesture`..`endGesture`, e.g. a timeline drag
  * or a slider drag) same-key updates merge however long the user pauses, and
  * ending the gesture always closes the step.
+ *
+ * `settle` brings each state an edit makes (`update`, `replace`) into line
+ * with itself before it is kept (data that follows the edit, part of the same
+ * undo step); undo and redo go back to states already settled.
  */
 export class EditStore<T> {
   private readonly history: History<T>
@@ -24,7 +28,8 @@ export class EditStore<T> {
     initial: T,
     limit = 200,
     mergeWindowMs = 800,
-    private readonly clock: () => number = Date.now
+    private readonly clock: () => number = Date.now,
+    private readonly settle: (next: T, prev: T) => T = (next) => next
   ) {
     this.history = new History(initial, limit, mergeWindowMs)
   }
@@ -50,7 +55,7 @@ export class EditStore<T> {
 
   update = (fn: (state: T) => T, key?: string): void => {
     const prev = this.history.present
-    const next = fn(prev)
+    const next = this.settled(fn(prev), prev)
     if (next === prev) return
     const now = this.clock()
     const holding = this.gestures > 0 && key !== undefined && key === this.lastKey
@@ -65,7 +70,7 @@ export class EditStore<T> {
   /** Changes the present without an undo step (automatic corrections). */
   replace = (fn: (state: T) => T): void => {
     const prev = this.history.present
-    const next = fn(prev)
+    const next = this.settled(fn(prev), prev)
     if (next === prev) return
     this.history.replace(next)
     this.changed()
@@ -98,6 +103,10 @@ export class EditStore<T> {
   seal = (): void => {
     this.history.seal()
     this.lastKey = null
+  }
+
+  private settled(next: T, prev: T): T {
+    return next === prev ? next : this.settle(next, prev)
   }
 
   private changed(): void {

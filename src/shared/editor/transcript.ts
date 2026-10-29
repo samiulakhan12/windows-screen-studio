@@ -5,8 +5,8 @@
  * Everything is in source seconds.
  */
 import { clamp } from '../engine/math'
-import { cutRange, MIN_CLIP, normalizeClips } from '../engine/timeline'
-import type { CaptionSegment, CaptionWord, Clip, Transcript } from '../types'
+import { clipIndexAt, cutRange, MIN_CLIP, normalizeClips } from '../engine/timeline'
+import type { CaptionSegment, CaptionWord, Clip, Project, Transcript } from '../types'
 import { restoreRange, timelineGaps } from './clips'
 import { rangeSaving, type TimeRange } from './smartSpeed'
 
@@ -186,6 +186,31 @@ export function anchorCutWords(transcript: Transcript | undefined, before: reado
     return seg
   })
   return changed ? { ...transcript, segments } : transcript
+}
+
+/**
+ * The project after an edit (`prev` before it) with the `deleted` mark taken off every stored word
+ * whose middle is in a clip: a mark lives only while its word is cut (edit-by-text.md §4.2), so a
+ * word brought back (Restore, Restore the whole recording, the timeline, a caption moved) is a
+ * guess again, which a later cut over its guessed time cannot take out. The editor store's
+ * `settle`: part of the edit's own undo step. The same object when nothing changes.
+ */
+export function settleDeletedWords(next: Project, prev: Project): Project {
+  if (!next.transcript || (next.clips === prev.clips && next.transcript === prev.transcript)) return next
+  const clips = next.clips
+  // The word's middle as alignCaptionWords times it (inside its caption).
+  const kept = (seg: CaptionSegment, w: CaptionWord): boolean => {
+    const start = clamp(w.start, seg.start, seg.end)
+    return clipIndexAt(clips, (start + Math.max(start, clamp(w.end, seg.start, seg.end))) / 2) >= 0
+  }
+  const restored = (seg: CaptionSegment, w: CaptionWord): boolean => w.deleted === true && kept(seg, w)
+  let changed = false
+  const segments = next.transcript.segments.map((seg) => {
+    if (!seg.words?.some((w) => restored(seg, w))) return seg
+    changed = true
+    return { ...seg, words: seg.words.map((w) => (restored(seg, w) ? { text: w.text, start: w.start, end: w.end, ...(w.estimated ? { estimated: w.estimated } : {}) } : w)) }
+  })
+  return changed ? { ...next, transcript: { ...next.transcript, segments } } : next
 }
 
 /** Whether two word lists are the same words of the same captions at the same times (stored estimates read back as they were). */

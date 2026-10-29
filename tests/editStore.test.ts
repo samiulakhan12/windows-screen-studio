@@ -67,6 +67,27 @@ describe('EditStore', () => {
     expect(s.state).toBe(0)
   })
 
+  it('settles each state an edit makes, in the same undo step; undo and redo go back to settled states', () => {
+    const calls: [number, number][] = []
+    // A derived field that follows the edit: here, an odd value is rounded up.
+    const s = new EditStore(0, 200, 800, () => 0, (next, prev) => (calls.push([next, prev]), next % 2 ? next + 1 : next))
+    s.update(() => 3)
+    expect(s.state).toBe(4)
+    s.replace(() => 5)
+    expect(s.state).toBe(6)
+    expect(calls).toEqual([
+      [3, 0],
+      [5, 4]
+    ])
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(0)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(6)
+    // Not called for undo, redo or an edit that changes nothing.
+    s.update((v) => v)
+    expect(calls.length).toBe(2)
+  })
+
   it('a new edit after undo clears redo', () => {
     const { s } = store()
     s.update(() => 1)
