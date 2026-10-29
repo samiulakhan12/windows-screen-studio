@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cropView } from '../src/shared/engine/crop'
+import { frameView } from '../src/shared/engine/frameView'
 import { sceneLayout } from '../src/shared/engine/layout'
 import { createProject } from '../src/shared/engine/project'
 import {
@@ -17,7 +18,7 @@ import {
   type PaceParams
 } from '../src/shared/engine/reframe'
 import { DEFAULT_REFRAME } from '../src/shared/engine/reframeData'
-import { clampCamera } from '../src/shared/engine/zoom'
+import { clampCamera, focusPathFor } from '../src/shared/engine/zoom'
 import type { ClickEvent, CursorSample, CursorTrack, LayoutSegment, Project, ReframePace, ReframeSettings, Shape } from '../src/shared/types'
 import { rng } from './verticalFixtures'
 
@@ -625,6 +626,144 @@ describe('a layout change while following (test 39)', () => {
     expect(back.o0).toBeLessThan(8)
     expect(moves(out)).toHaveLength(1)
   })
+})
+
+/** The drawn camera's centre (frameView, the canonical 1080x1920 frame) at `fps` over [a, b], and the width of the view it shows. */
+function drawnPath(p: Project, t: CursorTrack, a: number, b: number, fps: number): { at: number[]; cx: number[]; w: number[] } {
+  const scene = { project: p, cursor: t, focusPath: focusPathFor(t.samples, p.duration) }
+  const out: { at: number[]; cx: number[]; w: number[] } = { at: [], cx: [], w: [] }
+  for (let i = Math.round(a * fps); i <= Math.round(b * fps); i++) {
+    const v = frameView(scene, 1080, 1920, p.width, p.height, i / fps)
+    out.at.push(i / fps)
+    out.cx.push(v.cam.cx)
+    out.w.push(v.layout.follow!.base.w / v.cam.scale)
+  }
+  return out
+}
+
+/** The largest per-frame acceleration of the drawn centre over [a, b] at `fps`, in views of the view it shows (views/s²). */
+function drawnAccel(p: Project, t: CursorTrack, a: number, b: number, fps = 60): number {
+  const { cx, w } = drawnPath(p, t, a, b, fps)
+  let peak = 0
+  for (let i = 1; i + 1 < cx.length; i++) peak = Math.max(peak, (Math.abs(cx[i + 1] - 2 * cx[i] + cx[i - 1]) * fps * fps) / w[i])
+  return peak
+}
+
+/** The glide's peak acceleration for a move, in views w wide: 1.5/(r(1 − r)) × d/D² (§5.10). */
+const glideAccel = (m: FollowSegment, w: number): number => ((1.5 / (m.ramp * (1 - m.ramp))) * (Math.abs(m.to.x - m.from.x) / w)) / (m.o1 - m.o0) ** 2
+
+/** Back to back and continuous: every segment starts where the one before it ends (no cuts here). */
+function expectContinuous(plan: FollowPlan): void {
+  for (let i = 1; i < plan.segments.length; i++) {
+    expect(plan.segments[i].o0).toBeCloseTo(plan.segments[i - 1].o1, 9)
+    expect(plan.segments[i].from).toEqual(plan.segments[i - 1].to)
+  }
+}
+
+describe('leaving the edge of a narrower view (§5.11)', () => {
+  // A click at the right edge zoomed in on (an auto zoom 2x, framed 1.5x): inside the zoom the
+  // view's centre goes further right (0.893) than the unzoomed view can rest (1 − BASE_W/2 = 0.842).
+  const zoomed = (leave: number): { p: Project; t: CursorTrack } => ({
+    p: project({ zooms: [{ id: 'z', start: 2.2, end: 5.5, scale: 2, focus: { mode: 'cursor' }, auto: true, anchor: { t: 2.6, x: 0.95, y: 0.5 } }] }),
+    t: track(samples(12, (u) => (u < leave ? flight([0.5, 0.5], [0.95, 0.5], 1.8, 2)(u) : flight([0.95, 0.5], [0.3, 0.5], leave, leave + 0.2)(u))), [click(2.6, 0.95)])
+  })
+  const edge = 1 - BASE_W / 2
+
+  it('after a zoom at the edge the next pan starts where the camera rests, without a jolt; the plan settles there unseen', () => {
+    const { p, t } = zoomed(8)
+    const plan = planFollow(p, t)
+    expectContinuous(plan)
+    expect(plan.segments.some((s) => s.from.x > edge + 0.04)).toBe(true)
+    const pan = moves(plan).find((m) => Math.abs(m.to.x - 0.3) < 1e-6)!
+    expect(pan.o0).toBeCloseTo(8, 9)
+    expect(pan.from.x).toBeCloseTo(edge, 9)
+    // The camera rests at the edge until the pan, then eases out of it as the glide does.
+    const { at, cx } = drawnPath(p, t, 6, 8, 60)
+    at.forEach((u, i) => expect(cx[i], `at ${u} s`).toBeCloseTo(edge, 9))
+    expect(drawnAccel(p, t, 6, 11)).toBeLessThanOrEqual(glideAccel(pan, BASE_W) * 1.02)
+  })
+
+  it('after screen-only at the edge the next pan starts at the edge of the band’s wider view, without a jolt', () => {
+    const webcam: Project['webcam'] = { ...project().webcam, show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' }
+    const p = project({ hasWebcam: true, webcam, layouts: [{ id: 'l', start: 3, end: 7, layout: 'screen-only' }] }, {}, 14)
+    const path: Path = (u) => (u < 9 ? flight([0.5, 0.5], [0.98, 0.5], 4, 4.2)(u) : flight([0.98, 0.5], [0.3, 0.5], 9, 9.2)(u))
+    const t = track(samples(14, path))
+    const plan = planFollow(p, t)
+    expectContinuous(plan)
+    const band = sceneLayout(p, 1080, 1920, 1920, 1080, 8).follow!.base.w
+    const pan = moves(plan).find((m) => Math.abs(m.to.x - 0.3) < 1e-6)!
+    expect(pan.o0).toBeCloseTo(9, 9)
+    expect(pan.from.x).toBeCloseTo(1 - band / 2, 9)
+    expect(drawnAccel(p, t, 7.05, 13)).toBeLessThanOrEqual(glideAccel(pan, band) * 1.02)
+  })
+
+  it('a pan toward the edge that ends after its zoom ends where the unzoomed view can rest, without a jolt', () => {
+    const p = project({ zooms: [{ id: 'z', start: 2, end: 4, scale: 2, focus: { mode: 'cursor' }, auto: false }] })
+    const t = track(samples(12, flight([0.5, 0.5], [0.98, 0.5], 3, 3.1)))
+    const plan = planFollow(p, t)
+    const [pan, ...rest] = moves(plan)
+    expect(rest).toEqual([])
+    expect(pan.o1).toBeGreaterThan(4)
+    expect(pan.to.x).toBeCloseTo(edge, 9)
+    // Past the zoom's end the camera is the plan clamped with the unzoomed view: the glide itself.
+    expect(drawnAccel(p, t, 4, 8)).toBeLessThanOrEqual(glideAccel(pan, BASE_W) * 1.02)
+  })
+
+  it('a pan the band comes back during keeps to the band’s view: the plan settles onto its edge first, without a jolt when the band is back', () => {
+    const webcam: Project['webcam'] = { ...project().webcam, show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' }
+    const p = project({ hasWebcam: true, webcam, layouts: [{ id: 'l', start: 3, end: 7, layout: 'screen-only' }] }, {}, 14)
+    // The cursor leaves the edge as the band starts coming back (6.6-7 s).
+    const path: Path = (u) => (u < 6.6 ? flight([0.5, 0.5], [0.98, 0.5], 4, 4.2)(u) : flight([0.98, 0.5], [0.3, 0.5], 6.6, 6.8)(u))
+    const t = track(samples(14, path))
+    const plan = planFollow(p, t)
+    expectContinuous(plan)
+    const band = sceneLayout(p, 1080, 1920, 1920, 1080, 8).follow!.base.w
+    const pan = moves(plan).find((m) => Math.abs(m.to.x - 0.3) < 1e-6)!
+    expect(pan.o0).toBeCloseTo(6.6, 9)
+    expect(pan.from.x).toBeCloseTo(1 - band / 2, 9)
+    expect(drawnAccel(p, t, 7, 12)).toBeLessThanOrEqual(glideAccel(pan, band) * 1.02)
+  })
+
+  it('a settle the last move leaves no room for delays the pan, and a click it then misses is late', () => {
+    // The pan to the edge ends at 4.5 s inside the zoom, which ends at 5.5 s; the click at 6 s
+    // (its shot from 5.6 s) would be met by leaving at 4.85 s, but the settle needs 4.5-5.04 s first.
+    const p = project({ zooms: [{ id: 'z', start: 2, end: 5.5, scale: 2, focus: { mode: 'cursor' }, auto: false }] })
+    const path: Path = (u) => (u < 5.9 ? flight([0.5, 0.5], [0.98, 0.5], 3, 3.1)(u) : flight([0.98, 0.5], [0.3, 0.5], 5.9, 6)(u))
+    const plan = planFollow(p, track(samples(12, path), [click(6, 0.3)]))
+    expectContinuous(plan)
+    const [toEdge, settle, pan, ...rest] = moves(plan)
+    expect(rest).toEqual([])
+    expect(toEdge.o1).toBeCloseTo(4.5, 9)
+    expect(settle.o0).toBeCloseTo(4.5, 9)
+    expect(settle.to.x).toBeCloseTo(edge, 9)
+    expect(pan.o0).toBeCloseTo(settle.o1, 9)
+    const shot = plan.shots.find((s) => s.kind === 'click')!
+    expect(shot.late).toBe(true)
+    expect(views(Math.abs(followCentre(plan, 6).x - 0.3))).toBeGreaterThan(FOLLOW.inView)
+  })
+
+  it('a slow drag away from the edge after the zoom: the settle is a move of its own, never joined into the drag’s glide', () => {
+    const p = project({ zooms: zoomed(8).p.zooms }, {}, 16)
+    const t = track(samples(16, (u) => (u < 8 ? flight([0.5, 0.5], [0.95, 0.5], 1.8, 2)(u) : flight([0.95, 0.5], [0.4, 0.5], 8, 11)(u))), [click(2.6, 0.95)])
+    const plan = planFollow(p, t)
+    expectContinuous(plan)
+    const drag = moves(plan).find((m) => m.kind === 'glide')!
+    expect(drag.from.x).toBeCloseTo(edge, 9)
+    // Joined with the settle, the glide would cross the edge moving: a jolt of about 100 views/s².
+    expect(drawnAccel(p, t, 6, 15, 240)).toBeLessThanOrEqual(PACE.balanced.maxAccel)
+  })
+
+  for (const leave of [4.6, 5.2]) {
+    it(`leaving the edge inside a zoom that ends during the pan (${leave} s): the drawn camera’s speed never jumps`, () => {
+      const { p, t } = zoomed(leave)
+      const plan = planFollow(p, t)
+      expectContinuous(plan)
+      expect(moves(plan).find((m) => Math.abs(m.to.x - 0.3) < 1e-6)!.from.x).toBeCloseTo(edge, 9)
+      // At 240 fps a jump of v views/s in the camera's speed reads as 240·v views/s²; the zoom's
+      // move out and the pan's ease add up to less than twice the normal peak acceleration.
+      expect(drawnAccel(p, t, 3.6, 9, 240)).toBeLessThanOrEqual(2 * PACE.balanced.maxAccel)
+    })
+  }
 })
 
 describe('smoothness (test 40)', () => {

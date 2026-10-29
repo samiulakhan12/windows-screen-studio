@@ -785,14 +785,14 @@ interface Shot {
   kind: number
 }
 
-/** A pan, a joined glide, or a jump at a cut, in output time. */
+/** A pan, a joined glide, a jump at a cut, or a settle onto the edge of a pan's view before it, in output time. */
 interface Move {
   o0: number
   o1: number
   from: Pt
   to: Pt
   ramp: number
-  kind: 'pan' | 'glide' | 'jump'
+  kind: 'pan' | 'glide' | 'jump' | 'settle'
 }
 
 const GLIDE_RAMP = 0.5
@@ -845,11 +845,19 @@ class Planner {
     return clamp(Math.round(o / this.grid.g), 0, this.n - 1)
   }
 
+  /** The first sample at or after output time `o` (after a cut at `o`, the new clip's). */
+  sampleFrom(o: number): number {
+    return clamp(Math.ceil(o / this.grid.g - 1e-9), 0, this.n - 1)
+  }
+
+  /** The last sample before output time `o` (before a cut at `o`, the old clip's). */
+  sampleBefore(o: number): number {
+    return clamp(Math.ceil(o / this.grid.g - 1e-9) - 1, 0, this.n - 1)
+  }
+
   /** A centre kept where the view at sample k shows only the recording (0.5 on an axis it covers). */
   clampAt(k: number, x: number, y: number): Pt {
-    const w = this.view.w[k]
-    const h = this.view.h[k]
-    return { x: w >= 1 ? 0.5 : clamp(x, w / 2, 1 - w / 2), y: h >= 1 ? 0.5 : clamp(y, h / 2, 1 - h / 2) }
+    return clampIn(this.view.w[k], this.view.h[k], x, y)
   }
 
   /**
@@ -1019,12 +1027,20 @@ class Planner {
    * time, so the pan leaves early (anticipates) or speeds up (hurries) up to hardSpeed, else the
    * shot is late. A pan never crosses a cut: it ends there, or the view changes at the cut. A pan
    * that could only start after the next shot began is dropped.
+   *
+   * A centre clamped in a narrower view (inside a zoom, or in screen-only) can lie beyond the
+   * edge of the wider view of a later pan. Starting there, the drawn camera would wait at the
+   * edge and then jolt into the moving plan; ending there, stop short with one. So the plan first
+   * settles onto that edge (unseen where the camera rests on the plan; inside a zoom ending
+   * during the pan, the zoom's aim eases there), and the pan starts from and ends in that view.
    */
   pans(shots: Shot[]): Move[] {
     const { pace } = this
-    const g = this.grid.g
+    const { g, piece } = this.grid
     const moves: Move[] = []
     let a = shots[0]
+    // Where the plan holds: the end of the last move.
+    let held = a.centre
     let prevEnd = 0
     for (let i = 1; i < shots.length; i++) {
       const b = shots[i]
@@ -1032,9 +1048,11 @@ class Planner {
         moves.push({ o0: b.o0, o1: b.o0, from: b.centre, to: b.centre, ramp: GLIDE_RAMP, kind: 'jump' })
         prevEnd = Math.max(prevEnd, b.o0)
         a = b
+        held = b.centre
         continue
       }
-      const d = this.dist(this.sampleAt(b.o0), b.centre.x, b.centre.y, a.centre)
+      const kb = this.sampleAt(b.o0)
+      const d = this.dist(kb, b.centre.x, b.centre.y, held)
       if (!(d > 1e-9)) {
         a = b
         continue
@@ -1042,11 +1060,13 @@ class Planner {
       let D = panDuration(d, pace)
       const floor = Math.max(prevEnd, this.cutBefore(b.o0))
       let t0 = Math.max(b.o0, floor)
+      let deadline: { e: number; u: number } | null = null
       // A firm event before the shot could start (a zoom ending over typing already under way) sets no deadline.
       if (b.firm && b.firstAt && b.firstFirm >= b.o0 - g - 1e-9) {
         const e = b.firstFirm
         const delta = this.dist(b.firstK, b.firstAt.x, b.firstAt.y, b.centre)
         const u = glideInverse(clamp(1 - (pace.inView - delta) / d, 0, 1), GLIDE_RAMP)
+        deadline = { e, u }
         if (t0 + u * D > e + 1e-9) {
           t0 = Math.max(e - u * D, b.o0 - pace.maxLead, floor, a.lastFirm + pace.settle, a.o0 + pace.minShown)
           if (t0 + u * D > e + 1e-9) {
@@ -1055,6 +1075,29 @@ class Planner {
           }
         }
       }
+      // The drawn camera is the plan clamped with its frame's view (§5.11): the pan keeps to the
+      // widest view of its time, so the plan never crosses a view's edge moving. Held beyond it,
+      // the plan first settles onto that edge, before the pan (or, when the last move ended too
+      // recently, delaying it).
+      const k0 = this.sampleFrom(t0)
+      const k1 = this.sampleBefore(t0 + D)
+      let vw = 0
+      let vh = 0
+      for (let k = k0; k <= k1 && piece[k] === piece[k0]; k++) {
+        vw = Math.max(vw, this.view.w[k])
+        vh = Math.max(vh, this.view.h[k])
+      }
+      let settle: Move | null = null
+      const from = clampIn(vw, vh, held.x, held.y)
+      const ds = this.dist(k0, from.x, from.y, held)
+      if (ds > 1e-9) {
+        const Ds = panDuration(ds, pace)
+        const s0 = Math.max(floor, t0 - Ds)
+        settle = { o0: s0, o1: s0 + Ds, from: held, to: from, ramp: GLIDE_RAMP, kind: 'settle' }
+        t0 = Math.max(t0, settle.o1)
+        if (deadline) b.late = b.late || t0 + deadline.u * D > deadline.e + 1e-9
+      }
+      const to = clampIn(vw, vh, b.centre.x, b.centre.y)
       // Never across a cut: end there when that is not too short or fast, else change at the cut.
       const cut = this.cutIn(t0, t0 + D)
       if (cut !== null) {
@@ -1064,26 +1107,33 @@ class Planner {
           moves.push({ o0: cut, o1: cut, from: b.centre, to: b.centre, ramp: GLIDE_RAMP, kind: 'jump' })
           prevEnd = cut
           a = b
+          held = b.centre
           continue
         }
       }
       // Backlog: the view would only leave after the next shot began; go straight on to that one.
       const c = shots[i + 1]
       if (c && t0 >= c.o0) continue
-      moves.push({ o0: t0, o1: t0 + D, from: a.centre, to: b.centre, ramp: GLIDE_RAMP, kind: 'pan' })
+      if (settle) moves.push(settle)
+      moves.push({ o0: t0, o1: t0 + D, from, to, ramp: GLIDE_RAMP, kind: 'pan' })
       prevEnd = t0 + D
       a = b
+      held = to
     }
     return moves
   }
 
-  /** Consecutive pans in the same direction, close together and on one side of every cut, joined into one glide where it keeps every target in view (§5.10). */
+  /**
+   * Consecutive pans in the same direction, close together and on one side of every cut, joined
+   * into one glide where it keeps every target in view (§5.10). A settle joins nothing: joined
+   * with its pan, the plan would cross the view's edge moving.
+   */
   joined(moves: Move[]): Move[] {
     const { pace } = this
     const out: Move[] = []
     for (const m of moves) {
       const p = out[out.length - 1]
-      if (m.kind === 'pan' && p && p.kind !== 'jump' && m.o0 - p.o1 <= pace.joinGap + 1e-9 && this.cutIn(p.o0, m.o1) === null && sameWay(p, m)) {
+      if (m.kind === 'pan' && p && (p.kind === 'pan' || p.kind === 'glide') && m.o0 - p.o1 <= pace.joinGap + 1e-9 && this.cutIn(p.o0, m.o1) === null && sameWay(p, m)) {
         const g: Move = { o0: p.o0, o1: m.o1, from: p.from, to: m.to, ramp: Math.min(0.5, pace.glideRamp / (m.o1 - p.o0)), kind: 'glide' }
         if (this.keeps(g)) {
           out[out.length - 1] = g
@@ -1107,6 +1157,9 @@ class Planner {
   }
 }
 
+/** A centre kept where a w x h view shows only the recording (0.5 on an axis it covers). */
+const clampIn = (w: number, h: number, x: number, y: number): Pt => ({ x: w >= 1 ? 0.5 : clamp(x, w / 2, 1 - w / 2), y: h >= 1 ? 0.5 : clamp(y, h / 2, 1 - h / 2) })
+
 /** Whether two moves go the same way on both axes (neither reverses the other). */
 const sameWay = (p: Move, q: Move): boolean =>
   Math.sign(p.to.x - p.from.x) * Math.sign(q.to.x - q.from.x) >= 0 && Math.sign(p.to.y - p.from.y) * Math.sign(q.to.y - q.from.y) >= 0
@@ -1129,7 +1182,7 @@ function segmentsOf(moves: Move[], start: Pt, total: number): FollowSegment[] {
     hold(m.o0)
     t = Math.max(t, m.o0)
     if (m.kind !== 'jump') {
-      out.push({ o0: m.o0, o1: m.o1, from: m.from, to: m.to, ramp: m.ramp, kind: m.kind })
+      out.push({ o0: m.o0, o1: m.o1, from: m.from, to: m.to, ramp: m.ramp, kind: m.kind === 'glide' ? 'glide' : 'pan' })
       t = m.o1
     }
     at = m.to
