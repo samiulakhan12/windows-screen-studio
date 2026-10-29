@@ -241,6 +241,13 @@
   justify-content: center;
 }
 
+/* The polite live region of plain notices; an error notice (role alert) sits beside it, so it is read once. */
+.notice-live {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
 /* Scoped: Home has its own .notice warning box (recorder.css) and both land in one stylesheet. */
 .notice-slot .notice {
   max-width: 100%;

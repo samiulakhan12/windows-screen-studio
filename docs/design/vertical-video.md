@@ -122,7 +122,8 @@ Home is not changed: the library lists project folders, so the copy simply appea
   version" ("Making a square version", "Making a copy"), body "Copying “Billing demo” (1.4 GB). Your
   original stays as it is.", a progress bar (bytes; `aria-valuenow`), and **Cancel**. Cancel
   removes the half-made folder and closes the modal without a message.
-- Errors, as a notice with `role="alert"`, all starting "Could not make the copy: ":
+- Errors, as a notice with `role="alert"` (beside the transport's polite live region, not inside
+  it, so it is read once), all starting "Could not make the copy: ":
   - "there is not enough free space on this drive (it needs 1.4 GB, 0.6 GB is free)."
   - "some of the recording's files could not be read."
   - "Flown could not create a folder in Videos\Flown."

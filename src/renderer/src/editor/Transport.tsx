@@ -112,8 +112,12 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
         <span className="timecode" ref={timeRef} title="Position / length of the exported video" />
         <PreviewSpeedControl />
         {tall && <SafeZonesControl />}
-        <div className="notice-slot" role="status" aria-live="polite">
-          {notice && <TransportNotice text={notice} action={noticeAction} alert={noticeAlert} onHold={onNoticeHold} />}
+        {/* Plain notices are read from the polite live region; an error (role alert) sits beside it, outside it, so it is read once. */}
+        <div className="notice-slot">
+          <span className="notice-live" role="status" aria-live="polite">
+            {notice && !noticeAlert && <TransportNotice text={notice} action={noticeAction} onHold={onNoticeHold} />}
+          </span>
+          {notice && noticeAlert && <TransportNotice text={notice} action={noticeAction} alert onHold={onNoticeHold} />}
         </div>
         <div className="tool-group">
           <button className="btn ghost" onClick={onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>

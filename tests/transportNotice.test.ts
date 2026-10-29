@@ -140,6 +140,44 @@ const values = (selector: string, prop: string): string[] =>
     .filter((m) => m[1].split(',').map((s) => s.trim()).includes(selector))
     .flatMap((m) => [...m[2].matchAll(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`, 'g'))].map((d) => d[1].trim()))
 
+describe('the notice in the transport row is read once', () => {
+  /** The notice slot of the row, and its notice (a TransportNotice element) with the elements around it. */
+  function slotOf(props: Record<string, unknown>): { slot: El; notice: El | undefined; live: El[] } {
+    const slot = all(transportRow(props)).find((e) => e.props.className === 'notice-slot')!
+    const path = (root: El, trail: El[]): El[] | null => {
+      if (root.type === TransportNotice) return trail
+      for (const child of elements(root.props.children)) {
+        const found = path(child, [...trail, root])
+        if (found) return found
+      }
+      return null
+    }
+    const notice = all(slot).find((e) => e.type === TransportNotice)
+    const live = (notice && path(slot, [])) || []
+    return { slot, notice, live: live.filter((e) => e.props.role === 'status' || 'aria-live' in e.props) }
+  }
+
+  it('a plain notice is in the polite live region', () => {
+    const { slot, notice, live } = slotOf({ notice: 'Zoom added' })
+    expect(notice?.props).toMatchObject({ text: 'Zoom added' })
+    expect((notice?.props as { alert?: boolean }).alert).toBeFalsy()
+    expect(live.map((e) => [e.props.role, (e.props as Record<string, unknown>)['aria-live']])).toEqual([['status', 'polite']])
+    // The live region is there before any notice, so the first one is read too.
+    expect(all(slotOf({}).slot).some((e) => e.props.role === 'status')).toBe(true)
+    expect(slot.props.role).toBeUndefined()
+  })
+
+  it('an error is an alert outside the live region, not inside it (read twice)', () => {
+    const { slot, notice, live } = slotOf({ notice: 'Could not make the copy: there is not enough free space.', noticeAlert: true })
+    expect((notice?.props as { alert?: boolean }).alert).toBe(true)
+    expect(live).toEqual([])
+    expect(slot.props.role).toBeUndefined()
+    expect((slot.props as Record<string, unknown>)['aria-live']).toBeUndefined()
+    // The live region stays, empty, for the next plain notice.
+    expect(all(slot).filter((e) => e.props.role === 'status').map((e) => elements(e.props.children).length)).toEqual([0])
+  })
+})
+
 describe('a tall frame\'s transport row wraps in a narrow window (editor.css)', () => {
   it('only a tall frame\'s row (with the safe-zone control) is marked to wrap', () => {
     expect(transportRow({ tall: true }).props.className).toBe('transport tall')
