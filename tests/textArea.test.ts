@@ -207,6 +207,62 @@ describe('a large camera leaves text its room (§6.3: text never covers the came
       })
     }
   }
+
+  /** The keystroke pill as drawn: its first rounded rectangle through the translate and scale calls before it. */
+  function drawnKeys(): Rect & { moved: boolean } {
+    let m = 1
+    let tx = 0
+    let ty = 0
+    let moved = false
+    for (const c of calls) {
+      const [a, b] = c.args as number[]
+      if (c.name === 'translate') [tx, ty, moved] = [tx + m * a, ty + m * b, true]
+      if (c.name === 'scale') [m, moved] = [m * a, true]
+      if (c.name === 'roundRect') {
+        const [x, y, w, h] = c.args as number[]
+        return { x: m * x + tx, y: m * y + ty, w: m * w, h: m * h, moved }
+      }
+    }
+    throw new Error('no keystroke pill drawn')
+  }
+
+  it('the largest key presses beside the largest captions shrink into the room left, over neither the camera nor the caption', () => {
+    const cursor: CursorTrack = { samples: [], clicks: [], keys: [{ t: 1.9, label: 'Ctrl + S' }], shapes: [], scale: 1, valid: false }
+    let shrunk = 0
+    for (const padding of [0, 0.07, 0.25]) {
+      for (const band of [0.32, 0.5]) {
+        for (const keyAt of ['bottom', 'top'] as const) {
+          for (const captionAt of ['bottom', 'middle', 'top'] as const) {
+            for (const [keySize, captionSize] of [[0.07, 0.09], [0.065, 0.085], [0.035, 0.045]]) {
+              const p: Project = {
+                ...project({ appSafe: true, band }, { layouts: [{ id: 'l', start: 0, end: 30, layout: 'camera-large' }] }, padding),
+                effects: { motionBlur: 0, keystrokes: { show: true, position: keyAt, size: keySize } },
+                transcript: { provider: 'local', model: 'm', createdAt: '', segments: [{ ...LONG, start: 1, end: 4 }] },
+                captions: caps({ position: captionAt, size: captionSize })
+              }
+              const b = followGeometry('camera-large', p, W, H, 1920, 1080).band!
+              const a = area(p, 2)!
+              const ctx = recordingContext()
+              calls.length = 0
+              drawKeystrokes(ctx, W, H, 2, p, cursor, a)
+              const box = drawnKeys()
+              const caption = captionBlockAt(ctx, p, 2, W, H, a)!
+              const what = `padding ${padding}, band ${band}, keys ${keyAt} ${keySize}, caption ${captionAt} ${captionSize}`
+              expect(box.y, what).toBeGreaterThanOrEqual(Math.max(a.y, b.y + b.h) - 1e-6)
+              expect(box.y + box.h, what).toBeLessThanOrEqual(a.y + a.h + 1e-6)
+              expect(box.y + box.h <= caption.top + 1e-6 || box.y >= caption.bottom - 1e-6, what).toBe(true)
+              // Shrunk about its own centre across: still centred on the frame.
+              expect(box.x + box.w / 2, what).toBeCloseTo(W / 2, 6)
+              if (box.moved) shrunk++
+              // The default sizes fit as they are: drawn exactly as before.
+              if (keySize === 0.035) expect(box.moved, what).toBe(false)
+            }
+          }
+        }
+      }
+    }
+    expect(shrunk).toBeGreaterThan(0)
+  })
 })
 
 const measure = (text: string, px: number, weight: number): number => text.length * px * (weight >= 700 ? 0.56 : 0.5)

@@ -1107,7 +1107,7 @@ At 1080×1920 the area is 864×1248 px from (65, 211); under a top band at paddi
 | What | Rule with a text area (each an optional last parameter; `undefined` gives today's result) |
 |---|---|
 | Captions: `captionMetrics`, `captionLayout`, `placeChunk` (`src/shared/captions/layout.ts:290, 306, 407`) | Lines centred on the frame, `maxWidth = min(today's, 2·min(W/2 − area.x, area.x + area.w − W/2)) − 2·padX` (0.72W: 778 px at 1080 wide). `top`: `area.y + 0.02·u`; `middle`: the area's centre; `bottom`: `area.y + area.h − 0.02·u − height` (the area already keeps clear of the apps, so the 16:9 margins of `placeChunk` are not added). Font size unchanged (`size·min(w, h)`). `captionsLayer.ts`'s layout cache keys on the area. |
-| Key presses: `drawKeystrokes` (`textOverlays.ts:65`), `captionBlockAt` (`captionsLayer.ts:209`) | `top` / `bottom` inside the area, still stacking against a caption at the same edge (both get the same area). |
+| Key presses: `drawKeystrokes` (`textOverlays.ts:65`), `captionBlockAt` (`captionsLayer.ts:209`) | `top` / `bottom` inside the area, still stacking against a caption at the same edge (both get the same area). When the area is too short for both (a large camera band with big keys and a big caption), the keys shrink about their centre into the room the caption leaves on their side, like the logo, so they never cover the camera or the caption. |
 | Logo: `watermarkRect` (`src/shared/engine/watermark.ts:89`) | Corners inside the area, the margin applied within it; `center` unchanged. |
 | Lower-third titles: `titleLayout` (`src/shared/render/titleCards.ts:219`) | The band's bottom at the area's bottom, its left at `max(TITLE_SAFE·u, area.x)`, width ≤ `area.w`. Centred and big cards are unchanged (they wrap to the frame). |
 
@@ -1788,6 +1788,10 @@ the correct thing and the difference is listed here.
 
 - Key presses use the captions' `0.02·u` inset and are kept inside the area across; a logo in a
   corner shrinks to fit the area; the new export `TEXT_INSET = 0.02`.
+- Key presses also shrink to fit the room a caption leaves them in the area (`keepInArea` with no
+  floor, while there is any room). Stacking alone put the largest keys (7%) over the largest
+  caption (9%) above the area's top, over a large camera band; a middle caption left them even
+  less room. The default sizes never shrink.
 - While following, the card's radius and shadow are not shrunk with `cam.scale` (a view scale below
   1 still spans the slot one way).
 - `webcamLayer` keeps calling `sceneCameraBox` (§6.1) rather than reading `fc.layout.camera`.

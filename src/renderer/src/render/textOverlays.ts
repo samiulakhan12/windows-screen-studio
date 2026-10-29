@@ -3,7 +3,7 @@ import { clamp } from '../../../shared/engine/math'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { noFadeOutFrom, planOf } from '../../../shared/engine/freeze'
 import { ANNOTATION_FADE, ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
-import { TEXT_INSET } from '../../../shared/render/safeZones'
+import { keepInArea, TEXT_INSET } from '../../../shared/render/safeZones'
 import { captionBlockAt } from './captionsLayer'
 import { projectFontStack } from './fontLoader'
 
@@ -64,7 +64,8 @@ export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, proje
  * Keystroke overlay: the latest shortcut(s) as keycap pills, bottom or top centre,
  * fading out ~1.2 s after the last press. Presses in quick succession stack in one row.
  * A caption at the same edge keeps its place and the keys move inside it, so neither covers the other.
- * In a text area (docs/design/vertical-video.md §6.3) the keys go to its top or bottom, kept inside it across.
+ * In a text area (docs/design/vertical-video.md §6.3) the keys go to its top or bottom, kept inside it across,
+ * and shrink into the room a caption leaves them when the area is too short for both.
  */
 export function drawKeystrokes(
   ctx: Ctx,
@@ -103,10 +104,10 @@ export function drawKeystrokes(
   const margin = Math.min(w, h) * 0.05
   let x0 = (w - boxW) / 2
   let y0 = settings.position === 'top' ? margin : h - margin - boxH
+  // The area keeps clear of the apps already: a small inset from its edge (never nearer the frame's
+  // edge than today, where the area's edge is the frame's); centred on the frame as far as the area allows.
+  const inset = Math.min(w, h) * TEXT_INSET
   if (area) {
-    // The area keeps clear of the apps already: a small inset from its edge (never nearer the frame's
-    // edge than today, where the area's edge is the frame's); centred on the frame as far as the area allows.
-    const inset = Math.min(w, h) * TEXT_INSET
     y0 = settings.position === 'top' ? Math.max(y0, area.y + inset) : Math.min(y0, area.y + area.h - inset - boxH)
     x0 = boxW > area.w ? area.x + (area.w - boxW) / 2 : clamp(x0, area.x, area.x + area.w - boxW)
   }
@@ -115,6 +116,23 @@ export function drawKeystrokes(
   const gap = Math.min(w, h) * 0.015
   if (caption?.position === 'bottom' && settings.position === 'bottom') y0 = Math.min(y0, caption.top - gap - boxH)
   if (caption?.position === 'top' && settings.position === 'top') y0 = Math.max(y0, caption.bottom + gap)
+  if (area) {
+    // An area too short for the keys beside the caption (a large camera band, big text): like the
+    // logo, they shrink into the room the caption leaves on their side, never covering the camera or the caption.
+    let top = area.y + inset
+    let bottom = area.y + area.h - inset
+    if (caption?.position === 'bottom' || (caption?.position === 'middle' && settings.position === 'top')) bottom = Math.min(bottom, caption.top - gap)
+    else if (caption) top = Math.max(top, caption.bottom + gap)
+    // (Placed at the area's edge above, the box may miss it by a rounding error: that is not leaving it.)
+    if (bottom > top && (y0 < top - 1e-6 || y0 + boxH > bottom + 1e-6)) {
+      const fit = keepInArea({ x: x0, y: y0, w: boxW, h: boxH }, { x: x0, y: top, w: boxW, h: bottom - top }, 0)
+      const cx = x0 + boxW / 2
+      const cy = y0 + boxH / 2
+      ctx.translate(cx + fit.dx, cy + fit.dy)
+      ctx.scale(fit.scale, fit.scale)
+      ctx.translate(-cx, -cy)
+    }
+  }
 
   ctx.globalAlpha = view.alpha
   ctx.shadowColor = 'rgba(0,0,0,0.35)'
