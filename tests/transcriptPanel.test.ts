@@ -299,4 +299,14 @@ describe('the Transcript tab', () => {
     press('Delete')
     expect(log.notices).toEqual(['Too short to cut on its own. Select more words'])
   })
+
+  it('Ctrl+A selects every word on a Cyrillic, Greek or Bangla layout too, and keeps it from the editor', () => {
+    useProject(10, captions(3))
+    for (const key of ['ф', 'α', 'ো', 'A']) {
+      unmount()
+      render()
+      expect(press(key, { ctrl: true, code: 'KeyA' })).toBe(true)
+      expect(selectedWords()).toHaveLength(9)
+    }
+  })
 })

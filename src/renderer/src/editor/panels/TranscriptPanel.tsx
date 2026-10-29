@@ -13,6 +13,7 @@ import {
   type SelectionKey,
   type WordSelection
 } from '../../../../shared/editor/transcriptSelection'
+import { eventKeyName } from '../../../../shared/editor/shortcuts'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration } from '../../../../shared/engine/timeline'
@@ -251,7 +252,8 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     } else if (plain && !e.shiftKey && e.key === 'Enter') {
       own()
       if (sel) goTo(sel.focus)
-    } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'a') {
+    } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && eventKeyName(e) === 'A') {
+      // Read as the editor reads it: Ctrl+A on any layout (Cyrillic, Greek, Bangla) is the A key.
       own()
       setSel(selectAll(words))
     } else if (plain && e.key === 'Escape' && sel) {
