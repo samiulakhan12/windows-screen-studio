@@ -183,7 +183,8 @@ function TranscriptEditor({
   const find = (): void => {
     const items = reviewSuggestions(words, store.state.clips, store.state.duration, transcript.language)
     setReview(items)
-    if (items.length === 0) onNotice('No fillers or retakes found')
+    // Said either way (the list appears below the words, out of the focus's way).
+    onNotice(items.length > 0 ? `Found ${plural(items.length, 'filler or retake', 'fillers and retakes')}` : 'No fillers or retakes found')
   }
 
   const removeSuggestions = (items: EditSuggestion[]): number => {

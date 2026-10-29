@@ -369,4 +369,25 @@ describe('the Transcript tab', () => {
     press('ArrowRight')
     expect(selectedWords()).toEqual([1])
   })
+
+  it('Find says what it found', () => {
+    useProject(10, [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works', 2.3, 2.6],
+        ['uh', 2.9, 3.1],
+        ['fine.', 3.4, 3.8]
+      ])
+    ])
+    render()
+    click('Find fillers and retakes')
+    expect(log.notices).toEqual(['Found 2 fillers and retakes'])
+    unmount()
+    useProject(10, captions(1))
+    render()
+    click('Find fillers and retakes')
+    expect(log.notices.at(-1)).toBe('No fillers or retakes found')
+  })
 })

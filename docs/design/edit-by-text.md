@@ -387,8 +387,8 @@ Review list (after Find), section **Fillers and retakes (6)**:
 > [Remove all] [Close]
 
 Notices: "Cut 3 words (1.2 s)", "Cut 1 word (0.4 s)", "Restored 3 words", "Already cut. Press
-Restore to bring it back", "That would cut the whole video", "Removed 6 (8.2 s)", "No fillers or
-retakes found".
+Restore to bring it back", "That would cut the whole video", "Removed 6 (8.2 s)", "Found 6 fillers
+and retakes" (or "Found 1 filler or retake"), "No fillers or retakes found".
 
 ---
 
