@@ -518,6 +518,8 @@ export function LocalAction({
       const code = localErrorCode(job!.error!)
       const failedModel = speechModel(job?.local?.model) ? (job!.local!.model as SpeechModelId) : view.id
       const quicker = code === 'memory' ? quickerModel(failedModel) : null
+      // As Cancel goes the card's button catches the focus; a card without one gives it to Dismiss.
+      const action = code === 'damaged' || !!quicker || code === 'crashed' || code === 'stalled'
       return box(
         <>
           <div className="captions-error" role="alert">
@@ -546,7 +548,7 @@ export function LocalAction({
                   {SPEECH_COPY.generateAgain}
                 </button>
               )}
-              <button type="button" className="link" onClick={clearTranscriptionError}>
+              <button ref={action ? undefined : primaryRef} type="button" className="link" onClick={clearTranscriptionError}>
                 Dismiss
               </button>
             </div>

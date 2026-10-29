@@ -657,7 +657,7 @@ describe('CaptionsPanel: captions on this PC', () => {
     ['protocol', localErrorMessage('protocol'), null],
     ['outdated', localErrorMessage('outdated', { model: 'whisper-base' }), null],
     ['other', 'No speech was found in this recording', null]
-  ])('a local error (%s) offers the button localErrorCode chooses', async (_code, message, button) => {
+  ])('a local error (%s) offers the button localErrorCode chooses, which takes a focus that fell to the page (else Dismiss does)', async (_code, message, button) => {
     replies.providers = () => Promise.resolve([])
     replies.speech = () => Promise.resolve(speechState({ statuses: { 'whisper-base': { state: 'installed' } } }))
     let out = await show()
@@ -669,6 +669,15 @@ describe('CaptionsPanel: captions on this PC', () => {
     expect(has(out, `Captions could not be made: ${message}`)).toBe(true)
     const offered = buttons(out).filter((b) => b !== 'Dismiss' && !b.includes('·') && b !== 'Manage speech models…')
     expect(offered).toEqual(button ? [button] : [])
+    // Cancel went as the error came: its button has the focus, else Dismiss; once dismissed, Generate captions.
+    const last = (): string => textOf(focused[focused.length - 1]?.props.children).trim()
+    expect(last()).toBe(button ?? 'Dismiss')
+    if (!button) {
+      click(out, 'Dismiss')
+      out = render(m.panel)
+      expect(local(out)?.props['data-state']).toBe('ready')
+      expect(last()).toBe('Generate captions')
+    }
     if (button === 'Download again (60 MB)') {
       click(out, button)
       expect(calls.download).toEqual(['whisper-base'])
