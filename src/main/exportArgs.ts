@@ -139,10 +139,17 @@ export function chapterMetadata(chapters: readonly OutputChapter[], duration: nu
   return entries.length ? [';FFMETADATA1', ...entries, ''].join('\n') : null
 }
 
-/** Input arguments of the chapters file (after `inputs` other inputs) and its mapping onto the output. */
+/**
+ * Input arguments of the chapters file (after `inputs` other inputs) and its mapping onto the
+ * output. Only the project's chapters, and no input's tags: ffmpeg would otherwise copy the
+ * chapters of the first input that has any, and an M4A's tags from its sound file (an imported
+ * phone video's GPS location, author, chapters at times from before the cuts). `:g` keeps the
+ * titles of the project's chapters, which a bare `-map_metadata -1` would drop.
+ */
 function chapterArgs(io: ExportIo, inputs: number): { input: string[]; map: string[] } {
-  if (!io.chapters) return { input: [], map: [] }
-  return { input: ['-f', 'ffmetadata', '-i', io.chapters], map: ['-map_chapters', String(inputs)] }
+  const noTags = ['-map_metadata:g', '-1']
+  if (!io.chapters) return { input: [], map: [...noTags, '-map_chapters', '-1'] }
+  return { input: ['-f', 'ffmetadata', '-i', io.chapters], map: [...noTags, '-map_chapters', String(inputs)] }
 }
 
 /** Number of inputs in an ffmpeg argument list so far. */

@@ -256,7 +256,8 @@ export const hitTimeCap = (duration: number | null, measured: number): boolean =
 
 /**
  * proxyArgs' arguments turned into the import's: the chosen streams mapped by index (never
- * `0:v:0`, which can be cover art), the plan's filters first, and the length cap (importCap).
+ * `0:v:0`, which can be cover art), the plan's filters first, none of the file's metadata or
+ * chapters, and the length cap (importCap).
  * Throws when proxyArgs' shape changed, so a test catches it.
  */
 export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'videoStream' | 'audioStream' | 'preFilters' | 'duration'>): string[] {
@@ -288,7 +289,9 @@ export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'vide
     if (vf < 0) throw new Error('proxyArgs no longer sets -vf')
     args[vf + 1] = [...plan.preFilters, args[vf + 1]].join(',')
   }
-  args.splice(args.length - 1, 0, '-t', String(importCap(plan.duration)))
+  // None of the file's tags (a phone's GPS location, an author, comments) or chapters: they would
+  // ride along into the project's exports, the chapters at times from before the cuts.
+  args.splice(args.length - 1, 0, '-map_metadata', '-1', '-map_chapters', '-1', '-t', String(importCap(plan.duration)))
   return args
 }
 

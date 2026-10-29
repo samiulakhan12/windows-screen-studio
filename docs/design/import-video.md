@@ -440,6 +440,11 @@ smaller: *There is not enough free space for this video: it needs about 5.4 GB a
   nested quantifiers), and every number it reads is checked to be finite and in range.
 - **Names**: the file name is shown as text (React escapes it), stored after cleaning (§4.4) and
   never used to build a path.
+- **Metadata**: the editing copy keeps none of the file's tags (a phone's GPS location, make and
+  model, author, comments) or chapters (`-map_metadata -1 -map_chapters -1` in `importArgs`).
+  Exports take only the project's own chapters and no input's tags (`chapterArgs` in
+  `exportArgs.ts`), which also covers projects imported before this rule; a failed encode logs
+  ffmpeg's report without its `Metadata:` blocks (`withoutMetadata`).
 - Not weakened: `security.ts`, the sandbox, `guardWebContents` (a file dropped outside the drop
   zone still cannot navigate the window), the media protocol's file-name rule (`screen.mp4`).
 
