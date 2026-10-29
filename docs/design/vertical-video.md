@@ -575,6 +575,10 @@ the `projects:duplicateProgress` event:
     `projects.ts:177`). Until then such a folder is invisible: no `project.json` (not listed by
     `listProjects`, `projects.ts:142`) and no raw bytes (not listed by `listUnfinished`,
     `projects.ts:307`).
+    **Quit or closed window during a copy**: the copy is not finished and its folder stays, so at
+    start-up `removeAbandonedCopies()` removes every such marked folder whatever its age (one
+    instance runs at a time and no copy has started yet), with the same `project.json` and raw-file
+    guard.
 
 | File in the source folder | In the copy | Why |
 |---|---|---|
@@ -1682,7 +1686,6 @@ Regression at integration: `render`, `crop`, `camera`, `camera-director`, `expor
   when the cursor is idle; never required.
 - **Incremental plan rebuilds** during drags on very long recordings.
 - **Several vertical cuts from one recording** (LT-02 highlight clips) built on Duplicate.
-- **Cleaning up half-made copies at start-up**, not only at the next copy.
 
 ---
 

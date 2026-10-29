@@ -29,7 +29,7 @@ const MAIN = { id: 1, isDestroyed: () => false, sent: [] as [string, unknown][],
 const OTHER = { id: 2, isDestroyed: () => false, send: () => undefined }
 vi.mock('../src/main/windows', () => ({ getMainWindow: () => ({ isDestroyed: () => false, webContents: MAIN }) }))
 
-const { COPYING_MARK, LINKED_MEDIA, copiedFile, duplicateProject, linkAllowed, removeStaleCopies } = await import('../src/main/projectCopy')
+const { COPYING_MARK, LINKED_MEDIA, copiedFile, duplicateProject, linkAllowed, removeAbandonedCopies, removeStaleCopies } = await import('../src/main/projectCopy')
 const { registerProjectsIpc } = await import('../src/main/projectsIpc')
 const { projectDir, projectsRoot } = await import('../src/main/projects')
 const { createProject } = await import('../src/shared/engine/project')
@@ -383,6 +383,29 @@ describe('when links cannot be made, the drive is full, or the copy is stopped (
     folder('rec-garbled-new', '{not json', [], now - 60_000)
     expect(await removeStaleCopies(now)).toBe(2)
     expect(folders()).toEqual(['rec-finished', 'rec-garbled-new', 'rec-recent', 'rec-recording', 'rec-unmarked'])
+  })
+
+  it('at start-up removes every copy left half made, however recent (a quit cut it short); never a project or a recording', async () => {
+    rmSync(projectsRoot(), { recursive: true, force: true })
+    const folder = (id: string, mark: string | null, files: string[] = []): void => {
+      const dir = projectDir(id)
+      mkdirSync(dir, { recursive: true })
+      for (const f of files) writeFileSync(path.join(dir, f), 'x')
+      if (mark !== null) writeFileSync(path.join(dir, COPYING_MARK), mark)
+    }
+    const marker = JSON.stringify({ source: SOURCE, startedAt: new Date(Date.now() - 30_000).toISOString() })
+    folder('rec-quit', marker, ['screen.mp4', 'webcam.mp4'])
+    folder('rec-garbled', '{not json', ['screen.mp4'])
+    folder('rec-finished', marker, ['project.json'])
+    folder('rec-recording', marker, ['screen.webm'])
+    folder('rec-unmarked', null, ['screen.mp4'])
+    expect(await removeAbandonedCopies()).toBe(2)
+    expect(folders()).toEqual(['rec-finished', 'rec-recording', 'rec-unmarked'])
+    // The app does this as it starts, after the projects' IPC is set up and before its window opens.
+    const main = readFileSync(path.join(__dirname, '../src/main/index.ts'), 'utf8')
+    const at = main.indexOf('removeAbandonedCopies()')
+    expect(at).toBeGreaterThan(main.indexOf('registerProjectsIpc()'))
+    expect(at).toBeLessThan(main.indexOf('openMainWindow()\n'))
   })
 
   it('cleans them up before making a copy', async () => {

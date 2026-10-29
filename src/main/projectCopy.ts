@@ -279,6 +279,15 @@ async function copyInPieces(from: string, to: string, signal: AbortSignal | unde
 }
 
 /**
+ * Removes every copy left half made, however recent (at start-up); how many. One instance runs at
+ * a time and no copy has started yet, so a marked folder is one that quitting, closing the window
+ * or a crash cut short. A folder that became a project, or holds a recording, is kept.
+ */
+export function removeAbandonedCopies(): Promise<number> {
+  return removeStaleCopies(Number.POSITIVE_INFINITY)
+}
+
+/**
  * Removes copies a crash left half made (marked, more than an hour old, without project.json or raw files); how many.
  * Only in the current projects root. The marker's start time decides, or the folder's time when the marker cannot be read.
  */

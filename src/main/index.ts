@@ -12,6 +12,7 @@ import { disposeExport, registerExportIpc } from './exportIpc'
 import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
 import { registerNotesIpc } from './notes/notesIpc'
 import { registerPrefsIpc } from './prefsIpc'
+import { removeAbandonedCopies } from './projectCopy'
 import { projectsRoot, setLegacyProjectRoots } from './projects'
 import { registerProjectsIpc } from './projectsIpc'
 import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp, registerRecordingIpc } from './recordingIpc'
@@ -51,6 +52,8 @@ if (!app.requestSingleInstanceLock()) {
     // Speaker notes (teleprompter): Home, the notes window and the recording bar.
     registerNotesIpc()
     registerProjectsIpc()
+    // Copies that quitting or a crash cut short: none can be running yet (one instance, no window).
+    void removeAbandonedCopies().catch((err: unknown) => console.warn('Could not remove copies left half made:', err))
     registerAssetIpc()
     registerAnalysisIpc()
     registerPrefsIpc()
