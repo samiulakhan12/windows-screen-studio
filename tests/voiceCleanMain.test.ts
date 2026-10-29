@@ -402,11 +402,25 @@ describe('IPC and export', () => {
     expect(ensure).not.toHaveBeenCalled()
   })
 
-  it('cleans nothing when the stems were dropped for a missing file (the preview plays the mixed sound then)', async () => {
+  it('cleans nothing when the stems were dropped for a missing system sound file (the preview plays the mixed sound then)', async () => {
+    const dir = path.join(h.root, 'videos', 'Flown', 'nosystem')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(path.join(dir, 'mic.m4a'), 'mic')
     const ensure = vi.fn(async () => 'voice-0000000000000000.m4a')
     const requested = job('normal', { mic: 1, system: 1 })
-    const fellBack: SoundInputs = { job: job('normal'), audioInput: '/p/screen.mp4' }
-    expect(await cleanVoiceInputs(fellBack, 'exp', requested, { ensure })).toBe(fellBack)
+    const fellBack: SoundInputs = { job: job('normal'), audioInput: path.join(dir, 'screen.mp4') }
+    expect(await cleanVoiceInputs(fellBack, 'nosystem', requested, { ensure })).toBe(fellBack)
+    expect(ensure).not.toHaveBeenCalled()
+  })
+
+  it('stops the export when the microphone file it cleans is gone (the preview still plays the cleaned stem)', async () => {
+    const dir = path.join(h.root, 'videos', 'Flown', 'nomic')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(path.join(dir, 'system.m4a'), 'system')
+    const ensure = vi.fn(async () => 'voice-0000000000000000.m4a')
+    const requested = job('normal', { mic: 1, system: 1 })
+    const fellBack: SoundInputs = { job: job('normal'), audioInput: path.join(dir, 'screen.mp4') }
+    await expect(cleanVoiceInputs(fellBack, 'nomic', requested, { ensure })).rejects.toThrow(`${VOICE_COPY.failed} ${VOICE_COPY.missingMic}`)
     expect(ensure).not.toHaveBeenCalled()
   })
 
