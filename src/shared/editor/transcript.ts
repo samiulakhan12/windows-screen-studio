@@ -82,19 +82,21 @@ export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T)
 /**
  * The words of a caption as shown (its text split on spaces), timed by its word timings: the
  * shown words are matched to the timed words (longest common subsequence of their normalised
- * forms, so a fixed typo or an added word keeps the rest exact); unmatched words share the time
- * between their matched neighbours by length and are `estimated`, as are words matched to a stored
- * guess (anchorCutWords), which keep its `deleted` mark. Times stay inside the caption.
+ * forms, so a fixed typo or an added word keeps the rest exact; a word with nothing left once
+ * normalised, such as a dash, matches only the same text); unmatched words share the time between
+ * their matched neighbours by length and are `estimated`, as are words matched to a stored guess
+ * (anchorCutWords), which keep its `deleted` mark. Times stay inside the caption.
  */
 export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const texts = seg.text.split(' ').filter(Boolean)
   if (texts.length === 0) return []
   const timed = (seg.words ?? []).filter((w) => w.text.trim())
   if (timed.length === 0) return spread(texts, seg.start, seg.end)
-  const keyA = texts.map(normalizeWord)
-  const keyB = timed.map((w) => normalizeWord(w.text))
+  const keyOf = (text: string): string => normalizeWord(text) || `\u0000${text.trim()}`
+  const keyA = texts.map(keyOf)
+  const keyB = timed.map((w) => keyOf(w.text))
   // Word timings may split a shown word or join two, but most match one to one.
-  const pairs = lcsPairs(keyA, keyB, (x, y) => x === y && x !== '')
+  const pairs = lcsPairs(keyA, keyB, (x, y) => x === y)
   const out: TimedText[] = new Array(texts.length)
   const inside = (t: number): number => clamp(t, seg.start, seg.end)
   const matched = new Map(pairs)

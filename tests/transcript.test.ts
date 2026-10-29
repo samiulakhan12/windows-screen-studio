@@ -126,6 +126,29 @@ describe('alignCaptionWords', () => {
     expect(w[0].start).toBe(1)
     expect(w[1].end).toBe(2)
   })
+
+  it('matches a word with nothing left once normalised (a dash, "&") only to the same text, with its time and mark', () => {
+    const w = alignCaptionWords({
+      id: 'a',
+      start: 0,
+      end: 3,
+      text: 'Tom & Jerry - fun',
+      words: [
+        { text: 'Tom', start: 0, end: 0.5 },
+        { text: '&', start: 0.6, end: 0.8, estimated: true, deleted: true },
+        { text: 'Jerry', start: 1, end: 1.5 },
+        { text: '—', start: 1.6, end: 1.8 },
+        { text: 'fun', start: 2, end: 2.5 }
+      ]
+    })
+    expect(w.map((x) => [x.text, x.start, x.end, x.estimated, !!x.deleted])).toEqual([
+      ['Tom', 0, 0.5, false, false],
+      ['&', 0.6, 0.8, true, true],
+      ['Jerry', 1, 1.5, false, false],
+      ['-', 1.5, 2, true, false],
+      ['fun', 2, 2.5, false, false]
+    ])
+  })
 })
 
 describe('transcriptWords', () => {

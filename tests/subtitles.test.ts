@@ -601,6 +601,39 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     expect(marked(s.state)).toEqual(['um,'])
     expect(srt(s.state)).toEqual(['So, I think a lot works.'])
   })
+
+  /** Find fillers and retakes, then Remove all (TranscriptPanel's removeSuggestions): the cuts and the marks in one update. */
+  const removeAll = (s: EditStore<Project>): void => {
+    const w = wordsOf(s.state)
+    const found = reviewSuggestions(w, s.state.clips, DURATION, 'en')
+    expect(found.length).toBeGreaterThan(0)
+    s.update((p) => {
+      const cut = applySuggestions(p.clips, w, found, p.duration).clips
+      return { ...p, clips: same(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, found.map((x) => [x.first, x.last] as const)) }
+    })
+  }
+
+  it('a dash, "&" or "..." deleted in the tab goes with its words, in the tab and the subtitles, also after Merge', () => {
+    for (const [text, kept] of [
+      ['I - I think we should open the settings.', 'I think we should open the settings.'],
+      ['We need to - we need to open the settings.', 'we need to open the settings.'],
+      ['I think — I think we should um open the settings.', 'I think we should open the settings.'],
+      ['So ... um, I think it works.', 'So I think it works.']
+    ]) {
+      const s = open([seg('g', 2, 8, text)])
+      if (text.startsWith('So')) tabDelete(s, '...', 'um,')
+      else removeAll(s)
+      expect(srt(s.state)).toEqual([kept])
+    }
+    // "Tom & Jerry" deleted: all three struck through, so Delete has nothing left to cut there.
+    const s = open([seg('g', 10, 14, 'I watched Tom & Jerry with my kids today.'), seg('n', 15, 17, 'Then press Start.')])
+    tabDelete(s, 'Tom', 'Jerry')
+    expect(struck(s.state)).toEqual(['Tom', '&', 'Jerry'])
+    expect(srt(s.state)).toEqual(['I watched with my kids today.', 'Then press Start.'])
+    editCaptions(s, (list) => mergeWithNext(list, 'g')!)
+    expect(marked(s.state)).toEqual(['Tom', '&', 'Jerry'])
+    expect(srt(s.state)).toEqual(['I watched with my kids today. Then press Start.'])
+  })
 })
 
 describe('subtitle files', () => {
