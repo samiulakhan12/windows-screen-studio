@@ -55,21 +55,28 @@ function spread(texts: string[], from: number, to: number): TimedText[] {
   })
 }
 
-/** Longest common subsequence of two lists, as matched index pairs in order. */
-export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T) => boolean = Object.is): [number, number][] {
+/**
+ * Longest common subsequence of two lists, as matched index pairs in order: of the longest ones,
+ * the one with the fewest pairs `avoid` gives, then the one matching earliest.
+ */
+export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T) => boolean = Object.is, avoid: (i: number, j: number) => boolean = () => false): [number, number][] {
   const n = a.length
   const m = b.length
-  const table: Uint16Array[] = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1))
+  // A pair scores more than all the pairs avoided can take off, so length comes first.
+  const unit = Math.min(n, m) + 1
+  const score = (i: number, j: number): number => (avoid(i, j) ? unit - 1 : unit)
+  const table: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1))
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      table[i][j] = same(a[i], b[j]) ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
+      const skip = Math.max(table[i + 1][j], table[i][j + 1])
+      table[i][j] = same(a[i], b[j]) ? Math.max(skip, table[i + 1][j + 1] + score(i, j)) : skip
     }
   }
   const pairs: [number, number][] = []
   let i = 0
   let j = 0
   while (i < n && j < m) {
-    if (same(a[i], b[j])) {
+    if (same(a[i], b[j]) && table[i][j] === table[i + 1][j + 1] + score(i, j)) {
       pairs.push([i, j])
       i++
       j++
@@ -85,7 +92,9 @@ export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T)
  * forms, so a fixed typo or an added word keeps the rest exact; a word with nothing left once
  * normalised, such as a dash, matches only the same text); unmatched words share the time between
  * their matched neighbours by length and are `estimated`, as are words matched to a stored guess
- * (anchorCutWords), which keep its `deleted` mark. Times stay inside the caption.
+ * (anchorCutWords). A `deleted` mark comes with its stored word, and of the longest matchings the
+ * one pairing the fewest shown words with deleted ones is taken: when the text loses one of two
+ * equal words, the one left is the take still in the video. Times stay inside the caption.
  */
 export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const texts = seg.text.split(' ').filter(Boolean)
@@ -96,7 +105,7 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const keyA = texts.map(keyOf)
   const keyB = timed.map((w) => keyOf(w.text))
   // Word timings may split a shown word or join two, but most match one to one.
-  const pairs = lcsPairs(keyA, keyB, (x, y) => x === y)
+  const pairs = lcsPairs(keyA, keyB, (x, y) => x === y, (_, j) => timed[j].deleted === true)
   const out: TimedText[] = new Array(texts.length)
   const inside = (t: number): number => clamp(t, seg.start, seg.end)
   const matched = new Map(pairs)
@@ -250,8 +259,9 @@ export function captionWordTimes(seg: CaptionSegment, deleted: (i: number) => bo
  * guess, whether or not an earlier cut had already cut its time; its caption's words get their
  * times stored (captionWordTimes, the other guesses still guesses). The deleted words then stay
  * cut, in the tab and out of the subtitle files (cutFlags), when the caption's text or times are
- * edited later, and a later timeline cut still never drops another guess. The same object when
- * nothing is marked.
+ * edited later (and the text keeps the take still in the video when it loses one of two equal
+ * words: alignCaptionWords), and a later timeline cut still never drops another guess. The same
+ * object when nothing is marked.
  */
 export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[], spans: readonly WordSpan[] = []): Transcript | undefined {
   if (!transcript) return transcript

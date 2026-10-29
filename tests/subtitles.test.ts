@@ -613,6 +613,45 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     })
   }
 
+  it('a repeat removed in the tab, then taken out of the caption\'s text (by hand or Fix captions): the words left are the take still in the video', () => {
+    const takes = [
+      { text: 'I', start: 2.0, end: 2.1 },
+      { text: 'think', start: 2.1, end: 2.5 },
+      { text: 'I', start: 3.0, end: 3.1 },
+      { text: 'think', start: 3.1, end: 3.5 },
+      { text: 'we', start: 3.6, end: 3.8 },
+      { text: 'should', start: 3.8, end: 4.1 },
+      { text: 'open', start: 4.2, end: 4.5 },
+      { text: 'the', start: 4.5, end: 4.6 },
+      { text: 'settings.', start: 4.6, end: 5.2 }
+    ]
+    const cases: [string, string, string[], CaptionSegment['words']?][] = [
+      ['I think I think we should open the settings.', 'I think we should open the settings.', ['I', 'think']],
+      ['Open the the settings menu now.', 'Open the settings menu now.', ['the']],
+      ['I think I think we should open the settings.', 'I think we should open the settings.', ['I', 'think'], takes]
+    ]
+    for (const [text, cleaned, repeat, words] of cases) {
+      const s = open([seg('g', 2, 6, text, words)], words ? 'openai' : 'gemini')
+      removeAll(s)
+      expect(struck(s.state)).toEqual(repeat)
+      expect(srt(s.state)).toEqual([cleaned])
+      // CaptionsPanel's text edit.
+      editCaptions(s, ([c]) => [withCaptionText(c, cleaned)])
+      expect(struck(s.state)).toEqual([])
+      expect(srt(s.state)).toEqual([cleaned])
+    }
+    // Captions tab > Fix captions drops the stutter (it keeps the word timings, the number of words changed).
+    const s = open([seg('g', 2, 6, 'I think I think we should open the settings.')])
+    removeAll(s)
+    const before = s.state.transcript!.segments
+    const request = validateTextRequest({ task: 'cleanup', segments: before })
+    const answer = validateSegmentsAnswer('cleanup', request.segments, { segments: [{ id: 'g', text: 'I think we should open the settings.' }] })
+    editCaptions(s, () => applyTextResult(before, answer)!)
+    expect(s.state.transcript!.segments[0].words).toBeDefined()
+    expect(struck(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual(['I think we should open the settings.'])
+  })
+
   it('a dash, "&" or "..." deleted in the tab goes with its words, in the tab and the subtitles, also after Merge', () => {
     for (const [text, kept] of [
       ['I - I think we should open the settings.', 'I think we should open the settings.'],

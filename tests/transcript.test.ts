@@ -19,7 +19,7 @@ import {
   wordsRange,
   type TranscriptWord
 } from '../src/shared/editor/transcript'
-import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
+import type { CaptionSegment, CaptionWord, Clip, Project, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1, id = `c${start}`): Clip => ({ id, start, end, speed })
 
@@ -53,6 +53,26 @@ describe('lcsPairs', () => {
       [3, 3]
     ])
     expect(lcsPairs([], ['a'])).toEqual([])
+  })
+
+  it('takes, of the longest matchings, the one with the fewest pairs to avoid, then the earliest', () => {
+    const shown = ['i', 'think', 'we']
+    const stored = ['i', 'think', 'i', 'think', 'we']
+    expect(lcsPairs(shown, stored)).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 4]
+    ])
+    expect(lcsPairs(shown, stored, Object.is, (_, j) => j < 2)).toEqual([
+      [0, 2],
+      [1, 3],
+      [2, 4]
+    ])
+    // Never at the cost of length.
+    expect(lcsPairs(['a', 'b'], ['a', 'b'], Object.is, (i) => i === 0)).toEqual([
+      [0, 0],
+      [1, 1]
+    ])
   })
 })
 
@@ -125,6 +145,30 @@ describe('alignCaptionWords', () => {
     const w = alignCaptionWords(seg('a', 1, 2, 'a b', [['a', 0.5, 1.2], ['b', 1.5, 2.6]]))
     expect(w[0].start).toBe(1)
     expect(w[1].end).toBe(2)
+  })
+
+  it('gives the word left of two equal ones the time of the one not deleted, heard or a guess', () => {
+    // "I think" said twice, the first take deleted in the tab, then the repeat taken out of the text.
+    const takes = (estimated: boolean): CaptionWord[] =>
+      timed([
+        ['I', 2, 2.1],
+        ['think', 2.1, 2.5],
+        ['I', 3, 3.1],
+        ['think', 3.1, 3.5],
+        ['we', 3.6, 3.8]
+      ]).map((w, k) => ({ ...w, ...(estimated ? { estimated: true as const } : {}), ...(k < 2 ? { deleted: true as const } : {}) }))
+    for (const estimated of [false, true]) {
+      const w = alignCaptionWords({ id: 'a', start: 2, end: 4, text: 'I think we', words: takes(estimated) })
+      expect(w.map((x) => [x.start, x.end, x.estimated, !!x.deleted])).toEqual([
+        [3, 3.1, estimated, false],
+        [3.1, 3.5, estimated, false],
+        [3.6, 3.8, estimated, false]
+      ])
+    }
+    // The second take deleted: the first. Nothing deleted: the first, as ever.
+    const second = takes(false).map((w, k) => (k === 2 || k === 3 ? { ...w, deleted: true as const } : { text: w.text, start: w.start, end: w.end }))
+    expect(alignCaptionWords({ id: 'a', start: 2, end: 4, text: 'I think we', words: second })[0]).toMatchObject({ start: 2, end: 2.1 })
+    expect(alignCaptionWords({ id: 'a', start: 2, end: 4, text: 'I think we', words: takes(false).map(({ text, start, end }) => ({ text, start, end })) })[0]).toMatchObject({ start: 2, end: 2.1 })
   })
 
   it('matches a word with nothing left once normalised (a dash, "&") only to the same text, with its time and mark', () => {
