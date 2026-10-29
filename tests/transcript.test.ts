@@ -468,7 +468,7 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
     expect(struck([added, next], cut(10.8, 12))).toEqual(['world,', 'I', 'said'])
   })
 
-  it('cuts every word of a caption its clips keep less than MIN_CUE of (output seconds), heard words too: the subtitle files leave it out', () => {
+  it('cuts every word of a caption a cut reached and its clips keep less than MIN_CUE of (output seconds), heard words too: the subtitle files leave it out', () => {
     const gemini = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
     expect(struck([gemini], cut(10, 16.97))).toEqual(gemini.text.split(' '))
     expect(struck([gemini], [clip(0, 10), clip(16.92, 30, 2)])).toEqual(gemini.text.split(' '))
@@ -482,6 +482,13 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
     ])
     expect(struck([yes], [clip(0.935, 30)])).toEqual(['Yes', 'works.'])
     expect(struck([yes], [clip(0.92, 30)])).toEqual(['Yes'])
+    // Word timings shorter than that, none of them cut: nothing is.
+    const hmm = seg('h', 5, 5.5, 'Hmm, yes.', [
+      ['Hmm,', 5.2, 5.2],
+      ['yes.', 5.2, 5.23]
+    ])
+    expect(struck([hmm], [clip(0, 30)])).toEqual([])
+    expect(struck([hmm], [clip(0, 5.215)])).toEqual(['Hmm,', 'yes.'])
   })
 
   it('cuts a guess deleted in the tab by its middle, and never takes one as a heard neighbour', () => {

@@ -187,11 +187,12 @@ export const MIN_CUE = 0.05
  * surely cut: its middle is in no clip and no clip keeps any of the time between the middles of the
  * nearest heard words before and after it in its caption (the caption's first start or last end
  * where there is none), so a guess never takes out a word that may still be heard. Every word of a
- * caption the clips keep less than MIN_CUE of (between its words' first start and last end) is cut:
- * the subtitle files leave out such a sliver.
+ * caption that a cut has reached (a middle cut) and whose words' time (first start to last end) the
+ * clips keep less than MIN_CUE of is cut: the subtitle files leave out such a sliver.
  */
 export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
-  const flags = middlesCut(words, clips)
+  const middles = middlesCut(words, clips)
+  const flags = middles.slice()
   const mid = (w: TranscriptWord): number => (w.start + w.end) / 2
   const heard = (w: TranscriptWord): boolean => !w.estimated
   const before = new Array<number>(words.length)
@@ -211,11 +212,13 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
   for (let a = 0, b = 0; a < words.length; a = b) {
     let from = words[a].start
     let to = words[a].end
+    let reached = middles[a]
     for (b = a + 1; b < words.length && words[b].caption === words[a].caption; b++) {
       from = Math.min(from, words[b].start)
       to = Math.max(to, words[b].end)
+      reached ||= middles[b]
     }
-    if (keptOutput(clips, from, to) < MIN_CUE) flags.fill(true, a, b)
+    if (reached && keptOutput(clips, from, to) < MIN_CUE) flags.fill(true, a, b)
   }
   return flags
 }

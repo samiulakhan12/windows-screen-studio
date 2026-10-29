@@ -460,6 +460,11 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     t.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
     expect(struck(t.state)).toEqual(['Yes', 'works.'])
     expect(srt(t.state)).toEqual(['Then press Start.'])
+    // Word timings shorter than a cue, nothing cut: the caption stays.
+    const u = open([seg('h', 5, 5.5, 'Hmm.', [{ text: 'Hmm.', start: 5.2, end: 5.2 }]), next()], 'openai')
+    timelineCut(u, 7, 8)
+    expect(struck(u.state)).toEqual([])
+    expect(srt(u.state)).toEqual(['Hmm.', 'Then press Start.'])
   })
 
   it('a deleted word stays out after its caption is edited: words that no longer match their timings, or none, a typo, a full stop, the end dragged', () => {
