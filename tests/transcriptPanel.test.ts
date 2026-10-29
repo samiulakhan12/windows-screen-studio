@@ -119,7 +119,9 @@ vi.doMock('react', async (importOriginal) => ({
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/editor/panels/TranscriptPanel'
+const ITEMS = '../src/renderer/src/editor/captionItems'
 const { TranscriptPanel } = (await import(/* @vite-ignore */ PANEL)) as { TranscriptPanel: (props: unknown) => unknown }
+const items = (await import(/* @vite-ignore */ ITEMS)) as { takeCaptionsRequest(): unknown }
 
 const RENDERED = new Set(['TranscriptPanel', 'TranscriptEditor', 'TranscriptIntro', 'ReviewSection'])
 
@@ -465,20 +467,19 @@ describe('the Transcript tab', () => {
     }
   })
 
-  it('Make captions gives the keyboard to the Captions tab, not the top of the window, as this tab goes', () => {
+  it('Make captions leaves the focus to the Captions tab, whose Cancel catches it once the providers are read', () => {
     useProject(10, [])
-    // The Captions tab put the focus on a button of its own (Cancel on this PC), or nothing caught it (Cancel of an AI run).
-    for (const caught of [true, false]) {
-      timers.length = 0
-      log.focused.length = 0
-      // Enter on the button: the focus is on it, in the Inspector.
-      doc.activeElement = new FakeHTMLElement()
-      ;(button(render(), 'Make captions').props.onClick as (e: unknown) => void)({ detail: 0 })
-      // The Captions tab replaces this one, and the focused button goes with it.
-      doc.activeElement = caught ? new FakeHTMLElement() : doc.body
-      timers.splice(0).forEach((run) => run())
-      expect(log.focused, caught ? 'caught' : 'not caught').toEqual(caught ? [] : ['rail button'])
-    }
+    // Enter on the button: the focus is on it, in the Inspector.
+    doc.activeElement = new FakeHTMLElement()
+    ;(button(render(), 'Make captions').props.onClick as (e: unknown) => void)({ detail: 0 })
+    expect(items.takeCaptionsRequest()).toEqual({ kind: 'generate' })
+    // The Captions tab replaces this one, and the focused button goes with it. Until the providers are read (an answer
+    // from the main process, a task of its own) that tab shows only "Checking this PC…": timers of 0 ms run first.
+    doc.activeElement = doc.body
+    timers.splice(0).forEach((run) => run())
+    // Then the run starts, and its Cancel catches the focus only where it fell to the page (as useCatchFocus does).
+    if (doc.activeElement === doc.body) log.focused.push('Cancel')
+    expect(log.focused).toEqual(['Cancel'])
   })
 
   it('the arrow keys start on the page chosen with Earlier and Later', () => {

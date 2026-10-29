@@ -387,9 +387,11 @@ No transcript (or every caption deleted):
 
 `Make captions` opens the Captions tab and asks it to generate (`requestCaptions({ kind:
 'generate' })`, the command palette's "Generate captions" path): it starts at once when it can,
-else it shows what is missing (a model to download, a key to add). The button goes with this tab:
-unless the Captions tab puts the focus on a control of its own (Cancel on this PC, Generate or Add),
-it goes to the Captions tab's rail button (`keepInspectorFocus`), never to the top of the window.
+else it shows what is missing (a model to download, a key to add). The button goes with this tab,
+and the focus is on the page while the Captions tab reads the providers ("Checking this PC…"); then
+that tab catches it: the running job's Cancel (on this PC or with a key), else what is missing (the
+download, or Add an AI provider). Make captions moves the focus nowhere itself (no
+`keepInspectorFocus`): a move made before that read would keep Cancel from catching it.
 Without sound: the button is disabled and the text says "This recording has no sound to make a
 transcript from."
 
