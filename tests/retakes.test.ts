@@ -125,6 +125,15 @@ describe('retakes', () => {
     expect(spans(say('the |the end', 2))).toEqual([])
   })
 
+  it('names the first word of the take each match leaves in, and of the takes after it in turn', () => {
+    // Words: Open0 the1 file2 menu.3 Um4 open5 the6 file7 menu8 first.9
+    expect(findRetakes(say('Open the file menu. Um open the file menu first.')).map((m) => m.keeps)).toEqual([[5]])
+    // Click0 the1 button.2 Click3 the4 blue5 button.6 Click7 the8 blue9 button10 now.11
+    expect(findRetakes(say('Click the button. Click the blue button. Click the blue button now.')).map((m) => m.keeps)).toEqual([[3, 7], [7]])
+    // the0 the1 the2 end3
+    expect(findRetakes(say('the the the end')).map((m) => m.keeps)).toEqual([[1, 2], [2]])
+  })
+
   it('leaves out stutters inside a retake', () => {
     const w = say('The the first thing. The first thing you do is open settings.')
     expect(spans(w)).toEqual(['retake: The the first thing.'])

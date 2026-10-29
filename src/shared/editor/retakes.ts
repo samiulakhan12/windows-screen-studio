@@ -31,6 +31,11 @@ export type RetakeKind = 'retake' | 'repeat'
 export interface RetakeMatch {
   kind: RetakeKind
   span: WordSpan
+  /**
+   * The first word of the later take this match leaves in, then that of the take after it when a
+   * later match removes that one in turn: cutting the match only makes sense while one is kept.
+   */
+  keeps: readonly number[]
 }
 
 /** Sentences as word spans: ended by . ? ! … । , a pause of SENTENCE_PAUSE, or a caption's end before a short pause. */
@@ -90,7 +95,9 @@ export function findRetakes(words: readonly TranscriptWord[], language?: string)
       if (words[b.span[0]].start - words[a.span[1]].end > RETAKE_WINDOW) break
       if (gap === 2 && sentences[s + 1].tokens.length > MAX_BETWEEN) break
       if (retakeOf(a.tokens, b.tokens)) {
-        retakes.push({ kind: 'retake', span: [a.span[0], b.span[0] - 1] })
+        let keep = b.span[0]
+        while (keep < b.span[1] && !kept(keep)) keep++
+        retakes.push({ kind: 'retake', span: [a.span[0], b.span[0] - 1], keeps: [keep] })
         break
       }
     }
@@ -118,7 +125,7 @@ export function findRetakes(words: readonly TranscriptWord[], language?: string)
     }
     if (found) {
       // The first run, and any filler between it and the second ("I, um, I think").
-      stutters.push({ kind: 'repeat', span: [idx[k], idx[k + found] - 1] })
+      stutters.push({ kind: 'repeat', span: [idx[k], idx[k + found] - 1], keeps: [idx[k + found]] })
       k += found
     } else k++
   }
@@ -131,6 +138,13 @@ export function findRetakes(words: readonly TranscriptWord[], language?: string)
     const last = out[out.length - 1]
     if (last && m.span[0] <= last.span[1]) continue
     out.push(m)
+  }
+  // A take left in that a later match removes in turn (A, A', A''): the take after it counts too.
+  for (let i = out.length - 2; i >= 0; i--) {
+    const keep = out[i].keeps[0]
+    for (let j = i + 1; j < out.length && out[j].span[0] <= keep; j++) {
+      if (keep <= out[j].span[1]) out[i] = { ...out[i], keeps: [keep, ...out[j].keeps] }
+    }
   }
   return out
 }

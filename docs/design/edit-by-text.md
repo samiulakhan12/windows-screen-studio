@@ -286,6 +286,9 @@ quotes (with up to 4 words of context before, dimmed), the time where it plays, 
 - Words of listed suggestions are underlined dotted in the transcript.
 - An edit elsewhere (undo, a timeline cut) re-filters the list against the new clips, so a row
   whose words became cut disappears.
+- A retake or repeat is listed only while the later take it leaves in is kept (its first word, or
+  that of a take after it that another match would remove in turn): when the user cut the later
+  take, removing the earlier one would lose every take.
 - None found: "No fillers or retakes found." plus the hint "Some captions leave fillers out. Captions
   made on this PC keep most of them."
 

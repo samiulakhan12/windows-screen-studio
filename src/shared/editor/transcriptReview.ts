@@ -5,7 +5,7 @@
  */
 import { findFillers } from './fillers'
 import { findRetakes, type RetakeKind } from './retakes'
-import { cutWords, spansSaving, type TranscriptWord, type WordSpan } from './transcript'
+import { cutFlags, cutWords, spansSaving, type TranscriptWord, type WordSpan } from './transcript'
 import { outputDuration } from '../engine/timeline'
 import type { Clip } from '../types'
 
@@ -19,6 +19,8 @@ export interface EditSuggestion {
   last: number
   /** Output seconds removing it saves now. */
   saved: number
+  /** A retake or repeat: the words of the later takes it leaves in (RetakeMatch.keeps); listed only while one is kept. */
+  keeps?: readonly number[]
 }
 
 /** Suggestions that would save less (output seconds) are not listed: they are already cut. */
@@ -28,30 +30,44 @@ export const SUGGESTION_LABELS: Record<SuggestionKind, string> = { filler: 'Fill
 
 const idOf = (kind: SuggestionKind, [first, last]: WordSpan): string => `${kind}:${first}-${last}`
 
+/** Whether the take a retake or repeat leaves in is still in the edit (cut, removing it would lose every take). */
+const keepsATake = (s: { keeps?: readonly number[] }, cut: readonly boolean[]): boolean => !s.keeps || s.keeps.some((i) => !cut[i])
+
 /**
  * Fillers and retakes in order, those inside a retake left out (it covers them), each with what it
- * saves on the current clips; ones that save nothing (already cut) are left out.
+ * saves on the current clips; ones that save nothing (already cut) are left out, and so are retakes
+ * and repeats whose later take is cut.
  */
 export function reviewSuggestions(words: readonly TranscriptWord[], clips: readonly Clip[], duration: number, language?: string): EditSuggestion[] {
   const retakes = findRetakes(words, language)
   const inRetake = (s: WordSpan): boolean => retakes.some((r) => r.kind === 'retake' && s[0] >= r.span[0] && s[1] <= r.span[1])
   const overlaps = (s: WordSpan): boolean => retakes.some((r) => s[0] <= r.span[1] && s[1] >= r.span[0])
-  const items: { kind: SuggestionKind; span: WordSpan }[] = [
-    ...retakes.map((r) => ({ kind: r.kind, span: r.span })),
+  const items: { kind: SuggestionKind; span: WordSpan; keeps?: readonly number[] }[] = [
+    ...retakes.map((r) => ({ kind: r.kind, span: r.span, keeps: r.keeps })),
     ...findFillers(words, language)
       .filter((s) => !inRetake(s) && !overlaps(s))
       .map((span) => ({ kind: 'filler' as const, span }))
   ]
   items.sort((a, b) => a.span[0] - b.span[0])
+  const cut = cutFlags(words, clips)
   return items
-    .map((it) => ({ id: idOf(it.kind, it.span), kind: it.kind, first: it.span[0], last: it.span[1], saved: spansSaving(clips, words, [it.span], duration) }))
+    .filter((it) => keepsATake(it, cut))
+    .map((it) => ({
+      id: idOf(it.kind, it.span),
+      kind: it.kind,
+      first: it.span[0],
+      last: it.span[1],
+      saved: spansSaving(clips, words, [it.span], duration),
+      ...(it.keeps ? { keeps: it.keeps } : {})
+    }))
     .filter((s) => s.saved >= MIN_SUGGESTION_SAVING)
 }
 
-/** The listed suggestions still worth removing on these clips, with what each saves now. */
+/** The listed suggestions still worth removing on these clips (and whose later take is kept), with what each saves now. */
 export function refreshSuggestions(items: readonly EditSuggestion[], words: readonly TranscriptWord[], clips: readonly Clip[], duration: number): EditSuggestion[] {
+  const cut = cutFlags(words, clips)
   return items
-    .filter((s) => words[s.first] && words[s.last])
+    .filter((s) => words[s.first] && words[s.last] && keepsATake(s, cut))
     .map((s) => ({ ...s, saved: spansSaving(clips, words, [[s.first, s.last]], duration) }))
     .filter((s) => s.saved >= MIN_SUGGESTION_SAVING)
 }
