@@ -469,7 +469,7 @@ describe('the layers lay out again when the text area changes (their caches key 
     expect(bottoms[2]).toBe(bottoms[0])
   })
 
-  it('lower thirds: a solid band is pictured again for an area of another width, even at the same left and bottom', () => {
+  it('lower thirds: a solid band is pictured again for an area of another width, even at the same left and bottom, and only when it changes', () => {
     // A title of two lines in both areas, broken differently: the band starts at the same point but is narrower.
     const title = Array.from({ length: 28 }, () => 'alpha').join(' ')
     const q: Project = { ...p, titles: [{ id: 'w', start: 0, end: 6, title, style: 'lower-third', background: 'solid' }] }
@@ -505,6 +505,13 @@ describe('the layers lay out again when the text area changes (their caches key 
       expect(widths[2]).toBe(widths[0])
       // The first picture is used again for the first area.
       expect(made).toBe(2)
+      // An area whose top moves (a band above gliding) leaves the band as it is: no new picture.
+      const pushed: Rect = { ...wide, y: 674, h: wide.y + wide.h - 674 }
+      expect(titleLayout({ title, style: 'lower-third' }, W, H, layerMeasure, pushed).band).toEqual(bands[0])
+      calls.length = 0
+      drawTitleCardsLayer({ ctx, w: W, h: H, t: 2, k: 1, project: q, background: null, textArea: pushed })
+      expect(made).toBe(2)
+      expect(calls.filter((x) => x.canvas === undefined && x.name === 'drawImage')).toHaveLength(1)
     } finally {
       delete g.document
     }

@@ -327,8 +327,9 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.stroke()
   }
-  // Everything the layout depends on (as layoutOf's key, the text area too), and the colours.
-  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : '', fontKey(font), fc.textArea ?? null])
+  // The card in this frame size, its colours and its whole layout (the band, the lines and their
+  // sizes, which a text area changes; one that moves only away from the band pictures nothing new).
+  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : '', fontKey(font), l])
   const pad = glyphPad(l) + (solid ? Math.ceil(blur * 1.5 + drop) : 0)
   const sprite = spriteOf(key, band, pad, (c) => paint(c, 1, band.y))
   if (sprite) drawSprite(ctx, sprite, phase.rise * l.rise)
