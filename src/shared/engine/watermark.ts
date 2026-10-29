@@ -85,22 +85,32 @@ export function activeWatermark(project: Pick<Project, 'watermark'>): WatermarkS
 /**
  * Where the watermark goes in a w x h frame. `aspect` is the width / height of what is drawn
  * (the image, or the measured text). An image is `size` x the shorter side wide; text is that tall.
+ * In a text area (docs/design/vertical-video.md §6.3) a corner is the area's, the margin applied
+ * within it, and the logo is never larger than the area; the centre stays the frame's.
  */
-export function watermarkRect(w: number, h: number, wm: Pick<WatermarkSettings, 'kind' | 'size' | 'position' | 'margin'>, aspect: number): Rect {
+export function watermarkRect(
+  w: number,
+  h: number,
+  wm: Pick<WatermarkSettings, 'kind' | 'size' | 'position' | 'margin'>,
+  aspect: number,
+  /** The text area (render/safeZones.ts textArea, output px) the corners keep to; absent or null: the whole frame, as always. */
+  area?: Rect | null
+): Rect {
   const m = Math.min(w, h)
   const a = aspect > 0 && Number.isFinite(aspect) ? aspect : 1
   let bw = wm.kind === 'image' ? wm.size * m : wm.size * m * a
   let bh = bw / a
-  // Never larger than the frame inside the margins.
+  // Never larger than the frame (in a corner of a text area, the area) inside the margins.
   const margin = wm.margin * m
-  const fit = Math.min(1, (w - margin * 2) / bw, (h - margin * 2) / bh)
+  const box = area && wm.position !== 'center' ? area : { x: 0, y: 0, w, h }
+  const fit = Math.min(1, (box.w - margin * 2) / bw, (box.h - margin * 2) / bh)
   if (fit > 0 && fit < 1) {
     bw *= fit
     bh *= fit
   }
   if (wm.position === 'center') return { x: (w - bw) / 2, y: (h - bh) / 2, w: bw, h: bh }
   const corner: Corner = wm.position
-  const x = corner.endsWith('left') ? margin : w - margin - bw
-  const y = corner.startsWith('top') ? margin : h - margin - bh
+  const x = corner.endsWith('left') ? box.x + margin : box.x + box.w - margin - bw
+  const y = corner.startsWith('top') ? box.y + margin : box.y + box.h - margin - bh
   return { x, y, w: bw, h: bh }
 }

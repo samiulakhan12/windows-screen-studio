@@ -3,6 +3,7 @@ import { cornerRefusal, layoutRefusal, setCornerAt, setLayoutAt } from '../../..
 import { LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, removeLayout, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
 import { CORNER_NAMES } from '../../../../shared/recording/cameraBubble'
 import { AUTO_LAYOUT_HINT } from '../../../../shared/editor/directorCopy'
+import { bandOf } from '../../../../shared/editor/followEdit'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { visibleSize } from '../../../../shared/engine/crop'
@@ -40,6 +41,9 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
   const look = webcamLook(webcam)
   const set = (patch: Partial<WebcamSettings>, key?: string): void => store.update((p) => ({ ...p, webcam: { ...p.webcam, ...patch } }), key)
   const off = !hasWebcam || !webcam.show
+  // In a band (the view follows the action in a tall frame) corners do nothing; they stay stored
+  // for the bubble and 16:9 (docs/design/vertical-video.md §2.10).
+  const band = hasWebcam ? bandOf(project) : null
   return (
     <>
       {!hasWebcam && <p className="hint">{isImported(project) ? IMPORTED_COPY.camera : 'This recording has no camera. Pick a camera on the home screen before recording.'}</p>}
@@ -60,7 +64,15 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
         />
         <div className="corner-grid" role="group" aria-label="Camera corner" title="The camera's corner wherever no layout change chooses another one">
           {CORNERS.map((c) => (
-            <button key={c} disabled={off} className={`corner ${webcam.corner === c ? 'active' : ''} ${c}`} onClick={() => set({ corner: c })} title={c.replace('-', ' ')} aria-label={c.replace('-', ' ')}>
+            <button
+              key={c}
+              disabled={off}
+              aria-disabled={band ? true : undefined}
+              className={`corner ${webcam.corner === c ? 'active' : ''} ${c}`}
+              onClick={() => !band && set({ corner: c })}
+              title={c.replace('-', ' ')}
+              aria-label={c.replace('-', ' ')}
+            >
               <span />
             </button>
           ))}
@@ -92,8 +104,8 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
 
       <FramingSection project={project} off={off} set={set} />
       <BlurSection value={look.backgroundBlur} off={off} set={set} />
-      {hasWebcam && <LayoutSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} />}
-      {hasWebcam && <PositionSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} />}
+      {hasWebcam && <LayoutSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} band={band} />}
+      {hasWebcam && <PositionSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} band={band} />}
     </>
   )
 }
@@ -252,7 +264,13 @@ function BlurSection({ value, off, set }: { value: number; off: boolean; set: (p
  * How the screen and the camera share the frame over time: the layout of the selected change,
  * or of the playhead (picking one there adds a change at the playhead, as the layout commands do).
  */
-function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, 'project' | 'selection' | 'onSelect' | 'onNotice'>): JSX.Element {
+function LayoutSection({
+  project,
+  selection,
+  onSelect,
+  onNotice,
+  band
+}: Pick<Props, 'project' | 'selection' | 'onSelect' | 'onNotice'> & { band: 'top' | 'bottom' | null }): JSX.Element {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const layouts = project.layouts ?? []
@@ -298,6 +316,11 @@ function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, '
       }
     >
       {hidden && <p className="hint">The camera is hidden: show it to use layouts.</p>}
+      {band && (
+        <p className="hint" data-testid="layout-band-hint">
+          While the view follows the action, the camera sits in a band {band === 'top' ? 'at the top' : 'at the bottom'}. Change it in Style › Vertical framing.
+        </p>
+      )}
       <div className="layout-picker" role="group" aria-label="Camera layout">
         {LAYOUT_OPTIONS.map((o) => (
           <button
@@ -339,7 +362,13 @@ function LayoutSection({ project, selection, onSelect, onNotice }: Pick<Props, '
  * the playhead), or, outside every change, "Move camera here from the playhead", which adds a
  * change with that corner there. The Camera section's corner stays the default elsewhere.
  */
-function PositionSection({ project, selection, onSelect, onNotice }: Pick<Props, 'project' | 'selection' | 'onSelect' | 'onNotice'>): JSX.Element {
+function PositionSection({
+  project,
+  selection,
+  onSelect,
+  onNotice,
+  band
+}: Pick<Props, 'project' | 'selection' | 'onSelect' | 'onNotice'> & { band: 'top' | 'bottom' | null }): JSX.Element {
   const { store, player } = useEditor()
   const layouts = project.layouts ?? []
   const hereId = useSyncExternalStore(player.subscribe, () => layoutSegmentAt(layouts, layoutTimeAt(project, player.time))?.id ?? '')
@@ -390,9 +419,10 @@ function PositionSection({ project, selection, onSelect, onNotice }: Pick<Props,
           <button
             key={c}
             disabled={hidden || fixed}
+            aria-disabled={band ? true : undefined}
             className={`corner ${target && !fixed && current === c ? 'active' : ''} ${c}`}
             aria-pressed={!!target && !fixed && current === c}
-            onClick={() => pick(c)}
+            onClick={() => !band && pick(c)}
             title={target ? `${CORNER_NAMES[c]} during this layout change` : `Move the camera to the ${CORNER_NAMES[c].toLowerCase()} corner from the playhead`}
             aria-label={`${label}: ${CORNER_NAMES[c].toLowerCase()}`}
           >

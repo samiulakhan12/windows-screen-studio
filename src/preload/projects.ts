@@ -1,5 +1,6 @@
 import { ipcRenderer } from 'electron'
-import type { ProjectsApi } from '../shared/api/projects'
+import type { DuplicateProgress, ProjectsApi } from '../shared/api/projects'
+import { subscribe } from './ipc'
 
 export const projectsApi: ProjectsApi = {
   listProjects: () => ipcRenderer.invoke('projects:list'),
@@ -25,5 +26,11 @@ export const projectsApi: ProjectsApi = {
   backgroundUrl: (id, path) => ipcRenderer.invoke('projects:backgroundUrl', id, path),
   getStyleDefaults: () => ipcRenderer.invoke('styleDefaults:get'),
   saveStyleDefaults: (look) => ipcRenderer.invoke('styleDefaults:save', look),
-  resetStyleDefaults: () => ipcRenderer.invoke('styleDefaults:reset')
+  resetStyleDefaults: () => ipcRenderer.invoke('styleDefaults:reset'),
+  // X-04 duplicate (docs/design/vertical-video.md §4.7).
+  duplicateProject: (sourceId, copy) => ipcRenderer.invoke('projects:duplicate', sourceId, copy),
+  onDuplicateProgress: (listener) => subscribe<DuplicateProgress>('projects:duplicateProgress', listener),
+  cancelDuplicate: () => {
+    void ipcRenderer.invoke('projects:duplicateCancel').catch(() => undefined)
+  }
 }

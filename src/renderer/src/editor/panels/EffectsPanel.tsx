@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { followsAction } from '../../../../shared/editor/followEdit'
 import { LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { sameAngles, TILT_LIMITS, TILT_PRESETS, tiltCss, tiltSettingsOf, type TiltAnimation } from '../../../../shared/engine/tilt'
 import type { CursorTrack, Project, TiltSettings } from '../../../../shared/types'
@@ -82,6 +83,7 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
   return (
     <Section title="3D tilt">
       <Toggle label="Tilt the recording in 3D" checked={on} onChange={(v) => set({ enabled: v })} />
+      {followsAction(project) && <p className="hint">The 3D tilt is not drawn while the view follows the action.</p>}
       <div className="tilt-presets" role="group" aria-label="Tilt presets">
         {TILT_PRESETS.map((preset) => {
           const active = on && sameAngles(tilt, preset.angles)

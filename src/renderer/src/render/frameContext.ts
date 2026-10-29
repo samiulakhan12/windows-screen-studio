@@ -1,5 +1,5 @@
 import type { SmoothedTrack } from '../../../shared/engine/cursor'
-import type { Rect } from '../../../shared/engine/layout'
+import type { Rect, SceneLayout } from '../../../shared/engine/layout'
 import type { Camera } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import type { DrawOptions, FrameImage, RenderScene } from './compositor'
@@ -25,11 +25,19 @@ export interface FrameContext {
   /** Drawn (cropped) video size in pixels. */
   vw: number
   vh: number
-  /** Where the recording card is drawn (output px) and its corner radius. */
+  /** Where the recording card is drawn (output px) and its corner radius. While following: the virtual rectangle (layout.screen). */
   rect: Rect
   radius: number
   /** Zoom camera at t. */
   cam: Camera
+  /** The screen and camera at t (frameView): `layout.follow` while the view follows the action. */
+  layout: SceneLayout
+  /** Whether the view follows the action in this frame (docs/design/vertical-video.md §5.1). */
+  following: boolean
+  /** Where captions, key presses, the logo and lower-third titles go (safeZones.ts textArea); null: the whole frame, as always. */
+  textArea: Rect | null
+  /** Click effects are drawn this much larger while following (frameView.ts followGain); 1 otherwise. */
+  fxGain: number
   /** The recording's frame at t, as drawn (the crop's copy; null before the first frame is decoded). */
   screen: FrameImage | null
   /** Height (px) of the whole decoded recording frame; privacy blur/pixelate strength is relative to it. Absent = screen.height. */

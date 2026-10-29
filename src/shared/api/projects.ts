@@ -65,6 +65,30 @@ export interface ProjectsApi {
   saveStyleDefaults(look: StyleDefaults): Promise<StyleDefaults | null>
   /** Forgets the saved look, so new recordings use the built-in one again. */
   resetStyleDefaults(): Promise<void>
+  /**
+   * Makes a new project folder holding `copy` (the editor's current state, already transformed by
+   * projectCopy, still carrying the source's id) and the source's recording files. Rejects with a
+   * readable message; the source folder is never written.
+   */
+  duplicateProject(sourceId: string, copy: Project): Promise<DuplicateResult>
+  /** Progress of the running copy (bytes); returns an unsubscribe function. */
+  onDuplicateProgress(listener: (p: DuplicateProgress) => void): () => void
+  /** Stops the running copy; its promise rejects with an AbortError and the new folder is removed. */
+  cancelDuplicate(): void
+}
+
+/** How far the running copy is (Duplicate, Make a vertical version): bytes copied of the bytes to copy. */
+export interface DuplicateProgress {
+  done: number
+  total: number
+}
+
+/** The copy made by duplicateProject. */
+export interface DuplicateResult {
+  id: string
+  name: string
+  /** False when a media file had to be copied (the copy then uses more disk). */
+  linked: boolean
 }
 
 /** Kinds of user files a project can hold (copied in as `<kind>-<n>.<ext>`). */

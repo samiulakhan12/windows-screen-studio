@@ -157,11 +157,16 @@ export interface RectLike {
 /**
  * Largest on-screen movement (output pixels) of the content between two cameras,
  * measured at the corners of the content rectangle, where zooming moves pixels most.
+ * `clip`: measure at the corners of this part of the frame instead (the slot of a view that
+ * follows the action, docs/design/vertical-video.md §8.2); absent, the content's corners.
  */
-export function cameraDisplacement(a: Camera, b: Camera, rect: RectLike): number {
+export function cameraDisplacement(a: Camera, b: Camera, rect: RectLike, clip?: RectLike): number {
+  // The corners measured, as fractions of the content rectangle (its own: 0 and 1).
+  const xs = clip && rect.w > 0 ? [(clip.x - rect.x) / rect.w, (clip.x + clip.w - rect.x) / rect.w] : [0, 1]
+  const ys = clip && rect.h > 0 ? [(clip.y - rect.y) / rect.h, (clip.y + clip.h - rect.y) / rect.h] : [0, 1]
   let max = 0
-  for (const fx of [0, 1]) {
-    for (const fy of [0, 1]) {
+  for (const fx of xs) {
+    for (const fy of ys) {
       // Output corner -> source point under camera a -> output point under camera b.
       const sx = a.cx - 0.5 / a.scale + fx / a.scale
       const sy = a.cy - 0.5 / a.scale + fy / a.scale

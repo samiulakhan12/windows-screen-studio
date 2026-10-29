@@ -36,6 +36,32 @@
 - **Smooth cuts** (NW-06): the sound now fades out and back in over 10 ms at every cut, so cuts
   no longer click. **Existing projects with cuts sound slightly different at their next export**
   (only right at the cuts).
+- **Vertical video that follows the action** (NW-05): pick **Make a vertical version** from the new
+  copy button right of the recording's name (or `Ctrl+K`), and a 9:16 copy opens with your camera
+  in a band on top and the screen below it, cropped in and gliding calmly to where you point, click
+  and type instead of the whole desktop shrunk into a strip. The view is planned on your PC from
+  the recording's cursor data: it holds still most of the time, starts moving as the cursor does,
+  arrives before the click, and never pans across a cut. Zooms still work inside it, gentler and
+  limited so the picture stays sharp. Style › *Vertical framing* sets *How close*, *Movement*
+  (Calm, Balanced, Lively), the camera (band on top, at the bottom, or the bubble) and *Keep text
+  clear of app buttons*, which places captions, key presses, the logo and lower-third titles where
+  TikTok, Reels and Shorts leave the video free. Steer it with *Hold the view here* (`R`), by
+  dragging the paused picture, or by ignoring a stray click. *Make a square version* does the same
+  in 1:1, and *Follow the action* also works in a project you already set to 9:16, 1:1 or 4:3.
+  The TikTok, Reels, Shorts and Square presets export it exactly as previewed; a 16:9 export of the
+  same project shows the whole screen as before. Recordings without cursor data keep one view,
+  which you can place.
+- **Safe-zone preview**: in a tall video, *Safe zones* under the preview (or `G`) shades where
+  TikTok, Reels and Shorts put their buttons and captions (all three, or one app). It is shown in
+  the editor only and never exported. The zones are approximate, and the apps move them from time
+  to time.
+- **Duplicate** (X-04): the same copy button makes a copy you can edit separately. The copy is a new
+  project in the library, made from the editor's latest state, and opens with *Open original*; the
+  original folder is never written. The recording's video and sound are hard-linked where that is
+  safe, so a copy is instant and takes almost no extra space; under OneDrive, or on a drive that
+  cannot link, they are copied, with progress, Cancel and a free-space check. Existing projects,
+  including 9:16 and 1:1 ones, open, preview and export exactly as before until following is
+  turned on.
 - **Select several items and edit them together** (E-06): `Ctrl`+click or `Shift`+click items on
   the timeline, `Shift`+drag a box across the tracks, or press `Ctrl+A` (again for every item);
   `Ctrl`+click works on the paused preview too, and `Esc` clears. Drag one selected item to move

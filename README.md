@@ -106,6 +106,8 @@ These are the defaults; every one can be changed in the Shortcuts dialog (`Ctrl+
 | `S` | Split the clip at the playhead |
 | `C` | Crop the recording (`Enter` applies, `Esc` cancels) |
 | `F` | Freeze the frame at the playhead |
+| `R` | Hold the view here (a video that follows the action keeps its view still) |
+| `G` | Show or hide where TikTok, Reels and Shorts put their buttons and captions (tall frames, preview only) |
 | `Z` | Add a zoom at the playhead |
 | `1`–`4` / `0` | Set the selected zoom's level (1.25×, 1.5×, 2×, 3×) / pull back to 0.75× |
 | `T` | Add text at the playhead |

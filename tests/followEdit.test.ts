@@ -1,0 +1,296 @@
+import { describe, expect, it, vi } from 'vitest'
+import { bandOf, dragView, editorFrame, followsAction, followSuggestion, framedLevel, holdViewAt, withAppSafe, withFollowing } from '../src/shared/editor/followEdit'
+import { fromCrop } from '../src/shared/engine/crop'
+import { createProject } from '../src/shared/engine/project'
+import { DEFAULT_REFRAME } from '../src/shared/engine/reframeData'
+import { aimAt, cameraAt, zoomAt, zoomsConnected, zoomStyleOf } from '../src/shared/engine/zoom'
+import type { NormRect, Project, ZoomSegment } from '../src/shared/types'
+
+/*
+ * Steering the view that follows the action (docs/design/vertical-video.md §2.6, tests 54 and 55):
+ * Hold the view here writes a 1× zoom with a fixed point (or fixes the zoom at the playhead), and
+ * dragging the picture moves that point (a region its rectangle), or the rest point without cursor
+ * data. Positions are given in view space (after the crop) and stored in the full frame.
+ */
+
+// Part P1's band side and view limits, answered here (the panels' helpers only pass them on).
+const engine = vi.hoisted(() => ({ band: vi.fn((): 'top' | 'bottom' | null => 'top'), framed: vi.fn() }))
+vi.mock('../src/shared/engine/layout', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), bandSide: engine.band }))
+vi.mock('../src/shared/engine/reframe', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  followLimits: () => ({ base: { w: 0.3164, h: 1 }, level: 1, mag: 1.78, fit: 0.3164, cap: 1.69 }),
+  framedZooms: (zooms: ZoomSegment[]) => {
+    engine.framed(zooms)
+    return zooms.map((z) => ({ ...z, scale: 1 + (z.scale - 1) / 2 }))
+  }
+}))
+
+const capture = { method: 'native', cursorInVideo: false, region: null, target: 'screen' } as const
+
+function project(zooms: ZoomSegment[] = [], extra: Partial<Project> = {}): Project {
+  const p = createProject({ id: 'p', name: 'p', duration: 20, width: 1920, height: 1080, hasWebcam: false, hasAudio: false, webcamOffset: 0, zooms, cursorValid: true, capture })
+  return { ...p, style: { ...p.style, aspectRatio: '9:16' }, reframe: { ...DEFAULT_REFRAME }, ...extra }
+}
+
+const zoom = (id: string, start: number, end: number, focus: ZoomSegment['focus'], extra: Partial<ZoomSegment> = {}): ZoomSegment => ({ id, start, end, scale: 2, focus, auto: true, ...extra })
+
+/** Deeply frozen, so an edit that mutates its input throws. */
+function frozen<T>(v: T): T {
+  if (v && typeof v === 'object') {
+    for (const k of Object.keys(v)) frozen((v as Record<string, unknown>)[k])
+    Object.freeze(v)
+  }
+  return v
+}
+
+const LEFT_HALF: NormRect = { x: 0, y: 0, w: 0.5, h: 1 }
+const RIGHT_HALF: NormRect = { x: 0.5, y: 0, w: 0.5, h: 1 }
+
+describe('holdViewAt (test 54)', () => {
+  it('outside a zoom: a 1× zoom with a fixed point at the centre, 3 s from the playhead', () => {
+    const p = frozen(project())
+    const r = holdViewAt(p, 5, { x: 0.767, y: 0.5 }, null)
+    if (!r.project) throw new Error('no room')
+    expect(r.project.zooms).toHaveLength(1)
+    const z = r.project.zooms[0]
+    expect(z).toMatchObject({ id: r.zoomId, start: 5, end: 8, scale: 1, focus: { mode: 'fixed', x: 0.767, y: 0.5 }, auto: false })
+    // Nothing else changes.
+    expect({ ...r.project, zooms: p.zooms }).toEqual(p)
+  })
+
+  it('stores the centre in the full frame (through fromCrop)', () => {
+    const r = holdViewAt(project(), 5, { x: 0.5, y: 0.25 }, RIGHT_HALF)
+    if (!r.project) throw new Error('no room')
+    expect(r.project.zooms[0].focus).toEqual({ mode: 'fixed', ...fromCrop(RIGHT_HALF, { x: 0.5, y: 0.25 }) })
+    expect(r.project.zooms[0].focus).toEqual({ mode: 'fixed', x: 0.75, y: 0.25 })
+    // A centre off the view is kept on it.
+    const off = holdViewAt(project(), 5, { x: 1.4, y: -0.2 }, LEFT_HALF)
+    expect(off.project?.zooms[0].focus).toEqual({ mode: 'fixed', x: 0.5, y: 0 })
+  })
+
+  it('is fitted into the free gap like a new zoom, a connect gap clear of its neighbours, and needs at least 1 s', () => {
+    const at = (r: ReturnType<typeof holdViewAt>): ZoomSegment | undefined => (r.project ? r.project.zooms.find((z) => z.id === (r as { zoomId: string }).zoomId) : undefined)
+    const before = zoom('b', 0, 3, { mode: 'cursor' })
+    const next = zoom('n', 8, 12, { mode: 'cursor' })
+    // Close to the next zoom: it grows backwards into the free space, ending 0.7 s (the transition) before it.
+    let r = holdViewAt(project([before, next]), 6, { x: 0.5, y: 0.5 }, null)
+    expect(at(r)?.start).toBeCloseTo(4.3, 12)
+    expect(at(r)?.end).toBeCloseTo(7.3, 12)
+    // Right after a zoom: no room until 0.7 s after it, from where it starts.
+    expect(holdViewAt(project([before, next]), 3.2, { x: 0.5, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    expect(holdViewAt(project([before, next]), 3, { x: 0.5, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    r = holdViewAt(project([before, next]), 3.7, { x: 0.5, y: 0.5 }, null)
+    expect(at(r)?.start).toBeCloseTo(3.7, 12)
+    expect(at(r)?.end).toBeCloseTo(6.7, 12)
+    // A neighbour's own longer transition (2 s) keeps it further away: (0.7 + 2) / 2.
+    r = holdViewAt(project([before, zoom('n', 9, 12, { mode: 'cursor' }, { transition: 2 })]), 6, { x: 0.5, y: 0.5 }, null)
+    expect(at(r)?.end).toBeCloseTo(7.65, 12)
+    // So does the project's (1.5 s): the hold starts 1.5 s after the zoom before it at the earliest.
+    const slow = project([before], { zoomSettings: { ...project().zoomSettings!, transition: 1.5 } })
+    expect(holdViewAt(slow, 4.4, { x: 0.5, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    expect(at(holdViewAt(slow, 4.5, { x: 0.5, y: 0.5 }, null))?.start).toBeCloseTo(4.5, 12)
+    // 1.1 s of room is enough.
+    r = holdViewAt(project([before, zoom('n', 5.5, 10, { mode: 'cursor' })]), 4, { x: 0.5, y: 0.5 }, null)
+    expect(r.project?.zooms).toHaveLength(3)
+    expect(at(r)?.start).toBeCloseTo(3.7, 12)
+    expect(at(r)?.end).toBeCloseTo(4.8, 12)
+    // 0.8 s is not.
+    r = holdViewAt(project([before, zoom('n', 5.2, 10, { mode: 'cursor' })]), 4, { x: 0.5, y: 0.5 }, null)
+    expect(r).toEqual({ project: null, reason: 'no-room' })
+    // Near the end of the recording.
+    r = holdViewAt(project(), 19.5, { x: 0.5, y: 0.5 }, null)
+    expect(r.project?.zooms[0]).toMatchObject({ start: 17, end: 20 })
+  })
+
+  it('never joins a neighbouring zoom, so a frame that does not follow (a 16:9 file) looks exactly as before', () => {
+    // A 2× zoom at a fixed point, a cursor zoom, and one with a long transition that pans straight
+    // into the zoom before it (connected across 4 s).
+    const fixed = zoom('a', 2, 5, { mode: 'fixed', x: 0.2, y: 0.2 })
+    const cursor = zoom('c', 9, 12, { mode: 'cursor' })
+    const long = zoom('l', 9, 12, { mode: 'fixed', x: 0.8, y: 0.7 }, { transition: 10 })
+    const track = { at: (t: number) => ({ x: 0.3 + 0.02 * t, y: 0.6 - 0.01 * t }) }
+    let made = 0
+    for (const zooms of [[fixed], [fixed, cursor], [cursor], [fixed, long], [zoom('p', 2, 5, { mode: 'cursor' }, { scale: 0.7 }), cursor]]) {
+      const p = project(zooms)
+      const style = zoomStyleOf(p)
+      for (const t of [0, 1, 4.99, 5, 5.3, 5.69, 5.7, 6, 7.5, 8.3, 8.31, 8.9, 12, 12.5, 13, 19.9]) {
+        const r = holdViewAt(p, t, { x: 0.7, y: 0.5 }, null)
+        if (!r.project || zoomAt(zooms, t)) continue
+        made++
+        const held = r.project.zooms
+        const i = held.findIndex((z) => z.id === r.zoomId)
+        const hold = held[i]
+        expect(t >= hold.start && t < hold.end, `the hold covers the playhead (${t} in ${hold.start}..${hold.end})`).toBe(true)
+        if (i > 0) expect(zoomsConnected(held[i - 1], hold, style)).toBe(false)
+        if (i + 1 < held.length) expect(zoomsConnected(hold, held[i + 1], style)).toBe(false)
+        for (let s = 0; s <= 20; s += 0.05) {
+          expect(cameraAt(held, s, track, style), `camera at ${s.toFixed(2)} s, held at ${t} s`).toEqual(cameraAt(zooms, s, track, style))
+          expect(aimAt(held, s, track, style), `aim at ${s.toFixed(2)} s, held at ${t} s`).toEqual(aimAt(zooms, s, track, style))
+        }
+      }
+    }
+    // Room was found away from the zooms (not refused everywhere): at 0, 1, 5.7, 6, 7.5 and so on.
+    expect(made).toBeGreaterThanOrEqual(20)
+    // The case that used to join: just after the 2× zoom, where it would have panned into the hold.
+    expect(holdViewAt(project([fixed]), 5, { x: 0.7, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+    expect(holdViewAt(project([fixed, long]), 6, { x: 0.7, y: 0.5 }, null)).toEqual({ project: null, reason: 'no-room' })
+  })
+
+  it('inside a zoom that follows the cursor: its focus fixed at the centre, times and level kept', () => {
+    const z = zoom('z', 2, 6, { mode: 'cursor' }, { anchor: { t: 3, x: 0.2, y: 0.3 } })
+    const p = frozen(project([z]))
+    const r = holdViewAt(p, 4, { x: 0.4, y: 0.6 }, null)
+    expect(r).toMatchObject({ zoomId: 'z' })
+    expect(r.project?.zooms).toEqual([{ ...z, focus: { mode: 'fixed', x: 0.4, y: 0.6 }, auto: false }])
+  })
+
+  it('inside a fixed zoom: its point moves to the centre (full frame)', () => {
+    const r = holdViewAt(project([zoom('z', 2, 6, { mode: 'fixed', x: 0.1, y: 0.1 })]), 2, { x: 0.5, y: 0.5 }, LEFT_HALF)
+    expect(r.project?.zooms[0].focus).toEqual({ mode: 'fixed', x: 0.25, y: 0.5 })
+  })
+
+  it('inside a region zoom: its rectangle is kept', () => {
+    const p = project([zoom('r', 2, 6, { mode: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.3 })])
+    const r = holdViewAt(p, 3, { x: 0.8, y: 0.8 }, null)
+    expect(r).toEqual({ project: p, zoomId: 'r' })
+  })
+})
+
+describe('dragView (test 55)', () => {
+  it('moves a fixed point against the drag: the content follows the pointer', () => {
+    const p = frozen(project([zoom('z', 4, 8, { mode: 'fixed', x: 0.767, y: 0.5 }, { scale: 1 })]))
+    // Dragged right by 20% of a band view 0.4653 wide (e2e step 7).
+    const q = dragView(p, 6, { x: 0.2 * 0.4653, y: 0 }, null, false)
+    const f = q.zooms[0].focus
+    expect(f.mode).toBe('fixed')
+    expect(f.mode === 'fixed' && f.x).toBeCloseTo(0.674, 3)
+    expect(f.mode === 'fixed' && f.y).toBe(0.5)
+    expect(q.zooms[0]).toMatchObject({ start: 4, end: 8, scale: 1, auto: false })
+    // Down and left: the point goes up and right; it stays on the recording.
+    const r = dragView(p, 6, { x: -0.5, y: 0.1 }, null, false)
+    expect(r.zooms[0].focus).toEqual({ mode: 'fixed', x: 1, y: 0.4 })
+  })
+
+  it('drags in view units: with a crop the stored point moves by the drag times the crop', () => {
+    const p = project([zoom('z', 4, 8, { mode: 'fixed', x: 0.25, y: 0.5 })])
+    const q = dragView(p, 5, { x: 0.1, y: 0 }, LEFT_HALF, false)
+    expect(q.zooms[0].focus).toEqual({ mode: 'fixed', x: 0.2, y: 0.5 })
+  })
+
+  it('moves a region zoom by the same amount, kept inside the recording', () => {
+    const p = project([zoom('r', 4, 8, { mode: 'region', x: 0.3, y: 0.2, w: 0.2, h: 0.2 })])
+    const q = dragView(p, 5, { x: 0.1, y: -0.05 }, null, false)
+    const f = q.zooms[0].focus
+    expect(f).toMatchObject({ mode: 'region', w: 0.2, h: 0.2, y: 0.25 })
+    expect(f.mode === 'region' && f.x).toBeCloseTo(0.2, 12)
+    expect(q.zooms[0].scale).toBe(2)
+    expect(dragView(p, 5, { x: 0.9, y: 0 }, null, false).zooms[0].focus).toMatchObject({ x: 0 })
+  })
+
+  it('without cursor data and without a zoom: the rest point moves (from the centre of what is shown)', () => {
+    const p = frozen(project())
+    const q = dragView(p, 5, { x: 0.1, y: -0.2 }, null, true)
+    expect(q.reframe).toEqual({ ...DEFAULT_REFRAME, rest: { x: 0.4, y: 0.7 } })
+    expect(q.zooms).toBe(p.zooms)
+    // Again from there; cropped to the right half, the default rest is that half's centre.
+    expect(dragView(q, 5, { x: 0.1, y: 0 }, null, true).reframe?.rest?.x).toBeCloseTo(0.3, 12)
+    expect(dragView(p, 5, { x: 0.2, y: 0 }, RIGHT_HALF, true).reframe?.rest).toEqual({ x: 0.65, y: 0.5 })
+    // Kept on the recording.
+    expect(dragView(p, 5, { x: 2, y: 2 }, null, true).reframe?.rest).toEqual({ x: 0, y: 0 })
+  })
+
+  it('a zoom without cursor data still moves the zoom, not the rest point', () => {
+    const p = project([zoom('z', 4, 8, { mode: 'fixed', x: 0.5, y: 0.5 })])
+    const q = dragView(p, 5, { x: 0.1, y: 0 }, null, true)
+    expect(q.zooms[0].focus).toEqual({ mode: 'fixed', x: 0.4, y: 0.5 })
+    expect(q.reframe).toBe(p.reframe)
+  })
+
+  it('nothing to move with cursor data and no point: the project as it is (the caller holds the view first)', () => {
+    const p = project([zoom('c', 4, 8, { mode: 'cursor' })])
+    expect(dragView(p, 2, { x: 0.1, y: 0 }, null, false)).toBe(p)
+    expect(dragView(p, 5, { x: 0.1, y: 0 }, null, false)).toBe(p)
+  })
+
+  it('a drag is one update: Hold the view here at the start, then the point dragged (as the preview does it)', () => {
+    const history: Project[] = []
+    let state = project([zoom('c', 4, 8, { mode: 'cursor' })])
+    const start = state
+    const held = holdViewAt(start, 5, { x: 0.6, y: 0.5 }, null)
+    if (!held.project) throw new Error('no room')
+    // Each move replaces the gesture's one change, computed from the state the drag started from.
+    for (const dx of [0.02, 0.05, 0.1]) state = dragView(held.project, 5, { x: dx, y: 0 }, null, false)
+    history.push(start, state)
+    expect(state.zooms[0].focus.mode).toBe('fixed')
+    const f = state.zooms[0].focus
+    expect(f.mode === 'fixed' && f.x).toBeCloseTo(0.5, 12)
+    expect(history).toHaveLength(2)
+  })
+})
+
+describe('the panels\' helpers', () => {
+  const plain = (aspect: Project['style']['aspectRatio'], reframe?: Partial<NonNullable<Project['reframe']>>): Project => {
+    const p = project()
+    const { reframe: _r, ...rest } = p
+    const out: Project = { ...rest, style: { ...p.style, aspectRatio: aspect } }
+    return reframe ? { ...out, reframe: { ...DEFAULT_REFRAME, ...reframe } } : out
+  }
+
+  it('withFollowing: on writes the settings for the frame, off keeps them with mode fit', () => {
+    const p = frozen(plain('9:16'))
+    const on = withFollowing(p, true, 1920, 1080)
+    expect(on.reframe).toEqual(DEFAULT_REFRAME)
+    expect(withFollowing(on, false, 1920, 1080).reframe).toEqual({ ...DEFAULT_REFRAME, mode: 'fit' })
+    // Not following: off changes nothing.
+    expect(withFollowing(p, false, 1920, 1080)).toBe(p)
+    expect(withFollowing(plain('1:1'), true, 1920, 1080).reframe).toEqual({ ...DEFAULT_REFRAME, camera: 'bubble', appSafe: false })
+    // Turned on again: the settings chosen before.
+    const mine = plain('9:16', { mode: 'fit', pace: 'calm', level: 1.4 })
+    expect(withFollowing(mine, true, 1920, 1080).reframe).toEqual({ ...DEFAULT_REFRAME, pace: 'calm', level: 1.4 })
+  })
+
+  it('withAppSafe never turns following on', () => {
+    expect(withAppSafe(plain('9:16'), true).reframe).toEqual({ ...DEFAULT_REFRAME, mode: 'fit', appSafe: true })
+    expect(withAppSafe(plain('9:16', { mode: 'follow' }), false).reframe).toEqual({ ...DEFAULT_REFRAME, appSafe: false })
+  })
+
+  it('editorFrame and followsAction: the project\'s own frame of the recording as cropped', () => {
+    expect(editorFrame(plain('9:16'))).toEqual({ outW: 1080, outH: 1920, vw: 1920, vh: 1080 })
+    expect(editorFrame({ ...plain('1:1'), crop: { x: 0, y: 0, w: 0.5, h: 1 } })).toEqual({ outW: 1080, outH: 1080, vw: 960, vh: 1080 })
+    expect(followsAction(plain('9:16', { mode: 'follow' }))).toBe(true)
+    expect(followsAction(plain('9:16', { mode: 'fit' }))).toBe(false)
+    expect(followsAction(plain('16:9', { mode: 'follow' }))).toBe(false)
+    // Cropped to a narrow strip, a square frame is no narrower than the recording.
+    expect(followsAction({ ...plain('1:1', { mode: 'follow' }), crop: { x: 0, y: 0, w: 0.5, h: 1 } })).toBe(false)
+  })
+
+  it('bandOf asks for the band only while the frame follows', () => {
+    engine.band.mockClear()
+    expect(bandOf(plain('9:16'))).toBeNull()
+    expect(bandOf(plain('16:9', { mode: 'follow' }))).toBeNull()
+    expect(engine.band).not.toHaveBeenCalled()
+    expect(bandOf(plain('9:16', { mode: 'follow' }))).toBe('top')
+    expect(engine.band).toHaveBeenCalledWith(expect.objectContaining({ reframe: expect.objectContaining({ mode: 'follow' }) }), 1080, 1920, 1920, 1080)
+  })
+
+  it('framedLevel: the level a zoom shows in the followed frame, null when the frame does not follow', () => {
+    const z = zoom('z', 1, 3, { mode: 'cursor' }, { scale: 1.8 })
+    expect(framedLevel({ ...plain('9:16', { mode: 'follow' }), zooms: [z] }, 'z')).toBeCloseTo(1.4, 12)
+    expect(framedLevel({ ...plain('9:16', { mode: 'follow' }), zooms: [z] }, 'other')).toBeNull()
+    engine.framed.mockClear()
+    expect(framedLevel({ ...plain('16:9', { mode: 'follow' }), zooms: [z] }, 'z')).toBeNull()
+    expect(engine.framed).not.toHaveBeenCalled()
+  })
+
+  it('followSuggestion: a vertical version for 9:16, a square one for 1:1, when the project does not follow', () => {
+    expect(followSuggestion({}, ['9:16'], 1920, 1080)).toBe('vertical')
+    expect(followSuggestion({}, ['1:1'], 1920, 1080)).toBe('square')
+    expect(followSuggestion({}, ['1:1', '9:16'], 1920, 1080)).toBe('vertical')
+    expect(followSuggestion({}, ['16:9', '4:3', 'auto'], 1920, 1080)).toBeNull()
+    expect(followSuggestion({ reframe: { ...DEFAULT_REFRAME, mode: 'fit' } }, ['9:16'], 1920, 1080)).toBe('vertical')
+    expect(followSuggestion({ reframe: { ...DEFAULT_REFRAME } }, ['9:16'], 1920, 1080)).toBeNull()
+    // A tall recording: 9:16 cannot follow; a square frame of it cannot either.
+    expect(followSuggestion({}, ['9:16', '1:1'], 1080, 1920)).toBeNull()
+    expect(followSuggestion({}, [], 1920, 1080)).toBeNull()
+  })
+})

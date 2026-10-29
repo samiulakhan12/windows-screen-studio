@@ -38,12 +38,13 @@ function measureOn(ctx: Ctx, font: string): MeasureText {
 
 const layouts = new Map<string, TitleLayout>()
 
-function layoutOf(ctx: Ctx, card: TitleCard, w: number, h: number, font: string): TitleLayout {
-  const key = JSON.stringify([w, h, card.style, card.title, card.subtitle ?? '', fontKey(font)])
+/** `area`: the text area a lower third keeps to (null: the whole frame). */
+function layoutOf(ctx: Ctx, card: TitleCard, w: number, h: number, font: string, area: Rect | null): TitleLayout {
+  const key = JSON.stringify([w, h, card.style, card.title, card.subtitle ?? '', fontKey(font), area])
   let l = layouts.get(key)
   if (!l) {
     ctx.save()
-    l = titleLayout(card, w, h, measureOn(ctx, font))
+    l = titleLayout(card, w, h, measureOn(ctx, font), area)
     ctx.restore()
     if (layouts.size > 64) layouts.clear()
     layouts.set(key, l)
@@ -326,7 +327,9 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.stroke()
   }
-  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : '', fontKey(font)])
+  // The card in this frame size, its colours and its whole layout (the band, the lines and their
+  // sizes, which a text area changes; one that moves only away from the band pictures nothing new).
+  const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : '', fontKey(font), l])
   const pad = glyphPad(l) + (solid ? Math.ceil(blur * 1.5 + drop) : 0)
   const sprite = spriteOf(key, band, pad, (c) => paint(c, 1, band.y))
   if (sprite) drawSprite(ctx, sprite, phase.rise * l.rise)
@@ -337,7 +340,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
 /**
  * Title cards active at fc.t, drawn over the finished frame (under the watermark): full-frame
  * cards over their background (the blurred frame, a colour or the project's background), lower
- * thirds in a band at the bottom. They fade and rise in and fade out (shared/render/titleCards).
+ * thirds in a band at the bottom (of the text area, fc.textArea, when there is one). They fade and rise in and fade out (shared/render/titleCards).
  */
 export function drawTitleCardsLayer(fc: FrameContext): void {
   const titles = fc.project.titles
@@ -352,8 +355,9 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
   active.sort((a, b) => a.card.start - b.card.start)
   for (const { card, phase } of active) {
     const font = cardFont(fc.project, card)
-    const l = layoutOf(fc.ctx, card, fc.w, fc.h, font)
-    if (card.style === 'lower-third') drawLowerThird(fc, card, phase, l, font)
+    const lower = card.style === 'lower-third'
+    const l = layoutOf(fc.ctx, card, fc.w, fc.h, font, lower ? fc.textArea : null)
+    if (lower) drawLowerThird(fc, card, phase, l, font)
     else drawFullFrame(fc, card, phase, l, font)
   }
 }

@@ -1,6 +1,7 @@
 import { OPEN_SETTINGS_EVENT, SettingsButton } from '../settings/SettingsButton'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { LoadedProject } from '../../../shared/api'
+import type { DuplicateProgress } from '../../../shared/api/projects'
 import { openedWithoutStems, withRecordedStems } from '../../../shared/audio/settings'
 import { captionsOf } from '../../../shared/captions/settings'
 import { createAnnotation } from '../../../shared/editor/annotations'
@@ -10,6 +11,8 @@ import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/e
 import { cropNotice, setCrop, setZoomLevelInView, snapCrop, taskbarCrop, type CropDraft } from '../../../shared/editor/cropEdit'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
 import { FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze } from '../../../shared/editor/freezeEdit'
+import { canCopyAs, type CopyKind } from '../../../shared/editor/duplicate'
+import { editorFrame, followsAction, holdViewAt, withFollowing } from '../../../shared/editor/followEdit'
 import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setPathRange, setStraighten, useAllClicks, type PathSummary } from '../../../shared/editor/inputEdits'
 import { EditStore } from '../../../shared/editor/editStore'
 import { copyItems as copyGroupItems, duplicateItems as duplicateGroupItems, pasteItems as pasteGroupItems, pasteNotice, type PasteResult } from '../../../shared/editor/groupClipboard'
@@ -44,6 +47,9 @@ import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
 import { clickRows } from '../../../shared/engine/inputData'
+import { frameView } from '../../../shared/engine/frameView'
+import { outputSize } from '../../../shared/engine/layout'
+import { canFollow, isTall, withoutFollow } from '../../../shared/engine/reframeData'
 import { DEFAULT_EFFECTS, formatTime } from '../../../shared/engine/project'
 import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
@@ -55,11 +61,13 @@ import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '.
 import type { CameraLayout, NormRect, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
+import { CopyMenu, CopyProgress } from '../editor/CopyMenu'
 import { EditorContext, type EditorServices } from '../editor/context'
 import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
+import { runDuplicate } from '../editor/duplicateFlow'
 import { ExportDialog } from '../editor/ExportDialog'
-import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
+import { blurActiveControl, installFocusRelease, isKeyboardToggle, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
 import { keepInspectorFocus } from '../editor/inspectorFocus'
 import { addFreezeAt, freezeTarget, toggleFreezeSound } from '../editor/freezeItems'
 import { itemClipboard, lookClipboard } from '../editor/itemClipboard'
@@ -69,6 +77,7 @@ import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
+import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
@@ -84,6 +93,7 @@ import { requestCaptions } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
+import { safeZoneChoice, toggleSafeZones as toggleSafeZoneChoice } from '../editor/safeZonePref'
 import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 import type { RenderScene } from '../render/compositor'
 import { noCursorText } from '../../../shared/import/imported'
@@ -186,7 +196,19 @@ function closeSession(s: Session): void {
   else s.saver.dispose()
 }
 
-export function Editor({ projectId, onClose }: { projectId: string; onClose: () => void }): JSX.Element {
+export function Editor({
+  projectId,
+  onClose,
+  onOpenProject,
+  notice
+}: {
+  projectId: string
+  onClose: () => void
+  /** Opens another project in place of this one (a copy just made, or its original), with a notice to show there (docs/design/vertical-video.md §9.3). */
+  onOpenProject?: (id: string, notice?: string) => void
+  /** A notice to show once the project is open (after Make a vertical version or Duplicate). */
+  notice?: string
+}): JSX.Element {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   // Storage manager (F-26): an open recording counts as used and is never cleaned up.
   useEffect(() => (window.api.storageNoteOpened(projectId), () => window.api.storageNoteClosed(projectId)), [projectId])
@@ -234,21 +256,65 @@ export function Editor({ projectId, onClose }: { projectId: string; onClose: () 
     )
   }
 
-  return <EditorSession session={state.session} onClose={onClose} />
+  return <EditorSession session={state.session} onClose={onClose} onOpenProject={onOpenProject} openingNotice={notice} />
 }
 
-/** What the editor's components read from context: the session's services, the current shortcuts and the selected group. */
-function EditorProviders({ services, keymap, group, children }: { services: EditorServices; keymap: Keymap; group: GroupApi; children: ReactNode }): JSX.Element {
+/**
+ * What the editor's components read from context: the session's services, the current shortcuts,
+ * the selected group and what the Vertical framing section needs besides the project.
+ */
+function EditorProviders({
+  services,
+  keymap,
+  group,
+  follow,
+  children
+}: {
+  services: EditorServices
+  keymap: Keymap
+  group: GroupApi
+  follow: FollowEnv
+  children: ReactNode
+}): JSX.Element {
   return (
     <EditorContext.Provider value={services}>
       <KeymapContext.Provider value={keymap}>
-        <GroupContext.Provider value={group}>{children}</GroupContext.Provider>
+        <GroupContext.Provider value={group}>
+          <FollowEnvContext.Provider value={follow}>{children}</FollowEnvContext.Provider>
+        </GroupContext.Provider>
       </KeymapContext.Provider>
     </EditorContext.Provider>
   )
 }
 
-function EditorSession({ session, onClose }: { session: Session; onClose: () => void }): JSX.Element {
+/** Following works only in a frame narrower than the recording (docs/design/vertical-video.md §2.11). */
+const FOLLOW_UNAVAILABLE = 'Following works in 9:16, 1:1 and other frames narrower than the recording. Choose one in Style › Frame.'
+/** Hold the view here while the frame could follow but does not. */
+const FOLLOW_OFF = 'Turn on Follow the action first, in Style › Vertical framing.'
+/** The safe zones are shown over tall frames only (§2.8). */
+const SAFE_ZONES_TALL = 'Safe zones are shown for tall frames, such as 9:16.'
+/** Every copy error starts so (§2.3). */
+const COPY_FAILED = 'Could not make the copy: '
+
+/** A notice in the transport: its text, a button in it (Open original), and whether it is an error (role alert). */
+interface Notice {
+  text: string
+  action?: { label: string; run: () => void }
+  alert?: boolean
+}
+
+function EditorSession({
+  session,
+  onClose,
+  onOpenProject,
+  openingNotice
+}: {
+  session: Session
+  onClose: () => void
+  onOpenProject?: (id: string, notice?: string) => void
+  /** Shown once when the editor opens (a copy just made). */
+  openingNotice?: string
+}): JSX.Element {
   const { data, store, saver, player } = session
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const services = useMemo<EditorServices>(() => ({ store, player }), [store, player])
@@ -309,7 +375,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const [exporting, setExporting] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [background, setBackground] = useState<HTMLImageElement | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
   const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
@@ -343,11 +409,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   const cropping = !!cropDraft
   // What is drawn: the project and input as shown (cropView: positions relative to the crop, its
   // pixel size). While the crop tool is open, the whole recording without the camera (nor camera
-  // layouts); setNoZoom below leaves zooms and the tilt out.
+  // layouts) and without following the action; setNoZoom below leaves zooms and the tilt out.
   const drawn = useMemo((): CropView<Project> => {
     if (!cropping) return cropView(project, cursor)
     const { crop: _crop, ...whole } = project
-    return { project: { ...whole, webcam: { ...project.webcam, show: false } }, cursor, crop: null }
+    return { project: withoutFollow({ ...whole, webcam: { ...project.webcam, show: false } }), cursor, crop: null }
   }, [cropping, project, cursor])
   const cursorPath = useMemo(() => new SmoothedTrack(drawn.cursor.samples, project.duration, project.cursor.smoothing), [drawn.cursor.samples, project.duration, project.cursor.smoothing])
   const focusPath = useMemo(() => focusPathFor(drawn.cursor.samples, project.duration), [drawn.cursor.samples, project.duration])
@@ -358,6 +424,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   useEffect(() => player.setProject(project), [player, project])
   useEffect(() => player.setScene(scene, background), [player, scene, background])
+  const sceneRef = useRef(scene)
+  sceneRef.current = scene
+  // The frame as drawn: a tall one gets the safe-zone toggle (docs/design/vertical-video.md §2.8).
+  const drawnOut = outputSize(drawn.project.style.aspectRatio, drawn.project.width, drawn.project.height, 1080)
+  const tall = isTall(drawnOut.width, drawnOut.height)
 
   const pickZoom =
     pickFocus && selection?.kind === 'zoom' ? (project.zooms.find((z) => z.id === selection.id && z.focus.mode !== 'cursor') ?? null) : null
@@ -374,12 +445,105 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
   /* ---------- notices ---------- */
 
   const noticeTimer = useRef(0)
-  const showNotice = useCallback((message: string) => {
-    setNotice(message)
+  const noticeMs = useRef(4000)
+  /** Shows `message` for a few seconds; `opts`: a button in it, an error (role alert), a longer time. */
+  const showNotice = useCallback((message: string, opts?: { action?: Notice['action']; alert?: boolean; ms?: number }) => {
+    setNotice({ text: message, ...(opts?.action ? { action: opts.action } : {}), ...(opts?.alert ? { alert: true } : {}) })
+    noticeMs.current = opts?.ms ?? 4000
     window.clearTimeout(noticeTimer.current)
-    noticeTimer.current = window.setTimeout(() => setNotice(null), 4000)
+    noticeTimer.current = window.setTimeout(() => setNotice(null), noticeMs.current)
+  }, [])
+  /** A notice with a button (Open original) stays while the pointer is over it or focus is in it, then shows for its time again. */
+  const holdNotice = useCallback((held: boolean) => {
+    window.clearTimeout(noticeTimer.current)
+    if (!held) noticeTimer.current = window.setTimeout(() => setNotice(null), noticeMs.current)
   }, [])
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
+
+  /* ---------- leaving, copies and the original (docs/design/vertical-video.md §2.3) ---------- */
+
+  const leavingRef = useRef(false)
+  /** Leaves the editor the way Back does: pauses, waits for the save (asking when it failed), then `then`. */
+  const leave = useCallback(
+    async (then: () => void): Promise<void> => {
+      if (leavingRef.current) return
+      leavingRef.current = true
+      setLeaving(true)
+      player.pause()
+      // Wait for the save so the library shows the latest name and nothing is lost.
+      const saved = await saver.flush()
+      const status = saver.status
+      if (!saved && !window.confirm(`Your latest changes could not be saved${status.state === 'error' ? `:\n${status.message}` : ''}.\n\nLeave the editor anyway?`)) {
+        leavingRef.current = false
+        setLeaving(false)
+        return
+      }
+      then()
+    },
+    [player, saver]
+  )
+
+  /** Opens the project this one was copied from, unless it is gone from the library. */
+  const openOriginal = useCallback(async (): Promise<void> => {
+    const original = store.state.copyOf
+    if (!original || !onOpenProject) return
+    const list = await window.api.listProjects().catch(() => null)
+    if (list && !list.some((p) => p.id === original.id)) return showNotice('The original recording is no longer in your library.')
+    await leave(() => onOpenProject(original.id))
+  }, [store, onOpenProject, showNotice, leave])
+
+  // A copy just made opens with its notice and Open original; a vertical or square one shows
+  // Style › Vertical framing (§2.1).
+  const [followReveal, setFollowReveal] = useState(0)
+  const opened = useRef(false)
+  useEffect(() => {
+    if (opened.current || !openingNotice) return
+    opened.current = true
+    const original = store.state.copyOf
+    showNotice(openingNotice, { ms: 12000, ...(original && onOpenProject ? { action: { label: 'Open original', run: () => void openOriginal() } } : {}) })
+    if (original && store.state.reframe?.mode === 'follow') {
+      setTab('style')
+      setFollowReveal((n) => n + 1)
+    }
+  }, [openingNotice, store, onOpenProject, openOriginal, showNotice])
+
+  // The copy being made: its kind and progress (the progress window shows after 0.5 s), and how to stop it.
+  const [copy, setCopy] = useState<{ kind: CopyKind; progress: DuplicateProgress | null } | null>(null)
+  const copyAbort = useRef<AbortController | null>(null)
+  /** Duplicate, Make a vertical version, Make a square version: the copy is made, then opened in place of this project. */
+  const makeCopy = useCallback(
+    async (kind: CopyKind): Promise<void> => {
+      if (copyAbort.current) return showNotice(`${COPY_FAILED}a copy is already being made.`, { alert: true })
+      const p = store.state
+      const { vw, vh } = editorFrame(p)
+      const can = canCopyAs(p, kind, vw, vh)
+      if (!can.ok) return showNotice(can.reason)
+      player.pause()
+      const abort = new AbortController()
+      copyAbort.current = abort
+      setCopy({ kind, progress: null })
+      try {
+        const made = await runDuplicate(kind, {
+          project: store.state,
+          flush: () => saver.flush(),
+          confirm: (message) => window.confirm(message),
+          onProgress: (progress) => setCopy((c) => (c ? { ...c, progress } : c)),
+          signal: abort.signal
+        })
+        // Cancelled, or not confirmed: nothing to say.
+        if (!made) return
+        if (onOpenProject) onOpenProject(made.id, made.notice)
+        else showNotice(made.notice)
+      } catch (err) {
+        const message = ipcMessage(err)
+        showNotice(message.startsWith(COPY_FAILED) ? message : `${COPY_FAILED}${message}`, { alert: true, ms: 8000 })
+      } finally {
+        copyAbort.current = null
+        setCopy(null)
+      }
+    },
+    [store, player, saver, showNotice, onOpenProject]
+  )
 
   /* ---------- shortcuts (stored in the editor preferences) ---------- */
 
@@ -408,8 +572,8 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
 
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts })
-  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts }
+  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: false })
+  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: !!copy }
 
 
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
@@ -1113,9 +1277,47 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       pasteItems: pasteItemsNow,
       duplicateItems: duplicateSelected,
       copyLook: copyItemLook,
-      pasteLook: pasteItemLook
+      pasteLook: pasteItemLook,
+
+      // NW-05 vertical video and X-04 duplicate (docs/design/vertical-video.md §2.11)
+      makeVertical: () => void makeCopy('vertical'),
+      makeSquare: () => void makeCopy('square'),
+      duplicateVideo: () => void makeCopy('copy'),
+      // Following and the safe zones change the view, not what is recorded: the toggle is one undo step, the zones a view preference.
+      toggleFollow: () => {
+        const p = store.state
+        const { vw, vh } = editorFrame(p)
+        if (!canFollow(p.style.aspectRatio, vw, vh)) return showNotice(FOLLOW_UNAVAILABLE)
+        const on = p.reframe?.mode !== 'follow'
+        store.update((q) => withFollowing(q, on, vw, vh))
+        turned('Follow the action', on)
+      },
+      // A 1× zoom with a fixed point where the view is now (or the zoom there fixed), selected (§2.6).
+      holdView: () => {
+        const p = store.state
+        const { vw, vh } = editorFrame(p)
+        if (!followsAction(p)) return showNotice(canFollow(p.style.aspectRatio, vw, vh) ? FOLLOW_OFF : FOLLOW_UNAVAILABLE)
+        if (cropRef.current) return showNotice('Close the crop tool first')
+        const sc = sceneRef.current
+        const t = displayTime(p.clips, player.time)
+        const frame = outputSize(sc.project.style.aspectRatio, sc.project.width, sc.project.height, 1080)
+        const { cam } = frameView(sc, frame.width, frame.height, sc.project.width, sc.project.height, t)
+        const r = holdViewAt(p, t, { x: cam.cx, y: cam.cy }, cropOf(p))
+        if (!r.project) return showNotice('There is no room for a new zoom here.')
+        const next = r.project
+        store.update(() => next)
+        // Selecting the zoom shows the Zoom tab: focus on the Style tab's button or toggle goes to the tab rail, not the page.
+        keepInspectorFocus()
+        setSelection({ kind: 'zoom', id: r.zoomId })
+      },
+      toggleSafeZones: () => {
+        const { outW, outH } = editorFrame(store.state)
+        if (!isTall(outW, outH)) return showNotice(SAFE_ZONES_TALL)
+        toggleSafeZoneChoice()
+        turned('Safe zones', safeZoneChoice() !== 'off')
+      }
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection, makeCopy])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
   const runCommand = useCallback((id: CommandId) => commandsRef.current[id](), [])
@@ -1208,23 +1410,27 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       toggleCaptions: !!p.transcript?.segments.length && captionsOf(p).show
     }
     on.toggleWaveform = p.hasAudio && waveformShown()
+    // NW-05 and X-04: the copies (with the menu's reasons), following and the safe zones.
+    const frame = editorFrame(p)
+    const followable = canFollow(p.style.aspectRatio, frame.vw, frame.vh)
+    const copyReason = (kind: CopyKind): string | null => {
+      if (copy) return 'A copy is already being made'
+      const c = canCopyAs(p, kind, frame.vw, frame.vh)
+      return c.ok ? null : c.reason
+    }
+    unavailable.makeVertical = copyReason('vertical')
+    unavailable.makeSquare = copyReason('square')
+    unavailable.duplicateVideo = copyReason('copy')
+    unavailable.toggleFollow = followable ? null : FOLLOW_UNAVAILABLE
+    unavailable.holdView = !followsAction(p) ? (followable ? FOLLOW_OFF : FOLLOW_UNAVAILABLE) : cropDraft ? 'Close the crop tool first' : null
+    unavailable.toggleSafeZones = isTall(frame.outW, frame.outH) ? null : SAFE_ZONES_TALL
+    on.toggleFollow = followable && p.reframe?.mode === 'follow'
+    on.toggleSafeZones = isTall(frame.outW, frame.outH) && safeZoneChoice() !== 'off'
     return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: commandKeys(keymap, info.id), unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
-  }, [dialog, project, selection, group, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale])
+  }, [dialog, project, selection, group, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale, copy])
 
-  const goBack = async (): Promise<void> => {
-    if (leaving) return
-    setLeaving(true)
-    player.pause()
-    // Wait for the save so the library shows the latest name and nothing is lost.
-    const saved = await saver.flush()
-    const status = saver.status
-    if (!saved && !window.confirm(`Your latest changes could not be saved${status.state === 'error' ? `:\n${status.message}` : ''}.\n\nLeave the editor anyway?`)) {
-      setLeaving(false)
-      return
-    }
-    onClose()
-  }
+  const goBack = (): Promise<void> => leave(onClose)
 
   /* ---------- keyboard ---------- */
 
@@ -1246,8 +1452,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         }
         return
       }
-      // The palette and the shortcuts dialog handle their own keys (Esc closes them).
-      if (L.dialog) return
+      // The palette and the shortcuts dialog handle their own keys (Esc closes them); the window of a
+      // copy being made keeps the keyboard to itself.
+      if (L.dialog || L.copying) return
       const target = e.target instanceof Element ? e.target : null
       const chord = chordFromEvent(e)
       const id = chord ? matchShortcut(L.shortcuts, chord) : null
@@ -1288,6 +1495,9 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       }
       // A focused slider keeps its own arrow, Home and End keys.
       if (isRangeInput(target) && isSliderKey(chord)) return
+      // A toggle reached with the keyboard keeps Space, its only key (Follow the action is turned on
+      // so, docs/design/vertical-video.md §11.3); one the pointer left focused does not: Space plays.
+      if (chord.key === 'Space' && !chord.ctrl && !chord.alt && !chord.shift && isKeyboardToggle(target)) return
       e.preventDefault()
       if (chord.key === 'Space') {
         // A focused toggle or button must not also react to Space (on key up).
@@ -1335,8 +1545,12 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     }
   }, [saver])
 
+  // What the Vertical framing section reads besides the project, and the recording as cropped for the copy menu.
+  const followEnv = useMemo<FollowEnv>(() => ({ cursorValid: cursor.valid, reveal: followReveal }), [cursor.valid, followReveal])
+  const shown = editorFrame(project)
+
   return (
-    <EditorProviders services={services} keymap={keymap} group={groupApi}>
+    <EditorProviders services={services} keymap={keymap} group={groupApi} follow={followEnv}>
       <div className="app editor">
         <header className="titlebar">
           <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
@@ -1355,6 +1569,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
               if (!store.state.name.trim()) store.update((p) => ({ ...p, name: UNTITLED }), 'name')
             }}
           />
+          <CopyMenu project={project} vw={shown.vw} vh={shown.vh} run={(kind) => void makeCopy(kind)} />
           <div className="history-buttons">
             <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!store.canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
               <EditorIcon name="undo" />
@@ -1409,7 +1624,11 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
             <Transport
               clips={project.clips}
               freezes={project.freezes}
-              notice={notice}
+              notice={notice?.text ?? null}
+              noticeAction={notice?.action ?? null}
+              noticeAlert={!!notice?.alert}
+              onNoticeHold={holdNotice}
+              tall={tall}
               onTogglePlay={actions.togglePlay}
               onSplit={actions.split}
               onAddZoom={actions.addZoom}
@@ -1479,6 +1698,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
         <OverlayDropZone onSelect={setSelection} onNotice={showNotice} />
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
+        {copy && <CopyProgress kind={copy.kind} name={project.name} progress={copy.progress} onCancel={() => copyAbort.current?.abort()} />}
         {dialog === 'polish' && (
           <PolishDialog
             recorded={recorded}

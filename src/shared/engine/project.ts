@@ -6,6 +6,7 @@ import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
 import { readDirectorSettings } from './directorData'
+import { readCopyOf, readReframe } from './reframeData'
 import { readCrop } from './crop'
 import { readFreezes } from './freezeData'
 import { readBrand, readFonts, readOverlays } from './overlayData'
@@ -131,7 +132,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, crop, freezes, overlays, fonts, brand, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, ...rest } = p
   void _legacyTrim
   return {
     ...rest,
@@ -141,6 +142,10 @@ export function migrateProject(raw: unknown): Project {
     capture: p.capture ?? { method: 'chromium', cursorInVideo: true, region: null },
     // The part of the recording that is shown, clipped and checked (absent: the whole frame).
     ...optional('crop', readCrop(crop, p.width, p.height)),
+    // Following the action in tall and square frames, sanitised (absent: fitted, as before).
+    ...optional('reframe', readReframe(reframe)),
+    // The project this one was copied from (absent: an original).
+    ...optional('copyOf', readCopyOf(copyOf)),
     clips: normalizeClips(clips, duration),
     zooms: objects(p.zooms),
     // Ignored clicks and straightened cursor paths, cleaned (absent: the input as recorded).

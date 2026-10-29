@@ -18,6 +18,7 @@ import { pictureTime, planOf, type FreezePlan, type Hold } from '../../../shared
 import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
+import { withoutFollow } from '../../../shared/engine/reframeData'
 import { clipIndexAt, keptBounds, playableFrom } from '../../../shared/engine/timeline'
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { ClickSoundScheduler, clickWaveform, soundingClicks } from '../../../shared/render/clickSound'
@@ -224,7 +225,7 @@ export class PreviewPlayer {
     this.invalidate()
   }
 
-  /** Shows the frame without zoom (while the user picks a zoom's focus point on it). */
+  /** Shows the frame without zoom, and the whole recording without following the action (while the user picks a zoom's focus point on it). */
   setNoZoom(on: boolean): void {
     if (this.noZoom === on) return
     this.noZoom = on
@@ -454,7 +455,7 @@ export class PreviewPlayer {
   }
 
   private unzoomedScene(scene: RenderScene): RenderScene {
-    if (!this.unzoomed) this.unzoomed = { ...scene, project: { ...scene.project, zooms: [], tilt: undefined } }
+    if (!this.unzoomed) this.unzoomed = { ...scene, project: withoutFollow({ ...scene.project, zooms: [], tilt: undefined }) }
     return this.unzoomed
   }
 

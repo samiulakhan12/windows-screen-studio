@@ -1,3 +1,4 @@
+import { narrowBoxZoom } from '../../../shared/engine/frameView'
 import { cameraBoxShown, cameraSourceRect, layoutPhaseAt, sceneCameraBox, type Rect } from '../../../shared/engine/layout'
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { backgroundBlurRadius, BLUR_DOWNSCALE, cameraShadow, shadowReach } from '../../../shared/render/cameraLook'
@@ -98,7 +99,10 @@ export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): vo
   }
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
-  const src = cameraSourceRect(picture.width, picture.height, r.w, r.h, look)
+  // While following, the face framing zooms less in a box narrower than square, whose cover crop
+  // is narrow already (the camera filling a tall frame, docs/design/vertical-video.md §5.14).
+  const framing = fc.following ? { ...look, zoom: narrowBoxZoom(look.zoom, r.w / r.h) } : look
+  const src = cameraSourceRect(picture.width, picture.height, r.w, r.h, framing)
   if (mask && look.backgroundBlur > 0 && hasDocument()) drawBlurred(ctx, state, picture, mask, look.backgroundBlur, src, r)
   else ctx.drawImage(picture.image, src.x, src.y, src.w, src.h, r.x, r.y, r.w, r.h)
   ctx.restore()

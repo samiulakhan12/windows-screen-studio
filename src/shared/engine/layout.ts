@@ -1,6 +1,9 @@
 import type { AspectRatio, CameraLayout, Corner, LayoutSegment, Project, StyleSettings, WebcamSettings } from '../types'
 import { frameInsets, frameOf } from './deviceFrames'
 import { clamp, easeInOutCubic, lerp } from './math'
+// Used inside functions only: reframe.ts and reframeData.ts import this module too.
+import { MAX_MAGNIFY } from './reframe'
+import { DEFAULT_REFRAME, followApplies, isTall, REFRAME_LIMITS } from './reframeData'
 
 export interface Rect {
   x: number
@@ -118,15 +121,31 @@ export interface CameraBox {
   opacity: number
 }
 
+/** Size of the followed view at zoom 1, as shares of the recording (view space). */
+export interface ViewSize {
+  w: number
+  h: number
+}
+
+/** While following: the part of the frame the screen fills, the view's size there, and the camera band (if any). */
+export interface FollowGeometry {
+  slot: Rect
+  base: ViewSize
+  band: Rect | null
+}
+
 /** The screen and the camera at one moment. `moving`: the screen's rectangle is animating between layouts. */
 export interface SceneLayout {
+  /** Where the recording is drawn at camera scale 1. While following: the virtual rectangle (larger than the frame). */
   screen: Rect
   camera: CameraBox | null
   moving: boolean
+  /** Set only while following (docs/design/vertical-video.md §5.2). */
+  follow?: FollowGeometry
 }
 
-/** What the layout of a frame depends on (clips and duration only decide where changes animate). */
-export type SceneProject = Pick<Project, 'style' | 'layouts' | 'webcam' | 'hasWebcam'> & Partial<Pick<Project, 'clips' | 'duration'>>
+/** What the layout of a frame depends on (clips and duration only decide where changes animate; reframe whether the view follows the action). */
+export type SceneProject = Pick<Project, 'style' | 'layouts' | 'webcam' | 'hasWebcam'> & Partial<Pick<Project, 'clips' | 'duration' | 'reframe'>>
 
 /** Corner radius of a camera of `shape` drawn in `r`. */
 export function cameraRadius(shape: WebcamSettings['shape'], r: Rect): number {
@@ -165,7 +184,7 @@ function fitScreen(slot: Rect, srcW: number, srcH: number, style: Pick<StyleSett
  * or stacked (a wide camera), whichever shows the screen larger. The camera goes on the side
  * of its corner.
  */
-function sideBySide(project: SceneProject, outW: number, outH: number, srcW: number, srcH: number): { screen: Rect; camera: Rect } {
+function sideBySide(project: SceneProject, outW: number, outH: number, srcW: number, srcH: number): { screen: Rect; camera: Rect; slot: Rect } {
   const area = paddedArea(outW, outH, project.style.padding)
   const gap = Math.min(outW, outH) * SIDE_GAP
   const a = screenOuterAspect(srcW, srcH, project.style)
@@ -178,20 +197,16 @@ function sideBySide(project: SceneProject, outW: number, outH: number, srcW: num
     const x0 = area.x + (area.w - (cw + gap + sw)) / 2
     const y = area.y + (area.h - tall) / 2
     const left = corner.endsWith('left')
-    return {
-      screen: fitScreen({ x: left ? x0 + cw + gap : x0, y, w: sw, h: tall }, srcW, srcH, project.style),
-      camera: { x: left ? x0 : x0 + sw + gap, y, w: cw, h: tall }
-    }
+    const slot = { x: left ? x0 + cw + gap : x0, y, w: sw, h: tall }
+    return { screen: fitScreen(slot, srcW, srcH, project.style), camera: { x: left ? x0 : x0 + sw + gap, y, w: cw, h: tall }, slot }
   }
   const ch = wide * SIDE_CAMERA_ASPECT
   const sh = wide / a
   const x = area.x + (area.w - wide) / 2
   const y0 = area.y + (area.h - (ch + gap + sh)) / 2
   const top = corner.startsWith('top')
-  return {
-    screen: fitScreen({ x, y: top ? y0 + ch + gap : y0, w: wide, h: sh }, srcW, srcH, project.style),
-    camera: { x, y: top ? y0 : y0 + sh + gap, w: wide, h: ch }
-  }
+  const slot = { x, y: top ? y0 + ch + gap : y0, w: wide, h: sh }
+  return { screen: fitScreen(slot, srcW, srcH, project.style), camera: { x, y: top ? y0 : y0 + sh + gap, w: wide, h: ch }, slot }
 }
 
 /**
@@ -370,8 +385,13 @@ export function layoutMoving(project: Omit<SceneProject, 'style'>, t: number): b
   return p.progress < 1 && screenMoves(p)
 }
 
-/** Where the screen and the camera are at source time `t`, with layout changes animated (eased). */
+/**
+ * Where the screen and the camera are at source time `t`, with layout changes animated (eased).
+ * In a frame that follows the action (reframeData.ts followApplies) the screen is the virtual
+ * rectangle of the slot and `follow` is set (followLayout); otherwise every line runs as before.
+ */
 export function sceneLayout(project: SceneProject, outW: number, outH: number, srcW: number, srcH: number, t: number): SceneLayout {
+  if (followApplies(project, outW, outH, srcW, srcH)) return followLayout(project, outW, outH, srcW, srcH, t)
   if (!project.webcam.show) return { screen: styleContentRect(outW, outH, srcW, srcH, project.style), camera: null, moving: false }
   const p = layoutPhaseAt(project, t)
   const to = layoutGeometry(p.to, project, outW, outH, srcW, srcH, p.toCorner)
@@ -426,4 +446,198 @@ export function cameraSourceRect(camW: number, camH: number, boxW: number, boxH:
   const cx = clamp(Number.isFinite(crop.cropX) ? crop.cropX! : 0.5, 0, 1) * camW
   const cy = clamp(Number.isFinite(crop.cropY) ? crop.cropY! : 0.5, 0, 1) * camH
   return { x: clamp(cx - w / 2, 0, camW - w), y: clamp(cy - h / 2, 0, camH - h), w, h }
+}
+
+/* ---------- following the action (docs/design/vertical-video.md §5.2, §5.3) ---------- */
+
+/**
+ * The share of a vw x vh recording a `slot` shows at zoom 1: cover-fitted, divided by the
+ * effective level (base.w = min(1, a_s / a_v) / level, base.h = min(1, a_v / a_s) / level).
+ * Output px per recorded px are then equal on both axes. Unusable sizes show the whole recording.
+ */
+export function baseView(slot: Rect, vw: number, vh: number, level: number): ViewSize {
+  const L = Number.isFinite(level) && level > 0 ? level : 1
+  if (!(slot.w > 0 && slot.h > 0 && vw > 0 && vh > 0)) return { w: 1 / L, h: 1 / L }
+  const as = slot.w / slot.h
+  const av = vw / vh
+  return { w: Math.min(1, as / av) / L, h: Math.min(1, av / as) / L }
+}
+
+/** The slot enlarged about its centre by 1 / base: where the recording is drawn so the camera's view lands on the slot. */
+export function virtualRect(slot: Rect, base: ViewSize): Rect {
+  const w = slot.w / base.w
+  const h = slot.h / base.h
+  return { x: slot.x + slot.w / 2 - w / 2, y: slot.y + slot.h / 2 - h / 2, w, h }
+}
+
+/** The overlap of two rectangles (empty, w = h = 0, when they do not meet). */
+export function intersectRect(a: Rect, b: Rect): Rect {
+  const x0 = Math.max(a.x, b.x)
+  const y0 = Math.max(a.y, b.y)
+  const x1 = Math.min(a.x + a.w, b.x + b.w)
+  const y1 = Math.min(a.y + a.h, b.y + b.h)
+  if (!(x1 > x0 && y1 > y0)) return { x: x0, y: y0, w: 0, h: 0 }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
+}
+
+/** 'camera-large' makes the band this much taller than the setting... */
+const LARGE_BAND_GROWTH = 1.6
+/**
+ * ...up to this share of the area inside the padding: deeper, the text area under a top band is
+ * too short for a key press over a caption, a large caption or a lower third, and they would be
+ * drawn over the camera. The default band (0.32) is not limited by it.
+ */
+const LARGE_BAND_MAX = 0.52
+
+/** The reframe settings a geometry is drawn with (the defaults when absent). */
+const settingsOf = (project: SceneProject): NonNullable<SceneProject['reframe']> => project.reframe ?? DEFAULT_REFRAME
+
+/** Height of the band as a share of the area inside the padding (kept within REFRAME_LIMITS). */
+function bandShare(project: SceneProject): number {
+  const b = settingsOf(project).band
+  return Number.isFinite(b) ? clamp(b, REFRAME_LIMITS.band.min, REFRAME_LIMITS.band.max) : DEFAULT_REFRAME.band
+}
+
+/**
+ * Where the screen's slot and the camera are in `layout` while following, standing still: a band
+ * across the top or bottom of a tall frame, or the bubble (§5.3). `band`: the band's rectangle,
+ * null with the bubble or no camera.
+ *
+ * With a band: 'default' and 'side-by-side' put the camera in it, 'camera-large' in a taller one;
+ * 'screen-only' collapses it to height 0 at its outer edge (`band` is that empty rectangle);
+ * 'camera-only' fills the area with the camera and keeps the slot, scaled by BEHIND_SCALE about
+ * its centre, behind it (`band` null: there is none). With the bubble the slot is the area and
+ * the camera is drawn as layoutGeometry draws it, except that a tall frame puts 'side-by-side'
+ * in a band on its corner's side and other frames take the screen's part of it as the slot.
+ * The device frame is never drawn while following, so it is not measured either.
+ */
+export function followGeometry(
+  layout: CameraLayout,
+  project: SceneProject,
+  outW: number,
+  outH: number,
+  vw: number,
+  vh: number,
+  corner?: Corner
+): { slot: Rect; camera: CameraBox; band: Rect | null } {
+  const area = paddedArea(outW, outH, project.style.padding)
+  const m = Math.min(outW, outH)
+  const gap = project.style.padding > 0 ? SIDE_GAP * m : 0
+  const card = project.style.cornerRadius * (m / 1080)
+  const webcam = corner && (cornered(layout) || layout === 'screen-only') ? { ...project.webcam, corner } : project.webcam
+  const tall = isTall(outW, outH)
+  const camera = settingsOf(project).camera
+  const place = tall && layoutsApply(project) && camera !== 'bubble' ? camera : 'bubble'
+  const f = bandShare(project)
+  const band = (share: number, side: 'top' | 'bottom'): { slot: Rect; camera: CameraBox; band: Rect } => {
+    const bh = share * area.h
+    const rect = { x: area.x, y: side === 'top' ? area.y : area.y + area.h - bh, w: area.w, h: bh }
+    const slot = { x: area.x, y: side === 'top' ? area.y + bh + gap : area.y, w: area.w, h: Math.max(1, area.h - bh - gap) }
+    return { slot, camera: { rect, radius: card, opacity: 1 }, band: rect }
+  }
+  if (place !== 'bubble') {
+    switch (layout) {
+      case 'camera-only':
+        return { slot: scaleRect(band(f, place).slot, BEHIND_SCALE), camera: { rect: area, radius: card, opacity: 1 }, band: null }
+      case 'camera-large':
+        return band(Math.min(LARGE_BAND_MAX, LARGE_BAND_GROWTH * f), place)
+      case 'screen-only': {
+        const rect = { x: area.x, y: place === 'top' ? area.y : area.y + area.h, w: area.w, h: 0 }
+        return { slot: area, camera: { rect, radius: card, opacity: 0 }, band: rect }
+      }
+      default:
+        return band(f, place)
+    }
+  }
+  switch (layout) {
+    case 'camera-only':
+      return { slot: scaleRect(area, BEHIND_SCALE), camera: { rect: area, radius: card, opacity: 1 }, band: null }
+    case 'side-by-side': {
+      if (tall) return band(f, webcam.corner.startsWith('top') ? 'top' : 'bottom')
+      const { frame: _frame, ...style } = project.style
+      const g = sideBySide({ ...project, style, webcam }, outW, outH, vw, vh)
+      return { slot: g.slot, camera: { rect: g.camera, radius: card, opacity: 1 }, band: null }
+    }
+    case 'camera-large': {
+      const r = webcamRect(outW, outH, { corner: webcam.corner, size: Math.max(LARGE_CAMERA, Math.min(0.8, webcam.size * 2)) })
+      return { slot: area, camera: { rect: r, radius: cameraRadius(webcam.shape, r), opacity: 1 }, band: null }
+    }
+    case 'screen-only': {
+      const r = scaleRect(webcamRect(outW, outH, webcam), HIDDEN_SCALE)
+      return { slot: area, camera: { rect: r, radius: cameraRadius(webcam.shape, r), opacity: 0 }, band: null }
+    }
+    default: {
+      const r = webcamRect(outW, outH, webcam)
+      return { slot: area, camera: { rect: r, radius: cameraRadius(webcam.shape, r), opacity: 1 }, band: null }
+    }
+  }
+}
+
+/** The side of the camera band in a followed outW x outH frame, or null (no band: not following, not tall, no camera shown, or the bubble). */
+export function bandSide(project: SceneProject, outW: number, outH: number, vw: number, vh: number): 'top' | 'bottom' | null {
+  if (!followApplies(project, outW, outH, vw, vh) || !isTall(outW, outH) || !layoutsApply(project)) return null
+  const camera = settingsOf(project).camera
+  return camera === 'bubble' ? null : camera
+}
+
+/** Output px per recorded px of `slot` showing a vw x vh recording at level 1 (cover fit). */
+const slotMagnification = (slot: Rect, vw: number, vh: number): number => slot.w / (baseView(slot, vw, vh, 1).w * vw)
+
+/**
+ * Output px per recorded px of a followed outW x outH frame at level 1, in the layout that shows
+ * the recording largest (§5.12): the default layout's slot, or the whole area when a
+ * 'screen-only' segment collapses the camera band. The other layouts give smaller slots.
+ */
+export function peakMagnification(project: SceneProject, outW: number, outH: number, vw: number, vh: number): number {
+  const mag = slotMagnification(followGeometry('default', project, outW, outH, vw, vh).slot, vw, vh)
+  if (!sortedLayouts(project.layouts ?? []).some((s) => s.layout === 'screen-only')) return mag
+  return Math.max(mag, slotMagnification(followGeometry('screen-only', project, outW, outH, vw, vh).slot, vw, vh))
+}
+
+/**
+ * The effective level of a followed view of a vw x vh recording (§5.12): the setting, limited so
+ * no layout the project uses shows the recording more than MAX_MAGNIFY output px per recorded px
+ * (peakMagnification). Measured at the canonical frame (outputSize at 1080), never at the size
+ * being drawn, so the preview, every export size and the plan agree.
+ */
+export function followLevel(project: SceneProject, vw: number, vh: number): number {
+  const level = settingsOf(project).level
+  const L = Number.isFinite(level) ? clamp(level, REFRAME_LIMITS.level.min, REFRAME_LIMITS.level.max) : DEFAULT_REFRAME.level
+  if (!(vw > 0 && vh > 0)) return L
+  const frame = outputSize(project.style.aspectRatio, vw, vh, 1080)
+  const mag1 = peakMagnification(project, frame.width, frame.height, vw, vh)
+  return clamp(L, 1, Math.max(1, MAX_MAGNIFY / mag1))
+}
+
+/** The band of `g` collapsed to height 0 at its outer edge (where the camera goes when it hides). */
+function collapsedBand(band: Rect, outH: number): Rect {
+  const top = band.y + band.h / 2 < outH / 2
+  return { x: band.x, y: top ? band.y : band.y + band.h, w: band.w, h: 0 }
+}
+
+const sameRect = (a: Rect, b: Rect): boolean => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
+
+/**
+ * sceneLayout while following (§5.2, §5.3): the geometry of the layout in effect, changes eased as
+ * sceneLayout eases them (slot, camera, radius, opacity), and the view's base and virtual
+ * rectangle recomputed from the eased slot, so the view widens or narrows continuously as a band
+ * hides or shows. `moving` while the slot moves. A band appearing or going away grows from or
+ * shrinks to its outer edge.
+ */
+function followLayout(project: SceneProject, outW: number, outH: number, vw: number, vh: number, t: number): SceneLayout {
+  const level = followLevel(project, vw, vh)
+  const view = (slot: Rect, camera: CameraBox | null, band: Rect | null, moving: boolean): SceneLayout => {
+    const base = baseView(slot, vw, vh, level)
+    return { screen: virtualRect(slot, base), camera, moving, follow: { slot, base, band } }
+  }
+  if (!project.webcam.show) return view(followGeometry('default', project, outW, outH, vw, vh).slot, null, null, false)
+  const p = layoutPhaseAt(project, t)
+  const to = followGeometry(p.to, project, outW, outH, vw, vh, p.toCorner)
+  if (p.progress >= 1 || (p.from === p.to && p.fromCorner === p.toCorner)) return view(to.slot, to.camera, to.band, false)
+  const from = followGeometry(p.from, project, outW, outH, vw, vh, p.fromCorner)
+  const e = easeInOutCubic(clamp(p.progress, 0, 1))
+  const camera = { rect: lerpRect(from.camera.rect, to.camera.rect, e), radius: lerp(from.camera.radius, to.camera.radius, e), opacity: lerp(from.camera.opacity, to.camera.opacity, e) }
+  const a = from.band ?? (to.band && collapsedBand(to.band, outH))
+  const b = to.band ?? (from.band && collapsedBand(from.band, outH))
+  return view(lerpRect(from.slot, to.slot, e), camera, a && b ? lerpRect(a, b, e) : null, !sameRect(from.slot, to.slot))
 }

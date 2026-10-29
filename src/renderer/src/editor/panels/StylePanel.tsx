@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { saveErrorMessage } from '../../../../shared/editor/autosave'
+import { editorFrame, followsAction } from '../../../../shared/editor/followEdit'
 import { ASPECT_RATIOS, LOOK_LIMITS, lookOf } from '../../../../shared/editor/styleDefaults'
 import { ANIMATED_GRADIENTS, ANIMATED_SPEED, animatedSpeed, backgroundBlur, GRADIENTS, gradientCss } from '../../../../shared/engine/backgrounds'
 import { BORDER_WIDTH, cardLook, DEFAULT_BORDER } from '../../../../shared/engine/cardStyle'
@@ -10,8 +11,10 @@ import type { Background, DeviceFrame, DeviceFrameKind, Project, ShadowStyle } f
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
+import { useGroup } from '../groupContext'
 import { BrandKitBar } from './BrandKitBar'
 import { CropLink, CropRow } from './CropRow'
+import { FollowSection } from './FollowSection'
 import { PresetsSection } from './StylePresets'
 import { animatedThumb, frameThumb, wallpaperThumb } from './styleThumbs'
 import { WatermarkSection } from './WatermarkSection'
@@ -55,7 +58,11 @@ export function StylePanel({
   onCrop: (action: 'edit' | 'reset') => void
 }): JSX.Element {
   const { store } = useEditor()
+  const { command } = useGroup()
   const { style } = project
+  // The recording as cropped, and whether its frame follows the action (docs/design/vertical-video.md §2.5, §2.10).
+  const { vw, vh } = editorFrame(project)
+  const following = followsAction(project)
   const setStyle = (patch: Partial<Project['style']>, key?: string): void => store.update((p) => ({ ...p, style: { ...p.style, ...patch } }), key)
   const frame = frameOf(style)
   const card = cardLook(style)
@@ -88,6 +95,8 @@ export function StylePanel({
         <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
         <CropRow project={project} onCrop={onCrop} />
       </Section>
+
+      <FollowSection project={project} vw={vw} vh={vh} onMakeVertical={() => command('makeVertical')} />
 
       <Section title="Background">
         <div className="compact-chips">
@@ -229,6 +238,7 @@ export function StylePanel({
             ]}
           />
         )}
+        {following && frame && <p className="hint">Device frames are not drawn while the view follows the action.</p>}
         {frame?.kind === 'browser' && (
           <label className="field-label stacked">
             Address bar

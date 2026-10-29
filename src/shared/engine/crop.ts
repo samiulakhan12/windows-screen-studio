@@ -213,6 +213,12 @@ function spotlightInView(c: NormRect, s: Spotlight): Spotlight {
 
 const cropKey = (c: NormRect): string => `${c.x},${c.y},${c.w},${c.h}`
 
+/** Where the followed view rests (ReframeSettings.rest), in view space, kept inside the view. */
+function restInView(c: NormRect, rest: { x: number; y: number }): { x: number; y: number } {
+  const v = toCrop(c, rest)
+  return { x: clamp(v.x, 0, 1), y: clamp(v.y, 0, 1) }
+}
+
 type Mapped<T> = WeakMap<T[], { key: string; out: T[] }>
 
 /** `list` mapped into the view of the crop `key` names, memoised per source array (for its latest crop). */
@@ -230,12 +236,13 @@ const spotlightViews: Mapped<Spotlight> = new WeakMap()
 const projectViews = new WeakMap<object, CroppableProject>()
 
 /** What cropProject reads and writes. */
-export type CroppableProject = Pick<Project, 'width' | 'height' | 'zooms' | 'shapes' | 'spotlights' | 'crop'>
+export type CroppableProject = Pick<Project, 'width' | 'height' | 'zooms' | 'shapes' | 'spotlights' | 'crop' | 'reframe'>
 
 /**
- * The project as drawn: the crop's pixel size, zooms, shapes and spotlights in view space, and no
- * `crop` key; everything else shared. No crop: `p` itself. Memoised per project object, and each
- * mapped list per source list, so an edit elsewhere keeps the mapped lists.
+ * The project as drawn: the crop's pixel size, zooms, shapes, spotlights and the followed view's
+ * rest point in view space (the point clamped into the view), and no `crop` key; everything else
+ * shared. No crop: `p` itself. Memoised per project object, and each mapped list per source list,
+ * so an edit elsewhere keeps the mapped lists.
  */
 export function cropProject<P extends CroppableProject>(p: P): P {
   const c = cropOf(p)
@@ -251,7 +258,8 @@ export function cropProject<P extends CroppableProject>(p: P): P {
     height,
     zooms: mapped(zoomViews, p.zooms, key, (z) => mapZoom(c, z, true)),
     ...(p.shapes ? { shapes: mapped(shapeViews, p.shapes, key, (s) => rectToCrop(c, s)) } : {}),
-    ...(p.spotlights ? { spotlights: mapped(spotlightViews, p.spotlights, key, (s) => spotlightInView(c, s)) } : {})
+    ...(p.spotlights ? { spotlights: mapped(spotlightViews, p.spotlights, key, (s) => spotlightInView(c, s)) } : {}),
+    ...(p.reframe?.rest ? { reframe: { ...p.reframe, rest: restInView(c, p.reframe.rest) } } : {})
   } as unknown as P
   projectViews.set(p, view)
   return view

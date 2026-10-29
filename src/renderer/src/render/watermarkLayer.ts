@@ -158,12 +158,12 @@ function paintText(c: Ctx, text: string, px: number, x: number, y: number): void
   c.fillText(text, x, y)
 }
 
-/** Builds the stamp for `wm` in a w x h frame: rendered once, then copied every frame. */
-function buildStamp(ctx: Ctx, key: string, w: number, h: number, wm: WatermarkSettings, image: LoadedImage | null): Stamp | null {
+/** Builds the stamp for `wm` in a w x h frame (its corners in `area` when given): rendered once, then copied every frame. */
+function buildStamp(ctx: Ctx, key: string, w: number, h: number, wm: WatermarkSettings, image: LoadedImage | null, area: Rect | null): Stamp | null {
   const m = Math.min(w, h)
   if (wm.kind === 'image') {
     if (!image) return null
-    const rect = watermarkRect(w, h, wm, image.aspect)
+    const rect = watermarkRect(w, h, wm, image.aspect, area)
     if (typeof document === 'undefined') return { key, canvas: null, rect, pad: 0 }
     const c = document.createElement('canvas')
     c.width = Math.max(1, Math.round(rect.w))
@@ -181,7 +181,7 @@ function buildStamp(ctx: Ctx, key: string, w: number, h: number, wm: WatermarkSe
   ctx.font = FONT(px)
   const width = ctx.measureText(text).width
   ctx.restore()
-  const rect = watermarkRect(w, h, wm, width > 0 ? width / px : 1)
+  const rect = watermarkRect(w, h, wm, width > 0 ? width / px : 1, area)
   // The box may have been shrunk to fit the frame: the text follows it.
   const fpx = rect.h
   const pad = Math.ceil(fpx * 0.3)
@@ -197,8 +197,9 @@ function buildStamp(ctx: Ctx, key: string, w: number, h: number, wm: WatermarkSe
 
 /**
  * Stamps the project's watermark (logo image or text) over the finished frame, in output
- * space: zoom, pull-back and device frames never move it. Built once per size and settings,
- * then one image copy per frame. An image that is still loading is skipped (the preview
+ * space: zoom, pull-back and device frames never move it; a corner keeps to the text area
+ * (fc.textArea) when there is one. Built once per size, settings and area, then one image copy
+ * per frame. An image that is still loading is skipped (the preview
  * repaints when it arrives; the exporter waits for it in prepareStyleAssets).
  */
 export function drawWatermarkLayer(fc: FrameContext): void {
@@ -207,10 +208,12 @@ export function drawWatermarkLayer(fc: FrameContext): void {
   const { ctx, w, h } = fc
   const image = wm.kind === 'image' && wm.path ? watermarkImage(fc.project.id, wm.path) : null
   if (wm.kind === 'image' && !image) return
-  const key = `${w}x${h}|${wm.kind}|${wm.kind === 'image' ? `${wm.path}@${image?.version}` : wm.text}|${wm.position}|${wm.size}|${wm.margin}`
+  // The centre is the frame's in a text area too.
+  const area = wm.position === 'center' ? null : fc.textArea
+  const key = `${w}x${h}|${wm.kind}|${wm.kind === 'image' ? `${wm.path}@${image?.version}` : wm.text}|${wm.position}|${wm.size}|${wm.margin}${area ? `|${area.x},${area.y},${area.w},${area.h}` : ''}`
   let stamp = stamps.get(ctx)
   if (!stamp || stamp.key !== key) {
-    const built = buildStamp(ctx, key, w, h, wm, image)
+    const built = buildStamp(ctx, key, w, h, wm, image, area)
     if (!built) return
     stamp = built
     stamps.set(ctx, stamp)

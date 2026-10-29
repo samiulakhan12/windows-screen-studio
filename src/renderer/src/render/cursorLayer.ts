@@ -158,7 +158,8 @@ const easeOutBack = (x: number): number => {
 function drawClickEffects(fc: FrameContext, style: ClickStyle, color: string): void {
   const { ctx, cursor, t, k, cam } = fc
   const duration = CLICK_EFFECT_SECONDS * speedAt(fc.project.clips, t)
-  const s = k * cam.scale * 0.8
+  // While following, larger by the view's magnification, as the cursor is (fc.fxGain, 1 otherwise).
+  const s = k * cam.scale * 0.8 * fc.fxGain
   for (const click of cursor.clicks) {
     const dt = t - click.t
     if (dt < 0 || dt > duration || !inVideo(click)) continue

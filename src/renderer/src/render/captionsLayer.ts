@@ -1,6 +1,7 @@
 import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
 import { luminance } from '../../../shared/editor/titles'
+import type { Rect } from '../../../shared/engine/layout'
 import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
 import { fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
@@ -36,6 +37,8 @@ function measureOn(ctx: Ctx, font: string): MeasureText {
 interface CachedLayout {
   w: number
   h: number
+  /** The text area it was laid out in (null: the whole frame). */
+  area: Rect | null
   settings: CaptionSettings
   /** fontKey of the font it was measured with. */
   font: string
@@ -51,13 +54,19 @@ let nextSerial = 1
 const sameLook = (a: CaptionSettings, b: CaptionSettings): boolean =>
   a === b || (a.size === b.size && a.preset === b.preset && a.background === b.background && a.maxLines === b.maxLines)
 
-function layoutOf(ctx: Ctx, seg: CaptionSegment, settings: CaptionSettings, w: number, h: number, font: string): CaptionLayout {
+/** Whether two text areas are the same (null: none). */
+const sameArea = (a: Rect | null, b: Rect | null): boolean => a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h)
+
+/** A cache key part for a text area. */
+const areaKey = (area: Rect | null): string => (area ? `${area.x},${area.y},${area.w},${area.h}` : '')
+
+function layoutOf(ctx: Ctx, seg: CaptionSegment, settings: CaptionSettings, w: number, h: number, font: string, area: Rect | null): CaptionLayout {
   const hit = layouts.get(seg)
-  if (hit && hit.w === w && hit.h === h && hit.font === fontKey(font) && sameLook(hit.settings, settings)) return hit.layout
+  if (hit && hit.w === w && hit.h === h && sameArea(hit.area, area) && hit.font === fontKey(font) && sameLook(hit.settings, settings)) return hit.layout
   ctx.save()
-  const layout = captionLayout(seg, settings, w, h, measureOn(ctx, font))
+  const layout = captionLayout(seg, settings, w, h, measureOn(ctx, font), area)
   ctx.restore()
-  layouts.set(seg, { w, h, settings, font: fontKey(font), layout })
+  layouts.set(seg, { w, h, area, settings, font: fontKey(font), layout })
   return layout
 }
 
@@ -110,9 +119,9 @@ function spriteOf(key: string, box: { x: number; y: number; w: number; h: number
 /* ---------- drawing ---------- */
 
 /** Draws `chunk` of `layout` at its place, with token `spoken` lit (karaoke), at full opacity. */
-function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings: CaptionSettings, spoken: number, w: number, h: number, fontStackOf: string): void {
+function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings: CaptionSettings, spoken: number, w: number, h: number, fontStackOf: string, area: Rect | null): void {
   const { look, px, lineHeight, padX, padY, radius } = layout
-  const placed = placeChunk(layout, chunk, settings.position, w, h)
+  const placed = placeChunk(layout, chunk, settings.position, w, h, area)
   // Dark text gets a light box and outline, so it stays readable too.
   const darkText = luminance(settings.color) < 0.35
   const edge = darkText ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.82)'
@@ -183,8 +192,8 @@ interface Shown {
   placed: ReturnType<typeof placeChunk>
 }
 
-/** The caption chunk on screen at source time `t` in a `w` x `h` frame, or null when none shows. */
-function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number): Shown | null {
+/** The caption chunk on screen at source time `t` in a `w` x `h` frame (in `area` when given), or null when none shows. */
+function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number, area: Rect | null): Shown | null {
   const segments = project.transcript?.segments
   if (!segments?.length) return null
   const settings = project.captions ?? DEFAULT_CAPTIONS
@@ -195,19 +204,27 @@ function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number): S
   if (alpha <= 0.002) return null
   const seg = segments[i]
   const font = captionFont(project, settings)
-  const layout = layoutOf(ctx, seg, settings, w, h, font)
+  const layout = layoutOf(ctx, seg, settings, w, h, font, area)
   const ci = chunkIndexAt(layout, t)
   if (ci < 0) return null
   const chunk = layout.chunks[ci]
-  return { font, seg, settings, layout, ci, chunk, alpha, placed: placeChunk(layout, chunk, settings.position, w, h) }
+  return { font, seg, settings, layout, ci, chunk, alpha, placed: placeChunk(layout, chunk, settings.position, w, h, area) }
 }
 
 /**
  * Where the caption showing at source time `t` is (its lines with their box padding, px) and at
  * which edge, or null without one: the keystroke overlay keeps clear of it (textOverlays.ts).
  */
-export function captionBlockAt(ctx: Ctx, project: Project, t: number, w: number, h: number): { position: CaptionSettings['position']; top: number; bottom: number } | null {
-  const shown = shownAt(ctx, project, t, w, h)
+export function captionBlockAt(
+  ctx: Ctx,
+  project: Project,
+  t: number,
+  w: number,
+  h: number,
+  /** The text area (shared/render/safeZones.ts textArea); absent or null: the whole frame, as always. */
+  area?: Rect | null
+): { position: CaptionSettings['position']; top: number; bottom: number } | null {
+  const shown = shownAt(ctx, project, t, w, h, area ?? null)
   if (!shown) return null
   const { placed, settings } = shown
   return { position: settings.position, top: placed.top, bottom: placed.top + placed.height }
@@ -221,21 +238,21 @@ export function captionBlockAt(ctx: Ctx, project: Project, t: number, w: number,
  * captions hidden.
  */
 export function drawCaptionsLayer(fc: FrameContext): void {
-  const { ctx, w, h } = fc
-  const shown = shownAt(ctx, fc.project, fc.t, w, h)
+  const { ctx, w, h, textArea: area } = fc
+  const shown = shownAt(ctx, fc.project, fc.t, w, h, area)
   if (!shown) return
   const { font, seg, settings, layout, ci, chunk, alpha, placed } = shown
   const spoken = layout.look.karaoke ? spokenToken(layout, chunk, fc.t) : -1
   let serial = serials.get(seg)
   if (serial === undefined) serials.set(seg, (serial = nextSerial++))
-  const key = `${serial}|${ci}|${spoken}|${w}x${h}|${settings.preset}|${settings.position}|${settings.size}|${settings.color}|${settings.highlightColor}|${settings.background}|${settings.maxLines}|${fontKey(font)}`
+  const key = `${serial}|${ci}|${spoken}|${w}x${h}|${settings.preset}|${settings.position}|${settings.size}|${settings.color}|${settings.highlightColor}|${settings.background}|${settings.maxLines}|${fontKey(font)}|${areaKey(area)}`
   // Room for the box padding, the outline, the shadow and glyphs reaching past their line.
   const pad = Math.ceil(layout.px * 0.7 + layout.padX)
   const box = { x: Math.min(...placed.lines.map((l) => l.x)) - pad, y: placed.top - pad, w: chunk.width + pad * 2, h: placed.height + pad * 2 }
   ctx.save()
   ctx.globalAlpha = alpha
-  const sprite = spriteOf(key, box, (c) => paintChunk(c, layout, chunk, settings, spoken, w, h, font))
+  const sprite = spriteOf(key, box, (c) => paintChunk(c, layout, chunk, settings, spoken, w, h, font, area))
   if (sprite) ctx.drawImage(sprite.canvas, sprite.x, sprite.y)
-  else paintChunk(ctx, layout, chunk, settings, spoken, w, h, font)
+  else paintChunk(ctx, layout, chunk, settings, spoken, w, h, font, area)
   ctx.restore()
 }
