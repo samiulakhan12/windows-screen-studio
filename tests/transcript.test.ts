@@ -475,20 +475,32 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
     // 0.1 s kept, or 0.06 s at 1x: a guess there may still be heard.
     expect(struck([untimed], cut(10, 16.9))).toEqual([])
     expect(struck([untimed], [clip(0, 10), clip(16.94, 30)])).toEqual([])
-    // "works." keeps its middle (0.94 s) in the 0.045 s left of its caption's words.
-    const yes = seg('y', 0.4, 1.5, 'Yes works.', [
-      ['Yes', 0.4, 0.7],
-      ['works.', 0.9, 0.98]
+    // "works." keeps its middle (0.94 s) in the 0.045 s left of its caption ending at 0.98 s; one running to 1.5 s keeps 0.565 s, a cue.
+    const yes = (end: number): CaptionSegment =>
+      seg('y', 0.4, end, 'Yes works.', [
+        ['Yes', 0.4, 0.7],
+        ['works.', 0.9, 0.98]
+      ])
+    expect(struck([yes(0.98)], [clip(0.935, 30)])).toEqual(['Yes', 'works.'])
+    expect(struck([yes(0.98)], [clip(0.92, 30)])).toEqual(['Yes'])
+    expect(struck([yes(1.5)], [clip(0.935, 30)])).toEqual(['Yes'])
+    // Measured on the caption's own time, wider than its words' (a Whisper segment, a caption dragged longer): "it." keeps its middle and 1 s of its caption.
+    const said = seg('c', 20, 21.6, "So that's it.", [
+      ['So', 20.1, 20.3],
+      ["that's", 20.3, 20.6],
+      ['it.', 20.6, 20.64]
     ])
-    expect(struck([yes], [clip(0.935, 30)])).toEqual(['Yes', 'works.'])
-    expect(struck([yes], [clip(0.92, 30)])).toEqual(['Yes'])
-    // Word timings shorter than that, none of them cut: nothing is.
+    expect(struck([said], [clip(0, 19.75), clip(20.6, 30)])).toEqual(['So', "that's"])
+    expect(struck([said], [clip(0, 19.75, 2), clip(20.6, 30, 2)])).toEqual(['So', "that's"])
+    expect(struck([said], [clip(0, 19.8), clip(20.6, 21.64)])).toEqual(['So', "that's"])
+    expect(struck([said], [clip(0, 19.8), clip(20.6, 20.69, 2), clip(21.6, 30)])).toEqual(['So', "that's", 'it.'])
+    // Word timings shorter than a cue, none of them cut: nothing is; "yes." cut, "Hmm," stays (its caption keeps 0.215 s).
     const hmm = seg('h', 5, 5.5, 'Hmm, yes.', [
       ['Hmm,', 5.2, 5.2],
       ['yes.', 5.2, 5.23]
     ])
     expect(struck([hmm], [clip(0, 30)])).toEqual([])
-    expect(struck([hmm], [clip(0, 5.215)])).toEqual(['Hmm,', 'yes.'])
+    expect(struck([hmm], [clip(0, 5.215)])).toEqual(['yes.'])
   })
 
   it('cuts a guess deleted in the tab by its middle, and never takes one as a heard neighbour', () => {

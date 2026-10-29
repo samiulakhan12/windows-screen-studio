@@ -456,16 +456,65 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     timelineCut(s, 9, 16.9)
     expect(struck(s.state)).toEqual([])
     expect(srt(s.state)).toEqual([SENTENCE, 'Then press Start.'])
-    // Heard words: 0.045 s left of the words, more of the caption after them.
-    const t = open([seg('y', 0.4, 1.5, 'Yes works.', [{ text: 'Yes', start: 0.4, end: 0.7 }, { text: 'works.', start: 0.9, end: 0.98 }]), next()])
+    // Heard words: 0.045 s left of the caption ("works." keeps its middle); 0.565 s left of a longer one, a cue with "works.".
+    const yes = (end: number): CaptionSegment => seg('y', 0.4, end, 'Yes works.', [{ text: 'Yes', start: 0.4, end: 0.7 }, { text: 'works.', start: 0.9, end: 0.98 }])
+    const t = open([yes(0.98), next()])
     t.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
     expect(struck(t.state)).toEqual(['Yes', 'works.'])
     expect(srt(t.state)).toEqual(['Then press Start.'])
+    const longer = open([yes(1.5), next()])
+    longer.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
+    expect(struck(longer.state)).toEqual(['Yes'])
+    expect(srt(longer.state)).toEqual(['works.', 'Then press Start.'])
     // Word timings shorter than a cue, nothing cut: the caption stays.
     const u = open([seg('h', 5, 5.5, 'Hmm.', [{ text: 'Hmm.', start: 5.2, end: 5.2 }]), next()])
     timelineCut(u, 7, 8)
     expect(struck(u.state)).toEqual([])
     expect(srt(u.state)).toEqual(['Hmm.', 'Then press Start.'])
+  })
+
+  it('a caption is measured on its own time, wider than its words (a Whisper segment): a heard word that plays stays, however the captions are grouped', () => {
+    // Whisper's segment times run past their words (transcriptParse.ts).
+    const captions = (lastEnd = 20.64): CaptionSegment[] => [
+      seg('p', 17, 19.6, 'Okay.', [{ text: 'Okay.', start: 18.9, end: 19.4 }]),
+      seg('c', 20, 21.6, "So that's it.", [
+        { text: 'So', start: 20.1, end: 20.3 },
+        { text: "that's", start: 20.3, end: 20.6 },
+        { text: 'it.', start: 20.6, end: lastEnd }
+      ]),
+      seg('n', 22, 24, 'Next part.', [
+        { text: 'Next', start: 22, end: 22.4 },
+        { text: 'part.', start: 22.4, end: 22.9 }
+      ])
+    ]
+    // "So that's" deleted in the tab: "it." plays, and can be deleted on its own.
+    let s = open(captions(), 'openai')
+    tabDelete(s, 'So', "that's")
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+    tabDelete(s, 'it.')
+    expect(struck(s.state)).toEqual(['So', "that's", 'it.'])
+    expect(srt(s.state)).toEqual(['Okay.', 'Next part.'])
+    // Merged with the next caption, then split again: the same words cut.
+    s = open(captions(), 'openai')
+    tabDelete(s, 'So', "that's")
+    editCaptions(s, (list) => mergeWithNext(list, 'c')!)
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it. Next part.'])
+    editCaptions(s, (list) => splitCaption(list, 'c', 21.8)!)
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+    // At 2x, a 90 ms "it." (45 ms of output) in a 0.5 s cue.
+    s = open(captions(20.69), 'openai')
+    s.update((p) => ({ ...p, clips: [clip(0, DURATION, 2)] }))
+    tabDelete(s, 'So', "that's")
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
+    // A timeline cut that keeps the middle of an 80 ms "it.".
+    s = open(captions(20.68), 'openai')
+    s.update((p) => ({ ...p, clips: [clip(0, 19.8), clip(20.64, DURATION)] }))
+    expect(struck(s.state)).toEqual(['So', "that's"])
+    expect(srt(s.state)).toEqual(['Okay.', 'it.', 'Next part.'])
   })
 
   it('a deleted word stays out after its caption is edited: words that no longer match their timings, or none, a typo, a full stop, the end dragged', () => {

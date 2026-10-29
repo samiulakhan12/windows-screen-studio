@@ -24,6 +24,8 @@ export interface TranscriptWord {
   estimated: boolean
   /** A guess deleted in the Transcript tab: cut by its middle like a heard word (cutFlags). */
   deleted?: true
+  /** Its caption's own time (captionsWords gives it; else taken as its caption's words' time): what is left of the caption (cutFlags). */
+  captionTime?: TimeRange
 }
 
 type TimedText = Omit<TranscriptWord, 'index' | 'caption'>
@@ -132,7 +134,8 @@ export function transcriptWords(transcript: Transcript | undefined): TranscriptW
 export function captionsWords(segments: readonly CaptionSegment[]): TranscriptWord[] {
   const out: TranscriptWord[] = []
   for (const seg of segments) {
-    for (const w of alignCaptionWords(seg)) out.push({ ...w, index: out.length, caption: seg.id })
+    const captionTime = { start: seg.start, end: seg.end }
+    for (const w of alignCaptionWords(seg)) out.push({ ...w, index: out.length, caption: seg.id, captionTime })
   }
   return out
 }
@@ -187,8 +190,8 @@ export const MIN_CUE = 0.05
  * surely cut: its middle is in no clip and no clip keeps any of the time between the middles of the
  * nearest heard words before and after it in its caption (the caption's first start or last end
  * where there is none), so a guess never takes out a word that may still be heard. Every word of a
- * caption that a cut has reached (a middle cut) and whose words' time (first start to last end) the
- * clips keep less than MIN_CUE of is cut: the subtitle files leave out such a sliver.
+ * caption that a cut has reached (a middle cut) and whose own time (`captionTime`) the clips keep
+ * less than MIN_CUE of is cut: the subtitle files leave out such a sliver.
  */
 export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
   const middles = middlesCut(words, clips)
@@ -218,7 +221,8 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
       to = Math.max(to, words[b].end)
       reached ||= middles[b]
     }
-    if (reached && keptOutput(clips, from, to) < MIN_CUE) flags.fill(true, a, b)
+    const time = words[a].captionTime ?? { start: from, end: to }
+    if (reached && keptOutput(clips, time.start, time.end) < MIN_CUE) flags.fill(true, a, b)
   }
   return flags
 }
