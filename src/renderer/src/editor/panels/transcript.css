@@ -79,17 +79,23 @@
   box-shadow: inset 0 -2px 0 var(--track-caption);
 }
 
+/* The tint alone is too faint to see (1.13:1) and forced colours drop it: an outline marks each
+   selected word (7.6:1 on the list, 6.8:1 on the tint). */
 .tw.selected {
   background: var(--accent-soft);
   color: var(--text-1);
+  outline: 1px solid var(--accent-text);
+  outline-offset: -1px;
 }
 
 .tw.selected.cut {
   color: var(--text-2);
 }
 
+/* The keyboard's word: a wider ring, so it stands out among the selected words too. */
 .transcript-words:focus-visible .tw.focus {
-  outline: 1px solid var(--accent-text);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 0;
 }
 
 /* The review list. */

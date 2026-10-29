@@ -588,6 +588,9 @@ Where the build differs from the sections above, after an adversarial review:
   keyboard layout.
 - **Pages** follow playback only when the spoken word moves onto another page, so Earlier and Later
   work while playing.
+- **Selected words** carry the `--accent-text` outline of §5 (1 px, inset; 7.6:1 on the list, 6.8:1
+  on the `--accent-soft` tint, which alone is 1.13:1 and is dropped in forced colours); the
+  keyboard's word gets the wider `--focus-ring`.
 - `normalizeWord` lives in `transcript.ts` (re-exported by `fillers.ts`); `lcsPairs` too.
 - Two existing e2e expectations were updated for intended changes: the Inspector rail now has twelve
   tabs (`tests/e2e/ui.e2e.cjs`; it still fits at the minimum window size), and the older-project
