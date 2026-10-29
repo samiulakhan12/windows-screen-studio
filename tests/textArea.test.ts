@@ -1,65 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { CameraBox, Rect, SceneProject } from '../src/shared/engine/layout'
-import type { CameraLayout, CaptionSettings, Corner, CursorTrack, Project, ReframeSettings, TitleCard, WatermarkSettings } from '../src/shared/types'
+import type { Rect } from '../src/shared/engine/layout'
+import type { CaptionSettings, Corner, CursorTrack, Project, ReframeSettings, TitleCard, WatermarkSettings } from '../src/shared/types'
 
 /*
  * Where captions, key presses, the logo and lower-third titles go in a vertical frame
  * (docs/design/vertical-video.md §6.3, tests 52 and 53): the text area (safeZones.ts textArea) and
  * each placement rule in it. Without an area every rule gives today's placement; the equivalence
  * guard (tests/verticalEquivalence.test.ts) pins those values bit for bit.
- *
- * Until part P1's follow geometry lands, layout.ts's followGeometry and bandSide are stood in for
- * by the formulas of §5.3 (a band of the frame inside the padding, the slot below or above it
- * less the gap), so the numbers here are the spec's.
  */
 
-const { DEFAULT_REFRAME, followApplies, isTall } = await import('../src/shared/engine/reframeData')
-
-type Geometry = { slot: Rect; camera: CameraBox; band: Rect | null }
-
-/** The band layouts of §5.3, for the camera at the top or bottom of a tall frame (f: the band's share of the padded height). */
-function band(project: SceneProject, outW: number, outH: number, f: number, side: 'top' | 'bottom'): Geometry {
-  const m = Math.min(outW, outH)
-  const pad = m * project.style.padding
-  const area = { x: pad, y: pad, w: Math.max(1, outW - pad * 2), h: Math.max(1, outH - pad * 2) }
-  const gap = project.style.padding > 0 ? 0.03 * m : 0
-  const bh = f * area.h
-  const camera = { x: area.x, y: side === 'top' ? area.y : area.y + area.h - bh, w: area.w, h: bh }
-  const slot = { x: area.x, y: side === 'top' ? area.y + bh + gap : area.y, w: area.w, h: area.h - bh - gap }
-  return { slot, camera: { rect: camera, radius: (project.style.cornerRadius * m) / 1080, opacity: 1 }, band: camera }
-}
-
-vi.mock('../src/shared/engine/layout', async (importOriginal) => {
-  const real = await importOriginal<typeof import('../src/shared/engine/layout')>()
-  const placeOf = (p: SceneProject, w: number, h: number): 'top' | 'bottom' | 'bubble' =>
-    isTall(w, h) && real.layoutsApply(p) && p.reframe?.camera !== 'bubble' ? (p.reframe?.camera ?? 'top') : 'bubble'
-  const followGeometry = (layout: CameraLayout, p: SceneProject, w: number, h: number, vw: number, vh: number, corner?: Corner): Geometry => {
-    const place = placeOf(p, w, h)
-    const f = p.reframe?.band ?? 0.32
-    const whole = band(p, w, h, 0, 'top')
-    // The bubble side by side in a tall frame is a band too, on the side of the segment's corner.
-    if (place === 'bubble' && layout === 'side-by-side' && isTall(w, h)) return band(p, w, h, f, (corner ?? p.webcam.corner).startsWith('top') ? 'top' : 'bottom')
-    if (place === 'bubble' || layout === 'screen-only') {
-      const slot = { ...whole.slot }
-      const r = real.webcamRect(w, h, p.webcam)
-      return { slot, camera: { rect: layout === 'screen-only' ? { ...r, h: 0 } : r, radius: 0, opacity: layout === 'screen-only' ? 0 : 1 }, band: null }
-    }
-    if (layout === 'camera-only') {
-      // The camera fills the frame inside the padding (given as its band here: text must still not be pushed).
-      const s = band(p, w, h, f, place).slot
-      return { slot: { x: s.x + s.w / 4, y: s.y + s.h / 4, w: s.w / 2, h: s.h / 2 }, camera: { rect: whole.slot, radius: 0, opacity: 1 }, band: whole.slot }
-    }
-    void vw
-    void vh
-    return band(p, w, h, layout === 'camera-large' ? Math.min(0.65, 1.6 * f) : f, place)
-  }
-  const bandSide = (p: SceneProject, w: number, h: number, vw: number, vh: number): 'top' | 'bottom' | null => {
-    const place = placeOf(p, w, h)
-    return followApplies(p, w, h, vw, vh) && place !== 'bubble' ? place : null
-  }
-  return { ...real, followGeometry, bandSide }
-})
-
+const { DEFAULT_REFRAME } = await import('../src/shared/engine/reframeData')
 const { textArea, COMMON_SAFE, TEXT_INSET } = await import('../src/shared/render/safeZones')
 const { createProject } = await import('../src/shared/engine/project')
 const { easeInOutCubic } = await import('../src/shared/engine/math')

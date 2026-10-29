@@ -7,9 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * DOM nodes for their refs (focus is recorded), and window.api is a stub of the main process.
  */
 
-// textArea and keepInArea, with stand-ins while they are contract stubs (tests/safeZoneStandIns.ts).
-vi.mock('../src/shared/render/safeZones', async (importOriginal) => (await import('./safeZoneStandIns')).withStandIns(await importOriginal()))
-
 interface Cell {
   value?: unknown
   deps?: readonly unknown[]

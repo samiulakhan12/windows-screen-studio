@@ -1,9 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { Rect } from '../src/shared/engine/layout'
-
-// textArea and keepInArea, with stand-ins while they are contract stubs (tests/safeZoneStandIns.ts).
-vi.mock('../src/shared/render/safeZones', async (importOriginal) => (await import('./safeZoneStandIns')).withStandIns(await importOriginal()))
-
 import { canCopyAs, copyName, projectCopy, refitItems, type MeasureText } from '../src/shared/editor/duplicate'
 import { createProject } from '../src/shared/engine/project'
 import { COMMON_SAFE, textArea } from '../src/shared/render/safeZones'
