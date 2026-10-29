@@ -3,7 +3,7 @@ import { captionAlpha } from '../src/shared/captions/layout'
 import { animationTime } from '../src/shared/engine/backgrounds'
 import { planOf, videoFrames } from '../src/shared/engine/freeze'
 import { loopHomeWeight } from '../src/shared/render/cursorFx'
-import { chapterParts, chaptersNote, stillAcrossChapters } from '../src/shared/render/exportBundle'
+import { bundleKinds, chapterParts, chaptersNote, SIDECAR_KINDS, stillAcrossChapters, type BundleOptions, type BundleSources } from '../src/shared/render/exportBundle'
 import { overlayAlpha, overlayClockMs } from '../src/shared/render/imageOverlays'
 import { titlePhase } from '../src/shared/render/titleCards'
 import type { ChapterPart } from '../src/shared/render/exportBundle'
@@ -82,18 +82,13 @@ describe('one file per chapter: what the export dialog says', () => {
     }
     return out
   }
-  const thumbnailTitle = async (perChapter: boolean): Promise<string> => {
+  const render = async (value: BundleOptions, has: BundleSources = { captions: false, chapters: true }): Promise<El[]> => {
     const { ExportBundleOptions } = (await import(/* @vite-ignore */ OPTIONS)) as { ExportBundleOptions: Options }
-    const tree = ExportBundleOptions({
-      value: { srt: false, vtt: false, chapters: false, thumbnail: true, description: false, perChapter },
-      onChange: () => undefined,
-      format: 'mp4',
-      has: { captions: false, chapters: true },
-      mode: 'single',
-      chapterCount: 3
-    })
-    return String(elements(tree).find((e) => e.props['data-sidecar'] === 'thumbnail')!.props.title)
+    return elements(ExportBundleOptions({ value, onChange: () => undefined, format: 'mp4', has, mode: 'single', chapterCount: 3 }))
   }
+  const chip = (tree: El[], kind: string): El => tree.find((e) => e.props['data-sidecar'] === kind)!
+  const thumbnailTitle = async (perChapter: boolean): Promise<string> =>
+    String(chip(await render({ srt: false, vtt: false, chapters: false, thumbnail: true, description: false, perChapter }), 'thumbnail').props.title)
 
   it('says the parts have no chapter markers', () => {
     expect(chaptersNote(3, false, false)).toBe('3 chapters, written into the file.')
@@ -104,5 +99,35 @@ describe('one file per chapter: what the export dialog says', () => {
   it('says each part gets the frame 1 s in as its thumbnail, not the frame chosen above', async () => {
     expect(await thumbnailTitle(false)).toBe('Save the frame chosen above as a PNG at the export size')
     expect(await thumbnailTitle(true)).toBe('Save the frame 1 s into each part as a PNG at the export size')
+  })
+
+  it('shows the chapter list off with one file per chapter, as no part gets one, and says why', async () => {
+    const has: BundleSources = { captions: true, chapters: true }
+    const all: BundleOptions = { srt: true, vtt: true, chapters: true, thumbnail: true, description: true, perChapter: false }
+    for (const perChapter of [false, true]) {
+      const value = { ...all, perChapter }
+      const tree = await render(value, has)
+      // A chip shows on exactly when its file is written: for the video, or for every part.
+      const saved = bundleKinds(value, 'mp4', has, perChapter)
+      for (const k of SIDECAR_KINDS) expect([k, chip(tree, k).props['aria-pressed']]).toEqual([k, saved.includes(k)])
+    }
+    const off = await render({ ...all, perChapter: false }, has)
+    expect(chip(off, 'chapters').props.disabled).toBe(false)
+    expect(chip(off, 'chapters').props.title).toBe('Save the chapters as YouTube timestamps (0:00 Intro…) in a text file')
+    const per = await render({ ...all, perChapter: true }, has)
+    expect(chip(per, 'chapters').props.disabled).toBe(true)
+    expect(chip(per, 'chapters').props.title).toBe('Each file is one chapter, so it has no chapter list')
+    const hints = per.filter((e) => e.type === 'p').map((e) => String(e.props.children))
+    expect(hints).toContain('Each file is one chapter, so it has no chapter list.')
+    // The choice is kept: with one file per chapter off again, the chapter list is saved.
+    expect(chip(off, 'chapters').props['aria-pressed']).toBe(true)
+  })
+
+  it("says a part's description holds its title, which part it is and its length, not the chapters", async () => {
+    const value: BundleOptions = { srt: false, vtt: false, chapters: false, thumbnail: false, description: true, perChapter: false }
+    expect(chip(await render(value), 'description').props.title).toBe('Save a description with the title, length and chapters, ready to paste')
+    expect(chip(await render({ ...value, perChapter: true }), 'description').props.title).toBe(
+      "Save a description with each part's title, which part it is and its length, ready to paste"
+    )
   })
 })

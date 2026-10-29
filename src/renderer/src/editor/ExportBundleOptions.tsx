@@ -1,4 +1,4 @@
-import { perChapterBlocked, SIDECAR_KINDS, SIDECAR_LABELS, sidecarBlocked, type BundleOptions, type BundleSources } from '../../../shared/render/exportBundle'
+import { perChapterBlocked, SIDECAR_KINDS, SIDECAR_LABELS, sidecarBlocked, type BundleOptions, type BundleSources, type SidecarKind } from '../../../shared/render/exportBundle'
 import type { ExportFormat } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 
@@ -9,8 +9,13 @@ const TITLES: Record<string, string> = {
   thumbnail: 'Save the frame chosen above as a PNG at the export size',
   description: 'Save a description with the title, length and chapters, ready to paste'
 }
-/** One file per chapter: each part's thumbnail is its own frame, not the Frame slider's. */
-const PART_THUMBNAIL_TITLE = 'Save the frame 1 s into each part as a PNG at the export size'
+/** One file per chapter: what each part's thumbnail and description hold. */
+const PART_TITLES: Partial<Record<SidecarKind, string>> = {
+  thumbnail: 'Save the frame 1 s into each part as a PNG at the export size',
+  description: "Save a description with each part's title, which part it is and its length, ready to paste"
+}
+/** One file per chapter: a part is one chapter, so no chapter list is saved (bundleKinds). */
+const PART_NO_CHAPTER_LIST = 'Each file is one chapter, so it has no chapter list'
 
 /**
  * "Also save" in the export dialog's settings (F-11): files written next to the video, and one
@@ -32,8 +37,10 @@ export function ExportBundleOptions({
   chapterCount: number
 }): JSX.Element {
   const perBlocked = perChapterBlocked(has, mode)
+  const perOn = value.perChapter && !perBlocked
+  const blockedOf = (k: SidecarKind): string | null => sidecarBlocked(k, format, has) ?? (perOn && k === 'chapters' ? PART_NO_CHAPTER_LIST : null)
   // Why chips are off, as text everyone can read (a disabled button's tooltip is not announced).
-  const reasons = format === 'gif' ? [] : [...new Set(SIDECAR_KINDS.map((k) => sidecarBlocked(k, format, has)).filter((r): r is string => !!r))]
+  const reasons = format === 'gif' ? [] : [...new Set(SIDECAR_KINDS.map(blockedOf).filter((r): r is string => !!r))]
   return (
     <>
       <div className="form-row export-bundle">
@@ -41,7 +48,7 @@ export function ExportBundleOptions({
         <div className="export-stack">
           <div className="chips" role="group" aria-label="Also save">
             {SIDECAR_KINDS.map((k) => {
-              const blocked = sidecarBlocked(k, format, has)
+              const blocked = blockedOf(k)
               const on = value[k] && !blocked
               return (
                 <button
@@ -49,7 +56,7 @@ export function ExportBundleOptions({
                   className={`chip ${on ? 'active' : ''}`}
                   aria-pressed={on}
                   disabled={!!blocked}
-                  title={blocked ?? (k === 'thumbnail' && value.perChapter && !perBlocked ? PART_THUMBNAIL_TITLE : TITLES[k])}
+                  title={blocked ?? ((perOn && PART_TITLES[k]) || TITLES[k])}
                   data-sidecar={k}
                   onClick={() => onChange({ ...value, [k]: !value[k] })}
                 >
