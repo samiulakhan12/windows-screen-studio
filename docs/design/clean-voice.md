@@ -220,7 +220,8 @@ One store per window, keyed by `projectId|source|strength`, with entries
   switch on, changing the strength, opening a project whose stem was deleted). `stopped` (the user
   pressed Cancel) and `failed` are not restarted automatically.
 - `prepare(id, source, strength)`: starts or joins a render whatever the state (the panel's
-  *Clean now* / *Try again*, and the export).
+  *Clean now* / *Try again*, and the export). A stem already `ready` is checked with main first and
+  made again here (with progress and Cancel) when its file is gone.
 - `cancel(id)`, `original(id)` / `setOriginal(id, on)` (the A/B, view state only: never saved, never
   in undo, reset to off when the editor closes).
 - Progress events update the matching entry.
@@ -238,7 +239,7 @@ original* is off, the preview plays `voice-<key>.m4a` **in place of** the target
   nudges, pause freezes, preview speed).
 - While the stem is being made (or after Cancel, or when its file fails to load) the preview plays
   the original; a failed load tells the store, which checks the status again (a deleted file is made
-  again).
+  again), twice at most per file: a file main still finds but that will not play stays off.
 
 Ducking and the speech detector keep using the original microphone's levels and speech ranges
 (the speech is in the same places; cleaning only removes noise), so the music dips exactly as before.
@@ -255,7 +256,9 @@ about 0.4 dB quieter, §2.2); the export measures the real mix, as today.
   `voice`, picks the source the way §4.1 does from what is resolved (the `mic` stem file when the job
   mixes stems with a microphone; the mixed track when it mixes no stems), calls `ensureVoiceStem`
   (made there if it is somehow missing, so the export can never use a stale or wrong file), and
-  replaces that one input path. `audioPlan.ts`'s graph is unchanged: the cleaned file has the
+  replaces that one input path. When the stems were dropped because `mic.m4a` itself is gone, the
+  export stops ("Your voice could not be cleaned. The microphone file of this recording is
+  missing."): the preview still plays the stem made from it. `audioPlan.ts`'s graph is unchanged: the cleaned file has the
   source's timeline, channels and exact length, so cutting, re-timing, freezes, gains, noise reduction,
   normalisation, music, clicks and fades apply exactly as to the original.
 - `validRecording` accepts `voice` only as one of the three strengths.
