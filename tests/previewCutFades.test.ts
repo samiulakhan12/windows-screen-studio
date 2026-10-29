@@ -135,7 +135,7 @@ describe('the fade out before a cut in the preview', () => {
   /** A 60 or 30 fps recording, clip ends on and off the frame grid, the element clock half a frame ahead of or behind the frame shown. */
   const cases = [60, 30].flatMap((fps) => [2.001, 2.005, 2.009, 2.013, 2.021, 2.029].flatMap((end) => [0.5, -0.5].map((skew) => ({ fps, end, skew: skew / fps }))))
 
-  it('ends one render buffer before the jump (rendered before the seek), placed by the frame shown, whatever the element clock says', () => {
+  it('ends two render buffers before the jump (rendered before the seek), placed by the frame shown, whatever the element clock says', () => {
     for (const { fps, end, skew } of cases) {
       const what = `${fps} fps, end ${end}, skew ${skew}`
       const frame = 1 / fps
@@ -159,7 +159,7 @@ describe('the fade out before a cut in the preview', () => {
       }
       const ramps = cut.gain.ops.filter(([op, v]) => op === 'ramp' && v === 0)
       expect(ramps, what).toHaveLength(1)
-      expect(ramps[0][2], what).toBeCloseTo(jumpAt - ctx.baseLatency, 9)
+      expect(ramps[0][2], what).toBeCloseTo(jumpAt - 2 * ctx.baseLatency, 9)
       // The whole fade, from full sound.
       const from = cut.gain.ops.filter(([op, v]) => op !== 'cancel' && v === 1).at(-1)!
       expect(ramps[0][2] - from[2], what).toBeCloseTo(CUT_FADE, 9)
@@ -333,6 +333,63 @@ describe('the cut gain as rendered', () => {
         for (let p = 0; p < 8; p++) {
           const { rise, fall } = render({ clips, view: 1, start: 1, buffer, rate, phase: ((p + 0.5) / 8) * (buffer / rate), seek: { at: 5, to } })
           if (rise > 0.5 || fall > 0.5) steps.push(`${buffer}@${rate}, seek to ${to.toFixed(3)}, phase ${p}/8: up ${rise.toFixed(2)}, down ${fall.toFixed(2)}`)
+        }
+      }
+    }
+    expect(steps).toEqual([])
+  })
+
+  it('never steps at 1.5x, where the frames shown step 2, 1, 2 source frames on a 60 Hz display', () => {
+    // The frame shown sits on the recording's frame grid, so at 1.5x on a 60 Hz display it advances
+    // 2 or 1 frames per callback and a jump predicted from the last step can come a frame early.
+    // The audio clock moves a Windows-sized buffer at a time, rounded up to Chromium's 128-sample quanta.
+    const steps: string[] = []
+    for (const fps of [60, 30]) {
+      for (const { buffer, rate } of [{ buffer: 960, rate: 48000 }, { buffer: 882, rate: 44100 }]) {
+        for (let e = 0; e < 12; e++) {
+          const end = 2 + e * 0.0027
+          const clips = [
+            { id: 'a', start: 0, end, speed: 1 },
+            { id: 'b', start: 3, end: 20, speed: 1 }
+          ]
+          for (let p = 0; p < 8; p++) {
+            const { screen, sound, ctx, cut } = setUp(project(clips, [], fps))
+            const param = new RenderedParam()
+            ;(cut as { gain: unknown }).gain = param
+            const length = buffer / rate
+            ctx.baseLatency = length
+            const phase = ((p + 0.5) / 8) * length
+            const clock = (wall: number) => (Math.ceil((Math.floor((wall + phase) / length + 1e-9) * buffer) / 128 - 1e-9) * 128) / rate
+            ctx.currentTime = clock(0)
+            const view = 1.5
+            screen.playbackRate = view
+            sound.setRate(view)
+            sound.setView(view)
+            sound.play(1.5, view)
+            let at = 1.5
+            let jumped = -1
+            for (let k = 1; k < 60 && jumped < 0; k++) {
+              const now = clock(k / 60)
+              param.render(ctx.currentTime, now, rate)
+              ctx.currentTime = now
+              at += view / 60
+              const t = Math.floor(at * fps + 1e-6) / fps
+              screen.currentTime = t
+              sound.frame(t)
+              // The player's rule: jump when the next frame would reach the clip's end.
+              if (t + view / fps >= end - JUMP_SLACK) {
+                jumped = param.samples.length
+                screen.currentTime = 3
+                sound.jump(3, view)
+              }
+            }
+            param.render(ctx.currentTime, ctx.currentTime + 0.05, rate)
+            let fall = 0
+            param.samples.forEach((v, n) => {
+              if (n > 0) fall = Math.max(fall, param.samples[n - 1] - v)
+            })
+            if (jumped < 0 || fall > 0.2) steps.push(`${fps} fps, ${buffer}@${rate}, end ${end.toFixed(4)}, phase ${p}/8: ${jumped < 0 ? 'no jump' : `down ${fall.toFixed(2)}`}`)
+          }
         }
       }
     }

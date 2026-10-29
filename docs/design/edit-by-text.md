@@ -556,12 +556,14 @@ Where the build differs from the sections above, after an adversarial review:
   the ramp from the last callback that still leaves the whole fade, so it ends at the jump. The
   prediction uses the time of the frame shown (the callback's `mediaTime`, which `player.ts` passes
   to `frame(t)` and jumps on, with the same `JUMP_SLACK`), not the element's clock, which runs up to
-  a frame off it. The ramp ends one render buffer (`baseLatency`, about 23 ms with the 'playback'
-  latency) before the jump rather than at it: the audio clock moves a buffer at a time, and the
-  jump's seek silences the element at once, so a ramp not yet rendered would be cancelled and the
-  sound would stop dead (one buffer was enough in Electron; a second only mutes more speech). The
-  preview is therefore silent for that buffer before a cut (transcript cuts end in a pause); the
-  export fades over exactly `CUT_FADE`. When the jump is nearer than the fade and that buffer
+  a frame off it. The ramp ends two render buffers (`2 × baseLatency`, about 40 to 46 ms with the
+  'playback' latency) before the jump rather than at it: the audio clock moves a buffer at a time,
+  and the jump's seek silences the element at once, so a ramp not yet rendered would be cancelled and
+  the sound would stop dead. One buffer covers the buffer in flight; the second covers a frame
+  rhythm that is not even (at 1.5x on a 60 Hz display the frames shown step 2, 1, 2 source frames,
+  so a jump predicted from the last step can come a frame early; with one buffer about one cut in
+  five still stepped there). The preview is therefore silent for those buffers before a cut
+  (transcript cuts end in a pause); the export fades over exactly `CUT_FADE`. When the jump is nearer than the fade and that buffer
   (playing started just before a cut, a short clip at a fast preview speed), the ramp keeps its
   whole length and ends nearer the jump instead: never a step to silence. The fade out starts from
   the gain as scheduled (`previewAudio` keeps what it scheduled; the param's `value` is the last
