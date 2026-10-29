@@ -217,7 +217,8 @@ const blockWidth = (b: TextBlock | null): number => (b && b.widths.length ? Math
  * Where the text of `card` goes in a `w` x `h` frame: sizes relative to the frame, wrapped
  * within the title-safe area, and shrunk (title and subtitle together) until it fits. In a text
  * area (docs/design/vertical-video.md §6.3) a lower third's band keeps to it: its bottom at the
- * area's, its left at the area's (or the title-safe margin), no wider than the area.
+ * area's (never below the title-safe margin), its left at the area's (or the title-safe margin),
+ * no wider than the area.
  */
 export function titleLayout(
   card: Pick<TitleCard, 'title' | 'subtitle' | 'style'>,
@@ -263,7 +264,9 @@ export function titleLayout(
     const pad = bandPad(t.lines.length ? t.px : (s?.px ?? m.title * u))
     const bw = width + pad.x * 2 + pad.accent * 2.4
     const bh = height + pad.y * 2
-    band = { x: left, y: inArea ? inArea.y + inArea.h - bh : h - safe - bh, w: bw, h: bh, radius: Math.min(bh / 2, pad.y * 1.4), padX: pad.x, padY: pad.y, accent: pad.accent }
+    // In an area, at its bottom, but never lower than today (where the area's bottom is the frame's).
+    const y = inArea ? Math.min(h - safe - bh, inArea.y + inArea.h - bh) : h - safe - bh
+    band = { x: left, y, w: bw, h: bh, radius: Math.min(bh / 2, pad.y * 1.4), padX: pad.x, padY: pad.y, accent: pad.accent }
   }
   return { title: t, subtitle: s && s.lines.length ? s : null, gap, width, height, band, rise: (lower ? 0.018 : 0.028) * h }
 }

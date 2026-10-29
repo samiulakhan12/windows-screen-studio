@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { CameraBox, Rect, SceneProject } from '../src/shared/engine/layout'
-import type { CameraLayout, CaptionSettings, CursorTrack, Project, ReframeSettings, TitleCard, WatermarkSettings } from '../src/shared/types'
+import type { CameraLayout, CaptionSettings, Corner, CursorTrack, Project, ReframeSettings, TitleCard, WatermarkSettings } from '../src/shared/types'
 
 /*
  * Where captions, key presses, the logo and lower-third titles go in a vertical frame
@@ -33,10 +33,12 @@ vi.mock('../src/shared/engine/layout', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/shared/engine/layout')>()
   const placeOf = (p: SceneProject, w: number, h: number): 'top' | 'bottom' | 'bubble' =>
     isTall(w, h) && real.layoutsApply(p) && p.reframe?.camera !== 'bubble' ? (p.reframe?.camera ?? 'top') : 'bubble'
-  const followGeometry = (layout: CameraLayout, p: SceneProject, w: number, h: number, vw: number, vh: number): Geometry => {
+  const followGeometry = (layout: CameraLayout, p: SceneProject, w: number, h: number, vw: number, vh: number, corner?: Corner): Geometry => {
     const place = placeOf(p, w, h)
     const f = p.reframe?.band ?? 0.32
     const whole = band(p, w, h, 0, 'top')
+    // The bubble side by side in a tall frame is a band too, on the side of the segment's corner.
+    if (place === 'bubble' && layout === 'side-by-side' && isTall(w, h)) return band(p, w, h, f, (corner ?? p.webcam.corner).startsWith('top') ? 'top' : 'bottom')
     if (place === 'bubble' || layout === 'screen-only') {
       const slot = { ...whole.slot }
       const r = real.webcamRect(w, h, p.webcam)
@@ -72,15 +74,17 @@ interface Call {
   name: string
   args: unknown[]
   fill: unknown
+  /** The canvas drawn on, for a context made with an id (a layer's own picture). */
+  canvas?: number
 }
 const calls: Call[] = []
-function recordingContext(): unknown {
+function recordingContext(canvas?: number): unknown {
   const state: Record<string | symbol, unknown> = {}
   return new Proxy(state, {
     get(target, prop) {
       if (prop in target) return target[prop]
       if (prop === 'measureText') return (text: string) => ({ width: String(text).length * 9, actualBoundingBoxAscent: 7, actualBoundingBoxDescent: 2 })
-      return (...args: unknown[]) => void calls.push({ name: String(prop), args, fill: target.fillStyle })
+      return (...args: unknown[]) => void calls.push({ name: String(prop), args, fill: target.fillStyle, ...(canvas === undefined ? {} : { canvas }) })
     },
     set(target, prop, value) {
       target[prop] = value
@@ -196,6 +200,25 @@ describe('textArea (test 52)', () => {
     }
     // Halfway back in, halfway pushed.
     expect(area(p, 13.8)!.y).toBeCloseTo((pushed + free) / 2, 6)
+  })
+
+  it('keeps text off the band of a bubble side by side in a tall frame, with appSafe or without', () => {
+    const sideBySide = (appSafe: boolean, corner: Corner): Project =>
+      project({ appSafe, camera: 'bubble' }, { layouts: [{ id: 's', start: 2, end: 8, layout: 'side-by-side', corner }] }, 0)
+    // The camera's band (0.32 of the frame) at the bottom: the area ends where the slot does, 1305.6 px.
+    const slotEnd = H - 0.32 * H
+    expectRect(area(sideBySide(false, 'bottom-right'), 5), { x: 0, y: 0, w: W, h: slotEnd })
+    expectRect(area(sideBySide(true, 'bottom-right'), 5), { x: COMMON.x, y: COMMON.y, w: COMMON.w, h: slotEnd - COMMON.y })
+    // At the top: the area starts below it.
+    expectRect(area(sideBySide(false, 'top-left'), 5), { x: 0, y: 0.32 * H, w: W, h: H - 0.32 * H })
+    // Before the segment the bubble has no band: today's placement without appSafe.
+    expect(area(sideBySide(false, 'bottom-right'), 1)).toBeNull()
+    expectRect(area(sideBySide(true, 'bottom-right'), 1), COMMON)
+    // The bottom caption ends above the band, not on the camera.
+    const settings = caps()
+    const layout = captionLayout(LONG, settings, W, H, measure, area(sideBySide(false, 'bottom-right'), 5))
+    const placed = placeChunk(layout, layout.chunks[0], 'bottom', W, H, area(sideBySide(false, 'bottom-right'), 5))
+    expect(placed.top + placed.height).toBeCloseTo(slotEnd - TEXT_INSET * U, 6)
   })
 })
 
@@ -355,6 +378,45 @@ describe('placement in the text area (test 53)', () => {
     expect(l.band!.x + l.band!.w).toBeLessThanOrEqual(800 + 1e-9)
     expect(l.band!.y + l.band!.h).toBeCloseTo(1200, 9)
   })
+
+  it('without appSafe only the band\'s edge moves: at the frame\'s own edges text keeps today\'s margins', () => {
+    const card: Pick<TitleCard, 'title' | 'subtitle' | 'style'> = { title: 'Billing demo', subtitle: 'Qbexel', style: 'lower-third' }
+    const wm: Pick<WatermarkSettings, 'kind' | 'size' | 'position' | 'margin'> = { kind: 'image', size: 0.12, position: 'bottom-right', margin: 0.03 }
+    const caption = (position: CaptionSettings['position'], where: Rect | null): ReturnType<typeof placeChunk> => {
+      const layout = captionLayout(LONG, caps(), W, H, measure, where)
+      return placeChunk(layout, layout.chunks[0], position, W, H, where)
+    }
+    // A top band at padding 0: the area is the frame below it (614.4 px down).
+    const below = area(project({ appSafe: false }, {}, 0))!
+    expectRect(below, { x: 0, y: 0.32 * H, w: W, h: H - 0.32 * H })
+    expect(caption('top', below).top).toBeCloseTo(below.y + TEXT_INSET * U, 9)
+    expect(keys('top', 'none', below).box.y).toBeCloseTo(below.y + TEXT_INSET * U, 9)
+    // Its bottom is the frame's: captions, key presses and lower thirds as today, not at the edge.
+    expect(caption('bottom', below)).toEqual(caption('bottom', null))
+    expect(keys('bottom', 'none', below).box).toEqual(keys('bottom', 'none', null).box)
+    expect(titleLayout(card, W, H, measure, below)).toEqual(titleLayout(card, W, H, measure))
+    expect(titleLayout(card, W, H, measure, below).band!.y + titleLayout(card, W, H, measure, below).band!.h).toBeCloseTo(H - TITLE_SAFE * U, 9)
+    expect(watermarkRect(W, H, wm, 2, below)).toEqual(watermarkRect(W, H, wm, 2))
+    // A bottom band: the top is the frame's.
+    const above = area(project({ appSafe: false, camera: 'bottom' }, {}, 0))!
+    expectRect(above, { x: 0, y: 0, w: W, h: H - 0.32 * H })
+    expect(caption('top', above)).toEqual(caption('top', null))
+    expect(keys('top', 'none', above).box).toEqual(keys('top', 'none', null).box)
+    expect(watermarkRect(W, H, { ...wm, position: 'top-left' }, 2, above)).toEqual(watermarkRect(W, H, { ...wm, position: 'top-left' }, 2))
+    const bottom = caption('bottom', above)
+    expect(bottom.top + bottom.height).toBeCloseTo(above.h - TEXT_INSET * U, 9)
+    expect(keys('bottom', 'none', above).box.y + keys('bottom', 'none', above).box.h).toBeCloseTo(above.h - TEXT_INSET * U, 9)
+    const lower = titleLayout(card, W, H, measure, above).band!
+    expect(lower.y + lower.h).toBeCloseTo(above.h, 9)
+    // The whole frame as an area is today's placement exactly.
+    const whole: Rect = { x: 0, y: 0, w: W, h: H }
+    for (const position of ['top', 'middle', 'bottom'] as const) expect(caption(position, whole)).toEqual(caption(position, null))
+    for (const position of ['top', 'bottom'] as const) expect(keys(position, 'none', whole).box).toEqual(keys(position, 'none', null).box)
+    expect(titleLayout(card, W, H, measure, whole)).toEqual(titleLayout(card, W, H, measure))
+    // With appSafe the common safe area is further in than today's margins everywhere: its rules as before.
+    expect(caption('bottom', safeArea).top + caption('bottom', safeArea).height).toBeCloseTo(0.76 * H - TEXT_INSET * U, 9)
+    expect(titleLayout(card, W, H, measure, safeArea).band!.y + titleLayout(card, W, H, measure, safeArea).band!.h).toBeCloseTo(0.76 * H, 9)
+  })
 })
 
 describe('the layers lay out again when the text area changes (their caches key on it)', () => {
@@ -405,6 +467,47 @@ describe('the layers lay out again when the text area changes (their caches key 
     expect(bottoms[0]).toBeCloseTo(a.y + a.h, 6)
     expect(bottoms[1]).toBeCloseTo(c.y + c.h, 6)
     expect(bottoms[2]).toBe(bottoms[0])
+  })
+
+  it('lower thirds: a solid band is pictured again for an area of another width, even at the same left and bottom', () => {
+    // A title of two lines in both areas, broken differently: the band starts at the same point but is narrower.
+    const title = Array.from({ length: 28 }, () => 'alpha').join(' ')
+    const q: Project = { ...p, titles: [{ id: 'w', start: 0, end: 6, title, style: 'lower-third', background: 'solid' }] }
+    const wide: Rect = { x: 64.8, y: 211.2, w: 864, h: 1248 }
+    const narrow: Rect = { ...wide, w: 500 }
+    // Measured as the layer measures on the recording context: 9 px a letter at 100 px.
+    const layerMeasure = (text: string, px: number): number => (text.length * 9 * px) / 100
+    const bands = [wide, narrow].map((where) => titleLayout({ title, style: 'lower-third' }, W, H, layerMeasure, where).band!)
+    expect(bands[1].x).toBe(bands[0].x)
+    expect(bands[1].y).toBe(bands[0].y)
+    expect(bands[1].w).toBeLessThan(bands[0].w - 100)
+    // The band, its shadow, the accent bar and the text are drawn once on a canvas of their own, then copied.
+    const g = globalThis as { document?: unknown }
+    let made = 0
+    g.document = {
+      createElement: () => {
+        const id = ++made
+        return { id, width: 0, height: 0, getContext: () => recordingContext(id) }
+      }
+    }
+    try {
+      const ctx = recordingContext()
+      const painted = new Map<number, number>()
+      const widths = [wide, narrow, wide].map((textArea) => {
+        calls.length = 0
+        drawTitleCardsLayer({ ctx, w: W, h: H, t: 2, k: 1, project: q, background: null, textArea })
+        for (const x of calls) if (x.canvas !== undefined && x.name === 'roundRect' && !painted.has(x.canvas)) painted.set(x.canvas, (x.args as number[])[2])
+        const copy = calls.find((x) => x.canvas === undefined && x.name === 'drawImage')!
+        return painted.get((copy.args[0] as { id: number }).id)
+      })
+      expect(widths[0]).toBeCloseTo(bands[0].w, 6)
+      expect(widths[1]).toBeCloseTo(bands[1].w, 6)
+      expect(widths[2]).toBe(widths[0])
+      // The first picture is used again for the first area.
+      expect(made).toBe(2)
+    } finally {
+      delete g.document
+    }
   })
 
   it('the logo', () => {

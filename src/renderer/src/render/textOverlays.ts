@@ -104,9 +104,10 @@ export function drawKeystrokes(
   let x0 = (w - boxW) / 2
   let y0 = settings.position === 'top' ? margin : h - margin - boxH
   if (area) {
-    // The area keeps clear of the apps already: a small inset from its edge; centred on the frame as far as the area allows.
+    // The area keeps clear of the apps already: a small inset from its edge (never nearer the frame's
+    // edge than today, where the area's edge is the frame's); centred on the frame as far as the area allows.
     const inset = Math.min(w, h) * TEXT_INSET
-    y0 = settings.position === 'top' ? area.y + inset : area.y + area.h - inset - boxH
+    y0 = settings.position === 'top' ? Math.max(y0, area.y + inset) : Math.min(y0, area.y + area.h - inset - boxH)
     x0 = boxW > area.w ? area.x + (area.w - boxW) / 2 : clamp(x0, area.x, area.x + area.w - boxW)
   }
   // A caption at the same edge stays put; the keys show just inside it.

@@ -17,7 +17,7 @@
  * CONTRACT: the table and COMMON_SAFE are final (data).
  */
 import type { CameraLayout, Corner, NormRect, Project } from '../types'
-import { bandSide, followGeometry, layoutPhaseAt, type Rect } from '../engine/layout'
+import { followGeometry, layoutPhaseAt, type Rect } from '../engine/layout'
 import { clamp, easeInOutCubic, lerp } from '../engine/math'
 import { followApplies, isTall } from '../engine/reframeData'
 
@@ -87,21 +87,24 @@ export function zonesFor(choice: SafeChoice): SafeBox[] {
 /**
  * Where captions, key presses, the logo and lower-third titles go in a w x h frame of a vw x vh
  * recording at source time `t` (output px, §6.3): COMMON_SAFE with appSafe in a tall frame, its
- * edge on the camera band's side moved to the screen's slot while following with a band; null
- * when neither applies (today's placement exactly). With a band the area is there all the time,
- * whole or pushed, so text never jumps between the two rules as the band hides and shows.
+ * edge on the camera band's side moved to the screen's slot while following with a band (the
+ * bubble's side-by-side band too); null when neither applies (today's placement exactly). The
+ * rules keep today's margins where the area's edge is the frame's own, so text glides, never
+ * jumps, as a band hides and shows.
  */
 export function textArea(project: Project, w: number, h: number, vw: number, vh: number, t: number): Rect | null {
   const reframe = project.reframe
   if (!reframe || !(w > 0 && h > 0)) return null
   const tall = isTall(w, h)
   const safe = reframe.appSafe && tall
-  // Only a tall frame that follows has a band (bandSide says whether the camera is in one).
+  // Only a tall frame that follows has a band.
   const follows = tall && followApplies(project, w, h, vw, vh)
-  if (!safe && !(follows && bandSide(project, w, h, vw, vh))) return null
+  if (!safe && !follows) return null
   const area: Rect = safe ? { x: COMMON_SAFE.x * w, y: COMMON_SAFE.y * h, w: COMMON_SAFE.w * w, h: COMMON_SAFE.h * h } : { x: 0, y: 0, w, h }
   if (!follows) return area
   const [top, bottom] = bandEdges(project, w, h, vw, vh, t, area.y, area.y + area.h)
+  // No band at t and no appSafe: nothing applies.
+  if (!safe && top === area.y && bottom === area.y + area.h) return null
   return { ...area, y: top, h: Math.max(0, bottom - top) }
 }
 

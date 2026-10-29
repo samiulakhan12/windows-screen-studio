@@ -422,7 +422,7 @@ export interface PlacedLine {
 /**
  * Where the lines of `chunk` go in a `w` x `h` frame: centred, at the bottom, middle or top
  * inside the safe margins (the bottom a little higher, clear of video players' controls), or of
- * `area` when given (docs/design/vertical-video.md §6.3).
+ * `area` when given (docs/design/vertical-video.md §6.3), never nearer the frame's edges than without it.
  */
 export function placeChunk(
   layout: CaptionLayout,
@@ -437,7 +437,8 @@ export function placeChunk(
   const rowH = layout.lineHeight + layout.padY * 2
   const height = chunk.lines.length * rowH
   const margin = CAPTION_SAFE * u
-  const top = area ? areaTop(area, position, height, TEXT_INSET * u) : position === 'top' ? margin : position === 'middle' ? (h - height) / 2 : h - margin * 1.25 - height
+  const frameTop = position === 'top' ? margin : position === 'middle' ? (h - height) / 2 : h - margin * 1.25 - height
+  const top = area ? areaTop(area, position, height, TEXT_INSET * u, frameTop) : frameTop
   return {
     top,
     height,
@@ -445,9 +446,13 @@ export function placeChunk(
   }
 }
 
-/** Top of `height` px of lines at `position` in a text area: `inset` from its top or bottom, or centred (the area keeps clear of the apps' controls already). */
-function areaTop(area: Rect, position: CaptionSettings['position'], height: number, inset: number): number {
-  if (position === 'top') return area.y + inset
+/**
+ * Top of `height` px of lines at `position` in a text area: `inset` from its top or bottom (the
+ * area keeps clear of the apps' controls already), or centred; never nearer the frame's edge than
+ * `frameTop`, today's place, where the area's edge is the frame's own.
+ */
+function areaTop(area: Rect, position: CaptionSettings['position'], height: number, inset: number, frameTop: number): number {
+  if (position === 'top') return Math.max(frameTop, area.y + inset)
   if (position === 'middle') return area.y + (area.h - height) / 2
-  return area.y + area.h - inset - height
+  return Math.min(frameTop, area.y + area.h - inset - height)
 }
