@@ -4,6 +4,7 @@
  * anything. Pure; every operation returns new arrays and leaves the others untouched.
  */
 import { clamp } from '../engine/math'
+import { captionWordTimes } from '../editor/transcript'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanCaptionText, MIN_CAPTION, newCaptionId } from './captionData'
 
@@ -48,6 +49,13 @@ export function withCaptionText(seg: CaptionSegment, text: string): CaptionSegme
 }
 
 /**
+ * A caption's word timings one per shown word: its own when they match its text one to one, else
+ * each word's time as the Transcript tab has it (captionWordTimes: guesses stay marked), so a
+ * split or a merge keeps every word where it was, and a word cut by its time stays cut.
+ */
+const timingsOf = (seg: CaptionSegment, count: number): CaptionWord[] => (seg.words && seg.words.length === count ? seg.words : captionWordTimes(seg))
+
+/**
  * Splits caption `id` at source time `t` into two (the text divided at the word spoken there, or
  * by length without word timings). Null when `t` is too close to an edge or there is only one word.
  */
@@ -58,7 +66,7 @@ export function splitCaption(segments: readonly CaptionSegment[], id: string, t:
   const words = seg.text.split(' ').filter(Boolean)
   if (words.length < 2) return null
   let k: number
-  const timed = seg.words && seg.words.length === words.length ? seg.words : null
+  const timed = seg.words?.length ? timingsOf(seg, words.length) : null
   if (timed) {
     // The first word that starts after t goes to the second caption.
     k = timed.findIndex((w) => (w.start + w.end) / 2 >= t)
@@ -87,7 +95,7 @@ export function splitCaption(segments: readonly CaptionSegment[], id: string, t:
   return [...segments.slice(0, i), a, b, ...segments.slice(i + 1)]
 }
 
-/** Merges caption `id` with the one after it (their texts joined; word timings kept when both have them). Null for the last one. */
+/** Merges caption `id` with the one after it (their texts joined; word timings kept when either has them). Null for the last one. */
 export function mergeWithNext(segments: readonly CaptionSegment[], id: string): CaptionSegment[] | null {
   const i = segments.findIndex((s) => s.id === id)
   if (i < 0 || i + 1 >= segments.length) return null
@@ -95,7 +103,7 @@ export function mergeWithNext(segments: readonly CaptionSegment[], id: string): 
   const b = segments[i + 1]
   const merged: CaptionSegment = { id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }
   const count = (s: CaptionSegment): number => s.text.split(' ').filter(Boolean).length
-  if (a.words && b.words && a.words.length === count(a) && b.words.length === count(b)) merged.words = [...a.words, ...b.words]
+  if (a.words?.length || b.words?.length) merged.words = [...timingsOf(a, count(a)), ...timingsOf(b, count(b))]
   return [...segments.slice(0, i), merged, ...segments.slice(i + 2)]
 }
 

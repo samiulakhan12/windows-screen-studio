@@ -232,6 +232,10 @@ span restores exactly the range that cutting it removed.
   drops them from the subtitles (§4.2). The mark is saved with the project and read back
   (`captionData.ts`); projects without it load as before. The review list stays open across this
   change, and across its undo, because the words and their times are the same.
+  Merge and Split in the Captions tab keep every word's time too (`mergeWithNext`,
+  `splitCaption`): a caption whose timings no longer match its text, or that has none next to one
+  that has them, gets its words' times as this tab has them (`captionWordTimes`, guesses still
+  marked), so a deleted word stays cut and out of the subtitles after them.
 - **Restore** (`restoreWords`): `restoreRange` of the span's range: what is cut inside it comes
   back at 1×, kept parts keep their speed, and neighbours with the same speed merge (the timeline's
   own restore rule).

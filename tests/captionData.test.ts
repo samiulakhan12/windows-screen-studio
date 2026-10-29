@@ -209,6 +209,34 @@ describe('caption editing', () => {
     expect(mergeWithNext([seg('a', 0, 1, 'x')], 'a')).toBeNull()
   })
 
+  it('keeps every word time when one caption has word timings and the other none, or they no longer match the text', () => {
+    const timed = seg('a', 0, 2, 'one two', [
+      { text: 'one', start: 0.2, end: 0.6 },
+      { text: 'two', start: 1, end: 1.5 }
+    ])
+    // The untimed one's words keep the times they had on their own, marked as guesses.
+    const merged = mergeWithNext([timed, seg('b', 2, 4, 'aa bb')], 'a')!
+    expect(merged[0].words).toEqual([
+      { text: 'one', start: 0.2, end: 0.6 },
+      { text: 'two', start: 1, end: 1.5 },
+      { text: 'aa', start: 2, end: 3, estimated: true },
+      { text: 'bb', start: 3, end: 4, estimated: true }
+    ])
+    expect(mergeWithNext([seg('b', 0, 1, 'aa'), seg('c', 1, 2, 'bb')], 'b')![0].words).toBeUndefined()
+    // "won" fixed to "one too" after the timings were made: the words are split where they were spoken.
+    const edited = seg('a', 0, 3, 'one too three', [
+      { text: 'won', start: 0, end: 0.8 },
+      { text: 'three', start: 2.2, end: 3 }
+    ])
+    const out = splitCaption([edited], 'a', 2)!
+    expect(out.map((x) => x.text)).toEqual(['one too', 'three'])
+    expect(out[0].words).toEqual([
+      { text: 'one', start: 0, end: 1.1, estimated: true },
+      { text: 'too', start: 1.1, end: 2, estimated: true }
+    ])
+    expect(out[1].words).toEqual([{ text: 'three', start: 2.2, end: 3 }])
+  })
+
   it('finds and replaces ignoring case, removing captions left empty', () => {
     const list = [seg('a', 0, 1, 'Um, hello um'), seg('b', 1, 2, 'um'), seg('c', 2, 3, 'clean')]
     expect(findInCaptions(list, 'UM')).toEqual([

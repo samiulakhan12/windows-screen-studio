@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
 import { readTranscript } from '../src/shared/captions/captionData'
-import { retimeWords, withCaptionText } from '../src/shared/captions/edit'
+import { mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
 import { anchorCutWords, cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
 import { cutRange } from '../src/shared/engine/timeline'
@@ -124,6 +124,43 @@ describe('outputCues: captions in output time', () => {
       expect(after.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
       expect(outputCues([edited], clips)[0].text).toBe(text)
       expect(subtitleFile([edited], clips, 'srt')).not.toContain('um,')
+    }
+  })
+
+  it('keeps a word deleted in the Transcript tab out after its caption is merged or split in the Captions tab', () => {
+    const full = [clip(0, 30)]
+    const tabDelete = (segments: CaptionSegment[], text: string): { segments: CaptionSegment[]; clips: Clip[] } => {
+      const transcript = { provider: 'gemini', model: '', createdAt: '', segments } as Transcript
+      const words = transcriptWords(transcript)
+      const i = words.findIndex((w) => w.text === text)
+      const clips = cutWords(full, words, [[i, i]], 30)
+      return { segments: anchorCutWords(transcript, full, clips)!.segments, clips }
+    }
+    // Captions without word timings; and one with them, "alot" fixed to "a lot" before the delete.
+    const untimed = tabDelete([seg('a', 0.4, 3.8, 'So um, I think it works.'), seg('b', 4, 6, 'Let me show you.')], 'um,')
+    const whisper = [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.0, end: 1.5 },
+      { text: 'I', start: 1.9, end: 2.0 },
+      { text: 'think', start: 2.0, end: 2.4 },
+      { text: 'alot', start: 2.5, end: 2.9 },
+      { text: 'works.', start: 3.0, end: 3.6 }
+    ]
+    const next = seg('b', 4, 5, 'Next one.', [
+      { text: 'Next', start: 4, end: 4.4 },
+      { text: 'one.', start: 4.5, end: 4.9 }
+    ])
+    const timed = tabDelete([withCaptionText(seg('a', 0.4, 3.8, 'So um, I think alot works.', whisper), 'So um, I think a lot works.'), next], 'um,')
+    const cases: [CaptionSegment[], Clip[], string[]][] = [
+      [mergeWithNext(untimed.segments, 'a')!, untimed.clips, ['So I think it works. Let me show you.']],
+      [splitCaption(timed.segments, 'a', 2.45)!, timed.clips, ['So I think', 'a lot works.', 'Next one.']],
+      [mergeWithNext(timed.segments, 'a')!, timed.clips, ['So I think a lot works. Next one.']]
+    ]
+    for (const [segments, clips, cues] of cases) {
+      expect(outputCues(segments, clips).map((c) => c.text)).toEqual(cues)
+      const words = transcriptWords({ provider: 'gemini', model: '', createdAt: '', segments })
+      const flags = cutFlags(words, clips)
+      expect(words.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['um,'])
     }
   })
 
