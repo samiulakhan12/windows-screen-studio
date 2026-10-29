@@ -67,7 +67,7 @@ import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
 import { runDuplicate } from '../editor/duplicateFlow'
 import { ExportDialog } from '../editor/ExportDialog'
-import { blurActiveControl, installFocusRelease, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
+import { blurActiveControl, installFocusRelease, isKeyboardToggle, isRangeInput, isTextEntry, releaseFocus } from '../editor/focus'
 import { keepInspectorFocus } from '../editor/inspectorFocus'
 import { addFreezeAt, freezeTarget, toggleFreezeSound } from '../editor/freezeItems'
 import { itemClipboard, lookClipboard } from '../editor/itemClipboard'
@@ -283,9 +283,6 @@ function EditorProviders({
     </EditorContext.Provider>
   )
 }
-
-/** A checkbox the keyboard moved to (it matches :focus-visible; one focused by the pointer does not). */
-const isKeyboardToggle = (el: Element | null): boolean => el instanceof HTMLInputElement && el.type === 'checkbox' && el.matches(':focus-visible')
 
 /** Following works only in a frame narrower than the recording (docs/design/vertical-video.md §2.11). */
 const FOLLOW_UNAVAILABLE = 'Following works in 9:16, 1:1 and other frames narrower than the recording. Choose one in Style › Frame.'
