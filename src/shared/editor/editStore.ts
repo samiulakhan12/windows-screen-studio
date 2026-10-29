@@ -62,11 +62,17 @@ export class EditStore<T> {
   update = (fn: (state: T) => T, key?: string): void => {
     const held = this.gestures > 0 && key !== undefined
     const holding = held && key === this.lastKey
-    if (!holding) this.settleRun()
-    const prev = this.history.present
+    // Another edit closes a held run: it is made on the run's state settled, which takes the run's
+    // place (in its own undo step) unless the edit changes nothing (the run goes on).
+    const closing = holding ? null : this.unsettled
+    const prev = closing === null ? this.history.present : this.settled(this.history.present, closing)
     const out = fn(prev)
     const next = held ? out : this.settled(out, prev)
     if (next === prev) return
+    if (closing !== null) {
+      this.unsettled = null
+      if (prev !== this.history.present) this.history.replace(prev)
+    }
     if (held) this.unsettled ??= prev
     const now = this.clock()
     // Passing the previous timestamp keeps a held gesture inside the merge window.

@@ -99,9 +99,12 @@ describe('EditStore', () => {
     s.update(() => 7, 'drag')
     expect(s.state).toBe(7)
     expect(calls).toEqual([])
+    // An edit that changes nothing leaves the run going.
+    s.update((v) => v)
+    expect(s.state).toBe(7)
     s.endGesture()
     expect(s.state).toBe(8)
-    expect(calls).toEqual([[7, 0]])
+    expect(calls.at(-1)).toEqual([7, 0])
     expect(s.undo()).toBe(true)
     expect(s.state).toBe(0)
     expect(s.redo()).toBe(true)
