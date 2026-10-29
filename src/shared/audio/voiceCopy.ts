@@ -24,6 +24,7 @@ export const VOICE_COPY = {
   missingMic: 'The microphone file of this recording is missing.',
   missingMix: "The recording's sound file is missing.",
   tooLong: 'Cleaning took too long and was stopped.',
+  locked: 'Another app, such as an antivirus or OneDrive, kept the file busy. Try again in a moment.',
   engine: 'ffmpeg could not clean the sound.',
   damagedModel: 'The noise model of this app is damaged. Install Flown again.'
 } as const

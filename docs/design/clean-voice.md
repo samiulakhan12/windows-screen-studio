@@ -188,7 +188,8 @@ changing them (checked: identical samples, identical length, also after the AAC 
   names the model by its bare file name and no path needs escaping):
   `-hide_banner -nostdin -nostats -y -i <source> -filter_complex <graph> -map [voice] -c:a aac -b:a 160k
   -ar 48000 -movflags +faststart -progress pipe:1 <part>`, then renames the part into place and
-  prunes (§3.3).
+  prunes (§3.3). That rename, and the model's, is tried again for a moment while another app (an
+  antivirus scan, OneDrive) holds the fresh file, and Cancel still stops it meanwhile.
 - **One render per project.** A request for the same key joins the running one (one ffmpeg, one
   promise). A request for another key of the same project stops the running render first (the
   user changed the strength mid-way).
@@ -206,8 +207,8 @@ changing them (checked: identical samples, identical length, also after the AAC 
   checked before every render (a damaged or replaced file is rewritten). ffmpeg reads it from there:
   it cannot read inside `app.asar`, and this needs no `extraResources` change.
 - Errors are short sentences: the microphone file is missing; the disk is full / permission denied
-  (`describeFfmpegError`); took too long; "ffmpeg could not clean the sound." (with ffmpeg's last log
-  line in the console).
+  (`describeFfmpegError`); took too long; another app kept the file busy; "ffmpeg could not clean
+  the sound." (with ffmpeg's last log line in the console).
 
 ### 4.4 Renderer state (`src/renderer/src/editor/voiceStems.ts`)
 

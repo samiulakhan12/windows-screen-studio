@@ -41,6 +41,9 @@ const RENDER_PER_SECOND = 2
 const RENDER_UNKNOWN = 2 * 3600
 /** Progress events per render, at most one in this many ms. */
 const PROGRESS_EVERY_MS = 250
+/** Tries of a rename while another app holds the file, and the wait before the next (times the try). */
+const RENAME_TRIES = 5
+const RENAME_BACKOFF_MS = 150
 
 /** ffmpeg arguments that clean `input`'s first audio stream into `output` (run with the model's folder as the working folder). */
 export function voiceCleanArgs(input: string, output: string, strength: VoiceStrength): string[] {
@@ -85,6 +88,26 @@ export function parseProgress(chunk: string): number | null {
 const sha256 = (data: string | Buffer): string => createHash('sha256').update(data).digest('hex')
 
 /**
+ * Renames `from` to `to`, trying again for a moment while another app holds the file (on Windows
+ * an antivirus scan, the search indexer or OneDrive often opens a file just written; moveIntoPlace
+ * does the same for exports). Resolves false, without renaming, once `stop` says so.
+ */
+export async function renameRetrying(from: string, to: string, stop: () => boolean = () => false, rename = fs.rename, backoffMs = RENAME_BACKOFF_MS): Promise<boolean> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await rename(from, to)
+      return true
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES') throw err
+      if (attempt >= RENAME_TRIES) throw new Error(VOICE_COPY.locked)
+      await new Promise((r) => setTimeout(r, backoffMs * attempt))
+      if (stop()) return false
+    }
+  }
+}
+
+/**
  * Makes sure `dir` holds every model exactly as bundled (`texts`, each checked against its pin
  * first). A missing, damaged or replaced file is written again (atomically).
  */
@@ -99,7 +122,10 @@ export async function ensureVoiceModels(dir: string, texts: Record<VoiceModelId,
     await fs.mkdir(dir, { recursive: true })
     const tmp = `${file}.${process.pid}.tmp`
     await fs.writeFile(tmp, text, 'utf8')
-    await fs.rename(tmp, file)
+    await renameRetrying(tmp, file).catch(async (err: unknown) => {
+      await fs.rm(tmp, { force: true }).catch(() => undefined)
+      throw err
+    })
   }
 }
 
@@ -229,7 +255,7 @@ export class VoiceCleaner {
         send(p)
       })
       if (job.cancelled) throw new Error(stopped(job))
-      await fs.rename(part, path.join(dir, file))
+      if (!(await renameRetrying(part, path.join(dir, file), () => job.cancelled))) throw new Error(stopped(job))
     } catch (err) {
       await fs.rm(part, { force: true }).catch(() => undefined)
       throw err
