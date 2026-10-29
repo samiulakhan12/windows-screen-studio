@@ -266,6 +266,32 @@ describe('shots and pans (tests 22-28)', () => {
     const second = plan.shots.find((s) => s.firstFirm > 3.4)!
     expect(second.late).toBe(true)
   })
+
+  it('anticipation leaves at most maxLead before the shot; past that the pan hurries, here to hardSpeed and late (test 28)', () => {
+    // Calm: the click at 4.3 s is 2.15 views away and its shot starts at 3.9 s (clickBefore). To
+    // have it in view by then the view would leave at 3.26 s, 0.64 s early: more than maxLead.
+    const plan = planFollow(project({}, { pace: 'calm' }, 8), track(samples(8, flight([0.16, 0.5], [0.84, 0.5], 4, 4.1)), [click(4.3, 0.84)]))
+    const [pan, ...rest] = moves(plan)
+    expect(rest).toEqual([])
+    expect(plan.shots[1].o0).toBeCloseTo(3.9, 9)
+    expect(pan.o0).toBeCloseTo(3.9 - PACE.calm.maxLead, 9)
+    expect(pan.o1 - pan.o0).toBeCloseTo((2 * views(0.68)) / PACE.calm.hardSpeed, 6)
+    expect(plan.shots[1].late).toBe(true)
+  })
+
+  it('backlog: a shot whose pan could only start after the next shot began gets none; the view goes straight on to the next (test 28)', () => {
+    // Clicks at 0.84, 0.5 and 0.75, 0.4 s and 0.3 s apart: the long pan to 0.84 is still under way
+    // when the shots of 0.5 (4.0 s) and 0.75 (4.3 s) begin.
+    const path: Path = (t) => (t < 3.5 ? [0.2, 0.5] : t < 4.3 ? flight([0.2, 0.5], [0.84, 0.5], 3.5, 3.6)(t) : t < 4.6 ? flight([0.84, 0.5], [0.5, 0.5], 4.3, 4.4)(t) : flight([0.5, 0.5], [0.75, 0.5], 4.6, 4.7)(t))
+    const plan = planFollow(project({}, {}, 8), track(samples(8, path), [click(4, 0.84), click(4.4, 0.5), click(4.7, 0.75)]))
+    expect(plan.shots.map((s) => Math.round(s.centre.x * 100) / 100)).toEqual([0.2, 0.84, 0.5, 0.75])
+    const all = moves(plan)
+    expect(all).toHaveLength(2)
+    expect(all[0].to.x).toBeCloseTo(0.84, 6)
+    expect(all[1].from.x).toBeCloseTo(0.84, 6)
+    expect(all[1].to.x).toBeCloseTo(0.75, 6)
+    expect(all[1].o0).toBeCloseTo(all[0].o1, 9)
+  })
 })
 
 describe('what holds and what moves the view (tests 29, 31-34)', () => {
@@ -298,6 +324,18 @@ describe('what holds and what moves the view (tests 29, 31-34)', () => {
     const zoomed = project({ zooms: [{ id: 'z', start: 2, end: 11, scale: 1.8, focus: { mode: 'cursor' }, auto: false }] })
     expect(moves(planFollow(zoomed, track(samples(12, step))))).toHaveLength(1)
     expect(moves(planFollow(project(), track(samples(12, step))))).toEqual([])
+  })
+
+  it('a pull-back aims at nothing, fixed or anchored: the still cursor keeps the view (test 31)', () => {
+    const zooms: Project['zooms'] = [
+      { id: 'f', start: 3, end: 5, scale: 0.75, focus: { mode: 'fixed', x: 0.9, y: 0.5 }, auto: false },
+      { id: 'c', start: 7, end: 9, scale: 0.75, focus: { mode: 'cursor' }, auto: true, anchor: { t: 7.5, x: 0.9, y: 0.5 } }
+    ]
+    const p = project({ zooms })
+    const t = track(samples(12, () => [0.3, 0.5]))
+    const att = followAttention(p, t)
+    for (let k = 0; k < att.o.length; k++) expect(att.kind[k], `at ${att.o[k]} s`).toBe(6)
+    expect(moves(planFollow(p, t))).toEqual([])
   })
 
   it('shapes: an arrow shown 3-6 s keeps its head in view while the cursor wanders; a blur shape does not move the view (test 32)', () => {
@@ -545,6 +583,31 @@ describe('a layout change while following (test 39)', () => {
       if (prev) expect(Math.abs(drawn - prev.drawn - (c.x - prev.planned)) / base.w).toBeLessThanOrEqual(PACE.balanced.maxSpeed / 60)
       prev = { planned: c.x, drawn, w: base.w }
     }
+  })
+
+  it('during the change the plan measures in the smaller of the two views: a click in view only in the band’s wider one counts as outside', () => {
+    const webcam: Project['webcam'] = { ...project().webcam, show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' }
+    const p = project({ hasWebcam: true, webcam, layouts: [{ id: 'l', start: 2, end: 8, layout: 'screen-only' }] })
+    const band = sceneLayout(p, 1080, 1920, 1920, 1080, 1).follow!.base.w
+    const narrow = sceneLayout(p, 1080, 1920, 1920, 1080, 5).follow!.base.w
+    expect(narrow).toBeCloseTo(BASE_W, 9)
+    expect(band).toBeGreaterThan(narrow * 1.2)
+    // 0.3 views of the band's view is 0.36 views of screen-only's: outside the dead zone only there.
+    const x = 0.5 + 0.15 * (band + narrow)
+    const still = samples(12, () => [0.5, 0.5])
+    // Screen-only animates in over 2-2.4 s: a click at 2.41 s draws attention from 2.01 s.
+    const into = planFollow(p, track(still, [click(2.41, x)]))
+    const first = into.shots.find((s) => s.firm)!
+    expect(first.kind).toBe('click')
+    expect(first.o0).toBeGreaterThan(2)
+    expect(first.o0).toBeLessThan(2.4)
+    // And back to the band over 7.6-8 s: a click at 8.01 s draws attention from 7.61 s, during the change only.
+    const out = planFollow(p, track(still, [click(8.01, x)]))
+    const back = out.shots.find((s) => s.firm)!
+    expect(back.kind).toBe('click')
+    expect(back.o0).toBeGreaterThan(7.6)
+    expect(back.o0).toBeLessThan(8)
+    expect(moves(out)).toHaveLength(1)
   })
 })
 
