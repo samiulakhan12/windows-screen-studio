@@ -38,7 +38,7 @@ import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, typ
 import { useModalFocus } from './modalFocus'
 import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
-import { partSource, writeBundle } from './exportBundleRun'
+import { partSource, partThumbnailFrame, writeBundle } from './exportBundleRun'
 import { bundleKinds, chapterParts, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import type { BatchExtras } from './exporter'
@@ -453,10 +453,9 @@ export function ExportDialog(props: Props): JSX.Element {
     const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options, source: sources[i] }))
     await runBatch(folder, jobs, (i, path) => {
       const part = sources[i]
-      // The part's thumbnail: one second in (or its middle when shorter).
-      const length = videoDuration(part.project.clips, planOf(part.project))
-      const shown = videoToSource(part.project.clips, planOf(part.project), Math.min(1, length / 2))
-      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings: options, time: shown.time, held: !!shown.hold }).then((shot) => shot.png)
+      // The part's thumbnail: one second in (or its middle when shorter), as the part draws it.
+      const frame = partThumbnailFrame(part.project)
+      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings: options, ...frame }).then((shot) => shot.png)
       return writeBundle(path, {
         project: part.project,
         kinds: bundleKinds(bundle, options.format, bundleHas, true),

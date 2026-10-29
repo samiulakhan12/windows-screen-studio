@@ -4,7 +4,8 @@
  * reported and never fails the export itself.
  */
 import { subtitleFile } from '../../../shared/captions/subtitles'
-import { planOf, videoDuration } from '../../../shared/engine/freeze'
+import { pictureTime, planOf, videoDuration, videoToSource } from '../../../shared/engine/freeze'
+import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import { outputChapters } from '../../../shared/render/chapters'
 import { chapterListText, descriptionText, partProject, sidecarName, type ChapterPart, type SidecarKind } from '../../../shared/render/exportBundle'
 import type { Project } from '../../../shared/types'
@@ -18,6 +19,20 @@ import type { BatchExtras } from './exporter'
  */
 export function partSource<S extends { project: Project }>(source: S, part: ChapterPart, last: boolean): S {
   return { ...source, project: partProject(source.project, part, last) }
+}
+
+/**
+ * A part's thumbnail frame: one second in (or its middle when shorter), as the part's export draws
+ * it. Inside a freeze that keeps the sound playing the picture is the freeze's frame, drawn sharp; at
+ * a freeze on the edit's end the sound's time is the edit's last moment.
+ */
+export function partThumbnailFrame(project: Pick<Project, 'clips' | 'freezes'>): { time: number; soundTime: number; held: boolean } {
+  const plan = planOf(project)
+  const { clips } = project
+  const shown = videoToSource(clips, plan, Math.min(1, videoDuration(clips, plan) / 2))
+  const soundTime = shown.hold?.end ? outputToSource(clips, Math.max(0, outputDuration(clips) - 1e-3)).time : shown.time
+  const time = pictureTime(clips, plan, soundTime)
+  return { time, soundTime, held: !!shown.hold || plan.stills.some((s) => s.at === time) }
 }
 
 export interface BundleRequest {

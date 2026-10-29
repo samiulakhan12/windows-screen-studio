@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { captionAlpha } from '../src/shared/captions/layout'
 import { animationTime } from '../src/shared/engine/backgrounds'
+import { planOf, videoFrames } from '../src/shared/engine/freeze'
 import { loopHomeWeight } from '../src/shared/render/cursorFx'
-import { chapterParts } from '../src/shared/render/exportBundle'
+import { chapterParts, stillAcrossChapters } from '../src/shared/render/exportBundle'
 import { overlayAlpha, overlayClockMs } from '../src/shared/render/imageOverlays'
 import { titlePhase } from '../src/shared/render/titleCards'
 import type { ChapterPart } from '../src/shared/render/exportBundle'
-import type { Chapter, Clip, Project } from '../src/shared/types'
+import type { Chapter, Clip, Freeze, Project } from '../src/shared/types'
 
 interface Run {
   partSource<S extends { project: Project }>(source: S, part: ChapterPart, last: boolean): S
+  partThumbnailFrame(project: Pick<Project, 'clips' | 'freezes'>): { time: number; soundTime: number; held: boolean }
 }
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const RUN = '../src/renderer/src/editor/exportBundleRun'
-const { partSource } = (await import(/* @vite-ignore */ RUN)) as Run
+const { partSource, partThumbnailFrame } = (await import(/* @vite-ignore */ RUN)) as Run
 
 const clip = (id: string, start: number, end: number): Clip => ({ id, start, end, speed: 1 })
 const ch = (t: number, title: string): Chapter => ({ id: `k${t}`, t, title })
@@ -47,5 +49,19 @@ describe('one file per chapter', () => {
     expect(overlayClockMs({ start: 15 }, 20, second)).toBe(overlayClockMs({ start: 15 }, 20, whole))
     expect(animationTime(second, 20)).toBe(animationTime(whole, 20))
     expect(loopHomeWeight(first, 19.5)).toBe(loopHomeWeight(whole, 19.5))
+  })
+
+  it('takes the thumbnail 1 s in as the part draws it, a freeze that keeps the sound playing included', () => {
+    const freezes: Freeze[] = [{ id: 'f', at: 20, length: 5, sound: 'continue' }]
+    const still = { clips: [clip('a', 0, 60)], freezes, chapters: [ch(0, 'One'), ch(20, 'Two')] } as unknown as Project
+    const stillParts = chapterParts(still)
+    expect(stillAcrossChapters(still, stillParts)).toBe(false)
+    const second = partSource({ project: still }, stillParts[1], true).project
+    const fps = 30
+    const frames = videoFrames(second.clips, planOf(second), fps)
+    expect(partThumbnailFrame(second)).toEqual({ time: frames.pictures[fps], soundTime: frames.times[fps], held: !!frames.held?.[fps] })
+    expect(partThumbnailFrame(second)).toEqual({ time: 20, soundTime: 21, held: true })
+    // Without freezes: the live frame 1 s in, with motion blur.
+    expect(partThumbnailFrame(sources[1].project)).toEqual({ time: 21, soundTime: 21, held: false })
   })
 })
