@@ -571,7 +571,9 @@ Where the build differs from the sections above, after an adversarial review:
   A selection whose range is empty (words of zero length between touching words) says "Too short to
   cut on its own. Select more words".
 - **Restore** first puts back, on their own bounds, the cuts that lie inside the range (so a cut
-  shorter than `MIN_CLIP`, a short word between touching words, joins its neighbours), then grows a
+  shorter than `MIN_CLIP`, a short word between touching words, joins its neighbours), then the
+  part of a cut inside the words' own range that meets a kept clip (a short word at the edge of a
+  longer cut, or at the very start or end of the recording), which joins that clip, then grows a
   range shorter than `MIN_CLIP` around its middle and normalises the clips, so restoring one short
   word never leaves a sliver of a clip. When nothing can change, the notice says "Could not restore
   this here. Use Undo, or restore the cut on the timeline".

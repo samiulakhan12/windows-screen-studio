@@ -170,9 +170,10 @@ export function cutWords(clips: Clip[], words: readonly TranscriptWord[], spans:
 /**
  * The clips with the range of words `first..last` put back (restoreRange: cut parts at 1x, kept
  * parts as they are). Cuts that lie inside the range come back whole first, on their own bounds, so
- * one shorter than MIN_CLIP (a short word between touching ones) joins its neighbours. A range
- * shorter than a clip may be grows around its middle, so restoring one short word never leaves a
- * sliver of a clip.
+ * one shorter than MIN_CLIP (a short word between touching ones) joins its neighbours; then the part
+ * of a cut inside the words' own range that meets a kept clip joins that clip (a short word at the
+ * edge of a longer cut, or at the very start or end). A range shorter than a clip may be grows
+ * around its middle, so restoring one short word never leaves a sliver of a clip.
  */
 export function restoreWords(clips: Clip[], words: readonly TranscriptWord[], first: number, last: number, duration: number): Clip[] {
   if (!words[first] || !words[last]) return clips
@@ -185,6 +186,13 @@ export function restoreWords(clips: Clip[], words: readonly TranscriptWord[], fi
   let out = clips
   for (const g of timelineGaps(clips, duration)) {
     if (g.kind === 'cut' && g.start >= start - EPS && g.end <= end + EPS) out = restoreRange(out, g.start, g.end, duration)
+  }
+  // A part that meets no clip (inside a longer cut) is left to the grown range: alone it could be a sliver.
+  for (const g of timelineGaps(out, duration)) {
+    const a = Math.max(g.start, r.start)
+    const b = Math.min(g.end, r.end)
+    const meets = (a <= g.start + EPS && g.kind !== 'trim-start') || (b >= g.end - EPS && g.kind !== 'trim-end')
+    if (b - a > EPS && meets) out = restoreRange(out, a, b, duration)
   }
   out = restoreRange(out, start, end, duration)
   return out === clips ? clips : normalizeClips(out, duration)

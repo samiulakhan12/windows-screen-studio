@@ -264,6 +264,45 @@ describe('cutWords and restoreWords', () => {
     expect(restoreWords(cut, w, 0, 3, 10).map((c) => [c.start, c.end, c.speed])).toEqual([[0, 10, 1]])
   })
 
+  it('restores a short word at the edge of a longer cut, or at the very start or end, on its own', () => {
+    // "I saw a big cat": "a" and "big" are 0.06 s each and every word touches the next.
+    const w = wordsAt([
+      [1, 1.4],
+      [1.4, 1.6],
+      [1.6, 1.66],
+      [1.66, 1.72],
+      [1.72, 2.1]
+    ])
+    const flags = (c: Clip[]): string => cutFlags(w, c).map(Number).join('')
+    const noSliver = (c: Clip[]): boolean => c.every((x) => x.end - x.start >= 0.1 - 1e-9)
+    // "a big" cut together, or one by one: the same 0.12 s cut.
+    for (const cut of [cutWords(full, w, [[2, 3]], 10), cutWords(cutWords(full, w, [[2, 2]], 10), w, [[3, 3]], 10)]) {
+      expect(cut.map((c) => [c.start, c.end])).toEqual([
+        [0, 1.6],
+        [1.72, 10]
+      ])
+      expect(flags(restoreWords(cut, w, 2, 2, 10))).toBe('00010')
+      expect(flags(restoreWords(cut, w, 3, 3, 10))).toBe('00100')
+      expect(flags(restoreWords(cut, w, 1, 2, 10))).toBe('00010')
+      for (const [a, b] of [[2, 2], [3, 3], [1, 2]]) expect(noSliver(restoreWords(cut, w, a, b, 10))).toBe(true)
+    }
+    // Inside "saw a big", "a" meets no kept clip: it comes back on its own all the same.
+    const inside = restoreWords(cutWords(full, w, [[1, 3]], 10), w, 2, 2, 10)
+    expect(flags(inside)).toBe('01010')
+    expect(noSliver(inside)).toBe(true)
+    // A short first word at 0 s and a short last word at the recording's end.
+    const edges = wordsAt([
+      [0, 0.08],
+      [0.08, 0.5],
+      [9.5, 9.9],
+      [9.9, 9.96]
+    ])
+    const ends = cutWords([clip(0, 9.98)], edges, [[0, 0], [3, 3]], 9.98)
+    expect(ends.map((c) => [c.start, c.end])).toEqual([[0.08, 9.9]])
+    expect(restoreWords(ends, edges, 0, 0, 9.98).map((c) => [c.start, c.end])).toEqual([[0, 9.9]])
+    expect(restoreWords(ends, edges, 3, 3, 9.98).map((c) => [c.start, c.end])).toEqual([[0.08, 9.98]])
+  })
+
   it('never cuts the whole video', () => {
     const one = wordsAt([[0.2, 9.8]])
     expect(cutWords(full, one, [[0, 0]], 10)).toBe(full)
