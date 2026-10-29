@@ -444,8 +444,12 @@ describe('the request (test 64)', () => {
 /* ---------- the hard-link contract (test 64, source scan) ---------- */
 
 const LINKED_NAMES = /['"`](screen\.mp4|webcam\.mp4|mic\.m4a|system\.m4a)['"`]|SOURCE_FILES/
-/** Calls that write a file (or replace it by name), and which of their arguments is the file written. */
-const WRITES = /\b(writeFileAtomicSync|writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|truncateSync|truncate|copyFileSync|copyFile|renameSync|rename|linkSync|link|cpSync|cp|openSync|open)\s*\(/g
+/**
+ * Calls that write into a file. A rename or a link onto a medium's name is not one, nor is
+ * writeFileAtomicSync (a temporary file and a rename): they only change this folder's entry, which
+ * is how the contract has a medium replaced.
+ */
+const WRITES = /\b(writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|truncateSync|truncate|copyFileSync|copyFile|cpSync|cp|openSync|open)\s*\(/g
 
 /**
  * Places in `source` that open a recording medium for writing: a write whose arguments name one
@@ -481,11 +485,21 @@ function linkedWrites(source: string): string[] {
 describe('media are never opened for writing outside the recording (test 64)', () => {
   it('finds such writes', () => {
     expect(linkedWrites("const out = path.join(dir, 'screen.mp4')\nawait fs.writeFile(out, data)")).toHaveLength(1)
-    expect(linkedWrites('writeFileAtomicSync(path.join(dir, SOURCE_FILES.mic), text)')).toHaveLength(1)
-    expect(linkedWrites("const a = path.join(dir, 'webcam.mp4')\nconst b = a\nawait fs.rename(tmp, b)")).toHaveLength(1)
+    expect(linkedWrites('writeFileSync(path.join(dir, SOURCE_FILES.mic), text)')).toHaveLength(1)
+    expect(linkedWrites("const a = path.join(dir, 'webcam.mp4')\nconst b = a\nawait fs.appendFile(b, data)")).toHaveLength(1)
     expect(linkedWrites("const h = await fs.open(path.join(dir, 'system.m4a'), 'r+')")).toHaveLength(1)
     expect(linkedWrites("const h = await fs.open(path.join(dir, 'system.m4a'), 'r')\nawait fs.readFile(path.join(dir, 'screen.mp4'))")).toEqual([])
     expect(linkedWrites("await fs.writeFile(path.join(dir, 'cursor.json'), text)")).toEqual([])
+  })
+
+  it('lets a module replace a medium by name, as the contract asks', () => {
+    // A rename or a link only changes this folder's entry; the other project keeps its data.
+    expect(linkedWrites("await fs.writeFile(tmp, data)\nawait fs.rename(tmp, path.join(dir, 'screen.mp4'))")).toEqual([])
+    expect(linkedWrites("const out = path.join(dir, 'mic.m4a')\nrenameSync(tmp, out)")).toEqual([])
+    expect(linkedWrites("writeFileAtomicSync(path.join(dir, 'system.m4a'), text)")).toEqual([])
+    expect(linkedWrites("await fs.link(path.join(src, 'webcam.mp4'), path.join(dir, 'webcam.mp4'))")).toEqual([])
+    // Copying over one writes into the shared file.
+    expect(linkedWrites("await fs.copyFile(tmp, path.join(dir, 'screen.mp4'))")).toHaveLength(1)
   })
 
   it('in no module of src/main outside recording/ and projectCopy.ts', () => {
