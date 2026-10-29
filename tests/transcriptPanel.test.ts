@@ -374,6 +374,29 @@ describe('the Transcript tab', () => {
     expect(log.notices.at(-1)).toMatch(/^Cut 1 word \(/)
   })
 
+  it('Go to it clears the timeline selection, also on a review list kept from before that selection', () => {
+    useProject(10, [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works.', 2.3, 2.6]
+      ])
+    ])
+    render()
+    click('Find fillers and retakes')
+    // A clip clicked on the timeline (another tab), then the Transcript tab again: the list comes back
+    // without a Find, and the clip stays selected.
+    unmount()
+    log.selects.length = 0
+    const goTo = render().find((e) => e.type === 'button' && e.props.title === 'Go to it')!
+    // A mouse click leaves the focus on the page, where Delete is the editor's.
+    ;(goTo.props.onClick as (e: unknown) => void)({ detail: 1 })
+    render()
+    expect(player.time).toBe(1.5)
+    expect(log.selects).toEqual([null])
+  })
+
   it('Find, Earlier and Later give the focus back to the word list', () => {
     useProject(60, captions(45))
     render()

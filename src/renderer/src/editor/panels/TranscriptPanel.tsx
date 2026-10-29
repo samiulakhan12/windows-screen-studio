@@ -476,7 +476,11 @@ function TranscriptEditor({
           items={shownReview}
           words={words}
           timeOf={timeOf}
-          onGo={goTo}
+          onGo={(i) => {
+            // As Find does: a list kept from before a timeline selection must not leave it for Delete on the page.
+            onSelect(null)
+            goTo(i)
+          }}
           onKeep={(s) => refocus(() => keepOne(s))()}
           onRemove={(s) => refocus(() => removeOne(s))()}
           onRemoveAll={refocus(removeAll)}

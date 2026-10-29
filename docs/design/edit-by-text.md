@@ -626,9 +626,11 @@ Where the build differs from the sections above, after an adversarial review:
   the app's other controls do, so Enter turns page after page, until the first or last page disables
   the button: the focus then goes to the word list rather than falling to the page). `Delete` and
   `Backspace` are the tab's own wherever its focus is (a toolbar or review button too): they cut the
-  selected words, or do nothing, and never reach the editor's shortcuts. Selecting words and Find
-  clear the timeline's selection, so `Delete` pressed with the focus elsewhere (on the page after a
-  review button was clicked) never removes a timeline item the tab hides.
+  selected words, or do nothing, and never reach the editor's shortcuts. Selecting words, Find and
+  a review row's quote (go to it) clear the timeline's selection, so `Delete` pressed with the focus
+  elsewhere (on the page after a review button was clicked) never removes a timeline item the tab
+  hides. The quote clears it too because a list kept while the tab was closed comes back after a
+  timeline selection made meanwhile.
   `Ctrl+A` is read as the editor reads it (`eventKeyName`), so it selects every word on any
   keyboard layout.
 - **Pages** follow playback only when the spoken word moves onto another page, so Earlier and Later
