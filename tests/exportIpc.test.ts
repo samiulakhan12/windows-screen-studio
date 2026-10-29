@@ -234,8 +234,8 @@ describe('export clean-up in the main process', () => {
       await tick()
       expect(existsSync(enc.output)).toBe(true)
       enc.exit(false)
-      await tick()
-      expect(partials()).toEqual([])
+      // The clean-up runs after ffmpeg's exit; under a loaded test run it can take longer than a tick.
+      await vi.waitFor(() => expect(partials()).toEqual([]), { timeout: 2000 })
       expect(logged()).toEqual([])
       // Another export has to go through the save dialog again.
       await expect(invoke('export:start', { sender }, 'p1', jobFor(path.join(out, 'Crash.mp4')))).rejects.toThrow(/save dialog/)
