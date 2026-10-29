@@ -520,3 +520,20 @@ describe('runDuplicate (test 65)', () => {
     expect(api.deleted).toEqual(['rec-late'])
   })
 })
+
+/*
+ * The copy button (36 px and the title bar's 6 px gap) is new in the title bar. At the window's
+ * 1040 px minimum nothing else there can shrink, so the name field gives that room up: otherwise
+ * Export runs under the window's own buttons and a click on its right part minimizes the window.
+ */
+describe('the title bar at the minimum window width', () => {
+  it('the name field gives way by the copy button\'s width (it was at least 200 px)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const path = await import('node:path')
+    const css = readFileSync(path.resolve(__dirname, '../src/renderer/src/editor/editor.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rule = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].find((m) => m[1].trim() === '.editor .titlebar .title-input')!
+    const minWidth = Number(/min-width:\s*(\d+)px/.exec(rule[2])?.[1])
+    expect(minWidth).toBeGreaterThanOrEqual(120)
+    expect(minWidth).toBeLessThanOrEqual(200 - 36 - 6)
+  })
+})

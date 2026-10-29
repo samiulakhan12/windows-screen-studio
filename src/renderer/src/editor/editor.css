@@ -3,8 +3,9 @@
   gap: 6px;
 }
 
+/* 150 px at least: with the copy button, the title bar's items still end before the window's own buttons at the 1040 px minimum. */
 .editor .titlebar .title-input {
-  min-width: 200px;
+  min-width: 150px;
   max-width: 360px;
   font-size: var(--text-md);
 }
