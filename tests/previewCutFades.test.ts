@@ -163,6 +163,30 @@ describe('the fade out before a cut in the preview', () => {
       expect(ramps[0][2] - from[2], what).toBeCloseTo(CUT_FADE, 9)
     }
   })
+
+  it('keeps the whole fade, never a step, when playing starts closer to the cut than the fade and a buffer', () => {
+    // 60 fps, the clip ends at 2 s: the player jumps at the frame at 119/60 s. Play starts 1 to 3 frames before it.
+    for (const k0 of [116, 117, 118]) {
+      const { screen, sound, ctx, cut } = setUp(project([{ id: 'a', start: 0, end: 2, speed: 1 }, { id: 'b', start: 3, end: 10, speed: 1 }]))
+      sound.play(k0 / 60, 1)
+      let jumpAt = -1
+      for (let k = k0; jumpAt < 0; k++) {
+        const t = k / 60
+        ctx.currentTime = t
+        screen.currentTime = t
+        sound.frame(t)
+        if (t + 1 / 60 >= 2 - JUMP_SLACK) {
+          jumpAt = t
+          sound.jump(3, 1)
+        }
+      }
+      const ramps = cut.gain.ops.filter(([op, v]) => op === 'ramp' && v === 0)
+      expect(ramps, `from frame ${k0}`).toHaveLength(1)
+      expect(ramps[0][2], `from frame ${k0}`).toBeLessThanOrEqual(jumpAt + 1e-9)
+      const from = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
+      expect(ramps[0][2] - from[2], `from frame ${k0}`).toBeCloseTo(CUT_FADE, 9)
+    }
+  })
 })
 
 describe('leaving a pause freeze', () => {

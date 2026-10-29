@@ -618,7 +618,8 @@ export class PreviewAudio {
     const jump = cutFadeAhead(this.project.clips, t, this.screen.playbackRate, 1 / (this.project.capture?.fps ?? SCREEN_PROXY_FPS), step, fade + lead)
     const clip = jump === null ? null : this.project.clips.find((c) => t >= c.start && t < c.end)
     if (clip && jump !== null && this.cutFadeOut?.at !== clip.end) {
-      const ahead = Math.max(0, jump - lead)
+      // The lead never shortens the ramp below the fade (a step is the click this avoids): only a jump closer than that does.
+      const ahead = Math.max(jump - lead, Math.min(jump, fade))
       param.cancelScheduledValues(0)
       param.setValueAtTime(param.value, now)
       param.setValueAtTime(1, now + Math.max(0, ahead - fade))

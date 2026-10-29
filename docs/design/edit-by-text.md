@@ -558,7 +558,9 @@ Where the build differs from the sections above, after an adversarial review:
   jump's seek silences the element at once, so a ramp not yet rendered would be cancelled and the
   sound would stop dead (one buffer was enough in Electron; a second only mutes more speech). The
   preview is therefore silent for that buffer before a cut (transcript cuts end in a pause); the
-  export fades over exactly `CUT_FADE`. Leaving a
+  export fades over exactly `CUT_FADE`. When the jump is nearer than the fade and that buffer
+  (playing started just before a cut, a short clip at a fast preview speed), the ramp keeps its
+  whole length and ends nearer the jump instead: never a step to silence. Leaving a
   pause freeze sets the gain straight back (the export joins there without a fade), except for a
   freeze on the first frame after a cut (`fadesInAfterHold`, the export's own `soundPieces` and
   `pieceCutFades`): the export fades the sound in after its silence, and the preview fades in on the
