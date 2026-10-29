@@ -183,6 +183,8 @@ function TranscriptEditor({
   const find = (): void => {
     const items = reviewSuggestions(words, store.state.clips, store.state.duration, transcript.language)
     setReview(items)
+    // As selecting words does: Delete after a review button (the focus on the page) must not remove a hidden timeline item.
+    onSelect(null)
     // Said either way (the list appears below the words, out of the focus's way).
     onNotice(items.length > 0 ? `Found ${plural(items.length, 'filler or retake', 'fillers and retakes')}` : 'No fillers or retakes found')
   }
@@ -277,9 +279,6 @@ function TranscriptEditor({
       // The page shows the focused word, also when the focus stays where it was (Home on word 0).
       if (next) setPage(pageOfWord(next.focus))
       pagedByHand.current = false
-    } else if (plain && (e.key === 'Delete' || e.key === 'Backspace')) {
-      own()
-      cut()
     } else if (plain && !e.shiftKey && e.key === 'Enter') {
       own()
       if (sel) goTo(sel.focus)
@@ -291,6 +290,18 @@ function TranscriptEditor({
       own()
       setSel(null)
     }
+  }
+
+  /**
+   * Delete and Backspace are the tab's own wherever its focus is (the word list, a toolbar or review
+   * button): they cut the selected words, or do nothing, and never reach the editor's shortcuts,
+   * which would remove a timeline item the tab hides.
+   */
+  const onPanelKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.ctrlKey || e.metaKey || e.altKey || (e.key !== 'Delete' && e.key !== 'Backspace')) return
+    e.preventDefault()
+    e.stopPropagation()
+    cut()
   }
 
   /* ---------- pages and scrolling ---------- */
@@ -375,7 +386,7 @@ function TranscriptEditor({
   const timeOf = (i: number): string => formatTime(videoTimeAt(clips, plan, words[i].start))
 
   return (
-    <div className="transcript-panel">
+    <div className="transcript-panel" onKeyDown={onPanelKeyDown}>
       <Section title="Transcript" aside={<span className="hint transcript-count">{`${plural(words.length, 'word')} · ${cutCount} cut`}</span>}>
         <div className="row start transcript-tools">
           <button className="btn small" onClick={refocus(cut)} disabled={!canCut} title="Cut the selected words (Delete)">

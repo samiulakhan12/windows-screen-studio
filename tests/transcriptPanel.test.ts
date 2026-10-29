@@ -216,8 +216,11 @@ function pointerDown(i: number, shift = false): void {
   render()
 }
 
-/** A key pressed in the word list; whether the panel kept it from the editor's shortcuts. */
-function press(key: string, mods: { shift?: boolean; ctrl?: boolean; code?: string } = {}): boolean {
+/**
+ * A key pressed on `target` (the word list, a button): its own handler, then the tab's (no element
+ * between has one), as the key bubbles; whether the tab kept it from the editor's shortcuts.
+ */
+function keyDown(target: El, key: string, mods: { shift?: boolean; ctrl?: boolean; code?: string } = {}): boolean {
   let stopped = false
   const e = {
     key,
@@ -229,10 +232,13 @@ function press(key: string, mods: { shift?: boolean; ctrl?: boolean; code?: stri
     preventDefault: () => undefined,
     stopPropagation: () => void (stopped = true)
   }
-  ;(list().props.onKeyDown as (e: unknown) => void)(e)
+  const panel = render().find((el) => el.props.className === 'transcript-panel')!
+  for (const el of [target, panel]) if (!stopped) (el.props.onKeyDown as ((e: unknown) => void) | undefined)?.(e)
   render()
   return stopped
 }
+/** A key pressed in the word list. */
+const press = (key: string, mods: { shift?: boolean; ctrl?: boolean; code?: string } = {}): boolean => keyDown(list(), key, mods)
 
 const selectedWords = (): number[] =>
   render()
@@ -336,6 +342,36 @@ describe('the Transcript tab', () => {
     log.selects.length = 0
     press('a', { ctrl: true, code: 'KeyA' })
     expect(log.selects).toContain(null)
+  })
+
+  it('Find clears the timeline selection, and Delete on a review or toolbar button stays in the tab', () => {
+    // Two fillers, "um" and "uh".
+    useProject(10, [
+      seg('a', 1, 4, [
+        ['So', 1, 1.2],
+        ['um', 1.5, 1.7],
+        ['this', 2, 2.2],
+        ['works', 2.3, 2.6],
+        ['uh', 2.9, 3.1],
+        ['fine.', 3.4, 3.8]
+      ])
+    ])
+    render()
+    click('Find fillers and retakes')
+    expect(log.selects).toEqual([null])
+    // Tab to a row's buttons (or back to Find) and press Delete or Backspace, meaning "drop this one":
+    // nothing is cut, and the key never reaches the editor (which would delete its hidden selection).
+    const out = render()
+    const goTo = out.find((e) => e.type === 'button' && e.props.title === 'Go to it')!
+    for (const target of [goTo, button(out, 'Keep'), button(out, 'Remove'), button(out, 'Remove all'), button(out, 'Close'), button(out, 'Find fillers and retakes')])
+      for (const key of ['Delete', 'Backspace']) expect(keyDown(target, key), `${key} on ${textOf(target.props.children)}`).toBe(true)
+    expect(store.state.clips).toEqual([{ id: 'c', start: 0, end: 10, speed: 1 }])
+    expect(log.notices).toEqual(['Found 2 fillers and retakes'])
+    expect(render().filter((e) => e.type === 'li')).toHaveLength(2)
+    // With words selected, Delete there cuts them, as in the list.
+    pointerDown(2)
+    expect(keyDown(button(render(), 'Keep'), 'Delete')).toBe(true)
+    expect(log.notices.at(-1)).toMatch(/^Cut 1 word \(/)
   })
 
   it('Find, Earlier and Later give the focus back to the word list', () => {
