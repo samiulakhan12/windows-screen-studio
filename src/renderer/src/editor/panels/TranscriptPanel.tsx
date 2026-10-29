@@ -132,10 +132,9 @@ function TranscriptEditor({ project, transcript, words, onNotice }: { project: P
     if (flags.slice(a, b + 1).every((f) => f)) return onNotice('Already cut. Press Restore to bring it back')
     const range = wordsRange(words, a, b, store.state.duration)
     const next = cutWords(before, words, [[a, b]], store.state.duration)
-    if (sameClips(next, before)) {
-      const all = before.every((c) => c.start >= range.start - 1e-9 && c.end <= range.end + 1e-9)
-      return onNotice(all ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
-    }
+    // Nothing changes only when the range is empty (zero-length words between touching ones) or
+    // when nothing would be left (cutRange keeps no piece shorter than a clip may be).
+    if (sameClips(next, before)) return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
     store.update((p) => ({ ...p, clips: cutWords(p.clips, words, [[a, b]], p.duration) }))
     // Counted from the result: a short word left between two cuts goes with them (no clip is that short).
     const after = cutFlags(words, next)
