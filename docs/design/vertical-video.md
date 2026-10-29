@@ -767,7 +767,7 @@ ignored clicks are already gone and straightened moves already straight.
 |---|---|---|---|---|---|
 | 1 | `zoom` | a framed zoom with `start ≤ s_k < end` (sorted, one forward pointer) | fixed: `(x, y)`; region: its centre; cursor focus: its anchor while `anchorWeight(z, s_k) ≥ 0.5` (`zoom.ts:499`), else fall through. Pull-backs fall through. | yes | `o(z.start)` |
 | 2 | `typing` | `t0 ≤ s_k ≤ t1 + typingTail` for a session of `typingSessionsOf(track, zoomSettings.auto)` (the sessions auto zoom uses: zoom clicks, pause `max(TYPING_PAUSE, clusterGap)`, `zoom.ts:315, 386`) | the session's place (the click into the field, else the cursor where typing began) | yes | `o(t0)` |
-| 3 | `click` | `o(tc) − clickBefore ≤ o_k ≤ o(tc) + clickAfter` for a click that is finite, inside 0..1 and not in a cut; any button; the latest wins when windows overlap | the click | yes | `o(tc)` |
+| 3 | `click` | `o(tc) − clickBefore ≤ o_k ≤ o(tc) + clickAfter` for a click that is finite, inside 0..1 and not in a cut, and only on samples of the click's own clip piece (the window never reaches across a cut); any button; the latest wins when windows overlap | the click | yes | `o(tc)` |
 | 4 | `shape` | a shape shown at `s_k` (not blur or pixelate) or a region spotlight; the latest `start` wins | arrow: its head `(x + w, y + h)`; line: its middle; box, ellipse, highlight, spotlight: its centre | no | |
 | 5 | `scroll` | `start ≤ s_k ≤ end + scrollTail` for a session of `scrollSessions(track.scrolls)` (`scroll.ts:48`) | the latest wheel event's position at or before `s_k` | no | |
 | 6 | `cursor` | the track is valid and has samples | the cursor's intent (below) | no | |

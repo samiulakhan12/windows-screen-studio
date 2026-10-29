@@ -666,6 +666,19 @@ function attentionOn(grid: Grid, project: FollowProject, track: CursorTrack, fra
         .map((c) => ({ x: c.x, y: c.y, o: outputAt(grid, c.t) }))
         .filter((c): c is { x: number; y: number; o: number } => c.o !== null)
         .sort((a, b) => a.o - b.o)
+        .map((c) => {
+          // Its window stays in its own clip piece (as gridOf assigns samples): never across a cut.
+          let lo = -Infinity
+          let hi = Infinity
+          for (const cut of grid.cuts) {
+            if (cut - 1e-9 <= c.o) lo = cut - 1e-9
+            else {
+              hi = cut - 1e-9
+              break
+            }
+          }
+          return { ...c, w0: Math.max(c.o - pace.clickBefore, lo), w1: c.o + pace.clickAfter, hi }
+        })
     : []
   const shapes = shapeAims(project)
   const wheel = valid && track.scrolls ? track.scrolls : []
@@ -700,10 +713,11 @@ function attentionOn(grid: Grid, project: FollowProject, track: CursorTrack, fra
     while (ti + 1 < typing.length && typing[ti + 1].t0 <= t) ti++
     const ty = ti >= 0 ? typing[ti] : null
     if (ty && t <= ty.t1 + pace.typingTail && set(ty.place.x, ty.place.y, K_TYPING, ty.event)) continue
-    // 3. A click, from clickBefore before it to clickAfter after it (output time); the latest wins.
-    while (ci + 1 < clicks.length && clicks[ci + 1].o - pace.clickBefore <= o[k]) ci++
+    // 3. A click, from clickBefore before it to clickAfter after it (output time, within its clip
+    // piece); the latest wins.
+    while (ci + 1 < clicks.length && clicks[ci + 1].w0 <= o[k]) ci++
     const cl = ci >= 0 ? clicks[ci] : null
-    if (cl && o[k] <= cl.o + pace.clickAfter && set(cl.x, cl.y, K_CLICK, cl.o)) continue
+    if (cl && o[k] <= cl.w1 && o[k] < cl.hi && set(cl.x, cl.y, K_CLICK, cl.o)) continue
     // 4. A shape or region spotlight shown now; the latest start wins.
     while (si + 1 < shapes.length && shapes[si + 1].start <= t) si++
     let shown = false

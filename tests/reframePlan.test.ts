@@ -438,6 +438,22 @@ describe('cuts and speed (test 35)', () => {
     expect(followCentre(plan, 4.999).x).toBeCloseTo(a, 6)
   })
 
+  it('a click near a cut draws no attention across it: the view holds each clip’s action and changes at the cut', () => {
+    const a = 0.4
+    const b = a + 0.6 * BASE_W
+    const p = project({ clips: [{ id: 'c1', start: 0, end: 5, speed: 1 }, { id: 'c2', start: 8, end: 15, speed: 1 }] }, {}, 15)
+    const s = samples(15, (t) => (t < 6.5 ? [a, 0.5] : [b, 0.5]))
+    // A click 0.1 s before the cut, where the old clip's cursor rests; and one 0.05 s after it, in the new clip.
+    for (const clicks of [[click(4.9, a)], [click(8.05, b)]]) {
+      const plan = planFollow(p, track(s, clicks))
+      expect(moves(plan)).toEqual([])
+      expect(plan.shots.find((sh) => sh.cut)).toMatchObject({ o0: 5 })
+      expect(followCentre(plan, 4.99).x).toBeCloseTo(a, 6)
+      expect(followCentre(plan, 8).x).toBeCloseTo(b, 6)
+      expect(followCentre(plan, 9).x).toBeCloseTo(b, 6)
+    }
+  })
+
   it('a shutter past a clip’s end samples that clip’s last view, never the next clip’s', () => {
     const { plan, a, b } = cut(0.6)
     expect(followCentre(plan, 5 + 0.05, 5 - 0.01)).toEqual(followCentre(plan, 5 - 1e-9))
