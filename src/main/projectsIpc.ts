@@ -1,15 +1,17 @@
-import { dialog, ipcMain, shell } from 'electron'
+import { dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { SOURCE_FILES, stemsOf, type StemKind } from '../shared/audio/settings'
 import type { SaveMeta, SyncSaveResult } from '../shared/editor/autosave'
-import type { LoadedProject } from '../shared/api/projects'
+import type { DuplicateResult, LoadedProject } from '../shared/api/projects'
 import type { Project } from '../shared/types'
 import { stopAnalyses } from './analysisIpc'
 import { imageType } from './assetIpc'
 import { writeFileAtomicSync } from './atomicWrite'
 import { MEDIA_FILE_RE, mediaUrl } from './mediaProtocol'
+import { duplicateProject } from './projectCopy'
 import * as projects from './projects'
+import { isAppUrl } from './security'
 import { loadStyleDefaults, saveStyleDefaults, type StyleDefaults } from './styleDefaults'
 import { getMainWindow } from './windows'
 
@@ -46,6 +48,16 @@ export async function missingStems(project: Project, dir: string, exists = proje
   if (missing.length > 0) console.warn(`${missing.map((k) => SOURCE_FILES[k]).join(' and ')} of this recording ${missing.length > 1 ? 'are' : 'is'} missing; it opens with its mixed sound.`)
   return missing
 }
+
+/** Whether a message comes from the main window's own page (the rule of notes/notesIpc.ts fromHome). */
+function fromMainWindow(e: IpcMainInvokeEvent): boolean {
+  const main = getMainWindow()
+  if (!main || main.isDestroyed() || main.webContents.isDestroyed()) return false
+  return e.sender.id === main.webContents.id && isAppUrl(e.senderFrame?.url ?? '')
+}
+
+/** The copy being made (Duplicate, Make a vertical version), so the editor's Cancel can stop it. */
+let copying: AbortController | null = null
 
 export function registerProjectsIpc(): void {
   ipcMain.handle('projects:list', () => projects.listProjects())
@@ -116,6 +128,31 @@ export function registerProjectsIpc(): void {
   ipcMain.handle('projects:backgroundUrl', async (_e, id: string, file: string): Promise<string | null> => {
     if (typeof file !== 'string' || !BACKGROUND_RE.test(file)) return null
     return (await projects.exists(path.join(projects.projectDir(id), file))) ? mediaUrl(id, file) : null
+  })
+
+  // A new project folder from the open project (docs/design/vertical-video.md §4.7): only the
+  // editor in the main window may ask. Progress goes to the window that asked.
+  ipcMain.handle('projects:duplicate', async (e, sourceId: unknown, copy: unknown): Promise<DuplicateResult> => {
+    if (!fromMainWindow(e)) throw new Error('Not allowed')
+    if (typeof sourceId !== 'string') throw new Error('Invalid project id')
+    if (copying) throw new Error('a copy is already being made.')
+    const abort = new AbortController()
+    copying = abort
+    const sender = e.sender
+    try {
+      return await duplicateProject(sourceId, copy, {
+        signal: abort.signal,
+        onProgress: (p) => {
+          if (!sender.isDestroyed()) sender.send('projects:duplicateProgress', p)
+        }
+      })
+    } finally {
+      copying = null
+    }
+  })
+  ipcMain.handle('projects:duplicateCancel', (e) => {
+    if (!fromMainWindow(e)) throw new Error('Not allowed')
+    copying?.abort()
   })
 
   ipcMain.handle('styleDefaults:get', () => loadStyleDefaults())

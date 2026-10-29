@@ -194,7 +194,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Cap, Tella, ScreenPal, Camtasia.
 
 ### NW-05 · Vertical video that follows the action, with a safe-zone preview
-**Editing · M · planned**
+**Editing · M · shipped (next release)**: see [FEATURES.md](FEATURES.md) (Vertical video that follows the action, Safe-zone preview) and `docs/design/vertical-video.md`. Left for later (its §12): a Framing track, following picture changes in recordings without cursor data, pulling back while travelling, following in frames wider than the recording, carrying following in style presets, and checking the safe-zone table against the three apps on a phone before release.
 
 - **What:** for 9:16 and 1:1, the view crops in and follows the cursor, clicks and typing instead of shrinking the whole desktop. The camera moves to a band at the top or bottom. A toggle shows where TikTok, Reels and Shorts buttons cover the video.
 - **Works with:** runs on the PC from recorded cursor data. Gemini or Claude vision could be added later.
@@ -230,7 +230,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Why:** the app has no log file or crash reporting yet, and several Windows paths have not been run on a real PC.
 
 ### X-04 · Duplicate project and single-file project
-**Editing · S · planned**
+**Editing · S · Duplicate shipped (next release); single-file project planned**: Duplicate, Make a vertical version and Make a square version are in the editor (see [FEATURES.md](FEATURES.md) and `docs/design/vertical-video.md` §4.7). Still planned: Duplicate from the Home library and "Save as one .flown file", which can reuse `src/main/projectCopy.ts`'s list of the files a project holds.
 
 - **What:** "Duplicate" makes a vertical or short cut without touching the original; LT-02 and NW-05 need it. "Save as one .flown file" moves a project to another PC or a teammate.
 

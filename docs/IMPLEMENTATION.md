@@ -23,6 +23,8 @@ src/main/               Electron main process
   nativeCapture.ts        client for native/ssw-capture.exe (probe, monitor matching, session protocol)
   projects.ts, projectsIpc.ts, atomicWrite.ts, styleDefaults.ts
                           project folders, load/save with Windows lock retries, saved style defaults
+  projectCopy.ts          Duplicate / Make a vertical version: a new folder, media hard-linked or copied,
+                          project.json last (docs/design/vertical-video.md §4.7)
   proxyArgs.ts            WebM / native MP4 -> 60 fps short-GOP proxy (GPU encoder when available, crop, fit)
   exportIpc.ts, exportArgs.ts, exportJob.ts, exportClipboard.ts, ffmpeg.ts, hwEncoders.ts
                           export encoder processes, safe temp output, clipboard, GPU encoder detection
@@ -94,6 +96,24 @@ bytes with `FontFace` (the CSP is unchanged) and the text layers key their cache
 brand kit lives in userData (`brand-kit.json` and `brand-kit/`, `src/main/brandKit.ts`); applying it
 is one pure function (`shared/editor/brandKit.ts`), used by the editor (one undo step) and by
 `applyStyleDefaults` for new recordings (`docs/design/brand-kit.md`).
+
+**Following the action** (`Project.reframe`, NW-05, `docs/design/vertical-video.md`) applies only in
+a frame at least 10% narrower than the drawn recording (`shared/engine/reframeData.ts`
+`followApplies`); every project without it draws exactly as before (the equivalence tests in
+`tests/verticalEquivalence.test.ts` pin that). While following, `sceneLayout` returns the slot the
+screen fills and draws the recording into a *virtual rectangle* (the slot enlarged by the view's
+size), so the existing zoom camera and every mapping built on it keep working; the follow plan
+(`shared/engine/reframe.ts`, holds and C² glide pans planned once in output time from the drawn
+project and track, cached) is the camera's rest position. `shared/engine/frameView.ts` is the one
+entry point that gives a frame its drawn project, layout and camera, for the compositor, the
+preview, the shape layers and the camera director alike. The safe-zone table
+(`shared/render/safeZones.ts`) is drawn by the editor's DOM overlay only; placement uses its
+common safe area. A **copy** (`Project.copyOf`) is built by the renderer from the editor's state
+(`shared/editor/duplicate.ts`, which also refits text and images into a vertical frame) and
+written by `src/main/projectCopy.ts`: a `.copying` marker first, the recording's media hard-linked
+(copied under OneDrive or when linking fails), the other allow-listed files copied with their
+times, `project.json` last; the source folder is never written. Media may therefore be shared
+between projects: code outside `src/main/recording/` never opens them for writing.
 
 Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
 names from `productName`). The app was called "Screen Studio for Windows" before; on the first
