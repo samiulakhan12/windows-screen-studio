@@ -265,15 +265,17 @@ function TranscriptEditor({
       own()
       const key = e.key as SelectionKey
       // On a page turned to with Earlier or Later the arrows start there (its first word, or its
-      // last going back), not from a focus on another page; Shift keeps the anchor.
+      // last going back), not from a focus on another page; Shift keeps the anchor. A page turned
+      // by playback does not count: the keys move from the selection.
       let next: WordSelection | null
-      if (key !== 'Home' && key !== 'End' && shown.length > 0 && (!sel || pageOfWord(sel.focus) !== shownPage)) {
+      if (pagedByHand.current && key !== 'Home' && key !== 'End' && shown.length > 0 && (!sel || pageOfWord(sel.focus) !== shownPage)) {
         const w = key === 'ArrowLeft' || key === 'ArrowUp' ? shown[shown.length - 1].last : shown[0].first
         next = e.shiftKey && sel ? { anchor: sel.anchor, focus: w } : { anchor: w, focus: w }
       } else next = moveSelection(sel, key, e.shiftKey, words)
       setSel(next)
       // The page shows the focused word, also when the focus stays where it was (Home on word 0).
       if (next) setPage(pageOfWord(next.focus))
+      pagedByHand.current = false
     } else if (plain && (e.key === 'Delete' || e.key === 'Backspace')) {
       own()
       cut()
@@ -316,9 +318,17 @@ function TranscriptEditor({
   )
   const pages = Math.max(1, Math.ceil(paragraphs.length / PAGE))
   const [page, setPage] = useState(0)
+  /** The page shown was turned to with Earlier or Later, not by playback or the selection. */
+  const pagedByHand = useRef(false)
+  const turnPage = (p: number): void => {
+    setPage(p)
+    pagedByHand.current = true
+  }
   const focus = sel?.focus ?? -1
   useEffect(() => {
-    if (focus >= 0) setPage(pageOfWord(focus))
+    if (focus < 0) return
+    setPage(pageOfWord(focus))
+    pagedByHand.current = false
   }, [focus, pageOfWord])
   // While playing, the page turns when the word being said moves onto another page (Earlier and
   // Later stay where they were put until then).
@@ -329,6 +339,7 @@ function TranscriptEditor({
     if (p !== followed.current) {
       followed.current = p
       setPage(p)
+      pagedByHand.current = false
     }
   }, [playing, current, pageOfWord])
   const shownPage = Math.min(page, pages - 1)
@@ -374,13 +385,13 @@ function TranscriptEditor({
         {estimated && <p className="hint">Some word times are estimated: cuts there may be less exact.</p>}
         {pages > 1 && (
           <div className="row transcript-pager">
-            <button className="btn small" disabled={shownPage === 0} onClick={refocus(() => setPage(shownPage - 1))}>
+            <button className="btn small" disabled={shownPage === 0} onClick={refocus(() => turnPage(shownPage - 1))}>
               Earlier
             </button>
             <span className="hint">
               {shownPage * PAGE + 1}–{Math.min(paragraphs.length, (shownPage + 1) * PAGE)} of {paragraphs.length}
             </span>
-            <button className="btn small" disabled={shownPage >= pages - 1} onClick={refocus(() => setPage(shownPage + 1))}>
+            <button className="btn small" disabled={shownPage >= pages - 1} onClick={refocus(() => turnPage(shownPage + 1))}>
               Later
             </button>
           </div>

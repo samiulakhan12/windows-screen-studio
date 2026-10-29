@@ -195,10 +195,11 @@ const button = (out: El[], label: string): El => {
   if (!b) throw new Error(`No "${label}" button`)
   return b
 }
-const click = (label: string): void => {
-  ;(button(render(), label).props.onClick as () => void)()
+/** A mouse click on a button (`detail` 1), or Enter or Space on it from the keyboard (`detail` 0). */
+const click = (label: string, detail = 1): void => {
+  ;(button(render(), label).props.onClick as (e: unknown) => void)({ detail })
   // A mouse click leaves the focus on the button, which the editor then releases to the page.
-  doc.activeElement = doc.body
+  if (detail > 0) doc.activeElement = doc.body
 }
 const list = (out = render()): El => out.find((e) => e.props.role === 'listbox')!
 
@@ -378,6 +379,27 @@ describe('the Transcript tab', () => {
     expect(selectedWords()).toEqual([0])
     press('ArrowRight')
     expect(selectedWords()).toEqual([1])
+  })
+
+  it('after playback turned the page, the arrow keys move from the selection as before', () => {
+    useProject(60, captions(45))
+    render()
+    const shownWords = (): number[] => render().filter((e) => e.props.role === 'option').map((e) => Number(e.props['data-w']))
+    // The last two words of page 1, then playback runs on into caption 41 ("two41", word 124): the tab turns to page 2.
+    pointerDown(118)
+    pointerDown(119, true)
+    playing = true
+    player.time = 41.35
+    render()
+    expect(shownWords()[0]).toBe(120)
+    playing = false
+    render()
+    // Shift+Left drops one word; Left moves one word.
+    press('ArrowLeft', { shift: true })
+    expect(selectedWords()).toEqual([118])
+    expect(shownWords()[0]).toBe(0)
+    press('ArrowLeft')
+    expect(selectedWords()).toEqual([117])
   })
 
   it('Find says what it found', () => {

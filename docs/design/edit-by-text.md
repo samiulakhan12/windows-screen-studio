@@ -344,7 +344,9 @@ The text is shown in pages of 40 captions (like the Captions tab's 50-row pages)
 Later. The page follows the current word while playing and the focused word while moving with the
 keys. On a page turned to with Earlier or Later, the arrow keys start there (its first word; its
 last going Left or Up) rather than from a focus on another page; Shift keeps the anchor, so a
-selection can still be extended across pages. Selections can span pages (they are word indices).
+selection can still be extended across pages. A page turned by playback does not count: there the
+keys move from the selection, and the page goes back to it. Selections can span pages (they are
+word indices).
 
 ---
 
