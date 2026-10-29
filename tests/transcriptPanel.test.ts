@@ -102,6 +102,8 @@ const RENDERED = new Set(['TranscriptPanel', 'TranscriptEditor', 'TranscriptIntr
 /** The word list's stand-in: one word per 10 px line, 100 px of it shown, scrolled by scrollTop. */
 class ListStandIn {
   scrollTop = 0
+  clientTop = 0
+  clientHeight = 100
   constructor(public el: El) {}
   focus(): void {
     log.focused.push('list')
@@ -197,6 +199,12 @@ const click = (label: string): void => {
   doc.activeElement = doc.body
 }
 const list = (out = render()): El => out.find((e) => e.props.role === 'listbox')!
+
+/** The word list's stand-in element. */
+function standIn(): ListStandIn {
+  for (const c of [...cells.values()].flat()) if (c.current instanceof ListStandIn) return c.current
+  throw new Error('No word list')
+}
 
 /** A press of the main button on word `i` (focus goes to the list, as the browser would put it there). */
 function pointerDown(i: number, shift = false): void {
@@ -389,5 +397,26 @@ describe('the Transcript tab', () => {
     render()
     click('Find fillers and retakes')
     expect(log.notices.at(-1)).toBe('No fillers or retakes found')
+  })
+
+  it('while playing, follows the word being said in the word list only (the Inspector does not move)', () => {
+    useProject(60, captions(45))
+    render()
+    const list = standIn()
+    playing = true
+    // "two5" (5.3 to 5.5 s), word 16: below the 100 px shown, scrolled up to just show it.
+    player.time = 5.35
+    render()
+    expect(log.scrolledIntoView).toEqual([])
+    expect(list.scrollTop).toBe(70)
+    // "two1", word 4, above it now: scrolled back down to it.
+    player.time = 1.35
+    render()
+    expect(log.scrolledIntoView).toEqual([])
+    expect(list.scrollTop).toBe(40)
+    // In view: nothing moves.
+    player.time = 1.65
+    render()
+    expect(list.scrollTop).toBe(40)
   })
 })

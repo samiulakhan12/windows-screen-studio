@@ -335,7 +335,8 @@ fade out) is `cutFadeAhead()` in `cutFades.ts`, unit-tested.
 The current word is the word whose `[start, end)` contains the preview's display time
 (`displayTime(clips, player.time)`), read through `useSyncExternalStore(player.subscribe, …)` so the
 panel re-renders only when the index changes, not every frame. While playing, the current word is
-scrolled into view unless the word list has the focus; the page follows it (§4.11).
+scrolled into view in the word list (only the list scrolls, not the Inspector, so the review rows
+below stay where the user put them) unless the word list has the focus; the page follows it (§4.11).
 
 ### 4.11 Pages
 

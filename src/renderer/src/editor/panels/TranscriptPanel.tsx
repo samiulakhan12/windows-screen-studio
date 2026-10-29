@@ -338,10 +338,18 @@ function TranscriptEditor({
     if (focus < 0) return
     listRef.current?.querySelector(`#tw-${focus}`)?.scrollIntoView({ block: 'nearest' })
   }, [focus, shownPage])
+  // Only the word list scrolls (scrollIntoView would move the Inspector too, and the review rows
+  // below it out of view); rounded outward, as the lines sit on fractional pixels.
   useEffect(() => {
     const list = listRef.current
     if (!playing || current < 0 || !list || list === document.activeElement) return
-    list.querySelector(`#tw-${current}`)?.scrollIntoView({ block: 'nearest' })
+    const el = list.querySelector<HTMLElement>(`#tw-${current}`)
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const top = list.getBoundingClientRect().top + list.clientTop
+    const bottom = top + list.clientHeight
+    if (r.top < top) list.scrollTop -= Math.ceil(top - r.top)
+    else if (r.bottom > bottom) list.scrollTop += Math.ceil(r.bottom - bottom)
   }, [playing, current, shownPage])
 
   /* ---------- view ---------- */
