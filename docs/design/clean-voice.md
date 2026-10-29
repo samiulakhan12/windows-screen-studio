@@ -190,6 +190,9 @@ changing them (checked: identical samples, identical length, also after the AAC 
   -ar 48000 -movflags +faststart -progress pipe:1 <part>`, then renames the part into place and
   prunes (§3.3). That rename, and the model's, is tried again for a moment while another app (an
   antivirus scan, OneDrive) holds the fresh file, and Cancel still stops it meanwhile.
+- **Made again** (`voice:prepare` with `remake` exactly `true`: the editor could not play the file):
+  the `voice-<key>.m4a` there is deleted first, unless a render of that key is running, then made as
+  above.
 - **One render per project.** A request for the same key joins the running one (one ffmpeg, one
   promise). A request for another key of the same project stops the running render first (the
   user changed the strength mid-way).
@@ -221,7 +224,11 @@ One store per window, keyed by `projectId|source|strength`, with entries
   pressed Cancel) and `failed` are not restarted automatically.
 - `prepare(id, source, strength)`: starts or joins a render whatever the state (the panel's
   *Clean now* / *Try again*, and the export). A stem already `ready` is checked with main first and
-  made again here (with progress and Cancel) when its file is gone.
+  made again here (with progress and Cancel) when its file is gone. A stem the preview could not play
+  (`failed` with `remake`) is made again by main although its file is there.
+- `unplayable(id, source, strength, file)`: the preview could not play `file` even after loading it
+  again; a `ready` entry of that file becomes `failed` ("The cleaned file would not play, so the
+  preview plays the original voice.") with `remake`, which a failed remake keeps.
 - `cancel(id)`, `original(id)` / `setOriginal(id, on)` (the A/B, view state only: never saved, never
   in undo, reset to off when the editor closes).
 - Progress events update the matching entry.
@@ -239,7 +246,8 @@ original* is off, the preview plays `voice-<key>.m4a` **in place of** the target
   nudges, pause freezes, preview speed).
 - While the stem is being made (or after Cancel, or when its file fails to load) the preview plays
   the original; a failed load tells the store, which checks the status again (a deleted file is made
-  again), twice at most per file: a file main still finds but that will not play stays off.
+  again), twice at most per file. A file main still finds but that will not play after that is
+  reported `unplayable`: the panel shows the failure and *Try again*, which has main make it again.
 
 Ducking and the speech detector keep using the original microphone's levels and speech ranges
 (the speech is in the same places; cleaning only removes noise), so the music dips exactly as before.
@@ -318,7 +326,9 @@ original*, Cancel, *Clean now* and the rendering itself are not edits and are no
 - IPC: `voice:status`, `voice:prepare`, `voice:cancel` accept the app's own page only (`isAppUrl` on
   the sender frame, as the analysis and speech handlers). The project id goes through `projectDir`
   (rejects anything but `[A-Za-z0-9_-]+`), `source` must be `'mic'` or `'mix'`, `strength` one of the
-  three; anything else is "Invalid request." The renderer never names a path.
+  three; anything else is "Invalid request." `voice:prepare`'s `remake` counts only when it is exactly
+  `true`, and deletes only the stem main names from those checked values. The renderer never names a
+  path.
 - Files: read only `mic.m4a` / `screen.mp4` of that project folder (fixed names); write only
   `voice-<16 hex>.part.m4a`, renamed to `voice-<16 hex>.m4a`, in that folder; prune only names that
   match `VOICE_FILE_RE` exactly. The media protocol serves `voice-[0-9a-f]{16}\.m4a` only (one strict
