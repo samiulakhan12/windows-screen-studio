@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 import { VOICE_STRENGTHS, voiceLook, voiceSourceOf, voiceTarget } from '../../../../shared/audio/voiceClean'
 import { STRENGTH_HINTS, STRENGTH_NAMES, VOICE_COPY } from '../../../../shared/audio/voiceCopy'
 import type { Project, VoiceSettings } from '../../../../shared/types'
@@ -65,7 +65,8 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
 /**
  * Where the cleaned voice stands. The one action button stays the same element whatever it does
  * (Cancel, Clean now, Try again, Hear the original), so the keyboard focus stays on it when the
- * state changes under it.
+ * state changes under it; while the stem is checked again (an undo back to a strength, a file
+ * that went missing) it stays too, with its last label, and does nothing.
  */
 function VoiceStatus(props: {
   state: VoiceStemState
@@ -100,6 +101,9 @@ function VoiceStatus(props: {
             : null
   // Screen readers hear each change of state, not every step of the percentage (that is on the bar).
   const spoken = state.state === 'working' ? VOICE_COPY.cleaning : text
+  const lastLabel = useRef<string | null>(null)
+  if (action) lastLabel.current = action.label
+  const label = action?.label ?? (state.state === 'checking' ? lastLabel.current : null)
   return (
     <div className={`voice-status ${state.state}`} data-testid="voice-status" data-state={state.state}>
       <p className={`hint ${state.state === 'failed' ? 'error' : ''}`} aria-hidden="true">
@@ -113,18 +117,19 @@ function VoiceStatus(props: {
           <span style={{ width: `${percent}%` }} />
         </div>
       )}
-      {action && (
+      {label && (
         <button
           type="button"
           className={`btn voice-action ${state.state === 'ready' && original ? 'active' : ''}`}
           aria-pressed={state.state === 'ready' ? original : undefined}
+          aria-disabled={action ? undefined : true}
           onClick={(e) => {
             // The button changes meaning under the pointer (Clean now → Cancel): the second click of a
             // double click must not undo the first. Keyboard presses (detail 0) always count.
-            if (e.detail < 2) action.run()
+            if (action && e.detail < 2) action.run()
           }}
         >
-          {action.label}
+          {label}
         </button>
       )}
     </div>

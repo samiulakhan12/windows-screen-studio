@@ -54,6 +54,12 @@
   border-color: var(--accent-400);
 }
 
+/* While the stem is checked again: still focusable, it only looks and acts disabled. */
+.btn.voice-action[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .voice-bar span {
     transition: none;
