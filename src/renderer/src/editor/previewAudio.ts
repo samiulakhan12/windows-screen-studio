@@ -604,8 +604,8 @@ export class PreviewAudio {
     const fade = CUT_FADE / Math.max(this.view, 1e-3)
     // The audio clock moves a render buffer at a time, and the jump's seek silences the element at
     // once: a ramp not yet rendered then would be cancelled and the sound would stop dead. So the
-    // fade out ends two buffers before the jump.
-    const lead = 2 * (g.ctx.baseLatency || 0.02)
+    // fade out ends a buffer before the jump (one is enough, and each more mutes the speech longer).
+    const lead = g.ctx.baseLatency || 0.02
     const step = this.lastFrameAt !== null && t - this.lastFrameAt > 1e-4 && t - this.lastFrameAt < 0.25 ? t - this.lastFrameAt : 0
     this.lastFrameAt = t
     if (this.cutFadeIn) {

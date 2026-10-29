@@ -553,11 +553,12 @@ Where the build differs from the sections above, after an adversarial review:
   the ramp from the last callback that still leaves the whole fade, so it ends at the jump. The
   prediction uses the time of the frame shown (the callback's `mediaTime`, which `player.ts` passes
   to `frame(t)` and jumps on, with the same `JUMP_SLACK`), not the element's clock, which runs up to
-  a frame off it. The ramp ends two render buffers (`2 × baseLatency`, about 46 ms with the
-  'playback' latency) before the jump rather than at it: the audio clock moves a buffer at a time,
-  and the jump's seek silences the element at once, so a ramp not yet rendered would be cancelled
-  and the sound would stop dead. The preview is therefore silent for those few tens of ms before a
-  cut (transcript cuts end in a pause); the export fades over exactly `CUT_FADE`. Leaving a
+  a frame off it. The ramp ends one render buffer (`baseLatency`, about 23 ms with the 'playback'
+  latency) before the jump rather than at it: the audio clock moves a buffer at a time, and the
+  jump's seek silences the element at once, so a ramp not yet rendered would be cancelled and the
+  sound would stop dead (one buffer was enough in Electron; a second only mutes more speech). The
+  preview is therefore silent for that buffer before a cut (transcript cuts end in a pause); the
+  export fades over exactly `CUT_FADE`. Leaving a
   pause freeze sets the gain straight back (the export joins there without a fade), except for a
   freeze on the first frame after a cut (`fadesInAfterHold`, the export's own `soundPieces` and
   `pieceCutFades`): the export fades the sound in after its silence, and the preview fades in on the

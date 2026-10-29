@@ -133,7 +133,7 @@ describe('the fade out before a cut in the preview', () => {
   /** A 60 or 30 fps recording, clip ends on and off the frame grid, the element clock half a frame ahead of or behind the frame shown. */
   const cases = [60, 30].flatMap((fps) => [2.001, 2.005, 2.009, 2.013, 2.021, 2.029].flatMap((end) => [0.5, -0.5].map((skew) => ({ fps, end, skew: skew / fps }))))
 
-  it('ends two render buffers before the jump (rendered before the seek), placed by the frame shown, whatever the element clock says', () => {
+  it('ends one render buffer before the jump (rendered before the seek), placed by the frame shown, whatever the element clock says', () => {
     for (const { fps, end, skew } of cases) {
       const what = `${fps} fps, end ${end}, skew ${skew}`
       const frame = 1 / fps
@@ -157,7 +157,7 @@ describe('the fade out before a cut in the preview', () => {
       }
       const ramps = cut.gain.ops.filter(([op, v]) => op === 'ramp' && v === 0)
       expect(ramps, what).toHaveLength(1)
-      expect(ramps[0][2], what).toBeCloseTo(jumpAt - 2 * ctx.baseLatency, 9)
+      expect(ramps[0][2], what).toBeCloseTo(jumpAt - ctx.baseLatency, 9)
       // The whole fade, from full sound.
       const from = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
       expect(ramps[0][2] - from[2], what).toBeCloseTo(CUT_FADE, 9)
