@@ -568,8 +568,12 @@ export class PreviewAudio {
     else if (!this.playing) void g.ctx.suspend()
   }
 
-  /** Called for every video frame while playing: keeps the elements and the automation on time. */
-  frame(): void {
+  /**
+   * Called for every video frame while playing: keeps the elements and the automation on time.
+   * `frameTime` is the time of the frame shown (the callback's), which the player jumps on: the cut
+   * fades go by it; the elements follow the element's own clock.
+   */
+  frame(frameTime?: number): void {
     const g = this.graph
     if (!g || !this.playing) return
     const t = this.screen.currentTime
@@ -580,7 +584,7 @@ export class PreviewAudio {
       else setRate(stem.el, this.speed * nudge(drift, STEM_NUDGE))
     }
     this.syncMusic(false, t)
-    this.cutFadeStep(g, t)
+    this.cutFadeStep(g, frameTime ?? t)
     const out = this.outputAt(t)
     const a = this.anchor
     if (!a || out > a.until - 5 || Math.abs(a.out + (g.ctx.currentTime - a.ctx) * this.view - out) > ANCHOR_DRIFT) this.schedule()

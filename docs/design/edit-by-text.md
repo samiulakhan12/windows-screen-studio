@@ -547,7 +547,10 @@ Where the build differs from the sections above, after an adversarial review:
   the measured distance between video frame callbacks (`step`; before one is measured, one frame or
   one 60 Hz refresh, whichever is longer) and the fade in wall time (`CUT_FADE / view`, so a slow
   preview speed gets a longer ramp). It predicts the callback at which the player jumps and schedules
-  the ramp from the last callback that still leaves the whole fade, so it ends at the jump. Leaving a
+  the ramp from the last callback that still leaves the whole fade, so it ends at the jump. The
+  prediction uses the time of the frame shown (the callback's `mediaTime`, which `player.ts` passes
+  to `frame(t)` and jumps on, with the same `JUMP_SLACK`), not the element's clock, which runs up to
+  a frame off it. Leaving a
   pause freeze sets the gain straight back (the export joins there without a fade), and an edit
   while playing resets the gain at once.
 - **Export fade position (§4.8).** The fades come **last** in each piece's chain, after the

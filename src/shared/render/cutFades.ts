@@ -16,6 +16,9 @@ export const DISPLAY_RATE = 60
 /** Largest cutFade an export job may ask for (main validates it). */
 export const MAX_CUT_FADE = 0.05
 
+/** The preview player jumps over a cut once the next frame would come within this (source seconds) of the clip's end. */
+export const JUMP_SLACK = 1e-4
+
 const EPS = 1e-6
 
 /** Seconds as a compact decimal string for filter arguments. */
@@ -53,8 +56,9 @@ export const editHasCuts = (clips: readonly Clip[]): boolean => clips.some((c, i
 /**
  * Preview (docs/design/edit-by-text.md §4.9): wall seconds from now until the player jumps over the
  * cut at the end of the clip under source time `t`, when the fade out has to be scheduled now; else
- * null. The player jumps at the first video frame callback whose time is within one proxy frame
- * (`rate × frame`) of the clip's end; callbacks come every `step` source seconds (measured; 0 when
+ * null. `t` is the time of the frame shown (the callback's, not the element's clock). The player
+ * jumps at the first video frame callback whose time is within one proxy frame (`rate × frame`, less
+ * JUMP_SLACK) of the clip's end; callbacks come every `step` source seconds (measured; 0 when
  * not known yet: one proxy frame, or one display refresh when that is longer). The fade is scheduled
  * at the last callback that still leaves `fade` wall seconds before the jump; it ends at the jump.
  * Null too when the clip does not end in a cut (the last one, or the next continues it) or nothing plays.
@@ -64,7 +68,7 @@ export function cutFadeAhead(clips: readonly Clip[], t: number, rate: number, fr
   if (i < 0 || i >= clips.length - 1 || !(rate > 0) || !(frame > 0)) return null
   if (clips[i + 1].start - clips[i].end <= EPS) return null
   const s = step > 0 ? step : Math.max(frame, rate / DISPLAY_RATE)
-  const callbacks = Math.max(0, Math.ceil((clips[i].end - rate * frame - t) / s - 1e-9))
+  const callbacks = Math.max(0, Math.ceil((clips[i].end - JUMP_SLACK - rate * frame - t) / s - 1e-9))
   const wall = (callbacks * s) / rate
   // The next callback would still leave the whole fade: wait for it.
   if (wall - s / rate >= fade - 1e-9) return null
