@@ -8,7 +8,7 @@
 import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import path from 'node:path'
 import type { StorageCleanupResult, StorageOverview } from '../shared/api/storage'
-import { cleanupPlan, DAY_MS, type CleanupAction } from '../shared/storage/rules'
+import { cleanupPlan, DAY_MS, totalBytes, type CleanupAction } from '../shared/storage/rules'
 import { stopAnalyses } from './analysisIpc'
 import { jobsSnapshot } from './longJobs'
 import { projectsRoot } from './projects'
@@ -82,7 +82,7 @@ export function registerStorageIpc(): void {
     const s = storeOf()
     const recordings = await scanProjects(root, s.used)
     const space = await diskSpace(root)
-    return { root, free: space?.free ?? null, total: space?.total ?? null, bytes: recordings.reduce((n, r) => n + r.bytes, 0), recordings, rules: s.rules, now: Date.now() }
+    return { root, free: space?.free ?? null, total: space?.total ?? null, bytes: totalBytes(recordings), recordings, rules: s.rules, now: Date.now() }
   })
   ipcMain.handle('storage:setRules', (e, rules: unknown) => {
     if (!fromApp(e)) throw new Error('Not allowed')

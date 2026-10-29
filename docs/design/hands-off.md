@@ -153,6 +153,12 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   **caches** (`.cache/`) and the rest; unfinished recordings (no `project.json`) are listed as
   "Unfinished" and are never part of a rule (Home's Unfinished recordings list handles them).
   Free and total disk space come from `fs.statfs`.
+* **Files with several names** (Duplicate hard-links the media into a copy, vertical-video.md
+  §4.7) take their bytes once: a file whose link count is above 1 is identified by its drive and
+  file id (`lstat` with bigints, as NTFS ids pass 2^53) and counted once in a folder and once in the
+  total. Each row still shows what its folder holds, with "· 1.9 GB shared with a copy". A removal
+  is offered at the bytes it frees by itself (files with a name outside it stay), and the review's
+  totals and the result's "freed" count a shared file only when every one of its names goes.
 * **Last used** = the later of: `project.json`'s modification time (every edit autosaves it) and
   the last time the editor opened it, noted in `userData/storage.json` (`storage:opened` from
   `Editor.tsx`, one additive line). An export needs the recording open, so it counts through that. *Rejected:* the file's access time (NTFS often does not update it), and a field in
@@ -370,7 +376,10 @@ Unit (vitest; each fails without its code):
 * `redact.test.ts` — keys, tokens, e-mails, Windows/UNC/POSIX paths, app roots kept relative.
 * `appLog.test.ts` — rotation at the cap, line cap, buffering, redaction on write.
 * `diagnostics.test.ts` — report with fake probes, timeouts → "unavailable", last-used capture.
-* `storageRules.test.ts` — last used, cache rule, remove rule, open/unfinished excluded, sanitising.
+* `storageRules.test.ts` — last used, cache rule, remove rule, open/unfinished excluded, sanitising,
+  shared files counted once and freed only with every name.
+* `storageDuplicate.test.ts` — after Duplicate, the linked media count once in the total, a removal
+  offers and frees only its own files, and a pair removed together frees the media.
 * `storageMain.test.ts` — scan sizes, no symlink follow, depth/entry caps, trash plan recomputed,
   paths outside root and links refused, no permanent delete on trash failure, store load/save.
 * `exportBundle.test.ts` — names, kinds per format, chapter parts (cuts, speed, freezes, first at

@@ -6,7 +6,7 @@
  */
 import { promises as fs, type Dirent, type Stats } from 'node:fs'
 import path from 'node:path'
-import { cleanupPlan, lastUsed, type CleanupAction, type CleanupItem, type RecordingUsage, type StorageRules } from '../shared/storage/rules'
+import { cleanupPlan, freedBytes, lastUsed, type CleanupAction, type CleanupItem, type RecordingUsage, type SharedFile, type StorageRules } from '../shared/storage/rules'
 
 /** How far one recording's folder is walked. */
 export const SCAN = { maxDepth: 8, maxEntries: 20_000 } as const
@@ -19,20 +19,37 @@ export interface FsDeps {
   readdir(p: string): Promise<Dirent[]>
   readFile(p: string): Promise<string>
   realpath(p: string): Promise<string>
+  /** A file's identity on its drive ("<dev>:<ino>"), asked for files with more than one name. */
+  fileId?(p: string): Promise<string>
 }
 
 export const nodeFs: FsDeps = {
   lstat: (p) => fs.lstat(p),
   readdir: (p) => fs.readdir(p, { withFileTypes: true }),
   readFile: (p) => fs.readFile(p, 'utf8'),
-  realpath: (p) => fs.realpath(p)
+  realpath: (p) => fs.realpath(p),
+  // As bigints: NTFS file ids do not fit a double.
+  fileId: async (p) => {
+    const st = await fs.lstat(p, { bigint: true })
+    return `${st.dev}:${st.ino}`
+  }
 }
 
-/** Bytes under `dir` (itself not followed when it is a link), at most SCAN deep and wide. */
-export async function folderSize(dir: string, deps: FsDeps = nodeFs, limits: { maxDepth: number; maxEntries: number } = SCAN): Promise<{ bytes: number; capped: boolean }> {
+/**
+ * Bytes under `dir` (itself not followed when it is a link), at most SCAN deep and wide. A file with
+ * several names (Duplicate hard-links media into a copy) counts once, and is listed in `shared` when
+ * a name of it is outside `dir`.
+ */
+export async function folderSize(
+  dir: string,
+  deps: FsDeps = nodeFs,
+  limits: { maxDepth: number; maxEntries: number } = SCAN
+): Promise<{ bytes: number; capped: boolean; shared: SharedFile[] }> {
   let bytes = 0
   let entries = 0
   let capped = false
+  const linked = new Map<string, SharedFile>()
+  const result = (): { bytes: number; capped: boolean; shared: SharedFile[] } => ({ bytes, capped, shared: [...linked.values()].filter((f) => f.here < f.links) })
   const stack: { dir: string; depth: number }[] = [{ dir, depth: 0 }]
   while (stack.length) {
     const { dir: d, depth } = stack.pop()!
@@ -43,7 +60,10 @@ export async function folderSize(dir: string, deps: FsDeps = nodeFs, limits: { m
       continue
     }
     for (const e of list) {
-      if (++entries > limits.maxEntries) return { bytes, capped: true }
+      if (++entries > limits.maxEntries) {
+        capped = true
+        return result()
+      }
       const p = path.join(d, e.name)
       let st: Stats
       try {
@@ -56,10 +76,18 @@ export async function folderSize(dir: string, deps: FsDeps = nodeFs, limits: { m
       else if (st.isDirectory()) {
         if (depth + 1 >= limits.maxDepth) capped = true
         else stack.push({ dir: p, depth: depth + 1 })
+      } else if (st.nlink > 1 && deps.fileId) {
+        const id = await deps.fileId(p).catch(() => null)
+        const known = id === null ? undefined : linked.get(id)
+        if (known) known.here++
+        else {
+          bytes += st.size
+          if (id !== null) linked.set(id, { id, bytes: st.size, links: st.nlink, here: 1 })
+        }
       } else bytes += st.size
     }
   }
-  return { bytes, capped }
+  return result()
 }
 
 /**
@@ -111,7 +139,8 @@ export async function scanProjects(root: string, used: Readonly<Record<string, s
       bytes: size.bytes,
       cacheBytes: cache.bytes,
       finished,
-      capped: size.capped
+      capped: size.capped,
+      ...(size.shared.length ? { shared: size.shared } : {})
     })
   }
   return out.sort((a, b) => b.bytes - a.bytes)
@@ -183,7 +212,8 @@ export async function runCleanup(
       if (deps.isOpen?.(item.id)) throw new Error('It is open in the editor')
       await deps.trash(target)
       result.moved.push(item)
-      result.freed += item.bytes
+      // A file shared with a recording that stays is not freed.
+      result.freed = freedBytes(result.moved)
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err)
       result.failed.push({ item, reason })

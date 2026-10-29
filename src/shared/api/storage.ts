@@ -7,7 +7,7 @@ export interface StorageOverview {
   /** Free and total bytes of its drive; null when unknown. */
   free: number | null
   total: number | null
-  /** Every recording's bytes together. */
+  /** Every recording's bytes together (a file recordings share counted once). */
   bytes: number
   /** Largest first. */
   recordings: RecordingUsage[]
