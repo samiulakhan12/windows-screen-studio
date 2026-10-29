@@ -16,6 +16,7 @@ import { clientFor } from './ai/providers'
 import { stopAllTranscriptions, stopTranscription, sweepTranscribeTemp, transcribeProject } from './ai/transcribe'
 import type { TextEffort } from './ai/types'
 import { isAppUrl } from './security'
+import { beginJob } from './longJobs'
 
 /** safeStorage (DPAPI on Windows). On Linux without a keyring it falls back to a fixed key: a packaged app refuses that. */
 const secretBox: SecretBox = {
@@ -111,7 +112,18 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:transcribe', async (e, projectId: unknown, options: unknown) => {
     fromApp(e)
     const sender = e.sender
+    // A long job (F-12): taskbar progress, Stop on its thumbnail (keeps the parts made), PC kept awake.
+    let stopped = false
+    const job = beginJob({
+      kind: 'captions',
+      onStop: () => {
+        if (typeof projectId !== 'string') return
+        stopped = true
+        void stopTranscription(projectId)
+      }
+    })
     const progress = (p: TranscribeProgress): void => {
+      job.update({ fraction: typeof p.fraction === 'number' ? p.fraction : p.total > 0 ? p.done / p.total : null })
       if (!sender.isDestroyed()) sender.send('ai:transcribeProgress', p)
     }
     // The job belongs to the page that asked: a reload, a navigation (in-page route changes are
@@ -122,7 +134,13 @@ export function registerAiIpc(): void {
     const events = ['did-navigate', 'destroyed', 'render-process-gone'] as const
     for (const name of events) sender.once(name as 'destroyed', gone)
     try {
-      return await transcribeProject(providers(), projectId, options, progress)
+      const transcript = await transcribeProject(providers(), projectId, options, progress)
+      void job.end({ kind: 'done' })
+      return transcript
+    } catch (err) {
+      const cancel = stopped || (err as { failure?: { kind?: unknown } } | null)?.failure?.kind === 'cancelled'
+      void job.end(cancel ? { kind: 'cancelled' } : { kind: 'failed', message: err instanceof Error ? err.message : String(err) })
+      throw err
     } finally {
       for (const name of events) sender.removeListener(name as 'destroyed', gone)
     }

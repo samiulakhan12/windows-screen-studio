@@ -37,7 +37,14 @@ import { AspectGlyph, PresetBadge } from './exportIcons'
 import { ExportPreview } from './ExportPreview'
 import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, type BatchJob, type BatchStatus, type ExportProgress, type ExportResult } from './exporter'
 import { useModalFocus } from './modalFocus'
+import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
+import { ExportBundleOptions } from './ExportBundleOptions'
+import { partSource, partThumbnailFrame, writeBundle } from './exportBundleRun'
+import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
+import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
+import type { BatchExtras } from './exporter'
 import './exportDialog.css'
+import './handsOff.css'
 import './titles.css'
 
 interface Props {
@@ -52,7 +59,7 @@ interface Props {
 type Phase =
   | { kind: 'settings' }
   | { kind: 'running'; progress: ExportProgress | null }
-  | ({ kind: 'done'; path: string; targetMB?: number; limit?: { label: string; maxMB: number } } & ExportResult)
+  | ({ kind: 'done'; path: string; targetMB?: number; limit?: { label: string; maxMB: number }; extras?: BatchExtras } & ExportResult)
   | { kind: 'batch'; jobs: BatchJob[]; statuses: BatchStatus[]; folder: string; finished: boolean }
   | { kind: 'error'; message: string; detail: string }
 
@@ -63,6 +70,7 @@ const SETTINGS_KEY = 'export-settings'
 const MODE_KEY = 'export-mode'
 const BATCH_KEY = 'export-batch'
 const OPEN_KEY = 'export-settings-open'
+const BUNDLE_KEY = 'export-bundle'
 
 const RESOLUTIONS: ExportSettings['resolution'][] = [720, 1080, 1440, 2160]
 const FORMATS: { value: ExportFormat; label: string; title: string }[] = [
@@ -180,16 +188,15 @@ async function copyText(text: string): Promise<boolean> {
  * The video's chapters: how many go into the file, and a button that copies them as YouTube
  * timestamps ("0:00 Intro"), saying what YouTube still needs when the list does not qualify.
  */
-function ChapterCopy({ chapters, length, gif }: { chapters: OutputChapter[]; length: number; gif: boolean }): JSX.Element | null {
+function ChapterCopy({ chapters, length, gif, perChapter = false }: { chapters: OutputChapter[]; length: number; gif: boolean; perChapter?: boolean }): JSX.Element | null {
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const yt = useMemo(() => youtubeChapters(chapters, length), [chapters, length])
   useEffect(() => setState('idle'), [yt.text])
   if (!chapters.length) return null
   const copy = async (): Promise<void> => setState((await copyText(yt.text)) ? 'copied' : 'failed')
-  const count = `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`
   return (
     <div className="export-chapters" data-testid="export-chapters">
-      <p className="hint">{gif ? `${count} · GIFs have no chapters, other formats keep them.` : `${count}, written into the file.`}</p>
+      <p className="hint">{chaptersNote(chapters.length, gif, perChapter)}</p>
       <button className="btn small chapter-copy" onClick={() => void copy()} title="Copy the chapters as YouTube timestamps (0:00 Intro…) for the video's description">
         {state === 'copied' ? <Icon name="check" size={14} /> : <CopyIcon />} {state === 'copied' ? 'Copied' : 'Copy chapters'}
       </button>
@@ -252,6 +259,9 @@ export function ExportDialog(props: Props): JSX.Element {
   const [thumb, setThumb] = useState<ThumbState>({ kind: 'idle' })
   const [showDetail, setShowDetail] = useState(false)
   const [targetDraft, setTargetDraft] = useState<string>(() => (options.targetSizeMB ? String(options.targetSizeMB) : ''))
+  // Hands-off long jobs (F-12): pause, the taskbar and sleep; the export bundle (F-11).
+  const job = useLongJob()
+  const [bundle, setBundle] = useState<BundleOptions>(() => normalizeBundle(readJson(BUNDLE_KEY, {})))
   const { project } = props
   const clips = project.clips
   // Fonts text uses that cannot be loaded (their text is drawn with the default font) and images
@@ -292,6 +302,10 @@ export function ExportDialog(props: Props): JSX.Element {
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
   const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips, plan), [project.chapters, clips, plan])
+  const parts = useMemo(() => chapterParts(project), [project])
+  const bundleHas = { captions: !!project.transcript?.segments.some((seg) => seg.text.trim()), chapters: chapters.length > 0, stillAcross: stillAcrossChapters(project, parts) }
+  const perChapter = bundle.perChapter && !perChapterBlocked(bundleHas, mode) && parts.length > 0
+  const partNames = useMemo(() => partFileNames(parts, FORMAT_EXTENSIONS[options.format]), [parts, options.format])
 
   useEffect(() => {
     let live = true
@@ -375,7 +389,12 @@ export function ExportDialog(props: Props): JSX.Element {
   const baseName = safeFileName(exportBaseName(project))
   const source = { project, scene: props.scene, screenUrl: props.screenUrl, webcamUrl: props.webcamUrl, background: props.background }
 
+  // The frame of the Frame slider, as the export at `settings` draws it (the bundle's thumbnail).
+  const thumbnailOf = (settings: ExportOptions) => (): Promise<Uint8Array> =>
+    renderThumbnail({ ...source, settings, time: frameSource, soundTime: frameSound, held: frameHeld }).then((shot) => shot.png)
+
   const start = async (): Promise<void> => {
+    if (perChapter) return startChapters()
     const outputPath = await window.api.chooseExportPath(baseName, options.format)
     if (!outputPath) return
     const controller = new AbortController()
@@ -383,19 +402,30 @@ export function ExportDialog(props: Props): JSX.Element {
     setCopy({ kind: 'idle' })
     setShowDetail(false)
     setPhase({ kind: 'running', progress: null })
+    const link = await job.begin(controller)
     try {
       const result = await exportVideo({
         ...source,
         settings: options,
         outputPath,
         signal: controller.signal,
+        pause: job.gate,
         onProgress: (progress) => {
-          if (!controller.signal.aborted) setPhase({ kind: 'running', progress })
+          if (controller.signal.aborted) return
+          setPhase({ kind: 'running', progress })
+          const share = progressShare(progress)
+          link?.progress(share.fraction, share.pausable)
         }
       })
-      setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, ...result })
+      link?.progress(null, false)
+      const kinds = bundleKinds(bundle, options.format, bundleHas)
+      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(options) })
+      void link?.end({ kind: 'done', files: [outputPath] })
+      setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, extras, ...result })
     } catch (err) {
-      if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) setPhase({ kind: 'settings' })
+      const cancelled = controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')
+      void link?.end(cancelled ? { kind: 'cancelled' } : { kind: 'failed', message: splitError(err).message })
+      if (cancelled) setPhase({ kind: 'settings' })
       else setPhase({ kind: 'error', ...splitError(err) })
     } finally {
       if (abort.current === controller) abort.current = null
@@ -409,17 +439,58 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!folder) return
     const names = batchFileNames(project.name, items)
     const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: it.options }))
+    await runBatch(folder, jobs, (_i, path, j) =>
+      writeBundle(path, { project, kinds: bundleKinds(bundle, j.options.format, bundleHas), title: project.name, thumbnail: thumbnailOf(j.options) })
+    )
+  }
+
+  // One file per chapter (F-11): each chapter's range of the edit, into a folder, as a batch.
+  const startChapters = async (): Promise<void> => {
+    const folder = await window.api.chooseExportFolder()
+    if (!folder) return
+    // Each part's frames and sound come from its own clips; it is drawn with the whole edit's scene.
+    const sources = parts.map((part, i) => partSource(source, part, i === parts.length - 1))
+    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options, source: sources[i] }))
+    await runBatch(folder, jobs, (i, path) => {
+      const part = sources[i]
+      // The part's thumbnail: one second in (or its middle when shorter), as the part draws it.
+      const frame = partThumbnailFrame(part.project)
+      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings: options, ...frame }).then((shot) => shot.png)
+      return writeBundle(path, {
+        project: part.project,
+        kinds: bundleKinds(bundle, options.format, bundleHas, true),
+        title: jobs[i].label,
+        part: { index: i, count: parts.length, of: project.name },
+        thumbnail
+      })
+    })
+  }
+
+  // Runs `jobs` into `folder` with the batch view, the taskbar and pause; `after` saves each file's bundle.
+  const runBatch = async (folder: string, jobs: BatchJob[], after: (i: number, path: string, job: BatchJob) => Promise<BatchExtras | undefined>): Promise<void> => {
     const controller = new AbortController()
     abort.current = controller
     setCopy({ kind: 'idle' })
     setPhase({ kind: 'batch', jobs, statuses: jobs.map(() => ({ state: 'waiting' })), folder, finished: false })
-    const update = (i: number, status: BatchStatus): void =>
+    const link: ExportJobLink | null = await job.begin(controller)
+    const statuses: BatchStatus[] = jobs.map(() => ({ state: 'waiting' }))
+    const update = (i: number, status: BatchStatus): void => {
+      statuses[i] = status
       setPhase((p) => (p.kind === 'batch' ? { ...p, statuses: p.statuses.map((s, j) => (j === i ? status : s)) } : p))
+      const share = status.state === 'running' ? progressShare(status.progress) : { fraction: 1, pausable: false }
+      const settled = statuses.filter((s) => s.state === 'done' || s.state === 'failed').length
+      link?.progress(Math.min(1, (settled + (status.state === 'running' ? (share.fraction ?? 1) : 0)) / jobs.length), share.pausable)
+    }
     try {
-      await exportBatch(source, folder, jobs, update, controller.signal)
+      await exportBatch(source, folder, jobs, update, controller.signal, { pause: job.gate, after })
     } finally {
       if (abort.current === controller) abort.current = null
       setPhase((p) => (p.kind === 'batch' ? { ...p, finished: true } : p))
+      const files = statuses.flatMap((s) => (s.state === 'done' ? [s.path] : []))
+      const failed = statuses.find((s): s is Extract<BatchStatus, { state: 'failed' }> => s.state === 'failed')
+      const failures = statuses.filter((s) => s.state === 'failed').length
+      const stopped = statuses.some((s) => s.state === 'cancelled')
+      void link?.end(files.length ? { kind: 'done', files, failed: failures, stopped } : failed ? { kind: 'failed', message: failed.message } : { kind: 'cancelled' })
     }
   }
 
@@ -580,15 +651,27 @@ export function ExportDialog(props: Props): JSX.Element {
                   </p>
                 )}
                 {thumb.kind === 'failed' && <p className="hint warn">{thumb.message}</p>}
-                <ChapterCopy chapters={chapters} length={length} gif={mode === 'single' && gif} />
+                <ChapterCopy chapters={chapters} length={length} gif={mode === 'single' && gif} perChapter={perChapter} />
 
                 <div className="export-summary">
                   {mode === 'single' ? (
-                    <p className="hint export-size">
-                      {audioOnly ? 'Audio only' : `${dims.width}×${dims.height} · ${dims.fps} fps`} · {formatDuration(length)}
-                      {gif ? ` · GIFs play at ${GIF_FPS} fps` : ''}
-                      {target ? ` · ${gif ? 'up to' : 'about'} ${target} MB` : ''}
-                    </p>
+                    <>
+                      <p className="hint export-size">
+                        {audioOnly ? 'Audio only' : `${dims.width}×${dims.height} · ${dims.fps} fps`} · {formatDuration(length)}
+                        {gif ? ` · GIFs play at ${GIF_FPS} fps` : ''}
+                        {target ? ` · ${gif ? 'up to' : 'about'} ${target} MB` : ''}
+                      </p>
+                      {perChapter && (
+                        <ul className="export-batch-files" data-testid="export-part-files">
+                          {partNames.map((name, i) => (
+                            <li key={name} title={name}>
+                              <span className="name">{name}</span>
+                              <span className="muted">{formatClock(parts[i].end - parts[i].start)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
                   ) : (
                     <>
                       <p className="hint export-size">
@@ -790,6 +873,17 @@ export function ExportDialog(props: Props): JSX.Element {
                         </div>
                       </div>
                     )}
+                    <ExportBundleOptions
+                      value={bundle}
+                      onChange={(next) => {
+                        setBundle(next)
+                        writeJson(BUNDLE_KEY, next)
+                      }}
+                      format={options.format}
+                      has={bundleHas}
+                      mode={mode}
+                      chapterCount={parts.length}
+                    />
                   </div>
                 )}
               </div>
@@ -800,7 +894,7 @@ export function ExportDialog(props: Props): JSX.Element {
               </button>
               {mode === 'single' ? (
                 <button ref={primary} className="btn primary" onClick={() => void start()} disabled={audioOnly && !hasSound}>
-                  <Icon name="download" size={16} /> {exportLabel}
+                  {perChapter ? <Icon name="folder" size={16} /> : <Icon name="download" size={16} />} {perChapter ? `Export ${parts.length} chapter${parts.length === 1 ? '' : 's'}…` : exportLabel}
                 </button>
               ) : (
                 <button ref={primary} className="btn primary" onClick={() => void startBatch()} disabled={items.length === 0}>
@@ -811,7 +905,7 @@ export function ExportDialog(props: Props): JSX.Element {
           </>
         )}
 
-        {phase.kind === 'running' && <RunningView progress={phase.progress} gif={gif} onCancel={() => abort.current?.abort()} />}
+        {phase.kind === 'running' && <RunningView progress={phase.progress} gif={gif} onCancel={() => abort.current?.abort()} paused={job.paused} slept={job.slept} onPause={job.toggle} />}
 
         {phase.kind === 'batch' && (
           <BatchView
@@ -822,6 +916,9 @@ export function ExportDialog(props: Props): JSX.Element {
             primary={primary}
             copy={copy}
             onCopy={(f) => void copyFile(f)}
+            paused={job.paused}
+            slept={job.slept}
+            onPause={job.toggle}
           />
         )}
 
@@ -835,6 +932,7 @@ export function ExportDialog(props: Props): JSX.Element {
               {formatBytes(phase.bytes)} · exported in {formatDuration(phase.seconds)} · {phase.encoder}
             </p>
             <SizeReport result={phase} />
+            <ExtrasReport extras={phase.extras} />
             {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">
@@ -927,7 +1025,10 @@ function BatchView({
   onBack,
   primary,
   copy,
-  onCopy
+  onCopy,
+  paused,
+  slept,
+  onPause
 }: {
   phase: Extract<Phase, { kind: 'batch' }>
   onCancel: () => void
@@ -936,6 +1037,9 @@ function BatchView({
   primary: RefObject<HTMLButtonElement>
   copy: CopyState
   onCopy: (file: string) => void
+  paused: boolean
+  slept: boolean
+  onPause: () => void
 }): JSX.Element {
   const done = phase.statuses.filter((s) => s.state === 'done').length
   const failed = phase.statuses.filter((s) => s.state === 'failed').length
@@ -957,7 +1061,7 @@ function BatchView({
             <div className="progress-bar" style={{ width: `${overall * 100}%` }} />
           </div>
           <p className="hint export-status">
-            {current >= 0 ? `Exporting ${current + 1} of ${phase.jobs.length}: ${phase.jobs[current].label} · ${statusText(phase.statuses[current])}` : 'Preparing…'}
+            {current >= 0 ? `Exporting ${current + 1} of ${phase.jobs.length}: ${phase.jobs[current].label} · ${paused ? pausedText(slept) : statusText(phase.statuses[current])}` : 'Preparing…'}
           </p>
         </>
       )}
@@ -981,6 +1085,7 @@ function BatchView({
                     <span style={{ width: `${p * 100}%` }} />
                   </span>
                 )}
+                {s.state === 'done' && s.extras && <ExtrasLine extras={s.extras} />}
                 {s.state === 'done' && (s.reduced || s.overLimit) && (
                   <span className={`batch-status ${s.overLimit ? 'warn' : ''}`}>{s.overLimit ? `Still over ${job.options.targetSizeMB} MB` : `Fitted: ${s.reduced}`}</span>
                 )}
@@ -1012,16 +1117,83 @@ function BatchView({
             </button>
           </>
         ) : (
-          <button className="btn" onClick={onCancel}>
-            Cancel export
-          </button>
+          <>
+            <PauseButton paused={paused} onPause={onPause} disabled={!(run && run.state === 'running' && run.progress?.phase === 'rendering') && !paused} />
+            <button className="btn" onClick={onCancel}>
+              Cancel export
+            </button>
+          </>
         )}
       </footer>
     </>
   )
 }
 
-function RunningView({ progress, gif, onCancel }: { progress: ExportProgress | null; gif: boolean; onCancel: () => void }): JSX.Element {
+/** The running export's state while it waits at the pause gate (F-12). */
+function pausedText(slept: boolean): string {
+  return slept ? 'Paused while the PC slept. Carrying on…' : 'Paused · Resume to carry on'
+}
+
+function PauseButton({ paused, onPause, disabled }: { paused: boolean; onPause: () => void; disabled: boolean }): JSX.Element {
+  // aria-disabled, not disabled: the button flips between files and phases, and a disabled button
+  // would drop the keyboard focus to the page.
+  return (
+    <button
+      className="btn export-pause"
+      onClick={() => !disabled && onPause()}
+      aria-disabled={disabled}
+      title={disabled ? 'Pause is possible while frames are drawn' : paused ? 'Carry on with the export' : 'Pause the export; nothing is lost'}
+    >
+      {paused ? 'Resume' : 'Pause'}
+    </button>
+  )
+}
+
+/** "Also saved: Demo.srt, Demo - thumbnail.png" and the files that could not be saved (F-11). */
+function ExtrasLine({ extras }: { extras: BatchExtras }): JSX.Element | null {
+  const names = extras.saved.map((f) => f.split(/[\\/]/).pop())
+  return (
+    <>
+      {names.length > 0 && <span className="batch-status">Also saved: {names.join(', ')}</span>}
+      {extras.failed.map((f) => (
+        <span key={f} className="batch-status warn">
+          Could not save {f}
+        </span>
+      ))}
+    </>
+  )
+}
+
+function ExtrasReport({ extras }: { extras?: BatchExtras }): JSX.Element | null {
+  if (!extras) return null
+  const names = extras.saved.map((f) => f.split(/[\\/]/).pop())
+  return (
+    <div className="export-extras" data-testid="export-extras">
+      {names.length > 0 && <p className="hint">Also saved: {names.join(', ')}</p>}
+      {extras.failed.map((f) => (
+        <p key={f} className="hint warn">
+          Could not save {f}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+function RunningView({
+  progress,
+  gif,
+  onCancel,
+  paused,
+  slept,
+  onPause
+}: {
+  progress: ExportProgress | null
+  gif: boolean
+  onCancel: () => void
+  paused: boolean
+  slept: boolean
+  onPause: () => void
+}): JSX.Element {
   const finalizing = progress?.phase === 'finalizing'
   const fraction = progress && progress.frames > 0 ? progress.frame / progress.frames : 0
   let status = 'Preparing…'
@@ -1033,6 +1205,7 @@ function RunningView({ progress, gif, onCancel }: { progress: ExportProgress | n
   } else if (finalizing) {
     status = progress?.detail ? `Finalizing… ${progress.detail.replace(/…$/, '').toLowerCase()}` : gif ? 'Finalizing… building the GIF' : 'Finalizing…'
   }
+  if (paused) status = pausedText(slept)
   return (
     <>
       <div className={`progress ${finalizing ? 'indeterminate' : ''}`}>
@@ -1046,6 +1219,7 @@ function RunningView({ progress, gif, onCancel }: { progress: ExportProgress | n
         </p>
       )}
       <footer className="modal-foot">
+        <PauseButton paused={paused} onPause={onPause} disabled={progress?.phase !== 'rendering' && !paused} />
         <button className="btn" onClick={onCancel}>
           Cancel export
         </button>

@@ -19,6 +19,12 @@ import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp
 import { registerSecurity } from './security'
 import { registerSpeechIpc } from './speech/speechIpc'
 import { createMainWindow } from './windows'
+import { disposeJobs, registerJobsIpc, setTaskbarPort } from './longJobs'
+import { electronTaskbarPort } from './longJobsPort'
+import { registerExportBundleIpc } from './exportBundle'
+import { appLog, startAppLog } from './appLog'
+import { appNames, appRoots, registerDiagnosticsIpc } from './diagnostics'
+import { registerStorageIpc } from './storageIpc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -30,6 +36,9 @@ if (userData.plan === 'move') console.log(userData.error ? `Using the ${LEGACY_A
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  // The app's log (X-03): console lines, redacted, in userData/logs (docs/design/hands-off.md).
+  startAppLog(path.join(app.getPath('userData'), 'logs'), appRoots(), appNames())
+  console.info(`${APP_NAME} ${app.getVersion()} starting`)
   app.on('second-instance', focusApp)
 
   registerMediaScheme()
@@ -60,6 +69,12 @@ if (!app.requestSingleInstanceLock()) {
     registerCaptionsIpc()
     registerExportIpc()
     registerImportIpc()
+    // Hands-off long jobs (docs/design/hands-off.md): taskbar, notifications, keep-awake, sleep.
+    setTaskbarPort(electronTaskbarPort())
+    registerJobsIpc()
+    registerExportBundleIpc()
+    registerDiagnosticsIpc()
+    registerStorageIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()
@@ -73,6 +88,8 @@ if (!app.requestSingleInstanceLock()) {
     disposeRecording()
     disposeExport()
     disposeImport()
+    disposeJobs()
+    appLog()?.flushSync()
   })
 
   app.on('window-all-closed', () => {

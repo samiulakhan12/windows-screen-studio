@@ -21,6 +21,7 @@ import { CameraMaskPreparer } from '../render/segmentation/cameraMasks'
 import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
+import type { PauseGate } from '../../../shared/jobs/pauseGate'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -55,6 +56,8 @@ export interface ExportInput extends ExportSource {
   outputPath: string
   onProgress: (p: ExportProgress) => void
   signal: AbortSignal
+  /** Pause between frames (F-12: the dialog, the taskbar and sleep). */
+  pause?: PauseGate
 }
 
 export interface ExportResult {
@@ -425,6 +428,8 @@ async function renderAll(
     let lastReport = 0
     const spent = { decode: 0, draw: 0, encode: 0 }
     for (let i = 0; i < times.length; i++) {
+      // Paused: wait here; the speed readout starts afresh after it.
+      if (await input.pause?.wait(signal)) stamps.length = 0
       if (signal.aborted) throw abortError()
       const a = performance.now()
       const [screenFrame, webcamFrame] = await Promise.all([screen.get(i), camera ? cameraFrame(i) : null])
@@ -539,14 +544,28 @@ export interface BatchJob {
   label: string
   fileName: string
   options: ExportOptions
+  /** What this file draws, when it is not the batch's source (one file per chapter, F-11). */
+  source?: ExportSource
 }
 
 export type BatchStatus =
   | { state: 'waiting' }
   | { state: 'running'; progress: ExportProgress | null }
-  | ({ state: 'done'; path: string } & ExportResult)
+  | ({ state: 'done'; path: string; extras?: BatchExtras } & ExportResult)
   | { state: 'failed'; message: string }
   | { state: 'cancelled' }
+
+/** Files saved next to an exported file (F-11), and the ones that could not be. */
+export interface BatchExtras {
+  saved: string[]
+  failed: string[]
+}
+
+/** Optional parts of a batch: pause between frames, and work after each file (F-11 sidecar files). */
+export interface BatchHooks {
+  pause?: PauseGate
+  after?: (index: number, path: string, job: BatchJob) => Promise<BatchExtras | undefined>
+}
 
 /**
  * Exports `jobs` one after another into `folder` (chosen with chooseExportFolder). A
@@ -558,7 +577,8 @@ export async function exportBatch(
   folder: string,
   jobs: readonly BatchJob[],
   onStatus: (index: number, status: BatchStatus) => void,
-  signal: AbortSignal
+  signal: AbortSignal,
+  hooks: BatchHooks = {}
 ): Promise<void> {
   for (let i = 0; i < jobs.length; i++) {
     if (signal.aborted) {
@@ -570,15 +590,17 @@ export async function exportBatch(
     try {
       const outputPath = await window.api.exportBatchPath(folder, job.fileName)
       const result = await exportVideo({
-        ...source,
+        ...(job.source ?? source),
         settings: job.options,
         outputPath,
         signal,
+        pause: hooks.pause,
         onProgress: (progress) => {
           if (!signal.aborted) onStatus(i, { state: 'running', progress })
         }
       })
-      onStatus(i, { state: 'done', path: outputPath, ...result })
+      const extras = hooks.after ? await hooks.after(i, outputPath, job).catch(() => undefined) : undefined
+      onStatus(i, { state: 'done', path: outputPath, ...result, ...(extras ? { extras } : {}) })
     } catch (err) {
       if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
         for (let j = i; j < jobs.length; j++) onStatus(j, { state: 'cancelled' })

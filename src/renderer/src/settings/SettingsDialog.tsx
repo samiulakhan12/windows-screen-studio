@@ -4,6 +4,7 @@ import { useModalFocus } from '../editor/modalFocus'
 import { AboutSection } from './AboutSection'
 import { AiProvidersSection } from './AiProvidersSection'
 import { BrandKitSection } from './BrandKitSection'
+import { HealthSections } from './HealthSections'
 import { SpeechModelsSection } from './SpeechModelsSection'
 import './settings.css'
 
@@ -46,6 +47,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
           <BrandKitSection reveal={section === 'brand'} />
+          <HealthSections />
           <AboutSection reveal={section === 'about'} />
         </div>
         <footer className="modal-foot">

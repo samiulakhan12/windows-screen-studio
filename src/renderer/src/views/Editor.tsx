@@ -188,6 +188,8 @@ function closeSession(s: Session): void {
 
 export function Editor({ projectId, onClose }: { projectId: string; onClose: () => void }): JSX.Element {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
+  // Storage manager (F-26): an open recording counts as used and is never cleaned up.
+  useEffect(() => (window.api.storageNoteOpened(projectId), () => window.api.storageNoteClosed(projectId)), [projectId])
 
   useEffect(() => {
     let disposed = false

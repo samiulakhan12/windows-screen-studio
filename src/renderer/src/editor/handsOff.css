@@ -1,0 +1,6 @@
+/* ---------- Export: Pause (docs/design/hands-off.md) ---------- */
+/* aria-disabled keeps the focus on the button while the export cannot pause. */
+.btn.export-pause[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
