@@ -37,6 +37,11 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
       <Toggle label={VOICE_COPY.toggle} checked={look.on} disabled={!!unavailable && !look.on} onChange={(on) => setVoice({ on })} />
       <p className="hint">{unavailable ?? VOICE_COPY.intro}</p>
       {source === 'mix' && <p className="hint">{VOICE_COPY.mixed}</p>}
+      {/* Always there, also while off: a live region inserted with its text is not read out, so
+          the first status after turning the switch on would be missed. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {look.on && target && state ? spokenStatus(state, original) : ''}
+      </span>
       {look.on && target && state && (
         <>
           <div className="voice-strength">
@@ -62,6 +67,24 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
   )
 }
 
+/** The status line for `state`. */
+function statusText(state: VoiceStemState, original: boolean): string {
+  return state.state === 'ready'
+    ? original
+      ? VOICE_COPY.playingOriginal
+      : VOICE_COPY.ready
+    : state.state === 'working'
+      ? VOICE_COPY.working(Math.round(state.progress * 100))
+      : state.state === 'stopped'
+        ? VOICE_COPY.stopped
+        : state.state === 'failed'
+          ? `${VOICE_COPY.failed} ${state.message}`
+          : VOICE_COPY.checking
+}
+
+/** What screen readers hear: each change of state, not every step of the percentage (that is on the bar). */
+const spokenStatus = (state: VoiceStemState, original: boolean): string => (state.state === 'working' ? VOICE_COPY.cleaning : statusText(state, original))
+
 /**
  * Where the cleaned voice stands. The one action button stays the same element whatever it does
  * (Cancel, Clean now, Try again, Hear the original), so the keyboard focus stays on it when the
@@ -77,18 +100,7 @@ function VoiceStatus(props: {
 }): JSX.Element {
   const { state, original } = props
   const percent = state.state === 'working' ? Math.round(state.progress * 100) : 0
-  const text =
-    state.state === 'ready'
-      ? original
-        ? VOICE_COPY.playingOriginal
-        : VOICE_COPY.ready
-      : state.state === 'working'
-        ? VOICE_COPY.working(percent)
-        : state.state === 'stopped'
-          ? VOICE_COPY.stopped
-          : state.state === 'failed'
-            ? `${VOICE_COPY.failed} ${state.message}`
-            : VOICE_COPY.checking
+  const text = statusText(state, original)
   const action =
     state.state === 'working'
       ? { label: VOICE_COPY.cancel, run: props.onCancel }
@@ -99,8 +111,6 @@ function VoiceStatus(props: {
           : state.state === 'ready'
             ? { label: VOICE_COPY.original, run: () => props.onOriginal(!original) }
             : null
-  // Screen readers hear each change of state, not every step of the percentage (that is on the bar).
-  const spoken = state.state === 'working' ? VOICE_COPY.cleaning : text
   const lastLabel = useRef<string | null>(null)
   if (action) lastLabel.current = action.label
   const label = action?.label ?? (state.state === 'checking' ? lastLabel.current : null)
@@ -109,9 +119,6 @@ function VoiceStatus(props: {
       <p className={`hint ${state.state === 'failed' ? 'error' : ''}`} aria-hidden="true">
         {text}
       </p>
-      <span className="sr-only" role="status" aria-live="polite">
-        {spoken}
-      </span>
       {state.state === 'working' && (
         <div className="voice-bar" role="progressbar" aria-label={VOICE_COPY.toggle} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
           <span style={{ width: `${percent}%` }} />

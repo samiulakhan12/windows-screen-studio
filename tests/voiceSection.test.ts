@@ -93,6 +93,7 @@ function render(project: Project): El[] {
 const textOf = (node: unknown): string =>
   Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node === 'object' && 'props' in node ? textOf((node as El).props.children) : ''
 const button = (out: El[]): El | undefined => out.find((e) => e.type === 'button' && String(e.props.className).includes('voice-action'))
+const region = (out: El[]): El[] => out.filter((e) => e.props.role === 'status')
 /** A keyboard press (Enter) on `el`. */
 const press = (el: El): void => (el.props.onClick as (e: { detail: number }) => void)({ detail: 0 })
 
@@ -146,5 +147,25 @@ describe('the Voice section', () => {
   it('shows no button while the stem is first checked', () => {
     stems.state = { state: 'checking' }
     expect(button(render(project(true)))).toBeUndefined()
+  })
+
+  it('has its live region before the switch is turned on, so the first status is announced', () => {
+    const off = region(render(project(false)))
+    expect(off).toHaveLength(1)
+    expect(textOf(off[0].props.children)).toBe('')
+    // On, with a stem made earlier: ready at once.
+    stems.state = { state: 'ready', file: 'voice-0123456789abcdef.m4a' }
+    const on = region(render(project(true)))
+    expect(on).toHaveLength(1)
+    expect(on[0].at).toBe(off[0].at)
+    expect(on[0].props['aria-live']).toBe('polite')
+    expect(textOf(on[0].props.children)).toBe(VOICE_COPY.ready)
+    // A render under way is announced once, not at every percent.
+    stems.state = { state: 'working', progress: 0.42 }
+    expect(textOf(region(render(project(true)))[0].props.children)).toBe(VOICE_COPY.cleaning)
+    // Off again: the region stays, empty.
+    const again = region(render(project(false)))
+    expect(again[0].at).toBe(off[0].at)
+    expect(textOf(again[0].props.children)).toBe('')
   })
 })
