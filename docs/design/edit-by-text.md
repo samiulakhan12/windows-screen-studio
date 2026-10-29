@@ -387,8 +387,11 @@ No transcript (or every caption deleted):
 
 `Make captions` opens the Captions tab and asks it to generate (`requestCaptions({ kind:
 'generate' })`, the command palette's "Generate captions" path): it starts at once when it can,
-else it shows what is missing (a model to download, a key to add). Without sound: the button is
-disabled and the text says "This recording has no sound to make a transcript from."
+else it shows what is missing (a model to download, a key to add). The button goes with this tab:
+unless the Captions tab puts the focus on a control of its own (Cancel on this PC, Generate or Add),
+it goes to the Captions tab's rail button (`keepInspectorFocus`), never to the top of the window.
+Without sound: the button is disabled and the text says "This recording has no sound to make a
+transcript from."
 
 With a transcript:
 

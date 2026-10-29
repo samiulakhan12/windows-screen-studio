@@ -21,6 +21,7 @@ import type { Clip, Project, Transcript } from '../../../../shared/types'
 import { requestCaptions } from '../captionItems'
 import { useEditor } from '../context'
 import { EditorIcon } from '../EditorIcon'
+import { keepInspectorFocus } from '../inspectorFocus'
 import { Section } from '../controls'
 import type { InspectorProps } from '../Inspector'
 import './transcript.css'
@@ -65,6 +66,8 @@ export function TranscriptPanel(props: InspectorProps & { onOpenCaptions: () => 
 
 function TranscriptIntro({ project, onOpenCaptions }: { project: Project; onOpenCaptions: () => void }): JSX.Element {
   const make = (): void => {
+    // This tab goes, and the focused button with it: unless the Captions tab takes the keyboard, its rail button does, not the page.
+    keepInspectorFocus()
     onOpenCaptions()
     requestCaptions({ kind: 'generate' })
   }

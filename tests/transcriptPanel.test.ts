@@ -34,8 +34,30 @@ const log: { notices: string[]; selects: unknown[]; focused: string[]; scrolledI
 
 class FakeElement {}
 vi.stubGlobal('Element', FakeElement)
-vi.stubGlobal('window', { addEventListener: () => undefined, removeEventListener: () => undefined })
-const doc: { activeElement: unknown; body: object; elementFromPoint: () => null } = { activeElement: null, body: {}, elementFromPoint: () => null }
+/** A focusable element outside the word list (a button), in the Inspector. */
+class FakeHTMLElement extends FakeElement {
+  isConnected = true
+  closest(sel: string): unknown {
+    return sel === '.inspector' ? this : null
+  }
+}
+vi.stubGlobal('HTMLElement', FakeHTMLElement)
+/** Callbacks waiting on window.setTimeout, run by the test. */
+const timers: (() => void)[] = []
+vi.stubGlobal('window', { addEventListener: () => undefined, removeEventListener: () => undefined, setTimeout: (fn: () => void) => timers.push(fn) })
+/** The open tab's button on the Inspector's rail. */
+const railButton = {
+  focus(): void {
+    log.focused.push('rail button')
+    doc.activeElement = railButton
+  }
+}
+const doc: { activeElement: unknown; body: object; elementFromPoint: () => null; querySelector: (sel: string) => unknown } = {
+  activeElement: null,
+  body: {},
+  elementFromPoint: () => null,
+  querySelector: (sel) => (sel === '.inspector .insp-tabs button.active' ? railButton : null)
+}
 vi.stubGlobal('document', doc)
 
 let store: { state: Project; update: (fn: (p: Project) => Project) => void }
@@ -279,6 +301,7 @@ beforeEach(() => {
   playing = false
   player.time = 0
   doc.activeElement = null
+  timers.length = 0
   log.notices.length = 0
   log.selects.length = 0
   log.focused.length = 0
@@ -439,6 +462,22 @@ describe('the Transcript tab', () => {
         expect(rows(), label).toBe(left)
         expect(log.focused, `${label} (detail ${detail})`).toEqual(['list'])
       }
+    }
+  })
+
+  it('Make captions gives the keyboard to the Captions tab, not the top of the window, as this tab goes', () => {
+    useProject(10, [])
+    // The Captions tab put the focus on a button of its own (Cancel on this PC), or nothing caught it (Cancel of an AI run).
+    for (const caught of [true, false]) {
+      timers.length = 0
+      log.focused.length = 0
+      // Enter on the button: the focus is on it, in the Inspector.
+      doc.activeElement = new FakeHTMLElement()
+      ;(button(render(), 'Make captions').props.onClick as (e: unknown) => void)({ detail: 0 })
+      // The Captions tab replaces this one, and the focused button goes with it.
+      doc.activeElement = caught ? new FakeHTMLElement() : doc.body
+      timers.splice(0).forEach((run) => run())
+      expect(log.focused, caught ? 'caught' : 'not caught').toEqual(caught ? [] : ['rail button'])
     }
   })
 
