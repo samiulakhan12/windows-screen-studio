@@ -43,7 +43,7 @@ export interface SharedFile {
   /** The file on its drive ("<dev>:<ino>"). */
   id: string
   bytes: number
-  /** Names the file has in the recordings scanned (one in the Recycle Bin holds nothing). */
+  /** Names the file has in the recordings the library lists (one in the Recycle Bin holds nothing). */
   links: number
   /** Of which in this recording's folder. */
   here: number

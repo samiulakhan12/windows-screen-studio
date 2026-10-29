@@ -153,7 +153,8 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   project folders (`rec-…` names, `ID_RE`), each at most **8 levels deep and 20 000 entries**
   (a folder past that is reported as "at least" its counted size). Symbolic links and junctions are
   **never followed** (`lstat`); they count as their own size. Legacy roots (`brandMigration.ts`) are not
-  scanned: they are outside the projects folder and the clean-up must never touch them.
+  listed: they are outside the projects folder and the clean-up must never touch them. They are only
+  read for the names a shared file has there (below).
 * Per recording: name (from `project.json`), created, **last used**, total bytes, of which
   **caches** (`.cache/`) and the rest; unfinished recordings (no `project.json`) are listed as
   "Unfinished" and are never part of a rule (Home's Unfinished recordings list handles them).
@@ -164,8 +165,9 @@ lives in userData (`logs/`, `storage.json`) and in the export dialog's localStor
   total. Each row still shows what its folder holds, with "· 1.9 GB shared with a copy". A removal
   is offered at the bytes it frees by itself (files with a name in another recording stay), and the
   review's totals and the result's "freed" count a shared file only when every one of its names
-  goes. Only names in recording folders count: once an original is in the Recycle Bin, its copy
-  holds the media alone and is offered at its full size.
+  goes. Only names in recording folders the library lists count (the projects folder and the legacy
+  roots): once an original is in the Recycle Bin, its copy holds the media alone and is offered at
+  its full size, while an original still in a legacy root keeps holding them.
 * **Last used** = the later of: `project.json`'s modification time (every edit autosaves it) and
   the last time the editor opened it, noted in `userData/storage.json` (`storage:opened` from
   `Editor.tsx`, one additive line). An export needs the recording open, so it counts through that. *Rejected:* the file's access time (NTFS often does not update it), and a field in
@@ -386,8 +388,9 @@ Unit (vitest; each fails without its code):
 * `storageRules.test.ts` — last used, cache rule, remove rule, open/unfinished excluded, sanitising,
   shared files counted once and freed only with every name.
 * `storageDuplicate.test.ts` — after Duplicate, the linked media count once in the total, a removal
-  offers and frees only its own files, a pair removed together frees the media, and a copy whose
-  original is in the Recycle Bin is offered at, and frees, its full size.
+  offers and frees only its own files, a pair removed together frees the media, a copy whose
+  original is in the Recycle Bin is offered at, and frees, its full size, and a copy whose original
+  is in a legacy root frees only its own files.
 * `storageMain.test.ts` — scan sizes, no symlink follow, depth/entry caps, trash plan recomputed,
   paths outside root and links refused, no permanent delete on trash failure, store load/save.
 * `exportBundle.test.ts` — names, kinds per format, chapter parts (cuts, speed, freezes, first at

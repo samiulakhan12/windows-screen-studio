@@ -9,7 +9,8 @@ import type { CleanupItem } from '../src/shared/storage/rules'
 /*
  * Settings › Storage after Duplicate (docs/design/hands-off.md §2.7, vertical-video.md §4.7):
  * the media Duplicate hard-links into a copy take their bytes once, so the total counts them once,
- * and removing one of the two recordings frees only its own files.
+ * and removing one of the two recordings frees only its own files, also when the other is in a
+ * legacy root.
  */
 
 const h = vi.hoisted(() => ({ home: '', bin: '', binned: 0, handlers: new Map<string, (e: unknown, ...args: unknown[]) => unknown>() }))
@@ -31,7 +32,7 @@ vi.mock('electron', () => ({
 vi.mock('../src/main/analysisIpc', () => ({ stopAnalyses: async () => undefined }))
 
 const { duplicateProject } = await import('../src/main/projectCopy')
-const { projectDir } = await import('../src/main/projects')
+const { projectDir, setLegacyProjectRoots } = await import('../src/main/projects')
 const { registerStorageIpc } = await import('../src/main/storageIpc')
 const { createProject } = await import('../src/shared/engine/project')
 const { DAY_MS } = await import('../src/shared/storage/rules')
@@ -115,5 +116,33 @@ describe('Settings › Storage after Duplicate', () => {
     const gone = await call<StorageCleanupResult>('storage:clean', [{ id: first.copy, action: 'remove' }])
     expect(gone.moved.map((i) => i.id)).toEqual([first.copy])
     expect(gone.freed).toBe(size(first.copy))
+  })
+
+  it('a recording in a legacy root still holds the media it shares with its copy', async () => {
+    // Left in Videos\Screen Studio for Windows by the start-up move (brandMigration.ts), still listed.
+    const legacy = path.join(h.home, 'videos', 'Screen Studio for Windows')
+    const id = 'rec-20250103-090000'
+    mkdirSync(path.join(legacy, id), { recursive: true })
+    setLegacyProjectRoots([legacy])
+    try {
+      const pair = await recordingAndCopy(id, new Date(OLD.getTime() + 180_000))
+      expect(path.dirname(projectDir(pair.source))).toBe(legacy)
+
+      // Storage lists only the copy, with the media its original still holds.
+      const overview = await call<StorageOverview>('storage:scan')
+      expect(overview.recordings.map((r) => r.id)).toEqual([pair.copy])
+      const copy = overview.recordings[0]
+      expect(copy.shared?.map((f) => [f.bytes, f.links, f.here]).sort()).toEqual(Object.values(MEDIA).map((b) => [b, 2, 1]).sort())
+
+      // So removing the copy is offered at, and frees, only its own files; the original keeps the media.
+      const plan = await call<CleanupItem[]>('storage:plan')
+      expect(plan.map((i) => [i.action, i.id, i.bytes])).toEqual([['remove', pair.copy, copy.bytes - MEDIA_BYTES]])
+      const gone = await call<StorageCleanupResult>('storage:clean', [{ id: pair.copy, action: 'remove' }])
+      expect(gone.moved.map((i) => i.id)).toEqual([pair.copy])
+      expect(gone.freed).toBe(copy.bytes - MEDIA_BYTES)
+      expect(readFileSync(path.join(legacy, id, 'screen.mp4')).length).toBe(MEDIA['screen.mp4'])
+    } finally {
+      setLegacyProjectRoots([])
+    }
   })
 })

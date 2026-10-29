@@ -1,6 +1,7 @@
 /**
  * The storage manager's scan and clean-up (F-26, docs/design/hands-off.md §2.7). Only the current
- * projects folder is read; links and junctions are never followed; whatever a clean-up removes goes
+ * projects folder is listed (legacy roots are only read for the names of shared files); links and
+ * junctions are never followed; whatever a clean-up removes goes
  * to the Recycle Bin (shell.trashItem), never deleted for good, and only after main has scanned
  * again and found it still matches the rules.
  */
@@ -92,9 +93,16 @@ export async function folderSize(
 
 /**
  * Every recording folder directly in `root`: name, dates, sizes, and whether it is finished.
- * `used` holds the times the editor opened a recording (storage.json).
+ * `used` holds the times the editor opened a recording (storage.json). `holders` are the other
+ * folders of recordings the library lists (legacy roots): never listed or cleaned, only read for
+ * the names they give a shared file.
  */
-export async function scanProjects(root: string, used: Readonly<Record<string, string>>, deps: FsDeps = nodeFs): Promise<RecordingUsage[]> {
+export async function scanProjects(
+  root: string,
+  used: Readonly<Record<string, string>>,
+  deps: FsDeps = nodeFs,
+  holders: readonly string[] = []
+): Promise<RecordingUsage[]> {
   let list: Dirent[]
   try {
     list = await deps.readdir(root)
@@ -144,9 +152,19 @@ export async function scanProjects(root: string, used: Readonly<Record<string, s
     })
   }
   // Only names in recordings hold a file: one in the Recycle Bin (a removed original) or anywhere
-  // else outside the projects folder keeps no recording's bytes.
+  // else outside the library keeps no recording's bytes.
   const held = new Map<string, number>()
   for (const r of out) for (const f of r.shared ?? []) held.set(f.id, (held.get(f.id) ?? 0) + f.here)
+  // A recording in a legacy root (a copy's original Duplicate linked from there) still holds its names.
+  if (out.some((r) => r.shared?.some((f) => (held.get(f.id) ?? 0) < f.links))) {
+    for (const extra of holders) {
+      for (const e of await deps.readdir(extra).catch(() => [] as Dirent[])) {
+        const dir = path.join(extra, e.name)
+        if (!e.isDirectory() || !ID_RE.test(e.name) || !(await deps.lstat(dir).then((st) => st.isDirectory() && !st.isSymbolicLink(), () => false))) continue
+        for (const f of (await folderSize(dir, deps)).shared) if (held.has(f.id)) held.set(f.id, held.get(f.id)! + f.here)
+      }
+    }
+  }
   for (const r of out) {
     const shared = r.shared?.map((f) => ({ ...f, links: held.get(f.id) ?? f.here })).filter((f) => f.here < f.links)
     if (shared?.length) r.shared = shared
@@ -189,6 +207,8 @@ export interface CleanupDeps {
   beforeRemove?: (id: string) => Promise<void>
   /** Asked again right before each move: a recording opened during the clean-up is skipped. */
   isOpen?: (id: string) => boolean
+  /** Legacy roots, read for the names they hold (scanProjects). */
+  holders?: readonly string[]
 }
 
 /**
@@ -205,7 +225,7 @@ export async function runCleanup(
   deps: CleanupDeps
 ): Promise<CleanupResult> {
   const fsd = deps.fs ?? nodeFs
-  const plan = cleanupPlan(await scanProjects(root, used, fsd), rules, now, open)
+  const plan = cleanupPlan(await scanProjects(root, used, fsd, deps.holders), rules, now, open)
   const result: CleanupResult = { moved: [], failed: [], freed: 0 }
   const seen = new Set<string>()
   for (const req of requests) {
