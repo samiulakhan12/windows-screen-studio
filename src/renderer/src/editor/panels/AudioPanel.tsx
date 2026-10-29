@@ -13,6 +13,7 @@ import { useEditor } from '../context'
 import { pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { mediaDuration } from '../media'
+import { VoiceSection } from './VoiceSection'
 import './audioPanel.css'
 
 const STEM_NAMES: Record<StemKind, string> = { mic: 'Microphone', system: 'System sound' }
@@ -117,6 +118,8 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         onRemove={() => setAudio({ music: null })}
         setMusic={setMusic}
       />
+
+      <VoiceSection project={project} />
 
       <Section title="Clean up">
         <Slider

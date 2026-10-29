@@ -539,6 +539,17 @@ export interface AudioSettings {
   fadeIn?: number
   fadeOut?: number
   music?: MusicSettings | null
+  /** Clean voice (docs/design/clean-voice.md); absent in older projects: off. */
+  voice?: VoiceSettings
+}
+
+/** How hard Clean voice works (docs/design/clean-voice.md §4.2). */
+export type VoiceStrength = 'light' | 'normal' | 'strong'
+
+/** Clean voice (F-08): the microphone (or the mixed track of a recording without one) cleaned of noise. */
+export interface VoiceSettings {
+  on: boolean
+  strength: VoiceStrength
 }
 
 export type ShapeKind = 'arrow' | 'line' | 'rect' | 'ellipse' | 'highlight' | 'blur' | 'pixelate'

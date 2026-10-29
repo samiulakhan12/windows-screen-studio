@@ -2,7 +2,7 @@ import type { AudioLevels } from '../audio/loudness'
 import type { AudioSource, StemKind } from '../audio/settings'
 import type { Range } from '../audio/activity'
 import type { OutputChapter } from '../render/chapters'
-import type { Clip, ExportFormat, ExportSettings } from '../types'
+import type { Clip, ExportFormat, ExportSettings, VoiceStrength } from '../types'
 
 /** H.264 encoders ffmpeg may use; GPU ones are only used after a successful probe. */
 export type H264Encoder = 'h264_nvenc' | 'h264_qsv' | 'h264_amf' | 'h264_mf' | 'libx264'
@@ -73,6 +73,8 @@ export interface RecordingSound {
   normalize?: boolean
   /** Pause freezes, sorted by `at` (absent or empty: none). */
   holds?: SoundHold[]
+  /** Clean voice (docs/design/clean-voice.md): the cleaned stem replaces the microphone stem, or the mixed track without stems. */
+  voice?: VoiceStrength
 }
 
 /** Background music in an export: plays on the output timeline from its start, ignoring cuts. */

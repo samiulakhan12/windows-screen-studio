@@ -1,0 +1,67 @@
+/* ---------- Audio panel: Clean voice (docs/design/clean-voice.md §5) ---------- */
+
+.voice-strength {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.voice-label {
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+.voice-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.voice-status.ready > .hint {
+  color: var(--text-1);
+}
+
+.voice-bar {
+  position: relative;
+  align-self: stretch;
+  height: 6px;
+  border-radius: 3px;
+  /* The fill is at least 3:1 against the track (WCAG non-text contrast): about 7:1. */
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.voice-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 3px;
+  background: var(--accent-text);
+  transition: width 0.25s;
+}
+
+.btn.voice-action.active,
+.btn.voice-action.active:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-400);
+}
+
+/* While the stem is checked again: still focusable, it only looks and acts disabled. */
+.btn.voice-action[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-bar span {
+    transition: none;
+  }
+}

@@ -18,6 +18,7 @@ import { registerProjectsIpc } from './projectsIpc'
 import { attachRecorderWindow, closeRecordingWindows, disposeRecording, focusApp, registerRecordingIpc } from './recordingIpc'
 import { registerSecurity } from './security'
 import { registerSpeechIpc } from './speech/speechIpc'
+import { registerVoiceIpc } from './voice/voiceIpc'
 import { createMainWindow } from './windows'
 import { disposeJobs, registerJobsIpc, setTaskbarPort } from './longJobs'
 import { electronTaskbarPort } from './longJobsPort'
@@ -66,6 +67,7 @@ if (!app.requestSingleInstanceLock()) {
     registerPrefsIpc()
     registerAiIpc()
     registerSpeechIpc()
+    registerVoiceIpc()
     registerCaptionsIpc()
     registerExportIpc()
     registerImportIpc()

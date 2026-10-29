@@ -1,0 +1,2 @@
+# The model is hashed byte for byte (VOICE_ENGINE.sha256): never convert its line endings.
+*.rnnn -text

@@ -3,6 +3,7 @@ import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, keyIndexAt, type Keyf
 import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
 import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
 import { analysisSources, editLoudness, heardLevels, musicDucking, sourceActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
+import { voiceLook, voiceTarget, withCleanVoice, type VoiceSource } from '../../../shared/audio/voiceClean'
 import { MAX_ELEMENT_RATE, MIN_ELEMENT_RATE } from '../../../shared/editor/shuttle'
 import { editToVideo, NO_FREEZES, planOf, videoDuration, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { clamp } from '../../../shared/engine/math'
@@ -11,6 +12,7 @@ import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project } from '../../../shared/types'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio } from './media'
+import { voiceStems } from './voiceStems'
 
 /** Seconds of gain automation scheduled ahead of the playhead; more is added as playback gets there. */
 const HORIZON = 30
@@ -22,6 +24,8 @@ const MUSIC_SEEK = 0.3
 const MUSIC_NUDGE = 0.08
 /** Largest speed correction of a drifting element (inaudible with pitch preserved). */
 const MAX_NUDGE = 0.04
+/** How often a cleaned file that failed to load is loaded again once the store finds it again. */
+const MAX_VOICE_RETRIES = 2
 /** Automation is re-anchored when the video and the audio clock disagree by more than this. */
 const ANCHOR_DRIFT = 0.05
 
@@ -90,6 +94,7 @@ function softLimitCurve(): Float32Array<ArrayBuffer> {
  *   drift is re-seeked, a small one corrected with a slight speed change);
  * - per-source and master volume, and loudness normalisation approximated by one gain (from
  *   the measured loudness) and a soft limiter; noise reduction is export-only;
+ * - Clean voice: the cleaned stem in place of the microphone or the mixed track, as exported;
  * - background music on the OUTPUT timeline (it runs on through cuts and pause freezes), looped,
  *   faded and ducked under the recording's sound;
  * - fades of the whole soundtrack.
@@ -106,7 +111,14 @@ export class PreviewAudio {
   private plan: FreezePlan
   private held: { h: Hold; elapsed: number } | null = null
   private graph: Graph | null = null
-  private readonly stems = new Map<StemKind, Source>()
+  /** The stems' elements, and Clean voice's cleaned stem ('voice', see cleanVoice). */
+  private readonly stems = new Map<StemKind | 'voice', Source>()
+  /** What the 'voice' element plays: its file and the recorded sound it stands in for. */
+  private voice: { file: string; target: VoiceSource } | null = null
+  /** Times each cleaned file failed to load (a file found again is loaded again, a few times at most). */
+  private readonly voiceFailures = new Map<string, number>()
+  /** Unsubscribes from the stems store; set once the project first uses Clean voice. */
+  private offVoice: (() => void) | null = null
   private music: Music | null = null
   private analysis: AudioAnalysis = {}
   private analysisVersion = 0
@@ -191,25 +203,30 @@ export class PreviewAudio {
   private apply(): void {
     if (this.disposed) return
     const p = this.project
-    if (!this.graph && !needsAudioGraph(p)) return this.applyElementOnly()
+    const clean = this.cleanVoice()
+    if (!this.graph && !needsAudioGraph(p) && !clean) return this.applyElementOnly()
     const g = this.ensureGraph()
     if (!g) return this.applyElementOnly()
     const look = this.look
-    const mix = recordingMix(p)
+    // Clean voice: its element plays in place of the microphone stem, or of the video's own track.
+    const voice = this.ensureVoice(g, clean)
+    const mix = voice?.target === 'mic' ? withCleanVoice(recordingMix(p), p) : recordingMix(p)
     const stemsOk = mix.kind === 'stems' && Object.keys(mix.stems).every((k) => !this.stems.get(k as StemKind)?.failed)
     if (mix.kind === 'stems' && !stemsOk && !this.warnedStems) {
       this.warnedStems = true
       console.warn('A sound track of the recording could not be loaded; the preview plays the mixed sound.')
     }
+    let voiceGain = voice?.target === 'mix' && mix.kind === 'mix' ? 1 : 0
     for (const kind of STEM_KINDS) {
-      const gain = stemsOk && mix.kind === 'stems' ? (mix.stems[kind] ?? 0) : 0
+      let gain = stemsOk && mix.kind === 'stems' ? (mix.stems[kind] ?? 0) : 0
+      if (kind === 'mic' && voice?.target === 'mic') [voiceGain, gain] = [gain, 0]
       const stem = gain > 0 ? this.ensureStem(g, kind) : this.stems.get(kind)
       if (!stem) continue
-      stem.gain.gain.value = gain
-      if (gain <= 0) stem.el.pause()
-      else if (this.playing && stem.el.paused) this.startStem(stem)
+      this.setGain(stem, gain)
     }
-    g.screen.gain.value = mix.kind === 'mix' || (mix.kind === 'stems' && !stemsOk) ? 1 : 0
+    const cleaned = this.stems.get('voice')
+    if (cleaned) this.setGain(cleaned, voiceGain)
+    g.screen.gain.value = (mix.kind === 'mix' && voiceGain <= 0) || (mix.kind === 'stems' && !stemsOk) ? 1 : 0
     this.requestAnalysis()
     const norm = look.normalize ? this.normalizeGain() : 1
     g.rec.gain.value = mix.kind === 'none' ? 0 : mix.volume * norm
@@ -219,6 +236,75 @@ export class PreviewAudio {
     }
     this.applyMusic(g)
     this.scheduleIfChanged()
+  }
+
+  private setGain(stem: Source, gain: number): void {
+    stem.gain.gain.value = gain
+    if (gain <= 0) stem.el.pause()
+    else if (this.playing && stem.el.paused) this.startStem(stem)
+  }
+
+  /**
+   * The cleaned voice the preview should play (docs/design/clean-voice.md §4.5): asks for the stem
+   * the project needs (made when missing); null while it is not ready, while "Hear the original"
+   * is on, and when Clean voice is off or has nothing to clean.
+   */
+  private cleanVoice(): { file: string; target: VoiceSource } | null {
+    const p = this.project
+    const target = voiceTarget(p)
+    if (!target) return null
+    const store = voiceStems()
+    // From now on a stem made or a choice changed (the A/B) applies at once.
+    this.offVoice ??= store.subscribe(() => this.apply())
+    const { strength } = voiceLook(p.audio)
+    store.want(p.id, target, strength)
+    if (store.isOriginal(p.id)) return null
+    const s = store.get(p.id, target, strength)
+    return s.state === 'ready' ? { file: s.file, target } : null
+  }
+
+  /** The cleaned voice's element for `clean` (made, replaced or removed); null when there is none or it failed to load. */
+  private ensureVoice(g: Graph, clean: { file: string; target: VoiceSource } | null): { target: VoiceSource } | null {
+    const current = this.voice
+    if (current && (!clean || clean.file !== current.file)) this.disposeVoice()
+    if (!clean) return null
+    if (!this.voice) {
+      const el = createAudio(mediaUrl(this.project.id, clean.file))
+      const node = g.ctx.createMediaElementSource(el)
+      const gain = g.ctx.createGain()
+      gain.gain.value = 0
+      node.connect(gain).connect(g.rec)
+      const src: Source = { el, node, gain, failed: false }
+      const strength = voiceLook(this.project.audio).strength
+      el.addEventListener('error', () => {
+        if (this.stems.get('voice') !== src) return
+        src.failed = true
+        const failures = (this.voiceFailures.get(clean.file) ?? 0) + 1
+        this.voiceFailures.set(clean.file, failures)
+        console.warn('The cleaned voice could not be played in the preview; it plays the original.')
+        // Gone from the folder: checked again (and made again) by the store, a few times at most. A
+        // file main still finds but that will not play fails after that: the original plays, and the
+        // panel says so and offers Try again, which has main make the file again.
+        if (failures <= MAX_VOICE_RETRIES) voiceStems().forget(this.project.id, clean.target, strength)
+        else voiceStems().unplayable(this.project.id, clean.target, strength, clean.file)
+        this.apply()
+      })
+      this.stems.set('voice', src)
+      this.voice = { ...clean }
+    }
+    return this.stems.get('voice')?.failed ? null : clean
+  }
+
+  private disposeVoice(): void {
+    const src = this.stems.get('voice')
+    this.voice = null
+    if (!src) return
+    this.stems.delete('voice')
+    src.el.pause()
+    src.node.disconnect()
+    src.gain.disconnect()
+    src.el.removeAttribute('src')
+    src.el.load()
   }
 
   /** No graph: the video element plays its own track at up to 100% (as earlier versions did). */
@@ -599,6 +685,11 @@ export class PreviewAudio {
     if (this.disposed) return
     this.disposed = true
     this.playing = false
+    if (this.offVoice) {
+      this.offVoice()
+      voiceStems().closeProject(this.project.id)
+    }
+    this.voice = null
     for (const stem of this.stems.values()) {
       stem.el.pause()
       stem.el.removeAttribute('src')

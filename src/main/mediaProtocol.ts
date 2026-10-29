@@ -7,9 +7,9 @@ import { projectDir } from './projects'
 
 export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
 
-/** Project files the renderer may load: the proxies, a background image, a custom cursor image, picked assets, image overlays and fonts. */
+/** Project files the renderer may load: the proxies, a background image, a custom cursor image, picked assets, image overlays, fonts and cleaned voices. */
 export const MEDIA_FILE_RE =
-  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a|overlay-[1-9][0-9]{0,8}\.(png|jpg|webp|svg|gif)|font-[1-9][0-9]{0,8}\.(ttf|otf|woff2))$/i
+  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a|overlay-[1-9][0-9]{0,8}\.(png|jpg|webp|svg|gif)|font-[1-9][0-9]{0,8}\.(ttf|otf|woff2)|voice-[0-9a-f]{16}\.m4a)$/i
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.png': 'image/png',

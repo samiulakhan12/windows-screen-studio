@@ -1,0 +1,144 @@
+import { useRef, useSyncExternalStore } from 'react'
+import { VOICE_STRENGTHS, voiceLook, voiceSourceOf, voiceTarget } from '../../../../shared/audio/voiceClean'
+import { STRENGTH_HINTS, STRENGTH_NAMES, VOICE_COPY } from '../../../../shared/audio/voiceCopy'
+import type { Project, VoiceSettings } from '../../../../shared/types'
+import { useEditor } from '../context'
+import { Chips, Section, Toggle } from '../controls'
+import { voiceStems, type VoiceStemState } from '../voiceStems'
+import './voice.css'
+
+/**
+ * Clean voice in the Audio panel (docs/design/clean-voice.md §5): the switch, the strength, where
+ * the cleaned voice stands (progress and Cancel, Clean now, Try again) and "Hear the original".
+ * The switch and the strength are edits (one undo step each); everything else is not.
+ */
+export function VoiceSection({ project }: { project: Project }): JSX.Element {
+  const { store } = useEditor()
+  const stems = voiceStems()
+  useSyncExternalStore(stems.subscribe, stems.getVersion)
+  const look = voiceLook(project.audio)
+  const source = voiceSourceOf(project)
+  const target = voiceTarget(project)
+  const state: VoiceStemState | null = target ? stems.get(project.id, target, look.strength) : null
+  const original = stems.isOriginal(project.id)
+
+  /** One edit of the setting; the cleaned voice it needs is made at once (also after an earlier Cancel). */
+  const setVoice = (patch: Partial<VoiceSettings>): void => {
+    const next: Project = { ...project, audio: { ...project.audio, voice: { ...look, ...patch } } }
+    store.update((p) => ({ ...p, audio: { ...p.audio, voice: { ...voiceLook(p.audio), ...patch } } }))
+    if (patch.on === false) stems.setOriginal(project.id, false)
+    const t = voiceTarget(next)
+    if (t) void stems.prepare(project.id, t, voiceLook(next.audio).strength).catch(() => undefined)
+  }
+
+  const unavailable = source === 'silent' ? VOICE_COPY.silent : source === 'noMic' ? VOICE_COPY.noMic : null
+  return (
+    <Section title={VOICE_COPY.section}>
+      <Toggle label={VOICE_COPY.toggle} checked={look.on} disabled={!!unavailable && !look.on} onChange={(on) => setVoice({ on })} />
+      <p className="hint">{unavailable ?? VOICE_COPY.intro}</p>
+      {source === 'mix' && <p className="hint">{VOICE_COPY.mixed}</p>}
+      {/* Always there, also while off: a live region inserted with its text is not read out, so
+          the first status after turning the switch on would be missed. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {look.on && target && state ? spokenStatus(state, original) : ''}
+      </span>
+      {look.on && target && state && (
+        <>
+          <div className="voice-strength">
+            <span className="voice-label">{VOICE_COPY.strength}</span>
+            <Chips
+              label={VOICE_COPY.strength}
+              value={look.strength}
+              options={VOICE_STRENGTHS.map((s) => ({ value: s, label: STRENGTH_NAMES[s] }))}
+              onChange={(strength) => strength !== look.strength && setVoice({ strength })}
+            />
+          </div>
+          <p className="hint">{STRENGTH_HINTS[look.strength]}</p>
+          <VoiceStatus
+            state={state}
+            original={original}
+            onCancel={() => void stems.cancel(project.id)}
+            onClean={() => void stems.prepare(project.id, target, look.strength).catch(() => undefined)}
+            onOriginal={(on) => stems.setOriginal(project.id, on)}
+          />
+        </>
+      )}
+    </Section>
+  )
+}
+
+/** The status line for `state`. */
+function statusText(state: VoiceStemState, original: boolean): string {
+  return state.state === 'ready'
+    ? original
+      ? VOICE_COPY.playingOriginal
+      : VOICE_COPY.ready
+    : state.state === 'working'
+      ? VOICE_COPY.working(Math.round(state.progress * 100))
+      : state.state === 'stopped'
+        ? VOICE_COPY.stopped
+        : state.state === 'failed'
+          ? `${VOICE_COPY.failed} ${state.message}`
+          : VOICE_COPY.checking
+}
+
+/** What screen readers hear: each change of state, not every step of the percentage (that is on the bar). */
+const spokenStatus = (state: VoiceStemState, original: boolean): string => (state.state === 'working' ? VOICE_COPY.cleaning : statusText(state, original))
+
+/**
+ * Where the cleaned voice stands. The one action button stays the same element whatever it does
+ * (Cancel, Clean now, Try again, Hear the original), so the keyboard focus stays on it when the
+ * state changes under it; while the stem is checked again (an undo back to a strength, a file
+ * that went missing) it stays too, with its last label, and does nothing.
+ */
+function VoiceStatus(props: {
+  state: VoiceStemState
+  original: boolean
+  onCancel: () => void
+  onClean: () => void
+  onOriginal: (on: boolean) => void
+}): JSX.Element {
+  const { state, original } = props
+  const percent = state.state === 'working' ? Math.round(state.progress * 100) : 0
+  const text = statusText(state, original)
+  const action =
+    state.state === 'working'
+      ? { label: VOICE_COPY.cancel, run: props.onCancel }
+      : state.state === 'stopped' || state.state === 'missing'
+        ? { label: VOICE_COPY.cleanNow, run: props.onClean }
+        : state.state === 'failed'
+          ? { label: VOICE_COPY.tryAgain, run: props.onClean }
+          : state.state === 'ready'
+            ? { label: VOICE_COPY.original, run: () => props.onOriginal(!original) }
+            : null
+  const lastLabel = useRef<string | null>(null)
+  if (action) lastLabel.current = action.label
+  const label = action?.label ?? (state.state === 'checking' ? lastLabel.current : null)
+  return (
+    <div className={`voice-status ${state.state}`} data-testid="voice-status" data-state={state.state}>
+      <p className={`hint ${state.state === 'failed' ? 'error' : ''}`} aria-hidden="true">
+        {text}
+      </p>
+      {state.state === 'working' && (
+        <div className="voice-bar" role="progressbar" aria-label={VOICE_COPY.toggle} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+          <span style={{ width: `${percent}%` }} />
+        </div>
+      )}
+      {label && (
+        <button
+          type="button"
+          className={`btn voice-action ${state.state === 'ready' && original ? 'active' : ''}`}
+          aria-pressed={state.state === 'ready' ? original : undefined}
+          aria-disabled={action ? undefined : true}
+          onClick={(e) => {
+            // The button changes meaning under the pointer (Clean now → Cancel): the second click of a
+            // double click must not undo the first. Keyboard presses (detail 0) always count.
+            if (action && e.detail < 2) action.run()
+          }}
+        >
+          {label}
+        </button>
+      )}
+    </div>
+  )
+}

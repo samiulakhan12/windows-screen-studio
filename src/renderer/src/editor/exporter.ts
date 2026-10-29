@@ -1,6 +1,8 @@
 import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
+import { voiceLook, voiceTarget, withCleanVoice } from '../../../shared/audio/voiceClean'
+import { VOICE_COPY } from '../../../shared/audio/voiceCopy'
 import { editToVideo, planOf, videoFrames } from '../../../shared/engine/freeze'
 import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
@@ -8,7 +10,7 @@ import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
-import type { Project } from '../../../shared/types'
+import type { Project, VoiceStrength } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
 import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
@@ -22,6 +24,7 @@ import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
 import type { PauseGate } from '../../../shared/jobs/pauseGate'
+import { voiceStems } from './voiceStems'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -104,11 +107,13 @@ type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fad
  * ducking ranges the preview uses, and the fades. A project without the newer settings gets
  * exactly the job of earlier versions.
  */
-async function soundOf(input: ExportSource, format: ExportOptions['format']): Promise<SoundParts> {
+async function soundOf(input: ExportInput, format: ExportOptions['format']): Promise<SoundParts> {
   const { project } = input
   if (format === 'gif') return {}
   const look = audioLook(project.audio)
-  const mix = recordingMix(project, { denoise: true })
+  // Clean voice (docs/design/clean-voice.md §4.6): the cleaned stem is made first, then mixed in place of what it was made from.
+  const voice = await cleanVoiceOf(project, input.signal)
+  const mix = voice ? withCleanVoice(recordingMix(project, { denoise: true }), project) : recordingMix(project, { denoise: true })
   const plan = planOf(project)
   let audio: RecordingSound | undefined
   if (mix.kind !== 'none') {
@@ -117,6 +122,7 @@ async function soundOf(input: ExportSource, format: ExportOptions['format']): Pr
     if (look.noiseReduction > 0) audio.noiseReduction = look.noiseReduction
     if (look.normalize) audio.normalize = true
     if (plan.holds.length > 0) audio.holds = plan.holds.map((h) => ({ at: h.at, length: h.length }))
+    if (voice) audio.voice = voice
   }
   const job = clickSoundJob(project, input.scene.cursor, project.clips)
   // In video time: a click exactly at a pause freeze sounds when the freeze starts.
@@ -129,6 +135,31 @@ async function soundOf(input: ExportSource, format: ExportOptions['format']): Pr
     ...(look.fadeIn > 0 ? { fadeIn: look.fadeIn } : {}),
     ...(look.fadeOut > 0 ? { fadeOut: look.fadeOut } : {})
   }
+}
+
+/** Clean voice's strength once its stem is made (waiting for a render under way), or null when it is off or has nothing to clean. */
+async function cleanVoiceOf(project: Project, signal: AbortSignal): Promise<VoiceStrength | null> {
+  const target = voiceTarget(project)
+  if (!target) return null
+  const { strength } = voiceLook(project.audio)
+  const made = voiceStems()
+    .prepare(project.id, target, strength)
+    .catch((err: unknown) => {
+      throw new Error(`${VOICE_COPY.failed} ${err instanceof Error ? err.message : String(err)}`)
+    })
+  // Cancelling the export stops waiting (the stem goes on being made, for the preview).
+  let onAbort = (): void => undefined
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(abortError())
+    if (signal.aborted) onAbort()
+    else signal.addEventListener('abort', onAbort, { once: true })
+  })
+  try {
+    await Promise.race([made, aborted])
+  } finally {
+    signal.removeEventListener('abort', onAbort)
+  }
+  return strength
 }
 
 /** The background music of the export: its settings, length and ducking ranges. */
