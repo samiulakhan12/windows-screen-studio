@@ -7,7 +7,7 @@ import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { anchorCutWords, cutFlags, cutWords, restoreWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
-import { cutRange } from '../src/shared/engine/timeline'
+import { cutRange, removeClip, setTrimStart, splitAt } from '../src/shared/engine/timeline'
 import type { CaptionSegment, Clip, Project, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -357,6 +357,46 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     s = open([seg('w', 0.4, 3.8, 'So I think alot works.', whisperWords().filter((w) => w.text !== 'um,'))], 'openai')
     timelineCut(s, 1.8, 3.7)
     expect(srt(s.state)).toEqual(['So'])
+  })
+
+  it('a caption cut away up to its very end, or to a sliver shorter than a cue, is struck through whole and left out', () => {
+    const next = (): CaptionSegment => seg('n', 17, 20, 'Then press Start.')
+    const edits: ((s: EditStore<Project>) => void)[] = [
+      // A range cut on the clip track, snapped to the caption's edges or from before it.
+      (s) => timelineCut(s, 10, 17),
+      (s) => timelineCut(s, 9, 17),
+      // The start trim dragged to the caption's end (it snaps there).
+      (s) => s.update((p) => ({ ...p, clips: setTrimStart(p.clips, 17) })),
+      // Split at the caption's start and end, the clip between removed.
+      (s) => {
+        s.update((p) => ({ ...p, clips: splitAt(splitAt(p.clips, 10), 17) }))
+        s.update((p) => ({ ...p, clips: removeClip(p.clips, p.clips[1].id) }))
+      },
+      // The end of the sentence deleted in the tab (its cut ends where the next caption starts), then the rest cut on the timeline.
+      (s) => {
+        tabDelete(s, 'and', 'recordings')
+        expect(s.state.clips.at(-1)!.start).toBe(17)
+        timelineCut(s, 9.5, 12.6)
+      },
+      // 0.03 s of it left.
+      (s) => timelineCut(s, 10, 16.97)
+    ]
+    for (const edit of edits) {
+      const s = open([gemini(), next()])
+      edit(s)
+      expect(struck(s.state)).toEqual(SENTENCE.split(' '))
+      expect(srt(s.state)).toEqual(['Then press Start.'])
+    }
+    // 0.1 s left: the cue and its guesses stay.
+    const s = open([gemini(), next()])
+    timelineCut(s, 9, 16.9)
+    expect(struck(s.state)).toEqual([])
+    expect(srt(s.state)).toEqual([SENTENCE, 'Then press Start.'])
+    // Heard words: 0.045 s left of the words, more of the caption after them.
+    const t = open([seg('y', 0.4, 1.5, 'Yes works.', [{ text: 'Yes', start: 0.4, end: 0.7 }, { text: 'works.', start: 0.9, end: 0.98 }]), next()], 'openai')
+    t.update((p) => ({ ...p, clips: [clip(0.935, DURATION)] }))
+    expect(struck(t.state)).toEqual(['Yes', 'works.'])
+    expect(srt(t.state)).toEqual(['Then press Start.'])
   })
 
   it('a deleted word stays out after its caption is edited: words that no longer match their timings, or none, a typo, a full stop, the end dragged', () => {

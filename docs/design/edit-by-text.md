@@ -83,9 +83,10 @@ Buttons above the text: **Cut** (`Delete`), **Restore**, **Find fillers and reta
   of §4.2 is not such a list: the clips stay the one source of truth, the mark only says which
   guessed words the user deleted, and it goes as soon as the clips keep its word.)
 - Word state is **derived** from the clips: a word with a heard time is cut when its middle is not
-  inside any clip. So a cut made on the timeline, by Smart speed or by Remove silences shows struck
-  through in the transcript too. A word whose time is a guess shows struck through only when it is
-  surely cut or the user deleted it here (§4.2), as the subtitle files leave it out.
+  inside any clip (or no more than a sliver of its caption is kept). So a cut made on the timeline,
+  by Smart speed or by Remove silences shows struck through in the transcript too. A word whose time
+  is a guess shows struck through only when it is surely cut, the user deleted it here, or no more
+  than a sliver of its caption is kept (§4.2), as the subtitle files leave it out.
 
 ### 2.3 Padding: where a cut starts and ends
 
@@ -206,12 +207,13 @@ are exactly the words the subtitle files leave out:
 2. **Deleted.** A guess the user deleted in this tab carries the mark `deleted: true` (rule 4) and
    is cut the same way, by the middle of its stored time.
 3. **Other guesses.** Any other guess is cut only when it is surely cut: its middle is in no clip,
-   and no clip keeps anything between the middles of the nearest heard words before and after it
-   in its caption (the start of the caption's first word, or the end of its last, where there is
-   none on that side). Guesses, deleted or not, are never such neighbours. So a guess never takes
-   out a word that may still be heard: a timeline cut or trim, or a Smart speed > Silences cut, over
-   a guessed time leaves the word in (in the tab and in the subtitles) unless its heard neighbours
-   and everything between them are cut too, or its whole caption is.
+   and no clip keeps any of the time between the middles of the nearest heard words before and
+   after it in its caption (the start of the caption's first word, or the end of its last, where
+   there is none on that side; a clip that only touches that time, starting where it ends or ending
+   where it starts, keeps none of it). Guesses, deleted or not, are never such neighbours. So a
+   guess never takes out a word that may still be heard: a timeline cut or trim, or a Smart speed >
+   Silences cut, over a guessed time leaves the word in (in the tab and in the subtitles) unless its
+   heard neighbours and everything between them are cut too, or its whole caption is.
 4. **Deleting marks the guesses.** Delete (Cut), Remove and Remove all mark, in the same store
    update as the cut (one undo step, §4.4 Anchoring), every guess inside the spans being cut, and
    every other guess the cut newly cuts (a short word left between two cuts goes with them), whose
@@ -231,13 +233,19 @@ are exactly the words the subtitle files leave out:
    longer matches its stored time and is a new guess.
 7. **Saved** with the project, read back only as `true` (`captionData.ts`), like `estimated`.
 
+**A sliver of a caption.** Every word of a caption is cut, heard words too, when the clips keep
+less than `MIN_CUE` (0.05 s of the exported video) of the time from its words' first start to
+their last end: the subtitle files leave out a cue shorter than that. (A caption's time holds its
+words' time, so a caption whose words keep `MIN_CUE` is long enough for a cue; one whose words
+keep less but whose own time keeps more has no word left, and no cue either.)
+
 Subtitle files (Export captions, and Also save > Captions in every part of One file per chapter)
 apply the same rule: `outputCues` takes the captions' words as the tab does (`captionsWords`, the
 words `transcriptWords` gives) and leaves out the words `cutFlags` gives as cut. Burned-in captions and the preview show each
 caption's text as before; neither the marks nor this rule change them.
 
 Computed in one sweep over the sorted words and the sorted clips, plus a binary search for each
-guess whose middle is cut (O(words + guesses × log clips)).
+guess whose middle is cut and for each caption (O(words + (guesses + captions) × log clips + clips)).
 
 ### 4.3 The range of a word span (`wordsRange`)
 
@@ -509,7 +517,7 @@ New (owned):
   - `interface TranscriptWord { index; caption; text; start; end; estimated; deleted? }`
   - `transcriptWords(transcript?: Transcript): TranscriptWord[]`, `captionsWords(segments): TranscriptWord[]`
   - `alignCaptionWords(seg: CaptionSegment): Omit<TranscriptWord, 'index' | 'caption'>[]`
-  - `cutFlags(words, clips): boolean[]`
+  - `cutFlags(words, clips): boolean[]`, `MIN_CUE` (the shortest cue the subtitle files keep, §4.2; it moved here from `subtitles.ts`)
   - `wordsRange(words, first, last, duration): TimeRange`, `MAX_REACH`
   - `cutWords(clips, words, spans, duration): Clip[]`, `restoreWords(clips, words, first, last, duration): Clip[]`
   - `wordIndexAt(words, t): number`, `spanSaving(...)`

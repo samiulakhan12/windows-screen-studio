@@ -5,7 +5,7 @@
  * spoken there, as the Transcript tab shows them), and each piece is scaled by its clip's speed. Pure.
  */
 import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
-import { captionsWords, cutFlags } from '../editor/transcript'
+import { captionsWords, cutFlags, MIN_CUE } from '../editor/transcript'
 import type { CaptionSegment, Clip } from '../types'
 
 export type SubtitleFormat = 'srt' | 'vtt' | 'txt'
@@ -23,9 +23,6 @@ export interface Cue {
   text: string
 }
 
-/** Shortest cue kept, output seconds (what is left of a caption mostly cut away). */
-export const MIN_CUE = 0.05
-
 /** Output time of source time `s` inside clip `i` that starts at output time `at`. */
 const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c.speed
 
@@ -34,7 +31,8 @@ const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c
  * last shown moment (the clips around a cut play back to back, so it stays one cue), scaled by
  * the speed. Its words are the Transcript tab's (captionsWords), and the words the tab strikes
  * through are left out: cutFlags, one rule for both (docs/design/edit-by-text.md §4.2: a heard or
- * deleted word by its middle, any other guess only when surely cut).
+ * deleted word by its middle, any other guess only when surely cut, every word of a caption kept
+ * for less than MIN_CUE, the shortest cue kept).
  * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {

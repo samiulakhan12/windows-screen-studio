@@ -149,25 +149,43 @@ function middlesCut(words: readonly TranscriptWord[], clips: readonly Clip[]): b
   return flags
 }
 
-/** Whether a clip keeps any moment of [from, to] (clips sorted, end-exclusive). Binary search. */
-function keepsAny(clips: readonly Clip[], from: number, to: number): boolean {
+/** The first clip that ends after `t` (clips sorted, end-exclusive), or clips.length. Binary search. */
+function clipFrom(clips: readonly Clip[], t: number): number {
   let lo = 0
   let hi = clips.length
   while (lo < hi) {
     const mid = (lo + hi) >> 1
-    if (clips[mid].end <= from) lo = mid + 1
+    if (clips[mid].end <= t) lo = mid + 1
     else hi = mid
   }
-  return lo < clips.length && clips[lo].start <= to
+  return lo
 }
+
+/** Whether a clip keeps any of the time between `from` and `to` (one that only touches it keeps none). */
+function keepsAny(clips: readonly Clip[], from: number, to: number): boolean {
+  const c = clipFrom(clips, from)
+  return c < clips.length && clips[c].start < to
+}
+
+/** Output seconds the clips keep of the time between `from` and `to`. */
+function keptOutput(clips: readonly Clip[], from: number, to: number): number {
+  let out = 0
+  for (let c = clipFrom(clips, from); c < clips.length && clips[c].start < to; c++) out += (Math.min(to, clips[c].end) - Math.max(from, clips[c].start)) / clips[c].speed
+  return out
+}
+
+/** Shortest cue the subtitle files keep, output seconds: what is left of a caption mostly cut away is left out (cutFlags, outputCues). */
+export const MIN_CUE = 0.05
 
 /**
  * For each word, whether it is cut (docs/design/edit-by-text.md §4.2), the one rule of the Transcript
  * tab and the subtitle files (outputCues). A word with a heard time (not `estimated`), or a guess
  * `deleted` in the tab, is cut when its middle is in no clip. Any other guess is cut only when it is
- * surely cut: its middle is in no clip and no clip keeps anything between the middles of the nearest
- * heard words before and after it in its caption (the caption's first start or last end where there
- * is none), so a guess never takes out a word that may still be heard.
+ * surely cut: its middle is in no clip and no clip keeps any of the time between the middles of the
+ * nearest heard words before and after it in its caption (the caption's first start or last end
+ * where there is none), so a guess never takes out a word that may still be heard. Every word of a
+ * caption the clips keep less than MIN_CUE of (between its words' first start and last end) is cut:
+ * the subtitle files leave out such a sliver.
  */
 export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
   const flags = middlesCut(words, clips)
@@ -185,6 +203,16 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
     const next = words[i + 1]
     after = !next || next.caption !== w.caption ? w.end : heard(next) ? mid(next) : after
     if (flags[i] && w.estimated && !w.deleted) flags[i] = !keepsAny(clips, Math.min(before[i], after), Math.max(before[i], after))
+  }
+  // The words of each caption are words[a..b).
+  for (let a = 0, b = 0; a < words.length; a = b) {
+    let from = words[a].start
+    let to = words[a].end
+    for (b = a + 1; b < words.length && words[b].caption === words[a].caption; b++) {
+      from = Math.min(from, words[b].start)
+      to = Math.max(to, words[b].end)
+    }
+    if (keptOutput(clips, from, to) < MIN_CUE) flags.fill(true, a, b)
   }
   return flags
 }

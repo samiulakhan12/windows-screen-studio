@@ -453,6 +453,37 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
     expect(struck([added], [clip(1.3, 30)])).toEqual(['uh', 'So'])
   })
 
+  it('takes a clip that only touches that time as keeping none of it: a caption cut up to its very end, the next one right after it', () => {
+    const gemini = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
+    const next = seg('n', 17, 20, 'Then press Start.')
+    // A range cut snapped to the caption's edges, or from before it; a start trim to its end.
+    for (const clips of [cut(10, 17), cut(9, 17), [clip(17, 30)]]) expect(struck([gemini, next], clips)).toEqual(gemini.text.split(' '))
+    // From the end of a caption before it: the clip that ends where it starts keeps none of it either.
+    expect(struck([seg('p', 8, 10, 'First.'), gemini], cut(10, 17.5))).toEqual(gemini.text.split(' '))
+    // Words added after "world" (cut), up to the caption's end where the next clip starts: surely cut, while "Hello" plays.
+    const added = seg('h', 10, 12, 'Hello world, I said', [
+      ['Hello', 10, 10.5],
+      ['world,', 11, 11.5]
+    ])
+    expect(struck([added, next], cut(10.8, 12))).toEqual(['world,', 'I', 'said'])
+  })
+
+  it('cuts every word of a caption its clips keep less than MIN_CUE of (output seconds), heard words too: the subtitle files leave it out', () => {
+    const gemini = seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')
+    expect(struck([gemini], cut(10, 16.97))).toEqual(gemini.text.split(' '))
+    expect(struck([gemini], [clip(0, 10), clip(16.92, 30, 2)])).toEqual(gemini.text.split(' '))
+    // 0.1 s kept, or 0.06 s at 1x: a guess there may still be heard.
+    expect(struck([gemini], cut(10, 16.9))).toEqual([])
+    expect(struck([gemini], [clip(0, 10), clip(16.94, 30)])).toEqual([])
+    // "works." keeps its middle (0.94 s) in the 0.045 s left of its caption's words.
+    const yes = seg('y', 0.4, 1.5, 'Yes works.', [
+      ['Yes', 0.4, 0.7],
+      ['works.', 0.9, 0.98]
+    ])
+    expect(struck([yes], [clip(0.935, 30)])).toEqual(['Yes', 'works.'])
+    expect(struck([yes], [clip(0.92, 30)])).toEqual(['Yes'])
+  })
+
   it('cuts a guess deleted in the tab by its middle, and never takes one as a heard neighbour', () => {
     const g = transcript([seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')])
     const ws = transcriptWords(g)
