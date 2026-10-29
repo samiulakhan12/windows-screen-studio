@@ -34,6 +34,8 @@ const STALE_MS = 60 * 60 * 1000
 const PROJECT_MAX = 64 * 1024 * 1024
 /** Progress events at most this often. */
 const PROGRESS_MS = 100
+/** Files larger than this are copied piece by piece, so Cancel stops them midway. */
+const PIECE_BYTES = 4 * 1024 * 1024
 /** Longest name of a copy (shared/editor/duplicate.ts copyName makes one this long at most). */
 const NAME_MAX = 120
 
@@ -183,7 +185,7 @@ async function makeCopy(sourceId: string, raw: unknown, opts: { signal?: AbortSi
     for (const f of toCopy) {
       if (signal?.aborted) throw abortError()
       const before = done
-      await copyOne(src, dir, f, (bytes) => {
+      await copyOne(src, dir, f, signal, (bytes) => {
         done = before + Math.min(bytes, f.stat.size)
         report()
       })
@@ -238,27 +240,42 @@ async function checkSpace(dir: string, bytes: number): Promise<void> {
 }
 
 /**
- * Copies one file, copy-on-write where the file system offers it (COPYFILE_FICLONE falls back to a
- * plain copy), and keeps its times so the speech cache still matches; `progress` gets the bytes
- * written so far while it runs.
+ * Copies one file and keeps its times so the speech cache still matches. A small file in one go,
+ * copy-on-write where the file system offers it (COPYFILE_FICLONE falls back to a plain copy); a
+ * larger one piece by piece, because one copyFile cannot be stopped and a medium that could not be
+ * linked can take minutes. `progress` gets the bytes written so far.
  */
-async function copyOne(src: string, dir: string, f: Planned, progress: (bytes: number) => void): Promise<void> {
+async function copyOne(src: string, dir: string, f: Planned, signal: AbortSignal | undefined, progress: (bytes: number) => void): Promise<void> {
+  const from = path.join(src, f.name)
   const to = path.join(dir, f.name)
   await fs.mkdir(path.dirname(to), { recursive: true })
-  let live = true
-  const poll = setInterval(() => {
-    fs.stat(to).then(
-      (st) => live && progress(st.size),
-      () => undefined
-    )
-  }, PROGRESS_MS)
-  try {
-    await fs.copyFile(path.join(src, f.name), to, fsConstants.COPYFILE_EXCL | fsConstants.COPYFILE_FICLONE)
-  } finally {
-    live = false
-    clearInterval(poll)
-  }
+  if (f.stat.size <= PIECE_BYTES) await fs.copyFile(from, to, fsConstants.COPYFILE_EXCL | fsConstants.COPYFILE_FICLONE)
+  else await copyInPieces(from, to, signal, progress)
   await fs.utimes(to, f.stat.atimeMs / 1000, f.stat.mtimeMs / 1000)
+}
+
+/** Copies `from` into the new file `to`, stopping before the next piece once `signal` aborts; both files are closed before it settles, so the folder can be removed. */
+async function copyInPieces(from: string, to: string, signal: AbortSignal | undefined, progress: (bytes: number) => void): Promise<void> {
+  const input = await fs.open(from, 'r')
+  try {
+    // 'wx': a new file only, as COPYFILE_EXCL.
+    const output = await fs.open(to, 'wx')
+    try {
+      const piece = Buffer.allocUnsafe(PIECE_BYTES)
+      for (let at = 0; ; ) {
+        if (signal?.aborted) throw abortError()
+        const { bytesRead } = await input.read(piece, 0, PIECE_BYTES, at)
+        if (bytesRead === 0) return
+        for (let put = 0; put < bytesRead; ) put += (await output.write(piece, put, bytesRead - put, at + put)).bytesWritten
+        at += bytesRead
+        progress(at)
+      }
+    } finally {
+      await output.close()
+    }
+  } finally {
+    await input.close()
+  }
 }
 
 /**

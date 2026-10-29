@@ -42,7 +42,7 @@ export async function runDuplicate(
   try {
     const making = window.api.duplicateProject(project.id, copy)
     const made = await new Promise<DuplicateResult | null>((resolve, reject) => {
-      // Cancel answers at once; main removes the half-made folder once the file it is copying is done.
+      // Cancel answers at once; main stops at the next piece of the file it is copying and removes the half-made folder.
       const onAbort = (): void => {
         window.api.cancelDuplicate()
         // Finished all the same as Cancel was pressed: the user asked for no copy.

@@ -282,9 +282,68 @@ describe('when links cannot be made, the drive is full, or the copy is stopped (
     })
     const made = duplicateProject(SOURCE, rendererCopy(), { now: NOW, signal: abort.signal })
     await expect(made).rejects.toMatchObject({ name: 'AbortError' })
-    // The file being copied finishes; no other one starts.
+    // A small file being copied finishes; no other one starts.
     expect(fsDefault.promises.copyFile).toHaveBeenCalledTimes(1)
     expect(folders()).toEqual([SOURCE])
+  })
+
+  /** A 20 MiB screen recording that cannot be linked, each read of it slowed by `ms`; counts its reads and whether its files were closed. */
+  function slowLargeMedium(ms: number, onRead: (n: number) => void = () => undefined): { reads: () => number; open: () => number } {
+    const src = projectDir(SOURCE)
+    writeFileSync(path.join(src, 'screen.mp4'), Buffer.alloc(20 * 1024 * 1024, 7))
+    utimesSync(path.join(src, 'screen.mp4'), OLD, OLD)
+    vi.spyOn(fsDefault.promises, 'link').mockRejectedValue(errno('EXDEV'))
+    let reads = 0
+    let open = 0
+    const realOpen = fsDefault.promises.open.bind(fsDefault.promises)
+    vi.spyOn(fsDefault.promises, 'open').mockImplementation(async (file, flags, mode) => {
+      const handle = await realOpen(file, flags, mode)
+      if (path.basename(String(file)) !== 'screen.mp4') return handle
+      open++
+      const { read, close } = handle
+      return Object.assign(handle, {
+        read: async (...args: unknown[]) => {
+          await new Promise((r) => setTimeout(r, ms))
+          onRead(++reads)
+          return (read as (...a: unknown[]) => unknown).apply(handle, args)
+        },
+        close: async () => {
+          open--
+          return close.call(handle)
+        }
+      })
+    })
+    return { reads: () => reads, open: () => open }
+  }
+
+  it('copies a large medium piece by piece, with progress within it, the same bytes and the same times', async () => {
+    const src = seedSource()
+    const medium = slowLargeMedium(40)
+    const events: { done: number; total: number }[] = []
+    expect((await duplicateProject(SOURCE, rendererCopy(), { now: NOW, onProgress: (p) => events.push(p) })).linked).toBe(false)
+    const dst = projectDir(NEW_ID)
+    const [a, b] = [statSync(path.join(src, 'screen.mp4')), statSync(path.join(dst, 'screen.mp4'))]
+    expect(b.ino).not.toBe(a.ino)
+    expect(readFileSync(path.join(dst, 'screen.mp4')).equals(readFileSync(path.join(src, 'screen.mp4')))).toBe(true)
+    expect(Math.trunc(b.mtimeMs)).toBe(Math.trunc(a.mtimeMs))
+    expect(medium.reads()).toBeGreaterThan(1)
+    expect(medium.open()).toBe(0)
+    const total = events[0].total
+    expect(events.some((e) => e.done > 0.1 * total && e.done < 0.9 * total)).toBe(true)
+  })
+
+  it('stops a large medium midway on Cancel: the files are closed and the folder removed before it would have finished', async () => {
+    seedSource()
+    const abort = new AbortController()
+    // Five pieces of 4 MiB; Cancel during the second.
+    const medium = slowLargeMedium(40, (n) => n === 2 && abort.abort())
+    await expect(duplicateProject(SOURCE, rendererCopy(), { now: NOW, signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(medium.reads()).toBe(2)
+    expect(medium.open()).toBe(0)
+    expect(folders()).toEqual([SOURCE])
+    // The next copy is not refused.
+    vi.restoreAllMocks()
+    expect((await duplicateProject(SOURCE, rendererCopy(), { now: NOW })).id).toBe(NEW_ID)
   })
 
   it('refuses a second copy while one is being made', async () => {
