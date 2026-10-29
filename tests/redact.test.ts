@@ -50,6 +50,25 @@ describe('redactLine', () => {
     expect(redactLine("share '\\\\\\\\server\\\\Jane\\\\x.mp4'")).not.toMatch(/Jane|server/)
   })
 
+  it('hides the whole path when a folder name holds a full-width or no-break space', () => {
+    const home = 'C:\\Users\\山田\u3000太郎'
+    const roots = { userData: `${home}\\AppData\\Roaming\\Flown`, projects: `${home}\\Videos\\Flown` }
+    const names = [home, '山田\u3000太郎']
+    expect(redactLine(`open ${home}\\Desktop\\demo.mp4`, roots, names)).toBe('open <path>')
+    expect(redactLine(`Error occurred in handler for 'export:start': Error: Could not write to the folder "${home}\\Videos". Choose another folder.`, roots, names)).toBe(
+      `Error occurred in handler for 'export:start': Error: Could not write to the folder "<path>". Choose another folder.`
+    )
+    const inspected = redactLine("Export failed { path: 'C:\\\\Users\\\\山田\u3000太郎\\\\Desktop\\\\a.mp4', code: 'EBUSY' }", roots, names)
+    expect(inspected).not.toMatch(/山田|太郎|Desktop/)
+    expect(redactLine('open C:\\Users\\Jean\u00a0Dupont\\Desktop\\a.mp4', {}, ['C:\\Users\\Jean\u00a0Dupont', 'Jean\u00a0Dupont'])).toBe('open <path>')
+    expect(redactLine('open C:\\Users\\jsmith\\Desktop\\会議\u3000資料.mp4 failed')).not.toMatch(/資料/)
+    expect(redactLine(`read ${home}\\Videos\\Flown\\abc\\project.json`, roots, names)).toBe('read <projects>\\abc\\project.json')
+  })
+
+  it('hides file names after the home folder, not just the home folder', () => {
+    expect(redactLine('open C:\\Users\\john\\Desktop\\secret plan.mp4', {}, ['C:\\Users\\john', 'john'])).toBe('open <path>')
+  })
+
   it('takes out the home folder and the account name wherever they are left', () => {
     const names = ['C:\\Users\\jsmith', 'jsmith']
     expect(redactLine('user=jsmith in C:\\USERS\\JSMITH', {}, names)).toBe('user=<user> in <path>')

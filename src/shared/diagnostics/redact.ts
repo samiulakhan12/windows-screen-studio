@@ -24,10 +24,12 @@ function rootPattern(root: string): RegExp | null {
 
 /**
  * A path segment that may hold spaces and apostrophes ("John  Smith", "O'Brien"): a name never
- * leaks half-redacted (a little of the text after a path may go with it). Separators may be doubled,
- * as util.inspect prints them in logged objects and errors.
+ * leaks half-redacted (a little of the text after a path may go with it). Any space but a tab or a
+ * line break joins words, the full-width (U+3000) and no-break (U+00A0) spaces included, so a home
+ * folder such as "山田　太郎" is never cut in two. Separators may be doubled, as util.inspect prints
+ * them in logged objects and errors.
  */
-const SEG = `[^\\\\/\\s"<>|*?:\\r\\n]+(?: +[^\\\\/\\s"<>|*?:\\r\\n]+)*`
+const SEG = `[^\\\\/\\s"<>|*?:\\r\\n]+(?:[^\\S\\r\\n\\t]+[^\\\\/\\s"<>|*?:\\r\\n]+)*`
 const WIN_PATH = new RegExp(`\\b[A-Za-z]:[\\\\/]+(?:${SEG}[\\\\/]*)*`, 'g')
 const UNC_PATH = new RegExp(`\\\\{2,}${SEG}(?:\\\\+${SEG})*\\\\*`, 'g')
 const POSIX_PATH = /(^|[\s"'(=,[])(\/[^\s"'<>,)\]]+)/g
