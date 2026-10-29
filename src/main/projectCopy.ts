@@ -215,6 +215,7 @@ async function makeCopy(sourceId: string, raw: unknown, opts: { signal?: AbortSi
  * Removes a half-made copy, its marker last: a file another program holds (an antivirus scan,
  * the indexer, OneDrive) makes fs.rm fail after removing what it could, and a folder without its
  * marker would never be cleaned up. With the marker kept, the next copy or the next start does.
+ * Every other entry is still tried, so only the held file stays on disk meanwhile.
  */
 async function removeCopyDir(dir: string): Promise<void> {
   let names: string[]
@@ -224,7 +225,11 @@ async function removeCopyDir(dir: string): Promise<void> {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return
     throw err
   }
-  for (const name of names) if (name !== COPYING_MARK) await fs.rm(path.join(dir, name), { recursive: true, force: true, maxRetries: 3 })
+  const failed: unknown[] = []
+  for (const name of names) {
+    if (name !== COPYING_MARK) await fs.rm(path.join(dir, name), { recursive: true, force: true, maxRetries: 3 }).catch((err: unknown) => failed.push(err))
+  }
+  if (failed.length > 0) throw failed[0]
   await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
 }
 

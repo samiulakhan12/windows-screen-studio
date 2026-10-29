@@ -389,6 +389,36 @@ describe('when links cannot be made, the drive is full, or the copy is stopped (
     expect(folders()).toEqual([SOURCE])
   })
 
+  /** fs.readdir as Windows lists a folder on NTFS: by name. */
+  function listByName(): void {
+    const readdir = fsDefault.promises.readdir.bind(fsDefault.promises) as (...args: unknown[]) => Promise<unknown[]>
+    const nameOf = (e: unknown): string => (typeof e === 'string' ? e : (e as { name: string }).name)
+    vi.spyOn(fsDefault.promises, 'readdir').mockImplementation((async (...args: unknown[]) =>
+      (await readdir(...args)).sort((a, b) => (nameOf(a) < nameOf(b) ? -1 : nameOf(a) > nameOf(b) ? 1 : 0))) as never)
+  }
+
+  it('on Cancel removes all but a held file, the files after it included (the half-copied screen.mp4), and keeps the marker', async () => {
+    seedSource()
+    // Under OneDrive the media are copied: mic.m4a before screen.mp4, and the sync client or a scan holds it.
+    process.env.OneDrive = h.root
+    listByName()
+    const abort = new AbortController()
+    const dst = projectDir(NEW_ID)
+    const copyFile = fsDefault.promises.copyFile.bind(fsDefault.promises)
+    vi.spyOn(fsDefault.promises, 'copyFile').mockImplementation(async (from, to, mode) => {
+      await copyFile(from, to, mode)
+      if (path.basename(String(to)) === 'mic.m4a') holdFile(path.resolve(String(to)))
+    })
+    // Cancel during the second piece of screen.mp4.
+    slowLargeMedium(5, (n) => n === 2 && abort.abort())
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await expect(duplicateProject(SOURCE, rendererCopy(), { now: NOW, signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(readdirSync(dst).sort()).toEqual([COPYING_MARK, 'mic.m4a'])
+    vi.restoreAllMocks()
+    expect(await removeAbandonedCopies()).toBe(1)
+    expect(folders()).toEqual([SOURCE])
+  })
+
   it('keeps the marker of a half-made copy it could not remove at a sweep, and removes the folder at the next one', async () => {
     rmSync(projectsRoot(), { recursive: true, force: true })
     const dir = projectDir('rec-held')
@@ -396,9 +426,11 @@ describe('when links cannot be made, the drive is full, or the copy is stopped (
     for (const f of ['screen.mp4', 'mic.m4a', '.cache/speech.json']) writeFileSync(path.join(dir, f), 'x')
     writeFileSync(path.join(dir, COPYING_MARK), JSON.stringify({ source: SOURCE, startedAt: '2020-01-01T00:00:00.000Z' }))
     holdFile(path.join(dir, 'mic.m4a'))
+    listByName()
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(await removeStaleCopies(NOW.getTime())).toBe(0)
-    expect(existsSync(path.join(dir, COPYING_MARK))).toBe(true)
+    // Only the held file stays meanwhile, with the marker.
+    expect(readdirSync(dir).sort()).toEqual([COPYING_MARK, 'mic.m4a'])
     vi.restoreAllMocks()
     expect(await removeStaleCopies(NOW.getTime())).toBe(1)
     expect(folders()).toEqual([])

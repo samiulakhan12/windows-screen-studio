@@ -572,7 +572,9 @@ the `projects:duplicateProgress` event:
     marker last (each other entry with `fs.rm`, recursive, `maxRetries: 3`, then the folder), as
     every clean-up below does: a file another program holds (an antivirus scan, the indexer,
     OneDrive) makes the removal fail part way, and the folder then keeps its marker, so the next
-    copy or the next start removes it.
+    copy or the next start removes it. Every other entry is still tried before the failure is
+    reported, so only the held file stays meanwhile (never a half-copied `screen.mp4` listed after
+    it).
     **Crash**: `removeStaleCopies()` removes folders in the current root that hold `.copying` with a
     `startedAt` more than one hour old (or an unreadable marker on a folder modified more than one
     hour ago), and only when they have no `project.json` and no raw recording files (`RAW`,
