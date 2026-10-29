@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
-import type { Hold } from '../src/shared/engine/freeze'
+import { planOf, type Hold } from '../src/shared/engine/freeze'
+import { fadesInAfterHold, recordingGraph } from '../src/shared/render/audioPlan'
 import { CUT_FADE, JUMP_SLACK } from '../src/shared/render/cutFades'
 import type { Clip, Freeze, Project } from '../src/shared/types'
 
@@ -160,6 +161,66 @@ describe('the fade out before a cut in the preview', () => {
       // The whole fade, from full sound.
       const from = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
       expect(ramps[0][2] - from[2], what).toBeCloseTo(CUT_FADE, 9)
+    }
+  })
+})
+
+describe('leaving a pause freeze', () => {
+  const pause = (at: number): Freeze => ({ id: 'f', at, length: 1, sound: 'pause' })
+
+  /** Plays over the cut into the freeze's frame, holds it, leaves it and plays one frame on: what the cut gain gets from leaving the hold on. */
+  function leave(clips: Clip[], at: number, jumpFrom: number | null) {
+    const p = project(clips, [pause(at)])
+    const h = planOf(p).holds[0]
+    const { screen, sound, ctx, cut } = setUp(p)
+    sound.play(jumpFrom ?? at - 1, 1)
+    if (jumpFrom !== null) {
+      // The jump over the cut lands on the freeze's frame.
+      ctx.currentTime = 1
+      screen.currentTime = h.at
+      sound.jump(h.at, 1)
+    }
+    // The hold, a tick of it (the screen waits), then its end.
+    sound.hold(h, 0)
+    ctx.currentTime = 1.02
+    sound.frame()
+    sound.hold(h, h.length)
+    ctx.currentTime = 2
+    const from = cut.gain.ops.length
+    sound.jump(h.at, 1)
+    ctx.currentTime = 2.017
+    screen.currentTime = h.at + 1 / 60
+    sound.frame(h.at + 1 / 60)
+    return cut.gain.ops.slice(from)
+  }
+
+  it('fades the sound in after a freeze on the first frame after a cut, as the export does', () => {
+    // The clip after the cut starts on the anchor, or less than a ms before it (anchors are whole ms).
+    for (const start of [8, 7.9995]) {
+      const clips = [
+        { id: 'a', start: 0, end: 5, speed: 1 },
+        { id: 'b', start, end: 60, speed: 1 }
+      ]
+      expect(fadesInAfterHold(clips, 8)).toBe(true)
+      expect(recordingGraph({ clips, volume: 1, input: '1:a', cutFade: CUT_FADE, holds: [{ at: 8, length: 1 }] }, 60)).toContain('afade=t=in:st=1:')
+      const ops = leave(clips, 8, 4.98)
+      expect(ops).toContainEqual(['set', 0, 2])
+      expect(ops).not.toContainEqual(['set', 1, 2])
+      expect(ops.at(-1)).toEqual(['ramp', 1, 2.017 + CUT_FADE])
+    }
+  })
+
+  it('joins the sound straight on after a freeze inside a clip, after a split or on the edit\'s first frame', () => {
+    const cases: { clips: Clip[]; at: number }[] = [
+      { clips: [{ id: 'a', start: 0, end: 5, speed: 1 }, { id: 'b', start: 8, end: 60, speed: 1 }], at: 10 },
+      { clips: [{ id: 'a', start: 0, end: 8, speed: 2 }, { id: 'b', start: 8, end: 30, speed: 1 }, { id: 'c', start: 40, end: 60, speed: 1 }], at: 8 },
+      { clips: [{ id: 'a', start: 2, end: 5, speed: 1 }, { id: 'b', start: 8, end: 60, speed: 1 }], at: 2 }
+    ]
+    for (const { clips, at } of cases) {
+      expect(fadesInAfterHold(clips, at)).toBe(false)
+      const ops = leave(clips, at, null)
+      expect(ops).toContainEqual(['set', 1, 2])
+      expect(ops.some(([op]) => op === 'ramp')).toBe(false)
     }
   })
 })

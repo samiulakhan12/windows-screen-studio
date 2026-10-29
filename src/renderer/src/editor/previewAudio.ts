@@ -9,6 +9,7 @@ import { clamp } from '../../../shared/engine/math'
 import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
 import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project } from '../../../shared/types'
+import { fadesInAfterHold } from '../../../shared/render/audioPlan'
 import { CUT_FADE, cutFadeAhead, editHasCuts } from '../../../shared/render/cutFades'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio, SCREEN_PROXY_FPS } from './media'
@@ -521,9 +522,10 @@ export class PreviewAudio {
     this.speed = speed
     if (!this.graph || !this.playing) return
     // Silent across the jump; the first frame after it fades the sound back in. Leaving a pause
-    // freeze is no cut: the export joins its sound without a fade, and so does the preview.
+    // freeze is no cut: the export joins its sound without a fade, and so does the preview; but on
+    // the first frame after a cut the export fades the sound in after the freeze, and so does this.
     const held = this.held
-    if (held && held.elapsed >= held.h.length && Math.abs(t - held.h.at) < 1e-6) this.resetCutFade(this.graph)
+    if (held && held.elapsed >= held.h.length && Math.abs(t - held.h.at) < 1e-6 && !fadesInAfterHold(this.project.clips, held.h.at)) this.resetCutFade(this.graph)
     else {
       this.cutFadeOut = null
       this.cutFadeIn = true

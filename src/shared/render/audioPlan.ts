@@ -178,6 +178,17 @@ export function soundPieces(clips: readonly Clip[], holds: readonly SoundHold[])
   return { pieces, tail }
 }
 
+/**
+ * Whether the recording's sound fades in after a pause freeze at source time `at` (the preview
+ * follows the export here): the freeze is in front of a piece that starts after a cut, the first
+ * frame after it (within HOLD_SNAP of the clip's start).
+ */
+export function fadesInAfterHold(clips: readonly Clip[], at: number): boolean {
+  const { pieces } = soundPieces(clips, [{ at, length: 1 }])
+  const i = pieces.findIndex((p) => p.hold > 0)
+  return i >= 0 && pieceCutFades(pieces)[i].fadeIn
+}
+
 /** clipSampleBounds of sound pieces: each starts where the video shows its silence, then its sound. */
 export function pieceSampleBounds(pieces: readonly SoundPiece[], rate = AUDIO_RATE): number[] {
   let t = 0

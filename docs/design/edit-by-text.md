@@ -555,8 +555,10 @@ Where the build differs from the sections above, after an adversarial review:
   and the jump's seek silences the element at once, so a ramp not yet rendered would be cancelled
   and the sound would stop dead. The preview is therefore silent for those few tens of ms before a
   cut (transcript cuts end in a pause); the export fades over exactly `CUT_FADE`. Leaving a
-  pause freeze sets the gain straight back (the export joins there without a fade), and an edit
-  while playing resets the gain at once.
+  pause freeze sets the gain straight back (the export joins there without a fade), except for a
+  freeze on the first frame after a cut (`fadesInAfterHold`, the export's own `soundPieces` and
+  `pieceCutFades`): the export fades the sound in after its silence, and the preview fades in on the
+  first frame after the freeze. An edit while playing resets the gain at once.
 - **Export fade position (§4.8).** The fades come **last** in each piece's chain, after the
   sample-exact `apad`/`atrim`, with the fade in starting after the pause freeze's silence
   (`cutFadeFilters(edges, length, fade, offset)`): atempo's output is a little off its length, so a
