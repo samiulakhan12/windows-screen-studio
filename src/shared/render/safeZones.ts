@@ -12,12 +12,14 @@
  * (it is never stored in projects).
  *
  * The box table is drawn only by the editor's safe-zone preview (DOM over the preview, never a
- * canvas): the compositor imports only textArea and COMMON_SAFE, which are placement rules.
+ * canvas): the render code imports only the placement rules (textArea, TEXT_INSET).
  *
- * CONTRACT: the table and COMMON_SAFE are final (data); the functions belong to part P2.
+ * CONTRACT: the table and COMMON_SAFE are final (data).
  */
-import type { NormRect, Project } from '../types'
-import type { Rect } from '../engine/layout'
+import type { CameraLayout, Corner, NormRect, Project } from '../types'
+import { followGeometry, layoutPhaseAt, type Rect } from '../engine/layout'
+import { clamp, easeInOutCubic, lerp } from '../engine/math'
+import { followApplies, isTall } from '../engine/reframeData'
 
 export type SafePlatform = 'tiktok' | 'reels' | 'shorts'
 export type SafeChoice = SafePlatform | 'all'
@@ -69,28 +71,79 @@ export const SAFE_ZONES: Readonly<Record<SafePlatform, { name: string; checked: 
  */
 export const COMMON_SAFE: Readonly<NormRect> = Object.freeze({ x: 0.06, y: 0.11, w: 0.8, h: 0.65 })
 
-/** The boxes the preview shades for `choice` ('all': every platform's nine). */
+/** Distance text keeps from the edges of a text area, as a fraction of the frame's shorter side (§6.3). */
+export const TEXT_INSET = 0.02
+/** Smallest share of its size an item is shrunk to by keepInArea unless told otherwise (§6.4). */
+const MIN_FIT = 0.6
+
+const PLATFORMS = Object.keys(SAFE_ZONES) as SafePlatform[]
+
+/** The boxes the preview shades for `choice` ('all': every platform's nine), as copies. */
 export function zonesFor(choice: SafeChoice): SafeBox[] {
-  return notImplemented(choice)
+  const platforms = choice === 'all' ? PLATFORMS : SAFE_ZONES[choice] ? [choice] : []
+  return platforms.flatMap((p) => SAFE_ZONES[p].boxes.map((b) => ({ ...b })))
 }
 
 /**
  * Where captions, key presses, the logo and lower-third titles go in a w x h frame of a vw x vh
  * recording at source time `t` (output px, §6.3): COMMON_SAFE with appSafe in a tall frame, its
- * edge on the camera band's side moved to the screen's slot while following with a band; null
- * when neither applies (today's placement exactly).
+ * edge on the camera band's side moved to the screen's slot while following with a band (the
+ * bubble's side-by-side band too); null when neither applies (today's placement exactly). The
+ * rules keep today's margins where the area's edge is the frame's own, so text glides, never
+ * jumps, as a band hides and shows.
  */
 export function textArea(project: Project, w: number, h: number, vw: number, vh: number, t: number): Rect | null {
-  return notImplemented(project, w, h, vw, vh, t)
+  const reframe = project.reframe
+  if (!reframe || !(w > 0 && h > 0)) return null
+  const tall = isTall(w, h)
+  const safe = reframe.appSafe && tall
+  // Only a tall frame that follows has a band.
+  const follows = tall && followApplies(project, w, h, vw, vh)
+  if (!safe && !follows) return null
+  const area: Rect = safe ? { x: COMMON_SAFE.x * w, y: COMMON_SAFE.y * h, w: COMMON_SAFE.w * w, h: COMMON_SAFE.h * h } : { x: 0, y: 0, w, h }
+  if (!follows) return area
+  const [top, bottom] = bandEdges(project, w, h, vw, vh, t, area.y, area.y + area.h)
+  // No band at t and no appSafe: nothing applies.
+  if (!safe && top === area.y && bottom === area.y + area.h) return null
+  return { ...area, y: top, h: Math.max(0, bottom - top) }
 }
 
-/** How to move (and shrink, not below `minScale`) `box` into `area`: the shift and the scale about the box's centre. */
+/**
+ * The text area's top and bottom at source time `t` (output px) while following: the edge on a
+ * band's side moved to the slot's (a band above the slot pushes the top down, one below it the
+ * bottom up), none in screen-only (the band collapsed) and camera-only (the camera fills the
+ * frame), eased between layouts as sceneLayout moves the slot (layoutPhaseAt), so text glides
+ * with the band.
+ */
+function bandEdges(project: Project, w: number, h: number, vw: number, vh: number, t: number, top: number, bottom: number): [number, number] {
+  const edges = (layout: CameraLayout, corner: Corner | undefined): [number, number] => {
+    if (layout === 'screen-only' || layout === 'camera-only') return [top, bottom]
+    const g = followGeometry(layout, project, w, h, vw, vh, corner)
+    if (!g.band || !(g.band.h >= 1)) return [top, bottom]
+    return g.band.y < g.slot.y ? [Math.max(top, g.slot.y), bottom] : [top, Math.min(bottom, g.slot.y + g.slot.h)]
+  }
+  const p = layoutPhaseAt(project, t)
+  const to = edges(p.to, p.toCorner)
+  if (p.progress >= 1 || (p.from === p.to && p.fromCorner === p.toCorner)) return to
+  const from = edges(p.from, p.fromCorner)
+  const e = easeInOutCubic(clamp(p.progress, 0, 1))
+  return [lerp(from[0], to[0], e), lerp(from[1], to[1], e)]
+}
+
+/**
+ * How to move (and shrink, not below `minScale`, 0.6 by default) `box` into `area`: the shift and
+ * the scale about the box's centre. A box already inside gets { dx: 0, dy: 0, scale: 1 } exactly;
+ * one still larger than the area at `minScale` is centred on it along that axis.
+ */
 export function keepInArea(box: Rect, area: Rect, minScale?: number): { dx: number; dy: number; scale: number } {
-  return notImplemented(box, area, minScale)
-}
-
-/** Placeholder of the contract; the implementation replaces every call. */
-function notImplemented(...args: unknown[]): never {
-  void args
-  throw new Error('not implemented')
+  if (![box.x, box.y, box.w, box.h, area.x, area.y, area.w, area.h].every(Number.isFinite)) return { dx: 0, dy: 0, scale: 1 }
+  const floor = clamp(minScale !== undefined && Number.isFinite(minScale) ? minScale : MIN_FIT, 0, 1)
+  const fit = Math.min(1, box.w > 0 ? area.w / box.w : 1, box.h > 0 ? area.h / box.h : 1)
+  const scale = Math.max(floor, fit)
+  const shift = (from: number, size: number, lo: number, room: number): number => {
+    const s = size * scale
+    const at = from + (size - s) / 2
+    return s > room ? lo + (room - s) / 2 - at : clamp(at, lo, lo + room - s) - at
+  }
+  return { dx: shift(box.x, box.w, area.x, area.w), dy: shift(box.y, box.h, area.y, area.h), scale }
 }

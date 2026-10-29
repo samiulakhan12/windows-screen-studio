@@ -1,5 +1,6 @@
 import { isPrivacyKind, shapeBounds } from '../../../shared/editor/shapes'
-import { cameraAt, zoomStyleOf, type Camera } from '../../../shared/engine/zoom'
+import { frameCamera } from '../../../shared/engine/frameView'
+import type { Camera } from '../../../shared/engine/zoom'
 import { speedAt } from '../../../shared/render/overlays'
 import {
   arrowGeometry,
@@ -57,15 +58,18 @@ export function drawPrivacyLayer(fc: FrameContext): void {
   }
 }
 
-/** Cameras at both ends of this frame's motion-blur shutter (none when it has no motion blur). */
+/**
+ * Cameras at both ends of this frame's motion-blur shutter (none when it has no motion blur), as
+ * the compositor's sub-frames see them (frameCamera, the frame's own clip): while following, the
+ * view pans without zooms too.
+ */
 function shutterCameras(fc: FrameContext): Camera[] {
   const { project, t } = fc
   const strength = project.effects.motionBlur
   const opts = fc.options ?? { frameInterval: 1 / 60, blurSamples: 4 }
-  if (!(strength > 0) || opts.blurSamples <= 1 || project.zooms.length === 0) return []
+  if (!(strength > 0) || opts.blurSamples <= 1 || (!fc.following && project.zooms.length === 0)) return []
   const half = (strength * opts.frameInterval * speedAt(project.clips, t)) / 2
-  const style = zoomStyleOf(project)
-  return [cameraAt(project.zooms, t - half, fc.focus, style), cameraAt(project.zooms, t + half, fc.focus, style)]
+  return [frameCamera(fc.scene, fc.layout, t - half, t), frameCamera(fc.scene, fc.layout, t + half, t)]
 }
 
 /* ---------- blur and pixelate ---------- */

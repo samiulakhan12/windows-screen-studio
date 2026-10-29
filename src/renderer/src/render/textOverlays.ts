@@ -1,7 +1,9 @@
 import type { Rect } from '../../../shared/engine/layout'
+import { clamp } from '../../../shared/engine/math'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { noFadeOutFrom, planOf } from '../../../shared/engine/freeze'
 import { ANNOTATION_FADE, ANNOTATION_FONT, annotationAlpha, annotationMetrics, keycaps, keystrokesAt, speedAt } from '../../../shared/render/overlays'
+import { TEXT_INSET } from '../../../shared/render/safeZones'
 import { captionBlockAt } from './captionsLayer'
 import { projectFontStack } from './fontLoader'
 
@@ -62,6 +64,7 @@ export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, proje
  * Keystroke overlay: the latest shortcut(s) as keycap pills, bottom or top centre,
  * fading out ~1.2 s after the last press. Presses in quick succession stack in one row.
  * A caption at the same edge keeps its place and the keys move inside it, so neither covers the other.
+ * In a text area (docs/design/vertical-video.md §6.3) the keys go to its top or bottom, kept inside it across.
  */
 export function drawKeystrokes(
   ctx: Ctx,
@@ -73,7 +76,6 @@ export function drawKeystrokes(
   /** The text area (shared/render/safeZones.ts textArea) the keys keep to; absent or null: the whole frame, as always. */
   area?: Rect | null
 ): void {
-  if (area) throw new Error('not implemented')
   const settings = project.effects.keystrokes
   if (!settings.show) return
   const view = keystrokesAt(cursor.keys, project.clips, t)
@@ -99,10 +101,17 @@ export function drawKeystrokes(
   const boxW = innerW + pad * 2
   const boxH = capH + pad * 2
   const margin = Math.min(w, h) * 0.05
-  const x0 = (w - boxW) / 2
+  let x0 = (w - boxW) / 2
   let y0 = settings.position === 'top' ? margin : h - margin - boxH
+  if (area) {
+    // The area keeps clear of the apps already: a small inset from its edge (never nearer the frame's
+    // edge than today, where the area's edge is the frame's); centred on the frame as far as the area allows.
+    const inset = Math.min(w, h) * TEXT_INSET
+    y0 = settings.position === 'top' ? Math.max(y0, area.y + inset) : Math.min(y0, area.y + area.h - inset - boxH)
+    x0 = boxW > area.w ? area.x + (area.w - boxW) / 2 : clamp(x0, area.x, area.x + area.w - boxW)
+  }
   // A caption at the same edge stays put; the keys show just inside it.
-  const caption = captionBlockAt(ctx, project, t, w, h)
+  const caption = captionBlockAt(ctx, project, t, w, h, area)
   const gap = Math.min(w, h) * 0.015
   if (caption?.position === 'bottom' && settings.position === 'bottom') y0 = Math.min(y0, caption.top - gap - boxH)
   if (caption?.position === 'top' && settings.position === 'top') y0 = Math.max(y0, caption.bottom + gap)
