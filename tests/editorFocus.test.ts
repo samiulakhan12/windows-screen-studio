@@ -181,3 +181,23 @@ describe('Space on a toggle', () => {
     uninstall = installFocusRelease()
   })
 })
+
+/*
+ * Hold the view here (docs/design/vertical-video.md §2.6) selects the zoom it makes, which shows
+ * the Zoom tab and unmounts the Style tab with the button (or the toggle R was pressed on) that had
+ * the keyboard. As every other command that can take away the Inspector view holding focus, it
+ * hands focus to the open tab's rail button first (inspectorFocus.ts), not to the page.
+ */
+describe('Hold the view here keeps the keyboard in the Inspector', () => {
+  it('calls keepInspectorFocus before it selects the new zoom', async () => {
+    const { readFileSync } = await import('node:fs')
+    const path = await import('node:path')
+    const source = readFileSync(path.resolve(__dirname, '../src/renderer/src/views/Editor.tsx'), 'utf8')
+    const block = /\n\s*holdView: \(\) => \{([\s\S]*?)\n\s{6}\},/.exec(source)?.[1] ?? ''
+    const select = block.indexOf("setSelection({ kind: 'zoom'")
+    expect(select).toBeGreaterThan(0)
+    const keep = block.indexOf('keepInspectorFocus()')
+    expect(keep).toBeGreaterThan(-1)
+    expect(keep).toBeLessThan(select)
+  })
+})

@@ -1303,6 +1303,8 @@ function EditorSession({
         if (!r.project) return showNotice('There is no room for a new zoom here.')
         const next = r.project
         store.update(() => next)
+        // Selecting the zoom shows the Zoom tab: focus on the Style tab's button or toggle goes to the tab rail, not the page.
+        keepInspectorFocus()
         setSelection({ kind: 'zoom', id: r.zoomId })
       },
       toggleSafeZones: () => {

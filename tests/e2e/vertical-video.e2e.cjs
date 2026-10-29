@@ -580,6 +580,19 @@ h.run(
     }, 'the point back after one undo')
     await win.keyboard.press('Control+z')
     await f.waitFor(() => disk(home, COPY).zooms.length === 0, 'no zoom after a second undo')
+    // From the keyboard: Enter on "Hold the view here" selects the new zoom (the Zoom tab shows) and
+    // the keyboard stays in the Inspector, on the open tab's button, not on the page.
+    await styleTab(win)
+    await tabTo(win, '[data-testid=follow-hold]')
+    await win.keyboard.press('Enter')
+    await f.waitFor(() => disk(home, COPY).zooms.length === 1, 'the zoom Hold the view here adds')
+    await f.waitFor(
+      () => win.evaluate(() => document.activeElement?.matches('.inspector .insp-tabs button.active') === true),
+      'the focus on the open tab after Hold the view here'
+    )
+    await blur(win)
+    await win.keyboard.press('Control+z')
+    await f.waitFor(() => disk(home, COPY).zooms.length === 0, 'no zoom after undo')
     await backHome(win)
 
     // 8. No cursor data: the view rests in the middle, or where the slider puts it.
