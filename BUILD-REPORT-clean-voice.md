@@ -98,7 +98,30 @@ speech within 0.5 dB.
 
 ## Verification
 
-VERIFICATION_PLACEHOLDER
+All run on this Linux container (Xvfb), on the final code unless noted:
+
+- `npm run typecheck`: passes.
+- `npx vitest run --testTimeout=60000`: **220 files, 3011 tests, all pass.**
+- `npm run build`: passes (only Vite's existing large-chunk warning).
+- `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (full suite, built one commit before
+  the final one): **51/54 files, 235 tests passed, 3 failed**:
+  - `audio-pack`: "a recording interrupted by a crash keeps its microphone track when recovered"
+    (burst count 9 vs 8). This is a recording-recovery test that Clean voice does not touch, and it
+    passed in an earlier full run on this branch.
+  - `bangla-captions`: "the pinned file was asked for: []" (mock download). Speech code, not touched
+    here.
+  - `clean-voice`: Cancel test. A real bug in my review fix: a time-based double-click guard dropped
+    a keyboard press on Cancel made right after cleaning started. Fixed in the final commit (only the
+    second click of a double click is ignored; keyboard presses always count), and the test now also
+    double-clicks Clean now.
+- Re-run once on the final build (`node tests/e2e/run-all.cjs audio-pack bangla-captions
+  clean-voice`): **3/3 files, all 17 tests pass.** Clean voice export levels in that run: noise −29.1
+  → −44.3 (Normal) / −59.0 (Strong) dBFS, speech within 0.5 dB.
+- A first full run before the review fixes, cut short by a container restart, had passed every file
+  up to `tilt` (213 tests) with no failure.
+- Setup this environment needed: `node node_modules/electron/install.js` (the Electron binary was
+  not downloaded by `npm ci`), `apt-get install openbox`, `npm run build:speech-host`,
+  `npm run fetch:test-speech`.
 
 ## Review
 
