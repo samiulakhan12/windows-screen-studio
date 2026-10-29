@@ -55,8 +55,9 @@ export async function encodeWithFallback(
       if (isCancelled(err) || signal?.aborted) throw cancelledError()
       lastError = err
       // A GPU encoder can still fail on real content (driver, size limits): retry in software.
+      // Not without ffmpeg, nor on a full disk, which another encoder would only fill again.
       console.warn(`Proxy encode with ${encoder} failed:`, err)
-      if (err instanceof FfmpegError && err.code === 'ENOENT') break
+      if (err instanceof FfmpegError && (err.code === 'ENOENT' || err.code === 'ENOSPC')) break
     }
   }
   throw lastError

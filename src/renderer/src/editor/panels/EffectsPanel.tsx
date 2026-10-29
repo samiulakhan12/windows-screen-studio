@@ -5,6 +5,7 @@ import type { CursorTrack, Project, TiltSettings } from '../../../../shared/type
 import { tiltSupported } from '../../render/tiltLayer'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
+import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import './tiltPanel.css'
 
 const L = LOOK_LIMITS
@@ -33,7 +34,7 @@ export function EffectsPanel({ project, cursor }: { project: Project; cursor: Cu
       </Section>
       <Section title="Keyboard shortcuts">
         <p className="hint">
-          {keys > 0 ? `${keys} shortcut${keys === 1 ? '' : 's'} recorded (plain typing is never recorded).` : 'No keyboard shortcuts were recorded in this video.'}
+          {keys > 0 ? `${keys} shortcut${keys === 1 ? '' : 's'} recorded (plain typing is never recorded).` : isImported(project) ? IMPORTED_COPY.keystrokes : 'No keyboard shortcuts were recorded in this video.'}
         </p>
         <Toggle label="Show shortcuts on screen" checked={effects.keystrokes.show} onChange={(v) => setKeys({ show: v })} />
         <Chips

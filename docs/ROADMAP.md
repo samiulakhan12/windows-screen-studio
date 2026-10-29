@@ -42,7 +42,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 3. **NW-02**: teleprompter and speaker notes (shipped in 0.3.0).
 4. **NW-03**: better auto zoom input.
 5. **NW-06**: smooth cuts. Ship the audio fades first.
-6. **NW-07**: import an existing video.
+6. **NW-07**: import an existing video (shipped in the next release).
 7. **NW-13**: publishing copy pack.
 8. **NW-15 + X-03**: auto-update and a diagnostics bundle.
 
@@ -119,7 +119,10 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Descript, Camtasia, Cap, Tella.
 
 ### NW-07 · Import an existing video
-**Editing · M · planned**
+**Editing · M · shipped (next release)** · see [FEATURES.md](FEATURES.md) (Import a video) and `docs/design/import-video.md`
+
+- **Shipped:** *Import video* and drag and drop on Home; MP4, MOV, MKV and WebM; probe, test decode, size, length, DRM and disk checks with plain refusals; an editing copy at 30 or 60 fps (variable rates made constant), upright, at most 3840 × 2160, HDR tone-mapped; no cursor data, and the editor says what that turns off.
+- **Left for later:** remuxing files that already meet the editing-copy rules instead of re-encoding; keeping 24, 25 and 50 fps; choosing among several sound tracks; importing a separate camera file; AVI, WMV and MTS; several files at once; F-28 (auto zoom from the picture).
 
 - **What:** start a project from an MP4, MOV or WebM recorded with OBS, Xbox Game Bar, Teams or a phone. Backgrounds, manual zooms, captions, silence removal and export then work as usual.
 - **Builds on:** `proxyArgs.ts` and `recording/finalize.ts`, which can turn any video into the editing proxy.

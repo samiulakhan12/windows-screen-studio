@@ -11,6 +11,7 @@ import { useEditor } from '../context'
 import { pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InputActions } from '../Inspector'
+import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import './cursorPanel.css'
 
 const L = LOOK_LIMITS
@@ -101,10 +102,12 @@ export function CursorPanel({
   return (
     <>
       {!track.valid ? (
-        <p className="callout" data-testid="cursor-not-recorded">
+        <p className="callout" data-testid="cursor-not-recorded" data-imported={isImported(project) || undefined}>
           <EditorIcon name="alert" size={16} />
           <span>
-            {isWindow
+            {isImported(project)
+              ? IMPORTED_COPY.cursor
+              : isWindow
               ? 'Cursor movement was not recorded for this window (its position on screen could not be followed), so cursor effects are not available.'
               : 'Cursor movement was not recorded for this capture, so cursor effects are not available.'}
           </span>

@@ -8,6 +8,8 @@ export interface FfmpegRun {
   inputSize: { width: number; height: number } | null
   /** Whether the first input has an audio stream. */
   inputHasAudio: boolean
+  /** Reading an input failed part-way (READ_ERROR_RE): the output holds only what was read before. */
+  readError: boolean
 }
 
 /** An ffmpeg failure with a one-line summary; the full log goes to the console. */
@@ -66,6 +68,20 @@ export function parseInputHasAudio(log: string): boolean {
   const section = log.slice(input, end < 0 ? log.indexOf('Output #0', input) : end)
   return /Stream #0:\d+[^\n]*?: Audio: /.test(section)
 }
+
+/**
+ * ffmpeg's own report of a full disk ("[out#0/mp4 @ …] Error writing trailer: No space left on
+ * device"): a message of one of its components, never the input's name or its metadata.
+ */
+export const DISK_FULL_RE = /^\[[^\]]+\][^\n]*No space left on device/m
+
+/**
+ * ffmpeg's report that reading an input failed part-way ("[in#0/mov,mp4,… @ …] Error during
+ * demuxing: Input/output error"; 6.1 also logs "Error retrieving a packet from demuxer"): a drive
+ * or share that went away, a cloud file whose download failed. ffmpeg then ends that input as if
+ * it ended there and exits 0. A damaged file ("Invalid data found…") is not a read error.
+ */
+export const READ_ERROR_RE = /^\[in#\d+[^\]]*\] Error (?:during demuxing|retrieving a packet from demuxer): (?!Invalid data found)/m
 
 /** Last meaningful log line, e.g. "Invalid data found when processing input". */
 export function summarizeFfmpegLog(log: string): string {
@@ -126,7 +142,7 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
       running.delete(proc)
       signal?.removeEventListener('abort', onAbort)
       if (code === 0) {
-        resolve({ frames, inputSize: parseInputSize(log), inputHasAudio: parseInputHasAudio(log) })
+        resolve({ frames, inputSize: parseInputSize(log), inputHasAudio: parseInputHasAudio(log), readError: READ_ERROR_RE.test(log) })
         return
       }
       if (stopped.has(proc)) {
@@ -134,6 +150,11 @@ export function runFfmpegProgress(args: string[], onFrames?: (frames: number) =>
         return
       }
       console.error(`ffmpeg ${args.join(' ')}\nexited with ${exitSignal ?? code}\n${log}`)
+      // The log's last line is then an encoder's statistics ("Qavg: 435.6"), not the reason.
+      if (DISK_FULL_RE.test(log)) {
+        reject(new FfmpegError('No space left on device', 'ENOSPC'))
+        return
+      }
       reject(new FfmpegError(exitSignal ? `stopped (${exitSignal})` : summarizeFfmpegLog(log) || `exit code ${code}`, null))
     })
   })

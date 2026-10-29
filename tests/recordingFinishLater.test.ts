@@ -42,7 +42,7 @@ import type { StemKind } from '../src/shared/audio/settings'
 import { cancelledError, FfmpegError, isCancelled } from '../src/main/recording/proxyRunner'
 
 const T0 = 1_700_000_000_000
-const done = (frames = 120): FfmpegRun => ({ frames, inputSize: { width: 320, height: 240 }, inputHasAudio: false })
+const done = (frames = 120): FfmpegRun => ({ frames, inputSize: { width: 320, height: 240 }, inputHasAudio: false, readError: false })
 const output = (args: string[]): string => args[args.length - 1]
 
 /** Encodes "successfully": writes the output file and reports `frames`. */
@@ -195,6 +195,13 @@ describe('encoder fallback still works for real failures', () => {
     expect(project.duration).toBeCloseTo(2.5)
     expect(existsSync(path.join(dir, 'project.json'))).toBe(true)
     expect(existsSync(path.join(dir, 'recording.json'))).toBe(false)
+  })
+
+  it('does not encode again in software when the disk is full', async () => {
+    const { m } = await setup()
+    runner.steps = [async () => Promise.reject(new FfmpegError('No space left on device', 'ENOSPC')), succeed(150)]
+    await expect(processRecording(m, () => undefined)).rejects.toThrow('Your disk is full. Free some space and try again.')
+    expect(runner.calls).toHaveLength(1)
   })
 
   it('adds native audio in a second step, cut to the video frame count', async () => {

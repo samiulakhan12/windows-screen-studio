@@ -8,11 +8,13 @@ import type { NotesApi } from './api/notes'
 import type { ProjectsApi } from './api/projects'
 import type { RecordingApi } from './api/recording'
 import type { SpeechApi } from './api/speech'
+import type { ImportApi } from './api/import'
 
 export type { ExportApi, ExportJob } from './api/export'
 export type { LoadedProject, ProjectsApi } from './api/projects'
 export type { NotesApi } from './api/notes'
 export type { RecorderCommand, RecordingApi, SaveRecordingPayload } from './api/recording'
+export type { ImportApi, ImportProgress, ImportResult } from './api/import'
 
 /** API exposed to renderer windows by the preload script as `window.api`. */
-export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi
+export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi & ImportApi

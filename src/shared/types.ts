@@ -703,6 +703,30 @@ export interface Project {
   captions?: CaptionSettings
   /** The speaker notes read while recording (kept when "Keep a copy with the recording" was on). */
   script?: ProjectScript
+  /** Where the video came from when Flown did not record it. Absent: recorded in Flown (every project from before NW-07). */
+  source?: ImportedSource
+}
+
+/** A project made from a video file recorded with another app (docs/design/import-video.md §3). */
+export interface ImportedSource {
+  kind: 'import'
+  /** The file's name when it was imported (no folder). */
+  fileName: string
+  /** Size of the imported file in bytes. */
+  bytes: number
+  /** ffmpeg's container and codec names: 'mov,mp4,m4a,3gp,3g2,mj2', 'h264', 'aac' (null: no sound). */
+  container: string
+  videoCodec: string
+  audioCodec: string | null
+  /** The picture as the file stores it (before rotation), and its display-matrix rotation as ffmpeg prints it. */
+  width: number
+  height: number
+  rotation: 0 | 90 | 180 | 270
+  /** Average frame rate the file reports (null: not reported). */
+  fps: number | null
+  /** An HDR picture: tone-mapped to SDR (true) or imported as is (false). Absent: SDR. */
+  hdr?: boolean
+  importedAt: string
 }
 
 /**

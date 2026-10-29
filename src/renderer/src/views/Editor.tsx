@@ -86,6 +86,7 @@ import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
 import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 import type { RenderScene } from '../render/compositor'
+import { noCursorText } from '../../../shared/import/imported'
 import '../editor/editor.css'
 
 interface Session {
@@ -769,7 +770,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     /** The cursor path range commands: the selected range straightened, or kept as recorded. */
     const pathRangeCommand = (mode: PathMode): void => {
       const sel = latest.current.selection
-      if (!cursor.valid) return showNotice('This recording has no cursor data')
+      if (!cursor.valid) return showNotice(noCursorText(store.state))
       if (store.state.capture.cursorInVideo) return showNotice('The recorded cursor is in the video')
       if (sel?.kind !== 'range') return showNotice('Select a range first: Shift+drag on the clip track')
       input.setPathRange(sel, mode)
@@ -960,7 +961,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       addSpotlight: () => actions.addSpotlight('region'),
       addCursorSpotlight: () => {
         if (cursor.valid) actions.addSpotlight('cursor')
-        else showNotice('This recording has no cursor data: add a spotlight on an area instead')
+        else showNotice(`${noCursorText(store.state)}: add a spotlight on an area instead`)
       },
       addTitle: actions.addTitle,
       addChapter: actions.addChapter,
@@ -982,19 +983,19 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       zoomLevel4: level('4'),
       toggleCursor: () => {
         const p = store.state
-        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is already in the video' : 'This recording has no cursor data')
+        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is already in the video' : noCursorText(store.state))
         store.update((q) => ({ ...q, cursor: { ...q.cursor, show: !p.cursor.show } }))
         turned('Smooth cursor', !p.cursor.show)
       },
       toggleClickEffects: () => {
         const p = store.state
-        if (!cursor.valid) return showNotice('This recording has no cursor data')
+        if (!cursor.valid) return showNotice(noCursorText(store.state))
         store.update((q) => ({ ...q, cursor: { ...q.cursor, clickEffect: !p.cursor.clickEffect } }))
         turned('Click effects', !p.cursor.clickEffect)
       },
       toggleStraighten: () => {
         const p = store.state
-        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is in the video' : 'This recording has no cursor data')
+        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is in the video' : noCursorText(store.state))
         const on = !p.inputEdits?.straighten
         input.setStraighten(on)
         turned('Straighten moves', on)
@@ -1002,18 +1003,18 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
       straightenRange: () => pathRangeCommand('straight'),
       recordedPathRange: () => pathRangeCommand('recorded'),
       toggleClickAtPlayhead: () => {
-        if (!recorded.valid) return showNotice('This recording has no cursor data')
+        if (!recorded.valid) return showNotice(noCursorText(store.state))
         const p = store.state
         const row = clickAtPlayhead(clickRows(recorded, p.inputEdits), p.zooms, player.time)
         if (!row) return showNotice('No click near the playhead')
         input.setIgnored([row.ms], !row.ignored)
       },
       findStrayClicks: () => {
-        if (!recorded.valid) return showNotice('This recording has no cursor data')
+        if (!recorded.valid) return showNotice(noCursorText(store.state))
         input.findStray()
       },
       useAllClicks: () => {
-        if (!recorded.valid) return showNotice('This recording has no cursor data')
+        if (!recorded.valid) return showNotice(noCursorText(store.state))
         input.useAll()
       },
       toggleMotionBlur: () => {
@@ -1136,7 +1137,7 @@ function EditorSession({ session, onClose }: { session: Session; onClose: () => 
     if (dialog !== 'palette') return []
     const p = project
     const t = player.time
-    const noCursor = 'This recording has no cursor data'
+    const noCursor = noCursorText(p)
     const smoothCursor = cursor.valid && !p.capture.cursorInVideo
     const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, t)
     const edited = p.clips.length > 1 || p.clips[0].start > 0 || p.clips[0].end < p.duration || p.clips[0].speed !== 1
