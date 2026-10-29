@@ -1679,3 +1679,216 @@ Regression at integration: `render`, `crop`, `camera`, `camera-director`, `expor
 - **Incremental plan rebuilds** during drags on very long recordings.
 - **Several vertical cuts from one recording** (LT-02 highlight clips) built on Duplicate.
 - **Cleaning up half-made copies at start-up**, not only at the next copy.
+
+---
+
+## 13. Review notes
+
+Written at integration (`feat/vertical-video`: the contracts commit `d60de6a`, then `feat/vv-p1`,
+`feat/vv-p2`, `feat/vv-p4` and `feat/vv-p3`, merged in that order with `--no-ff`). The four parts
+changed disjoint files, so the merges had no conflicts. Each part was reviewed by a checker after
+its first version; every finding below was reproduced and fixed on the part's branch before the
+merge. The body of this document is kept as designed; where the code proved it wrong, the code does
+the correct thing and the difference is listed here.
+
+### 13.1 Corrections to the design
+
+- **§5.10 jerk bound.** The third derivative of `S(y) = y³ − y⁴/2` is `6 − 12y`, so the glide's
+  peak jerk is `6/(r²(1 − r))` × d/D³, not `3/(r²(1 − r))`. Test 40 checks the correct bound.
+- **§5.7 and §5.11 disagree on the clamp.** Shot centres are clamped with `view_k`, which is narrower
+  inside a zoom and, during a layout change, uses the smaller base; a centre clamped there can lie
+  beyond the edge of the wider view that is drawn later, so the drawn camera sat still on the edge
+  and then jolted into the next pan (measured 57.7 views/s² against `maxAccel` 5). Each pan's `from`
+  and `to` are now clamped into the widest view over the pan's own samples (`t0 … t0 + D`, one clip
+  piece); a plan held beyond that edge first glides onto it with a short **settle** move before the
+  pan (it appears as a `'pan'` segment; it is never joined into a glide, delays the pan when the last
+  move ended less than its length before, and the shot's deadline is checked again). A pan shortened
+  to end at a cut ends at a `to` clamped for the uncut pan's span. Measured after the fix: 4.57
+  views/s² in the reported case, 2.68 for the band coming back during a pan. §5.11's "differ only by
+  pixel rounding or while a layout change narrows the view" holds only with this rule.
+- **§6.3 text placement margins.** "The area already keeps clear of the apps, so the 16:9 margins of
+  `placeChunk` are not added" holds only for edges that come from `COMMON_SAFE` or the band push.
+  Where the area's edge is the frame's own edge (*Keep text clear* off, the side away from the
+  band), captions, key presses and lower thirds keep today's margins: the area rule is applied with
+  `max` (top) or `min` (bottom) against today's position. A whole-frame area therefore places text
+  exactly like no area, and with *Keep text clear* on the numbers of §6.3 are unchanged.
+- **§6.3 step 2, the band push.** It applies whether or not `appSafe` is on, for every band
+  `followGeometry` draws, including a bubble's `side-by-side` segment in a tall frame (which §5.3
+  draws as a band); otherwise captions were drawn over the camera. `textArea` finds the band from
+  `followGeometry` for each layout state at `t`, not from `bandSide`. With `appSafe` off it is `null`
+  when nothing pushes.
+- **§2.6 and §3: Hold the view here in 16:9.** Fitted exactly like `insertZoom`, a new 1× hold next
+  to a zoom could connect to it, and the classic camera then panned between them instead of zooming
+  out (a 16:9 export changed). The hold now keeps a connect gap (`connectGap`, the average of the two
+  transitions, 0.7 s by default) from the zooms on either side; a playhead inside that gap gets "There
+  is no room for a new zoom here." A new hold changes nothing in 16:9; fixing or moving the point of
+  a zoom that already exists (`R` inside a cursor zoom, dragging the picture) changes that zoom in
+  every frame, as §2.6 asks.
+- **§5.6 rule 2, typing with the cursor off the frame.** `typingSessions` takes its place from
+  `cursorPlace`, which clamps into 0..1, so a cursor parked outside a window recording dragged the
+  view to the edge (against §5.16). For a session whose place comes from the cursor (no click into a
+  field), `typingSessionsOf` now returns the cursor where typing began, unclamped, so a place outside
+  0..1 gives no target. Auto zoom's own anchors are unchanged. `typingSessionsOf`'s return type is
+  frozen by the contracts test, so no flag was added.
+- **§4.7 step 8, copies.** One `fs.copyFile` cannot be interrupted, so Cancel left main copying
+  gigabytes for minutes while new copies were refused. Files over 4 MiB are copied in 4 MiB pieces
+  (`'wx'`, abort checked before each piece, both handles closed before the folder is removed, times
+  kept with `utimes`, progress within the file); smaller files keep `copyFile` with `COPYFILE_EXCL |
+  COPYFILE_FICLONE`. Large copied files lose copy-on-write where a file system offers it; NTFS has
+  none, and the fallback cases (EXDEV, OneDrive) could not clone anyway.
+- **Test 64, the media scan.** The contract says "write a temporary file and rename it", so `rename`,
+  `renameSync`, `link`, `linkSync` and `writeFileAtomicSync` (a temporary file and a rename) are
+  allowed; `copyFile`, `cp`, `writeFile`, `appendFile`, `truncate`, `createWriteStream` and `open`
+  with `w`, `a` or `r+` on a linked name are still flagged.
+
+### 13.2 Part P1 (engine)
+
+- A cut shot starts at the cut's own output time, not at the first grid sample after it, so the first
+  frame of the new clip never shows the old view.
+- A pan shortened to end at a cut is kept only when its peak speed stays at or below `hardSpeed`;
+  otherwise the view changes at the cut (§5.9 had only the `c − t0 ≥ minPan/2` test).
+- A deadline is set only for a firm event at or after the shot's start (one grid step allowed); an
+  event already past (a zoom ending during typing under way) sets none.
+- Without cursor data, when no rule gives a target the rest point is a soft target, which gives
+  §5.15's pans to and back from zoom points (test 34). `followAttention` still reports kind 0 there.
+- A rule whose target is outside 0..1 gives no target and the next rule is tried (the "–" row of
+  §5.6).
+- `zoomTargetScale(z, floor)` clamps `z.scale` to `[floor, 5]` for every focus mode, regions
+  included, because `framedZooms` writes each region's framed level into `scale`. With a base,
+  `cameraAt` uses `floor = min(base.w, base.h)` of the frame's own base.
+- `cursorPath.ts` does not expose rests; the first and last rest are found with the walk
+  `cursorMoves` uses.
+- `typingSessionsOf` is not gated on auto zoom's `enabled` or `onTyping`; the planner gates typing on
+  cursor data instead.
+- `FollowGeometry.band`: `screen-only` gives the band collapsed to height 0 at its outer edge;
+  `camera-only` gives `null`.
+- The director measures corner costs in the default layout's follow geometry (bubble time is always
+  the default layout), so its cache stays valid when layouts change.
+- Outside P1's file list: `directorCopy.ts` gains `NOTE_TEXT.band` (`Record<DirectorNote, …>` needs
+  it); `CornerProject` gains `hasWebcam`, `layouts`, `reframe`, `shapes` and `spotlights`, and
+  `DirectorProject` gains `reframe`, `shapes` and `spotlights`. Extra exports: `followLevel`
+  (layout.ts) and `viewLimits` (reframe.ts).
+- Test readings: test 26's visible visit is followed by a move 0.4 views away (otherwise the 1.2 s
+  look-ahead merges the return into one centre); test 28 uses 1.738 views so `2d/3 = 1.159 s`
+  exactly; in test 35 "0.4 views changes nothing" means nothing changes at the cut; test 39 checks
+  frames before the segment's end (at exactly `end`, `layoutPhaseAt` is already back to default).
+  Five more tests pin rules no test caught by mutation (the smaller base during a layout change,
+  both ways; pull-backs give no target; `maxLead`; the backlog; typing off the frame).
+
+### 13.3 Part P2 (render and placement)
+
+- Key presses use the captions' `0.02·u` inset and are kept inside the area across; a logo in a
+  corner shrinks to fit the area; the new export `TEXT_INSET = 0.02`.
+- While following, the card's radius and shadow are not shrunk with `cam.scale` (a view scale below
+  1 still spans the slot one way).
+- `webcamLayer` keeps calling `sceneCameraBox` (§6.1) rather than reading `fc.layout.camera`.
+- The lower third's cached picture is keyed on its whole layout (band, lines, widths and sizes) plus
+  the old fields, so a text area of another width repaints it and old projects reuse pictures as
+  before.
+- `tests/compositorFollow.test.ts` re-imports the compositor per variant for the "equal the 9.0
+  snapshot" part of test 47 (the digests depend on the order the module caches fill); it mocks
+  `frameView.ts` as §9.2 asks. `tests/previewNoFollow.test.ts` covers `unzoomedScene`.
+
+### 13.4 Part P3 (editor)
+
+- `FollowSection`'s frozen props carry no cursor data, so `FollowSection.tsx` exports
+  `FollowEnvContext` (`cursorValid`, `reveal`), provided by the Editor; the section's, the Style
+  callout's and the Export note's buttons run editor commands through the existing
+  `GroupContext.command`.
+- `dragView`'s frozen signature has no view centre, so it cannot hold the view by itself: when
+  there is no point to move, the preview applies `holdViewAt` at `frameCamera`'s centre first, in
+  the same gesture and undo step. `holdViewAt` inside a region zoom returns the project unchanged
+  with that zoom's id.
+- The overlay paints the union of the boxes once (SVG) so overlapping `--scrim` fills do not darken;
+  the `.safe-zone-box` elements (9 or 3) carry the labels and no paint.
+- Copy the design did not give: "Turn on Follow the action first, in Style › Vertical framing." (`R`
+  while not following); "Safe zones are shown for tall frames, such as 9:16." (`G` in another
+  frame); "A copy is already being made" (palette reason); "Follow the action on/off" and "Safe zones
+  on/off" (toggle notices, like the other toggles).
+- Keyboard: a toggle reached with the keyboard keeps `Space` (§11.3 step 2 turns following on with
+  Tab and Space). `focus.ts` records whether the keyboard or the pointer moved focus
+  (`isKeyboardToggle`); a toggle clicked with the mouse still lets `Space` play. The safe-zones app
+  select keeps focus after a keyboard choice.
+- The *Open original* notice: the message is ellipsised in its own span and the button sits beside
+  it (only a notice with a button is a flex row, so other notices keep their look); a notice with a
+  button stays while hovered or focused. The separate branch `fix/vv-p3-notice` (the same fix
+  written from P4's side, making every notice a flex row) was **not merged**: P3 fixed it on its own
+  branch, and that branch would break `ui.e2e`'s check that the editor notice is not `display: flex`.
+- The magnification warning applies from 2× at rest. A rejection without the "Could not make the
+  copy: " prefix gets it added.
+- Extra `data-testid`s (the frozen list is unchanged): `layout-band-hint`, `zoom-framed-level`,
+  `export-follow-off`.
+- `DirectorSection.tsx` is unchanged: it already plans from `cropView(project, cursor)`, which
+  carries `reframe`, and P1's director builds the `frameView` scene itself.
+- `useSceneView` re-renders when the screen rectangle or the slot changes, not on camera-only moves.
+- `tests/e2e/editor.e2e.cjs` scrolls the Padding slider into view before dragging it (the Vertical
+  framing section under Frame pushes it down); its assertions are unchanged.
+
+### 13.5 Part P4 (Duplicate)
+
+- `refitItems` breaks a text that is still too wide at 60% repeatedly (at the run of spaces nearest
+  the widest line's middle) until it fits or cannot break; test 60 checks the single break. With
+  `measure` null a character is estimated at 0.55 × the font size.
+- `projectCopy` refits each item into the text area at its own start, with the project's fonts;
+  `refitItems` itself (whose `Pick<>` has no fonts) measures with the fallback font.
+- The 0.5 s delay is inside `CopyProgress`, which the Editor mounts as soon as a copy starts.
+- Cancel answers at once in the renderer; main finishes its current piece and removes the folder. A
+  copy that finishes just as Cancel is pressed is deleted with `deleteProject`.
+- Main rejects with the reason only and `runDuplicate` adds the prefix. `ENOSPC` gives the free-space
+  message; `ENOENT`, `EACCES`, `EPERM`, `EIO` and `EBUSY` give "some of the recording's files could
+  not be read."; a failed `createProjectDir` gives the Videos\Flown message. `linkAllowed` is also
+  checked for the source folder; the progress total includes linked bytes, done at once.
+- Opened by a click or `Enter`, the menu takes focus itself, so the first `Down` reaches *Make a
+  vertical version* (§11.3 step 5); `Down`/`Up` on the button open it at the first or last item.
+- The copy icon is a local SVG in `CopyMenu.tsx` (no change to the shared `EditorIcon.tsx`).
+- E2E: step 10 runs in *Old* before step 5; step 4 also checks that TikTok comes back after
+  reopening; step 9 first edits and restores the name so the original's `project.json` is in the
+  editor's saved form, then compares without regard to key order.
+- The copy is built from the editor's state (`store.state`), not from the saved form
+  (`withRecordedStems`/`withRecordedCamera`): a project opened while a stem or camera file is
+  missing is copied without `audioStems` or `hasWebcam`, which matches the files the copy gets.
+
+### 13.6 Integration
+
+- Test 66's source check is added to `tests/verticalContracts.test.ts`: the compositor,
+  `shapesLayer`, `PreviewStage` and `directorCorners` neither call nor import `cameraAt` and use
+  `frameCamera`/`frameView`; it fails on the contracts commit's files.
+- The stand-ins the parts used while the others were stubs are removed:
+  `tests/textArea.test.ts` now runs against P1's real `followGeometry` and `bandSide`, and
+  `tests/duplicate.test.ts` and `tests/copyMenu.test.ts` against P2's real `textArea` and
+  `keepInArea` (`tests/safeZoneStandIns.ts` deleted). All pass unchanged.
+- The e2e tests that use the speech detector (`camera-director`, `captions`) need the host speech
+  helper (`npm run build:speech-host`, `native/bin/`) and the test model (`npm run
+  fetch:test-speech`, `.cache/test-speech/`) in the worktree; both are ignored by git, so a fresh
+  worktree fails them with that message until they are built or copied in.
+- Verified at integration: `npm run typecheck` clean; `npx vitest run` 237 files, 3312 tests
+  passed; `npm run build`; under Xvfb `vertical-video` and the regression list of §11.3 (`render`,
+  `crop`, `camera`, `camera-director`, `export`, `export-pack`, `freeze`, `multi-select`,
+  `commands`, `smart-zoom`, `titles`, `captions`) all pass, and so do `editor`, `cursor`, `ui`,
+  `zoom`, `style-pack`, `tilt`, `shapes` and `preview-speed`, which the parts' changes touch.
+- Looked at by eye in the built app on a 1920×1080 recording with a camera, captions, clicks, typing
+  and an auto zoom (`docs/screenshots/vertical-video-*.png`): the copy menu, the 9:16 copy with the
+  band on top, the safe zones (all three and TikTok), the band at the bottom, the bubble, the square
+  version, the Export dialog's notes, a 1080×1920 export (pans with motion blur, the zoom inside the
+  view, captions and key presses inside the text area) and an export with `screen-only` and
+  `camera-only` segments (the band collapses and comes back, the view widens and narrows with it).
+  Nothing needed changing.
+
+### 13.7 Open
+
+- **Before release**: compare the safe-zone table with the three apps on a phone and set each
+  platform's `checked` date (§7).
+- *Windows-unverified*: hard links on NTFS, the OneDrive root check, copy speed and Cancel of large
+  copies on a real disk.
+- Plan time for the synthetic hour of test 30 on the integration machine: about 115–130 ms on the
+  first plan and 57–68 ms warm, against the §8.2 budget of 60 ms per hour (the CI guard of 400 ms
+  passes). The incremental rebuild of §8.2 (and §12) is the way down if drags on very long
+  recordings hitch.
+- An export at 720×1280 took 3.8 s following against 3.6 s fitted in the e2e run (§8.2 asks within
+  5%; logged, not asserted).
+- During the 0.4 s layout animation the drawn view can still kink where the eased edge meets a moving
+  plan (§5.11 accepts this); a settle inside a zoom shows as a small drift of at most about 0.35
+  zoomed views before the pan.
+- A valid track with typing but no samples and no clicks still gives a firm typing target at the
+  centre; §5.15 says only zooms and shapes give targets there (behaviour of the shared typing
+  sessions, older than this feature).

@@ -106,14 +106,23 @@ size), so the existing zoom camera and every mapping built on it keep working; t
 (`shared/engine/reframe.ts`, holds and C² glide pans planned once in output time from the drawn
 project and track, cached) is the camera's rest position. `shared/engine/frameView.ts` is the one
 entry point that gives a frame its drawn project, layout and camera, for the compositor, the
-preview, the shape layers and the camera director alike. The safe-zone table
-(`shared/render/safeZones.ts`) is drawn by the editor's DOM overlay only; placement uses its
-common safe area. A **copy** (`Project.copyOf`) is built by the renderer from the editor's state
-(`shared/editor/duplicate.ts`, which also refits text and images into a vertical frame) and
-written by `src/main/projectCopy.ts`: a `.copying` marker first, the recording's media hard-linked
-(copied under OneDrive or when linking fails), the other allow-listed files copied with their
-times, `project.json` last; the source folder is never written. Media may therefore be shared
-between projects: code outside `src/main/recording/` never opens them for writing.
+preview, the shape layers and the camera director alike (a contracts test checks that none of them
+calls `cameraAt` directly). The plan is a pure function of the drawn project at a canonical frame
+(`outputSize(aspect, vw, vh, 1080)`) and is read by source time, so preview, scrubbing and export
+agree frame for frame. The safe-zone table (`shared/render/safeZones.ts`) is drawn by the editor's
+DOM overlay only (`editor/SafeZoneOverlay.tsx`, its on/off and app in `localStorage` through
+`editor/safeZonePref.ts`); placement uses its common safe area, pushed off the camera band
+(`textArea`). The editor's controls are Style › Vertical framing (`editor/panels/FollowSection.tsx`)
+and the pure edits of `shared/editor/followEdit.ts` (*Hold the view here* writes a 1× fixed-point
+zoom, dragging the picture moves that point). A **copy** (`Project.copyOf`) is built by the
+renderer from the editor's state (`shared/editor/duplicate.ts`, which also refits text and images
+into the new frame; `editor/duplicateFlow.ts` and `editor/CopyMenu.tsx` run it) and written by
+`src/main/projectCopy.ts` behind `projects:duplicate`, which only the main window's app page may
+call: a `.copying` marker first, the recording's media hard-linked (copied under OneDrive or when
+linking fails, large files in pieces so Cancel stops them), the other allow-listed files copied
+with their times, `project.json` last; the source folder is never written. Media may therefore be
+shared between projects: code outside `src/main/recording/` never opens them for writing (write a
+temporary file and rename it; `tests/projectCopy.test.ts` scans `src/main` for it).
 
 Recordings live in `Videos\Flown`, settings in userData (`%APPDATA%\Flown`; Electron derives both
 names from `productName`). The app was called "Screen Studio for Windows" before; on the first
