@@ -25,6 +25,8 @@ export const VOICE_COPY = {
   missingMix: "The recording's sound file is missing.",
   tooLong: 'Cleaning took too long and was stopped.',
   locked: 'Another app, such as an antivirus or OneDrive, kept the file busy. Try again in a moment.',
+  /** The editor's own reason: the cleaned file is there but will not play. */
+  unplayable: 'The cleaned file would not play, so the preview plays the original voice.',
   engine: 'ffmpeg could not clean the sound.',
   damagedModel: 'The noise model of this app is damaged. Install Flown again.'
 } as const

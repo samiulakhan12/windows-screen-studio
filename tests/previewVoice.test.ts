@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { VOICE_COPY } from '../src/shared/audio/voiceCopy'
 import { createProject } from '../src/shared/engine/project'
 import type { Project } from '../src/shared/types'
 
@@ -6,8 +7,9 @@ import type { Project } from '../src/shared/types'
  * The preview's cleaned voice (editor/previewAudio.ts, docs/design/clean-voice.md §4.5) when its
  * file will not play: main says the stem is ready (the file is there) but the element cannot
  * load it (a damaged file, a cloud placeholder read offline). The element is loaded again a few
- * times at most, then the preview plays the original. The stems store is the real one, over a
- * fake main process; the audio graph and the elements are stand-ins.
+ * times at most, then the preview plays the original and the panel says the stem failed; its Try
+ * again has main make the file again. The stems store is the real one, over a fake main process;
+ * the audio graph and the elements are stand-ins.
  */
 
 const FILE = 'voice-0123456789abcdef.m4a'
@@ -57,15 +59,19 @@ vi.mock('../src/renderer/src/editor/media', async (original) => ({
 }))
 vi.mock('../src/renderer/src/editor/audioAnalysis', () => ({ loadAudioAnalysis: async () => ({}) }))
 
-/** Main: the stem is always there. Its status asks, per project. */
+/** Main: the stem is always there. Its status asks, per project, and the projects whose stem it made again. */
 const statusCalls = new Map<string, number>()
+const remade: string[] = []
 vi.stubGlobal('window', {
   api: {
     voiceStatus: async (id: string) => {
       statusCalls.set(id, (statusCalls.get(id) ?? 0) + 1)
       return { state: 'ready', file: FILE }
     },
-    prepareVoice: async () => FILE,
+    prepareVoice: async (id: string, _source: string, _strength: string, remake?: boolean) => {
+      if (remake === true) remade.push(id)
+      return FILE
+    },
     cancelVoice: async () => undefined,
     onVoiceProgress: () => () => undefined
   }
@@ -88,7 +94,9 @@ class FakeNode {
     this.to = n as FakeNode
     return n
   }
-  disconnect(): void {}
+  disconnect(): void {
+    this.to = null
+  }
 }
 class FakeAudioContext {
   static last: FakeAudioContext
@@ -121,6 +129,8 @@ const AUDIO = '../src/renderer/src/editor/previewAudio'
 const { PreviewAudio } = (await import(/* @vite-ignore */ AUDIO)) as {
   PreviewAudio: new (screen: unknown, p: Project) => { play(t: number, speed: number): void; dispose(): void }
 }
+const STEMS = '../src/renderer/src/editor/voiceStems'
+const stems = ((await import(/* @vite-ignore */ STEMS)) as { voiceStems: () => { get(id: string, source: string, strength: string): object; prepare(id: string, source: string, strength: string): Promise<string> } }).voiceStems()
 
 /** A recording without stems (Clean voice cleans its mixed track), with Clean voice on. */
 function project(id: string): Project {
@@ -142,7 +152,7 @@ function project(id: string): Project {
   return p
 }
 
-/** The gain each element plays at now ('screen': the video's own track), its latest element per file. */
+/** The gain each connected element plays at now ('screen': the video's own track; NaN: none), its latest element per file. */
 function gains(screen: object): { screen: number; voice: number } {
   const out = { screen: NaN, voice: NaN }
   for (const n of FakeAudioContext.last.nodes) {
@@ -163,12 +173,35 @@ describe('the preview’s cleaned voice that will not play', () => {
     const sound = new PreviewAudio(screen, project('broken'))
     sound.play(0, 1)
     await settle(300)
-    // The first load and two more once the store found the file again; then it stays as it is.
+    // The first load and two more once the store found the file again; then it stays as it is,
+    // and the panel says so (it no longer says the preview plays the clean voice, nor offers the A/B).
     expect(loads.get('broken')).toBe(3)
     expect(statusCalls.get('broken')).toBe(3)
-    expect(gains(screen)).toEqual({ screen: 1, voice: 0 })
+    expect(stems.get('broken', 'mix', 'normal')).toEqual({ state: 'failed', message: VOICE_COPY.unplayable, remake: true })
+    expect(gains(screen)).toEqual({ screen: 1, voice: NaN })
     await settle(100)
     expect(loads.get('broken')).toBe(3)
+    expect(remade).not.toContain('broken')
+    sound.dispose()
+    warn.mockRestore()
+  })
+
+  it('has main make the file again on Try again, and plays the new one', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    failing.set('remade', 3)
+    const screen = { currentTime: 0, muted: false, volume: 1 }
+    const sound = new PreviewAudio(screen, project('remade'))
+    sound.play(0, 1)
+    await settle(100)
+    expect(loads.get('remade')).toBe(3)
+    expect(stems.get('remade', 'mix', 'normal')).toEqual({ state: 'failed', message: VOICE_COPY.unplayable, remake: true })
+    // What the panel's Try again (and the export) does.
+    await expect(stems.prepare('remade', 'mix', 'normal')).resolves.toBe(FILE)
+    expect(remade).toEqual(['remade'])
+    await settle(50)
+    expect(loads.get('remade')).toBe(4)
+    expect(stems.get('remade', 'mix', 'normal')).toEqual({ state: 'ready', file: FILE })
+    expect(gains(screen)).toEqual({ screen: 0, voice: 1 })
     sound.dispose()
     warn.mockRestore()
   })

@@ -283,8 +283,10 @@ export class PreviewAudio {
         this.voiceFailures.set(clean.file, failures)
         console.warn('The cleaned voice could not be played in the preview; it plays the original.')
         // Gone from the folder: checked again (and made again) by the store, a few times at most. A
-        // file main still finds but that will not play stays failed after that: the original plays.
+        // file main still finds but that will not play fails after that: the original plays, and the
+        // panel says so and offers Try again, which has main make the file again.
         if (failures <= MAX_VOICE_RETRIES) voiceStems().forget(this.project.id, clean.target, strength)
+        else voiceStems().unplayable(this.project.id, clean.target, strength, clean.file)
         this.apply()
       })
       this.stems.set('voice', src)

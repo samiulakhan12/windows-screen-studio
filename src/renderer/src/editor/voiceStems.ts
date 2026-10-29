@@ -7,6 +7,7 @@
  */
 import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceApi } from '../../../shared/api/voice'
 import type { VoiceSource } from '../../../shared/audio/voiceClean'
+import { VOICE_COPY } from '../../../shared/audio/voiceCopy'
 import type { VoiceStrength } from '../../../shared/types'
 
 export type VoiceStemState =
@@ -16,7 +17,8 @@ export type VoiceStemState =
   | { state: 'ready'; file: string }
   /** The user pressed Cancel. */
   | { state: 'stopped' }
-  | { state: 'failed'; message: string }
+  /** `remake`: the file there would not play, so the next `prepare` has main make it again. */
+  | { state: 'failed'; message: string; remake?: true }
 
 const CHECKING: VoiceStemState = { state: 'checking' }
 
@@ -99,10 +101,13 @@ export class VoiceStems {
       )
     const running = this.running.get(key)
     if (running) return running
+    const remake = current?.state === 'failed' && current.remake === true
     this.set(key, { state: 'working', progress: 0 })
     const epoch = this.epochs.get(projectId) ?? 0
     const live = (): boolean => (this.epochs.get(projectId) ?? 0) === epoch
-    const run = this.api.voiceStatus(projectId, source, strength).then((s) => (s.state === 'ready' ? s.file : this.api.prepareVoice(projectId, source, strength)))
+    const run = remake
+      ? this.api.prepareVoice(projectId, source, strength, true)
+      : this.api.voiceStatus(projectId, source, strength).then((s) => (s.state === 'ready' ? s.file : this.api.prepareVoice(projectId, source, strength)))
     const done = run.then(
       (file) => {
         if (live()) this.set(key, { state: 'ready', file })
@@ -116,7 +121,7 @@ export class VoiceStems {
           if (message === VOICE_REPLACED) {
             this.entries.delete(key)
             this.emit()
-          } else this.set(key, message === VOICE_CANCELLED ? { state: 'stopped' } : { state: 'failed', message })
+          } else this.set(key, message === VOICE_CANCELLED ? { state: 'stopped' } : { state: 'failed', message, ...(remake ? { remake } : {}) })
         }
         throw new Error(message)
       }
@@ -143,6 +148,16 @@ export class VoiceStems {
     if (this.entries.get(key)?.state !== 'ready') return
     this.entries.delete(key)
     this.emit()
+  }
+
+  /**
+   * The stem's `file` is there but the preview cannot play it, even after loading it again: it
+   * failed (the panel says so and offers Try again), and the next `prepare` has main make it again.
+   */
+  unplayable(projectId: string, source: VoiceSource, strength: VoiceStrength, file: string): void {
+    const key = keyOf(projectId, source, strength)
+    const e = this.entries.get(key)
+    if (e?.state === 'ready' && e.file === file) this.set(key, { state: 'failed', message: VOICE_COPY.unplayable, remake: true })
   }
 
   /** Whether the preview plays the original voice (view state: never saved, never undone). */

@@ -3,9 +3,10 @@
 import { describe, expect, it } from 'vitest'
 import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceApi, type VoiceProgress, type VoiceStemStatus } from '../src/shared/api/voice'
 import type { VoiceSource } from '../src/shared/audio/voiceClean'
+import { VOICE_COPY } from '../src/shared/audio/voiceCopy'
 import type { VoiceStrength } from '../src/shared/types'
 
-type State = { state: string; progress?: number; file?: string; message?: string }
+type State = { state: string; progress?: number; file?: string; message?: string; remake?: boolean }
 interface Stems {
   subscribe(l: () => void): () => void
   get(id: string, source: VoiceSource, strength: VoiceStrength): State
@@ -13,6 +14,7 @@ interface Stems {
   prepare(id: string, source: VoiceSource, strength: VoiceStrength): Promise<string>
   cancel(id: string): Promise<void>
   forget(id: string, source: VoiceSource, strength: VoiceStrength): void
+  unplayable(id: string, source: VoiceSource, strength: VoiceStrength, file: string): void
   isOriginal(id: string): boolean
   setOriginal(id: string, on: boolean): void
   closeProject(id: string): void
@@ -26,14 +28,15 @@ function fakeApi(initial: VoiceStemStatus = { state: 'missing' }) {
   let status = initial
   let progress: ((p: VoiceProgress) => void) | null = null
   const waiting: { resolve: (f: string) => void; reject: (e: Error) => void }[] = []
-  const calls = { status: 0, prepare: 0, cancel: 0 }
+  const calls = { status: 0, prepare: 0, cancel: 0, remake: 0 }
   const api: VoiceApi = {
     voiceStatus: async () => {
       calls.status++
       return status
     },
-    prepareVoice: () => {
+    prepareVoice: (_id, _source, _strength, remake) => {
       calls.prepare++
+      if (remake === true) calls.remake++
       return new Promise<string>((resolve, reject) => waiting.push({ resolve, reject }))
     },
     cancelVoice: async () => {
@@ -198,6 +201,37 @@ describe('VoiceStems', () => {
     s.want('p', 'mic', 'normal')
     await tick()
     expect(f.calls.prepare).toBe(1)
+  })
+
+  it('a stem the preview cannot play fails, and Try again or the export makes it again', async () => {
+    const f = fakeApi({ state: 'ready', file: FILE })
+    const s = new VoiceStems(f.api)
+    s.want('p', 'mix', 'normal')
+    await tick()
+    // A late report about another file changes nothing.
+    s.unplayable('p', 'mix', 'normal', 'voice-fedcba9876543210.m4a')
+    expect(s.get('p', 'mix', 'normal')).toEqual({ state: 'ready', file: FILE })
+    s.unplayable('p', 'mix', 'normal', FILE)
+    expect(s.get('p', 'mix', 'normal')).toEqual({ state: 'failed', message: VOICE_COPY.unplayable, remake: true })
+    // The preview does not start it again by itself.
+    s.want('p', 'mix', 'normal')
+    await tick()
+    expect(f.calls.prepare).toBe(0)
+    // Try again: main makes it again although its file is there; until that works it keeps asking so.
+    const retry = s.prepare('p', 'mix', 'normal')
+    await tick()
+    expect(f.calls.remake).toBe(1)
+    expect(s.get('p', 'mix', 'normal')).toEqual({ state: 'working', progress: 0 })
+    f.fail(VOICE_COPY.locked)
+    await expect(retry).rejects.toThrow(VOICE_COPY.locked)
+    expect(s.get('p', 'mix', 'normal')).toEqual({ state: 'failed', message: VOICE_COPY.locked, remake: true })
+    const again = s.prepare('p', 'mix', 'normal')
+    await tick()
+    expect(f.calls.remake).toBe(2)
+    f.finish(FILE)
+    await expect(again).resolves.toBe(FILE)
+    expect(s.get('p', 'mix', 'normal')).toEqual({ state: 'ready', file: FILE })
+    expect(f.calls.prepare).toBe(2)
   })
 
   it('Hear the original is per project and dropped when the editor closes', () => {
