@@ -592,13 +592,18 @@ export class PreviewAudio {
 
   /**
    * Smooth cuts (NW-06, docs/design/edit-by-text.md §4.9), once per video frame: after a jump the
-   * sound fades in over CUT_FADE; before the jump over a cut it fades out to silence at the jump
-   * (cutFadeAhead), once per cut. A fade out that no jump followed (the edit changed) fades back in.
+   * sound fades in over CUT_FADE; before the jump over a cut it fades out to silence just ahead of
+   * the jump (cutFadeAhead), once per cut. A fade out that no jump followed (the edit changed) fades
+   * back in.
    */
   private cutFadeStep(g: Graph, t: number): void {
     const param = g.cut.gain
     const now = g.ctx.currentTime
     const fade = CUT_FADE / Math.max(this.view, 1e-3)
+    // The audio clock moves a render buffer at a time, and the jump's seek silences the element at
+    // once: a ramp not yet rendered then would be cancelled and the sound would stop dead. So the
+    // fade out ends two buffers before the jump.
+    const lead = 2 * (g.ctx.baseLatency || 0.02)
     const step = this.lastFrameAt !== null && t - this.lastFrameAt > 1e-4 && t - this.lastFrameAt < 0.25 ? t - this.lastFrameAt : 0
     this.lastFrameAt = t
     if (this.cutFadeIn) {
@@ -608,14 +613,15 @@ export class PreviewAudio {
       param.linearRampToValueAtTime(1, now + fade)
       return
     }
-    const ahead = cutFadeAhead(this.project.clips, t, this.screen.playbackRate, 1 / (this.project.capture?.fps ?? SCREEN_PROXY_FPS), step, fade)
-    const clip = ahead === null ? null : this.project.clips.find((c) => t >= c.start && t < c.end)
-    if (clip && ahead !== null && this.cutFadeOut?.at !== clip.end) {
+    const jump = cutFadeAhead(this.project.clips, t, this.screen.playbackRate, 1 / (this.project.capture?.fps ?? SCREEN_PROXY_FPS), step, fade + lead)
+    const clip = jump === null ? null : this.project.clips.find((c) => t >= c.start && t < c.end)
+    if (clip && jump !== null && this.cutFadeOut?.at !== clip.end) {
+      const ahead = Math.max(0, jump - lead)
       param.cancelScheduledValues(0)
       param.setValueAtTime(param.value, now)
       param.setValueAtTime(1, now + Math.max(0, ahead - fade))
       param.linearRampToValueAtTime(0, now + ahead)
-      this.cutFadeOut = { at: clip.end, until: now + ahead }
+      this.cutFadeOut = { at: clip.end, until: now + jump }
     } else if (this.cutFadeOut && !clip && now > this.cutFadeOut.until + 0.05) {
       this.resetCutFade(g)
     }

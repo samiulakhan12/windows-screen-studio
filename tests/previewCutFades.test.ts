@@ -13,9 +13,20 @@ import type { Clip, Freeze, Project } from '../src/shared/types'
 
 vi.mock('../src/renderer/src/editor/media', async (original) => ({
   ...(await original<object>()),
-  createAudio: () => ({ paused: true, playbackRate: 1, currentTime: 0, play: () => Promise.resolve(), pause: () => undefined, addEventListener: () => undefined, removeAttribute: () => undefined, load: () => undefined })
+  createAudio: () => ({
+    paused: true,
+    playbackRate: 1,
+    currentTime: 0,
+    play: () => Promise.resolve(),
+    pause: () => undefined,
+    addEventListener: () => undefined,
+    removeAttribute: () => undefined,
+    load: () => undefined
+  })
 }))
-vi.mock('../src/renderer/src/editor/audioAnalysis', () => ({ loadAudioAnalysis: async () => ({}) }))
+vi.mock('../src/renderer/src/editor/audioAnalysis', () => ({
+  loadAudioAnalysis: async () => ({})
+}))
 vi.stubGlobal('window', { api: { stopAnalysis: async () => undefined } })
 
 type Op = ['cancel' | 'set' | 'ramp', number, number]
@@ -79,12 +90,11 @@ type Sound = {
   frame(frameTime?: number): void
   dispose(): void
 }
-const { PreviewAudio } = (await import(/* @vite-ignore */ AUDIO)) as { PreviewAudio: new (s: unknown, p: Project) => Sound }
+const { PreviewAudio } = (await import(/* @vite-ignore */ AUDIO)) as {
+  PreviewAudio: new (s: unknown, p: Project) => Sound
+}
 
-const FPS = 60
-const FRAME = 1 / FPS
-
-function project(clips: Clip[], freezes: Freeze[] = []): Project {
+function project(clips: Clip[], freezes: Freeze[] = [], fps = 60): Project {
   const p = createProject({
     id: 'p',
     name: 'p',
@@ -96,7 +106,7 @@ function project(clips: Clip[], freezes: Freeze[] = []): Project {
     webcamOffset: 0,
     zooms: [],
     cursorValid: false,
-    capture: { method: 'native', cursorInVideo: false, region: null, fps: FPS }
+    capture: { method: 'native', cursorInVideo: false, region: null, fps }
   })
   p.clips = clips
   p.freezes = freezes
@@ -119,34 +129,37 @@ function setUp(p: Project) {
 }
 
 describe('the fade out before a cut in the preview', () => {
-  it('ends at the jump, placed by the frame shown, whatever the element clock says', () => {
-    for (const end of [2.001, 2.005, 2.009, 2.013]) {
-      for (const skew of [FRAME / 2, -FRAME / 2]) {
-        const { screen, sound, ctx, cut } = setUp(project([{ id: 'a', start: 0, end, speed: 1 }, { id: 'b', start: 3, end: 10, speed: 1 }]))
-        sound.play(0, 1)
-        let jumpAt = -1
-        for (let k = 60; k < 200 && jumpAt < 0; k++) {
-          // Rate 1: the audio clock runs with the frames; the element's clock is off the frame shown.
-          const t = k * FRAME
-          ctx.currentTime = t
-          screen.currentTime = t + skew
-          sound.frame(t)
-          // The player's rule: jump when the next frame would reach the clip's end.
-          if (t + FRAME >= end - JUMP_SLACK) {
-            jumpAt = ctx.currentTime
-            const before = cut.gain.ops.length
-            screen.currentTime = 3
-            sound.jump(3, 1)
-            expect(cut.gain.ops.slice(before)).toContainEqual(['set', 0, jumpAt])
-          }
+  /** A 60 or 30 fps recording, clip ends on and off the frame grid, the element clock half a frame ahead of or behind the frame shown. */
+  const cases = [60, 30].flatMap((fps) => [2.001, 2.005, 2.009, 2.013, 2.021, 2.029].flatMap((end) => [0.5, -0.5].map((skew) => ({ fps, end, skew: skew / fps }))))
+
+  it('ends two render buffers before the jump (rendered before the seek), placed by the frame shown, whatever the element clock says', () => {
+    for (const { fps, end, skew } of cases) {
+      const what = `${fps} fps, end ${end}, skew ${skew}`
+      const frame = 1 / fps
+      const { screen, sound, ctx, cut } = setUp(project([{ id: 'a', start: 0, end, speed: 1 }, { id: 'b', start: 3, end: 10, speed: 1 }], [], fps))
+      sound.play(0, 1)
+      let jumpAt = -1
+      for (let k = fps; k < 4 * fps && jumpAt < 0; k++) {
+        // Rate 1: the audio clock runs with the frames; the element's clock is off the frame shown.
+        const t = k * frame
+        ctx.currentTime = t
+        screen.currentTime = t + skew
+        sound.frame(t)
+        // The player's rule: jump when the next frame would reach the clip's end.
+        if (t + frame >= end - JUMP_SLACK) {
+          jumpAt = ctx.currentTime
+          const before = cut.gain.ops.length
+          screen.currentTime = 3
+          sound.jump(3, 1)
+          expect(cut.gain.ops.slice(before)).toContainEqual(['set', 0, jumpAt])
         }
-        const ramps = cut.gain.ops.filter(([op, v]) => op === 'ramp' && v === 0)
-        expect(ramps, `end ${end}, skew ${skew}`).toHaveLength(1)
-        expect(ramps[0][2], `end ${end}, skew ${skew}`).toBeCloseTo(jumpAt, 9)
-        // The whole fade, from full sound.
-        const start = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
-        expect(ramps[0][2] - start[2]).toBeCloseTo(CUT_FADE, 9)
       }
+      const ramps = cut.gain.ops.filter(([op, v]) => op === 'ramp' && v === 0)
+      expect(ramps, what).toHaveLength(1)
+      expect(ramps[0][2], what).toBeCloseTo(jumpAt - 2 * ctx.baseLatency, 9)
+      // The whole fade, from full sound.
+      const from = cut.gain.ops.filter(([op, v]) => op === 'set' && v === 1).at(-1)!
+      expect(ramps[0][2] - from[2], what).toBeCloseTo(CUT_FADE, 9)
     }
   })
 })
