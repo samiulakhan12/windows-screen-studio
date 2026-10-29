@@ -241,8 +241,10 @@ it (one of its words' middles is in no clip) and the clips keep less than `MIN_C
 exported video) of the time from its words' first start to their last end: the subtitle files
 leave out a cue shorter than that. (A caption's time holds its words' time, so a caption whose
 words keep `MIN_CUE` is long enough for a cue; one whose words keep less but whose own time keeps
-more has no word left, and no cue either. A caption no cut has reached keeps its words, however
-short their timings.)
+more has no word left, and no cue either. A caption with no word's middle cut keeps its words,
+however short their timings; the one case where the two differ is such a caption that plays for
+less than `MIN_CUE` all the same, sped up or cut around word timings that short: the files leave
+it out, the tab shows its words kept.)
 
 Subtitle files (Export captions, and Also save > Captions in every part of One file per chapter)
 apply the same rule: `outputCues` takes the captions' words as the tab does (`captionsWords`, the
