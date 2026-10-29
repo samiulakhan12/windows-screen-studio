@@ -440,7 +440,8 @@ function processesWith(needle) {
     await f.waitFor(() => !fs.existsSync(path.join(dir, sp.TEST_MODEL.file)), 'the file is deleted', 10000)
     await win.click('.settings-modal button:has-text("Done")')
     await waitState(win, 'needs-model')
-    h.assert(!(await win.$('[data-testid="local-use-installed"]')), 'back to the consent card')
+    // The card was in this state before Settings opened; it re-renders once the model list is read again.
+    await f.waitFor(async () => !(await win.$('[data-testid="local-use-installed"]')), 'back to the consent card')
 
     // Tiny and base downloaded, base the default; Accurate chosen: "Make them now with Standard (downloaded)".
     installModel(dir)
