@@ -6,6 +6,9 @@ import { ipcMessage } from './providerText'
 /** Recordings listed before "Show all". */
 const SHOWN = 8
 
+/** Dispatched on window when a clean-up moved recordings to the Recycle Bin: Home lists them again. */
+export const PROJECTS_CHANGED_EVENT = 'ssw:projects-changed'
+
 const keyOf = (i: Pick<CleanupItem, 'id' | 'action'>): string => `${i.action}:${i.id}`
 const dateOf = (iso: string): string => {
   const d = new Date(iso)
@@ -71,6 +74,7 @@ export function StorageSection(): JSX.Element {
       const r = await window.api.storageClean(plan.filter((i) => ticked.has(keyOf(i))).map((i) => ({ id: i.id, action: i.action })))
       setResult(r)
       setPlan(null)
+      if (r.moved.some((i) => i.action === 'remove')) window.dispatchEvent(new Event(PROJECTS_CHANGED_EVENT))
       await scan()
       // The review (and its focused button) is gone: the result takes the focus.
       focusLater(resultRef)

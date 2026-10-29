@@ -47,6 +47,9 @@ describe('hands-off contracts (docs/design/hands-off.md)', () => {
     }
     expect(src('src/renderer/src/settings/SettingsDialog.tsx')).toContain('<HealthSections />')
     expect(src('src/renderer/src/views/Editor.tsx')).toContain('window.api.storageNoteOpened(projectId)')
+    // Settings opens over Home: recordings Storage moved to the Recycle Bin leave Home's list at once.
+    expect(src('src/renderer/src/views/Home.tsx')).toContain('window.addEventListener(PROJECTS_CHANGED_EVENT, onProjectsChanged)')
+    expect(src('src/renderer/src/views/Home.tsx')).toContain('window.removeEventListener(PROJECTS_CHANGED_EVENT, onProjectsChanged)')
     expect(src('src/renderer/src/editor/exporter.ts')).toContain('await input.pause?.wait(signal)')
     expect(src('src/main/aiIpc.ts')).toContain("beginJob({\n      kind: 'captions'")
   })

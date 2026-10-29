@@ -194,3 +194,19 @@ describe('Settings › Storage: focus never falls to the page', () => {
     expect(lastFocused()).toBe('Review clean-up')
   })
 })
+
+describe('Settings › Storage: Home hears of removed recordings', () => {
+  it('says the projects changed when a recording went to the Recycle Bin', async () => {
+    await press(/^Review clean-up…$/)
+    await press(/^Move 2 to the Recycle Bin/)
+    expect(dispatched).toEqual([section.PROJECTS_CHANGED_EVENT])
+    expect(section.PROJECTS_CHANGED_EVENT).toBe('ssw:projects-changed')
+  })
+
+  it('says nothing when only caches were cleared', async () => {
+    plan = () => Promise.resolve([item('b', 'caches')])
+    await press(/^Review clean-up…$/)
+    await press(/^Move 1 to the Recycle Bin/)
+    expect(dispatched).toEqual([])
+  })
+})

@@ -1,4 +1,5 @@
 import { SettingsButton } from '../settings/SettingsButton'
+import { PROJECTS_CHANGED_EVENT } from '../settings/StorageSection'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
 import { formatTime } from '../../../shared/engine/project'
@@ -470,9 +471,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
         void refreshLibrary()
       }
     })
+    // Settings › Storage moved recordings to the Recycle Bin (Settings opens over Home).
+    const onProjectsChanged = (): void => void refreshLibrary()
+    window.addEventListener(PROJECTS_CHANGED_EVENT, onProjectsChanged)
     return () => {
       offDevices()
       offProgress()
+      window.removeEventListener(PROJECTS_CHANGED_EVENT, onProjectsChanged)
     }
   }, [refreshLibrary, refreshDevices])
 
