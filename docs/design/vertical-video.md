@@ -568,7 +568,11 @@ the `projects:duplicateProgress` event:
    name: copy.name.trim().slice(0, 120) || 'Untitled recording', copyOf: { id: sourceId, name:
    sourceName } }`. The renderer's `copyOf` and `createdAt` are ignored.
 10. Remove `.copying`; resolve `{ id, name, linked }`.
-11. **Failure or Cancel**: remove the new folder (`fs.rm`, recursive, `maxRetries: 3`) and reject.
+11. **Failure or Cancel**: remove the new folder and reject. It is removed with its `.copying`
+    marker last (each other entry with `fs.rm`, recursive, `maxRetries: 3`, then the folder), as
+    every clean-up below does: a file another program holds (an antivirus scan, the indexer,
+    OneDrive) makes the removal fail part way, and the folder then keeps its marker, so the next
+    copy or the next start removes it.
     **Crash**: `removeStaleCopies()` removes folders in the current root that hold `.copying` with a
     `startedAt` more than one hour old (or an unreadable marker on a folder modified more than one
     hour ago), and only when they have no `project.json` and no raw recording files (`RAW`,

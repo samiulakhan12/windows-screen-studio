@@ -346,6 +346,64 @@ describe('when links cannot be made, the drive is full, or the copy is stopped (
     expect((await duplicateProject(SOURCE, rendererCopy(), { now: NOW })).id).toBe(NEW_ID)
   })
 
+  /** fs.rm as Windows answers while another program (an antivirus scan, OneDrive) holds the file `held`: everything else in the folder goes, then it fails. */
+  function holdFile(held: string): void {
+    const rm = fsDefault.promises.rm.bind(fsDefault.promises)
+    const keepOnlyHeld = async (dir: string): Promise<void> => {
+      for (const name of readdirSync(dir)) {
+        const p = path.join(dir, name)
+        if (held.startsWith(p + path.sep)) await keepOnlyHeld(p)
+        else if (p !== held) await rm(p, { recursive: true, force: true })
+      }
+    }
+    vi.spyOn(fsDefault.promises, 'rm').mockImplementation(async (target, opts) => {
+      const p = path.resolve(String(target))
+      if (p === held) throw errno('EBUSY')
+      if (!held.startsWith(p + path.sep)) return rm(target, opts)
+      await keepOnlyHeld(p)
+      throw errno('EBUSY')
+    })
+  }
+
+  it('keeps the marker of a cancelled copy it could not remove (a file held by another program), so the next start removes it', async () => {
+    seedSource()
+    // Under OneDrive the media are copied, and the sync client or a scan may hold one just written.
+    process.env.OneDrive = h.root
+    const abort = new AbortController()
+    const dst = projectDir(NEW_ID)
+    const copyFile = fsDefault.promises.copyFile.bind(fsDefault.promises)
+    vi.spyOn(fsDefault.promises, 'copyFile').mockImplementation(async (from, to, mode) => {
+      abort.abort()
+      await copyFile(from, to, mode)
+      holdFile(path.resolve(String(to)))
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await expect(duplicateProject(SOURCE, rendererCopy(), { now: NOW, signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    // Not a project and not listed, but still marked as a half-made copy.
+    expect(readdirSync(dst)).toHaveLength(2)
+    expect(existsSync(path.join(dst, COPYING_MARK))).toBe(true)
+    expect(existsSync(path.join(dst, 'project.json'))).toBe(false)
+    // The file is let go; the next start removes the folder.
+    vi.restoreAllMocks()
+    expect(await removeAbandonedCopies()).toBe(1)
+    expect(folders()).toEqual([SOURCE])
+  })
+
+  it('keeps the marker of a half-made copy it could not remove at a sweep, and removes the folder at the next one', async () => {
+    rmSync(projectsRoot(), { recursive: true, force: true })
+    const dir = projectDir('rec-held')
+    mkdirSync(path.join(dir, '.cache'), { recursive: true })
+    for (const f of ['screen.mp4', 'mic.m4a', '.cache/speech.json']) writeFileSync(path.join(dir, f), 'x')
+    writeFileSync(path.join(dir, COPYING_MARK), JSON.stringify({ source: SOURCE, startedAt: '2020-01-01T00:00:00.000Z' }))
+    holdFile(path.join(dir, 'mic.m4a'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(await removeStaleCopies(NOW.getTime())).toBe(0)
+    expect(existsSync(path.join(dir, COPYING_MARK))).toBe(true)
+    vi.restoreAllMocks()
+    expect(await removeStaleCopies(NOW.getTime())).toBe(1)
+    expect(folders()).toEqual([])
+  })
+
   it('refuses a second copy while one is being made', async () => {
     seedSource()
     let release = (): void => undefined

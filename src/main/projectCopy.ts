@@ -202,13 +202,30 @@ async function makeCopy(sourceId: string, raw: unknown, opts: { signal?: AbortSi
     await fs.rm(path.join(dir, COPYING_MARK), { force: true, maxRetries: 3 })
     return { id, name, linked: files.every((f) => f.how !== 'link' || linked.has(f.name)) }
   } catch (err) {
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }).catch((e: unknown) => console.warn('Could not remove the unfinished copy:', e))
+    await removeCopyDir(dir).catch((e: unknown) => console.warn('Could not remove the unfinished copy:', e))
     if (err instanceof CopyError || (err as Error).name === 'AbortError') throw err
     const code = (err as NodeJS.ErrnoException).code
     if (code === 'ENOSPC') throw new Error(spaceReason(bytesOf(files) + SPARE_BYTES, await freeBytes(path.dirname(dir)).catch(() => 0)))
     if (code === 'ENOENT' || code === 'EACCES' || code === 'EPERM' || code === 'EIO' || code === 'EBUSY') throw new Error(REASONS.read)
     throw err
   }
+}
+
+/**
+ * Removes a half-made copy, its marker last: a file another program holds (an antivirus scan,
+ * the indexer, OneDrive) makes fs.rm fail after removing what it could, and a folder without its
+ * marker would never be cleaned up. With the marker kept, the next copy or the next start does.
+ */
+async function removeCopyDir(dir: string): Promise<void> {
+  let names: string[]
+  try {
+    names = await fs.readdir(dir)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return
+    throw err
+  }
+  for (const name of names) if (name !== COPYING_MARK) await fs.rm(path.join(dir, name), { recursive: true, force: true, maxRetries: 3 })
+  await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
 }
 
 /** Hard-links the media (LINKED_MEDIA) where that is safe; the names linked. Any that cannot be linked are copied. */
@@ -319,7 +336,7 @@ export async function removeStaleCopies(now: number = Date.now()): Promise<numbe
       if (now - started <= STALE_MS) continue
       // A folder that became a project, or holds a recording, is never removed.
       if (await holdsAny(dir, ['project.json', ...Object.values(projects.RAW)])) continue
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
+      await removeCopyDir(dir)
       removed++
     } catch (err) {
       console.warn(`Could not remove the half-made copy ${name}:`, err)
