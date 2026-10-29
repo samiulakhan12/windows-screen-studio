@@ -33,13 +33,15 @@ export function dragCaptionTimes(initial: { start: number; end: number }, mode: 
 }
 
 /**
- * The caption moved or trimmed to `next`, its word timings moved with it (a move) and kept inside it.
+ * The caption moved or trimmed to `next`, its word timings moved with it (a move) and kept inside
+ * it; a trim leaves a word deleted in the Transcript tab where it was said, in the cut
+ * (edit-by-text.md §4.2).
  */
 export function retimeWords(seg: CaptionSegment, next: { start: number; end: number }): CaptionSegment {
   const out: CaptionSegment = { ...seg, ...next }
   if (!seg.words) return out
   const shift = Math.abs(next.end - next.start - (seg.end - seg.start)) < 1e-9 ? next.start - seg.start : 0
-  out.words = seg.words.map((w) => ({ ...w, start: clamp(w.start + shift, next.start, next.end), end: clamp(w.end + shift, next.start, next.end) }))
+  out.words = seg.words.map((w) => (w.deleted && shift === 0 ? w : { ...w, start: clamp(w.start + shift, next.start, next.end), end: clamp(w.end + shift, next.start, next.end) }))
   return out
 }
 
@@ -88,7 +90,8 @@ export function splitCaption(segments: readonly CaptionSegment[], id: string, t:
   const a: CaptionSegment = { id: seg.id, start: seg.start, end: t, text: words.slice(0, k).join(' ') }
   const b: CaptionSegment = { id: newCaptionId(), start: t, end: seg.end, text: words.slice(k).join(' ') }
   if (timed) {
-    const inside = (w: CaptionWord, s: number, e: number): CaptionWord => ({ ...w, start: clamp(w.start, s, e), end: clamp(w.end, s, e) })
+    // A deleted word keeps its own time (retimeWords).
+    const inside = (w: CaptionWord, s: number, e: number): CaptionWord => (w.deleted ? w : { ...w, start: clamp(w.start, s, e), end: clamp(w.end, s, e) })
     a.words = timed.slice(0, k).map((w) => inside(w, a.start, a.end))
     b.words = timed.slice(k).map((w) => inside(w, b.start, b.end))
   }

@@ -193,6 +193,25 @@ describe('alignCaptionWords', () => {
       ['fun', 2, 2.5, false, false]
     ])
   })
+
+  it('keeps the own time of a deleted word its caption was trimmed past, and the words around it inside the caption', () => {
+    const w = alignCaptionWords({
+      id: 'a',
+      start: 0.9,
+      end: 3,
+      text: 'Um, uh so today',
+      words: [
+        { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+        { text: 'so', start: 1.5, end: 2 }
+      ]
+    })
+    expect(w.map((x) => [x.text, +x.start.toFixed(3), +x.end.toFixed(3), x.estimated, !!x.deleted])).toEqual([
+      ['Um,', 0.3, 0.6, false, true],
+      ['uh', 0.9, 1.5, true, false],
+      ['so', 1.5, 2, false, false],
+      ['today', 2, 3, true, false]
+    ])
+  })
 })
 
 describe('transcriptWords', () => {
@@ -231,6 +250,16 @@ describe('cutFlags', () => {
       const flags = cutFlags(words, clips)
       words.forEach((w, i) => expect(flags[i]).toBe(clipIndexAt(clips, (w.start + w.end) / 2) < 0))
     }
+  })
+
+  it('takes words out of time order: a deleted word left past its trimmed caption, the next caption moved over its time', () => {
+    // "um" (29.5-29.8 s) deleted, its caption's end trimmed to 29.4 s, the next caption's start dragged there.
+    const words: TranscriptWord[] = [
+      { index: 0, caption: 'a', text: 'you', start: 29, end: 29.3, estimated: false },
+      { index: 1, caption: 'a', text: 'um', start: 29.5, end: 29.8, estimated: true, deleted: true },
+      { index: 2, caption: 'b', text: 'Bye.', start: 29.4, end: 29.5, estimated: false }
+    ]
+    expect(cutFlags(words, [clip(0, 29.508)])).toEqual([false, true, false])
   })
 })
 
@@ -646,6 +675,15 @@ describe('settleDeletedWords', () => {
     // Its caption moved on the track so that the word plays: the mark goes too.
     const moved = { ...deleted, transcript: { ...g, segments: [retimeWords(deleted.transcript!.segments[0], { start: 14, end: 21 }), g.segments[1]] } }
     expect(marks(settleDeletedWords(moved, deleted))).toEqual([])
+  })
+
+  it('reads a deleted word at its own time, outside its caption when a trim left it there', () => {
+    // "settings" (about 11.9-13.1 s) deleted, the caption's start trimmed past it to 13.5 s.
+    const trimmed = { ...deleted, transcript: { ...g, segments: [retimeWords(deleted.transcript!.segments[0], { start: 13.5, end: 17 }), g.segments[1]] } }
+    expect(settleDeletedWords(trimmed, deleted)).toBe(trimmed)
+    expect(marks(trimmed)).toEqual(['settings'])
+    // Its own time brought back: the mark goes, though the caption starts after it.
+    expect(marks(settleDeletedWords({ ...trimmed, clips: full }, trimmed))).toEqual([])
   })
 
   it('changes nothing when neither the clips nor the transcript changed, or there is no mark', () => {

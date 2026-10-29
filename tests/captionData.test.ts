@@ -112,6 +112,37 @@ describe('readCaptionSegments', () => {
     // Saved again, a caption without marks is byte for byte what it was.
     expect(JSON.stringify(read[1])).toBe(JSON.stringify(raw[1]))
   })
+
+  it('keeps a deleted word at its own time outside its caption (a trim left it there), inside the recording', () => {
+    const [s] = readCaptionSegments(
+      [
+        seg('a', 1, 3, 'um hi there', [
+          { text: 'um', start: 0.4, end: 0.8, estimated: true, deleted: true },
+          { text: 'hi', start: 0.5, end: 1.5 },
+          { text: 'there', start: 2, end: 9, deleted: true }
+        ])
+      ],
+      5
+    )
+    expect(s.words).toEqual([
+      { text: 'um', start: 0.4, end: 0.8, estimated: true, deleted: true },
+      { text: 'hi', start: 1, end: 1.5 },
+      { text: 'there', start: 2, end: 5, deleted: true }
+    ])
+    // The end trimmed past a deleted "um" and the word after it, put at the new end: they keep the text's order.
+    const [t] = readCaptionSegments(
+      [
+        seg('b', 0, 1.9, 'see you um bye', [
+          { text: 'see', start: 1, end: 1.3 },
+          { text: 'you', start: 1.3, end: 1.6 },
+          { text: 'um', start: 2, end: 2.3, deleted: true },
+          { text: 'bye', start: 1.9, end: 1.9 }
+        ])
+      ],
+      5
+    )
+    expect(t.words!.map((w) => w.text)).toEqual(['see', 'you', 'um', 'bye'])
+  })
 })
 
 describe('readTranscript', () => {
@@ -199,6 +230,31 @@ describe('caption editing', () => {
       { text: 'a', start: 1, end: 2 },
       { text: 'b', start: 2, end: 2.5 }
     ])
+  })
+
+  it('leaves a word deleted in the Transcript tab where it was said when its caption is trimmed past it, and moves it with a moved caption', () => {
+    const s = seg('a', 0.3, 3, 'Um, so today', [
+      { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+      { text: 'so', start: 0.8, end: 1 },
+      { text: 'today', start: 1, end: 1.4, estimated: true, deleted: true }
+    ])
+    expect(retimeWords(s, { start: 0.9, end: 1.2 }).words).toEqual([
+      { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+      { text: 'so', start: 0.9, end: 1 },
+      { text: 'today', start: 1, end: 1.4, estimated: true, deleted: true }
+    ])
+    expect(retimeWords(s, { start: 1.3, end: 4 }).words).toEqual([
+      { text: 'Um,', start: 1.3, end: 1.6, deleted: true },
+      { text: 'so', start: 1.8, end: 2 },
+      { text: 'today', start: 2, end: 2.4, estimated: true, deleted: true }
+    ])
+    // Split: the halves keep it where it was too.
+    const [c, d] = splitCaption([retimeWords(s, { start: 0.9, end: 3 })], 'a', 0.98)!
+    expect(c.words).toEqual([
+      { text: 'Um,', start: 0.3, end: 0.6, deleted: true },
+      { text: 'so', start: 0.9, end: 0.98 }
+    ])
+    expect(d.words).toEqual([{ text: 'today', start: 1, end: 1.4, estimated: true, deleted: true }])
   })
 
   it('splits at the word spoken there', () => {

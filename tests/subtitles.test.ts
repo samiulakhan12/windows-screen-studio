@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
 import { readTranscript } from '../src/shared/captions/captionData'
-import { applyTextResult, mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
+import { applyTextResult, captionDragBounds, dragCaptionTimes, mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
 import { validateSegmentsAnswer, validateTextRequest } from '../src/shared/captions/transcriptText'
 import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
@@ -672,6 +672,79 @@ describe('deleted words: the Transcript tab and the subtitle files agree (edit-b
     editCaptions(s, (list) => mergeWithNext(list, 'g')!)
     expect(marked(s.state)).toEqual(['Tom', '&', 'Jerry'])
     expect(srt(s.state)).toEqual(['I watched with my kids today. Then press Start.'])
+  })
+
+  it('a caption trimmed on its track past a word deleted in the tab keeps the word out, also after a save; Restore brings it back', () => {
+    /** CaptionTrack's drag: one gesture, each move worked out from the caption at pointer-down. */
+    const captionDrag = (s: EditStore<Project>, id: string, mode: 'move' | 'start' | 'end', targets: number[]): void => {
+      const seg0 = s.state.transcript!.segments.find((x) => x.id === id)!
+      const bounds = captionDragBounds(s.state.transcript!.segments, id, DURATION)
+      const initial = { start: seg0.start, end: seg0.end }
+      s.beginGesture()
+      for (const t of targets) {
+        const times = dragCaptionTimes(initial, mode, t - (mode === 'end' ? initial.end : initial.start), bounds)
+        editCaptions(s, (list) => list.map((x) => (x.id === id ? retimeWords(seg0, times) : x)))
+      }
+      s.endGesture()
+    }
+    const heard = [
+      { text: 'Um,', start: 0.3, end: 0.5 },
+      { text: 'so', start: 0.8, end: 1.0 },
+      { text: 'today', start: 1.0, end: 1.4 },
+      { text: 'we', start: 1.4, end: 1.6 },
+      { text: 'look', start: 1.6, end: 1.9 },
+      { text: 'at', start: 1.9, end: 2.0 },
+      { text: 'settings', start: 2.0, end: 2.8 }
+    ]
+    for (const words of [undefined, heard]) {
+      for (const target of ['where the speech starts', 0.9] as const) {
+        const s = open([seg('u', 0.3, 3, 'Um, so today we look at settings', words), seg('b', 3, 6, 'Then press Start.')], words ? 'openai' : 'gemini')
+        tabDelete(s, 'Um,')
+        const to = target === 0.9 ? 0.9 : s.state.clips[0].start
+        captionDrag(s, 'u', 'start', [0.5, to])
+        expect(s.state.transcript!.segments[0].start).toBeCloseTo(to, 9)
+        expect(marked(s.state)).toEqual(['Um,'])
+        expect(struck(s.state)).toEqual(['Um,'])
+        expect(srt(s.state)).toEqual(['so today we look at settings', 'Then press Start.'])
+        const reopened = { ...s.state, transcript: readTranscript(JSON.parse(JSON.stringify(s.state.transcript)), DURATION) }
+        expect(srt(reopened)).toEqual(['so today we look at settings', 'Then press Start.'])
+        tabRestore(s, 'Um,')
+        expect(marked(s.state)).toEqual([])
+        expect(srt(s.state)).toEqual(['Um, so today we look at settings', 'Then press Start.'])
+      }
+    }
+    // The end trimmed past the deleted word and the one after it, which goes to the new end: the same after a save.
+    const e = open(
+      [
+        seg('e', 10, 13, 'See you um bye.', [
+          { text: 'See', start: 10, end: 10.3 },
+          { text: 'you', start: 10.3, end: 10.6 },
+          { text: 'um', start: 11, end: 11.4 },
+          { text: 'bye.', start: 12, end: 12.4 }
+        ]),
+        seg('n', 14, 16, 'Then press Start.')
+      ],
+      'openai'
+    )
+    tabDelete(e, 'um')
+    captionDrag(e, 'e', 'end', [12, 10.7])
+    expect(struck(e.state)).toEqual(['um'])
+    expect(srt(e.state)).toEqual(['See you bye.', 'Then press Start.'])
+    const saved = { ...e.state, transcript: readTranscript(JSON.parse(JSON.stringify(e.state.transcript)), DURATION) }
+    expect(marked(saved)).toEqual(['um'])
+    expect(srt(saved)).toEqual(['See you bye.', 'Then press Start.'])
+    // The end handle, then the next caption moved over the deleted word's time: it plays, the word stays out.
+    const t = open([seg('t', 26, 29.4, 'Thanks for watching, see you um'), seg('b', 29.6, 29.8, 'Bye.')])
+    tabDelete(t, 'um')
+    captionDrag(t, 't', 'end', [29.2, 29])
+    expect(struck(t.state)).toEqual(['um'])
+    expect(srt(t.state)).toEqual(['Thanks for watching, see you', 'Bye.'])
+    captionDrag(t, 'b', 'move', [28.5])
+    expect(t.state.transcript!.segments[1]).toMatchObject({ start: 29, end: 29.2 })
+    expect(wordsOf(t.state).map((w) => w.text)).toEqual(['Thanks', 'for', 'watching,', 'see', 'you', 'um', 'Bye.'])
+    expect(wordsOf(t.state)[5].start).toBeGreaterThan(29.1)
+    expect(struck(t.state)).toEqual(['um'])
+    expect(srt(t.state)).toEqual(['Thanks for watching, see you', 'Bye.'])
   })
 })
 

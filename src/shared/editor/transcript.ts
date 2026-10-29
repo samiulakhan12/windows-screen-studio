@@ -22,7 +22,7 @@ export interface TranscriptWord {
   end: number
   /** Its times were shared out from its neighbours' (no timed word matched it), or are a stored guess. */
   estimated: boolean
-  /** Deleted in the Transcript tab: cut by its middle, a guess too (cutFlags). */
+  /** Deleted in the Transcript tab: cut by its middle, a guess too (cutFlags), and timed as stored even outside its caption (alignCaptionWords). */
   deleted?: true
   /** Its caption's own time (captionsWords gives it; else taken as its caption's words' time): what is left of the caption (cutFlags). */
   captionTime?: TimeRange
@@ -94,7 +94,8 @@ export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T)
  * their matched neighbours by length and are `estimated`, as are words matched to a stored guess
  * (anchorCutWords). A `deleted` mark comes with its stored word, and of the longest matchings the
  * one pairing the fewest shown words with deleted ones is taken: when the text loses one of two
- * equal words, the one left is the take still in the video. Times stay inside the caption.
+ * equal words, the one left is the take still in the video. Times stay inside the caption, but a
+ * deleted word keeps its own (in the cut, where a trim of the caption left it: retimeWords).
  */
 export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const texts = seg.text.split(' ').filter(Boolean)
@@ -110,9 +111,11 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const inside = (t: number): number => clamp(t, seg.start, seg.end)
   const matched = new Map(pairs)
   for (const [i, j] of pairs) {
-    const start = inside(timed[j].start)
-    const word: TimedText = { text: texts[i], start, end: Math.max(start, inside(timed[j].end)), estimated: timed[j].estimated === true }
-    if (timed[j].deleted === true) word.deleted = true
+    const w = timed[j]
+    const own = (t: number): number => (w.deleted === true ? t : inside(t))
+    const start = own(w.start)
+    const word: TimedText = { text: texts[i], start, end: Math.max(start, own(w.end)), estimated: w.estimated === true }
+    if (w.deleted === true) word.deleted = true
     out[i] = word
   }
   // Runs of unmatched words between matched ones (or the caption's ends). At a caption end, a run
@@ -128,8 +131,8 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
     while (k < texts.length && !out[k]) k++
     const jPrev = i > 0 ? matched.get(i - 1)! : -1
     const jNext = k < texts.length ? matched.get(k)! : timed.length
-    const from = i > 0 ? out[i - 1].end : jNext > 0 ? inside(timed[0].start) : seg.start
-    const to = k < texts.length ? out[k].start : jPrev < timed.length - 1 ? inside(timed[timed.length - 1].end) : seg.end
+    const from = i > 0 ? inside(out[i - 1].end) : jNext > 0 ? inside(timed[0].start) : seg.start
+    const to = k < texts.length ? inside(out[k].start) : jPrev < timed.length - 1 ? inside(timed[timed.length - 1].end) : seg.end
     spread(texts.slice(i, k), from, Math.max(from, to)).forEach((w, n) => (out[i + n] = w))
     i = k
   }
@@ -158,8 +161,12 @@ export function captionsWords(segments: readonly CaptionSegment[]): TranscriptWo
 export function middlesCut(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
   const flags = new Array<boolean>(words.length)
   let c = 0
+  let last = -Infinity
   for (let i = 0; i < words.length; i++) {
     const mid = (words[i].start + words[i].end) / 2
+    // A deleted word left outside its trimmed caption can come before the words ahead of it.
+    if (mid < last) c = clipFrom(clips, mid)
+    last = mid
     while (c < clips.length && clips[c].end <= mid) c++
     flags[i] = !(c < clips.length && clips[c].start <= mid)
   }
@@ -297,17 +304,13 @@ export function anchorCutWords(transcript: Transcript | undefined, before: reado
 export function settleDeletedWords(next: Project, prev: Project): Project {
   if (!next.transcript || (next.clips === prev.clips && next.transcript === prev.transcript)) return next
   const clips = next.clips
-  // The word's middle as alignCaptionWords times it (inside its caption).
-  const kept = (seg: CaptionSegment, w: CaptionWord): boolean => {
-    const start = clamp(w.start, seg.start, seg.end)
-    return clipIndexAt(clips, (start + Math.max(start, clamp(w.end, seg.start, seg.end))) / 2) >= 0
-  }
-  const restored = (seg: CaptionSegment, w: CaptionWord): boolean => w.deleted === true && kept(seg, w)
+  // The word's middle as alignCaptionWords times a deleted word (its own time).
+  const restored = (w: CaptionWord): boolean => w.deleted === true && clipIndexAt(clips, (w.start + Math.max(w.start, w.end)) / 2) >= 0
   let changed = false
   const segments = next.transcript.segments.map((seg) => {
-    if (!seg.words?.some((w) => restored(seg, w))) return seg
+    if (!seg.words?.some(restored)) return seg
     changed = true
-    return { ...seg, words: seg.words.map((w) => (restored(seg, w) ? { text: w.text, start: w.start, end: w.end, ...(w.estimated ? { estimated: w.estimated } : {}) } : w)) }
+    return { ...seg, words: seg.words.map((w) => (restored(w) ? { text: w.text, start: w.start, end: w.end, ...(w.estimated ? { estimated: w.estimated } : {}) } : w)) }
   })
   return changed ? { ...next, transcript: { ...next.transcript, segments } } : next
 }
