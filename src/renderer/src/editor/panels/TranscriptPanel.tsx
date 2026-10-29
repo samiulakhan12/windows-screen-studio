@@ -320,9 +320,11 @@ function TranscriptEditor({
   const [page, setPage] = useState(0)
   /** The page shown was turned to with Earlier or Later, not by playback or the selection. */
   const pagedByHand = useRef(false)
-  const turnPage = (p: number): void => {
+  /** Earlier and Later. A mouse click gives the focus back to the words; from the keyboard it stays on the button, so Enter turns page after page. */
+  const turnPage = (p: number, e: React.MouseEvent): void => {
     setPage(p)
     pagedByHand.current = true
+    if (e.detail > 0) listRef.current?.focus({ preventScroll: true })
   }
   const focus = sel?.focus ?? -1
   useEffect(() => {
@@ -385,13 +387,13 @@ function TranscriptEditor({
         {estimated && <p className="hint">Some word times are estimated: cuts there may be less exact.</p>}
         {pages > 1 && (
           <div className="row transcript-pager">
-            <button className="btn small" disabled={shownPage === 0} onClick={refocus(() => turnPage(shownPage - 1))}>
+            <button className="btn small" disabled={shownPage === 0} onClick={(e) => turnPage(shownPage - 1, e)}>
               Earlier
             </button>
             <span className="hint">
               {shownPage * PAGE + 1}–{Math.min(paragraphs.length, (shownPage + 1) * PAGE)} of {paragraphs.length}
             </span>
-            <button className="btn small" disabled={shownPage >= pages - 1} onClick={refocus(() => turnPage(shownPage + 1))}>
+            <button className="btn small" disabled={shownPage >= pages - 1} onClick={(e) => turnPage(shownPage + 1, e)}>
               Later
             </button>
           </div>

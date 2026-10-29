@@ -402,6 +402,23 @@ describe('the Transcript tab', () => {
     expect(selectedWords()).toEqual([117])
   })
 
+  it('Earlier and Later keep the focus when pressed from the keyboard, so Enter turns page after page', () => {
+    // 130 captions: four pages.
+    useProject(140, captions(130))
+    render()
+    const shownWords = (): number[] => render().filter((e) => e.props.role === 'option').map((e) => Number(e.props['data-w']))
+    for (const first of [120, 240, 360]) {
+      click('Later', 0)
+      expect(shownWords()[0]).toBe(first)
+    }
+    click('Earlier', 0)
+    expect(shownWords()[0]).toBe(240)
+    expect(log.focused).toEqual([])
+    // The arrow keys then start on the page shown.
+    press('ArrowRight')
+    expect(selectedWords()).toEqual([240])
+  })
+
   it('Find says what it found', () => {
     useProject(10, [
       seg('a', 1, 4, [
