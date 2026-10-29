@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
+import { readTranscript } from '../src/shared/captions/captionData'
 import { retimeWords, withCaptionText } from '../src/shared/captions/edit'
 import { anchorCutWords, cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { freezePlan, NO_FREEZES } from '../src/shared/engine/freeze'
+import { cutRange } from '../src/shared/engine/timeline'
 import type { CaptionSegment, Clip, Transcript } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
@@ -85,6 +87,24 @@ describe('outputCues: captions in output time', () => {
     }
   })
 
+  it('leaves out words with guessed times deleted in the Transcript tab, in a caption with word timings', () => {
+    // "alot" fixed to "a lot" in the Captions tab: "a" and "lot" have guessed times. Both deleted in the tab.
+    const caption = seg('w', 0.4, 3.8, 'So um, I think a lot works.', [
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.1, end: 1.5 },
+      { text: 'I', start: 2, end: 2.1 },
+      { text: 'think', start: 2.15, end: 2.5 },
+      { text: 'alot', start: 2.6, end: 3 },
+      { text: 'works.', start: 3.1, end: 3.6 }
+    ])
+    const transcript = { provider: 'local', model: '', createdAt: '', segments: [caption] } as Transcript
+    const words = transcriptWords(transcript)
+    const a = words.findIndex((w) => w.text === 'a')
+    const clips = cutWords([clip(0, 10)], words, [[a, a + 1]], 10)
+    const segments = anchorCutWords(transcript, [clip(0, 10)], clips)!.segments
+    expect(outputCues(segments, clips)[0].text).toBe('So um, I think works.')
+  })
+
   it('keeps a word deleted in the Transcript tab out after the caption without word timings is edited', () => {
     const caption = seg('g', 0.4, 3.8, 'So um, I thnk it works.')
     const transcript = { provider: 'gemini', model: '', createdAt: '', segments: [caption] } as Transcript
@@ -115,6 +135,27 @@ describe('outputCues: captions in output time', () => {
       [seg('c', 0, 3, 'el coche rojo es muy rápido'), [clip(0, 0.9), clip(1.8, 10)]]
     ]
     for (const [caption, clips] of cases) expect(outputCues([caption], clips)[0].text).toBe(caption.text)
+  })
+
+  it('keeps the guessed words of a caption without word timings across a timeline cut after one was deleted in the Transcript tab', () => {
+    const transcript = { provider: 'gemini', model: '', createdAt: '', segments: [seg('g', 10, 17, 'Now open the settings and pick a folder for your recordings')] } as Transcript
+    const full = [clip(0, 30)]
+    const tabDelete = (clips: Clip[], text: string): { segments: CaptionSegment[]; clips: Clip[] } => {
+      const words = transcriptWords(transcript)
+      const i = words.findIndex((w) => w.text === text)
+      const cut = cutWords(clips, words, [[i, i]], 30)
+      return { segments: anchorCutWords(transcript, clips, cut)!.segments, clips: cut }
+    }
+    // Smart speed > Silences cuts the pause at 11.85-13.75 s, where the guesses put "settings and pick a".
+    const silences = (clips: Clip[]): Clip[] => cutRange(clips, 11.85, 13.75)
+    const deleted = tabDelete(full, 'Now')
+    // "Now" deleted, then the pause cut; the pause cut, then "Now" deleted.
+    for (const { segments, clips } of [{ ...deleted, clips: silences(deleted.clips) }, tabDelete(silences(full), 'Now')]) {
+      expect(outputCues(segments, clips)[0].text).toBe('open the settings and pick a folder for your recordings')
+      // Also after the project is saved and opened again.
+      const reopened = readTranscript(JSON.parse(JSON.stringify({ ...transcript, segments })), 30)!
+      expect(outputCues(reopened.segments, clips)[0].text).toBe('open the settings and pick a folder for your recordings')
+    }
   })
 
   it('never overlaps and drops slivers', () => {

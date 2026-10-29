@@ -6,7 +6,7 @@
  */
 import { clamp } from '../engine/math'
 import { cutRange, MIN_CLIP, normalizeClips } from '../engine/timeline'
-import type { CaptionSegment, Clip, Transcript } from '../types'
+import type { CaptionSegment, CaptionWord, Clip, Transcript } from '../types'
 import { restoreRange, timelineGaps } from './clips'
 import { rangeSaving, type TimeRange } from './smartSpeed'
 
@@ -78,7 +78,8 @@ export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T)
  * The words of a caption as shown (its text split on spaces), timed by its word timings: the
  * shown words are matched to the timed words (longest common subsequence of their normalised
  * forms, so a fixed typo or an added word keeps the rest exact); unmatched words share the time
- * between their matched neighbours by length and are `estimated`. Times stay inside the caption.
+ * between their matched neighbours by length and are `estimated`, as are words matched to a stored
+ * guess (anchorCutWords). Times stay inside the caption.
  */
 export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const texts = seg.text.split(' ').filter(Boolean)
@@ -94,7 +95,7 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   const matched = new Map(pairs)
   for (const [i, j] of pairs) {
     const start = inside(timed[j].start)
-    out[i] = { text: texts[i], start, end: Math.max(start, inside(timed[j].end)), estimated: false }
+    out[i] = { text: texts[i], start, end: Math.max(start, inside(timed[j].end)), estimated: timed[j].estimated === true }
   }
   // Runs of unmatched words between matched ones (or the caption's ends). At a caption end, a run
   // that took the place of timed words (retyped) shares their time, not the silence the caption
@@ -139,24 +140,39 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
 }
 
 /**
+ * A caption's words as alignCaptionWords times them, to store as its word timings (one per shown
+ * word): a guessed time stays marked `estimated`, unless `known(i)` (the i-th word's time is now
+ * what a cut was made by).
+ */
+export function captionWordTimes(seg: CaptionSegment, known: (i: number) => boolean = () => false): CaptionWord[] {
+  return alignCaptionWords(seg).map(({ text, start, end, estimated }, i) => (estimated && !known(i) ? { text, start, end, estimated } : { text, start, end }))
+}
+
+/**
  * The transcript after a cut made in the Transcript tab (clips `before` to `after`): a caption with
- * no word timing to go by (every word estimated) and a word newly cut gets its estimated times
- * stored as its word timings, so the words deleted stay cut, and out of the subtitle files
- * (outputCues), when its text or times are edited later. The same object when nothing is stored.
+ * an estimated word newly cut gets its words' times stored (captionWordTimes), the cut words' as
+ * known, the other guesses still marked `estimated`. The words deleted then stay cut, and out of
+ * the subtitle files (outputCues), when the caption's text or times are edited later, and a later
+ * timeline cut still never drops a guessed word from them. The same object when nothing is stored.
  */
 export function anchorCutWords(transcript: Transcript | undefined, before: readonly Clip[], after: readonly Clip[]): Transcript | undefined {
   if (!transcript) return transcript
   const words = transcriptWords(transcript)
   const was = cutFlags(words, before)
   const now = cutFlags(words, after)
-  const newly = new Set(words.filter((_, i) => now[i] && !was[i]).map((w) => w.caption))
+  const fresh = (i: number): boolean => words[i].estimated && now[i] && !was[i]
   let changed = false
+  let at = 0
   const segments = transcript.segments.map((seg) => {
-    if (!newly.has(seg.id)) return seg
-    const timed = alignCaptionWords(seg)
-    if (timed.some((t) => !t.estimated)) return seg
-    changed = true
-    return { ...seg, words: timed.map(({ text, start, end }) => ({ text, start, end })) }
+    // The caption's words are words[from..at) (as many as alignCaptionWords gives it).
+    const from = at
+    at += seg.text.split(' ').filter(Boolean).length
+    for (let i = from; i < at; i++) {
+      if (!fresh(i)) continue
+      changed = true
+      return { ...seg, words: captionWordTimes(seg, (k) => fresh(from + k)) }
+    }
+    return seg
   })
   return changed ? { ...transcript, segments } : transcript
 }

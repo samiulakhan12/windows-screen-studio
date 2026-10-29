@@ -316,6 +316,8 @@ export interface CaptionWord {
   text: string
   start: number
   end: number
+  /** Its times are a guess, shared out over the caption (stored with a cut made in the Transcript tab). */
+  estimated?: true
 }
 
 /** One caption (a sentence or phrase) of the transcript, in source seconds. */

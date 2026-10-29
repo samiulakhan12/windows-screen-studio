@@ -338,15 +338,49 @@ describe('anchorCutWords', () => {
   const words = transcriptWords(t)
   const at = (text: string): number => words.findIndex((w) => w.text === text)
 
-  it('stores the estimated times of an untimed caption with a word newly cut, as the tab showed them', () => {
+  it('stores the times of an untimed caption with a word newly cut, as the tab showed them: the cut word known, the others still guesses', () => {
     const cut = cutWords(full, words, [[at('um,'), at('um,')]], 20)
     const out = anchorCutWords(t, full, cut)!
-    expect(out.segments[0].words).toEqual(alignCaptionWords(t.segments[0]).map(({ text, start, end }) => ({ text, start, end })))
+    expect(out.segments[0].words).toEqual(alignCaptionWords(t.segments[0]).map(({ text, start, end }) => (text === 'um,' ? { text, start, end } : { text, start, end, estimated: true })))
     // Nothing else changes: the timed caption and the untouched one stay the same objects.
     expect(out.segments[1]).toBe(t.segments[1])
     expect(out.segments[2]).toBe(t.segments[2])
     expect(sameWords(transcriptWords(out), words)).toBe(true)
-    expect(transcriptWords(out).filter((w) => w.caption === 'a').every((w) => !w.estimated)).toBe(true)
+    expect(transcriptWords(out).filter((w) => w.caption === 'a' && !w.estimated).map((w) => w.text)).toEqual(['um,'])
+    // A second word cut there later is known too; the first stays known.
+    const again = cutWords(cut, words, [[at('thnk'), at('thnk')]], 20)
+    const out2 = anchorCutWords(out, cut, again)!
+    expect(transcriptWords(out2).filter((w) => w.caption === 'a' && !w.estimated).map((w) => w.text)).toEqual(['um,', 'thnk'])
+    expect(sameWords(transcriptWords(out2), words)).toBe(true)
+  })
+
+  it('stores the times of a caption with word timings when a word with a guessed time is cut (the text was edited)', () => {
+    // "alot" fixed to "a lot" in the Captions tab: "a" and "lot" are guessed between "think" and "works.".
+    const edited = transcript([
+      seg('w', 0.4, 3.8, 'So um, I think a lot works.', [
+        ['So', 0.4, 0.7],
+        ['um,', 1.0, 1.5],
+        ['I', 1.9, 2.0],
+        ['think', 2.0, 2.4],
+        ['alot', 2.5, 2.9],
+        ['works.', 3.0, 3.6]
+      ])
+    ])
+    const ws = transcriptWords(edited)
+    const a = ws.findIndex((w) => w.text === 'a')
+    const cut = cutWords(full, ws, [[a, a + 1]], 20)
+    const out = anchorCutWords(edited, full, cut)!
+    expect(out.segments[0].words).toEqual([
+      { text: 'So', start: 0.4, end: 0.7 },
+      { text: 'um,', start: 1.0, end: 1.5 },
+      { text: 'I', start: 1.9, end: 2.0 },
+      { text: 'think', start: 2.0, end: 2.4 },
+      { text: 'a', start: ws[a].start, end: ws[a].end },
+      { text: 'lot', start: ws[a + 1].start, end: ws[a + 1].end },
+      { text: 'works.', start: 3.0, end: 3.6 }
+    ])
+    expect(transcriptWords(out).every((w) => !w.estimated)).toBe(true)
+    expect(sameWords(transcriptWords(out), ws)).toBe(true)
   })
 
   it('changes nothing when no word of an untimed caption is newly cut', () => {

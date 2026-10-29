@@ -72,6 +72,24 @@ describe('readCaptionSegments', () => {
       { text: 'there', start: 2, end: 3 }
     ])
   })
+
+  it('keeps a word timing marked as a guess (stored with a cut in the Transcript tab), and only a real mark', () => {
+    const [s] = readCaptionSegments(
+      [
+        seg('a', 1, 3, 'hi there you', [
+          { text: 'hi', start: 1, end: 1.5, estimated: true },
+          { text: 'there', start: 1.5, end: 2 },
+          { text: 'you', start: 2, end: 3, estimated: 'yes' } as never
+        ])
+      ],
+      10
+    )
+    expect(s.words).toEqual([
+      { text: 'hi', start: 1, end: 1.5, estimated: true },
+      { text: 'there', start: 1.5, end: 2 },
+      { text: 'you', start: 2, end: 3 }
+    ])
+  })
 })
 
 describe('readTranscript', () => {

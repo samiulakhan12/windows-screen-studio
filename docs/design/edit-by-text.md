@@ -177,6 +177,8 @@ timed words by a longest common subsequence of their normalised forms (§4.5 nor
   caption may hold before or after them; a run with no timed words left there (added) reaches the
   caption's own start or end.
 - A caption without any timed words gets every word estimated the same way across the caption.
+- A shown word matched to a stored guess (a timed word marked `estimated`, §4.4 Anchoring) takes
+  its times and stays `estimated`.
 - A word is at least 0 s long; times stay inside its caption.
 
 `estimated` words work like any other; the panel says "Some word times are estimated: cuts there
@@ -194,10 +196,10 @@ A word is cut when its middle, `(start + end) / 2`, is in no clip (`clipIndexAt`
 
 Subtitle files (Export captions, and Also save > Captions in every part of One file per chapter)
 leave out the same words: `outputCues` times each caption's words with `alignCaptionWords` and
-drops a word whose middle is cut, whether or not the text still matches its word timings. A
-caption with no word timing to go by (every word estimated) keeps all its words, so a timeline or
-Smart speed cut never takes a heard word out of the subtitles by a guess. Deleting words here
-anchors such a caption first (§4.4), so its deleted words are dropped like any other.
+drops a word whose middle is cut, whether or not the text still matches its word timings. A word
+whose time is a guess (`estimated`) is kept, so a timeline or Smart speed cut never takes a heard
+word out of the subtitles by a guess. Deleting words here stores their times as known first
+(§4.4 Anchoring), so the deleted words are dropped like any other.
 
 ### 4.3 The range of a word span (`wordsRange`)
 
@@ -221,12 +223,15 @@ span restores exactly the range that cutting it removed.
   left (a single short word between two cuts goes with them, and shows struck through), and the
   last piece of the video is never removed (then nothing changes and the notice says "That would
   cut the whole video").
-- **Anchoring** (`anchorCutWords`): in the same store update, a caption with no word timing to go
-  by (every word estimated) that has a word newly cut gets its estimated times stored as its
-  `words`. Cut, Remove and Remove all do this. Without it, an edit of the caption's text or times
+- **Anchoring** (`anchorCutWords`): in the same store update, a caption with an estimated word
+  newly cut gets the times of all its shown words stored as its `words` (`captionWordTimes`): the
+  newly cut words as known times, every other estimated word marked `estimated: true` (still a
+  guess). Cut, Remove and Remove all do this. Without it, an edit of the caption's text or times
   in the Captions tab would share its times out again and could move a deleted word out of the
-  cut. The review list stays open across this change, and across its undo, because the words and
-  their times are the same.
+  cut. The marks keep the other words guesses, so a later timeline or Smart speed cut still never
+  drops them from the subtitles (§4.2). The mark is saved with the project and read back
+  (`captionData.ts`); projects without it load as before. The review list stays open across this
+  change, and across its undo, because the words and their times are the same.
 - **Restore** (`restoreWords`): `restoreRange` of the span's range: what is cut inside it comes
   back at 1×, kept parts keep their speed, and neighbours with the same speed merge (the timeline's
   own restore rule).
@@ -459,6 +464,7 @@ New (owned):
   - `wordsRange(words, first, last, duration): TimeRange`, `MAX_REACH`
   - `cutWords(clips, words, spans, duration): Clip[]`, `restoreWords(clips, words, first, last, duration): Clip[]`
   - `wordIndexAt(words, t): number`, `spanSaving(...)`
+  - `anchorCutWords(transcript, before, after): Transcript | undefined`, `captionWordTimes(seg, known?): CaptionWord[]`, `sameWords(a, b): boolean`
 - `src/shared/editor/transcriptSelection.ts`: `interface WordSelection { anchor; focus }`,
   `selectionSpan`, `moveSelection(sel, key, shift, words)`, `clickSelection(sel, index, shift)`.
 - `src/shared/editor/fillers.ts`: `normalizeWord`, `fillerLanguage`, `findFillers(words, language?)`.

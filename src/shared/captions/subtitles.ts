@@ -33,9 +33,9 @@ const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c
  * The captions as they play in the exported video: each one's kept part from its first to its
  * last shown moment (the clips around a cut play back to back, so it stays one cue), scaled by
  * the speed. Its words are timed as the Transcript tab times them (alignCaptionWords), and a word
- * whose middle was cut is left out, as the tab shows it. A caption with no word timing to go by
- * (every time shared out) keeps all its words: a guess never takes out a word that is still heard
- * (deleting words in the tab stores their times first: anchorCutWords).
+ * whose middle was cut is left out, as the tab shows it, when its time is known. A word whose time
+ * is a guess (`estimated`) is kept: a guess never takes out a word that is still heard (deleting
+ * words in the tab stores their times as known first: anchorCutWords).
  * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {
@@ -61,8 +61,7 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
       last = outOf(c, starts[i], b)
     }
     if (first === null || last === null || last - first < MIN_CUE) continue
-    const timed = alignCaptionWords(seg)
-    const words = timed.some((t) => !t.estimated) ? timed.filter((t) => kept((t.start + t.end) / 2)) : timed
+    const words = alignCaptionWords(seg).filter((t) => t.estimated || kept((t.start + t.end) / 2))
     if (!words.length) continue
     cues.push({ start: first, end: last, text: words.map((t) => t.text).join(' ') })
   }

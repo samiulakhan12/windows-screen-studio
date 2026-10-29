@@ -37,12 +37,12 @@ function readWords(raw: unknown, start: number, end: number): CaptionWord[] | nu
   const out: CaptionWord[] = []
   for (const w of raw.slice(0, MAX_WORDS * 2)) {
     if (!w || typeof w !== 'object') continue
-    const { text, start: ws, end: we } = w as Partial<CaptionWord>
+    const { text, start: ws, end: we, estimated } = w as Partial<CaptionWord>
     if (typeof text !== 'string' || !finite(ws) || !finite(we)) continue
     const t = cleanCaptionText(text)
     if (!t) continue
     const s = Math.min(Math.max(ws, start), end)
-    out.push({ text: t, start: s, end: Math.min(Math.max(we, s), end) })
+    out.push({ text: t, start: s, end: Math.min(Math.max(we, s), end), ...(estimated === true ? { estimated } : {}) })
   }
   out.sort((a, b) => a.start - b.start)
   return out.length ? out.slice(0, MAX_WORDS) : null
