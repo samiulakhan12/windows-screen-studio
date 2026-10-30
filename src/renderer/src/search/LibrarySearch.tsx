@@ -140,6 +140,8 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       const step = e.key === 'ArrowDown' ? 1 : -1
       setActive((i) => (i < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, i + step))))
     } else if (e.key === 'Enter') {
+      // Still composing (an input method, as many Bangla keyboards use): the Enter is the IME's.
+      if (e.nativeEvent.isComposing) return
       const row = activeRow ?? rows[0]
       if (!row) return
       e.preventDefault()
@@ -204,7 +206,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
               <strong>{summary}</strong>
               <p>
                 Search looks in what was said (captions), titles, chapters, text on screen, speaker notes and names.
-                {response.withoutTranscript > 0 && ' Recordings without captions can only be found by their name and text.'}
+                {response.withoutTranscript > 0 && ' Recordings without captions are found by their name, titles, chapters, text on screen and notes.'}
               </p>
             </div>
           )}
@@ -241,14 +243,14 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
                         <>
                           <span className="search-time">{row.moment.start === null ? '' : clockTime(row.moment.start)}</span>
                           <span className="search-kind">{KIND_LABEL[row.moment.kind]}</span>
+                          <span className="search-snippet">
+                            <Snippet parts={row.moment.snippet} />
+                          </span>
                           {row.moment.cut && (
                             <span className="search-cut" title="This part was cut from the video">
                               Cut
                             </span>
                           )}
-                          <span className="search-snippet">
-                            <Snippet parts={row.moment.snippet} />
-                          </span>
                         </>
                       )}
                       {row.kind === 'more' && (

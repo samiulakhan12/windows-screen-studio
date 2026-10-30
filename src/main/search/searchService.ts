@@ -128,7 +128,8 @@ export class SearchService {
     if (raw !== null && stored.size === 0) this.dirty = true
     let slice = this.now()
     for (const [id, entry] of stored) {
-      this.index.add(id, entry)
+      // A save taken before the file was loaded is newer than what the file holds.
+      if (!this.index.has(id)) this.index.add(id, entry)
       if (this.now() - slice >= SEARCH_TIMING.sliceMs) {
         await this.yieldTurn()
         slice = this.now()
@@ -284,6 +285,18 @@ export class SearchService {
     }
     const hits = q ? this.index.search(q) : []
     return { query: q, hits, status: this.getStatus(), withoutTranscript: this.index.withoutTranscript() }
+  }
+
+  /**
+   * Home's list changed (a recording added or deleted): reconcile now. Before the index has started
+   * this does nothing: its start reconciles anyway, and start-up is not slowed down for it.
+   */
+  async refresh(): Promise<SearchStatus> {
+    if (this.started) {
+      await this.started
+      await this.reconcile()
+    }
+    return this.getStatus()
   }
 
   /** Writes what is pending (quitting); no more timers after this. */

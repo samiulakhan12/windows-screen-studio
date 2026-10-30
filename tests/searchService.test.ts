@@ -214,6 +214,35 @@ describe('SearchService', () => {
     expect(disk.reads).toEqual([])
   })
 
+  it('a refresh before the start does not start the index; after it, it reconciles', async () => {
+    const { disk, service } = setup()
+    disk.project('rec-a', { name: 'Alpha' })
+    expect(await service.refresh()).toEqual({ state: 'idle', indexed: 0, total: 0 })
+    expect(disk.reads).toEqual([])
+    await service.start()
+    disk.removeFolder('rec-a')
+    expect(await service.refresh()).toMatchObject({ state: 'ready' })
+    expect(service.index.ids()).toEqual([])
+  })
+
+  it('a save taken before the file is loaded is not replaced by the older stored entry', async () => {
+    const disk = new FakeDisk()
+    disk.project('rec-a', { name: 'Stored' })
+    const first = setup(disk)
+    await first.service.start()
+    first.service.dispose()
+    const file = `${ROOT}/rec-a/project.json`
+    const saved = { ...JSON.parse(disk.files.get(file)?.text ?? '{}'), name: 'Saved later' }
+    disk.put(file, saved)
+    const { service } = setup(disk)
+    service.noteSaved(saved, file)
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMING.saveDebounceMs + 10)
+    disk.reads = []
+    await service.start()
+    expect(await ids(service, 'later')).toEqual(['rec-a'])
+    expect(disk.reads).toEqual([INDEX]) // its stamp is current: not read again
+  })
+
   it('ignores saves of things that are not projects', async () => {
     const { service } = setup()
     await service.start()

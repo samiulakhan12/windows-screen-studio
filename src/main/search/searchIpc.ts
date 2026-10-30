@@ -112,9 +112,7 @@ export function registerSearchIpc(): void {
   })
   ipcMain.handle(SEARCH_CHANNELS.refresh, async (e) => {
     if (!fromMainWindow(e)) throw new Error('Not allowed')
-    void s.start()
-    await s.reconcile()
-    return s.getStatus()
+    return s.refresh()
   })
 }
 
