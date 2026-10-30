@@ -28,10 +28,11 @@
     "test:e2e": "node tests/e2e/run-all.cjs",
     "icons": "electron --no-sandbox scripts/icons/render-icons.cjs",
     "predist": "node scripts/predist.mjs",
-    "dist:win": "npm run predist && electron-vite build && electron-builder --win --x64 --config electron-builder.config.cjs && node scripts/verify-dist.mjs",
+    "dist:win": "npm run predist && electron-vite build && electron-builder --win --x64 --publish never --config electron-builder.config.cjs && node scripts/verify-dist.mjs",
     "verify:dist": "node scripts/verify-dist.mjs"
   },
   "dependencies": {
+    "electron-updater": "6.8.10",
     "ffmpeg-static": "5.3.0"
   },
   "optionalDependencies": {

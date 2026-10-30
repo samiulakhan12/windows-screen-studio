@@ -51,8 +51,12 @@ module.exports = {
   electronLanguages: ['en-US'],
   compression: 'maximum',
   npmRebuild: false,
-  // No auto-updater is wired up, so skip update metadata (app-update.yml, latest.yml, blockmap).
-  publish: null,
+  // Flown's own updates (docs/design/auto-update.md): this repository's GitHub releases. The builder
+  // writes resources/app-update.yml (where the app looks) and dist/latest.yml (what the release
+  // carries). It never uploads anything itself (`--publish never` in dist:win): the release workflow
+  // makes a draft that a person publishes. Signed builds also get the publisher name in
+  // app-update.yml, so the updater checks a downloaded installer's signature too.
+  publish: [{ provider: 'github', owner: 'samiulakhan12', repo: 'windows-screen-studio', releaseType: 'release' }],
   forceCodeSigning: signing.forceCodeSigning,
   // Flipped before signing. The signed exe never runs as plain Node (ELECTRON_RUN_AS_NODE), ignores
   // NODE_OPTIONS and --inspect, and loads only the app.asar whose header hash is embedded in it.

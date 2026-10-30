@@ -427,6 +427,8 @@ export async function importVideo(file: unknown, options: ImportOptions = {}): P
 /* ---------- IPC ---------- */
 
 let active: AbortController | null = null
+/** Whether an import runs (Restart to update waits for it). */
+export const importRunning = (): boolean => active !== null
 
 const guard = (e: IpcMainInvokeEvent): void => {
   if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')

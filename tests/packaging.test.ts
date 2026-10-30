@@ -823,7 +823,8 @@ describe('electron-builder.config.cjs', () => {
     expect(config.win.files).toBeUndefined()
     expect(config.electronLanguages).toEqual(['en-US'])
     expect(config.compression).toBe('maximum')
-    expect(config.publish).toBeNull()
+    // Updates come from this repository's GitHub releases (docs/design/auto-update.md §1.1).
+    expect(config.publish).toEqual([{ provider: 'github', owner: 'samiulakhan12', repo: 'windows-screen-studio', releaseType: 'release' }])
     expect(config.win.signtoolOptions).toBeUndefined()
     expect(config.win.azureSignOptions).toBeUndefined()
     for (const f of [config.win.icon, config.nsis.installerIcon, config.nsis.uninstallerIcon, config.nsis.installerSidebar]) {

@@ -33,6 +33,8 @@ interface ActiveExport {
 }
 
 let active: ActiveExport | null = null
+/** Whether an export runs (Restart to update waits for it). */
+export const exportRunning = (): boolean => active !== null
 let approvedExportPath: string | null = null
 let approvedThumbnailPath: string | null = null
 /** Folder chosen for a batch export, and the paths handed out in it (each accepted once). */

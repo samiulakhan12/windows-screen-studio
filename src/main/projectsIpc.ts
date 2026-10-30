@@ -58,6 +58,8 @@ function fromMainWindow(e: IpcMainInvokeEvent): boolean {
 
 /** The copy being made (Duplicate, Make a vertical version), so the editor's Cancel can stop it. */
 let copying: AbortController | null = null
+/** Whether a copy is being made (Restart to update waits for it). */
+export const copyRunning = (): boolean => copying !== null
 
 export function registerProjectsIpc(): void {
   ipcMain.handle('projects:list', () => projects.listProjects())

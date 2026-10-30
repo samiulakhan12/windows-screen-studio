@@ -177,6 +177,12 @@ export class VoiceCleaner {
 
   constructor(private readonly deps: VoiceCleanerDeps) {}
 
+  /** Whether a cleaned voice is being made (Restart to update waits for it). */
+  get busy(): boolean {
+    for (const job of this.jobs.values()) if (!job.cancelled) return true
+    return false
+  }
+
   /** The project folder and the stem's file name for these arguments (the source must exist). */
   private async locate(id: unknown, source: VoiceSource, strength: VoiceStrength): Promise<{ id: string; dir: string; input: string; key: string } | null> {
     if (typeof id !== 'string') throw new Error('Invalid request.')

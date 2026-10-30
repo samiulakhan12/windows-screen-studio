@@ -27,6 +27,7 @@ import { registerExportBundleIpc } from './exportBundle'
 import { appLog, startAppLog } from './appLog'
 import { appNames, appRoots, registerDiagnosticsIpc } from './diagnostics'
 import { registerStorageIpc } from './storageIpc'
+import { disposeUpdates, registerUpdatesIpc } from './updates/updatesIpc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -80,6 +81,8 @@ if (!app.requestSingleInstanceLock()) {
     registerExportBundleIpc()
     registerDiagnosticsIpc()
     registerStorageIpc()
+    // Flown's own updates (docs/design/auto-update.md): GitHub releases, packaged Windows builds only.
+    registerUpdatesIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()
@@ -94,6 +97,7 @@ if (!app.requestSingleInstanceLock()) {
     disposeExport()
     disposeImport()
     disposeJobs()
+    disposeUpdates()
     appLog()?.flushSync()
   })
 

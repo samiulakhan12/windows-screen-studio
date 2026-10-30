@@ -15,6 +15,7 @@ const require = createRequire(import.meta.url)
 const { readAsarHeader, listAsar } = require('./lib/asar.cjs')
 const { checkWindowsExe, parsePe, readIconGroups, readImports, readVersionStrings } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
+const { updateMetaProblems } = require('./lib/updateMeta.cjs')
 const {
   FFMPEG_EXE,
   missingSpeechOptions,
@@ -249,6 +250,28 @@ if (!signed(installer)) unsignedFiles.push(path.relative(distDir, installer))
 const signState = unsignedFiles.length ? `UNSIGNED: ${unsignedFiles.join(', ')}` : `installer and ${signedFiles(unpacked).length} file(s) in win-unpacked signed`
 if (process.env.SSW_REQUIRE_SIGNING === '1' && unsignedFiles.length) fail(`code signing required but ${signState}`)
 else note(`Authenticode: ${signState}`)
+
+// 7. Update metadata (docs/design/auto-update.md): the app knows where to look for updates, and
+// latest.yml (uploaded with the installer) names this installer with its real SHA-512 and size.
+{
+  const builder = require(path.join(root, 'electron-builder.config.cjs'))
+  const publish = Array.isArray(builder.publish) ? builder.publish[0] : builder.publish
+  const read = (file) => (existsSync(file) ? readFileSync(file, 'utf8') : null)
+  const installerName = path.basename(installer)
+  const problems = publish
+    ? updateMetaProblems({
+        appUpdateText: read(path.join(unpacked, 'resources', 'app-update.yml')),
+        latestText: read(path.join(distDir, 'latest.yml')),
+        publish,
+        version: pkg.version,
+        installerName,
+        installerSha512: existsSync(installer) ? createHash('sha512').update(readFileSync(installer)).digest('base64') : '',
+        installerSize
+      })
+    : ['electron-builder.config.cjs has no publish target (the app could not update itself)']
+  for (const p of problems) fail(`update metadata: ${p}`)
+  if (!problems.length) ok(`update metadata: app-update.yml -> ${publish.provider} ${publish.owner}/${publish.repo}; latest.yml ${pkg.version} -> ${installerName} (sha512 and size match)`)
+}
 
 const installSize = dirSize(unpacked)
 console.log(
