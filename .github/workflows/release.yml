@@ -5,42 +5,74 @@
 # Run it by hand: Actions › Release › Run workflow. It stops before building when the version in
 # package.json already has a release (draft or published) or docs/RELEASE-NOTES.md has no section
 # for it.
+#
+# Only the jobs that run no npm package and no build hold a token that can write to the
+# repository: the build job, which runs every dependency's install scripts and build code, can
+# only read it, so a bad dependency cannot publish a release, change a published one or push.
 name: Release
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  draft:
+  check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 10
+    # Write access only so the check sees drafts too.
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Version
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version package.json)
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The version in package.json is not x.y.z."
+            exit 1
+          fi
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::A release v$version already exists. Raise the version in package.json first."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
 
-      - name: Version and notes
-        id: meta
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Notes
         run: |
-          version=$(node -p "require('./package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          if gh release view "v$version" >/dev/null 2>&1; then
-            echo "::error::A release v$version already exists. Raise the version in package.json first."
-            exit 1
-          fi
-          node scripts/release-notes.mjs "$version" > "$RUNNER_TEMP/notes.md"
+          mkdir -p "$RUNNER_TEMP/release"
+          node scripts/release-notes.mjs "$VERSION" > "$RUNNER_TEMP/release/notes.md"
 
       # The toolchain native/README.md and docs/BUILDING.md list: the Windows helpers are
       # cross-compiled with MinGW-w64; Wine runs rcedit (icons and file properties of the exes).
@@ -58,21 +90,43 @@ jobs:
         env:
           # Release builds need both native helpers and the checked notices (scripts/predist.mjs).
           SSW_REQUIRE_NATIVE: '1'
-        run: npm run dist:win
+        run: |
+          npm run dist:win
+          cp "dist/Flown-Setup-$VERSION.exe" dist/latest.yml "$RUNNER_TEMP/release/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 1
+
+  draft:
+    needs: [check, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # No checkout, no npm, no build: this job only uploads what the build made.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release
 
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.meta.outputs.version }}
+          VERSION: ${{ needs.check.outputs.version }}
         run: |
-          gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "Flown $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
-            "dist/Flown-Setup-$VERSION.exe" dist/latest.yml
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Flown $VERSION" --notes-file release/notes.md \
+            "release/Flown-Setup-$VERSION.exe" release/latest.yml
           {
             echo "### Flown $VERSION: draft release made"
             echo
             echo "Open it under Releases, try the installer, then press **Publish release**."
             echo
             echo '```'
-            sha256sum "dist/Flown-Setup-$VERSION.exe"
+            sha256sum "release/Flown-Setup-$VERSION.exe"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

@@ -38,6 +38,9 @@ SHA-512 in `latest.yml`, so a changed file fails to install. Make a new version 
 - Builds are not code-signed yet, so the GitHub account is what users trust: **use two-factor
   sign-in** on it, and give write access only to people who release. Whoever can publish a release
   can ship an update to every user.
+- The *Release* workflow builds with a token that can only read the repository; only its last
+  job, which runs no npm package and no build, can make the draft. Keep it that way when changing
+  the workflow, so a bad dependency cannot publish a release or push.
 - With a code-signing certificate configured (`docs/BUILDING.md`, Code signing), electron-builder
   writes the publisher's name into the app, and Flown then also checks that each downloaded
   installer is signed by that publisher. Windows SmartScreen stops warning as well.

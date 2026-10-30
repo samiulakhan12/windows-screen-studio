@@ -203,6 +203,13 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   from the `## <version>` section of `docs/RELEASE-NOTES.md` (`scripts/release-notes.mjs`) and runs
   `gh release create v<version> --draft` with `Flown-Setup-<version>.exe` and `latest.yml` (no
   blockmap: differential downloads are off, `nsis.differentialPackage`). It stops before building when the tag exists or the notes section is missing.
+- Three jobs, so no npm package ever runs next to a token that can write to the repository: *check*
+  (write access, only to see drafts too; reads the version from `package.json`, runs no code),
+  *build* (read access only, checkout without stored credentials: notes, toolchain, `npm ci`,
+  `dist:win`, then the installer, `latest.yml` and the notes as a workflow artifact) and *draft*
+  (write access; no checkout, no npm: downloads that artifact and runs `gh release create`). A bad
+  dependency can still change the installer it builds (the person trying the draft is the check
+  for that), but it cannot publish a release, change a published one or push.
 - `docs/RELEASING.md`: bump the version and the notes, push, run the workflow, try the draft,
   press *Publish release*; how to pull a bad release; why two-factor sign-in matters.
 - `verify-dist` now also checks that `latest.yml` names the installer with its size and SHA-512 and
