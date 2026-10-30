@@ -436,3 +436,30 @@ E2E (`tests/e2e/publish-pack.e2e.cjs`, with the AI mock):
 - Posting directly to YouTube / LinkedIn / X (needs OAuth apps per platform).
 - Per-part descriptions written by the AI for "one file per chapter".
 - Saving the other items with the project or as files in the export bundle.
+
+---
+
+## 12. As built
+
+Where the build differs from or adds to the sections above:
+
+- **Tone and Length** are the editor's chip groups (buttons with `aria-pressed`, `controls.tsx`
+  `Chips`), like every other choice in the editor, not radio groups.
+- **A link is kept only when the transcript has the very same link** (case ignored), not merely a
+  longer one that contains it (`example.co` is not `example.com/settings`). Links are also found when
+  glued to a word (`_https://…`) and as bare domains with a common top-level domain
+  (`evil.com/login`), because LinkedIn and X turn those into links too. E-mail addresses are kept.
+- **The saved description shows in the YouTube card** of a new session (it says *Stop using for
+  exports*), so the export's text is never hidden.
+- **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),
+  called from `exportBundleRun.ts`.
+- **A palette request is written once:** closing the dialog clears it, so reopening Publish never
+  sends it again; the Captions tab's AI request is cleared once taken, so a remount (undo bringing
+  the captions back) never runs it again.
+- **The queue keeps a cancelled job's slot** until its request has really stopped, so Stop all and
+  Write all again never put more than two requests out at once.
+- **Excerpts** of a long transcript start from the smallest step that can fit (a few passes, not
+  hundreds), and are built once per request.
+- **The mock AI** (`tests/e2e/ai-mock-server.cjs`) answers the pack's prompts by task, names the tone
+  and length it was asked for, puts markup and a foreign link in the YouTube answer, makes the X post
+  too long, and with a `slow…` key holds each pack request 2.5 s while counting how many run at once.

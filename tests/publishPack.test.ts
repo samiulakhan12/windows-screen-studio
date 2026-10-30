@@ -8,7 +8,7 @@ import { cleanTags, packPrompt, packTranscript, PACK_DATA_START, PACK_RULES, ren
 import { readPublish } from '../src/shared/publish/project'
 import { createQueue, CancelledError } from '../src/shared/publish/queue'
 import { cutAt, fitX, plainText, xLength, X_LIMIT } from '../src/shared/publish/text'
-import { composeYoutubeDescription, parseTags, projectYoutubeChapters, tagsText, YOUTUBE_DESCRIPTION_MAX } from '../src/shared/publish/youtube'
+import { composeYoutubeDescription, exportDescription, parseTags, projectYoutubeChapters, tagsText, YOUTUBE_DESCRIPTION_MAX } from '../src/shared/publish/youtube'
 import type { CaptionSegment, Clip } from '../src/shared/types'
 
 const seg = (id: string, start: number, end: number, text: string): CaptionSegment => ({ id, start, end, text })
@@ -29,6 +29,11 @@ describe('plainText', () => {
     expect(plainText(text, { max: 200, linksFrom: TRANSCRIPT })).toBe('See https://example.com/settings. Or and')
     expect(plainText(text, { max: 200 })).toBe('See . Or and')
     expect(plainText(text, { max: 200, keepLinks: true })).toBe(text)
+    // Glued to a word, or a bare domain: still links (sites link them), still removed.
+    expect(plainText('Sign up at _https://evil.example/login or 1https://x.example and evil.com/login, mail@evil.com', { max: 200, linksFrom: '' })).toBe('Sign up at _ or 1 and , mail@evil.com')
+    expect(plainText('Say example.com now', { max: 200, linksFrom: 'go to example.com.' })).toBe('Say example.com now')
+    // Words with dots that are not links stay.
+    expect(plainText('Node.js, e.g. v1.2 and file.txt', { max: 200 })).toBe('Node.js, e.g. v1.2 and file.txt')
     // Only the very same link: a shorter one that is part of it can be another site.
     expect(plainText('Go to https://example.co or https://EXAMPLE.com/settings', { max: 200, linksFrom: TRANSCRIPT })).toBe('Go to or https://EXAMPLE.com/settings')
   })
@@ -58,6 +63,7 @@ describe('xLength and fitX', () => {
   it('counts as X does: links 23, emoji 2, CJK 2, Latin 1', () => {
     expect(xLength('hello')).toBe(5)
     expect(xLength('see https://example.com/a/very/long/path/that/goes/on')).toBe(4 + 23)
+    expect(xLength('see flown.app')).toBe(4 + 23)
     expect(xLength('hi 👋🏽')).toBe(5)
     expect(xLength('👨\u200d👩\u200d👧')).toBe(2)
     expect(xLength('日本語')).toBe(6)
@@ -292,18 +298,45 @@ describe('createQueue', () => {
     expect(q.running).toEqual([])
     expect(q.cancel('zzz')).toBe(false)
   })
-  it('frees the slot of a cancelled job at once, replaces a job with the same id, and cancels all', async () => {
+  it('replaces a job with the same id, and cancels all', async () => {
     const q = createQueue(1)
-    const first = q.add({ id: 'x', run: () => new Promise<string>(() => undefined) })
+    const stoppable = (signal: AbortSignal): Promise<string> => new Promise<string>((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted'))))
+    const first = q.add({ id: 'x', run: stoppable })
     const second = q.add({ id: 'x', run: async () => 'again' })
     await expect(first).rejects.toBeInstanceOf(CancelledError)
     expect(await second).toBe('again')
-    const never = (): Promise<string> => new Promise<string>(() => undefined)
-    const all = [q.add({ id: 'p', run: never }), q.add({ id: 'q', run: never })]
+    const all = [q.add({ id: 'p', run: stoppable }), q.add({ id: 'q', run: stoppable })]
     q.cancelAll()
     for (const p of all) await expect(p).rejects.toBeInstanceOf(CancelledError)
     expect(q.running).toEqual([])
     expect(q.waiting).toEqual([])
+  })
+  it('keeps a cancelled job’s slot until its work stops: never more than the limit at once', async () => {
+    const q = createQueue(2)
+    const ends: (() => void)[] = []
+    let out = 0
+    let most = 0
+    const job = (): Promise<string> => {
+      out++
+      most = Math.max(most, out)
+      return new Promise<string>((resolve) => ends.push(() => (out--, resolve('ok'))))
+    }
+    const a = q.add({ id: 'a', run: job }).catch((e: Error) => e)
+    q.add({ id: 'b', run: job }).catch(() => undefined)
+    q.cancel('a')
+    expect(await a).toBeInstanceOf(CancelledError)
+    const c = q.add({ id: 'c', run: job })
+    expect(q.busy).toBe(2)
+    expect(q.waiting).toEqual(['c'])
+    expect(most).toBe(2)
+    ends[0]()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(q.waiting).toEqual([])
+    expect(most).toBe(2)
+    ends[1]()
+    ends[2]()
+    expect(await c).toBe('ok')
   })
   it('passes errors through', async () => {
     const q = createQueue(2)
@@ -392,19 +425,17 @@ describe('the copy pack in the command palette', () => {
 })
 
 describe('the export bundle’s description with a saved one', () => {
-  it('is what Copy gives, and a part keeps its own', async () => {
-    const { sidecarText } = await import('../src/renderer/src/editor/exportBundleRun')
+  it('is what Copy gives, and a part keeps its own', () => {
     const project = migrateProject({
       id: 'p', name: 'Demo', createdAt: '', duration: 120, width: 100, height: 100, hasWebcam: false, hasAudio: true, webcamOffset: 0,
       clips: [{ id: 'c', start: 0, end: 120, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: {}, cursor: {}, webcam: {}, effects: {}, audio: {}, version: 2,
       chapters: [{ id: 'a', t: 0, title: 'Intro' }, { id: 'b', t: 60, title: 'Users' }]
     })
-    const req = { project, kinds: ['description' as const], title: 'Demo', thumbnail: async () => new Uint8Array() }
-    expect(sidecarText('description', req)).toBe('Demo\n\nLength: 2 min\n\nChapters\n0:00 Intro\n1:00 Users\n')
-    const saved = { ...req, project: { ...project, publish: { description: 'All about users.' } } }
-    const { chapters, duration } = projectYoutubeChapters(saved.project)
-    expect(sidecarText('description', saved)).toBe(`${composeYoutubeDescription('All about users.', chapters, duration)}\n`)
-    expect(sidecarText('description', saved)).toBe('All about users.\n\nChapters\n0:00 Intro\n1:00 Users\n')
-    expect(sidecarText('description', { ...saved, part: { index: 0, count: 2, of: 'Demo' } })).toMatch(/^Demo\n\nPart 1 of 2 of Demo/)
+    const { chapters, duration } = projectYoutubeChapters(project)
+    expect(exportDescription(project, 'Demo', duration, chapters)).toBe('Demo\n\nLength: 2 min\n\nChapters\n0:00 Intro\n1:00 Users\n')
+    const saved = { ...project, publish: { description: 'All about users.' } }
+    expect(exportDescription(saved, 'Demo', duration, chapters)).toBe(`${composeYoutubeDescription('All about users.', chapters, duration)}\n`)
+    expect(exportDescription(saved, 'Demo', duration, chapters)).toBe('All about users.\n\nChapters\n0:00 Intro\n1:00 Users\n')
+    expect(exportDescription(saved, 'Demo', duration, chapters, { index: 0, count: 2, of: 'Demo' })).toMatch(/^Demo\n\nPart 1 of 2 of Demo/)
   })
 })

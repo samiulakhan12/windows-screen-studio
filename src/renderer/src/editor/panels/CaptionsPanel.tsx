@@ -197,7 +197,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
             onSelect={props.onSelect}
             onNotice={props.onNotice}
           />
-          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} request={aiNow} />
+          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} request={aiNow} onRequestHandled={() => setAiNow(null)} />
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
       )}
@@ -1012,13 +1012,16 @@ function AiToolsSection({
   providers,
   onNotice,
   services,
-  request
+  request,
+  onRequestHandled
 }: {
   providers: AiProviderInfo[] | null
   onNotice: (message: string) => void
   services: ReturnType<typeof useEditor>
   /** A tool the command palette asked for (NW-13): run once the providers are known. */
   request?: { task: CaptionsAiTask; n: number } | null
+  /** Called once the request is taken, so a remount never runs it again. */
+  onRequestHandled?: () => void
 }): JSX.Element {
   const { store } = services
   const [provider, setProvider] = useState(remembered.textProvider)
@@ -1098,6 +1101,7 @@ function AiToolsSection({
   useEffect(() => {
     if (!request || request.n === handled.current || providers === null) return
     handled.current = request.n
+    onRequestHandled?.()
     if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
     if (busy) return onNotice('An AI tool is already working')
     if (request.task !== 'translate') return void run(request.task)

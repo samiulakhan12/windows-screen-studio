@@ -264,6 +264,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, onWrite, onStop, on
   const over = limit !== undefined && count > limit
   const tags = parseTags(item.tags)
   const text = item.text.trim()
+  const cleanTitle = kind === 'title' ? plainText(item.text, { max: 150, oneLine: true, keepLinks: true }) : ''
   const isSaved = saved !== null && saved === plainText(item.text, { max: 3000, keepLinks: true })
 
   return (
@@ -343,7 +344,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, onWrite, onStop, on
             </button>
           ))}
         {kind === 'title' && !busy && (
-          <button className="btn small ghost" disabled={!text} onClick={() => onRename(plainText(text, { max: 150, oneLine: true, keepLinks: true }))}>
+          <button className="btn small ghost" disabled={!cleanTitle} onClick={() => onRename(cleanTitle)}>
             Rename the recording
           </button>
         )}

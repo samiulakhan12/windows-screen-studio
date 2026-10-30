@@ -8,8 +8,12 @@
 // eslint-disable-next-line no-control-regex
 const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufeff]/g
 
-/** Links as they are written in text: with a scheme, or starting with "www.". */
-const LINK = /\b(?:https?:\/\/|www\.)[^\s<>"'`]+/gi
+/**
+ * Links as they are written in text: with a scheme or "www." anywhere (also glued to a word, as
+ * "_https://…"), or a bare domain with a common top-level domain ("evil.com/login"), which sites
+ * turn into links too.
+ */
+const LINK = /(?:https?:\/\/|www\.)[^\s<>"'`]+|(?<![\p{L}\p{N}@.-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:com|net|org|io|co|app|dev|ai|me|ly|gg|xyz|info|biz|link|site|online|shop|store|page|ru|cn|tk|top|click|zip|mov)(?![\p{L}\p{N}])(?:\/[^\s<>"'`]*)?/giu
 
 export interface PlainTextOptions {
   /** Longest result (characters), cut at a sentence or word end. */
@@ -67,7 +71,7 @@ export function cutAt(s: string, max: number): string {
   if (chars.length <= max) return s
   if (max <= 1) return chars.slice(0, Math.max(0, max)).join('')
   const head = chars.slice(0, max).join('')
-  const sentence = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '), head.lastIndexOf('.\n'), head.lastIndexOf('\n'))
+  const sentence = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '), head.lastIndexOf('.\n'), head.lastIndexOf('\n\n'))
   if (sentence >= head.length / 2) return head.slice(0, sentence + 1).trim()
   const room = chars.slice(0, max - 1).join('')
   const space = room.search(/\s\S*$/)
@@ -102,7 +106,7 @@ export function xLength(s: string): number {
   }
   for (const m of s.matchAll(X_TOKENS)) {
     n += counted(s.slice(last, m.index))
-    n += /^(?:https?:\/\/|www\.)/i.test(m[0]) ? X_URL : 2
+    n += /^\p{Extended_Pictographic}/u.test(m[0]) ? 2 : X_URL
     last = m.index! + m[0].length
   }
   return n + counted(s.slice(last))

@@ -1336,7 +1336,10 @@ function EditorSession({
 
       // NW-13 publishing copy pack: the Captions tab's AI tools run there; the pack's items open Publish.
       ...aiToolCommands,
-      publishPack: () => setDialog('publish'),
+      publishPack: () => {
+        setPublishRequest(null)
+        setDialog('publish')
+      },
       publishYoutube: () => writeInPublish('youtube'),
       publishLinkedin: () => writeInPublish('linkedin'),
       publishX: () => writeInPublish('xpost'),
@@ -1620,7 +1623,7 @@ function EditorSession({
           <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
             <EditorIcon name="sparkle" size={16} /> Polish
           </button>
-          <button className="btn" data-testid="publish-open" onClick={() => setDialog('publish')} title={withShortcut('Write the text to post with the video', keymap.publishPack)}>
+          <button className="btn" data-testid="publish-open" onClick={() => commandsRef.current.publishPack()} title={withShortcut('Write the text to post with the video', keymap.publishPack)}>
             <EditorIcon name="transcript" size={16} /> Publish
           </button>
           <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
@@ -1734,8 +1737,13 @@ function EditorSession({
           <PublishDialog
             project={project}
             request={publishRequest}
-            onClose={closeDialog}
+            onClose={() => {
+              // A palette request is written once: reopening the dialog never sends it again.
+              setPublishRequest(null)
+              closeDialog()
+            }}
             onGenerateCaptions={() => {
+              setPublishRequest(null)
               setDialog(null)
               setTab('captions')
               requestCaptions({ kind: 'generate' })

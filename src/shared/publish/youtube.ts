@@ -6,6 +6,7 @@
  */
 import { planOf, videoDuration } from '../engine/freeze'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../render/chapters'
+import { descriptionText } from '../render/exportBundle'
 import type { Project } from '../types'
 import { cutAt } from './text'
 
@@ -34,6 +35,22 @@ export function composeYoutubeDescription(text: string, chapters: readonly Outpu
   const room = YOUTUBE_DESCRIPTION_MAX - [...tail].length - 2
   if (room <= 0) return cutAt(tail, YOUTUBE_DESCRIPTION_MAX)
   return `${cutAt(body, room)}\n\n${tail}`
+}
+
+/**
+ * The export bundle's description file: the copy pack's saved description composed with the chapters
+ * of this export, as the dialog's Copy gives it; without one, or for a part of "one file per chapter",
+ * the standard description (exportBundle.ts descriptionText).
+ */
+export function exportDescription(
+  project: Pick<Project, 'publish'>,
+  title: string,
+  length: number,
+  chapters: readonly OutputChapter[],
+  part?: { index: number; count: number; of: string }
+): string {
+  if (project.publish?.description && !part) return `${composeYoutubeDescription(project.publish.description, chapters, length)}\n`
+  return descriptionText(title, length, chapters, part)
 }
 
 /** Tags as YouTube's tag field takes them: comma separated. */

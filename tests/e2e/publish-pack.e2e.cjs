@@ -300,6 +300,12 @@ async function main() {
         for (const k of KINDS.filter((k) => k !== 'xpost')) h.assert((await status(win, k)) === 'idle', `${k} untouched`)
         h.assert(mock.pack.count - before === 1, 'one request')
         h.assert((await cardText(win, 'xpost')).startsWith('Mock X post (friendly normal)'), 'default tone and length')
+        // Reopening the dialog never sends the palette's request again.
+        await card(win, 'xpost').locator('textarea.publish-text').fill('My post')
+        await closeDialog(win)
+        await openDialog(win)
+        await h.sleep(1000)
+        h.assert(mock.pack.count - before === 1 && (await cardText(win, 'xpost')) === 'My post', 'reopening writes nothing again')
         await closeDialog(win)
 
         await runCommand(win, 'summarize with ai', 'Summarize with AI')

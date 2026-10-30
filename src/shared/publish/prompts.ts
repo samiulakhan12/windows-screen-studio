@@ -106,7 +106,8 @@ export function packTranscript(segments: readonly Pick<CaptionSegment, 'text'>[]
   const texts = segments.map((s) => s.text.replace(/\s+/g, ' ').trim()).filter(Boolean)
   const whole = texts.join(' ')
   if (whole.length <= max) return { text: whole, shortened: false }
-  for (let k = 2; k <= texts.length; k++) {
+  // The smallest step that can fit, then up from there: a few passes even for the longest transcripts.
+  for (let k = Math.max(2, Math.floor(whole.length / max)); k <= texts.length; k++) {
     const kept = texts.filter((_, i) => i % k === 0)
     const text = kept.join(' … ')
     if (text.length <= max) return { text, shortened: true }
@@ -132,8 +133,8 @@ export function readPackContext(raw: unknown): { title?: string; chapters?: stri
 }
 
 /** The prompt of pack task `request.task`: fixed instructions, then the video as JSON data. */
-export function packPrompt(request: AiTextRequest & { task: PackTextTask }): TextPrompt {
-  const { text, shortened } = packTranscript(request.segments)
+export function packPrompt(request: AiTextRequest & { task: PackTextTask }, sent = packTranscript(request.segments)): TextPrompt {
+  const { text, shortened } = sent
   const length: PublishLength = request.length === 'short' ? 'short' : 'normal'
   const tone: PublishTone = request.tone && request.tone in TONE_LINES ? request.tone : 'friendly'
   const data: Record<string, unknown> = {}
@@ -264,6 +265,6 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
 
 /** Runs pack task `request.task` with `ask` (one request) and checks the answer. */
 export async function runPackTask(request: AiTextRequest & { task: PackTextTask }, ask: (prompt: TextPrompt) => Promise<unknown>): Promise<AiTextResult> {
-  const prompt = packPrompt(request)
-  return validatePackAnswer(request.task, await ask(prompt), packTranscript(request.segments).text)
+  const sent = packTranscript(request.segments)
+  return validatePackAnswer(request.task, await ask(packPrompt(request, sent)), sent.text)
 }
