@@ -29,8 +29,9 @@ const MAIN = { id: 1, isDestroyed: () => false, sent: [] as [string, unknown][],
 const OTHER = { id: 2, isDestroyed: () => false, send: () => undefined }
 vi.mock('../src/main/windows', () => ({ getMainWindow: () => ({ isDestroyed: () => false, webContents: MAIN }) }))
 
-const { COPYING_MARK, LINKED_MEDIA, copiedFile, duplicateProject, linkAllowed, removeAbandonedCopies, removeStaleCopies } = await import('../src/main/projectCopy')
+const { COPYING_MARK, LINKED_MEDIA, NOT_COPIED_DIRS, copiedFile, duplicateProject, linkAllowed, removeAbandonedCopies, removeStaleCopies } = await import('../src/main/projectCopy')
 const { registerProjectsIpc } = await import('../src/main/projectsIpc')
+const { VERSIONS_DIR } = await import('../src/main/versions')
 const { projectDir, projectsRoot } = await import('../src/main/projects')
 const { createProject } = await import('../src/shared/engine/project')
 type Project = import('../src/shared/types').Project
@@ -161,6 +162,19 @@ describe('making a copy (test 61)', () => {
     for (const f of [...LEFT_OUT, 'overlay-9.png', COPYING_MARK]) expect(existsSync(path.join(dst, f)), f).toBe(false)
     expect(readdirSync(path.join(dst, '.cache'))).toEqual(['speech.json'])
     expect(readdirSync(dst).sort()).toEqual([...MEDIA, ...COPIED.filter((f) => !f.includes('/')), '.cache', 'project.json'].sort())
+  })
+})
+
+describe('versions (docs/design/versions.md §2.6)', () => {
+  it('stay with the source: a copy starts its own history', async () => {
+    const src = seedSource()
+    mkdirSync(path.join(src, VERSIONS_DIR))
+    writeFileSync(path.join(src, VERSIONS_DIR, 'index.json'), '{"v":1,"items":[]}')
+    writeFileSync(path.join(src, VERSIONS_DIR, 'v-aaaaaaaa-00000000.json'), '{}')
+    expect(NOT_COPIED_DIRS).toContain(VERSIONS_DIR)
+    const result = await duplicateProject(SOURCE, rendererCopy(), { now: NOW })
+    expect(existsSync(path.join(projectDir(result.id), VERSIONS_DIR))).toBe(false)
+    expect(readdirSync(path.join(src, VERSIONS_DIR))).toHaveLength(2)
   })
 })
 

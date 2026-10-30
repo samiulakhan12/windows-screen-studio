@@ -7,6 +7,7 @@
  */
 import { promises as fs, type Dirent, type Stats } from 'node:fs'
 import path from 'node:path'
+import { VERSIONS_DIR } from './versions'
 import { cleanupPlan, freedBytes, lastUsed, type CleanupAction, type CleanupItem, type RecordingUsage, type SharedFile, type StorageRules } from '../shared/storage/rules'
 
 /** How far one recording's folder is walked. */
@@ -139,6 +140,9 @@ export async function scanProjects(
     const size = await folderSize(dir, deps)
     const cacheStat = await deps.lstat(path.join(dir, CACHE_DIR)).catch(() => null)
     const cache = cacheStat?.isDirectory() && !cacheStat.isSymbolicLink() ? await folderSize(path.join(dir, CACHE_DIR), deps) : { bytes: 0, capped: false }
+    // Kept versions of the edit (docs/design/versions.md §2.6): counted apart, never cleaned as a cache.
+    const versionsStat = await deps.lstat(path.join(dir, VERSIONS_DIR)).catch(() => null)
+    const versions = versionsStat?.isDirectory() && !versionsStat.isSymbolicLink() ? (await folderSize(path.join(dir, VERSIONS_DIR), deps)).bytes : 0
     out.push({
       id: e.name,
       name,
@@ -148,7 +152,8 @@ export async function scanProjects(
       cacheBytes: cache.bytes,
       finished,
       capped: size.capped,
-      ...(size.shared.length ? { shared: size.shared } : {})
+      ...(size.shared.length ? { shared: size.shared } : {}),
+      ...(versions > 0 ? { versionBytes: versions } : {})
     })
   }
   // Only names in recordings hold a file: one in the Recycle Bin (a removed original) or anywhere

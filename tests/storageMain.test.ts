@@ -48,6 +48,20 @@ beforeEach(() => {
 afterEach(() => rmSync(home, { recursive: true, force: true }))
 
 describe('scan', () => {
+  it('counts kept versions apart, and the cache rule never takes them', async () => {
+    const dir = project('rec-v', { bytes: 1000, cache: 100, days: 60 })
+    mkdirSync(path.join(dir, 'versions'))
+    writeFileSync(path.join(dir, 'versions', 'v-aaaaaaaa-00000000.json'), 'x'.repeat(400))
+    writeFileSync(path.join(dir, 'versions', 'index.json'), 'x'.repeat(50))
+    const r = (await scanProjects(root, {})).find((x) => x.id === 'rec-v')!
+    expect(r.versionBytes).toBe(450)
+    expect(r.cacheBytes).toBe(100)
+    expect(r.bytes).toBeGreaterThanOrEqual(1550)
+    project('rec-w', { bytes: 10 })
+    const w = (await scanProjects(root, {})).find((x) => x.id === 'rec-w')!
+    expect('versionBytes' in w).toBe(false)
+  })
+
   it('measures every recording, its cache, and whether it is finished', async () => {
     project('rec-a', { bytes: 5000, cache: 700, days: 10 })
     project('rec-b', { noProject: true, bytes: 300 })

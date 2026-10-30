@@ -19,6 +19,11 @@ import * as projects from './projects'
 
 /** The recording's media, never rewritten once the project exists: linked when allowed. */
 export const LINKED_MEDIA = ['screen.mp4', 'webcam.mp4', 'mic.m4a', 'system.m4a'] as const
+/**
+ * Folders a copy never takes (docs/design/versions.md §2.6): `versions` holds the source's own
+ * history, and a copy starts its own (a vertical version's earlier versions would undo its framing).
+ */
+export const NOT_COPIED_DIRS: readonly string[] = ['versions']
 /** Written first into a copy being made, removed when it is finished. */
 export const COPYING_MARK = '.copying'
 
@@ -97,6 +102,7 @@ async function planFiles(src: string): Promise<Planned[]> {
     if (stat.isFile()) out.push({ name, how, stat })
   }
   for (const entry of await fs.readdir(src)) {
+    if (NOT_COPIED_DIRS.includes(entry)) continue
     if (entry !== '.cache') await add(entry)
     else if ((await fs.lstat(path.join(src, entry))).isDirectory()) {
       await add(SPEECH_CACHE).catch((err: NodeJS.ErrnoException) => {

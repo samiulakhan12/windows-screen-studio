@@ -126,6 +126,7 @@ export function StorageSection(): JSX.Element {
                   <span className="storage-meta">
                     {r.finished ? `${dateOf(r.createdAt)} · used ${usedAgo(r.lastUsed, overview.now)}` : 'Unfinished'}
                     {r.cacheBytes > 0 ? ` · incl. ${formatBytes(r.cacheBytes)} cache` : ''}
+                    {r.versionBytes ? ` · ${formatBytes(r.versionBytes)} in versions` : ''}
                     {sharedNote(r.shared)}
                   </span>
                   <span className="storage-size">
