@@ -368,6 +368,13 @@ the project. Play, Show ignored and the scan state are view state.
 
 ## 8. Performance (measured here; a Windows PC of the same class should be close)
 
+Measured in the built app on this 4-core Linux container (`tests/e2e/sound-finder.e2e.cjs`'s
+fixture repeated: speech on the microphone about half the time, a ding and music on the system
+sound): **10 minutes in 10.6 s, an hour in 74.6 s** from the click to the list. For the hour, the
+first 45 s are the sound levels and the speech detector on the whole recording, which the editor
+shares (ducking, Remove silences) and keeps in `.cache/speech.json`; listening itself took about
+30 s for the two sources together. Opening the recording again shows the list in under a second.
+
 - YAMNet: **6.8 ms per window** (0.4875 s of sound per window with the overlap): ≈ **50 s per hour of
   sound classified**, one core, per source.
 - Skipping quiet and speech windows: a narrated microphone is typically 50–70% speech, so ≈ 15–25 s
@@ -467,4 +474,13 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
 
 ## 13. As built
 
-(Filled in when the build is done.)
+- Order of §4.3 changed while building: speech is taken out of a window run first, then each piece is
+  fitted to the levels, and the row's key is the piece's start before fitting. Fitting first let
+  loud speech next to a sound set its level, and made the key depend on the levels.
+- Listening shows *"Getting the recording ready…"* while the levels and the speech detector are
+  measured (45 s for an hour the first time), then the percentage.
+- Opening the Audio tab reads the stored scores first and only waits for the levels and the speech
+  detector when every source has some.
+- `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
+  `scripts/notices.mjs` names it among the bundled packages and `resources/THIRD_PARTY_NOTICES.txt`
+  is regenerated; `resources/notices/34-yamnet.txt` names the model.
