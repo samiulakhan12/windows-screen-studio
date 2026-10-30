@@ -35,6 +35,7 @@ import { ImportButton } from '../import/ImportButton'
 import { ImportDialog } from '../import/ImportDialog'
 import { ImportDropZone } from '../import/ImportDropZone'
 import { useVideoImport } from '../import/useVideoImport'
+import { LibrarySearch } from '../search/LibrarySearch'
 
 const PREFS_KEY = 'recorder-prefs'
 
@@ -831,6 +832,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </h2>
               <ImportButton importer={importer} disabled={!idle} />
             </div>
+            <LibrarySearch projects={projects} onOpen={onOpenProject} />
             <ImportDropZone importer={importer} disabled={!idle} empty={projects.length === 0}>
             {projects.length === 0 ? (
               <div className="empty-state">
