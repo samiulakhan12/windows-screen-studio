@@ -39,10 +39,17 @@ interface Sheet {
 }
 
 const sheets = new Map<string, Promise<Sheet | null>>()
+/** Sheets kept decoded (about 15 MB each): the project open and the one before. */
+const KEEP_SHEETS = 2
 
 /** The decoded sheet of project `id` (asked of main once per editor session; a failure is asked again next time). */
 function loadSheet(id: string): Promise<Sheet | null> {
   let p = sheets.get(id)
+  if (p) {
+    // The most recently used last, so the oldest is the one released.
+    sheets.delete(id)
+    sheets.set(id, p)
+  }
   if (!p) {
     p = window.api
       .getFilmstrip(id)
@@ -56,6 +63,11 @@ function loadSheet(id: string): Promise<Sheet | null> {
         return s
       })
     sheets.set(id, p)
+    while (sheets.size > KEEP_SHEETS) {
+      const [oldest, sheet] = sheets.entries().next().value!
+      sheets.delete(oldest)
+      void sheet.then((s) => s?.image.close())
+    }
   }
   return p
 }

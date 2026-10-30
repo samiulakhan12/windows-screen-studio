@@ -57,6 +57,8 @@ export function VersionsDialog({
   const [busy, setBusy] = useState(false)
   const [row, setRow] = useState<RowView | null>(null)
   const [renameText, setRenameText] = useState('')
+  /** The version whose rename field Esc closed: its blur, which follows, must not save. */
+  const renameCancelled = useRef<string | null>(null)
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
@@ -120,11 +122,14 @@ export function VersionsDialog({
   }
 
   const rename = async (v: VersionMeta): Promise<void> => {
+    if (renameCancelled.current === v.id) return
+    renameCancelled.current = v.id
     try {
       await window.api.renameVersion(projectId, v.id, renameText)
       setRow(null)
       versionsChanged()
     } catch (err) {
+      renameCancelled.current = null
       setError(`Could not rename the version: ${ipcMessage(err)}`)
     }
   }
@@ -201,6 +206,7 @@ export function VersionsDialog({
                             value={renameText}
                             onChange={(e) => setRenameText(e.target.value)}
                             onKeyDown={(e) => {
+                              if (e.key === 'Escape') renameCancelled.current = v.id
                               escapeRow(e)
                               if (e.key === 'Enter') {
                                 e.preventDefault()
@@ -230,6 +236,7 @@ export function VersionsDialog({
                           type="button"
                           className="btn small ghost"
                           onClick={() => {
+                            renameCancelled.current = null
                             setRenameText(v.name)
                             setRow({ id: v.id, kind: 'rename' })
                           }}

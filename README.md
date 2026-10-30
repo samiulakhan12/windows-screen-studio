@@ -100,8 +100,8 @@ These are the defaults; every one can be changed in the Shortcuts dialog (`Ctrl+
 | `Space` | Play / pause |
 | `J` / `K` / `L` | Play backwards / pause / play forward (press `J` or `L` again for 2×, 4×, 8×; hold `K` and tap `J` / `L` to step one frame) |
 | `<` / `>` | Slower / faster preview speed (0.5×–2×; the export is not affected) |
-| `←` / `→` | Step 1/30 s |
-| `Shift+←` / `Shift+→` | Back / forward one second |
+| `←` / `→` | Step 1/30 s; with items selected, move them one frame earlier / later |
+| `Shift+←` / `Shift+→` | Back / forward one second; with items selected, move them ten frames |
 | `Home` / `End` | Go to the start / end |
 | `S` | Split the clip at the playhead |
 | `C` | Crop the recording (`Enter` applies, `Esc` cancels) |
@@ -131,6 +131,7 @@ These are the defaults; every one can be changed in the Shortcuts dialog (`Ctrl+
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste items (pasted at the playhead; the items stay in Flown, not in the Windows clipboard) |
 | `Ctrl+D` | Duplicate the selected items right after themselves |
 | `Ctrl+Shift+C` / `Ctrl+Shift+V` | Copy one item's look / paste it onto the selected items |
+| `Ctrl+Shift+S` | Save a version of the edit (Versions: compare, rename, or go back to any of them) |
 
 ## How it works (short version)
 
