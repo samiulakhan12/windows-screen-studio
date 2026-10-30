@@ -76,6 +76,12 @@ describe('timeTextPart', () => {
     expect(long.length).toBeGreaterThan(1)
   })
 
+  it('leaves out slivers of sound too short to hold a word', () => {
+    const words = timeTextPart('one two', [{ start: 0, end: 0.05 }, { start: 2, end: 4 }], 5).flatMap((s) => s.words!)
+    expect(words[0].start).toBe(2)
+    expect(words.every((w) => w.end - w.start > 0.5)).toBe(true)
+  })
+
   it('returns nothing for no text', () => {
     expect(timeTextPart('   ', [{ start: 0, end: 1 }], 1)).toEqual([])
     expect(timeTextPart('hi', [], 0)).toEqual([])

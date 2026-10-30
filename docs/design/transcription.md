@@ -175,6 +175,15 @@ test checks, with the mock's tone bursts, that every word starts within 0.6 s of
 (`transcriptMerge.ts`) carries both through unchanged (two additive spreads), so `CaptionWord.estimated`
 reaches the project.
 
+Risk: where no pause is found near the end of a 30 s window (steady music or noise under the
+voice), parts are cut at a fixed point with a 2 s overlap, and the merge pairs the words both parts
+heard by text and time (within 0.5 s). Two separate estimates can differ by more than that, so a
+word there may show twice or be missed. Speech with pauses of 0.5 s or more every 10 s or so never
+hits this. Matching the overlap by text alone is left for later (§13).
+
+Stretches of sound shorter than 0.12 s are left out of the spread (a sliver at a part's edge would
+squeeze a word to nothing and the caption would be dropped as too short).
+
 ### 3.5 Saying so in the UI
 
 - **Captions tab, Generate form**, with an OpenAI provider whose model gives text only:
@@ -287,9 +296,12 @@ A paragraph whose speaker differs from the paragraph before starts with the name
 - **WebVTT**: a cue with a speaker is `<v Name>text` (the name escaped like the text: `&`, `<`,
   `>`), always — players that do not show voices ignore the tag.
 - **SRT** and **text**: `Name: text` when the option is on; unchanged when off (the default).
-- **Burned-in**: with *Show speaker names*, the caption is drawn as `Name: text`; the name is one
-  more token, timed at the caption's start, so karaoke never lights it. Preview and export draw
-  through the same layer (`captionsLayer.ts`), so they match.
+- **Burned-in**: with *Show speaker names*, the caption is drawn as `Name: text`; each word of the
+  name is a `label` token (`CaptionToken.label`, `layout.ts`) that karaoke never lights, and the
+  caption's own words keep the times the drawing gives them without the name. Preview and export
+  draw through the same layer (`captionsLayer.ts`), so they match.
+- The export pack (*Also save*, `exportBundleRun.ts`, not part of this change) writes WebVTT with
+  voice tags; its SRT has no names (the option is the Captions tab's).
 
 ## 9. Data model
 
@@ -356,6 +368,8 @@ tracks gets You/Others; a retired-model 404 shows the plain message.
 ## 13. Left for later
 
 - Aligning a provider's text to word times from the speech model on this PC (§2.1 alternative 2).
+- Matching the overlap of text-only parts cut without a pause by text instead of time (§3.4).
+- *Speaker names in SRT and text* for the export pack's files.
 - Keeping Gemini's speaker numbers consistent across 5-minute parts (send the previous part's
   last seconds, or match voices).
 - Speaker labels for captions made On this PC beyond You/Others (needs a diarization model).

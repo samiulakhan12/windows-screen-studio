@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { cleanSpeakerName, clearSpeakers, nextSpeakerName, renameSpeaker, setSpeaker, SPEAKER_COPY, speakersOf, stemSpeakers } from '../../../../shared/captions/speakers'
+import { cleanSpeakerName, SPEAKER_NAME_MAX, clearSpeakers, nextSpeakerName, renameSpeaker, setSpeaker, SPEAKER_COPY, speakersOf, stemSpeakers } from '../../../../shared/captions/speakers'
 import { captionsOf } from '../../../../shared/captions/settings'
 import type { CaptionSegment, Project } from '../../../../shared/types'
 import { loadAudioAnalysis } from '../audioAnalysis'
@@ -72,8 +72,9 @@ export function SpeakersSection({ project, onNotice }: { project: Project; onNot
     <Section title={SPEAKER_COPY.title}>
       {speakers.length > 0 && (
         <ul className="speaker-list" data-testid="speaker-list">
-          {speakers.map((s) => (
-            <li key={s.name} className="speaker-row">
+          {/* Keyed by place, not name: a rename keeps the field (and the focus). */}
+          {speakers.map((s, i) => (
+            <li key={i} className="speaker-row">
               <SpeakerName name={s.name} onRename={(to) => rename(s.name, to)} />
               <span className="hint">{SPEAKER_COPY.count(s.count)}</span>
             </li>
@@ -110,7 +111,7 @@ function SpeakerName({ name, onRename }: { name: string; onRename: (to: string) 
       className="tc-input speaker-name"
       aria-label={SPEAKER_COPY.nameLabel(name)}
       value={draft}
-      maxLength={64}
+      maxLength={SPEAKER_NAME_MAX}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {

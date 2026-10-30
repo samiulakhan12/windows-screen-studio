@@ -5,7 +5,8 @@
  */
 import { activityThreshold } from '../audio/activity'
 import { powerDb, type AudioLevels } from '../audio/loudness'
-import type { CaptionSegment } from '../types'
+import type { CaptionSegment, CaptionWord } from '../types'
+import { captionTokens } from './layout'
 
 /** Longest speaker name, in characters. */
 export const SPEAKER_NAME_MAX = 32
@@ -143,16 +144,17 @@ export function stemSpeakers(segments: readonly CaptionSegment[], mic: AudioLeve
 
 /**
  * The caption as drawn with its speaker's name first ("Priya: Hello"), for the burned-in captions
- * with Show speaker names on: the name is one more word, timed at the caption's start, so karaoke
- * never lights it. The caption itself without a speaker.
+ * with Show speaker names on: each word of the name is a `label` token at the caption's start, which
+ * karaoke never lights (layout.ts spokenToken), and the caption's own words keep the times the
+ * drawing would give them anyway (captionTokens). The caption itself without a speaker.
  */
 export function speakerCaption(seg: CaptionSegment): CaptionSegment {
   if (!seg.speaker || !seg.text.trim()) return seg
   const name = `${seg.speaker}:`
-  const words = seg.text.split(/\s+/).filter(Boolean)
-  const timed = seg.words && seg.words.length === words.length ? [{ text: name, start: seg.start, end: seg.start }, ...seg.words] : undefined
+  const label = name.split(/\s+/).filter(Boolean).map((text) => ({ text, start: seg.start, end: seg.start, label: true as const }) as CaptionWord)
+  const own: CaptionWord[] = captionTokens(seg).map(({ text, start, end }) => ({ text, start, end }))
   const { words: _old, ...rest } = seg
-  return { ...rest, text: `${name} ${seg.text}`, ...(timed ? { words: timed } : {}) }
+  return { ...rest, text: `${name} ${seg.text}`, words: [...label, ...own] }
 }
 
 /** What the Speakers section and the options say (docs/design/transcription.md §7). */

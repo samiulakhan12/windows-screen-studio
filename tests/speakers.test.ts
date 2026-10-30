@@ -17,6 +17,7 @@ import {
 } from '../src/shared/captions/speakers'
 import { subtitleFile, toPlainText, toSrt, toVtt } from '../src/shared/captions/subtitles'
 import type { AudioLevels } from '../src/shared/audio/loudness'
+import { captionTokens, spokenToken } from '../src/shared/captions/layout'
 import type { CaptionSegment } from '../src/shared/types'
 
 const seg = (id: string, start: number, end: number, text: string, speaker?: string): CaptionSegment => ({ id, start, end, text, ...(speaker ? { speaker } : {}) })
@@ -105,12 +106,29 @@ describe('speakers in the files and on the video', () => {
     expect(toVtt([{ start: 0, end: 1, text: 'a --> b', speaker: 'x-->y' }])).toContain('<v x-&gt;y>a -&gt; b')
   })
 
-  it('draws the name as a first word timed at the caption start', () => {
-    const timed = { ...seg('a', 1, 3, 'Hello there', 'Sam'), words: [{ text: 'Hello', start: 1.2, end: 2 }, { text: 'there', start: 2, end: 2.8 }] }
-    expect(speakerCaption(timed)).toEqual({ id: 'a', start: 1, end: 3, speaker: 'Sam', text: 'Sam: Hello there', words: [{ text: 'Sam:', start: 1, end: 1 }, ...timed.words] })
+  it('draws the name first, never lit by karaoke, the caption words keeping their times', () => {
+    const timed = { ...seg('a', 1, 3, 'Hello there', 'Speaker 2'), words: [{ text: 'Hello', start: 1.2, end: 2 }, { text: 'there', start: 2, end: 2.8 }] }
+    const drawn = speakerCaption(timed)
+    expect(drawn.text).toBe('Speaker 2: Hello there')
+    expect(drawn.words).toEqual([
+      { text: 'Speaker', start: 1, end: 1, label: true },
+      { text: '2:', start: 1, end: 1, label: true },
+      { text: 'Hello', start: 1.2, end: 2 },
+      { text: 'there', start: 2, end: 2.8 }
+    ])
+    const tokens = captionTokens(drawn)
+    expect(tokens.map((t) => t.label ?? false)).toEqual([true, true, false, false])
+    const chunk = { first: 0, last: 3 }
+    // Before the first word nothing is lit; then the words, never the name.
+    expect(spokenToken({ tokens }, chunk, 1.1)).toBe(-1)
+    expect(spokenToken({ tokens }, chunk, 1.5)).toBe(2)
+    expect(spokenToken({ tokens }, chunk, 2.5)).toBe(3)
+    // Words that no longer match the text (an edit) are spread as the drawing spreads them, the name still apart.
+    const edited = speakerCaption({ ...seg('c', 0, 1, 'Hi you', 'Sam'), words: [{ text: 'x', start: 0, end: 1 }] })
+    expect(edited.words!.map((w) => w.text)).toEqual(['Sam:', 'Hi', 'you'])
+    expect(captionTokens(edited)[0].label).toBe(true)
     const plain = seg('b', 0, 1, 'Hi')
     expect(speakerCaption(plain)).toBe(plain)
-    expect(speakerCaption({ ...seg('c', 0, 1, 'Hi', 'Sam'), words: [{ text: 'x', start: 0, end: 1 }, { text: 'y', start: 0, end: 1 }] })).not.toHaveProperty('words')
   })
 })
 

@@ -45,6 +45,8 @@ export interface CaptionToken {
   text: string
   start: number
   end: number
+  /** Not spoken: the speaker's name drawn before the caption (speakers.ts speakerCaption); karaoke never lights it. */
+  label?: true
 }
 
 /**
@@ -61,7 +63,7 @@ export function captionTokens(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
       const w = seg.words![i]
       const start = clamp(Math.max(w.start, at), seg.start, seg.end)
       at = start
-      return { text, start, end: clamp(Math.max(w.end, start), start, seg.end) }
+      return { text, start, end: clamp(Math.max(w.end, start), start, seg.end), ...((w as { label?: true }).label ? { label: true as const } : {}) }
     })
   }
   // Evenly by characters (a space counts as one), so long words take longer.
@@ -404,6 +406,7 @@ export function chunkIndexAt(layout: Pick<CaptionLayout, 'chunks'>, t: number): 
 export function spokenToken(layout: Pick<CaptionLayout, 'tokens'>, chunk: Pick<CaptionChunk, 'first' | 'last'>, t: number): number {
   let spoken = -1
   for (let i = chunk.first; i <= chunk.last; i++) {
+    if (layout.tokens[i].label) continue
     if (layout.tokens[i].start <= t) spoken = i
     else break
   }

@@ -11,6 +11,8 @@ import type { RawSegment, RawWord } from './transcriptParse'
 
 /** Longest part sent to a provider that returns text only, seconds. */
 export const TEXT_PART_SECONDS = 30
+/** Stretches of sound shorter than this are left out (a sliver at a part's edge would squeeze a word to nothing), seconds. */
+const MIN_STRETCH = 0.12
 /** Less sound than this in a part, seconds: the whole part counts as sound. */
 const MIN_ACTIVE = 0.2
 /** A word is not stretched over a pause longer than this, seconds. */
@@ -97,7 +99,7 @@ function spreadOver(texts: readonly string[], ranges: readonly Range[]): RawWord
 export function timeTextPart(text: string, active: readonly Range[], partSeconds: number): RawSegment[] {
   const texts = text.split(/\s+/).filter(Boolean)
   if (!texts.length || !(partSeconds > 0)) return []
-  const clipped = activeIn(active, 0, partSeconds)
+  const clipped = activeIn(active, 0, partSeconds).filter((r) => r.end - r.start >= MIN_STRETCH)
   const voiced = clipped.reduce((n, r) => n + (r.end - r.start), 0)
   const words = spreadOver(texts, voiced >= MIN_ACTIVE ? clipped : [{ start: 0, end: partSeconds }])
   const segments: RawSegment[] = []
