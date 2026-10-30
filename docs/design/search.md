@@ -372,6 +372,32 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 
 ## 10. Risks
 
+### Known limits (accepted)
+
+- `strasse` does not find "Straße" (`toLowerCase` keeps ß; full case folding would need a table).
+- `京都` does not find "東京都": the word breaker splits it as 東京 + 都, and matching is by word
+  prefix. Indexing every Han character on its own (bigrams) would fix it at about twice the index size.
+- At most 50 recordings are returned; the count then says "The first 50 recordings found. Add a word
+  to narrow them."
+
+### Found in review and fixed
+
+- New results of the same query (while the index is built) used to reset the active row, so Enter
+  could open another recording: the active row is now kept by its key (the recording, the kind and the
+  time of the moment), and Enter opens nothing when that row is gone.
+- An index file entry is held to the caps of §2.2 (text, notes, kept ranges); a hostile entry of
+  56 MB took 6 s to index in one go and is now dropped and read again from its project.
+- The vocabulary is made again when most of its terms are dead (autosaves replace a recording's
+  words), so a long editing session does not slow down every keystroke's scan.
+- The stamp of a save is the stat taken right after its write, not 1.5 s later.
+- The file is never written before it was loaded, nor when it is too large to read back (64 MB).
+- A project folder named `__proto__` is stored like any other.
+- Snippets in scripts without spaces keep their text before the match and never cut a surrogate pair.
+- The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
+- Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
+  3 s and only after a change); an asynchronous write is left for later.
+
+
 - **The first build on a big library** reads every `project.json` (500 × ~100 KB = 50 MB of JSON):
   about 2–4 s of reads on a slow disk, in the background, one file per slice; parsing a large file
   is one synchronous `JSON.parse` (~10 ms for 1 MB) and cannot be sliced. A 64 MB cap keeps a

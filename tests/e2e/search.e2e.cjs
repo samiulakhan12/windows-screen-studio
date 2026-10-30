@@ -11,7 +11,12 @@ const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
 
 const SHOTS = process.env.SSW_E2E_SHOTS || null
-const shot = async (win, name) => SHOTS && win.screenshot({ path: path.join(SHOTS, `${name}.png`) })
+/** A screenshot of Home's left column (the library and its search). */
+async function shot(win, name) {
+  if (!SHOTS) return
+  const area = await (await win.$('.home-main')).boundingBox()
+  await win.screenshot({ path: path.join(SHOTS, `${name}.png`), clip: area })
+}
 
 function test(name, body) {
   const only = process.env.SSW_E2E_ONLY

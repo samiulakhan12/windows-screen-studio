@@ -243,6 +243,30 @@ describe('SearchService', () => {
     expect(disk.reads).toEqual([INDEX]) // its stamp is current: not read again
   })
 
+  it('keeps the stamp taken at the save: a later write by someone else is read again', async () => {
+    const { disk, service } = setup()
+    disk.project('rec-a', { name: 'Alpha' })
+    await service.start()
+    const file = `${ROOT}/rec-a/project.json`
+    const saved = { ...JSON.parse(disk.files.get(file)?.text ?? '{}'), name: 'Edited' }
+    disk.put(file, saved)
+    service.noteSaved(saved, file, await disk.stat(file))
+    // Within the debounce, the recording's finish writes the file again.
+    disk.put(file, { ...saved, name: 'Finished' })
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMING.saveDebounceMs + SEARCH_TIMING.reconcileAfterMs + 10)
+    expect(await ids(service, 'finished')).toEqual(['rec-a'])
+  })
+
+  it('never writes the file before it was loaded (it would drop what the file holds)', async () => {
+    const disk = new FakeDisk()
+    disk.project('rec-a', { name: 'Alpha' })
+    disk.put(INDEX, serializeIndex(new Map([['rec-z', { stamp: 'x', name: 'Zed', createdAt: '', duration: 1, units: [], hasTranscript: false, kept: [] }]])))
+    const { service } = setup(disk)
+    service.noteSaved({ id: 'rec-a', name: 'Alpha' }, `${ROOT}/rec-a/project.json`)
+    service.dispose()
+    expect(disk.writes).toEqual([])
+  })
+
   it('ignores saves of things that are not projects', async () => {
     const { service } = setup()
     await service.start()

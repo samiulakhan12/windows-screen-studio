@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { SearchResponse, SearchStatus, SnippetPart } from '../../../shared/api/search'
 import { clockTime, KIND_LABEL, resultsSummary } from '../../../shared/search/moment'
+import { SEARCH_LIMITS } from '../../../shared/search/types'
 import type { ProjectSummary } from '../../../shared/types'
 import { clearPendingMoment, setPendingMoment } from './openAt'
 import { dateOf, resultRows, rowLabel, type Row } from './rows'
@@ -30,7 +31,8 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [status, setStatus] = useState<SearchStatus | null>(null)
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
-  const [active, setActive] = useState(-1)
+  /** The active row by its key, so results that change while the index is built keep it (or lose it, never move it). */
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const listId = useId()
   const seq = useRef(0)
@@ -59,11 +61,11 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
     return () => window.clearTimeout(timer)
   }, [query, run])
 
-  // New results start with nothing active and nothing expanded.
+  // A new query starts with nothing active and nothing expanded (new results of the same query keep both).
   useEffect(() => {
-    setActive(-1)
+    setActiveKey(null)
     setExpanded(new Set())
-  }, [response])
+  }, [query])
 
   // While the index is built, results fill in as it goes.
   const queryRef = useRef(query)
@@ -94,9 +96,12 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
     )
   }, [idsKey, run])
 
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
   // Ctrl+F on Home puts the cursor in the box (not while a dialog is open over Home).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (!projectsRef.current.length) return
       if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'f') return
       if (document.querySelector('[role="dialog"][aria-modal="true"], .modal, dialog[open]')) return
       e.preventDefault()
@@ -111,6 +116,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
   const known = useMemo(() => new Set(projects.map((p) => p.id)), [projects])
   const hits = useMemo(() => (searching && response ? response.hits.filter((h) => known.has(h.id)) : []), [searching, response, known])
   const rows = useMemo(() => resultRows(hits, expanded), [hits, expanded])
+  const active = activeKey === null ? -1 : rows.findIndex((r) => r.key === activeKey)
   const activeRow = active >= 0 ? rows[active] : undefined
   const optionId = (key: string): string => `${listId}-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`
   const activeId = activeRow ? optionId(activeRow.key) : undefined
@@ -124,8 +130,9 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       const next = new Set(expanded)
       next.add(row.hit.id)
       setExpanded(next)
-      // Stay on the first moment that was hidden.
-      setActive(rows.indexOf(row))
+      // Stay on the first moment that was hidden (it takes the "more" row's place).
+      const firstHidden = resultRows([row.hit], next).find((r) => r.kind === 'moment' && !rows.some((o) => o.key === r.key))
+      setActiveKey(firstHidden?.key ?? null)
       return
     }
     if (row.kind === 'moment' && row.moment.start !== null) setPendingMoment(row.hit.id, row.moment.start)
@@ -138,11 +145,13 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       if (!rows.length) return
       e.preventDefault()
       const step = e.key === 'ArrowDown' ? 1 : -1
-      setActive((i) => (i < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, i + step))))
+      const i = active < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, active + step))
+      setActiveKey(rows[i].key)
     } else if (e.key === 'Enter') {
       // Still composing (an input method, as many Bangla keyboards use): the Enter is the IME's.
       if (e.nativeEvent.isComposing) return
-      const row = activeRow ?? rows[0]
+      // A row picked that the latest results no longer hold: nothing opens (never another recording).
+      const row = activeKey === null ? rows[0] : activeRow
       if (!row) return
       e.preventDefault()
       activate(row)
@@ -157,7 +166,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
 
   const live = status ?? response?.status ?? null
   const building = live?.state === 'building'
-  const summary = searching && response ? resultsSummary(hits.length, response.query) : ''
+  const summary = searching && response ? resultsSummary(hits.length, response.query, SEARCH_LIMITS.hits) : ''
 
   return (
     <div className="library-search" data-active={searching ? 'true' : 'false'}>
@@ -192,7 +201,8 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
         )}
       </div>
       <p className="sr-only" role="status" aria-live="polite">
-        {summary}
+        {/* Not while the index is built: the count would be read out every half second. */}
+        {building ? '' : summary}
       </p>
       {searching && (
         <div className="search-results">
@@ -226,7 +236,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
                       className={`search-row search-${row.kind}${index === active ? ' active' : ''}`}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => activate(row)}
-                      onMouseMove={() => index !== active && setActive(index)}
+                      onMouseMove={() => index !== active && setActiveKey(row.key)}
                     >
                       {row.kind === 'open' && (
                         <>

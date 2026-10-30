@@ -63,10 +63,12 @@ export class SearchService {
   private status: SearchStatus = { state: 'idle', indexed: 0, total: 0 }
   private dirty = false
   private writeTimer: ReturnType<typeof setTimeout> | null = null
-  private readonly pendingSaves = new Map<string, { project: unknown; timer: ReturnType<typeof setTimeout> }>()
+  private readonly pendingSaves = new Map<string, { project: unknown; timer: ReturnType<typeof setTimeout>; stamp: { mtimeMs: number; size: number } | null }>()
   /** Where each indexed project's file is (for the stamp after a save). */
   private readonly files = new Map<string, string>()
   private disposed = false
+  /** The index file has been read: before that, writing it would drop what it holds. */
+  private loaded = false
 
   constructor(private readonly deps: SearchServiceDeps) {}
 
@@ -135,6 +137,7 @@ export class SearchService {
         slice = this.now()
       }
     }
+    this.loaded = true
   }
 
   /** The project folders: id → project.json path, the first root winning. */
@@ -216,7 +219,7 @@ export class SearchService {
    * The editor saved `project` (already written): index it from the object in hand, debounced per
    * project, stamped with its file's stat taken then (so a later reconcile does not read it again).
    */
-  noteSaved(project: unknown, file: string): void {
+  noteSaved(project: unknown, file: string, stamp?: { mtimeMs: number; size: number } | null): void {
     if (this.disposed || !project || typeof project !== 'object') return
     const id = (project as { id?: unknown }).id
     if (typeof id !== 'string' || !ID_RE.test(id)) return
@@ -228,7 +231,9 @@ export class SearchService {
         // A newer save came in meanwhile: its own timer indexes it.
         if (!latest || this.pendingSaves.get(id) !== latest) return
         this.pendingSaves.delete(id)
-        const st = await this.deps.disk.stat(file).catch(() => null)
+        // The stat taken right after the save's write; another write since (a recording finishing,
+        // an import) then differs from it, and the next reconcile reads the file again.
+        const st = latest.stamp ?? (await this.deps.disk.stat(file).catch(() => null))
         if (!st) return
         const entry = indexedProject(latest.project, stampOf(st))
         if (!entry) return
@@ -238,7 +243,7 @@ export class SearchService {
         this.scheduleWrite()
       })
     }, SEARCH_TIMING.saveDebounceMs)
-    this.pendingSaves.set(id, { project, timer })
+    this.pendingSaves.set(id, { project, timer, stamp: stamp ?? null })
   }
 
   private scheduleWrite(): void {
@@ -251,14 +256,21 @@ export class SearchService {
 
   /** Writes the index file when something changed; a failure is logged and tried again later. */
   writeNow(): void {
-    if (!this.dirty) return
+    if (!this.dirty || !this.loaded) return
     const entries = new Map<string, IndexedProject>()
     for (const id of this.index.ids()) {
       const e = this.index.get(id)
       if (e) entries.set(id, e)
     }
+    const text = serializeIndex(entries)
+    // A file the next start would refuse to read is not written: the index is built again instead.
+    if (text.length * 3 > MAX_READ_BYTES && Buffer.byteLength(text) > MAX_READ_BYTES) {
+      this.dirty = false
+      this.log('The search index is too large to keep; it is built again at the next start')
+      return
+    }
     try {
-      this.deps.disk.writeText(this.deps.indexFile, serializeIndex(entries))
+      this.deps.disk.writeText(this.deps.indexFile, text)
       this.dirty = false
     } catch (err) {
       this.log(`Could not write the search index (${err instanceof Error && 'code' in err ? String((err as NodeJS.ErrnoException).code) : 'error'}); trying again later`)

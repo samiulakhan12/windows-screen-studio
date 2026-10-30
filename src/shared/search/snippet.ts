@@ -8,6 +8,8 @@ export type Range = readonly [number, number]
 
 const ELLIPSIS = '…'
 
+const isLowSurrogate = (c: number): boolean => c >= 0xdc00 && c <= 0xdfff
+
 /** Sorted, merged ranges inside 0..length. */
 function mergeRanges(ranges: readonly Range[], length: number): [number, number][] {
   const sorted = ranges
@@ -56,11 +58,14 @@ export function snippetOf(text: string, ranges: readonly Range[]): SnippetPart[]
   // Cut on a word boundary: never in the middle of a word.
   if (from > lineStart) {
     const space = text.slice(from, first[0]).search(/\s/)
-    from = space < 0 ? first[0] : from + space + 1
+    // No space to cut at (Chinese, Japanese, Thai): cut between characters, never inside a surrogate pair.
+    if (space >= 0) from += space + 1
+    else if (isLowSurrogate(text.charCodeAt(from))) from++
   }
   if (to < lineEnd) {
     const space = text.slice(first[1], to).search(/\s\S*$/)
-    to = space < 0 ? to : first[1] + space
+    if (space >= 0) to = first[1] + space
+    else if (isLowSurrogate(text.charCodeAt(to))) to--
   }
   const parts = markRanges(text, merged, from, to)
   const trimmed = parts.length ? parts : [{ text: '', hit: false }]

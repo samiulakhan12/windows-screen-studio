@@ -22,6 +22,8 @@ const PHRASE_BONUS = 0.5
 const OTHER_UNIT_BONUS = 0.25
 const OTHER_UNITS_COUNTED = 8
 const ALL_TERMS_BONUS = 0.5
+/** Dead terms tolerated before the vocabulary is made again. */
+const COMPACT_MIN_DEAD = 2000
 
 /** Scripts written without spaces: a one-character word is a whole word there, matched by prefix everywhere. */
 const UNSPACED_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
@@ -60,14 +62,21 @@ export function allowedTypos(term: string, length = codePoints(term)): number {
 }
 
 export class SearchIndex {
-  private readonly termIds = new Map<string, number>()
-  private readonly terms: string[] = []
-  private readonly termLengths: number[] = []
-  private readonly postings: Set<Doc>[] = []
+  private termIds = new Map<string, number>()
+  private terms: string[] = []
+  private termLengths: number[] = []
+  private postings: Set<Doc>[] = []
   private readonly docs = new Map<string, Doc>()
+  /** Terms no recording holds any more (saves replace a recording's words). */
+  private dead = 0
 
   get size(): number {
     return this.docs.size
+  }
+
+  /** Terms in the vocabulary, dead ones included (tests). */
+  get vocabularySize(): number {
+    return this.terms.length
   }
 
   has(id: string): boolean {
@@ -97,6 +106,8 @@ export class SearchIndex {
       this.terms.push(term)
       this.termLengths.push(codePoints(term))
       this.postings.push(new Set())
+    } else if (this.postings[id].size === 0) {
+      this.dead-- // alive again
     }
     return id
   }
@@ -126,8 +137,36 @@ export class SearchIndex {
   remove(id: string): void {
     const doc = this.docs.get(id)
     if (!doc) return
-    for (const tid of doc.terms) this.postings[tid].delete(doc)
+    for (const tid of doc.terms) {
+      const p = this.postings[tid]
+      if (p.delete(doc) && p.size === 0) this.dead++
+    }
     this.docs.delete(id)
+    // Every query scans the vocabulary: once most of it is dead, make it again from the live terms.
+    if (this.dead > COMPACT_MIN_DEAD && this.dead * 2 > this.terms.length) this.compact()
+  }
+
+  /** Drops dead terms, renumbering the live ones in every recording. */
+  private compact(): void {
+    const remap = new Int32Array(this.terms.length).fill(-1)
+    const termIds = new Map<string, number>()
+    const terms: string[] = []
+    const termLengths: number[] = []
+    const postings: Set<Doc>[] = []
+    for (let tid = 0; tid < this.terms.length; tid++) {
+      if (this.postings[tid].size === 0) continue
+      remap[tid] = terms.length
+      termIds.set(this.terms[tid], terms.length)
+      terms.push(this.terms[tid])
+      termLengths.push(this.termLengths[tid])
+      postings.push(this.postings[tid])
+    }
+    for (const doc of this.docs.values()) for (let k = 0; k < doc.terms.length; k++) doc.terms[k] = remap[doc.terms[k]]
+    this.termIds = termIds
+    this.terms = terms
+    this.termLengths = termLengths
+    this.postings = postings
+    this.dead = 0
   }
 
   /** The vocabulary's matches for one query word. */

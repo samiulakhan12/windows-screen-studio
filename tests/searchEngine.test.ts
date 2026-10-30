@@ -223,6 +223,22 @@ describe('SearchIndex', () => {
   })
 })
 
+describe('SearchIndex vocabulary', () => {
+  it('drops terms no recording holds once most of the vocabulary is dead', () => {
+    const r = new SearchIndex()
+    r.add('keep', entry('Keep', [said(1, 'stable words here')]))
+    for (let round = 0; round < 6; round++) {
+      const words = Array.from({ length: 1000 }, (_, i) => `w${round}x${i}`).join(' ')
+      r.add('edited', entry('Edited', [said(1, words)]))
+    }
+    expect(r.vocabularySize).toBeLessThan(2600)
+    expect(r.search('stable').map((h) => h.id)).toEqual(['keep'])
+    expect(r.search('w5x999').map((h) => h.id)).toEqual(['edited'])
+    const [hit] = r.search('stable')
+    expect(hits(hit.moments[0].snippet)).toEqual(['stable'])
+  })
+})
+
 describe('snippetOf', () => {
   it('shows the text around the first match, cut on words, with ellipses', () => {
     const text = `${'word '.repeat(30)}xx target ${'tail '.repeat(40)}`
@@ -249,6 +265,20 @@ describe('snippetOf', () => {
     ])
   })
 
+  it('keeps the text before a match in scripts without spaces, never splitting a character', () => {
+    const text = `${'录屏很好'.repeat(30)}目标${'很'.repeat(200)}`
+    const at = text.indexOf('目标')
+    const s = plain(snippetOf(text, [[at, at + 2]]))
+    expect(s.startsWith('…录') || s.startsWith('…屏') || s.startsWith('…很') || s.startsWith('…好')).toBe(true)
+    expect(s.length).toBeGreaterThan(100)
+    // A cut 60 units before the hit lands inside a surrogate pair here.
+    const emoji = `${'😀'.repeat(40)}xhit`
+    const e = emoji.indexOf('hit')
+    const parts = snippetOf(emoji, [[e, e + 3]])
+    expect(plain(parts)).not.toMatch(/[\uDC00-\uDFFF]…|…[\uDC00-\uDFFF]/)
+    expect(plain(parts).slice(1).codePointAt(0)).toBe(0x1f600)
+  })
+
   it('merges overlapping ranges and shows the start without a match', () => {
     expect(hits(snippetOf('abcdef', [[0, 3], [2, 5]]))).toEqual(['abcde'])
     expect(plain(snippetOf('short text', []))).toBe('short text')
@@ -260,6 +290,19 @@ describe('index file', () => {
 
   it('round-trips', () => {
     expect(parseIndexFile(JSON.parse(serializeIndex(projects)))).toEqual(projects)
+  })
+
+  it('keeps a project folder named __proto__', () => {
+    const odd = new Map([['__proto__', entry('Odd', [])]])
+    expect([...parseIndexFile(JSON.parse(serializeIndex(odd))).keys()]).toEqual(['__proto__'])
+  })
+
+  it('drops an entry over the caps Flown writes (a damaged or hostile file)', () => {
+    const big = (units: unknown[], kept: unknown[] = []): unknown => ({ version: SEARCH_INDEX_VERSION, projects: { 'rec-1': { stamp: 's', name: 'n', createdAt: '', duration: 1, hasTranscript: true, kept, units } } })
+    expect(parseIndexFile(big(Array.from({ length: 250 }, () => ['said', 1, 2, 'y'.repeat(2000)]))).size).toBe(0)
+    expect(parseIndexFile(big(Array.from({ length: 201 }, () => ['notes', null, null, 'n']))).size).toBe(0)
+    expect(parseIndexFile(big([], Array.from({ length: 10_001 }, (_, i) => [i, i + 0.5]))).size).toBe(0)
+    expect(parseIndexFile(big(Array.from({ length: 200 }, () => ['said', 1, 2, 'y'.repeat(2000)]))).size).toBe(1)
   })
 
   it('drops a file of another version whole, and entries that do not validate', () => {
@@ -290,5 +333,7 @@ describe('moments', () => {
     expect(spokenTime(3601)).toBe('1 hour 1 second')
     expect(resultsSummary(1, 'x')).toBe('1 recording found')
     expect(resultsSummary(0, 'xy')).toBe('No recordings match "xy".')
+    expect(resultsSummary(50, 'x', 50)).toBe('The first 50 recordings found. Add a word to narrow them.')
+    expect(resultsSummary(49, 'x', 50)).toBe('49 recordings found')
   })
 })

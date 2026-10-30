@@ -3,7 +3,7 @@
  * for Home, and the editor's save hook. Only the main window's own page may query (§6).
  */
 import { app, ipcMain, type IpcMainInvokeEvent } from 'electron'
-import { mkdirSync, promises as fs } from 'node:fs'
+import { mkdirSync, promises as fs, statSync } from 'node:fs'
 import path from 'node:path'
 import { SEARCH_CHANNELS } from '../../shared/api/search'
 import type { SearchStatus } from '../../shared/search/types'
@@ -119,7 +119,17 @@ export function registerSearchIpc(): void {
 /** The editor saved a project (projectsIpc.ts saveProjectNow): the index takes it in a moment. Never throws. */
 export function noteProjectSaved(project: { id: string }): void {
   try {
-    service?.noteSaved(project, path.join(projectDir(project.id), 'project.json'))
+    if (!service) return
+    const file = path.join(projectDir(project.id), 'project.json')
+    // Stat'ed now, right after the save's write, so the stamp is this save's.
+    let st: { mtimeMs: number; size: number } | null = null
+    try {
+      const s = statSync(file)
+      st = { mtimeMs: s.mtimeMs, size: s.size }
+    } catch {
+      // Read again by the next reconcile.
+    }
+    service.noteSaved(project, file, st)
   } catch {
     // An id projectDir refuses was refused by the save before this.
   }

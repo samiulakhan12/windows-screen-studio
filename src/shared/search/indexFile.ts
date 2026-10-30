@@ -24,6 +24,8 @@ export interface IndexFile {
 }
 
 const ID_RE = /^[a-zA-Z0-9_-]+$/
+/** Most kept ranges an entry holds (extract.ts keptRanges). */
+const MAX_KEPT = 10_000
 const KINDS: ReadonlySet<string> = new Set(SEARCH_KINDS)
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const timeOrNull = (v: unknown): v is number | null => v === null || (typeof v === 'number' && Number.isFinite(v) && v >= 0)
@@ -43,10 +45,18 @@ function readProject(v: unknown): IndexedProject | null {
   const { stamp, name, createdAt, duration, hasTranscript, kept, units } = v
   if (typeof stamp !== 'string' || typeof name !== 'string' || typeof createdAt !== 'string' || typeof duration !== 'number' || !Number.isFinite(duration)) return null
   if (typeof hasTranscript !== 'boolean' || !Array.isArray(kept) || !kept.every(isRange) || !Array.isArray(units)) return null
+  // The caps of extract.ts: an entry over them was not written by Flown (or is damaged), and could
+  // stall the main process while it is indexed; it is read again from its project instead.
+  if (kept.length > MAX_KEPT || units.length > SEARCH_LIMITS.projectChars) return null
   const out: SearchUnit[] = []
+  let chars = 0
+  let notes = 0
   for (const u of units) {
     const unit = readUnit(u)
     if (!unit) return null
+    chars += unit.text.length
+    if (unit.kind === 'notes') notes++
+    if (chars > SEARCH_LIMITS.projectChars || notes > SEARCH_LIMITS.notesUnits) return null
     out.push(unit)
   }
   return { stamp, name, createdAt, duration, hasTranscript, kept: kept.map(([s, e]) => [s, e]), units: out }
@@ -66,7 +76,8 @@ export function parseIndexFile(raw: unknown): Map<string, IndexedProject> {
 
 /** The file's JSON (compact: it is read by Flown only). */
 export function serializeIndex(projects: ReadonlyMap<string, IndexedProject>): string {
-  const file: IndexFile = { version: SEARCH_INDEX_VERSION, projects: {} }
+  // No prototype: a project folder named __proto__ is an entry like any other.
+  const file: IndexFile = { version: SEARCH_INDEX_VERSION, projects: Object.create(null) as IndexFile['projects'] }
   for (const [id, p] of projects) {
     file.projects[id] = {
       stamp: p.stamp,

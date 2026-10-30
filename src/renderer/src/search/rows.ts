@@ -27,7 +27,14 @@ export function resultRows(hits: readonly SearchHit[], expanded: ReadonlySet<str
   for (const hit of hits) {
     rows.push({ kind: 'open', key: `${hit.id}:open`, hit })
     const shown = expanded.has(hit.id) ? hit.moments : hit.moments.slice(0, MOMENTS_SHOWN)
-    shown.forEach((moment, i) => rows.push({ kind: 'moment', key: `${hit.id}:${i}`, hit, moment }))
+    // Keyed by what the moment is, not its place: results that change while the index is built keep the active row.
+    const seen = new Map<string, number>()
+    for (const moment of shown) {
+      const base = `${hit.id}:${moment.kind}:${moment.start ?? 'none'}`
+      const n = seen.get(base) ?? 0
+      seen.set(base, n + 1)
+      rows.push({ kind: 'moment', key: `${base}:${n}`, hit, moment })
+    }
     const hidden = hit.moments.length - shown.length
     if (hidden > 0) rows.push({ kind: 'more', key: `${hit.id}:more`, hit, count: hidden })
   }

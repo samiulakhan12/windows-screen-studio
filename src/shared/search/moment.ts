@@ -56,7 +56,8 @@ export function spokenTime(seconds: number): string {
 }
 
 /** The live region's sentence: "3 recordings found", "No recordings match "x"." */
-export function resultsSummary(count: number, query: string): string {
+export function resultsSummary(count: number, query: string, limit = Infinity): string {
   if (count === 0) return `No recordings match "${query}".`
+  if (count >= limit) return `The first ${count} recordings found. Add a word to narrow them.`
   return `${plural(count, 'recording')} found`
 }
