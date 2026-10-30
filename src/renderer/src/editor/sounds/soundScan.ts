@@ -22,7 +22,8 @@ export type ScanState =
   | { status: 'idle'; checking?: boolean }
   /** `progress` 0..1; `preparing` while the levels and the speech detector are measured first. */
   | { status: 'listening'; progress: number; preparing?: boolean }
-  | { status: 'done'; rows: SoundRow[]; fromCache: boolean }
+  /** `sources`: what was listened to (the rows are dropped when the recording's sources change). */
+  | { status: 'done'; rows: SoundRow[]; fromCache: boolean; sources: string }
   | { status: 'failed'; message: string }
 
 type ScanProject = Pick<Project, 'id' | 'hasAudio' | 'audioStems' | 'duration'>
@@ -33,20 +34,22 @@ const CANCELLED = 'cancelled'
 /** "Error invoking remote method 'x': Error: message" -> "message". */
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
-/** What a source needs to be listened to: a worker and its stream. */
+/** One source being listened to: a worker and its stream. */
 export interface Listener {
+  /** The file as it was opened (its size and time key the stored scores); rejects as `done` does. */
+  info: Promise<{ size: number; mtimeMs: number }>
   /** Resolves with the source's scores; rejects with a sentence, or CANCELLED. */
   done: Promise<{ n: number; scores: Uint8Array }>
+  /** Stops at once, at any point (also before the model has loaded): the worker ends, the stream closes. */
   stop(): void
 }
 
-/** Starts a worker on one source (replaced in tests). */
-export type ListenFn = (api: SoundsApi, project: ScanProject, source: AudioSource, skip: Range[] | null, onSeconds: (s: number) => void) => Promise<{ info: { size: number; mtimeMs: number }; listener: Listener }>
+/** Starts listening to one source (replaced in tests). Returns at once, so Cancel can always stop it. */
+export type ListenFn = (api: SoundsApi, project: ScanProject, source: AudioSource, skip: Range[] | null, onSeconds: (s: number) => void) => Listener
 
 /** Listens to one source in a new worker, pulling its samples one chunk ahead. */
-export const listenInWorker: ListenFn = async (api, project, source, skip, onSeconds) => {
+export const listenInWorker: ListenFn = (api, project, source, skip, onSeconds) => {
   const worker = new Worker(new URL('./sounds.worker.ts', import.meta.url), { type: 'module' })
-  let stream: number | null = null
   let stopped = false
   // The worker's messages, read in order by `expect`.
   const inbox: FromWorker[] = []
@@ -62,11 +65,16 @@ export const listenInWorker: ListenFn = async (api, project, source, skip, onSec
     e.preventDefault()
     deliver({ type: 'failed', reason: e.message || 'it could not start' })
   }
+  const post = (msg: ToWorker, transfer: Transferable[] = []): void => worker.postMessage(msg, transfer)
+  post({ type: 'start', skip })
+  // Decoding starts while the model loads; whatever happens, the stream is closed when this stops.
+  const opened = api.soundsOpen(project.id, source)
+  opened.catch(() => undefined)
   const stop = (): void => {
     if (stopped) return
     stopped = true
     worker.terminate()
-    if (stream !== null) void api.soundsClose(stream).catch(() => undefined)
+    void opened.then((i) => api.soundsClose(i.stream)).catch(() => undefined)
     const w = wake
     wake = null
     w?.()
@@ -83,41 +91,36 @@ export const listenInWorker: ListenFn = async (api, project, source, skip, onSec
       await new Promise<void>((resolve) => (wake = resolve))
     }
   }
-  const post = (msg: ToWorker, transfer: Transferable[] = []): void => worker.postMessage(msg, transfer)
-  let info: { stream: number; size: number; mtimeMs: number }
-  try {
-    post({ type: 'start', skip })
-    const opened = api.soundsOpen(project.id, source)
+  const info = (async () => {
     await expect('ready')
-    info = await opened
-    stream = info.stream
+    const i = await opened
     if (stopped) throw new Error(CANCELLED)
-  } catch (err) {
-    stop()
-    throw err
-  }
-  const run = async (): Promise<{ n: number; scores: Uint8Array }> => {
+    return i
+  })()
+  info.catch(() => undefined)
+  const done = (async (): Promise<{ n: number; scores: Uint8Array }> => {
     try {
-      let pending = api.soundsRead(info.stream)
+      const { stream } = await info
+      let pending = api.soundsRead(stream)
       for (;;) {
         const chunk = await pending
         if (stopped) throw new Error(CANCELLED)
         if (!chunk) break
         // The next chunk is decoded while the worker classifies this one.
-        pending = api.soundsRead(info.stream)
+        pending = api.soundsRead(stream)
         pending.catch(() => undefined)
         post({ type: 'chunk', samples: chunk }, [chunk])
         onSeconds((await expect('progress')).seconds)
       }
-      stream = null
       post({ type: 'end' })
-      const done = await expect('done')
-      return { n: done.n, scores: new Uint8Array(done.scores) }
+      const result = await expect('done')
+      return { n: result.n, scores: new Uint8Array(result.scores) }
     } finally {
       stop()
     }
-  }
-  return { info, listener: { done: run(), stop } }
+  })()
+  done.catch(() => undefined)
+  return { info, done, stop }
 }
 
 /* ---------- the store ---------- */
@@ -177,9 +180,11 @@ async function stored(api: SoundsApi, project: ScanProject, sources: readonly Au
  */
 export async function checkStored(api: SoundsApi, project: ScanProject): Promise<void> {
   const e = entry(project.id)
+  const sources = scanSources(project)
+  // Rows of other sources (the stems were turned on or off since) are dropped.
+  if (e.state.status === 'done' && e.state.sources !== sources.join()) e.state = IDLE
   if (e.state.status !== 'idle' || e.state.checking) return
   const epoch = ++e.epoch
-  const sources = scanSources(project)
   if (sources.length === 0) return
   set(project.id, { status: 'idle', checking: true })
   try {
@@ -192,7 +197,7 @@ export async function checkStored(api: SoundsApi, project: ScanProject): Promise
     const { levels, speech } = await inputs(project)
     const have = await stored(api, project, sources, skipKey(speech))
     if (entry(project.id).epoch !== epoch) return
-    if (have.size === sources.length) set(project.id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, levels }), fromCache: true })
+    if (have.size === sources.length) set(project.id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, levels }), fromCache: true, sources: sources.join() })
     else set(project.id, IDLE)
   } catch (err) {
     console.warn('Could not read the stored sound scores:', err)
@@ -231,12 +236,14 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
     // A failure of one source stops the other at once.
     let aborted = false
     const runs = missing.map(async (source) => {
-      const { info, listener } = await listen(api, project, source, speech, (s) => {
+      const listener = listen(api, project, source, speech, (s) => {
         seconds.set(source, s)
         report()
       })
+      // Registered at once: Cancel stops it even while its model loads.
       listeners.push(listener)
       if (!live() || aborted) listener.stop()
+      const info = await listener.info
       const { n, scores } = await listener.done
       have.set(source, { source, n, scores })
       // Kept for next time; a failure to keep it only means listening again then.
@@ -247,7 +254,7 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
       throw err
     })
     if (!live()) return
-    set(id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, levels }), fromCache: missing.length === 0 })
+    set(id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, levels }), fromCache: missing.length === 0, sources: sources.join() })
   } catch (err) {
     for (const l of listeners) l.stop()
     if (!live()) return

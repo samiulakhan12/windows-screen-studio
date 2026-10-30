@@ -27,7 +27,8 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   const [showIgnored, setShowIgnored] = useState(false)
   const [said, setSaid] = useState('')
   const listRef = useRef<HTMLUListElement>(null)
-  const focusKey = useRef<string | null>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const focusKey = useRef<{ key: string; index: number } | null>(null)
   const stopPlay = useRef<(() => void) | null>(null)
   const hasSound = scanSources(project).length > 0
   const stemsKey = `${project.hasAudio}|${project.audioStems?.mic}|${project.audioStems?.system}`
@@ -39,12 +40,16 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   useEffect(() => () => stopPlay.current?.(), [])
   // After an action the row's buttons change: the focus goes to its first one (not to the page,
   // where Delete would remove a timeline item).
+  // A row that left the list (Ignore) hands the focus to the row now in its place, else the one before,
+  // else Show ignored.
   useEffect(() => {
-    const key = focusKey.current
-    if (!key) return
+    const want = focusKey.current
+    if (!want) return
     focusKey.current = null
-    const row = listRef.current?.querySelector<HTMLElement>(`li[data-key="${key}"]`)
-    ;(row?.querySelector<HTMLElement>('.sound-actions button') ?? row)?.focus({ preventScroll: true })
+    const items = [...(listRef.current?.querySelectorAll<HTMLElement>('li.sound-row') ?? [])]
+    const row = items.find((li) => li.dataset.key === want.key) ?? items[Math.min(want.index, items.length - 1)]
+    const target = row ? (row.querySelector<HTMLElement>('.sound-actions button') ?? row) : sectionRef.current?.querySelector<HTMLElement>('.sound-show-ignored input, button')
+    target?.focus({ preventScroll: true })
   })
 
   const timeOf = (r: SoundRow): number => editToVideo(planOf(project), outputTimeAt(project.clips, r.start))
@@ -56,7 +61,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
       return
     }
     store.update(edit)
-    focusKey.current = r.key
+    focusKey.current = { key: r.key, index: Math.max(0, shown.findIndex((x) => x.key === r.key)) }
     setSaid(message)
   }
 
@@ -122,7 +127,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
           </button>
         </div>
       ) : (
-        <div data-testid="sounds-status" data-state="done" data-from={state.fromCache ? 'cache' : 'scan'}>
+        <div data-testid="sounds-status" data-state="done" data-from={state.fromCache ? 'cache' : 'scan'} ref={sectionRef}>
           <p className="hint">{rows.length === 0 ? SOUNDS_COPY.none : foundText(rows.length)}</p>
           {shown.length > 0 && (
             <ul className="sound-list" ref={listRef} data-testid="sound-list">
@@ -157,7 +162,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
                   onClick={() => {
                     store.update((p) => addSpans(p, open, 'mute'))
                     // The button goes with the last open row: the focus goes to the first row muted.
-                    focusKey.current = open[0].key
+                    focusKey.current = { key: open[0].key, index: 0 }
                     setSaid(actionText.muteAll(open.length))
                   }}
                 >

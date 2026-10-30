@@ -60,6 +60,8 @@ export class SoundStreams {
   private readonly streams = new Map<number, Stream>()
   private readonly processes = new ProjectProcesses()
   private readonly writes = new Map<string, Promise<void>>()
+  /** Streams being opened (counted against MAX_STREAMS while their file is checked). */
+  private readonly opening = new Map<number, number>()
   private nextId = 1
 
   constructor(private readonly deps: SoundStreamsDeps) {}
@@ -73,13 +75,25 @@ export class SoundStreams {
 
   /** Streams open for window `owner`. */
   openCount(owner: number): number {
-    return [...this.streams.values()].filter((s) => s.owner === owner).length
+    return [...this.streams.values()].filter((s) => s.owner === owner).length + (this.opening.get(owner) ?? 0)
   }
 
   async open(owner: number, projectId: unknown, source: unknown): Promise<SoundStreamInfo> {
     const { file } = this.fileOf(projectId, source)
     if (this.openCount(owner) >= MAX_STREAMS) throw new Error('Too many sounds are being read at once')
-    const generation = this.processes.generation(projectId as string)
+    // The slot is taken before the first await, so calls at once cannot pass the limit together.
+    this.opening.set(owner, (this.opening.get(owner) ?? 0) + 1)
+    try {
+      return await this.start(owner, projectId as string, source as AudioSource, file)
+    } finally {
+      const n = (this.opening.get(owner) ?? 1) - 1
+      if (n > 0) this.opening.set(owner, n)
+      else this.opening.delete(owner)
+    }
+  }
+
+  private async start(owner: number, projectId: string, source: AudioSource, file: string): Promise<SoundStreamInfo> {
+    const generation = this.processes.generation(projectId)
     const stat = await fs.stat(file).catch(() => null)
     if (!stat?.isFile()) throw new Error(`The recording's ${source === 'mic' ? 'microphone' : source === 'system' ? 'system sound' : 'sound'} file is missing`)
     // Stopped meanwhile (the editor closed): nothing new starts.

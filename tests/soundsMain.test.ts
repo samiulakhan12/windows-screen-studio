@@ -96,6 +96,11 @@ describe('decoding streams', () => {
     await expect(s.open(3, 'rec-a', 'mic')).rejects.toThrow(/Too many/)
     await s.open(4, 'rec-a', 'mic')
     s.stopAll()
+    // Calls at once cannot pass the limit together.
+    const t = streams({ ffmpeg: () => slow })
+    const all = await Promise.allSettled(Array.from({ length: MAX_STREAMS + 3 }, () => t.open(5, 'rec-a', 'mic')))
+    expect(all.filter((r) => r.status === 'fulfilled')).toHaveLength(MAX_STREAMS)
+    t.stopAll()
   })
 
   it('rejects a waiting read when the project is stopped, and closes an idle stream', async () => {

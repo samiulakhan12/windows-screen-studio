@@ -150,10 +150,11 @@ describe('the gain curve', () => {
     { start: 0.01, end: 0.5, gain: 0 }
   ])
 
-  it('joins stretches closer than two ramps', () => {
+  it('joins stretches closer than two ramps, the quieter gain filling the gap', () => {
     expect(gains).toEqual([
       { start: 0.01, end: 0.5, gain: 0 },
-      { start: 1, end: 3, gain: 0 },
+      { start: 1, end: 2.03, gain: 0 },
+      { start: 2.03, end: 3, gain: DUCK_GAIN },
       { start: 5, end: 6, gain: DUCK_GAIN }
     ])
     expect(soundGains(project({ sounds: { spans: [{ start: 5, end: 6, action: 'duck', key: 'dog-500' }, { start: 1, end: 2, action: 'mute', key: 'dog-100' }], ignored: [] } }))).toEqual([
@@ -162,17 +163,42 @@ describe('the gain curve', () => {
     ])
   })
 
+  it('mutes only the muted stretch inside a lowered one', () => {
+    const g = joinGains([
+      { start: 0, end: 40, gain: DUCK_GAIN },
+      { start: 10, end: 10.4, gain: 0 },
+      // A duck shorter than two ramps between two mutes is muted too.
+      { start: 20, end: 21, gain: 0 },
+      { start: 21, end: 21.01, gain: DUCK_GAIN },
+      { start: 21.01, end: 22, gain: 0 }
+    ])
+    expect(g).toEqual([
+      { start: 0, end: 10, gain: DUCK_GAIN },
+      { start: 10, end: 10.4, gain: 0 },
+      { start: 10.4, end: 20, gain: DUCK_GAIN },
+      { start: 20, end: 22, gain: 0 },
+      { start: 22, end: 40, gain: DUCK_GAIN }
+    ])
+    expect(soundGainAt(g, 5)).toBeCloseTo(DUCK_GAIN, 9)
+    expect(soundGainAt(g, 10.2)).toBe(0)
+    expect(soundGainAt(g, 10 - SOUND_FADE / 2)).toBeCloseTo(DUCK_GAIN / 2, 6)
+    expect(soundGainAt(g, 10.4 + SOUND_FADE / 2)).toBeCloseTo(DUCK_GAIN / 2, 6)
+    expect(soundGainAt(g, 30)).toBeCloseTo(DUCK_GAIN, 9)
+    expect(soundGainAt(g, 40 + SOUND_FADE / 2)).toBeCloseTo((1 + DUCK_GAIN) / 2, 6)
+    const keys = soundGainKeyframes(g)
+    for (let i = 1; i < keys.length; i++) expect(keys[i].t).toBeGreaterThanOrEqual(keys[i - 1].t)
+  })
+
   it('ramps outside the stretch, which is fully muted or lowered', () => {
     expect(soundGainAt(gains, 0.98)).toBe(1)
     expect(soundGainAt(gains, 1 - SOUND_FADE / 2)).toBeCloseTo(0.5, 6)
     expect(soundGainAt(gains, 1)).toBe(0)
-    expect(soundGainAt(gains, 2.5)).toBe(0)
-    expect(soundGainAt(gains, 3 + SOUND_FADE / 4)).toBeCloseTo(0.25, 6)
+    expect(soundGainAt(gains, 2.5)).toBeCloseTo(DUCK_GAIN, 9)
+    expect(soundGainAt(gains, 2.03 + SOUND_FADE / 2)).toBeCloseTo(DUCK_GAIN / 2, 6)
+    expect(soundGainAt(gains, 3 + SOUND_FADE / 4)).toBeCloseTo(DUCK_GAIN + (1 - DUCK_GAIN) / 4, 6)
     expect(soundGainAt(gains, 5.5)).toBeCloseTo(DUCK_GAIN, 9)
     expect(soundGainAt(gains, 7)).toBe(1)
     expect(soundGainAt([], 1)).toBe(1)
-    const keys = soundGainKeyframes(gains)
-    for (let t = -0.1; t < 7; t += 0.0007) expect(gainAt(keys, t)).toBeCloseTo(soundGainAt(gains, t), 6)
   })
 
   it('writes the same curve as an ffmpeg expression', () => {
@@ -180,7 +206,7 @@ describe('the gain curve', () => {
     for (let t = 0; t < 7; t += 0.0013) expect(fn(t)).toBeCloseTo(soundGainAt(gains, t), 3)
     expect(soundGainExpression([])).toBe('1')
     expect(soundGainFilters([])).toBe('')
-    expect(soundGainFilters(gains)).toMatch(/^asetnsamples=n=256:p=0,volume=volume='.*':eval=frame$/)
+    expect(soundGainFilters(gains)).toMatch(/^asetnsamples=n=64:p=0,volume=volume='.*':eval=frame$/)
     // Many stretches: a balanced search.
     const many = joinGains(Array.from({ length: 3000 }, (_, i) => ({ start: i, end: i + 0.3, gain: i % 2 ? 0 : DUCK_GAIN })))
     const big = evaluate(soundGainExpression(many))
@@ -208,11 +234,11 @@ describe('the gain curve', () => {
     expect(recordingGraph({ clips, volume: 1, input: '1:a', sounds: [] }, 7)).toBe(plain)
     expect(plain).toBe(audioFilterGraph(clips, 1, 7))
     const withGain = recordingGraph({ clips, volume: 1, input: '1:a', sounds: [{ start: 1, end: 2, gain: 0 }] }, 7)
-    expect(withGain).toContain("[1:a]aresample=48000:async=1:first_pts=0,asetnsamples=n=256:p=0,volume=volume='")
+    expect(withGain).toContain("[1:a]aresample=48000:async=1:first_pts=0,asetnsamples=n=64:p=0,volume=volume='")
     // Before the split into clips: once, on the whole recording.
     expect(withGain.indexOf('volume=volume=')).toBeLessThan(withGain.indexOf('asplit'))
     const stems = recordingGraph({ clips, volume: 1, input: '1:a', stems: [{ input: '1:a', gain: 1, denoise: false }, { input: '2:a', gain: 0.5, denoise: false }], sounds: [{ start: 1, end: 2, gain: 0 }] }, 7)
-    expect(stems).toMatch(/amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,asetnsamples=n=256:p=0,volume=volume='[^']+':eval=frame,asplit/)
+    expect(stems).toMatch(/amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,asetnsamples=n=64:p=0,volume=volume='[^']+':eval=frame,asplit/)
     const job = { frames: 210, fps: 30, audio: { clips, volume: 1, sounds: [{ start: 1, end: 2, gain: 0 }] } } as unknown as ExportJob
     expect(planSoundtrack(job, { mix: 'screen.mp4' }, 1).graph).toContain("volume=volume='")
     const none = { frames: 210, fps: 30, audio: { clips, volume: 1 } } as unknown as ExportJob

@@ -22,8 +22,8 @@ export const MIN_SPAN = 0.01
 export const MAX_SOUND_SPANS = 2000
 /** Most stretches an export job may carry (main validates it). */
 export const MAX_SOUND_GAINS = 4000
-/** The export evaluates the gain once per this many samples (5 ms at 48 kHz), as the music's ducking. */
-export const GAIN_FRAME = 256
+/** The export evaluates the gain once per this many samples (1.3 ms at 48 kHz): a 20 ms ramp in 15 steps. */
+export const GAIN_FRAME = 64
 
 const EPS = 1e-6
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -130,48 +130,90 @@ export function bringBack(p: Project, key: string): Project {
 /* ---------- the gain curve ---------- */
 
 /**
- * The project's stretches as gains (mute 0, duck DUCK_GAIN), joined where they overlap or come
- * closer than two ramps (the lower gain wins), so no two ramps ever meet. Source seconds, sorted.
+ * The project's stretches as gains (mute 0, duck DUCK_GAIN), made piecewise (joinGains), so a mute
+ * inside a lowered stretch silences only itself. Source seconds, sorted.
  */
 export function soundGains(p: Pick<Project, 'sounds'>): SoundGain[] {
   return joinGains((p.sounds?.spans ?? []).map((s) => ({ start: s.start, end: s.end, gain: s.action === 'mute' ? 0 : DUCK_GAIN })))
 }
 
-/** Gains sorted, with those that overlap or come within 2 × SOUND_FADE of each other joined (the lower gain wins). */
+/**
+ * Gains as a piecewise-constant curve (docs/design/sound-finder.md §4.6): split at every stretch's
+ * edge, each piece at the lowest gain over it, neighbours of the same gain joined. A piece shorter
+ * than two ramps that is louder than a neighbour (a gap between two stretches, a short duck between
+ * mutes) takes its quieter neighbour's gain, so the ramps, always on the louder side of an edge, never
+ * meet. Returns the pieces below 1, sorted and separate (they may touch).
+ */
 export function joinGains(gains: readonly SoundGain[]): SoundGain[] {
-  const sorted = gains.filter((g) => g.end > g.start).sort((a, b) => a.start - b.start)
-  const out: SoundGain[] = []
-  for (const g of sorted) {
-    const last = out[out.length - 1]
-    if (last && g.start - last.end < 2 * SOUND_FADE - 1e-9) {
-      last.end = Math.max(last.end, g.end)
-      last.gain = Math.min(last.gain, g.gain)
-    } else out.push({ start: g.start, end: g.end, gain: Math.min(1, Math.max(0, g.gain)) })
+  const list = gains.filter((g) => g.end > g.start).map((g) => ({ start: g.start, end: g.end, gain: Math.min(1, Math.max(0, g.gain)) }))
+  if (list.length === 0) return []
+  const edges = [...new Set(list.flatMap((g) => [g.start, g.end]))].sort((x, y) => x - y)
+  // The lowest gain over each piece between two edges (1 where no stretch is).
+  let pieces: SoundGain[] = []
+  for (let i = 0; i + 1 < edges.length; i++) {
+    const a = edges[i]
+    const b = edges[i + 1]
+    let gain = 1
+    for (const g of list) if (g.start <= a && g.end >= b) gain = Math.min(gain, g.gain)
+    const last = pieces[pieces.length - 1]
+    if (last && Math.abs(last.gain - gain) < 1e-9) last.end = b
+    else pieces.push({ start: a, end: b, gain })
   }
-  return out
+  // Short louder pieces take their quieter neighbour's gain, until none is left.
+  for (let changed = true; changed; ) {
+    changed = false
+    for (let i = 0; i < pieces.length; i++) {
+      const p = pieces[i]
+      const left = pieces[i - 1]?.gain ?? 1
+      const right = pieces[i + 1]?.gain ?? 1
+      const quieter = Math.min(i > 0 ? left : 2, i + 1 < pieces.length ? right : 2)
+      if (p.end - p.start < 2 * SOUND_FADE - 1e-9 && quieter < p.gain) {
+        p.gain = quieter
+        changed = true
+      }
+    }
+    if (changed) {
+      const merged: SoundGain[] = []
+      for (const p of pieces) {
+        const last = merged[merged.length - 1]
+        if (last && Math.abs(last.gain - p.gain) < 1e-9) last.end = p.end
+        else merged.push({ ...p })
+      }
+      pieces = merged
+    }
+  }
+  return pieces.filter((p) => p.gain < 1 - 1e-9)
 }
 
-/** The gain at source time `t` of joined gains: 1 outside, the stretch's gain inside, linear over SOUND_FADE either side. */
-export function soundGainAt(joined: readonly SoundGain[], t: number): number {
-  let lo = 0
-  let hi = joined.length
-  // The first stretch whose ramp out ends after t.
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (joined[mid].end + SOUND_FADE > t) hi = mid
-    else lo = mid + 1
-  }
-  const g = joined[lo]
-  if (!g || t < g.start - SOUND_FADE) return 1
-  const clip01 = (v: number): number => Math.min(1, Math.max(0, v))
-  return 1 - (1 - g.gain) * clip01((t - (g.start - SOUND_FADE)) / SOUND_FADE) * clip01((g.end + SOUND_FADE - t) / SOUND_FADE)
-}
-
-/** Keyframes of soundGainAt in source time (exact: the curve is linear between them). */
+/**
+ * Keyframes of the curve in source time: 1 outside the pieces, each piece's gain inside it, and a
+ * linear ramp of SOUND_FADE at every edge, on its louder side (before a quieter piece, after a louder
+ * one), so every muted or lowered stretch is fully muted or lowered.
+ */
 export function soundGainKeyframes(joined: readonly SoundGain[]): Keyframe[] {
   const keys: Keyframe[] = []
-  for (const g of joined) keys.push({ t: g.start - SOUND_FADE, gain: 1 }, { t: g.start, gain: g.gain }, { t: g.end, gain: g.gain }, { t: g.end + SOUND_FADE, gain: 1 })
+  const edge = (t: number, from: number, to: number): void => {
+    if (Math.abs(from - to) < 1e-9) return
+    if (to < from) keys.push({ t: t - SOUND_FADE, gain: from }, { t, gain: to })
+    else keys.push({ t, gain: from }, { t: t + SOUND_FADE, gain: to })
+  }
+  joined.forEach((g, i) => {
+    const before = i > 0 && Math.abs(joined[i - 1].end - g.start) < 1e-9 ? joined[i - 1].gain : 1
+    edge(g.start, before, g.gain)
+    const touching = i + 1 < joined.length && Math.abs(joined[i + 1].start - g.end) < 1e-9
+    if (!touching) edge(g.end, g.gain, 1)
+  })
   return keys
+}
+
+const keyMemo = new WeakMap<readonly SoundGain[], Keyframe[]>()
+
+/** The gain at source time `t` of joined gains (the keyframes' curve, made once per list). */
+export function soundGainAt(joined: readonly SoundGain[], t: number): number {
+  if (joined.length === 0) return 1
+  let keys = keyMemo.get(joined)
+  if (!keys) keyMemo.set(joined, (keys = soundGainKeyframes(joined)))
+  return gainAt(keys, t)
 }
 
 /**
@@ -209,21 +251,28 @@ const num = (v: number): string => String(+v.toFixed(5))
 const tMinus = (v: number): string => (v < 0 ? `t+${num(-v)}` : `t-${num(v)}`)
 
 /**
- * soundGainAt as an ffmpeg expression in `t` (source seconds), for `volume=eval=frame`: a binary
- * search picks the only stretch whose ramps can reach `t` (joined stretches are at least two ramps
- * apart), so each evaluation costs log N comparisons. '1' without stretches. Contains commas.
+ * The curve as an ffmpeg expression in `t` (source seconds), for `volume=eval=frame`: a binary
+ * search over the keyframes picks the segment `t` is in, which is constant or a linear ramp, so each
+ * evaluation costs log N comparisons. '1' without stretches. Contains commas.
  */
 export function soundGainExpression(joined: readonly SoundGain[]): string {
-  if (joined.length === 0) return '1'
-  const f = num(SOUND_FADE)
-  const term = (g: SoundGain): string => `1-${num(1 - g.gain)}*clip((${tMinus(g.start - SOUND_FADE)})/${f},0,1)*clip((${num(g.end + SOUND_FADE)}-t)/${f},0,1)`
-  const tree = (lo: number, hi: number): string => {
-    if (hi - lo === 1) return term(joined[lo])
-    const mid = (lo + hi) >> 1
-    const split = (joined[mid - 1].end + joined[mid].start) / 2
-    return `if(lt(t,${num(split)}),${tree(lo, mid)},${tree(mid, hi)})`
+  const keys = soundGainKeyframes(joined)
+  if (keys.length === 0) return '1'
+  // Segment i runs from keys[i - 1] to keys[i] (before the first and after the last: held).
+  const segment = (i: number): string => {
+    if (i === 0) return num(keys[0].gain)
+    if (i === keys.length) return num(keys[keys.length - 1].gain)
+    const a = keys[i - 1]
+    const b = keys[i]
+    if (Math.abs(a.gain - b.gain) < 1e-9 || b.t - a.t < 1e-9) return num(b.gain)
+    return `${num(a.gain)}+${num(b.gain - a.gain)}*(${tMinus(a.t)})/${num(b.t - a.t)}`
   }
-  return tree(0, joined.length)
+  const tree = (lo: number, hi: number): string => {
+    if (hi - lo === 1) return segment(lo)
+    const mid = (lo + hi) >> 1
+    return `if(lt(t,${num(keys[mid - 1].t)}),${tree(lo, mid)},${tree(mid, hi)})`
+  }
+  return tree(0, keys.length + 1)
 }
 
 /** The filters (no leading comma) that put `gains` on the recording's sound in source time, or '' for none. */

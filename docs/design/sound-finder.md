@@ -276,16 +276,19 @@ leaves the project as it was.
 
 ### 4.6 The gain curve (one curve, preview and export)
 
-`soundGains(project)`: the spans as `{ start, end, gain }` (mute 0, duck **0.2 = −14 dB**). Spans that
-overlap or are closer than 40 ms are joined, the lower gain winning (so ramps never cross). The gain
-`g(t)` in source time is 1 outside, the span's gain inside, and linear over **20 ms** (`SOUND_FADE`)
-before the start and after the end: the stretch itself is fully muted or ducked.
+`soundGains(project)`: the spans as `{ start, end, gain }` (mute 0, duck **0.2 = −14 dB**), made
+**piecewise** (`joinGains`): split at every span's edge, each piece at the lowest gain over it, so a
+cough muted inside a ducked stretch of music silences only the cough. A piece shorter than two ramps
+(40 ms) that is louder than a neighbour (a gap between two spans, a tiny duck between two mutes)
+takes the quieter neighbour's gain, so ramps never meet. The gain `g(t)` in source time is 1 outside,
+each piece's gain inside, with a linear **20 ms** (`SOUND_FADE`) ramp at every edge on its louder
+side: every muted or lowered stretch is fully muted or lowered.
 
 - **Export** (`audioPlan.ts`, `recordingGraph`): when the job has `sounds`, the recording's head (the
   mixed track or the mixed stems, after noise reduction, in source time because it starts at 0 with
-  `first_pts=0`) gets `asetnsamples=n=256:p=0,volume=volume='<expr>':eval=frame`. `<expr>` is
-  `soundGainExpression`, the exact `g(t)` as a binary search over the joined spans (like
-  `duckExpression`). Then it is cut and re-timed clip by clip as before, so cuts, speed changes and
+  `first_pts=0`) gets `asetnsamples=n=64:p=0,volume=volume='<expr>':eval=frame` (the gain is evaluated every 1.3 ms, so a
+  20 ms ramp is 15 steps). `<expr>` is `soundGainExpression`, the exact `g(t)` as a binary search over
+  its keyframes (like `duckExpression`). Then it is cut and re-timed clip by clip as before, so cuts, speed changes and
   pause freezes carry the curve with the sound. A job without `sounds` gets the graph of before.
 - **Preview** (`previewAudio.ts`): a new `sounds` gain node right after `cut` (both act on the mixed recording only, before the limiter and the master fades). Its curve is
   `g` mapped to the output (video) timeline through the clips and the pause freezes
@@ -434,6 +437,14 @@ and element), `package.json` (the devDependency), `scripts/notices.mjs` (one nam
 - **Merge conflicts**: single-line lists (`api.ts`, `preload/index.ts`, the migration's destructuring)
   are touched by every team; each change is one token or one line.
 
+Known limits, found in review and left as they are:
+- The finder decodes without `aresample=async=1:first_pts=0`, as the level meter and the speech
+  detector do; in a file with gaps in its sound timestamps (some imported videos) rows after a gap can
+  sit a little early. The export's gain is in the corrected time, so a mute there can miss by the gap.
+- A ramp that crosses a pause freeze is stretched over the hold in the preview (20 ms of gain around a
+  freeze frame, during which the recording is silent anyway).
+- The cache file is written synchronously (at most 8 MB, usually under 200 KB).
+
 ## 11. Test plan
 
 Unit (vitest), each failing without its code:
@@ -481,6 +492,11 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   measured (45 s for an hour the first time), then the percentage.
 - Opening the Audio tab reads the stored scores first and only waits for the levels and the speech
   detector when every source has some.
+- After an adversarial review: the curve became piecewise (a mute inside a duck no longer silences the
+  whole duck), the export evaluates it every 64 samples (was 256), rows that share a key are one row,
+  the focus moves to the next row when one leaves the list, Cancel stops a listener while its model
+  still loads and a failed start always closes its stream, the stream limit is taken before the first
+  await, and rows are dropped when the recording's sources change.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
   `scripts/notices.mjs` names it among the bundled packages and `resources/THIRD_PARTY_NOTICES.txt`
   is regenerated; `resources/notices/34-yamnet.txt` names the model.

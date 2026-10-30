@@ -17,8 +17,8 @@ vi.mock('../src/renderer/src/editor/audioAnalysis', () => ({
 }))
 
 type Project = { id: string; hasAudio: boolean; audioStems: { mic: boolean; system: boolean }; duration: number }
-type Listener = { done: Promise<{ n: number; scores: Uint8Array }>; stop(): void }
-type ListenFn = (api: SoundsApi, project: Project, source: string, skip: unknown, onSeconds: (s: number) => void) => Promise<{ info: { size: number; mtimeMs: number }; listener: Listener }>
+type Listener = { info: Promise<{ size: number; mtimeMs: number }>; done: Promise<{ n: number; scores: Uint8Array }>; stop(): void }
+type ListenFn = (api: SoundsApi, project: Project, source: string, skip: unknown, onSeconds: (s: number) => void) => Listener
 type ScanState = { status: 'idle'; checking?: boolean } | { status: 'listening'; progress: number } | { status: 'done'; rows: SoundRow[]; fromCache: boolean } | { status: 'failed'; message: string }
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const MODULE = '../src/renderer/src/editor/sounds/soundScan'
@@ -50,28 +50,36 @@ function fakeApi(stored: Partial<Record<string, SoundCacheEntry>> = {}) {
   return { api, saved }
 }
 
-/** A listener that finishes when `release` is called (or fails with `error`). */
-function fakeListen(opts: { error?: string } = {}) {
+/** A listener that finishes when `resolve` is called (or fails with `error`); `loading` keeps it before its model is ready. */
+function fakeListen(opts: { error?: string; loading?: boolean } = {}) {
   const stops: string[] = []
   const pending: { source: string; resolve: () => void; reject: (e: Error) => void }[] = []
-  const listen: ListenFn = async (_api, _p, source, _skip, onSeconds) => {
+  const listen: ListenFn = (_api, _p, source, _skip, onSeconds) => {
     let resolve!: () => void
     let reject!: (e: Error) => void
     const done = new Promise<{ n: number; scores: Uint8Array }>((res, rej) => {
       resolve = () => res({ n: 200, scores: dingScores() })
       reject = rej
     })
+    let ready!: () => void
+    const info = new Promise<{ size: number; mtimeMs: number }>((res, rej) => {
+      ready = () => res({ size: 10, mtimeMs: 20 })
+      done.catch(rej)
+    })
+    done.catch(() => undefined)
+    info.catch(() => undefined)
     pending.push({ source, resolve, reject })
-    onSeconds(50)
+    if (!opts.loading) {
+      ready()
+      onSeconds(50)
+    }
     if (opts.error) queueMicrotask(() => reject(new Error(opts.error)))
     return {
-      info: { size: 10, mtimeMs: 20 },
-      listener: {
-        done,
-        stop: () => {
-          stops.push(source)
-          reject(new Error('cancelled'))
-        }
+      info,
+      done,
+      stop: () => {
+        stops.push(source)
+        reject(new Error('cancelled'))
       }
     }
   }
@@ -141,6 +149,19 @@ describe('the scan controller', () => {
     await run
     expect([...new Set(stops)].sort()).toEqual(['mic', 'system'])
     expect(scanState('p5')).toEqual({ status: 'idle' })
+    expect(saved).toEqual({})
+  })
+
+  it('Cancel stops a listener whose model is still loading', async () => {
+    const { api, saved } = fakeApi()
+    const { listen, stops } = fakeListen({ loading: true })
+    const run = startScan(api, project('p8'), listen)
+    await tick()
+    await tick()
+    cancelScan('p8')
+    await run
+    expect([...new Set(stops)].sort()).toEqual(['mic', 'system'])
+    expect(scanState('p8')).toEqual({ status: 'idle' })
     expect(saved).toEqual({})
   })
 

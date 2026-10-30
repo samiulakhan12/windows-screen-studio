@@ -232,14 +232,23 @@ export function findSounds(input: FindInput): SoundRow[] {
         i = j + 1
       }
     }
-    // The same kind heard on both sources is one row.
+    // The same kind heard on both sources is one row: where they overlap, and where they share a key
+    // (the same windows, fitted apart on each source).
     found.sort((a, b) => a.start - b.start)
+    const byKey = new Map<string, SoundRow>()
     for (const f of found) {
       const last = rows.length > 0 && rows[rows.length - 1].kind === kind ? rows[rows.length - 1] : null
-      if (last && f.start <= last.end + 1e-9) {
-        last.end = Math.max(last.end, f.end)
-        last.score = Math.max(last.score, f.score)
-      } else rows.push({ ...f })
+      const same = byKey.get(f.key) ?? (last && f.start <= last.end + 1e-9 ? last : null)
+      if (same) {
+        same.start = Math.min(same.start, f.start)
+        same.end = Math.max(same.end, f.end)
+        same.score = Math.max(same.score, f.score)
+        byKey.set(f.key, same)
+      } else {
+        const row = { ...f }
+        rows.push(row)
+        byKey.set(f.key, row)
+      }
     }
   })
   const kept = rows.length > FIND.maxRows ? [...rows].sort((a, b) => b.score - a.score || a.start - b.start).slice(0, FIND.maxRows) : rows

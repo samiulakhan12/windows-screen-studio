@@ -105,6 +105,16 @@ describe('findSounds', () => {
     expect(rows[0].source).toBe('mic')
   })
 
+  it('gives every row its own key, also when the two sources fit the same windows apart', () => {
+    const mic = levels(30, [[2.0, 2.1]])
+    const system = levels(30, [[2.6, 2.7]])
+    const rows = findSounds({ sources: [scores('mic', 30, [['ping', 4, 4, 0.6]]), scores('system', 30, [['ping', 4, 4, 0.9]])], speech: [], levels: { mic, system } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].start).toBeCloseTo(1.95, 4)
+    expect(rows[0].end).toBeCloseTo(2.75, 4)
+    expect(rows[0].score).toBeCloseTo(0.9, 2)
+  })
+
   it('keeps the strongest rows when there are too many, and stays fast on an hour', () => {
     const marks: [SoundKind, number, number, number][] = []
     for (let w = 0; w < 7000; w += 4) marks.push(['typing', w, w, 0.4 + (w % 7) / 20])
