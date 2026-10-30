@@ -9,9 +9,10 @@ suggested OpenAI transcription model and the only OpenAI model whose answer has 
 Captions, karaoke highlighting, the Transcript tab (edit by text), filler and retake removal and
 the subtitle files all read word times. This feature:
 
-1. moves the suggested OpenAI model to its replacement, `gpt-transcribe`, which returns **text
-   only**, and gives every word a time anyway, estimated from where the recording has sound, and
-   says plainly which words are estimated (§3);
+1. handles its replacement, `gpt-transcribe`, which returns **text only**: every word gets a time
+   anyway, estimated from where the recording has sound, and the UI says plainly which words are
+   estimated (§3). `whisper-1` stays the suggested model until near its retirement day, when the
+   list of suggested models moves to `gpt-transcribe` (§2.1);
 2. checks Gemini's word times and replaces impossible ones with estimates (§4);
 3. replaces the raw API error of a retired model with a plain sentence saying what to do (§5);
 4. adds **speaker labels**: "You" and "Others" from the microphone and computer-sound tracks with
@@ -79,12 +80,32 @@ already cited in `src/main/ai/gemini.ts`).
 
 ## 2. Decisions
 
-### 2.1 OpenAI: suggest `gpt-transcribe`, estimate word times from the sound
+### 2.1 OpenAI: handle `gpt-transcribe`, keep suggesting `whisper-1` until near the day
 
-`resources/ai-models.json` and `BUNDLED_MODEL_LIST` suggest `gpt-transcribe` (and keep the
-`whisper-1` retiring entry). A provider that never chose a transcription model uses the suggestion
-(`transcribe.ts`: `info.transcriptionModel ?? modelDefaults(kind)`), so it moves with the list; a
-provider whose user typed `whisper-1` keeps it (and sees the Settings note) until the shutdown.
+`resources/ai-models.json` and `BUNDLED_MODEL_LIST` keep suggesting `whisper-1` (with its retiring
+entry): until 26 February 2027 it still works and gives exact word times, where `gpt-transcribe`
+gives estimated ones. Anyone who wants `gpt-transcribe` sooner types it as the transcription model
+in Settings › AI providers, and this release handles it.
+
+**The switch goes through the list, near the day.** `resources/ai-models.json` on the default
+branch is the list every installed Flown downloads (the newest `updated` wins), 0.7.1 included,
+which has no text-only path: its `openai.ts` asks for `timestamp_granularities` and its parser
+rejects an answer without timings, so a `gpt-transcribe` suggestion would break its captions.
+So:
+
+1. Before 0.7.1 ships, the list format gains a minimum app version per suggestion (the lead is
+   adding it): a Flown older than that minimum does not take the suggestion.
+2. A few weeks before 26 February 2027, the list on the default branch suggests `gpt-transcribe`
+   for OpenAI transcription, with the first version that has this text-only path as its minimum
+   and a newer `updated`. `BUNDLED_MODEL_LIST` follows in the release of that time (a test keeps it
+   equal to the file).
+3. A provider that never chose a transcription model uses the suggestion (`transcribe.ts`:
+   `info.transcriptionModel ?? modelDefaults(kind)`), so it moves with the list; a provider whose
+   user typed `whisper-1` keeps it (and sees the Settings note) until the shutdown, then gets the
+   plain message of §5, which names the list's suggestion.
+
+A Flown that never downloads the newer list still suggests `whisper-1`; after the day its message
+says to choose another transcription model or make captions On this PC (§5).
 
 The OpenAI client now has two ways:
 
@@ -96,10 +117,10 @@ The OpenAI client now has two ways:
 
 Alternatives considered:
 
-1. **Keep suggesting `whisper-1` until February.** Word times stay exact for four more months,
-   but every user then breaks on one day, and the list refresh is the only fix. Rejected: the
-   replacement is cheaper and recommended for accuracy; switching now means the timing path is
-   used and fixed long before the deadline.
+1. **Suggest `gpt-transcribe` now.** Cheaper, recommended by OpenAI, and the timing path would be
+   used long before the deadline. Rejected: word times would be estimates for four months while
+   exact ones are still there, and the list on GitHub is read by every installed Flown, so 0.7.1
+   would suggest a model it cannot use (§2.1).
 2. **Align the provider's text to the audio with the speech model on this PC** (run whisper.cpp
    over the same parts and copy its word times onto matching words). Exact times where words
    match, but it needs a downloaded model (44–574 MB), runs a full local transcription anyway
@@ -217,7 +238,10 @@ Transcript tab estimates its words, as today).
 returns, for a model on the retiring list whose day has come,
 
 - transcription: *"OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the
-  transcription model in Settings › AI providers, or make captions On this PC."*
+  transcription model in Settings › AI providers, or make captions On this PC."* The model named is
+  the list's suggestion (`gpt-transcribe` once the list has moved, §2.1); while the list still
+  suggests the retired model, *"Choose another transcription model in Settings › AI providers, or
+  make captions On this PC."*
 - text tasks: *"OpenAI retired gpt-x on 1 March 2027. Choose another model in Settings › AI
   providers."*
 
@@ -344,7 +368,7 @@ Settings: none.
 - Changed: `openai.ts`, `gemini.ts`, `transcribe.ts`, `transcriptParse.ts`, `transcriptMerge.ts`
   (carry fields), `captionData.ts` and `settings.ts` (load), `edit.ts` (split and merge keep the
   speaker), `subtitles.ts` (voice tags, option), `captionsLayer.ts` (name token), the two panels
-  (additive), `types.ts`, `ai-models.json` + `BUNDLED_MODEL_LIST`.
+  (additive), `types.ts`. `ai-models.json` and `BUNDLED_MODEL_LIST` are unchanged (§2.1).
 
 ## 12. Test plan
 
@@ -355,15 +379,17 @@ when one); merge carries `estimated` and `speaker`; `retiredMessage` before/on/a
 client wrapping; `stemSpeakers` (mic only, system only, both with bleed, too short); rename/merge
 names/clear; load of old and new projects (byte-equal for old); split and merge keep speakers;
 VTT voice tags and escaping, SRT/text prefix on and off; `speakerCaption`; the model list
-(`gpt-transcribe` suggested, JSON equals the bundled list).
+(`whisper-1` still suggested and on the retiring list, JSON equals the bundled list).
 
 E2E (`tests/e2e/transcription.e2e.cjs`, the AI mock server, no real API): an OpenAI provider with
-the suggested model transcribes the tone fixture with `response_format=json` and no timestamp
+`gpt-transcribe` transcribes the tone fixture with `response_format=json` and no timestamp
 fields; words are estimated and start within 0.6 s of their bursts; the Captions tab shows the
 estimate notice; the Transcript tab marks words; a Gemini run returns two speakers, shown in the
 caption rows and the Transcript tab; renaming one renames every caption and Undo brings it back;
 the VTT export has `<v …>`; Show speaker names changes the drawn frame; a recording with both
-tracks gets You/Others; a retired-model 404 shows the plain message.
+tracks gets You/Others; a retired-model 404 shows the plain message naming the suggestion of a
+downloaded list that has moved to `gpt-transcribe`. `tests/e2e/ai.e2e.cjs`: a new OpenAI provider
+still gets `whisper-1`.
 
 ## 13. Left for later
 

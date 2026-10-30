@@ -159,15 +159,18 @@ describe('speakers in projects', () => {
 
 describe('a retired model', () => {
   const list = BUNDLED_MODEL_LIST
+  /** The list as it is meant to be near the day: the replacement suggested (docs/design/transcription.md §2.1). */
+  const onTheDay = { ...list, providers: { ...list.providers, openai: { ...list.providers.openai, transcriptionModel: 'gpt-transcribe' } } }
 
-  it('is still flagged, and its replacement suggested', () => {
-    expect(list.providers.openai.transcriptionModel).toBe('gpt-transcribe')
+  it('is flagged, and still suggested until the list moves to its replacement near the day', () => {
+    // Older Flown versions read the same list and cannot use a text-only model.
+    expect(list.providers.openai.transcriptionModel).toBe('whisper-1')
     expect(list.retiring).toContainEqual({ provider: 'openai', model: 'whisper-1', on: '2027-02-26' })
   })
 
   it('fails with what to do from its day on, not before', () => {
-    expect(retiredMessage(list, 'openai', 'whisper-1', '2027-02-25', 'transcription')).toBeNull()
-    expect(retiredMessage(list, 'openai', 'whisper-1', '2027-02-26', 'transcription')).toBe(
+    expect(retiredMessage(onTheDay, 'openai', 'whisper-1', '2027-02-25', 'transcription')).toBeNull()
+    expect(retiredMessage(onTheDay, 'openai', 'whisper-1', '2027-02-26', 'transcription')).toBe(
       'OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or make captions On this PC.'
     )
     expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'text')).toBe('OpenAI retired whisper-1 on 26 February 2027. Choose another model in Settings › AI providers.')
@@ -185,6 +188,10 @@ describe('a retired model', () => {
   it('suggests another model when the list still suggests the retired one', () => {
     const stale = { ...list, providers: { ...list.providers, openai: { model: 'm', transcriptionModel: 'whisper-1' } } }
     expect(retiredMessage(stale, 'openai', 'whisper-1', '2027-03-01', 'transcription')).toContain('Choose another transcription model')
+    // The bundled list, when no newer list was downloaded by then.
+    expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'transcription')).toBe(
+      'OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model in Settings › AI providers, or make captions On this PC.'
+    )
     expect(todayUtc(new Date('2027-02-26T23:59:00Z'))).toBe('2027-02-26')
   })
 })

@@ -44,9 +44,9 @@ export interface ModelList {
 
 export const BUNDLED_MODEL_LIST: ModelList = {
   version: 1,
-  updated: '2026-10-31',
+  updated: '2026-10-30',
   providers: {
-    openai: { model: 'gpt-6.1-sol', transcriptionModel: 'gpt-transcribe' },
+    openai: { model: 'gpt-6.1-sol', transcriptionModel: 'whisper-1' },
     gemini: { model: 'gemini-3.8-flash', transcriptionModel: 'gemini-3.8-flash' },
     anthropic: { model: 'claude-opus-5-5' }
   },

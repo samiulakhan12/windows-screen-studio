@@ -3,11 +3,12 @@
 ## Next release
 
 - **Captions keep working after OpenAI retires whisper-1** (NW-09): OpenAI removes `whisper-1` on
-  26 February 2027. New OpenAI providers now use its replacement, `gpt-transcribe`, which gives text
+  26 February 2027. Flown now works with its replacement, `gpt-transcribe`, which gives text
   without timings: Flown times each word from where the recording has sound and marks those times
   as estimated (the Captions and Transcript tabs say so, and point to *Captions on this PC* for exact
-  times). A request to a retired model now says plainly what to choose instead. Providers where you
-  typed `whisper-1` keep it until that day.
+  times). New OpenAI providers keep `whisper-1`, with exact word times, until the suggested models
+  move to `gpt-transcribe` near that day; type `gpt-transcribe` in Settings › AI providers to use it
+  sooner. A request to a retired model now says plainly what to choose instead.
 - **Speaker labels**: Gemini tells speakers apart, and recordings with separate microphone and
   computer-sound tracks get *You* and *Others* with no AI. Rename a speaker once for every caption;
   names show in the Captions and Transcript tabs, in WebVTT voice tags, optionally in SRT and text

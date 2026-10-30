@@ -151,7 +151,7 @@ async function main() {
       // The form: OpenAI by default, key hidden until shown, default models.
       await d.getByRole('button', { name: '+ Add provider' }).click()
       h.assert((await d.getByRole('radio', { name: 'OpenAI' }).getAttribute('aria-checked')) === 'true', 'OpenAI picked by default')
-      h.assert((await d.getByLabel('Transcription model').inputValue()) === 'gpt-transcribe', 'gpt-transcribe by default (whisper-1 retires on 26 February 2027)')
+      h.assert((await d.getByLabel('Transcription model').inputValue()) === 'whisper-1', 'whisper-1 by default')
       const key = d.getByLabel('API key')
       h.assert((await key.getAttribute('type')) === 'password', 'key hidden')
       await key.fill(KEYS.openai)
@@ -176,7 +176,7 @@ async function main() {
       await addProvider(win, 'openai', 'Wrong key', 'bad-e2e-openai-key')
       const rows = await d.locator('.ai-provider').allTextContents()
       h.assert(rows.length === 4 && /…0001/.test(rows[0]) && /…0002/.test(rows[1]) && /…0003/.test(rows[2]), `masked keys listed: ${rows.join(' | ')}`)
-      h.assert(/gpt-transcribe/.test(rows[0]) && /gemini-3\.8-flash/.test(rows[1]) && /claude-opus-5-5/.test(rows[2]) && !/Transcription/.test(rows[2]), 'models listed')
+      h.assert(/whisper-1/.test(rows[0]) && /gemini-3\.8-flash/.test(rows[1]) && /claude-opus-5-5/.test(rows[2]) && !/Transcription/.test(rows[2]), 'models listed')
 
       for (const name of ['My OpenAI', 'My Gemini', 'My Claude']) {
         const r = await testProvider(win, name)

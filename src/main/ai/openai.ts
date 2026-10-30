@@ -6,7 +6,7 @@
  * https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create).
  * whisper-1 (retired 26 February 2027): response_format "verbose_json" with
  * timestamp_granularities ["segment", "word"], which only it supports. Every other model
- * (gpt-transcribe, the suggested one): response_format "json", `languages` hints, an answer of text
+ * (gpt-transcribe, its replacement): response_format "json", `languages` hints, an answer of text
  * only, sent in 30 s parts and timed from the sound by the job (docs/design/transcription.md §3).
  * A request to a retired model fails with a plain message (retiredModel.ts).
  * Text tasks: the Responses API with a strict JSON schema (text.format type "json_schema");

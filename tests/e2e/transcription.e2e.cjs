@@ -1,12 +1,13 @@
 // Captions that survive the OpenAI shutdown, with speaker labels (NW-09, docs/design/transcription.md),
 // in the real built app against the local mock of the providers (ai-mock-server.cjs; no real API):
-// - OpenAI's suggested gpt-transcribe answers text only: the Captions tab says word times will be
-//   estimated, the request has no timestamp fields, every word is estimated and lands on its sound,
-//   the summary and the Transcript tab say so;
+// - OpenAI's gpt-transcribe (whisper-1's replacement) answers text only: the Captions tab says word
+//   times will be estimated, the request has no timestamp fields, every word is estimated and lands
+//   on its sound, the summary and the Transcript tab say so;
 // - Gemini labels two speakers: shown in the caption rows and the Transcript tab, renamed everywhere
 //   at once (one undo step), in the WebVTT voice tags and, when asked, the SRT, and on the video;
 // - a recording with microphone and computer-sound tracks is labelled You and Others with no AI;
-// - a retired model fails with a plain message after its day (SSW_AI_TODAY).
+// - a retired model fails with a plain message after its day (SSW_AI_TODAY), naming the replacement
+//   the model list suggests by then.
 // SSW_E2E_SHOTS=<dir> saves screenshots of the new UI.
 const fs = require('node:fs')
 const path = require('node:path')
@@ -119,8 +120,8 @@ async function main() {
     await test('transcription: gpt-transcribe text is timed from the sound and marked estimated', fx.withHome('nw09-openai', async (ctx, home) => {
       const id = seed(home, { id: 'rec-nw09-openai', name: 'Text only', seconds: SECONDS, media: wordsVideo('words', STARTS), audio: true })
       const { win } = await launch(ctx, home, mock)
-      const r = await api(win, 'saveAiProvider', { kind: 'openai', label: 'OpenAI', apiKey: 'sk-e2e-openai-key-0001' })
-      h.assert(r.ok && r.value.transcriptionModel === 'gpt-transcribe', `the suggested transcription model is gpt-transcribe (${r.value?.transcriptionModel})`)
+      const r = await api(win, 'saveAiProvider', { kind: 'openai', label: 'OpenAI', apiKey: 'sk-e2e-openai-key-0001', transcriptionModel: 'gpt-transcribe' })
+      h.assert(r.ok && r.value.transcriptionModel === 'gpt-transcribe', `saved with gpt-transcribe (${r.value?.transcriptionModel})`)
 
       await fx.openProject(win, 'Text only')
       await captionsTab(win)
@@ -296,6 +297,13 @@ async function main() {
 
     await test('transcription: a retired model fails with a plain message after its day', fx.withHome('nw09-retired', async (ctx, home) => {
       seed(home, { id: 'rec-nw09-retired', name: 'Retired', seconds: SECONDS, media: wordsVideo('words', STARTS), audio: true })
+      // The list downloaded near the day suggests gpt-transcribe (docs/design/transcription.md §2.1).
+      const list = JSON.parse(fs.readFileSync(path.join(h.APP_DIR, 'resources', 'ai-models.json'), 'utf8'))
+      list.updated = '2027-02-20'
+      list.providers.openai.transcriptionModel = 'gpt-transcribe'
+      const userData = path.join(home, '.config', 'Flown')
+      fs.mkdirSync(userData, { recursive: true })
+      fs.writeFileSync(path.join(userData, 'ai-models.json'), JSON.stringify({ fetchedAt: new Date().toISOString(), list }))
       const { win } = await launch(ctx, home, mock, { SSW_AI_TODAY: '2027-03-01' })
       const r = await api(win, 'saveAiProvider', { kind: 'openai', label: 'Old OpenAI', apiKey: 'retired-e2e-openai-key', transcriptionModel: 'whisper-1' })
       h.assert(r.ok, `saved: ${r.error}`)
