@@ -461,6 +461,21 @@ describe('text tasks', () => {
     }
   }, 30_000)
 
+  // The copy pack (docs/design/publish-pack.md): each provider takes the five strict schemas, and the answers are checked and cleaned.
+  for (const name of ['OpenAI', 'Gemini', 'Claude']) {
+    it(`writes the copy pack with ${name}`, async () => {
+      const id = providers[name].id
+      const opts = { segments, tone: 'professional', length: 'short' }
+      const yt = await call<AiTextResult>('ai:text', id, { task: 'youtube', ...opts })
+      expect(yt).toEqual({ task: 'youtube', text: 'Mock description (professional short, 6 words). <img src=x onerror="document.title=\'pwned\'"> See now.', tags: ['mock', 'flown demo', 'btag/b'] })
+      expect(await call('ai:text', id, { task: 'linkedin', ...opts })).toEqual({ task: 'linkedin', text: 'Mock LinkedIn post (professional short).\n\n#flown' })
+      const x = await call<AiTextResult>('ai:text', id, { task: 'xpost', ...opts })
+      expect(x.task === 'xpost' && x.text.startsWith('Mock X post (professional short) word') && x.text.endsWith('…') && x.text.length <= 280).toBe(true)
+      expect(await call('ai:text', id, { task: 'article', ...opts })).toEqual({ task: 'article', text: '# Mock article\n\nWritten professional short.\n\n## Get started\n1. Open Flown\n2. Press Record' })
+      expect(await call('ai:text', id, { task: 'releaseNotes', ...opts })).toEqual({ task: 'releaseNotes', text: 'Mock release\n\nNotes professional short.\n\nNew\n- A mock feature\n\nFixed\n- A mock bug' })
+    }, 30_000)
+  }
+
   it('rejects malformed requests before calling anyone', async () => {
     const before = mock.requests.length
     expect(await failure(call('ai:text', providers.OpenAI.id, { task: 'cleanup', segments: [{ id: 't1', start: 2, end: 1, text: 'x' }] }))).toMatch(/Invalid captions/)
