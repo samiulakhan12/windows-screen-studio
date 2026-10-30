@@ -224,7 +224,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
                     <span className="review-text" aria-hidden="true">
                       <span className="review-title">{item.title}</span>
                       <span className="review-meta">
-                        {item.detail} · {time}
+                        {time} · {item.detail}
                       </span>
                     </span>
                   </button>
