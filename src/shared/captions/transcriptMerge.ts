@@ -5,8 +5,10 @@
  * part, its end from the other). The two parts time the words at a fixed cut a little
  * differently, so the earlier part's timing decides there: the later part keeps a word both
  * heard only if the earlier did not, and any other word only if it is after the last word the
- * earlier part kept. Segments without word times are taken whole by their middle, and those
- * both overlapping parts heard near a fixed cut are kept once.
+ * earlier part kept. Where both parts answered text only (every word's time estimated, so the
+ * two can be seconds apart), the words are matched by text instead (startAfterText). Segments
+ * without word times are taken whole by their middle, and those both overlapping parts heard
+ * near a fixed cut are kept once.
  */
 import type { CaptionSegment, CaptionWord } from '../types'
 import type { RawSegment, RawTranscript, RawWord } from './transcriptParse'
@@ -34,6 +36,9 @@ const round = (t: number): number => Math.round(t * 1000) / 1000
 /** How far apart, seconds, two parts may time the same word at a fixed cut and still be paired. */
 const PAIR_SLACK = 0.5
 
+/** No one says more words a second than this: at most this many a second of overlap are matched by text. */
+const MAX_WORDS_PER_SECOND = 8
+
 /** The same word whatever its case and punctuation ("" for none). */
 const wordKey = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 
@@ -49,24 +54,29 @@ function shiftPart(part: TranscriptPart, transcript: RawTranscript, duration: nu
   })
 }
 
-/** Of one part's segments (see shiftPart), those it keeps; `begin` settles the words at a fixed cut it starts at. */
-export function placePart(part: TranscriptPart, segments: readonly RawSegment[], duration: number, last: boolean, begin?: Start): Placed[] {
+/**
+ * Of one part's segments (see shiftPart), those it keeps; `begin` settles the words at a fixed cut
+ * it starts at, and `dropped`, when given, the words at a fixed cut it ends at: it keeps all others.
+ */
+export function placePart(part: TranscriptPart, segments: readonly RawSegment[], duration: number, last: boolean, begin?: Start, dropped?: ReadonlySet<RawWord>): Placed[] {
   const lo = Math.max(0, part.start)
   const hi = Math.min(duration, part.end)
   // A part cut in a pause sent nothing past keepEnd, so a word clamped onto it was heard here only.
   const closedEnd = last || part.end <= part.keepEnd
-  const kept = (a: number, b: number, from: number, settled?: boolean): boolean => {
+  const kept = (a: number, b: number, from: number, settled?: boolean, word?: RawWord): boolean => {
     const mid = (a + b) / 2
-    return (settled ?? mid >= from) && (mid < part.keepEnd || (closedEnd && mid === part.keepEnd))
+    return (settled ?? mid >= from) && (dropped && word ? !dropped.has(word) : mid < part.keepEnd || (closedEnd && mid === part.keepEnd))
   }
   const out: Placed[] = []
   for (const s of segments) {
     let seg: RawSegment
     if (s.words?.length) {
-      const mine = s.words.filter((w) => kept(w.start, w.end, begin?.from ?? part.keepStart, begin?.settled.get(w)))
+      const mine = s.words.filter((w) => kept(w.start, w.end, begin?.from ?? part.keepStart, begin?.settled.get(w), w))
       if (!mine.length) continue
-      // All its words: as heard (with its punctuation); some: only those, across a fixed cut.
-      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text: mine.map((w) => w.text).join(' '), words: mine, ...(s.speaker ? { speaker: s.speaker } : {}) }
+      // All its words: as heard (with its punctuation); some: only those, across a fixed cut
+      // (without spaces when the text had none: Chinese, Japanese…).
+      const text = mine.map((w) => w.text).join(/\s/.test(s.text) ? ' ' : '')
+      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text, words: mine, ...(s.speaker ? { speaker: s.speaker } : {}) }
     } else {
       if (!kept(s.start, s.end, part.keepStart)) continue
       seg = { start: s.start, end: s.end, text: s.text, ...(s.speaker ? { speaker: s.speaker } : {}) }
@@ -106,6 +116,71 @@ function startAfter(prev: TranscriptPart, heard: readonly RawSegment[], kept: re
   return { from: lastEnd >= part.start ? lastEnd : part.keepStart, settled }
 }
 
+/** Whether a part answered text only: every word of every segment estimated (transcriptTiming.timeTextPart). */
+const textOnly = (segments: readonly RawSegment[]): boolean => segments.length > 0 && segments.every((s) => !!s.words?.length && s.words.every((w) => w.estimated))
+
+/** How many words two text-only parts both heard at a fixed cut, matched by text (overlapByText). */
+interface TextOverlap {
+  /** The earlier part's last words that go: one cut in two at its end, which the later part heard whole. */
+  tail: number
+  /** The later part's first words that go: those the earlier part also heard, and one cut in two at its start. */
+  head: number
+}
+
+/**
+ * The words the earlier part heard last (`theirs`) and the later part heard first (`mine`) at a
+ * fixed cut, matched by text: the longest run of the later part's first words that repeats the
+ * earlier part's last words (at most `most`, what the overlap can hold), allowing a word cut in
+ * two at either edge (heard by one part only in part, so its text differs) when at least two
+ * words match after it.
+ */
+function overlapByText(theirs: readonly RawWord[], mine: readonly RawWord[], most: number): TextOverlap {
+  const a = theirs.map((w) => wordKey(w.text))
+  const b = mine.map((w) => wordKey(w.text))
+  let best = { n: 0, tail: 0, head: 0 }
+  for (const tail of [0, 1]) {
+    for (const head of [0, 1]) {
+      for (let n = Math.min(a.length - tail, b.length - head, most); n > best.n; n--) {
+        let same = true
+        for (let i = 0; i < n && same; i++) same = a[a.length - tail - n + i] === b[head + i]
+        if (!same) continue
+        if (n >= (tail || head ? 2 : 1)) best = { n, tail, head }
+        break
+      }
+    }
+  }
+  return { tail: best.tail, head: best.head + best.n }
+}
+
+/**
+ * How `part` keeps the words at a fixed cut where it and the part before both answered text only
+ * (see overlapByText): the part before kept every word but its `tail`; this part keeps all but
+ * its first `head` words, and those it keeps that it timed before the last word kept before are
+ * moved after it (with the words following them, squeezed a little, over twice that distance).
+ */
+function startAfterText(kept: readonly Placed[], part: TranscriptPart, segments: RawSegment[], duration: number, overlap: TextOverlap): Start {
+  const mine = segments.flatMap((s) => s.words ?? [])
+  const settled = new Map(mine.map((w, i) => [w, i >= overlap.head]))
+  let lastEnd = -Infinity
+  for (const p of kept) for (const w of p.seg.words ?? []) lastEnd = Math.max(lastEnd, w.end)
+  const first = mine[overlap.head]
+  if (first && first.start < lastEnd) {
+    const a = first.start
+    const h = Math.max(lastEnd, Math.min(lastEnd + 2 * (lastEnd - a), duration, part.end))
+    const move = (t: number): number => (t >= h ? t : lastEnd + ((Math.max(t, a) - a) * (h - lastEnd)) / (h - a))
+    for (const w of mine.slice(overlap.head)) {
+      w.start = move(w.start)
+      w.end = Math.max(w.start, move(w.end))
+    }
+    for (const s of segments) {
+      if (!s.words?.some((w) => settled.get(w))) continue
+      s.start = move(s.start)
+      s.end = Math.max(s.start, move(s.end))
+    }
+  }
+  return { from: -Infinity, settled }
+}
+
 /**
  * The whole transcript from the parts' results (in plan order). Overlapping segments without
  * word times from neighbouring parts (the same words heard twice around a fixed cut) are kept
@@ -115,12 +190,23 @@ function startAfter(prev: TranscriptPart, heard: readonly RawSegment[], kept: re
  */
 export function mergeParts(results: readonly { part: TranscriptPart; transcript: RawTranscript }[], duration: number): { segments: CaptionSegment[]; language?: string } {
   const placed: Placed[] = []
+  const shifted = results.map(({ part, transcript }) => shiftPart(part, transcript, duration))
+  const wordsOf = (segments: readonly RawSegment[]): RawWord[] => segments.flatMap((s) => s.words ?? [])
+  // At each fixed cut between two text-only answers, the words both heard, matched by text.
+  const byText = results.map(({ part }, i) =>
+    i > 0 && part.start < part.keepStart && textOnly(shifted[i - 1]) && textOnly(shifted[i])
+      ? overlapByText(wordsOf(shifted[i - 1]), wordsOf(shifted[i]), Math.ceil((results[i - 1].part.end - part.start) * MAX_WORDS_PER_SECOND))
+      : undefined
+  )
   let prev: { part: TranscriptPart; heard: RawSegment[]; kept: Placed[] } | undefined
   for (let i = 0; i < results.length; i++) {
-    const { part, transcript } = results[i]
-    const heard = shiftPart(part, transcript, duration)
-    const begin = prev && part.start < part.keepStart ? startAfter(prev.part, prev.heard, prev.kept, part, heard) : undefined
-    const own = placePart(part, heard, duration, i === results.length - 1, begin)
+    const { part } = results[i]
+    const heard = shifted[i]
+    const matched = byText[i]
+    const begin = prev && part.start < part.keepStart ? (matched ? startAfterText(prev.kept, part, heard, duration, matched) : startAfter(prev.part, prev.heard, prev.kept, part, heard)) : undefined
+    const ahead = byText[i + 1]
+    const dropped = ahead ? new Set(wordsOf(heard).slice(wordsOf(heard).length - ahead.tail)) : undefined
+    const own = placePart(part, heard, duration, i === results.length - 1, begin, dropped)
     placed.push(...own)
     prev = { part, heard, kept: own }
   }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mergeParts } from '../src/shared/captions/transcriptMerge'
 import type { RawTranscript, RawWord } from '../src/shared/captions/transcriptParse'
 import { planParts } from '../src/shared/captions/transcriptPlan'
+import { timeTextPart } from '../src/shared/captions/transcriptTiming'
 
 const seg = (start: number, end: number, text: string, words?: { text: string; start: number; end: number }[]): RawTranscript['segments'][number] => ({ start, end, text, ...(words ? { words } : {}) })
 
@@ -97,6 +98,18 @@ describe('mergeParts', () => {
       ['the cut.', 9.1, 9.9]
     ])
     expect(out.segments[1].words?.map((w) => w.text)).toEqual(['the', 'cut.'])
+  })
+
+  it('splits a sentence without spaces across a fixed cut without adding any', () => {
+    const parts = planParts(18, [], { maxSeconds: 10, overlap: 2 })
+    const out = mergeParts(
+      [
+        { part: parts[0], transcript: { segments: [seg(8.3, 9.7, '今日は', [{ text: '今日', start: 8.3, end: 8.9 }, { text: 'は', start: 9.1, end: 9.7 }])] } },
+        { part: parts[1], transcript: { segments: [seg(0.3, 1.9, '今日は晴れ。', [{ text: '今日', start: 0.3, end: 0.9 }, { text: 'は', start: 1.1, end: 1.5 }, { text: '晴れ。', start: 1.55, end: 1.9 }])] } }
+      ],
+      18
+    )
+    expect(out.segments.map((s) => s.text)).toEqual(['今日', 'は晴れ。'])
   })
 
   it('keeps every word of a long sentence across a fixed cut exactly once', () => {
@@ -201,6 +214,52 @@ describe('mergeParts', () => {
         [w('important', 598.5, 599.1), w('change', 599.14, 599.27), w('now.', 599.4, 599.9)]
       )
     ).toEqual(sentence)
+  })
+
+  describe('text-only parts at fixed cuts (steady sound, every word estimated)', () => {
+    // Narration of 2.6 words a second in phrases of 9 words with 1.5 s pauses between, under
+    // steady music: the whole recording has sound, so parts are cut at fixed points.
+    const duration = 86
+    const truth: RawWord[] = []
+    for (let t = 0.5, n = 0; t < duration - 1; t += 1.5) {
+      for (let k = 0; k < 9 && t < duration - 0.5; k++, t += 1 / 2.6) truth.push({ text: `w${n++}`, start: t, end: t + 0.35 })
+    }
+    const parts = planParts(duration, [], { maxSeconds: 30 })
+    // What each part's text-only answer says: the words whose middle it sent, timed from its sound.
+    const answer = (texts: (string[] | undefined)[] = []) =>
+      parts.map((part, i) => {
+        const said = texts[i] ?? truth.filter((w) => (w.start + w.end) / 2 >= part.start && (w.start + w.end) / 2 < part.end).map((w) => w.text)
+        return { part, transcript: { segments: timeTextPart(said.join(' '), [{ start: 0, end: part.end - part.start }], part.end - part.start) } }
+      })
+    const wordsOf = (out: ReturnType<typeof mergeParts>): string[] => out.segments.flatMap((s) => s.words!.map((w) => w.text))
+
+    it('keeps every word once, in order, though the two parts time the words of the overlap seconds apart', () => {
+      expect(parts.length).toBe(3)
+      expect(parts.every((p, i) => i === 0 || p.start < p.keepStart)).toBe(true)
+      const out = mergeParts(answer(), duration)
+      expect(wordsOf(out)).toEqual(truth.map((w) => w.text))
+      // Captions follow one another, each with its words inside it.
+      out.segments.forEach((s, i) => {
+        if (i) expect(s.start).toBeGreaterThanOrEqual(out.segments[i - 1].end)
+        expect(s.text).toBe(s.words!.map((w) => w.text).join(' '))
+        for (const w of s.words!) expect(w.start >= s.start && w.end <= s.end && w.end > w.start).toBe(true)
+      })
+    })
+
+    it('drops a word cut in two at the edge of a part when the other part heard it whole', () => {
+      const texts = answer().map((r) => r.transcript.segments.flatMap((s) => s.words!.map((w) => w.text)))
+      // At the second cut, the earlier part heard only the start of its last word, the later only the end of its first.
+      const garbled = texts.map((t, i) => (i === 1 ? [...t.slice(0, -1), t[t.length - 1].slice(0, 2)] : i === 2 ? [`${t[0].slice(-1)}x`, ...t.slice(1)] : t))
+      expect(garbled[1].slice(-1)[0]).not.toBe(texts[1].slice(-1)[0])
+      expect(wordsOf(mergeParts(answer(garbled), duration))).toEqual(truth.map((w) => w.text))
+    })
+
+    it('matches no more words than the overlap can hold, though the text repeats', () => {
+      // "one two three four" over and over: every run of the later part's first words repeats the earlier's last.
+      const counting = answer().map((r) => r.transcript.segments.flatMap((s) => s.words!.map((w) => ['one', 'two', 'three', 'four'][Number(w.text.slice(1)) % 4])))
+      const said = mergeParts(answer(counting), duration).segments.flatMap((s) => s.words!).length
+      expect(said).toBeGreaterThan(truth.length - 2 * 16)
+    })
   })
 
   it('trims overlapping neighbours so segments follow one another, and drops slivers', () => {

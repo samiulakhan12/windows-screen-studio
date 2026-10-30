@@ -200,11 +200,20 @@ test checks, with the mock's tone bursts, that every word starts within 0.6 s of
 (`transcriptMerge.ts`) carries both through unchanged (two additive spreads), so `CaptionWord.estimated`
 reaches the project.
 
-Risk: where no pause is found near the end of a 30 s window (steady music or noise under the
-voice), parts are cut at a fixed point with a 2 s overlap, and the merge pairs the words both parts
-heard by text and time (within 0.5 s). Two separate estimates can differ by more than that, so a
-word there may show twice or be missed. Speech with pauses of 0.5 s or more every 10 s or so never
-hits this. Matching the overlap by text alone is left for later (§13).
+Where no pause is found near the end of a 30 s window (steady music or noise under the voice),
+parts are cut at a fixed point with a 2 s overlap. The two parts' estimates of the same word there
+can be seconds apart, so pairing them by time (within 0.5 s, as for providers that time words
+themselves) would lose or repeat words at nearly every cut. When both parts answered text only
+(every word estimated), the merge matches the overlap by text instead (`overlapByText`,
+`startAfterText` in `transcriptMerge.ts`): the earlier part keeps every word it heard; the later
+part drops its longest run of first words that repeats the earlier part's last words (by
+`wordKey`, at most 8 words a second of overlap, so text that repeats itself cannot swallow a
+part), allowing one word cut in two at either edge (its text differs from the whole word the other
+part heard) when at least two words match after it; that edge word is dropped too. The later
+part's first kept words, when timed before the earlier part's last kept word, are moved after it,
+and the words after them squeezed a little, over twice that distance, so captions follow one
+another and no word is lost. A word cut in two where fewer than two whole words are shared (a
+pause in the overlap) may still show twice.
 
 Stretches of sound shorter than 0.12 s are left out of the spread (a sliver at a part's edge would
 squeeze a word to nothing and the caption would be dropped as too short).
@@ -399,7 +408,6 @@ still gets `whisper-1`.
 ## 13. Left for later
 
 - Aligning a provider's text to word times from the speech model on this PC (§2.1 alternative 2).
-- Matching the overlap of text-only parts cut without a pause by text instead of time (§3.4).
 - *Speaker names in SRT and text* for the export pack's files.
 - Keeping Gemini's speaker numbers consistent across 5-minute parts (send the previous part's
   last seconds, or match voices).
