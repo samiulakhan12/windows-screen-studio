@@ -77,7 +77,10 @@ function times(start: unknown, end: unknown, limit: number): { start: number; en
   return { start: s, end: e }
 }
 
-function readWords(list: unknown, limit: number, key: 'word' | 'text'): RawWord[] {
+const byStart = (a: { start: number }, b: { start: number }): number => a.start - b.start
+
+/** The usable words of `list`, sorted by start (or in the order sent, to check that order first). */
+function readWords(list: unknown, limit: number, key: 'word' | 'text', sort = true): RawWord[] {
   if (!Array.isArray(list)) return []
   const out: RawWord[] = []
   for (const w of list) {
@@ -86,7 +89,7 @@ function readWords(list: unknown, limit: number, key: 'word' | 'text'): RawWord[
     const t = times(w.start, w.end, limit)
     if (text && t) out.push({ text, ...t })
   }
-  return out.sort((a, b) => a.start - b.start)
+  return sort ? out.sort(byStart) : out
 }
 
 /** Words of `words` whose middle lies in [start, end) (the last segment takes its end too). */
@@ -224,10 +227,13 @@ export function parseGeminiTranscription(text: string, partSeconds: number): Raw
     const text = cleanText(s.text)
     const t = times(s.start, s.end, limit)
     if (!text || !t) continue
-    const words = readWords(s.words, limit, 'text').filter((w) => w.end >= t.start - 0.5 && w.start <= t.end + 0.5)
+    // In the order sent: words out of order are a sign of impossible times.
+    const words = readWords(s.words, limit, 'text', false).filter((w) => w.end >= t.start - 0.5 && w.start <= t.end + 0.5)
     const speaker = typeof s.speaker === 'string' ? cleanText(s.speaker, 64) : ''
-    // Impossible word times are replaced by an estimate (docs/design/transcription.md §4).
-    segments.push(checkWordTimes({ ...t, text, ...(words.length ? { words } : {}), ...(speaker ? { speaker } : {}) }))
+    // Impossible word times are replaced by an estimate (docs/design/transcription.md §4); kept ones are sorted.
+    const checked = checkWordTimes({ ...t, text, ...(words.length ? { words } : {}), ...(speaker ? { speaker } : {}) })
+    checked.words?.sort(byStart)
+    segments.push(checked)
   }
   return { language: languageCode(json.language), segments: normalizeSpeakerLabels(segments.sort((a, b) => a.start - b.start)) }
 }

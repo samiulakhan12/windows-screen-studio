@@ -153,6 +153,17 @@ describe('Gemini speakers', () => {
     const answer = JSON.stringify({ segments: [{ start: 0, end: 4, text: 'a b', words: [{ text: 'a', start: 3, end: 3 }, { text: 'b', start: 1, end: 1 }] }] })
     expect(parseGeminiTranscription(answer, 5).segments[0].words!.every((w) => w.estimated)).toBe(true)
   })
+
+  it('checks the order of Gemini word times as sent, before sorting them', () => {
+    const words = [{ text: 'Hello', start: 2, end: 2.4 }, { text: 'there', start: 0, end: 0.4 }, { text: 'my', start: 1.2, end: 1.5 }, { text: 'friend', start: 0.5, end: 1 }]
+    const out = parseGeminiTranscription(JSON.stringify({ segments: [{ start: 0, end: 2.5, text: 'Hello there my friend', words }] }), 5).segments[0].words!
+    expect(out.map((w) => w.text)).toEqual(['Hello', 'there', 'my', 'friend'])
+    expect(out.every((w) => w.estimated)).toBe(true)
+    // In order but a hair apart (within 0.05 s): kept as timed, sorted by start.
+    const close = [{ text: 'a', start: 0.52, end: 1 }, { text: 'b', start: 0.5, end: 0.9 }, { text: 'c', start: 1, end: 2 }]
+    const kept = parseGeminiTranscription(JSON.stringify({ segments: [{ start: 0, end: 2, text: 'a b c', words: close }] }), 5).segments[0].words!
+    expect(kept.map((w) => [w.text, w.start, w.estimated])).toEqual([['b', 0.5, undefined], ['a', 0.52, undefined], ['c', 1, undefined]])
+  })
 })
 
 describe('mergeParts', () => {

@@ -223,7 +223,8 @@ squeeze a word to nothing and the caption would be dropped as too short).
 A segment's words are kept as Gemini timed them when all of these hold, else they are re-spread
 over the segment by length and marked `estimated`:
 
-- starts never go back by more than 0.05 s from one word to the next;
+- starts never go back by more than 0.05 s from one word to the next, in the order Gemini sent
+  them (kept words are sorted by start only after this check);
 - at most a quarter of the words have no length (end − start < 0.01 s);
 - in a segment longer than 1 s, the words reach over at least 30 % of it;
 - there are as many timed words as words in the text, or at least half as many (Gemini sometimes
