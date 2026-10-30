@@ -10,9 +10,11 @@
  * (https://platform.claude.com/docs/en/build-with-claude/structured-outputs,
  * https://developers.openai.com/api/docs/guides/structured-outputs).
  */
-import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask } from '../api/ai'
+import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask, type PackTextTask } from '../api/ai'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
+import { isLength, isPackTask, isTone } from '../publish/pack'
+import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
 export interface TextPrompt {
@@ -137,6 +139,13 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         system: "You summarise a screen recording from its transcript in 2 to 4 plain sentences in the transcript's language: what is shown and what the viewer learns. No headings, lists or markdown.",
         user: data
       }
+    // The publishing copy pack (NW-13): its own prompts, the transcript as plain text in a data block.
+    case 'youtube':
+    case 'linkedin':
+    case 'xpost':
+    case 'article':
+    case 'releaseNotes':
+      return packPrompt(request as AiTextRequest & { task: PackTextTask })
   }
 }
 
@@ -242,6 +251,12 @@ export async function runTextTask(request: AiTextRequest, ask: (prompt: TextProm
     case 'title':
     case 'summary':
       return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request))) }
+    case 'youtube':
+    case 'linkedin':
+    case 'xpost':
+    case 'article':
+    case 'releaseNotes':
+      return runPackTask(request as AiTextRequest & { task: PackTextTask }, ask)
   }
 }
 
@@ -276,6 +291,11 @@ export function validateTextRequest(raw: unknown): AiTextRequest {
     // A language name or code, not instructions: letters, spaces and a few separators only.
     targetLanguage = raw.targetLanguage.trim()
     if (!/^[\p{L}\p{M} ()'.,-]+$/u.test(targetLanguage)) throw new Error('Choose the language to translate into.')
+  }
+  if (isPackTask(task)) {
+    // The pack's choices: a tone and a length from their lists (else the defaults), the name and chapter titles as one-line data.
+    const context = readPackContext(raw.context)
+    return { task, segments, tone: isTone(raw.tone) ? raw.tone : 'friendly', length: isLength(raw.length) ? raw.length : 'normal', ...(context ? { context } : {}) }
   }
   return { task, segments, ...(targetLanguage ? { targetLanguage } : {}) }
 }

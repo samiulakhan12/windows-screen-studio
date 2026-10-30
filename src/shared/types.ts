@@ -762,6 +762,14 @@ export interface Project {
   script?: ProjectScript
   /** Where the video came from when Flown did not record it. Absent: recorded in Flown (every project from before NW-07). */
   source?: ImportedSource
+  /** The publishing copy pack's saved choices (NW-13). Absent: none (every project from before it). */
+  publish?: ProjectPublish
+}
+
+/** What the publishing copy pack keeps with the project (docs/design/publish-pack.md §3). */
+export interface ProjectPublish {
+  /** The YouTube description's text (without the chapters), saved with "Use for exports". */
+  description: string
 }
 
 /** A project made from a video file recorded with another app (docs/design/import-video.md §3). */

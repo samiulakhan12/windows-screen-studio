@@ -1,5 +1,6 @@
 import type { ModelList } from '../ai/modelList'
 import type { AiProviderKind, CaptionSegment, Transcript } from '../types'
+import type { PublishLength, PublishTone } from '../publish/pack'
 
 /** A configured AI provider as the renderer sees it: the API key itself never leaves the main process. */
 export interface AiProviderInfo {
@@ -57,7 +58,10 @@ export interface TranscribeProgress {
   resumed?: number
 }
 
-export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
+export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | PackTextTask
+
+/** The publishing copy pack's own tasks (NW-13, docs/design/publish-pack.md). */
+export type PackTextTask = 'youtube' | 'linkedin' | 'xpost' | 'article' | 'releaseNotes'
 
 export interface AiTextRequest {
   task: AiTextTask
@@ -65,6 +69,11 @@ export interface AiTextRequest {
   segments: CaptionSegment[]
   /** For 'translate'. */
   targetLanguage?: string
+  /** For the pack's tasks (NW-13): how it sounds and how long it is (others ignore them). */
+  tone?: PublishTone
+  length?: PublishLength
+  /** For the pack's tasks: the recording's name and its chapter titles, sent as data. */
+  context?: { title?: string; chapters?: string[] }
 }
 
 export type AiTextResult =
@@ -73,6 +82,9 @@ export type AiTextResult =
   /** 'chapters': chapter starts (source seconds) with titles. */
   | { task: 'chapters'; chapters: { t: number; title: string }[] }
   | { task: 'title' | 'summary'; text: string }
+  /** The pack (NW-13): checked, cleaned plain text; the YouTube description's text has no chapters (Flown adds them). */
+  | { task: 'youtube'; text: string; tags: string[] }
+  | { task: 'linkedin' | 'xpost' | 'article' | 'releaseNotes'; text: string }
 
 /** "Draft script" (speaker notes): the presenter's notes or bullet points, sent only on that click. */
 export interface ScriptDraftRequest {
@@ -100,7 +112,10 @@ export interface AiApi {
   transcribe(projectId: string, options: TranscribeOptions): Promise<Transcript>
   cancelTranscription(projectId: string): Promise<void>
   onTranscribeProgress(listener: (progress: TranscribeProgress) => void): () => void
-  aiText(providerId: string, request: AiTextRequest): Promise<AiTextResult>
+  /** `requestId` (optional, `^[A-Za-z0-9_-]{1,64}$`) lets cancelAiText stop it; a second request with the same id stops the first. */
+  aiText(providerId: string, request: AiTextRequest, requestId?: string): Promise<AiTextResult>
+  /** Stops text request `requestId` (it then rejects); nothing when none runs. */
+  cancelAiText(requestId: string): Promise<void>
   /**
    * Turns notes or bullet points into a script to read aloud with provider `providerId`. One
    * draft runs at a time: a new one cancels the one before. Rejects with a message to show.
@@ -156,7 +171,7 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
   }
 }
 
-export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary']
+export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'youtube', 'linkedin', 'xpost', 'article', 'releaseNotes']
 
 /** Limits of what the renderer may send (checked again in the main process). */
 export const AI_LIMITS = {
