@@ -77,6 +77,15 @@ export interface RecordingSound {
   voice?: VoiceStrength
   /** Seconds of fade out before and fade in after every cut (NW-06); absent: none (earlier jobs). */
   cutFade?: number
+  /** Stretches of the recording's sound at a lower gain (F-17, docs/design/sound-finder.md §4.6); absent: none. */
+  sounds?: SoundGain[]
+}
+
+/** A stretch of the recording's sound (source seconds) at `gain` (0 muted .. 1), with SOUND_FADE ramps outside it. */
+export interface SoundGain {
+  start: number
+  end: number
+  gain: number
 }
 
 /** Background music in an export: plays on the output timeline from its start, ignoring cuts. */

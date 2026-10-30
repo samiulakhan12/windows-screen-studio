@@ -762,6 +762,8 @@ export interface Project {
   script?: ProjectScript
   /** Where the video came from when Flown did not record it. Absent: recorded in Flown (every project from before NW-07). */
   source?: ImportedSource
+  /** Unwanted sounds muted, lowered or ignored (F-17, docs/design/sound-finder.md). Absent: none (every project from before). */
+  sounds?: SoundEdits
 }
 
 /** A project made from a video file recorded with another app (docs/design/import-video.md §3). */
@@ -830,4 +832,21 @@ export interface ExportSettings {
 export interface RecordingStatus {
   state: 'idle' | 'countdown' | 'recording' | 'paused' | 'processing'
   elapsed: number
+}
+
+/** What the unwanted-sound finder changed (F-17, docs/design/sound-finder.md §3.1). */
+export interface SoundEdits {
+  /** Stretches of the recording's sound that are muted or lowered (source seconds, sorted by start). */
+  spans: SoundSpan[]
+  /** Keys of found sounds the user chose to keep as they are (Ignore). */
+  ignored: string[]
+}
+
+/** A muted or lowered stretch of the recording's sound. */
+export interface SoundSpan {
+  start: number
+  end: number
+  action: 'mute' | 'duck'
+  /** The found sound it came from (`<kind>-<start in centiseconds>`). */
+  key: string
 }

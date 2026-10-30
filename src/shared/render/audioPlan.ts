@@ -8,10 +8,11 @@
  * are cut to the exact length of their video and kept on its frames, click sounds keep the
  * recording's channels at full level on each side, and sources mixed together are made stereo.
  */
-import type { ClickSounds, ExportJob, SoundHold } from '../api/export'
+import type { ClickSounds, ExportJob, SoundGain, SoundHold } from '../api/export'
 import { duckExpression, fitFades } from '../audio/automation'
 import { LOUDNESS_TARGET } from '../audio/loudness'
 import { musicEnd, STEM_KINDS, type StemKind } from '../audio/settings'
+import { soundGainFilters } from '../audio/soundsEdit'
 import { atempoChain, atempoStages } from '../engine/timeline'
 import type { Clip } from '../types'
 import { clickSoundSource } from './clickSound'
@@ -104,6 +105,8 @@ export interface RecordingPart {
   holds?: SoundHold[]
   /** Seconds of fade out before and fade in after every cut (NW-06, cutFades.ts); absent: none. */
   cutFade?: number
+  /** Muted and lowered stretches (F-17, soundsEdit.ts), in source time; absent: none. */
+  sounds?: SoundGain[]
 }
 
 /** Background music in the graph. */
@@ -222,6 +225,9 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
     stems.forEach((s, i) => parts.push(`[${s.input}]${resample}${s.denoise ? denoise : ''}${gainFilter(s.gain)},${STEREO}[m${i}]`))
     head = `${stems.map((_, i) => `[m${i}]`).join('')}amix=inputs=${stems.length}:duration=longest:dropout_transition=0:normalize=0`
   }
+  // Unwanted sounds (F-17): on the whole recording in source time, before it is cut and re-timed.
+  const soundGain = soundGainFilters(rec.sounds)
+  if (soundGain) head += `,${soundGain}`
   parts.push(`${head}${n > 1 ? `,asplit=${n}${clips.map((_, i) => `[s${i}]`).join('')}` : '[s0]'}`)
   const edges = rec.cutFade && rec.cutFade > 0 ? pieceCutFades(clips) : null
   clips.forEach((c, i) => {
@@ -374,6 +380,7 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
   if (job.audio && job.audio.clips.length > 0) {
     const { clips, volume, noiseReduction, normalize, holds, cutFade } = job.audio
     const extras = { ...(noiseReduction && noiseReduction > 0 ? { noiseReduction } : {}), ...(normalize ? { normalize: true } : {}), ...(holds?.length ? { holds } : {}), ...(cutFade && cutFade > 0 ? { cutFade } : {}) }
+    const sounds = job.audio.sounds?.length ? { sounds: job.audio.sounds } : {}
     const wanted = STEM_KINDS.filter((k) => job.audio?.stems?.[k] !== undefined)
     if (wanted.length > 0) {
       const stems: StemPart[] = []
@@ -383,10 +390,10 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
         args.push('-vn', '-i', file)
         stems.push({ input: `${next++}:a`, gain: job.audio.stems?.[k] ?? 1, denoise: k === 'mic' })
       }
-      audio = { clips, volume, input: stems[0].input, stems, ...extras }
+      audio = { clips, volume, input: stems[0].input, stems, ...extras, ...sounds }
     } else if (files.mix) {
       args.push('-vn', '-i', files.mix)
-      audio = { clips, volume, input: `${next++}:a`, ...extras }
+      audio = { clips, volume, input: `${next++}:a`, ...extras, ...sounds }
     }
   }
   let music: MusicPart | undefined

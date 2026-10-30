@@ -29,7 +29,7 @@ const HAND = path.join(root, 'resources', 'notices')
 const CRATES = ['native/Cargo.toml', 'native/speech/Cargo.toml']
 const TARGET = 'x86_64-pc-windows-gnu'
 /** devDependencies that Vite bundles into the app (electron-vite externalises `dependencies` only). */
-const BUNDLED = ['react', 'react-dom', '@mediapipe/tasks-vision', '@anthropic-ai/sdk', '@google/genai', 'openai']
+const BUNDLED = ['react', 'react-dom', '@mediapipe/tasks-vision', '@anthropic-ai/sdk', '@google/genai', 'openai', '@mediapipe/tasks-audio']
 /** Type declarations: in the dependency trees, but no code of them ships. */
 const TYPES_ONLY = (name) => name.startsWith('@types/') || name === 'undici-types'
 const RULE = '='.repeat(78)

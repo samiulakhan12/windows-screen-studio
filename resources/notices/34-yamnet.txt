@@ -1,0 +1,7 @@
+MediaPipe Tasks Audio (@mediapipe/tasks-audio) and the YAMNet sound event model
+https://github.com/google-ai-edge/mediapipe and https://github.com/tensorflow/models/tree/master/research/audioset/yamnet
+Bundled into the app for the unwanted-sound finder (its WebAssembly runtime and the YAMNet model,
+yamnet.tflite, 4,126,810 bytes, SHA-256
+4d8b4a53282dc83ef04e3e7dbc4fbc98082e34e44ed798e16c3a0cdd4c584faf, run on this PC). Copyright The
+MediaPipe Authors and The TensorFlow Authors. Licensed under the Apache License, Version 2.0, whose
+full text is reproduced below with the npm packages under the same licence.
