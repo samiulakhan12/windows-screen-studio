@@ -16,7 +16,7 @@ import { EditorIcon } from '../editor/EditorIcon'
 import { useModalFocus } from '../editor/modalFocus'
 import { useAiProviders } from '../editor/panels/CaptionsPanel'
 import { loadPublishPrefs, savePublishPrefs } from './publishPrefs'
-import { editItem, isRunning, stopAll, stopItem, usePackItems, writeItem, type PackItem, type WriteContext } from './publishRun'
+import { editItem, isRunning, seedItem, stopAll, stopItem, usePackItems, writeItem, type PackItem, type WriteContext } from './publishRun'
 import './publish.css'
 
 const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
@@ -52,6 +52,11 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   const segments = project.transcript?.segments
   const key = useMemo(() => transcriptKey(segments ?? []), [segments])
   const youtube = useMemo(() => projectYoutubeChapters(project), [project])
+
+  // The description saved for exports shows in an empty YouTube card (a new session).
+  useEffect(() => {
+    if (project.publish?.description) seedItem(project.id, 'youtube', project.publish.description)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const close = (): void => {
     stopAll(project.id)

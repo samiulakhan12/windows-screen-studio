@@ -57,6 +57,12 @@ export function editItem(projectId: string, kind: PublishKind, change: Partial<P
   patch(projectId, kind, change)
 }
 
+/** Shows `text` in an empty, idle card (the YouTube description saved for exports, in a new session). */
+export function seedItem(projectId: string, kind: PublishKind, text: string): void {
+  const item = packItems(projectId)[kind]
+  if (item.status === 'idle' && !item.text && text) patch(projectId, kind, { status: 'done', text })
+}
+
 export function usePackItems(projectId: string): PackItems {
   return useSyncExternalStore(
     (l) => {
