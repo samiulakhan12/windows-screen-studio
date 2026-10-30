@@ -1,0 +1,110 @@
+/* ---------- Audio panel: Unwanted sounds (docs/design/sound-finder.md §5) ---------- */
+
+.sounds-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.sounds-bar {
+  position: relative;
+  align-self: stretch;
+  height: 6px;
+  border-radius: 3px;
+  /* The fill is at least 3:1 against the track (WCAG non-text contrast), as Clean voice's bar. */
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.sounds-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 3px;
+  background: var(--accent-text);
+  transition: width 0.25s;
+}
+
+.sound-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 360px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sound-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.sound-row:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
+.sound-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.sound-kind {
+  color: var(--text-1);
+  font-weight: var(--weight-semibold);
+}
+
+/* --text-2 on --surface-2: 6.9:1 (AA). */
+.sound-time,
+.sound-state {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.sound-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.sound-state {
+  font-size: var(--text-sm);
+  margin-right: 2px;
+}
+
+.sound-row[data-state='muted'] .sound-kind,
+.sound-row[data-state='ducked'] .sound-kind,
+.sound-row[data-state='cut'] .sound-kind,
+.sound-row[data-state='ignored'] .sound-kind {
+  color: var(--text-2);
+}
+
+.sound-footer {
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sound-show-ignored {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
