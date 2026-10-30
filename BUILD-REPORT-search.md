@@ -82,7 +82,14 @@ Branch `feat-search`, from `ccr-b6df7cf7-yked87` (546e479). Design: `docs/design
   `tests/groupMove.test.ts › G-PERF` (a timing limit), during a run while a review was also running
   tests. It failed again when re-run as a file under that load and passed when run alone. It does not
   touch search code.
-- `xvfb-run … npm run test:e2e`: see the result below.
+- `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`, the full suite:
+  - 53 of 60 files passed, including the 3 search tests.
+  - The 7 files that failed (audio-pack, bangla-captions, camera-director, captions,
+    offline-captions, polish, w3fix-timeline) need the speech helper and a test model. This container
+    had neither, and the tests say so ("the speech helper is missing … run npm run build:speech-host").
+  - After `npm run build:speech-host` and `npm run fetch:test-speech`, I re-ran all 7: every one
+    passed. So all 60 e2e files pass.
+  - None of these files touch search code.
 
 ## Needs a real Windows PC to confirm
 
