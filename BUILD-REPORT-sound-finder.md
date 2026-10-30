@@ -91,7 +91,29 @@ recording keeps nothing and the editor stays usable; a mixed-track-only recordin
 
 ## Verification
 
-VERIFICATION_PLACEHOLDER
+On this Linux container (4 cores), with the speech host helper built (`npm run build:speech-host`)
+and the test model fetched (`npm run fetch:test-speech`):
+
+- `npm run typecheck`: passes.
+- `npx vitest run --testTimeout=60000`: **3849 passed, 1 failed** of 3850 (287 files). The failure was
+  `tests/groupMove.test.ts` › G-PERF (a 250 ms time limit, measured 251.8 ms while the e2e suite loaded
+  the machine). Re-run alone it passed 3 times in a row. 52 of the tests are the sound finder's.
+- `npm run build`: passes. The worker (61 KB), `audio_wasm_module_internal` (.js 253 KB, .wasm 6.58 MB)
+  and `yamnet-*.tflite` (4.13 MB) are in `out/renderer/assets/`.
+- `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (the full suite): **58 of 60 files
+  passed**, 248 tests passed, 2 failed:
+  - `teleprompter.e2e.cjs` › "notes: … rehearsal window …": "dragged by its strip" (the window did not
+    move). It **fails the same way on the base commit 546e479**: no window manager here (`openbox` cannot
+    be installed in this container).
+  - `shapes.e2e.cjs` › "add from the panel …": `ENOTEMPTY` while deleting the test's temporary HOME
+    after the test. Re-run alone on this branch, the whole file passes (6/6).
+- After the review fixes (rebuilt): `sound-finder`, `clean-voice`, `edit-by-text`, `audio-pack`,
+  `audit-audio-export`, `export-pack`, `preview-speed`, `waveform` all pass again (teleprompter and the
+  shapes cleanup race as above).
+- `sound-finder.e2e.cjs`: 4/4 (found in about 1 s: ping 12.95–13.45 s, music 14.63–23.40 s; ding
+  −17.6 → −125.9 dBFS when muted, elsewhere −17.2 / −17.2; music lowered by 14.0 dB).
+- Not run here: `npm run dist:win` and `verify-dist` (they need the Windows packaging); the new
+  `verify-dist` lines were checked against the `out/renderer/assets` names of this build.
 
 ## Shared files touched (additive)
 
