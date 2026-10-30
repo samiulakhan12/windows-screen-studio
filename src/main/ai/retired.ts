@@ -18,6 +18,6 @@ export function today(): string {
 /** `err` as the plain "retired" failure when `model` is on the retiring list and its day has come, else `err` itself. */
 export function retiredFailure(err: unknown, kind: AiProviderKind, model: string, use: 'transcription' | 'text', day = today()): unknown {
   if (!(err instanceof AiError)) return err
-  const message = retiredMessage(modelList(), kind, model, day, use, err.failure.kind)
+  const message = retiredMessage(modelList(), kind, model, day, use, err.failure.kind, err.failure.status)
   return message ? new AiError({ kind: 'not-found', retryable: false, message }) : err
 }

@@ -13,15 +13,18 @@ const MAKERS: Record<AiProviderKind, string> = { openai: 'OpenAI', gemini: 'Goog
 export const todayUtc = (now = new Date()): string => now.toISOString().slice(0, 10)
 
 /**
- * Failures a retired model can explain (an unknown model is a 404, a refused one a 400): not a
- * key, quota, rate limit, a server error, the network or a cancel.
+ * Failures a retired model can explain (an unknown model is a 404, a refused one a 400, one the key
+ * has no access to a 403): not a bad key (401), quota, rate limit, a server error, the network or a
+ * cancel.
  */
 const EXPLAINED: readonly AiFailureKind[] = ['not-found', 'bad-request', 'other', 'refused']
+const explained = (failure: AiFailureKind, status?: number): boolean => EXPLAINED.includes(failure) || (failure === 'auth' && status === 403)
 
 /**
  * The message for a failed request to `model` of `kind` when the model is retired by `today`, or
  * null. `use` is 'transcription' (suggests the list's transcription model and On this PC) or
- * 'text'. `failure`: the kind of failure, when there was one (absent: any).
+ * 'text'. `failure`: the kind of failure, when there was one (absent: any), and `status` its HTTP
+ * status (a key with no access, 403, is explained; a bad key, 401, is not).
  */
 export function retiredMessage(
   list: ModelList,
@@ -29,9 +32,10 @@ export function retiredMessage(
   model: string,
   today: string,
   use: 'transcription' | 'text',
-  failure?: AiFailureKind
+  failure?: AiFailureKind,
+  status?: number
 ): string | null {
-  if (failure && !EXPLAINED.includes(failure)) return null
+  if (failure && !explained(failure, status)) return null
   const r = list.retiring.find((x) => x.provider === kind && x.model === model)
   if (!r || r.on > today) return null
   const head = `${MAKERS[kind]} retired ${model} on ${dayText(r.on)}.`

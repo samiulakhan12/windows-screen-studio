@@ -28,10 +28,11 @@ and the installed `openai` SDK 7.32.0 types (design §1):
   Transcript tab underlines estimated words (dotted, `title="Estimated time"`).
 - **Gemini**: asks for a `speaker` per segment (normalised to "Speaker N", dropped when only one);
   implausible word times are replaced by estimates (`checkWordTimes`).
-- **Retired models**: after the day on the list, a failed request (404/400/other, not key, quota,
-  rate limit, server or network) says *"OpenAI retired whisper-1 on 26 February 2027. Choose
-  gpt-transcribe as the transcription model in Settings › AI providers, or make captions On this
-  PC."* (`shared/captions/retiredModel.ts`, `main/ai/retired.ts`; text tasks get their own line).
+- **Retired models**: after the day on the list, a failed request (404/403/400/other, not a bad
+  key (401), quota, rate limit, server or network) says *"OpenAI retired whisper-1 on 26
+  February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or
+  make captions On this PC."* (`shared/captions/retiredModel.ts`, `main/ai/retired.ts`; text
+  tasks get their own line).
 - **Speaker labels**: `CaptionSegment.speaker`; *You* / *Others* from the microphone and
   computer-sound levels with no AI; Speakers section (rename everywhere on Enter or blur, one undo
   step; Remove labels; Label You and Others), a speaker menu per caption row, names in the

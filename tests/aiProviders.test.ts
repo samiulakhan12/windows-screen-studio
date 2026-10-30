@@ -47,11 +47,12 @@ import { anthropicFailure, claudeAnswerText, claudeRequest } from '../src/main/a
 import { baseUrlOverride } from '../src/main/ai/endpoints'
 import { geminiClient, geminiFailure } from '../src/main/ai/gemini'
 import { refreshModelList, resetModelList } from '../src/main/ai/modelList'
-import { callWithRetry } from '../src/main/ai/request'
-import { today } from '../src/main/ai/retired'
+import { AiError, callWithRetry } from '../src/main/ai/request'
+import { retiredFailure, today } from '../src/main/ai/retired'
 import { partArgs, stopTranscription, sweepTranscribeTemp, validateTranscribeOptions, wavPartArgs } from '../src/main/ai/transcribe'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { BUNDLED_MODEL_LIST } from '../src/shared/ai/modelList'
+import { describeFailure } from '../src/shared/captions/transcriptErrors'
 import { ApiError } from '@google/genai'
 
 const req = createRequire(import.meta.url)
@@ -341,6 +342,11 @@ describe('transcription', () => {
       expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toBe(
         'OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model in Settings › AI providers, or make captions On this PC.'
       )
+      // OpenAI may answer a retired model with 403 (no access to the model): the same message. A bad key keeps its own.
+      const noAccess = new AiError(describeFailure({ status: 403, code: 'model_not_found', message: 'Project `proj_x` does not have access to model `whisper-1`' }, 'OpenAI', 'whisper-1'))
+      expect((retiredFailure(noAccess, 'openai', 'whisper-1', 'transcription') as Error).message).toMatch(/^OpenAI retired whisper-1 on 26 February 2027\./)
+      const badKey = new AiError(describeFailure({ status: 401, code: 'invalid_api_key' }, 'OpenAI', 'whisper-1'))
+      expect(retiredFailure(badKey, 'openai', 'whisper-1', 'transcription')).toBe(badKey)
       // Near the day the downloaded list suggests gpt-transcribe (docs/design/transcription.md §2.1).
       const onTheDay = { ...BUNDLED_MODEL_LIST, updated: '2027-02-20', providers: { ...BUNDLED_MODEL_LIST.providers, openai: { ...BUNDLED_MODEL_LIST.providers.openai, transcriptionModel: 'gpt-transcribe' } } }
       expect(await refreshModelList('https://example.test/ai-models.json', async () => new Response(JSON.stringify(onTheDay)))).toBe(true)

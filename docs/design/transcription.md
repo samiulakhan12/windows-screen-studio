@@ -261,8 +261,9 @@ returns, for a model on the retiring list whose day has come,
 
 Both clients (`openai.ts`, `gemini.ts`) wrap failed requests: a non-retryable failure that is
 not cancelled, network, timeout, rate limit, quota or a bad key (401) — that is, 400, 403, 404
-and the rest — becomes an `AiError` of kind `not-found` with that message when the model is on
-the list and retired. The date is the PC's (UTC). Before the day the request is sent as usual (the
+and the rest (a 403 keeps its status on the failure, so it is told apart from a bad key) —
+becomes an `AiError` of kind `not-found` with that message when the model is on the list and
+retired. The date is the PC's (UTC). Before the day the request is sent as usual (the
 provider may keep a model longer). The Settings note (`retiringNotes`) is unchanged.
 
 ## 6. Speaker labels

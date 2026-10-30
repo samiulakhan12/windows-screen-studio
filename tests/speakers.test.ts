@@ -3,6 +3,7 @@ import { BUNDLED_MODEL_LIST } from '../src/shared/ai/modelList'
 import { readCaptionSegments, readTranscript } from '../src/shared/captions/captionData'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { retiredMessage, todayUtc } from '../src/shared/captions/retiredModel'
+import { describeFailure } from '../src/shared/captions/transcriptErrors'
 import { readCaptionSettings } from '../src/shared/captions/settings'
 import {
   cleanSpeakerName,
@@ -183,6 +184,16 @@ describe('a retired model', () => {
       expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'transcription', kind)).toBeNull()
     }
     for (const kind of ['not-found', 'bad-request', 'other'] as const) expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'transcription', kind)).not.toBeNull()
+  })
+
+  it('explains a 403 (no access to the model), not a bad key (401)', () => {
+    const fails = (status: number, code: string, message: string) => describeFailure({ status, code, message }, 'OpenAI', 'whisper-1')
+    const noAccess = fails(403, 'model_not_found', 'Project `proj_x` does not have access to model `whisper-1`')
+    expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'transcription', noAccess.kind, noAccess.status)).toMatch(/^OpenAI retired whisper-1 on 26 February 2027\./)
+    expect(retiredMessage(list, 'openai', 'whisper-1', '2027-02-25', 'transcription', noAccess.kind, noAccess.status)).toBeNull()
+    for (const badKey of [fails(401, 'invalid_api_key', 'Incorrect API key provided'), fails(403, 'invalid_api_key', 'Incorrect API key provided')]) {
+      expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'transcription', badKey.kind, badKey.status)).toBeNull()
+    }
   })
 
   it('suggests another model when the list still suggests the retired one', () => {
