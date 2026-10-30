@@ -73,19 +73,20 @@ export function electronTaskbarPort(): TaskbarPort {
       })
     },
     notify(copy, handlers) {
-      trace?.('notify', copy)
+      trace?.('notify', handlers.extras ? { ...copy, extras: handlers.extras.map((x) => x.text) } : copy)
       if (!Notification.isSupported()) return
       const n = new Notification({
         title: copy.title,
         body: copy.body,
         icon: windowIconPath(),
-        actions: copy.actions.map((a) => ({ type: 'button' as const, text: a === 'open' ? 'Open' : 'Show in folder' }))
+        actions: [...copy.actions.map((a) => ({ type: 'button' as const, text: a === 'open' ? 'Open' : 'Show in folder' })), ...(handlers.extras ?? []).map((x) => ({ type: 'button' as const, text: x.text }))]
       })
       n.on('action', (details, index) => {
         const i = typeof details?.actionIndex === 'number' ? details.actionIndex : index
         const action = copy.actions[i]
         if (action === 'open') handlers.open()
         else if (action === 'show') handlers.show()
+        else handlers.extras?.[i - copy.actions.length]?.run()
       })
       n.on('click', () => {
         const win = getMainWindow()

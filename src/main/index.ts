@@ -29,6 +29,7 @@ import { appNames, appRoots, registerDiagnosticsIpc } from './diagnostics'
 import { registerStorageIpc } from './storageIpc'
 import { disposeUpdates, registerUpdatesIpc } from './updates/updatesIpc'
 import { registerModelListIpc } from './ai/modelListIpc'
+import { disposeShare, registerShareIpc } from './share/shareIpc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -86,6 +87,8 @@ if (!app.requestSingleInstanceLock()) {
     registerUpdatesIpc()
     // The suggested AI models, refreshed after an update check (same switch).
     registerModelListIpc()
+    // Share without a server (docs/design/share.md): cloud folders and chat webhooks after export.
+    registerShareIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()
@@ -101,6 +104,7 @@ if (!app.requestSingleInstanceLock()) {
     disposeImport()
     disposeJobs()
     disposeUpdates()
+    disposeShare()
     appLog()?.flushSync()
   })
 
