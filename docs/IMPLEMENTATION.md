@@ -111,6 +111,14 @@ words (`fillers.ts`, `retakes.ts`) as a review list. Every cut gets 10 ms audio 
 `render/cutFades.ts` gives the export's `afade` filters (`RecordingSound.cutFade`, opt-in per job)
 and the preview's ramp timing on a `cut` gain node in `previewAudio.ts`.
 
+**Review mode** (E-02, `docs/design/review-mode.md`) lists the automatic changes: zooms and
+layout segments marked `auto`, the director's face framing, and `Project.autoCuts` (optional),
+the record of cuts and speed-ups made by Remove silences, Smart speed, Polish and the fillers
+list's Remove all, each with the kept pieces from before so Remove puts the footage back at its
+speed (`shared/review/autoCuts.ts`, written in the same `store.update` as the cut). Statuses are
+derived from the project (`shared/review/review.ts`), so undo needs nothing more; nothing renders
+from the record.
+
 **Following the action** (`Project.reframe`, NW-05, `docs/design/vertical-video.md`) applies only in
 a frame at least 10% narrower than the drawn recording (`shared/engine/reframeData.ts`
 `followApplies`); every project without it draws exactly as before (the equivalence tests in

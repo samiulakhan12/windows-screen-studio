@@ -1,5 +1,12 @@
 # Release notes
 
+## Next release
+
+- **Review mode** (E-02): *Review* in the editor's title bar (or `Shift+R`) lists every change Flown
+  made by itself (auto zooms, camera moves, silences and idle time cut or sped up, fillers removed)
+  in time order. Play each one, then *Keep* it or *Remove* it to get back what was there; *Keep all*
+  or *Remove all* of a kind. Every choice is one undo step, and it all works from the keyboard.
+
 ## 0.7.1
 
 - **Flown updates itself**: it looks for a new version a few times a day, downloads it in the
