@@ -1,7 +1,7 @@
 /* The Versions dialog (VersionsDialog.tsx, docs/design/versions.md §2.7). Text uses --text-1 and
    --text-2 on --surface-1 / --surface-2 (17:1 and 7:1 at least); the badge is --accent-text on
    --accent-soft over --surface-2 (5.5:1). */
-.versions-modal {
+.modal.versions-modal {
   width: min(600px, calc(100vw - 48px));
   max-height: calc(100vh - 80px);
 }
@@ -81,11 +81,17 @@
 
 .version-meta {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
   gap: 6px;
   color: var(--text-2);
   font-size: var(--text-sm);
+}
+
+.version-meta > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .version-badge {
