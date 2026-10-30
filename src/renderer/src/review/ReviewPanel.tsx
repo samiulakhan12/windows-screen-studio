@@ -53,6 +53,14 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }, [])
   useEffect(() => stopStretch, [stopStretch])
 
+  // The Inspector under the panel is out of reach while it is open (Tab never lands on hidden controls).
+  useEffect(() => {
+    const under = document.querySelector('.editor-body > .inspector')
+    if (!under || under.hasAttribute('inert')) return
+    under.setAttribute('inert', '')
+    return () => under.removeAttribute('inert')
+  }, [])
+
   // The focus starts on the first item to review (else the first, else Close).
   useEffect(() => {
     const first = activeKey ? rows.current.get(activeKey) : null
@@ -76,6 +84,12 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const choose = (item: ReviewItem): void => {
     focusKey(item.key)
     play(item)
+    // A click hands the focus back to the editor once released (focus.ts installFocusRelease); the
+    // list's keys need it on the row, so it comes back after that.
+    window.setTimeout(() => {
+      const el = document.activeElement
+      if (!el || el === document.body) rows.current.get(item.key)?.focus()
+    }, 0)
   }
 
   const move = (to: number): void => {

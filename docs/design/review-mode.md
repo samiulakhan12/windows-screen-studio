@@ -68,7 +68,10 @@ Alternatives:
 
 The record is written in the same `store.update` as the cut (one undo step; undo takes both away).
 Records whose change is no longer in the clips (the user restored or re-timed that part by hand)
-are *stale*: they are never listed as pending and are dropped the next time records are written.
+are *stale*: the editor's store drops them in the same undo step as the edit that made them stale
+(`settleAutoCuts`, composed with `settleDeletedWords` as the `EditStore` settle), so a later hand cut
+over the same footage can never bring an old record back; undo brings the record back with the clips.
+A speed-up stays intact when a part of it is cut later: what is still kept still plays at its speed.
 
 ### 2.2 What is listed
 
@@ -174,15 +177,23 @@ Project.autoCuts?: AutoCut[]
 `recordAutoCuts(project, nextClips, ranges, action, by, words?) → Project`:
 1. `removed` = the kept source time of `project.clips` that is not kept in `nextClips` (for a cut),
    or the kept time whose speed changed to `action` (for a speed-up); each piece with its old speed.
-2. Each requested range (merged) gets a record of the removed pieces that touch it (so a sliver
-   `cutRange` took next to the range belongs to that record). Ranges whose pieces are empty — the
-   cut was refused, the part already played that fast — get no record.
+2. The pieces are split at the ranges' ends; a part inside a range goes to the first range holding
+   it, a part outside every range (a sliver `cutRange` took next to one) to the nearest range. So
+   two fillers whose cuts meet keep a record each. Ranges whose share is empty — the cut was
+   refused, the part already played that fast — get no record; a share of more than 64 pieces is
+   split over several records.
 3. Stale records (§2.1) are dropped; the new ones are appended; ids are `c<base36 time><counter>`.
 4. Returns `{ ...project, clips: nextClips, autoCuts }`; `project` itself when the clips are the
    same object.
 
-Intact (`cutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a speed-up,
-every `was` piece is covered by clips playing at `action`, within 1 ms.
+Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a
+speed-up, every part of the `was` pieces still kept plays at `action` (within 1 ms) and something
+is kept.
+
+Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
+plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
+clip it was part of), and joins it to touching clips at the same speed, keeping the old clip's id;
+a split of the user's next to it stays.
 
 ### 4.2 The list (`reviewItems`)
 
@@ -230,6 +241,9 @@ listed item being pending by construction).
 
 ### 4.3 The panel
 
+* While open, the Inspector under it is `inert`, so `Tab` never reaches hidden controls. A mouse
+  click on a row keeps the focus on the row (the editor's focus release would hand it back to the
+  page, and the list's keys with it).
 * Opens with the Review button or the `review` command; the focus goes to the first pending item
   (else the first item, else the Close button). Escape (focus in the panel) or Close shuts it and
   gives the focus back to the Review button.
@@ -289,9 +303,14 @@ make Remove restore time outside the recording (`restoreRange` clamps to the dur
   `reviewStatus(project, item)`, `keepItems(project, items)`, `removeItems(project, items)`,
   `mergeSnapshot(snapshot, current)`, `reviewProgress`, `KIND_WORDS`.
 * `src/shared/review/copy.ts` — titles, places, the live messages, `itemAccessibleName`.
-* `src/shared/review/preview.ts` — `previewStretch(project, item)` (source from/to of the stretch).
+* `src/shared/review/preview.ts` — `previewStretch(clips, start, end)` (where to seek, when to stop).
+* `src/shared/review/stretch.ts` — `playStretch(player, clips, stretch, clock)`: plays the stretch,
+  pauses at its end; a seek of more than 0.5 s (back or ahead) or a pause by the user ends it
+  quietly. `src/renderer/src/review/playStretch.ts` runs it on animation frames.
+* `src/shared/review/wordCuts.ts` — `suggestionRanges(words, items, duration)`.
 * `src/renderer/src/review/ReviewPanel.tsx`, `ReviewButton.tsx`, `playStretch.ts`, `review.css`.
 * Additive lines: `types.ts` (`AutoCut`, `Project.autoCuts`), `engine/project.ts` (one line),
+  `Editor.tsx`'s store settle (`settleAutoCuts` after `settleDeletedWords`),
   `ClipPanel.tsx` apply, `polish.ts` silences step, `TranscriptPanel.tsx` Remove all,
   `commands.ts`/`shortcuts.ts` (the command and its key), `Editor.tsx` (state, button, command,
   panel).

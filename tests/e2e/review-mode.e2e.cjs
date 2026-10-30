@@ -3,7 +3,8 @@
 // (with its record), and a zoom of yours. The Review button counts 3; Shift+R opens the panel with
 // the focus on the first item; N and P move (the playhead jumps); K keeps the zoom (saved with
 // auto false); Delete removes the silence cut (the footage comes back, the record goes); Ctrl+Z
-// brings the cut back and its row back to "not reviewed"; Keep all reviews the rest; Escape closes
+// brings the cut back and its row back to "not reviewed"; a mouse click on a row then Delete
+// removes the camera change; Keep all reviews the rest; Escape closes
 // and gives the focus back to the button; the palette opens it again, now empty.
 const fs = require('node:fs')
 const path = require('node:path')
@@ -120,16 +121,27 @@ async function main() {
     h.assert(back.zooms.find((z) => z.id === 'z1')?.auto === false, 'the keep before it stays')
     h.assert((await win.textContent('[data-testid="review-progress"]')) === '1 of 3 reviewed', 'progress follows the undo')
 
+    // A mouse click on a row keeps the list's keys in the list: Delete removes that camera change
+    // (it must not reach the editor, where Delete would remove the selected timeline item).
+    await win.click('[data-testid="review-row"][data-key="camera:l1"] .review-item')
+    await h.sleep(150)
+    h.assert((await focused(win)).startsWith('Camera to the top left corner'), `the focus stays on the clicked row: ${await focused(win)}`)
+    await win.keyboard.press('Delete')
+    await f.waitFor(async () => (await rows(win)).includes('camera:l1=removed'), 'the camera change removed')
+    await savedWhen(home, id, (p) => (p.layouts ?? []).length === 0, 'the camera change gone')
+    h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'the Inspector under the panel is out of reach')
+
     // Keep all reviews the rest in one go.
     await win.click('[data-testid="review-keep-all"]')
     await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === '3 of 3 reviewed', 'all reviewed')
-    h.assert((await win.textContent('[data-testid="review-said"]')) === 'Kept 2 changes.', 'keep all is announced')
-    const kept = await savedWhen(home, id, (p) => !('autoCuts' in p) && p.layouts.every((s) => !s.auto), 'everything kept')
+    h.assert((await win.textContent('[data-testid="review-said"]')) === 'Kept 1 change.', 'keep all is announced')
+    const kept = await savedWhen(home, id, (p) => !('autoCuts' in p), 'everything kept')
     h.assert(kept.clips.length === 2, 'the cut stays, as a plain cut')
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'review-mode-reviewed.png') })
 
     // Escape closes and gives the focus back to the button, which has nothing left to count.
     await win.focus('[data-testid="review-row"] .review-item >> nth=0')
+    h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'still out of reach')
     await win.keyboard.press('Escape')
     await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
     h.assert((await focused(win)) === 'Review automatic changes, nothing to review', `the focus back on the button: ${await focused(win)}`)

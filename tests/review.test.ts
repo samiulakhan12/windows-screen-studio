@@ -194,6 +194,13 @@ describe('keep and remove', () => {
     expect(reviewStatus(r, item)).toBe('removed')
   })
 
+  it('a camera segment you edited by hand reads as kept', () => {
+    const p = fixture()
+    const item = reviewItems(p).find((i) => i.kind === 'camera')!
+    const edited = { ...p, layouts: [{ id: 'l1', start: 5, end: 7, layout: 'camera-only' as const }] }
+    expect(reviewStatus(edited, item)).toBe('kept')
+  })
+
   it('a removed cut keeps its speed: a 2x piece comes back at 2x', () => {
     const p = project({ clips: [clip(0, 8, 2), clip(10, 20, 2)], autoCuts: [{ ...silence, end: 10, was: [{ start: 8, end: 10, speed: 2 }] }] })
     const r = removeItems(p, reviewItems(p))

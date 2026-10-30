@@ -81,6 +81,7 @@ import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
 import { ReviewButton } from '../review/ReviewButton'
+import { settleAutoCuts } from '../../../shared/review/autoCuts'
 import { ReviewPanel } from '../review/ReviewPanel'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
@@ -182,7 +183,8 @@ async function openSession(projectId: string): Promise<Session> {
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
   // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2).
-  const store = new EditStore(project, undefined, undefined, undefined, settleDeletedWords)
+  // Review mode (E-02): records of automatic cuts whose change is gone are dropped in the same step.
+  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) => settleAutoCuts(settleDeletedWords(next, prev), prev))
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { playStretch, type FrameClock, type StretchPlayer } from '../src/renderer/src/review/playStretch'
+import { playStretch, type FrameClock, type StretchPlayer } from '../src/shared/review/stretch'
 import type { Clip } from '../src/shared/types'
 
 const clips: Clip[] = [
@@ -44,10 +44,12 @@ describe('playStretch', () => {
     const clock = manualClock()
     playStretch(player, () => clips, { from: 6.5, until: 9.5 }, clock)
     expect(player.calls).toEqual(['seek 6.5', 'play'])
-    player.time = 7.9
-    clock.step()
-    expect(player.moving).toBe(true)
-    // 11.9 s of source is 9.5 s of output (2.4 s cut).
+    // Across the cut: 11.9 s of source is 9.5 s of output (2.4 s cut).
+    for (const t of [6.9, 7.3, 7.7, 10.5, 10.9, 11.3, 11.7]) {
+      player.time = t
+      clock.step()
+      expect(player.moving).toBe(true)
+    }
     player.time = 11.9
     clock.step()
     expect(player.calls.at(-1)).toBe('pause')
@@ -64,7 +66,7 @@ describe('playStretch', () => {
     player.time = 11.95
     clock.step()
     expect(player.calls).toEqual(['seek 6.5', 'play'])
-    // A seek back (a click on the timeline) ends it too.
+    // A seek back or ahead (a click on the timeline) ends it too, without pausing.
     const p2 = new FakePlayer()
     const c2 = manualClock()
     playStretch(p2, () => clips, { from: 6.5, until: 9.5 }, c2)
@@ -83,5 +85,19 @@ describe('playStretch', () => {
     expect(player.calls.at(-1)).toBe('pause')
     stop()
     expect(player.calls.filter((c) => c === 'pause')).toHaveLength(1)
+  })
+})
+
+describe('playStretch: a seek ahead', () => {
+  it('ends the stretch and leaves the playback going', () => {
+    const player = new FakePlayer()
+    const clock = manualClock()
+    playStretch(player, () => clips, { from: 6.5, until: 9.5 }, clock)
+    player.time = 15
+    clock.step()
+    player.time = 15.1
+    clock.step()
+    expect(player.calls).toEqual(['seek 6.5', 'play'])
+    expect(player.moving).toBe(true)
   })
 })

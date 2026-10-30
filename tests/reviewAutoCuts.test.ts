@@ -3,7 +3,7 @@ import { applySmartSpeed } from '../src/shared/editor/smartSpeed'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange } from '../src/shared/engine/timeline'
 import { MAX_AUTO_CUTS, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
-import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
+import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
 import type { AutoCut, Clip, Project } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1, id = `c${start}`): Clip => ({ id, start, end, speed })
@@ -233,5 +233,95 @@ describe('undoAutoCut', () => {
       [8, 10, 0.5],
       [10, 20, 1]
     ])
+  })
+})
+
+describe('review findings (regressions)', () => {
+  it('a cut across a 1x/2x boundary by less than MIN_CLIP comes back exactly', () => {
+    const p = project([clip(0, 10.55), clip(10.55, 20, 2)])
+    const ranges = [{ start: 9.76, end: 10.57 }]
+    const next = recordAutoCuts(p, cutRange(p.clips, 9.76, 10.57), ranges, 'cut', 'silences', counter())
+    const [rec] = next.autoCuts!
+    expect(rec.was).toEqual([
+      { start: 9.76, end: 10.55, speed: 1 },
+      { start: 10.55, end: 10.57, speed: 2 }
+    ])
+    const back = undoAutoCut(next.clips, rec, 20)
+    expect(spans(back)).toEqual([
+      [0, 10.55, 1],
+      [10.55, 20, 2]
+    ])
+    expect(footageBack(rec, back)).toBe(true)
+  })
+
+  it('a sliver piece joins the clip it was part of, never a clip shorter than MIN_CLIP', () => {
+    const p = project([clip(16.55, 17.16, 1.5), clip(17.37, 20, 1.5)], { duration: 20 })
+    const next = recordAutoCuts(p, cutRange(p.clips, 17.14, 18.85), [{ start: 17.14, end: 18.85 }], 'cut', 'silences', counter())
+    const back = undoAutoCut(next.clips, next.autoCuts![0], 20)
+    expect(spans(back)).toEqual([
+      [16.55, 17.16, 1.5],
+      [17.37, 20, 1.5]
+    ])
+    expect(back.every((c) => c.end - c.start >= 0.1 - 1e-9)).toBe(true)
+  })
+
+  it('putting a cut back keeps a split of yours next to it', () => {
+    const clips = [clip(0, 4, 1, 'a'), clip(6, 10, 1, 'b'), clip(10, 20, 1, 'c')]
+    expect(undoAutoCut(clips, cut(), 20).map((c) => [c.id, c.start, c.end])).toEqual([
+      ['a', 0, 10],
+      ['c', 10, 20]
+    ])
+  })
+
+  it('a speed-up stays listed when part of it is cut later, and Remove gives the rest back', () => {
+    const p = project([clip(0, 20)])
+    const fast = recordAutoCuts(p, applySmartSpeed(p.clips, [{ start: 5, end: 10 }], 4), [{ start: 5, end: 10 }], 4, 'smart-speed', counter())
+    const later = recordAutoCuts(fast, cutRange(fast.clips, 7, 7.5), [{ start: 7, end: 7.5, words: 'um' }], 'cut', 'filler', counter('f'))
+    expect(liveAutoCuts(later).map((c) => c.by)).toEqual(['smart-speed', 'filler'])
+    const speed = later.autoCuts!.find((c) => c.by === 'smart-speed')!
+    const back = undoAutoCut(later.clips, speed, 20)
+    expect(spans(back)).toEqual([
+      [0, 5, 1],
+      [5, 7, 1],
+      [7.5, 10, 1],
+      [10, 20, 1]
+    ])
+    expect(footageBack(speed, back)).toBe(true)
+  })
+
+  it('stale records are dropped by the settle step, so a later hand cut cannot bring one back', () => {
+    const p = { ...project([clip(0, 5), clip(6, 20)]), autoCuts: [cut({ start: 5, end: 6, was: [{ start: 5, end: 6, speed: 1 }] })] }
+    const restored = settleAutoCuts({ ...p, clips: [clip(0, 20)] }, p)
+    expect('autoCuts' in restored).toBe(false)
+    const handCut = settleAutoCuts({ ...restored, clips: [clip(0, 4), clip(8, 20)] }, restored)
+    expect(liveAutoCuts(handCut)).toEqual([])
+    // An edit that leaves the change in place keeps the record (same object back).
+    const named = { ...p, name: 'x' }
+    expect(settleAutoCuts(named, p)).toBe(named)
+  })
+
+  it('two fillers whose cuts meet keep a record each', () => {
+    const p = project()
+    const ranges = [
+      { start: 2, end: 2.5, words: 'um' },
+      { start: 2.5, end: 3, words: 'uh' }
+    ]
+    let clips = p.clips
+    for (const r of ranges) clips = cutRange(clips, r.start, r.end)
+    const next = recordAutoCuts(p, clips, ranges, 'cut', 'filler', counter())
+    expect(next.autoCuts?.map((c) => [c.words, c.start, c.end, c.was])).toEqual([
+      ['um', 2, 2.5, [{ start: 2, end: 2.5, speed: 1 }]],
+      ['uh', 2.5, 3, [{ start: 2.5, end: 3, speed: 1 }]]
+    ])
+  })
+
+  it('a range over more than 64 pieces gets several records, and removing them all gives it all back', () => {
+    const many = Array.from({ length: 80 }, (_, i) => clip(i * 0.2, i * 0.2 + 0.15, i % 2 ? 1 : 2, `m${i}`))
+    const p = project([...many, clip(16, 20)])
+    const next = recordAutoCuts(p, cutRange(p.clips, 0, 16), [{ start: 0, end: 16 }], 'cut', 'smart-speed', counter())
+    expect(next.autoCuts!.length).toBe(2)
+    let clips = next.clips
+    for (const c of [...next.autoCuts!].reverse()) clips = undoAutoCut(clips, c, 20)
+    expect(spans(clips)).toEqual(spans(p.clips))
   })
 })

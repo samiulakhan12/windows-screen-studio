@@ -40,7 +40,7 @@ export interface ReviewItem {
   title: string
   detail: string
   /** A camera segment as listed (its status compares the layout). */
-  segment?: Pick<LayoutSegment, 'id' | 'layout' | 'corner'>
+  segment?: Pick<LayoutSegment, 'id' | 'layout' | 'corner' | 'cutOut'>
   /** A cut or speed-up as listed (its status reads the footage after the record is gone). */
   cut?: AutoCut
 }
@@ -60,7 +60,7 @@ export function reviewItems(project: Project): ReviewItem[] {
   }
   for (const s of project.layouts ?? []) {
     if (!s.auto) continue
-    const segment = { id: s.id, layout: s.layout, ...(s.corner ? { corner: s.corner } : {}) }
+    const segment = { id: s.id, layout: s.layout, ...(s.corner ? { corner: s.corner } : {}), ...(s.cutOut ? { cutOut: true } : {}) }
     items.push({ key: `camera:${s.id}`, kind: 'camera', start: s.start, end: s.end, title: layoutTitle(s), detail: DIRECTOR_DETAIL, segment })
   }
   if (directorsFraming(project)) {
@@ -93,8 +93,9 @@ export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
     const s = (project.layouts ?? []).find((x) => x.id === id)
     if (!s) return 'removed'
     if (s.auto) return 'pending'
-    // A removed cut-out turns back into its camera position, which may keep its id.
-    return item.segment && (s.layout !== item.segment.layout || s.corner !== item.segment.corner) ? 'removed' : 'kept'
+    // A removed cut-out turns back into its camera position, which may keep its id; any other
+    // segment no longer automatic is the user's, edited or not.
+    return item.segment?.cutOut && s.layout === 'default' && item.segment.layout !== 'default' ? 'removed' : 'kept'
   }
   const cut = item.cut
   if (!cut) return 'removed'
