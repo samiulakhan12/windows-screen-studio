@@ -115,6 +115,7 @@ These are the defaults; every one can be changed in the Shortcuts dialog (`Ctrl+
 | `M` | Add a chapter at the playhead |
 | `Shift+PageDown` / `Shift+PageUp` | Next / previous chapter |
 | `Shift+P` | Polish in one click |
+| `Shift+R` | Review automatic changes (in its list: `N`/`P` or `↓`/`↑` move, `K` keeps, `Delete` removes) |
 | `Ctrl+K` (`Ctrl+Shift+P`) | Command palette: search and run any command |
 | `Ctrl+E` | Export |
 | `Ctrl+/` | Shortcuts: rebind any command, reset to defaults |

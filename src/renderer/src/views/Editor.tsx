@@ -80,6 +80,8 @@ import { PreviewPlayer } from '../editor/player'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
+import { ReviewButton } from '../review/ReviewButton'
+import { ReviewPanel } from '../review/ReviewPanel'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
 import { groupKeyOf, selectionOfKey, validSelection, type Selection } from '../editor/selection'
@@ -382,6 +384,9 @@ function EditorSession({
   const [tab, setTab] = useState<InspectorTab>('style')
   const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
+  // E-02 Review mode (docs/design/review-mode.md): the panel over the Inspector, and its button.
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const reviewButton = useRef<HTMLButtonElement>(null)
   const [directorRequest, setDirectorRequest] = useState(0)
 
   // The background image always follows the project state, including undo/redo.
@@ -1239,6 +1244,8 @@ function EditorSession({
 
       // E-01 polish
       polish: () => setDialog('polish'),
+      // E-02 review mode
+      review: () => setReviewOpen(true),
 
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
       toggleWaveform: () => {
@@ -1592,6 +1599,7 @@ function EditorSession({
           <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
             <EditorIcon name="keyboard" />
           </button>
+          <ReviewButton ref={reviewButton} project={project} shortcuts={keymap.review} open={reviewOpen} onToggle={() => setReviewOpen((o) => !o)} />
           <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
             <EditorIcon name="sparkle" size={16} /> Polish
           </button>
@@ -1666,6 +1674,14 @@ function EditorSession({
             onRestore={actions.restore}
             onCutRange={actions.cut}
           />
+          {reviewOpen && (
+            <ReviewPanel
+              onClose={() => {
+                setReviewOpen(false)
+                reviewButton.current?.focus()
+              }}
+            />
+          )}
         </div>
 
         <Timeline

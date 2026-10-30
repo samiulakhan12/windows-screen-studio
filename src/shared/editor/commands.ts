@@ -53,6 +53,8 @@ const COMMAND_LIST = [
   { id: 'restoreAll', title: 'Restore the whole recording', category: 'Edit', keywords: 'undo cuts trims speed reset uncut' },
   { id: 'smartSpeed', title: 'Smart speed: find idle parts', category: 'Edit', keywords: 'speed up skip pauses still inactivity fast forward silence auto cut' },
   { id: 'polish', title: 'Polish in one click…', category: 'Edit', keywords: 'auto magic clean up remove silences auto zoom camera director captions subtitles style preset one click' },
+  // E-02 review mode (docs/design/review-mode.md §5).
+  { id: 'review', title: 'Review automatic changes…', category: 'Edit', keywords: 'tracked changes auto zoom silence cut camera director filler undo keep remove accept reject' },
   { id: 'straightenRange', title: 'Straighten cursor in selected range', category: 'Edit', keywords: 'cursor path straight line glide smooth wobble mouse range' },
   { id: 'recordedPathRange', title: 'Keep recorded cursor path in selected range', category: 'Edit', keywords: 'cursor path as recorded original wobble mouse range' },
   { id: 'cropRecording', title: 'Crop the recording…', category: 'Edit', keywords: 'crop trim edge taskbar tabs hide area frame region cut' },

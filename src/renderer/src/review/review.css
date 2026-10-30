@@ -1,0 +1,235 @@
+/* Review mode (docs/design/review-mode.md §5): the title bar button and the panel over the Inspector. */
+
+.review-open .review-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-500);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.review-open.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-500);
+}
+
+/* The panel sits over the Inspector, so the preview stays in view. */
+.editor-body:has(> .review-panel) {
+  position: relative;
+}
+
+.review-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  max-width: 100%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  background: var(--surface-1);
+  border-left: 1px solid var(--border-default);
+  box-shadow: var(--shadow-3);
+  color: var(--text-1);
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.review-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.review-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.review-bar {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.review-bar > div {
+  height: 100%;
+  background: var(--success);
+  transition: width 0.2s ease;
+}
+
+.review-hint,
+.review-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.review-empty {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.review-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.review-row.active {
+  background: var(--surface-2);
+  border-color: var(--border-default);
+}
+
+.review-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.review-item:focus-visible,
+.review-actions .btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.review-chip {
+  flex: none;
+  width: 58px;
+  padding: 2px 0;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-1);
+  background: color-mix(in srgb, var(--chip) 24%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip) 55%, transparent);
+}
+
+.review-chip.kind-zoom {
+  --chip: var(--track-zoom);
+}
+.review-chip.kind-camera {
+  --chip: var(--track-layout);
+}
+.review-chip.kind-silence {
+  --chip: var(--track-clip);
+}
+.review-chip.kind-idle {
+  --chip: var(--track-clip-fast);
+}
+.review-chip.kind-words {
+  --chip: var(--track-caption);
+}
+
+.review-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-title {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-meta {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.review-row.removed .review-title {
+  text-decoration: line-through;
+  color: var(--text-2);
+}
+
+.review-actions {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.review-actions .btn {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.review-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.review-mark.kept {
+  color: var(--success-text);
+}
+
+.review-mark.removed {
+  color: var(--text-2);
+}
+
+.review-foot {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.review-foot .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-bar > div {
+    transition: none;
+  }
+}
