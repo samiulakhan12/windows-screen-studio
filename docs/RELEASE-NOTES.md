@@ -1,5 +1,13 @@
 # Release notes
 
+## Next release
+
+- **Search every recording** (F-18): type in the new box under *Recent recordings* on Home (or press
+  `Ctrl+F`) to find a moment across all your recordings: words said in captions, chapters, title
+  cards, text on screen, speaker notes and names. Results show the time and the words in context;
+  Enter opens the recording in the editor right at that moment. Small typos are forgiven, and Bangla,
+  Chinese, Japanese and Thai work too. Everything stays on your PC.
+
 ## 0.7.1
 
 - **Flown updates itself**: it looks for a new version a few times a day, downloads it in the

@@ -13,15 +13,18 @@ with a small local model.
 
 ## 1. What the user gets
 
-- A search box at the top of **Recent recordings** on Home: `Search recordings` with a magnifier,
-  and `Ctrl+F` anywhere on Home puts the cursor in it (selecting what is there).
+- A search box under the head of **Recent recordings** on Home: `Search recordings` with a
+  magnifier, and `Ctrl+F` anywhere on Home puts the cursor in it (selecting what is there), unless a
+  dialog is open over Home.
 - As they type (150 ms after the last key), the recording grid is replaced by results, grouped by
   recording: the recording's name, date and length, then up to 4 moments, each with a time
   (`1:23`), where the words were found (`Said`, `Title`, `Chapter`, `On screen`, `Notes`, `Name`,
   `File`) and a one-line snippet with the matched words in bold. `3 more moments` is a button that
   shows the rest (up to 50).
-- `↓`/`↑` move through the moments (and recordings), `Enter` opens the recording at the moment,
-  `Escape` clears the box (a second Escape leaves it), `Home`/`End` jump to the first and last.
+- `↓`/`↑` move through the rows (each recording's heading, its moments, its "more" row), `Enter`
+  opens the recording at the moment (the first row when none is active; never while an input method
+  is composing), `Escape` clears the box (a second Escape leaves it). `Home`/`End` stay with the
+  text, as in any text box.
   The list is an ARIA `listbox` driven from the input (`aria-activedescendant`), the pattern of a
   combobox: focus stays in the box, a screen reader reads each moment as one sentence ("Said at
   1 minute 23 seconds: open the settings page. In Product demo, 12 March"), and a polite live region
@@ -66,7 +69,7 @@ Read from each project's `project.json` (`src/shared/types.ts`), never from medi
 | `title` | `Project.titles[]`: `title` and `subtitle` | `start`–`end` | 2.5 |
 | `text` | `Project.annotations[].text` (text on screen) | `start`–`end` | 1.5 |
 | `said` | `Project.transcript.segments[]` (one unit per caption, its `text`) | `start`–`end` | 1 |
-| `notes` | `Project.script.text`, one unit per paragraph (blank line or line break), at most 200 units | none | 0.8 |
+| `notes` | `Project.script.text`, one unit per non-empty line, at most 200 units | none | 0.8 |
 
 Each is a **unit**: `{ kind, start, end, text }`. A unit's text is capped at 2,000 characters, a
 project at 400,000 characters of text in all (a 10-hour recording's captions are about 350,000);
@@ -91,7 +94,8 @@ image overlays (no text); the cursor and keystrokes (keystrokes never record whi
    character of a script written without spaces (Han, Hiragana, Katakana, Hangul is spaced and not
    included, Thai, Lao, Khmer, Myanmar), that piece goes through `Intl.Segmenter(…, 'word')`
    (ICU's dictionary word breaker, in Electron's full ICU) and its word-like segments are the
-   terms. Single Han characters are terms of their own.
+   terms. A query is split the same way, and prefix matching lets the first characters of a word
+   find it.
 7. Terms longer than 40 code points are cut to 40.
 
 Every term keeps its character range in the original text, so snippets highlight the original
@@ -233,17 +237,19 @@ New types live in `src/shared/search/types.ts` (§9).
 | Reconcile on query | when the last one is older than 2 s |
 | Index write | at most every 3 s, and on quit |
 | Start-up delay | 4 s after the main window opens |
-| Slice | at most ~8 ms of work, then `setImmediate` |
+| Slice | work until ~8 ms have passed, then `setImmediate`; one project is never split (13 ms for a 5-minute recording) |
 | Text caps | 2,000 characters a unit, 400,000 a project, 200 notes paragraphs |
 | Index file cap | 64 MB (read); `project.json` read cap 64 MB |
 
 ## 5. UI and copy
 
-The search box sits in the head of **Recent recordings**, between the title and **Import a
-video**. When the library is empty it is not shown.
+The search box sits on its own row under the head of **Recent recordings** (title and **Import
+video** stay as they are, so the head is unchanged), at most 520 px wide. When the library is empty
+it is not shown.
 
 ```
-Recent recordings 12            [🔍 Search recordings        ] [Import a video]
+Recent recordings 12                                         [Import video]
+[🔍 Search recordings                 ]
 ```
 
 - Placeholder: `Search recordings`. `aria-label`: `Search recordings: words said, titles, chapters and notes`.
@@ -261,18 +267,21 @@ Product demo · Today, 10:15 · 5:12
   [2 more moments]
 
 Onboarding call · 3 Oct 2026 · 41:02
-  12:41 Said  Cut  …we changed the **settings** page last week…
+  12:41 Said     …we changed the **settings** page last week…  Cut
 ```
 
 - No match: `No recordings match "setings xyz".` and below, `Search looks in what was said
-  (captions), titles, chapters, text on screen, speaker notes and names. Recordings without
-  captions can only be found by their name and text.` (The second line only when at least one
-  recording has no transcript.)
+  (captions), titles, chapters, text on screen, speaker notes and names.`, followed by `Recordings
+  without captions are found by their name, titles, chapters, text on screen and notes.` when at
+  least one recording has no transcript.
 - Building: `Still indexing your recordings (120 of 500)…` above the results.
 - The index could not be read or written: results still come from memory; a warning goes to the
   log (no text), nothing is shown.
 - Kind labels: `Said`, `Title`, `Chapter`, `On screen`, `Notes`, `File`. A cut moment adds a `Cut`
-  tag (`title="This part was cut from the video"`).
+  tag after its snippet (`title="This part was cut from the video"`).
+- The recording's heading row: its name (matched words marked), date and length, and
+  `· Found in the name` when nothing else matched. Its screen reader text: `Open {name}. {date},
+  {length in words} long.`; the "more" row: `Show {n} more moments. In {name}, {date}.`
 - Screen reader text of a moment: `{Kind label} at {time in words}: {snippet}. In {name}, {date}.`
   ("Said at 1 minute 23 seconds: …"). A moment with no time: `{Kind label}: {snippet}. In …`.
 - Opening a cut moment, editor notice: `That moment was cut from the video, so the editor is at the
@@ -313,18 +322,25 @@ Search changes nothing in a project, so there is nothing to undo. Opening at a m
 
 ## 8. Performance (500 recordings)
 
-Measured by `tests/searchBench.test.ts` on synthetic projects (500 recordings, each with a name, 5
-chapters, 3 titles, 4 text overlays, a 5-minute transcript of 70 captions and 750 words drawn from a
-6,000-word mixed English and Bangla vocabulary, and a page of notes) in this container (Node 22,
-one core). Exact numbers are in BUILD-REPORT-search.md; the test asserts generous limits only:
+Measured by `tests/searchBench.test.ts` on synthetic projects: 500 recordings, each with a name, 5
+chapters, 3 titles, 4 text overlays, a 5-minute transcript of 70 captions (770 words) drawn with a
+Zipf-like skew from a 6,000-word mixed English and Bangla vocabulary, and 8 lines of notes (6.5 MB
+of project.json in all). In this container (Node 22 under vitest, one busy core; a Windows laptop
+is typically faster). The test asserts generous limits only, so machine load cannot fail it:
 
 | Step | Measured | Limit in the test |
 | --- | --- | --- |
-| Extract and index all 500 (no I/O) | ~0.5 s total, each slice ≤ 8 ms | 10 s |
-| Index file | ~3.5 MB (≈ the text it holds) | 15 MB |
-| Load the file and make terms again | ~0.4 s, in slices | 10 s |
-| A query of 1–3 words, with typos | ~5 ms (vocabulary of ~8,000 terms, ~40,000 units) | 200 ms |
-| Memory | ~25 MB | – |
+| Parse, extract and index all 500 (the first build, file reads aside) | 0.82–1.0 s in all; the slowest project 13 ms (one slice) | 10 s |
+| Write the index file (serialise) | 37–55 ms | – |
+| Index file | 5.5 MB (the text it holds, as compact JSON) | 15 MB |
+| Load the file and make the terms again | 0.74–0.83 s, one project per slice | 10 s |
+| A query: a rare word / a word in every recording / two common words / a typo | 4–9 ms / 15–19 ms / 22–27 ms / 14–16 ms | 200 ms |
+| The loaded index's memory | 24 MB | – |
+
+A query's cost is the vocabulary scan for prefixes and typos (~4 ms for the ~10,000 terms here)
+plus a pass over the words of every recording that holds all the query's words; moments and
+snippets are made only for the 50 recordings returned. Typing is debounced by 150 ms, so even the
+slowest query here is answered before the next one is sent.
 
 ## 9. Files and exported signatures
 
@@ -341,10 +357,11 @@ New:
 - `src/shared/search/indexFile.ts`: `parseIndexFile(raw): Map<string, IndexedProject>`, `serializeIndex(map)`.
 - `src/shared/search/moment.ts`: `momentTarget(clips, t): { t: number; cut: boolean }`, `momentLabel(kind)`, `spokenTime(seconds)`.
 - `src/shared/api/search.ts`: `SearchApi` (`searchLibrary`, `refreshSearch`, `onSearchStatus`), `SEARCH_CHANNELS`.
-- `src/main/search/searchService.ts`: `SearchService` (queue, reconcile, debounced saves and writes), with an injectable file system and clock.
+- `src/main/search/searchService.ts`: `SearchService` (`start`, `reconcile`, `refresh`, `noteSaved`, `query`, `writeNow`, `dispose`: the queue, debounced saves and writes), with an injectable disk (`SearchDisk`), clock and log.
 - `src/main/search/searchIpc.ts`: `registerSearchIpc()`, `noteProjectSaved(project)`, `disposeSearch()`.
 - `src/preload/search.ts`: `searchApi`.
-- `src/renderer/src/search/LibrarySearch.tsx`, `search.css`, `openAt.ts`, `useSearchMoment.ts`.
+- `src/renderer/src/search/LibrarySearch.tsx`, `rows.ts` (the result rows and their screen reader
+  text, pure), `search.css`, `openAt.ts`, `useSearchMoment.ts`.
 - Tests: `tests/search*.test.ts`, `tests/e2e/search.e2e.cjs`.
 
 Additive lines in shared files: `src/main/index.ts` (register, dispose), `src/main/projectsIpc.ts`
