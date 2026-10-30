@@ -4,10 +4,10 @@
  * Pure: what a command does lives in the editor (views/Editor.tsx), which runs them by id.
  */
 
-export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Camera' | 'Captions' | 'Panels' | 'Timeline' | 'General'
+export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Camera' | 'Captions' | 'Panels' | 'Timeline' | 'General' | 'Publish'
 
 /** Categories in the order the palette and the shortcuts editor list them. */
-export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit', 'Add', 'Zoom', 'Effects', 'Camera', 'Captions', 'Panels', 'Timeline', 'General']
+export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit', 'Add', 'Zoom', 'Effects', 'Camera', 'Captions', 'Panels', 'Timeline', 'General', 'Publish']
 
 interface CommandSpec {
   id: string
@@ -138,7 +138,20 @@ const COMMAND_LIST = [
   { id: 'export', title: 'Export…', category: 'General', keywords: 'render save mp4 gif video share' },
   { id: 'shortcuts', title: 'Keyboard shortcuts…', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },
   { id: 'about', title: 'About Flown', category: 'General', keywords: 'version qbexel website credits info' },
-  { id: 'commandPalette', title: 'Command palette', category: 'General', keywords: 'search commands', inText: true, hidden: true }
+  { id: 'commandPalette', title: 'Command palette', category: 'General', keywords: 'search commands', inText: true, hidden: true },
+
+  // NW-13 publishing copy pack (docs/design/publish-pack.md §2.8): every AI text tool, and the pack's items.
+  { id: 'aiCleanup', title: 'Fix captions with AI', category: 'Captions', keywords: 'ai clean up correct spelling punctuation misheard transcript' },
+  { id: 'aiTranslate', title: 'Translate captions with AI…', category: 'Captions', keywords: 'ai language subtitles transcript other' },
+  { id: 'aiChapters', title: 'Suggest chapters with AI', category: 'Captions', keywords: 'ai chapter markers sections youtube timestamps' },
+  { id: 'aiTitle', title: 'Suggest a title with AI', category: 'Captions', keywords: 'ai name rename recording heading' },
+  { id: 'aiSummary', title: 'Summarize with AI', category: 'Captions', keywords: 'ai summary summarise description overview' },
+  { id: 'publishPack', title: 'Publish: write the copy…', category: 'Publish', keywords: 'ai copy pack text description post social share all tone length' },
+  { id: 'publishYoutube', title: 'Write a YouTube description', category: 'Publish', keywords: 'ai copy description chapters timestamps tags video upload' },
+  { id: 'publishLinkedin', title: 'Write a LinkedIn post', category: 'Publish', keywords: 'ai copy social share post' },
+  { id: 'publishX', title: 'Write an X post', category: 'Publish', keywords: 'ai copy twitter tweet social share post' },
+  { id: 'publishArticle', title: 'Write a help-centre article', category: 'Publish', keywords: 'ai copy help center knowledge base docs how to steps guide' },
+  { id: 'publishReleaseNotes', title: 'Write release notes', category: 'Publish', keywords: 'ai copy changelog what changed update new fixed improved product' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']

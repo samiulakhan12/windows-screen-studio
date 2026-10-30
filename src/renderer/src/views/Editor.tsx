@@ -90,7 +90,7 @@ import { snapPref } from '../editor/snapControl'
 import { addChapterAt, addTitleAt, brandFontFor } from '../editor/titleItems'
 import { OverlayDropZone } from '../editor/OverlayDropZone'
 import { ipcMessage, noteItemCopy, pasteClipboardImage } from '../editor/overlayItems'
-import { requestCaptions } from '../editor/captionItems'
+import { requestCaptions, type CaptionsAiTask } from '../editor/captionItems'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
@@ -99,6 +99,8 @@ import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 import type { RenderScene } from '../render/compositor'
 import { noCursorText } from '../../../shared/import/imported'
 import '../editor/editor.css'
+import { PublishDialog } from '../publish/PublishDialog'
+import type { PublishKind } from '../../../shared/publish/pack'
 
 interface Session {
   data: LoadedProject
@@ -380,7 +382,9 @@ function EditorSession({
   const [notice, setNotice] = useState<Notice | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
-  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | 'publish' | null>(null)
+  // NW-13: the item a palette command asked the Publish dialog to write.
+  const [publishRequest, setPublishRequest] = useState<{ kind: PublishKind; n: number } | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
   const [directorRequest, setDirectorRequest] = useState(0)
 
@@ -936,6 +940,16 @@ function EditorSession({
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
     const showTab = (t: InspectorTab) => (): void => setTab(t)
+    const aiTool = (task: CaptionsAiTask) => (): void => {
+      if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
+      setTab('captions')
+      requestCaptions({ kind: 'ai', task })
+    }
+    const aiToolCommands = { aiCleanup: aiTool('cleanup'), aiTranslate: aiTool('translate'), aiChapters: aiTool('chapters'), aiTitle: aiTool('title'), aiSummary: aiTool('summary') }
+    const writeInPublish = (kind: PublishKind): void => {
+      setPublishRequest((was) => ({ kind, n: (was?.n ?? 0) + 1 }))
+      setDialog('publish')
+    }
     /** The cursor path range commands: the selected range straightened, or kept as recorded. */
     const pathRangeCommand = (mode: PathMode): void => {
       const sel = latest.current.selection
@@ -1318,7 +1332,16 @@ function EditorSession({
         if (!isTall(outW, outH)) return showNotice(SAFE_ZONES_TALL)
         toggleSafeZoneChoice()
         turned('Safe zones', safeZoneChoice() !== 'off')
-      }
+      },
+
+      // NW-13 publishing copy pack: the Captions tab's AI tools run there; the pack's items open Publish.
+      ...aiToolCommands,
+      publishPack: () => setDialog('publish'),
+      publishYoutube: () => writeInPublish('youtube'),
+      publishLinkedin: () => writeInPublish('linkedin'),
+      publishX: () => writeInPublish('xpost'),
+      publishArticle: () => writeInPublish('article'),
+      publishReleaseNotes: () => writeInPublish('releaseNotes')
     }
   }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection, makeCopy])
   const commandsRef = useRef(commands)
@@ -1365,6 +1388,8 @@ function EditorSession({
       prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet',
       toggleCaptions: p.transcript?.segments.length ? null : 'No captions yet',
       exportCaptions: p.transcript?.segments.length ? null : 'No captions yet',
+      // NW-13: the Captions tab's AI tools need captions (the Publish dialog says what to do without them).
+      ...Object.fromEntries((['aiCleanup', 'aiTranslate', 'aiChapters', 'aiTitle', 'aiSummary'] as const).map((k) => [k, p.transcript?.segments.length ? null : 'No captions yet'])),
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
@@ -1595,6 +1620,9 @@ function EditorSession({
           <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
             <EditorIcon name="sparkle" size={16} /> Polish
           </button>
+          <button className="btn" data-testid="publish-open" onClick={() => setDialog('publish')} title={withShortcut('Write the text to post with the video', keymap.publishPack)}>
+            <EditorIcon name="transcript" size={16} /> Publish
+          </button>
           <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
             <Icon name="download" size={16} /> Export
           </button>
@@ -1702,6 +1730,19 @@ function EditorSession({
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
         {copy && <CopyProgress kind={copy.kind} name={project.name} progress={copy.progress} onCancel={() => copyAbort.current?.abort()} />}
+        {dialog === 'publish' && (
+          <PublishDialog
+            project={project}
+            request={publishRequest}
+            onClose={closeDialog}
+            onGenerateCaptions={() => {
+              setDialog(null)
+              setTab('captions')
+              requestCaptions({ kind: 'generate' })
+            }}
+            onNotice={showNotice}
+          />
+        )}
         {dialog === 'polish' && (
           <PolishDialog
             recorded={recorded}

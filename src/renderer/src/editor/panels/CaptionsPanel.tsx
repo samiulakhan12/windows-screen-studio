@@ -24,6 +24,7 @@ import {
   takeCaptionsRequest,
   transcribe,
   transcriptionJob,
+  type CaptionsAiTask,
   type CaptionsRequest
 } from '../captionItems'
 import { useEditor } from '../context'
@@ -114,7 +115,7 @@ const isSettingsDialog = (n: Node): boolean => n instanceof Element && n.classLi
  * (the settings may have changed), when the settings say they changed (AI_PROVIDERS_CHANGED) and
  * when the settings dialog closes. Null while the first read is under way.
  */
-function useAiProviders(): { providers: AiProviderInfo[] | null; error: string | null; reload: () => void } {
+export function useAiProviders(): { providers: AiProviderInfo[] | null; error: string | null; reload: () => void } {
   const [providers, setProviders] = useState<AiProviderInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
@@ -162,6 +163,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
   const [focusId, setFocusId] = useState<string | null>(null)
   const [exportNow, setExportNow] = useState(0)
   const [generateNow, setGenerateNow] = useState(0)
+  const [aiNow, setAiNow] = useState<{ task: CaptionsAiTask; n: number } | null>(null)
 
   // What the commands and the caption track ask for (also a request made just before the tab opened).
   useEffect(() => {
@@ -170,6 +172,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       if (!r) return
       if (r.kind === 'focus') setFocusId(r.id)
       else if (r.kind === 'export') setExportNow((n) => n + 1)
+      else if (r.kind === 'ai') setAiNow((was) => ({ task: r.task, n: (was?.n ?? 0) + 1 }))
       else setGenerateNow((n) => n + 1)
     }
     take()
@@ -194,7 +197,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
             onSelect={props.onSelect}
             onNotice={props.onNotice}
           />
-          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} />
+          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} request={aiNow} />
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
       )}
@@ -999,7 +1002,7 @@ function TranscriptSection({
 
 /* ---------- AI tools ---------- */
 
-type AiTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
+type AiTask = CaptionsAiTask
 
 /** Control characters of an AI answer as spaces (`keepLines`: line breaks stay), trimmed. */
 const plainAnswer = (text: string, keepLines = false): string =>
@@ -1008,11 +1011,14 @@ const plainAnswer = (text: string, keepLines = false): string =>
 function AiToolsSection({
   providers,
   onNotice,
-  services
+  services,
+  request
 }: {
   providers: AiProviderInfo[] | null
   onNotice: (message: string) => void
   services: ReturnType<typeof useEditor>
+  /** A tool the command palette asked for (NW-13): run once the providers are known. */
+  request?: { task: CaptionsAiTask; n: number } | null
 }): JSX.Element {
   const { store } = services
   const [provider, setProvider] = useState(remembered.textProvider)
@@ -1086,6 +1092,19 @@ function AiToolsSection({
     }
   }
 
+  // A tool the command palette asked for (NW-13): translate only shows the language list, as a language must be chosen.
+  const translateRef = useRef<HTMLSelectElement>(null)
+  const handled = useRef(0)
+  useEffect(() => {
+    if (!request || request.n === handled.current || providers === null) return
+    handled.current = request.n
+    if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
+    if (busy) return onNotice('An AI tool is already working')
+    if (request.task !== 'translate') return void run(request.task)
+    translateRef.current?.scrollIntoView({ block: 'nearest' })
+    translateRef.current?.focus()
+  }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const label = (task: AiTask, text: string): string => (busy === task ? 'Working…' : text)
   return (
     <Section title="AI tools">
@@ -1116,7 +1135,7 @@ function AiToolsSection({
               <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('translate')} title="Replace the text with a translation; the timing stays">
                 {label('translate', 'Translate to…')}
               </button>
-              <select className="captions-select" aria-label="Translate to" value={translateTo} onChange={(e) => setTranslateTo(e.target.value)}>
+              <select ref={translateRef} className="captions-select" aria-label="Translate to" value={translateTo} onChange={(e) => setTranslateTo(e.target.value)}>
                 {CAPTION_LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.name}

@@ -357,3 +357,54 @@ describe('the saved description in project.json', () => {
     expect(readPublish([])).toBeUndefined()
   })
 })
+
+describe('the copy pack in the command palette', () => {
+  it('has every AI text tool and pack item, in its category', async () => {
+    const { COMMAND_CATEGORIES, commandInfo, PALETTE_COMMANDS, searchCommands } = await import('../src/shared/editor/commands')
+    const ids = PALETTE_COMMANDS.map((c) => c.id)
+    const NEW = {
+      aiCleanup: 'Captions',
+      aiTranslate: 'Captions',
+      aiChapters: 'Captions',
+      aiTitle: 'Captions',
+      aiSummary: 'Captions',
+      publishPack: 'Publish',
+      publishYoutube: 'Publish',
+      publishLinkedin: 'Publish',
+      publishX: 'Publish',
+      publishArticle: 'Publish',
+      publishReleaseNotes: 'Publish'
+    } as const
+    for (const [id, category] of Object.entries(NEW)) {
+      expect(ids, id).toContain(id)
+      expect(commandInfo(id as keyof typeof NEW).category).toBe(category)
+    }
+    expect(COMMAND_CATEGORIES[COMMAND_CATEGORIES.length - 1]).toBe('Publish')
+    const first = (q: string): string => searchCommands(PALETTE_COMMANDS, q)[0].command.title
+    expect(first('linkedin')).toBe('Write a LinkedIn post')
+    expect(first('x post')).toBe('Write an X post')
+    expect(first('twitter')).toBe('Write an X post')
+    expect(first('youtube description')).toBe('Write a YouTube description')
+    expect(first('changelog')).toBe('Write release notes')
+    expect(first('summarize')).toBe('Summarize with AI')
+    expect(first('translate captions')).toBe('Translate captions with AI…')
+  })
+})
+
+describe('the export bundle’s description with a saved one', () => {
+  it('is what Copy gives, and a part keeps its own', async () => {
+    const { sidecarText } = await import('../src/renderer/src/editor/exportBundleRun')
+    const project = migrateProject({
+      id: 'p', name: 'Demo', createdAt: '', duration: 120, width: 100, height: 100, hasWebcam: false, hasAudio: true, webcamOffset: 0,
+      clips: [{ id: 'c', start: 0, end: 120, speed: 1 }], zooms: [], autoZoom: false, annotations: [], style: {}, cursor: {}, webcam: {}, effects: {}, audio: {}, version: 2,
+      chapters: [{ id: 'a', t: 0, title: 'Intro' }, { id: 'b', t: 60, title: 'Users' }]
+    })
+    const req = { project, kinds: ['description' as const], title: 'Demo', thumbnail: async () => new Uint8Array() }
+    expect(sidecarText('description', req)).toBe('Demo\n\nLength: 2 min\n\nChapters\n0:00 Intro\n1:00 Users\n')
+    const saved = { ...req, project: { ...project, publish: { description: 'All about users.' } } }
+    const { chapters, duration } = projectYoutubeChapters(saved.project)
+    expect(sidecarText('description', saved)).toBe(`${composeYoutubeDescription('All about users.', chapters, duration)}\n`)
+    expect(sidecarText('description', saved)).toBe('All about users.\n\nChapters\n0:00 Intro\n1:00 Users\n')
+    expect(sidecarText('description', { ...saved, part: { index: 0, count: 2, of: 'Demo' } })).toMatch(/^Demo\n\nPart 1 of 2 of Demo/)
+  })
+})
