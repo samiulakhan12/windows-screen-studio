@@ -159,7 +159,7 @@ export function undoAutoCut(clips: Clip[], cut: AutoCut, duration: number): Clip
   for (const p of [...cut.was].sort((a, b) => b.start - a.start)) {
     if (cut.action === 'cut') {
       out = restoreRange(out, p.start, p.end, duration)
-      if (p.speed !== 1) out = setRangeSpeed(out, p.start, p.end, p.speed)
+      out = setRangeSpeed(out, p.start, p.end, p.speed)
       continue
     }
     const fast = out
