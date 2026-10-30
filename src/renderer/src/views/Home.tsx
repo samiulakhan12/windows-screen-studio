@@ -1,4 +1,5 @@
 import { SettingsButton } from '../settings/SettingsButton'
+import { UpdateNotice } from '../updates/UpdateNotice'
 import { PROJECTS_CHANGED_EVENT } from '../settings/StorageSection'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
@@ -720,6 +721,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           <BrandLogo size={22} />
         </div>
         <div className="tb-spacer" />
+        <UpdateNotice />
         <SettingsButton />
       </header>
 

@@ -1,0 +1,118 @@
+/* ---------- Flown's own updates (UpdatesBlock.tsx, UpdateNotice.tsx; docs/design/auto-update.md) ---------- */
+.updates-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.updates-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-1);
+}
+
+.updates-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+.updates-progress {
+  width: 100%;
+  max-width: 360px;
+  height: 6px;
+  accent-color: var(--accent-500);
+}
+
+.updates-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* An action that waits (checking, downloading) keeps the focus instead of becoming disabled. */
+.updates-block .btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.updates-refused {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warning-text);
+}
+
+.updates-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-1);
+  font-size: 13px;
+}
+
+.updates-block .hint {
+  margin: 0;
+  max-width: 560px;
+}
+
+.updates-notes {
+  align-self: stretch;
+  max-width: 560px;
+}
+
+.updates-notes summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--accent-text);
+}
+
+/* Release notes are plain text (never HTML): line breaks kept, long lines wrapped. */
+.updates-notes-text {
+  margin-top: 6px;
+  max-height: 200px;
+  max-width: 560px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Home's title bar. */
+.update-slot {
+  display: flex;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.update-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 3px 2px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+  color: var(--text-1);
+  font-size: 12px;
+}
+
+.update-pill-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-pill .update-pill-btn {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+}

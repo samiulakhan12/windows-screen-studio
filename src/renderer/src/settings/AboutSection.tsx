@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AppInfo } from '../../../shared/api/brand'
 import { APP_NAME, COMPANY_NAME, COMPANY_URL, COMPANY_URL_LABEL, COPYRIGHT } from '../../../shared/brand'
 import { BrandLogo } from '../components/BrandLogo'
+import { UpdatesBlock } from '../updates/UpdatesBlock'
 import { NoticesPanel } from './NoticesPanel'
 import './about.css'
 
@@ -48,6 +49,7 @@ export function AboutSection({ reveal = false }: { reveal?: boolean }): JSX.Elem
           <p className="about-legal">{COPYRIGHT}</p>
         </div>
       </div>
+      <UpdatesBlock />
       <NoticesPanel />
     </section>
   )

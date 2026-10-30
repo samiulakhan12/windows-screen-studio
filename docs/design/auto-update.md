@@ -112,8 +112,10 @@ Home, when an update is ready: a notice "Flown 0.7.2 is ready. It installs when 
 with [Restart now] and [Later] (Later hides it until the next version or the next start). Never
 in the editor or during a recording: updates must not interrupt work.
 
-*Restart now* while something runs: the button is disabled with the reason next to it, for
-example "Finish or stop the export first." The main process checks again when it is pressed.
+*Restart now* while something runs: main refuses it and the reason shows where the button is, for
+example "Finish or stop the export first." (main checks when it is pressed; nothing installs). The
+Settings action is one button whose label follows the state (Check for updates, Download, Restart
+now); while it waits it is `aria-disabled`, not removed or disabled, so the keyboard focus stays.
 
 ## 2. Main process
 
