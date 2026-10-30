@@ -100,14 +100,17 @@ describe('SearchIndex', () => {
     expect(ix.search('setings').map((h) => h.id).sort()).toEqual(['call', 'demo'])
     expect(ix.search('recrod').map((h) => h.id)).toEqual(['call'])
     expect(ix.search('settigns').map((h) => h.id).sort()).toEqual(['call', 'demo'])
+    // Two edits (a swap and a wrong letter): only from 8 letters.
+    expect(ix.search('settnigz').map((h) => h.id).sort()).toEqual(['call', 'demo'])
+    expect(ix.search('stetinz')).toEqual([])
     // Three letters: no typos.
     expect(ix.search('svae')).toHaveLength(1) // 4 letters: save
     expect(ix.search('sae')).toEqual([])
   })
 
   it('never matches numbers by typo', () => {
-    const n = index({ a: entry('Release 2024', []) })
-    expect(n.search('2024')).toHaveLength(1)
+    const n = index({ a: entry('Release 2024', []), b: entry('Build', [said(1, 'tag 2024b')]) })
+    expect(n.search('2024').map((h) => h.id).sort()).toEqual(['a', 'b'])
     expect(n.search('2025')).toEqual([])
   })
 
@@ -131,6 +134,8 @@ describe('SearchIndex', () => {
     expect(r.search('o').map((h) => h.id).sort()).toEqual(['a', 'b'])
     const moments = r.search('o').flatMap((h) => h.moments.map((m) => m.kind))
     expect(moments).toEqual(['title'])
+    // "o" is only in a caption of "Zed": that does not count, so Zed does not hold every word.
+    expect(index({ z: entry('Zed', [said(1, 'open the menu')]) }).search('zed o')).toEqual([])
   })
 
   it('a one-character Chinese word matches by prefix everywhere', () => {
@@ -220,7 +225,7 @@ describe('SearchIndex', () => {
 
 describe('snippetOf', () => {
   it('shows the text around the first match, cut on words, with ellipses', () => {
-    const text = `${'word '.repeat(30)}target ${'tail '.repeat(40)}`
+    const text = `${'word '.repeat(30)}xx target ${'tail '.repeat(40)}`
     const at = text.indexOf('target')
     const parts = snippetOf(text, [[at, at + 6]])
     const s = plain(parts)
