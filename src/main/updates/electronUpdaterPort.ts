@@ -6,6 +6,13 @@
 import type { UpdaterEvent } from '../../shared/updates/updates'
 import type { UpdaterPort } from './updaterPort'
 
+/**
+ * Sent in place of electron-updater's per-install id (userData/.updaterId), which it adds to every
+ * request for staged roll-outs. Flown has none, and the same id on every check would let a copy's
+ * check-ins be linked across networks.
+ */
+export const NO_STAGING_ID = '00000000-0000-4000-8000-000000000000'
+
 export async function electronUpdaterPort(): Promise<UpdaterPort> {
   const { autoUpdater } = await import('electron-updater')
   // Flown asks for the download itself (only when "Update Flown automatically" is on, §1.5).
@@ -14,6 +21,8 @@ export async function electronUpdaterPort(): Promise<UpdaterPort> {
   autoUpdater.allowPrerelease = false
   autoUpdater.allowDowngrade = false
   autoUpdater.fullChangelog = false
+  // Applied over the generated header, so the check sends the same value from every copy.
+  autoUpdater.requestHeaders = { 'x-user-staging-id': NO_STAGING_ID }
   // console reaches the app log (appLog.ts), which leaves the user's folders out.
   autoUpdater.logger = { info: (m) => console.info('[updates]', m), warn: (m) => console.warn('[updates]', m), error: (m) => console.error('[updates]', m), debug: () => undefined }
 

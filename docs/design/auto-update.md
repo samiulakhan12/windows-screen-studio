@@ -76,9 +76,11 @@ page for a manual reinstall.
 | Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording, an export, captions or analysis, an import, Clean voice, or a copy being made. The button says why. |
 
 The four-hour period and the 30 s delay keep start-up quick and the number of requests small
-(electron-updater reads the repository's public releases feed and `latest.yml` from github.com,
-not the rate-limited API; one check is two small requests). A failed check is retried at the next
-period; the error shows in Settings only.
+(electron-updater reads the repository's public releases feed, its latest release and
+`latest.yml` from github.com, not the rate-limited API; one check is three small requests). A check
+sends no identifier: electron-updater's per-install id for staged roll-outs (`userData/.updaterId`)
+is replaced by a constant, the same for every copy. A failed check is retried at the next period;
+the error shows in Settings only.
 
 Quitting with an update downloaded installs it silently and does not reopen Flown. *Restart now*
 installs and reopens it. A per-machine install (Program Files) shows Windows' permission prompt
