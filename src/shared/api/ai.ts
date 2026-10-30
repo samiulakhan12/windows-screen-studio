@@ -1,3 +1,4 @@
+import type { ModelList } from '../ai/modelList'
 import type { AiProviderKind, CaptionSegment, Transcript } from '../types'
 
 /** A configured AI provider as the renderer sees it: the API key itself never leaves the main process. */
@@ -89,6 +90,8 @@ export const SCRIPT_DRAFT_MAX_NOTES = 20_000
 
 export interface AiApi {
   listAiProviders(): Promise<AiProviderInfo[]>
+  /** The suggested models and the retiring ones (NW-15; bundled, or refreshed from GitHub). */
+  getAiModelList(): Promise<ModelList>
   saveAiProvider(input: AiProviderInput): Promise<AiProviderInfo>
   removeAiProvider(id: string): Promise<void>
   /** Checks the key with a tiny request. */

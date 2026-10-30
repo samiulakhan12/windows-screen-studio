@@ -17,6 +17,7 @@ import { stopAllTranscriptions, stopTranscription, sweepTranscribeTemp, transcri
 import type { TextEffort } from './ai/types'
 import { isAppUrl } from './security'
 import { beginJob } from './longJobs'
+import { modelDefaults } from './ai/modelList'
 
 /** safeStorage (DPAPI on Windows). On Linux without a keyring it falls back to a fixed key: a packaged app refuses that. */
 const secretBox: SecretBox = {
@@ -28,7 +29,7 @@ const secretBox: SecretBox = {
 }
 
 let store: AiProviderStore | null = null
-const providers = (): AiProviderStore => (store ??= new AiProviderStore(path.join(app.getPath('userData'), 'ai-providers.json'), secretBox))
+const providers = (): AiProviderStore => (store ??= new AiProviderStore(path.join(app.getPath('userData'), 'ai-providers.json'), secretBox, modelDefaults))
 
 /** Text tasks in progress, stopped when the app quits. */
 const textCalls = new Set<AbortController>()

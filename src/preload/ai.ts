@@ -3,6 +3,7 @@ import type { AiApi, TranscribeProgress } from '../shared/api/ai'
 
 export const aiApi: AiApi = {
   listAiProviders: () => ipcRenderer.invoke('ai:listProviders'),
+  getAiModelList: () => ipcRenderer.invoke('ai:modelList'),
   saveAiProvider: (input) => ipcRenderer.invoke('ai:saveProvider', input),
   removeAiProvider: (id) => ipcRenderer.invoke('ai:removeProvider', id),
   testAiProvider: (id) => ipcRenderer.invoke('ai:testProvider', id),

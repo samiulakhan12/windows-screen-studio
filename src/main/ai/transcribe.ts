@@ -46,6 +46,7 @@ import type { AiProviderStore } from './keyStore'
 import { clientFor } from './providers'
 import type { AiClient, PartProgress } from './types'
 import { cancelled } from './request'
+import { modelDefaults } from './modelList'
 
 const RATE = 16000
 /** Bytes per second of the decoded sound (16-bit mono). */
@@ -221,7 +222,7 @@ export async function transcribeProject(store: AiProviderStore, projectId: unkno
     )
   }
   const controller = new AbortController()
-  const model = info.transcriptionModel ?? AI_PROVIDER_KINDS[info.kind].defaultTranscriptionModel!
+  const model = info.transcriptionModel ?? modelDefaults(info.kind).transcriptionModel!
   const job: Job = { controller, done: Promise.resolve() }
   const run = clientFor(info, apiKey).then((client) => runJob(projectId, dir, options, info.kind, model, client, controller.signal, progress, (tmp) => (job.tmp = tmp)))
   job.done = run.catch(() => undefined)

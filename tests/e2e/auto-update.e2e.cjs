@@ -3,8 +3,10 @@
 // automatic path finds 9.9.9, downloads it and shows the Home notice; Later hides it; the release
 // notes are plain text; Restart now is refused while an export runs and installs after; with
 // automatic updates off nothing is checked on its own, and Check then Download keep the focus; a
-// failed check and a failed download say so plainly.
+// failed check and a failed download say so plainly. The model list refreshes after a check
+// (SSW_MODEL_LIST_URL, a local server): the retiring note and the suggested models follow it.
 const fs = require('node:fs')
+const http = require('node:http')
 const path = require('node:path')
 const h = require('./helpers.cjs')
 const fx = require('./render-fixtures.cjs')
@@ -119,6 +121,49 @@ async function main() {
     await waitStatus(win, /Couldn't check for updates\. Check your internet connection and try again\. Last checked/)
     h.assert(!(await status(win)).includes('ERR_'), 'no raw error')
     h.assert((await win.textContent('[data-testid="updates-action"]')) === 'Check for updates', 'Check for updates is offered again')
+  }))
+
+  await test('model list: refreshed after an update check; a retiring model is noted; a new provider gets the suggestions', fx.withHome('upd-models', async (ctx, home) => {
+    const list = {
+      version: 1,
+      updated: '2027-01-15',
+      providers: {
+        openai: { model: 'gpt-e2e-next', transcriptionModel: 'gpt-transcribe-e2e' },
+        gemini: { model: 'gemini-3.8-flash', transcriptionModel: 'gemini-3.8-flash' },
+        anthropic: { model: 'claude-opus-5-5' }
+      },
+      retiring: [{ provider: 'gemini', model: 'gemini-3.8-flash', on: '2099-03-01' }]
+    }
+    let served = 0
+    const server = http.createServer((req, res) => {
+      served++
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify(list))
+    })
+    await new Promise((r) => server.listen(0, '127.0.0.1', r))
+    try {
+      const url = `http://127.0.0.1:${server.address().port}/ai-models.json`
+      const { app, win } = await launch(ctx, home, { SSW_UPDATES_FAKE: 'none', SSW_UPDATES_FIRST_CHECK_MS: '200', SSW_MODEL_LIST_URL: url })
+      const cache = path.join(userData(home), 'ai-models.json')
+      await ef.waitFor(() => served === 1 && fs.existsSync(cache), 'the list is downloaded and kept', 15000)
+      h.assert(JSON.parse(fs.readFileSync(cache, 'utf8')).list.updated === '2027-01-15', 'the newer list is kept')
+      await app.evaluate(({ safeStorage }) => safeStorage.setUsePlainTextEncryption(true))
+      await win.evaluate(() => window.api.saveAiProvider({ kind: 'gemini', label: 'My Gemini', apiKey: 'AIza-e2e-gemini-key-0002' }))
+      await win.click('.titlebar button[aria-label="Settings"]')
+      const row = win.locator('.ai-provider', { hasText: 'My Gemini' })
+      await row.waitFor({ timeout: 10000 })
+      const notes = await row.locator('[data-testid="ai-retiring"]').allTextContents()
+      h.assert(
+        JSON.stringify(notes) === JSON.stringify(['Google retires gemini-3.8-flash on 1 March 2099. Choose another model before then.', 'Google retires gemini-3.8-flash on 1 March 2099. Choose another transcription model before then.']),
+        `both models are noted: ${JSON.stringify(notes)}`
+      )
+      await win.getByRole('button', { name: '+ Add provider' }).click()
+      await ef.waitFor(async () => (await win.getByLabel('Model for text tasks').inputValue()) === 'gpt-e2e-next', 'a new provider gets the suggested model')
+      h.assert((await win.getByLabel('Transcription model').inputValue()) === 'gpt-transcribe-e2e', 'and the suggested transcription model')
+      h.assert(served === 1, 'one download')
+    } finally {
+      server.close()
+    }
   }))
 
   await test('updates: a failed download says Flown tries again, and Download is offered', fx.withHome('upd-dlerr', async (ctx, home) => {

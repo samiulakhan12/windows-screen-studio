@@ -1,7 +1,8 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { AI_LIMITS, AI_PROVIDER_KINDS, type AiProviderInfo } from '../../../shared/api/ai'
 import type { AiProviderKind } from '../../../shared/types'
 import { canDo, ipcMessage } from './providerText'
+import { suggestedModels, useModelList } from './useModelList'
 
 const KINDS = Object.values(AI_PROVIDER_KINDS)
 
@@ -39,18 +40,31 @@ export function ProviderForm({
   const [showKey, setShowKey] = useState(false)
   const info = AI_PROVIDER_KINDS[kind]
   const sameKind = editing?.kind === kind
-  const [model, setModel] = useState(editing?.model ?? info.defaultModel)
-  const [transcriptionModel, setTranscriptionModel] = useState(editing?.transcriptionModel ?? info.defaultTranscriptionModel ?? '')
+  // The suggested models come from the list Flown has (NW-15), which may answer after the form opens.
+  const list = useModelList()
+  const suggested = suggestedModels(list, kind)
+  const [model, setModel] = useState(editing?.model ?? suggested.model)
+  const [transcriptionModel, setTranscriptionModel] = useState(editing?.transcriptionModel ?? suggested.transcriptionModel ?? '')
+  const [modelsEdited, setModelsEdited] = useState(!!editing)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // The list answered after the form opened: its suggestions replace the built-in ones not yet edited.
+  useEffect(() => {
+    if (!list || modelsEdited) return
+    setModel(suggestedModels(list, kind).model)
+    setTranscriptionModel(suggestedModels(list, kind).transcriptionModel ?? '')
+    // Only when the list arrives: a change of kind sets its own models.
+  }, [list])
 
   const pickKind = (k: AiProviderKind): void => {
     if (k === kind) return
     setKind(k)
-    const next = AI_PROVIDER_KINDS[k]
-    // Models of one provider mean nothing to another: back to the new kind's defaults.
-    setModel(editing?.kind === k ? editing.model : next.defaultModel)
-    setTranscriptionModel(editing?.kind === k ? (editing.transcriptionModel ?? next.defaultTranscriptionModel ?? '') : (next.defaultTranscriptionModel ?? ''))
+    const next = suggestedModels(list, k)
+    // Models of one provider mean nothing to another: back to the new kind's suggestions.
+    setModel(editing?.kind === k ? editing.model : next.model)
+    setTranscriptionModel(editing?.kind === k ? (editing.transcriptionModel ?? next.transcriptionModel ?? '') : (next.transcriptionModel ?? ''))
+    setModelsEdited(editing?.kind === k)
     if (!labelEdited) setLabel(freeName(k, existing))
   }
 
@@ -172,10 +186,13 @@ export function ProviderForm({
         <input
           className="settings-input"
           value={model}
-          placeholder={info.defaultModel}
+          placeholder={suggested.model}
           maxLength={AI_LIMITS.modelLength}
           spellCheck={false}
-          onChange={(e) => setModel(e.target.value)}
+          onChange={(e) => {
+            setModelsEdited(true)
+            setModel(e.target.value)
+          }}
         />
       </label>
 
@@ -185,11 +202,14 @@ export function ProviderForm({
           <input
             className="settings-input"
             value={transcriptionModel}
-            placeholder={info.defaultTranscriptionModel}
+            placeholder={suggested.transcriptionModel}
             maxLength={AI_LIMITS.modelLength}
             spellCheck={false}
             aria-describedby={`${id}-tm-hint`}
-            onChange={(e) => setTranscriptionModel(e.target.value)}
+            onChange={(e) => {
+              setModelsEdited(true)
+              setTranscriptionModel(e.target.value)
+            }}
           />
           <span className="hint" id={`${id}-tm-hint`}>
             {kind === 'openai'

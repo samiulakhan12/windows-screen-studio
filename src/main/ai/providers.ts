@@ -1,4 +1,5 @@
-import { AI_PROVIDER_KINDS, type AiProviderInfo } from '../../shared/api/ai'
+import type { AiProviderInfo } from '../../shared/api/ai'
+import { modelDefaults } from './modelList'
 import type { AiClient } from './types'
 
 /**
@@ -6,7 +7,7 @@ import type { AiClient } from './types'
  * used (they are large, and most sessions never call one), not when the app starts.
  */
 export async function clientFor(info: AiProviderInfo, apiKey: string): Promise<AiClient> {
-  const transcriptionModel = info.transcriptionModel ?? AI_PROVIDER_KINDS[info.kind].defaultTranscriptionModel ?? ''
+  const transcriptionModel = info.transcriptionModel ?? modelDefaults(info.kind).transcriptionModel ?? ''
   switch (info.kind) {
     case 'openai':
       return (await import('./openai')).openAiClient(apiKey, info.model, transcriptionModel)

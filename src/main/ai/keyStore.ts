@@ -57,7 +57,11 @@ function modelName(v: unknown, fallback: string, what: string): string {
 }
 
 /** An AiProviderInput from the renderer, checked field by field; throws a message to show. */
-export function validateProviderInput(input: unknown): AiProviderInput {
+/** Each kind's suggested models: the bundled ones, or the refreshed list's (modelList.ts). */
+export type ModelDefaultsOf = (kind: AiProviderKind) => { model: string; transcriptionModel?: string }
+const builtinDefaults: ModelDefaultsOf = (kind) => ({ model: AI_PROVIDER_KINDS[kind].defaultModel, transcriptionModel: AI_PROVIDER_KINDS[kind].defaultTranscriptionModel })
+
+export function validateProviderInput(input: unknown, defaults: ModelDefaultsOf = builtinDefaults): AiProviderInput {
   if (!isObject(input)) throw new Error('Invalid provider.')
   if (!isKind(input.kind)) throw new Error('Choose OpenAI, Google Gemini or Anthropic Claude.')
   if (input.id !== undefined && (typeof input.id !== 'string' || !ID_RE.test(input.id))) throw new Error('Invalid provider.')
@@ -72,13 +76,14 @@ export function validateProviderInput(input: unknown): AiProviderInput {
     if (apiKey.length < 8 || apiKey.length > AI_LIMITS.keyLength || !KEY_RE.test(apiKey)) throw new Error('That does not look like an API key (copy the whole key, without spaces).')
   }
   const info = AI_PROVIDER_KINDS[input.kind]
+  const suggested = defaults(input.kind)
   return {
     ...(input.id !== undefined ? { id: input.id as string } : {}),
     kind: input.kind,
     label,
     ...(apiKey ? { apiKey } : {}),
-    model: modelName(input.model, info.defaultModel, 'model'),
-    ...(info.canTranscribe ? { transcriptionModel: modelName(input.transcriptionModel, info.defaultTranscriptionModel ?? '', 'transcription model') } : {})
+    model: modelName(input.model, suggested.model, 'model'),
+    ...(info.canTranscribe ? { transcriptionModel: modelName(input.transcriptionModel, suggested.transcriptionModel ?? '', 'transcription model') } : {})
   }
 }
 
@@ -99,7 +104,8 @@ export class AiProviderStore {
 
   constructor(
     readonly file: string,
-    private readonly box: SecretBox
+    private readonly box: SecretBox,
+    private readonly defaults: ModelDefaultsOf = builtinDefaults
   ) {}
 
   private load(): StoredProvider[] {
@@ -167,7 +173,7 @@ export class AiProviderStore {
 
   /** Adds or updates a provider from the renderer's input; returns what the renderer may see. */
   save(raw: unknown, now = new Date()): AiProviderInfo {
-    const input = validateProviderInput(raw)
+    const input = validateProviderInput(raw, this.defaults)
     const entries = this.load()
     const existing = input.id !== undefined ? entries.find((e) => e.id === input.id) : undefined
     if (input.id !== undefined && !existing) throw new Error('This provider no longer exists.')

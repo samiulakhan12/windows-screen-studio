@@ -3,6 +3,8 @@ import { AI_PROVIDER_KINDS, type AiProviderInfo } from '../../../shared/api/ai'
 import { ProviderForm } from './ProviderForm'
 import { canDo, ipcMessage } from './providerText'
 import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
+import { BUNDLED_MODEL_LIST, retiringNotes } from '../../../shared/ai/modelList'
+import { today, useModelList } from './useModelList'
 
 type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
 type Mode = { kind: 'list' } | { kind: 'add' } | { kind: 'edit'; provider: AiProviderInfo }
@@ -20,6 +22,9 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
   const [tests, setTests] = useState<Record<string, TestState>>({})
   const [removing, setRemoving] = useState<AiProviderInfo | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  // Models their makers are retiring (NW-15): a note under each provider still using one.
+  const modelList = useModelList() ?? BUNDLED_MODEL_LIST
+  const day = today()
   const addRef = useRef<HTMLButtonElement>(null)
   /** Where focus goes when the form or a question closes. */
   const returnFocus = useRef<string | null>(null)
@@ -151,6 +156,11 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                         )}
                       </div>
                       <div className="ai-provider-can">{canDo(p.kind)}.</div>
+                      {retiringNotes(modelList, p, day).map((note) => (
+                        <p key={note} className="ai-retiring" data-testid="ai-retiring">
+                          {note}
+                        </p>
+                      ))}
                       {t && (
                         <p className={`ai-test ${t.busy ? '' : t.ok ? 'ok' : 'error'}`} role="status" aria-live="polite">
                           {t.busy ? 'Testing…' : `${t.ok ? '✓' : '✕'} ${t.message}`}
