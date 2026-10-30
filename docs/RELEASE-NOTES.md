@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.7.1
+
+- **Flown updates itself**: it looks for a new version a few times a day, downloads it in the
+  background and installs it when you close Flown. *Restart now* installs it at once (it waits while
+  you record, export or make captions). Settings › About shows what is new, *Check for updates* and
+  the switch *Update Flown automatically*. Updates come from Flown's page on GitHub. Install this
+  version by hand once; every later version arrives by itself.
+- **Suggested AI models stay current**: the models Flown suggests for each AI provider are refreshed
+  with the update check, and Settings › AI tells you when a provider uses a model that is being
+  retired (OpenAI retires `whisper-1` on 26 February 2027). Models you chose are never changed.
+
 ## 0.7.0
 
 - **Import a video** (NW-07): bring in a video recorded with another app (OBS, Xbox Game Bar,

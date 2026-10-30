@@ -206,7 +206,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Opus Clip, CapCut, Descript, Screen Studio.
 
 ### NW-15 · Auto-update and a refreshable model list
-**Quality · S · planned**
+**Quality · S · shipped (0.7.1)**: see [FEATURES.md](FEATURES.md) (Updates itself, Suggested AI models refresh themselves), `docs/design/auto-update.md` and `docs/RELEASING.md`. Left for later: differential downloads, a beta channel, staged roll-outs, code signing (needs a certificate).
 
 - **What:** checks for new versions, downloads them in the background and installs on restart. The list of recommended AI models can be refreshed without a full release.
 - **Builds on:** `electron-builder.config.cjs` (`publish: null` today) and the code-signing setup; electron-updater.

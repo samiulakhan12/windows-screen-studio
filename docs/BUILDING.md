@@ -43,6 +43,11 @@ npm run test:native         # the helper's tests (tests/native/*.spec.ts)
 npm run dist:win     # -> dist/Flown-Setup-<version>.exe
 ```
 
+It also writes `dist/latest.yml` (the update metadata a release carries) and, inside the app,
+`resources/app-update.yml` (where Flown looks for updates: this repository's GitHub releases). It
+never uploads anything: releases are made by the *Release* workflow as drafts that a person
+publishes, see [RELEASING.md](RELEASING.md).
+
 The same command works on Windows, Linux and macOS. It runs four steps and stops at the first one
 that fails:
 
