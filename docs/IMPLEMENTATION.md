@@ -23,6 +23,11 @@ src/main/               Electron main process
   nativeCapture.ts        client for native/ssw-capture.exe (probe, monitor matching, session protocol)
   projects.ts, projectsIpc.ts, atomicWrite.ts, styleDefaults.ts
                           project folders, load/save with Windows lock retries, saved style defaults
+  versions.ts, versionsIpc.ts
+                          versions of an edit (docs/design/versions.md): <project>/versions/, one file
+                          per version and an index rebuilt from them, written atomically
+  filmstrip.ts            the clip track's frames: one ffmpeg run on the proxy's key frames, tiled into
+                          one JPEG kept in <project>/.cache/
   projectCopy.ts          Duplicate / Make a vertical version: a new folder, media hard-linked or copied,
                           project.json last (docs/design/vertical-video.md §4.7)
   proxyArgs.ts            WebM / native MP4 -> 60 fps short-GOP proxy (GPU encoder when available, crop, fit)

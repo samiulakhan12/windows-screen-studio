@@ -1,5 +1,11 @@
 # Release notes
 
+## Next release
+
+- **Versions** (E-12): save named versions of an edit (*Versions* in the title bar, or `Ctrl+Shift+S`), compare any of them with the edit now, and open one again: your edit is kept as a version first, and `Ctrl+Z` goes straight back. Flown also keeps a version before Polish in one click, Remove all and Make a vertical version.
+- **Filmstrip** (E-07): small frames along the clip track to find a moment by sight; *Frames on the clip track* in the command palette hides them.
+- **Nudge by one frame** (E-09): with items selected, `←` / `→` move them one frame and `Shift+←` / `Shift+→` ten frames; with nothing selected the keys step the playhead as before.
+
 ## 0.7.1
 
 - **Flown updates itself**: it looks for a new version a few times a day, downloads it in the

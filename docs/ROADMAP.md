@@ -245,6 +245,7 @@ Added 25 October 2026. These make everyday editing faster. Each was checked agai
 commit `f17cd98`, and the editor does not have it yet. E-01, E-04, E-05, E-08, E-10 and E-11 are
 `shipped` (Wave 6): see [FEATURES.md](FEATURES.md) and `docs/design/editing-wins.md`, which links the six
 designs. E-06 is `shipped` (after 0.5.0): see [FEATURES.md](FEATURES.md) and `docs/design/multi-select.md`.
+E-07, E-09 and E-12 are `shipped` (`feat-versions`): see `docs/design/versions.md`.
 The rest are `planned`.
 
 | Id | Feature | What it does | Size |
@@ -255,12 +256,12 @@ The rest are `planned`.
 | E-04 (shipped, Wave 6) | **Audio waveform on the timeline** | Shows where you talk and where the pauses are, so cuts land in the right place. | S |
 | E-05 (shipped, Wave 6) | **Snapping** | Segment edges and the playhead snap to cuts, clicks, chapter flags and other segments while dragging (hold Alt to turn it off). | S |
 | E-06 (shipped) | **Select several items** | Ctrl/Shift-click or drag a box to select zooms, text, shapes, spotlights, title cards, chapters and freeze frames together, edit what they share, move, delete, copy, paste or duplicate them; copy one item's look onto others. | M |
-| E-07 | **Filmstrip on the clip track** | Small frames along the clip track, to find a moment by sight. | S–M |
+| E-07 (shipped, `feat-versions`) | **Filmstrip on the clip track** | Small frames along the clip track, to find a moment by sight. See [FEATURES.md](FEATURES.md) and `docs/design/versions.md` §3. Left for later: a finer second sheet when zoomed far in. | S–M |
 | E-08 (shipped, Wave 6) | **J / K / L playback and preview speed** | Reverse, pause and forward from the keyboard (tap again to go faster), and play the preview at 1.5× or 2× to review long recordings quickly. | S |
-| E-09 | **Nudge by one frame** | Arrow keys move the selected item one frame, Shift + arrow ten frames. | S |
+| E-09 (shipped, `feat-versions`) | **Nudge by one frame** | Arrow keys move the selected item one frame, Shift + arrow ten frames. See `docs/design/versions.md` §4. | S |
 | E-10 (shipped, Wave 6) | **Crop the recording in the editor** | Hide the taskbar, browser tabs or a screen edge after recording. Today the area can only be chosen before recording. | S–M |
 | E-11 (shipped, Wave 6) | **Freeze frame** | Hold a frame for a few seconds so viewers can read something, with the sound paused or continuing. | S |
-| E-12 | **Versions** | Save named versions of an edit ("Before captions", "v1 for client") and go back to any of them. | S–M |
+| E-12 (shipped, `feat-versions`) | **Versions** | Save named versions of an edit ("Before captions", "v1 for client") and go back to any of them. See [FEATURES.md](FEATURES.md) and `docs/design/versions.md` §2. Left for later: comparing two versions with each other, a picture per version, opening a version from Home, and keeping music and logo picks that versions name. | S–M |
 | E-13 | **Re-record one part** | Record only the part that went wrong and drop it in place. Builds on multiple takes (LT-01). | L |
 
 ---
