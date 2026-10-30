@@ -111,7 +111,16 @@ over-limit counter 6.3:1, errors 11.8:1 (design §5.4).
   passed alone.
 - `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`: see below.
 
-E2E_RESULTS_PLACEHOLDER
+- **First full run:** 53/60 files passed. The seven failures were environmental: this container had
+  no native speech helper (`native/bin/ssw-speech`) and no test speech model. After
+  `npm run build:speech-host` and `npm run fetch:test-speech`, those files were re-run:
+  - 6 of 8 passed at once (the run included the two caption files that depend on them).
+  - `audio-pack` failed once, on a different test than before: crash recovery, "the same sound
+    bursts in both (9 vs 8)", a timing check.
+  - `offline-captions` failed because the test model had not been downloaded yet.
+  - Re-run alone, both passed (2/2).
+- **`publish-pack.e2e.cjs`:** 3/3 in every run.
+- **Every e2e file has now passed** in this environment; nothing was skipped or loosened.
 
 ## Needs a real Windows PC
 
