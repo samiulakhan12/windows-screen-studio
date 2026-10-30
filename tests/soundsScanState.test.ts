@@ -113,6 +113,8 @@ describe('the scan controller', () => {
     const { api, saved } = fakeApi({ mic: e })
     const { listen, pending } = fakeListen()
     const run = startScan(api, project('p4'), listen)
+    // First the levels and the speech detector: said as getting ready, not as 0% listened.
+    expect(scanState('p4')).toEqual({ status: 'listening', progress: 0, preparing: true })
     await tick()
     await tick()
     expect(pending.map((p) => p.source)).toEqual(['system'])

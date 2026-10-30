@@ -36,6 +36,9 @@ src/main/               Electron main process
                           files saved next to an export
   ai/                     AI providers (keys, transcription pipeline, text tasks); transcribe.ts also runs
                           "On this PC" (providerId 'local') with lossless WAV parts
+  sounds/                 the unwanted-sound finder's decoding streams (ffmpeg to 16 kHz mono floats,
+                          pulled chunk by chunk by the window that opened them) and its
+                          <project>/.cache/sounds.json (docs/design/sound-finder.md)
   speech/                 captions on this PC and the speech detector (docs/design/offline-captions.md):
                           helper.ts (ssw-speech as a child process: build choice from the `cpu` probe,
                           minimal environment, line caps, cancel, stall watchdog and time limit, exits),
@@ -110,6 +113,15 @@ whether a word is cut is derived from the clips. Fillers and retakes are found o
 words (`fillers.ts`, `retakes.ts`) as a review list. Every cut gets 10 ms audio fades:
 `render/cutFades.ts` gives the export's `afade` filters (`RecordingSound.cutFade`, opt-in per job)
 and the preview's ramp timing on a `cut` gain node in `previewAudio.ts`.
+
+**Unwanted sounds** (F-17, `docs/design/sound-finder.md`) are found on this PC by YAMNet (MediaPipe
+tasks-audio, bundled like the camera's segmenter) in a module worker per source, fed 16 kHz samples
+that main decodes with ffmpeg; the scores per window are kept in `<project>/.cache/sounds.json` and
+`shared/audio/sounds.ts` `findSounds` turns them into rows (speech taken out with the speech
+detector's ranges). A muted or lowered row is a span in `Project.sounds` (source seconds; absent in
+every older project); `shared/audio/soundsEdit.ts` makes the one gain curve both play: an ffmpeg
+`volume` expression on the recording's mixed sound before it is cut (`audioPlan.ts`), and keyframes
+mapped through the clips on a `sounds` gain node in `previewAudio.ts`. Cut is an ordinary cut.
 
 **Following the action** (`Project.reframe`, NW-05, `docs/design/vertical-video.md`) applies only in
 a frame at least 10% narrower than the drawn recording (`shared/engine/reframeData.ts`

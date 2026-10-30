@@ -20,8 +20,8 @@ import type { FromWorker, ToWorker } from './protocol'
 export type ScanState =
   /** Not listened to yet (or Cancel); `checking`: looking for stored scores. */
   | { status: 'idle'; checking?: boolean }
-  /** `progress` 0..1. */
-  | { status: 'listening'; progress: number }
+  /** `progress` 0..1; `preparing` while the levels and the speech detector are measured first. */
+  | { status: 'listening'; progress: number; preparing?: boolean }
   | { status: 'done'; rows: SoundRow[]; fromCache: boolean }
   | { status: 'failed'; message: string }
 
@@ -210,7 +210,7 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
   if (e.state.status === 'listening') return
   const epoch = ++e.epoch
   const live = (): boolean => entry(id).epoch === epoch
-  set(id, { status: 'listening', progress: 0 })
+  set(id, { status: 'listening', progress: 0, preparing: true })
   const listeners: Listener[] = []
   e.listeners = listeners
   try {
@@ -220,6 +220,7 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
     const skip = skipKey(speech)
     const have = await stored(api, project, sources, skip)
     const missing = sources.filter((s) => !have.has(s))
+    if (live()) set(id, { status: 'listening', progress: 0 })
     const length = Math.max(1, project.duration)
     const seconds = new Map<AudioSource, number>()
     const report = (): void => {

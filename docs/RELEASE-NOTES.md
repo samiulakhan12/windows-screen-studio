@@ -1,5 +1,13 @@
 # Release notes
 
+## Next release
+
+- **Unwanted sounds** (F-17): *Find unwanted sounds* in the Audio tab lists the coughs, sneezes,
+  typing, notification sounds, phones, dogs, knocks and background music in your recording, on this
+  PC (nothing is uploaded or downloaded). Speech is never listed. Play each one, then *Mute* it,
+  *Duck* it, *Cut* it or *Ignore* it; every choice is one undo step, and the preview sounds exactly
+  like the export. The list comes back at once when you open the recording again.
+
 ## 0.7.1
 
 - **Flown updates itself**: it looks for a new version a few times a day, downloads it in the

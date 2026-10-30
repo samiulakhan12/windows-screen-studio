@@ -22,6 +22,7 @@ export const SOUNDS_COPY = {
   noSound: 'This recording has no sound.',
   find: 'Find unwanted sounds',
   checking: 'Looking for sounds found before…',
+  preparing: 'Getting the recording ready…',
   cancel: 'Cancel',
   tryAgain: 'Try again',
   failed: 'Could not listen to the recording:',

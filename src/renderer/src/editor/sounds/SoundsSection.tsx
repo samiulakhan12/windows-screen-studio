@@ -102,7 +102,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
       ) : state.status === 'listening' ? (
         <div className="sounds-status" data-testid="sounds-status" data-state="listening">
           <p className="hint" aria-hidden="true">
-            {listeningText(state.progress)}
+            {state.preparing ? SOUNDS_COPY.preparing : listeningText(state.progress)}
           </p>
           <div className="sounds-bar" role="progressbar" aria-label={SOUNDS_COPY.title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(state.progress * 100)}>
             <span style={{ width: `${Math.round(state.progress * 100)}%` }} />
