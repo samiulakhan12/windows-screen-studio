@@ -213,7 +213,7 @@ export function ProviderForm({
           />
           <span className="hint" id={`${id}-tm-hint`}>
             {kind === 'openai'
-              ? 'whisper-1 is the OpenAI model that gives word and sentence timings, which captions need.'
+              ? 'gpt-transcribe gives text only: Flown estimates word times from the sound. whisper-1 gives exact word times until OpenAI retires it on 26 February 2027.'
               : 'Gemini listens to the sound and returns sentences with their times.'}
           </span>
         </label>

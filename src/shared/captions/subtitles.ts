@@ -21,6 +21,14 @@ export interface Cue {
   start: number
   end: number
   text: string
+  /** Who speaks (docs/design/transcription.md §8): a WebVTT voice tag, or "Name: " in SRT and text when asked. */
+  speaker?: string
+}
+
+/** How the subtitle files are written. */
+export interface SubtitleOptions {
+  /** SRT and text: each caption starts with its speaker's name ("Priya: Hello"). WebVTT always names the speaker. */
+  speakerNames?: boolean
 }
 
 /** Output time of source time `s` inside clip `i` that starts at output time `at`. */
@@ -69,7 +77,7 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
       .map((w) => w.text)
       .join(' ')
     if (!text) continue
-    cues.push({ start: first, end: last, text })
+    cues.push({ start: first, end: last, text, ...(seg.speaker ? { speaker: seg.speaker } : {}) })
   }
   // Rounded later to milliseconds: never overlapping.
   for (let i = 1; i < cues.length; i++) if (cues[i].start < cues[i - 1].end) cues[i - 1].end = cues[i].start
@@ -104,46 +112,50 @@ export function subtitleLines(text: string, max = SUBTITLE_LINE): string[] {
 }
 
 /** Cues with times in whole milliseconds, each at least 1 ms long and never before the one before. */
-function msCues(cues: readonly Cue[]): { start: number; end: number; text: string }[] {
-  const out: { start: number; end: number; text: string }[] = []
+function msCues(cues: readonly Cue[]): { start: number; end: number; text: string; speaker?: string }[] {
+  const out: { start: number; end: number; text: string; speaker?: string }[] = []
   for (const c of cues) {
     const prev = out.length ? out[out.length - 1].end : 0
     const start = Math.max(prev, Math.round(c.start * 1000))
     const end = Math.round(c.end * 1000)
-    if (end > start) out.push({ start, end, text: c.text })
+    if (end > start) out.push({ start, end, text: c.text, ...(c.speaker ? { speaker: c.speaker } : {}) })
   }
   return out
 }
 
+/** A cue's text with its speaker's name first when `names` is on ("Priya: Hello"). */
+const named = (c: Pick<Cue, 'text' | 'speaker'>, names: boolean | undefined): string => (names && c.speaker ? `${c.speaker}: ${c.text}` : c.text)
+
 /** "-->" would end a cue's timing line early in either format. */
 const safeText = (s: string): string => s.replace(/-->/g, '->')
 
-export function toSrt(cues: readonly Cue[]): string {
+export function toSrt(cues: readonly Cue[], options: SubtitleOptions = {}): string {
   return msCues(cues)
-    .map((c, i) => `${i + 1}\n${formatTimestamp(c.start, ',')} --> ${formatTimestamp(c.end, ',')}\n${subtitleLines(safeText(c.text)).join('\n')}\n`)
+    .map((c, i) => `${i + 1}\n${formatTimestamp(c.start, ',')} --> ${formatTimestamp(c.end, ',')}\n${subtitleLines(safeText(named(c, options.speakerNames))).join('\n')}\n`)
     .join('\n')
 }
 
 const escapeVtt = (s: string): string => safeText(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export function toVtt(cues: readonly Cue[]): string {
-  const body = msCues(cues).map((c) => `${formatTimestamp(c.start, '.')} --> ${formatTimestamp(c.end, '.')}\n${subtitleLines(escapeVtt(c.text)).join('\n')}\n`)
+  // A speaker is a voice tag on the cue: <v Priya>Hello (the name escaped like the text).
+  const body = msCues(cues).map((c) => `${formatTimestamp(c.start, '.')} --> ${formatTimestamp(c.end, '.')}\n${c.speaker ? `<v ${escapeVtt(c.speaker)}>` : ''}${subtitleLines(escapeVtt(c.text)).join('\n')}\n`)
   return ['WEBVTT\n', ...body].join('\n')
 }
 
 /** The transcript as plain text: one caption per line. */
-export function toPlainText(cues: readonly Cue[]): string {
-  return cues.map((c) => c.text).join('\n') + (cues.length ? '\n' : '')
+export function toPlainText(cues: readonly Cue[], options: SubtitleOptions = {}): string {
+  return cues.map((c) => named(c, options.speakerNames)).join('\n') + (cues.length ? '\n' : '')
 }
 
 /**
  * The subtitle file of `segments` in the exported video's time, as `format`: past the pause freezes
  * of `plan` (a caption across one stretches over it, one starting exactly at it shows through it).
  */
-export function subtitleFile(segments: readonly CaptionSegment[], clips: readonly Clip[], format: SubtitleFormat, plan: FreezePlan = NO_FREEZES): string {
+export function subtitleFile(segments: readonly CaptionSegment[], clips: readonly Clip[], format: SubtitleFormat, plan: FreezePlan = NO_FREEZES, options: SubtitleOptions = {}): string {
   const edited = outputCues(segments, clips)
   const cues = plan.holds.length ? edited.map((c) => ({ ...c, start: editToVideo(plan, c.start), end: editToVideo(plan, c.end) })) : edited
-  return format === 'srt' ? toSrt(cues) : format === 'vtt' ? toVtt(cues) : toPlainText(cues)
+  return format === 'srt' ? toSrt(cues, options) : format === 'vtt' ? toVtt(cues) : toPlainText(cues, options)
 }
 
 /** Largest subtitle file accepted, in characters (5000 captions are well under 2 MB). */

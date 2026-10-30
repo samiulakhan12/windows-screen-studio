@@ -58,8 +58,8 @@ describe('parseOpenAiTranscription', () => {
     expect(t.language).toBeUndefined()
   })
 
-  it('says to use whisper-1 when a model returns text without timings', () => {
-    expect(() => parseOpenAiTranscription({ text: 'Hello there' }, 5)).toThrow(/whisper-1/)
+  it('reads text without timings as one untimed segment over the part, to be timed from the sound', () => {
+    expect(parseOpenAiTranscription({ text: 'Hello there' }, 5)).toEqual({ segments: [{ start: 0, end: 5, text: 'Hello there' }], untimed: true })
     expect(parseOpenAiTranscription({ text: '' }, 5).segments).toEqual([])
     expect(() => parseOpenAiTranscription('nope', 5)).toThrow(/not a transcript/)
   })

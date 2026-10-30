@@ -1,5 +1,6 @@
 import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
+import { speakerCaption } from '../../../shared/captions/speakers'
 import { luminance } from '../../../shared/editor/titles'
 import type { Rect } from '../../../shared/engine/layout'
 import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
@@ -180,6 +181,14 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
   c.restore()
 }
 
+/** Captions with the speaker's name first (Show speaker names), one object per caption so their layout stays cached. */
+const withNames = new WeakMap<CaptionSegment, CaptionSegment>()
+function named(seg: CaptionSegment): CaptionSegment {
+  let out = withNames.get(seg)
+  if (!out) withNames.set(seg, (out = speakerCaption(seg)))
+  return out
+}
+
 interface Shown {
   /** The font stack the caption draws with. */
   font: string
@@ -202,7 +211,7 @@ function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number, ar
   if (i < 0) return null
   const alpha = captionAlpha(segments, i, t, project.clips)
   if (alpha <= 0.002) return null
-  const seg = segments[i]
+  const seg = settings.showSpeaker ? named(segments[i]) : segments[i]
   const font = captionFont(project, settings)
   const layout = layoutOf(ctx, seg, settings, w, h, font, area)
   const ci = chunkIndexAt(layout, t)

@@ -330,6 +330,8 @@ export interface CaptionSegment {
   text: string
   /** Word timings when the provider returned them (karaoke highlighting, cut by word). */
   words?: CaptionWord[]
+  /** Who speaks, as shown ("You", "Speaker 2"); absent: no label (docs/design/transcription.md §6). */
+  speaker?: string
 }
 
 /** What was said in the recording, as returned by a transcription provider and edited by the user. */
@@ -360,6 +362,8 @@ export interface CaptionSettings {
   maxLines: 1 | 2
   /** A ProjectFont id (Project.fonts); absent or unknown = the built-in caption font. */
   font?: string
+  /** Draw the speaker's name before each labelled caption (off when absent). */
+  showSpeaker?: true
 }
 
 /** A 3D tilt of the recording card (degrees), for a perspective "product shot" look. */

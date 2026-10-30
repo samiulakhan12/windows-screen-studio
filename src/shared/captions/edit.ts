@@ -89,6 +89,8 @@ export function splitCaption(segments: readonly CaptionSegment[], id: string, t:
   k = clamp(k, 1, words.length - 1)
   const a: CaptionSegment = { id: seg.id, start: seg.start, end: t, text: words.slice(0, k).join(' ') }
   const b: CaptionSegment = { id: newCaptionId(), start: t, end: seg.end, text: words.slice(k).join(' ') }
+  // Both halves keep the speaker.
+  if (seg.speaker) a.speaker = b.speaker = seg.speaker
   if (timed) {
     // A deleted word keeps its own time (retimeWords).
     const inside = (w: CaptionWord, s: number, e: number): CaptionWord => (w.deleted ? w : { ...w, start: clamp(w.start, s, e), end: clamp(w.end, s, e) })
@@ -105,6 +107,9 @@ export function mergeWithNext(segments: readonly CaptionSegment[], id: string): 
   const a = segments[i]
   const b = segments[i + 1]
   const merged: CaptionSegment = { id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }
+  // The first caption's speaker, else the second's.
+  const speaker = a.speaker ?? b.speaker
+  if (speaker) merged.speaker = speaker
   const count = (s: CaptionSegment): number => s.text.split(' ').filter(Boolean).length
   if (a.words?.length || b.words?.length) merged.words = [...timingsOf(a, count(a)), ...timingsOf(b, count(b))]
   return [...segments.slice(0, i), merged, ...segments.slice(i + 2)]

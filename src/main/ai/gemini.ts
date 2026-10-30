@@ -10,6 +10,8 @@
  * Text tasks: generateContent with the task's JSON schema
  * (https://ai.google.dev/gemini-api/docs/structured-output). A blocked prompt or answer is
  * reported (promptFeedback.blockReason, finishReason SAFETY and the like) rather than parsed.
+ * NW-09 (docs/design/transcription.md §4, §6.2): each segment also names its speaker ("Speaker 1"),
+ * implausible word times are replaced by estimates, and a retired model fails with a plain message.
  */
 import { readFile } from 'node:fs/promises'
 import { ApiError, FileState, GoogleGenAI, type GenerateContentResponse, type Part } from '@google/genai'
@@ -18,6 +20,7 @@ import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import { GEMINI_TRANSCRIPT_SCHEMA, parseGeminiTranscription } from '../../shared/captions/transcriptParse'
 import { baseUrlOverride, testLimit } from './endpoints'
 import { AiError, callWithRetry, isNetworkError, sleep } from './request'
+import { retiredFailure } from './retired'
 import type { AiClient, AudioPart } from './types'
 
 const OFFICIAL_URL = 'https://generativelanguage.googleapis.com/'
@@ -84,6 +87,7 @@ function parseJson(text: string): unknown {
 const TRANSCRIBE_PROMPT =
   'Transcribe this screen recording\'s speech verbatim, in the language spoken, as JSON. Split it into segments of one sentence or short phrase (at most about 12 words or 6 seconds each). ' +
   'Give each segment its start and end time in seconds (with decimals) from the start of this audio, and when you can, each word with its own start and end time. ' +
+  'Say who speaks each segment: "Speaker 1" for the first voice heard, "Speaker 2" for the next one, and so on, always the same label for the same voice. ' +
   'Leave out silence, music and noises. If nobody speaks, return an empty list of segments.'
 
 export function geminiClient(apiKey: string, model: string, transcriptionModel: string): AiClient {
@@ -139,7 +143,9 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
               config: { responseMimeType: 'application/json', responseJsonSchema: GEMINI_TRANSCRIPT_SCHEMA, abortSignal: signal }
             }),
           { ...base, model: transcriptionModel, signal: call.signal, timeoutMs: 180_000 + part.seconds * 1000 }
-        )
+        ).catch((err: unknown) => {
+          throw retiredFailure(err, 'gemini', transcriptionModel, 'transcription')
+        })
         return parseGeminiTranscription(answerText(response), part.seconds)
       } finally {
         // Best effort: the file expires after 48 hours anyway.
@@ -156,7 +162,9 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
             config: { systemInstruction: prompt.system, responseMimeType: 'application/json', responseJsonSchema: prompt.schema, abortSignal: s }
           }),
         { ...base, model, signal, timeoutMs: 10 * 60_000 }
-      )
+      ).catch((err: unknown) => {
+        throw retiredFailure(err, 'gemini', model, 'text')
+      })
       return parseJson(answerText(response))
     }
   }

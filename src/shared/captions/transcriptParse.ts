@@ -7,14 +7,19 @@
  * timestamp_granularities ["segment", "word"] returns { language, duration, text, segments:
  * [{ id, start, end, text, ... }], words: [{ word, start, end }] }
  * (https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create).
+ * gpt-transcribe and later OpenAI models answer response_format "json" with { text, languages:
+ * [{ code }], usage } and no times (parseOpenAiText; timed in transcriptTiming.ts).
  * Gemini: generateContent with a response schema (GEMINI_TRANSCRIPT_SCHEMA) returns that JSON
  * as the text of the first candidate (https://ai.google.dev/gemini-api/docs/structured-output).
  */
+import { checkWordTimes } from './transcriptTiming'
 
 export interface RawWord {
   text: string
   start: number
   end: number
+  /** Its times are a guess (the provider gave none, or impossible ones): docs/design/transcription.md §3. */
+  estimated?: true
 }
 
 export interface RawSegment {
@@ -22,12 +27,19 @@ export interface RawSegment {
   end: number
   text: string
   words?: RawWord[]
+  /** Who speaks ("Speaker 1"), when the provider labelled it (Gemini). */
+  speaker?: string
 }
 
 export interface RawTranscript {
   /** BCP-47 language code when known. */
   language?: string
   segments: RawSegment[]
+  /**
+   * The answer had text but no times: one segment covering the whole part, without words. The
+   * transcription job times it from the sound (transcriptTiming.timeTextPart).
+   */
+  untimed?: true
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -105,10 +117,64 @@ export function parseOpenAiTranscription(json: unknown, partSeconds: number): Ra
     segments.push({ ...t, text, ...(own.length ? { words: own } : {}) })
   }
   if (segments.length === 0 && typeof json.text === 'string' && cleanText(json.text)) {
-    // Text but no timings: the model does not give segments (only whisper-1 does).
-    throw new Error('This transcription model returned text without timings. Choose whisper-1 as the transcription model in Settings.')
+    // Text but no timings (only whisper-1 gives segments): timed from the sound like a text answer.
+    return parseOpenAiText(json, partSeconds)
   }
   return { language: languageCode(json.language), segments }
+}
+
+/** Longest text kept from a text-only answer for one part (30 s of fast speech is well under 1000). */
+const MAX_PART_TEXT = 20000
+
+/**
+ * An OpenAI "json" transcription (gpt-transcribe and later: { text, languages: [{ code }], usage },
+ * no times) of a part `partSeconds` long: one untimed segment over the whole part (empty when
+ * nothing was said), and the first language detected.
+ */
+export function parseOpenAiText(json: unknown, partSeconds: number): RawTranscript {
+  if (!isObject(json) || typeof json.text !== 'string') throw new Error('The transcription service returned something that is not a transcript.')
+  const text = cleanText(json.text, MAX_PART_TEXT)
+  const detected = Array.isArray(json.languages) ? json.languages.map((l) => (isObject(l) ? languageCode(l.code) : undefined)).find(Boolean) : languageCode(json.language)
+  const end = Math.max(0, partSeconds)
+  return { ...(detected ? { language: detected } : {}), segments: text ? [{ start: 0, end, text }] : [], untimed: true }
+}
+
+/** Most speakers told apart in one part. */
+const MAX_SPEAKERS = 20
+const SPEAKER_RE = /^speaker\s*(\d{1,2})$/i
+
+/**
+ * Speaker labels of one part as "Speaker N": a "Speaker N" label (N 1..MAX_SPEAKERS) is kept, any
+ * other label becomes the next free number in order of first appearance; segments without a
+ * label stay without (docs/design/transcription.md §6.2).
+ */
+export function normalizeSpeakerLabels(segments: readonly RawSegment[]): RawSegment[] {
+  const names = new Map<string, string>()
+  const used = new Set<number>()
+  for (const s of segments) {
+    const m = s.speaker ? SPEAKER_RE.exec(s.speaker.trim()) : null
+    if (m && Number(m[1]) >= 1 && Number(m[1]) <= MAX_SPEAKERS) used.add(Number(m[1]))
+  }
+  return segments.map((s) => {
+    const { speaker, ...rest } = s
+    const raw = speaker?.trim()
+    if (!raw) return rest
+    const key = raw.toLowerCase()
+    let name = names.get(key)
+    if (!name) {
+      const m = SPEAKER_RE.exec(raw)
+      if (m && Number(m[1]) >= 1 && Number(m[1]) <= MAX_SPEAKERS) name = `Speaker ${Number(m[1])}`
+      else {
+        let n = 1
+        while (used.has(n)) n++
+        if (n > MAX_SPEAKERS) return rest
+        used.add(n)
+        name = `Speaker ${n}`
+      }
+      names.set(key, name)
+    }
+    return { ...rest, speaker: name }
+  })
 }
 
 /** The JSON a Gemini transcription answers with (responseJsonSchema). */
@@ -125,6 +191,7 @@ export const GEMINI_TRANSCRIPT_SCHEMA = {
           start: { type: 'number', description: 'Seconds from the start of the audio when the segment starts.' },
           end: { type: 'number', description: 'Seconds from the start of the audio when the segment ends.' },
           text: { type: 'string', description: 'The words spoken, verbatim.' },
+          speaker: { type: 'string', description: 'Who speaks: "Speaker 1" for the first voice heard, "Speaker 2" for the next, and so on; the same label for the same voice.' },
           words: {
             type: 'array',
             items: {
@@ -158,7 +225,9 @@ export function parseGeminiTranscription(text: string, partSeconds: number): Raw
     const t = times(s.start, s.end, limit)
     if (!text || !t) continue
     const words = readWords(s.words, limit, 'text').filter((w) => w.end >= t.start - 0.5 && w.start <= t.end + 0.5)
-    segments.push({ ...t, text, ...(words.length ? { words } : {}) })
+    const speaker = typeof s.speaker === 'string' ? cleanText(s.speaker, 64) : ''
+    // Impossible word times are replaced by an estimate (docs/design/transcription.md §4).
+    segments.push(checkWordTimes({ ...t, text, ...(words.length ? { words } : {}), ...(speaker ? { speaker } : {}) }))
   }
-  return { language: languageCode(json.language), segments: segments.sort((a, b) => a.start - b.start) }
+  return { language: languageCode(json.language), segments: normalizeSpeakerLabels(segments.sort((a, b) => a.start - b.start)) }
 }

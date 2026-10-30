@@ -1,0 +1,42 @@
+/**
+ * A request to a model its maker has retired fails with a plain sentence saying what to do, not
+ * the provider's error (NW-09, docs/design/transcription.md §5). The retiring list is the list of
+ * suggested models (shared/ai/modelList.ts); before the day the request is sent as usual.
+ */
+import { dayText, type ModelList } from '../ai/modelList'
+import type { AiProviderKind } from '../types'
+import type { AiFailureKind } from './transcriptErrors'
+
+const MAKERS: Record<AiProviderKind, string> = { openai: 'OpenAI', gemini: 'Google', anthropic: 'Anthropic' }
+
+/** Today as YYYY-MM-DD (UTC), as the list's dates are compared. */
+export const todayUtc = (now = new Date()): string => now.toISOString().slice(0, 10)
+
+/**
+ * Failures a retired model can explain (an unknown model is a 404, a refused one a 400): not a
+ * key, quota, rate limit, a server error, the network or a cancel.
+ */
+const EXPLAINED: readonly AiFailureKind[] = ['not-found', 'bad-request', 'other', 'refused']
+
+/**
+ * The message for a failed request to `model` of `kind` when the model is retired by `today`, or
+ * null. `use` is 'transcription' (suggests the list's transcription model and On this PC) or
+ * 'text'. `failure`: the kind of failure, when there was one (absent: any).
+ */
+export function retiredMessage(
+  list: ModelList,
+  kind: AiProviderKind,
+  model: string,
+  today: string,
+  use: 'transcription' | 'text',
+  failure?: AiFailureKind
+): string | null {
+  if (failure && !EXPLAINED.includes(failure)) return null
+  const r = list.retiring.find((x) => x.provider === kind && x.model === model)
+  if (!r || r.on > today) return null
+  const head = `${MAKERS[kind]} retired ${model} on ${dayText(r.on)}.`
+  if (use === 'text') return `${head} Choose another model in Settings › AI providers.`
+  const next = list.providers[kind]?.transcriptionModel
+  const suggestion = next && next !== model ? `Choose ${next} as the transcription model in Settings › AI providers` : 'Choose another transcription model in Settings › AI providers'
+  return `${head} ${suggestion}, or make captions On this PC.`
+}

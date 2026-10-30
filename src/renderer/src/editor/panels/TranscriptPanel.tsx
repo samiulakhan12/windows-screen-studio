@@ -24,6 +24,8 @@ import { EditorIcon } from '../EditorIcon'
 import { Section } from '../controls'
 import type { InspectorProps } from '../Inspector'
 import './transcript.css'
+import './speakers.css'
+import { TIMING_COPY } from '../../../../shared/captions/transcriptTiming'
 
 /*
  * Edit by text (NW-04, NW-01; docs/design/edit-by-text.md): the transcript word by word. Deleting
@@ -388,6 +390,9 @@ function TranscriptEditor({
   }, [playing, current, pageOfWord])
   const shownPage = Math.min(page, pages - 1)
   const shown = paragraphs.slice(shownPage * PAGE, shownPage * PAGE + PAGE)
+  // Speakers (NW-09): each caption's, named before a paragraph where it changes.
+  const speakerOf = useMemo(() => new Map((project.transcript?.segments ?? []).map((s) => [s.id, s.speaker])), [project.transcript])
+  const allEstimated = useMemo(() => words.length > 0 && words.every((w) => w.estimated), [words])
 
   useEffect(() => {
     if (focus < 0) return
@@ -427,6 +432,7 @@ function TranscriptEditor({
         </div>
         <p className="hint">Select words and press Delete to cut them. Click a word to go there.</p>
         {estimated && <p className="hint">Some word times are estimated: cuts there may be less exact.</p>}
+        {allEstimated && <p className="hint">{TIMING_COPY.transcriptAll}</p>}
         {pages > 1 && (
           <div className="row transcript-pager">
             <button className="btn small" disabled={shownPage === 0} onClick={(e) => turnPage(shownPage - 1, e)}>
@@ -453,8 +459,13 @@ function TranscriptEditor({
           onKeyDown={onKeyDown}
           data-testid="transcript-words"
         >
-          {shown.map((p) => (
-            <p key={p.caption} className="transcript-para" role="group" aria-label={`At ${timeOf(p.first)}`}>
+          {shown.map((p, k) => (
+            <p key={p.caption} className="transcript-para" role="group" aria-label={`${speakerOf.get(p.caption) ? `${speakerOf.get(p.caption)}, at` : 'At'} ${timeOf(p.first)}`}>
+              {speakerOf.get(p.caption) && speakerOf.get(p.caption) !== speakerOf.get((k > 0 ? shown[k - 1] : paragraphs[shownPage * PAGE - 1])?.caption ?? '') && (
+                <span className="transcript-speaker" aria-hidden="true" data-testid="transcript-speaker">
+                  {speakerOf.get(p.caption)}
+                </span>
+              )}
               <span className="transcript-time" aria-hidden="true">
                 {timeOf(p.first)}
               </span>
@@ -467,10 +478,11 @@ function TranscriptEditor({
                 if (i === current) classes.push('current')
                 if (i === focus) classes.push('focus')
                 if (suggested.has(i)) classes.push('suggested')
+                if (w.estimated) classes.push('estimated')
                 // A space after each word: the line can wrap there.
                 return (
                   <Fragment key={i}>
-                    <span id={`tw-${i}`} data-w={i} role="option" aria-selected={selected} aria-label={flags[i] ? `${w.text}, cut` : w.text} className={classes.join(' ')}>
+                    <span id={`tw-${i}`} data-w={i} role="option" aria-selected={selected} aria-label={flags[i] ? `${w.text}, cut` : w.text} className={classes.join(' ')} title={w.estimated ? TIMING_COPY.wordTitle : undefined}>
                       {w.text}
                     </span>{' '}
                   </Fragment>

@@ -41,7 +41,7 @@ describe('AiProviderStore', () => {
       kind: 'openai',
       label: 'My OpenAI',
       model: 'gpt-6.1-sol',
-      transcriptionModel: 'whisper-1',
+      transcriptionModel: 'gpt-transcribe',
       maskedKey: '…abcd',
       createdAt: '2026-10-25T10:00:00.000Z',
       canTranscribe: true

@@ -4,8 +4,10 @@
  * endpoints and response shapes the provider modules use, checks the requests (auth headers,
  * models, structured-output settings), and records them for assertions.
  *
- *   OpenAI     <url>/openai/v1:  GET /models, POST /audio/transcriptions (multipart, verbose_json
- *              with segment + word timestamps), POST /responses (json_schema text format)
+ *   OpenAI     <url>/openai/v1:  GET /models, POST /audio/transcriptions (multipart: whisper-1 with
+ *              verbose_json and segment + word timestamps; any other model, as gpt-transcribe, with
+ *              response_format json: { text, languages, usage }, no times), POST /responses
+ *              (json_schema text format)
  *   Gemini     <url>/gemini:     GET /v1beta/models/{m}, POST /v1beta/models/{m}:generateContent,
  *              resumable POST /upload/v1beta/files, GET + DELETE /v1beta/files/{id}
  *   Anthropic  <url>/anthropic:  GET /v1/models/{id}, POST /v1/messages?beta=true (SSE stream)
@@ -27,7 +29,9 @@
  * "slow..." takes 60 s to transcribe (for cancelling), "refuse..." is declined by the model,
  * "fallback..." (Claude) switches models mid-answer, "midstream..." (Claude) fails once per endpoint
  * with an SSE overloaded_error after HTTP 200, "ratemin..." (Gemini) hits a per-minute free-tier
- * rate limit once per endpoint (429 with RetryInfo). Anything else works.
+ * rate limit once per endpoint (429 with RetryInfo), "retired..." gets OpenAI's 404 model_not_found (a
+ * model past its shutdown) for every transcription. Anything else works. A Gemini transcription asked
+ * for speakers (the schema has `speaker`) labels "Word k" with "Speaker 1" for even k, "Speaker 2" for odd.
  */
 'use strict'
 const http = require('node:http')
@@ -150,13 +154,23 @@ function openAiTranscript(ffmpeg, file) {
   return { task: 'transcribe', language: 'english', duration, text: segments.map((s) => s.text).join(''), segments, words, usage: { type: 'duration', seconds: Math.ceil(duration) } }
 }
 
-/** A "Word k" transcript of `file` as Gemini's JSON answer (per the app's response schema). */
-function geminiTranscript(ffmpeg, file) {
+/** A "Word k" transcript of `file` as gpt-transcribe's json answer: text only, "Word 0. Word 1." */
+function openAiTextTranscript(ffmpeg, file) {
+  const found = bursts(ffmpeg, file)
+  const end = found.length ? found[found.length - 1].end : 0
+  return { text: found.map((b) => `Word ${b.k}.`).join(' '), languages: found.length ? [{ code: 'en' }] : [], usage: { type: 'duration', seconds: Math.ceil(end) } }
+}
+
+/** A "Word k" transcript of `file` as Gemini's JSON answer (per the app's response schema; speakers when asked). */
+function geminiTranscript(ffmpeg, file, speakers = false) {
   return {
     language: 'en',
     segments: bursts(ffmpeg, file).map((b) => {
       const mid = (b.start + b.end) / 2
-      return { start: +b.start.toFixed(2), end: +b.end.toFixed(2), text: `Word ${b.k}`, words: [{ text: 'Word', start: b.start, end: mid }, { text: String(b.k), start: mid, end: b.end }] }
+      return {
+        start: +b.start.toFixed(2), end: +b.end.toFixed(2), text: `Word ${b.k}`, words: [{ text: 'Word', start: b.start, end: mid }, { text: String(b.k), start: mid, end: b.end }],
+        ...(speakers ? { speaker: `Speaker ${b.k % 2 === 0 ? 1 : 2}` } : {})
+      }
     })
   }
 }
@@ -218,10 +232,19 @@ function startMockAi({ ffmpeg, hfFiles = {} }) {
     if (req.method === 'POST' && route === '/audio/transcriptions') {
       const fields = multipart(body, req.headers['content-type'])
       rec.fields = Object.fromEntries(Object.entries(fields || {}).map(([k, v]) => [k, Array.isArray(v) ? v.map((x) => x.value ?? `<${x.data.length} bytes ${x.type}>`) : v.value ?? `<${v.data.length} bytes ${v.type}>`]))
+      if (/^retired/.test(key)) return error(404, `The model \`${fields?.model?.value}\` has been deprecated, learn more here: https://developers.openai.com/api/docs/deprecations`, 'invalid_request_error', 'model_not_found')
+      if (fields?.model?.value !== 'whisper-1') {
+        // gpt-transcribe and later: json only, no timestamps, `languages` hints.
+        if (!fields?.file?.data || (fields.response_format && fields.response_format.value !== 'json')) return error(400, `response_format must be json for ${fields?.model?.value}`, 'invalid_request_error', null)
+        if (fields['timestamp_granularities[]']) return error(400, 'The timestamp_granularities[] parameter is only supported for whisper-1.', 'invalid_request_error', null)
+        if (fields.language) return error(400, `language is not supported for ${fields.model?.value}: use languages`, 'invalid_request_error', null)
+        if (fields.file.data.length > 25 * 1024 * 1024) return error(413, 'Maximum content size limit (26214400) exceeded.', 'invalid_request_error', null)
+        if (/^slow/.test(key) && !(await wait(req, 60000))) return
+        return json(res, 200, openAiTextTranscript(ffmpeg, saveAudio(fields.file.data, 'mp3')))
+      }
       if (!fields?.file?.data || fields.response_format?.value !== 'verbose_json') return error(400, 'file and response_format verbose_json expected', 'invalid_request_error', null)
       const grains = [].concat(fields['timestamp_granularities[]'] || []).map((f) => f.value)
       if (!grains.includes('word') || !grains.includes('segment')) return error(400, 'timestamp_granularities must include word and segment', 'invalid_request_error', null)
-      if (fields.model?.value !== 'whisper-1') return error(400, `timestamp_granularities is not supported for ${fields.model?.value}`, 'invalid_request_error', null)
       if (fields.file.data.length > 25 * 1024 * 1024) return error(413, 'Maximum content size limit (26214400) exceeded.', 'invalid_request_error', null)
       if (/^slow/.test(key) && !(await wait(req, 60000))) return
       return json(res, 200, openAiTranscript(ffmpeg, saveAudio(fields.file.data, 'mp3')))
@@ -319,7 +342,7 @@ function startMockAi({ ffmpeg, hfFiles = {} }) {
           if (!f || f.deleted || f.polls < 2) return error(400, 'File is not ACTIVE', 'FAILED_PRECONDITION')
           audio = f.file
         }
-        answer = geminiTranscript(ffmpeg, audio)
+        answer = geminiTranscript(ffmpeg, audio, !!config.responseJsonSchema?.properties?.segments?.items?.properties?.speaker)
       } else {
         const system = (b.systemInstruction?.parts || []).map((p) => p.text).join('')
         const user = parts.map((p) => p.text || '').join('')

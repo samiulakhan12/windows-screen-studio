@@ -1,0 +1,49 @@
+/* Speaker labels (NW-09, docs/design/transcription.md §7). */
+
+.speaker-list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.speaker-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A caption row with a speaker: the speaker on the left of the second line, the tools on its right. */
+.caption-row .caption-speaker {
+  grid-row: 2;
+  grid-column: 2;
+  justify-self: start;
+  max-width: 60%;
+  height: 22px;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.caption-row:has(.caption-speaker) .caption-tools {
+  grid-row: 2;
+  grid-column: 2;
+  justify-self: end;
+}
+
+/* The Transcript tab: the speaker before a paragraph where it changes. */
+.transcript-speaker {
+  display: block;
+  margin: 8px 0 2px;
+  color: var(--text-1);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* A word whose time is estimated; a suggested cut's underline wins. */
+.tw.estimated:not(.suggested):not(.cut) {
+  text-decoration: underline dotted var(--text-3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}

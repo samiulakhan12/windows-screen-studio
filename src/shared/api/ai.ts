@@ -132,8 +132,9 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
     label: 'OpenAI',
     canTranscribe: true,
     defaultModel: 'gpt-6.1-sol',
-    // The only OpenAI transcription model that returns segment and word timings (timestamp_granularities).
-    defaultTranscriptionModel: 'whisper-1',
+    // whisper-1's replacement (OpenAI retires whisper-1 on 26 February 2027): text only, word times
+    // estimated from the sound (docs/design/transcription.md); the model list can change it.
+    defaultTranscriptionModel: 'gpt-transcribe',
     keyPage: 'https://platform.openai.com/api-keys',
     keyPlaceholder: 'sk-…'
   },

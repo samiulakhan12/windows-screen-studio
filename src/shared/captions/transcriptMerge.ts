@@ -44,8 +44,8 @@ function shiftPart(part: TranscriptPart, transcript: RawTranscript, duration: nu
   return transcript.segments.map((s) => {
     const start = Math.min(Math.max(s.start + part.start, lo), hi)
     const end = Math.min(Math.max(s.end + part.start, lo), hi)
-    const words = s.words?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end) }))
-    return { start, end, text: s.text, ...(words ? { words } : {}) }
+    const words = s.words?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end), ...(w.estimated ? { estimated: w.estimated } : {}) }))
+    return { start, end, text: s.text, ...(words ? { words } : {}), ...(s.speaker ? { speaker: s.speaker } : {}) }
   })
 }
 
@@ -66,10 +66,10 @@ export function placePart(part: TranscriptPart, segments: readonly RawSegment[],
       const mine = s.words.filter((w) => kept(w.start, w.end, begin?.from ?? part.keepStart, begin?.settled.get(w)))
       if (!mine.length) continue
       // All its words: as heard (with its punctuation); some: only those, across a fixed cut.
-      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text: mine.map((w) => w.text).join(' '), words: mine }
+      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text: mine.map((w) => w.text).join(' '), words: mine, ...(s.speaker ? { speaker: s.speaker } : {}) }
     } else {
       if (!kept(s.start, s.end, part.keepStart)) continue
-      seg = { start: s.start, end: s.end, text: s.text }
+      seg = { start: s.start, end: s.end, text: s.text, ...(s.speaker ? { speaker: s.speaker } : {}) }
     }
     const mid = (seg.start + seg.end) / 2
     out.push({ seg, margin: Math.min(mid - lo, hi - mid) })
@@ -146,8 +146,8 @@ export function mergeParts(results: readonly { part: TranscriptPart; transcript:
     if (end - s.start < MIN_LENGTH) continue
     const words: CaptionWord[] | undefined = s.words
       ?.filter((w) => w.start < end)
-      .map((w) => ({ text: w.text, start: round(w.start), end: round(Math.min(w.end, end)) }))
-    segments.push({ id: '', start: round(s.start), end: round(end), text: s.text, ...(words?.length ? { words } : {}) })
+      .map((w) => ({ text: w.text, start: round(w.start), end: round(Math.min(w.end, end)), ...(w.estimated ? { estimated: w.estimated } : {}) }))
+    segments.push({ id: '', start: round(s.start), end: round(end), text: s.text, ...(words?.length ? { words } : {}), ...(s.speaker ? { speaker: s.speaker } : {}) })
   }
   segments.forEach((s, i) => (s.id = `t${i + 1}`))
   const languages = results.map((r) => r.transcript.language).filter((l): l is string => !!l)
