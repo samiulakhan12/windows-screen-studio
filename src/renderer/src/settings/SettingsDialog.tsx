@@ -6,6 +6,7 @@ import { AiProvidersSection } from './AiProvidersSection'
 import { BrandKitSection } from './BrandKitSection'
 import { HealthSections } from './HealthSections'
 import { SpeechModelsSection } from './SpeechModelsSection'
+import { ShareSection } from '../share/ShareSection'
 import './settings.css'
 
 export type SettingsSection = 'ai' | 'speech' | 'brand' | 'about'
@@ -47,6 +48,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
           <BrandKitSection reveal={section === 'brand'} />
+          <ShareSection />
           <HealthSections />
           <AboutSection reveal={section === 'about'} />
         </div>

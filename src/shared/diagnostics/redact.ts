@@ -37,6 +37,8 @@ const FILE_URL = /file:\/\/\/?(?=[A-Za-z]:|\/)[^\s"')]+/gi
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
 
 const SECRETS: [RegExp, string][] = [
+  // Chat webhooks (F-22 share): the part after the service's path is the secret.
+  [/(hooks\.slack\.com\/services\/|discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/|webhook\.office\.com\/webhookb2\/)[^\s"'<>]+/gi, '$1<secret>'],
   [/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g, '<secret>'],
   [/\bAIza[0-9A-Za-z_-]{20,}/g, '<secret>'],
   [/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '<secret>'],
