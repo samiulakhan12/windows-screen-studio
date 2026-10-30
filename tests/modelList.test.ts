@@ -49,6 +49,20 @@ describe('the model list (docs/design/auto-update.md §3)', () => {
     expect(parseModelList(l)?.retiring).toEqual([])
   })
 
+  it('a suggestion meant for newer versions (minApp) is left to them: older ones keep their own', () => {
+    const l = clone()
+    l.updated = '2027-02-20'
+    l.providers.openai = { model: 'gpt-6.1-sol', transcriptionModel: 'gpt-transcribe', minApp: '0.8.0' }
+    l.providers.gemini = { model: 'gemini-next', transcriptionModel: 'gemini-next' }
+    const old = parseModelList(l, '0.7.1')
+    expect(old?.providers.openai).toEqual(BUNDLED_MODEL_LIST.providers.openai)
+    expect(old?.providers.gemini).toEqual({ model: 'gemini-next', transcriptionModel: 'gemini-next' })
+    expect(parseModelList(l, '0.8.0')?.providers.openai).toEqual({ model: 'gpt-6.1-sol', transcriptionModel: 'gpt-transcribe' })
+    expect(parseModelList(l, '0.10.2')?.providers.openai.transcriptionModel).toBe('gpt-transcribe')
+    l.providers.openai.minApp = '0.8'
+    expect(parseModelList(l, '0.7.1')).toBeNull()
+  })
+
   it('keeps the newer list by date', () => {
     const older = { ...BUNDLED_MODEL_LIST, updated: '2026-01-01' }
     expect(newerList(BUNDLED_MODEL_LIST, older)).toBe(BUNDLED_MODEL_LIST)
@@ -103,6 +117,19 @@ describe('the list in the main process', () => {
     resetModelList()
     loadModelCache(file)
     expect(modelList().updated).toBe('2027-01-15')
+  })
+
+  it('keeps the list as downloaded, so a newer Flown reads its minApp suggestions again', async () => {
+    const file = path.join(tmp(), 'ai-models.json')
+    loadModelCache(file, '0.7.1')
+    const l = newer()
+    l.providers.openai.minApp = '0.8.0'
+    expect(await refreshModelList('https://example.test/l', respond(JSON.stringify(l)), 10)).toBe(true)
+    expect(modelDefaults('openai').transcriptionModel).toBe('whisper-1')
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).list.providers.openai.minApp).toBe('0.8.0')
+    resetModelList()
+    loadModelCache(file, '0.8.0')
+    expect(modelDefaults('openai').transcriptionModel).toBe('gpt-transcribe')
   })
 
   it('never takes an older list, and a bad or older cache is ignored', async () => {

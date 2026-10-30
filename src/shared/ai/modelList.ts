@@ -7,6 +7,7 @@
  */
 import { AI_LIMITS, AI_PROVIDER_KINDS } from '../api/ai'
 import type { AiProviderKind } from '../types'
+import { isNewer, isVersion } from '../updates/updates'
 
 /** The list on GitHub, on the default branch (raw.githubusercontent.com resolves HEAD). */
 export const MODEL_LIST_URL = 'https://raw.githubusercontent.com/samiulakhan12/windows-screen-studio/HEAD/resources/ai-models.json'
@@ -72,13 +73,18 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
  * every provider Flown knows (a transcription model only for providers that transcribe) and at most
  * 50 retiring entries. Providers and entries for providers Flown does not know are skipped (a newer
  * list may name more); anything else wrong rejects the whole list.
+ *
+ * A provider's entry may carry `minApp` (x.y.z): a suggestion only versions from that one can use
+ * (a model an older version cannot handle). Flown `appVersion` older than that keeps its own
+ * bundled suggestion for that provider. The list on GitHub is read by every installed version.
  */
-export function parseModelList(raw: unknown): ModelList | null {
+export function parseModelList(raw: unknown, appVersion?: string): ModelList | null {
   if (!isObject(raw) || raw.version !== 1 || !isDate(raw.updated) || !isObject(raw.providers)) return null
   const providers = {} as Record<AiProviderKind, ModelDefaults>
   for (const kind of KINDS) {
     const p = raw.providers[kind]
     if (!isObject(p) || !isModel(p.model)) return null
+    if (p.minApp !== undefined && !isVersion(p.minApp)) return null
     if (AI_PROVIDER_KINDS[kind].canTranscribe) {
       if (!isModel(p.transcriptionModel)) return null
       providers[kind] = { model: p.model, transcriptionModel: p.transcriptionModel }
@@ -86,6 +92,8 @@ export function parseModelList(raw: unknown): ModelList | null {
       if (p.transcriptionModel !== undefined) return null
       providers[kind] = { model: p.model }
     }
+    // Meant for newer versions only: this one keeps its own suggestion.
+    if (appVersion && typeof p.minApp === 'string' && isNewer(p.minApp, appVersion)) providers[kind] = BUNDLED_MODEL_LIST.providers[kind]
   }
   const list = raw.retiring === undefined ? [] : raw.retiring
   if (!Array.isArray(list) || list.length > MAX_RETIRING) return null

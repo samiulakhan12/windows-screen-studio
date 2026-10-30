@@ -11,7 +11,7 @@ import { onUpdateCheckEnded, updatesAuto } from '../updates/updatesIpc'
 import { MODEL_CACHE_FILE, loadModelCache, modelList, refreshModelList } from './modelList'
 
 export function registerModelListIpc(): void {
-  loadModelCache(path.join(app.getPath('userData'), MODEL_CACHE_FILE))
+  loadModelCache(path.join(app.getPath('userData'), MODEL_CACHE_FILE), app.getVersion())
   const url = app.isPackaged ? MODEL_LIST_URL : process.env.SSW_MODEL_LIST_URL || null
   if (url) {
     onUpdateCheckEnded(() => {

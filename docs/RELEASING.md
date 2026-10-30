@@ -49,3 +49,9 @@ a day, so a change to that file needs no release: edit it, raise `updated` to to
 (`YYYY-MM-DD`; Flown keeps the newest list), keep `BUNDLED_MODEL_LIST` in
 `src/shared/ai/modelList.ts` the same (a test checks), run `npx vitest run tests/modelList.test.ts`,
 commit and push. A file Flown cannot read is ignored, so a mistake never breaks anyone's copy.
+
+Every installed version reads the same file, including old ones. To suggest a model that only newer
+versions can use (one that needs new code, for example a transcription model without word times),
+add `"minApp": "x.y.z"` to that provider's entry: versions from x.y.z on take the suggestion, older
+ones keep the one they shipped with for that provider. For example
+`"openai": { "model": "gpt-6.1-sol", "transcriptionModel": "gpt-transcribe", "minApp": "0.8.0" }`.

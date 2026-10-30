@@ -174,7 +174,13 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   providers that transcribe, dates as `YYYY-MM-DD`, at most 50 retiring entries. Anything else and
   the whole download is ignored (the bundled or cached list stays). The newest valid list by
   `updated` wins, so an old cache never replaces a newer bundled list.
-- Cached in `userData/ai-models.json` (written atomically).
+- Every installed version reads the same file, so a provider entry can carry `"minApp": "x.y.z"`
+  (a version like the app's own; anything else and the download is ignored): a version older than
+  that keeps the bundled suggestion for that provider and takes the rest of the list. A suggestion
+  that needs new code (a transcription model without word times, say) is then given only to
+  versions that have that code.
+- Cached in `userData/ai-models.json` (written atomically) as downloaded, with `minApp` kept, so a
+  copy updated to a newer version reads its gated suggestions again from the cache.
 - What it changes, and only this: the suggested models when adding a provider (Settings › AI), the
   transcription model of a provider that has none of its own, and a note in Settings › AI next to
   a provider whose model is on the retiring list: "OpenAI retires whisper-1 on 26 February 2027.
