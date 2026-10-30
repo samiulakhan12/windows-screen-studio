@@ -174,7 +174,10 @@ floor), the whole part counts as active.
 
 ### 3.3 Spreading the words (`timeTextPart`, `src/shared/captions/transcriptTiming.ts`)
 
-- The text is split on whitespace into words.
+- The text is split on whitespace into words. A run in a script written without spaces
+  (Chinese, Japanese, Thai, Lao, Khmer, Burmese) is cut further into words by `Intl.Segmenter`;
+  punctuation stays with the word before it (an opening bracket or quote with the word after it),
+  and a caption joins those words without spaces, so the caption rules below apply to them too.
 - Each word weighs its number of characters (graphemes) plus one (the space). The active ranges
   are laid end to end as "speaking time"; word *k* gets the share of it its weight gives, and
   that position is mapped back to the recording. A word never starts in a pause; a word that

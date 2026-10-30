@@ -24,6 +24,10 @@ const MAX_CAPTION_SECONDS = 6
 /** A pause at least this long before a word starts a new caption, seconds. */
 const CAPTION_PAUSE = 0.7
 const SENTENCE_END = /[.!?…。！？]["'”’)\]]*$/u
+/** Scripts written without spaces between words (Chinese, Japanese, Thai…): cut into words by Intl.Segmenter. */
+const UNSPACED = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
+/** Opening brackets and quotes go with the word after them. */
+const OPENING = /^[\p{Ps}\p{Pi}]+$/u
 
 const EPS = 1e-9
 const round = (t: number): number => Math.round(t * 1000) / 1000
@@ -46,6 +50,48 @@ export function activeIn(active: readonly Range[], start: number, end: number): 
     if (b > a) out.push({ start: a - start, end: b - start })
   }
   return out.sort((x, y) => x.start - y.start)
+}
+
+let wordSegmenter: Intl.Segmenter | null | undefined
+
+/** One word of a text answer; `joined` when no space comes before it (inside a run of Chinese, Japanese, Thai…). */
+interface Piece {
+  text: string
+  joined: boolean
+}
+
+/**
+ * The words of a text answer: split on whitespace, and runs in a script written without spaces cut
+ * into words (punctuation stays with the word before it, an opening bracket or quote with the
+ * word after it), so the caption rules below see sentence ends and word counts in those too.
+ */
+function textPieces(text: string): Piece[] {
+  if (wordSegmenter === undefined) {
+    try {
+      wordSegmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'word' }) : null
+    } catch {
+      wordSegmenter = null
+    }
+  }
+  const out: Piece[] = []
+  for (const token of text.split(/\s+/).filter(Boolean)) {
+    if (!wordSegmenter || !UNSPACED.test(token)) {
+      out.push({ text: token, joined: false })
+      continue
+    }
+    const first = out.length
+    let lead = ''
+    for (const s of wordSegmenter.segment(token)) {
+      if (s.isWordLike) {
+        out.push({ text: lead + s.segment, joined: out.length > first })
+        lead = ''
+      } else if (out.length > first && !lead && !OPENING.test(s.segment)) out[out.length - 1].text += s.segment
+      else lead += s.segment
+    }
+    if (lead && out.length > first) out[out.length - 1].text += lead
+    else if (lead) out.push({ text: lead, joined: false })
+  }
+  return out
 }
 
 /** `texts` spread between `start` and `end` by length, all estimated. */
@@ -97,16 +143,21 @@ function spreadOver(texts: readonly string[], ranges: readonly Range[]): RawWord
  * CAPTION_PAUSE or at MAX_CAPTION_SECONDS. Times on the part's clock; every word estimated.
  */
 export function timeTextPart(text: string, active: readonly Range[], partSeconds: number): RawSegment[] {
-  const texts = text.split(/\s+/).filter(Boolean)
-  if (!texts.length || !(partSeconds > 0)) return []
+  const pieces = textPieces(text)
+  if (!pieces.length || !(partSeconds > 0)) return []
   const clipped = activeIn(active, 0, partSeconds).filter((r) => r.end - r.start >= MIN_STRETCH)
   const voiced = clipped.reduce((n, r) => n + (r.end - r.start), 0)
-  const words = spreadOver(texts, voiced >= MIN_ACTIVE ? clipped : [{ start: 0, end: partSeconds }])
+  const words = spreadOver(
+    pieces.map((p) => p.text),
+    voiced >= MIN_ACTIVE ? clipped : [{ start: 0, end: partSeconds }]
+  )
+  const joined = new Set(words.filter((_, i) => pieces[i].joined))
   const segments: RawSegment[] = []
   let group: RawWord[] = []
   const flush = (): void => {
     if (!group.length) return
-    segments.push({ start: group[0].start, end: Math.max(group[0].start, group[group.length - 1].end), text: group.map((w) => w.text).join(' '), words: group })
+    const text = group.map((w, k) => (k && !joined.has(w) ? ' ' : '') + w.text).join('')
+    segments.push({ start: group[0].start, end: Math.max(group[0].start, group[group.length - 1].end), text, words: group })
     group = []
   }
   for (const w of words) {

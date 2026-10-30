@@ -86,6 +86,38 @@ describe('timeTextPart', () => {
     expect(timeTextPart('   ', [{ start: 0, end: 1 }], 1)).toEqual([])
     expect(timeTextPart('hi', [], 0)).toEqual([])
   })
+
+  it('cuts Chinese, Japanese and Thai text into words: captions end at its sentences and follow its sound', () => {
+    const inSound = (w: { start: number; end: number }, sound: { start: number; end: number }[]): boolean => sound.some((r) => w.start >= r.start - 1e-9 && w.end <= r.end + 1e-9)
+    const ja = '今日はとても良い天気ですね。私たちは公園へ散歩に行きました。それからカフェで「おいしい」コーヒーを飲みました！'
+    const sound = [[0.3, 4], [4.8, 9], [9.9, 14], [15, 20], [20.8, 25], [26, 29.5]].map(([start, end]) => ({ start, end }))
+    const segs = timeTextPart(ja, sound, 30)
+    expect(segs.length).toBeGreaterThan(3)
+    // The text as said, with no space added; a sentence of 3 words or more ends its caption.
+    expect(segs.map((s) => s.text).join('')).toBe(ja)
+    expect(segs.some((s) => s.text.endsWith('天気ですね。'))).toBe(true)
+    for (const s of segs) {
+      expect(s.text).not.toMatch(/\s/u)
+      expect(s.words!.map((w) => w.text).join('')).toBe(s.text)
+      for (const w of s.words!) expect(inSound(w, sound)).toBe(true)
+    }
+    expect(segs.flatMap((s) => s.words!).map((w) => w.text)).toContain('「おいしい」')
+    expect(segs[segs.length - 1].end).toBeGreaterThan(25)
+
+    const zh = '今天天气很好。我们去公园散步吧。然后去喝咖啡。'
+    const two = [{ start: 0, end: 10 }, { start: 11, end: 20 }]
+    const zhSegs = timeTextPart(zh, two, 20)
+    expect(zhSegs.map((s) => s.text).join('')).toBe(zh)
+    expect(zhSegs[0].text).toBe('今天天气很好。')
+    expect(zhSegs.some((s) => s.start >= 11)).toBe(true)
+    expect(zhSegs[zhSegs.length - 1].end).toBe(20)
+
+    const th = timeTextPart('สวัสดีครับวันนี้อากาศดีมาก', [{ start: 0, end: 3 }], 3)
+    expect(th.flatMap((s) => s.words!).length).toBeGreaterThan(3)
+    expect(th.map((s) => s.text).join('')).toBe('สวัสดีครับวันนี้อากาศดีมาก')
+    // Spaces between words of a spaced language stay; text in those scripts keeps its own spaces.
+    expect(timeTextPart('我用 iPhone 拍的。', [{ start: 0, end: 3 }], 3).map((s) => s.text)).toEqual(['我用 iPhone 拍的。'])
+  })
 })
 
 describe('parseOpenAiText', () => {
