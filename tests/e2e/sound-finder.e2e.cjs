@@ -150,8 +150,7 @@ async function exportM4a(app, win, out) {
 }
 
 /** The rows as listed: [{ kind, key, state }]. */
-const rows = (win) => win.$$eval('.sound-row', (els) => els.map((e) => ({ kind: e.dataset.kind, key: e.dataset.key, state: e.dataset.state })))
-const startOf = (key) => Number(key.split('-')[1]) / 100
+const rows = (win) => win.$$eval('.sound-row', (els) => els.map((e) => ({ kind: e.dataset.kind, key: e.dataset.key, state: e.dataset.state, start: Number(e.dataset.start), end: Number(e.dataset.end) })))
 
 async function main() {
   await test('sound finder: finds the ding and the music, not speech; keeps the scores; Mute, Duck, Cut, Ignore, each one undo step, as exported', fx.withHome('sf-main', async (ctx, home) => {
@@ -176,12 +175,13 @@ async function main() {
     const took = (Date.now() - t0) / 1000
     h.assert((await win.getAttribute('[data-testid="sounds-status"]', 'data-from')) === 'scan', 'listened to the recording')
     let list = await rows(win)
-    console.log(`    found in ${took.toFixed(1)} s: ${list.map((r) => r.key).join(', ')}`)
+    console.log(`    found in ${took.toFixed(1)} s: ${list.map((r) => `${r.kind} ${r.start.toFixed(2)}-${r.end.toFixed(2)}`).join(', ')}`)
     const ding = list.find((r) => r.kind === 'ping')
     const music = list.find((r) => r.kind === 'music')
-    h.assert(ding && Math.abs(startOf(ding.key) - DING) < 0.6, `the ding is listed near ${DING} s: ${JSON.stringify(list)}`)
-    h.assert(music && startOf(music.key) >= MUSIC[0] - 0.6 && startOf(music.key) < MUSIC[0] + 1.5, `the music is listed from about ${MUSIC[0]} s: ${JSON.stringify(list)}`)
-    h.assert(list.every((r) => startOf(r.key) >= 12 || startOf(r.key) < 0.9), `nothing is listed while JFK speaks: ${JSON.stringify(list)}`)
+    // The ding is fitted to its sound (it rings for about a second); the music runs from 15 s to 23 s.
+    h.assert(ding && Math.abs(ding.start - DING) < 0.15 && ding.end > DING + 0.3 && ding.end < DING + 1.7, `the ding is listed at ${DING} s: ${JSON.stringify(list)}`)
+    h.assert(music && music.start >= MUSIC[0] - 0.6 && music.start < MUSIC[0] + 1 && music.end > MUSIC[1] - 1, `the music is listed from about ${MUSIC[0]} s to ${MUSIC[1]} s: ${JSON.stringify(list)}`)
+    h.assert(list.every((r) => r.start >= 12 || r.end < 0.9), `nothing is listed while JFK speaks: ${JSON.stringify(list)}`)
     h.assert(list.every((r) => r.state === 'open'), 'every row is open')
     h.assert(fs.readFileSync(path.join(dir, 'project.json'), 'utf8') === before, 'listening changes nothing in the project')
     const cache = JSON.parse(fs.readFileSync(path.join(dir, '.cache', 'sounds.json'), 'utf8'))

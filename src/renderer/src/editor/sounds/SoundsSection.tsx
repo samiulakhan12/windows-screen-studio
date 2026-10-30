@@ -194,7 +194,7 @@ function SoundRowItem(props: {
   const { row: r, state, name } = props
   const label = SOUND_LABELS[r.kind]
   return (
-    <li className="sound-row" data-key={r.key} data-kind={r.kind} data-state={state} tabIndex={-1}>
+    <li className="sound-row" data-key={r.key} data-kind={r.kind} data-state={state} data-start={r.start} data-end={r.end} tabIndex={-1}>
       <button type="button" className="btn small ghost icon-only sound-play" onClick={props.onPlay} aria-label={`Play ${name}`} title="Play it">
         <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
