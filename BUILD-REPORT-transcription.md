@@ -82,7 +82,21 @@ and the installed `openai` SDK 7.32.0 types (design §1):
 
 ## Verification
 
-VERIFICATION_PLACEHOLDER
+On the final code (commit with this report), in this Linux container:
+
+- `npm run typecheck`: passes.
+- `npx vitest run --testTimeout=60000`: **282 files, 3832 tests passed**, none failed.
+- `npm run build`: passes.
+- `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e` (the full suite, with the speech
+  helper built by `npm run build:speech-host` and the test model fetched): **59 of 60 files passed**
+  (259 passing tests). The one failure was this feature's own test *You and Others*: with the speech
+  helper present, its detector does not count the fixture's tone bursts as speech, so (as designed,
+  design §6.1) the microphone counted nowhere. The test now runs with `SSW_SPEECH_HELPER=/nonexistent`
+  so the levels decide (the speech-range rule stays covered by a unit test); re-run alone,
+  `tests/e2e/transcription.e2e.cjs` passes 4/4. Skipped by the suite for the environment: the
+  native capture helper under wine (no MinGW/wine here), the packaged-installer checks (no
+  `dist/win-unpacked`) and desktop icons under wine.
+- No timing check failed or was retried in this run.
 
 ## Needs a real Windows PC / real keys
 

@@ -275,7 +275,9 @@ async function main() {
         files: { 'mic.m4a': wordsAudio('call-mic', mine), 'system.m4a': wordsAudio('call-system', theirs) },
         extra: { audioStems: { mic: true, system: true }, transcript: { provider: 'openai', model: 'whisper-1', createdAt: new Date().toISOString(), language: 'en', segments: segs } }
       })
-      const { win } = await launch(ctx, home, mock)
+      // The tracks' levels decide: the fixture's tone bursts are not speech to the speech detector, which
+      // otherwise limits the microphone to where it hears speech (unit-tested in tests/speakers.test.ts).
+      const { win } = await launch(ctx, home, mock, { SSW_SPEECH_HELPER: '/nonexistent' })
       await fx.openProject(win, 'Call')
       await captionsTab(win)
       await win.waitForSelector('text=For calls, transcribe the Mixed sound')
