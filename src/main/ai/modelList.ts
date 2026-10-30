@@ -89,7 +89,8 @@ export type Fetcher = (url: string, init: RequestInit) => Promise<Response>
  * most MODEL_LIST_MAX_BYTES, 15 s; anything parseModelList rejects is dropped.
  */
 export async function refreshModelList(url: string, fetcher: Fetcher, now = Date.now()): Promise<boolean> {
-  if (fetchedAt > 0 && now - fetchedAt < MODEL_LIST_EVERY_MS) return false
+  // A download time later than now (the clock was ahead then) does not count.
+  if (fetchedAt > 0 && now >= fetchedAt && now - fetchedAt < MODEL_LIST_EVERY_MS) return false
   let list: ModelList | null = null
   let raw: unknown = null
   try {

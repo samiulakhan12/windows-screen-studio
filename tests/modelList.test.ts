@@ -119,6 +119,20 @@ describe('the list in the main process', () => {
     expect(modelList().updated).toBe('2027-01-15')
   })
 
+  it('a download time later than now (the clock was ahead) does not hold back the next download', async () => {
+    const file = path.join(tmp(), 'ai-models.json')
+    fs.writeFileSync(file, JSON.stringify({ fetchedAt: '2026-12-15T00:00:00.000Z', list: clone() }))
+    loadModelCache(file)
+    const now = Date.parse('2026-11-05T09:00:00.000Z')
+    const fetcher = respond(JSON.stringify(newer()))
+    expect(await refreshModelList('https://example.test/l', fetcher, now)).toBe(true)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).fetchedAt).toBe('2026-11-05T09:00:00.000Z')
+    // From then on, once a day again.
+    expect(await refreshModelList('https://example.test/l', fetcher, now + MODEL_LIST_EVERY_MS - 1)).toBe(false)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps the list as downloaded, so a newer Flown reads its minApp suggestions again', async () => {
     const file = path.join(tmp(), 'ai-models.json')
     loadModelCache(file, '0.7.1')

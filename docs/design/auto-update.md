@@ -173,6 +173,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
 - The app bundles it (imported at build time) and refreshes it from
   `https://raw.githubusercontent.com/samiulakhan12/windows-screen-studio/HEAD/resources/ai-models.json`
   (the default branch) with the update check, at most once a day, when automatic updates are on.
+  A last download time later than now (the clock was ahead) does not count, so the next check
+  downloads it again.
   Changing the suggestions is a commit to that file; no release needed.
 - Strictly checked (`src/shared/ai/modelList.ts`): at most 64 KB, provider kinds Flown knows,
   model names of 1-100 characters from `[A-Za-z0-9._:/-]`, transcription models only for
