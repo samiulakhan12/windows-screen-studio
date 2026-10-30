@@ -90,9 +90,18 @@ function readFileMeta(file: string, id: string): VersionMeta | null {
 
 const newestFirst = (a: VersionMeta, b: VersionMeta): number => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)
 
-function writeIndex(folder: string, items: readonly VersionMeta[]): void {
-  writeFileAtomicSync(path.join(folder, INDEX), JSON.stringify({ v: 1, items }, null, 1), { attempts: 4 })
+/** writeFileAtomicSync, after removing whatever holds its temporary name (a link planted there is never written through). */
+function writeAtomic(file: string, data: string): void {
+  fs.rmSync(`${file}.tmp`, { force: true })
+  writeFileAtomicSync(file, data, { attempts: 4 })
 }
+
+function writeIndex(folder: string, items: readonly VersionMeta[]): void {
+  writeAtomic(path.join(folder, INDEX), JSON.stringify({ v: 1, items }, null, 1))
+}
+
+/** Largest index read (200 metas are far less). */
+const INDEX_MAX = 4 * 1024 * 1024
 
 /**
  * Every version of the project in `dir`, newest first. The index is checked against the files:
@@ -110,6 +119,8 @@ export function listVersions(dir: string): VersionMeta[] {
   let indexed: VersionMeta[] = []
   let stale = false
   try {
+    const st = fs.lstatSync(path.join(folder, INDEX))
+    if (!st.isFile() || st.size > INDEX_MAX) throw new Error('not an index')
     const raw = JSON.parse(fs.readFileSync(path.join(folder, INDEX), 'utf8')) as { v?: unknown; items?: unknown }
     if (raw?.v !== 1 || !Array.isArray(raw.items)) throw new Error('not an index')
     indexed = raw.items.slice(0, VERSION_LIMITS.index).map(sanitizeMeta).filter((m): m is VersionMeta => m !== null)
@@ -152,6 +163,8 @@ export interface SaveVersionOptions {
   reason?: unknown
   /** The name of the version being opened (reason 'open'). */
   about?: unknown
+  /** A version that must stay (the one being opened): never pruned to make room. */
+  protect?: unknown
   now?: Date
 }
 
@@ -207,10 +220,12 @@ export function saveVersion(dir: string, projectId: string, raw: unknown, opts: 
   const body = `{"format":"${FORMAT}","v":1,"meta":${JSON.stringify(meta)},"project":${json}}`
   meta.bytes = Buffer.byteLength(body)
   // The size in the file's own meta is left 0: the listing reads it from the file.
-  writeFileAtomicSync(fileOf(folder, id), body, { attempts: 4 })
+  writeAtomic(fileOf(folder, id), body)
 
   const next = [meta, ...list].sort(newestFirst)
-  const removed = reason ? prunedAutos(next) : []
+  // Never the version just kept, nor the one being opened (it would be gone before it is read).
+  const keep = new Set([id, typeof opts.protect === 'string' ? opts.protect : ''])
+  const removed = reason ? prunedAutos(next, keep) : []
   for (const old of removed) fs.rmSync(fileOf(folder, old), { force: true, maxRetries: 3 })
   writeIndex(folder, next.filter((v) => !removed.includes(v.id)))
   return { saved: meta, removed }
@@ -224,7 +239,14 @@ export function renameVersion(dir: string, id: string, name: unknown): VersionMe
   if (!found) throw new VersionError('This version is no longer there.')
   const renamed = { ...found, name: cleanVersionName(name, found.name) }
   if (renamed.name === found.name) return found
-  writeIndex(versionsDir(dir)!, list.map((v) => (v.id === id ? renamed : v)))
+  const folder = versionsDir(dir)!
+  // The file's own meta too: an index rebuilt from the files keeps the new name.
+  const file = fileOf(folder, id)
+  const st = fs.lstatSync(file)
+  if (!st.isFile() || st.size > VERSION_LIMITS.bytes + 64 * 1024) throw new VersionError('This version could not be read.')
+  const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as { meta?: Record<string, unknown> }
+  writeAtomic(file, JSON.stringify({ ...raw, meta: { ...raw.meta, name: renamed.name } }))
+  writeIndex(folder, list.map((v) => (v.id === id ? renamed : v)))
   return renamed
 }
 

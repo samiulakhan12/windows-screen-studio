@@ -269,10 +269,16 @@ export function sanitizeMeta(raw: unknown): VersionMeta | null {
   }
 }
 
-/** Which versions go when one more `auto` version is kept: the oldest automatic ones beyond the limit. */
-export function prunedAutos(list: readonly VersionMeta[]): string[] {
-  const autos = list.filter((v) => v.auto).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-  return autos.slice(VERSION_LIMITS.auto).map((v) => v.id)
+/**
+ * Which versions go when one more `auto` version is kept: the oldest automatic ones until the limit
+ * is kept, never one of `keep` (the version just kept, the one being opened).
+ */
+export function prunedAutos(list: readonly VersionMeta[], keep: ReadonlySet<string> = new Set()): string[] {
+  const autos = list.filter((v) => v.auto)
+  const excess = autos.length - VERSION_LIMITS.auto
+  if (excess <= 0) return []
+  const oldestFirst = autos.filter((v) => !keep.has(v.id)).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+  return oldestFirst.slice(0, excess).map((v) => v.id)
 }
 
 /** "Today 14:02", "Yesterday 09:15", "12 Mar 14:02", "12 Mar 2025 14:02". */

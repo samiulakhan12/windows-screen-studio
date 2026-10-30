@@ -59,6 +59,13 @@ export function VersionsDialog({
   const [renameText, setRenameText] = useState('')
   /** The version whose rename field Esc closed: its blur, which follows, must not save. */
   const renameCancelled = useRef<string | null>(null)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
@@ -99,9 +106,12 @@ export function VersionsDialog({
     setBusy(true)
     setError(null)
     try {
-      // The edit now first: going back to it is always possible.
-      await keepVersionBefore(getProject(), 'open', v.name)
-      onOpen(await window.api.readVersion(projectId, v.id))
+      // The edit now first: going back to it is always possible. Without it, nothing is opened.
+      const kept = await keepVersionBefore(getProject(), 'open', v.name, v.id)
+      if (kept && 'failed' in kept) throw new Error(`your edit now could not be kept as a version first (${kept.failed})`)
+      const read = await window.api.readVersion(projectId, v.id)
+      // Closed meanwhile (Esc): the user no longer asked for it.
+      if (mounted.current) onOpen(read)
     } catch (err) {
       setError(`Could not open this version: ${ipcMessage(err)}`)
       setBusy(false)

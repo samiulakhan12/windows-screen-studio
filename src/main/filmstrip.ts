@@ -83,7 +83,11 @@ function runFfmpeg(args: string[], id: string, timeoutMs: number): Promise<{ cou
         else if (line.trim()) last = line.trim()
       }
     })
-    const timer = setTimeout(() => proc.kill('SIGKILL'), timeoutMs)
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      proc.kill('SIGKILL')
+    }, timeoutMs)
     const finish = (r: { count: number } | { error: string }): void => {
       clearTimeout(timer)
       running.delete(proc)
@@ -93,6 +97,7 @@ function runFfmpeg(args: string[], id: string, timeoutMs: number): Promise<{ cou
     proc.on('close', (code, signal) => {
       count += countShowinfo(tail)
       if (code === 0) finish({ count })
+      else if (timedOut) finish({ error: 'it took too long and was stopped' })
       else finish({ error: signal ? 'stopped' : `ffmpeg could not read the video (exit code ${code}${last ? `: ${last.slice(0, 200)}` : ''})` })
     })
   })
@@ -142,7 +147,7 @@ export async function getFilmstrip(id: unknown): Promise<{ meta: FilmstripMeta; 
   const fps = num(project.capture?.fps, 60)
   const plan = filmstripPlan(duration, num(project.width, 16), num(project.height, 9), GOP / fps)
   const key = filmstripKey(stat.size, stat.mtimeMs, plan)
-  const flightKey = `${dir}\n${key}`
+  const flightKey = `${dir}\n${key}\n${generation}`
   const shared = inFlight.get(flightKey)
   if (shared) return shared
   const work = (async () => {
@@ -152,6 +157,7 @@ export async function getFilmstrip(id: unknown): Promise<{ meta: FilmstripMeta; 
     // Stopped while the files were looked at (the editor closed, the project is being deleted).
     if (running.generation(id) !== generation) return null
     const part = path.join(cache, '.filmstrip-part.jpg')
+    await fs.rm(part, { force: true })
     const timeoutMs = 60_000 + Math.min(duration, 4 * 3600) * 250
     const r = await runFfmpeg(filmstripArgs(file, plan, part), id, timeoutMs)
     if ('error' in r || r.count === 0) {

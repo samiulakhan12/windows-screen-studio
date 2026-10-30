@@ -44,8 +44,8 @@ export function registerVersionsIpc(): void {
   ipcMain.handle('versions:list', (e, id: unknown): VersionMeta[] => listVersions(folderFor(e, id)))
   ipcMain.handle('versions:save', (e, id: unknown, project: unknown, opts: unknown): SaveVersionResult => {
     const dir = folderFor(e, id)
-    const o = (opts && typeof opts === 'object' ? opts : {}) as { name?: unknown; reason?: unknown; about?: unknown }
-    return saveVersion(dir, id as string, project, { name: o.name, reason: o.reason, about: o.about })
+    const o = (opts && typeof opts === 'object' ? opts : {}) as { name?: unknown; reason?: unknown; about?: unknown; protect?: unknown }
+    return saveVersion(dir, id as string, project, { name: o.name, reason: o.reason, about: o.about, protect: o.protect })
   })
   ipcMain.handle('versions:rename', (e, id: unknown, versionId: unknown, name: unknown): VersionMeta => renameVersion(folderFor(e, id), versionId as string, name))
   ipcMain.handle('versions:delete', (e, id: unknown, versionId: unknown): void => deleteVersion(folderFor(e, id), versionId as string))

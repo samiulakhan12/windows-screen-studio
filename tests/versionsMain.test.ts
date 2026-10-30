@@ -92,7 +92,36 @@ describe('automatic versions', () => {
   })
 })
 
+describe('opening the oldest automatic version', () => {
+  it('never prunes the version being opened, nor the one just kept', async () => {
+    const autos = [1, 2, 3, 4, 5].map((n) => saveVersion(dir, 'p20', edit(n), { reason: 'polish', now: at(n) }).saved!)
+    const oldest = autos[0]
+    const r = saveVersion(dir, 'p20', edit(9), { reason: 'open', about: oldest.name, protect: oldest.id, now: at(9) })
+    expect(r.removed).toEqual([autos[1].id])
+    expect((await readVersion(dir, 'p20', oldest.id)).project.zooms).toHaveLength(1)
+    // A clock that went back never prunes the version just kept.
+    const back = saveVersion(dir, 'p20', edit(10), { reason: 'polish', now: at(0) })
+    expect(back.removed).not.toContain(back.saved!.id)
+    expect(listVersions(dir).some((v) => v.id === back.saved!.id)).toBe(true)
+  })
+})
+
 describe('rename, delete, read', () => {
+  it('keeps a new name when the index is rebuilt from the files', () => {
+    const v = saveVersion(dir, 'p20', edit(1), { name: 'v1', now: at(0) }).saved!
+    renameVersion(dir, v.id, 'Final cut')
+    fs.rmSync(path.join(folder(), 'index.json'))
+    expect(listVersions(dir)[0].name).toBe('Final cut')
+  })
+
+  it('reads an index only when it is a small regular file', () => {
+    const v = saveVersion(dir, 'p20', edit(1), { name: 'v1', now: at(0) }).saved!
+    fs.rmSync(path.join(folder(), 'index.json'))
+    fs.mkdirSync(path.join(folder(), 'index.json'))
+    // Rebuilt from the files instead (its write then fails, which listing survives).
+    expect(listVersions(dir).map((x) => x.id)).toEqual([v.id])
+  })
+
   it('renames, keeping the name when the new one is empty', () => {
     const v = saveVersion(dir, 'p20', edit(1), { name: 'v1', now: at(0) }).saved!
     expect(renameVersion(dir, v.id, ' Final cut ').name).toBe('Final cut')

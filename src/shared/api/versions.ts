@@ -16,10 +16,11 @@ export interface VersionsApi {
   listVersions(projectId: string): Promise<VersionMeta[]>
   /**
    * Keeps `project` (the editor's state) as a version: named (`name`, empty: "Version N"), or
-   * automatic before `reason` (then null when that edit is already kept). Rejects with the
+   * automatic before `reason` (then null when that edit is already kept; `protect` names a version
+   * never pruned to make room, the one being opened). Rejects with the
    * sentence to show.
    */
-  saveVersion(projectId: string, project: Project, opts: { name?: string; reason?: AutoReason; about?: string }): Promise<{ saved: VersionMeta | null; removed: string[] }>
+  saveVersion(projectId: string, project: Project, opts: { name?: string; reason?: AutoReason; about?: string; protect?: string }): Promise<{ saved: VersionMeta | null; removed: string[] }>
   renameVersion(projectId: string, versionId: string, name: string): Promise<VersionMeta>
   /** Removes a version for good. */
   deleteVersion(projectId: string, versionId: string): Promise<void>

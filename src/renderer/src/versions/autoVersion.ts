@@ -21,11 +21,14 @@ export function versionsChanged(): void {
   for (const l of [...listeners]) l()
 }
 
-/** Keeps `project` as an automatic version before `reason`; the version kept, or null (already kept, or it failed). */
-export function keepVersionBefore(project: Project, reason: AutoReason, about?: string): Promise<VersionMeta | null> {
+/**
+ * Keeps `project` as an automatic version before `reason`: the version kept, null when that edit is
+ * already kept, or `{ failed }` with the reason. `protect`: a version never pruned (the one being opened).
+ */
+export function keepVersionBefore(project: Project, reason: AutoReason, about?: string, protect?: string): Promise<VersionMeta | null | { failed: string }> {
   let sent: Promise<{ saved: VersionMeta | null }>
   try {
-    sent = window.api.saveVersion(project.id, project, { reason, ...(about !== undefined ? { about } : {}) })
+    sent = window.api.saveVersion(project.id, project, { reason, ...(about !== undefined ? { about } : {}), ...(protect ? { protect } : {}) })
   } catch (err) {
     sent = Promise.reject(err)
   }
@@ -36,7 +39,7 @@ export function keepVersionBefore(project: Project, reason: AutoReason, about?: 
     },
     (err: unknown) => {
       console.warn(`Could not keep a version before ${reason}:`, err)
-      return null
+      return { failed: (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '') }
     }
   )
 }
