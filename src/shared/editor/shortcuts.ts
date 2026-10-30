@@ -68,7 +68,9 @@ export const DEFAULT_KEYMAP: Keymap = Object.freeze({
   export: ['Ctrl+E'],
   shortcuts: ['Ctrl+/'],
   about: [],
-  commandPalette: ['Ctrl+K', 'Ctrl+Shift+P']
+  commandPalette: ['Ctrl+K', 'Ctrl+Shift+P'],
+  // E-12 versions (docs/design/versions.md §2.7).
+  saveVersion: ['Ctrl+Shift+S']
 })
 
 /* ---------- key names ---------- */
@@ -362,9 +364,35 @@ export function standardKeyOf(id: CommandId): string | null {
   return (Object.keys(STANDARD_EDIT_KEYS) as (keyof typeof STANDARD_EDIT_KEYS)[]).find((k) => STANDARD_EDIT_KEYS[k] === id) ?? null
 }
 
+/*
+ * Nudge (E-09, docs/design/versions.md §4.1): while items are selected, the keys of the frame and
+ * second steps move them one and ten frames instead. Not keymap bindings: the nudges follow
+ * whatever keys the step commands have, and a key a user gives a nudge itself works always.
+ */
+
+export type NudgeCommand = 'nudgeBack' | 'nudgeForward' | 'nudgeBackTen' | 'nudgeForwardTen'
+
+/** The step command whose keys each nudge borrows, and how many frames it moves. */
+export const NUDGE_STEPS: Readonly<Record<NudgeCommand, { step: CommandId; frames: number }>> = Object.freeze({
+  nudgeBack: { step: 'stepBack', frames: -1 },
+  nudgeForward: { step: 'stepForward', frames: 1 },
+  nudgeBackTen: { step: 'jumpBack', frames: -10 },
+  nudgeForwardTen: { step: 'jumpForward', frames: 10 }
+})
+
+const NUDGE_OF_STEP = new Map<CommandId, NudgeCommand>(Object.entries(NUDGE_STEPS).map(([nudge, { step }]) => [step, nudge as NudgeCommand]))
+
+/** What a key that runs `run` does: its nudge when items are selected and `run` is a step, else `run`. */
+export function nudgeInstead(run: CommandId, itemsSelected: boolean): CommandId {
+  return (itemsSelected && NUDGE_OF_STEP.get(run)) || run
+}
+
 /** A command's keys for labels: its keymap bindings, then its standard key (if any). */
 export function commandKeys(keymap: Keymap, id: CommandId): string[] {
   const own = keymap[id] ?? []
+  const nudge = (NUDGE_STEPS as Partial<Record<CommandId, { step: CommandId }>>)[id]
+  // A nudge also has its step's keys (while items are selected).
+  if (nudge) return [...own, ...keymap[nudge.step].filter((k) => !own.includes(k))]
   const standard = standardKeyOf(id)
   // The standard key works only while no command has it in the keymap.
   return standard && !own.includes(standard) && !commandForShortcut(keymap, standard) ? [...own, standard] : [...own]

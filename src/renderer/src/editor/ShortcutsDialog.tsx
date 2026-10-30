@@ -10,6 +10,7 @@ import {
   isDefaultBinding,
   keymapOverrides,
   MAX_BINDINGS,
+  NUDGE_STEPS,
   partialLabel,
   removeBinding,
   resetCommand,
@@ -99,6 +100,9 @@ function ShortcutRow({
   // E-06: Ctrl+A/C/X/V work for their commands while no command has them in the keymap.
   const standard = standardKeyOf(id)
   const standardFree = !!standard && !bindings.includes(standard) && !commandForShortcut(keymap, standard)
+  // E-09: a nudge also has its step command's keys, while items are selected (docs/design/versions.md §4.1).
+  const nudgeStep = (NUDGE_STEPS as Partial<Record<CommandId, { step: CommandId }>>)[id]?.step
+  const stepKeys = nudgeStep ? keymap[nudgeStep].filter((a) => !bindings.includes(a)) : []
   return (
     <li className={`shortcut-row ${capture ? 'capturing' : ''}`} data-command={id} ref={rowRef}>
       <div className="shortcut-line">
@@ -121,6 +125,11 @@ function ShortcutRow({
               >
                 <Icon name="x" size={11} />
               </button>
+            </span>
+          ))}
+          {stepKeys.map((a) => (
+            <span key={`step:${a}`} className="shortcut-chip standard" data-step={a} title={`While items are selected · the key of ${commandInfo(nudgeStep!).title}`}>
+              <ShortcutKeys accelerator={a} />
             </span>
           ))}
           {standardFree && (

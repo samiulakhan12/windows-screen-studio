@@ -24,6 +24,7 @@ import { EditorIcon } from '../EditorIcon'
 import { Section } from '../controls'
 import type { InspectorProps } from '../Inspector'
 import './transcript.css'
+import { keepVersionBefore } from '../../versions/autoVersion'
 
 /*
  * Edit by text (NW-04, NW-01; docs/design/edit-by-text.md): the transcript word by word. Deleting
@@ -234,6 +235,8 @@ function TranscriptEditor({
   const removeAll = (): void => {
     const items = shownReview ?? []
     if (items.length === 0) return
+    // E-12: the edit before is kept as a version (docs/design/versions.md §2.4).
+    void keepVersionBefore(store.state, 'fillers')
     const saved = removeSuggestions(items)
     if (saved === null) return
     setReview(null)

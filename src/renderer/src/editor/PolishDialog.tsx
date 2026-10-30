@@ -35,6 +35,7 @@ import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
 import { availableState, onSpeechRead, spokenLanguage, useSpeechState } from './speechState'
 import { runPolish, type PolishRowState, type PolishRun } from './polishRunner'
 import './polish.css'
+import { keepVersionBefore } from '../versions/autoVersion'
 
 type View =
   | { kind: 'options' }
@@ -136,6 +137,8 @@ export function PolishDialog(props: {
 
   const start = (): void => {
     if (!options || !ready || !anything || runRef.current) return
+    // E-12: the edit before is kept as a version (docs/design/versions.md §2.4).
+    void keepVersionBefore(store.state, 'polish')
     const chosen: PolishOptions = { ...options, styleId: styleFound ? options.styleId : null }
     window.api.setPref('polish', chosen).catch((err: unknown) => console.warn('The polish options could not be saved:', err))
     const make = transcriber && 'providerId' in transcriber ? transcriber : null

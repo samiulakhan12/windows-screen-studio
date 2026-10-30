@@ -138,7 +138,16 @@ const COMMAND_LIST = [
   { id: 'export', title: 'Export…', category: 'General', keywords: 'render save mp4 gif video share' },
   { id: 'shortcuts', title: 'Keyboard shortcuts…', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },
   { id: 'about', title: 'About Flown', category: 'General', keywords: 'version qbexel website credits info' },
-  { id: 'commandPalette', title: 'Command palette', category: 'General', keywords: 'search commands', inText: true, hidden: true }
+  { id: 'commandPalette', title: 'Command palette', category: 'General', keywords: 'search commands', inText: true, hidden: true },
+
+  // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md): the step keys nudge while items are selected (shortcuts.ts NUDGE_STEPS).
+  { id: 'nudgeBack', title: 'Move selected items one frame earlier', category: 'Edit', keywords: 'nudge shift left arrow frame item selection earlier', repeat: true },
+  { id: 'nudgeForward', title: 'Move selected items one frame later', category: 'Edit', keywords: 'nudge shift right arrow frame item selection later', repeat: true },
+  { id: 'nudgeBackTen', title: 'Move selected items ten frames earlier', category: 'Edit', keywords: 'nudge shift left arrow frames item selection earlier', repeat: true },
+  { id: 'nudgeForwardTen', title: 'Move selected items ten frames later', category: 'Edit', keywords: 'nudge shift right arrow frames item selection later', repeat: true },
+  { id: 'toggleFilmstrip', title: 'Frames on the clip track', category: 'Timeline', keywords: 'filmstrip thumbnails pictures preview video frames show hide', toggle: true },
+  { id: 'saveVersion', title: 'Save a version…', category: 'General', keywords: 'snapshot history checkpoint backup keep edit restore' },
+  { id: 'versions', title: 'Versions…', category: 'General', keywords: 'history snapshot restore go back compare checkpoint earlier edit' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']

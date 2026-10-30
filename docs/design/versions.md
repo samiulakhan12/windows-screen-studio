@@ -129,7 +129,7 @@ export interface VersionSummary {
   "Saved “v1 for client”".
 * **Automatic versions** are made just before:
   * **Polish in one click** — when **Polish** is pressed in its dialog: "Before Polish in one click";
-  * **Remove all** in the Transcript tab's review list (fillers and retakes): "Before removing fillers";
+  * **Remove all** in the Transcript tab's review list (fillers and retakes): "Before removing fillers and retakes";
   * **Make a vertical version** / **Make a square version**: "Before making a vertical version" /
     "Before making a square version" (the source is not changed by a copy, but the copy is made
     from this moment: the user can always find the edit it came from);

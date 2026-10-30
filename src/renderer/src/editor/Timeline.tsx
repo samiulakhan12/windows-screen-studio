@@ -1,5 +1,6 @@
 import { CaptionTrack, CaptionTrackLabel } from './CaptionTrack'
 import { ClipWaveform, useWaveformHint } from './ClipWaveform'
+import { Filmstrip, useFilmstripHint } from './Filmstrip'
 import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
 import { TitleTrack, TitleTrackLabel } from './TitleTrack'
 import { OverlayTrack, OverlayTrackLabel } from './OverlayTrack'
@@ -643,7 +644,7 @@ export const Timeline = memo(
                 ))}
               </div>
 
-              <div className="tl-track clip-track" onPointerDown={onClipTrackDown} title={`Click to move the playhead, Shift+drag to select a range to cut${useWaveformHint()}`}>
+              <div className="tl-track clip-track" onPointerDown={onClipTrackDown} title={`Click to move the playhead, Shift+drag to select a range to cut${useWaveformHint()}${useFilmstripHint()}`}>
                 {clips
                   .filter((c) => overlaps(c, win))
                   .map((c) => {
@@ -662,6 +663,7 @@ export const Timeline = memo(
                       </div>
                     )
                   })}
+                <Filmstrip px={px} win={win} duration={duration} />
                 <ClipWaveform px={px} win={win} duration={duration} />
                 {gaps.map((g) => (
                   <GapBlock

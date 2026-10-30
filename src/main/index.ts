@@ -30,6 +30,7 @@ import { registerStorageIpc } from './storageIpc'
 import { disposeUpdates, registerUpdatesIpc } from './updates/updatesIpc'
 import { registerModelListIpc } from './ai/modelListIpc'
 import { registerVersionsIpc } from './versionsIpc'
+import { registerFilmstripIpc } from './filmstrip'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -89,6 +90,7 @@ if (!app.requestSingleInstanceLock()) {
     registerModelListIpc()
     // Versions of an edit (docs/design/versions.md).
     registerVersionsIpc()
+    registerFilmstripIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()

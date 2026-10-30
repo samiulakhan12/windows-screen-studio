@@ -82,7 +82,7 @@ export function autoVersionName(reason: AutoReason, about?: string): string {
     case 'polish':
       return 'Before Polish in one click'
     case 'fillers':
-      return 'Before removing fillers'
+      return 'Before removing fillers and retakes'
     case 'vertical':
       return 'Before making a vertical version'
     case 'square':

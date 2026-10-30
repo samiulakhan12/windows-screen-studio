@@ -1,3 +1,4 @@
+import type { FilmstripMeta } from '../editor/filmstrip'
 import type { AutoReason, VersionMeta } from '../editor/versions'
 import type { Project } from '../types'
 
@@ -23,4 +24,10 @@ export interface VersionsApi {
   /** Removes a version for good. */
   deleteVersion(projectId: string, versionId: string): Promise<void>
   readVersion(projectId: string, versionId: string): Promise<ReadVersion>
+}
+
+/** The filmstrip's frames (E-07, docs/design/versions.md §3.4). */
+export interface FilmstripApi {
+  /** The frames sheet of project `projectId` (a JPEG) and its numbers; null when it cannot be made. */
+  getFilmstrip(projectId: string): Promise<{ meta: FilmstripMeta; jpeg: Uint8Array } | null>
 }

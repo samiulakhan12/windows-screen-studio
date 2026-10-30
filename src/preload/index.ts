@@ -17,8 +17,8 @@ import { diagnosticsApi } from './diagnostics'
 import { storageApi } from './storage'
 import { voiceApi } from './voice'
 import { updatesApi } from './updates'
-import { versionsApi } from './versions'
+import { filmstripApi, versionsApi } from './versions'
 
-const api: StudioApi = { platform: process.platform, ...recordingApi, ...projectsApi, ...exportApi, ...prefsApi, ...aiApi, ...captionsApi, ...brandApi, ...brandKitApi, ...notesApi, ...speechApi, ...jobsApi, ...exportBundleApi, ...diagnosticsApi, ...storageApi, ...importApi, ...voiceApi, ...updatesApi, ...versionsApi }
+const api: StudioApi = { platform: process.platform, ...recordingApi, ...projectsApi, ...exportApi, ...prefsApi, ...aiApi, ...captionsApi, ...brandApi, ...brandKitApi, ...notesApi, ...speechApi, ...jobsApi, ...exportBundleApi, ...diagnosticsApi, ...storageApi, ...importApi, ...voiceApi, ...updatesApi, ...versionsApi, ...filmstripApi }
 
 contextBridge.exposeInMainWorld('api', api)

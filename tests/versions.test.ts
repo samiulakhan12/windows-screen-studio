@@ -36,7 +36,7 @@ describe('version names', () => {
   })
   it('names automatic versions by their reason', () => {
     expect(autoVersionName('polish')).toBe('Before Polish in one click')
-    expect(autoVersionName('fillers')).toBe('Before removing fillers')
+    expect(autoVersionName('fillers')).toBe('Before removing fillers and retakes')
     expect(autoVersionName('vertical')).toBe('Before making a vertical version')
     expect(autoVersionName('square')).toBe('Before making a square version')
     expect(autoVersionName('open', 'v1 for client')).toBe('Before opening “v1 for client”')

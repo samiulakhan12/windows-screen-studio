@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron'
-import type { VersionsApi } from '../shared/api/versions'
+import type { FilmstripApi, VersionsApi } from '../shared/api/versions'
 
 // E-12 versions (docs/design/versions.md §2.5).
 export const versionsApi: VersionsApi = {
@@ -8,4 +8,9 @@ export const versionsApi: VersionsApi = {
   renameVersion: (projectId, versionId, name) => ipcRenderer.invoke('versions:rename', projectId, versionId, name),
   deleteVersion: (projectId, versionId) => ipcRenderer.invoke('versions:delete', projectId, versionId),
   readVersion: (projectId, versionId) => ipcRenderer.invoke('versions:read', projectId, versionId)
+}
+
+// E-07 filmstrip (docs/design/versions.md §3.4).
+export const filmstripApi: FilmstripApi = {
+  getFilmstrip: (projectId) => ipcRenderer.invoke('filmstrip:get', projectId)
 }

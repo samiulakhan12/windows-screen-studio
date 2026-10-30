@@ -96,6 +96,15 @@ import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
 import { safeZoneChoice, toggleSafeZones as toggleSafeZoneChoice } from '../editor/safeZonePref'
 import { setWaveformShown, waveformShown } from '../editor/waveformPref'
+// E-12 versions, E-07 filmstrip, E-09 nudge (docs/design/versions.md).
+import { filmstripShown, setFilmstripShown } from '../editor/filmstripPref'
+import { nudgeSelected } from '../editor/nudgeCommand'
+import { missingFilesNotice, restoreVersion } from '../../../shared/editor/versions'
+import { NUDGE_STEPS, nudgeInstead } from '../../../shared/editor/shortcuts'
+import type { ReadVersion } from '../../../shared/api/versions'
+import { keepVersionBefore } from '../versions/autoVersion'
+import { VersionsDialog } from '../versions/VersionsDialog'
+import { VersionsIcon } from '../versions/VersionsIcon'
 import type { RenderScene } from '../render/compositor'
 import { noCursorText } from '../../../shared/import/imported'
 import '../editor/editor.css'
@@ -380,7 +389,7 @@ function EditorSession({
   const [notice, setNotice] = useState<Notice | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
-  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | 'versions' | 'saveVersion' | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
   const [directorRequest, setDirectorRequest] = useState(0)
 
@@ -520,6 +529,8 @@ function EditorSession({
       const { vw, vh } = editorFrame(p)
       const can = canCopyAs(p, kind, vw, vh)
       if (!can.ok) return showNotice(can.reason)
+      // E-12: the edit the copy is made from is kept as a version (docs/design/versions.md §2.4).
+      if (kind !== 'copy') void keepVersionBefore(p, kind)
       player.pause()
       const abort = new AbortController()
       copyAbort.current = abort
@@ -1098,6 +1109,13 @@ function EditorSession({
       player.setPreviewSpeed(next)
       showNotice(`Preview speed ${formatRate(next)} (the export is not affected)`)
     }
+    /** E-09: the selected items by `frames` frames (one undo step per run of presses). */
+    const nudge = (frames: number): void => {
+      if (cropRef.current) return showNotice('Close the crop tool first')
+      const keys = selectedKeys()
+      if (!keys.length) return showNotice(`Select ${what} to move them`)
+      nudgeSelected(store, keys, frames, showNotice)
+    }
     return {
       play: actions.togglePlay,
       goToStart: actions.goToStart,
@@ -1240,6 +1258,19 @@ function EditorSession({
       // E-01 polish
       polish: () => setDialog('polish'),
 
+      // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md)
+      nudgeBack: () => nudge(NUDGE_STEPS.nudgeBack.frames),
+      nudgeForward: () => nudge(NUDGE_STEPS.nudgeForward.frames),
+      nudgeBackTen: () => nudge(NUDGE_STEPS.nudgeBackTen.frames),
+      nudgeForwardTen: () => nudge(NUDGE_STEPS.nudgeForwardTen.frames),
+      toggleFilmstrip: () => {
+        const on = !filmstripShown()
+        setFilmstripShown(on)
+        turned('Frames on the clip track', on)
+      },
+      saveVersion: () => setDialog('saveVersion'),
+      versions: () => setDialog('versions'),
+
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
       toggleWaveform: () => {
         if (!store.state.hasAudio) return showNotice('This recording has no sound')
@@ -1334,6 +1365,19 @@ function EditorSession({
   )
 
   const closeDialog = useCallback(() => setDialog(null), [])
+  /** E-12: puts a version in place as one undo step (the edit before it is already kept as a version). */
+  const openVersion = useCallback(
+    ({ meta, project: version, missing }: ReadVersion) => {
+      store.seal()
+      store.update((p) => restoreVersion(p, version))
+      store.seal()
+      setSelection(null)
+      setDialog(null)
+      const gone = missingFilesNotice(missing)
+      showNotice(`Opened “${meta.name}”. Your edit before it is kept as a version${undoHint(keymap)}${gone ? ` · ${gone}` : ''}`, { ms: 8000 })
+    },
+    [store, setSelection, showNotice, keymap]
+  )
   const runFromPalette = useCallback((id: CommandId) => {
     setDialog(null)
     commandsRef.current[id]()
@@ -1413,6 +1457,8 @@ function EditorSession({
       toggleCaptions: !!p.transcript?.segments.length && captionsOf(p).show
     }
     on.toggleWaveform = p.hasAudio && waveformShown()
+    on.toggleFilmstrip = filmstripShown()
+    for (const k of ['nudgeBack', 'nudgeForward', 'nudgeBackTen', 'nudgeForwardTen'] as const) unavailable[k] = picked.length ? null : 'Select items to move them'
     // NW-05 and X-04: the copies (with the menu's reasons), following and the safe zones.
     const frame = editorFrame(p)
     const followable = canFollow(p.style.aspectRatio, frame.vw, frame.vh)
@@ -1490,7 +1536,9 @@ function EditorSession({
       }
       // E-06: Ctrl+A/C/X/V run their standard commands when the keymap has nothing for them; Ctrl+C
       // and Ctrl+X leave text selected on the page to the system (a hint's text can still be copied).
-      const run = id ?? (chord ? standardEditCommand(chord) : null)
+      const matched = id ?? (chord ? standardEditCommand(chord) : null)
+      // E-09: the step keys move the selected items while items are selected (docs/design/versions.md §4.1).
+      const run = matched && nudgeInstead(matched, L.group.keys.length >= 2 || !!groupKeyOf(L.selection))
       if (!chord || !run) return
       if (!id && (run === 'copyItems' || run === 'cutItems')) {
         const text = window.getSelection()
@@ -1581,6 +1629,9 @@ function EditorSession({
               <EditorIcon name="redo" />
             </button>
           </div>
+          <button className="btn ghost versions-button" onClick={() => setDialog('versions')} title={withShortcut('Versions: save this edit, or go back to an earlier one', keymap.saveVersion)} data-testid="versions-open">
+            <VersionsIcon size={16} /> Versions
+          </button>
           <SaveIndicator saver={saver} />
           <div className="tb-spacer" />
           <SettingsButton />
@@ -1701,6 +1752,9 @@ function EditorSession({
         <OverlayDropZone onSelect={setSelection} onNotice={showNotice} />
         {dialog === 'palette' && <CommandPalette entries={paletteEntries} onRun={runFromPalette} onClose={closeDialog} />}
         {dialog === 'shortcuts' && <ShortcutsDialog keymap={keymap} onChange={changeKeymap} onClose={closeDialog} />}
+        {(dialog === 'versions' || dialog === 'saveVersion') && (
+          <VersionsDialog getProject={() => store.state} focusName={dialog === 'saveVersion'} onOpen={openVersion} onNotice={showNotice} onClose={closeDialog} />
+        )}
         {copy && <CopyProgress kind={copy.kind} name={project.name} progress={copy.progress} onCancel={() => copyAbort.current?.abort()} />}
         {dialog === 'polish' && (
           <PolishDialog
