@@ -350,7 +350,7 @@ export class PreviewAudio {
       const sounds = ctx.createGain()
       // From now on the video's track plays through the graph only.
       ctx.createMediaElementSource(this.screen).connect(screen)
-      screen.connect(rec).connect(sounds).connect(cut).connect(limiter).connect(master).connect(ctx.destination)
+      screen.connect(rec).connect(cut).connect(sounds).connect(limiter).connect(master).connect(ctx.destination)
       this.screen.muted = this.silent
       this.screen.volume = 1
       if (!this.playing && !this.silent) void ctx.suspend()

@@ -287,7 +287,7 @@ before the start and after the end: the stretch itself is fully muted or ducked.
   `soundGainExpression`, the exact `g(t)` as a binary search over the joined spans (like
   `duckExpression`). Then it is cut and re-timed clip by clip as before, so cuts, speed changes and
   pause freezes carry the curve with the sound. A job without `sounds` gets the graph of before.
-- **Preview** (`previewAudio.ts`): a new `sounds` gain node between `rec` and `cut`. Its curve is
+- **Preview** (`previewAudio.ts`): a new `sounds` gain node right after `cut` (both act on the mixed recording only, before the limiter and the master fades). Its curve is
   `g` mapped to the output (video) timeline through the clips and the pause freezes
   (`soundOutputKeyframes`): within a clip `t → out(c) + (t − c.start) / speed`, a step at each cut
   (masked by the cut fade). It is scheduled with the other curves (`ramp`, re-anchored after jumps
