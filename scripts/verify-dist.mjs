@@ -270,7 +270,7 @@ else note(`Authenticode: ${signState}`)
       })
     : ['electron-builder.config.cjs has no publish target (the app could not update itself)']
   for (const p of problems) fail(`update metadata: ${p}`)
-  if (!problems.length) ok(`update metadata: app-update.yml -> ${publish.provider} ${publish.owner}/${publish.repo}; latest.yml ${pkg.version} -> ${installerName} (sha512 and size match)`)
+  if (!problems.length) ok(`update metadata: app-update.yml -> ${publish.provider} ${publish.owner}/${publish.repo}; latest.yml ${pkg.version} -> ${installerName} (sha512 matches)`)
 }
 
 const installSize = dirSize(unpacked)

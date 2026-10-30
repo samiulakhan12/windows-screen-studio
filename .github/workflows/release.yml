@@ -1,0 +1,78 @@
+# Builds the Windows installer and puts it, with the update metadata, in a DRAFT GitHub release
+# (docs/RELEASING.md, docs/design/auto-update.md §4). Drafts are invisible to Flown: nothing reaches
+# users until someone opens the draft on GitHub and presses "Publish release".
+#
+# Run it by hand: Actions › Release › Run workflow. It stops before building when the version in
+# package.json already has a release (draft or published) or docs/RELEASE-NOTES.md has no section
+# for it.
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Version and notes
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "::error::A release v$version already exists. Raise the version in package.json first."
+            exit 1
+          fi
+          node scripts/release-notes.mjs "$version" > "$RUNNER_TEMP/notes.md"
+
+      # The toolchain native/README.md and docs/BUILDING.md list: the Windows helpers are
+      # cross-compiled with MinGW-w64; Wine runs rcedit (icons and file properties of the exes).
+      - name: Toolchain
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mingw-w64 cmake clang libclang-dev wine wine32 wine64
+          rustup toolchain install 1.97.0 --profile minimal --target x86_64-pc-windows-gnu
+          rustup default 1.97.0
+
+      - run: npm ci
+
+      - name: Build and check the installer
+        env:
+          # Release builds need both native helpers and the checked notices (scripts/predist.mjs).
+          SSW_REQUIRE_NATIVE: '1'
+        run: npm run dist:win
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "Flown $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
+            "dist/Flown-Setup-$VERSION.exe" dist/latest.yml
+          {
+            echo "### Flown $VERSION: draft release made"
+            echo
+            echo "Open it under Releases, try the installer, then press **Publish release**."
+            echo
+            echo '```'
+            sha256sum "dist/Flown-Setup-$VERSION.exe"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

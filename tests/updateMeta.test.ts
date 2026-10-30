@@ -47,5 +47,7 @@ describe('update metadata checks (verify-dist, docs/design/auto-update.md §4)',
     expect(updateMetaProblems({ ...good, installerName: 'Flown-Setup-0.7.2.exe' }).join('\n')).toMatch(/path is Flown-Setup-0.7.1.exe[\s\S]*files has no Flown-Setup-0.7.2.exe/)
     expect(updateMetaProblems({ ...good, installerSha512: 'other' })).toEqual(["latest.yml sha512 does not match the installer's", "latest.yml files[].sha512 does not match the installer's"])
     expect(updateMetaProblems({ ...good, installerSize: 99 })).toEqual(['latest.yml files[].size is 1234, the installer has 99 bytes'])
+    // Without a blockmap electron-builder writes no size: nothing to compare.
+    expect(updateMetaProblems({ ...good, latestText: LATEST.replace(/    size: 1234\n/, ''), installerSize: 99 })).toEqual([])
   })
 })

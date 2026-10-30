@@ -188,8 +188,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   `x86_64-pc-windows-gnu`, MinGW-w64 posix, cmake, libclang, Wine), `npm ci`, then
   `SSW_REQUIRE_NATIVE=1 npm run dist:win` (predist and verify-dist included). It takes the notes
   from the `## <version>` section of `docs/RELEASE-NOTES.md` (`scripts/release-notes.mjs`) and runs
-  `gh release create v<version> --draft` with `Flown-Setup-<version>.exe`, its `.blockmap` and
-  `latest.yml`. It stops before building when the tag exists or the notes section is missing.
+  `gh release create v<version> --draft` with `Flown-Setup-<version>.exe` and `latest.yml` (no
+  blockmap: differential downloads are off, `nsis.differentialPackage`). It stops before building when the tag exists or the notes section is missing.
 - `docs/RELEASING.md`: bump the version and the notes, push, run the workflow, try the draft,
   press *Publish release*; how to pull a bad release; why two-factor sign-in matters.
 - `verify-dist` now also checks that `latest.yml` names the installer with its size and SHA-512 and

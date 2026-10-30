@@ -37,7 +37,7 @@ function parseLatestYml(text) {
 /**
  * Problems with the update metadata (an empty list when it is right): app-update.yml must point at
  * `publish` (GitHub, the owner and repository), latest.yml must name `installerName` at `version`
- * with the installer's real SHA-512 (base64) and size.
+ * with the installer's real SHA-512 (base64), and its size when it gives one.
  */
 function updateMetaProblems({ appUpdateText, latestText, publish, version, installerName, installerSha512, installerSize }) {
   const problems = []
@@ -58,7 +58,8 @@ function updateMetaProblems({ appUpdateText, latestText, publish, version, insta
     if (!f) problems.push(`latest.yml files has no ${installerName}`)
     else {
       if (f.sha512 !== installerSha512) problems.push("latest.yml files[].sha512 does not match the installer's")
-      if (f.size !== installerSize) problems.push(`latest.yml files[].size is ${f.size}, the installer has ${installerSize} bytes`)
+      // electron-builder writes the size only with a blockmap (differential downloads, off for Flown).
+      if (f.size !== undefined && f.size !== installerSize) problems.push(`latest.yml files[].size is ${f.size}, the installer has ${installerSize} bytes`)
     }
   }
   return problems
