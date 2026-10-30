@@ -313,6 +313,17 @@ describe('transcription', () => {
     expect(transcribeTemps()).toEqual([])
   }, 60_000)
 
+  it('gives the gpt-4o transcription models the spoken language as `language`, which they take', async () => {
+    const mini = await add('OpenAI 4o mini', 'openai', 'sk-good-openai-key-0010', { transcriptionModel: 'gpt-4o-mini-transcribe' })
+    const before = mock.requests.length
+    const t = await call<Transcript>('ai:transcribe', 'rec-words', { providerId: mini.id, language: 'en' })
+    expect(t).toMatchObject({ provider: 'openai', model: 'gpt-4o-mini-transcribe', language: 'en' })
+    expect(t.segments.flatMap((s) => s.words ?? []).every((w) => w.estimated)).toBe(true)
+    const sent = mock.requests.slice(before).filter((r) => r.route === '/audio/transcriptions')
+    expect(sent[0].fields).toMatchObject({ model: 'gpt-4o-mini-transcribe', response_format: 'json', language: 'en' })
+    expect(sent[0].fields).not.toHaveProperty('languages[]')
+  }, 60_000)
+
   it('labels Gemini speakers', async () => {
     const t = await call<Transcript>('ai:transcribe', 'rec-words', { providerId: providers.Gemini.id })
     expect(t.segments.map((s) => s.speaker)).toEqual(STARTS.map((_, k) => `Speaker ${k % 2 === 0 ? 1 : 2}`))

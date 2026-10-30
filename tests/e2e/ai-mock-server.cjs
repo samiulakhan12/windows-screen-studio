@@ -6,7 +6,8 @@
  *
  *   OpenAI     <url>/openai/v1:  GET /models, POST /audio/transcriptions (multipart: whisper-1 with
  *              verbose_json and segment + word timestamps; any other model, as gpt-transcribe, with
- *              response_format json: { text, languages, usage }, no times), POST /responses
+ *              response_format json: { text, languages, usage }, no times; `languages` hints, or
+ *              `language` for the gpt-4o models), POST /responses
  *              (json_schema text format)
  *   Gemini     <url>/gemini:     GET /v1beta/models/{m}, POST /v1beta/models/{m}:generateContent,
  *              resumable POST /upload/v1beta/files, GET + DELETE /v1beta/files/{id}
@@ -237,7 +238,8 @@ function startMockAi({ ffmpeg, hfFiles = {} }) {
         // gpt-transcribe and later: json only, no timestamps, `languages` hints.
         if (!fields?.file?.data || (fields.response_format && fields.response_format.value !== 'json')) return error(400, `response_format must be json for ${fields?.model?.value}`, 'invalid_request_error', null)
         if (fields['timestamp_granularities[]']) return error(400, 'The timestamp_granularities[] parameter is only supported for whisper-1.', 'invalid_request_error', null)
-        if (fields.language) return error(400, `language is not supported for ${fields.model?.value}: use languages`, 'invalid_request_error', null)
+        // gpt-transcribe takes `languages`; the gpt-4o transcription models take `language`.
+        if (/^gpt-4o/.test(fields.model?.value) ? fields['languages[]'] : fields.language) return error(400, `${/^gpt-4o/.test(fields.model?.value) ? 'languages' : 'language'} is not supported for ${fields.model?.value}`, 'invalid_request_error', null)
         if (fields.file.data.length > 25 * 1024 * 1024) return error(413, 'Maximum content size limit (26214400) exceeded.', 'invalid_request_error', null)
         if (/^slow/.test(key) && !(await wait(req, 60000))) return
         return json(res, 200, openAiTextTranscript(ffmpeg, saveAudio(fields.file.data, 'mp3')))

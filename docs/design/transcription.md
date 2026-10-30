@@ -112,8 +112,9 @@ The OpenAI client now has two ways:
 - `whisper-1` (any model whose name starts with `whisper`): exactly as before, `verbose_json`
   with segment and word times.
 - **Any other model** (`gpt-transcribe` and what comes after it): `response_format: "json"`,
-  `languages: [code]` when the user chose a spoken language. The text comes back without times
-  and Flown times it (§3).
+  `languages: [code]` when the user chose a spoken language (`language: code` for the `gpt-4o`
+  transcription models, retired on the same day, which take only that). The text comes back
+  without times and Flown times it (§3).
 
 Alternatives considered:
 

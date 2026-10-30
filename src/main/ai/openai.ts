@@ -6,8 +6,9 @@
  * https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create).
  * whisper-1 (retired 26 February 2027): response_format "verbose_json" with
  * timestamp_granularities ["segment", "word"], which only it supports. Every other model
- * (gpt-transcribe, its replacement): response_format "json", `languages` hints, an answer of text
- * only, sent in 30 s parts and timed from the sound by the job (docs/design/transcription.md §3).
+ * (gpt-transcribe, its replacement): response_format "json", `languages` hints (`language` for the
+ * gpt-4o transcription models), an answer of text only, sent in 30 s parts and timed from the
+ * sound by the job (docs/design/transcription.md §3).
  * A request to a retired model fails with a plain message (retiredModel.ts).
  * Text tasks: the Responses API with a strict JSON schema (text.format type "json_schema");
  * a refusal comes back as a "refusal" content item instead of the JSON
@@ -46,6 +47,8 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
   const base = { provider: PROVIDER, toFailure: openAiFailure }
   // Text without times: short parts, timed from the sound by the job.
   const textOnly = isTextOnlyOpenAiModel(transcriptionModel)
+  // gpt-transcribe and later take `languages`; the gpt-4o transcription models (retired with whisper-1) take `language`.
+  const languageHint = (language: string): { language: string } | { languages: string[] } => (/^gpt-4o/i.test(transcriptionModel.trim()) ? { language } : { languages: [language] })
   const retired = (use: 'transcription' | 'text', name: string) => (err: unknown): never => {
     throw retiredFailure(err, 'openai', name, use)
   }
@@ -68,7 +71,7 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
                 file: await toFile(bytes, 'audio.mp3', { type: part.mimeType }),
                 model: transcriptionModel,
                 response_format: 'json',
-                ...(language ? { languages: [language] } : {})
+                ...(language ? languageHint(language) : {})
               },
               { signal }
             ),
