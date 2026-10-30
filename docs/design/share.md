@@ -93,6 +93,9 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
   forces it). It never throws: a source that fails is skipped.
 * A localised Google Drive ("Meine Ablage") is not found automatically: "Add a folder…" covers it
   (§11).
+* `reg.exe` prints in the console code page, so a registry path with characters outside it may come
+  back garbled; such a path does not exist and is dropped. OneDrive's own environment variables
+  (Unicode) still find it, and "Add a folder…" always works.
 
 ### 2.3 Copying — **a hidden partial file, renamed; never replaces; never leaves the folder**
 * Target folder `<root>\Flown`, created when missing. The file keeps its exported name; when taken,
@@ -112,6 +115,8 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
   accepts. When the file is already inside `<root>\Flown` (the user exported straight into it), the
   step is done at once: "Already in OneDrive › Flown".
 * Progress: bytes copied / size, sent at most every **200 ms**.
+* **Quitting during a copy** aborts it and deletes its partial file synchronously at `will-quit`
+  (`removePartialCopies`), so a cloud app is never left with half a video.
 
 ### 2.4 Share links — **only when the cloud app offers one locally; otherwise say how**
 None of the three desktop apps offers a documented local way to make a share link (no CLI, no local
@@ -164,8 +169,8 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   "off": [ "cf9f8e7d6c" ],                 // found folders the user turned off
   "hooks": [ { "id": "whk…", "service": "slack", "label": "#demos", "url": "<base64 safeStorage>", "createdAt": "…" } ] }
 ```
-* A found folder's id is `cf` + the first 10 hex characters of SHA-256 of its normalised path
-  (lower case, `\` separators, no trailing separator), so a chosen chip survives restarts and a
+* A found folder's id is `cf` + 10 hex characters of two FNV-1a hashes of its normalised path
+  (lower case, `\` separators, no trailing separator; pure, so shared code needs no crypto module), so a chosen chip survives restarts and a
   folder found again keeps its choice. Picked folders use the same id.
 * Each entry is checked when read (bad ones dropped with a warning that names no path or URL); a
   missing or unreadable file means none. Writes are atomic (`writeFileAtomicSync`). At most **8**

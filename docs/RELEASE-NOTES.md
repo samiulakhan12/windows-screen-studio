@@ -1,5 +1,15 @@
 # Release notes
 
+## Next release
+
+- **Share without a server** (F-22): after an export, Flown can copy the video into your OneDrive,
+  Dropbox or Google Drive folder (into a *Flown* folder there; your cloud app uploads it) and post a
+  short message to a Slack, Discord or Microsoft Teams chat: the title, the length and where it was
+  saved. Set it up in Settings › Share, which lists the folders Flown found and where it found them;
+  paste a chat's incoming webhook there (it is stored encrypted). Pick the destinations under
+  *After export* in the export dialog; they are remembered for each preset. The video is never
+  uploaded to a chat, and nothing goes through a Flown server.
+
 ## 0.7.1
 
 - **Flown updates itself**: it looks for a new version a few times a day, downloads it in the
