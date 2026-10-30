@@ -100,8 +100,9 @@ export class ShareService {
     this.runs.set(run.view.id, run)
     // Finished runs of other files are forgotten after a while (a session can export a lot).
     if (this.runs.size > 100) for (const [id, r] of this.runs) if (r.view.finished && this.runs.size > 100) this.runs.delete(id)
+    const view = this.snapshot(run)
     void this.execute(run, folders)
-    return this.snapshot(run)
+    return view
   }
 
   cancel(id: unknown): void {
