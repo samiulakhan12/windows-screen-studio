@@ -11,6 +11,7 @@ import { MAX_CUT_FADE } from '../shared/render/cutFades'
 import { FfmpegFailure } from './ffmpeg'
 import { isVoiceStrength } from '../shared/audio/voiceClean'
 import { HARDWARE_ENCODERS } from './hwEncoders'
+import { validSoundGains } from '../shared/audio/soundsEdit'
 
 let counter = 0
 const uniqueSuffix = (): string => `${process.pid}-${Date.now().toString(36)}${(counter++).toString(36)}`
@@ -132,7 +133,8 @@ function validRecording(a: RecordingSound): boolean {
     (a.voice === undefined || isVoiceStrength(a.voice)) &&
     (a.holds === undefined ||
       (Array.isArray(a.holds) && a.holds.length <= MAX_FREEZES && a.holds.every((h) => isNum(h?.at, 0, 1e7) && isNum(h.length, FREEZE.min, FREEZE.max)))) &&
-    (a.cutFade === undefined || isNum(a.cutFade, 0, MAX_CUT_FADE))
+    (a.cutFade === undefined || isNum(a.cutFade, 0, MAX_CUT_FADE)) &&
+    (a.sounds === undefined || validSoundGains(a.sounds))
   )
 }
 

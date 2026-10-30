@@ -4,6 +4,7 @@ import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
 import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
 import { analysisSources, editLoudness, heardLevels, musicDucking, sourceActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
 import { voiceLook, voiceTarget, withCleanVoice, type VoiceSource } from '../../../shared/audio/voiceClean'
+import { soundGains, soundOutputKeyframes } from '../../../shared/audio/soundsEdit'
 import { MAX_ELEMENT_RATE, MIN_ELEMENT_RATE } from '../../../shared/editor/shuttle'
 import { editToVideo, NO_FREEZES, planOf, videoDuration, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { clamp } from '../../../shared/engine/math'
@@ -43,6 +44,8 @@ interface Graph {
   master: GainNode
   /** Smooth cuts (NW-06): the recording's sound fades out before each cut and in after it. */
   cut: GainNode
+  /** Unwanted sounds (F-17): the recording's muted and lowered stretches. */
+  sounds: GainNode
 }
 
 interface Source {
@@ -57,6 +60,8 @@ interface Curves {
   master: Keyframe[]
   musicFade: Keyframe[]
   duck: Keyframe[]
+  /** Unwanted sounds (F-17, soundsEdit.ts), on the output timeline. */
+  sounds: Keyframe[]
 }
 
 /** A value computed from what `key` describes, kept until that changes. */
@@ -143,7 +148,9 @@ export class PreviewAudio {
    * time, then per edit on the output); its heard levels (per measurement and gains) and
    * their loudness in the edit.
    */
-  private curveMemo: Memo<Curves> = { key: '', value: { master: [], musicFade: [], duck: [] } }
+  private curveMemo: Memo<Curves> = { key: '', value: { master: [], musicFade: [], duck: [], sounds: [] } }
+  /** The identity of the project's muted and lowered stretches (a new array on every change). */
+  private soundSpans: { spans: unknown; key: string } = { spans: undefined, key: '' }
   private sourceActivity: Memo<Range[] | null> = { key: '', value: null }
   private activity: Memo<Range[] | null> = { key: '', value: null }
   private heard: Memo<AudioLevels | null> = { key: '', value: null }
@@ -182,7 +189,7 @@ export class PreviewAudio {
     const prev = this.project
     this.project = project
     const timing = project.clips !== prev.clips || project.freezes !== prev.freezes
-    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || timing) {
+    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || timing || project.sounds !== prev.sounds) {
       this.look = audioLook(project.audio)
       this.plan = planOf(project)
       this.length = videoDuration(project.clips, this.plan)
@@ -221,7 +228,7 @@ export class PreviewAudio {
     const p = this.project
     const clean = this.cleanVoice()
     // An edit with cuts plays through the graph too, for the fades at its cuts (NW-06).
-    if (!this.graph && !needsAudioGraph(p) && !clean && !(recordingMix(p).kind !== 'none' && editHasCuts(p.clips))) return this.applyElementOnly()
+    if (!this.graph && !needsAudioGraph(p) && !clean && !(recordingMix(p).kind !== 'none' && (editHasCuts(p.clips) || !!p.sounds?.spans.length))) return this.applyElementOnly()
     const g = this.ensureGraph()
     if (!g) return this.applyElementOnly()
     const look = this.look
@@ -340,13 +347,14 @@ export class PreviewAudio {
       const limiter = ctx.createWaveShaper()
       const master = ctx.createGain()
       const cut = ctx.createGain()
+      const sounds = ctx.createGain()
       // From now on the video's track plays through the graph only.
       ctx.createMediaElementSource(this.screen).connect(screen)
-      screen.connect(rec).connect(cut).connect(limiter).connect(master).connect(ctx.destination)
+      screen.connect(rec).connect(sounds).connect(cut).connect(limiter).connect(master).connect(ctx.destination)
       this.screen.muted = this.silent
       this.screen.volume = 1
       if (!this.playing && !this.silent) void ctx.suspend()
-      this.graph = { ctx, screen, rec, limiter, master, cut }
+      this.graph = { ctx, screen, rec, limiter, master, cut, sounds }
     } catch (err) {
       // Without Web Audio the preview plays the video's own track; the export applies everything.
       console.warn('Sound effects are not available in the preview:', err)
@@ -483,8 +491,17 @@ export class PreviewAudio {
       look.fadeOut,
       length,
       m ? [m.path, m.loop, m.fadeIn, m.fadeOut, m.ducking, this.music?.duration].join() : '',
-      this.ducks && this.soundRanges() ? this.activity.key : 'none'
+      this.ducks && this.soundRanges() ? this.activity.key : 'none',
+      this.soundSpansKey()
     ].join('|')
+  }
+
+  /** What the unwanted sounds' curve is made from: the stretches and the edit's timing (F-17). */
+  private soundSpansKey(): string {
+    const spans = this.project.sounds?.spans
+    if (!spans?.length) return 'no-sounds'
+    if (this.soundSpans.spans !== spans) this.soundSpans = { spans, key: spans.map((s) => `${s.start},${s.end},${s.action}`).join(';') }
+    return `${this.soundSpans.key}|${this.clipsKey}`
   }
 
   /** The curves (memoised: playback schedules them again after every jump and re-anchor). */
@@ -498,7 +515,8 @@ export class PreviewAudio {
     const value: Curves = {
       master: fadeKeyframes(length, look.fadeIn, look.fadeOut),
       musicFade: m ? fadeKeyframes(end, m.fadeIn, m.fadeOut) : [],
-      duck: duck ? duckKeyframes(duck.ranges, length, duck.shape) : []
+      duck: duck ? duckKeyframes(duck.ranges, length, duck.shape) : [],
+      sounds: soundOutputKeyframes(soundGains(this.project), this.project.clips, this.plan)
     }
     this.curveMemo = { key, value }
     return value
@@ -521,6 +539,7 @@ export class PreviewAudio {
     this.anchor = { ctx: now, out, until: out + HORIZON }
     const c = this.curves()
     this.ramp(g.master.gain, c.master, out, now)
+    this.ramp(g.sounds.gain, c.sounds, out, now)
     if (this.music) {
       this.ramp(this.music.fade.gain, c.musicFade, out, now)
       this.ramp(this.music.duck.gain, c.duck, out, now)
