@@ -85,6 +85,7 @@ export class ShareService {
     }
     for (const id of ids) {
       if (folders.some((x) => x.id === id)) continue
+      if (id.startsWith('cf')) throw new Error('This folder is not set up any more. Look in Settings › Share.')
       const h = this.deps.hook(id)
       steps.push({ target: id, kind: 'post', service: h.service, label: h.label, state: 'waiting' })
     }

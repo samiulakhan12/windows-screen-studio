@@ -4,7 +4,7 @@
  * never leaving the folder through a link named Flown, with progress, Cancel and a free-space check.
  * The caller makes sure `file` was exported in this session and `root` is a folder found or picked.
  */
-import { createReadStream, createWriteStream, existsSync, promises as fs } from 'node:fs'
+import { createReadStream, createWriteStream, existsSync, promises as fs, rmSync } from 'node:fs'
 import path from 'node:path'
 import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -44,6 +44,19 @@ const realFree = async (dir: string): Promise<number | null> => {
 const sameDir = (a: string, b: string): boolean => normalizeFolderPath(a) === normalizeFolderPath(b)
 
 export const CANCELLED = 'The share was cancelled.'
+
+/** Partial files being written now: deleted at once when the app quits, so a cloud app never keeps one. */
+const writing = new Set<string>()
+export function removePartialCopies(): void {
+  for (const temp of writing) {
+    try {
+      rmSync(temp, { force: true })
+    } catch {
+      // Locked by the cloud app: left with its .partial name, never taken for a finished video.
+    }
+  }
+  writing.clear()
+}
 
 /** "1.2 GB" */
 const gb = (n: number): string => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`)
@@ -93,6 +106,7 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
       cb(null, chunk)
     }
   })
+  writing.add(temp)
   try {
     opts.onProgress?.(0)
     await pipeline(createReadStream(file, { highWaterMark: 1024 * 1024 }), count, createWriteStream(temp, { flags: 'wx' }), { signal })
@@ -105,6 +119,8 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
     if (signal.aborted) throw new Error(CANCELLED)
     if ((e as NodeJS.ErrnoException).code === 'ENOSPC') throw new Error(`The drive of ${label} is full.`)
     throw new Error(`Could not copy to ${label}: ${(e as Error).message.split('\n')[0].replace(/'[^']*'/g, '').trim()}`)
+  } finally {
+    writing.delete(temp)
   }
   return { dest, bytes: st.size, already: false }
 }

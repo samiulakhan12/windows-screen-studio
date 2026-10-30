@@ -137,3 +137,35 @@ describe('postToWebhook', () => {
     await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps({ origin: 'http://127.0.0.1:9' }))).rejects.toThrow('Could not reach Slack')
   })
 })
+
+describe('quitting during a copy', () => {
+  it('deletes the partial file at once', async () => {
+    const { removePartialCopies } = await import('../src/main/share/copyToFolder')
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharequit-'))
+    try {
+      const video = path.join(dir, 'Big.mp4')
+      writeFileSync(video, Buffer.alloc(8 * 1024 * 1024, 1))
+      const root = path.join(dir, 'Drive')
+      mkdirSync(root)
+      const controller = new AbortController()
+      let partial = ''
+      const run = copyIntoFolder(video, root, 'Drive', {
+        signal: controller.signal,
+        freeBytes: plenty,
+        now: () => Date.now() + Math.random() * 1e6,
+        onProgress: (f) => {
+          if (f > 0 && !partial) {
+            partial = readdirSync(path.join(root, 'Flown')).find((n) => n.includes('.partial-')) ?? 'none'
+            removePartialCopies()
+            controller.abort()
+          }
+        }
+      })
+      await expect(run).rejects.toThrow()
+      expect(partial).toMatch(/^\.Big\.partial-/)
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})

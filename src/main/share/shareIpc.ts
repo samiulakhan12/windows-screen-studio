@@ -16,7 +16,7 @@ import { setNotificationExtras } from '../longJobs'
 import { isAppUrl } from '../security'
 import { getMainWindow, windowIconPath } from '../windows'
 import { detectCloudFolders, fakeProbe, realProbe, type CloudProbe } from './cloudDetect'
-import { copyIntoFolder } from './copyToFolder'
+import { copyIntoFolder, removePartialCopies } from './copyToFolder'
 import { ShareService } from './shareService'
 import { ShareStore } from './shareStore'
 import { postToWebhook, type FetchLike } from './webhookPost'
@@ -175,4 +175,5 @@ export function registerShareIpc(): void {
 
 export function disposeShare(): void {
   service?.dispose()
+  removePartialCopies()
 }

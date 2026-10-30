@@ -87,6 +87,7 @@ describe('ShareService', () => {
     await expect(s.service.start(FILE, [], META)).rejects.toThrow('Choose where')
     await expect(s.service.start(FILE, [DROPBOX.id], META)).rejects.toThrow('turned off')
     await expect(s.service.start(FILE, ['whkother'], META)).rejects.toThrow('no longer set up')
+    await expect(s.service.start(FILE, ['cf00000000ff'], META)).rejects.toThrow('This folder is not set up any more')
     await expect(s.service.start(FILE, [ONEDRIVE.id], { title: 'x', seconds: -1 })).rejects.toThrow('Invalid')
     await expect(s.service.start(FILE, [ONEDRIVE.id], { title: 'x'.repeat(201), seconds: 1 })).rejects.toThrow('Invalid')
     expect(validMeta({ title: 'ok', seconds: 3 })).toEqual({ title: 'ok', seconds: 3 })
