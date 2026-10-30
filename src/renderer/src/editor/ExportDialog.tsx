@@ -984,7 +984,7 @@ export function ExportDialog(props: Props): JSX.Element {
             </p>
             <SizeReport result={phase} />
             <ExtrasReport extras={phase.extras} />
-            <ShareDone file={phase.path} meta={{ title: project.name, seconds: length }} targets={share.targets} />
+            <ShareDone file={phase.path} meta={{ title: project.name, seconds: length }} targets={share.targets} startError={share.error} />
             {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">

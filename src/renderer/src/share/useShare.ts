@@ -32,18 +32,19 @@ export function actionTitle(t: ShareTargets | null, id: string): string {
   return h ? `Post the title, length and where it was saved to ${h.label} (${h.masked}). The video is not uploaded.` : ''
 }
 
-export function useShareTargets(): { targets: ShareTargets | null; error: string | null; reload: (refresh?: boolean) => void; set: (t: ShareTargets) => void } {
+/** The destinations; `fromSettings` when Settings › Share shows them (found folders are offered from then on). */
+export function useShareTargets(fromSettings = false): { targets: ShareTargets | null; error: string | null; reload: (refresh?: boolean) => void; set: (t: ShareTargets) => void } {
   const [targets, setTargets] = useState<ShareTargets | null>(null)
   const [error, setError] = useState<string | null>(null)
   const reload = useCallback((refresh = false) => {
-    window.api.shareTargets(refresh).then(
+    window.api.shareTargets(refresh, fromSettings).then(
       (t) => {
         setTargets(t)
         setError(null)
       },
       (err: unknown) => setError(ipcMessage(err))
     )
-  }, [])
+  }, [fromSettings])
   useEffect(() => reload(), [reload])
   return { targets, error, reload, set: setTargets }
 }
@@ -63,15 +64,18 @@ export interface AfterExport {
   toggle: (id: string) => void
   /**
    * After a single export: tells main about the file (the notification then offers the
-   * destinations not chosen) and starts the chosen ones. Never throws.
+   * destinations not chosen) and starts the chosen ones without waiting for them. Never throws;
+   * a share that could not start is said in `error` (the done view shows it).
    */
   begin: (file: string, meta: ShareMeta) => Promise<void>
+  error: string | null
 }
 
 /** The export dialog's "After export" row, remembered for `preset`. */
 export function useAfterExport(preset: string | undefined): AfterExport {
   const { targets } = useShareTargets()
   const [choices, setChoices] = useState(readChoices)
+  const [error, setError] = useState<string | null>(null)
   const offered = useMemo(() => offeredIds(targets), [targets])
   const chosen = useMemo(() => choicesFor(choices, preset, offered), [choices, preset, offered])
   const toggle = (id: string): void => {
@@ -85,14 +89,12 @@ export function useAfterExport(preset: string | undefined): AfterExport {
     }
   }
   const begin = async (file: string, meta: ShareMeta): Promise<void> => {
-    try {
-      await window.api.shareOffer(file, meta, chosen.length > 0)
-      if (chosen.length) await window.api.shareStart(file, chosen, meta)
-    } catch (err) {
-      console.warn('Share could not start:', ipcMessage(err))
-    }
+    setError(null)
+    const fail = (err: unknown): void => setError(`Could not share: ${ipcMessage(err)}`)
+    await window.api.shareOffer(file, meta, chosen.length > 0).catch(fail)
+    if (chosen.length) void window.api.shareStart(file, chosen, meta).catch(fail)
   }
-  return { targets, offered, chosen, toggle, begin }
+  return { targets, offered, chosen, toggle, begin, error }
 }
 
 /** The share runs of `file`, kept up to date. */

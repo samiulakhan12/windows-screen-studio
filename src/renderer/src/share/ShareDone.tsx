@@ -1,26 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ShareMeta, ShareRunView, ShareStepView, ShareTargets } from '../../../shared/api/share'
-import { linkHint, placeText, type CloudService } from '../../../shared/share/cloudFolders'
+import { linkHint, type CloudService } from '../../../shared/share/cloudFolders'
+import { retryTargets, stepText } from '../../../shared/share/steps'
 import { ipcMessage } from '../settings/providerText'
 import { actionLabel, actionTitle, offeredIds, useShareRuns } from './useShare'
 import './share.css'
-
-/** What a step says now. */
-export function stepText(s: ShareStepView): string {
-  const pct = s.fraction !== undefined ? ` ${Math.floor(s.fraction * 100)}%` : ''
-  if (s.kind === 'copy') {
-    if (s.state === 'waiting') return `Waiting to copy to ${s.label}`
-    if (s.state === 'running') return `Copying to ${s.label}…${pct}`
-    if (s.state === 'done') return s.message ?? `Saved to ${placeText(s.label)}`
-    if (s.state === 'cancelled') return `Not copied to ${s.label}: cancelled`
-    return `Could not copy to ${s.label}: ${s.message ?? 'something went wrong.'}`
-  }
-  if (s.state === 'waiting') return `Waiting to post to ${s.label}`
-  if (s.state === 'running') return `Posting to ${s.label}…`
-  if (s.state === 'done') return `Posted to ${s.label}`
-  if (s.state === 'cancelled') return `Not posted to ${s.label}: cancelled`
-  return `Could not post to ${s.label}: ${s.message ?? 'something went wrong.'}`
-}
 
 /** The latest step for each destination, across this file's runs. */
 function latestSteps(runs: readonly ShareRunView[]): { run: ShareRunView; step: ShareStepView }[] {
@@ -30,27 +14,52 @@ function latestSteps(runs: readonly ShareRunView[]): { run: ShareRunView; step: 
 }
 
 /**
- * The export done view's "Share" block (F-22): each step's progress and result, Cancel, Try again,
- * Show in folder and how to get a link, and buttons for the destinations not used yet.
+ * The export done view's "Share" block (F-22): each step's progress and result, Cancel for a run,
+ * Try again, Show in folder and how to get a link, and buttons for the destinations not used yet.
+ * Buttons name their destination for screen readers; when one goes away (a step ends) focus moves
+ * to the block, not to the page.
  */
-export function ShareDone({ file, meta, targets }: { file: string; meta: ShareMeta; targets: ShareTargets | null }): JSX.Element | null {
+export function ShareDone({ file, meta, targets, startError }: { file: string; meta: ShareMeta; targets: ShareTargets | null; startError?: string | null }): JSX.Element | null {
   const runs = useShareRuns(file)
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState<string[]>([])
+  const box = useRef<HTMLDivElement>(null)
+  const hadFocus = useRef(false)
+  useEffect(() => {
+    if (hadFocus.current && (document.activeElement === document.body || document.activeElement === null)) box.current?.focus({ preventScroll: true })
+  }, [runs, pending])
+
   const steps = latestSteps(runs)
   const offered = offeredIds(targets).filter((id) => !steps.some((s) => s.step.target === id))
-  if (!steps.length && !offered.length) return null
+  const shownError = error ?? startError ?? null
+  if (!steps.length && !offered.length && !shownError) return null
 
-  const start = (id: string): void => {
+  const start = (ids: string[]): void => {
     setError(null)
-    window.api.shareStart(file, [id], meta).catch((err: unknown) => setError(ipcMessage(err)))
+    setPending((p) => [...p, ...ids])
+    window.api
+      .shareStart(file, ids, meta)
+      .catch((err: unknown) => setError(ipcMessage(err)))
+      .finally(() => setPending((p) => p.filter((x) => !ids.includes(x))))
   }
   const copied = steps.filter((s) => s.step.kind === 'copy' && s.step.state === 'done')
   const hints = [...new Set(copied.map((s) => linkHint(s.step.service as CloudService)))]
   // Said to screen readers on each change of state (not each percent).
   const spoken = steps.map((s) => stepText({ ...s.step, fraction: undefined })).join('. ')
+  const running = runs.filter((r) => !r.finished)
 
   return (
-    <div className="share-done" aria-label="Share">
+    <div
+      className="share-done"
+      role="group"
+      aria-label="Share"
+      tabIndex={-1}
+      ref={box}
+      onFocus={() => (hadFocus.current = true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hadFocus.current = e.relatedTarget === null
+      }}
+    >
       <p className="share-done-title">Share</p>
       {steps.length > 0 && (
         <ul className="share-steps">
@@ -61,23 +70,18 @@ export function ShareDone({ file, meta, targets }: { file: string; meta: ShareMe
               </span>
               <span className="share-step-text">{stepText(step)}</span>
               {step.kind === 'copy' && step.state === 'running' && <progress className="share-progress" max={1} value={step.fraction ?? 0} aria-hidden="true" />}
-              {!run.finished && step.state !== 'done' && step.state !== 'failed' && (
-                <button className="btn ghost small" onClick={() => void window.api.shareCancel(run.id)}>
-                  Cancel
-                </button>
-              )}
               {(step.state === 'failed' || step.state === 'cancelled') && run.finished && (
-                <button className="btn ghost small" onClick={() => start(step.target)}>
+                <button className="btn ghost small" disabled={pending.includes(step.target)} aria-label={`Try again: ${step.kind === 'copy' ? 'copy to' : 'post to'} ${step.label}`} onClick={() => start(retryTargets(run, step))}>
                   Try again
                 </button>
               )}
               {step.kind === 'copy' && step.state === 'done' && step.dest && (
-                <button className="btn ghost small" onClick={() => void window.api.showItemInFolder(step.dest!)}>
+                <button className="btn ghost small" aria-label={`Show the copy in ${step.label}`} onClick={() => void window.api.showItemInFolder(step.dest!)}>
                   Show in folder
                 </button>
               )}
               {step.link && (
-                <button className="btn ghost small" onClick={() => void navigator.clipboard.writeText(step.link!)}>
+                <button className="btn ghost small" aria-label={`Copy the ${step.label} link`} onClick={() => void navigator.clipboard.writeText(step.link!)}>
                   Copy link
                 </button>
               )}
@@ -85,6 +89,13 @@ export function ShareDone({ file, meta, targets }: { file: string; meta: ShareMe
           ))}
         </ul>
       )}
+      {running.map((run) => (
+        <div key={run.id}>
+          <button className="btn ghost small" data-share-cancel={run.id} onClick={() => void window.api.shareCancel(run.id)} aria-label={`Cancel sharing to ${run.steps.filter((s) => s.state === 'running' || s.state === 'waiting').map((s) => s.label).join(' and ')}`}>
+            Cancel share
+          </button>
+        </div>
+      ))}
       {hints.map((h) => (
         <p key={h} className="hint">
           {h}
@@ -93,15 +104,15 @@ export function ShareDone({ file, meta, targets }: { file: string; meta: ShareMe
       {offered.length > 0 && (
         <div className="share-offers">
           {offered.map((id) => (
-            <button key={id} className="btn small" title={actionTitle(targets, id)} data-share-offer={id} onClick={() => start(id)}>
+            <button key={id} className="btn small" title={actionTitle(targets, id)} data-share-offer={id} disabled={pending.includes(id)} onClick={() => start([id])}>
               {actionLabel(targets, id)}
             </button>
           ))}
         </div>
       )}
-      {error && (
+      {shownError && (
         <p className="error" role="alert">
-          {error}
+          {shownError}
         </p>
       )}
       <p className="sr-only" role="status" aria-live="polite">

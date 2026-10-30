@@ -1,19 +1,21 @@
 /**
  * Finds the cloud folders on this PC (F-22, docs/design/share.md §2.2) through a CloudProbe: the
- * environment, two registry keys read with reg.exe (a fixed program path and fixed arguments, a
- * time limit and an output cap), Dropbox's info.json, and whether a folder exists. Tests and the
+ * environment, three registry keys read with `reg.exe export` (a fixed program path and fixed
+ * arguments, a time limit; it writes UTF-16, so user names in any script survive, where `reg query`
+ * prints in the console code page), Dropbox's info.json, and whether a folder exists. Tests and the
  * end-to-end run use fakeProbe (Windows-shaped data on any OS).
  */
 import { execFile } from 'node:child_process'
 import { promises as fs, readFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { cloudCandidates, mergeRegistry, parseRegQuery, REGISTRY_KEYS, type CloudCandidate } from '../../shared/share/cloudFolders'
+import { cloudCandidates, mergeRegistry, parseRegistryText, REGISTRY_KEYS, type CloudCandidate } from '../../shared/share/cloudFolders'
 
 export interface CloudProbe {
   env: Readonly<Record<string, string | undefined>>
   driveLetters: boolean
-  /** `reg query <key> [/s]` output, '' when it fails. */
-  regQuery(key: string, recursive: boolean): Promise<string>
+  /** The key with its subkeys as registry text (`reg export`, or `reg query` output), '' when it fails. */
+  regQuery(key: string): Promise<string>
   /** A small text file, or null. */
   readText(file: string): Promise<string | null>
   isDir(dir: string): Promise<boolean>
@@ -21,7 +23,8 @@ export interface CloudProbe {
 }
 
 const REG_TIMEOUT_MS = 5000
-const REG_MAX_BYTES = 256 * 1024
+const REG_MAX_BYTES = 512 * 1024
+let exports = 0
 const INFO_MAX_BYTES = 64 * 1024
 
 async function readSmall(file: string): Promise<string | null> {
@@ -50,14 +53,25 @@ export function realProbe(): CloudProbe {
   return {
     env: process.env,
     driveLetters: win,
-    regQuery: (key, recursive) =>
-      !win
-        ? Promise.resolve('')
-        : new Promise((resolve) => {
-            execFile(reg, ['query', key, ...(recursive ? ['/s'] : [])], { windowsHide: true, timeout: REG_TIMEOUT_MS, maxBuffer: REG_MAX_BYTES, encoding: 'utf8' }, (err, stdout) =>
-              resolve(err ? '' : stdout)
-            )
-          }),
+    regQuery: async (key) => {
+      if (!win) return ''
+      const file = path.join(os.tmpdir(), `flown-reg-${process.pid}-${exports++}.reg`)
+      try {
+        const ok = await new Promise<boolean>((resolve) => {
+          execFile(reg, ['export', key, file, '/y'], { windowsHide: true, timeout: REG_TIMEOUT_MS, maxBuffer: 64 * 1024 }, (err) => resolve(!err))
+        })
+        if (!ok) return ''
+        const st = await fs.stat(file)
+        if (st.size > REG_MAX_BYTES) return ''
+        const bytes = await fs.readFile(file)
+        // UTF-16 LE with a byte order mark; anything else is read as UTF-8.
+        return bytes[0] === 0xff && bytes[1] === 0xfe ? bytes.subarray(2).toString('utf16le') : bytes.toString('utf8')
+      } catch {
+        return ''
+      } finally {
+        await fs.rm(file, { force: true }).catch(() => undefined)
+      }
+    },
     readText: readSmall,
     isDir,
     join: path.join
@@ -89,9 +103,9 @@ export function fakeProbe(file: string): CloudProbe {
 /** The cloud folders that exist, best source first; never throws. */
 export async function detectCloudFolders(probe: CloudProbe): Promise<CloudCandidate[]> {
   const [od, gd, gdm] = await Promise.all([
-    probe.regQuery(REGISTRY_KEYS.onedrive, true).catch(() => ''),
-    probe.regQuery(REGISTRY_KEYS.drivefs, false).catch(() => ''),
-    probe.regQuery(REGISTRY_KEYS.drivefsMachine, false).catch(() => '')
+    probe.regQuery(REGISTRY_KEYS.onedrive).catch(() => ''),
+    probe.regQuery(REGISTRY_KEYS.drivefs).catch(() => ''),
+    probe.regQuery(REGISTRY_KEYS.drivefsMachine).catch(() => '')
   ])
   const infos: string[] = []
   for (const base of [probe.env.APPDATA, probe.env.LOCALAPPDATA]) {
@@ -101,7 +115,7 @@ export async function detectCloudFolders(probe: CloudProbe): Promise<CloudCandid
   }
   const candidates = cloudCandidates({
     env: probe.env,
-    registry: mergeRegistry(parseRegQuery(od), parseRegQuery(gd), parseRegQuery(gdm)),
+    registry: mergeRegistry(parseRegistryText(od), parseRegistryText(gd), parseRegistryText(gdm)),
     dropboxInfo: infos,
     driveLetters: probe.driveLetters,
     join: probe.join

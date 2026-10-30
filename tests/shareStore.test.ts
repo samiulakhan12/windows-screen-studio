@@ -91,6 +91,13 @@ describe('ShareStore', () => {
     expect(again.folders()).toEqual([])
   })
 
+  it('remembers that Settings › Share was seen', () => {
+    const store = new ShareStore(file, fakeBox())
+    expect(store.reviewed()).toBe(false)
+    store.markReviewed()
+    expect(new ShareStore(file, fakeBox()).reviewed()).toBe(true)
+  })
+
   it('drops malformed entries and reads a broken file as empty', () => {
     writeFileSync(
       file,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ShareFolderInfo, ShareRunView } from '../src/shared/api/share'
-import { MAX_RUNS, ShareService, validMeta, type ShareDeps } from '../src/main/share/shareService'
+import { EXTRAS_WAIT_MS, MAX_RUNS, ShareService, validMeta, type ShareDeps } from '../src/main/share/shareService'
 
 const FILE = 'C:\\Videos\\Demo.mp4'
 const ONEDRIVE: ShareFolderInfo = { id: 'cf0000000001', service: 'onedrive', label: 'OneDrive', path: 'C:\\OneDrive', source: 'app', on: true }
@@ -115,6 +115,26 @@ describe('ShareService', () => {
     // Not for a file that was not exported.
     s.service.offer('C:\\other.mp4', META, false)
     expect(await s.service.extras('C:\\other.mp4')).toEqual([])
+  })
+
+  it('lets only one of two starts at the same moment through', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((r) => (release = r))
+    const s = setup({ folders: async () => (await gate, [ONEDRIVE, DROPBOX]), copy: () => new Promise(() => undefined) })
+    const a = s.service.start(FILE, [ONEDRIVE.id], META)
+    const b = s.service.start(FILE, [ONEDRIVE.id], META)
+    release()
+    const results = await Promise.allSettled([a, b])
+    expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected'])
+  })
+
+  it('does not hold the notification back for slow folder look-ups', async () => {
+    const s = setup({ folders: () => new Promise(() => undefined) })
+    s.service.offer(FILE, META, false)
+    const t0 = Date.now()
+    const extras = await s.service.extras(FILE)
+    expect(Date.now() - t0).toBeLessThan(EXTRAS_WAIT_MS + 500)
+    expect(extras.map((x) => x.text)).toEqual(['Post to #demos'])
   })
 
   it('offers at most three buttons', async () => {

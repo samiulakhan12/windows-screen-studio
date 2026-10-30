@@ -16,7 +16,11 @@ export function ShareAfterExport({ share, single }: { share: AfterExport; single
         {!single ? (
           <p className="hint">After export works when one file is exported.</p>
         ) : targets && offered.length === 0 ? (
-          <p className="hint">Add a cloud folder or a chat in Settings › Share.</p>
+          <p className="hint">
+            {!targets.reviewed && targets.folders.length > 0
+              ? `Flown found ${[...new Set(targets.folders.map((f) => f.label))].join(', ')} on this PC. Check them in Settings › Share to copy exports there.`
+              : 'Add a cloud folder or a chat in Settings › Share.'}
+          </p>
         ) : (
           <>
             <div className="chips" role="group" aria-label="After export">

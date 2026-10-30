@@ -35,6 +35,8 @@ interface ShareFile {
   folders: StoredFolder[]
   off: string[]
   hooks: StoredHook[]
+  /** The user has seen Settings › Share: found folders are offered only after that. */
+  reviewed: boolean
 }
 
 const FOLDER_ID = /^cf[0-9a-f]{10}$/
@@ -98,7 +100,7 @@ export class ShareStore {
       else console.warn('Ignoring a malformed share chat entry')
     }
     const off = (Array.isArray(obj.off) ? obj.off : []).filter((id): id is string => typeof id === 'string' && FOLDER_ID.test(id))
-    this.data = { folders: folders.slice(0, SHARE_LIMITS.maxFolders), off: [...new Set(off)].slice(0, 100), hooks: hooks.slice(0, SHARE_LIMITS.maxHooks) }
+    this.data = { folders: folders.slice(0, SHARE_LIMITS.maxFolders), off: [...new Set(off)].slice(0, 100), hooks: hooks.slice(0, SHARE_LIMITS.maxHooks), reviewed: obj.reviewed === true }
     return this.data
   }
 
@@ -110,6 +112,16 @@ export class ShareStore {
 
   folders(): StoredFolder[] {
     return this.load().folders
+  }
+
+  reviewed(): boolean {
+    return this.load().reviewed
+  }
+
+  /** Settings › Share was opened: the folders found are now offered (each can be turned off there). */
+  markReviewed(): void {
+    const d = this.load()
+    if (!d.reviewed) this.write({ ...d, reviewed: true })
   }
 
   isOff(id: string): boolean {

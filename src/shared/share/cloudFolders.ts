@@ -31,7 +31,7 @@ export interface CloudCandidate {
   source: FolderSource
 }
 
-/** Registry keys read (with reg.exe query; the first with /s). */
+/** Registry keys read (with `reg.exe export`, each with its subkeys). */
 export const REGISTRY_KEYS = {
   onedrive: 'HKCU\\Software\\Microsoft\\OneDrive\\Accounts',
   drivefs: 'HKCU\\Software\\Google\\DriveFS',
@@ -68,6 +68,32 @@ export function parseRegQuery(stdout: string): RegistryValues {
   }
   return out
 }
+
+/**
+ * `reg export <key> <file>` output (UTF-16 text, so any user name survives): "[HKEY_CURRENT_USER\…]"
+ * sections and "Name"="value" lines with \\ and \" escaped. Only plain strings are kept.
+ */
+export function parseRegExport(text: string): RegistryValues {
+  const out: RegistryValues = {}
+  let key: string | null = null
+  for (const raw of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const line = raw.trim()
+    const section = /^\[(HKEY_[^\]]+)\]$/.exec(line)
+    if (section) {
+      key = shortKey(section[1])
+      out[key] ??= {}
+      continue
+    }
+    const m = /^"((?:[^"\\]|\\.)*)"="((?:[^"\\]|\\.)*)"$/.exec(line)
+    if (!m || !key) continue
+    const unescape = (v: string): string => v.replace(/\\(.)/g, '$1')
+    out[key][unescape(m[1]).toLowerCase()] = unescape(m[2]).trim()
+  }
+  return out
+}
+
+/** Registry text in either shape: `reg export` (sections in brackets) or `reg query`. */
+export const parseRegistryText = (text: string): RegistryValues => (/^\uFEFF?\s*(Windows Registry Editor|\[HKEY_)/m.test(text) ? parseRegExport(text) : parseRegQuery(text))
 
 /** Merges several parsed outputs. */
 export const mergeRegistry = (...parts: RegistryValues[]): RegistryValues => Object.assign({}, ...parts)

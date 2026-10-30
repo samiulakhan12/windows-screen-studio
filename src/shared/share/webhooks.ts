@@ -135,7 +135,8 @@ const slackEscape = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g
  * Every line starts with Flown's own words, so line-start markdown (# heading, - list) cannot occur.
  */
 const discordEscape = (s: string): string => s.replace(/([\\*_~`|[\]])/g, '\\$1').replace(/@/g, '@\u200b')
-const teamsEscape = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([\\*_~`[\]#])/g, '\\$1')
+/** Teams connectors do not honour backslash escapes; markup is taken out by escaping < > &. */
+const teamsEscape = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /** The JSON body for `service`; links stay clickable, everything else is plain text. */
 export function webhookBody(service: WebhookService, lines: readonly string[]): string {

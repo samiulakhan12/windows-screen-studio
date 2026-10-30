@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cloudCandidates, folderId, linkHint, normalizeFolderPath, parseRegQuery, sourceText, type CloudInput } from '../src/shared/share/cloudFolders'
+import { cloudCandidates, folderId, linkHint, normalizeFolderPath, parseRegExport, parseRegistryText, parseRegQuery, sourceText, type CloudInput } from '../src/shared/share/cloudFolders'
 import { detectCloudFolders, fakeProbe } from '../src/main/share/cloudDetect'
 
 const win = path.win32.join
@@ -46,6 +46,26 @@ describe('parseRegQuery', () => {
     // Numbers are not kept.
     expect(reg['hkcu\\software\\microsoft\\onedrive\\accounts\\business1']['timer interval']).toBeUndefined()
     expect(parseRegQuery('ERROR: The system was unable to find the specified registry key or value.')).toEqual({})
+  })
+})
+
+describe('parseRegExport', () => {
+  it('reads reg export text, with any user name and escaped characters', () => {
+    const text = [
+      '\uFEFFWindows Registry Editor Version 5.00',
+      '',
+      '[HKEY_CURRENT_USER\\Software\\Microsoft\\OneDrive\\Accounts\\Business1]',
+      '"DisplayName"="Société \\"Générale\\""',
+      '"UserFolder"="C:\\\\Users\\\\Jürgen 山田\\\\OneDrive - Société"',
+      '"Timer"=dword:00000010',
+      '"Expand"=hex(2):43,00,3a,00',
+      ''
+    ].join('\r\n')
+    const reg = parseRegistryText(text)
+    expect(reg['hkcu\\software\\microsoft\\onedrive\\accounts\\business1']).toEqual({ displayname: 'Société "Générale"', userfolder: 'C:\\Users\\Jürgen 山田\\OneDrive - Société' })
+    expect(parseRegExport('nothing')).toEqual({})
+    // reg query output still reads.
+    expect(Object.keys(parseRegistryText(ONEDRIVE_REG))).toContain('hkcu\\software\\microsoft\\onedrive\\accounts\\personal')
   })
 })
 

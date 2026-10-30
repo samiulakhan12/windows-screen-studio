@@ -109,7 +109,7 @@ describe('postToWebhook', () => {
 
   it('never follows a redirect', async () => {
     reply = (res) => res.writeHead(302, { location: `${origin}/elsewhere` }).end()
-    await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps())).rejects.toThrow('somewhere else')
+    await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps())).rejects.toThrow('Could not reach Slack')
     expect(received.map((r) => r.path)).toEqual(['/services/T0001/B0002/secretPART'])
   })
 
@@ -162,8 +162,50 @@ describe('quitting during a copy', () => {
         }
       })
       await expect(run).rejects.toThrow()
-      expect(partial).toMatch(/^\.Big\.partial-/)
+      expect(partial).toMatch(/^\.~Big\.partial-.*\.tmp$/)
       expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('claiming the name', () => {
+  it('never replaces a file that appears while copying, and sweeps old partial files', async () => {
+    const { claimName, partialName, STALE_PARTIAL_MS } = await import('../src/main/share/copyToFolder')
+    const { utimesSync } = await import('node:fs')
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-shareclaim-'))
+    try {
+      const temp = partialName(path.join(dir, 'Demo.mp4'))
+      expect(path.basename(temp)).toMatch(/^\.~Demo\.partial-\d+-[0-9a-z]+\.tmp$/)
+      writeFileSync(temp, 'new')
+      writeFileSync(path.join(dir, 'Demo.mp4'), 'theirs')
+      expect(await claimName(temp, dir, 'Demo.mp4')).toBe(path.join(dir, 'Demo (2).mp4'))
+      expect(readFileSync(path.join(dir, 'Demo.mp4'), 'utf8')).toBe('theirs')
+      expect(readFileSync(path.join(dir, 'Demo (2).mp4'), 'utf8')).toBe('new')
+      expect(existsSync(temp)).toBe(false)
+
+      // A file that appears after the name was checked is still not replaced.
+      const temp2 = partialName(path.join(dir, 'Demo.mp4'))
+      writeFileSync(temp2, 'newer')
+      let first = true
+      const raced = await claimName(temp2, dir, 'Demo.mp4', (f) => (first ? ((first = false), false) : existsSync(f)))
+      expect(raced).toBe(path.join(dir, 'Demo (3).mp4'))
+      expect(readFileSync(path.join(dir, 'Demo.mp4'), 'utf8')).toBe('theirs')
+
+      // A copy into the folder removes partial files a crash left there an hour ago, not newer ones.
+      const root = path.join(dir, 'Drive')
+      mkdirSync(path.join(root, 'Flown'), { recursive: true })
+      const old = path.join(root, 'Flown', '.~Old.partial-1-abc.tmp')
+      const fresh = path.join(root, 'Flown', '.~Fresh.partial-1-abd.tmp')
+      writeFileSync(old, 'x')
+      writeFileSync(fresh, 'x')
+      const t = (Date.now() - STALE_PARTIAL_MS - 60_000) / 1000
+      utimesSync(old, t, t)
+      const video = path.join(dir, 'Demo.mp4')
+      await copyIntoFolder(video, root, 'Drive', { signal: signal(), freeBytes: plenty })
+      expect(existsSync(old)).toBe(false)
+      expect(existsSync(fresh)).toBe(true)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

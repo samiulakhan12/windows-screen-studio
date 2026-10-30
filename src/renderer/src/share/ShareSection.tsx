@@ -14,20 +14,24 @@ type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
  * (typed once, then only shown masked). Esc closes the add form first, as the AI providers do.
  */
 export function ShareSection(): JSX.Element {
-  const { targets, error, set } = useShareTargets()
+  const { targets, error, set } = useShareTargets(true)
   const [adding, setAdding] = useState(false)
   const [tests, setTests] = useState<Record<string, TestState>>({})
   const [removing, setRemoving] = useState<ShareHookInfo | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [looking, setLooking] = useState(false)
   const addRef = useRef<HTMLButtonElement>(null)
-  const refocus = useRef(false)
+  const addFolderRef = useRef<HTMLButtonElement>(null)
+  /** Where focus goes once a form or question closes: a button's data-focus-key, '' for "+ Add a chat". */
+  const refocus = useRef<string | null>(null)
 
   useEffect(() => {
-    if (adding || removing || !refocus.current) return
-    refocus.current = false
-    addRef.current?.focus({ preventScroll: true })
-  }, [adding, removing])
+    if (adding || removing || refocus.current === null) return
+    const key = refocus.current
+    refocus.current = null
+    const el = key ? document.querySelector<HTMLElement>(`[data-focus-key="${CSS.escape(key)}"]`) : null
+    ;(el ?? (key === 'folder' ? addFolderRef.current : addRef.current))?.focus({ preventScroll: true })
+  }, [adding, removing, targets])
 
   const act = async (fn: () => Promise<ShareTargets | null>): Promise<void> => {
     setActionError(null)
@@ -63,11 +67,11 @@ export function ShareSection(): JSX.Element {
         if (e.key !== 'Escape' || e.defaultPrevented) return
         if (removing) {
           e.preventDefault()
-          refocus.current = true
+          refocus.current = `remove:${removing.id}`
           setRemoving(null)
         } else if (adding) {
           e.preventDefault()
-          refocus.current = true
+          refocus.current = ''
           setAdding(false)
         }
       }}
@@ -99,7 +103,15 @@ export function ShareSection(): JSX.Element {
                   Use
                 </label>
                 {f.source === 'picked' && (
-                  <button type="button" className="btn ghost danger settings-small" onClick={() => void act(() => window.api.shareSetFolder(f.id, null))} aria-label={`Remove ${f.label}`}>
+                  <button
+                    type="button"
+                    className="btn ghost danger settings-small"
+                    onClick={() => {
+                      refocus.current = 'folder'
+                      void act(() => window.api.shareSetFolder(f.id, null))
+                    }}
+                    aria-label={`Remove ${f.label}`}
+                  >
                     Remove
                   </button>
                 )}
@@ -110,7 +122,7 @@ export function ShareSection(): JSX.Element {
       )}
       <p className="hint">Videos go into a Flown folder inside. Your cloud app uploads them.</p>
       <div className="share-row">
-        <button type="button" className="btn" onClick={() => void act(() => window.api.sharePickFolder())}>
+        <button type="button" className="btn" ref={addFolderRef} onClick={() => void act(() => window.api.sharePickFolder())}>
           + Add a folder…
         </button>
         <button type="button" className="btn ghost" onClick={() => void lookAgain()} disabled={looking}>
@@ -149,14 +161,22 @@ export function ShareSection(): JSX.Element {
                       type="button"
                       className="btn danger settings-small"
                       onClick={() => {
-                        refocus.current = true
+                        refocus.current = ''
                         setRemoving(null)
                         void act(() => window.api.shareRemoveHook(h.id))
                       }}
                     >
                       Remove
                     </button>
-                    <button type="button" className="btn ghost settings-small" autoFocus onClick={() => setRemoving(null)}>
+                    <button
+                      type="button"
+                      className="btn ghost settings-small"
+                      autoFocus
+                      onClick={() => {
+                        refocus.current = `remove:${h.id}`
+                        setRemoving(null)
+                      }}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -165,7 +185,7 @@ export function ShareSection(): JSX.Element {
                     <button type="button" className="btn settings-small" disabled={t?.busy || !h.readable} onClick={() => void test(h)} aria-label={`Test ${h.label}`}>
                       Test
                     </button>
-                    <button type="button" className="btn ghost danger settings-small" onClick={() => setRemoving(h)} aria-label={`Remove ${h.label}`}>
+                    <button type="button" className="btn ghost danger settings-small" data-focus-key={`remove:${h.id}`} onClick={() => setRemoving(h)} aria-label={`Remove ${h.label}`}>
                       Remove
                     </button>
                   </div>
@@ -178,12 +198,12 @@ export function ShareSection(): JSX.Element {
       {adding ? (
         <HookForm
           onCancel={() => {
-            refocus.current = true
+            refocus.current = ''
             setAdding(false)
           }}
           onSaved={(next) => {
             set(next)
-            refocus.current = true
+            refocus.current = ''
             setAdding(false)
           }}
         />

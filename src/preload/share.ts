@@ -3,7 +3,7 @@ import type { ShareApi } from '../shared/api/share'
 import { subscribe } from './ipc'
 
 export const shareApi: ShareApi = {
-  shareTargets: (refresh) => ipcRenderer.invoke('share:targets', refresh === true),
+  shareTargets: (refresh, fromSettings) => ipcRenderer.invoke('share:targets', refresh === true, fromSettings === true),
   shareSetFolder: (id, on) => ipcRenderer.invoke('share:setFolder', id, on),
   sharePickFolder: () => ipcRenderer.invoke('share:pickFolder'),
   shareAddHook: (label, url) => ipcRenderer.invoke('share:addHook', label, url),

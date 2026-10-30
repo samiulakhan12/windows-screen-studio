@@ -80,31 +80,35 @@ better source winning. On Windows only (§2.9 for the test seam):
 | Google Drive | `HKCU\Software\Google\DriveFS` `PerAccountPreferences` (JSON; every `mount_point_path`, a letter or a path) and `DefaultMountPoint` → `<mount>\My Drive` | "Google Drive" |
 | Google Drive | usual places `G:\My Drive` (stream mode), `%USERPROFILE%\My Drive` (mirror mode), `%USERPROFILE%\Google Drive` (the old Backup and Sync) | "Google Drive" |
 
-Sources shown: "Found in OneDrive's settings", "Found in Dropbox's settings", "Found in Google
+**Found folders are offered only after the user has seen them**: until Settings › Share has been
+opened once (`reviewed` in `share.json`), the export dialog says "Flown found OneDrive, Dropbox on this
+PC. Check them in Settings › Share to copy exports there." and neither the dialog nor the notification
+offers them. Sources shown: "Found in OneDrive's settings", "Found in Dropbox's settings", "Found in Google
 Drive's settings", "Found at the usual place", "Added by you". **Nothing is guessed silently**:
 every folder Flown would copy into is listed in Settings › Share with its full path and its source,
 can be turned off there ("Use" switch), and the export chip's tooltip shows the full path.
 
-* Registry values are read with `%SystemRoot%\System32\reg.exe query <key> [/s]`: a fixed program
-  path, fixed arguments (two keys, never built from user data), `windowsHide`, a **5 s** time limit,
-  **256 KB** output cap. *Rejected:* a native registry module (a new dependency and a native build
+* Registry values are read with `%SystemRoot%\System32\reg.exe export <key> <temp file> /y`: a fixed
+  program path, fixed arguments (three keys, never built from user data; the temp file in the OS temp
+  folder, deleted after), `windowsHide`, a **5 s** time limit, files over **512 KB** ignored. `reg
+  export` writes UTF-16, so a user name in any script survives (`reg query` prints in the console code
+  page and garbles them). *Rejected:* a native registry module (a new dependency and a native build
   for two reads). Its output is parsed by a pure function (`parseRegQuery`).
 * Detection runs when Settings › Share or the export dialog opens (cached for **60 s**, "Look again"
   forces it). It never throws: a source that fails is skipped.
 * A localised Google Drive ("Meine Ablage") is not found automatically: "Add a folder…" covers it
   (§11).
-* `reg.exe` prints in the console code page, so a registry path with characters outside it may come
-  back garbled; such a path does not exist and is dropped. OneDrive's own environment variables
-  (Unicode) still find it, and "Add a folder…" always works.
 
 ### 2.3 Copying — **a hidden partial file, renamed; never replaces; never leaves the folder**
 * Target folder `<root>\Flown`, created when missing. The file keeps its exported name; when taken,
   `freeBatchPath` adds " (2)" (a share never replaces a file).
-* Bytes go to `partialPath(target)` (hidden `.name.partial-…`) with a stream copy (1 MiB chunks),
-  then `moveIntoPlace`. Cancel or failure deletes the partial file (`removeWithRetries`). The cloud
-  app therefore never uploads half a video (OneDrive and Dropbox skip neither hidden nor partial
-  files, but a partial file lives seconds and is replaced by the rename; the final file appears
-  complete in one step).
+* Bytes go to `.~<name>.partial-<pid>-<id>.tmp` next to the target (a name of the shape cloud apps
+  treat as a temporary file: Dropbox ignores `.~*` and `~*.tmp`) with a stream copy (1 MiB chunks).
+  The final name is then **claimed atomically**: a hard link to the free name fails with `EEXIST` if a
+  file appeared meanwhile (another share, the cloud app syncing one down), and the next name is
+  tried; where links are not supported (FAT, some network shares) the name is checked and the file
+  renamed. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
+  quit, and partial files over an hour old are removed by the next copy into that folder.
 * Before copying: free space at the target (`fs.statfs`) must be ≥ size + **64 MB**, else
   "There is not enough space on the drive of OneDrive (needs 1.2 GB)."
 * **Containment:** the real path (`fs.realpath`) of `<root>\Flown` must be `<real root>` + `\Flown`
@@ -150,9 +154,10 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   or `Link: https://…` when a link is known. **Never** a local path (it holds the user name) and
   never the file itself. Per service: Slack `{ "text" }` with `& < >` escaped (so `<!channel>` cannot
   be written); Discord `{ "content", "allowed_mentions": { "parse": [] } }` (no `@everyone` ping)
-  with markdown escaped; Teams `{ "text" }` with `< > * _ \` escaped. Body ≤ **4 KB**.
+  with markdown escaped; Teams `{ "text" }` with `& < >` escaped (Teams connectors do not honour backslash escapes, so
+  markdown is left as typed: it can only format the title, never reach anyone). Body ≤ **4 KB**.
 * **Request:** `POST`, `content-type: application/json`, **15 s** time limit, **no redirects**
-  (`redirect: 'error'`: a redirect could leave the allowed host), response read up to **16 KB** and
+  (`redirect: 'error'`: a redirect could leave the allowed host; it reads as "Could not reach …"), response read up to **16 KB** and
   never shown. Electron's `net.fetch` (uses the system proxy). No retries: the done view has "Try
   again".
 * **Errors** (never with the URL): 404 / 410 "This webhook no longer exists. Paste a new one in
@@ -214,7 +219,17 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   notification buttons, the page registers it with the file when the export ends (`shareOffer`, the
   line before `link.end`), with `auto: true` when it starts a run itself (no buttons then).
 * At most **4** runs at once ("Wait for the other shares to finish."); a run for a file that is
-  already copying to the same place is refused.
+  already copying to the same place is refused. Both checks run after the folder look-up and before
+  the run is registered, with nothing awaited between, so two starts at once (a double click, the
+  notification and the page) cannot both pass; the page also disables a button while its start is
+  pending.
+* Nothing waits on detection: the export's done view appears at once (the chosen share is started
+  without waiting), and the notification waits at most **1.5 s** for the folders before showing
+  without them. A share that cannot start is said in the done view ("Could not share: …").
+* The done view has one **Cancel share** per running run (it stops that run's remaining steps), and
+  *Try again* on a post that a failed copy held back retries that copy too, so the message still says
+  where the video went. Every button names its destination for screen readers, and focus moves to the
+  Share block when the focused button goes away.
 * *Rejected:* copying from the page (no file access in the sandboxed page) and posting from the page
   (its CSP blocks the network on purpose).
 
@@ -289,7 +304,7 @@ New, owned by this feature:
   `folderId(path)`, `normalizeFolderPath`, `placeText(label)`, `SOURCE_TEXT`.
 * `src/shared/share/choices.ts` — `readShareChoices(raw)`, `choicesFor(map, presetId, valid)`,
   `withChoices(map, presetId, ids)`.
-* `src/shared/share/runs.ts` — `ShareRunView`, `ShareStepView`, step text (`stepText`), `linkHint`.
+* `src/shared/share/steps.ts` — the done view's step text (`stepText`) and what *Try again* retries (`retryTargets`).
 * `src/shared/api/share.ts` — `ShareApi`, `ShareTargets`, `ShareMeta`.
 * `src/main/share/shareStore.ts` — `ShareStore` (folders, off list, chats; encrypt / decrypt).
 * `src/main/share/cloudDetect.ts` — `CloudProbe`, `realProbe()`, `fakeProbe(file)`, `detectCloudFolders(probe)`.

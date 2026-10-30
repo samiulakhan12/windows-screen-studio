@@ -26,6 +26,8 @@ export interface ShareDeps {
 }
 
 export const MAX_RUNS = 4
+/** Longest wait for the folders before the notification shows without them. */
+export const EXTRAS_WAIT_MS = 1500
 const MAX_TARGETS = 12
 const MAX_OFFERS = 200
 
@@ -71,9 +73,11 @@ export class ShareService {
     if (typeof file !== 'string' || !this.deps.isExported(file)) throw new Error('Only files exported in this session can be shared.')
     if (!Array.isArray(targets) || targets.length === 0 || targets.length > MAX_TARGETS || !targets.every((t) => typeof t === 'string')) throw new Error('Choose where to share it.')
     const meta = validMeta(rawMeta)
+    const folders = await this.deps.folders()
+    // Checked after the wait and before the run is added, with nothing awaited between: two starts
+    // at once (a double click, the notification and the page) cannot both pass.
     const active = [...this.runs.values()].filter((r) => !r.view.finished)
     if (active.length >= MAX_RUNS) throw new Error('Wait for the other shares to finish.')
-    const folders = await this.deps.folders()
     const ids = [...new Set(targets as string[])]
     const steps: ShareStepView[] = []
     for (const id of ids) {
@@ -127,7 +131,9 @@ export class ShareService {
   async extras(file: string): Promise<{ text: string; run: () => void }[]> {
     const offer = this.offers.get(file)
     if (!offer || offer.auto) return []
-    const folders = (await this.deps.folders()).filter((f) => f.on)
+    // The notification never waits long for the folders (a stale look-up runs reg.exe).
+    const listed = await Promise.race([this.deps.folders(), new Promise<null>((r) => setTimeout(() => r(null), EXTRAS_WAIT_MS))])
+    const folders = (listed ?? []).filter((f) => f.on)
     const out: { text: string; run: () => void }[] = []
     const startOne = (id: string): void => {
       this.start(file, [id], offer.meta).catch((err: unknown) => this.deps.notify({ title: 'Could not share', body: err instanceof Error ? err.message : String(err) }))

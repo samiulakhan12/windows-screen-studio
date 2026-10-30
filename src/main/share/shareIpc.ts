@@ -55,7 +55,8 @@ async function folderInfos(refresh = false): Promise<ShareFolderInfo[]> {
   const out: ShareFolderInfo[] = []
   for (const c of await foundFolders(refresh)) {
     const id = folderId(c.path)
-    if (!out.some((f) => f.id === id)) out.push({ id, service: c.service, label: c.label, path: c.path, source: c.source, on: !s.isOff(id) })
+    // Nothing is offered that the user has not seen: found folders wait for Settings › Share.
+    if (!out.some((f) => f.id === id)) out.push({ id, service: c.service, label: c.label, path: c.path, source: c.source, on: s.reviewed() && !s.isOff(id) })
   }
   for (const f of s.folders()) {
     if (!out.some((x) => x.id === f.id)) out.push({ id: f.id, service: 'folder', label: f.label, path: f.path, source: 'picked', on: !s.isOff(f.id) })
@@ -64,7 +65,7 @@ async function folderInfos(refresh = false): Promise<ShareFolderInfo[]> {
 }
 
 async function targets(refresh = false): Promise<ShareTargets> {
-  return { folders: await folderInfos(refresh), hooks: shareStore().hooks() }
+  return { folders: await folderInfos(refresh), hooks: shareStore().hooks(), reviewed: shareStore().reviewed() }
 }
 
 const fetchPost: FetchLike = (url, init) => net.fetch(url, init)
@@ -125,7 +126,10 @@ const handle = (channel: string, fn: (...args: unknown[]) => unknown): void => {
 }
 
 export function registerShareIpc(): void {
-  handle('share:targets', (refresh) => targets(refresh === true))
+  handle('share:targets', (refresh, fromSettings) => {
+    if (fromSettings === true) shareStore().markReviewed()
+    return targets(refresh === true)
+  })
   handle('share:setFolder', async (id, on) => {
     if (typeof id !== 'string') throw new Error('Invalid folder')
     const s = shareStore()
