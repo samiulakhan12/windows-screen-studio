@@ -183,6 +183,12 @@ export async function checkStored(api: SoundsApi, project: ScanProject): Promise
   if (sources.length === 0) return
   set(project.id, { status: 'idle', checking: true })
   try {
+    // Without stored scores for every source there is nothing to show: no need to wait for the levels and the speech detector.
+    const any = await Promise.all(sources.map((source) => api.soundsCached(project.id, source).catch(() => null)))
+    if (any.some((e) => !e)) {
+      if (entry(project.id).epoch === epoch) set(project.id, IDLE)
+      return
+    }
     const { levels, speech } = await inputs(project)
     const have = await stored(api, project, sources, skipKey(speech))
     if (entry(project.id).epoch !== epoch) return

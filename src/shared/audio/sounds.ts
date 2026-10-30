@@ -223,9 +223,11 @@ export function findSounds(input: FindInput): SoundRow[] {
           best = Math.max(best, s.scores[wins[j] * cols + column])
         }
         const span = { start: wins[i] * HOP_SECONDS, end: wins[j] * HOP_SECONDS + WINDOW_SECONDS }
-        const fitted = spec.fit ? fitToLevels(span.start, span.end, input.levels?.[s.source]) : span
-        for (const piece of subtractRanges(fitted, speech)) {
-          if (piece.end - piece.start >= spec.minLength - 1e-9) found.push({ key: '', kind, start: piece.start, end: piece.end, score: best / 255, source: s.source })
+        // Speech out first, then each piece fitted: the key is the piece's start before fitting, so it
+        // does not change with the levels (a mute, duck or ignore stays with its row).
+        for (const piece of subtractRanges(span, speech)) {
+          const fitted = spec.fit ? fitToLevels(piece.start, piece.end, input.levels?.[s.source]) : piece
+          if (fitted.end - fitted.start >= spec.minLength - 1e-9) found.push({ key: soundKey(kind, piece.start), kind, start: fitted.start, end: fitted.end, score: best / 255, source: s.source })
         }
         i = j + 1
       }
@@ -242,6 +244,6 @@ export function findSounds(input: FindInput): SoundRow[] {
   })
   const kept = rows.length > FIND.maxRows ? [...rows].sort((a, b) => b.score - a.score || a.start - b.start).slice(0, FIND.maxRows) : rows
   return kept
-    .map((r) => ({ ...r, start: r4(r.start), end: r4(r.end), score: Math.round(r.score * 1000) / 1000, key: soundKey(r.kind, r.start) }))
+    .map((r) => ({ ...r, start: r4(r.start), end: r4(r.end), score: Math.round(r.score * 1000) / 1000 }))
     .sort((a, b) => a.start - b.start || SOUND_KIND_ORDER.indexOf(a.kind) - SOUND_KIND_ORDER.indexOf(b.kind))
 }

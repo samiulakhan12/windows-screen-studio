@@ -63,6 +63,21 @@ describe('findSounds', () => {
     expect(fitToLevels(1, 2, levels(5, []))).toEqual({ start: 1, end: 2 }) // all equally quiet: the loudest is everywhere
   })
 
+  it('keys a row by its windows, not by its fitted bounds, and fits each piece left by speech on its own', () => {
+    const input = { sources: [scores('mic', 30, [['cough', 20, 21, 0.7]])], speech: [] }
+    const plain = findSounds(input)
+    const fitted = findSounds({ ...input, levels: { mic: levels(30, [[10.2, 10.5]]) } })
+    expect(fitted[0].key).toBe(plain[0].key)
+    expect(fitted[0].start).not.toBe(plain[0].start)
+    // Loud speech before the sound does not set the level it is fitted to: the piece after speech is.
+    const lv = levels(30, [[9.75, 10.3]])
+    for (let i = Math.round(10.6 / 0.05); i < Math.round(10.8 / 0.05); i++) lv.power[i] = 1e-4
+    const [after] = findSounds({ sources: [scores('mic', 30, [['cough', 20, 21, 0.7]])], speech: [{ start: 9.75, end: 10.3 }], levels: { mic: lv } })
+    expect(after.start).toBeCloseTo(10.55, 4)
+    expect(after.end).toBeCloseTo(10.85, 4)
+    expect(after.key).toBe(soundKey('cough', 10.4))
+  })
+
   it('takes speech out: a cough inside speech goes, music between sentences stays where it is long enough', () => {
     const speech = [{ start: 9, end: 12 }, { start: 20, end: 30 }, { start: 34, end: 50 }]
     const rows = findSounds({ sources: [scores('mic', 60, [['cough', 20, 21, 0.9], ['music', 26, 80, 0.9]])], speech })

@@ -241,17 +241,18 @@ already measured for the preview's ducking and shared through `loadAudioAnalysis
    the window's speech score (a word that sounds like a ding is speech).
 2. **Spans:** candidate windows of a kind that overlap or are less than 0.5 s apart are joined; a
    span covers its windows `[k × hop, k × hop + 0.975]`.
-3. **Fit** (all kinds but music): inside the span, the 50 ms level windows within 20 dB of the
-   span's loudest one; the span becomes the first to the last of them (a cough is 0.3 s of a 1.5 s
-   window run), padded by 50 ms, never beyond the windows.
-4. **Speech guard:** the speech ranges (or, when the detector did not run, the windows whose speech
-   score is at least 0.5), each widened by 0.1 s, are taken out of the span. What is left of it is
-   kept when at least the kind's shortest length (music under speech is offered only between
-   sentences, a cough inside a sentence not at all).
+3. **Speech guard:** the speech ranges (or, when the detector did not run, the windows whose speech
+   score is at least 0.5), each widened by 0.1 s, are taken out of the span (music under speech is
+   offered only between sentences, a cough inside a sentence not at all).
+4. **Fit** (each piece left, all kinds but music): inside the piece, the 50 ms level windows within
+   20 dB of its loudest one; the piece becomes the first to the last of them (a cough is 0.3 s of a
+   1.5 s window run), padded by 50 ms, never beyond the piece. It is kept when at least the kind's
+   shortest length. Fitting after the guard means loud speech next to a sound never sets its level.
 5. **Sources joined:** spans of the same kind from the microphone and the system sound that overlap
    become one row.
 6. **Score:** the highest window score in the span. At most **400 rows** (the strongest), listed by
-   time. Key: `<kind>-<round(start × 100)>`.
+   time. Key: `<kind>-<round(start × 100)>` of the piece **before fitting**, so the key depends on the
+   scores and the speech only, never on the levels: a mute, duck or ignore stays with its row.
 
 ### 4.4 Row states (`soundRows`)
 

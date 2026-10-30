@@ -156,6 +156,8 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
                   className="btn small"
                   onClick={() => {
                     store.update((p) => addSpans(p, open, 'mute'))
+                    // The button goes with the last open row: the focus goes to the first row muted.
+                    focusKey.current = open[0].key
                     setSaid(actionText.muteAll(open.length))
                   }}
                 >
