@@ -2,6 +2,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import type React from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
 import { anchorCutWords, cutFlags, cutWords, restoreWords, sameWords, spansSaving, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
+import { recordAutoCuts } from '../../../../shared/review/autoCuts'
+import { suggestionRanges } from '../../../../shared/review/wordCuts'
 import { applySuggestions, refreshSuggestions, reviewSuggestions, SUGGESTION_LABELS, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
 import {
   clickSelection,
@@ -210,7 +212,7 @@ function TranscriptEditor({
   }
 
   /** Cuts these suggestions and marks their words deleted (one store update, as Delete does); the output seconds saved, or null when nothing changes. */
-  const removeSuggestions = (items: EditSuggestion[]): number | null => {
+  const removeSuggestions = (items: EditSuggestion[], automatic = false): number | null => {
     const before = store.state.clips
     const spans = items.map((s) => [s.first, s.last] as const)
     const r = applySuggestions(before, words, items, store.state.duration)
@@ -221,7 +223,9 @@ function TranscriptEditor({
     }
     store.update((p) => {
       const cut = applySuggestions(p.clips, words, items, p.duration).clips
-      return { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, spans) }
+      const next = { ...p, clips: sameClips(cut, p.clips) ? p.clips : cut, transcript: anchorCutWords(p.transcript, p.clips, cut, spans) }
+      // Remove all is remembered as automatic, for Review mode (docs/design/review-mode.md §4.1).
+      return automatic ? recordAutoCuts({ ...next, clips: p.clips }, next.clips, suggestionRanges(words, items, p.duration), 'cut', 'filler') : next
     })
     return r.saved
   }
@@ -234,7 +238,7 @@ function TranscriptEditor({
   const removeAll = (): void => {
     const items = shownReview ?? []
     if (items.length === 0) return
-    const saved = removeSuggestions(items)
+    const saved = removeSuggestions(items, true)
     if (saved === null) return
     setReview(null)
     onNotice(`Removed ${items.length} (${seconds(saved)})`)

@@ -28,6 +28,7 @@ import { speechModel, type SpeechModelId } from '../speech/catalog'
 import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../speech/transcriber'
 import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
+import { recordAutoCuts } from '../review/autoCuts'
 
 export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'director'
 /** Run order (decision 2); the dialog lists rows in this order too. */
@@ -235,7 +236,8 @@ export function planPolish(input: PolishInput, options: PolishOptions): PolishRe
     const plan = planSilences(input.sound, p.clips, SILENCES, options.silenceAction, polishKeepRanges(p))
     const clips = plan.parts.length ? applySmartSpeed(p.clips, plan.parts.flatMap((x) => x.pieces), options.silenceAction) : p.clips
     if (clips !== p.clips) summary.silences = plan.parts.length
-    ran('silences', clips === p.clips ? p : { ...p, clips })
+    // Remembered as automatic, for Review mode (docs/design/review-mode.md §4.1).
+    ran('silences', clips === p.clips ? p : recordAutoCuts(p, clips, plan.parts.flatMap((x) => x.pieces), options.silenceAction, 'polish'))
   }
 
   // Captions: the Captions tab's write. A transcript already there holds your edits: never replaced.
