@@ -1,5 +1,14 @@
 # Release notes
 
+## Next release
+
+- **Publish: the text to post with your video** (NW-13): *Publish* in the title bar writes a YouTube
+  description (with the chapter times of the edited video and tags), a LinkedIn post, an X post, a
+  help-centre article, release notes, a title and a summary from the captions, with your OpenAI,
+  Gemini or Claude key. Pick a tone and a length, edit any of it, copy it in one click, or regenerate
+  one item. *Use for exports* saves the YouTube description as the export's description file. Every
+  AI text tool is now in the command palette (Ctrl+K).
+
 ## 0.7.1
 
 - **Flown updates itself**: it looks for a new version a few times a day, downloads it in the

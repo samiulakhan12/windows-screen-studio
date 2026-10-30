@@ -312,9 +312,17 @@ to the Publish button. Tone and Length are radio groups (arrow keys). Every text
 
 ### 5.4 Contrast
 
-Text uses `--text-1` / `--text-2` on `--surface-1` / `--surface-2` (above 7:1), the counter over
-the limit uses `--danger-text` (#fb7185 on #1c1c22, 6.1:1), hints `--text-3` (#8a8a96 on #141418,
-5.4:1). All AA.
+Measured with the tokens in `src/renderer/src/styles.css` (WCAG 2 contrast ratio):
+
+| Text | On `--surface-1` #141418 | On `--surface-2` #1c1c22 (cards) |
+|---|---|---|
+| `--text-1` #f4f4f6 (card text, titles) | 16.7:1 | 15.4:1 |
+| `--text-2` #a1a1ad (hints, status, counter) | 7.2:1 | 6.6:1 |
+| `--danger-text` #fb7185 (counter over the limit) | 6.8:1 | 6.3:1 |
+| `--warning-text` #fcd34d (a card's error) | 12.7:1 | 11.8:1 |
+| `--text-1` on `--surface-sunken` #0a0a0d (chapter list) | 18.0:1 | |
+
+All above AA (4.5:1).
 
 ---
 

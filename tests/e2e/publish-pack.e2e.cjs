@@ -156,16 +156,6 @@ async function main() {
 
         await win.click('button[aria-label="Back to recordings"]')
         await fx.openProject(win, 'Talking')
-        await openDialog(win)
-        await win.waitForSelector('[data-testid="publish-blocked"][data-blocker="no-captions"]', { timeout: 10000 })
-        h.assert((await dialog(win).textContent()).includes('No captions yet. The copy is written from what is said, so make the captions first.'), 'no captions: says so')
-        if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'publish-pack-no-captions.png') })
-        await dialog(win).locator('button', { hasText: 'Generate captions' }).click()
-        await f.waitFor(async () => !(await win.$('[data-testid="publish-dialog"]')), 'Generate captions closes the dialog', 5000)
-        await win.waitForSelector('.captions-panel', { timeout: 10000 })
-        // The Captions tab took the request: its generate form or job is showing.
-        await f.waitFor(async () => (await win.locator('.captions-panel').textContent()).length > 0, 'the Captions tab opens', 5000)
-
         // The palette greys out the Captions tab's AI tools without captions.
         await openPalette(win)
         await win.keyboard.type('fix captions with ai')
@@ -175,6 +165,17 @@ async function main() {
         }, 'the AI tool is listed', 3000)
         h.assert(rows[0].disabled, `greyed out without captions: ${JSON.stringify(rows[0])}`)
         await win.keyboard.press('Escape')
+        await f.waitFor(async () => !(await win.$('.command-palette')), 'palette closes', 3000)
+        await openDialog(win)
+        await win.waitForSelector('[data-testid="publish-blocked"][data-blocker="no-captions"]', { timeout: 10000 })
+        h.assert((await dialog(win).textContent()).includes('No captions yet. The copy is written from what is said, so make the captions first.'), 'no captions: says so')
+        if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'publish-pack-no-captions.png') })
+        const sentBefore = mock.requests.length
+        await dialog(win).locator('button', { hasText: 'Generate captions' }).click()
+        await f.waitFor(async () => !(await win.$('[data-testid="publish-dialog"]')), 'Generate captions closes the dialog', 5000)
+        await win.waitForSelector('.captions-panel', { timeout: 10000 })
+        // The Captions tab took the request and started making the captions.
+        await f.waitFor(() => mock.requests.slice(sentBefore).some((r) => r.route === '/audio/transcriptions'), 'the sound is sent for captions', 30000)
       })
     )
 
