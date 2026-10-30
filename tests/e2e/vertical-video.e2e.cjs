@@ -503,7 +503,13 @@ h.run(
     }
     h.assert(fs.readFileSync(path.join(camDir, 'cursor.json')).equals(fs.readFileSync(path.join(copyDir, 'cursor.json'))), 'cursor.json is the same')
     h.assert(!fs.existsSync(path.join(copyDir, '.copying')), 'the copy is finished')
-    h.assert(JSON.stringify(snapshot(camDir)) === JSON.stringify(camBefore), 'the original folder is byte for byte as it was, with no new file')
+    // The one change: the edit the copy was made from is kept as an automatic version (E-12, docs/design/versions.md §2.4).
+    const camAfter = snapshot(camDir)
+    const versionFiles = Object.keys(camAfter).filter((p) => p.startsWith(`versions${path.sep}`))
+    for (const p of versionFiles) delete camAfter[p]
+    h.assert(JSON.stringify(camAfter) === JSON.stringify(camBefore), 'the original folder is byte for byte as it was, with no new file besides its versions')
+    const kept = JSON.parse(fs.readFileSync(path.join(camDir, 'versions', 'index.json'), 'utf8')).items
+    h.assert(versionFiles.length === 2 && kept.length === 1 && kept[0].auto && kept[0].name === 'Before making a vertical version', `one automatic version of the original (${JSON.stringify(kept)})`)
     await titleIs(win, 'Cam (vertical)', 'the copy opens')
     await noticeHas(win, 'Your original “Cam” is unchanged', 'the notice after the copy')
     await win.click('.notice-slot button:has-text("Open original")')

@@ -258,9 +258,8 @@ Copy:
 ### 3.3 The setting
 
 *Frames on the clip track* (Timeline, a toggle, on by default), in the palette and the shortcuts
-editor (no default key); stored as `localStorage['editor-filmstrip']` like the waveform's. The
-clip track's tooltip adds " · Frames: hover to find a moment by sight" when shown; "Reading frames…"
-while they are made.
+editor (no default key); stored as `localStorage['editor-filmstrip']` like the waveform's. The clip track's tooltip is
+left as it is (it explains the waveform; frames need no explanation).
 
 ### 3.4 IPC
 

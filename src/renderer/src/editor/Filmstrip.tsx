@@ -72,27 +72,6 @@ function loadSheet(id: string): Promise<Sheet | null> {
   return p
 }
 
-/* ---------- the tooltip hint (read by the Timeline for the clip track's title) ---------- */
-
-const hintListeners = new Set<() => void>()
-let hint = ''
-
-function publishHint(next: string): void {
-  if (next === hint) return
-  hint = next
-  for (const l of [...hintListeners]) l()
-}
-
-const subscribeHint = (l: () => void): (() => void) => {
-  hintListeners.add(l)
-  return () => {
-    hintListeners.delete(l)
-  }
-}
-
-/** What the clip track's tooltip adds about the frames ('' when none are shown). */
-export const useFilmstripHint = (): string => useSyncExternalStore(subscribeHint, () => hint)
-
 /* ---------- drawing ---------- */
 
 interface Scene {
@@ -195,10 +174,6 @@ export const Filmstrip = memo(function Filmstrip({ px, win, duration }: { px: nu
     draw(canvas, { px, win, duration, sheet, tileW, crop, gaps, clips, alpha: waveShown ? ALPHA.withWave : ALPHA.alone, dpr })
     canvas.dataset.draws = String(++draws.current)
   }, [px, win, duration, sheet, tileW, crop, gaps, clips, waveShown, dpr, state])
-
-  const hintText = state === 'loading' ? ' · Reading frames for the filmstrip…' : state === 'ready' ? ' · Frames show where you are, to find a moment by sight' : ''
-  useEffect(() => publishHint(hintText), [hintText])
-  useEffect(() => () => publishHint(''), [])
 
   if (state !== 'ready') return state === 'none' ? null : <span hidden data-testid="clip-filmstrip" data-state={state} />
   return (

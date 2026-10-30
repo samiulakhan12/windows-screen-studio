@@ -151,6 +151,8 @@ const paletteTitles = (win) => win.$$eval('.command-palette [role="option"] .pal
 const activeTab = (win) => win.$eval('.insp-tabs button.active', (b) => b.textContent.trim())
 
 async function playheadAt(win, seconds) {
+  // With an item selected the arrows move it (E-09, docs/design/versions.md §4.1): Esc clears the selection first.
+  await win.keyboard.press('Escape')
   await win.keyboard.press('Home')
   for (let i = 0; i < seconds; i++) await win.keyboard.press('Shift+ArrowRight')
   await f.waitFor(async () => Math.abs(outTime(await timecode(win)) - seconds) < 0.05, `playhead at ${seconds} s`, 3000)
