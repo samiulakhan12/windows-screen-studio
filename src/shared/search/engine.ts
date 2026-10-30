@@ -26,23 +26,24 @@ const ALL_TERMS_BONUS = 0.5
 /** Scripts written without spaces: a one-character word is a whole word there, matched by prefix everywhere. */
 const UNSPACED_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
 
-interface UnitData {
-  unit: SearchUnit
-  terms: Int32Array
-  starts: Int32Array
-  ends: Int32Array
-}
-
+/**
+ * A recording in the index: every unit's terms and their ranges in one packed array each (units
+ * `u` runs from bounds[u] to bounds[u + 1]), so 40,000 captions are not 120,000 small arrays.
+ */
 interface Doc {
   id: string
   entry: IndexedProject
-  units: UnitData[]
+  terms: Int32Array
+  starts: Int32Array
+  ends: Int32Array
+  bounds: Int32Array
 }
 
-/** A query word's matches: term id → quality, and whether a match is allowed only in the strong kinds. */
+/** A query word's matches, by term id: quality (0 = no match), and 1 where the match counts only in the strong kinds. */
 interface TermMatches {
-  quality: Map<number, number>
-  strongOnly: Set<number>
+  quality: Float32Array
+  strongOnly: Uint8Array
+  ids: number[]
 }
 
 export interface SearchOptions {
@@ -103,50 +104,60 @@ export class SearchIndex {
   /** Indexes (or indexes again) a recording. */
   add(id: string, entry: IndexedProject): void {
     this.remove(id)
-    const doc: Doc = { id, entry, units: [] }
-    for (const unit of entry.units) {
-      const tokens = tokenize(unit.text)
-      const data: UnitData = { unit, terms: new Int32Array(tokens.length), starts: new Int32Array(tokens.length), ends: new Int32Array(tokens.length) }
-      tokens.forEach((t, i) => {
+    const perUnit = entry.units.map((u) => tokenize(u.text))
+    const count = perUnit.reduce((n, t) => n + t.length, 0)
+    const doc: Doc = { id, entry, terms: new Int32Array(count), starts: new Int32Array(count), ends: new Int32Array(count), bounds: new Int32Array(entry.units.length + 1) }
+    let k = 0
+    perUnit.forEach((tokens, u) => {
+      doc.bounds[u] = k
+      for (const t of tokens) {
         const tid = this.termId(t.term)
-        data.terms[i] = tid
-        data.starts[i] = t.start
-        data.ends[i] = t.end
+        doc.terms[k] = tid
+        doc.starts[k] = t.start
+        doc.ends[k] = t.end
         this.postings[tid].add(doc)
-      })
-      doc.units.push(data)
-    }
+        k++
+      }
+    })
+    doc.bounds[entry.units.length] = k
     this.docs.set(id, doc)
   }
 
   remove(id: string): void {
     const doc = this.docs.get(id)
     if (!doc) return
-    for (const u of doc.units) for (const tid of u.terms) this.postings[tid].delete(doc)
+    for (const tid of doc.terms) this.postings[tid].delete(doc)
     this.docs.delete(id)
   }
 
   /** The vocabulary's matches for one query word. */
   private match(q: string): TermMatches {
-    const quality = new Map<number, number>()
-    const strongOnly = new Set<number>()
+    const n = this.terms.length
+    const quality = new Float32Array(n)
+    const strongOnly = new Uint8Array(n)
+    const ids: number[] = []
     const qLength = codePoints(q)
     const typos = allowedTypos(q, qLength)
     const shortPrefix = qLength === 1 && !UNSPACED_RE.test(q)
-    for (let tid = 0; tid < this.terms.length; tid++) {
+    for (let tid = 0; tid < n; tid++) {
       if (this.postings[tid].size === 0) continue
       const t = this.terms[tid]
+      let quality_ = 0
       if (t === q) {
-        quality.set(tid, QUALITY.exact)
+        quality_ = QUALITY.exact
       } else if (t.startsWith(q)) {
-        quality.set(tid, QUALITY.prefixBase + QUALITY.prefixLength * (qLength / this.termLengths[tid]))
-        if (shortPrefix) strongOnly.add(tid)
+        quality_ = QUALITY.prefixBase + QUALITY.prefixLength * (qLength / this.termLengths[tid])
+        if (shortPrefix) strongOnly[tid] = 1
       } else if (typos > 0 && this.termLengths[tid] >= qLength - typos && !isNumeric(t)) {
         const d = prefixDistance(q, t, typos)
-        if (d <= typos) quality.set(tid, d === 1 ? QUALITY.typo1 : QUALITY.typo2)
+        if (d <= typos) quality_ = d === 1 ? QUALITY.typo1 : QUALITY.typo2
+      }
+      if (quality_ > 0) {
+        quality[tid] = quality_
+        ids.push(tid)
       }
     }
-    return { quality, strongOnly }
+    return { quality, strongOnly, ids }
   }
 
   search(query: string, options: SearchOptions = {}): SearchHit[] {
@@ -157,26 +168,20 @@ export class SearchIndex {
     let candidates: Set<Doc> | null = null
     for (const m of matches) {
       const docs = new Set<Doc>()
-      for (const tid of m.quality.keys()) for (const d of this.postings[tid]) if (!candidates || candidates.has(d)) docs.add(d)
+      for (const tid of m.ids) for (const d of this.postings[tid]) if (!candidates || candidates.has(d)) docs.add(d)
       candidates = docs
       if (!docs.size) return []
     }
-    const hits: SearchHit[] = []
+    // Score every candidate first; moments and snippets only for those returned.
+    const scored: { doc: Doc; score: number }[] = []
     for (const doc of candidates ?? []) {
       if (options.only && !options.only.has(doc.id)) continue
-      const hit = scoreDoc(doc, matches, options.moments ?? SEARCH_LIMITS.moments)
-      if (hit) hits.push(hit)
+      const score = docScore(doc, matches)
+      if (score !== null) scored.push({ doc, score })
     }
-    hits.sort((a, b) => b.score - a.score || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
-    return hits.slice(0, options.hits ?? SEARCH_LIMITS.hits)
+    scored.sort((a, b) => b.score - a.score || b.doc.entry.createdAt.localeCompare(a.doc.entry.createdAt) || a.doc.id.localeCompare(b.doc.id))
+    return scored.slice(0, options.hits ?? SEARCH_LIMITS.hits).map(({ doc, score }) => hitOf(doc, score, matches, options.moments ?? SEARCH_LIMITS.moments))
   }
-}
-
-interface ScoredUnit {
-  data: UnitData
-  score: number
-  terms: number
-  ranges: Range[]
 }
 
 /** Whether nothing of `start..end` is kept (no clip overlaps it; a point is cut when no clip holds it). */
@@ -185,35 +190,16 @@ export function isCut(kept: readonly (readonly [number, number])[], start: numbe
   return !kept.some(([s, e]) => (end > start ? s < end && e > start : start >= s && start < e))
 }
 
-function scoreUnit(data: UnitData, matches: TermMatches[]): ScoredUnit | null {
-  const kind = data.unit.kind
-  const strong = STRONG_KINDS.has(kind)
-  const best = new Array<number>(matches.length).fill(0)
-  const ranges: Range[] = []
-  // Which query word each position matches (-1: none), for the phrase bonus.
-  const at = new Int8Array(data.terms.length).fill(-1)
-  for (let k = 0; k < data.terms.length; k++) {
-    const tid = data.terms[k]
-    for (let i = 0; i < matches.length; i++) {
-      const m = matches[i]
-      const q = m.quality.get(tid)
-      if (q === undefined || (!strong && m.strongOnly.has(tid))) continue
-      if (q > best[i]) best[i] = q
-      if (at[k] < 0) at[k] = i
-      ranges.push([data.starts[k], data.ends[k]])
-    }
-  }
-  const terms = best.filter((q) => q > 0).length
-  if (!terms) return null
-  const weight = KIND_WEIGHT[kind]
-  let score = best.reduce((a, b) => a + b, 0) * weight
-  if (matches.length > 1 && hasPhrase(at, matches.length)) score += PHRASE_BONUS * weight
-  return { data, score, terms, ranges }
+/** A unit's score and how many query words it holds; `found` is set for each word it holds. */
+interface UnitScore {
+  unit: number
+  score: number
+  terms: number
 }
 
 /** The query's words next to each other in the order typed. */
-function hasPhrase(at: Int8Array, n: number): boolean {
-  for (let k = 0; k + n <= at.length; k++) {
+function hasPhrase(at: Int8Array, length: number, n: number): boolean {
+  for (let k = 0; k + n <= length; k++) {
     let i = 0
     while (i < n && at[k + i] === i) i++
     if (i === n) return true
@@ -221,42 +207,94 @@ function hasPhrase(at: Int8Array, n: number): boolean {
   return false
 }
 
-function scoreDoc(doc: Doc, matches: TermMatches[], momentLimit: number): SearchHit | null {
-  const scored: ScoredUnit[] = []
-  const found = new Array<boolean>(matches.length).fill(false)
-  for (const data of doc.units) {
-    const s = scoreUnit(data, matches)
-    if (!s) continue
-    scored.push(s)
-    // Which words this unit holds (scoreUnit counted them; recount per word for the AND).
-    for (let i = 0; i < matches.length; i++) {
-      if (found[i]) continue
+/** Buffers reused by scoreUnit (one query at a time; never shared across calls). */
+let bestBuffer = new Float32Array(8)
+let atBuffer = new Int8Array(256)
+
+/** Scores unit `u` of `doc`; marks the words it holds in `found`. Null when it holds none. */
+function scoreUnit(doc: Doc, u: number, matches: TermMatches[], found: boolean[] | null): UnitScore | null {
+  const kind = doc.entry.units[u].kind
+  const strong = STRONG_KINDS.has(kind)
+  const from = doc.bounds[u]
+  const to = doc.bounds[u + 1]
+  const n = matches.length
+  if (bestBuffer.length < n) bestBuffer = new Float32Array(n)
+  if (atBuffer.length < to - from) atBuffer = new Int8Array(to - from)
+  const best = bestBuffer.fill(0, 0, n)
+  const at = n > 1 ? atBuffer.fill(-1, 0, to - from) : null
+  let any = false
+  for (let k = from; k < to; k++) {
+    const tid = doc.terms[k]
+    for (let i = 0; i < n; i++) {
       const m = matches[i]
-      for (const tid of data.terms) {
-        if (m.quality.has(tid) && (STRONG_KINDS.has(data.unit.kind) || !m.strongOnly.has(tid))) {
-          found[i] = true
-          break
-        }
-      }
+      const q = m.quality[tid]
+      if (q === 0 || (!strong && m.strongOnly[tid])) continue
+      any = true
+      if (q > best[i]) best[i] = q
+      if (at && at[k - from] < 0) at[k - from] = i
     }
   }
-  if (!found.every(Boolean)) return null
-  scored.sort((a, b) => b.score - a.score)
-  const best = scored[0]
-  const score = best.score + OTHER_UNIT_BONUS * Math.min(OTHER_UNITS_COUNTED, scored.length - 1) + (best.terms === matches.length ? ALL_TERMS_BONUS : 0)
+  if (!any) return null
+  let terms = 0
+  let sum = 0
+  for (let i = 0; i < n; i++) {
+    if (best[i] > 0) {
+      terms++
+      sum += best[i]
+      if (found) found[i] = true
+    }
+  }
+  const weight = KIND_WEIGHT[kind]
+  const score = sum * weight + (at && hasPhrase(at, to - from, n) ? PHRASE_BONUS * weight : 0)
+  return { unit: u, score, terms }
+}
 
-  const nameUnit = scored.find((s) => s.data.unit.kind === 'name')
-  const title = nameUnit ? markRanges(nameUnit.data.unit.text, nameUnit.ranges) : [{ text: doc.entry.name, hit: false }]
-  const momentUnits = scored
-    .filter((s) => s.data.unit.kind !== 'name' && s.data.unit.kind !== 'file')
-    .sort((a, b) => b.terms - a.terms || b.score - a.score || (a.data.unit.start ?? Infinity) - (b.data.unit.start ?? Infinity))
+/** The units of `doc` holding any query word. */
+function matchingUnits(doc: Doc, matches: TermMatches[], found: boolean[] | null): UnitScore[] {
+  const out: UnitScore[] = []
+  for (let u = 0; u < doc.entry.units.length; u++) {
+    const s = scoreUnit(doc, u, matches, found)
+    if (s) out.push(s)
+  }
+  return out
+}
+
+/** The recording's score (§2.6), or null when one of the words is in none of its units. */
+function docScore(doc: Doc, matches: TermMatches[]): number | null {
+  const found = new Array<boolean>(matches.length).fill(false)
+  const units = matchingUnits(doc, matches, found)
+  if (!found.every(Boolean)) return null
+  let best: UnitScore = units[0]
+  for (const s of units) if (s.score > best.score) best = s
+  return best.score + OTHER_UNIT_BONUS * Math.min(OTHER_UNITS_COUNTED, units.length - 1) + (best.terms === matches.length ? ALL_TERMS_BONUS : 0)
+}
+
+/** The ranges of the matched words in unit `u`. */
+function unitRanges(doc: Doc, u: number, matches: TermMatches[]): Range[] {
+  const strong = STRONG_KINDS.has(doc.entry.units[u].kind)
+  const ranges: Range[] = []
+  for (let k = doc.bounds[u]; k < doc.bounds[u + 1]; k++) {
+    const tid = doc.terms[k]
+    if (matches.some((m) => m.quality[tid] > 0 && (strong || !m.strongOnly[tid]))) ranges.push([doc.starts[k], doc.ends[k]])
+  }
+  return ranges
+}
+
+function hitOf(doc: Doc, score: number, matches: TermMatches[], momentLimit: number): SearchHit {
+  const units = matchingUnits(doc, matches, null)
+  const unit = (s: UnitScore): SearchUnit => doc.entry.units[s.unit]
+  const name = units.find((s) => unit(s).kind === 'name')
+  const title = name ? markRanges(unit(name).text, unitRanges(doc, name.unit, matches)) : [{ text: doc.entry.name, hit: false }]
+  const momentUnits = units
+    .filter((s) => unit(s).kind !== 'name' && unit(s).kind !== 'file')
+    .sort((a, b) => b.terms - a.terms || b.score - a.score || (unit(a).start ?? Infinity) - (unit(b).start ?? Infinity))
   const moments: SearchMoment[] = momentUnits.slice(0, momentLimit).map((s) => {
-    const u = s.data.unit
+    const u = unit(s)
     return {
       kind: u.kind,
       start: u.start,
       end: u.end,
-      snippet: snippetOf(u.text, s.ranges),
+      snippet: snippetOf(u.text, unitRanges(doc, s.unit, matches)),
       terms: s.terms,
       cut: u.start !== null && isCut(doc.entry.kept, u.start, u.end ?? u.start)
     }
