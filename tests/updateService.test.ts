@@ -159,6 +159,36 @@ describe('UpdateService (docs/design/auto-update.md §1.5)', () => {
     expect(s.calls.at(-1)).toBe('install-on-quit false')
   })
 
+  it('a downloaded release that was pulled no longer installs at quit when the check offers another version', async () => {
+    const s = setup()
+    await s.svc.check()
+    s.emit({ type: 'available', version: '0.7.3' })
+    s.emit({ type: 'downloaded', version: '0.7.3' })
+    expect(s.svc.get()).toMatchObject({ phase: 'ready', version: '0.7.3' })
+    s.calls.length = 0
+    // 0.7.3 is pulled: the latest release is 0.7.2, still newer than this copy.
+    await s.svc.check()
+    s.emit({ type: 'available', version: '0.7.2' })
+    await Promise.resolve()
+    expect(s.calls).toEqual(['check', 'install-on-quit false', 'download'])
+    expect(s.svc.get()).toMatchObject({ phase: 'downloading', version: '0.7.2' })
+    s.emit({ type: 'downloaded', version: '0.7.2' })
+    expect(s.svc.get()).toMatchObject({ phase: 'ready', version: '0.7.2' })
+    expect(s.calls.at(-1)).toBe('install-on-quit true')
+  })
+
+  it('a check that offers the version already downloaded keeps it ready', async () => {
+    const s = setup()
+    s.emit({ type: 'available', version: '0.7.3' })
+    s.emit({ type: 'downloaded', version: '0.7.3' })
+    s.calls.length = 0
+    await s.svc.check()
+    s.emit({ type: 'available', version: '0.7.3' })
+    await Promise.resolve()
+    expect(s.calls).toEqual(['check'])
+    expect(s.svc.get()).toMatchObject({ phase: 'ready', version: '0.7.3', lastCheck: '2026-10-30T10:00:00.000Z' })
+  })
+
   it('a check that never answers fails after the timeout, and checks go on', async () => {
     const s = setup()
     s.svc.start()

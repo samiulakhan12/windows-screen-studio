@@ -61,13 +61,23 @@ describe('the update state', () => {
     expect(reduceUpdate(idle(), { type: 'available', version: '0.7.2-beta.1' }, AT).phase).toBe('idle')
     const ready = idle({ phase: 'ready', version: '0.7.2' })
     expect(reduceUpdate(ready, { type: 'checking' }, AT)).toBe(ready)
-    expect(reduceUpdate(ready, { type: 'available', version: '0.7.3' }, AT)).toMatchObject({ phase: 'ready', version: '0.7.2', lastCheck: AT })
+    expect(reduceUpdate(ready, { type: 'available', version: '0.7.2' }, AT)).toMatchObject({ phase: 'ready', version: '0.7.2', lastCheck: AT })
     expect(reduceUpdate(ready, { type: 'error', stage: 'check', message: 'x' }, AT)).toBe(ready)
     expect(reduceUpdate(idle({ phase: 'downloading', version: '0.7.2' }), { type: 'checking' }, AT).phase).toBe('downloading')
   })
 
   it('forgets a downloaded release that was pulled', () => {
     expect(reduceUpdate(idle({ phase: 'ready', version: '0.7.2' }), { type: 'none' }, AT)).toEqual(idle({ lastCheck: AT }))
+  })
+
+  it('drops a downloaded release the check no longer offers, for the version it offers now', () => {
+    const ready = idle({ phase: 'ready', version: '0.7.3', notes: 'Old' })
+    // 0.7.3 pulled: the latest is 0.7.2 again (still newer than this copy).
+    expect(reduceUpdate(ready, { type: 'available', version: '0.7.2', notes: '<p>Two</p>' }, AT)).toEqual(
+      idle({ phase: 'available', version: '0.7.2', notes: 'Two', lastCheck: AT })
+    )
+    // 0.7.3 pulled and the fix published as 0.7.4.
+    expect(reduceUpdate(ready, { type: 'available', version: '0.7.4' }, AT)).toMatchObject({ phase: 'available', version: '0.7.4', lastCheck: AT })
   })
 
   it('says a failed check or download plainly, never the raw error', () => {

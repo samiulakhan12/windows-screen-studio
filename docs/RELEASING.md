@@ -27,7 +27,8 @@ SHA-512 in `latest.yml`, so a changed file fails to install. Make a new version 
 
 - **Not downloaded yet:** on the release page, press *Edit* and turn it back into a draft (or delete
   it). Copies that have not downloaded it stop being offered it. A copy that downloaded it but has
-  not installed it yet drops it at its next check (it no longer installs when Flown closes).
+  not installed it yet drops it at its next check (it no longer installs when Flown closes), also
+  when an older release or a fix is the latest now; it then takes that one instead.
 - **Already installed:** Flown never installs a lower version, so publish the fix as the next
   version (for example 0.7.3). Older installers stay on the Releases page for anyone who needs to
   reinstall one by hand.

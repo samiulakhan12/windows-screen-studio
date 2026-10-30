@@ -60,9 +60,12 @@ draft, can download and try its installer, and presses *Publish release*; from t
 copies find it within four hours.
 
 A bad release is stopped by turning it back into a draft (or deleting it): copies that have not
-downloaded it yet stop being offered it. Copies that already installed it get the fix as the next
-version; Flown never installs a lower version. Older installers stay on the Releases page for a
-manual reinstall.
+downloaded it yet stop being offered it. A copy that downloaded it but has not installed it yet
+drops it at its next check, whether the check finds nothing newer or another version (the release
+before it, or a fix published since): it no longer installs at quit, and the version found now is
+offered (and downloaded, when automatic) instead. Copies that already installed it get the fix
+as the next version; Flown never installs a lower version. Older installers stay on the Releases
+page for a manual reinstall.
 
 ### 1.5 When Flown checks, downloads and installs
 

@@ -124,7 +124,9 @@ export function disabledState(current: string): UpdateState {
 
 /**
  * The state after the updater reported `e` (`at`: now, ISO). A check never undoes a download under
- * way or finished; a version that is not newer than this copy's is ignored.
+ * way, nor a finished one of the version it still offers; a downloaded release the check no longer
+ * offers (it was pulled) is dropped for the one it offers now. A version that is not newer than this
+ * copy's is ignored.
  */
 export function reduceUpdate(s: UpdateState, e: UpdaterEvent, at: string): UpdateState {
   if (s.phase === 'disabled') return s
@@ -133,7 +135,7 @@ export function reduceUpdate(s: UpdateState, e: UpdaterEvent, at: string): Updat
     case 'checking':
       return s.phase === 'downloading' || s.phase === 'ready' ? s : { ...base, phase: 'checking' }
     case 'available': {
-      if (s.phase === 'downloading' || s.phase === 'ready') return { ...s, lastCheck: at }
+      if (s.phase === 'downloading' || (s.phase === 'ready' && e.version === s.version)) return { ...s, lastCheck: at }
       if (!isVersion(e.version) || !isNewer(e.version, s.current)) return { ...base, phase: 'idle', lastCheck: at }
       return { ...base, phase: 'available', version: e.version, notes: notesText(e.notes), lastCheck: at }
     }
