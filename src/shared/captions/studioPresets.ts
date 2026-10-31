@@ -447,6 +447,7 @@ const MORE_LONG: StudioPreset[] = [
     group: 'long',
     description: 'Film-style subtitles in warm yellow, low on the frame',
     fallback: 'clean',
+    // A thin dark edge (0.04 em) with the strong shadow, so the yellow passes §7.2 over white video too.
     look: look('cinema', {
       text: { font: cat('inter-tight'), weight: 600, case: 'asis', tracking: 0, lineHeight: 1.25, size: 0.045, tall: 1.1, scripts: bengali('noto-sans-bengali', 600) },
       emphasis: { weight: 800 },
@@ -463,6 +464,7 @@ const MORE_LONG: StudioPreset[] = [
     group: 'long',
     description: 'Gold serif letters for titles and launches',
     fallback: 'clean',
+    // The gradient's stops sweep from top to bottom; a thin black edge keeps the darkest (#b7862b, 6.5:1) readable.
     look: look('gold', {
       text: { font: cat('playfair-display'), weight: 900, case: 'asis', tracking: 0, lineHeight: 1.15, size: 0.065, tall: 1.15, scripts: bengali('noto-serif-bengali', 700) },
       emphasis: { weight: 900 },
@@ -498,6 +500,7 @@ const MORE_SHORT: StudioPreset[] = [
     group: 'short',
     description: 'Bold capitals in a pink to orange gradient',
     fallback: 'bold',
+    // The mock-up's 1 px dark edge is a 0.04 em outline in #1b1b1b (pink 5.6:1, orange 7.3:1), with its hard offset shadow.
     look: look('gradient', {
       text: { font: cat('archivo-black'), weight: 400, case: 'upper', tracking: 0.02, lineHeight: 1.05, size: 0.08, tall: 1.2, scripts: bengali('noto-sans-bengali', 800) },
       emphasis: { scale: 1.15 },
