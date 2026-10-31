@@ -17,8 +17,8 @@ vi.mock('../src/shared/captions/marks', () => ({ clearEmphasis: (p: Project) => 
 vi.mock('../src/shared/captions/emphasis', () => ({ pickEmphasis: () => p4.marks }))
 vi.mock('../src/shared/captions/great', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  readGreatOptions: () => ({ emoji: 'auto' }),
-  resolveGreatOptions: (_o: unknown, _p: unknown, frame: { w: number; h: number }) => ({ emoji: frame.h > frame.w }),
+  readGreatOptions: (raw: unknown) => ({ emoji: (raw as { emoji?: string } | null)?.emoji ?? 'auto' }),
+  resolveGreatOptions: (o: { emoji?: string }, _p: unknown, frame: { w: number; h: number }) => ({ emoji: o.emoji === 'on' ? true : o.emoji === 'off' ? false : frame.h > frame.w }),
   greatHint: (o: { emoji: boolean }) => (o.emoji ? 'Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.' : 'Emphasises key words, tidies the text and adds lower thirds. You can review every change.')
 }))
 vi.mock('../src/shared/captions/autoStyle', () => ({ suggestedTile: () => 'subtitle' }))
@@ -46,6 +46,7 @@ mockReact()
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const CONTROLS = '../src/renderer/src/editor/panels/StudioControls'
 const LOOK = '../src/renderer/src/editor/panels/CaptionLookSection'
+const GREAT_RUN = '../src/renderer/src/editor/greatRun'
 const c = (await import(/* @vite-ignore */ CONTROLS)) as Record<string, (p: unknown) => unknown>
 const { CaptionLookSection } = (await import(/* @vite-ignore */ LOOK)) as { CaptionLookSection: (p: unknown) => unknown }
 await useEditorContexts()
@@ -208,6 +209,18 @@ describe('Show captions and Classic looks', () => {
     expect(textOf(byTestId(els, 'captions-great-hint')!)).toBe('Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.')
   })
 
+  it('the hint changes as soon as the options are saved (the options store, not a later focus)', async () => {
+    const { saveGreatOptions } = (await import(/* @vite-ignore */ GREAT_RUN)) as { saveGreatOptions: (o: unknown) => Promise<void> }
+    store.state = project()
+    try {
+      await saveGreatOptions({ emoji: 'on' })
+      const els = await settle(look(), SECTION_SKIP)
+      expect(textOf(byTestId(els, 'captions-great-hint')!)).toBe('Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.')
+    } finally {
+      await saveGreatOptions({ emoji: 'auto' })
+    }
+  })
+
   it('Make my captions great reads Working… with Cancel while it runs', async () => {
     const run: string[] = []
     const els = await settle({ type: CaptionLookSection, props: { project: store.state, vw: 1920, vh: 1080, onGreat: () => run.push('great'), greatBusy: true, onGreatCancel: () => run.push('cancel') } }, SECTION_SKIP)
@@ -314,6 +327,14 @@ describe('Digits (§0.2)', () => {
     expect(byTestId(els, 'caption-case')).toBeUndefined()
     ;(chipIn(els, 'caption-digits', 'Bangla ০–৯').props.onClick as () => void)()
     expect(store.state.captions).toMatchObject({ digits: 'native', picked: true })
+  })
+
+  it('on a Classic look the choice makes its Studio twin in the same undo step (legacy drawing never shows it)', async () => {
+    store.state = project({ ...DEFAULT_CAPTIONS, preset: 'boxed' }, { transcript: { language: 'bn', segments: [{ id: 'c1', start: 0, end: 2, text: 'এখন ৩টি ধাপ' }] } as Project['transcript'] })
+    const els = await settle(view('TextControls'), SKIP)
+    ;(chipIn(els, 'caption-digits', 'Bangla ০–৯').props.onClick as () => void)()
+    expect(store.steps).toBe(1)
+    expect(store.state.captions).toMatchObject({ preset: 'boxed', digits: 'native', picked: true, studio: { from: 'boxed', layout: { legacyAnchor: true } } })
   })
 
   it('is not offered for English', async () => {

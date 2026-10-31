@@ -226,7 +226,9 @@ export function TextControls(props: { project: Project }): JSX.Element {
             store.update((p) => {
               const { digits: _old, ...rest } = captionsOf(p)
               void _old
-              return { ...p, captions: { ...rest, ...(d === 'asis' ? {} : { digits: d }), picked: true } }
+              // A Classic look cannot draw other digits: like every change below today's controls,
+              // the choice makes its Studio twin in the same undo step (§2.4, §5.8).
+              return { ...p, captions: { ...rest, studio: rest.studio ?? legacyTwin(rest), ...(d === 'asis' ? {} : { digits: d }), picked: true } }
             })
           }
           hint={<span className="hint">Used by captions, counters, list numbers and chapter titles.</span>}

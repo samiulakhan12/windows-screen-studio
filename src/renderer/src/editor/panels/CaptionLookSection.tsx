@@ -6,9 +6,9 @@
  * look into its Studio twin in the same undo step. Every change of the look sets `picked`; Show
  * captions does not.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { BrandKit } from '../../../../shared/editor/brandKit'
-import { readGreatOptions, greatHint, resolveGreatOptions, DEFAULT_GREAT_OPTIONS, type GreatOptions } from '../../../../shared/captions/great'
+import { greatHint, resolveGreatOptions, type GreatOptions } from '../../../../shared/captions/great'
 import { suggestedTile } from '../../../../shared/captions/autoStyle'
 import { CAPTION_COLORS, CAPTION_SIZE, captionsOf, HIGHLIGHT_COLORS } from '../../../../shared/captions/settings'
 import { legacyTwin } from '../../../../shared/captions/studioEdit'
@@ -21,6 +21,7 @@ import { useEditor } from '../context'
 import { Chips, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { useGroup } from '../groupContext'
+import { currentGreatOptions, loadGreatOptions, onGreatOptions } from '../greatRun'
 import { setPreviewLook } from '../previewLook'
 import { CaptionGallery } from './CaptionGallery'
 import { lookName, pickTile, resetTile, tileName } from './captionTiles'
@@ -87,23 +88,18 @@ function useBrandLook(): { look: CaptionStudio; name: string } | null {
   return brand
 }
 
-/** Make my captions great's saved options (prefs `captionsGreat`), for the button's hint. */
+/**
+ * Make my captions great's saved options (prefs `captionsGreat`), for the button's hint: the
+ * options store the popover saves through, so the hint changes as soon as an option does; read
+ * again when the window's focus comes back (another window may have saved them).
+ */
 function useGreat(): GreatOptions {
-  const [options, setOptions] = useState<GreatOptions>(DEFAULT_GREAT_OPTIONS)
+  const options = useSyncExternalStore(onGreatOptions, currentGreatOptions)
   useEffect(() => {
-    let live = true
-    const read = (): void =>
-      void window.api.getPref('captionsGreat').then(
-        (raw) => live && setOptions(readGreatOptions(raw)),
-        () => undefined
-      )
-    read()
-    // The options popover saves them; the window's focus coming back is when they may have changed.
+    void loadGreatOptions().catch(() => undefined)
+    const read = (): void => void loadGreatOptions(true).catch(() => undefined)
     window.addEventListener('focus', read)
-    return () => {
-      live = false
-      window.removeEventListener('focus', read)
-    }
+    return () => window.removeEventListener('focus', read)
   }, [])
   return options
 }
