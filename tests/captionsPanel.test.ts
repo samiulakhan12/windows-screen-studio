@@ -334,7 +334,7 @@ function speechState(over: Partial<SpeechState> & { statuses?: Partial<Record<Sp
 
 interface Mods {
   panel: (props: unknown) => unknown
-  items: { requestCaptions(r: { kind: 'generate' }): void; clearTranscriptionError(): void }
+  items: { requestCaptions(r: { kind: 'generate' } | { kind: 'ai'; task: string }): void; clearTranscriptionError(): void }
   speech: { useCaptionsHost(projectId: string, onNotice: (m: string) => void, open: boolean): unknown; captionsIntent(projectId: string): { model: string; options: unknown } | null; spokenLanguage(): string }
 }
 
@@ -1341,7 +1341,7 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
   }
   /** A palette command such as "Summarize with AI" with the Captions tab already open. */
   const command = (task: string): El[] => {
-    ;(m.items.requestCaptions as (r: { kind: 'ai'; task: string }) => void)({ kind: 'ai', task })
+    m.items.requestCaptions({ kind: 'ai', task })
     return render(m.panel)
   }
   const answer = async (i: number, result: unknown): Promise<El[]> => {
