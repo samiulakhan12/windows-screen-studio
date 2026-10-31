@@ -13,6 +13,7 @@ import type { SavedLook } from '../../../../shared/captions/studioPresets'
 import type { CaptionSettings, CaptionStudio } from '../../../../shared/types'
 import { fontGeneration } from '../../render/fontLoader'
 import { drawStudioSample } from '../../render/studioLayer'
+import { onStyleAssetsChanged } from '../../render/watermarkLayer'
 import { removeLook, restoreLook } from '../captionPresets'
 import { useGroup } from '../groupContext'
 import { checkedTile, filtersFor, galleryTiles, MINE_PREFIX, suggestedReason, tileLabel, usableFilter, type GalleryFilter, type GalleryTile } from './captionTiles'
@@ -115,10 +116,11 @@ const whenIdle = (fn: () => void): (() => void) => {
 }
 
 /** A tile's picture: the still thumbnail, or its look playing over a loop while `playing`. */
-function Thumb({ look, frame, size, language, playing, onDone }: { look: CaptionStudio; frame: { w: number; h: number }; size: { w: number; h: number }; language?: string; playing: 'loop' | 'once' | null; onDone: () => void }): JSX.Element {
+function Thumb({ look, frame, size, language, playing, onDone, fonts }: { look: CaptionStudio; frame: { w: number; h: number }; size: { w: number; h: number }; language?: string; playing: 'loop' | 'once' | null; onDone: () => void; fonts: number }): JSX.Element {
   const [still, setStill] = useState<{ url: string; textPx: number } | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => whenIdle(() => setStill(thumbnail(look, frame, size, language))), [look, frame.w, frame.h, size.w, size.h, language])
+  // Drawn again when a font finishes loading (fontGeneration is part of the cache key).
+  useEffect(() => whenIdle(() => setStill(thumbnail(look, frame, size, language))), [look, frame.w, frame.h, size.w, size.h, language, fonts])
   useEffect(() => {
     if (!playing) return
     const canvas = canvasRef.current
@@ -171,6 +173,7 @@ export function CaptionGallery(props: {
   const { value, frame, saved, brand, suggested, onPick, onPreview, language } = props
   const group = useGroup()
   const reduced = useReducedMotion()
+  const fonts = useSyncExternalStore(onStyleAssetsChanged, fontGeneration)
   const [wanted, setWanted] = useState<string | null>(readFilter)
   const filter = usableFilter(wanted, frame, saved, brand)
   const tiles = galleryTiles(filter, value, saved, brand)
@@ -355,6 +358,7 @@ export function CaptionGallery(props: {
                 language={language}
                 playing={once === t.id ? 'once' : !reduced && active === t.id ? 'loop' : null}
                 onDone={() => setOnce(null)}
+                fonts={fonts}
               />
               <span className="tile-name">{t.current ? `${t.name} · Your current style` : t.name}</span>
               {t.id === suggested && (
