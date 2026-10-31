@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CommandId } from '../../../shared/editor/commands'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { CursorTrack, PathMode, Project, ZoomSegment } from '../../../shared/types'
@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon'
 import { EditorIcon } from './EditorIcon'
 import { useGroup } from './groupContext'
 import { SelectionPanel } from './panels/SelectionPanel'
+import { onCaptionsRequest } from './captionItems'
 import type { Selection } from './selection'
 import { StylePanel } from './panels/StylePanel'
 import { CursorPanel } from './panels/CursorPanel'
@@ -146,6 +147,9 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
   useLayoutEffect(() => {
     if (groupSize < 2) setShowGroup(false)
   }, [groupSize])
+  // A command for the Captions tab (an AI tool from the palette, Generate, Export) opens it now, so
+  // the tab takes the request at once instead of running it whenever the Selection view closes.
+  useEffect(() => onCaptionsRequest(() => setShowGroup(false)), [])
   const groupShown = showGroup && groupSize >= 2
   const onCommand = props.onCommand ?? group.command
 

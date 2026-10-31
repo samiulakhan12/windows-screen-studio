@@ -520,7 +520,9 @@ data still moves.
   - Inspector list rows and the Selection view's own buttons pass `{ reveal: false }`. The view's
     buttons that leave one item (Leave out, or "Only text (1)") reveal it instead (item 3).
   - Timeline clicks, boxes, the preview, Ctrl+A, paste and duplicate reveal.
-- Clicking any tab sets it false and shows that tab; the group stays.
+- Clicking any tab sets it false and shows that tab; the group stays. So does a command for the
+  Captions tab (`requestCaptions`: Generate, Export, an AI tool from the palette), so the tab opens
+  and takes it at once.
 - The view renders only while a group exists, so it disappears with the group.
 - `TAB_FOR` and `InspectorTab` are unchanged.
 

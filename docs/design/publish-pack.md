@@ -125,7 +125,8 @@ An item written from captions that have since changed says *Written from older c
 
 *Fix captions*, *Suggest chapters*, *Suggest a title* and *Summarize* open the Captions tab and run
 the tool there (through the tab's request channel, `captionItems.ts` `requestCaptions`), so their
-results, notices and undo are exactly the tab's. The tab scrolls its AI tools into view, so the
+results, notices and undo are exactly the tab's. A request closes the Selection view of several
+selected items (E-06), so the tab opens and runs it then, never later when that view closes. The tab scrolls its AI tools into view, so the
 work in progress and the answer (a suggested title or a summary) show. *Translate captions with AI…* opens the tab and
 focuses the language list (a language must be chosen; the ellipsis says so). Without captions
 they are greyed out in the palette with "No captions yet". The pack's item commands open the
