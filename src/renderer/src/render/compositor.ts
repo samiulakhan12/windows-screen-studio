@@ -17,6 +17,8 @@ import { drawSpotlightLayer } from './spotlightLayer'
 import { beginTiltedCard, drawTiltedCard } from './tiltLayer'
 import { drawAnnotations, drawKeystrokes } from './textOverlays'
 import { drawCaptionsLayer } from './captionsLayer'
+import { drawGraphicsLayer } from './graphicsLayer'
+import { noteStudioFrame } from './studioLayer'
 import { drawTitleCardsLayer } from './titleCardLayer'
 import { drawWatermarkLayer } from './watermarkLayer'
 import { drawWebcamLayer } from './webcamLayer'
@@ -223,9 +225,14 @@ export function drawFrame(
   drawWebcamLayer(top, project.webcam.show ? webcamImage(src) : null)
   drawOverlaysLayer(top)
 
+  // Captions and graphics run on the sound's clock (E-11 freezes; Captions Studio §9.1 rule 6).
+  const spoken = soundTime === t ? top : { ...top, t: soundTime }
+  // Key presses ask where a Captions Studio block is before it is drawn: it is placed with this frame's obstacles.
+  noteStudioFrame(spoken)
   drawKeystrokes(ctx, w, h, t, project, cursor, fc.textArea)
   drawAnnotations(ctx, w, h, t, project)
-  drawCaptionsLayer(soundTime === t ? top : { ...top, t: soundTime })
+  drawGraphicsLayer(spoken)
+  drawCaptionsLayer(spoken)
   drawTitleCardsLayer(top)
   drawWatermarkLayer(top)
   ctx.restore()

@@ -15,6 +15,7 @@ import { musicEnd, STEM_KINDS, type StemKind } from '../audio/settings'
 import { atempoChain, atempoStages } from '../engine/timeline'
 import type { Clip } from '../types'
 import { clickSoundSource } from './clickSound'
+import { BLEEP_TONE, POP_VOLUME, popSoundSource, toneSoundSource } from './popSound'
 import { cutFadeFilters, pieceCutFades } from './cutFades'
 
 /** Sample rate of every soundtrack the export writes (Opus requires 48 kHz; AAC is fine with it). */
@@ -312,23 +313,76 @@ function fadeFilters(duration: number, fadeIn = 0, fadeOut = 0): string {
 }
 
 /**
+ * The bleep tones' track (Captions Studio §11.7): the tone (input `input`, a mono sine at its
+ * gain from time 0, at least as long as the longest span) cut to each span, with linear ramps of
+ * BLEEP_TONE.ramp at both ends, at its exact sample, and silence between, `duration` seconds
+ * long. Built in time order like the click track. Null when no span falls inside the export.
+ */
+export function toneTrackGraph(spans: readonly { start: number; end: number }[], duration: number, input: string, out = 'tone', rate = AUDIO_RATE): string | null {
+  const total = Math.round(duration * rate)
+  const at = spans
+    .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end > s.start)
+    .map((s) => ({ from: Math.max(0, Math.round(s.start * rate)), to: Math.min(total, Math.round(s.end * rate)) }))
+    .filter((s) => s.to > s.from)
+    .sort((a, b) => a.from - b.from)
+  // Spans never overlap on the track: one that starts inside the one before starts where it ends.
+  const placed: { from: number; to: number }[] = []
+  for (const s of at) {
+    const from = Math.max(s.from, placed.length ? placed[placed.length - 1].to : 0)
+    if (s.to > from) placed.push({ from, to: s.to })
+  }
+  if (placed.length === 0) return null
+  const n = placed.length
+  const ramp = Math.round(BLEEP_TONE.ramp * rate)
+  const fmt = `aformat=sample_fmts=fltp:sample_rates=${rate}:channel_layouts=mono`
+  const parts: string[] = [`[${input}]${fmt}${n > 1 ? `,asplit=${n}${placed.map((_, i) => `[t${i}]`).join('')}` : '[t0]'}`]
+  const segments: string[] = []
+  if (placed[0].from > 0) {
+    parts.push(`anullsrc=r=${rate}:cl=mono,${fmt},atrim=end_sample=${placed[0].from}[tz]`)
+    segments.push('[tz]')
+  }
+  placed.forEach((s, i) => {
+    const len = s.to - s.from
+    const room = (i + 1 < n ? placed[i + 1].from : total) - s.from
+    const r = Math.max(1, Math.min(ramp, Math.floor(len / 2)))
+    parts.push(`[t${i}]atrim=end_sample=${len},afade=t=in:ss=0:ns=${r},afade=t=out:ss=${len - r}:ns=${r},apad=whole_len=${room},atrim=end_sample=${room}[tp${i}]`)
+    segments.push(`[tp${i}]`)
+  })
+  const joined = segments.length > 1 ? `${segments.join('')}concat=n=${segments.length}:v=0:a=1,` : segments[0]
+  parts.push(`${joined}apad=whole_len=${total},atrim=end_sample=${total}[${out}]`)
+  return parts.join(';')
+}
+
+/** The longest tone span of `spans` (seconds): the length of the tone source every span is cut from. */
+export function longestTone(spans: readonly { start: number; end: number }[]): number {
+  return spans.reduce((m, s) => (Number.isFinite(s.end - s.start) ? Math.max(m, s.end - s.start) : m), 0)
+}
+
+/**
  * The export's soundtrack graph, ending in [aout]: the edited recording audio, the music and
- * the click track, mixed (added on top of each other, nothing renormalised), then faded.
- * Null when silent.
+ * the click track, and the graphics' pops and the bleep tones (Captions Studio), mixed (added on
+ * top of each other, nothing renormalised), then faded. Null when silent. Without pops and tones
+ * the graph is exactly the one earlier versions made.
  */
 export function soundtrackGraph(opts: {
   duration: number
   audio?: RecordingPart
   clicks?: { sounds: ClickSounds; input: string }
   music?: MusicPart
+  /** The graphics' pop and ding tracks: output times per sound, played at POP_VOLUME. */
+  pops?: readonly { sounds: ClickSounds; input: string }[]
+  /** The bleep tones: output spans, cut from the tone source `input`. */
+  tones?: { spans: readonly { start: number; end: number }[]; input: string }
   fadeIn?: number
   fadeOut?: number
 }): string | null {
   const { duration, audio, clicks, music } = opts
   const fades = fadeFilters(duration, opts.fadeIn, opts.fadeOut)
   const hasClicks = !!clicks && clickPositions(clicks.sounds.times, duration).length > 0
+  const pops = (opts.pops ?? []).filter((p) => clickPositions(p.sounds.times, duration).length > 0)
+  const tones = opts.tones && toneTrackGraph(opts.tones.spans, duration, opts.tones.input) ? opts.tones : undefined
   // A single source without fades ends in [aout] directly (the graph earlier versions made).
-  const solo = (audio ? 1 : 0) + (music ? 1 : 0) + (hasClicks ? 1 : 0) === 1 && !fades
+  const solo = (audio ? 1 : 0) + (music ? 1 : 0) + (hasClicks ? 1 : 0) + pops.length + (tones ? 1 : 0) === 1 && !fades
   const branches: { label: string; graph: string }[] = []
   if (audio) {
     // Under stereo music, a mono recording is made stereo too (see STEREO).
@@ -336,15 +390,23 @@ export function soundtrackGraph(opts: {
     branches.push({ label: 'rec', graph: music && !solo ? `${graph};[rec0]${STEREO}[rec]` : graph })
   }
   if (music) branches.push({ label: 'mus', graph: musicGraph(music, duration, solo ? 'aout' : 'mus') })
+  // amix gives all its inputs one channel layout: a mono click (pop, tone) would make the whole
+  // soundtrack mono. It takes the layout of the sound it joins, at full level on each side as the
+  // preview plays it (aresample's own mono upmix is 3 dB lower): it is made stereo (see STEREO),
+  // then aresample follows the mix. Into a mono recording it averages the two equal sides back
+  // (rematrix_maxval=1 scales its downmix, which adds them, to 1).
+  const join = audio || music ? `${STEREO},aresample=rematrix_maxval=1` : 'aresample'
   if (clicks && hasClicks) {
     const graph = clickTrackGraph(clicks.sounds, duration, clicks.input, solo ? 'aout' : 'clk0')!
-    // amix gives all its inputs one channel layout: the mono click would make the whole
-    // soundtrack mono. The click takes the layout of the sound it joins, at full level on each
-    // side as the preview plays it (aresample's own mono upmix is 3 dB lower): it is made
-    // stereo (see STEREO), then aresample follows the mix. Into a mono recording it averages
-    // the two equal sides back (rematrix_maxval=1 scales its downmix, which adds them, to 1).
-    const join = audio || music ? `${STEREO},aresample=rematrix_maxval=1` : 'aresample'
     branches.push({ label: 'clk', graph: solo ? graph : `${graph};[clk0]${join}[clk]` })
+  }
+  pops.forEach((p, i) => {
+    const graph = clickTrackGraph(p.sounds, duration, p.input, solo ? 'aout' : `pop${i}0`)!
+    branches.push({ label: `pop${i}`, graph: solo ? graph : `${graph};[pop${i}0]${join}[pop${i}]` })
+  })
+  if (tones) {
+    const graph = toneTrackGraph(tones.spans, duration, tones.input, solo ? 'aout' : 'tone0')!
+    branches.push({ label: 'tone', graph: solo ? graph : `${graph};[tone0]${join}[tone]` })
   }
   if (branches.length === 0) return null
   if (solo) return branches[0].graph
@@ -364,7 +426,8 @@ export interface SoundFiles {
 
 /**
  * Inputs (after `first` other inputs) and the graph that mixes them into [aout]: the
- * recording, the music (looped by the demuxer when it should repeat) and the click source.
+ * recording, the music (looped by the demuxer when it should repeat), the click source, and the
+ * pop and tone sources of Captions Studio (§10.6, §11.7).
  */
 export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number): { args: string[]; graph: string | null } {
   const args: string[] = []
@@ -402,5 +465,20 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
     args.push('-f', 'lavfi', '-i', clickSoundSource())
     clicks = { sounds: job.clicks, input: `${next++}:a` }
   }
-  return { args, graph: soundtrackGraph({ duration, audio, clicks, music, fadeIn: job.fadeIn, fadeOut: job.fadeOut }) }
+  // Captions Studio: one source per pop sound and one tone source, only when they sound in the export.
+  const pops: { sounds: ClickSounds; input: string }[] = []
+  for (const p of job.pops ?? []) {
+    if (clickPositions(p.times, duration).length === 0) continue
+    args.push('-f', 'lavfi', '-i', popSoundSource(p.sound))
+    pops.push({ sounds: { times: p.times, volume: POP_VOLUME }, input: `${next++}:a` })
+  }
+  let tones: { spans: readonly { start: number; end: number }[]; input: string } | undefined
+  if (job.tones?.length && toneTrackGraph(job.tones, duration, 'x')) {
+    args.push('-f', 'lavfi', '-i', toneSoundSource(longestTone(job.tones)))
+    tones = { spans: job.tones, input: `${next++}:a` }
+  }
+  return {
+    args,
+    graph: soundtrackGraph({ duration, audio, clicks, music, ...(pops.length ? { pops } : {}), ...(tones ? { tones } : {}), fadeIn: job.fadeIn, fadeOut: job.fadeOut })
+  }
 }

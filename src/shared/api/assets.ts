@@ -40,3 +40,10 @@ export const ASSETS_CHANNELS = {
   remove: 'assets:remove',
   progress: 'assets:progress'
 } as const
+
+/**
+ * The file a downloaded font is stored and served as (userData/caption-assets/<file>,
+ * studio-media://assets/<file>): its catalogue id, so the names the store serves are built from the
+ * catalogue only (§12).
+ */
+export const assetFontFile = (id: string): string => `${id}.ttf`

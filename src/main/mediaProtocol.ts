@@ -3,6 +3,7 @@ import { createReadStream, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { MEDIA_SCHEME } from '../shared/mediaUrl'
+import { assetPath } from './assets/assetStore'
 import { projectDir } from './projects'
 
 export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
@@ -46,6 +47,21 @@ const typeHeaders = (type: string): Record<string, string> =>
       ? { 'X-Content-Type-Options': 'nosniff' }
       : {}
 
+/** A project's file: studio-media://project/<id>/<file>, only names MEDIA_FILE_RE lists. */
+function servedProjectFile(parts: string[], host: string): string | null {
+  const [id, file] = parts
+  if (host !== 'project' || parts.length !== 2 || !id || !file || !MEDIA_FILE_RE.test(file)) return null
+  return path.join(projectDir(id), file)
+}
+
+/**
+ * A downloaded caption asset (Captions Studio §6.5, §12): studio-media://assets/<file>, only names
+ * built from the catalogues, only from userData/caption-assets (served as fonts are, nosniff).
+ */
+function servedAsset(parts: string[]): string | null {
+  return parts.length === 1 ? assetPath(parts[0]) : null
+}
+
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
@@ -54,15 +70,16 @@ export function registerMediaScheme(): void {
 
 /**
  * Serves project media with HTTP Range support so <video> can seek.
- * Only whitelisted files inside a project folder are reachable.
+ * Only whitelisted files inside a project folder are reachable, and the caption downloads.
  */
 export function handleMediaProtocol(): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     try {
       const url = new URL(request.url)
-      const [id, file] = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
-      if (url.host !== 'project' || !id || !file || !MEDIA_FILE_RE.test(file)) return new Response('Not found', { status: 404 })
-      const filePath = path.join(projectDir(id), file)
+      const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
+      const filePath = url.host === 'assets' ? servedAsset(parts) : servedProjectFile(parts, url.host)
+      if (!filePath) return new Response('Not found', { status: 404 })
+      const file = path.basename(filePath)
       const { size } = await fs.stat(filePath)
       const type = MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream'
       const range = request.headers.get('range')

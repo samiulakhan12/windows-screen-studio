@@ -24,6 +24,7 @@ import { createMainWindow } from './windows'
 import { disposeJobs, registerJobsIpc, setTaskbarPort } from './longJobs'
 import { electronTaskbarPort } from './longJobsPort'
 import { registerExportBundleIpc } from './exportBundle'
+import { registerAssetsIpc } from './assetsIpc'
 import { appLog, startAppLog } from './appLog'
 import { appNames, appRoots, registerDiagnosticsIpc } from './diagnostics'
 import { registerStorageIpc } from './storageIpc'
@@ -80,6 +81,8 @@ if (!app.requestSingleInstanceLock()) {
     setTaskbarPort(electronTaskbarPort())
     registerJobsIpc()
     registerExportBundleIpc()
+    // Captions Studio's downloads (CJK caption fonts): pinned, checked, user-initiated.
+    registerAssetsIpc()
     registerDiagnosticsIpc()
     registerStorageIpc()
     // Flown's own updates (docs/design/auto-update.md): GitHub releases, packaged Windows builds only.

@@ -15,7 +15,11 @@ import { drawFrame, type FrameImage, type RenderScene } from '../render/composit
 import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
-import { prepareProjectFonts } from '../render/fontLoader'
+import { prepareCaptionFonts, prepareProjectFonts } from '../render/fontLoader'
+import { spriteCap, STUDIO_SPRITES } from '../render/wordSprites'
+import { popJob, toneJob } from '../../../shared/render/popSound'
+import { subtitleStreams } from '../../../shared/render/exportBundle'
+import { languageSubtitleFile } from '../../../shared/captions/subtitles'
 import { prepareOverlays } from '../render/overlayLayer'
 import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
@@ -62,6 +66,8 @@ export interface ExportInput extends ExportSource {
   signal: AbortSignal
   /** Pause between frames (F-12: the dialog, the taskbar and sleep). */
   pause?: PauseGate
+  /** The subtitle languages ticked (Captions Studio §11.10, BundleOptions.languages): with **Also inside the video**, one stream each; absent: the spoken language's. */
+  subtitleLanguages?: readonly string[]
 }
 
 export interface ExportResult {
@@ -95,12 +101,17 @@ async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 
   const scene = drawn === input.scene.project ? input.scene : { ...input.scene, project: drawn }
   await prepareCursorAssets(project, projectMediaUrl(project.id))
   await prepareStyleAssets(project, projectMediaUrl(project.id))
-  // Image overlays decoded (a GIF's every frame) and the fonts text uses loaded, before the first frame.
-  await Promise.all([prepareOverlays(project), prepareProjectFonts(project)])
+  // Image overlays decoded (a GIF's every frame) and the fonts text uses loaded, before the first
+  // frame: brand fonts, and Captions Studio's catalogue faces and FlownFontW- faces (§6.8), so the
+  // font generation never changes between two exported frames.
+  await Promise.all([prepareOverlays(project), prepareProjectFonts(project), prepareCaptionFonts(project)])
   return { ...input, project, scene }
 }
 
-type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut'>
+type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut' | 'pops' | 'tones'>
+
+/** Whether a job's soundtrack has anything in it. */
+const hasSound = (s: SoundParts): boolean => !!(s.audio || s.clicks || s.music || s.pops?.length || s.tones?.length)
 
 /**
  * The soundtrack parts of a job: the edited recording (the mixed track, or the stems with
@@ -136,8 +147,29 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
     clicks,
     ...(music ? { music } : {}),
     ...(look.fadeIn > 0 ? { fadeIn: look.fadeIn } : {}),
-    ...(look.fadeOut > 0 ? { fadeOut: look.fadeOut } : {})
+    ...(look.fadeOut > 0 ? { fadeOut: look.fadeOut } : {}),
+    // Captions Studio (§10.6, §11.7): graphics' pops and bleep tones; a project without them gets the job of before.
+    ...studioSounds(project)
   }
+}
+
+/** The pops of graphics and the bleep tones of a project, in the export's video time; nothing without them. */
+function studioSounds(project: Project): Pick<ExportJob, 'pops' | 'tones'> {
+  const pops = popJob(project)
+  const tones = toneJob(project)
+  return { ...(pops.length ? { pops } : {}), ...(tones.length ? { tones } : {}) }
+}
+
+/**
+ * The subtitle streams of a video export (Captions Studio §11.10): only with **Also inside the
+ * video**; WebVTT per language, with speaker names written into the text for MP4 and MOV (mov_text
+ * drops voice tags) when the captions show them.
+ */
+function subtitlesOf(input: ExportInput): Pick<ExportJob, 'subtitles'> {
+  const { project, settings } = input
+  const names = !!project.captions?.showSpeaker && settings.format !== 'webm'
+  const subtitles = subtitleStreams(project, settings, input.subtitleLanguages, (language, spoken) => languageSubtitleFile(project, spoken ? null : language, 'vtt', { namesInText: names }))
+  return subtitles.length ? { subtitles } : {}
 }
 
 /** Clean voice's strength once its stem is made (waiting for a render under way), or null when it is off or has nothing to clean. */
@@ -215,14 +247,15 @@ interface JobPlan {
   sound: SoundParts
   rate: Pick<ExportJob, 'bitrate' | 'maxBytes'>
   chapters: Pick<ExportJob, 'chapters'>
+  subtitles: Pick<ExportJob, 'subtitles'>
 }
 
 async function planJob(input: ExportInput): Promise<JobPlan> {
   const { width, height, fps } = exportDimensions(input.project, input.settings)
   const { times, pictures, held } = videoFrames(input.project.clips, planOf(input.project), fps)
   const sound = await soundOf(input, input.settings.format)
-  const rate = rateOf(input.settings, times.length, { width, height, fps }, !!(sound.audio || sound.clicks || sound.music))
-  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(input.project, input.settings.format) }
+  const rate = rateOf(input.settings, times.length, { width, height, fps }, hasSound(sound))
+  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(input.project, input.settings.format), subtitles: subtitlesOf(input) }
 }
 
 /**
@@ -268,7 +301,7 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
   const report = (phase: ExportProgress['phase']): void => input.onProgress({ phase, frame: 0, frames, fps: 0, eta: null, encoder, detail: phase === 'finalizing' ? 'Encoding the audio…' : undefined })
   report('preparing')
   const sound = await soundOf(input, settings.format)
-  if (!sound.audio && !sound.clicks && !sound.music) throw new Error('This recording has no sound to export. Turn the audio on in the Audio panel, or choose a video format.')
+  if (!hasSound(sound)) throw new Error('This recording has no sound to export. Turn the audio on in the Audio panel, or choose a video format.')
   const t0 = performance.now()
   const onAbort = (): void => void window.api.exportCancel()
   signal.addEventListener('abort', onAbort)
@@ -422,9 +455,14 @@ async function renderAll(
     // willReadFrequently would make the canvas CPU-rasterised, reading back every
     // source frame and blur sub-frame drawn onto it. Without a GPU canvas (blocklisted
     // or missing GPU) the canvas is on the CPU anyway, and the hint saves a copy per readback.
-    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: route.video === 'ffmpeg' && !caps.gpuCanvas })
+    const cpu = route.video === 'ffmpeg' && !caps.gpuCanvas
+    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: cpu })
     if (!ctx) throw new Error('Could not create a drawing surface')
     drawn = ctx
+    // Captions Studio's word sprites (§9.7): a cache sized for this output, in the frame's raster
+    // mode, so drawing a sprite never forces a GPU readback. Set back for the preview afterwards.
+    STUDIO_SPRITES.setReadFrequently(cpu)
+    STUDIO_SPRITES.setCap(spriteCap(width, height))
 
     const base: Omit<ExportJob, 'video'> = {
       width,
@@ -436,6 +474,7 @@ async function renderAll(
       ...plan.sound,
       ...plan.rate,
       ...plan.chapters,
+      ...plan.subtitles,
       outputPath: input.outputPath
     }
     const startJob = (job: ExportJob): Promise<void> => window.api.exportStart(project.id, job)
@@ -509,6 +548,9 @@ async function renderAll(
     sink?.close()
     // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more.
     if (drawn) releaseTilt(drawn)
+    // The word sprites go back to the preview's cache (its cap and raster mode).
+    STUDIO_SPRITES.setReadFrequently(false)
+    STUDIO_SPRITES.setCap(spriteCap(0, 0))
     screen.close()
     camera?.close()
     videos.forEach(disposeVideo)
