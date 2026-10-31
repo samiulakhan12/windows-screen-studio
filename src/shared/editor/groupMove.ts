@@ -10,7 +10,7 @@
 import { atEditEnd } from '../engine/freeze'
 import { clipIndexAt } from '../engine/timeline'
 import { dragZoomTimes, zoomDragBounds } from '../engine/zoom'
-import type { Project } from '../types'
+import type { Graphic, Project } from '../types'
 import { dragAnnotationTimes } from './annotations'
 import { canMoveFreeze, moveFreeze } from './freezeEdit'
 import { parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
@@ -61,7 +61,15 @@ function listOf(p: Project, kind: GroupKind): readonly Timed[] {
       return (p.chapters ?? []).map((c) => ({ id: c.id, start: c.t, end: c.t }))
     case 'freeze':
       return (p.freezes ?? []).map((f) => ({ id: f.id, start: f.at, end: f.at }))
+    case 'graphic':
+      return p.graphics ?? []
   }
+}
+
+/** Graphic `g` at `start`..`end`, a list card's items moved with it (Captions Studio §10.5). */
+function graphicAt(g: Graphic, start: number, end: number): Graphic {
+  const dt = start - g.start
+  return g.kind === 'list' && dt !== 0 ? { ...g, start, end, items: g.items.map((it) => ({ ...it, at: it.at + dt })) } : { ...g, start, end }
 }
 
 /** The members that exist, by kind: id → times. */
@@ -300,6 +308,20 @@ export function moveGroup(p: Project, plan: GroupMovePlan, delta: number, exact?
     const next = retimed(q.titles, titles, delta, exact)
     if (next !== q.titles) q = { ...q, titles: next }
   }
+  const graphics = to.get('graphic')
+  if (graphics && q.graphics) {
+    let changed = false
+    const next = q.graphics.map((g) => {
+      const init = graphics.get(g.id)
+      if (!init) return g
+      const start = placedStart(init, delta, exact)
+      const end = placedEnd(init, delta, exact)
+      if (start === g.start && end === g.end) return g
+      changed = true
+      return graphicAt(g, start, end)
+    })
+    if (changed) q = { ...q, graphics: next }
+  }
   const chapters = to.get('chapter')
   if (chapters && q.chapters) {
     let changed = false
@@ -353,7 +375,7 @@ export function setGroupStart(p: Project, keys: readonly ItemKey[], t: number): 
 }
 
 /**
- * Every span member (zoom, text, shape, spotlight, title card) set to `length` seconds by its own
+ * Every span member (zoom, text, shape, spotlight, title card, graphic) set to `length` seconds by its own
  * end drag: zooms stop at the next zoom and at MIN_ZOOM_LENGTH (and become yours), the others at
  * their minimum and the recording's end. Chapters and freezes are left as they are. `clamped`
  * counts the members that came out at another length.
@@ -372,7 +394,7 @@ export function setGroupLength(p: Project, keys: readonly ItemKey[], length: num
     const times =
       k.kind === 'zoom'
         ? dragZoomTimes(initial, 'end', dt, zoomDragBounds(q.zooms, k.id, q.duration))
-        : k.kind === 'annotation' || k.kind === 'overlay'
+        : k.kind === 'annotation' || k.kind === 'overlay' || k.kind === 'graphic'
           ? dragAnnotationTimes(initial, 'end', dt, q.duration)
           : k.kind === 'title'
             ? dragTitleTimes(initial, 'end', dt, q.duration)
@@ -384,6 +406,7 @@ export function setGroupLength(p: Project, keys: readonly ItemKey[], length: num
     else if (k.kind === 'shape') q = { ...q, shapes: withTimes(q.shapes ?? [], k.id, times) }
     else if (k.kind === 'spotlight') q = { ...q, spotlights: withTimes(q.spotlights ?? [], k.id, times) }
     else if (k.kind === 'overlay') q = { ...q, overlays: withTimes(q.overlays ?? [], k.id, times) }
+    else if (k.kind === 'graphic') q = { ...q, graphics: (q.graphics ?? []).map((g) => (g.id === k.id ? graphicAt(g, times.start, times.end) : g)) }
     else q = { ...q, titles: withTimes(q.titles ?? [], k.id, times) }
   }
   return { project: q, clamped }
