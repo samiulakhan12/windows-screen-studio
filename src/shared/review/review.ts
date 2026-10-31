@@ -11,7 +11,7 @@
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
-import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
+import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -107,10 +107,11 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   const rec = records.find((c) => c.id === id)
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
   const ids = new Set(records.map((c) => c.id))
-  // A part sped up again on top of it (a speed-up of the project or of the list) is under that one.
+  // A part sped up again on top of it (a speed-up of the project or of the list) is under that one;
+  // a part a speed-up of the list kept since plays on top of a third one is the user's.
   const reviewed = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))
   const over = [...records, ...reviewed]
-  let before = cut
+  let before = withoutKeptInside(cut, project.clips, reviewed, over)
   if (footageBack(before, project.clips, over)) return 'removed'
   // Out through the speed-ups of the list taken back since, one at a time and the innermost first
   // (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×), until the footage is back.

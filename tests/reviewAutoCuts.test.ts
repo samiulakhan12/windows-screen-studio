@@ -578,6 +578,110 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     })
   })
 
+  describe('a 2x, a 4x inside it and an 8x inside that', () => {
+    // Smart speed at 2x over [5,15], Remove silences at 4x over [7,12], then again at 8x over [9,10].
+    const nested = (): Project => auto(auto(auto(project(), 5, 15, 2, 'smart-speed', 'f'), 7, 12, 4, 'silences', 'g'), 9, 10, 8, 'silences', 'h')
+
+    it('all three are listed, each holding its part at the speed from before it', () => {
+      const p = nested()
+      expect(plays(p.clips)).toEqual([
+        [0, 5, 1],
+        [5, 7, 2],
+        [7, 9, 4],
+        [9, 10, 8],
+        [10, 12, 4],
+        [12, 15, 2],
+        [15, 20, 1]
+      ])
+      expect(liveAutoCuts(p).map((c) => [c.id, c.was])).toEqual([
+        ['f1', [{ start: 5, end: 15, speed: 1 }]],
+        ['g1', [{ start: 7, end: 12, speed: 2 }]],
+        ['h1', [{ start: 9, end: 10, speed: 4 }]]
+      ])
+      expect(pendingCount(p)).toBe(3)
+    })
+
+    it('removing them all, at once or one by one in either order, gives it all back at 1x, every row removed', () => {
+      expect(plays(removeItems(nested(), reviewItems(nested())).clips)).toEqual([[0, 20, 1]])
+      for (const order of [
+        [0, 1, 2],
+        [2, 1, 0]
+      ]) {
+        const { p, shown } = reviewSteps(
+          nested(),
+          order.map((k) => [k, 'R'])
+        )
+        expect(plays(p.clips)).toEqual([[0, 20, 1]])
+        expect(rows(p, shown)).toEqual(['f1:removed', 'g1:removed', 'h1:removed'])
+      }
+    })
+
+    it('removing only the 8x puts that part back at 4x', () => {
+      const { p, shown } = reviewSteps(nested(), [[2, 'R']])
+      expect(plays(p.clips)).toEqual([
+        [0, 5, 1],
+        [5, 7, 2],
+        [7, 12, 4],
+        [12, 15, 2],
+        [15, 20, 1]
+      ])
+      expect(rows(p, shown)).toEqual(['f1:pending', 'g1:pending', 'h1:removed'])
+    })
+
+    it('keeping the 8x makes that part yours in the 4x and in the 2x, which stay listed for the rest', () => {
+      const kept = reviewSteps(nested(), [[2, 'K']])
+      expect(liveAutoCuts(kept.p).map((c) => [c.id, c.was])).toEqual([
+        [
+          'f1',
+          [
+            { start: 5, end: 9, speed: 1 },
+            { start: 10, end: 15, speed: 1 }
+          ]
+        ],
+        [
+          'g1',
+          [
+            { start: 7, end: 9, speed: 2 },
+            { start: 10, end: 12, speed: 2 }
+          ]
+        ]
+      ])
+      expect(rows(kept.p, kept.shown)).toEqual(['f1:pending', 'g1:pending', 'h1:kept'])
+      const { p, shown } = reviewSteps(nested(), [
+        [2, 'K'],
+        [0, 'R'],
+        [1, 'R']
+      ])
+      expect(plays(p.clips)).toEqual([
+        [0, 9, 1],
+        [9, 10, 8],
+        [10, 20, 1]
+      ])
+      expect(rows(p, shown)).toEqual(['f1:removed', 'g1:removed', 'h1:kept'])
+    })
+
+    it('removing the 2x and then keeping the 8x: the 2x still reads removed', () => {
+      let { p, shown } = reviewSteps(nested(), [
+        [0, 'R'],
+        [2, 'K']
+      ])
+      expect(plays(p.clips)).toEqual([
+        [0, 7, 1],
+        [7, 9, 4],
+        [9, 10, 8],
+        [10, 12, 4],
+        [12, 20, 1]
+      ])
+      expect(rows(p, shown)).toEqual(['f1:removed', 'g1:pending', 'h1:kept'])
+      ;({ p, shown } = reviewSteps(nested(), [
+        [0, 'R'],
+        [2, 'K'],
+        [1, 'K']
+      ]))
+      expect(rows(p, shown)).toEqual(['f1:removed', 'g1:kept', 'h1:kept'])
+    })
+  })
+
   it('a cut inside a 2x that a 4x then takes over comes back at 1x', () => {
     const p = auto(auto(auto(project(), 5, 9, 2, 'smart-speed', 'f'), 6, 7, 'cut', 'silences', 'c'), 5, 9, 4, 'smart-speed', 'g')
     expect(liveAutoCuts(p).map((c) => c.id)).toEqual(['c1', 'g1'])

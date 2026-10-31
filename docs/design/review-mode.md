@@ -79,7 +79,9 @@ own cut next to an earlier one) is not by hand.
 A speed-up stays intact when a part of it is cut later: what is still kept still plays at its speed.
 It also stays intact when a later automatic speed-up re-times a part of it (a silence sped up 4×
 inside an idle part sped up 2×): the later record holds that part at this one's speed, as a cut
-inside it does, so removing only the later one puts the part back at 2×, not at 1×.
+inside it does, so removing only the later one puts the part back at 2×, not at 1×. The same goes
+one level further in (a silence sped up 8× inside the 4× one): the 4× record hands that part on to
+the 8× one, and all three stay listed.
 
 ### 2.2 What is listed
 
@@ -105,7 +107,9 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
   (`was` pieces kept at their old speeds, or at the speed from before the speed-ups of the panel's
   list taken back since, one at a time and the innermost first: a silence cut removed inside a
   sped-up idle part, then the speed-up removed; for a speed-up, a part that a later speed-up of the
-  project or the list holds at the old speed counts as back) → removed; else → kept.
+  project or the list holds at the old speed, itself or through one inside it, counts as back, and
+  a part of a speed-up of the list kept since inside a third one is the user's and left out: a 2×
+  removed, then an 8× kept inside the 4× inside it) → removed; else → kept.
 
 So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
 again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the
@@ -124,7 +128,7 @@ is still automatic.
 | camera segment | `auto` and `cutOut` cleared | the segment is deleted; a `cutOut` piece turns back into the position's corner and joins its touching pieces (as `withoutDirected` does for one run) |
 | face framing | `director.framed` dropped (the framing is yours) | webcam `zoom/cropX/cropY` removed and `director.framed` dropped (`clearDirected`'s framing part) |
 | automatic cut | the record is dropped (the cut stays, now a plain cut) | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); the record is dropped |
-| automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`): the part is yours now, and the earlier one stays listed for the rest | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one |
+| automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`), and so does one that holds that part of it in turn (a 2× around a 4× around the 8× kept): the part is yours now, and the earlier ones stay listed for the rest | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one |
 
 Each Keep or Remove is **one** `store.update` (one undo step). **Keep all** keeps every pending
 item in one update; **Remove all of this kind** removes every pending item of the focused item's
@@ -209,9 +213,10 @@ Project.autoCuts?: AutoCut[]
    same object.
 
 Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a
-speed-up, every part of the `was` pieces still kept plays at `action`, or at the speed of a later
-speed-up record that holds it at `action` (within 1 ms), and something plays at `action`. Records
-are judged among the others still intact, so a speed-up whose later record went stale goes too.
+speed-up, every part of the `was` pieces still kept plays at `action`, or is held at `action` by a
+later speed-up record that plays it at its own speed or hands it on to another one in the same way
+(an 8× inside a 4× inside a 2×), within 1 ms, and something plays at `action`. Records are judged
+among the others still intact, so a speed-up whose later record went stale goes too.
 
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the

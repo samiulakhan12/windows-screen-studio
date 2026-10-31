@@ -40,19 +40,40 @@ function covered(clips: readonly Clip[], a: number, b: number, which: (c: Clip) 
   return sum
 }
 
-/**
- * Length of [a, b] that a speed-up of `list` other than `id` plays at its own speed and holds at
- * `speed` (it played at `speed` before that one): a later change on top, such as a silence sped up
- * 4× inside an idle part sped up 2×.
- */
-function held(list: readonly AutoCut[], id: string, clips: readonly Clip[], a: number, b: number, speed: number): number {
-  let sum = 0
-  for (const r of list) {
-    if (r.id === id || r.action === 'cut' || r.end <= a || r.start >= b) continue
-    for (const w of r.was) if (w.speed === speed) sum += covered(clips, Math.max(a, w.start), Math.min(b, w.end), (c) => c.speed === r.action)
+/** The parts of [a, b] the clips play at `speed`. */
+function playing(clips: readonly Clip[], a: number, b: number, speed: number): Piece[] {
+  const out: Piece[] = []
+  for (const c of clips) {
+    const lo = Math.max(a, c.start)
+    const hi = Math.min(b, c.end)
+    if (c.speed === speed && hi > lo) out.push({ start: lo, end: hi, speed })
   }
-  return sum
+  return out
 }
+
+const length = (pieces: readonly Piece[]): number => pieces.reduce((n, p) => n + p.end - p.start, 0)
+
+/**
+ * The parts of [a, b] that a speed-up of `list` not in `seen` holds at `speed` (it played at `speed`
+ * before that one) and plays at its own speed, or hands on to a later one in the same way: a later
+ * change on top, such as a silence sped up 4× inside an idle part sped up 2×, and 8× inside that.
+ */
+function heldParts(list: readonly AutoCut[], clips: readonly Clip[], a: number, b: number, speed: number, seen: ReadonlySet<string>): Piece[] {
+  const out: Piece[] = []
+  for (const r of list) {
+    if (seen.has(r.id) || r.action === 'cut' || r.end <= a || r.start >= b) continue
+    for (const w of r.was) {
+      const lo = Math.max(a, w.start)
+      const hi = Math.min(b, w.end)
+      if (w.speed === speed && hi - lo > EPS) out.push(...playing(clips, lo, hi, r.action), ...heldParts(list, clips, lo, hi, r.action, new Set([...seen, r.id])))
+    }
+  }
+  return out
+}
+
+/** Length of [a, b] that a speed-up of `list` other than `id` holds at `speed` (heldParts). */
+const held = (list: readonly AutoCut[], id: string, clips: readonly Clip[], a: number, b: number, speed: number): number =>
+  length(heldParts(list, clips, a, b, speed, new Set([id])))
 
 /**
  * Whether a record's change is still in the clips: for a cut no clip plays any of its pieces; for a
@@ -306,15 +327,47 @@ export function settleAutoCuts(next: Project, prev: Project): Project {
 /**
  * The records `list` with the speed-up `k` kept (§2.4): an earlier speed-up whose footage it holds
  * at that one's speed gives that part up, as if the user had re-timed it, and stays listed for the
- * rest. Records that change nothing are the same objects.
+ * rest; so does one that holds the part given up in turn (a 2× around a 4× around the 8× kept).
+ * Records that change nothing are the same objects.
  */
 export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
   if (k.action === 'cut') return list
-  return list.map((c) => {
-    if (c.id === k.id || c.action === 'cut') return c
-    const mine = k.was.filter((w) => w.speed === c.action && c.was.some((p) => Math.min(p.end, w.end) - Math.max(p.start, w.start) > EPS))
-    return mine.length ? { ...c, was: without(c.was, mine) } : c
-  })
+  let out = list
+  let gone: readonly Piece[] = k.was
+  // Outward one level at a time: the part a record gives up carries its speeds from before it.
+  for (let n = 0; gone.length > 0 && n < list.length; n++) {
+    const next: Piece[] = []
+    const g = gone
+    out = out.map((c) => {
+      if (c.id === k.id || c.action === 'cut') return c
+      const mine = g.filter((w) => w.speed === c.action && c.was.some((p) => Math.min(p.end, w.end) - Math.max(p.start, w.start) > EPS))
+      if (!mine.length) return c
+      const rest = without(c.was, mine)
+      next.push(...without(c.was, rest))
+      return { ...c, was: rest }
+    })
+    gone = next
+  }
+  return out
+}
+
+/**
+ * The speed-up `cut` without the parts that a speed-up of `reviewed` (the panel's list, no longer
+ * recorded) plays at its own speed, or hands on to a later one of `list`, and holds at a speed other
+ * than `cut`'s: one kept inside a third one inside `cut` (an 8× kept inside a 4× inside a 2×). Such
+ * a part is the user's, as withSpeedUpKept makes it for a record. `cut` itself when no part is.
+ */
+export function withoutKeptInside(cut: AutoCut, clips: readonly Clip[], reviewed: readonly AutoCut[], list: readonly AutoCut[]): AutoCut {
+  if (cut.action === 'cut') return cut
+  const yours: Piece[] = []
+  for (const r of reviewed) {
+    if (r.id === cut.id || r.action === 'cut') continue
+    for (const w of r.was) {
+      if (w.speed !== cut.action) yours.push(...playing(clips, w.start, w.end, r.action), ...heldParts(list, clips, w.start, w.end, r.action, new Set([r.id, cut.id])))
+    }
+  }
+  const was = without(cut.was, yours)
+  return length(cut.was) - length(was) > EPS ? { ...cut, was } : cut
 }
 
 /** `project` with `list` as its records: no key when the list is empty. */
