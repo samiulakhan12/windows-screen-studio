@@ -236,6 +236,10 @@ distance, so captions follow one another and no word is lost. Where the parts di
 words written differently, or a word cut in two where fewer than two whole words are shared, as
 with a pause in the overlap) the overlap may still show twice.
 
+A caption split at a fixed cut keeps the spaces its text had between the words it keeps (none
+inside Chinese or Japanese, one around a Latin name in them); when a word is not found in the
+text, its words are joined with spaces unless the text has none.
+
 Stretches of sound shorter than 0.12 s are left out of the spread (a sliver at a part's edge would
 squeeze a word to nothing and the caption would be dropped as too short).
 

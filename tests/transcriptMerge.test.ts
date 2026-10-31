@@ -112,6 +112,31 @@ describe('mergeParts', () => {
     expect(out.segments.map((s) => s.text)).toEqual(['今日', 'は晴れ。'])
   })
 
+  it('keeps the spaces of a sentence mixing Chinese and English split at a fixed cut, and adds none', () => {
+    const parts = planParts(18, [], { maxSeconds: 10, overlap: 2 })
+    const out = mergeParts(
+      [
+        { part: parts[0], transcript: { segments: [seg(8.3, 9.7, '现在打开', [{ text: '现在', start: 8.3, end: 8.9 }, { text: '打开', start: 9.1, end: 9.7 }])] } },
+        {
+          part: parts[1],
+          transcript: {
+            segments: [
+              seg(0.3, 2.9, '现在打开 Chrome 设置菜单。', [
+                { text: '现在', start: 0.3, end: 0.9 },
+                { text: '打开', start: 1.1, end: 1.5 },
+                { text: 'Chrome', start: 1.6, end: 2.0 },
+                { text: '设置', start: 2.1, end: 2.5 },
+                { text: '菜单。', start: 2.5, end: 2.9 }
+              ])
+            ]
+          }
+        }
+      ],
+      18
+    )
+    expect(out.segments.map((s) => s.text)).toEqual(['现在', '打开 Chrome 设置菜单。'])
+  })
+
   it('keeps every word of a long sentence across a fixed cut exactly once', () => {
     // 1000 s without a pause: a fixed cut at 599, part 0 sent until 600 and part 1 from 598.
     const parts = planParts(1000, [], { maxSeconds: 600 })

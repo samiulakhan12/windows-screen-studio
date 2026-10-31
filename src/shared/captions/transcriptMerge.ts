@@ -55,6 +55,24 @@ function shiftPart(part: TranscriptPart, transcript: RawTranscript, duration: nu
 }
 
 /**
+ * The text of `mine`, some of the words of `s` in order: a space between two of them where the
+ * segment's text has one, so a run of Chinese or Japanese gets none though a Latin name in it keeps
+ * its spaces. When a word is not found in the text, a space between all of them unless it has none.
+ */
+function keptText(s: RawSegment, mine: readonly RawWord[]): string {
+  // Where each word starts and ends in the text.
+  const at = new Map<RawWord, [number, number]>()
+  let from = 0
+  for (const w of s.words ?? []) {
+    const i = s.text.indexOf(w.text, from)
+    if (i < 0) return mine.map((x) => x.text).join(/\s/.test(s.text) ? ' ' : '')
+    from = i + w.text.length
+    at.set(w, [i, from])
+  }
+  return mine.map((w, k) => (k && /\s/.test(s.text.slice(at.get(mine[k - 1])?.[1], at.get(w)?.[0])) ? ' ' : '') + w.text).join('')
+}
+
+/**
  * Of one part's segments (see shiftPart), those it keeps; `begin` settles the words at a fixed cut
  * it starts at, and `dropped`, when given, the words at a fixed cut it ends at: it keeps all others.
  */
@@ -74,9 +92,8 @@ export function placePart(part: TranscriptPart, segments: readonly RawSegment[],
       const mine = s.words.filter((w) => kept(w.start, w.end, begin?.from ?? part.keepStart, begin?.settled.get(w), w))
       if (!mine.length) continue
       // All its words: as heard (with its punctuation); some: only those, across a fixed cut
-      // (without spaces when the text had none: Chinese, Japanese…).
-      const text = mine.map((w) => w.text).join(/\s/.test(s.text) ? ' ' : '')
-      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text, words: mine, ...(s.speaker ? { speaker: s.speaker } : {}) }
+      // (with the spaces the text had between them: none inside Chinese, Japanese…).
+      seg = mine.length === s.words.length ? s : { start: mine[0].start, end: mine[mine.length - 1].end, text: keptText(s, mine), words: mine, ...(s.speaker ? { speaker: s.speaker } : {}) }
     } else {
       if (!kept(s.start, s.end, part.keepStart)) continue
       seg = { start: s.start, end: s.end, text: s.text, ...(s.speaker ? { speaker: s.speaker } : {}) }
