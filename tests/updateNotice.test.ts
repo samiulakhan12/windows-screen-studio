@@ -327,3 +327,28 @@ describe('why Restart now was refused (docs/design/auto-update.md §1.7)', () =>
     expect(refusedOf(out)).toBeUndefined()
   })
 })
+
+describe('Settings: what a screen reader hears (docs/design/auto-update.md §1.7)', () => {
+  const live = (out: El[]): El[] => out.filter((e) => e.props.role === 'status' || e.props.role === 'alert' || 'aria-live' in e.props)
+  const statusOf = (out: El[]): El => out.find((e) => e.props['data-testid'] === 'updates-status')!
+
+  it('announces a download once, not at every percent; the page still shows the percent', async () => {
+    main.state = { phase: 'available', current: '0.7.1', version: '9.9.9', lastCheck: null, auto: false }
+    const view = UpdatesBlock
+    render(view)
+    let out = await settle(view)
+    // The live region is there before the download starts, so its first change is read out.
+    expect(live(out).map((e) => textOf(e.props.children))).toEqual(['Flown 9.9.9 is available.'])
+    const heard = new Set<string>()
+    for (const percent of [1, 12, 13, 14, 60, 99]) {
+      emit({ phase: 'downloading', current: '0.7.1', version: '9.9.9', percent, lastCheck: null, auto: false })
+      out = render(view)
+      expect(textOf(statusOf(out).props.children)).toBe(`Downloading Flown 9.9.9… ${percent}%`)
+      for (const e of live(out)) heard.add(textOf(e.props.children))
+    }
+    expect([...heard]).toEqual(['Downloading Flown 9.9.9…'])
+    emit(ready('9.9.9'))
+    out = render(view)
+    expect(live(out).map((e) => textOf(e.props.children))).toEqual(['Flown 9.9.9 is ready. It installs when you close Flown.'])
+  })
+})

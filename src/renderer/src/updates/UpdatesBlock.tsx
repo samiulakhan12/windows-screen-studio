@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { statusLine, type UpdateState } from '../../../shared/updates/updates'
+import { spokenStatus, statusLine, type UpdateState } from '../../../shared/updates/updates'
 import { checkedAt, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
 
@@ -47,10 +47,16 @@ export function UpdatesBlock(): JSX.Element {
   return (
     <div className="updates-block" data-testid="updates" data-phase={s.phase}>
       <h4 className="updates-title">Updates</h4>
-      <p className="updates-status" role="status" data-testid="updates-status">
+      <p className="updates-status" data-testid="updates-status">
         {statusLine(s)}
         {last && <span className="muted"> Last checked {last}.</span>}
       </p>
+      {/* The live region: the same status without the download's percent, so a download is not
+          announced at every percent (the progress bar gives the value when asked). */}
+      <span className="sr-only" role="status">
+        {spokenStatus(s)}
+        {last && ` Last checked ${last}.`}
+      </span>
       {s.phase === 'downloading' && <progress className="updates-progress" max={100} value={s.percent ?? 0} aria-label={`Downloading Flown ${s.version}`} />}
       {action && (
         <div className="updates-actions">

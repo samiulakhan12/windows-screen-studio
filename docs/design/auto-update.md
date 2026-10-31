@@ -101,8 +101,9 @@ updates* still works when pressed.
 
 ### 1.7 What the user sees
 
-Settings › About, under the version (a status line and buttons; `aria-live="polite"` on the
-status):
+Settings › About, under the version (a status line and buttons; a polite live region says the
+status, without the download's percent, which changes about once a second: a download is announced
+once and the labelled progress bar gives the value when asked):
 
 - "Flown is up to date." (with "Last checked 10:42")
 - "Checking for updates…"
@@ -252,7 +253,8 @@ interface UpdateState {
 ```
 
 Plus `reduce(state, event)`, `notesText(raw)` (tags removed, entities decoded, whitespace folded,
-capped), `statusLine(state, now)` and `isNewer(a, b)` (semver, no pre-releases).
+capped), `statusLine(state, now)`, `spokenStatus(state)` (the live region's text: the status line
+without the percent) and `isNewer(a, b)` (semver, no pre-releases).
 
 ## 6. Tests
 

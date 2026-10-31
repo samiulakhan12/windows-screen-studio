@@ -182,6 +182,15 @@ export function statusLine(s: UpdateState): string {
   }
 }
 
+/**
+ * What the status's live region says: the status line without the download's percent, which
+ * changes about once a second (the progress bar gives it when asked). So a download is announced
+ * once, not at every percent.
+ */
+export function spokenStatus(s: UpdateState): string {
+  return s.phase === 'downloading' ? `Downloading Flown ${s.version}…` : statusLine(s)
+}
+
 /** What keeps Restart now from running (main checks it again when it is pressed). */
 export type BusyKind = 'recording' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy'
 
