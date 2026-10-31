@@ -137,6 +137,35 @@ describe('mergeParts', () => {
     expect(out.segments.map((s) => s.text)).toEqual(['现在', '打开 Chrome 设置菜单。'])
   })
 
+  it('keeps the hyphen or point inside a written word that the words list splits, across a fixed cut', () => {
+    // whisper-1 lists "well-known" as well, known and "3.5" as 3, 5, without the punctuation.
+    const parts = planParts(18, [], { maxSeconds: 10, overlap: 2 })
+    const out = mergeParts(
+      [
+        {
+          part: parts[0],
+          transcript: {
+            segments: [
+              seg(5.0, 9.7, 'A well-known tool, version 3.5 now.', [
+                { text: 'A', start: 5.0, end: 5.2 },
+                { text: 'well', start: 5.3, end: 5.6 },
+                { text: 'known', start: 5.6, end: 6.0 },
+                { text: 'tool', start: 6.1, end: 6.5 },
+                { text: 'version', start: 6.7, end: 7.2 },
+                { text: '3', start: 7.3, end: 7.6 },
+                { text: '5', start: 7.7, end: 8.1 },
+                { text: 'now', start: 9.2, end: 9.7 }
+              ])
+            ]
+          }
+        },
+        { part: parts[1], transcript: { segments: [seg(1.2, 1.7, 'now.', [{ text: 'now', start: 1.2, end: 1.7 }])] } }
+      ],
+      18
+    )
+    expect(out.segments.map((s) => s.text)).toEqual(['A well-known tool version 3.5', 'now.'])
+  })
+
   it('adds no spaces to a Thai or Japanese text-only caption split at a fixed cut', () => {
     // Music all through: no pause, so a fixed cut at 29 with the parts overlapping.
     const parts = planParts(58, [], { maxSeconds: 30 })

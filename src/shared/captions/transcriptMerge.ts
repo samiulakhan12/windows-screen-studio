@@ -57,7 +57,8 @@ function shiftPart(part: TranscriptPart, transcript: RawTranscript, duration: nu
 /**
  * The text of `mine`, some of the words of `s` in order: a space between two of them where the
  * segment's text has one, so a run of Chinese or Japanese gets none though a Latin name in it keeps
- * its spaces. When a word is not found in the text, a space between all of them unless it has none.
+ * its spaces; where it has only punctuation, that ("well-known" and "3.5", which whisper-1 lists as
+ * two words each). When a word is not found in the text, a space between all of them unless it has none.
  */
 function keptText(s: RawSegment, mine: readonly RawWord[]): string {
   // Where each word starts and ends in the text.
@@ -69,7 +70,14 @@ function keptText(s: RawSegment, mine: readonly RawWord[]): string {
     from = i + w.text.length
     at.set(w, [i, from])
   }
-  return mine.map((w, k) => (k && /\s/.test(s.text.slice(at.get(mine[k - 1])?.[1], at.get(w)?.[0])) ? ' ' : '') + w.text).join('')
+  return mine
+    .map((w, k) => {
+      if (!k) return w.text
+      // What the text has between this word and the one before it (a word left out has letters).
+      const gap = s.text.slice(at.get(mine[k - 1])?.[1], at.get(w)?.[0])
+      return (/\s/.test(gap) ? ' ' : /[\p{L}\p{N}]/u.test(gap) ? '' : gap) + w.text
+    })
+    .join('')
 }
 
 /**
