@@ -187,8 +187,15 @@ Project.autoCuts?: AutoCut[]
    two fillers whose cuts meet keep a record each. Ranges whose share is empty — the cut was
    refused, the part already played that fast — get no record; a share of more than 64 pieces is
    split over several records.
-3. Stale records (§2.1) are dropped; the new ones are appended; ids are `c<base36 time><counter>`.
-4. Returns `{ ...project, clips: nextClips, autoCuts }`; `project` itself when the clips are the
+3. An earlier automatic speed-up that this change takes over (it cuts or re-times footage the
+   speed-up changed: Remove silences at 2× and then again with Cut, Smart speed at 2× and then at
+   4×) hands that footage over: the new record holds it at its speed from *before* the speed-up,
+   and the speed-up keeps the rest of its pieces. When nothing of the speed-up is left, it is
+   dropped, and any other record holding footage at its speed inside it (a cut made inside it)
+   takes the speed from before it too. So Remove never leaves an automatic 2× behind that the list
+   no longer shows.
+4. Stale records (§2.1) are dropped; the new ones are appended; ids are `c<base36 time><counter>`.
+5. Returns `{ ...project, clips: nextClips, autoCuts }`; `project` itself when the clips are the
    same object.
 
 Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a

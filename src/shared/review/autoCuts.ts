@@ -134,12 +134,52 @@ function assign(pieces: readonly Piece[], ranges: readonly AutoRange[]): Piece[]
 }
 
 /**
+ * `pieces` as they were before the speed-up `s`: a part inside one of its pieces that plays at its
+ * speed gets that piece's speed from before. `pieces` itself when no part does.
+ */
+function beforeSpeedUp(pieces: Piece[], s: AutoCut): Piece[] {
+  if (s.action === 'cut') return pieces
+  let hit = false
+  const out: Piece[] = []
+  for (const p of pieces) {
+    if (p.speed !== s.action) {
+      out.push(p)
+      continue
+    }
+    const cuts = [p.start, ...s.was.flatMap((w) => [w.start, w.end]).filter((t) => t > p.start + EPS && t < p.end - EPS).sort((x, y) => x - y), p.end]
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const mid = (cuts[i] + cuts[i + 1]) / 2
+      const w = s.was.find((x) => mid >= x.start && mid <= x.end)
+      if (w && w.speed !== p.speed) hit = true
+      out.push({ start: cuts[i], end: cuts[i + 1], speed: w ? w.speed : p.speed })
+    }
+  }
+  return hit ? joinPieces(out) : pieces
+}
+
+/**
+ * The records `list` with the speed-up `s` gone from under them (taken back, or taken over by a
+ * later automatic change): a piece one of them holds at `s`'s speed inside `s` now holds the speed
+ * from before `s`, so its Remove puts the footage back as it was before both. Records that change
+ * nothing are the same objects.
+ */
+export function withoutSpeedUp(list: AutoCut[], s: AutoCut): AutoCut[] {
+  return list.map((c) => {
+    if (c.id === s.id) return c
+    const was = beforeSpeedUp(c.was, s)
+    return was === c.was ? c : { ...c, was }
+  })
+}
+
+/**
  * The project with `nextClips` and a record of what that automatic edit changed (§4.1): the kept
  * time it cut (or sped up to `action`), split among the ranges it was asked to act on (assign: a
  * sliver cutRange took next to a range belongs to that range's record). A range that changed
  * nothing (a refused cut, a part already that fast) gets no record; one with more than
- * MAX_WAS_PIECES pieces gets several. Stale records are dropped. `project` itself when the clips
- * are the same object.
+ * MAX_WAS_PIECES pieces gets several. An earlier automatic speed-up this edit takes over (it cuts
+ * or re-times footage that speed-up changed) hands its footage over: the new record holds it at its
+ * speed from before the speed-up, and the speed-up keeps the rest (dropped when nothing of it is
+ * left). Stale records are dropped. `project` itself when the clips are the same object.
  */
 export function recordAutoCuts(
   project: Project,
@@ -150,7 +190,16 @@ export function recordAutoCuts(
   newId: () => string = newCutId
 ): Project {
   if (nextClips === project.clips) return project
-  const changed = action === 'cut' ? cutPieces(project.clips, nextClips) : speedPieces(project.clips, nextClips, action)
+  let live = project.autoCuts ?? []
+  const over = live.filter((c) => c.action !== 'cut' && autoCutIntact(c, project.clips) && !autoCutIntact(c, nextClips))
+  let changed = action === 'cut' ? cutPieces(project.clips, nextClips) : speedPieces(project.clips, nextClips, action)
+  for (const s of over) changed = beforeSpeedUp(changed, s)
+  for (const { id } of over) {
+    const s = live.find((c) => c.id === id)!
+    const rest = { ...s, was: without(s.was, changed) }
+    live = rest.was.length && autoCutIntact(rest, nextClips) ? live.map((c) => (c.id === id ? rest : c)) : withoutSpeedUp(live, s)
+  }
+  live = live.filter((c) => autoCutIntact(c, nextClips))
   const sorted = ranges.filter((r) => finite(r.start) && finite(r.end) && r.end > r.start).sort((a, b) => a.start - b.start)
   const fresh: AutoCut[] = []
   const shares = sorted.length ? assign(changed, sorted) : []
@@ -170,7 +219,6 @@ export function recordAutoCuts(
       })
     }
   })
-  const live = (project.autoCuts ?? []).filter((c) => autoCutIntact(c, nextClips))
   const all = [...live, ...fresh]
   const autoCuts = all.length > MAX_AUTO_CUTS ? all.slice(all.length - MAX_AUTO_CUTS) : all
   return withAutoCuts({ ...project, clips: nextClips }, autoCuts)

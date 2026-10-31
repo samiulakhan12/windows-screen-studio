@@ -6,7 +6,7 @@ import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
 import { MAX_AUTO_CUTS, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
 import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
-import { pendingCount, removeItems, reviewItems } from '../src/shared/review/review'
+import { mergeSnapshot, pendingCount, removeItems, reviewItems } from '../src/shared/review/review'
 import { suggestionRanges } from '../src/shared/review/wordCuts'
 import type { AutoCut, Clip, Project } from '../src/shared/types'
 
@@ -424,5 +424,64 @@ describe('a hand edit that takes in an automatic cut (settle)', () => {
     const f = store(recordAutoCuts(project(), cutRange(project().clips, 2, 2.5), [{ start: 2, end: 2.5, words: 'um' }], 'cut', 'filler', counter('u')))
     f.update((p) => recordAutoCuts(p, cutRange(p.clips, 2.5, 3), [{ start: 2.5, end: 3, words: 'uh' }], 'cut', 'filler', counter('h')))
     expect(liveAutoCuts(f.state).map((c) => c.words)).toEqual(['um', 'uh'])
+  })
+})
+
+describe('an automatic change over an earlier automatic speed-up', () => {
+  /** Touching spans at the same speed joined: how the video plays. */
+  const plays = (clips: Clip[]): [number, number, number][] =>
+    spans(clips).reduce<[number, number, number][]>((out, s) => {
+      const last = out[out.length - 1]
+      if (last && Math.abs(last[1] - s[0]) < 1e-6 && last[2] === s[2]) last[1] = s[1]
+      else out.push([...s])
+      return out
+    }, [])
+  const auto = (p: Project, start: number, end: number, action: AutoCut['action'], by: AutoCut['by'], prefix: string): Project =>
+    recordAutoCuts(p, applySmartSpeed(p.clips, [{ start, end }], action), [{ start, end }], action, by, counter(prefix))
+  /** Removes each listed item in list order, one at a time, as the panel's Delete does. */
+  const removeOneByOne = (p: Project): Project => {
+    let shown = reviewItems(p)
+    for (let k = 0; k < shown.length; k++) {
+      const item = shown[k]
+      p = removeItems(p, [item])
+      shown = mergeSnapshot(shown, reviewItems(p))
+    }
+    return p
+  }
+
+  it('2x and then a cut of the same silence: one record, and Remove brings it back at 1x', () => {
+    const fast = auto(project(), 5, 7, 2, 'silences', 'f')
+    const cut2 = auto(fast, 5, 7, 'cut', 'silences', 'c')
+    expect(cut2.autoCuts).toEqual([{ id: 'c1', by: 'silences', action: 'cut', start: 5, end: 7, was: [{ start: 5, end: 7, speed: 1 }] }])
+    const back = removeItems(cut2, reviewItems(cut2))
+    expect(plays(back.clips)).toEqual([[0, 20, 1]])
+    expect(reviewItems(back)).toEqual([])
+  })
+
+  it('2x and then 4x over the same part: Remove brings it back at 1x', () => {
+    const p = auto(auto(project(), 5, 9, 2, 'smart-speed', 'f'), 5, 9, 4, 'smart-speed', 'g')
+    expect(p.autoCuts?.map((c) => [c.id, c.action, c.was])).toEqual([['g1', 4, [{ start: 5, end: 9, speed: 1 }]]])
+    expect(plays(removeItems(p, reviewItems(p)).clips)).toEqual([[0, 20, 1]])
+  })
+
+  it('a part of a 2x re-timed to 4x: the 2x keeps the rest, both listed, and removing both gives it all back', () => {
+    const p = auto(auto(project(), 5, 15, 2, 'smart-speed', 'f'), 8, 10, 4, 'silences', 'g')
+    expect(liveAutoCuts(p).map((c) => [c.id, c.was])).toEqual([
+      [
+        'f1',
+        [
+          { start: 5, end: 8, speed: 1 },
+          { start: 10, end: 15, speed: 1 }
+        ]
+      ],
+      ['g1', [{ start: 8, end: 10, speed: 1 }]]
+    ])
+    expect(plays(removeOneByOne(p).clips)).toEqual([[0, 20, 1]])
+  })
+
+  it('a cut inside a 2x that a 4x then takes over comes back at 1x', () => {
+    const p = auto(auto(auto(project(), 5, 9, 2, 'smart-speed', 'f'), 6, 7, 'cut', 'silences', 'c'), 5, 9, 4, 'smart-speed', 'g')
+    expect(liveAutoCuts(p).map((c) => c.id)).toEqual(['c1', 'g1'])
+    expect(plays(removeOneByOne(p).clips)).toEqual([[0, 20, 1]])
   })
 })
