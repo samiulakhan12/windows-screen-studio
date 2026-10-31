@@ -204,7 +204,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   transcription model of a provider that has none of its own, and a note in Settings › AI next to
   a provider whose model is on the retiring list: "OpenAI retires whisper-1 on 26 February 2027.
   Choose another transcription model before then." It never changes a model the user saved, never
-  adds a provider, host or address, and nothing in it runs.
+  adds a provider, host or address, and nothing in it runs. Settings asks main for the list each
+  time it opens, so a list refreshed while Flown runs shows the next time Settings opens.
 
 ## 4. Releasing
 
