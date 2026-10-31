@@ -249,7 +249,9 @@ The limit is 280. The card's counter shows "212 / 280".
 - The queue runs at most 2 at a time. Each job has a request id `pub-<n>`; *Stop* on a waiting job
   takes it out of the queue, on a running one calls `cancelAiText(id)`. *Stop all* stops every one.
 - The answer is applied only to the job that is still current for its item (a stopped or replaced
-  job's late answer is dropped). The renderer cleans the text again (§4.4) before showing it.
+  job's late answer is dropped). The renderer cleans the text again (§4.4) before showing it; the
+  title and summary, which main checks the Captions tab's way, lose there the links the captions
+  sent do not have, as the pack's items do in main.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
 

@@ -95,15 +95,21 @@ let seq = 0
 const current = new Map<string, string>()
 const slot = (projectId: string, kind: PublishKind): string => `${projectId}\u0000${kind}`
 
-/** The text a card shows for `result`, cleaned again (the user's own links are kept from here on). */
-export function cardText(result: AiTextResult): { text: string; tags: string } {
+/**
+ * The text a card shows for `result`, cleaned again. The pack's own items lost the links their
+ * captions lack in main, so the rest are kept; a title or summary (the Captions tab's tasks, checked
+ * the old way) loses here the links `segments`, the captions sent, do not have.
+ */
+export function cardText(result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text'>[]): { text: string; tags: string } {
   const keep = { keepLinks: true }
+  const sent = { linksFrom: segments.map((s) => s.text).join(' ') }
   switch (result.task) {
     case 'title':
-      return { text: plainText(result.text, { ...keep, max: 150, oneLine: true }), tags: '' }
+      return { text: plainText(result.text, { ...sent, max: 150, oneLine: true }), tags: '' }
+    case 'summary':
+      return { text: plainText(result.text, { ...sent, max: MAX_CARD_TEXT }), tags: '' }
     case 'youtube':
       return { text: plainText(result.text, { ...keep, max: MAX_CARD_TEXT }), tags: tagsText(result.tags.map((t) => plainText(t, { ...keep, max: 30, oneLine: true })).filter(Boolean)) }
-    case 'summary':
     case 'linkedin':
     case 'xpost':
     case 'article':
@@ -148,7 +154,7 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
           patch(projectId, kind, { status: 'error', error: 'The provider answered something else; try again.' })
           return
         }
-        const { text, tags } = cardText(result)
+        const { text, tags } = cardText(result, ctx.segments)
         if (!text) {
           patch(projectId, kind, { status: 'error', error: 'The provider wrote nothing; try again.' })
           return

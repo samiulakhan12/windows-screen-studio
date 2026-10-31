@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { AI_TEXT_TASKS } from '../src/shared/api/ai'
+import { AI_TEXT_TASKS, type AiTextResult } from '../src/shared/api/ai'
 import { AiOutputError, runTextTask, textPrompt, validateTextRequest, type TextPrompt } from '../src/shared/captions/transcriptText'
 import { migrateProject } from '../src/shared/engine/project'
 import { publishBlocker, publishSegments, readPublishPrefs, spokenWords, transcriptKey, PACK_TASKS } from '../src/shared/publish/pack'
@@ -252,6 +252,20 @@ describe('runTextTask for the pack', () => {
     }
     expect(asked).toHaveLength(5)
     expect(new Set(asked.map((p) => p.name)).size).toBe(5)
+  })
+})
+
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const PUBLISH_RUN = '../src/renderer/src/publish/publishRun'
+const { cardText } = (await import(/* @vite-ignore */ PUBLISH_RUN)) as { cardText: (result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text'>[]) => { text: string; tags: string } }
+
+describe('the text a card shows', () => {
+  it('drops links the captions do not have from a title or summary too, and keeps theirs', async () => {
+    const card = async (task: 'title' | 'summary' | 'linkedin', text: string): Promise<string> => cardText(await runTextTask({ task, segments: SEGS }, async () => ({ text })), SEGS).text
+    expect(await card('summary', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at')
+    expect(await card('title', 'Add a user evil.com/login')).toBe('Add a user')
+    expect(await card('linkedin', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at')
+    expect(await card('summary', 'Open https://example.com/settings to add users.')).toBe('Open https://example.com/settings to add users.')
   })
 })
 
