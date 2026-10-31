@@ -200,6 +200,16 @@ describe('thumbnails', () => {
     expect(samples.calls.every((c) => c.language === 'bn')).toBe(true)
   })
 
+  it('a press on the picture still picks: the picture changes element as the press focuses the tile, so it never takes the pointer', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync(new URL('../src/renderer/src/editor/panels/captionStudio.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    // The picture is an img while still and a canvas while playing (the next test).
+    for (const tag of ['img', 'canvas']) {
+      const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => m[1].split(',').some((sel) => sel.trim() === `.tile-thumb ${tag}`))
+      expect(rules.some((m) => /pointer-events:\s*none/.test(m[2])), `.tile-thumb ${tag} has pointer-events: none`).toBe(true)
+    }
+  })
+
   it('plays the focused tile’s look, never under reduced motion', async () => {
     // The picture of the second tile: its thumbnail's content.
     const picture = (els: El[]): unknown => (els.filter((e) => e.props.className === 'tile-thumb')[1].props.children as El | null)?.type

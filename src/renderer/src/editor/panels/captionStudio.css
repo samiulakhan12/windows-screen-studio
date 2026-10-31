@@ -77,11 +77,17 @@
   background: #2a2d34;
 }
 
+/*
+ * The picture changes element when the tile starts playing (an img becomes a canvas as the press
+ * focuses it); a press on the old element would then lose its click. The picture never takes the
+ * pointer, so the press and its click land on the tile.
+ */
 .tile-thumb img,
 .tile-thumb canvas {
   display: block;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
 .tile-name {
