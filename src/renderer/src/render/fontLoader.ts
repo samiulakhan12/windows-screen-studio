@@ -7,6 +7,7 @@
  * Text layers cache measured widths and drawn sprites: they put fontGeneration() in their keys,
  * so everything measured while a font was still loading is measured again once it is ready.
  */
+import type { CatalogFont } from '../../../shared/captions/fontCatalog'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project, ProjectFont } from '../../../shared/types'
@@ -141,4 +142,38 @@ export function missingFonts(project: Project): ProjectFont[] {
   return usedFontIds(project)
     .map((id) => fontOf(project.fonts, id)!)
     .filter((f) => entries.get(keyOf(project.id, f))?.state === 'missing')
+}
+
+/* ---------- Captions Studio's catalogue fonts (docs/design/captions-studio.md §6.5, §6.8) ---------- */
+// CONTRACT (part P2): signatures are frozen; bodies are to be written. P2 also makes usedFontIds
+// read captions.studio, graphics and title cards, and registers brand fonts again as FlownFontW-<id>.
+
+/** The body of a frozen signature part P2 writes. */
+function notImplemented(name: string, ...args: unknown[]): never {
+  void args
+  throw new Error(`${name}: not implemented (Captions Studio part P2)`)
+}
+
+/** The catalogue fonts the project draws with (§6.8): captions, graphics, title cards, scripts, partners and the emoji face. */
+export function catalogFontsFor(project: Project): string[] {
+  return notImplemented('catalogFontsFor', project)
+}
+
+/** Registers catalogue font `id` as FlownCat-<id> (bundled, or downloaded bytes); resolves when it is ready or missing. */
+export function loadCatalogFont(id: string): Promise<void> {
+  return notImplemented('loadCatalogFont', id)
+}
+
+export function catalogFontReady(id: string): boolean {
+  return notImplemented('catalogFontReady', id)
+}
+
+/** Waits for the catalogue faces and the FlownFontW- faces the project needs (export, before the first frame). Never rejects. */
+export async function prepareCaptionFonts(project: Project): Promise<void> {
+  return notImplemented('prepareCaptionFonts', project)
+}
+
+/** Catalogue fonts the project needs that are not downloaded (the export dialog's missing-font note). */
+export function missingCatalogFonts(project: Project): CatalogFont[] {
+  return notImplemented('missingCatalogFonts', project)
 }

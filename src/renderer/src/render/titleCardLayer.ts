@@ -361,3 +361,14 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
     else drawFullFrame(fc, card, phase, l, font)
   }
 }
+
+/**
+ * A blurred copy of the frame drawn so far, made off the frame canvas at `size` px (Captions
+ * Studio §9.7: shared by title cards and the Glass look).
+ *
+ * CONTRACT (part P2): the signature is frozen; P2 moves the title cards' blurred copy here.
+ */
+export function blurredFrameOf(ctx: CanvasRenderingContext2D, size: 256 | 128): HTMLCanvasElement {
+  void [ctx, size]
+  throw new Error('blurredFrameOf: not implemented (Captions Studio part P2)')
+}

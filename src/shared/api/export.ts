@@ -122,6 +122,12 @@ export interface ExportJob {
   maxBytes?: number
   /** Chapter markers written into the file (not GIF): output seconds, in order (see shared/render/chapters). */
   chapters?: OutputChapter[]
+  /** Pop and ding sounds of graphics (Captions Studio §10.6): output seconds per sound. */
+  pops?: { times: number[]; sound: 'pop' | 'ding' }[]
+  /** Bleep tones (Captions Studio §11.7): output seconds, split at cuts. */
+  tones?: { start: number; end: number }[]
+  /** Subtitle streams (Captions Studio §11.10): WebVTT per language, at most 8. */
+  subtitles?: { language: string; name: string; vtt: string; default: boolean }[]
   outputPath: string
 }
 

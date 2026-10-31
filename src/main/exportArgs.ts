@@ -2,6 +2,7 @@ import { AUDIO_RATE, planSoundtrack, type SoundFiles } from '../shared/render/au
 import { vp9MetadataFilter } from '../shared/render/codec'
 import type { ColorTags, ExportJob, FfmpegVideoEncoder, H264Encoder } from '../shared/api/export'
 import type { OutputChapter } from '../shared/render/chapters'
+import type { ExportFormat } from '../shared/types'
 import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
 
 export { AUDIO_RATE, audioFilterGraph, clickPositions, clickTrackGraph, soundtrackGraph } from '../shared/render/audioPlan'
@@ -423,4 +424,16 @@ export function ffmpegPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
   const logs = [`${log}-0.log`, `${log}-0.log.temp`, `${log}-0.log.mbtree`, `${log}-0.log.mbtree.temp`]
   const scripts = [...extra, ...(s ? [s] : [])]
   return { capture, passes: [pass1, args], scripts, temps: [intermediate, ...logs, ...scripts.map((f) => f.path)] }
+}
+
+/**
+ * The subtitle streams' arguments (Captions Studio §11.10): each WebVTT file an input after the
+ * chapters, mapped and encoded as mov_text (MP4, MOV) or webvtt (WebM), with its ISO 639-2 language
+ * and name; the same in both passes of a two-pass encode.
+ *
+ * CONTRACT (part P2): the signature is frozen; the body is to be written.
+ */
+export function subtitleArgs(io: { inputs: string[] }, from: number, tracks: readonly { file: string; iso: string; name: string; default: boolean }[], format: ExportFormat): string[] {
+  void [io, from, tracks, format]
+  throw new Error('subtitleArgs: not implemented (Captions Studio part P2)')
 }
