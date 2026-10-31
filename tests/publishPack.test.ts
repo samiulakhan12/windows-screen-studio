@@ -339,6 +339,13 @@ describe('composeYoutubeDescription', () => {
     expect([...out].length).toBeLessThanOrEqual(YOUTUBE_DESCRIPTION_MAX)
     expect(out.endsWith('9:30 Chapter 19')).toBe(true)
   })
+  it('has no "<" or ">", which YouTube refuses in a description, in what Copy and the export give', () => {
+    const chapters = [{ start: 0, title: 'Intro' }, { start: 30, title: 'Export <MP4>' }]
+    const copy = composeYoutubeDescription('Go to Settings > Export and pick <MP4>.', chapters, 60)
+    expect(copy).toBe('Go to Settings › Export and pick ‹MP4›.\n\nChapters\n0:00 Intro\n0:30 Export ‹MP4›')
+    expect(exportDescription({ publish: { description: 'Settings > Export' } }, 'Demo', 60, chapters)).toBe('Settings › Export\n\nChapters\n0:00 Intro\n0:30 Export ‹MP4›\n')
+    expect(composeYoutubeDescription('a<b', [], 10)).toBe('a‹b')
+  })
   it('reads tags typed with commas or line breaks', () => {
     expect(parseTags('a, b\n c,,')).toEqual(['a', 'b', 'c'])
   })

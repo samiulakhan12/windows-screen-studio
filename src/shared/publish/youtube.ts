@@ -28,13 +28,17 @@ export function projectYoutubeChapters(project: Pick<Project, 'clips' | 'freezes
  */
 export const descriptionBody = (text: unknown): string => typedText(text, YOUTUBE_DESCRIPTION_MAX)
 
+/** `s` without "<" and ">", which YouTube refuses in a description: they become "‹" and "›" (same length). */
+const withoutAngleBrackets = (s: string): string => s.replace(/</g, '‹').replace(/>/g, '›')
+
 /**
  * The description: `text`, then (with chapters) a blank line, "Chapters" and one "0:00 Intro" line
- * per chapter. Over YouTube's 5 000 characters, the text is cut to fit (the timestamps are kept whole).
+ * per chapter, with "<" and ">" as "‹" and "›" ("Settings › Export"). Over YouTube's 5 000
+ * characters, the text is cut to fit (the timestamps are kept whole).
  */
 export function composeYoutubeDescription(text: string, chapters: readonly OutputChapter[], duration: number): string {
-  const body = text.trim()
-  const list = chapters.length ? youtubeChapters(chapters, duration).text : ''
+  const body = withoutAngleBrackets(text.trim())
+  const list = chapters.length ? withoutAngleBrackets(youtubeChapters(chapters, duration).text) : ''
   if (!list) return cutAt(body, YOUTUBE_DESCRIPTION_MAX)
   const tail = `${CHAPTERS_HEADING}\n${list}`
   if (!body) return cutAt(tail, YOUTUBE_DESCRIPTION_MAX)

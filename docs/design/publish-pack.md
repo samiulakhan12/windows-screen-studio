@@ -269,8 +269,11 @@ comma: `https://example.com/をご覧ください` is a 23 and 7 Japanese charac
 ### 4.7 Composing the YouTube description
 
 `composeYoutubeDescription(text, chapters, duration)`: the text; then, when there is at least one
-chapter, a blank line, `Chapters` and `youtubeChapters(chapters, duration).text`. When the whole is
-over YouTube's 5 000 characters the text is cut (at a sentence or word end) to fit. Chapters come
+chapter, a blank line, `Chapters` and `youtubeChapters(chapters, duration).text`. `<` and `>`,
+which YouTube refuses in a description, become `‹` and `›` in both ("Settings › Export"), so what
+*Copy* gives and the export's file can be pasted as they are; the card keeps the text as written.
+When the whole is over YouTube's 5 000 characters the text is cut (at a sentence or word end) to
+fit. Chapters come
 from `outputChapters(project.chapters, project.clips, planOf(project))` and the duration from
 `videoDuration`, as `exportBundleRun.ts` does.
 

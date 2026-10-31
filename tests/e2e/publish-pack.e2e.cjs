@@ -225,9 +225,11 @@ async function main() {
         h.assert((await cardText(win, 'summary')) === 'A mock summary of the recording.', 'summary from the existing task')
         if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'publish-pack-written.png') })
 
-        // Copy: the exact text, the YouTube one with the chapters; an edit is what gets copied.
+        // Copy: the exact text, the YouTube one with the chapters and "<" and ">" (which YouTube
+        // refuses) as "‹" and "›"; an edit is what gets copied.
         const copied = await copyFrom(win, app, 'youtube')
-        h.assert(copied === `${yt}\n\nChapters\n0:00 Intro\n0:02 Settings\n0:04 Save`, `YouTube copy: ${JSON.stringify(copied)}`)
+        const ytCopy = yt.replace(/</g, '‹').replace(/>/g, '›')
+        h.assert(copied === `${ytCopy}\n\nChapters\n0:00 Intro\n0:02 Settings\n0:04 Save`, `YouTube copy: ${JSON.stringify(copied)}`)
         h.assert((await copyFrom(win, app, 'youtube', 'Copy tags')) === 'mock, flown demo, btag/b', 'tags copied')
         await card(win, 'linkedin').locator('textarea.publish-text').fill('My own words <b>here</b>')
         h.assert((await copyFrom(win, app, 'linkedin')) === 'My own words <b>here</b>', 'the edit is copied')
