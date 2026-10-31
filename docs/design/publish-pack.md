@@ -489,8 +489,11 @@ Where the build differs from or adds to the sections above:
   removed even when it is code (`user.email`), unless the transcript has it. E-mail addresses are
   kept. A bare name with no port or path on a top-level domain that is also a file type (`.app`,
   `.zip`, `.mov`, `.srt`, `.md`, `.py`, `.sh`, `.rs`, `.java`, `.so`, `.cc`, `.gd`, `.map`:
-  `recording.mov`, `captions.srt`, `README.md`, `install.sh`) is a file or app name and stays (X
-  still counts it as a link). Tags keep the links the transcript has too (`ASP.NET` when it was said).
+  `recording.mov`, `captions.srt`, `README.md`, `install.sh`) is a file or app name, but sites still
+  link it (`flown.app` is a site, and X counts it as a link): it stays whole only when the transcript
+  has it, else its name stays without the extension (`Open Settings to check it`, `Grab flown-setup
+  from flown`), or nothing when that name is a link too (`paypal.com.app`). Tags keep the links the
+  transcript has too (`ASP.NET` when it was said).
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),

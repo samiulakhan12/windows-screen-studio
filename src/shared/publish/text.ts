@@ -44,8 +44,9 @@ const TRAIL = /[.,;:!?)\]]+$/
 /**
  * A bare name on a top-level domain that is also a file type, with no port or path
  * ("recording.mov", "export.zip", "Settings.app", "captions.srt", "settings.py", "README.md",
- * "install.sh", "Main.java"): a file or app name, kept as text. With a scheme, "www.", a port or a
- * path it is a link. X still counts it as one (xLength), as X does.
+ * "install.sh", "Main.java"): a file or app name. Sites still link it ("flown.app" is a site), so
+ * unless the transcript has it, only its name stays ("recording", "Settings"). With a scheme, "www.",
+ * a port or a path it is a link. X counts it as one (xLength), as X does.
  */
 const FILE_NAME = /^(?!www\.)[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:app|zip|mov|srt|md|py|sh|rs|java|so|cc|gd|map)$/iu
 
@@ -64,7 +65,10 @@ export function plainText(s: unknown, opts: PlainTextOptions): string {
       // A dot or bracket at the end is the sentence's, not the link's: it stays.
       const tail = TRAIL.exec(match)?.[0] ?? ''
       const link = match.slice(0, match.length - tail.length)
-      return (FILE_NAME.test(link) || allowed.has(link.toLowerCase()) ? link : '') + tail
+      if (allowed.has(link.toLowerCase())) return link + tail
+      // A file or app name keeps its name without the extension, unless that is a link too ("evil.com.app").
+      const name = FILE_NAME.test(link) ? link.slice(0, link.lastIndexOf('.')) : ''
+      return (name.search(LINK) < 0 ? name : '') + tail
     })
   }
   if (opts.oneLine) t = t.replace(/\s*\n\s*/g, ' ')

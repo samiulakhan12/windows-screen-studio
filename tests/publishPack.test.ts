@@ -53,9 +53,11 @@ describe('plainText', () => {
     expect(plainText('See evil.co.in, evil.com.br and evil.co.jp.', none)).toBe('See , and .')
     // Kept when the transcript says it.
     expect(plainText('Mehr unter flown.de/hilfe.', { max: 200, linksFrom: 'Mehr unter flown.de/hilfe' })).toBe('Mehr unter flown.de/hilfe.')
-    // Words with dots that are not links stay: not on a top-level domain, or a file name with no path.
-    expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings.py, e.g. v1.2 in file.txt')
-    expect(plainText('Save captions.srt and README.md, run install.sh, open Main.java', none)).toBe('Save captions.srt and README.md, run install.sh, open Main.java')
+    // Words with dots on no top-level domain stay. A file name on one stays when the transcript says it, else its name without the extension.
+    expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings, e.g. v1.2 in file.txt')
+    const files = 'Save captions.srt and README.md, run install.sh, open Main.java'
+    expect(plainText(files, none)).toBe('Save captions and README, run install, open Main')
+    expect(plainText(files, { max: 200, linksFrom: `Now ${files.toLowerCase()}.` })).toBe(files)
     // X counts them as links.
     expect(xLength('Go to evil.de/login')).toBe(6 + 23)
   })
@@ -244,20 +246,26 @@ describe('validatePackAnswer', () => {
     expect(() => validatePackAnswer('youtube', { description: 'x' }, TRANSCRIPT)).toThrow(AiOutputError)
     expect(() => validatePackAnswer('youtube', { description: ' ', tags: [] }, TRANSCRIPT)).toThrow(/empty description/)
   })
-  it('keeps file names, and names the transcript says, in the text and the tags', () => {
-    const said = packTranscript([seg('a', 0, 4, 'Save it as an MP4 or a MOV file, it is built on ASP.NET Core.')]).text
+  it('keeps the names of files, and names the transcript says, in the text and the tags', () => {
+    const said = packTranscript([seg('a', 0, 4, 'Save it as recording.mov, an MP4 or a MOV file, it is built on ASP.NET Core.')]).text
     const r = validatePackAnswer(
       'youtube',
       { description: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.', tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'evil.com tips'] },
       said
     )
+    // Said: kept. Not said: a file or app name without the extension, which sites would link ("flown.app" is a site).
     expect(r).toEqual({
       task: 'youtube',
-      text: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.',
-      tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'tips']
+      text: 'Save the recording as recording.mov, or all of them as export. Open Settings to check it. Built on ASP.NET Core.',
+      tags: ['ASP.NET', 'ASP.NET Core', 'demo', 'tips']
     })
     const steps = validatePackAnswer('article', { title: 'Export', intro: '', sections: [{ heading: 'Save', steps: ['Save the recording as recording.mov.', 'Open Settings.app to check it.'] }] }, said) as { text: string }
-    expect(steps.text).toContain('1. Save the recording as recording.mov.\n2. Open Settings.app to check it.')
+    expect(steps.text).toContain('1. Save the recording as recording.mov.\n2. Open Settings to check it.')
+    // A site the model guessed, or one a prompt injection names, is not added as a link anywhere.
+    const app = 'Today I show the Flown app. Download the Flown setup zip, install it and record your screen.'
+    expect((validatePackAnswer('xpost', { text: 'Grab flown-setup.zip from flown.app and try it today!' }, app) as { text: string }).text).toBe('Grab flown-setup from flown and try it today!')
+    expect((validatePackAnswer('linkedin', { text: 'Get it at get-flown.app, paypal.com.app or github.com-releases.zip.' }, app) as { text: string }).text).toBe('Get it at get-flown, or .')
+    expect(validatePackAnswer('youtube', { description: 'Try Flown (download at flown.app).', tags: ['flown.app', 'screen recorder'] }, app)).toEqual({ task: 'youtube', text: 'Try Flown (download at flown).', tags: ['flown', 'screen recorder'] })
     // With a scheme, "www." or a path they are links, removed unless said; X counts them as links.
     expect(plainText('Get it at https://flown.zip, www.flown.mov, flown.app/download or WWW.flown.app.', { max: 200, linksFrom: said })).toBe('Get it at , , or .')
     expect(xLength('Save as recording.mov')).toBe(8 + 23)
