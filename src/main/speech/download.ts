@@ -48,6 +48,25 @@ export interface DownloadOptions {
   freeBytes?: (dir: string) => Promise<number | null>
   /** The test hook's base (SSW_SPEECH_MODEL_BASE_URL, unpackaged only): its origin is allowed too. */
   testBase?: string | null
+  /**
+   * Where a download (and each redirect) may go; absent: allowDownloadUrl with `testBase` (speech
+   * models). Captions Studio's assets pass their own pinned prefixes (assetStore.allowAssetUrl).
+   */
+  allow?: (url: URL) => boolean
+  /**
+   * The addresses tried in order (a mirror, then upstream), every one checked against the same
+   * pin; absent: `pin.url` alone. A source that is missing, refuses, or stays busy too long gives
+   * way to the next one.
+   */
+  sources?: readonly string[]
+  /** The server is busy (HTTP 429 or 503 with Retry-After): when the download tries again (epoch ms), null once it does. */
+  onBusy?: (retryAt: number | null) => void
+  /** Longest Retry-After honoured; longer stops with the busy message (or tries the next source). */
+  maxRetryAfterMs?: number
+  /** The clock Retry-After dates are read against (tests). */
+  now?: () => number
+  /** How a busy server's Retry-After is waited for (tests); absent: a cancellable timer. */
+  wait?: (ms: number, signal: AbortSignal) => Promise<void>
   /** Injectable for tests (EBUSY on rename). */
   rename?: (from: string, to: string) => Promise<void>
   /** Attempts of a rename blocked by a transient lock, and the wait between them. */
@@ -55,7 +74,22 @@ export interface DownloadOptions {
   renameDelayMs?: number
 }
 
-export const DOWNLOAD = { stallMs: 60_000, retries: 3, retryDelaysMs: [2000, 5000, 15_000], maxRedirects: 5, spareBytes: 64 << 20, progressEveryMs: 250 } as const
+export const DOWNLOAD = { stallMs: 60_000, retries: 3, retryDelaysMs: [2000, 5000, 15_000], maxRedirects: 5, spareBytes: 64 << 20, progressEveryMs: 250, maxRetryAfterMs: 10 * 60_000, busyWaits: 3, busyDefaultMs: 60_000 } as const
+
+/** What a download that stays busy longer than DOWNLOAD.maxRetryAfterMs stops with. */
+export const BUSY_MESSAGE = 'The download server is busy. Try again in 10 minutes.'
+
+/**
+ * Milliseconds a Retry-After header asks to wait (seconds, or an HTTP date read against `now`);
+ * null when absent or unreadable.
+ */
+export function retryAfterMs(value: string | undefined, now: number): number | null {
+  const v = value?.trim()
+  if (!v) return null
+  if (/^\d+$/.test(v)) return Number(v) * 1000
+  const at = Date.parse(v)
+  return Number.isFinite(at) ? Math.max(0, at - now) : null
+}
 
 /** Speed is averaged over this long. */
 const SPEED_WINDOW_MS = 5000
@@ -198,8 +232,32 @@ async function renameWithRetries(from: string, to: string, opts: DownloadOptions
   }
 }
 
-/** Downloads `pin` to `dest` (through `dest`.part); resolves once the verified file is in place. */
+/**
+ * Downloads `pin` to `dest` (through `dest`.part) from its sources in order; resolves once the
+ * verified file is in place. A source that is missing (404, 410), refuses (403), answers another
+ * error status or stays busy longer than Retry-After allows gives way to the next one (resuming
+ * the same .part: every source serves the same pinned bytes); the last one's failure is thrown.
+ * A file that does not match its pin is deleted and stops the download.
+ */
 export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptions): Promise<void> {
+  const sources = opts.sources?.length ? opts.sources : [pin.url]
+  const allow = opts.allow ?? ((u: URL) => allowDownloadUrl(u, opts.testBase ?? null))
+  for (const source of sources) if (!allow(new URL(source))) throw new DownloadFailure('other', 'The download address is not allowed.')
+  let last: unknown = null
+  for (const [i, source] of sources.entries()) {
+    try {
+      return await downloadFrom(source, pin, dest, opts, allow)
+    } catch (err) {
+      last = err
+      const next = i + 1 < sources.length
+      if (!next || !(err instanceof DownloadFailure) || !['missing', 'refused', 'http'].includes(err.kind)) throw err
+    }
+  }
+  throw last
+}
+
+/** One source's download of `pin` (downloadPinned): resumed, retried, verified, installed. */
+async function downloadFrom(source: string, pin: Pin, dest: string, opts: DownloadOptions, allow: (url: URL) => boolean): Promise<void> {
   const part = `${dest}.part`
   const meta = `${dest}.part.json`
   const dir = dest.replace(/[\\/][^\\/]*$/, '')
@@ -207,7 +265,8 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
   const delays = opts.retryDelaysMs ?? DOWNLOAD.retryDelaysMs
   const stallMs = opts.stallMs ?? DOWNLOAD.stallMs
   const cancelled = (): DownloadFailure => new DownloadFailure('cancelled', 'Cancelled.')
-  if (!allowDownloadUrl(new URL(pin.url), opts.testBase ?? null)) throw new DownloadFailure('other', 'The download address is not allowed.')
+  const maxWait = opts.maxRetryAfterMs ?? DOWNLOAD.maxRetryAfterMs
+  let busyWaits = 0
 
   let have = await sizeOf(part)
   if (have > pin.bytes) {
@@ -283,7 +342,7 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
       }
       const headers: Record<string, string> = have > 0 ? { Range: `bytes=${have}-` } : {}
       armStall()
-      let url = pin.url
+      let url = source
       let res: HttpResponse
       for (let hop = 0; ; hop++) {
         try {
@@ -300,13 +359,27 @@ export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptio
           } catch {
             throw new DownloadFailure('other', 'The download was redirected to an invalid address.')
           }
-          if (!allowDownloadUrl(next, opts.testBase ?? null)) throw new DownloadFailure('other', `The download was redirected to a host that is not allowed (${next.host}).`)
+          if (!allow(next)) throw new DownloadFailure('other', `The download was redirected to a host that is not allowed (${next.host}).`)
           url = next.href
           continue
         }
         break
       }
       res = res!
+      // A busy server (rate limits on raw.githubusercontent.com, an overloaded mirror) is not a
+      // fault of the file: wait as long as Retry-After asks, up to maxRetryAfterMs, then try again.
+      const wait = res.status === 429 || res.status === 503 ? (retryAfterMs(res.headers['retry-after'], (opts.now ?? Date.now)()) ?? (res.status === 429 ? DOWNLOAD.busyDefaultMs : null)) : null
+      if (wait !== null) {
+        if (wait > maxWait || busyWaits >= DOWNLOAD.busyWaits) throw new DownloadFailure('http', BUSY_MESSAGE, res.status)
+        busyWaits++
+        if (stallTimer) clearTimeout(stallTimer)
+        controller.abort()
+        opts.onBusy?.((opts.now ?? Date.now)() + wait)
+        await (opts.wait ?? sleep)(wait, opts.signal)
+        opts.onBusy?.(null)
+        if (opts.signal.aborted) throw cancelled()
+        continue
+      }
       if (res.status === 403) throw new DownloadFailure('refused', 'Hugging Face or the network refused the download (HTTP 403).', 403)
       if (res.status === 404 || res.status === 410) throw new DownloadFailure('missing', `The model is no longer at its address (HTTP ${res.status}).`, res.status)
       if (res.status >= 500) throw Object.assign(new Retryable(`The server answered with HTTP ${res.status}.`), { status: res.status })
