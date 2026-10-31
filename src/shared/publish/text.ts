@@ -100,9 +100,20 @@ function linkKey(link: string): string {
   return host.replace(/[A-Z]+/g, (c) => c.toLowerCase()) + link.slice(host.length)
 }
 
+/** The last few texts' links: every field of an answer is checked against the same transcript. */
+const keysOf = new Map<string, ReadonlySet<string>>()
+
 /** The links of `text` (in its NFC form, as X reads it), as linkKey compares them. */
-export function linkKeys(text: string): Set<string> {
-  return new Set(linksIn(text.normalize()).map((l) => linkKey(l.text)))
+export function linkKeys(text: string): ReadonlySet<string> {
+  let keys = keysOf.get(text)
+  if (keys) keysOf.delete(text)
+  else {
+    keys = new Set(linksIn(text.normalize()).map((l) => linkKey(l.text)))
+    if (keysOf.size >= 8) keysOf.delete(keysOf.keys().next().value as string)
+  }
+  // The most recently used last, so the transcript stays while an answer's fields are checked.
+  keysOf.set(text, keys)
+  return keys
 }
 
 /**

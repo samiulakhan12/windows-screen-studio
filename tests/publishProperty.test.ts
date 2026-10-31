@@ -187,4 +187,14 @@ describe('the copy pack, on thousands of seeded texts', () => {
       expect(performance.now() - start, `cutAt and fitX ${s.slice(0, 20)}`).toBeLessThan(300)
     }
   })
+
+  it('checks every field of a long answer against an hour of transcript once, not once per field', () => {
+    const hour = 'Today I show how to export a video and set up flown.app with e.target and ASP.NET Core. '.repeat(680)
+    const sections = Array.from({ length: 12 }, (_, i) => ({ heading: `Part ${i}`, steps: Array.from({ length: 20 }, (_, j) => `Open settings ${j} and press Save on flown.app`) }))
+    const start = performance.now()
+    const r = validatePackAnswer('article', { title: 'Export', intro: 'How to export.', sections }, hour) as { text: string }
+    expect(performance.now() - start).toBeLessThan(500)
+    expect(r.text).toContain('1. Open settings 0 and press Save on flown.app')
+  })
 })
+
