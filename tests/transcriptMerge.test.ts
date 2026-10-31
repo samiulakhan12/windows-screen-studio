@@ -137,6 +137,22 @@ describe('mergeParts', () => {
     expect(out.segments.map((s) => s.text)).toEqual(['现在', '打开 Chrome 设置菜单。'])
   })
 
+  it('adds no spaces to a Thai or Japanese text-only caption split at a fixed cut', () => {
+    // Music all through: no pause, so a fixed cut at 29 with the parts overlapping.
+    const parts = planParts(58, [], { maxSeconds: 30 })
+    const answers = [
+      ['สวัสดีครับวันนี้อากาศดีมาก ผมจะไปตลาดกับเพื่อนๆ แล้วก็กลับบ้านตอนเย็น '.repeat(4) + 'เราจะทำอาหาร', 'เราจะทำอาหาร ด้วยกันที่บ้าน พรุ่งนี้เราจะไปทะเล ผมชอบว่ายน้ำมาก '.repeat(4).trim()],
+      ['今日は新しいアプリを紹介します。'.repeat(8) + 'まず Settings を', 'まず Settings を開いて、次に Display を選びます。' + '最後に保存します。'.repeat(8)]
+    ]
+    for (const texts of answers) {
+      const results = parts.map((part, i) => ({ part, transcript: { segments: timeTextPart(texts[i], [{ start: 0, end: part.end - part.start }], part.end - part.start) } }))
+      const out = mergeParts(results, 58).segments.map((s) => s.text)
+      // A caption cut in two at the fixed cut, and every caption as the answer wrote it.
+      expect(out.filter((t) => !results.some((r) => r.transcript.segments.some((s) => s.text === t))).length).toBeGreaterThan(0)
+      for (const t of out) expect(texts.some((x) => x.includes(t)), t).toBe(true)
+    }
+  })
+
   it('keeps every word of a long sentence across a fixed cut exactly once', () => {
     // 1000 s without a pause: a fixed cut at 599, part 0 sent until 600 and part 1 from 598.
     const parts = planParts(1000, [], { maxSeconds: 600 })
