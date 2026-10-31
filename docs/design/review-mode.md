@@ -237,7 +237,7 @@ Project.autoCutOutcomes?: AutoCutOutcome[]
    holding footage at its speed inside it (a cut made inside it) takes that speed too. Speed-ups
    are taken over latest first, so one inside another goes first. So Remove never leaves an
    automatic 2× behind that the list no longer shows, and never a 1× hole inside one it still shows.
-4. Stale records (§2.1) are dropped; the new ones are appended; ids are `c<base36 time><counter>`.
+4. Stale records (§2.1) are dropped; the new ones are appended; ids are `a<base36 time><counter>`.
 5. Returns `{ ...project, clips: nextClips, autoCuts }`; `project` itself when the clips are the
    same object.
 
