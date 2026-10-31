@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 import { MAX_CAPTIONS } from '../src/shared/captions/captionData'
+import { studioPreset } from '../src/shared/captions/studioPresets'
 
 /** What a call to the main process rejects with in the renderer (Electron puts the error's name first). */
 const ipcError = (channel: string, text: string): Error => new Error(`Error invoking remote method '${channel}': ${text}`)
@@ -18,8 +19,11 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 const calls = { transcribe: [] as ReturnType<typeof deferred<unknown>>[], cancel: [] as ReturnType<typeof deferred<void>>[] }
 const listeners = new Set<(p: TranscribeProgress) => void>()
 const progress = (p: TranscribeProgress): void => listeners.forEach((l) => l(p))
+/** The brand kit main hands out (Captions Studio's caption style, §4.6). */
+const kit: { captionStyle?: unknown } = {}
 vi.stubGlobal('window', {
   api: {
+    getBrandKit: () => Promise.resolve(kit),
     transcribe: () => {
       const d = deferred<unknown>()
       calls.transcribe.push(d)
@@ -161,5 +165,52 @@ describe('captionItems: a transcript longer than a project keeps (AI-8)', () => 
     calls.transcribe[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] })
     await run
     expect(items.transcriptionJob()).toBeNull()
+  })
+})
+
+describe('captionItems: the first captions get Auto style (Captions Studio test 40, §11.6)', () => {
+  const tall = (): ReturnType<typeof services> => {
+    const s = services()
+    s.store.state = { ...s.store.state, width: 1920, height: 1080, style: { aspectRatio: '9:16' } }
+    return s
+  }
+  const segments = [{ id: 'a', start: 0, end: 1, text: 'hi there' }]
+
+  it('in the same update that writes the transcript, with no record', async () => {
+    const s = tall()
+    let updates = 0
+    const write = s.store.update
+    s.store.update = (fn) => {
+      updates++
+      write(fn)
+    }
+    const run = items.transcribe(s, { providerId: 'x' })
+    calls.transcribe[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments })
+    expect(await run).toBe(true)
+    expect(updates).toBe(1)
+    expect(s.store.state.captions).toMatchObject({ show: true, studio: { from: 'clean-short' } })
+    expect(s.store.state.captionAuto).toBeUndefined()
+  })
+
+  it("the brand kit's caption style wins", async () => {
+    kit.captionStyle = studioPreset('bold-pop')!.look
+    try {
+      const s = tall()
+      const run = items.transcribe(s, { providerId: 'x' })
+      calls.transcribe[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments })
+      await run
+      expect(s.store.state.captions).toMatchObject({ studio: { from: 'brand' } })
+    } finally {
+      delete kit.captionStyle
+    }
+  })
+
+  it('captions made again keep the look the project has', async () => {
+    const s = tall()
+    s.store.state = { ...s.store.state, transcript: { language: 'en', provider: 'local', model: 'm', createdAt: '', segments } }
+    const run = items.transcribe(s, { providerId: 'x' })
+    calls.transcribe[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments })
+    await run
+    expect((s.store.state.captions as { studio?: unknown }).studio).toBeUndefined()
   })
 })

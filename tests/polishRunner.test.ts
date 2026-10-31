@@ -17,6 +17,12 @@ import type { CursorTrack, Project } from '../src/shared/types'
  * live for the editor session).
  */
 
+// The Caption look step runs Captions Studio's planner: part P1's word times and twins (stand-ins
+// only while P1's functions are stubs, tests/p1Fillins.ts).
+vi.mock('../src/shared/captions/words', async (o) => (await import('./p1Fillins')).fillWords(await o()))
+vi.mock('../src/shared/captions/studioLayout', async (o) => (await import('./p1Fillins')).fillLayout(await o(), await import('../src/shared/captions/words')))
+vi.mock('../src/shared/captions/studioEdit', async (o) => (await import('./p1Fillins')).fillEdit(await o()))
+
 function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void } {
   let resolve!: (v: T) => void
   let reject!: (e: unknown) => void

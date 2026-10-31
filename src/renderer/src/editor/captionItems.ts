@@ -1,3 +1,4 @@
+import { autoStyleOnFirstCaptions, captionFrame } from '../../../shared/captions/autoStyle'
 import { MAX_CAPTIONS, readTranscript } from '../../../shared/captions/captionData'
 import { captionAlpha } from '../../../shared/captions/layout'
 import { captionsOf } from '../../../shared/captions/settings'
@@ -8,6 +9,7 @@ import { formatTime } from '../../../shared/engine/project'
 import { playableFrom } from '../../../shared/engine/timeline'
 import type { CaptionSegment, Clip, Project, Transcript } from '../../../shared/types'
 import type { EditorServices } from './context'
+import { loadBrandLook } from './greatRun'
 import type { PreviewPlayer } from './player'
 
 /*
@@ -162,7 +164,9 @@ export async function transcribe({ store }: EditorServices, options: TranscribeO
   const fetched = await fetchTranscript(projectId, store.state.duration, options)
   if (!('transcript' in fetched)) return false
   const { transcript } = fetched
-  store.update((p: Project) => (p.id !== projectId ? p : { ...p, transcript, captions: { ...captionsOf(p), show: true } }))
+  // The first captions get Auto style's look (Captions Studio §11.6) in the same update: one undo step, no record.
+  const brand = await loadBrandLook()
+  store.update((p: Project) => (p.id !== projectId ? p : autoStyleOnFirstCaptions(p, { ...p, transcript, captions: { ...captionsOf(p), show: true } }, captionFrame(p), brand)))
   // A project keeps at most MAX_CAPTIONS captions: say where the kept ones stop rather than drop the rest silently.
   if (fetched.leftOut) {
     const last = transcript.segments[transcript.segments.length - 1]
