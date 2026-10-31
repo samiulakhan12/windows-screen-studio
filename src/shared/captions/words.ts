@@ -99,7 +99,9 @@ export function studioWordTexts(text: string, language?: string): string[] {
   return studioWords(text, language).map((w) => w.text)
 }
 
-const notImplemented = (name: string): never => {
+/** The body of a frozen signature part P1 writes. */
+function notImplemented(name: string, ...args: unknown[]): never {
+  void args
   throw new Error(`${name}: not implemented (Captions Studio part P1)`)
 }
 
@@ -109,30 +111,25 @@ const notImplemented = (name: string): never => {
  * graphemes + 1 and `estimated`. Speaker labels (withLabel) come first with word -1.
  */
 export function studioTokens(seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words' | 'speaker'>, language?: string, withLabel?: boolean): StudioToken[] {
-  void seg, language, withLabel
-  return notImplemented('studioTokens')
+  return notImplemented('studioTokens', seg, language, withLabel)
 }
 
 /** The script of the first letter of `text` ('other' without one). */
 export function scriptOf(text: string): ScriptTag {
-  void text
-  return notImplemented('scriptOf')
+  return notImplemented('scriptOf', text)
 }
 
 /** The script of at least half the letters of `text`, and its share (line height follows it, §6.6). */
 export function mainScript(text: string): { script: ScriptTag; share: number } {
-  void text
-  return notImplemented('mainScript')
+  return notImplemented('mainScript', text)
 }
 
 /** Every script with a letter in `texts`. */
 export function scriptsIn(texts: Iterable<string>): Set<ScriptTag> {
-  void texts
-  return notImplemented('scriptsIn')
+  return notImplemented('scriptsIn', texts)
 }
 
 /** Whether a prefix of a word draws the same as in the whole word (Latin, Cyrillic, Greek, Han, Kana, Hangul; §9.3 typewriter). */
 export function prefixDrawsSame(script: ScriptTag): boolean {
-  void script
-  return notImplemented('prefixDrawsSame')
+  return notImplemented('prefixDrawsSame', script)
 }
