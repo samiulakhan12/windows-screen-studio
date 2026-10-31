@@ -67,6 +67,10 @@ export interface StudioLayout {
   dirs: ('l' | 'r')[]
   /** 0: not emphasised; 1 or 2: the emphasis tone. */
   emphasis: (0 | 1 | 2)[]
+  /** The caption's id (CaptionSegment.id): the seed of its rotations and shakes (§9.1 rule 4). */
+  caption?: string
+  /** Set by flashSafeChunks when a spoken box, pill, underline or glow would cover more than 2.5% of the frame: it then dwells 0.34 s (§9.6 rule 1). */
+  bigMark?: true
 }
 
 /** What a caption keeps clear of (§8.6), in output px. */
@@ -523,7 +527,7 @@ export function studioLayout(
     return { start: lead.start, end: 0, lines, first, last, width: Math.max(...lines.map((l) => l.width)), height: lines.reduce((s, l) => s + l.height, 0) }
   })
   timeChunks(chunks, seg)
-  return { tokens, chunks, px: m.px, lineHeight: m.lineHeight, rtl, dirs, emphasis }
+  return { tokens, chunks, px: m.px, lineHeight: m.lineHeight, rtl, dirs, emphasis, caption: seg.id }
 }
 
 /** Chunk times as captionLayout gives them (§8.2): from the first word, the first from the caption's start; chunks starting together share the time; each shows at least min(0.4 s, caption / chunks); a chunk shows until the next one starts. */
