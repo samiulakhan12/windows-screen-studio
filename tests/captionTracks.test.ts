@@ -3,7 +3,29 @@
  * burned-in captions, cues of partly cut captions, the ISO map and names in VTT.
  */
 import { describe, expect, it } from 'vitest'
-import { burnedSegments, iso6392, ISO_639_2, missingTranslations, outOfDate, placeOf, textHash, withoutTrack, withTrack } from '../src/shared/captions/captionTracks'
+import {
+  burnedSegments,
+  burnedTrackNote,
+  captionsToTranslate,
+  defaultExportLanguages,
+  exportLanguages,
+  iso6392,
+  ISO_639_2,
+  languageName,
+  languagesToAdd,
+  missingTranslations,
+  outOfDate,
+  placeOf,
+  textHash,
+  TRACK_LANGUAGES,
+  trackRows,
+  withoutTrack,
+  withShownTrack,
+  withTrack,
+  withTranslation
+} from '../src/shared/captions/captionTracks'
+import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
+import { readCaptionTracks } from '../src/shared/captions/studioData'
 import { trackCues, trackVtt } from '../src/shared/captions/trackCues'
 import type { CaptionSegment, CaptionTrack, Project } from '../src/shared/types'
 
@@ -103,5 +125,99 @@ describe('caption tracks (test 47)', () => {
     expect(trackVtt(p, 'bn', false)).not.toContain('Priya')
     expect(trackVtt(p, 'bn', true)).not.toContain('<v ')
     expect(trackVtt(p, 'bn', true).startsWith('WEBVTT\n')).toBe(true)
+  })
+})
+
+describe('translating into a track with an AI provider (§11.9, §2.10)', () => {
+  const answer = (sent: readonly CaptionSegment[], texts: string[]): CaptionSegment[] => sent.map((s, i) => ({ id: s.id, start: s.start, end: s.end, text: texts[i] }))
+  const base = { by: 'gemini' as const, model: 'gemini-x', createdAt: '2026-10-31T00:00:00Z' }
+
+  it('a new track gets every caption, with the hash of the text it was made from; the captions keep their text', () => {
+    const p = project()
+    const sent = captionsToTranslate(p, 'bn')
+    expect(sent.map((s) => s.id)).toEqual(['a', 'b', 'c'])
+    const next = withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']) })!
+    expect(next.transcript).toBe(p.transcript)
+    expect(next.captionTracks).toEqual([{ language: 'bn', ...base, segments: [{ id: 'a', text: 'এক', src: textHash('Hello there') }, { id: 'b', text: 'দুই', src: textHash('Second caption') }, { id: 'c', text: 'তিন', src: textHash('Third one') }] }])
+    expect(outOfDate(next, 'bn')).toEqual([])
+  })
+
+  it('Translate again sends only changed and missing captions and keeps the rest', () => {
+    const p = project({ captionTracks: [bn] })
+    const sent = captionsToTranslate(p, 'bn')
+    expect(sent.map((s) => s.id)).toEqual(['b', 'c'])
+    const next = withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['দ্বিতীয় নতুন', 'তৃতীয়']) })!
+    expect(next.captionTracks![0].segments.map((s) => s.text)).toEqual(['নমস্কার', 'দ্বিতীয় নতুন', 'তৃতীয়'])
+    expect(outOfDate(next, 'bn')).toEqual([])
+  })
+
+  it('a caption edited while the provider worked stays out of date', () => {
+    const p = project({ captionTracks: [bn] })
+    const sent = captionsToTranslate(p, 'bn')
+    const edited = { ...p, transcript: { ...p.transcript!, segments: p.transcript!.segments.map((s) => (s.id === 'b' ? { ...s, text: 'Edited meanwhile' } : s)) } }
+    const next = withTranslation(edited, { ...base, language: 'bn', sent, answer: answer(sent, ['দ্বিতীয় নতুন', 'তৃতীয়']) })!
+    expect(next.captionTracks![0].segments.find((s) => s.id === 'b')?.text).toBe('দ্বিতীয়')
+    expect(outOfDate(next, 'bn')).toEqual(['b'])
+  })
+
+  it('an answer that changed the timing or left captions out is not used; nor is the spoken language', () => {
+    const p = project()
+    const sent = captionsToTranslate(p, 'bn')
+    expect(withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']).slice(1) })).toBeNull()
+    expect(withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']).map((s) => ({ ...s, start: s.start + 1 })) })).toBeNull()
+    expect(withTranslation(p, { ...base, language: 'EN', sent, answer: answer(sent, ['a', 'b', 'c']) })).toBeNull()
+  })
+
+  it('reads back unchanged through the project reader', () => {
+    const p = project()
+    const sent = captionsToTranslate(p, 'bn')
+    const next = withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']) })!
+    expect(readCaptionTracks(JSON.parse(JSON.stringify(next.captionTracks)), next.transcript)).toEqual(next.captionTracks)
+  })
+
+  it('the shown track: one value, cleared when the spoken captions are chosen or the track is unknown', () => {
+    const p = project({ captionTracks: [bn], captions: { ...DEFAULT_CAPTIONS, show: true } })
+    const shown = withShownTrack(p, 'bn')
+    expect(shown.captions?.track).toBe('bn')
+    expect(withShownTrack(shown, 'bn')).toBe(shown)
+    expect(withShownTrack(shown, null).captions).toEqual({ ...DEFAULT_CAPTIONS, show: true })
+    expect(withShownTrack(p, 'hi')).toBe(p)
+  })
+
+  it('offers the caption languages without the spoken one and those with a track; names them', () => {
+    const offered = languagesToAdd(project({ captionTracks: [bn] })).map((l) => l.code)
+    expect(offered).toHaveLength(23)
+    expect(offered).not.toContain('en')
+    expect(offered).not.toContain('bn')
+    expect(TRACK_LANGUAGES.map((l) => l.code).sort()).toEqual(Object.keys(ISO_639_2).sort())
+    expect(languageName('bn-BD')).toBe('Bengali')
+    expect(languageName('xx')).toBe('xx')
+  })
+})
+
+describe('the Languages rows and the export languages (§2.10, §2.13)', () => {
+  it('lists the spoken captions first, then each track with what is out of date or missing', () => {
+    const p = project({ captionTracks: [bn], captions: { ...DEFAULT_CAPTIONS, track: 'bn' } })
+    expect(trackRows(p)).toEqual([
+      { language: null, label: 'English · spoken', changed: 0, missing: 0, shown: false, notes: [] },
+      { language: 'bn', label: 'Bengali · translated with Gemini', changed: 1, missing: 1, shown: true, notes: ['1 caption changed since', '1 caption is not translated: it shows in English'] }
+    ])
+    const local: CaptionTrack = { ...bn, language: 'hi', by: 'local', segments: [] }
+    const rows = trackRows(project({ captionTracks: [local], bleeps: [{ id: 'x', start: 1, end: 1.5, word: 'damn', sound: 'tone' }] }))
+    expect(rows[0].shown).toBe(true)
+    expect(rows[1]).toMatchObject({ label: 'Hindi · translated on this PC', changed: 0, missing: 3, notes: ['3 captions are not translated: they show in English', 'Bleeped words are not masked in translations'] })
+  })
+
+  it('the export notes captions the burned-in track lacks, and ticks the spoken and burned-in languages', () => {
+    const p = project({ captionTracks: [bn], captions: { ...DEFAULT_CAPTIONS, show: true, track: 'bn' } })
+    expect(burnedTrackNote(p)).toBe('1 caption is not translated into Bengali: it shows in English.')
+    expect(burnedTrackNote(project({ captionTracks: [bn] }))).toBeNull()
+    expect(exportLanguages(p)).toEqual([
+      { code: 'en', name: 'English', spoken: true },
+      { code: 'bn', name: 'Bengali', spoken: false }
+    ])
+    expect(defaultExportLanguages(p)).toEqual(['en', 'bn'])
+    expect(defaultExportLanguages(project({ captionTracks: [bn] }))).toEqual(['en'])
+    expect(defaultExportLanguages(project({ captionTracks: [bn], captions: { ...DEFAULT_CAPTIONS, show: false, track: 'bn' } }))).toEqual(['en'])
   })
 })

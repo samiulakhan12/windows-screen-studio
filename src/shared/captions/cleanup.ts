@@ -391,7 +391,16 @@ const WIDEN = 0.05
 const WIDEN_ESTIMATED = 0.15
 
 /** The bleeps the captions' words need, for the words not bleeped yet. */
-function findBleeps(segments: readonly CaptionSegment[], mode: 'standard' | 'strict', sound: Bleep['sound'], language: string | undefined, have: readonly Bleep[], duration: number): Bleep[] {
+function findBleeps(
+  segments: readonly CaptionSegment[],
+  mode: 'standard' | 'strict',
+  sound: Bleep['sound'],
+  language: string | undefined,
+  have: readonly Bleep[],
+  duration: number,
+  /** Ids of the bleeps made from estimated word times (their window is wider). */
+  estimated?: Set<string>
+): Bleep[] {
   const out: Bleep[] = []
   for (const seg of segments) {
     for (const w of captionWordTimes(seg)) {
@@ -402,7 +411,9 @@ function findBleeps(segments: readonly CaptionSegment[], mode: 'standard' | 'str
       const word = bleepKey(w.text).slice(0, 40) || w.text.toLowerCase().slice(0, 40)
       const mid = (w.start + w.end) / 2
       if (have.some((b) => b.start <= mid && b.end >= mid) || out.some((b) => b.start <= mid && b.end >= mid)) continue
-      out.push({ id: `b-${textHash(`${start.toFixed(3)}|${end.toFixed(3)}|${word}`)}`, start, end, word, sound, auto: true })
+      const id = `b-${textHash(`${start.toFixed(3)}|${end.toFixed(3)}|${word}`)}`
+      if (w.estimated) estimated?.add(id)
+      out.push({ id, start, end, word, sound, auto: true })
     }
   }
   return out
@@ -466,9 +477,12 @@ const sameWords = (a: CaptionWord[] | undefined, b: CaptionWord[] | undefined): 
  * `fix` is the AI fix's answer (rule 6), applied when `ai` is on. (The contracts named it `ai`, which
  * CleanupChoices.ai already is; no value could satisfy both, so the answer is `fix`.)
  */
-export function tidyCaptions(project: Project, opts: CleanupChoices & { words: readonly WordListEntry[]; fix?: TextResult }): { project: Project; changed: number; bleeped: number } {
+export function tidyCaptions(
+  project: Project,
+  opts: CleanupChoices & { words: readonly WordListEntry[]; fix?: TextResult }
+): { project: Project; changed: number; bleeped: number; /** New bleeps made from estimated word times (a little more is bleeped). */ estimated: number } {
   const transcript = project.transcript
-  if (!transcript?.segments.length) return { project, changed: 0, bleeped: 0 }
+  if (!transcript?.segments.length) return { project, changed: 0, bleeped: 0, estimated: 0 }
   const language = transcript.language
   const segs = transcript.segments
   let tidied: CaptionSegment[] = segs.map((seg, i) => {
@@ -516,15 +530,34 @@ export function tidyCaptions(project: Project, opts: CleanupChoices & { words: r
     next.captionAuto = auto
   }
   let bleeped = 0
+  let estimated = 0
   if (opts.bleep !== 'off') {
-    const found = findBleeps(next.transcript!.segments, opts.bleep, opts.bleepSound, language, project.bleeps ?? [], project.duration)
+    const guessed = new Set<string>()
+    const found = findBleeps(next.transcript!.segments, opts.bleep, opts.bleepSound, language, project.bleeps ?? [], project.duration, guessed)
     if (found.length) {
       const all = [...(project.bleeps ?? []), ...found]
         .sort((a, b) => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
         .slice(0, MAX_BLEEPS)
       bleeped = found.filter((b) => all.includes(b)).length
+      estimated = found.filter((b) => all.includes(b) && guessed.has(b.id)).length
       next = { ...next, bleeps: all }
     }
   }
-  return { project: next, changed, bleeped }
+  return { project: next, changed, bleeped, estimated }
+}
+
+const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
+
+/**
+ * Tidy captions' notice (§2.9, §11.7): "Tidied 12 captions, bleeped 2 words" or "Nothing to tidy";
+ * says when bleeped words had estimated times, and when the AI fix was left out.
+ */
+export function cleanupNotice(r: { changed: number; bleeped: number; estimated?: number; aiLeftOut?: string }): string {
+  const parts: string[] = []
+  if (r.changed) parts.push(`Tidied ${count(r.changed, 'caption')}`)
+  if (r.bleeped) parts.push(`${parts.length ? 'bleeped' : 'Bleeped'} ${count(r.bleeped, 'word')}`)
+  let text = parts.length ? parts.join(', ') : 'Nothing to tidy'
+  if (r.estimated) text += '. Some bleeped words have estimated times, so a little more is bleeped'
+  if (r.aiLeftOut) text += `. ${r.aiLeftOut}`
+  return text
 }

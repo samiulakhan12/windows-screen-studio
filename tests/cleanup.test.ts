@@ -3,7 +3,7 @@
  * rules, the word list, bleeping, masks by time, and the AI fix's records.
  */
 import { describe, expect, it } from 'vitest'
-import { bleepGains, bleepKey, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
+import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
@@ -98,7 +98,7 @@ describe('tidyCaptions (test 41)', () => {
 
   it('nothing to tidy returns the same project', () => {
     const p = project([timed('a', 0, 'Fine.')])
-    expect(tidyCaptions(p, { ...OFF, caps: true, punct: true, digits: 'above-ten', words: [] })).toEqual({ project: p, changed: 0, bleeped: 0 })
+    expect(tidyCaptions(p, { ...OFF, caps: true, punct: true, digits: 'above-ten', words: [] })).toEqual({ project: p, changed: 0, bleeped: 0, estimated: 0 })
   })
 
   it('the AI fix applies after the rules and its changes are recorded', () => {
@@ -138,6 +138,10 @@ describe('bleeping (tests 41, 50)', () => {
     // A second run adds none.
     expect(tidyCaptions(out.project, { ...OFF, bleep: 'standard', words: [] }).bleeped).toBe(0)
     expect(bleepGains(out.project)).toEqual([{ start: b.start, end: b.end, gain: 0 }])
+    // Exact word times: none estimated. A caption without word times has estimated ones, bleeped wider and counted.
+    expect(out.estimated).toBe(0)
+    const guessed = tidyCaptions(project([{ id: 'c', start: 30, end: 32, text: 'oh fuck no' }]), { ...OFF, bleep: 'standard', words: [] })
+    expect(guessed).toMatchObject({ bleeped: 1, estimated: 1 })
   })
 
   it('masks keep the first letter in cased scripts, all stars otherwise', () => {
@@ -188,5 +192,15 @@ describe('the word list as a transcription hint (§11.7 rule 4)', () => {
     expect(glossaryLine(['Flown', 'Qbexel'])).toBe('Glossary: Flown, Qbexel.')
     expect(glossaryLine(['Flown'], 'Spell these names as written')).toBe('Spell these names as written: Flown.')
     expect(glossaryLine([])).toBeUndefined()
+  })
+})
+
+describe("Tidy captions' notice (§2.9)", () => {
+  it('says what changed, or that there was nothing to tidy', () => {
+    expect(cleanupNotice({ changed: 12, bleeped: 2 })).toBe('Tidied 12 captions, bleeped 2 words')
+    expect(cleanupNotice({ changed: 1, bleeped: 0 })).toBe('Tidied 1 caption')
+    expect(cleanupNotice({ changed: 0, bleeped: 1, estimated: 1 })).toBe('Bleeped 1 word. Some bleeped words have estimated times, so a little more is bleeped')
+    expect(cleanupNotice({ changed: 0, bleeped: 0 })).toBe('Nothing to tidy')
+    expect(cleanupNotice({ changed: 0, bleeped: 0, aiLeftOut: 'The AI fix was left out.' })).toBe('Nothing to tidy. The AI fix was left out.')
   })
 })
