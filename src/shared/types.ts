@@ -469,7 +469,10 @@ export interface StudioTheme {
   /** Text on a spoken box or pill; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
   spokenText?: string
   emphasis: string
-  /** Text on an emphasis marker or box; absent: by contrast, as spokenText. */
+  /**
+   * Text on an emphasis marker or box; absent: by contrast, as spokenText. With the 'circle' mark:
+   * the colour of the words the circle goes around (`emphasis` is the circle's); absent: `text`.
+   */
   emphasisText?: string
   /** Colour of words emphasised with tone 2 (Ctrl+Shift+B); absent: `emphasis`. */
   emphasis2?: string

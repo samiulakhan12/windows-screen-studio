@@ -432,7 +432,7 @@ const MORE_LONG: StudioPreset[] = [
     fallback: 'boxed',
     // The blue of "You" is #2f7bff 12% darker (#296ce0): white on #2f7bff is 3.9:1, on #296ce0 4.9:1.
     look: look('chat', {
-      text: { font: cat('inter-tight'), weight: 600, case: 'asis', tracking: 0, lineHeight: 1.3, size: 0.04, tall: 1.2, scripts: bengali('hind-siliguri', 600) },
+      text: { font: cat('inter-tight'), weight: 600, case: 'asis', tracking: 0, lineHeight: 1.3, size: 0.04, tall: 1.2, scripts: bengali('noto-sans-bengali', 600) },
       emphasis: { weight: 800 },
       theme: { text: '#15151f', spoken: '#15151f', emphasis: '#15151f', box: '#e9eaf0', youBox: '#296ce0', youText: '#ffffff' },
       box: { kind: 'chat', alpha: 1, padX: 0.8, padY: 0.5, radius: 1, border: 0, gap: 0.3 },
@@ -448,7 +448,7 @@ const MORE_LONG: StudioPreset[] = [
     description: 'Film-style subtitles in warm yellow, low on the frame',
     fallback: 'clean',
     look: look('cinema', {
-      text: { font: cat('inter-tight'), weight: 600, case: 'asis', tracking: 0, lineHeight: 1.25, size: 0.045, tall: 1.1, scripts: bengali('hind-siliguri', 600) },
+      text: { font: cat('inter-tight'), weight: 600, case: 'asis', tracking: 0, lineHeight: 1.25, size: 0.045, tall: 1.1, scripts: bengali('noto-sans-bengali', 600) },
       emphasis: { weight: 800 },
       theme: { text: '#ffe680', spoken: '#ffffff', emphasis: '#ffffff' },
       edge: { outline: 0.04, outlineAlpha: 0.9, shadow: { x: 0, y: 0.1, blur: 0.4, alpha: 1 } },
