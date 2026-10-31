@@ -29,6 +29,7 @@ interface StoredProvider {
   kind: AiProviderKind
   label: string
   model: string
+  /** The transcription model the user chose; none means the suggested one, which follows the list. */
   transcriptionModel?: string
   createdAt: string
   /** The encrypted key, base64. */
@@ -155,12 +156,14 @@ export class AiProviderStore {
   private info(entry: StoredProvider): AiProviderInfo {
     const key = this.decrypt(entry)
     const canTranscribe = AI_PROVIDER_KINDS[entry.kind].canTranscribe
+    // No transcription model stored: the suggested one, whatever the list says now.
+    const transcriptionModel = canTranscribe ? (entry.transcriptionModel ?? this.defaults(entry.kind).transcriptionModel) : undefined
     return {
       id: entry.id,
       kind: entry.kind,
       label: entry.label,
       model: entry.model,
-      ...(canTranscribe && entry.transcriptionModel ? { transcriptionModel: entry.transcriptionModel } : {}),
+      ...(transcriptionModel ? { transcriptionModel } : {}),
       maskedKey: key ? `…${key.slice(-4)}` : 'unreadable',
       createdAt: entry.createdAt,
       canTranscribe
@@ -180,12 +183,21 @@ export class AiProviderStore {
     if (!existing && !input.apiKey) throw new Error('Enter the API key.')
     if (existing && existing.kind !== input.kind && !input.apiKey) throw new Error('Enter the API key for the new kind of provider.')
     if (!existing && entries.length >= AI_LIMITS.maxProviders) throw new Error(`At most ${AI_LIMITS.maxProviders} providers can be added.`)
+    // The suggested transcription model is not stored, so the provider moves with the list when a
+    // model retires (docs/design/transcription.md §2.1); one the user chose instead is kept. The form
+    // leaves the field out until the user types in it: an edit of the same kind keeps what it had.
+    const untouched = input.transcriptionModel !== undefined && (raw as { transcriptionModel?: unknown }).transcriptionModel === undefined && existing?.kind === input.kind
+    const chosen = untouched
+      ? existing.transcriptionModel
+      : input.transcriptionModel && input.transcriptionModel !== this.defaults(input.kind).transcriptionModel
+        ? input.transcriptionModel
+        : undefined
     const entry: StoredProvider = {
       id: existing?.id ?? newId(),
       kind: input.kind,
       label: input.label,
       model: input.model!,
-      ...(input.transcriptionModel ? { transcriptionModel: input.transcriptionModel } : {}),
+      ...(chosen ? { transcriptionModel: chosen } : {}),
       createdAt: existing?.createdAt ?? now.toISOString(),
       key: input.apiKey ? this.encrypt(input.apiKey) : existing!.key
     }

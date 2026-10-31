@@ -13,6 +13,11 @@
  *    hour) and transcribed; the results are shifted to source seconds and merged
  *    (transcriptMerge). The editor maps them through cuts.
  *
+ * A provider that answers with text only (OpenAI's models after whisper-1) gets parts of at most
+ * 30 s, and each part's words are spread over the stretches of it that have sound (transcriptTiming,
+ * docs/design/transcription.md §3), all marked estimated. Speaker labels (Gemini) are kept when
+ * there are at least two speakers.
+ *
  * "On this PC" (providerId LOCAL_TRANSCRIBER_ID, speech/localClient.ts) runs the same pipeline with
  * the speech helper instead of a provider: no key, parts as lossless 16 kHz WAV, progress inside
  * each part, and finished parts cached in the project so a stopped job continues.
@@ -30,9 +35,12 @@ import { AI_PROVIDER_KINDS, type TranscribeOptions, type TranscribeProgress } fr
 import { LOCAL_TRANSCRIBER_ID } from '../../shared/api/speech'
 import { detectActivity } from '../../shared/audio/activity'
 import { LevelMeter } from '../../shared/audio/loudness'
+import { dropLoneSpeaker } from '../../shared/captions/speakers'
 import { mergeParts } from '../../shared/captions/transcriptMerge'
 import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import { planParts, secondsForBytes, silencesBetween, type TranscriptPart } from '../../shared/captions/transcriptPlan'
+import { activeIn, providerTiming, timeTextPart } from '../../shared/captions/transcriptTiming'
+import type { Range } from '../../shared/audio/activity'
 import { speechModel } from '../../shared/speech/catalog'
 import { tierLabel } from '../../shared/speech/errors'
 import type { Transcript } from '../../shared/types'
@@ -153,8 +161,8 @@ export function wavPartArgs(pcm: string, start: number, seconds: number, output:
   ]
 }
 
-/** Quiet stretches of the decoded sound (seconds), from its levels as measured for ducking. */
-async function silencesOf(pcm: string, duration: number, signal: AbortSignal): Promise<{ start: number; end: number }[]> {
+/** Stretches of the decoded sound that have sound (seconds), from its levels as measured for ducking. */
+async function activityOf(pcm: string, signal: AbortSignal): Promise<Range[]> {
   const meter = new LevelMeter(RATE, 1)
   let carry: Buffer = Buffer.alloc(0)
   const stream = createReadStream(pcm, { highWaterMark: 1 << 20 })
@@ -170,7 +178,7 @@ async function silencesOf(pcm: string, duration: number, signal: AbortSignal): P
     meter.push(samples)
     carry = Buffer.from(buf.subarray(whole))
   }
-  return silencesBetween(detectActivity(meter.finish()), duration)
+  return detectActivity(meter.finish())
 }
 
 /** Which file of project `dir` to transcribe. */
@@ -263,8 +271,10 @@ async function runJob(
 
     const limits = client.partLimits!
     const maxSeconds = Math.min(limits.maxSeconds, secondsForBytes(limits.maxBytes, MP3_BITRATE), testLimit('SSW_AI_MAX_PART_SECONDS') ?? Infinity)
-    const silences = duration > maxSeconds ? await silencesOf(pcm, duration, signal) : []
-    const parts = planParts(duration, silences, { maxSeconds })
+    // Text-only answers are timed from where there is sound, so it is always measured for them.
+    const textOnly = providerTiming(kind, model) === 'text'
+    let active: Range[] | null = duration > maxSeconds || textOnly ? await activityOf(pcm, signal) : null
+    const parts = planParts(duration, active ? silencesBetween(active, duration) : [], { maxSeconds })
 
     const results: { part: TranscriptPart; transcript: RawTranscript }[] = []
     const wav = client.input === 'wav'
@@ -291,10 +301,17 @@ async function runJob(
           ...(resumed ? { resumed } : {})
         })
       }
-      const transcript = await client.transcribe!(
+      const answer = await client.transcribe!(
         { file, mimeType: wav ? 'audio/wav' : 'audio/mpeg', bytes, seconds },
         { language: options.language, signal, onUpload: () => send('uploading', part.index, parts.length), part: { index: part.index, count: parts.length }, ...(wav ? { onProgress } : {}) }
       )
+      let transcript = answer
+      if (answer.untimed) {
+        // Text without times: spread over the part's sound (measured now if it was not yet).
+        active ??= await activityOf(pcm, signal)
+        const where = activeIn(active, part.start, part.end)
+        transcript = { ...(answer.language ? { language: answer.language } : {}), segments: answer.segments.flatMap((s) => timeTextPart(s.text, where, seconds)) }
+      }
       finished += seconds
       results.push({ part, transcript })
       await fs.rm(file, { force: true })
@@ -306,7 +323,7 @@ async function runJob(
       provider: kind,
       model,
       createdAt: new Date().toISOString(),
-      segments: merged.segments
+      segments: dropLoneSpeaker(merged.segments)
     }
   } catch (err) {
     if (signal.aborted) throw cancelled()

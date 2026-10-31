@@ -5,6 +5,7 @@
  * engine/titleData.ts for title cards.
  */
 import type { CaptionSegment, CaptionWord, Transcript } from '../types'
+import { cleanSpeakerName } from './speakers'
 
 /** Shortest caption kept, seconds. */
 export const MIN_CAPTION = 0.05
@@ -41,13 +42,13 @@ function readWords(raw: unknown, start: number, end: number, duration: number): 
   const out: CaptionWord[] = []
   for (const w of raw.slice(0, MAX_WORDS * 2)) {
     if (!w || typeof w !== 'object') continue
-    const { text, start: ws, end: we, estimated, deleted } = w as Partial<CaptionWord>
+    const { text, start: ws, end: we, estimated, fromSound, deleted } = w as Partial<CaptionWord>
     if (typeof text !== 'string' || !finite(ws) || !finite(we)) continue
     const t = cleanCaptionText(text)
     if (!t) continue
     const [from, to] = deleted === true ? [0, duration] : [start, end]
     const s = Math.min(Math.max(ws, from), to)
-    out.push({ text: t, start: s, end: Math.min(Math.max(we, s), to), ...(estimated === true ? { estimated } : {}), ...(deleted === true ? { deleted } : {}) })
+    out.push({ text: t, start: s, end: Math.min(Math.max(we, s), to), ...(estimated === true ? { estimated, ...(fromSound === true ? { fromSound } : {}) } : {}), ...(deleted === true ? { deleted } : {}) })
   }
   // A deleted word outside the caption sorts as if at its edge, next to the words a trim put there, in their stored order.
   const at = (w: CaptionWord): number => Math.min(Math.max(w.start, start), end)
@@ -74,6 +75,9 @@ export function readCaptionSegments(raw: unknown, duration = Infinity): CaptionS
     const seg: CaptionSegment = { id: typeof r.id === 'string' && r.id && r.id.length <= 64 ? r.id : '', start, end, text }
     const words = readWords(r.words, start, end, duration)
     if (words) seg.words = words
+    // Who speaks (docs/design/transcription.md §6.3): absent in older projects.
+    const speaker = cleanSpeakerName(r.speaker)
+    if (speaker) seg.speaker = speaker
     items.push(seg)
   }
   items.sort((a, b) => a.start - b.start || a.end - b.end)

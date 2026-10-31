@@ -28,6 +28,8 @@ export interface Failure {
   retryable: boolean
   message: string
   retryAfter?: number
+  /** HTTP status, kept for a 403 (no access to the model), which a retired model also gets (retiredModel.ts). */
+  status?: number
 }
 
 const QUOTA_RE = /insufficient_quota|billing|credit balance|exceeded your current quota.*(plan|billing)|per ?day|PerDay/i
@@ -53,7 +55,7 @@ export function describeFailure(info: FailureInfo, provider: string, model?: str
   if (status === 402 || status === 429 || QUOTA_RE.test(text)) {
     return { kind: 'quota', retryable: false, message: `Your ${provider} account has no credits or quota left. Check its billing and usage limits, then try again.` }
   }
-  if (status === 403) return { kind: 'auth', retryable: false, message: `${provider} refused the request: this key has no access to ${model ? `the model “${model}”` : 'that API'}.` }
+  if (status === 403) return { kind: 'auth', status, retryable: false, message: `${provider} refused the request: this key has no access to ${model ? `the model “${model}”` : 'that API'}.` }
   if (status === 404) return { kind: 'not-found', retryable: false, message: `${provider} does not know the model${model ? ` “${model}”` : ''}. Check the model name in Settings → AI providers.` }
   if (status === 413) return { kind: 'too-large', retryable: false, message: `The sound was too large for ${provider}.` }
   if (status === 408 || status === 409 || (status !== undefined && status >= 500)) {

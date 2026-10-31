@@ -46,9 +46,13 @@ import { registerAiIpc } from '../src/main/aiIpc'
 import { anthropicFailure, claudeAnswerText, claudeRequest } from '../src/main/ai/anthropic'
 import { baseUrlOverride } from '../src/main/ai/endpoints'
 import { geminiClient, geminiFailure } from '../src/main/ai/gemini'
-import { callWithRetry } from '../src/main/ai/request'
+import { refreshModelList, resetModelList } from '../src/main/ai/modelList'
+import { AiError, callWithRetry } from '../src/main/ai/request'
+import { retiredFailure, today } from '../src/main/ai/retired'
 import { partArgs, stopTranscription, sweepTranscribeTemp, validateTranscribeOptions, wavPartArgs } from '../src/main/ai/transcribe'
 import { ffmpegPath } from '../src/main/ffmpeg'
+import { BUNDLED_MODEL_LIST } from '../src/shared/ai/modelList'
+import { describeFailure } from '../src/shared/captions/transcriptErrors'
 import { ApiError } from '@google/genai'
 
 const req = createRequire(import.meta.url)
@@ -123,8 +127,8 @@ afterAll(async () => {
 })
 
 const providers: Record<string, AiProviderInfo> = {}
-const add = async (name: string, kind: AiProviderInfo['kind'], apiKey: string): Promise<AiProviderInfo> =>
-  (providers[name] = await call<AiProviderInfo>('ai:saveProvider', { kind, label: name, apiKey }))
+const add = async (name: string, kind: AiProviderInfo['kind'], apiKey: string, extra: { transcriptionModel?: string } = {}): Promise<AiProviderInfo> =>
+  (providers[name] = await call<AiProviderInfo>('ai:saveProvider', { kind, label: name, apiKey, ...extra }))
 
 describe('base URL overrides', () => {
   it('are honoured only when the app is not packaged', () => {
@@ -208,6 +212,7 @@ describe('providers over IPC', () => {
   })
 
   it('stores providers with their keys encrypted; the renderer sees masked keys only', async () => {
+    // No transcription model chosen: the suggested whisper-1 (until the list moves it), word times from the provider.
     await add('OpenAI', 'openai', 'sk-good-openai-key-0001')
     await add('Gemini', 'gemini', 'AIza-good-gemini-key-0002')
     await add('Claude', 'anthropic', 'sk-ant-good-claude-key-0003')
@@ -288,8 +293,89 @@ describe('transcription', () => {
     }
   }, 60_000)
 
+  it('transcribes with gpt-transcribe (whisper-1\'s replacement): text only, every word timed from the sound and estimated', async () => {
+    const text = await add('OpenAI text', 'openai', 'sk-good-openai-key-0009', { transcriptionModel: 'gpt-transcribe' })
+    expect(text.transcriptionModel).toBe('gpt-transcribe')
+    const before = mock.requests.length
+    const t = await call<Transcript>('ai:transcribe', 'rec-words', { providerId: text.id, language: 'en' })
+    expect(t).toMatchObject({ provider: 'openai', model: 'gpt-transcribe', language: 'en' })
+    expect(t.segments.map((s) => s.text)).toEqual(STARTS.map((_, k) => `Word ${k}.`))
+    t.segments.forEach((s, k) => {
+      expect(s.words?.every((w) => w.estimated === true)).toBe(true)
+      // Spread over the burst's sound: within 0.6 s of where it is heard.
+      expect(Math.abs(s.words![0].start - STARTS[k])).toBeLessThan(0.6)
+      expect(Math.abs(s.words![s.words!.length - 1].end - (STARTS[k] + 1.2))).toBeLessThan(0.6)
+    })
+    const sent = mock.requests.slice(before).filter((r) => r.route === '/audio/transcriptions')
+    expect(sent.length).toBe(3)
+    expect(sent[0].fields).toMatchObject({ model: 'gpt-transcribe', response_format: 'json', 'languages[]': 'en' })
+    expect(sent[0].fields).not.toHaveProperty('timestamp_granularities[]')
+    expect(sent[0].fields).not.toHaveProperty('language')
+    expect(transcribeTemps()).toEqual([])
+  }, 60_000)
+
+  it('gives the gpt-4o transcription models the spoken language as `language`, which they take', async () => {
+    const mini = await add('OpenAI 4o mini', 'openai', 'sk-good-openai-key-0010', { transcriptionModel: 'gpt-4o-mini-transcribe' })
+    const before = mock.requests.length
+    const t = await call<Transcript>('ai:transcribe', 'rec-words', { providerId: mini.id, language: 'en' })
+    expect(t).toMatchObject({ provider: 'openai', model: 'gpt-4o-mini-transcribe', language: 'en' })
+    expect(t.segments.flatMap((s) => s.words ?? []).every((w) => w.estimated)).toBe(true)
+    const sent = mock.requests.slice(before).filter((r) => r.route === '/audio/transcriptions')
+    expect(sent[0].fields).toMatchObject({ model: 'gpt-4o-mini-transcribe', response_format: 'json', language: 'en' })
+    expect(sent[0].fields).not.toHaveProperty('languages[]')
+  }, 60_000)
+
+  it('labels Gemini speakers', async () => {
+    const t = await call<Transcript>('ai:transcribe', 'rec-words', { providerId: providers.Gemini.id })
+    expect(t.segments.map((s) => s.speaker)).toEqual(STARTS.map((_, k) => `Speaker ${k % 2 === 0 ? 1 : 2}`))
+    const sent = mock.requests.filter((r) => r.provider === 'gemini' && /generateContent/.test(r.route))
+    expect(sent[sent.length - 1].json.generationConfig.responseJsonSchema.properties.segments.items.properties.speaker.type).toBe('string')
+  }, 60_000)
+
+  it('says plainly what to do when a retired model fails, from its day on', async () => {
+    const old = await add('Retired OpenAI', 'openai', 'retired-openai-key-1', { transcriptionModel: 'whisper-1' })
+    process.env.SSW_AI_TODAY = '2027-02-25'
+    try {
+      expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toMatch(/does not know the model “whisper-1”/)
+      process.env.SSW_AI_TODAY = '2027-02-26'
+      // The bundled list still suggests whisper-1.
+      expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toBe(
+        'OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model in Settings › AI providers, or make captions On this PC.'
+      )
+      // OpenAI may answer a retired model with 403 (no access to the model): the same message. A bad key keeps its own.
+      const noAccess = new AiError(describeFailure({ status: 403, code: 'model_not_found', message: 'Project `proj_x` does not have access to model `whisper-1`' }, 'OpenAI', 'whisper-1'))
+      expect((retiredFailure(noAccess, 'openai', 'whisper-1', 'transcription') as Error).message).toMatch(/^OpenAI retired whisper-1 on 26 February 2027\./)
+      const badKey = new AiError(describeFailure({ status: 401, code: 'invalid_api_key' }, 'OpenAI', 'whisper-1'))
+      expect(retiredFailure(badKey, 'openai', 'whisper-1', 'transcription')).toBe(badKey)
+      // Near the day the downloaded list suggests gpt-transcribe (docs/design/transcription.md §2.1).
+      const onTheDay = { ...BUNDLED_MODEL_LIST, updated: '2027-02-20', providers: { ...BUNDLED_MODEL_LIST.providers, openai: { ...BUNDLED_MODEL_LIST.providers.openai, transcriptionModel: 'gpt-transcribe' } } }
+      expect(await refreshModelList('https://example.test/ai-models.json', async () => new Response(JSON.stringify(onTheDay)))).toBe(true)
+      // The provider kept the suggested whisper-1, so it moves with the list.
+      expect((await call<AiProviderInfo[]>('ai:listProviders')).find((p) => p.id === old.id)?.transcriptionModel).toBe('gpt-transcribe')
+      expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toMatch(/does not know the model “gpt-transcribe”/)
+      expect(mock.requests.filter((r) => r.route === '/audio/transcriptions').at(-1)?.fields.model).toBe('gpt-transcribe')
+      // whisper-1 chosen while the list suggests gpt-transcribe stays, and is told what to choose.
+      const pinned = await call<AiProviderInfo>('ai:saveProvider', { id: old.id, kind: 'openai', label: 'Retired OpenAI', transcriptionModel: 'whisper-1' })
+      expect(pinned.transcriptionModel).toBe('whisper-1')
+      expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toBe(
+        'OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or make captions On this PC.'
+      )
+      // A packaged app ignores the test date.
+      expect(today()).toBe('2027-02-26')
+      h.packaged = true
+      try {
+        expect(today()).toBe(new Date().toISOString().slice(0, 10))
+      } finally {
+        h.packaged = false
+      }
+    } finally {
+      delete process.env.SSW_AI_TODAY
+      resetModelList()
+    }
+  }, 60_000)
+
   it('retries rate limits and server errors', async () => {
-    const flaky = await add('Flaky OpenAI', 'openai', 'flaky-openai-key-1')
+    const flaky = await add('Flaky OpenAI', 'openai', 'flaky-openai-key-1', { transcriptionModel: 'whisper-1' })
     expectWords(await call<Transcript>('ai:transcribe', 'rec-words', { providerId: flaky.id }))
   }, 60_000)
 

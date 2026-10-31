@@ -133,6 +133,8 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
     canTranscribe: true,
     defaultModel: 'gpt-6.1-sol',
     // The only OpenAI transcription model that returns segment and word timings (timestamp_granularities).
+    // OpenAI retires it on 26 February 2027: near that day the model list suggests gpt-transcribe
+    // instead (docs/design/transcription.md §2.1).
     defaultTranscriptionModel: 'whisper-1',
     keyPage: 'https://platform.openai.com/api-keys',
     keyPlaceholder: 'sk-…'

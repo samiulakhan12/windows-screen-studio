@@ -1,5 +1,6 @@
-import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
+import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, wordDirection, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
+import { speakerCaption } from '../../../shared/captions/speakers'
 import { luminance } from '../../../shared/editor/titles'
 import type { Rect } from '../../../shared/engine/layout'
 import type { CaptionSegment, CaptionSettings, Project } from '../../../shared/types'
@@ -129,8 +130,7 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
   c.save()
   c.font = font
   c.textAlign = 'left'
-  // x is still each word's left edge; the direction puts punctuation on the right side of an RTL word.
-  c.direction = layout.rtl ? 'rtl' : 'ltr'
+  // x is still each word's left edge; the direction (set per word) puts punctuation on the right side of an RTL word.
   c.textBaseline = 'middle'
   c.lineJoin = 'round'
   if (settings.background === 'box') {
@@ -162,6 +162,7 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
     c.lineWidth = outline * px * 2
     for (const wd of words) {
       if (karaokePill && wd.token === spoken) continue
+      c.direction = wordDirection(layout, wd.token)
       c.strokeText(wd.text, wd.x, wd.y)
     }
   }
@@ -175,9 +176,18 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
     // On the pill the word is dark (or white on a dark pill) and needs no shadow.
     if (shadow) c.shadowColor = lit && karaokePill ? 'transparent' : shadow
     c.fillStyle = !lit ? settings.color : karaokePill ? (luminance(settings.highlightColor) > 0.5 ? '#0b0b10' : '#ffffff') : settings.highlightColor
+    c.direction = wordDirection(layout, wd.token)
     c.fillText(wd.text, wd.x, wd.y)
   }
   c.restore()
+}
+
+/** Captions with the speaker's name first (Show speaker names), one object per caption so their layout stays cached. */
+const withNames = new WeakMap<CaptionSegment, CaptionSegment>()
+function named(seg: CaptionSegment): CaptionSegment {
+  let out = withNames.get(seg)
+  if (!out) withNames.set(seg, (out = speakerCaption(seg)))
+  return out
 }
 
 interface Shown {
@@ -202,7 +212,7 @@ function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number, ar
   if (i < 0) return null
   const alpha = captionAlpha(segments, i, t, project.clips)
   if (alpha <= 0.002) return null
-  const seg = segments[i]
+  const seg = settings.showSpeaker ? named(segments[i]) : segments[i]
   const font = captionFont(project, settings)
   const layout = layoutOf(ctx, seg, settings, w, h, font, area)
   const ci = chunkIndexAt(layout, t)

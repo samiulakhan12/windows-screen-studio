@@ -45,6 +45,8 @@ export interface CaptionToken {
   text: string
   start: number
   end: number
+  /** Not spoken: the speaker's name drawn before the caption (speakers.ts speakerCaption); karaoke never lights it. */
+  label?: true
 }
 
 /**
@@ -61,7 +63,7 @@ export function captionTokens(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
       const w = seg.words![i]
       const start = clamp(Math.max(w.start, at), seg.start, seg.end)
       at = start
-      return { text, start, end: clamp(Math.max(w.end, start), start, seg.end) }
+      return { text, start, end: clamp(Math.max(w.end, start), start, seg.end), ...((w as { label?: true }).label ? { label: true as const } : {}) }
     })
   }
   // Evenly by characters (a space counts as one), so long words take longer.
@@ -121,7 +123,7 @@ export interface CaptionLine {
   width: number
 }
 
-/** The lines shown together (at most maxLines), from `start` to `end` (source seconds). */
+/** The lines shown together (at most maxLines, and a line of the speaker's name), from `start` to `end` (source seconds). */
 export interface CaptionChunk {
   start: number
   end: number
@@ -312,7 +314,8 @@ export function captionMetrics(
 /**
  * Lines of caption `seg` for `settings` in a `w` x `h` frame: its words broken into lines that fit
  * the safe width, grouped `maxLines` at a time into chunks shown one after the other (timed by
- * the words they start with), two-line chunks evened out.
+ * the words they start with), two-line chunks evened out. A line holding only the speaker's name
+ * (speakers.ts speakerCaption) is shown with the next one, so the name never shows alone.
  */
 export function captionLayout(
   seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words'>,
@@ -332,11 +335,17 @@ export function captionLayout(
   const pieces = piecesOf(tokens, m.maxWidth, width)
   const lines = breakLines(pieces, m.maxWidth, space)
   const per = settings.maxLines === 1 ? 1 : 2
-  const rtl = RTL_FIRST.test(seg.text)
+  // The caption's own words decide, not the speaker's name before them (a Latin "Speaker 1:" before Arabic).
+  const rtl = RTL_FIRST.test(base.filter((t) => !t.label).map((t) => t.text).join(' '))
   const dirs = tokenDirs(tokens, rtl ? 'r' : 'l')
   const chunks: CaptionChunk[] = []
-  for (let c = 0; c < lines.length; c += per) {
-    const group = lines.slice(c, c + per)
+  const onlyName = ([a, b]: [number, number]): boolean => pieces.slice(a, b).every((p) => tokens[p.token].label)
+  for (let c = 0; c < lines.length; ) {
+    // The speaker's name never shows alone: a line holding only the name goes with the words after it.
+    let end = Math.min(c + per, lines.length)
+    while (end < lines.length && lines.slice(c, end).every(onlyName)) end++
+    const group = lines.slice(c, end)
+    c = end
     const from = group[0][0]
     const to = group[group.length - 1][1]
     const ranges = group.length === 2 ? balance(pieces, from, to, m.maxWidth, space) : group
@@ -404,10 +413,24 @@ export function chunkIndexAt(layout: Pick<CaptionLayout, 'chunks'>, t: number): 
 export function spokenToken(layout: Pick<CaptionLayout, 'tokens'>, chunk: Pick<CaptionChunk, 'first' | 'last'>, t: number): number {
   let spoken = -1
   for (let i = chunk.first; i <= chunk.last; i++) {
+    if (layout.tokens[i].label) continue
     if (layout.tokens[i].start <= t) spoken = i
     else break
   }
   return spoken
+}
+
+/**
+ * The direction token `token` is drawn with: the caption's, which puts the punctuation of a
+ * right-to-left word on its correct side; a speaker's name without right-to-left letters before a
+ * right-to-left caption keeps left to right, so its colon stays after it ("You:", not ":You"). The
+ * whole name decides, so the number of a right-to-left name ("متحدث 2:") draws right to left too,
+ * and so does a name without letters ("7:"), which sits with the caption's words.
+ */
+export function wordDirection(layout: Pick<CaptionLayout, 'tokens' | 'rtl'>, token: number): 'ltr' | 'rtl' {
+  if (!layout.rtl) return 'ltr'
+  const name = layout.tokens.filter((t) => t.label).map((t) => t.text).join(' ')
+  return layout.tokens[token]?.label && /\p{L}/u.test(name) && !RTL_LETTER.test(name) ? 'ltr' : 'rtl'
 }
 
 /* ---------- placement ---------- */

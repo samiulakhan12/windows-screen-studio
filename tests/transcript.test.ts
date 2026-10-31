@@ -631,6 +631,23 @@ describe('cutFlags: one rule for heard words, deleted words and guesses (edit-by
     ]
     expect(struck([deletedA], cut(2.4, 3.7))).toEqual(['a', 'works.'])
   })
+
+  it('cuts a guess that follows the recording\'s sound (a text-only answer) by its middle, and takes it as a heard neighbour', () => {
+    // gpt-transcribe's words placed over the sound (transcriptTiming.timeTextPart).
+    const placed = seg('s', 0.4, 3.6, 'So I think it works.')
+    placed.words = [
+      { text: 'So', start: 0.4, end: 0.7, estimated: true, fromSound: true },
+      { text: 'I', start: 0.7, end: 0.9, estimated: true, fromSound: true },
+      { text: 'think', start: 0.9, end: 1.5, estimated: true, fromSound: true },
+      { text: 'it', start: 1.5, end: 1.8, estimated: true, fromSound: true },
+      { text: 'works.', start: 1.8, end: 2.6, estimated: true, fromSound: true }
+    ]
+    expect(struck([placed], cut(0.85, 1.85))).toEqual(['think', 'it'])
+    // "it" retyped as "that": a plain guess between "think" and "works.", cut only with the time between their middles.
+    const retyped = { ...placed, text: 'So I think that works.' }
+    expect(struck([retyped], cut(1.4, 1.7))).toEqual([])
+    expect(struck([retyped], cut(1.1, 2.3))).toEqual(['think', 'that', 'works.'])
+  })
 })
 
 describe('captionWordTimes', () => {
@@ -650,6 +667,19 @@ describe('captionWordTimes', () => {
     // A heard word deleted keeps its time, marked.
     expect(captionWordTimes(s, (i) => i === 0)[0]).toEqual({ text: 'So', start: 0, end: 0.5, deleted: true })
     expect(captionWordTimes({ ...s, words: captionWordTimes(s, (i) => i === 3) })[3]).toEqual({ text: 'think', start: 3, end: 4, deleted: true })
+  })
+
+  it('keeps a guess that follows the sound marked so, deleted or not; a word added is a plain guess', () => {
+    const s = seg('s', 0, 2, 'So it works.')
+    s.words = [
+      { text: 'So', start: 0, end: 0.5, estimated: true, fromSound: true },
+      { text: 'works.', start: 1, end: 2, estimated: true, fromSound: true }
+    ]
+    expect(captionWordTimes(s, (i) => i === 0)).toEqual([
+      { text: 'So', start: 0, end: 0.5, estimated: true, fromSound: true, deleted: true },
+      { text: 'it', start: 0.5, end: 1, estimated: true },
+      { text: 'works.', start: 1, end: 2, estimated: true, fromSound: true }
+    ])
   })
 })
 
@@ -684,6 +714,20 @@ describe('settleDeletedWords', () => {
     expect(marks(trimmed)).toEqual(['settings'])
     // Its own time brought back: the mark goes, though the caption starts after it.
     expect(marks(settleDeletedWords({ ...trimmed, clips: full }, trimmed))).toEqual([])
+  })
+
+  it('keeps a guess that follows the sound marked so, through the delete and the restore', () => {
+    const placed = transcript([seg('s', 0, 2, 'So it works.')])
+    placed.segments[0].words = [
+      { text: 'So', start: 0, end: 0.5, estimated: true, fromSound: true },
+      { text: 'it', start: 0.5, end: 1.2, estimated: true, fromSound: true },
+      { text: 'works.', start: 1.2, end: 2, estimated: true, fromSound: true }
+    ]
+    const cutIt = cutWords(full, transcriptWords(placed), [[1, 1]], 30)
+    const gone = { duration: 30, clips: cutIt, transcript: anchorCutWords(placed, full, cutIt, [[1, 1]]) } as unknown as Project
+    expect(marks(gone)).toEqual(['it'])
+    expect(gone.transcript!.segments[0].words!.every((w) => w.fromSound)).toBe(true)
+    expect(settleDeletedWords({ ...gone, clips: full }, gone).transcript!.segments[0].words).toEqual(placed.segments[0].words)
   })
 
   it('changes nothing when neither the clips nor the transcript changed, or there is no mark', () => {

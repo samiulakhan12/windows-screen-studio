@@ -52,6 +52,8 @@ import {
 } from '../speechState'
 import { BanglaOffer, banglaOfferApplies, isSmallTier, LocalAction, LocalQuality, LocalRunning } from './LocalCaptions'
 import '../captions.css'
+import { estimatedShare, providerTiming, TIMING_COPY } from '../../../../shared/captions/transcriptTiming'
+import { CaptionSpeakerSelect, ShowSpeakerToggle, SpeakerNamesToggle, speakerFileOptions, SpeakersSection, speakersShown } from './SpeakersSection'
 
 /* ---------- Captions and transcript ---------- */
 
@@ -194,6 +196,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
             onSelect={props.onSelect}
             onNotice={props.onNotice}
           />
+          {speakersShown(project) && <SpeakersSection project={project} onNotice={props.onNotice} />}
           <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} />
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
@@ -478,6 +481,11 @@ function GenerateSection({
             {languageName ? ` (${languageName})` : ''}.
           </p>
         )}
+        {t.provider !== 'local' && estimatedShare(t.segments) > 0.5 && (
+          <p className="hint" data-testid="estimated-summary">
+            {TIMING_COPY.summary}
+          </p>
+        )}
         {mine?.notice && (
           <div className="captions-suggestion" role="status">
             <p className="hint warn">{mine.notice}</p>
@@ -673,6 +681,22 @@ function GenerateSection({
                 )}
               </div>
               <p className="hint">The recording&apos;s sound is sent to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'} with your key; it is billed to your account.</p>
+              {chosen?.transcriptionModel && providerTiming(chosen.kind, chosen.transcriptionModel) === 'text' && (
+                <p className="hint" data-testid="estimated-times-hint">
+                  {TIMING_COPY.formHint(chosen.transcriptionModel)}{' '}
+                  {local && (
+                    <button
+                      className="link"
+                      onClick={() => {
+                        setProvider(LOCAL_TRANSCRIBER_ID)
+                        clearTranscriptionError()
+                      }}
+                    >
+                      {TIMING_COPY.useLocal}
+                    </button>
+                  )}
+                </p>
+              )}
             </>
           )}
         </>
@@ -769,6 +793,7 @@ function LookSection({ project }: { project: Project }): JSX.Element {
           { value: 2, label: 'Up to two lines' }
         ]}
       />
+      <ShowSpeakerToggle project={project} />
       <p className="hint">Long captions show part by part. The preview shows them as the export draws them.</p>
     </Section>
   )
@@ -836,6 +861,7 @@ function TranscriptSection({
   const matches = useMemo(() => findInCaptions(segments, find), [segments, find])
   const matchIds = useMemo(() => new Set(matches.map((m) => m.id)), [matches])
   const matchCount = matches.reduce((n, m) => n + m.count, 0)
+  const labelled = useMemo(() => segments.some((s) => s.speaker), [segments])
 
   // The caption under the playhead (re-rendered only when it changes, not on every frame).
   const currentAt = useCallback(() => {
@@ -977,6 +1003,7 @@ function TranscriptSection({
                 onChange={(e) => setText(s.id, e.target.value)}
                 onBlur={() => tidyText(s.id)}
               />
+              {labelled && <CaptionSpeakerSelect segments={segments} seg={s} at={at} />}
               <div className="caption-tools">
                 <button className="btn ghost icon-btn" title="Split at the playhead" aria-label="Split at the playhead" onClick={() => split(s.id)} disabled={!playheadIn(s) && currentId !== s.id}>
                   <EditorIcon name="scissors" size={14} />
@@ -1205,7 +1232,7 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
     if (!segments.length) return onNotice('There are no captions to export')
     setSaving(true)
     try {
-      const file = await window.api.saveCaptions(p.name, f, subtitleFile(segments, p.clips, f, planOf(p)))
+      const file = await window.api.saveCaptions(p.name, f, subtitleFile(segments, p.clips, f, planOf(p), speakerFileOptions()))
       if (file) onNotice(`Captions saved: ${file}`)
     } catch (err) {
       onNotice(`The captions could not be saved: ${ipcMessage(err)}`)
@@ -1234,6 +1261,7 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
         }}
         options={SUBTITLE_FORMATS}
       />
+      <SpeakerNamesToggle project={project} />
       <button ref={buttonRef} className="btn" disabled={saving || !transcript.segments.length} onClick={() => void save()}>
         <EditorIcon name="captions" size={15} /> {saving ? 'Saving…' : 'Export captions…'}
       </button>

@@ -21,7 +21,7 @@ AI features keep the current model: the user brings their own key, there is no F
 | Date | What happens | What it affects |
 |---|---|---|
 | **6 January 2027** | OpenAI removes `tts-1`, `tts-1-hd` and `gpt-4o-mini-tts`. OpenAI names `gpt-realtime-2.1-mini` as the replacement. | Nothing shipped. LT-04 (voiceover) should be built on Gemini TTS. |
-| **26 February 2027** | OpenAI removes `whisper-1`, `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`. OpenAI names `gpt-transcribe` and `gpt-live-transcribe` as replacements. | **Shipped feature.** `whisper-1` is Flown's default OpenAI transcription model (`src/shared/api/ai.ts`), and `src/main/ai/openai.ts` relies on its word timestamps. Third-party write-ups say the replacements return no word timings. Check the current OpenAI docs before building **NW-09**. Captions on this PC (F-01, shipped) do not depend on it. |
+| **26 February 2027** | OpenAI removes `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` and `gpt-4o-transcribe-diarize`. OpenAI names `gpt-transcribe` and `gpt-live-transcribe` as replacements. | **Handled by NW-09** (next release): Flown handles `gpt-transcribe`, which returns text only (OpenAI's docs, 30 October 2026); it times its words from the sound and marks them estimated, and a request to a retired model fails with a plain message. `whisper-1` stays the suggested model until the list of suggested models moves to `gpt-transcribe` a few weeks before the day, only for versions that can use it (a minimum app version per suggestion, added before 0.7.1 ships; `docs/design/transcription.md` §2.1). Providers saved with the suggested model move with the list; a model the user chose, or the `whisper-1` an earlier Flown stored, is kept, with the Settings note, until the day. Captions on this PC (F-01, shipped) do not depend on it. |
 
 Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/deprecations), checked 25 October 2026.
 
@@ -37,7 +37,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 
 ## Suggested Wave 5
 
-1. **NW-09 + LT-20**: transcription that survives the OpenAI shutdown. This has a deadline. (LT-20 shipped with F-01, captions on this PC; NW-09 is still planned.)
+1. **NW-09 + LT-20**: transcription that survives the OpenAI shutdown. This has a deadline. (LT-20 shipped with F-01, captions on this PC; NW-09 shipped for the next release.)
 2. **NW-04 + NW-01**: transcript editing, then filler and retake removal. They share one review screen.
 3. **NW-02**: teleprompter and speaker notes (shipped in 0.3.0).
 4. **NW-03**: better auto zoom input.
@@ -55,7 +55,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 ## Next wave
 
 ### NW-09 · Transcription that survives the OpenAI shutdown, with speaker labels
-**AI · M · planned · deadline 26 Feb 2027**
+**AI · M · shipped (next release) · deadline 26 Feb 2027**: see [FEATURES.md](FEATURES.md) (Captions after OpenAI retires whisper-1, Speaker labels) and `docs/design/transcription.md`. OpenAI's replacement `gpt-transcribe` returns text only (checked 30 October 2026): Flown times its words from the sound (marked estimated; exact times On this PC), and the suggested model moves to it through the model list near the day. Gemini labels speakers; recordings with separate tracks get You / Others with no AI. Left for later: aligning a provider's text to word times from the speech model on this PC, keeping Gemini's speaker numbers consistent across 5-minute parts, speaker labels for captions made On this PC beyond You / Others, a colour per speaker, and exact word times with a key through an OpenAI-compatible Whisper host (NW-14).
 
 - **What:** keeps word timings working when `whisper-1` goes away. Karaoke captions, filler removal and transcript editing all depend on them. Also adds speaker labels for calls and interviews.
 - **Works with:**

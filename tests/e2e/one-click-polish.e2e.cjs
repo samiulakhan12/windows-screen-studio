@@ -109,7 +109,8 @@ async function open(ctx, home, mock, apiKey) {
   // Xvfb has no keyring: the test turns on Chromium's basic store from outside (as ai.e2e.cjs does).
   await app.evaluate(({ safeStorage }) => safeStorage.setUsePlainTextEncryption(true))
   await win.waitForSelector('.home', { timeout: 30000 })
-  const saved = await api(win, 'saveAiProvider', { kind: 'openai', label: 'OpenAI', apiKey })
+  // whisper-1: the captions' exact text and times are checked (gpt-transcribe's estimated times: transcription.e2e.cjs).
+  const saved = await api(win, 'saveAiProvider', { kind: 'openai', label: 'OpenAI', apiKey, transcriptionModel: 'whisper-1' })
   h.assert(saved.ok, `provider saved: ${saved.error}`)
   await f.openProject(win, NAME)
   return { app, win }

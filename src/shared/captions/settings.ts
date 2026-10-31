@@ -94,6 +94,7 @@ export function readCaptionSettings(raw: unknown): CaptionSettings | undefined {
     highlightColor: typeof r.highlightColor === 'string' && HEX.test(r.highlightColor) ? r.highlightColor.toLowerCase() : d.highlightColor,
     background: pick(r.background, BACKGROUNDS, d.background),
     maxLines: r.maxLines === 1 ? 1 : 2,
-    ...(font ? { font } : {})
+    ...(font ? { font } : {}),
+    ...(r.showSpeaker === true ? { showSpeaker: true as const } : {})
   }
 }

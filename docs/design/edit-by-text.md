@@ -148,7 +148,7 @@ memory:
 | The word list | Derived from `Project.transcript` (`transcriptWords`), memoised on the transcript object. |
 | Cut or kept, per word | Derived from `Project.clips` (`cutFlags`). |
 | The selection in the transcript | Panel state (indices into the word list), never saved. |
-| A caption's word times after a cut made in the tab | `CaptionSegment.words`, stored by the cut (§4.4 Anchoring), with two optional per-word marks written only when set: `estimated: true` (the time is a guess) and `deleted: true` (a word the user deleted here, §4.2). Projects without them load and save byte for byte as before. |
+| A caption's word times after a cut made in the tab | `CaptionSegment.words`, stored by the cut (§4.4 Anchoring), with optional per-word marks written only when set: `estimated: true` (the time is a guess), with it `fromSound: true` (a guess that follows the recording's sound, a text-only answer: transcription.md §3.3), and `deleted: true` (a word the user deleted here, §4.2). Projects without them load and save byte for byte as before. |
 | The fillers and retakes list | Renderer memory per transcript object (`reviewMemory` in the panel, a `WeakMap`), so switching tabs keeps it; gone when the editor closes (with the editor's project). Never saved. |
 
 The export job gains one optional field (`src/shared/api/export.ts`, additive):
@@ -187,8 +187,8 @@ same text):
   caption's own start or end.
 - A caption without any timed words gets every word estimated the same way across the caption.
 - A shown word matched to a stored guess (a timed word marked `estimated`, §4.4 Anchoring) takes
-  its times and stays `estimated`; a stored `deleted` mark comes with its word, heard or a guess
-  (§4.2).
+  its times and stays `estimated` (and `fromSound` when the guess had it); a stored `deleted` mark
+  comes with its word, heard or a guess (§4.2).
 - Of the longest matchings, the one that pairs the fewest shown words with timed words marked
   `deleted` is taken, then the one matching earliest. So when the text loses one of two equal
   words (a repeat removed in this tab, then taken out of the text by hand or by Fix captions), the
@@ -206,8 +206,10 @@ transcript object.
 
 ### 4.2 Cut or kept (`cutFlags`)
 
-A shown word's time is either **heard** (matched to a word timing the provider gave, §4.1) or a
-**guess** (`estimated`: shared out by §4.1, or a stored guess). The Transcript tab and the subtitle
+A shown word's time is either **heard** (matched to a word timing the provider gave, §4.1, or to
+a guess that follows the recording's sound, `fromSound`: a text-only answer's words placed over
+the stretches with sound, off by tenths of a second, transcription.md §3.3) or a **guess**
+(`estimated`: shared out by §4.1, or another stored guess). The Transcript tab and the subtitle
 files decide whether a word is cut by one rule, `cutFlags`, so the words the tab strikes through
 are exactly the words the subtitle files leave out:
 
@@ -558,7 +560,7 @@ change with cuts.
 New (owned):
 
 - `src/shared/editor/transcript.ts`
-  - `interface TranscriptWord { index; caption; text; start; end; estimated; deleted?; captionTime? }`
+  - `interface TranscriptWord { index; caption; text; start; end; estimated; fromSound?; deleted?; captionTime? }`
   - `transcriptWords(transcript?: Transcript): TranscriptWord[]`, `captionsWords(segments): TranscriptWord[]`
   - `alignCaptionWords(seg: CaptionSegment): Omit<TranscriptWord, 'index' | 'caption'>[]`
   - `cutFlags(words, clips): boolean[]`, `middlesCut(words, clips): boolean[]` (§4.7), `MIN_CUE` (the shortest cue the subtitle files keep, §4.2; it moved here from `subtitles.ts`)
@@ -593,7 +595,7 @@ Additive lines in shared files:
 - `src/shared/editor/editStore.ts`: an optional `settle(next, prev)` applied to every state `update`
   and `replace` make (a held gesture's run once, when it closes); `src/renderer/src/views/Editor.tsx`
   passes `settleDeletedWords` (§4.2 rule 5).
-- `src/shared/types.ts`: `CaptionWord.estimated?` and `CaptionWord.deleted?`, read back by
+- `src/shared/types.ts`: `CaptionWord.estimated?`, `CaptionWord.fromSound?` and `CaptionWord.deleted?`, read back by
   `src/shared/captions/captionData.ts`; `src/shared/captions/subtitles.ts` `outputCues` uses `cutFlags` (§4.2).
 - `src/renderer/src/editor/EditorIcon.tsx`: one icon path.
 - Docs: FEATURES, ROADMAP, RELEASE-NOTES, this file.
