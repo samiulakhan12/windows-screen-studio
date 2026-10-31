@@ -3,7 +3,13 @@
 //   src/shared/captions/emojiList.ts: the emoji the bundled colour emoji font draws, that is the
 //   fully-qualified entries of Unicode's emoji-test.txt 18.0 whose code points the font
 //   (resources/fonts/noto-color-emoji.woff2) maps. Readers, the emoji picker and generation use it.
-// Part P4 adds emojiData.ts (keywords from CLDR) and the number tables to this script.
+//   src/shared/captions/numberData.ts: Bangla and Hindi number words (0–99, hundreds and the
+//   scales), read from CLDR's spell-out rules, for spelled-out numbers (§11.4).
+//   src/shared/captions/emojiData.ts: the emoji generation suggests, each with its words per
+//   language: English by hand (scripts/data/emoji-triggers.txt), the other languages from CLDR's
+//   emoji annotations, filtered (§11.3).
+//   src/shared/captions/bleepWords.ts: the swear-word lists of bleeping (§11.7): obscenity's
+//   English data set (Standard) and LDNOOBW per language (Strict).
 //
 //   node scripts/build-emoji-data.mjs           # write the files
 //   node scripts/build-emoji-data.mjs --check   # exit 1 when a committed file is not what it would write
@@ -12,8 +18,12 @@
 //   scripts/data/emoji-test-18.0.txt  https://www.unicode.org/Public/18.0.0/emoji/emoji-test.txt
 //                                     (Unicode License v3, © 1991-2026 Unicode, Inc.)
 //   resources/fonts/noto-color-emoji.woff2, against its pin in src/shared/captions/fontCatalog.ts
+//   The npm tarballs of NPM_INPUTS (CLDR 49 annotations and spell-out rules, Unicode License v3;
+//   obscenity 0.4.6, MIT; naughty-words 1.2.0, CC-BY-4.0), downloaded once into
+//   .cache/caption-data/ (SSW_CAPTION_DATA_CACHE overrides) and checked by bytes and SHA-256.
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { gunzipSync } from 'node:zlib'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadCatalog, woff2Tables } from './fonts.mjs'
@@ -28,6 +38,44 @@ export const EMOJI_TEST = {
   sha256: '8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a'
 }
 const OUT_LIST = path.join('src', 'shared', 'captions', 'emojiList.ts')
+const OUT_NUMBERS = path.join('src', 'shared', 'captions', 'numberData.ts')
+
+/** The npm packages the data comes from: tarball URL, bytes and SHA-256 (the registry's integrity is SHA-512 of the same bytes). */
+export const NPM_INPUTS = {
+  'cldr-annotations-full': {
+    version: '49.0.0',
+    url: 'https://registry.npmjs.org/cldr-annotations-full/-/cldr-annotations-full-49.0.0.tgz',
+    bytes: 6_604_242,
+    sha256: 'ce415a4898da7a4ca755437de2593863c05045fc6b1649d8da5ee05fa3bdc33b',
+    licence: 'Unicode-3.0'
+  },
+  'cldr-rbnf': {
+    version: '49.0.0',
+    url: 'https://registry.npmjs.org/cldr-rbnf/-/cldr-rbnf-49.0.0.tgz',
+    bytes: 96_174,
+    sha256: '6dc753630b1a7ebb1900b026e9ea0779c4c5ca0a4306c7c69a3ff37a07b5313d',
+    licence: 'Unicode-3.0'
+  },
+  obscenity: {
+    version: '0.4.6',
+    url: 'https://registry.npmjs.org/obscenity/-/obscenity-0.4.6.tgz',
+    bytes: 43_792,
+    sha256: '7b00239506036326205e6e42580b438b3458492a1845d8f15e53c263532b368b',
+    licence: 'MIT'
+  },
+  'naughty-words': {
+    version: '1.2.0',
+    url: 'https://registry.npmjs.org/naughty-words/-/naughty-words-1.2.0.tgz',
+    bytes: 24_337,
+    sha256: 'c34b05e10a97ec7b9e0c3dd91d09888187c0f08d0812eaea79679795585b217e',
+    licence: 'CC-BY-4.0'
+  }
+}
+
+/** The folder the npm tarballs are kept in. */
+export function dataCacheDir(env = process.env) {
+  return path.resolve(root, env.SSW_CAPTION_DATA_CACHE || path.join('.cache', 'caption-data'))
+}
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
@@ -36,6 +84,96 @@ function pinned(file, bytes, hash) {
   const data = readFileSync(path.join(root, file))
   if (data.length !== bytes || sha256(data) !== hash) throw new Error(`${file} is not the pinned file (${data.length} bytes, SHA-256 ${sha256(data)}; pinned ${bytes}, ${hash})`)
   return data
+}
+
+/** The files of a gzipped tar (ustar; regular files only), by path. */
+export function untar(gz) {
+  const tar = gunzipSync(gz)
+  const files = new Map()
+  let at = 0
+  while (at + 512 <= tar.length) {
+    const header = tar.subarray(at, at + 512)
+    if (header.every((b) => b === 0)) break
+    const field = (from, len) => header.subarray(from, from + len).toString('utf8').replace(/\0.*$/s, '')
+    const name = (field(345, 155) ? field(345, 155) + '/' : '') + field(0, 100)
+    const size = parseInt(field(124, 12).trim() || '0', 8)
+    const type = field(156, 1)
+    if (type === '0' || type === '') files.set(name, tar.subarray(at + 512, at + 512 + size))
+    at += 512 + Math.ceil(size / 512) * 512
+  }
+  return files
+}
+
+/** The files of a pinned npm tarball, downloaded into the cache once (never more bytes than pinned). */
+export async function npmInput(name) {
+  const pin = NPM_INPUTS[name]
+  const file = path.join(dataCacheDir(), path.basename(new URL(pin.url).pathname))
+  const ok = (bytes) => bytes.length === pin.bytes && sha256(bytes) === pin.sha256
+  let bytes = existsSync(file) ? readFileSync(file) : null
+  if (!bytes || !ok(bytes)) {
+    const res = await fetch(pin.url, { redirect: 'error' })
+    if (!res.ok) throw new Error(`${pin.url}: HTTP ${res.status}`)
+    const chunks = []
+    let got = 0
+    for await (const chunk of res.body) {
+      got += chunk.length
+      if (got > pin.bytes) throw new Error(`${pin.url}: more than the pinned ${pin.bytes} bytes`)
+      chunks.push(chunk)
+    }
+    bytes = Buffer.concat(chunks)
+    if (!ok(bytes)) throw new Error(`${pin.url} did not match its pin (${bytes.length} bytes, SHA-256 ${sha256(bytes)})`)
+    mkdirSync(path.dirname(file), { recursive: true })
+    writeFileSync(file + '.part', bytes)
+    renameSync(file + '.part', file)
+  }
+  return untar(bytes)
+}
+
+/* ---------- number words (§11.4) ---------- */
+
+/** Number words of CLDR spell-out rules: 0–99, the hundred (attached to its multiplier or not) and the scales. */
+export function spelloutTable(rules) {
+  const card = rules.split('%spellout-cardinal:')[1]?.split(/\n%/)[0] ?? ''
+  const words = {}
+  let hundred = null
+  const scales = {}
+  for (const line of card.split('\n')) {
+    const plain = /^(\d+): ([^;<>=[\]]+);$/u.exec(line.trim())
+    if (plain && Number(plain[1]) < 100) {
+      words[plain[2].trim()] = Number(plain[1])
+      continue
+    }
+    const scaled = /^(\d+): <<( ?)([^\s[;]+)\[/u.exec(line.trim())
+    if (!scaled) continue
+    const n = Number(scaled[1])
+    if (n === 100) hundred = { word: scaled[3], attached: scaled[2] === '' }
+    else if (n >= 1000 && n <= 1e12) scales[scaled[3]] = n
+  }
+  if (Object.keys(words).length !== 100 || !hundred) throw new Error('the spell-out rules did not give 0–99 and the hundred')
+  return { words, hundred, scales }
+}
+
+export function numberDataSource(tables) {
+  return `/**
+ * GENERATED by scripts/build-emoji-data.mjs: do not edit; \`node scripts/build-emoji-data.mjs --check\` compares.
+ *
+ * Spelled-out Bangla and Hindi numbers (docs/design/captions-studio.md §11.4): the words for 0–99,
+ * the hundred and the scales, read from CLDR ${NPM_INPUTS['cldr-rbnf'].version}'s spell-out rules
+ * (cldr-rbnf, ${NPM_INPUTS['cldr-rbnf'].url}, SHA-256 ${NPM_INPUTS['cldr-rbnf'].sha256}; Unicode
+ * License v3, © 1991-2026 Unicode, Inc., resources/notices/35-caption-data.txt).
+ */
+
+export interface SpelledNumbers {
+  /** 0–99 by word. */
+  words: Readonly<Record<string, number>>
+  /** The word for a hundred, written onto its multiplier (Bangla তিনশো) or after it (Hindi तीन सौ). */
+  hundred: { word: string; attached: boolean }
+  /** Thousand and up, by word. */
+  scales: Readonly<Record<string, number>>
+}
+
+export const NUMBER_WORDS: Readonly<Record<'bn' | 'hi', SpelledNumbers>> = ${JSON.stringify(tables, null, 2)}
+`
 }
 
 /** The code points a font's cmap maps (formats 4 and 12). */
@@ -169,7 +307,13 @@ export async function generate() {
   const test = pinned(EMOJI_TEST.file, EMOJI_TEST.bytes, EMOJI_TEST.sha256).toString('utf8')
   // An entry is drawn when the font maps each of its code points but the variation selector.
   const entries = emojiTestEntries(test).filter((e) => e.points.every((c) => c === 0xfe0f || drawn.has(c)))
-  return { [OUT_LIST]: emojiListSource(entries, pin) }
+  const rbnf = await npmInput('cldr-rbnf')
+  const rules = (lang) => {
+    const f = rbnf.get(`package/rbnf/${lang}-SpelloutRules.txt`)
+    if (!f) throw new Error(`cldr-rbnf has no ${lang}-SpelloutRules.txt`)
+    return spelloutTable(f.toString('utf8'))
+  }
+  return { [OUT_LIST]: emojiListSource(entries, pin), [OUT_NUMBERS]: numberDataSource({ bn: rules('bn'), hi: rules('hi') }) }
 }
 
 async function main(args) {
