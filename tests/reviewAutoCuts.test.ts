@@ -988,4 +988,43 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     ])
     expect(rows(ui.p, ui.shown)).toEqual(['w1:kept', 'y1:kept', 'x1:removed', 'z1:kept'])
   })
+
+  it('a speed-up kept after a run over it was undone still reads kept when a run at that speed plays part of it', () => {
+    // With the list open: Polish at 2x; Polish at 4x over it; Ctrl+Z; K the 2x; Polish at 8x over
+    // its end, K; Polish at 4x over its start. The undone 4x still lists the 2x's footage at 1x, but
+    // the new 4x holds it at 2x, so the undone one does not.
+    const one = panel(project())
+    one.step(auto(one.ui.p, 16.5, 18.5, 2, 'polish', 'a'))
+    const before = one.ui.p
+    one.step(auto(one.ui.p, 13, 19, 4, 'polish', 'b'))
+    one.step(before)
+    one.step(keepItems(one.ui.p, [one.item('a1')]))
+    one.step(auto(one.ui.p, 17, 19.5, 8, 'polish', 'c'))
+    one.step(keepItems(one.ui.p, [one.item('c1')]))
+    one.step(auto(one.ui.p, 16, 17, 4, 'polish', 'd'))
+    expect(plays(one.ui.p.clips)).toEqual([
+      [0, 16, 1],
+      [16, 17, 4],
+      [17, 19.5, 8],
+      [19.5, 20, 1]
+    ])
+    const read = (u: typeof one, id: string): string => `${id}:${reviewStatus(u.ui.p, u.item(id), u.ui.shown)}`
+    expect(['a1', 'c1', 'd1'].map((id) => read(one, id))).toEqual(['a1:kept', 'c1:kept', 'd1:pending'])
+    // The same where the one listed later at the undone run's speed is kept: Polish at 2x, Review,
+    // Delete; Polish at 8x over its end; Ctrl+Z twice; K the 2x; Polish at 8x over all of it, K.
+    const made = auto(project(), 12, 17, 2, 'polish', 'e')
+    const two = panel(made)
+    two.step(removeItems(two.ui.p, [two.item('e1')]))
+    two.step(auto(two.ui.p, 16.5, 18.5, 8, 'polish', 'f'))
+    two.step(made)
+    two.step(keepItems(two.ui.p, [two.item('e1')]))
+    two.step(auto(two.ui.p, 11.5, 17, 8, 'polish', 'g'))
+    two.step(keepItems(two.ui.p, [two.item('g1')]))
+    expect(plays(two.ui.p.clips)).toEqual([
+      [0, 11.5, 1],
+      [11.5, 17, 8],
+      [17, 20, 1]
+    ])
+    expect(['e1', 'g1'].map((id) => read(two, id))).toEqual(['e1:kept', 'g1:kept'])
+  })
 })

@@ -123,6 +123,12 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
   One made before the item, around it, holds that footage lower too, and so does one that took the
   item over and was undone since, but neither plays it while the item is kept (Smart speed at 2×,
   Polish at 4× inside it, Keep all, then Polish at 8× inside that kept: the 4× still reads kept).
+  Nor does a speed-up of the list hold footage that a record at its speed, or one the panel listed
+  later at its speed, holds from another speed: both cannot have played it at that speed (a tool
+  only speeds up what is slower), so the later one was made over it while the first one's change
+  there was gone (Polish at 2×, Polish at 4× over it, Ctrl+Z, K the 2×, Polish at 8× over its end
+  kept, then Polish at 4× over its start: the undone 4× lists that footage at 1×, the new one at 2×,
+  and the 2× still reads kept).
   A speed-up the panel listed before the item appeared was made before it, so it counts for neither:
   Polish at 2× removed, then Polish run again over the same silence with the panel open and the new
   2× kept; Polish at 4× removed, Polish at 2× inside it kept, then Polish at 4× over both, and the

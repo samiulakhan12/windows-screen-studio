@@ -368,7 +368,11 @@ export function recordAutoCuts(
 
 /** `pieces` without the time of `gone`, each split where `gone` covers it (in their order). */
 function without(pieces: readonly Piece[], gone: readonly Piece[]): Piece[] {
-  const g = union(gone)
+  return outside(pieces, union(gone))
+}
+
+/** `pieces` without the time of `g` (sorted, not overlapping: union), each split where `g` covers it. */
+function outside(pieces: readonly Piece[], g: readonly Piece[]): Piece[] {
   const out: Piece[] = []
   for (const p of pieces) {
     let at = p.start
@@ -495,6 +499,54 @@ export function playsBelow(cut: AutoCut, clips: readonly Clip[], list: readonly 
     if (length(both(both(union(ws), mine, speed), plays, speed)) > SLACK) return true
   }
   return false
+}
+
+/**
+ * Each speed-up of `ranked` (by id) without the footage that one ranked higher at its speed holds
+ * from another speed; one that loses nothing is the same object. Both cannot have played that
+ * footage at their speed (a tool only speeds up what is slower), so the higher one was made over it
+ * while the other's change there was gone. Worked out one speed and rank at a time, the highest
+ * first, with the pieces held above joined once for each speed they were at.
+ */
+export function withoutHeldAbove(ranked: readonly { cut: AutoCut; rank: number }[]): Map<string, AutoCut> {
+  const out = new Map<string, AutoCut>()
+  const byAction = new Map<number, { cut: AutoCut; rank: number }[]>()
+  for (const e of ranked) {
+    if (e.cut.action === 'cut') continue
+    const es = byAction.get(e.cut.action)
+    if (es) es.push(e)
+    else byAction.set(e.cut.action, [e])
+  }
+  for (const es of byAction.values()) {
+    es.sort((a, b) => b.rank - a.rank)
+    // The pieces of those ranked higher, by the speed they were at.
+    const above = new Map<number, Piece[]>()
+    for (let k = 0; k < es.length; ) {
+      let j = k
+      while (j < es.length && es[j].rank === es[k].rank) j++
+      // The time held above at a speed other than `s`, joined.
+      const gone = new Map<number, Piece[]>()
+      const goneAt = (s: number): Piece[] => {
+        let g = gone.get(s)
+        if (!g) gone.set(s, (g = union([...above].flatMap(([t, ps]) => (t === s ? [] : ps)))))
+        return g
+      }
+      for (let i = k; i < j; i++) {
+        const c = es[i].cut
+        const was = above.size ? c.was.flatMap((p) => outside([p], goneAt(p.speed))) : c.was
+        out.set(c.id, length(c.was) - length(was) > EPS ? { ...c, was } : c)
+      }
+      for (let i = k; i < j; i++) {
+        for (const p of es[i].cut.was) {
+          const ps = above.get(p.speed)
+          if (ps) ps.push(p)
+          else above.set(p.speed, [p])
+        }
+      }
+      k = j
+    }
+  }
+  return out
 }
 
 /** `project` with `list` as its records: no key when the list is empty. */

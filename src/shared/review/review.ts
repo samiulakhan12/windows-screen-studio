@@ -11,7 +11,7 @@
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, Clip, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
-import { autoCutIntact, footageBack, liveAutoCuts, playsBelow, undoAutoCut, withAutoCuts, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
+import { autoCutIntact, footageBack, liveAutoCuts, playsBelow, undoAutoCut, withAutoCuts, withoutHeldAbove, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -86,6 +86,27 @@ export const pendingCount = (project: Project): number => reviewItems(project).l
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
 
+const NO_RECORDS: readonly AutoCut[] = []
+/** What heldAbove worked out, by list and records; neither is ever changed in place. */
+const aboveMemo = new WeakMap<readonly ReviewItem[], WeakMap<readonly AutoCut[], Map<string, AutoCut>>>()
+
+/**
+ * The speed-ups of `listed` no longer recorded (by id), each without the footage that a record at
+ * its speed, or one the panel listed later at its speed, holds from another speed (withoutHeldAbove):
+ * that one was made over it while this one's change there was gone, such as a tool run that took
+ * an item over, undone, and a later run at its speed over part of that item. Once for a list and records.
+ */
+function heldAbove(listed: readonly ReviewItem[], records: readonly AutoCut[], ids: ReadonlySet<string>): Map<string, AutoCut> {
+  let byRecords = aboveMemo.get(listed)
+  if (!byRecords) aboveMemo.set(listed, (byRecords = new WeakMap()))
+  let done = byRecords.get(records)
+  if (!done) {
+    const mine = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [{ cut: i.cut, rank: i.seq ?? 0 }] : []))
+    byRecords.set(records, (done = withoutHeldAbove([...records.map((cut) => ({ cut, rank: Infinity })), ...mine])))
+  }
+  return done
+}
+
 /**
  * Whether `item` is still automatic, was kept (now the user's) or removed, read from `project` (§2.3).
  * `listed` is the list it is shown in: a cut removed inside a speed-up of that list taken back since
@@ -111,16 +132,18 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   }
   const cut = item.cut
   if (!cut) return 'removed'
-  const records = project.autoCuts ?? []
+  const records = project.autoCuts ?? NO_RECORDS
   const rec = records.find((c) => c.id === id)
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
   const ids = new Set(records.map((c) => c.id))
   // A part sped up again on top of it (a speed-up of the project or of the list) is under that one;
   // a part a speed-up of the list kept since plays on top of a third one is the user's. One the
-  // panel listed before this item appeared was made before it, so it is neither.
+  // panel listed before this item appeared was made before it, so it is neither, and so is footage
+  // one holds that a record or one listed later at its speed holds from another speed (heldAbove).
   const reviewed = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))
   const earlier = new Set(listed.flatMap((i) => (i.cut && (i.seq ?? 0) < (item.seq ?? 0) ? [i.cut.id] : [])))
-  const later = reviewed.filter((r) => !earlier.has(r.id))
+  const above = reviewed.length ? heldAbove(listed, records, ids) : undefined
+  const later = reviewed.flatMap((r) => (earlier.has(r.id) ? [] : [above?.get(r.id) ?? r]))
   const over = [...records, ...later]
   const back = (c: AutoCut): boolean => footageBack(c, project.clips, over)
   // Each part not back goes out through the speed-ups of the list taken back since, one at a time
