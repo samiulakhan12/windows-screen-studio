@@ -162,8 +162,45 @@ const VAD_PIN = {
   sha256: '2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987'
 }
 
-/** Names THIRD_PARTY_NOTICES.txt must mention (§6.3), matched without case. */
-const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe']
+/**
+ * Names THIRD_PARTY_NOTICES.txt must mention (§6.3), matched without case; and Captions Studio's
+ * (docs/design/captions-studio.md §6.9): its fonts' licence and families (34-caption-fonts.txt)
+ * and the Unicode data of its emoji list (35-caption-data.txt). The data sections part P4 adds
+ * there (CLDR, obscenity, LDNOOBW's Shutterstock) add their names with them.
+ */
+const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode']
+
+/**
+ * Captions Studio's bundled caption fonts (§6.9): the 42 WOFF2 files of resources/fonts that Vite
+ * copies into out/renderer/assets, measured 7,467,996 B installed and 7,449,971 B
+ * brotli-compressed (quality 11, 16 MB window, one stream: WOFF2 does not compress further). Each
+ * limit leaves about 0.5 MB, so a 2 MB regression fails the build.
+ */
+const CAPTIONS_BUDGET = { compressed: 8.0e6, installed: 8.5e6 }
+
+/**
+ * The offline translation runtime's budget (§6.9, §11.9), checked only when resources/translate/
+ * exists. TODO(phase B): offline translation waits for the owner's decision on its licences.
+ */
+const TRANSLATE_BUDGET = { compressed: 2.3e6, installed: 6e6 }
+
+/**
+ * What is wrong with the caption fonts found (by WOFF2 file name: their bytes and SHA-256) against
+ * the catalogue's pins (`pins`: fontCatalog.ts CatalogFile.woff2): each missing, changed or extra
+ * file. Empty: every pinned file is there, exactly.
+ */
+function captionFontProblems(found, pins) {
+  const out = []
+  const byName = new Map(found.map((f) => [f.name, f]))
+  for (const pin of pins) {
+    const f = byName.get(pin.file)
+    if (!f) out.push(`${pin.file} is missing`)
+    else if (f.bytes !== pin.bytes || f.sha256 !== pin.sha256) out.push(`${pin.file} is not the pinned file (${f.bytes} bytes, SHA-256 ${f.sha256})`)
+  }
+  const pinned = new Set(pins.map((p) => p.file))
+  for (const f of found) if (!pinned.has(f.name)) out.push(`${f.name} is not in the catalogue`)
+  return out
+}
 
 /** What is wrong with a notices text (empty: fine): at least 10 KB and every NOTICE_NAMES entry. */
 function noticesProblems(text) {
@@ -300,6 +337,9 @@ module.exports = {
   noticesResource,
   noticesProblems,
   NOTICE_NAMES,
+  CAPTIONS_BUDGET,
+  TRANSLATE_BUDGET,
+  captionFontProblems,
   VAD_PIN,
   SPEECH_IMPORTS,
   SPEECH_BUDGET,
