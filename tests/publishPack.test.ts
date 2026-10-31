@@ -125,6 +125,22 @@ describe('xLength and fitX', () => {
     expect(fitX(post)).not.toBe(post)
     expect(xLength(fitX(post))).toBeLessThanOrEqual(X_LIMIT)
   })
+  it("counts a bare domain's port and query by their characters when no path follows, as X does", () => {
+    expect(xLength('flown.app?ref=linkedin')).toBe(23 + 13)
+    expect(xLength('Run it at flown.app:8080')).toBe(10 + 23 + 5)
+    expect(xLength('Get it at flown.app?utm_source=x&utm_medium=social')).toBe(10 + 23 + 31)
+    // A domain in such a query is no link of its own.
+    expect(xLength('flown.app?utm_source=linkedin.com')).toBe(23 + 24)
+    // With a path, or with http(s)://, the port and the query are part of the link.
+    expect(xLength('flown.app:8080/download?ref=x')).toBe(23)
+    expect(xLength('flown.app/?ref=x')).toBe(23)
+    expect(xLength('https://flown.app:8080?ref=x')).toBe(23)
+    // So such a post is fitted to what X counts.
+    const post = `${'A'.repeat(240)} Get it: flown.app?utm_source=x&utm_medium=social`
+    expect(xLength(post)).toBe(240 + 9 + 23 + 31)
+    expect(fitX(post)).not.toBe(post)
+    expect(xLength(fitX(post))).toBeLessThanOrEqual(X_LIMIT)
+  })
   it('fits a long post into 280 at a word end with an ellipsis', () => {
     const long = Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ')
     const fitted = fitX(long)

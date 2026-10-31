@@ -125,13 +125,16 @@ const X_QUERY = "\\?[a-z0-9!?*'@();:&=+$/%#\\[\\]\\-_.,~|]*[a-z0-9\\-_&=#/]"
  * Links as X finds them in a post (twitter-text v3), not as plainText does: a domain on a top-level
  * domain X knows (tlds.ts), with "http(s)://" (any letters) or bare (Latin letters, also right
  * after Chinese or Japanese text), then a port, a path and a query, which end where X ends them (at
- * other scripts, quotes, an unmatched bracket or a closing dot or comma). "Node.js" and "file.txt"
- * are not links; "flown.fm" and "README.md" are.
+ * other scripts, quotes, an unmatched bracket or a closing dot or comma). A bare domain takes its
+ * port and query only with a path: without one ("flown.app?ref=x", "flown.app:8080"), X links the
+ * domain alone and counts what follows by its characters (`rest` without `scheme`). "Node.js" and
+ * "file.txt" are not links; "flown.fm" and "README.md" are. (The top-level domains are written once:
+ * a pattern twice as long runs many times slower.)
  */
 const X_LINK =
-  `(?:(?<![a-z0-9@\\uff20$#\\uff03])https?:\\/\\/(?:[\\p{L}\\p{M}\\p{N}_-]+\\.)+` +
+  `(?:(?<scheme>(?<![a-z0-9@\\uff20$#\\uff03])https?:\\/\\/(?:[\\p{L}\\p{M}\\p{N}_-]+\\.)+)` +
   `|(?<![a-z0-9@\\uff20$#\\uff03\\-_./${X_ACCENTS}])[a-z0-9${X_ACCENTS}][-a-z0-9${X_ACCENTS}]*\\.(?:[-a-z0-9${X_ACCENTS}]+\\.)*)` +
-  `${X_TLD}(?::[0-9]+)?(?:${X_PATH})?(?:${X_QUERY})?`
+  `${X_TLD}(?:(?::[0-9]+)?${X_PATH}(?:${X_QUERY})?|(?<rest>(?::[0-9]+)?(?:${X_QUERY})?))`
 
 // Emoji (with skin tones, variation selectors and joined sequences) count 2 each.
 const EMOJI = /\p{Extended_Pictographic}(?:\ufe0f|[\u{1f3fb}-\u{1f3ff}]|\u200d\p{Extended_Pictographic}\ufe0f?)*/gu
@@ -153,7 +156,7 @@ export function xLength(s: string): number {
   }
   for (const m of s.matchAll(X_TOKENS)) {
     n += counted(s.slice(last, m.index))
-    n += /^\p{Extended_Pictographic}/u.test(m[0]) ? 2 : X_URL
+    n += /^\p{Extended_Pictographic}/u.test(m[0]) ? 2 : X_URL + (m.groups?.scheme ? 0 : counted(m.groups?.rest ?? ''))
     last = m.index! + m[0].length
   }
   return n + counted(s.slice(last))

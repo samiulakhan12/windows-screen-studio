@@ -255,7 +255,9 @@ A URL is found as X finds it, not with `plainText`'s link filter: a domain on on
 domains X knows (`src/shared/publish/tlds.ts`, twitter-text v3's lists), with `http(s)://` or bare
 (`flown.fm`, `README.md`, also right after Japanese text: `詳細はflown.tvで`), then a port, path and
 query that end where X ends them (at other scripts, quotes, an unmatched bracket or a closing dot or
-comma: `https://example.com/をご覧ください` is a 23 and 7 Japanese characters). `Node.js`,
+comma: `https://example.com/をご覧ください` is a 23 and 7 Japanese characters). A bare domain takes
+its port and query only when a path follows: `flown.app?ref=x` and `flown.app:8080` are a 23 and
+then their `?ref=x` or `:8080` by characters, while `flown.app/?ref=x` is a 23. `Node.js`,
 `package.json` or `evil.example/login` are not on such a domain and count by their characters.
 
 ### 4.6 Running (`PublishRunner`, `src/renderer/src/publish/publishRun.ts`)
