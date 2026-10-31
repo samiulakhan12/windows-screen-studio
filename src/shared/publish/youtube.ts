@@ -8,7 +8,7 @@ import { planOf, videoDuration } from '../engine/freeze'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../render/chapters'
 import { descriptionText } from '../render/exportBundle'
 import type { Project } from '../types'
-import { cutAt, typedText } from './text'
+import { cutAt, typedText, withLinksOf } from './text'
 
 /** YouTube's limit for a description (characters). */
 export const YOUTUBE_DESCRIPTION_MAX = 5000
@@ -28,13 +28,17 @@ export function projectYoutubeChapters(project: Pick<Project, 'clips' | 'freezes
  */
 export const descriptionBody = (text: unknown): string => typedText(text, YOUTUBE_DESCRIPTION_MAX)
 
-/** `s` without "<" and ">", which YouTube refuses in a description: they become "‹" and "›" (same length). */
-const withoutAngleBrackets = (s: string): string => s.replace(/</g, '‹').replace(/>/g, '›')
+/**
+ * `s` without "<" and ">", which YouTube refuses in a description: they become "‹" and "›" (same
+ * length). "‹" can be part of a name where "<" cannot ("https://evil<.com"): a link that makes is
+ * broken or removed (withLinksOf), so the description has no link the text had not.
+ */
+const withoutAngleBrackets = (s: string): string => (/[<>]/.test(s) ? withLinksOf(s.replace(/</g, '‹').replace(/>/g, '›'), s) : s)
 
 /**
  * The description: `text`, then (with chapters) a blank line, "Chapters" and one "0:00 Intro" line
  * per chapter, with "<" and ">" as "‹" and "›" ("Settings › Export"). Over YouTube's 5 000
- * characters, the text is cut to fit (the timestamps are kept whole).
+ * characters, the text is cut to fit (the timestamps are kept whole); the cut makes no link (cutAt).
  */
 export function composeYoutubeDescription(text: string, chapters: readonly OutputChapter[], duration: number): string {
   const body = withoutAngleBrackets(text.trim())

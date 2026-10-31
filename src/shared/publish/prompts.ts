@@ -161,15 +161,15 @@ const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is
 
 /**
  * Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters, distinct, 400
- * characters together. Links `transcript` does not contain are removed ("ASP.NET" stays when it was said).
+ * characters together. Links `linksFrom` does not have are removed or broken ("ASP.NET" stays when it
+ * was said), after those characters are, so taking them out makes no link.
  */
-export function cleanTags(raw: unknown, transcript = ''): string[] {
+export function cleanTags(raw: unknown, linksFrom = ''): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   let total = 0
   for (const t of strings(raw)) {
-    const tag = plainText(t, { max: 200, oneLine: true, linksFrom: transcript })
-      .replace(/[<>#,]/g, '')
+    const tag = plainText(t.replace(/[<>#,]/g, ''), { max: 200, oneLine: true, linksFrom })
       .replace(/\s+/g, ' ')
       .trim()
     if (!tag || [...tag].length > PACK_CAPS.tagLength || seen.has(tag.toLowerCase())) continue
@@ -182,8 +182,10 @@ export function cleanTags(raw: unknown, transcript = ''): string[] {
   return out
 }
 
-/** A step without the numbering or bullet the model may have added. */
-const bareStep = (s: string): string => s.replace(/^(?:\d+[.)]|[-*•])\s+/, '').trim()
+/** A step without the numbering or bullet the model may have added (taken off before cleaning, so taking it off makes no link). */
+const bareStep = (s: string): string => s.trim().replace(/^(?:\d+[.)]|[-*•])\s+/, '')
+/** A title or heading without the "#" the model may have added. */
+const bareHeading = (s: string): string => s.trim().replace(/^#+\s*/, '')
 
 /** The article as text: "# Title", the introduction, then "## Heading" and numbered steps. */
 export function renderArticle(a: { title: string; intro: string; sections: { heading: string; steps: string[] }[] }): string {
@@ -212,18 +214,20 @@ export function renderReleaseNotes(n: { title: string; summary: string; items: {
 }
 
 /**
- * The checked, cleaned answer to pack task `task` (§4.3). `transcript` is the text that was sent:
- * links it does not contain are removed. Throws AiOutputError when nothing usable came back.
+ * The checked, cleaned answer to pack task `task` (§4.3). `transcript` is the text that was sent: a
+ * link it does not have is removed or broken (plainText). Throws AiOutputError when nothing usable
+ * came back.
  */
 export function validatePackAnswer(task: PackTextTask, answer: unknown, transcript: string): AiTextResult {
   if (!isObject(answer)) throw new AiOutputError('no answer')
-  const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine, linksFrom: transcript })
+  const linksFrom = transcript
+  const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine, linksFrom })
   switch (task) {
     case 'youtube': {
       if (typeof answer.description !== 'string' || !Array.isArray(answer.tags)) throw new AiOutputError('no description or tags')
       const description = text(answer.description, PACK_CAPS.youtubeText)
       if (!description) throw new AiOutputError('an empty description')
-      return { task, text: description, tags: cleanTags(answer.tags, transcript) }
+      return { task, text: description, tags: cleanTags(answer.tags, linksFrom) }
     }
     case 'linkedin':
     case 'xpost': {
@@ -238,30 +242,32 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
       for (const s of answer.sections) {
         if (!isObject(s) || typeof s.heading !== 'string' || !Array.isArray(s.steps)) continue
         const steps = strings(s.steps)
-          .map((step) => bareStep(text(step, PACK_CAPS.step, true)))
+          .map((step) => text(bareStep(step), PACK_CAPS.step, true))
           .filter(Boolean)
           .slice(0, PACK_CAPS.steps)
-        const heading = text(s.heading, PACK_CAPS.heading, true).replace(/^#+\s*/, '')
+        const heading = text(bareHeading(s.heading), PACK_CAPS.heading, true)
         if (steps.length) sections.push({ heading: heading || `Part ${sections.length + 1}`, steps })
         if (sections.length >= PACK_CAPS.sections) break
       }
       if (!sections.length) throw new AiOutputError('no steps')
-      const title = text(answer.title, PACK_CAPS.title, true).replace(/^#+\s*/, '') || 'How to'
-      return { task, text: cutAt(renderArticle({ title, intro: text(answer.intro, PACK_CAPS.intro), sections }), PACK_CAPS.article) }
+      const title = text(bareHeading(answer.title), PACK_CAPS.title, true) || 'How to'
+      // Cut and read once more as a whole, as it is pasted: putting the parts together makes no link.
+      return { task, text: text(renderArticle({ title, intro: text(answer.intro, PACK_CAPS.intro), sections }), PACK_CAPS.article) }
     }
     case 'releaseNotes': {
       if (typeof answer.title !== 'string' || typeof answer.summary !== 'string' || !Array.isArray(answer.items)) throw new AiOutputError('no release notes')
       const items: { kind: ReleaseKind; text: string }[] = []
       for (const i of answer.items) {
         if (!isObject(i) || typeof i.text !== 'string') continue
-        const line = bareStep(text(i.text, PACK_CAPS.item, true))
+        const line = text(bareStep(i.text), PACK_CAPS.item, true)
         const kind = typeof i.kind === 'string' ? i.kind.trim().toLowerCase() : ''
         if (line) items.push({ kind: kind === 'new' || kind === 'fixed' ? kind : 'improved', text: line })
         if (items.length >= PACK_CAPS.items) break
       }
       if (!items.length) throw new AiOutputError('no changes listed')
       const title = text(answer.title, PACK_CAPS.title, true) || 'Release notes'
-      return { task, text: renderReleaseNotes({ title, summary: text(answer.summary, PACK_CAPS.summary), items }) }
+      // Read once more as a whole (the parts' caps keep it short): putting them together makes no link.
+      return { task, text: text(renderReleaseNotes({ title, summary: text(answer.summary, PACK_CAPS.summary), items }), Infinity) }
     }
   }
 }

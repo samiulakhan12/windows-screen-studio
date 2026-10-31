@@ -38,25 +38,26 @@ describe('plainText', () => {
     expect(plainText('Go to https://example.co or https://EXAMPLE.com/settings', { max: 200, linksFrom: TRANSCRIPT })).toBe('Go to or https://EXAMPLE.com/settings')
   })
 
-  it('removes a bare domain on any top-level domain X links, with or without a port and a path', () => {
+  it('removes a link with a path, and breaks a bare domain on any top-level domain X links', () => {
     const none = { max: 200, linksFrom: 'Heute zeige ich den Export.' }
     expect(plainText('Visit evil.de/login now', none)).toBe('Visit now')
     for (const link of ['is.gd/abc123', 'rb.gy/abc', 'goo.gl/abc', 'youtu.be/abc', 'shorturl.at/abc', 'evil.studio/login']) expect(plainText(`See ${link}.`, none)).toBe('See .')
-    expect(plainText('Watch at evil.tv, evil.cloud or evil.eu', none)).toBe('Watch at , or')
+    // A bare name: a space after its dots, so no letter is lost and nothing links it.
+    expect(plainText('Watch at evil.tv, evil.cloud or evil.eu', none)).toBe('Watch at evil. tv, evil. cloud or evil. eu')
     for (const tld of ['in', 'jp', 'pl', 'se', 'to', 'pw', 'su', 'ws', 'fm', 'icu', 'sbs', 'cfd', 'studio', 'lol', 'win']) {
-      expect(plainText(`Visit evil.${tld} now`, none)).toBe('Visit now')
+      expect(plainText(`Visit evil.${tld} now`, none)).toBe(`Visit evil. ${tld} now`)
       expect(xLength(`Visit evil.${tld} now`)).toBe(6 + 23 + 4)
     }
     // With a port, and a longer domain: whole, not leaving a piece of it.
     expect(plainText('Log in at evil.pw:8080/login or evil.de:8080/login now', none)).toBe('Log in at or now')
-    expect(plainText('Help: flown.co.uk/help and flown.co.uk', none)).toBe('Help: and')
-    expect(plainText('See evil.co.in, evil.com.br and evil.co.jp.', none)).toBe('See , and .')
+    expect(plainText('Help: flown.co.uk/help and flown.co.uk', none)).toBe('Help: and flown. co. uk')
+    expect(plainText('See evil.co.in, evil.com.br and evil.co.jp.', none)).toBe('See evil. co. in, evil. com. br and evil. co. jp.')
     // Kept when the transcript says it.
     expect(plainText('Mehr unter flown.de/hilfe.', { max: 200, linksFrom: 'Mehr unter flown.de/hilfe' })).toBe('Mehr unter flown.de/hilfe.')
-    // Words with dots on no top-level domain stay. A file name on one stays when the transcript says it, else its name without the extension.
-    expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings, e.g. v1.2 in file.txt')
+    // Words with dots on no top-level domain stay. A file name on one stays when the transcript says it, else it is broken as any bare name is.
+    expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings. py, e.g. v1.2 in file.txt')
     const files = 'Save captions.srt and README.md, run install.sh, open Main.java'
-    expect(plainText(files, none)).toBe('Save captions and README, run install, open Main')
+    expect(plainText(files, none)).toBe('Save captions. srt and README. md, run install. sh, open Main. java')
     expect(plainText(files, { max: 200, linksFrom: `Now ${files.toLowerCase()}.` })).toBe(files)
     // X counts them as links.
     expect(xLength('Go to evil.de/login')).toBe(6 + 23)
@@ -70,20 +71,23 @@ describe('plainText', () => {
     // Not a link for X either: counted by its characters.
     expect(xLength('Built with Next.js/React and Node.js/Deno.')).toBe(42)
     const yt = validatePackAnswer('youtube', { description: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind', 'evil.icu'] }, 'Heute zeige ich den Export.')
-    expect(yt).toEqual({ task: 'youtube', text: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind'] })
+    expect(yt).toEqual({ task: 'youtube', text: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind', 'evil. icu'] })
   })
 
-  it('removes a name on a top-level domain with the code or query it is part of, leaving no piece of it', () => {
+  it('breaks the name X links in code, keeping the code and its letters', () => {
     const none = { max: 200, linksFrom: 'Today I show the handler.' }
-    expect(plainText('Read e.target.value in the handler.', none)).toBe('Read in the handler.')
-    expect(plainText('Use Date.now() to time it, or Date.now().toString().', none)).toBe('Use to time it, or .')
-    expect(plainText('Change element.style.color to red. Use player.audio.volume.', none)).toBe('Change to red. Use .')
-    expect(plainText('Use DateTime.Now and Task.Run(Work) in C#. Then call requests.post(url, data) and self.name.', none)).toBe('Use and in C#. Then call and .')
-    expect(plainText('Try it at flown.studio?ref=yt now (or flown.studio?ref=x).', none)).toBe('Try it at now (or ).')
-    // X links the domain in them, so they are not kept as text.
-    expect(plainText('See evil.com.x, evil.com() or evil.com?', none)).toBe('See , or ?')
+    // X links "e.target", "Date.now", "element.style": a space after their dot, the rest as written.
+    expect(plainText('Read e.target.value in the handler.', none)).toBe('Read e. target.value in the handler.')
+    expect(plainText('Use Date.now() to time it, or Date.now().toString().', none)).toBe('Use Date. now() to time it, or Date. now().toString().')
+    expect(plainText('Change element.style.color to red. Use player.audio.volume.', none)).toBe('Change element. style.color to red. Use player. audio.volume.')
+    expect(plainText('Use DateTime.Now and Task.Run(Work) in C#. Then call requests.post(url, data) and self.name.', none)).toBe(
+      'Use DateTime. Now and Task. Run(Work) in C#. Then call requests. post(url, data) and self. name.'
+    )
+    // Without a path, X links the domain alone: its query stays, and nothing links it.
+    expect(plainText('Try it at flown.studio?ref=yt now (or flown.studio?ref=x).', none)).toBe('Try it at flown. studio?ref=yt now (or flown. studio?ref=x).')
+    expect(plainText('See evil.com.x, evil.com() or evil.com?', none)).toBe('See evil. com.x, evil. com() or evil. com?')
     const notes = validatePackAnswer('releaseNotes', { title: 'Fixes', summary: '', items: [{ kind: 'fixed', text: 'Fixed req.params.id being empty' }, { kind: 'new', text: 'Added DateTime.Now stamps' }] }, none.linksFrom)
-    expect(notes).toEqual({ task: 'releaseNotes', text: 'Fixes\n\nNew\n- Added stamps\n\nFixed\n- Fixed being empty' })
+    expect(notes).toEqual({ task: 'releaseNotes', text: 'Fixes\n\nNew\n- Added DateTime. Now stamps\n\nFixed\n- Fixed req. params. id being empty' })
     // Said in the transcript: kept whole, also with more code after it than was said.
     const said = { max: 200, linksFrom: 'Here e.target.value and date.now come in.' }
     expect(plainText('Read e.target.value, e.target.checked and Date.now() now.', said)).toBe('Read e.target.value, e.target.checked and Date.now() now.')
@@ -91,26 +95,26 @@ describe('plainText', () => {
 
   it('finds a link glued to Chinese, Japanese or Korean text, and ends it where that text starts', () => {
     const ja = { max: 200, linksFrom: '新しい書き出し機能です。録画して書き出すだけです。' }
-    expect(plainText('新しい書き出し機能です。詳細はevil.icuで確認してください。', ja)).toBe('新しい書き出し機能です。詳細はで確認してください。')
-    expect(plainText('新功能上线了。详情请访问evil.top了解更多。', ja)).toBe('新功能上线了。详情请访问了解更多。')
-    expect(plainText('evil.com에서 확인하세요', ja)).toBe('에서 확인하세요')
-    expect((validatePackAnswer('xpost', { text: '新しい書き出し機能です。詳細はevil.comで。' }, ja.linksFrom) as { text: string }).text).toBe('新しい書き出し機能です。詳細はで。')
+    expect(plainText('新しい書き出し機能です。詳細はevil.icuで確認してください。', ja)).toBe('新しい書き出し機能です。詳細はevil. icuで確認してください。')
+    expect(plainText('新功能上线了。详情请访问evil.top了解更多。', ja)).toBe('新功能上线了。详情请访问evil. top了解更多。')
+    expect(plainText('evil.com에서 확인하세요', ja)).toBe('evil. com에서 확인하세요')
+    expect((validatePackAnswer('xpost', { text: '新しい書き出し機能です。詳細はevil.comで。' }, ja.linksFrom) as { text: string }).text).toBe('新しい書き出し機能です。詳細はevil. comで。')
     // With a path: the link alone goes, not the rest of the text.
     expect(plainText('新しい書き出し機能です。ログインはevil.de/loginから。録画して書き出すだけです。', ja)).toBe('新しい書き出し機能です。ログインはから。録画して書き出すだけです。')
     expect(plainText('詳しくはhttps://evil.example/loginをご覧ください。録画して書き出すだけです。', ja)).toBe('詳しくはをご覧ください。録画して書き出すだけです。')
     // A link the transcript has is the same link there, so it stays.
     const said = { max: 200, linksFrom: '新しい書き出し機能です。詳しくはflown.app/helpを見てください。' }
     expect(plainText('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。', said)).toBe('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。')
-    // A host written in those languages after a scheme is still a link.
-    expect(plainText('See https://例え.jp/パス now', ja)).toBe('See now')
+    // A host written in those languages after a scheme is still a link, which ends where X ends it (its path takes no Japanese).
+    expect(plainText('See https://例え.jp/パス now', ja)).toBe('See パス now')
     // Domains the transcript never says, as a model might guess them or an injection add them.
     const ko = '오늘은 Flown 앱을 소개합니다. 설치 파일을 내려받고 화면을 녹화해 보세요.'
-    expect((validatePackAnswer('xpost', { text: '지금 flown.app에서 내려받으세요!' }, ko) as { text: string }).text).toBe('지금 flown에서 내려받으세요!')
-    expect((validatePackAnswer('xpost', { text: 'paypal-login.com에 로그인해서 확인하세요.' }, ko) as { text: string }).text).toBe('에 로그인해서 확인하세요.')
+    expect((validatePackAnswer('xpost', { text: '지금 flown.app에서 내려받으세요!' }, ko) as { text: string }).text).toBe('지금 flown. app에서 내려받으세요!')
+    expect((validatePackAnswer('xpost', { text: 'paypal-login.com에 로그인해서 확인하세요.' }, ko) as { text: string }).text).toBe('paypal-login. com에 로그인해서 확인하세요.')
     const ja0 = '今日はFlownアプリを紹介します。セットアップファイルをダウンロードして、画面を録画してみましょう。'
-    expect((validatePackAnswer('xpost', { text: '詳しくはpaypal.comへ。ログインして確認してください。' }, ja0) as { text: string }).text).toBe('詳しくはへ。ログインして確認してください。')
-    expect((validatePackAnswer('xpost', { text: 'Flownアプリはflown.appからダウンロード！' }, ja0) as { text: string }).text).toBe('Flownアプリはflownからダウンロード！')
-    expect((validatePackAnswer('linkedin', { text: '请访问evil.com下载安装包。' }, '今天我来介绍Flown应用。下载安装包，然后录制你的屏幕。') as { text: string }).text).toBe('请访问下载安装包。')
+    expect((validatePackAnswer('xpost', { text: '詳しくはpaypal.comへ。ログインして確認してください。' }, ja0) as { text: string }).text).toBe('詳しくはpaypal. comへ。ログインして確認してください。')
+    expect((validatePackAnswer('xpost', { text: 'Flownアプリはflown.appからダウンロード！' }, ja0) as { text: string }).text).toBe('Flownアプリはflown. appからダウンロード！')
+    expect((validatePackAnswer('linkedin', { text: '请访问evil.com下载安装包。' }, '今天我来介绍Flown应用。下载安装包，然后录制你的屏幕。') as { text: string }).text).toBe('请访问evil. com下载安装包。')
     // A said link with a path, glued to the text: the rest of the paragraph stays.
     const jaSaid = 'ダウンロードは flown.app/download から。今日は録画の方法を説明します。'
     const post = '新しいFlownが出ました。入手はflown.app/downloadから、今すぐ試してください。設定も簡単です。'
@@ -119,17 +123,19 @@ describe('plainText', () => {
 
   it('finds a domain glued to a word of another script, which X links too', () => {
     const none = { max: 200, linksFrom: 'Today I show the export.' }
-    expect(plainText('Скачайте paypal.comы сейчас', none)).toBe('Скачайте ы сейчас')
-    expect(plainText('היכנס לevil.comעכשיו', none)).toBe('היכנס עכשיו')
-    expect(plainText('இப்போது evil.comஇல் பதிவிறக்கவும்', none)).toBe('இப்போது இல் பதிவிறக்கவும்')
-    expect(plainText('Login at evil.comé now', none)).toBe('Login at é now')
+    expect(plainText('Скачайте paypal.comы сейчас', none)).toBe('Скачайте paypal. comы сейчас')
+    expect(plainText('היכנס לevil.comעכשיו', none)).toBe('היכנס לevil. comעכשיו')
+    expect(plainText('இப்போது evil.comஇல் பதிவிறக்கவும்', none)).toBe('இப்போது evil. comஇல் பதிவிறக்கவும்')
+    expect(plainText('Login at evil.comé now', none)).toBe('Login at evil. comé now')
     const bn = 'আজ আমি Flown অ্যাপ দেখাব। ফাইল ডাউনলোড করে স্ক্রিন রেকর্ড করুন।'
-    expect((validatePackAnswer('xpost', { text: 'paypal-login.comএ লগইন করুন।' }, bn) as { text: string }).text).toBe('এ লগইন করুন।')
-    expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, bn) as { text: string }).text).toBe('এখনই flownএ যান!')
+    expect((validatePackAnswer('xpost', { text: 'paypal-login.comএ লগইন করুন।' }, bn) as { text: string }).text).toBe('paypal-login. comএ লগইন করুন।')
+    expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, bn) as { text: string }).text).toBe('এখনই flown. appএ যান!')
     // Said in the transcript: kept.
     expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, 'আজ আমি Flown অ্যাপ দেখাব। flown.app এ যান।') as { text: string }).text).toBe('এখনই flown.appএ যান!')
-    // A top-level domain in other letters still ends only where a word ends.
-    expect(plainText('предложение.сайтом конец', none)).toBe('предложение.сайтом конец')
+    // A name with no Latin letters on such a domain: X does not link it without a scheme, other sites
+    // may ("госуслуги.рф"), so it is broken too, losing no letter.
+    expect(plainText('предложение.сайтом конец', none)).toBe('предложение. сайтом конец')
+    expect(plainText('Мы снимали в г.Москва, госуслуги.рф', none)).toBe('Мы снимали в г. Москва, госуслуги. рф')
   })
 
   it('makes one line when asked, and is empty for anything but a string', () => {
@@ -346,19 +352,21 @@ describe('validatePackAnswer', () => {
       { description: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.', tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'evil.com tips'] },
       said
     )
-    // Said: kept. Not said: a file or app name without the extension, which sites would link ("flown.app" is a site).
+    // Said: kept. Not said: a file or app name is broken as any bare name ("flown.app" is a site), no letter lost.
     expect(r).toEqual({
       task: 'youtube',
-      text: 'Save the recording as recording.mov, or all of them as export. Open Settings to check it. Built on ASP.NET Core.',
-      tags: ['ASP.NET', 'ASP.NET Core', 'demo', 'tips']
+      text: 'Save the recording as recording.mov, or all of them as export. zip. Open Settings. app to check it. Built on ASP.NET Core.',
+      tags: ['ASP.NET', 'ASP.NET Core', 'demo. mov', 'evil. com tips']
     })
     const steps = validatePackAnswer('article', { title: 'Export', intro: '', sections: [{ heading: 'Save', steps: ['Save the recording as recording.mov.', 'Open Settings.app to check it.'] }] }, said) as { text: string }
-    expect(steps.text).toContain('1. Save the recording as recording.mov.\n2. Open Settings to check it.')
+    expect(steps.text).toContain('1. Save the recording as recording.mov.\n2. Open Settings. app to check it.')
     // A site the model guessed, or one a prompt injection names, is not added as a link anywhere.
     const app = 'Today I show the Flown app. Download the Flown setup zip, install it and record your screen.'
-    expect((validatePackAnswer('xpost', { text: 'Grab flown-setup.zip from flown.app and try it today!' }, app) as { text: string }).text).toBe('Grab flown-setup from flown and try it today!')
-    expect((validatePackAnswer('linkedin', { text: 'Get it at get-flown.app, paypal.com.app or github.com-releases.zip.' }, app) as { text: string }).text).toBe('Get it at get-flown, or .')
-    expect(validatePackAnswer('youtube', { description: 'Try Flown (download at flown.app).', tags: ['flown.app', 'screen recorder'] }, app)).toEqual({ task: 'youtube', text: 'Try Flown (download at flown).', tags: ['flown', 'screen recorder'] })
+    expect((validatePackAnswer('xpost', { text: 'Grab flown-setup.zip from flown.app and try it today!' }, app) as { text: string }).text).toBe('Grab flown-setup. zip from flown. app and try it today!')
+    expect((validatePackAnswer('linkedin', { text: 'Get it at get-flown.app, paypal.com.app or github.com-releases.zip.' }, app) as { text: string }).text).toBe(
+      'Get it at get-flown. app, paypal. com. app or github. com-releases. zip.'
+    )
+    expect(validatePackAnswer('youtube', { description: 'Try Flown (download at flown.app).', tags: ['flown.app', 'screen recorder'] }, app)).toEqual({ task: 'youtube', text: 'Try Flown (download at flown. app).', tags: ['flown. app', 'screen recorder'] })
     // With a scheme, "www." or a path they are links, removed unless said; X counts them as links.
     expect(plainText('Get it at https://flown.zip, www.flown.mov, flown.app/download or WWW.flown.app.', { max: 200, linksFrom: said })).toBe('Get it at , , or .')
     expect(xLength('Save as recording.mov')).toBe(8 + 23)

@@ -346,9 +346,11 @@ function urlMatches(text: string): UrlMatch[] {
 
 /**
  * The links in `text` as twitter-text 3.1.0's extractUrlsWithIndices finds them (with links without
- * a scheme, its default). `lenient` (not in twitter-text) also gives the links it drops only for
- * their length (over 4 096 characters, a domain label over 63 in punycode, a t.co name over 40) or
- * for a "xn--" domain with other letters, which other sites may still link; the others are the same.
+ * a scheme, its default). `lenient` (not in twitter-text) also gives what it matches but drops only
+ * for its length (over 4 096 characters, a t.co name over 40) or, without a scheme, for having no
+ * name in Latin letters ("госуслуги.рф"), which other sites may still link; the others are the
+ * same. A domain no site can have (a label over 63 characters in punycode, a "xn--" one with other
+ * letters) is no link either way.
  */
 export function findUrls(text: string, lenient = false, matches = urlMatches): UrlEntity[] {
   if (!text || !text.match(/\./)) return []
@@ -358,7 +360,9 @@ export function findUrls(text: string, lenient = false, matches = urlMatches): U
     let url = m.url
     let endPosition = m.end
     const startPosition = endPosition - url.length
-    if (!isValidUrl(url, protocol || DEFAULT_PROTOCOL, domain) && !lenient) continue
+    const valid = isValidUrl(url, protocol || DEFAULT_PROTOCOL, domain)
+    // `lenient` keeps one that is too long, not one with a label no name can have.
+    if (!valid && !(lenient && toAscii(domain))) continue
     if (!protocol) {
       // Only the domain's parts in Latin letters are linked without a scheme.
       if (before.match(INVALID_URL_WITHOUT_PROTOCOL_PRECEDING_CHARS)) continue
@@ -372,7 +376,11 @@ export function findUrls(text: string, lenient = false, matches = urlMatches): U
         urls.push(lastUrl)
       }
       const last = lastUrl as UrlEntity | null
-      if (last == null) continue
+      if (last == null) {
+        // No Latin name in it ("госуслуги.рф"): X does not link it, other sites may.
+        if (lenient && valid) urls.push({ url: path ? url : domain, indices: [startPosition, path ? endPosition : startPosition + domain.length] })
+        continue
+      }
       // Only the last name gets the port, path and query.
       if (path) {
         last.url = url.replace(domain, last.url)
