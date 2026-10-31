@@ -6,11 +6,13 @@
  * Kinds: auto zooms (ZoomSegment.auto), the camera director's segments (LayoutSegment.auto) and its
  * face framing (framingIsDirectors), and the recorded automatic cuts and speed-ups
  * (Project.autoCuts, autoCuts.ts). Keeping makes a change the user's, as an edit by hand does;
- * removing puts back what was there before.
+ * removing puts back what was there before. For a cut or speed-up the choice itself is recorded
+ * (Project.autoCutOutcomes) in the same edit, since the footage alone cannot always tell.
  */
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
-import type { AutoCut, Clip, LayoutSegment, Project } from '../types'
+import type { AutoCut, AutoCutOutcome, Clip, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
+import { withOutcomes } from './autoCutData'
 import { autoCutIntact, footageBack, liveAutoCuts, playsBelow, undoAutoCut, withAutoCuts, withoutHeldAbove, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
@@ -75,8 +77,9 @@ export function reviewItems(project: Project): ReviewItem[] {
     const at = project.clips[0]?.start ?? 0
     items.push({ key: FRAMING_KEY, kind: 'camera', start: at, end: at, title: FRAMING_TITLE, detail: DIRECTOR_DETAIL })
   }
+  const chosen = outcomesOf(project)
   liveAutoCuts(project).forEach((c, made) => {
-    items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c, made })
+    if (!chosen.has(c.id)) items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c, made })
   })
   return items.sort(byTime)
 }
@@ -85,6 +88,17 @@ export function reviewItems(project: Project): ReviewItem[] {
 export const pendingCount = (project: Project): number => reviewItems(project).length
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
+
+const NO_OUTCOMES: ReadonlyMap<string, AutoCutOutcome['outcome']> = new Map()
+const outcomeMemo = new WeakMap<readonly AutoCutOutcome[], Map<string, AutoCutOutcome['outcome']>>()
+/** The choices made in the panel for cuts and speed-ups, by record id (worked out once for each list). */
+function outcomesOf(project: Pick<Project, 'autoCutOutcomes'>): ReadonlyMap<string, AutoCutOutcome['outcome']> {
+  const list = project.autoCutOutcomes
+  if (!list?.length) return NO_OUTCOMES
+  let byId = outcomeMemo.get(list)
+  if (!byId) outcomeMemo.set(list, (byId = new Map(list.map((o) => [o.id, o.outcome]))))
+  return byId
+}
 
 const NO_RECORDS: readonly AutoCut[] = []
 /** What heldAbove worked out, by list and records; neither is ever changed in place. */
@@ -109,6 +123,7 @@ function heldAbove(listed: readonly ReviewItem[], records: readonly AutoCut[], i
 
 /**
  * Whether `item` is still automatic, was kept (now the user's) or removed, read from `project` (§2.3).
+ * A cut or speed-up reads the choice made for it in the panel (Project.autoCutOutcomes) first.
  * `listed` is the list it is shown in: a cut removed inside a speed-up of that list taken back since
  * has its footage back at the speed from before the speed-up, which still reads as removed.
  */
@@ -132,6 +147,8 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   }
   const cut = item.cut
   if (!cut) return 'removed'
+  const chosen = outcomesOf(project).get(cut.id)
+  if (chosen) return chosen
   const records = project.autoCuts ?? NO_RECORDS
   const rec = records.find((c) => c.id === id)
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
@@ -224,7 +241,8 @@ const pendingOf = (project: Project, items: readonly ReviewItem[]): ReviewItem[]
  * The project with `items` kept (§2.4): zooms and camera segments no longer automatic (as an edit
  * by hand), the face framing the user's (director.framed dropped), cut records dropped (the cuts
  * stay, as plain cuts; a speed-up kept inside another one makes that part of the other the user's,
- * withSpeedUpKept). Items not pending are left alone. `project` itself when nothing changes.
+ * withSpeedUpKept) and each recorded as kept (withChoices). Items not pending are left alone.
+ * `project` itself when nothing changes.
  */
 export function keepItems(project: Project, items: readonly ReviewItem[]): Project {
   const todo = pendingOf(project, items)
@@ -243,7 +261,7 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
   if (todo.some((i) => i.cut)) {
     let list = next.autoCuts ?? []
     for (const k of list.filter((c) => keys.has(`cut:${c.id}`))) list = withSpeedUpKept(list, k)
-    next = withAutoCuts(next, list.filter((c) => !keys.has(`cut:${c.id}`) && c.was.length > 0))
+    next = withChoices(withAutoCuts(next, list.filter((c) => !keys.has(`cut:${c.id}`) && c.was.length > 0)), todo, 'kept')
   }
   return next
 }
@@ -251,10 +269,10 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
 /**
  * The project with `items` removed (§2.4): zooms deleted; the director's segments deleted (a
  * cut-out given back to its camera position); the face framing reset; each cut or speed-up taken
- * back (undoAutoCut, latest first) and its record dropped. A speed-up taken back leaves the records
- * inside it holding their footage at its speed from before (withoutSpeedUp), so removing a cut
- * inside it later, in any order, never brings the footage back at the removed speed. Items not
- * pending are left alone. `project` itself when nothing changes.
+ * back (undoAutoCut, latest first), its record dropped and the choice recorded (withChoices). A
+ * speed-up taken back leaves the records inside it holding their footage at its speed from before
+ * (withoutSpeedUp), so removing a cut inside it later, in any order, never brings the footage back
+ * at the removed speed. Items not pending are left alone. `project` itself when nothing changes.
  */
 export function removeItems(project: Project, items: readonly ReviewItem[]): Project {
   const todo = pendingOf(project, items)
@@ -286,9 +304,15 @@ export function removeItems(project: Project, items: readonly ReviewItem[]): Pro
       if (c.action !== 'cut') list = withoutSpeedUp(list, c)
     }
     const gone = new Set(cuts.map((c) => c.id))
-    next = withAutoCuts({ ...next, clips }, list.filter((c) => !gone.has(c.id)))
+    next = withChoices(withAutoCuts({ ...next, clips }, list.filter((c) => !gone.has(c.id))), todo, 'removed')
   }
   return next
+}
+
+/** `project` with `outcome` recorded for each cut or speed-up of `items` (Project.autoCutOutcomes). */
+function withChoices(project: Project, items: readonly ReviewItem[], outcome: AutoCutOutcome['outcome']): Project {
+  const chosen = items.flatMap((i) => (i.cut ? [{ id: i.cut.id, outcome }] : []))
+  return chosen.length ? { ...project, autoCutOutcomes: withOutcomes(project.autoCutOutcomes ?? [], chosen) } : project
 }
 
 /**
