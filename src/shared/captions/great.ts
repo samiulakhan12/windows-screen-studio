@@ -7,9 +7,8 @@
  * whose result is the previous state).
  */
 import type { MarksAnswer } from '../api/ai'
-import { isTall } from '../engine/reframeData'
 import type { AiProviderKind, CaptionMark, CaptionStudio, CursorTrack, Graphic, Project } from '../types'
-import { autoStyleSettings, cameraLed } from './autoStyle'
+import { autoStyleSettings, cameraLed, frameShape } from './autoStyle'
 import { tidyCaptions, type CleanupChoices, type WordListEntry } from './cleanup'
 import { markId, pickEmphasis } from './emphasis'
 import { deepEqual, planGraphics } from './graphicRules'
@@ -109,13 +108,9 @@ export function readGreatOptions(raw: unknown): GreatOptions {
   }
 }
 
-/** A square-ish frame (1:1): not tall, and no wider than 5:4. */
-const isSquare = (w: number, h: number): boolean => !isTall(w, h) && w <= h * 1.25
-
 /** The options resolved for this project and frame (§2.8, §11.6). */
 export function resolveGreatOptions(o: GreatOptions, project: Project, frame: { w: number; h: number }): ResolvedGreatOptions {
-  const tall = isTall(frame.w, frame.h)
-  const short = tall || isSquare(frame.w, frame.h)
+  const short = frameShape(frame) !== 'wide'
   let led: boolean | null = null
   const camera = (): boolean => (led ??= cameraLed(project, frame))
   const pick = (v: Auto, when: () => boolean): boolean => (v === 'auto' ? when() : v)
@@ -182,7 +177,7 @@ export function planCaptionsGreat(
   const start = input.project
   const o = resolveGreatOptions(options, start, input.frame)
   // Polish runs unattended on long tutorials: in wide frames only style, emphasis and tidy (§11.8).
-  const wide = !isTall(input.frame.w, input.frame.h) && !isSquare(input.frame.w, input.frame.h)
+  const wide = frameShape(input.frame) === 'wide'
   const graphicsOn = !(input.by === 'polish' && wide)
   const summary: GreatSummary = { style: null, emphasised: 0, emoji: 0, counters: 0, lists: 0, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 0, bleeped: 0 }
   let p = start

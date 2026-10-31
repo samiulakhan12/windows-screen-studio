@@ -2,7 +2,7 @@
  * Auto style (docs/design/captions-studio.md §11.6): the look new captions get for the frame's
  * shape and whether the camera leads, and the gate that never replaces a look picked by hand. Pure.
  */
-import { cameraBoxShown, sceneCameraBox } from '../engine/layout'
+import { cameraBoxShown, outputSize, sceneCameraBox } from '../engine/layout'
 import { isTall } from '../engine/reframeData'
 import type { CaptionSettings, CaptionStudio, Project } from '../types'
 import { captionsOf, DEFAULT_CAPTIONS, withPreset } from './settings'
@@ -43,6 +43,17 @@ export function autoStyleAllowed(project: Project): boolean {
 
 /** A square-ish frame (1:1): not tall, and no wider than 5:4. */
 const isSquare = (w: number, h: number): boolean => !isTall(w, h) && w <= h * 1.25
+
+/** The frame's shape as the caption automation reads it: tall (9:16, 4:5), square (up to 5:4) or wide. */
+export function frameShape(frame: { w: number; h: number }): 'tall' | 'square' | 'wide' {
+  return isTall(frame.w, frame.h) ? 'tall' : isSquare(frame.w, frame.h) ? 'square' : 'wide'
+}
+
+/** The output frame, 1080 px on its shorter side, a caption look is chosen for. */
+export function captionFrame(project: Pick<Project, 'style' | 'width' | 'height'>): { w: number; h: number } {
+  const f = outputSize(project.style?.aspectRatio ?? 'auto', project.width || 1920, project.height || 1080, 1080)
+  return { w: f.width, h: f.height }
+}
 
 /** The camera covers at least 20% of the frame, or a camera-only or large-camera layout shows, for half the viewing time. */
 export function cameraLed(project: Project, frame: { w: number; h: number }): boolean {
