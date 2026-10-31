@@ -335,8 +335,10 @@ never left on the Publish button behind the scrim; from there Tab goes to its fi
 Shift+Tab to its last (*Close*), never to the editor behind. Opened by a palette command that writes one item
 (*Write release notes*), the dialog shows that card instead, with the focus on its text. When
 *Stop all* goes (pressed, or the last item written) while it has the focus, the focus goes to
-*Write all*, not the page. Only then: after a mouse click (which leaves the focus on the page) the
-focus stays put, so the dialog never scrolls back up when the last item comes in.
+*Write all*, not the page. Only then: after a mouse click (which leaves the focus on the page),
+also one beside the dialog after tabbing to *Stop all*, the focus stays put, so the dialog never
+scrolls back up when the last item comes in. Switching to another app does not count: *Stop all*
+still has the focus, so back in Flown it is on *Write all*.
 
 ### 5.3 When there is nothing to write from
 

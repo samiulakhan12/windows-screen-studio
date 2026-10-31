@@ -126,8 +126,9 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   const done = PUBLISH_KINDS.filter((k) => items[k].status === 'done').length
 
   // Stop all goes once nothing runs: when it had the focus, the focus goes to Write all, not the
-  // page. Only then: a mouse click leaves the focus on the page too (focus.ts), and the dialog must
-  // not scroll back up to Write all when the last item comes in.
+  // page. Only then: a mouse click leaves the focus on the page too (focus.ts, or a click beside the
+  // dialog after Tab), and the dialog must not scroll back up to Write all when the last item comes
+  // in. Losing the focus with the window (another app) does not count: it is still Stop all's.
   const stopAllRef = useRef<HTMLButtonElement>(null)
   const stopAllFocused = useRef(false)
   useEffect(() => {
@@ -210,7 +211,14 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
             {running.length ? `Writing… ${done} of ${PUBLISH_KINDS.length} done` : ''}
           </span>
           {running.length > 0 && (
-            <button ref={stopAllRef} className="btn ghost" onClick={() => stopAll(project.id)}>
+            <button
+              ref={stopAllRef}
+              className="btn ghost"
+              onClick={() => stopAll(project.id)}
+              onBlur={() => {
+                if (document.hasFocus()) stopAllFocused.current = false
+              }}
+            >
               Stop all
             </button>
           )}

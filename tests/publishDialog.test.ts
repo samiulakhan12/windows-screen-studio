@@ -65,8 +65,10 @@ vi.stubGlobal('window', {
   setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
   clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id)
 })
+/** Whether the app's window has the focus (not another app's). */
+let windowFocused = true
 /** The page: `activeElement` is the stand-in that has the focus, or the body; querySelector finds a card. */
-const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown } = { body: {}, activeElement: null }
+const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown; hasFocus: () => boolean } = { body: {}, activeElement: null, hasFocus: () => windowFocused }
 vi.stubGlobal('document', page)
 vi.stubGlobal('navigator', {
   clipboard: {
@@ -283,6 +285,7 @@ beforeEach(async () => {
   scrolls.length = 0
   notices.length = 0
   page.activeElement = null
+  windowFocused = true
   clipboardTakes = true
   clipboardText = ''
   // Requests a test left out end, so the next test has the queue to itself.
@@ -372,6 +375,42 @@ describe('Publish dialog: Stop all keeps the focus in the dialog (§5.2)', () =>
     out = render()
     expect(focused).toBe('textarea')
     expect(page.activeElement).toBe(field)
+  })
+
+  /** Stop all loses the focus (a browser fires blur on it): to the page, or with the window to another app. */
+  const leaveStopAll = (out: El[]): void => {
+    const stop = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop all')
+    if (!stop) throw new Error('No "Stop all" button')
+    ;(stop.props.onBlur as (() => void) | undefined)?.()
+  }
+
+  it('tabbed to, then left for the page by a click beside the dialog: the focus stays there when the last item is written', async () => {
+    let out = await opened()
+    press(out, 'Write all')
+    out = render()
+    onStopAll(out)
+    // The click: Stop all loses the focus to the page. The user scrolls down to read the cards.
+    leaveStopAll(out)
+    page.activeElement = page.body
+    focused = null
+    scrolls.length = 0
+    await answerAll()
+    expect(focused).toBe(null)
+    expect(page.activeElement).toBe(page.body)
+    expect(scrolls).toEqual([])
+  })
+
+  it('still has the focus while the user is in another app: back in Flown, the focus is on Write all again', async () => {
+    let out = await opened()
+    press(out, 'Write all')
+    out = render()
+    onStopAll(out)
+    // Alt+Tab: Stop all hears blur, but it is still the dialog's focused element.
+    windowFocused = false
+    leaveStopAll(out)
+    const last = await answerAll()
+    expect(last.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop all')).toBe(false)
+    expect(focused).toBe('Write all again')
   })
 
   it('left on the page by a mouse click (focus.ts), it stays there when the last item is written: the dialog does not scroll back up', async () => {
