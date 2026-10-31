@@ -6,7 +6,7 @@
  */
 import type { DuplicateProgress, DuplicateResult } from '../../../shared/api/projects'
 import { withRecordedStems } from '../../../shared/audio/settings'
-import { projectCopy, type CopyKind, type MeasureText } from '../../../shared/editor/duplicate'
+import { captionCopyNotice, projectCopy, type CopyKind, type MeasureText } from '../../../shared/editor/duplicate'
 import { withRecordedCamera } from '../../../shared/engine/webcamData'
 import type { Project } from '../../../shared/types'
 
@@ -68,7 +68,9 @@ export async function runDuplicate(
     })
     if (!made) return null
     const name = project.name.trim() || 'Untitled recording'
-    return { id: made.id, notice: `${MADE[kind]} Your original “${name}” is unchanged.` }
+    // Captions Studio §10.5: the caption look chosen again for the new shape is said too.
+    const look = captionCopyNotice(project, copy, kind)
+    return { id: made.id, notice: `${MADE[kind]}${look ? ` ${look}.` : ''} Your original “${name}” is unchanged.` }
   } catch (err) {
     const message = ipcMessage(err)
     throw new Error(message.startsWith(FAILED) ? message : `${FAILED}${message}`)
