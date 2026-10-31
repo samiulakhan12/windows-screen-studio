@@ -391,14 +391,21 @@ describe('recording at the sources', () => {
  * the tab and what the command does there stay out of sight and out of reach under it.
  */
 describe('commands that show an Inspector tab', () => {
-  it('close Review and give the focus to its button, as Esc does', () => {
+  it('close Review, the focus going to its button only when it went with the panel', () => {
     const source = readFileSync(path.resolve(__dirname, '../src/renderer/src/views/Editor.tsx'), 'utf8')
     const commands = source.slice(source.indexOf('const commands = useMemo('), source.indexOf('const runCommand = '))
     expect(commands.length).toBeGreaterThan(0)
     const reveal = /\n(\s*)const reveal = \(t: InspectorTab\): void => \{([\s\S]*?)\n\1\}/.exec(commands)?.[2] ?? ''
     expect(reveal).toContain('setReviewOpen(false)')
-    expect(reveal).toContain('reviewButton.current?.focus()')
     expect(reveal).toContain('setTab(t)')
+    // Not moved there at once: the focus outside the panel (the timeline, a button) stays where it
+    // is, and the palette the command ran from gives it back to where it was.
+    expect(reveal).not.toContain('focus(')
+    // Caught only once the panel has closed and its unmount cleanups (the palette's focus return
+    // among them) have run, and only when the focus fell to the page.
+    const caught = /const reviewWasOpen = useRef\(false\)\n\s*useEffect\(\(\) => \{([\s\S]*?)\n\s*\}, \[reviewOpen\]\)/.exec(source)?.[1] ?? ''
+    expect(caught).toMatch(/reviewWasOpen\.current && !reviewOpen && \(!active \|\| active === document\.body\)\) reviewButton\.current\?\.focus\(\)/)
+    expect(caught).toContain('reviewWasOpen.current = reviewOpen')
     // Every tab a command shows goes through it.
     expect(commands.match(/setTab\(/g)).toEqual(['setTab('])
     expect(commands).toContain('const showTab = (t: InspectorTab) => (): void => reveal(t)')

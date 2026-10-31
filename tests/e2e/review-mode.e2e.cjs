@@ -7,7 +7,8 @@
 // reviewed"; a mouse click on a row then Delete removes the camera change (the same message as
 // before is announced again); Keep all, pressed from the keyboard, reviews the rest and leaves the
 // focus in the list; Escape closes and gives the focus back to the button; the palette opens it
-// again, now empty.
+// again, now empty; a palette command that shows an Inspector tab closes it, the focus going to the
+// button when it was in the panel and staying where it was when it was outside.
 const fs = require('node:fs')
 const path = require('node:path')
 const h = require('./helpers.cjs')
@@ -195,6 +196,20 @@ async function main() {
     h.assert((await win.getAttribute('.insp-tabs button.active', 'title')) === 'Clip', 'the Clip tab shows')
     await h.sleep(100)
     h.assert((await focused(win)) === 'Review automatic changes, nothing to review', `the focus on the Review button: ${await focused(win)}`)
+
+    // From outside the panel (Review is not modal), the same kind of command leaves the focus where it was.
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
+    await win.focus('[aria-label="Keyboard shortcuts"]')
+    await win.keyboard.press('Control+k')
+    await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+    await win.keyboard.type('open style settings')
+    await f.waitFor(async () => (await win.$eval('.command-palette [role="option"] .palette-title', (e) => e.textContent).catch(() => '')) === 'Open Style settings', '"Open Style settings" listed first', 3000)
+    await win.keyboard.press('Enter')
+    await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed for the Style tab')
+    h.assert((await win.getAttribute('.insp-tabs button.active', 'title')) === 'Style', 'the Style tab shows')
+    await h.sleep(100)
+    h.assert((await focused(win)) === 'Keyboard shortcuts', `the focus back where it was: ${await focused(win)}`)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
 }

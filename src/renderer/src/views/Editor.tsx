@@ -389,6 +389,15 @@ function EditorSession({
   // E-02 Review mode (docs/design/review-mode.md): the panel over the Inspector, and its button.
   const [reviewOpen, setReviewOpen] = useState(false)
   const reviewButton = useRef<HTMLButtonElement>(null)
+  // When the panel closes under the focus (a command that shows an Inspector tab), the focus goes to
+  // its button, as Esc does. Run after the unmount cleanups: a palette closing with it has given the
+  // focus back to where it was, which then keeps it.
+  const reviewWasOpen = useRef(false)
+  useEffect(() => {
+    const active = document.activeElement
+    if (reviewWasOpen.current && !reviewOpen && (!active || active === document.body)) reviewButton.current?.focus()
+    reviewWasOpen.current = reviewOpen
+  }, [reviewOpen])
   const [directorRequest, setDirectorRequest] = useState(0)
 
   // The background image always follows the project state, including undo/redo.
@@ -942,12 +951,9 @@ function EditorSession({
   const commands = useMemo((): Record<CommandId, () => void> => {
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
-    /** Shows an Inspector tab. Review covers the Inspector, so it closes first, giving the focus to its button as Esc does. */
+    /** Shows an Inspector tab. Review covers the Inspector, so it closes first (the focus, when it goes with it, then goes to its button). */
     const reveal = (t: InspectorTab): void => {
-      if (latest.current.reviewOpen) {
-        setReviewOpen(false)
-        reviewButton.current?.focus()
-      }
+      if (latest.current.reviewOpen) setReviewOpen(false)
       setTab(t)
     }
     const showTab = (t: InspectorTab) => (): void => reveal(t)

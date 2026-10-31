@@ -270,8 +270,10 @@ listed item being pending by construction).
 * Opens with the Review button or the `review` command; the focus goes to the first pending item
   (else the first item, else the Close button). Escape (focus in the panel) or Close shuts it and
   gives the focus back to the Review button. A command that shows an Inspector tab (`Open … settings`,
-  Smart speed, the camera director, generating or exporting captions) shuts it the same way first,
-  so the tab and what the command does there are in sight and in reach.
+  Smart speed, the camera director, generating or exporting captions) shuts it first, so the tab and
+  what the command does there are in sight and in reach. The focus then stays where it was (the
+  palette gives it back to what had it before it opened); only when it was in the panel, and so went
+  with it, does it go to the Review button.
 * The time shown is the **video time** of the item's start (`videoTimeAt`, freeze frames counted),
   as `m:ss.t`.
 * Choosing an item (click, Enter or Space on it, or `N`/`P`/↑/↓ moving to it) **jumps and plays**:
