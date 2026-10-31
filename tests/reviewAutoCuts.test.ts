@@ -4,7 +4,7 @@ import { applySmartSpeed } from '../src/shared/editor/smartSpeed'
 import { cutWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
-import { MAX_AUTO_CUTS, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
+import { MAX_AUTO_CUTS, MAX_WAS_PIECES, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
 import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem } from '../src/shared/review/review'
 import { suggestionRanges } from '../src/shared/review/wordCuts'
@@ -209,6 +209,37 @@ describe('intact, footage back, live', () => {
       expect(p.autoCuts).toHaveLength(n)
       const t = performance.now()
       expect(reviewItems(p)).toEqual([])
+      expect(settleAutoCuts({ ...p, clips: [clip(0, 20)] }, p).autoCuts).toBeUndefined()
+      expect(performance.now() - t).toBeLessThan(500)
+    }
+  })
+
+  it('records from a project file over three rising speeds are listed, shown and settled at once', () => {
+    // Hand-written records over the same footage: 2x holding [0,20] at 1x, 4x [1,20] at 2x and 8x
+    // [2,20] at 4x, with the video at 2x, 4x and then 8x from those points, so every 4x and 8x
+    // hands on what the slower ones hold. Following each way through them took seconds for a few
+    // hundred records and minutes for a thousand.
+    const rising = (n: number, pieces: number): AutoCut[] =>
+      readAutoCuts(
+        Array.from({ length: n }, (_, k) => {
+          const action = ([2, 4, 8] as const)[k % 3]
+          const start = Math.log2(action) - 1
+          const step = (20 - start) / pieces
+          const was = Array.from({ length: pieces }, (_, j) => ({ start: start + j * step, end: start + (j + 1) * step, speed: action / 2 }))
+          return cut({ id: `r${k}`, action, start, end: 20, was })
+        }),
+        20
+      )!
+    for (const [n, pieces] of [
+      [300, 1],
+      [MAX_AUTO_CUTS, 1],
+      [MAX_AUTO_CUTS, MAX_WAS_PIECES]
+    ]) {
+      const p = project([clip(0, 1, 2), clip(1, 2, 4), clip(2, 20, 8)], { autoCuts: rising(n, pieces) })
+      const t = performance.now()
+      const list = reviewItems(p)
+      expect(list).toHaveLength(n)
+      expect(list.every((i) => reviewStatus(p, i, list) === 'pending')).toBe(true)
       expect(settleAutoCuts({ ...p, clips: [clip(0, 20)] }, p).autoCuts).toBeUndefined()
       expect(performance.now() - t).toBeLessThan(500)
     }

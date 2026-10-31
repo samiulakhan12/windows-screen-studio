@@ -229,8 +229,10 @@ Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more th
 speed-up, every part of the `was` pieces still kept plays at `action`, or is held at `action` by a
 later, faster speed-up record that plays it at its own speed or hands it on to another one in the
 same way (an 8× inside a 4× inside a 2×), within 1 ms, and something plays at `action`. Only a
-faster record counts (a tool only speeds up), so a chain is at most three deep. Records are judged
-among the others still intact, so a speed-up whose later record went stale goes too.
+faster record counts (a tool only speeds up), so a chain is at most three deep. What the records
+hold is worked out one speed at a time, the slowest first, as one set of parts for each speed (not
+path by path), once for a list and its clips. Records are judged among the others still intact, so
+a speed-up whose later record went stale goes too.
 
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
@@ -349,9 +351,12 @@ Nothing new reads files, runs programs or talks to the network. `project.json` i
 `readAutoCuts` keeps only well-formed records (types, finite numbers, bounded lengths and counts, no
 prototype keys copied: fields are read one by one), so a hand-edited file cannot crash the list or
 make Remove restore time outside the recording (`restoreRange` clamps to the duration as well).
-A record that holds footage at its own speed or a faster one is never followed from another
-(a chain only goes on to a faster record), so a file with a thousand such records over the same
-footage is listed and settled in milliseconds, not by walking every order of them.
+What records hold is worked out a speed at a time, each speed as one set of parts, and a chain
+only goes on to a faster record, so the cost grows with the pieces stored, never with the ways
+footage is handed from one record to another: a file with a thousand records over the same footage
+(at their own speed, or over three rising speeds with 64 pieces each) is listed, settled and shown
+in the panel in milliseconds. In such a file, once many rows are kept or removed, reading them
+again can take a few seconds, as each row leaves itself out of what the others hold.
 
 ## 7. Files and exported signatures
 
