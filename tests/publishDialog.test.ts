@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
-import type { Project } from '../src/shared/types'
+import type { CaptionSegment, Project } from '../src/shared/types'
 
 /*
  * The Publish dialog (docs/design/publish-pack.md §5) without a DOM: React's hooks are swapped for a
@@ -42,16 +42,16 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** The providers list waits for this. */
 let providersGate = deferred<void>()
-/** What the AI provider was asked (window.api.aiText), each with its answer to give. */
-const asked: { task: string; answer: ReturnType<typeof deferred<unknown>> }[] = []
+/** What the AI provider was asked (window.api.aiText), each with the captions sent and its answer to give. */
+const asked: { task: string; segments: CaptionSegment[]; answer: ReturnType<typeof deferred<unknown>> }[] = []
 /** Whether the clipboard takes the text. */
 let clipboardTakes = true
 vi.stubGlobal('window', {
   api: {
     listAiProviders: () => providersGate.promise.then(() => [OPENAI]),
-    aiText: (_provider: string, request: { task: string }) => {
+    aiText: (_provider: string, request: { task: string; segments: CaptionSegment[] }) => {
       const answer = deferred<unknown>()
-      asked.push({ task: request.task, answer })
+      asked.push({ task: request.task, segments: request.segments, answer })
       return answer.promise
     },
     cancelAiText: () => Promise.resolve()
@@ -420,6 +420,41 @@ describe('Publish dialog: a card says when its text is written (§5.2)', () => {
     await flush()
     out = render()
     expect(state(card(out, 'linkedin'))).toBe('Written')
+  })
+})
+
+describe('Publish dialog: what is sent is what the edited video says (§4.2)', () => {
+  it('leaves out captions in a cut, and gives the rest output times', async () => {
+    current = {
+      ...current,
+      duration: 12,
+      transcript: {
+        ...base.transcript!,
+        segments: [
+          { id: 'a', start: 0, end: 4, text: 'Open the settings page first and look at the list.' },
+          { id: 'b', start: 4, end: 8, text: 'Then turn on the new reports and press save.' },
+          { id: 'c', start: 8, end: 12, text: 'That is all you need to share the reports today.' }
+        ]
+      },
+      // The middle caption is cut from the video.
+      clips: [
+        { id: 'k1', start: 0, end: 4, speed: 1 },
+        { id: 'k2', start: 8, end: 12, speed: 1 }
+      ]
+    }
+    let out = await opened()
+    press(card(out, 'linkedin'), 'Write')
+    out = render()
+    press(card(out, 'summary'), 'Write')
+    render()
+    expect(asked.map((a) => a.task)).toEqual(['linkedin', 'summary'])
+    for (const a of asked) {
+      expect(a.segments.map((s) => s.text).join(' ')).not.toContain('Then turn on the new reports')
+      expect(a.segments).toEqual([
+        { id: 'o0', start: 0, end: 4, text: 'Open the settings page first and look at the list.' },
+        { id: 'o1', start: 4, end: 8, text: 'That is all you need to share the reports today.' }
+      ])
+    }
   })
 })
 
