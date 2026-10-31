@@ -34,7 +34,7 @@ const providers = (): AiProviderStore => (store ??= new AiProviderStore(path.joi
 /** Text tasks in progress, stopped when the app quits. */
 const textCalls = new Set<AbortController>()
 
-const EFFORT: Record<AiTextRequest['task'], TextEffort> = { cleanup: 'medium', translate: 'medium', chapters: 'medium', title: 'low', summary: 'low' }
+const EFFORT: Record<AiTextRequest['task'], TextEffort> = { cleanup: 'medium', translate: 'medium', chapters: 'medium', title: 'low', summary: 'low', marks: 'low' }
 
 /** Runs a text task on the transcript with provider `providerId`. */
 export async function aiText(providerId: unknown, raw: unknown): Promise<AiTextResult> {

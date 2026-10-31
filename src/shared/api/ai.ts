@@ -57,7 +57,11 @@ export interface TranscribeProgress {
   resumed?: number
 }
 
-export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
+/**
+ * 'marks' (Captions Studio §11.2): emphasis, emoji, numbers, lists and quotes picked by word
+ * index; part P4 adds it to AI_TEXT_TASKS with its prompt and checks.
+ */
+export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | 'marks'
 
 export interface AiTextRequest {
   task: AiTextTask
@@ -65,6 +69,28 @@ export interface AiTextRequest {
   segments: CaptionSegment[]
   /** For 'translate'. */
   targetLanguage?: string
+  /** For 'marks': the words of each caption, sent as data. */
+  marks?: MarksBatch
+}
+
+/**
+ * One batch of the 'marks' task (Captions Studio §11.2): each caption's words as studioWordTexts
+ * splits them, numbered from 0. No times are sent.
+ */
+export interface MarksBatch {
+  language?: string
+  captions: { id: string; w: string[] }[]
+}
+
+/**
+ * The 'marks' answer as validateMarksAnswer leaves it: word indexes and listed emoji only, so
+ * nothing the provider writes can reach the video (§11.2).
+ */
+export interface MarksAnswer {
+  captions: { id: string; emphasis: number[]; emoji: string; emojiWord: number }[]
+  numbers: { id: string; from: number; to: number }[]
+  lists: { id: string; from: number; to: number; items: { id: string; from: number; to: number }[] }[]
+  quotes: { id: string; from: number; to: number }[]
 }
 
 export type AiTextResult =
@@ -73,6 +99,8 @@ export type AiTextResult =
   /** 'chapters': chapter starts (source seconds) with titles. */
   | { task: 'chapters'; chapters: { t: number; title: string }[] }
   | { task: 'title' | 'summary'; text: string }
+  /** 'marks': the checked picks. */
+  | { task: 'marks'; answer: MarksAnswer }
 
 /** "Draft script" (speaker notes): the presenter's notes or bullet points, sent only on that click. */
 export interface ScriptDraftRequest {

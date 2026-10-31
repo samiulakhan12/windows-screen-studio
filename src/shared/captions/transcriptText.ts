@@ -10,7 +10,7 @@
  * (https://platform.claude.com/docs/en/build-with-claude/structured-outputs,
  * https://developers.openai.com/api/docs/guides/structured-outputs).
  */
-import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask } from '../api/ai'
+import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask, type MarksAnswer, type MarksBatch } from '../api/ai'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 
@@ -137,6 +137,8 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         system: "You summarise a screen recording from its transcript in 2 to 4 plain sentences in the transcript's language: what is shown and what the viewer learns. No headings, lists or markdown.",
         user: data
       }
+    case 'marks':
+      return notImplemented('the marks prompt')
   }
 }
 
@@ -242,7 +244,25 @@ export async function runTextTask(request: AiTextRequest, ask: (prompt: TextProm
     case 'title':
     case 'summary':
       return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request))) }
+    case 'marks':
+      return notImplemented('the marks task')
   }
+}
+
+/** The body of a frozen signature part P4 writes. */
+function notImplemented(name: string, ...args: unknown[]): never {
+  void args
+  throw new Error(`${name}: not implemented (Captions Studio part P4)`)
+}
+
+/**
+ * The 'marks' answer for `batch`, checked (Captions Studio §11.2): ids of the batch, indexes in
+ * range, spans bounded, emoji from Flown's list only; a failed batch drops only its own marks.
+ *
+ * CONTRACT (part P4): the signature is frozen; the body is to be written.
+ */
+export function validateMarksAnswer(answer: unknown, batch: MarksBatch): MarksAnswer {
+  return notImplemented('validateMarksAnswer', answer, batch)
 }
 
 /**
