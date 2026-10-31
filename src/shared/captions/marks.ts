@@ -1,38 +1,276 @@
 /**
  * Emphasis marks and per-caption places (docs/design/captions-studio.md §2.7, §11.1): toggling
- * emphasis, and keeping marks, word anchors and places on their words through edits.
- *
- * CONTRACT (part P1): signatures are frozen; bodies are to be written.
+ * emphasis, and keeping marks, word anchors and places on their words through edits. Pure: each
+ * function gives the project of one undo step, or the project itself when nothing changes.
  */
-import type { CaptionMark, Project } from '../types'
+import { lcsPairs } from '../editor/transcript'
+import type { CaptionMark, CaptionPlace, CaptionSegment, Graphic, Project, Transcript, WordAnchor } from '../types'
+import { captionsOf } from './settings'
+import { ANCHOR_TEXT_MAX, readCaptionMarks, readCaptionPlaces, readGraphics } from './studioData'
+import { legacyTwin } from './studioEdit'
+import { seedOf } from './motion'
+import { studioTokens, studioWords } from './words'
 
-/** The body of a frozen signature part P1 writes. */
-function notImplemented(name: string, ...args: unknown[]): never {
-  void args
-  throw new Error(`${name}: not implemented (Captions Studio part P1)`)
-}
-
-/** The marks of each caption, by caption id. */
+/** The marks of each caption, by caption id, each list in word order. */
 export function marksByCaption(marks: readonly CaptionMark[] | undefined): ReadonlyMap<string, readonly CaptionMark[]> {
-  return notImplemented('marksByCaption', marks)
+  const out = new Map<string, CaptionMark[]>()
+  for (const m of marks ?? []) {
+    const list = out.get(m.caption)
+    if (list) list.push(m)
+    else out.set(m.caption, [m])
+  }
+  for (const list of out.values()) list.sort((a, b) => a.from - b.from || a.to - b.to)
+  return out
 }
 
-/** Emphasis toggled on the words of `spans` (removed when all are emphasised, else added; tone 2 with Ctrl+Shift+B); the twin on a legacy look. */
+/** The words of a caption joined as the text shows them (a space where it has one), at most ANCHOR_TEXT_MAX characters. */
+function wordsText(words: readonly { text: string; gap: boolean }[], from: number, to: number): string {
+  let out = ''
+  for (let i = from; i <= to; i++) out += (i > from && words[i].gap ? ' ' : '') + words[i].text
+  return out.slice(0, ANCHOR_TEXT_MAX).trim()
+}
+
+/** A mark id from its content, unique among `taken`. */
+function markId(caption: string, from: number, to: number, taken: Set<string>): string {
+  const base = `m-${seedOf(`${caption}|${from}|${to}`).toString(36)}`
+  let id = base
+  for (let k = 2; taken.has(id); k++) id = `${base}~${k}`
+  taken.add(id)
+  return id
+}
+
+/** Captions ordered as the transcript has them. */
+const orderOf = (t: Transcript): Map<string, number> => new Map(t.segments.map((s, i) => [s.id, i]))
+
+/** The project with `marks` (none: no key), the captions turned into the twin when asked. */
+function withMarks(project: Project, marks: CaptionMark[], twin: boolean): Project {
+  const { captionMarks: _old, ...rest } = project
+  void _old
+  const out: Project = marks.length ? { ...rest, captionMarks: marks } : rest
+  if (twin && !project.captions?.studio) {
+    const captions = captionsOf(project)
+    out.captions = { ...captions, studio: legacyTwin(captions) }
+  }
+  return out
+}
+
+/**
+ * Emphasis toggled on the words of `spans` (§2.7): removed when every selected word is already
+ * emphasised, else added (tone 2 with Ctrl+Shift+B), one mark per span, replacing the marks under
+ * it. On a legacy look the captions become its Studio twin in the same update, so emphasis can
+ * show. The project itself when nothing changes.
+ */
 export function toggleEmphasis(project: Project, spans: readonly { caption: string; from: number; to: number }[], tone?: 2): Project {
-  return notImplemented('toggleEmphasis', project, spans, tone)
+  const transcript = project.transcript
+  if (!transcript || !spans.length) return project
+  const language = transcript.language
+  const segs = new Map(transcript.segments.map((s) => [s.id, s]))
+  const valid = spans
+    .map((sp) => {
+      const seg = segs.get(sp.caption)
+      if (!seg) return null
+      const words = studioWords(seg.text, language)
+      const from = Math.max(0, Math.min(sp.from, sp.to))
+      const to = Math.min(words.length - 1, Math.max(sp.from, sp.to))
+      return Number.isInteger(from) && Number.isInteger(to) && from <= to ? { caption: sp.caption, from, to, words } : null
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x)
+  if (!valid.length) return project
+  const marks = project.captionMarks ?? []
+  // Emphasised already in the tone asked for (Ctrl+B on words in the second colour gives them the first).
+  const covered = (caption: string, i: number): boolean => marks.some((m) => m.caption === caption && i >= m.from && i <= m.to && (m.tone === 2) === (tone === 2))
+  const all = valid.every((sp) => {
+    for (let i = sp.from; i <= sp.to; i++) if (!covered(sp.caption, i)) return false
+    return true
+  })
+  // Cut the selection out of the marks under it (a mark across its edge keeps its outer part).
+  const cut: CaptionMark[] = []
+  const taken = new Set(marks.map((m) => m.id))
+  for (const m of marks) {
+    const hits = valid.filter((sp) => sp.caption === m.caption && sp.from <= m.to && sp.to >= m.from)
+    if (!hits.length) {
+      cut.push(m)
+      continue
+    }
+    let pieces: [number, number][] = [[m.from, m.to]]
+    for (const sp of hits) pieces = pieces.flatMap(([a, b]): [number, number][] => [...(a < sp.from ? [[a, Math.min(b, sp.from - 1)] as [number, number]] : []), ...(b > sp.to ? [[Math.max(a, sp.to + 1), b] as [number, number]] : [])])
+    pieces.forEach(([a, b], k) => cut.push({ ...m, from: a, to: b, text: wordsText(hits[0].words, a, b), id: k === 0 ? m.id : markId(m.caption, a, b, taken) }))
+  }
+  let next = cut
+  if (!all) {
+    const added: CaptionMark[] = valid.map((sp) => ({ id: markId(sp.caption, sp.from, sp.to, taken), caption: sp.caption, from: sp.from, to: sp.to, text: wordsText(sp.words, sp.from, sp.to), ...(tone === 2 ? { tone: 2 as const } : {}) }))
+    next = [...cut, ...added]
+  }
+  const order = orderOf(transcript)
+  next.sort((a, b) => order.get(a.caption)! - order.get(b.caption)! || a.from - b.from)
+  // Marks next to each other stay apart; the reader merges only overlapping ones.
+  return withMarks(project, next, !all)
 }
 
-/** Every emphasis mark removed. */
+/** Every emphasis mark removed; the project itself when it has none. */
 export function clearEmphasis(project: Project): Project {
-  return notImplemented('clearEmphasis', project)
+  if (!project.captionMarks) return project
+  return withMarks(project, [], false)
 }
 
-/** Marks, graphic anchors and captionPlaces of `next` remapped after its captions changed from `prev`'s (§11.1); `next` itself when nothing changed. */
+/* ---------- records follow their words (§11.1) ---------- */
+
+const norm = (text: string): string => text.normalize('NFKC').toLowerCase().replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, '')
+
+/** A caption's words: their texts (as compared) and times. */
+interface Words {
+  seg: CaptionSegment
+  keys: string[]
+  times: { start: number; end: number }[]
+}
+
+function wordsOf(seg: CaptionSegment, language: string | undefined): Words {
+  const tokens = studioTokens(seg, language)
+  return { seg, keys: tokens.map((t) => norm(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end })) }
+}
+
+/** Where a record's words are in `next` (§11.1 rules 1–3), or null when they are gone. */
+type Found = { caption: string; from: number; to: number }
+
+function relocate(rec: { caption: string; from: number; to: number }, prev: Map<string, Words>, next: Map<string, Words>, nextList: Words[]): Found | null {
+  const before = prev.get(rec.caption)
+  if (!before || rec.from < 0 || rec.to >= before.keys.length || rec.from > rec.to) return null
+  const want = before.keys.slice(rec.from, rec.to + 1)
+  const same = next.get(rec.caption)
+  // Rule 1: the same caption, its text changed: the words found again in order and next to each other.
+  if (same) {
+    if (same.seg.text === before.seg.text) return { caption: rec.caption, from: rec.from, to: rec.to }
+    const pairs = lcsPairs(before.keys, same.keys)
+    const map = new Map(pairs)
+    const mapped: number[] = []
+    for (let i = rec.from; i <= rec.to; i++) {
+      const j = map.get(i)
+      if (j === undefined) break
+      mapped.push(j)
+    }
+    if (mapped.length === want.length && mapped.every((j, k) => k === 0 || j === mapped[k - 1] + 1)) return { caption: rec.caption, from: mapped[0], to: mapped[mapped.length - 1] }
+  }
+  // Rule 2: the words' time span, and their text looked for in the captions of `next` over it, nearest first.
+  const span = { start: before.times[rec.from].start, end: before.times[rec.to].end }
+  const mid = (span.start + span.end) / 2
+  const candidates = nextList.filter((w) => w.seg.start < span.end + 1e-6 && w.seg.end > span.start - 1e-6)
+  let best: (Found & { d: number }) | null = null
+  for (const w of candidates) {
+    for (let i = 0; i + want.length <= w.keys.length; i++) {
+      let ok = true
+      for (let k = 0; k < want.length && ok; k++) ok = w.keys[i + k] === want[k]
+      if (!ok) continue
+      const d = Math.abs((w.times[i].start + w.times[i + want.length - 1].end) / 2 - mid)
+      if (!best || d < best.d) best = { caption: w.seg.id, from: i, to: i + want.length - 1, d }
+    }
+  }
+  return best ? { caption: best.caption, from: best.from, to: best.to } : null
+}
+
+/** The places of `prev` kept on `next`: a caption keeps its own; captions that are new in `next` take the place of the old caption they overlap most (both halves of a split). */
+function remapPlaces(places: readonly CaptionPlace[], prevT: Transcript, nextT: Transcript): CaptionPlace[] {
+  const prevIds = new Set(prevT.segments.map((s) => s.id))
+  const nextIds = new Set(nextT.segments.map((s) => s.id))
+  const placeOf = new Map(places.map((p) => [p.caption, p.position]))
+  const out: CaptionPlace[] = []
+  for (const seg of nextT.segments) {
+    const own = placeOf.get(seg.id)
+    if (own && prevIds.has(seg.id)) {
+      out.push({ caption: seg.id, position: own })
+      continue
+    }
+    if (prevIds.has(seg.id)) continue
+    // A new caption (a split's second half): the place of the old caption it overlaps most, when that one was split.
+    let best: { id: string; overlap: number } | null = null
+    for (const old of prevT.segments) {
+      if (!placeOf.has(old.id) || !nextIds.has(old.id)) continue
+      const overlap = Math.min(old.end, seg.end) - Math.max(old.start, seg.start)
+      if (overlap > 1e-6 && (!best || overlap > best.overlap)) best = { id: old.id, overlap }
+    }
+    if (best) out.push({ caption: seg.id, position: placeOf.get(best.id)! })
+  }
+  return out
+}
+
+/** Deep equality of plain data. */
+const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
+
+/**
+ * Marks, graphic anchors and captionPlaces of `next` remapped after its captions changed from
+ * `prev`'s (§11.1), as the store's settle does in the same undo step as the change: a record
+ * whose caption kept its text stays; one whose caption's text changed is found again by the
+ * longest common subsequence of words; one whose caption is gone (split, merge, generated again)
+ * is looked for by its text in the captions over its old time, nearest first; else it is dropped
+ * (a graphic then stays free). Places follow their caption, both halves of a split keep one, a
+ * caption that is gone loses its. The result is what reading the saved project gives for these
+ * fields; `next` itself when nothing changed.
+ */
 export function remapAnchors(next: Project, prev: Project): Project {
-  return notImplemented('remapAnchors', next, prev)
+  const nt = next.transcript
+  const pt = prev.transcript
+  if (nt === pt || !pt) return next
+  const hasRecords = !!(next.captionMarks?.length || next.captionPlaces?.length || next.graphics?.some((g) => (g.kind === 'keyword' || g.kind === 'emoji') && g.anchor))
+  if (!hasRecords) return next
+  if (!nt) {
+    const { captionMarks: _m, captionPlaces: _p, ...rest } = next
+    void _m
+    void _p
+    const graphics = next.graphics?.map((g) => ((g.kind === 'keyword' || g.kind === 'emoji') && g.anchor ? dropAnchor(g) : g))
+    return { ...rest, ...(graphics ? { graphics } : {}) }
+  }
+  const lang = nt.language
+  const prevWords = new Map(pt.segments.map((s) => [s.id, wordsOf(s, pt.language)]))
+  const nextList = nt.segments.map((s) => wordsOf(s, lang))
+  const nextWords = new Map(nextList.map((w) => [w.seg.id, w]))
+  const textOf = (f: Found): string => {
+    const words = studioWords(nextWords.get(f.caption)!.seg.text, lang)
+    return wordsText(words, f.from, f.to)
+  }
+  const move = <T extends { caption: string; from: number; to: number; text: string }>(rec: T): T | null => {
+    const f = relocate(rec, prevWords, nextWords, nextList)
+    if (!f) return null
+    if (f.caption === rec.caption && f.from === rec.from && f.to === rec.to && nextWords.get(f.caption)!.seg.text === prevWords.get(rec.caption)?.seg.text) return rec
+    return { ...rec, caption: f.caption, from: f.from, to: f.to, text: textOf(f) }
+  }
+  // Marks.
+  const movedMarks = (next.captionMarks ?? []).map(move).filter((m): m is CaptionMark => !!m)
+  const marks = readCaptionMarks(movedMarks, nt)
+  // Graphic anchors.
+  const graphicsIn = next.graphics?.map((g): Graphic => {
+    if ((g.kind !== 'keyword' && g.kind !== 'emoji') || !g.anchor) return g
+    const a = move<WordAnchor>(g.anchor)
+    return a ? (a === g.anchor ? g : { ...g, anchor: a }) : dropAnchor(g)
+  })
+  const graphics = graphicsIn ? readGraphics(graphicsIn, next.duration, nt) : undefined
+  // Places.
+  const places = next.captionPlaces ? readCaptionPlaces(remapPlaces(next.captionPlaces, pt, nt), nt) : undefined
+  if (same(marks, next.captionMarks) && same(graphics, next.graphics) && same(places, next.captionPlaces)) return next
+  const { captionMarks: _m, captionPlaces: _p, graphics: _g, ...rest } = next
+  void _m
+  void _p
+  void _g
+  return { ...rest, ...(marks ? { captionMarks: marks } : {}), ...(places ? { captionPlaces: places } : {}), ...(graphics ? { graphics } : {}) }
 }
 
-/** Caption `caption` placed at the top or the bottom, or back to the look's place (null). */
+/** A keyword or emoji without its anchor (it stays where it is, free; a keyword then replaces nothing). */
+function dropAnchor<G extends Graphic>(g: G): G {
+  if (g.kind !== 'keyword' && g.kind !== 'emoji') return g
+  const { anchor: _a, ...rest } = g
+  void _a
+  return rest as G
+}
+
+/** Caption `caption` placed at the top or the bottom, or back to the look's place (null); one undo step; the project itself when nothing changes. */
 export function withCaptionPlace(project: Project, caption: string, position: 'top' | 'bottom' | null): Project {
-  return notImplemented('withCaptionPlace', project, caption, position)
+  const transcript = project.transcript
+  if (!transcript || !transcript.segments.some((s) => s.id === caption)) return project
+  const places = project.captionPlaces ?? []
+  const current = places.find((p) => p.caption === caption)?.position ?? null
+  if (current === position) return project
+  const order = orderOf(transcript)
+  const others = places.filter((p) => p.caption !== caption)
+  const list = position ? [...others, { caption, position }].sort((a, b) => order.get(a.caption)! - order.get(b.caption)!) : others
+  const { captionPlaces: _p, ...rest } = project
+  void _p
+  return list.length ? { ...rest, captionPlaces: list } : rest
 }
