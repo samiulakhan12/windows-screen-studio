@@ -11,6 +11,7 @@ import { exportRunning } from '../exportIpc'
 import { importRunning } from '../importVideo'
 import { jobsSnapshot } from '../longJobs'
 import { copyRunning } from '../projectsIpc'
+import { isToolbarVisible } from '../recording/toolbarWindow'
 import { isAppUrl } from '../security'
 import { voiceCleaner } from '../voice/voiceIpc'
 import { electronUpdaterPort } from './electronUpdaterPort'
@@ -24,21 +25,11 @@ const afterCheck = new Set<() => void>()
 
 const fromApp = (e: IpcMainInvokeEvent): boolean => isAppUrl(e.senderFrame?.url ?? '')
 
-/** The recording bar is open (a window on the /toolbar route): a recording runs. */
-function recording(): boolean {
-  return BrowserWindow.getAllWindows().some((w) => {
-    if (w.isDestroyed()) return false
-    try {
-      return new URL(w.webContents.getURL()).hash === '#/toolbar'
-    } catch {
-      return false
-    }
-  })
-}
-
 /** Why Restart now cannot run now, or null (main checks again when it is pressed). */
 export function busyReason(): string | null {
-  if (recording()) return BUSY_COPY.recording
+  // The recording bar shows from the countdown until the recording ends; it is only hidden (kept
+  // for the next recording) afterwards, so an open but hidden bar is no recording.
+  if (isToolbarVisible()) return BUSY_COPY.recording
   const jobs = jobsSnapshot()
   for (const kind of ['export', 'captions', 'analysis'] as const) if (jobs.some((j) => j.kind === kind)) return BUSY_COPY[kind]
   if (exportRunning()) return BUSY_COPY.export

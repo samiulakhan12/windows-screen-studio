@@ -148,10 +148,12 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   handler uses) and the event `updates:changed` to every window.
 - Busy check (`busyReason()`): `jobsSnapshot()` (exports, captions, analysis), plus small read-only
   getters added to the features that own the state: `exportRunning()` (exportIpc),
-  `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc). A
-  recording keeps Home hidden, so *Restart now* cannot be pressed during one; quitting during a
-  recording already waits for the capture helper (nativeCapture's will-quit guard) and the
-  installer runs only after the app has really quit.
+  `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc), and
+  for a recording `isToolbarVisible()` (the recording bar shows from the countdown until the
+  recording ends; afterwards it is only hidden, kept for the next one, so an open bar is not a
+  recording). A recording keeps Home hidden, so *Restart now* cannot be pressed during one;
+  quitting during a recording already waits for the capture helper (nativeCapture's will-quit
+  guard) and the installer runs only after the app has really quit.
 
 ## 3. The refreshable model list
 
