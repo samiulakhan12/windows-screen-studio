@@ -9,8 +9,9 @@ Branch `feat-share`, from `ccr-b6df7cf7-yked87` (546e479). Design: `docs/design/
   Drive for desktop (its `PerAccountPreferences` mounts and `DefaultMountPoint`, then `G:\My Drive`,
   `%USERPROFILE%\My Drive`, `%USERPROFILE%\Google Drive`), keeps those that exist, and lists each in
   Settings › Share with its path, where it was found and a *Use* switch. Any other folder can be added
-  with the folder dialog. An export is copied into `<folder>\Flown` through a hidden partial file
-  renamed when complete, with progress, Cancel, a free-space check, no replacing (" (2)"), and a
+  with the folder dialog. Found folders are offered only after Settings › Share has been seen once.
+  An export is copied into `<folder>\Flown` through a `.~name.partial-….tmp` file (a name cloud apps
+  skip) whose final name is claimed with a hard link, with progress, Cancel, a free-space check, no replacing (" (2)"), and a
   refusal when `Flown` is a link that leads elsewhere.
 * **Chats.** Slack, Discord and Microsoft Teams incoming webhooks, checked (HTTPS, the services' own
   hosts and path shapes, no port, credentials or fragment, ≤ 1024 characters), stored encrypted with
@@ -62,7 +63,25 @@ secret in `share.json` or the log. Screenshots: `docs/screenshots/share-settings
 
 ## Verification
 
-VERIFICATION
+All on the branch head (the review fixes included), Linux under Xvfb with openbox:
+
+* `npm run typecheck`: clean.
+* `npx vitest run --testTimeout=60000`: **287 files, 3873 tests passed** (share adds 8 files, 74 tests).
+* `npm run build`: OK.
+* `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`: **60/60 e2e files passed**.
+
+Earlier runs, reported honestly: the first full e2e run (before the review fixes) was 57/60. Two
+files failed only because the environment was not set up yet (`audio-pack` needs the speech helper,
+built with `npm run build:speech-host`; `offline-captions` needs `npm run fetch:test-speech`). The
+third, `teleprompter`, failed its window-drag check because openbox was not installed. In a targeted
+re-run, `audio-pack`'s crash-recovery check once found 9 vs 8 sound bursts (the known timing
+flakiness); it passed alone and in the final full run. No test was skipped or loosened.
+
+Review: an adversarial review of the share code found no security hole. It did find races and gaps,
+all fixed in `b14d56c`: two starts at once passing the run cap; a name check followed by a rename
+that could replace a file (now a hard-link claim); partial files a cloud app could sync; the export
+waiting on folder detection; found folders offered before the user saw them; `reg query`'s code
+page; focus and button names; and the redirect mode. Each fix has a test that fails without it.
 
 ## Needs a real Windows PC
 
