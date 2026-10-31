@@ -62,6 +62,82 @@ The rules of the earlier waves hold:
 
 ---
 
+## 0. The owner's approved look and decisions (31 October 2026)
+
+**This section overrides the rest of the document where they differ.** The owner saw mock-ups of the
+looks and approved them; they are kept with their exact CSS in the lead's scratchpad folder
+`caption-mockups/` (`mockups.html`, `more.html`, `bangla.html`; pictures `captions-styles.png`,
+`captions-more.png`, `captions-vertical.png`, `captions-graphics.png`, `captions-motion.gif`,
+`bangla-fonts.png`, `bangla-styles.png`, `bangla-more.png`; notes `APPROVED-LOOK.md`,
+`BANGLA-NOTES.md`). Builders read those files for exact colours, sizes and motion.
+
+### 0.1 Eleven more looks in the gallery
+
+The 19 new looks of §5.3–5.4 stay. Add these 11, which the owner approved, with the values of
+`more.html` and `mockups.html` turned into the units of §5.1 (each passes the contrast rule of §7.2;
+where a mock-up colour fails it, darken or lighten it until it passes and say so in the look's row):
+
+| Look (preset id) | Group | From the mock-up |
+|---|---|---|
+| Gradient (`gradient`) | Short clips | Archivo Black capitals, a pink→orange gradient fill, a dark offset shadow. Uses the Gradient spoken option of §5.6 as its whole-text fill. |
+| Stickers (`stickers`) | Short clips | Lilita One; each word a white rounded sticker with a dark 3 px border and a hard offset shadow, alternately tilted −4° / +3°; the spoken word's sticker turns yellow and grows 1.12×. Tilt comes from the word's index, never from a random number (§9: deterministic). |
+| Speech Bubble (`bubble-speech`) | Long videos | A white rounded bubble with a tail pointing at the camera bubble; dark text; the spoken words in the accent colour. With no camera on screen the tail points down. Keeps clear of the camera bubble like every look. |
+| Chat (`chat`) | Long videos | For calls: each caption is a chat bubble, You (from NW-09 speakers) on the right in blue, Others on the left in light grey, with the speaker name above. Without speakers it falls back to Subtitle. |
+| Spotlight Word (`spotlight-word`) | Short clips | Poppins 800; words not spoken yet dimmed (contrast checked on the dimmed colour against the outline), the spoken word bigger, full white with a soft blue glow. Reduce motion: no size change. |
+| Cinema (`cinema`) | Long videos | Film subtitles: Inter 600, warm yellow #ffe680, a strong shadow, low on the frame; optional letterbox bars are not drawn (the look only places the text where bars would be). |
+| Retro Pixel (`retro-pixel`) | Short clips | Press Start 2P (OFL; add it to §6.1), a static red/cyan offset of 3 px at 1080p and a hard dark drop; the spoken word yellow. The offset never moves (not the left-out glitch). |
+| Gold (`gold`) | Long videos | Playfair Display 900 with a gold vertical gradient and a dark soft shadow; for titles and launches. |
+| 3D Block (`block-3d`) | Short clips | Rubik 900 capitals (OFL; add it) with a six-step extrusion in a darker shade of the fill and a soft shadow; the spoken word changes to yellow with its own darker extrusion. |
+| Bubble (`bubble-round`) | Short clips | Fredoka 700 in pastel pink with a thick white outline and a soft drop; the spoken word purple. |
+| Circle (`circle`) | Long videos | Clean white text with a dark outline; emphasised words (§2.7) get a hand-drawn red ellipse drawn around them in 0.3 s; the path is fixed per word (from the word's index), never random. |
+
+### 0.2 Bangla (owner requirement; `BANGLA-NOTES.md`)
+
+- **Bundle all nine Bangla families** (SIL OFL 1.1, from the same pinned google/fonts commit, SHA-256
+  pinned; measure and record each file): Noto Sans Bengali and Baloo Da 2 (already in §6.2) plus
+  **Hind Siliguri** (400, 600, 700), **Anek Bangla** (variable width and weight), **Noto Serif
+  Bengali** (variable), **Tiro Bangla** (regular, italic), **Galada**, **Atma** (500, 700) and
+  **Mina** (400, 700). The Bangla subsets measured about 1.4 MB as WOFF2 together.
+- **Twelve Bangla looks**: when a caption's text is Bangla (script detection of §8.1), each of these
+  looks uses its Bangla font instead of its Latin one: Bold Pop → Baloo Da 2 800; Karaoke Fill →
+  Hind Siliguri 700; Highlight Box → Noto Sans Bengali 700; Glass Pill → Hind Siliguri 600;
+  Stacked → Anek Bangla 800 at width 75; Neon → Mina 700; Handwritten → Galada; Comic → Atma 700;
+  Editorial and Gold → Noto Serif Bengali 700; Subtitle and News Bar → Hind Siliguri; any other
+  look → Noto Sans Bengali. English words inside a Bangla caption keep the look's Latin font.
+- **Rules** (from the mock-ups): no capitals in Bangla, so emphasis and the spoken word use colour,
+  size (×1.14 at most) and weight, never case; line height at least 1.4; outlines about 0.08 em
+  (thinner than Latin: 2.5 px at 30 px) with a soft shadow; pop styles add word spacing so a grown
+  word never touches its neighbours; word effects never split a conjunct or a vowel sign from its
+  letter; a **Digits** choice (Bangla ০–৯ or Western 0–9) used by captions, counters, list numbers
+  and chapter names.
+- The gallery shows Bangla sample text on its tiles when the captions are Bangla.
+
+### 0.3 Decisions on §18's open questions
+
+1. **Download source for on-demand fonts**: commit-pinned `raw.githubusercontent.com` paths of
+   `google/fonts` and `googlefonts/noto-emoji` (each file SHA-256 pinned and size capped), added to
+   the download allow list for those exact repositories only. No Qbexel mirror is needed for wave 9.
+2. **Font files in git**: commit the **WOFF2** files (about 5–6.5 MB), not the TTFs. A script
+   (`scripts/fonts.mjs`) can rebuild them from the pinned TTFs and checks the hashes.
+3. **Colour emoji**: **bundled** (the owner approved emoji looks): Noto-COLRv1 as WOFF2.
+4. **Word lists**: use openly licensed lists (for example stopwords-iso, MIT) with their notices;
+   Bangla and other swear-word lists start small and are marked as needing a native speaker's check.
+5. **Offline translation (MPL-2.0 runtime and models, BSD-3-Clause PCRE2)**: waiting for the owner.
+   Build everything else first; translation through the AI provider ships either way.
+6. **Measurements on a real Windows PC** (§9.8, installer size): after the build, by the owner.
+
+### 0.4 Build order (the owner said: start now)
+
+Phase A starts at once on top of the default branch (0.7.1 + NW-09): the contracts step without the
+parts that touch branches not merged yet, then P1, the drawing, fonts and export parts of P2, the UI
+of P3 that does not touch them, and the parts of P4 that do not. Deferred to phase B, after the
+review mode, publishing pack, sound finder and versions branches are merged: Review mode group rows
+(`review.ts`, `ReviewPanel.tsx`), the bleep gains in the sound finder's `soundsEdit.ts`, `versions.ts`
+areas, and retargeting the publishing pack's `aiTranslate` / `aiCleanup` commands; and offline
+translation if the owner approves its licences.
+
+---
+
 ## 1. Summary
 
 - **A style gallery of 24 looks.** The five legacy presets stay exactly as they are, under a
