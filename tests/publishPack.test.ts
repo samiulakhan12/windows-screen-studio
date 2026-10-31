@@ -21,7 +21,9 @@ describe('plainText', () => {
   })
 
   it('removes markdown emphasis, trailing spaces and extra blank lines', () => {
-    expect(plainText('**Bold** and __this__  \n\n\n\nnext   ', { max: 100 })).toBe('Bold and this\n\nnext')
+    // "__this__" is written as "__init__" is: it stays (only "__" around words with a space between goes).
+    expect(plainText('**Bold** and __this__  \n\n\n\nnext   ', { max: 100 })).toBe('Bold and __this__\n\nnext')
+    expect(plainText('**Two words** and __two words__.', { max: 100 })).toBe('Two words and two words.')
   })
 
   it('removes links the transcript does not contain and keeps those it does', () => {

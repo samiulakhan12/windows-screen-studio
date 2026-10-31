@@ -172,6 +172,14 @@ function settle(allowed: ReadonlySet<string>, max: number, cut: (budget: number)
 
 /* ---------- plain text ---------- */
 
+/**
+ * Markdown emphasis around words: "**Bold**", "**two words**", and "__two words__" (with a space
+ * inside, so that "__init__" and "__name__" stay). Not glued to a letter, digit, "_" or "*" outside,
+ * so "2**8", "**kwargs", the "**" of a glob ("src/**" + "/*.ts") and "snake__case" stay.
+ */
+const STRONG = /(?<![\p{L}\p{N}_*])\*\*(?=[^\s*])([^*\n]*?[^\s*])\*\*(?![\p{L}\p{N}_*])/gu
+const UNDERLINED = /(?<![\p{L}\p{N}_])__(?=[^\s_])([^_\n]*?\s[^_\n]*?[^\s_])__(?![\p{L}\p{N}_])/gu
+
 /** Repeated spaces, spaces at line ends and more than one blank line removed, trimmed. */
 const tidyText = (t: string): string =>
   t
@@ -185,7 +193,7 @@ const charLength = (t: string): number => [...t].length
 
 /**
  * `s` as plain text: line breaks normalised, control and direction characters removed (a tab is a
- * space), NFC, ** and __ emphasis removed, spaces at line ends and repeated blank lines removed,
+ * space), NFC, markdown emphasis removed, spaces at line ends and repeated blank lines removed,
  * trimmed, cut to `max`, and then every link `linksFrom` does not have (keepLinks: `s` itself)
  * removed or broken (cleanLinks). Not a string: ''.
  */
@@ -193,7 +201,7 @@ export function plainText(s: unknown, opts: PlainTextOptions): string {
   if (typeof s !== 'string') return ''
   const allowed = linkKeys(opts.keepLinks ? s : (opts.linksFrom ?? ''))
   let t = s.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(CONTROLS, '').normalize()
-  t = t.replace(/\*\*|__/g, '')
+  t = t.replace(STRONG, '$1').replace(UNDERLINED, '$1')
   if (opts.oneLine) t = t.replace(/\s*\n\s*/g, ' ')
   t = tidyText(t)
   return settle(allowed, opts.max, (budget) => cutText(t, budget), charLength, tidyText)
