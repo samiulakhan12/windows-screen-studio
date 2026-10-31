@@ -410,9 +410,13 @@ export type SpokenMark = 'none' | 'color' | 'fill' | 'box' | 'pill' | 'underline
 export type EmphasisMark = 'none' | 'marker' | 'underline' | 'box' | 'circle'
 export type ChunkEnter = 'none' | 'fade' | 'rise' | 'drop' | 'slide' | 'pop' | 'squeeze' | 'grow' | 'blur' | 'wipe' | 'slam'
 export type ChunkExit = 'none' | 'fade' | 'rise' | 'shrink' | 'blur'
-export type WordMotion = 'none' | 'pulse' | 'pop' | 'bounce' | 'rise' | 'slide' | 'fade' | 'typewriter' | 'blur' | 'shake' | 'wipe'
+/** 'grow' (Editorial's emphasis, §5.3): scale 0.96 → 1 over 0.20 s, emphDecel, as the chunk entrance. */
+export type WordMotion = 'none' | 'pulse' | 'pop' | 'bounce' | 'rise' | 'slide' | 'fade' | 'typewriter' | 'blur' | 'shake' | 'wipe' | 'grow'
 
-/** The font a look draws the words of one script with (§0.2: the look's Bangla font). */
+/**
+ * The font a look draws the words of one script with (§0.2: the look's Bangla font). Emphasised
+ * words of the script draw at the heavier of `weight` and StudioEmphasis.weight (clamped).
+ */
 export interface StudioScriptFont {
   /** 'cat:<id>' of a catalogue font that has the script's letters. */
   font: string
@@ -436,6 +440,8 @@ export interface StudioText {
   size: number
   /** Size multiplier in tall frames, 1..1.6. */
   tall: number
+  /** The 'weight' spoken mark's weight, 100..1000 (Light to Bold: 700); absent: `weight` + 300, at most 900. */
+  spokenWeight?: number
   /**
    * The look's own font for words of a script (§0.2): a Bangla word draws in `bengali` instead of
    * the script's default (Noto Sans Bengali, or Baloo Da 2 at 700 or more, §6.6). English words in
