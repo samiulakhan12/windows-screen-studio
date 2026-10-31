@@ -11,7 +11,7 @@
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, Clip, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
-import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
+import { autoCutIntact, footageBack, liveAutoCuts, playsBelow, undoAutoCut, withAutoCuts, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -137,16 +137,18 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
       return true
     })
   // A part a speed-up of the list kept since holds at this item's own speed is the user's too when
-  // some other part of the item's footage still plays, or a record or a later item holds some of it
-  // below this item's speed (a tool only speeds up, so that footage was back when it was made): it
+  // some other part of the item's footage still plays, or a speed-up of the project or a later one
+  // holds some of it below this item's speed and still plays it at its own speed, itself or through
+  // another one inside it (a tool only speeds up, so that footage was back when it was made): it
   // was made inside a later one at this speed, after this item was removed. Otherwise the part is
   // this item's, kept. (When nothing else tells, kept and removed leave the same project and list.)
+  // One made before this item (around it), or one that took it over and was undone since, holds
+  // its footage lower too, but plays none of it at its own speed while this item is kept.
   const inside = withoutKeptInside(cut, project.clips, later, over)
   const any = withoutKeptInside(inside, project.clips, later, over, true)
   const overlap = (a: Piece, b: Piece): boolean => Math.min(a.end, b.end) - Math.max(a.start, b.start) > SLACK
   const plays = (c: AutoCut): boolean => c.was.some((p) => project.clips.some((k) => overlap(k, p)))
-  const again = over.some((r) => r.id !== cut.id && r.was.some((w) => w.speed < Number(cut.action) && cut.was.some((p) => overlap(w, p))))
-  return walksBack(any !== inside && (plays(any) || again) ? any : inside) ? 'removed' : 'kept'
+  return walksBack(any !== inside && (plays(any) || playsBelow(cut, project.clips, over)) ? any : inside) ? 'removed' : 'kept'
 }
 
 /** `pieces` split where a clip starts or ends, so each part plays at one speed or is cut. */

@@ -469,6 +469,34 @@ export function withoutKeptInside(cut: AutoCut, clips: readonly Clip[], reviewed
   return length(cut.was) - length(was) > EPS ? { ...cut, was } : cut
 }
 
+/**
+ * Whether a speed-up of `list` other than `cut` holds some of `cut`'s footage below `cut`'s speed
+ * and still plays it at its own speed, or hands it on to a later one of `list` (not `cut`) that
+ * does. A tool only speeds up, so such a one was made while that footage was back; one made
+ * before `cut`, around it, holds it lower too, but plays none of it while `cut`'s change is there.
+ */
+export function playsBelow(cut: AutoCut, clips: readonly Clip[], list: readonly AutoCut[]): boolean {
+  if (cut.action === 'cut') return false
+  // Their pieces below `cut`'s speed, by their own speed, each kind taken at once.
+  const by = new Map<number, Piece[]>()
+  for (const r of list) {
+    if (r.id === cut.id || r.action === 'cut') continue
+    for (const w of r.was) {
+      if (w.speed >= cut.action) continue
+      const ws = by.get(r.action)
+      if (ws) ws.push(w)
+      else by.set(r.action, [w])
+    }
+  }
+  const mine = union(cut.was)
+  for (const [speed, ws] of by) {
+    const held = holds(list, clips, speed, cut)
+    const plays = (held.plays ??= union([...playing(clips, -Infinity, Infinity, speed), ...held.parts]))
+    if (length(both(both(union(ws), mine, speed), plays, speed)) > SLACK) return true
+  }
+  return false
+}
+
 /** `project` with `list` as its records: no key when the list is empty. */
 export function withAutoCuts(project: Project, list: AutoCut[]): Project {
   if (list.length) return { ...project, autoCuts: list }

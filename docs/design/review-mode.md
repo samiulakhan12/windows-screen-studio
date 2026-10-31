@@ -112,10 +112,14 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
   list holds at the old speed, itself or through one inside it, counts as back, and a part of a
   speed-up of the list kept since inside a third one is the user's and left out: a 2× removed,
   then an 8× kept inside the 4× inside it. A part one kept since holds at the item's own speed is
-  left out too when some other part of the item's footage still plays, or a record or a later item
-  holds some of it below the item's speed (a tool only speeds up, so that footage was back when it
-  was made): the kept one was made inside a later one at the item's speed, after the item was
-  removed (Polish at 2× removed, Smart speed at 2× over its end, Polish at 4× inside that kept).
+  left out too when some other part of the item's footage still plays, or a speed-up of the
+  project or a later one holds some of it below the item's speed and still plays it at its own
+  speed, itself or through another one inside it (a tool only speeds up, so that footage was back
+  when it was made): the kept one was made inside a later one at the item's speed, after the item
+  was removed (Polish at 2× removed, Smart speed at 2× over its end, Polish at 4× inside that kept).
+  One made before the item, around it, holds that footage lower too, and so does one that took the
+  item over and was undone since, but neither plays it while the item is kept (Smart speed at 2×,
+  Polish at 4× inside it, Keep all, then Polish at 8× inside that kept: the 4× still reads kept).
   A speed-up the panel listed before the item appeared was made before it, so it counts for neither:
   Polish at 2× removed, then Polish run again over the same silence with the panel open and the new
   2× kept; Polish at 4× removed, Polish at 2× inside it kept, then Polish at 4× over both, and the

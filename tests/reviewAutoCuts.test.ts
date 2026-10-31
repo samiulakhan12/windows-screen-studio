@@ -886,4 +886,55 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     ])
     expect(rows(two.ui.p, two.ui.shown)).toEqual(['y1:kept', 'x1:removed', 'z1:kept'])
   })
+
+  it('a speed-up kept inside one made before it still reads kept after a faster one run over it is kept', () => {
+    // Smart speed at 2x, Polish at 4x inside it; Review, Keep all; Polish at 8x over the silence, K.
+    const one = panel(auto(auto(project(), 3, 9, 2, 'smart-speed', 'f'), 4, 5.5, 4, 'polish', 'g'))
+    one.step(keepItems(one.ui.p, one.ui.shown))
+    one.step(auto(one.ui.p, 4, 5.5, 8, 'polish', 'h'))
+    one.step(keepItems(one.ui.p, [one.item('h1')]))
+    expect(plays(one.ui.p.clips)).toEqual([
+      [0, 3, 1],
+      [3, 4, 2],
+      [4, 5.5, 8],
+      [5.5, 9, 2],
+      [9, 20, 1]
+    ])
+    expect(rows(one.ui.p, one.ui.shown)).toEqual(['f1:kept', 'g1:kept', 'h1:kept'])
+    // With the list open: Polish at 2x, Polish at 4x over it (taking it over), Ctrl+Z; K the 2x;
+    // Polish at 8x over it, K.
+    const two = panel(project())
+    two.step(auto(two.ui.p, 16.5, 18.5, 2, 'polish', 'a'))
+    const before = two.ui.p
+    two.step(auto(two.ui.p, 13, 19, 4, 'polish', 'b'))
+    two.step(before)
+    two.step(keepItems(two.ui.p, [two.item('a1')]))
+    two.step(auto(two.ui.p, 16, 19.5, 8, 'polish', 'c'))
+    two.step(keepItems(two.ui.p, [two.item('c1')]))
+    expect(plays(two.ui.p.clips)).toEqual([
+      [0, 16, 1],
+      [16, 19.5, 8],
+      [19.5, 20, 1]
+    ])
+    expect(rows(two.ui.p, two.ui.shown)).toEqual(['b1:removed', 'c1:kept', 'a1:kept'])
+  })
+
+  it('a speed-up removed still reads removed when the one made over it at its speed is kept with faster ones kept all over it', () => {
+    // Polish at 4x, Delete; Polish at 4x over it; Polish at 8x over its end, K; K the 4x; Polish at
+    // 8x over the rest of it, K. The later 4x plays none of its footage at 4x any more.
+    const { ui, step, item } = panel(auto(project(), 9, 15.5, 4, 'polish', 'x'))
+    step(removeItems(ui.p, [item('x1')]))
+    step(auto(ui.p, 8.5, 15.5, 4, 'polish', 'y'))
+    step(auto(ui.p, 14.5, 15.5, 8, 'polish', 'z'))
+    step(keepItems(ui.p, [item('z1')]))
+    step(keepItems(ui.p, [item('y1')]))
+    step(auto(ui.p, 8.5, 14.5, 8, 'polish', 'w'))
+    step(keepItems(ui.p, [item('w1')]))
+    expect(plays(ui.p.clips)).toEqual([
+      [0, 8.5, 1],
+      [8.5, 15.5, 8],
+      [15.5, 20, 1]
+    ])
+    expect(rows(ui.p, ui.shown)).toEqual(['w1:kept', 'y1:kept', 'x1:removed', 'z1:kept'])
+  })
 })
