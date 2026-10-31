@@ -5,6 +5,8 @@
  */
 import { readFontId } from '../render/fonts'
 import type { CaptionPreset, CaptionSettings } from '../types'
+import { LANGUAGE_RE } from './captionData'
+import { readCaptionStudio } from './studioData'
 
 /** Text height limits, as a fraction of the output's shorter side. */
 export const CAPTION_SIZE = { min: 0.025, max: 0.09 }
@@ -84,6 +86,8 @@ export function readCaptionSettings(raw: unknown): CaptionSettings | undefined {
   const d = DEFAULT_CAPTIONS
   const pick = <T>(v: unknown, list: readonly T[], fallback: T): T => (list.includes(v as T) ? (v as T) : fallback)
   const font = readFontId(r.font)
+  // Captions Studio (docs/design/captions-studio.md §4.2): each absent unless set.
+  const studio = readCaptionStudio(r.studio)
   const size = typeof r.size === 'number' && Number.isFinite(r.size) ? Math.min(CAPTION_SIZE.max, Math.max(CAPTION_SIZE.min, r.size)) : d.size
   return {
     show: typeof r.show === 'boolean' ? r.show : d.show,
@@ -95,6 +99,10 @@ export function readCaptionSettings(raw: unknown): CaptionSettings | undefined {
     background: pick(r.background, BACKGROUNDS, d.background),
     maxLines: r.maxLines === 1 ? 1 : 2,
     ...(font ? { font } : {}),
-    ...(r.showSpeaker === true ? { showSpeaker: true as const } : {})
+    ...(r.showSpeaker === true ? { showSpeaker: true as const } : {}),
+    ...(studio ? { studio } : {}),
+    ...(typeof r.track === 'string' && r.track.length <= 35 && LANGUAGE_RE.test(r.track) ? { track: r.track } : {}),
+    ...(r.picked === true ? { picked: true as const } : {}),
+    ...(r.digits === 'native' || r.digits === 'western' ? { digits: r.digits } : {})
   }
 }
