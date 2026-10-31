@@ -452,6 +452,13 @@ describe('with no choice made, a row whose record went reads removed when its ch
     // Taken over by a cut, the same.
     expect(replay('tool 5-9 2; open; tool 4-10 cut').rows()).toEqual(['r1:pending', 'r0:removed'])
   })
+
+  it('the footage cannot always tell: a run undone and then made again over part of it at its speed reads kept', () => {
+    expect(replay('open; tool 17.5-20 4; undo').rows()).toEqual(['r0:removed'])
+    expect(replay('open; tool 17.5-20 4; undo; tool 19.5-20 4').rows()).toEqual(['r0:kept', 'r1:pending'])
+    // A choice made in the panel is certain.
+    expect(replay('open; tool 17.5-20 4; R r0; tool 19.5-20 4').rows()).toEqual(['r0:removed', 'r1:pending'])
+  })
 })
 
 describe('every reviewed row reads what was chosen, in any order (nested runs)', () => {

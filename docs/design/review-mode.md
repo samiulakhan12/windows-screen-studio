@@ -108,7 +108,9 @@ Each listed item is **pending**, **kept** or **removed**, read from the current 
   when there is one. Else record present and intact → pending. Else (an undo, an edit by hand or a
   later tool run took the record, with no choice made) → **removed** when its change is gone from
   the video (all of a cut's footage plays again, at any speed; none of a speed-up's footage plays
-  at its speed), **kept** otherwise (`changeGone`).
+  at its speed), **kept** otherwise (`changeGone`). The footage cannot always tell: a run undone
+  and then made again over part of the same footage at the same speed reads kept. Only a choice
+  made in the panel is certain.
 
 Why cuts and speed-ups record the choice: a zoom or camera segment carries its state itself
 (`auto`), so the project tells. Keep and Remove both drop a cut's record, and the footage cannot
