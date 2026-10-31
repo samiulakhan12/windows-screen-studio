@@ -57,11 +57,12 @@ const length = (pieces: readonly Piece[]): number => pieces.reduce((n, p) => n +
  * The parts of [a, b] that a speed-up of `list` not in `seen` holds at `speed` (it played at `speed`
  * before that one) and plays at its own speed, or hands on to a later one in the same way: a later
  * change on top, such as a silence sped up 4× inside an idle part sped up 2×, and 8× inside that.
+ * Only a faster one counts (a tool only speeds up), so the chain is at most as deep as the speeds.
  */
 function heldParts(list: readonly AutoCut[], clips: readonly Clip[], a: number, b: number, speed: number, seen: ReadonlySet<string>): Piece[] {
   const out: Piece[] = []
   for (const r of list) {
-    if (seen.has(r.id) || r.action === 'cut' || r.end <= a || r.start >= b) continue
+    if (seen.has(r.id) || r.action === 'cut' || !(r.action > speed) || r.end <= a || r.start >= b) continue
     for (const w of r.was) {
       const lo = Math.max(a, w.start)
       const hi = Math.min(b, w.end)

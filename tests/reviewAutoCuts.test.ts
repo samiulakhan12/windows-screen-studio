@@ -196,6 +196,24 @@ describe('intact, footage back, live', () => {
     expect(liveAutoCuts(p).map((c) => c.id)).toEqual(['a'])
   })
 
+  it('records from a project file that hold the same footage at their own speed are listed and settled at once', () => {
+    // Hand-written records, each holding all of the video at 4x and playing it at 4x, over clips at
+    // 1x: none is intact. Walking every order of them took seconds for ten, and ages for a thousand.
+    const crafted = (n: number): AutoCut[] =>
+      readAutoCuts(
+        Array.from({ length: n }, (_, k) => cut({ id: `r${k}`, action: 4, start: 0, end: 20, was: [{ start: 0, end: 20, speed: 4 }] })),
+        20
+      )!
+    for (const n of [10, MAX_AUTO_CUTS]) {
+      const p = project([clip(0, 20)], { autoCuts: crafted(n) })
+      expect(p.autoCuts).toHaveLength(n)
+      const t = performance.now()
+      expect(reviewItems(p)).toEqual([])
+      expect(settleAutoCuts({ ...p, clips: [clip(0, 20)] }, p).autoCuts).toBeUndefined()
+      expect(performance.now() - t).toBeLessThan(500)
+    }
+  })
+
   it('withAutoCuts leaves no key for an empty list', () => {
     const p = { ...project(), autoCuts: [cut()] }
     expect('autoCuts' in withAutoCuts(p, [])).toBe(false)

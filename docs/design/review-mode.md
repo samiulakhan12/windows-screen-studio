@@ -217,8 +217,9 @@ Project.autoCuts?: AutoCut[]
 
 Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a
 speed-up, every part of the `was` pieces still kept plays at `action`, or is held at `action` by a
-later speed-up record that plays it at its own speed or hands it on to another one in the same way
-(an 8× inside a 4× inside a 2×), within 1 ms, and something plays at `action`. Records are judged
+later, faster speed-up record that plays it at its own speed or hands it on to another one in the
+same way (an 8× inside a 4× inside a 2×), within 1 ms, and something plays at `action`. Only a
+faster record counts (a tool only speeds up), so a chain is at most three deep. Records are judged
 among the others still intact, so a speed-up whose later record went stale goes too.
 
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
@@ -338,6 +339,9 @@ Nothing new reads files, runs programs or talks to the network. `project.json` i
 `readAutoCuts` keeps only well-formed records (types, finite numbers, bounded lengths and counts, no
 prototype keys copied: fields are read one by one), so a hand-edited file cannot crash the list or
 make Remove restore time outside the recording (`restoreRange` clamps to the duration as well).
+A record that holds footage at its own speed or a faster one is never followed from another
+(a chain only goes on to a faster record), so a file with a thousand such records over the same
+footage is listed and settled in milliseconds, not by walking every order of them.
 
 ## 7. Files and exported signatures
 
