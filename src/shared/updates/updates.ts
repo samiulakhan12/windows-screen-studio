@@ -46,6 +46,8 @@ export const UPDATE_COPY = {
   checking: 'Checking for updates…',
   checkFailed: "Couldn't check for updates. Check your internet connection and try again.",
   downloadFailed: "The update couldn't be downloaded. Flown will try again later.",
+  /** The same, when automatic updates are off: nothing tries again by itself. */
+  downloadFailedManual: "The update couldn't be downloaded. Try again.",
   notReady: 'There is no update ready to install.'
 } as const
 
@@ -174,6 +176,8 @@ export function statusLine(s: UpdateState): string {
     case 'ready':
       return `Flown ${s.version} is ready. It installs when you close Flown.`
     case 'error':
+      // Only automatic updates try a failed download again by themselves (the next check).
+      if (s.error === UPDATE_COPY.downloadFailed && !s.auto) return UPDATE_COPY.downloadFailedManual
       return s.error ?? UPDATE_COPY.checkFailed
   }
 }

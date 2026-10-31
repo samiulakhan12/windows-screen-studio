@@ -110,6 +110,8 @@ status):
 - "Downloading Flown 0.7.2… 45%"
 - "Flown 0.7.2 is ready. It installs when you close Flown." [Restart now]
 - "Couldn't check for updates. Check your internet connection and try again." [Check for updates]
+- "The update couldn't be downloaded. Flown will try again later." [Download] (with automatic
+  updates off, nothing tries again by itself: "The update couldn't be downloaded. Try again.")
 - In development: "Updates are turned off in this build."
 
 Plus: [Check for updates], the switch "Update Flown automatically", and "What's new in 0.7.2", a

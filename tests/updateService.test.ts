@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { CHECK_EVERY_MS, FIRST_CHECK_MS, UPDATE_COPY, type UpdaterEvent, type UpdateState } from '../src/shared/updates/updates'
+import { CHECK_EVERY_MS, FIRST_CHECK_MS, UPDATE_COPY, statusLine, type UpdaterEvent, type UpdateState } from '../src/shared/updates/updates'
 import { DEFAULT_UPDATE_PREFS, UpdatePrefsStore, sanitizeUpdatePrefs, type UpdatePrefs } from '../src/main/updates/updatePrefs'
 import { CHECK_TIMEOUT_MS, UpdateService, type Timers } from '../src/main/updates/updateService'
 import type { UpdaterPort } from '../src/main/updates/updaterPort'
@@ -212,6 +212,9 @@ describe('UpdateService (docs/design/auto-update.md §1.5)', () => {
     expect(s.calls).toEqual(['check', 'download'])
     s.emit({ type: 'error', stage: 'download', message: 'x' })
     expect(s.svc.get()).toMatchObject({ phase: 'error', error: UPDATE_COPY.downloadFailed })
+    // Automatic updates are off: nothing tries again by itself, and the status line says so.
+    expect(s.pending()).toEqual([])
+    expect(statusLine(s.svc.get())).toBe(UPDATE_COPY.downloadFailedManual)
     await s.svc.download()
     expect(s.calls).toEqual(['check', 'download', 'download'])
   })

@@ -104,4 +104,11 @@ describe('the update state', () => {
     expect(statusLine(idle({ phase: 'error', error: UPDATE_COPY.downloadFailed }))).toBe(UPDATE_COPY.downloadFailed)
     expect(Object.values(BUSY_COPY).every((t) => t.endsWith('.'))).toBe(true)
   })
+
+  it('promises another try at a failed download only when automatic updates are on', () => {
+    const failed = reduceUpdate(idle({ phase: 'downloading', version: '0.7.2', auto: false }), { type: 'error', stage: 'download', message: 'x' }, AT)
+    expect(statusLine(failed)).toBe(UPDATE_COPY.downloadFailedManual)
+    expect(statusLine({ ...failed, auto: true })).toBe(UPDATE_COPY.downloadFailed)
+    expect(statusLine(idle({ phase: 'error', error: UPDATE_COPY.checkFailed, auto: false }))).toBe(UPDATE_COPY.checkFailed)
+  })
 })
