@@ -279,7 +279,8 @@ listed item being pending by construction).
   `Remove all idle-time changes`, `Remove all word cuts`), disabled when none of that kind is pending.
 * After each action a polite live region says what happened: `Kept. 13 of 40 reviewed.`,
   `Removed. 14 of 40 reviewed.`, `Kept 26 changes.`, `Removed 5 zooms.`; and the next pending item
-  after the one acted on gets the focus (it is not played: playing only follows a move).
+  after the one acted on gets the focus (it is not played: playing only follows a move). After
+  Keep all, whose button then turns disabled, the focus goes back to the focused item's row.
 * Empty: `Nothing to review. Flown has not changed anything by itself yet, or you have reviewed it all.`
 
 ## 5. UI and copy

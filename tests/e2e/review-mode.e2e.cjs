@@ -4,8 +4,9 @@
 // the focus on the first item; N and P move (the playhead jumps); K keeps the zoom (saved with
 // auto false); Delete removes the silence cut (the footage comes back, the record goes); Ctrl+Z
 // brings the cut back and its row back to "not reviewed"; a mouse click on a row then Delete
-// removes the camera change; Keep all reviews the rest; Escape closes
-// and gives the focus back to the button; the palette opens it again, now empty.
+// removes the camera change; Keep all, pressed from the keyboard, reviews the rest and leaves the
+// focus in the list; Escape closes and gives the focus back to the button; the palette opens it
+// again, now empty.
 const fs = require('node:fs')
 const path = require('node:path')
 const h = require('./helpers.cjs')
@@ -131,16 +132,19 @@ async function main() {
     await savedWhen(home, id, (p) => (p.layouts ?? []).length === 0, 'the camera change gone')
     h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'the Inspector under the panel is out of reach')
 
-    // Keep all reviews the rest in one go.
-    await win.click('[data-testid="review-keep-all"]')
+    // Keep all, pressed from the keyboard, reviews the rest in one go; the button turns disabled and
+    // the focus goes back to the row, so the panel's keys keep working.
+    await win.focus('[data-testid="review-keep-all"]')
+    await win.keyboard.press('Enter')
     await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === '3 of 3 reviewed', 'all reviewed')
     h.assert((await win.textContent('[data-testid="review-said"]')) === 'Kept 1 change.', 'keep all is announced')
+    await h.sleep(100)
+    h.assert((await focused(win)).startsWith('Cut 2.4 s of silence'), `the focus back on the row: ${await focused(win)}`)
     const kept = await savedWhen(home, id, (p) => !('autoCuts' in p), 'everything kept')
     h.assert(kept.clips.length === 2, 'the cut stays, as a plain cut')
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'review-mode-reviewed.png') })
 
     // Escape closes and gives the focus back to the button, which has nothing left to count.
-    await win.focus('[data-testid="review-row"] .review-item >> nth=0')
     h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'still out of reach')
     await win.keyboard.press('Escape')
     await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')

@@ -127,6 +127,9 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     stopStretch()
     store.update((p) => keepItems(p, list))
     setSaid(bulkMessage('keep', count))
+    // Keep all turns disabled under the focus, which would drop to the page (Esc and the list's
+    // keys would then miss the panel): the focus goes back to the row.
+    focusKey(list[active].key)
   }
 
   const current = list[active]
