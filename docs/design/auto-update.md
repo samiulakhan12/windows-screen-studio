@@ -73,7 +73,7 @@ page for a manual reinstall.
 |---|---|---|
 | Check | 30 s after start, then every 4 h, and on *Check for updates* | Packaged Windows builds only; never in development or tests (a fake updater, §6). |
 | Download | at once when an update is found and *Update Flown automatically* is on; otherwise on *Download* | One at a time; progress shown in Settings. |
-| Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording, an export, captions or analysis, an import, Clean voice, or a copy being made. The button says why. |
+| Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording (until it has been saved and processed), an export, captions or analysis, an import, Clean voice, or a copy being made. The button says why. |
 
 The four-hour period and the 30 s delay keep start-up quick and the number of requests small
 (electron-updater reads the repository's public releases feed, its latest release and
@@ -83,11 +83,13 @@ is replaced by a constant, the same for every copy. A failed check is retried at
 the error shows in Settings only.
 
 Quitting with an update downloaded installs it silently and does not reopen Flown. *Restart now*
-installs and reopens it. It quits Flown the way closing it does, so what asks before Flown closes
-still asks (a recording still being processed: *Keep working* or *Quit anyway*), and the installer
-starts only once Flown has really quit. A quit called off installs nothing; closing Flown later
-installs as usual, without reopening it. A per-machine install (Program Files) shows Windows'
-permission prompt for the installer, as a first install does.
+installs and reopens it. It quits Flown the way closing it does, and the installer starts only once
+Flown has really quit. Closing Flown while a recording is being saved or processed asks first
+(*Keep working* or *Quit anyway*); *Restart now* is refused then ("Wait for the recording to finish
+processing."), so it never meets that question (*Quit anyway* there would install without reopening
+Flown). A quit called off installs nothing; closing Flown later installs as usual, without reopening
+it. A per-machine install (Program Files) shows Windows' permission prompt for the installer, as a
+first install does.
 
 ### 1.6 Settings: one switch
 
@@ -126,9 +128,10 @@ its buttons has the focus (Later, or the update stops being ready), the focus mo
 Settings button next to it, never to the page.
 
 *Restart now* while something runs: main refuses it and the reason shows where the button is, for
-example "Finish or stop the export first." (main checks when it is pressed; nothing installs). Main
-says nothing when that job ends, so the reason shows for 8 seconds (on Home the ready text then
-comes back), and goes at once when the update changes (another phase or version). The
+example "Finish or stop the export first." (main checks when it is pressed; nothing installs). A
+recording being made, saved or processed is refused by the page itself, before main is asked (§2).
+Main says nothing when that job ends, so the reason shows for 8 seconds (on Home the ready text
+then comes back), and goes at once when the update changes (another phase or version). The
 Settings action is one button whose label follows the state (Check for updates, Download, Restart
 now); while it waits it is `aria-disabled`, not removed or disabled, so the keyboard focus stays.
 
@@ -165,7 +168,12 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc), and
   for a recording `isToolbarVisible()` (the recording bar shows from the countdown until the
   recording ends; afterwards it is only hidden, kept for the next one, so an open bar is not a
-  recording). A recording keeps Home hidden, so *Restart now* cannot be pressed during one;
+  recording). The steps on either side of the bar (a recording being prepared, then saved and
+  processed) are known only to the recording code, so the page checks them: Home tells the update
+  buttons while it shows them (`setRecordingBusy`, useUpdates.ts), and *Restart now* is refused
+  there without asking main (`installUpdate`). Left open: a page reloaded after a crash while a
+  recording is being saved knows nothing until the processing progress arrives. A recording keeps
+  Home hidden, so *Restart now* cannot be pressed during one;
   quitting during a recording already waits for the capture helper (nativeCapture's will-quit
   guard) and the installer runs only after the app has really quit.
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { UpdateInstallResult } from '../../../shared/api/updates'
 import type { UpdateState } from '../../../shared/updates/updates'
 
 /** Flown's update state (NW-15, docs/design/auto-update.md): what main last said, null until it answers. */
@@ -44,6 +45,21 @@ export function useRefusal(s: UpdateState | null): [string | null, (reason: stri
   const refuse = useCallback((reason: string | null) => setRefused(reason ? { reason } : null), [])
   return [refused?.reason ?? null, refuse]
 }
+
+/**
+ * Why a recording keeps Restart now from running, as Home shows it: from Record until the recording
+ * has been saved and processed. Main's busy check cannot see all of that (it lives in the recording
+ * code), and quitting then asks first (Keep working or Quit anyway), which would lose the restart.
+ * Set by Home only, null while Home is closed.
+ */
+let recordingBusy: string | null = null
+export const setRecordingBusy = (reason: string | null): void => {
+  recordingBusy = reason
+}
+
+/** Restart now: refused here while Home makes, saves or processes a recording; otherwise main decides. */
+export const installUpdate = (): Promise<UpdateInstallResult> =>
+  recordingBusy ? Promise.resolve({ ok: false, reason: recordingBusy }) : window.api.updatesInstall()
 
 /** Versions whose Home notice the user put off with Later (until the next start). */
 const later = new Set<string>()

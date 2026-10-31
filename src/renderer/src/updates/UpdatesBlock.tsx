@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { spokenStatus, statusLine, type UpdateState } from '../../../shared/updates/updates'
-import { checkedAt, useRefusal, useUpdates } from './useUpdates'
+import { checkedAt, installUpdate, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
 
 type Action = { label: string; run?: () => Promise<unknown> }
@@ -36,7 +36,7 @@ export function UpdatesBlock(): JSX.Element {
   const [pendingAuto, setPendingAuto] = useState<boolean | null>(null)
 
   const restart = async (): Promise<void> => {
-    const r = await window.api.updatesInstall()
+    const r = await installUpdate()
     setRefused(r.ok ? null : r.reason)
   }
 

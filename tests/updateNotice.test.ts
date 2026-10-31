@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { UpdateState } from '../src/shared/updates/updates'
+import { BUSY_COPY, type UpdateState } from '../src/shared/updates/updates'
 
 /*
  * Home's update notice and Settings › About › Updates (docs/design/auto-update.md §1.7) without a
@@ -100,7 +100,9 @@ vi.stubGlobal('document', doc)
 const main = {
   state: null as UpdateState | null,
   listeners: new Set<(s: UpdateState) => void>(),
-  install: { ok: true } as { ok: true } | { ok: false; reason: string }
+  install: { ok: true } as { ok: true } | { ok: false; reason: string },
+  /** How many times Restart now reached main. */
+  installs: 0
 }
 vi.stubGlobal('window', {
   api: {
@@ -109,7 +111,10 @@ vi.stubGlobal('window', {
       main.listeners.add(fn)
       return () => main.listeners.delete(fn)
     },
-    updatesInstall: () => Promise.resolve(main.install)
+    updatesInstall: () => {
+      main.installs++
+      return Promise.resolve(main.install)
+    }
   },
   // Looked up when called, so fake timers apply.
   setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
@@ -122,7 +127,7 @@ const BLOCK = '../src/renderer/src/updates/UpdatesBlock'
 const HOOKS = '../src/renderer/src/updates/useUpdates'
 const { UpdateNotice } = (await import(/* @vite-ignore */ NOTICE)) as { UpdateNotice: () => unknown }
 const { UpdatesBlock } = (await import(/* @vite-ignore */ BLOCK)) as { UpdatesBlock: () => unknown }
-const { REFUSED_MS } = (await import(/* @vite-ignore */ HOOKS)) as { REFUSED_MS: number }
+const { REFUSED_MS, setRecordingBusy } = (await import(/* @vite-ignore */ HOOKS)) as { REFUSED_MS: number; setRecordingBusy: (reason: string | null) => void }
 
 /* ---------- a tiny renderer ---------- */
 
@@ -207,6 +212,7 @@ beforeEach(() => {
   nodes.clear()
   main.listeners.clear()
   main.install = { ok: true }
+  main.installs = 0
   doc.activeElement = doc.body
 })
 
@@ -325,6 +331,43 @@ describe('why Restart now was refused (docs/design/auto-update.md §1.7)', () =>
     out = render(view)
     expect(textOf(action(out).props.children)).toBe('Check for updates')
     expect(refusedOf(out)).toBeUndefined()
+  })
+})
+
+describe('Restart now while Home makes, saves or processes a recording (docs/design/auto-update.md §1.5)', () => {
+  const PROCESSING = BUSY_COPY.processing
+  const refusedOf = (out: El[]): El | undefined => out.find((e) => e.props['data-testid'] === 'updates-refused')
+  const action = (out: El[]): El => out.find((e) => e.props['data-testid'] === 'updates-action')!
+
+  // Main cannot see a recording being saved or processed, and a quit then asks first (Keep working
+  // or Quit anyway), where Quit anyway would install without reopening Flown.
+  it('Home and Settings give the reason and never ask main; once it is done, main is asked', async () => {
+    main.state = ready('9.9.10')
+    try {
+      setRecordingBusy(PROCESSING)
+      const notice = UpdateNotice
+      render(notice)
+      let out = await settle(notice)
+      ;(button(out, 'Restart now')!.props.onClick as () => void)()
+      out = await settle(notice)
+      expect(textOf(pillOf(out))).toContain(PROCESSING)
+
+      const block = UpdatesBlock
+      render(block)
+      out = await settle(block)
+      ;(action(out).props.onClick as () => void)()
+      out = await settle(block)
+      expect(textOf(refusedOf(out))).toBe(PROCESSING)
+      expect(main.installs).toBe(0)
+
+      setRecordingBusy(null)
+      ;(action(out).props.onClick as () => void)()
+      out = await settle(block)
+      expect(main.installs).toBe(1)
+      expect(refusedOf(out)).toBeUndefined()
+    } finally {
+      setRecordingBusy(null)
+    }
   })
 })
 

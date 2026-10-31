@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { isPutOff, putOff, useRefusal, useUpdates } from './useUpdates'
+import { installUpdate, isPutOff, putOff, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
 
 /**
@@ -24,7 +24,7 @@ export function UpdateNotice(): JSX.Element {
             type="button"
             className="btn primary update-pill-btn"
             onClick={() => {
-              void window.api.updatesInstall().then((r) => setRefused(r.ok ? null : r.reason), () => undefined)
+              void installUpdate().then((r) => setRefused(r.ok ? null : r.reason), () => undefined)
             }}
           >
             Restart now

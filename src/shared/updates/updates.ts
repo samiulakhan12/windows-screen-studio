@@ -191,11 +191,15 @@ export function spokenStatus(s: UpdateState): string {
   return s.phase === 'downloading' ? `Downloading Flown ${s.version}…` : statusLine(s)
 }
 
-/** What keeps Restart now from running (main checks it again when it is pressed). */
-export type BusyKind = 'recording' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy'
+/**
+ * What keeps Restart now from running (main checks it again when it is pressed). 'processing' (a
+ * recording being saved or processed) is the page's check: main cannot see that step.
+ */
+export type BusyKind = 'recording' | 'processing' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy'
 
 export const BUSY_COPY: Record<BusyKind, string> = {
   recording: 'Stop the recording first.',
+  processing: 'Wait for the recording to finish processing.',
   export: 'Finish or stop the export first.',
   captions: 'Wait for the captions to finish, or stop them.',
   analysis: 'Wait for the sound analysis to finish.',
