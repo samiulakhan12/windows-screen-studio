@@ -54,6 +54,11 @@ export function canvas(w = 300, h = 150): Record<string, unknown> & { id: number
       // 10 units a character at 100 px, a narrow "1" (5): digits differ in width, as in most fonts.
       if (prop === 'measureText') return (text: string) => ({ width: [...String(text)].reduce((a, ch) => a + (ch === '1' ? 5 : 10), 0) * (parseFloat(String(target.font ?? '').split(' ')[1]) / 100 || 1), actualBoundingBoxAscent: 7, actualBoundingBoxDescent: 2 })
       if (prop === 'getTransform') return () => ({ a: matrix[0], b: matrix[1], c: matrix[2], d: matrix[3], e: matrix[4], f: matrix[5] })
+      if (prop === 'getImageData')
+        return (...args: number[]) => {
+          calls.push({ canvas: id, name: 'getImageData', args, font: target.font, fill: target.fillStyle, alpha: target.globalAlpha, matrix: [...matrix] })
+          return { data: new Uint8ClampedArray(Math.max(0, args[2] * args[3] * 4)) }
+        }
       return (...args: unknown[]) => {
         if (prop === 'save') stack.push({ m: matrix, s: { ...target } })
         if (prop === 'restore') {
