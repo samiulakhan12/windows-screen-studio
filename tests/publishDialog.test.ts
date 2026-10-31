@@ -44,6 +44,8 @@ const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionMo
 let providersGate = deferred<void>()
 /** What the AI provider was asked (window.api.aiText), each with its answer to give. */
 const asked: { task: string; answer: ReturnType<typeof deferred<unknown>> }[] = []
+/** Whether the clipboard takes the text. */
+let clipboardTakes = true
 vi.stubGlobal('window', {
   api: {
     listAiProviders: () => providersGate.promise.then(() => [OPENAI]),
@@ -63,6 +65,7 @@ vi.stubGlobal('window', {
 /** The page: `activeElement` is the stand-in that has the focus, or the body. */
 const page: { body: object; activeElement: unknown } = { body: {}, activeElement: null }
 vi.stubGlobal('document', page)
+vi.stubGlobal('navigator', { clipboard: { writeText: () => (clipboardTakes ? Promise.resolve() : Promise.reject(new Error('Document is not focused'))) } })
 vi.stubGlobal(
   'MutationObserver',
   class {
@@ -178,6 +181,8 @@ function walk(node: unknown, out: El[]): El[] {
 
 /** What has the focus: a button's text, 'panel' for the dialog itself, null while it is still behind the modal. */
 let focused: string | null = null
+/** What went to the editor's notice, which shows behind the dialog (it was given one before). */
+const notices: string[] = []
 const nameOf = (el: El): string => (el.type === 'button' ? textOf(el.props.children).trim() : el.props.role === 'dialog' ? 'panel' : String(el.type))
 
 /** A stand-in for the element a ref is on: a disabled button does not take the focus. */
@@ -200,7 +205,7 @@ function render(): El[] {
   for (let pass = 0; pass < 20; pass++) {
     dirty = false
     at = 0
-    const out = walk(PublishDialog({ project: current, request: null, onClose: () => undefined, onGenerateCaptions: () => undefined }), [])
+    const out = walk(PublishDialog({ project: current, request: null, onClose: () => undefined, onGenerateCaptions: () => undefined, onNotice: (m: string) => notices.push(m) }), [])
     for (const el of out) if (el.ref && typeof el.ref === 'object') (el.ref as { current: unknown }).current = standIn(el)
     // A focused element that is gone leaves the focus on the body.
     const active = page.activeElement as { name?: string } | null
@@ -221,19 +226,36 @@ async function opened(): Promise<El[]> {
   await flush()
   return render()
 }
+const card = (out: El[], kind: string): El[] => {
+  const section = out.find((e) => e.props['data-publish-card'] === kind)
+  if (!section) throw new Error(`No ${kind} card`)
+  return walk(section.props.children, [])
+}
 const press = (els: El[], label: string): void => {
   const button = els.find((e) => e.type === 'button' && textOf(e.props.children).trim() === label)
   if (!button) throw new Error(`No "${label}" button`)
   if (button.props.disabled) throw new Error(`"${label}" is disabled`)
   ;(button.props.onClick as () => void)()
 }
+const type = (els: El[], label: string, value: string): void => {
+  const field = els.find((e) => e.type === 'textarea' && e.props['aria-label'] === label)
+  if (!field) throw new Error(`No "${label}" field`)
+  ;(field.props.onChange as (e: { target: { value: string } }) => void)({ target: { value } })
+}
+/** What the card says its last action did: [role, text] of each message shown (its status line apart). */
+const said = (els: El[]): [string, string][] =>
+  els
+    .filter((e) => (e.props.role === 'status' || e.props.role === 'alert') && !String(e.props.className).includes('publish-state') && textOf(e.props.children).trim())
+    .map((e) => [e.props.role as string, textOf(e.props.children).trim()])
 
 beforeEach(async () => {
   for (const c of cells) c.cleanup?.()
   cells = []
   effects = []
   focused = null
+  notices.length = 0
   page.activeElement = null
+  clipboardTakes = true
   // Requests a test left out end, so the next test has the queue to itself.
   for (const a of asked.splice(0)) a.answer.reject(new Error('gone'))
   await flush()
@@ -315,5 +337,48 @@ describe('Publish dialog: Stop all keeps the focus in the dialog (§5.2)', () =>
     out = render()
     expect(focused).toBe('textarea')
     expect(page.activeElement).toBe(field)
+  })
+})
+
+describe("Publish dialog: what a card's buttons did is said on that card (§5.1)", () => {
+  it('Copy, and a copy the clipboard refused', async () => {
+    let out = await opened()
+    type(card(out, 'xpost'), 'X post text', 'New reports are here.')
+    out = render()
+    press(card(out, 'xpost'), 'Copy')
+    await flush()
+    out = render()
+    expect(said(card(out, 'xpost'))).toEqual([['status', 'X post copied']])
+
+    clipboardTakes = false
+    press(card(out, 'xpost'), 'Copy')
+    await flush()
+    out = render()
+    expect(said(card(out, 'xpost'))).toEqual([['alert', 'X post could not be copied']])
+    // Only on that card, and not behind the dialog.
+    expect(said(card(out, 'linkedin'))).toEqual([])
+    expect(notices).toEqual([])
+  })
+
+  it('Use for exports, Stop using for exports and Rename the recording', async () => {
+    let out = await opened()
+    type(card(out, 'youtube'), 'YouTube description text', 'All about the new reports.')
+    out = render()
+    press(card(out, 'youtube'), 'Use for exports')
+    out = render()
+    expect(current.publish).toEqual({ description: 'All about the new reports.' })
+    expect(said(card(out, 'youtube'))).toEqual([['status', "The export's description file will use this text"]])
+    press(card(out, 'youtube'), 'Stop using for exports')
+    out = render()
+    expect(current.publish).toBeUndefined()
+    expect(said(card(out, 'youtube'))).toEqual([['status', "The export's description is back to the standard one"]])
+
+    type(card(out, 'title'), 'Title text', 'New reports')
+    out = render()
+    press(card(out, 'title'), 'Rename the recording')
+    out = render()
+    expect(current.name).toBe('New reports')
+    expect(said(card(out, 'title'))).toEqual([['status', 'Recording renamed']])
+    expect(notices).toEqual([])
   })
 })

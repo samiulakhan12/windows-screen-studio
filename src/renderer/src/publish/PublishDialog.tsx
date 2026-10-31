@@ -29,6 +29,9 @@ const LIMITS: Partial<Record<PublishKind, number>> = { youtube: YOUTUBE_DESCRIPT
 /** Longest text a card takes while editing. */
 const EDIT_MAX = 25_000
 
+/** How long a card's message ("X post copied") shows. */
+const SAID_MS = 4000
+
 export interface PublishDialogProps {
   project: Project
   /** An item a palette command asked to write as the dialog opens (n changes per request). */
@@ -36,10 +39,16 @@ export interface PublishDialogProps {
   onClose: () => void
   /** Closes the dialog and runs the Captions tab's Generate captions. */
   onGenerateCaptions: () => void
-  onNotice: (message: string) => void
 }
 
-export function PublishDialog({ project, request, onClose, onGenerateCaptions, onNotice }: PublishDialogProps): JSX.Element {
+/** What a card's last action did, said on that card; `alert` when it failed. */
+interface Said {
+  kind: PublishKind
+  text: string
+  alert?: boolean
+}
+
+export function PublishDialog({ project, request, onClose, onGenerateCaptions }: PublishDialogProps): JSX.Element {
   const { store } = useEditor()
   const boxRef = useRef<HTMLDivElement>(null)
   const firstRef = useRef<HTMLButtonElement>(null)
@@ -118,10 +127,20 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
     if (!running.length && document.activeElement === document.body) focusFirst()
   }, [running.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const copy = (text: string, what: string): void => {
+  // Said on the card, not in the editor's notice: that one shows behind the dialog.
+  const [said, setSaid] = useState<Said | null>(null)
+  const saidTimer = useRef(0)
+  const say = (kind: PublishKind, text: string, alert = false): void => {
+    setSaid({ kind, text, alert })
+    window.clearTimeout(saidTimer.current)
+    saidTimer.current = window.setTimeout(() => setSaid(null), SAID_MS)
+  }
+  useEffect(() => () => window.clearTimeout(saidTimer.current), [])
+
+  const copy = (kind: PublishKind, text: string, what: string): void => {
     void navigator.clipboard.writeText(text).then(
-      () => onNotice(`${what} copied`),
-      () => onNotice(`${what} could not be copied`)
+      () => say(kind, `${what} copied`),
+      () => say(kind, `${what} could not be copied`, true)
     )
   }
 
@@ -199,26 +218,27 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
               canWrite={!!chosen}
               youtube={youtube}
               saved={project.publish?.description ?? null}
+              said={said?.kind === kind ? said : null}
               onWrite={() => write([kind])}
               onStop={() => stopItem(project.id, kind)}
               onEdit={(change) => editItem(project.id, kind, change)}
-              onCopy={copy}
+              onCopy={(text, what) => copy(kind, text, what)}
               onUseForExports={(text) => {
                 const description = descriptionBody(text)
                 if (!description) return
                 store.update((p) => ({ ...p, publish: { description } }))
-                onNotice("The export's description file will use this text")
+                say(kind, "The export's description file will use this text")
               }}
               onStopForExports={() => {
                 store.update((p) => {
                   const { publish: _gone, ...rest } = p
                   return rest
                 })
-                onNotice("The export's description is back to the standard one")
+                say(kind, "The export's description is back to the standard one")
               }}
               onRename={(name) => {
                 store.update((p) => ({ ...p, name }))
-                onNotice('Recording renamed')
+                say(kind, 'Recording renamed')
               }}
             />
           ))}
@@ -255,6 +275,7 @@ interface CardProps {
   canWrite: boolean
   youtube: ReturnType<typeof projectYoutubeChapters>
   saved: string | null
+  said: Said | null
   onWrite: () => void
   onStop: () => void
   onEdit: (change: Partial<Pick<PackItem, 'text' | 'tags'>>) => void
@@ -266,7 +287,7 @@ interface CardProps {
 
 const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: '', error: '' }
 
-function Card({ kind, item, stale, canWrite, youtube, saved, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
+function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
   const label = PUBLISH_LABELS[kind]
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
@@ -363,6 +384,14 @@ function Card({ kind, item, stale, canWrite, youtube, saved, onWrite, onStop, on
           <button className="btn small ghost" disabled={!cleanTitle} onClick={() => onRename(cleanTitle)}>
             Rename the recording
           </button>
+        )}
+        <span className="publish-said" role="status">
+          {said && !said.alert ? said.text : ''}
+        </span>
+        {said?.alert && (
+          <span className="publish-said warn" role="alert">
+            {said.text}
+          </span>
         )}
         {limit !== undefined && (
           <span className={`publish-count ${over ? 'over' : ''}`} aria-label={`${count} of ${limit} characters`}>

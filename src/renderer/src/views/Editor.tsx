@@ -1748,7 +1748,6 @@ function EditorSession({
               setTab('captions')
               requestCaptions({ kind: 'generate' })
             }}
-            onNotice={showNotice}
           />
         )}
         {dialog === 'polish' && (

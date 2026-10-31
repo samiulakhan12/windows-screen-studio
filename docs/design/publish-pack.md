@@ -310,7 +310,9 @@ notes*, *Title*, *Summary*. Empty card: "Not written yet." and a *Write* button.
 *Copy* (disabled while empty; notice "Copied"), *Regenerate*, *Stop* (while waiting or writing),
 *Copy tags*, *Use for exports* / *Update for exports* / *Stop using for exports* (notice "The
 export's description file will use this text" / "The export's description is back to the
-standard one"), *Rename the recording* on Title (notice "Recording renamed").
+standard one"), *Rename the recording* on Title (notice "Recording renamed"). These notices show
+on their card, next to its buttons (`role="status"`; a copy the clipboard refused, "X post could
+not be copied", is `role="alert"`), for 4 s: the editor's own notice would sit behind the dialog.
 
 Errors show on their card (role alert) with the provider's message, e.g. "The AI's answer could
 not be used (no tags). Nothing was changed; try again."

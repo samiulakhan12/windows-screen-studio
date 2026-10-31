@@ -165,6 +165,16 @@
   gap: var(--space-2);
 }
 
+/* What the card's last action did ("X post copied"); empty otherwise. */
+.publish-said {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.publish-said.warn {
+  color: var(--warning-text);
+}
+
 .publish-count {
   margin-left: auto;
   color: var(--text-2);
