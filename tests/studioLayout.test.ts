@@ -114,6 +114,17 @@ describe('chunk modes (test 9)', () => {
     expect(l.tokens.map((t) => t.text)).toEqual(['STEP', '3', 'OF', 'FLOWN', 'আমরা'])
   })
 
+  it('in Bangla, a pop style leaves room for a word that grows (§0.2)', () => {
+    const bp = look('bold-pop')
+    const seg = { id: 'c', start: 0, end: 2, text: 'এক ক্লিকে সুন্দর' }
+    const gap = (s: CaptionStudio): number => {
+      const words = studioLayout(seg, s, 1080, 1920, measure, { faceOf: () => FACE, language: 'bn' }).chunks[0].lines[0].words
+      return words[1].x - (words[0].x + words[0].w)
+    }
+    expect(gap(bp)).toBeGreaterThan(gap({ ...bp, motion: { ...bp.motion, word: 'none' } }))
+    expect(gap({ ...bp, motion: { ...bp.motion, calm: true } })).toBe(gap({ ...bp, motion: { ...bp.motion, word: 'none' } }))
+  })
+
   it('raises the line height for Bangla captions', () => {
     const bn = studioLayout({ id: 'c', start: 0, end: 2, text: 'আমরা আজ শিখব' }, look('bold-pop'), 1080, 1920, measure, { faceOf: () => FACE, language: 'bn' })
     expect(bn.lineHeight / bn.px).toBeCloseTo(1.4, 9)
@@ -192,6 +203,18 @@ describe('positions (test 10)', () => {
         const expected = placeChunk(fake, { start: 0, end: 1, lines: [{ words: [], width: 0 }], first: 0, last: 0, width: 0 }, legacy, 1080, 1920, area)
         expect(p.top, `${position} ${area ? 'area' : 'frame'}`).toBeCloseTo(expected.top, 6)
       }
+  })
+
+  it('Chat puts the captions of You on the right and the others on the left', () => {
+    const chat = look('chat')
+    const at = (speaker?: string): number => {
+      const l = studioLayout({ ...timed('Sure, opening the dashboard now'), ...(speaker ? { speaker } : {}) }, chat, 1920, 1080, measure, { faceOf: () => FACE })
+      const p = placeStudio(l, l.chunks[0], chat, 1920, 1080, {})
+      return p.box.x + p.box.w / 2
+    }
+    expect(at('You')).toBeGreaterThan(960)
+    expect(at('Others')).toBeLessThan(960)
+    expect(at()).toBe(960)
   })
 
   it('a caption with its own place uses that edge and does not move for obstacles', () => {

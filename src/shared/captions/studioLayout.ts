@@ -69,6 +69,8 @@ export interface StudioLayout {
   emphasis: (0 | 1 | 2)[]
   /** The caption's id (CaptionSegment.id): the seed of its rotations and shakes (§9.1 rule 4). */
   caption?: string
+  /** The caption's speaker (NW-09): Chat puts the captions of "You" on the right, others on the left (§0.1). */
+  speaker?: string
   /** Set by flashSafeChunks when a spoken box, pill, underline or glow would cover more than 2.5% of the frame: it then dwells 0.34 s (§9.6 rule 1). */
   bigMark?: true
 }
@@ -483,13 +485,24 @@ export function studioLayout(
   const pxOf = tokens.map((t, i) => (emphasis[i] ? m.px * scriptScale(t.script, studio.emphasis.scale) : m.px))
   const measureFace = (i: number): StudioFace => (spoken && studio.spoken === 'weight' && !tokens[i].label ? { ...faces[i], weight: Math.max(faces[i].weight, spokenWeightOf(studio)) } : faces[i])
   const widths = tokens.map((t, i) => measure(t.text, pxOf[i], measureFace(i)))
-  // Room for a spoken word that grows, on the side of each neighbour.
-  const grow = spoken && !studio.motion.calm ? (studio.motion.spokenScale ?? 1) : 1
+  // Room for a word that grows, on the side of each neighbour: the spoken word's size, and in Bangla
+  // the peak of a pop style's word motion too (§0.2: a grown word never touches its neighbours).
+  const calm = !!studio.motion.calm
+  const s0 = studio.motion.strength
+  const motionPeak = (k: number): number => {
+    const kind = emphasis[k] ? studio.motion.emphasis : studio.motion.word
+    return kind === 'pulse' ? 1 + 0.08 * s0 : kind === 'pop' ? 1 + 0.04 * s0 : 1
+  }
+  const peak = (k: number): number => {
+    if (!spoken || calm || tokens[k].label) return 1
+    const grow = scriptScale(tokens[k].script, studio.motion.spokenScale ?? 1)
+    return tokens[k].script === 'bengali' ? Math.max(grow, motionPeak(k)) : grow
+  }
   const spaces = tokens.map((t, i) => {
     if (!t.gap) return 0
     const space = measure(' ', pxOf[i], faces[i])
-    if (grow <= 1 || i === 0) return space
-    const g = (k: number): number => (scriptScale(tokens[k].script, grow) - 1) * widths[k]
+    if (i === 0) return space
+    const g = (k: number): number => (peak(k) - 1) * widths[k]
     return space + Math.max(g(i - 1), g(i)) / 2
   })
   const meter = lineMeter(widths, tokens, spaces)
@@ -527,7 +540,7 @@ export function studioLayout(
     return { start: lead.start, end: 0, lines, first, last, width: Math.max(...lines.map((l) => l.width)), height: lines.reduce((s, l) => s + l.height, 0) }
   })
   timeChunks(chunks, seg)
-  return { tokens, chunks, px: m.px, lineHeight: m.lineHeight, rtl, dirs, emphasis, caption: seg.id }
+  return { tokens, chunks, px: m.px, lineHeight: m.lineHeight, rtl, dirs, emphasis, caption: seg.id, ...(seg.speaker ? { speaker: seg.speaker } : {}) }
 }
 
 /** Chunk times as captionLayout gives them (§8.2): from the first word, the first from the caption's start; chunks starting together share the time; each shows at least min(0.4 s, caption / chunks); a chunk shows until the next one starts. */
@@ -621,6 +634,9 @@ function anchorTop(position: StudioPosition, height: number, w: number, h: numbe
   return h - 0.075 * u - height
 }
 
+/** NW-09's name of the microphone's speaker (speakers.ts STEM_SPEAKERS.mic). */
+const CHAT_YOU = 'You'
+
 /** The legacy look's position a Studio position stands for (a twin's top, middle or bottom). */
 const legacyPosition = (p: StudioPosition): CaptionSettings['position'] => (p === 'top' || p === 'upper' ? 'top' : p === 'middle' ? 'middle' : 'bottom')
 
@@ -677,7 +693,7 @@ const ACTION_LIMIT = 0.3
  * else a free span beside the obstacles at least half the frame wide; else the other positions
  * (bottom, lower, upper, top); else where it was. Never onto the camera to clear the cursor.
  */
-function keepClear(studio: CaptionStudio, size: { width: number; height: number }, w: number, h: number, bounds: { top: number; bottom: number }, obstacles: CaptionObstacles, topOf: (p: StudioPosition, height: number) => number): Plan {
+function keepClear(studio: CaptionStudio, size: { width: number; height: number }, w: number, h: number, bounds: { top: number; bottom: number }, obstacles: CaptionObstacles, topOf: (p: StudioPosition, height: number) => number, cx0: number): Plan {
   const u = Math.min(w, h)
   const clear = 0.02 * u
   const hard = [...obstacles.camera, ...obstacles.titles, ...(obstacles.keys ? [obstacles.keys] : [])]
@@ -704,7 +720,6 @@ function keepClear(studio: CaptionStudio, size: { width: number; height: number 
     }
     return null
   }
-  const cx0 = w / 2
   const start = studio.layout.position
   const tryAt = (p: StudioPosition, cx = cx0): Plan | null => {
     const dy = shifted(p, cx)
@@ -767,7 +782,9 @@ export function placeStudio(
   const intoArea = (top: number, height: number): number => (area ? Math.min(Math.max(top, bounds.top), Math.max(bounds.top, bounds.bottom - height)) : top)
   const topOf = (p: StudioPosition, height: number): number => (lay.legacyAnchor && !opts.forced ? legacyTop(legacyPosition(p), height, w, h, area, opts.legacyAnchor) : intoArea(anchorTop(p, height, w, h), height))
   let top: number
-  let cx = w / 2
+  // Chat (§0.1): the captions of "You" sit on the right, others on the left.
+  const side = studio.box.kind === 'chat' && layout.speaker ? (layout.speaker === CHAT_YOU ? w - margin - block.width / 2 : margin + block.width / 2) : w / 2
+  let cx = side
   let position: StudioPosition | null = lay.position
   if (opts.forced) {
     position = opts.forced
@@ -780,10 +797,10 @@ export function placeStudio(
     cx = Math.min(Math.max(lay.place.x * w, lo.x + block.width / 2), Math.max(lo.x + block.width / 2, hi.x - block.width / 2))
     top = Math.min(Math.max(lay.place.y * h - block.height / 2, lo.y), Math.max(lo.y, hi.y - block.height))
   } else {
-    let plan: Plan = { position: lay.position, dy: 0, cx: w / 2 }
+    let plan: Plan = { position: lay.position, dy: 0, cx: side }
     if (lay.avoid && opts.obstacles) {
       // Once per caption, from its tallest and widest block, so the caption never jumps between its chunks.
-      const key = `${w}x${h}|${area ? `${area.x},${area.y},${area.w},${area.h}` : '-'}|${lay.position}|${lay.legacyAnchor ? 1 : 0}`
+      const key = `${w}x${h}|${area ? `${area.x},${area.y},${area.w},${area.h}` : '-'}|${lay.position}|${lay.legacyAnchor ? 1 : 0}|${side}`
       let byObstacles = plans.get(layout)
       if (!byObstacles) plans.set(layout, (byObstacles = new WeakMap()))
       let byKey = byObstacles.get(opts.obstacles)
@@ -794,7 +811,7 @@ export function placeStudio(
           const b = blockOf(c, studio, layout.px, w)
           return { width: Math.max(s.width, b.width), height: Math.max(s.height, b.height) }
         }, { width: 0, height: 0 })
-        found = keepClear(studio, size, w, h, bounds, opts.obstacles, topOf)
+        found = keepClear(studio, size, w, h, bounds, opts.obstacles, topOf, side)
         byKey.set(key, found)
       }
       plan = found
