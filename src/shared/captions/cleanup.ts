@@ -9,7 +9,7 @@
  */
 import type { AiTextResult } from '../api/ai'
 import { captionWordTimes } from '../editor/transcript'
-import type { Bleep, CaptionAuto, CaptionSegment, CaptionWord, Project } from '../types'
+import type { Bleep, CaptionAuto, CaptionSegment, CaptionSettings, CaptionWord, Project } from '../types'
 import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
 import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
@@ -235,11 +235,19 @@ const isTerm = (core: string, words: readonly WordListEntry[]): boolean => words
 /** Spelled numbers above this are written as digits ("Above ten"); 12 in Norwegian (Netflix's guides). */
 const writtenUpTo = (lang: string): number => (lang === 'no' || lang === 'nb' || lang === 'nn' ? 12 : 10)
 
-function applyDigits(tokens: Tok[], mode: CleanupChoices['digits'], language: string | undefined): Tok[] {
+/** The digits a number is written with (§0.2's Digits choice): Bangla ০–৯ or Hindi ०–९ for 'native', 0–9 for 'western'; absent, the language's own. */
+function numbering(lang: string, digits: CaptionSettings['digits']): string | undefined {
+  if (digits === 'western') return 'latn'
+  if (digits === 'native') return lang === 'bn' ? 'beng' : lang === 'hi' ? 'deva' : undefined
+  return undefined
+}
+
+function applyDigits(tokens: Tok[], mode: CleanupChoices['digits'], language: string | undefined, digits: CaptionSettings['digits']): Tok[] {
   if (mode === 'off') return tokens
   const lang = baseLanguage(language)
   if (lang !== 'en' && lang !== 'bn' && lang !== 'hi') return tokens
-  const fmt = new Intl.NumberFormat(language || 'en', { useGrouping: false, maximumFractionDigits: 0 })
+  const system = numbering(lang, digits)
+  const fmt = new Intl.NumberFormat(language || 'en', { useGrouping: false, maximumFractionDigits: 0, ...(system ? { numberingSystem: system } : {}) })
   const out: Tok[] = []
   let i = 0
   while (i < tokens.length) {
@@ -489,7 +497,7 @@ export function tidyCaptions(
     let tokens = tokensOf(seg)
     if (!tokens.length) return seg
     tokens = applyWordList(tokens, opts.words)
-    tokens = applyDigits(tokens, opts.digits, language)
+    tokens = applyDigits(tokens, opts.digits, language, project.captions?.digits)
     if (opts.punct) tokens = applySpaces(tokens)
     if (opts.caps || opts.words.length) {
       const prevText = segs[i - 1]?.text.trim() ?? ''

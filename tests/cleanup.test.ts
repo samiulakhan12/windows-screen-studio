@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
+import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
 
 const OFF: CleanupChoices = { caps: false, punct: false, digits: 'off', bleep: 'off', bleepSound: 'tone', ai: false }
@@ -55,6 +56,14 @@ describe('tidyCaptions (test 41)', () => {
   it('end marks per language before a pause of 0.7 s, none in Thai; spaces before punctuation go', () => {
     const p = project([timed('a', 0, 'first part ,'), timed('b', 1.2, 'still going'), timed('c', 5, 'the end')])
     expect(texts(tidyCaptions(p, { ...OFF, punct: true, words: [] }).project)).toEqual(['first part,', 'still going.', 'the end.'])
+    // Numbers as digits follow the Digits choice (§0.2): Bangla ০–৯ by default and when native, 0–9 when western.
+    const count = (language: string, text: string, digits?: 'native' | 'western') =>
+      texts(tidyCaptions(project([{ id: 'n', start: 0, end: 2, text }], language, digits ? ({ captions: { ...DEFAULT_CAPTIONS, digits } } as Partial<Project>) : {}), { ...OFF, digits: 'all', words: [] }).project)[0]
+    expect(count('bn', 'পঁচিশ টাকা')).toBe('২৫ টাকা')
+    expect(count('bn', 'পঁচিশ টাকা', 'native')).toBe('২৫ টাকা')
+    expect(count('bn', 'পঁচিশ টাকা', 'western')).toBe('25 টাকা')
+    expect(count('hi', 'पच्चीस रुपये', 'native')).toBe('२५ रुपये')
+    expect(count('hi', 'पच्चीस रुपये')).toBe('25 रुपये')
     const bn = project([{ id: 'a', start: 0, end: 2, text: 'আমি খুশি' }], 'bn')
     expect(texts(tidyCaptions(bn, { ...OFF, punct: true, words: [] }).project)).toEqual(['আমি খুশি।'])
     const zh = project([{ id: 'a', start: 0, end: 2, text: '我们今天学习' }], 'zh')
