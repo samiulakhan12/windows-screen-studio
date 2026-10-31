@@ -202,7 +202,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   (a version like the app's own; anything else and the download is ignored): a version older than
   that keeps the bundled suggestion for that provider and takes the rest of the list. A suggestion
   that needs new code (a transcription model without word times, say) is then given only to
-  versions that have that code.
+  versions that have that code. The bundled list is what the app's own version takes from the
+  file (gated entries keep the bundled suggestion until that version); a test keeps them in step.
 - Cached in `userData/ai-models.json` (written atomically) as downloaded, with `minApp` kept, so a
   copy updated to a newer version reads its gated suggestions again from the cache.
 - What it changes, and only this: the suggested models when adding a provider (Settings › AI), the

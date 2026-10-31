@@ -54,11 +54,14 @@ are retiring. Copies of Flown with automatic updates on read it from the default
 a day, so a change to that file needs no release: edit it, raise `updated` to today's date
 (`YYYY-MM-DD`; Flown never takes a list older than the one it has, and one of the same date
 counts, so a second fix on the same day is fine), keep `BUNDLED_MODEL_LIST` in
-`src/shared/ai/modelList.ts` the same (a test checks), run `npx vitest run tests/modelList.test.ts`,
-commit and push. A file Flown cannot read is ignored, so a mistake never breaks anyone's copy.
+`src/shared/ai/modelList.ts` equal to what this version takes from the file (a test checks), run
+`npx vitest run tests/modelList.test.ts`, commit and push. A file Flown cannot read is ignored, so
+a mistake never breaks anyone's copy.
 
 Every installed version reads the same file, including old ones. To suggest a model that only newer
 versions can use (one that needs new code, for example a transcription model without word times),
 add `"minApp": "x.y.z"` to that provider's entry: versions from x.y.z on take the suggestion, older
 ones keep the one they shipped with for that provider. For example
 `"openai": { "model": "gpt-6.1-sol", "transcriptionModel": "gpt-transcribe", "minApp": "0.8.0" }`.
+`BUNDLED_MODEL_LIST` keeps this version's own suggestion for that provider until `package.json`
+reaches x.y.z; from that version on it has the new one.

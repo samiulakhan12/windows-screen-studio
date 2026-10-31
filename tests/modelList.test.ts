@@ -5,15 +5,52 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BUNDLED_MODEL_LIST, MODEL_LIST_EVERY_MS, MODEL_LIST_MAX_BYTES, dayText, newerList, parseModelList, retiringNotes, type ModelList } from '../src/shared/ai/modelList'
 import { loadModelCache, modelDefaults, modelList, refreshModelList, resetModelList, type Fetcher } from '../src/main/ai/modelList'
 import { validateProviderInput } from '../src/main/ai/keyStore'
+import { isNewer } from '../src/shared/updates/updates'
 
 const ROOT = path.resolve(__dirname, '..')
 const clone = (): Record<string, any> => JSON.parse(JSON.stringify(BUNDLED_MODEL_LIST))
 
+/**
+ * BUNDLED_MODEL_LIST is what Flown `app` takes from the list file `file`, which every version can
+ * read: an entry whose minApp is newer than `app` is for those versions (this one keeps its bundled
+ * suggestion), and besides minApp the file holds nothing the bundled list lacks.
+ */
+function expectBundledFrom(file: Record<string, any>, app: string): void {
+  expect(parseModelList(file)).not.toBeNull()
+  expect(parseModelList(file, app)).toEqual(BUNDLED_MODEL_LIST)
+  const bundled: Record<string, unknown> = BUNDLED_MODEL_LIST.providers
+  const providers = Object.fromEntries(
+    Object.entries(file.providers as Record<string, Record<string, unknown>>).map(([kind, { minApp, ...p }]) => [
+      kind,
+      typeof minApp === 'string' && isNewer(minApp, app) ? bundled[kind] : p
+    ])
+  )
+  expect({ ...file, providers }).toEqual(BUNDLED_MODEL_LIST)
+}
+
 describe('the model list (docs/design/auto-update.md §3)', () => {
-  it('ships the same list as resources/ai-models.json, the file Flown downloads', () => {
+  it('ships what this version takes from resources/ai-models.json, the file Flown downloads', () => {
     const file = JSON.parse(fs.readFileSync(path.join(ROOT, 'resources', 'ai-models.json'), 'utf8'))
-    expect(file).toEqual(BUNDLED_MODEL_LIST)
-    expect(parseModelList(file)).toEqual(BUNDLED_MODEL_LIST)
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+    expectBundledFrom(file, pkg.version)
+  })
+
+  it('a suggestion in the file for newer versions only (minApp) stays out of the bundled list until then', () => {
+    // docs/RELEASING.md's example.
+    const l = clone()
+    l.providers.openai = { model: 'gpt-6.1-sol', transcriptionModel: 'gpt-transcribe', minApp: '0.8.0' }
+    expectBundledFrom(l, '0.7.1')
+    // Flown 0.8.0 takes it, so its bundled list must have it.
+    expect(() => expectBundledFrom(l, '0.8.0')).toThrow()
+    l.providers.openai = { ...BUNDLED_MODEL_LIST.providers.openai, minApp: '0.7.0' }
+    expectBundledFrom(l, '0.7.1')
+    // Anything else in the file that the bundled list lacks still counts.
+    const stray = clone()
+    stray.providers.anthropic.transcriptonModel = 'claude-opus-5-5'
+    expect(() => expectBundledFrom(stray, '0.7.1')).toThrow()
+    const other = clone()
+    other.providers.openai.model = 'gpt-7'
+    expect(() => expectBundledFrom(other, '0.7.1')).toThrow()
   })
 
   it('rejects anything but a usable list', () => {

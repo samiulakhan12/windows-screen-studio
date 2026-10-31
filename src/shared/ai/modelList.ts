@@ -1,7 +1,8 @@
 /**
  * The list of suggested AI models (NW-15, docs/design/auto-update.md §3): the default models of
  * each provider and the models their makers are retiring. Flown carries BUNDLED_MODEL_LIST and
- * refreshes it from resources/ai-models.json on GitHub (the same content: a test keeps them equal).
+ * refreshes it from resources/ai-models.json on GitHub (a test keeps BUNDLED_MODEL_LIST equal to
+ * what this version takes from that file: an entry whose minApp is newer is not for it).
  * A downloaded list is untrusted: parseModelList takes only what it knows, and it only ever
  * suggests models and flags retiring ones; a model the user saved is never changed.
  */
