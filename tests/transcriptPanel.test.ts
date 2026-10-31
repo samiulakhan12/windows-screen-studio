@@ -602,6 +602,23 @@ describe('the Transcript tab', () => {
     }
   })
 
+  it('names the speaker at the top of every page, also on a page that starts inside a turn', () => {
+    // 45 captions: Priya says the first 42, Sam the rest; page 2 (captions 40..44) starts inside Priya's turn.
+    useProject(60, captions(45).map((s, i) => ({ ...s, speaker: i < 42 ? 'Priya' : 'Sam' })))
+    const names = (): string[] =>
+      render()
+        .filter((e) => e.props.className === 'transcript-para')
+        .map((p) => descendants(p).filter((d) => d.props.className === 'transcript-speaker').map((d) => textOf(d.props.children)).join(''))
+    expect(names().slice(0, 3)).toEqual(['Priya', '', ''])
+    click('Later')
+    expect(names()).toEqual(['Priya', '', 'Sam', '', ''])
+    // Turned by playback too.
+    click('Earlier')
+    playing = true
+    player.time = 41.35
+    expect(names()).toEqual(['Priya', '', 'Sam', '', ''])
+  })
+
   it('Find says what it found', () => {
     useProject(10, [
       seg('a', 1, 4, [

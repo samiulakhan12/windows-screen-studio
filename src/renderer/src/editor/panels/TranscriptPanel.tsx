@@ -390,7 +390,7 @@ function TranscriptEditor({
   }, [playing, current, pageOfWord])
   const shownPage = Math.min(page, pages - 1)
   const shown = paragraphs.slice(shownPage * PAGE, shownPage * PAGE + PAGE)
-  // Speakers (NW-09): each caption's, named before a paragraph where it changes.
+  // Speakers (NW-09): each caption's, named before a paragraph where it changes and atop every page.
   const speakerOf = useMemo(() => new Map((project.transcript?.segments ?? []).map((s) => [s.id, s.speaker])), [project.transcript])
   const allEstimated = useMemo(() => words.length > 0 && words.every((w) => w.estimated), [words])
 
@@ -461,7 +461,7 @@ function TranscriptEditor({
         >
           {shown.map((p, k) => (
             <p key={p.caption} className="transcript-para" role="group" aria-label={`${speakerOf.get(p.caption) ? `${speakerOf.get(p.caption)}, at` : 'At'} ${timeOf(p.first)}`}>
-              {speakerOf.get(p.caption) && speakerOf.get(p.caption) !== speakerOf.get((k > 0 ? shown[k - 1] : paragraphs[shownPage * PAGE - 1])?.caption ?? '') && (
+              {speakerOf.get(p.caption) && speakerOf.get(p.caption) !== speakerOf.get(k > 0 ? shown[k - 1].caption : '') && (
                 <span className="transcript-speaker" aria-hidden="true" data-testid="transcript-speaker">
                   {speakerOf.get(p.caption)}
                 </span>

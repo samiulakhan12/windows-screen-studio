@@ -333,7 +333,8 @@ label. Old projects have no `speaker` and load byte for byte unchanged; an inval
 
 ### 7.2 Transcript tab
 
-A paragraph whose speaker differs from the paragraph before starts with the name in bold
+A paragraph whose speaker differs from the paragraph before starts with the name in bold, and so
+does the first paragraph of every page (a page can start inside someone's turn)
 (`.transcript-speaker`, not selectable as a word, `aria-hidden` with the name in the paragraph's
 `aria-label`).
 
