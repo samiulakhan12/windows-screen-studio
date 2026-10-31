@@ -116,14 +116,24 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* A field colour of their own: the platform's dark one (#3b3b3b) leaves greyed text under AA. */
 .publish-text,
 .publish-tags {
   width: 100%;
   resize: vertical;
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-0);
   font: inherit;
   font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-1);
+}
+
+.publish-text::placeholder,
+.publish-tags::placeholder {
+  color: var(--text-3);
 }
 
 .publish-card[data-status='waiting'] .publish-text,

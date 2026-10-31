@@ -347,6 +347,9 @@ Measured with the tokens in `src/renderer/src/styles.css` (WCAG 2 contrast ratio
 | `--danger-text` #fb7185 (counter over the limit) | 6.8:1 | 6.3:1 |
 | `--warning-text` #fcd34d (a card's error) | 12.7:1 | 11.8:1 |
 | `--text-1` on `--surface-sunken` #0a0a0d (chapter list) | 18.0:1 | |
+| `--text-1` on `--surface-0` #0e0e11 (the text fields) | 17.5:1 | |
+| `--text-2` on `--surface-0` (a field's text while it is written again) | 7.5:1 | |
+| `--text-3` #8a8a96 on `--surface-0` (placeholder "Not written yet.") | 5.6:1 | |
 
 All above AA (4.5:1).
 
