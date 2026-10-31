@@ -59,7 +59,7 @@ export interface TranscribeProgress {
 
 /**
  * 'marks' (Captions Studio §11.2): emphasis, emoji, numbers, lists and quotes picked by word
- * index; part P4 adds it to AI_TEXT_TASKS with its prompt and checks.
+ * index, checked by validateMarksAnswer (transcriptText.ts).
  */
 export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | 'marks'
 
@@ -186,7 +186,7 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
   }
 }
 
-export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary']
+export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'marks']
 
 /** Limits of what the renderer may send (checked again in the main process). */
 export const AI_LIMITS = {
