@@ -19,6 +19,7 @@ import { CAPTION_FONT, captionIndexAt, viewAt } from '../../../shared/captions/l
 import { clipsKey, counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
 import { captionObstacles } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
+import { withDigits } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
@@ -86,10 +87,13 @@ function measure(ctx: Ctx, text: string, font: string): number {
 
 const DIGIT = /\p{Nd}/u
 
-/** A counter's digit cell: as wide as the font's widest digit of its locale (§10.1). */
-function cellWidth(ctx: Ctx, font: string, g: CounterGraphic): number {
+/** A counter's text in the captions' Digits choice (§0.2: Bangla ০–৯ or Western 0–9 when chosen). */
+const counterOf = (project: Project, g: CounterGraphic, value: number): ReturnType<typeof counterText> => counterText(g, value, project.captions?.digits)
+
+/** A counter's digit cell: as wide as the font's widest digit of its locale and Digits choice (§10.1). */
+function cellWidth(ctx: Ctx, font: string, project: Project, g: CounterGraphic): number {
   const digits = new Set<string>()
-  for (let d = 0; d <= 9; d++) for (const ch of counterText(g, d).text) if (DIGIT.test(ch)) digits.add(ch)
+  for (let d = 0; d <= 9; d++) for (const ch of counterOf(project, g, d).text) if (DIGIT.test(ch)) digits.add(ch)
   for (const d of '0123456789') digits.add(d)
   let max = 0
   for (const d of digits) max = Math.max(max, measure(ctx, d, font))
@@ -142,8 +146,8 @@ function shapeOf(ctx: Ctx, project: Project, g: Graphic, w: number, h: number): 
   }
   if (g.kind === 'counter') {
     const font = counterFont(project, g, px)
-    const cell = cellWidth(ctx, font, g)
-    const tw = Math.max(counterWidth(ctx, font, counterText(g, g.from).text, cell), counterWidth(ctx, font, counterText(g, g.to).text, cell))
+    const cell = cellWidth(ctx, font, project, g)
+    const tw = Math.max(counterWidth(ctx, font, counterOf(project, g, g.from).text, cell), counterWidth(ctx, font, counterOf(project, g, g.to).text, cell))
     const label = g.label?.toLocaleUpperCase() ?? ''
     const labelW = label ? measure(ctx, label, labelFont(project, g, px)) + [...label].length * labelSpacing(px) : 0
     return { w: Math.max(tw, labelW) + px * 0.8, h: px * 1.15 + (g.label ? px * 0.45 * 1.6 : 0) + px * 0.5, px }
@@ -460,9 +464,9 @@ function drawCounter(c: Ctx, project: Project, g: CounterGraphic, shape: Shape, 
   })
   if (sp) c.drawImage(sp.canvas, -sp.ox, -sp.oy)
   const font = counterFont(project, g, px)
-  const cell = cellWidth(c, font, g)
-  const { text } = counterText(g, counterValue(g, t, project.clips))
-  const full = Math.max(counterWidth(c, font, counterText(g, g.to).text, cell), counterWidth(c, font, text, cell))
+  const cell = cellWidth(c, font, project, g)
+  const { text } = counterOf(project, g, counterValue(g, t, project.clips))
+  const full = Math.max(counterWidth(c, font, counterOf(project, g, g.to).text, cell), counterWidth(c, font, text, cell))
   const y = -shape.h / 2 + px * 0.25 + px * 0.575
   // Right-aligned in the final number's width, so digits never move as they change.
   let x = full / 2 - counterWidth(c, font, text, cell)
@@ -557,17 +561,10 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
   c.restore()
 }
 
-/** A list number in the captions' digits (§0.2: Bangla ০–৯ when the captions ask for them). */
+/** A list number in the captions' Digits choice (§0.2: Bangla ০–৯, Devanagari ०–९… or Western 0–9). */
 function listNumber(n: number, project: Project): string {
   const lang = project.captions?.track ?? project.transcript?.language ?? 'en'
-  if (project.captions?.digits === 'native') {
-    try {
-      return new Intl.NumberFormat(lang, { useGrouping: false }).format(n)
-    } catch {
-      return String(n)
-    }
-  }
-  return String(n)
+  return withDigits(String(n), project.captions?.digits, lang)
 }
 
 /** Motion graphics of fc.t, on the captions' clock (§9.1 rule 6); nothing without graphics. */

@@ -2,6 +2,7 @@ import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
+import { withDigits } from '../../../shared/captions/words'
 import { quoteName, quotePanel, TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
 import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
@@ -391,13 +392,25 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
  * cards over their background (the blurred frame, a colour or the project's background), lower
  * thirds in a band at the bottom (of the text area, fc.textArea, when there is one). They fade and rise in and fade out (shared/render/titleCards).
  */
+/**
+ * A card as drawn: a chapter title made from the chapters (Captions Studio §10.1) writes its digits
+ * in the captions' Digits choice (§0.2); every other card, and every card without the choice, is
+ * the card itself.
+ */
+function drawnCard(project: Project, card: TitleCard): TitleCard {
+  const digits = project.captions?.digits
+  if (!digits || card.auto?.by !== 'chapter') return card
+  const title = withDigits(card.title, digits, project.captions?.track ?? project.transcript?.language)
+  return title === card.title ? card : { ...card, title }
+}
+
 export function drawTitleCardsLayer(fc: FrameContext): void {
   const titles = fc.project.titles
   if (!titles?.length) return
   let active: { card: TitleCard; phase: TitlePhase }[] | null = null
   for (const card of titles) {
     const phase = titlePhase(card, fc.t, fc.project.clips)
-    if (phase) (active ??= []).push({ card, phase })
+    if (phase) (active ??= []).push({ card: drawnCard(fc.project, card), phase })
   }
   if (!active) return
   // Later cards on top.
@@ -465,8 +478,9 @@ function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: Titl
  */
 export function lowerThirdBoxes(ctx: Ctx, project: Project, w: number, h: number, area: Rect | null): { start: number; end: number; box: Rect }[] {
   const out: { start: number; end: number; box: Rect }[] = []
-  for (const card of project.titles ?? []) {
-    if (card.style !== 'lower-third') continue
+  for (const raw of project.titles ?? []) {
+    if (raw.style !== 'lower-third') continue
+    const card = drawnCard(project, raw)
     const font = cardFont(project, card)
     const band = layoutOf(ctx, card, w, h, font, area).band
     if (band) out.push({ start: card.start, end: card.end, box: { x: band.x, y: band.y, w: band.w, h: band.h } })

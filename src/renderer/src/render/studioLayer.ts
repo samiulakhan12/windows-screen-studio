@@ -148,12 +148,14 @@ interface LayoutInput {
 function layoutOf(i: LayoutInput): StudioLayout {
   const marks = captionMarks(i.project, i.seg.id)
   const clips = i.project.clips
-  const key = [i.w, i.h, areaKey(i.area), fontGeneration(), clipsKey(clips), i.language ?? '', i.showSpeaker, i.spoken, marks.map((m) => `${m.from}-${m.to}-${m.tone ?? 1}`).join(','), idOf(i.project.fonts)].join('|')
+  // The Digits choice (§0.2) changes the words' text, so it is part of the key.
+  const digits = i.project.captions?.digits
+  const key = [i.w, i.h, areaKey(i.area), fontGeneration(), clipsKey(clips), i.language ?? '', i.showSpeaker, i.spoken, digits ?? '', marks.map((m) => `${m.from}-${m.to}-${m.tone ?? 1}`).join(','), idOf(i.project.fonts)].join('|')
   const hit = layouts.get(i.seg)
   if (hit && hit.studio === i.studio && hit.key === key) return hit.layout
   const faceOf = (token: StudioToken, role: 'text' | 'emphasis'): StudioFace =>
     wordFace(i.studio, role, token.script, { language: i.language, scripts: i.scripts, fonts: i.project.fonts, downloaded: catalogFontReady })
-  const raw = studioLayout(i.seg, i.studio, i.w, i.h, measureOn(i.ctx), { faceOf, area: i.area, marks, language: i.language, showSpeaker: i.showSpeaker, spoken: i.spoken })
+  const raw = studioLayout(i.seg, i.studio, i.w, i.h, measureOn(i.ctx), { faceOf, area: i.area, marks, language: i.language, showSpeaker: i.showSpeaker, spoken: i.spoken, digits })
   const layout = raw.chunks.length ? flashSafeChunks(raw, clips, i.w * i.h, (c) => chunkArea(i.studio, raw, raw.chunks[c])) : raw
   layouts.set(i.seg, { key, studio: i.studio, layout })
   return layout
