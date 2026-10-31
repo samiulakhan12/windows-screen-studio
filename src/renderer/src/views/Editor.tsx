@@ -582,8 +582,8 @@ function EditorSession({
 
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: false })
-  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: !!copy }
+  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: false, reviewOpen })
+  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: !!copy, reviewOpen }
 
 
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
@@ -942,7 +942,15 @@ function EditorSession({
   const commands = useMemo((): Record<CommandId, () => void> => {
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
-    const showTab = (t: InspectorTab) => (): void => setTab(t)
+    /** Shows an Inspector tab. Review covers the Inspector, so it closes first, giving the focus to its button as Esc does. */
+    const reveal = (t: InspectorTab): void => {
+      if (latest.current.reviewOpen) {
+        setReviewOpen(false)
+        reviewButton.current?.focus()
+      }
+      setTab(t)
+    }
+    const showTab = (t: InspectorTab) => (): void => reveal(t)
     /** The cursor path range commands: the selected range straightened, or kept as recorded. */
     const pathRangeCommand = (mode: PathMode): void => {
       const sel = latest.current.selection
@@ -1122,7 +1130,7 @@ function EditorSession({
       cutRange: actions.cutSelectedRange,
       restoreAll: actions.restoreAll,
       smartSpeed: () => {
-        setTab('clip')
+        reveal('clip')
         setSmartSpeedRequest((n) => n + 1)
       },
       addZoom: actions.addZoom,
@@ -1149,7 +1157,7 @@ function EditorSession({
       directCamera: () => {
         const why = directUnavailable(!!data.webcamUrl, store.state.webcam.show)
         if (why) return showNotice(why)
-        setTab('camera')
+        reveal('camera')
         setDirectorRequest((n) => n + 1)
       },
       zoomLevel0: level('0'),
@@ -1212,7 +1220,7 @@ function EditorSession({
         turned('Camera', on)
       },
       generateCaptions: () => {
-        setTab('captions')
+        reveal('captions')
         requestCaptions({ kind: 'generate' })
       },
       toggleCaptions: () => {
@@ -1223,7 +1231,7 @@ function EditorSession({
       },
       exportCaptions: () => {
         if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
-        setTab('captions')
+        reveal('captions')
         requestCaptions({ kind: 'export' })
       },
       showCaptions: showTab('captions'),

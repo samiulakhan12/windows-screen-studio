@@ -183,6 +183,18 @@ async function main() {
     await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
     h.assert((await win.textContent('.review-empty')).startsWith('Nothing to review.'), 'the empty panel says so')
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'review-mode-empty.png') })
+
+    // A command that shows an Inspector tab closes the panel over it, the focus going to the button.
+    await win.keyboard.press('Control+k')
+    await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+    await win.keyboard.type('open clip settings')
+    await f.waitFor(async () => (await win.$eval('.command-palette [role="option"] .palette-title', (e) => e.textContent).catch(() => '')) === 'Open Clip settings', '"Open Clip settings" listed first', 3000)
+    await win.keyboard.press('Enter')
+    await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed for the Clip tab')
+    h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) === null, 'the Inspector in reach again')
+    h.assert((await win.getAttribute('.insp-tabs button.active', 'title')) === 'Clip', 'the Clip tab shows')
+    await h.sleep(100)
+    h.assert((await focused(win)) === 'Review automatic changes, nothing to review', `the focus on the Review button: ${await focused(win)}`)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
 }

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { withoutDirected } from '../src/shared/editor/cameraDirector'
 import { EditStore } from '../src/shared/editor/editStore'
@@ -380,5 +382,34 @@ describe('recording at the sources', () => {
     const p = project()
     const next = recordAutoCuts(p, cutRange(p.clips, r.start, r.end), [r], 'cut', 'filler')
     expect(reviewItems(next)[0].title).toBe('Removed “um”')
+  })
+})
+
+/*
+ * The panel covers the Inspector (docs/design/review-mode.md §4.3): a command that shows an
+ * Inspector tab (Open … settings, Smart speed, the camera director, captions) closes it first, else
+ * the tab and what the command does there stay out of sight and out of reach under it.
+ */
+describe('commands that show an Inspector tab', () => {
+  it('close Review and give the focus to its button, as Esc does', () => {
+    const source = readFileSync(path.resolve(__dirname, '../src/renderer/src/views/Editor.tsx'), 'utf8')
+    const commands = source.slice(source.indexOf('const commands = useMemo('), source.indexOf('const runCommand = '))
+    expect(commands.length).toBeGreaterThan(0)
+    const reveal = /\n(\s*)const reveal = \(t: InspectorTab\): void => \{([\s\S]*?)\n\1\}/.exec(commands)?.[2] ?? ''
+    expect(reveal).toContain('setReviewOpen(false)')
+    expect(reveal).toContain('reviewButton.current?.focus()')
+    expect(reveal).toContain('setTab(t)')
+    // Every tab a command shows goes through it.
+    expect(commands.match(/setTab\(/g)).toEqual(['setTab('])
+    expect(commands).toContain('const showTab = (t: InspectorTab) => (): void => reveal(t)')
+    for (const [id, tab] of [
+      ['smartSpeed', 'clip'],
+      ['directCamera', 'camera'],
+      ['generateCaptions', 'captions'],
+      ['exportCaptions', 'captions']
+    ]) {
+      const block = new RegExp(`\\n\\s*${id}: \\(\\) => \\{([\\s\\S]*?)\\n\\s{6}\\},`).exec(commands)?.[1] ?? ''
+      expect(block, id).toContain(`reveal('${tab}')`)
+    }
   })
 })
