@@ -68,6 +68,11 @@ describe('emphasis marks (test 20)', () => {
     expect(remapAnchors(inserted, on).captionMarks).toEqual([expect.objectContaining({ caption: 'c1', from: 3, to: 3, text: 'word' })])
     const changed = withSegments(on, [withCaptionText(on.transcript!.segments[0], 'Make every phrase count today'), on.transcript!.segments[1]])
     expect(remapAnchors(changed, on).captionMarks).toBeUndefined()
+    // Words added after it: the mark stays on its own word, even when the same word comes again later.
+    const twice = project([caption('c1', 'x a y a', 0)])
+    const marked = toggleEmphasis(twice, [{ caption: 'c1', from: 3, to: 3 }])
+    const longer = withSegments(marked, [withCaptionText(marked.transcript!.segments[0], 'x a y a q r s t u v w a')])
+    expect(remapAnchors(longer, marked).captionMarks).toEqual([expect.objectContaining({ caption: 'c1', from: 3, to: 3 })])
     // Nothing about the captions changed: the very same project.
     const moved = { ...on, zooms: [] }
     expect(remapAnchors(moved, on)).toBe(moved)

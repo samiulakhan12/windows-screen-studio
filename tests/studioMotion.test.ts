@@ -168,8 +168,14 @@ describe('calm motion and strength 0 (test 14)', () => {
   }
 
   it('calm clamps every pose: scale 0.96–1.04, movement 0.015 u, no rotation, blur or overshoot', () => {
-    for (const id of ['bold-pop', 'comic', 'one-word', 'stickers', 'spotlight-word']) {
-      const s = withMotion(look(id), { calm: true, word: 'shake', emphasis: 'blur' })
+    for (const [id, word, emphasis] of [
+      ['bold-pop', 'shake', 'blur'],
+      ['comic', 'rise', 'slide'],
+      ['one-word', 'bounce', 'pop'],
+      ['stickers', 'slide', 'rise'],
+      ['spotlight-word', 'pulse', 'shake']
+    ] as const) {
+      const s = withMotion(look(id), { calm: true, word, emphasis })
       const r = moving(s)
       expect(Math.min(...r.scale), id).toBeGreaterThanOrEqual(0.96)
       expect(Math.max(...r.scale), id).toBeLessThanOrEqual(1.04)
