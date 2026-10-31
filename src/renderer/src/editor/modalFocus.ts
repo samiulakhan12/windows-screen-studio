@@ -19,9 +19,10 @@ function targetsFromHere(): HTMLElement[] {
 
 /**
  * Keyboard behaviour of a modal dialog: Tab and Shift+Tab stay inside it (even after a mouse
- * click moved focus off a button, see focus.ts), Esc closes it unless a control inside
- * already handled Esc (calling preventDefault), and focus goes back to where it was when the
- * dialog closes, unless something else took it meanwhile (a dialog the closing one opened).
+ * click moved focus off a button, see focus.ts, or while the dialog itself has the focus), Esc
+ * closes it unless a control inside already handled Esc (calling preventDefault), and focus goes
+ * back to where it was when the dialog closes, unless something else took it meanwhile (a dialog
+ * the closing one opened).
  */
 export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void): void {
   const close = useRef(onClose)
@@ -43,7 +44,9 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
       const last = items[items.length - 1]
       const active = document.activeElement
       const inside = active instanceof Node && box.contains(active)
-      if (!inside || (e.shiftKey && active === first) || (!e.shiftKey && active === last)) {
+      // The dialog itself (focused while it has no button to focus) wraps too: from it, Shift+Tab
+      // would go to the page behind the scrim.
+      if (!inside || active === box || (e.shiftKey && active === first) || (!e.shiftKey && active === last)) {
         e.preventDefault()
         ;(e.shiftKey ? last : first).focus()
       }
