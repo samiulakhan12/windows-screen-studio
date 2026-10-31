@@ -176,7 +176,7 @@ describe('the Vertical framing section (test 56)', () => {
     expect(inputIn(els, 'follow-toggle').props).toMatchObject({ 'aria-label': 'Follow the action', checked: false })
     expect(hints(els)).toEqual([
       'Your whole screen is shrunk to fit this shape. Turn this on to crop in and follow your cursor, clicks and typing.',
-      "Places captions, key presses, your logo and lower-third titles where TikTok, Reels and Shorts don't put buttons."
+      "Places captions, pop-ups, key presses, your logo and lower-third titles where TikTok, Reels and Shorts don't put buttons."
     ])
     // A square frame has no text toggle.
     store.state = project('1:1')

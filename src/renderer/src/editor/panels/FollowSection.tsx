@@ -202,7 +202,7 @@ export function FollowSection(props: { project: Project; vw: number; vh: number;
             <div data-testid="app-safe-toggle">
               <Toggle label="Keep text clear of app buttons" checked={reframe.appSafe} onChange={(on) => store.update((p) => withAppSafe(p, on))} />
             </div>
-            <p className="hint">Places captions, key presses, your logo and lower-third titles where TikTok, Reels and Shorts don't put buttons.</p>
+            <p className="hint">Places captions, pop-ups, key presses, your logo and lower-third titles where TikTok, Reels and Shorts don't put buttons.</p>
           </>
         )}
         {following && tiltOrFrame && <p className="hint">The 3D tilt and the device frame are left out while the view follows the action.</p>}
