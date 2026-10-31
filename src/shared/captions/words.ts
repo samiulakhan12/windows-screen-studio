@@ -3,12 +3,14 @@
  * for layout, emphasis marks, word anchors and the AI `marks` task. Legacy looks keep
  * layout.ts captionTokens.
  *
- * The contracts step implements the splitter itself (studioWords, studioWordTexts), because the
- * project readers check marks and anchors with it (studioData.ts checkAnchor); part P1 implements
- * the rest of this file.
+ * The splitter itself (studioWords, studioWordTexts) came with the contracts, because the project
+ * readers check marks and anchors with it (studioData.ts checkAnchor). Also here: the words with
+ * their times (studioTokens), the script of a word (scriptOf, mainScript, scriptsIn) and the
+ * Digits choice of §0.2 (withDigits).
  */
+import { clamp } from '../engine/math'
 import type { CaptionSegment } from '../types'
-import type { CaptionToken } from './layout'
+import { RTL_FIRST, tokenDirs, type CaptionToken } from './layout'
 
 /** The script of a word (§6.6, §8.1). */
 export type ScriptTag = 'latin' | 'cyrillic' | 'greek' | 'arabic' | 'hebrew' | 'devanagari' | 'bengali' | 'tamil' | 'telugu' | 'thai' | 'han' | 'kana' | 'hangul' | 'other'
@@ -99,10 +101,188 @@ export function studioWordTexts(text: string, language?: string): string[] {
   return studioWords(text, language).map((w) => w.text)
 }
 
-/** The body of a frozen signature part P1 writes. */
-function notImplemented(name: string, ...args: unknown[]): never {
-  void args
-  throw new Error(`${name}: not implemented (Captions Studio part P1)`)
+/* ---------- scripts ---------- */
+
+/** The scripts the Studio tells apart, with their Unicode Script property (Common and Inherited letters have none). */
+const SCRIPTS: readonly [ScriptTag, RegExp][] = [
+  ['latin', /\p{Script=Latin}/u],
+  ['cyrillic', /\p{Script=Cyrillic}/u],
+  ['greek', /\p{Script=Greek}/u],
+  ['arabic', /\p{Script=Arabic}/u],
+  ['hebrew', /\p{Script=Hebrew}/u],
+  ['devanagari', /\p{Script=Devanagari}/u],
+  ['bengali', /\p{Script=Bengali}/u],
+  ['tamil', /\p{Script=Tamil}/u],
+  ['telugu', /\p{Script=Telugu}/u],
+  ['thai', /\p{Script=Thai}/u],
+  ['han', /\p{Script=Han}/u],
+  ['kana', /[\p{Script=Hiragana}\p{Script=Katakana}]/u],
+  ['hangul', /\p{Script=Hangul}/u]
+]
+/** A character of some script: a letter, a mark or a digit outside Common and Inherited (Bengali ৩ is Bengali, 3 is not). */
+const SCRIPTED = /[\p{L}\p{M}\p{Nd}]/u
+const UNSCRIPTED = /[\p{Script=Common}\p{Script=Inherited}]/u
+
+/** The script of one character, or null for one of no script (Latin digits, punctuation, emoji, marks that go with any letter). */
+function charScript(ch: string): ScriptTag | null {
+  if (!SCRIPTED.test(ch) || UNSCRIPTED.test(ch)) return null
+  for (const [tag, re] of SCRIPTS) if (re.test(ch)) return tag
+  return 'other'
+}
+
+/** The script of the first letter of `text` ('other' without one). Bengali digits count as Bengali; 0–9 have no script. */
+export function scriptOf(text: string): ScriptTag {
+  for (const ch of text) {
+    const s = charScript(ch)
+    if (s) return s
+  }
+  return 'other'
+}
+
+/** Letters of `text` per script. */
+function scriptCounts(text: string): Map<ScriptTag, number> {
+  const counts = new Map<ScriptTag, number>()
+  for (const ch of text) {
+    const s = charScript(ch)
+    if (s) counts.set(s, (counts.get(s) ?? 0) + 1)
+  }
+  return counts
+}
+
+/**
+ * The script most of the letters of `text` are in, and its share of them (line height follows it
+ * when the share is at least a half, §6.6). 'other' with share 0 without letters. A tie goes to
+ * the script met first.
+ */
+export function mainScript(text: string): { script: ScriptTag; share: number } {
+  const counts = scriptCounts(text)
+  let total = 0
+  let best: ScriptTag = 'other'
+  let most = 0
+  for (const [s, n] of counts) {
+    total += n
+    if (n > most) {
+      best = s
+      most = n
+    }
+  }
+  return total ? { script: best, share: most / total } : { script: 'other', share: 0 }
+}
+
+/** Every script with a letter in `texts`. */
+export function scriptsIn(texts: Iterable<string>): Set<ScriptTag> {
+  const out = new Set<ScriptTag>()
+  for (const text of texts) for (const s of scriptCounts(text).keys()) out.add(s)
+  return out
+}
+
+/** Scripts where the first k letters of a word draw as they do in the whole word (no joining or reordering, §9.3 typewriter). */
+const PREFIX_SAFE: ReadonlySet<ScriptTag> = new Set(['latin', 'cyrillic', 'greek', 'han', 'kana', 'hangul'])
+
+/** Whether a prefix of a word draws the same as in the whole word (Latin, Cyrillic, Greek, Han, Kana, Hangul; §9.3 typewriter). */
+export function prefixDrawsSame(script: ScriptTag): boolean {
+  return PREFIX_SAFE.has(script)
+}
+
+/** Scripts without letter case: a look's capitals and lowercase do nothing to them (§6.6, §0.2). */
+const CASELESS: ReadonlySet<ScriptTag> = new Set(['arabic', 'hebrew', 'devanagari', 'bengali', 'tamil', 'telugu', 'thai', 'han', 'kana', 'hangul'])
+
+/** Whether `script` has capital letters. */
+export const hasCase = (script: ScriptTag): boolean => !CASELESS.has(script)
+
+/* ---------- digits (§0.2) ---------- */
+
+/** The first digit (zero) of each numbering system the Digits choice uses. */
+const ZEROS = { latn: 0x30, beng: 0x9e6, deva: 0x966, arab: 0x660, arabext: 0x6f0 } as const
+type Numbering = keyof typeof ZEROS
+
+/** A language's own digits (CLDR's native numbering): Bangla ০–৯, Devanagari ०–९, Arabic-Indic ٠–٩, Persian and Urdu ۰–۹; else 0–9. */
+export function nativeNumbering(language: string | undefined): Numbering {
+  const base = (language ?? '').toLowerCase().split(/[-_]/)[0]
+  if (base === 'bn' || base === 'as') return 'beng'
+  if (base === 'hi' || base === 'mr' || base === 'ne') return 'deva'
+  if (base === 'ar') return 'arab'
+  if (base === 'fa' || base === 'ur' || base === 'ps') return 'arabext'
+  return 'latn'
+}
+
+/** Any digit of the systems above, with its value. */
+const ANY_DIGIT = /[0-9\u09e6-\u09ef\u0966-\u096f\u0660-\u0669\u06f0-\u06f9]/g
+const digitValue = (ch: string): number => {
+  const c = ch.codePointAt(0)!
+  for (const zero of Object.values(ZEROS)) if (c >= zero && c <= zero + 9) return c - zero
+  return 0
+}
+
+/**
+ * `text` with its digits in the Digits choice (§0.2): 'native' the language's own (Bangla ০–৯ in a
+ * Bangla caption), 'western' 0–9; absent: as written. Digit for digit, so words and their indexes
+ * never change. Used by captions, counters, list numbers and chapter titles.
+ */
+export function withDigits(text: string, digits: 'native' | 'western' | undefined, language?: string): string {
+  if (!digits) return text
+  const zero = ZEROS[digits === 'western' ? 'latn' : nativeNumbering(language)]
+  return text.replace(ANY_DIGIT, (ch) => String.fromCodePoint(zero + digitValue(ch)))
+}
+
+/** The Intl numbering system of a Digits choice for `language` (counters), or undefined for the locale's own. */
+export function numberingFor(digits: 'native' | 'western' | undefined, language?: string): Numbering | undefined {
+  return digits === 'western' ? 'latn' : digits === 'native' ? nativeNumbering(language) : undefined
+}
+
+/* ---------- the words with their times ---------- */
+
+/** Graphemes of each word plus one, the weights times are spread by (§8.1 step 3). */
+function spreadTimes(words: readonly string[], start: number, end: number): { start: number; end: number }[] {
+  const weights = words.map((w) => graphemeCount(w) + 1)
+  const total = weights.reduce((a, b) => a + b, 0) || 1
+  const span = Math.max(0, end - start)
+  let acc = 0
+  return weights.map((n) => {
+    const a = start + (acc / total) * span
+    acc += n
+    return { start: a, end: start + (acc / total) * span }
+  })
+}
+
+/** Times taken from `src` (provider words) as captionTokens clamps them: never before the previous word, inside the caption. */
+function clampedTimes(src: readonly { start: number; end: number }[], seg: { start: number; end: number }): { start: number; end: number }[] {
+  let at = seg.start
+  return src.map((w) => {
+    const start = clamp(Math.max(w.start, at), seg.start, seg.end)
+    at = start
+    return { start, end: clamp(Math.max(w.end, start), start, seg.end) }
+  })
+}
+
+/**
+ * Studio words timed by provider words that split the same text differently (NW-09 text-only
+ * Chinese, Japanese and Thai, joined without spaces): each word takes the start of the provider
+ * word holding its first character and the end of the one holding its last. Null when the texts
+ * joined without spaces differ.
+ */
+function timesByConcatenation(
+  words: readonly string[],
+  provider: readonly { text: string; start: number; end: number; estimated?: true }[]
+): { start: number; end: number; estimated: boolean }[] | null {
+  const strip = (s: string): string => s.replace(/\s+/g, '')
+  if (words.map(strip).join('') !== provider.map((w) => strip(w.text)).join('')) return null
+  // owner[k]: the provider word holding character k of the joined text.
+  const owner: number[] = []
+  provider.forEach((w, i) => {
+    for (let k = 0; k < strip(w.text).length; k++) owner.push(i)
+  })
+  let at = 0
+  return words.map((w) => {
+    const n = strip(w).length
+    if (!n) return { start: provider[owner[Math.min(at, owner.length - 1)]]?.start ?? 0, end: provider[owner[Math.min(at, owner.length - 1)]]?.start ?? 0, estimated: true }
+    const a = owner[at]
+    const b = owner[at + n - 1]
+    at += n
+    let estimated = false
+    for (let i = a; i <= b; i++) if (provider[i].estimated) estimated = true
+    return { start: provider[a].start, end: provider[b].end, estimated }
+  })
 }
 
 /**
@@ -111,25 +291,41 @@ function notImplemented(name: string, ...args: unknown[]): never {
  * graphemes + 1 and `estimated`. Speaker labels (withLabel) come first with word -1.
  */
 export function studioTokens(seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words' | 'speaker'>, language?: string, withLabel?: boolean): StudioToken[] {
-  return notImplemented('studioTokens', seg, language, withLabel)
-}
-
-/** The script of the first letter of `text` ('other' without one). */
-export function scriptOf(text: string): ScriptTag {
-  return notImplemented('scriptOf', text)
-}
-
-/** The script of at least half the letters of `text`, and its share (line height follows it, §6.6). */
-export function mainScript(text: string): { script: ScriptTag; share: number } {
-  return notImplemented('mainScript', text)
-}
-
-/** Every script with a letter in `texts`. */
-export function scriptsIn(texts: Iterable<string>): Set<ScriptTag> {
-  return notImplemented('scriptsIn', texts)
-}
-
-/** Whether a prefix of a word draws the same as in the whole word (Latin, Cyrillic, Greek, Han, Kana, Hangul; §9.3 typewriter). */
-export function prefixDrawsSame(script: ScriptTag): boolean {
-  return notImplemented('prefixDrawsSame', script)
+  const words = studioWords(seg.text, language)
+  if (!words.length) return []
+  const texts = words.map((w) => w.text)
+  const provider = seg.words ?? []
+  let times: { start: number; end: number; estimated: boolean }[]
+  if (provider.length === words.length) {
+    const t = clampedTimes(provider, seg)
+    times = t.map((x, i) => ({ ...x, estimated: !!provider[i].estimated }))
+  } else {
+    const joined = provider.length ? timesByConcatenation(texts, provider) : null
+    if (joined) {
+      const t = clampedTimes(joined, seg)
+      times = t.map((x, i) => ({ ...x, estimated: joined[i].estimated }))
+    } else times = spreadTimes(texts, seg.start, seg.end).map((x) => ({ ...x, estimated: true }))
+  }
+  const own: Omit<StudioToken, 'dir'>[] = words.map((w, i) => ({
+    text: w.text,
+    start: times[i].start,
+    end: times[i].end,
+    word: i,
+    gap: w.gap,
+    ...(times[i].estimated ? { estimated: true as const } : {}),
+    script: scriptOf(w.text)
+  }))
+  const label: Omit<StudioToken, 'dir'>[] =
+    withLabel && seg.speaker && seg.text.trim()
+      ? `${seg.speaker}:`
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((text, i) => ({ text, start: seg.start, end: seg.start, label: true as const, word: -1, gap: i > 0, script: scriptOf(text) }))
+      : []
+  if (label.length) own[0] = { ...own[0], gap: true }
+  const all = [...label, ...own]
+  // The caption's own words decide its direction, not the speaker's name before them.
+  const rtl = RTL_FIRST.test(texts.join(' '))
+  const dirs = tokenDirs(all, rtl ? 'r' : 'l')
+  return all.map((t, i) => ({ ...t, dir: dirs[i] }))
 }
