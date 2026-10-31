@@ -265,13 +265,17 @@ export const fakeMotion = {
     return h
   },
   clipsKey: (clips: readonly { start: number; end: number; speed: number }[]) => clips.map((c) => `${c.start}-${c.end}-${c.speed}`).join(','),
-  captionPoses: (layout: StudioLayout, chunk: number, t: number) => {
+  captionPoses: (layout: StudioLayout, chunk: number, t: number, _clips: unknown, studio: CaptionStudio) => {
     hooks.log.push({ name: 'captionPoses', args: [chunk, t] })
     if (hooks.poses) return hooks.poses(layout, chunk, t)
     const c = layout.chunks[chunk]
     let spoken = -1
     for (let i = c.first; i <= c.last; i++) if (layout.tokens[i].start <= t) spoken = i
-    return { chunk: IDLE_CHUNK, words: Array.from({ length: c.last - c.first + 1 }, (_, k) => ({ ...idleWord(c.first + k), mark: c.first + k === spoken ? 1 : 0, fill: c.first + k < spoken ? 1 : c.first + k === spoken ? 0.5 : 0 })), mark: null }
+    // As motion.ts defines `fill`: the sweep for the fill and gradient marks (spoken words stay
+    // filled), else the spoken colour's crossfade share (the word being spoken only).
+    const sweep = studio.spoken === 'fill' || studio.spoken === 'gradient'
+    const fill = (i: number): number => (sweep ? (i < spoken ? 1 : i === spoken ? 0.5 : 0) : i === spoken ? 1 : 0)
+    return { chunk: IDLE_CHUNK, words: Array.from({ length: c.last - c.first + 1 }, (_, k) => ({ ...idleWord(c.first + k), fill: fill(c.first + k) })), mark: null }
   },
   itemPose: (start: number, end: number, t: number) => {
     hooks.log.push({ name: 'itemPose', args: [start, end, t] })

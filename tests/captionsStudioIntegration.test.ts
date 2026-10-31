@@ -161,6 +161,39 @@ describe('the Digits choice reaches every place §0.2 names (captions, counters,
   })
 })
 
+describe('the spoken word on P1’s poses (WordPose.fill is the spoken colour’s share; mark is the emphasis mark’s)', () => {
+  const C1: CaptionSegment = {
+    id: 'c1',
+    start: 0.5,
+    end: 3,
+    text: 'Make every word count today',
+    words: [
+      { text: 'Make', start: 0.5, end: 0.9 },
+      { text: 'every', start: 1.0, end: 1.4 },
+      { text: 'word', start: 1.5, end: 1.9 },
+      { text: 'count', start: 2.0, end: 2.4 },
+      { text: 'today', start: 2.5, end: 2.9 }
+    ]
+  }
+  /** The texts painted in `colour` (the lit sprites of the spoken word). */
+  const paintedIn = (colour: string): string[] => calls.filter((c) => c.name === 'fillText' && String(c.fill).toLowerCase() === colour).map((c) => String(c.args[0]))
+
+  for (const [id, colour] of [
+    ['bold-pop', '#39e508'],
+    ['spotlight-word', null],
+    ['neon', null]
+  ] as const)
+    it(`${id}: the word being spoken is drawn lit, and the words around it are not`, () => {
+      const studio = look(id)
+      const spoken = (colour ?? studio.theme.spoken).toLowerCase()
+      const p = project([C1], 'en', { preset: 'bold', studio })
+      drawStudioCaptions(frameOf(p, 1.2, 1080, 1920).fc)
+      const lit = paintedIn(spoken).map((t) => t.toLowerCase())
+      expect(lit).toContain('every')
+      expect(lit).not.toContain('make')
+    })
+})
+
 describe('the gallery’s Bangla sample (§0.2: tiles show Bangla text when the captions are Bangla)', () => {
   it('draws the approved Bangla sentence in the look’s Bangla font, and English otherwise', () => {
     const ctx = contextOf(canvas(136, 96))

@@ -14,10 +14,12 @@
  * The poses are read in these units (motion.ts, part P1): lengths (dx, dy, blur) in output px;
  * rotate in degrees; scale and scaleX as factors around the word's or the block's centre; alpha
  * 0..1 (a word's includes the opacity of words not yet spoken); reveal 0..1, the share shown from
- * the reading start (wipe; a typewriter's is the share of graphemes, k / n); fill 0..1, the spoken
- * fill or gradient sweep from the reading start; mark 0..1, how far the spoken colour, glow or
- * sticker colour has come in; weight 0..1, how far the word has turned to the spoken weight (a
- * value above 1 is read as the weight itself). A MarkBox's x and w are the marked words' span from
+ * the reading start (wipe; a typewriter's is the share of graphemes, k / n); fill 0..1, as
+ * motion.ts defines it: the spoken fill or gradient sweep from the reading start, and for the other
+ * marks (colour, glow, a sticker's colour, box and pill text) how far the spoken colour has come in;
+ * mark 0..1, the share of an emphasis mark drawn (this layer times those itself,
+ * emphasisProgress); weight 0..1, how far the word has turned to the spoken weight (a value above 1
+ * is read as the weight itself). A MarkBox's x and w are the marked words' span from
  * its line's left edge (the fixed padding of §5.1 is added here). placeStudio's lines are as
  * placeChunk's: x the left edge of the text, y the middle of the line.
  */
@@ -1256,7 +1258,8 @@ function drawWord(c: Ctx, d: ChunkDraw, info: WordInfo, row: Row, x: number, pos
       const to = studio.text.spokenWeight ?? Math.min(900, from + 300)
       lit = Math.max(0, Math.min(1, p.weight > 1 ? (p.weight - from) / Math.max(1, to - from) : p.weight))
     } else if ((mark === 'box' || mark === 'pill') && studio.box.kind !== 'word') lit = d.mark && info.box.token >= d.mark.first && info.box.token <= d.mark.last ? d.mark.alpha : 0
-    else if (mark !== 'none' && mark !== 'underline') lit = Math.max(0, Math.min(1, p.mark))
+    // Colour, glow and a sticker's colour: the crossfade share motion.ts gives in `fill`.
+    else if (mark !== 'none' && mark !== 'underline') lit = Math.max(0, Math.min(1, p.fill))
   }
   const baseState: WordState = !started && studio.theme.upcoming && !label ? 'upcoming' : 'base'
   const basePaint = paintFor(studio, info, baseState)
