@@ -374,6 +374,16 @@ describe('Restart now while Home makes, saves or processes a recording (docs/des
 describe('Settings: what a screen reader hears (docs/design/auto-update.md §1.7)', () => {
   const live = (out: El[]): El[] => out.filter((e) => e.props.role === 'status' || e.props.role === 'alert' || 'aria-live' in e.props)
   const statusOf = (out: El[]): El => out.find((e) => e.props['data-testid'] === 'updates-status')!
+  /** The block's text as a screen reader reads it down the page (browse mode): aria-hidden parts are skipped. */
+  const readable = (node: unknown): string =>
+    Array.isArray(node)
+      ? node.map(readable).join('')
+      : typeof node === 'string' || typeof node === 'number'
+        ? String(node)
+        : node && typeof node === 'object' && 'props' in node && !(node as El).props['aria-hidden']
+          ? readable((node as El).props.children)
+          : ''
+  const timesRead = (out: El[], words: string): number => readable(out[0]).split(words).length - 1
 
   it('announces a download once, not at every percent; the page still shows the percent', async () => {
     main.state = { phase: 'available', current: '0.7.1', version: '9.9.9', lastCheck: null, auto: false }
@@ -382,16 +392,30 @@ describe('Settings: what a screen reader hears (docs/design/auto-update.md §1.7
     let out = await settle(view)
     // The live region is there before the download starts, so its first change is read out.
     expect(live(out).map((e) => textOf(e.props.children))).toEqual(['Flown 9.9.9 is available.'])
+    expect(timesRead(out, 'Flown 9.9.9 is available.')).toBe(1)
     const heard = new Set<string>()
     for (const percent of [1, 12, 13, 14, 60, 99]) {
       emit({ phase: 'downloading', current: '0.7.1', version: '9.9.9', percent, lastCheck: null, auto: false })
       out = render(view)
       expect(textOf(statusOf(out).props.children)).toBe(`Downloading Flown 9.9.9… ${percent}%`)
+      expect(timesRead(out, 'Downloading Flown 9.9.9…')).toBe(1)
       for (const e of live(out)) heard.add(textOf(e.props.children))
     }
     expect([...heard]).toEqual(['Downloading Flown 9.9.9…'])
     emit(ready('9.9.9'))
     out = render(view)
     expect(live(out).map((e) => textOf(e.props.children))).toEqual(['Flown 9.9.9 is ready. It installs when you close Flown.'])
+    expect(timesRead(out, 'Flown 9.9.9 is ready.')).toBe(1)
+  })
+
+  it('reads the status once when the page is read down, with the last check', async () => {
+    main.state = { phase: 'idle', current: '0.7.1', lastCheck: new Date().toISOString(), auto: true }
+    const view = UpdatesBlock
+    render(view)
+    const out = await settle(view)
+    // The visible line is hidden from screen readers; the live region says the same words.
+    expect(statusOf(out).props['aria-hidden']).toBe('true')
+    expect(timesRead(out, 'Flown is up to date.')).toBe(1)
+    expect(timesRead(out, 'Last checked')).toBe(1)
   })
 })

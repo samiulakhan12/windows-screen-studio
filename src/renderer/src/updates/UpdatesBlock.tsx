@@ -47,7 +47,8 @@ export function UpdatesBlock(): JSX.Element {
   return (
     <div className="updates-block" data-testid="updates" data-phase={s.phase}>
       <h4 className="updates-title">Updates</h4>
-      <p className="updates-status" data-testid="updates-status">
+      {/* Hidden from screen readers: the live region below says the same, so it is not read twice. */}
+      <p className="updates-status" data-testid="updates-status" aria-hidden="true">
         {statusLine(s)}
         {last && <span className="muted"> Last checked {last}.</span>}
       </p>

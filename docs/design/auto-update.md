@@ -105,7 +105,8 @@ updates* still works when pressed.
 
 Settings › About, under the version (a status line and buttons; a polite live region says the
 status, without the download's percent, which changes about once a second: a download is announced
-once and the labelled progress bar gives the value when asked):
+once and the labelled progress bar gives the value when asked. The visible line is aria-hidden, as
+the live region says the same words, so a screen reader reading down the page hears the status once):
 
 - "Flown is up to date." (with "Last checked 10:42")
 - "Checking for updates…"
