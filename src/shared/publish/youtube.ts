@@ -8,7 +8,7 @@ import { planOf, videoDuration } from '../engine/freeze'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../render/chapters'
 import { descriptionText } from '../render/exportBundle'
 import type { Project } from '../types'
-import { cutAt } from './text'
+import { cutAt, typedText } from './text'
 
 /** YouTube's limit for a description (characters). */
 export const YOUTUBE_DESCRIPTION_MAX = 5000
@@ -21,6 +21,12 @@ export function projectYoutubeChapters(project: Pick<Project, 'clips' | 'freezes
   const plan = planOf(project)
   return { chapters: outputChapters(project.chapters ?? [], project.clips, plan), duration: videoDuration(project.clips, plan) }
 }
+
+/**
+ * The description's text as "Use for exports" saves it and Copy composes it: as typed (typedText),
+ * at most YouTube's 5 000 characters. So the export's file is exactly what Copy gives.
+ */
+export const descriptionBody = (text: unknown): string => typedText(text, YOUTUBE_DESCRIPTION_MAX)
 
 /**
  * The description: `text`, then (with chapters) a blank line, "Chapters" and one "0:00 Intro" line

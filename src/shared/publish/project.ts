@@ -3,12 +3,11 @@
  * text saved with "Use for exports". Read when a project opens; absent stays absent.
  */
 import type { ProjectPublish } from '../types'
-import { plainText } from './text'
-import { PACK_CAPS } from './prompts'
+import { descriptionBody } from './youtube'
 
-/** `raw` as a ProjectPublish: a cleaned, non-empty description of at most 3 000 characters; else undefined. */
+/** `raw` as a ProjectPublish: a non-empty description as the dialog saves it (descriptionBody); else undefined. */
 export function readPublish(raw: unknown): ProjectPublish | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
-  const description = plainText((raw as Record<string, unknown>).description, { max: PACK_CAPS.youtubeText, keepLinks: true })
+  const description = descriptionBody((raw as Record<string, unknown>).description)
   return description ? { description } : undefined
 }

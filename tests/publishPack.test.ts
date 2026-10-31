@@ -8,7 +8,7 @@ import { cleanTags, packPrompt, packTranscript, PACK_DATA_START, PACK_RULES, ren
 import { readPublish } from '../src/shared/publish/project'
 import { createQueue, CancelledError } from '../src/shared/publish/queue'
 import { cutAt, fitX, plainText, xLength, X_LIMIT } from '../src/shared/publish/text'
-import { composeYoutubeDescription, exportDescription, parseTags, projectYoutubeChapters, tagsText, YOUTUBE_DESCRIPTION_MAX } from '../src/shared/publish/youtube'
+import { composeYoutubeDescription, descriptionBody, exportDescription, parseTags, projectYoutubeChapters, tagsText, YOUTUBE_DESCRIPTION_MAX } from '../src/shared/publish/youtube'
 import type { CaptionSegment, Clip } from '../src/shared/types'
 
 const seg = (id: string, start: number, end: number, text: string): CaptionSegment => ({ id, start, end, text })
@@ -442,8 +442,27 @@ describe('the saved description in project.json', () => {
     expect(migrateProject({ ...base, publish: { description: ' Hi\u0000 https://my.site ' } }).publish).toEqual({ description: 'Hi https://my.site' })
     expect(migrateProject({ ...base, publish: { description: '' } }).publish).toBeUndefined()
     expect(migrateProject({ ...base, publish: 'x' }).publish).toBeUndefined()
-    expect(readPublish({ description: 'y'.repeat(9000) })!.description.length).toBeLessThanOrEqual(3000)
+    expect(readPublish({ description: 'y'.repeat(9000) })!.description).toBe(cutAt('y'.repeat(9000), YOUTUBE_DESCRIPTION_MAX))
     expect(readPublish([])).toBeUndefined()
+  })
+  it('keeps the text as typed, up to YouTube’s 5 000 characters, so the export’s file is what Copy gives', () => {
+    const project = migrateProject({ ...base, duration: 120, clips: [{ id: 'c', start: 0, end: 120, speed: 1 }], chapters: [{ id: 'a', t: 0, title: 'Intro' }, { id: 'b', t: 60, title: 'Users' }] })
+    const { chapters, duration } = projectYoutubeChapters(project)
+    // An edited description over 3 000 characters, and one with underscores and double spaces.
+    const long = `${'Learn how to add users and roles in Flown, step by step. '.repeat(60).trim()} Links: https://my.site`
+    const odd = 'Learn __init__.py setup.  Two  spaces.\n\n\n**Bold** stays.'
+    expect([...long].length).toBeGreaterThan(3000)
+    expect(readPublish({ description: long })).toEqual({ description: long })
+    expect(readPublish({ description: odd })).toEqual({ description: odd })
+    for (const typed of [long, odd, ` ${odd}\u202e\u0000 `]) {
+      // "Use for exports" saves descriptionBody(text); Copy composes from the same text.
+      const description = descriptionBody(typed)
+      const copy = composeYoutubeDescription(description, chapters, duration)
+      expect(copy.startsWith(typed.trim().replace(/[\u0000\u202e]/g, '').trim())).toBe(true)
+      const reopened = migrateProject(JSON.parse(JSON.stringify({ ...project, publish: { description } })))
+      expect(reopened.publish).toEqual({ description })
+      expect(exportDescription(reopened, 'Demo', duration, chapters)).toBe(`${copy}\n`)
+    }
   })
 })
 

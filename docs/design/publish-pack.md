@@ -146,7 +146,8 @@ interface Project { /* … */ publish?: ProjectPublish }
 ```
 
 `migrateProject` reads it with `readPublish` (`src/shared/publish/project.ts`): an object with a
-non-empty string `description`, cleaned (§4.4) and cut to 3 000 characters; anything else is
+non-empty string `description`, read as the dialog saves it (`descriptionBody`: control and
+direction characters removed, trimmed, cut to YouTube's 5 000 characters); anything else is
 dropped. Absent stays absent (`optional()`), so **every older project loads byte-for-byte
 unchanged**, and a project with `publish` opened in an older Flown keeps it (unknown fields pass
 through `...rest`).
@@ -459,6 +460,10 @@ Where the build differs from or adds to the sections above:
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),
   called from `exportBundleRun.ts`.
+- **The saved description is the text as typed** (`descriptionBody`: control and direction
+  characters removed, trimmed, at most YouTube's 5 000 characters), and *Copy* composes from the same
+  text, so an edited description (longer than the AI's 3 000, or with `__init__.py` or double spaces)
+  is written to the file exactly as *Copy* gives it.
 - **A palette request is written once:** closing the dialog clears it, so reopening Publish never
   sends it again; the Captions tab's AI request is cleared once taken, so a remount (undo bringing
   the captions back) never runs it again.

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AiProviderInfo } from '../../../shared/api/ai'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
-import { composeYoutubeDescription, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
+import { composeYoutubeDescription, descriptionBody, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
 import { youtubeChapters } from '../../../shared/render/chapters'
 import type { Project } from '../../../shared/types'
 import { useEditor } from '../editor/context'
@@ -192,7 +192,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
               onEdit={(change) => editItem(project.id, kind, change)}
               onCopy={copy}
               onUseForExports={(text) => {
-                const description = plainText(text, { max: 3000, keepLinks: true })
+                const description = descriptionBody(text)
                 if (!description) return
                 store.update((p) => ({ ...p, publish: { description } }))
                 onNotice("The export's description file will use this text")
@@ -260,14 +260,16 @@ function Card({ kind, item, stale, canWrite, youtube, saved, onWrite, onStop, on
   const busy = isRunning(item.status)
   const isYoutube = kind === 'youtube'
   const chapters = isYoutube && youtube.chapters.length ? youtubeChapters(youtube.chapters, youtube.duration) : null
-  const copied = isYoutube ? composeYoutubeDescription(item.text, youtube.chapters, youtube.duration) : item.text.trim()
+  // The YouTube text is saved for exports and copied the same way, so the export's file is what Copy gives.
+  const body = isYoutube ? descriptionBody(item.text) : ''
+  const copied = isYoutube ? composeYoutubeDescription(body, youtube.chapters, youtube.duration) : item.text.trim()
   const limit = LIMITS[kind]
   const count = kind === 'xpost' ? xLength(item.text.trim()) : [...copied].length
   const over = limit !== undefined && count > limit
   const tags = parseTags(item.tags)
   const text = item.text.trim()
   const cleanTitle = kind === 'title' ? plainText(item.text, { max: 150, oneLine: true, keepLinks: true }) : ''
-  const isSaved = saved !== null && saved === plainText(item.text, { max: 3000, keepLinks: true })
+  const isSaved = saved !== null && saved === body
 
   return (
     <section className="publish-card" data-publish-card={kind} data-status={item.status} aria-labelledby={`${id}-title`}>

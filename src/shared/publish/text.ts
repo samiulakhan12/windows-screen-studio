@@ -64,6 +64,16 @@ export function plainText(s: unknown, opts: PlainTextOptions): string {
 }
 
 /**
+ * Text the user typed or edited, as it is saved and copied: line breaks normalised, control and
+ * direction characters removed, trimmed and cut to `max`. Emphasis, spaces and links stay as typed.
+ * Not a string: ''.
+ */
+export function typedText(s: unknown, max: number): string {
+  if (typeof s !== 'string') return ''
+  return cutAt(s.replace(/\r\n?/g, '\n').replace(CONTROLS, '').trim(), max)
+}
+
+/**
  * `s` at most `max` characters: whole when it fits, else cut after the last sentence end in its
  * second half, or else the last word end, with "…" when cut inside a sentence.
  */
