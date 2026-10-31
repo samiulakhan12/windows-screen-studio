@@ -243,15 +243,23 @@ describe('the choice made in the panel is what a row reads (scenarios of earlier
     const two = replay('tool 3-15 2 smart-speed; tool 5.5-10.5 4; open; K r0; close; open; tool 16-18 2; undo; undo; R r0; K r1')
     expect(plays(two.p.clips)).toBe(plays(s.p.clips))
     expect(two.rows().filter((r) => !r.startsWith('r2'))).toEqual(['r0:removed', 'r1:kept'])
-    // The same after an edit by hand that took the 2x away was undone.
+    // The same after an edit by hand that took the 2x away was undone, and with the panel never closed.
     const hand = replay('tool 3-15 2 smart-speed; tool 5.5-10.5 4; hand speed 12-14 1; open; undo; R r0; K r1')
     expect(hand.rows()).toEqual(['r0:removed', 'r1:kept'])
+    expect(replay('tool 3-15 2 smart-speed; tool 5.5-10.5 4; open; R r0; K r1').rows()).toEqual(['r0:removed', 'r1:kept'])
   })
 
   it('Polish 4x removed, Polish 2x kept, Polish 4x over both and 8x inside that, the 8x and the second 4x removed', () => {
     const s = replay('open; tool 7-13.5 4; R r0; tool 10.5-16.5 2; K r1; tool 7-13 4; tool 9.5-11 8; R r3; R r2')
     expect(plays(s.p.clips)).toBe('[0,10.5]@1 [10.5,16.5]@2 [16.5,20]@1')
     expect(s.rows()).toEqual(['r0:removed', 'r2:removed', 'r3:removed', 'r1:kept'])
+    // The second 4x removed first, then the 8x.
+    const other = replay('open; tool 7-13.5 4; R r0; tool 10.5-16.5 2 smart-speed; K r1; tool 7-13 4; tool 9.5-11 8; R r2; R r3')
+    expect(plays(other.p.clips)).toBe(plays(s.p.clips))
+    expect(other.rows()).toEqual(['r0:removed', 'r2:removed', 'r3:removed', 'r1:kept'])
+    // Without the 2x kept: it stays to review.
+    const control = replay('open; tool 7-13.5 4; R r0; tool 10.5-16.5 2 smart-speed; tool 7-13 4; tool 9.5-11 8; R r3; R r2')
+    expect(control.rows()).toEqual(['r0:removed', 'r2:removed', 'r3:removed', 'r1:pending'])
   })
 
   it('a speed-up kept after a run over it was undone, then runs at other speeds over it', () => {
