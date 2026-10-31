@@ -26,11 +26,13 @@ const URL_CHAR = `[^\\s<>"'\`${NO_SPACE}]`
  * (tlds.ts), with or without a port and a path ("evil.icu", "flown.co.uk", "is.gd/x",
  * "evil.de:8080/login"). "Node.js/React" or "index.html/style.css" are on none, so they are text.
  * A host written in those languages after a scheme runs to the next space ("https://例え.jp/…").
+ * A bare domain with no path takes the code or query it is part of as `code` ("e.target" and
+ * ".value", "Date.now" and "()", "flown.studio" and "?ref=yt"), so they go or stay together.
  */
 const LINK = new RegExp(
   `(?:https?:\\/\\/|www\\.)(?:${URL_CHAR}+|[^\\s<>"'\`]+)` +
     `|(?<=^|[^\\p{L}\\p{N}@.-]|[${NO_SPACE}])(?:${ALNUM}|-)+(?:\\.(?:${ALNUM}|-)+)*\\.(?:${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|xn--(?:${ALNUM}|-)+)` +
-    `(?!${ALNUM})(?::\\d+)?(?:\\/${URL_CHAR}*)?`,
+    `(?!${ALNUM})(?::\\d+)?(?:\\/${URL_CHAR}*|(?<code>(?:\\.(?:${ALNUM}|[_$])+|\\([^()\\n]*\\))*(?:\\?${URL_CHAR}*(?<![.,;:!?)\\]]))?))`,
   'giu'
 )
 
@@ -45,9 +47,14 @@ export interface PlainTextOptions {
   keepLinks?: boolean
 }
 
-/** The links written in `source`, without a trailing dot or bracket, in lower case. */
+/** The links written in `source`, without a trailing dot or bracket or the code they are part of, in lower case. */
 function linksIn(source: string): Set<string> {
-  return new Set([...source.matchAll(LINK)].map((m) => m[0].replace(TRAIL, '').toLowerCase()))
+  return new Set([...source.matchAll(LINK)].map((m) => linkOf(m[0], m.groups?.code).toLowerCase()))
+}
+
+/** The link in a match of LINK: without the code it is part of, or else without the dot or bracket that ends the sentence. */
+function linkOf(match: string, code: string | undefined): string {
+  return code ? match.slice(0, match.length - code.length) : match.replace(TRAIL, '')
 }
 
 /** Punctuation that ends a sentence or a bracket right after a link. */
@@ -73,11 +80,14 @@ export function plainText(s: unknown, opts: PlainTextOptions): string {
   t = t.replace(/\*\*|__/g, '')
   if (!opts.keepLinks) {
     const allowed = opts.linksFrom === undefined ? new Set<string>() : linksIn(opts.linksFrom)
-    t = t.replace(LINK, (match) => {
+    t = t.replace(LINK, (match: string, ...rest: unknown[]) => {
+      const code = (rest.at(-1) as { code?: string }).code
+      const link = linkOf(match, code)
+      if (allowed.has(link.toLowerCase())) return match
+      // The code it is part of goes with it: no ".value" or "()" is left.
+      if (code) return ''
       // A dot or bracket at the end is the sentence's, not the link's: it stays.
-      const tail = TRAIL.exec(match)?.[0] ?? ''
-      const link = match.slice(0, match.length - tail.length)
-      if (allowed.has(link.toLowerCase())) return link + tail
+      const tail = match.slice(link.length)
       // A file or app name keeps its name without the extension, unless that is a link too ("evil.com.app").
       const name = FILE_NAME.test(link) ? link.slice(0, link.lastIndexOf('.')) : ''
       return (name.search(LINK) < 0 ? name : '') + tail

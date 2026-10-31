@@ -493,8 +493,12 @@ Where the build differs from or adds to the sections above:
   §4.5), with or without a port and a path (`evil.com`, `evil.icu`, `flown.co.uk`, `is.gd/x`,
   `evil.de:8080/login`), because LinkedIn and X turn those into links too. A name on no such domain
   is text (`Node.js/React`, `index.html/style.css`, `evil.example/login`); one on such a domain is
-  removed even when it is code (`user.email`), unless the transcript has it. E-mail addresses are
-  kept. A link glued to Chinese, Japanese, Korean or Thai text is found too, and ends where that
+  removed even when it is code (`user.email`), unless the transcript has it. Then the code it is part
+  of goes with it, and stays with it, so no piece is left: `e.target.value`, `Date.now()`,
+  `Task.Run(Work)`, `element.style.color`, `DateTime.Now` and a bare domain's query
+  (`flown.studio?ref=yt`) go whole, and stay whole when the transcript has the name (`e.target`,
+  `date.now`). X would link the domain in them (`evil.com.x`, `evil.com()`), so they are not kept
+  as text. E-mail addresses are kept. A link glued to Chinese, Japanese, Korean or Thai text is found too, and ends where that
   text starts, as X ends it: `詳細はevil.icuで` keeps `詳細はで`, and `ログインはevil.de/loginから。`
   keeps `ログインはから。`, not losing the text after the link. A bare domain written in those
   scripts is not a link (X does not link one either); after `https://` it is. A bare name with no port or path on a top-level domain that is also a file type (`.app`,

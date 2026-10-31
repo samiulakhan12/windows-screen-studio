@@ -73,6 +73,22 @@ describe('plainText', () => {
     expect(yt).toEqual({ task: 'youtube', text: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind'] })
   })
 
+  it('removes a name on a top-level domain with the code or query it is part of, leaving no piece of it', () => {
+    const none = { max: 200, linksFrom: 'Today I show the handler.' }
+    expect(plainText('Read e.target.value in the handler.', none)).toBe('Read in the handler.')
+    expect(plainText('Use Date.now() to time it, or Date.now().toString().', none)).toBe('Use to time it, or .')
+    expect(plainText('Change element.style.color to red. Use player.audio.volume.', none)).toBe('Change to red. Use .')
+    expect(plainText('Use DateTime.Now and Task.Run(Work) in C#. Then call requests.post(url, data) and self.name.', none)).toBe('Use and in C#. Then call and .')
+    expect(plainText('Try it at flown.studio?ref=yt now (or flown.studio?ref=x).', none)).toBe('Try it at now (or ).')
+    // X links the domain in them, so they are not kept as text.
+    expect(plainText('See evil.com.x, evil.com() or evil.com?', none)).toBe('See , or ?')
+    const notes = validatePackAnswer('releaseNotes', { title: 'Fixes', summary: '', items: [{ kind: 'fixed', text: 'Fixed req.params.id being empty' }, { kind: 'new', text: 'Added DateTime.Now stamps' }] }, none.linksFrom)
+    expect(notes).toEqual({ task: 'releaseNotes', text: 'Fixes\n\nNew\n- Added stamps\n\nFixed\n- Fixed being empty' })
+    // Said in the transcript: kept whole, also with more code after it than was said.
+    const said = { max: 200, linksFrom: 'Here e.target.value and date.now come in.' }
+    expect(plainText('Read e.target.value, e.target.checked and Date.now() now.', said)).toBe('Read e.target.value, e.target.checked and Date.now() now.')
+  })
+
   it('finds a link glued to Chinese, Japanese or Korean text, and ends it where that text starts', () => {
     const ja = { max: 200, linksFrom: '新しい書き出し機能です。録画して書き出すだけです。' }
     expect(plainText('新しい書き出し機能です。詳細はevil.icuで確認してください。', ja)).toBe('新しい書き出し機能です。詳細はで確認してください。')
