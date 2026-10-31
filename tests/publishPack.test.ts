@@ -94,6 +94,21 @@ describe('xLength and fitX', () => {
     const cjk = '日'.repeat(200)
     expect(xLength(fitX(cjk))).toBeLessThanOrEqual(X_LIMIT)
   })
+  it('cuts a Japanese or Chinese post by characters, not at a space after its first phrase', () => {
+    const body = '今日は新しいエクスポート機能を紹介します。設定を開いて保存を押すだけです。'.repeat(5)
+    for (const post of [`新機能を紹介！ ${body} #新機能 #デモ`, `新機能を紹介！\n\n${body}\n\n#新機能`, `新功能介绍！\n${'只需打开设置并点击保存即可完成导出。'.repeat(10)}\n#新功能`]) {
+      expect(xLength(post)).toBeGreaterThan(X_LIMIT)
+      const fitted = (validatePackAnswer('xpost', { text: post }, TRANSCRIPT) as { text: string }).text
+      expect(xLength(fitted)).toBeLessThanOrEqual(X_LIMIT)
+      expect(xLength(fitted)).toBeGreaterThan(X_LIMIT - 4)
+      expect(fitted.endsWith('…')).toBe(true)
+      expect(post.replace(/\n{2,}/g, '\n').startsWith(fitted.slice(0, -1))).toBe(true)
+    }
+    // Words still end it when one ends in the second half.
+    const latin = Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ')
+    expect(fitX(latin).endsWith(' …')).toBe(false)
+    expect(/word\d+…$/.test(fitX(latin))).toBe(true)
+  })
 })
 
 describe('the existing text tasks', () => {

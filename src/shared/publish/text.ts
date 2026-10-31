@@ -133,12 +133,15 @@ export function fitX(s: string, limit = X_LIMIT): string {
     out += w
   }
   out = out.replace(/[\s,;:–—-]+$/, '')
-  if (!out) {
-    // One very long word: cut by characters.
+  if (xLength(out) < limit / 2) {
+    // No word end in the second half (one very long word, or Chinese or Japanese written without
+    // spaces): cut by characters.
+    out = ''
     for (const ch of s) {
       if (xLength(`${out}${ch}…`) > limit) break
       out += ch
     }
+    out = out.replace(/[\s,;:–—-]+$/, '')
   }
   return `${out}…`
 }
