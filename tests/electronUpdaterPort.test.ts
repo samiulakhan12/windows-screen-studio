@@ -1,6 +1,8 @@
+import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterAll, describe, expect, it, vi } from 'vitest'
+import type { UpdaterPort } from '../src/main/updates/updaterPort'
 import type { UpdaterEvent } from '../src/shared/updates/updates'
 
 /**
@@ -37,6 +39,25 @@ vi.mock('electron-updater', async () => {
 
 afterAll(() => fs.rmSync(h.dir, { recursive: true, force: true }))
 
+/**
+ * Electron's app as far as a quit goes: before-quit, then (unless a window keeps Flown open, as the
+ * recording's "Keep working" does) quit with exit code 0.
+ */
+function standInApp(): { app: EventEmitter & { quit(): void }; steps: string[]; keepOpen: { on: boolean } } {
+  const steps: string[] = []
+  const keepOpen = { on: false }
+  const app = Object.assign(new EventEmitter(), {
+    quit() {
+      steps.push('quit asked')
+      app.emit('before-quit', {})
+      if (keepOpen.on) return
+      steps.push('quit')
+      app.emit('quit', {}, 0)
+    }
+  })
+  return { app, steps, keepOpen }
+}
+
 const FEED = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom"><entry><id>tag:github.com,2008:Repository/1/v0.7.2</id>
 <link rel="alternate" type="text/html" href="https://github.com/samiulakhan12/windows-screen-studio/releases/tag/v0.7.2"/>
@@ -54,7 +75,7 @@ releaseDate: '2026-10-30T10:00:00.000Z'
 describe('the real updater (electronUpdaterPort)', () => {
   it('sends no per-install identifier with a check', async () => {
     const { NO_STAGING_ID, electronUpdaterPort } = await import('../src/main/updates/electronUpdaterPort')
-    const port = await electronUpdaterPort()
+    const port = await electronUpdaterPort(standInApp().app as never)
     const updater = h.holder.updater as { httpExecutor: unknown; _testOnlyOptions: unknown; logger: unknown }
     updater.logger = null
     updater._testOnlyOptions = { platform: 'win32' }
@@ -84,5 +105,44 @@ describe('the real updater (electronUpdaterPort)', () => {
       expect(JSON.stringify(r.headers)).not.toContain(id)
       expect(r.headers['x-user-staging-id']).toBe(NO_STAGING_ID)
     }
+  })
+
+  /** The real port over a stand-in app; the installer start (quitAndInstall) is only recorded. */
+  async function restartSetup(): Promise<ReturnType<typeof standInApp> & { port: UpdaterPort }> {
+    const { electronUpdaterPort } = await import('../src/main/updates/electronUpdaterPort')
+    const stand = standInApp()
+    const port = await electronUpdaterPort(stand.app as never)
+    const updater = h.holder.updater as { quitAndInstall(silent?: boolean, run?: boolean): void }
+    vi.spyOn(updater, 'quitAndInstall').mockImplementation((silent, run) => {
+      stand.steps.push(`installer ${silent ? 'silent' : 'shown'} ${run ? 'reopens' : 'stays closed'}`)
+    })
+    return { ...stand, port }
+  }
+
+  it('Restart now starts the installer only once Flown has really quit, and reopens Flown', async () => {
+    const s = await restartSetup()
+    s.port.setInstallOnQuit(true)
+    s.port.install()
+    expect(s.steps).toEqual(['quit asked', 'quit', 'installer silent reopens'])
+  })
+
+  it('Restart now that a window calls off (a recording being processed: "Keep working") installs nothing', async () => {
+    const s = await restartSetup()
+    s.port.setInstallOnQuit(true)
+    s.keepOpen.on = true
+    s.port.install()
+    expect(s.steps).toEqual(['quit asked'])
+    // Closing Flown later is an ordinary quit: electron-updater's own handler installs, without reopening.
+    s.keepOpen.on = false
+    s.app.quit()
+    expect(s.steps).toEqual(['quit asked', 'quit asked', 'quit'])
+  })
+
+  it('Restart now never installs a release pulled meanwhile', async () => {
+    const s = await restartSetup()
+    s.port.setInstallOnQuit(false)
+    s.port.install()
+    expect(s.steps).toEqual(['quit asked', 'quit'])
+    s.port.setInstallOnQuit(true)
   })
 })

@@ -83,8 +83,11 @@ is replaced by a constant, the same for every copy. A failed check is retried at
 the error shows in Settings only.
 
 Quitting with an update downloaded installs it silently and does not reopen Flown. *Restart now*
-installs and reopens it. A per-machine install (Program Files) shows Windows' permission prompt
-for the installer, as a first install does.
+installs and reopens it. It quits Flown the way closing it does, so what asks before Flown closes
+still asks (a recording still being processed: *Keep working* or *Quit anyway*), and the installer
+starts only once Flown has really quit. A quit called off installs nothing; closing Flown later
+installs as usual, without reopening it. A per-machine install (Program Files) shows Windows'
+permission prompt for the installer, as a first install does.
 
 ### 1.6 Settings: one switch
 
@@ -138,7 +141,11 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
 
 - `src/main/updates/electronUpdaterPort.ts`: the real port over `autoUpdater` from
   electron-updater (`autoDownload = false`, `autoInstallOnAppQuit = true`,
-  `allowPrerelease = false`, `allowDowngrade = false`, logger to `appLog`).
+  `allowPrerelease = false`, `allowDowngrade = false`, logger to `appLog`). Its `install` calls
+  `app.quit()` and starts the installer (`quitAndInstall(true, true)`: silent, reopens Flown) on
+  the app's `quit` event, ahead of electron-updater's own quit handler. Called at once,
+  `quitAndInstall` would start the installer before the windows close, and the installer closes
+  Flown by force, whatever the user answers there.
 - `src/main/updates/fakeUpdaterPort.ts`: for development and the e2e tests, enabled only when the
   app is not packaged and `SSW_UPDATES_FAKE` names a scenario (`available`, `none`, `error`); its
   install writes a line to `SSW_UPDATES_FAKE_LOG` and quits.

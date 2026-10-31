@@ -10,7 +10,7 @@ export interface UpdaterPort {
   check(): Promise<void>
   /** Downloads the release found: 'progress' events, then 'downloaded' or 'error'. */
   download(): Promise<void>
-  /** Quits Flown, installs the downloaded release silently and opens Flown again. */
+  /** Quits Flown (as closing it does: a window may keep it open), then installs the downloaded release silently and opens Flown again. */
   install(): void
   /** Whether a downloaded release installs when Flown quits (off once its release is pulled). */
   setInstallOnQuit(on: boolean): void

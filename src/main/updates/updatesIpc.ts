@@ -50,7 +50,7 @@ async function makePort(): Promise<UpdaterPort | null> {
   if (app.isPackaged) {
     if (process.platform !== 'win32') return null
     try {
-      return await electronUpdaterPort()
+      return await electronUpdaterPort(app)
     } catch (err) {
       console.warn('Updates are off: the updater could not start:', err)
       return null
