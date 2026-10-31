@@ -356,15 +356,16 @@ export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
  * The speed-up `cut` without the parts that a speed-up of `reviewed` (the panel's list, no longer
  * recorded) plays at its own speed, or hands on to a later one of `list`, and holds at a speed other
  * than `cut`'s: one kept inside a third one inside `cut` (an 8× kept inside a 4× inside a 2×). Such
- * a part is the user's, as withSpeedUpKept makes it for a record. `cut` itself when no part is.
+ * a part is the user's, as withSpeedUpKept makes it for a record. With `itsSpeed`, the parts it holds
+ * at `cut`'s speed instead. `cut` itself when no part is.
  */
-export function withoutKeptInside(cut: AutoCut, clips: readonly Clip[], reviewed: readonly AutoCut[], list: readonly AutoCut[]): AutoCut {
+export function withoutKeptInside(cut: AutoCut, clips: readonly Clip[], reviewed: readonly AutoCut[], list: readonly AutoCut[], itsSpeed = false): AutoCut {
   if (cut.action === 'cut') return cut
   const yours: Piece[] = []
   for (const r of reviewed) {
     if (r.id === cut.id || r.action === 'cut') continue
     for (const w of r.was) {
-      if (w.speed !== cut.action) yours.push(...playing(clips, w.start, w.end, r.action), ...heldParts(list, clips, w.start, w.end, r.action, new Set([r.id, cut.id])))
+      if ((w.speed === cut.action) === itsSpeed) yours.push(...playing(clips, w.start, w.end, r.action), ...heldParts(list, clips, w.start, w.end, r.action, new Set([r.id, cut.id])))
     }
   }
   const was = without(cut.was, yours)

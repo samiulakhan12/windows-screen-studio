@@ -9,7 +9,7 @@
  * removing puts back what was there before.
  */
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
-import type { AutoCut, LayoutSegment, Project } from '../types'
+import type { AutoCut, Clip, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
 import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
@@ -47,7 +47,11 @@ export interface ReviewItem {
   seq?: number
 }
 
+type Piece = AutoCut['was'][number]
+
 const EPS = 1e-6
+/** As autoCuts.ts: how far (seconds) clips may differ from a record. */
+const SLACK = 1e-3
 const kindOrder = (k: ReviewKind): number => REVIEW_KINDS.indexOf(k)
 const byTime = (a: ReviewItem, b: ReviewItem): number => a.start - b.start || kindOrder(a.kind) - kindOrder(b.kind) || a.key.localeCompare(b.key)
 
@@ -110,24 +114,48 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
   const ids = new Set(records.map((c) => c.id))
   // A part sped up again on top of it (a speed-up of the project or of the list) is under that one;
-  // a part a speed-up of the list kept since plays on top of a third one is the user's. One at the
-  // same speed that the panel listed before this item appeared was made before it: where its
-  // footage plays at that speed, this item is what plays it, so it is left out of both.
+  // a part a speed-up of the list kept since plays on top of a third one is the user's. One the
+  // panel listed before this item appeared was made before it, so it is neither.
   const reviewed = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))
-  const earlier = new Set(listed.flatMap((i) => (i.cut?.action === cut.action && (i.seq ?? 0) < (item.seq ?? 0) ? [i.cut.id] : [])))
-  const others = reviewed.filter((r) => !earlier.has(r.id))
-  const over = [...records, ...others]
-  let before = withoutKeptInside(cut, project.clips, others, over)
-  if (footageBack(before, project.clips, over)) return 'removed'
-  // Out through the speed-ups of the list taken back since, one at a time and the innermost first
-  // (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×), until the footage is back.
-  for (let n = 0; n < reviewed.length; n++) {
-    const s = reviewed.find((r) => r.action !== 'cut' && withoutSpeedUp([before], r)[0] !== before)
-    if (!s) break
-    before = withoutSpeedUp([before], s)[0]
-    if (footageBack(before, project.clips, over)) return 'removed'
-  }
-  return 'kept'
+  const earlier = new Set(listed.flatMap((i) => (i.cut && (i.seq ?? 0) < (item.seq ?? 0) ? [i.cut.id] : [])))
+  const later = reviewed.filter((r) => !earlier.has(r.id))
+  const over = [...records, ...later]
+  const back = (c: AutoCut): boolean => footageBack(c, project.clips, over)
+  // Each part not back goes out through the speed-ups of the list taken back since, one at a time
+  // and the innermost first (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×),
+  // until it is back. A part back already stays as it is: one inside a speed-up kept before it
+  // plays at that one's speed, which is how it was.
+  const walksBack = (c: AutoCut): boolean =>
+    back(c) ||
+    byClips(c.was, project.clips).every((part) => {
+      let at: AutoCut = { ...c, was: [part] }
+      for (let n = 0; !back(at); n++) {
+        const s = n < reviewed.length ? reviewed.find((r) => r.action !== 'cut' && withoutSpeedUp([at], r)[0] !== at) : undefined
+        if (!s) return false
+        at = withoutSpeedUp([at], s)[0]
+      }
+      return true
+    })
+  // A part a speed-up of the list kept since holds at this item's own speed is the user's too when
+  // some other part of the item's footage still plays, or a record or a later item holds some of it
+  // below this item's speed (a tool only speeds up, so that footage was back when it was made): it
+  // was made inside a later one at this speed, after this item was removed. Otherwise the part is
+  // this item's, kept. (When nothing else tells, kept and removed leave the same project and list.)
+  const inside = withoutKeptInside(cut, project.clips, later, over)
+  const any = withoutKeptInside(inside, project.clips, later, over, true)
+  const overlap = (a: Piece, b: Piece): boolean => Math.min(a.end, b.end) - Math.max(a.start, b.start) > SLACK
+  const plays = (c: AutoCut): boolean => c.was.some((p) => project.clips.some((k) => overlap(k, p)))
+  const again = over.some((r) => r.id !== cut.id && r.was.some((w) => w.speed < Number(cut.action) && cut.was.some((p) => overlap(w, p))))
+  return walksBack(any !== inside && (plays(any) || again) ? any : inside) ? 'removed' : 'kept'
+}
+
+/** `pieces` split where a clip starts or ends, so each part plays at one speed or is cut. */
+function byClips(pieces: AutoCut['was'], clips: readonly Clip[]): AutoCut['was'] {
+  const ends = clips.flatMap((c) => [c.start, c.end])
+  return pieces.flatMap((p) => {
+    const at = [p.start, ...ends.filter((t) => t > p.start + EPS && t < p.end - EPS).sort((a, b) => a - b), p.end]
+    return at.slice(1).flatMap((t, i) => (t - at[i] > EPS ? [{ start: at[i], end: t, speed: p.speed }] : []))
+  })
 }
 
 /** Reviewed items of `statuses` and how many in all. */

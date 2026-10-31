@@ -790,4 +790,69 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     ])
     expect(rows(p, shown)).toEqual(['k1:kept', 'e1:removed', 'f1:removed'])
   })
+
+  /** The panel open throughout: each change is merged into the list as it is made. */
+  const panel = (start: Project) => {
+    const ui = { p: start, shown: reviewItems(start) }
+    const step = (p: Project): void => {
+      ui.p = p
+      ui.shown = mergeSnapshot(ui.shown, reviewItems(p))
+    }
+    const item = (id: string): ReviewItem => ui.shown.find((i) => i.cut!.id === id)!
+    return { ui, step, item }
+  }
+
+  it('a 2x kept inside a 4x removed before still reads kept when a 4x run again speeds both up', () => {
+    // Polish at 4x, Delete; Polish at 2x inside it (Shift+P), K; Polish at 4x again over both.
+    const { ui, step, item } = panel(auto(project(), 12, 18, 4, 'polish', 'a'))
+    step(removeItems(ui.p, [item('a1')]))
+    step(auto(ui.p, 14, 16, 2, 'polish', 'b'))
+    step(keepItems(ui.p, [item('b1')]))
+    step(auto(ui.p, 10, 18, 4, 'polish', 'c'))
+    expect(plays(ui.p.clips)).toEqual([
+      [0, 10, 1],
+      [10, 18, 4],
+      [18, 20, 1]
+    ])
+    expect(rows(ui.p, ui.shown)).toEqual(['c1:pending', 'a1:removed', 'b1:kept'])
+    // Removing the new 4x puts the 2x back at 2x.
+    step(removeItems(ui.p, [item('c1')]))
+    expect(plays(ui.p.clips)).toEqual([
+      [0, 14, 1],
+      [14, 16, 2],
+      [16, 20, 1]
+    ])
+    expect(rows(ui.p, ui.shown)).toEqual(['c1:removed', 'a1:removed', 'b1:kept'])
+  })
+
+  it('a speed-up removed still reads removed after one made over it at its speed has a faster one kept inside', () => {
+    // Polish at 2x, Delete; Smart speed at 2x over its end; Polish at 4x inside that, K.
+    const one = panel(auto(project(), 5.5, 12.5, 2, 'polish', 'a'))
+    one.step(removeItems(one.ui.p, [one.item('a1')]))
+    one.step(auto(one.ui.p, 11, 16.5, 2, 'smart-speed', 'f'))
+    one.step(auto(one.ui.p, 11, 11.5, 4, 'polish', 'g'))
+    one.step(keepItems(one.ui.p, [one.item('g1')]))
+    expect(plays(one.ui.p.clips)).toEqual([
+      [0, 11, 1],
+      [11, 11.5, 4],
+      [11.5, 16.5, 2],
+      [16.5, 20, 1]
+    ])
+    expect(rows(one.ui.p, one.ui.shown)).toEqual(['a1:removed', 'g1:kept', 'f1:pending'])
+    // Polish at 4x, Delete; Polish at 4x over most of it; Polish at 8x over its end, K; then K the 4x.
+    const two = panel(auto(project(), 9, 16, 4, 'polish', 'x'))
+    two.step(removeItems(two.ui.p, [two.item('x1')]))
+    two.step(auto(two.ui.p, 8.5, 15.5, 4, 'polish', 'y'))
+    two.step(auto(two.ui.p, 14.5, 16, 8, 'polish', 'z'))
+    two.step(keepItems(two.ui.p, [two.item('z1')]))
+    expect(rows(two.ui.p, two.ui.shown)).toEqual(['y1:pending', 'x1:removed', 'z1:kept'])
+    two.step(keepItems(two.ui.p, [two.item('y1')]))
+    expect(plays(two.ui.p.clips)).toEqual([
+      [0, 8.5, 1],
+      [8.5, 14.5, 4],
+      [14.5, 16, 8],
+      [16, 20, 1]
+    ])
+    expect(rows(two.ui.p, two.ui.shown)).toEqual(['y1:kept', 'x1:removed', 'z1:kept'])
+  })
 })

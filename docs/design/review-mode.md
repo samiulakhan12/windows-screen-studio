@@ -106,13 +106,23 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
 * automatic cut: record present and intact → pending. Otherwise: its footage is back as it was
   (`was` pieces kept at their old speeds, or at the speed from before the speed-ups of the panel's
   list taken back since, one at a time and the innermost first: a silence cut removed inside a
-  sped-up idle part, then the speed-up removed; for a speed-up, a part that a later speed-up of the
-  project or the list holds at the old speed, itself or through one inside it, counts as back, and
-  a part of a speed-up of the list kept since inside a third one is the user's and left out: a 2×
-  removed, then an 8× kept inside the 4× inside it; a speed-up at the item's speed that the panel
-  listed before the item appeared was made before it, so where its footage plays at that speed the
-  item is what plays it, and it counts for neither: Polish at 2× removed, then Polish run again
-  over the same silence with the panel open and the new 2× kept) → removed; else → kept.
+  sped-up idle part, then the speed-up removed; each part of the footage goes out on its own until
+  it is back, and a part back already stays as it is, so a part inside a speed-up kept before the
+  item is not taken out of it. For a speed-up, a part that a later speed-up of the project or the
+  list holds at the old speed, itself or through one inside it, counts as back, and a part of a
+  speed-up of the list kept since inside a third one is the user's and left out: a 2× removed,
+  then an 8× kept inside the 4× inside it. A part one kept since holds at the item's own speed is
+  left out too when some other part of the item's footage still plays, or a record or a later item
+  holds some of it below the item's speed (a tool only speeds up, so that footage was back when it
+  was made): the kept one was made inside a later one at the item's speed, after the item was
+  removed (Polish at 2× removed, Smart speed at 2× over its end, Polish at 4× inside that kept).
+  A speed-up the panel listed before the item appeared was made before it, so it counts for neither:
+  Polish at 2× removed, then Polish run again over the same silence with the panel open and the new
+  2× kept; Polish at 4× removed, Polish at 2× inside it kept, then Polish at 4× over both, and the
+  2× still reads kept) → removed; else → kept. When all of a speed-up's footage that still plays is
+  the user's through later ones kept, made inside later ones that have given it up since, a Keep
+  and a Remove of it leave the same project and list: it reads removed where they hold the footage
+  at another speed than its own, kept where they hold it at its own.
 
 So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
 again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the
