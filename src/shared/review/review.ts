@@ -108,10 +108,19 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
   const ids = new Set(records.map((c) => c.id))
   // A part sped up again on top of it (a speed-up of the project or of the list) is under that one.
-  const over = [...records, ...listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))]
-  if (footageBack(cut, project.clips, over)) return 'removed'
-  const before = listed.reduce((c, i) => (i.cut && i.cut.action !== 'cut' && !ids.has(i.cut.id) ? withoutSpeedUp([c], i.cut)[0] : c), cut)
-  return before !== cut && footageBack(before, project.clips, over) ? 'removed' : 'kept'
+  const reviewed = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))
+  const over = [...records, ...reviewed]
+  let before = cut
+  if (footageBack(before, project.clips, over)) return 'removed'
+  // Out through the speed-ups of the list taken back since, one at a time and the innermost first
+  // (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×), until the footage is back.
+  for (let n = 0; n < reviewed.length; n++) {
+    const s = reviewed.find((r) => r.action !== 'cut' && withoutSpeedUp([before], r)[0] !== before)
+    if (!s) break
+    before = withoutSpeedUp([before], s)[0]
+    if (footageBack(before, project.clips, over)) return 'removed'
+  }
+  return 'kept'
 }
 
 /** Reviewed items of `statuses` and how many in all. */

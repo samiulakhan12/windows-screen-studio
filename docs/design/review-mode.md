@@ -102,10 +102,10 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
 * face framing: `framingIsDirectors` → pending; framing still set (not the director's) → kept;
   framing back to none → removed.
 * automatic cut: record present and intact → pending. Otherwise: its footage is back as it was
-  (`was` pieces kept at their old speeds, or at the speed from before a speed-up of the panel's
-  list taken back since: a silence cut removed inside a sped-up idle part, then the speed-up
-  removed; for a speed-up, a part that a later speed-up of the project or the list holds at the
-  old speed counts as back) → removed; else → kept.
+  (`was` pieces kept at their old speeds, or at the speed from before the speed-ups of the panel's
+  list taken back since, one at a time and the innermost first: a silence cut removed inside a
+  sped-up idle part, then the speed-up removed; for a speed-up, a part that a later speed-up of the
+  project or the list holds at the old speed counts as back) → removed; else → kept.
 
 So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
 again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the

@@ -449,6 +449,17 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     return p
   }
 
+  /** Keeps (K) or removes (R) the listed items in `steps` order, one at a time, as the panel does. */
+  const reviewSteps = (p: Project, steps: [number, 'K' | 'R'][]): { p: Project; shown: ReviewItem[] } => {
+    let shown = reviewItems(p)
+    for (const [k, how] of steps) {
+      p = how === 'K' ? keepItems(p, [shown[k]]) : removeItems(p, [shown[k]])
+      shown = mergeSnapshot(shown, reviewItems(p))
+    }
+    return { p, shown }
+  }
+  const rows = (p: Project, shown: ReviewItem[]): string[] => shown.map((i) => `${i.cut!.id}:${reviewStatus(p, i, shown)}`)
+
   it('2x and then a cut of the same silence: one record, and Remove brings it back at 1x', () => {
     const fast = auto(project(), 5, 7, 2, 'silences', 'f')
     const cut2 = auto(fast, 5, 7, 'cut', 'silences', 'c')
@@ -571,5 +582,33 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     const p = auto(auto(auto(project(), 5, 9, 2, 'smart-speed', 'f'), 6, 7, 'cut', 'silences', 'c'), 5, 9, 4, 'smart-speed', 'g')
     expect(liveAutoCuts(p).map((c) => c.id)).toEqual(['c1', 'g1'])
     expect(plays(removeOneByOne(p).clips)).toEqual([[0, 20, 1]])
+  })
+
+  it('a cut inside a 4x inside a 2x: removing the cut, the 4x and then the 2x reads removed for all three', () => {
+    const nested = (): Project => auto(auto(auto(project(), 5, 15, 2, 'smart-speed', 'f'), 7, 12, 4, 'silences', 'g'), 9, 10, 'cut', 'silences', 'c')
+    expect(liveAutoCuts(nested()).map((c) => [c.id, c.was])).toEqual([
+      ['f1', [{ start: 5, end: 15, speed: 1 }]],
+      ['g1', [{ start: 7, end: 12, speed: 2 }]],
+      ['c1', [{ start: 9, end: 10, speed: 4 }]]
+    ])
+    const removed = reviewSteps(nested(), [
+      [2, 'R'],
+      [1, 'R'],
+      [0, 'R']
+    ])
+    expect(plays(removed.p.clips)).toEqual([[0, 20, 1]])
+    expect(rows(removed.p, removed.shown)).toEqual(['f1:removed', 'g1:removed', 'c1:removed'])
+    // With the 2x kept last, the cut is back at 2x and still reads removed.
+    const { p, shown } = reviewSteps(nested(), [
+      [2, 'R'],
+      [1, 'R'],
+      [0, 'K']
+    ])
+    expect(plays(p.clips)).toEqual([
+      [0, 5, 1],
+      [5, 15, 2],
+      [15, 20, 1]
+    ])
+    expect(rows(p, shown)).toEqual(['f1:kept', 'g1:removed', 'c1:removed'])
   })
 })
