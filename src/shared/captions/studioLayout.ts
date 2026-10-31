@@ -12,6 +12,8 @@ export interface StudioFace {
   stack: string
   weight: number
   tracking: number
+  /** The font's width (wdth axis, percent; canvas fontStretch) when the look asks for one (§0.2: Stacked's Anek Bangla at 75); absent: 100. */
+  stretch?: number
 }
 
 /** Width of `text` at `px` pixels in `face`. */
