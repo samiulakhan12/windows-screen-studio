@@ -1,4 +1,4 @@
-import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
+import { captionAlpha, captionIndexAt, captionLayout, CAPTION_FONT, chunkIndexAt, placeChunk, spokenToken, wordDirection, type CaptionChunk, type CaptionLayout, type MeasureText } from '../../../shared/captions/layout'
 import { DEFAULT_CAPTIONS } from '../../../shared/captions/settings'
 import { speakerCaption } from '../../../shared/captions/speakers'
 import { luminance } from '../../../shared/editor/titles'
@@ -130,8 +130,7 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
   c.save()
   c.font = font
   c.textAlign = 'left'
-  // x is still each word's left edge; the direction puts punctuation on the right side of an RTL word.
-  c.direction = layout.rtl ? 'rtl' : 'ltr'
+  // x is still each word's left edge; the direction (set per word) puts punctuation on the right side of an RTL word.
   c.textBaseline = 'middle'
   c.lineJoin = 'round'
   if (settings.background === 'box') {
@@ -163,6 +162,7 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
     c.lineWidth = outline * px * 2
     for (const wd of words) {
       if (karaokePill && wd.token === spoken) continue
+      c.direction = wordDirection(layout, wd.token)
       c.strokeText(wd.text, wd.x, wd.y)
     }
   }
@@ -176,6 +176,7 @@ function paintChunk(c: Ctx, layout: CaptionLayout, chunk: CaptionChunk, settings
     // On the pill the word is dark (or white on a dark pill) and needs no shadow.
     if (shadow) c.shadowColor = lit && karaokePill ? 'transparent' : shadow
     c.fillStyle = !lit ? settings.color : karaokePill ? (luminance(settings.highlightColor) > 0.5 ? '#0b0b10' : '#ffffff') : settings.highlightColor
+    c.direction = wordDirection(layout, wd.token)
     c.fillText(wd.text, wd.x, wd.y)
   }
   c.restore()

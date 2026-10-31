@@ -18,7 +18,7 @@ import {
 } from '../src/shared/captions/speakers'
 import { subtitleFile, toPlainText, toSrt, toVtt } from '../src/shared/captions/subtitles'
 import type { AudioLevels } from '../src/shared/audio/loudness'
-import { captionLayout, captionTokens, chunkIndexAt, spokenToken, type CaptionChunk, type MeasureText } from '../src/shared/captions/layout'
+import { captionLayout, captionTokens, chunkIndexAt, spokenToken, wordDirection, type CaptionChunk, type MeasureText } from '../src/shared/captions/layout'
 import type { CaptionSegment } from '../src/shared/types'
 
 const seg = (id: string, start: number, end: number, text: string, speaker?: string): CaptionSegment => ({ id, start, end, text, ...(speaker ? { speaker } : {}) })
@@ -150,6 +150,25 @@ describe('speakers in the files and on the video', () => {
     // Two lines a chunk: the name already shares its chunk with the first words.
     const two = captionLayout(speakerCaption(caption), { ...settings, maxLines: 2 }, 1080, 1920, measure)
     expect(shownText(two.chunks[0])).toBe('SPEAKER 1: / WELCOME BACK TO')
+  })
+
+  it('a right-to-left caption stays right to left with a Latin name, the name read first at its right end', () => {
+    const caption = seg('a', 0, 4, 'مرحبا بكم، كيف حالكم؟', 'Speaker 1')
+    const bare = captionLayout(caption, DEFAULT_CAPTIONS, 1920, 1080, measure)
+    const drawn = captionLayout(speakerCaption(caption), DEFAULT_CAPTIONS, 1920, 1080, measure)
+    expect(bare.rtl).toBe(true)
+    expect(drawn.rtl).toBe(true)
+    const line = drawn.chunks[0].lines[0]
+    expect([...line.words].sort((a, b) => a.x - b.x).map((wd) => wd.text)).toEqual(['حالكم؟', 'كيف', 'بكم،', 'مرحبا', 'Speaker', '1:'])
+    // The caption's words draw right to left (their punctuation on the correct side), the Latin name left to right ("1:", not ":1").
+    expect(line.words.map((wd) => wordDirection(drawn, wd.token))).toEqual(['ltr', 'ltr', 'rtl', 'rtl', 'rtl', 'rtl'])
+    // An Arabic name draws right to left like the caption; in a left-to-right caption every word draws left to right.
+    const arabicName = captionLayout(speakerCaption({ ...caption, speaker: 'أحمد' }), DEFAULT_CAPTIONS, 1920, 1080, measure)
+    expect(arabicName.rtl).toBe(true)
+    expect(wordDirection(arabicName, 0)).toBe('rtl')
+    const english = captionLayout(speakerCaption(seg('b', 0, 2, 'Hello there', 'أحمد')), DEFAULT_CAPTIONS, 1920, 1080, measure)
+    expect(english.rtl).toBe(false)
+    expect(english.tokens.map((_, i) => wordDirection(english, i))).toEqual(['ltr', 'ltr', 'ltr'])
   })
 })
 

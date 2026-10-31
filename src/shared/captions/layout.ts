@@ -335,7 +335,8 @@ export function captionLayout(
   const pieces = piecesOf(tokens, m.maxWidth, width)
   const lines = breakLines(pieces, m.maxWidth, space)
   const per = settings.maxLines === 1 ? 1 : 2
-  const rtl = RTL_FIRST.test(seg.text)
+  // The caption's own words decide, not the speaker's name before them (a Latin "Speaker 1:" before Arabic).
+  const rtl = RTL_FIRST.test(base.filter((t) => !t.label).map((t) => t.text).join(' '))
   const dirs = tokenDirs(tokens, rtl ? 'r' : 'l')
   const chunks: CaptionChunk[] = []
   const onlyName = ([a, b]: [number, number]): boolean => pieces.slice(a, b).every((p) => tokens[p.token].label)
@@ -417,6 +418,17 @@ export function spokenToken(layout: Pick<CaptionLayout, 'tokens'>, chunk: Pick<C
     else break
   }
   return spoken
+}
+
+/**
+ * The direction token `token` is drawn with: the caption's, which puts the punctuation of a
+ * right-to-left word on its correct side; a speaker's name without right-to-left letters before a
+ * right-to-left caption keeps left to right, so its colon stays after it ("You:", not ":You").
+ */
+export function wordDirection(layout: Pick<CaptionLayout, 'tokens' | 'rtl'>, token: number): 'ltr' | 'rtl' {
+  if (!layout.rtl) return 'ltr'
+  const t = layout.tokens[token]
+  return t?.label && !RTL_LETTER.test(t.text) ? 'ltr' : 'rtl'
 }
 
 /* ---------- placement ---------- */
