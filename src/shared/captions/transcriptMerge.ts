@@ -128,24 +128,53 @@ interface TextOverlap {
 }
 
 /**
+ * How many words two runs of words (by wordKey) share in order when they differ by at most one
+ * word, written differently ("OK" and "okay") or said in one only ("um"), and whether they differ;
+ * undefined when they differ by more.
+ */
+function sameButOne(x: readonly string[], y: readonly string[]): { shared: number; edits: number } | undefined {
+  let i = 0
+  let j = 0
+  let edits = 0
+  while (i < x.length || j < y.length) {
+    if (i < x.length && j < y.length && x[i] === y[j]) {
+      i++
+      j++
+      continue
+    }
+    if (++edits > 1) return undefined
+    if (x.length - i > y.length - j) i++
+    else if (y.length - j > x.length - i) j++
+    else {
+      i++
+      j++
+    }
+  }
+  return { shared: Math.min(x.length, y.length) - (edits && x.length === y.length ? 1 : 0), edits }
+}
+
+/**
  * The words the earlier part heard last (`theirs`) and the later part heard first (`mine`) at a
- * fixed cut, matched by text: the longest run of the later part's first words that repeats the
- * earlier part's last words (at most `most`, what the overlap can hold), allowing a word cut in
- * two at either edge (heard by one part only in part, so its text differs) when at least two
- * words match after it.
+ * fixed cut, matched by text: the run of the later part's first words (at most `most`, what the
+ * overlap can hold) that repeats the earlier part's last words with the most words shared. It may
+ * leave out a word cut in two at either edge (heard by one part only in part, so its text differs)
+ * and differ by one word inside (written differently by the two parts, or said in one only) when
+ * at least two words are shared. Its last word is the earlier part's last (whole) word, so the
+ * later part goes on from there.
  */
 function overlapByText(theirs: readonly RawWord[], mine: readonly RawWord[], most: number): TextOverlap {
   const a = theirs.map((w) => wordKey(w.text))
   const b = mine.map((w) => wordKey(w.text))
-  let best = { n: 0, tail: 0, head: 0 }
+  let best = { n: 0, tail: 0, head: 0, shared: 0, edits: 0 }
   for (const tail of [0, 1]) {
     for (const head of [0, 1]) {
-      for (let n = Math.min(a.length - tail, b.length - head, most); n > best.n; n--) {
-        let same = true
-        for (let i = 0; i < n && same; i++) same = a[a.length - tail - n + i] === b[head + i]
-        if (!same) continue
-        if (n >= (tail || head ? 2 : 1)) best = { n, tail, head }
-        break
+      for (let n = Math.min(b.length - head, most); n > 0; n--) {
+        for (const m of [n, n - 1, n + 1]) {
+          if (m < 1 || m > a.length - tail || a[a.length - tail - 1] !== b[head + n - 1]) continue
+          const match = sameButOne(a.slice(a.length - tail - m, a.length - tail), b.slice(head, head + n))
+          if (!match || match.shared < (tail || head || match.edits ? 2 : 1)) continue
+          if (match.shared > best.shared || (match.shared === best.shared && match.edits < best.edits)) best = { n, tail, head, ...match }
+        }
       }
     }
   }

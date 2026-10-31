@@ -224,14 +224,17 @@ can be seconds apart, so pairing them by time (within 0.5 s, as for providers th
 themselves) would lose or repeat words at nearly every cut. When both parts answered text only
 (every word estimated), the merge matches the overlap by text instead (`overlapByText`,
 `startAfterText` in `transcriptMerge.ts`): the earlier part keeps every word it heard; the later
-part drops its longest run of first words that repeats the earlier part's last words (by
-`wordKey`, at most 8 words a second of overlap, so text that repeats itself cannot swallow a
-part), allowing one word cut in two at either edge (its text differs from the whole word the other
-part heard) when at least two words match after it; that edge word is dropped too. The later
-part's first kept words, when timed before the earlier part's last kept word, are moved after it,
-and the words after them squeezed a little, over twice that distance, so captions follow one
-another and no word is lost. A word cut in two where fewer than two whole words are shared (a
-pause in the overlap) may still show twice.
+part drops the run of its first words that repeats the earlier part's last words with the most
+words shared (by `wordKey`, at most 8 words a second of overlap, so text that repeats itself
+cannot swallow a part). The run may leave out one word cut in two at either edge (its text differs
+from the whole word the other part heard; that edge word is dropped too) and differ by one word
+inside it (the two parts wrote it differently, "OK" and "okay", or only one said it, "um"; the
+earlier part's words are kept), when at least two words are shared; its last word is the earlier
+part's last whole word. The later part's first kept words, when timed before the earlier part's
+last kept word, are moved after it, and the words after them squeezed a little, over twice that
+distance, so captions follow one another and no word is lost. Where the parts differ by more (two
+words written differently, or a word cut in two where fewer than two whole words are shared, as
+with a pause in the overlap) the overlap may still show twice.
 
 Stretches of sound shorter than 0.12 s are left out of the spread (a sliver at a part's edge would
 squeeze a word to nothing and the caption would be dropped as too short).

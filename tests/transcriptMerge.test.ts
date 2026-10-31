@@ -254,6 +254,21 @@ describe('mergeParts', () => {
       expect(wordsOf(mergeParts(answer(garbled), duration))).toEqual(truth.map((w) => w.text))
     })
 
+    it('keeps the overlap once though the two parts write one word in it differently, or only one says it', () => {
+      const texts = answer().map((r) => r.transcript.segments.flatMap((s) => s.words!.map((w) => w.text)))
+      const words = truth.map((w) => w.text)
+      // The words both parts heard at the second cut.
+      const both = texts[2].filter((t) => texts[1].includes(t))
+      expect(both.length).toBeGreaterThanOrEqual(4)
+      // The later part writes the third of them differently ("okay" for "OK").
+      const okay = texts.map((t, i) => (i === 2 ? t.map((w) => (w === both[2] ? `${w}x` : w)) : t))
+      expect(wordsOf(mergeParts(answer(okay), duration))).toEqual(words)
+      // One part says an "um" before it that the other leaves out: kept if the earlier part said it.
+      const um = (t: string[]): string[] => t.flatMap((w) => (w === both[2] ? ['um', w] : [w]))
+      expect(wordsOf(mergeParts(answer(texts.map((t, i) => (i === 1 ? um(t) : t))), duration))).toEqual(um(words))
+      expect(wordsOf(mergeParts(answer(texts.map((t, i) => (i === 2 ? um(t) : t))), duration))).toEqual(words)
+    })
+
     it('matches no more words than the overlap can hold, though the text repeats', () => {
       // "one two three four" over and over: every run of the later part's first words repeats the earlier's last.
       const counting = answer().map((r) => r.transcript.segments.flatMap((s) => s.words!.map((w) => ['one', 'two', 'three', 'four'][Number(w.text.slice(1)) % 4])))
