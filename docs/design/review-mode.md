@@ -13,6 +13,7 @@ there before.
 | Review list (the pure rules) | `src/shared/review/*` |
 | Review panel (view, css) | `src/renderer/src/review/*` |
 | Record of automatic cuts | `Project.autoCuts` (optional, additive), read by `readAutoCuts` in the migration |
+| What was chosen for them | `Project.autoCutOutcomes` (optional, additive), read by `readAutoCutOutcomes` in the migration |
 | Entry points | a **Review** button in the editor's title bar, the `review` command in `Ctrl+K` (`Shift+R`) |
 
 ---
@@ -89,66 +90,42 @@ the 8× one, and all three stay listed.
 |---|---|---|
 | `zoom` | `ZoomSegment.auto === true` | the zoom exists and is still `auto` |
 | `camera` | `LayoutSegment.auto === true`; the director's face framing | the segment exists and is `auto`; `framingIsDirectors` |
-| `silence` | `autoCuts` by `silences` or `polish` | the record exists and its change is intact |
+| `silence` | `autoCuts` by `silences` or `polish` | the record exists, its change is intact and no choice is recorded for it |
 | `idle` | `autoCuts` by `smart-speed` | as above |
 | `words` | `autoCuts` by `filler`, `retake`, `repeat` | as above |
 
 Captions written by Polish and a style preset are not listed: captions have their own tab and are
 plain text the user edits; a style is one visible look, not a decision at a time.
 
-### 2.3 Status is derived from the project, never stored
+### 2.3 Status is read from the project
 
-Each listed item is **pending**, **kept** or **removed**, worked out from the current project:
+Each listed item is **pending**, **kept** or **removed**, read from the current project:
 
 * zoom / camera segment: exists and `auto` → pending; exists, not `auto` → kept; gone → removed.
 * face framing: `framingIsDirectors` → pending; framing still set (not the director's) → kept;
   framing back to none → removed.
-* automatic cut: record present and intact → pending. Otherwise: its footage is back as it was
-  (`was` pieces kept at their old speeds, or at the speed from before the speed-ups of the panel's
-  list taken back since, one at a time and the innermost first: a silence cut removed inside a
-  sped-up idle part, then the speed-up removed; each part of the footage goes out on its own until
-  it is back, through the one the panel listed later where two at one speed hold it (Polish at 4×
-  removed, Polish at 2× kept, Polish at 4× over both and Polish at 8× inside that, then the 8× and
-  the second 4× removed: the 8× goes out through the second 4×, to 2×), and a part back already
-  stays as it is, so a part inside a speed-up kept before the item is not taken out of it. For a
-  speed-up, a part that a later speed-up of the project or the list holds at the old speed, itself
-  or through one inside it, counts as back, and a part of a speed-up of the list kept since inside
-  a third one is the user's and left out: a 2× removed, then an 8× kept inside the 4× inside it. A
-  part one kept since holds at the item's own speed is left out too when some other part of the
-  item's footage still plays, or a speed-up of the project or a later one holds some of it below the
-  item's speed and still plays it at its own speed, itself or through another one inside it (a tool
-  only speeds up, so that footage was back when it was made): the kept one was made inside a later
-  one at the item's speed, after the item was removed (Polish at 2× removed, Smart speed at 2× over
-  its end, Polish at 4× inside that kept).
-  One made before the item, around it, holds that footage lower too, and so does one that took the
-  item over and was undone since, but neither plays it while the item is kept (Smart speed at 2×,
-  Polish at 4× inside it, Keep all, then Polish at 8× inside that kept: the 4× still reads kept).
-  Nor does a speed-up of the list hold footage that a record at its speed, or one the panel listed
-  later at its speed, holds from another speed: both cannot have played it at that speed (a tool
-  only speeds up what is slower), so the later one was made over it while the first one's change
-  there was gone (Polish at 2×, Polish at 4× over it, Ctrl+Z, K the 2×, Polish at 8× over its end
-  kept, then Polish at 4× over its start: the undone 4× lists that footage at 1×, the new one at 2×,
-  and the 2× still reads kept).
-  A speed-up the panel listed before the item appeared was made before it, so it counts for neither:
-  Polish at 2× removed, then Polish run again over the same silence with the panel open and the new
-  2× kept; Polish at 4× removed, Polish at 2× inside it kept, then Polish at 4× over both, and the
-  2× still reads kept) → removed; else → kept. When all of a speed-up's footage that still plays is
-  the user's through later ones kept, made inside later ones that have given it up since, a Keep
-  and a Remove of it leave the same project and list: it reads removed where they hold the footage
-  at another speed than its own, kept where they hold it at its own.
+* automatic cut or speed-up: the choice made for it in the panel (`Project.autoCutOutcomes`, §3)
+  when there is one. Else record present and intact → pending. Else (an undo, an edit by hand or a
+  later tool run took the record, with no choice made) → **removed** when its change is gone from
+  the video (all of a cut's footage plays again, at any speed; none of a speed-up's footage that is
+  still kept plays at its speed), **kept** otherwise (`changeGone`).
 
-So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
-again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the
-panel — rejected, it disagrees with the project after any undo.
+Why cuts and speed-ups record the choice: a zoom or camera segment carries its state itself
+(`auto`), so the project tells. Keep and Remove both drop a cut's record, and the footage cannot
+always tell which one was pressed: nested speed-ups, undo and later runs over the same footage can
+leave the same clips and records after a Keep as after a Remove. So the choice is written in the
+same `store.update` as the change it makes (§2.4): undo and redo take it back and forth with the
+footage, and a row always agrees with the project.
+
+So **undo and redo just work**: undoing a Keep makes the zoom `auto` again, or brings a cut's
+record back without its choice, and the item pending again, with no second copy of the state to
+keep in step. Alternative: a set of reviewed ids in the panel — rejected, it disagrees with the
+project after any undo.
 
 The panel keeps one thing of its own: the list of items it showed (a snapshot taken when it opens,
-with every new pending item added as it appears, numbered after the items already shown (`seq`),
-and every pending item taken as it is now), so kept and removed items stay in the list, marked,
-until the panel closes. Reopening lists only what is still automatic. A record older than one still
-listed is not new work: an undo brought it back from before the panel opened (a tool run adds its
-records after all others, and records keep that order), so it is numbered as if in the first list
-(Smart speed at 2×, Polish at 4× inside it, K the idle row, Esc, reopen, Ctrl+Z: the idle row comes
-back, made before the silence row, and reads removed once removed).
+with every new pending item added as it appears, and every pending item taken as it is now), so
+kept and removed items stay in the list, marked, until the panel closes. Reopening lists only what
+is still automatic: a record with a choice is never listed.
 
 ### 2.4 Keep and Remove
 
@@ -157,12 +134,13 @@ back, made before the silence row, and reads removed once removed).
 | zoom | `auto: false` (as an edit by hand does) | the zoom is deleted |
 | camera segment | `auto` and `cutOut` cleared | the segment is deleted; a `cutOut` piece turns back into the position's corner and joins its touching pieces (as `withoutDirected` does for one run) |
 | face framing | `director.framed` dropped (the framing is yours) | webcam `zoom/cropX/cropY` removed and `director.framed` dropped (`clearDirected`'s framing part) |
-| automatic cut | the record is dropped (the cut stays, now a plain cut) | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); the record is dropped |
-| automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`), and so does one that holds that part of it in turn (a 2× around a 4× around the 8× kept): the part is yours now, and the earlier ones stay listed for the rest | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one |
+| automatic cut | the record is dropped (the cut stays, now a plain cut); `kept` is recorded for its id | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); the record is dropped; `removed` is recorded for its id |
+| automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`), and so does one that holds that part of it in turn (a 2× around a 4× around the 8× kept): the part is yours now, and the earlier ones stay listed for the rest; `kept` is recorded for its id | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one; `removed` is recorded for its id |
 
-Each Keep or Remove is **one** `store.update` (one undo step). **Keep all** keeps every pending
-item in one update; **Remove all of this kind** removes every pending item of the focused item's
-kind in one update. Removing cuts goes from the latest in source time to the earliest so restoring
+Each Keep or Remove is **one** `store.update` (one undo step), the recorded choice included.
+**Keep all** keeps every pending item in one update; **Remove all of this kind** removes every
+pending item of the focused item's kind in one update; each records the choice for every cut and
+speed-up it acts on. Removing cuts goes from the latest in source time to the earliest so restoring
 one never shifts another (they are in source time anyway; the order only keeps `restoreRange`'s
 joins predictable).
 
@@ -200,7 +178,15 @@ export interface AutoCut {
   words?: string
 }
 
+/** Keep or Remove pressed in the Review panel for an automatic cut or speed-up. */
+export interface AutoCutOutcome {
+  /** The AutoCut's id. */
+  id: string
+  outcome: 'kept' | 'removed'
+}
+
 Project.autoCuts?: AutoCut[]
+Project.autoCutOutcomes?: AutoCutOutcome[]
 ```
 
 * **Absent** in every project from before (and in projects nothing automatic has cut): the
@@ -212,15 +198,26 @@ Project.autoCuts?: AutoCut[]
   pieces finite, inside `[start, end]`, speed in `[0.25, 16]`, at most 64 pieces; `words` a string
   cut to 80 characters; at most 1000 records (the newest kept). Anything else is dropped; an empty
   result is `undefined` (no key). Idempotent.
-* A copy (Duplicate, vertical version) carries the records with the clips; they are in source time
-  of the same media.
-* Rendering, export, captions and the audio plan never read `autoCuts`.
+* `autoCutOutcomes` is **absent** until a choice is made in the panel (the migration adds no key:
+  `optional('autoCutOutcomes', readAutoCutOutcomes(...))`), so old projects, and projects with
+  records but no choice, load and save byte for byte unchanged. Keep, Remove, Keep all and Remove
+  all add one entry per cut or speed-up they act on (`withOutcomes`): one entry per record id, a
+  new choice for an id taking the old one's place at the end, at most 1000 (the newest kept). A
+  choice outlives its record, which the same edit drops.
+* `readAutoCutOutcomes(raw)`: an array of plain objects only, fields read one by one; `id` a string
+  of 1–64 characters; `outcome` `'kept'` or `'removed'`; one entry per id (a later entry for an id
+  is the newer choice and takes its place); at most 1000 (the newest kept). Anything else is
+  dropped; an empty result is `undefined` (no key). Idempotent.
+* A copy (Duplicate, vertical version) carries the records and the choices with the clips; they are
+  in source time of the same media.
+* Rendering, export, captions and the audio plan never read `autoCuts` or `autoCutOutcomes`.
 
 ## 4. Exact behaviour and numbers
 
 ### 4.1 Recording a change (`recordAutoCuts`)
 
-`recordAutoCuts(project, nextClips, ranges, action, by, words?) → Project`:
+`recordAutoCuts(project, nextClips, ranges, action, by, newId?) → Project` (a range may carry its own
+`by` and `words`):
 1. `removed` = the kept source time of `project.clips` that is not kept in `nextClips` (for a cut),
    or the kept time whose speed changed to `action` (for a speed-up); each piece with its old speed.
 2. The pieces are split at the ranges' ends; a part inside a range goes to the first range holding
@@ -250,6 +247,10 @@ faster record counts (a tool only speeds up), so a chain is at most three deep. 
 hold is worked out one speed at a time, the slowest first, as one set of parts for each speed (not
 path by path), once for a list and its clips. Records are judged among the others still intact, so
 a speed-up whose later record went stale goes too.
+
+Change gone (`changeGone`, the reading of a record that went with no choice made, §2.3): for a
+cut, every `was` piece is kept again (at any speed), within 1 ms; for a speed-up, some of its `was`
+pieces are still kept and none of that plays at `action`, within 1 ms.
 
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
@@ -294,11 +295,15 @@ Titles (exact copy):
 right` from the anchor (else a fixed focus point) in thirds; `<n>` is the source length of the
 `was` pieces with one decimal; `<corner>` is `top left`, `top right`, `bottom left`, `bottom right`.
 
-`reviewStatus(project, item, listed?) → 'pending' | 'kept' | 'removed'` (§2.3; `listed` is the
-panel's list). `reviewProgress(statuses)` gives `{ reviewed, total }`.
+`reviewStatus(project, item) → 'pending' | 'kept' | 'removed'` (§2.3). `reviewProgress(statuses)`
+gives `{ reviewed, total }`. A cut or speed-up with a recorded choice is not listed by
+`reviewItems`, even where a hand-edited file still holds its record.
 
 `pendingCount(project)` is the badge on the Review button (`reviewItems(project).length`, every
 listed item being pending by construction).
+
+`mergeSnapshot(shown, current)` is the panel's list (§2.3): `shown` with each item still pending
+taken as it is in `current`, plus the items of `current` not shown yet, in time order.
 
 ### 4.3 The panel
 
@@ -368,18 +373,24 @@ Nothing new reads files, runs programs or talks to the network. `project.json` i
 `readAutoCuts` keeps only well-formed records (types, finite numbers, bounded lengths and counts, no
 prototype keys copied: fields are read one by one), so a hand-edited file cannot crash the list or
 make Remove restore time outside the recording (`restoreRange` clamps to the duration as well).
+`readAutoCutOutcomes` does the same for the choices (plain objects, bounded ids, an outcome from
+its list, at most 1000); a choice only ever changes how a row reads, never the footage.
 What records hold is worked out a speed at a time, each speed as one set of parts, and a chain
 only goes on to a faster record, so the cost grows with the pieces stored, never with the ways
 footage is handed from one record to another: a file with a thousand records over the same footage
 (at their own speed, or over three rising speeds with 64 pieces each) is listed, settled and shown
-in the panel in milliseconds. In such a file, once many rows are kept or removed, reading them
-again can take a few seconds, as each row leaves itself out of what the others hold.
+in the panel in milliseconds. A row's status reads its recorded choice by id, or its record and the
+clips, so reading the rows again after many are kept or removed costs no more.
 
 ## 7. Files and exported signatures
 
-* `src/shared/review/autoCuts.ts` — `AUTO_CUT_SOURCES`, `readAutoCuts(raw, duration)`,
-  `recordAutoCuts(project, nextClips, ranges, action, by, words?)`, `autoCutIntact(cut, clips)`,
-  `footageBack(cut, clips)`, `undoAutoCut(clips, cut, duration)`, `liveAutoCuts(project)`.
+* `src/shared/review/autoCutData.ts` — `AUTO_CUT_SOURCES`, `readAutoCuts(raw, duration)`,
+  `readAutoCutOutcomes(raw)`, `withOutcomes(list, chosen)` (the migration's sanitisers, free of
+  editor code).
+* `src/shared/review/autoCuts.ts` — `recordAutoCuts(project, nextClips, ranges, action, by, newId?)`,
+  `autoCutIntact(cut, clips, list?)`, `changeGone(cut, clips)`, `undoAutoCut(clips, cut, duration)`,
+  `liveAutoCuts(project)`, `settleAutoCuts(next, prev)`, `withSpeedUpKept(list, kept)`,
+  `withoutSpeedUp(list, speedUp)`, `withAutoCuts(project, list)`.
 * `src/shared/review/review.ts` — `ReviewKind`, `ReviewItem`, `ReviewStatus`, `reviewItems(project)`,
   `reviewStatus(project, item)`, `keepItems(project, items)`, `removeItems(project, items)`,
   `mergeSnapshot(snapshot, current)`, `reviewProgress`, `KIND_WORDS`.
@@ -391,7 +402,8 @@ again can take a few seconds, as each row leaves itself out of what the others h
 * `src/shared/review/wordCuts.ts` — `suggestionRanges(words, items, duration)`.
 * `src/shared/review/keys.ts` — `listKey(event)`: what a key pressed in the list does, or null.
 * `src/renderer/src/review/ReviewPanel.tsx`, `ReviewButton.tsx`, `playStretch.ts`, `review.css`.
-* Additive lines: `types.ts` (`AutoCut`, `Project.autoCuts`), `engine/project.ts` (one line),
+* Additive lines: `types.ts` (`AutoCut`, `AutoCutOutcome`, `Project.autoCuts`,
+  `Project.autoCutOutcomes`), `engine/project.ts` (two lines),
   `Editor.tsx`'s store settle (`settleAutoCuts` after `settleDeletedWords`),
   `ClipPanel.tsx` apply, `polish.ts` silences step, `TranscriptPanel.tsx` Remove all,
   `commands.ts`/`shortcuts.ts` (the command and its key), `Editor.tsx` (state, button, command,
@@ -402,6 +414,9 @@ again can take a few seconds, as each row leaves itself out of what the others h
 * **A record drifts from the clips** (the user edits that part by hand): the record turns stale and
   is not listed; Remove of an intact record is computed from the clips at that moment, never from a
   snapshot. Tested.
+* **The choices grow with the project**: one small entry per cut or speed-up reviewed, at most 1000
+  kept (the newest); an older choice dropped by that limit belongs to a record long gone, so only a
+  row still shown in an open panel could read the fallback (§2.3) instead.
 * **Restoring a cut next to clips at another speed**: `restoreRange` makes the footage a 1× clip and
   `setRangeSpeed` sets it back; tested at 2× and 0.5×.
 * **Polish's "polishing again changes nothing"**: recording adds nothing when the clips do not
@@ -416,6 +431,11 @@ again can take a few seconds, as each row leaves itself out of what the others h
 Unit (`tests/review*.test.ts`), each failing without its code:
 * `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; capped; idempotent; a
   project without `autoCuts` migrates with no key (byte-for-byte JSON equal to the old migration).
+* `readAutoCutOutcomes`: absent or empty → undefined; malformed entries dropped (not an object, id
+  empty or over 64 characters, an unknown outcome, extra fields not copied); one entry per id, the
+  later one kept; capped at 1000, the newest kept; idempotent; a project without choices (with
+  records or not) migrates with no key, byte for byte; Duplicate and the vertical and square copies
+  carry the choices; only Review mode and the migration name the field.
 * `recordAutoCuts`: a silence cut records the exact removed pieces with speeds; a sliver taken by
   `cutRange` joins its record; a refused cut records nothing; speed-ups record only changed pieces;
   stale records are dropped; same clips → same project.
@@ -423,6 +443,17 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   user re-timed since are left alone.
 * `reviewItems`/`reviewStatus`: each kind and title; statuses after keep, remove, undo (an
   `EditStore` round trip: one undo step each, `Keep all` and `Remove all` one step).
+* Choices (`tests/reviewOutcomes.test.ts`): histories replayed through the editor's store (its
+  settle step) and the panel's list, as the panel drives them: every case earlier review rounds
+  found (nested speed-ups, undo, redo, reopening, later runs, Keep all), every order of Keep and
+  Remove over nested runs (and the removed ones, then Keep all), two histories that leave the same
+  clips and records, and seeded random histories with undo, redo, reopening and edits by hand.
+  After each step every row the user chose reads that choice and the project holds exactly those
+  choices. Keep, Remove, Keep all and Remove all are one undo step each: the rows go back to
+  pending and forward again on redo. Reopening lists only what is still automatic. Edits by hand
+  after a choice leave it; with no choice, the rows read `changeGone` (undone runs, runs undone
+  from the inside out, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken
+  over by a later one).
 * Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
 * `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
 * Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).

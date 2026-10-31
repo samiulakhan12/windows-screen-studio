@@ -116,8 +116,10 @@ layout segments marked `auto`, the director's face framing, and `Project.autoCut
 the record of cuts and speed-ups made by Remove silences, Smart speed, Polish and the fillers
 list's Remove all, each with the kept pieces from before so Remove puts the footage back at its
 speed (`shared/review/autoCuts.ts`, written in the same `store.update` as the cut). Statuses are
-derived from the project (`shared/review/review.ts`), so undo needs nothing more; nothing renders
-from the record.
+read from the project (`shared/review/review.ts`): for zooms and layouts their `auto` mark, for
+cuts and speed-ups the choice made in the panel, which Keep and Remove write to
+`Project.autoCutOutcomes` (optional) in the same update as the change, so undo needs nothing more;
+nothing renders from the record or the choices.
 
 **Following the action** (`Project.reframe`, NW-05, `docs/design/vertical-video.md`) applies only in
 a frame at least 10% narrower than the drawn recording (`shared/engine/reframeData.ts`
