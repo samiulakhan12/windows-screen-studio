@@ -43,6 +43,8 @@ export interface ReviewItem {
   segment?: Pick<LayoutSegment, 'id' | 'layout' | 'corner' | 'cutOut'>
   /** A cut or speed-up as listed (its status reads the footage after the record is gone). */
   cut?: AutoCut
+  /** When the panel listed it: none in its first list, one more for each batch added since (mergeSnapshot). */
+  seq?: number
 }
 
 const EPS = 1e-6
@@ -108,10 +110,14 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
   const ids = new Set(records.map((c) => c.id))
   // A part sped up again on top of it (a speed-up of the project or of the list) is under that one;
-  // a part a speed-up of the list kept since plays on top of a third one is the user's.
+  // a part a speed-up of the list kept since plays on top of a third one is the user's. One at the
+  // same speed that the panel listed before this item appeared was made before it: where its
+  // footage plays at that speed, this item is what plays it, so it is left out of both.
   const reviewed = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))
-  const over = [...records, ...reviewed]
-  let before = withoutKeptInside(cut, project.clips, reviewed, over)
+  const earlier = new Set(listed.flatMap((i) => (i.cut?.action === cut.action && (i.seq ?? 0) < (item.seq ?? 0) ? [i.cut.id] : [])))
+  const others = reviewed.filter((r) => !earlier.has(r.id))
+  const over = [...records, ...others]
+  let before = withoutKeptInside(cut, project.clips, others, over)
   if (footageBack(before, project.clips, over)) return 'removed'
   // Out through the speed-ups of the list taken back since, one at a time and the innermost first
   // (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×), until the footage is back.
@@ -133,13 +139,17 @@ export function reviewProgress(statuses: readonly ReviewStatus[]): { reviewed: n
  * The panel's list: what it showed (`shown`, kept and removed items stay, marked) plus every item of
  * `current` (pending now) it did not show yet, in time order. A pending item also shown takes its
  * current version (a zoom's place could change; a record's pieces could, when a speed-up around it
- * was removed).
+ * was removed). An item added to a list already shown is numbered after every item in it (`seq`).
  */
 export function mergeSnapshot(shown: readonly ReviewItem[], current: readonly ReviewItem[]): ReviewItem[] {
   const now = new Map(current.map((i) => [i.key, i]))
   const keys = new Set(shown.map((i) => i.key))
-  const out = shown.map((i) => now.get(i.key) ?? i)
-  for (const i of current) if (!keys.has(i.key)) out.push(i)
+  const out = shown.map((i) => {
+    const c = now.get(i.key)
+    return c && i.seq ? { ...c, seq: i.seq } : (c ?? i)
+  })
+  const seq = shown.length ? Math.max(0, ...shown.map((i) => i.seq ?? 0)) + 1 : 0
+  for (const i of current) if (!keys.has(i.key)) out.push(seq ? { ...i, seq } : i)
   return out.sort(byTime)
 }
 

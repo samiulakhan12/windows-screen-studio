@@ -715,4 +715,61 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     ])
     expect(rows(p, shown)).toEqual(['f1:kept', 'g1:removed', 'c1:removed'])
   })
+
+  it('a speed-up made again with the list open after one over the same footage was removed reads kept once kept', () => {
+    // Polish at 2x, Delete in the list, Polish again (Shift+P) over the same silence, then K.
+    let p = auto(project(), 5, 9, 2, 'polish', 'a')
+    let shown = reviewItems(p)
+    p = removeItems(p, [shown[0]])
+    shown = mergeSnapshot(shown, reviewItems(p))
+    p = auto(p, 5, 9, 2, 'polish', 'b')
+    shown = mergeSnapshot(shown, reviewItems(p))
+    expect(rows(p, shown)).toEqual(['a1:removed', 'b1:pending'])
+    p = keepItems(p, [shown[1]])
+    shown = mergeSnapshot(shown, reviewItems(p))
+    expect(plays(p.clips)).toEqual([
+      [0, 5, 1],
+      [5, 9, 2],
+      [9, 20, 1]
+    ])
+    expect(rows(p, shown)).toEqual(['a1:removed', 'b1:kept'])
+    // The same inside a wider idle part removed first: Smart speed at 2x, Delete, then Polish at 2x and K.
+    p = auto(project(), 3, 15, 2, 'smart-speed', 'f')
+    shown = reviewItems(p)
+    p = removeItems(p, [shown[0]])
+    shown = mergeSnapshot(shown, reviewItems(p))
+    p = auto(p, 5, 9, 2, 'polish', 'g')
+    shown = mergeSnapshot(shown, reviewItems(p))
+    p = keepItems(p, [shown[1]])
+    shown = mergeSnapshot(shown, reviewItems(p))
+    expect(plays(p.clips)).toEqual([
+      [0, 5, 1],
+      [5, 9, 2],
+      [9, 20, 1]
+    ])
+    expect(rows(p, shown)).toEqual(['f1:removed', 'g1:kept'])
+  })
+
+  it('an 8x over a 4x kept earlier and a 2x: removing the 8x and then the 2x reads removed for both', () => {
+    // Polish at 4x, Keep all; with the list open, Smart speed at 2x next to it and Polish at 8x over
+    // part of both; Delete the 8x, then the 2x. The kept 4x is not one taken back.
+    let p = auto(project(), 7.5, 13.5, 4, 'polish', 'k')
+    let shown = reviewItems(p)
+    p = keepItems(p, shown)
+    shown = mergeSnapshot(shown, reviewItems(p))
+    p = auto(p, 14.5, 18.5, 2, 'smart-speed', 'f')
+    shown = mergeSnapshot(shown, reviewItems(p))
+    p = auto(p, 10, 15.5, 8, 'polish', 'e')
+    shown = mergeSnapshot(shown, reviewItems(p))
+    for (const id of ['e1', 'f1']) {
+      p = removeItems(p, [shown.find((i) => i.cut!.id === id)!])
+      shown = mergeSnapshot(shown, reviewItems(p))
+    }
+    expect(plays(p.clips)).toEqual([
+      [0, 7.5, 1],
+      [7.5, 13.5, 4],
+      [13.5, 20, 1]
+    ])
+    expect(rows(p, shown)).toEqual(['k1:kept', 'e1:removed', 'f1:removed'])
+  })
 })

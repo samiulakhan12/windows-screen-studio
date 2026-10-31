@@ -109,16 +109,19 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
   sped-up idle part, then the speed-up removed; for a speed-up, a part that a later speed-up of the
   project or the list holds at the old speed, itself or through one inside it, counts as back, and
   a part of a speed-up of the list kept since inside a third one is the user's and left out: a 2×
-  removed, then an 8× kept inside the 4× inside it) → removed; else → kept.
+  removed, then an 8× kept inside the 4× inside it; a speed-up at the item's speed that the panel
+  listed before the item appeared was made before it, so where its footage plays at that speed the
+  item is what plays it, and it counts for neither: Polish at 2× removed, then Polish run again
+  over the same silence with the panel open and the new 2× kept) → removed; else → kept.
 
 So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
 again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the
 panel — rejected, it disagrees with the project after any undo.
 
 The panel keeps one thing of its own: the list of items it showed (a snapshot taken when it opens,
-with every new pending item added as it appears and every pending item taken as it is now), so
-kept and removed items stay in the list, marked, until the panel closes. Reopening lists only what
-is still automatic.
+with every new pending item added as it appears, numbered after the items already shown (`seq`),
+and every pending item taken as it is now), so kept and removed items stay in the list, marked,
+until the panel closes. Reopening lists only what is still automatic.
 
 ### 2.4 Keep and Remove
 
