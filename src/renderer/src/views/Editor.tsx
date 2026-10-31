@@ -91,6 +91,9 @@ import { addChapterAt, addTitleAt, brandFontFor } from '../editor/titleItems'
 import { OverlayDropZone } from '../editor/OverlayDropZone'
 import { ipcMessage, noteItemCopy, pasteClipboardImage } from '../editor/overlayItems'
 import { requestCaptions } from '../editor/captionItems'
+import { captionCommands } from '../editor/captionCommands'
+import { usePreviewLook } from '../editor/previewLook'
+import { settleCaptionAuto } from '../../../shared/captions/captionAutoSettle'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
@@ -179,8 +182,10 @@ async function openSession(projectId: string): Promise<Session> {
   // Likewise without its camera when the camera file is missing (its layouts then leave the screen be).
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
-  // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2).
-  const store = new EditStore(project, undefined, undefined, undefined, settleDeletedWords)
+  // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2);
+  // then automatic caption changes become the user's when edited by hand, and marks, word anchors and
+  // per-caption places follow their words (Captions Studio §11.8). Each is part of the edit's undo step.
+  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) => settleCaptionAuto(settleDeletedWords(next, prev), prev))
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),
@@ -423,9 +428,13 @@ function EditorSession({
     () => ({ project: drawn.project, cursor: drawn.cursor, cursorPath, focusPath, ...(drawn.crop ? { crop: drawn.crop } : {}) }),
     [drawn, cursorPath, focusPath]
   )
+  // A caption look hovered or focused in the gallery shows on the preview only (Captions Studio
+  // §2.5): the export, the project and the undo stack never see it.
+  const previewLook = usePreviewLook()
+  const previewScene: RenderScene = useMemo(() => (previewLook ? { ...scene, project: { ...scene.project, captions: previewLook.captions } } : scene), [scene, previewLook])
 
   useEffect(() => player.setProject(project), [player, project])
-  useEffect(() => player.setScene(scene, background), [player, scene, background])
+  useEffect(() => player.setScene(previewScene, background), [player, previewScene, background])
   const sceneRef = useRef(scene)
   sceneRef.current = scene
   // The frame as drawn: a tall one gets the safe-zone toggle (docs/design/vertical-video.md §2.8).
@@ -1219,15 +1228,16 @@ function EditorSession({
         setTab('captions')
         requestCaptions({ kind: 'export' })
       },
-      // Captions Studio (docs/design/captions-studio.md §2.14): they open the Captions tab until
-      // part P3 wires each to its section and part P4's planners.
-      captionsGreat: showTab('captions'),
-      captionStyles: showTab('captions'),
-      captionEmphasis: showTab('captions'),
-      captionGraphics: showTab('captions'),
-      captionTidy: showTab('captions'),
-      captionLanguage: showTab('captions'),
-      saveCaptionStyle: showTab('captions'),
+      // Captions Studio (docs/design/captions-studio.md §2.14): each opens its tab and does what its button does.
+      ...captionCommands({
+        store,
+        setTab,
+        notice: showNotice,
+        frame: () => {
+          const f = editorFrame(store.state)
+          return { w: f.outW, h: f.outH }
+        }
+      }),
       showCaptions: showTab('captions'),
       showStyle: showTab('style'),
       showCursor: showTab('cursor'),
@@ -1624,7 +1634,7 @@ function EditorSession({
               selectedAnnotation={selectedAnnotation}
               onTogglePlay={actions.togglePlay}
               onExitPick={exitPick}
-              scene={scene}
+              scene={previewScene}
               selection={selection}
               onSelect={setSelection}
               cropTool={cropTool}

@@ -70,6 +70,11 @@ export function takeCaptionsRequest(): CaptionsRequest | null {
   return r
 }
 
+/** The request waiting for the tab, left there (Captions Studio: the Languages and Clean up sections take theirs). */
+export function peekCaptionsRequest(): CaptionsRequest | null {
+  return pending
+}
+
 export function onCaptionsRequest(listener: () => void): () => void {
   requestListeners.add(listener)
   return () => requestListeners.delete(listener)

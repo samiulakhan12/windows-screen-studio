@@ -1,0 +1,211 @@
+/* ---------- Inspector › Graphics (Captions Studio, docs/design/captions-studio.md §2.11) ---------- */
+
+.graphics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.graphics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.graphics-add {
+  position: relative;
+}
+
+.graphics-add-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.graphics-add-menu [role='menuitem'] {
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+}
+
+.graphics-add-menu [role='menuitem']:hover,
+.graphics-add-menu [role='menuitem']:focus-visible {
+  background: var(--surface-4);
+}
+
+.graphics-list button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.graphics-list button > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graphics-list button.active {
+  background: var(--accent-soft);
+}
+
+.graphics-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.graphics-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.graphics-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.graphics-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.graphics-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.emoji-current {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.emoji-glyph {
+  font-family: 'FlownCat-noto-color-emoji', 'Segoe UI Emoji', sans-serif;
+  font-size: 22px;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.emoji-cell {
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: 'FlownCat-noto-color-emoji', 'Segoe UI Emoji', sans-serif;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.emoji-cell:hover {
+  background: var(--surface-3);
+}
+
+.emoji-cell.active {
+  border-color: var(--focus-ring);
+  background: var(--accent-soft);
+}
+
+/* ---------- the Graphics row of the timeline (two classes each: editor.css loads after this file) ---------- */
+
+.tl-track.graphics-track {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
+  cursor: col-resize;
+}
+
+/* White labels on #a8390c (6.6:1) and #7c2d12 (9.0:1), also under the hover brightness (labelContrast.test.ts). */
+.seg.graphic-seg {
+  justify-content: flex-start;
+  gap: 4px;
+  color: #ffffff;
+  background: linear-gradient(180deg, #a8390c, #7c2d12);
+  border: 1px solid #fdba74;
+}
+
+/* Made automatically and not reviewed yet: a dashed edge, the same fill. */
+.seg.graphic-seg.auto {
+  border-style: dashed;
+}
+
+.seg.graphic-seg .seg-icon {
+  flex: none;
+  display: flex;
+  margin-left: 4px;
+  pointer-events: none;
+}
+
+.seg.graphic-seg .seg-label {
+  padding-left: 0;
+}
+
+.tl-labels .tl-label.graphics-label {
+  --kind: #fdba74;
+}
+
+/* ---------- graphics and the caption block on the preview (paused) ---------- */
+
+.graphic-handle {
+  position: absolute;
+  z-index: 3;
+  padding: 0;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: grab;
+}
+
+.graphic-handle:hover,
+.graphic-handle.selected {
+  border-color: var(--focus-ring);
+}
+
+.graphic-handle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.caption-block-handle {
+  position: absolute;
+  z-index: 2;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-sm);
+  cursor: move;
+}
+
+.caption-block-handle:hover {
+  border-color: var(--focus-ring);
+}

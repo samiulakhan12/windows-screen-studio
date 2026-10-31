@@ -1,4 +1,5 @@
 import { CaptionTrack, CaptionTrackLabel } from './CaptionTrack'
+import { GraphicsTrack, GraphicsTrackLabel } from './GraphicsTrack'
 import { ClipWaveform, useWaveformHint } from './ClipWaveform'
 import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
 import { TitleTrack, TitleTrackLabel } from './TitleTrack'
@@ -631,6 +632,7 @@ export const Timeline = memo(
             <OverlayTrackLabel />
             <TitleTrackLabel />
             <CaptionTrackLabel />
+            <GraphicsTrackLabel />
             <LayoutTrackLabel />
           </div>
           <div className="tl-scroller" ref={scrollerRef} data-testid="timeline-scroller">
@@ -838,6 +840,7 @@ export const Timeline = memo(
               <OverlayTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
+              <GraphicsTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
 
               <SnapGuide ref={guideRef} />

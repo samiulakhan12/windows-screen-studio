@@ -26,6 +26,10 @@ import type { InspectorProps } from '../Inspector'
 import './transcript.css'
 import './speakers.css'
 import { TIMING_COPY } from '../../../../shared/captions/transcriptTiming'
+import { toggleEmphasis, withCaptionPlace } from '../../../../shared/captions/marks'
+import { captionsOf } from '../../../../shared/captions/settings'
+import { LEGACY_TILES } from '../../../../shared/captions/studioPresets'
+import { emphasisNotice, removesEmphasis, selectionSpans, wordEmphasis } from './transcriptMarks'
 
 /*
  * Edit by text (NW-04, NW-01; docs/design/edit-by-text.md): the transcript word by word. Deleting
@@ -120,6 +124,10 @@ function TranscriptEditor({
   const selectedCut = span ? flags.slice(span[0], span[1] + 1) : []
   const canCut = selectedCut.some((f) => !f)
   const canRestore = selectedCut.some((f) => f)
+  // Captions Studio (docs/design/captions-studio.md §2.7): emphasised words, and one caption's place.
+  const emphasis = useMemo(() => wordEmphasis(words, project.captionMarks, transcript.segments, transcript.language), [words, project.captionMarks, transcript])
+  const focusCaption = sel ? (words[sel.focus]?.caption ?? null) : null
+  const focusPlace = focusCaption ? (project.captionPlaces?.find((c) => c.caption === focusCaption)?.position ?? 'auto') : 'auto'
 
   // The word under the playhead, re-rendered only when it changes.
   const wordsRef = useRef(words)
@@ -194,6 +202,29 @@ function TranscriptEditor({
     const after = cutFlags(words, next)
     const back = flags.reduce((n, f, i) => n + (f && !after[i] ? 1 : 0), 0)
     onNotice(`Restored ${plural(back, 'word')}`)
+  }
+
+  /**
+   * Emphasis on the selected words (Emphasise, Ctrl+B; Ctrl+Shift+B in the second colour): removed
+   * when every selected word has it, else added; one undo step. On a Classic look the first
+   * emphasis makes its Studio twin in the same step (toggleEmphasis), and the notice says so.
+   */
+  const emphasise = (tone?: 2): void => {
+    if (!span) return onNotice('Select words first')
+    const spans = selectionSpans(words, span[0], span[1], transcript.segments, transcript.language)
+    if (!spans.length) return
+    const removed = removesEmphasis(spans, store.state.captionMarks, tone)
+    const before = captionsOf(store.state)
+    store.update((p) => toggleEmphasis(p, spans, tone))
+    const twinOf = !removed && !before.studio && store.state.captions?.studio ? (LEGACY_TILES.find((t) => t.preset === before.preset)?.name ?? 'Clean') : null
+    onNotice(emphasisNotice(span[1] - span[0] + 1, removed, twinOf))
+  }
+
+  /** The caption of the focused word placed at the top or the bottom, or back to the look's place: one undo step (§2.7). */
+  const placeCaption = (position: 'auto' | 'top' | 'bottom'): void => {
+    if (!focusCaption) return
+    store.update((p) => withCaptionPlace(p, focusCaption, position === 'auto' ? null : position))
+    onNotice(position === 'auto' ? 'This caption follows the look’s position again' : `This caption shows at the ${position}`)
   }
 
   /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). So do the review list's Keep, Remove, Remove all and Close, whose row or list goes (the focus would fall to the page). */
@@ -310,6 +341,10 @@ function TranscriptEditor({
     } else if (plain && !e.shiftKey && e.key === 'Enter') {
       own()
       if (sel) goTo(sel.focus)
+    } else if ((e.ctrlKey || e.metaKey) && !e.altKey && eventKeyName(e) === 'B') {
+      // Emphasis, read on any layout as Ctrl+A is; Shift gives the second colour (§2.7).
+      own()
+      emphasise(e.shiftKey ? 2 : undefined)
     } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && eventKeyName(e) === 'A') {
       // Read as the editor reads it: Ctrl+A on any layout (Cyrillic, Greek, Bangla) is the A key.
       own()
@@ -430,6 +465,26 @@ function TranscriptEditor({
             <EditorIcon name="sparkle" size={14} /> Find fillers and retakes
           </button>
         </div>
+        <div className="row start transcript-tools transcript-emphasis">
+          <button className="btn small" onClick={refocus(() => emphasise())} disabled={!span} title="Emphasise the selected words (Ctrl+B)" data-testid="transcript-emphasise">
+            <strong aria-hidden="true">B</strong> Emphasise
+          </button>
+          <EmphasisMenu disabled={!span} onSecond={refocus(() => emphasise(2))} />
+          <label className="transcript-place">
+            <span>Caption position</span>
+            <select
+              data-testid="caption-row-position"
+              value={focusPlace}
+              disabled={!focusCaption}
+              title="Where the caption of the selected words shows: Auto follows the look"
+              onChange={(e) => placeCaption(e.target.value as 'auto' | 'top' | 'bottom')}
+            >
+              <option value="auto">Auto</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </label>
+        </div>
         <p className="hint">Select words and press Delete to cut them. Click a word to go there.</p>
         {estimated && <p className="hint">Some word times are estimated: cuts there may be less exact.</p>}
         {allEstimated && <p className="hint">{TIMING_COPY.transcriptAll}</p>}
@@ -479,10 +534,12 @@ function TranscriptEditor({
                 if (i === focus) classes.push('focus')
                 if (suggested.has(i)) classes.push('suggested')
                 if (w.estimated) classes.push('estimated')
+                if (emphasis[i]) classes.push(emphasis[i] === 2 ? 'emphasis2' : 'emphasis')
+                const label = `${w.text}${flags[i] ? ', cut' : ''}${emphasis[i] === 2 ? ', emphasised in the second colour' : emphasis[i] ? ', emphasised' : ''}`
                 // A space after each word: the line can wrap there.
                 return (
                   <Fragment key={i}>
-                    <span id={`tw-${i}`} data-w={i} role="option" aria-selected={selected} aria-label={flags[i] ? `${w.text}, cut` : w.text} className={classes.join(' ')} title={w.estimated ? TIMING_COPY.wordTitle : undefined}>
+                    <span id={`tw-${i}`} data-w={i} role="option" aria-selected={selected} aria-label={label} className={classes.join(' ')} title={w.estimated ? TIMING_COPY.wordTitle : undefined}>
                       {w.text}
                     </span>{' '}
                   </Fragment>
@@ -509,6 +566,62 @@ function TranscriptEditor({
         />
       )}
     </div>
+  )
+}
+
+/** The menu next to Emphasise: Emphasise in the second colour (Ctrl+Shift+B, §2.7). Escape closes it and returns to its button. */
+function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () => void }): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const itemRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (open) itemRef.current?.focus()
+  }, [open])
+  return (
+    <span className="transcript-menu">
+      <button
+        ref={buttonRef}
+        type="button"
+        className="btn small icon-btn"
+        aria-label="More emphasis"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        title="More emphasis"
+        onClick={() => setOpen((o) => !o)}
+      >
+        ▾
+      </button>
+      {open && (
+        <span
+          className="transcript-menu-list"
+          role="menu"
+          aria-label="More emphasis"
+          onKeyDown={(e) => {
+            if (e.key !== 'Escape' && e.key !== 'Tab') return
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              e.stopPropagation()
+              buttonRef.current?.focus()
+            }
+            setOpen(false)
+          }}
+        >
+          <button
+            ref={itemRef}
+            type="button"
+            role="menuitem"
+            data-testid="transcript-emphasise-second"
+            onClick={() => {
+              setOpen(false)
+              onSecond()
+            }}
+          >
+            Emphasise in the second colour (Ctrl+Shift+B)
+          </button>
+        </span>
+      )}
+    </span>
   )
 }
 

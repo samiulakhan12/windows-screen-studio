@@ -7,7 +7,7 @@
 import type { Project } from '../types'
 
 /** Kinds of items that can be selected together; captions, layouts, clips and clicks stay one at a time (§3). */
-export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze'] as const
+export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze', 'graphic'] as const
 export type GroupKind = (typeof GROUP_KINDS)[number]
 /** `${kind}:${id}`: the snapping owner key, and what selectionKey() gives for the same item. */
 export type ItemKey = `${GroupKind}:${string}`
@@ -24,7 +24,7 @@ export interface ItemGroup {
 export const NO_GROUP: ItemGroup = Object.freeze({ keys: Object.freeze([]) as readonly ItemKey[], anchor: null, stamp: 0 })
 
 /** The timeline row an item sits on (shapes and spotlights share one). */
-export type ItemTrack = 'zoom' | 'text' | 'shapes' | 'images' | 'titles' | 'chapters' | 'freezes'
+export type ItemTrack = 'zoom' | 'text' | 'shapes' | 'images' | 'titles' | 'chapters' | 'freezes' | 'graphics'
 
 /** One groupable item: points (chapters, freezes) have start === end (a freeze's `at`). */
 export interface ItemEntry {
@@ -57,7 +57,8 @@ const TRACK_OF: Readonly<Record<GroupKind, ItemTrack>> = {
   overlay: 'images',
   title: 'titles',
   chapter: 'chapters',
-  freeze: 'freezes'
+  freeze: 'freezes',
+  graphic: 'graphics'
 }
 
 export const trackOfKind = (k: GroupKind): ItemTrack => TRACK_OF[k]
@@ -76,6 +77,7 @@ export function projectItems(p: Project): ItemEntry[] {
   add('spotlight', p.spotlights)
   add('overlay', p.overlays)
   add('title', p.titles)
+  add('graphic', p.graphics)
   for (const c of p.chapters ?? []) out.push({ key: itemKey('chapter', c.id), kind: 'chapter', id: c.id, track: 'chapters', start: c.t, end: c.t })
   for (const f of p.freezes ?? []) out.push({ key: itemKey('freeze', f.id), kind: 'freeze', id: f.id, track: 'freezes', start: f.at, end: f.at })
   return out.sort(byTime)
@@ -100,6 +102,8 @@ function idsOf(p: Project, kind: GroupKind): readonly { id: string }[] {
       return p.chapters ?? []
     case 'freeze':
       return p.freezes ?? []
+    case 'graphic':
+      return p.graphics ?? []
   }
 }
 
@@ -238,7 +242,8 @@ export const KIND_WORDS: Readonly<Record<GroupKind, readonly [string, string]>> 
   overlay: ['image', 'images'],
   title: ['title card', 'title cards'],
   chapter: ['chapter', 'chapters'],
-  freeze: ['freeze frame', 'freeze frames']
+  freeze: ['freeze frame', 'freeze frames'],
+  graphic: ['pop-up', 'pop-ups']
 }
 
 /** "3 zooms", "1 text item". */

@@ -12,7 +12,8 @@ import { FREEZE } from '../engine/freeze'
 import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomEasing, zoomTargetScale, zoomTransition, type ZoomStyle } from '../engine/zoom'
 import { OVERLAY_LIMITS } from '../engine/overlayData'
 import { stickerOf } from '../render/stickers'
-import type { Annotation, Background, Chapter, Freeze, ImageOverlay, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import { captionsOf } from '../captions/settings'
+import type { Annotation, Background, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { ANNOTATION_SIZE } from './annotations'
 import { setZoomLevelInView } from './cropEdit'
 import { removeFreeze, setFreezeLength, setFreezeSound } from './freezeEdit'
@@ -23,10 +24,10 @@ import { TITLE_BACKGROUNDS, TITLE_COLORS, TITLE_STYLES, TITLE_TEXT_COLORS, title
 import { formatLevel } from './zoomEdit'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
-export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze'
+export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic'
 
 /** The order sections and looks come in. */
-export const LOOK_CLASSES: readonly LookClass[] = ['zoom', 'text', 'mark', 'privacy', 'spotlight', 'image', 'title', 'freeze']
+export const LOOK_CLASSES: readonly LookClass[] = ['zoom', 'text', 'mark', 'privacy', 'spotlight', 'image', 'title', 'freeze', 'graphic']
 
 /** What reads and writes need besides the project: the crop (levels and points are in its view), the zoom style, the background. */
 export interface FieldCtx {
@@ -85,6 +86,50 @@ const sameLevel = (a: unknown, b: unknown): boolean => typeof a === 'number' && 
 const sameColor = (a: unknown, b: unknown): boolean => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase()
 
 const isMark = (s: Shape): boolean => !isPrivacyKind(s.kind)
+
+/* ---------- motion graphics (Captions Studio, docs/design/captions-studio.md §2.11, §10.5) ---------- */
+
+/** A graphic's size, a fraction of the output's shorter side (readGraphics' limits). */
+export const GRAPHIC_SIZE = { min: 0.02, max: 0.3 }
+/** Colour dots of a graphic's text and accent: the caption themes' colours (§7.1). */
+export const GRAPHIC_COLORS: readonly string[] = ['#ffffff', '#ffe14d', '#39e508', '#22d3ee', '#ff5c8a', '#111111']
+/** Comes in and Goes out (§2.11). */
+export const ITEM_MOTIONS: readonly { value: ItemMotion['kind']; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'fade', label: 'Fade' },
+  { value: 'pop', label: 'Pop' },
+  { value: 'rise', label: 'Rise' },
+  { value: 'drop', label: 'Drop' },
+  { value: 'slide-left', label: 'Slide left' },
+  { value: 'slide-right', label: 'Slide right' },
+  { value: 'grow', label: 'Grow' },
+  { value: 'blur', label: 'Blur' },
+  { value: 'typewriter', label: 'Typewriter' }
+]
+/** Sound on a pop-up (§2.11): absent is None. */
+export const GRAPHIC_SOUNDS: readonly { value: 'none' | 'pop' | 'ding'; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'pop', label: 'Pop' },
+  { value: 'ding', label: 'Ding' }
+]
+/** A graphic's text colour when it has none: the caption look's (so writing it keeps "Same as the captions"). */
+export const captionTextColor = (p: Project): string => {
+  const c = captionsOf(p)
+  return c.studio?.theme.text ?? c.color
+}
+/** A graphic's accent when it has none: the caption look's emphasis colour. */
+export const captionAccentColor = (p: Project): string => {
+  const c = captionsOf(p)
+  return c.studio?.theme.emphasis ?? c.highlightColor
+}
+/** `g` with colour `key` set to `v`, or without it when `v` is the caption look's (it follows the captions again). */
+function graphicColor(g: Graphic, key: 'color' | 'accent', v: string, captions: string): Graphic {
+  const c = v.toLowerCase()
+  if (c !== captions.toLowerCase()) return { ...g, [key]: c }
+  const { [key]: _gone, ...rest } = g
+  void _gone
+  return rest as Graphic
+}
 const zoomLevelOf = (z: ZoomSegment, ctx: FieldCtx): number => zoomTargetScale(zoomInView(ctx.crop, z))
 
 /** A field writing `patch(v)` into an item of its class. */
@@ -456,7 +501,72 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     applies: () => true,
     read: (f) => (f as Freeze).sound,
     write: { project: (p, id, v) => setFreezeSound(p, id, v as Freeze['sound']) }
-  }
+  },
+
+  patchField<Graphic>({
+    id: 'graphic.size',
+    cls: 'graphic',
+    label: 'Size',
+    control: { type: 'slider', min: GRAPHIC_SIZE.min, max: GRAPHIC_SIZE.max, step: 0.005, format: sizeFmt },
+    look: true,
+    read: (g) => g.size,
+    patch: (g, v) => ({ ...g, size: v as number })
+  }),
+  {
+    id: 'graphic.color',
+    cls: 'graphic',
+    label: 'Colour',
+    control: { type: 'color', presets: GRAPHIC_COLORS },
+    look: true,
+    applies: () => true,
+    read: (g, p) => (g as Graphic).color ?? captionTextColor(p),
+    eq: sameColor,
+    write: { project: (p, id, v) => mapItems(p, 'graphic', new Set([id]), (g: Graphic) => graphicColor(g, 'color', v as string, captionTextColor(p))) }
+  },
+  {
+    id: 'graphic.accent',
+    cls: 'graphic',
+    label: 'Accent',
+    control: { type: 'color', presets: GRAPHIC_COLORS },
+    look: true,
+    applies: () => true,
+    read: (g, p) => (g as Graphic).accent ?? captionAccentColor(p),
+    eq: sameColor,
+    write: { project: (p, id, v) => mapItems(p, 'graphic', new Set([id]), (g: Graphic) => graphicColor(g, 'accent', v as string, captionAccentColor(p))) }
+  },
+  patchField<Graphic>({
+    id: 'graphic.enter',
+    cls: 'graphic',
+    label: 'Comes in',
+    control: { type: 'chips', options: ITEM_MOTIONS },
+    look: true,
+    // Typewriter is for keywords only (§10.1).
+    read: (g) => g.enter.kind,
+    patch: (g, v) => (v === 'typewriter' && g.kind !== 'keyword' ? g : { ...g, enter: { ...g.enter, kind: v as ItemMotion['kind'] } })
+  }),
+  patchField<Graphic>({
+    id: 'graphic.exit',
+    cls: 'graphic',
+    label: 'Goes out',
+    control: { type: 'chips', options: ITEM_MOTIONS },
+    look: true,
+    read: (g) => g.exit.kind,
+    patch: (g, v) => (v === 'typewriter' && g.kind !== 'keyword' ? g : { ...g, exit: { ...g.exit, kind: v as ItemMotion['kind'] } })
+  }),
+  patchField<Graphic>({
+    id: 'graphic.sound',
+    cls: 'graphic',
+    label: 'Sound',
+    control: { type: 'chips', options: GRAPHIC_SOUNDS },
+    look: true,
+    read: (g) => g.sound ?? 'none',
+    patch: (g, v) => {
+      if (v !== 'none') return { ...g, sound: v as 'pop' | 'ding' }
+      const { sound: _s, ...rest } = g
+      void _s
+      return rest as Graphic
+    }
+  })
 ]
 
 /** The kind of item a look class's items are. */
@@ -468,7 +578,8 @@ const KIND_OF: Readonly<Record<LookClass, GroupKind>> = {
   spotlight: 'spotlight',
   image: 'overlay',
   title: 'title',
-  freeze: 'freeze'
+  freeze: 'freeze',
+  graphic: 'graphic'
 }
 
 /** The item list of `kind`. */
@@ -490,6 +601,8 @@ function listOf(p: Project, kind: GroupKind): readonly { id: string }[] {
       return p.chapters ?? []
     case 'freeze':
       return p.freezes ?? []
+    case 'graphic':
+      return p.graphics ?? []
   }
 }
 
@@ -524,6 +637,8 @@ const classOfItem = (kind: GroupKind, item: unknown): LookClass | null => {
       return 'title'
     case 'freeze':
       return 'freeze'
+    case 'graphic':
+      return 'graphic'
     case 'chapter':
       return null
   }
@@ -601,6 +716,13 @@ function withList(p: Project, kind: GroupKind, list: unknown[]): Project {
       return { ...p, chapters: list as Chapter[] }
     case 'freeze':
       return { ...p, freezes: (list as Freeze[]).sort((a, b) => a.at - b.at) }
+    case 'graphic': {
+      // No empty key: a project without graphics has none (§4.2 rule 1).
+      if (list.length) return { ...p, graphics: list as Graphic[] }
+      const { graphics: _g, ...rest } = p
+      void _g
+      return rest
+    }
   }
 }
 
@@ -703,10 +825,15 @@ function lookName(kind: GroupKind, item: unknown): string {
       return 'Title card'
     case 'freeze':
       return 'Freeze frame'
+    case 'graphic':
+      return GRAPHIC_NAMES[(item as Graphic).kind]
     case 'chapter':
       return 'Chapter'
   }
 }
+
+/** A graphic's kind as a name ("Keyword pop-up"). */
+export const GRAPHIC_NAMES: Readonly<Record<Graphic['kind'], string>> = { keyword: 'Keyword pop-up', emoji: 'Emoji', counter: 'Counter', list: 'List card' }
 
 /** The look of one item: the values of its class's look fields, read in the crop's view. Null for a chapter or a missing item. */
 export function copyLook(p: Project, key: ItemKey, ctx: FieldCtx): Look | null {
@@ -773,6 +900,9 @@ export function lookLabel(look: Look): string {
     case 'freeze':
       parts.push(num('freeze.length') === null ? null : tenthsFmt(num('freeze.length')!), v['freeze.sound'] === 'continue' ? 'sound plays on' : v['freeze.sound'] === 'pause' ? 'sound paused' : null)
       break
+    case 'graphic':
+      parts.push(num('graphic.size') === null ? null : sizeFmt(num('graphic.size')!), v['graphic.enter'] ? `in ${optionLabel('graphic.enter', v['graphic.enter']).toLowerCase()}` : null)
+      break
   }
   const text = parts.filter(Boolean).join(', ')
   return text ? `${look.label}: ${text}` : look.label
@@ -787,5 +917,6 @@ export const LOOK_CLASS_WORDS: Readonly<Record<LookClass, readonly [string, stri
   spotlight: ['spotlight', 'spotlights'],
   image: ['image', 'images'],
   title: ['title card', 'title cards'],
-  freeze: ['freeze frame', 'freeze frames']
+  freeze: ['freeze frame', 'freeze frames'],
+  graphic: ['pop-up', 'pop-ups']
 }

@@ -88,3 +88,33 @@ describe('label contrast on coloured fills', () => {
     }
   })
 })
+
+describe('Captions Studio (docs/design/captions-studio.md §2.15, §7.3): the new labels on fills', () => {
+  const studio = css('editor/panels/captionStudio.css')
+  const graphics = css('editor/panels/graphics.css')
+  const vars = tokens(css('styles.css'))
+
+  it('the Suggested badge and the preview’s label', () => {
+    for (const sel of ['.tile-badge', '.preview-look-label']) {
+      const label = resolve(declared(studio, sel, 'color'), vars)
+      for (const fill of fills(declared(studio, sel, 'background'), vars)) expect(contrast(label, fill), sel).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('the contrast meter’s words on the Inspector, easy and hard to read', () => {
+    const panel = resolve('var(--surface-1)', vars)
+    for (const sel of ['.caption-contrast', '.caption-contrast.poor']) expect(contrast(resolve(declared(studio, sel, 'color'), vars), panel), sel).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('the Graphics row’s block labels at every stop, also under the hover brightness(1.1)', () => {
+    const label = resolve(declared(graphics, '.seg.graphic-seg', 'color'), vars)
+    const stops = declared(graphics, '.seg.graphic-seg', 'background')
+      .match(/#[0-9a-f]{6}/gi)!
+      .map((h) => resolve(h, vars))
+    expect(stops).toHaveLength(2)
+    for (const s of stops) {
+      expect(contrast(label, s)).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(label, s.map((x) => Math.min(255, x * 1.1)) as RGB)).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+})

@@ -1380,6 +1380,35 @@ export const SAMPLE_CAPTION: CaptionSegment = {
     { text: 'today', start: 1.8, end: 2.3 }
   ]
 }
+/**
+ * The Bangla sample (§0.2, from the approved bangla.html): the gallery shows it when the captions
+ * are Bangla, with "শেয়ার" spoken at the still thumbnail's time.
+ */
+export const SAMPLE_CAPTION_BN: CaptionSegment = {
+  id: 'sample-bn',
+  start: 0,
+  end: 2.4,
+  text: 'আপনার ভিডিও শেয়ার করার জন্য তৈরি',
+  words: [
+    { text: 'আপনার', start: 0, end: 0.38 },
+    { text: 'ভিডিও', start: 0.4, end: 0.78 },
+    { text: 'শেয়ার', start: 0.8, end: 1.28 },
+    { text: 'করার', start: 1.3, end: 1.6 },
+    { text: 'জন্য', start: 1.62, end: 1.95 },
+    { text: 'তৈরি', start: 1.97, end: 2.3 }
+  ]
+}
+
+/** The sample a thumbnail shows for the captions' language: Bangla for 'bn', else English. */
+interface Sample {
+  seg: CaptionSegment
+  language: 'en' | 'bn'
+  scripts: Set<ScriptTag>
+}
+const SAMPLE_EN: Sample = { seg: SAMPLE_CAPTION, language: 'en', scripts: new Set<ScriptTag>(['latin']) }
+const SAMPLE_BN: Sample = { seg: SAMPLE_CAPTION_BN, language: 'bn', scripts: new Set<ScriptTag>(['bengali']) }
+const sampleOf = (language: string | undefined): Sample => (language?.toLowerCase().split(/[-_]/)[0] === 'bn' ? SAMPLE_BN : SAMPLE_EN)
+
 /** The still thumbnail's time: "word" is being spoken (§2.5). */
 export const SAMPLE_STILL_T = 1.0
 /** The loop an animated thumbnail plays (§2.5), seconds. */
@@ -1390,18 +1419,19 @@ const SAMPLE_PX = 18
 const SAMPLE_PX_ONE_WORD = 28
 
 /** A project holding only the sample caption (no clips: viewing time is source time). */
-const sampleProjects = new WeakMap<CaptionStudio, Project>()
-function sampleProject(studio: CaptionStudio): Project {
-  let p = sampleProjects.get(studio)
+const sampleProjects = { en: new WeakMap<CaptionStudio, Project>(), bn: new WeakMap<CaptionStudio, Project>() }
+function sampleProject(studio: CaptionStudio, sample: Sample = SAMPLE_EN): Project {
+  const cache = sampleProjects[sample.language]
+  let p = cache.get(studio)
   if (!p) {
     p = {
       id: 'caption-sample',
       clips: [],
       fonts: [],
-      transcript: { language: 'en', segments: [SAMPLE_CAPTION] },
+      transcript: { language: sample.language, segments: [sample.seg] },
       captions: { show: true, preset: 'clean', position: 'bottom', size: 0.05, color: '#ffffff', highlightColor: '#ffe14d', background: 'shadow', maxLines: 2, studio }
     } as unknown as Project
-    sampleProjects.set(studio, p)
+    cache.set(studio, p)
   }
   return p
 }
@@ -1410,11 +1440,11 @@ function sampleProject(studio: CaptionStudio): Project {
 const lookPx = (studio: CaptionStudio, frame: { w: number; h: number }): number => studio.text.size * (isTall(frame.w, frame.h) ? studio.text.tall : 1) * Math.min(frame.w, frame.h)
 
 /** The sample laid out in `frame`'s shape scaled by `k`, in a room `room` px wide. */
-function sampleLayout(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: number }, k: number, room: number): { layout: StudioLayout; vw: number; vh: number; area: Rect } {
+function sampleLayout(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: number }, k: number, room: number, sample: Sample): { layout: StudioLayout; vw: number; vh: number; area: Rect } {
   const vw = frame.w * k
   const vh = frame.h * k
   const area: Rect = { x: vw / 2 - room / 2, y: 0, w: room, h: vh }
-  const layout = layoutOf({ ctx, project: sampleProject(studio), seg: SAMPLE_CAPTION, studio, w: vw, h: vh, area, language: 'en', scripts: new Set<ScriptTag>(['latin']), showSpeaker: false, spoken: true })
+  const layout = layoutOf({ ctx, project: sampleProject(studio, sample), seg: sample.seg, studio, w: vw, h: vh, area, language: sample.language, scripts: sample.scripts, showSpeaker: false, spoken: true })
   return { layout, vw, vh, area }
 }
 
@@ -1424,11 +1454,14 @@ function sampleLayout(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: nu
  * real word sprites at 18 px (One Word 28 px; Stacked's smallest line 18 px) in a room 84% of the
  * tile wide, at most three lines, centred on the dark grey picture. `tile` and the returned size
  * are in the units `ctx` draws in (CSS px when the caller scales the canvas by its pixel ratio).
+ * `language`: the captions' language; 'bn' draws the Bangla sample of §0.2 (SAMPLE_CAPTION_BN) in
+ * the look's Bangla font.
  */
-export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number): { textPx: number } {
+export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number, language?: string): { textPx: number } {
+  const sample = sampleOf(language)
   // Its fonts start loading; fontGeneration() then changes, and sprites (keyed by it) are painted
   // again: a thumbnail drawn again after that shows the font.
-  for (const id of catalogFontsFor(sampleProject(studio))) void loadCatalogFont(id)
+  for (const id of catalogFontsFor(sampleProject(studio, sample))) void loadCatalogFont(id)
   ctx.save()
   const bg = ctx.createLinearGradient(0, 0, tile.w, tile.h)
   bg.addColorStop(0, '#2a2d34')
@@ -1439,7 +1472,7 @@ export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: nu
   const full = lookPx(studio, frame)
   const room = tile.w * 0.84
   let k = full > 0 ? target / full : 1
-  let { layout, vw, vh, area } = sampleLayout(ctx, studio, frame, k, room)
+  let { layout, vw, vh, area } = sampleLayout(ctx, studio, frame, k, room, sample)
   const smallest = (l: StudioLayout): number => {
     const sizes = (l.chunks[0]?.lines ?? []).flatMap((line) => line.words.map((wd) => wd.px)).filter((v) => v > 0)
     return sizes.length ? Math.min(...sizes) : target
@@ -1447,16 +1480,16 @@ export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: nu
   // Stacked keeps its line ratios with the smallest line at the sample size.
   if (studio.layout.chunk === 'stack' && smallest(layout) < target - 0.01) {
     k *= target / smallest(layout)
-    ;({ layout, vw, vh, area } = sampleLayout(ctx, studio, frame, k, room))
+    ;({ layout, vw, vh, area } = sampleLayout(ctx, studio, frame, k, room, sample))
   }
   let textPx = target
   if (layout.chunks.length) {
     const first = layout.chunks[0]
     // At most three lines; words that still do not fit are left out.
     const chunk: StudioChunk = first.lines.length > 3 ? { ...first, lines: first.lines.slice(0, 3) } : first
-    const project = sampleProject(studio)
+    const project = sampleProject(studio, sample)
     const placed = placeStudio(layout, chunk, studio, vw, vh, { area })
-    const s: Shown = { project, studio, seg: SAMPLE_CAPTION, segments: [SAMPLE_CAPTION], index: 0, layout, ci: 0, chunk, placed, shiftX: 0, spoken: true, area, w: vw, h: vh }
+    const s: Shown = { project, studio, seg: sample.seg, segments: [sample.seg], index: 0, layout, ci: 0, chunk, placed, shiftX: 0, spoken: true, area, w: vw, h: vh }
     const block = blockRect(s, chunk, placed)
     textPx = smallest(layout)
     ctx.translate(Math.round(tile.w / 2 - (block.x + block.w / 2)), Math.round(tile.h / 2 - (block.y + block.h / 2)))

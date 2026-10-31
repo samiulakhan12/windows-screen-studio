@@ -12,7 +12,11 @@ import { fontStack } from '../render/fonts'
 import { overlayBox } from '../render/imageOverlays'
 import { ANNOTATION_FONT, annotationMetrics, type TextBoxMetrics } from '../render/overlays'
 import { keepInArea, textArea } from '../render/safeZones'
-import type { Annotation, AspectRatio, ImageOverlay, Project, ProjectFont, ReframeSettings } from '../types'
+import { autoStyle } from '../captions/autoStyle'
+import { captionsOf } from '../captions/settings'
+import { studioEdited } from '../captions/studioEdit'
+import { studioPreset } from '../captions/studioPresets'
+import type { Annotation, AspectRatio, CaptionSettings, Graphic, ImageOverlay, Project, ProjectFont, ReframeSettings } from '../types'
 
 export type CopyKind = 'copy' | 'vertical' | 'square'
 
@@ -62,7 +66,11 @@ export function canCopyAs(project: Project, kind: CopyKind, vw: number, vh: numb
  *  - 'vertical' / 'square': aspectRatio '9:16' / '1:1'; reframe = { ...DEFAULT_REFRAME, ...project.reframe,
  *    mode: 'follow', camera: kind === 'vertical' ? (project.reframe?.camera ?? 'top') : 'bubble',
  *    appSafe: kind === 'vertical' }; text annotations and image overlays refitted (refitItems).
- * Never changes clips, zooms, layouts, captions, shapes, crop, freezes or any other field. Pure: the input is not mutated.
+ * Captions Studio (docs/design/captions-studio.md §10.5): the caption look is chosen again for the
+ * new shape (what Auto style gives the new frame) when it was not picked by hand or is an unedited
+ * built-in tile, and kept when edited, saved or the brand kit's; dragged graphics and a dragged
+ * caption block are refitted as images are.
+ * Never changes clips, zooms, layouts, shapes, crop, freezes or any other field. Pure: the input is not mutated.
  *
  * Each text and image goes into the new frame's text area at its start (textArea: the area the
  * apps leave free in a tall frame, clear of the camera band in effect there), or into the whole
@@ -85,7 +93,85 @@ export function projectCopy(project: Project, kind: CopyKind, measure: MeasureTe
   const { width: vw, height: vh } = visibleSize(project)
   const { width: w, height: h } = outputSize(aspectRatio, vw, vh, 1080)
   const areaAt = (t: number): Rect => textArea(copy, w, h, vw, vh, t) ?? { x: 0, y: 0, w, h }
-  return { ...copy, ...refit(copy, w, h, areaAt, measure, project.fonts) }
+  const refitted: Project = { ...copy, ...refit(copy, w, h, areaAt, measure, project.fonts) }
+  return refitCaptions(withCopyLook(refitted, { w, h }), w, h, areaAt)
+}
+
+/**
+ * Whether a copy in another shape gets its caption look chosen again (§10.5): a look not picked
+ * by hand (an automatic one, or the default Classic look), or an unedited built-in tile. An edited,
+ * saved or brand look, and a Classic look picked by hand, are kept.
+ */
+export function lookChosenAgain(captions: CaptionSettings | undefined): boolean {
+  const c = captions
+  if (!c?.picked) return true
+  const s = c.studio
+  return !!s && !!studioPreset(s.from) && !studioEdited(s)
+}
+
+/** The copy with what Auto style gives its frame, when it has captions and its look is chosen again; it is not a pick, and a dragged place stays. */
+function withCopyLook(copy: Project, frame: { w: number; h: number }): Project {
+  const c = captionsOf(copy)
+  // Without captions there is no look to choose: Auto style gives one when the first captions come.
+  if (!copy.transcript?.segments.length || !lookChosenAgain(copy.captions)) return copy
+  const { picked: _picked, ...free } = c
+  void _picked
+  const chosen = autoStyle({ ...copy, captions: free }, frame, null)
+  if (!chosen) return copy
+  const tile = studioPreset(chosen.tile)
+  const place = c.studio?.layout.place
+  const studio = place ? { ...chosen.studio, layout: { ...chosen.studio.layout, place: { ...place } } } : chosen.studio
+  return { ...copy, captions: { ...free, ...(tile ? { preset: tile.fallback } : {}), studio } }
+}
+
+/** A normalised centre moved into `area` (px of a w × h frame). */
+const intoArea = (p: { x: number; y: number }, w: number, h: number, area: Rect): { x: number; y: number } => ({
+  x: Math.min(area.x + area.w, Math.max(area.x, p.x * w)) / w,
+  y: Math.min(area.y + area.h, Math.max(area.y, p.y * h)) / h
+})
+
+/**
+ * A dragged caption block and dragged graphics moved into the text area of the new frame, as
+ * images are (§10.5): a graphic's box (its size in the shorter side, twice as wide as tall) is
+ * shifted in, and shrunk to fit but not below 60%; the caption block's centre is moved in.
+ * Graphics placed automatically need nothing. Lists without a change stay the same arrays.
+ */
+function refitCaptions(copy: Project, w: number, h: number, areaAt: (t: number) => Rect): Project {
+  let out = copy
+  const place = copy.captions?.studio?.layout.place
+  if (place) {
+    const at = intoArea(place, w, h, areaAt(0))
+    if (at.x !== place.x || at.y !== place.y) {
+      const c = copy.captions!
+      out = { ...out, captions: { ...c, studio: { ...c.studio!, layout: { ...c.studio!.layout, place: at } } } }
+    }
+  }
+  const graphics = copy.graphics
+  if (graphics?.some((g) => g.place !== 'auto')) {
+    const u = Math.min(w, h)
+    const next = graphics.map((g): Graphic => {
+      if (g.place === 'auto') return g
+      const area = areaAt(g.start)
+      const bh = g.size * u
+      const bw = bh * 2
+      const fit = keepInArea({ x: g.place.x * w - bw / 2, y: g.place.y * h - bh / 2, w: bw, h: bh }, area, MIN_SCALE)
+      if (fit.dx === 0 && fit.dy === 0 && fit.scale === 1) return g
+      return { ...g, place: { x: (g.place.x * w + fit.dx) / w, y: (g.place.y * h + fit.dy) / h }, size: g.size * fit.scale }
+    })
+    if (next.some((g, i) => g !== graphics[i])) out = { ...out, graphics: next }
+  }
+  return out
+}
+
+const VERSION: Record<Exclude<CopyKind, 'copy'>, string> = { vertical: 'the vertical version', square: 'the square version' }
+
+/** "Captions: Bold Pop for the vertical version" when the copy's look was chosen again (§10.5), else null. */
+export function captionCopyNotice(before: Project, after: Project, kind: CopyKind): string | null {
+  if (kind === 'copy' || !after.transcript?.segments.length) return null
+  const a = after.captions?.studio
+  if (!a || a === before.captions?.studio) return null
+  const name = studioPreset(a.from)?.name
+  return name ? `Captions: ${name} for ${VERSION[kind]}` : null
 }
 
 /**

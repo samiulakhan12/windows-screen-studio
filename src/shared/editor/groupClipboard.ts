@@ -12,7 +12,8 @@ import { MAX_OVERLAYS } from '../engine/overlayData'
 import { formatTime } from '../engine/project'
 import { MIN_NEW_ZOOM, newZoomId, zoomAt } from '../engine/zoom'
 import { chapterInVideo } from '../render/chapters'
-import type { Annotation, Chapter, Freeze, ImageOverlay, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import { MAX_GRAPHICS } from '../captions/studioData'
+import type { Annotation, Chapter, Freeze, Graphic, ImageOverlay, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { newAnnotationId } from './annotations'
 import { displayTime } from './clips'
 import { freezeAtPlayhead } from './freezeEdit'
@@ -31,6 +32,7 @@ export type ClipItem =
   | { kind: 'title'; item: TitleCard }
   | { kind: 'chapter'; item: Chapter }
   | { kind: 'freeze'; item: Freeze }
+  | { kind: 'graphic'; item: Graphic }
 
 export interface ItemClipboard {
   version: 1
@@ -60,6 +62,7 @@ export type PasteSkip =
   | 'freeze-other-recording'
   | 'image-other-recording'
   | 'image-full'
+  | 'graphic-full'
 
 export interface PasteResult {
   project: Project
@@ -131,7 +134,33 @@ function clipItemOf(p: Project, key: ItemKey): ClipItem | null {
       const item = copy(find(p.freezes))
       return item && { kind: 'freeze', item }
     }
+    case 'graphic': {
+      const item = copy(find(p.graphics))
+      return item && { kind: 'graphic', item }
+    }
   }
+}
+
+let graphicCounter = 0
+/** A fresh id for a pasted or duplicated graphic (generated ones are 'g-' and a hash, added ones 'g<n>'). */
+const newGraphicId = (): string => `gc${Date.now().toString(36)}${(graphicCounter++).toString(36)}`
+
+/**
+ * A copy of graphic `g` moved by `offset` seconds (list items with it): the user's (no `auto`),
+ * and free of the caption words it was made from, which are not at its new time.
+ */
+function pastedGraphic(g: Graphic, offset: number): Graphic {
+  const { auto: _auto, ...rest } = g
+  void _auto
+  const moved = { ...rest, id: newGraphicId(), start: g.start + offset, end: g.end + offset } as Graphic
+  if (moved.kind === 'list') return { ...moved, items: moved.items.map((it) => ({ ...it, at: it.at + offset })) }
+  if (moved.kind === 'keyword' || moved.kind === 'emoji') {
+    const { anchor: _anchor, ...free } = moved as Graphic & { anchor?: unknown; replace?: false }
+    void _anchor
+    if ('replace' in free) delete (free as { replace?: false }).replace
+    return free as Graphic
+  }
+  return moved
 }
 
 /** Deep copies of the items of `keys` (in time order), with their origin and span; null when none is there. */
@@ -250,6 +279,20 @@ function place(p: Project, clip: ItemClipboard, at: number, movedBack: boolean):
         }
         break
       }
+      case 'graphic': {
+        // A project keeps at most MAX_GRAPHICS (more would be dropped when it is opened again).
+        if ((q.graphics?.length ?? 0) >= MAX_GRAPHICS) {
+          skipped.push({ kind: c.kind, why: 'graphic-full' })
+          break
+        }
+        const item = pastedGraphic(c.item, offset)
+        if (outside(item.end)) skipped.push({ kind: c.kind, why: 'outside' })
+        else {
+          q = { ...q, graphics: [...(q.graphics ?? []), item].sort((a, b) => a.start - b.start) }
+          keys.push(itemKey(c.kind, item.id))
+        }
+        break
+      }
       case 'freeze': {
         if (clip.projectId !== p.id) {
           skipped.push({ kind: c.kind, why: 'freeze-other-recording' })
@@ -327,6 +370,8 @@ function skipText(kind: GroupKind, why: PasteSkip, n: number): string {
       return `${what} would go past the limit of ${MAX_FREEZES}`
     case 'image-full':
       return `${what} would go past the limit of ${MAX_OVERLAYS}`
+    case 'graphic-full':
+      return `${what} would go past the limit of ${MAX_GRAPHICS}`
     case 'freeze-other-recording':
     case 'image-other-recording':
       return `${what} ${is} from another recording`
