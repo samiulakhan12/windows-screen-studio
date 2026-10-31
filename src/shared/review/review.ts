@@ -1,7 +1,7 @@
 /**
  * Review mode (E-02, docs/design/review-mode.md): the automatic changes of a project as one list in
- * time order, each one's status derived from the project (so undo and redo need nothing more),
- * and Keep / Remove as pure edits, each one project out (one store.update, one undo step).
+ * time order, each one's status read from the project (so undo and redo need nothing more), and
+ * Keep / Remove as pure edits, each one project out (one store.update, one undo step).
  *
  * Kinds: auto zooms (ZoomSegment.auto), the camera director's segments (LayoutSegment.auto) and its
  * face framing (framingIsDirectors), and the recorded automatic cuts and speed-ups
@@ -10,10 +10,10 @@
  * (Project.autoCutOutcomes) in the same edit, since the footage alone cannot always tell.
  */
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
-import type { AutoCut, AutoCutOutcome, Clip, LayoutSegment, Project } from '../types'
+import type { AutoCut, AutoCutOutcome, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
 import { withOutcomes } from './autoCutData'
-import { autoCutIntact, footageBack, liveAutoCuts, playsBelow, undoAutoCut, withAutoCuts, withoutHeldAbove, withoutKeptInside, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
+import { autoCutIntact, changeGone, liveAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -43,19 +43,11 @@ export interface ReviewItem {
   detail: string
   /** A camera segment as listed (its status compares the layout). */
   segment?: Pick<LayoutSegment, 'id' | 'layout' | 'corner' | 'cutOut'>
-  /** A cut or speed-up as listed (its status reads the footage after the record is gone). */
+  /** A cut or speed-up as listed (with no choice recorded, its status reads its footage once the record is gone). */
   cut?: AutoCut
-  /** When the panel listed it: none in its first list, one more for each batch added since (mergeSnapshot). */
-  seq?: number
-  /** A cut or speed-up: its record's place among the project's records, which are kept in the order they were made. */
-  made?: number
 }
 
-type Piece = AutoCut['was'][number]
-
 const EPS = 1e-6
-/** As autoCuts.ts: how far (seconds) clips may differ from a record. */
-const SLACK = 1e-3
 const kindOrder = (k: ReviewKind): number => REVIEW_KINDS.indexOf(k)
 const byTime = (a: ReviewItem, b: ReviewItem): number => a.start - b.start || kindOrder(a.kind) - kindOrder(b.kind) || a.key.localeCompare(b.key)
 
@@ -78,9 +70,9 @@ export function reviewItems(project: Project): ReviewItem[] {
     items.push({ key: FRAMING_KEY, kind: 'camera', start: at, end: at, title: FRAMING_TITLE, detail: DIRECTOR_DETAIL })
   }
   const chosen = outcomesOf(project)
-  liveAutoCuts(project).forEach((c, made) => {
-    if (!chosen.has(c.id)) items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c, made })
-  })
+  for (const c of liveAutoCuts(project)) {
+    if (!chosen.has(c.id)) items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c })
+  }
   return items.sort(byTime)
 }
 
@@ -100,34 +92,14 @@ function outcomesOf(project: Pick<Project, 'autoCutOutcomes'>): ReadonlyMap<stri
   return byId
 }
 
-const NO_RECORDS: readonly AutoCut[] = []
-/** What heldAbove worked out, by list and records; neither is ever changed in place. */
-const aboveMemo = new WeakMap<readonly ReviewItem[], WeakMap<readonly AutoCut[], Map<string, AutoCut>>>()
-
 /**
- * The speed-ups of `listed` no longer recorded (by id), each without the footage that a record at
- * its speed, or one the panel listed later at its speed, holds from another speed (withoutHeldAbove):
- * that one was made over it while this one's change there was gone, such as a tool run that took
- * an item over, undone, and a later run at its speed over part of that item. Once for a list and records.
+ * Whether `item` is still automatic, was kept (now the user's) or removed, read from `project`
+ * (§2.3). A cut or speed-up: the choice made for it in the panel (Project.autoCutOutcomes); else
+ * pending while its record is there and intact; else (it went with no choice made: an undo, an
+ * edit by hand, a later tool run) removed when its change is gone from the video (changeGone),
+ * kept otherwise.
  */
-function heldAbove(listed: readonly ReviewItem[], records: readonly AutoCut[], ids: ReadonlySet<string>): Map<string, AutoCut> {
-  let byRecords = aboveMemo.get(listed)
-  if (!byRecords) aboveMemo.set(listed, (byRecords = new WeakMap()))
-  let done = byRecords.get(records)
-  if (!done) {
-    const mine = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [{ cut: i.cut, rank: i.seq ?? 0 }] : []))
-    byRecords.set(records, (done = withoutHeldAbove([...records.map((cut) => ({ cut, rank: Infinity })), ...mine])))
-  }
-  return done
-}
-
-/**
- * Whether `item` is still automatic, was kept (now the user's) or removed, read from `project` (§2.3).
- * A cut or speed-up reads the choice made for it in the panel (Project.autoCutOutcomes) first.
- * `listed` is the list it is shown in: a cut removed inside a speed-up of that list taken back since
- * has its footage back at the speed from before the speed-up, which still reads as removed.
- */
-export function reviewStatus(project: Project, item: ReviewItem, listed: readonly ReviewItem[] = []): ReviewStatus {
+export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
   if (item.key === FRAMING_KEY) {
     if (directorsFraming(project)) return 'pending'
     return framingUntouched(project.webcam) ? 'removed' : 'kept'
@@ -149,62 +121,10 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   if (!cut) return 'removed'
   const chosen = outcomesOf(project).get(cut.id)
   if (chosen) return chosen
-  const records = project.autoCuts ?? NO_RECORDS
-  const rec = records.find((c) => c.id === id)
+  const records = project.autoCuts ?? []
+  const rec = records.find((c) => c.id === cut.id)
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
-  const ids = new Set(records.map((c) => c.id))
-  // A part sped up again on top of it (a speed-up of the project or of the list) is under that one;
-  // a part a speed-up of the list kept since plays on top of a third one is the user's. One the
-  // panel listed before this item appeared was made before it, so it is neither, and so is footage
-  // one holds that a record or one listed later at its speed holds from another speed (heldAbove).
-  const reviewed = listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))
-  const earlier = new Set(listed.flatMap((i) => (i.cut && (i.seq ?? 0) < (item.seq ?? 0) ? [i.cut.id] : [])))
-  const above = reviewed.length ? heldAbove(listed, records, ids) : undefined
-  const later = reviewed.flatMap((r) => (earlier.has(r.id) ? [] : [above?.get(r.id) ?? r]))
-  const over = [...records, ...later]
-  const back = (c: AutoCut): boolean => footageBack(c, project.clips, over)
-  // Each part not back goes out through the speed-ups of the list taken back since, one at a time
-  // and the innermost first (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×),
-  // until it is back; of two at one speed over it, the one listed later (made over the other after
-  // that one was taken back). A part back already stays as it is: one inside a speed-up kept before
-  // it plays at that one's speed, which is how it was.
-  const outward = listed
-    .flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [{ r: i.cut, seq: i.seq ?? 0 }] : []))
-    .sort((a, b) => b.seq - a.seq)
-    .map(({ r }) => r)
-  const walksBack = (c: AutoCut): boolean =>
-    back(c) ||
-    byClips(c.was, project.clips).every((part) => {
-      let at: AutoCut = { ...c, was: [part] }
-      for (let n = 0; !back(at); n++) {
-        const s = n < reviewed.length ? outward.find((r) => r.action !== 'cut' && withoutSpeedUp([at], r)[0] !== at) : undefined
-        if (!s) return false
-        at = withoutSpeedUp([at], s)[0]
-      }
-      return true
-    })
-  // A part a speed-up of the list kept since holds at this item's own speed is the user's too when
-  // some other part of the item's footage still plays, or a speed-up of the project or a later one
-  // holds some of it below this item's speed and still plays it at its own speed, itself or through
-  // another one inside it (a tool only speeds up, so that footage was back when it was made): it
-  // was made inside a later one at this speed, after this item was removed. Otherwise the part is
-  // this item's, kept. (When nothing else tells, kept and removed leave the same project and list.)
-  // One made before this item (around it), or one that took it over and was undone since, holds
-  // its footage lower too, but plays none of it at its own speed while this item is kept.
-  const inside = withoutKeptInside(cut, project.clips, later, over)
-  const any = withoutKeptInside(inside, project.clips, later, over, true)
-  const overlap = (a: Piece, b: Piece): boolean => Math.min(a.end, b.end) - Math.max(a.start, b.start) > SLACK
-  const plays = (c: AutoCut): boolean => c.was.some((p) => project.clips.some((k) => overlap(k, p)))
-  return walksBack(any !== inside && (plays(any) || playsBelow(cut, project.clips, over)) ? any : inside) ? 'removed' : 'kept'
-}
-
-/** `pieces` split where a clip starts or ends, so each part plays at one speed or is cut. */
-function byClips(pieces: AutoCut['was'], clips: readonly Clip[]): AutoCut['was'] {
-  const ends = clips.flatMap((c) => [c.start, c.end])
-  return pieces.flatMap((p) => {
-    const at = [p.start, ...ends.filter((t) => t > p.start + EPS && t < p.end - EPS).sort((a, b) => a - b), p.end]
-    return at.slice(1).flatMap((t, i) => (t - at[i] > EPS ? [{ start: at[i], end: t, speed: p.speed }] : []))
-  })
+  return changeGone(cut, project.clips) ? 'removed' : 'kept'
 }
 
 /** Reviewed items of `statuses` and how many in all. */
@@ -213,24 +133,16 @@ export function reviewProgress(statuses: readonly ReviewStatus[]): { reviewed: n
 }
 
 /**
- * The panel's list: what it showed (`shown`, kept and removed items stay, marked) plus every item of
+ * The panel's list: what it showed (`shown`; kept and removed items stay, marked) plus every item of
  * `current` (pending now) it did not show yet, in time order. A pending item also shown takes its
  * current version (a zoom's place could change; a record's pieces could, when a speed-up around it
- * was removed). An item added to a list already shown is numbered after every item in it (`seq`),
- * except a record older than one still listed: an undo brought it back from before the panel opened
- * (a tool run adds its records after all others), so it is numbered as if in the first list.
+ * was removed).
  */
 export function mergeSnapshot(shown: readonly ReviewItem[], current: readonly ReviewItem[]): ReviewItem[] {
   const now = new Map(current.map((i) => [i.key, i]))
   const keys = new Set(shown.map((i) => i.key))
-  const out = shown.map((i) => {
-    const c = now.get(i.key)
-    return c && i.seq ? { ...c, seq: i.seq } : (c ?? i)
-  })
-  const seq = shown.length ? Math.max(0, ...shown.map((i) => i.seq ?? 0)) + 1 : 0
-  const newest = Math.max(-1, ...current.flatMap((i) => (keys.has(i.key) && i.made !== undefined ? [i.made] : [])))
-  const old = (i: ReviewItem): boolean => i.made !== undefined && i.made < newest
-  for (const i of current) if (!keys.has(i.key)) out.push(seq && !old(i) ? { ...i, seq } : i)
+  const out = shown.map((i) => now.get(i.key) ?? i)
+  for (const i of current) if (!keys.has(i.key)) out.push(i)
   return out.sort(byTime)
 }
 

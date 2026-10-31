@@ -39,11 +39,11 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const [shown, setShown] = useState<ReviewItem[]>(() => reviewItems(store.state))
   const list = useMemo(() => mergeSnapshot(shown, reviewItems(project)), [shown, project])
   useEffect(() => {
-    // A record rewritten while pending (a speed-up around it removed) is kept as it is now, so its
-    // status still reads right once it is removed too.
+    // A record rewritten while pending (a speed-up around it removed) is kept as it is now, so a row
+    // whose record goes with no choice made (an undo, an edit by hand) reads its latest footage.
     if (list.length !== shown.length || list.some((i, k) => i.cut !== shown[k].cut)) setShown(list)
   }, [list, shown])
-  const statuses = useMemo(() => list.map((i) => reviewStatus(project, i, list)), [list, project])
+  const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
   const { reviewed, total } = reviewProgress(statuses)
   const plan = planOf(project)
 
@@ -122,7 +122,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     if (index < 0 || reviewStatus(store.state, item) !== 'pending') return
     stopStretch()
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
-    const after = list.map((i) => reviewStatus(store.state, i, list))
+    const after = list.map((i) => reviewStatus(store.state, i))
     const done = reviewProgress(after)
     say(actedMessage(action, done.reviewed, done.total))
     const next = nextPending(after, index)
@@ -147,7 +147,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     stopStretch()
     store.update((p) => removeItems(p, kindPending))
     say(bulkMessage('remove', kindPending.length, current.kind))
-    const after = list.map((i) => reviewStatus(store.state, i, list))
+    const after = list.map((i) => reviewStatus(store.state, i))
     const next = nextPending(after, active)
     if (next) focusKey(next)
   }

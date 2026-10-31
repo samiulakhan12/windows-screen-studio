@@ -51,8 +51,6 @@ function playing(clips: readonly Clip[], a: number, b: number, speed: number): P
   return out
 }
 
-const length = (pieces: readonly Piece[]): number => pieces.reduce((n, p) => n + p.end - p.start, 0)
-
 /** `pieces` sorted, with those that touch or overlap joined (each keeps the speed of its first). */
 function union(pieces: readonly Piece[]): Piece[] {
   const out: Piece[] = []
@@ -81,35 +79,30 @@ function both(a: readonly Piece[], b: readonly Piece[], speed: number): Piece[] 
 interface Held {
   parts: Piece[]
   sums: number[]
-  /** Its parts and the clips at its speed, joined (withoutKeptInside); worked out when first asked. */
-  plays?: Piece[]
 }
 
-/** What holds worked out, by list, clips and speed (with the record left out); neither is ever changed in place. */
-const heldMemo = new WeakMap<readonly AutoCut[], WeakMap<readonly Clip[], Map<string, Held>>>()
+/** What holds worked out, by list, clips and speed; neither is ever changed in place. */
+const heldMemo = new WeakMap<readonly AutoCut[], WeakMap<readonly Clip[], Map<number, Held>>>()
 
 /**
- * The footage that a speed-up of `list` other than `skip` holds at `speed` (it played at `speed`
- * before that one) and plays at its own speed, or hands on to a later one in the same way: a later
- * change on top, such as a silence sped up 4× inside an idle part sped up 2×, and 8× inside that.
- * Only a faster one counts (a tool only speeds up). Worked out one speed at a time, the slowest
- * first, each as one set of parts, so the cost grows with the pieces of `list`, not with the ways
- * a part is handed on; and once for a list and clips.
+ * The footage that a speed-up of `list` holds at `speed` (it played at `speed` before that one) and
+ * plays at its own speed, or hands on to a later one in the same way: a later change on top, such
+ * as a silence sped up 4× inside an idle part sped up 2×, and 8× inside that. Only a faster one
+ * counts (a tool only speeds up), so a record at `speed` never holds footage for itself. Worked out
+ * one speed at a time, the slowest first, each as one set of parts, so the cost grows with the
+ * pieces of `list`, not with the ways a part is handed on; and once for a list and clips.
  */
-function holds(list: readonly AutoCut[], clips: readonly Clip[], speed: number, skip?: AutoCut): Held {
-  // `skip` can only be followed when it is faster than `speed`.
-  const id = skip && skip.action !== 'cut' && skip.action > speed ? skip.id : ''
+function holds(list: readonly AutoCut[], clips: readonly Clip[], speed: number): Held {
   let byClips = heldMemo.get(list)
   if (!byClips) heldMemo.set(list, (byClips = new WeakMap()))
   let known = byClips.get(clips)
   if (!known) byClips.set(clips, (known = new Map()))
-  const key = `${speed} ${id}`
-  const done = known.get(key)
+  const done = known.get(speed)
   if (done) return done
   // The pieces each speed-up plays faster than they were, by the speed they were at and its own.
   const from = new Map<number, Map<number, Piece[]>>()
   for (const r of list) {
-    if (r.action === 'cut' || r.id === id) continue
+    if (r.action === 'cut') continue
     for (const w of r.was) {
       if (!(r.action > w.speed) || w.speed < speed) continue
       let to = from.get(w.speed)
@@ -136,7 +129,7 @@ function holds(list: readonly AutoCut[], clips: readonly Clip[], speed: number, 
   const sums = [0]
   for (const p of parts) sums.push(sums[sums.length - 1] + p.end - p.start)
   const held: Held = { parts, sums }
-  known.set(key, held)
+  known.set(speed, held)
   return held
 }
 
@@ -174,25 +167,22 @@ export function autoCutIntact(cut: AutoCut, clips: readonly Clip[], list: readon
   for (const p of cut.was) {
     const k = covered(clips, p.start, p.end)
     const fast = covered(clips, p.start, p.end, (c) => c.speed === cut.action)
-    if (fast < k - SLACK && fast + heldLength(holds(list, clips, cut.action, cut), p.start, p.end) < k - SLACK) return false
+    if (fast < k - SLACK && fast + heldLength(holds(list, clips, cut.action), p.start, p.end) < k - SLACK) return false
     own += fast
   }
   return own > SLACK
 }
 
 /**
- * Whether the footage a record changed is back as it was: every piece kept at its old speed (within
- * 1 ms). For a speed-up, a part a speed-up of `list` holds at that speed counts as back (it is under
- * that one).
+ * Whether a record's change is gone from the clips (within 1 ms): all of a cut's footage plays
+ * again, at any speed; some of a speed-up's footage is still kept and none of it plays at the
+ * record's speed. Review's reading of a record that went with no choice made in the panel (§2.3).
  */
-export function footageBack(cut: AutoCut, clips: readonly Clip[], list: readonly AutoCut[] = []): boolean {
-  // A speed-up: the parts still kept (a part cut since cannot come back by undoing the speed).
-  if (cut.action !== 'cut') {
-    return cut.was.every(
-      (p) => covered(clips, p.start, p.end, (c) => c.speed === p.speed) + heldLength(holds(list, clips, p.speed, cut), p.start, p.end) >= covered(clips, p.start, p.end) - SLACK
-    )
-  }
-  return cut.was.every((p) => covered(clips, p.start, p.end, (c) => c.speed === p.speed) >= p.end - p.start - SLACK)
+export function changeGone(cut: AutoCut, clips: readonly Clip[]): boolean {
+  if (cut.action === 'cut') return cut.was.every((p) => covered(clips, p.start, p.end) >= p.end - p.start - SLACK)
+  const kept = cut.was.reduce((n, p) => n + covered(clips, p.start, p.end), 0)
+  const fast = cut.was.reduce((n, p) => n + covered(clips, p.start, p.end, (c) => c.speed === cut.action), 0)
+  return kept > SLACK && fast <= SLACK
 }
 
 /** The records of `list` whose change is still in `clips`, each judged among the others still there. */
@@ -439,112 +429,6 @@ export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
       return { ...c, was: rest }
     })
     gone = next
-  }
-  return out
-}
-
-/**
- * The speed-up `cut` without the parts that a speed-up of `reviewed` (the panel's list, no longer
- * recorded) plays at its own speed, or hands on to a later one of `list`, and holds at a speed other
- * than `cut`'s: one kept inside a third one inside `cut` (an 8× kept inside a 4× inside a 2×). Such
- * a part is the user's, as withSpeedUpKept makes it for a record. With `itsSpeed`, the parts it holds
- * at `cut`'s speed instead. `cut` itself when no part is.
- */
-export function withoutKeptInside(cut: AutoCut, clips: readonly Clip[], reviewed: readonly AutoCut[], list: readonly AutoCut[], itsSpeed = false): AutoCut {
-  if (cut.action === 'cut') return cut
-  // Their pieces by their speed, each kind taken at once.
-  const by = new Map<number, Piece[]>()
-  for (const r of reviewed) {
-    if (r.id === cut.id || r.action === 'cut') continue
-    for (const w of r.was) {
-      if ((w.speed === cut.action) !== itsSpeed) continue
-      const ws = by.get(r.action)
-      if (ws) ws.push(w)
-      else by.set(r.action, [w])
-    }
-  }
-  const yours: Piece[] = []
-  for (const [speed, ws] of by) {
-    const held = holds(list, clips, speed, cut)
-    const plays = (held.plays ??= union([...playing(clips, -Infinity, Infinity, speed), ...held.parts]))
-    for (const p of both(union(ws), plays, speed)) yours.push(p)
-  }
-  const was = without(cut.was, yours)
-  return length(cut.was) - length(was) > EPS ? { ...cut, was } : cut
-}
-
-/**
- * Whether a speed-up of `list` other than `cut` holds some of `cut`'s footage below `cut`'s speed
- * and still plays it at its own speed, or hands it on to a later one of `list` (not `cut`) that
- * does. A tool only speeds up, so such a one was made while that footage was back; one made
- * before `cut`, around it, holds it lower too, but plays none of it while `cut`'s change is there.
- */
-export function playsBelow(cut: AutoCut, clips: readonly Clip[], list: readonly AutoCut[]): boolean {
-  if (cut.action === 'cut') return false
-  // Their pieces below `cut`'s speed, by their own speed, each kind taken at once.
-  const by = new Map<number, Piece[]>()
-  for (const r of list) {
-    if (r.id === cut.id || r.action === 'cut') continue
-    for (const w of r.was) {
-      if (w.speed >= cut.action) continue
-      const ws = by.get(r.action)
-      if (ws) ws.push(w)
-      else by.set(r.action, [w])
-    }
-  }
-  const mine = union(cut.was)
-  for (const [speed, ws] of by) {
-    const held = holds(list, clips, speed, cut)
-    const plays = (held.plays ??= union([...playing(clips, -Infinity, Infinity, speed), ...held.parts]))
-    if (length(both(both(union(ws), mine, speed), plays, speed)) > SLACK) return true
-  }
-  return false
-}
-
-/**
- * Each speed-up of `ranked` (by id) without the footage that one ranked higher at its speed holds
- * from another speed; one that loses nothing is the same object. Both cannot have played that
- * footage at their speed (a tool only speeds up what is slower), so the higher one was made over it
- * while the other's change there was gone. Worked out one speed and rank at a time, the highest
- * first, with the pieces held above joined once for each speed they were at.
- */
-export function withoutHeldAbove(ranked: readonly { cut: AutoCut; rank: number }[]): Map<string, AutoCut> {
-  const out = new Map<string, AutoCut>()
-  const byAction = new Map<number, { cut: AutoCut; rank: number }[]>()
-  for (const e of ranked) {
-    if (e.cut.action === 'cut') continue
-    const es = byAction.get(e.cut.action)
-    if (es) es.push(e)
-    else byAction.set(e.cut.action, [e])
-  }
-  for (const es of byAction.values()) {
-    es.sort((a, b) => b.rank - a.rank)
-    // The pieces of those ranked higher, by the speed they were at.
-    const above = new Map<number, Piece[]>()
-    for (let k = 0; k < es.length; ) {
-      let j = k
-      while (j < es.length && es[j].rank === es[k].rank) j++
-      // The time held above at a speed other than `s`, joined.
-      const gone = new Map<number, Piece[]>()
-      const goneAt = (s: number): Piece[] => {
-        let g = gone.get(s)
-        if (!g) gone.set(s, (g = union([...above].flatMap(([t, ps]) => (t === s ? [] : ps)))))
-        return g
-      }
-      for (let i = k; i < j; i++) {
-        const c = es[i].cut
-        const was = above.size ? c.was.flatMap((p) => outside([p], goneAt(p.speed))) : c.was
-        out.set(c.id, length(c.was) - length(was) > EPS ? { ...c, was } : c)
-      }
-      for (let i = k; i < j; i++) {
-        for (const p of es[i].cut.was) {
-          const ps = above.get(p.speed)
-          if (ps) ps.push(p)
-          else above.set(p.speed, [p])
-        }
-      }
-      k = j
-    }
   }
   return out
 }

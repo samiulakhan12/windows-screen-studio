@@ -8,7 +8,7 @@ import { cutWords, settleDeletedWords, transcriptWords } from '../src/shared/edi
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
 import { MAX_AUTO_CUT_OUTCOMES, MAX_AUTO_CUTS, MAX_WAS_PIECES, readAutoCutOutcomes, readAutoCuts, withOutcomes, wordsText } from '../src/shared/review/autoCutData'
-import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
+import { autoCutIntact, changeGone, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem } from '../src/shared/review/review'
 import { suggestionRanges } from '../src/shared/review/wordCuts'
 import type { AutoCut, AutoCutOutcome, Clip, Project } from '../src/shared/types'
@@ -277,18 +277,26 @@ describe('recordAutoCuts', () => {
   })
 })
 
-describe('intact, footage back, live', () => {
-  it('a cut is intact while none of it plays', () => {
+describe('intact, change gone, live', () => {
+  it('a cut is intact while none of it plays, and gone once all of it plays again, at any speed', () => {
     expect(autoCutIntact(cut(), [clip(0, 4), clip(6, 20)])).toBe(true)
     expect(autoCutIntact(cut(), [clip(0, 4.5), clip(6, 20)])).toBe(false)
-    expect(footageBack(cut(), [clip(0, 20)])).toBe(true)
-    expect(footageBack(cut(), [clip(0, 20, 2)])).toBe(false)
+    expect(changeGone(cut(), [clip(0, 20)])).toBe(true)
+    expect(changeGone(cut(), [clip(0, 20, 2)])).toBe(true)
+    expect(changeGone(cut(), [clip(0, 4.5), clip(6, 20)])).toBe(false)
+    expect(changeGone(cut(), [clip(0, 4), clip(6, 20)])).toBe(false)
   })
 
-  it('a speed-up is intact while all of it plays at its speed', () => {
+  it('a speed-up is intact while all of it plays at its speed, and gone once none of what is kept does', () => {
     const fast = cut({ action: 4 })
     expect(autoCutIntact(fast, [clip(0, 4), clip(4, 6, 4), clip(6, 20)])).toBe(true)
     expect(autoCutIntact(fast, [clip(0, 4), clip(4, 6, 2), clip(6, 20)])).toBe(false)
+    expect(changeGone(fast, [clip(0, 20)])).toBe(true)
+    expect(changeGone(fast, [clip(0, 4), clip(4, 6, 2), clip(6, 20)])).toBe(true)
+    expect(changeGone(fast, [clip(0, 4), clip(4.5, 20)])).toBe(true)
+    expect(changeGone(fast, [clip(0, 4), clip(4, 5, 4), clip(5, 20)])).toBe(false)
+    // All of it cut since: nothing came back, so it is not gone.
+    expect(changeGone(fast, [clip(0, 4), clip(6, 20)])).toBe(false)
   })
 
   it('liveAutoCuts lists only intact records', () => {
@@ -339,7 +347,7 @@ describe('intact, footage back, live', () => {
       const t = performance.now()
       const list = reviewItems(p)
       expect(list).toHaveLength(n)
-      expect(list.every((i) => reviewStatus(p, i, list) === 'pending')).toBe(true)
+      expect(list.every((i) => reviewStatus(p, i) === 'pending')).toBe(true)
       expect(settleAutoCuts({ ...p, clips: [clip(0, 20)] }, p).autoCuts).toBeUndefined()
       expect(performance.now() - t).toBeLessThan(500)
     }
@@ -404,7 +412,7 @@ describe('review findings (regressions)', () => {
       [0, 10.55, 1],
       [10.55, 20, 2]
     ])
-    expect(footageBack(rec, back)).toBe(true)
+    expect(changeGone(rec, back)).toBe(true)
   })
 
   it('a sliver piece joins the clip it was part of, never a clip shorter than MIN_CLIP', () => {
@@ -439,7 +447,7 @@ describe('review findings (regressions)', () => {
       [7.5, 10, 1],
       [10, 20, 1]
     ])
-    expect(footageBack(speed, back)).toBe(true)
+    expect(changeGone(speed, back)).toBe(true)
   })
 
   it('stale records are dropped by the settle step, so a later hand cut cannot bring one back', () => {
@@ -607,7 +615,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     }
     return { p, shown }
   }
-  const rows = (p: Project, shown: ReviewItem[]): string[] => shown.map((i) => `${i.cut!.id}:${reviewStatus(p, i, shown)}`)
+  const rows = (p: Project, shown: ReviewItem[]): string[] => shown.map((i) => `${i.cut!.id}:${reviewStatus(p, i)}`)
 
   it('2x and then a cut of the same silence: one record, and Remove brings it back at 1x', () => {
     const fast = auto(project(), 5, 7, 2, 'silences', 'f')
@@ -627,7 +635,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
   describe('a part of a 2x re-timed to 4x', () => {
     // Smart speed at 2x over [5,15], then Remove silences at 4x over [8,10] inside it.
     const nested = (): Project => auto(auto(project(), 5, 15, 2, 'smart-speed', 'f'), 8, 10, 4, 'silences', 'g')
-    const statuses = (p: Project, shown: ReviewItem[]): string[] => shown.map((i) => `${i.cut!.id}:${reviewStatus(p, i, shown)}`)
+    const statuses = (p: Project, shown: ReviewItem[]): string[] => shown.map((i) => `${i.cut!.id}:${reviewStatus(p, i)}`)
 
     it('both listed: the 2x keeps its pieces, the 4x holds its part at 2x, as a cut inside it would', () => {
       const p = nested()
@@ -1108,7 +1116,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
       [17, 19.5, 8],
       [19.5, 20, 1]
     ])
-    const read = (u: typeof one, id: string): string => `${id}:${reviewStatus(u.ui.p, u.item(id), u.ui.shown)}`
+    const read = (u: typeof one, id: string): string => `${id}:${reviewStatus(u.ui.p, u.item(id))}`
     expect(['a1', 'c1', 'd1'].map((id) => read(one, id))).toEqual(['a1:kept', 'c1:kept', 'd1:pending'])
     // The same where the one listed later at the undone run's speed is kept: Polish at 2x, Review,
     // Delete; Polish at 8x over its end; Ctrl+Z twice; K the 2x; Polish at 8x over all of it, K.

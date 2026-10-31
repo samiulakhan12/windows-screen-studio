@@ -169,8 +169,10 @@ describe('keep and remove', () => {
     const restored = { ...p, clips: [clip(0, 20)] }
     expect(reviewItems(restored).some((i) => i.kind === 'silence')).toBe(false)
     expect(reviewStatus(restored, item)).toBe('removed')
-    // Re-timed by hand instead: not the original footage, so kept.
-    expect(reviewStatus({ ...p, clips: [clip(0, 8), clip(8, 10.4, 2), clip(10.4, 20)] }, item)).toBe('kept')
+    // Put back at another speed: the cut is gone all the same, so removed.
+    expect(reviewStatus({ ...p, clips: [clip(0, 8), clip(8, 10.4, 2), clip(10.4, 20)] }, item)).toBe('removed')
+    // Only part of it put back: the rest is still cut, now the user's, so kept.
+    expect(reviewStatus({ ...p, clips: [clip(0, 9), clip(10.4, 20)] }, item)).toBe('kept')
   })
 
   it('removing a director cut-out gives its time back to the camera position', () => {
@@ -250,14 +252,14 @@ describe('a cut inside an automatic speed-up', () => {
       [5, 9, 2],
       [9, 20, 1]
     ])
-    expect(shown.map((i) => reviewStatus(one, i, shown))).toEqual(['pending', 'removed'])
+    expect(shown.map((i) => reviewStatus(one, i))).toEqual(['pending', 'removed'])
     // Then the speed-up: all of it at 1x again, neither row turned into Kept.
     const two = removeItems(one, [shown[0]])
     expect(plays(two.clips)).toEqual([[0, 20, 1]])
-    expect(shown.map((i) => reviewStatus(two, i, shown))).toEqual(['removed', 'removed'])
+    expect(shown.map((i) => reviewStatus(two, i))).toEqual(['removed', 'removed'])
     // A cut kept, then the speed-up around it removed: the cut stays, and reads kept.
     const kept = removeItems(keepItems(p, [shown[1]]), [shown[0]])
-    expect(shown.map((i) => reviewStatus(kept, i, shown))).toEqual(['removed', 'kept'])
+    expect(shown.map((i) => reviewStatus(kept, i))).toEqual(['removed', 'kept'])
   })
 
   it('removing both at once gives it all back when the cut starts before the speed-up', () => {

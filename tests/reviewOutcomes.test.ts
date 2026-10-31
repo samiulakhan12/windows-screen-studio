@@ -84,7 +84,7 @@ class Session {
   }
 
   status(item: ReviewItem): ReviewStatus {
-    return reviewStatus(this.p, item, this.list)
+    return reviewStatus(this.p, item)
   }
 
   item(id: string): ReviewItem {
@@ -396,6 +396,59 @@ describe('edits by hand after a choice', () => {
     expect(replay('tool 5-9 2; open; K r0; hand speed 5-9 1').rows()).toEqual(['r0:kept'])
     // Nor does a later run over the same footage change it: it is listed as a new row.
     expect(replay('tool 5-9 2; open; K r0; tool 4-10 4').rows()).toEqual(['r1:pending', 'r0:kept'])
+  })
+
+  it('a choice in a project file wins over a record still there: not listed, not acted on again', () => {
+    const p = base()
+    const rec: AutoCut = { id: 'x', by: 'silences', action: 'cut', start: 5, end: 9, was: [{ start: 5, end: 9, speed: 1 }] }
+    const opened = { ...p, clips: [{ id: 'a', start: 0, end: 5, speed: 1 }, { id: 'b', start: 9, end: 20, speed: 1 }], autoCuts: [rec], autoCutOutcomes: [{ id: 'x', outcome: 'removed' as const }] }
+    expect(reviewItems(opened)).toEqual([])
+    const item = reviewItems({ ...opened, autoCutOutcomes: undefined })[0]
+    expect(reviewStatus(opened, item)).toBe('removed')
+    expect(keepItems(opened, [item])).toBe(opened)
+    expect(removeItems(opened, [item])).toBe(opened)
+  })
+})
+
+describe('with no choice made, a row whose record went reads removed when its change is gone from the video', () => {
+  it('an undone run: removed, and pending again after redo', () => {
+    const cut = replay('open; tool 5-9 cut; undo')
+    expect(cut.rows()).toEqual(['r0:removed'])
+    expect(cut.run('redo').rows()).toEqual(['r0:pending'])
+    expect(replay('open; tool 5-9 2; undo').rows()).toEqual(['r0:removed'])
+  })
+
+  it('runs undone from the inside out: a cut and a speed-up inside an idle part both read removed', () => {
+    expect(replay('open; tool 3-15 2 smart-speed; tool 6-7 cut; undo; undo').rows()).toEqual(['r0:removed', 'r1:removed'])
+    expect(replay('open; tool 3-15 2 smart-speed; tool 5.5-10.5 4; undo; undo').rows()).toEqual(['r0:removed', 'r1:removed'])
+    // Only the inner one undone: the idle part is still to review.
+    expect(replay('open; tool 3-15 2 smart-speed; tool 5.5-10.5 4; undo').rows()).toEqual(['r0:pending', 'r1:removed'])
+  })
+
+  it('a cut put back by hand: removed when all of it plays again, at any speed; kept when part of it is still cut', () => {
+    expect(replay('tool 5-9 cut; open; hand restore 5-9').rows()).toEqual(['r0:removed'])
+    expect(replay('tool 5-9 cut; open; hand restore 5-7').rows()).toEqual(['r0:kept'])
+    // A trim or cut by hand that takes in an automatic cut makes it the user's.
+    const trimmed = replay('tool 17-18 cut; open; hand cut 16-17')
+    expect(trimmed.p.autoCuts).toBeUndefined()
+    expect(trimmed.rows()).toEqual(['r0:kept'])
+  })
+
+  it('a speed-up edited by hand: removed when none of it plays at its speed, kept when some still does or all of it was cut', () => {
+    expect(replay('tool 5-9 2; open; hand speed 5-9 1').rows()).toEqual(['r0:removed'])
+    expect(replay('tool 5-9 2; open; hand speed 5-9 4').rows()).toEqual(['r0:removed'])
+    expect(replay('tool 5-9 2; open; hand speed 6-7 1').rows()).toEqual(['r0:kept'])
+    expect(replay('tool 5-9 2; open; hand cut 4-10').rows()).toEqual(['r0:kept'])
+    // Undone, the edit by hand gives the row back to review.
+    expect(replay('tool 5-9 2; open; hand speed 5-9 1; undo').rows()).toEqual(['r0:pending'])
+  })
+
+  it('a speed-up a later run took over reads removed, whatever is chosen for the new one', () => {
+    const s = replay('tool 5-9 2; open; tool 4-10 4')
+    expect(s.p.autoCuts?.map((c) => c.id)).toEqual(['r1'])
+    expect(s.rows()).toEqual(['r1:pending', 'r0:removed'])
+    expect(replay('tool 5-9 2; open; tool 4-10 4; R r1').rows()).toEqual(['r1:removed', 'r0:removed'])
+    expect(replay('tool 5-9 2; open; tool 4-10 4; K r1').rows()).toEqual(['r1:kept', 'r0:removed'])
   })
 })
 
