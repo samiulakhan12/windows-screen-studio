@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { formatTimestamp, outputCues, subtitleFile, subtitleLines, toPlainText, toSrt, toVtt, validSubtitle } from '../src/shared/captions/subtitles'
 import { readTranscript } from '../src/shared/captions/captionData'
 import { applyTextResult, captionDragBounds, dragCaptionTimes, mergeWithNext, retimeWords, splitCaption, withCaptionText } from '../src/shared/captions/edit'
+import { mergeParts } from '../src/shared/captions/transcriptMerge'
 import { validateSegmentsAnswer, validateTextRequest } from '../src/shared/captions/transcriptText'
+import { timeTextPart } from '../src/shared/captions/transcriptTiming'
 import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { anchorCutWords, cutFlags, cutWords, restoreWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
@@ -91,6 +93,20 @@ describe('outputCues: captions in output time', () => {
       expect(c.text).toBe('So I think a lot works.')
       expect(subtitleFile(segments, clips, 'srt')).not.toContain('um,')
     }
+  })
+
+  it('leaves out the words of a text-only answer, timed from the sound, that a timeline cut takes by their middle', () => {
+    // gpt-transcribe's text for one 10 s part, the voice from 0.2 s to 5.2 s, merged, saved and loaded.
+    const raw = timeTextPart('one two three four five six seven eight nine ten.', [{ start: 0.2, end: 5.2 }], 10)
+    const merged = mergeParts([{ part: { index: 0, start: 0, end: 10, keepStart: 0, keepEnd: 10 }, transcript: { segments: raw } }], 10)
+    const transcript = readTranscript(JSON.parse(JSON.stringify({ provider: 'openai', model: 'gpt-transcribe', createdAt: '', segments: merged.segments })), 10)!
+    // The middle of the sentence cut on the timeline: "five six seven" (middles 2.35, 2.8 and 3.3 s).
+    const clips = [clip(0, 2), clip(3.6, 10)]
+    const words = transcriptWords(transcript)
+    const flags = cutFlags(words, clips)
+    expect(words.filter((_, i) => flags[i]).map((w) => w.text)).toEqual(['five', 'six', 'seven'])
+    expect(outputCues(transcript.segments, clips).map((c) => c.text)).toEqual(['one two three four eight nine ten.'])
+    expect(subtitleFile(transcript.segments, clips, 'srt')).not.toMatch(/five|six|seven/)
   })
 
   it('leaves out words with guessed times deleted in the Transcript tab, in a caption with word timings', () => {

@@ -2,8 +2,9 @@
  * Word times for transcription answers that have none (docs/design/transcription.md §3): OpenAI's
  * models after whisper-1 return text only. A part is short (30 s, cut in pauses), and its words
  * are spread over the stretches of it that have sound, by length, so no word starts in a pause.
- * Every such word is `estimated`. Also the check of word times a provider wrote itself (Gemini,
- * §4): impossible ones are replaced by the same kind of estimate. Pure.
+ * Every such word is `estimated`, and `fromSound` when the sound gave it its place. Also the check
+ * of word times a provider wrote itself (Gemini, §4): impossible ones are replaced by an even
+ * spread over their segment (a plain guess). Pure.
  */
 import type { Range } from '../audio/activity'
 import type { AiProviderKind } from '../types'
@@ -94,7 +95,7 @@ function textPieces(text: string): Piece[] {
   return out
 }
 
-/** `texts` spread between `start` and `end` by length, all estimated. */
+/** `texts` spread between `start` and `end` by length, all estimated (plain guesses). */
 export function spreadWords(texts: readonly string[], start: number, end: number): RawWord[] {
   return spreadOver(texts, [{ start, end: Math.max(start, end) }])
 }
@@ -102,8 +103,9 @@ export function spreadWords(texts: readonly string[], start: number, end: number
 /**
  * `texts` spread over `ranges` (sorted, separate) laid end to end, each word taking the share its
  * length gives; a word that would straddle a pause longer than MAX_WORD_GAP starts after it.
+ * With `fromSound` (the ranges are where the part has sound), every word is marked so.
  */
-function spreadOver(texts: readonly string[], ranges: readonly Range[]): RawWord[] {
+function spreadOver(texts: readonly string[], ranges: readonly Range[], fromSound = false): RawWord[] {
   if (!texts.length) return []
   const total = ranges.reduce((n, r) => n + (r.end - r.start), 0)
   const weights = texts.map(weight)
@@ -131,7 +133,7 @@ function spreadOver(texts: readonly string[], ranges: readonly Range[]): RawWord
       if (ranges[a.range].end - a.t >= b.t - ranges[b.range].start) end = ranges[a.range].end
       else start = ranges[b.range].start
     }
-    out.push({ text: texts[i], start: round(start), end: round(end), estimated: true })
+    out.push({ text: texts[i], start: round(start), end: round(end), estimated: true, ...(fromSound ? { fromSound: true as const } : {}) })
   }
   return out
 }
@@ -140,7 +142,10 @@ function spreadOver(texts: readonly string[], ranges: readonly Range[]): RawWord
  * The captions of a part's text answer (`text`, the part `partSeconds` long, `active` its stretches
  * with sound on its own clock): its words spread over the sound and grouped into captions at
  * sentence ends (from SENTENCE_MIN_WORDS words), after MAX_CAPTION_WORDS words, before a pause of
- * CAPTION_PAUSE or at MAX_CAPTION_SECONDS. Times on the part's clock; every word estimated.
+ * CAPTION_PAUSE or at MAX_CAPTION_SECONDS. Times on the part's clock; every word estimated, and
+ * `fromSound` when the sound leaves a pause in the part (MAX_WORD_GAP or more of it is quiet): with
+ * sound all through it (steady music or noise under the voice) or none, the words are spread
+ * evenly over the whole part, a plain guess.
  */
 export function timeTextPart(text: string, active: readonly Range[], partSeconds: number): RawSegment[] {
   const pieces = textPieces(text)
@@ -149,7 +154,8 @@ export function timeTextPart(text: string, active: readonly Range[], partSeconds
   const voiced = clipped.reduce((n, r) => n + (r.end - r.start), 0)
   const words = spreadOver(
     pieces.map((p) => p.text),
-    voiced >= MIN_ACTIVE ? clipped : [{ start: 0, end: partSeconds }]
+    voiced >= MIN_ACTIVE ? clipped : [{ start: 0, end: partSeconds }],
+    voiced >= MIN_ACTIVE && partSeconds - voiced >= MAX_WORD_GAP
   )
   const joined = new Set(words.filter((_, i) => pieces[i].joined))
   const segments: RawSegment[] = []

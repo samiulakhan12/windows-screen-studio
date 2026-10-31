@@ -22,6 +22,8 @@ export interface TranscriptWord {
   end: number
   /** Its times were shared out from its neighbours' (no timed word matched it), or are a stored guess. */
   estimated: boolean
+  /** With `estimated`: a stored guess that follows the recording's sound (CaptionWord.fromSound), cut by its middle like a heard time (cutFlags). */
+  fromSound?: true
   /** Deleted in the Transcript tab: cut by its middle, a guess too (cutFlags), and timed as stored even outside its caption (alignCaptionWords). */
   deleted?: true
   /** Its caption's own time (captionsWords gives it; else taken as its caption's words' time): what is left of the caption (cutFlags). */
@@ -92,9 +94,9 @@ export function lcsPairs<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T)
  * forms, so a fixed typo or an added word keeps the rest exact; a word with nothing left once
  * normalised, such as a dash, matches only the same text); unmatched words share the time between
  * their matched neighbours by length and are `estimated`, as are words matched to a stored guess
- * (anchorCutWords). A `deleted` mark comes with its stored word, and of the longest matchings the
- * one pairing the fewest shown words with deleted ones is taken: when the text loses one of two
- * equal words, the one left is the take still in the video. Times stay inside the caption, but a
+ * (anchorCutWords; its `fromSound` comes with it). A `deleted` mark comes with its stored word, and
+ * of the longest matchings the one pairing the fewest shown words with deleted ones is taken: when
+ * the text loses one of two equal words, the one left is the take still in the video. Times stay inside the caption, but a
  * deleted word keeps its own (in the cut, where a trim of the caption left it: retimeWords).
  */
 export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
@@ -115,6 +117,7 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
     const own = (t: number): number => (w.deleted === true ? t : inside(t))
     const start = own(w.start)
     const word: TimedText = { text: texts[i], start, end: Math.max(start, own(w.end)), estimated: w.estimated === true }
+    if (w.estimated === true && w.fromSound === true) word.fromSound = true
     if (w.deleted === true) word.deleted = true
     out[i] = word
   }
@@ -203,19 +206,20 @@ export const MIN_CUE = 0.05
 
 /**
  * For each word, whether it is cut (docs/design/edit-by-text.md §4.2), the one rule of the Transcript
- * tab and the subtitle files (outputCues). A word with a heard time (not `estimated`), or a word
- * `deleted` in the tab, is cut when its middle is in no clip. Any other guess is cut only when it is
- * surely cut: its middle is in no clip and no clip keeps any of the time between the middles of the
- * nearest heard words before and after it in its caption (the caption's first start or last end
- * where there is none), so a guess never takes out a word that may still be heard. Every word of a
- * caption that a cut has reached (a middle cut) and whose own time (`captionTime`) the clips keep
- * less than MIN_CUE of is cut: the subtitle files leave out such a sliver.
+ * tab and the subtitle files (outputCues). A word with a heard time (not `estimated`, or a guess
+ * that follows the recording's sound: `fromSound`), or a word `deleted` in the tab, is cut when its
+ * middle is in no clip. Any other guess is cut only when it is surely cut: its middle is in no
+ * clip and no clip keeps any of the time between the middles of the nearest heard words before and
+ * after it in its caption (the caption's first start or last end where there is none), so a guess
+ * never takes out a word that may still be heard. Every word of a caption that a cut has reached
+ * (a middle cut) and whose own time (`captionTime`) the clips keep less than MIN_CUE of is cut:
+ * the subtitle files leave out such a sliver.
  */
 export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[]): boolean[] {
   const middles = middlesCut(words, clips)
   const flags = middles.slice()
   const mid = (w: TranscriptWord): number => (w.start + w.end) / 2
-  const heard = (w: TranscriptWord): boolean => !w.estimated
+  const heard = (w: TranscriptWord): boolean => !w.estimated || w.fromSound === true
   const before = new Array<number>(words.length)
   for (let i = 0; i < words.length; i++) {
     const w = words[i]
@@ -227,7 +231,7 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
     const w = words[i]
     const next = words[i + 1]
     after = !next || next.caption !== w.caption ? w.end : heard(next) ? mid(next) : after
-    if (flags[i] && w.estimated && !w.deleted) flags[i] = !keepsAny(clips, Math.min(before[i], after), Math.max(before[i], after))
+    if (flags[i] && !heard(w) && !w.deleted) flags[i] = !keepsAny(clips, Math.min(before[i], after), Math.max(before[i], after))
   }
   // The words of each caption are words[a..b).
   for (let a = 0, b = 0; a < words.length; a = b) {
@@ -247,15 +251,17 @@ export function cutFlags(words: readonly TranscriptWord[], clips: readonly Clip[
 
 /**
  * A caption's words as alignCaptionWords times them, to store as its word timings (one per shown
- * word): a guessed time stays marked `estimated`, and a word stays marked `deleted` when it was,
- * or gets the mark when `deleted(i)` (the i-th word was deleted in the Transcript tab).
+ * word): a guessed time stays marked `estimated` (and `fromSound`), and a word stays marked
+ * `deleted` when it was, or gets the mark when `deleted(i)` (the i-th word was deleted in the
+ * Transcript tab).
  */
 export function captionWordTimes(seg: CaptionSegment, deleted: (i: number) => boolean = () => false): CaptionWord[] {
   return alignCaptionWords(seg).map((w, i) => {
     const { text, start, end } = w
     const mark = w.deleted === true || deleted(i)
     if (!w.estimated) return mark ? { text, start, end, deleted: true } : { text, start, end }
-    return mark ? { text, start, end, estimated: true, deleted: true } : { text, start, end, estimated: true }
+    const guess: CaptionWord = w.fromSound ? { text, start, end, estimated: true, fromSound: true } : { text, start, end, estimated: true }
+    return mark ? { ...guess, deleted: true } : guess
   })
 }
 
@@ -310,7 +316,7 @@ export function settleDeletedWords(next: Project, prev: Project): Project {
   const segments = next.transcript.segments.map((seg) => {
     if (!seg.words?.some(restored)) return seg
     changed = true
-    return { ...seg, words: seg.words.map((w) => (restored(w) ? { text: w.text, start: w.start, end: w.end, ...(w.estimated ? { estimated: w.estimated } : {}) } : w)) }
+    return { ...seg, words: seg.words.map((w) => (restored(w) ? { text: w.text, start: w.start, end: w.end, ...(w.estimated ? { estimated: w.estimated, ...(w.fromSound ? { fromSound: w.fromSound } : {}) } : {}) } : w)) }
   })
   return changed ? { ...next, transcript: { ...next.transcript, segments } } : next
 }

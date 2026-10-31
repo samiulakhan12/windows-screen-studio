@@ -318,6 +318,12 @@ export interface CaptionWord {
   end: number
   /** Its times are a guess, shared out over the caption (stored with a cut made in the Transcript tab). */
   estimated?: true
+  /**
+   * With `estimated`: the guess follows where the recording has sound (a text-only answer,
+   * docs/design/transcription.md §3.3), so a cut takes the word by its middle, like a heard one
+   * (edit-by-text.md §4.2).
+   */
+  fromSound?: true
   /** Deleted in the Transcript tab: cut by its own time while that time is cut, even outside its caption (edit-by-text.md §4.2). */
   deleted?: true
 }

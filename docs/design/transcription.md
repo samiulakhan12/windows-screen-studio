@@ -193,7 +193,17 @@ floor), the whole part counts as active.
   (`.`, `!`, `?`, `…`, `。`, `！`, `？`) once the caption has 3 words; after 12 words; before a word
   that starts after a pause of 0.7 s or more; or when the caption would pass 6 s. A caption runs
   from its first word's start to its last word's end.
-- Every word is `estimated: true`.
+- Every word is `estimated: true`, and `fromSound: true` when the sound placed it: the part has
+  sound, and at least 0.25 s of it is quiet. With (almost) no sound, or sound all through the part
+  (steady music or noise under the voice, where nothing says where the voice pauses), the words
+  are an even spread over the whole part, a plain guess.
+
+`fromSound` decides how a cut treats the word (edit-by-text.md §4.2): like a heard word, by its
+middle, so a timeline cut, trim or Smart speed cut takes the words said there out of the
+Transcript tab and the subtitle files. A plain guess is cut only when its whole caption is (or its
+heard neighbours and everything between them are), which would leave every word of a text-only
+caption in the subtitle files after a partial cut. The dotted underline and the notices still
+read `estimated`. Loaded back only as `true`, and only with `estimated` (`captionData.ts`).
 
 Expected error: within a phrase between pauses, words are placed by length, so a word is typically
 off by a fraction of a syllable-weighted share — tenths of a second, rarely more than half a
@@ -202,9 +212,9 @@ test checks, with the mock's tone bursts, that every word starts within 0.6 s of
 
 ### 3.4 Merging
 
-`RawWord` gains `estimated?: true`; `RawSegment` gains `speaker?: string`. The merge
-(`transcriptMerge.ts`) carries both through unchanged (two additive spreads), so `CaptionWord.estimated`
-reaches the project.
+`RawWord` gains `estimated?: true` and `fromSound?: true`; `RawSegment` gains `speaker?: string`.
+The merge (`transcriptMerge.ts`) carries them through unchanged (additive spreads), so
+`CaptionWord.estimated` and `CaptionWord.fromSound` reach the project.
 
 Where no pause is found near the end of a 30 s window (steady music or noise under the voice),
 parts are cut at a fixed point with a 2 s overlap. The two parts' estimates of the same word there
@@ -358,9 +368,10 @@ does the first paragraph of every page (a page can start inside someone's turn)
 ```ts
 // shared/types.ts (additive)
 interface CaptionSegment { …; speaker?: string }
+interface CaptionWord { …; fromSound?: true }   // with estimated: placed by the sound (§3.3)
 interface CaptionSettings { …; showSpeaker?: true }
 // shared/captions/transcriptParse.ts
-interface RawWord { …; estimated?: true }
+interface RawWord { …; estimated?: true; fromSound?: true }
 interface RawSegment { …; speaker?: string }
 interface RawTranscript { …; untimed?: true }   // text-only answer: one segment per part
 // main/ai/types.ts — AiClient: no change; the client marks its answer untimed
@@ -393,14 +404,16 @@ Settings: none.
 - `src/shared/captions/retiredModel.ts` (new): `retiredMessage(...)`, `todayUtc()`.
 - `src/renderer/src/editor/panels/SpeakersSection.tsx` (new): `SpeakersSection`, `CaptionSpeakerSelect`.
 - Changed: `openai.ts`, `gemini.ts`, `transcribe.ts`, `transcriptParse.ts`, `transcriptMerge.ts`
-  (carry fields), `captionData.ts` and `settings.ts` (load), `edit.ts` (split and merge keep the
-  speaker), `subtitles.ts` (voice tags, option), `captionsLayer.ts` (name token), the two panels
-  (additive), `types.ts`. `ai-models.json` and `BUNDLED_MODEL_LIST` are unchanged (§2.1).
+  (carry fields), `captionData.ts` and `settings.ts` (load), `editor/transcript.ts` (`fromSound`
+  words are cut like heard ones), `edit.ts` (split and merge keep the speaker), `subtitles.ts`
+  (voice tags, option), `captionsLayer.ts` (name token), the two panels (additive), `types.ts`. `ai-models.json` and `BUNDLED_MODEL_LIST` are unchanged (§2.1).
 
 ## 12. Test plan
 
 Unit (vitest): `timeTextPart` (no word in a pause, captions split by the rules, all estimated,
-an even spread when the part is quiet); `parseOpenAiText`; the OpenAI request shape for
+`fromSound` only where the sound placed them, an even spread when the part is quiet); a timeline
+cut over a text-only caption takes the words whose middles it cuts out of the Transcript tab and
+the SRT, a word retyped there stays a plain guess; `parseOpenAiText`; the OpenAI request shape for
 `gpt-transcribe` vs `whisper-1`; `checkWordTimes` each rule; Gemini speakers (normalised, dropped
 when one); merge carries `estimated` and `speaker`; `retiredMessage` before/on/after the day and the
 client wrapping; `stemSpeakers` (mic only, system only, both with bleed, too short); rename/merge

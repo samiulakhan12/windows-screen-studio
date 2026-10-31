@@ -57,6 +57,25 @@ describe('timeTextPart', () => {
     for (const w of [...after, ...before]) expect(within(w)).toBe(true)
   })
 
+  it('marks the words the sound placed fromSound, not an even spread over the whole part', () => {
+    // A pause after the voice: the sound gave the words their place.
+    const placed = timeTextPart('one two three', [{ start: 0.5, end: 2 }], 5).flatMap((s) => s.words!)
+    expect(placed.map((w) => [w.estimated, w.fromSound])).toEqual([
+      [true, true],
+      [true, true],
+      [true, true]
+    ])
+    // (Almost) no sound, or sound all through the part (steady music under the voice): spread evenly, a plain guess.
+    for (const active of [[{ start: 3, end: 3.1 }], [{ start: 0, end: 5 }], [{ start: 0.1, end: 5 }]]) {
+      const words = timeTextPart('one two three', active, 5).flatMap((s) => s.words!)
+      expect(words.map((w) => [w.estimated, w.fromSound])).toEqual([
+        [true, undefined],
+        [true, undefined],
+        [true, undefined]
+      ])
+    }
+  })
+
   it('spreads over the whole part when it has (almost) no sound', () => {
     const words = timeTextPart('one two', [{ start: 3, end: 3.1 }], 4).flatMap((s) => s.words!)
     expect(words[0].start).toBe(0)
@@ -157,7 +176,7 @@ describe('checkWordTimes', () => {
     ]
     for (const c of cases) {
       const out = checkWordTimes(c)
-      expect(out.words!.every((w) => w.estimated)).toBe(true)
+      expect(out.words!.every((w) => w.estimated && !w.fromSound)).toBe(true)
       expect(out.words!.map((w) => w.text)).toEqual(c.text.split(' '))
       expect(out.words![0].start).toBe(0)
       expect(out.words![out.words!.length - 1].end).toBe(4)
@@ -217,6 +236,15 @@ describe('mergeParts', () => {
     expect(merged.segments).toEqual([
       { id: 't1', start: 11, end: 12, text: 'a b', speaker: 'Speaker 1', words: [{ text: 'a', start: 11, end: 11.5, estimated: true }, { text: 'b', start: 11.5, end: 12, estimated: true }] },
       { id: 't2', start: 13, end: 14, text: 'c', speaker: 'Speaker 2' }
+    ])
+  })
+
+  it('carries the mark of words the sound placed', () => {
+    const part = { index: 0, start: 10, end: 20, keepStart: 10, keepEnd: 20 }
+    const merged = mergeParts([{ part, transcript: { segments: timeTextPart('a b', [{ start: 1, end: 2 }], 10) } }], 30)
+    expect(merged.segments[0].words).toEqual([
+      { text: 'a', start: 11, end: 11.5, estimated: true, fromSound: true },
+      { text: 'b', start: 11.5, end: 12, estimated: true, fromSound: true }
     ])
   })
 })

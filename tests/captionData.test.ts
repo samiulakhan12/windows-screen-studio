@@ -91,6 +91,26 @@ describe('readCaptionSegments', () => {
     ])
   })
 
+  it('keeps a guess marked as following the sound (a text-only answer), only a real mark and only on a guess', () => {
+    const [s] = readCaptionSegments(
+      [
+        seg('a', 1, 4, 'hi there you all', [
+          { text: 'hi', start: 1, end: 1.5, estimated: true, fromSound: true },
+          { text: 'there', start: 1.5, end: 2, estimated: true, fromSound: 'yes' } as never,
+          { text: 'you', start: 2, end: 3, fromSound: true },
+          { text: 'all', start: 3, end: 4, estimated: true, fromSound: true, deleted: true }
+        ])
+      ],
+      10
+    )
+    expect(s.words).toEqual([
+      { text: 'hi', start: 1, end: 1.5, estimated: true, fromSound: true },
+      { text: 'there', start: 1.5, end: 2, estimated: true },
+      { text: 'you', start: 2, end: 3 },
+      { text: 'all', start: 3, end: 4, estimated: true, fromSound: true, deleted: true }
+    ])
+  })
+
   it('keeps a word marked deleted in the Transcript tab, and only a real mark; words without marks read as before', () => {
     const raw = [
       seg('a', 1, 3, 'hi there you', [

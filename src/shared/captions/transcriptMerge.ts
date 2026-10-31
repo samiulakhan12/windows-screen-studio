@@ -49,7 +49,7 @@ function shiftPart(part: TranscriptPart, transcript: RawTranscript, duration: nu
   return transcript.segments.map((s) => {
     const start = Math.min(Math.max(s.start + part.start, lo), hi)
     const end = Math.min(Math.max(s.end + part.start, lo), hi)
-    const words = s.words?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end), ...(w.estimated ? { estimated: w.estimated } : {}) }))
+    const words = s.words?.map((w) => ({ text: w.text, start: Math.min(Math.max(w.start + part.start, start), end), end: Math.min(Math.max(w.end + part.start, start), end), ...(w.estimated ? { estimated: w.estimated } : {}), ...(w.fromSound ? { fromSound: w.fromSound } : {}) }))
     return { start, end, text: s.text, ...(words ? { words } : {}), ...(s.speaker ? { speaker: s.speaker } : {}) }
   })
 }
@@ -232,7 +232,7 @@ export function mergeParts(results: readonly { part: TranscriptPart; transcript:
     if (end - s.start < MIN_LENGTH) continue
     const words: CaptionWord[] | undefined = s.words
       ?.filter((w) => w.start < end)
-      .map((w) => ({ text: w.text, start: round(w.start), end: round(Math.min(w.end, end)), ...(w.estimated ? { estimated: w.estimated } : {}) }))
+      .map((w) => ({ text: w.text, start: round(w.start), end: round(Math.min(w.end, end)), ...(w.estimated ? { estimated: w.estimated } : {}), ...(w.fromSound ? { fromSound: w.fromSound } : {}) }))
     segments.push({ id: '', start: round(s.start), end: round(end), text: s.text, ...(words?.length ? { words } : {}), ...(s.speaker ? { speaker: s.speaker } : {}) })
   }
   segments.forEach((s, i) => (s.id = `t${i + 1}`))

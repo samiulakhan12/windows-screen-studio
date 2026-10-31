@@ -20,6 +20,8 @@ export interface RawWord {
   end: number
   /** Its times are a guess (the provider gave none, or impossible ones): docs/design/transcription.md §3. */
   estimated?: true
+  /** With `estimated`: the guess follows where the part has sound (transcriptTiming.timeTextPart). */
+  fromSound?: true
 }
 
 export interface RawSegment {
