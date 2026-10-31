@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { isPutOff, putOff, useUpdates } from './useUpdates'
+import { isPutOff, putOff, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
 
 /**
@@ -11,7 +11,7 @@ import './updates.css'
 export function UpdateNotice(): JSX.Element {
   const s = useUpdates()
   const [, setTick] = useState(0)
-  const [refused, setRefused] = useState<string | null>(null)
+  const [refused, setRefused] = useRefusal(s)
   const slot = useRef<HTMLDivElement>(null)
   const show = !!s && s.phase === 'ready' && !!s.version && !isPutOff(s.version)
 

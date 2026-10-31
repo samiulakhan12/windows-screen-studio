@@ -125,7 +125,9 @@ its buttons has the focus (Later, or the update stops being ready), the focus mo
 Settings button next to it, never to the page.
 
 *Restart now* while something runs: main refuses it and the reason shows where the button is, for
-example "Finish or stop the export first." (main checks when it is pressed; nothing installs). The
+example "Finish or stop the export first." (main checks when it is pressed; nothing installs). Main
+says nothing when that job ends, so the reason shows for 8 seconds (on Home the ready text then
+comes back), and goes at once when the update changes (another phase or version). The
 Settings action is one button whose label follows the state (Check for updates, Download, Restart
 now); while it waits it is `aria-disabled`, not removed or disabled, so the keyboard focus stays.
 

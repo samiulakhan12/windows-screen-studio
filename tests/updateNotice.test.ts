@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UpdateState } from '../src/shared/updates/updates'
 
 /*
- * Home's update notice (docs/design/auto-update.md §1.7) without a DOM: React's hooks are swapped
+ * Home's update notice and Settings › About › Updates (docs/design/auto-update.md §1.7) without a
+ * DOM: React's hooks are swapped
  * for a few lines that keep each component's state (as in copyMenu.test.ts), a component no longer
  * rendered is unmounted (its layout effects' cleanups first, as React does before it removes the
  * nodes), and the page then drops the focus a removed button had, as a browser does.
@@ -109,12 +110,19 @@ vi.stubGlobal('window', {
       return () => main.listeners.delete(fn)
     },
     updatesInstall: () => Promise.resolve(main.install)
-  }
+  },
+  // Looked up when called, so fake timers apply.
+  setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+  clearTimeout: (t: ReturnType<typeof setTimeout>) => clearTimeout(t)
 })
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const NOTICE = '../src/renderer/src/updates/UpdateNotice'
+const BLOCK = '../src/renderer/src/updates/UpdatesBlock'
+const HOOKS = '../src/renderer/src/updates/useUpdates'
 const { UpdateNotice } = (await import(/* @vite-ignore */ NOTICE)) as { UpdateNotice: () => unknown }
+const { UpdatesBlock } = (await import(/* @vite-ignore */ BLOCK)) as { UpdatesBlock: () => unknown }
+const { REFUSED_MS } = (await import(/* @vite-ignore */ HOOKS)) as { REFUSED_MS: number }
 
 /* ---------- a tiny renderer ---------- */
 
@@ -189,6 +197,9 @@ const emit = (s: UpdateState): void => {
   for (const l of main.listeners) l(s)
 }
 
+afterEach(() => {
+  vi.useRealTimers()
+})
 beforeEach(() => {
   for (const hooks of mounted.values()) for (const c of hooks) c.cleanup?.()
   mounted.clear()
@@ -234,5 +245,85 @@ describe("Home's update notice (docs/design/auto-update.md §1.7)", () => {
     emit({ phase: 'idle', current: '0.7.1', lastCheck: '2026-10-31T10:00:00.000Z', auto: true })
     render(view)
     expect(doc.activeElement).toBe(doc.body)
+  })
+})
+
+const EXPORTING = 'Finish or stop the export first.'
+
+describe('why Restart now was refused (docs/design/auto-update.md §1.7)', () => {
+  it("Home: the reason shows for a while, then the notice says the update is ready again", async () => {
+    vi.useFakeTimers()
+    main.state = ready('9.9.4')
+    main.install = { ok: false, reason: EXPORTING }
+    const view = UpdateNotice
+    render(view)
+    let out = await settle(view)
+    ;(button(out, 'Restart now')!.props.onClick as () => void)()
+    out = await settle(view)
+    expect(textOf(pillOf(out))).toContain(EXPORTING)
+    // The export ends; main says nothing about it.
+    vi.advanceTimersByTime(REFUSED_MS)
+    out = render(view)
+    expect(textOf(pillOf(out))).toContain('Flown 9.9.4 is ready. It installs when you close Flown.')
+    expect(textOf(pillOf(out))).not.toContain(EXPORTING)
+  })
+
+  it('Home: the same reason again shows for its full time again', async () => {
+    vi.useFakeTimers()
+    main.state = ready('9.9.5')
+    main.install = { ok: false, reason: EXPORTING }
+    const view = UpdateNotice
+    render(view)
+    let out = await settle(view)
+    ;(button(out, 'Restart now')!.props.onClick as () => void)()
+    out = await settle(view)
+    vi.advanceTimersByTime(REFUSED_MS - 1000)
+    ;(button(out, 'Restart now')!.props.onClick as () => void)()
+    out = await settle(view)
+    vi.advanceTimersByTime(2000)
+    out = render(view)
+    expect(textOf(pillOf(out))).toContain(EXPORTING)
+  })
+
+  it('Home: a newer version ready replaces the reason at once', async () => {
+    main.state = ready('9.9.6')
+    main.install = { ok: false, reason: EXPORTING }
+    const view = UpdateNotice
+    render(view)
+    let out = await settle(view)
+    ;(button(out, 'Restart now')!.props.onClick as () => void)()
+    out = await settle(view)
+    expect(textOf(pillOf(out))).toContain(EXPORTING)
+    emit(ready('9.9.7'))
+    out = render(view)
+    expect(textOf(pillOf(out))).toContain('Flown 9.9.7 is ready. It installs when you close Flown.')
+  })
+
+  const refusedOf = (out: El[]): El | undefined => out.find((e) => e.props['data-testid'] === 'updates-refused')
+  const action = (out: El[]): El => out.find((e) => e.props['data-testid'] === 'updates-action')!
+
+  it('Settings: the reason goes after a while, and at once when the update moves on', async () => {
+    vi.useFakeTimers()
+    main.state = ready('9.9.8')
+    main.install = { ok: false, reason: EXPORTING }
+    const view = UpdatesBlock
+    render(view)
+    let out = await settle(view)
+    ;(action(out).props.onClick as () => void)()
+    out = await settle(view)
+    expect(refusedOf(out)?.props.role).toBe('alert')
+    expect(textOf(refusedOf(out))).toBe(EXPORTING)
+    vi.advanceTimersByTime(REFUSED_MS)
+    out = render(view)
+    expect(refusedOf(out)).toBeUndefined()
+
+    ;(action(out).props.onClick as () => void)()
+    out = await settle(view)
+    expect(textOf(refusedOf(out))).toBe(EXPORTING)
+    // The release was pulled: the button is Check for updates again, and the reason about it goes.
+    emit({ phase: 'idle', current: '0.7.1', lastCheck: '2026-10-31T10:00:00.000Z', auto: true })
+    out = render(view)
+    expect(textOf(action(out).props.children)).toBe('Check for updates')
+    expect(refusedOf(out)).toBeUndefined()
   })
 })

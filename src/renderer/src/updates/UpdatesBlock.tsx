@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { statusLine, type UpdateState } from '../../../shared/updates/updates'
-import { checkedAt, useUpdates } from './useUpdates'
+import { checkedAt, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
 
 type Action = { label: string; run?: () => Promise<unknown> }
@@ -31,7 +31,7 @@ function actionOf(s: UpdateState, restart: () => Promise<unknown>): Action | nul
  */
 export function UpdatesBlock(): JSX.Element {
   const s = useUpdates()
-  const [refused, setRefused] = useState<string | null>(null)
+  const [refused, setRefused] = useRefusal(s)
   // The switch shows the change at once; main's answer (a state change) takes over when it arrives.
   const [pendingAuto, setPendingAuto] = useState<boolean | null>(null)
 
