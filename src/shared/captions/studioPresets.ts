@@ -37,6 +37,13 @@ export interface StudioPreset {
   look: CaptionStudio
 }
 
+/** A look the user saved (prefs `captionPresets`, §4.6, §5.7): ids `^[a-z0-9]{1,16}$`, names at most 40 characters, at most 50. */
+export interface SavedLook {
+  id: string
+  name: string
+  look: CaptionStudio
+}
+
 /** A legacy tile (§5.2): drawn by today's code, under the *Classic* filter. */
 export interface LegacyTile {
   preset: CaptionPreset
