@@ -21,6 +21,8 @@ export interface BundleOptions {
   description: boolean
   /** One file per chapter: "01 Intro.mp4", "02 Billing.mp4" into a folder. */
   perChapter: boolean
+  /** The subtitle languages for files and streams (Captions Studio §11.10); absent: the spoken language only, as today. */
+  languages?: string[]
 }
 
 export const NO_BUNDLE: BundleOptions = { srt: false, vtt: false, chapters: false, thumbnail: false, description: false, perChapter: false }
@@ -29,7 +31,7 @@ export const NO_BUNDLE: BundleOptions = { srt: false, vtt: false, chapters: fals
 export function normalizeBundle(raw: unknown): BundleOptions {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const out = { ...NO_BUNDLE }
-  for (const k of Object.keys(NO_BUNDLE) as (keyof BundleOptions)[]) out[k] = r[k] === true
+  for (const k of Object.keys(NO_BUNDLE) as Exclude<keyof BundleOptions, 'languages'>[]) out[k] = r[k] === true
   return out
 }
 

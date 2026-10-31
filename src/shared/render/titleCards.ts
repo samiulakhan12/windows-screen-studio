@@ -107,7 +107,10 @@ interface StyleMetrics {
 const METRICS: Record<TitleCardStyle, StyleMetrics> = {
   centered: { title: 0.085, titleMin: 0.03, titleLine: 1.16, titleWeight: 700, sub: 0.038, subMin: 0.022, subLine: 1.35, subWeight: 500, titleLines: 3, subLines: 3, gap: 0.42, maxWidth: 0.78, maxHeight: 0.72 },
   big: { title: 0.165, titleMin: 0.05, titleLine: 1.04, titleWeight: 800, sub: 0.042, subMin: 0.022, subLine: 1.35, subWeight: 500, titleLines: 3, subLines: 2, gap: 0.3, maxWidth: 0.86, maxHeight: 0.8 },
-  'lower-third': { title: 0.05, titleMin: 0.028, titleLine: 1.2, titleWeight: 700, sub: 0.03, subMin: 0.02, subLine: 1.3, subWeight: 500, titleLines: 2, subLines: 2, gap: 0.22, maxWidth: 0.62, maxHeight: 0.3 }
+  'lower-third': { title: 0.05, titleMin: 0.028, titleLine: 1.2, titleWeight: 700, sub: 0.03, subMin: 0.02, subLine: 1.3, subWeight: 500, titleLines: 2, subLines: 2, gap: 0.22, maxWidth: 0.62, maxHeight: 0.3 },
+  // The quote panel (docs/design/captions-studio.md §10.1): the quote at 0.06 u, "— Name" at 0.6×,
+  // at most 0.8 W. Part P2 draws it as a panel; until then it lays out as a centred card.
+  quote: { title: 0.06, titleMin: 0.03, titleLine: 1.25, titleWeight: 400, sub: 0.036, subMin: 0.02, subLine: 1.3, subWeight: 500, titleLines: 4, subLines: 1, gap: 0.3, maxWidth: 0.8, maxHeight: 0.5 }
 }
 
 /** Distance from the frame's edges kept clear (title-safe area), as a fraction of the shorter side. */
