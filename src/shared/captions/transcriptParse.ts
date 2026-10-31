@@ -126,8 +126,11 @@ export function parseOpenAiTranscription(json: unknown, partSeconds: number): Ra
   return { language: languageCode(json.language), segments }
 }
 
-/** Longest text kept from a text-only answer for one part (30 s of fast speech is well under 1000). */
-const MAX_PART_TEXT = 20000
+/**
+ * Most text kept from a text-only answer per 30 s of its part (30 s of fast speech is well under
+ * 1000 characters), so a model that loops over music cannot fill the transcript (§10).
+ */
+const TEXT_PER_30_SECONDS = 2000
 
 /**
  * An OpenAI "json" transcription (gpt-transcribe and later: { text, languages: [{ code }], usage },
@@ -136,7 +139,7 @@ const MAX_PART_TEXT = 20000
  */
 export function parseOpenAiText(json: unknown, partSeconds: number): RawTranscript {
   if (!isObject(json) || typeof json.text !== 'string') throw new Error('The transcription service returned something that is not a transcript.')
-  const text = cleanText(json.text, MAX_PART_TEXT)
+  const text = cleanText(json.text, TEXT_PER_30_SECONDS * Math.max(1, Math.ceil(partSeconds / 30) || 1))
   const detected = Array.isArray(json.languages) ? json.languages.map((l) => (isObject(l) ? languageCode(l.code) : undefined)).find(Boolean) : languageCode(json.language)
   const end = Math.max(0, partSeconds)
   return { ...(detected ? { language: detected } : {}), segments: text ? [{ start: 0, end, text }] : [], untimed: true }

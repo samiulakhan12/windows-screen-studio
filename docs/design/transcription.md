@@ -373,8 +373,9 @@ Settings: none.
 ## 10. Security
 
 - Names and texts from providers are untrusted: cleaned to one line and bounded (32 / 2000
-  characters) in `transcriptParse.ts`, again on load. They are drawn on a canvas and written into
-  subtitle files (VTT-escaped; `-->` replaced as for text), never into HTML.
+  characters; a text-only answer to 2000 per 30 s of its part) in `transcriptParse.ts`, again on
+  load. They are drawn on a canvas and written into subtitle files (VTT-escaped; `-->` replaced as
+  for text), never into HTML.
 - No new IPC channel; `transcribe` options are validated as before. No new dependency.
 
 ## 11. Files and exported signatures

@@ -130,6 +130,15 @@ describe('parseOpenAiText', () => {
     expect(parseOpenAiText({ text: '', languages: [] }, 5)).toEqual({ segments: [], untimed: true })
     expect(() => parseOpenAiText({ languages: [] }, 5)).toThrow(/not a transcript/)
   })
+
+  it('keeps at most 2000 characters per 30 s of a part, so a looping answer cannot flood the captions', () => {
+    const loop = 'Thank you. '.repeat(1000)
+    expect(parseOpenAiText({ text: loop }, TEXT_PART_SECONDS).segments[0].text).toHaveLength(2000)
+    expect(parseOpenAiText({ text: loop }, 4).segments[0].text).toHaveLength(2000)
+    // A whisper-1 answer with text but no segments (a 600 s part) keeps ten minutes of speech.
+    const talk = 'and then we open the settings '.repeat(300).trim()
+    expect(parseOpenAiText({ text: talk }, 600).segments[0].text).toBe(talk)
+  })
 })
 
 describe('checkWordTimes', () => {
