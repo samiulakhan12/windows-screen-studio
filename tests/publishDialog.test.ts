@@ -256,6 +256,13 @@ const press = (els: El[], label: string): void => {
   if (button.props.disabled) throw new Error(`"${label}" is disabled`)
   ;(button.props.onClick as () => void)()
 }
+/** The focus moves to `el`, a stand-in from the last render: the dialog hears it (focusin), as in a browser. */
+const focusOn = (out: El[], el: unknown): void => {
+  page.activeElement = el
+  const dialog = out.find((e) => e.props.role === 'dialog')
+  if (!dialog) throw new Error('No dialog')
+  ;(dialog.props.onFocus as ((e: { target: unknown }) => void) | undefined)?.({ target: el })
+}
 const type = (els: El[], label: string, value: string): void => {
   const field = els.find((e) => e.type === 'textarea' && e.props['aria-label'] === label)
   if (!field) throw new Error(`No "${label}" field`)
@@ -314,9 +321,21 @@ describe('Publish dialog: the focus when it opens (§5.2)', () => {
 describe('Publish dialog: Stop all keeps the focus in the dialog (§5.2)', () => {
   /** A keyboard user tabbed to Stop all. */
   const onStopAll = (out: El[]): void => {
-    expect(out.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop all')).toBe(true)
+    const stop = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop all')
+    if (!stop) throw new Error('No "Stop all" button')
     focused = 'Stop all'
-    page.activeElement = { name: 'Stop all' }
+    focusOn(out, (stop.ref as { current: unknown }).current)
+  }
+  /** The other items' answers, so the last item is written. */
+  const answerAll = async (): Promise<El[]> => {
+    let out: El[] = []
+    for (let i = 0; i < 7; i++) {
+      const a = asked[i]
+      a.answer.resolve(a.task === 'youtube' ? { task: a.task, text: 'About the reports.', tags: ['reports'] } : { task: a.task, text: 'About the reports.' })
+      await flush()
+      out = render()
+    }
+    return out
   }
 
   it('pressed: the focus goes to Write all, not the page', async () => {
@@ -334,31 +353,40 @@ describe('Publish dialog: Stop all keeps the focus in the dialog (§5.2)', () =>
   })
 
   it('gone when the last item is written: the focus goes to Write all again', async () => {
-    let out = await opened()
+    const out = await opened()
     press(out, 'Write all')
     onStopAll(render())
-    for (let i = 0; i < 7; i++) {
-      const a = asked[i]
-      a.answer.resolve(a.task === 'youtube' ? { task: a.task, text: 'About the reports.', tags: ['reports'] } : { task: a.task, text: 'About the reports.' })
-      await flush()
-      out = render()
-    }
-    expect(out.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop all')).toBe(false)
+    const last = await answerAll()
+    expect(last.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop all')).toBe(false)
     expect(focused).toBe('Write all again')
   })
 
   it('leaves the focus where it is when that is still in the dialog', async () => {
     let out = await opened()
     press(out, 'Write all')
-    render()
     const field = { name: 'textarea' }
-    page.activeElement = field
+    focusOn(render(), field)
     focused = 'textarea'
     press(render(), 'Stop all')
     await flush()
     out = render()
     expect(focused).toBe('textarea')
     expect(page.activeElement).toBe(field)
+  })
+
+  it('left on the page by a mouse click (focus.ts), it stays there when the last item is written: the dialog does not scroll back up', async () => {
+    const out = await opened()
+    // Write all clicked: the focus release takes the focus off it. The user scrolls down to read the cards.
+    focusOn(out, (out.find((e) => e.props['data-testid'] === 'publish-write-all')!.ref as { current: unknown }).current)
+    press(out, 'Write all')
+    page.activeElement = page.body
+    focused = null
+    scrolls.length = 0
+    render()
+    await answerAll()
+    expect(focused).toBe(null)
+    expect(page.activeElement).toBe(page.body)
+    expect(scrolls).toEqual([])
   })
 })
 

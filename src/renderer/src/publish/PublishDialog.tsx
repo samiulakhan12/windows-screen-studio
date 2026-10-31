@@ -125,9 +125,13 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   const running = PUBLISH_KINDS.filter((k) => isRunning(items[k].status))
   const done = PUBLISH_KINDS.filter((k) => items[k].status === 'done').length
 
-  // Stop all goes once nothing runs, and the focus with it: back to Write all, not the page.
+  // Stop all goes once nothing runs: when it had the focus, the focus goes to Write all, not the
+  // page. Only then: a mouse click leaves the focus on the page too (focus.ts), and the dialog must
+  // not scroll back up to Write all when the last item comes in.
+  const stopAllRef = useRef<HTMLButtonElement>(null)
+  const stopAllFocused = useRef(false)
   useEffect(() => {
-    if (!running.length && document.activeElement === document.body) focusFirst()
+    if (!running.length && stopAllFocused.current && document.activeElement === document.body) focusFirst()
   }, [running.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Said on the card, not in the editor's notice: that one shows behind the dialog.
@@ -206,7 +210,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
             {running.length ? `Writing… ${done} of ${PUBLISH_KINDS.length} done` : ''}
           </span>
           {running.length > 0 && (
-            <button className="btn ghost" onClick={() => stopAll(project.id)}>
+            <button ref={stopAllRef} className="btn ghost" onClick={() => stopAll(project.id)}>
               Stop all
             </button>
           )}
@@ -252,7 +256,18 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
 
   return (
     <div className="overlay modal-backdrop">
-      <div className="publish-dialog" role="dialog" aria-modal="true" aria-labelledby="publish-title" ref={boxRef} tabIndex={-1} data-testid="publish-dialog">
+      <div
+        className="publish-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="publish-title"
+        ref={boxRef}
+        tabIndex={-1}
+        data-testid="publish-dialog"
+        onFocus={(e) => {
+          stopAllFocused.current = (e.target as EventTarget) === stopAllRef.current
+        }}
+      >
         <header className="modal-head">
           <h2 id="publish-title">
             <EditorIcon name="transcript" size={18} /> Publish
