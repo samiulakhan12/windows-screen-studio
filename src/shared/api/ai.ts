@@ -38,6 +38,8 @@ export interface TranscribeOptions {
   source?: 'auto' | 'mic' | 'mixed'
   /** On this PC only: the speech model (a catalog id, speech/catalog.ts); absent = the default model. Ignored for providers. */
   model?: string
+  /** The caption word list's terms (prefs captionWordList), a spelling hint for every route (Captions Studio §11.7 rule 4). */
+  glossary?: string[]
 }
 
 export interface TranscribeProgress {

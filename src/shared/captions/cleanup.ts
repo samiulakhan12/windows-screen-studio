@@ -66,22 +66,65 @@ export function readCleanupChoices(raw: unknown): CleanupChoices {
   }
 }
 
-/** A stored word list: entries with a term (one line, at most 60 characters), their heard forms, at most WORD_LIST_MAX. */
+/** Longest term or heard form, and most heard forms a term keeps (§4.6). */
+export const WORD_LIST_LIMITS = { chars: 40, heard: 5 } as const
+
+/** A stored word list (§4.6): terms of one line and at most 40 characters, each with at most 5 heard forms of at most 40, at most WORD_LIST_MAX entries. */
 export function readWordList(raw: unknown): WordListEntry[] {
   if (!Array.isArray(raw)) return []
   const out: WordListEntry[] = []
   const seen = new Set<string>()
-  const line = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 60) : '')
+  const line = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, WORD_LIST_LIMITS.chars).trim() : '')
   for (const v of raw) {
     if (out.length >= WORD_LIST_MAX) break
     if (!v || typeof v !== 'object') continue
     const term = line((v as Record<string, unknown>).term)
     if (!term || seen.has(term.toLowerCase())) continue
     seen.add(term.toLowerCase())
-    const heard = Array.isArray((v as Record<string, unknown>).heard) ? ((v as Record<string, unknown>).heard as unknown[]).map(line).filter(Boolean).slice(0, 10) : []
+    const heard = Array.isArray((v as Record<string, unknown>).heard) ? ((v as Record<string, unknown>).heard as unknown[]).map(line).filter(Boolean).slice(0, WORD_LIST_LIMITS.heard) : []
     out.push({ term, heard })
   }
   return out
+}
+
+/* ---------- the word list as a transcription hint (rule 4) ---------- */
+
+/**
+ * Most UTF-8 bytes of terms (with their ", ") sent as a transcription hint: Whisper keeps at most
+ * 224 prompt tokens (§11.7 rule 4), and the speech engine takes a prompt of at most 1,024 bytes.
+ */
+export const GLOSSARY_BYTES = 900
+const utf8 = new TextEncoder()
+
+/** Control and bidi-override characters a hint never carries (ZWJ and ZWNJ stay: Bangla and Hindi spell with them). */
+const HINT_UNSAFE = /[\p{Cc}\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]+/gu
+
+/**
+ * The word list's terms as a transcription hint carries them (§11.7 rule 4): strings of one line
+ * without control characters, at most 40 characters, no repeats (case ignored), and only whole
+ * terms within GLOSSARY_BYTES. Anything else in `raw` is dropped.
+ */
+export function glossaryTerms(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  let bytes = 0
+  for (const v of raw.slice(0, WORD_LIST_MAX)) {
+    if (typeof v !== 'string') continue
+    const term = v.replace(HINT_UNSAFE, ' ').replace(/\s+/g, ' ').trim().slice(0, WORD_LIST_LIMITS.chars).trim()
+    if (!term || seen.has(term.toLowerCase())) continue
+    const size = utf8.encode(term).length + 2
+    if (bytes + size > GLOSSARY_BYTES) break
+    seen.add(term.toLowerCase())
+    out.push(term)
+    bytes += size
+  }
+  return out
+}
+
+/** "Glossary: Flown, Qbexel." (the engine's and OpenAI's prompt), or another lead (Gemini's "Spell these names as written"); undefined without terms. */
+export function glossaryLine(terms: readonly string[], lead = 'Glossary'): string | undefined {
+  return terms.length ? `${lead}: ${terms.join(', ')}.` : undefined
 }
 
 /* ---------- words of a caption ---------- */

@@ -1,5 +1,6 @@
 import { autoStyleOnFirstCaptions, captionFrame } from '../../../shared/captions/autoStyle'
 import { MAX_CAPTIONS, readTranscript } from '../../../shared/captions/captionData'
+import { readWordList, type WordListEntry } from '../../../shared/captions/cleanup'
 import { captionAlpha } from '../../../shared/captions/layout'
 import { captionsOf } from '../../../shared/captions/settings'
 import type { TranscribeOptions, TranscribeProgress } from '../../../shared/api/ai'
@@ -51,6 +52,50 @@ export function onCaptionsRequest(listener: () => void): () => void {
   requestListeners.add(listener)
   return () => requestListeners.delete(listener)
 }
+
+/* ---------- the caption word list (prefs captionWordList, Captions Studio §2.9) ---------- */
+
+/** The word list as last read or saved: Clean up shows it, and every transcription gets its terms as a spelling hint (§11.7 rule 4). */
+let wordList: readonly WordListEntry[] = []
+let wordListRead: Promise<readonly WordListEntry[]> | null = null
+const wordListListeners = new Set<() => void>()
+
+const setWordList = (next: readonly WordListEntry[]): void => {
+  wordList = next
+  for (const l of [...wordListListeners]) l()
+}
+
+/** The word list, read from the prefs once (empty when it cannot be read). */
+export function loadWordList(): Promise<readonly WordListEntry[]> {
+  wordListRead ??= (async () => {
+    try {
+      setWordList(readWordList(await window.api.getPref('captionWordList')))
+    } catch {
+      // Unreadable: an empty list, read again next time.
+      wordListRead = null
+    }
+    return wordList
+  })()
+  return wordListRead
+}
+
+export const currentWordList = (): readonly WordListEntry[] => wordList
+
+export function onWordList(listener: () => void): () => void {
+  wordListListeners.add(listener)
+  return () => wordListListeners.delete(listener)
+}
+
+/** Saves the word list (read back through readWordList, so what is kept is what the next read gives). */
+export async function saveWordList(next: readonly WordListEntry[]): Promise<void> {
+  const list = readWordList(next)
+  await window.api.setPref('captionWordList', list)
+  wordListRead = Promise.resolve(list)
+  setWordList(list)
+}
+
+// Read at start, so the first transcription already spells the user's words.
+void loadWordList()
 
 /* ---------- showing a caption ---------- */
 
@@ -130,8 +175,10 @@ export async function fetchTranscript(projectId: string, duration: number, optio
   const off = window.api.onTranscribeProgress((progress) => {
     if (mine === generation && progress.projectId === projectId && job?.running) setJob({ ...job, progress })
   })
+  // The word list's terms as a spelling hint (§11.7 rule 4); main checks and caps them.
+  const glossary = options.glossary ?? wordList.map((e) => e.term)
   try {
-    const raw = await window.api.transcribe(projectId, options)
+    const raw = await window.api.transcribe(projectId, glossary.length ? { ...options, glossary } : options)
     if (mine !== generation) return { cancelled: true }
     const transcript = readTranscript(raw, duration)
     if (!transcript) throw new Error('The provider returned something that is not a transcript')

@@ -125,6 +125,9 @@ describe('partCacheKey', () => {
     expect(partCacheKey('a'.repeat(64), tiny, 'en', 'ssw-speech/2')).not.toBe(k)
     // Detect automatically is one key, however it is written.
     expect(partCacheKey('a'.repeat(64), tiny, undefined, ENGINE_VERSION)).toBe(partCacheKey('a'.repeat(64), tiny, 'auto', ENGINE_VERSION))
+    // A word-list prompt is part of the key; without one the key is as before.
+    expect(partCacheKey('a'.repeat(64), tiny, 'en', ENGINE_VERSION, 'Glossary: Flown.')).not.toBe(k)
+    expect(partCacheKey('a'.repeat(64), tiny, 'en', ENGINE_VERSION, undefined)).toBe(k)
   })
 
   it('passes a chosen language as its primary subtag', () => {
@@ -168,6 +171,20 @@ describe('localSpeechClient', () => {
     expect(readdirSync(path.join(projectDir, PART_CACHE_DIR))).toHaveLength(1)
     c.dispose!()
     expect(store.held).toBe(0)
+  })
+
+  it('passes the caption word list as the engine prompt, and caches parts per prompt (Captions Studio §11.7 rule 4)', async () => {
+    const c = await localSpeechClient('whisper-tiny', deps())
+    const file = wav('gl-0.wav', 2, 21)
+    await c.transcribe!(part(file, 2), { signal: signal(), glossary: ['Flown', 'Qbexel'] })
+    const [args] = transcribeCalls()
+    expect(argOf(args, '--prompt')).toBe('Glossary: Flown, Qbexel.')
+    expect(args.indexOf('--prompt')).toBeLessThan(args.indexOf('--threads'))
+    // Another word list is another part: run again, not read from the cache.
+    await c.transcribe!(part(file, 2), { signal: signal(), glossary: ['Flown'] })
+    await c.transcribe!(part(file, 2), { signal: signal() })
+    expect(transcribeCalls().map((a) => (a.includes('--prompt') ? argOf(a, '--prompt') : null))).toEqual(['Glossary: Flown, Qbexel.', 'Glossary: Flown.', null])
+    c.dispose!()
   })
 
   it('carries a detected language to later parts only from a part with language_s >= 10', async () => {

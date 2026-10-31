@@ -3,7 +3,7 @@
  * rules, the word list, bleeping, masks by time, and the AI fix's records.
  */
 import { describe, expect, it } from 'vitest'
-import { bleepGains, bleepKey, isSwearWord, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
+import { bleepGains, bleepKey, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
@@ -32,6 +32,10 @@ describe('readCleanupChoices (test 41)', () => {
 
   it('reads the word list: terms, heard forms, no repeats', () => {
     expect(readWordList([{ term: ' Flown ', heard: ['flow in', 7] }, { term: 'flown' }, { heard: ['x'] }, 'x'])).toEqual([{ term: 'Flown', heard: ['flow in'] }])
+    // §4.6: terms and heard forms at most 40 characters, at most 5 heard forms.
+    const long = readWordList([{ term: 'x'.repeat(50), heard: ['a', 'b', 'c', 'd', 'e', 'f', 'y'.repeat(45)] }])[0]
+    expect(long.term).toHaveLength(40)
+    expect(long.heard).toEqual(['a', 'b', 'c', 'd', 'e'])
   })
 })
 
@@ -166,5 +170,23 @@ describe('bleeping (tests 41, 50)', () => {
       expect(shown).not.toContain('fuck')
       expect(readBleeps(JSON.parse(JSON.stringify(q.bleeps)), q.duration)).toEqual(q.bleeps)
     }
+  })
+})
+
+describe('the word list as a transcription hint (§11.7 rule 4)', () => {
+  it('keeps plain terms, without repeats, whole terms within the byte cap', () => {
+    expect(glossaryTerms(['Flown', ' Qbexel ', 'flown', '', 7, 'a\nb', 'বাংলা\u200c'])).toEqual(['Flown', 'Qbexel', 'a b', 'বাংলা\u200c'])
+    expect(glossaryTerms('Flown')).toEqual([])
+    // Bangla is three bytes a letter: the cap counts bytes, so the engine's 1,024-byte prompt always fits.
+    const many = glossaryTerms(Array.from({ length: 100 }, (_, i) => `অআইঈউঊঋএঐও${i}`))
+    const bytes = new TextEncoder().encode(glossaryLine(many)!).length
+    expect(bytes).toBeLessThanOrEqual(GLOSSARY_BYTES + 11)
+    expect(bytes).toBeGreaterThan(GLOSSARY_BYTES - 40)
+  })
+
+  it('reads as one line', () => {
+    expect(glossaryLine(['Flown', 'Qbexel'])).toBe('Glossary: Flown, Qbexel.')
+    expect(glossaryLine(['Flown'], 'Spell these names as written')).toBe('Spell these names as written: Flown.')
+    expect(glossaryLine([])).toBeUndefined()
   })
 })

@@ -20,6 +20,7 @@ import type { ProjectProcesses } from '../projectProcesses'
 import { commonArgs, markIllegalInstruction, runHelper, selectHelper, spawnFailure, speechHelperPaths, SPEECH_TIMING, type HelperBuild, type HelperChoice, type SpeechExit } from './helper'
 import type { SpeechModelStore } from './models'
 import { detectorModelOk } from './vad'
+import { glossaryLine } from '../../shared/captions/cleanup'
 
 export interface LocalClientDeps {
   /** The project's folder (its .cache holds finished parts). */
@@ -46,9 +47,9 @@ const LEARN_MIN_SECONDS = 60
 const LEARN_MIN_SPEECH = 0.5
 
 /** Cache key of a finished part: its WAV's SHA-256, the model's SHA-256, the language asked for and ENGINE_VERSION. */
-export function partCacheKey(partSha256: string, spec: Pick<SpeechModelSpec, 'sha256'>, language: string | undefined, engine: string): string {
+export function partCacheKey(partSha256: string, spec: Pick<SpeechModelSpec, 'sha256'>, language: string | undefined, engine: string, prompt?: string): string {
   return createHash('sha256')
-    .update([partSha256, spec.sha256, language || 'auto', engine].join('\n'))
+    .update([partSha256, spec.sha256, language || 'auto', engine, ...(prompt ? [prompt] : [])].join('\n'))
     .digest('hex')
 }
 
@@ -135,6 +136,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
 
   const runPart = async (part: AudioPart, lang: string, threads: number, call: TranscribeCall, exe: string, build: HelperBuild): Promise<PartRun> => {
     const limitMs = partLimitMs(spec, part.seconds, threads, store.measured(spec.id, build), build)
+    const prompt = glossaryLine(call.glossary ?? [])
     const args = [
       'transcribe',
       '--model-dir', path.dirname(modelFile),
@@ -144,6 +146,8 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
       '--lang', lang,
       // The model's own arguments (the Bangla model: 20 s chunks, no timestamp tokens), else none.
       ...modelArgs(spec),
+      // The caption word list as Whisper's initial prompt (Captions Studio §11.7 rule 4).
+      ...(prompt ? ['--prompt', prompt] : []),
       '--threads', String(threads),
       '--stdin-control',
       ...commonArgs()
@@ -190,7 +194,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
     const asked = spec.language ?? helperLanguage(call.language)
     const lang = asked ?? carried ?? 'auto'
     const partSha256 = createHash('sha256').update(await fs.readFile(part.file)).digest('hex')
-    const key = partCacheKey(partSha256, spec, lang, ENGINE_VERSION)
+    const key = partCacheKey(partSha256, spec, lang, ENGINE_VERSION, glossaryLine(call.glossary ?? []))
     const cacheFile = path.join(cacheDir, `${key}.json`)
     const learn = (language: string, seconds: number): void => {
       if (!asked && !carried && language && language !== 'auto' && seconds >= SIDECAR.detectMinSpeech) carried = language

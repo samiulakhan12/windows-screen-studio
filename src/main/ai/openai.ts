@@ -24,6 +24,7 @@ import { baseUrlOverride } from './endpoints'
 import { AiError, callWithRetry, isNetworkError, retryAfterSeconds } from './request'
 import { retiredFailure } from './retired'
 import type { AiClient } from './types'
+import { glossaryLine } from '../../shared/captions/cleanup'
 
 const OFFICIAL_URL = 'https://api.openai.com/v1'
 const PROVIDER = AI_PROVIDER_KINDS.openai.label
@@ -63,6 +64,8 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
     async transcribe(part, call) {
       const bytes = await readFile(part.file)
       const language = call.language ? call.language.split('-')[0].toLowerCase() : undefined
+      // The caption word list in the transcription's `prompt` field (Captions Studio §11.7 rule 4).
+      const prompt = glossaryLine(call.glossary ?? [])
       if (textOnly) {
         const json = await callWithRetry(
           async (signal) =>
@@ -71,7 +74,8 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
                 file: await toFile(bytes, 'audio.mp3', { type: part.mimeType }),
                 model: transcriptionModel,
                 response_format: 'json',
-                ...(language ? languageHint(language) : {})
+                ...(language ? languageHint(language) : {}),
+                ...(prompt ? { prompt } : {})
               },
               { signal }
             ),
@@ -87,7 +91,8 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
               model: transcriptionModel,
               response_format: 'verbose_json',
               timestamp_granularities: ['segment', 'word'],
-              ...(language ? { language } : {})
+              ...(language ? { language } : {}),
+              ...(prompt ? { prompt } : {})
             },
             { signal }
           ),

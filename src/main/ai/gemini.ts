@@ -22,6 +22,7 @@ import { baseUrlOverride, testLimit } from './endpoints'
 import { AiError, callWithRetry, isNetworkError, sleep } from './request'
 import { retiredFailure } from './retired'
 import type { AiClient, AudioPart } from './types'
+import { glossaryLine } from '../../shared/captions/cleanup'
 
 const OFFICIAL_URL = 'https://generativelanguage.googleapis.com/'
 const PROVIDER = AI_PROVIDER_KINDS.gemini.label
@@ -135,11 +136,13 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
       }
       try {
         const language = call.language ? ` The speech is in ${call.language} (BCP-47).` : ''
+        // The caption word list, as data in its own part (Captions Studio §11.7 rule 4).
+        const names = glossaryLine(call.glossary ?? [], 'Spell these names as written')
         const response = await callWithRetry(
           (signal) =>
             ai.models.generateContent({
               model: transcriptionModel,
-              contents: [{ role: 'user', parts: [audio, { text: TRANSCRIBE_PROMPT + language }] }],
+              contents: [{ role: 'user', parts: [audio, { text: TRANSCRIBE_PROMPT + language }, ...(names ? [{ text: names }] : [])] }],
               config: { responseMimeType: 'application/json', responseJsonSchema: GEMINI_TRANSCRIPT_SCHEMA, abortSignal: signal }
             }),
           { ...base, model: transcriptionModel, signal: call.signal, timeoutMs: 180_000 + part.seconds * 1000 }
