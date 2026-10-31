@@ -434,11 +434,11 @@ describe('with no choice made, a row whose record went reads removed when its ch
     expect(trimmed.rows()).toEqual(['r0:kept'])
   })
 
-  it('a speed-up edited by hand: removed when none of it plays at its speed, kept when some still does or all of it was cut', () => {
+  it('a speed-up edited by hand: removed when none of it plays at its speed, kept while some still does', () => {
     expect(replay('tool 5-9 2; open; hand speed 5-9 1').rows()).toEqual(['r0:removed'])
     expect(replay('tool 5-9 2; open; hand speed 5-9 4').rows()).toEqual(['r0:removed'])
+    expect(replay('tool 5-9 2; open; hand cut 4-10').rows()).toEqual(['r0:removed'])
     expect(replay('tool 5-9 2; open; hand speed 6-7 1').rows()).toEqual(['r0:kept'])
-    expect(replay('tool 5-9 2; open; hand cut 4-10').rows()).toEqual(['r0:kept'])
     // Undone, the edit by hand gives the row back to review.
     expect(replay('tool 5-9 2; open; hand speed 5-9 1; undo').rows()).toEqual(['r0:pending'])
   })
@@ -449,6 +449,8 @@ describe('with no choice made, a row whose record went reads removed when its ch
     expect(s.rows()).toEqual(['r1:pending', 'r0:removed'])
     expect(replay('tool 5-9 2; open; tool 4-10 4; R r1').rows()).toEqual(['r1:removed', 'r0:removed'])
     expect(replay('tool 5-9 2; open; tool 4-10 4; K r1').rows()).toEqual(['r1:kept', 'r0:removed'])
+    // Taken over by a cut, the same.
+    expect(replay('tool 5-9 2; open; tool 4-10 cut').rows()).toEqual(['r1:pending', 'r0:removed'])
   })
 })
 

@@ -107,8 +107,8 @@ Each listed item is **pending**, **kept** or **removed**, read from the current 
 * automatic cut or speed-up: the choice made for it in the panel (`Project.autoCutOutcomes`, §3)
   when there is one. Else record present and intact → pending. Else (an undo, an edit by hand or a
   later tool run took the record, with no choice made) → **removed** when its change is gone from
-  the video (all of a cut's footage plays again, at any speed; none of a speed-up's footage that is
-  still kept plays at its speed), **kept** otherwise (`changeGone`).
+  the video (all of a cut's footage plays again, at any speed; none of a speed-up's footage plays
+  at its speed), **kept** otherwise (`changeGone`).
 
 Why cuts and speed-ups record the choice: a zoom or camera segment carries its state itself
 (`auto`), so the project tells. Keep and Remove both drop a cut's record, and the footage cannot
@@ -249,8 +249,8 @@ path by path), once for a list and its clips. Records are judged among the other
 a speed-up whose later record went stale goes too.
 
 Change gone (`changeGone`, the reading of a record that went with no choice made, §2.3): for a
-cut, every `was` piece is kept again (at any speed), within 1 ms; for a speed-up, some of its `was`
-pieces are still kept and none of that plays at `action`, within 1 ms.
+cut, every `was` piece is kept again (at any speed), within 1 ms; for a speed-up, no part of its
+`was` pieces plays at `action` (it plays at another speed, or is cut), within 1 ms.
 
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the

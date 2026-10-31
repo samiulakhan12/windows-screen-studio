@@ -175,14 +175,13 @@ export function autoCutIntact(cut: AutoCut, clips: readonly Clip[], list: readon
 
 /**
  * Whether a record's change is gone from the clips (within 1 ms): all of a cut's footage plays
- * again, at any speed; some of a speed-up's footage is still kept and none of it plays at the
- * record's speed. Review's reading of a record that went with no choice made in the panel (§2.3).
+ * again, at any speed; none of a speed-up's footage plays at the record's speed (it plays at
+ * another speed, or is cut). Review's reading of a record that went with no choice made in the
+ * panel (§2.3).
  */
 export function changeGone(cut: AutoCut, clips: readonly Clip[]): boolean {
   if (cut.action === 'cut') return cut.was.every((p) => covered(clips, p.start, p.end) >= p.end - p.start - SLACK)
-  const kept = cut.was.reduce((n, p) => n + covered(clips, p.start, p.end), 0)
-  const fast = cut.was.reduce((n, p) => n + covered(clips, p.start, p.end, (c) => c.speed === cut.action), 0)
-  return kept > SLACK && fast <= SLACK
+  return cut.was.reduce((n, p) => n + covered(clips, p.start, p.end, (c) => c.speed === cut.action), 0) <= SLACK
 }
 
 /** The records of `list` whose change is still in `clips`, each judged among the others still there. */

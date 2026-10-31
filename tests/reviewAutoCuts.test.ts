@@ -287,7 +287,7 @@ describe('intact, change gone, live', () => {
     expect(changeGone(cut(), [clip(0, 4), clip(6, 20)])).toBe(false)
   })
 
-  it('a speed-up is intact while all of it plays at its speed, and gone once none of what is kept does', () => {
+  it('a speed-up is intact while all of it plays at its speed, and gone once none of it does', () => {
     const fast = cut({ action: 4 })
     expect(autoCutIntact(fast, [clip(0, 4), clip(4, 6, 4), clip(6, 20)])).toBe(true)
     expect(autoCutIntact(fast, [clip(0, 4), clip(4, 6, 2), clip(6, 20)])).toBe(false)
@@ -295,8 +295,8 @@ describe('intact, change gone, live', () => {
     expect(changeGone(fast, [clip(0, 4), clip(4, 6, 2), clip(6, 20)])).toBe(true)
     expect(changeGone(fast, [clip(0, 4), clip(4.5, 20)])).toBe(true)
     expect(changeGone(fast, [clip(0, 4), clip(4, 5, 4), clip(5, 20)])).toBe(false)
-    // All of it cut since: nothing came back, so it is not gone.
-    expect(changeGone(fast, [clip(0, 4), clip(6, 20)])).toBe(false)
+    // All of it cut since: none of it plays sped up any more.
+    expect(changeGone(fast, [clip(0, 4), clip(6, 20)])).toBe(true)
   })
 
   it('liveAutoCuts lists only intact records', () => {
