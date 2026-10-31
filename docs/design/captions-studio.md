@@ -3089,6 +3089,55 @@ start. Changed later only with every part's agreement, recorded in this section.
   output for the pinned inputs; `emojiList.ts` equals `build-emoji-data.mjs --check`'s.
 - The `data-testid` list of §2 as a comment block at the top of `tests/e2e/captions-studio.e2e.cjs`.
 
+#### 14.0.1 The contracts as built for phase A (31 October 2026)
+
+What the contracts commits on `feat/captions-studio` froze beyond the text above, so the parts build
+on the same thing:
+
+- **Types the approved looks need** (§0.1, §0.2; every parameter that draws stays in the look):
+  `StudioBoxKind` gains `'word'` (Stickers), `'bubble'` (Speech Bubble) and `'chat'` (Chat);
+  `EmphasisMark` gains `'circle'` (Circle; `theme.emphasisText` is then the words' colour);
+  `WordMotion` gains `'grow'` (Editorial's emphasis). `StudioText.spokenWeight` (Light to Bold's
+  700) and `StudioText.scripts.bengali` (`StudioScriptFont`: the look's Bangla font, weight and
+  width). `StudioTheme.fill` (a gradient text fill, `across` or `down`: Gradient, Gold), `border`,
+  `youBox` and `youText` (Chat), `extrude` and `spokenExtrude`, `split`. `StudioEdge.extrude`
+  (3D Block) and `split` (Retro Pixel). `StudioBox.gap`, `shadow` (a shadow under each box) and
+  `tail`; the border limit is 0.12 em. `CaptionMotion.wordTilt` (Stickers' −4° / +3° by word
+  index) and `spokenScale` (1..1.3). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2).
+  `STUDIO_LIMITS` holds the new limits.
+- **Readers**: an unknown `cat:` emphasis font is dropped (the text's font draws); repeated ids
+  become `id~2`, `id~3`; overlapping marks keep the first one's id and tone, `auto` only when both
+  were; a mark or anchor text cut at 80 characters names the start of its words; emoji keys are
+  lower case without FE0F and leading zeros; a track with an unknown `by` reads `'local'`, and a
+  track keeps its row with no segments left.
+- **Fonts** (§0.3 decision 2): `fontCatalog.ts` lists 40 fonts; each `CatalogFile` pins the upstream
+  TTF (`path`, `bytes`, `sha256`) and, for the 36 bundled fonts, the committed WOFF2 (`woff2.file`,
+  `bytes`, `sha256`; 42 files, 7.47 MB). The WOFF2 files keep every TTF table byte for byte (null
+  transforms), so `node scripts/fonts.mjs check` proves each against its TTF. Besides §6 and the
+  seven Bangla families, the looks of §0.1 bring Archivo Black, Lilita One, Press Start 2P, Rubik,
+  Playfair Display and Fredoka. WOFF2 does not compress further: the fonts add about 7.45 MB to the
+  installer (brotli q11), so `CAPTIONS_BUDGET` (§6.9) is sized by P2 from these numbers.
+- **The word splitter** (`studioWords`, `studioWordTexts`, §8.1) is written in the contracts,
+  because the readers check marks and anchors with it; P1 writes the rest of `words.ts`.
+- **Looks**: Glass Pill's words not yet spoken are at 0.8 (0.78 is 4.50:1 on its tint over white);
+  Text Box's soft shadow is the boxes' (`box.shadow`); Terminal's 0.2 s fade is `speed` 0.6. Of the
+  approved looks, Chat's blue, Bubble's pink and purple and 3D Block's edge were darkened, and
+  Retro Pixel, Gold, Gradient, Spotlight Word and Cinema have a dark edge, so each passes §7.2
+  (each look says so in `studioPresets.ts`). Chat and Cinema draw Bangla in Noto Sans Bengali.
+- **Stubs** return their input on the legacy drawing's identity paths (`burnedSegments`,
+  `placeOf`, `maskedSegments`, `replacedAt`), so a part merged before another never changes how
+  old projects draw. `'marks'` is in `AiTextTask` but joins `AI_TEXT_TASKS` with P4's prompt. The
+  seven commands open the Captions tab until P3 wires them. Polish's Caption look skips until P4
+  makes it run; it is available with a transcript or when the Captions step can make one.
+- **Phase B** (after the review-mode, publishing-pack, sound-finder and versions branches merge):
+  the review kinds and `ReviewItem.members`, the smaller `CaptionsAiTask`, test 1's fixtures of
+  those branches' projects, `bleepGains` returning the sound finder's `SoundGain` (a local type
+  until then, `TODO(phase B)`), and offline translation with its catalogue (`catalog.ts`,
+  `resources/translate/models.json`, `scripts/build-translate-catalog.mjs`). The inputs are
+  checked: the saved registry is the pinned 188,342 bytes, and the archived
+  mozilla/firefox-translations-models at `e7957fc407441a5e3e35bbcbf9d60d9b35764618` serves the
+  pinned `by-hash.json` and Git LFS pointers (en → bn's model: `df17fb75…`, 12,821,521 bytes).
+
 ### 14.1 Part P1 · Look, layout and motion engine (pure, `src/shared`)
 
 | File | Exports |
