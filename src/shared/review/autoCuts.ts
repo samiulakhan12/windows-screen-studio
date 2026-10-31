@@ -41,31 +41,66 @@ function covered(clips: readonly Clip[], a: number, b: number, which: (c: Clip) 
 }
 
 /**
- * Whether a record's change is still in the clips: for a cut no clip plays any of its pieces; for a
- * speed-up every part of its pieces still kept plays at the record's speed, and some is kept (within 1 ms).
+ * Length of [a, b] that a speed-up of `list` other than `id` plays at its own speed and holds at
+ * `speed` (it played at `speed` before that one): a later change on top, such as a silence sped up
+ * 4× inside an idle part sped up 2×.
  */
-export function autoCutIntact(cut: AutoCut, clips: readonly Clip[]): boolean {
-  if (cut.action === 'cut') return cut.was.every((p) => covered(clips, p.start, p.end) <= SLACK)
-  // A speed-up stays while every part of it still kept plays at its speed (a part cut since is fine).
-  let kept = 0
-  for (const p of cut.was) {
-    const k = covered(clips, p.start, p.end)
-    if (covered(clips, p.start, p.end, (c) => c.speed === cut.action) < k - SLACK) return false
-    kept += k
+function held(list: readonly AutoCut[], id: string, clips: readonly Clip[], a: number, b: number, speed: number): number {
+  let sum = 0
+  for (const r of list) {
+    if (r.id === id || r.action === 'cut' || r.end <= a || r.start >= b) continue
+    for (const w of r.was) if (w.speed === speed) sum += covered(clips, Math.max(a, w.start), Math.min(b, w.end), (c) => c.speed === r.action)
   }
-  return kept > SLACK
+  return sum
 }
 
-/** Whether the footage a record changed is back as it was: every piece kept at its old speed (within 1 ms). */
-export function footageBack(cut: AutoCut, clips: readonly Clip[]): boolean {
+/**
+ * Whether a record's change is still in the clips: for a cut no clip plays any of its pieces; for a
+ * speed-up every part of its pieces still kept plays at the record's speed, or is held at it by a
+ * later speed-up of `list`, and some plays at its speed (within 1 ms).
+ */
+export function autoCutIntact(cut: AutoCut, clips: readonly Clip[], list: readonly AutoCut[] = []): boolean {
+  if (cut.action === 'cut') return cut.was.every((p) => covered(clips, p.start, p.end) <= SLACK)
+  // A speed-up stays while every part of it still kept plays at its speed (a part cut since is fine,
+  // and so is a part re-timed by a later automatic change that remembers it at this speed).
+  let own = 0
+  for (const p of cut.was) {
+    const k = covered(clips, p.start, p.end)
+    const fast = covered(clips, p.start, p.end, (c) => c.speed === cut.action)
+    if (fast < k - SLACK && fast + held(list, cut.id, clips, p.start, p.end, cut.action) < k - SLACK) return false
+    own += fast
+  }
+  return own > SLACK
+}
+
+/**
+ * Whether the footage a record changed is back as it was: every piece kept at its old speed (within
+ * 1 ms). For a speed-up, a part a speed-up of `list` holds at that speed counts as back (it is under
+ * that one).
+ */
+export function footageBack(cut: AutoCut, clips: readonly Clip[], list: readonly AutoCut[] = []): boolean {
   // A speed-up: the parts still kept (a part cut since cannot come back by undoing the speed).
-  if (cut.action !== 'cut') return cut.was.every((p) => covered(clips, p.start, p.end, (c) => c.speed === p.speed) >= covered(clips, p.start, p.end) - SLACK)
+  if (cut.action !== 'cut') {
+    return cut.was.every(
+      (p) => covered(clips, p.start, p.end, (c) => c.speed === p.speed) + held(list, cut.id, clips, p.start, p.end, p.speed) >= covered(clips, p.start, p.end) - SLACK
+    )
+  }
   return cut.was.every((p) => covered(clips, p.start, p.end, (c) => c.speed === p.speed) >= p.end - p.start - SLACK)
+}
+
+/** The records of `list` whose change is still in `clips`, each judged among the others still there. */
+function intactOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
+  let live = [...list]
+  for (;;) {
+    const next = live.filter((c) => autoCutIntact(c, clips, live))
+    if (next.length === live.length) return next
+    live = next
+  }
 }
 
 /** The records whose change is still in the project's clips (what Review lists), in stored order. */
 export function liveAutoCuts(project: Pick<Project, 'autoCuts' | 'clips'>): AutoCut[] {
-  return (project.autoCuts ?? []).filter((c) => autoCutIntact(c, project.clips))
+  return intactOf(project.autoCuts ?? [], project.clips)
 }
 
 /** Kept time of `before` that `after` no longer keeps, with its old speed. */
@@ -176,10 +211,11 @@ export function withoutSpeedUp(list: AutoCut[], s: AutoCut): AutoCut[] {
  * time it cut (or sped up to `action`), split among the ranges it was asked to act on (assign: a
  * sliver cutRange took next to a range belongs to that range's record). A range that changed
  * nothing (a refused cut, a part already that fast) gets no record; one with more than
- * MAX_WAS_PIECES pieces gets several. An earlier automatic speed-up this edit takes over (it cuts
- * or re-times footage that speed-up changed) hands its footage over: the new record holds it at its
- * speed from before the speed-up, and the speed-up keeps the rest (dropped when nothing of it is
- * left). Stale records are dropped. `project` itself when the clips are the same object.
+ * MAX_WAS_PIECES pieces gets several. An earlier automatic speed-up this edit cuts or re-times
+ * stays whole while some of it still plays at its speed: the new record holds the part it takes at
+ * that speed, as a cut inside it does. When none does, it is dropped and the new record holds that
+ * part at its speed from before the speed-up. Stale records are dropped. `project` itself when the
+ * clips are the same object.
  */
 export function recordAutoCuts(
   project: Project,
@@ -191,15 +227,14 @@ export function recordAutoCuts(
 ): Project {
   if (nextClips === project.clips) return project
   let live = project.autoCuts ?? []
-  const over = live.filter((c) => c.action !== 'cut' && autoCutIntact(c, project.clips) && !autoCutIntact(c, nextClips))
+  const over = live.filter((c) => c.action !== 'cut' && autoCutIntact(c, project.clips, live) && !autoCutIntact(c, nextClips, live))
   let changed = action === 'cut' ? cutPieces(project.clips, nextClips) : speedPieces(project.clips, nextClips, action)
-  for (const s of over) changed = beforeSpeedUp(changed, s)
-  for (const { id } of over) {
-    const s = live.find((c) => c.id === id)!
-    const rest = { ...s, was: without(s.was, changed) }
-    live = rest.was.length && autoCutIntact(rest, nextClips) ? live.map((c) => (c.id === id ? rest : c)) : withoutSpeedUp(live, s)
+  // The latest first: a speed-up inside an earlier one holds its footage at that one's speed.
+  for (const s of [...over].reverse()) {
+    if (autoCutIntact({ ...s, was: without(s.was, changed) }, nextClips, live)) continue
+    changed = beforeSpeedUp(changed, s)
+    live = withoutSpeedUp(live, s)
   }
-  live = live.filter((c) => autoCutIntact(c, nextClips))
   const sorted = ranges.filter((r) => finite(r.start) && finite(r.end) && r.end > r.start).sort((a, b) => a.start - b.start)
   const fresh: AutoCut[] = []
   const shares = sorted.length ? assign(changed, sorted) : []
@@ -219,7 +254,7 @@ export function recordAutoCuts(
       })
     }
   })
-  const all = [...live, ...fresh]
+  const all = intactOf([...live, ...fresh], nextClips)
   const autoCuts = all.length > MAX_AUTO_CUTS ? all.slice(all.length - MAX_AUTO_CUTS) : all
   return withAutoCuts({ ...project, clips: nextClips }, autoCuts)
 }
@@ -264,8 +299,22 @@ export function settleAutoCuts(next: Project, prev: Project): Project {
   const old = new Set((prev.autoCuts ?? []).map((c) => c.id))
   const byHand = next.clips === prev.clips ? [] : without(cutPieces(prev.clips, next.clips), list.filter((c) => !old.has(c.id)).flatMap((c) => c.was))
   const absorbed = (c: AutoCut): boolean => c.action === 'cut' && old.has(c.id) && byHand.length > 0 && sameGap(c, byHand, next.clips)
-  const live = list.filter((c) => autoCutIntact(c, next.clips) && !absorbed(c))
+  const live = intactOf(list.filter((c) => !absorbed(c)), next.clips)
   return live.length === list.length ? next : withAutoCuts(next, live)
+}
+
+/**
+ * The records `list` with the speed-up `k` kept (§2.4): an earlier speed-up whose footage it holds
+ * at that one's speed gives that part up, as if the user had re-timed it, and stays listed for the
+ * rest. Records that change nothing are the same objects.
+ */
+export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
+  if (k.action === 'cut') return list
+  return list.map((c) => {
+    if (c.id === k.id || c.action === 'cut') return c
+    const mine = k.was.filter((w) => w.speed === c.action && c.was.some((p) => Math.min(p.end, w.end) - Math.max(p.start, w.start) > EPS))
+    return mine.length ? { ...c, was: without(c.was, mine) } : c
+  })
 }
 
 /** `project` with `list` as its records: no key when the list is empty. */

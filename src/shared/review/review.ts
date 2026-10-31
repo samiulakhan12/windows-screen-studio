@@ -11,7 +11,7 @@
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
-import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp } from './autoCuts'
+import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -103,12 +103,15 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   }
   const cut = item.cut
   if (!cut) return 'removed'
-  const rec = (project.autoCuts ?? []).find((c) => c.id === id)
-  if (rec && autoCutIntact(rec, project.clips)) return 'pending'
-  if (footageBack(cut, project.clips)) return 'removed'
-  const ids = new Set((project.autoCuts ?? []).map((c) => c.id))
+  const records = project.autoCuts ?? []
+  const rec = records.find((c) => c.id === id)
+  if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
+  const ids = new Set(records.map((c) => c.id))
+  // A part sped up again on top of it (a speed-up of the project or of the list) is under that one.
+  const over = [...records, ...listed.flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [i.cut] : []))]
+  if (footageBack(cut, project.clips, over)) return 'removed'
   const before = listed.reduce((c, i) => (i.cut && i.cut.action !== 'cut' && !ids.has(i.cut.id) ? withoutSpeedUp([c], i.cut)[0] : c), cut)
-  return before !== cut && footageBack(before, project.clips) ? 'removed' : 'kept'
+  return before !== cut && footageBack(before, project.clips, over) ? 'removed' : 'kept'
 }
 
 /** Reviewed items of `statuses` and how many in all. */
@@ -136,7 +139,8 @@ const pendingOf = (project: Project, items: readonly ReviewItem[]): ReviewItem[]
 /**
  * The project with `items` kept (§2.4): zooms and camera segments no longer automatic (as an edit
  * by hand), the face framing the user's (director.framed dropped), cut records dropped (the cuts
- * stay, as plain cuts). Items not pending are left alone. `project` itself when nothing changes.
+ * stay, as plain cuts; a speed-up kept inside another one makes that part of the other the user's,
+ * withSpeedUpKept). Items not pending are left alone. `project` itself when nothing changes.
  */
 export function keepItems(project: Project, items: readonly ReviewItem[]): Project {
   const todo = pendingOf(project, items)
@@ -152,7 +156,11 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
     void _framed
     next = { ...next, director }
   }
-  if (todo.some((i) => i.cut)) next = withAutoCuts(next, (next.autoCuts ?? []).filter((c) => !keys.has(`cut:${c.id}`)))
+  if (todo.some((i) => i.cut)) {
+    let list = next.autoCuts ?? []
+    for (const k of list.filter((c) => keys.has(`cut:${c.id}`))) list = withSpeedUpKept(list, k)
+    next = withAutoCuts(next, list.filter((c) => !keys.has(`cut:${c.id}`) && c.was.length > 0))
+  }
   return next
 }
 

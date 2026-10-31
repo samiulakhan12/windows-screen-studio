@@ -77,6 +77,9 @@ a deleted sentence holding a filler cut). That cut is the user's now, so Remove 
 back footage inside their trim or cut. Time claimed by the records an edit writes itself (a tool's
 own cut next to an earlier one) is not by hand.
 A speed-up stays intact when a part of it is cut later: what is still kept still plays at its speed.
+It also stays intact when a later automatic speed-up re-times a part of it (a silence sped up 4×
+inside an idle part sped up 2×): the later record holds that part at this one's speed, as a cut
+inside it does, so removing only the later one puts the part back at 2×, not at 1×.
 
 ### 2.2 What is listed
 
@@ -101,7 +104,8 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
 * automatic cut: record present and intact → pending. Otherwise: its footage is back as it was
   (`was` pieces kept at their old speeds, or at the speed from before a speed-up of the panel's
   list taken back since: a silence cut removed inside a sped-up idle part, then the speed-up
-  removed) → removed; else → kept.
+  removed; for a speed-up, a part that a later speed-up of the project or the list holds at the
+  old speed counts as back) → removed; else → kept.
 
 So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
 again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the
@@ -120,7 +124,7 @@ is still automatic.
 | camera segment | `auto` and `cutOut` cleared | the segment is deleted; a `cutOut` piece turns back into the position's corner and joins its touching pieces (as `withoutDirected` does for one run) |
 | face framing | `director.framed` dropped (the framing is yours) | webcam `zoom/cropX/cropY` removed and `director.framed` dropped (`clearDirected`'s framing part) |
 | automatic cut | the record is dropped (the cut stays, now a plain cut) | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); the record is dropped |
-| automatic speed-up | the record is dropped | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one |
+| automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`): the part is yours now, and the earlier one stays listed for the rest | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one |
 
 Each Keep or Remove is **one** `store.update` (one undo step). **Keep all** keeps every pending
 item in one update; **Remove all of this kind** removes every pending item of the focused item's
@@ -190,20 +194,24 @@ Project.autoCuts?: AutoCut[]
    two fillers whose cuts meet keep a record each. Ranges whose share is empty — the cut was
    refused, the part already played that fast — get no record; a share of more than 64 pieces is
    split over several records.
-3. An earlier automatic speed-up that this change takes over (it cuts or re-times footage the
-   speed-up changed: Remove silences at 2× and then again with Cut, Smart speed at 2× and then at
-   4×) hands that footage over: the new record holds it at its speed from *before* the speed-up,
-   and the speed-up keeps the rest of its pieces. When nothing of the speed-up is left, it is
-   dropped, and any other record holding footage at its speed inside it (a cut made inside it)
-   takes the speed from before it too. So Remove never leaves an automatic 2× behind that the list
-   no longer shows.
+3. An earlier automatic speed-up whose footage this change cuts or re-times keeps all its pieces
+   while some of it still plays at its own speed: the new record holds the part it takes at that
+   speed (Smart speed at 2×, then a silence inside it at 4×: the 4× record holds the silence at 2×),
+   so removing only the new one gives that part back at 2×, and removing the 2× takes the 4× record
+   back to 1× (`withoutSpeedUp`). When none of it plays at its speed any more (Remove silences at 2×
+   and then again with Cut, Smart speed at 2× and then at 4× over the same part), it is dropped:
+   the new record holds that footage at its speed from *before* the speed-up, and any other record
+   holding footage at its speed inside it (a cut made inside it) takes that speed too. Speed-ups
+   are taken over latest first, so one inside another goes first. So Remove never leaves an
+   automatic 2× behind that the list no longer shows, and never a 1× hole inside one it still shows.
 4. Stale records (§2.1) are dropped; the new ones are appended; ids are `c<base36 time><counter>`.
 5. Returns `{ ...project, clips: nextClips, autoCuts }`; `project` itself when the clips are the
    same object.
 
 Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a
-speed-up, every part of the `was` pieces still kept plays at `action` (within 1 ms) and something
-is kept.
+speed-up, every part of the `was` pieces still kept plays at `action`, or at the speed of a later
+speed-up record that holds it at `action` (within 1 ms), and something plays at `action`. Records
+are judged among the others still intact, so a speed-up whose later record went stale goes too.
 
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the

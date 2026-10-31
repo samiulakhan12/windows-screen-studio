@@ -6,7 +6,7 @@ import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
 import { MAX_AUTO_CUTS, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
 import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
-import { mergeSnapshot, pendingCount, removeItems, reviewItems } from '../src/shared/review/review'
+import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem } from '../src/shared/review/review'
 import { suggestionRanges } from '../src/shared/review/wordCuts'
 import type { AutoCut, Clip, Project } from '../src/shared/types'
 
@@ -464,19 +464,107 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     expect(plays(removeItems(p, reviewItems(p)).clips)).toEqual([[0, 20, 1]])
   })
 
-  it('a part of a 2x re-timed to 4x: the 2x keeps the rest, both listed, and removing both gives it all back', () => {
-    const p = auto(auto(project(), 5, 15, 2, 'smart-speed', 'f'), 8, 10, 4, 'silences', 'g')
-    expect(liveAutoCuts(p).map((c) => [c.id, c.was])).toEqual([
-      [
-        'f1',
-        [
-          { start: 5, end: 8, speed: 1 },
-          { start: 10, end: 15, speed: 1 }
-        ]
-      ],
-      ['g1', [{ start: 8, end: 10, speed: 1 }]]
-    ])
-    expect(plays(removeOneByOne(p).clips)).toEqual([[0, 20, 1]])
+  describe('a part of a 2x re-timed to 4x', () => {
+    // Smart speed at 2x over [5,15], then Remove silences at 4x over [8,10] inside it.
+    const nested = (): Project => auto(auto(project(), 5, 15, 2, 'smart-speed', 'f'), 8, 10, 4, 'silences', 'g')
+    const statuses = (p: Project, shown: ReviewItem[]): string[] => shown.map((i) => `${i.cut!.id}:${reviewStatus(p, i, shown)}`)
+
+    it('both listed: the 2x keeps its pieces, the 4x holds its part at 2x, as a cut inside it would', () => {
+      const p = nested()
+      expect(plays(p.clips)).toEqual([
+        [0, 5, 1],
+        [5, 8, 2],
+        [8, 10, 4],
+        [10, 15, 2],
+        [15, 20, 1]
+      ])
+      expect(liveAutoCuts(p).map((c) => [c.id, c.was])).toEqual([
+        ['f1', [{ start: 5, end: 15, speed: 1 }]],
+        ['g1', [{ start: 8, end: 10, speed: 2 }]]
+      ])
+      expect(pendingCount(p)).toBe(2)
+    })
+
+    it('removing only the 4x puts that part back at 2x, inside the 2x still listed', () => {
+      let p = nested()
+      let shown = reviewItems(p)
+      p = removeItems(p, [shown[1]])
+      shown = mergeSnapshot(shown, reviewItems(p))
+      expect(plays(p.clips)).toEqual([
+        [0, 5, 1],
+        [5, 15, 2],
+        [15, 20, 1]
+      ])
+      expect(statuses(p, shown)).toEqual(['f1:pending', 'g1:removed'])
+      // Keeping the 2x then leaves it all at 2x.
+      p = keepItems(p, [shown[0]])
+      expect(plays(p.clips)).toEqual([
+        [0, 5, 1],
+        [5, 15, 2],
+        [15, 20, 1]
+      ])
+      expect(statuses(p, shown)).toEqual(['f1:kept', 'g1:removed'])
+    })
+
+    it('removing them one by one in either order, or both at once, gives it all back at 1x, both rows removed', () => {
+      const listOrder = removeOneByOne(nested())
+      expect(plays(listOrder.clips)).toEqual([[0, 20, 1]])
+      let p = nested()
+      let shown = reviewItems(p)
+      for (const k of [1, 0]) {
+        p = removeItems(p, [shown[k]])
+        shown = mergeSnapshot(shown, reviewItems(p))
+      }
+      expect(plays(p.clips)).toEqual([[0, 20, 1]])
+      expect(statuses(p, shown)).toEqual(['f1:removed', 'g1:removed'])
+      const both = removeItems(nested(), reviewItems(nested()))
+      expect(plays(both.clips)).toEqual([[0, 20, 1]])
+      expect(both.autoCuts).toBeUndefined()
+    })
+
+    it('removing the 2x first reads removed while the 4x is still to review', () => {
+      let p = nested()
+      let shown = reviewItems(p)
+      p = removeItems(p, [shown[0]])
+      shown = mergeSnapshot(shown, reviewItems(p))
+      expect(plays(p.clips)).toEqual([
+        [0, 8, 1],
+        [8, 10, 4],
+        [10, 20, 1]
+      ])
+      expect(statuses(p, shown)).toEqual(['f1:removed', 'g1:pending'])
+      // Keeping the 4x then: it stays, and the 2x still reads removed.
+      p = keepItems(p, [shown[1]])
+      expect(plays(p.clips)).toEqual([
+        [0, 8, 1],
+        [8, 10, 4],
+        [10, 20, 1]
+      ])
+      expect(statuses(p, shown)).toEqual(['f1:removed', 'g1:kept'])
+    })
+
+    it('keeping the 4x makes that part yours: the 2x stays listed for the rest, and Remove leaves the 4x', () => {
+      let p = nested()
+      let shown = reviewItems(p)
+      p = keepItems(p, [shown[1]])
+      shown = mergeSnapshot(shown, reviewItems(p))
+      expect(statuses(p, shown)).toEqual(['f1:pending', 'g1:kept'])
+      p = removeItems(p, [shown[0]])
+      shown = mergeSnapshot(shown, reviewItems(p))
+      expect(plays(p.clips)).toEqual([
+        [0, 8, 1],
+        [8, 10, 4],
+        [10, 20, 1]
+      ])
+      expect(statuses(p, shown)).toEqual(['f1:removed', 'g1:kept'])
+      expect(p.autoCuts).toBeUndefined()
+    })
+
+    it('an 8x over all of both takes both over: one record, and Remove brings it back at 1x', () => {
+      const p = auto(nested(), 5, 15, 8, 'smart-speed', 'h')
+      expect(p.autoCuts?.map((c) => [c.id, c.was])).toEqual([['h1', [{ start: 5, end: 15, speed: 1 }]]])
+      expect(plays(removeItems(p, reviewItems(p)).clips)).toEqual([[0, 20, 1]])
+    })
   })
 
   it('a cut inside a 2x that a 4x then takes over comes back at 1x', () => {
