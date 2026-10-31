@@ -919,6 +919,35 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     expect(rows(two.ui.p, two.ui.shown)).toEqual(['b1:removed', 'c1:kept', 'a1:kept'])
   })
 
+  it('a speed-up an undo brings back after the panel reopened reads removed once removed', () => {
+    // Smart speed at 2x, Polish at 4x inside it; Review, K the idle row; Esc, reopen; Ctrl+Z; Delete
+    // the idle row, K the silence row. The idle row comes back after the silence row is listed, but
+    // was made before it.
+    const made = auto(auto(project(), 3, 15, 2, 'smart-speed', 'f'), 5.5, 10.5, 4, 'polish', 'g')
+    const first = panel(made)
+    first.step(keepItems(first.ui.p, [first.item('f1')]))
+    const one = panel(first.ui.p)
+    expect(one.ui.shown.map((i) => i.key)).toEqual(['cut:g1'])
+    one.step(made)
+    one.step(removeItems(one.ui.p, [one.item('f1')]))
+    one.step(keepItems(one.ui.p, [one.item('g1')]))
+    expect(plays(one.ui.p.clips)).toEqual([
+      [0, 5.5, 1],
+      [5.5, 10.5, 4],
+      [10.5, 20, 1]
+    ])
+    expect(rows(one.ui.p, one.ui.shown)).toEqual(['f1:removed', 'g1:kept'])
+    // The same with Polish run somewhere else after reopening and undone first (two Ctrl+Z).
+    const two = panel(first.ui.p)
+    two.step(auto(two.ui.p, 16, 18, 2, 'polish', 'h'))
+    two.step(first.ui.p)
+    two.step(made)
+    two.step(removeItems(two.ui.p, [two.item('f1')]))
+    two.step(keepItems(two.ui.p, [two.item('g1')]))
+    expect(plays(two.ui.p.clips)).toEqual(plays(one.ui.p.clips))
+    expect(rows(two.ui.p, two.ui.shown)).toEqual(['f1:removed', 'g1:kept', 'h1:removed'])
+  })
+
   it('a speed-up removed still reads removed when the one made over it at its speed is kept with faster ones kept all over it', () => {
     // Polish at 4x, Delete; Polish at 4x over it; Polish at 8x over its end, K; K the 4x; Polish at
     // 8x over the rest of it, K. The later 4x plays none of its footage at 4x any more.

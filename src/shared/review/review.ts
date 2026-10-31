@@ -45,6 +45,8 @@ export interface ReviewItem {
   cut?: AutoCut
   /** When the panel listed it: none in its first list, one more for each batch added since (mergeSnapshot). */
   seq?: number
+  /** A cut or speed-up: its record's place among the project's records, which are kept in the order they were made. */
+  made?: number
 }
 
 type Piece = AutoCut['was'][number]
@@ -73,9 +75,9 @@ export function reviewItems(project: Project): ReviewItem[] {
     const at = project.clips[0]?.start ?? 0
     items.push({ key: FRAMING_KEY, kind: 'camera', start: at, end: at, title: FRAMING_TITLE, detail: DIRECTOR_DETAIL })
   }
-  for (const c of liveAutoCuts(project)) {
-    items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c })
-  }
+  liveAutoCuts(project).forEach((c, made) => {
+    items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c, made })
+  })
   return items.sort(byTime)
 }
 
@@ -169,7 +171,9 @@ export function reviewProgress(statuses: readonly ReviewStatus[]): { reviewed: n
  * The panel's list: what it showed (`shown`, kept and removed items stay, marked) plus every item of
  * `current` (pending now) it did not show yet, in time order. A pending item also shown takes its
  * current version (a zoom's place could change; a record's pieces could, when a speed-up around it
- * was removed). An item added to a list already shown is numbered after every item in it (`seq`).
+ * was removed). An item added to a list already shown is numbered after every item in it (`seq`),
+ * except a record older than one still listed: an undo brought it back from before the panel opened
+ * (a tool run adds its records after all others), so it is numbered as if in the first list.
  */
 export function mergeSnapshot(shown: readonly ReviewItem[], current: readonly ReviewItem[]): ReviewItem[] {
   const now = new Map(current.map((i) => [i.key, i]))
@@ -179,7 +183,9 @@ export function mergeSnapshot(shown: readonly ReviewItem[], current: readonly Re
     return c && i.seq ? { ...c, seq: i.seq } : (c ?? i)
   })
   const seq = shown.length ? Math.max(0, ...shown.map((i) => i.seq ?? 0)) + 1 : 0
-  for (const i of current) if (!keys.has(i.key)) out.push(seq ? { ...i, seq } : i)
+  const newest = Math.max(-1, ...current.flatMap((i) => (keys.has(i.key) && i.made !== undefined ? [i.made] : [])))
+  const old = (i: ReviewItem): boolean => i.made !== undefined && i.made < newest
+  for (const i of current) if (!keys.has(i.key)) out.push(seq && !old(i) ? { ...i, seq } : i)
   return out.sort(byTime)
 }
 

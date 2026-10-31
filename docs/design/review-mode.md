@@ -135,7 +135,11 @@ panel — rejected, it disagrees with the project after any undo.
 The panel keeps one thing of its own: the list of items it showed (a snapshot taken when it opens,
 with every new pending item added as it appears, numbered after the items already shown (`seq`),
 and every pending item taken as it is now), so kept and removed items stay in the list, marked,
-until the panel closes. Reopening lists only what is still automatic.
+until the panel closes. Reopening lists only what is still automatic. A record older than one still
+listed is not new work: an undo brought it back from before the panel opened (a tool run adds its
+records after all others, and records keep that order), so it is numbered as if in the first list
+(Smart speed at 2×, Polish at 4× inside it, K the idle row, Esc, reopen, Ctrl+Z: the idle row comes
+back, made before the silence row, and reads removed once removed).
 
 ### 2.4 Keep and Remove
 
