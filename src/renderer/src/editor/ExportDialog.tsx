@@ -927,6 +927,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       has={bundleHas}
                       mode={mode}
                       chapterCount={parts.length}
+                      savedDescription={!!project.publish?.description}
                     />
                   </div>
                 )}

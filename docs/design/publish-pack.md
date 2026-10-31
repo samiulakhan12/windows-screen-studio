@@ -96,6 +96,8 @@ dialog's *Copy* uses. So the file and the dialog never disagree, also after the 
 A part of "one file per chapter" keeps today's per-part description (it is one chapter; the
 pack's description describes the whole video). When the text in the dialog differs from the saved
 one, the button reads *Update for exports*; *Stop using for exports* removes it (one undo step).
+With one saved, the export dialog's "Also save › Description" says so in its tooltip (*Save the
+description written in Publish, with this export's chapters*), except for one file per chapter.
 
 - *Alternative: keep it out of the project.* An export in another session would silently go back
   to the plain description. Rejected: the project is where the export reads its other choices.
@@ -400,6 +402,7 @@ Changed (additive): `src/shared/api/ai.ts` (task ids, request fields, results, `
 `src/renderer/src/views/Editor.tsx` (the button, the dialog, the command handlers),
 `src/renderer/src/editor/captionItems.ts` + `panels/CaptionsPanel.tsx` (an `ai` request kind),
 `src/renderer/src/editor/exportBundleRun.ts` (the saved description),
+`ExportBundleOptions.tsx` + `ExportDialog.tsx` (the Description choice's tooltip names it),
 `tests/e2e/ai-mock-server.cjs` (answers for the pack's prompts).
 
 ---
