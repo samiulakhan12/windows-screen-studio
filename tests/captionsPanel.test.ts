@@ -38,6 +38,8 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 
 /** Elements that got the focus (refs are given a stand-in element as they are rendered). */
 const focused: El[] = []
+/** Elements scrolled into view, with the options given. */
+const scrolled: { el: El; options: unknown }[] = []
 
 const runs: ReturnType<typeof deferred<unknown>>[] = []
 /** What the AI tools asked the provider (window.api.aiText): the task, and its answer to give. */
@@ -187,7 +189,7 @@ function walk(node: unknown, path: string, out: El[]): void {
   const ref = (node as { ref?: { current?: unknown } | null }).ref
   if (ref && typeof ref === 'object') {
     if (!ref.current) {
-      const stand: { el: El; focus: () => void; querySelector: (sel: string) => unknown; scrollIntoView: () => void } = {
+      const stand: { el: El; focus: () => void; querySelector: (sel: string) => unknown; scrollIntoView: (options?: unknown) => void } = {
         el,
         focus: () => focused.push(stand.el),
         querySelector: (sel) => {
@@ -195,7 +197,7 @@ function walk(node: unknown, path: string, out: El[]): void {
           const found = match ? descendants(stand.el).find((d) => String(d.props[match[1]]) === match[2]) : undefined
           return found ? { focus: () => focused.push(found) } : null
         },
-        scrollIntoView: () => undefined
+        scrollIntoView: (options) => void scrolled.push({ el: stand.el, options })
       }
       ref.current = stand
     } else if (typeof ref.current === 'object' && ref.current && 'el' in ref.current) (ref.current as { el: El }).el = el
@@ -1326,6 +1328,7 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
   beforeEach(async () => {
     m = await fresh()
     aiAsked.length = 0
+    scrolled.length = 0
     replies.providers = () => Promise.resolve([OPENAI])
     replies.speech = () => Promise.resolve(speechState())
     store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments } }
@@ -1372,5 +1375,13 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     store.state = { ...store.state, transcript }
     await show()
     expect(aiAsked).toHaveLength(3)
+  })
+
+  it('brings the AI tools into view, where the work and its answer show', async () => {
+    await show()
+    // The tab may be scrolled to its captions: the tools come to its top, with the answer's room under them.
+    const out = command('summary')
+    expect(scrolled.map((s) => ({ text: textOf(s.el.props.children), options: s.options }))).toEqual([{ text: expect.stringMatching(/^Provider/), options: { block: 'start' } }])
+    expect(buttons(out)).toContain('Working…')
   })
 })

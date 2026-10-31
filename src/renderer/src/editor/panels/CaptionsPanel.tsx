@@ -1099,6 +1099,7 @@ function AiToolsSection({
 
   // A tool the command palette asked for (NW-13): translate only shows the language list, as a language must be chosen.
   const translateRef = useRef<HTMLSelectElement>(null)
+  const toolsRef = useRef<HTMLLabelElement>(null)
   const handled = useRef(0)
   useEffect(() => {
     if (!request || request.n === handled.current || providers === null) return
@@ -1106,6 +1107,8 @@ function AiToolsSection({
     onRequestHandled?.()
     if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
     if (busy) return onNotice('An AI tool is already working')
+    // The tab may be scrolled to its captions: the tools come into view, with their progress and the answer under them.
+    toolsRef.current?.scrollIntoView({ block: 'start' })
     if (request.task !== 'translate') return void run(request.task)
     translateRef.current?.scrollIntoView({ block: 'nearest' })
     translateRef.current?.focus()
@@ -1123,7 +1126,7 @@ function AiToolsSection({
         </div>
       ) : (
         <>
-          <label className="field">
+          <label className="field" ref={toolsRef}>
             <span>Provider</span>
             <select className="captions-select" aria-label="AI provider for text" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)} disabled={!list.length}>
               {list.map((p) => (
