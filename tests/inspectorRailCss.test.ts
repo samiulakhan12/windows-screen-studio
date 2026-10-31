@@ -31,9 +31,9 @@ describe('the Inspector tab rail', () => {
   const px = (v: string): number[] => v.split(/\s+/).map((x) => parseFloat(x))
 
   it('turns compact on any Inspector shorter than the labelled rail with every tab, the Selection tab included', () => {
-    // Twelve tabs, and the Selection tab while several items are selected.
+    // Thirteen tabs (Graphics joined after Captions), and the Selection tab while several items are selected.
     const tabs = (read('editor/Inspector.tsx').match(/const TABS[\s\S]*?\n\]/)?.[0].match(/\{ id: '/g) ?? []).length + 1
-    expect(tabs).toBe(13)
+    expect(tabs).toBe(14)
     const [padTop, , padBottom] = px(value('.insp-tabs button', 'padding'))
     const label = px(value('.insp-tabs button', 'font-size'))[0] * Number(value('.insp-tabs button', 'line-height'))
     const button = padTop + 17 + px(value('.insp-tabs button', 'gap'))[0] + label + padBottom
