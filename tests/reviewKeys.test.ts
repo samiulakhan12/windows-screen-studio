@@ -55,4 +55,15 @@ describe('review list keys', () => {
     expect(action(press('s', 'KeyS'))).toBeNull()
     expect(action(press('Shift', 'ShiftLeft', { shiftKey: true }))).toBeNull()
   })
+
+  it('Shift with a letter goes on to the editor (Shift+P is Polish), Shift with an arrow still moves', () => {
+    expect(action(press('P', 'KeyP', { shiftKey: true }))).toBeNull()
+    expect(action(press('N', 'KeyN', { shiftKey: true }))).toBeNull()
+    expect(action(press('K', 'KeyK', { shiftKey: true }))).toBeNull()
+    // Caps Lock and Shift together type the small letter.
+    expect(action(press('p', 'KeyP', { shiftKey: true }))).toBeNull()
+    expect(action(press('З', 'KeyP', { shiftKey: true }))).toBeNull()
+    expect(action(press('ArrowDown', 'ArrowDown', { shiftKey: true }))).toBe('next')
+    expect(action(press('Delete', 'Delete', { shiftKey: true }))).toBe('remove')
+  })
 })

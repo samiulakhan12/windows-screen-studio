@@ -276,7 +276,8 @@ listed item being pending by construction).
   (`eventKeyName`), so on a layout of another alphabet the keys where N, P and K sit do the same
   (else they would reach the editor as Snapping and Pause). The focus stays on the row (roving
   `tabindex`); `Tab` moves to the row's Keep and Remove buttons. Other keys go on to the editor
-  (`Ctrl+Z` undoes); Space on a row is the row's own, as above.
+  (`Ctrl+Z` undoes), Shift with a letter too (`Shift+P` is Polish; a capital from Caps Lock still
+  moves or keeps); Space on a row is the row's own, as above.
 * Header: `Review automatic changes`, then progress `12 of 40 reviewed` and a bar.
 * Footer: `Keep all` (keeps every pending item), `Remove all <kind words>` for the focused item's
   kind (`Remove all zooms`, `Remove all camera changes`, `Remove all silence cuts`,

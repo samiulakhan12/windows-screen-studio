@@ -26,9 +26,13 @@ const LIST_KEYS = new Map<string, ListKey>([
   ['Backspace', { action: 'remove', again: false }]
 ])
 
-/** What a key pressed in the list does, or null when it goes on to the editor (Ctrl, Alt and Meta chords too). */
+/**
+ * What a key pressed in the list does, or null when it goes on to the editor: Ctrl, Alt and Meta
+ * chords, and Shift with a letter (Shift+P is Polish; a capital from Caps Lock still counts).
+ */
 export function listKey(e: KeyInput): ListKey | null {
   if (e.ctrlKey || e.altKey || e.metaKey) return null
   const name = eventKeyName(e)
-  return (name && LIST_KEYS.get(name)) || null
+  if (!name || (e.shiftKey && /^[A-Z]$/.test(name))) return null
+  return LIST_KEYS.get(name) ?? null
 }
