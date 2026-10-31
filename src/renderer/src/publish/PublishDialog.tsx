@@ -305,6 +305,8 @@ interface CardProps {
 
 /** A card's status line (role status): "Written" is how a screen reader hears the text is ready. */
 const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: 'Written', error: '' }
+/** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
+const statusText = (item: PackItem): string => (item.stopped ? 'Stopped' : item.status === 'done' && !item.text.trim() ? STATUS_TEXT.idle : STATUS_TEXT[item.status])
 
 function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
   const label = PUBLISH_LABELS[kind]
@@ -329,7 +331,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onSt
         <h3 id={`${id}-title`}>{label}</h3>
         <span className="publish-state" role="status">
           {busy && <span className="publish-spinner" aria-hidden="true" />}
-          {STATUS_TEXT[item.status]}
+          {statusText(item)}
         </span>
       </header>
       {item.error && (

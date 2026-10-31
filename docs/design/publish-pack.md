@@ -326,7 +326,9 @@ not be used (no tags). Nothing was changed; try again."
 A modal dialog (`useModalFocus`): Tab stays inside, Esc closes (and stops the jobs), focus goes back
 to the Publish button. Tone and Length are radio groups (arrow keys). Every textarea has an
 `aria-label` ("YouTube description text"); status lines are `role="status"`, and a card's says
-*Waiting…*, *Writing…* and then *Written*, so a screen reader hears when its text is ready. Opening focuses
+*Waiting…*, *Writing…* and then *Written*, so a screen reader hears when its text is ready. A run
+that is stopped says *Stopped* (the card keeps the text it had), never *Written*; a card whose text
+the user has cleared says *Not written yet*. Opening focuses
 *Write all* (or the empty state's button); while there is no such button (no sound, too little
 speech) or it is still disabled (the providers loading), the dialog itself has the focus, so it is
 never left on the Publish button behind the scrim; from there Tab goes to its first control and

@@ -484,6 +484,50 @@ describe('Publish dialog: a card says when its text is written (§5.2)', () => {
     out = render()
     expect(state(card(out, 'linkedin'))).toBe('Written')
   })
+
+  /** The text in the card's field. */
+  const field = (els: El[]): unknown => els.find((e) => e.type === 'textarea' && String(e.props.className).includes('publish-text'))?.props.value
+
+  it('says Stopped, not Written, when a run is stopped, and Not written yet when the text is cleared', async () => {
+    let out = await opened()
+    press(card(out, 'linkedin'), 'Write')
+    asked[0].answer.resolve({ task: 'linkedin', text: 'The new reports are here.' })
+    await flush()
+    out = render()
+    expect(state(card(out, 'linkedin'))).toBe('Written')
+    // Regenerate, then Stop: the older text stays, and the line does not say it was written.
+    press(card(out, 'linkedin'), 'Regenerate')
+    out = render()
+    press(card(out, 'linkedin'), 'Stop')
+    await flush()
+    out = render()
+    expect(field(card(out, 'linkedin'))).toBe('The new reports are here.')
+    expect(state(card(out, 'linkedin'))).toBe('Stopped')
+    // A card stopped before its first text says so too.
+    press(card(out, 'xpost'), 'Write')
+    out = render()
+    press(card(out, 'xpost'), 'Stop')
+    await flush()
+    out = render()
+    expect(state(card(out, 'xpost'))).toBe('Stopped')
+    // Writing again starts afresh (the stopped request's slot is free once it has ended).
+    asked[1].answer.reject(new Error('gone'))
+    await flush()
+    out = render()
+    press(card(out, 'linkedin'), 'Regenerate')
+    out = render()
+    expect(state(card(out, 'linkedin'))).toMatch(/^(Waiting|Writing)…$/)
+    expect(asked.map((a) => a.task)).toEqual(['linkedin', 'linkedin', 'xpost', 'linkedin'])
+    asked[3].answer.resolve({ task: 'linkedin', text: 'The new reports are out now.' })
+    await flush()
+    out = render()
+    expect(state(card(out, 'linkedin'))).toBe('Written')
+    // The user empties the field: nothing there is written.
+    type(card(out, 'linkedin'), 'LinkedIn post text', '')
+    out = render()
+    expect(state(card(out, 'linkedin'))).toBe('Not written yet')
+    expect(card(out, 'linkedin').some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Write')).toBe(true)
+  })
 })
 
 describe('Publish dialog: what is sent is what the edited video says (§4.2)', () => {

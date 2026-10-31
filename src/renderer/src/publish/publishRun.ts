@@ -24,6 +24,8 @@ export interface PackItem {
   error: string | null
   /** The captions' fingerprint (transcriptKey) the text was written from. */
   writtenFrom: string | null
+  /** The last run was stopped: the card kept what it had. */
+  stopped?: boolean
 }
 
 export type PackItems = Readonly<Record<PublishKind, PackItem>>
@@ -60,7 +62,7 @@ export function editItem(projectId: string, kind: PublishKind, change: Partial<P
 /** Shows `text` in an empty, idle card (the YouTube description saved for exports, in a new session). */
 export function seedItem(projectId: string, kind: PublishKind, text: string): void {
   const item = packItems(projectId)[kind]
-  if (item.status === 'idle' && !item.text && text) patch(projectId, kind, { status: 'done', text })
+  if (item.status === 'idle' && !item.text && text) patch(projectId, kind, { status: 'done', text, stopped: false })
 }
 
 export function usePackItems(projectId: string): PackItems {
@@ -129,7 +131,7 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
   current.set(key, id)
   const mine = (): boolean => current.get(key) === id
   const had = packItems(projectId)[kind]
-  patch(projectId, kind, { status: 'waiting', error: null })
+  patch(projectId, kind, { status: 'waiting', error: null, stopped: false })
   const task = taskOfKind(kind)
   const request: AiTextRequest = { task, segments: ctx.segments }
   if (task !== 'title' && task !== 'summary') {
@@ -165,7 +167,7 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
         if (!mine()) return
         current.delete(key)
         // Stopped: back to what the card had.
-        if (err instanceof CancelledError) patch(projectId, kind, { status: had.text ? 'done' : 'idle', error: null })
+        if (err instanceof CancelledError) patch(projectId, kind, { status: had.text ? 'done' : 'idle', error: null, stopped: true })
         else patch(projectId, kind, { status: 'error', error: ipcMessage(err) })
       }
     )
