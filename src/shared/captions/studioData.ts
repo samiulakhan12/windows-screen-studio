@@ -347,12 +347,15 @@ function joinWords(words: readonly { text: string; gap: boolean }[], from: numbe
   return out
 }
 
+/** Whether a stored text was cut at ANCHOR_TEXT_MAX (one character less when the cut left a trailing space). */
+const cutText = (text: string): boolean => text.length >= ANCHOR_TEXT_MAX - 1
+
 /** Whether `text` (as stored, at most ANCHOR_TEXT_MAX characters) names the words `from..to`. */
 function names(words: readonly { text: string; gap: boolean }[], from: number, to: number, text: string): boolean {
   const have = norm(joinWords(words, from, to))
   const want = norm(text)
-  // A stored text cut at its limit names words that start with it.
-  return have === want || (text.length >= ANCHOR_TEXT_MAX && !!want && have.startsWith(want))
+  // A stored text cut at its limit (and trimmed after the cut) names words that start with it.
+  return have === want || (cutText(text) && !!want && have.startsWith(want))
 }
 
 /** Per transcript (never changed in place: an edit makes a new one): its captions by id, and their words once split. */
@@ -391,9 +394,11 @@ export function checkAnchor<T extends { caption: string; from: number; to: numbe
   for (let i = 0; i < words.length; i++) {
     for (let j = i; j < words.length; j++) {
       const have = norm(joinWords(words, i, j))
-      if (have.length > want.length && !(a.text.length >= ANCHOR_TEXT_MAX && have.startsWith(want))) break
+      if (have.length > want.length && !(cutText(a.text) && have.startsWith(want))) break
       if (names(words, i, j, a.text)) {
-        if (!best || Math.abs(i - a.from) < Math.abs(best.from - a.from)) best = { from: i, to: j }
+        // A cut text names the start of its words: they keep their number of words.
+        const to = cutText(a.text) ? Math.max(j, Math.min(words.length - 1, i + Math.max(0, a.to - a.from))) : j
+        if (!best || Math.abs(i - a.from) < Math.abs(best.from - a.from)) best = { from: i, to }
         break
       }
     }

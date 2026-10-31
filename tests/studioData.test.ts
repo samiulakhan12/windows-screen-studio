@@ -451,3 +451,18 @@ describe('readCaptionAuto (rule 8)', () => {
     expect(readCaptionAuto({ style: { was: null, by: 'robot', name: 'x' } }, transcript)).toBeUndefined()
   })
 })
+
+describe('long marks and anchors', () => {
+  it('keeps a mark whose words are longer than its stored text (cut at 80 characters)', () => {
+    const long = 'Open the advanced export settings panel and choose the hardware accelerated encoder option today'
+    const t: Transcript = { ...transcript, segments: [{ id: 'l1', start: 0, end: 9, text: long }] }
+    const words = long.split(' ')
+    const out = readCaptionMarks([{ id: 'm', caption: 'l1', from: 0, to: words.length - 1, text: long }], t)!
+    expect(out[0].text.length).toBeLessThanOrEqual(80)
+    expect(out[0]).toMatchObject({ from: 0, to: words.length - 1 })
+    expect(readCaptionMarks(JSON.parse(JSON.stringify(out)), t)).toEqual(out)
+    // Its words moved by one (a word inserted before): found again from the cut text.
+    const moved = { ...t, segments: [{ id: 'l1', start: 0, end: 9, text: `Now ${long}` }] }
+    expect(readCaptionMarks(out, moved)).toEqual([{ ...out[0], from: 1, to: words.length }])
+  })
+})
