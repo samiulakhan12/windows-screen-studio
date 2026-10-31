@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AiProviderInfo } from '../../../shared/api/ai'
-import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
+import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
 import { composeYoutubeDescription, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
 import { youtubeChapters } from '../../../shared/render/chapters'
@@ -46,11 +46,13 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   const { providers } = useAiProviders()
   const [prefs, setPrefs] = useState<PublishPrefs>(loadPublishPrefs)
   const items = usePackItems(project.id)
-  const blocker = publishBlocker(project)
+  // What the edited video says: nothing that was cut is sent.
+  const { transcript, clips } = project
+  const segments = useMemo(() => publishSegments({ transcript, clips }), [transcript, clips])
+  const blocker = publishBlocker(project, segments)
   const list = providers ?? []
   const chosen = list.find((p) => p.id === prefs.provider) ?? list[0] ?? null
-  const segments = project.transcript?.segments
-  const key = useMemo(() => transcriptKey(segments ?? []), [segments])
+  const key = useMemo(() => transcriptKey(segments), [segments])
   const youtube = useMemo(() => projectYoutubeChapters(project), [project])
 
   // The description saved for exports shows in an empty YouTube card (a new session).
@@ -71,7 +73,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   }
 
   const context = (): WriteContext | null => {
-    if (!chosen || blocker || !segments) return null
+    if (!chosen || blocker) return null
     const chapters = youtube.chapters.map((c) => c.title)
     return {
       providerId: chosen.id,

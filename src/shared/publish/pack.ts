@@ -1,8 +1,10 @@
 /**
  * The publishing copy pack (NW-13, docs/design/publish-pack.md): its items, the tone and length
- * that apply to all of them, the remembered choices, and when there is nothing to write from. Pure.
+ * that apply to all of them, the remembered choices, what is written from, and when there is
+ * nothing to write from. Pure.
  */
 import type { AiTextTask, PackTextTask } from '../api/ai'
+import { outputCues } from '../captions/subtitles'
 import type { CaptionSegment, Project } from '../types'
 
 /** The pack's items, in the order of the dialog's cards. Title and summary are the Captions tab's tasks. */
@@ -75,13 +77,23 @@ export function spokenWords(segments: readonly Pick<CaptionSegment, 'text'>[]): 
   return n
 }
 
+/**
+ * What the pack is written from: the captions as the edited video says them (outputCues, as its
+ * subtitle files), so captions and words that were cut are never sent nor written about. Times are
+ * the edited video's. Empty without captions.
+ */
+export function publishSegments(project: Pick<Project, 'transcript' | 'clips'>): CaptionSegment[] {
+  if (!project.transcript) return []
+  return outputCues(project.transcript.segments, project.clips).map((c, i) => ({ id: `o${i}`, start: c.start, end: c.end, text: c.text }))
+}
+
 /** Why there is nothing to write from: no sound, no captions yet, or too little speech; null when there is. */
 export type PublishBlocker = 'no-sound' | 'no-captions' | 'too-little' | null
 
-export function publishBlocker(project: Pick<Project, 'hasAudio' | 'transcript'>): PublishBlocker {
-  const t = project.transcript
-  if (!t) return project.hasAudio ? 'no-captions' : 'no-sound'
-  return spokenWords(t.segments) < PACK_MIN_WORDS ? 'too-little' : null
+/** `segments`: what is written from (publishSegments); the whole captions when left out. */
+export function publishBlocker(project: Pick<Project, 'hasAudio' | 'transcript'>, segments: readonly Pick<CaptionSegment, 'text'>[] = project.transcript?.segments ?? []): PublishBlocker {
+  if (!project.transcript) return project.hasAudio ? 'no-captions' : 'no-sound'
+  return spokenWords(segments) < PACK_MIN_WORDS ? 'too-little' : null
 }
 
 export const BLOCKER_TEXT: Record<Exclude<PublishBlocker, null>, string> = {

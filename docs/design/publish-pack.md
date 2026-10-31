@@ -201,6 +201,8 @@ existing tasks do.
 
 ### 4.2 The transcript sent
 
+The captions as the edited video says them (`publishSegments(project)`, the export's subtitle
+cues: captions and words that were cut are left out, so nothing cut is sent or written about).
 `packTranscript(segments)`: the segments' cleaned text joined by spaces. When it is longer than
 `PACK_TRANSCRIPT_MAX` = 60 000 characters, evenly spaced segments are kept (every k-th, k the
 smallest step that fits), joined with ` … `, and `shortened: true` tells the model they are
@@ -359,7 +361,7 @@ New:
 
 - `src/shared/publish/pack.ts`: `PUBLISH_KINDS`, `PublishKind`, `PUBLISH_LABELS`, `PUBLISH_TONES`,
   `PUBLISH_LENGTHS`, `PublishTone`, `PublishLength`, `PACK_TASKS`, `taskOfKind`, `readPublishPrefs`,
-  `publishBlocker(project)`, `transcriptKey(segments)`.
+  `publishSegments(project)`, `publishBlocker(project, segments)`, `transcriptKey(segments)`.
 - `src/shared/publish/text.ts`: `plainText(s, { max, oneLine, allowLinksFrom })`, `cutAt(s, max)`,
   `xLength(s)`, `fitX(s)`, `X_LIMIT`.
 - `src/shared/publish/prompts.ts`: `packPrompt(request)`, `packTranscript(segments)`,
@@ -460,6 +462,9 @@ Where the build differs from or adds to the sections above:
   the captions back) never runs it again.
 - **The queue keeps a cancelled job's slot** until its request has really stopped, so Stop all and
   Write all again never put more than two requests out at once.
+- **Only what the edited video says is sent** (`publishSegments`, the subtitle files' cues), for
+  every item, title and summary included; the word count of §5.3 and *Written from older captions*
+  use the same captions, so cutting more marks written items out of date.
 - **Excerpts** of a long transcript start from the smallest step that can fit (a few passes, not
   hundreds), and are built once per request.
 - **The mock AI** (`tests/e2e/ai-mock-server.cjs`) answers the pack's prompts by task, names the tone

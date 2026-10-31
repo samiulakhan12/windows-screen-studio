@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { AI_TEXT_TASKS } from '../src/shared/api/ai'
 import { AiOutputError, runTextTask, textPrompt, validateTextRequest, type TextPrompt } from '../src/shared/captions/transcriptText'
 import { migrateProject } from '../src/shared/engine/project'
-import { publishBlocker, readPublishPrefs, spokenWords, transcriptKey, PACK_TASKS } from '../src/shared/publish/pack'
+import { publishBlocker, publishSegments, readPublishPrefs, spokenWords, transcriptKey, PACK_TASKS } from '../src/shared/publish/pack'
 import { cleanTags, packPrompt, packTranscript, PACK_DATA_START, PACK_RULES, renderArticle, validatePackAnswer } from '../src/shared/publish/prompts'
 import { readPublish } from '../src/shared/publish/project'
 import { createQueue, CancelledError } from '../src/shared/publish/queue'
@@ -387,6 +387,33 @@ describe('pack choices and blockers', () => {
     expect(transcriptKey(SEGS)).toBe(transcriptKey(SEGS.map((s) => ({ ...s }))))
     expect(transcriptKey(SEGS)).not.toBe(transcriptKey([...SEGS.slice(0, 2), { ...SEGS[2], text: 'Then press Save!' }]))
     expect(transcriptKey([{ text: 'ab' }, { text: 'c' }])).not.toBe(transcriptKey([{ text: 'a' }, { text: 'bc' }]))
+  })
+  it('writes from what the edited video says: captions and words that were cut are left out', () => {
+    const clip = (start: number, end: number): Clip => ({ id: `${start}`, start, end, speed: 1 })
+    const um: CaptionSegment = {
+      ...seg('d', 12, 16, 'Pick a um size.'),
+      words: [
+        { text: 'Pick', start: 12, end: 13 },
+        { text: 'a', start: 13, end: 13.5 },
+        { text: 'um', start: 13.5, end: 14, deleted: true },
+        { text: 'size.', start: 14, end: 16 }
+      ]
+    }
+    const segments = [seg('a', 0, 3, 'Today I show the new export flow.'), seg('b', 4, 7, 'Oops, that was the Acme Corp customer list, cut this.'), seg('c', 8, 11, 'Then press Export.'), um]
+    const transcript = { provider: 'openai' as const, model: '', createdAt: '', segments }
+    const project = { hasAudio: true, transcript, clips: [clip(0, 3.5), clip(7.5, 13.5), clip(14, 20)] }
+    const sent = publishSegments(project)
+    expect(sent.map((s) => s.text)).toEqual(['Today I show the new export flow.', 'Then press Export.', 'Pick a size.'])
+    expect(packTranscript(sent).text).not.toContain('Acme')
+    expect(sent.map((s) => [s.id, s.start, s.end])).toEqual([['o0', 0, 3], ['o1', 4, 7], ['o2', 8, 11.5]])
+    // The request is one main accepts.
+    expect(validateTextRequest({ task: 'linkedin', segments: sent }).segments).toEqual(sent)
+    // Cut more, and the item is out of date; cut nearly all, and there is too little to write from.
+    expect(transcriptKey(sent)).not.toBe(transcriptKey(publishSegments({ ...project, clips: [clip(0, 20)] })))
+    expect(publishBlocker(project, sent)).toBe(null)
+    const most = { ...project, clips: [clip(0, 3.5)] }
+    expect(publishBlocker(most, publishSegments(most))).toBe('too-little')
+    expect(publishSegments({ clips: [clip(0, 3)] })).toEqual([])
   })
 })
 
