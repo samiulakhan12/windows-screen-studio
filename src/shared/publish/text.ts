@@ -11,11 +11,16 @@ const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u
 
 /**
  * Links as they are written in text: with a scheme or "www." anywhere (also glued to a word, as
- * "_https://…"), or a bare domain, which sites turn into links too: with a common top-level domain
- * ("evil.com", "evil.de/login"), or any other one when a path follows ("is.gd/x").
+ * "_https://…"), or a bare domain, which sites turn into links too: on a top-level domain X links
+ * (tlds.ts), with or without a port and a path ("evil.icu", "flown.co.uk", "is.gd/x",
+ * "evil.de:8080/login"). "Node.js/React" or "index.html/style.css" are on none, so they are text.
  */
-const LINK =
-  /(?:https?:\/\/|www\.)[^\s<>"'`]+|(?<![\p{L}\p{N}@.-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:(?:com|net|org|io|co|app|dev|ai|me|ly|gg|xyz|info|biz|link|site|online|shop|store|page|ru|cn|tk|top|click|zip|mov|de|uk|fr|eu|us|ca|au|nl|es|it|ch|at|be|tv|gl|gd|gy|cc|live|tech|cloud)(?![\p{L}\p{N}])(?:\/[^\s<>"'`]*)?|\p{L}{2,63}\/[^\s<>"'`]*)/giu
+const LINK = new RegExp(
+  '(?:https?:\\/\\/|www\\.)[^\\s<>"\'`]+' +
+    `|(?<![\\p{L}\\p{N}@.-])[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)*\\.(?:${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|xn--[\\p{L}\\p{N}-]+)` +
+    '(?![\\p{L}\\p{N}])(?::\\d+)?(?:\\/[^\\s<>"\'`]*)?',
+  'giu'
+)
 
 export interface PlainTextOptions {
   /** Longest result (characters), cut at a sentence or word end. */
@@ -37,11 +42,12 @@ function linksIn(source: string): Set<string> {
 const TRAIL = /[.,;:!?)\]]+$/
 
 /**
- * A bare name on a top-level domain that is also a file type, with no path ("recording.mov",
- * "export.zip", "Settings.app"): a file or app name, kept as text. With a scheme, "www." or a path
- * it is a link. X still counts it as one (xLength), as X does.
+ * A bare name on a top-level domain that is also a file type, with no port or path
+ * ("recording.mov", "export.zip", "Settings.app", "captions.srt", "settings.py", "README.md",
+ * "install.sh", "Main.java"): a file or app name, kept as text. With a scheme, "www.", a port or a
+ * path it is a link. X still counts it as one (xLength), as X does.
  */
-const FILE_NAME = /^(?!www\.)[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:app|zip|mov)$/iu
+const FILE_NAME = /^(?!www\.)[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:app|zip|mov|srt|md|py|sh|rs|java|so|cc|gd|map)$/iu
 
 /**
  * `s` as plain text: line breaks normalised, control and direction characters removed (a tab is a

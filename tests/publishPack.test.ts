@@ -38,19 +38,37 @@ describe('plainText', () => {
     expect(plainText('Go to https://example.co or https://EXAMPLE.com/settings', { max: 200, linksFrom: TRANSCRIPT })).toBe('Go to or https://EXAMPLE.com/settings')
   })
 
-  it('removes a bare domain on any top-level domain when a path follows, and on the common ones without', () => {
+  it('removes a bare domain on any top-level domain X links, with or without a port and a path', () => {
     const none = { max: 200, linksFrom: 'Heute zeige ich den Export.' }
     expect(plainText('Visit evil.de/login now', none)).toBe('Visit now')
-    for (const link of ['is.gd/abc123', 'rb.gy/abc', 'goo.gl/abc', 'youtu.be/abc', 'shorturl.at/abc', 'evil.example/login']) expect(plainText(`See ${link}.`, none)).toBe('See .')
+    for (const link of ['is.gd/abc123', 'rb.gy/abc', 'goo.gl/abc', 'youtu.be/abc', 'shorturl.at/abc', 'evil.studio/login']) expect(plainText(`See ${link}.`, none)).toBe('See .')
     expect(plainText('Watch at evil.tv, evil.cloud or evil.eu', none)).toBe('Watch at , or')
-    // A longer domain goes whole, not leaving a piece of it.
+    for (const tld of ['in', 'jp', 'pl', 'se', 'to', 'pw', 'su', 'ws', 'fm', 'icu', 'sbs', 'cfd', 'studio', 'lol', 'win']) {
+      expect(plainText(`Visit evil.${tld} now`, none)).toBe('Visit now')
+      expect(xLength(`Visit evil.${tld} now`)).toBe(6 + 23 + 4)
+    }
+    // With a port, and a longer domain: whole, not leaving a piece of it.
+    expect(plainText('Log in at evil.pw:8080/login or evil.de:8080/login now', none)).toBe('Log in at or now')
     expect(plainText('Help: flown.co.uk/help and flown.co.uk', none)).toBe('Help: and')
+    expect(plainText('See evil.co.in, evil.com.br and evil.co.jp.', none)).toBe('See , and .')
     // Kept when the transcript says it.
     expect(plainText('Mehr unter flown.de/hilfe.', { max: 200, linksFrom: 'Mehr unter flown.de/hilfe' })).toBe('Mehr unter flown.de/hilfe.')
-    // Words with dots that are not links stay.
+    // Words with dots that are not links stay: not on a top-level domain, or a file name with no path.
     expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings.py, e.g. v1.2 in file.txt')
+    expect(plainText('Save captions.srt and README.md, run install.sh, open Main.java', none)).toBe('Save captions.srt and README.md, run install.sh, open Main.java')
     // X counts them as links.
     expect(xLength('Go to evil.de/login')).toBe(6 + 23)
+  })
+
+  it('keeps names joined by a slash, which are on no top-level domain', () => {
+    const none = { max: 200, linksFrom: 'Heute zeige ich den Export.' }
+    for (const text of ['Built with Next.js/React and Node.js/Deno.', 'Edit index.html/style.css next.', 'Use package.json/tsconfig.json', 'Use Vue.js/Nuxt.js together', 'Install Node.js/npm']) {
+      expect(plainText(text, none)).toBe(text)
+    }
+    // Not a link for X either: counted by its characters.
+    expect(xLength('Built with Next.js/React and Node.js/Deno.')).toBe(42)
+    const yt = validatePackAnswer('youtube', { description: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind', 'evil.icu'] }, 'Heute zeige ich den Export.')
+    expect(yt).toEqual({ task: 'youtube', text: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind'] })
   })
 
   it('makes one line when asked, and is empty for anything but a string', () => {

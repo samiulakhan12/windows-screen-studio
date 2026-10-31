@@ -482,12 +482,15 @@ Where the build differs from or adds to the sections above:
   `Chips`), like every other choice in the editor, not radio groups.
 - **A link is kept only when the transcript has the very same link** (case ignored), not merely a
   longer one that contains it (`example.co` is not `example.com/settings`). Links are also found when
-  glued to a word (`_https://…`) and as bare domains: with a common top-level domain, generic or
-  country (`evil.com`, `evil.de`, `flown.co.uk`), or with any other one when a path follows
-  (`is.gd/x`, `evil.example/login`), because LinkedIn and X turn those into links too (X counts
-  those on a top-level domain it knows as 23, §4.5). E-mail addresses are kept. A bare name on `.app`, `.zip` or `.mov` with no path
-  (`recording.mov`, `export.zip`, `Settings.app`) is a file or app name and stays (X still counts it
-  as a link). Tags keep the links the transcript has too (`ASP.NET` when it was said).
+  glued to a word (`_https://…`) and as bare domains on any top-level domain X links (`tlds.ts`,
+  §4.5), with or without a port and a path (`evil.com`, `evil.icu`, `flown.co.uk`, `is.gd/x`,
+  `evil.de:8080/login`), because LinkedIn and X turn those into links too. A name on no such domain
+  is text (`Node.js/React`, `index.html/style.css`, `evil.example/login`); one on such a domain is
+  removed even when it is code (`user.email`), unless the transcript has it. E-mail addresses are
+  kept. A bare name with no port or path on a top-level domain that is also a file type (`.app`,
+  `.zip`, `.mov`, `.srt`, `.md`, `.py`, `.sh`, `.rs`, `.java`, `.so`, `.cc`, `.gd`, `.map`:
+  `recording.mov`, `captions.srt`, `README.md`, `install.sh`) is a file or app name and stays (X
+  still counts it as a link). Tags keep the links the transcript has too (`ASP.NET` when it was said).
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),
