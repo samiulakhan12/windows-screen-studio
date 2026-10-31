@@ -301,8 +301,9 @@ listed item being pending by construction).
   title, detail and time on the second line, then **Keep** and **Remove** buttons. A reviewed row
   shows `Kept` (check, `--success-text`) or `Removed` (`--text-2`, title struck through) in place of
   its buttons; `Ctrl+Z` takes the action back and the row is pending again (§2.3).
-* The row's accessible name: `<title>, <kind>, at <time>, <status>` (status: `not reviewed`,
-  `kept`, `removed`), e.g. *"Cut 2.4 s of silence, silence, at 0:12.4, not reviewed"*. The list is
+* The row's accessible name: `<title>, <kind>, at <time>, <detail>, <status>` (status: `not reviewed`,
+  `kept`, `removed`), e.g. *"Cut 2.4 s of silence, silence, at 0:12.4, Polish, not reviewed"*: all
+  the row shows, so which tool made a cut and how far a zoom goes are read out too. The list is
   `role="listbox"`-free: a `ul` of rows whose main button carries that name, so the Keep and Remove
   buttons stay ordinary buttons a screen reader can reach.
 * Contrast (on `--surface-1` #141418): titles `--text-1` 17:1, details `--text-2` 7.2:1, `Kept`

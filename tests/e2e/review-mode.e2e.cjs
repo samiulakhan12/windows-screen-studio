@@ -96,7 +96,7 @@ async function main() {
     h.assert(JSON.stringify(await rows(win)) === JSON.stringify(['zoom:z1=pending', 'camera:l1=pending', 'cut:s1=pending']), `rows in time order: ${await rows(win)}`)
     h.assert((await win.textContent('[data-testid="review-progress"]')) === '0 of 3 reviewed', 'progress starts at 0')
     const first = await focused(win)
-    h.assert(first === 'Zoom in on a click, top right, zoom, at 0:02.0, not reviewed', `the focus starts on the first item: ${first}`)
+    h.assert(first === 'Zoom in on a click, top right, zoom, at 0:02.0, 2×, not reviewed', `the focus starts on the first item: ${first}`)
 
     // N moves to the camera change and plays around it: the playhead goes to 1.5 s before it.
     await win.keyboard.press('n')

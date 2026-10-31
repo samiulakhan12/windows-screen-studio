@@ -108,9 +108,12 @@ export const cutDetail = (cut: Pick<AutoCut, 'by'>): string => CUT_DETAILS[cut.b
 /** "12 of 40 reviewed". */
 export const progressText = (reviewed: number, total: number): string => `${reviewed} of ${total} reviewed`
 
-/** What a screen reader says for a row: "Cut 2.4 s of silence, silence, at 0:12.4, not reviewed". */
-export function itemAccessibleName(item: { title: string; kind: ReviewKind }, time: string, status: ReviewStatus): string {
-  return `${item.title}, ${KIND_WORDS[item.kind].name}, at ${time}, ${STATUS_WORDS[status]}`
+/**
+ * What a screen reader says for a row, everything the row shows in its order: "Cut 2.4 s of
+ * silence, silence, at 0:12.4, Polish, not reviewed", "Zoom in on a click, top right, zoom, at 0:02.0, 2×, kept".
+ */
+export function itemAccessibleName(item: { title: string; kind: ReviewKind; detail: string }, time: string, status: ReviewStatus): string {
+  return `${item.title}, ${KIND_WORDS[item.kind].name}, at ${time}, ${item.detail}, ${STATUS_WORDS[status]}`
 }
 
 /** The live message after one Keep or Remove: "Kept. 13 of 40 reviewed." */

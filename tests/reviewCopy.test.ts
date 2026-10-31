@@ -18,8 +18,10 @@ describe('review copy', () => {
 
   it('progress, the accessible name and the live messages', () => {
     expect(progressText(12, 40)).toBe('12 of 40 reviewed')
-    expect(itemAccessibleName({ title: 'Cut 2.4 s of silence', kind: 'silence' }, '0:12.4', 'pending')).toBe('Cut 2.4 s of silence, silence, at 0:12.4, not reviewed')
-    expect(itemAccessibleName({ title: 'Zoom in', kind: 'zoom' }, '0:01.0', 'kept')).toBe('Zoom in, zoom, at 0:01.0, kept')
+    // The second line too: which tool made a cut, how far a zoom goes.
+    expect(itemAccessibleName({ title: 'Cut 2.4 s of silence', kind: 'silence', detail: 'Polish' }, '0:12.4', 'pending')).toBe('Cut 2.4 s of silence, silence, at 0:12.4, Polish, not reviewed')
+    expect(itemAccessibleName({ title: 'Cut 2.4 s of silence', kind: 'silence', detail: 'Remove silences' }, '0:12.4', 'removed')).toBe('Cut 2.4 s of silence, silence, at 0:12.4, Remove silences, removed')
+    expect(itemAccessibleName({ title: 'Zoom in', kind: 'zoom', detail: '2×' }, '0:01.0', 'kept')).toBe('Zoom in, zoom, at 0:01.0, 2×, kept')
     expect(actedMessage('keep', 13, 40)).toBe('Kept. 13 of 40 reviewed.')
     expect(actedMessage('remove', 14, 40)).toBe('Removed. 14 of 40 reviewed.')
     expect(bulkMessage('keep', 26)).toBe('Kept 26 changes.')
