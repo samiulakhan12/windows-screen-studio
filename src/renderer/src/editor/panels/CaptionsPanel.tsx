@@ -164,6 +164,8 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
   const [exportNow, setExportNow] = useState(0)
   const [generateNow, setGenerateNow] = useState(0)
   const [aiNow, setAiNow] = useState<{ task: CaptionsAiTask; n: number } | null>(null)
+  // Numbers the AI requests: never one the tools have taken before, though aiNow is cleared once taken.
+  const aiCount = useRef(0)
 
   // What the commands and the caption track ask for (also a request made just before the tab opened).
   useEffect(() => {
@@ -172,7 +174,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       if (!r) return
       if (r.kind === 'focus') setFocusId(r.id)
       else if (r.kind === 'export') setExportNow((n) => n + 1)
-      else if (r.kind === 'ai') setAiNow((was) => ({ task: r.task, n: (was?.n ?? 0) + 1 }))
+      else if (r.kind === 'ai') setAiNow({ task: r.task, n: ++aiCount.current })
       else setGenerateNow((n) => n + 1)
     }
     take()

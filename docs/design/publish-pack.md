@@ -482,7 +482,8 @@ Where the build differs from or adds to the sections above:
   is written to the file exactly as *Copy* gives it.
 - **A palette request is written once:** closing the dialog clears it, so reopening Publish never
   sends it again; the Captions tab's AI request is cleared once taken, so a remount (undo bringing
-  the captions back) never runs it again.
+  the captions back) never runs it again, and each request gets a number never used before, so every
+  command given while the tab is open runs.
 - **The queue keeps a cancelled job's slot** until its request has really stopped, so Stop all and
   Write all again never put more than two requests out at once.
 - **Only what the edited video says is sent** (`publishSegments`, the subtitle files' cues), for

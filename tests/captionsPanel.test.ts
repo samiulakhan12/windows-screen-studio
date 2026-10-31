@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 import { MAX_CAPTIONS } from '../src/shared/captions/captionData'
 
@@ -40,6 +40,8 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 const focused: El[] = []
 
 const runs: ReturnType<typeof deferred<unknown>>[] = []
+/** What the AI tools asked the provider (window.api.aiText): the task, and its answer to give. */
+const aiAsked: { task: string; answer: ReturnType<typeof deferred<unknown>> }[] = []
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** What the main process answers; the speech state rejects by default, as before workstream B's handlers exist. */
 const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: (id: string) => Promise<void>; confirm: boolean } = {
@@ -86,7 +88,12 @@ vi.stubGlobal('window', {
         if (progress === l) progress = null
       }
     },
-    cancelTranscription: () => Promise.resolve()
+    cancelTranscription: () => Promise.resolve(),
+    aiText: (_id: string, request: { task: string }) => {
+      const answer = deferred<unknown>()
+      aiAsked.push({ task: request.task, answer })
+      return answer.promise
+    }
   },
   confirm: (question: string) => {
     calls.confirm.push(question)
@@ -1305,5 +1312,65 @@ describe('banglaOfferApplies: the offer under the summary (offline-captions §14
     expect(banglaOfferApplies({ ...state, engine: { ...state.engine, available: false } }, t)).toBe(false)
     expect(banglaOfferApplies(null, t)).toBe(false)
     expect(banglaOfferApplies(state, undefined)).toBe(false)
+  })
+})
+
+/* ---------- the AI tools asked for from the command palette (publish-pack §2.8) ---------- */
+
+describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
+  let m: Mods
+  const segments = [{ id: 'a', start: 0, end: 1, text: 'hi' }]
+  // The AI tools section is called as well (left unrendered in the tests above).
+  beforeAll(() => void RENDERED.add('AiToolsSection'))
+  afterAll(() => void RENDERED.delete('AiToolsSection'))
+  beforeEach(async () => {
+    m = await fresh()
+    aiAsked.length = 0
+    replies.providers = () => Promise.resolve([OPENAI])
+    replies.speech = () => Promise.resolve(speechState())
+    store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments } }
+  })
+  const show = async (): Promise<El[]> => {
+    render(m.panel)
+    await flush()
+    await flush()
+    return render(m.panel)
+  }
+  /** A palette command such as "Summarize with AI" with the Captions tab already open. */
+  const command = (task: string): El[] => {
+    ;(m.items.requestCaptions as (r: { kind: 'ai'; task: string }) => void)({ kind: 'ai', task })
+    return render(m.panel)
+  }
+  const answer = async (i: number, result: unknown): Promise<El[]> => {
+    aiAsked[i].answer.resolve(result)
+    await flush()
+    return render(m.panel)
+  }
+
+  it('runs every command given while the tab is open, once each', async () => {
+    await show()
+    command('summary')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary'])
+    expect(has(await answer(0, { task: 'summary', text: 'All about users.' }), 'All about users.')).toBe(true)
+    // The next command runs too, not only every other one.
+    command('title')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary', 'title'])
+    expect(has(await answer(1, { task: 'title', text: 'Users' }), 'Users')).toBe(true)
+    command('summary')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary', 'title', 'summary'])
+    await answer(2, { task: 'summary', text: 'Again.' })
+
+    // Undo takes the captions away and Redo brings them back (the section mounts afresh): nothing is sent again.
+    const transcript = store.state.transcript
+    store.state = { ...store.state, transcript: undefined }
+    render(m.panel)
+    for (const [path, list] of cells) {
+      if (!path.endsWith('/AiToolsSection')) continue
+      for (const c of list) c.cleanup?.()
+      cells.delete(path)
+    }
+    store.state = { ...store.state, transcript }
+    await show()
+    expect(aiAsked).toHaveLength(3)
   })
 })
