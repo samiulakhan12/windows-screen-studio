@@ -35,10 +35,32 @@ export type CaptionsRequest =
 let pending: CaptionsRequest | null = null
 const requestListeners = new Set<() => void>()
 
+/** A request for the Languages or Clean up section, kept until that section takes it (it may be mounting). */
+type SectionRequest = Extract<CaptionsRequest, { kind: 'language' | 'cleanup' }>
+let sectionPending: SectionRequest | null = null
+const sectionListeners = new Set<() => void>()
+
 /** Asks the Captions tab to act (it may be opening: it takes the request once mounted). */
 export function requestCaptions(request: CaptionsRequest): void {
   pending = request
+  if (request.kind === 'language' || request.kind === 'cleanup') {
+    sectionPending = request
+    for (const l of [...sectionListeners]) l()
+  }
   for (const l of [...requestListeners]) l()
+}
+
+/** The Languages or Clean up request waiting for section `kind`, taken (null when there is none). */
+export function takeSectionRequest<K extends SectionRequest['kind']>(kind: K): Extract<SectionRequest, { kind: K }> | null {
+  const r = sectionPending
+  if (!r || r.kind !== kind) return null
+  sectionPending = null
+  return r as Extract<SectionRequest, { kind: K }>
+}
+
+export function onSectionRequest(listener: () => void): () => void {
+  sectionListeners.add(listener)
+  return () => sectionListeners.delete(listener)
 }
 
 /** The request waiting for the tab, taken (null when there is none). */

@@ -50,6 +50,10 @@ interface Job {
   stopping?: boolean
 }
 interface Items {
+  requestCaptions(request: { kind: string; [k: string]: unknown }): void
+  takeCaptionsRequest(): { kind: string } | null
+  takeSectionRequest(kind: 'language' | 'cleanup'): { kind: string; [k: string]: unknown } | null
+  onSectionRequest(listener: () => void): () => void
   ipcMessage(err: unknown): string
   transcribe(services: unknown, options: { providerId: string }): Promise<boolean>
   cancelTranscription(): void
@@ -212,5 +216,27 @@ describe('captionItems: the first captions get Auto style (Captions Studio test 
     calls.transcribe[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments })
     await run
     expect((s.store.state.captions as { studio?: unknown }).studio).toBeUndefined()
+  })
+})
+
+describe('captionItems: requests for the Languages and Clean up sections (Captions Studio §2.14, test 57)', () => {
+  it('a language or clean-up request waits for its section, which takes it once', () => {
+    let heard = 0
+    const off = items.onSectionRequest(() => heard++)
+    items.requestCaptions({ kind: 'language', via: 'ai' })
+    expect(heard).toBe(1)
+    // The tab opens (it takes its own request) and the Languages section takes the form's.
+    expect(items.takeCaptionsRequest()).toEqual({ kind: 'language', via: 'ai' })
+    expect(items.takeSectionRequest('cleanup')).toBeNull()
+    expect(items.takeSectionRequest('language')).toEqual({ kind: 'language', via: 'ai' })
+    expect(items.takeSectionRequest('language')).toBeNull()
+    items.requestCaptions({ kind: 'cleanup', ai: true })
+    expect(items.takeSectionRequest('cleanup')).toEqual({ kind: 'cleanup', ai: true })
+    // Other requests are the tab's only.
+    items.requestCaptions({ kind: 'generate' })
+    expect(heard).toBe(2)
+    expect(items.takeSectionRequest('language')).toBeNull()
+    off()
+    items.takeCaptionsRequest()
   })
 })
