@@ -372,10 +372,22 @@ describe('Restart now while Home makes, saves or processes a recording (docs/des
     }
   })
 
+  const homeSource = (): string => readFileSync(path.join(__dirname, '..', 'src/renderer/src/views/Home.tsx'), 'utf8')
+
+  // The test above sets the reason by hand; Home is what sets it.
+  it('Home sets the reason from Record until the recording is processed, and clears it when it closes', () => {
+    const home = homeSource()
+    expect(home).toContain("import { setRecordingBusy } from '../updates/useUpdates'")
+    // The processing screen shows while the recording is saved, then with its progress.
+    expect(home).toContain("const overlay = busy ?? (phase === 'saving' ? ")
+    expect(home).toContain('const recordingBusy = overlay ? BUSY_COPY.processing : phase ? BUSY_COPY.recording : null')
+    expect(home).toMatch(/useEffect\(\(\) => \{\s*setRecordingBusy\(recordingBusy\)\s*return \(\) => setRecordingBusy\(null\)\s*\}, \[recordingBusy\]\)/)
+  })
+
   // Opening a recording closes Home and its reason with it, while main goes on processing; Settings
   // in the editor would then ask main, which cannot see it.
   it("Home's recordings do not open until a recording has been made and processed", () => {
-    const home = readFileSync(path.join(__dirname, '..', 'src/renderer/src/views/Home.tsx'), 'utf8')
+    const home = homeSource()
     expect(home).toContain('const idle = phase === null && !busy && ')
     const start = home.indexOf('<ProjectCard')
     const card = home.slice(start, home.indexOf('/>', start))
