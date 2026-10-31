@@ -176,15 +176,47 @@ export function recordAutoCuts(
   return withAutoCuts({ ...project, clips: nextClips }, autoCuts)
 }
 
+/** `pieces` without the time of `gone`. */
+function without(pieces: readonly Piece[], gone: readonly Piece[]): Piece[] {
+  let out = pieces.map((p) => ({ ...p }))
+  for (const g of gone) {
+    out = out.flatMap((p) =>
+      g.end <= p.start + EPS || g.start >= p.end - EPS
+        ? [p]
+        : [...(g.start - p.start > EPS ? [{ ...p, end: g.start }] : []), ...(p.end - g.end > EPS ? [{ ...p, start: g.end }] : [])]
+    )
+  }
+  return out
+}
+
+/** Whether one of `pieces` lies in the same gap between `clips` as a part of a cut record. */
+function sameGap(cut: AutoCut, pieces: readonly Piece[], clips: readonly Clip[]): boolean {
+  return cut.was.some((w) => {
+    let lo = -Infinity
+    let hi = Infinity
+    for (const c of clips) {
+      if (c.end <= w.start + SLACK) lo = Math.max(lo, c.end)
+      else if (c.start >= w.end - SLACK) hi = Math.min(hi, c.start)
+    }
+    return pieces.some((p) => p.start >= lo - EPS && p.end <= hi + EPS)
+  })
+}
+
 /**
  * The edit store's settle step for records (docs/design/review-mode.md §2.1): after any edit that
  * changes the clips, records whose change is no longer there are dropped in the same undo step, so
- * a later hand cut over the same footage cannot bring one back. `next` itself when nothing goes.
+ * a later hand cut over the same footage cannot bring one back. So is a cut the edit made longer by
+ * hand (a trim, a cut or a deleted clip reaching its gap): it is the user's cut now, and Remove must
+ * not bring back footage inside it. The time a tool's own new records claim is not by hand. `next`
+ * itself when nothing goes.
  */
 export function settleAutoCuts(next: Project, prev: Project): Project {
   const list = next.autoCuts
   if (!list?.length || (next.clips === prev.clips && list === prev.autoCuts)) return next
-  const live = list.filter((c) => autoCutIntact(c, next.clips))
+  const old = new Set((prev.autoCuts ?? []).map((c) => c.id))
+  const byHand = next.clips === prev.clips ? [] : without(cutPieces(prev.clips, next.clips), list.filter((c) => !old.has(c.id)).flatMap((c) => c.was))
+  const absorbed = (c: AutoCut): boolean => c.action === 'cut' && old.has(c.id) && byHand.length > 0 && sameGap(c, byHand, next.clips)
+  const live = list.filter((c) => autoCutIntact(c, next.clips) && !absorbed(c))
   return live.length === list.length ? next : withAutoCuts(next, live)
 }
 

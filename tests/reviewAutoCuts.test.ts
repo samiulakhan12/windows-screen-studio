@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed } from '../src/shared/editor/smartSpeed'
+import { cutWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { createProject, migrateProject } from '../src/shared/engine/project'
-import { cutRange } from '../src/shared/engine/timeline'
+import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
 import { MAX_AUTO_CUTS, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
 import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
+import { pendingCount, removeItems, reviewItems } from '../src/shared/review/review'
+import { suggestionRanges } from '../src/shared/review/wordCuts'
 import type { AutoCut, Clip, Project } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1, id = `c${start}`): Clip => ({ id, start, end, speed })
@@ -323,5 +327,102 @@ describe('review findings (regressions)', () => {
     let clips = next.clips
     for (const c of [...next.autoCuts!].reverse()) clips = undoAutoCut(clips, c, 20)
     expect(spans(clips)).toEqual(spans(p.clips))
+  })
+})
+
+describe('a hand edit that takes in an automatic cut (settle)', () => {
+  // The editor's store: settleDeletedWords, then settleAutoCuts (Editor.tsx).
+  const store = (p: Project): EditStore<Project> => new EditStore(p, 200, 800, () => 0, (next: Project, prev: Project) => settleAutoCuts(settleDeletedWords(next, prev), prev))
+  const silenceAt = (p: Project, start: number, end: number, newId = counter()): Project => recordAutoCuts(p, cutRange(p.clips, start, end), [{ start, end }], 'cut', 'silences', newId)
+  const edit = (s: EditStore<Project>, fn: (clips: Clip[], p: Project) => Clip[]): void => s.update((p) => ({ ...p, clips: fn(p.clips, p) }))
+
+  it('trimming the end over a cut makes it yours: nothing to review, nothing comes back', () => {
+    const s = store(silenceAt(project(), 15, 16))
+    edit(s, (c, p) => setTrimEnd(c, 10, p.duration))
+    expect(spans(s.state.clips)).toEqual([[0, 10, 1]])
+    expect('autoCuts' in s.state).toBe(false)
+    expect(pendingCount(s.state)).toBe(0)
+    // Undo brings the record back with the clips.
+    s.undo()
+    expect(liveAutoCuts(s.state).map((c) => [c.start, c.end])).toEqual([[15, 16]])
+  })
+
+  it('trimming the start over a cut makes it yours', () => {
+    const s = store(silenceAt(project(), 2, 3))
+    edit(s, (c) => setTrimStart(c, 6))
+    expect(spans(s.state.clips)).toEqual([[6, 20, 1]])
+    expect(pendingCount(s.state)).toBe(0)
+  })
+
+  it('a hand cut around an automatic cut makes it yours', () => {
+    const s = store(silenceAt(project(), 5, 6))
+    edit(s, (c) => cutRange(c, 3, 9))
+    expect(spans(s.state.clips)).toEqual([
+      [0, 3, 1],
+      [9, 20, 1]
+    ])
+    expect(pendingCount(s.state)).toBe(0)
+  })
+
+  it('deleting the clip next to an automatic cut makes it yours', () => {
+    const s = store(silenceAt(project(), 5, 6))
+    edit(s, (c) => removeClip(c, c[0].id))
+    expect(spans(s.state.clips)).toEqual([[6, 20, 1]])
+    expect(pendingCount(s.state)).toBe(0)
+  })
+
+  it('a hand cut elsewhere leaves the record listed, and Remove gives back only its own footage', () => {
+    const s = store(silenceAt(project(), 5, 6))
+    edit(s, (c) => cutRange(c, 12, 14))
+    expect(pendingCount(s.state)).toBe(1)
+    s.update((p) => removeItems(p, reviewItems(p)))
+    expect(spans(s.state.clips)).toEqual([
+      [0, 12, 1],
+      [14, 20, 1]
+    ])
+  })
+
+  it('deleting a sentence in the Transcript tab that holds a filler cut makes it yours', () => {
+    const transcript = {
+      provider: 'test',
+      language: 'en',
+      createdAt: '',
+      segments: [
+        {
+          id: 's',
+          start: 2,
+          end: 6,
+          text: 'so um hello there',
+          words: [
+            { text: 'so', start: 2, end: 2.4 },
+            { text: 'um', start: 3, end: 3.3 },
+            { text: 'hello', start: 4, end: 4.6 },
+            { text: 'there', start: 5, end: 5.5 }
+          ]
+        }
+      ]
+    }
+    const p = project([clip(0, 20)], { transcript: transcript as never })
+    const words = transcriptWords(p.transcript!)
+    const ranges = suggestionRanges(words, [{ kind: 'filler', first: 1, last: 1 }], p.duration)
+    const s = store(recordAutoCuts(p, cutWords(p.clips, words, [[1, 1]], p.duration), ranges, 'cut', 'filler', counter()))
+    expect(pendingCount(s.state)).toBe(1)
+    edit(s, (c, q) => cutWords(c, words, [[0, 3]], q.duration))
+    expect(pendingCount(s.state)).toBe(0)
+  })
+
+  it('a tool writing a record next to an earlier one keeps both', () => {
+    const s = store(silenceAt(project(), 5, 6, counter('a')))
+    s.update((p) => silenceAt(p, 6, 7, counter('b')))
+    s.update((p) => silenceAt(p, 4, 5, counter('c')))
+    expect(liveAutoCuts(s.state).map((c) => [c.id, c.start, c.end])).toEqual([
+      ['a1', 5, 6],
+      ['b1', 6, 7],
+      ['c1', 4, 5]
+    ])
+    // Two fillers cut one after the other by two Remove alls, touching.
+    const f = store(recordAutoCuts(project(), cutRange(project().clips, 2, 2.5), [{ start: 2, end: 2.5, words: 'um' }], 'cut', 'filler', counter('u')))
+    f.update((p) => recordAutoCuts(p, cutRange(p.clips, 2.5, 3), [{ start: 2.5, end: 3, words: 'uh' }], 'cut', 'filler', counter('h')))
+    expect(liveAutoCuts(f.state).map((c) => c.words)).toEqual(['um', 'uh'])
   })
 })

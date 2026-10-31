@@ -71,6 +71,11 @@ Records whose change is no longer in the clips (the user restored or re-timed th
 are *stale*: the editor's store drops them in the same undo step as the edit that made them stale
 (`settleAutoCuts`, composed with `settleDeletedWords` as the `EditStore` settle), so a later hand cut
 over the same footage can never bring an old record back; undo brings the record back with the clips.
+The same step drops an automatic cut that an edit by hand made longer: a trim, a cut or a deleted
+clip that takes away kept time in the same gap as the cut (the trimmed outro holding a silence cut,
+a deleted sentence holding a filler cut). That cut is the user's now, so Remove can never bring
+back footage inside their trim or cut. Time claimed by the records an edit writes itself (a tool's
+own cut next to an earlier one) is not by hand.
 A speed-up stays intact when a part of it is cut later: what is still kept still plays at its speed.
 
 ### 2.2 What is listed
