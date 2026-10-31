@@ -11,6 +11,7 @@ import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/en
 import { mediaUrl } from '../../../shared/mediaUrl'
 import type { Project } from '../../../shared/types'
 import { fadesInAfterHold } from '../../../shared/render/audioPlan'
+import { POP_VOLUME, popJob, popWaveform, toneJob, toneWaveform } from '../../../shared/render/popSound'
 import { CUT_FADE, cutFadeAhead, editHasCuts } from '../../../shared/render/cutFades'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio, SCREEN_PROXY_FPS } from './media'
@@ -30,6 +31,8 @@ const MAX_NUDGE = 0.04
 const MAX_VOICE_RETRIES = 2
 /** Automation is re-anchored when the video and the audio clock disagree by more than this. */
 const ANCHOR_DRIFT = 0.05
+/** Pops and bleep tones are scheduled this far (output seconds) ahead of the playhead, so they land on time. */
+const EFFECTS_AHEAD = 0.25
 
 interface Graph {
   ctx: AudioContext
@@ -43,6 +46,16 @@ interface Graph {
   master: GainNode
   /** Smooth cuts (NW-06): the recording's sound fades out before each cut and in after it. */
   cut: GainNode
+  /** Captions Studio's pops (at POP_VOLUME) and bleep tones (their gain is in their samples), under the soundtrack's fades as exported. */
+  pops: GainNode
+  tones: GainNode
+}
+
+/** The pops and bleep tones of the project in output seconds (popJob, toneJob), and what they were made from. */
+interface Effects {
+  from: readonly unknown[]
+  pops: { times: number[]; sound: 'pop' | 'ding' }[]
+  tones: { start: number; end: number }[]
 }
 
 interface Source {
@@ -163,6 +176,11 @@ export class PreviewAudio {
   private lastFrameAt: number | null = null
   /** Called when a stem's file turns out to be missing (the Audio panel says so). */
   onStemFailed: (() => void) | null = null
+  /** Captions Studio: the pops and tones, the output time scheduled up to in this pass (null: a new pass), and the voices playing. */
+  private effects: Effects | null = null
+  private effectsUntil: number | null = null
+  private readonly effectVoices = new Set<AudioBufferSourceNode>()
+  private readonly popBuffers = new Map<'pop' | 'ding', AudioBuffer>()
 
   constructor(
     private readonly screen: HTMLVideoElement,
@@ -182,7 +200,9 @@ export class PreviewAudio {
     const prev = this.project
     this.project = project
     const timing = project.clips !== prev.clips || project.freezes !== prev.freezes
-    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || timing) {
+    // Captions Studio's pops and bleeps play through the graph too (needsAudioGraph).
+    const effects = project.graphics !== prev.graphics || project.bleeps !== prev.bleeps || project.captions !== prev.captions || project.transcript !== prev.transcript
+    if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || timing || effects) {
       this.look = audioLook(project.audio)
       this.plan = planOf(project)
       this.length = videoDuration(project.clips, this.plan)
@@ -340,13 +360,18 @@ export class PreviewAudio {
       const limiter = ctx.createWaveShaper()
       const master = ctx.createGain()
       const cut = ctx.createGain()
+      const pops = ctx.createGain()
+      const tones = ctx.createGain()
       // From now on the video's track plays through the graph only.
       ctx.createMediaElementSource(this.screen).connect(screen)
       screen.connect(rec).connect(cut).connect(limiter).connect(master).connect(ctx.destination)
+      pops.gain.value = POP_VOLUME
+      pops.connect(master)
+      tones.connect(master)
       this.screen.muted = this.silent
       this.screen.volume = 1
       if (!this.playing && !this.silent) void ctx.suspend()
-      this.graph = { ctx, screen, rec, limiter, master, cut }
+      this.graph = { ctx, screen, rec, limiter, master, cut, pops, tones }
     } catch (err) {
       // Without Web Audio the preview plays the video's own track; the export applies everything.
       console.warn('Sound effects are not available in the preview:', err)
@@ -591,6 +616,7 @@ export class PreviewAudio {
     if (!g) return
     void g.ctx.resume()
     this.resetCutFade(g)
+    this.stopEffects()
     for (const stem of this.activeStems()) this.startStem(stem, t)
     this.syncMusic(true, t)
     this.schedule()
@@ -600,6 +626,7 @@ export class PreviewAudio {
     this.playing = false
     for (const stem of this.stems.values()) stem.el.pause()
     this.music?.el.pause()
+    this.stopEffects()
     const g = this.graph
     if (!g) return
     this.resetCutFade(g)
@@ -631,6 +658,9 @@ export class PreviewAudio {
     // The music runs on through cuts (output time is continuous); only a real seek moves it.
     this.syncMusic(false, t)
     this.schedule()
+    // A seek starts a new pass of pops and tones there; over a cut output time runs on, and so do they.
+    const out = this.outputAt(t)
+    if (this.effectsUntil !== null && Math.abs(out - (this.effectsUntil - EFFECTS_AHEAD * this.view)) > 0.5) this.stopEffects()
   }
 
   /** The clip speed changed without a seek (adjacent clips). */
@@ -659,6 +689,7 @@ export class PreviewAudio {
     const g = this.graph
     if (!g) return this.applyElementOnly()
     this.screen.muted = on
+    if (on) this.stopEffects()
     if (on) void g.ctx.resume()
     else if (!this.playing) void g.ctx.suspend()
   }
@@ -680,6 +711,7 @@ export class PreviewAudio {
     }
     this.syncMusic(false, t)
     this.cutFadeStep(g, frameTime ?? t)
+    this.effectsStep(g, t)
     const out = this.outputAt(t)
     const a = this.anchor
     if (!a || out > a.until - 5 || Math.abs(a.out + (g.ctx.currentTime - a.ctx) * this.view - out) > ANCHOR_DRIFT) this.schedule()
@@ -777,6 +809,97 @@ export class PreviewAudio {
     if (music.el.paused) void music.el.play().catch(() => undefined)
   }
 
+  /* ---------- Captions Studio: pops and bleep tones (§10.6, §11.7) ---------- */
+
+  /** The project's pops and tones in output seconds, made again only when what they come from changed. */
+  private effectsOf(): Effects {
+    const p = this.project
+    const from = [p.graphics, p.bleeps, p.clips, p.freezes, p.captions, p.transcript]
+    const e = this.effects
+    if (e && e.from.length === from.length && e.from.every((v, i) => v === from[i])) return e
+    this.effects = { from, pops: popJob(p), tones: toneJob(p) }
+    return this.effects
+  }
+
+  /**
+   * Once per video frame while playing: the pops and tones due up to EFFECTS_AHEAD past the
+   * playhead, each once per pass, at the moment the export plays them (output time on the video's
+   * clock). A tone the playhead starts inside of plays from where it has got to.
+   */
+  private effectsStep(g: Graph, t: number): void {
+    if (this.silent) return
+    const fx = this.effectsOf()
+    if (fx.pops.length === 0 && fx.tones.length === 0) return
+    const out = this.outputAt(t)
+    const now = g.ctx.currentTime
+    const upto = out + EFFECTS_AHEAD * this.view
+    const fresh = this.effectsUntil === null
+    const from = fresh ? out : this.effectsUntil!
+    if (upto <= from) return
+    const at = (time: number): number => now + Math.max(0, (time - out) / this.view)
+    for (const p of fx.pops) {
+      for (const time of p.times) {
+        if (time < from || (!fresh && time === from) || time > upto) continue
+        this.startVoice(g, g.pops, this.popBuffer(g, p.sound), at(time), 0)
+      }
+    }
+    for (const tone of fx.tones) {
+      if (fresh && tone.start < out && tone.end > out) {
+        this.startVoice(g, g.tones, this.toneBuffer(g, tone.end - tone.start), now, out - tone.start)
+        continue
+      }
+      if (tone.start < from || (!fresh && tone.start === from) || tone.start > upto) continue
+      this.startVoice(g, g.tones, this.toneBuffer(g, tone.end - tone.start), at(tone.start), 0)
+    }
+    this.effectsUntil = upto
+  }
+
+  private startVoice(g: Graph, into: GainNode, buffer: AudioBuffer, when: number, offset: number): void {
+    const voice = g.ctx.createBufferSource()
+    voice.buffer = buffer
+    // At the preview's speed (E-08) a sound plays at its own pitch and length, as a click does.
+    voice.connect(into)
+    voice.onended = () => {
+      this.effectVoices.delete(voice)
+      voice.disconnect()
+    }
+    this.effectVoices.add(voice)
+    voice.start(when, Math.max(0, offset))
+  }
+
+  private popBuffer(g: Graph, sound: 'pop' | 'ding'): AudioBuffer {
+    let buffer = this.popBuffers.get(sound)
+    if (!buffer || buffer.sampleRate !== g.ctx.sampleRate) {
+      const wave = popWaveform(sound, g.ctx.sampleRate)
+      buffer = g.ctx.createBuffer(1, wave.length, g.ctx.sampleRate)
+      buffer.copyToChannel(wave as Float32Array<ArrayBuffer>, 0)
+      this.popBuffers.set(sound, buffer)
+    }
+    return buffer
+  }
+
+  /** One tone span's samples (toneWaveform: the export's tone with its ramps). */
+  private toneBuffer(g: Graph, length: number): AudioBuffer {
+    const wave = toneWaveform(length, g.ctx.sampleRate)
+    const buffer = g.ctx.createBuffer(1, wave.length, g.ctx.sampleRate)
+    buffer.copyToChannel(wave as Float32Array<ArrayBuffer>, 0)
+    return buffer
+  }
+
+  /** Stops the pops and tones scheduled or playing; the next frame starts a new pass at the playhead. */
+  private stopEffects(): void {
+    this.effectsUntil = null
+    for (const v of this.effectVoices) {
+      try {
+        v.stop()
+      } catch {
+        // Already stopped.
+      }
+      v.disconnect()
+    }
+    this.effectVoices.clear()
+  }
+
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
@@ -793,6 +916,7 @@ export class PreviewAudio {
     }
     this.stems.clear()
     this.disposeMusic()
+    this.stopEffects()
     void this.graph?.ctx.close()
     this.graph = null
   }

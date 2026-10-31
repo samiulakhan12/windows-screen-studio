@@ -174,12 +174,14 @@ export function hasSoundtrack(project: Project, clickSounds: boolean): boolean {
 
 /**
  * Whether the preview needs its Web Audio graph: per-source gains, music, fades, loudness
- * normalisation or a gain above 100%. Without it the video element plays its own track.
+ * normalisation or a gain above 100%; and Captions Studio's bleeps and the graphics' pop sounds
+ * (§14.2), which play through it. Without it the video element plays its own track.
  */
 export function needsAudioGraph(project: Project): boolean {
   const look = audioLook(project.audio)
   const mix = recordingMix(project)
   if (look.music && look.music.volume > 0) return true
+  if (project.bleeps?.length || project.graphics?.some((g) => !!g.sound)) return true
   if (mix.kind === 'none') return false
   return mix.kind === 'stems' || mix.volume > 1 || look.normalize || look.fadeIn > 0 || look.fadeOut > 0
 }
