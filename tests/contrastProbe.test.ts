@@ -40,9 +40,10 @@ vi.stubGlobal('document', {
 
 // Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
 const PROBE = '../src/renderer/src/render/contrastProbe'
-const { probeContrast, setContrastSource } = (await import(/* @vite-ignore */ PROBE)) as {
+const { probeContrast, setContrastSource, releaseContrastSource } = (await import(/* @vite-ignore */ PROBE)) as {
   probeContrast(p: Project, t: number, s: CaptionStudio): Promise<{ ratio: number; at: number } | null>
   setContrastSource(s: (() => unknown) | null): void
+  releaseContrastSource(s: () => unknown): void
 }
 
 const studio = structuredClone(studioPreset('subtitle')!.look)
@@ -57,6 +58,18 @@ const project = {
 } as unknown as Project
 
 describe('probeContrast (§7.3)', () => {
+  it('an editor closing drops its own frame source, never the one an editor opened since registered', async () => {
+    const frame = (): unknown => ({ scene: { project }, sources: {}, width: 1920, height: 1080 })
+    const older = (): unknown => frame()
+    const newer = (): unknown => frame()
+    setContrastSource(older)
+    setContrastSource(newer)
+    releaseContrastSource(older)
+    await expect(probeContrast(project, 1.2, studio)).resolves.not.toBeNull()
+    releaseContrastSource(newer)
+    await expect(probeContrast(project, 1.2, studio)).resolves.toBeNull()
+  })
+
   it('measures nothing without the preview’s frame', async () => {
     setContrastSource(null)
     await expect(probeContrast(project, 1.2, studio)).resolves.toBeNull()

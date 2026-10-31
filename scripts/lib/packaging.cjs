@@ -168,7 +168,7 @@ const VAD_PIN = {
  * and the Unicode data of its emoji list (35-caption-data.txt). The data sections part P4 adds
  * there (CLDR, obscenity, LDNOOBW's Shutterstock) add their names with them.
  */
-const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode']
+const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW']
 
 /**
  * Captions Studio's bundled caption fonts (§6.9): the 42 WOFF2 files of resources/fonts that Vite

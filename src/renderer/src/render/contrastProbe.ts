@@ -25,6 +25,11 @@ export function setContrastSource(next: ContrastSource | null): void {
   source = next
 }
 
+/** Drops `mine` when it is still the registered source (an editor closing never drops the next one's). */
+export function releaseContrastSource(mine: ContrastSource): void {
+  if (source === mine) source = null
+}
+
 /** The probe's canvas: 320 px on its long side, the output's shape. */
 const PROBE_SIDE = 320
 

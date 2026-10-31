@@ -673,10 +673,11 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
   it('commits third-party notices that name what ships, and checks them', () => {
     const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
     expect(packaging.noticesProblems(text)).toEqual([])
-    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode'])
+    // Captions Studio's data (resources/notices/35-caption-data.txt): CLDR, obscenity and LDNOOBW.
+    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW'])
     expect(packaging.noticesProblems('React and Electron')).toEqual([
       'only 18 bytes (at least 10 KB expected)',
-      'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe, SIL Open Font License, Noto, Unicode'
+      'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe, SIL Open Font License, Noto, Unicode, CLDR, obscenity, LDNOOBW'
     ])
     // The hand-written entries are part of it.
     for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {

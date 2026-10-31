@@ -3,7 +3,7 @@ import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } f
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
 import { findInCaptions, mergeWithNext, readSuggestedChapters, replaceInCaptions, splitCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
-import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
+import { languageSubtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
 import { displayTime } from '../../../../shared/editor/clips'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
@@ -1132,7 +1132,8 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
     if (!segments.length) return onNotice('There are no captions to export')
     setSaving(true)
     try {
-      const file = await window.api.saveCaptions(p.name, f, subtitleFile(segments, p.clips, f, planOf(p), speakerFileOptions()))
+      // The spoken captions with bleeped words masked, as the export's subtitle files carry them (§11.7).
+      const file = await window.api.saveCaptions(p.name, f, languageSubtitleFile(p, null, f, speakerFileOptions()))
       if (file) onNotice(`Captions saved: ${file}`)
     } catch (err) {
       onNotice(`The captions could not be saved: ${ipcMessage(err)}`)

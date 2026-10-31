@@ -26,7 +26,7 @@ import { cursorLook } from '../../../shared/render/cursorFx'
 import { JUMP_SLACK } from '../../../shared/render/cutFades'
 import { frameSeekTime } from '../../../shared/render/frameTiming'
 import type { Clip, Project } from '../../../shared/types'
-import { drawFrame, type DrawOptions, type FrameImage, type RenderScene } from '../render/compositor'
+import { drawFrame, type DrawOptions, type FrameImage, type RenderScene, type RenderSources } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
 import { heldLivePicture, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
@@ -429,6 +429,17 @@ export class PreviewPlayer {
       this.hold || still ? FROZEN : undefined,
       s
     )
+  }
+
+  /**
+   * The preview's frame for the contrast meter (Captions Studio §7.3): its scene and elements at the
+   * playhead, at the preview canvas's size; null while it plays, seeks or has no picture yet (the
+   * meter then keeps the static figure).
+   */
+  pausedFrame(): { scene: RenderScene; sources: RenderSources; width: number; height: number } | null {
+    const { canvas, scene } = this
+    if (!canvas || !scene || this.disposed || this.moving || this.hold || this.screen.seeking || this.screen.readyState < 2) return null
+    return { scene, sources: { screen: this.screen, webcam: this.webcam, background: this.background }, width: canvas.width, height: canvas.height }
   }
 
   /** True while the camera seeks (an element that failed never lands: it does not hold drawing up). */

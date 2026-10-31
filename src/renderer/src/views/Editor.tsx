@@ -77,6 +77,7 @@ import { KeymapContext } from '../editor/keymapContext'
 import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
+import { releaseContrastSource, setContrastSource, type ContrastSource } from '../render/contrastProbe'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
@@ -108,6 +109,8 @@ interface Session {
   store: EditStore<Project>
   saver: Autosaver<Project>
   player: PreviewPlayer
+  /** The preview's frame for the contrast meter (Captions Studio §7.3), registered while the session is open. */
+  contrast: ContrastSource
 }
 
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; session: Session }
@@ -193,10 +196,13 @@ async function openSession(projectId: string): Promise<Session> {
   })
   if (project !== opened) saver.markDirty()
   const player = new PreviewPlayer(screen, webcam, project, data.missingStems)
-  return { data, store, saver, player }
+  const contrast: ContrastSource = () => player.pausedFrame()
+  setContrastSource(contrast)
+  return { data, store, saver, player, contrast }
 }
 
 function closeSession(s: Session): void {
+  releaseContrastSource(s.contrast)
   s.player.dispose()
   // Normally already flushed by Back; this covers any other way the editor goes away.
   if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
