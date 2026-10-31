@@ -220,9 +220,12 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   `SSW_REQUIRE_NATIVE=1 npm run dist:win` (predist and verify-dist included). It takes the notes
   from the `## <version>` section of `docs/RELEASE-NOTES.md` (`scripts/release-notes.mjs`) and runs
   `gh release create v<version> --draft` with `Flown-Setup-<version>.exe` and `latest.yml` (no
-  blockmap: differential downloads are off, `nsis.differentialPackage`). It stops before building when the tag exists or the notes section is missing.
+  blockmap: differential downloads are off, `nsis.differentialPackage`). It stops before building
+  when the version already has a release (draft or published) or a tag (a deleted release keeps
+  its tag, and a new draft would be attached to its old commit), or the notes section is missing.
 - Three jobs, so no npm package ever runs next to a token that can write to the repository: *check*
-  (write access, only to see drafts too; reads the version from `package.json`, runs no code),
+  (write access, only to see drafts too; reads the version from `package.json` and looks for a
+  release or tag of it, runs no code),
   *build* (read access only, checkout without stored credentials: notes, toolchain, `npm ci`,
   `dist:win`, then the installer, `latest.yml` and the notes as a workflow artifact) and *draft*
   (write access; no checkout, no npm: downloads that artifact and runs `gh release create`). A bad
@@ -262,7 +265,8 @@ without the percent) and `isNewer(a, b)` (semver, no pre-releases).
   (first check at 30 s, then 4 h, none when off, none while one runs); prefs (defaults, bad files,
   atomic write); the busy check; `UpdateService` with a fake port (auto on and off, download
   errors, install refused while busy); the model list (every rule of §3, newest wins, cache);
-  `release-notes.mjs` (section found, missing, last section); the builder config (`publish`
+  `release-notes.mjs` (section found, missing, last section); the workflow's version check (a
+  release or a tag of the version stops it, run against a fake `gh`); the builder config (`publish`
   points at this repository, `publisherName` only when signing); verify-dist's new checks.
 - E2E `tests/e2e/auto-update.e2e.cjs` with the fake updater: Settings › About shows each state;
   *Download* and the progress; the Home notice and *Later*; *Restart now* refused during an export

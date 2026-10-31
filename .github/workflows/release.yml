@@ -3,8 +3,8 @@
 # users until someone opens the draft on GitHub and presses "Publish release".
 #
 # Run it by hand: Actions › Release › Run workflow. It stops before building when the version in
-# package.json already has a release (draft or published) or docs/RELEASE-NOTES.md has no section
-# for it.
+# package.json already has a release (draft or published) or a tag, or docs/RELEASE-NOTES.md has no
+# section for it.
 #
 # Only the jobs that run no npm package and no build hold a token that can write to the
 # repository: the build job, which runs every dependency's install scripts and build code, can
@@ -47,6 +47,12 @@ jobs:
           fi
           if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::A release v$version already exists. Raise the version in package.json first."
+            exit 1
+          fi
+          # A deleted release keeps its tag, and a new draft would be attached to that old commit.
+          tags=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v$version" --jq "map(select(.ref == \"refs/tags/v$version\")) | length")
+          if [ "$tags" != 0 ]; then
+            echo "::error::A tag v$version already exists. Raise the version in package.json first."
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"

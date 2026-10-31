@@ -11,8 +11,8 @@ Flown 0.7.1 and later update themselves from this repository's GitHub releases
    changed, in plain words. Flown shows this text under *What's new* in Settings › About. Commit and
    push to the default branch.
 2. **Build.** On GitHub: *Actions* › *Release* › *Run workflow*. It takes about half an hour. It
-   stops at once, without building, when the version already has a release or the notes have no
-   section for it.
+   stops at once, without building, when the version already has a release or a tag, or the notes
+   have no section for it.
 3. **Try the draft.** Under *Releases* there is now a **draft** "Flown 0.7.2" with
    `Flown-Setup-0.7.2.exe` and `latest.yml`. Drafts are invisible to Flown. Download the installer
    and try it; the workflow's summary page shows its SHA-256.
@@ -28,7 +28,9 @@ SHA-512 in `latest.yml`, so a changed file fails to install. Make a new version 
 - **Not downloaded yet:** on the release page, press *Edit* and turn it back into a draft (or delete
   it). Copies that have not downloaded it stop being offered it. A copy that downloaded it but has
   not installed it yet drops it at its next check (it no longer installs when Flown closes), also
-  when an older release or a fix is the latest now; it then takes that one instead.
+  when an older release or a fix is the latest now; it then takes that one instead. Ship the fix
+  as a new version (for example 0.7.3): a deleted release keeps its tag, so the workflow refuses
+  its version.
 - **Already installed:** Flown never installs a lower version, so publish the fix as the next
   version (for example 0.7.3). Older installers stay on the Releases page for anyone who needs to
   reinstall one by hand.
