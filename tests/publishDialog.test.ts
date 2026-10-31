@@ -62,8 +62,8 @@ vi.stubGlobal('window', {
   setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
   clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id)
 })
-/** The page: `activeElement` is the stand-in that has the focus, or the body. */
-const page: { body: object; activeElement: unknown } = { body: {}, activeElement: null }
+/** The page: `activeElement` is the stand-in that has the focus, or the body; querySelector finds a card. */
+const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown } = { body: {}, activeElement: null }
 vi.stubGlobal('document', page)
 vi.stubGlobal('navigator', { clipboard: { writeText: () => (clipboardTakes ? Promise.resolve() : Promise.reject(new Error('Document is not focused'))) } })
 vi.stubGlobal(
@@ -181,6 +181,12 @@ function walk(node: unknown, out: El[]): El[] {
 
 /** What has the focus: a button's text, 'panel' for the dialog itself, null while it is still behind the modal. */
 let focused: string | null = null
+/** The item a palette command asked for as the dialog opens. */
+let request: { kind: string; n: number } | null = null
+/** What scrolled the dialog, in order: a card shown, or an element focused without preventScroll. */
+const scrolls: string[] = []
+/** The elements of the last render (document.querySelector looks in them). */
+let tree: El[] = []
 /** What went to the editor's notice, which shows behind the dialog (it was given one before). */
 const notices: string[] = []
 const nameOf = (el: El): string => (el.type === 'button' ? textOf(el.props.children).trim() : el.props.role === 'dialog' ? 'panel' : String(el.type))
@@ -191,8 +197,9 @@ function standIn(el: El): { name: string; disabled?: boolean; focus(): void } {
   const stand = {
     name: nameOf(el),
     disabled,
-    focus: () => {
+    focus: (options?: { preventScroll?: boolean }) => {
       if (disabled) return
+      if (!options?.preventScroll) scrolls.push(stand.name)
       focused = stand.name
       page.activeElement = stand
     }
@@ -205,8 +212,9 @@ function render(): El[] {
   for (let pass = 0; pass < 20; pass++) {
     dirty = false
     at = 0
-    const out = walk(PublishDialog({ project: current, request: null, onClose: () => undefined, onGenerateCaptions: () => undefined, onNotice: (m: string) => notices.push(m) }), [])
+    const out = walk(PublishDialog({ project: current, request, onClose: () => undefined, onGenerateCaptions: () => undefined, onNotice: (m: string) => notices.push(m) }), [])
     for (const el of out) if (el.ref && typeof el.ref === 'object') (el.ref as { current: unknown }).current = standIn(el)
+    tree = out
     // A focused element that is gone leaves the focus on the body.
     const active = page.activeElement as { name?: string } | null
     if (active && active !== page.body && !out.some((el) => nameOf(el) === active.name)) page.activeElement = page.body
@@ -253,6 +261,8 @@ beforeEach(async () => {
   cells = []
   effects = []
   focused = null
+  request = null
+  scrolls.length = 0
   notices.length = 0
   page.activeElement = null
   clipboardTakes = true
@@ -410,5 +420,48 @@ describe('Publish dialog: a card says when its text is written (§5.2)', () => {
     await flush()
     out = render()
     expect(state(card(out, 'linkedin'))).toBe('Written')
+  })
+})
+
+describe('Publish dialog: a palette command shows the card it writes (§5.2)', () => {
+  /** document.querySelector for a card: it scrolls into view, and finds its text field. */
+  const findCard = (sel: string): unknown => {
+    const kind = /^\[data-publish-card="(\w+)"\]$/.exec(sel)?.[1]
+    const section = tree.find((e) => e.props['data-publish-card'] === kind)
+    if (!section) return null
+    const field = walk(section.props.children, []).find((e) => e.type === 'textarea' && String(e.props.className).includes('publish-text'))
+    return {
+      scrollIntoView: () => scrolls.push(`${kind} card`),
+      querySelector: (inner: string) =>
+        inner === '.publish-text' && field
+          ? {
+              focus: (options?: { preventScroll?: boolean }) => {
+                const label = String(field.props['aria-label'])
+                if (!options?.preventScroll) scrolls.push(label)
+                focused = label
+                page.activeElement = { name: 'textarea' }
+              }
+            }
+          : null
+    }
+  }
+  beforeEach(() => {
+    page.querySelector = findCard
+  })
+
+  it('"Write release notes": that card stays in view, with the focus on its text, not on Write all', async () => {
+    request = { kind: 'releaseNotes', n: 1 }
+    render()
+    expect(asked).toEqual([])
+    await opened()
+    expect(asked.map((a) => a.task)).toEqual(['releaseNotes'])
+    expect(scrolls.at(-1)).toBe('releaseNotes card')
+    expect(focused).toBe('Release notes text')
+  })
+
+  it('opened from its button, the focus is on Write all', async () => {
+    await opened()
+    expect(asked).toEqual([])
+    expect(focused).toBe('Write all')
   })
 })

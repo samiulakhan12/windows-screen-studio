@@ -8,8 +8,8 @@
 //     Regenerate sends one request; Stop cancels one.
 //  3. Use for exports: one undo step; the export's description file is what Copy gives.
 //  4. Tone and length are remembered after a restart.
-//  5. The palette: "Write an X post" writes that item only; "Summarize with AI" runs the Captions
-//     tab's summary; the AI tools are greyed out without captions.
+//  5. The palette: "Write an X post" writes that item only, with the focus on its text; "Summarize
+//     with AI" runs the Captions tab's summary; the AI tools are greyed out without captions.
 const fs = require('node:fs')
 const path = require('node:path')
 const h = require('./helpers.cjs')
@@ -299,6 +299,7 @@ async function main() {
         await runCommand(win, 'x post', 'Write an X post')
         await dialog(win).waitFor({ timeout: 10000 })
         await f.waitFor(async () => (await status(win, 'xpost')) === 'done', 'the X post is written', 15000)
+        h.assert((await win.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label'))) === 'X post text', "the X post's text has the focus")
         for (const k of KINDS.filter((k) => k !== 'xpost')) h.assert((await status(win, k)) === 'idle', `${k} untouched`)
         h.assert(mock.pack.count - before === 1, 'one request')
         h.assert((await cardText(win, 'xpost')).startsWith('Mock X post (friendly normal)'), 'default tone and length')

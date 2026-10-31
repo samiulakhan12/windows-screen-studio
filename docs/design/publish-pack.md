@@ -325,8 +325,10 @@ to the Publish button. Tone and Length are radio groups (arrow keys). Every text
 *Waiting…*, *Writing…* and then *Written*, so a screen reader hears when its text is ready. Opening focuses
 *Write all* (or the empty state's button); while there is no such button (no sound, too little
 speech) or it is still disabled (the providers loading), the dialog itself has the focus, so it is
-never left on the Publish button behind the scrim. When *Stop all* goes (pressed, or the last item
-written) while it has the focus, the focus goes to *Write all*, not the page.
+never left on the Publish button behind the scrim. Opened by a palette command that writes one item
+(*Write release notes*), the dialog shows that card instead, with the focus on its text. When
+*Stop all* goes (pressed, or the last item written) while it has the focus, the focus goes to
+*Write all*, not the page.
 
 ### 5.3 When there is nothing to write from
 

@@ -99,15 +99,6 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
     for (const kind of kinds) void writeItem(project.id, kind, ctx)
   }
 
-  // The item a palette command asked for, once the providers are known.
-  const handled = useRef(0)
-  useEffect(() => {
-    if (!request || request.n === handled.current || providers === null) return
-    handled.current = request.n
-    if (context()) write([request.kind])
-    document.querySelector<HTMLElement>(`[data-publish-card="${request.kind}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // Write all or the empty state's button; the dialog itself while there is none (no sound, too
   // little speech) or it is disabled (providers loading), so the focus never stays behind the scrim.
   const focusFirst = (): void => {
@@ -118,6 +109,18 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   useEffect(() => {
     focusFirst()
   }, [providers === null, !!blocker]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The item a palette command asked for, once the providers are known: its card is shown, with the
+  // focus on its text. After the focus above, which would scroll the dialog back to Write all.
+  const handled = useRef(0)
+  useEffect(() => {
+    if (!request || request.n === handled.current || providers === null) return
+    handled.current = request.n
+    if (context()) write([request.kind])
+    const card = document.querySelector<HTMLElement>(`[data-publish-card="${request.kind}"]`)
+    card?.scrollIntoView({ block: 'nearest' })
+    card?.querySelector<HTMLElement>('.publish-text')?.focus({ preventScroll: true })
+  }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const running = PUBLISH_KINDS.filter((k) => isRunning(items[k].status))
   const done = PUBLISH_KINDS.filter((k) => items[k].status === 'done').length
