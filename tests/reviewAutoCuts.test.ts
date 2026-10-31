@@ -1,14 +1,17 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { projectCopy } from '../src/shared/editor/duplicate'
 import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed } from '../src/shared/editor/smartSpeed'
 import { cutWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
-import { MAX_AUTO_CUTS, MAX_WAS_PIECES, readAutoCuts, wordsText } from '../src/shared/review/autoCutData'
+import { MAX_AUTO_CUT_OUTCOMES, MAX_AUTO_CUTS, MAX_WAS_PIECES, readAutoCutOutcomes, readAutoCuts, withOutcomes, wordsText } from '../src/shared/review/autoCutData'
 import { autoCutIntact, footageBack, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem } from '../src/shared/review/review'
 import { suggestionRanges } from '../src/shared/review/wordCuts'
-import type { AutoCut, Clip, Project } from '../src/shared/types'
+import type { AutoCut, AutoCutOutcome, Clip, Project } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1, id = `c${start}`): Clip => ({ id, start, end, speed })
 const spans = (clips: Clip[]): [number, number, number][] => clips.map((c) => [+c.start.toFixed(4), +c.end.toFixed(4), c.speed])
@@ -104,6 +107,103 @@ describe('readAutoCuts (migration)', () => {
   it('wordsText squeezes spaces and drops empty text', () => {
     expect(wordsText('  um,\n  uh ')).toBe('um, uh')
     expect(wordsText('   ')).toBeUndefined()
+  })
+})
+
+describe('readAutoCutOutcomes (migration)', () => {
+  const kept = (id: string): AutoCutOutcome => ({ id, outcome: 'kept' })
+  const removed = (id: string): AutoCutOutcome => ({ id, outcome: 'removed' })
+
+  it('is undefined for anything but an array, and for an empty result', () => {
+    for (const raw of [undefined, null, 3, 'x', {}, []]) expect(readAutoCutOutcomes(raw)).toBeUndefined()
+    expect(readAutoCutOutcomes([null, 1, 'x', [], { id: 'a' }, { outcome: 'kept' }])).toBeUndefined()
+  })
+
+  it('keeps well-formed entries, copies only known fields and drops malformed ones', () => {
+    const out = readAutoCutOutcomes([
+      kept('a'),
+      { id: '', outcome: 'kept' },
+      { id: 'x'.repeat(65), outcome: 'kept' },
+      { id: 'x'.repeat(64), outcome: 'removed' },
+      { id: 7, outcome: 'kept' },
+      { id: 'b', outcome: 'maybe' },
+      { id: 'c', outcome: 'pending' },
+      { id: 'd', outcome: 'KEPT' },
+      [kept('e')],
+      { id: 'f', outcome: 'removed', extra: true, __proto__: { polluted: 1 } }
+    ])
+    expect(out).toEqual([kept('a'), removed('x'.repeat(64)), removed('f')])
+    expect(Object.keys(out![2])).toEqual(['id', 'outcome'])
+  })
+
+  it('keeps one entry per id: a later entry is the newer choice and takes its place', () => {
+    expect(readAutoCutOutcomes([kept('a'), removed('b'), removed('a'), kept('c')])).toEqual([removed('b'), removed('a'), kept('c')])
+  })
+
+  it('keeps the newest MAX_AUTO_CUT_OUTCOMES', () => {
+    const many = Array.from({ length: MAX_AUTO_CUT_OUTCOMES + 5 }, (_, i) => kept(`r${i}`))
+    const out = readAutoCutOutcomes(many)!
+    expect(out).toHaveLength(MAX_AUTO_CUT_OUTCOMES)
+    expect(out[0].id).toBe('r5')
+    expect(out[out.length - 1].id).toBe(`r${MAX_AUTO_CUT_OUTCOMES + 4}`)
+    // Duplicates are folded before the cap: 1000 distinct ids after them are all kept.
+    expect(readAutoCutOutcomes([...many.slice(0, 10), ...many.slice(0, 10), ...many.slice(10, MAX_AUTO_CUT_OUTCOMES)])).toHaveLength(MAX_AUTO_CUT_OUTCOMES)
+  })
+
+  it('is idempotent', () => {
+    for (const raw of [[kept('a'), removed('b')], [kept('a'), removed('a'), { id: 'z', outcome: 'x' }], Array.from({ length: 1200 }, (_, i) => (i % 3 ? kept(`r${i % 700}`) : removed(`r${i}`)))]) {
+      const once = readAutoCutOutcomes(raw)
+      expect(readAutoCutOutcomes(once)).toEqual(once)
+    }
+  })
+
+  it('withOutcomes adds a choice at the end, replaces an older one for its id and keeps the newest 1000', () => {
+    expect(withOutcomes([kept('a'), kept('b')], [removed('a')])).toEqual([kept('b'), removed('a')])
+    const full = Array.from({ length: MAX_AUTO_CUT_OUTCOMES }, (_, i) => kept(`r${i}`))
+    const out = withOutcomes(full, [removed('new')])
+    expect(out).toHaveLength(MAX_AUTO_CUT_OUTCOMES)
+    expect([out[0].id, out[out.length - 1]]).toEqual(['r1', removed('new')])
+  })
+
+  it('an old project, and one with records but no choice, migrate with no autoCutOutcomes key, byte for byte', () => {
+    for (const p of [project(), { ...project([clip(0, 4), clip(6, 20)]), autoCuts: [cut()] }]) {
+      const old = JSON.parse(JSON.stringify(p))
+      const migrated = migrateProject(old)
+      expect('autoCutOutcomes' in migrated).toBe(false)
+      expect(JSON.stringify(migrated)).toBe(JSON.stringify(migrateProject(JSON.parse(JSON.stringify(p)))))
+      expect(JSON.stringify(migrateProject(JSON.parse(JSON.stringify(migrated))))).toBe(JSON.stringify(migrated))
+    }
+    // An empty or broken list is no choice: no key.
+    for (const autoCutOutcomes of [[], [{ id: '', outcome: 'kept' }], 'kept']) expect('autoCutOutcomes' in migrateProject({ ...JSON.parse(JSON.stringify(project())), autoCutOutcomes })).toBe(false)
+  })
+
+  it('a project with choices keeps them through the migration, saved and opened again the same', () => {
+    const p = { ...project([clip(0, 4), clip(6, 20)]), autoCuts: [cut()], autoCutOutcomes: [kept('gone'), removed('x')] }
+    const migrated = migrateProject(JSON.parse(JSON.stringify(p)))
+    expect(migrated.autoCutOutcomes).toEqual([kept('gone'), removed('x')])
+    expect(JSON.stringify(migrateProject(JSON.parse(JSON.stringify(migrated))))).toBe(JSON.stringify(migrated))
+  })
+
+  it('Duplicate and the vertical and square copies carry the choices with the records', () => {
+    const p = { ...project([clip(0, 4), clip(6, 20)]), autoCuts: [cut()], autoCutOutcomes: [kept('k1'), removed('r1')] }
+    for (const kind of ['copy', 'vertical', 'square'] as const) {
+      const copy = projectCopy(p, kind, (s, px) => s.length * px * 0.5)
+      expect(copy.autoCuts).toEqual(p.autoCuts)
+      expect(copy.autoCutOutcomes).toEqual(p.autoCutOutcomes)
+      // Main checks the copy with migrateProject before writing it.
+      const written = migrateProject(JSON.parse(JSON.stringify(copy)))
+      expect([written.autoCuts, written.autoCutOutcomes]).toEqual([p.autoCuts, p.autoCutOutcomes])
+    }
+  })
+
+  it('only Review mode and the migration read the choices: never rendering, export, captions or the audio plan', () => {
+    const root = path.resolve(__dirname, '../src')
+    const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []))
+    const readers = files(root)
+      .filter((f) => readFileSync(f, 'utf8').includes('autoCutOutcomes'))
+      .map((f) => path.relative(root, f).split(path.sep).join('/'))
+      .sort()
+    expect(readers.filter((f) => !f.startsWith('shared/review/'))).toEqual(['shared/engine/project.ts', 'shared/types.ts'])
   })
 })
 

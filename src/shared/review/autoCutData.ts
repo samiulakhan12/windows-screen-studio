@@ -1,16 +1,20 @@
 /**
- * Reading the stored record of automatic cuts (Review mode, docs/design/review-mode.md §3): the
- * migration's sanitiser, kept free of editor code so engine/project.ts can import it. Pure.
+ * Reading the stored record of automatic cuts and the choices made for them in the Review panel
+ * (Review mode, docs/design/review-mode.md §3): the migration's sanitisers, kept free of editor
+ * code so engine/project.ts can import them. Pure.
  */
 import { clamp } from '../engine/math'
 import { MAX_SPEED, MIN_SPEED } from '../engine/timeline'
-import type { AutoCut, AutoCutSource } from '../types'
+import type { AutoCut, AutoCutOutcome, AutoCutSource } from '../types'
 
 export const AUTO_CUT_SOURCES: readonly AutoCutSource[] = ['silences', 'smart-speed', 'polish', 'filler', 'retake', 'repeat']
 export const AUTO_CUT_ACTIONS: readonly AutoCut['action'][] = ['cut', 2, 4, 8]
+export const AUTO_CUT_OUTCOMES: readonly AutoCutOutcome['outcome'][] = ['kept', 'removed']
 
 /** At most this many records are kept (the newest). */
 export const MAX_AUTO_CUTS = 1000
+/** At most this many choices made in the Review panel are kept (the newest). */
+export const MAX_AUTO_CUT_OUTCOMES = 1000
 /** At most this many pieces per record. */
 export const MAX_WAS_PIECES = 64
 /** Longest `words` text kept. */
@@ -65,5 +69,39 @@ export function readAutoCuts(raw: unknown, duration: number): AutoCut[] | undefi
   }
   const kept = out.length > MAX_AUTO_CUTS ? out.slice(out.length - MAX_AUTO_CUTS) : out
   return kept.length ? kept : undefined
+}
+
+/**
+ * `list` with each of `chosen` recorded: one entry per id, a new choice for an id taking the old
+ * one's place at the end (the newest last), at most MAX_AUTO_CUT_OUTCOMES (the newest).
+ */
+export function withOutcomes(list: readonly AutoCutOutcome[], chosen: readonly AutoCutOutcome[]): AutoCutOutcome[] {
+  const byId = new Map(list.map((o) => [o.id, o]))
+  for (const o of chosen) {
+    byId.delete(o.id)
+    byId.set(o.id, { id: o.id, outcome: o.outcome })
+  }
+  const out = [...byId.values()]
+  return out.length > MAX_AUTO_CUT_OUTCOMES ? out.slice(out.length - MAX_AUTO_CUT_OUTCOMES) : out
+}
+
+/**
+ * The stored choices made in the Review panel, sanitised (§3): plain objects only, fields read one
+ * by one; ids 1..64 characters; `outcome` from its list; one entry per id (a later entry for an id
+ * is the newer choice and takes its place); at most MAX_AUTO_CUT_OUTCOMES (the newest). Undefined
+ * when nothing is left (no key in the project). Idempotent.
+ */
+export function readAutoCutOutcomes(raw: unknown): AutoCutOutcome[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const read: AutoCutOutcome[] = []
+  for (const r of raw) {
+    if (!isObject(r)) continue
+    const id = r.id
+    const outcome = AUTO_CUT_OUTCOMES.find((o) => o === r.outcome)
+    if (typeof id !== 'string' || id.length < 1 || id.length > MAX_ID || !outcome) continue
+    read.push({ id, outcome })
+  }
+  const out = withOutcomes([], read)
+  return out.length ? out : undefined
 }
 
