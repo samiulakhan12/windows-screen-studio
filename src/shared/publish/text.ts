@@ -10,15 +10,27 @@ import { X_COUNTRY_TLDS, X_GENERIC_TLDS } from './tlds'
 const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufeff]/g
 
 /**
+ * Letters of the languages written without spaces between words (Chinese, Japanese, Korean, Thai…)
+ * and their punctuation and full-width forms. A domain is never written in them, and a link glued to
+ * them ends where they start, as X ends it ("詳細はevil.icuで", "ログインはevil.de/loginから。").
+ */
+const NO_SPACE = '\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{sc=Thai}\\p{sc=Lao}\\p{sc=Khmer}\\p{sc=Myanmar}\\u3000-\\u303f\\uff00-\\uffef'
+/** A letter or digit of a domain: not one of those languages. */
+const ALNUM = `(?![${NO_SPACE}])[\\p{L}\\p{N}]`
+/** A character of a link after its scheme or domain: up to a space, a quote or such a language's text. */
+const URL_CHAR = `[^\\s<>"'\`${NO_SPACE}]`
+
+/**
  * Links as they are written in text: with a scheme or "www." anywhere (also glued to a word, as
  * "_https://…"), or a bare domain, which sites turn into links too: on a top-level domain X links
  * (tlds.ts), with or without a port and a path ("evil.icu", "flown.co.uk", "is.gd/x",
  * "evil.de:8080/login"). "Node.js/React" or "index.html/style.css" are on none, so they are text.
+ * A host written in those languages after a scheme runs to the next space ("https://例え.jp/…").
  */
 const LINK = new RegExp(
-  '(?:https?:\\/\\/|www\\.)[^\\s<>"\'`]+' +
-    `|(?<![\\p{L}\\p{N}@.-])[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)*\\.(?:${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|xn--[\\p{L}\\p{N}-]+)` +
-    '(?![\\p{L}\\p{N}])(?::\\d+)?(?:\\/[^\\s<>"\'`]*)?',
+  `(?:https?:\\/\\/|www\\.)(?:${URL_CHAR}+|[^\\s<>"'\`]+)` +
+    `|(?<=^|[^\\p{L}\\p{N}@.-]|[${NO_SPACE}])(?:${ALNUM}|-)+(?:\\.(?:${ALNUM}|-)+)*\\.(?:${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|xn--(?:${ALNUM}|-)+)` +
+    `(?!${ALNUM})(?::\\d+)?(?:\\/${URL_CHAR}*)?`,
   'giu'
 )
 

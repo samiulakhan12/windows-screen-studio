@@ -73,6 +73,22 @@ describe('plainText', () => {
     expect(yt).toEqual({ task: 'youtube', text: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind'] })
   })
 
+  it('finds a link glued to Chinese, Japanese or Korean text, and ends it where that text starts', () => {
+    const ja = { max: 200, linksFrom: '新しい書き出し機能です。録画して書き出すだけです。' }
+    expect(plainText('新しい書き出し機能です。詳細はevil.icuで確認してください。', ja)).toBe('新しい書き出し機能です。詳細はで確認してください。')
+    expect(plainText('新功能上线了。详情请访问evil.top了解更多。', ja)).toBe('新功能上线了。详情请访问了解更多。')
+    expect(plainText('evil.com에서 확인하세요', ja)).toBe('에서 확인하세요')
+    expect((validatePackAnswer('xpost', { text: '新しい書き出し機能です。詳細はevil.comで。' }, ja.linksFrom) as { text: string }).text).toBe('新しい書き出し機能です。詳細はで。')
+    // With a path: the link alone goes, not the rest of the text.
+    expect(plainText('新しい書き出し機能です。ログインはevil.de/loginから。録画して書き出すだけです。', ja)).toBe('新しい書き出し機能です。ログインはから。録画して書き出すだけです。')
+    expect(plainText('詳しくはhttps://evil.example/loginをご覧ください。録画して書き出すだけです。', ja)).toBe('詳しくはをご覧ください。録画して書き出すだけです。')
+    // A link the transcript has is the same link there, so it stays.
+    const said = { max: 200, linksFrom: '新しい書き出し機能です。詳しくはflown.app/helpを見てください。' }
+    expect(plainText('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。', said)).toBe('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。')
+    // A host written in those languages after a scheme is still a link.
+    expect(plainText('See https://例え.jp/パス now', ja)).toBe('See now')
+  })
+
   it('makes one line when asked, and is empty for anything but a string', () => {
     expect(plainText(' a\n\n b \n c', { max: 50, oneLine: true })).toBe('a b c')
     expect(plainText(42, { max: 50 })).toBe('')

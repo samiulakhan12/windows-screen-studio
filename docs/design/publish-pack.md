@@ -494,7 +494,10 @@ Where the build differs from or adds to the sections above:
   `evil.de:8080/login`), because LinkedIn and X turn those into links too. A name on no such domain
   is text (`Node.js/React`, `index.html/style.css`, `evil.example/login`); one on such a domain is
   removed even when it is code (`user.email`), unless the transcript has it. E-mail addresses are
-  kept. A bare name with no port or path on a top-level domain that is also a file type (`.app`,
+  kept. A link glued to Chinese, Japanese, Korean or Thai text is found too, and ends where that
+  text starts, as X ends it: `詳細はevil.icuで` keeps `詳細はで`, and `ログインはevil.de/loginから。`
+  keeps `ログインはから。`, not losing the text after the link. A bare domain written in those
+  scripts is not a link (X does not link one either); after `https://` it is. A bare name with no port or path on a top-level domain that is also a file type (`.app`,
   `.zip`, `.mov`, `.srt`, `.md`, `.py`, `.sh`, `.rs`, `.java`, `.so`, `.cc`, `.gd`, `.map`:
   `recording.mov`, `captions.srt`, `README.md`, `install.sh`) is a file or app name, but sites still
   link it (`flown.app` is a site, and X counts it as a link): it stays whole only when the transcript
