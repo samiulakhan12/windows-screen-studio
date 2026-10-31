@@ -17,6 +17,7 @@ import {
   outOfDate,
   placeOf,
   textHash,
+  tickedExportLanguages,
   TRACK_LANGUAGES,
   trackRows,
   withoutTrack,
@@ -219,5 +220,15 @@ describe('the Languages rows and the export languages (§2.10, §2.13)', () => {
     expect(defaultExportLanguages(p)).toEqual(['en', 'bn'])
     expect(defaultExportLanguages(project({ captionTracks: [bn] }))).toEqual(['en'])
     expect(defaultExportLanguages(project({ captionTracks: [bn], captions: { ...DEFAULT_CAPTIONS, show: false, track: 'bn' } }))).toEqual(['en'])
+  })
+})
+
+describe("the export's ticked languages (§2.13)", () => {
+  it('the choice made, in the export order, else the defaults; never a language the project lacks; never none', () => {
+    const p = project({ captionTracks: [bn, { ...bn, language: 'hi' }], captions: { ...DEFAULT_CAPTIONS, show: true, track: 'bn' } })
+    expect(tickedExportLanguages(p, undefined)).toEqual(['en', 'bn'])
+    expect(tickedExportLanguages(p, ['hi', 'en'])).toEqual(['en', 'hi'])
+    expect(tickedExportLanguages(p, ['fr'])).toEqual(['en'])
+    expect(tickedExportLanguages(project(), ['bn'])).toEqual(['en'])
   })
 })

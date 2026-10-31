@@ -228,6 +228,13 @@ export function defaultExportLanguages(project: Project): string[] {
   return track ? [spoken, track.language] : [spoken]
 }
 
+/** The ticked subtitle languages (§2.13): the export dialog's choice when it made one, else the defaults; only languages the project has, never none. */
+export function tickedExportLanguages(project: Project, chosen: readonly string[] | undefined): string[] {
+  const have = exportLanguages(project).map((l) => l.code)
+  const picked = (chosen ?? defaultExportLanguages(project)).filter((l) => have.includes(l))
+  return picked.length ? have.filter((l) => picked.includes(l)) : have.slice(0, 1)
+}
+
 /** The track `captions.track` names, when it exists. */
 function shownTrack(project: Project): CaptionTrack | undefined {
   const language = project.captions?.track
