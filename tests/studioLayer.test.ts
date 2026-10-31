@@ -42,7 +42,12 @@ const GRAPHICS = '../src/renderer/src/render/graphicsLayer'
 const SPRITES = '../src/renderer/src/render/wordSprites'
 type Draw = (fc: never) => void
 const { drawCaptionsLayer, captionBlockAt } = (await import(/* @vite-ignore */ LAYER)) as { drawCaptionsLayer: Draw; captionBlockAt: (ctx: unknown, p: Project, t: number, w: number, h: number) => { position: string; top: number; bottom: number } | null }
-const { drawStudioCaptions } = (await import(/* @vite-ignore */ STUDIO)) as { drawStudioCaptions: Draw }
+const { drawStudioCaptions, drawStudioSample, SAMPLE_STILL_T } = (await import(/* @vite-ignore */ STUDIO)) as {
+  drawStudioCaptions: Draw
+  drawStudioSample: (ctx: unknown, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number) => { textPx: number }
+  SAMPLE_STILL_T: number
+}
+const { fontGeneration, loadCatalogFont } = (await import(/* @vite-ignore */ '../src/renderer/src/render/fontLoader')) as { fontGeneration(): number; loadCatalogFont(id: string): Promise<void> }
 const { drawGraphicsLayer } = (await import(/* @vite-ignore */ GRAPHICS)) as { drawGraphicsLayer: Draw }
 const { STUDIO_SPRITES } = (await import(/* @vite-ignore */ SPRITES)) as { STUDIO_SPRITES: { clear(): void } }
 
@@ -361,5 +366,33 @@ describe('nothing is read twice (test 51)', () => {
     calls.length = 0
     drawCaptionsLayer(frameOf(p, 2.1).fc)
     expect(calls.some((c) => c.name === 'fillText' && c.args[0] === 'count')).toBe(true)
+  })
+})
+
+describe('gallery thumbnails (§2.5)', () => {
+  it('draw the first chunk at 18 px (One Word 28 px) on the dark grey picture, with the spoken mark on "word"', () => {
+    const c = canvas(136, 96)
+    const subtitle = drawStudioSample(contextOf(c), look('subtitle'), { w: 1920, h: 1080 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
+    expect(subtitle.textPx).toBeCloseTo(18, 6)
+    expect(calls.some((k) => k.canvas === c.id && k.name === 'fillRect' && k.args[2] === 136 && k.args[3] === 96)).toBe(true)
+    expect(drawStudioSample(contextOf(canvas(136, 96)), look('one-word'), { w: 1080, h: 1920 }, { w: 136, h: 96 }, SAMPLE_STILL_T).textPx).toBeCloseTo(28, 6)
+    // Bold Pop's spoken word at the still time is "WORD", painted in the spoken colour.
+    drawStudioSample(contextOf(canvas(136, 96)), look('bold-pop'), { w: 1080, h: 1920 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
+    expect(calls.some((k) => k.name === 'fillText' && k.args[0] === 'WORD' && k.fill === '#39e508')).toBe(true)
+  })
+
+  it('are painted again after a font loads (sprites are keyed by the font generation)', async () => {
+    const studio = look('subtitle')
+    const paints = (): number => calls.filter((k) => k.name === 'fillText' && k.args[0] === 'count').length
+    drawStudioSample(contextOf(canvas(136, 96)), studio, { w: 1920, h: 1080 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
+    const first = paints()
+    drawStudioSample(contextOf(canvas(136, 96)), studio, { w: 1920, h: 1080 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
+    expect(paints()).toBe(first)
+    const generation = fontGeneration()
+    // A font not loaded before in this file.
+    await loadCatalogFont('luckiest-guy')
+    expect(fontGeneration()).toBeGreaterThan(generation)
+    drawStudioSample(contextOf(canvas(136, 96)), studio, { w: 1920, h: 1080 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
+    expect(paints()).toBeGreaterThan(first)
   })
 })
