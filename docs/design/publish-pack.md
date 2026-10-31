@@ -134,7 +134,12 @@ dialog, which handles "no captions" itself (§5.3).
 
 ### 2.9 No new dependencies
 
-The X length count (§4.5), the queue and the sanitiser are small pure functions.
+The queue and the sanitiser are small pure functions. What X links and how it counts a post (§4.4,
+§4.5) is X's own library, twitter-text 3.1.0 (Apache-2.0), ported into the app
+(`src/shared/publish/twitterText.ts`, with its top-level domain lists in `tlds.ts` and
+twemoji-parser's emoji pattern, MIT, in `twemoji.ts`): no package is added, and the notices are in
+`resources/notices/34-twitter-text.txt` and `35-twemoji-parser.txt`. That the port answers exactly
+as the package does is tested, not argued (§10).
 
 ---
 
@@ -239,26 +244,65 @@ The answer must be an object with the schema's fields of the right types, else `
 
 Every string from the AI: CR/LF normalised; C0 and C1 control characters (except line break and
 tab, which becomes a space), DEL, bidirectional overrides and isolates (U+202A–U+202E,
-U+2066–U+2069) and U+FEFF removed; `**` and `__` emphasis markers removed; trailing spaces on
-lines and more than one blank line in a row removed; trimmed; then **links the transcript does not
-contain are removed** (`http(s)://…` and `www.…`): a link can only come from what was said, so a
-prompt injection cannot slip one in. One-line fields (titles, headings, tags, steps) also turn
-line breaks into spaces.
+U+2066–U+2069) and U+FEFF removed; NFC (as X reads a post); markdown emphasis removed, only as pairs
+around words (`**Bold**`, `__two words__`: `__init__`, `__name__`, `**kwargs`, `2**8`, a glob's `**`
+and `snake__case` stay as written); trailing spaces on lines and more than one blank line in a row
+removed; trimmed; cut to the field's cap (`cutAt`, below); and then, last, **no link the transcript
+does not have is left**: a link can only come from what was said, so a prompt injection cannot slip
+one in. One-line fields (titles, headings, tags, steps) also turn line breaks into spaces.
+
+*Which links.* Every link X finds, by X's own rules: `findUrls` in `twitterText.ts`, the port of
+twitter-text 3.1.0's `extractUrlsWithIndices` (its top-level domain lists, what may come before and
+after a link, `@`, `#` and `$`, ports, paths, queries, punycode, any script). A text is read as X
+reads it at its very start and as it reads it after a space, since a part of the pack becomes either
+as it is put together and pasted (at the start, X takes a first `é` or `(` as what comes before a
+link: `éflown.app` links `flown.app`; after a space it links `éflown.app`). Added to X's: links X
+leaves only for their length (over 4 096 characters), names on such a domain with no Latin letters
+(`госуслуги.рф`, which X links only after a scheme but other sites may), and every `http(s)://` or
+`www.` link X does not link but YouTube and LinkedIn do (glued to a word, `xhttps://…`; inside
+another link's query, `flown.app?next=https://evil.com/login`; on an address X does not know,
+`http://192.168.1.1/login`, `https://evil.example`), as X ends it from there, else up to a space, a
+quote, an angle bracket or Chinese or Japanese text.
+
+*Which are kept.* A link is kept when the transcript, the recording's name or a chapter title (what
+the user typed, §4.1) has the very same link (`trustedText`): the host and scheme compared without
+case in ASCII only (the Kelvin sign is not `k`), the rest exactly. `example.co` is not
+`example.com/settings`.
+
+*What happens to the others.* A link with a scheme, `www.`, or a path (and its port and query with
+it) is removed; the sentence's punctuation after it stays (X does not end a link with it). A bare
+name (`evil.com`, `TP.Thủ`, `Sr.João`, `m.in`, `user.id`, `logo.ai`, `README.md`, `e.target`) is
+not deleted but broken: a space after each of its dots (`evil. com`, `TP. Thủ Đức`, `m. in.`,
+`e. target.value`), so no word loses a letter and nothing links it. Removing a link can join the
+text around it into another (`evil.comhttps://x.de`), and breaking one can show what it hid
+(`x.de:80evil.com`), so the text is read again until no such link is left; after 8 rounds (a text
+built to hide links in links) every `.` before a letter and every `://` is removed, and then nothing
+can be a link.
+
+*Cuts make no link.* A cut can turn a word into a link (`evil.comfy` cut to `evil.com…`). Every cut
+(a field's cap, `fitX`, the article's 20 000) happens before that last reading; `cutAt` and `fitX`
+themselves leave no link their text did not have (`evil.com…` becomes `evil. com…`, or the cut goes
+earlier when a broken name no longer fits), and inside a word never cut inside a link that goes
+whole, but before it. The article and the release notes are read once more as a whole after their
+parts are put together; a step's number and a heading's `#` come off before a part is read; a tag's
+`<`, `>`, `#` and commas before it is read. The YouTube description's `<` to `‹` (§4.7) makes no link
+either (`withLinksOf`).
 
 ### 4.5 X's length (`xLength`)
 
-As X counts (twitter-text v3): a URL counts 23; an emoji sequence 2; a code point in
-U+0000–U+10FF, U+2000–U+200D, U+2010–U+201F or U+2032–U+2037 counts 1; any other code point 2.
+Exactly as X counts: twitter-text 3.1.0's `parseTweet(text).weightedLength` (configs version 3), from
+the same port as the links (`twitterText.ts`), on the text's NFC form: a link X finds counts 23; an
+emoji twemoji-parser 11.0.2 finds counts 2; a UTF-16 unit in U+0000–U+10FF, U+2000–U+200D,
+U+2010–U+201F or U+2032–U+2037 counts 1; any other character 2 (a surrogate pair once; `…` is 2).
 The limit is 280. The card's counter shows "212 / 280".
 
-A URL is found as X finds it, not with `plainText`'s link filter: a domain on one of the top-level
-domains X knows (`src/shared/publish/tlds.ts`, twitter-text v3's lists), with `http(s)://` or bare
-(`flown.fm`, `README.md`, also right after Japanese text: `詳細はflown.tvで`), then a port, path and
-query that end where X ends them (at other scripts, quotes, an unmatched bracket or a closing dot or
-comma: `https://example.com/をご覧ください` is a 23 and 7 Japanese characters). A bare domain takes
-its port and query only when a path follows: `flown.app?ref=x` and `flown.app:8080` are a 23 and
-then their `?ref=x` or `:8080` by characters, while `flown.app/?ref=x` is a 23. `Node.js`,
-`package.json` or `evil.example/login` are not on such a domain and count by their characters.
+So a bare domain takes its port and query only when a path follows: `flown.app?ref=x` and
+`flown.app:8080` are a 23 and then their `?ref=x` or `:8080` by characters, while
+`flown.app/?ref=x` is a 23; `https://example.com/をご覧ください` is a 23 and 7 Japanese characters;
+`Node.js`, `package.json` or `evil.example/login` are on no top-level domain X knows and count by
+their characters. `fitX` cuts a post at a word end (by characters when no word ends in its second
+half, as in Chinese or Japanese written without spaces), never inside a link X counts or an emoji,
+and leaves no link its text did not have.
 
 ### 4.6 Running (`PublishRunner`, `src/renderer/src/publish/publishRun.ts`)
 
@@ -269,7 +313,7 @@ then their `?ref=x` or `:8080` by characters, while `flown.app/?ref=x` is a 23. 
 - The answer is applied only to the job that is still current for its item (a stopped or replaced
   job's late answer is dropped). The renderer cleans the text again (§4.4) before showing it; the
   title and summary, which main checks the Captions tab's way, lose there the links the captions
-  sent do not have, as the pack's items do in main.
+  sent, the name and the chapter titles do not have, as the pack's items do in main.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
 
@@ -378,8 +422,8 @@ All above AA (4.5:1).
 - **Validated input (main):** `validateTextRequest` checks the new fields: tone and length in
   their lists (else Friendly / Normal), title ≤ 200 characters, at most 100 chapter titles of ≤ 120
   characters, control characters removed. The request id must match `^[A-Za-z0-9_-]{1,64}$`.
-- **Validated output:** schema shape, lengths, cleaning, foreign links removed (§4.3–4.4); the
-  renderer cleans again before showing it.
+- **Validated output:** schema shape, lengths, cleaning, foreign links removed or broken, by X's
+  own rules (§4.3–4.4); the renderer cleans again before showing it.
 - **No HTML:** textareas and text nodes only (§2.5).
 - **Export bundle:** the description is plain text written by main's existing sidecar writer
   (size, NUL and path checks unchanged).
@@ -402,9 +446,16 @@ New:
 - `src/shared/publish/pack.ts`: `PUBLISH_KINDS`, `PublishKind`, `PUBLISH_LABELS`, `PUBLISH_TONES`,
   `PUBLISH_LENGTHS`, `PublishTone`, `PublishLength`, `PACK_TASKS`, `taskOfKind`, `readPublishPrefs`,
   `publishSegments(project)`, `publishBlocker(project, segments)`, `transcriptKey(segments)`.
-- `src/shared/publish/text.ts`: `plainText(s, { max, oneLine, allowLinksFrom })`, `cutAt(s, max)`,
-  `xLength(s)`, `fitX(s)`, `X_LIMIT`.
-- `src/shared/publish/tlds.ts`: `X_GENERIC_TLDS`, `X_COUNTRY_TLDS` (the top-level domains X links).
+- `src/shared/publish/text.ts`: `plainText(s, { max, oneLine, linksFrom, keepLinks })`,
+  `typedText(s, max)`, `cutAt(s, max)`, `xLength(s)`, `fitX(s)`, `X_LIMIT`, `linkKeys(text)`,
+  `trustedText(transcript, context)`, `withLinksOf(s, from)`.
+- `src/shared/publish/twitterText.ts`: the port of twitter-text 3.1.0 (Apache-2.0):
+  `extractUrlsWithIndices(text)`, `findUrls(text, lenient)`, `parseTweet(text)`, `emojiSpans(text)`
+  and its patterns (`EXTRACT_URL`, `VALID_ASCII_DOMAIN`, `VALID_TCO_URL`…).
+- `src/shared/publish/tlds.ts`: `X_GENERIC_TLDS`, `X_COUNTRY_TLDS` (twitter-text's lists, in its
+  order); `src/shared/publish/twemoji.ts`: `TWEMOJI` (twemoji-parser 11.0.2's pattern, MIT).
+- `scripts/build-link-oracle.mjs`: writes `tests/fixtures/x-links.json` from the integrity-checked
+  packages (`--check` compares); the texts come from `tests/fixtures/link-samples.json`.
 - `src/shared/publish/prompts.ts`: `packPrompt(request)`, `packTranscript(segments)`,
   `validatePackAnswer(task, answer, transcript)`, `renderArticle`, `renderReleaseNotes`,
   `readPackContext`, constants `PACK_TRANSCRIPT_MAX`, `PACK_MIN_WORDS`.
@@ -446,6 +497,17 @@ Unit (vitest, each failing without its code):
 
 - `publishText.test.ts`: cleaning (controls, bidi, emphasis, blank lines), foreign links removed
   and kept ones kept, `cutAt`, `xLength` (ASCII, CJK, emoji, URLs), `fitX`.
+- `publishLinks.test.ts`: the port builds the very patterns twitter-text 3.1.0 and twemoji-parser
+  11.0.2 build, and gives the same links, indices and weighted length for every text of
+  `tests/fixtures/x-links.json` (6 233 texts: the review findings' examples, the earlier tests' texts,
+  every caption language, CJK, emoji, glued and nested links, brackets, queries, code, e-mail
+  addresses, `@`, `#`, `$`, ports, punycode, zero-width and combining marks, full-width dots), which
+  `scripts/build-link-oracle.mjs` writes from the packages themselves, each checked against the npm
+  registry's integrity; the fast match finder equals twitter-text's own loop on seeded random texts.
+- `publishFindings.test.ts`: one test per problem the second review confirmed (17).
+- `publishProperty.test.ts`: 3 000 seeded texts, ordinary and hostile, through every task and the
+  cards: no link the transcript, name and chapter titles lack, and no letter of ordinary text lost;
+  the worst texts (10 000 dots, nested brackets, long queries, links in links) cleaned in tens of ms.
 - `publishPrompts.test.ts`: prompts (data block escapes the transcript, rules present, tone and
   length lines, no user text in the system), the existing tasks' prompts unchanged (snapshot of
   their `textPrompt` output), excerpts, every validator (good, missing fields, caps, tags,
@@ -489,30 +551,40 @@ Where the build differs from or adds to the sections above:
 
 - **Tone and Length** are the editor's chip groups (buttons with `aria-pressed`, `controls.tsx`
   `Chips`), like every other choice in the editor, not radio groups.
-- **A link is kept only when the transcript has the very same link** (case ignored), not merely a
-  longer one that contains it (`example.co` is not `example.com/settings`). Links are also found when
-  glued to a word (`_https://…`) and as bare domains on any top-level domain X links (`tlds.ts`,
-  §4.5), with or without a port and a path (`evil.com`, `evil.icu`, `flown.co.uk`, `is.gd/x`,
-  `evil.de:8080/login`), because LinkedIn and X turn those into links too. A name on no such domain
-  is text (`Node.js/React`, `index.html/style.css`, `evil.example/login`); one on such a domain is
-  removed even when it is code (`user.email`), unless the transcript has it. Then the code it is part
-  of goes with it, and stays with it, so no piece is left: `e.target.value`, `Date.now()`,
-  `Task.Run(Work)`, `element.style.color`, `DateTime.Now` and a bare domain's query
-  (`flown.studio?ref=yt`) go whole, and stay whole when the transcript has the name (`e.target`,
-  `date.now`). X would link the domain in them (`evil.com.x`, `evil.com()`), so they are not kept
-  as text. E-mail addresses are kept. A link glued to Chinese, Japanese, Korean or Thai text is found too, and ends where that
-  text starts, as X ends it: `詳細はevil.icuで` keeps `詳細はで`, and `ログインはevil.de/loginから。`
-  keeps `ログインはから。`, not losing the text after the link. A bare domain written in those
-  scripts is not a link (X does not link one either); after `https://` it is. A top-level domain
-  in Latin letters ends at anything but a Latin letter or digit, as X ends it, so a domain glued to
-  a word of any other script or to an accented letter is found too (`paypal.comы`, `flown.appএ`,
-  `לevil.com`, `evil.comé`). A bare name with no port or path on a top-level domain that is also a file type (`.app`,
-  `.zip`, `.mov`, `.srt`, `.md`, `.py`, `.sh`, `.rs`, `.java`, `.so`, `.cc`, `.gd`, `.map`:
-  `recording.mov`, `captions.srt`, `README.md`, `install.sh`) is a file or app name, but sites still
-  link it (`flown.app` is a site, and X counts it as a link): it stays whole only when the transcript
-  has it, else its name stays without the extension (`Open Settings to check it`, `Grab flown-setup
-  from flown`), or nothing when that name is a link too (`paypal.com.app`). Tags keep the links the
-  transcript has too (`ASP.NET` when it was said).
+- **Links are what X links, and a bare name is broken, not deleted** (§4.4). Two rounds of review
+  found that a hand-written link pattern both let links through that X links (after `….`, a
+  combining mark, `ſ`, `@ñ`, a removed link that joined the text around it, a cut) and deleted
+  ordinary words X does not link or that only look like names (`TP.Thủ Đức` lost `TP.Th`,
+  `wei.wang@acme.com` its name, `my_model.fit` its tail, `m.in.` everything). The pattern is gone:
+  links are found with the port of twitter-text, the cleaning reads its own result again until
+  nothing is left, and a bare name loses no letter. As a result:
+  - code and file names on a top-level domain are broken where X would link them, the rest as written
+    (`e. target.value`, `Date. now()`, `form. is_valid()`, `README. md`, `logo. ai`, `settings. py`).
+    *A file name the transcript does not say is broken like any other bare name* (it used to keep
+    its stem only): one rule for every bare name, no letter lost, and the user sees at once what to
+    join again; the transcript saying it (`recording.mov`) keeps it whole.
+  - a link inside the brackets or query of one the transcript says goes on its own
+    (`flown.app(evil.com/login)` → `flown.app()`, `flown.app?next=https://evil.com/login` →
+    `flown.app?next=`).
+  - e-mail addresses, `#ASP.NET`, `$evil.com`, `my_model.fit`, `src/main.rs` and `~/Movies/recording.mov`
+    stay as written: X links nothing there. Where X does link part of an address (`wei.wang` in
+    `wei.wang.li@acme.com`) that part is broken.
+  - a link glued to Chinese, Japanese, Korean or Thai text ends where X ends it: `詳細はevil.icuで`
+    becomes `詳細はevil. icuで`, `ログインはevil.de/loginから。` becomes `ログインはから。`.
+  - names in other scripts that X links only after a scheme (`госуслуги.рф`, `г.Москва`) are broken
+    too (`г. Москва`), as other sites may link them.
+  - the Kelvin sign is `K` after NFC, so `evil.comK` (with it) is one word, as X reads it.
+  - tags keep the links the transcript has (`ASP.NET` when it was said), and are broken otherwise.
+- **What the user typed is trusted like the transcript.** The recording's name and chapter titles go
+  to the provider as typed (one line, capped, control characters removed: `readPackContext`), and an
+  answer may keep a link they have (`trustedText`), in the pack's items and in the title and summary
+  cards.
+- **Emphasis is removed only as pairs around words** (§4.4): `__this__` (one word, written as
+  `__init__` is) stays.
+- **Speed.** twitter-text takes time quadratic in a long run of name characters with dots (Chinese or
+  Japanese with `.` between phrases: 0.8 s for 10 000 characters, minutes for an hour's transcript).
+  The port finds the same matches in linear time (`urlMatches`, `asciiDomainsIn`), which the tests
+  check against twitter-text's own loop; the worst texts are cleaned in tens of milliseconds.
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),
