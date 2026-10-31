@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
+import { composeYoutubeDescription, exportDescription, projectYoutubeChapters } from '../src/shared/publish/youtube'
 import type { CaptionSegment, Project } from '../src/shared/types'
 
 /*
@@ -46,6 +47,8 @@ let providersGate = deferred<void>()
 const asked: { task: string; segments: CaptionSegment[]; answer: ReturnType<typeof deferred<unknown>> }[] = []
 /** Whether the clipboard takes the text. */
 let clipboardTakes = true
+/** What the clipboard took last. */
+let clipboardText = ''
 vi.stubGlobal('window', {
   api: {
     listAiProviders: () => providersGate.promise.then(() => [OPENAI]),
@@ -65,7 +68,15 @@ vi.stubGlobal('window', {
 /** The page: `activeElement` is the stand-in that has the focus, or the body; querySelector finds a card. */
 const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown } = { body: {}, activeElement: null }
 vi.stubGlobal('document', page)
-vi.stubGlobal('navigator', { clipboard: { writeText: () => (clipboardTakes ? Promise.resolve() : Promise.reject(new Error('Document is not focused'))) } })
+vi.stubGlobal('navigator', {
+  clipboard: {
+    writeText: (text: string) => {
+      if (!clipboardTakes) return Promise.reject(new Error('Document is not focused'))
+      clipboardText = text
+      return Promise.resolve()
+    }
+  }
+})
 vi.stubGlobal(
   'MutationObserver',
   class {
@@ -266,6 +277,7 @@ beforeEach(async () => {
   notices.length = 0
   page.activeElement = null
   clipboardTakes = true
+  clipboardText = ''
   // Requests a test left out end, so the next test has the queue to itself.
   for (const a of asked.splice(0)) a.answer.reject(new Error('gone'))
   await flush()
@@ -390,6 +402,29 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(current.name).toBe('New reports')
     expect(said(card(out, 'title'))).toEqual([['status', 'Recording renamed']])
     expect(notices).toEqual([])
+  })
+
+  it("Use for exports saves the description as typed, so the export's file is what Copy gives (§12)", async () => {
+    current = { ...current, chapters: [{ id: 'c1', t: 0, title: 'Intro' }, { id: 'c2', t: 6, title: 'Reports' }] }
+    let out = await opened()
+    // Longer than the AI's 3 000, with "__init__.py", double spaces and a pasted direction override.
+    const typed = `Learn __init__.py setup.  Two  spaces.\u202e\n\n${'Turn on the new reports and press save to keep them. '.repeat(64)}The end.`
+    expect(typed.length).toBeGreaterThan(3400)
+    type(card(out, 'youtube'), 'YouTube description text', typed)
+    out = render()
+    press(card(out, 'youtube'), 'Use for exports')
+    out = render()
+    expect(current.publish).toEqual({ description: typed.replace('\u202e', '') })
+    // Shown as saved, not as one to update.
+    press(card(out, 'youtube'), 'Copy')
+    await flush()
+    out = render()
+    expect(card(out, 'youtube').some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop using for exports')).toBe(true)
+    const { chapters, duration } = projectYoutubeChapters(current)
+    expect(clipboardText).toBe(composeYoutubeDescription(current.publish!.description, chapters, duration))
+    expect(clipboardText).toContain('Learn __init__.py setup.  Two  spaces.\n\n')
+    expect(clipboardText).toContain('The end.\n\nChapters\n0:00 Intro\n0:06 Reports')
+    expect(exportDescription(current, current.name, duration, chapters)).toBe(`${clipboardText}\n`)
   })
 })
 
