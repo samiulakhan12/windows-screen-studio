@@ -32,7 +32,9 @@ and the installed `openai` SDK 7.32.0 types (design §1):
   key (401), quota, rate limit, server or network) says *"OpenAI retired whisper-1 on 26
   February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or
   make captions On this PC."* (`shared/captions/retiredModel.ts`, `main/ai/retired.ts`; text
-  tasks get their own line).
+  tasks get their own line). The retiring list also names the `gpt-4o` transcription models
+  (26 February 2027; `gpt-4o-mini-transcribe-2025-03-20` on 20 January 2027), and the message
+  never suggests a model that is retired too.
 - **Speaker labels**: `CaptionSegment.speaker`; *You* / *Others* from the microphone and
   computer-sound levels with no AI; Speakers section (rename everywhere on Enter or blur, one undo
   step; Remove labels; Label You and Others), a speaker menu per caption row, names in the

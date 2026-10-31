@@ -3,7 +3,7 @@
  * the provider's error (NW-09, docs/design/transcription.md §5). The retiring list is the list of
  * suggested models (shared/ai/modelList.ts); before the day the request is sent as usual.
  */
-import { dayText, type ModelList } from '../ai/modelList'
+import { dayText, type ModelList, type RetiringModel } from '../ai/modelList'
 import type { AiProviderKind } from '../types'
 import type { AiFailureKind } from './transcriptErrors'
 
@@ -36,11 +36,13 @@ export function retiredMessage(
   status?: number
 ): string | null {
   if (failure && !explained(failure, status)) return null
-  const r = list.retiring.find((x) => x.provider === kind && x.model === model)
-  if (!r || r.on > today) return null
+  const retired = (name: string): RetiringModel | undefined => list.retiring.find((x) => x.provider === kind && x.model === name && x.on <= today)
+  const r = retired(model)
+  if (!r) return null
   const head = `${MAKERS[kind]} retired ${model} on ${dayText(r.on)}.`
   if (use === 'text') return `${head} Choose another model in Settings › AI providers.`
+  // Never the list's suggestion when it is retired too (whisper-1 goes with the gpt-4o models).
   const next = list.providers[kind]?.transcriptionModel
-  const suggestion = next && next !== model ? `Choose ${next} as the transcription model in Settings › AI providers` : 'Choose another transcription model in Settings › AI providers'
+  const suggestion = next && !retired(next) ? `Choose ${next} as the transcription model in Settings › AI providers` : 'Choose another transcription model in Settings › AI providers'
   return `${head} ${suggestion}, or make captions On this PC.`
 }

@@ -50,7 +50,14 @@ export const BUNDLED_MODEL_LIST: ModelList = {
     gemini: { model: 'gemini-3.8-flash', transcriptionModel: 'gemini-3.8-flash' },
     anthropic: { model: 'claude-opus-5-5' }
   },
-  retiring: [{ provider: 'openai', model: 'whisper-1', on: '2027-02-26' }]
+  retiring: [
+    { provider: 'openai', model: 'whisper-1', on: '2027-02-26' },
+    { provider: 'openai', model: 'gpt-4o-transcribe', on: '2027-02-26' },
+    { provider: 'openai', model: 'gpt-4o-mini-transcribe', on: '2027-02-26' },
+    { provider: 'openai', model: 'gpt-4o-mini-transcribe-2025-12-15', on: '2027-02-26' },
+    { provider: 'openai', model: 'gpt-4o-transcribe-diarize', on: '2027-02-26' },
+    { provider: 'openai', model: 'gpt-4o-mini-transcribe-2025-03-20', on: '2027-01-20' }
+  ]
 }
 
 const KINDS = Object.keys(AI_PROVIDER_KINDS) as AiProviderKind[]

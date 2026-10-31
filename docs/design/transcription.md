@@ -87,6 +87,12 @@ entry): until 26 February 2027 it still works and gives exact word times, where 
 gives estimated ones. Anyone who wants `gpt-transcribe` sooner types it as the transcription model
 in Settings › AI providers, and this release handles it.
 
+The retiring list also names the other OpenAI transcription models, which this release makes
+usable (they take the text-only path below): `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`,
+`gpt-4o-mini-transcribe-2025-12-15` and `gpt-4o-transcribe-diarize` on 26 February 2027, and
+`gpt-4o-mini-transcribe-2025-03-20` on 20 January 2027 (§1.1). A provider using one gets the
+Settings note before the day and the plain message of §5 after it.
+
 **The switch goes through the list, near the day.** `resources/ai-models.json` on the default
 branch is the list every installed Flown downloads (the newest `updated` wins), 0.7.1 included,
 which has no text-only path: its `openai.ts` asks for `timestamp_granularities` and its parser
@@ -254,8 +260,9 @@ returns, for a model on the retiring list whose day has come,
 - transcription: *"OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the
   transcription model in Settings › AI providers, or make captions On this PC."* The model named is
   the list's suggestion (`gpt-transcribe` once the list has moved, §2.1); while the list still
-  suggests the retired model, *"Choose another transcription model in Settings › AI providers, or
-  make captions On this PC."*
+  suggests a retired model (the one that failed, or `whisper-1` for a `gpt-4o` model retired the
+  same day), *"Choose another transcription model in Settings › AI providers, or make captions On
+  this PC."*
 - text tasks: *"OpenAI retired gpt-x on 1 March 2027. Choose another model in Settings › AI
   providers."*
 
@@ -394,7 +401,8 @@ when one); merge carries `estimated` and `speaker`; `retiredMessage` before/on/a
 client wrapping; `stemSpeakers` (mic only, system only, both with bleed, too short); rename/merge
 names/clear; load of old and new projects (byte-equal for old); split and merge keep speakers;
 VTT voice tags and escaping, SRT/text prefix on and off; `speakerCaption`; the model list
-(`whisper-1` still suggested and on the retiring list, JSON equals the bundled list).
+(`whisper-1` still suggested and on the retiring list with the `gpt-4o` transcription models, JSON
+equals the bundled list).
 
 E2E (`tests/e2e/transcription.e2e.cjs`, the AI mock server, no real API): an OpenAI provider with
 `gpt-transcribe` transcribes the tone fixture with `response_format=json` and no timestamp

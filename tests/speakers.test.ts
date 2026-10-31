@@ -186,6 +186,22 @@ describe('a retired model', () => {
     for (const kind of ['not-found', 'bad-request', 'other'] as const) expect(retiredMessage(list, 'openai', 'whisper-1', '2027-03-01', 'transcription', kind)).not.toBeNull()
   })
 
+  it('names the other OpenAI transcription models that shut down, and never suggests a retired one', () => {
+    for (const model of ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe', 'gpt-4o-mini-transcribe-2025-12-15', 'gpt-4o-transcribe-diarize']) {
+      expect(list.retiring).toContainEqual({ provider: 'openai', model, on: '2027-02-26' })
+      expect(retiredMessage(list, 'openai', model, '2027-02-25', 'transcription')).toBeNull()
+      // whisper-1, which the bundled list still suggests, goes the same day.
+      expect(retiredMessage(list, 'openai', model, '2027-02-26', 'transcription')).toBe(
+        `OpenAI retired ${model} on 26 February 2027. Choose another transcription model in Settings › AI providers, or make captions On this PC.`
+      )
+      expect(retiredMessage(onTheDay, 'openai', model, '2027-02-26', 'transcription')).toContain('Choose gpt-transcribe as the transcription model')
+    }
+    // This one goes first, while whisper-1 still works.
+    expect(retiredMessage(list, 'openai', 'gpt-4o-mini-transcribe-2025-03-20', '2027-01-20', 'transcription')).toBe(
+      'OpenAI retired gpt-4o-mini-transcribe-2025-03-20 on 20 January 2027. Choose whisper-1 as the transcription model in Settings › AI providers, or make captions On this PC.'
+    )
+  })
+
   it('explains a 403 (no access to the model), not a bad key (401)', () => {
     const fails = (status: number, code: string, message: string) => describeFailure({ status, code, message }, 'OpenAI', 'whisper-1')
     const noAccess = fails(403, 'model_not_found', 'Project `proj_x` does not have access to model `whisper-1`')
