@@ -1,0 +1,702 @@
+[
+  {
+    "name": "nw09-speakers",
+    "raw": {
+      "version": 2,
+      "id": "nw09-speakers",
+      "name": "nw09-speakers",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 30,
+      "width": 1920,
+      "height": 1080,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "cmvwgyukx0",
+          "start": 0,
+          "end": 30,
+          "speed": 1
+        }
+      ],
+      "zooms": [],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [
+        {
+          "id": "t1",
+          "start": 0.5,
+          "end": 3.5,
+          "title": "Priya Sharma",
+          "subtitle": "Designer",
+          "style": "lower-third",
+          "background": "blur",
+          "font": "f1"
+        }
+      ],
+      "chapters": [
+        {
+          "id": "ch1",
+          "t": 0,
+          "title": "Intro"
+        },
+        {
+          "id": "ch2",
+          "t": 12,
+          "title": "Export settings"
+        }
+      ],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "auto"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "fonts": [
+        {
+          "id": "f1",
+          "name": "Brand Sans",
+          "file": "font-1.ttf"
+        }
+      ],
+      "brand": {
+        "colors": [
+          "#1d4ed8",
+          "#f97316"
+        ],
+        "bodyFont": "f1",
+        "headingFont": "f1"
+      },
+      "transcript": {
+        "language": "en",
+        "provider": "local",
+        "model": "speech-small",
+        "createdAt": "2026-10-20T09:05:00.000Z",
+        "segments": [
+          {
+            "id": "c1",
+            "start": 0.5,
+            "end": 3,
+            "text": "Make every word count today",
+            "speaker": "You",
+            "words": [
+              {
+                "text": "Make",
+                "start": 0.5,
+                "end": 0.9
+              },
+              {
+                "text": "every",
+                "start": 1,
+                "end": 1.4
+              },
+              {
+                "text": "word",
+                "start": 1.5,
+                "end": 1.9
+              },
+              {
+                "text": "count",
+                "start": 2,
+                "end": 2.4
+              },
+              {
+                "text": "today",
+                "start": 2.5,
+                "end": 2.9
+              }
+            ]
+          },
+          {
+            "id": "c2",
+            "start": 3.5,
+            "end": 6.5,
+            "text": "Sales grew 300 percent this year",
+            "speaker": "Priya",
+            "words": [
+              {
+                "text": "Sales",
+                "start": 3.5,
+                "end": 3.9,
+                "estimated": true,
+                "fromSound": true
+              },
+              {
+                "text": "grew",
+                "start": 4,
+                "end": 4.4,
+                "estimated": true,
+                "fromSound": true
+              },
+              {
+                "text": "really",
+                "start": 4.4,
+                "end": 4.6,
+                "estimated": true,
+                "deleted": true
+              },
+              {
+                "text": "300",
+                "start": 4.6,
+                "end": 5.1,
+                "estimated": true
+              },
+              {
+                "text": "percent",
+                "start": 5.1,
+                "end": 5.6,
+                "estimated": true
+              },
+              {
+                "text": "this",
+                "start": 5.6,
+                "end": 6,
+                "estimated": true
+              },
+              {
+                "text": "year",
+                "start": 6,
+                "end": 6.4,
+                "estimated": true
+              }
+            ]
+          },
+          {
+            "id": "c3",
+            "start": 7,
+            "end": 9.8,
+            "text": "Three steps: first open settings, second click export, finally save",
+            "speaker": "You"
+          },
+          {
+            "id": "c4",
+            "start": 12,
+            "end": 14,
+            "text": "Others talk here",
+            "speaker": "Others"
+          }
+        ]
+      },
+      "captions": {
+        "show": true,
+        "preset": "boxed",
+        "position": "bottom",
+        "size": 0.05,
+        "color": "#ffffff",
+        "highlightColor": "#facc15",
+        "background": "box",
+        "maxLines": 2,
+        "font": "f1",
+        "showSpeaker": true
+      }
+    }
+  },
+  {
+    "name": "tall-karaoke",
+    "raw": {
+      "version": 2,
+      "id": "tall-karaoke",
+      "name": "tall-karaoke",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 20,
+      "width": 1080,
+      "height": 1920,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "cmvwgyukx1",
+          "start": 0,
+          "end": 20,
+          "speed": 1
+        }
+      ],
+      "zooms": [],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [],
+      "chapters": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "9:16"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "transcript": {
+        "language": "bn",
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "createdAt": "2026-10-21T10:00:00.000Z",
+        "segments": [
+          {
+            "id": "b1",
+            "start": 1,
+            "end": 4,
+            "text": "আমরা আজ Flown শিখব",
+            "words": [
+              {
+                "text": "আমরা",
+                "start": 1,
+                "end": 1.6
+              },
+              {
+                "text": "আজ",
+                "start": 1.7,
+                "end": 2.1
+              },
+              {
+                "text": "Flown",
+                "start": 2.2,
+                "end": 2.9
+              },
+              {
+                "text": "শিখব",
+                "start": 3,
+                "end": 3.8
+              }
+            ]
+          },
+          {
+            "id": "b2",
+            "start": 5,
+            "end": 8,
+            "text": "مرحبا بالعالم من Flown"
+          },
+          {
+            "id": "b3",
+            "start": 9,
+            "end": 12,
+            "text": "এক ক্লিকে সুন্দর ভিডিও"
+          }
+        ]
+      },
+      "captions": {
+        "show": true,
+        "preset": "karaoke",
+        "position": "top",
+        "size": 0.07,
+        "color": "#ffffff",
+        "highlightColor": "#22d3ee",
+        "background": "box",
+        "maxLines": 1
+      }
+    }
+  },
+  {
+    "name": "caption-data",
+    "raw": {
+      "id": "p",
+      "version": 2,
+      "duration": 10,
+      "clips": [
+        {
+          "id": "c",
+          "start": 0,
+          "end": 10,
+          "speed": 1
+        }
+      ],
+      "transcript": {
+        "provider": "openai",
+        "model": "w",
+        "createdAt": "",
+        "segments": [
+          {
+            "id": "b",
+            "start": 4,
+            "end": 12,
+            "text": "late"
+          },
+          {
+            "id": "a",
+            "start": 1,
+            "end": 2,
+            "text": "early"
+          },
+          {
+            "bad": true
+          }
+        ]
+      },
+      "captions": {
+        "show": true,
+        "preset": "bold",
+        "size": -1
+      }
+    }
+  },
+  {
+    "name": "default-look",
+    "raw": {
+      "version": 2,
+      "id": "default-look",
+      "name": "default-look",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 12,
+      "width": 1080,
+      "height": 1080,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "cmvwgyukx2",
+          "start": 0,
+          "end": 12,
+          "speed": 1
+        }
+      ],
+      "zooms": [],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [],
+      "chapters": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "1:1"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "transcript": {
+        "provider": "openai",
+        "model": "whisper-1",
+        "createdAt": "2026-10-22T08:00:00.000Z",
+        "segments": [
+          {
+            "id": "d1",
+            "start": 0.2,
+            "end": 2.5,
+            "text": "Click the Save button, then open the Export dialog"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "minimal-hidden",
+    "raw": {
+      "version": 2,
+      "id": "minimal-hidden",
+      "name": "minimal-hidden",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 8,
+      "width": 2560,
+      "height": 1440,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "cmvwgyukx3",
+          "start": 0,
+          "end": 8,
+          "speed": 1
+        }
+      ],
+      "zooms": [],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [],
+      "chapters": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "auto"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "transcript": {
+        "provider": "anthropic",
+        "model": "x",
+        "createdAt": "",
+        "segments": [
+          {
+            "id": "e1",
+            "start": 0,
+            "end": 3,
+            "text": "Visual Studio Code opens"
+          }
+        ]
+      },
+      "captions": {
+        "show": false,
+        "preset": "minimal",
+        "position": "middle",
+        "size": 0.03,
+        "color": "#F8FAFC",
+        "highlightColor": "#FACC15",
+        "background": "none",
+        "maxLines": 1
+      }
+    }
+  }
+]
