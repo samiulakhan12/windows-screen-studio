@@ -50,7 +50,8 @@ SHA-512 in `latest.yml`, so a changed file fails to install. Make a new version 
 `resources/ai-models.json` names each AI provider's suggested models and the models their makers
 are retiring. Copies of Flown with automatic updates on read it from the default branch at most once
 a day, so a change to that file needs no release: edit it, raise `updated` to today's date
-(`YYYY-MM-DD`; Flown keeps the newest list), keep `BUNDLED_MODEL_LIST` in
+(`YYYY-MM-DD`; Flown never takes a list older than the one it has, and one of the same date
+counts, so a second fix on the same day is fine), keep `BUNDLED_MODEL_LIST` in
 `src/shared/ai/modelList.ts` the same (a test checks), run `npx vitest run tests/modelList.test.ts`,
 commit and push. A file Flown cannot read is ignored, so a mistake never breaks anyone's copy.
 

@@ -69,6 +69,10 @@ describe('the model list (docs/design/auto-update.md §3)', () => {
     expect(newerList(older, BUNDLED_MODEL_LIST)).toBe(BUNDLED_MODEL_LIST)
     expect(newerList(BUNDLED_MODEL_LIST, null)).toBe(BUNDLED_MODEL_LIST)
     expect(newerList(BUNDLED_MODEL_LIST, { ...BUNDLED_MODEL_LIST })).toBe(BUNDLED_MODEL_LIST)
+    // A list from GitHub also wins a tie, never an older one.
+    const same = { ...BUNDLED_MODEL_LIST }
+    expect(newerList(BUNDLED_MODEL_LIST, same, true)).toBe(same)
+    expect(newerList(BUNDLED_MODEL_LIST, older, true)).toBe(BUNDLED_MODEL_LIST)
   })
 
   it('notes a provider still using a retiring model, before and after the day', () => {
@@ -131,6 +135,27 @@ describe('the list in the main process', () => {
     // From then on, once a day again.
     expect(await refreshModelList('https://example.test/l', fetcher, now + MODEL_LIST_EVERY_MS - 1)).toBe(false)
     expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes a fix made the same day as the list it has, also after a restart', async () => {
+    const file = path.join(tmp(), 'ai-models.json')
+    loadModelCache(file)
+    const fix = clone()
+    fix.providers.openai.model = 'gpt-6.1'
+    fix.retiring[0].on = '2027-03-26'
+    expect(fix.updated).toBe(BUNDLED_MODEL_LIST.updated)
+    expect(await refreshModelList('https://example.test/l', respond(JSON.stringify(fix)), 10)).toBe(true)
+    expect(modelDefaults('openai').model).toBe('gpt-6.1')
+    expect(modelList().retiring[0].on).toBe('2027-03-26')
+    // A second fix that day reaches a copy that took the first one.
+    fix.providers.openai.model = 'gpt-6.2'
+    expect(await refreshModelList('https://example.test/l', respond(JSON.stringify(fix)), 10 + MODEL_LIST_EVERY_MS)).toBe(true)
+    expect(modelDefaults('openai').model).toBe('gpt-6.2')
+    // The cache keeps it over the bundled list of the same date.
+    resetModelList()
+    loadModelCache(file)
+    expect(modelDefaults('openai').model).toBe('gpt-6.2')
+    expect(modelList().retiring[0].on).toBe('2027-03-26')
   })
 
   it('keeps the list as downloaded, so a newer Flown reads its minApp suggestions again', async () => {

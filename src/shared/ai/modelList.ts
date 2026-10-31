@@ -105,8 +105,12 @@ export function parseModelList(raw: unknown, appVersion?: string): ModelList | n
   return { version: 1, updated: raw.updated, providers, retiring }
 }
 
-/** The newer of two lists by `updated` (`a` when they are as new). */
-export const newerList = (a: ModelList, b: ModelList | null): ModelList => (b && b.updated > a.updated ? b : a)
+/**
+ * The newer of two lists by `updated`: `a` when they are as new, or `b` with `bWinsTie` (a list
+ * from GitHub, so that a fix made the same day as the list Flown has still counts).
+ */
+export const newerList = (a: ModelList, b: ModelList | null, bWinsTie = false): ModelList =>
+  b && (b.updated > a.updated || (bWinsTie && b.updated === a.updated)) ? b : a
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 

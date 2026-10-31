@@ -191,7 +191,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   model names of 1-100 characters from `[A-Za-z0-9._:/-]`, transcription models only for
   providers that transcribe, dates as `YYYY-MM-DD`, at most 50 retiring entries. Anything else and
   the whole download is ignored (the bundled or cached list stays). The newest valid list by
-  `updated` wins, so an old cache never replaces a newer bundled list.
+  `updated` wins, so an old cache never replaces a newer bundled list. A download (and the cache
+  of it) also wins over a list of the same date, so a fix made the same day still counts.
 - Every installed version reads the same file, so a provider entry can carry `"minApp": "x.y.z"`
   (a version like the app's own; anything else and the download is ignored): a version older than
   that keeps the bundled suggestion for that provider and takes the rest of the list. A suggestion
