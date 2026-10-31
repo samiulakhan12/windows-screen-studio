@@ -95,6 +95,23 @@ export async function restoreLook(entry: SavedLook, at: number): Promise<void> {
   await write(next)
 }
 
+/** The saved looks, read first when this window has not read them yet. */
+export async function loadSavedLooks(): Promise<readonly SavedLook[]> {
+  if (state !== 'read') {
+    try {
+      const raw = await window.api.getPref('captionPresets')
+      // Another read may have finished while this one waited.
+      if ((state as string) !== 'read') {
+        state = 'read'
+        publish(readSavedLooks(raw))
+      }
+    } catch (err) {
+      console.warn('The saved caption styles could not be read:', err)
+    }
+  }
+  return looks
+}
+
 export function useSavedLooks(): { looks: readonly SavedLook[]; save(name: string, look: CaptionStudio): Promise<void>; remove(id: string): Promise<void> } {
   const list = useSyncExternalStore(subscribe, snapshot)
   useEffect(read, [])

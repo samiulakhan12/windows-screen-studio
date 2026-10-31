@@ -149,6 +149,14 @@ function Thumb({ look, frame, size, language, playing, onDone }: { look: Caption
 
 /* ---------- the gallery ---------- */
 
+/** Caption styles… (§2.14) asks the gallery to take the focus, on its checked tile. */
+let focusAsked = false
+const focusListeners = new Set<() => void>()
+export function focusGallery(): void {
+  focusAsked = true
+  for (const l of focusListeners) l()
+}
+
 export function CaptionGallery(props: {
   value: CaptionSettings
   frame: { w: number; h: number }
@@ -231,6 +239,17 @@ export function CaptionGallery(props: {
     setFocusId(id)
     gridRef.current?.querySelector<HTMLElement>(`[data-tile="${id}"]`)?.focus()
   }
+  // Caption styles…: the focus goes to the checked tile (the tab stop) once the gallery shows.
+  useEffect(() => {
+    const take = (): void => {
+      if (!focusAsked || !stop) return
+      focusAsked = false
+      gridRef.current?.querySelector<HTMLElement>(`[data-tile="${stop}"]`)?.focus()
+    }
+    take()
+    focusListeners.add(take)
+    return () => void focusListeners.delete(take)
+  }, [stop])
   const onKeyDown = (e: ReactKeyboardEvent): void => {
     const i = shown.findIndex((t) => t.id === stop)
     if (i < 0) return

@@ -40,6 +40,7 @@ import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import { SafeZoneOverlay } from './SafeZoneOverlay'
+import { GraphicHandles, PreviewLookLabel } from './GraphicHandle'
 import { useSafeZoneChoice } from './safeZonePref'
 import type { Selection } from './selection'
 import { usePlaying } from './Transport'
@@ -447,6 +448,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
       <div className="canvas-box" style={{ width: box.w, height: box.h }}>
         <canvas ref={canvasRef} className="preview-canvas" />
         {safeZones !== 'off' && isTall(out.width, out.height) && <SafeZoneOverlay choice={safeZones} box={box} />}
+        <PreviewLookLabel />
         <div
           className={['preview-overlay', pickZoom && 'picking', canDragView && 'view-drag', dragging && 'dragging'].filter(Boolean).join(' ')}
           onPointerDown={onOverlayDown}
@@ -459,6 +461,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
+          {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} paused={!playing} />}
           {outlines.map((b) => (
             <div
               key={b.key}

@@ -7,7 +7,6 @@
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { brandTheme, speakerColors, withTheme } from '../../../../shared/captions/colors'
 import { clearEmphasis } from '../../../../shared/captions/marks'
-import { pickEmphasis } from '../../../../shared/captions/emphasis'
 import { catalogFont, catalogId } from '../../../../shared/captions/fontCatalog'
 import { captionsOf } from '../../../../shared/captions/settings'
 import { speakersOf, SPEAKER_COPY } from '../../../../shared/captions/speakers'
@@ -21,6 +20,7 @@ import type { CaptionMotion, CaptionSettings, CaptionStudio, ChunkEnter, ChunkEx
 import { useEditor, holdGesture } from '../context'
 import { Toggle } from '../controls'
 import { useGroup } from '../groupContext'
+import { findImportantWords } from '../captionCommands'
 import { FontPicker } from './FontPicker'
 import { ContrastMeter } from './ContrastMeter'
 import './captionStudio.css'
@@ -654,18 +654,8 @@ export function EmphasisControls(props: { project: Project }): JSX.Element {
   const group = useGroup()
   const { studio, edit } = useLook(project)
   const count = markedWordCount(project.captionMarks)
-  const find = (): void => {
-    let added = 0
-    store.update((p) => {
-      const marks = pickEmphasis(p)
-      added = markedWordCount(marks)
-      if (!marks.length) return p
-      // On a Classic look emphasis needs the Studio twin (§2.7); the emphasis buttons do not set `picked`.
-      const c = captionsOf(p)
-      return { ...p, captionMarks: [...(p.captionMarks ?? []), ...marks], captions: c.studio ? c : { ...c, studio: legacyTwin(c) } }
-    })
-    group.notice(added ? `Emphasised ${words(added)}` : 'No words stood out')
-  }
+  // On a Classic look emphasis needs the Studio twin (§2.7); the emphasis buttons do not set `picked`.
+  const find = (): void => findImportantWords(store, group.notice)
   const clear = (): void => {
     const n = markedWordCount(store.state.captionMarks)
     store.update((p) => clearEmphasis(p))
