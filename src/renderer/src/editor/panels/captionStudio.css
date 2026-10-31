@@ -1,0 +1,285 @@
+/* Captions › Look of Captions Studio (docs/design/captions-studio.md §2.4–2.7): the gallery, the
+   name line, Save as my style and the collapsible sections. Colours are the app's tokens; text on
+   fills passes AA (tests/labelContrast.test.ts). */
+
+.caption-look {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.caption-great {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.caption-great-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.caption-great-row .btn.primary {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ---------- the gallery ---------- */
+
+.caption-gallery-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.caption-gallery-filter {
+  flex-wrap: wrap;
+}
+
+.caption-gallery {
+  display: grid;
+  gap: 6px;
+  justify-content: start;
+}
+
+.caption-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.caption-tile:hover {
+  border-color: var(--border-strong);
+}
+
+.caption-tile.checked {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
+}
+
+.caption-tile:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.tile-thumb {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #2a2d34;
+}
+
+.tile-thumb img,
+.tile-thumb canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tile-name {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.caption-tile.current .tile-name {
+  color: var(--accent-text);
+}
+
+/* White on the accent: 5.1:1. */
+.tile-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-500);
+  color: var(--text-on-accent);
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.caption-gallery-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---------- the name line and Save as my style ---------- */
+
+.caption-style-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.caption-save {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.caption-classic {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---------- the collapsible sections ---------- */
+
+.caption-part {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-2);
+}
+
+.caption-part h4 {
+  margin: 0;
+}
+
+.caption-part-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.caption-part-chevron {
+  transition: transform var(--dur-fast);
+}
+
+.caption-part-chevron.open {
+  transform: rotate(90deg);
+}
+
+.caption-part-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+/* ---------- Colours ---------- */
+
+.caption-themes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.caption-theme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.caption-theme.active {
+  border-color: var(--focus-ring);
+  color: var(--text-1);
+}
+
+.theme-swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 22px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-xs);
+  font-weight: 800;
+}
+
+.caption-contrast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-1);
+}
+
+.caption-contrast.poor {
+  color: var(--warning);
+}
+
+/* ---------- Motion, Emphasis, Speakers ---------- */
+
+.caption-note {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--text-1);
+}
+
+.caption-emphasis-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.caption-speaker-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xs);
+}
+
+.caption-speaker-dots li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.speaker-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+/* ---------- the preview of a hovered look (PreviewStage) ---------- */
+
+/* White on #0e0e11: 18.9:1. */
+.preview-look-label {
+  position: absolute;
+  z-index: 6;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: #0e0e11;
+  color: #ffffff;
+  font-size: var(--text-xs);
+  pointer-events: none;
+  white-space: nowrap;
+}

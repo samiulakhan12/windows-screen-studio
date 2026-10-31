@@ -32,7 +32,12 @@ export function studioBlockAt(
   return notImplemented('studioBlockAt', ctx, project, t, w, h, area)
 }
 
-/** A gallery thumbnail at the sample scale of §2.5; returns the text size it drew. */
-export function drawStudioSample(ctx: CanvasRenderingContext2D, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number): { textPx: number } {
-  return notImplemented('drawStudioSample', ctx, studio, frame, tile, t)
+/**
+ * A gallery thumbnail at the sample scale of §2.5; returns the text size it drew. `language`: the
+ * captions' language; 'bn' draws the Bangla sample of §0.2 ("আপনার ভিডিও শেয়ার করার জন্য তৈরি", the
+ * spoken mark on "শেয়ার", from the approved bangla.html) in the look's Bangla font (contract
+ * change by part P3: the gallery shows Bangla sample text when the captions are Bangla).
+ */
+export function drawStudioSample(ctx: CanvasRenderingContext2D, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number, language?: string): { textPx: number } {
+  return notImplemented('drawStudioSample', ctx, studio, frame, tile, t, language)
 }
