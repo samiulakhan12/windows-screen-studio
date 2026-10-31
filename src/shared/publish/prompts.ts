@@ -9,7 +9,7 @@ import type { AiTextRequest, AiTextResult, PackTextTask } from '../api/ai'
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
 import type { CaptionSegment } from '../types'
 import type { PublishLength, PublishTone } from './pack'
-import { cutAt, fitX, plainText, X_LIMIT } from './text'
+import { cutAt, fitX, plainText, trustedText, typedText, X_LIMIT } from './text'
 
 /** Longest transcript sent in one request (characters, about an hour of speech); longer ones are sent as excerpts. */
 export const PACK_TRANSCRIPT_MAX = 60_000
@@ -115,17 +115,24 @@ export function packTranscript(segments: readonly Pick<CaptionSegment, 'text'>[]
   return { text: cutAt(texts[0] ?? '', max), shortened: true }
 }
 
-/** The context as sent: one-line text, capped (main checks it again in validateTextRequest). */
+/** One line of what the user typed: control and direction characters removed, line breaks and tabs as spaces, capped. Links, emphasis and code stay. */
+const typedLine = (v: unknown, max: number): string => (typeof v === 'string' ? typedText(v.replace(/\s*[\r\n]+\s*|\t/g, ' '), max) : '')
+
+/**
+ * The context as sent: the recording's name and chapter titles as the user typed them, one line each,
+ * capped (main checks it again in validateTextRequest). They are data in the JSON block (§4.1), so
+ * nothing in them is removed; their links may be in the answers (trustedText).
+ */
 export function readPackContext(raw: unknown): { title?: string; chapters?: string[] } | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
   const r = raw as Record<string, unknown>
   const out: { title?: string; chapters?: string[] } = {}
-  const title = plainText(r.title, { max: PACK_CONTEXT_LIMITS.title, oneLine: true })
+  const title = typedLine(r.title, PACK_CONTEXT_LIMITS.title)
   if (title) out.title = title
   if (Array.isArray(r.chapters)) {
     const chapters = r.chapters
       .slice(0, PACK_CONTEXT_LIMITS.chapters)
-      .map((c) => plainText(c, { max: PACK_CONTEXT_LIMITS.chapter, oneLine: true }))
+      .map((c) => typedLine(c, PACK_CONTEXT_LIMITS.chapter))
       .filter(Boolean)
     if (chapters.length) out.chapters = chapters
   }
@@ -214,13 +221,13 @@ export function renderReleaseNotes(n: { title: string; summary: string; items: {
 }
 
 /**
- * The checked, cleaned answer to pack task `task` (§4.3). `transcript` is the text that was sent: a
- * link it does not have is removed or broken (plainText). Throws AiOutputError when nothing usable
- * came back.
+ * The checked, cleaned answer to pack task `task` (§4.3). `transcript` is the text that was sent and
+ * `context` the name and chapter titles: a link neither has is removed or broken (plainText). Throws
+ * AiOutputError when nothing usable came back.
  */
-export function validatePackAnswer(task: PackTextTask, answer: unknown, transcript: string): AiTextResult {
+export function validatePackAnswer(task: PackTextTask, answer: unknown, transcript: string, context?: { title?: string; chapters?: string[] }): AiTextResult {
   if (!isObject(answer)) throw new AiOutputError('no answer')
-  const linksFrom = transcript
+  const linksFrom = trustedText(transcript, context)
   const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine, linksFrom })
   switch (task) {
     case 'youtube': {
@@ -275,5 +282,5 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
 /** Runs pack task `request.task` with `ask` (one request) and checks the answer. */
 export async function runPackTask(request: AiTextRequest & { task: PackTextTask }, ask: (prompt: TextPrompt) => Promise<unknown>): Promise<AiTextResult> {
   const sent = packTranscript(request.segments)
-  return validatePackAnswer(request.task, await ask(packPrompt(request, sent)), sent.text)
+  return validatePackAnswer(request.task, await ask(packPrompt(request, sent)), sent.text, request.context)
 }

@@ -170,6 +170,14 @@ function settle(allowed: ReadonlySet<string>, max: number, cut: (budget: number)
   return tidy(noLinkAtAll(cut(Math.max(0, budget)).normalize()))
 }
 
+/**
+ * The text whose links an answer may have: the transcript that was sent, and the recording's name and
+ * chapter titles, which the user typed. On lines of their own, so no link spans two of them.
+ */
+export function trustedText(transcript: string, context?: { title?: string; chapters?: string[] }): string {
+  return [transcript, context?.title ?? '', ...(context?.chapters ?? [])].join('\n')
+}
+
 /* ---------- plain text ---------- */
 
 /**
