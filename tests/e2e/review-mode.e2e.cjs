@@ -3,8 +3,8 @@
 // (with its record), and a zoom of yours. The Review button counts 3; Shift+R opens the panel with
 // the focus on the first item; N and P move (the playhead jumps); Space on the row stops the
 // stretch where it is; K keeps the zoom (saved with auto false); Delete removes the silence cut
-// (the footage comes back, the record goes); Ctrl+Z brings the cut back and its row back to "not
-// reviewed"; a mouse click on a row then Delete removes the camera change (the same message as
+// (the footage comes back, the record goes, the choice is saved); Ctrl+Z brings the cut back and
+// its row back to "not reviewed", and takes the choice away; a mouse click on a row then Delete removes the camera change (the same message as
 // before is announced again); Keep all, pressed from the keyboard, reviews the rest and leaves the
 // focus in the list; Escape closes and gives the focus back to the button; the palette opens it
 // again, now empty; a palette command that shows an Inspector tab closes it, the focus going to the
@@ -130,6 +130,7 @@ async function main() {
     const restored = await savedWhen(home, id, (p) => p.clips.length === 1, 'the footage back')
     h.assert(restored.clips[0].start === 0 && restored.clips[0].end === SECONDS, `the whole recording: ${JSON.stringify(restored.clips)}`)
     h.assert(!('autoCuts' in restored), 'the record is gone')
+    h.assert(JSON.stringify(restored.autoCutOutcomes) === JSON.stringify([{ id: 's1', outcome: 'removed' }]), `the choice saved: ${JSON.stringify(restored.autoCutOutcomes)}`)
     h.assert(restored.zooms.some((z) => z.id === 'mine'), 'your zoom is untouched')
 
     // Ctrl+Z (one undo step) brings the cut and its row back.
@@ -137,6 +138,7 @@ async function main() {
     await f.waitFor(async () => (await rows(win)).includes('cut:s1=pending'), 'the cut pending again')
     const back = await savedWhen(home, id, (p) => p.clips.length === 2 && Array.isArray(p.autoCuts), 'the cut back')
     h.assert(back.zooms.find((z) => z.id === 'z1')?.auto === false, 'the keep before it stays')
+    h.assert(!('autoCutOutcomes' in back), 'the undo takes the choice away with the cut')
     h.assert((await win.textContent('[data-testid="review-progress"]')) === '1 of 3 reviewed', 'progress follows the undo')
 
     // A mouse click on a row keeps the list's keys in the list: Delete removes that camera change
@@ -167,6 +169,7 @@ async function main() {
     h.assert((await focused(win)).startsWith('Cut 2.4 s of silence'), `the focus back on the row: ${await focused(win)}`)
     const kept = await savedWhen(home, id, (p) => !('autoCuts' in p), 'everything kept')
     h.assert(kept.clips.length === 2, 'the cut stays, as a plain cut')
+    h.assert(JSON.stringify(kept.autoCutOutcomes) === JSON.stringify([{ id: 's1', outcome: 'kept' }]), `the choice saved: ${JSON.stringify(kept.autoCutOutcomes)}`)
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'review-mode-reviewed.png') })
 
     // Escape closes and gives the focus back to the button, which has nothing left to count.

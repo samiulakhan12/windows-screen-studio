@@ -464,8 +464,8 @@ Unit (`tests/review*.test.ts`), each failing without its code:
 End to end (`tests/e2e/review-mode.e2e.cjs`): open a project with an auto zoom, a director segment
 and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows read right; `N`
 moves and the playhead jumps; `K` keeps the zoom (it stays, `auto` false in the saved project);
-Delete removes the cut (clips back, record gone); `Ctrl+Z` brings the cut back and the row back to
-pending; Keep all; Escape returns the focus to the button; screenshots.
+Delete removes the cut (clips back, record gone, `removed` saved for it); `Ctrl+Z` brings the cut
+back and the row back to pending (the choice gone); Keep all (`kept` saved); Escape returns the focus to the button; screenshots.
 
 ## 10. Later
 
