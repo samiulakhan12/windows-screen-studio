@@ -44,7 +44,10 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
 
   const [activeKey, setActiveKey] = useState<string | null>(() => list.find((_, i) => statuses[i] === 'pending')?.key ?? list[0]?.key ?? null)
   const active = Math.max(0, list.findIndex((i) => i.key === activeKey))
-  const [said, setSaid] = useState('')
+  // What the live region says. Each message is a new node, so the same words twice (Keep, Ctrl+Z,
+  // Keep) are read out twice.
+  const [said, setSaid] = useState({ text: '', n: 0 })
+  const say = (text: string): void => setSaid((s) => ({ text, n: s.n + 1 }))
   const rows = useRef(new Map<string, HTMLButtonElement>())
   const closeRef = useRef<HTMLButtonElement>(null)
   const stopRef = useRef<(() => void) | null>(null)
@@ -116,7 +119,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
     const after = list.map((i) => reviewStatus(store.state, i, list))
     const done = reviewProgress(after)
-    setSaid(actedMessage(action, done.reviewed, done.total))
+    say(actedMessage(action, done.reviewed, done.total))
     const next = nextPending(after, index)
     if (next) focusKey(next)
   }
@@ -126,7 +129,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     if (count === 0) return
     stopStretch()
     store.update((p) => keepItems(p, list))
-    setSaid(bulkMessage('keep', count))
+    say(bulkMessage('keep', count))
     // Keep all turns disabled under the focus, which would drop to the page (Esc and the list's
     // keys would then miss the panel): the focus goes back to the row.
     focusKey(list[active].key)
@@ -138,7 +141,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     if (!current || kindPending.length === 0) return
     stopStretch()
     store.update((p) => removeItems(p, kindPending))
-    setSaid(bulkMessage('remove', kindPending.length, current.kind))
+    say(bulkMessage('remove', kindPending.length, current.kind))
     const after = list.map((i) => reviewStatus(store.state, i, list))
     const next = nextPending(after, active)
     if (next) focusKey(next)
@@ -293,7 +296,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
         </>
       )}
       <div className="sr-only" role="status" aria-live="polite" data-testid="review-said">
-        {said}
+        <span key={said.n}>{said.text}</span>
       </div>
     </aside>
   )

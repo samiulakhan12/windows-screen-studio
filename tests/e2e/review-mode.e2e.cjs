@@ -4,9 +4,10 @@
 // the focus on the first item; N and P move (the playhead jumps); Space on the row stops the
 // stretch where it is; K keeps the zoom (saved with auto false); Delete removes the silence cut
 // (the footage comes back, the record goes); Ctrl+Z brings the cut back and its row back to "not
-// reviewed"; a mouse click on a row then Delete removes the camera change; Keep all, pressed from
-// the keyboard, reviews the rest and leaves the focus in the list; Escape closes and gives the
-// focus back to the button; the palette opens it again, now empty.
+// reviewed"; a mouse click on a row then Delete removes the camera change (the same message as
+// before is announced again); Keep all, pressed from the keyboard, reviews the rest and leaves the
+// focus in the list; Escape closes and gives the focus back to the button; the palette opens it
+// again, now empty.
 const fs = require('node:fs')
 const path = require('node:path')
 const h = require('./helpers.cjs')
@@ -142,8 +143,16 @@ async function main() {
     await win.click('[data-testid="review-row"][data-key="camera:l1"] .review-item')
     await h.sleep(150)
     h.assert((await focused(win)).startsWith('Camera to the top left corner'), `the focus stays on the clicked row: ${await focused(win)}`)
+    // The same words as the last message are a change in the live region, so they are read out again.
+    h.assert((await win.textContent('[data-testid="review-said"]')) === 'Removed. 2 of 3 reviewed.', 'the last message')
+    await win.evaluate(() => {
+      window.__saidChanges = 0
+      new MutationObserver((m) => (window.__saidChanges += m.length)).observe(document.querySelector('[data-testid="review-said"]'), { childList: true, subtree: true, characterData: true })
+    })
     await win.keyboard.press('Delete')
     await f.waitFor(async () => (await rows(win)).includes('camera:l1=removed'), 'the camera change removed')
+    h.assert((await win.textContent('[data-testid="review-said"]')) === 'Removed. 2 of 3 reviewed.', 'the remove is announced')
+    h.assert((await win.evaluate(() => window.__saidChanges)) > 0, 'the same words are announced again')
     await savedWhen(home, id, (p) => (p.layouts ?? []).length === 0, 'the camera change gone')
     h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'the Inspector under the panel is out of reach')
 
