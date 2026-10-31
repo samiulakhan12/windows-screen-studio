@@ -308,11 +308,21 @@ function projectDate(iso: string): string {
 }
 
 /** A recording in the library: thumbnail, name, length and date; open, show in Explorer and delete. */
-function ProjectCard({ project, onOpen, onDelete }: { project: ProjectSummary; onOpen: () => void; onDelete: () => Promise<void> }): JSX.Element {
+function ProjectCard({
+  project,
+  disabled,
+  onOpen,
+  onDelete
+}: {
+  project: ProjectSummary
+  disabled: boolean
+  onOpen: () => void
+  onDelete: () => Promise<void>
+}): JSX.Element {
   const thumb = useProjectThumbnail(project.id)
   return (
     <li className="project-card">
-      <button className="project-open" onClick={onOpen}>
+      <button className="project-open" onClick={onOpen} disabled={disabled}>
         <span className="project-thumb">
           {thumb ? <img src={thumb} alt="" /> : <Icon name="film" size={22} />}
           <span className="project-duration">{formatTime(project.duration, false)}</span>
@@ -855,6 +865,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                   <ProjectCard
                     key={p.id}
                     project={p}
+                    // Home stays open until a recording has been made and processed: it holds Restart now back meanwhile.
+                    disabled={!idle}
                     onOpen={() => onOpenProject(p.id)}
                     onDelete={async () => {
                       if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return

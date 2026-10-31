@@ -1181,7 +1181,11 @@ input[type='range']:disabled::-webkit-slider-thumb {
   font-variant-numeric: tabular-nums;
 }
 
-.project-open:hover .project-thumb {
+.project-open:disabled {
+  cursor: default;
+}
+
+.project-open:hover:not(:disabled) .project-thumb {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-3);
   transform: translateY(-2px);

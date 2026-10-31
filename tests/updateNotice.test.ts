@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUSY_COPY, type UpdateState } from '../src/shared/updates/updates'
 
@@ -368,6 +370,17 @@ describe('Restart now while Home makes, saves or processes a recording (docs/des
     } finally {
       setRecordingBusy(null)
     }
+  })
+
+  // Opening a recording closes Home and its reason with it, while main goes on processing; Settings
+  // in the editor would then ask main, which cannot see it.
+  it("Home's recordings do not open until a recording has been made and processed", () => {
+    const home = readFileSync(path.join(__dirname, '..', 'src/renderer/src/views/Home.tsx'), 'utf8')
+    expect(home).toContain('const idle = phase === null && !busy && ')
+    const start = home.indexOf('<ProjectCard')
+    const card = home.slice(start, home.indexOf('/>', start))
+    expect(card).toContain('disabled={!idle}')
+    expect(home).toContain('<button className="project-open" onClick={onOpen} disabled={disabled}>')
   })
 })
 

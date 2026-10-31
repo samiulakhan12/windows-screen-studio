@@ -172,8 +172,10 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   recording). The steps on either side of the bar (a recording being prepared, then saved and
   processed) are known only to the recording code, so the page checks them: Home tells the update
   buttons while it shows them (`setRecordingBusy`, useUpdates.ts), and *Restart now* is refused
-  there without asking main (`installUpdate`). Left open: a page reloaded after a crash while a
-  recording is being saved knows nothing until the processing progress arrives. A recording keeps
+  there without asking main (`installUpdate`). Home's recordings do not open meanwhile, so Home
+  stays until the recording is done (the editor's Settings would ask main, which cannot see it).
+  Left open: a page reloaded after a crash while a recording is being saved knows nothing until
+  the processing progress arrives. A recording keeps
   Home hidden, so *Restart now* cannot be pressed during one;
   quitting during a recording already waits for the capture helper (nativeCapture's will-quit
   guard) and the installer runs only after the app has really quit.
