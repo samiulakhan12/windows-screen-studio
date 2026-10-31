@@ -4,7 +4,15 @@ Flown's caption emoji list (src/shared/captions/emojiList.ts) is generated from 
 emoji-test.txt, version 18.0 (671,655 bytes, SHA-256
 8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a): the fully-qualified emoji, their
 names and groups, limited to those the bundled Noto Color Emoji font draws. Modified: filtered and
-reformatted. Unicode data is used under the following licence:
+reformatted.
+
+The emoji keywords of other languages (src/shared/captions/emojiData.ts) come from the Unicode
+Common Locale Data Repository (CLDR) 49.0.0 emoji annotations (npm package cldr-annotations-full
+49.0.0), and the Bangla and Hindi number words (src/shared/captions/numberData.ts) from CLDR
+49.0.0's rule-based number format data (npm package cldr-rbnf 49.0.0). Modified: selected,
+filtered and reformatted.
+
+Unicode data (emoji-test.txt and CLDR) is used under the following licence:
 
 UNICODE LICENSE V3
 
@@ -45,3 +53,53 @@ Except as contained in this notice, the name of a copyright holder shall
 not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
+
+---
+
+obscenity 0.4.6 (https://github.com/jo3-l/obscenity)
+Bleeping's Standard list (src/shared/captions/bleepWords.ts) is generated from the English data set
+of the npm package obscenity 0.4.6: its words, patterns and safe look-alikes. Modified: the patterns
+rewritten as regular expressions. The words come from cuss (https://github.com/words/cuss, MIT,
+Copyright (c) 2016 Titus Wormer), with obscenity's changes.
+
+The MIT License (MIT)
+
+Copyright © 2025 Joseph Liu.
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the “Software”), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+List of Dirty, Naughty, Obscene, and Otherwise Bad Words (LDNOOBW)
+https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words
+Bleeping's Strict lists (src/shared/captions/bleepWords.ts) are generated from the npm package
+naughty-words 1.2.0, which publishes these lists.
+© 2012–2020 Shutterstock, Inc.
+Licensed under the Creative Commons Attribution 4.0 International License,
+https://creativecommons.org/licenses/by/4.0/
+Modified: lower-cased, filtered and merged with Flown's own lists.
+
+---
+
+Flown's own word lists (stop words, sensitive topics, the Bangla bleep list, emoji keywords in
+English) are written for Flown and dedicated to the public domain under CC0-1.0
+(https://creativecommons.org/publicdomain/zero/1.0/).
