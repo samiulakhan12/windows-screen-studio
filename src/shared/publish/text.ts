@@ -36,6 +36,13 @@ function linksIn(source: string): Set<string> {
 const TRAIL = /[.,;:!?)\]]+$/
 
 /**
+ * A bare name on a top-level domain that is also a file type, with no path ("recording.mov",
+ * "export.zip", "Settings.app"): a file or app name, kept as text. With a scheme, "www." or a path
+ * it is a link. X still counts it as one (xLength), as X does.
+ */
+const FILE_NAME = /^(?!www\.)[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:app|zip|mov)$/iu
+
+/**
  * `s` as plain text: line breaks normalised, control and direction characters removed (a tab is a
  * space), ** and __ emphasis removed, links the transcript does not contain removed, spaces at line
  * ends and repeated blank lines removed, trimmed and cut to `max`. Not a string: ''.
@@ -50,7 +57,7 @@ export function plainText(s: unknown, opts: PlainTextOptions): string {
       // A dot or bracket at the end is the sentence's, not the link's: it stays.
       const tail = TRAIL.exec(match)?.[0] ?? ''
       const link = match.slice(0, match.length - tail.length)
-      return (allowed.has(link.toLowerCase()) ? link : '') + tail
+      return (FILE_NAME.test(link) || allowed.has(link.toLowerCase()) ? link : '') + tail
     })
   }
   if (opts.oneLine) t = t.replace(/\s*\n\s*/g, ' ')

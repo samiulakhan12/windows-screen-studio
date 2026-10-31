@@ -458,7 +458,9 @@ Where the build differs from or adds to the sections above:
   glued to a word (`_https://…`) and as bare domains: with a common top-level domain, generic or
   country (`evil.com`, `evil.de`, `flown.co.uk`), or with any other one when a path follows
   (`is.gd/x`, `evil.example/login`), because LinkedIn and X turn those into links too (and X counts
-  them as 23). E-mail addresses are kept.
+  them as 23). E-mail addresses are kept. A bare name on `.app`, `.zip` or `.mov` with no path
+  (`recording.mov`, `export.zip`, `Settings.app`) is a file or app name and stays (X still counts it
+  as a link). Tags keep the links the transcript has too (`ASP.NET` when it was said).
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),

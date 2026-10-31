@@ -205,6 +205,24 @@ describe('validatePackAnswer', () => {
     expect(() => validatePackAnswer('youtube', { description: 'x' }, TRANSCRIPT)).toThrow(AiOutputError)
     expect(() => validatePackAnswer('youtube', { description: ' ', tags: [] }, TRANSCRIPT)).toThrow(/empty description/)
   })
+  it('keeps file names, and names the transcript says, in the text and the tags', () => {
+    const said = packTranscript([seg('a', 0, 4, 'Save it as an MP4 or a MOV file, it is built on ASP.NET Core.')]).text
+    const r = validatePackAnswer(
+      'youtube',
+      { description: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.', tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'evil.com tips'] },
+      said
+    )
+    expect(r).toEqual({
+      task: 'youtube',
+      text: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.',
+      tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'tips']
+    })
+    const steps = validatePackAnswer('article', { title: 'Export', intro: '', sections: [{ heading: 'Save', steps: ['Save the recording as recording.mov.', 'Open Settings.app to check it.'] }] }, said) as { text: string }
+    expect(steps.text).toContain('1. Save the recording as recording.mov.\n2. Open Settings.app to check it.')
+    // With a scheme, "www." or a path they are links, removed unless said; X counts them as links.
+    expect(plainText('Get it at https://flown.zip, www.flown.mov, flown.app/download or WWW.flown.app.', { max: 200, linksFrom: said })).toBe('Get it at , , or .')
+    expect(xLength('Save as recording.mov')).toBe(8 + 23)
+  })
   it('caps the tags at 15 and 400 characters', () => {
     expect(cleanTags(Array.from({ length: 40 }, (_, i) => `tag ${i}`))).toHaveLength(15)
     const long = cleanTags(Array.from({ length: 15 }, (_, i) => `${i}${'t'.repeat(28)}`))

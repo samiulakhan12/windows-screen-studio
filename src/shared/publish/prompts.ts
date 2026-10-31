@@ -159,13 +159,16 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
-/** Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters, distinct, 400 characters together. */
-export function cleanTags(raw: unknown): string[] {
+/**
+ * Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters, distinct, 400
+ * characters together. Links `transcript` does not contain are removed ("ASP.NET" stays when it was said).
+ */
+export function cleanTags(raw: unknown, transcript = ''): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   let total = 0
   for (const t of strings(raw)) {
-    const tag = plainText(t, { max: 200, oneLine: true })
+    const tag = plainText(t, { max: 200, oneLine: true, linksFrom: transcript })
       .replace(/[<>#,]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
@@ -220,7 +223,7 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
       if (typeof answer.description !== 'string' || !Array.isArray(answer.tags)) throw new AiOutputError('no description or tags')
       const description = text(answer.description, PACK_CAPS.youtubeText)
       if (!description) throw new AiOutputError('an empty description')
-      return { task, text: description, tags: cleanTags(answer.tags) }
+      return { task, text: description, tags: cleanTags(answer.tags, transcript) }
     }
     case 'linkedin':
     case 'xpost': {
