@@ -38,7 +38,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     // status still reads right once it is removed too.
     if (list.length !== shown.length || list.some((i, k) => i.cut !== shown[k].cut)) setShown(list)
   }, [list, shown])
-  const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
+  const statuses = useMemo(() => list.map((i) => reviewStatus(project, i, list)), [list, project])
   const { reviewed, total } = reviewProgress(statuses)
   const plan = planOf(project)
 
@@ -114,7 +114,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     if (index < 0 || reviewStatus(store.state, item) !== 'pending') return
     stopStretch()
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
-    const after = list.map((i) => reviewStatus(store.state, i))
+    const after = list.map((i) => reviewStatus(store.state, i, list))
     const done = reviewProgress(after)
     setSaid(actedMessage(action, done.reviewed, done.total))
     const next = nextPending(after, index)
@@ -136,7 +136,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     stopStretch()
     store.update((p) => removeItems(p, kindPending))
     setSaid(bulkMessage('remove', kindPending.length, current.kind))
-    const after = list.map((i) => reviewStatus(store.state, i))
+    const after = list.map((i) => reviewStatus(store.state, i, list))
     const next = nextPending(after, active)
     if (next) focusKey(next)
   }

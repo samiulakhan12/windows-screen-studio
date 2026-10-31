@@ -78,8 +78,12 @@ export const pendingCount = (project: Project): number => reviewItems(project).l
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
 
-/** Whether `item` is still automatic, was kept (now the user's) or removed, read from `project` (§2.3). */
-export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
+/**
+ * Whether `item` is still automatic, was kept (now the user's) or removed, read from `project` (§2.3).
+ * `listed` is the list it is shown in: a cut removed inside a speed-up of that list taken back since
+ * has its footage back at the speed from before the speed-up, which still reads as removed.
+ */
+export function reviewStatus(project: Project, item: ReviewItem, listed: readonly ReviewItem[] = []): ReviewStatus {
   if (item.key === FRAMING_KEY) {
     if (directorsFraming(project)) return 'pending'
     return framingUntouched(project.webcam) ? 'removed' : 'kept'
@@ -101,7 +105,10 @@ export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
   if (!cut) return 'removed'
   const rec = (project.autoCuts ?? []).find((c) => c.id === id)
   if (rec && autoCutIntact(rec, project.clips)) return 'pending'
-  return footageBack(cut, project.clips) ? 'removed' : 'kept'
+  if (footageBack(cut, project.clips)) return 'removed'
+  const ids = new Set((project.autoCuts ?? []).map((c) => c.id))
+  const before = listed.reduce((c, i) => (i.cut && i.cut.action !== 'cut' && !ids.has(i.cut.id) ? withoutSpeedUp([c], i.cut)[0] : c), cut)
+  return before !== cut && footageBack(before, project.clips) ? 'removed' : 'kept'
 }
 
 /** Reviewed items of `statuses` and how many in all. */

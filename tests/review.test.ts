@@ -238,6 +238,26 @@ describe('a cut inside an automatic speed-up', () => {
     expect(shown.map((i) => reviewStatus(two, i))).toEqual(['removed', 'removed'])
   })
 
+  it('removing the cut and then the speed-up gives it all back at 1x, and the cut row still reads removed', () => {
+    const p = nested([5, 9], [6, 7])
+    const shown = reviewItems(p)
+    // The cut first: its footage comes back at the speed-up's 2x, the speed-up still to review.
+    const one = removeItems(p, [shown[1]])
+    expect(plays(one.clips)).toEqual([
+      [0, 5, 1],
+      [5, 9, 2],
+      [9, 20, 1]
+    ])
+    expect(shown.map((i) => reviewStatus(one, i, shown))).toEqual(['pending', 'removed'])
+    // Then the speed-up: all of it at 1x again, neither row turned into Kept.
+    const two = removeItems(one, [shown[0]])
+    expect(plays(two.clips)).toEqual([[0, 20, 1]])
+    expect(shown.map((i) => reviewStatus(two, i, shown))).toEqual(['removed', 'removed'])
+    // A cut kept, then the speed-up around it removed: the cut stays, and reads kept.
+    const kept = removeItems(keepItems(p, [shown[1]]), [shown[0]])
+    expect(shown.map((i) => reviewStatus(kept, i, shown))).toEqual(['removed', 'kept'])
+  })
+
   it('removing both at once gives it all back when the cut starts before the speed-up', () => {
     const p = nested([5, 9], [4, 6])
     expect(plays(removeItems(p, reviewItems(p)).clips)).toEqual([[0, 20, 1]])

@@ -99,7 +99,9 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
 * face framing: `framingIsDirectors` → pending; framing still set (not the director's) → kept;
   framing back to none → removed.
 * automatic cut: record present and intact → pending. Otherwise: its footage is back as it was
-  (`was` pieces kept at their old speeds) → removed; else → kept.
+  (`was` pieces kept at their old speeds, or at the speed from before a speed-up of the panel's
+  list taken back since: a silence cut removed inside a sped-up idle part, then the speed-up
+  removed) → removed; else → kept.
 
 So **undo and redo just work**: undoing a Keep makes the zoom `auto` again and the item pending
 again, with no second copy of the state to keep in step. Alternative: a set of reviewed ids in the
@@ -246,8 +248,8 @@ Titles (exact copy):
 right` from the anchor (else a fixed focus point) in thirds; `<n>` is the source length of the
 `was` pieces with one decimal; `<corner>` is `top left`, `top right`, `bottom left`, `bottom right`.
 
-`reviewStatus(project, item) → 'pending' | 'kept' | 'removed'` (§2.3). `reviewProgress(statuses)`
-gives `{ reviewed, total }`.
+`reviewStatus(project, item, listed?) → 'pending' | 'kept' | 'removed'` (§2.3; `listed` is the
+panel's list). `reviewProgress(statuses)` gives `{ reviewed, total }`.
 
 `pendingCount(project)` is the badge on the Review button (`reviewItems(project).length`, every
 listed item being pending by construction).
