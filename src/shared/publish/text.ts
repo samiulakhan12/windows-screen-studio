@@ -10,10 +10,11 @@ const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u
 
 /**
  * Links as they are written in text: with a scheme or "www." anywhere (also glued to a word, as
- * "_https://…"), or a bare domain with a common top-level domain ("evil.com/login"), which sites
- * turn into links too.
+ * "_https://…"), or a bare domain, which sites turn into links too: with a common top-level domain
+ * ("evil.com", "evil.de/login"), or any other one when a path follows ("is.gd/x").
  */
-const LINK = /(?:https?:\/\/|www\.)[^\s<>"'`]+|(?<![\p{L}\p{N}@.-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:com|net|org|io|co|app|dev|ai|me|ly|gg|xyz|info|biz|link|site|online|shop|store|page|ru|cn|tk|top|click|zip|mov)(?![\p{L}\p{N}])(?:\/[^\s<>"'`]*)?/giu
+const LINK =
+  /(?:https?:\/\/|www\.)[^\s<>"'`]+|(?<![\p{L}\p{N}@.-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:(?:com|net|org|io|co|app|dev|ai|me|ly|gg|xyz|info|biz|link|site|online|shop|store|page|ru|cn|tk|top|click|zip|mov|de|uk|fr|eu|us|ca|au|nl|es|it|ch|at|be|tv|gl|gd|gy|cc|live|tech|cloud)(?![\p{L}\p{N}])(?:\/[^\s<>"'`]*)?|\p{L}{2,63}\/[^\s<>"'`]*)/giu
 
 export interface PlainTextOptions {
   /** Longest result (characters), cut at a sentence or word end. */

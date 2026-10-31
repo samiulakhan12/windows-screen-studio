@@ -38,6 +38,21 @@ describe('plainText', () => {
     expect(plainText('Go to https://example.co or https://EXAMPLE.com/settings', { max: 200, linksFrom: TRANSCRIPT })).toBe('Go to or https://EXAMPLE.com/settings')
   })
 
+  it('removes a bare domain on any top-level domain when a path follows, and on the common ones without', () => {
+    const none = { max: 200, linksFrom: 'Heute zeige ich den Export.' }
+    expect(plainText('Visit evil.de/login now', none)).toBe('Visit now')
+    for (const link of ['is.gd/abc123', 'rb.gy/abc', 'goo.gl/abc', 'youtu.be/abc', 'shorturl.at/abc', 'evil.example/login']) expect(plainText(`See ${link}.`, none)).toBe('See .')
+    expect(plainText('Watch at evil.tv, evil.cloud or evil.eu', none)).toBe('Watch at , or')
+    // A longer domain goes whole, not leaving a piece of it.
+    expect(plainText('Help: flown.co.uk/help and flown.co.uk', none)).toBe('Help: and')
+    // Kept when the transcript says it.
+    expect(plainText('Mehr unter flown.de/hilfe.', { max: 200, linksFrom: 'Mehr unter flown.de/hilfe' })).toBe('Mehr unter flown.de/hilfe.')
+    // Words with dots that are not links stay.
+    expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings.py, e.g. v1.2 in file.txt')
+    // X counts them as links.
+    expect(xLength('Go to evil.de/login')).toBe(6 + 23)
+  })
+
   it('makes one line when asked, and is empty for anything but a string', () => {
     expect(plainText(' a\n\n b \n c', { max: 50, oneLine: true })).toBe('a b c')
     expect(plainText(42, { max: 50 })).toBe('')

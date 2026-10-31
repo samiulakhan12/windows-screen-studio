@@ -447,8 +447,10 @@ Where the build differs from or adds to the sections above:
   `Chips`), like every other choice in the editor, not radio groups.
 - **A link is kept only when the transcript has the very same link** (case ignored), not merely a
   longer one that contains it (`example.co` is not `example.com/settings`). Links are also found when
-  glued to a word (`_https://…`) and as bare domains with a common top-level domain
-  (`evil.com/login`), because LinkedIn and X turn those into links too. E-mail addresses are kept.
+  glued to a word (`_https://…`) and as bare domains: with a common top-level domain, generic or
+  country (`evil.com`, `evil.de`, `flown.co.uk`), or with any other one when a path follows
+  (`is.gd/x`, `evil.example/login`), because LinkedIn and X turn those into links too (and X counts
+  them as 23). E-mail addresses are kept.
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),
