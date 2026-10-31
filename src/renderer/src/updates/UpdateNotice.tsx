@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { isPutOff, putOff, useUpdates } from './useUpdates'
 import './updates.css'
 
@@ -12,12 +12,13 @@ export function UpdateNotice(): JSX.Element {
   const s = useUpdates()
   const [, setTick] = useState(0)
   const [refused, setRefused] = useState<string | null>(null)
+  const slot = useRef<HTMLDivElement>(null)
   const show = !!s && s.phase === 'ready' && !!s.version && !isPutOff(s.version)
 
   return (
-    <div className="update-slot" aria-live="polite">
+    <div ref={slot} className="update-slot" aria-live="polite">
       {show && (
-        <div className="update-pill" data-testid="update-notice">
+        <Pill slot={slot}>
           <span className="update-pill-text">{refused ?? `Flown ${s.version} is ready. It installs when you close Flown.`}</span>
           <button
             type="button"
@@ -38,8 +39,29 @@ export function UpdateNotice(): JSX.Element {
           >
             Later
           </button>
-        </div>
+        </Pill>
       )}
+    </div>
+  )
+}
+
+/**
+ * The notice itself. It goes with its focused button (Later, or the update stops being ready while
+ * Restart now has the focus): the focus then moves on to the next control in the title bar
+ * (Settings), never to the page. A layout effect's cleanup runs before React removes the pill.
+ */
+function Pill({ slot, children }: { slot: RefObject<HTMLDivElement>; children: ReactNode }): JSX.Element {
+  const pill = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = pill.current
+    return () => {
+      // When the whole title bar goes (Home closes) the slot's ref is already cleared: nothing to do.
+      if (el?.contains(document.activeElement)) (slot.current?.nextElementSibling as HTMLElement | null)?.focus()
+    }
+  }, [slot])
+  return (
+    <div ref={pill} className="update-pill" data-testid="update-notice">
+      {children}
     </div>
   )
 }

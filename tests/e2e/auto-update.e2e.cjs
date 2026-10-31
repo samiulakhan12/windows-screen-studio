@@ -1,7 +1,7 @@
 // Flown's own updates in the real built app (docs/design/auto-update.md §6), with the scripted fake
 // updater (SSW_UPDATES_FAKE, unpackaged builds only): a build that cannot update itself says so; the
-// automatic path finds 9.9.9, downloads it and shows the Home notice; Later hides it; the release
-// notes are plain text; Restart now is refused while an export runs and installs after; with
+// automatic path finds 9.9.9, downloads it and shows the Home notice; Later hides it and the focus
+// moves on to Settings; the release notes are plain text; Restart now is refused while an export runs and installs after; with
 // automatic updates off nothing is checked on its own, and Check then Download keep the focus; a
 // failed check and a failed download say so plainly. The model list refreshes after a check
 // (SSW_MODEL_LIST_URL, a local server): the retiring note and the suggested models follow it.
@@ -58,8 +58,11 @@ async function main() {
     const prefs = JSON.parse(fs.readFileSync(path.join(userData(home), 'updates.json'), 'utf8'))
     h.assert(prefs.auto === true && typeof prefs.lastCheck === 'string', `the last check is kept: ${JSON.stringify(prefs)}`)
 
-    await notice.locator('button:has-text("Later")').click()
+    // From the keyboard: Later goes with the notice, and the focus moves on to Settings, not to the page.
+    await notice.locator('button:has-text("Later")').focus()
+    await win.keyboard.press('Enter')
     await ef.waitFor(async () => (await notice.count()) === 0, 'Later hides the notice')
+    h.assert(await win.evaluate(() => document.activeElement?.matches('.titlebar button[aria-label="Settings"]') === true), 'the focus moved on to Settings')
 
     await openAbout(win)
     await waitStatus(win, /Flown 9\.9\.9 is ready\. It installs when you close Flown\./)

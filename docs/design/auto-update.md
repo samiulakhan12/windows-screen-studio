@@ -120,7 +120,9 @@ release body is untrusted text and is never rendered as HTML).
 
 Home, when an update is ready: a notice "Flown 0.7.2 is ready. It installs when you close Flown."
 with [Restart now] and [Later] (Later hides it until the next version or the next start). Never
-in the editor or during a recording: updates must not interrupt work.
+in the editor or during a recording: updates must not interrupt work. When it goes while one of
+its buttons has the focus (Later, or the update stops being ready), the focus moves on to the
+Settings button next to it, never to the page.
 
 *Restart now* while something runs: main refuses it and the reason shows where the button is, for
 example "Finish or stop the export first." (main checks when it is pressed; nothing installs). The
