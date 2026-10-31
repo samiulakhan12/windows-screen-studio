@@ -141,7 +141,8 @@ const TEXT_PER_30_SECONDS = 2000
  */
 export function parseOpenAiText(json: unknown, partSeconds: number): RawTranscript {
   if (!isObject(json) || typeof json.text !== 'string') throw new Error('The transcription service returned something that is not a transcript.')
-  const text = cleanText(json.text, TEXT_PER_30_SECONDS * Math.max(1, Math.ceil(partSeconds / 30) || 1))
+  // The part's length to the millisecond: end - start of a full part can be 30 s and a rounding error.
+  const text = cleanText(json.text, TEXT_PER_30_SECONDS * Math.max(1, Math.ceil(Math.round(partSeconds * 1000) / 30_000) || 1))
   const detected = Array.isArray(json.languages) ? json.languages.map((l) => (isObject(l) ? languageCode(l.code) : undefined)).find(Boolean) : languageCode(json.language)
   const end = Math.max(0, partSeconds)
   return { ...(detected ? { language: detected } : {}), segments: text ? [{ start: 0, end, text }] : [], untimed: true }

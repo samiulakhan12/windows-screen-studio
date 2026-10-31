@@ -154,6 +154,9 @@ describe('parseOpenAiText', () => {
     const loop = 'Thank you. '.repeat(1000)
     expect(parseOpenAiText({ text: loop }, TEXT_PART_SECONDS).segments[0].text).toHaveLength(2000)
     expect(parseOpenAiText({ text: loop }, 4).segments[0].text).toHaveLength(2000)
+    // A full part measured as end - start: 30 s and a rounding error.
+    expect(parseOpenAiText({ text: loop }, 79.59007808979567 - 49.59007808979566).segments[0].text).toHaveLength(2000)
+    expect(parseOpenAiText({ text: loop }, 30.5).segments[0].text).toHaveLength(4000)
     // A whisper-1 answer with text but no segments (a 600 s part) keeps ten minutes of speech.
     const talk = 'and then we open the settings '.repeat(300).trim()
     expect(parseOpenAiText({ text: talk }, 600).segments[0].text).toBe(talk)
