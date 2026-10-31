@@ -125,14 +125,19 @@ export function reviewStatus(project: Project, item: ReviewItem, listed: readonl
   const back = (c: AutoCut): boolean => footageBack(c, project.clips, over)
   // Each part not back goes out through the speed-ups of the list taken back since, one at a time
   // and the innermost first (a cut inside a 4× inside a 2× holds its footage at 4×, the 4× at 2×),
-  // until it is back. A part back already stays as it is: one inside a speed-up kept before it
-  // plays at that one's speed, which is how it was.
+  // until it is back; of two at one speed over it, the one listed later (made over the other after
+  // that one was taken back). A part back already stays as it is: one inside a speed-up kept before
+  // it plays at that one's speed, which is how it was.
+  const outward = listed
+    .flatMap((i) => (i.cut && !ids.has(i.cut.id) ? [{ r: i.cut, seq: i.seq ?? 0 }] : []))
+    .sort((a, b) => b.seq - a.seq)
+    .map(({ r }) => r)
   const walksBack = (c: AutoCut): boolean =>
     back(c) ||
     byClips(c.was, project.clips).every((part) => {
       let at: AutoCut = { ...c, was: [part] }
       for (let n = 0; !back(at); n++) {
-        const s = n < reviewed.length ? reviewed.find((r) => r.action !== 'cut' && withoutSpeedUp([at], r)[0] !== at) : undefined
+        const s = n < reviewed.length ? outward.find((r) => r.action !== 'cut' && withoutSpeedUp([at], r)[0] !== at) : undefined
         if (!s) return false
         at = withoutSpeedUp([at], s)[0]
       }

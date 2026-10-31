@@ -919,6 +919,28 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     expect(rows(two.ui.p, two.ui.shown)).toEqual(['b1:removed', 'c1:kept', 'a1:kept'])
   })
 
+  it('an 8x removed inside a 4x made over a 2x kept reads removed once that 4x is removed too', () => {
+    // With the list open: Polish at 4x, Delete; Polish at 2x, K; Polish at 4x over both; Polish at
+    // 8x inside that; Delete the 8x, then the new 4x. The 8x's footage goes out through the 4x it
+    // was made in, not through the 4x removed first.
+    const { ui, step, item } = panel(project())
+    step(auto(ui.p, 7, 13.5, 4, 'polish', 'a'))
+    step(removeItems(ui.p, [item('a1')]))
+    step(auto(ui.p, 10.5, 16.5, 2, 'polish', 'b'))
+    step(keepItems(ui.p, [item('b1')]))
+    step(auto(ui.p, 7, 13, 4, 'polish', 'c'))
+    step(auto(ui.p, 9.5, 11, 8, 'polish', 'd'))
+    step(removeItems(ui.p, [item('d1')]))
+    expect(rows(ui.p, ui.shown)).toEqual(['a1:removed', 'c1:pending', 'd1:removed', 'b1:kept'])
+    step(removeItems(ui.p, [item('c1')]))
+    expect(plays(ui.p.clips)).toEqual([
+      [0, 10.5, 1],
+      [10.5, 16.5, 2],
+      [16.5, 20, 1]
+    ])
+    expect(rows(ui.p, ui.shown)).toEqual(['a1:removed', 'c1:removed', 'd1:removed', 'b1:kept'])
+  })
+
   it('a speed-up an undo brings back after the panel reopened reads removed once removed', () => {
     // Smart speed at 2x, Polish at 4x inside it; Review, K the idle row; Esc, reopen; Ctrl+Z; Delete
     // the idle row, K the silence row. The idle row comes back after the silence row is listed, but

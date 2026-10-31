@@ -107,16 +107,19 @@ Each listed item is **pending**, **kept** or **removed**, worked out from the cu
   (`was` pieces kept at their old speeds, or at the speed from before the speed-ups of the panel's
   list taken back since, one at a time and the innermost first: a silence cut removed inside a
   sped-up idle part, then the speed-up removed; each part of the footage goes out on its own until
-  it is back, and a part back already stays as it is, so a part inside a speed-up kept before the
-  item is not taken out of it. For a speed-up, a part that a later speed-up of the project or the
-  list holds at the old speed, itself or through one inside it, counts as back, and a part of a
-  speed-up of the list kept since inside a third one is the user's and left out: a 2× removed,
-  then an 8× kept inside the 4× inside it. A part one kept since holds at the item's own speed is
-  left out too when some other part of the item's footage still plays, or a speed-up of the
-  project or a later one holds some of it below the item's speed and still plays it at its own
-  speed, itself or through another one inside it (a tool only speeds up, so that footage was back
-  when it was made): the kept one was made inside a later one at the item's speed, after the item
-  was removed (Polish at 2× removed, Smart speed at 2× over its end, Polish at 4× inside that kept).
+  it is back, through the one the panel listed later where two at one speed hold it (Polish at 4×
+  removed, Polish at 2× kept, Polish at 4× over both and Polish at 8× inside that, then the 8× and
+  the second 4× removed: the 8× goes out through the second 4×, to 2×), and a part back already
+  stays as it is, so a part inside a speed-up kept before the item is not taken out of it. For a
+  speed-up, a part that a later speed-up of the project or the list holds at the old speed, itself
+  or through one inside it, counts as back, and a part of a speed-up of the list kept since inside
+  a third one is the user's and left out: a 2× removed, then an 8× kept inside the 4× inside it. A
+  part one kept since holds at the item's own speed is left out too when some other part of the
+  item's footage still plays, or a speed-up of the project or a later one holds some of it below the
+  item's speed and still plays it at its own speed, itself or through another one inside it (a tool
+  only speeds up, so that footage was back when it was made): the kept one was made inside a later
+  one at the item's speed, after the item was removed (Polish at 2× removed, Smart speed at 2× over
+  its end, Polish at 4× inside that kept).
   One made before the item, around it, holds that footage lower too, and so does one that took the
   item over and was undone since, but neither plays it while the item is kept (Smart speed at 2×,
   Polish at 4× inside it, Keep all, then Polish at 8× inside that kept: the 4× still reads kept).
