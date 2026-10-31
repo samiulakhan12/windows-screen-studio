@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AiProviderInfo } from '../src/shared/api/ai'
 import type { DirectorSpeech } from '../src/shared/audio/speech'
 import { applyDirectorPlan, planDirector } from '../src/shared/editor/cameraDirector'
@@ -22,6 +22,12 @@ import { outputDuration, sourceToOutput } from '../src/shared/engine/timeline'
 import { DEFAULT_ZOOM_SETTINGS, regenerateAutoZooms } from '../src/shared/engine/zoom'
 import type { FramingOutcome } from '../src/shared/render/faceFraming'
 import type { Clip, CursorSample, CursorTrack, Freeze, LayoutSegment, Project, TitleCard, Transcript, ZoomSegment } from '../src/shared/types'
+
+// The Caption look step runs Captions Studio's planner: part P1's word times and twins (stand-ins
+// only while P1's functions are stubs, tests/p1Fillins.ts).
+vi.mock('../src/shared/captions/words', async (o) => (await import('./p1Fillins')).fillWords(await o()))
+vi.mock('../src/shared/captions/studioLayout', async (o) => (await import('./p1Fillins')).fillLayout(await o(), await import('../src/shared/captions/words')))
+vi.mock('../src/shared/captions/studioEdit', async (o) => (await import('./p1Fillins')).fillEdit(await o()))
 
 /*
  * Polish in one click (docs/design/polish-in-one-click.md §10). The silence fixture: 12 s, one
@@ -374,8 +380,8 @@ describe('planPolish: the whole run', () => {
       ['zoom', 'changed'],
       ['silences', 'changed'],
       ['captions', 'changed'],
-      // Caption look (Captions Studio §11.8) skips until part P4 makes it run.
-      ['captionLook', 'skipped'],
+      // Caption look (Captions Studio §11.8): style, emphasis and tidy on the new captions.
+      ['captionLook', 'changed'],
       ['director', 'changed']
     ])
     expect(r.summary.saved).toBeCloseTo(outputDuration(base.project.clips) - outputDuration(r.project.clips), 6)

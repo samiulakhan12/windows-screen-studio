@@ -3,7 +3,13 @@
 //   src/shared/captions/emojiList.ts: the emoji the bundled colour emoji font draws, that is the
 //   fully-qualified entries of Unicode's emoji-test.txt 18.0 whose code points the font
 //   (resources/fonts/noto-color-emoji.woff2) maps. Readers, the emoji picker and generation use it.
-// Part P4 adds emojiData.ts (keywords from CLDR) and the number tables to this script.
+//   src/shared/captions/numberData.ts: Bangla and Hindi number words (0–99, hundreds and the
+//   scales), read from CLDR's spell-out rules, for spelled-out numbers (§11.4).
+//   src/shared/captions/emojiData.ts: the emoji generation suggests, each with its words per
+//   language: English by hand (scripts/data/emoji-triggers.txt), the other languages from CLDR's
+//   emoji annotations, filtered (§11.3).
+//   src/shared/captions/bleepWords.ts: the swear-word lists of bleeping (§11.7): obscenity's
+//   English data set (Standard) and LDNOOBW per language (Strict).
 //
 //   node scripts/build-emoji-data.mjs           # write the files
 //   node scripts/build-emoji-data.mjs --check   # exit 1 when a committed file is not what it would write
@@ -12,8 +18,12 @@
 //   scripts/data/emoji-test-18.0.txt  https://www.unicode.org/Public/18.0.0/emoji/emoji-test.txt
 //                                     (Unicode License v3, © 1991-2026 Unicode, Inc.)
 //   resources/fonts/noto-color-emoji.woff2, against its pin in src/shared/captions/fontCatalog.ts
+//   The npm tarballs of NPM_INPUTS (CLDR 49 annotations and spell-out rules, Unicode License v3;
+//   obscenity 0.4.6, MIT; naughty-words 1.2.0, CC-BY-4.0), downloaded once into
+//   .cache/caption-data/ (SSW_CAPTION_DATA_CACHE overrides) and checked by bytes and SHA-256.
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { gunzipSync } from 'node:zlib'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadCatalog, woff2Tables } from './fonts.mjs'
@@ -28,6 +38,49 @@ export const EMOJI_TEST = {
   sha256: '8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a'
 }
 const OUT_LIST = path.join('src', 'shared', 'captions', 'emojiList.ts')
+const OUT_NUMBERS = path.join('src', 'shared', 'captions', 'numberData.ts')
+const OUT_BLEEP = path.join('src', 'shared', 'captions', 'bleepWords.ts')
+const OUT_EMOJI = path.join('src', 'shared', 'captions', 'emojiData.ts')
+const TRIGGERS = path.join('scripts', 'data', 'emoji-triggers.txt')
+/** The caption languages (CAPTION_LANGUAGES) whose words come from CLDR. */
+export const EMOJI_LANGUAGES = ['bn', 'hi', 'es', 'fr', 'de', 'pt', 'it', 'nl', 'ru', 'uk', 'pl', 'tr', 'ar', 'ur', 'ta', 'te', 'mr', 'zh', 'ja', 'ko', 'id', 'vi', 'th', 'sv']
+
+/** The npm packages the data comes from: tarball URL, bytes and SHA-256 (the registry's integrity is SHA-512 of the same bytes). */
+export const NPM_INPUTS = {
+  'cldr-annotations-full': {
+    version: '49.0.0',
+    url: 'https://registry.npmjs.org/cldr-annotations-full/-/cldr-annotations-full-49.0.0.tgz',
+    bytes: 6_604_242,
+    sha256: 'ce415a4898da7a4ca755437de2593863c05045fc6b1649d8da5ee05fa3bdc33b',
+    licence: 'Unicode-3.0'
+  },
+  'cldr-rbnf': {
+    version: '49.0.0',
+    url: 'https://registry.npmjs.org/cldr-rbnf/-/cldr-rbnf-49.0.0.tgz',
+    bytes: 96_174,
+    sha256: '6dc753630b1a7ebb1900b026e9ea0779c4c5ca0a4306c7c69a3ff37a07b5313d',
+    licence: 'Unicode-3.0'
+  },
+  obscenity: {
+    version: '0.4.6',
+    url: 'https://registry.npmjs.org/obscenity/-/obscenity-0.4.6.tgz',
+    bytes: 43_792,
+    sha256: '7b00239506036326205e6e42580b438b3458492a1845d8f15e53c263532b368b',
+    licence: 'MIT'
+  },
+  'naughty-words': {
+    version: '1.2.0',
+    url: 'https://registry.npmjs.org/naughty-words/-/naughty-words-1.2.0.tgz',
+    bytes: 24_337,
+    sha256: 'c34b05e10a97ec7b9e0c3dd91d09888187c0f08d0812eaea79679795585b217e',
+    licence: 'CC-BY-4.0'
+  }
+}
+
+/** The folder the npm tarballs are kept in. */
+export function dataCacheDir(env = process.env) {
+  return path.resolve(root, env.SSW_CAPTION_DATA_CACHE || path.join('.cache', 'caption-data'))
+}
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
@@ -36,6 +89,256 @@ function pinned(file, bytes, hash) {
   const data = readFileSync(path.join(root, file))
   if (data.length !== bytes || sha256(data) !== hash) throw new Error(`${file} is not the pinned file (${data.length} bytes, SHA-256 ${sha256(data)}; pinned ${bytes}, ${hash})`)
   return data
+}
+
+/** The files of a gzipped tar (ustar; regular files only), by path. */
+export function untar(gz) {
+  const tar = gunzipSync(gz)
+  const files = new Map()
+  let at = 0
+  while (at + 512 <= tar.length) {
+    const header = tar.subarray(at, at + 512)
+    if (header.every((b) => b === 0)) break
+    const field = (from, len) => header.subarray(from, from + len).toString('utf8').replace(/\0.*$/s, '')
+    const name = (field(345, 155) ? field(345, 155) + '/' : '') + field(0, 100)
+    const size = parseInt(field(124, 12).trim() || '0', 8)
+    const type = field(156, 1)
+    if (type === '0' || type === '') files.set(name, tar.subarray(at + 512, at + 512 + size))
+    at += 512 + Math.ceil(size / 512) * 512
+  }
+  return files
+}
+
+/** The files of a pinned npm tarball, downloaded into the cache once (never more bytes than pinned). */
+export async function npmInput(name) {
+  const pin = NPM_INPUTS[name]
+  const file = path.join(dataCacheDir(), path.basename(new URL(pin.url).pathname))
+  const ok = (bytes) => bytes.length === pin.bytes && sha256(bytes) === pin.sha256
+  let bytes = existsSync(file) ? readFileSync(file) : null
+  if (!bytes || !ok(bytes)) {
+    const res = await fetch(pin.url, { redirect: 'error' })
+    if (!res.ok) throw new Error(`${pin.url}: HTTP ${res.status}`)
+    const chunks = []
+    let got = 0
+    for await (const chunk of res.body) {
+      got += chunk.length
+      if (got > pin.bytes) throw new Error(`${pin.url}: more than the pinned ${pin.bytes} bytes`)
+      chunks.push(chunk)
+    }
+    bytes = Buffer.concat(chunks)
+    if (!ok(bytes)) throw new Error(`${pin.url} did not match its pin (${bytes.length} bytes, SHA-256 ${sha256(bytes)})`)
+    mkdirSync(path.dirname(file), { recursive: true })
+    writeFileSync(file + '.part', bytes)
+    renameSync(file + '.part', file)
+  }
+  return untar(bytes)
+}
+
+/* ---------- number words (§11.4) ---------- */
+
+/** Number words of CLDR spell-out rules: 0–99, the hundred (attached to its multiplier or not) and the scales. */
+export function spelloutTable(rules) {
+  const card = rules.split('%spellout-cardinal:')[1]?.split(/\n%/)[0] ?? ''
+  const words = {}
+  let hundred = null
+  const scales = {}
+  for (const line of card.split('\n')) {
+    const plain = /^(\d+): ([^;<>=[\]]+);$/u.exec(line.trim())
+    if (plain && Number(plain[1]) < 100) {
+      words[plain[2].trim()] = Number(plain[1])
+      continue
+    }
+    const scaled = /^(\d+): <<( ?)([^\s[;]+)\[/u.exec(line.trim())
+    if (!scaled) continue
+    const n = Number(scaled[1])
+    if (n === 100) hundred = { word: scaled[3], attached: scaled[2] === '' }
+    else if (n >= 1000 && n <= 1e12) scales[scaled[3]] = n
+  }
+  if (Object.keys(words).length !== 100 || !hundred) throw new Error('the spell-out rules did not give 0–99 and the hundred')
+  return { words, hundred, scales }
+}
+
+export function numberDataSource(tables) {
+  return `/**
+ * GENERATED by scripts/build-emoji-data.mjs: do not edit; \`node scripts/build-emoji-data.mjs --check\` compares.
+ *
+ * Spelled-out Bangla and Hindi numbers (docs/design/captions-studio.md §11.4): the words for 0–99,
+ * the hundred and the scales, read from CLDR ${NPM_INPUTS['cldr-rbnf'].version}'s spell-out rules
+ * (cldr-rbnf, ${NPM_INPUTS['cldr-rbnf'].url}, SHA-256 ${NPM_INPUTS['cldr-rbnf'].sha256}; Unicode
+ * License v3, © 1991-2026 Unicode, Inc., resources/notices/35-caption-data.txt).
+ */
+
+export interface SpelledNumbers {
+  /** 0–99 by word. */
+  words: Readonly<Record<string, number>>
+  /** The word for a hundred, written onto its multiplier (Bangla তিনশো) or after it (Hindi तीन सौ). */
+  hundred: { word: string; attached: boolean }
+  /** Thousand and up, by word. */
+  scales: Readonly<Record<string, number>>
+}
+
+export const NUMBER_WORDS: Readonly<Record<'bn' | 'hi', SpelledNumbers>> = ${JSON.stringify(tables, null, 2)}
+`
+}
+
+/* ---------- emoji words (§11.3) ---------- */
+
+const noVs = (text) => [...text].filter((c) => c !== '\ufe0f').join('')
+const keyOf = (text) => [...noVs(text)].map((c) => c.codePointAt(0).toString(16)).join('-')
+const graphemeCount = (s) => [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)].length
+
+/** The hand-written English triggers: [emoji, words] in file order. */
+export function readTriggers(text) {
+  const out = []
+  for (const line of text.split('\n')) {
+    if (!line.trim() || line.startsWith('#')) continue
+    const [emoji, words] = line.split('\t')
+    if (!emoji || !words) throw new Error(`emoji-triggers.txt: a line without a tab: ${line}`)
+    out.push([emoji.trim(), words.split(',').map((w) => w.trim().toLowerCase()).filter(Boolean)])
+  }
+  return out
+}
+
+/**
+ * Words per language for the chosen emoji: English as written by hand (a word listed twice
+ * belongs to its first emoji); other languages from CLDR's annotations, without keywords CLDR
+ * gives 8 or more emoji, shorter than 3 graphemes (2 in Chinese, Japanese and Korean), with spaces,
+ * or listed under two chosen emoji (§11.3).
+ */
+export function emojiWords(triggers, annotations, listed) {
+  const chosen = triggers.map(([e]) => keyOf(e))
+  for (const [e] of triggers) if (!listed.has(keyOf(e))) throw new Error(`emoji-triggers.txt: ${e} is not in the emoji list the font draws`)
+  const out = { en: {} }
+  triggers.forEach(([, words], i) => {
+    for (const w of words) if (!(w in out.en)) out.en[w] = chosen[i]
+  })
+  for (const lang of EMOJI_LANGUAGES) {
+    const data = annotations.get(lang)
+    if (!data) throw new Error(`CLDR has no annotations for ${lang}`)
+    const all = data.annotations.annotations
+    const uses = new Map()
+    for (const v of Object.values(all)) for (const k of new Set([...(v.default ?? []), ...(v.tts ?? [])].map((x) => x.toLowerCase()))) uses.set(k, (uses.get(k) ?? 0) + 1)
+    const byKey = new Map(Object.entries(all).map(([emoji, v]) => [keyOf(emoji), v]))
+    const min = lang === 'zh' || lang === 'ja' || lang === 'ko' ? 2 : 3
+    const owner = new Map()
+    const twice = new Set()
+    for (const key of chosen) {
+      const v = byKey.get(key)
+      if (!v) continue
+      for (const raw of new Set([...(v.default ?? []), ...(v.tts ?? [])].map((x) => x.toLowerCase().trim()))) {
+        if (!raw || /\s/.test(raw) || graphemeCount(raw) < min || (uses.get(raw) ?? 0) >= 8) continue
+        if (owner.has(raw) && owner.get(raw) !== key) twice.add(raw)
+        else owner.set(raw, key)
+      }
+    }
+    out[lang] = {}
+    for (const [w, key] of [...owner].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) if (!twice.has(w)) out[lang][w] = key
+  }
+  return out
+}
+
+export function emojiDataSource(words, triggers) {
+  const a = NPM_INPUTS['cldr-annotations-full']
+  const counts = Object.entries(words).map(([l, w]) => `${l} ${Object.keys(w).length}`).join(', ')
+  return `/**
+ * GENERATED by scripts/build-emoji-data.mjs: do not edit; \`node scripts/build-emoji-data.mjs --check\` compares.
+ *
+ * The emoji Flown suggests from caption words (docs/design/captions-studio.md §11.3), ${triggers.length}
+ * emoji: English words written for Flown (scripts/data/emoji-triggers.txt, CC0-1.0); the other
+ * languages' words from Unicode CLDR ${a.version}'s emoji annotations (cldr-annotations-full,
+ * ${a.url}, SHA-256 ${a.sha256}; Unicode License v3, © 1991-2026 Unicode, Inc.,
+ * resources/notices/35-caption-data.txt), filtered as §11.3 says. They need a native speaker's
+ * check per language before release. Words per language: ${counts}.
+ */
+
+/** Per language, each trigger word and the key (EmojiGraphic.emoji) of its emoji. */
+export const EMOJI_TRIGGERS: Readonly<Record<string, Readonly<Record<string, string>>>> = ${JSON.stringify(words)}
+`
+}
+
+/* ---------- bleep words (§11.7) ---------- */
+
+/**
+ * obscenity's English data set (dist/preset/english.js): per phrase its word, its patterns and its
+ * whitelisted terms. A pattern's '|' marks a word boundary, '[x]' an optional part, '?' any letter.
+ */
+export function obscenityPhrases(js) {
+  const out = []
+  for (const chunk of js.split('.addPhrase(').slice(1)) {
+    const word = /originalWord: '([^']+)'/.exec(chunk)?.[1]
+    if (!word) continue
+    const patterns = [...chunk.matchAll(/pattern\) `([^`]+)`/g)].map((m) => patternSource(m[1]))
+    const safe = [...chunk.matchAll(/addWhitelistedTerm\('([^']+)'\)/g)].map((m) => m[1].replace(/\s+/g, ''))
+    if (patterns.length) out.push({ word, patterns: [...new Set(patterns)], safe: [...new Set(safe)] })
+  }
+  if (out.length < 60) throw new Error(`obscenity's data set gave only ${out.length} words`)
+  return out
+}
+
+/** A RegExp source (over a word lower-cased, punctuation removed, repeats collapsed) of an obscenity pattern. */
+function patternSource(p) {
+  let src = ''
+  let i = 0
+  const start = p.startsWith('|')
+  const end = p.endsWith('|') && p.length > 1
+  const body = p.slice(start ? 1 : 0, end ? -1 : undefined)
+  for (i = 0; i < body.length; i++) {
+    const ch = body[i]
+    if (ch === '[') {
+      const close = body.indexOf(']', i)
+      src += `(?:${escapeRe(body.slice(i + 1, close)).replace(/\\\?/g, '.')})?`
+      i = close
+    } else if (ch === '?') src += '.'
+    else src += escapeRe(ch)
+  }
+  return `${start ? '^' : ''}${src}${end ? '$' : ''}`
+}
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** LDNOOBW (naughty-words) per language: its single words, lower case, sorted. */
+export function ldnoobwWords(files) {
+  const out = {}
+  for (const [name, data] of files) {
+    const m = /^package\/([a-z]{2,3})\.json$/.exec(name)
+    if (!m || m[1] === 'tlh' || m[1] === 'kab') continue
+    const list = JSON.parse(data.toString('utf8'))
+    if (!Array.isArray(list)) continue
+    out[m[1]] = [...new Set(list.filter((w) => typeof w === 'string' && !/\s/.test(w.trim())).map((w) => w.trim().toLowerCase()))].sort()
+  }
+  return Object.fromEntries(Object.entries(out).sort(([a], [b]) => (a < b ? -1 : 1)))
+}
+
+export function bleepWordsSource(standard, strict) {
+  const o = NPM_INPUTS.obscenity
+  const n = NPM_INPUTS['naughty-words']
+  return `/**
+ * GENERATED by scripts/build-emoji-data.mjs: do not edit; \`node scripts/build-emoji-data.mjs --check\` compares.
+ *
+ * The swear-word lists of bleeping (docs/design/captions-studio.md §11.7), matched against a word
+ * lower-cased, without punctuation, with repeated letters collapsed (cleanup.ts):
+ * - Standard: obscenity ${o.version}'s English data set (${o.url}, SHA-256 ${o.sha256}; MIT,
+ *   Copyright (c) 2025 Joseph Liu; its words from cuss, MIT, © 2016 Titus Wormer), each word with its patterns and
+ *   its safe look-alikes ("assassin").
+ * - Strict adds LDNOOBW per language: "List of Dirty, Naughty, Obscene, and Otherwise Bad Words"
+ *   (naughty-words ${n.version}, ${n.url}, SHA-256 ${n.sha256}), © 2012–2020 Shutterstock, Inc., licensed
+ *   CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); single words only, lower-cased and
+ *   de-duplicated, nothing else changed. Attribution: resources/notices/35-caption-data.txt.
+ */
+
+export interface StandardWord {
+  /** The word as obscenity names it. */
+  word: string
+  /** RegExp sources over the normalised word ('^' and '$' where obscenity marks a word boundary). */
+  patterns: readonly string[]
+  /** Look-alikes that are not rude: a word holding one is never bleeped. */
+  safe: readonly string[]
+}
+
+export const STANDARD_WORDS: readonly StandardWord[] = ${JSON.stringify(standard)}
+
+/** LDNOOBW's single words per language. */
+export const STRICT_WORDS: Readonly<Record<string, readonly string[]>> = ${JSON.stringify(strict)}
+`
 }
 
 /** The code points a font's cmap maps (formats 4 and 12). */
@@ -169,7 +472,29 @@ export async function generate() {
   const test = pinned(EMOJI_TEST.file, EMOJI_TEST.bytes, EMOJI_TEST.sha256).toString('utf8')
   // An entry is drawn when the font maps each of its code points but the variation selector.
   const entries = emojiTestEntries(test).filter((e) => e.points.every((c) => c === 0xfe0f || drawn.has(c)))
-  return { [OUT_LIST]: emojiListSource(entries, pin) }
+  const rbnf = await npmInput('cldr-rbnf')
+  const rules = (lang) => {
+    const f = rbnf.get(`package/rbnf/${lang}-SpelloutRules.txt`)
+    if (!f) throw new Error(`cldr-rbnf has no ${lang}-SpelloutRules.txt`)
+    return spelloutTable(f.toString('utf8'))
+  }
+  const obscenity = (await npmInput('obscenity')).get('package/dist/preset/english.js')
+  if (!obscenity) throw new Error('obscenity has no dist/preset/english.js')
+  const naughty = await npmInput('naughty-words')
+  const cldr = await npmInput('cldr-annotations-full')
+  const annotations = new Map()
+  for (const lang of EMOJI_LANGUAGES) {
+    const f = cldr.get(`package/annotations/${lang}/annotations.json`)
+    if (f) annotations.set(lang, JSON.parse(f.toString('utf8')))
+  }
+  const triggers = readTriggers(readFileSync(path.join(root, TRIGGERS), 'utf8'))
+  const listed = new Set(entries.map((e) => e.points.filter((c) => c !== 0xfe0f).map(hex).join('-')))
+  return {
+    [OUT_EMOJI]: emojiDataSource(emojiWords(triggers, annotations, listed), triggers),
+    [OUT_LIST]: emojiListSource(entries, pin),
+    [OUT_NUMBERS]: numberDataSource({ bn: rules('bn'), hi: rules('hi') }),
+    [OUT_BLEEP]: bleepWordsSource(obscenityPhrases(obscenity.toString('utf8')), ldnoobwWords(naughty))
+  }
 }
 
 async function main(args) {

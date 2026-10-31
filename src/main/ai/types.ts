@@ -25,6 +25,8 @@ export interface TranscribeCall {
   onProgress?: (progress: PartProgress) => void
   /** Which part this is (0-based) of how many (on this PC: the failure message names it). */
   part?: { index: number; count: number }
+  /** Terms of the caption word list, to be spelled as written (checked by glossaryTerms; Captions Studio §11.7 rule 4). */
+  glossary?: readonly string[]
 }
 
 /** How far one part has got (on this PC). */

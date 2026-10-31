@@ -75,7 +75,7 @@ const minSilence = `${SILENCE_LENGTH.default.toFixed(1)} s`
 export function polishHint(
   step: PolishStep,
   /** `bangla`: On this PC makes the captions with the Bangla model (Bengali chosen in the Captions tab). */
-  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean; bangla?: boolean }
+  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean; bangla?: boolean; wide?: boolean }
 ): string {
   switch (step) {
     case 'style':
@@ -90,7 +90,8 @@ export function polishHint(
       if (state.local) return state.bangla ? SPEECH_COPY.readyHintBangla : SPEECH_COPY.readyHint
       return `The sound is sent to ${state.provider ? providerName(state.provider) : 'the provider'} with your key and billed to your account.`
     case 'captionLook':
-      return 'Style, emphasis and pop-ups for your captions.'
+      // In wide frames Polish adds no pop-ups (Captions Studio §2.8, §11.8).
+      return state.wide ? 'Style, emphasis and tidy text for your captions.' : 'Style, emphasis and pop-ups for your captions.'
     case 'director':
       return 'Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept.'
   }

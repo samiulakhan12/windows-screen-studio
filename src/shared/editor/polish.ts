@@ -15,6 +15,9 @@ import type { AiProviderInfo } from '../api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechState } from '../api/speech'
 import { activitySources } from '../audio/settings'
 import type { DirectorSpeech } from '../audio/speech'
+import { autoStyleOnFirstCaptions, captionFrame } from '../captions/autoStyle'
+import { DEFAULT_CLEANUP, type CleanupChoices, type WordListEntry } from '../captions/cleanup'
+import { DEFAULT_GREAT_OPTIONS, planCaptionsGreat, type GreatOptions } from '../captions/great'
 import { captionsOf } from '../captions/settings'
 import { cropView, regenerateInFrame } from '../engine/crop'
 import { directorSettingsOf } from '../engine/directorData'
@@ -22,7 +25,7 @@ import { freezeKeepRanges, planOf, videoDuration, videoTimeAt } from '../engine/
 import { effectiveTrack } from '../engine/inputTrack'
 import { isZoomClick, zoomSettingsOf } from '../engine/zoom'
 import type { FramingOutcome } from '../render/faceFraming'
-import type { CursorTrack, Project, Transcript } from '../types'
+import type { CaptionStudio, CursorTrack, Project, Transcript } from '../types'
 import { applyDirectorPlan, planDirector, type DirectorPlan } from './cameraDirector'
 import { speechModel, type SpeechModelId } from '../speech/catalog'
 import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../speech/transcriber'
@@ -117,6 +120,12 @@ export interface PolishInput {
   errors?: Partial<Record<PolishStep, string>>
   /** Ids of new director segments (tests inject a counter). */
   newId?: () => string
+  /**
+   * What the Caption look step and the first captions' style use (Captions Studio §11.6, §11.8): the
+   * saved Make my captions great options, Clean up choices and word list, and the brand kit's
+   * caption style. Absent: the defaults, no brand look.
+   */
+  captionLook?: { great: GreatOptions; cleanup: CleanupChoices; words: readonly WordListEntry[]; brand?: CaptionStudio | null }
 }
 
 export interface PolishStepResult {
@@ -252,18 +261,28 @@ export function planPolish(input: PolishInput, options: PolishOptions): PolishRe
   else if (!input.transcript) skip('captions', 'failed', input.errors?.captions)
   else {
     const transcript = input.transcript
-    ran('captions', { ...p, transcript, captions: { ...captionsOf(p), show: true } })
+    // The first transcript gets Auto style's look (Captions Studio §11.6), with no record.
+    const written = { ...p, transcript, captions: { ...captionsOf(p), show: true } }
+    ran('captions', autoStyleOnFirstCaptions(p, written, captionFrame(p), input.captionLook?.brand ?? null))
     summary.captions = transcript.segments.length
     const last = transcript.segments[transcript.segments.length - 1]
     // The clips are final here: only remove silences changes them, and it ran.
     if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = videoTimeAt(p.clips, planOf(p), last.end)
   }
 
-  // Caption look (Captions Studio §11.8): Make my captions great, offline, with the saved options.
-  // TODO(part P4): run the planner (planCaptionsGreat, by 'polish'); until then it is skipped.
+  // Caption look (Captions Studio §11.8): Make my captions great, offline, with the saved options
+  // (no provider, no quotes); in wide frames the planner runs only style, emphasis and tidy.
   if (!options.captionLook) skip('captionLook', 'off')
   else if (!p.transcript?.segments.length) skip('captionLook', 'no-captions')
-  else skip('captionLook', 'off')
+  else {
+    const look = input.captionLook
+    const great = { ...(look?.great ?? DEFAULT_GREAT_OPTIONS), provider: null, quotes: false }
+    const planned = planCaptionsGreat(
+      { project: p, frame: captionFrame(p), brand: look?.brand ?? null, cleanup: look?.cleanup ?? DEFAULT_CLEANUP, words: look?.words ?? [], by: 'polish', cursor: effectiveTrack(input.recorded, p) },
+      great
+    )
+    ran('captionLook', planned.project)
+  }
 
   // Camera director, last: it plans in output seconds on the final clips, finds the demo from the
   // final zooms and their style, and listens to speech the transcript refined. Direct again:

@@ -1,0 +1,171 @@
+# The emoji generation may suggest, each with its English trigger words (docs/design/captions-studio.md
+# §11.3). Written for Flown, CC0-1.0. One emoji per line: the emoji, a tab, its words separated by
+# commas. A word matches a caption word that starts with it and ends with one of the language's
+# suffixes; a word listed twice belongs to its first emoji. Never here: weapons, bodily functions,
+# alcohol, drugs, flags, religious symbols, skin-tone or gender variants, and words a tutorial says
+# all the time (click, open, save as, video, page). build-emoji-data.mjs adds the other languages'
+# words from CLDR's annotations.
+💡	idea, ideas, tip, tips, insight, hint, lightbulb
+⚡	fast, faster, fastest, quick, quickly, speed, instant, instantly, lightning
+🚀	launch, launched, launching, rocket, shipped, release, released
+📈	grew, growth, increase, increased, rising, gains, revenue, trend, trending
+📉	decline, declined, decrease, decreased, falling, downturn
+💰	money, cash, profit, profits, earnings, income, budget, price, prices, pricing, salary
+💵	dollar, dollars, payment, payments, paid
+💳	card, credit, checkout, billing, subscription
+⏱️	timer, stopwatch, timing
+⏰	alarm, deadline, deadlines, reminder
+📅	calendar, weekly, monthly
+⚠️	warning, careful, caution, danger, risky, risk, beware, mistake, mistakes
+✅	done, complete, completed, finished, success, successful, correct, approved, verified
+❌	wrong, error, errors, fail, failed, failure, incorrect, broken
+✨	magic, sparkle, shiny, polished, beautiful
+🔍	search, magnify, inspect
+⚙️	settings, setting, configure, configuration, preferences, setup, gear
+🔒	password, passwords, secure, security, lock, locked, private, privacy, encrypted
+🔓	unlock, unlocked
+🔑	key, keys, login, credentials
+📧	email, emails, inbox, newsletter
+💬	chat, comment, comments, message, messages, feedback, conversation
+📞	phone, telephone
+📱	mobile, smartphone, iphone, android
+💻	laptop, computer, developer, programming, coding
+🖥️	monitor, desktop
+⌨️	keyboard, typing, shortcut, shortcuts, hotkey, hotkeys
+🖱️	mouse
+🖨️	print, printer, printing
+💾	save, saved, backup, floppy
+📁	folder, folders, directory
+📄	document, documents, pdf
+📝	notes, memo, draft
+📋	clipboard, checklist
+📌	pin, pinned, bookmark
+📎	attach, attachment, attachments, paperclip
+✂️	scissors
+🗑️	trash, bin, discard
+🔗	link, links, url
+🌐	website, internet, browser, online
+☁️	cloud, upload, uploaded, storage
+⬇️	download, downloads, downloaded
+🔄	refresh, reload
+🔁	repeat, recurring, loop
+🔔	notification, notifications, alert, alerts, bell, subscribe
+📣	announce, announcement, megaphone
+🎯	goal, goals, target, targets, aim, accuracy
+🏆	win, winner, winning, won, champion, award, trophy
+🥇	gold, medal
+🎉	celebrate, celebration, party, congrats, congratulations, hooray
+🎁	gift, gifts, bonus, giveaway
+🐛	bug, bugs, debug, debugging, glitch
+🔧	wrench, repair
+🛠️	toolkit
+🔨	hammer
+🧩	puzzle, plugin, plugins, integration, integrations
+🧠	brain, smart, memory, knowledge
+👀	watch, eyes
+👂	ear, hear
+👍	thumbs, approve
+👏	applause, clap, bravo
+🤝	deal, partner, partners, partnership, agreement, handshake
+💪	strong, strength, powerful, muscle
+❤️	love, loved, heart, favorite, favourite
+🔥	fire, hot, popular, viral, amazing, insane
+🌟	star, featured, shine
+⭐	rating, ratings, rated
+💯	perfect, hundred
+🆓	free
+❓	question, questions, faq
+💭	thought, thoughts, imagine
+😀	happy, smile, smiling, glad, fun
+😂	funny, hilarious, laugh, laughing, joke, lol
+😮	wow, surprised, surprise, shocking
+🤔	hmm, wondering, curious, consider
+😎	cool, awesome, chill
+😴	sleep, sleepy, tired, boring, bored
+🤯	mindblowing, unbelievable
+😅	phew, oops, awkward
+🥳	birthday
+🤖	robot, robots, ai, automation, automate, automated, bot, bots
+👋	hello, welcome, goodbye, bye
+☕	coffee, cafe
+🍕	pizza, lunch, dinner, food
+🍎	apple, fruit, healthy
+🍪	cookie, cookies
+🎵	music, song, songs, melody
+🎧	headphones, podcast, podcasts
+🎤	microphone, mic, sing, singing
+🎬	film, movie, movies, clapper
+📷	camera, photo, photos, picture, pictures
+📸	screenshot, screenshots
+🎥	webcam, filming
+📺	tv, television, channel, streaming
+🎮	game, games, gaming, gamer, controller
+🎨	art, creative, paint, palette, artist
+✏️	pencil, sketch, draw, drawing
+🖌️	brush
+📊	chart, charts, analytics, dashboard, metrics, statistics
+📚	books, study, studying, course, courses, library, documentation
+📖	book, story
+🎓	graduate, school, university, college, lesson, lessons, student, students, learn, learning
+🏢	office, company, business, enterprise, corporate
+🏪	shop, ecommerce
+🛒	cart, shopping, buy, purchase
+📦	package, packages, delivery, product, products
+🚚	shipping, truck
+✈️	travel, flight, trip, airport, plane
+🚗	car, cars, driving, road
+🚲	bike, bicycle, cycling
+🗺️	map, maps, roadmap
+📍	location, address
+🌍	world, earth, international, everywhere
+🌈	rainbow, colorful, colourful
+☀️	sun, sunny, summer
+🌙	night, moon, evening
+🌧️	rain, rainy, weather
+❄️	snow, winter, cold
+🌱	beginner, beginners, seed, sustainable
+🌳	tree, trees, nature
+🌸	spring, flower, flowers
+🐶	dog, dogs, puppy
+🐱	cat, cats, kitten
+🐍	python, snake
+🦄	unicorn, startup
+🐢	slow, slowly, turtle
+🏃	hurry, rush, sprint
+🚶	walk, walking
+🧘	calm, relax, relaxed, mindful
+⚖️	balance, compare, comparison, fair, versus
+🧪	test, tests, testing, experiment, lab
+🔬	research, science, scientist, analysis
+🧮	math, calculate, calculation
+🔢	numbers, digits
+💎	premium, quality, valuable, gem, diamond
+👑	king, queen, boss
+🛡️	protect, protection, safe, safety, shield
+🚫	forbidden, blocked, banned
+🛑	stop, halt
+🔇	mute, muted, silent, silence, quiet
+🏁	finish, race
+🧹	clean, cleaning, cleanup, tidy, sweep
+🪄	automatic, automatically, wand
+🧭	direction, directions, navigate, navigation, compass
+🔦	explore, discover, flashlight
+💸	spend, spending, expensive, cost, costs
+📬	mailbox
+🗂️	organize, organized, categories, category
+🗓️	plan, planning, planner, agenda
+⌛	wait, waiting, loading, hourglass
+🔋	battery, energy, charge, charging
+🔌	plug, electricity
+📡	signal, network, wifi, satellite
+🧲	attract, magnet
+🧱	foundation, wall
+🪜	ladder, climb
+📏	measure, ruler
+🎛️	controls, adjust, slider, sliders
+👥	users, people, audience, community, members, followers
+👤	user, profile, account
+🧑‍💻	programmer, coder, engineer, engineers
+🧑‍🏫	teacher, teach, teaching, instructor
+🧑‍🚀	astronaut, space
+🤓	nerd, geek

@@ -20,6 +20,7 @@ import { loadAudioAnalysis } from './audioAnalysis'
 import { cancelTranscription, fetchTranscript, onTranscriptionJob, transcriptionJob, type FetchedTranscript } from './captionItems'
 import type { EditorServices } from './context'
 import { loadDirectorSpeech, measureFraming } from './directorAnalysis'
+import { loadGreatInputs } from './greatRun'
 
 /** What a row of the running dialog shows. `canSkip`: its Skip button (captions, the face). */
 export type PolishRowState = { phase: 'waiting' | 'working' | 'done' | 'skipped'; text: string; canSkip?: boolean }
@@ -188,7 +189,9 @@ export function runPolish(
       framing: { status: 'skipped' },
       preset: found ? { name: found.name, look: found.look } : null,
       blocked,
-      errors
+      errors,
+      // The saved caption choices and brand look (Captions Studio §11.6, §11.8).
+      ...(options.captionLook || options.captions ? { captionLook: await loadGreatInputs() } : {})
     }
     const framing = await until(measureFace(gathered, speech))
     if (!framing || run.signal.aborted) return null

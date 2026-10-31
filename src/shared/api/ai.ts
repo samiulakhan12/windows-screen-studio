@@ -38,6 +38,8 @@ export interface TranscribeOptions {
   source?: 'auto' | 'mic' | 'mixed'
   /** On this PC only: the speech model (a catalog id, speech/catalog.ts); absent = the default model. Ignored for providers. */
   model?: string
+  /** The caption word list's terms (prefs captionWordList), a spelling hint for every route (Captions Studio §11.7 rule 4). */
+  glossary?: string[]
 }
 
 export interface TranscribeProgress {
@@ -59,7 +61,7 @@ export interface TranscribeProgress {
 
 /**
  * 'marks' (Captions Studio §11.2): emphasis, emoji, numbers, lists and quotes picked by word
- * index; part P4 adds it to AI_TEXT_TASKS with its prompt and checks.
+ * index, checked by validateMarksAnswer (transcriptText.ts).
  */
 export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | 'marks'
 
@@ -186,7 +188,7 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
   }
 }
 
-export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary']
+export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'marks']
 
 /** Limits of what the renderer may send (checked again in the main process). */
 export const AI_LIMITS = {

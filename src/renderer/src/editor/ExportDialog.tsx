@@ -43,6 +43,8 @@ import { exportBatch, exportVideo, GIF_FPS, GIF_MAX_HEIGHT, renderThumbnail, typ
 import { useModalFocus } from './modalFocus'
 import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
+import { STREAM_FORMATS, SubtitlesField } from './panels/SubtitlesField'
+import { tickedExportLanguages } from '../../../shared/captions/captionTracks'
 import { partSource, partThumbnailFrame, writeBundle } from './exportBundleRun'
 import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
@@ -75,6 +77,13 @@ const MODE_KEY = 'export-mode'
 const BATCH_KEY = 'export-batch'
 const OPEN_KEY = 'export-settings-open'
 const BUNDLE_KEY = 'export-bundle'
+
+/** Bundle choices without the subtitle languages, which belong to one project (Captions Studio §2.13). */
+function withoutLanguages(b: BundleOptions): BundleOptions {
+  const { languages: _languages, ...rest } = b
+  void _languages
+  return rest
+}
 
 const RESOLUTIONS: ExportSettings['resolution'][] = [720, 1080, 1440, 2160]
 const FORMATS: { value: ExportFormat; label: string; title: string }[] = [
@@ -266,7 +275,10 @@ export function ExportDialog(props: Props): JSX.Element {
   const [targetDraft, setTargetDraft] = useState<string>(() => (options.targetSizeMB ? String(options.targetSizeMB) : ''))
   // Hands-off long jobs (F-12): pause, the taskbar and sleep; the export bundle (F-11).
   const job = useLongJob()
-  const [bundle, setBundle] = useState<BundleOptions>(() => normalizeBundle(readJson(BUNDLE_KEY, {})))
+  // The subtitle languages are the project's own: never remembered between exports (Captions Studio §2.13).
+  const [bundle, setBundle] = useState<BundleOptions>(() => withoutLanguages(normalizeBundle(readJson(BUNDLE_KEY, {}))))
+  // Also inside the video (Captions Studio §2.13): off when the dialog opens.
+  const [streams, setStreams] = useState(false)
   const { project } = props
   const clips = project.clips
   // Fonts text uses that cannot be loaded (their text is drawn with the default font) and images
@@ -392,7 +404,14 @@ export function ExportDialog(props: Props): JSX.Element {
   }
 
   const baseName = safeFileName(exportBaseName(project))
-  const source = { project, scene: props.scene, screenUrl: props.screenUrl, webcamUrl: props.webcamUrl, background: props.background }
+  // The subtitle languages ticked (Captions Studio §2.13, §11.10): one SRT or VTT file each, and
+  // with Also inside the video one stream each (read by the exporter as subtitleLanguages and by
+  // the bundle as languages, part P2's plumbing).
+  const subtitleLanguages = tickedExportLanguages(project, bundle.languages)
+  const source = { project, scene: props.scene, screenUrl: props.screenUrl, webcamUrl: props.webcamUrl, background: props.background, subtitleLanguages }
+  /** The export settings with Also inside the video, for the formats that carry subtitle streams. */
+  const streamed = (o: ExportOptions): ExportOptions => (streams && STREAM_FORMATS.includes(o.format) ? { ...o, subtitleStreams: true } : o)
+  const bundleLanguages = { languages: subtitleLanguages }
 
   // The frame of the Frame slider, as the export at `settings` draws it (the bundle's thumbnail).
   const thumbnailOf = (settings: ExportOptions) => (): Promise<Uint8Array> =>
@@ -411,7 +430,7 @@ export function ExportDialog(props: Props): JSX.Element {
     try {
       const result = await exportVideo({
         ...source,
-        settings: options,
+        settings: streamed(options),
         outputPath,
         signal: controller.signal,
         pause: job.gate,
@@ -424,7 +443,7 @@ export function ExportDialog(props: Props): JSX.Element {
       })
       link?.progress(null, false)
       const kinds = bundleKinds(bundle, options.format, bundleHas)
-      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(options) })
+      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(options), ...bundleLanguages })
       void link?.end({ kind: 'done', files: [outputPath] })
       setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, extras, ...result })
     } catch (err) {
@@ -443,9 +462,9 @@ export function ExportDialog(props: Props): JSX.Element {
     const folder = await window.api.chooseExportFolder()
     if (!folder) return
     const names = batchFileNames(project.name, items)
-    const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: it.options }))
+    const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: streamed(it.options) }))
     await runBatch(folder, jobs, (_i, path, j) =>
-      writeBundle(path, { project, kinds: bundleKinds(bundle, j.options.format, bundleHas), title: project.name, thumbnail: thumbnailOf(j.options) })
+      writeBundle(path, { project, kinds: bundleKinds(bundle, j.options.format, bundleHas), title: project.name, thumbnail: thumbnailOf(j.options), ...bundleLanguages })
     )
   }
 
@@ -455,7 +474,7 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!folder) return
     // Each part's frames and sound come from its own clips; it is drawn with the whole edit's scene.
     const sources = parts.map((part, i) => partSource(source, part, i === parts.length - 1))
-    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options, source: sources[i] }))
+    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options: streamed(options), source: sources[i] }))
     await runBatch(folder, jobs, (i, path) => {
       const part = sources[i]
       // The part's thumbnail: one second in (or its middle when shorter), as the part draws it.
@@ -466,7 +485,8 @@ export function ExportDialog(props: Props): JSX.Element {
         kinds: bundleKinds(bundle, options.format, bundleHas, true),
         title: jobs[i].label,
         part: { index: i, count: parts.length, of: project.name },
-        thumbnail
+        thumbnail,
+        ...bundleLanguages
       })
     })
   }
@@ -917,11 +937,22 @@ export function ExportDialog(props: Props): JSX.Element {
                         </div>
                       </div>
                     )}
+                    <SubtitlesField
+                      project={project}
+                      value={bundle}
+                      onChange={(next) => {
+                        setBundle(next)
+                        writeJson(BUNDLE_KEY, withoutLanguages(next))
+                      }}
+                      format={options.format}
+                      streams={streams}
+                      onStreams={setStreams}
+                    />
                     <ExportBundleOptions
                       value={bundle}
                       onChange={(next) => {
                         setBundle(next)
-                        writeJson(BUNDLE_KEY, next)
+                        writeJson(BUNDLE_KEY, withoutLanguages(next))
                       }}
                       format={options.format}
                       has={bundleHas}
