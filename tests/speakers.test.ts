@@ -174,6 +174,14 @@ describe('speakers in the files and on the video', () => {
       expect(words.slice(-2).map((wd) => wd.text)).toEqual([`${name.split(' ')[1]}:`, name.split(' ')[0]])
       expect(words.map((wd) => wordDirection(numbered, wd.token))).toEqual(words.map(() => 'rtl'))
     }
+    // A name without letters goes with the caption: right to left, so its colon follows it ("7:", not ":7").
+    for (const name of ['7', '007', '🎤']) {
+      const noLetters = captionLayout(speakerCaption({ ...caption, speaker: name }), DEFAULT_CAPTIONS, 1920, 1080, measure)
+      expect(noLetters.rtl).toBe(true)
+      const words = [...noLetters.chunks[0].lines[0].words].sort((a, b) => a.x - b.x)
+      expect(words.at(-1)!.text).toBe(`${name}:`)
+      expect(words.map((wd) => wordDirection(noLetters, wd.token))).toEqual(words.map(() => 'rtl'))
+    }
     const english = captionLayout(speakerCaption(seg('b', 0, 2, 'Hello there', 'أحمد')), DEFAULT_CAPTIONS, 1920, 1080, measure)
     expect(english.rtl).toBe(false)
     expect(english.tokens.map((_, i) => wordDirection(english, i))).toEqual(['ltr', 'ltr', 'ltr'])
