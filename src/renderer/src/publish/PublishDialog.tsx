@@ -99,12 +99,24 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
     document.querySelector<HTMLElement>(`[data-publish-card="${request.kind}"]`)?.scrollIntoView({ block: 'nearest' })
   }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Write all or the empty state's button; the dialog itself while there is none (no sound, too
+  // little speech) or it is disabled (providers loading), so the focus never stays behind the scrim.
+  const focusFirst = (): void => {
+    const first = firstRef.current
+    if (first && !first.disabled) first.focus()
+    else boxRef.current?.focus()
+  }
   useEffect(() => {
-    firstRef.current?.focus()
+    focusFirst()
   }, [providers === null, !!blocker]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const running = PUBLISH_KINDS.filter((k) => isRunning(items[k].status))
   const done = PUBLISH_KINDS.filter((k) => items[k].status === 'done').length
+
+  // Stop all goes once nothing runs, and the focus with it: back to Write all, not the page.
+  useEffect(() => {
+    if (!running.length && document.activeElement === document.body) focusFirst()
+  }, [running.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const copy = (text: string, what: string): void => {
     void navigator.clipboard.writeText(text).then(
