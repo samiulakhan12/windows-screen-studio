@@ -180,6 +180,7 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
             }}
             aria-pressed={tab === t.id && !groupShown}
             title={t.label}
+            data-testid={t.id === 'graphics' ? 'graphics' : undefined}
           >
             {t.editorIcon ? <EditorIcon name={t.icon} size={17} /> : <Icon name={t.icon} size={17} />}
             <span>{t.label}</span>

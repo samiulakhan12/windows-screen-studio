@@ -128,7 +128,7 @@ export function GraphicsPanel(props: { project: Project; selection: Selection })
   const { project, selection } = props
   const graphic = selection?.kind === 'graphic' ? project.graphics?.find((g) => g.id === selection.id) : undefined
   return (
-    <div className="graphics-panel" data-testid="graphics">
+    <div className="graphics-panel" data-testid="graphics-panel">
       {graphic ? (
         <SelectedGraphic project={project} graphic={graphic} />
       ) : (
