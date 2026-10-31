@@ -530,6 +530,15 @@ function paintWord(c: Ctx, p: WordPaint, width: number): void {
     }
     c.restore()
   }
+  if (p.split && p.outline && !p.hollow) {
+    // Retro Pixel (§0.1): the dark edge under the colour split, so the split shows beside the letters as in the mock-up.
+    c.save()
+    c.strokeStyle = p.outline.color
+    c.lineWidth = p.outline.width
+    stroke(-p.split.d, 0)
+    stroke(p.split.d, 0)
+    c.restore()
+  }
   if (p.split) {
     // Retro Pixel (§0.1): a static colour split, never moving.
     c.save()
@@ -547,7 +556,7 @@ function paintWord(c: Ctx, p: WordPaint, width: number): void {
     c.restore()
     return
   }
-  if (p.outline) {
+  if (p.outline && !p.split) {
     c.save()
     c.strokeStyle = p.outline.color
     c.lineWidth = p.outline.width
@@ -883,7 +892,10 @@ function drawChunk(c: Ctx, d: ChunkDraw, frame: FrameContext | null): void {
       const pr = emphasisProgress(studio, info.token, d.t, clips)
       if (pr > 0.002) drawEmphasisBox(c, studio, info, row, x, pr)
     }
-  for (const { info, row, x } of words) drawWord(c, d, info, row, x, info.token.word < 0 ? undefined : poseOf.get(info.box.token))
+  // A word grown or moving past its size (the spoken sticker, a popping word) is drawn over its neighbours.
+  const above = (w: { info: WordInfo }): boolean => (poseOf.get(w.info.box.token)?.scale ?? 1) > 1.001
+  for (const { info, row, x } of words) if (!above({ info })) drawWord(c, d, info, row, x, info.token.word < 0 ? undefined : poseOf.get(info.box.token))
+  for (const { info, row, x } of words) if (above({ info })) drawWord(c, d, info, row, x, poseOf.get(info.box.token))
   // Over the words: the emphasis underline and circle, drawn on with their timing.
   if (emphMark === 'underline' || emphMark === 'circle')
     for (const { info, row, x } of words) {
