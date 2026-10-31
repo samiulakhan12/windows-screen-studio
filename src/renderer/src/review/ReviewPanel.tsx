@@ -180,6 +180,18 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
       onClose()
       return
     }
+    // Space on an item stops what is playing (§4.3), else chooses the item. Its own press on key up
+    // is held back: it would start the stretch over again.
+    if (e.key === ' ' && !e.ctrlKey && !e.altKey && !e.metaKey && e.target instanceof HTMLElement && e.target.classList.contains('review-item')) {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.repeat) return
+      if (player.moving) {
+        stopStretch()
+        player.pause()
+      } else if (current) choose(current)
+      return
+    }
     // Enter and Space press the focused button here (the editor would play or pause instead).
     if ((e.key === 'Enter' || e.key === ' ') && e.target instanceof HTMLButtonElement) e.stopPropagation()
   }

@@ -1,12 +1,12 @@
 // Review mode end to end (docs/design/review-mode.md §9): a 20 s recording with a camera, an auto
 // zoom at 2 s, a camera director segment at 5 s and a silence cut Remove silences made at 8-10.4 s
 // (with its record), and a zoom of yours. The Review button counts 3; Shift+R opens the panel with
-// the focus on the first item; N and P move (the playhead jumps); K keeps the zoom (saved with
-// auto false); Delete removes the silence cut (the footage comes back, the record goes); Ctrl+Z
-// brings the cut back and its row back to "not reviewed"; a mouse click on a row then Delete
-// removes the camera change; Keep all, pressed from the keyboard, reviews the rest and leaves the
-// focus in the list; Escape closes and gives the focus back to the button; the palette opens it
-// again, now empty.
+// the focus on the first item; N and P move (the playhead jumps); Space on the row stops the
+// stretch where it is; K keeps the zoom (saved with auto false); Delete removes the silence cut
+// (the footage comes back, the record goes); Ctrl+Z brings the cut back and its row back to "not
+// reviewed"; a mouse click on a row then Delete removes the camera change; Keep all, pressed from
+// the keyboard, reviews the rest and leaves the focus in the list; Escape closes and gives the
+// focus back to the button; the palette opens it again, now empty.
 const fs = require('node:fs')
 const path = require('node:path')
 const h = require('./helpers.cjs')
@@ -52,6 +52,13 @@ function seed(home) {
 const rows = (win) => win.$$eval('[data-testid="review-row"]', (els) => els.map((e) => `${e.dataset.key}=${e.dataset.status}`))
 const focused = (win) => win.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName ?? '')
 const timecode = (win) => win.$eval('.timecode', (e) => e.textContent ?? '')
+const playing = (win) => win.$eval('.transport .btn.round', (e) => e.dataset.playing === 'true')
+/** The playhead in seconds of the video (the timecode's first half). */
+const seconds = (win) =>
+  win.$eval('.timecode', (e) => {
+    const m = /^(\d+):(\d+\.\d)/.exec(e.textContent ?? '')
+    return m ? Number(m[1]) * 60 + Number(m[2]) : -1
+  })
 
 /** The saved project once `pred` holds. */
 function savedWhen(home, id, pred, what) {
@@ -94,6 +101,14 @@ async function main() {
     await win.keyboard.press('n')
     h.assert((await focused(win)).startsWith('Camera to the top left corner, camera, at 0:05.0'), `N moves: ${await focused(win)}`)
     await f.waitFor(async () => /^0:0[3-6]/.test(await timecode(win)), 'the playhead at the camera change', 5000)
+    // Space on the row stops the stretch where it is, not back at its start playing again.
+    await f.waitFor(async () => (await playing(win)) && (await seconds(win)) >= 3.8, 'the stretch playing', 5000)
+    await win.keyboard.press('Space')
+    await f.waitFor(async () => !(await playing(win)), 'Space stops the stretch', 5000)
+    const stopped = await seconds(win)
+    await h.sleep(500)
+    h.assert(!(await playing(win)) && (await seconds(win)) === stopped && stopped >= 3.8, `stopped where it was: ${stopped}, now ${await timecode(win)}`)
+    h.assert((await focused(win)).startsWith('Camera to the top left corner'), `the focus stays on the row: ${await focused(win)}`)
     await win.keyboard.press('p')
     h.assert((await focused(win)).startsWith('Zoom in on a click'), 'P moves back')
 

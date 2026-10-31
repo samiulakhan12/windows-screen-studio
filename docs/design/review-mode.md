@@ -268,11 +268,13 @@ listed item being pending by construction).
   the playhead goes to `PREVIEW_BEFORE = 1.5` s of video before the item and plays until
   `PREVIEW_AFTER = 1.5` s after it, at most `PREVIEW_MAX = 8` s in all, then pauses. A cut has no
   length in the video: it plays across the cut point. A removed cut plays the footage that came
-  back. Moving to another item, closing the panel, or pressing Space stops it.
+  back. Moving to another item, closing the panel, or pressing Space stops it: Space on a row
+  stops whatever plays (the row's own press is held back, so the stretch does not start over),
+  and chooses the row when nothing plays.
 * Keys while the focus is in the list: `↓`/`N` next item, `↑`/`P` previous, `Home`/`End` first and
   last, `K` keep, `Delete`/`Backspace` remove. The focus stays on the row (roving `tabindex`); `Tab`
-  moves to the row's Keep and Remove buttons. Other keys go on to the editor (Space plays,
-  `Ctrl+Z` undoes).
+  moves to the row's Keep and Remove buttons. Other keys go on to the editor (`Ctrl+Z` undoes);
+  Space on a row is the row's own, as above.
 * Header: `Review automatic changes`, then progress `12 of 40 reviewed` and a bar.
 * Footer: `Keep all` (keeps every pending item), `Remove all <kind words>` for the focused item's
   kind (`Remove all zooms`, `Remove all camera changes`, `Remove all silence cuts`,
