@@ -54,8 +54,9 @@ const setGreatOptions = (next: GreatOptions): void => {
   for (const l of [...greatListeners]) l()
 }
 
-/** The saved options, read from the prefs once (the defaults when they cannot be read). */
-export function loadGreatOptions(): Promise<GreatOptions> {
+/** The saved options, read from the prefs once, or again when `fresh` (other places save them too); the defaults when they cannot be read. */
+export function loadGreatOptions(fresh = false): Promise<GreatOptions> {
+  if (fresh) greatRead = null
   greatRead ??= (async () => {
     const raw = await pref('captionsGreat')
     if (raw === null) greatRead = null

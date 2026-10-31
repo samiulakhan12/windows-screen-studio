@@ -56,7 +56,11 @@ export function GreatOptionsPopover({ project }: { project: Project }): JSX.Elem
         title="Choose what Make my captions great does"
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Read again: the Graphics tab saves the pop-up sound in the same prefs.
+          if (!open) void loadGreatOptions(true)
+          setOpen(!open)
+        }}
       >
         <EditorIcon name="gear" size={15} />
       </button>

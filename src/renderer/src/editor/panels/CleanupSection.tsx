@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { cleanupNotice, DEFAULT_CLEANUP, readCleanupChoices, tidyCaptions, WORD_LIST_LIMITS, WORD_LIST_MAX, type CleanupChoices, type TextResult, type WordListEntry } from '../../../../shared/captions/cleanup'
+import { applyTextResult } from '../../../../shared/captions/edit'
 import type { Project } from '../../../../shared/types'
 import { currentWordList, ipcMessage, loadWordList, onSectionRequest, onWordList, saveWordList, takeSectionRequest } from '../captionItems'
 import { useEditor } from '../context'
@@ -134,10 +135,14 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         if (live.current) setBusy(false)
       }
     }
-    // The AI fix only onto the captions it was made from (edits made meanwhile would be lost).
+    // The AI fix only onto the captions it was made from (edits made meanwhile would be lost), and
+    // only when it kept their ids and times (applyTextResult, as Fix captions did).
     if (fix && store.state.transcript?.segments !== before) {
       fix = undefined
       leftOut = 'The AI fix was left out: the captions changed while the provider worked.'
+    } else if (fix && !applyTextResult(before, fix.segments)) {
+      fix = undefined
+      leftOut = "The AI fix was left out: the provider changed the captions' timing or left some out."
     }
     let out: ReturnType<typeof tidyCaptions> | null = null
     // One undo step for the rules, the AI fix and the bleeps.
@@ -148,7 +153,9 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     })
     store.seal()
     const r = out as ReturnType<typeof tidyCaptions> | null
-    if (r) setStatus(cleanupNotice({ changed: r.changed, bleeped: r.bleeped, estimated: r.estimated, ...(leftOut ? { aiLeftOut: leftOut } : {}) }))
+    if (r) setStatus(cleanupNotice({ changed: r.changed, bleeped: r.bleeped, estimated: r.estimated }))
+    // A fix left out stands out from the notice.
+    if (leftOut) setError(leftOut)
   }
 
   const cancel = (): void => {

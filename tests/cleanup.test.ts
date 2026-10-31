@@ -201,6 +201,5 @@ describe("Tidy captions' notice (§2.9)", () => {
     expect(cleanupNotice({ changed: 1, bleeped: 0 })).toBe('Tidied 1 caption')
     expect(cleanupNotice({ changed: 0, bleeped: 1, estimated: 1 })).toBe('Bleeped 1 word. Some bleeped words have estimated times, so a little more is bleeped')
     expect(cleanupNotice({ changed: 0, bleeped: 0 })).toBe('Nothing to tidy')
-    expect(cleanupNotice({ changed: 0, bleeped: 0, aiLeftOut: 'The AI fix was left out.' })).toBe('Nothing to tidy. The AI fix was left out.')
   })
 })
