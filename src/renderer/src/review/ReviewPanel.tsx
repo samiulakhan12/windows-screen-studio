@@ -21,6 +21,7 @@ import {
   REVIEW_HINT,
   REVIEW_TITLE
 } from '../../../shared/review/copy'
+import { listKey } from '../../../shared/review/keys'
 import { previewStretch } from '../../../shared/review/preview'
 import { keepItems, mergeSnapshot, removeItems, reviewItems, reviewProgress, reviewStatus, type ReviewItem, type ReviewStatus } from '../../../shared/review/review'
 import { useEditor } from '../editor/context'
@@ -148,31 +149,16 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }
 
   const onListKey = (e: React.KeyboardEvent): void => {
-    if (e.ctrlKey || e.altKey || e.metaKey) return
-    const key = e.key
-    const handled = (): void => {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    if (key === 'ArrowDown' || key === 'n' || key === 'N') {
-      handled()
-      if (!e.repeat || key === 'ArrowDown') move(active + 1)
-    } else if (key === 'ArrowUp' || key === 'p' || key === 'P') {
-      handled()
-      if (!e.repeat || key === 'ArrowUp') move(active - 1)
-    } else if (key === 'Home') {
-      handled()
-      move(0)
-    } else if (key === 'End') {
-      handled()
-      move(list.length - 1)
-    } else if (key === 'k' || key === 'K') {
-      handled()
-      if (current && !e.repeat) act(current, 'keep')
-    } else if (key === 'Delete' || key === 'Backspace') {
-      handled()
-      if (current && !e.repeat) act(current, 'remove')
-    }
+    const key = listKey(e)
+    if (!key) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.repeat && !key.again) return
+    if (key.action === 'next') move(active + 1)
+    else if (key.action === 'previous') move(active - 1)
+    else if (key.action === 'first') move(0)
+    else if (key.action === 'last') move(list.length - 1)
+    else if (current) act(current, key.action)
   }
 
   const onPanelKey = (e: React.KeyboardEvent): void => {

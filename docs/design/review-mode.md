@@ -272,9 +272,11 @@ listed item being pending by construction).
   stops whatever plays (the row's own press is held back, so the stretch does not start over),
   and chooses the row when nothing plays.
 * Keys while the focus is in the list: `↓`/`N` next item, `↑`/`P` previous, `Home`/`End` first and
-  last, `K` keep, `Delete`/`Backspace` remove. The focus stays on the row (roving `tabindex`); `Tab`
-  moves to the row's Keep and Remove buttons. Other keys go on to the editor (`Ctrl+Z` undoes);
-  Space on a row is the row's own, as above.
+  last, `K` keep, `Delete`/`Backspace` remove. Letters are read as the editor's shortcuts read them
+  (`eventKeyName`), so on a layout of another alphabet the keys where N, P and K sit do the same
+  (else they would reach the editor as Snapping and Pause). The focus stays on the row (roving
+  `tabindex`); `Tab` moves to the row's Keep and Remove buttons. Other keys go on to the editor
+  (`Ctrl+Z` undoes); Space on a row is the row's own, as above.
 * Header: `Review automatic changes`, then progress `12 of 40 reviewed` and a bar.
 * Footer: `Keep all` (keeps every pending item), `Remove all <kind words>` for the focused item's
   kind (`Remove all zooms`, `Remove all camera changes`, `Remove all silence cuts`,
@@ -327,6 +329,7 @@ make Remove restore time outside the recording (`restoreRange` clamps to the dur
   pauses at its end; a seek of more than 0.5 s (back or ahead) or a pause by the user ends it
   quietly. `src/renderer/src/review/playStretch.ts` runs it on animation frames.
 * `src/shared/review/wordCuts.ts` — `suggestionRanges(words, items, duration)`.
+* `src/shared/review/keys.ts` — `listKey(event)`: what a key pressed in the list does, or null.
 * `src/renderer/src/review/ReviewPanel.tsx`, `ReviewButton.tsx`, `playStretch.ts`, `review.css`.
 * Additive lines: `types.ts` (`AutoCut`, `Project.autoCuts`), `engine/project.ts` (one line),
   `Editor.tsx`'s store settle (`settleAutoCuts` after `settleDeletedWords`),
