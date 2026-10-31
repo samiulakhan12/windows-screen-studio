@@ -423,12 +423,12 @@ export function spokenToken(layout: Pick<CaptionLayout, 'tokens'>, chunk: Pick<C
 /**
  * The direction token `token` is drawn with: the caption's, which puts the punctuation of a
  * right-to-left word on its correct side; a speaker's name without right-to-left letters before a
- * right-to-left caption keeps left to right, so its colon stays after it ("You:", not ":You").
+ * right-to-left caption keeps left to right, so its colon stays after it ("You:", not ":You"). The
+ * whole name decides, so the number of a right-to-left name ("متحدث 2:") draws right to left too.
  */
 export function wordDirection(layout: Pick<CaptionLayout, 'tokens' | 'rtl'>, token: number): 'ltr' | 'rtl' {
   if (!layout.rtl) return 'ltr'
-  const t = layout.tokens[token]
-  return t?.label && !RTL_LETTER.test(t.text) ? 'ltr' : 'rtl'
+  return layout.tokens[token]?.label && !layout.tokens.some((t) => t.label && RTL_LETTER.test(t.text)) ? 'ltr' : 'rtl'
 }
 
 /* ---------- placement ---------- */

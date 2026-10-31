@@ -368,7 +368,8 @@ does the first paragraph of every page (a page can start inside someone's turn)
   alone: a line holding only the name is shown with the next line (so with *One line* that chunk has
   two). The caption's own words set its direction, so an Arabic or Hebrew caption stays right to
   left with a Latin name, which sits at its right end and is drawn left to right, its colon after it
-  (`wordDirection`). Preview and export draw through the same layer (`captionsLayer.ts`), so they match.
+  (`wordDirection`); a name with right-to-left letters is drawn right to left as a whole, its number
+  too, so the colon ends it (`متحدث 2:`). Preview and export draw through the same layer (`captionsLayer.ts`), so they match.
 - The export pack (*Also save*, `exportBundleRun.ts`, not part of this change) writes WebVTT with
   voice tags; its SRT has no names (the option is the Captions tab's).
 

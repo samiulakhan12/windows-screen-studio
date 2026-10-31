@@ -166,6 +166,14 @@ describe('speakers in the files and on the video', () => {
     const arabicName = captionLayout(speakerCaption({ ...caption, speaker: 'أحمد' }), DEFAULT_CAPTIONS, 1920, 1080, measure)
     expect(arabicName.rtl).toBe(true)
     expect(wordDirection(arabicName, 0)).toBe('rtl')
+    // A right-to-left name with a number draws its number right to left too, so the colon ends the name (":2"), not between its parts.
+    for (const name of ['متحدث 2', 'ضيف 1', 'דובר 2']) {
+      const numbered = captionLayout(speakerCaption({ ...caption, speaker: name }), DEFAULT_CAPTIONS, 1920, 1080, measure)
+      expect(numbered.rtl).toBe(true)
+      const words = [...numbered.chunks[0].lines[0].words].sort((a, b) => a.x - b.x)
+      expect(words.slice(-2).map((wd) => wd.text)).toEqual([`${name.split(' ')[1]}:`, name.split(' ')[0]])
+      expect(words.map((wd) => wordDirection(numbered, wd.token))).toEqual(words.map(() => 'rtl'))
+    }
     const english = captionLayout(speakerCaption(seg('b', 0, 2, 'Hello there', 'أحمد')), DEFAULT_CAPTIONS, 1920, 1080, measure)
     expect(english.rtl).toBe(false)
     expect(english.tokens.map((_, i) => wordDirection(english, i))).toEqual(['ltr', 'ltr', 'ltr'])
