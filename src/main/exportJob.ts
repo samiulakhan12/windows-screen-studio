@@ -5,6 +5,9 @@ import { MAX_DUCK_RANGES } from '../shared/audio/automation'
 import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
 import { MAX_CHAPTERS } from '../shared/render/chapters'
+import { MAX_SUBTITLE_LANGUAGES, SUBTITLE_LANGUAGE_RE } from '../shared/render/exportBundle'
+import { MAX_POP_TIMES, MAX_TONES } from '../shared/render/popSound'
+import { validSubtitle } from '../shared/captions/subtitles'
 import { FREEZE, MAX_FREEZES } from '../shared/engine/freeze'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
 import { MAX_CUT_FADE } from '../shared/render/cutFades'
@@ -171,6 +174,47 @@ function validChapters(list: unknown): boolean {
   return true
 }
 
+/** Longest subtitle stream name (a language's name). */
+export const MAX_SUBTITLE_NAME = 64
+
+/** Graphics' pop and ding sounds (Captions Studio §10.6): each sound once, its output seconds bounded. */
+function validPops(list: unknown): boolean {
+  if (!Array.isArray(list) || list.length > 2) return false
+  const sounds = new Set<string>()
+  for (const p of list) {
+    if (!p || typeof p !== 'object' || (p.sound !== 'pop' && p.sound !== 'ding') || sounds.has(p.sound)) return false
+    sounds.add(p.sound)
+    if (!Array.isArray(p.times) || p.times.length > MAX_POP_TIMES || !p.times.every((t: unknown) => isNum(t, 0, 1e7))) return false
+  }
+  return true
+}
+
+/** Bleep tones (Captions Studio §11.7): output spans, each with a start before its end, bounded. */
+function validTones(list: unknown): boolean {
+  if (!Array.isArray(list) || list.length > MAX_TONES) return false
+  return list.every((t) => !!t && typeof t === 'object' && isNum(t.start, 0, 1e7) && isNum(t.end, 0, 1e7) && t.end > t.start)
+}
+
+/**
+ * Subtitle streams (Captions Studio §11.10, §12): MP4, MOV and WebM only; at most 8, each a
+ * well-formed language once, a one-line name, a WebVTT file subtitleFile could write, at most one
+ * default.
+ */
+function validSubtitles(list: unknown, format: ExportFormat): boolean {
+  if (format !== 'mp4' && format !== 'mov' && format !== 'webm') return false
+  if (!Array.isArray(list) || list.length > MAX_SUBTITLE_LANGUAGES) return false
+  const languages = new Set<string>()
+  let defaults = 0
+  for (const t of list) {
+    if (!t || typeof t !== 'object' || typeof t.language !== 'string' || !SUBTITLE_LANGUAGE_RE.test(t.language) || languages.has(t.language)) return false
+    languages.add(t.language)
+    if (typeof t.name !== 'string' || !t.name || t.name.length > MAX_SUBTITLE_NAME || /[\u0000-\u001f\u007f]/.test(t.name)) return false
+    if (typeof t.default !== 'boolean' || !validSubtitle('vtt', t.vtt)) return false
+    if (t.default) defaults++
+  }
+  return defaults <= 1
+}
+
 /** The renderer is trusted, but ffmpeg arguments are still built only from validated values. */
 export function validateJob(job: ExportJob): void {
   const audioOnly = job.format === 'm4a'
@@ -193,9 +237,12 @@ export function validateJob(job: ExportJob): void {
       (isNum(job.clicks.volume, 0, 2) && Array.isArray(job.clicks.times) && job.clicks.times.length <= MAX_CLICKS && job.clicks.times.every((t) => isNum(t, 0, 1e7)))) &&
     (!job.bitrate || (isNum(job.bitrate.video, 0, 1e9) && isNum(job.bitrate.audio, 0, 1e6) && (audioOnly || job.bitrate.video >= 1000))) &&
     (job.maxBytes === undefined || (job.format === 'gif' && isNum(job.maxBytes, 1000, 1e12))) &&
-    (job.chapters === undefined || (job.format !== 'gif' && validChapters(job.chapters)))
+    (job.chapters === undefined || (job.format !== 'gif' && validChapters(job.chapters))) &&
+    (job.pops === undefined || (job.format !== 'gif' && validPops(job.pops))) &&
+    (job.tones === undefined || (job.format !== 'gif' && validTones(job.tones))) &&
+    (job.subtitles === undefined || validSubtitles(job.subtitles, job.format))
   if (!ok) throw new Error('Invalid export settings')
-  if (audioOnly && !job.audio && !job.clicks && !job.music) throw new Error('This recording has no sound to export.')
+  if (audioOnly && !job.audio && !job.clicks && !job.music && !job.pops?.length && !job.tones?.length) throw new Error('This recording has no sound to export.')
 }
 
 /** The files a job's soundtrack reads, inside the project folder. */

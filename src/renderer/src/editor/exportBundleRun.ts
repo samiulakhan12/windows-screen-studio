@@ -3,11 +3,11 @@
  * captions as SRT / VTT, the chapter list, the description and the thumbnail. A file that fails is
  * reported and never fails the export itself.
  */
-import { subtitleFile } from '../../../shared/captions/subtitles'
+import { languageSubtitleFile } from '../../../shared/captions/subtitles'
 import { pictureTime, planOf, videoDuration, videoToSource } from '../../../shared/engine/freeze'
 import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import { outputChapters } from '../../../shared/render/chapters'
-import { chapterListText, descriptionText, partProject, sidecarName, type ChapterPart, type SidecarKind } from '../../../shared/render/exportBundle'
+import { chapterListText, descriptionText, partProject, sidecarName, spokenLanguage, subtitleLanguages, type ChapterPart, type SidecarKind } from '../../../shared/render/exportBundle'
 import type { Project } from '../../../shared/types'
 import type { BatchExtras } from './exporter'
 
@@ -44,16 +44,21 @@ export interface BundleRequest {
   part?: { index: number; count: number; of: string }
   /** The thumbnail's PNG, drawn as the export draws it. */
   thumbnail: () => Promise<Uint8Array>
+  /** The subtitle languages ticked (Captions Studio §11.10, BundleOptions.languages): one SRT or VTT each; absent: the spoken language's alone. */
+  languages?: readonly string[]
 }
 
 const baseName = (file: string): string => file.split(/[\\/]/).pop() ?? file
 
-/** The text content of `kind`, or null for the thumbnail. */
-export function sidecarText(kind: SidecarKind, req: BundleRequest): string | null {
+/**
+ * The text content of `kind`, or null for the thumbnail. Subtitles are the spoken captions with
+ * bleeped words masked, or the translated track of `language` (Captions Studio §11.10).
+ */
+export function sidecarText(kind: SidecarKind, req: BundleRequest, language?: string): string | null {
   const { project } = req
   const plan = planOf(project)
   const length = videoDuration(project.clips, plan)
-  if (kind === 'srt' || kind === 'vtt') return subtitleFile(project.transcript?.segments ?? [], project.clips, kind, plan)
+  if (kind === 'srt' || kind === 'vtt') return languageSubtitleFile(project, language && language !== spokenLanguage(project) ? language : null, kind)
   const chapters = outputChapters(project.chapters ?? [], project.clips, plan)
   if (kind === 'chapters') return chapterListText(chapters, length)
   if (kind === 'description') return descriptionText(req.title, length, chapters, req.part)
@@ -65,13 +70,19 @@ export async function writeBundle(anchor: string, req: BundleRequest): Promise<B
   if (!req.kinds.length) return undefined
   const saved: string[] = []
   const failed: string[] = []
+  const spoken = spokenLanguage(req.project)
   for (const kind of req.kinds) {
-    try {
-      const content = kind === 'thumbnail' ? await req.thumbnail() : sidecarText(kind, req)!
-      saved.push(await window.api.writeSidecar(anchor, kind, content))
-    } catch (err) {
-      const reason = (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '').split(/\n/)[0]
-      failed.push(`${sidecarName(baseName(anchor), kind)}: ${reason}`)
+    // Subtitles: one file per language, the spoken one named as before ("Demo.srt"), each translation with its code ("Demo.bn.srt").
+    const languages = kind === 'srt' || kind === 'vtt' ? subtitleLanguages(req.project, req.languages) : [spoken]
+    for (const language of languages) {
+      const translated = language !== spoken ? language : undefined
+      try {
+        const content = kind === 'thumbnail' ? await req.thumbnail() : sidecarText(kind, req, translated)!
+        saved.push(await (translated ? window.api.writeSidecar(anchor, kind, content, translated) : window.api.writeSidecar(anchor, kind, content)))
+      } catch (err) {
+        const reason = (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '').split(/\n/)[0]
+        failed.push(`${sidecarName(baseName(anchor), kind, translated)}: ${reason}`)
+      }
     }
   }
   return { saved, failed }

@@ -9,7 +9,7 @@ import { ipcMain } from 'electron'
 import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { validSubtitle } from '../shared/captions/subtitles'
-import { MAX_SIDECAR_TEXT, SIDECAR_KINDS, sidecarName, type SidecarKind } from '../shared/render/exportBundle'
+import { MAX_SIDECAR_TEXT, SIDECAR_KINDS, sidecarName, SUBTITLE_LANGUAGE_RE, type SidecarKind } from '../shared/render/exportBundle'
 import { freeBatchPath, isPng, moveIntoPlace, partialPath } from './exportJob'
 import { isExportedFile, replacedExport } from './exportIpc'
 import { removeWithRetries } from './exportCleanup'
@@ -29,14 +29,19 @@ const realDeps: SidecarDeps = { isExported: isExportedFile, replaced: replacedEx
 
 /**
  * Where `kind` goes for exported file `anchor`: next to it, named after it; " (2)", " (3)" ... when
- * the name is taken and the export did not replace a file of the same name.
+ * the name is taken and the export did not replace a file of the same name. A translated caption
+ * track's subtitles (Captions Studio §11.10) carry a language part, "Demo.bn.srt", accepted only
+ * for SRT and VTT and only as a well-formed language code (so it never adds a path); they never
+ * replace an existing file.
  */
-export function sidecarTarget(anchor: unknown, kind: unknown, deps: SidecarDeps = realDeps): string {
+export function sidecarTarget(anchor: unknown, kind: unknown, deps: SidecarDeps = realDeps, language?: unknown): string {
   if (typeof anchor !== 'string' || !path.isAbsolute(anchor) || !deps.isExported(anchor)) throw new Error('Only files exported in this session get extra files')
   if (!SIDECAR_KINDS.includes(kind as SidecarKind)) throw new Error('Invalid extra file')
-  const name = sidecarName(path.basename(anchor), kind as SidecarKind)
+  if (language !== undefined && language !== null && (typeof language !== 'string' || !SUBTITLE_LANGUAGE_RE.test(language) || (kind !== 'srt' && kind !== 'vtt'))) throw new Error('Invalid extra file')
+  const lang = typeof language === 'string' ? language : undefined
+  const name = sidecarName(path.basename(anchor), kind as SidecarKind, lang)
   const dir = path.dirname(anchor)
-  if (deps.replaced(anchor, kind as SidecarKind)) return path.join(dir, name)
+  if (!lang && deps.replaced(anchor, kind as SidecarKind)) return path.join(dir, name)
   return freeBatchPath(dir, name, deps.exists)
 }
 
@@ -56,8 +61,8 @@ export function sidecarBytes(kind: SidecarKind, content: unknown): Uint8Array {
 }
 
 /** Writes `kind` next to `anchor` safely (temp file + rename); resolves with the path written. */
-export async function writeSidecar(anchor: unknown, kind: unknown, content: unknown, deps: SidecarDeps = realDeps): Promise<string> {
-  const file = sidecarTarget(anchor, kind, deps)
+export async function writeSidecar(anchor: unknown, kind: unknown, content: unknown, deps: SidecarDeps = realDeps, language?: unknown): Promise<string> {
+  const file = sidecarTarget(anchor, kind, deps, language)
   const bytes = sidecarBytes(kind as SidecarKind, content)
   const temp = partialPath(file)
   try {
@@ -71,8 +76,8 @@ export async function writeSidecar(anchor: unknown, kind: unknown, content: unkn
 }
 
 export function registerExportBundleIpc(): void {
-  ipcMain.handle('exportBundle:write', (e, anchor: unknown, kind: unknown, content: unknown) => {
+  ipcMain.handle('exportBundle:write', (e, anchor: unknown, kind: unknown, content: unknown, language?: unknown) => {
     if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
-    return writeSidecar(anchor, kind, content)
+    return writeSidecar(anchor, kind, content, realDeps, language)
   })
 }
