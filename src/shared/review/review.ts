@@ -11,7 +11,7 @@
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
-import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts } from './autoCuts'
+import { autoCutIntact, footageBack, liveAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -112,7 +112,8 @@ export function reviewProgress(statuses: readonly ReviewStatus[]): { reviewed: n
 /**
  * The panel's list: what it showed (`shown`, kept and removed items stay, marked) plus every item of
  * `current` (pending now) it did not show yet, in time order. A pending item also shown takes its
- * current title (a record's text never changes; a zoom's place could).
+ * current version (a zoom's place could change; a record's pieces could, when a speed-up around it
+ * was removed).
  */
 export function mergeSnapshot(shown: readonly ReviewItem[], current: readonly ReviewItem[]): ReviewItem[] {
   const now = new Map(current.map((i) => [i.key, i]))
@@ -151,8 +152,10 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
 /**
  * The project with `items` removed (§2.4): zooms deleted; the director's segments deleted (a
  * cut-out given back to its camera position); the face framing reset; each cut or speed-up taken
- * back (undoAutoCut, latest first) and its record dropped. Items not pending are left alone.
- * `project` itself when nothing changes.
+ * back (undoAutoCut, latest first) and its record dropped. A speed-up taken back leaves the records
+ * inside it holding their footage at its speed from before (withoutSpeedUp), so removing a cut
+ * inside it later, in any order, never brings the footage back at the removed speed. Items not
+ * pending are left alone. `project` itself when nothing changes.
  */
 export function removeItems(project: Project, items: readonly ReviewItem[]): Project {
   const todo = pendingOf(project, items)
@@ -177,9 +180,14 @@ export function removeItems(project: Project, items: readonly ReviewItem[]): Pro
   const cuts = todo.flatMap((i) => (i.cut ? [(next.autoCuts ?? []).find((c) => c.id === i.cut!.id)!] : [])).filter(Boolean)
   if (cuts.length) {
     let clips = next.clips
-    for (const c of [...cuts].sort((a, b) => b.start - a.start)) clips = undoAutoCut(clips, c, next.duration)
+    let list = next.autoCuts ?? []
+    for (const { id } of [...cuts].sort((a, b) => b.start - a.start)) {
+      const c = list.find((x) => x.id === id)!
+      clips = undoAutoCut(clips, c, next.duration)
+      if (c.action !== 'cut') list = withoutSpeedUp(list, c)
+    }
     const gone = new Set(cuts.map((c) => c.id))
-    next = withAutoCuts({ ...next, clips }, (next.autoCuts ?? []).filter((c) => !gone.has(c.id)))
+    next = withAutoCuts({ ...next, clips }, list.filter((c) => !gone.has(c.id)))
   }
   return next
 }

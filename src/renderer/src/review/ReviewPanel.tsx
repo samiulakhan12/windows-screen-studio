@@ -34,8 +34,10 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const [shown, setShown] = useState<ReviewItem[]>(() => reviewItems(store.state))
   const list = useMemo(() => mergeSnapshot(shown, reviewItems(project)), [shown, project])
   useEffect(() => {
-    if (list.length !== shown.length) setShown(list)
-  }, [list, shown.length])
+    // A record rewritten while pending (a speed-up around it removed) is kept as it is now, so its
+    // status still reads right once it is removed too.
+    if (list.length !== shown.length || list.some((i, k) => i.cut !== shown[k].cut)) setShown(list)
+  }, [list, shown])
   const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
   const { reviewed, total } = reviewProgress(statuses)
   const plan = planOf(project)

@@ -208,6 +208,42 @@ describe('keep and remove', () => {
   })
 })
 
+describe('a cut inside an automatic speed-up', () => {
+  /** Touching spans at the same speed joined: how the video plays. */
+  const plays = (clips: Clip[]): [number, number, number][] =>
+    spans(clips).reduce<[number, number, number][]>((out, s) => {
+      const last = out[out.length - 1]
+      if (last && Math.abs(last[1] - s[0]) < 1e-6 && last[2] === s[2]) last[1] = s[1]
+      else out.push([...s])
+      return out
+    }, [])
+  /** Smart speed 2x over `fast`, then Remove silences cutting `cut`. */
+  function nested(fast: [number, number], cut: [number, number]): Project {
+    const p = project({ hasWebcam: false })
+    const r1 = [{ start: fast[0], end: fast[1] }]
+    const sped = recordAutoCuts(p, applySmartSpeed(p.clips, r1, 2), r1, 2, 'smart-speed')
+    const r2 = [{ start: cut[0], end: cut[1] }]
+    return recordAutoCuts(sped, cutRange(sped.clips, cut[0], cut[1]), r2, 'cut', 'silences')
+  }
+
+  it('removing the speed-up and then the cut, in list order, gives it all back at 1x, both rows removed', () => {
+    const p = nested([5, 9], [6, 7])
+    let shown = reviewItems(p)
+    expect(shown.map((i) => i.kind)).toEqual(['idle', 'silence'])
+    // The panel: Delete on each row in turn, its list following the project.
+    const one = removeItems(p, [shown[0]])
+    shown = mergeSnapshot(shown, reviewItems(one))
+    const two = removeItems(one, [shown[1]])
+    expect(plays(two.clips)).toEqual([[0, 20, 1]])
+    expect(shown.map((i) => reviewStatus(two, i))).toEqual(['removed', 'removed'])
+  })
+
+  it('removing both at once gives it all back when the cut starts before the speed-up', () => {
+    const p = nested([5, 9], [4, 6])
+    expect(plays(removeItems(p, reviewItems(p)).clips)).toEqual([[0, 20, 1]])
+  })
+})
+
 describe('undo: one step per action, statuses follow', () => {
   const settle = (next: Project): Project => next
   it('Keep, Remove, Keep all and Remove all are each one undo step', () => {

@@ -106,8 +106,9 @@ again, with no second copy of the state to keep in step. Alternative: a set of r
 panel — rejected, it disagrees with the project after any undo.
 
 The panel keeps one thing of its own: the list of items it showed (a snapshot taken when it opens,
-with every new pending item added as it appears), so kept and removed items stay in the list,
-marked, until the panel closes. Reopening lists only what is still automatic.
+with every new pending item added as it appears and every pending item taken as it is now), so
+kept and removed items stay in the list, marked, until the panel closes. Reopening lists only what
+is still automatic.
 
 ### 2.4 Keep and Remove
 
@@ -117,7 +118,7 @@ marked, until the panel closes. Reopening lists only what is still automatic.
 | camera segment | `auto` and `cutOut` cleared | the segment is deleted; a `cutOut` piece turns back into the position's corner and joins its touching pieces (as `withoutDirected` does for one run) |
 | face framing | `director.framed` dropped (the framing is yours) | webcam `zoom/cropX/cropY` removed and `director.framed` dropped (`clearDirected`'s framing part) |
 | automatic cut | the record is dropped (the cut stays, now a plain cut) | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); the record is dropped |
-| automatic speed-up | the record is dropped | each `was` piece set back to its speed where it still plays at the record's speed |
+| automatic speed-up | the record is dropped | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one |
 
 Each Keep or Remove is **one** `store.update` (one undo step). **Keep all** keeps every pending
 item in one update; **Remove all of this kind** removes every pending item of the focused item's
