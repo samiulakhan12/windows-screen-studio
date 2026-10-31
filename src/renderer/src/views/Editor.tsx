@@ -1219,6 +1219,15 @@ function EditorSession({
         setTab('captions')
         requestCaptions({ kind: 'export' })
       },
+      // Captions Studio (docs/design/captions-studio.md §2.14): they open the Captions tab until
+      // part P3 wires each to its section and part P4's planners.
+      captionsGreat: showTab('captions'),
+      captionStyles: showTab('captions'),
+      captionEmphasis: showTab('captions'),
+      captionGraphics: showTab('captions'),
+      captionTidy: showTab('captions'),
+      captionLanguage: showTab('captions'),
+      saveCaptionStyle: showTab('captions'),
       showCaptions: showTab('captions'),
       showStyle: showTab('style'),
       showCursor: showTab('cursor'),
@@ -1365,6 +1374,13 @@ function EditorSession({
       prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet',
       toggleCaptions: p.transcript?.segments.length ? null : 'No captions yet',
       exportCaptions: p.transcript?.segments.length ? null : 'No captions yet',
+      captionsGreat: p.transcript?.segments.length ? null : 'No captions yet',
+      captionStyles: p.transcript?.segments.length ? null : 'No captions yet',
+      captionEmphasis: p.transcript?.segments.length ? null : 'No captions yet',
+      captionGraphics: p.transcript?.segments.length ? null : 'No captions yet',
+      captionTidy: p.transcript?.segments.length ? null : 'No captions yet',
+      captionLanguage: p.transcript?.segments.length ? null : 'No captions yet',
+      saveCaptionStyle: p.transcript?.segments.length ? null : 'No captions yet',
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',

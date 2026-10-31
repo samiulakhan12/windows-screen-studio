@@ -29,9 +29,10 @@ import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../s
 import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 
-export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'director'
+/** 'captionLook': Make my captions great, offline (docs/design/captions-studio.md §11.8). */
+export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'captionLook' | 'director'
 /** Run order (decision 2); the dialog lists rows in this order too. */
-export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'captions', 'director']
+export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'captions', 'captionLook', 'director']
 
 export interface PolishOptions {
   /** A style preset id (BUILT_IN_PRESETS or the user's), or null: keep the current look. */
@@ -43,6 +44,8 @@ export interface PolishOptions {
   captions: boolean
   /** Transcription provider id; null or no longer able to transcribe: the first that can (pickTranscriber). */
   captionsProvider: string | null
+  /** Caption look: style, emphasis and pop-ups for the captions (Captions Studio §11.8); saved options without it read false. */
+  captionLook: boolean
   director: boolean
 }
 
@@ -53,6 +56,7 @@ export const DEFAULT_POLISH_OPTIONS: Readonly<PolishOptions> = Object.freeze({
   silenceAction: 'cut',
   captions: true,
   captionsProvider: null,
+  captionLook: true,
   director: true
 })
 
@@ -80,6 +84,8 @@ export type PolishSkip =
   | 'busy'
   /** the provider failed (PolishInput.errors.captions) */
   | 'failed'
+  /** Caption look: there are no captions to style */
+  | 'no-captions'
   /** skipped by the user while it ran */
   | 'cancelled'
   /** no camera (project.hasWebcam false, or the file is missing) */
@@ -253,6 +259,12 @@ export function planPolish(input: PolishInput, options: PolishOptions): PolishRe
     if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = videoTimeAt(p.clips, planOf(p), last.end)
   }
 
+  // Caption look (Captions Studio §11.8): Make my captions great, offline, with the saved options.
+  // TODO(part P4): run the planner (planCaptionsGreat, by 'polish'); until then it is skipped.
+  if (!options.captionLook) skip('captionLook', 'off')
+  else if (!p.transcript?.segments.length) skip('captionLook', 'no-captions')
+  else skip('captionLook', 'off')
+
   // Camera director, last: it plans in output seconds on the final clips, finds the demo from the
   // final zooms and their style, and listens to speech the transcript refined. Direct again:
   // only its own earlier segments are replaced.
@@ -296,6 +308,8 @@ export function readPolishOptions(raw: unknown): PolishOptions {
     silenceAction: SMART_SPEED_ACTIONS.find((a) => a === o.silenceAction) ?? D.silenceAction,
     captions: flag(o.captions, D.captions),
     captionsProvider: isId(o.captionsProvider) ? o.captionsProvider : null,
+    // Saved before the step existed: off, so a saved Polish does what it did (Captions Studio §11.8).
+    captionLook: flag(o.captionLook, false),
     director: flag(o.director, D.director)
   }
 }
@@ -318,6 +332,8 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
     zoom: autoZoomHasInput(recorded) ? null : 'no-input',
     silences: !project.hasAudio ? 'no-sound' : activitySources(project).length === 0 ? 'muted' : null,
     captions: captions(),
+    // It styles the captions there are, or the ones the captions step makes in the same run.
+    captionLook: project.transcript?.segments.length || captions() === null ? null : 'no-captions',
     director: !ctx.hasCameraFile || !project.hasWebcam ? 'no-camera' : !project.webcam.show ? 'camera-hidden' : null
   }
 }

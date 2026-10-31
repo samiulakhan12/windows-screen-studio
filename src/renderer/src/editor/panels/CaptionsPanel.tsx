@@ -172,7 +172,8 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       if (!r) return
       if (r.kind === 'focus') setFocusId(r.id)
       else if (r.kind === 'export') setExportNow((n) => n + 1)
-      else setGenerateNow((n) => n + 1)
+      else if (r.kind === 'generate') setGenerateNow((n) => n + 1)
+      // 'language' and 'cleanup': the Languages and Clean up sections take them (Captions Studio parts P3 and P4).
     }
     take()
     return onCaptionsRequest(take)

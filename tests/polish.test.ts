@@ -37,7 +37,7 @@ const SOUND = [
   { start: 7.5, end: 11.9 }
 ]
 /** Every step off: tests turn on the ones they look at. */
-const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, captions: false, director: false }
+const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, captions: false, captionLook: false, director: false }
 
 function counter(prefix = 'a'): () => string {
   let n = 0
@@ -374,6 +374,8 @@ describe('planPolish: the whole run', () => {
       ['zoom', 'changed'],
       ['silences', 'changed'],
       ['captions', 'changed'],
+      // Caption look (Captions Studio §11.8) skips until part P4 makes it run.
+      ['captionLook', 'skipped'],
       ['director', 'changed']
     ])
     expect(r.summary.saved).toBeCloseTo(outputDuration(base.project.clips) - outputDuration(r.project.clips), 6)
@@ -438,8 +440,11 @@ describe('readPolishOptions', () => {
     expect(readPolishOptions({ styleId: 5 }).styleId).toBeNull()
     expect(readPolishOptions({ captionsProvider: 'x'.repeat(65) }).captionsProvider).toBeNull()
     const read = readPolishOptions({ styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', director: false })
-    expect(read).toEqual({ ...DEFAULT_POLISH_OPTIONS, styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', director: false })
+    // Saved before Caption look existed: it reads as off, so a saved Polish does what it did.
+    expect(read).toEqual({ ...DEFAULT_POLISH_OPTIONS, styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', captionLook: false, director: false })
     expect(readPolishOptions(read)).toEqual(read)
+    expect(readPolishOptions({ captionLook: true }).captionLook).toBe(true)
+    expect(DEFAULT_POLISH_OPTIONS.captionLook).toBe(true)
   })
 })
 
@@ -448,7 +453,7 @@ describe('polishAvailability', () => {
   const recorded = track(12, { clicks: [{ t: 1, x: 0.5, y: 0.5, button: 'left' }] })
 
   it('offers every step of a recording that has everything', () => {
-    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, captions: null, director: null })
+    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, captions: null, captionLook: null, director: null })
   })
 
   it('says why a row is disabled', () => {

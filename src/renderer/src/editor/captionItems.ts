@@ -17,8 +17,17 @@ import type { PreviewPlayer } from './player'
 
 /* ---------- requests to the Captions tab ---------- */
 
-/** 'generate' and 'export' from the commands; `focus` a caption's text (a double-click on the track). */
-export type CaptionsRequest = { kind: 'generate' } | { kind: 'export' } | { kind: 'focus'; id: string }
+/**
+ * 'generate' and 'export' from the commands; `focus` a caption's text (a double-click on the
+ * track); 'language' and 'cleanup' open Captions Studio's Languages › Add a language and Clean up
+ * (docs/design/captions-studio.md §2.14).
+ */
+export type CaptionsRequest =
+  | { kind: 'generate' }
+  | { kind: 'export' }
+  | { kind: 'focus'; id: string }
+  | { kind: 'language'; via: 'ai' | 'local' }
+  | { kind: 'cleanup'; ai: true }
 
 let pending: CaptionsRequest | null = null
 const requestListeners = new Set<() => void>()

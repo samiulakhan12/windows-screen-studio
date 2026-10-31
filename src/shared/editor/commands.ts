@@ -112,6 +112,14 @@ const COMMAND_LIST = [
   { id: 'generateCaptions', title: 'Generate captions', category: 'Captions', keywords: 'transcribe transcript subtitles speech text auto ai' },
   { id: 'toggleCaptions', title: 'Show or hide captions', category: 'Captions', keywords: 'subtitles transcript on off toggle burn', toggle: true },
   { id: 'exportCaptions', title: 'Export captions…', category: 'Captions', keywords: 'subtitles srt vtt transcript text save file' },
+  // Captions Studio (docs/design/captions-studio.md §2.14): no default keys.
+  { id: 'captionsGreat', title: 'Make my captions great', category: 'Captions', keywords: 'auto style emphasis emoji pop-ups motion graphics magic' },
+  { id: 'captionStyles', title: 'Caption styles…', category: 'Captions', keywords: 'gallery look preset font theme' },
+  { id: 'captionEmphasis', title: 'Find important words', category: 'Captions', keywords: 'emphasis highlight bold key words' },
+  { id: 'captionGraphics', title: 'Add pop-ups from captions', category: 'Captions', keywords: 'keyword emoji counter number list graphics' },
+  { id: 'captionTidy', title: 'Tidy captions', category: 'Captions', keywords: 'clean capital punctuation digits bleep' },
+  { id: 'captionLanguage', title: 'Add a caption language…', category: 'Captions', keywords: 'translate subtitles track' },
+  { id: 'saveCaptionStyle', title: 'Save caption style as mine', category: 'Captions', keywords: 'preset save' },
 
   { id: 'showStyle', title: 'Open Style settings', category: 'Panels', keywords: 'background padding corners shadow aspect inspector tab' },
   { id: 'showCursor', title: 'Open Cursor settings', category: 'Panels', keywords: 'pointer clicks inspector tab' },
