@@ -10,6 +10,8 @@
 - **Suggested AI models stay current**: the models Flown suggests for each AI provider are refreshed
   with the update check, and Settings › AI tells you when a provider uses a model that is being
   retired (OpenAI retires `whisper-1` on 26 February 2027). Models you chose are never changed.
+- **Private by design**: an update check sends nothing that identifies your PC, and a release that is
+  pulled is never installed.
 
 ## 0.7.0
 
