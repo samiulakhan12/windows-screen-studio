@@ -1339,8 +1339,9 @@ function drawShown(c: Ctx, s: Shown, t: number, frame: FrameContext | null): voi
   if (poses.out) {
     const out = s.layout.chunks[poses.out.chunk]
     if (out) {
-      const placed = placeStudio(s.layout, out, s.studio, s.w, s.h, { area: s.area, ...(s.studio.layout.legacyAnchor ? { legacyAnchor: legacyAnchorOf(s.w, s.h, s.area) } : {}) })
-      const shownOut: Shown = { ...s, chunk: out, placed }
+      // Placed as it was while it showed (the same obstacles, its caption's own position), so the push does not jump.
+      const { placed, shiftX } = placeChunkOf(c, s.project, s.seg, s.studio, s.layout, out, s.w, s.h, s.area)
+      const shownOut: Shown = { ...s, chunk: out, placed, shiftX }
       const pose = poses.out.pose
       withChunkPose(c, shownOut, blockRect(shownOut, out, placed), band ? { ...pose, reveal: 1 } : pose, () =>
         drawChunk(c, { s: shownOut, chunk: out, placed, pose, words: [], mark: null, t, live: false, noBand: band }, frame)
