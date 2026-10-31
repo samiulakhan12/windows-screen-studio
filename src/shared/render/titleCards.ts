@@ -108,9 +108,9 @@ const METRICS: Record<TitleCardStyle, StyleMetrics> = {
   centered: { title: 0.085, titleMin: 0.03, titleLine: 1.16, titleWeight: 700, sub: 0.038, subMin: 0.022, subLine: 1.35, subWeight: 500, titleLines: 3, subLines: 3, gap: 0.42, maxWidth: 0.78, maxHeight: 0.72 },
   big: { title: 0.165, titleMin: 0.05, titleLine: 1.04, titleWeight: 800, sub: 0.042, subMin: 0.022, subLine: 1.35, subWeight: 500, titleLines: 3, subLines: 2, gap: 0.3, maxWidth: 0.86, maxHeight: 0.8 },
   'lower-third': { title: 0.05, titleMin: 0.028, titleLine: 1.2, titleWeight: 700, sub: 0.03, subMin: 0.02, subLine: 1.3, subWeight: 500, titleLines: 2, subLines: 2, gap: 0.22, maxWidth: 0.62, maxHeight: 0.3 },
-  // The quote panel (docs/design/captions-studio.md §10.1): the quote at 0.06 u, "— Name" at 0.6×,
-  // at most 0.8 W. Part P2 draws it as a panel; until then it lays out as a centred card.
-  quote: { title: 0.06, titleMin: 0.03, titleLine: 1.25, titleWeight: 400, sub: 0.036, subMin: 0.02, subLine: 1.3, subWeight: 500, titleLines: 4, subLines: 1, gap: 0.3, maxWidth: 0.8, maxHeight: 0.5 }
+  // The quote panel (docs/design/captions-studio.md §10.1): the quote at 0.06 u, "— Name" at 0.6×;
+  // the text 0.7 W at most, so the panel with its padding and opening mark stays within 0.8 W (quotePanel).
+  quote: { title: 0.06, titleMin: 0.03, titleLine: 1.25, titleWeight: 400, sub: 0.036, subMin: 0.02, subLine: 1.3, subWeight: 500, titleLines: 4, subLines: 1, gap: 0.3, maxWidth: 0.7, maxHeight: 0.5 }
 }
 
 /** Distance from the frame's edges kept clear (title-safe area), as a fraction of the shorter side. */
@@ -272,4 +272,45 @@ export function titleLayout(
     band = { x: left, y, w: bw, h: bh, radius: Math.min(bh / 2, pad.y * 1.4), padX: pad.x, padY: pad.y, accent: pad.accent }
   }
   return { title: t, subtitle: s && s.lines.length ? s : null, gap, width, height, band, rise: (lower ? 0.018 : 0.028) * h }
+}
+
+/* ---------- the quote panel (docs/design/captions-studio.md §10.1) ---------- */
+
+/** A quote card's name line: "— Name" (a name already starting with a dash is kept). */
+export function quoteName(name: string | undefined): string {
+  const n = (name ?? '').trim()
+  if (!n) return ''
+  return /^[\u2014\u2013-]/.test(n) ? n : `\u2014 ${n}`
+}
+
+export interface QuotePanel {
+  /** The panel (output px) and its corner radius (0.3 em). */
+  panel: Rect
+  radius: number
+  /** Where the text block starts: its left edge and top. */
+  textX: number
+  textTop: number
+  /** The opening mark: its left edge, the middle of the first line, its size (1.6 em). */
+  mark: { x: number; y: number; px: number }
+}
+
+/**
+ * Where a quote card goes (§10.1): a panel centred at 0.72 H in frames that are not tall and at
+ * 0.45 H in tall ones, padded 0.6 / 0.5 em around the text, with the opening mark (1.6 em) hanging
+ * before the first line; never wider than 0.8 W, kept inside the title-safe margins.
+ */
+export function quotePanel(l: TitleLayout, w: number, h: number): QuotePanel {
+  const em = l.title.px
+  const markPx = em * 1.6
+  const markW = markPx * 0.42
+  const padX = em * 0.6
+  const padY = em * 0.5
+  const pw = Math.min(w * 0.8, l.width + markW + padX * 2 + em * 0.15)
+  const ph = l.height + padY * 2
+  const tall = h >= 1.25 * w
+  const safe = TITLE_SAFE * Math.min(w, h)
+  const cy = Math.max(safe + ph / 2, Math.min(h - safe - ph / 2, (tall ? 0.45 : 0.72) * h))
+  const panel = { x: (w - pw) / 2, y: cy - ph / 2, w: pw, h: ph }
+  const textX = panel.x + padX + markW + em * 0.15
+  return { panel, radius: Math.min(em * 0.3, ph / 2), textX, textTop: panel.y + padY, mark: { x: panel.x + padX, y: panel.y + padY + l.title.lineHeight / 2, px: markPx } }
 }

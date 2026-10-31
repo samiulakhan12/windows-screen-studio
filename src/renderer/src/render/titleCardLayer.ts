@@ -1,10 +1,12 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
-import { TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
+import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
+import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
+import { quoteName, quotePanel, TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
 import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
 import type { Project } from '../../../shared/types'
-import { fontGeneration, projectFontStack } from './fontLoader'
+import { ensureCaptionFonts, fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
 import { paintBackgroundLayer } from './staticLayer'
 
@@ -16,8 +18,20 @@ type Ctx = CanvasRenderingContext2D
 const MEASURE_PX = 100
 const widths = new Map<string, number>()
 
-/** The font stack of a card: its brand font, else the title font. */
-const cardFont = (project: Pick<Project, 'id' | 'fonts'>, card: TitleCard): string => projectFontStack(project, card.font, TITLE_FONT)
+/** The quote style's font (captions-studio.md §10.1). */
+const QUOTE_FONT = 'instrument-serif-italic'
+/** After a catalogue font: the bundled script fonts and the colour emoji face (§6.6), then the title font. */
+const CATALOG_FALLBACK = ['noto-sans-bengali', 'noto-sans-devanagari', 'noto-sans-arabic', 'noto-sans-hebrew', 'noto-sans-thai', 'noto-color-emoji'].map((id) => `"${catalogFamily(id)}"`).join(', ')
+
+/**
+ * The font stack of a card: a catalogue font (`cat:`, and the quote style's), its brand font, else
+ * the title font. Cards without a `cat:` font and of the older styles draw exactly as before.
+ */
+function cardFont(project: Pick<Project, 'id' | 'fonts'>, card: TitleCard): string {
+  const cat = catalogId(card.font) ?? (card.style === 'quote' && !card.font ? QUOTE_FONT : null)
+  if (cat) return `"${catalogFamily(cat)}", ${CATALOG_FALLBACK}, ${TITLE_FONT}`
+  return projectFontStack(project, card.font, TITLE_FONT)
+}
 
 /** A cache key part for a font: the stack and the font generation (widths measured while it loaded are dropped). */
 const fontKey = (font: string): string => `${fontGeneration()}|${font}`
@@ -44,7 +58,8 @@ function layoutOf(ctx: Ctx, card: TitleCard, w: number, h: number, font: string,
   let l = layouts.get(key)
   if (!l) {
     ctx.save()
-    l = titleLayout(card, w, h, measureOn(ctx, font), area)
+    // A quote card's name line reads "— Name" (§10.1), measured as drawn.
+    l = titleLayout(card.style === 'quote' ? { ...card, subtitle: quoteName(card.subtitle) } : card, w, h, measureOn(ctx, font), area)
     ctx.restore()
     if (layouts.size > 64) layouts.clear()
     layouts.set(key, l)
@@ -74,38 +89,31 @@ interface BlurredFrame {
 const blurs = new WeakMap<Ctx, BlurredFrame>()
 
 /**
- * The frame drawn so far, small and blurred. Made once per frame on two small canvases kept for
- * the output (never allocated per frame), reading the full-size frame only once: it is drawn
- * small, copied with its edges stretched into a margin (so the blur does not darken the edges),
- * then blurred.
+ * Blurs the `fw` x `fh` frame of `ctx` into `b`'s small canvases (`size` px on its long side),
+ * reading the full-size frame only once: it is drawn small, copied with its edges stretched into a
+ * margin (so the blur does not darken the edges), then blurred. Only these small canvases are
+ * filtered, never the frame.
  */
-function blurredFrame(fc: FrameContext): BlurredFrame | null {
-  if (typeof document === 'undefined') return null
-  let b = blurs.get(fc.ctx)
-  if (b && b.fc === fc) return b
-  const s = BLUR_SIDE / Math.max(fc.w, fc.h)
-  const sw = Math.max(2, Math.round(fc.w * s))
-  const sh = Math.max(2, Math.round(fc.h * s))
+function blurInto(ctx: Ctx, fw: number, fh: number, size: number, b: BlurredFrame): boolean {
+  const s = size / Math.max(fw, fh)
+  const sw = Math.max(2, Math.round(fw * s))
+  const sh = Math.max(2, Math.round(fh * s))
   const sigma = Math.max(1, BLUR_SIGMA * Math.min(sw, sh))
   const m = Math.ceil(sigma * 2.5)
-  if (!b) {
-    b = { padded: document.createElement('canvas'), blurred: document.createElement('canvas'), m, sw, sh, fc: null }
-    blurs.set(fc.ctx, b)
-  }
   for (const c of [b.padded, b.blurred]) {
     if (c.width !== sw + 2 * m) c.width = sw + 2 * m
     if (c.height !== sh + 2 * m) c.height = sh + 2 * m
   }
   const p = b.padded.getContext('2d', { alpha: false })
   const o = b.blurred.getContext('2d', { alpha: false })
-  if (!p || !o) return null
+  if (!p || !o) return false
   const W = sw + 2 * m
   const H = sh + 2 * m
   // 1. The frame, small, into the middle of the result canvas (its only full-size read).
   o.imageSmoothingEnabled = true
   o.imageSmoothingQuality = 'medium'
   o.globalCompositeOperation = 'copy'
-  o.drawImage(fc.ctx.canvas, 0, 0, fc.w, fc.h, m, m, sw, sh)
+  o.drawImage(ctx.canvas, 0, 0, fw, fh, m, m, sw, sh)
   // 2. Stretched over the whole work canvas (filling the margin from the edges), and exact in its middle.
   p.imageSmoothingEnabled = true
   p.drawImage(b.blurred, m, m, sw, sh, 0, 0, W, H)
@@ -118,8 +126,49 @@ function blurredFrame(fc: FrameContext): BlurredFrame | null {
   b.m = m
   b.sw = sw
   b.sh = sh
+  return true
+}
+
+/**
+ * The frame drawn so far, small and blurred. Made once per frame on two small canvases kept for
+ * the output (never allocated per frame).
+ */
+function blurredFrame(fc: FrameContext): BlurredFrame | null {
+  if (typeof document === 'undefined') return null
+  let b = blurs.get(fc.ctx)
+  if (b && b.fc === fc) return b
+  if (!b) {
+    b = { padded: document.createElement('canvas'), blurred: document.createElement('canvas'), m: 0, sw: 0, sh: 0, fc: null }
+    blurs.set(fc.ctx, b)
+  }
+  if (!blurInto(fc.ctx, fc.w, fc.h, BLUR_SIDE, b)) return null
   b.fc = fc
   return b
+}
+
+/** The canvases blurredFrameOf keeps per frame canvas and size (never allocated per frame), and the copy it returns. */
+const frameBlurs = new WeakMap<Ctx, Map<number, { b: BlurredFrame; out: HTMLCanvasElement }>>()
+
+/**
+ * A blurred copy of the frame drawn so far into `ctx`, made off the frame canvas at `size` px on
+ * its long side (Captions Studio §9.7: the title cards' blur, shared with the Glass look): the
+ * whole frame, small, with no margin. The frame canvas itself is never filtered.
+ */
+export function blurredFrameOf(ctx: CanvasRenderingContext2D, size: 256 | 128): HTMLCanvasElement {
+  let bySize = frameBlurs.get(ctx)
+  if (!bySize) frameBlurs.set(ctx, (bySize = new Map()))
+  let e = bySize.get(size)
+  if (!e) bySize.set(size, (e = { b: { padded: document.createElement('canvas'), blurred: document.createElement('canvas'), m: 0, sw: 0, sh: 0, fc: null }, out: document.createElement('canvas') }))
+  const { b, out } = e
+  if (!blurInto(ctx, ctx.canvas.width, ctx.canvas.height, size, b)) return out
+  if (out.width !== b.sw) out.width = b.sw
+  if (out.height !== b.sh) out.height = b.sh
+  const r = out.getContext('2d', { alpha: false })
+  if (r) {
+    r.globalCompositeOperation = 'copy'
+    r.drawImage(b.blurred, b.m, b.m, b.sw, b.sh, 0, 0, b.sw, b.sh)
+  }
+  return out
 }
 
 /* ---------- the text as a picture (made once per card, text and size) ---------- */
@@ -353,22 +402,75 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
   if (!active) return
   // Later cards on top.
   active.sort((a, b) => a.card.start - b.card.start)
+  // Catalogue fonts (cat: and quote cards) load as the editor draws; the export waits for them (prepareCaptionFonts).
+  if (titles.some((c) => c.style === 'quote' || catalogId(c.font))) ensureCaptionFonts(fc.project)
   for (const { card, phase } of active) {
     const font = cardFont(fc.project, card)
     const lower = card.style === 'lower-third'
     const l = layoutOf(fc.ctx, card, fc.w, fc.h, font, lower ? fc.textArea : null)
     if (lower) drawLowerThird(fc, card, phase, l, font)
+    else if (card.style === 'quote') drawQuote(fc, card, phase, l, font)
     else drawFullFrame(fc, card, phase, l, font)
   }
 }
 
+/** #rrggbb's relative luminance is above the middle: dark text on it. */
+const lightColour = (hex: string): boolean => luminance(hex) > 0.45
+
 /**
- * A blurred copy of the frame drawn so far, made off the frame canvas at `size` px (Captions
- * Studio §9.7: shared by title cards and the Glass look).
- *
- * CONTRACT (part P2): the signature is frozen; P2 moves the title cards' blurred copy here.
+ * A quote card (Captions Studio §10.1): a pull quote on a panel in the caption look's box colour
+ * at α 0.85 (radius 0.3 em), the quote in Instrument Serif Italic, an opening “ in the emphasis
+ * colour at 1.6×, and "— Name" under it at 0.6×; no full-frame background. It fades over
+ * TITLE_FADE (at least 0.2 s, §9.6) and rises in like the other cards.
  */
-export function blurredFrameOf(ctx: CanvasRenderingContext2D, size: 256 | 128): HTMLCanvasElement {
-  void [ctx, size]
-  throw new Error('blurredFrameOf: not implemented (Captions Studio part P2)')
+function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string): void {
+  const { ctx, w, h } = fc
+  if (phase.text <= 0.002 || l.height <= 0) return
+  const look = fc.project.captions?.studio ?? STUDIO_BASE
+  const panelColour = card.color ?? look.theme.box
+  const textColour = card.textColor ?? (lightColour(panelColour) ? '#111111' : '#ffffff')
+  const markColour = look.theme.emphasis
+  const q = quotePanel(l, w, h)
+  const paint = (c: Ctx, alpha: number, rise: number): void => {
+    c.save()
+    c.globalAlpha = alpha * 0.85
+    c.fillStyle = panelColour
+    c.beginPath()
+    c.roundRect(q.panel.x, q.panel.y + rise, q.panel.w, q.panel.h, q.radius)
+    c.fill()
+    c.globalAlpha = alpha
+    c.fillStyle = markColour
+    c.font = `${l.title.weight} ${q.mark.px}px ${font}`
+    c.textAlign = 'left'
+    c.textBaseline = 'middle'
+    c.fillText('\u201c', q.mark.x, q.mark.y + q.mark.px * 0.18 + rise)
+    drawText(c, l, q.textX, q.textTop + rise, 'left', textColour, alpha, font)
+    c.restore()
+  }
+  const key = JSON.stringify(['quote', w, h, card.title, card.subtitle ?? '', panelColour, textColour, markColour, fontKey(font), l])
+  const sprite = spriteOf(key, q.panel, Math.ceil(q.mark.px * 0.5), (c) => paint(c, 1, 0))
+  if (!sprite) {
+    paint(ctx, phase.text, phase.rise * l.rise)
+    return
+  }
+  ctx.save()
+  ctx.globalAlpha = phase.text
+  drawSprite(ctx, sprite, phase.rise * l.rise)
+  ctx.restore()
 }
+
+/**
+ * The lower-third title cards' bands (output px, at rest) with their times: Captions Studio
+ * captions keep clear of them (captions-studio.md §8.6).
+ */
+export function lowerThirdBoxes(ctx: Ctx, project: Project, w: number, h: number, area: Rect | null): { start: number; end: number; box: Rect }[] {
+  const out: { start: number; end: number; box: Rect }[] = []
+  for (const card of project.titles ?? []) {
+    if (card.style !== 'lower-third') continue
+    const font = cardFont(project, card)
+    const band = layoutOf(ctx, card, w, h, font, area).band
+    if (band) out.push({ start: card.start, end: card.end, box: { x: band.x, y: band.y, w: band.w, h: band.h } })
+  }
+  return out
+}
+

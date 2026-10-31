@@ -10,6 +10,7 @@
 import { assetFontFile } from '../../../shared/api/assets'
 import { burnedSegments } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFont } from '../../../shared/captions/fontCatalog'
+import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
 import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
@@ -337,7 +338,8 @@ export function catalogFontsFor(project: Project): string[] {
   }
   const graphics = project.graphics ?? []
   for (const g of graphics) {
-    add(g.font ?? studio?.text.font)
+    // A graphic without a font takes the look's (Subtitle's on a legacy look).
+    add(g.font ?? studio?.text.font ?? STUDIO_BASE.text.font)
     texts.push(...graphicTexts(g))
   }
   for (const c of project.titles ?? []) {

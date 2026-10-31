@@ -119,3 +119,20 @@ export function spriteCap(outW: number, outH: number): number {
 
 /** The Studio layer's sprites. */
 export const STUDIO_SPRITES: SpriteCache = new SpriteCache(BASE_CAP)
+
+/**
+ * A blurred copy of sprite `source` (§9.7: blur motion crossfades three pre-blurred levels), made
+ * on first use on its own canvas at half resolution: blurred, half resolution loses nothing
+ * visible and takes a quarter of the memory. Only this small canvas is ever filtered, never the
+ * frame (a filter on the frame costs 61 ms at 1080p). Keyed by the sprite's key and the radius.
+ */
+export function blurredSprite(cache: SpriteCache, key: string, source: HTMLCanvasElement, radius: number): HTMLCanvasElement | null {
+  const r = Math.max(0.5, radius / 2)
+  const w = Math.max(1, Math.ceil(source.width / 2))
+  const h = Math.max(1, Math.ceil(source.height / 2))
+  return cache.get(`${key}|blur${r.toFixed(2)}`, w, h, (c) => {
+    c.filter = `blur(${r}px)`
+    c.drawImage(source, 0, 0, w, h)
+    c.filter = 'none'
+  })
+}
