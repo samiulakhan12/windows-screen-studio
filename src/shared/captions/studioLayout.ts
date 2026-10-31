@@ -121,6 +121,7 @@ const NEEDLESS_BREAK = 6
 
 const graphemer = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
 function graphemes(text: string): number {
+  if (/^[\x20-\x7e]*$/.test(text)) return text.length
   if (!graphemer) return Array.from(text).length
   let n = 0
   for (const _ of graphemer.segment(text)) n++
@@ -204,11 +205,10 @@ export function breakPhrases(widths: number[], tokens: StudioToken[], room: numb
   const per = Math.max(1, Math.min(2, Math.round(lines)))
   const meter = lineMeter(widths, tokens, spaces)
   const bc = Array.from({ length: Math.max(0, n - 1) }, (_, i) => breakCost(tokens, i, language))
-  const words = (a: number, b: number): number => {
-    let k = 0
-    for (let i = a; i < b; i++) if (!tokens[i].label && WORDISH.test(tokens[i].text)) k++
-    return k
-  }
+  // Words that count as a word on a line (not the speaker's name, not punctuation alone), as prefix sums.
+  const plain = new Int32Array(n + 1)
+  for (let i = 0; i < n; i++) plain[i + 1] = plain[i] + (!tokens[i].label && WORDISH.test(tokens[i].text) ? 1 : 0)
+  const words = (a: number, b: number): number => plain[b] - plain[a]
   const within = (a: number, b: number): boolean => meter.width(a, b) <= room * (1 + 1e-9) && (maxChars <= 0 || meter.chars(a, b) <= maxChars)
   const fits = (a: number, b: number): boolean => {
     const plain = words(a, b)

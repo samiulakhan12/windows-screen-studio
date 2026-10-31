@@ -147,6 +147,14 @@ export function calmed(m: CaptionMotion): CaptionMotion {
   }
 }
 
+const calmCache = new WeakMap<CaptionMotion, CaptionMotion>()
+/** calmed(m), once per motion object. */
+function calmedOf(m: CaptionMotion): CaptionMotion {
+  let c = calmCache.get(m)
+  if (!c) calmCache.set(m, (c = calmed(m)))
+  return c
+}
+
 /** Calm motion's clamp of a pose: scale within 0.96–1.04, movement at most 0.015 u, no rotation or blur. */
 function calmPose<T extends { dx: number; dy: number; scale: number; scaleX: number; rotate: number; blur: number }>(p: T, u: number): T {
   const move = 0.015 * u
@@ -343,7 +351,7 @@ const WORD_TIMING: Record<Exclude<WordMotion, 'none' | 'typewriter' | 'wipe'>, {
 }
 
 const graphemer = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
-const graphemeCount = (text: string): number => (graphemer ? [...graphemer.segment(text)].length : Array.from(text).length)
+const graphemeCount = (text: string): number => (/^[\x20-\x7e]*$/.test(text) ? text.length : graphemer ? [...graphemer.segment(text)].length : Array.from(text).length)
 
 interface WordCtx {
   /** Viewing seconds since the word's start (negative before it). */
@@ -475,6 +483,19 @@ function markGroups(layout: StudioLayout, chunk: StudioChunk, starts: Float64Arr
   return groups
 }
 
+/** Per chunk (and clips and dwell): its mark groups and each word's size and place in its line, made once. */
+const chunkCache = new WeakMap<StudioChunk, { clips: readonly Clip[]; dwell: boolean; groups: { first: number; last: number }[]; wordBox: Map<number, { px: number; place: number }> }>()
+
+function chunkInfo(layout: StudioLayout, chunk: StudioChunk, clips: readonly Clip[], starts: Float64Array, dwell: boolean): { groups: { first: number; last: number }[]; wordBox: Map<number, { px: number; place: number }> } {
+  const hit = chunkCache.get(chunk)
+  if (hit && hit.clips === clips && hit.dwell === dwell) return hit
+  const wordBox = new Map<number, { px: number; place: number }>()
+  chunk.lines.forEach((l) => l.words.forEach((w, k) => wordBox.set(w.token, { px: w.px, place: k })))
+  const info = { clips, dwell, groups: markGroups(layout, chunk, starts, dwell), wordBox }
+  chunkCache.set(chunk, info)
+  return info
+}
+
 /** The box of words first..last on their line (x and width in the line's coordinates). */
 function spanOf(chunk: StudioChunk, first: number, last: number): { x: number; w: number; line: number } | null {
   for (let li = 0; li < chunk.lines.length; li++) {
@@ -506,7 +527,7 @@ export function captionPoses(
 ): { chunk: ChunkPose; words: WordPose[]; mark: MarkBox | null; out?: { chunk: number; pose: ChunkPose } } {
   const ch = layout.chunks[chunk]
   if (!ch) return { chunk: rest(), words: [], mark: null }
-  const m = studio.motion.calm ? calmed(studio.motion) : studio.motion
+  const m = studio.motion.calm ? calmedOf(studio.motion) : studio.motion
   const calm = !!m.calm
   const s = m.strength
   const em = layout.px
@@ -563,11 +584,9 @@ export function captionPoses(
     return k
   })()
   const bigMark = !!layout.bigMark && (studio.spoken === 'box' || studio.spoken === 'pill' || studio.spoken === 'underline' || studio.spoken === 'glow')
-  const groups = markGroups(layout, ch, v.starts, bigMark)
+  const { groups, wordBox } = chunkInfo(layout, ch, clips, v.starts, bigMark)
   const groupOf = (i: number): { first: number; last: number } | undefined => groups.find((g) => i >= g.first && i <= g.last)
   const spokenGroup = spokenAt >= 0 ? groupOf(spokenAt) : undefined
-  const wordBox = new Map<number, { px: number; place: number }>()
-  ch.lines.forEach((l) => l.words.forEach((w, k) => wordBox.set(w.token, { px: w.px, place: k })))
   const words: WordPose[] = []
   for (let i = ch.first; i <= ch.last; i++) {
     const tok = layout.tokens[i]
@@ -584,9 +603,9 @@ export function captionPoses(
     const lenW = Math.max(0, v.ends[i] - v.starts[i])
     if (spoken) {
       // Estimated words move gently (§9.1 rule 7).
-      const wm = tok.estimated ? calmed(m) : m
+      const wm = tok.estimated && !calm ? calmedOf(m) : m
       const kind = emph ? wm.emphasis : wm.word
-      const ctx: WordCtx = { age: ageW, len: lenW, em: wem, u, s, m: wm, entrance: m.upcoming < 1, upcoming: m.upcoming, dir: layout.dirs[i] ?? 'l', seed: seedOf(`${key}|${i}`), graphemes: graphemeCount(tok.text), calm: calm || !!tok.estimated }
+      const ctx: WordCtx = { age: ageW, len: lenW, em: wem, u, s, m: wm, entrance: m.upcoming < 1, upcoming: m.upcoming, dir: layout.dirs[i] ?? 'l', seed: kind === 'shake' ? seedOf(`${key}|${i}`) : 0, graphemes: kind === 'typewriter' ? graphemeCount(tok.text) : 0, calm: calm || !!tok.estimated }
       Object.assign(pose, wordMotion(kind, ctx))
       /* the spoken mark */
       const isSpoken = spokenAt === i || (!!spokenGroup && i >= spokenGroup.first && i <= spokenGroup.last && bigMark)

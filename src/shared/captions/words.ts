@@ -37,8 +37,12 @@ const hasSegmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl
 const graphemeSegmenter = hasSegmenter ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
 const wordSegmenters = new Map<string, Intl.Segmenter>()
 
+/** Printable ASCII: one grapheme per character, Latin letters or none. */
+const ASCII = /^[\x20-\x7e]*$/
+
 /** Number of graphemes (letters as the reader sees them) in `text`. */
 function graphemeCount(text: string): number {
+  if (ASCII.test(text)) return text.length
   if (!graphemeSegmenter) return Array.from(text).length
   let n = 0
   for (const _ of graphemeSegmenter.segment(text)) n++
@@ -132,6 +136,7 @@ function charScript(ch: string): ScriptTag | null {
 
 /** The script of the first letter of `text` ('other' without one). Bengali digits count as Bengali; 0–9 have no script. */
 export function scriptOf(text: string): ScriptTag {
+  if (ASCII.test(text)) return /[A-Za-z]/.test(text) ? 'latin' : 'other'
   for (const ch of text) {
     const s = charScript(ch)
     if (s) return s
@@ -142,6 +147,11 @@ export function scriptOf(text: string): ScriptTag {
 /** Letters of `text` per script. */
 function scriptCounts(text: string): Map<ScriptTag, number> {
   const counts = new Map<ScriptTag, number>()
+  if (ASCII.test(text)) {
+    const n = text.match(/[A-Za-z]/g)?.length ?? 0
+    if (n) counts.set('latin', n)
+    return counts
+  }
   for (const ch of text) {
     const s = charScript(ch)
     if (s) counts.set(s, (counts.get(s) ?? 0) + 1)
