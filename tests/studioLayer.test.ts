@@ -47,7 +47,7 @@ const { drawStudioCaptions, drawStudioSample, SAMPLE_STILL_T } = (await import(/
   drawStudioSample: (ctx: unknown, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number) => { textPx: number }
   SAMPLE_STILL_T: number
 }
-const { fontGeneration, loadCatalogFont } = (await import(/* @vite-ignore */ '../src/renderer/src/render/fontLoader')) as { fontGeneration(): number; loadCatalogFont(id: string): Promise<void> }
+const { fontGeneration, loadCatalogFont } = (await import(/* @vite-ignore */ `${'../src/renderer/src/render/'}fontLoader`)) as { fontGeneration(): number; loadCatalogFont(id: string): Promise<void> }
 const { drawGraphicsLayer } = (await import(/* @vite-ignore */ GRAPHICS)) as { drawGraphicsLayer: Draw }
 const { STUDIO_SPRITES } = (await import(/* @vite-ignore */ SPRITES)) as { STUDIO_SPRITES: { clear(): void } }
 
