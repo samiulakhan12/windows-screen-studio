@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
+import { shortcutIndex } from '../../../shared/editor/shortcuts'
 import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
 import { formatTime } from '../../../shared/engine/project'
 import {
@@ -25,11 +26,14 @@ import { listKey } from '../../../shared/review/keys'
 import { previewStretch } from '../../../shared/review/preview'
 import { keepItems, mergeSnapshot, removeItems, reviewItems, reviewProgress, reviewStatus, type ReviewItem, type ReviewStatus } from '../../../shared/review/review'
 import { useEditor } from '../editor/context'
+import { useKeymap } from '../editor/keymapContext'
 import { playStretch } from './playStretch'
 import './review.css'
 
 export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const { store, player } = useEditor()
+  const keymap = useKeymap()
+  const shortcuts = useMemo(() => shortcutIndex(keymap), [keymap])
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
   // What the panel has shown: reviewed items stay in the list, marked, until it closes.
   const [shown, setShown] = useState<ReviewItem[]>(() => reviewItems(store.state))
@@ -149,7 +153,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }
 
   const onListKey = (e: React.KeyboardEvent): void => {
-    const key = listKey(e)
+    const key = listKey(e, shortcuts)
     if (!key) return
     e.preventDefault()
     e.stopPropagation()

@@ -4,7 +4,7 @@
  * shortcuts read them (shortcuts.ts eventKeyName), so on another alphabet's layout the key where N
  * is still moves on, instead of going on to the editor as Snapping. Pure.
  */
-import { eventKeyName, type KeyInput } from '../editor/shortcuts'
+import { eventKeyName, type KeyInput, type ShortcutIndex } from '../editor/shortcuts'
 
 export type ListAction = 'next' | 'previous' | 'first' | 'last' | 'keep' | 'remove'
 
@@ -28,11 +28,13 @@ const LIST_KEYS = new Map<string, ListKey>([
 
 /**
  * What a key pressed in the list does, or null when it goes on to the editor: Ctrl, Alt and Meta
- * chords, and Shift with a letter (Shift+P is Polish; a capital from Caps Lock still counts).
+ * chords, and Shift with a letter that has a shortcut of its own in `shortcuts` (Shift+P is
+ * Polish). Shift with any other letter is the letter, as the editor reads it: Shift+N would be
+ * Snapping there, so it moves on here.
  */
-export function listKey(e: KeyInput): ListKey | null {
+export function listKey(e: KeyInput, shortcuts: ShortcutIndex): ListKey | null {
   if (e.ctrlKey || e.altKey || e.metaKey) return null
   const name = eventKeyName(e)
-  if (!name || (e.shiftKey && /^[A-Z]$/.test(name))) return null
+  if (!name || (e.shiftKey && /^[A-Z]$/.test(name) && shortcuts.has(`Shift+${name}`))) return null
   return LIST_KEYS.get(name) ?? null
 }
