@@ -9,7 +9,7 @@ import { emojiSpans, extractUrlsWithIndices, findUrls, parseTweet } from './twit
 
 /** C0 controls but tab and line feed, DEL, C1 controls, direction overrides and isolates, and the BOM. */
 // eslint-disable-next-line no-control-regex
-const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f‪-‮⁦-⁩﻿]/g
+const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufeff]/g
 
 export interface PlainTextOptions {
   /** Longest result (characters), cut at a sentence or word end. */
@@ -24,7 +24,7 @@ export interface PlainTextOptions {
 
 /* ---------- links ---------- */
 
-/** A link in a text: where it is, and whether it goes whole (a scheme, "www.", a port, a path or a query) or is only broken. */
+/** A link in a text: where it is, and whether it goes whole (a scheme, "www." or a path, with its port and query) or is only broken. */
 interface Link {
   start: number
   end: number
@@ -94,7 +94,7 @@ function linksIn(text: string): Link[] {
   return links.sort((a, b) => a.start - b.start || b.end - a.end)
 }
 
-/** Hosts (and schemes) compare without case, in ASCII only ("K", the Kelvin sign, is not "k"); the rest of a link exactly. */
+/** Hosts (and schemes) compare without case, in ASCII only (U+212A, the Kelvin sign, is not "k"); the rest of a link exactly. */
 function linkKey(link: string): string {
   const host = /^(?:https?:\/\/)?[^/?#:]*/i.exec(link)?.[0] ?? ''
   return host.replace(/[A-Z]+/g, (c) => c.toLowerCase()) + link.slice(host.length)
@@ -130,11 +130,12 @@ const ROUNDS = 8
 const noLinkAtAll = (t: string): string => t.replace(/\.(?=[\p{L}\p{M}])/gu, '').replace(/:\/\//g, '')
 
 /**
- * `text` with no link that `allowed` lacks (read in NFC, as X reads it; NFC when anything changed): a link with a scheme, "www.", a port, a path or a
- * query is removed (the punctuation after it stays); a bare name ("evil.com", "TP.Thủ", "README.md")
- * gets a space after each of its dots ("evil. com", "TP. Thủ"), so no word loses a letter and nothing
- * links it. The result is read again until no such link is left, since removing one can join the text
- * around it into another; should a text still hide one after ROUNDS, noLinkAtAll.
+ * `text` with no link that `allowed` lacks (read in NFC, as X reads it; NFC when anything changed): a
+ * link with a scheme, "www." or a path (and its port and query) is removed (the punctuation after it
+ * stays); a bare name ("evil.com", "TP.Thủ", "README.md") gets a space after each of its dots
+ * ("evil. com", "TP. Thủ"), so no word loses a letter and nothing links it. The result is read again
+ * until no such link is left, since removing one can join the text around it into another; should a
+ * text still hide one after ROUNDS, noLinkAtAll.
  */
 function cleanLinks(text: string, allowed: ReadonlySet<string>): string {
   let t = text
@@ -192,7 +193,7 @@ const UNDERLINED = /(?<![\p{L}\p{N}_])__(?=[^\s_])([^_\n]*?\s[^_\n]*?[^\s_])__(?
 const tidyText = (t: string): string =>
   t
     .split('\n')
-    .map((line) => line.replace(/[  ]{2,}/g, ' ').replace(/\s+$/, ''))
+    .map((line) => line.replace(/[ \u00a0]{2,}/g, ' ').replace(/\s+$/, ''))
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()

@@ -64,7 +64,7 @@ describe("the port of twitter-text 3.1.0 (X's rules for links and length)", () =
 
   it("finds the same matches in linear time as twitter-text's own loop (seeded random texts, short and long)", () => {
     const rnd = random(42)
-    const atoms = ['a', 'b', 'Th', 'ủ', '.', '.', '.', 'com', 'co', 'uk', 'de', '日本', '在线', '嘉里', '大酒店', 'онлайн', '_', '-', 'x', '1', 'https://', 'HTTP://', '/', '?', ':', '#', '(', ')', ' ', 'ы', 'xn--p1ai', 'é', '́', 'K', 'ſ', '@', '😀', '。', '​']
+    const atoms = ['a', 'b', 'Th', 'ủ', '.', '.', '.', 'com', 'co', 'uk', 'de', '日本', '在线', '嘉里', '大酒店', 'онлайн', '_', '-', 'x', '1', 'https://', 'HTTP://', '/', '?', ':', '#', '(', ')', ' ', 'ы', 'xn--p1ai', 'é', '\u0301', '\u212a', '\u017f', '@', '😀', '。', '\u200b']
     for (let k = 0; k < 4000; k++) {
       let s = ''
       const n = 1 + Math.floor(rnd() * (k % 10 === 0 ? 200 : 20))

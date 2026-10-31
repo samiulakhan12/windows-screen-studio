@@ -55,7 +55,7 @@ describe('the copy pack after the second review of its link filter', () => {
   })
 
   it('A domain after a dot that follows a non-ASCII symbol, CJK text, a zero-width space or a quote is never removed, and X links it', () => {
-    for (const before of ['…', '”', '"', '詳', '​', '😀', '€']) expect(plainText(`More at ${before}.evil.com today`, none)).toBe(`More at ${before}.evil. com today`)
+    for (const before of ['…', '”', '"', '詳', '\u200b', '😀', '€']) expect(plainText(`More at ${before}.evil.com today`, none)).toBe(`More at ${before}.evil. com today`)
     expect(plainText('More at https://x詳.evil.com today', none)).toBe('More at today')
     expect(text(validatePackAnswer('linkedin', { text: 'More at ….evil.com today' }, none.linksFrom))).toBe('More at ….evil. com today')
   })
@@ -91,16 +91,16 @@ describe('the copy pack after the second review of its link filter', () => {
   })
 
   it('Combining marks (U+0300-U+036F) inside or before a domain hide it from LINK, and X links the mixed-script name', () => {
-    expect(plainText('Log in at paypaĺ.com', none)).toBe('Log in at paypaĺ. com')
-    expect(plainText('Get it at éflown.app', { max: 500, linksFrom: 'Get Flown at flown.app today.' })).toBe('Get it at éflown. app')
-    expect(plainText('Log in at evíl.xn--p1ai', none)).toBe('Log in at evíl. xn--p1ai'.normalize())
+    expect(plainText('Log in at paypal\u0301.com', none)).toBe('Log in at paypaĺ. com')
+    expect(plainText('Get it at e\u0301flown.app', { max: 500, linksFrom: 'Get Flown at flown.app today.' })).toBe('Get it at éflown. app')
+    expect(plainText('Log in at evi\u0301l.xn--p1ai', none)).toBe('Log in at evi\u0301l. xn--p1ai'.normalize())
   })
 
-  it('A Latin top-level domain followed by ſ (U+017F) or K (Kelvin sign, U+212A) is kept, and X links the domain', () => {
-    expect(plainText('More at evil.comſ today', none)).toBe('More at evil. comſ today')
-    expect(plainText('evil.coſm', none)).toBe('evil. coſm')
+  it('A Latin top-level domain followed by \u017f (U+017F) or K (Kelvin sign, U+212A) is kept, and X links the domain', () => {
+    expect(plainText('More at evil.com\u017f today', none)).toBe('More at evil. com\u017f today')
+    expect(plainText('evil.co\u017fm', none)).toBe('evil. co\u017fm')
     // NFC turns the Kelvin sign into "K": then it continues the name, and X links nothing.
-    expect(plainText('More at evil.comK today', none)).toBe('More at evil.comK today')
+    expect(plainText('More at evil.com\u212a today', none)).toBe('More at evil.comK today')
   })
 
   it("'@' followed by a non-ASCII letter hides the domain after that letter from LINK, but not from X", () => {

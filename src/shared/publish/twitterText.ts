@@ -63,7 +63,8 @@ const validUrlQueryEndingChars = '[a-z0-9\\-_&=#\\/]'
 /**
  * regexp/extractUrl.js: $2 the character before the link, $3 the link, $4 its scheme, $5 its domain,
  * $6 port, $7 path, $8 query. Not Unicode-aware, as in twitter-text: a character class matches one
- * UTF-16 unit and "i" folds only what toUpperCase folds within a unit ("ſ" and "K" are not "s" and "k").
+ * UTF-16 unit and "i" folds only what toUpperCase folds within a unit (U+017F, the long s, and
+ * U+212A, the Kelvin sign, are not "s" and "k").
  */
 export const EXTRACT_URL = new RegExp(
   `((${validUrlPrecedingChars})((https?:\\/\\/)?(${validDomain})(?::(${validPortNumber}))?(\\/${validUrlPath}*)?(\\?${validUrlQueryChars}*${validUrlQueryEndingChars})?))`,
