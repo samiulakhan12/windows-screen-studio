@@ -150,8 +150,9 @@ export class UpdateService {
       this.schedule(CHECK_EVERY_MS)
       this.deps.afterCheck?.()
     }
-    // A release pulled after it was downloaded must not install at quit (§1.4); a new download re-arms.
-    if (e.type === 'none' && was.phase === 'ready') this.deps.port?.setInstallOnQuit(false)
+    // A release pulled after it was downloaded must not install at quit (§1.4), also when the check
+    // now offers another version; a new download re-arms.
+    if ((e.type === 'none' || e.type === 'available') && was.phase === 'ready' && this.state.phase !== 'ready') this.deps.port?.setInstallOnQuit(false)
     if (e.type === 'downloaded' && this.state.phase === 'ready') this.deps.port?.setInstallOnQuit(true)
     this.deps.onChange(this.get())
     if (e.type === 'available' && this.state.phase === 'available' && this.state.auto) void this.download()

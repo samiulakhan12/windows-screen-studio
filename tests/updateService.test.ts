@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { CHECK_EVERY_MS, FIRST_CHECK_MS, UPDATE_COPY, type UpdaterEvent, type UpdateState } from '../src/shared/updates/updates'
+import { CHECK_EVERY_MS, FIRST_CHECK_MS, UPDATE_COPY, statusLine, type UpdaterEvent, type UpdateState } from '../src/shared/updates/updates'
 import { DEFAULT_UPDATE_PREFS, UpdatePrefsStore, sanitizeUpdatePrefs, type UpdatePrefs } from '../src/main/updates/updatePrefs'
 import { CHECK_TIMEOUT_MS, UpdateService, type Timers } from '../src/main/updates/updateService'
 import type { UpdaterPort } from '../src/main/updates/updaterPort'
@@ -159,6 +159,36 @@ describe('UpdateService (docs/design/auto-update.md §1.5)', () => {
     expect(s.calls.at(-1)).toBe('install-on-quit false')
   })
 
+  it('a downloaded release that was pulled no longer installs at quit when the check offers another version', async () => {
+    const s = setup()
+    await s.svc.check()
+    s.emit({ type: 'available', version: '0.7.3' })
+    s.emit({ type: 'downloaded', version: '0.7.3' })
+    expect(s.svc.get()).toMatchObject({ phase: 'ready', version: '0.7.3' })
+    s.calls.length = 0
+    // 0.7.3 is pulled: the latest release is 0.7.2, still newer than this copy.
+    await s.svc.check()
+    s.emit({ type: 'available', version: '0.7.2' })
+    await Promise.resolve()
+    expect(s.calls).toEqual(['check', 'install-on-quit false', 'download'])
+    expect(s.svc.get()).toMatchObject({ phase: 'downloading', version: '0.7.2' })
+    s.emit({ type: 'downloaded', version: '0.7.2' })
+    expect(s.svc.get()).toMatchObject({ phase: 'ready', version: '0.7.2' })
+    expect(s.calls.at(-1)).toBe('install-on-quit true')
+  })
+
+  it('a check that offers the version already downloaded keeps it ready', async () => {
+    const s = setup()
+    s.emit({ type: 'available', version: '0.7.3' })
+    s.emit({ type: 'downloaded', version: '0.7.3' })
+    s.calls.length = 0
+    await s.svc.check()
+    s.emit({ type: 'available', version: '0.7.3' })
+    await Promise.resolve()
+    expect(s.calls).toEqual(['check'])
+    expect(s.svc.get()).toMatchObject({ phase: 'ready', version: '0.7.3', lastCheck: '2026-10-30T10:00:00.000Z' })
+  })
+
   it('a check that never answers fails after the timeout, and checks go on', async () => {
     const s = setup()
     s.svc.start()
@@ -182,6 +212,9 @@ describe('UpdateService (docs/design/auto-update.md §1.5)', () => {
     expect(s.calls).toEqual(['check', 'download'])
     s.emit({ type: 'error', stage: 'download', message: 'x' })
     expect(s.svc.get()).toMatchObject({ phase: 'error', error: UPDATE_COPY.downloadFailed })
+    // Automatic updates are off: nothing tries again by itself, and the status line says so.
+    expect(s.pending()).toEqual([])
+    expect(statusLine(s.svc.get())).toBe(UPDATE_COPY.downloadFailedManual)
     await s.svc.download()
     expect(s.calls).toEqual(['check', 'download', 'download'])
   })

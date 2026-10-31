@@ -1,5 +1,7 @@
 import { SettingsButton } from '../settings/SettingsButton'
 import { UpdateNotice } from '../updates/UpdateNotice'
+import { setRecordingBusy } from '../updates/useUpdates'
+import { BUSY_COPY } from '../../../shared/updates/updates'
 import { PROJECTS_CHANGED_EVENT } from '../settings/StorageSection'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
@@ -306,11 +308,21 @@ function projectDate(iso: string): string {
 }
 
 /** A recording in the library: thumbnail, name, length and date; open, show in Explorer and delete. */
-function ProjectCard({ project, onOpen, onDelete }: { project: ProjectSummary; onOpen: () => void; onDelete: () => Promise<void> }): JSX.Element {
+function ProjectCard({
+  project,
+  disabled,
+  onOpen,
+  onDelete
+}: {
+  project: ProjectSummary
+  disabled: boolean
+  onOpen: () => void
+  onDelete: () => Promise<void>
+}): JSX.Element {
   const thumb = useProjectThumbnail(project.id)
   return (
     <li className="project-card">
-      <button className="project-open" onClick={onOpen}>
+      <button className="project-open" onClick={onOpen} disabled={disabled}>
         <span className="project-thumb">
           {thumb ? <img src={thumb} alt="" /> : <Icon name="film" size={22} />}
           <span className="project-duration">{formatTime(project.duration, false)}</span>
@@ -699,6 +711,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   }
 
   const overlay = busy ?? (phase === 'saving' ? { message: 'Saving recording…', progress: null } : null)
+  // Restart now (the update notice, Settings › About) waits until a recording has been saved and
+  // processed: main cannot see every step of it, and quitting then asks first.
+  const recordingBusy = overlay ? BUSY_COPY.processing : phase ? BUSY_COPY.recording : null
+  useEffect(() => {
+    setRecordingBusy(recordingBusy)
+    return () => setRecordingBusy(null)
+  }, [recordingBusy])
   // With a microphone selected the live meter tells whether it can be opened; without
   // one, say why the list may only show unnamed devices.
   const micHint = prefs.micId ? (micMissing ? null : micProblem) : blocked.microphone
@@ -846,6 +865,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                   <ProjectCard
                     key={p.id}
                     project={p}
+                    // Home stays open until a recording has been made and processed: it holds Restart now back meanwhile.
+                    disabled={!idle}
                     onOpen={() => onOpenProject(p.id)}
                     onDelete={async () => {
                       if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return

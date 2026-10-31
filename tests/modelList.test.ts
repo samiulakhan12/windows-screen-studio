@@ -5,15 +5,52 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BUNDLED_MODEL_LIST, MODEL_LIST_EVERY_MS, MODEL_LIST_MAX_BYTES, dayText, newerList, parseModelList, retiringNotes, type ModelList } from '../src/shared/ai/modelList'
 import { loadModelCache, modelDefaults, modelList, refreshModelList, resetModelList, type Fetcher } from '../src/main/ai/modelList'
 import { validateProviderInput } from '../src/main/ai/keyStore'
+import { isNewer } from '../src/shared/updates/updates'
 
 const ROOT = path.resolve(__dirname, '..')
 const clone = (): Record<string, any> => JSON.parse(JSON.stringify(BUNDLED_MODEL_LIST))
 
+/**
+ * BUNDLED_MODEL_LIST is what Flown `app` takes from the list file `file`, which every version can
+ * read: an entry whose minApp is newer than `app` is for those versions (this one keeps its bundled
+ * suggestion), and besides minApp the file holds nothing the bundled list lacks.
+ */
+function expectBundledFrom(file: Record<string, any>, app: string): void {
+  expect(parseModelList(file)).not.toBeNull()
+  expect(parseModelList(file, app)).toEqual(BUNDLED_MODEL_LIST)
+  const bundled: Record<string, unknown> = BUNDLED_MODEL_LIST.providers
+  const providers = Object.fromEntries(
+    Object.entries(file.providers as Record<string, Record<string, unknown>>).map(([kind, { minApp, ...p }]) => [
+      kind,
+      typeof minApp === 'string' && isNewer(minApp, app) ? bundled[kind] : p
+    ])
+  )
+  expect({ ...file, providers }).toEqual(BUNDLED_MODEL_LIST)
+}
+
 describe('the model list (docs/design/auto-update.md §3)', () => {
-  it('ships the same list as resources/ai-models.json, the file Flown downloads', () => {
+  it('ships what this version takes from resources/ai-models.json, the file Flown downloads', () => {
     const file = JSON.parse(fs.readFileSync(path.join(ROOT, 'resources', 'ai-models.json'), 'utf8'))
-    expect(file).toEqual(BUNDLED_MODEL_LIST)
-    expect(parseModelList(file)).toEqual(BUNDLED_MODEL_LIST)
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+    expectBundledFrom(file, pkg.version)
+  })
+
+  it('a suggestion in the file for newer versions only (minApp) stays out of the bundled list until then', () => {
+    // docs/RELEASING.md's example.
+    const l = clone()
+    l.providers.openai = { model: 'gpt-6.1-sol', transcriptionModel: 'gpt-transcribe', minApp: '0.8.0' }
+    expectBundledFrom(l, '0.7.1')
+    // Flown 0.8.0 takes it, so its bundled list must have it.
+    expect(() => expectBundledFrom(l, '0.8.0')).toThrow()
+    l.providers.openai = { ...BUNDLED_MODEL_LIST.providers.openai, minApp: '0.7.0' }
+    expectBundledFrom(l, '0.7.1')
+    // Anything else in the file that the bundled list lacks still counts.
+    const stray = clone()
+    stray.providers.anthropic.transcriptonModel = 'claude-opus-5-5'
+    expect(() => expectBundledFrom(stray, '0.7.1')).toThrow()
+    const other = clone()
+    other.providers.openai.model = 'gpt-7'
+    expect(() => expectBundledFrom(other, '0.7.1')).toThrow()
   })
 
   it('rejects anything but a usable list', () => {
@@ -69,6 +106,10 @@ describe('the model list (docs/design/auto-update.md §3)', () => {
     expect(newerList(older, BUNDLED_MODEL_LIST)).toBe(BUNDLED_MODEL_LIST)
     expect(newerList(BUNDLED_MODEL_LIST, null)).toBe(BUNDLED_MODEL_LIST)
     expect(newerList(BUNDLED_MODEL_LIST, { ...BUNDLED_MODEL_LIST })).toBe(BUNDLED_MODEL_LIST)
+    // A list from GitHub also wins a tie, never an older one.
+    const same = { ...BUNDLED_MODEL_LIST }
+    expect(newerList(BUNDLED_MODEL_LIST, same, true)).toBe(same)
+    expect(newerList(BUNDLED_MODEL_LIST, older, true)).toBe(BUNDLED_MODEL_LIST)
   })
 
   it('notes a provider still using a retiring model, before and after the day', () => {
@@ -117,6 +158,41 @@ describe('the list in the main process', () => {
     resetModelList()
     loadModelCache(file)
     expect(modelList().updated).toBe('2027-01-15')
+  })
+
+  it('a download time later than now (the clock was ahead) does not hold back the next download', async () => {
+    const file = path.join(tmp(), 'ai-models.json')
+    fs.writeFileSync(file, JSON.stringify({ fetchedAt: '2026-12-15T00:00:00.000Z', list: clone() }))
+    loadModelCache(file)
+    const now = Date.parse('2026-11-05T09:00:00.000Z')
+    const fetcher = respond(JSON.stringify(newer()))
+    expect(await refreshModelList('https://example.test/l', fetcher, now)).toBe(true)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).fetchedAt).toBe('2026-11-05T09:00:00.000Z')
+    // From then on, once a day again.
+    expect(await refreshModelList('https://example.test/l', fetcher, now + MODEL_LIST_EVERY_MS - 1)).toBe(false)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes a fix made the same day as the list it has, also after a restart', async () => {
+    const file = path.join(tmp(), 'ai-models.json')
+    loadModelCache(file)
+    const fix = clone()
+    fix.providers.openai.model = 'gpt-6.1'
+    fix.retiring[0].on = '2027-03-26'
+    expect(fix.updated).toBe(BUNDLED_MODEL_LIST.updated)
+    expect(await refreshModelList('https://example.test/l', respond(JSON.stringify(fix)), 10)).toBe(true)
+    expect(modelDefaults('openai').model).toBe('gpt-6.1')
+    expect(modelList().retiring[0].on).toBe('2027-03-26')
+    // A second fix that day reaches a copy that took the first one.
+    fix.providers.openai.model = 'gpt-6.2'
+    expect(await refreshModelList('https://example.test/l', respond(JSON.stringify(fix)), 10 + MODEL_LIST_EVERY_MS)).toBe(true)
+    expect(modelDefaults('openai').model).toBe('gpt-6.2')
+    // The cache keeps it over the bundled list of the same date.
+    resetModelList()
+    loadModelCache(file)
+    expect(modelDefaults('openai').model).toBe('gpt-6.2')
+    expect(modelList().retiring[0].on).toBe('2027-03-26')
   })
 
   it('keeps the list as downloaded, so a newer Flown reads its minApp suggestions again', async () => {

@@ -1,7 +1,8 @@
 /**
  * The list of suggested AI models (NW-15, docs/design/auto-update.md §3): the default models of
  * each provider and the models their makers are retiring. Flown carries BUNDLED_MODEL_LIST and
- * refreshes it from resources/ai-models.json on GitHub (the same content: a test keeps them equal).
+ * refreshes it from resources/ai-models.json on GitHub (a test keeps BUNDLED_MODEL_LIST equal to
+ * what this version takes from that file: an entry whose minApp is newer is not for it).
  * A downloaded list is untrusted: parseModelList takes only what it knows, and it only ever
  * suggests models and flags retiring ones; a model the user saved is never changed.
  */
@@ -105,8 +106,12 @@ export function parseModelList(raw: unknown, appVersion?: string): ModelList | n
   return { version: 1, updated: raw.updated, providers, retiring }
 }
 
-/** The newer of two lists by `updated` (`a` when they are as new). */
-export const newerList = (a: ModelList, b: ModelList | null): ModelList => (b && b.updated > a.updated ? b : a)
+/**
+ * The newer of two lists by `updated`: `a` when they are as new, or `b` with `bWinsTie` (a list
+ * from GitHub, so that a fix made the same day as the list Flown has still counts).
+ */
+export const newerList = (a: ModelList, b: ModelList | null, bWinsTie = false): ModelList =>
+  b && (b.updated > a.updated || (bWinsTie && b.updated === a.updated)) ? b : a
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 

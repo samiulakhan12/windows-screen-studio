@@ -46,6 +46,8 @@ export const UPDATE_COPY = {
   checking: 'Checking for updates…',
   checkFailed: "Couldn't check for updates. Check your internet connection and try again.",
   downloadFailed: "The update couldn't be downloaded. Flown will try again later.",
+  /** The same, when automatic updates are off: nothing tries again by itself. */
+  downloadFailedManual: "The update couldn't be downloaded. Try again.",
   notReady: 'There is no update ready to install.'
 } as const
 
@@ -124,7 +126,9 @@ export function disabledState(current: string): UpdateState {
 
 /**
  * The state after the updater reported `e` (`at`: now, ISO). A check never undoes a download under
- * way or finished; a version that is not newer than this copy's is ignored.
+ * way, nor a finished one of the version it still offers; a downloaded release the check no longer
+ * offers (it was pulled) is dropped for the one it offers now. A version that is not newer than this
+ * copy's is ignored.
  */
 export function reduceUpdate(s: UpdateState, e: UpdaterEvent, at: string): UpdateState {
   if (s.phase === 'disabled') return s
@@ -133,7 +137,7 @@ export function reduceUpdate(s: UpdateState, e: UpdaterEvent, at: string): Updat
     case 'checking':
       return s.phase === 'downloading' || s.phase === 'ready' ? s : { ...base, phase: 'checking' }
     case 'available': {
-      if (s.phase === 'downloading' || s.phase === 'ready') return { ...s, lastCheck: at }
+      if (s.phase === 'downloading' || (s.phase === 'ready' && e.version === s.version)) return { ...s, lastCheck: at }
       if (!isVersion(e.version) || !isNewer(e.version, s.current)) return { ...base, phase: 'idle', lastCheck: at }
       return { ...base, phase: 'available', version: e.version, notes: notesText(e.notes), lastCheck: at }
     }
@@ -172,15 +176,30 @@ export function statusLine(s: UpdateState): string {
     case 'ready':
       return `Flown ${s.version} is ready. It installs when you close Flown.`
     case 'error':
+      // Only automatic updates try a failed download again by themselves (the next check).
+      if (s.error === UPDATE_COPY.downloadFailed && !s.auto) return UPDATE_COPY.downloadFailedManual
       return s.error ?? UPDATE_COPY.checkFailed
   }
 }
 
-/** What keeps Restart now from running (main checks it again when it is pressed). */
-export type BusyKind = 'recording' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy'
+/**
+ * What the status's live region says: the status line without the download's percent, which
+ * changes about once a second (the progress bar gives it when asked). So a download is announced
+ * once, not at every percent.
+ */
+export function spokenStatus(s: UpdateState): string {
+  return s.phase === 'downloading' ? `Downloading Flown ${s.version}…` : statusLine(s)
+}
+
+/**
+ * What keeps Restart now from running (main checks it again when it is pressed). 'processing' (a
+ * recording being saved or processed) is the page's check: main cannot see that step.
+ */
+export type BusyKind = 'recording' | 'processing' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy'
 
 export const BUSY_COPY: Record<BusyKind, string> = {
   recording: 'Stop the recording first.',
+  processing: 'Wait for the recording to finish processing.',
   export: 'Finish or stop the export first.',
   captions: 'Wait for the captions to finish, or stop them.',
   analysis: 'Wait for the sound analysis to finish.',

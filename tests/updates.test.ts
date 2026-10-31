@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BUSY_COPY, NOTES_MAX, UPDATE_COPY, disabledState, isNewer, isVersion, notesText, reduceUpdate, statusLine, type UpdateState } from '../src/shared/updates/updates'
+import { BUSY_COPY, NOTES_MAX, UPDATE_COPY, disabledState, isNewer, isVersion, notesText, reduceUpdate, spokenStatus, statusLine, type UpdateState } from '../src/shared/updates/updates'
 
 const AT = '2026-10-30T10:00:00.000Z'
 const idle = (over: Partial<UpdateState> = {}): UpdateState => ({ phase: 'idle', current: '0.7.1', lastCheck: null, auto: true, ...over })
@@ -61,13 +61,23 @@ describe('the update state', () => {
     expect(reduceUpdate(idle(), { type: 'available', version: '0.7.2-beta.1' }, AT).phase).toBe('idle')
     const ready = idle({ phase: 'ready', version: '0.7.2' })
     expect(reduceUpdate(ready, { type: 'checking' }, AT)).toBe(ready)
-    expect(reduceUpdate(ready, { type: 'available', version: '0.7.3' }, AT)).toMatchObject({ phase: 'ready', version: '0.7.2', lastCheck: AT })
+    expect(reduceUpdate(ready, { type: 'available', version: '0.7.2' }, AT)).toMatchObject({ phase: 'ready', version: '0.7.2', lastCheck: AT })
     expect(reduceUpdate(ready, { type: 'error', stage: 'check', message: 'x' }, AT)).toBe(ready)
     expect(reduceUpdate(idle({ phase: 'downloading', version: '0.7.2' }), { type: 'checking' }, AT).phase).toBe('downloading')
   })
 
   it('forgets a downloaded release that was pulled', () => {
     expect(reduceUpdate(idle({ phase: 'ready', version: '0.7.2' }), { type: 'none' }, AT)).toEqual(idle({ lastCheck: AT }))
+  })
+
+  it('drops a downloaded release the check no longer offers, for the version it offers now', () => {
+    const ready = idle({ phase: 'ready', version: '0.7.3', notes: 'Old' })
+    // 0.7.3 pulled: the latest is 0.7.2 again (still newer than this copy).
+    expect(reduceUpdate(ready, { type: 'available', version: '0.7.2', notes: '<p>Two</p>' }, AT)).toEqual(
+      idle({ phase: 'available', version: '0.7.2', notes: 'Two', lastCheck: AT })
+    )
+    // 0.7.3 pulled and the fix published as 0.7.4.
+    expect(reduceUpdate(ready, { type: 'available', version: '0.7.4' }, AT)).toMatchObject({ phase: 'available', version: '0.7.4', lastCheck: AT })
   })
 
   it('says a failed check or download plainly, never the raw error', () => {
@@ -93,5 +103,25 @@ describe('the update state', () => {
     expect(statusLine(idle({ phase: 'ready', version: '0.7.2' }))).toBe('Flown 0.7.2 is ready. It installs when you close Flown.')
     expect(statusLine(idle({ phase: 'error', error: UPDATE_COPY.downloadFailed }))).toBe(UPDATE_COPY.downloadFailed)
     expect(Object.values(BUSY_COPY).every((t) => t.endsWith('.'))).toBe(true)
+  })
+
+  it('announces a download once, not at every percent (the progress bar gives the value)', () => {
+    let s = idle({ phase: 'available', version: '0.7.2' })
+    const spoken = new Set<string>()
+    for (const percent of [0, 12.4, 13, 45, 99.6]) {
+      s = reduceUpdate(s, { type: 'progress', percent }, AT)
+      spoken.add(spokenStatus(s))
+    }
+    expect([...spoken]).toEqual(['Downloading Flown 0.7.2…'])
+    expect(statusLine(s)).toBe('Downloading Flown 0.7.2… 100%')
+    for (const t of [disabledState('0.7.1'), idle(), idle({ lastCheck: AT }), idle({ phase: 'checking' }), idle({ phase: 'available', version: '0.7.2' }), idle({ phase: 'ready', version: '0.7.2' }), idle({ phase: 'error', error: UPDATE_COPY.downloadFailed, auto: false })])
+      expect(spokenStatus(t)).toBe(statusLine(t))
+  })
+
+  it('promises another try at a failed download only when automatic updates are on', () => {
+    const failed = reduceUpdate(idle({ phase: 'downloading', version: '0.7.2', auto: false }), { type: 'error', stage: 'download', message: 'x' }, AT)
+    expect(statusLine(failed)).toBe(UPDATE_COPY.downloadFailedManual)
+    expect(statusLine({ ...failed, auto: true })).toBe(UPDATE_COPY.downloadFailed)
+    expect(statusLine(idle({ phase: 'error', error: UPDATE_COPY.checkFailed, auto: false }))).toBe(UPDATE_COPY.checkFailed)
   })
 })

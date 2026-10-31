@@ -47,7 +47,8 @@ export function loadModelCache(file: string, version?: string): void {
   const r = raw && typeof raw === 'object' ? (raw as { fetchedAt?: unknown; list?: unknown }) : {}
   const at = typeof r.fetchedAt === 'string' ? Date.parse(r.fetchedAt) : NaN
   if (Number.isFinite(at)) fetchedAt = at
-  current = newerList(current, parseModelList(r.list, appVersion))
+  // The cache is the last list from GitHub: it also wins over a bundled list of the same date.
+  current = newerList(current, parseModelList(r.list, appVersion), true)
 }
 
 /** The body as text, or null past `max` bytes or when it is not UTF-8. */
@@ -85,11 +86,13 @@ export type Fetcher = (url: string, init: RequestInit) => Promise<Response>
 
 /**
  * Downloads the list from `url` when the last download is a day old (a failure is tried again at
- * the next update check). Returns whether Flown now has a newer list. Only https, no redirects, at
- * most MODEL_LIST_MAX_BYTES, 15 s; anything parseModelList rejects is dropped.
+ * the next update check). Returns whether Flown took it (a list at least as new as the one it has).
+ * Only https, no redirects, at most MODEL_LIST_MAX_BYTES, 15 s; anything parseModelList rejects is
+ * dropped.
  */
 export async function refreshModelList(url: string, fetcher: Fetcher, now = Date.now()): Promise<boolean> {
-  if (fetchedAt > 0 && now - fetchedAt < MODEL_LIST_EVERY_MS) return false
+  // A download time later than now (the clock was ahead then) does not count.
+  if (fetchedAt > 0 && now >= fetchedAt && now - fetchedAt < MODEL_LIST_EVERY_MS) return false
   let list: ModelList | null = null
   let raw: unknown = null
   try {
@@ -113,6 +116,7 @@ export async function refreshModelList(url: string, fetcher: Fetcher, now = Date
     }
   }
   const before = current
-  current = newerList(current, list)
+  // As new as the list Flown has counts too: a fix made the same day.
+  current = newerList(current, list, true)
   return current !== before
 }

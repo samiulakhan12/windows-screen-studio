@@ -3,17 +3,24 @@ import { AI_PROVIDER_KINDS } from '../../../shared/api/ai'
 import type { ModelDefaults, ModelList } from '../../../shared/ai/modelList'
 import type { AiProviderKind } from '../../../shared/types'
 
-let asked: Promise<ModelList | null> | null = null
+/** Main's last answer, shown until it answers again. */
+let last: ModelList | null = null
 
-/** The suggested AI models main has (NW-15): asked once per window, null until it answers. */
+/**
+ * The suggested AI models main has (NW-15): asked each time Settings or the provider form opens, as
+ * main refreshes its list while Flown runs; until it answers, its last answer (null at first).
+ */
 export function useModelList(): ModelList | null {
-  const [list, setList] = useState<ModelList | null>(null)
+  const [list, setList] = useState<ModelList | null>(last)
   useEffect(() => {
     let live = true
-    asked ??= window.api.getAiModelList().catch(() => null)
-    void asked.then((l) => {
-      if (live) setList(l)
-    })
+    void window.api
+      .getAiModelList()
+      .catch(() => null)
+      .then((l) => {
+        if (l) last = l
+        if (live) setList(l ?? last)
+      })
     return () => {
       live = false
     }

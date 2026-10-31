@@ -60,9 +60,12 @@ draft, can download and try its installer, and presses *Publish release*; from t
 copies find it within four hours.
 
 A bad release is stopped by turning it back into a draft (or deleting it): copies that have not
-downloaded it yet stop being offered it. Copies that already installed it get the fix as the next
-version; Flown never installs a lower version. Older installers stay on the Releases page for a
-manual reinstall.
+downloaded it yet stop being offered it. A copy that downloaded it but has not installed it yet
+drops it at its next check, whether the check finds nothing newer or another version (the release
+before it, or a fix published since): it no longer installs at quit, and the version found now is
+offered (and downloaded, when automatic) instead. Copies that already installed it get the fix
+as the next version; Flown never installs a lower version. Older installers stay on the Releases
+page for a manual reinstall.
 
 ### 1.5 When Flown checks, downloads and installs
 
@@ -70,16 +73,23 @@ manual reinstall.
 |---|---|---|
 | Check | 30 s after start, then every 4 h, and on *Check for updates* | Packaged Windows builds only; never in development or tests (a fake updater, §6). |
 | Download | at once when an update is found and *Update Flown automatically* is on; otherwise on *Download* | One at a time; progress shown in Settings. |
-| Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording, an export, captions or analysis, an import, Clean voice, or a copy being made. The button says why. |
+| Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording (until it has been saved and processed), an export, captions or analysis, an import, Clean voice, or a copy being made. The button says why. |
 
 The four-hour period and the 30 s delay keep start-up quick and the number of requests small
-(electron-updater reads the repository's public releases feed and `latest.yml` from github.com,
-not the rate-limited API; one check is two small requests). A failed check is retried at the next
-period; the error shows in Settings only.
+(electron-updater reads the repository's public releases feed, its latest release and
+`latest.yml` from github.com, not the rate-limited API; one check is three small requests). A check
+sends no identifier: electron-updater's per-install id for staged roll-outs (`userData/.updaterId`)
+is replaced by a constant, the same for every copy. A failed check is retried at the next period;
+the error shows in Settings only.
 
 Quitting with an update downloaded installs it silently and does not reopen Flown. *Restart now*
-installs and reopens it. A per-machine install (Program Files) shows Windows' permission prompt
-for the installer, as a first install does.
+installs and reopens it. It quits Flown the way closing it does, and the installer starts only once
+Flown has really quit. Closing Flown while a recording is being saved or processed asks first
+(*Keep working* or *Quit anyway*); *Restart now* is refused then ("Wait for the recording to finish
+processing."), so it never meets that question (*Quit anyway* there would install without reopening
+Flown). A quit called off installs nothing; closing Flown later installs as usual, without reopening
+it. A per-machine install (Program Files) shows Windows' permission prompt for the installer, as a
+first install does.
 
 ### 1.6 Settings: one switch
 
@@ -93,8 +103,10 @@ updates* still works when pressed.
 
 ### 1.7 What the user sees
 
-Settings › About, under the version (a status line and buttons; `aria-live="polite"` on the
-status):
+Settings › About, under the version (a status line and buttons; a polite live region says the
+status, without the download's percent, which changes about once a second: a download is announced
+once and the labelled progress bar gives the value when asked. The visible line is aria-hidden, as
+the live region says the same words, so a screen reader reading down the page hears the status once):
 
 - "Flown is up to date." (with "Last checked 10:42")
 - "Checking for updates…"
@@ -102,6 +114,8 @@ status):
 - "Downloading Flown 0.7.2… 45%"
 - "Flown 0.7.2 is ready. It installs when you close Flown." [Restart now]
 - "Couldn't check for updates. Check your internet connection and try again." [Check for updates]
+- "The update couldn't be downloaded. Flown will try again later." [Download] (with automatic
+  updates off, nothing tries again by itself: "The update couldn't be downloaded. Try again.")
 - In development: "Updates are turned off in this build."
 
 Plus: [Check for updates], the switch "Update Flown automatically", and "What's new in 0.7.2", a
@@ -110,10 +124,15 @@ release body is untrusted text and is never rendered as HTML).
 
 Home, when an update is ready: a notice "Flown 0.7.2 is ready. It installs when you close Flown."
 with [Restart now] and [Later] (Later hides it until the next version or the next start). Never
-in the editor or during a recording: updates must not interrupt work.
+in the editor or during a recording: updates must not interrupt work. When it goes while one of
+its buttons has the focus (Later, or the update stops being ready), the focus moves on to the
+Settings button next to it, never to the page.
 
 *Restart now* while something runs: main refuses it and the reason shows where the button is, for
-example "Finish or stop the export first." (main checks when it is pressed; nothing installs). The
+example "Finish or stop the export first." (main checks when it is pressed; nothing installs). A
+recording being made, saved or processed is refused by the page itself, before main is asked (§2).
+Main says nothing when that job ends, so the reason shows for 8 seconds (on Home the ready text
+then comes back), and goes at once when the update changes (another phase or version). The
 Settings action is one button whose label follows the state (Check for updates, Download, Restart
 now); while it waits it is `aria-disabled`, not removed or disabled, so the keyboard focus stays.
 
@@ -133,7 +152,11 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
 
 - `src/main/updates/electronUpdaterPort.ts`: the real port over `autoUpdater` from
   electron-updater (`autoDownload = false`, `autoInstallOnAppQuit = true`,
-  `allowPrerelease = false`, `allowDowngrade = false`, logger to `appLog`).
+  `allowPrerelease = false`, `allowDowngrade = false`, logger to `appLog`). Its `install` calls
+  `app.quit()` and starts the installer (`quitAndInstall(true, true)`: silent, reopens Flown) on
+  the app's `quit` event, ahead of electron-updater's own quit handler. Called at once,
+  `quitAndInstall` would start the installer before the windows close, and the installer closes
+  Flown by force, whatever the user answers there.
 - `src/main/updates/fakeUpdaterPort.ts`: for development and the e2e tests, enabled only when the
   app is not packaged and `SSW_UPDATES_FAKE` names a scenario (`available`, `none`, `error`); its
   install writes a line to `SSW_UPDATES_FAKE_LOG` and quits.
@@ -143,10 +166,19 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   handler uses) and the event `updates:changed` to every window.
 - Busy check (`busyReason()`): `jobsSnapshot()` (exports, captions, analysis), plus small read-only
   getters added to the features that own the state: `exportRunning()` (exportIpc),
-  `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc). A
-  recording keeps Home hidden, so *Restart now* cannot be pressed during one; quitting during a
-  recording already waits for the capture helper (nativeCapture's will-quit guard) and the
-  installer runs only after the app has really quit.
+  `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc), and
+  for a recording `isToolbarVisible()` (the recording bar shows from the countdown until the
+  recording ends; afterwards it is only hidden, kept for the next one, so an open bar is not a
+  recording). The steps on either side of the bar (a recording being prepared, then saved and
+  processed) are known only to the recording code, so the page checks them: Home tells the update
+  buttons while it shows them (`setRecordingBusy`, useUpdates.ts), and *Restart now* is refused
+  there without asking main (`installUpdate`). Home's recordings do not open meanwhile, so Home
+  stays until the recording is done (the editor's Settings would ask main, which cannot see it).
+  Left open: a page reloaded after a crash while a recording is being saved knows nothing until
+  the processing progress arrives. A recording keeps
+  Home hidden, so *Restart now* cannot be pressed during one;
+  quitting during a recording already waits for the capture helper (nativeCapture's will-quit
+  guard) and the installer runs only after the app has really quit.
 
 ## 3. The refreshable model list
 
@@ -168,24 +200,29 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
 - The app bundles it (imported at build time) and refreshes it from
   `https://raw.githubusercontent.com/samiulakhan12/windows-screen-studio/HEAD/resources/ai-models.json`
   (the default branch) with the update check, at most once a day, when automatic updates are on.
+  A last download time later than now (the clock was ahead) does not count, so the next check
+  downloads it again.
   Changing the suggestions is a commit to that file; no release needed.
 - Strictly checked (`src/shared/ai/modelList.ts`): at most 64 KB, provider kinds Flown knows,
   model names of 1-100 characters from `[A-Za-z0-9._:/-]`, transcription models only for
   providers that transcribe, dates as `YYYY-MM-DD`, at most 50 retiring entries. Anything else and
   the whole download is ignored (the bundled or cached list stays). The newest valid list by
-  `updated` wins, so an old cache never replaces a newer bundled list.
+  `updated` wins, so an old cache never replaces a newer bundled list. A download (and the cache
+  of it) also wins over a list of the same date, so a fix made the same day still counts.
 - Every installed version reads the same file, so a provider entry can carry `"minApp": "x.y.z"`
   (a version like the app's own; anything else and the download is ignored): a version older than
   that keeps the bundled suggestion for that provider and takes the rest of the list. A suggestion
   that needs new code (a transcription model without word times, say) is then given only to
-  versions that have that code.
+  versions that have that code. The bundled list is what the app's own version takes from the
+  file (gated entries keep the bundled suggestion until that version); a test keeps them in step.
 - Cached in `userData/ai-models.json` (written atomically) as downloaded, with `minApp` kept, so a
   copy updated to a newer version reads its gated suggestions again from the cache.
 - What it changes, and only this: the suggested models when adding a provider (Settings › AI), the
   transcription model of a provider that has none of its own, and a note in Settings › AI next to
   a provider whose model is on the retiring list: "OpenAI retires whisper-1 on 26 February 2027.
   Choose another transcription model before then." It never changes a model the user saved, never
-  adds a provider, host or address, and nothing in it runs.
+  adds a provider, host or address, and nothing in it runs. Settings asks main for the list each
+  time it opens, so a list refreshed while Flown runs shows the next time Settings opens.
 
 ## 4. Releasing
 
@@ -195,7 +232,17 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   `SSW_REQUIRE_NATIVE=1 npm run dist:win` (predist and verify-dist included). It takes the notes
   from the `## <version>` section of `docs/RELEASE-NOTES.md` (`scripts/release-notes.mjs`) and runs
   `gh release create v<version> --draft` with `Flown-Setup-<version>.exe` and `latest.yml` (no
-  blockmap: differential downloads are off, `nsis.differentialPackage`). It stops before building when the tag exists or the notes section is missing.
+  blockmap: differential downloads are off, `nsis.differentialPackage`). It stops before building
+  when the version already has a release (draft or published) or a tag (a deleted release keeps
+  its tag, and a new draft would be attached to its old commit), or the notes section is missing.
+- Three jobs, so no npm package ever runs next to a token that can write to the repository: *check*
+  (write access, only to see drafts too; reads the version from `package.json` and looks for a
+  release or tag of it, runs no code),
+  *build* (read access only, checkout without stored credentials: notes, toolchain, `npm ci`,
+  `dist:win`, then the installer, `latest.yml` and the notes as a workflow artifact) and *draft*
+  (write access; no checkout, no npm: downloads that artifact and runs `gh release create`). A bad
+  dependency can still change the installer it builds (the person trying the draft is the check
+  for that), but it cannot publish a release, change a published one or push.
 - `docs/RELEASING.md`: bump the version and the notes, push, run the workflow, try the draft,
   press *Publish release*; how to pull a bad release; why two-factor sign-in matters.
 - `verify-dist` now also checks that `latest.yml` names the installer with its size and SHA-512 and
@@ -221,7 +268,8 @@ interface UpdateState {
 ```
 
 Plus `reduce(state, event)`, `notesText(raw)` (tags removed, entities decoded, whitespace folded,
-capped), `statusLine(state, now)` and `isNewer(a, b)` (semver, no pre-releases).
+capped), `statusLine(state, now)`, `spokenStatus(state)` (the live region's text: the status line
+without the percent) and `isNewer(a, b)` (semver, no pre-releases).
 
 ## 6. Tests
 
@@ -229,7 +277,8 @@ capped), `statusLine(state, now)` and `isNewer(a, b)` (semver, no pre-releases).
   (first check at 30 s, then 4 h, none when off, none while one runs); prefs (defaults, bad files,
   atomic write); the busy check; `UpdateService` with a fake port (auto on and off, download
   errors, install refused while busy); the model list (every rule of §3, newest wins, cache);
-  `release-notes.mjs` (section found, missing, last section); the builder config (`publish`
+  `release-notes.mjs` (section found, missing, last section); the workflow's version check (a
+  release or a tag of the version stops it, run against a fake `gh`); the builder config (`publish`
   points at this repository, `publisherName` only when signing); verify-dist's new checks.
 - E2E `tests/e2e/auto-update.e2e.cjs` with the fake updater: Settings › About shows each state;
   *Download* and the progress; the Home notice and *Later*; *Restart now* refused during an export
