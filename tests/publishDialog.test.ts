@@ -382,3 +382,33 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(notices).toEqual([])
   })
 })
+
+describe('Publish dialog: a card says when its text is written (§5.2)', () => {
+  /** The card's status line (role status), which a screen reader reads out as it changes. */
+  const state = (els: El[]): string => {
+    const line = els.find((e) => String(e.props.className).includes('publish-state'))
+    expect(line?.props.role).toBe('status')
+    return textOf(line?.props.children).trim()
+  }
+
+  it('Not written yet, Writing… and then Written, not nothing', async () => {
+    let out = await opened()
+    expect(state(card(out, 'linkedin'))).toBe('Not written yet')
+    press(card(out, 'linkedin'), 'Write')
+    out = render()
+    expect(state(card(out, 'linkedin'))).toMatch(/^(Waiting|Writing)…$/)
+    expect(asked.map((a) => a.task)).toEqual(['linkedin'])
+    asked[0].answer.resolve({ task: 'linkedin', text: 'The new reports are here.' })
+    await flush()
+    out = render()
+    expect(state(card(out, 'linkedin'))).toBe('Written')
+    // Regenerate says it again when the new text is in.
+    press(card(out, 'linkedin'), 'Regenerate')
+    out = render()
+    expect(state(card(out, 'linkedin'))).toMatch(/^(Waiting|Writing)…$/)
+    asked[1].answer.resolve({ task: 'linkedin', text: 'The new reports are out now.' })
+    await flush()
+    out = render()
+    expect(state(card(out, 'linkedin'))).toBe('Written')
+  })
+})

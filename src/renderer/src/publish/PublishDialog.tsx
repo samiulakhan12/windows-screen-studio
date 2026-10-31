@@ -285,7 +285,8 @@ interface CardProps {
   onRename: (name: string) => void
 }
 
-const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: '', error: '' }
+/** A card's status line (role status): "Written" is how a screen reader hears the text is ready. */
+const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: 'Written', error: '' }
 
 function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
   const label = PUBLISH_LABELS[kind]
