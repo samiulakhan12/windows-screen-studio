@@ -111,6 +111,10 @@ So:
    the list. A model the user chose instead is stored and kept, and so is the `whisper-1` that an
    earlier Flown stored for every OpenAI provider: such a provider sees the Settings note until
    the shutdown, then gets the plain message of §5, which names the list's suggestion.
+   Main may download a newer list while a form is open, so the form asks main for the list each
+   time it opens and sends the transcription model only once the user types in the field: left
+   alone, main fills in its own newest suggestion for a new provider, and an edit of the same
+   kind keeps what the provider had (`ProviderForm.tsx`, `useModelList.ts`, `keyStore.ts`).
 
 A Flown that never downloads the newer list still suggests `whisper-1`; after the day its message
 says to choose another transcription model or make captions On this PC (§5).
@@ -417,7 +421,9 @@ Settings: none.
   (carry fields), `captionData.ts` and `settings.ts` (load), `editor/transcript.ts` (`fromSound`
   words are cut like heard ones), `edit.ts` (split and merge keep the speaker), `subtitles.ts`
   (voice tags, option), `captionsLayer.ts` (name token), the two panels (additive), `types.ts`,
-  `keyStore.ts` (the suggested transcription model is not stored, §2.1). `ai-models.json` and
+  `keyStore.ts` (the suggested transcription model is not stored, §2.1; an edit without the field
+  keeps the provider's), `ProviderForm.tsx` and `useModelList.ts` (the field is sent only once
+  typed in; the list is asked for each time the form opens). `ai-models.json` and
   `BUNDLED_MODEL_LIST` are unchanged (§2.1).
 
 ## 12. Test plan
@@ -433,7 +439,10 @@ names/clear; load of old and new projects (byte-equal for old); split and merge 
 VTT voice tags and escaping, SRT/text prefix on and off; `speakerCaption`; the model list
 (`whisper-1` still suggested and on the retiring list with the `gpt-4o` transcription models, JSON
 equals the bundled list); a provider saved with the suggested transcription model moves with the
-list, one with a chosen model and one saved by an earlier Flown keep theirs.
+list, one with a chosen model and one saved by an earlier Flown keep theirs, an edit without the
+field keeps the provider's; the provider form (`tests/providerForm.test.ts`) suggests the list main
+has when it opens, and a provider added or edited while main moves the list follows it unless the
+user typed a model.
 
 E2E (`tests/e2e/transcription.e2e.cjs`, the AI mock server, no real API): an OpenAI provider with
 `gpt-transcribe` transcribes the tone fixture with `response_format=json` and no timestamp

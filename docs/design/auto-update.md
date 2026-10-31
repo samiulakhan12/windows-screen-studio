@@ -179,7 +179,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   transcription model of a provider that has none of its own, and a note in Settings › AI next to
   a provider whose model is on the retiring list: "OpenAI retires whisper-1 on 26 February 2027.
   Choose another transcription model before then." A provider saved with the suggested
-  transcription model stores none, so it follows the list (`docs/design/transcription.md` §2.1). It
+  transcription model stores none, so it follows the list (`docs/design/transcription.md` §2.1);
+  the form asks for the list each time it opens, so it suggests the newest one main has. It
   never changes a model the user chose, never adds a provider, host or address, and nothing in it
   runs.
 

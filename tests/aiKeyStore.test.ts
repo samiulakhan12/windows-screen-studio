@@ -87,6 +87,24 @@ describe('AiProviderStore', () => {
     expect(moved.save({ kind: 'anthropic', label: 'C', apiKey: KEY }).transcriptionModel).toBeUndefined()
   })
 
+  it('an edit without the transcription model (the user did not type in it) keeps the provider’s', () => {
+    const store = new AiProviderStore(file, fakeBox())
+    const chosen = store.save({ kind: 'openai', label: 'Chosen', apiKey: KEY, transcriptionModel: 'gpt-4o-transcribe' })
+    const follows = store.save({ kind: 'openai', label: 'Follows', apiKey: KEY })
+    const raw = JSON.parse(readFileSync(file, 'utf8'))
+    raw.providers.push({ ...raw.providers[1], id: 'aiold1', label: 'Old', transcriptionModel: 'whisper-1' })
+    writeFileSync(file, JSON.stringify(raw))
+    const again = new AiProviderStore(file, fakeBox())
+    // Renamed with the field left out: each keeps what it had, an earlier Flown's whisper-1 too.
+    for (const id of [chosen.id, follows.id, 'aiold1']) again.save({ id, kind: 'openai', label: `${id} 2` })
+    const disk = (): (string | undefined)[] => JSON.parse(readFileSync(file, 'utf8')).providers.map((p: { transcriptionModel?: string }) => p.transcriptionModel)
+    expect(disk()).toEqual(['gpt-4o-transcribe', undefined, 'whisper-1'])
+    // Emptied, it follows the list again; another kind starts from that kind's suggestion.
+    again.save({ id: chosen.id, kind: 'openai', label: 'Chosen', transcriptionModel: '' })
+    expect(again.save({ id: 'aiold1', kind: 'gemini', label: 'Old', apiKey: KEY }).transcriptionModel).toBe('gemini-3.8-flash')
+    expect(disk()).toEqual([undefined, undefined, undefined])
+  })
+
   it('refuses to store a key when encryption is unavailable or weak', () => {
     expect(() => new AiProviderStore(file, fakeBox({ available: false })).save({ kind: 'gemini', label: 'G', apiKey: KEY })).toThrow(/cannot be stored safely/)
     expect(() => new AiProviderStore(file, fakeBox({ weak: 'no system keyring is available' })).save({ kind: 'gemini', label: 'G', apiKey: KEY })).toThrow(/no system keyring/)

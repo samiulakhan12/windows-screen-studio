@@ -46,6 +46,8 @@ export function ProviderForm({
   const [model, setModel] = useState(editing?.model ?? suggested.model)
   const [transcriptionModel, setTranscriptionModel] = useState(editing?.transcriptionModel ?? suggested.transcriptionModel ?? '')
   const [modelsEdited, setModelsEdited] = useState(!!editing)
+  // Sent only once typed in: main fills in its own newest suggestion, or keeps the provider's model.
+  const [transcriptionTyped, setTranscriptionTyped] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -65,6 +67,7 @@ export function ProviderForm({
     setModel(editing?.kind === k ? editing.model : next.model)
     setTranscriptionModel(editing?.kind === k ? (editing.transcriptionModel ?? next.transcriptionModel ?? '') : (next.transcriptionModel ?? ''))
     setModelsEdited(editing?.kind === k)
+    setTranscriptionTyped(false)
     if (!labelEdited) setLabel(freeName(k, existing))
   }
 
@@ -82,7 +85,7 @@ export function ProviderForm({
         label: label.trim(),
         ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         model: model.trim(),
-        ...(info.canTranscribe ? { transcriptionModel: transcriptionModel.trim() } : {})
+        ...(info.canTranscribe && transcriptionTyped ? { transcriptionModel: transcriptionModel.trim() } : {})
       })
       // The key is not kept here a moment longer than needed.
       setApiKey('')
@@ -208,6 +211,7 @@ export function ProviderForm({
             aria-describedby={`${id}-tm-hint`}
             onChange={(e) => {
               setModelsEdited(true)
+              setTranscriptionTyped(true)
               setTranscriptionModel(e.target.value)
             }}
           />

@@ -184,8 +184,14 @@ export class AiProviderStore {
     if (existing && existing.kind !== input.kind && !input.apiKey) throw new Error('Enter the API key for the new kind of provider.')
     if (!existing && entries.length >= AI_LIMITS.maxProviders) throw new Error(`At most ${AI_LIMITS.maxProviders} providers can be added.`)
     // The suggested transcription model is not stored, so the provider moves with the list when a
-    // model retires (docs/design/transcription.md §2.1); one the user chose instead is kept.
-    const chosen = input.transcriptionModel && input.transcriptionModel !== this.defaults(input.kind).transcriptionModel ? input.transcriptionModel : undefined
+    // model retires (docs/design/transcription.md §2.1); one the user chose instead is kept. The form
+    // leaves the field out until the user types in it: an edit of the same kind keeps what it had.
+    const untouched = input.transcriptionModel !== undefined && (raw as { transcriptionModel?: unknown }).transcriptionModel === undefined && existing?.kind === input.kind
+    const chosen = untouched
+      ? existing.transcriptionModel
+      : input.transcriptionModel && input.transcriptionModel !== this.defaults(input.kind).transcriptionModel
+        ? input.transcriptionModel
+        : undefined
     const entry: StoredProvider = {
       id: existing?.id ?? newId(),
       kind: input.kind,
