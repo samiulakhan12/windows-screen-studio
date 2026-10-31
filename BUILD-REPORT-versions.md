@@ -81,7 +81,32 @@ End to end, `tests/e2e/versions.e2e.cjs` has three scenarios:
 
 ## Verification
 
-See the end of this file (filled in from the final runs).
+Final runs on branch head (Linux container, 4 cores, Xvfb):
+
+* `npm run typecheck`: clean.
+* `npx vitest run --testTimeout=60000`: **284/284 files, 3869/3869 tests** on an idle machine. Run
+  again while the e2e suite loaded the machine, three timing tests failed: `groupMove` G-PERF,
+  `notesBlocks` 50,000 characters, and `reframePlan` performance. Re-run alone, `notesBlocks` and
+  `reframePlan` passed. `groupMove` G-PERF (a 250 ms limit) failed 2 of 6 runs alone on this branch,
+  and also failed 1 of 5 runs on the unchanged base `546e479` in a separate worktree. It is machine
+  timing: `groupMove.ts` is not changed here. The limit was not loosened.
+* `npm run build`: passes.
+* `xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e`: **59/60 files** in the full run. The one
+  failure was audio-pack's crash-recovery microphone burst count ("9 vs 8", recording side). Re-run
+  alone, all 10 audio-pack scenarios passed, so all 60 files have passed.
+  * This container needed `npm run build:speech-host`, `npm run fetch:test-speech`, Electron's binary
+    (`node node_modules/electron/install.js`) and `openbox`. Before those, audio-pack and offline
+    captions failed on the missing helper or model.
+
+Three existing e2e files needed changes for the new behaviour. None is loosened:
+
+* `titles.e2e.cjs`: its playhead helper presses Esc first. After Shift+T the new card is selected,
+  so Shift+→ now nudges it (E-09).
+* `vertical-video.e2e.cjs`: the original folder is still checked byte for byte, apart from the new
+  `versions/`. That folder is checked to hold exactly one automatic version, "Before making a
+  vertical version" (E-12 requires it).
+* `waveform.e2e.cjs` is unchanged: I removed a filmstrip tooltip hint instead, because the test pins
+  the clip track's tooltip.
 
 ## Needs a real Windows PC
 
