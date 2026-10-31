@@ -36,7 +36,7 @@ const CUE = /\[([^\[\]\n]*)\]/g
 let segmenter: Intl.Segmenter | null | undefined
 
 /** Word-like segments of `text` (cues not removed: callers pass spoken text only). */
-function spokenWords(text: string): number {
+export function wordsIn(text: string): number {
   if (!text.trim()) return 0
   if (segmenter === undefined) {
     try {
@@ -65,7 +65,7 @@ function runsOf(line: string): NoteRun[] {
   return runs
 }
 
-const runWords = (runs: readonly NoteRun[]): number => runs.reduce((n, r) => (r.cue ? n : n + spokenWords(r.text)), 0)
+const runWords = (runs: readonly NoteRun[]): number => runs.reduce((n, r) => (r.cue ? n : n + wordsIn(r.text)), 0)
 
 /** The blocks of `text` (CR LF, CR and LF all end a line). */
 export function splitBlocks(text: string): NotesBlock[] {

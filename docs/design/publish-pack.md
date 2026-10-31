@@ -207,7 +207,9 @@ cues: captions and words that were cut are left out, so nothing cut is sent or w
 `packTranscript(segments)`: the segments' cleaned text joined by spaces. When it is longer than
 `PACK_TRANSCRIPT_MAX` = 60 000 characters, evenly spaced segments are kept (every k-th, k the
 smallest step that fits), joined with ` … `, and `shortened: true` tells the model they are
-excerpts. Fewer than `PACK_MIN_WORDS` = 8 words: nothing is sent (§5.3).
+excerpts. Fewer than `PACK_MIN_WORDS` = 8 words (word-like segments of `Intl.Segmenter`, as the
+speaker notes count them, so Chinese, Japanese or Thai written without spaces count too): nothing is
+sent (§5.3).
 
 ### 4.3 Checking each answer (`validatePackAnswer`)
 

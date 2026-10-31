@@ -5,6 +5,7 @@
  */
 import type { AiTextTask, PackTextTask } from '../api/ai'
 import { outputCues } from '../captions/subtitles'
+import { wordsIn } from '../notes/blocks'
 import type { CaptionSegment, Project } from '../types'
 
 /** The pack's items, in the order of the dialog's cards. Title and summary are the Captions tab's tasks. */
@@ -70,10 +71,10 @@ export function readPublishPrefs(raw: unknown): PublishPrefs {
 /** Fewest spoken words the pack writes from. */
 export const PACK_MIN_WORDS = 8
 
-/** Words in the captions. */
+/** Words in the captions, as Intl.Segmenter finds them (so Chinese, Japanese or Thai, written without spaces, count too). */
 export function spokenWords(segments: readonly Pick<CaptionSegment, 'text'>[]): number {
   let n = 0
-  for (const s of segments) n += s.text.split(/\s+/).filter(Boolean).length
+  for (const s of segments) n += wordsIn(s.text)
   return n
 }
 

@@ -412,6 +412,18 @@ describe('pack choices and blockers', () => {
     expect(publishBlocker({ hasAudio: true, transcript: t(['one two three four', 'five six seven eight']) })).toBe(null)
     expect(spokenWords([{ text: '  a  b ' }, { text: '' }])).toBe(2)
   })
+  it('counts the words of languages written without spaces', () => {
+    const t = (texts: string[]): { provider: 'openai'; model: string; createdAt: string; segments: CaptionSegment[] } => ({ provider: 'openai', model: '', createdAt: '', segments: texts.map((x, i) => seg(`${i}`, i, i + 1, x)) })
+    const ja = ['今日は新しいエクスポート機能を紹介します。', '設定を開いて、保存先のフォルダを選びます。', '最後に書き出しボタンを押してください。']
+    const zh = ['今天我来介绍新的导出功能。', '打开设置，然后选择保存的文件夹。', '最后点击导出按钮。']
+    const th = ['วันนี้ผมจะแนะนำการส่งออกแบบใหม่', 'เปิดการตั้งค่าแล้วเลือกโฟลเดอร์']
+    for (const texts of [ja, zh, th]) {
+      expect(spokenWords(texts.map((text) => ({ text })))).toBeGreaterThanOrEqual(8)
+      expect(publishBlocker({ hasAudio: true, transcript: t(texts) })).toBe(null)
+    }
+    // Still too little: a few words, and punctuation is not a word.
+    expect(publishBlocker({ hasAudio: true, transcript: t(['こんにちは。', '— … !']) })).toBe('too-little')
+  })
   it('fingerprints the captions’ text', () => {
     expect(transcriptKey(SEGS)).toBe(transcriptKey(SEGS.map((s) => ({ ...s }))))
     expect(transcriptKey(SEGS)).not.toBe(transcriptKey([...SEGS.slice(0, 2), { ...SEGS[2], text: 'Then press Save!' }]))
