@@ -44,7 +44,7 @@ describe('actionRects (§8.6)', () => {
   })
 
   it('adds clicks and the place typed into, and skips cut time', () => {
-    const { scene, cursor, project } = setup({ clicks: [{ t: 1.25, x: 0.2, y: 0.3, button: 'left' }, { t: 1.45, x: 0.9, y: 0.1, button: 'left' }], typing: [{ t: 1.7, end: 2.6 }] })
+    const { scene, cursor } = setup({ clicks: [{ t: 1.25, x: 0.2, y: 0.3, button: 'left' }, { t: 1.45, x: 0.9, y: 0.1, button: 'left' }], typing: [{ t: 1.7, end: 2.6 }] })
     const clips: Clip[] = [
       { id: 'a', start: 0, end: 1.3, speed: 1 },
       { id: 'b', start: 1.6, end: 10, speed: 1 }

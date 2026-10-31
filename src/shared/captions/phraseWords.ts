@@ -23,7 +23,7 @@ export const JOIN_WORDS: Readonly<Record<string, readonly string[]>> = {
 export const END_WORDS: Readonly<Record<string, readonly string[]>> = {
   en: ['the', 'a', 'an', 'my', 'your', 'our', 'their', 'its', 'his', 'her'],
   es: ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'mi', 'tu', 'su'],
-  fr: ['le', 'la', 'les', "l'", 'un', 'une', 'des', 'mon', 'ma', 'mes', 'ton', 'ta', 'son', 'sa', 'ses', 'ce', 'cette'],
+  fr: ['le', 'la', 'les', 'un', 'une', 'des', 'mon', 'ma', 'mes', 'ton', 'ta', 'son', 'sa', 'ses', 'ce', 'cette'],
   de: ['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'einem', 'einer', 'mein', 'dein', 'sein', 'ihr'],
   pt: ['o', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'meu', 'minha', 'seu', 'sua']
 }
