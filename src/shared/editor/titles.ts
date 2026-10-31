@@ -23,7 +23,9 @@ export const CHAPTER_NEAR = 0.1
 export const TITLE_STYLES: { value: TitleCardStyle; label: string; title: string }[] = [
   { value: 'centered', label: 'Centered', title: 'A full-frame card with the title in the middle' },
   { value: 'big', label: 'Big', title: 'A full-frame card with a very large title' },
-  { value: 'lower-third', label: 'Lower third', title: 'A band at the bottom, over the video' }
+  { value: 'lower-third', label: 'Lower third', title: 'A band at the bottom, over the video' },
+  // Captions Studio (docs/design/captions-studio.md §10.1): a pull quote on a panel, over the video.
+  { value: 'quote', label: 'Quote', title: 'A short quote on a panel' }
 ]
 
 export const TITLE_BACKGROUNDS: { value: TitleCard['background']; label: string; title: string }[] = [
