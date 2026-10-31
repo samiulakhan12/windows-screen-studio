@@ -3,6 +3,7 @@
  * without control or direction characters, markdown emphasis or links the transcript does not
  * contain, cut at a word end, and X's way of counting a post's length. Pure.
  */
+import { X_COUNTRY_TLDS, X_GENERIC_TLDS } from './tlds'
 
 /** C0 controls but tab and line feed, DEL, C1 controls, direction overrides and isolates, and the BOM. */
 // eslint-disable-next-line no-control-regex
@@ -104,9 +105,27 @@ export const X_LIMIT = 280
 /** What X counts a link as, whatever its length. */
 const X_URL = 23
 
+/** Latin letters with accents, which X takes in a domain or a path. */
+const X_ACCENTS = '\\u00c0-\\u00d6\\u00d8-\\u00f6\\u00f8-\\u024f\\u0253\\u0254\\u0256\\u0257\\u0259\\u025b\\u0263\\u0268\\u026f\\u0272\\u0289\\u028b\\u02bb\\u0300-\\u036f\\u1e00-\\u1eff'
+const X_TLD = `(?:${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|xn--[0-9a-z-]+)(?![0-9a-z@+-])`
+const X_PATH_CHAR = `[a-z\\u0400-\\u04ff0-9!*';:=+,.$/%#\\[\\]\\-\\u2013_~@|&${X_ACCENTS}]`
+const X_PATH = `\\/(?:${X_PATH_CHAR}|\\(${X_PATH_CHAR}+\\))*(?<=[+\\-a-z\\u0400-\\u04ff0-9=_#/)${X_ACCENTS}])`
+const X_QUERY = "\\?[a-z0-9!?*'@();:&=+$/%#\\[\\]\\-_.,~|]*[a-z0-9\\-_&=#/]"
+/**
+ * Links as X finds them in a post (twitter-text v3), not as plainText does: a domain on a top-level
+ * domain X knows (tlds.ts), with "http(s)://" (any letters) or bare (Latin letters, also right
+ * after Chinese or Japanese text), then a port, a path and a query, which end where X ends them (at
+ * other scripts, quotes, an unmatched bracket or a closing dot or comma). "Node.js" and "file.txt"
+ * are not links; "flown.fm" and "README.md" are.
+ */
+const X_LINK =
+  `(?:(?<![a-z0-9@\\uff20$#\\uff03])https?:\\/\\/(?:[\\p{L}\\p{M}\\p{N}_-]+\\.)+` +
+  `|(?<![a-z0-9@\\uff20$#\\uff03\\-_./${X_ACCENTS}])[a-z0-9${X_ACCENTS}][-a-z0-9${X_ACCENTS}]*\\.(?:[-a-z0-9${X_ACCENTS}]+\\.)*)` +
+  `${X_TLD}(?::[0-9]+)?(?:${X_PATH})?(?:${X_QUERY})?`
+
 // Emoji (with skin tones, variation selectors and joined sequences) count 2 each.
 const EMOJI = /\p{Extended_Pictographic}(?:\ufe0f|[\u{1f3fb}-\u{1f3ff}]|\u200d\p{Extended_Pictographic}\ufe0f?)*/gu
-const X_TOKENS = new RegExp(`${LINK.source}|${EMOJI.source}`, 'giu')
+const X_TOKENS = new RegExp(`${X_LINK}|${EMOJI.source}`, 'giu')
 
 /** Code points X counts as 1 (Latin and other narrow scripts, some punctuation); others count 2. */
 function lightCodePoint(cp: number): boolean {

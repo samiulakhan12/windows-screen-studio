@@ -84,6 +84,27 @@ describe('xLength and fitX', () => {
     expect(xLength('日本語')).toBe(6)
     expect(xLength('café – “ok”')).toBe(11)
   })
+  it('counts a link wherever X sees one, and only there', () => {
+    // A bare domain on any top-level domain X knows, also right after Japanese text.
+    expect(xLength('Try it at flown.fm')).toBe(10 + 23)
+    expect(xLength('Get it on flown.so and help.flown.studio')).toBe(10 + 23 + 5 + 23)
+    expect(xLength('詳細はflown.tvで')).toBe(6 + 23 + 2)
+    expect(xLength('See README.md')).toBe(4 + 23)
+    expect(xLength('Посетите https://пример.рф сегодня')).toBe(9 + 23 + 8)
+    // Not a top-level domain: plain text.
+    expect(xLength('Node.js, package.json and index.html')).toBe(36)
+    expect(xLength('evil.example/login')).toBe(18)
+    // A link ends where X ends it: at other scripts, quotes, a comma or an unmatched bracket.
+    expect(xLength('https://example.com/をご覧ください')).toBe(23 + 14)
+    expect(xLength('http://x.com/a“quoted”')).toBe(23 + 8)
+    expect(xLength('https://example.com,next')).toBe(23 + 5)
+    expect(xLength('(see https://a.com/b) c')).toBe(5 + 23 + 3)
+    // So a post with such a link is fitted to what X counts.
+    const post = `${'A'.repeat(250)} see docs.flown.fm now`
+    expect(xLength(post)).toBe(250 + 5 + 23 + 4)
+    expect(fitX(post)).not.toBe(post)
+    expect(xLength(fitX(post))).toBeLessThanOrEqual(X_LIMIT)
+  })
   it('fits a long post into 280 at a word end with an ellipsis', () => {
     const long = Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ')
     const fitted = fitX(long)

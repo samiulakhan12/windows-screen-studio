@@ -246,6 +246,13 @@ As X counts (twitter-text v3): a URL counts 23; an emoji sequence 2; a code poin
 U+0000–U+10FF, U+2000–U+200D, U+2010–U+201F or U+2032–U+2037 counts 1; any other code point 2.
 The limit is 280. The card's counter shows "212 / 280".
 
+A URL is found as X finds it, not with `plainText`'s link filter: a domain on one of the top-level
+domains X knows (`src/shared/publish/tlds.ts`, twitter-text v3's lists), with `http(s)://` or bare
+(`flown.fm`, `README.md`, also right after Japanese text: `詳細はflown.tvで`), then a port, path and
+query that end where X ends them (at other scripts, quotes, an unmatched bracket or a closing dot or
+comma: `https://example.com/をご覧ください` is a 23 and 7 Japanese characters). `Node.js`,
+`package.json` or `evil.example/login` are not on such a domain and count by their characters.
+
 ### 4.6 Running (`PublishRunner`, `src/renderer/src/publish/publishRun.ts`)
 
 - *Write all* queues every item (title and summary included) in the order of the cards; *Write* /
@@ -370,6 +377,7 @@ New:
   `publishSegments(project)`, `publishBlocker(project, segments)`, `transcriptKey(segments)`.
 - `src/shared/publish/text.ts`: `plainText(s, { max, oneLine, allowLinksFrom })`, `cutAt(s, max)`,
   `xLength(s)`, `fitX(s)`, `X_LIMIT`.
+- `src/shared/publish/tlds.ts`: `X_GENERIC_TLDS`, `X_COUNTRY_TLDS` (the top-level domains X links).
 - `src/shared/publish/prompts.ts`: `packPrompt(request)`, `packTranscript(segments)`,
   `validatePackAnswer(task, answer, transcript)`, `renderArticle`, `renderReleaseNotes`,
   `readPackContext`, constants `PACK_TRANSCRIPT_MAX`, `PACK_MIN_WORDS`.
@@ -457,8 +465,8 @@ Where the build differs from or adds to the sections above:
   longer one that contains it (`example.co` is not `example.com/settings`). Links are also found when
   glued to a word (`_https://…`) and as bare domains: with a common top-level domain, generic or
   country (`evil.com`, `evil.de`, `flown.co.uk`), or with any other one when a path follows
-  (`is.gd/x`, `evil.example/login`), because LinkedIn and X turn those into links too (and X counts
-  them as 23). E-mail addresses are kept. A bare name on `.app`, `.zip` or `.mov` with no path
+  (`is.gd/x`, `evil.example/login`), because LinkedIn and X turn those into links too (X counts
+  those on a top-level domain it knows as 23, §4.5). E-mail addresses are kept. A bare name on `.app`, `.zip` or `.mov` with no path
   (`recording.mov`, `export.zip`, `Settings.app`) is a file or app name and stays (X still counts it
   as a link). Tags keep the links the transcript has too (`ASP.NET` when it was said).
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
