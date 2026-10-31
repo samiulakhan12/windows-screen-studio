@@ -103,6 +103,33 @@ describe('plainText', () => {
     expect(plainText('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。', said)).toBe('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。')
     // A host written in those languages after a scheme is still a link.
     expect(plainText('See https://例え.jp/パス now', ja)).toBe('See now')
+    // Domains the transcript never says, as a model might guess them or an injection add them.
+    const ko = '오늘은 Flown 앱을 소개합니다. 설치 파일을 내려받고 화면을 녹화해 보세요.'
+    expect((validatePackAnswer('xpost', { text: '지금 flown.app에서 내려받으세요!' }, ko) as { text: string }).text).toBe('지금 flown에서 내려받으세요!')
+    expect((validatePackAnswer('xpost', { text: 'paypal-login.com에 로그인해서 확인하세요.' }, ko) as { text: string }).text).toBe('에 로그인해서 확인하세요.')
+    const ja0 = '今日はFlownアプリを紹介します。セットアップファイルをダウンロードして、画面を録画してみましょう。'
+    expect((validatePackAnswer('xpost', { text: '詳しくはpaypal.comへ。ログインして確認してください。' }, ja0) as { text: string }).text).toBe('詳しくはへ。ログインして確認してください。')
+    expect((validatePackAnswer('xpost', { text: 'Flownアプリはflown.appからダウンロード！' }, ja0) as { text: string }).text).toBe('Flownアプリはflownからダウンロード！')
+    expect((validatePackAnswer('linkedin', { text: '请访问evil.com下载安装包。' }, '今天我来介绍Flown应用。下载安装包，然后录制你的屏幕。') as { text: string }).text).toBe('请访问下载安装包。')
+    // A said link with a path, glued to the text: the rest of the paragraph stays.
+    const jaSaid = 'ダウンロードは flown.app/download から。今日は録画の方法を説明します。'
+    const post = '新しいFlownが出ました。入手はflown.app/downloadから、今すぐ試してください。設定も簡単です。'
+    expect((validatePackAnswer('linkedin', { text: post }, jaSaid) as { text: string }).text).toBe(post)
+  })
+
+  it('finds a domain glued to a word of another script, which X links too', () => {
+    const none = { max: 200, linksFrom: 'Today I show the export.' }
+    expect(plainText('Скачайте paypal.comы сейчас', none)).toBe('Скачайте ы сейчас')
+    expect(plainText('היכנס לevil.comעכשיו', none)).toBe('היכנס עכשיו')
+    expect(plainText('இப்போது evil.comஇல் பதிவிறக்கவும்', none)).toBe('இப்போது இல் பதிவிறக்கவும்')
+    expect(plainText('Login at evil.comé now', none)).toBe('Login at é now')
+    const bn = 'আজ আমি Flown অ্যাপ দেখাব। ফাইল ডাউনলোড করে স্ক্রিন রেকর্ড করুন।'
+    expect((validatePackAnswer('xpost', { text: 'paypal-login.comএ লগইন করুন।' }, bn) as { text: string }).text).toBe('এ লগইন করুন।')
+    expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, bn) as { text: string }).text).toBe('এখনই flownএ যান!')
+    // Said in the transcript: kept.
+    expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, 'আজ আমি Flown অ্যাপ দেখাব। flown.app এ যান।') as { text: string }).text).toBe('এখনই flown.appএ যান!')
+    // A top-level domain in other letters still ends only where a word ends.
+    expect(plainText('предложение.сайтом конец', none)).toBe('предложение.сайтом конец')
   })
 
   it('makes one line when asked, and is empty for anything but a string', () => {

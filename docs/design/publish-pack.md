@@ -501,7 +501,10 @@ Where the build differs from or adds to the sections above:
   as text. E-mail addresses are kept. A link glued to Chinese, Japanese, Korean or Thai text is found too, and ends where that
   text starts, as X ends it: `詳細はevil.icuで` keeps `詳細はで`, and `ログインはevil.de/loginから。`
   keeps `ログインはから。`, not losing the text after the link. A bare domain written in those
-  scripts is not a link (X does not link one either); after `https://` it is. A bare name with no port or path on a top-level domain that is also a file type (`.app`,
+  scripts is not a link (X does not link one either); after `https://` it is. A top-level domain
+  in Latin letters ends at anything but a Latin letter or digit, as X ends it, so a domain glued to
+  a word of any other script or to an accented letter is found too (`paypal.comы`, `flown.appএ`,
+  `לevil.com`, `evil.comé`). A bare name with no port or path on a top-level domain that is also a file type (`.app`,
   `.zip`, `.mov`, `.srt`, `.md`, `.py`, `.sh`, `.rs`, `.java`, `.so`, `.cc`, `.gd`, `.map`:
   `recording.mov`, `captions.srt`, `README.md`, `install.sh`) is a file or app name, but sites still
   link it (`flown.app` is a site, and X counts it as a link): it stays whole only when the transcript

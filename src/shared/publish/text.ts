@@ -19,6 +19,12 @@ const NO_SPACE = '\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\
 const ALNUM = `(?![${NO_SPACE}])[\\p{L}\\p{N}]`
 /** A character of a link after its scheme or domain: up to a space, a quote or such a language's text. */
 const URL_CHAR = `[^\\s<>"'\`${NO_SPACE}]`
+/**
+ * The end of a top-level domain. One in Latin letters ends at anything but a Latin letter or digit,
+ * as X ends it, so a domain glued to a word of another script is found ("paypal.comы",
+ * "flown.appএ", "evil.comé"); one in other letters ("онлайн") ends at anything but a letter or digit.
+ */
+const TLD_END = `(?:(?<=[\\da-z])(?![\\da-z])|(?<![\\da-z])(?!${ALNUM}))`
 
 /**
  * Links as they are written in text: with a scheme or "www." anywhere (also glued to a word, as
@@ -32,7 +38,7 @@ const URL_CHAR = `[^\\s<>"'\`${NO_SPACE}]`
 const LINK = new RegExp(
   `(?:https?:\\/\\/|www\\.)(?:${URL_CHAR}+|[^\\s<>"'\`]+)` +
     `|(?<=^|[^\\p{L}\\p{N}@.-]|[${NO_SPACE}])(?:${ALNUM}|-)+(?:\\.(?:${ALNUM}|-)+)*\\.(?:${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|xn--(?:${ALNUM}|-)+)` +
-    `(?!${ALNUM})(?::\\d+)?(?:\\/${URL_CHAR}*|(?<code>(?:\\.(?:${ALNUM}|[_$])+|\\([^()\\n]*\\))*(?:\\?${URL_CHAR}*(?<![.,;:!?)\\]]))?))`,
+    `${TLD_END}(?::\\d+)?(?:\\/${URL_CHAR}*|(?<code>(?:\\.(?:${ALNUM}|[_$])+|\\([^()\\n]*\\))*(?:\\?${URL_CHAR}*(?<![.,;:!?)\\]]))?))`,
   'giu'
 )
 
