@@ -8,7 +8,7 @@
 import type { AiProviderInfo, AiTextRequest, MarksAnswer } from '../../../shared/api/ai'
 import { textHash } from '../../../shared/captions/captionTracks'
 import { readCleanupChoices, readWordList, type CleanupChoices, type WordListEntry } from '../../../shared/captions/cleanup'
-import { greatNotice, planCaptionsGreat, readGreatOptions, type GreatOptions, type GreatSummary } from '../../../shared/captions/great'
+import { DEFAULT_GREAT_OPTIONS, greatNotice, planCaptionsGreat, readGreatOptions, type GreatOptions, type GreatSummary } from '../../../shared/captions/great'
 import { readCaptionStudio } from '../../../shared/captions/studioData'
 import type { EditStore } from '../../../shared/editor/editStore'
 import type { CaptionStudio, Project } from '../../../shared/types'
@@ -41,6 +41,44 @@ export async function loadBrandLook(): Promise<CaptionStudio | null> {
   } catch {
     return null
   }
+}
+
+/* ---------- the saved options (prefs captionsGreat, §2.8) ---------- */
+
+let greatOptions: GreatOptions = { ...DEFAULT_GREAT_OPTIONS }
+let greatRead: Promise<GreatOptions> | null = null
+const greatListeners = new Set<() => void>()
+
+const setGreatOptions = (next: GreatOptions): void => {
+  greatOptions = next
+  for (const l of [...greatListeners]) l()
+}
+
+/** The saved options, read from the prefs once (the defaults when they cannot be read). */
+export function loadGreatOptions(): Promise<GreatOptions> {
+  greatRead ??= (async () => {
+    const raw = await pref('captionsGreat')
+    if (raw === null) greatRead = null
+    else setGreatOptions(readGreatOptions(raw))
+    return greatOptions
+  })()
+  return greatRead
+}
+
+/** The options as last read or saved (the button's hint and the run use them). */
+export const currentGreatOptions = (): GreatOptions => greatOptions
+
+export function onGreatOptions(listener: () => void): () => void {
+  greatListeners.add(listener)
+  return () => greatListeners.delete(listener)
+}
+
+/** Saves the options (read back through readGreatOptions): used at once, kept in the prefs. */
+export async function saveGreatOptions(next: GreatOptions): Promise<void> {
+  const o = readGreatOptions(next)
+  greatRead = Promise.resolve(o)
+  setGreatOptions(o)
+  await window.api.setPref('captionsGreat', o)
 }
 
 /** The saved options, Clean up choices, word list and brand look, read once per run. */

@@ -30,6 +30,10 @@ const prefs: Record<string, unknown> = {}
 vi.stubGlobal('window', {
   api: {
     getPref: (key: string) => Promise.resolve(prefs[key] ?? null),
+    setPref: (key: string, value: unknown) => {
+      prefs[key] = value
+      return Promise.resolve()
+    },
     getBrandKit: () => Promise.resolve({}),
     listAiProviders: () => Promise.resolve([{ id: 'g1', kind: 'gemini', label: 'Gemini' }] as AiProviderInfo[]),
     aiText: (provider: string, request: AiTextRequest) => {
@@ -41,11 +45,16 @@ vi.stubGlobal('window', {
 })
 
 interface Runner {
+  loadGreatOptions(): Promise<GreatOptions>
+  currentGreatOptions(): GreatOptions
+  onGreatOptions(listener: () => void): () => void
+  saveGreatOptions(next: GreatOptions): Promise<void>
   runCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; options: GreatOptions; signal: AbortSignal }): Promise<{ notice: string } | null>
 }
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const RUN = '../src/renderer/src/editor/greatRun'
-const { runCaptionsGreat } = (await import(/* @vite-ignore */ RUN)) as Runner
+const runner = (await import(/* @vite-ignore */ RUN)) as Runner
+const { runCaptionsGreat } = runner
 
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 const TEXTS = ['First, open the Settings page and click Export.', 'Second, turn on Auto Save so you never lose work.', 'Click Save and you are done.']
@@ -145,6 +154,24 @@ describe('runCaptionsGreat', () => {
       expect(store.state.transcript!.segments[0].text).toBe('today i open the settings')
     } finally {
       delete prefs.captionCleanup
+    }
+  })
+})
+
+describe('the saved options (prefs captionsGreat, §2.8)', () => {
+  it('are read once, used at once when saved, and kept through readGreatOptions', async () => {
+    prefs.captionsGreat = { emoji: true, sound: 'ding', bogus: 1 }
+    try {
+      expect(await runner.loadGreatOptions()).toEqual({ ...DEFAULT_GREAT_OPTIONS, emoji: true, sound: 'ding' })
+      let heard = 0
+      const off = runner.onGreatOptions(() => heard++)
+      await runner.saveGreatOptions({ ...runner.currentGreatOptions(), counters: false, provider: '../bad' })
+      expect(heard).toBe(1)
+      expect(runner.currentGreatOptions()).toMatchObject({ emoji: true, counters: false, provider: null })
+      expect(prefs.captionsGreat).toEqual(runner.currentGreatOptions())
+      off()
+    } finally {
+      delete prefs.captionsGreat
     }
   })
 })
