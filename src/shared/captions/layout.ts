@@ -123,7 +123,7 @@ export interface CaptionLine {
   width: number
 }
 
-/** The lines shown together (at most maxLines), from `start` to `end` (source seconds). */
+/** The lines shown together (at most maxLines, and a line of the speaker's name), from `start` to `end` (source seconds). */
 export interface CaptionChunk {
   start: number
   end: number
@@ -314,7 +314,8 @@ export function captionMetrics(
 /**
  * Lines of caption `seg` for `settings` in a `w` x `h` frame: its words broken into lines that fit
  * the safe width, grouped `maxLines` at a time into chunks shown one after the other (timed by
- * the words they start with), two-line chunks evened out.
+ * the words they start with), two-line chunks evened out. A line holding only the speaker's name
+ * (speakers.ts speakerCaption) is shown with the next one, so the name never shows alone.
  */
 export function captionLayout(
   seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words'>,
@@ -337,8 +338,13 @@ export function captionLayout(
   const rtl = RTL_FIRST.test(seg.text)
   const dirs = tokenDirs(tokens, rtl ? 'r' : 'l')
   const chunks: CaptionChunk[] = []
-  for (let c = 0; c < lines.length; c += per) {
-    const group = lines.slice(c, c + per)
+  const onlyName = ([a, b]: [number, number]): boolean => pieces.slice(a, b).every((p) => tokens[p.token].label)
+  for (let c = 0; c < lines.length; ) {
+    // The speaker's name never shows alone: a line holding only the name goes with the words after it.
+    let end = Math.min(c + per, lines.length)
+    while (end < lines.length && lines.slice(c, end).every(onlyName)) end++
+    const group = lines.slice(c, end)
+    c = end
     const from = group[0][0]
     const to = group[group.length - 1][1]
     const ranges = group.length === 2 ? balance(pieces, from, to, m.maxWidth, space) : group

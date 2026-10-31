@@ -4,7 +4,7 @@ import { readCaptionSegments, readTranscript } from '../src/shared/captions/capt
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { retiredMessage, todayUtc } from '../src/shared/captions/retiredModel'
 import { describeFailure } from '../src/shared/captions/transcriptErrors'
-import { readCaptionSettings } from '../src/shared/captions/settings'
+import { DEFAULT_CAPTIONS, readCaptionSettings } from '../src/shared/captions/settings'
 import {
   cleanSpeakerName,
   clearSpeakers,
@@ -18,7 +18,7 @@ import {
 } from '../src/shared/captions/speakers'
 import { subtitleFile, toPlainText, toSrt, toVtt } from '../src/shared/captions/subtitles'
 import type { AudioLevels } from '../src/shared/audio/loudness'
-import { captionTokens, spokenToken } from '../src/shared/captions/layout'
+import { captionLayout, captionTokens, chunkIndexAt, spokenToken, type CaptionChunk, type MeasureText } from '../src/shared/captions/layout'
 import type { CaptionSegment } from '../src/shared/types'
 
 const seg = (id: string, start: number, end: number, text: string, speaker?: string): CaptionSegment => ({ id, start, end, text, ...(speaker ? { speaker } : {}) })
@@ -130,6 +130,26 @@ describe('speakers in the files and on the video', () => {
     expect(captionTokens(edited)[0].label).toBe(true)
     const plain = seg('b', 0, 1, 'Hi')
     expect(speakerCaption(plain)).toBe(plain)
+  })
+
+  /** Every character is half the font size wide. */
+  const measure: MeasureText = (text, px) => Array.from(text).length * px * 0.5
+  const shownText = (ch: CaptionChunk): string => ch.lines.map((l) => l.words.map((wd) => wd.text).join(' ')).join(' / ')
+
+  it('never shows the name alone: on a line of its own it goes with the first words, which keep their times', () => {
+    // Vertical, Bold at the largest size, one line: "SPEAKER 1: WELCOME" is wider than a line.
+    const settings = { ...DEFAULT_CAPTIONS, preset: 'bold' as const, size: 0.09, maxLines: 1 as const }
+    const caption = seg('a', 10, 12, 'Welcome back to the show', 'Speaker 1')
+    const bare = captionLayout(caption, settings, 1080, 1920, measure)
+    const drawn = captionLayout(speakerCaption(caption), settings, 1080, 1920, measure)
+    expect(shownText(drawn.chunks[0])).toBe('SPEAKER 1: / WELCOME BACK TO')
+    for (const ch of drawn.chunks) expect(drawn.tokens.slice(ch.first, ch.last + 1).some((t) => !t.label)).toBe(true)
+    // The words show when they would without the name: the name is on screen with "Welcome" from the start.
+    expect(drawn.chunks.map((ch) => [ch.start, ch.end])).toEqual(bare.chunks.map((ch) => [ch.start, ch.end]))
+    expect(shownText(drawn.chunks[chunkIndexAt(drawn, 10.05)])).toContain('WELCOME')
+    // Two lines a chunk: the name already shares its chunk with the first words.
+    const two = captionLayout(speakerCaption(caption), { ...settings, maxLines: 2 }, 1080, 1920, measure)
+    expect(shownText(two.chunks[0])).toBe('SPEAKER 1: / WELCOME BACK TO')
   })
 })
 
