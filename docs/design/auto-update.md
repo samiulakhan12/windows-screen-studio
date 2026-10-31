@@ -178,8 +178,10 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
 - What it changes, and only this: the suggested models when adding a provider (Settings › AI), the
   transcription model of a provider that has none of its own, and a note in Settings › AI next to
   a provider whose model is on the retiring list: "OpenAI retires whisper-1 on 26 February 2027.
-  Choose another transcription model before then." It never changes a model the user saved, never
-  adds a provider, host or address, and nothing in it runs.
+  Choose another transcription model before then." A provider saved with the suggested
+  transcription model stores none, so it follows the list (`docs/design/transcription.md` §2.1). It
+  never changes a model the user chose, never adds a provider, host or address, and nothing in it
+  runs.
 
 ## 4. Releasing
 

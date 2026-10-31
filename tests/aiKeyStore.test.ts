@@ -56,6 +56,37 @@ describe('AiProviderStore', () => {
     expect(again.get(info.id).apiKey).toBe(KEY)
   })
 
+  it('stores no suggested transcription model, so the provider moves with the list; a chosen one stays', () => {
+    // The suggestions of the list Flown has: near whisper-1's retirement the list moves to gpt-transcribe.
+    let suggested = 'whisper-1'
+    const defaults = (kind: 'openai' | 'gemini' | 'anthropic'): { model: string; transcriptionModel?: string } =>
+      kind === 'openai' ? { model: 'gpt-6.1-sol', transcriptionModel: suggested } : { model: 'm', ...(kind === 'gemini' ? { transcriptionModel: 'gemini-3.8-flash' } : {}) }
+    const store = new AiProviderStore(file, fakeBox(), defaults)
+    // As the form sends it (filled with the suggestion), with the field emptied, without it, and with another model.
+    const form = store.save({ kind: 'openai', label: 'Form', apiKey: KEY, transcriptionModel: 'whisper-1' })
+    const empty = store.save({ kind: 'openai', label: 'Empty', apiKey: KEY, transcriptionModel: '' })
+    const absent = store.save({ kind: 'openai', label: 'Absent', apiKey: KEY })
+    const chosen = store.save({ kind: 'openai', label: 'Chosen', apiKey: KEY, transcriptionModel: 'gpt-4o-transcribe' })
+    expect([form, empty, absent, chosen].map((p) => p.transcriptionModel)).toEqual(['whisper-1', 'whisper-1', 'whisper-1', 'gpt-4o-transcribe'])
+    const disk = JSON.parse(readFileSync(file, 'utf8')).providers
+    expect(disk.map((p: { transcriptionModel?: string }) => p.transcriptionModel)).toEqual([undefined, undefined, undefined, 'gpt-4o-transcribe'])
+    // A provider saved by an earlier Flown has whisper-1 in the file: it loads as it was.
+    const raw = JSON.parse(readFileSync(file, 'utf8'))
+    raw.providers.push({ ...raw.providers[0], id: 'aiold1', label: 'Old', transcriptionModel: 'whisper-1' })
+    writeFileSync(file, JSON.stringify(raw))
+    suggested = 'gpt-transcribe'
+    const moved = new AiProviderStore(file, fakeBox(), defaults)
+    for (const p of [form, empty, absent]) expect(moved.get(p.id).info.transcriptionModel).toBe('gpt-transcribe')
+    expect(moved.get(chosen.id).info.transcriptionModel).toBe('gpt-4o-transcribe')
+    expect(moved.get('aiold1').info.transcriptionModel).toBe('whisper-1')
+    expect(moved.list().map((p) => p.transcriptionModel)).toEqual(['gpt-transcribe', 'gpt-transcribe', 'gpt-transcribe', 'gpt-4o-transcribe', 'whisper-1'])
+    // whisper-1 typed while the list suggests gpt-transcribe is a choice: it stays.
+    expect(moved.save({ id: form.id, kind: 'openai', label: 'Form', transcriptionModel: 'whisper-1' }).transcriptionModel).toBe('whisper-1')
+    expect(new AiProviderStore(file, fakeBox(), defaults).get(form.id).info.transcriptionModel).toBe('whisper-1')
+    // Claude transcribes nothing, whatever the list says.
+    expect(moved.save({ kind: 'anthropic', label: 'C', apiKey: KEY }).transcriptionModel).toBeUndefined()
+  })
+
   it('refuses to store a key when encryption is unavailable or weak', () => {
     expect(() => new AiProviderStore(file, fakeBox({ available: false })).save({ kind: 'gemini', label: 'G', apiKey: KEY })).toThrow(/cannot be stored safely/)
     expect(() => new AiProviderStore(file, fakeBox({ weak: 'no system keyring is available' })).save({ kind: 'gemini', label: 'G', apiKey: KEY })).toThrow(/no system keyring/)

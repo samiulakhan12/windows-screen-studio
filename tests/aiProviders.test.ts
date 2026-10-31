@@ -350,6 +350,13 @@ describe('transcription', () => {
       // Near the day the downloaded list suggests gpt-transcribe (docs/design/transcription.md §2.1).
       const onTheDay = { ...BUNDLED_MODEL_LIST, updated: '2027-02-20', providers: { ...BUNDLED_MODEL_LIST.providers, openai: { ...BUNDLED_MODEL_LIST.providers.openai, transcriptionModel: 'gpt-transcribe' } } }
       expect(await refreshModelList('https://example.test/ai-models.json', async () => new Response(JSON.stringify(onTheDay)))).toBe(true)
+      // The provider kept the suggested whisper-1, so it moves with the list.
+      expect((await call<AiProviderInfo[]>('ai:listProviders')).find((p) => p.id === old.id)?.transcriptionModel).toBe('gpt-transcribe')
+      expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toMatch(/does not know the model “gpt-transcribe”/)
+      expect(mock.requests.filter((r) => r.route === '/audio/transcriptions').at(-1)?.fields.model).toBe('gpt-transcribe')
+      // whisper-1 chosen while the list suggests gpt-transcribe stays, and is told what to choose.
+      const pinned = await call<AiProviderInfo>('ai:saveProvider', { id: old.id, kind: 'openai', label: 'Retired OpenAI', transcriptionModel: 'whisper-1' })
+      expect(pinned.transcriptionModel).toBe('whisper-1')
       expect(await failure(call('ai:transcribe', 'rec-words', { providerId: old.id }))).toBe(
         'OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or make captions On this PC.'
       )

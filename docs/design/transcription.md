@@ -105,10 +105,12 @@ So:
    for OpenAI transcription, with the first version that has this text-only path as its minimum
    and a newer `updated`. `BUNDLED_MODEL_LIST` follows in the release of that time (a test keeps it
    equal to the file).
-3. A provider that never chose a transcription model uses the suggestion (`transcribe.ts`:
-   `info.transcriptionModel ?? modelDefaults(kind)`), so it moves with the list; a provider whose
-   user typed `whisper-1` keeps it (and sees the Settings note) until the shutdown, then gets the
-   plain message of §5, which names the list's suggestion.
+3. A provider saved with the suggested transcription model (the form fills it in) stores none
+   (`keyStore.ts`), so it uses the list's suggestion (`transcribe.ts`:
+   `info.transcriptionModel ?? modelDefaults(kind)`; the provider rows show it too) and moves with
+   the list. A model the user chose instead is stored and kept, and so is the `whisper-1` that an
+   earlier Flown stored for every OpenAI provider: such a provider sees the Settings note until
+   the shutdown, then gets the plain message of §5, which names the list's suggestion.
 
 A Flown that never downloads the newer list still suggests `whisper-1`; after the day its message
 says to choose another transcription model or make captions On this PC (§5).
@@ -406,7 +408,9 @@ Settings: none.
 - Changed: `openai.ts`, `gemini.ts`, `transcribe.ts`, `transcriptParse.ts`, `transcriptMerge.ts`
   (carry fields), `captionData.ts` and `settings.ts` (load), `editor/transcript.ts` (`fromSound`
   words are cut like heard ones), `edit.ts` (split and merge keep the speaker), `subtitles.ts`
-  (voice tags, option), `captionsLayer.ts` (name token), the two panels (additive), `types.ts`. `ai-models.json` and `BUNDLED_MODEL_LIST` are unchanged (§2.1).
+  (voice tags, option), `captionsLayer.ts` (name token), the two panels (additive), `types.ts`,
+  `keyStore.ts` (the suggested transcription model is not stored, §2.1). `ai-models.json` and
+  `BUNDLED_MODEL_LIST` are unchanged (§2.1).
 
 ## 12. Test plan
 
@@ -420,7 +424,8 @@ client wrapping; `stemSpeakers` (mic only, system only, both with bleed, too sho
 names/clear; load of old and new projects (byte-equal for old); split and merge keep speakers;
 VTT voice tags and escaping, SRT/text prefix on and off; `speakerCaption`; the model list
 (`whisper-1` still suggested and on the retiring list with the `gpt-4o` transcription models, JSON
-equals the bundled list).
+equals the bundled list); a provider saved with the suggested transcription model moves with the
+list, one with a chosen model and one saved by an earlier Flown keep theirs.
 
 E2E (`tests/e2e/transcription.e2e.cjs`, the AI mock server, no real API): an OpenAI provider with
 `gpt-transcribe` transcribes the tone fixture with `response_format=json` and no timestamp
