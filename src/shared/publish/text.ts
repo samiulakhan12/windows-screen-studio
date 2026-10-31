@@ -171,11 +171,19 @@ export function fitX(s: string, limit = X_LIMIT): string {
   out = out.replace(/[\s,;:–—-]+$/, '')
   if (xLength(out) < limit / 2) {
     // No word end in the second half (one very long word, or Chinese or Japanese written without
-    // spaces): cut by characters.
+    // spaces): cut by characters, with each link and emoji whole (a piece of a link is broken, or
+    // links to another site: "https://app.flown.co.…").
+    const pieces: string[] = []
+    let last = 0
+    for (const m of s.matchAll(X_TOKENS)) {
+      pieces.push(...s.slice(last, m.index), m[0])
+      last = m.index! + m[0].length
+    }
+    pieces.push(...s.slice(last))
     out = ''
-    for (const ch of s) {
-      if (xLength(`${out}${ch}…`) > limit) break
-      out += ch
+    for (const piece of pieces) {
+      if (xLength(`${out}${piece}…`) > limit) break
+      out += piece
     }
     out = out.replace(/[\s,;:–—-]+$/, '')
   }

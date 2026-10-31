@@ -226,7 +226,8 @@ The answer must be an object with the schema's fields of the right types, else `
 - **linkedin**: cleaned, at most 3 000 characters (LinkedIn's limit). Empty → error.
 - **xpost**: cleaned to one paragraph block; when its X length (§4.5) is over 280 it is cut at a
   word end and ends with "…" to fit (by characters when no word ends in the second half, as in
-  Chinese or Japanese written without spaces). Empty → error.
+  Chinese or Japanese written without spaces, but never inside a link or an emoji, which stay
+  whole or go). Empty → error.
 - **article**: title ≤ 150, intro ≤ 1 500, at most 12 sections with a heading ≤ 120 and 1–20 steps
   of ≤ 600 characters (leading "1." / "-" removed, empty steps dropped); a section without steps is
   dropped; none left → error. Rendered as `# Title`, intro, then `## Heading` and `1.` steps.

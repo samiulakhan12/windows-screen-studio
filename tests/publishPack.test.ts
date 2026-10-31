@@ -150,6 +150,24 @@ describe('xLength and fitX', () => {
     expect(fitX(latin).endsWith(' …')).toBe(false)
     expect(/word\d+…$/.test(fitX(latin))).toBe(true)
   })
+  it('cuts such a post before a link, never inside it', () => {
+    const jp = '今日は新しいエクスポート機能を紹介します。設定を開いて保存を押すだけです。'.repeat(5)
+    // The link does not fit: the post ends before it, not in "https://flo…".
+    const before = `新機能！ ${jp.slice(0, 125)}詳しくは`
+    expect(fitX(`${before}https://flown.fm/docs/export-guide #新機能`)).toBe(`${before}…`)
+    // It fits whole, though a piece of it would not (or would link another site, "https://app.flown.co.…"): it is kept whole.
+    for (const link of ['https://docs.flown-studio-exports.com/guide', 'https://app.flown.co.uk/export']) {
+      const head = `新機能！${jp.slice(0, 119)}詳しくは${link}`
+      const fitted = fitX(`${head}${jp}`)
+      expect(fitted).toBe(`${head}…`)
+      expect(xLength(fitted)).toBeLessThanOrEqual(X_LIMIT)
+    }
+    // An emoji is not split either: the family, not only its man.
+    const family = '👨\u200d👩\u200d👧'
+    const head = `新機能！${jp.slice(0, 134)}`
+    expect(fitX(`${head}${family}${jp}`)).toBe(`${head}${family}…`)
+    expect(xLength(`${head}${family}…`)).toBe(X_LIMIT)
+  })
 })
 
 describe('the existing text tasks', () => {
