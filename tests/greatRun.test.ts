@@ -123,6 +123,17 @@ describe('runCaptionsGreat', () => {
     expect(undoSteps(store)).toBe(2)
   })
 
+  it('asks the provider on the captions as the tidy step leaves them, so its word indexes name the words marked', async () => {
+    const store = storeOf(studioProject({ segments: captions(['we grew one hundred and twenty users and our Revenue increased', 'Click Save and you are done.']) }))
+    const run = runCaptionsGreat({ store, frame: TALL, options: AI, signal: new AbortController().signal })
+    await flush()
+    expect(asked[0].request.segments[0].text).toBe('We grew 120 users and our Revenue increased')
+    // "Revenue" is word 6 of the caption sent (word 9 before the tidy).
+    asked[0].answer.resolve({ task: 'marks', answer: { captions: [{ id: 'c0', emphasis: [6], emoji: '', emojiWord: -1 }], numbers: [], lists: [], quotes: [] } })
+    await run
+    expect(store.state.captionMarks?.filter((m) => m.caption === 'c0')).toEqual([expect.objectContaining({ from: 6, to: 6, text: 'Revenue', auto: true })])
+  })
+
   it('a provider that fails leaves the picks made on this PC, and the notice says so', async () => {
     const store = storeOf(studioProject({ segments: captions(TEXTS) }))
     const run = runCaptionsGreat({ store, frame: TALL, options: AI, signal: new AbortController().signal })

@@ -2530,6 +2530,13 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
 3. Else the record is dropped (a mark deleted; an anchor removed, so the graphic stays free; a
    keyword then replaces nothing).
 
+Only a record the previous project had (the same id on the same words) is remapped: one the
+update itself made or moved already names the new captions' words and is only checked. Make my
+captions great (and Polish's Caption look) tidies first, moves the marks and anchors already there
+onto the tidied words, and picks its emphasis, keywords and emoji on the tidied text; the AI's
+`marks` task is asked on the captions as that tidy leaves them, so its word indexes are the
+planner's ("twenty five" sent as "25").
+
 Per-caption positions (`captionPlaces`) follow their caption the same way: after a split both
 halves keep the position, after a merge the merged caption keeps the first one's, and a caption
 that is gone drops its entry. Bleeps need none of this: they are time-based (§11.7).

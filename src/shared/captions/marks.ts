@@ -202,8 +202,10 @@ const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.str
  * longest common subsequence of words; one whose caption is gone (split, merge, generated again)
  * is looked for by its text in the captions over its old time, nearest first; else it is dropped
  * (a graphic then stays free). Places follow their caption, both halves of a split keep one, a
- * caption that is gone loses its. The result is what reading the saved project gives for these
- * fields; `next` itself when nothing changed.
+ * caption that is gone loses its. Only a mark or anchor `prev` had (same id, same words) is
+ * remapped: one this update made or moved already names `next`'s words and is only checked. The
+ * result is what reading the saved project gives for these fields; `next` itself when nothing
+ * changed.
  */
 export function remapAnchors(next: Project, prev: Project): Project {
   const nt = next.transcript
@@ -226,19 +228,26 @@ export function remapAnchors(next: Project, prev: Project): Project {
     const words = studioWords(nextWords.get(f.caption)!.seg.text, lang)
     return wordsText(words, f.from, f.to)
   }
-  const move = <T extends { caption: string; from: number; to: number; text: string }>(rec: T): T | null => {
+  // Only a record `prev` already had on these words counts them in `prev`'s captions; one this
+  // update made or moved (Make my captions great's picks on the tidied text) counts them in `next`'s.
+  type Spot = { caption: string; from: number; to: number; text: string }
+  const prevMarks = new Map((prev.captionMarks ?? []).map((m) => [m.id, m]))
+  const prevAnchors = new Map((prev.graphics ?? []).flatMap((g) => ((g.kind === 'keyword' || g.kind === 'emoji') && g.anchor ? [[g.id, g.anchor] as const] : [])))
+  const fromPrev = (rec: Spot, was: Spot | undefined): boolean => !!was && was.caption === rec.caption && was.from === rec.from && was.to === rec.to && was.text === rec.text
+  const move = <T extends Spot>(rec: T, was: Spot | undefined): T | null => {
+    if (!fromPrev(rec, was)) return rec
     const f = relocate(rec, prevWords, nextWords, nextList)
     if (!f) return null
     if (f.caption === rec.caption && f.from === rec.from && f.to === rec.to && nextWords.get(f.caption)!.seg.text === prevWords.get(rec.caption)?.seg.text) return rec
     return { ...rec, caption: f.caption, from: f.from, to: f.to, text: textOf(f) }
   }
   // Marks.
-  const movedMarks = (next.captionMarks ?? []).map(move).filter((m): m is CaptionMark => !!m)
+  const movedMarks = (next.captionMarks ?? []).map((m) => move(m, prevMarks.get(m.id))).filter((m): m is CaptionMark => !!m)
   const marks = readCaptionMarks(movedMarks, nt)
   // Graphic anchors.
   const graphicsIn = next.graphics?.map((g): Graphic => {
     if ((g.kind !== 'keyword' && g.kind !== 'emoji') || !g.anchor) return g
-    const a = move<WordAnchor>(g.anchor)
+    const a = move<WordAnchor>(g.anchor, prevAnchors.get(g.id))
     return a ? (a === g.anchor ? g : { ...g, anchor: a }) : dropAnchor(g)
   })
   const graphics = graphicsIn ? readGraphics(graphicsIn, next.duration, nt) : undefined

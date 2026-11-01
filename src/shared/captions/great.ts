@@ -12,6 +12,7 @@ import { autoStyleSettings, cameraLed, frameShape } from './autoStyle'
 import { tidyCaptions, type CleanupChoices, type WordListEntry } from './cleanup'
 import { markId, pickEmphasis } from './emphasis'
 import { deepEqual, planGraphics } from './graphicRules'
+import { remapAnchors } from './marks'
 import { captionsOf } from './settings'
 import { studioPreset } from './studioPresets'
 import { legacyTwin } from './studioEdit'
@@ -165,6 +166,7 @@ export function planCaptionsGreat(
     brand?: CaptionStudio | null
     cleanup: CleanupChoices
     words: readonly WordListEntry[]
+    /** The AI's picks; their word indexes name the captions as the tidy step leaves them (what greatRun asks on). */
     marks?: MarksAnswer
     by: 'great' | 'polish'
     /** The provider kind the AI marks came from (their items' `auto.via`). */
@@ -186,7 +188,9 @@ export function planCaptionsGreat(
   // 1. Tidy: the saved Clean up choices, rules 1–4; bleeping only when the user turned it on.
   if (o.tidy) {
     const t = tidyCaptions(p, { ...input.cleanup, ai: false, words: input.words })
-    p = t.project
+    // The marks and anchors there move onto the tidied words ("twenty five" is now "25"): the
+    // steps below pick words of the tidied text, and the store's settle moves only what the input had.
+    p = remapAnchors(t.project, start)
     summary.tidied = t.changed
     summary.bleeped = t.bleeped
   }

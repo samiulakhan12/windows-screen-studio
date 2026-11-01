@@ -2,11 +2,13 @@
  * Captions Studio test 42 (docs/design/captions-studio.md §11.8, §2.8): Make my captions great.
  */
 import { describe, expect, it, vi } from 'vitest'
+import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, greatHint, greatNotice, planCaptionsGreat, readGreatOptions, resolveGreatOptions, type GreatSummary } from '../src/shared/captions/great'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
+import { studioWordTexts } from '../src/shared/captions/words'
 import { chordFromEvent, DEFAULT_KEYMAP, matchShortcut, shortcutIndex, undoHint } from '../src/shared/editor/shortcuts'
-import type { Project } from '../src/shared/types'
+import type { Graphic, Project } from '../src/shared/types'
 import { captions, studioProject, TALL, WIDE } from './p4Fixtures'
 
 vi.mock('../src/shared/captions/words', async (o) => (await import('./p1Fillins')).fillWords(await o()))
@@ -78,6 +80,32 @@ describe('Make my captions great (test 42)', () => {
     expect(summary.style).toBeNull()
     expect(project.captionMarks!.find((m) => m.id === 'mine')).toEqual({ id: 'mine', caption: 'c5', from: 1, to: 1, text: 'Save' })
     expect(project.captionMarks!.some((m) => m.caption === 'c5' && m.auto)).toBe(false)
+  })
+
+  it('emphasis picked on words the tidy joined stays on them through the store’s settle', () => {
+    const p = studioProject({ segments: captions(['we have twenty five new Export options today', 'we grew one hundred and twenty users and our Revenue increased']) })
+    const { project } = run(p, WIDE)
+    expect(project.transcript!.segments[1].text).toBe('we grew 120 users and our Revenue increased.')
+    const on = (q: Project): string[] => (q.captionMarks ?? []).map((m) => `${m.caption}:${m.from}-${m.to} ${m.text}`)
+    expect(on(project)).toContain('c1:6-6 Revenue')
+    const words = new Map(project.transcript!.segments.map((s) => [s.id, studioWordTexts(s.text, 'en')]))
+    for (const m of project.captionMarks!) expect(words.get(m.caption)!.slice(m.from, m.to + 1).join(' ')).toBe(m.text)
+    // The Editor's store settles every update against the project before it: the marks stay on their words.
+    expect(on(settleCaptionAuto(project, p))).toEqual(on(project))
+  })
+
+  it('the user’s marks and anchored graphics move onto the tidied words before anything is picked', () => {
+    const graphic: Graphic = { id: 'g-mine', kind: 'emoji', start: 4, end: 5, place: 'auto', size: 0.12, enter: { kind: 'pop', duration: 0.24, strength: 1 }, exit: { kind: 'fade', duration: 0.18, strength: 1 }, emoji: '1f4c8', anchor: { caption: 'c1', from: 9, to: 9, text: 'Revenue' } }
+    const p = studioProject({
+      segments: captions(['we have twenty five new Export options today', 'we grew one hundred and twenty users and our Revenue increased']),
+      captionMarks: [{ id: 'mine', caption: 'c1', from: 9, to: 9, text: 'Revenue' }],
+      graphics: [graphic]
+    })
+    const { project } = run(p, WIDE)
+    expect(project.captionMarks!.find((m) => m.id === 'mine')).toEqual({ id: 'mine', caption: 'c1', from: 6, to: 6, text: 'Revenue' })
+    const g = project.graphics!.find((x) => x.id === 'g-mine')
+    expect(g?.kind === 'emoji' && g.anchor).toEqual({ caption: 'c1', from: 6, to: 6, text: 'Revenue' })
+    expect(settleCaptionAuto(project, p).captionMarks!.find((m) => m.id === 'mine')).toMatchObject({ from: 6, to: 6, text: 'Revenue' })
   })
 
   it('emphasis on a legacy look makes the Studio twin in the same update', () => {

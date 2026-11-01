@@ -7,7 +7,7 @@
  */
 import type { AiProviderInfo, AiTextRequest, MarksAnswer } from '../../../shared/api/ai'
 import { textHash } from '../../../shared/captions/captionTracks'
-import { readCleanupChoices, readWordList, type CleanupChoices, type WordListEntry } from '../../../shared/captions/cleanup'
+import { readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices, type WordListEntry } from '../../../shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, greatNotice, planCaptionsGreat, readGreatOptions, type GreatOptions, type GreatSummary } from '../../../shared/captions/great'
 import { readCaptionStudio } from '../../../shared/captions/studioData'
 import type { BrandKit } from '../../../shared/editor/brandKit'
@@ -89,12 +89,17 @@ export async function loadGreatInputs(): Promise<GreatInputs> {
   return { great: readGreatOptions(great), cleanup: readCleanupChoices(cleanup), words: readWordList(words), brand }
 }
 
-/** The AI marks for the project's captions from `provider`, with a hash of each caption's text as it was sent. */
-async function requestMarks(project: Project, provider: string): Promise<{ answer: MarksAnswer; sent: Map<string, string> }> {
-  const segments = project.transcript?.segments ?? []
+/**
+ * The AI marks for the project's captions from `provider`, with a hash of each caption's text as it
+ * was when asked. The provider reads the captions as the planner's tidy step leaves them
+ * ("twenty five" as "25"), so its word indexes name the words the planner picks from.
+ */
+async function requestMarks(project: Project, provider: string, tidy: { cleanup: CleanupChoices; words: readonly WordListEntry[] } | null): Promise<{ answer: MarksAnswer; sent: Map<string, string> }> {
+  const own = project.transcript?.segments ?? []
+  const segments = tidy ? (tidyCaptions(project, { ...tidy.cleanup, ai: false, bleep: 'off', words: tidy.words }).project.transcript?.segments ?? own) : own
   const language = project.transcript?.language
   const request: AiTextRequest = { task: 'marks', segments, marks: { ...(language ? { language } : {}), captions: [] } }
-  const sent = new Map(segments.map((s) => [s.id, textHash(s.text)]))
+  const sent = new Map(own.map((s) => [s.id, textHash(s.text)]))
   // TODO(phase B): pass a requestId and call cancelAiText on Cancel once the publishing pack has merged.
   const result = await window.api.aiText(provider, request)
   if (result.task !== 'marks') throw new Error('The AI provider answered another task.')
@@ -135,7 +140,7 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
   let providerFailed = false
   if (options.provider) {
     try {
-      const [asked, kind] = await Promise.all([requestMarks(start, options.provider), providerKind(options.provider)])
+      const [asked, kind] = await Promise.all([requestMarks(start, options.provider, options.tidy ? inputs : null), providerKind(options.provider)])
       if (signal.aborted) return null
       marks = stillValid(asked.answer, asked.sent, store.getSnapshot())
       marksVia = kind
