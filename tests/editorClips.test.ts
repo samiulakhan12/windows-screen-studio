@@ -83,6 +83,25 @@ describe('setRangeSpeed', () => {
     ])
   })
 
+  it('snaps to the nearest clip edge, and an end on an edge stays there', () => {
+    // A 0.125 s clip at 4x: 14.58 is 0.08 s from its start and 0.045 s from its end.
+    const short = [clip('a', 10, 14.5, 2), clip('b', 14.5, 14.625, 4), clip('c', 14.625, 18, 2)]
+    expect(spans(setRangeSpeed(short, 14.58, 16, 1))).toEqual([
+      [10, 14.5, 2],
+      [14.5, 14.625, 4],
+      [14.625, 16, 1],
+      [16, 18, 2]
+    ])
+    // 14.6 - 14.5 is a hair under 0.1 in floating point: an end on the edge 14.6 never moves to 14.5.
+    const tenth = [clip('a', 10, 14.5, 2), clip('b', 14.5, 14.6, 4), clip('c', 14.6, 18, 2)]
+    expect(spans(setRangeSpeed(tenth, 14.6, 16, 1))).toEqual([
+      [10, 14.5, 2],
+      [14.5, 14.6, 4],
+      [14.6, 16, 1],
+      [16, 18, 2]
+    ])
+  })
+
   it('returns the input when the range changes nothing (audit E5)', () => {
     const clips = [clip('a', 0, 5), clip('b', 7, 10)]
     // Inside the cut, and a range that already plays at that speed.

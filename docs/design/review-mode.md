@@ -280,7 +280,18 @@ cut, every `was` piece is kept again (at any speed), within 1 ms; for a speed-up
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
 clip it was part of), and joins it to touching clips at the same speed, keeping the old clip's id;
-a split of the user's next to it stays.
+a split of the user's next to it stays. Remove of a speed-up sets each piece back with
+`setRangeSpeed`, which snaps a range end within `MIN_CLIP` of a clip edge onto the nearest such
+edge (a clip is never shorter; an end on an edge stays). So a reset can leave a sliver at another
+speed than it had before the record: one beside the record's own footage (a cut ending 0.05 s
+before two touching 2× records meet leaves 0.05 s of the first in the second's clip, and the
+second's Remove sets that clip back whole), or one of its own between two pieces that were at
+different speeds (a 4× over the start of a 2×, cut 0.01 s into the 2×: its Remove sets all it
+still plays to 1×). A speed-up left that was intact and no longer plays such a sliver at its speed
+(nor has it held there by a later record) gives it up, as Keep's `withSpeedUpKept` gives up a part:
+it is not its change any more, and the record stays intact and to review for the rest
+(`withoutResetSlivers`); so does one that held it through that one. So Remove of one row never
+takes another off the list.
 
 A piece shorter than `MIN_CLIP` (Remove silences run again with less padding cuts 0.05 s more on
 each side of the same pause) comes back only by joining a clip: alone it cannot be one. Remove
@@ -518,6 +529,12 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   clip at the nearest speed; one inside a speed-up still to review goes to the cut beside it instead
   of joining a clip outside it at another speed (the speed-up stays to review); one between two
   kept cuts stays out and reads removed.
+* A reset that snaps (§4.1): two touching 2× records joined into one clip by a Remove, a cut ending
+  0.05 s before they meet (or starting 0.05 s after), then Remove of the other 2×: the 2× left gives
+  up the sliver, stays to review, and its Remove and the cut's bring all the footage back; its Keep
+  keeps the rest sped up, and undo gives the sliver back. A 4× over the start of a 2×, cut 0.01 s
+  into the 2×, removed: the 2× gives up the 0.01 s and stays to review. `setRangeSpeed` snaps to
+  the nearest clip edge, and an end on an edge stays (14.6 − 14.5 is a hair under 0.1).
 * Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
 * `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
 * Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).

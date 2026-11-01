@@ -735,6 +735,55 @@ describe('a piece of a cut too short to come back alone (shorter than MIN_CLIP)'
   })
 })
 
+describe('a Remove that re-times a sliver of footage another record holds', () => {
+  // A clip is never shorter than MIN_CLIP, so a reset snaps a range end that close to a clip edge onto
+  // it (setRangeSpeed). Smart speed 2x over [10, 14] (r0); Remove silences 2x over [12, 16] changes
+  // only [14, 16] (r1); a filler cut [13.5, 14.5] (r2) removed, so [10, 16] plays at 2x as one clip.
+  const joined = 'tool 10-14 2 smart-speed; tool 12-16 2 silences; tool 13.5-14.5 cut filler; open; R r2'
+
+  it('a cut ending 0.05 s before the two 2x meet, then the later 2x removed: the earlier one gives up that sliver and stays to review', () => {
+    // r3 keeps [13.95, 14] of r0 at 2x in the clip [13.95, 16]; r1's reset takes all of that clip.
+    const s = replay(`${joined}; tool 13-13.95 cut filler; R r1`)
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,13]@2 [13.95,20]@1')
+    expect(s.rows()).toEqual(['r0:pending', 'r1:removed', 'r3:pending', 'r2:removed'])
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([{ start: 10, end: 13.95, speed: 1 }])
+    expect(pendingCount(s.p)).toBe(2)
+    s.run('R r0; R r3')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+    expect(s.p.autoCuts).toBeUndefined()
+  })
+
+  it('the mirror: a cut starting 0.05 s after they meet, then the earlier 2x removed: the later one stays to review', () => {
+    const s = replay(`${joined}; tool 14.05-15 cut filler; R r0`)
+    expect(plays(s.p.clips)).toBe('[0,14.05]@1 [15,16]@2 [16,20]@1')
+    expect(s.rows()).toEqual(['r0:removed', 'r1:pending', 'r2:removed', 'r3:pending'])
+    expect(s.p.autoCuts?.find((c) => c.id === 'r1')?.was).toEqual([{ start: 14.05, end: 16, speed: 1 }])
+    s.run('R r1; R r3')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+  })
+
+  it('a 4x over the start of a 2x, cut 0.01 s into the 2x, removed: the 2x gives up the 0.01 s that went back to 1x with the rest', () => {
+    // r1 holds [9.7, 10] at 1x and [10, 10.66] at 2x; a filler cut inside it removed joins its
+    // footage into one 4x clip. After r3 only [9.7, 10.01] of it plays, and [10, 10.01] cannot be a
+    // clip at 2x of its own, so r1's Remove sets [9.7, 10.01] to 1x.
+    const s = replay('tool 10-12 2 silences; tool 9.7-10.66 4; open; tool 9.9-10.2 cut filler; R r2; tool 10.01-10.7 cut; R r1')
+    expect(plays(s.p.clips)).toBe('[0,10.01]@1 [10.7,12]@2 [12,20]@1')
+    expect(s.rows()).toEqual(['r1:removed', 'r2:removed', 'r0:pending', 'r3:pending'])
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([{ start: 10.01, end: 12, speed: 1 }])
+    s.run('R r0; R r3')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+  })
+
+  it('Keep of the 2x left keeps the rest of its footage sped up; undo gives the sliver back to it', () => {
+    const s = replay(`${joined}; tool 13-13.95 cut filler; R r1; K r0`)
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,13]@2 [13.95,20]@1')
+    expect(s.rows()).toEqual(['r0:kept', 'r1:removed', 'r3:pending', 'r2:removed'])
+    s.run('undo; undo')
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([{ start: 10, end: 14, speed: 1 }])
+    expect(s.rows()).toEqual(['r0:pending', 'r1:pending', 'r3:pending', 'r2:removed'])
+  })
+})
+
 describe('random histories', () => {
   // Tool runs over random and nested ranges, Keep and Remove (one row, Keep all, Remove all), undo,
   // redo, closing and reopening the panel and edits by hand: after every step each row the user

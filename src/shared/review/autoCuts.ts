@@ -657,7 +657,8 @@ function putBack(clips: Clip[], pieces: readonly Piece[], duration: number): Cli
  * The clips and records with the records `ids` of `list` taken back (Remove and Remove all, §2.4):
  * each as undoAutoCut, the latest in source time first, a speed-up leaving the records inside it
  * holding their footage at the speed from before it (withoutSpeedUp); the records taken back are
- * left out.
+ * left out. A speed-up left whose sliver beside them a reset re-timed gives it up and stays to
+ * review (withoutResetSlivers).
  *
  * A piece of a cut shorter than MIN_CLIP comes back only by joining a clip (alone it cannot be
  * one). Once all are back it is put back again, so it joins a neighbour at its speed that came back
@@ -687,6 +688,7 @@ export function takeBack(
     at = undoAutoCut(at, c, duration)
     if (c.action !== 'cut') out = withoutSpeedUp(out, c)
   }
+  out = withoutResetSlivers(out, list, gone, clips, at)
   const outOf = (pieces: readonly Piece[]): Piece[] =>
     outside(pieces, union(at.map((c) => ({ start: c.start, end: c.end, speed: c.speed })))).filter((p) => p.end - p.start > SLACK)
   let left = outOf(out.filter((c) => gone.has(c.id) && c.action === 'cut').flatMap((c) => c.was))
@@ -742,6 +744,59 @@ export function takeBack(
     })
   }
   return { clips: at, list: out.filter((c) => !gone.has(c.id)) }
+}
+
+/** The time `before` and `after` both play, at different speeds (with the speed `after` plays it at). */
+function retimed(before: readonly Clip[], after: readonly Clip[]): Piece[] {
+  const a = [...before].sort((x, y) => x.start - y.start)
+  const b = [...after].sort((x, y) => x.start - y.start)
+  const out: Piece[] = []
+  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
+    const lo = Math.max(a[i].start, b[j].start)
+    const hi = Math.min(a[i].end, b[j].end)
+    if (hi - lo > EPS && a[i].speed !== b[j].speed) out.push({ start: lo, end: hi, speed: b[j].speed })
+    if (a[i].end < b[j].end) i++
+    else j++
+  }
+  return out
+}
+
+const length = (pieces: readonly Piece[]): number => pieces.reduce((n, p) => n + p.end - p.start, 0)
+
+/**
+ * The records `out` once the records `gone` of `list` are reset, the clips going from `before` to
+ * `after` (takeBack). A clip is never shorter than MIN_CLIP, so a reset snaps a range end that close
+ * to a clip edge onto it (setRangeSpeed), and a sliver can end up at another speed than it had
+ * before the records taken back: one beside their own footage, or one of theirs between two pieces
+ * that were at different speeds. A speed-up left that was intact and no longer plays such a sliver
+ * at its speed (nor has it held at it by a later record) gives it up, as withSpeedUpKept gives up a
+ * part: that part is not its change any more. It stays intact, to review for the rest; so does one
+ * that held it through that one. So Remove of one row never takes another off the list. Records
+ * that change nothing are the same objects.
+ */
+function withoutResetSlivers(out: AutoCut[], list: readonly AutoCut[], gone: ReadonlySet<string>, before: Clip[], after: Clip[]): AutoCut[] {
+  if (after === before) return out
+  const changed = retimed(before, after)
+  if (changed.length === 0) return out
+  const intact = new Set(list.filter((c) => c.action !== 'cut' && !gone.has(c.id) && autoCutIntact(c, before, list)).map((c) => c.id))
+  for (let n = 0; n < list.length && intact.size > 0; n++) {
+    const left = out.filter((c) => !gone.has(c.id))
+    let dropped = false
+    out = out.map((c) => {
+      if (!intact.has(c.id) || c.action === 'cut' || autoCutIntact(c, after, left)) return c
+      // What this Remove re-timed away from its speed, where no later record holds it at its speed.
+      const off = outside(
+        changed.filter((p) => p.speed !== c.action),
+        holds(left, after, c.action).parts
+      )
+      const was = without(c.was, off)
+      if (length(was) >= length(c.was) - EPS) return c
+      dropped = true
+      return { ...c, was }
+    })
+    if (!dropped) break
+  }
+  return out
 }
 
 /**
