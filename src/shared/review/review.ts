@@ -81,8 +81,20 @@ export function reviewItems(project: Project): ReviewItem[] {
   return items.sort(byTime)
 }
 
-/** How many automatic changes are waiting for review (the Review button's count). */
-export const pendingCount = (project: Project): number => reviewItems(project).length
+/**
+ * How many automatic changes are waiting for review (the Review button's count): reviewItems'
+ * length, counted without making the rows (their titles) or putting them in order, since it is
+ * worked out again on every edit.
+ */
+export function pendingCount(project: Project): number {
+  let n = 0
+  for (const z of project.zooms) if (z.auto) n++
+  for (const s of project.layouts ?? []) if (s.auto) n++
+  if (directorsFraming(project)) n++
+  const chosen = outcomesOf(project)
+  for (const c of liveAutoCuts(project)) if (!chosen.has(c.id)) n++
+  return n
+}
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
 

@@ -8,7 +8,7 @@ import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { finish, recordAutoCuts, settleAutoCuts } from '../src/shared/review/autoCuts'
-import { removeItems, removeSteps, reviewItems, reviewStatus } from '../src/shared/review/review'
+import { pendingCount, removeItems, removeSteps, reviewItems, reviewStatus } from '../src/shared/review/review'
 import { inSlices, type Tasks } from '../src/shared/review/slices'
 import type { AutoCut, AutoCutSource, Project } from '../src/shared/types'
 
@@ -79,6 +79,9 @@ describe('removeSteps', () => {
       expect(finish(removeSteps(p, silences))).toEqual(r.value)
       // Every row it took back reads removed.
       expect(silences.every((i) => reviewStatus(r.value, i) === 'removed')).toBe(true)
+      // The Review button counts what is listed, before and after, and half way.
+      const half = removeItems(p, silences.filter((_, k) => k % 2 === 0))
+      for (const q of [p, half, r.value]) expect(pendingCount(q)).toBe(reviewItems(q).length)
     })
   }
 

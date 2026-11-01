@@ -145,6 +145,26 @@ describe('keep and remove', () => {
     expect(keepItems(kept, items)).toBe(kept)
   })
 
+  it("counts what reviewItems lists (the Review button's count, worked out without the rows)", () => {
+    const framed = project({
+      zooms: [zoom('z1', 2), zoom('mine', 14, { auto: false })],
+      layouts: [{ id: 'l1', start: 5, end: 7, layout: 'default', corner: 'top-left', auto: true }],
+      clips: [clip(0, 8), clip(10.4, 20)],
+      autoCuts: [silence, { id: 'gone', by: 'polish', action: 'cut', start: 3, end: 4, was: [{ start: 3, end: 4, speed: 1 }] }],
+      webcam: { show: true, corner: 'bottom-right', size: 0.24, shape: 'circle', zoom: 1.6, cropX: 0.4, cropY: 0.45 },
+      director: { intro: 'off', corners: 'auto', hideAfter: 0, frameFace: true, framed: { zoom: 1.6, cropX: 0.4, cropY: 0.45 } }
+    })
+    const items = reviewItems(framed)
+    expect(items.length).toBe(4)
+    // Every subset kept, removed, and a choice recorded with the record back (an undo after Remove).
+    for (let mask = 0; mask < 1 << items.length; mask++) {
+      const some = items.filter((_, k) => mask & (1 << k))
+      for (const p of [framed, keepItems(framed, some), removeItems(framed, some), { ...removeItems(framed, some), autoCuts: framed.autoCuts }]) {
+        expect(pendingCount(p)).toBe(reviewItems(p).length)
+      }
+    }
+  })
+
   it('the face framing: Keep drops director.framed, Remove resets the webcam framing', () => {
     const p = project({
       webcam: { show: true, corner: 'bottom-right', size: 0.24, shape: 'circle', zoom: 1.6, cropX: 0.4, cropY: 0.45 },
