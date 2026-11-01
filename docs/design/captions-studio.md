@@ -577,9 +577,11 @@ The subtitle part of the export options becomes one field **Subtitles** (`export
 GIF and M4A keep today's options: no languages, no streams. When the burned-in track lacks some
 captions, the export notes "3 captions are not translated into Bengali: they show in English."
 
-When the captions use a downloadable font that is missing, the existing missing-font note
-(`missingFonts`, `fontLoader.ts:140-144`) lists it: "Captions use Noto Sans JP, which is not
-downloaded: they will use Yu Gothic UI."
+When the captions use a downloadable font that is missing, the export dialog's missing-font notes
+(`missingCatalogNotes` beside `missingFonts`, `fontLoader.ts`) list it once the dialog has tried
+the project's catalogue fonts as the export does: "Captions use Noto Sans JP, which is not
+downloaded: they will use Yu Gothic UI." A bundled caption font whose file fails to load says
+"Font missing: Bangers. Text that uses it is drawn with another font."
 
 ### 2.14 Command palette and keys
 

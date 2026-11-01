@@ -31,7 +31,7 @@ import {
 import type { AspectRatio, ExportFormat, ExportSettings, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import type { RenderScene } from '../render/compositor'
-import { missingFonts, prepareProjectFonts } from '../render/fontLoader'
+import { missingCatalogNotes, missingFonts, prepareProjectFonts } from '../render/fontLoader'
 import { missingOverlays, prepareOverlays } from '../render/overlayLayer'
 import { overlayLabel } from '../../../shared/editor/overlays'
 import { avcConfigs, supportedAvcConfig, vp9Configs } from '../render/encoders'
@@ -284,10 +284,13 @@ export function ExportDialog(props: Props): JSX.Element {
   // Fonts text uses that cannot be loaded (their text is drawn with the default font) and images
   // that cannot be shown (left out): said below, so another PC's missing files are no surprise.
   const [lostFonts, setLostFonts] = useState<string[]>([])
+  // Caption fonts not there (a download not made on this PC): their notes (Captions Studio §2.13).
+  const [lostCaptionFonts, setLostCaptionFonts] = useState<string[]>([])
   const [lostImages, setLostImages] = useState<string[]>([])
   useEffect(() => {
     let live = true
     void prepareProjectFonts(project).then(() => live && setLostFonts(missingFonts(project).map((f) => f.name)))
+    void missingCatalogNotes(project).then((notes) => live && setLostCaptionFonts(notes))
     void prepareOverlays(project).then(() => live && setLostImages(missingOverlays(project).map(overlayLabel)))
     return () => {
       live = false
@@ -622,6 +625,7 @@ export function ExportDialog(props: Props): JSX.Element {
     warnings.push({ key: 'images', cls: 'warn', text: `Image missing: ${[...new Set(lostImages)].join(', ')}. It is left out of the video.` })
   if (!audioOnly && lostFonts.length)
     warnings.push({ key: 'fonts', cls: 'warn', text: `Font missing: ${lostFonts.join(', ')}. Text that uses it is drawn with Segoe UI.` })
+  if (!audioOnly) for (const text of lostCaptionFonts) warnings.push({ key: `caption-font ${text}`, cls: 'warn', testid: 'export-caption-font', text })
   if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: 'Long GIFs get very large; MP4 is better for clips over 30 s.' })
   if (audioOnly && !hasSound) warnings.push({ key: 'silent', cls: 'warn', text: 'This recording has no sound to export.' })
   if (limits?.maxSeconds && length > limits.maxSeconds) {

@@ -482,3 +482,14 @@ export function missingCatalogFonts(project: Project): CatalogFont[] {
     .filter((id) => catalogEntries.get(id)?.state === 'missing')
     .map((id) => catalogFont(id)!)
 }
+
+/**
+ * The export dialog's missing-font notes for the catalogue fonts (§2.13), once each was tried as
+ * the export tries it: a download not made names the Windows font its captions are drawn with.
+ */
+export async function missingCatalogNotes(project: Project): Promise<string[]> {
+  await prepareCaptionFonts(project)
+  return missingCatalogFonts(project).map((f) =>
+    f.download ? `Captions use ${f.family}, which is not downloaded: they will use ${f.download.until}.` : `Font missing: ${f.family}. Text that uses it is drawn with another font.`
+  )
+}

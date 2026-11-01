@@ -59,6 +59,7 @@ const fonts = (await import(/* @vite-ignore */ LOADER)) as {
   catalogFontReady(id: string): boolean
   prepareCaptionFonts(p: Project): Promise<void>
   missingCatalogFonts(p: Project): { id: string }[]
+  missingCatalogNotes(p: Project): Promise<string[]>
   catalogDescriptors(font: unknown, file: unknown): Record<string, string>
   ensureProjectFonts(p: Project): void
   prepareProjectFonts(p: Project): Promise<void>
@@ -258,5 +259,15 @@ describe('prepareCaptionFonts (§6.8)', () => {
     const ko = withStudio(STUDIO_BASE as CaptionStudio, { id: 'pk', transcript: { language: 'ko', segments: [{ id: 'c1', start: 0, end: 1, text: '안녕하세요' }] } } as Partial<Project>)
     await fonts.prepareCaptionFonts(ko)
     expect(fonts.missingCatalogFonts(ko).map((f) => f.id)).toEqual(['noto-sans-kr'])
+  })
+
+  it("names them in the export dialog's notes: a download not made with the Windows font drawn instead (§2.13)", async () => {
+    broken.add('FlownCat-bangers')
+    const ko = withStudio(STUDIO_BASE as CaptionStudio, { id: 'pn', transcript: { language: 'ko', segments: [{ id: 'c1', start: 0, end: 1, text: '안녕하세요' }] } } as Partial<Project>)
+    expect(await fonts.missingCatalogNotes(ko)).toEqual(['Captions use Noto Sans KR, which is not downloaded: they will use Malgun Gothic.'])
+    // A bundled file that fails to load is named too.
+    expect(await fonts.missingCatalogNotes(withStudio(look('comic'), { id: 'pc' }))).toContain('Font missing: Bangers. Text that uses it is drawn with another font.')
+    // An old project on a legacy look needs no catalogue font.
+    expect(await fonts.missingCatalogNotes(project({ id: 'po' }))).toEqual([])
   })
 })
