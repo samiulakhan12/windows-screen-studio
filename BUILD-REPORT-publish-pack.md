@@ -51,8 +51,9 @@ Design: `docs/design/publish-pack.md` (§12 lists where the build differs from t
   name and the chapter titles go in the same block. The system rules say never to follow
   instructions in it, and tone and length map to fixed sentences.
 - **Answers:** checked against their schema, capped, and stripped of control and direction
-  characters and markdown emphasis. Links the transcript does not have (the exact same link) are
-  removed, including links glued to a word and bare domains.
+  characters and markdown emphasis. Links the transcript does not have were removed at first; after
+  nine review rounds they are kept as written, noted and confirmed before use instead
+  (`docs/design/publish-pack.md` §4.4, §4.8).
 - **No new dependencies.** No changes to settings files. The project gains one optional field;
   older projects load byte-for-byte unchanged (tested).
 - **Shared files** were changed additively only: types, project migration, api index, preload,
