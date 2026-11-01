@@ -182,7 +182,8 @@ export function CaptionGallery(props: {
   brand: CaptionStudio | null
   suggested: string
   onPick(tile: string): void
-  onPreview(tile: string | null): void
+  /** The tile previewed on the video and how (focus: Enter picks it; pointer: a click does), or null. */
+  onPreview(tile: string | null, via?: 'focus' | 'pointer'): void
   /** The captions' language: 'bn' shows Bangla sample text on the tiles (§0.2). */
   language?: string
 }): JSX.Element {
@@ -238,12 +239,12 @@ export function CaptionGallery(props: {
       onPreview(null)
     }
   }
-  const startPreview = (id: string): void => {
+  const startPreview = (id: string, via: 'focus' | 'pointer'): void => {
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       timer.current = null
       previewing.current = id
-      onPreview(id)
+      onPreview(id, via)
     }, PREVIEW_DELAY)
   }
   useEffect(() => stopPreview, [])
@@ -372,11 +373,11 @@ export function CaptionGallery(props: {
                 if (t.id.startsWith(MINE_PREFIX)) setLastSaved(t.id)
                 // Focus never starts an animation under reduced motion (§2.15).
                 if (!reduced) setActive(t.id)
-                startPreview(t.id)
+                startPreview(t.id, 'focus')
               }}
               onPointerEnter={() => {
                 if (!reduced) setActive(t.id)
-                startPreview(t.id)
+                startPreview(t.id, 'pointer')
               }}
               onPointerLeave={() => {
                 setActive((a) => (a === t.id ? null : a))

@@ -295,8 +295,10 @@ state is remembered in `localStorage` `captions-look-open`.
   "Play a preview of Bold Pop", naming the focused tile, else the checked one) plays one loop.
 - **Preview on the video.** While a tile is hovered or focused for more than 300 ms, the main
   preview draws that look at the playhead, with the label "Previewing Bold Pop · Enter uses it"
-  over the preview. The project does not change and no undo step is made. Leaving the tile,
-  moving focus out of the grid or **Escape** restores the preview. The export never sees it.
+  over the preview ("Previewing Bold Pop · Click to use it" while only hovered: Enter acts on the
+  focused tile, not the hovered one). The project does not change and no undo step is made.
+  Leaving the tile, moving focus out of the grid or **Escape** restores the preview. The export
+  never sees it.
 - One tile carries a badge "Suggested" (`aria-describedby` text "Suggested for tall videos",
   "Suggested for wide videos" or "Suggested when you are on camera"): the look Auto style would
   pick for this project, except in a wide camera-led project, where it is Karaoke Fill while

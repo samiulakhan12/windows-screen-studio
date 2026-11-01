@@ -147,7 +147,7 @@ export function suggestedReason(tile: string, frame: { w: number; h: number }): 
   return frameGroup(frame) === 'short' ? 'Suggested for tall videos' : 'Suggested for wide videos'
 }
 
-/** A look's name for the hover preview's label ("Previewing Bold Pop · Enter uses it", §2.5). */
+/** A look's name for the preview's label ("Previewing Bold Pop · Enter uses it", §2.5). */
 export function tileName(tile: string, saved: readonly SavedLook[]): string {
   if (tile.startsWith(LEGACY_PREFIX)) return legacyName(tile.slice(LEGACY_PREFIX.length)) ?? 'Classic'
   if (tile.startsWith(MINE_PREFIX)) return saved.find((x) => `${MINE_PREFIX}${x.id}` === tile)?.name ?? 'Your style'

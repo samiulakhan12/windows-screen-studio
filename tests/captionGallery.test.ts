@@ -375,12 +375,25 @@ describe('in the Look section', () => {
     expect(preview.previewLook()).toBeNull()
     vi.advanceTimersByTime(1)
     expect(preview.previewLook()).toMatchObject({ tile: 'karaoke-fill', name: 'Karaoke Fill', captions: { studio: { from: 'karaoke-fill' } } })
-    expect(preview.previewLabel(preview.previewLook())).toBe('Previewing Karaoke Fill · Enter uses it')
+    // Hovered, not focused: Enter would act on the focused tile, so the label says a click uses it.
+    expect(preview.previewLabel(preview.previewLook())).toBe('Previewing Karaoke Fill · Click to use it')
     els = render(look(), SKIP)
     ;(tile().props.onPointerLeave as () => void)()
     expect(preview.previewLook()).toBeNull()
     expect(store.steps).toBe(0)
     expect(store.state.captions).toBeUndefined()
+  })
+
+  it('a focused tile’s preview says Enter uses it, and Enter picks that tile', async () => {
+    vi.useFakeTimers()
+    let els = render(look(), SKIP)
+    const karaoke = (): El => tiles(els).find((t) => t.props['data-tile'] === 'karaoke-fill')!
+    ;(karaoke().props.onFocus as () => void)()
+    vi.advanceTimersByTime(300)
+    expect(preview.previewLabel(preview.previewLook())).toBe('Previewing Karaoke Fill · Enter uses it')
+    els = render(look(), SKIP)
+    ;(grid(els).props.onKeyDown as (e: unknown) => void)(key('Enter'))
+    expect(store.state.captions).toMatchObject({ studio: { from: 'karaoke-fill' } })
   })
 
   it('Escape in the grid ends the preview', async () => {

@@ -22,7 +22,7 @@ import { Chips, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { useGroup } from '../groupContext'
 import { currentGreatOptions, loadGreatOptions, onGreatOptions } from '../greatRun'
-import { setPreviewLook } from '../previewLook'
+import { setPreviewLook, type PreviewLook } from '../previewLook'
 import { useReturnFocus } from '../returnFocus'
 import { CaptionGallery } from './CaptionGallery'
 import { lookName, pickTile, resetTile, tileName } from './captionTiles'
@@ -323,8 +323,8 @@ export function CaptionLookSection(props: { project: Project; vw: number; vh: nu
     store.update((p) => ({ ...p, captions: pickTile(captionsOf(p), tile, frame, saved, brand?.look ?? null) }))
     group.notice(`Caption style: ${tile === 'brand' && brand ? brand.name : tileName(tile, saved)}`)
   }
-  const preview = (tile: string | null): void =>
-    setPreviewLook(tile ? { tile, name: tile === 'brand' && brand ? brand.name : tileName(tile, saved), captions: pickTile(captionsOf(store.state), tile, frame, saved, brand?.look ?? null) } : null)
+  const preview = (tile: string | null, via: PreviewLook['via'] = 'pointer'): void =>
+    setPreviewLook(tile ? { tile, name: tile === 'brand' && brand ? brand.name : tileName(tile, saved), via, captions: pickTile(captionsOf(store.state), tile, frame, saved, brand?.look ?? null) } : null)
   const classic = !settings.studio
   const speakers = !!project.transcript?.segments.some((s) => s.speaker)
 
