@@ -127,8 +127,10 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }, [])
 
   // A row of a long list far from the one in view is not drawn yet: it gets the focus once it is
-  // (it is drawn as the focused row). Each move asks the list to bring the row fully into view once
-  // its rows are measured (`reveal`), also when the row has the focus already (End on the last row).
+  // (it is drawn as the focused row), on the first render where it is the focused item; a render
+  // before that (the project's change after Remove all is drawn before the focused item's) leaves
+  // it waiting. Each move asks the list to bring the row fully into view once its rows are
+  // measured (`reveal`), also when the row has the focus already (End on the last row).
   const focusLater = useRef<string | null>(null)
   const [reveal, setReveal] = useState(1)
   const focusKey = (key: string): void => {
@@ -138,11 +140,18 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     focusLater.current = el ? null : key
     el?.focus()
   }
+  /** Makes `key` the focused item without moving the focus (it is elsewhere); a focus waiting for another row is dropped. */
+  const pick = useCallback((key: string) => {
+    if (focusLater.current !== key) focusLater.current = null
+    setActiveKey(key)
+  }, [])
   useLayoutEffect(() => {
     const key = focusLater.current
-    if (key === null) return
+    if (key === null || key !== activeKey) return
+    const el = rows.current.get(key)
+    if (!el) return
     focusLater.current = null
-    if (key === activeKey) rows.current.get(key)?.focus()
+    el.focus()
   })
 
   /** Jumps the preview to the item and plays a short stretch around it. */
@@ -267,7 +276,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
       const after = list.map((i) => reviewStatus(store.state, i))
       const next = nextPending(list, after, active)
       if (next && here) focusKey(next)
-      else if (next) setActiveKey(next)
+      else if (next) pick(next)
     })
   }
 
@@ -369,7 +378,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
             onKeyDown={onListKey}
             onChoose={onRowChoose}
             onAct={onRowAct}
-            onFocusRow={setActiveKey}
+            onFocusRow={pick}
             setRef={setRow}
           />
           <div className="review-foot">
