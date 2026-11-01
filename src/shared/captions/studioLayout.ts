@@ -545,8 +545,11 @@ export function studioLayout(
         x += widths[i] * k
       }
       displayOrder(words, x, dirs, rtl ? 'r' : 'l')
+      // Each line is as tall as the tallest script on it needs (§0.2: Bangla 1.4), so a Bangla word
+      // among English ones keeps its vowel signs clear of the next line.
       const top = Math.max(...words.map((wd) => wd.px))
-      return { words, width: x, height: top * lhMul, px: m.px * k }
+      const tall = Math.max(lhMul, ...words.map((wd) => scriptLineHeight(tokens[wd.token].script, studio.text.lineHeight)))
+      return { words, width: x, height: top * tall, px: m.px * k }
     })
     const first = group[0][0]
     const last = group[group.length - 1][1] - 1

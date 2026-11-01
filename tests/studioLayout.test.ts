@@ -190,6 +190,18 @@ describe('chunk modes (test 9)', () => {
     expect(bn.lineHeight / bn.px).toBeCloseTo(1.4, 9)
     expect(lay(timed('we learn today'), look('bold-pop'), 1080, 1920).lineHeight / bn.px).toBeCloseTo(1.05, 9)
   })
+
+  it('gives a line with a Bangla word the Bangla line height in a mostly English caption', () => {
+    // Stacked's 0.88 would run খুলুন's vowel signs into the line below (§0.2: Bangla 1.4).
+    const l = lay(timed('Open Chrome Settings খুলুন কিন্তু Windows Update'), look('stacked'), 1080, 1920)
+    const lines = l.chunks.flatMap((c) => c.lines)
+    const bangla = lines.filter((line) => line.words.some((wd) => /[ঀ-৿]/.test(wd.text)))
+    const latin = lines.filter((line) => !bangla.includes(line))
+    expect(bangla.length).toBeGreaterThan(0)
+    expect(latin.length).toBeGreaterThan(0)
+    for (const line of bangla) expect(line.height / line.px).toBeCloseTo(1.4, 9)
+    for (const line of latin) expect(line.height / line.px).toBeCloseTo(0.88, 9)
+  })
 })
 
 /* ---------- positions ---------- */

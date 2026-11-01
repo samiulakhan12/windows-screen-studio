@@ -1695,7 +1695,8 @@ Montserrat, Oswald and Nunito.
    Thai; Chinese, Japanese, Korean → the downloaded Noto Sans font of the language, else the
    Windows font. This puts the vertical metrics of the script that is drawn under the `middle`
    baseline (`captionsLayer.ts:134`). Line height follows the caption's main script (at least 50%
-   of its letters, `mainScript`).
+   of its letters, `mainScript`), and a line is never shorter than any script on it needs: a Bangla
+   word in a mostly English caption gives its line the Bangla 1.4.
 2. **The look's font**, or its **partner** when the caption's language needs letters the font
    lacks. The whole font is swapped, never single letters inside a word. Partners: Anton, Bebas
    Neue → Oswald; Bangers, Luckiest Guy, Outfit, Poppins → Montserrat; Permanent Marker, Caveat,
