@@ -567,7 +567,7 @@ edit).
 
 The panel draws as fast (§4.3: the rows' times in one pass, a row drawn again only when what it
 shows changes, only the rows near the view drawn). Measured in the built app under Xvfb on those two
-projects, from the key to the next frame drawn, over four runs (before, at 7546e2b, in brackets):
+projects, from the key to the next frame drawn, over two to four runs (before, at 7546e2b, in brackets):
 
 | Step | 8,098 cuts over 2,700 clips | 5,399 speed-ups over 10,799 clips |
 |---|---|---|
@@ -577,21 +577,24 @@ projects, from the key to the next frame drawn, over four runs (before, at 7546e
 | `K` | 32-57 ms (266-310 ms) | 50-90 ms (281-389 ms) |
 | `Delete` | 46-79 ms (551-652 ms) | 64-113 ms (449-538 ms) |
 | `Ctrl+Z`, `Ctrl+Y` on a row | 36-49 ms (523-527 ms) | 46-109 ms (467 ms) |
-| `End`, `Home` | 42-44 ms, 14-24 ms (266, 156 ms) | 50-60 ms, 21-26 ms (249, 211 ms) |
+| `End`, `Home` | 57-58 ms, 14-24 ms (266, 156 ms) | 62-63 ms, 21-26 ms (249, 211 ms) |
 | Keep all, done | 47-54 ms (891 ms) | 54-58 ms (704 ms) |
 | Remove all, busy state drawn | 9-13 ms | 13-16 ms |
-| Remove all, done | 0.82-0.89 s, no task over 54 ms (1.8 s, one task of 1.3 s) | 6.5-8.0 s, no task over 240 ms (9.3 s, one task of 8.6 s) |
+| Remove all, done | 0.82-0.89 s, no task over 54 ms (1.8 s, one task of 1.3 s) | 5.7-8.0 s, no task over 250 ms (9.3 s, one task of 8.6 s) |
 | `Ctrl+Z` of Remove all, panel open / closed | 215-307 / 160-179 ms (1,265 ms open) | 340-355 / 243-322 ms (1,140 ms open) |
 | An edit elsewhere (`Z`, `Ctrl+Z`), panel open | 25-51 ms; no records: 14-21 ms (144-541 ms) | 32-57 ms; no records: 27-66 ms (253-444 ms) |
 | `Escape` | 14-51 ms (165 ms) | 32-67 ms (260 ms) |
 
-Only part of each step is the panel's: any edit to these projects costs the editor 20 to 40 ms (an
+`End` brings the last row fully into view once the rows near it are measured (§4.3), a few
+milliseconds more than drawing it where it was guessed to be. Only part of each step is the
+panel's: any edit to these projects costs the editor 20 to 40 ms (an
 undo with the panel closed), and the one long task of Remove all over the speed-ups, at its end,
 is the editor taking in the clips that changed (the same redo with the panel closed takes 216-260
 ms). Not fast there: the tool runs that write the records (about half a second for a
 cut run, 3 to 4 s for each speed-up run over 10,000 clips), and Remove all of a kind over thousands
-of rows in all (0.8 s for the cuts, 6.5 to 8 s for the speed-ups), which is why it shows it is at
-work first and lets the page draw while it works (§4.3).
+of rows in all (0.8 s for the cuts, 5.7 to 8 s for the speed-ups), which is why it shows it is at
+work first, lets the page draw while it works, and has undo, redo and the rows' Keep and Remove
+wait for it (§4.3).
 
 ## 7. Files and exported signatures
 
