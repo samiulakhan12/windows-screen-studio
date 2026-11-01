@@ -14,7 +14,11 @@
 // spoken "words", Ctrl+Z takes them back (the rows read removed), and the same Polish again lists
 // its new rows to review while the first run's rows still read removed, with no choice saved;
 // Ctrl+Z from Keep all, which it disables, leaves the focus on a row, and so does Undo run from the
-// palette with the focus on Keep all (N then moves in the list).
+// palette with the focus on Keep all (N then moves in the list). A long list (399 cut records)
+// draws only the rows near the view: the focus starts on the first row, End, P, Home and a held
+// arrow move it with its accessible name and place in the list (aria-posinset, aria-setsize), each
+// in view; K keeps and moves on; scrolled away, N brings the next row into view; Remove all says it
+// is working, then what it did, and one Ctrl+Z takes it back; Escape closes.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -115,6 +119,37 @@ async function polishSilences(win) {
   await win.click('.polish-dialog .modal-foot button:has-text("Done")')
   await dialog.waitFor({ state: 'detached' })
 }
+
+/**
+ * A 20-minute recording with a second cut every 3 s by Remove silences: 400 clips of 2 s and
+ * LONG_ROWS cut records, more than the panel draws at once. Row k starts at 3k + 2 s of the
+ * recording, so at 2(k + 1) s of the video.
+ */
+const LONG_NAME = 'Review a long one'
+const LONG_ROWS = 399
+function seedLong(home) {
+  const clips = Array.from({ length: LONG_ROWS + 1 }, (_, k) => ({ id: `c${k}`, start: 3 * k, end: 3 * k + 2, speed: 1 }))
+  const id = f.seedProject(home, { id: 'rec-review-long', name: LONG_NAME, seconds: 1200, width: 128, height: 72, fps: 1, clips, cursor: f.cursorTrack(2) })
+  const file = path.join(h.projectsRoot(home), id, 'project.json')
+  const p = JSON.parse(fs.readFileSync(file, 'utf8'))
+  p.autoCuts = Array.from({ length: LONG_ROWS }, (_, k) => ({ id: `s${k}`, by: 'silences', action: 'cut', start: 3 * k + 2, end: 3 * k + 3, was: [{ start: 3 * k + 2, end: 3 * k + 3, speed: 1 }] }))
+  fs.writeFileSync(file, JSON.stringify(p))
+  return id
+}
+/** Row k's accessible name. */
+const longName = (k, status) => {
+  const t = 2 * (k + 1)
+  return `Cut 1.0 s of silence, silence, at ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}.0, Remove silences, ${status}`
+}
+/** Where the focused row is in the list (aria-posinset, aria-setsize) and whether it is in view. */
+const place = (win) =>
+  win.evaluate(() => {
+    const row = document.activeElement?.closest('[data-testid="review-row"]')
+    if (!row) return null
+    const r = row.querySelector('.review-item').getBoundingClientRect()
+    const box = row.parentElement.getBoundingClientRect()
+    return { pos: Number(row.getAttribute('aria-posinset')), size: Number(row.getAttribute('aria-setsize')), inView: r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5 }
+  })
 
 const rows = (win) => win.$$eval('[data-testid="review-row"]', (els) => els.map((e) => `${e.dataset.key}=${e.dataset.status}`))
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
@@ -306,6 +341,85 @@ async function main() {
     h.assert((await win.getAttribute('.insp-tabs button.active', 'title')) === 'Style', 'the Style tab shows')
     await h.sleep(100)
     h.assert((await focused(win)) === 'Keyboard shortcuts', `the focus back where it was: ${await focused(win)}`)
+    h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+  })
+
+  await test('review mode: a long list draws the rows in view; keys, names, place and Escape as before', async (ctx) => {
+    const home = h.tempHome('review-long')
+    seedLong(home)
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await f.openProject(win, LONG_NAME)
+    await win.click('.timecode').catch(() => undefined)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"] [data-testid="review-row"]', { timeout: 10000 })
+    h.assert((await win.textContent('[data-testid="review-progress"]')) === `0 of ${LONG_ROWS} reviewed`, 'every record listed')
+    const drawn = await win.$$eval('[data-testid="review-row"]', (els) => els.length)
+    h.assert(drawn > 0 && drawn < 60, `only the rows near the view are drawn: ${drawn}`)
+    h.assert((await focused(win)) === longName(0, 'not reviewed'), `the focus starts on the first row: ${await focused(win)}`)
+    h.assert(same(await place(win), { pos: 1, size: LONG_ROWS, inView: true }), `the first row's place: ${JSON.stringify(await place(win))}`)
+
+    // End goes to the last row, not drawn until then: it gets the focus, in view, with its place.
+    await win.keyboard.press('End')
+    await f.waitFor(async () => (await focused(win)) === longName(LONG_ROWS - 1, 'not reviewed'), 'End on the last row', 3000)
+    h.assert(same(await place(win), { pos: LONG_ROWS, size: LONG_ROWS, inView: true }), `the last row's place: ${JSON.stringify(await place(win))}`)
+    await win.keyboard.press('p')
+    h.assert((await focused(win)) === longName(LONG_ROWS - 2, 'not reviewed'), `P moves back: ${await focused(win)}`)
+    await win.keyboard.press('Home')
+    await f.waitFor(async () => (await focused(win)) === longName(0, 'not reviewed'), 'Home on the first row', 3000)
+    // A held arrow walks down the list, each row scrolled into view.
+    for (let i = 0; i < 30; i++) await win.keyboard.press('ArrowDown')
+    h.assert((await focused(win)) === longName(30, 'not reviewed'), `30 rows down: ${await focused(win)}`)
+    h.assert(same(await place(win), { pos: 31, size: LONG_ROWS, inView: true }), `row 31's place: ${JSON.stringify(await place(win))}`)
+    h.assert((await win.$$eval('[data-testid="review-row"]', (els) => els.length)) < 60, 'still only the rows near the view')
+
+    // K keeps the row and the focus moves on to the next one, announced as on a short list.
+    await win.keyboard.press('k')
+    await f.waitFor(async () => (await focused(win)) === longName(31, 'not reviewed'), 'the focus on the next row', 3000)
+    h.assert((await win.getAttribute('[data-testid="review-row"][data-key="cut:s30"]', 'data-status')) === 'kept', 'row 31 kept')
+    h.assert((await win.textContent('[data-testid="review-said"]')) === `Kept. 1 of ${LONG_ROWS} reviewed.`, 'the keep is announced')
+
+    // Scrolled far away with the wheel, the focused row stays (drawn, focused); N brings the next into view.
+    const box = await win.$eval('.review-list', (e) => {
+      const r = e.getBoundingClientRect()
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    })
+    await win.mouse.move(box.x, box.y)
+    for (let i = 0; i < 10; i++) await win.mouse.wheel(0, 2000)
+    await h.sleep(200)
+    h.assert((await focused(win)) === longName(31, 'not reviewed'), `the focus stays on its row: ${await focused(win)}`)
+    h.assert(!(await place(win)).inView, 'scrolled away from it')
+    await win.keyboard.press('n')
+    await f.waitFor(async () => (await place(win)).pos === 33, 'N moves on', 3000)
+    h.assert(same(await place(win), { pos: 33, size: LONG_ROWS, inView: true }), `the next row scrolled into view: ${JSON.stringify(await place(win))}`)
+
+    // Remove all over this many rows says it is working before it works, and is one undo step.
+    await win.evaluate(() => {
+      window.__said = []
+      window.__busy = false
+      const said = document.querySelector('[data-testid="review-said"]')
+      new MutationObserver(() => window.__said.push(said.textContent)).observe(said, { childList: true, subtree: true, characterData: true })
+      const button = document.querySelector('[data-testid="review-remove-kind"]')
+      new MutationObserver(() => (window.__busy ||= button.getAttribute('aria-busy') === 'true')).observe(button, { attributes: true, childList: true, subtree: true })
+    })
+    await win.focus('[data-testid="review-remove-kind"]')
+    await win.keyboard.press('Enter')
+    const pending = LONG_ROWS - 1
+    await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `${LONG_ROWS} of ${LONG_ROWS} reviewed`, 'all removed or kept', 15000)
+    const said = await win.evaluate(() => window.__said)
+    h.assert(same(said, [`Removing ${pending} silence cuts…`, `Removed ${pending} silence cuts.`]), `said what it does, then what it did: ${JSON.stringify(said)}`)
+    h.assert(await win.evaluate(() => window.__busy), 'the button said it was working')
+    h.assert((await win.textContent('[data-testid="review-remove-kind"]')) === 'Remove all silence cuts', 'the button back')
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `1 of ${LONG_ROWS} reviewed`, 'one Ctrl+Z brings them all back', 5000)
+
+    // Escape closes and gives the focus back to the button.
+    await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
+    h.assert((await focused(win)) === `Review automatic changes, ${pending} to review`, `the focus back on the button: ${await focused(win)}`)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
 
