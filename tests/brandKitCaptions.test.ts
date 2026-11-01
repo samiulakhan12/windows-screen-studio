@@ -127,6 +127,23 @@ describe('a font rewrite keeps automatic items automatic (§4.6, §11.8 rule 3)'
     expect(out.captionAuto?.style).not.toBe(record)
   })
 
+  it('draws an automatic Studio look in the body font; a look picked by hand keeps its font', () => {
+    const kb = applyBrandKit(project(), fontKit, files).captions!.font!
+    // The look the first captions get, as Studio draws it from text.font (and emphasis.font when it follows).
+    const auto = { ...boldPop, from: 'clean-short', emphasis: { ...boldPop.emphasis, font: boldPop.text.font } }
+    const out = applyBrandKit(project({ captions: { ...DEFAULT_CAPTIONS, studio: auto } }), fontKit, files).captions!
+    expect(out.font).toBe(kb)
+    expect(out.studio?.text.font).toBe(kb)
+    expect(out.studio?.emphasis.font).toBe(kb)
+    expect(out.picked).toBeUndefined()
+    // An emphasis font of its own stays.
+    const own = { ...auto, emphasis: { ...auto.emphasis, font: 'cat:anton' } }
+    expect(applyBrandKit(project({ captions: { ...DEFAULT_CAPTIONS, studio: own } }), fontKit, files).captions!.studio?.emphasis.font).toBe('cat:anton')
+    const picked = applyBrandKit(project({ captions: { ...DEFAULT_CAPTIONS, studio: auto, picked: true } }), fontKit, files).captions!
+    expect(picked.font).toBe(kb)
+    expect(picked.studio?.text.font).toBe(auto.text.font)
+  })
+
   it('leaves the record to the settle rule when the kit picks its own look', () => {
     const record = { was: null, by: 'great' as const, name: 'Bold Pop' }
     const p = project({ captions: { ...DEFAULT_CAPTIONS, studio: boldPop }, captionAuto: { style: record } })

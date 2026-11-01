@@ -6,6 +6,7 @@ import { cameraBoxShown, outputSize, sceneCameraBox } from '../engine/layout'
 import { isTall } from '../engine/reframeData'
 import type { CaptionSettings, CaptionStudio, Project } from '../types'
 import { CAPTION_PRESETS, captionsOf, DEFAULT_CAPTIONS, withPreset } from './settings'
+import { withTextFont } from './studioEdit'
 import { studioPreset } from './studioPresets'
 import { estimatedShare } from './transcriptTiming'
 
@@ -147,10 +148,7 @@ function adapt(studio: CaptionStudio, project: Project, frame: { w: number; h: n
   if (SHORT_LINES.has(lang)) s = { ...s, text: { ...s.text, case: 'asis' }, layout: { ...s.layout, chars: 24, tallChars: 16 } }
   // A brand kit's body font (applyBrandKitToNew writes it to captions.font) becomes the text's font.
   const font = project.captions?.font
-  if (font) {
-    const emphasisFollows = !s.emphasis.font || s.emphasis.font === s.text.font
-    s = { ...s, text: { ...s.text, font }, emphasis: emphasisFollows ? { ...s.emphasis, ...(s.emphasis.font ? { font } : {}) } : s.emphasis }
-  }
+  if (font) s = withTextFont(s, font)
   if (isTall(frame.w, frame.h) && s.layout.position === 'bottom') s = { ...s, layout: { ...s.layout, position: 'lower' } }
   return s
 }

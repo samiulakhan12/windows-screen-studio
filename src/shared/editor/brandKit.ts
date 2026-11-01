@@ -12,7 +12,7 @@ import { cleanTitle } from '../engine/titleData'
 import { DEFAULT_WATERMARK, WATERMARK_LIMITS, WATERMARK_POSITIONS } from '../engine/watermark'
 import { captionsOf } from '../captions/settings'
 import { cleanPrefText } from '../captions/captionPrefs'
-import { withStudioTile } from '../captions/studioEdit'
+import { withStudioTile, withTextFont } from '../captions/studioEdit'
 import { readCaptionStudio } from '../captions/studioData'
 import { outputSize } from '../engine/layout'
 import { cleanFontName, FONT_FILE_RE, MAX_PROJECT_FONTS, newFontId, readFontId } from '../render/fonts'
@@ -214,9 +214,9 @@ export const brandFontsLeftOut = (project: Project, kit: BrandKit, files: BrandF
 
 /**
  * The project with the brand kit applied (docs/design/brand-kit.md §2 decision 20), in this order:
- * the style preset; the logo as the watermark; the kit's fonts added, captions and the text and
- * title cards that use the default font switched to the body and heading fonts (a font chosen by
- * hand is kept); the kit's earlier intro and outro replaced by the current ones; the colours and
+ * the style preset; the logo as the watermark; the kit's fonts added, captions (and a Studio look
+ * not picked by hand) and the text and title cards that use the default font switched to the body
+ * and heading fonts (a font chosen by hand is kept); the kit's earlier intro and outro replaced by the current ones; the colours and
  * fonts kept on the project for the pickers; the caption style picked (Captions Studio §4.6: the
  * Brand tile, as the gallery picks it, so show, speaker names, the burned-in track and a dragged
  * place stay, and `picked` is set). A font rewritten on an automatic title card, or on captions
@@ -236,7 +236,9 @@ export function applyBrandKit(project: Project, kit: BrandKit, files: BrandFiles
   const heading = kit.headingFont ? ids[kit.headingFont] : undefined
   const body = kit.bodyFont ? ids[kit.bodyFont] : undefined
   if (body) {
-    p.captions = { ...captionsOf(p), font: body }
+    const c = captionsOf(p)
+    // A Studio look draws in its own font: one not picked by hand (automatic, or a Classic look's twin) takes the body font too.
+    p.captions = { ...c, font: body, ...(c.studio && !c.picked ? { studio: withTextFont(c.studio, body) } : {}) }
     p.annotations = p.annotations.map((a) => (a.font ? a : { ...a, font: body }))
   }
   if (kit.captionStyle) {

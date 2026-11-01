@@ -1256,7 +1256,10 @@ const transcriptRead = readTranscript(transcript, duration)
 - `BrandKit` (`src/shared/editor/brandKit.ts:45-60`) gains `captionStyle?: { name: string; look:
   CaptionStudio }`, read by `sanitizeBrandKit` through `readCaptionStudio`. `applyBrandKit`
   (`brandKit.ts:204-240`) sets `captions.studio` from it (with `from: 'brand'`, keeping `show`,
-  `showSpeaker`, `track` and the dragged `place`) when present; without it, applying is as today.
+  `showSpeaker`, `track` and the dragged `place`) when present; without it, applying is as today:
+  the body font goes to `captions.font`, and to the text font of a Studio look not picked by hand
+  (an automatic look, or a Classic look's twin; to its emphasis font too when that is the text's),
+  since a Studio look draws in its own fonts. A look picked by hand keeps its fonts.
   A brand look counts as chosen, so applying it also sets `picked: true` and Auto style never
   replaces it (§5.7). When `applyBrandKit` rewrites a font on an automatic title card or on
   captions that carry a

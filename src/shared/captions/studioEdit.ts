@@ -122,6 +122,15 @@ export function editStudio(settings: CaptionSettings, patch: (s: CaptionStudio) 
   return { ...settings, studio: next, picked: true }
 }
 
+/**
+ * The look drawn in `font` (a brand body font, §4.6, §11.6): its text's font, and its emphasis's
+ * when that is the text's font too.
+ */
+export function withTextFont(s: CaptionStudio, font: string): CaptionStudio {
+  const follows = !!s.emphasis.font && s.emphasis.font === s.text.font
+  return { ...s, text: { ...s.text, font }, ...(follows ? { emphasis: { ...s.emphasis, font } } : {}) }
+}
+
 /** Structural equality of plain data. */
 function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true
