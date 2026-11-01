@@ -36,20 +36,27 @@ vi.mock('../src/shared/captions/cleanup', async (importOriginal) => ({
 }))
 vi.mock('../src/shared/captions/emphasis', () => ({ pickEmphasis: () => [{ id: 'm1', caption: 'c1', from: 0, to: 1, text: 'Make every', auto: true }] }))
 vi.mock('../src/shared/captions/studioEdit', async () => await import('./studioStandIns'))
-const handles = vi.hoisted(() => ({ rects: [] as { id: string; rect: { x: number; y: number; w: number; h: number } }[] }))
+const handles = vi.hoisted(() => ({ rects: [] as { id: string; rect: { x: number; y: number; w: number; h: number } }[], block: null as { box: { x: number; y: number; w: number; h: number } } | null }))
 vi.mock('../src/renderer/src/render/graphicsLayer', () => ({ graphicRects: () => handles.rects, drawGraphicsLayer: () => undefined }))
-vi.mock('../src/renderer/src/render/studioLayer', () => ({ studioBlockAt: () => null, drawStudioSample: () => ({ textPx: 18 }) }))
+vi.mock('../src/renderer/src/render/studioLayer', () => ({ studioBlockAt: () => handles.block, drawStudioSample: () => ({ textPx: 18 }) }))
 vi.mock('../src/shared/editor/graphicsEdit', () => ({
   placeGraphicAt: (p: Project, id: string, place: Graphic['place']) => ({ ...p, graphics: p.graphics!.map((g) => (g.id === id ? { ...g, place } : g)) })
 }))
 
 const prefs: Record<string, unknown> = {}
 const writes: [string, unknown][] = []
+/** The window's listeners (a drag on the preview follows the pointer there); fire() sends them an event. */
+const listeners = new Map<string, Set<(e: unknown) => void>>()
+const fire = (type: string, e: object): void => {
+  for (const fn of [...(listeners.get(type) ?? [])]) fn({ type, ...e })
+}
 vi.stubGlobal('window', {
   api: { getPref: async (k: string) => prefs[k] ?? null, setPref: async (k: string, v: unknown) => void writes.push([k, v]) },
-  addEventListener: () => undefined,
-  removeEventListener: () => undefined
+  addEventListener: (type: string, fn: (e: unknown) => void) => void (listeners.get(type) ?? listeners.set(type, new Set()).get(type)!).add(fn),
+  removeEventListener: (type: string, fn: (e: unknown) => void) => void listeners.get(type)?.delete(fn)
 })
+// Pressing a handle lets go of the focus (focus.ts): nothing is focused here.
+vi.stubGlobal('HTMLElement', class {})
 vi.stubGlobal('document', { activeElement: null, body: {}, createElement: () => ({ getContext: () => ({}) }) })
 vi.stubGlobal('requestAnimationFrame', (fn: () => void) => fn())
 
@@ -195,5 +202,63 @@ describe('graphics on the preview (§2.11)', () => {
     expect(store.steps).toBe(2)
     unmountAll()
     expect(render(view(false)).some((e) => e.props['data-graphic-handle'])).toBe(false)
+  })
+
+  it('the caption block: a drag places the captions; a plain click plays or pauses; Ctrl or Shift+click goes on to the preview (E-06)', async () => {
+    const { studioPreset } = await import('../src/shared/captions/studioPresets')
+    store.state = base({ ...DEFAULT_CAPTIONS, studio: studioPreset('subtitle')!.look })
+    handles.rects = []
+    handles.block = { box: { x: 100, y: 1500, w: 880, h: 200 } }
+    contexts.editor = { store, player: { time: 1, subscribe: () => () => undefined } }
+    let toggles = 0
+    const els = render({ type: GraphicHandles, props: { project: store.state, box: { w: 540, h: 960 }, out: { w: 1080, h: 1920 }, selection: null, onSelect: () => undefined, onTogglePlay: () => toggles++, paused: true } })
+    handles.block = null
+    const handle = els.find((e) => e.props['data-testid'] === 'caption-block-handle')!
+    expect(handle.props.style).toEqual({ left: 50, top: 750, width: 440, height: 100 })
+    const press = (mods: Record<string, boolean> = {}): { prevented: boolean; stopped: boolean } => {
+      const e = {
+        button: 0,
+        pointerId: 1,
+        clientX: 300,
+        clientY: 800,
+        target: {},
+        currentTarget: {},
+        prevented: false,
+        stopped: false,
+        preventDefault: () => void (e.prevented = true),
+        stopPropagation: () => void (e.stopped = true),
+        ...mods
+      }
+      ;(handle.props.onPointerDown as (ev: unknown) => void)(e)
+      return e
+    }
+    for (const mod of ['ctrlKey', 'shiftKey', 'metaKey']) {
+      const e = press({ [mod]: true })
+      expect({ mod, prevented: e.prevented, stopped: e.stopped, following: listeners.get('pointerup')?.size ?? 0 }).toEqual({ mod, prevented: false, stopped: false, following: 0 })
+    }
+    expect(press()).toMatchObject({ prevented: true, stopped: true })
+    fire('pointerup', { pointerId: 1, clientX: 301, clientY: 801 })
+    expect(toggles).toBe(1)
+    expect(store.steps).toBe(0)
+    press()
+    fire('pointermove', { pointerId: 1, clientX: 300, clientY: 750 })
+    fire('pointerup', { pointerId: 1, clientX: 300, clientY: 750 })
+    expect(toggles).toBe(1)
+    expect(store.steps).toBe(1)
+    const place = store.state.captions!.studio!.layout.place as { x: number; y: number }
+    expect(place.x).toBeCloseTo(0.5)
+    expect(place.y).toBeCloseTo(1600 / 1920 - 50 / 0.5 / 1920)
+  })
+
+  it('the caption block lies under the selected item’s handles: before them in the overlay, with no z-index of its own', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync(new URL('../src/renderer/src/editor/panels/graphics.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => m[1].split(',').some((sel) => sel.trim() === '.caption-block-handle'))
+    expect(rules.length).toBeGreaterThan(0)
+    for (const m of rules) expect(m[2]).not.toMatch(/z-index/)
+    const stage = readFileSync(new URL('../src/renderer/src/editor/PreviewStage.tsx', import.meta.url), 'utf8')
+    const at = (tag: string): number => stage.indexOf(`<${tag} `)
+    for (const editor of ['AnnotationHandle', 'OverlayEditor', 'ShapeEditor', 'CropEditor']) expect(at('GraphicHandles'), editor).toBeLessThan(at(editor))
+    expect(at('GraphicHandles')).toBeGreaterThan(stage.indexOf('className={[\'preview-overlay\''))
   })
 })

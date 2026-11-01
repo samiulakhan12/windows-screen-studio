@@ -549,7 +549,10 @@ text blocks; multi-select, snapping, copy and paste and Delete as for the other 
 **Preview.** Clicking a graphic selects it. Dragging moves it (paused): one undo step, and its
 position becomes "Placed by you". The focused selection handle moves it with the arrow keys (1% of
 the frame, Shift 10%). Dragging the caption block (paused, on the caption) sets the captions'
-position to *dragged*: one undo step.
+position to *dragged*: one undo step. A plain click on the captions still plays or pauses, and
+Ctrl or Shift+click goes on to the preview (adding or removing the item under the pointer). The
+selected item's handles lie above the caption block, so dragging them where they overlap the
+captions moves the item.
 
 ### 2.12 The Style tab, Settings and the brand kit
 

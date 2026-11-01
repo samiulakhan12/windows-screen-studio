@@ -198,9 +198,9 @@
   outline-offset: var(--focus-ring-offset);
 }
 
+/* No z-index: it sits under the selected item's handles, which come after it in the overlay. */
 .caption-block-handle {
   position: absolute;
-  z-index: 2;
   border: 1px dashed transparent;
   border-radius: var(--radius-sm);
   cursor: move;

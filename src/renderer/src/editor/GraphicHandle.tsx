@@ -3,7 +3,8 @@
  * paused only: a click on a graphic selects it, dragging moves it (one undo step, merge key
  * `graphic-pos:<id>`; it is then "Placed by you"), the focused handle moves it with the arrow keys
  * (1% of the frame, Shift 10%; one undo step per key press). Dragging the captions sets their place
- * (one undo step; not a pick of a look). And the label of a gallery look previewed on the video.
+ * (one undo step; not a pick of a look); a plain click on them still plays or pauses, and Ctrl or
+ * Shift+click goes on to the preview (E-06). And the label of a gallery look previewed on the video.
  */
 import { useMemo, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { captionsOf } from '../../../shared/captions/settings'
@@ -47,7 +48,24 @@ const centreOf = (r: Rect, w: number, h: number): { x: number; y: number } => ({
  * Handles over the graphics shown at the playhead and over the caption block, laid out on the
  * preview box (`box` CSS px) of the output frame (`out` px).
  */
-export function GraphicHandles({ project, box, out, selection, onSelect, paused }: { project: Project; box: { w: number; h: number }; out: { w: number; h: number }; selection?: Selection; onSelect?: (sel: Selection) => void; paused: boolean }): JSX.Element | null {
+export function GraphicHandles({
+  project,
+  box,
+  out,
+  selection,
+  onSelect,
+  onTogglePlay,
+  paused
+}: {
+  project: Project
+  box: { w: number; h: number }
+  out: { w: number; h: number }
+  selection?: Selection
+  onSelect?: (sel: Selection) => void
+  /** A plain click on the captions (no drag): plays or pauses, as a click on the preview does. */
+  onTogglePlay?: () => void
+  paused: boolean
+}): JSX.Element | null {
   const { store, player } = useEditor()
   const t = useSyncExternalStore(player.subscribe, () => player.time)
   const k = out.w > 0 ? box.w / out.w : 0
@@ -93,7 +111,8 @@ export function GraphicHandles({ project, box, out, selection, onSelect, paused 
   }
 
   const onCaptionDown = (b: Rect) => (e: ReactPointerEvent<HTMLElement>) => {
-    if (e.button !== 0) return
+    // Ctrl or Shift+click adds or removes the item under the pointer (E-06): the preview does that.
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
     e.preventDefault()
     e.stopPropagation()
     releaseFocus(e.target)
@@ -117,7 +136,10 @@ export function GraphicHandles({ project, box, out, selection, onSelect, paused 
           return { ...p, captions: { ...c, studio: { ...c.studio, layout: { ...layout, place: at } } } }
         }, 'caption-drag')
       },
-      () => store.endGesture()
+      (ev) => {
+        store.endGesture()
+        if (!moved && ev.type === 'pointerup') onTogglePlay?.()
+      }
     )
   }
 
@@ -128,7 +150,7 @@ export function GraphicHandles({ project, box, out, selection, onSelect, paused 
           className="caption-block-handle"
           data-testid="caption-block-handle"
           style={{ left: block.box.x * k, top: block.box.y * k, width: block.box.w * k, height: block.box.h * k }}
-          title="Drag the captions to place them; Layout › Position puts them back"
+          title="Drag the captions to place them, or click to play or pause; Layout › Position puts them back"
           onPointerDown={onCaptionDown(block.box)}
         />
       )}

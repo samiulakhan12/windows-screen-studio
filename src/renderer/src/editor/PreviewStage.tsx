@@ -457,11 +457,12 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
         >
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
+          {/* Under the selected item's handles (later in the overlay), so a drag there moves the item, not the captions. */}
+          {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} onTogglePlay={onTogglePlay} paused={!playing} />}
           {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}
-          {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} paused={!playing} />}
           {outlines.map((b) => (
             <div
               key={b.key}
