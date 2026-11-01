@@ -137,9 +137,10 @@ dialog, which handles "no captions" itself (§5.3).
 The queue and the sanitiser are small pure functions. What X links and how it counts a post (§4.4,
 §4.5) is X's own library, twitter-text 3.1.0 (Apache-2.0), ported into the app
 (`src/shared/publish/twitterText.ts`, with its top-level domain lists in `tlds.ts` and
-twemoji-parser's emoji pattern, MIT, in `twemoji.ts`): no package is added, and the notices are in
-`resources/notices/34-twitter-text.txt` and `35-twemoji-parser.txt`. That the port answers exactly
-as the package does is tested, not argued (§10).
+twemoji-parser's emoji pattern, MIT, in `twemoji.ts`; the length of a name in punycode that
+twitter-text checks is punycode.js 1.4.1's, MIT, adapted to count it): no package is added, and the
+notices are in `resources/notices/34-twitter-text.txt`, `35-twemoji-parser.txt` and
+`36-punycode.txt`. That the port answers exactly as the package does is tested, not argued (§10).
 
 ---
 
@@ -263,10 +264,15 @@ ways. As X reads it at its very start and as it reads it after a space, since a 
 becomes either as it is put together and pasted (at the start, X takes a first `é` or `(` as what
 comes before a link: `éflown.app` links `flown.app`; after a space it links `éflown.app`). And as
 sites other than X read it (LinkedIn, YouTube, a help centre's linkifier). There, what a browser
-reads in a host as ASCII letters or digits, or drops, is a letter (full-width and mathematical
+reads in a host as ASCII letters or digits, or drops, is a digit (full-width and mathematical
 letters, variation selectors: in `ｇｅｔflown.com` and `get\ufe0fflown.com` X links only
-`flown.com`, a browser opens getflown.com); and where X has rules of its own, they take these for
-the end of a name, so that reading has them as spaces:
+`flown.com`, a browser opens getflown.com; a digit, as no top-level domain has one, so `１.５００` and
+`ｒｅａｄｍｅ.ｔｘｔ` are no link); not punctuation that NFKC makes `-` (`－`, `﹣`), where a linkifier
+ends a name before any browser reads it (`support@flown.app－paypal-login.com` links
+`paypal-login.com`); and a variation selector only after a part of such a name, as after an emoji it
+is the emoji's (`➡\ufe0fflown.app` is `➡flown.app`, which X and that reading link as `flown.app`).
+Where X has rules of its own, they take these for the end of a name, so that reading has them as
+spaces:
 
 - `$` and `#` (X's cashtag and hashtag: `$paypal-login.com/verify`, and markdown-it's linkifier
   links `#evil.com`; a said `#ASP.NET` stays, an unsaid one is broken);
@@ -284,13 +290,19 @@ the end of a name, so that reading has them as spaces:
 - `//` before a name that is not a scheme's (`//evil.com/login`; a user name after it is judged by
   the `@` rule: `//me@evil.com`, `//paypal-login.com@x.com/verify`);
 - what X counts as part of a name: `"`, `` ` ``, punctuation other than ASCII's (`/．evil.com`,
-  `「evil.com」`, which X then drops for the `/`), the text of languages written without spaces
-  (`网站flown.app/download`, where X counts the whole run as one label, too long to link), but not
+  `「evil.com」`, which X then drops for the `/`), linkify-it's other separators `<`, `>` and `｜`
+  (`support@flown.app｜paypal-login.com`, `｜` being the usual separator in Japanese text), the text
+  of languages written without spaces (`网站flown.app/download`, where X counts the whole run as one label, too long to link), but not
   right after a `.`, where that text is a top-level domain (`$paypal-login.在线/verify`,
   `「paypal-login.コム」`);
 - the ASCII punctuation X reads on through in a path or query it drops (`flown.app?README.md`: X
   links `flown.app` and nothing in its query, other sites start again after the `?`;
   `!?*'();=+,%[]~|&{}^<>\`).
+
+A `.` right after one of these (not after a space) is an end too: X links no name after a `.`, but
+a site may read what ended the name as a label of the name after it, a subdomain its owner creates
+(linkify-it reads `ログイン`, `~`, `$` or `𐄀` in a host: `support@flown.app，ログイン.paypal-login.com`,
+`~.paypal-login.com`, `//$.paypal-login.com`), so the name after the `.` is read.
 
 Each reading is read with X's top-level domains and, apart, with the wider lists below, as a match
 the wider lists make and X drops can use up the text X links from (`/a.web:1paypal-login.com/verify`:
@@ -298,9 +310,14 @@ X links `1paypal-login.com/verify`). Added to X's in every reading: links X leav
 length (over 4 096 characters), names on such a domain with no Latin letters (`госуслуги.рф`, which X
 links only after a scheme but other sites may), names on the top-level domains IANA delegated after
 twitter-text's lists (`newerTlds.ts`: `evil.web`, `evil.amazon`, `evil.亚马逊`…), and every
-`http(s)://` or `www.` link X does not link but YouTube and LinkedIn do (glued to a word,
-`xhttps://…`; inside another link's query, `flown.app?next=https://evil.com/login`; on an address X
-does not know, `http://192.168.1.1/login`, `https://evil.example`), as X ends it from there, else up
+`http(s)://` or `www.` link X does not link but YouTube and LinkedIn do, and every protocol-relative
+`//` link linkify-it makes (a `//` not right after `:` or `/`, as after a separator or right where a
+link or address it read ends, with a dot inside its host: `//203.0.113.7/login`,
+`//paypal-login.com\ufe0f/login`, `support@flown.app//203.0.113.7`; it has no scheme, so it is
+broken like a bare name, and compares as the name after it: `//flown.app/docs` is `flown.app/docs`)
+(glued to a word, `xhttps://…`; inside another link's query, `flown.app?next=https://evil.com/login`;
+on an address X does not know, `http://192.168.1.1/login`, `https://evil.example`), as X ends it from
+there, else up
 to a space, a quotation mark (`"`, `'`, `` ` ``), an angle bracket, Chinese or Japanese text (not
 full-width Latin letters: IDNA reads `https://ｅｖｉｌ.ｃｏｍ` as `evil.com`) or punctuation other than
 ASCII's that no host holds (`，`, `（`, `！`, `；`, `“”‘’‹›«»„‚`, `—`, `।`; not `．`, `－`, `＿`, `｡` or
@@ -320,7 +337,9 @@ domain and is neither X's host nor one under it (`https://flown.app%2eevil%2ecom
 `https://flown.app．evil．com`, `https://flown.app".evil.com` open evil.com's;
 `https://flown.app—great` and `https://flown.app,` are on no top-level domain and open nothing). A
 `http(s)://` or `www.` glued to what no site reads as a host (`https://日%2eevil…`, `https://“…`) is
-a link of its own: the scheme.
+a link of its own: the scheme; a `//` so glued, the stretch to the space when it has a dotted host
+that may be opened (`` //`@203.0.113.7/login ``, where linkify-it reads `` ` `` in a user name; a
+browser skips `/` and `\` after `//`, so its host is read after them: `//\@203.0.113.7/login`).
 
 *Which are kept.* A link is kept when the transcript, the recording's name or a chapter title (§4.1)
 has the very same link (`trustedText`, read the same three ways), without `http(s)://` and without a
@@ -331,13 +350,21 @@ not `example.com/settings`. A link that is a said one with a word's ending glued
 (`flown.app/download'dan`, `github.com/flown/recorder's`, `…/download-Seite`, `…:sta`,
 `…-странице`, which X reads into its path) keeps the said link: U+2060, the word joiner, goes before
 the ending, so X links exactly the said link and no letter is lost; a transcript that says the link
-with an ending allows it without too. The name and chapter titles are what the user
-typed, or what an AI suggested for them, which is cleaned the same way against the captions it was
+with an ending allows it without too. So does a said bare name that X reads with the `-` before it:
+Hebrew attaches its one-letter prefixes so (`ל-flown.app`, `ב-github.com/flown/recorder`), and after
+a letter of a script other than Latin X links `-flown.app`, a name no registry gives; the word joiner
+goes after the `-`, and a transcript that says the name with the prefix allows it without. The name
+and chapter titles are what the user typed, or what an AI suggested for them, which is cleaned the same way against the captions it was
 written from before it reaches the project (§4.6).
 
-*What happens to the others.* A link with a scheme or `www.` (and its port, path and query with it)
-is removed; the sentence's punctuation after it stays (X does not end a link with it). A bare name,
-with its path (`evil.com`, `evil.de/login`, `ASP.NET/C#`, `TP.Thủ`, `Sr.João`, `m.in`, `user.id`,
+*What happens to the others.* A stretch to the next space that is a link only because a site reading
+that far may open another host (above) and that starts with a said link keeps that link, with a
+no-break space after it, and the rest is read again: in Chinese, Japanese, Korean or Thai, where no
+space follows a link, `官网：https://flown.app，客服邮箱：support@flown.app。` keeps every character
+(`https://flown.app` then the no-break space), as does `https://flown.app!@203.0.113.7/login`, whose
+`!@203.0.113.7/login` nothing then links. Otherwise a link with a scheme or `www.` (and its port,
+path and query with it) is removed; the sentence's punctuation after it stays (X does not end a link
+with it). A bare name, with its path (`evil.com`, `evil.de/login`, `ASP.NET/C#`, `TP.Thủ`, `Sr.João`, `m.in`, `user.id`,
 `logo.ai`, `README.md`, `e.target`) is not deleted but broken: a no-break space (U+00A0) after each
 of its dots (`evil. com`, `evil. de/login`, `TP. Thủ Đức`, `m. in.`, `e. target.value`; written
 with a plain space here), so no word loses a letter and nothing links it; it reads as a space, ends
@@ -395,7 +422,11 @@ and leaves no link its text did not have.
   job's late answer is dropped). The renderer cleans the text again (§4.4) before showing it; the
   title and summary, which main checks the Captions tab's way (losing there the links the captions
   lack, as its chapter titles do: §4.4), lose there the links the captions sent, the name and the
-  chapter titles do not have, as the pack's items do in main.
+  chapter titles do not have, as the pack's items do in main. The captions themselves are what the
+  pack trusts most, so what *Fix captions* and *Translate to…* write into them keeps only the links
+  of the captions sent (`validateSegmentsAnswer`): an injected caption can no longer have the
+  clean-up write `paypal-login.com/verify` into the next one (it becomes `paypal-login. com/verify`),
+  while a said `flown.app/docs` survives a translation.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
 
@@ -509,7 +540,9 @@ All above AA (4.5:1).
   tab's chapter titles, title and summary lose in main the links their captions lack, since the
   chapter titles and the name (once *Rename the recording* is used) go into the project, whose links
   the pack trusts; what the renderer then does to them (quotation marks off, a cut by UTF-16 units),
-  and a copy's name cut before its suffix, makes no link (`sliceAt`, §4.4).
+  and a copy's name cut before its suffix, makes no link (`sliceAt`, §4.4). The captions *Fix
+  captions* and *Translate to…* write keep only the links of the captions they were written from
+  (§4.6), so no AI answer puts a link into the project that nobody said.
 - **No HTML:** textareas and text nodes only (§2.5).
 - **Export bundle:** the description is plain text written by main's existing sidecar writer
   (size, NUL and path checks unchanged).
@@ -595,10 +628,12 @@ Unit (vitest, each failing without its code):
   `scripts/build-link-oracle.mjs` writes from the packages themselves, each checked against the npm
   registry's integrity; the fast match finder equals twitter-text's own loop on seeded random texts.
 - `publishFindings.test.ts`: one test per problem the second review confirmed (17);
-  `publishReview3.test.ts`: one per problem the third confirmed (15, two of them the same).
+  `publishReview3.test.ts`: one per problem the third confirmed (15, two of them the same);
+  `publishReview4.test.ts` (11) and `publishReview5.test.ts` (11) the same for the fourth and fifth.
 - `publishProperty.test.ts`: 3 000 seeded texts, ordinary and hostile, through every task and the
   cards: no link the transcript, name and chapter titles lack, and no letter of ordinary text lost;
-  the worst texts (10 000 dots, nested brackets, long queries, links in links) cleaned in tens of ms.
+  the worst texts (10 000 dots, nested brackets, long queries, links in links, runs of `//`)
+  cleaned in tens of ms.
 - `publishPrompts.test.ts`: prompts (data block escapes the transcript, rules present, tone and
   length lines, no user text in the system), the existing tasks' prompts unchanged (snapshot of
   their `textPrompt` output), excerpts, every validator (good, missing fields, caps, tags,
@@ -671,7 +706,19 @@ Where the build differs from or adds to the sections above:
   letters, an `@` in an authority makes the stretch to the space the link, an `@` stays where nothing
   before it can be a link or it is an address's as linkify-it reads one, a loose link ends at
   punctuation no host holds, links compare without a `/` at their end, the result is the NFC form
-  that was read, and those cuts make no link (`sliceAt`). As a result:
+  that was read, and those cuts make no link (`sliceAt`). A fifth review found that `｜`, `－` or `﹣`
+  after an address, Chinese, Japanese, Korean or Thai text (or `~`) before a `.`, and protocol-relative
+  `//` links to an IP address or a name with a variation selector hid a link linkify-it makes; that
+  *Fix captions* and *Translate to…* could write a link into the captions, which the pack trusts; and
+  that a said `https://flown.app` was deleted with the rest of a line of Chinese or Japanese whenever
+  an `@` followed, `１.５００` and `ｒｅａｄｍｅ.ｔｘｔ` were broken (read as the top-level domain `.xxx`),
+  a said name after an emoji with a variation selector (`➡\ufe0fflown.app`) or a Hebrew prefix
+  (`ל-flown.app`) was broken, the http(s) and `www.` reading took quadratic time in its matches, and
+  punycode.js lacked a notice. So linkify-it's separators end a name, punctuation joins none, a `.`
+  after an end is an end, `//` is read as linkify-it reads it, the captions keep only said links, a
+  said link before such a stretch stays with a no-break space after it, what joins a name is read as
+  a digit and a variation selector as part of the character before it, a Hebrew prefix's `-` gets the
+  word joiner after it, and the links found are swept once. As a result:
   - code and file names on a top-level domain are broken where X would link them, the rest as written
     (`e. target.value`, `Date. now()`, `form. is_valid()`, `README. md`, `logo. ai`, `settings. py`;
     the space is a no-break space).
