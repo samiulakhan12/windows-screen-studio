@@ -163,7 +163,7 @@ const MAIL_HOST = /^(?:[^\s\p{P}\p{Cc}<>｜]|[-.])+/u
  * name before the "@" ("paypal-login.com@flown.app", "paypal-login.com@x.com:80/verify",
  * "|paypal-login.com@evil.com").
  */
-function isMailAt(text: string, at: number): boolean {
+export function isMailAt(text: string, at: number): boolean {
   let s = at
   while (s > 0 && at - s < 256 && /[-;:&=+$,."\w]/.test(text[s - 1])) s--
   // The user name may start at any of its characters after the start, a space, a control, '<>｜"(', or a '"' in it.
