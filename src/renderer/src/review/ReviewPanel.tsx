@@ -10,8 +10,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { shortcutIndex } from '../../../shared/editor/shortcuts'
-import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
-import { formatTime } from '../../../shared/engine/project'
+import { planOf } from '../../../shared/engine/freeze'
 import {
   actedMessage,
   bulkMessage,
@@ -25,6 +24,7 @@ import {
 import { listKey } from '../../../shared/review/keys'
 import { previewStretch } from '../../../shared/review/preview'
 import { keepItems, mergeSnapshot, removeItems, reviewItems, reviewProgress, reviewStatus, type ReviewItem, type ReviewStatus } from '../../../shared/review/review'
+import { rowTimes } from '../../../shared/review/times'
 import { useEditor } from '../editor/context'
 import { useKeymap } from '../editor/keymapContext'
 import { playStretch } from './playStretch'
@@ -52,6 +52,8 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
   const { reviewed, total } = reviewProgress(statuses)
   const plan = planOf(project)
+  // Every row's time, in one pass over the clips, kept for the same clips and plan (times.ts).
+  const times = useMemo(() => rowTimes(list, project.clips, plan), [list, project.clips, plan])
 
   const [activeKey, setActiveKey] = useState<string | null>(() => list.find((_, i) => statuses[i] === 'pending')?.key ?? list[0]?.key ?? null)
   const active = Math.max(0, list.findIndex((i) => i.key === activeKey))
@@ -220,8 +222,6 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     if ((e.key === 'Enter' || e.key === ' ') && e.target instanceof HTMLButtonElement) e.stopPropagation()
   }
 
-  const timeOf = (item: ReviewItem): string => formatTime(videoTimeAt(project.clips, plan, item.start))
-
   return (
     <aside ref={panelRef} className="review-panel" role="region" aria-label={REVIEW_TITLE} data-testid="review-panel" onKeyDown={onPanelKey}>
       <div className="review-head">
@@ -258,7 +258,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
             {list.map((item, k) => {
               const status = statuses[k]
               const isActive = k === active
-              const time = timeOf(item)
+              const time = times[k]
               return (
                 <li key={item.key} className={`review-row ${status}${isActive ? ' active' : ''}`} data-testid="review-row" data-key={item.key} data-status={status}>
                   <button
