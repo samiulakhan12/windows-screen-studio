@@ -342,6 +342,26 @@ describe('spoken marks and word motion (§9.3)', () => {
     expect(at(lay(guess, s), 0.3)).toBe(1)
   })
 
+  it("Bold Pop's spoken word tilts -2° while spoken, and no other word does (APPROVED-LOOK.md)", () => {
+    const s = look('bold-pop')
+    const rot = (l: StudioLayout, t: number, st: CaptionStudio = s): number[] => captionPoses(l, 0, t, ONE, st, U, null).words.map((w) => w.rotate)
+    const l = lay(timed('go export it', 0.4), s)
+    expect(l.chunks.length).toBe(1)
+    // Word 1 is spoken from 0.4 s, word 2 from 0.8 s.
+    for (const t of [0.42, 0.5, 0.7]) expect(rot(l, t), `${t} s`).toEqual([0, -2, 0])
+    expect(rot(l, 0.85)).toEqual([0, 0, -2])
+    // By strength, none at 0 and with calm motion.
+    expect(rot(l, 0.5, withMotion(s, { strength: 0.5 }))[1]).toBeCloseTo(-1, 9)
+    const straight = (r: number[]): boolean => r.length > 1 && r.every((x) => x === 0)
+    expect(straight(rot(l, 0.5, withMotion(s, { strength: 0 })))).toBe(true)
+    expect(straight(rot(l, 0.5, withMotion(s, { calm: true })))).toBe(true)
+    // Not in Bangla (the approved Bangla pop stands straight), nor on a word whose time is estimated.
+    expect(straight(rot(lay(timed('এক ক্লিকে সুন্দর', 0.4), s, 1080, 1920, undefined, 'bn'), 0.5))).toBe(true)
+    const guess = timed('go export it', 0.4)
+    guess.words = guess.words!.map((w) => ({ ...w, estimated: true as const }))
+    expect(straight(rot(lay(guess, s), 0.5))).toBe(true)
+  })
+
   it('Bold Pop keeps room for its spoken word at the peak of its pulse and pop, so it never runs into the space beside it', () => {
     const s = look('bold-pop')
     const l = lay(timed('click export and', 0.4), s, 1920, 1080)

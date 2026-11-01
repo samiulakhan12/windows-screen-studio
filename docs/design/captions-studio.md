@@ -1374,7 +1374,8 @@ turns green".
 - Motion: spoken colour; in pop, out fade; word pulse; emphasis pop; upcoming 1; tilt 3° on
   emphasised words; the spoken word grows to 1.18 and holds while spoken (`spokenScale` 1.18,
   ×1.14 in Bangla; with the pulse it peaks near 1.28 in about 0.08 s and settles by 0.2 s, as in
-  `APPROVED-LOOK.md`), and the layout keeps room for that peak beside it.
+  `APPROVED-LOOK.md`), and the layout keeps room for that peak beside it; while spoken it also
+  tilts −2° (`spokenTilt` −2; not on Bangla words, as the approved Bangla pop).
 
 **Clean Short** (`clean-short`, fallback `clean`): "Calm sentence-case words with a soft
 shadow". The default for tall and square screen recordings (§5.5).
@@ -1472,7 +1473,7 @@ or in a camera-only or large-camera layout, for at least 50% of the viewing time
 | Frame | New captions get | Notes |
 |---|---|---|
 | Wide (16:9, 4:3, 21:9 and anything not tall or square) | **Subtitle** | Long tutorials need full phrases with read-ahead. With two or more named speakers: speaker names and colours on. When camera-led, Karaoke Fill carries the "Suggested" badge, but Subtitle stays the pick. |
-| Tall (9:16, 4:5), camera-led | **Bold Pop** | With more than 50% estimated word times: spoken mark, word motion and the growing spoken word off. With speech faster than 190 words a minute: 4 words. |
+| Tall (9:16, 4:5), camera-led | **Bold Pop** | With more than 50% estimated word times: spoken mark, word motion and the growing, tilting spoken word off. With speech faster than 190 words a minute: 4 words. |
 | Tall, screen-led | **Clean Short** | Heavy capitals would compete with the small UI text of a reframed screen recording. |
 | Square (1:1) | **Highlight Box** with 5 words and 2 lines when camera-led; **Clean Short** with 4 words otherwise | |
 
@@ -2175,7 +2176,9 @@ Shake uses 5 and 7 Hz, under the 12 Hz limit of a 24 fps export, so it never ali
 - Emphasised words use the emphasis colour, font, weight and size, their mark (marker, underline,
   box; drawn with the wipe timing) and `motion.emphasis` instead of `motion.word`.
 - **Tilt**: a seeded angle in [−tilt, +tilt] degrees × strength, on chunks (Comic, Handwritten)
-  or on emphasised words (Bold Pop). Fixed for the chunk or word's whole time.
+  or on emphasised words (Bold Pop). Fixed for the chunk or word's whole time. `spokenTilt`
+  (Bold Pop −2°) turns the word being spoken while it is spoken, × strength; none with calm
+  motion, on estimated words or on Bangla words.
 
 ### 9.5 Strength, speed, calm and reduced motion
 
@@ -2662,7 +2665,7 @@ Rules, first match wins, with the reason shown in the notice and in Review:
 | # | Condition | Look | Reason text |
 |---|---|---|---|
 | 1 | The brand kit has a caption style | Brand | "Your brand kit's caption style" |
-| 2a | Tall frame, camera-led | Bold Pop; 4 words when speech is faster than 190 words a minute; spoken mark, word motion and the growing spoken word off when more than 50% of word times are estimated (`estimatedShare`, NW-09) | "Bold Pop: you are on camera in a tall video" |
+| 2a | Tall frame, camera-led | Bold Pop; 4 words when speech is faster than 190 words a minute; spoken mark, word motion and the growing, tilting spoken word off when more than 50% of word times are estimated (`estimatedShare`, NW-09) | "Bold Pop: you are on camera in a tall video" |
 | 2b | Tall frame, not camera-led | Clean Short | "Clean Short: a screen recording for phones" |
 | 3 | Square frame | Camera-led: Highlight Box, 5 words, 2 lines; else Clean Short, 4 words | "Highlight Box: a square video for feeds" / "Clean Short: a square screen recording" |
 | 4 | Wide frame, two or more named speakers | Subtitle with speaker names and a colour per speaker (§7.4) | "Subtitle with names and a colour per speaker" |
@@ -3146,7 +3149,7 @@ on the same thing:
   `youBox` and `youText` (Chat), `extrude` and `spokenExtrude`, `split`. `StudioEdge.extrude`
   (3D Block) and `split` (Retro Pixel). `StudioBox.gap`, `shadow` (a shadow under each box) and
   `tail`; the border limit is 0.12 em. `CaptionMotion.wordTilt` (Stickers' −4° / +3° by word
-  index) and `spokenScale` (1..1.3). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2).
+  index), `spokenScale` (1..1.3) and `spokenTilt` (degrees, −8..8: Bold Pop's −2° while spoken). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2).
   `STUDIO_LIMITS` holds the new limits.
 - **Readers**: an unknown `cat:` emphasis font is dropped (the text's font draws); repeated ids
   become `id~2`, `id~3`; overlapping marks keep the first one's id and tone, `auto` only when both

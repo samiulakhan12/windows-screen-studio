@@ -209,7 +209,7 @@ describe('the gallery looks', () => {
     const v = (id: string): CaptionStudio => studioPreset(id)!.look
     expect(v('subtitle').text).toMatchObject({ font: 'cat:inter-tight', weight: 600, lineHeight: 1.28, size: 0.05, tall: 1.07 })
     expect(v('subtitle').layout).toMatchObject({ chunk: 'phrase', lines: 2, chars: 42, tallChars: 26, position: 'bottom' })
-    expect(v('bold-pop')).toMatchObject({ spoken: 'color', text: { font: 'cat:montserrat', weight: 900, case: 'upper', size: 0.085, tall: 1.26 }, theme: { spoken: '#39e508', emphasis2: '#ff6ad5' }, layout: { chunk: 'words', words: 3, lines: 1 }, motion: { enter: 'pop', tilt: 3, tiltOn: 'emphasis' } })
+    expect(v('bold-pop')).toMatchObject({ spoken: 'color', text: { font: 'cat:montserrat', weight: 900, case: 'upper', size: 0.085, tall: 1.26 }, theme: { spoken: '#39e508', emphasis2: '#ff6ad5' }, layout: { chunk: 'words', words: 3, lines: 1 }, motion: { enter: 'pop', tilt: 3, tiltOn: 'emphasis', spokenScale: 1.18, spokenTilt: -2 } })
     expect(v('editorial').emphasis).toMatchObject({ font: 'cat:instrument-serif-italic', scale: 1.6 })
     expect(v('one-word').layout).toMatchObject({ chunk: 'word', position: 'middle', fit: 0.8 })
     expect(v('stacked').layout).toMatchObject({ chunk: 'stack', words: 6, lines: 4, fit: 0.7 })

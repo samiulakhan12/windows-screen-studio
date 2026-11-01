@@ -68,7 +68,7 @@ describe('readCaptionStudio (test 4)', () => {
         edge: { outline: 1, outlineAlpha: 7, glow: 5, shadow: { x: 9, y: -9, blur: 9, alpha: 9 }, extrude: { steps: 99, x: 1, y: -1 }, split: 1 },
         box: { alpha: 2, padX: 9, padY: -1, radius: 9, border: 1, gap: 9, tail: 9, shadow: { x: 1, y: 1, blur: -1, alpha: -1 } },
         layout: { words: 99, lines: 99, chars: 999, tallChars: -5, fit: 0.1, place: { x: 9, y: -9 } },
-        motion: { upcoming: 2, strength: 3, speed: 9, tilt: 99, wordTilt: [-99, 99], spokenScale: 9 }
+        motion: { upcoming: 2, strength: 3, speed: 9, tilt: 99, wordTilt: [-99, 99], spokenScale: 9, spokenTilt: 99 }
       })
     )!
     const L = STUDIO_LIMITS
@@ -78,10 +78,10 @@ describe('readCaptionStudio (test 4)', () => {
     expect(big.edge).toMatchObject({ outline: L.outline.max, outlineAlpha: 1, glow: L.glow.max, shadow: { x: 0.3, y: -0.3, blur: 1, alpha: 1 }, extrude: { steps: 12, x: 0.05, y: -0.05 }, split: L.split.max })
     expect(big.box).toMatchObject({ alpha: 1, padX: L.pad.max, padY: 0, radius: L.radius.max, border: L.border.max, gap: L.boxGap.max, tail: L.tail.max, shadow: { x: 0.3, y: 0.3, blur: 0, alpha: 0 } })
     expect(big.layout).toMatchObject({ words: L.words.max, lines: L.lines.max, chars: L.chars.max, tallChars: 0, fit: L.fit.min, place: { x: 1, y: 0 } })
-    expect(big.motion).toMatchObject({ upcoming: 1, strength: 1, speed: L.speed.max, tilt: L.tilt.max, wordTilt: [-8, 8], spokenScale: L.spokenScale.max })
-    const small = readCaptionStudio(lookWith({ text: { size: 0, tall: 0, tracking: -1, lineHeight: 0 }, motion: { speed: 0, spokenScale: 0 }, layout: { words: 0, lines: 0 } }))!
+    expect(big.motion).toMatchObject({ upcoming: 1, strength: 1, speed: L.speed.max, tilt: L.tilt.max, wordTilt: [-8, 8], spokenScale: L.spokenScale.max, spokenTilt: L.spokenTilt.max })
+    const small = readCaptionStudio(lookWith({ text: { size: 0, tall: 0, tracking: -1, lineHeight: 0 }, motion: { speed: 0, spokenScale: 0, spokenTilt: -99 }, layout: { words: 0, lines: 0 } }))!
     expect(small.text).toMatchObject({ size: L.size.min, tall: L.tall.min, tracking: L.tracking.min, lineHeight: L.lineHeight.min })
-    expect(small.motion).toMatchObject({ speed: L.speed.min, spokenScale: 1 })
+    expect(small.motion).toMatchObject({ speed: L.speed.min, spokenScale: 1, spokenTilt: L.spokenTilt.min })
     expect(small.layout).toMatchObject({ words: 1, lines: 1 })
   })
 

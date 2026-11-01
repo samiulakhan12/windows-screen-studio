@@ -67,6 +67,7 @@ export const STUDIO_LIMITS = {
   tail: { min: 0, max: 1.5 },
   wordTilt: { min: -8, max: 8 },
   spokenScale: { min: 1, max: 1.3 },
+  spokenTilt: { min: -8, max: 8 },
   extrudeSteps: { min: 1, max: 12 },
   extrudeStep: { min: -0.05, max: 0.05 },
   split: { min: 0, max: 0.1 },
@@ -314,6 +315,7 @@ function readMotion(v: unknown): CaptionMotion {
     tiltOn: pick(v.tiltOn, ['chunk', 'emphasis'] as const, b.tiltOn),
     ...opt('wordTilt', wordTilt),
     ...opt('spokenScale', finite(v.spokenScale) ? clamp(v.spokenScale, L.spokenScale) : undefined),
+    ...opt('spokenTilt', finite(v.spokenTilt) ? clamp(v.spokenTilt, L.spokenTilt) : undefined),
     ...opt('calm', v.calm === true ? (true as const) : undefined)
   }
 }

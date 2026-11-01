@@ -133,9 +133,10 @@ const CALM_WORD: Partial<Record<WordMotion, WordMotion>> = { pop: 'grow', bounce
 
 /** Motion with the clamps of Calm motion (§9.5): pop, bounce, drop and slam grow; blur fades; no shake, tilt or growing spoken word. */
 export function calmed(m: CaptionMotion): CaptionMotion {
-  const { wordTilt: _wt, spokenScale: _ss, ...rest } = m
+  const { wordTilt: _wt, spokenScale: _ss, spokenTilt: _st, ...rest } = m
   void _wt
   void _ss
+  void _st
   return {
     ...rest,
     enter: CALM_ENTER[m.enter] ?? m.enter,
@@ -675,6 +676,8 @@ export function captionPoses(
           pose.scale *= 1 + grow * (1 - EASE.out((now - next) / down))
         }
       }
+      /* Bold Pop's spoken word tilts (-2°) while spoken; not in Bangla, as the approved Bangla pop */
+      if (!calm && s > 0 && wm.spokenTilt && spokenAt === i && tok.script !== 'bengali') pose.rotate += wm.spokenTilt * s
     }
     /* emphasis marks draw with the wipe timing */
     if (emph && studio.emphasis.mark !== 'none') {

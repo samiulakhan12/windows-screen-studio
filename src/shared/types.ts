@@ -588,6 +588,12 @@ export interface CaptionMotion {
    * touches its neighbours. Calm motion: 1. Absent: 1.
    */
   spokenScale?: number
+  /**
+   * The spoken word's tilt while it is spoken, degrees, -8..8 (Bold Pop -2, APPROVED-LOOK.md; not
+   * on Bangla words, as the approved Bangla pop); scaled by strength, none with calm motion and on
+   * estimated words. Absent: none.
+   */
+  spokenTilt?: number
   /** Calm motion: the clamp of §9.5. */
   calm?: true
 }

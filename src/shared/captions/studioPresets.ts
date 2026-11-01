@@ -240,7 +240,7 @@ const SHORT: StudioPreset[] = [
       edge: { outline: 0.085, outlineAlpha: 1, shadow: { x: 0, y: 0.04, blur: 0.12, alpha: 0.55 } },
       spoken: 'color',
       layout: { chunk: 'words', words: 3, lines: 1, chars: 16, tallChars: 14, position: 'lower' },
-      motion: { enter: 'pop', exit: 'fade', word: 'pulse', emphasis: 'pop', upcoming: 1, tilt: 3, tiltOn: 'emphasis', spokenScale: 1.18 }
+      motion: { enter: 'pop', exit: 'fade', word: 'pulse', emphasis: 'pop', upcoming: 1, tilt: 3, tiltOn: 'emphasis', spokenScale: 1.18, spokenTilt: -2 }
     })
   },
   {

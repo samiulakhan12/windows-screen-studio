@@ -110,9 +110,10 @@ function rule(project: Project, frame: { w: number; h: number }): { tile: string
       tile: 'bold-pop',
       reason: AUTO_STYLE_REASONS.tallCamera,
       edit: (s) => {
-        // Guessed word times: no spoken mark, no word motion and no spoken word growing at a guessed time.
-        const { spokenScale: _ss, ...still } = s.motion
+        // Guessed word times: no spoken mark, no word motion and no spoken word growing or tilting at a guessed time.
+        const { spokenScale: _ss, spokenTilt: _st, ...still } = s.motion
         void _ss
+        void _st
         return {
           ...s,
           ...(guessed ? { spoken: 'none' as const, motion: { ...still, word: 'none' as const } } : {}),
