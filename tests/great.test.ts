@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, greatHint, greatNotice, planCaptionsGreat, readGreatOptions, resolveGreatOptions, type GreatSummary } from '../src/shared/captions/great'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
+import { chordFromEvent, DEFAULT_KEYMAP, matchShortcut, shortcutIndex, undoHint } from '../src/shared/editor/shortcuts'
 import type { Project } from '../src/shared/types'
 import { captions, studioProject, TALL, WIDE } from './p4Fixtures'
 
@@ -103,10 +104,21 @@ describe('Make my captions great (test 42)', () => {
 
   it('the notice lists what changed, or says there was nothing', () => {
     const s: GreatSummary = { style: 'Bold Pop', emphasised: 38, emoji: 3, counters: 1, lists: 1, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 12, bleeped: 0 }
-    expect(greatNotice(s)).toBe('Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied. Review (Shift+R) · Undo')
+    expect(greatNotice(s, undoHint(DEFAULT_KEYMAP))).toBe('Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied · Ctrl + Z to undo')
     const none: GreatSummary = { style: null, emphasised: 0, emoji: 0, counters: 0, lists: 0, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 0, bleeped: 0 }
-    expect(greatNotice(none)).toBe('Your captions already have all of this.')
-    expect(greatNotice({ ...s, providerFailed: true })).toMatch(/The AI provider could not be reached, so Flown picked on this PC\.$/)
+    expect(greatNotice(none, undoHint(DEFAULT_KEYMAP))).toBe('Your captions already have all of this.')
+    expect(greatNotice({ ...s, providerFailed: true }, undoHint(DEFAULT_KEYMAP))).toBe(
+      'Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied · Ctrl + Z to undo. The AI provider could not be reached, so Flown picked on this PC.'
+    )
+    // Without an undo shortcut the notice just lists what changed.
+    expect(greatNotice({ ...s, providerFailed: true })).toBe('Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied. The AI provider could not be reached, so Flown picked on this PC.')
+  })
+
+  it('the notice asks for no key that runs another command: Shift+R is Hold the view until Review mode comes (phase B)', () => {
+    const s: GreatSummary = { style: 'Bold Pop', emphasised: 38, emoji: 3, counters: 1, lists: 1, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 12, bleeped: 0 }
+    const shiftR = { key: 'R', code: 'KeyR', ctrlKey: false, shiftKey: true, altKey: false, metaKey: false }
+    expect(matchShortcut(shortcutIndex(DEFAULT_KEYMAP), chordFromEvent(shiftR)!)).toBe('holdView')
+    for (const notice of [greatNotice(s, undoHint(DEFAULT_KEYMAP)), greatNotice({ ...s, providerFailed: true }, undoHint(DEFAULT_KEYMAP))]) expect(notice).not.toMatch(/Shift\+R|Review|· Undo/)
   })
 
   it('the hint follows the resolved options', () => {

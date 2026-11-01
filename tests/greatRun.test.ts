@@ -49,7 +49,7 @@ interface Runner {
   currentGreatOptions(): GreatOptions
   onGreatOptions(listener: () => void): () => void
   saveGreatOptions(next: GreatOptions): Promise<void>
-  runCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; options: GreatOptions; signal: AbortSignal }): Promise<{ notice: string } | null>
+  runCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; options: GreatOptions; signal: AbortSignal; undo?: string }): Promise<{ notice: string } | null>
 }
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const RUN = '../src/renderer/src/editor/greatRun'
@@ -86,9 +86,9 @@ describe('runCaptionsGreat', () => {
   it('on this PC: one undo step, and the notice of what changed', async () => {
     const start = studioProject({ segments: captions(TEXTS) })
     const store = storeOf(start)
-    const out = await runCaptionsGreat({ store, frame: TALL, options: OFFLINE, signal: new AbortController().signal })
+    const out = await runCaptionsGreat({ store, frame: TALL, options: OFFLINE, signal: new AbortController().signal, undo: ' · Ctrl + Z to undo' })
     expect(asked).toHaveLength(0)
-    expect(out?.notice).toMatch(/^Captions: Clean Short, \d+ words? emphasised.*Review \(Shift\+R\) · Undo$/)
+    expect(out?.notice).toMatch(/^Captions: Clean Short, \d+ words? emphasised.* · Ctrl \+ Z to undo$/)
     expect(store.state.captionMarks?.length).toBeGreaterThan(0)
     expect(undoSteps(store)).toBe(1)
     expect(store.state).toBe(start)

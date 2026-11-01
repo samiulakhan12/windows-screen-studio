@@ -1242,7 +1242,8 @@ function EditorSession({
         frame: () => {
           const f = editorFrame(store.state)
           return { w: f.outW, h: f.outH }
-        }
+        },
+        undo: () => undoHint(latest.current.keymap)
       }),
       showCaptions: showTab('captions'),
       showStyle: showTab('style'),

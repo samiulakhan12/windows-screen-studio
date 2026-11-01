@@ -123,7 +123,7 @@ async function providerKind(id: string): Promise<AiProviderInfo['kind'] | undefi
 
 const NOTHING: Omit<GreatSummary, 'providerFailed'> = { style: null, emphasised: 0, emoji: 0, counters: 0, lists: 0, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 0, bleeped: 0 }
 
-export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; options: GreatOptions; signal: AbortSignal }): Promise<{ notice: string } | null> {
+export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; options: GreatOptions; signal: AbortSignal; undo?: string }): Promise<{ notice: string } | null> {
   const { store, frame, options, signal } = deps
   const start = store.getSnapshot()
   if (!start.transcript?.segments.length) return null
@@ -158,5 +158,5 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
   store.seal()
   if (!summary) return null
   const failed = providerFailed ? { providerFailed: true as const } : {}
-  return { notice: greatNotice(changed ? { ...(summary as GreatSummary), ...failed } : { ...NOTHING, ...failed }) }
+  return { notice: greatNotice(changed ? { ...(summary as GreatSummary), ...failed } : { ...NOTHING, ...failed }, deps.undo) }
 }

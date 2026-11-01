@@ -256,8 +256,12 @@ function withoutMarks(p: Project): Project {
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 
-/** "Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list. Review (Shift+R) · Undo". */
-export function greatNotice(s: GreatSummary): string {
+/**
+ * "Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list" followed by `undo`
+ * (undoHint: " · Ctrl + Z to undo").
+ * TODO(phase B): "Review (Shift+R)" once Review mode and its Shift+R are in (§2.8).
+ */
+export function greatNotice(s: GreatSummary, undo = ''): string {
   const parts: string[] = []
   if (s.style) parts.push(s.style)
   if (s.emphasised) parts.push(`${plural(s.emphasised, 'word')} emphasised`)
@@ -272,7 +276,7 @@ export function greatNotice(s: GreatSummary): string {
   if (s.bleeped) parts.push(`${plural(s.bleeped, 'word')} bleeped`)
   const failed = s.providerFailed ? ' The AI provider could not be reached, so Flown picked on this PC.' : ''
   if (!parts.length) return `Your captions already have all of this.${failed}`
-  return `Captions: ${parts.join(', ')}. Review (Shift+R) · Undo${failed}`
+  return `Captions: ${parts.join(', ')}${undo}${failed ? `.${failed}` : ''}`
 }
 
 /** The hint under the button, from the resolved options (§2.4). */

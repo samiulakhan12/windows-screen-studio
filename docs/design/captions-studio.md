@@ -207,7 +207,8 @@ translation if the owner approves its licences.
    under 0.2 s for a 10-minute video. The captions now have about one emphasised word in eight,
    three emoji next to key words, a counter where the speaker said "grew 300 percent" and a list
    card where they said "three steps". Notice: "Captions: Bold Pop, 38 words emphasised, 3 emoji,
-   1 counter, 1 list. Review (Shift+R) · Undo".
+   1 counter, 1 list. Review (Shift+R) · Undo" (phase A, before Review mode: "… 1 list · Ctrl + Z
+   to undo", §2.8).
 3. They press **Shift+R**. Review mode lists the changes: one row "Emphasis: 38 words" (it opens
    to the single words), and one row per emoji, counter and list ("Emoji 💡 on “tip”", "Counter
    300%", "List: 3 steps"). They remove one emoji with **Delete**.
@@ -449,7 +450,9 @@ built from the resolved choices.
 
 **After it runs:** one undo step and the notice "Captions: Bold Pop, 38 words emphasised, 3 emoji,
 1 counter, 1 list, 12 captions tidied. Review (Shift+R) · Undo". Parts that changed nothing are
-left out. With nothing to do: "Your captions already have all of this." When the provider fails,
+left out. Phase A, until Review mode and its Shift+R are in (§0.4), ends the notice with the undo
+key instead, as Polish does: "…, 12 captions tidied · Ctrl + Z to undo" (the user's own key; no
+hint when Undo has none). Shift+R alone would run Hold the view (`R`) meanwhile. With nothing to do: "Your captions already have all of this." When the provider fails,
 the offline picks are used and the notice ends "The AI provider could not be reached, so Flown
 picked on this PC."
 

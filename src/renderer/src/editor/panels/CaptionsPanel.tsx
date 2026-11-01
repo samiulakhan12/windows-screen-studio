@@ -5,7 +5,7 @@ import { findInCaptions, mergeWithNext, readSuggestedChapters, replaceInCaptions
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { languageSubtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
 import { displayTime } from '../../../../shared/editor/clips'
-import { withShortcut } from '../../../../shared/editor/shortcuts'
+import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
@@ -194,10 +194,11 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
   }, [])
   // Make my captions great (Captions Studio §2.8): one run at a time, its notice in the editor's live region.
   const greatBusy = useCaptionsGreatBusy()
+  const keymap = useKeymap()
   const shown = visibleSize(project)
   const onGreat = (): void => {
     const f = editorFrame(services.store.state)
-    void startCaptionsGreat({ store: services.store, frame: { w: f.outW, h: f.outH }, notice: props.onNotice })
+    void startCaptionsGreat({ store: services.store, frame: { w: f.outW, h: f.outH }, notice: props.onNotice, undo: undoHint(keymap) })
   }
 
   const selectedId = props.selection?.kind === 'caption' ? props.selection.id : null
