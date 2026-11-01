@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { calls, canvas, contextOf, frameOf, spriteTexts } from './studioFakes'
 import { studioPreset } from '../src/shared/captions/studioPresets'
-import type { CaptionSegment, CaptionSettings, CaptionStudio, CounterGraphic, CursorTrack, ListGraphic, Project, StudioPosition, TitleCard } from '../src/shared/types'
+import type { CaptionSegment, CaptionSettings, CaptionStudio, CounterGraphic, CursorTrack, KeywordGraphic, ListGraphic, Project, StudioPosition, TitleCard } from '../src/shared/types'
 
 /*
  * Captions Studio after the parts merged (docs/design/captions-studio.md §14.5): the drawing (P2)
@@ -29,10 +29,11 @@ vi.spyOn(console, 'warn').mockImplementation(() => {})
 // Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
 const R = '../src/renderer/src/render/'
 type Draw = (fc: never) => void
-const { drawStudioCaptions, drawStudioSample, studioBlockAt } = (await import(/* @vite-ignore */ `${R}studioLayer`)) as {
+const { drawStudioCaptions, drawStudioSample, studioBlockAt, studioWordChunk } = (await import(/* @vite-ignore */ `${R}studioLayer`)) as {
   drawStudioCaptions: Draw
   drawStudioSample: (ctx: unknown, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number, language?: string) => { textPx: number }
   studioBlockAt: (ctx: unknown, p: Project, t: number, w: number, h: number) => { box: { y: number; h: number } } | null
+  studioWordChunk: (ctx: unknown, p: Project, caption: string, word: number, w: number, h: number, area: null) => { start: number; end: number } | null
 }
 const { drawGraphicsLayer } = (await import(/* @vite-ignore */ `${R}graphicsLayer`)) as { drawGraphicsLayer: Draw }
 const { drawTitleCardsLayer } = (await import(/* @vite-ignore */ `${R}titleCardLayer`)) as { drawTitleCardsLayer: Draw }
@@ -275,4 +276,46 @@ describe('the flash rule keeps a merged block inside the frame (§9.6 rule 2 on 
         }
         expect(blocks).toBeGreaterThan(0)
       })
+})
+
+describe('a keyword card that replaces its chunk shows only while the drawn chunk does (§10.1)', () => {
+  // The planner times a card by its own estimate of the chunks; the look draws them with the real font.
+  const text = 'open the settings panel and choose the export tab'
+  const words = text.split(' ').map((t, i) => ({ text: t, start: 0.5 + i * 0.4, end: 0.5 + i * 0.4 + 0.3 }))
+  const seg: CaptionSegment = { id: 'c1', start: 0.5, end: 0.5 + words.length * 0.4, text, words }
+  const card: KeywordGraphic = {
+    id: 'k1',
+    kind: 'keyword',
+    start: seg.start,
+    end: seg.end,
+    place: 'auto',
+    size: 0.09,
+    text: 'export',
+    look: 'card',
+    enter: { kind: 'pop', duration: 0.24, strength: 1 },
+    exit: { kind: 'fade', duration: 0.18, strength: 1 },
+    anchor: { caption: 'c1', from: 7, to: 7, text: 'export' }
+  }
+  const drawsOn = (draw: Draw, p: Project, t: number, w: number, h: number): boolean => {
+    const { fc, id } = frameOf(p, t, w, h)
+    draw(fc)
+    return calls.some((c) => c.canvas === id && c.name === 'drawImage')
+  }
+  for (const [w, h] of [
+    [1080, 1920],
+    [1920, 1080]
+  ])
+    it(`Bold Pop in ${w}x${h}: never over the chunk before, and that chunk hidden only while it shows`, () => {
+      const p = project([seg], 'en', { preset: 'bold', studio: look('bold-pop') }, { graphics: [card] } as Partial<Project>)
+      const chunk = studioWordChunk(contextOf(canvas(w, h)), p, 'c1', 7, w, h, null)!
+      expect(chunk.start).toBeGreaterThan(seg.start + 0.5)
+      // Before the chunk holding EXPORT: its own chunk shows and no card covers it.
+      const before = chunk.start - 0.1
+      expect(drawsOn(drawGraphicsLayer, p, before, w, h)).toBe(false)
+      expect(drawsOn(drawStudioCaptions, p, before, w, h)).toBe(true)
+      // While it shows: the card, and not the chunk it replaces.
+      const during = Math.min(chunk.start + 0.3, (chunk.start + chunk.end) / 2)
+      expect(drawsOn(drawGraphicsLayer, p, during, w, h)).toBe(true)
+      expect(drawsOn(drawStudioCaptions, p, during, w, h)).toBe(false)
+    })
 })

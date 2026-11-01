@@ -2304,9 +2304,11 @@ the reference machine before P2 merges, and written into this table.
 
 - A keyword pop-up with an `anchor` (and `replace` not false): while it shows, the Studio layer
   does not draw the chunk that holds the anchor's first word. Its time is that chunk's time when
-  it is made, so no words are lost and the card takes the chunk's place. If the look changes
-  later and the chunk boundaries move, the rule still holds at every frame: the chunk is hidden
-  only while the card shows. Keyword pop-ups are generated only for looks of *A few words*, *One
+  it is made, so no words are lost and the card takes the chunk's place. The planner measures
+  without the look's real font, and the look or the frame may change later, so the stored time
+  and the drawn chunk can differ: the card shows only while both its own time and the chunk
+  holding the anchor's first word, as the look draws it, hold, and the chunk is hidden for
+  exactly that window. The card is never drawn over another chunk's words. Keyword pop-ups are generated only for looks of *A few words*, *One
   word* and *Stacked* (a *Phrases* chunk is a whole sentence, too long to replace; there the word
   is emphasised in the caption instead). Generated keywords are never also emphasised.
 - An automatic quote card (`auto.by: 'quote'`): while it shows, its caption is not drawn, on

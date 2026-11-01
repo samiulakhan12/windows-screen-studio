@@ -258,13 +258,18 @@ interface Shown {
   h: number
 }
 
-/** The anchored keyword's chunk is hidden while its card shows (§10.1). */
+/**
+ * The anchored keyword's chunk is hidden while its card shows (§10.1): the chunk holding the
+ * anchor's first word (its first piece, as studioWordChunk finds it), while the card's time holds.
+ * The card shows only while that chunk would (graphicsLayer), so the two always coincide.
+ */
 function chunkReplaced(project: Project, t: number, seg: CaptionSegment, layout: StudioLayout, chunk: StudioChunk): boolean {
   const r = replacedAt(project, t)
   if (!r.chunks.length) return false
+  const { tokens } = layout
   for (const c of r.chunks) {
     if (c.caption !== seg.id) continue
-    for (let k = chunk.first; k <= chunk.last; k++) if (layout.tokens[k]?.word === c.word) return true
+    for (let k = chunk.first; k <= chunk.last; k++) if (tokens[k]?.word === c.word && tokens[k - 1]?.word !== c.word) return true
   }
   return false
 }
@@ -313,6 +318,28 @@ function placeChunkOf(ctx: Ctx, project: Project, seg: CaptionSegment, studio: C
  * Null on a legacy look or when the caption or word is not there.
  */
 export function studioWordPlace(ctx: Ctx, project: Project, caption: string, word: number, w: number, h: number, area: Rect | null): { word: Rect; block: Rect; start: number; end: number; px: number } | null {
+  const at = wordChunkOf(ctx, project, caption, word, w, h, area)
+  if (!at) return null
+  const { seg, studio, layout, chunk, line, box } = at
+  const { placed, shiftX } = placeChunkOf(ctx, project, seg, studio, layout, chunk, w, h, area)
+  const s = { studio, layout, shiftX }
+  const row = rowsOf(s, chunk, placed)[line]
+  if (!row) return null
+  return { word: { x: row.x + box.x, y: row.y - row.height / 2, w: box.w, h: row.height }, block: blockRect(s, chunk, placed), start: chunk.start, end: chunk.end, px: box.px }
+}
+
+/**
+ * The time of the chunk holding word `word` of caption `caption` as the Studio look draws it, or
+ * null on a legacy look or when the caption or word is not there: studioWordPlace's chunk, without
+ * placing it (a keyword card that replaces its chunk shows only while that chunk would, §10.1).
+ */
+export function studioWordChunk(ctx: Ctx, project: Project, caption: string, word: number, w: number, h: number, area: Rect | null): { start: number; end: number } | null {
+  const at = wordChunkOf(ctx, project, caption, word, w, h, area)
+  return at ? { start: at.chunk.start, end: at.chunk.end } : null
+}
+
+/** The first chunk, line and box holding word `word` of caption `caption` in the Studio look. */
+function wordChunkOf(ctx: Ctx, project: Project, caption: string, word: number, w: number, h: number, area: Rect | null): { seg: CaptionSegment; studio: CaptionStudio; layout: StudioLayout; chunk: StudioChunk; line: number; box: StudioWordBox } | null {
   const settings = project.captions
   const look = settings?.studio
   if (!settings || !look) return null
@@ -325,12 +352,7 @@ export function studioWordPlace(ctx: Ctx, project: Project, caption: string, wor
   for (const chunk of layout.chunks) {
     for (const [li, line] of chunk.lines.entries()) {
       const box = line.words.find((b) => layout.tokens[b.token]?.word === word)
-      if (!box) continue
-      const { placed, shiftX } = placeChunkOf(ctx, project, seg, studio, layout, chunk, w, h, area)
-      const s = { studio, layout, shiftX }
-      const row = rowsOf(s, chunk, placed)[li]
-      if (!row) return null
-      return { word: { x: row.x + box.x, y: row.y - row.height / 2, w: box.w, h: row.height }, block: blockRect(s, chunk, placed), start: chunk.start, end: chunk.end, px: box.px }
+      if (box) return { seg, studio, layout, chunk, line: li, box }
     }
   }
   return null

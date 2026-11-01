@@ -31,7 +31,7 @@ import type { CaptionStudio, CounterGraphic, Graphic, KeywordGraphic, ListGraphi
 import { captionBlockAt } from './captionsLayer'
 import { ensureCaptionFonts, fontGeneration, studioBrandFamily } from './fontLoader'
 import type { FrameContext } from './frameContext'
-import { studioWordPlace } from './studioLayer'
+import { studioWordChunk, studioWordPlace } from './studioLayer'
 import { STUDIO_SPRITES } from './wordSprites'
 
 type Ctx = CanvasRenderingContext2D
@@ -267,13 +267,28 @@ interface Shown {
   end: number
 }
 
-/** The window of `g` showing at `t` (a list card's windows, §10.1), or null. */
-function windowAt(g: Graphic, t: number, project: Project): { start: number; end: number } | null {
+/**
+ * The window of `g` showing at `t` (a list card's windows, §10.1), or null. A keyword that replaces
+ * its chunk shows only while that chunk would, as the Studio look draws it: the card takes the
+ * chunk's place and is never drawn over another chunk's words when its stored time (from the
+ * planner's estimate, or a later look or frame) and the drawn chunk differ. The Studio layer hides
+ * that chunk for the same window (chunkReplaced).
+ */
+function windowAt(ctx: Ctx, g: Graphic, t: number, project: Project, w: number, h: number, area: Rect | null): { start: number; end: number } | null {
   if (g.kind === 'list') {
     for (const win of listWindows(g, project.clips)) if (t >= win.start && t < win.end) return win
     return null
   }
-  return t >= g.start && t < g.end ? { start: g.start, end: g.end } : null
+  if (!(t >= g.start && t < g.end)) return null
+  if (g.kind === 'keyword' && g.anchor && g.replace !== false) {
+    const chunk = studioWordChunk(ctx, project, g.anchor.caption, g.anchor.from, w, h, area)
+    if (chunk) {
+      const start = Math.max(g.start, chunk.start)
+      const end = Math.min(g.end, chunk.end)
+      return t >= start && t < end ? { start, end } : null
+    }
+  }
+  return { start: g.start, end: g.end }
 }
 
 interface Placement {
@@ -353,7 +368,7 @@ function graphicsAt(ctx: Ctx, project: Project, t: number, w: number, h: number,
   for (let i = 0; i < graphics.length; i++) {
     const g = graphics[i]
     if (!graphicDrawn(project, g)) continue
-    const win = windowAt(g, t, project)
+    const win = windowAt(ctx, g, t, project, w, h, area)
     if (!win) continue
     const pose = itemPose(win.start, win.end, t, project.clips, g.enter, g.exit, u, calm)
     if (!pose || pose.alpha <= 0.002) continue
