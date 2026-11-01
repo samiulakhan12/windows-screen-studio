@@ -226,8 +226,10 @@ The answer must be an object with the schema's fields of the right types, else `
 ("The AI's answer could not be used (…). Nothing was changed; try again."). Then, per task:
 
 - **youtube**: description cleaned, at most 3 000 characters (cut at a sentence or word end);
-  tags: strings, cleaned to one line, `<`, `>`, `#` and commas removed, 1–30 characters, distinct
-  ignoring case, at most 15 and 400 characters together. Empty description → error.
+  tags: strings, cleaned to one line, `<`, `>`, `#` and commas removed, 1–30 characters as written
+  (a name broken by the cleaning, §4.4, may make one a character or two longer: it is not dropped
+  for it), distinct ignoring case, at most 15 and 400 characters together. Empty description →
+  error.
 - **linkedin**: cleaned, at most 3 000 characters (LinkedIn's limit). Empty → error.
 - **xpost**: cleaned to one paragraph block; when its X length (§4.5) is over 280 it is cut at a
   word end and ends with "…" to fit (by characters when no word ends in the second half, as in
@@ -244,7 +246,8 @@ The answer must be an object with the schema's fields of the right types, else `
 
 Every string from the AI: CR/LF normalised; C0 and C1 control characters (except line break and
 tab, which becomes a space), DEL, bidirectional overrides and isolates (U+202A–U+202E,
-U+2066–U+2069) and U+FEFF removed; NFC (as X reads a post); markdown emphasis removed, only as pairs
+U+2066–U+2069), U+FEFF and the invisible characters IDNA drops from a host (soft hyphen, zero-width
+space, invisible plus: `evil\u200bflown.app` is evilflown.app to a browser) removed; NFC (as X reads a post); markdown emphasis removed, only as pairs
 around words (`**Bold**`, `__two words__`: `__init__`, `__name__`, `**kwargs`, `2**8`, a glob's `**`
 and `snake__case` stay as written); trailing spaces on lines and more than one blank line in a row
 removed; trimmed; cut to the field's cap (`cutAt`, below); and then, last, **no link the transcript
@@ -253,40 +256,79 @@ one in. One-line fields (titles, headings, tags, steps) also turn line breaks in
 
 *Which links.* Every link X finds, by X's own rules: `findUrls` in `twitterText.ts`, the port of
 twitter-text 3.1.0's `extractUrlsWithIndices` (its top-level domain lists, what may come before and
-after a link, `@`, `#` and `$`, ports, paths, queries, punycode, any script). A text is read as X
-reads it at its very start and as it reads it after a space, since a part of the pack becomes either
-as it is put together and pasted (at the start, X takes a first `é` or `(` as what comes before a
-link: `éflown.app` links `flown.app`; after a space it links `éflown.app`). Added to X's: links X
-leaves only for their length (over 4 096 characters), names on such a domain with no Latin letters
-(`госуслуги.рф`, which X links only after a scheme but other sites may), and every `http(s)://` or
-`www.` link X does not link but YouTube and LinkedIn do (glued to a word, `xhttps://…`; inside
-another link's query, `flown.app?next=https://evil.com/login`; on an address X does not know,
+after a link, `@`, `#` and `$`, ports, paths, queries, punycode, any script). A text is read three
+ways. As X reads it at its very start and as it reads it after a space, since a part of the pack
+becomes either as it is put together and pasted (at the start, X takes a first `é` or `(` as what
+comes before a link: `éflown.app` links `flown.app`; after a space it links `éflown.app`). And as
+sites other than X read it (LinkedIn, YouTube, a help centre's linkifier): where X has rules of its
+own, they take these for the end of a name, so that reading has them as spaces: `$` and `#` (X's
+cashtag and hashtag: `$paypal-login.com/verify`, and markdown-it's linkifier links `#evil.com`; a
+said `#ASP.NET` stays, an unsaid one is broken); `@`, but an e-mail address's (an ASCII user name
+starting a word, a name after it ending at a space or a sentence's punctuation:
+`paypal.com@login` and `paypal-login.com@evil.comx` are links elsewhere, `wei.wang@acme.com` is
+not); `//` before a name that is not a scheme's, with a user name after it
+(`//evil.com/login`, `//me@evil.com`); what X counts as part of a name (`"`, `` ` ``, punctuation
+other than ASCII's: `/．evil.com`, `「evil.com」`, which X then drops for the `/`; the text of
+languages written without spaces: `网站flown.app/download`, where X counts the whole run as one
+label, too long to link); and the ASCII punctuation X reads on through in a path or query it drops
+(`flown.app?README.md`: X links `flown.app` and nothing in its query, other sites start again after
+the `?`; `!?*'();=+,%[]~|&{}^<>\`). Added to X's in every reading: links X leaves only for their length (over 4 096
+characters), names on such a domain with no Latin letters (`госуслуги.рф`, which X links only after a
+scheme but other sites may), names on the top-level domains IANA delegated after twitter-text's
+lists (`newerTlds.ts`: `evil.web`, `evil.amazon`, `evil.亚马逊`…), and every `http(s)://` or `www.`
+link X does not link but YouTube and LinkedIn do (glued to a word, `xhttps://…`; inside another
+link's query, `flown.app?next=https://evil.com/login`; on an address X does not know,
 `http://192.168.1.1/login`, `https://evil.example`), as X ends it from there, else up to a space, a
-quote, an angle bracket or Chinese or Japanese text.
+quotation mark (`"`, `'`, `` ` ``, `“”‘’‹›«»„‚`), an angle bracket or Chinese or Japanese text (not
+full-width Latin letters: IDNA reads `https://ｅｖｉｌ.ｃｏｍ` as `evil.com`). Where X ends such a link
+earlier than that, the stretch to the next space is a link too when a browser may open another
+name for it: when a piece of its authority (before, between or after its `@`s), cut where any site
+may end it (at each character that is not a letter, digit, `-`, `_` or `.`: `%`, `．`, a quotation
+mark…) and read as a browser reads a host (no port, percent-decoded, IDNA: NFKC, `．` and `。` as
+dots), is a host on a top-level domain that is neither X's host nor one under it
+(`https://flown.app%2eevil%2ecom/login`, `https://flown.app:8443@evil.com/login`,
+`https://flown.app．evil．com`, `https://flown.app".evil.com` open evil.com's;
+`https://flown.app—great` and `https://flown.app,` are on no top-level domain and open nothing). A
+`http(s)://` or `www.` glued to what no site reads as a host (`https://日%2eevil…`, `https://“…`) is
+a link of its own: the scheme.
 
-*Which are kept.* A link is kept when the transcript, the recording's name or a chapter title (what
-the user typed, §4.1) has the very same link (`trustedText`): the host and scheme compared without
-case in ASCII only (the Kelvin sign is not `k`), the rest exactly. `example.co` is not
-`example.com/settings`.
+*Which are kept.* A link is kept when the transcript, the recording's name or a chapter title (§4.1)
+has the very same link (`trustedText`, read the same three ways), without `http(s)://` (it goes to
+the same place: `https://flown.app/download` is `flown.app/download`, and `http://` is `https://`;
+`www.` is another host), the host compared without case in ASCII only (the Kelvin sign is not `k`),
+the rest exactly. `example.co` is not `example.com/settings`. A link that is a said one with a
+word's ending glued on (`flown.app/download'dan`, `github.com/flown/recorder's`, `…/download-Seite`,
+`…:sta`, `…-странице`, which X reads into its path) keeps the said link: U+2060, the word joiner,
+goes before the ending, so X links exactly the said link and no letter is lost; a transcript that
+says the link with an ending allows it without too. The name and chapter titles are what the user
+typed, or what an AI suggested for them, which is cleaned the same way against the captions it was
+written from before it reaches the project (§4.6).
 
-*What happens to the others.* A link with a scheme, `www.`, or a path (and its port and query with
-it) is removed; the sentence's punctuation after it stays (X does not end a link with it). A bare
-name (`evil.com`, `TP.Thủ`, `Sr.João`, `m.in`, `user.id`, `logo.ai`, `README.md`, `e.target`) is
-not deleted but broken: a space after each of its dots (`evil. com`, `TP. Thủ Đức`, `m. in.`,
-`e. target.value`), so no word loses a letter and nothing links it. Removing a link can join the
-text around it into another (`evil.comhttps://x.de`), and breaking one can show what it hid
+*What happens to the others.* A link with a scheme or `www.` (and its port, path and query with it)
+is removed; the sentence's punctuation after it stays (X does not end a link with it). A bare name,
+with its path (`evil.com`, `evil.de/login`, `ASP.NET/C#`, `TP.Thủ`, `Sr.João`, `m.in`, `user.id`,
+`logo.ai`, `README.md`, `e.target`) is not deleted but broken: a no-break space (U+00A0) after each
+of its dots (`evil. com`, `evil. de/login`, `TP. Thủ Đức`, `m. in.`, `e. target.value`; written
+with a plain space here), so no word loses a letter and nothing links it; it reads as a space, ends
+a name for X and every other site, and no later cut takes it for a sentence end. Removing a link can
+join the text around it into another (`evil.comhttps://x.de`), and breaking one can show what it hid
 (`x.de:80evil.com`), so the text is read again until no such link is left; after 8 rounds (a text
-built to hide links in links) every `.` before a letter and every `://` is removed, and then nothing
-can be a link.
+built to hide links in links) a no-break space goes after every `.` that is not before a space and
+into every `://`: then nothing can be a link, and as it only adds characters, it joins nothing.
 
 *Cuts make no link.* A cut can turn a word into a link (`evil.comfy` cut to `evil.com…`). Every cut
 (a field's cap, `fitX`, the article's 20 000) happens before that last reading; `cutAt` and `fitX`
 themselves leave no link their text did not have (`evil.com…` becomes `evil. com…`, or the cut goes
-earlier when a broken name no longer fits), and inside a word never cut inside a link that goes
-whole, but before it. The article and the release notes are read once more as a whole after their
-parts are put together; a step's number and a heading's `#` come off before a part is read; a tag's
-`<`, `>`, `#` and commas before it is read. The YouTube description's `<` to `‹` (§4.7) makes no link
-either (`withLinksOf`).
+earlier when a broken name no longer fits: by what it went over, and below a cut that comes back the
+same, as a cut at a sentence end does for every budget down to it), and inside a word never cut
+inside a link that goes whole, but before it. The article and the release notes are read once more
+as a whole after their parts are put together; a step's number and a heading's `#` come off before a
+part is read; a tag's `<`, `>`, `#` and commas before it is read. The YouTube description's `<` to
+`‹` (§4.7) makes no link either (`withLinksOf`; `‹` and `›` end a link as the angle brackets do, so
+the user's own `http://localhost:3000/users/<id>` keeps its link).
+
+*Emphasis* is removed as pairs around words: `**` and `__` not glued to a letter, digit, `_` or `*`
+outside, except the text of a language written without spaces (`点击**保存**按钮`, `**설정**을`).
 
 ### 4.5 X's length (`xLength`)
 
@@ -312,8 +354,9 @@ and leaves no link its text did not have.
   takes it out of the queue, on a running one calls `cancelAiText(id)`. *Stop all* stops every one.
 - The answer is applied only to the job that is still current for its item (a stopped or replaced
   job's late answer is dropped). The renderer cleans the text again (§4.4) before showing it; the
-  title and summary, which main checks the Captions tab's way, lose there the links the captions
-  sent, the name and the chapter titles do not have, as the pack's items do in main.
+  title and summary, which main checks the Captions tab's way (losing there the links the captions
+  lack, as its chapter titles do: §4.4), lose there the links the captions sent, the name and the
+  chapter titles do not have, as the pack's items do in main.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
 
@@ -423,7 +466,10 @@ All above AA (4.5:1).
   their lists (else Friendly / Normal), title ≤ 200 characters, at most 100 chapter titles of ≤ 120
   characters, control characters removed. The request id must match `^[A-Za-z0-9_-]{1,64}$`.
 - **Validated output:** schema shape, lengths, cleaning, foreign links removed or broken, by X's
-  own rules (§4.3–4.4); the renderer cleans again before showing it.
+  own rules and other sites' (§4.3–4.4); the renderer cleans again before showing it. The Captions
+  tab's chapter titles, title and summary lose in main the links their captions lack, since the
+  chapter titles and the name (once *Rename the recording* is used) go into the project, whose links
+  the pack trusts.
 - **No HTML:** textareas and text nodes only (§2.5).
 - **Export bundle:** the description is plain text written by main's existing sidecar writer
   (size, NUL and path checks unchanged).
@@ -452,6 +498,8 @@ New:
 - `src/shared/publish/twitterText.ts`: the port of twitter-text 3.1.0 (Apache-2.0):
   `extractUrlsWithIndices(text)`, `findUrls(text, lenient)`, `parseTweet(text)`, `emojiSpans(text)`
   and its patterns (`EXTRACT_URL`, `VALID_ASCII_DOMAIN`, `VALID_TCO_URL`…).
+- `src/shared/publish/newerTlds.ts`: `NEWER_GENERIC_TLDS`, `NEWER_COUNTRY_TLDS` (IANA's top-level
+  domains twitter-text's lists lack, read by `findUrls(text, true)`).
 - `src/shared/publish/tlds.ts`: `X_GENERIC_TLDS`, `X_COUNTRY_TLDS` (twitter-text's lists, in its
   order); `src/shared/publish/twemoji.ts`: `TWEMOJI` (twemoji-parser 11.0.2's pattern, MIT).
 - `scripts/build-link-oracle.mjs`: writes `tests/fixtures/x-links.json` from the integrity-checked
@@ -504,7 +552,8 @@ Unit (vitest, each failing without its code):
   addresses, `@`, `#`, `$`, ports, punycode, zero-width and combining marks, full-width dots), which
   `scripts/build-link-oracle.mjs` writes from the packages themselves, each checked against the npm
   registry's integrity; the fast match finder equals twitter-text's own loop on seeded random texts.
-- `publishFindings.test.ts`: one test per problem the second review confirmed (17).
+- `publishFindings.test.ts`: one test per problem the second review confirmed (17);
+  `publishReview3.test.ts`: one per problem the third confirmed (15, two of them the same).
 - `publishProperty.test.ts`: 3 000 seeded texts, ordinary and hostile, through every task and the
   cards: no link the transcript, name and chapter titles lack, and no letter of ordinary text lost;
   the worst texts (10 000 dots, nested brackets, long queries, links in links) cleaned in tens of ms.
@@ -557,20 +606,32 @@ Where the build differs from or adds to the sections above:
   ordinary words X does not link or that only look like names (`TP.Thủ Đức` lost `TP.Th`,
   `wei.wang@acme.com` its name, `my_model.fit` its tail, `m.in.` everything). The pattern is gone:
   links are found with the port of twitter-text, the cleaning reads its own result again until
-  nothing is left, and a bare name loses no letter. As a result:
+  nothing is left, and a bare name loses no letter. A third review found that this still let through
+  what other sites link where X does not (after `$`, `/．`, `「`, `//`, before `@`, on newer
+  top-level domains, a host in full-width letters, a said link with `%2e…` or `:port@…` after it, a
+  last resort that deleted dots and so joined `paypal..com` into a link), and that the AI's chapter
+  titles were trusted as typed; and that a said link was deleted when written with or without
+  `https://`, with a word's ending, or glued to a long run of Chinese, Japanese or Thai text. So
+  links are also read as other sites read them, a scheme's host as a browser reads it, a broken name
+  gets a no-break space (which no later cut takes for a sentence end), a bare name with a path is
+  broken rather than removed, and the last resort only adds. As a result:
   - code and file names on a top-level domain are broken where X would link them, the rest as written
-    (`e. target.value`, `Date. now()`, `form. is_valid()`, `README. md`, `logo. ai`, `settings. py`).
+    (`e. target.value`, `Date. now()`, `form. is_valid()`, `README. md`, `logo. ai`, `settings. py`;
+    the space is a no-break space).
     *A file name the transcript does not say is broken like any other bare name* (it used to keep
     its stem only): one rule for every bare name, no letter lost, and the user sees at once what to
     join again; the transcript saying it (`recording.mov`) keeps it whole.
   - a link inside the brackets or query of one the transcript says goes on its own
-    (`flown.app(evil.com/login)` → `flown.app()`, `flown.app?next=https://evil.com/login` →
-    `flown.app?next=`).
-  - e-mail addresses, `#ASP.NET`, `$evil.com`, `my_model.fit`, `src/main.rs` and `~/Movies/recording.mov`
-    stay as written: X links nothing there. Where X does link part of an address (`wei.wang` in
-    `wei.wang.li@acme.com`) that part is broken.
+    (`flown.app(evil.com/login)` → `flown.app(evil. com/login)`, `flown.app?next=https://evil.com/login`
+    → `flown.app?next=`).
+  - e-mail addresses, `my_model.fit`, `src/main.rs` and `~/Movies/recording.mov` stay as written: no
+    site links there. Where X does link part of an address (`wei.wang` in `wei.wang.li@acme.com`)
+    that part is broken. `$evil.com` and an unsaid `#ASP.NET` are broken (X's cashtag and hashtag
+    rules are its own: markdown-it's linkifier links both), losing no letter.
   - a link glued to Chinese, Japanese, Korean or Thai text ends where X ends it: `詳細はevil.icuで`
-    becomes `詳細はevil. icuで`, `ログインはevil.de/loginから。` becomes `ログインはから。`.
+    becomes `詳細はevil. icuで`, `ログインはevil.de/loginから。` becomes `ログインはevil. de/loginから。`.
+  - slash-joined names (`ASP.NET/C#`, `README.md/CHANGELOG.md`) are one name with a path for X:
+    broken, every letter kept.
   - names in other scripts that X links only after a scheme (`госуслуги.рф`, `г.Москва`) are broken
     too (`г. Москва`), as other sites may link them.
   - the Kelvin sign is `K` after NFC, so `evil.comK` (with it) is one word, as X reads it.
@@ -578,7 +639,8 @@ Where the build differs from or adds to the sections above:
 - **What the user typed is trusted like the transcript.** The recording's name and chapter titles go
   to the provider as typed (one line, capped, control characters removed: `readPackContext`), and an
   answer may keep a link they have (`trustedText`), in the pack's items and in the title and summary
-  cards.
+  cards. What an AI suggests for them (*Suggest chapters*, the title for *Rename the recording*) loses
+  in main the links its captions lack, so the project holds no link nobody said.
 - **Emphasis is removed only as pairs around words** (§4.4): `__this__` (one word, written as
   `__init__` is) stays.
 - **Speed.** twitter-text takes time quadratic in a long run of name characters with dots (Chinese or
