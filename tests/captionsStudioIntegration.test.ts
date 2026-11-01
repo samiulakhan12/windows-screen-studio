@@ -255,6 +255,22 @@ describe('Bangla edges (§0.2: outlines about 0.08 em, thinner than Latin, with 
     expect(edges('CHROME').length).toBeGreaterThan(0)
     for (const e of edges('CHROME')) expect(e.outline).toBeCloseTo(0.17, 3)
   })
+
+  it('Bangla in a look without a shadow (Circle) gets a soft shadow with its thinner outline; English keeps none', () => {
+    sets.length = 0
+    const p = project([caption('আমরা আজ শিখব')], 'bn', { studio: look('circle') })
+    for (const t of [1, 2.8]) drawStudioCaptions(frameOf(p, t).fc)
+    for (const word of ['আমরা', 'শিখব']) {
+      expect(edges(word).length, word).toBeGreaterThan(0)
+      for (const e of edges(word)) expect(e, word).toEqual({ outline: expect.closeTo(0.08, 3), shadow: true })
+    }
+    calls.length = 0
+    sets.length = 0
+    STUDIO_SPRITES.clear()
+    drawStudioCaptions(frameOf(project([caption('We learn today')], 'en', { studio: look('circle') }), 1.5).fc)
+    expect(edges('learn').length).toBeGreaterThan(0)
+    for (const e of edges('learn')) expect(e).toEqual({ outline: expect.closeTo(0.14, 3), shadow: false })
+  })
 })
 
 describe('key presses keep clear of a block P1 placed (test 54 on the real layout)', () => {

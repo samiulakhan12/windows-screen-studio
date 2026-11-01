@@ -32,7 +32,7 @@ import { captionPoses, clipsKey, EASE, flashSafeChunks, seedOf, typewriterClip, 
 import { replacedAt } from '../../../shared/captions/replaced'
 import { speakersOf, STEM_SPEAKERS } from '../../../shared/captions/speakers'
 import { captionObstacles, fitChunk, placeStudio, studioChunkAt, studioLayout, type CaptionObstacles, type StudioChunk, type StudioFace, type StudioLayout, type StudioLine, type StudioWordBox } from '../../../shared/captions/studioLayout'
-import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
+import { SHADOW_CHIPS, STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { prefixDrawsSame, scriptsIn, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
@@ -718,7 +718,8 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   // No outline on words over a marker or box (the mark is their background), nor on the spoken box.
   const onMark = (emph && markOnBox) || (lit && boxedSpoken && box.kind !== 'word')
   const outline = !hollow && !onMark && outlineEm > 0 && edge.outlineAlpha > 0 ? { width: 2 * outlineEm * em * grow, color: rgba(theme.outline, edge.outlineAlpha) } : null
-  const sh = edge.shadow
+  // §0.2: Bangla's thinner outline comes with a soft shadow; a look without a shadow of its own lends it the Soft one.
+  const sh = edge.shadow && edge.shadow.alpha > 0 ? edge.shadow : outline && outlineEm < edge.outline ? SHADOW_CHIPS.soft : edge.shadow
   const shadow = hollow
     ? { x: 0, y: 0, blur: 0.1 * em * grow, color: rgba('#000000', 0.6) }
     : sh && sh.alpha > 0 && !onMark
