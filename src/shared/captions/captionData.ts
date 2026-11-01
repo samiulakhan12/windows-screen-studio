@@ -4,7 +4,7 @@
  * project (engine/project.ts) and for what a provider returns (the Captions tab), like
  * engine/titleData.ts for title cards.
  */
-import { EVERY_LINK, sliceAt } from '../publish/text'
+import { sliceAt } from '../publish/text'
 import type { CaptionSegment, CaptionWord, Transcript } from '../types'
 
 /** Shortest caption kept, seconds. */
@@ -21,11 +21,7 @@ const LANGUAGE = /^[a-z]{2,3}(-[a-z0-9]{1,8})*$/i
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
-/**
- * Caption text as stored and drawn: one line (control characters and line breaks become spaces),
- * single spaces, trimmed, at most CAPTION_MAX_CHARS; a cut makes no link the text did not have
- * (sliceAt: "…paypal-login.comfy" cut after "com" is not paypal-login.com).
- */
+/** Caption text as stored and drawn: one line (control characters and line breaks become spaces), single spaces, trimmed, at most CAPTION_MAX_CHARS (sliceAt). */
 export const cleanCaptionText = (text: string): string =>
   sliceAt(
     text
@@ -34,6 +30,12 @@ export const cleanCaptionText = (text: string): string =>
       .trim(),
     CAPTION_MAX_CHARS
   )
+
+/**
+ * CaptionSegment.aiLinks of a caption an AI wrote more links into than a caption records (or whose
+ * record could not be read whole): every link of its text is the AI's.
+ */
+export const EVERY_LINK = '*'
 
 /** Most links one caption records as written by an AI (CaptionSegment.aiLinks); with more, it records EVERY_LINK. */
 export const MAX_AI_LINKS = 100
@@ -45,9 +47,8 @@ export function capAiLinks(keys: readonly string[]): string[] {
 }
 
 /**
- * A caption's stored aiLinks (capAiLinks); null when there are none. Never cut short, as the pack
- * would trust the links it lost: a list that is too long, or has an item that is not a string of 1 to
- * 2 000 characters, is EVERY_LINK.
+ * A caption's stored aiLinks (capAiLinks); null when there are none. Never cut short: a list that is
+ * too long, or has an item that is not a string of 1 to 2 000 characters, is EVERY_LINK.
  */
 export function readAiLinks(raw: unknown): string[] | null {
   if (!Array.isArray(raw) || !raw.length) return null

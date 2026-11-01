@@ -9,7 +9,7 @@ import type { AiTextRequest, AiTextResult, PackTextTask } from '../api/ai'
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
 import type { CaptionSegment } from '../types'
 import type { PublishLength, PublishTone } from './pack'
-import { cutAt, fitX, plainText, trustedText, typedText, unsaidLinks, X_LIMIT, type PlainTextOptions } from './text'
+import { cutAt, fitX, plainText, typedText, X_LIMIT } from './text'
 
 /** Longest transcript sent in one request (characters, about an hour of speech); longer ones are sent as excerpts. */
 export const PACK_TRANSCRIPT_MAX = 60_000
@@ -121,7 +121,7 @@ const typedLine = (v: unknown, max: number): string => (typeof v === 'string' ? 
 /**
  * The context as sent: the recording's name and chapter titles as the user typed them, one line each,
  * capped (main checks it again in validateTextRequest). They are data in the JSON block (§4.1), so
- * nothing in them is removed; their links may be in the answers (trustedText).
+ * nothing in them is removed; what they say counts as said for the check (check.ts saidLinks).
  */
 export function readPackContext(raw: unknown): { title?: string; chapters?: string[] } | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
@@ -166,27 +166,20 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
-/** A tag on one line, its spaces single: cleaned with `opts` (plainText). */
-const tagText = (t: string, opts: Omit<PlainTextOptions, 'max' | 'oneLine'>): string =>
-  plainText(t, { ...opts, max: 200, oneLine: true })
+/** A tag on one line, its spaces single (plainText). */
+const tagText = (t: string): string =>
+  plainText(t, { max: 200, oneLine: true })
     .replace(/\s+/g, ' ')
     .trim()
 
-/**
- * Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters (as written:
- * breaking a name never drops a tag), distinct, 400 characters together. Links `linksFrom` does not
- * have, or `untrusted` ones, are removed or broken ("ASP.NET" stays when it was said), after those
- * characters are, so taking them out makes no link.
- */
-export function cleanTags(raw: unknown, linksFrom = '', untrusted: readonly string[] = []): string[] {
+/** Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters, distinct, 400 characters together. */
+export function cleanTags(raw: unknown): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   let total = 0
   for (const t of strings(raw)) {
-    const bare = t.replace(/[<>#,]/g, '')
-    if ([...tagText(bare, { keepLinks: true })].length > PACK_CAPS.tagLength) continue
-    const tag = tagText(bare, { linksFrom, untrusted })
-    if (!tag || seen.has(tag.toLowerCase())) continue
+    const tag = tagText(t.replace(/[<>#,]/g, ''))
+    if (!tag || [...tag].length > PACK_CAPS.tagLength || seen.has(tag.toLowerCase())) continue
     if (total + tag.length + (out.length ? 1 : 0) > PACK_CAPS.tagsTotal) break
     seen.add(tag.toLowerCase())
     out.push(tag)
@@ -196,7 +189,7 @@ export function cleanTags(raw: unknown, linksFrom = '', untrusted: readonly stri
   return out
 }
 
-/** A step without the numbering or bullet the model may have added (taken off before cleaning, so taking it off makes no link). */
+/** A step without the numbering or bullet the model may have added. */
 const bareStep = (s: string): string => s.trim().replace(/^(?:\d+[.)]|[-*•])\s+/, '')
 /** A title or heading without the "#" the model may have added. */
 const bareHeading = (s: string): string => s.trim().replace(/^#+\s*/, '')
@@ -228,21 +221,19 @@ export function renderReleaseNotes(n: { title: string; summary: string; items: {
 }
 
 /**
- * The checked, cleaned answer to pack task `task` (§4.3). `transcript` is the text that was sent and
- * `context` the name and chapter titles: a link neither has, or an `untrusted` one (written into the
- * captions by an AI: unsaidLinks), is removed or broken (plainText). Throws AiOutputError when
- * nothing usable came back.
+ * The checked, cleaned answer to pack task `task` (§4.3): the schema's fields, capped and cleaned
+ * (plainText). No character changes because of a link: what nobody said is noted where the text is
+ * shown and confirmed before it is used (check.ts). Throws AiOutputError when nothing usable came back.
  */
-export function validatePackAnswer(task: PackTextTask, answer: unknown, transcript: string, context?: { title?: string; chapters?: string[] }, untrusted: readonly string[] = []): AiTextResult {
+export function validatePackAnswer(task: PackTextTask, answer: unknown): AiTextResult {
   if (!isObject(answer)) throw new AiOutputError('no answer')
-  const linksFrom = trustedText(transcript, context)
-  const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine, linksFrom, untrusted })
+  const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine })
   switch (task) {
     case 'youtube': {
       if (typeof answer.description !== 'string' || !Array.isArray(answer.tags)) throw new AiOutputError('no description or tags')
       const description = text(answer.description, PACK_CAPS.youtubeText)
       if (!description) throw new AiOutputError('an empty description')
-      return { task, text: description, tags: cleanTags(answer.tags, linksFrom, untrusted) }
+      return { task, text: description, tags: cleanTags(answer.tags) }
     }
     case 'linkedin':
     case 'xpost': {
@@ -266,7 +257,7 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
       }
       if (!sections.length) throw new AiOutputError('no steps')
       const title = text(bareHeading(answer.title), PACK_CAPS.title, true) || 'How to'
-      // Cut and read once more as a whole, as it is pasted: putting the parts together makes no link.
+      // Cut once more as a whole.
       return { task, text: text(renderArticle({ title, intro: text(answer.intro, PACK_CAPS.intro), sections }), PACK_CAPS.article) }
     }
     case 'releaseNotes': {
@@ -281,14 +272,12 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
       }
       if (!items.length) throw new AiOutputError('no changes listed')
       const title = text(answer.title, PACK_CAPS.title, true) || 'Release notes'
-      // Read once more as a whole (the parts' caps keep it short): putting them together makes no link.
       return { task, text: text(renderReleaseNotes({ title, summary: text(answer.summary, PACK_CAPS.summary), items }), Infinity) }
     }
   }
 }
 
-/** Runs pack task `request.task` with `ask` (one request) and checks the answer: no link an AI wrote into the captions is trusted (unsaidLinks). */
+/** Runs pack task `request.task` with `ask` (one request) and checks the answer. */
 export async function runPackTask(request: AiTextRequest & { task: PackTextTask }, ask: (prompt: TextPrompt) => Promise<unknown>): Promise<AiTextResult> {
-  const sent = packTranscript(request.segments)
-  return validatePackAnswer(request.task, await ask(packPrompt(request, sent)), sent.text, request.context, unsaidLinks(request.segments, request.context))
+  return validatePackAnswer(request.task, await ask(packPrompt(request)))
 }

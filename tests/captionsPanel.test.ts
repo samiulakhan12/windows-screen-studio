@@ -163,6 +163,9 @@ vi.doMock('react', async (importOriginal) => ({
   useContext: () => editor
 }))
 
+// Tab and Esc in the link check's confirm are not what is tested, and the hook reads the real document.
+vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () => undefined }))
+
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/editor/panels/CaptionsPanel'
 const ITEMS = '../src/renderer/src/editor/captionItems'
@@ -1326,8 +1329,8 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
   let m: Mods
   const segments = [{ id: 'a', start: 0, end: 1, text: 'hi' }]
   // The AI tools section is called as well (left unrendered in the tests above).
-  beforeAll(() => void RENDERED.add('AiToolsSection'))
-  afterAll(() => void RENDERED.delete('AiToolsSection'))
+  beforeAll(() => void ['AiToolsSection', 'NotedConfirm'].forEach((name) => RENDERED.add(name)))
+  afterAll(() => void ['AiToolsSection', 'NotedConfirm'].forEach((name) => RENDERED.delete(name)))
   beforeEach(async () => {
     m = await fresh()
     aiAsked.length = 0
@@ -1380,7 +1383,13 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(aiAsked).toHaveLength(3)
   })
 
-  it('a suggested summary with a link nobody said shows the safety net\'s note, and Copy says it (publish-pack §4.8)', async () => {
+  /** The link check's confirm (publish-pack §4.8): the pieces it lists, or null when none shows. */
+  const confirmItems = (out: El[]): string[] | null => {
+    const box = byTest(out, 'publish-confirm')[0]
+    return box ? descendants(box).filter((e) => e.type === 'li').map((li) => textOf(li.props.children)) : null
+  }
+
+  it('a suggested summary with a link nobody said shows the note, and Copy asks first (publish-pack §4.8)', async () => {
     let clipboardText = ''
     // The clipboard (only for this test: the window stub stays).
     const navigatorBefore = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
@@ -1393,18 +1402,27 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     let out = await answer(0, { task: 'summary', text: 'Grab the project at ログインflown.jp/download today.' })
     const note = byTest(out, 'publish-check')
     expect(note.map((n) => textOf(n.props.children))).toEqual([
-      "Check this link before you post:ログインflown.jp/downloadIt is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+      "Check this before you post:ログインflown.jp/downloadIt has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
     ])
     expect(note[0].props.role).toBe('note')
     const copy = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Copy') as El
     expect(copy.props['aria-describedby']).toBe(note[0].props.id)
     panelNotices.length = 0
     click(out, 'Copy')
+    out = render(m.panel)
+    expect(confirmItems(out)).toEqual(['… project at ログインflown.jp/download today.'])
+    expect(clipboardText).toBe('')
+    click(out, 'Cancel')
+    out = render(m.panel)
+    expect(confirmItems(out)).toBeNull()
+    click(out, 'Copy')
+    out = render(m.panel)
+    click(out, 'Copy anyway')
     await flush()
-    // Copied as written, with the note said.
+    // Copied as written.
     expect(clipboardText).toBe('Grab the project at ログインflown.jp/download today.')
-    expect(panelNotices).toEqual(['Summary copied. Check this link before you post: ログインflown.jp/download'])
-    // The said link needs no note.
+    expect(panelNotices).toEqual(['Summary copied'])
+    // The said link needs no note, and is copied at once.
     command('summary')
     out = await answer(1, { task: 'summary', text: 'Grab the project at flown.jp/download today.' })
     expect(byTest(out, 'publish-check')).toEqual([])
@@ -1414,25 +1432,64 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(panelNotices).toEqual(['Summary copied'])
   })
 
-  it('a suggested title with a link nobody said shows the note, and Rename the recording is not offered for it (publish-pack §4.8)', async () => {
+  it('a suggested title with a link nobody said shows the note, and Rename the recording asks first; the note describes its buttons (publish-pack §4.8)', async () => {
     const said = [{ id: 'a', start: 0, end: 5, text: 'You can download it from github.com/flown/recorder or from flown.app.' }]
     store.state = { ...store.state, name: 'Demo', transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
     await show()
     command('title')
     let out = await answer(0, { task: 'title', text: 'Get it at 登录github.com/flown/recorder' })
-    expect(byTest(out, 'publish-check').map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this link before you post:登录github.com/flown/recorder')])
-    const rename = (els: El[]): El => els.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Rename the recording') as El
-    expect(rename(out).props.disabled).toBe(true)
-    expect(rename(out).props['aria-describedby']).toBe('captions-title-check')
-    // A title with the said link, or glued to Chinese text where no site reads a longer name, is offered.
-    for (const [i, text] of [[1, 'Get it at github.com/flown/recorder'], [2, '用flown.app轻松录制屏幕']] as const) {
-      command('title')
-      out = await answer(i, { task: 'title', text })
-      expect(byTest(out, 'publish-check')).toEqual([])
-      expect(rename(out).props.disabled).toBe(false)
-    }
+    expect(byTest(out, 'publish-check').map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this before you post:登录github.com/flown/recorder')])
+    const button = (els: El[], label: string): El => els.find((e) => e.type === 'button' && textOf(e.props.children).trim() === label) as El
+    // Focusable, with the note as its description, as is Dismiss.
+    expect(button(out, 'Rename the recording').props.disabled).toBeUndefined()
+    expect(button(out, 'Rename the recording').props['aria-describedby']).toBe('captions-title-check')
+    expect(button(out, 'Dismiss').props['aria-describedby']).toBe('captions-title-check')
     click(out, 'Rename the recording')
-    expect(store.state.name).toBe('用flown.app轻松录制屏幕')
+    out = render(m.panel)
+    expect(confirmItems(out)).toEqual(['Get it at 登录github.com/flown/recorder'])
+    click(out, 'Cancel')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Demo')
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Get it at 登录github.com/flown/recorder')
+    // A title with the said link is renamed at once.
+    command('title')
+    out = await answer(1, { task: 'title', text: 'Get it at github.com/flown/recorder' })
+    expect(byTest(out, 'publish-check')).toEqual([])
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(confirmItems(out)).toBeNull()
+    expect(store.state.name).toBe('Get it at github.com/flown/recorder')
+  })
+
+  it('suggested chapters with a link nobody said in a title are asked about before they are added (publish-pack §4.8)', async () => {
+    const said = [
+      { id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' },
+      { id: 'b', start: 30, end: 35, text: 'Then open the settings.' }
+    ]
+    store.state = { ...store.state, chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    command('chapters')
+    let out = await answer(0, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] })
+    expect(confirmItems(out)).toEqual(['… Sign in at paypal-login.com'])
+    expect((store.state.chapters as unknown[]).length).toBe(0)
+    click(out, 'Cancel')
+    out = render(m.panel)
+    expect((store.state.chapters as unknown[]).length).toBe(0)
+    command('chapters')
+    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] })
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Sign in at paypal-login.com'])
+    // Chapters with only what was said are added at once.
+    store.state = { ...store.state, chapters: [] }
+    command('chapters')
+    out = await answer(2, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Settings' }] })
+    expect(confirmItems(out)).toBeNull()
+    expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Settings'])
   })
 
   it('brings the AI tools into view, where the work and its answer show', async () => {

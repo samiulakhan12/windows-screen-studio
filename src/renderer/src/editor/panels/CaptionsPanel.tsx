@@ -11,7 +11,7 @@ import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
-import { linksToCheck } from '../../../../shared/publish/check'
+import { linksToCheck, notedPieces, type Said } from '../../../../shared/publish/check'
 import type { CaptionPreset, CaptionSegment, CaptionSettings, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { SearchIcon } from '../CommandPalette'
@@ -34,7 +34,7 @@ import { FontPicker } from './FontPicker'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
-import { checkNote, checkText, projectSaid } from '../../publish/checkNote'
+import { checkNote, NotedConfirm, projectSaid, type NotedAsk } from '../../publish/checkNote'
 import { LOCAL_TRANSCRIBER_ID } from '../../../../shared/api/speech'
 import { BANGLA_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
 import { doneLine, downloadSpaceNeeded, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
@@ -1032,15 +1032,20 @@ function AiToolsSection({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
   const [summary, setSummary] = useState<string | null>(null)
-  // The safety net (publish-pack §4.8) reads a suggested title and summary as the Publish dialog reads its cards: a
-  // title it notes is not offered as the recording's name (which is trusted as typed), and Copy says what to check.
-  const project = store.state
-  const said = useMemo(
-    () => (title || summary ? projectSaid(project) : null),
-    [title, summary, project.transcript, project.clips, project.freezes, project.chapters, project.name] // eslint-disable-line react-hooks/exhaustive-deps
-  )
+  // The link check (publish-pack §4.8) reads a suggested title and summary as the Publish dialog reads its cards. What
+  // was said is read once, when the answer comes (the note speaks for the captions it was written from), never while
+  // the captions are edited or dragged; Rename and Copy read it again, and ask first when the check notes anything.
+  const [said, setSaid] = useState<Said | null>(null)
   const titleChecks = useMemo(() => (title && said ? linksToCheck(title, said) : []), [title, said])
   const summaryChecks = useMemo(() => (summary && said ? linksToCheck(summary, said) : []), [summary, said])
+  const [ask, setAsk] = useState<NotedAsk | null>(null)
+  /** Runs `run` at once when `text` has nothing the check notes against what is said now, else after the confirm. */
+  const confirmed = (what: string, action: NotedAsk['action'], text: string, run: () => void): void => {
+    const pieces = notedPieces(text, projectSaid(store.state))
+    if (pieces.length && live.current) setAsk({ what, action, text, pieces, run })
+    else if (!pieces.length) run()
+    else onNotice(`${what}: not used, as it has a link nobody said. Run it again with the Captions tab open.`)
+  }
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   const live = useRef(true)
@@ -1093,16 +1098,25 @@ function AiToolsSection({
       const existing = store.state.chapters ?? []
       const added = found.filter((c, i) => !chapterNear(existing, c.t) && !found.slice(0, i).some((d) => Math.abs(d.t - c.t) < 0.1)).map((c) => createChapter(c.t, c.title))
       if (!added.length) return fail(found.length ? 'The suggested chapters are already there.' : 'The provider suggested no chapters.')
-      store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
-      onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
+      // Chapter titles count as said once they are the recording's: asked about first when the check notes anything in them.
+      confirmed('Suggested chapters', 'Use anyway', added.map((c) => c.title).join('\n'), () => {
+        store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
+        onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
+      })
     } else if (result.task === 'title') {
       const text = readSuggestedText('title', result.text)
       if (!text) return fail('The provider suggested no title.')
-      if (live.current) setTitle(text)
+      if (live.current) {
+        setSaid(projectSaid(store.state))
+        setTitle(text)
+      }
     } else if (result.task === 'summary') {
       const text = readSuggestedText('summary', result.text)
       if (!text) return fail('The provider wrote no summary.')
-      if (live.current) setSummary(text)
+      if (live.current) {
+        setSaid(projectSaid(store.state))
+        setSummary(text)
+      }
     }
   }
 
@@ -1176,21 +1190,23 @@ function AiToolsSection({
               <p>
                 Suggested title: <strong>{title}</strong>
               </p>
-              {said && checkNote(titleChecks, said, 'captions-title-check')}
+              {checkNote(titleChecks, 'captions-title-check')}
               <div className="row start">
                 <button
                   className="btn small primary"
-                  disabled={titleChecks.length > 0}
                   aria-describedby={titleChecks.length ? 'captions-title-check' : undefined}
-                  onClick={() => {
-                    store.update((p) => ({ ...p, name: title }))
-                    setTitle(null)
-                    onNotice('Recording renamed')
-                  }}
+                  onClick={() =>
+                    // The name counts as said once it is the recording's: asked about first when the check notes anything in it.
+                    confirmed('Suggested title', 'Use anyway', title, () => {
+                      store.update((p) => ({ ...p, name: title }))
+                      setTitle(null)
+                      onNotice('Recording renamed')
+                    })
+                  }
                 >
                   Rename the recording
                 </button>
-                <button className="btn small ghost" onClick={() => setTitle(null)}>
+                <button className="btn small ghost" aria-describedby={titleChecks.length ? 'captions-title-check' : undefined} onClick={() => setTitle(null)}>
                   Dismiss
                 </button>
               </div>
@@ -1200,23 +1216,23 @@ function AiToolsSection({
             <div className="captions-suggestion" role="status">
               <p>Summary:</p>
               <p className="captions-summary">{summary}</p>
-              {said && checkNote(summaryChecks, said, 'captions-summary-check')}
+              {checkNote(summaryChecks, 'captions-summary-check')}
               <div className="row start">
                 <button
                   className="btn small primary"
                   aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined}
-                  onClick={() => {
-                    // The safety net's note is said with the copy too, as the Publish dialog's Copy says it.
-                    const check = said ? checkText(summaryChecks, said) : ''
-                    void navigator.clipboard.writeText(summary).then(
-                      () => onNotice(check ? `Summary copied. ${check}` : 'Summary copied'),
-                      () => onNotice('The summary could not be copied')
-                    )
-                  }}
+                  onClick={() =>
+                    confirmed('Summary', 'Copy anyway', summary, () => {
+                      void navigator.clipboard.writeText(summary).then(
+                        () => onNotice('Summary copied'),
+                        () => onNotice('The summary could not be copied')
+                      )
+                    })
+                  }
                 >
                   Copy
                 </button>
-                <button className="btn small ghost" onClick={() => setSummary(null)}>
+                <button className="btn small ghost" aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined} onClick={() => setSummary(null)}>
                   Dismiss
                 </button>
               </div>
@@ -1228,6 +1244,7 @@ function AiToolsSection({
             </p>
           )}
           <p className="hint">Each tool sends the caption text (not the sound) to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'}. Undo reverts any change.</p>
+          {ask && <NotedConfirm ask={ask} onClose={() => setAsk(null)} />}
         </>
       )}
     </Section>

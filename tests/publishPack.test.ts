@@ -26,120 +26,27 @@ describe('plainText', () => {
     expect(plainText('**Two words** and __two words__.', { max: 100 })).toBe('Two words and two words.')
   })
 
-  it('removes links the transcript does not contain and keeps those it does', () => {
-    const text = 'See https://example.com/settings. Or www.evil.example/x and http://evil.example?a=1'
-    expect(plainText(text, { max: 200, linksFrom: TRANSCRIPT })).toBe('See https://example.com/settings. Or and')
-    expect(plainText(text, { max: 200 })).toBe('See . Or and')
-    expect(plainText(text, { max: 200, keepLinks: true })).toBe(text)
-    // Glued to a word: still links (sites link them), still removed. A bare name, with its path, is broken.
-    expect(plainText('Sign up at _https://evil.example/login or 1https://x.example and evil.com/login, mail@evil.com', { max: 200, linksFrom: '' })).toBe(
-      'Sign up at _ or 1 and evil.\u00a0com/login, mail@evil.com'
-    )
-    expect(plainText('Say example.com now', { max: 200, linksFrom: 'go to example.com.' })).toBe('Say example.com now')
-    // Words with dots that are not links stay.
-    expect(plainText('Node.js, e.g. v1.2 and file.txt', { max: 200 })).toBe('Node.js, e.g. v1.2 and file.txt')
-    // Only the very same link: a shorter one that is part of it can be another site.
-    expect(plainText('Go to https://example.co or https://EXAMPLE.com/settings', { max: 200, linksFrom: TRANSCRIPT })).toBe('Go to or https://EXAMPLE.com/settings')
-  })
-
-  it('breaks a bare name, with its path, on any top-level domain X links', () => {
-    const none = { max: 200, linksFrom: 'Heute zeige ich den Export.' }
-    expect(plainText('Visit evil.de/login now', none)).toBe('Visit evil.\u00a0de/login now')
-    for (const link of ['is.gd/abc123', 'rb.gy/abc', 'goo.gl/abc', 'youtu.be/abc', 'shorturl.at/abc', 'evil.studio/login']) expect(plainText(`See ${link}.`, none)).toBe(`See ${link.replace('.', '.\u00a0')}.`)
-    // A bare name: a no-break space after its dots, so no letter is lost and nothing links it.
-    expect(plainText('Watch at evil.tv, evil.cloud or evil.eu', none)).toBe('Watch at evil.\u00a0tv, evil.\u00a0cloud or evil.\u00a0eu')
-    for (const tld of ['in', 'jp', 'pl', 'se', 'to', 'pw', 'su', 'ws', 'fm', 'icu', 'sbs', 'cfd', 'studio', 'lol', 'win']) {
-      expect(plainText(`Visit evil.${tld} now`, none)).toBe(`Visit evil.\u00a0${tld} now`)
-      expect(xLength(`Visit evil.${tld} now`)).toBe(6 + 23 + 4)
+  it('changes no character because of a link: links, names, addresses and code stay as written (the check notes them: §4.8)', () => {
+    const texts = [
+      'See https://example.com/settings. Or www.evil.example/x and http://evil.example?a=1',
+      'Sign up at _https://evil.example/login or 1https://x.example and evil.com/login, mail@evil.com',
+      'Visit evil.de/login now, evil.tv, evil.cloud or evil.eu; is.gd/abc123 and youtu.be/abc.',
+      'Log in at evil.pw:8080/login or flown.co.uk/help. See evil.co.in, evil.com.br and evil.co.jp.',
+      'Node.js and settings.py, e.g. v1.2 in file.txt. Save captions.srt and README.md, run install.sh, open Main.java',
+      'Built with Next.js/React. Read e.target.value; use Date.now() and DateTime.Now. Try flown.studio?ref=yt now.',
+      '新しい書き出し機能です。詳細はevil.icuで確認してください。ログインはevil.de/loginから。',
+      '詳しくはhttps://evil.example/loginをご覧ください。官网https://flown.app，先打开README.md。',
+      'Скачайте paypal.comы сейчас. היכנס לevil.comעכשיו. এখনই flown.appএ যান! Мы снимали в г.Москва, госуслуги.рф',
+      '如有问题请联系 anna.li@acme.de，我们会尽快回复。문의는 anna.li@acme.de로 보내주세요!'
+    ]
+    for (const text of texts) {
+      expect(plainText(text, { max: 400 })).toBe(text)
+      expect(validatePackAnswer('linkedin', { text })).toEqual({ task: 'linkedin', text })
     }
-    // With a port, and a longer domain: at each dot.
-    expect(plainText('Log in at evil.pw:8080/login or evil.de:8080/login now', none)).toBe('Log in at evil.\u00a0pw:8080/login or evil.\u00a0de:8080/login now')
-    expect(plainText('Help: flown.co.uk/help and flown.co.uk', none)).toBe('Help: flown.\u00a0co.\u00a0uk/help and flown.\u00a0co.\u00a0uk')
-    expect(plainText('See evil.co.in, evil.com.br and evil.co.jp.', none)).toBe('See evil.\u00a0co.\u00a0in, evil.\u00a0com.\u00a0br and evil.\u00a0co.\u00a0jp.')
-    // Kept when the transcript says it.
-    expect(plainText('Mehr unter flown.de/hilfe.', { max: 200, linksFrom: 'Mehr unter flown.de/hilfe' })).toBe('Mehr unter flown.de/hilfe.')
-    // Words with dots on no top-level domain stay. A file name on one stays when the transcript says it, else it is broken as any bare name is.
-    expect(plainText('Node.js and settings.py, e.g. v1.2 in file.txt', none)).toBe('Node.js and settings.\u00a0py, e.g. v1.2 in file.txt')
-    const files = 'Save captions.srt and README.md, run install.sh, open Main.java'
-    expect(plainText(files, none)).toBe('Save captions.\u00a0srt and README.\u00a0md, run install.\u00a0sh, open Main.\u00a0java')
-    expect(plainText(files, { max: 200, linksFrom: `Now ${files.toLowerCase()}.` })).toBe(files)
+    // Words with dots that are not links stay too.
+    expect(plainText('Node.js, e.g. v1.2 and file.txt', { max: 200 })).toBe('Node.js, e.g. v1.2 and file.txt')
     // X counts them as links.
     expect(xLength('Go to evil.de/login')).toBe(6 + 23)
-  })
-
-  it('keeps names joined by a slash, which are on no top-level domain', () => {
-    const none = { max: 200, linksFrom: 'Heute zeige ich den Export.' }
-    for (const text of ['Built with Next.js/React and Node.js/Deno.', 'Edit index.html/style.css next.', 'Use package.json/tsconfig.json', 'Use Vue.js/Nuxt.js together', 'Install Node.js/npm']) {
-      expect(plainText(text, none)).toBe(text)
-    }
-    // Not a link for X either: counted by its characters.
-    expect(xLength('Built with Next.js/React and Node.js/Deno.')).toBe(42)
-    const yt = validatePackAnswer('youtube', { description: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind', 'evil.icu'] }, 'Heute zeige ich den Export.')
-    expect(yt).toEqual({ task: 'youtube', text: 'Set up a Next.js/Tailwind project.', tags: ['Next.js/Tailwind', 'evil. icu'] })
-  })
-
-  it('breaks the name X links in code, keeping the code and its letters', () => {
-    const none = { max: 200, linksFrom: 'Today I show the handler.' }
-    // X links "e.target", "Date.now", "element.style": a space after their dot, the rest as written.
-    expect(plainText('Read e.target.value in the handler.', none)).toBe('Read e.\u00a0target.value in the handler.')
-    expect(plainText('Use Date.now() to time it, or Date.now().toString().', none)).toBe('Use Date.\u00a0now() to time it, or Date.\u00a0now().toString().')
-    expect(plainText('Change element.style.color to red. Use player.audio.volume.', none)).toBe('Change element.\u00a0style.color to red. Use player.\u00a0audio.volume.')
-    expect(plainText('Use DateTime.Now and Task.Run(Work) in C#. Then call requests.post(url, data) and self.name.', none)).toBe(
-      'Use DateTime.\u00a0Now and Task.\u00a0Run(Work) in C#. Then call requests.\u00a0post(url, data) and self.\u00a0name.'
-    )
-    // Without a path, X links the domain alone: its query stays, and nothing links it.
-    expect(plainText('Try it at flown.studio?ref=yt now (or flown.studio?ref=x).', none)).toBe('Try it at flown.\u00a0studio?ref=yt now (or flown.\u00a0studio?ref=x).')
-    expect(plainText('See evil.com.x, evil.com() or evil.com?', none)).toBe('See evil.\u00a0com.x, evil.\u00a0com() or evil.\u00a0com?')
-    const notes = validatePackAnswer('releaseNotes', { title: 'Fixes', summary: '', items: [{ kind: 'fixed', text: 'Fixed req.params.id being empty' }, { kind: 'new', text: 'Added DateTime.Now stamps' }] }, none.linksFrom)
-    expect(notes).toEqual({ task: 'releaseNotes', text: 'Fixes\n\nNew\n- Added DateTime.\u00a0Now stamps\n\nFixed\n- Fixed req.\u00a0params.\u00a0id being empty' })
-    // Said in the transcript: kept whole, also with more code after it than was said.
-    const said = { max: 200, linksFrom: 'Here e.target.value and date.now come in.' }
-    expect(plainText('Read e.target.value, e.target.checked and Date.now() now.', said)).toBe('Read e.target.value, e.target.checked and Date.now() now.')
-  })
-
-  it('finds a link glued to Chinese, Japanese or Korean text, and ends it where that text starts', () => {
-    const ja = { max: 200, linksFrom: '新しい書き出し機能です。録画して書き出すだけです。' }
-    expect(plainText('新しい書き出し機能です。詳細はevil.icuで確認してください。', ja)).toBe('新しい書き出し機能です。詳細はevil.\u00a0icuで確認してください。')
-    expect(plainText('新功能上线了。详情请访问evil.top了解更多。', ja)).toBe('新功能上线了。详情请访问evil.\u00a0top了解更多。')
-    expect(plainText('evil.com에서 확인하세요', ja)).toBe('evil.\u00a0com에서 확인하세요')
-    expect((validatePackAnswer('xpost', { text: '新しい書き出し機能です。詳細はevil.comで。' }, ja.linksFrom) as { text: string }).text).toBe('新しい書き出し機能です。詳細はevil.\u00a0comで。')
-    // With a path: the name alone is broken, and with a scheme the link alone goes, not the rest of the text.
-    expect(plainText('新しい書き出し機能です。ログインはevil.de/loginから。録画して書き出すだけです。', ja)).toBe('新しい書き出し機能です。ログインはevil.\u00a0de/loginから。録画して書き出すだけです。')
-    expect(plainText('詳しくはhttps://evil.example/loginをご覧ください。録画して書き出すだけです。', ja)).toBe('詳しくはをご覧ください。録画して書き出すだけです。')
-    // A link the transcript has is the same link there, so it stays.
-    const said = { max: 200, linksFrom: '新しい書き出し機能です。詳しくはflown.app/helpを見てください。' }
-    expect(plainText('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。', said)).toBe('詳しくはflown.app/helpをご覧ください。録画して書き出すだけです。')
-    // A host written in those languages after a scheme is still a link, which ends where X ends it (its path takes no Japanese).
-    expect(plainText('See https://例え.jp/パス now', ja)).toBe('See パス now')
-    // Domains the transcript never says, as a model might guess them or an injection add them.
-    const ko = '오늘은 Flown 앱을 소개합니다. 설치 파일을 내려받고 화면을 녹화해 보세요.'
-    expect((validatePackAnswer('xpost', { text: '지금 flown.app에서 내려받으세요!' }, ko) as { text: string }).text).toBe('지금 flown.\u00a0app에서 내려받으세요!')
-    expect((validatePackAnswer('xpost', { text: 'paypal-login.com에 로그인해서 확인하세요.' }, ko) as { text: string }).text).toBe('paypal-login.\u00a0com에 로그인해서 확인하세요.')
-    const ja0 = '今日はFlownアプリを紹介します。セットアップファイルをダウンロードして、画面を録画してみましょう。'
-    expect((validatePackAnswer('xpost', { text: '詳しくはpaypal.comへ。ログインして確認してください。' }, ja0) as { text: string }).text).toBe('詳しくはpaypal.\u00a0comへ。ログインして確認してください。')
-    expect((validatePackAnswer('xpost', { text: 'Flownアプリはflown.appからダウンロード！' }, ja0) as { text: string }).text).toBe('Flownアプリはflown.\u00a0appからダウンロード！')
-    expect((validatePackAnswer('linkedin', { text: '请访问evil.com下载安装包。' }, '今天我来介绍Flown应用。下载安装包，然后录制你的屏幕。') as { text: string }).text).toBe('请访问evil.\u00a0com下载安装包。')
-    // A said link with a path, glued to the text: the rest of the paragraph stays.
-    const jaSaid = 'ダウンロードは flown.app/download から。今日は録画の方法を説明します。'
-    const post = '新しいFlownが出ました。入手はflown.app/downloadから、今すぐ試してください。設定も簡単です。'
-    expect((validatePackAnswer('linkedin', { text: post }, jaSaid) as { text: string }).text).toBe(post)
-  })
-
-  it('finds a domain glued to a word of another script, which X links too', () => {
-    const none = { max: 200, linksFrom: 'Today I show the export.' }
-    expect(plainText('Скачайте paypal.comы сейчас', none)).toBe('Скачайте paypal.\u00a0comы сейчас')
-    expect(plainText('היכנס לevil.comעכשיו', none)).toBe('היכנס לevil.\u00a0comעכשיו')
-    expect(plainText('இப்போது evil.comஇல் பதிவிறக்கவும்', none)).toBe('இப்போது evil.\u00a0comஇல் பதிவிறக்கவும்')
-    expect(plainText('Login at evil.comé now', none)).toBe('Login at evil.\u00a0comé now')
-    const bn = 'আজ আমি Flown অ্যাপ দেখাব। ফাইল ডাউনলোড করে স্ক্রিন রেকর্ড করুন।'
-    expect((validatePackAnswer('xpost', { text: 'paypal-login.comএ লগইন করুন।' }, bn) as { text: string }).text).toBe('paypal-login.\u00a0comএ লগইন করুন।')
-    expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, bn) as { text: string }).text).toBe('এখনই flown.\u00a0appএ যান!')
-    // Said in the transcript: kept.
-    expect((validatePackAnswer('xpost', { text: 'এখনই flown.appএ যান!' }, 'আজ আমি Flown অ্যাপ দেখাব। flown.app এ যান।') as { text: string }).text).toBe('এখনই flown.appএ যান!')
-    // A name with no Latin letters on such a domain: X does not link it without a scheme, other sites
-    // may ("госуслуги.рф"), so it is broken too, losing no letter.
-    expect(plainText('предложение.сайтом конец', none)).toBe('предложение.\u00a0сайтом конец')
-    expect(plainText('Мы снимали в г.Москва, госуслуги.рф', none)).toBe('Мы снимали в г.\u00a0Москва, госуслуги.\u00a0рф')
   })
 
   it('makes one line when asked, and is empty for anything but a string', () => {
@@ -224,7 +131,7 @@ describe('xLength and fitX', () => {
     const body = '今日は新しいエクスポート機能を紹介します。設定を開いて保存を押すだけです。'.repeat(5)
     for (const post of [`新機能を紹介！ ${body} #新機能 #デモ`, `新機能を紹介！\n\n${body}\n\n#新機能`, `新功能介绍！\n${'只需打开设置并点击保存即可完成导出。'.repeat(10)}\n#新功能`]) {
       expect(xLength(post)).toBeGreaterThan(X_LIMIT)
-      const fitted = (validatePackAnswer('xpost', { text: post }, TRANSCRIPT) as { text: string }).text
+      const fitted = (validatePackAnswer('xpost', { text: post }) as { text: string }).text
       expect(xLength(fitted)).toBeLessThanOrEqual(X_LIMIT)
       expect(xLength(fitted)).toBeGreaterThan(X_LIMIT - 4)
       expect(fitted.endsWith('…')).toBe(true)
@@ -344,35 +251,23 @@ describe('packTranscript', () => {
 
 describe('validatePackAnswer', () => {
   it('checks and cleans a YouTube description and its tags', () => {
-    const r = validatePackAnswer('youtube', { description: '**Learn** how to add users.\u0000 Visit https://bad.example now.', tags: ['users', 'Users', '<b>admin</b>', '#tips', 'a,b', 'x'.repeat(31), 5, ''] }, TRANSCRIPT)
-    expect(r).toEqual({ task: 'youtube', text: 'Learn how to add users. Visit now.', tags: ['users', 'badmin/b', 'tips', 'ab'] })
-    expect(() => validatePackAnswer('youtube', { description: 'x' }, TRANSCRIPT)).toThrow(AiOutputError)
-    expect(() => validatePackAnswer('youtube', { description: ' ', tags: [] }, TRANSCRIPT)).toThrow(/empty description/)
+    const r = validatePackAnswer('youtube', { description: '**Learn** how to add users.\u0000 Visit https://bad.example now.', tags: ['users', 'Users', '<b>admin</b>', '#tips', 'a,b', 'x'.repeat(31), 5, ''] })
+    expect(r).toEqual({ task: 'youtube', text: 'Learn how to add users. Visit https://bad.example now.', tags: ['users', 'badmin/b', 'tips', 'ab'] })
+    expect(() => validatePackAnswer('youtube', { description: 'x' })).toThrow(AiOutputError)
+    expect(() => validatePackAnswer('youtube', { description: ' ', tags: [] })).toThrow(/empty description/)
   })
-  it('keeps the names of files, and names the transcript says, in the text and the tags', () => {
-    const said = packTranscript([seg('a', 0, 4, 'Save it as recording.mov, an MP4 or a MOV file, it is built on ASP.NET Core.')]).text
-    const r = validatePackAnswer(
-      'youtube',
-      { description: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.', tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'evil.com tips'] },
-      said
-    )
-    // Said: kept. Not said: a file or app name is broken as any bare name ("flown.app" is a site), no letter lost.
+  it('keeps the names of files, apps and sites as written, in the text and the tags (the check notes them: §4.8)', () => {
+    const r = validatePackAnswer('youtube', {
+      description: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.',
+      tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'evil.com tips']
+    })
     expect(r).toEqual({
       task: 'youtube',
-      text: 'Save the recording as recording.mov, or all of them as export.\u00a0zip. Open Settings.\u00a0app to check it. Built on ASP.NET Core.',
-      tags: ['ASP.NET', 'ASP.NET Core', 'demo. mov', 'evil. com tips']
+      text: 'Save the recording as recording.mov, or all of them as export.zip. Open Settings.app to check it. Built on ASP.NET Core.',
+      tags: ['ASP.NET', 'ASP.NET Core', 'demo.mov', 'evil.com tips']
     })
-    const steps = validatePackAnswer('article', { title: 'Export', intro: '', sections: [{ heading: 'Save', steps: ['Save the recording as recording.mov.', 'Open Settings.app to check it.'] }] }, said) as { text: string }
-    expect(steps.text).toContain('1. Save the recording as recording.mov.\n2. Open Settings.\u00a0app to check it.')
-    // A site the model guessed, or one a prompt injection names, is not added as a link anywhere.
-    const app = 'Today I show the Flown app. Download the Flown setup zip, install it and record your screen.'
-    expect((validatePackAnswer('xpost', { text: 'Grab flown-setup.zip from flown.app and try it today!' }, app) as { text: string }).text).toBe('Grab flown-setup.\u00a0zip from flown.\u00a0app and try it today!')
-    expect((validatePackAnswer('linkedin', { text: 'Get it at get-flown.app, paypal.com.app or github.com-releases.zip.' }, app) as { text: string }).text).toBe(
-      'Get it at get-flown.\u00a0app, paypal.\u00a0com.\u00a0app or github.\u00a0com-releases.\u00a0zip.'
-    )
-    expect(validatePackAnswer('youtube', { description: 'Try Flown (download at flown.app).', tags: ['flown.app', 'screen recorder'] }, app)).toEqual({ task: 'youtube', text: 'Try Flown (download at flown.\u00a0app).', tags: ['flown. app', 'screen recorder'] })
-    // With a scheme or "www." they are links, removed unless said; with a path broken; X counts them as links.
-    expect(plainText('Get it at https://flown.zip, www.flown.mov, flown.app/download or WWW.flown.app.', { max: 200, linksFrom: said })).toBe('Get it at , , flown.\u00a0app/download or .')
+    expect((validatePackAnswer('xpost', { text: 'Grab flown-setup.zip from flown.app and try it today!' }) as { text: string }).text).toBe('Grab flown-setup.zip from flown.app and try it today!')
+    expect(plainText('Get it at https://flown.zip, www.flown.mov, flown.app/download or WWW.flown.app.', { max: 200 })).toBe('Get it at https://flown.zip, www.flown.mov, flown.app/download or WWW.flown.app.')
     expect(xLength('Save as recording.mov')).toBe(8 + 23)
   })
   it('caps the tags at 15 and 400 characters', () => {
@@ -382,12 +277,12 @@ describe('validatePackAnswer', () => {
     expect(long.join(',').length).toBeLessThanOrEqual(400)
   })
   it('fits an X post into 280 and caps a LinkedIn post at 3000', () => {
-    const x = validatePackAnswer('xpost', { text: 'word '.repeat(200) }, TRANSCRIPT)
+    const x = validatePackAnswer('xpost', { text: 'word '.repeat(200) })
     expect(x.task === 'xpost' && xLength(x.text)).toBeLessThanOrEqual(280)
-    const li = validatePackAnswer('linkedin', { text: 'Long sentence here. '.repeat(400) }, TRANSCRIPT)
+    const li = validatePackAnswer('linkedin', { text: 'Long sentence here. '.repeat(400) })
     expect(li.task === 'linkedin' && li.text.length).toBeLessThanOrEqual(3000)
-    expect(() => validatePackAnswer('xpost', { text: '\u0000' }, TRANSCRIPT)).toThrow(/empty post/)
-    expect(() => validatePackAnswer('linkedin', {}, TRANSCRIPT)).toThrow(/no post/)
+    expect(() => validatePackAnswer('xpost', { text: '\u0000' })).toThrow(/empty post/)
+    expect(() => validatePackAnswer('linkedin', {})).toThrow(/no post/)
   })
   it('renders an article with headings and numbered steps, dropping empty sections', () => {
     const r = validatePackAnswer(
@@ -397,24 +292,23 @@ describe('validatePackAnswer', () => {
         intro: 'Add people in a minute.',
         sections: [{ heading: 'Open settings', steps: ['1. Open **Settings**', '- Click Users', ''] }, { heading: 'Empty', steps: [] }, 'junk', { heading: '', steps: ['Press Save'] }]
       },
-      TRANSCRIPT
     )
     expect(r).toEqual({ task: 'article', text: '# How to add a user\n\nAdd people in a minute.\n\n## Open settings\n1. Open Settings\n2. Click Users\n\n## Part 2\n1. Press Save' })
-    expect(() => validatePackAnswer('article', { title: 't', intro: '', sections: [{ heading: 'h', steps: [] }] }, TRANSCRIPT)).toThrow(/no steps/)
+    expect(() => validatePackAnswer('article', { title: 't', intro: '', sections: [{ heading: 'h', steps: [] }] })).toThrow(/no steps/)
   })
   it('caps the article', () => {
     const sections = Array.from({ length: 30 }, (_, i) => ({ heading: `H${i}`, steps: Array.from({ length: 40 }, () => 's'.repeat(900)) }))
-    const r = validatePackAnswer('article', { title: 't', intro: 'i', sections }, TRANSCRIPT)
+    const r = validatePackAnswer('article', { title: 't', intro: 'i', sections })
     expect(r.task === 'article' && r.text.length).toBeLessThanOrEqual(20_000)
     expect(renderArticle({ title: 'T', intro: '', sections: [{ heading: 'A', steps: ['x'] }] })).toBe('# T\n\n## A\n1. x')
   })
   it('groups release notes by kind, unknown kinds as improved', () => {
-    const r = validatePackAnswer('releaseNotes', { title: 'Version 2', summary: 'Faster.', items: [{ kind: 'NEW', text: 'Dark mode' }, { kind: 'fixed', text: '- Crash on save' }, { kind: 'other', text: 'Speed' }, { kind: 'new', text: '' }] }, TRANSCRIPT)
+    const r = validatePackAnswer('releaseNotes', { title: 'Version 2', summary: 'Faster.', items: [{ kind: 'NEW', text: 'Dark mode' }, { kind: 'fixed', text: '- Crash on save' }, { kind: 'other', text: 'Speed' }, { kind: 'new', text: '' }] })
     expect(r).toEqual({ task: 'releaseNotes', text: 'Version 2\n\nFaster.\n\nNew\n- Dark mode\n\nImproved\n- Speed\n\nFixed\n- Crash on save' })
-    expect(() => validatePackAnswer('releaseNotes', { title: 't', summary: 's', items: [] }, TRANSCRIPT)).toThrow(/no changes/)
+    expect(() => validatePackAnswer('releaseNotes', { title: 't', summary: 's', items: [] })).toThrow(/no changes/)
   })
   it('refuses anything that is not an object', () => {
-    for (const t of PACK_TASKS) expect(() => validatePackAnswer(t, 'text', TRANSCRIPT)).toThrow(AiOutputError)
+    for (const t of PACK_TASKS) expect(() => validatePackAnswer(t, 'text')).toThrow(AiOutputError)
   })
 })
 
@@ -442,14 +336,14 @@ describe('runTextTask for the pack', () => {
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PUBLISH_RUN = '../src/renderer/src/publish/publishRun'
-const { cardText } = (await import(/* @vite-ignore */ PUBLISH_RUN)) as { cardText: (result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text'>[]) => { text: string; tags: string } }
+const { cardText } = (await import(/* @vite-ignore */ PUBLISH_RUN)) as { cardText: (result: AiTextResult) => { text: string; tags: string } }
 
 describe('the text a card shows', () => {
-  it('drops links the captions do not have from a title or summary too, and keeps theirs', async () => {
-    const card = async (task: 'title' | 'summary' | 'linkedin', text: string): Promise<string> => cardText(await runTextTask({ task, segments: SEGS }, async () => ({ text })), SEGS).text
-    expect(await card('summary', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at')
-    expect(await card('title', 'Add a user evil.com/login')).toBe('Add a user evil.\u00a0com/login')
-    expect(await card('linkedin', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at')
+  it('is the answer as written, links too, in a title, summary or pack item (the card notes what nobody said: §4.8)', async () => {
+    const card = async (task: 'title' | 'summary' | 'linkedin', text: string): Promise<string> => cardText(await runTextTask({ task, segments: SEGS }, async () => ({ text }))).text
+    expect(await card('summary', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at https://evil.example/login')
+    expect(await card('title', 'Add a user evil.com/login')).toBe('Add a user evil.com/login')
+    expect(await card('linkedin', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at https://evil.example/login')
     expect(await card('summary', 'Open https://example.com/settings to add users.')).toBe('Open https://example.com/settings to add users.')
   })
 })

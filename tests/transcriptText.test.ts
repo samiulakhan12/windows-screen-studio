@@ -111,10 +111,10 @@ describe('validateChaptersAnswer', () => {
 
 describe('validateTextAnswer', () => {
   it('cleans a title and keeps a summary', () => {
-    expect(validateTextAnswer('title', { text: '"Exporting in Flown."' }, [])).toBe('Exporting in Flown')
-    expect(validateTextAnswer('summary', { text: ' A short tour.\nThe end. ' }, [])).toBe('A short tour.\nThe end.')
-    expect(() => validateTextAnswer('title', { text: '  ' }, [])).toThrow(AiOutputError)
-    expect(() => validateTextAnswer('summary', { summary: 'x' }, [])).toThrow(AiOutputError)
+    expect(validateTextAnswer('title', { text: '"Exporting in Flown."' })).toBe('Exporting in Flown')
+    expect(validateTextAnswer('summary', { text: ' A short tour.\nThe end. ' })).toBe('A short tour.\nThe end.')
+    expect(() => validateTextAnswer('title', { text: '  ' })).toThrow(AiOutputError)
+    expect(() => validateTextAnswer('summary', { summary: 'x' })).toThrow(AiOutputError)
   })
 })
 

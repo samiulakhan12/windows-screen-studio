@@ -33,8 +33,7 @@ const CHAR_WIDTH = 0.55
 export function copyName(name: string, kind: CopyKind): string {
   const suffix = SUFFIX[kind]
   const base = (typeof name === 'string' ? name.trim() : '') || UNTITLED
-  // A long name is cut before its suffix, so the copy still says what it is; the cut makes no link
-  // (the copy pack trusts the name as typed, and it may be an AI's title: sliceAt).
+  // A long name is cut before its suffix, so the copy still says what it is.
   return `${sliceAt(base, NAME_MAX - suffix.length).trimEnd()}${suffix}`
 }
 

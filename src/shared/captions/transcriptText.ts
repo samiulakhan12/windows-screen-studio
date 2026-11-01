@@ -15,8 +15,7 @@ import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
 import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
-import { linksToCheck, saidLinks, type SaidLinks } from '../publish/check'
-import { plainText, unsaidLinks } from '../publish/text'
+import { plainText } from '../publish/text'
 import { readAiLinks } from './captionData'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
@@ -212,41 +211,20 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
   })
 }
 
-/** The captions' text as one string: an answer may have only the links it has. */
-const captionsText = (segments: readonly CaptionSegment[]): string => segments.map((s) => s.text).join(' ')
-
 /**
- * `text` without the links `segments` do not have as said (removed, or a bare name broken: plainText,
- * the copy pack's rule, docs/design/publish-pack.md §4.4): a link an AI wrote into the captions
- * (unsaidLinks) is not one. A chapter title or a title goes into the project, and the copy pack
- * trusts the links of the project's name and chapter titles as the user's own, so what the AI wrote
- * there may only have the links that were said.
- */
-const withSaidLinks = (text: string, segments: readonly CaptionSegment[], max: number, oneLine: boolean): string =>
-  plainText(text, { max, oneLine, linksFrom: captionsText(segments), untrusted: unsaidLinks(segments) })
-
-/**
- * Whether the safety net (check.ts) notes anything in `text` that `segments` do not say: a chapter
- * title an AI suggests is added to the project, where it is trusted as typed, so it may have nothing
- * the net would note ("Sign in at 登录acme.com", which the cleaning keeps). (A suggested title is
- * shown with the net's note, and Rename the recording is not offered for it: §4.8.)
- */
-const noted = (text: string, said: SaidLinks): boolean => linksToCheck(text, said).length > 0
-
-/**
- * Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start;
- * titles with only the links the captions have, and without a title the safety net notes (noted).
+ * Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start.
+ * Their titles are cleaned (plainText), never changed for a link: the Captions tab shows what the
+ * link check notes in them and asks before it adds them (docs/design/publish-pack.md §4.8).
  */
 export function validateChaptersAnswer(segments: readonly CaptionSegment[], answer: unknown): { t: number; title: string }[] {
   if (!isObject(answer) || !Array.isArray(answer.chapters)) throw new AiOutputError('no list of chapters')
   const first = segments.length ? segments[0].start : 0
   const last = segments.length ? segments[segments.length - 1].end : 0
   const raw: { t: number; title: string }[] = []
-  let said: SaidLinks | undefined
   for (const c of answer.chapters) {
     if (!isObject(c) || typeof c.start !== 'number' || !Number.isFinite(c.start) || typeof c.title !== 'string') continue
-    const title = withSaidLinks(cleanText(c.title, 80).replace(/^\d+[.)]\s*/, ''), segments, 80, true)
-    if (!title || c.start > last + 1 || c.start < -1 || noted(title, (said ??= saidLinks(segments)))) continue
+    const title = plainText(cleanText(c.title, 80).replace(/^\d+[.)]\s*/, ''), { max: 80, oneLine: true })
+    if (!title || c.start > last + 1 || c.start < -1) continue
     raw.push({ t: Math.min(Math.max(c.start, 0), last), title })
   }
   raw.sort((a, b) => a.t - b.t)
@@ -258,16 +236,16 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
 }
 
 /**
- * A title or summary of an answer, with only the links `segments` (the captions sent) have. What the
- * safety net notes in it is shown with the net's note where it is shown (the Captions tab, the Publish
- * dialog), and a noted title cannot become the recording's name there (docs/design/publish-pack.md §4.8).
+ * A title or summary of an answer, cleaned (plainText), never changed for a link: what the link check
+ * notes in it is shown with it, and asked about before it is copied or becomes the recording's name
+ * (docs/design/publish-pack.md §4.8).
  */
-export function validateTextAnswer(task: 'title' | 'summary', answer: unknown, segments: readonly CaptionSegment[]): string {
+export function validateTextAnswer(task: 'title' | 'summary', answer: unknown): string {
   if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(`no ${task}`)
   const text =
     task === 'title'
-      ? withSaidLinks(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), segments, 120, true)
-      : withSaidLinks(answer.text.trim().slice(0, 3000), segments, 3000, false)
+      ? plainText(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), { max: 120, oneLine: true })
+      : plainText(answer.text.trim().slice(0, 3000), { max: 3000 })
   if (!text) throw new AiOutputError(`an empty ${task}`)
   return text
 }
@@ -288,7 +266,7 @@ export async function runTextTask(request: AiTextRequest, ask: (prompt: TextProm
       return { task: 'chapters', chapters: validateChaptersAnswer(request.segments, await ask(textPrompt(request))) }
     case 'title':
     case 'summary':
-      return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request)), request.segments) }
+      return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request))) }
     case 'youtube':
     case 'linkedin':
     case 'xpost':

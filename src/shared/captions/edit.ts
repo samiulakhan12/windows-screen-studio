@@ -5,8 +5,8 @@
  */
 import { clamp } from '../engine/math'
 import { captionWordTimes } from '../editor/transcript'
-import { linksToCheck, NOTHING_SAID, saidLinks, view } from '../publish/check'
-import { aiLinksOf, saidKeys, sliceAt, withLinksOf } from '../publish/text'
+import { normalise, notedPieces, NOTHING_SAID, saidOf } from '../publish/check'
+import { sliceAt } from '../publish/text'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { capAiLinks, cleanCaptionText, MIN_CAPTION, newCaptionId } from './captionData'
 
@@ -48,21 +48,16 @@ export function retimeWords(seg: CaptionSegment, next: { start: number; end: num
 }
 
 /**
- * The links an AI wrote into caption `before` by giving it `text` (as stored: cleanCaptionText),
- * for CaptionSegment.aiLinks (capAiLinks): those `text` has that `before` did not have as said (its
- * links but its own aiLinks); without one, the stretches the safety net notes in `text` against
- * `before` (check.ts, as `view` reads them: "ログインflown.jp/download" when "flown.jp/download" was
- * said), so the net never takes a caption an AI wrote one into for said (saidLinks reads no stretch of
- * a caption with aiLinks). Empty when the text is the same or has neither (docs/design/publish-pack.md §4.6).
+ * The links an AI wrote into caption `before` by giving it `text` (as stored: cleanCaptionText), for
+ * CaptionSegment.aiLinks (capAiLinks): the pieces of `text` the link check notes against what `before`
+ * said (check.ts, as `normalise` reads them: "ログインflown.jp/download" when "flown.jp/download" was
+ * said), against nothing when an AI wrote a link into `before` too. A caption with aiLinks is never
+ * read as said (saidLinks). The same text keeps its record (docs/design/publish-pack.md §4.6).
  */
 export function aiLinksAfter(before: Pick<CaptionSegment, 'text' | 'aiLinks'>, text: string): string[] {
   if (text === before.text) return before.aiLinks ? [...before.aiLinks] : []
-  const mine = new Set(aiLinksOf(before))
-  const said = new Set([...saidKeys(before.text)].filter((k) => !mine.has(k)))
-  const keys = [...saidKeys(text)].filter((k) => !said.has(k))
-  // Without one, what the net notes marks the caption as one an AI wrote a link into.
-  if (keys.length || !linksToCheck(text, NOTHING_SAID).length) return capAiLinks(keys)
-  return capAiLinks(linksToCheck(text, saidLinks([before])).map((run) => view(run)))
+  const said = before.aiLinks?.length ? NOTHING_SAID : saidOf([before.text])
+  return capAiLinks([...new Set(notedPieces(text, said).map((p) => normalise(p.text)))])
 }
 
 /** `seg` with `aiLinks` (none when empty; capAiLinks). */
@@ -131,17 +126,9 @@ export function mergeWithNext(segments: readonly CaptionSegment[], id: string): 
   if (i < 0 || i + 1 >= segments.length) return null
   const a = segments[i]
   const b = segments[i + 1]
-  // Joined by a space and cut without making a link (cleanCaptionText): the links an AI wrote into either stay its own,
-  // but those the other one says ("Get it at flown.app." and a fixed "flown dot app": flown.app stays said).
-  const saidIn = (s: CaptionSegment, k: string): boolean => saidKeys(s.text).has(k) && !aiLinksOf(s).includes(k)
-  const ai = [...aiLinksOf(a), ...aiLinksOf(b)].filter((k) => !saidIn(a, k) && !saidIn(b, k))
-  // With none left, what the safety net notes in the one an AI wrote a link into, against what the other says, stays
-  // the AI's, as aiLinksAfter records it ("ログインflown.jp/download" after "flown.jp/download" is said): else the
-  // merged caption is taken for said, and so is that stretch.
-  if (!ai.length) {
-    for (const [s, o] of [[a, b], [b, a]] as const) if (s.aiLinks?.length) ai.push(...linksToCheck(s.text, saidLinks([o])).map((run) => view(run)))
-  }
-  const merged: CaptionSegment = withAiLinks({ id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }, ai)
+  // Joined by a space (cleanCaptionText). What an AI wrote a link into stays the AI's: the merged caption keeps both records.
+  const ai = [...(a.aiLinks ?? []), ...(b.aiLinks ?? [])]
+  const merged: CaptionSegment = withAiLinks({ id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }, [...new Set(ai)])
   const count = (s: CaptionSegment): number => s.text.split(' ').filter(Boolean).length
   if (a.words?.length || b.words?.length) merged.words = [...timingsOf(a, count(a)), ...timingsOf(b, count(b))]
   return [...segments.slice(0, i), merged, ...segments.slice(i + 2)]
@@ -213,11 +200,7 @@ export function applyTextResult(current: readonly CaptionSegment[], result: unkn
   return out
 }
 
-/**
- * Chapters an AI task suggested, inside the recording and in order (unusable entries dropped); titles
- * one line, at most 100 UTF-16 units, with no link main's cleaned title lacked (the copy pack trusts
- * chapter titles as typed: withLinksOf, sliceAt).
- */
+/** Chapters an AI task suggested, inside the recording and in order (unusable entries dropped); titles one line, at most 100 UTF-16 units. */
 export function readSuggestedChapters(result: unknown, duration: number): { t: number; title: string }[] {
   if (!Array.isArray(result)) return []
   const out: { t: number; title: string }[] = []
@@ -225,7 +208,7 @@ export function readSuggestedChapters(result: unknown, duration: number): { t: n
     if (!c || typeof c !== 'object') continue
     const { t, title } = c as { t?: unknown; title?: unknown }
     if (typeof t !== 'number' || !Number.isFinite(t) || typeof title !== 'string') continue
-    const name = sliceAt(withLinksOf(title.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim(), title), 100)
+    const name = sliceAt(title.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim(), 100)
     if (!name) continue
     out.push({ t: clamp(t, 0, duration), title: name })
   }
@@ -235,8 +218,6 @@ export function readSuggestedChapters(result: unknown, duration: number): { t: n
 /**
  * A title (one line, without quotation marks at its ends, at most 120 UTF-16 units) or a summary (line
  * breaks kept, at most 4000) an AI task suggested, as the Captions tab shows it; '' when there is none.
- * Main cleaned it against the captions; what is done to it here makes no link it lacked (withLinksOf,
- * sliceAt), as the recording's name is then trusted as typed.
  */
 export function readSuggestedText(task: 'title' | 'summary', text: unknown): string {
   if (typeof text !== 'string') return ''
@@ -244,5 +225,5 @@ export function readSuggestedText(task: 'title' | 'summary', text: unknown): str
     task === 'title'
       ? text.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().replace(/^["“'\s]+|["”'\s]+$/g, '')
       : text.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
-  return sliceAt(withLinksOf(shown, text), task === 'title' ? 120 : 4000)
+  return sliceAt(shown, task === 'title' ? 120 : 4000)
 }

@@ -186,7 +186,7 @@ function walk(node: unknown, out: El[]): El[] {
   }
   if (!node || typeof node !== 'object' || !('props' in node)) return out
   const el = node as El
-  if (typeof el.type === 'function' && el.type.name === 'Card') return walk((el.type as (p: unknown) => unknown)(el.props), out)
+  if (typeof el.type === 'function' && (el.type.name === 'Card' || el.type.name === 'NotedConfirm')) return walk((el.type as (p: unknown) => unknown)(el.props), out)
   out.push(el)
   walk(el.props.children, out)
   return out
@@ -270,6 +270,14 @@ const type = (els: El[], label: string, value: string): void => {
   if (!field) throw new Error(`No "${label}" field`)
   ;(field.props.onChange as (e: { target: { value: string } }) => void)({ target: { value } })
 }
+/** The link check's confirm (§4.8): its box, its elements and the pieces it lists, each with its context. */
+function confirmOf(out: El[]): { box: El; els: El[]; items: string[] } {
+  const box = out.find((e) => e.props['data-testid'] === 'publish-confirm')
+  if (!box) throw new Error('No confirm')
+  const els = walk(box.props.children, [])
+  return { box, els, items: els.filter((e) => e.type === 'li').map((li) => textOf(li.props.children)) }
+}
+
 /** What the card says its last action did: [role, text] of each message shown (its status line apart). */
 const said = (els: El[]): [string, string][] =>
   els
@@ -449,7 +457,7 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(notices).toEqual([])
   })
 
-  it('a link nobody said shows a note next to its card and with its copy, and is copied as written (§4.8)', async () => {
+  it('a link nobody said shows a note next to its card; Copy asks first, with the focus on Cancel, and copies it as written (§4.8)', async () => {
     const note = (els: El[]): string | null => {
       const box = els.find((e) => e.props['data-testid'] === 'publish-check')
       return box ? textOf(box.props.children) : null
@@ -457,36 +465,50 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     let out = await opened()
     type(card(out, 'linkedin'), 'LinkedIn post text', 'The new reports are here: paypal-login.com/verify')
     out = render()
-    expect(note(card(out, 'linkedin'))).toContain('Check this link before you post:paypal-login.com/verify')
+    expect(note(card(out, 'linkedin'))).toContain('Check this before you post:paypal-login.com/verify')
     expect(card(out, 'linkedin').find((e) => e.props['data-testid'] === 'publish-check')?.props.role).toBe('note')
     expect(note(card(out, 'xpost'))).toBeNull()
     press(card(out, 'linkedin'), 'Copy')
+    out = render()
+    // One dialog for the action: the piece exactly, with a few characters around it; the focus on Cancel.
+    let ask = confirmOf(out)
+    expect(ask.box.props.role).toBe('alertdialog')
+    expect(ask.box.props['aria-modal']).toBe('true')
+    expect(textOf(ask.box.props.children)).toContain('LinkedIn post: check this before you copy it')
+    expect(ask.items).toEqual(['…s are here: paypal-login.com/verify'])
+    expect(focused).toBe('Cancel')
+    press(ask.els, 'Cancel')
+    await flush()
+    out = render()
+    expect(out.some((e) => e.props['data-testid'] === 'publish-confirm')).toBe(false)
+    expect(clipboardText).toBe('')
+    expect(said(card(out, 'linkedin'))).toEqual([])
+    press(card(out, 'linkedin'), 'Copy')
+    out = render()
+    ask = confirmOf(out)
+    press(ask.els, 'Copy anyway')
     await flush()
     out = render()
     expect(clipboardText).toBe('The new reports are here: paypal-login.com/verify')
-    expect(said(card(out, 'linkedin'))).toEqual([['status', 'LinkedIn post copied. Check this link before you post: paypal-login.com/verify']])
-    // What the captions say needs no note; an invisible character in a link is shown.
+    expect(said(card(out, 'linkedin'))).toEqual([['status', 'LinkedIn post copied']])
+    // What the captions say needs no note and no confirm; an invisible character in a link is shown.
     type(card(out, 'linkedin'), 'LinkedIn post text', 'Open the settings page first.')
     out = render()
     expect(note(card(out, 'linkedin'))).toBeNull()
-    type(card(out, 'xpost'), 'X post text', `Go to evil${String.fromCharCode(0x200b)}reports.com now`)
-    out = render()
-    expect(note(card(out, 'xpost'))).toContain('evil⟨U+200B⟩reports.com')
-  })
-
-  it('in a Chinese or Japanese paragraph the note and the copy name only the clauses to check (§4.8)', async () => {
-    const note = (els: El[]): string[] => els.filter((e) => e.props['data-testid'] === 'publish-check').map((box) => textOf(box.props.children))
-    let out = await opened()
-    type(card(out, 'linkedin'), 'LinkedIn post text', '第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。')
-    out = render()
-    expect(note(card(out, 'linkedin'))).toEqual([expect.stringContaining('Check this link before you post:打开README.md。 … 运行main.py。It is not')])
     press(card(out, 'linkedin'), 'Copy')
     await flush()
     out = render()
-    expect(said(card(out, 'linkedin'))).toEqual([['status', 'LinkedIn post copied. Check this link before you post: 打开README.md。 … 运行main.py。']])
+    expect(out.some((e) => e.props['data-testid'] === 'publish-confirm')).toBe(false)
+    expect(clipboardText).toBe('Open the settings page first.')
+    type(card(out, 'xpost'), 'X post text', `Go to evil${String.fromCharCode(0x200b)}reports.com now`)
+    out = render()
+    expect(note(card(out, 'xpost'))).toContain('evil⟨U+200B⟩reports.com')
+    press(card(out, 'xpost'), 'Copy')
+    out = render()
+    expect(confirmOf(out).items).toEqual(['Go to evil⟨U+200B⟩reports.com now'])
   })
 
-  it('the note agrees in number with the links it names (§4.8)', async () => {
+  it('lists each piece once, as one item, and agrees in number with the items it lists (§4.8)', async () => {
     const note = (els: El[]): string | null => {
       const box = els.find((e) => e.props['data-testid'] === 'publish-check')
       return box ? textOf(box.props.children) : null
@@ -495,16 +517,17 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com and paypal-login.com/verify')
     out = render()
     expect(note(card(out, 'linkedin'))).toBe(
-      "Check these links before you post:evil.compaypal-login.com/verifyThey are not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."
+      "Check these before you post:evil.compaypal-login.com/verifyEach has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."
     )
-    type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com')
+    // Two file names in one piece of Chinese text: one item, which is "this".
+    type(card(out, 'linkedin'), 'LinkedIn post text', '第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。')
     out = render()
     expect(note(card(out, 'linkedin'))).toBe(
-      "Check this link before you post:evil.comIt is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+      "Check this before you post:第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。It has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
     )
   })
 
-  it('the text field is described by the note, and Use for exports says it too (§4.8)', async () => {
+  it('the text field is described by the note, and Use for exports asks first (§4.8)', async () => {
     const field = (els: El[], label: string): El | undefined => els.find((e) => e.type === 'textarea' && e.props['aria-label'] === label)
     let out = await opened()
     type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com')
@@ -514,22 +537,44 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(box.props.id).toBe('publish-linkedin-check')
     expect(field(card(out, 'linkedin'), 'LinkedIn post text')?.props['aria-describedby']).toBe('publish-linkedin-check')
     expect(field(card(out, 'xpost'), 'X post text')?.props['aria-describedby']).toBeUndefined()
-    // Every export's description file would have the link: Use for exports says so.
+    // Every export's description file would have the link: Use for exports asks first.
     type(card(out, 'youtube'), 'YouTube description text', 'All about the new reports: paypal-login.com/verify')
     out = render()
     press(card(out, 'youtube'), 'Use for exports')
     out = render()
-    expect(said(card(out, 'youtube'))).toEqual([['status', "The export's description file will use this text. Check this link before you post: paypal-login.com/verify"]])
+    const ask = confirmOf(out)
+    expect(textOf(ask.box.props.children)).toContain('YouTube description: check this before you use it')
+    expect(current.publish).toBeUndefined()
+    press(ask.els, 'Cancel')
+    out = render()
+    expect(current.publish).toBeUndefined()
+    press(card(out, 'youtube'), 'Use for exports')
+    out = render()
+    press(confirmOf(out).els, 'Use anyway')
+    out = render()
+    expect(current.publish).toEqual({ description: 'All about the new reports: paypal-login.com/verify' })
+    expect(said(card(out, 'youtube'))).toEqual([['status', "The export's description file will use this text"]])
   })
 
-  it('Rename the recording is not offered for a title with a link the note asks to check: the name is trusted as typed (§4.8)', async () => {
+  it('Rename the recording asks first for a title with a note, and stays focusable with the note as its description (§4.8)', async () => {
     let out = await opened()
     type(card(out, 'title'), 'Title text', 'New reports at 登录paypal-login.com')
     out = render()
     const rename = card(out, 'title').find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Rename the recording') as El
-    expect(rename.props.disabled).toBe(true)
-    expect(() => press(card(out, 'title'), 'Rename the recording')).toThrow('is disabled')
+    expect(rename.props.disabled).toBe(false)
+    expect(rename.props['aria-describedby']).toBe('publish-title-check')
+    press(card(out, 'title'), 'Rename the recording')
+    out = render()
+    expect(confirmOf(out).items).toEqual(['… reports at 登录paypal-login.com'])
+    press(confirmOf(out).els, 'Cancel')
+    out = render()
     expect(current.name).toBe('Demo')
+    press(card(out, 'title'), 'Rename the recording')
+    out = render()
+    press(confirmOf(out).els, 'Use anyway')
+    out = render()
+    expect(current.name).toBe('New reports at 登录paypal-login.com')
+    // Without a note, at once.
     type(card(out, 'title'), 'Title text', 'New reports')
     out = render()
     press(card(out, 'title'), 'Rename the recording')
@@ -569,9 +614,14 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     out = render()
     press(card(out, 'youtube'), 'Use for exports')
     out = render()
+    // "__init__.py" is a name on a top-level domain nobody said: asked about first.
+    press(confirmOf(out).els, 'Use anyway')
+    out = render()
     expect(current.publish).toEqual({ description: typed.replace('\u202e', '') })
     // Shown as saved, not as one to update.
     press(card(out, 'youtube'), 'Copy')
+    out = render()
+    press(confirmOf(out).els, 'Copy anyway')
     await flush()
     out = render()
     expect(card(out, 'youtube').some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop using for exports')).toBe(true)

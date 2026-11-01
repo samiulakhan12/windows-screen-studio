@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 import type { AiTextRequest, AiTextResult } from '../../../shared/api/ai'
 import { PUBLISH_KINDS, taskOfKind, type PublishKind, type PublishLength, type PublishTone } from '../../../shared/publish/pack'
 import { CancelledError, createQueue } from '../../../shared/publish/queue'
-import { plainText, trustedText, unsaidLinks } from '../../../shared/publish/text'
+import { plainText } from '../../../shared/publish/text'
 import { tagsText } from '../../../shared/publish/youtube'
 import type { CaptionSegment } from '../../../shared/types'
 import { ipcMessage } from '../editor/captionItems'
@@ -98,28 +98,22 @@ const current = new Map<string, string>()
 const slot = (projectId: string, kind: PublishKind): string => `${projectId}\u0000${kind}`
 
 /**
- * The text a card shows for `result`, cleaned again. The pack's own items lost in main the links
- * their captions, name and chapter titles lack, so theirs are kept; a title or summary (the Captions
- * tab's tasks, checked the old way) loses here the links `segments` (the captions sent) and
- * `context` (the name and chapter titles the user typed) do not have, and those an AI wrote into the
- * captions (unsaidLinks).
+ * The text a card shows for `result`, cleaned again (plainText). No character changes because of a
+ * link: the card notes what nobody said, and asks before it is copied or used (check.ts).
  */
-export function cardText(result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text' | 'aiLinks'>[], context?: { title?: string; chapters?: string[] }): { text: string; tags: string } {
-  const keep = { keepLinks: true }
-  const sent = { linksFrom: trustedText(segments.map((s) => s.text).join(' '), context), untrusted: unsaidLinks(segments, context) }
+export function cardText(result: AiTextResult): { text: string; tags: string } {
   switch (result.task) {
     case 'title':
-      return { text: plainText(result.text, { ...sent, max: 150, oneLine: true }), tags: '' }
+      return { text: plainText(result.text, { max: 150, oneLine: true }), tags: '' }
     case 'summary':
-      return { text: plainText(result.text, { ...sent, max: MAX_CARD_TEXT }), tags: '' }
+      return { text: plainText(result.text, { max: MAX_CARD_TEXT }), tags: '' }
     case 'youtube':
-      // Main took tags of at most 30 characters as written; a broken name may make one a little longer.
-      return { text: plainText(result.text, { ...keep, max: MAX_CARD_TEXT }), tags: tagsText(result.tags.map((t) => plainText(t, { ...keep, max: 200, oneLine: true })).filter(Boolean)) }
+      return { text: plainText(result.text, { max: MAX_CARD_TEXT }), tags: tagsText(result.tags.map((t) => plainText(t, { max: 200, oneLine: true })).filter(Boolean)) }
     case 'linkedin':
     case 'xpost':
     case 'article':
     case 'releaseNotes':
-      return { text: plainText(result.text, { ...keep, max: MAX_CARD_TEXT }), tags: '' }
+      return { text: plainText(result.text, { max: MAX_CARD_TEXT }), tags: '' }
     default:
       return { text: '', tags: '' }
   }
@@ -159,7 +153,7 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
           patch(projectId, kind, { status: 'error', error: 'The provider answered something else; try again.' })
           return
         }
-        const { text, tags } = cardText(result, ctx.segments, ctx.context)
+        const { text, tags } = cardText(result)
         if (!text) {
           patch(projectId, kind, { status: 'error', error: 'The provider wrote nothing; try again.' })
           return

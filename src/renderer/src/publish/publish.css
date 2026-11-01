@@ -246,3 +246,65 @@
     animation: none;
   }
 }
+
+/* The link check's confirm (checkNote.tsx NotedConfirm): over the Publish dialog or the editor. */
+.publish-confirm-scrim {
+  z-index: 60;
+}
+
+.publish-confirm {
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--highlight-top), var(--shadow-4);
+  animation: modal-in var(--dur-med) var(--ease-out);
+}
+
+.publish-confirm h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-1);
+}
+
+.publish-confirm p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.publish-confirm-list {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.publish-confirm-list code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.publish-confirm-list mark {
+  background: transparent;
+  color: var(--warning-text);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+}
+
+.publish-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
