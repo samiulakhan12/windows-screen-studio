@@ -208,6 +208,20 @@ describe('the graphics layer (§10.4)', () => {
     }
   })
 
+  it('spaces a counter’s English label, and keeps a Bangla label’s letters joined (§6.6)', () => {
+    const spacing = (label: string): string[] => {
+      calls.length = 0
+      sets.length = 0
+      STUDIO_SPRITES.clear()
+      drawGraphicsLayer(frameOf(project([counter({ label })]), 4.5).fc)
+      const card = calls.find((c) => c.name === 'fillText' && String(c.args[0]) === label.toLocaleUpperCase())!.canvas
+      return sets.filter((s) => s.canvas === card && s.name === 'letterSpacing').map((s) => String(s.value))
+    }
+    expect(spacing('users')).toEqual([`${(0.11 * 1080 * 0.45 * 0.15).toFixed(2)}px`])
+    // 0.15 em would split its headline between every syllable: 'হ য়ে ছে'.
+    expect(spacing('হয়েছে')).toEqual(['0.00px'])
+  })
+
   it('shows a list card’s items from their times', () => {
     const list: ListGraphic = { id: 'l1', kind: 'list', start: 1, end: 8, place: 'auto', size: 0.045, title: 'Three steps', marker: 'number', items: [{ text: 'Open settings', at: 1.2 }, { text: 'Click export', at: 3 }, { text: 'Save', at: 5 }], ...motion }
     const items = (t: number): string[] => {

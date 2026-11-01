@@ -139,7 +139,7 @@ export const fakeFontStack = {
   coverageNeeded: () => [],
   partnerFor: (f: string) => f,
   scriptLineHeight: (_s: string, l: number) => l,
-  trackingFor: (_s: string, t: number) => t
+  trackingFor: (s: string, t: number) => (['arabic', 'hebrew', 'bengali', 'devanagari', 'tamil', 'telugu'].includes(s) ? 0 : t)
 }
 
 /* ---------- colors.ts ---------- */

@@ -14,12 +14,12 @@ import { burnedSegments } from '../../../shared/captions/captionTracks'
 import { textOn } from '../../../shared/captions/colors'
 import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
-import { clampWeight } from '../../../shared/captions/fontStack'
+import { clampWeight, trackingFor } from '../../../shared/captions/fontStack'
 import { CAPTION_FONT, captionIndexAt, viewAt } from '../../../shared/captions/layout'
 import { counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
 import { captionObstacles } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
-import { withDigits } from '../../../shared/captions/words'
+import { scriptOf, withDigits } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
@@ -152,7 +152,7 @@ function shapeOf(ctx: Ctx, project: Project, g: Graphic, w: number, h: number): 
     const cell = cellWidth(ctx, font, project, g)
     const tw = Math.max(counterWidth(ctx, font, counterOf(project, g, g.from).text, cell), counterWidth(ctx, font, counterOf(project, g, g.to).text, cell))
     const label = g.label?.toLocaleUpperCase() ?? ''
-    const labelW = label ? measure(ctx, label, labelFont(project, g, px)) + [...label].length * labelSpacing(px) : 0
+    const labelW = label ? measure(ctx, label, labelFont(project, g, px)) + [...label].length * labelSpacing(px, label) : 0
     return { w: Math.max(tw, labelW) + px * 0.8, h: px * 1.15 + (g.label ? px * 0.45 * 1.6 : 0) + px * 0.5, px }
   }
   const m = listMetrics(g, w, h)
@@ -166,8 +166,11 @@ const counterFont = (project: Project, g: CounterGraphic, px: number): string =>
   const ref = fontRef(project, g)
   return `${weightOf(ref, 800)} ${px}px ${stackOf(project, ref)}`
 }
-/** A counter label's letter spacing (capitals spaced 0.15 em, as the mock-ups' label). */
-const labelSpacing = (px: number): number => px * 0.45 * 0.15
+/**
+ * A counter label's letter spacing: capitals spaced 0.15 em, as the mock-ups' label; none when its
+ * letters join or carry vowel signs (Bangla, Hindi, Arabic, §6.6), so its headline stays whole.
+ */
+const labelSpacing = (px: number, label: string): number => ([...label].some((ch) => trackingFor(scriptOf(ch), 0.15) === 0) ? 0 : px * 0.45 * 0.15)
 const labelFont = (project: Project, g: Graphic, px: number): string => {
   const ref = fontRef(project, g)
   return `${weightOf(ref, 700)} ${px * 0.45}px ${stackOf(project, ref)}`
@@ -525,7 +528,7 @@ function drawCounter(c: Ctx, project: Project, g: CounterGraphic, shape: Shape, 
       k.font = labelFont(project, g, px)
       k.textAlign = 'center'
       k.textBaseline = 'middle'
-      k.letterSpacing = `${labelSpacing(px).toFixed(2)}px`
+      k.letterSpacing = `${labelSpacing(px, g.label).toFixed(2)}px`
       k.fillStyle = rgba(look.theme.text, 0.7)
       k.fillText(g.label.toLocaleUpperCase(), 0, shape.h / 2 - px * 0.25 - px * 0.45 * 0.8)
     }
