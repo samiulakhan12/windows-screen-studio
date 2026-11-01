@@ -16,8 +16,14 @@
 
 .caption-great-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+
+/* The options dialog opens below the buttons on a line of its own, as wide as the section. */
+.caption-great-row > .great-options {
+  flex: 1 0 100%;
 }
 
 .caption-great-row .btn.primary {

@@ -210,6 +210,14 @@ describe('thumbnails', () => {
     }
   })
 
+  it('Make my captions great’s options open on a line of their own, as wide as the section, not squeezed beside its buttons', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync(new URL('../src/renderer/src/editor/panels/captionStudio.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rule = (selector: string): string => [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => m[1].split(',').some((sel) => sel.trim() === selector)).map((m) => m[2]).join(';')
+    expect(rule('.caption-great-row')).toMatch(/flex-wrap:\s*wrap/)
+    expect(rule('.caption-great-row > .great-options')).toMatch(/flex:\s*1 0 100%/)
+  })
+
   it('plays the focused tile’s look, never under reduced motion', async () => {
     // The picture of the second tile: its thumbnail's content.
     const picture = (els: El[]): unknown => (els.filter((e) => e.props.className === 'tile-thumb')[1].props.children as El | null)?.type
