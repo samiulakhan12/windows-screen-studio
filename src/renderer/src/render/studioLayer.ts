@@ -1284,7 +1284,8 @@ function drawWord(c: Ctx, d: ChunkDraw, info: WordInfo, row: Row, x: number, pos
     // Colour, glow and a sticker's colour: the crossfade share motion.ts gives in `fill`.
     else if (mark !== 'none' && mark !== 'underline') lit = Math.max(0, Math.min(1, p.fill))
   }
-  const baseState: WordState = !started && studio.theme.upcoming && !label ? 'upcoming' : 'base'
+  // Words to come are dimmed by their times; a translated track has none (§9.1 rule 7).
+  const baseState: WordState = !started && s.spoken && studio.theme.upcoming && !label ? 'upcoming' : 'base'
   const basePaint = paintFor(studio, info, baseState)
   const base = spriteOf(basePaint.paint, basePaint.key, info.box.w)
   const litPaint = lit > 0.002 || sweep > 0.002 ? paintFor(studio, info, 'lit') : null

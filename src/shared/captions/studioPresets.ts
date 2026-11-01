@@ -532,11 +532,12 @@ const MORE_SHORT: StudioPreset[] = [
     group: 'short',
     description: 'Only the spoken word is lit',
     fallback: 'karaoke',
-    // The dimmed words are #9a9a9a over a dark edge (6.2:1); the mock-up's white at α 0.32 is 2.7:1.
+    // The words to come are #9a9a9a over a dark edge (6.2:1); the mock-up's white at α 0.32 is 2.7:1.
+    // Words already spoken stay full white (APPROVED-LOOK.md).
     look: look('spotlight-word', {
       text: { font: cat('poppins'), weight: 800, case: 'asis', tracking: 0, lineHeight: 1.2, size: 0.06, tall: 1.2, scripts: bengali('noto-sans-bengali', 700) },
       emphasis: { weight: 800 },
-      theme: { text: '#9a9a9a', spoken: '#ffffff', emphasis: '#ffe14d', glow: '#78beff' },
+      theme: { text: '#ffffff', upcoming: '#9a9a9a', spoken: '#ffffff', emphasis: '#ffe14d', glow: '#78beff' },
       edge: { outline: 0.05, outlineAlpha: 0.9, shadow: { x: 0, y: 0.1, blur: 0.28, alpha: 0.6 }, glow: 0.7 },
       spoken: 'glow',
       layout: { chunk: 'words', words: 3, lines: 2, chars: 18, tallChars: 16, position: 'lower' },

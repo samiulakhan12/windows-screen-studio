@@ -180,7 +180,6 @@ describe('the spoken word on P1’s poses (WordPose.fill is the spoken colour’
 
   for (const [id, colour] of [
     ['bold-pop', '#39e508'],
-    ['spotlight-word', null],
     ['neon', null]
   ] as const)
     it(`${id}: the word being spoken is drawn lit, and the words around it are not`, () => {
@@ -192,6 +191,16 @@ describe('the spoken word on P1’s poses (WordPose.fill is the spoken colour’
       expect(lit).toContain('every')
       expect(lit).not.toContain('make')
     })
+
+  it('spotlight-word: the word being spoken is lit and bigger, the words said stay full white, the words to come are dimmed (§0.1)', () => {
+    drawStudioCaptions(frameOf(project([C1], 'en', { preset: 'bold', studio: look('spotlight-word') }), 1.2, 1080, 1920).fc)
+    const size = (word: string): number => Math.max(...calls.filter((c) => c.name === 'fillText' && c.args[0] === word).map((c) => parseFloat(/([\d.]+)px/.exec(String(c.font))![1])))
+    expect(size('every')).toBeGreaterThan(size('Make') * 1.2)
+    expect(paintedIn('#ffffff')).toContain('Make')
+    expect(paintedIn('#9a9a9a')).not.toContain('Make')
+    expect(paintedIn('#9a9a9a')).toContain('word')
+    expect(paintedIn('#ffffff')).not.toContain('word')
+  })
 })
 
 describe('the gallery’s Bangla sample (§0.2: tiles show Bangla text when the captions are Bangla)', () => {

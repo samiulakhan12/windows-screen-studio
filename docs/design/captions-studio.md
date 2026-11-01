@@ -2074,8 +2074,9 @@ position works for them.
    pop sounds when it appears.
 7. **Estimated words** (`estimated`, NW-09 `fromSound`) get calm word motion (§9.5) and their fill
    becomes a whole-word colour change. **A translated track** (`captions.track`, §11.9) has no
-   word times at all: while it is shown, spoken marks and word motion are off (chunk entrances and
-   exits stay), and the legacy Bold and Karaoke looks draw no lit word either.
+   word times at all: while it is shown, spoken marks, word motion and the colour of words to come
+   (`theme.upcoming`) are off (chunk entrances and exits stay), and the legacy Bold and Karaoke
+   looks draw no lit word either.
 8. **Speaker labels** take the chunk's pose only.
 9. Preview and export can differ in `t` by up to half a frame (the preview draws at
    `meta.mediaTime`, the export at frame times, `player.ts:474-487`, `exporter.ts:473`), as every

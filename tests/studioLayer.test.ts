@@ -400,6 +400,19 @@ describe('the legacy branch and its three guarded calls (tests 23, 50, 51)', () 
     drawCaptionsLayer(frameOf(project({ ...karaoke, track: 'bn' }), 1.2).fc)
     expect(calls.some((c) => c.name === 'fill' && c.fill === '#ff00ff')).toBe(false)
   })
+
+  it('dims no word to come while a translated track shows: it has no word times (§9.1 rule 7)', () => {
+    const spotlight = { ...LEGACY, studio: look('spotlight-word') }
+    const dimmed = (): string[] => calls.filter((c) => c.name === 'fillText' && c.fill === '#9a9a9a').map((c) => String(c.args[0]))
+    drawStudioCaptions(frameOf(project(spotlight), 1.2).fc)
+    expect(dimmed()).toContain('word')
+    calls.length = 0
+    STUDIO_SPRITES.clear()
+    hooks.burned = (p) => p.transcript!.segments.map((s) => ({ ...s, text: 'আমরা আজ শিখব', words: undefined }))
+    drawStudioCaptions(frameOf(project({ ...spotlight, track: 'bn' }), 1.2).fc)
+    expect(calls.some((c) => c.name === 'fillText' && c.args[0] === 'শিখব')).toBe(true)
+    expect(dimmed()).toEqual([])
+  })
 })
 
 describe('keeping clear (§8.6)', () => {
