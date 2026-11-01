@@ -12,11 +12,12 @@
  * lib/idna.js and the src/regexp/ patterns it is built from) and of parseTweet's weighted length
  * (with lib/getCharacterWeight.js and configs.js version 3), in one module. The patterns are built
  * from the same pieces in the same order and compile to the same regular expressions. The punycode
- * package's toASCII is replaced by punycodeLength below, which gives the length of its result (RFC
- * 3492's encoder, counted). Added: urlMatches and asciiDomainsIn, which find the same matches as
- * twitter-text's loops over EXTRACT_URL and VALID_ASCII_DOMAIN in linear time, and the `lenient`
- * option of findUrls (with the top-level domains of newerTlds.ts). See
- * resources/notices/34-twitter-text.txt.
+ * package's toASCII is replaced by punycodeLength below, which gives the length of its result: it is
+ * adapted from punycode.js 1.4.1 (Copyright Mathias Bynens <https://mathiasbynens.be/>, MIT licence:
+ * resources/notices/36-punycode.txt), its toASCII and its encoder (RFC 3492's), counted. Added:
+ * urlMatches and asciiDomainsIn, which find the same matches as twitter-text's loops over
+ * EXTRACT_URL and VALID_ASCII_DOMAIN in linear time, and the `lenient` option of findUrls (with the
+ * top-level domains of newerTlds.ts). See resources/notices/34-twitter-text.txt.
  */
 
 /**
@@ -103,7 +104,7 @@ export const VALID_TCO_URL = new RegExp(`^https?:\\/\\/t\\.co\\/([a-z0-9]+)(?:\\
 /** regexp/invalidUrlWithoutProtocolPrecedingChars.js: no link without a scheme after these. */
 export const INVALID_URL_WITHOUT_PROTOCOL_PRECEDING_CHARS = /[-_.\/]$/
 
-/* ---------- lib/idna.js (with the length of punycode 1.4.1's toASCII) ---------- */
+/* ---------- lib/idna.js (with the length of punycode 1.4.1's toASCII, adapted from punycode.js: MIT, Copyright Mathias Bynens) ---------- */
 
 const MAX_DOMAIN_LABEL_LENGTH = 63
 const PUNYCODE_ENCODED_DOMAIN_PREFIX = 'xn--'
