@@ -139,7 +139,14 @@ describe('filters and rows', () => {
     els = await settle(gallery({ value: { ...DEFAULT_CAPTIONS, preset: 'boxed' } }))
     expect(ids(els)[0]).toBe('legacy:boxed')
     expect(tiles(els)[0].props['aria-checked']).toBe(true)
-    expect(textOf(tiles(els)[0])).toContain('Boxed · Your current style')
+    // "Your current style" on its own line (next to the name, the ellipsis cut it off), and in the tile's name.
+    const first = tiles(els)[0]
+    expect(descendants(first).filter((e) => e.type === 'span').map((e) => [e.props.className, textOf(e)])).toEqual([
+      ['tile-name', 'Boxed'],
+      ['tile-current', 'Your current style']
+    ])
+    expect(first.props['aria-label']).toBe('Boxed, classic: text on a dark box, like TV subtitles, your current style')
+    expect(tiles(els)[1].props['aria-label']).not.toMatch(/current style/)
     expect(ids(els).filter((id) => id.startsWith('legacy:'))).toEqual(['legacy:boxed'])
   })
 

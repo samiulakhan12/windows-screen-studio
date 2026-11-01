@@ -354,7 +354,8 @@ export function CaptionGallery(props: {
       >
         {shown.map((t) => {
           const on = t.id === checked
-          const label = tileLabel(t)
+          // "Your current style" is said as it is shown, on its own line under the name (§2.5).
+          const label = t.current ? `${tileLabel(t)}, your current style` : tileLabel(t)
           const reason = t.id === suggested ? `tile-why-${t.id}` : undefined
           return (
             <div
@@ -393,7 +394,8 @@ export function CaptionGallery(props: {
                 onDone={() => setOnce(null)}
                 fonts={fonts}
               />
-              <span className="tile-name">{t.current ? `${t.name} · Your current style` : t.name}</span>
+              <span className="tile-name">{t.name}</span>
+              {t.current && <span className="tile-current">Your current style</span>}
               {t.id === suggested && (
                 <>
                   <span className="tile-badge" aria-hidden="true">

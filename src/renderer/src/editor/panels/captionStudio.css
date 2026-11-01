@@ -103,8 +103,10 @@
   text-overflow: ellipsis;
 }
 
-.caption-tile.current .tile-name {
+/* A line of its own, which wraps: next to the name it was cut off. */
+.tile-current {
   color: var(--accent-text);
+  font-size: var(--text-xs);
 }
 
 /* White on the accent: 5.1:1. */

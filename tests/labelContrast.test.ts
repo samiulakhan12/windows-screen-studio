@@ -101,6 +101,11 @@ describe('Captions Studio (docs/design/captions-studio.md §2.15, §7.3): the ne
     }
   })
 
+  it('"Your current style" on its tile', () => {
+    const tile = resolve(declared(studio, '.caption-tile', 'background'), vars)
+    expect(contrast(resolve(declared(studio, '.tile-current', 'color'), vars), tile)).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('the contrast meter’s words on the Inspector, easy and hard to read', () => {
     const panel = resolve('var(--surface-1)', vars)
     for (const sel of ['.caption-contrast', '.caption-contrast.poor']) expect(contrast(resolve(declared(studio, sel, 'color'), vars), panel), sel).toBeGreaterThanOrEqual(4.5)

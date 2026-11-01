@@ -304,7 +304,9 @@ state is remembered in `localStorage` `captions-look-open`.
   pick for this project, except in a wide camera-led project, where it is Karaoke Fill while
   Auto style itself keeps Subtitle (§11.6).
 - When the project uses a Classic look, its tile is shown first in every filter, labelled "Your
-  current style".
+  current style" on a line under its name (next to it, the name's ellipsis cut it off) and in its
+  accessible name ("Boxed, classic: text on a dark box, like TV subtitles, your current
+  style").
 - The current look's tile is checked (`aria-checked="true"`). Picking a tile is one undo step
   (§5.8 says which fields it keeps).
 - Each tile's accessible name is its name, its group and its one-line description, for example
