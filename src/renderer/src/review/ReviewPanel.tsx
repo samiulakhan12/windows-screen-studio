@@ -561,8 +561,9 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
   const places = useMemo(() => (windowed ? placesOf(list, sizes.current) : null), [windowed, list, measured])
   // What the last frame placed: to keep what is in view where it was.
   const placed = useRef<{ list: readonly ReviewItem[]; places: Float64Array; active: number } | null>(null)
-  // The last `reveal` done.
+  // The last `reveal` done, and the block's height last set (setting it again would have the page work out its style anew).
   const revealed = useRef(0)
+  const height = useRef('')
 
   useLayoutEffect(() => {
     const el = ul.current
@@ -584,6 +585,7 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
     const focused = list[active]?.key
     if (!places) {
       placed.current = null
+      height.current = ''
       if (reveal !== revealed.current) {
         revealed.current = reveal
         const row = el.children[active]
@@ -604,7 +606,11 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
       const now = before.list[at] ? indexOf.get(before.list[at].key) : undefined
       if (now !== undefined) to = top + places[now] - before.places[at]
     }
-    el.style.setProperty('--review-list-height', `${places[n] - ROW_GAP}px`)
+    const tall = `${places[n] - ROW_GAP}px`
+    if (tall !== height.current) {
+      height.current = tall
+      el.style.setProperty('--review-list-height', tall)
+    }
     if (Math.abs(to - el.scrollTop) > 0.5) el.scrollTop = to
     placed.current = { list, places, active }
     let changed = false
@@ -613,11 +619,11 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
       const key = (child as HTMLElement).dataset.key
       if (!key) continue
       if (key === focused) row = child
-      const height = child.getBoundingClientRect().height
+      const size = child.getBoundingClientRect().height
       const was = sizes.current.byKey.get(key)
-      if (was !== undefined && Math.abs(was - height) < 0.25) continue
-      sizes.current.byKey.set(key, height)
-      sizes.current.sum += height - (was ?? 0)
+      if (was !== undefined && Math.abs(was - size) < 0.25) continue
+      sizes.current.byKey.set(key, size)
+      sizes.current.sum += size - (was ?? 0)
       changed = true
     }
     if (changed) setMeasured((m) => m + 1)
