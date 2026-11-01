@@ -250,6 +250,26 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     expect(calls.find((c) => c.name === 'fillText' && c.args[0] === 'Make')?.fill).toBe('#ffffff')
   })
 
+  it('gives a Bangla sticker room above for its vowel signs, clear of the border (BANGLA-NOTES)', () => {
+    const seg: CaptionSegment = { id: 'b1', start: 0.5, end: 3, text: 'Make কিন্তু', words: [{ text: 'Make', start: 0.5, end: 0.9 }, { text: 'কিন্তু', start: 1, end: 1.4 }] }
+    drawStudioCaptions(frameOf(studioProject(look('stickers'), { transcript: { language: 'bn', segments: [seg] } } as Partial<Project>), 2).fc)
+    const texts = spriteTexts()
+    // The sticker's top edge above the word's middle, in the sprite's em, on each sprite that painted `word` (its shadow sits lower).
+    const tops = (word: string): number[] =>
+      [...texts.keys()]
+        .filter((id) => texts.get(id)![0] === word)
+        .map((id) => {
+          const on = calls.filter((c) => c.canvas === id)
+          const em = parseFloat(/([\d.]+)px/.exec(String(on.find((c) => c.name === 'fillText')!.font))![1])
+          return -Math.min(...on.filter((c) => c.name === 'roundRect').map((c) => c.args[1] as number)) / em
+        })
+    expect(tops('Make').length).toBeGreaterThan(0)
+    for (const top of tops('Make')) expect(top).toBeCloseTo(0.62 + 0.07, 6)
+    // ি reaches 0.72 em above the middle in Noto Sans Bengali; the 0.1 em border now starts above 0.8.
+    expect(tops('কিন্তু').length).toBeGreaterThan(0)
+    for (const top of tops('কিন্তু')) expect(top).toBeCloseTo(0.8 + 0.07, 6)
+  })
+
   it('points Speech Bubble’s tail at the camera bubble, and down without one (§0.1)', () => {
     const bubble = look('bubble-speech')
     const camera = { rect: { x: 1600, y: 80, w: 220, h: 220 }, radius: 110, opacity: 1 }

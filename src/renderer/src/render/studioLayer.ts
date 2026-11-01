@@ -450,7 +450,8 @@ interface WordPaint {
   glow: { radius: number; color: string } | null
   extrude: { steps: number; x: number; y: number; color: string } | null
   split: { d: number; left: string; right: string } | null
-  sticker: { fill: string; border: number; borderColor: string; padX: number; padY: number; radius: number; shadow: { x: number; y: number; blur: number; color: string } | null } | null
+  /** `top`: how far the sticker reaches above the line's middle, em (0.62; more for the tall marks of Bangla, Hindi and Thai). */
+  sticker: { fill: string; border: number; borderColor: string; padX: number; padY: number; radius: number; shadow: { x: number; y: number; blur: number; color: string } | null; top?: number } | null
   /** Extra room for blur motion. */
   blurRoom: boolean
   /** The line height a 'down' gradient spans. */
@@ -473,7 +474,7 @@ function padOf(p: WordPaint): number {
   if (p.glow) pad += p.glow.radius * 1.5
   if (p.extrude) pad += p.extrude.steps * Math.max(Math.abs(p.extrude.x), Math.abs(p.extrude.y))
   if (p.split) pad += p.split.d
-  if (p.sticker) pad += Math.max(p.sticker.padX, p.sticker.padY) + p.sticker.border + (p.sticker.shadow ? Math.max(Math.abs(p.sticker.shadow.x), Math.abs(p.sticker.shadow.y)) + 2 * p.sticker.shadow.blur : 0)
+  if (p.sticker) pad += Math.max(p.sticker.padX, p.sticker.padY + ((p.sticker.top ?? 0.62) - 0.62) * em) + p.sticker.border + (p.sticker.shadow ? Math.max(Math.abs(p.sticker.shadow.x), Math.abs(p.sticker.shadow.y)) + 2 * p.sticker.shadow.blur : 0)
   if (p.blurRoom) pad += 0.2 * em
   return Math.ceil(pad)
 }
@@ -518,9 +519,10 @@ function paintWord(c: Ctx, p: WordPaint, width: number): void {
     // Stickers (§0.1): a rounded sticker with a dark border and a hard offset shadow.
     const k = p.sticker
     const bx = -k.padX
-    const by = -em * 0.62 - k.padY
+    const up = em * (k.top ?? 0.62)
+    const by = -up - k.padY
     const bw = w + k.padX * 2
-    const bh = em * 1.24 + k.padY * 2
+    const bh = up + em * 0.62 + k.padY * 2
     const r = Math.min(k.radius, bh / 2)
     if (k.shadow) {
       c.save()
@@ -678,6 +680,13 @@ interface WordInfo {
 /** Bangla outlines are thinner than Latin (§0.2: 2.5 px at 30 px). */
 const BENGALI_OUTLINE_MAX = 0.04
 
+/**
+ * A sticker's top above the line's middle, em, for scripts whose marks reach higher than 0.62 em
+ * (BANGLA-NOTES: boxes get extra top padding): ি, ৌ and the reph reach 0.74 em in Noto Sans
+ * Bengali, ि 0.71 in Noto Sans Devanagari, Thai's stacked tone marks 0.84; all clear of the border.
+ */
+const STICKER_TOP: Partial<Record<ScriptTag, number>> = { bengali: 0.8, devanagari: 0.8, thai: 0.92 }
+
 /** The paint of word `wi` in `state` (§9.3, §0.1, §0.2). */
 function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPaint {
   const { theme, edge, box } = studio
@@ -726,7 +735,8 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
           padX: box.padX * em * grow,
           padY: box.padY * em * grow,
           radius: box.radius * em * grow,
-          shadow: box.shadow && box.shadow.alpha > 0 ? { x: box.shadow.x * em * grow, y: box.shadow.y * em * grow, blur: box.shadow.blur * em * grow, color: rgba(theme.shadow, box.shadow.alpha) } : null
+          shadow: box.shadow && box.shadow.alpha > 0 ? { x: box.shadow.x * em * grow, y: box.shadow.y * em * grow, blur: box.shadow.blur * em * grow, color: rgba(theme.shadow, box.shadow.alpha) } : null,
+          ...(STICKER_TOP[wi.token.script] ? { top: STICKER_TOP[wi.token.script] } : {})
         }
       : null
   const m = studio.motion
