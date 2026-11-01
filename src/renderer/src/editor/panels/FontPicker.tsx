@@ -75,6 +75,27 @@ export const megabytes = (bytes: number): string => `${(bytes / 1e6).toFixed(1)}
 /** The catalogue fonts the menu offers: bundled caption, script and Bangla fonts (not the emoji face), and the downloads. */
 const MENU_FONTS = CATALOG_FONTS.filter((f) => f.group !== 'emoji')
 
+/** Font downloads under way from a Font menu, by catalogue id: a menu shown again while one runs follows it to its end. */
+const downloads = new Map<string, Promise<AssetState['state']>>()
+
+/** Downloads catalogue font `id` (one download per id), then loads it. */
+function downloadFont(id: string): Promise<AssetState['state']> {
+  let run = downloads.get(id)
+  if (!run) {
+    run = window.api
+      .downloadAsset(id)
+      .then(async (done) => {
+        // The preview asked for the font before it was on this PC and keeps it missing: load it now,
+        // so the preview, the export dialog and the gallery draw with it (fontGeneration changes).
+        if (done.state === 'ready') await loadCatalogFont(id)
+        return done.state
+      })
+      .finally(() => downloads.delete(id))
+    downloads.set(id, run)
+  }
+  return run
+}
+
 /** Download (with its size), progress and Cancel for a catalogue font that is not on this PC (§2.6, §6.4). */
 function CatalogDownload({ font }: { font: CatalogFont }): JSX.Element | null {
   const [state, setState] = useState<AssetState['state'] | null>(null)
@@ -82,10 +103,24 @@ function CatalogDownload({ font }: { font: CatalogFont }): JSX.Element | null {
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let live = true
-    window.api.listAssets().then(
-      (list) => live && setState(list.find((a) => a.id === font.id)?.state ?? 'missing'),
-      () => live && setState('missing')
-    )
+    const run = downloads.get(font.id)
+    if (run) {
+      // Shown again (another panel and back) while its download runs: follow it to its end.
+      setState('downloading')
+      run.then(
+        (done) => live && setState(done),
+        (err: unknown) => {
+          if (!live) return
+          setState('missing')
+          setError(ipcMessage(err))
+        }
+      )
+    } else {
+      window.api.listAssets().then(
+        (list) => live && setState(list.find((a) => a.id === font.id)?.state ?? 'missing'),
+        () => live && setState('missing')
+      )
+    }
     const off = window.api.onAssetProgress((p) => {
       if (p.id === font.id) setProgress({ received: p.received, total: p.total, ...(p.retryAt ? { retryAt: p.retryAt } : {}) })
     })
@@ -100,11 +135,7 @@ function CatalogDownload({ font }: { font: CatalogFont }): JSX.Element | null {
     setState('downloading')
     setProgress(null)
     try {
-      const done = await window.api.downloadAsset(font.id)
-      // The preview asked for the font before it was on this PC and keeps it missing: load it now,
-      // so the preview, the export dialog and the gallery draw with it (fontGeneration changes).
-      if (done.state === 'ready') await loadCatalogFont(font.id)
-      setState(done.state)
+      setState(await downloadFont(font.id))
     } catch (err) {
       setState('missing')
       setError(ipcMessage(err))
@@ -269,7 +300,8 @@ export function FontPicker({
           {note}
         </p>
       )}
-      {cat && !cat.bundled && <CatalogDownload font={cat} />}
+      {/* Keyed: another font gets its own row, never the state of one still downloading. */}
+      {cat && !cat.bundled && <CatalogDownload key={cat.id} font={cat} />}
       {state === 'missing' && current && (
         <p className="callout" role="status" data-testid="font-missing">
           <EditorIcon name="alert" size={16} />

@@ -1714,7 +1714,8 @@ Per-script rules:
   again.
 - A download made from the Font menu is loaded (`loadCatalogFont`) as soon as it is on disk, so
   the preview, the export dialog's preview and the gallery draw with it at once, as the export
-  does.
+  does. A Font menu made again while the download runs (another panel and back) follows it to
+  its end: done, or the reason it stopped.
 - The export awaits `prepareCaptionFonts(project)` in `prepare` (`exporter.ts:92-101`) beside
   `prepareProjectFonts`. It waits for every catalogue face above and for the `FlownFontW-<id>`
   faces of brand fonts used by Studio looks, graphics and title cards (§6.7). Those entries are

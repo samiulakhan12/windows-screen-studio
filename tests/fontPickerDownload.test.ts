@@ -7,7 +7,8 @@ import { contexts, mockReact, settle, testStore, textOf, unmountAll, useEditorCo
 /*
  * The Font menu's Download for a caption font that is not on this PC (docs/design/captions-studio.md
  * §2.6, §6.4), without a DOM: once the download is done the font is loaded, so the preview draws
- * with it as the export does.
+ * with it as the export does; a menu made again while the download runs (another panel and back)
+ * follows it to its end.
  */
 
 const ASSET = 'studio-media://assets/noto-sans-jp.ttf'
@@ -35,13 +36,15 @@ vi.stubGlobal('fetch', async (url: string) => {
 /** What listAssets answers, and the download under way (the test ends it). */
 let listed: AssetState[] = []
 let finish: (s: AssetState) => void = () => undefined
+let fail: (err: Error) => void = () => undefined
 const api = {
   listAssets: async () => listed,
   downloadAsset: vi.fn(
     (id: string) =>
-      new Promise<AssetState>((resolve) => {
+      new Promise<AssetState>((resolve, reject) => {
         listed = [{ id, kind: 'font', state: 'downloading' }]
         finish = resolve
+        fail = reject
       })
   ),
   cancelAssetDownload: async () => undefined,
@@ -109,5 +112,35 @@ describe('Download in the Font menu (§2.6, §6.4)', () => {
     // The preview's next frame (a new project object) finds it ready.
     fonts.ensureCaptionFonts(project())
     expect(fonts.catalogFontReady('noto-sans-jp')).toBe(true)
+  })
+
+  it('a menu made again while the download runs follows it to its end', async () => {
+    listed = []
+    const started = api.downloadAsset.mock.calls.length
+    let els = await settle(view())
+    ;(downloadButton(els)!.props.onClick as () => void)()
+    // Another panel and back: the menu is made again.
+    unmountAll()
+    els = await settle(view())
+    expect(textOf(row(els))).toMatch(/^Downloading Noto Sans JP/)
+    finish({ id: 'noto-sans-jp', kind: 'font', state: 'ready', bytes: 9589900 })
+    listed = [{ id: 'noto-sans-jp', kind: 'font', state: 'ready', bytes: 9589900 }]
+    els = await settle(view())
+    expect(row(els)).toBeUndefined()
+    // One download: the menu made again did not start another.
+    expect(api.downloadAsset.mock.calls.length).toBe(started + 1)
+  })
+
+  it('a menu made again shows why the download stopped, and Download again', async () => {
+    listed = []
+    let els = await settle(view())
+    ;(downloadButton(els)!.props.onClick as () => void)()
+    unmountAll()
+    els = await settle(view())
+    fail(new Error("Error invoking remote method 'assets:download': Error: The download was cancelled."))
+    listed = [{ id: 'noto-sans-jp', kind: 'font', state: 'missing' }]
+    els = await settle(view())
+    expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe('The download was cancelled.')
+    expect(downloadButton(els)).toBeDefined()
   })
 })
