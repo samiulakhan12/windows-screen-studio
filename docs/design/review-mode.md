@@ -501,8 +501,8 @@ step after an edit by hand and the Review button's count after any edit each tak
 milliseconds to a few tens (tested: the panel's steps under 250 ms, the count under 50 ms; they took
 0.3 to 3 s, and the count 55 to 600 ms on every edit). Not fast there: the tool runs that write the
 records (about half a second for a cut run, 3 to 4 s for each speed-up run over 10,000 clips),
-Remove all of a kind over thousands of rows (about 1.5 s for the cuts, 5 s for the speed-ups), and
-drawing the rows, which are not virtualised (§8).
+Remove all of a kind over thousands of rows (1 to 1.5 s for the cuts, 5 to 6 s for the
+speed-ups), and drawing the rows, which are not virtualised (§8).
 
 ## 7. Files and exported signatures
 
