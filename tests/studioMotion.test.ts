@@ -212,6 +212,17 @@ describe('calm motion and strength 0 (test 14)', () => {
     const l = lay(timed('make every word'), s)
     expect(captionPoses(l, 0, 0.12, ONE, s, U, null).chunk.alpha).toBe(1)
   })
+
+  it('strength 0: the spoken word keeps its size in Spotlight Word and Stickers too ("Colour and fade only.")', () => {
+    for (const id of ['spotlight-word', 'stickers']) {
+      const s = withMotion(look(id), { strength: 0 })
+      const l = lay(timed('one two three', 0.6), s)
+      for (const t of [0.05, 0.65, 0.75, 1.21, 1.5, 1.7]) for (const w of captionPoses(l, 0, t, ONE, s, U, null).words) expect(w.scale, `${id} word ${w.token} at ${t} s`).toBe(1)
+      // At strength 1 it grows, as each look asks.
+      const full = look(id)
+      expect(captionPoses(lay(timed('one two three', 0.6), full), 0, 1.5, ONE, full, U, null).words[2].scale).toBeCloseTo(full.motion.spokenScale!, 6)
+    }
+  })
 })
 
 describe('the flash rule (test 15)', () => {
