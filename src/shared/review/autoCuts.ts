@@ -194,6 +194,28 @@ function intactOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
   }
 }
 
+/**
+ * The records of `list` whose change is still in `clips` (intactOf), each speed-up that goes leaving
+ * the others as Keep or Remove of it would, by how its row then reads (changeGone, §2.3): gone, a
+ * record holding footage at its speed inside it takes the speed from before it (withoutSpeedUp, as
+ * Remove); still playing at its speed, an earlier speed-up it holds footage of gives that part up
+ * (withSpeedUpKept, as Keep). So removing a record left never puts footage back at the speed of one
+ * gone, inside a speed-up still listed. The latest first; the rest judged again until none goes.
+ */
+function settledOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
+  let live = [...list]
+  for (;;) {
+    const next = intactOf(live, clips)
+    if (next.length === live.length) return next
+    const stays = new Set(next)
+    let out = next
+    for (const s of [...live].reverse()) {
+      if (s.action !== 'cut' && !stays.has(s)) out = changeGone(s, clips) ? withoutSpeedUp(out, s) : withSpeedUpKept(out, s)
+    }
+    live = out
+  }
+}
+
 /** The records whose change is still in the project's clips (what Review lists), in stored order. */
 export function liveAutoCuts(project: Pick<Project, 'autoCuts' | 'clips'>): AutoCut[] {
   return intactOf(project.autoCuts ?? [], project.clips)
@@ -392,8 +414,9 @@ function sameGap(cut: AutoCut, pieces: readonly Piece[], clips: readonly Clip[])
  * changes the clips, records whose change is no longer there are dropped in the same undo step, so
  * a later hand cut over the same footage cannot bring one back. So is a cut the edit made longer by
  * hand (a trim, a cut or a deleted clip reaching its gap): it is the user's cut now, and Remove must
- * not bring back footage inside it. The time a tool's own new records claim is not by hand. `next`
- * itself when nothing goes.
+ * not bring back footage inside it. The time a tool's own new records claim is not by hand. A
+ * speed-up that goes leaves the records around it as its row then reads (settledOf). `next` itself
+ * when nothing goes.
  */
 export function settleAutoCuts(next: Project, prev: Project): Project {
   const list = next.autoCuts
@@ -401,7 +424,7 @@ export function settleAutoCuts(next: Project, prev: Project): Project {
   const old = new Set((prev.autoCuts ?? []).map((c) => c.id))
   const byHand = next.clips === prev.clips ? [] : without(cutPieces(prev.clips, next.clips), list.filter((c) => !old.has(c.id)).flatMap((c) => c.was))
   const absorbed = (c: AutoCut): boolean => c.action === 'cut' && old.has(c.id) && byHand.length > 0 && sameGap(c, byHand, next.clips)
-  const live = intactOf(list.filter((c) => !absorbed(c)), next.clips)
+  const live = settledOf(list.filter((c) => !absorbed(c)), next.clips)
   return live.length === list.length ? next : withAutoCuts(next, live)
 }
 

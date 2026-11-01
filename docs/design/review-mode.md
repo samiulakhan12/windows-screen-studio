@@ -83,6 +83,13 @@ inside an idle part sped up 2×): the later record holds that part at this one's
 inside it does, so removing only the later one puts the part back at 2×, not at 1×. The same goes
 one level further in (a silence sped up 8× inside the 4× one): the 4× record hands that part on to
 the 8× one, and all three stay listed.
+A speed-up the settle step drops leaves the records around it as Keep or Remove of it would
+(§2.4), by how its row then reads (§2.3): when none of it plays at its speed any more, a record
+inside it that holds footage at its speed takes the speed from before it (`withoutSpeedUp`); while
+some of it still does, an earlier speed-up it holds footage of gives that part up
+(`withSpeedUpKept`). So removing a record later never puts footage back at the speed of one gone,
+inside a speed-up still listed: a 4× inside a 2× set back to 2× by hand, then the retake cut inside
+it removed, brings the retake back at 2× and the 2× stays to review.
 
 ### 2.2 What is listed
 
@@ -451,7 +458,9 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   Remove over nested runs (and the removed ones, then Keep all), two histories that leave the same
   clips and records, and seeded random histories with undo, redo, reopening and edits by hand.
   After each step every row the user chose reads that choice and the project holds exactly those
-  choices. Keep, Remove, Keep all and Remove all are one undo step each: the rows go back to
+  choices, and Keep or Remove leaves every row it did not act on to review (a speed-up the settle
+  step dropped leaves the records inside and around it as its row reads, §2.1). Keep, Remove, Keep
+  all and Remove all are one undo step each: the rows go back to
   pending and forward again on redo. Reopening lists only what is still automatic. Edits by hand
   after a choice leave it; with no choice, the rows read `changeGone` (undone runs, runs undone
   from the inside out, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken

@@ -6,7 +6,7 @@
  * with the panel's list kept as the panel keeps it.
  *
  * A history is a script of steps separated by ';':
- *   tool a-b <2|4|8|cut> [by]   an automatic run over [a, b] (Polish unless `by` is given), records r0, r1, ...
+ *   tool a-b[,c-d] <2|4|8|cut> [by]   an automatic run over [a, b] (and [c, d]; Polish unless `by` is given), records r0, r1, ...
  *   hand speed a-b <s> | hand cut a-b | hand restore a-b   an edit by hand
  *   undo | redo | open | close  Ctrl+Z, Ctrl+Y, the panel opened (Shift+R) and closed (Esc)
  *   K <id> | R <id>             Keep or Remove on that row (the panel opens first if it is closed)
@@ -109,9 +109,11 @@ class Session {
   step(raw: string): void {
     const w = raw.split(/\s+/)
     if (w[0] === 'tool') {
-      const [a, b] = span(w[1])
       const action = (w[2] === 'cut' ? 'cut' : Number(w[2])) as AutoCut['action']
-      const ranges = [{ start: a, end: b }]
+      const ranges = w[1].split(',').map((r) => {
+        const [a, b] = span(r)
+        return { start: a, end: b }
+      })
       // As the Clip panel's apply and Polish do: the run and its record in one update.
       this.edit((p) => recordAutoCuts(p, applySmartSpeed(p.clips, ranges, action), ranges, action, (w[3] ?? 'polish') as AutoCutSource, () => `r${this.n++}`))
     } else if (w[0] === 'hand') {
@@ -143,6 +145,8 @@ class Session {
       const outcome: Choice = w[0] === 'K' ? 'kept' : 'removed'
       // As ReviewPanel's act, keepAll and removeKind: one update.
       this.edit((p) => (w[0] === 'K' ? keepItems(p, items) : removeItems(p, items)), todo, outcome)
+      // Acting on rows leaves every other row to review.
+      for (const i of pending) if (!todo.some((x) => x.key === i.key)) expect(this.status(i), `${i.key} after "${raw}"`).toBe('pending')
     } else throw new Error(`unknown step ${raw}`)
   }
 
@@ -466,6 +470,46 @@ describe('with no choice made, a row whose record went reads removed when its ch
     expect(replay('open; tool 17.5-20 4; undo; tool 19.5-20 4').rows()).toEqual(['r0:kept', 'r1:pending'])
     // A choice made in the panel is certain.
     expect(replay('open; tool 17.5-20 4; R r0; tool 19.5-20 4').rows()).toEqual(['r0:removed', 'r1:pending'])
+  })
+})
+
+describe('a speed-up that goes with no choice made leaves the records inside it as its row reads', () => {
+  // Polish 2x over [10,20], Smart speed 4x over [12,14] inside it, a retake cut over [13,15].
+  const nested = 'tool 10-20 2; tool 12-14 4 smart-speed; tool 13-15 cut retake; open'
+
+  it('the 4x set back to 2x by hand reads removed: removing the cut brings its footage back at 2x and the 2x stays to review', () => {
+    const s = replay(`${nested}; hand speed 12-13 2`)
+    expect(s.p.autoCuts?.map((c) => c.id)).toEqual(['r0', 'r2'])
+    expect(s.rows()).toEqual(['r0:pending', 'r1:removed', 'r2:pending'])
+    s.run('R r2')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,20]@2')
+    expect(s.rows()).toEqual(['r0:pending', 'r1:removed', 'r2:removed'])
+    // As if the 4x had been removed in the panel.
+    const panel = replay(`${nested}; R r1; R r2`)
+    expect(plays(panel.p.clips)).toBe(plays(s.p.clips))
+    // Undone, the 4x is back and the cut holds its footage at 4x again.
+    s.run('undo; undo')
+    expect(s.rows()).toEqual(['r0:pending', 'r1:pending', 'r2:pending'])
+    s.run('R r2')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,12]@2 [12,14]@4 [14,20]@2')
+  })
+
+  it('a 4x that still plays at 4x outside the 2x reads kept: the 2x gives up its part, as Keep does, and stays to review', () => {
+    // Polish 2x over [5,15], Smart speed 4x over [10,20], a retake cut over [11,13]; the part of the
+    // 4x inside the 2x set to 2x by hand.
+    const s = replay('tool 5-15 2; tool 10-20 4 smart-speed; tool 11-13 cut retake; open; hand speed 10-15 2')
+    expect(s.rows()).toEqual(['r0:pending', 'r1:kept', 'r2:pending'])
+    s.run('R r2')
+    expect(plays(s.p.clips)).toBe('[0,5]@1 [5,11]@2 [11,13]@4 [13,15]@2 [15,20]@4')
+    expect(s.rows()).toEqual(['r0:pending', 'r1:kept', 'r2:removed'])
+    s.run('R r0')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,11]@2 [11,13]@4 [13,15]@2 [15,20]@4')
+  })
+
+  it('a 4x part of which is slowed by hand reads kept: a cut inside it still comes back at 4x', () => {
+    const s = replay('tool 5-15 4; tool 8-9 cut filler; open; hand speed 5-6 1; R r1')
+    expect(plays(s.p.clips)).toBe('[0,6]@1 [6,15]@4 [15,20]@1')
+    expect(s.rows()).toEqual(['r0:kept', 'r1:removed'])
   })
 })
 
