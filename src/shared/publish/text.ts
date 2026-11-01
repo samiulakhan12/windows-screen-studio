@@ -188,8 +188,9 @@ export function isMailAt(text: string, at: number): boolean {
  */
 function atStays(text: string, folded: string, ended: string, at: number): boolean {
   const from = Math.max(0, at - 256)
-  // A user name stops at the punctuation of Chinese and Japanese ("文档：flown.app/docs，邮箱：support@flown.app"), as a "/" before it does not start it.
-  const user = /[^\s@/\\[\]()，、：；！？（）「」『』【】《》]*$/.exec(folded.slice(from, at))?.[0] ?? ''
+  // A user name stops at the punctuation of Chinese and Japanese, their full stop too ("文档：flown.app/docs。邮箱：support@flown.app"),
+  // as a "/" before it does not start it.
+  const user = /[^\s@/\\[\]()，、：；！？（）「」『』【】《》。｡]*$/.exec(folded.slice(from, at))?.[0] ?? ''
   const name = /(?:[^\s\p{P}\p{Cc}<>｜]|[-._．。｡])*$/u.exec(ended.slice(from, at))?.[0].replace(/[．。｡]/g, '.') ?? ''
   const plain = !/[/\\]$/.test(folded.slice(from, at - user.length)) && !findUrls(` ${name}`, false).length && !findUrls(` ${name}`, true).length
   return plain || isMailAt(text, at)
