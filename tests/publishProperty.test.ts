@@ -53,9 +53,9 @@ const context = { title: 'Flown tour: flown.app/help', chapters: ['Intro', 'Edit
 const transcript = segments.map((s) => s.text).join(' ')
 const trusted = [transcript, context.title, ...context.chapters].join('\n')
 
-/** A link without its scheme (it goes to the same place), its host in lower case (ASCII only), the rest as written. */
+/** A link without its scheme or a "/" at its end (each goes to the same place), its host in lower case (ASCII only), the rest as written. */
 const key = (link: string): string => {
-  const bare = link.replace(/^https?:\/\//i, '')
+  const bare = link.replace(/^https?:\/\//i, '').replace(/\/$/, '')
   const host = /^[^/?#:]*/.exec(bare)?.[0] ?? ''
   return host.replace(/[A-Z]/g, (c) => c.toLowerCase()) + bare.slice(host.length)
 }

@@ -11,11 +11,17 @@ import { emojiSpans, extractUrlsWithIndices, findUrls, isTopLevelDomain, parseTw
 
 /**
  * C0 controls but tab and line feed, DEL, C1 controls, direction overrides and isolates, the BOM,
- * and the invisible characters IDNA drops from a host (soft hyphen, zero-width space, invisible
- * plus): "evil\u200bflown.app" is evilflown.app to a browser, and only "flown.app" to X.
+ * and invisible characters a browser drops from a host (soft hyphen, combining grapheme joiner,
+ * zero-width space, the invisible operators, shorthand format controls): "evil\u200bflown.app" is
+ * evilflown.app to a browser, and only "flown.app" to X.
  */
 // eslint-disable-next-line no-control-regex
-const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u00ad\u200b\u2064\u202a-\u202e\u2066-\u2069\ufeff]/g
+const CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u00ad\u034f\u200b\u2061-\u2064\u202a-\u202e\u2066-\u2069\ufeff]|\ud82f[\udca0-\udca3]/g
+/**
+ * The word joiner, which a browser drops from a host too: removed from what an AI wrote (cleanLinks
+ * puts it back only as JOIN, after a said link), kept in what the user typed.
+ */
+const WORD_JOINER = /\u2060/g
 
 export interface PlainTextOptions {
   /** Longest result (characters), cut at a sentence or word end. */
@@ -47,55 +53,129 @@ const SCHEME_OR_WWW = /https?:\/\/|www\./gi
  * ("https://ｅｖｉｌ.ｃｏｍ").
  */
 const NO_SPACE = '\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{sc=Thai}\\p{sc=Lao}\\p{sc=Khmer}\\p{sc=Myanmar}\\u3000-\\u303f\\uff5f-\\uffef'
-/** A "http(s)://" or "www." link X does not link: to a space, a quotation mark, an angle bracket or such a language's text… */
-const LOOSE_LINK = new RegExp(`(?:https?:\\/\\/|www\\.)[^\\s"'\`<>\\p{Pi}\\p{Pf}\\u201a\\u201e${NO_SPACE}]*`, 'iuy')
+/** A "http(s)://" or "www." link X does not link: to a space, a quotation mark, an angle bracket or such a language's text (and endsLooseLink)… */
+const LOOSE_LINK = new RegExp(`(?:https?:\\/\\/|www\\.)[^\\s"'\`<>${NO_SPACE}]*`, 'iuy')
 /** …without the sentence's punctuation after it, and with something after its "://" or "www.". */
-const LOOSE_TRAIL = /[.,;:!?)\]}…]+$/u
+const LOOSE_TRAIL = /(?:[.,;:!?)\]}]|(?![\x00-\x7f])\p{P})+$/u
 const LOOSE_HOST = /^(?:https?:\/\/|www\.)[\p{L}\p{N}]/iu
 /** A link that goes whole: with a scheme or "www."; any other is a bare name, broken. */
 const WHOLE = /^(?:https?:\/\/|www\.)/i
-/** Longest stretch read for one "http(s)://" or "www." link (a longer one goes in pieces, a round each). */
+/** Longest stretch X's own reading of one "http(s)://" or "www." link is looked for in, longest such link X does not link, and longest authority read for its hosts. */
 const LOOSE_MAX = 2000
 
 /**
  * What sites other than X take for the end of a name (and X does not), for linksIn's third reading:
  * "$" and "#" (X's cashtag and hashtag: a linkifier such as markdown-it's links "#evil.com"), "@"
- * (asOtherSitesRead keeps an e-mail address's), "//" before a name that is not a scheme's, with any
- * user name after it (protocol-relative, "//evil.com/login", "//me@evil.com"); what X counts as part
- * of a name: '"' and "`", punctuation other than ASCII's ("「evil.com」", "/．evil.com") and the text
- * of languages written without spaces ("网站flown.app/download"); and the ASCII punctuation X reads
- * on through in a path or query it drops ("flown.app?README.md", ".x.de/a%2eREADME.md": X links
- * nothing after a bare name's "?" or in a name it does not link, other sites start again there).
+ * (but where it stays one: atStays), "//" before a name that is not a scheme's (protocol-relative,
+ * "//evil.com/login"); what X counts as part of a name: '"' and "`", punctuation other than ASCII's
+ * ("「evil.com」", "/．evil.com") and the text of languages written without spaces
+ * ("网站flown.app/download"), but not right after a "." (a top-level domain in such a script:
+ * "paypal-login.在线"); and the ASCII punctuation X reads on through in a path or query it drops
+ * ("flown.app?README.md", ".x.de/a%2eREADME.md": X links nothing after a bare name's "?" or in a name
+ * it does not link, other sites start again there).
  */
-const OTHER_SITES_ENDS = new RegExp(`[${NO_SPACE}]+|(?:(?![\\x00-\\x7f])\\p{P})+|[$#"\`!?*'();=+,%[\\]~|&{}^<>\\\\]+|@|(?<!https?:)\\/\\/(?:[-\\w.~%!$&'()*+,;=:]*@)?`, 'giu')
+const OTHER_SITES_ENDS = new RegExp(`(?<![.${NO_SPACE}])[${NO_SPACE}]+|(?:(?![\\x00-\\x7f])\\p{P})+|[$#"\`!?*'();=+,%[\\]~|&{}^<>\\\\]+|@|(?<!https?:)\\/\\/`, 'giu')
 
 /**
- * Whether the "@" between `before` and `rest` is an e-mail address's, as other sites read one: after
- * a user name in ASCII that starts a word, and before a name that ends at a space, the end or
- * punctuation that ends a sentence or a bracket. Else they take the name before it for a link
- * ("paypal-login.com@evil.comx", "paypal.com@login", "ſevil.com@x.com").
+ * Characters a browser drops from a host: IDNA's ignored ones (soft hyphen, combining grapheme joiner,
+ * variation selectors, zero-width space, word joiner, invisible operators, BOM, shorthand format
+ * controls) and the joiners IDNA's older, transitional processing drops (U+200C, U+200D).
  */
-const isMailAt = (before: string, rest: string): boolean => {
-  if (!/(?:^|[\s<>|"(])[-;:&=+$,.\w]+$/.test(before)) return false
-  const name = findUrls(rest, true).find((u) => u.indices[0] === 0)
-  return !!name && /^(?:$|\s|[,;!?)\]'"…<>#/%&*。、，]|\.(?![\p{L}\p{N}]))/u.test(rest.slice(name.indices[1]))
+const HOST_IGNORED = /[\u00ad\u034f\u180b-\u180d\u180f\u200b-\u200d\u2060-\u2064\ufe00-\ufe0f\ufeff\u{1bca0}-\u{1bca3}\u{e0100}-\u{e01ef}]/gu
+/**
+ * Whether a browser reads character `c` in a host as ASCII letters, digits or "-" (IDNA: NFKC, case
+ * folded: "ｇ", "𝗀", "™", "①") or drops it (HOST_IGNORED), while X reads it as no part of an ASCII
+ * name. Not the word joiner: what an AI wrote has none but JOIN, after a said link's path.
+ */
+const foldCache = new Uint8Array(0x10000)
+function joinsName(c: string): boolean {
+  const code = c.length === 1 ? c.charCodeAt(0) : -1
+  if (code >= 0 && foldCache[code]) return foldCache[code] === 1
+  HOST_IGNORED.lastIndex = 0
+  const joins = c !== JOIN && (HOST_IGNORED.test(c) || /^[a-z0-9-]+$/.test(c.normalize('NFKC').toLowerCase()))
+  if (code >= 0) foldCache[code] = joins ? 1 : 2
+  return joins
 }
 
-/** `text` as sites other than X read it for links: OTHER_SITES_ENDS as spaces (but an e-mail address's "@"), so each character stays where it was. */
-const asOtherSitesRead = (text: string): string =>
-  text.replace(OTHER_SITES_ENDS, (m: string, at: number) => (m === '@' && isMailAt(text.slice(Math.max(0, at - 256), at), text.slice(at + 1, at + 257)) ? m : ' '.repeat(m.length)))
+/**
+ * Whether `c` ends a "http(s)://" or "www." link X does not link: punctuation other than ASCII's that
+ * a browser does not read as part of a host ("，", "（", "！", "—", "»", "।"; not "．", "－", "＿", "｡",
+ * "…": IDNA reads them as ".", "-", "_"), as linkifiers end a host there ("http://localhost:3000，就能…").
+ */
+const stopCache = new Uint8Array(0x10000)
+function endsLooseLink(c: string): boolean {
+  const code = c.length === 1 ? c.charCodeAt(0) : -1
+  if (code >= 0 && stopCache[code]) return stopCache[code] === 1
+  const ends = /^(?![\x00-\x7f])\p{P}$/u.test(c) && !/^[-._]+$/.test(c.normalize('NFKC')) && !joinsName(c)
+  if (code >= 0) stopCache[code] = ends ? 1 : 2
+  return ends
+}
 
-/** A "http(s)://" or "www." link's authority: what comes before its path, query or fragment ("\\" is "/" to a browser). */
-const authorityOf = (link: string): string => link.replace(/^https?:\/\//i, '').split(/[/?#\\]/, 1)[0]
+/** An e-mail address's top-level domain as markdown-it's linkifier (linkify-it 5) knows one: two letters, punycode, or its list. */
+const MAIL_TLD = /^(?:[a-z]{2}|xn--[-a-z0-9]+|biz|com|edu|gov|net|org|pro|web|xxx|aero|asia|coop|info|museum|name|shop|рф)$/i
+/** A host's characters for a linkifier: anything but spaces, controls, punctuation and "<", ">", "｜"; "-" and "." between. */
+const MAIL_HOST = /^(?:[^\s\p{P}\p{Cc}<>｜]|[-.])+/u
 
 /**
- * The hosts a browser may open for `piece` (a piece of an authority between "@"s), as sites end a
- * link at different places: up to each character that is not a letter, digit, "-", "_" or "." ("%",
- * "．", a quotation mark…: one site ends there, another reads on), each without the port, its escapes
- * decoded, as IDNA reads it (NFKC, lower case, "。" and "｡" as "."), without dots at its ends.
+ * Whether the "@" at `at` of `text` is an e-mail address's as linkifiers read one (linkify-it 5, which
+ * markdown-it uses): a user name of ASCII letters, digits and "-;:&=+$,._" (and '"' after the first)
+ * after the start, a space, a control or one of '<>｜"(', and a host of dotted names on MAIL_TLD,
+ * not followed by "_", a port or a name ("wei.wang@acme.com", "anna.li@acme.de"). Else they link a
+ * name before the "@" ("paypal-login.com@flown.app", "paypal-login.com@x.com:80/verify",
+ * "|paypal-login.com@evil.com").
  */
-function hostsOf(piece: string): string[] {
-  const raw = piece.replace(/:.*$/s, '')
+function isMailAt(text: string, at: number): boolean {
+  let s = at
+  while (s > 0 && at - s < 256 && /[-;:&=+$,."\w]/.test(text[s - 1])) s--
+  // The user name may start at any of its characters after the start, a space, a control, '<>｜"(', or a '"' in it.
+  let ok = false
+  for (let u = s; u < at && !ok; u++) ok = text[u] !== '"' && (u === 0 || (u === s ? /[\s\p{Cc}<>｜"(]/u.test(text[u - 1]) : text[u - 1] === '"'))
+  if (!ok) return false
+  const host = MAIL_HOST.exec(text.slice(at + 1, at + 300))?.[0] ?? ''
+  const name = host.replace(/\.+$/, '')
+  const labels = name.split('.')
+  if (labels.length < 2 || labels.some((l) => !l || l.startsWith('-') || l.endsWith('-')) || !MAIL_TLD.test(labels[labels.length - 1])) return false
+  return !/^(?:_|:\d)/.test(text.slice(at + 1 + name.length))
+}
+
+/**
+ * Whether the "@" at `at` stays one for linksIn's third reading, where no site links across it: when
+ * nothing right before it can be a link (the name before it, as that reading has it in `ended`, has
+ * none, and no "/" or "\" starts its user name: "support@flown.app", "@flown.studio",
+ * "@flown@mastodon.social"; not "//me@evil.com", "$paypal.com@x"), or it is an e-mail address's
+ * (isMailAt, on `text` as written). Else it is read as a space, and the names on both sides are read
+ * ("paypal-login.com@flown.app", "paypal.com@login"). `folded`: `text` with what joins a name folded;
+ * `ended`: that, with every other end of a name as spaces.
+ */
+function atStays(text: string, folded: string, ended: string, at: number): boolean {
+  const from = Math.max(0, at - 256)
+  const user = /[^\s@/\\[\]()]*$/.exec(folded.slice(from, at))?.[0] ?? ''
+  const name = /(?:[^\s\p{P}\p{Cc}<>｜]|[-._．。｡])*$/u.exec(ended.slice(from, at))?.[0].replace(/[．。｡]/g, '.') ?? ''
+  const plain = !/[/\\]$/.test(folded.slice(from, at - user.length)) && !findUrls(` ${name}`, false).length && !findUrls(` ${name}`, true).length
+  return plain || isMailAt(text, at)
+}
+
+/**
+ * `text` as sites other than X read it for links, each character where it was: what a browser reads
+ * in a host as ASCII letters or digits, or drops ("ｇｅｔflown.com", "get\ufe0fflown.com", which X links
+ * from "flown.com"), as "x"; then OTHER_SITES_ENDS as spaces, an "@" only where it does not stay one
+ * (atStays).
+ */
+function asOtherSitesRead(text: string): string {
+  const folded = text.replace(/[^\x00-\x7f]/gu, (c) => (joinsName(c) ? 'x'.repeat(c.length) : c))
+  const ended = folded.replace(OTHER_SITES_ENDS, (m: string) => (m === '@' ? m : ' '.repeat(m.length)))
+  return ended.replace(/@/g, (m: string, at: number) => (atStays(text, folded, ended, at) ? m : ' '))
+}
+
+/**
+ * The hosts a browser may open for `authority` (a "http(s)://" or "www." link's, with no "@" in it),
+ * as sites end a link at different places: up to each character that is not a letter, digit, "-",
+ * "_" or "." ("%", "．", a quotation mark…: one site ends there, another reads on), each without the
+ * port, its escapes decoded, as IDNA reads it (HOST_IGNORED dropped, NFKC, lower case, "。" and "｡"
+ * as "."), without dots at its ends.
+ */
+function hostsOf(authority: string): string[] {
+  const raw = authority.replace(HOST_IGNORED, '').replace(/:.*$/s, '')
   const hosts: string[] = []
   let end = 0
   for (const part of raw.split(/(?=[^\p{L}\p{M}\p{N}._-])/u)) {
@@ -107,37 +187,19 @@ function hostsOf(piece: string): string[] {
         return m // no UTF-8: a browser keeps the bytes, and no name has them
       }
     })
-    hosts.push(decoded.normalize('NFKC').toLowerCase().replace(/[。｡]/g, '.').replace(/^\.+|\.+$/g, ''))
+    hosts.push(decoded.replace(HOST_IGNORED, '').normalize('NFKC').toLowerCase().replace(/[。｡]/g, '.').replace(/^\.+|\.+$/g, ''))
   }
   return hosts
 }
 
 /**
- * Whether a site that reads "http(s)://" or "www." link `wide` (to the next space) further than X's
- * reading `own` may open a name that is not own's: when a piece of its authority (before, between or
- * after "@"s, as sites end such a link at different places, quotation marks or not) is a host on a
- * top-level domain that is neither own's host nor one under it ("https://flown.app%2eevil.com",
- * "https://flown.app:8443@evil.com", "https://flown.app．evil．com", 'https://flown.app".evil.com'). A
- * host on no top-level domain ("https://flown.app—great", "https://flown.app,") opens nothing.
- */
-function opensOtherHost(wide: string, own: string): boolean {
-  const mine = hostsOf(authorityOf(own)).at(-1) ?? ''
-  return authorityOf(wide)
-    .split('@')
-    .some((piece) =>
-      hostsOf(piece).some((host) => {
-        const dot = host.lastIndexOf('.')
-        return dot > 0 && host !== mine && !host.endsWith(`.${mine}`) && isTopLevelDomain(host.slice(dot + 1))
-      })
-    )
-}
-
-/**
  * The links in `text`, in order: every link X finds (with those it leaves only for their length, and
- * names on newer top-level domains, which other sites link), read three ways; and every "http(s)://"
- * or "www." link elsewhere (glued to a word, in another link's query, to an address X does not link),
- * as X ends it when it links it from there, else up to a space, a quotation mark or Chinese or
- * Japanese text, and up to there too when a site reading that far opens another host.
+ * names on newer top-level domains, which other sites link: `findUrls` read both ways), read three
+ * ways; and every "http(s)://" or "www." link elsewhere (glued to a word, in another link's query, to
+ * an address X does not link), as X ends it when it links it from there, else up to a space, a
+ * quotation mark, punctuation that ends a host (endsLooseLink) or Chinese or Japanese text; and to
+ * the next space too when a site reading that far may open another host (otherHostReader:
+ * "https://flown.app%2eevil.com", "https://flown.app:8443@evil.com", "https://flown.app!@203.0.113.7").
  *
  * X reads the start of a text in two ways: at the very start a first character such as "é" or "("
  * is what comes before a link ("éflown.app" links "flown.app"), after a space it is part of it
@@ -155,30 +217,39 @@ function linksIn(text: string): Link[] {
     links.push({ start, end, text: t, whole: WHOLE.test(t) })
   }
   for (const [read, shift] of [[text, 0], [` ${text}`, 1], [` ${asOtherSitesRead(text)}`, 1]] as const) {
-    for (const { indices } of findUrls(read, true)) add(Math.max(0, indices[0] - shift), indices[1] - shift)
+    // X's own reading, and the wider one: a match on a newer top-level domain that X drops can hide one X makes ("/a.web:1paypal-login.com").
+    for (const lenient of [false, true]) for (const { indices } of findUrls(read, lenient)) add(Math.max(0, indices[0] - shift), indices[1] - shift)
   }
   const found = links.slice()
+  const opens = otherHostReader(text)
+  const nextSpace = nextIndex(text, /\s/g)
   let after = 0
   for (const m of text.matchAll(SCHEME_OR_WWW)) {
     const i = m.index
     // Inside a link found above, or the last one found here: it goes with that one.
     if (i < after || found.some((l) => l.start < i && i < l.end)) continue
-    // As if the text started here (a link has no space in it, so it ends at the first one).
-    const space = text.slice(i, i + LOOSE_MAX).search(/\s/)
-    const from = text.slice(i, space < 0 ? i + LOOSE_MAX : i + space)
-    const x = findUrls(from, true).find((u) => u.indices[0] === 0)
-    const own = x ? from.slice(0, x.indices[1]) : ''
-    LOOSE_LINK.lastIndex = i
-    const loose = (LOOSE_LINK.exec(text)?.[0] ?? '').slice(0, LOOSE_MAX).replace(LOOSE_TRAIL, '')
+    // The stretch a site reading to the next space takes (a link has no space in it).
+    const stretch = nextSpace(i)
+    // As if the text started here.
+    const from = text.slice(i, Math.min(stretch, i + LOOSE_MAX))
+    const own = Math.max(0, ...[false, true].map((lenient) => findUrls(from, lenient).find((u) => u.indices[0] === 0)?.indices[1] ?? 0))
+    let loose = ''
+    if (!own) {
+      LOOSE_LINK.lastIndex = 0
+      const run = LOOSE_LINK.exec(from)?.[0] ?? ''
+      let cut = m[0].length
+      while (cut < run.length && !endsLooseLink(String.fromCodePoint(run.codePointAt(cut) as number))) cut += (run.codePointAt(cut) as number) > 0xffff ? 2 : 1
+      loose = run.slice(0, cut).replace(LOOSE_TRAIL, '')
+    }
+    const link = own ? from.slice(0, own) : LOOSE_HOST.test(loose) ? loose : ''
     let end = i + m[0].length
-    if (own) {
-      // Read to the space when a site reading that far may open another name.
-      end = i + (opensOtherHost(from, own) ? from.length : own.length)
-      add(i, i + own.length)
+    if (link) {
+      end = i + link.length
       add(i, end)
-    } else if (LOOSE_HOST.test(loose)) {
-      end = i + loose.length
-      add(i, end)
+      if (opens(i + (/^w/i.test(m[0]) ? 0 : m[0].length), stretch, link)) {
+        end = stretch
+        add(i, end)
+      }
     } else if (/\S/.test(text[end] ?? ' ')) {
       // A scheme glued to what no site reads as a host ("https://日%2eevil…", "https://“…"): the scheme.
       add(i, end)
@@ -189,6 +260,47 @@ function linksIn(text: string): Link[] {
 }
 
 /**
+ * For linksIn: whether a site that reads a "http(s)://" or "www." link whose host starts at `start`
+ * to `stretch` (the next space) may open another host than that of `link` (its reading as X or a
+ * linkifier ends it). Its authority runs to the first "/", "?", "#" or "\\" (a browser's). With an
+ * "@" in it, a browser opens whatever follows the last one ("https://flown.app!@203.0.113.7",
+ * "https://flown.app:8443@3405803783"), which no transcript's link is unless it says this whole
+ * stretch; so does an authority longer than LOOSE_MAX, which no link has (escapes of characters a
+ * browser drops can pad one: its hosts are not read); else when a host of it (hostsOf) is on a
+ * top-level domain and is neither link's host nor one under it ("https://flown.app%2eevil.com",
+ * "https://flown.app．evil．com", 'https://flown.app".evil.com'). A host on no top-level domain
+ * ("https://flown.app—great", "https://flown.app,") opens nothing. Called with `start` never going back.
+ */
+function otherHostReader(text: string): (start: number, stretch: number, link: string) => boolean {
+  const nextStop = nextIndex(text, /[\s/?#\\]/g)
+  const nextAt = nextIndex(text, /@/g)
+  return (start, stretch, link) => {
+    const end = Math.min(stretch, nextStop(start))
+    if (nextAt(start) < end || end - start > LOOSE_MAX) return true
+    const mine = hostsOf(authorityOf(link)).at(-1) ?? ''
+    return hostsOf(text.slice(start, end)).some((host) => {
+      const dot = host.lastIndexOf('.')
+      return dot > 0 && host !== mine && !host.endsWith(`.${mine}`) && isTopLevelDomain(host.slice(dot + 1))
+    })
+  }
+}
+
+/** Where the next match of global `re` in `text` is at or after `pos` (its length when none), for a `pos` that never goes back. */
+function nextIndex(text: string, re: RegExp): (pos: number) => number {
+  let found = -1
+  return (pos) => {
+    if (found < pos) {
+      re.lastIndex = pos
+      found = re.exec(text)?.index ?? text.length
+    }
+    return found
+  }
+}
+
+/** A "http(s)://" or "www." link's authority: what comes before its path, query or fragment ("\\" is "/" to a browser). */
+const authorityOf = (link: string): string => link.replace(/^https?:\/\//i, '').split(/[/?#\\]/, 1)[0]
+
+/**
  * The ending of a word written on a link ("'dan", "'s", "-Seite", ":sta", "-странице"), which X reads
  * as part of its path: the link without it, and it; or null.
  */
@@ -197,9 +309,13 @@ function ending(link: string): { stem: string; tail: string } | null {
   return m && m.index > 0 ? { stem: link.slice(0, m.index), tail: m[0] } : null
 }
 
-/** A link as links compare: without "http(s)://" (it goes to the same place), the host without case in ASCII only (U+212A, the Kelvin sign, is not "k"), the rest exactly. */
+/**
+ * A link as links compare: without "http(s)://" and without a "/" at its end (each goes to the same
+ * place: "https://flown.app/" is "flown.app"), the host without case in ASCII only (U+212A, the Kelvin
+ * sign, is not "k"), the rest exactly.
+ */
 function linkKey(link: string): string {
-  const bare = link.replace(/^https?:\/\//i, '')
+  const bare = link.replace(/^https?:\/\//i, '').replace(/\/$/, '')
   const host = /^[^/?#:]*/.exec(bare)?.[0] ?? ''
   return host.replace(/[A-Z]+/g, (c) => c.toLowerCase()) + bare.slice(host.length)
 }
@@ -273,7 +389,8 @@ function cleanLinks(text: string, allowed: ReadonlySet<string>): string {
   for (let round = 0; round < ROUNDS; round++) {
     const nfc = t.normalize()
     const bad = disallowed(nfc, allowed)
-    if (!bad.length) return t
+    // What was read: NFC once anything changed (a mark left by a removed link joins the letter before it).
+    if (!bad.length) return round ? nfc : t
     let out = ''
     let last = 0
     for (const l of bad) {
@@ -284,7 +401,8 @@ function cleanLinks(text: string, allowed: ReadonlySet<string>): string {
     }
     t = out + nfc.slice(last)
   }
-  return disallowed(t.normalize(), allowed).length ? noLinkAtAll(t.normalize()) : t
+  const nfc = t.normalize()
+  return disallowed(nfc, allowed).length ? noLinkAtAll(nfc) : nfc
 }
 
 /**
@@ -340,15 +458,15 @@ const tidyText = (t: string): string =>
 const charLength = (t: string): number => [...t].length
 
 /**
- * `s` as plain text: line breaks normalised, control and direction characters removed (a tab is a
- * space), NFC, markdown emphasis removed, spaces at line ends and repeated blank lines removed,
+ * `s` as plain text: line breaks normalised, control and direction characters and the word joiner
+ * removed (a tab is a space), NFC, markdown emphasis removed, spaces at line ends and repeated blank lines removed,
  * trimmed, cut to `max`, and then every link `linksFrom` does not have (keepLinks: `s` itself)
  * removed or broken (cleanLinks). Not a string: ''.
  */
 export function plainText(s: unknown, opts: PlainTextOptions): string {
   if (typeof s !== 'string') return ''
   const allowed = linkKeys(opts.keepLinks ? s : (opts.linksFrom ?? ''))
-  let t = s.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(CONTROLS, '').normalize()
+  let t = s.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(CONTROLS, '').replace(WORD_JOINER, '').normalize()
   t = t.replace(STRONG, '$1').replace(UNDERLINED, '$1')
   if (opts.oneLine) t = t.replace(/\s*\n\s*/g, ' ')
   t = tidyText(t)
