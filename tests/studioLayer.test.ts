@@ -202,6 +202,20 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     expect(every).toBeDefined()
   })
 
+  it('draws the spoken sticker’s word in the colour that reads on it when the theme sets none (§7.1)', () => {
+    // A theme swapped in: white words, a yellow spoken sticker and no spokenText (withTheme drops it).
+    const themed = look('stickers')
+    const { spokenText: _t, ...theme } = themed.theme
+    void _t
+    themed.theme = { ...theme, text: '#ffffff', spoken: '#ffe14d' }
+    drawStudioCaptions(frameOf(studioProject(themed), 1.2).fc)
+    expect(calls.filter((c) => c.name === 'fill').map((c) => c.fill)).toContain('rgba(255, 225, 77, 1)')
+    const every = calls.find((c) => c.name === 'fillText' && c.args[0] === 'every' && String(c.font).includes(`${0.065 * 1080 * 1.12}px`))
+    // textOn('#ffe14d'), as the meter judges it; not the white of the words around it.
+    expect(every?.fill).toBe('#111111')
+    expect(calls.find((c) => c.name === 'fillText' && c.args[0] === 'Make')?.fill).toBe('#ffffff')
+  })
+
   it('points Speech Bubble’s tail at the camera bubble, and down without one (§0.1)', () => {
     const bubble = look('bubble-speech')
     const camera = { rect: { x: 1600, y: 80, w: 220, h: 220 }, radius: 110, opacity: 1 }

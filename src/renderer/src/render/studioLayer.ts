@@ -657,7 +657,7 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   const boxedSpoken = spokenMark === 'box' || spokenMark === 'pill'
   if (lit && !emph) {
     if (spokenMark === 'gradient' && theme.gradient?.length) fill = { stops: theme.gradient, axis: 'across', from: 0, to: 1 }
-    else if (boxedSpoken) fill = theme.spokenText ?? (box.kind === 'word' ? wi.textColor : textOn(theme.spoken))
+    else if (boxedSpoken) fill = theme.spokenText ?? textOn(theme.spoken)
     else if (spokenMark !== 'weight' && spokenMark !== 'none' && spokenMark !== 'underline') fill = theme.spoken
   }
   const hollow = !!edge.hollow && !lit && !emph
