@@ -470,7 +470,11 @@ function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoos
   useLayoutEffect(() => {
     const el = ul.current
     if (!windowed || !el) return
-    const read = (): void => setView((v) => (v.top === el.scrollTop && v.height === el.clientHeight ? v : { top: el.scrollTop, height: el.clientHeight }))
+    const read = (): void => {
+      const top = el.scrollTop
+      const height = el.clientHeight
+      setView((v) => (v.top === top && v.height === height ? v : { top, height }))
+    }
     read()
     const watch = new ResizeObserver(read)
     watch.observe(el)
