@@ -229,7 +229,8 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
           }
         />
       </div>
-      <p className="hint">Pop-ups made here are listed in Review mode. Drag one in the preview to place it yourself.</p>
+      {/* TODO(phase B): "Pop-ups made here are listed in Review mode." comes back with Review mode. */}
+      <p className="hint">Drag one in the preview to place it yourself.</p>
     </Section>
   )
 }
@@ -435,7 +436,8 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
         <span>Sound</span>
         <Chips<'none' | 'pop' | 'ding'> label="Sound" value={g.sound ?? 'none'} onChange={(v) => set({ sound: v === 'none' ? undefined : v })} options={[...GRAPHIC_SOUNDS]} />
       </div>
-      {g.auto && <p className="hint">Made automatically. Editing it makes it yours; Review mode lists it until then.</p>}
+      {/* TODO(phase B): "; Review mode lists it until then" comes back with Review mode. */}
+      {g.auto && <p className="hint">Made automatically. Editing it makes it yours.</p>}
       <LookButtons itemKey={itemKey('graphic', id)} />
       <button
         type="button"

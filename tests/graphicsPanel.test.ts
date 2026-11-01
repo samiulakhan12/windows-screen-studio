@@ -146,6 +146,7 @@ beforeEach(() => {
 })
 
 const chip = (els: El[], text: string): El | undefined => els.find((e) => e.type === 'button' && String(e.props.className ?? '').startsWith('chip') && textOf(e) === text)
+const hints = (els: El[]): string[] => els.filter((e) => e.type === 'p' && e.props.className === 'hint').map(textOf)
 
 describe('with nothing selected', () => {
   it('starts the chips as Make my captions great’s options resolve, Quotes only with a provider', async () => {
@@ -220,6 +221,19 @@ describe('with nothing selected', () => {
     expect(rows.map(textOf)).toEqual(['“Auto Save”0:02 · Keyword pop-up', 'List: 1 item0:05 · List card'])
     ;(rows[1].props.onClick as (e: unknown) => void)({ ctrlKey: false, metaKey: false, shiftKey: false })
     expect(selected).toEqual([['graphic:l1']])
+  })
+})
+
+describe('the hints (§0.4)', () => {
+  // Review mode comes in phase B: until then no hint sends the user looking for it.
+  it('point to nothing this version lacks, with nothing selected and on a pop-up made automatically', async () => {
+    const panel = hints(await settle(view(), SKIP))
+    expect(panel).toContain('Drag one in the preview to place it yourself.')
+    unmountAll()
+    store.state = { ...store.state, graphics: [counterOf('c9', 1, 4)] }
+    const selectedHints = hints(await settle(view({ kind: 'graphic', id: 'c9' }), SKIP))
+    expect(selectedHints).toContain('Made automatically. Editing it makes it yours.')
+    for (const hint of [...panel, ...selectedHints]) expect(hint).not.toMatch(/Review/)
   })
 })
 

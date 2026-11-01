@@ -7,7 +7,7 @@ import { button, byTestId, contexts, focused, key, mockReact, settle, testStore,
  * §2.10, §2.15) without a DOM: each Show on the video radio is named with its row's language and
  * keeps Left and Right (the editor would step the playhead), and the forms that open in place of
  * their button (Add a language, Add a word) give the keyboard back to it when the keyboard closes
- * them; a click does not.
+ * them; a click does not. Clean up's hints name nothing this version lacks.
  */
 
 // Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
@@ -122,6 +122,15 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     expect(store.state.captionTracks?.map((t) => t.language)).toHaveLength(1)
     expect(byTestId(after, 'track-translate')).toBeUndefined()
     expect(focused.at(-1)?.props['data-testid']).toBe('track-add')
+  })
+})
+
+describe('Clean up’s hints (§2.9, §0.4)', () => {
+  // Review mode comes in phase B: until then no hint sends the user looking for it.
+  it('point to nothing this version lacks', async () => {
+    const hints = (await settle(cleanup())).filter((e) => e.type === 'p' && e.props.className === 'hint').map(textOf)
+    expect(hints).toContain('The word list also helps Generate captions spell these words.')
+    for (const hint of hints) expect(hint).not.toMatch(/Review/)
   })
 })
 

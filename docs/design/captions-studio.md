@@ -488,7 +488,7 @@ Section **Clean up** (`caption-cleanup`), shown with a transcript:
 | Chips `cleanup-bleep-sound` | **Bleep sound**: **Tone** · **Silence** | Tone. Only when bleeping is on. |
 | Checkbox `cleanup-ai` | **Also fix spelling and misheard words with AI** | Off. Shown only when an AI provider is set up, with a provider select (`cleanup-ai-provider`). This is today's **Fix captions** of the AI tools (`cleanup` task), moved here. |
 | Button `cleanup-run` | **Tidy captions** | One undo step (the AI fix, when ticked, is applied with the rest once its answer arrives; **Cancel** beside the button while it waits). Notice "Tidied 12 captions, bleeped 2 words" or "Nothing to tidy". |
-| Hint | "Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words." | |
+| Hint | "Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words." | Phase A, until Review mode is in (§0.4): only "The word list also helps Generate captions spell these words." The Graphics tab's hints leave Review mode out the same way. |
 
 The choices above (not the word list) are saved in prefs `captionCleanup` (§4.6) and used by Make
 my captions great's tidy step. Changes made by the AI fix are recorded like the offline ones
