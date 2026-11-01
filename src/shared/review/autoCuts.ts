@@ -10,7 +10,7 @@
 import type { AutoCut, AutoCutSource, Clip, Project } from '../types'
 import { setRangeSpeed } from '../editor/clips'
 import { MIN_CLIP, newClipId, normalizeClips } from '../engine/timeline'
-import { finite, MAX_AUTO_CUTS, MAX_WAS_PIECES, wordsText } from './autoCutData'
+import { finite, MAX_WAS_PIECES, newestAutoCuts, wordsText } from './autoCutData'
 
 /** How far (seconds) clips may differ from a record and still count as its change being there. */
 const SLACK = 1e-3
@@ -293,27 +293,13 @@ function assign(pieces: readonly Piece[], ranges: readonly AutoRange[]): Piece[]
 
 /**
  * `pieces` as they were before the speed-up `s`: a part inside one of its pieces that plays at its
- * speed gets that piece's speed from before. `pieces` itself when no part does.
+ * speed gets that piece's speed from before (the first of its pieces holding it). `pieces` itself
+ * when no part does. By binary search over its pieces joined once (firstHeld), so the cost grows
+ * with the pieces of both, not with their product.
  */
 function beforeSpeedUp(pieces: Piece[], s: AutoCut): Piece[] {
   if (s.action === 'cut' || !pieces.some((p) => p.speed === s.action)) return pieces
-  const bounds = s.was.flatMap((w) => [w.start, w.end]).sort((x, y) => x - y)
-  let hit = false
-  const out: Piece[] = []
-  for (const p of pieces) {
-    if (p.speed !== s.action) {
-      out.push(p)
-      continue
-    }
-    const cuts = [p.start, ...bounds.filter((t) => t > p.start + EPS && t < p.end - EPS), p.end]
-    for (let i = 0; i + 1 < cuts.length; i++) {
-      const mid = (cuts[i] + cuts[i + 1]) / 2
-      const w = s.was.find((x) => mid >= x.start && mid <= x.end)
-      if (w && w.speed !== p.speed) hit = true
-      out.push({ start: cuts[i], end: cuts[i + 1], speed: w ? w.speed : p.speed })
-    }
-  }
-  return hit ? joinPieces(out) : pieces
+  return withSpeedsBefore(pieces, firstHeld(s.was), s.action)
 }
 
 /**
@@ -323,9 +309,11 @@ function beforeSpeedUp(pieces: Piece[], s: AutoCut): Piece[] {
  * nothing are the same objects.
  */
 export function withoutSpeedUp(list: AutoCut[], s: AutoCut): AutoCut[] {
+  let parts: Piece[] | undefined
   return list.map((c) => {
-    if (c.id === s.id) return c
-    const was = beforeSpeedUp(c.was, s)
+    if (c.id === s.id || s.action === 'cut' || !c.was.some((p) => p.speed === s.action)) return c
+    parts ??= firstHeld(s.was)
+    const was = withSpeedsBefore(c.was, parts, s.action)
     return was === c.was ? c : { ...c, was }
   })
 }
@@ -475,9 +463,7 @@ export function recordAutoCuts(
       })
     }
   })
-  const all = intactOf([...live, ...fresh], nextClips)
-  const autoCuts = all.length > MAX_AUTO_CUTS ? all.slice(all.length - MAX_AUTO_CUTS) : all
-  return withAutoCuts({ ...project, clips: nextClips }, autoCuts)
+  return withAutoCuts({ ...project, clips: nextClips }, intactOf([...live, ...fresh], nextClips))
 }
 
 /** `pieces` without the time of `gone`, each split where `gone` covers it (in their order). */
@@ -538,24 +524,7 @@ export function settleAutoCuts(next: Project, prev: Project): Project {
  * Records that change nothing are the same objects.
  */
 export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
-  if (k.action === 'cut') return list
-  let out = list
-  let gone: readonly Piece[] = k.was
-  // Outward one level at a time: the part a record gives up carries its speeds from before it.
-  for (let n = 0; gone.length > 0 && n < list.length; n++) {
-    const next: Piece[] = []
-    const g = gone
-    out = out.map((c) => {
-      if (c.id === k.id || c.action === 'cut') return c
-      const mine = g.filter((w) => w.speed === c.action && c.was.some((p) => Math.min(p.end, w.end) - Math.max(p.start, w.start) > EPS))
-      if (!mine.length) return c
-      const rest = without(c.was, mine)
-      next.push(...without(c.was, rest))
-      return { ...c, was: rest }
-    })
-    gone = next
-  }
-  return out
+  return withSpeedUpsKept(list, [k])
 }
 
 /**
@@ -593,9 +562,13 @@ function withSpeedUpsKept(list: AutoCut[], ks: readonly AutoCut[]): AutoCut[] {
   return out
 }
 
-/** `project` with `list` as its records: no key when the list is empty. */
+/**
+ * `project` with `list` as its records: the newest that fit whole (newestAutoCuts, as a project file
+ * is read, so it opens again as it was); no key when none is left.
+ */
 export function withAutoCuts(project: Project, list: AutoCut[]): Project {
-  if (list.length) return { ...project, autoCuts: list }
+  const kept = newestAutoCuts(list)
+  if (kept.length) return { ...project, autoCuts: kept }
   if (!('autoCuts' in project)) return project
   const { autoCuts: _gone, ...rest } = project
   void _gone
@@ -629,9 +602,10 @@ export function undoAutoCut(clips: Clip[], cut: AutoCut, duration: number): Clip
  */
 function putBack(clips: Clip[], pieces: readonly Piece[], duration: number): Clip[] {
   const back: Clip[] = []
+  const sorted = [...clips].sort((x, y) => x.start - y.start)
   for (const p of pieces) {
     let at = p.start
-    for (const c of [...clips].sort((x, y) => x.start - y.start)) {
+    for (const c of sorted) {
       if (c.end <= at + EPS || c.start >= p.end - EPS) continue
       if (c.start - at > EPS) back.push({ id: newClipId(), start: at, end: c.start, speed: p.speed })
       at = Math.max(at, c.end)

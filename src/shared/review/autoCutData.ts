@@ -15,8 +15,15 @@ export const AUTO_CUT_OUTCOMES: readonly AutoCutOutcome['outcome'][] = ['kept', 
 export const MAX_AUTO_CUTS = 1000
 /** At most this many choices made in the Review panel are kept (the newest). */
 export const MAX_AUTO_CUT_OUTCOMES = 1000
-/** At most this many pieces per record. */
+/**
+ * At most this many pieces in a record a tool run writes (a longer share is split over several
+ * records), and in one a too-short piece of a cut is handed to (takeBack). A record grows past it
+ * when the records around it change (Keep of a speed-up inside it gives up those parts), so the
+ * reader keeps whole records within MAX_AUTO_CUT_PIECES in all instead.
+ */
 export const MAX_WAS_PIECES = 64
+/** At most this many pieces in all the records kept (the newest records, each whole). */
+export const MAX_AUTO_CUT_PIECES = MAX_AUTO_CUTS * MAX_WAS_PIECES
 /** Longest `words` text kept. */
 export const MAX_WORDS_TEXT = 80
 const MAX_ID = 64
@@ -33,11 +40,28 @@ export function wordsText(text: string | undefined): string | undefined {
 }
 
 /**
+ * The newest records of `list` (the last ones) that fit whole: walking from the newest, at most
+ * MAX_AUTO_CUTS records and MAX_AUTO_CUT_PIECES pieces in all, up to the first that does not fit.
+ * `list` itself when all fit. The editor keeps its records so (withAutoCuts) and the reader reads a
+ * file so, so a project saves and opens again as it was, every record with all its pieces.
+ */
+export function newestAutoCuts<T extends { was: readonly unknown[] }>(list: T[]): T[] {
+  let k = list.length
+  let pieces = 0
+  while (k > 0 && list.length - k < MAX_AUTO_CUTS && pieces + list[k - 1].was.length <= MAX_AUTO_CUT_PIECES) {
+    pieces += list[k - 1].was.length
+    k--
+  }
+  return k === 0 ? list : list.slice(k)
+}
+
+/**
  * The stored records, sanitised (§3): plain objects only, fields read one by one; ids 1..64
  * characters and unique; `by`/`action` from their lists; ranges finite, clamped to [0, duration]
- * and not empty; pieces inside the range with a speed in [MIN_SPEED, MAX_SPEED], at most
- * MAX_WAS_PIECES; `words` cut to MAX_WORDS_TEXT; at most MAX_AUTO_CUTS (the newest). A record
- * without a piece is dropped. Undefined when nothing is left (no key in the project). Idempotent.
+ * and not empty; pieces inside the range with a speed in [MIN_SPEED, MAX_SPEED]; `words` cut to
+ * MAX_WORDS_TEXT; the newest records that fit whole in MAX_AUTO_CUTS records and
+ * MAX_AUTO_CUT_PIECES pieces (newestAutoCuts). A record without a piece is dropped. Undefined when
+ * nothing is left (no key in the project). Idempotent.
  */
 export function readAutoCuts(raw: unknown, duration: number): AutoCut[] | undefined {
   if (!Array.isArray(raw)) return undefined
@@ -55,7 +79,8 @@ export function readAutoCuts(raw: unknown, duration: number): AutoCut[] | undefi
     if (end - start <= EPS) continue
     const was: AutoCut['was'] = []
     for (const p of Array.isArray(r.was) ? r.was : []) {
-      if (was.length >= MAX_WAS_PIECES) break
+      // One with more pieces than all may hold never fits (newestAutoCuts): no need to read on.
+      if (was.length > MAX_AUTO_CUT_PIECES) break
       if (!isObject(p) || !finite(p.start) || !finite(p.end) || !finite(p.speed)) continue
       const a = clamp(p.start, start, end)
       const b = clamp(p.end, start, end)
@@ -67,7 +92,7 @@ export function readAutoCuts(raw: unknown, duration: number): AutoCut[] | undefi
     ids.add(id)
     out.push({ id, by, action, start, end, was, ...(words ? { words } : {}) })
   }
-  const kept = out.length > MAX_AUTO_CUTS ? out.slice(out.length - MAX_AUTO_CUTS) : out
+  const kept = newestAutoCuts(out)
   return kept.length ? kept : undefined
 }
 

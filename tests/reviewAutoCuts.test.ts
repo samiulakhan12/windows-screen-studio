@@ -2,13 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { projectCopy } from '../src/shared/editor/duplicate'
+import { setRangeSpeed } from '../src/shared/editor/clips'
 import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed } from '../src/shared/editor/smartSpeed'
 import { cutWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange, removeClip, setTrimEnd, setTrimStart } from '../src/shared/engine/timeline'
-import { MAX_AUTO_CUT_OUTCOMES, MAX_AUTO_CUTS, MAX_WAS_PIECES, readAutoCutOutcomes, readAutoCuts, withOutcomes, wordsText } from '../src/shared/review/autoCutData'
-import { autoCutIntact, changeGone, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts } from '../src/shared/review/autoCuts'
+import { MAX_AUTO_CUT_OUTCOMES, MAX_AUTO_CUT_PIECES, MAX_AUTO_CUTS, MAX_WAS_PIECES, readAutoCutOutcomes, readAutoCuts, withOutcomes, wordsText } from '../src/shared/review/autoCutData'
+import { autoCutIntact, changeGone, liveAutoCuts, recordAutoCuts, settleAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp } from '../src/shared/review/autoCuts'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem } from '../src/shared/review/review'
 import { suggestionRanges } from '../src/shared/review/wordCuts'
 import type { AutoCut, AutoCutOutcome, Clip, Project } from '../src/shared/types'
@@ -39,6 +40,16 @@ function project(clips: Clip[] = [clip(0, 20)], over: Partial<Project> = {}): Pr
 }
 
 const cut = (over: Partial<AutoCut> = {}): AutoCut => ({ id: 'a', by: 'silences', action: 'cut', start: 4, end: 6, was: [{ start: 4, end: 6, speed: 1 }], ...over })
+
+/** `n` pieces spread over [0, 20], each half of its share. */
+const spread = (n: number, speed = 1): AutoCut['was'] => Array.from({ length: n }, (_, i) => ({ start: (20 * i) / n, end: (20 * (i + 0.5)) / n, speed }))
+
+/** Three records over [0, 20]: the newest two fit in MAX_AUTO_CUT_PIECES, the oldest does not. */
+const budgetCase = (): AutoCut[] => [
+  cut({ id: 'old', start: 0, end: 20, was: spread(100) }),
+  cut({ id: 'mid', start: 0, end: 20, was: spread(MAX_AUTO_CUT_PIECES - 50) }),
+  cut({ id: 'new', start: 0, end: 20, was: spread(40) })
+]
 
 describe('readAutoCuts (migration)', () => {
   it('is undefined for anything but an array, and for an empty result', () => {
@@ -77,13 +88,22 @@ describe('readAutoCuts (migration)', () => {
     expect(Object.keys(c)).not.toContain('extra')
   })
 
-  it('keeps the newest MAX_AUTO_CUTS records and at most 64 pieces each', () => {
+  it('keeps the newest records that fit whole: MAX_AUTO_CUTS of them, MAX_AUTO_CUT_PIECES pieces in all', () => {
     const many = Array.from({ length: MAX_AUTO_CUTS + 5 }, (_, i) => cut({ id: `r${i}` }))
     const out = readAutoCuts(many, 20)!
     expect(out).toHaveLength(MAX_AUTO_CUTS)
     expect(out[0].id).toBe('r5')
-    const pieces = Array.from({ length: 70 }, (_, i) => ({ start: i * 0.1, end: i * 0.1 + 0.05, speed: 1 }))
-    expect(readAutoCuts([cut({ start: 0, end: 10, was: pieces })], 20)![0].was).toHaveLength(64)
+    // A record keeps all its pieces, past the MAX_WAS_PIECES a tool run writes in one (Keep of the
+    // speed-ups inside one splits it).
+    expect(readAutoCuts([cut({ start: 0, end: 20, was: spread(MAX_WAS_PIECES + 17) })], 20)![0].was).toHaveLength(MAX_WAS_PIECES + 17)
+    // The newest records whole, up to the first that does not fit in the pieces left.
+    const big = readAutoCuts(budgetCase(), 20)!
+    expect(big.map((c) => [c.id, c.was.length])).toEqual([
+      ['mid', MAX_AUTO_CUT_PIECES - 50],
+      ['new', 40]
+    ])
+    expect(readAutoCuts(big, 20)).toEqual(big)
+    expect(readAutoCuts([cut({ start: 0, end: 20, was: spread(MAX_AUTO_CUT_PIECES + 1) })], 20)).toBeUndefined()
   })
 
   it('is idempotent', () => {
@@ -481,6 +501,96 @@ describe('intact, change gone, live', () => {
     expect('autoCuts' in withAutoCuts(p, [])).toBe(false)
     const none = project()
     expect(withAutoCuts(none, [])).toBe(none)
+  })
+
+  it('withAutoCuts keeps the records a project file keeps, so the project opens again as it was', () => {
+    const p = withAutoCuts(project(), budgetCase())
+    expect(p.autoCuts!.map((c) => c.id)).toEqual(['mid', 'new'])
+    expect(migrateProject(JSON.parse(JSON.stringify(p))).autoCuts).toEqual(p.autoCuts)
+  })
+
+  it('two records from a project file with 32,000 pieces each: taking one from under the other and a Keep take milliseconds', () => {
+    // Hand-written, over a 600 s video at 2x: a 2x whose pieces cover it all, at 1x and 0.5x in turn,
+    // and a cut holding a sliver inside each at 2x. The 2x taken from under the cut (withoutSpeedUp:
+    // its Remove, or a later run taking it over): the cut holds its slivers at the 2x's speeds from
+    // before. Then a 4x holding those slivers at 2x inside such a 2x, over a video at 4x, the 4x kept:
+    // the 2x gives up its parts (withSpeedUpKept). Each compared every piece of one record with every
+    // piece of the other: seconds.
+    const D = 600
+    const n = MAX_AUTO_CUT_PIECES / 2
+    const half = (off: number, speed: number) =>
+      Array.from({ length: n }, (_, j) => ({ start: (D * (j + off)) / n, end: (D * (j + off + 0.5)) / n, speed }))
+    const whole = Array.from({ length: n }, (_, j) => ({ start: (D * j) / n, end: (D * (j + 1)) / n, speed: j % 2 ? 0.5 : 1 }))
+    const over = project([clip(0, D, 2)], {
+      duration: D,
+      autoCuts: readAutoCuts([cut({ id: 'c', by: 'retake', start: 0, end: D, was: half(0.25, 2) }), cut({ id: 's', by: 'smart-speed', action: 2, start: 0, end: D, was: whole })], D)
+    })
+    expect(over.autoCuts!.map((c) => c.was.length)).toEqual([n, n])
+    let t = performance.now()
+    const [c, s] = withoutSpeedUp(over.autoCuts!, over.autoCuts![1])
+    expect(performance.now() - t).toBeLessThan(500)
+    expect(c.was.map((p) => p.speed)).toEqual(whole.map((w) => w.speed))
+    expect(s).toBe(over.autoCuts![1])
+    const kept = project([clip(0, D, 4)], {
+      duration: D,
+      autoCuts: readAutoCuts([cut({ id: 't', by: 'smart-speed', action: 2, start: 0, end: D, was: whole }), cut({ id: 'f', by: 'polish', action: 4, start: 0, end: D, was: half(0.25, 2) })], D)
+    })
+    t = performance.now()
+    const listed = reviewItems(kept)
+    expect(listed.map((i) => i.key)).toEqual(['cut:f'])
+    const after = keepItems(kept, listed)
+    expect(performance.now() - t).toBeLessThan(500)
+    expect(after.autoCuts!.find((c) => c.id === 't')!.was).toHaveLength(2 * n)
+  })
+})
+
+describe('a record that grows past MAX_WAS_PIECES opens again with all its pieces', () => {
+  const D = 600
+  const editor = (): EditStore<Project> =>
+    new EditStore(project([clip(0, D)], { duration: D }), 200, 800, () => 0, (n: Project, p: Project) => settleAutoCuts(settleDeletedWords(n, p), p))
+  const reopen = (p: Project): Project => migrateProject(JSON.parse(JSON.stringify(p)))
+  const covered = (clips: Clip[], a: number, b: number, speed?: number): number =>
+    clips.reduce((n, c) => n + (speed === undefined || c.speed === speed ? Math.max(0, Math.min(b, c.end) - Math.max(a, c.start)) : 0), 0)
+
+  it('Smart speed 2x over an idle part, 80 pauses inside it sped up 4x and kept: Remove of the idle part after reopening puts all of it back', () => {
+    const s = editor()
+    const idle = [{ start: 100, end: 500 }]
+    s.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, idle, 2), idle, 2, 'smart-speed'))
+    const pauses = Array.from({ length: 80 }, (_, k) => ({ start: 101 + k * 5, end: 102.5 + k * 5 }))
+    s.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, pauses, 4), pauses, 4, 'polish'))
+    s.update((p) => keepItems(p, reviewItems(p).filter((i) => i.cut?.by === 'polish')))
+    expect(s.state.autoCuts!.map((c) => [c.by, c.was.length])).toEqual([['smart-speed', 81]])
+    const again = reopen(s.state)
+    expect(again.autoCuts).toEqual(s.state.autoCuts)
+    const out = removeItems(again, reviewItems(again))
+    expect(covered(out.clips, 0, D, 2)).toBe(0)
+    expect(covered(out.clips, 0, D, 4)).toBeCloseTo(80 * 1.5)
+    expect(reviewItems(out)).toEqual([])
+  })
+
+  it('a retake cut inside an 8x that an edit by hand took away holds its footage at the speeds from before: all of it comes back after reopening', () => {
+    const s = editor()
+    const pauses = Array.from({ length: 120 }, (_, k) => ({ start: 51 + k * 4, end: 52.2 + k * 4 }))
+    s.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, pauses, 4), pauses, 4, 'polish'))
+    s.update((p) => keepItems(p, reviewItems(p)))
+    const idle = [{ start: 100, end: 500 }]
+    s.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, idle, 8), idle, 8, 'smart-speed'))
+    s.update((p) => recordAutoCuts(p, cutRange(p.clips, 150, 450), [{ start: 150, end: 450 }], 'cut', 'retake'))
+    // By hand, [100, 150] back to 1x: the 8x goes, and the retake holds [150, 450] as it was before it.
+    s.update((p) => ({ ...p, clips: setRangeSpeed(p.clips, 100, 150, 1) }))
+    const retake = s.state.autoCuts!.find((c) => c.by === 'retake')!
+    expect(retake.was.length).toBeGreaterThan(MAX_WAS_PIECES)
+    const again = reopen(s.state)
+    expect(again.autoCuts).toEqual(s.state.autoCuts)
+    const out = removeItems(again, reviewItems(again).filter((i) => i.cut?.by === 'retake'))
+    expect(covered(out.clips, 150, 450)).toBeCloseTo(300)
+    // The 8x's other records are still to review; with them removed, only the kept 4x pauses stay
+    // sped up, but for those inside [100, 150], set to 1x by hand.
+    const all = removeItems(out, reviewItems(out))
+    expect(reviewItems(all)).toEqual([])
+    expect(covered(all.clips, 0, D, 1) + covered(all.clips, 0, D, 4)).toBeCloseTo(D)
+    const outsideHand = pauses.reduce((n, r) => n + (r.end - r.start) - Math.max(0, Math.min(150, r.end) - Math.max(100, r.start)), 0)
+    expect(covered(all.clips, 0, D, 4)).toBeCloseTo(outsideHand)
   })
 })
 

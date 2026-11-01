@@ -220,9 +220,15 @@ Project.autoCutOutcomes?: AutoCutOutcome[]
   already carried `auto`.
 * `readAutoCuts(raw, duration)`: an array of plain objects only; `id` 1–64 characters, unique;
   `by` and `action` from their lists; `start < end`, finite, clamped to `[0, duration]`; `was`
-  pieces finite, inside `[start, end]`, speed in `[0.25, 16]`, at most 64 pieces; `words` a string
-  cut to 80 characters; at most 1000 records (the newest kept). Anything else is dropped; an empty
-  result is `undefined` (no key). Idempotent.
+  pieces finite, inside `[start, end]`, speed in `[0.25, 16]`; `words` a string cut to 80
+  characters; the newest records that fit whole in 1000 records and 64,000 pieces in all
+  (`newestAutoCuts`: walking from the newest, up to the first that does not fit). Anything else is
+  dropped; an empty result is `undefined` (no key). Idempotent. A tool run writes at most 64 pieces
+  in a record (§4.1), but a record grows past that while the project is open: Keep of the 80 pauses
+  sped up inside an idle part gives those parts up from it (81 pieces), and a speed-up an edit takes
+  away hands the cut inside it its speeds from before. So the cap is on the pieces in all, not on
+  each record, and the editor keeps its records by the same rule (`withAutoCuts`): a project saves
+  and opens again (or is duplicated) with every record whole, and Remove still puts all of it back.
 * `autoCutOutcomes` is **absent** until a choice is made in the panel (the migration adds no key:
   `optional('autoCutOutcomes', readAutoCutOutcomes(...))`), so old projects, and projects with
   records but no choice, load and save byte for byte unchanged. Keep, Remove, Keep all and Remove
@@ -440,7 +446,9 @@ footage is handed from one record to another: a file with a thousand records ove
 (at their own speed, or over three rising speeds with 64 pieces each, or five hundred speed-ups
 that go at once with five hundred records around or inside them) is listed, settled and shown in
 the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
-a time, not one by one. A row's status reads its recorded choice by id, or
+a time, not one by one. Taking a speed-up from under the other records (`withoutSpeedUp`) and
+giving up the parts of a speed-up kept (`withSpeedUpKept`) go by binary search over its pieces
+joined once, so two records of 32,000 pieces each take milliseconds too. A row's status reads its recorded choice by id, or
 its record and the clips, so reading the rows again after many are kept or removed costs no more.
 
 ## 7. Files and exported signatures
@@ -490,8 +498,13 @@ its record and the clips, so reading the rows again after many are kept or remov
 ## 9. Test plan
 
 Unit (`tests/review*.test.ts`), each failing without its code:
-* `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; capped; idempotent; a
-  project without `autoCuts` migrates with no key (byte-for-byte JSON equal to the old migration).
+* `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; capped (the newest
+  records whole, a record past 64 pieces kept whole); idempotent; a project without `autoCuts`
+  migrates with no key (byte-for-byte JSON equal to the old migration). `withAutoCuts` keeps the
+  same records. Saved and opened again: an idle part with 80 pauses inside it kept (81 pieces), and
+  a retake cut inside an 8× an edit by hand took away (over 64 pieces), each removed after opening,
+  bring all their footage back. Two records of 32,000 pieces each: `withoutSpeedUp` and Keep of
+  one inside the other take milliseconds.
 * `readAutoCutOutcomes`: absent or empty → undefined; malformed entries dropped (not an object, id
   empty or over 64 characters, an unknown outcome, extra fields not copied); one entry per id, the
   later one kept; capped at 1000, the newest kept; idempotent; a project without choices (with
