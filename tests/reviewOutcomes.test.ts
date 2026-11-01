@@ -17,7 +17,7 @@ import { restoreRange, setRangeSpeed } from '../src/shared/editor/clips'
 import { EditStore } from '../src/shared/editor/editStore'
 import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
-import { createProject } from '../src/shared/engine/project'
+import { createProject, migrateProject } from '../src/shared/engine/project'
 import { cutRange } from '../src/shared/engine/timeline'
 import { recordAutoCuts, settleAutoCuts } from '../src/shared/review/autoCuts'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem, type ReviewStatus } from '../src/shared/review/review'
@@ -400,6 +400,32 @@ describe('reopening the panel', () => {
     expect(s.rows()).toEqual(['r0:kept', 'r1:kept', 'r2:removed'])
     s.run('close; open')
     expect(s.list).toEqual([])
+  })
+
+  it('a 1-hour recording: Remove silences and then Polish leave every row to review, and it opens again with all of them', () => {
+    // A 2.5 s pause every 10 s. Remove silences (Cut, padding 0.5) makes 360 rows; Polish (padding
+    // 0.25) splits each cut's pause, 718 more. Past a cap of 1000 records the oldest went: their rows
+    // read kept and left the list on reopening, their cuts plain cuts no row could bring back.
+    const D = 3600
+    const sound = Array.from({ length: 360 }, (_, k) => ({ start: k * 10, end: k * 10 + 7.5 }))
+    const s = new Session({ ...base(), duration: D, clips: [{ id: 'c0', start: 0, end: D, speed: 1 }] })
+    s.run('open')
+    for (const [by, padding] of [
+      ['silences', 0.5],
+      ['polish', 0.25]
+    ] as const) {
+      const ranges = planSilences(sound, s.p.clips, { minLength: 1, padding }, 'cut').parts.flatMap((p) => p.pieces)
+      s.run(`tool ${ranges.map((r) => `${r.start}-${r.end}`).join(',')} cut ${by}`)
+    }
+    expect(s.p.autoCuts).toHaveLength(1078)
+    expect(s.rows().filter((r) => !r.endsWith(':pending'))).toEqual([])
+    expect(pendingCount(s.p)).toBe(1078)
+    const again = migrateProject(JSON.parse(JSON.stringify(s.p)))
+    expect(again.autoCuts).toEqual(s.p.autoCuts)
+    expect(reviewItems(again)).toHaveLength(1078)
+    // Keep all records every choice.
+    s.run('K all')
+    expect(s.p.autoCutOutcomes).toHaveLength(1078)
   })
 })
 

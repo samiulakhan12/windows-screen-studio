@@ -11,10 +11,13 @@ export const AUTO_CUT_SOURCES: readonly AutoCutSource[] = ['silences', 'smart-sp
 export const AUTO_CUT_ACTIONS: readonly AutoCut['action'][] = ['cut', 2, 4, 8]
 export const AUTO_CUT_OUTCOMES: readonly AutoCutOutcome['outcome'][] = ['kept', 'removed']
 
-/** At most this many records are kept (the newest). */
-export const MAX_AUTO_CUTS = 1000
-/** At most this many choices made in the Review panel are kept (the newest). */
-export const MAX_AUTO_CUT_OUTCOMES = 1000
+/**
+ * At most this many records are kept (the newest): well above what the runs over one long recording
+ * write (Remove silences and then Polish on a 1-hour video write over a thousand).
+ */
+export const MAX_AUTO_CUTS = 10_000
+/** At most this many choices made in the Review panel are kept (the newest): one for each record. */
+export const MAX_AUTO_CUT_OUTCOMES = MAX_AUTO_CUTS
 /**
  * At most this many pieces in a record a tool run writes (a longer share is split over several
  * records), and in one a too-short piece of a cut is handed to (takeBack). A record grows past it
@@ -22,8 +25,11 @@ export const MAX_AUTO_CUT_OUTCOMES = 1000
  * reader keeps whole records within MAX_AUTO_CUT_PIECES in all instead.
  */
 export const MAX_WAS_PIECES = 64
-/** At most this many pieces in all the records kept (the newest records, each whole). */
-export const MAX_AUTO_CUT_PIECES = MAX_AUTO_CUTS * MAX_WAS_PIECES
+/**
+ * At most this many pieces in all the records kept (the newest records, each whole), whatever their
+ * count: what bounds the work on a hand-made file.
+ */
+export const MAX_AUTO_CUT_PIECES = 64_000
 /** Longest `words` text kept. */
 export const MAX_WORDS_TEXT = 80
 const MAX_ID = 64

@@ -88,8 +88,8 @@ A speed-up the settle step drops leaves the records around it as Keep or Remove 
 (read removed) go first, the fastest first (one inside another is faster, so an 8× hands its part
 back at 4× before the 4× around it goes) and the latest first among those at one speed: a record
 inside one that holds footage at its speed takes the speed from before it (`withoutSpeedUp`'s
-rule; what those at one speed held is joined into one set of parts, so a project file with a
-thousand records settles in tens of milliseconds). Then those that still play at their speed
+rule; what those at one speed held is joined into one set of parts, so a project file with as
+many records as it may hold settles in tens of milliseconds). Then those that still play at their speed
 somewhere (read kept), all at once: an earlier speed-up one holds footage of gives that part up
 (`withSpeedUpKept`'s rule, the parts joined a speed at a time), while a record inside it keeps
 holding its speed. So removing a record later never puts footage back at the speed of one gone,
@@ -221,9 +221,13 @@ Project.autoCutOutcomes?: AutoCutOutcome[]
 * `readAutoCuts(raw, duration)`: an array of plain objects only; `id` 1–64 characters, unique;
   `by` and `action` from their lists; `start < end`, finite, clamped to `[0, duration]`; `was`
   pieces finite, inside `[start, end]`, speed in `[0.25, 16]`; `words` a string cut to 80
-  characters; the newest records that fit whole in 1000 records and 64,000 pieces in all
+  characters; the newest records that fit whole in 10,000 records and 64,000 pieces in all
   (`newestAutoCuts`: walking from the newest, up to the first that does not fit). Anything else is
-  dropped; an empty result is `undefined` (no key). Idempotent. A tool run writes at most 64 pieces
+  dropped; an empty result is `undefined` (no key). Idempotent. The count is well above what the
+  runs over one long recording write (Remove silences and then Polish on a 1-hour recording with a
+  pause every 10 s write 1,078 records: past a cap of 1000 the oldest went, their rows read kept and
+  their cuts turned plain cuts no row could bring back); the 64,000 pieces, a budget of their own,
+  bound the work on a hand-made file. A tool run writes at most 64 pieces
   in a record (§4.1), but a record grows past that while the project is open: Keep of the 80 pauses
   sped up inside an idle part gives those parts up from it (81 pieces), and a speed-up an edit takes
   away hands the cut inside it its speeds from before. So the cap is on the pieces in all, not on
@@ -233,11 +237,11 @@ Project.autoCutOutcomes?: AutoCutOutcome[]
   `optional('autoCutOutcomes', readAutoCutOutcomes(...))`), so old projects, and projects with
   records but no choice, load and save byte for byte unchanged. Keep, Remove, Keep all and Remove
   all add one entry per cut or speed-up they act on (`withOutcomes`): one entry per record id, a
-  new choice for an id taking the old one's place at the end, at most 1000 (the newest kept). A
-  choice outlives its record, which the same edit drops.
+  new choice for an id taking the old one's place at the end, at most 10,000, one for each record
+  a project holds (the newest kept). A choice outlives its record, which the same edit drops.
 * `readAutoCutOutcomes(raw)`: an array of plain objects only, fields read one by one; `id` a string
   of 1–64 characters; `outcome` `'kept'` or `'removed'`; one entry per id (a later entry for an id
-  is the newer choice and takes its place); at most 1000 (the newest kept). Anything else is
+  is the newer choice and takes its place); at most 10,000 (the newest kept). Anything else is
   dropped; an empty result is `undefined` (no key). Idempotent.
 * A copy (Duplicate, vertical version) carries the records and the choices with the clips; they are
   in source time of the same media.
@@ -444,13 +448,13 @@ Nothing new reads files, runs programs or talks to the network. `project.json` i
 prototype keys copied: fields are read one by one), so a hand-edited file cannot crash the list or
 make Remove restore time outside the recording (`restoreRange` clamps to the duration as well).
 `readAutoCutOutcomes` does the same for the choices (plain objects, bounded ids, an outcome from
-its list, at most 1000); a choice only ever changes how a row reads, never the footage.
+its list, at most 10,000); a choice only ever changes how a row reads, never the footage.
 What records hold is worked out a speed at a time, each speed as one set of parts, and a chain
 only goes on to a faster record, so the cost grows with the pieces stored, never with the ways
-footage is handed from one record to another: a file with a thousand records over the same footage
-(at their own speed, or over three rising speeds with 64 pieces each, or five hundred speed-ups
-that go at once with five hundred records around or inside them) is listed, settled and shown in
-the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
+footage is handed from one record to another: a file with as many records over the same footage as
+it may hold (ten thousand of one piece, or a thousand of 64 pieces; at their own speed, or over
+three rising speeds, or half of them speed-ups that go at once with the other half around or
+inside them) is listed, settled and shown in the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
 a time, not one by one. Taking a speed-up from under the other records (`withoutSpeedUp`) and
 giving up the parts of a speed-up kept (`withSpeedUpKept`) go by binary search over its pieces
 joined once, so two records of 32,000 pieces each take milliseconds too. Remove and Remove all
@@ -492,8 +496,8 @@ its record and the clips, so reading the rows again after many are kept or remov
 * **A record drifts from the clips** (the user edits that part by hand): the record turns stale and
   is not listed; Remove of an intact record is computed from the clips at that moment, never from a
   snapshot. Tested.
-* **The choices grow with the project**: one small entry per cut or speed-up reviewed, at most 1000
-  kept (the newest); an older choice dropped by that limit belongs to a record long gone, so only a
+* **The choices grow with the project**: one small entry per cut or speed-up reviewed, at most
+  10,000 kept (the newest); an older choice dropped by that limit belongs to a record long gone, so only a
   row still shown in an open panel could read the fallback (§2.3) instead.
 * **Restoring a cut next to clips at another speed**: `restoreRange` makes the footage a 1× clip and
   `setRangeSpeed` sets it back; tested at 2× and 0.5×.
@@ -508,7 +512,8 @@ its record and the clips, so reading the rows again after many are kept or remov
 
 Unit (`tests/review*.test.ts`), each failing without its code:
 * `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; capped (the newest
-  records whole, a record past 64 pieces kept whole); idempotent; a project without `autoCuts`
+  records whole within 10,000 records and 64,000 pieces, a record past 64 pieces kept whole);
+  idempotent; a project without `autoCuts`
   migrates with no key (byte-for-byte JSON equal to the old migration). `withAutoCuts` keeps the
   same records. Saved and opened again: an idle part with 80 pauses inside it kept (81 pieces), and
   a retake cut inside an 8× an edit by hand took away (over 64 pieces), each removed after opening,
@@ -516,7 +521,7 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   one inside the other take milliseconds.
 * `readAutoCutOutcomes`: absent or empty → undefined; malformed entries dropped (not an object, id
   empty or over 64 characters, an unknown outcome, extra fields not copied); one entry per id, the
-  later one kept; capped at 1000, the newest kept; idempotent; a project without choices (with
+  later one kept; capped at 10,000, the newest kept; idempotent; a project without choices (with
   records or not) migrates with no key, byte for byte; Duplicate and the vertical and square copies
   carry the choices; only Review mode and the migration name the field.
 * `recordAutoCuts`: a silence cut records the exact removed pieces with speeds; a sliver taken by
@@ -538,7 +543,9 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   choices, and Keep or Remove leaves every row it did not act on to review (a speed-up the settle
   step dropped leaves the records inside and around it as its row reads, §2.1). Keep, Remove, Keep
   all and Remove all are one undo step each: the rows go back to
-  pending and forward again on redo. Reopening lists only what is still automatic. Edits by hand
+  pending and forward again on redo. Reopening lists only what is still automatic. Remove
+  silences and then Polish on a 1-hour recording (1,078 records) leave every row to review, and the
+  project opens again with all of them. Edits by hand
   after a choice leave it; with no choice, the rows read `changeGone` in the first state without
   their record and keep it (undone runs, runs undone from the inside out, Polish undone and run
   again, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken over by a later
