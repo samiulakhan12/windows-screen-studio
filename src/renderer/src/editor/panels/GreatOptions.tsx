@@ -89,7 +89,21 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
   // A provider that was removed reads as On this PC.
   const provider = providers.some((p) => p.id === options.provider) ? options.provider : null
   return (
-    <div ref={box} role="dialog" aria-label="Make my captions great options" data-testid="great-options" className="captions-suggestion great-options">
+    <div
+      ref={box}
+      role="dialog"
+      aria-label="Make my captions great options"
+      data-testid="great-options"
+      className="captions-suggestion great-options"
+      onKeyDown={(e) => {
+        // Esc closes here, before the editor's own keys see it: on a select they would blur it
+        // (the focus left on the page, the dialog open), elsewhere clear the selection.
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      }}
+    >
       {ROWS.map((key, i) => {
         const copy = COPY[key]
         const quotesOff = key === 'quotes' && provider === null
