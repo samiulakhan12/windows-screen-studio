@@ -18,7 +18,14 @@
 // draws only the rows near the view: the focus starts on the first row, End, P, Home and a held
 // arrow move it with its accessible name and place in the list (aria-posinset, aria-setsize), each
 // in view; K keeps and moves on; scrolled away, N brings the next row into view; Remove all says it
-// is working, then what it did, and one Ctrl+Z takes it back; Escape closes.
+// is working, then what it did, and one Ctrl+Z takes it back; Escape closes. Long lists of rows of
+// different heights (400, 2,000 and 6,000 rows, retakes whose words wrap): End, End again, End once
+// scrolled away, K, Home, P and a held arrow each leave the focused row fully in view; Remove all
+// from the last row moves the focus to the first row to review, not drawn until then, where N moves
+// in the list; Ctrl+Z pressed while Remove all works waits and undoes it, the Keep before it stays
+// and Ctrl+Y brings it back; and on 6,000 rows, K, Delete and a click on a row's Keep pressed while
+// it works each say they wait, move the focus on, and are done after it in order, each its own undo
+// step, while Keep all pressed meanwhile says it is still working.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -150,6 +157,68 @@ const place = (win) =>
     const box = row.parentElement.getBoundingClientRect()
     return { pos: Number(row.getAttribute('aria-posinset')), size: Number(row.getAttribute('aria-setsize')), inView: r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5 }
   })
+
+/**
+ * A long list whose rows differ in height (docs/design/review-mode.md §4.3): three auto zooms at the
+ * start, then `cuts` cut records 3 s apart, the first MIXED_SILENCES silences and the rest retakes,
+ * a third of whose words are long enough to wrap the title over two or three lines.
+ */
+const MIXED_SILENCES = 30
+const LONG_WORDS = 'so what I was trying to say before is that the thing we need to do here is honestly'
+function seedMixed(home, name, cuts) {
+  const clips = Array.from({ length: cuts + 1 }, (_, k) => ({ id: `c${k}`, start: 3 * k, end: 3 * k + 2, speed: 1 }))
+  const zooms = [0, 1, 2].map((j) => ({ id: `z${j}`, start: 0.1 + 0.5 * j, end: 0.5 + 0.5 * j, scale: 2, focus: { mode: 'cursor' }, auto: true, anchor: { t: 0.2 + 0.5 * j, x: 0.2, y: 0.8 } }))
+  const id = f.seedProject(home, { id: `rec-mixed-${cuts}`, name, seconds: 3 * cuts + 3, width: 128, height: 72, fps: 1, clips, zooms, cursor: f.cursorTrack(2) })
+  const file = path.join(h.projectsRoot(home), id, 'project.json')
+  const p = JSON.parse(fs.readFileSync(file, 'utf8'))
+  p.autoCuts = Array.from({ length: cuts }, (_, k) => {
+    const was = [{ start: 3 * k + 2, end: 3 * k + 3, speed: 1 }]
+    if (k < MIXED_SILENCES) return { id: `s${k}`, by: 'silences', action: 'cut', start: 3 * k + 2, end: 3 * k + 3, was }
+    return { id: `s${k}`, by: 'retake', action: 'cut', start: 3 * k + 2, end: 3 * k + 3, was, words: k % 3 === 0 ? LONG_WORDS : 'um so' }
+  })
+  fs.writeFileSync(file, JSON.stringify(p))
+  return id
+}
+/** The focused row's key and whether it is fully in view, once the list has stopped measuring and scrolling. */
+async function settled(win) {
+  let last = null
+  for (let i = 0; i < 40; i++) {
+    await h.sleep(60)
+    const now = await win.evaluate(() => {
+      const ul = document.querySelector('.review-list')
+      const row = document.activeElement?.closest('[data-testid="review-row"]')
+      if (!ul || !row) return { key: null, inView: false, top: ul?.scrollTop ?? -1 }
+      const r = row.getBoundingClientRect()
+      const b = ul.getBoundingClientRect()
+      return { key: row.dataset.key, pos: Number(row.getAttribute('aria-posinset')), inView: r.top >= b.top - 0.5 && r.bottom <= b.bottom + 0.5, top: ul.scrollTop }
+    })
+    if (last && JSON.stringify(now) === JSON.stringify(last)) return now
+    last = now
+  }
+  return last
+}
+/** What the focus is on: a row's key, else the element's test id or name. */
+const focusOn = (win) =>
+  win.evaluate(() => {
+    const a = document.activeElement
+    const row = a?.closest?.('[data-testid="review-row"]')
+    if (row && a.classList.contains('review-item')) return row.dataset.key
+    return a?.dataset?.testid ?? a?.getAttribute?.('aria-label') ?? a?.tagName ?? ''
+  })
+/** Records, on every key press, whether Keep all or Remove all was working then (window.__busyAt). */
+async function watchBusy(win) {
+  await win.evaluate(() => {
+    window.__busyAt = []
+    window.__said = []
+    if (window.__watching) return
+    window.__watching = true
+    window.addEventListener('keydown', (e) => window.__busyAt.push(`${e.key}:${!!document.querySelector('[data-testid="review-panel"] [aria-busy="true"]')}`), true)
+    const said = document.querySelector('[data-testid="review-said"]')
+    new MutationObserver(() => window.__said.push(said.textContent)).observe(said, { childList: true, subtree: true, characterData: true })
+  })
+}
+const idle = (win, timeout = 30000) => f.waitFor(async () => !(await win.$('[data-testid="review-panel"] [aria-busy="true"]')), 'Keep all or Remove all done', timeout)
+const progressOf = (win) => win.textContent('[data-testid="review-progress"]')
 
 const rows = (win) => win.$$eval('[data-testid="review-row"]', (els) => els.map((e) => `${e.dataset.key}=${e.dataset.status}`))
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
@@ -422,6 +491,186 @@ async function main() {
     h.assert((await focused(win)) === `Review automatic changes, ${pending} to review`, `the focus back on the button: ${await focused(win)}`)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
+
+  // 400 and 2,000 rows for the moves; 6,000 for what is done while Remove all works (over a second).
+  for (const cuts of [397, 1997, 5997]) {
+    const total = cuts + 3
+    const retakes = cuts - MIXED_SILENCES
+    const long = total > 5000
+    await test(`review mode: ${total} rows of different heights: moves end in view; after Remove all the focus moves on; what is done while it works waits`, async (ctx) => {
+      const home = h.tempHome(`review-mixed-${total}`)
+      const name = `Mixed rows ${total}`
+      seedMixed(home, name, cuts)
+      const { app, win, logs } = await h.launch({ home })
+      ctx.app = app
+      ctx.logs = logs
+      await f.openProject(win, name)
+      await win.click('.timecode').catch(() => undefined)
+      await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+      await win.keyboard.press('Shift+R')
+      await win.waitForSelector('[data-testid="review-panel"] [data-testid="review-row"]', { timeout: 20000 })
+      h.assert((await progressOf(win)) === `0 of ${total} reviewed`, 'every row listed')
+      const last = `cut:s${cuts - 1}`
+
+      // A move from the keyboard ends with the row fully in view once the rows drawn are measured:
+      // End, End again on the row that has the focus, K (on to the first row), Home, End then P,
+      // and an arrow held from the end.
+      const inView = async (what, key) => {
+        const at = await settled(win)
+        h.assert(at.inView && (!key || at.key === key), `${what}: ${JSON.stringify(at)}`)
+        return at
+      }
+      await settled(win)
+      if (!long) {
+        await win.keyboard.press('End')
+        await inView('End', last)
+        const heights = await win.$$eval('[data-testid="review-row"]', (els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().height)))])
+        h.assert(heights.length >= 2, `rows of different heights: ${heights}`)
+        await win.keyboard.press('End')
+        await inView('End again', last)
+        // Scrolled away with the wheel, End on the row that has the focus brings it back.
+        const box = await win.$eval('.review-list', (e) => {
+          const r = e.getBoundingClientRect()
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+        })
+        await win.mouse.move(box.x, box.y)
+        await win.mouse.wheel(0, -3000)
+        await h.sleep(200)
+        h.assert(!(await settled(win)).inView, 'scrolled away from the last row')
+        await win.keyboard.press('End')
+        await inView('End once scrolled away', last)
+        await win.keyboard.press('k')
+        await inView('K (on to the first row to review)', 'zoom:z0')
+        await win.keyboard.press('End')
+        await inView('End after K', last)
+        await win.keyboard.press('Home')
+        await inView('Home', 'zoom:z0')
+        await win.keyboard.press('End')
+        for (let k = 0; k < 3; k++) await win.keyboard.press('p')
+        await inView('End then P three times', `cut:s${cuts - 4}`)
+        await win.keyboard.press('End')
+        await win.keyboard.down('ArrowUp')
+        for (let k = 0; k < 149; k++) await win.keyboard.down('ArrowUp')
+        await win.keyboard.up('ArrowUp')
+        await inView('ArrowUp held from the end', `cut:s${cuts - 151}`)
+        await win.keyboard.press('ArrowUp')
+        await inView('ArrowUp once more', `cut:s${cuts - 152}`)
+        await win.keyboard.press('Control+z') // the Keep back: nothing reviewed
+        await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'the Keep undone', 5000)
+      }
+
+      // Remove all from the last row, whose next row to review is the first, not drawn: the focus
+      // goes to it, in view, and N then moves in the list (it would switch Snapping in the editor).
+      await win.keyboard.press('End')
+      await settled(win)
+      await watchBusy(win)
+      await win.focus('[data-testid="review-remove-kind"]')
+      h.assert((await win.textContent('[data-testid="review-remove-kind"]')) === 'Remove all word cuts', 'Remove all word cuts')
+      await win.keyboard.press('Enter')
+      await idle(win, 60000)
+      await f.waitFor(async () => (await focusOn(win)) === 'zoom:z0', 'the focus on to the first row to review', 3000).catch(() => undefined)
+      h.assert((await focusOn(win)) === 'zoom:z0', `the focus moved on to the first row to review: ${await focusOn(win)}`)
+      h.assert((await settled(win)).inView, 'in view')
+      h.assert((await progressOf(win)) === `${retakes} of ${total} reviewed`, `all word cuts removed: ${await progressOf(win)}`)
+      h.assert(
+        same(await win.evaluate(() => window.__said), [`Removing ${retakes} word cuts… Keep, Remove, Undo and Redo wait until it is done.`, `Removed ${retakes} word cuts.`]),
+        `said what it does and what waits, then what it did: ${JSON.stringify(await win.evaluate(() => window.__said))}`
+      )
+      const snap = await win.getAttribute('[data-testid="snap-toggle"]', 'aria-pressed')
+      await win.keyboard.press('n')
+      await f.waitFor(async () => (await focusOn(win)) === 'zoom:z1', 'N moves on in the list', 3000)
+      h.assert((await win.getAttribute('[data-testid="snap-toggle"]', 'aria-pressed')) === snap, 'Snapping untouched')
+      await win.keyboard.press('Control+z')
+      await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'Remove all undone', 10000)
+
+      // Keep the first zoom (the user's last step), then Remove all, and Ctrl+Z while it works: the
+      // Ctrl+Z waits and undoes the Remove all once it is done; the Keep stays, and Ctrl+Y brings
+      // the Remove all back.
+      await win.keyboard.press('Home')
+      await settled(win)
+      await win.keyboard.press('k')
+      await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'z0 kept', 3000)
+      await win.keyboard.press('End')
+      await settled(win)
+      await watchBusy(win)
+      await win.focus('[data-testid="review-remove-kind"]')
+      await win.keyboard.press('Enter')
+      await win.keyboard.press('Control+z')
+      const zAt = (await win.evaluate(() => window.__busyAt)).filter((k) => k.startsWith('z:'))
+      await idle(win, 60000)
+      h.assert(!long || same(zAt, ['z:true']), `Ctrl+Z pressed while Remove all worked: ${JSON.stringify(zAt)}`)
+      if (same(zAt, ['z:true'])) {
+        await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'the Ctrl+Z undid the Remove all once done', 5000).catch(() => undefined)
+        h.assert((await progressOf(win)) === `1 of ${total} reviewed`, `the Ctrl+Z that waited undid the Remove all, not the Keep: ${await progressOf(win)}`)
+        h.assert((await win.getAttribute('[data-key="zoom:z0"]', 'data-status').catch(() => 'not drawn')) === 'kept', 'the Keep stays')
+        await win.keyboard.press('Control+y')
+        await f.waitFor(async () => (await progressOf(win)) === `${retakes + 1} of ${total} reviewed`, 'Ctrl+Y brings the Remove all back (redo kept)', 10000)
+        await win.keyboard.press('Control+z')
+        await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'and Ctrl+Z takes it back again', 10000)
+      } else console.log(`  (Remove all was done before Ctrl+Z reached the page: ${JSON.stringify(zAt)}; the wait not exercised on ${total} rows)`)
+
+      // While Remove all works: N to the second zoom, K (waits; the focus moves on to the third
+      // zoom), Delete (waits; on to the first silence), a click on that row's Keep (waits), and Keep
+      // all (still working). Once done, each is done in order, its own undo step, said after it.
+      if (long) {
+        await win.keyboard.press('End')
+        await settled(win)
+        await watchBusy(win)
+        await win.focus('[data-testid="review-remove-kind"]')
+        const t0 = Date.now()
+        await win.keyboard.press('Enter')
+        await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+        await win.keyboard.press('Home')
+        await win.keyboard.press('n')
+        await win.keyboard.press('k')
+        await win.keyboard.press('Delete')
+        await win.click('[data-key="cut:s0"] [data-testid="review-keep"]')
+        await win.click('[data-testid="review-keep-all"]', { force: true }) // aria-disabled, which Playwright would wait out
+        const meanwhile = await win.evaluate(() => ({
+          busy: !!document.querySelector('[data-testid="review-panel"] [aria-busy="true"]'),
+          rows: ['zoom:z1', 'zoom:z2', 'cut:s0'].map((k) => document.querySelector(`[data-key="${k}"]`)?.dataset.status)
+        }))
+        const pressed = Date.now() - t0
+        await idle(win, 60000)
+        console.log(`  pressed in ${pressed} ms; Remove all done ${Date.now() - t0} ms after Enter`)
+        const keys = await win.evaluate(() => window.__busyAt)
+        h.assert(meanwhile.busy && keys.every((k) => k.endsWith(':true') || k === 'Enter:false'), `all pressed while it worked: ${JSON.stringify(keys)} ${meanwhile.busy}`)
+        h.assert(same(meanwhile.rows, ['pending', 'pending', 'pending']), `nothing done while it worked: ${meanwhile.rows}`)
+        await f.waitFor(async () => (await progressOf(win)) === `${retakes + 4} of ${total} reviewed`, 'the Remove all, then the Keep, Delete and click that waited', 5000).catch(() => undefined)
+        h.assert((await progressOf(win)) === `${retakes + 4} of ${total} reviewed`, `each done: ${await progressOf(win)}`)
+        const status = (key) => win.getAttribute(`[data-key="${key}"]`, 'data-status')
+        h.assert((await status('zoom:z1')) === 'kept' && (await status('zoom:z2')) === 'removed' && (await status('cut:s0')) === 'kept', 'z1 kept, z2 removed, s0 kept')
+        h.assert((await focusOn(win)) === 'cut:s1', `the focus where the waiting moves left it: ${await focusOn(win)}`)
+        const said = await win.evaluate(() => window.__said)
+        h.assert(
+          same(said, [
+            `Removing ${retakes} word cuts… Keep, Remove, Undo and Redo wait until it is done.`,
+            'Keep waits until Remove all is done.',
+            'Remove waits until Remove all is done.',
+            'Keep waits until Remove all is done.',
+            `Still removing ${retakes} word cuts…`,
+            `Removed ${retakes} word cuts. Kept. ${retakes + 2} of ${total} reviewed. Removed. ${retakes + 3} of ${total} reviewed. Kept. ${retakes + 4} of ${total} reviewed.`
+          ]),
+          `said: ${JSON.stringify(said)}`
+        )
+        // Each its own undo step, after the Remove all's.
+        for (const [key, was] of [
+          ['cut:s0', `${retakes + 3}`],
+          ['zoom:z2', `${retakes + 2}`],
+          ['zoom:z1', `${retakes + 1}`]
+        ]) {
+          await win.keyboard.press('Control+z')
+          await f.waitFor(async () => (await progressOf(win)) === `${was} of ${total} reviewed`, `Ctrl+Z takes back ${key}`, 5000)
+          h.assert((await status(key)) === 'pending', `${key} back to review`)
+        }
+        await win.keyboard.press('Control+z')
+        await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'then the Remove all', 5000)
+      }
+      await win.keyboard.press('Escape')
+      await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
+      h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+    })
+  }
 
   const mock = await startMockAi({ ffmpeg: FF })
   try {
