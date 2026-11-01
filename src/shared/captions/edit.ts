@@ -5,7 +5,7 @@
  */
 import { clamp } from '../engine/math'
 import { captionWordTimes } from '../editor/transcript'
-import { sliceAt, withLinksOf } from '../publish/text'
+import { linkKeys, sliceAt, withLinksOf } from '../publish/text'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanCaptionText, MIN_CAPTION, newCaptionId } from './captionData'
 
@@ -44,6 +44,26 @@ export function retimeWords(seg: CaptionSegment, next: { start: number; end: num
   const shift = Math.abs(next.end - next.start - (seg.end - seg.start)) < 1e-9 ? next.start - seg.start : 0
   out.words = seg.words.map((w) => (w.deleted && shift === 0 ? w : { ...w, start: clamp(w.start + shift, next.start, next.end), end: clamp(w.end + shift, next.start, next.end) }))
   return out
+}
+
+/**
+ * The links an AI wrote into caption `before` by giving it `text` (as stored: cleanCaptionText),
+ * for CaptionSegment.aiLinks: those `text` has that `before` did not have as said (its links but
+ * its own aiLinks). Empty when the text is the same or has no link (docs/design/publish-pack.md §4.6).
+ */
+export function aiLinksAfter(before: Pick<CaptionSegment, 'text' | 'aiLinks'>, text: string): string[] {
+  if (text === before.text) return before.aiLinks ? [...before.aiLinks] : []
+  const now = linkKeys(text)
+  if (!now.size) return []
+  const mine = new Set(before.aiLinks)
+  const said = new Set([...linkKeys(before.text)].filter((k) => !mine.has(k)))
+  return [...now].filter((k) => !said.has(k))
+}
+
+/** `seg` with `aiLinks` (none when empty). */
+function withAiLinks<T extends CaptionSegment>(seg: T, aiLinks: readonly string[] | undefined): T {
+  const { aiLinks: _old, ...rest } = seg
+  return (aiLinks?.length ? { ...rest, aiLinks: [...new Set(aiLinks)] } : rest) as T
 }
 
 /** The caption with new text: its word timings are kept while the text still has as many words. */
@@ -88,8 +108,9 @@ export function splitCaption(segments: readonly CaptionSegment[], id: string, t:
     }
   }
   k = clamp(k, 1, words.length - 1)
-  const a: CaptionSegment = { id: seg.id, start: seg.start, end: t, text: words.slice(0, k).join(' ') }
-  const b: CaptionSegment = { id: newCaptionId(), start: t, end: seg.end, text: words.slice(k).join(' ') }
+  // Links an AI wrote stay its own in both halves.
+  const a: CaptionSegment = withAiLinks({ id: seg.id, start: seg.start, end: t, text: words.slice(0, k).join(' ') }, seg.aiLinks)
+  const b: CaptionSegment = withAiLinks({ id: newCaptionId(), start: t, end: seg.end, text: words.slice(k).join(' ') }, seg.aiLinks)
   if (timed) {
     // A deleted word keeps its own time (retimeWords).
     const inside = (w: CaptionWord, s: number, e: number): CaptionWord => (w.deleted ? w : { ...w, start: clamp(w.start, s, e), end: clamp(w.end, s, e) })
@@ -105,7 +126,8 @@ export function mergeWithNext(segments: readonly CaptionSegment[], id: string): 
   if (i < 0 || i + 1 >= segments.length) return null
   const a = segments[i]
   const b = segments[i + 1]
-  const merged: CaptionSegment = { id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }
+  // Joined by a space and cut without making a link (cleanCaptionText): the links an AI wrote into either stay its own.
+  const merged: CaptionSegment = withAiLinks({ id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }, [...(a.aiLinks ?? []), ...(b.aiLinks ?? [])])
   const count = (s: CaptionSegment): number => s.text.split(' ').filter(Boolean).length
   if (a.words?.length || b.words?.length) merged.words = [...timingsOf(a, count(a)), ...timingsOf(b, count(b))]
   return [...segments.slice(0, i), merged, ...segments.slice(i + 2)]
@@ -152,7 +174,9 @@ export function replaceInCaptions(segments: readonly CaptionSegment[], find: str
  * does not match them: the same ids in the same order with the same times (within a millisecond),
  * and text for each (a caption that was already empty may stay empty). Word timings are kept only
  * where the result kept them (a clean-up that kept the words; never a translation, whose words
- * are not the ones spoken), and then the captions' own, not times sent back.
+ * are not the ones spoken), and then the captions' own, not times sent back. The text is stored as
+ * the AI wrote it (cleanCaptionText), and each caption records the links that stored text has and
+ * it did not (aiLinks, aiLinksAfter): the copy pack never trusts them as said.
  */
 export function applyTextResult(current: readonly CaptionSegment[], result: unknown): CaptionSegment[] | null {
   if (!Array.isArray(result) || result.length !== current.length) return null
@@ -168,8 +192,9 @@ export function applyTextResult(current: readonly CaptionSegment[], result: unkn
       out.push(c)
       continue
     }
-    const { words, ...rest } = c
-    out.push(Array.isArray(r.words) && words ? { ...rest, text, words } : { ...rest, text })
+    const { words, aiLinks: _old, ...rest } = c
+    const aiLinks = aiLinksAfter(c, text)
+    out.push({ ...rest, text, ...(Array.isArray(r.words) && words ? { words } : {}), ...(aiLinks.length ? { aiLinks } : {}) })
   }
   return out
 }

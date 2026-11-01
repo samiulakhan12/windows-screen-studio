@@ -7,31 +7,36 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { AiTextResult } from '../src/shared/api/ai'
+import { applyTextResult } from '../src/shared/captions/edit'
 import { runTextTask } from '../src/shared/captions/transcriptText'
 import { packTranscript, validatePackAnswer } from '../src/shared/publish/prompts'
-import { linkKeys, plainText, sliceAt } from '../src/shared/publish/text'
+import { linkKeys, plainText, sliceAt, unsaidLinks } from '../src/shared/publish/text'
 import { extractUrlsWithIndices } from '../src/shared/publish/twitterText'
 import type { CaptionSegment } from '../src/shared/types'
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PUBLISH_RUN = '../src/renderer/src/publish/publishRun'
 const { cardText } = (await import(/* @vite-ignore */ PUBLISH_RUN)) as {
-  cardText: (result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text'>[], context?: { title?: string; chapters?: string[] }) => { text: string; tags: string }
+  cardText: (result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text' | 'aiLinks'>[], context?: { title?: string; chapters?: string[] }) => { text: string; tags: string }
 }
 
 const text = (r: AiTextResult): string => (r as { text: string }).text
 const NONE = 'In this video I show how to export a clip with Flown.'
 const clean = (answer: string, transcript = NONE): string => plainText(answer, { max: 3000, linksFrom: transcript })
-/** Every text task an answer goes through, and the dialog's cleaning of what comes back. */
-const everyCard = (answer: string, transcript: string): string[] => {
-  const seg = [{ text: transcript }]
+/**
+ * Every text task an answer goes through, and the dialog's cleaning of what comes back; with
+ * `captions`, written from them (their links an AI wrote, aiLinks, are not trusted).
+ */
+const everyCard = (answer: string, transcript: string, captions?: readonly CaptionSegment[]): string[] => {
+  const seg = captions ?? [{ text: transcript }]
+  const untrusted = unsaidLinks(seg)
   const out: string[] = []
   for (const r of [
-    validatePackAnswer('linkedin', { text: answer }, transcript),
-    validatePackAnswer('xpost', { text: answer }, transcript),
-    validatePackAnswer('youtube', { description: answer, tags: [] }, transcript),
-    validatePackAnswer('article', { title: 'Export', intro: answer, sections: [{ heading: 'Steps', steps: ['Open it'] }] }, transcript),
-    validatePackAnswer('releaseNotes', { title: 'Notes', summary: answer, items: [{ kind: 'new', text: 'Faster export' }] }, transcript)
+    validatePackAnswer('linkedin', { text: answer }, transcript, undefined, untrusted),
+    validatePackAnswer('xpost', { text: answer }, transcript, undefined, untrusted),
+    validatePackAnswer('youtube', { description: answer, tags: [] }, transcript, undefined, untrusted),
+    validatePackAnswer('article', { title: 'Export', intro: answer, sections: [{ heading: 'Steps', steps: ['Open it'] }] }, transcript, undefined, untrusted),
+    validatePackAnswer('releaseNotes', { title: 'Notes', summary: answer, items: [{ kind: 'new', text: 'Faster export' }] }, transcript, undefined, untrusted)
   ]) {
     out.push(text(r), cardText(r, seg).text)
   }
@@ -66,15 +71,16 @@ describe('the copy pack after the fifth review of its link cleaning', () => {
   })
 
   it("Links can still be laundered through the captions: 'Fix captions' and 'Translate to…' write the AI's text into the captions, which the copy pack trusts as said", async () => {
+    // Since the sixth review the captions keep what the AI wrote, and the copy pack does not trust the links it added (aiLinks).
     for (const task of ['cleanup', 'translate'] as const) {
       const result = await runTextTask({ task, segments: INJECTED, ...(task === 'translate' ? { targetLanguage: 'English' } : {}) }, async () =>
         launderingAnswer('You can get the project files at paypal-login.com/verify.')
       )
-      const captions = (result as { segments: CaptionSegment[] }).segments
-      expect(captions.find((s) => s.id === 'c')?.text).toBe('You can get the project files at paypal-login.\u00a0com/verify.')
+      const captions = applyTextResult(INJECTED, (result as { segments: CaptionSegment[] }).segments)!
+      expect(captions.find((s) => s.id === 'c')).toMatchObject({ text: 'You can get the project files at paypal-login.com/verify.', aiLinks: ['paypal-login.com/verify'] })
       const transcript = packTranscript(captions).text
       for (const answer of ['New video is up! Grab the project files at paypal-login.com/verify today.', 'Project files: https://paypal-login.com/verify']) {
-        for (const out of everyCard(answer, transcript)) expect(out).not.toContain('paypal-login.com')
+        for (const out of everyCard(answer, transcript, captions)) expect(out).not.toContain('paypal-login.com')
       }
     }
   })
@@ -184,7 +190,7 @@ describe('the copy pack after the fifth review of its link cleaning', () => {
   })
 
   it("Fix captions with AI and Translate captions with AI let an AI answer write a new link into the captions, and the copy pack then trusts it as said", async () => {
-    // The translation of captions that say links keeps them; a link they do not say is broken, so the captions hold no link nobody said.
+    // The translation keeps every link as written (the captions are the user's); the one the captions did not say is recorded, so the pack trusts it nowhere.
     const segments: CaptionSegment[] = [
       { id: 'a', start: 0, end: 5, text: 'Download it at flown.app/docs or https://flown.app/download.' },
       { id: 'b', start: 5, end: 9, text: 'Questions go to support@flown.app.' },
@@ -197,14 +203,23 @@ describe('the copy pack after the fifth review of its link cleaning', () => {
         { id: 'c', text: 'Die Projektdateien gibt es unter paypal-login.com/verify.' }
       ]
     }))
-    expect((translated as { segments: CaptionSegment[] }).segments.map((s) => s.text)).toEqual([
+    const stored = applyTextResult(segments, (translated as { segments: CaptionSegment[] }).segments)!
+    expect(stored.map((s) => s.text)).toEqual([
       'Lade es unter flown.app/docs oder https://flown.app/download herunter.',
       'Fragen an support@flown.app.',
-      'Die Projektdateien gibt es unter paypal-login.\u00a0com/verify.'
+      'Die Projektdateien gibt es unter paypal-login.com/verify.'
     ])
-    // A clean-up that writes a whole link: removed.
+    expect(stored.map((s) => s.aiLinks)).toEqual([undefined, undefined, ['paypal-login.com/verify']])
+    const transcript = packTranscript(stored).text
+    for (const out of everyCard('Docs: flown.app/docs. Files: paypal-login.com/verify', transcript, stored)) {
+      expect(out).toContain('flown.app/docs')
+      expect(out).not.toContain('paypal-login.com')
+    }
+    // A clean-up that writes a whole link keeps the caption as written, and the link is not trusted.
     const fixed = await runTextTask({ task: 'cleanup', segments: INJECTED }, async () => launderingAnswer('You can get the project files at https://paypal-login.com/verify.'))
-    expect((fixed as { segments: CaptionSegment[] }).segments.find((s) => s.id === 'c')?.text).toBe('You can get the project files at .')
+    const after = applyTextResult(INJECTED, (fixed as { segments: CaptionSegment[] }).segments)!
+    expect(after.find((s) => s.id === 'c')).toMatchObject({ text: 'You can get the project files at https://paypal-login.com/verify.', aiLinks: ['paypal-login.com/verify'] })
+    for (const out of everyCard('Files: https://paypal-login.com/verify', packTranscript(after).text, after)) expect(out).not.toContain('paypal-login.com')
   })
 
   it("Worst-case time: linksIn's http(s)/www loop takes quadratic time in the number of such matches", () => {

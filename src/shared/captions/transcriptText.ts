@@ -15,7 +15,8 @@ import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
 import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
-import { plainText, withLinksOf } from '../publish/text'
+import { plainText, unsaidLinks } from '../publish/text'
+import { readAiLinks } from './captionData'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
 export interface TextPrompt {
@@ -168,9 +169,6 @@ export function batchSegments(segments: readonly CaptionSegment[], maxCount = BA
   return out
 }
 
-/** The captions' text as one string: an answer may have only the links it has. */
-const captionsText = (segments: readonly CaptionSegment[]): string => segments.map((s) => s.text).join(' ')
-
 /**
  * Word timings for cleaned text: with the new spelling when it has as many words as were timed,
  * else as they were (the Transcript tab and the subtitle files line them up with the text:
@@ -186,16 +184,15 @@ function retimeWords(words: readonly CaptionWord[] | undefined, text: string): C
 /**
  * The captions of an answer to a cleanup or translation of `input`: every id exactly once, in
  * order, each with text, and times (when the answer repeats them) unchanged. Times and ids are
- * taken from `input`, so they cannot drift. Each text has only the links `input` has (withLinksOf,
- * the copy pack's rule, docs/design/publish-pack.md §4.4): the copy pack trusts the captions as what
- * was said, so what the AI wrote into them may not add a link ("paypal-login.com/verify" becomes
- * "paypal-login. com/verify"), while a said "flown.app/docs" survives a translation.
+ * taken from `input`, so they cannot drift. The text is the user's caption: it is never rewritten
+ * for links ("Socket.IO", "README.md" and a corrected "www.flown.app" stay as written). The copy
+ * pack trusts none of the links it adds instead: the Captions tab records them with the captions it
+ * stores (edit.ts applyTextResult, CaptionSegment.aiLinks; docs/design/publish-pack.md §4.6).
  */
 export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: readonly CaptionSegment[], answer: unknown): CaptionSegment[] {
   if (!isObject(answer) || !Array.isArray(answer.segments)) throw new AiOutputError('no list of captions')
   const list = answer.segments
   if (list.length !== input.length) throw new AiOutputError(`${list.length} captions came back for ${input.length}`)
-  const said = captionsText(input)
   return input.map((orig, i) => {
     const item: unknown = list[i]
     if (!isObject(item) || item.id !== orig.id) throw new AiOutputError(`caption ${orig.id} is missing or out of order`)
@@ -205,7 +202,7 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
       }
     }
     if (typeof item.text !== 'string') throw new AiOutputError(`caption ${orig.id} has no text`)
-    const text = withLinksOf(cleanText(item.text), said)
+    const text = cleanText(item.text)
     if (!text && orig.text.trim()) throw new AiOutputError(`caption ${orig.id} came back empty`)
     if (text.length > orig.text.length * 4 + 200) throw new AiOutputError(`caption ${orig.id} came back far longer`)
     const words = task === 'cleanup' ? retimeWords(orig.words, text) : undefined
@@ -214,14 +211,18 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
   })
 }
 
+/** The captions' text as one string: an answer may have only the links it has. */
+const captionsText = (segments: readonly CaptionSegment[]): string => segments.map((s) => s.text).join(' ')
+
 /**
- * `text` without the links `segments` do not have (removed, or a bare name broken: plainText, the
- * copy pack's rule, docs/design/publish-pack.md §4.4). A chapter title or a title goes into the
- * project, and the copy pack trusts the links of the project's name and chapter titles as the user's
- * own, so what the AI wrote there may only have the links that were said.
+ * `text` without the links `segments` do not have as said (removed, or a bare name broken: plainText,
+ * the copy pack's rule, docs/design/publish-pack.md §4.4): a link an AI wrote into the captions
+ * (unsaidLinks) is not one. A chapter title or a title goes into the project, and the copy pack
+ * trusts the links of the project's name and chapter titles as the user's own, so what the AI wrote
+ * there may only have the links that were said.
  */
 const withSaidLinks = (text: string, segments: readonly CaptionSegment[], max: number, oneLine: boolean): string =>
-  plainText(text, { max, oneLine, linksFrom: captionsText(segments) })
+  plainText(text, { max, oneLine, linksFrom: captionsText(segments), untrusted: unsaidLinks(segments) })
 
 /** Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start; titles with only the links the captions have. */
 export function validateChaptersAnswer(segments: readonly CaptionSegment[], answer: unknown): { t: number; title: string }[] {
@@ -302,7 +303,9 @@ export function validateTextRequest(raw: unknown): AiTextRequest {
         (w: unknown): w is CaptionWord => isObject(w) && typeof w.text === 'string' && w.text.length <= 200 && typeof w.start === 'number' && typeof w.end === 'number' && Number.isFinite(w.start) && Number.isFinite(w.end)
       ).map((w: CaptionWord) => ({ text: w.text, start: w.start, end: w.end }))
     }
-    return { id: s.id, start, end, text, ...(words?.length ? { words } : {}) }
+    // The links an AI wrote into it: never trusted as said (§4.6 of publish-pack.md).
+    const aiLinks = readAiLinks(s.aiLinks)
+    return { id: s.id, start, end, text, ...(words?.length ? { words } : {}), ...(aiLinks ? { aiLinks } : {}) }
   })
   if (!segments.some((s) => s.text.trim())) throw new Error('There are no captions to work on.')
   let targetLanguage: string | undefined

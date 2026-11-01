@@ -4,7 +4,7 @@
  * nothing to write from. Pure.
  */
 import type { AiTextTask, PackTextTask } from '../api/ai'
-import { outputCues } from '../captions/subtitles'
+import { sourcedCues } from '../captions/subtitles'
 import { wordsIn } from '../notes/blocks'
 import type { CaptionSegment, Project } from '../types'
 
@@ -81,11 +81,16 @@ export function spokenWords(segments: readonly Pick<CaptionSegment, 'text'>[]): 
 /**
  * What the pack is written from: the captions as the edited video says them (outputCues, as its
  * subtitle files), so captions and words that were cut are never sent nor written about. Times are
- * the edited video's. Empty without captions.
+ * the edited video's; each keeps the links an AI wrote into its caption (aiLinks), which the pack
+ * never trusts. Empty without captions.
  */
 export function publishSegments(project: Pick<Project, 'transcript' | 'clips'>): CaptionSegment[] {
   if (!project.transcript) return []
-  return outputCues(project.transcript.segments, project.clips).map((c, i) => ({ id: `o${i}`, start: c.start, end: c.end, text: c.text }))
+  const captions = project.transcript.segments
+  return sourcedCues(captions, project.clips).map((c, i) => {
+    const aiLinks = captions[c.source].aiLinks
+    return { id: `o${i}`, start: c.start, end: c.end, text: c.text, ...(aiLinks?.length ? { aiLinks: [...aiLinks] } : {}) }
+  })
 }
 
 /** Why there is nothing to write from: no sound, no captions yet, or too little speech; null when there is. */

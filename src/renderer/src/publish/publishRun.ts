@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 import type { AiTextRequest, AiTextResult } from '../../../shared/api/ai'
 import { PUBLISH_KINDS, taskOfKind, type PublishKind, type PublishLength, type PublishTone } from '../../../shared/publish/pack'
 import { CancelledError, createQueue } from '../../../shared/publish/queue'
-import { plainText, trustedText } from '../../../shared/publish/text'
+import { plainText, trustedText, unsaidLinks } from '../../../shared/publish/text'
 import { tagsText } from '../../../shared/publish/youtube'
 import type { CaptionSegment } from '../../../shared/types'
 import { ipcMessage } from '../editor/captionItems'
@@ -101,11 +101,12 @@ const slot = (projectId: string, kind: PublishKind): string => `${projectId}\u00
  * The text a card shows for `result`, cleaned again. The pack's own items lost in main the links
  * their captions, name and chapter titles lack, so theirs are kept; a title or summary (the Captions
  * tab's tasks, checked the old way) loses here the links `segments` (the captions sent) and
- * `context` (the name and chapter titles the user typed) do not have.
+ * `context` (the name and chapter titles the user typed) do not have, and those an AI wrote into the
+ * captions (unsaidLinks).
  */
-export function cardText(result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text'>[], context?: { title?: string; chapters?: string[] }): { text: string; tags: string } {
+export function cardText(result: AiTextResult, segments: readonly Pick<CaptionSegment, 'text' | 'aiLinks'>[], context?: { title?: string; chapters?: string[] }): { text: string; tags: string } {
   const keep = { keepLinks: true }
-  const sent = { linksFrom: trustedText(segments.map((s) => s.text).join(' '), context) }
+  const sent = { linksFrom: trustedText(segments.map((s) => s.text).join(' '), context), untrusted: unsaidLinks(segments, context) }
   switch (result.task) {
     case 'title':
       return { text: plainText(result.text, { ...sent, max: 150, oneLine: true }), tags: '' }

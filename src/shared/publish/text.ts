@@ -32,6 +32,8 @@ export interface PlainTextOptions {
   linksFrom?: string
   /** Every link of the text itself is kept (text the user wrote or edited); a cut still makes none. */
   keepLinks?: boolean
+  /** Links not kept although `linksFrom` has them: those an AI wrote into the captions and nothing else says (unsaidLinks). */
+  untrusted?: readonly string[]
 }
 
 /* ---------- links ---------- */
@@ -518,6 +520,30 @@ export function trustedText(transcript: string, context?: { title?: string; chap
   return [transcript, context?.title ?? '', ...(context?.chapters ?? [])].join('\n')
 }
 
+/**
+ * The links Fix captions or Translate wrote into `segments` (CaptionSegment.aiLinks) that nothing
+ * else says: not a caption's own (its links but its aiLinks), nor the name's or a chapter title's.
+ * The copy pack never trusts them (PlainTextOptions.untrusted, docs/design/publish-pack.md §4.6).
+ */
+export function unsaidLinks(segments: readonly { text: string; aiLinks?: readonly string[] }[], context?: { title?: string; chapters?: string[] }): string[] {
+  const marked = segments.filter((s) => s.aiLinks?.length)
+  if (!marked.length) return []
+  const said = new Set(linkKeys(trustedText(segments.filter((s) => !s.aiLinks?.length).map((s) => s.text).join(' '), context)))
+  for (const s of marked) {
+    const ai = new Set(s.aiLinks)
+    for (const k of linkKeys(s.text)) if (!ai.has(k)) said.add(k)
+  }
+  return [...new Set(marked.flatMap((s) => s.aiLinks ?? []))].filter((k) => !said.has(k))
+}
+
+/** `keys` without `gone`. */
+const without = (keys: ReadonlySet<string>, gone: readonly string[] | undefined): ReadonlySet<string> => {
+  if (!gone?.length) return keys
+  const out = new Set(keys)
+  for (const k of gone) out.delete(k)
+  return out
+}
+
 /* ---------- plain text ---------- */
 
 /**
@@ -543,12 +569,12 @@ const charLength = (t: string): number => [...t].length
 /**
  * `s` as plain text: line breaks normalised, control and direction characters and the word joiner
  * removed (a tab is a space), NFC, markdown emphasis removed, spaces at line ends and repeated blank lines removed,
- * trimmed, cut to `max`, and then every link `linksFrom` does not have (keepLinks: `s` itself)
- * removed or broken (cleanLinks). Not a string: ''.
+ * trimmed, cut to `max`, and then every link `linksFrom` does not have (keepLinks: `s` itself), or
+ * that is `untrusted`, removed or broken (cleanLinks). Not a string: ''.
  */
 export function plainText(s: unknown, opts: PlainTextOptions): string {
   if (typeof s !== 'string') return ''
-  const allowed = linkKeys(opts.keepLinks ? s : (opts.linksFrom ?? ''))
+  const allowed = without(linkKeys(opts.keepLinks ? s : (opts.linksFrom ?? '')), opts.untrusted)
   let t = s.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(CONTROLS, '').replace(WORD_JOINER, '').normalize()
   t = t.replace(STRONG, '$1').replace(UNDERLINED, '$1')
   if (opts.oneLine) t = t.replace(/\s*\n\s*/g, ' ')

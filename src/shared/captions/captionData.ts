@@ -4,6 +4,7 @@
  * project (engine/project.ts) and for what a provider returns (the Captions tab), like
  * engine/titleData.ts for title cards.
  */
+import { sliceAt } from '../publish/text'
 import type { CaptionSegment, CaptionWord, Transcript } from '../types'
 
 /** Shortest caption kept, seconds. */
@@ -20,13 +21,29 @@ const LANGUAGE = /^[a-z]{2,3}(-[a-z0-9]{1,8})*$/i
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
-/** Caption text as stored and drawn: one line (control characters and line breaks become spaces), single spaces, trimmed, at most CAPTION_MAX_CHARS. */
+/**
+ * Caption text as stored and drawn: one line (control characters and line breaks become spaces),
+ * single spaces, trimmed, at most CAPTION_MAX_CHARS; a cut makes no link the text did not have
+ * (sliceAt: "…paypal-login.comfy" cut after "com" is not paypal-login.com).
+ */
 export const cleanCaptionText = (text: string): string =>
-  text
-    .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, CAPTION_MAX_CHARS)
+  sliceAt(
+    text
+      .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    CAPTION_MAX_CHARS
+  )
+
+/** Most links one caption records as written by an AI (CaptionSegment.aiLinks). */
+const MAX_AI_LINKS = 100
+
+/** A caption's stored aiLinks: distinct strings of at most 2 000 characters, at most MAX_AI_LINKS; null when there are none. */
+export function readAiLinks(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null
+  const out = [...new Set(raw.filter((k): k is string => typeof k === 'string' && k.length > 0 && k.length <= 2000))].slice(0, MAX_AI_LINKS)
+  return out.length ? out : null
+}
 
 let idCounter = 0
 export const newCaptionId = (): string => `cap${Date.now().toString(36)}${(idCounter++).toString(36)}`
@@ -74,6 +91,8 @@ export function readCaptionSegments(raw: unknown, duration = Infinity): CaptionS
     const seg: CaptionSegment = { id: typeof r.id === 'string' && r.id && r.id.length <= 64 ? r.id : '', start, end, text }
     const words = readWords(r.words, start, end, duration)
     if (words) seg.words = words
+    const aiLinks = readAiLinks(r.aiLinks)
+    if (aiLinks) seg.aiLinks = aiLinks
     items.push(seg)
   }
   items.sort((a, b) => a.start - b.start || a.end - b.end)

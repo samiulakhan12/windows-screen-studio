@@ -36,7 +36,12 @@ const outOf = (c: Clip, at: number, s: number): number => at + (s - c.start) / c
  * Empty captions (one emptied and brought back by Undo) are left out.
  */
 export function outputCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): Cue[] {
-  const cues: Cue[] = []
+  return sourcedCues(segments, clips).map(({ source: _s, ...cue }) => cue)
+}
+
+/** outputCues, each with the index in `segments` of the caption it shows (`source`). */
+export function sourcedCues(segments: readonly CaptionSegment[], clips: readonly Clip[]): (Cue & { source: number })[] {
+  const cues: (Cue & { source: number })[] = []
   // Output start of every clip.
   const starts: number[] = []
   let acc = 0
@@ -47,7 +52,7 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
   const words = captionsWords(segments)
   const cut = cutFlags(words, clips)
   let at = 0
-  for (const seg of segments) {
+  for (const [source, seg] of segments.entries()) {
     // The caption's words are words[from..at) (as many as alignCaptionWords gives it).
     const from = at
     at += seg.text.split(' ').filter(Boolean).length
@@ -69,7 +74,7 @@ export function outputCues(segments: readonly CaptionSegment[], clips: readonly 
       .map((w) => w.text)
       .join(' ')
     if (!text) continue
-    cues.push({ start: first, end: last, text })
+    cues.push({ start: first, end: last, text, source })
   }
   // Rounded later to milliseconds: never overlapping.
   for (let i = 1; i < cues.length; i++) if (cues[i].start < cues[i - 1].end) cues[i - 1].end = cues[i].start

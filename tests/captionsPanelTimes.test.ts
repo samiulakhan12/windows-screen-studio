@@ -115,3 +115,19 @@ describe('Captions tab: "the captions after X were left out" is video time', () 
     expect(items.transcriptionJob()?.notice).toContain('the captions after 250:02 were left out')
   })
 })
+
+describe('Captions tab: a caption typed by hand is the user\'s (publish-pack §4.6)', () => {
+  it('drops the links an AI wrote into it (aiLinks), and keeps them on the others', () => {
+    const segments = [
+      { id: 'a', start: 5, end: 6, text: 'Files at paypal-login.com/verify', aiLinks: ['paypal-login.com/verify'] },
+      { id: 'b', start: 7, end: 8, text: 'Also socket.io', aiLinks: ['socket.io'] }
+    ]
+    store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments } }
+    const out = walk(CaptionsPanel({ project: store.state, selection: null, onSelect: () => undefined, onNotice: () => undefined }), [])
+    const field = out.find((e) => e.props.className === 'caption-text' && e.props['aria-label'] === 'Caption at 0:05.0')
+    ;(field?.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: 'Files at paypal-login.com/verify!' } })
+    const after = (store.state.transcript as { segments: { text: string; aiLinks?: string[] }[] }).segments
+    expect(after[0]).toEqual({ id: 'a', start: 5, end: 6, text: 'Files at paypal-login.com/verify!' })
+    expect(after[1].aiLinks).toEqual(['socket.io'])
+  })
+})

@@ -888,7 +888,9 @@ function TranscriptSection({
   const setText = (id: string, raw: string): void => {
     // While typing: one line, but spaces kept; cleaned when the field is left.
     const text = raw.replace(/[\r\n]+/g, ' ').slice(0, CAPTION_MAX_CHARS)
-    store.update((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? { ...s, text } : s))), `caption-text:${id}`)
+    // Edited by hand, the caption is the user's: the copy pack trusts its links (no aiLinks).
+    const typed = ({ aiLinks: _ai, ...s }: CaptionSegment): CaptionSegment => ({ ...s, text })
+    store.update((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? typed(s) : s))), `caption-text:${id}`)
   }
   const tidyText = (id: string): void => {
     const seg = store.state.transcript?.segments.find((s) => s.id === id)

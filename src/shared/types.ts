@@ -330,6 +330,12 @@ export interface CaptionSegment {
   text: string
   /** Word timings when the provider returned them (karaoke highlighting, cut by word). */
   words?: CaptionWord[]
+  /**
+   * The links (as the copy pack compares them: text.ts linkKeys) that Fix captions or Translate wrote
+   * into this caption and it did not have before: the copy pack never trusts them as said
+   * (docs/design/publish-pack.md §4.6). Gone once the user edits the caption's text by hand.
+   */
+  aiLinks?: string[]
 }
 
 /** What was said in the recording, as returned by a transcription provider and edited by the user. */

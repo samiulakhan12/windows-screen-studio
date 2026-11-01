@@ -9,7 +9,7 @@ import type { AiTextRequest, AiTextResult, PackTextTask } from '../api/ai'
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
 import type { CaptionSegment } from '../types'
 import type { PublishLength, PublishTone } from './pack'
-import { cutAt, fitX, plainText, trustedText, typedText, X_LIMIT, type PlainTextOptions } from './text'
+import { cutAt, fitX, plainText, trustedText, typedText, unsaidLinks, X_LIMIT, type PlainTextOptions } from './text'
 
 /** Longest transcript sent in one request (characters, about an hour of speech); longer ones are sent as excerpts. */
 export const PACK_TRANSCRIPT_MAX = 60_000
@@ -175,17 +175,17 @@ const tagText = (t: string, opts: Omit<PlainTextOptions, 'max' | 'oneLine'>): st
 /**
  * Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters (as written:
  * breaking a name never drops a tag), distinct, 400 characters together. Links `linksFrom` does not
- * have are removed or broken ("ASP.NET" stays when it was said), after those characters are, so
- * taking them out makes no link.
+ * have, or `untrusted` ones, are removed or broken ("ASP.NET" stays when it was said), after those
+ * characters are, so taking them out makes no link.
  */
-export function cleanTags(raw: unknown, linksFrom = ''): string[] {
+export function cleanTags(raw: unknown, linksFrom = '', untrusted: readonly string[] = []): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   let total = 0
   for (const t of strings(raw)) {
     const bare = t.replace(/[<>#,]/g, '')
     if ([...tagText(bare, { keepLinks: true })].length > PACK_CAPS.tagLength) continue
-    const tag = tagText(bare, { linksFrom })
+    const tag = tagText(bare, { linksFrom, untrusted })
     if (!tag || seen.has(tag.toLowerCase())) continue
     if (total + tag.length + (out.length ? 1 : 0) > PACK_CAPS.tagsTotal) break
     seen.add(tag.toLowerCase())
@@ -229,19 +229,20 @@ export function renderReleaseNotes(n: { title: string; summary: string; items: {
 
 /**
  * The checked, cleaned answer to pack task `task` (§4.3). `transcript` is the text that was sent and
- * `context` the name and chapter titles: a link neither has is removed or broken (plainText). Throws
- * AiOutputError when nothing usable came back.
+ * `context` the name and chapter titles: a link neither has, or an `untrusted` one (written into the
+ * captions by an AI: unsaidLinks), is removed or broken (plainText). Throws AiOutputError when
+ * nothing usable came back.
  */
-export function validatePackAnswer(task: PackTextTask, answer: unknown, transcript: string, context?: { title?: string; chapters?: string[] }): AiTextResult {
+export function validatePackAnswer(task: PackTextTask, answer: unknown, transcript: string, context?: { title?: string; chapters?: string[] }, untrusted: readonly string[] = []): AiTextResult {
   if (!isObject(answer)) throw new AiOutputError('no answer')
   const linksFrom = trustedText(transcript, context)
-  const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine, linksFrom })
+  const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine, linksFrom, untrusted })
   switch (task) {
     case 'youtube': {
       if (typeof answer.description !== 'string' || !Array.isArray(answer.tags)) throw new AiOutputError('no description or tags')
       const description = text(answer.description, PACK_CAPS.youtubeText)
       if (!description) throw new AiOutputError('an empty description')
-      return { task, text: description, tags: cleanTags(answer.tags, linksFrom) }
+      return { task, text: description, tags: cleanTags(answer.tags, linksFrom, untrusted) }
     }
     case 'linkedin':
     case 'xpost': {
@@ -286,8 +287,8 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown, transcri
   }
 }
 
-/** Runs pack task `request.task` with `ask` (one request) and checks the answer. */
+/** Runs pack task `request.task` with `ask` (one request) and checks the answer: no link an AI wrote into the captions is trusted (unsaidLinks). */
 export async function runPackTask(request: AiTextRequest & { task: PackTextTask }, ask: (prompt: TextPrompt) => Promise<unknown>): Promise<AiTextResult> {
   const sent = packTranscript(request.segments)
-  return validatePackAnswer(request.task, await ask(packPrompt(request, sent)), sent.text, request.context)
+  return validatePackAnswer(request.task, await ask(packPrompt(request, sent)), sent.text, request.context, unsaidLinks(request.segments, request.context))
 }
