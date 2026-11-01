@@ -404,7 +404,11 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   palette gives it back to what had it before it opened); only when it was in the panel, and so went
   with it, does it go to the Review button.
 * The time shown is the **video time** of the item's start (`videoTimeAt`, freeze frames counted),
-  as `m:ss.t`.
+  as `m:ss.t`. The rows' times are worked out together in one pass over the clips
+  (`videoTimesAt`: the starts in order, the edit time before each clip added up as the walk goes,
+  the same numbers as `videoTimeAt` one by one) and kept by start for each clips array and freeze
+  plan (`rowTimes`), so a key or an edit that leaves the clips alone reads them back. Row by row it
+  was rows × clips on every render: 40 to 120 ms on a 3-hour recording.
 * Choosing an item (click, Enter or Space on it, or `N`/`P`/↑/↓ moving to it) **jumps and plays**:
   the playhead goes to `PREVIEW_BEFORE = 1.5` s of video before the item and plays until
   `PREVIEW_AFTER = 1.5` s after it, at most `PREVIEW_MAX = 8` s in all, then pauses. A cut has no
@@ -421,12 +425,39 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   keymap (`Shift+P` is Polish). Shift with another letter is that letter, as a capital from Caps
   Lock is (`Shift+N` moves on; the editor would read it as `N`, Snapping). Space on a row is the
   row's own, as above.
+* Long lists (a 3-hour recording lists 5,000 to 8,000 rows). A row is drawn again only when what it
+  shows changes (a memoized row given its values and handlers that stay the same function), so `N`
+  redraws the two rows whose focus moved, and `K` the rows whose status changed. A list of more
+  than 200 rows draws only the rows near the visible area (360 px above and below) and the focused
+  row, each at its place over a block the height of the whole list, so the scroll bar is the whole
+  list's: rows drawn are measured, those not drawn yet count as the mean height of those measured
+  (52 px before any is), and when rows above the view turn out taller or shorter, the view keeps its
+  place on the focused row when it is in view, else on the first row in view. The focused row is
+  always drawn, so the roving focus stays on it when the list is scrolled away with the wheel; a
+  move to a row not drawn yet (`End`, `Home`, `N` after scrolling away, the next row to review
+  after the last) draws it, gives it the focus, and the focus scrolls it into view. Each row says
+  where it is in the whole list (`aria-posinset`, `aria-setsize` on its `li`), so a screen reader
+  gives its place among all of them, not among those drawn. A list of 200 rows or fewer is drawn
+  whole, as before. In the built app on a 3-hour recording (5,399 to 8,098 rows) the panel opens in
+  70 to 85 ms, `N` and `P` take 11 to 43 ms, `K` 32 to 90 ms and `Delete` 46 to 113 ms, against
+  0.9 to 1 s, 0.15 to 0.4 s, 0.27 to 0.39 s and 0.45 to 0.65 s before (§6).
 * Header: `Review automatic changes`, then progress `12 of 40 reviewed` and a bar.
 * Footer: `Keep all` (keeps every pending item), `Remove all <kind words>` for the focused item's
   kind (`Remove all zooms`, `Remove all camera changes`, `Remove all silence cuts`,
   `Remove all idle-time changes`, `Remove all word cuts`), disabled when none of that kind is pending.
+  Keep all and Remove all acting on more than 200 rows say they are working before they work: the
+  button reads `Keeping…` or `Removing…` (`aria-busy`; both buttons `aria-disabled`, so the focus
+  stays on the one pressed) and the live region says what it does (`Keeping 8098 changes…`,
+  `Removing 5393 silence cuts…`), drawn before the work starts. Then the work goes a slice of time
+  at a time (about 25 ms, a task each, the page drawing in between): Remove all takes its cuts and
+  speed-ups back one at a time (`removeSteps`, `takeBackSteps`: the same result as `removeItems`),
+  and the result is one edit, one undo step, made at the end from the project as it is then (an
+  edit meanwhile, `Ctrl+Z` say, starts it over from the new state). Meanwhile the panel's other Keep
+  and Remove wait (the keys are still the list's); closing the panel stops it, and nothing has
+  changed then. When it is done the focus moves on as below, if it is still in the panel.
 * After each action a polite live region says what happened: `Kept. 13 of 40 reviewed.`,
-  `Removed. 14 of 40 reviewed.`, `Kept 26 changes.`, `Removed 5 zooms.` (each message a new node
+  `Removed. 14 of 40 reviewed.`, `Kept 26 changes.`, `Removed 5 zooms.`, and before Keep all or
+  Remove all over more than 200 rows `Removing 5393 silence cuts…` (each message a new node
   in the region, so the same words after an undo are read out again); and the next pending item
   after the one acted on gets the focus (it is not played: playing only follows a move). After
   Keep all, whose button then turns disabled, the focus goes back to the focused item's row.
@@ -496,13 +527,39 @@ instead (2×, then Polish 4× and 8×), 5,399 speed-ups over 10,799 clips. Wheth
 intact is worked out once for a state of the project, and the settle step, the list, the Review
 button's count and every row's status share it (`staleAmong`); a record's footage is measured over
 only the clips it can touch, found by binary search over the clips in order; Keep all gives up the
-parts of all its speed-ups at once. There, opening the panel, one K, Keep all, Delete, the settle
-step after an edit by hand and the Review button's count after any edit each take from a few
-milliseconds to a few tens (tested: the panel's steps under 250 ms, the count under 50 ms; they took
-0.3 to 3 s, and the count 55 to 600 ms on every edit). Not fast there: the tool runs that write the
-records (about half a second for a cut run, 3 to 4 s for each speed-up run over 10,000 clips),
-Remove all of a kind over thousands of rows (1 to 1.5 s for the cuts, 5 to 6 s for the
-speed-ups), and drawing the rows, which are not virtualised (§8).
+parts of all its speed-ups at once. There, the logic of opening the panel, one K, Keep all,
+Delete, the settle step after an edit by hand and the Review button's count after any edit (counted
+without making the rows) each take from a few milliseconds to a few tens (tested: the panel's steps
+under 250 ms, the count under 50 ms; they took 0.3 to 3 s, and the count 55 to 600 ms on every
+edit).
+
+The panel draws as fast (§4.3: the rows' times in one pass, a row drawn again only when what it
+shows changes, only the rows near the view drawn). Measured in the built app under Xvfb on those two
+projects, from the key to the next frame drawn, over four runs (before, at 7546e2b, in brackets):
+
+| Step | 8,098 cuts over 2,700 clips | 5,399 speed-ups over 10,799 clips |
+|---|---|---|
+| Open the panel (`Shift+R`) | 69-72 ms (1,008 ms) | 79-85 ms (879 ms) |
+| `N`, `P` | 11-24 ms (151-259 ms) | 21-43 ms (208-418 ms) |
+| Ten `↓` back to back | no task over 50 ms (1.2 s of them) | no task over 50 ms (2.2 s of them) |
+| `K` | 32-57 ms (266-310 ms) | 50-90 ms (281-389 ms) |
+| `Delete` | 46-79 ms (551-652 ms) | 64-113 ms (449-538 ms) |
+| `Ctrl+Z`, `Ctrl+Y` on a row | 36-49 ms (523-527 ms) | 46-109 ms (467 ms) |
+| `End`, `Home` | 42-44 ms, 14-24 ms (266, 156 ms) | 50-60 ms, 21-26 ms (249, 211 ms) |
+| Keep all, done | 47-54 ms (891 ms) | 54-58 ms (704 ms) |
+| Remove all, busy state drawn | 9-13 ms | 13-16 ms |
+| Remove all, done | 0.82-0.89 s, no task over 54 ms (1.8 s, one task of 1.3 s) | 6.5-8.0 s, no task over 240 ms (9.3 s, one task of 8.6 s) |
+| `Ctrl+Z` of Remove all, panel open / closed | 215-307 / 160-179 ms (1,265 ms open) | 340-355 / 243-322 ms (1,140 ms open) |
+| An edit elsewhere (`Z`, `Ctrl+Z`), panel open | 25-51 ms; no records: 14-21 ms (144-541 ms) | 32-57 ms; no records: 27-66 ms (253-444 ms) |
+| `Escape` | 14-51 ms (165 ms) | 32-67 ms (260 ms) |
+
+Only part of each step is the panel's: any edit to these projects costs the editor 20 to 40 ms (an
+undo with the panel closed), and the one long task of Remove all over the speed-ups, at its end,
+is the editor taking in the clips that changed (the same redo with the panel closed takes 216-260
+ms). Not fast there: the tool runs that write the records (about half a second for a
+cut run, 3 to 4 s for each speed-up run over 10,000 clips), and Remove all of a kind over thousands
+of rows in all (0.8 s for the cuts, 6.5 to 8 s for the speed-ups), which is why it shows it is at
+work first and lets the page draw while it works (§4.3).
 
 ## 7. Files and exported signatures
 
@@ -513,18 +570,29 @@ speed-ups), and drawing the rows, which are not virtualised (§8).
   `autoCutIntact(cut, clips, list?)`, `changeGone(cut, clips)`, `undoAutoCut(clips, cut, duration)`,
   `liveAutoCuts(project)`, `staleAmong(list, clips)`, `settleAutoCuts(next, prev)`,
   `withSpeedUpKept(list, kept)`, `withSpeedUpsKept(list, kept)`,
-  `withoutSpeedUp(list, speedUp)`, `withAutoCuts(project, list)`.
+  `withoutSpeedUp(list, speedUp)`, `withAutoCuts(project, list)`, `takeBack(clips, list, ids,
+  duration, heir)` and `takeBackSteps(…)` (the same, yielding after each record taken back),
+  `finish(steps)` (runs steps to their end).
 * `src/shared/review/review.ts` — `ReviewKind`, `ReviewItem`, `ReviewStatus`, `reviewItems(project)`,
   `reviewStatus(project, item)`, `keepItems(project, items)`, `removeItems(project, items)`,
-  `mergeSnapshot(shown, project)`, `reviewProgress`, `KIND_WORDS`.
-* `src/shared/review/copy.ts` — titles, places, the live messages, `itemAccessibleName`.
+  `mergeSnapshot(shown, project)`, `reviewProgress`, `KIND_WORDS`, `removeSteps(project, items)`
+  (removeItems a cut or speed-up a step).
+* `src/shared/review/times.ts` — `rowTimes(items, clips, plan)`: the rows' times, kept by start for
+  each clips array and plan; `src/shared/engine/freeze.ts` `videoTimesAt(clips, plan, times)`:
+  `videoTimeAt` for many times in one pass over the clips.
+* `src/shared/review/slices.ts` — `inSlices(read, start, done, tasks, slice?)`: steps a slice of
+  time at a time, over again when the state changes; `src/renderer/src/review/tasks.ts`
+  `pageTasks()`: the page's tasks for it (the first after the next frame is drawn).
+* `src/shared/review/copy.ts` — titles, places, the live messages (`busyMessage`, `BUSY_WORDS`
+  for Keep all and Remove all at work), `itemAccessibleName`.
 * `src/shared/review/preview.ts` — `previewStretch(clips, start, end)` (where to seek, when to stop).
 * `src/shared/review/stretch.ts` — `playStretch(player, clips, stretch, clock)`: plays the stretch,
   pauses at its end; a seek of more than 0.5 s (back or ahead) or a pause by the user ends it
   quietly. `src/renderer/src/review/playStretch.ts` runs it on animation frames.
 * `src/shared/review/wordCuts.ts` — `suggestionRanges(words, items, duration)`.
 * `src/shared/review/keys.ts` — `listKey(event)`: what a key pressed in the list does, or null.
-* `src/renderer/src/review/ReviewPanel.tsx`, `ReviewButton.tsx`, `playStretch.ts`, `review.css`.
+* `src/renderer/src/review/ReviewPanel.tsx` (the panel, `ReviewList` and its windowing,
+  `ReviewRow`), `ReviewButton.tsx`, `playStretch.ts`, `tasks.ts`, `review.css`.
 * Additive lines: `types.ts` (`AutoCut`, `AutoCutOutcome`, `Project.autoCuts`,
   `Project.autoCutOutcomes`), `engine/project.ts` (two lines),
   `Editor.tsx`'s store settle (`settleAutoCuts` after `settleDeletedWords`),
@@ -546,10 +614,13 @@ speed-ups), and drawing the rows, which are not virtualised (§8).
   change (same object back), so it still holds; covered by the existing polish tests.
 * **Shift+R** could clash with a user's own binding: the keymap's conflict rules already handle a
   clash (the user's binding wins in their keymap file).
-* **Long lists** (a long recording with 300 zooms): items are plain rows, computed once per project
-  change; no virtualisation needed below a few thousand (tested 2000 in < 50 ms). A 3-hour recording
-  after Remove silences and Polish lists up to about 8,000 rows: what they read is worked out in
-  milliseconds (§6), but all of them are drawn.
+* **Long lists** (a long recording with 300 zooms; a 3-hour one after Remove silences and Polish
+  lists up to about 8,000 rows, and the choices allow 10,000): what the rows read is worked out in
+  milliseconds (§6), each row is drawn again only when what it shows changes, and over 200 rows only
+  the rows near the view and the focused row are drawn (§4.3). A screen reader's browse mode reads
+  only the rows drawn (their places in the whole list are given); the keys reach every row.
+  Measured in the built app (§6). Remove all over thousands of speed-ups still takes seconds in
+  all, but in slices, with the page drawing and the busy state shown first.
 
 ## 9. Test plan
 
@@ -629,7 +700,17 @@ Unit (`tests/review*.test.ts`), each failing without its code:
 * Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
 * `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
 * Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).
-* Copy: every title, the accessible name, progress text.
+* Copy: every title, the accessible name, progress text, the busy messages.
+* Row times (`tests/reviewTimes.test.ts`): `videoTimesAt` gives `videoTimeAt`'s numbers bit for bit
+  for times in a clip, in a cut, on the edges, before, past the end and not finite, in any order
+  with repeats, on clips never put in order, and on 500 seeded random edits with speeds and pause
+  and continue freezes; `rowTimes` gives each start's `m:ss.t` and works out 8,098 rows over 2,700
+  clips in one pass in milliseconds, then reads them back for the same clips.
+* Work in slices (`tests/reviewSlices.test.ts`): `removeSteps` yields once for each cut or
+  speed-up taken back and gives what `removeItems` gives (cuts, and speed-ups at 2×, 4× and 8×);
+  `inSlices` takes steps for about a slice per task and gives the result once, starts over from the
+  new state when the state changes under it, does nothing more once stopped, and a long Remove all
+  through it is one store edit and one undo step.
 
 End to end (`tests/e2e/review-mode.e2e.cjs`): open a project with an auto zoom, a director segment
 and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows read right; `N`
@@ -645,6 +726,13 @@ still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kep
 `Ctrl+Z` from Keep all, which the undo disables: the focus back on a row; `Ctrl+Y`, then Undo run
 from the palette with the focus on Keep all: the focus on a row too (the panel's current item, not
 its Close button), `N` moves in the list, and Escape closes.
+A long list (a 20-minute recording with 399 cut records): fewer than 60 rows drawn; the focus starts
+on the first row; `End` (a row not drawn until then), `P`, `Home` and 30 `↓` move it, each time
+with the row's accessible name (its video time), its place (`aria-posinset`, `aria-setsize`) and
+the row in view; `K` keeps and moves on, announced; scrolled far away with the wheel, the focus
+stays on its row and `N` brings the next one into view; Remove all says `Removing 398 silence
+cuts…` then `Removed 398 silence cuts.`, its button says it is working, and one `Ctrl+Z` takes it
+all back; Escape closes and gives the focus to the Review button.
 
 ## 10. Later
 
