@@ -15,7 +15,7 @@ import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
 import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
-import { plainText } from '../publish/text'
+import { plainText, withLinksOf } from '../publish/text'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
 export interface TextPrompt {
@@ -168,6 +168,9 @@ export function batchSegments(segments: readonly CaptionSegment[], maxCount = BA
   return out
 }
 
+/** The captions' text as one string: an answer may have only the links it has. */
+const captionsText = (segments: readonly CaptionSegment[]): string => segments.map((s) => s.text).join(' ')
+
 /**
  * Word timings for cleaned text: with the new spelling when it has as many words as were timed,
  * else as they were (the Transcript tab and the subtitle files line them up with the text:
@@ -183,12 +186,16 @@ function retimeWords(words: readonly CaptionWord[] | undefined, text: string): C
 /**
  * The captions of an answer to a cleanup or translation of `input`: every id exactly once, in
  * order, each with text, and times (when the answer repeats them) unchanged. Times and ids are
- * taken from `input`, so they cannot drift.
+ * taken from `input`, so they cannot drift. Each text has only the links `input` has (withLinksOf,
+ * the copy pack's rule, docs/design/publish-pack.md §4.4): the copy pack trusts the captions as what
+ * was said, so what the AI wrote into them may not add a link ("paypal-login.com/verify" becomes
+ * "paypal-login. com/verify"), while a said "flown.app/docs" survives a translation.
  */
 export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: readonly CaptionSegment[], answer: unknown): CaptionSegment[] {
   if (!isObject(answer) || !Array.isArray(answer.segments)) throw new AiOutputError('no list of captions')
   const list = answer.segments
   if (list.length !== input.length) throw new AiOutputError(`${list.length} captions came back for ${input.length}`)
+  const said = captionsText(input)
   return input.map((orig, i) => {
     const item: unknown = list[i]
     if (!isObject(item) || item.id !== orig.id) throw new AiOutputError(`caption ${orig.id} is missing or out of order`)
@@ -198,7 +205,7 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
       }
     }
     if (typeof item.text !== 'string') throw new AiOutputError(`caption ${orig.id} has no text`)
-    const text = cleanText(item.text)
+    const text = withLinksOf(cleanText(item.text), said)
     if (!text && orig.text.trim()) throw new AiOutputError(`caption ${orig.id} came back empty`)
     if (text.length > orig.text.length * 4 + 200) throw new AiOutputError(`caption ${orig.id} came back far longer`)
     const words = task === 'cleanup' ? retimeWords(orig.words, text) : undefined
@@ -206,9 +213,6 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
     return { ...rest, text, ...(words ? { words } : {}) }
   })
 }
-
-/** The captions' text as one string: an answer may have only the links it has. */
-const captionsText = (segments: readonly CaptionSegment[]): string => segments.map((s) => s.text).join(' ')
 
 /**
  * `text` without the links `segments` do not have (removed, or a bare name broken: plainText, the
