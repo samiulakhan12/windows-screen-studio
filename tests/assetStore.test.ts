@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import fs, { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -20,7 +20,9 @@ const SHA = createHash('sha256').update(FILE).digest('hex')
 vi.mock('../src/shared/captions/fontCatalog', async (original) => {
   const real = await original<typeof import('../src/shared/captions/fontCatalog')>()
   const test = { ...real.CATALOG_FONTS.find((f) => f.id === 'noto-sans-jp')!, id: 'test-cjk', files: [{ path: 'ofl/testcjk/TestCJK[wght].ttf', bytes: FILE.length, sha256: SHA }] }
-  return { ...real, CATALOG_FONTS: [...real.CATALOG_FONTS, test] }
+  // A second one, downloaded beside the first (two Font menus).
+  const second = { ...test, id: 'test-kr', files: [{ path: 'ofl/testkr/TestKR[wght].ttf', bytes: FILE.length, sha256: SHA }] }
+  return { ...real, CATALOG_FONTS: [...real.CATALOG_FONTS, test, second] }
 })
 
 const store = await import('../src/main/assets/assetStore')
@@ -165,6 +167,59 @@ describe('downloading an asset (§12)', () => {
     const s = server(() => ({ status: 200, body: FILE }))
     await expect(downloadPinned({ url: 'https://a.example/f', bytes: 1, sha256: SHA }, path.join(dir, 'z'), { get: s.get, signal: new AbortController().signal, allow: (u) => u.hostname === 'a.example', sources: ['https://a.example/f', 'https://b.example/f'] })).rejects.toThrow('not allowed')
     expect(s.urls).toEqual([])
+  })
+})
+
+describe('assets.json (§12)', () => {
+  it('keeps both records when two downloads end together', async () => {
+    // Both answers start streaming at once, so the two downloads end within the same moment.
+    let open: () => void = () => undefined
+    let asked = 0
+    const both = new Promise<void>((r) => (open = r))
+    const get: HttpGet = async () => {
+      if (++asked % 2 === 0) open()
+      await both
+      return { status: 200, headers: {}, body: (async function* () {
+        yield FILE
+      })() }
+    }
+    use(get)
+    for (let round = 0; round < 8; round++) {
+      await store.removeAsset('test-cjk')
+      await store.removeAsset('test-kr')
+      const states = await Promise.allSettled([store.downloadAsset('test-cjk', progress), store.downloadAsset('test-kr', progress)])
+      expect(states.map((s) => s.status), `round ${round}`).toEqual(['fulfilled', 'fulfilled'])
+      const listed = await store.listAssets()
+      expect(['test-cjk', 'test-kr'].map((id) => listed.find((a) => a.id === id)?.state), `round ${round}`).toEqual(['ready', 'ready'])
+    }
+  })
+
+  it('records a download while Windows briefly locks assets.json: the rename is tried again', async () => {
+    use(server(() => ({ status: 200, body: FILE })).get)
+    // The first rename onto assets.json meets the lock; the next goes through.
+    let tries = 0
+    const locked = (to: fs.PathLike): boolean => String(to).endsWith('assets.json') && ++tries === 1
+    const eperm = (): Error => Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' })
+    const renameSync = fs.renameSync
+    const rename = fs.promises.rename
+    const spies = [
+      vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
+        if (locked(to)) throw eperm()
+        renameSync(from, to)
+      }),
+      vi.spyOn(fs.promises, 'rename').mockImplementation(async (from, to) => {
+        if (locked(to)) throw eperm()
+        return rename(from, to)
+      })
+    ]
+    try {
+      await expect(store.downloadAsset('test-cjk', progress)).resolves.toMatchObject({ state: 'ready' })
+      expect(tries).toBe(2)
+      expect((await store.listAssets()).find((a) => a.id === 'test-cjk')?.state).toBe('ready')
+      expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([])
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
   })
 })
 

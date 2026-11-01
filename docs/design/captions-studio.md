@@ -3001,7 +3001,9 @@ translation is applied when the worker or provider has finished.
   passes the pinned unpacked size, then hashed against the registry's SHA-256.
 - **Storage**: `userData/caption-assets/` with an `assets.json` of verified `{ bytes, mtimeMs }`
   records, read through a sanitiser; stale `.part` files removed as the speech store does
-  (`STALE_PART_MS`, `src/main/speech/models.ts:27-31`).
+  (`STALE_PART_MS`, `src/main/speech/models.ts:27-31`). Each change of `assets.json` is read,
+  changed and written in one main-process turn (`writeFileAtomicSync`, its rename tried again
+  while Windows briefly locks the file), so two downloads ending together keep both records.
 - **Nothing downloaded runs.** Fonts go to `FontFace(bytes)`, where Chromium's sanitiser (OTS)
   checks every table. Model files are data for the bundled WebAssembly runtime, which runs in a
   worker without IPC. The runtime itself is bundled.

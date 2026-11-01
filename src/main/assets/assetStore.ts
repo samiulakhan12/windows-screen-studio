@@ -13,10 +13,11 @@
  * pinned unpacked size, hashed against the registry).
  */
 import { app } from 'electron'
-import { promises as fs } from 'node:fs'
+import { mkdirSync, promises as fs, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { assetFontFile, type AssetProgress, type AssetState } from '../../shared/api/assets'
 import { CAPTION_MIRROR, CATALOG_FONTS, fontSources, GOOGLE_FONTS_COMMIT, NOTO_EMOJI_COMMIT, type CatalogFile, type CatalogFont } from '../../shared/captions/fontCatalog'
+import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from '../speech/download'
 
 /** The folder under userData that holds the assets. */
@@ -115,13 +116,12 @@ interface Records {
   [file: string]: { bytes: number; mtimeMs: number }
 }
 
-/** assets.json through a sanitiser: only catalogue names with numbers. */
-async function readRecords(): Promise<Records> {
+/** assets.json through a sanitiser: only catalogue names with numbers (read at once, for updateRecords). */
+function readRecords(): Records {
   const file = path.join(deps.dir(), RECORDS)
   try {
-    const stat = await fs.stat(file)
-    if (stat.size > RECORDS_MAX) return {}
-    const raw = JSON.parse(await fs.readFile(file, 'utf8')) as unknown
+    if (statSync(file).size > RECORDS_MAX) return {}
+    const raw = JSON.parse(readFileSync(file, 'utf8')) as unknown
     const files = raw && typeof raw === 'object' ? (raw as { files?: unknown }).files : null
     const out: Records = {}
     const re = assetFileRe()
@@ -136,13 +136,18 @@ async function readRecords(): Promise<Records> {
   }
 }
 
-async function writeRecords(records: Records): Promise<void> {
+/**
+ * Changes assets.json in one main-process turn: read, `change` (false when it changed nothing),
+ * then written through a temporary file whose rename is tried again while Windows briefly locks
+ * the file (atomicWrite.ts). Two downloads ending together, or a removal as a download ends, can
+ * then never lose each other's records or share the temporary file.
+ */
+function updateRecords(change: (records: Records) => boolean): void {
   const dir = deps.dir()
-  await fs.mkdir(dir, { recursive: true })
-  const file = path.join(dir, RECORDS)
-  const temp = `${file}.tmp`
-  await fs.writeFile(temp, JSON.stringify({ version: 1, files: records }))
-  await fs.rename(temp, file)
+  mkdirSync(dir, { recursive: true })
+  const records = readRecords()
+  if (!change(records)) return
+  writeFileAtomicSync(path.join(dir, RECORDS), JSON.stringify({ version: 1, files: records }))
 }
 
 /** Whether `id`'s file is on disk as it was verified (the size of its pin, unchanged since). */
@@ -175,7 +180,7 @@ async function sweepStaleParts(now: number): Promise<void> {
 /** Every downloadable asset as it stands on this PC (Settings › Downloads for captions). */
 export async function listAssets(): Promise<AssetState[]> {
   await sweepStaleParts((deps.now ?? Date.now)())
-  const records = await readRecords()
+  const records = readRecords()
   const out: AssetState[] = []
   for (const f of DOWNLOADS) {
     if (active.has(f.id)) {
@@ -243,11 +248,17 @@ export async function downloadAsset(id: string, opts: { signal: AbortSignal; onP
     } catch (err) {
       throw new Error(failureMessage(err))
     }
-    const stat = await fs.stat(dest)
-    const records = await readRecords()
-    records[name] = { bytes: stat.size, mtimeMs: stat.mtimeMs }
-    await writeRecords(records)
-    return { id, kind: 'font', state: 'ready', bytes: stat.size }
+    try {
+      const stat = await fs.stat(dest)
+      updateRecords((records) => {
+        records[name] = { bytes: stat.size, mtimeMs: stat.mtimeMs }
+        return true
+      })
+      return { id, kind: 'font', state: 'ready', bytes: stat.size }
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      throw new Error(`The font downloaded, but Flown could not save it${code ? ` (${code})` : ''}. Try again.`)
+    }
   })()
   active.set(id, { controller, done })
   try {
@@ -270,11 +281,11 @@ export async function removeAsset(id: string): Promise<void> {
   const name = assetFontFile(id)
   const dir = deps.dir()
   for (const f of [name, `${name}.part`, `${name}.part.json`]) await fs.rm(path.join(dir, f), { force: true })
-  const records = await readRecords()
-  if (records[name]) {
+  updateRecords((records) => {
+    if (!records[name]) return false
     delete records[name]
-    await writeRecords(records)
-  }
+    return true
+  })
 }
 
 /** The path of a served asset file, or null when the name is not one of the catalogue's (mediaProtocol's assets host). */
