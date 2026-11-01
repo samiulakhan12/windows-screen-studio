@@ -485,8 +485,9 @@ export function studioLayout(
   const pxOf = tokens.map((t, i) => (emphasis[i] ? m.px * scriptScale(t.script, studio.emphasis.scale) : m.px))
   const measureFace = (i: number): StudioFace => (spoken && studio.spoken === 'weight' && !tokens[i].label ? { ...faces[i], weight: Math.max(faces[i].weight, spokenWeightOf(studio)) } : faces[i])
   const widths = tokens.map((t, i) => measure(t.text, pxOf[i], measureFace(i)))
-  // Room for a word that grows, on the side of each neighbour: the spoken word's size, and in Bangla
-  // the peak of a pop style's word motion too (§0.2: a grown word never touches its neighbours).
+  // Room for a word that grows, on the side of each neighbour: the spoken word's size times the peak
+  // of its word motion (Bold Pop: 1.18 × a 1.08 pulse), and in Bangla the peak of a pop style's word
+  // motion alone too (§0.2: a grown word never touches its neighbours).
   const calm = !!studio.motion.calm
   const s0 = studio.motion.strength
   const motionPeak = (k: number): number => {
@@ -496,7 +497,8 @@ export function studioLayout(
   const peak = (k: number): number => {
     if (!spoken || calm || tokens[k].label) return 1
     const grow = scriptScale(tokens[k].script, studio.motion.spokenScale ?? 1)
-    return tokens[k].script === 'bengali' ? Math.max(grow, motionPeak(k)) : grow
+    if (grow > 1) return grow * motionPeak(k)
+    return tokens[k].script === 'bengali' ? motionPeak(k) : 1
   }
   // Stickers (§0.1, more.html): each word is its own sticker, reaching padX and half its border past
   // the word, so neighbours stand 0.2 em apart sticker to sticker, with or without a space in the text.

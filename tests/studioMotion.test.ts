@@ -109,7 +109,13 @@ describe('purity (test 12)', () => {
     const p = captionPoses(l, 0, at, ONE, s, U, null)
     expect(isRest(p.chunk)).toBe(true)
     const late = captionPoses(l, 0, l.chunks[0].end - 0.001, ONE, s, U, null)
-    for (const w of late.words) expect([w.dx, w.dy, w.scale, w.alpha]).toEqual([0, 0, 1, 1])
+    // The spoken word (the chunk's last) holds its grown size; the others are at rest.
+    const spokenNow = l.chunks[0].last
+    for (const w of late.words) {
+      expect([w.dx, w.dy, w.alpha], `${w.token}`).toEqual([0, 0, 1])
+      if (w.token === spokenNow) expect(w.scale).toBeCloseTo(1.18, 9)
+      else expect(w.scale, `${w.token}`).toBe(1)
+    }
   })
 
   it('keeps the minimum durations: 0.1 s for chunk motion even at double speed', () => {
@@ -320,6 +326,38 @@ describe('spoken marks and word motion (§9.3)', () => {
     expect(captionPoses(l, 0, 0.35 + 0.25, ONE, s, U, null).words[1].scale).toBeCloseTo(1.28, 6)
     const bn = lay(timed('এক ক্লিকে সুন্দর'), s, 1080, 1920, undefined, 'bn')
     expect(captionPoses(bn, 0, 0.35 + 0.25, ONE, s, U, null).words[1].scale).toBeCloseTo(1.14, 6)
+  })
+
+  it("Bold Pop's spoken word pops past its size, settles at 1.18 by 0.2 s and holds while spoken (APPROVED-LOOK.md)", () => {
+    const s = look('bold-pop')
+    const at = (l: StudioLayout, dt: number): number => captionPoses(l, 0, 0.4 + dt, ONE, s, U, null).words[1].scale
+    const l = lay(timed('click export and', 0.4), s)
+    expect(Math.max(...[0.04, 0.06, 0.08, 0.1].map((dt) => at(l, dt)))).toBeGreaterThan(1.24)
+    for (const dt of [0.2, 0.3, 0.39]) expect(at(l, dt), `+${dt} s`).toBeCloseTo(1.18, 6)
+    // At most ×1.14 in Bangla.
+    expect(at(lay(timed('এক ক্লিকে সুন্দর', 0.4), s, 1080, 1920, undefined, 'bn'), 0.3)).toBeCloseTo(1.14, 6)
+    // A word whose time is estimated keeps its size (§9.1 rule 7).
+    const guess = timed('click export and', 0.4)
+    guess.words = guess.words!.map((w) => ({ ...w, estimated: true as const }))
+    expect(at(lay(guess, s), 0.3)).toBe(1)
+  })
+
+  it('Bold Pop keeps room for its spoken word at the peak of its pulse and pop, so it never runs into the space beside it', () => {
+    const s = look('bold-pop')
+    const l = lay(timed('click export and', 0.4), s, 1920, 1080)
+    const words = l.chunks[0].lines[0].words
+    expect(words.length).toBe(3)
+    let least = Infinity
+    for (let t = 0; t < 1.2; t += 0.005) {
+      const p = captionPoses(l, 0, t, ONE, s, U, null)
+      const scale = (token: number): number => p.words.find((w) => w.token === token)!.scale
+      for (let i = 1; i < words.length; i++) {
+        const [a, b] = [words[i - 1], words[i]]
+        least = Math.min(least, b.x + (b.w * (1 - scale(b.token))) / 2 - (a.x + a.w - (a.w * (1 - scale(a.token))) / 2))
+      }
+    }
+    // The space itself (0.55 em here) stays clear, give or take the pop's overshoot.
+    expect(least / l.px).toBeGreaterThan(0.55 - 0.02)
   })
 
   it('emphasis marks draw in from 0.06 s before the word', () => {

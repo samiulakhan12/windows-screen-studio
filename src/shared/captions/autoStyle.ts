@@ -109,11 +109,16 @@ function rule(project: Project, frame: { w: number; h: number }): { tile: string
     return {
       tile: 'bold-pop',
       reason: AUTO_STYLE_REASONS.tallCamera,
-      edit: (s) => ({
-        ...s,
-        ...(guessed ? { spoken: 'none' as const, motion: { ...s.motion, word: 'none' as const } } : {}),
-        layout: { ...s.layout, ...(fast ? { words: 4 } : {}) }
-      })
+      edit: (s) => {
+        // Guessed word times: no spoken mark, no word motion and no spoken word growing at a guessed time.
+        const { spokenScale: _ss, ...still } = s.motion
+        void _ss
+        return {
+          ...s,
+          ...(guessed ? { spoken: 'none' as const, motion: { ...still, word: 'none' as const } } : {}),
+          layout: { ...s.layout, ...(fast ? { words: 4 } : {}) }
+        }
+      }
     }
   }
   if (isSquare(frame.w, frame.h)) {

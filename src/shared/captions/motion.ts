@@ -663,15 +663,16 @@ export function captionPoses(
           pose.fill = isSpoken ? 1 : 0
           break
       }
-      /* growing while spoken (Stickers, Spotlight Word; ×1.14 at most in Bangla) */
-      const grow = calm ? 1 : scriptScale(tok.script, m.spokenScale ?? 1)
-      if (grow > 1) {
+      /* growing while spoken (Bold Pop, Stickers, Spotlight Word; ×1.14 at most in Bangla; by strength,
+         none at 0; estimated words keep their size) */
+      const grow = calm ? 0 : (scriptScale(tok.script, wm.spokenScale ?? 1) - 1) * s
+      if (grow > 0) {
         const up = duration(0.2, m, 0.06)
         const down = duration(0.1, m, 0.06)
-        if (spokenAt === i) pose.scale *= 1 + (grow - 1) * (ageW < 0 ? 0 : back(unit(ageW / up), 1.7 * s))
+        if (spokenAt === i) pose.scale *= 1 + grow * (ageW < 0 ? 0 : back(unit(ageW / up), 1.7 * s))
         else if (past) {
           const next = i + 1 <= ch.last ? v.starts[i + 1] : Infinity
-          pose.scale *= 1 + (grow - 1) * (1 - EASE.out((now - next) / down))
+          pose.scale *= 1 + grow * (1 - EASE.out((now - next) / down))
         }
       }
     }

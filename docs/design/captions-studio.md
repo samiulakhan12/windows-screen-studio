@@ -1368,7 +1368,9 @@ turns green".
 - Edge: outline 0.085 α 1; shadow (0, 0.04, 0.12) α 0.55.
 - Words: a few words, 3 words, 1 line, 16 / 14, lower.
 - Motion: spoken colour; in pop, out fade; word pulse; emphasis pop; upcoming 1; tilt 3° on
-  emphasised words.
+  emphasised words; the spoken word grows to 1.18 and holds while spoken (`spokenScale` 1.18,
+  ×1.14 in Bangla; with the pulse it peaks near 1.28 in about 0.08 s and settles by 0.2 s, as in
+  `APPROVED-LOOK.md`), and the layout keeps room for that peak beside it.
 
 **Clean Short** (`clean-short`, fallback `clean`): "Calm sentence-case words with a soft
 shadow". The default for tall and square screen recordings (§5.5).
@@ -1466,7 +1468,7 @@ or in a camera-only or large-camera layout, for at least 50% of the viewing time
 | Frame | New captions get | Notes |
 |---|---|---|
 | Wide (16:9, 4:3, 21:9 and anything not tall or square) | **Subtitle** | Long tutorials need full phrases with read-ahead. With two or more named speakers: speaker names and colours on. When camera-led, Karaoke Fill carries the "Suggested" badge, but Subtitle stays the pick. |
-| Tall (9:16, 4:5), camera-led | **Bold Pop** | With more than 50% estimated word times: spoken mark and word motion off. With speech faster than 190 words a minute: 4 words. |
+| Tall (9:16, 4:5), camera-led | **Bold Pop** | With more than 50% estimated word times: spoken mark, word motion and the growing spoken word off. With speech faster than 190 words a minute: 4 words. |
 | Tall, screen-led | **Clean Short** | Heavy capitals would compete with the small UI text of a reframed screen recording. |
 | Square (1:1) | **Highlight Box** with 5 words and 2 lines when camera-led; **Clean Short** with 4 words otherwise | |
 
@@ -2072,11 +2074,11 @@ position works for them.
    `itemPose`, `counterValue` and the pop sound times (`popJob`) all use that time. So in a
    continue freeze an emoji stays with its word, a counter keeps counting with the speech, and its
    pop sounds when it appears.
-7. **Estimated words** (`estimated`, NW-09 `fromSound`) get calm word motion (§9.5) and their fill
-   becomes a whole-word colour change. **A translated track** (`captions.track`, §11.9) has no
-   word times at all: while it is shown, spoken marks, word motion and the colour of words to come
-   (`theme.upcoming`) are off (chunk entrances and exits stay), and the legacy Bold and Karaoke
-   looks draw no lit word either.
+7. **Estimated words** (`estimated`, NW-09 `fromSound`) get calm word motion (§9.5, so a spoken
+   word does not grow) and their fill becomes a whole-word colour change. **A translated track**
+   (`captions.track`, §11.9) has no word times at all: while it is shown, spoken marks, word
+   motion and the colour of words to come (`theme.upcoming`) are off (chunk entrances and exits
+   stay), and the legacy Bold and Karaoke looks draw no lit word either.
 8. **Speaker labels** take the chunk's pose only.
 9. Preview and export can differ in `t` by up to half a frame (the preview draws at
    `meta.mediaTime`, the export at frame times, `player.ts:474-487`, `exporter.ts:473`), as every
@@ -2636,7 +2638,7 @@ Rules, first match wins, with the reason shown in the notice and in Review:
 | # | Condition | Look | Reason text |
 |---|---|---|---|
 | 1 | The brand kit has a caption style | Brand | "Your brand kit's caption style" |
-| 2a | Tall frame, camera-led | Bold Pop; 4 words when speech is faster than 190 words a minute; spoken mark and word motion off when more than 50% of word times are estimated (`estimatedShare`, NW-09) | "Bold Pop: you are on camera in a tall video" |
+| 2a | Tall frame, camera-led | Bold Pop; 4 words when speech is faster than 190 words a minute; spoken mark, word motion and the growing spoken word off when more than 50% of word times are estimated (`estimatedShare`, NW-09) | "Bold Pop: you are on camera in a tall video" |
 | 2b | Tall frame, not camera-led | Clean Short | "Clean Short: a screen recording for phones" |
 | 3 | Square frame | Camera-led: Highlight Box, 5 words, 2 lines; else Clean Short, 4 words | "Highlight Box: a square video for feeds" / "Clean Short: a square screen recording" |
 | 4 | Wide frame, two or more named speakers | Subtitle with speaker names and a colour per speaker (§7.4) | "Subtitle with names and a colour per speaker" |
@@ -3558,8 +3560,10 @@ nearest fixture colour; shares are compared within the caption band.
 5. **Deterministic.** Export *Wide* at 30 fps and at 60 fps: the frames at 1.0 s and 1.7 s agree
    in 99.5% of pixels within 3 levels. Exporting twice gives identical decoded frames.
 6. **Motion.** In *Tall*, pick Bold Pop: the caption's ink box at the chunk start + 0.033 s is
-   smaller than at + 0.3 s and centred within 2 px; green (#39e508) pixels at 1.1 s lie in the
-   middle third of the line and at 1.6 s further right.
+   smaller than at + 0.3 s and centred on the line: the spoken first word, held at 1.18 by + 0.3 s,
+   widens the ink on the left only, so the early centre lies between the later ink's centre and
+   the line's (a quarter of that word's growth to the right), within 3 px; green (#39e508) pixels
+   at 1.1 s lie in the middle third of the line and at 1.6 s further right.
 7. **Reduced motion.** With `reducedMotion: 'reduce'` emulated: picking Bold Pop writes no
    `motion.calm`; the Motion section shows "Your PC asks for less animation…"; a focused tile's
    thumbnail does not change over 600 ms; turning Calm motion on writes `calm: true`, and then the

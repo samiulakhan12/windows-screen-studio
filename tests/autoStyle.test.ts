@@ -31,6 +31,9 @@ describe('auto style (test 40)', () => {
     const g = autoStyle(studioProject({ segments: guessed, camera: 'large' }), TALL)!
     expect(g.studio.spoken).toBe('none')
     expect(g.studio.motion.word).toBe('none')
+    // Nor a spoken word growing at a guessed time; with real word times it grows as Bold Pop comes.
+    expect(g.studio.motion.spokenScale).toBeUndefined()
+    expect(autoStyle(p, TALL)!.studio.motion.spokenScale).toBe(1.18)
   })
 
   it('2b: a tall screen recording gets Clean Short', () => {

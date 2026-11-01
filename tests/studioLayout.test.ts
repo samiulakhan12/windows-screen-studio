@@ -166,8 +166,11 @@ describe('chunk modes (test 9)', () => {
       const words = studioLayout(seg, s, 1080, 1920, measure, { faceOf: () => FACE, language: 'bn' }).chunks[0].lines[0].words
       return words[1].x - (words[0].x + words[0].w)
     }
+    // Room for the spoken word's size (×1.14) times the peak of its pulse, for the size alone, and none when calm.
+    const still = { ...bp, motion: { ...bp.motion, word: 'none' as const, spokenScale: undefined } }
     expect(gap(bp)).toBeGreaterThan(gap({ ...bp, motion: { ...bp.motion, word: 'none' } }))
-    expect(gap({ ...bp, motion: { ...bp.motion, calm: true } })).toBe(gap({ ...bp, motion: { ...bp.motion, word: 'none' } }))
+    expect(gap({ ...bp, motion: { ...bp.motion, word: 'none' } })).toBeGreaterThan(gap(still))
+    expect(gap({ ...bp, motion: { ...bp.motion, calm: true } })).toBe(gap(still))
   })
 
   it('raises the line height for Bangla captions', () => {

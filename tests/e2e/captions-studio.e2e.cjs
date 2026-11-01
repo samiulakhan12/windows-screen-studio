@@ -447,7 +447,14 @@ async function shortTests() {
     h.assert(inkA.box.w < inkB.box.w, `it pops in: narrower at +0.033 s (${inkA.box.w} px) than at +0.3 s (${inkB.box.w} px)`)
     const cA = inkA.box.x + inkA.box.w / 2
     const cB = inkB.box.x + inkB.box.w / 2
-    h.assert(Math.abs(cA - cB) <= 3, `growing about its centre (${cA.toFixed(1)} vs ${cB.toFixed(1)})`)
+    // Growing about its centre. The spoken first word also grows, about its own centre, and holds at
+    // 1.18 by +0.3 s (APPROVED-LOOK.md): it widens the ink on the left only, so at +0.3 s the line's
+    // centre is right of the ink's by a quarter of that word's growth (its green fill), and at +0.033 s,
+    // the word part grown, the ink's centre lies between the two.
+    const lit = settled.count(lowBand(settled), GREEN).box
+    h.assert(lit && lit.x - inkB.box.x < 20, 'the spoken first word is green at +0.3 s, at the left of the line')
+    const line = cB + (lit.w - lit.w / 1.18) / 4
+    h.assert(cA >= cB - 3 && cA <= line + 3, `growing about its centre (${cA.toFixed(1)}, between ${cB.toFixed(1)} and ${line.toFixed(1)})`)
     h.assert(spoken.count(lowBand(spoken), GREEN).n > 150, 'the spoken word is green at 1.1 s')
     h.assert(settled.count({ x: 0, y: 0, w: settled.width, h: settled.height * 0.5 }, INK).n === 0, 'nothing drawn in the top half')
 

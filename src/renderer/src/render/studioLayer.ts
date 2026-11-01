@@ -663,7 +663,7 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   const emph = wi.emphasis > 0
   const emphColor = wi.emphasis === 2 ? (theme.emphasis2 ?? theme.emphasis) : theme.emphasis
   const markOnBox = studio.emphasis.mark === 'marker' || studio.emphasis.mark === 'box'
-  // The spoken word grows (Stickers 1.12, Spotlight Word 1.28; at most 1.14 for Bangla, §0.2): it is painted at that size.
+  // The spoken word grows (Bold Pop 1.18, Stickers 1.12, Spotlight Word 1.28; at most 1.14 for Bangla, §0.2): it is painted at that size.
   const grow = lit && studio.motion.spokenScale && !studio.motion.calm ? Math.max(1, Math.min(studio.motion.spokenScale, bengali ? 1.14 : 1.3)) : 1
   let face = wi.box.face
   if (lit && spokenMark === 'weight' && !emph) face = { ...face, weight: studio.text.spokenWeight ?? Math.min(900, face.weight + 300) }
