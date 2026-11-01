@@ -135,6 +135,12 @@ export function mergeWithNext(segments: readonly CaptionSegment[], id: string): 
   // but those the other one says ("Get it at flown.app." and a fixed "flown dot app": flown.app stays said).
   const saidIn = (s: CaptionSegment, k: string): boolean => saidKeys(s.text).has(k) && !aiLinksOf(s).includes(k)
   const ai = [...aiLinksOf(a), ...aiLinksOf(b)].filter((k) => !saidIn(a, k) && !saidIn(b, k))
+  // With none left, what the safety net notes in the one an AI wrote a link into, against what the other says, stays
+  // the AI's, as aiLinksAfter records it ("ログインflown.jp/download" after "flown.jp/download" is said): else the
+  // merged caption is taken for said, and so is that stretch.
+  if (!ai.length) {
+    for (const [s, o] of [[a, b], [b, a]] as const) if (s.aiLinks?.length) ai.push(...linksToCheck(s.text, saidLinks([o])).map((run) => view(run)))
+  }
   const merged: CaptionSegment = withAiLinks({ id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }, ai)
   const count = (s: CaptionSegment): number => s.text.split(' ').filter(Boolean).length
   if (a.words?.length || b.words?.length) merged.words = [...timingsOf(a, count(a)), ...timingsOf(b, count(b))]
