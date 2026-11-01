@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { CATALOG_FONTS, catalogFont } from '../src/shared/captions/fontCatalog'
-import { STUDIO_BASE, studioPreset } from '../src/shared/captions/studioPresets'
+import { CATALOG_FONTS, catalogFont, catalogId } from '../src/shared/captions/fontCatalog'
+import { coverageNeeded, partnerFor } from '../src/shared/captions/fontStack'
+import { STUDIO_BASE, STUDIO_PRESETS, studioPreset } from '../src/shared/captions/studioPresets'
 import type { CaptionStudio, Graphic, Project, ProjectFont, TitleCard } from '../src/shared/types'
 
 /*
@@ -147,6 +148,23 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(withStudio(look('one-word'), { transcript: ru } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald']))
     const ja = { language: 'ja', segments: [{ id: 'c1', start: 0, end: 2, text: '動画を書き出す' }] }
     expect(fonts.catalogFontsFor(withStudio(look('subtitle'), { transcript: ja } as Partial<Project>))).toContain('noto-sans-jp')
+  })
+
+  it('adds the partners of partners the drawing walks to: Anton → Oswald → Inter Tight for Greek', () => {
+    const el = { language: 'el', segments: [{ id: 'c1', start: 0, end: 2, text: 'Καλημέρα σε όλους σήμερα' }] }
+    expect(fonts.catalogFontsFor(withStudio(look('one-word'), { transcript: el } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald', 'inter-tight']))
+    // Every look, in languages that need letters beyond Latin-1: the font the words draw with is loaded.
+    const captions: Record<string, string> = { el: 'Καλημέρα σε όλους σήμερα', ru: 'Привет всем сегодня', vi: 'Xin chào mọi người hôm nay', pl: 'Dzień dobry wszystkim' }
+    for (const preset of STUDIO_PRESETS) {
+      for (const [language, text] of Object.entries(captions)) {
+        const studio = structuredClone(preset.look)
+        const ids = fonts.catalogFontsFor(withStudio(studio, { transcript: { language, segments: [{ id: 'c1', start: 0, end: 2, text }] } } as Partial<Project>))
+        for (const f of [studio.text.font, studio.emphasis.font ?? studio.text.font]) {
+          const drawn = catalogId(partnerFor(f, coverageNeeded(language, text)))
+          if (drawn) expect(ids, `${preset.id} in ${language} draws ${drawn}`).toContain(drawn)
+        }
+      }
+    }
   })
 })
 

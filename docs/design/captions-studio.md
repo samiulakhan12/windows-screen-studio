@@ -1703,9 +1703,11 @@ Per-script rules:
   font; every graphic's font (list items included); the catalogue fonts of title cards (the quote
   style's `cat:instrument-serif-italic` and any `cat:` font a card was given); the script fonts
   for the scripts found in the burned-in captions, graphics and titles (Unicode script of each
-  letter); the partner fonts; and the emoji font whenever the project has a Studio look or any
-  graphic. The emoji face is not chosen by scanning for emoji: keycaps, U+FE0F sequences and
-  text-presentation symbols have no "emoji script", and a scan would miss them.
+  letter); the partner fonts, with their own partners down to Inter Tight (a partner may lack
+  the letters too: Anton → Oswald → Inter Tight for Greek); and the emoji font whenever the
+  project has a Studio look or any graphic. The emoji face is not chosen by scanning for emoji:
+  keycaps, U+FE0F sequences and text-presentation symbols have no "emoji script", and a scan
+  would miss them.
 - The editor loads them when the project opens (all 24 bundled files load in 155 ms on the test
   PC; a typical project needs 2–4 files). Until a face is ready the fallback draws, and the load
   bumps `fontGeneration()` (`fontLoader.ts:29-35`) so cached widths and thumbnails are made

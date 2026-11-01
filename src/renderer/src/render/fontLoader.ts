@@ -321,11 +321,28 @@ const titleCatalogId = (c: TitleCard): string | null => catalogId(c.font) ?? (c.
 const fontsFor = new WeakMap<Project, string[]>()
 
 /**
+ * The partners partnerFor (fontStack.ts) may walk from `font` until one has the letters (§6.6):
+ * its partner, that one's partner and so on, Inter Tight last (Anton → Oswald → Inter Tight for
+ * Greek). A brand font has none.
+ */
+function partnersOf(font: string | undefined): string[] {
+  const out: string[] = []
+  let id = catalogId(font)
+  while (id) {
+    const next: string = catalogFont(id)?.partner ?? 'inter-tight'
+    if (next === id || out.includes(next)) break
+    out.push(next)
+    id = next
+  }
+  return out
+}
+
+/**
  * The catalogue fonts the project draws with (§6.8): the Studio look's text, emphasis and Bangla
  * fonts; every graphic's font (a graphic without one takes the look's); the catalogue fonts of
  * title cards (a quote card's Instrument Serif Italic); the script fonts of the scripts in the
  * burned-in captions (with a Studio look), the graphics and those title cards; the partners of the
- * look's fonts when the language needs letters they lack; the downloadable CJK font of the language;
+ * look's fonts, and their partners, when the language needs letters they lack; the downloadable CJK font of the language;
  * and the colour emoji face whenever the project has a Studio look or any graphic (never found by
  * scanning for emoji: keycaps and FE0F sequences have no script).
  */
@@ -369,10 +386,7 @@ export function catalogFontsFor(project: Project): string[] {
   const cjk = cjkFont(language, text)
   if (cjk) ids.add(cjk)
   if (studio && (BEYOND_LATIN1.test(text) || PARTNER_LANGUAGES.has((language ?? '').slice(0, 2)))) {
-    for (const f of [studio.text.font, studio.emphasis.font]) {
-      const partner = catalogFont(catalogId(f) ?? '')?.partner
-      if (partner) ids.add(partner)
-    }
+    for (const f of [studio.text.font, studio.emphasis.font]) for (const partner of partnersOf(f)) ids.add(partner)
   }
   if (studio || graphics.length) ids.add('noto-color-emoji')
   const out = [...ids].filter((id) => !!catalogFont(id)).sort()
