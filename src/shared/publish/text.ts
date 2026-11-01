@@ -188,7 +188,8 @@ function isMailAt(text: string, at: number): boolean {
  */
 function atStays(text: string, folded: string, ended: string, at: number): boolean {
   const from = Math.max(0, at - 256)
-  const user = /[^\s@/\\[\]()]*$/.exec(folded.slice(from, at))?.[0] ?? ''
+  // A user name stops at the punctuation of Chinese and Japanese ("文档：flown.app/docs，邮箱：support@flown.app"), as a "/" before it does not start it.
+  const user = /[^\s@/\\[\]()，、：；！？（）「」『』【】《》]*$/.exec(folded.slice(from, at))?.[0] ?? ''
   const name = /(?:[^\s\p{P}\p{Cc}<>｜]|[-._．。｡])*$/u.exec(ended.slice(from, at))?.[0].replace(/[．。｡]/g, '.') ?? ''
   const plain = !/[/\\]$/.test(folded.slice(from, at - user.length)) && !findUrls(` ${name}`, false).length && !findUrls(` ${name}`, true).length
   return plain || isMailAt(text, at)
@@ -420,6 +421,13 @@ function linkKey(link: string): string {
 /** The last few texts' links: every field of an answer is checked against the same transcript. */
 const keysOf = new Map<string, ReadonlySet<string>>()
 
+/**
+ * A "-" after a dotted name before a letter of a script other than Latin: Bangla, Hindi and Tamil
+ * write a case ending so ("flown.app-এ", "flown.app-पर", "flown.app-இல்"), and no site links the name
+ * then (a "-" follows its top-level domain).
+ */
+const NAME_HYPHEN_ENDING = /(?<=[\p{L}\p{N}]\.[\p{L}\p{N}]+)-(?=[^\P{L}\p{Script=Latin}])/gu
+
 /** The links of `text` (in its NFC form, as X reads it), as linkKey compares them, each also without a word's ending and without a "-" X reads before it. */
 export function linkKeys(text: string): ReadonlySet<string> {
   let keys = keysOf.get(text)
@@ -539,28 +547,54 @@ function settle(allowed: ReadonlySet<string>, max: number, cut: (budget: number)
 }
 
 /**
+ * The links `text` says (linkKeys), and a name said with a hyphen ending ("flown.app-এ": NAME_HYPHEN_ENDING),
+ * which no site links. For what was said, and for what an AI wrote into a caption (the more, the less is
+ * trusted); not for a cut, which keeps only the links its text has (cutAt, sliceAt, fitX).
+ */
+export function saidKeys(text: string): ReadonlySet<string> {
+  const nfc = text.normalize()
+  NAME_HYPHEN_ENDING.lastIndex = 0
+  if (!NAME_HYPHEN_ENDING.test(nfc)) return linkKeys(text)
+  return new Set([...linkKeys(text), ...linkKeys(nfc.replace(NAME_HYPHEN_ENDING, ' '))])
+}
+
+/**
  * The text whose links an answer may have: the transcript that was sent, and the recording's name and
  * chapter titles, which the user typed (what an AI suggested for them lost in main the links its
  * captions lack: transcriptText.ts). On lines of their own, so no link spans two of them.
  */
 export function trustedText(transcript: string, context?: { title?: string; chapters?: string[] }): string {
-  return [transcript, context?.title ?? '', ...(context?.chapters ?? [])].join('\n')
+  // Without them, the transcript itself: its links are read once (linkKeys remembers the last few texts).
+  return [transcript, ...(context?.title ? [context.title] : []), ...(context?.chapters ?? [])].join('\n')
 }
 
 /**
- * The links Fix captions or Translate wrote into `segments` (CaptionSegment.aiLinks) that nothing
- * else says: not a caption's own (its links but its aiLinks), nor the name's or a chapter title's.
- * The copy pack never trusts them (PlainTextOptions.untrusted, docs/design/publish-pack.md §4.6).
+ * CaptionSegment.aiLinks of a caption an AI wrote more links into than a caption records (or whose
+ * record could not be read whole): every link of its text is the AI's. A list cut short would have
+ * the pack trust the links it lost.
+ */
+export const EVERY_LINK = '*'
+
+/** The links an AI wrote into caption `s`: its aiLinks, or every link of its text when they are EVERY_LINK. */
+export function aiLinksOf(s: { text: string; aiLinks?: readonly string[] }): readonly string[] {
+  if (!s.aiLinks?.length) return []
+  return s.aiLinks.includes(EVERY_LINK) ? [...saidKeys(s.text)] : s.aiLinks
+}
+
+/**
+ * The links Fix captions or Translate wrote into `segments` (CaptionSegment.aiLinks, aiLinksOf) that
+ * nothing else says: not a caption's own (its links but its aiLinks), nor the name's or a chapter
+ * title's. The copy pack never trusts them (PlainTextOptions.untrusted, docs/design/publish-pack.md §4.6).
  */
 export function unsaidLinks(segments: readonly { text: string; aiLinks?: readonly string[] }[], context?: { title?: string; chapters?: string[] }): string[] {
   const marked = segments.filter((s) => s.aiLinks?.length)
   if (!marked.length) return []
-  const said = new Set(linkKeys(trustedText(segments.filter((s) => !s.aiLinks?.length).map((s) => s.text).join(' '), context)))
+  const said = new Set(saidKeys(trustedText(segments.filter((s) => !s.aiLinks?.length).map((s) => s.text).join(' '), context)))
   for (const s of marked) {
-    const ai = new Set(s.aiLinks)
-    for (const k of linkKeys(s.text)) if (!ai.has(k)) said.add(k)
+    const ai = new Set(aiLinksOf(s))
+    for (const k of saidKeys(s.text)) if (!ai.has(k)) said.add(k)
   }
-  return [...new Set(marked.flatMap((s) => s.aiLinks ?? []))].filter((k) => !said.has(k))
+  return [...new Set(marked.flatMap(aiLinksOf))].filter((k) => !said.has(k))
 }
 
 /** `keys` without `gone`. */
@@ -601,7 +635,7 @@ const charLength = (t: string): number => [...t].length
  */
 export function plainText(s: unknown, opts: PlainTextOptions): string {
   if (typeof s !== 'string') return ''
-  const allowed = without(linkKeys(opts.keepLinks ? s : (opts.linksFrom ?? '')), opts.untrusted)
+  const allowed = without(saidKeys(opts.keepLinks ? s : (opts.linksFrom ?? '')), opts.untrusted)
   let t = s.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(CONTROLS, '').replace(WORD_JOINER, '').normalize()
   t = t.replace(STRONG, '$1').replace(UNDERLINED, '$1')
   if (opts.oneLine) t = t.replace(/\s*\n\s*/g, ' ')

@@ -4,7 +4,7 @@
  * project (engine/project.ts) and for what a provider returns (the Captions tab), like
  * engine/titleData.ts for title cards.
  */
-import { sliceAt } from '../publish/text'
+import { EVERY_LINK, sliceAt } from '../publish/text'
 import type { CaptionSegment, CaptionWord, Transcript } from '../types'
 
 /** Shortest caption kept, seconds. */
@@ -35,14 +35,24 @@ export const cleanCaptionText = (text: string): string =>
     CAPTION_MAX_CHARS
   )
 
-/** Most links one caption records as written by an AI (CaptionSegment.aiLinks). */
-const MAX_AI_LINKS = 100
+/** Most links one caption records as written by an AI (CaptionSegment.aiLinks); with more, it records EVERY_LINK. */
+export const MAX_AI_LINKS = 100
 
-/** A caption's stored aiLinks: distinct strings of at most 2 000 characters, at most MAX_AI_LINKS; null when there are none. */
+/** aiLinks as a caption records them: distinct, or EVERY_LINK alone when there are more than MAX_AI_LINKS or it is one of them. */
+export function capAiLinks(keys: readonly string[]): string[] {
+  const out = [...new Set(keys)]
+  return out.length > MAX_AI_LINKS || out.includes(EVERY_LINK) ? [EVERY_LINK] : out
+}
+
+/**
+ * A caption's stored aiLinks (capAiLinks); null when there are none. Never cut short, as the pack
+ * would trust the links it lost: a list that is too long, or has an item that is not a string of 1 to
+ * 2 000 characters, is EVERY_LINK.
+ */
 export function readAiLinks(raw: unknown): string[] | null {
-  if (!Array.isArray(raw)) return null
-  const out = [...new Set(raw.filter((k): k is string => typeof k === 'string' && k.length > 0 && k.length <= 2000))].slice(0, MAX_AI_LINKS)
-  return out.length ? out : null
+  if (!Array.isArray(raw) || !raw.length) return null
+  if (raw.length > MAX_AI_LINKS || raw.some((k) => typeof k !== 'string' || !k || k.length > 2000)) return [EVERY_LINK]
+  return capAiLinks(raw as string[])
 }
 
 let idCounter = 0

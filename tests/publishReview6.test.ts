@@ -288,7 +288,9 @@ describe('the links an AI wrote into the captions (aiLinks)', () => {
 
   it('are kept with the project, a split and a merge, and leave once the user types the caption', () => {
     expect(readCaptionSegments(captions).map((s) => s.aiLinks)).toEqual([undefined, ['paypal-login.com/verify'], ['flown.app']])
-    expect(readCaptionSegments([{ ...captions[0], aiLinks: [1, '', 'x'.repeat(3000), 'ok', 'ok'] as unknown as string[] }])[0].aiLinks).toEqual(['ok'])
+    expect(readCaptionSegments([{ ...captions[0], aiLinks: ['ok', 'ok'] }])[0].aiLinks).toEqual(['ok'])
+    // A record that cannot be read whole stands for every link of the caption (EVERY_LINK): never cut short.
+    expect(readCaptionSegments([{ ...captions[0], aiLinks: [1, '', 'x'.repeat(3000), 'ok', 'ok'] as unknown as string[] }])[0].aiLinks).toEqual(['*'])
     const split = splitCaption(captions, 'b', 6) as CaptionSegment[]
     expect(split.slice(1, 3).map((s) => s.aiLinks)).toEqual([['paypal-login.com/verify'], ['paypal-login.com/verify']])
     expect((mergeWithNext(captions, 'b') as CaptionSegment[])[1].aiLinks).toEqual(['paypal-login.com/verify', 'flown.app'])
