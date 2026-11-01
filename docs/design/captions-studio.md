@@ -1846,13 +1846,17 @@ A theme or colour the user picks can fail; the meter then says so and offers **F
 **A colour for each speaker** works only while **Show speaker names** is on (§2.6), so colour is
 never the only cue. The speakers in the order they first speak (`speakersOf`, `speakers.ts:25`)
 take colours from the palette #ffffff, #ffe14d, #5ce1e6, #8be28b, #ff9fb2, #c4a7ff, then again
-from the first. A palette colour is skipped when it is too close to the look's spoken or
-emphasis colour: both saturated (HSV saturation 0.25 or more) with hues less than 30° apart, or
+from the first. A palette colour is skipped when it does not reach 4.5:1 against the look's
+surround (§7.2; without a box or outline, against black; in Chat, against the "You" bubbles too),
+and when it is too close to the look's spoken or emphasis colour: both saturated (HSV saturation 0.25 or more) with hues less than 30° apart, or
 both unsaturated with a contrast ratio under 1.5:1 between them. (Contrast alone cannot judge
 this: bright colours of different hues, such as #ffe14d and #5ce1e6, are only 1.2:1 apart.)
 Examples: in Karaoke Fill (spoken #ffe14d) the second speaker gets #5ce1e6, so the fill stays
 visible; in Bold Pop (spoken #39e508, emphasis #ffe14d) #ffe14d and #8be28b (13° from the green)
-are skipped.
+are skipped. When fewer than two colours are left (light boxes and outlines: Chat, Text Box,
+Stickers, both Bubbles, the Ink theme; Glass Pill's tint), speakers keep the look's own text
+colour, and the panel says so ("Speaker colours would be hard to read on this look, so it keeps
+its own text colour.").
 The colour replaces the words' colour for that speaker's captions; the spoken mark still applies.
 The name label ("Priya:") uses the same colour at α 0.85, weight 700. Each palette colour reaches
 at least 10:1 against black.

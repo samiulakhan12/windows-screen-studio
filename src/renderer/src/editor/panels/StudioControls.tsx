@@ -752,6 +752,7 @@ export function SpeakerControls(props: { project: Project }): JSX.Element {
         />
       </div>
       {!names && <p className="hint">Turn on speaker names first, so colour is never the only cue.</p>}
+      {names && studio.speakerColors && speakers.length > 0 && colours.length === 0 && <p className="hint">Speaker colours would be hard to read on this look, so it keeps its own text colour.</p>}
       {colours.length > 0 && (
         <ul className="caption-speaker-dots" aria-label="Speaker colours">
           {speakers.map((sp, i) => (

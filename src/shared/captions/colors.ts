@@ -326,12 +326,22 @@ export function tooClose(a: string, b: string): boolean {
 
 /**
  * A colour for each of `speakers` speakers (in the order they first speak), from SPEAKER_PALETTE,
+ * keeping only those that reach 4.5:1 on the look's surround (and on Chat's "You" bubbles), and
  * skipping those too close to the look's spoken or emphasis colour, then again from the first
- * (§7.4). When every palette colour is too close, the palette as it is.
+ * (§7.4). When every readable colour is too close, the readable ones as they are. None when fewer
+ * than two palette colours are readable there (a light box or outline): the look's own text colour stays.
  */
 export function speakerColors(studio: CaptionStudio, speakers: number): string[] {
-  const marks = [studio.theme.spoken, studio.theme.emphasis]
-  const free = SPEAKER_PALETTE.filter((c) => !marks.some((m) => tooClose(c, m)))
-  const list = free.length ? free : SPEAKER_PALETTE
+  const t = studio.theme
+  const around = surroundOf(studio)
+  // Without a box or outline the words rest on their dark shadow (as brandTheme judges them).
+  const surround = around.given ? around.colours : [BLACK]
+  if (studio.box.kind === 'chat' && t.youBox) surround.push(over(t.youBox, studio.box.alpha, WHITE), over(t.youBox, studio.box.alpha, BLACK))
+  const readable = SPEAKER_PALETTE.filter((c) => surround.every((bg) => contrastRatio(c, bg) >= CONTRAST_MIN))
+  const marks = [t.spoken, t.emphasis]
+  const free = readable.filter((c) => !marks.some((m) => tooClose(c, m)))
+  const list = free.length ? free : readable
+  // One colour cannot tell speakers apart.
+  if (list.length < 2) return []
   return Array.from({ length: Math.max(0, Math.floor(speakers)) }, (_, i) => list[i % list.length])
 }

@@ -245,6 +245,14 @@ describe('Speakers', () => {
     expect(els.some((e) => textOf(e) === 'Turn on speaker names first, so colour is never the only cue.')).toBe(true)
   })
 
+  it('on a look where speaker colours would be hard to read, says so and shows no dots', async () => {
+    const chat = speakers(true, true)
+    store.state = { ...chat, captions: { ...chat.captions!, studio: { ...studioPreset('chat')!.look, from: 'chat', speakerColors: true } } }
+    const els = await settle(view('SpeakerControls'), SKIP)
+    expect(els.filter((e) => e.props.className === 'speaker-dot')).toHaveLength(0)
+    expect(els.some((e) => textOf(e) === 'Speaker colours would be hard to read on this look, so it keeps its own text colour.')).toBe(true)
+  })
+
   it('turning names off also turns colours off, in one undo step, without picked', async () => {
     store.state = speakers(true, true)
     const els = await settle(view('SpeakerControls'), SKIP)

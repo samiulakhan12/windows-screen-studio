@@ -147,6 +147,25 @@ describe('speaker colours (test 53)', () => {
     expect(c[5]).toBe(c[0])
   })
 
+  it('gives no colour on a look whose light box or outline would hide the words, so its own text colour stays', () => {
+    for (const id of ['chat', 'text-box', 'stickers', 'bubble-speech', 'bubble-round']) expect(speakerColors(look(id), 3), id).toEqual([])
+    const ink = THEMES.find((t) => t.id === 'ink')!.theme
+    expect(speakerColors(withTheme(look('subtitle'), ink), 3)).toEqual([])
+    // Chat in Classic: its bubbles turn dark, but only white reads on the blue of "You".
+    const chat = withTheme(look('chat'), THEMES.find((t) => t.id === 'classic')!.theme)
+    expect(contrastRatio('#5ce1e6', chat.theme.youBox!)).toBeLessThan(4.5)
+    expect(speakerColors(chat, 3)).toEqual([])
+  })
+
+  it('keeps only colours that reach 4.5:1 on the look’s box, and none when one colour is all that is left', () => {
+    // News Bar's red band: #5ce1e6 is only 3.7:1 on it.
+    const news = speakerColors(look('news'), 4)
+    expect(news).toEqual(['#ffffff', '#ffe14d', '#ffffff', '#ffe14d'])
+    for (const colour of news) expect(contrastRatio(colour, look('news').theme.box), colour).toBeGreaterThanOrEqual(4.5)
+    // Glass Pill's tint over white video: white alone reaches 4.5:1, which cannot tell speakers apart.
+    expect(speakerColors(look('glass'), 3)).toEqual([])
+  })
+
   it('judges closeness by hue for saturated colours and by contrast for the others', () => {
     expect(tooClose('#ffe14d', '#5ce1e6')).toBe(false)
     expect(tooClose('#8be28b', '#39e508')).toBe(true)
