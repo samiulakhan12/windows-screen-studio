@@ -32,7 +32,12 @@ vi.stubGlobal(
     }
   }
 )
-vi.stubGlobal('fetch', async () => ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) }))
+/** URLs fetched (downloads read through studio-media://assets/; none is on this PC). */
+const fetched: string[] = []
+vi.stubGlobal('fetch', async (url: string) => {
+  fetched.push(url)
+  return { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) }
+})
 vi.spyOn(console, 'warn').mockImplementation(() => {})
 
 // Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
@@ -511,5 +516,23 @@ describe('gallery thumbnails (§2.5)', () => {
     expect(fontGeneration()).toBeGreaterThan(generation)
     drawStudioSample(contextOf(canvas(136, 96)), studio, { w: 1920, h: 1080 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
     expect(paints()).toBeGreaterThan(first)
+  })
+
+  it('do not fetch a missing download again on each draw (the gallery would draw again for ever)', async () => {
+    // A saved look whose font is a download not on this PC.
+    const studio = { ...look('subtitle'), text: { ...look('subtitle').text, font: 'cat:noto-sans-kr' } }
+    const draw = async (): Promise<void> => {
+      drawStudioSample(contextOf(canvas(136, 96)), studio, { w: 1920, h: 1080 }, { w: 136, h: 96 }, SAMPLE_STILL_T)
+      await new Promise((r) => setTimeout(r, 0))
+    }
+    const tries = (): number => fetched.filter((u) => u.includes('noto-sans-kr')).length
+    await draw()
+    const first = tries()
+    const generation = fontGeneration()
+    expect(first).toBeGreaterThan(0)
+    // The gallery draws again when the generation changes: it must settle.
+    for (let i = 0; i < 3; i++) await draw()
+    expect(tries()).toBe(first)
+    expect(fontGeneration()).toBe(generation)
   })
 })

@@ -237,9 +237,18 @@ function catalogEntry(id: string): Entry | null {
 }
 
 /**
+ * Starts loading catalogue font `id` the first time it is asked for, as the preview does (no retry
+ * of a font that is missing: drawing again must not fetch it again and bump fontGeneration, which
+ * would draw again, for ever). The gallery's thumbnails use it.
+ */
+export function ensureCatalogFont(id: string): void {
+  catalogEntry(id)
+}
+
+/**
  * Registers catalogue font `id` as FlownCat-<id> (a bundled file, or a download's bytes) and
  * resolves when it is ready or missing; never rejects. A font that was missing is tried again
- * (a download may have finished since).
+ * (a download may have finished since): the export, and the Font menu once a download is done.
  */
 export function loadCatalogFont(id: string): Promise<void> {
   if (catalogEntries.get(id)?.state === 'missing') catalogEntries.delete(id)

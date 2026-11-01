@@ -284,7 +284,9 @@ state is remembered in `localStorage` `captions-look-open`.
   picture (#2a2d34 with a soft diagonal gradient to #3b3f48). `drawStudioSample` (§14.2) draws it
   with the real word sprites.
 - Thumbnails are drawn once per look, theme, frame shape and `fontGeneration()` into cached data
-  URLs, in idle time, about 2 ms each. A font that finishes loading therefore redraws them.
+  URLs, in idle time, about 2 ms each. A font that finishes loading therefore redraws them. A
+  font that could not load (a download not made) is not tried again when a thumbnail is drawn:
+  that would change `fontGeneration()` and draw every tile again, for ever.
 - **Animated thumbnails.** When a tile is hovered or focused, it plays its look over a 2.4 s loop
   at 30 fps, again with the real renderer. Only one tile plays at a time. A loop never runs
   longer than 5 s without a hover or focus. Under `prefers-reduced-motion: reduce` thumbnails stay

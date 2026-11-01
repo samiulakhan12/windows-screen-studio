@@ -40,7 +40,7 @@ import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
 import { actionRects } from '../../../shared/render/actionRects'
 import { TEXT_INSET } from '../../../shared/render/safeZones'
 import type { CaptionMark, CaptionSegment, CaptionSettings, CaptionStudio, Clip, Project, StudioPosition } from '../../../shared/types'
-import { catalogFontReady, catalogFontsFor, ensureCaptionFonts, fontGeneration, loadCatalogFont } from './fontLoader'
+import { catalogFontReady, catalogFontsFor, ensureCaptionFonts, ensureCatalogFont, fontGeneration } from './fontLoader'
 import type { FrameContext } from './frameContext'
 import { blurredFrameOf, lowerThirdBoxes } from './titleCardLayer'
 import { blurredSprite, STUDIO_SPRITES } from './wordSprites'
@@ -1494,8 +1494,9 @@ function sampleLayout(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: nu
 export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: number; h: number }, tile: { w: number; h: number }, t: number, language?: string): { textPx: number } {
   const sample = sampleOf(language)
   // Its fonts start loading; fontGeneration() then changes, and sprites (keyed by it) are painted
-  // again: a thumbnail drawn again after that shows the font.
-  for (const id of catalogFontsFor(sampleProject(studio, sample))) void loadCatalogFont(id)
+  // again: a thumbnail drawn again after that shows the font. A missing download is not fetched
+  // again on each draw (that would change fontGeneration and draw again, for ever).
+  for (const id of catalogFontsFor(sampleProject(studio, sample))) ensureCatalogFont(id)
   ctx.save()
   const bg = ctx.createLinearGradient(0, 0, tile.w, tile.h)
   bg.addColorStop(0, '#2a2d34')
