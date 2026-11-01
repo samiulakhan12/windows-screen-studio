@@ -3,7 +3,7 @@ import type { AssetState } from '../../../../shared/api/assets'
 import { catalogFamily, catalogFont, catalogId, CATALOG_FONTS, CATALOG_PREFIX, type CatalogFont, type FontCoverage } from '../../../../shared/captions/fontCatalog'
 import { DEFAULT_FONT_LABEL, fontNameFromFile, fontOf, MAX_PROJECT_FONTS, newFontId } from '../../../../shared/render/fonts'
 import type { Project, ProjectFont } from '../../../../shared/types'
-import { fontState, preloadProjectFont } from '../../render/fontLoader'
+import { fontState, loadCatalogFont, preloadProjectFont } from '../../render/fontLoader'
 import { onStyleAssetsChanged } from '../../render/watermarkLayer'
 import { useEditor } from '../context'
 import { EditorIcon } from '../EditorIcon'
@@ -101,6 +101,9 @@ function CatalogDownload({ font }: { font: CatalogFont }): JSX.Element | null {
     setProgress(null)
     try {
       const done = await window.api.downloadAsset(font.id)
+      // The preview asked for the font before it was on this PC and keeps it missing: load it now,
+      // so the preview, the export dialog and the gallery draw with it (fontGeneration changes).
+      if (done.state === 'ready') await loadCatalogFont(font.id)
       setState(done.state)
     } catch (err) {
       setState('missing')

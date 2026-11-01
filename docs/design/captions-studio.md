@@ -1708,6 +1708,9 @@ Per-script rules:
   PC; a typical project needs 2–4 files). Until a face is ready the fallback draws, and the load
   bumps `fontGeneration()` (`fontLoader.ts:29-35`) so cached widths and thumbnails are made
   again.
+- A download made from the Font menu is loaded (`loadCatalogFont`) as soon as it is on disk, so
+  the preview, the export dialog's preview and the gallery draw with it at once, as the export
+  does.
 - The export awaits `prepareCaptionFonts(project)` in `prepare` (`exporter.ts:92-101`) beside
   `prepareProjectFonts`. It waits for every catalogue face above and for the `FlownFontW-<id>`
   faces of brand fonts used by Studio looks, graphics and title cards (§6.7). Those entries are
