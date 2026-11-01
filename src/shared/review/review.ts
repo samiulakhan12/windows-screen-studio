@@ -13,7 +13,7 @@ import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, AutoCutOutcome, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
 import { withOutcomes } from './autoCutData'
-import { changeGone, liveAutoCuts, staleAmong, takeBack, withAutoCuts, withSpeedUpsKept } from './autoCuts'
+import { changeGone, finish, liveAutoCuts, staleAmong, takeBackSteps, withAutoCuts, withSpeedUpsKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -223,6 +223,15 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
  * nothing changes.
  */
 export function removeItems(project: Project, items: readonly ReviewItem[]): Project {
+  return finish(removeSteps(project, items))
+}
+
+/**
+ * removeItems one cut or speed-up at a time (takeBackSteps): it yields after each one it takes back
+ * and gives the same project at the end, so the panel's Remove all over thousands of them can be
+ * spread over several tasks and still be one store.update (one undo step).
+ */
+export function* removeSteps(project: Project, items: readonly ReviewItem[]): Generator<void, Project, undefined> {
   const todo = pendingOf(project, items)
   if (todo.length === 0) return project
   const keys = new Set(todo.map((i) => i.key))
@@ -249,7 +258,7 @@ export function removeItems(project: Project, items: readonly ReviewItem[]): Pro
     let listed: ReadonlySet<string> | null = null
     // A piece too short to come back alone goes to a cut still to review next to it.
     const heir = (c: AutoCut): boolean => !chosen.has(c.id) && (listed ??= new Set(liveAutoCuts(from).map((x) => x.id))).has(c.id)
-    const { clips, list } = takeBack(from.clips, from.autoCuts ?? [], ids, from.duration, heir)
+    const { clips, list } = yield* takeBackSteps(from.clips, from.autoCuts ?? [], ids, from.duration, heir)
     next = withChoices(withAutoCuts({ ...from, clips }, list), todo, 'removed')
   }
   return next

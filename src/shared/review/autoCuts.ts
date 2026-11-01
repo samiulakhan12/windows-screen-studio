@@ -826,14 +826,41 @@ export function takeBack(
   duration: number,
   heir: (c: AutoCut) => boolean
 ): { clips: Clip[]; list: AutoCut[] } {
+  return finish(takeBackSteps(clips, list, ids, duration, heir))
+}
+
+/** Runs `steps` to their end and gives what they give. */
+export function finish<T>(steps: Generator<unknown, T, undefined>): T {
+  for (;;) {
+    const r = steps.next()
+    if (r.done) return r.value
+  }
+}
+
+/**
+ * takeBack one record at a time: it yields after each record it takes back and gives the same
+ * clips and records at the end. Remove all over thousands of speed-ups takes seconds, so the panel
+ * spreads it over several tasks (the page keeps drawing) and makes it one edit at the end.
+ */
+export function* takeBackSteps(
+  clips: Clip[],
+  list: readonly AutoCut[],
+  ids: readonly string[],
+  duration: number,
+  heir: (c: AutoCut) => boolean
+): Generator<void, { clips: Clip[]; list: AutoCut[] }, undefined> {
   const gone = new Set(ids)
   let out = [...list]
   let at = clips
-  const order = ids.flatMap((id) => list.filter((c) => c.id === id).slice(0, 1))
+  // The first record of each id, in the order of `ids`.
+  const firsts = new Map<string, AutoCut>()
+  for (const c of list) if (!firsts.has(c.id)) firsts.set(c.id, c)
+  const order = ids.flatMap((id) => (firsts.has(id) ? [firsts.get(id)!] : []))
   for (const { id } of order.sort((a, b) => b.start - a.start)) {
     const c = out.find((x) => x.id === id)!
     if (c.action === 'cut') {
       at = undoAutoCut(at, c, duration)
+      yield
       continue
     }
     const back = setBack(at, c, () => out.filter((x) => !gone.has(x.id)))
@@ -842,6 +869,7 @@ export function takeBack(
       out = out.map((x) => (x.id === to ? { ...x, start: Math.min(x.start, piece.start), end: Math.max(x.end, piece.end), was: joinPieces([...x.was, piece]) } : x))
     }
     out = withoutSpeedUp(out, c)
+    yield
   }
   out = withoutResetSlivers(out, list, gone, clips, at)
   const outOf = (pieces: readonly Piece[]): Piece[] =>

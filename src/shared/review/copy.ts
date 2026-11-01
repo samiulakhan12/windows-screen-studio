@@ -129,5 +129,18 @@ export function bulkMessage(action: 'keep' | 'remove', count: number, kind?: Rev
   return `Removed ${count} ${noun}.`
 }
 
+/**
+ * The live message as Keep all or Remove all starts on a long list, before the work (§4.3):
+ * "Keeping 8098 changes…", "Removing 5399 silence cuts…".
+ */
+export function busyMessage(action: 'keep' | 'remove', count: number, kind?: ReviewKind): string {
+  const k = action === 'remove' && kind ? KIND_WORDS[kind] : null
+  const noun = count === 1 ? (k?.one ?? 'change') : (k?.plural ?? 'changes')
+  return `${action === 'keep' ? 'Keeping' : 'Removing'} ${count} ${noun}…`
+}
+
+/** What a footer button reads while it works. */
+export const BUSY_WORDS = { keep: 'Keeping…', remove: 'Removing…' } as const
+
 /** The Review button's accessible name. */
 export const buttonLabel = (pending: number): string => (pending > 0 ? `${REVIEW_TITLE}, ${pending} to review` : `${REVIEW_TITLE}, nothing to review`)

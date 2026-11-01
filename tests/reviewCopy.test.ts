@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actedMessage, bulkMessage, buttonLabel, itemAccessibleName, KIND_WORDS, placeOf, progressText, REVIEW_KINDS } from '../src/shared/review/copy'
+import { actedMessage, bulkMessage, BUSY_WORDS, busyMessage, buttonLabel, itemAccessibleName, KIND_WORDS, placeOf, progressText, REVIEW_KINDS } from '../src/shared/review/copy'
 
 describe('review copy', () => {
   it('places points in thirds of the frame', () => {
@@ -28,6 +28,11 @@ describe('review copy', () => {
     expect(bulkMessage('keep', 1)).toBe('Kept 1 change.')
     expect(bulkMessage('remove', 5, 'zoom')).toBe('Removed 5 zooms.')
     expect(bulkMessage('remove', 1, 'words')).toBe('Removed 1 word cut.')
+    // Keep all and Remove all on a long list say what they do before the work (§4.3).
+    expect(busyMessage('keep', 8098)).toBe('Keeping 8098 changes…')
+    expect(busyMessage('remove', 5399, 'silence')).toBe('Removing 5399 silence cuts…')
+    expect(busyMessage('remove', 1, 'zoom')).toBe('Removing 1 zoom…')
+    expect(BUSY_WORDS).toEqual({ keep: 'Keeping…', remove: 'Removing…' })
     expect(buttonLabel(12)).toBe('Review automatic changes, 12 to review')
     expect(buttonLabel(0)).toBe('Review automatic changes, nothing to review')
   })

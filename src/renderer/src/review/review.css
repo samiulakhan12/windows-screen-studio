@@ -255,6 +255,20 @@
   justify-content: center;
 }
 
+/*
+ * While Keep all or Remove all works on a long list both wait (aria-disabled keeps the focus on the
+ * one pressed); the one working says so.
+ */
+.review-foot .btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.review-foot .btn[aria-busy='true'] {
+  opacity: 1;
+  cursor: progress;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .review-bar > div {
     transition: none;

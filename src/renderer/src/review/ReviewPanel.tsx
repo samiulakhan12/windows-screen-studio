@@ -18,6 +18,8 @@ import { planOf } from '../../../shared/engine/freeze'
 import {
   actedMessage,
   bulkMessage,
+  BUSY_WORDS,
+  busyMessage,
   itemAccessibleName,
   KIND_WORDS,
   progressText,
@@ -31,6 +33,7 @@ import {
   keepItems,
   mergeSnapshot,
   removeItems,
+  removeSteps,
   reviewItems,
   reviewProgress,
   reviewStatus,
@@ -38,10 +41,13 @@ import {
   type ReviewKind,
   type ReviewStatus
 } from '../../../shared/review/review'
+import { inSlices } from '../../../shared/review/slices'
 import { rowTimes } from '../../../shared/review/times'
+import type { Project } from '../../../shared/types'
 import { useEditor } from '../editor/context'
 import { useKeymap } from '../editor/keymapContext'
 import { playStretch } from './playStretch'
+import { pageTasks } from './tasks'
 import './review.css'
 
 export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
@@ -161,7 +167,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }
 
   /** The next item still to review after `index` (wrapping), else the same one. */
-  const nextPending = (after: readonly ReviewStatus[], index: number): string | null => {
+  const nextPending = (list: readonly ReviewItem[], after: readonly ReviewStatus[], index: number): string | null => {
     for (let k = 1; k <= list.length; k++) {
       const j = (index + k) % list.length
       if (after[j] === 'pending') return list[j].key
@@ -171,25 +177,73 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
 
   const act = (item: ReviewItem, action: 'keep' | 'remove'): void => {
     const index = indexOf.get(item.key) ?? -1
-    if (index < 0 || reviewStatus(store.state, item) !== 'pending') return
+    if (index < 0 || busy || reviewStatus(store.state, item) !== 'pending') return
     stopStretch()
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
     const after = list.map((i) => reviewStatus(store.state, i))
     const done = reviewProgress(after)
     say(actedMessage(action, done.reviewed, done.total))
-    const next = nextPending(after, index)
+    const next = nextPending(list, after, index)
     if (next) focusKey(next)
+  }
+
+  // Keep all and Remove all over more than BUSY_FROM rows (§4.3): the button says it is working and
+  // the live region what it does, drawn before the work starts; then the work goes a slice of time
+  // at a time (Remove all: removeSteps, one cut or speed-up a step), the page drawing in between, and
+  // is one edit (one undo step) at the end, made from the project as it is then. Meanwhile the
+  // panel's other Keep and Remove wait; closing the panel stops it, and nothing has changed then.
+  const [busy, setBusy] = useState<'keep' | 'remove' | null>(null)
+  const working = useRef<(() => void) | null>(null)
+  useEffect(() => () => working.current?.(), [])
+
+  /**
+   * Keep or Remove `count` rows of `list` (of `kind` for Remove all) still to review, then `after`
+   * (where the focus goes); the live region says what was done.
+   */
+  const bulk = (action: 'keep' | 'remove', kind: ReviewKind | undefined, count: number, after: (here: boolean) => void): void => {
+    stopStretch()
+    const targets = (p: Project): ReviewItem[] => latest.current.list.filter((i) => (!kind || i.kind === kind) && reviewStatus(p, i) === 'pending')
+    const apply = (p: Project, items: readonly ReviewItem[]): Project => (action === 'keep' ? keepItems(p, items) : removeItems(p, items))
+    if (count <= BUSY_FROM) {
+      store.update((p) => apply(p, targets(p)))
+      say(bulkMessage(action, count, kind))
+      after(true)
+      return
+    }
+    setBusy(action)
+    say(busyMessage(action, count, kind))
+    working.current = inSlices(
+      () => store.state,
+      (p) =>
+        action === 'remove'
+          ? removeSteps(p, targets(p))
+          : (function* (): Generator<never, Project, undefined> {
+              return keepItems(p, targets(p))
+            })(),
+      (base, next) => {
+        working.current = null
+        const done = targets(base).length
+        store.update((p) => (p === base ? next : apply(p, targets(p))))
+        setBusy(null)
+        say(bulkMessage(action, done, kind))
+        // The focus moves on only when it is still in the panel (or was dropped to the page).
+        const el = document.activeElement
+        after(!el || el === document.body || !!panelRef.current?.contains(el))
+      },
+      pageTasks()
+    )
   }
 
   const keepAll = (): void => {
     const count = statuses.filter((s) => s === 'pending').length
-    if (count === 0) return
-    stopStretch()
-    store.update((p) => keepItems(p, list))
-    say(bulkMessage('keep', count))
+    if (count === 0 || busy) return
     // Keep all turns disabled under the focus, which would drop to the page (Esc and the list's
     // keys would then miss the panel): the focus goes back to the row.
-    focusKey(list[active].key)
+    bulk('keep', undefined, count, (here) => {
+      const { list, active } = latest.current
+      if (!list[active]) return
+      if (here) focusKey(list[active].key)
+    })
   }
 
   useLayoutEffect(() => {
@@ -204,19 +258,20 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const kind = current?.kind
   const kindPending = useMemo(() => (kind ? list.filter((i, k) => i.kind === kind && statuses[k] === 'pending') : []), [list, statuses, kind])
   const removeKind = (): void => {
-    if (!current || kindPending.length === 0) return
-    stopStretch()
-    store.update((p) => removeItems(p, kindPending))
-    say(bulkMessage('remove', kindPending.length, current.kind))
-    const after = list.map((i) => reviewStatus(store.state, i))
-    const next = nextPending(after, active)
-    if (next) focusKey(next)
+    if (!current || kindPending.length === 0 || busy) return
+    bulk('remove', current.kind, kindPending.length, (here) => {
+      const { list, active } = latest.current
+      const after = list.map((i) => reviewStatus(store.state, i))
+      const next = nextPending(list, after, active)
+      if (next && here) focusKey(next)
+      else if (next) setActiveKey(next)
+    })
   }
 
   // The rows' handlers stay the same function from render to render, so a row draws again only
   // when what it shows changes (N redraws the two rows whose focus moved, not the whole list).
-  const latest = useRef({ choose, act, list, indexOf })
-  latest.current = { choose, act, list, indexOf }
+  const latest = useRef({ choose, act, list, indexOf, active })
+  latest.current = { choose, act, list, indexOf, active }
   const onRowChoose = useCallback((key: string) => {
     const { list, indexOf, choose } = latest.current
     const k = indexOf.get(key)
@@ -314,11 +369,25 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
             setRef={setRow}
           />
           <div className="review-foot">
-            <button className="btn" data-testid="review-keep-all" disabled={reviewed === total} onClick={keepAll}>
-              Keep all
+            <button
+              className="btn"
+              data-testid="review-keep-all"
+              disabled={reviewed === total}
+              aria-disabled={busy ? 'true' : undefined}
+              aria-busy={busy === 'keep' ? 'true' : undefined}
+              onClick={keepAll}
+            >
+              {busy === 'keep' ? BUSY_WORDS.keep : 'Keep all'}
             </button>
-            <button className="btn" data-testid="review-remove-kind" disabled={kindPending.length === 0} onClick={removeKind}>
-              {current ? KIND_WORDS[current.kind].all : 'Remove all'}
+            <button
+              className="btn"
+              data-testid="review-remove-kind"
+              disabled={kindPending.length === 0 && busy !== 'remove'}
+              aria-disabled={busy ? 'true' : undefined}
+              aria-busy={busy === 'remove' ? 'true' : undefined}
+              onClick={removeKind}
+            >
+              {busy === 'remove' ? BUSY_WORDS.remove : current ? KIND_WORDS[current.kind].all : 'Remove all'}
             </button>
           </div>
         </>
@@ -332,6 +401,8 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
 
 /** A list longer than this draws only the rows near the visible area (§4.3). */
 const WINDOW_FROM = 200
+/** Keep all and Remove all over more rows than this show they are working before the work (§4.3). */
+const BUSY_FROM = 200
 /** The height of a row not measured yet (px) while none is; then the mean of those measured. */
 const ROW_GUESS = 52
 /** The space between rows (px), the list's gap. */
