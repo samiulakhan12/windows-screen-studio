@@ -127,10 +127,13 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }, [])
 
   // A row of a long list far from the one in view is not drawn yet: it gets the focus once it is
-  // (it is drawn as the focused row), and the focus scrolls it into view.
+  // (it is drawn as the focused row). Each move asks the list to bring the row fully into view once
+  // its rows are measured (`reveal`), also when the row has the focus already (End on the last row).
   const focusLater = useRef<string | null>(null)
+  const [reveal, setReveal] = useState(1)
   const focusKey = (key: string): void => {
     setActiveKey(key)
+    setReveal((r) => r + 1)
     const el = rows.current.get(key)
     focusLater.current = el ? null : key
     el?.focus()
@@ -362,6 +365,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
             statuses={statuses}
             times={times}
             active={active}
+            reveal={reveal}
             onKeyDown={onListKey}
             onChoose={onRowChoose}
             onAct={onRowAct}
@@ -423,6 +427,15 @@ function placesOf(list: readonly ReviewItem[], sizes: Sizes): Float64Array {
   return tops
 }
 
+/** Scrolls `list` the least that brings `row` fully into view (from its top when it is taller than the view). */
+function bringIntoView(list: HTMLElement, row: Element): void {
+  const r = row.getBoundingClientRect()
+  const top = list.getBoundingClientRect().top + list.clientTop
+  const bottom = top + list.clientHeight
+  if (r.top < top) list.scrollTop -= top - r.top
+  else if (r.bottom > bottom) list.scrollTop += Math.min(r.top - top, r.bottom - bottom)
+}
+
 /** The first row whose bottom is below `y`. */
 function rowAt(tops: Float64Array, y: number): number {
   let lo = 0
@@ -441,6 +454,8 @@ interface ListProps {
   statuses: readonly ReviewStatus[]
   times: readonly string[]
   active: number
+  /** Changes when the focused row is moved to (a key, a click, Keep or Remove): it is then brought fully into view, once its rows are measured. */
+  reveal: number
   onKeyDown: (e: React.KeyboardEvent) => void
   onChoose: (key: string) => void
   onAct: (key: string, action: 'keep' | 'remove') => void
@@ -453,9 +468,12 @@ interface ListProps {
  * rows near the visible area and the focused row, each at its place over a block the height of the
  * whole list (the scroll bar is the whole list's): rows drawn are measured, those not drawn yet
  * count as the mean height, and when rows above the view turn out taller or shorter the view keeps
- * its place on the focused row (else the first row in view).
+ * its place on the focused row (else the first row in view), judged from where the last frame had
+ * scrolled to: the block takes its new height only after that is read, so a shorter list has not
+ * pulled the scroll position back yet. A row moved to (`reveal`) is then brought fully into view
+ * once the rows drawn are all measured.
  */
-function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoose, onAct, onFocusRow, setRef }: ListProps): JSX.Element {
+function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown, onChoose, onAct, onFocusRow, setRef }: ListProps): JSX.Element {
   const n = list.length
   const windowed = n > WINDOW_FROM
   const ul = useRef<HTMLUListElement>(null)
@@ -466,6 +484,8 @@ function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoos
   const places = useMemo(() => (windowed ? placesOf(list, sizes.current) : null), [windowed, list, measured])
   // What the last frame placed: to keep what is in view where it was.
   const placed = useRef<{ list: readonly ReviewItem[]; places: Float64Array; active: number } | null>(null)
+  // The last `reveal` done.
+  const revealed = useRef(0)
 
   useLayoutEffect(() => {
     const el = ul.current
@@ -483,27 +503,40 @@ function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoos
 
   useLayoutEffect(() => {
     const el = ul.current
-    if (!places || !el) {
+    if (!el) return
+    const focused = list[active]?.key
+    if (!places) {
       placed.current = null
+      if (reveal !== revealed.current) {
+        revealed.current = reveal
+        const row = el.children[active]
+        if (row) bringIntoView(el, row)
+      }
       return
     }
+    // Where the last frame had scrolled to: the block still has the height it had then (it takes its
+    // new one below), so the browser has not clamped this to a shorter list.
+    const top = el.scrollTop
+    let to = top
     const before = placed.current
     if (before && before.places !== places) {
-      const top = el.scrollTop
       const bottom = top + el.clientHeight
       const a = before.active
       const inView = a < before.list.length && before.places[a] < bottom && before.places[a + 1] - ROW_GAP > top
       const at = inView ? a : rowAt(before.places, top)
       const now = before.list[at] ? indexOf.get(before.list[at].key) : undefined
-      const moved = now === undefined ? 0 : places[now] - before.places[at]
-      if (Math.abs(moved) > 0.5) el.scrollTop = top + moved
+      if (now !== undefined) to = top + places[now] - before.places[at]
     }
+    el.style.setProperty('--review-list-height', `${places[n] - ROW_GAP}px`)
+    if (Math.abs(to - el.scrollTop) > 0.5) el.scrollTop = to
     placed.current = { list, places, active }
     let changed = false
-    for (const row of el.children) {
-      const key = (row as HTMLElement).dataset.key
+    let row: Element | null = null
+    for (const child of el.children) {
+      const key = (child as HTMLElement).dataset.key
       if (!key) continue
-      const height = row.getBoundingClientRect().height
+      if (key === focused) row = child
+      const height = child.getBoundingClientRect().height
       const was = sizes.current.byKey.get(key)
       if (was !== undefined && Math.abs(was - height) < 0.25) continue
       sizes.current.byKey.set(key, height)
@@ -511,6 +544,10 @@ function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoos
       changed = true
     }
     if (changed) setMeasured((m) => m + 1)
+    else if (reveal !== revealed.current && row) {
+      revealed.current = reveal
+      bringIntoView(el, row)
+    }
   })
 
   const row = (k: number): JSX.Element => (
@@ -557,7 +594,6 @@ function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoos
         const top = e.currentTarget.scrollTop
         setView((v) => (v.top === top ? v : { ...v, top }))
       }}
-      style={{ '--review-list-height': `${places[n] - ROW_GAP}px` } as React.CSSProperties}
     >
       {drawn.map(row)}
     </ul>
