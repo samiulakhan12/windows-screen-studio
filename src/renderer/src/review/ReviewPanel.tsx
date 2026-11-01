@@ -6,6 +6,10 @@
  *
  * Not modal: the preview stays in view and the editor's shortcuts keep working, except the keys
  * the list uses while the focus is in it (N/P/arrows, Home/End, K, Delete), which it keeps.
+ *
+ * A long recording lists thousands of rows: a list longer than WINDOW_FROM draws only the rows near
+ * the visible area, and the focused row (ReviewList), each row saying where it is in the whole list
+ * (aria-posinset, aria-setsize); a row draws again only when what it shows changes (ReviewRow).
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
@@ -116,10 +120,21 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // A row of a long list far from the one in view is not drawn yet: it gets the focus once it is
+  // (it is drawn as the focused row), and the focus scrolls it into view.
+  const focusLater = useRef<string | null>(null)
   const focusKey = (key: string): void => {
     setActiveKey(key)
-    rows.current.get(key)?.focus()
+    const el = rows.current.get(key)
+    focusLater.current = el ? null : key
+    el?.focus()
   }
+  useLayoutEffect(() => {
+    const key = focusLater.current
+    if (key === null) return
+    focusLater.current = null
+    if (key === activeKey) rows.current.get(key)?.focus()
+  })
 
   /** Jumps the preview to the item and plays a short stretch around it. */
   const play = (item: ReviewItem): void => {
@@ -286,24 +301,18 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
       ) : (
         <>
           <p className="review-hint">{REVIEW_HINT}</p>
-          <ul className="review-list" aria-label="Automatic changes" onKeyDown={onListKey}>
-            {list.map((item, k) => (
-              <ReviewRow
-                key={item.key}
-                itemKey={item.key}
-                kind={item.kind}
-                title={item.title}
-                detail={item.detail}
-                time={times[k]}
-                status={statuses[k]}
-                isActive={k === active}
-                onChoose={onRowChoose}
-                onAct={onRowAct}
-                onFocusRow={setActiveKey}
-                setRef={setRow}
-              />
-            ))}
-          </ul>
+          <ReviewList
+            list={list}
+            indexOf={indexOf}
+            statuses={statuses}
+            times={times}
+            active={active}
+            onKeyDown={onListKey}
+            onChoose={onRowChoose}
+            onAct={onRowAct}
+            onFocusRow={setActiveKey}
+            setRef={setRow}
+          />
           <div className="review-foot">
             <button className="btn" data-testid="review-keep-all" disabled={reviewed === total} onClick={keepAll}>
               Keep all
@@ -321,6 +330,165 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   )
 }
 
+/** A list longer than this draws only the rows near the visible area (§4.3). */
+const WINDOW_FROM = 200
+/** The height of a row not measured yet (px) while none is; then the mean of those measured. */
+const ROW_GUESS = 52
+/** The space between rows (px), the list's gap. */
+const ROW_GAP = 4
+/** How far beyond the visible area rows are drawn (px), above and below. */
+const OVERSCAN = 360
+
+interface Sizes {
+  byKey: Map<string, number>
+  sum: number
+}
+
+/** Where each row starts (px) in the whole list, and where the list ends (the last entry, plus a gap). */
+function placesOf(list: readonly ReviewItem[], sizes: Sizes): Float64Array {
+  const guess = sizes.byKey.size > 0 ? sizes.sum / sizes.byKey.size : ROW_GUESS
+  const tops = new Float64Array(list.length + 1)
+  for (let k = 0; k < list.length; k++) tops[k + 1] = tops[k] + (sizes.byKey.get(list[k].key) ?? guess) + ROW_GAP
+  return tops
+}
+
+/** The first row whose bottom is below `y`. */
+function rowAt(tops: Float64Array, y: number): number {
+  let lo = 0
+  let hi = tops.length - 2
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (tops[mid + 1] - ROW_GAP > y) hi = mid
+    else lo = mid + 1
+  }
+  return lo
+}
+
+interface ListProps {
+  list: readonly ReviewItem[]
+  indexOf: ReadonlyMap<string, number>
+  statuses: readonly ReviewStatus[]
+  times: readonly string[]
+  active: number
+  onKeyDown: (e: React.KeyboardEvent) => void
+  onChoose: (key: string) => void
+  onAct: (key: string, action: 'keep' | 'remove') => void
+  onFocusRow: (key: string) => void
+  setRef: (key: string, el: HTMLButtonElement | null) => void
+}
+
+/**
+ * The rows. Up to WINDOW_FROM, all of them, as a list in the page's flow. A longer list draws the
+ * rows near the visible area and the focused row, each at its place over a block the height of the
+ * whole list (the scroll bar is the whole list's): rows drawn are measured, those not drawn yet
+ * count as the mean height, and when rows above the view turn out taller or shorter the view keeps
+ * its place on the focused row (else the first row in view).
+ */
+function ReviewList({ list, indexOf, statuses, times, active, onKeyDown, onChoose, onAct, onFocusRow, setRef }: ListProps): JSX.Element {
+  const n = list.length
+  const windowed = n > WINDOW_FROM
+  const ul = useRef<HTMLUListElement>(null)
+  const [view, setView] = useState({ top: 0, height: 600 })
+  const sizes = useRef<Sizes>({ byKey: new Map(), sum: 0 })
+  // Counts the rows measured taller or shorter than they were placed, so the places are worked out again.
+  const [measured, setMeasured] = useState(0)
+  const places = useMemo(() => (windowed ? placesOf(list, sizes.current) : null), [windowed, list, measured])
+  // What the last frame placed: to keep what is in view where it was.
+  const placed = useRef<{ list: readonly ReviewItem[]; places: Float64Array; active: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const el = ul.current
+    if (!windowed || !el) return
+    const read = (): void => setView((v) => (v.top === el.scrollTop && v.height === el.clientHeight ? v : { top: el.scrollTop, height: el.clientHeight }))
+    read()
+    const watch = new ResizeObserver(read)
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [windowed])
+
+  useLayoutEffect(() => {
+    const el = ul.current
+    if (!places || !el) {
+      placed.current = null
+      return
+    }
+    const before = placed.current
+    if (before && before.places !== places) {
+      const top = el.scrollTop
+      const bottom = top + el.clientHeight
+      const a = before.active
+      const inView = a < before.list.length && before.places[a] < bottom && before.places[a + 1] - ROW_GAP > top
+      const at = inView ? a : rowAt(before.places, top)
+      const now = before.list[at] ? indexOf.get(before.list[at].key) : undefined
+      const moved = now === undefined ? 0 : places[now] - before.places[at]
+      if (Math.abs(moved) > 0.5) el.scrollTop = top + moved
+    }
+    placed.current = { list, places, active }
+    let changed = false
+    for (const row of el.children) {
+      const key = (row as HTMLElement).dataset.key
+      if (!key) continue
+      const height = row.getBoundingClientRect().height
+      const was = sizes.current.byKey.get(key)
+      if (was !== undefined && Math.abs(was - height) < 0.25) continue
+      sizes.current.byKey.set(key, height)
+      sizes.current.sum += height - (was ?? 0)
+      changed = true
+    }
+    if (changed) setMeasured((m) => m + 1)
+  })
+
+  const row = (k: number): JSX.Element => (
+    <ReviewRow
+      key={list[k].key}
+      itemKey={list[k].key}
+      kind={list[k].kind}
+      title={list[k].title}
+      detail={list[k].detail}
+      time={times[k]}
+      status={statuses[k]}
+      isActive={k === active}
+      pos={k + 1}
+      size={n}
+      top={places ? places[k] : undefined}
+      onChoose={onChoose}
+      onAct={onAct}
+      onFocusRow={onFocusRow}
+      setRef={setRef}
+    />
+  )
+
+  if (!places) {
+    return (
+      <ul ref={ul} className="review-list" aria-label="Automatic changes" onKeyDown={onKeyDown}>
+        {list.map((_, k) => row(k))}
+      </ul>
+    )
+  }
+  const first = rowAt(places, view.top - OVERSCAN)
+  let last = rowAt(places, view.top + view.height + OVERSCAN)
+  if (places[last] > view.top + view.height + OVERSCAN && last > first) last--
+  const drawn: number[] = []
+  if (active < first) drawn.push(active)
+  for (let k = first; k <= last; k++) drawn.push(k)
+  if (active > last) drawn.push(active)
+  return (
+    <ul
+      ref={ul}
+      className="review-list windowed"
+      aria-label="Automatic changes"
+      onKeyDown={onKeyDown}
+      onScroll={(e) => {
+        const top = e.currentTarget.scrollTop
+        setView((v) => (v.top === top ? v : { ...v, top }))
+      }}
+      style={{ '--review-list-height': `${places[n] - ROW_GAP}px` } as React.CSSProperties}
+    >
+      {drawn.map(row)}
+    </ul>
+  )
+}
+
 interface RowProps {
   itemKey: string
   kind: ReviewKind
@@ -329,6 +497,11 @@ interface RowProps {
   time: string
   status: ReviewStatus
   isActive: boolean
+  /** Where the row is in the whole list, from 1, and how many there are (aria-posinset, aria-setsize). */
+  pos: number
+  size: number
+  /** Its place (px) in a long list (ReviewList), else undefined (in the flow). */
+  top: number | undefined
   onChoose: (key: string) => void
   onAct: (key: string, action: 'keep' | 'remove') => void
   onFocusRow: (key: string) => void
@@ -336,10 +509,18 @@ interface RowProps {
 }
 
 /** One row: drawn again only when what it shows changes (its props are values and stable handlers). */
-const ReviewRow = memo(function ReviewRow({ itemKey, kind, title, detail, time, status, isActive, onChoose, onAct, onFocusRow, setRef }: RowProps): JSX.Element {
+const ReviewRow = memo(function ReviewRow({ itemKey, kind, title, detail, time, status, isActive, pos, size, top, onChoose, onAct, onFocusRow, setRef }: RowProps): JSX.Element {
   const ref = useCallback((el: HTMLButtonElement | null) => setRef(itemKey, el), [setRef, itemKey])
   return (
-    <li className={`review-row ${status}${isActive ? ' active' : ''}`} data-testid="review-row" data-key={itemKey} data-status={status}>
+    <li
+      className={`review-row ${status}${isActive ? ' active' : ''}`}
+      data-testid="review-row"
+      data-key={itemKey}
+      data-status={status}
+      aria-posinset={pos}
+      aria-setsize={size}
+      style={top === undefined ? undefined : { top }}
+    >
       <button
         ref={ref}
         className="review-item"

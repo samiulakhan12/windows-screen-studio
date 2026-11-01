@@ -99,6 +99,28 @@
   gap: 4px;
 }
 
+/*
+ * A long list (ReviewPanel's ReviewList) draws only the rows near the visible area, each at its
+ * place over a block the height of the whole list, so the scroll bar is the whole list's.
+ */
+.review-list.windowed {
+  display: block;
+  position: relative;
+  overflow-anchor: none;
+}
+
+.review-list.windowed::before {
+  content: '';
+  display: block;
+  height: var(--review-list-height, 0);
+}
+
+.review-list.windowed > .review-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
 .review-row {
   display: flex;
   align-items: center;
