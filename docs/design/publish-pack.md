@@ -458,7 +458,10 @@ and leaves no link its text did not have.
   `ダウンロードはログインflown.jp/downloadから。` for a said `flown.jp/download`) are recorded instead, so
   the net never counts what an AI wrote as said. The list is never cut short (`['*']` past 100, §3).
   A merge keeps the AI's links but those either caption says as its own (`Get it at flown.app.`
-  merged with a fixed `flown dot app` keeps `flown.app` said). Captions an AI changed before this (no
+  merged with a fixed `flown dot app` keeps `flown.app` said); when none is left, it records what the
+  net notes in the caption an AI wrote a link into against what the other one says, as the apply does
+  (a fixed `ログインflown.jp/download` merged with the user's `flown.jp/download` stays the AI's, also
+  after a save and a load). Captions an AI changed before this (no
   `aiLinks`) count as said; the safety net (§4.8) still reads every card.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
@@ -480,41 +483,66 @@ The cleaning above rewrites text for every reading it knows, and six reviews eac
 the dialog also reads every card's text (what *Copy* gives, tags too) with a paranoid detector that
 never changes it. It splits the text at spaces and reads each stretch as a browser may read a host:
 Markdown's backslash escapes and character references decoded (`paypal-login\.com`,
-`paypal-login&#46;com`; a reference by a name it does not know may be any letter, so a label with one
-may be a top-level domain: `&rcy;&fcy;` is `рф`) and also as written, controls, format characters and
+`paypal-login&#46;com`, and HTML's numeric ones without `;` or with leading zeros: `&#46`,
+`&#0000046;`; a reference by a name it does not know may be any letter, so a label with one may be a
+top-level domain: `&rcy;&fcy;` is `рф`) and also as written, controls, format characters and
 variation selectors dropped (and controls also as spaces), escapes decoded, NFKC, lower case, and
 `。｡．` as dots in a host a browser is given (after `//` or a scheme, to its path) and nowhere else, as
-no site links across them in text, where Chinese and Japanese end their sentences with them. A
-stretch is noted when it has a scheme (also `https:` without its slashes before a host, which a
-browser reads as `https://`), `www.`, an IP address after `//` or `@` (also two or three parts after a
-`//` not glued to a letter or digit: `//203.28935` is 203.0.113.7), or a dotted name one of whose
-labels after the first is a top-level domain (IANA's, also before text of another script, also
-without its marks). A name's labels have letters, digits, marks, `-` and symbols other than ASCII's,
-which linkify-it reads in a host (`😀flown.to`, `➡flown.app`). A name is not one right after `@` (an
-address's domain, with no `//` before), one `/` (a path), `_`, or a `.` after punctuation; after `//`,
-`~`, `$`, `#` or other text it is. A stretch is said, and needs no note, when it is written as a
+no site links across them in text, where Chinese and Japanese end their sentences with them. Outside
+such a host, a character NFKC turns into an `@`, `/`, `\`, `_` or `.` that ends what comes before a
+name (`＠`, `／`, `＿`, `…`, `℅`, `⒈`) is read as the punctuation it is, as linkify-it starts a link
+right after it (`ダウンロードは＠ログインflown.jp/download`). It also reads as one stretch what a
+site reads as one link across spaces: the value of an HTML attribute that takes a URL (`href`, `src`,
+`action`…), whose tabs and line breaks a browser drops and whose space before an `@` is part of a
+user name (`<a href="https://flown.app\n@paypal-login.com">`, `<a href="//paypal-login.\ncom">`,
+`<a href="https://flown.app @paypal-login.com">`, all paypal-login.com in Chromium; so is a space
+written `&nbsp;` or `%20` there), and a Markdown destination in `<…>`, whose spaces markdown-it
+percent-encodes. A stretch is noted when it has a
+scheme (also `https:` without its slashes before a host, which a browser reads as `https://`),
+`www.`, an IP address after `//` or `@` (also two or three parts after a `//` not glued to a letter
+or digit: `//203.28935` is 203.0.113.7; also an IPv6 address in brackets: `//[2606:4700::1111]`),
+or a dotted name one of whose labels after the first is a top-level domain (IANA's, also before text
+of another script, also without its marks). Either slash of a `//` may be a `\`, which a browser
+reads as `/` (`\/paypal-login.com`, `/\3405803783`). A name's labels have letters, digits, marks,
+`-` and symbols other than ASCII's, which linkify-it reads in a host (`😀flown.to`, `➡flown.app`). A
+name is not one right after `@` (an address's domain, with no `//` before), one `/` (a path), `_`, or
+a `.` after punctuation; after `//`, `~`, `$`, `#` or other text it is. Nor is an e-mail address's
+user name as linkifiers read one, in the stretch as written (`anna.li@acme.de`, `wei.wang@acme.com`:
+`li` and `wang` are top-level domains; not `paypal-login.com@hi.zz`, `paypal-login.com@x.co:80`,
+`*paypal.com@acme.de` or `連絡先：anna.li@acme.de`, where linkify-it links the name before the `@`).
+A stretch is said, and needs no note, when it is written as a
 stretch of the captions (those without `aiLinks`), the name or a chapter title, or when nothing in it
 links once the said links and addresses are taken out of it (not where they are part of a longer
 name or a user name: `paypal-flown.app`, `https://flown.app@evil.com`, `flown.app:8443@3405803783`).
 A said name that ends in ASCII ends before a letter or symbol of another script (`flown.app에서`,
 `README.md를`, `flown.appからダウンロード`), and a port or line number after it is the said name
-(`main.py:42`) unless an `@` follows.
+(`main.py:42`) unless an `@` follows. A said host between a letter of a script other than Latin (or a
+symbol other than ASCII's) and such a letter is read alone (`在flown.app下载`, `無料のflown.appで`): X
+reads only the ASCII and linkify-it reads no top-level domain that goes on with such a letter, while
+`éflown.appから` is a longer name to X. So is one after a Hebrew or Arabic prefix and `-`
+(`ב-flown.app`), which no site opens as a longer host (a label never starts with `-`, and a host that
+mixes the two directions fails); after Cyrillic it is not (`на-flown.app` is a host linkify-it opens).
 
-What becomes trusted context must pass the net too: main drops a suggested chapter whose title it
-notes, and does not use a suggested title it notes ("The AI's answer could not be used (a title with a
-link that was not said)"), as the name and the chapter titles are then trusted as typed; the Title
-card's *Rename the recording* is disabled while its note shows.
+What becomes trusted context must pass the net too, as the name and the chapter titles are trusted as
+typed: main drops a suggested chapter whose title it notes; a suggested title it notes is shown with
+its note (the Captions tab, the palette's *Suggest a title with AI*, the Title card), and *Rename the
+recording* is disabled there while the note shows. (Main no longer refuses such a title: a false
+alarm would have failed every run, as the model keeps writing the same way.) The Captions tab's
+*Summarize* shows the note under its summary too, and its *Copy* adds it to "Summary copied".
 
 Each card shows its stretches under its text, exactly as written with invisible characters shown as
-`⟨U+200B⟩`: **Check this link before you post:** … *It is not in what was said, the recording's name
+`⟨U+200B⟩` (in Chinese and Japanese, where one stretch may be a paragraph, only the clauses noted on
+their own, when what is left without them is noted nowhere and there is no host or escape a clause's
+end may be part of: `打开README.md。 … 运行main.py。`; `shownPart`): **Check this link before you post:** … *It is not in what was said, the recording's name
 or its chapters. Nothing was changed: post it only if you know where it goes.* (with two or more:
 **Check these links…**, *They are not… post them only if you know where they go.*). The text field is
 described by the note (`aria-describedby`). *Copy* says the same ("LinkedIn post copied. Check this
 link before you post: …"), and so does *Use for exports* ("The export's description file will use this
-text. Check this link…"). A false alarm only shows a note: a said link glued after Chinese or Japanese
-text (`从flown.app下载`), which linkify-it reads as one host with it, or after a Hebrew prefix, a name
-over 63 characters. What the cleaning still misses (the mixed-script class: `登录flown.app`, which
-linkify-it with every top-level domain reads as one host) is noted here.
+text. Check this link…"). What is still noted though nobody meant a link: a name over 63 characters,
+and a file name glued after Chinese or Japanese text and before punctuation or nothing (`运行main.py。`),
+which linkify-it does read as one host with the text before it. What the cleaning still misses (the
+mixed-script class: `登录flown.app。`, which linkify-it with every top-level domain reads as one host)
+is noted here.
 
 ---
 
@@ -553,6 +581,9 @@ not be copied", is `role="alert"`), for 4 s: the editor's own notice would sit b
 A card whose text has a link nobody said shows the safety net's note under its text (`role="note"`,
 which describes the text field, §4.8), and *Copy* and *Use for exports* add it to their notice, which
 wraps a long link inside the card. *Rename the recording* is disabled while the Title card has a note.
+The Captions tab's suggested title and summary show the same note (`checkNote`), which describes
+*Rename the recording* (disabled while it shows) and *Copy* ("Summary copied. Check this link before
+you post: …").
 
 Errors show on their card (role alert) with the provider's message, e.g. "The AI's answer could
 not be used (no tags). Nothing was changed; try again."
@@ -621,10 +652,11 @@ All above AA (4.5:1).
   the pack trusts; what the renderer then does to them (quotation marks off, a cut by UTF-16 units),
   and a copy's name cut before its suffix, makes no link (`sliceAt`, §4.4). The links *Fix captions*
   and *Translate to…* write into the captions are recorded and never trusted (§4.6), so no AI answer
-  puts a link into the project that the pack takes for said; a suggested chapter title or title the
-  safety net notes is not used (§4.8).
-- **Safety net:** every card is also read paranoidly and anything a site could link that was not
-  said is shown next to it and with its copy (§4.8). It never changes the text.
+  puts a link into the project that the pack takes for said; a suggested chapter title the safety net
+  notes is not used, and a suggested title it notes cannot become the name (§4.8).
+- **Safety net:** every card, and the Captions tab's suggested title and summary, are also read
+  paranoidly and anything a site could link that was not said is shown next to them and with their
+  copy (§4.8). It never changes the text.
 - **No HTML:** textareas and text nodes only (§2.5).
 - **Export bundle:** the description is plain text written by main's existing sidecar writer
   (size, NUL and path checks unchanged).
@@ -667,7 +699,10 @@ New:
   `projectYoutubeChapters(project)`, `tagsText(tags)`, `YOUTUBE_DESCRIPTION_MAX`.
 - `src/shared/publish/queue.ts`: `createQueue(limit)` → `{ add(job), cancel(id), cancelAll(), running, waiting }`.
 - `src/shared/publish/project.ts`: `readPublish(raw)`.
-- `src/shared/publish/check.ts`: the safety net, `linksToCheck(text, said)`, `saidLinks(segments, context)`, `NOTHING_SAID`, `view(s, markdown)`, `shownRun(run)`.
+- `src/shared/publish/check.ts`: the safety net, `linksToCheck(text, said)`, `saidLinks(segments, context)`, `NOTHING_SAID`, `view(s, markdown)`, `shownRun(run)`, `shownPart(run, said)`.
+- `src/renderer/src/publish/checkNote.tsx`: the net's note and notice words for the Publish dialog
+  and the Captions tab, `checkNote(runs, said, id)`, `checkText(runs, said)`, `shownCheck(run, said)`,
+  `projectSaid(project)`.
 - `src/renderer/src/publish/PublishDialog.tsx`, `publish.css`, `publishPrefs.ts`,
   `publishRun.ts` (the session cache and the runner), `publishRequests.ts` (palette → dialog item).
 
@@ -681,9 +716,10 @@ Changed (additive): `src/shared/api/ai.ts` (task ids, request fields, results, `
 `src/shared/captions/edit.ts` (`readSuggestedText(task, text)`, `readSuggestedChapters` cuts
 with `sliceAt`; `applyTextResult`, `splitCaption` and `mergeWithNext` keep `aiLinks`, `aiLinksAfter`),
 `src/shared/captions/captionData.ts` (`cleanCaptionText` cuts with `sliceAt`, `readAiLinks`, `capAiLinks`, `MAX_AI_LINKS`),
-`src/shared/captions/transcriptText.ts` (a suggested chapter or title the safety net notes is not used),
+`src/shared/captions/transcriptText.ts` (a suggested chapter the safety net notes is not used),
 `src/shared/captions/subtitles.ts` (`sourcedCues`), `src/shared/types.ts` (`CaptionSegment.aiLinks`),
-`src/shared/publish/text.ts` (`unsaidLinks`, `PlainTextOptions.untrusted`), `src/shared/editor/duplicate.ts` (`copyName` cuts with `sliceAt`),
+`src/shared/publish/text.ts` (`unsaidLinks`, `PlainTextOptions.untrusted`, `isMailAt`), `src/shared/editor/duplicate.ts` (`copyName` cuts with `sliceAt`),
+`panels/CaptionsPanel.tsx` (the net's note under a suggested title and summary),
 `src/renderer/src/editor/exportBundleRun.ts` (the saved description),
 `ExportBundleOptions.tsx` + `ExportDialog.tsx` (the Description choice's tooltip names it),
 `tests/e2e/ai-mock-server.cjs` (answers for the pack's prompts).
@@ -722,7 +758,10 @@ Unit (vitest, each failing without its code):
   bypass example of that review noted, no note on common tutorial text in 25 languages and scripts);
   `publishReview7.test.ts` the 11 of the seventh review that are not the dialog's (`publishDialog`
   and `publishCss` test the note's wording, its description, *Use for exports*, *Rename* and the
-  notice's wrapping).
+  notice's wrapping); `publishReview8.test.ts` the eighth review's (raw HTML, `\` as `/`, IPv6,
+  full-width punctuation, merges, Chinese and Japanese names, addresses, Hebrew prefixes, the note's
+  clauses, titles, `。` before an address), and `captionsPanel.test.ts` the Captions tab's note under a
+  suggested title and summary.
 - `publishProperty.test.ts`: 3 000 seeded texts, ordinary and hostile, through every task and the
   cards: no link the transcript, name and chapter titles lack, and no letter of ordinary text lost;
   the worst texts (10 000 dots, nested brackets, long queries, links in links, runs of `//`)
@@ -860,6 +899,18 @@ Where the build differs from or adds to the sections above:
   field, and *Use for exports* says it too. Writing 5 000 captions of 500 characters full of links
   back from *Fix captions* takes about 2.7 s (1.3 s before), as each caption is read by the net; an
   ordinary transcript takes the same time as before.
+- **The eighth review: the net reads raw HTML and Markdown destinations, and is quieter in Chinese and
+  Japanese.** Where a link got past both layers, the net reads more: an attribute's URL across tabs,
+  line breaks and a space before `@`, HTML's numeric references without `;`, `\` as `/`, IPv6 hosts,
+  and full-width or compatibility punctuation as punctuation. A merge no longer launders a stretch an
+  AI wrote. Its noise went down where it broke features: a said host between letters of another script
+  (`在flown.app下载`) or after a Hebrew or Arabic prefix is said, and a dotted user name of an address
+  (`anna.li@acme.de`) is no name. Main no longer refuses a suggested title the net notes: it is shown
+  with its note and cannot become the name, in the Captions tab too, whose summary now has the note.
+  The note shows only the noted clauses of a Chinese or Japanese paragraph. The cleaning keeps a said
+  address after `。` (`…/docs。…support@flown.app`). On realistic copy in 25 languages, 4 of 88 cards
+  have a note (7 before), none needless; the oracle fuzzers find no note dropped where a reader links a
+  host nobody said.
 - **What the user typed is trusted like the transcript.** The recording's name and chapter titles go
   to the provider as typed (one line, capped, control characters removed: `readPackContext`), and an
   answer may keep a link they have (`trustedText`), in the pack's items and in the title and summary
