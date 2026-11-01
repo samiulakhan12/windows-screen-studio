@@ -9,7 +9,7 @@ import type { AiTextRequest, AiTextResult, PackTextTask } from '../api/ai'
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
 import type { CaptionSegment } from '../types'
 import type { PublishLength, PublishTone } from './pack'
-import { cutAt, fitX, plainText, trustedText, typedText, X_LIMIT } from './text'
+import { cutAt, fitX, plainText, trustedText, typedText, X_LIMIT, type PlainTextOptions } from './text'
 
 /** Longest transcript sent in one request (characters, about an hour of speech); longer ones are sent as excerpts. */
 export const PACK_TRANSCRIPT_MAX = 60_000
@@ -166,20 +166,27 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
+/** A tag on one line, its spaces single: cleaned with `opts` (plainText). */
+const tagText = (t: string, opts: Omit<PlainTextOptions, 'max' | 'oneLine'>): string =>
+  plainText(t, { ...opts, max: 200, oneLine: true })
+    .replace(/\s+/g, ' ')
+    .trim()
+
 /**
- * Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters, distinct, 400
- * characters together. Links `linksFrom` does not have are removed or broken ("ASP.NET" stays when it
- * was said), after those characters are, so taking them out makes no link.
+ * Tags YouTube accepts: one line, no angle brackets, hashes or commas, 1–30 characters (as written:
+ * breaking a name never drops a tag), distinct, 400 characters together. Links `linksFrom` does not
+ * have are removed or broken ("ASP.NET" stays when it was said), after those characters are, so
+ * taking them out makes no link.
  */
 export function cleanTags(raw: unknown, linksFrom = ''): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   let total = 0
   for (const t of strings(raw)) {
-    const tag = plainText(t.replace(/[<>#,]/g, ''), { max: 200, oneLine: true, linksFrom })
-      .replace(/\s+/g, ' ')
-      .trim()
-    if (!tag || [...tag].length > PACK_CAPS.tagLength || seen.has(tag.toLowerCase())) continue
+    const bare = t.replace(/[<>#,]/g, '')
+    if ([...tagText(bare, { keepLinks: true })].length > PACK_CAPS.tagLength) continue
+    const tag = tagText(bare, { linksFrom })
+    if (!tag || seen.has(tag.toLowerCase())) continue
     if (total + tag.length + (out.length ? 1 : 0) > PACK_CAPS.tagsTotal) break
     seen.add(tag.toLowerCase())
     out.push(tag)

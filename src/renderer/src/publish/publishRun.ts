@@ -112,7 +112,8 @@ export function cardText(result: AiTextResult, segments: readonly Pick<CaptionSe
     case 'summary':
       return { text: plainText(result.text, { ...sent, max: MAX_CARD_TEXT }), tags: '' }
     case 'youtube':
-      return { text: plainText(result.text, { ...keep, max: MAX_CARD_TEXT }), tags: tagsText(result.tags.map((t) => plainText(t, { ...keep, max: 30, oneLine: true })).filter(Boolean)) }
+      // Main took tags of at most 30 characters as written; a broken name may make one a little longer.
+      return { text: plainText(result.text, { ...keep, max: MAX_CARD_TEXT }), tags: tagsText(result.tags.map((t) => plainText(t, { ...keep, max: 200, oneLine: true })).filter(Boolean)) }
     case 'linkedin':
     case 'xpost':
     case 'article':

@@ -2,10 +2,13 @@
  * A seeded property test of the copy pack's cleaning (docs/design/publish-pack.md §4.4): thousands of
  * texts, ordinary and hostile, through every task's validatePackAnswer and the card's cleaning in the
  * dialog (publishRun's cardText). No output may hold a link X finds (the port, which the fixture
- * proves equal to twitter-text) or an "http(s)://" or "www." link that the transcript, name and
- * chapter titles do not have; and ordinary text loses no letter.
+ * proves equal to twitter-text), an "http(s)://" or "www." glued to anything outside a link the
+ * transcript, name and chapter titles have, or a "http(s)://" or "www." stretch (as a site reading to
+ * the next space takes it) on whose host a browser opens another name; and ordinary text loses no
+ * letter.
  */
 import { readFileSync } from 'node:fs'
+import { domainToUnicode } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { AiTextResult, PackTextTask } from '../src/shared/api/ai'
 import { validatePackAnswer } from '../src/shared/publish/prompts'
@@ -50,22 +53,46 @@ const context = { title: 'Flown tour: flown.app/help', chapters: ['Intro', 'Edit
 const transcript = segments.map((s) => s.text).join(' ')
 const trusted = [transcript, context.title, ...context.chapters].join('\n')
 
-/** A link's host (and scheme) in lower case (ASCII only), the rest as written. */
+/** A link without its scheme (it goes to the same place), its host in lower case (ASCII only), the rest as written. */
 const key = (link: string): string => {
-  const host = /^(?:https?:\/\/)?[^/?#:]*/i.exec(link)?.[0] ?? ''
-  return host.replace(/[A-Z]/g, (c) => c.toLowerCase()) + link.slice(host.length)
+  const bare = link.replace(/^https?:\/\//i, '')
+  const host = /^[^/?#:]*/.exec(bare)?.[0] ?? ''
+  return host.replace(/[A-Z]/g, (c) => c.toLowerCase()) + bare.slice(host.length)
 }
 const allowed = new Set(extractUrlsWithIndices(trusted.normalize()).map((u) => key(trusted.normalize().slice(u.indices[0], u.indices[1]))))
 for (const m of trusted.matchAll(/https?:\/\/\S+/g)) allowed.add(key(m[0].replace(/[.,]$/, '')))
+/** The hosts of the allowed links, as a browser has them. */
+const hostOf = (link: string): string | null => {
+  try {
+    return domainToUnicode(new URL(/^https?:/i.test(link) ? link : `http://${link}`).hostname)
+  } catch {
+    return null
+  }
+}
+const allowedHosts = new Set([...allowed].map((k) => hostOf(k)))
 
-/** The links in `out` nobody said: X's (on the text and on its NFC form), and "http(s)://" or "www." ones outside an allowed link. */
+/**
+ * The links in `out` nobody said: X's (on the text and on its NFC form); "http(s)://" or "www." glued
+ * to anything, unless inside an allowed link or starting one as X reads the text from there; and,
+ * read to the next space as some sites do, a "http(s)://" or "www." stretch whose host (WHATWG's
+ * URL: after a user name, percent-decoded, IDNA) is a name X links whole and none of the allowed
+ * links has.
+ */
 function foreignLinks(out: string): string[] {
   const bad: string[] = []
   for (const t of new Set([out, out.normalize()])) {
     const links = extractUrlsWithIndices(t).map((u) => ({ start: u.indices[0], end: u.indices[1], text: t.slice(u.indices[0], u.indices[1]) }))
     for (const l of links) if (!allowed.has(key(l.text))) bad.push(l.text)
-    for (const m of t.matchAll(/(?:https?:\/\/|www\.)[\p{L}\p{N}]/giu)) {
-      if (!links.some((l) => l.start <= m.index && m.index < l.end && allowed.has(key(l.text)))) bad.push(t.slice(m.index, m.index + 30))
+    for (const m of t.matchAll(/(?:https?:\/\/|www\.)\S/giu)) {
+      if (links.some((l) => l.start <= m.index && m.index < l.end && allowed.has(key(l.text)))) continue
+      const from = t.slice(m.index)
+      const own = extractUrlsWithIndices(from).find((u) => u.indices[0] === 0)
+      if (!own || !allowed.has(key(from.slice(0, own.indices[1])))) bad.push(t.slice(m.index, m.index + 30))
+    }
+    for (const m of t.matchAll(/(?:https?:\/\/|www\.)\S+/giu)) {
+      const host = hostOf(m[0])
+      if (!host || allowedHosts.has(host)) continue
+      if (findUrls(host, true).some((u) => u.indices[0] === 0 && u.indices[1] === host.length)) bad.push(`${m[0]} (${host})`)
     }
   }
   return bad
@@ -80,8 +107,30 @@ const ordinary = (t: string): boolean => !/https?:\/\/|www\./i.test(t) && findUr
 const words = [...Object.values(samples.languages).flat(), ...samples.code, ...Object.values(samples.findings).flat(), ...samples.earlierTests]
   .flatMap((t) => [t, ...t.split(/\s+/)])
   .filter((w) => w && ordinary(w))
-const hostile = [...samples.links, ...Object.values(samples.findings).flat(), ...samples.earlierTests]
-const glue = [...samples.before, ...samples.after, '', '', ' ', '(', ')', '?next=', '/', '.', '**', '__', '\n']
+/** What the third review found other sites link, or browsers open, where X does not. */
+const thirdReview = [
+  'https://flown.app%2eevil%2ecom/login',
+  'https://flown.app:8443@evil.com/login',
+  'https://flown.app．evil．com/x',
+  'www.flown.app%2eevil%2ecom',
+  'https://ｅｖｉｌ.ｃｏｍ/login',
+  'www.ｅｖｉｌ.ｃｏｍ/x',
+  'https://日%2eevil%2ecom/login',
+  '$paypal-login.com/verify',
+  '/．paypal-login.com/login',
+  '「paypal-login.com」',
+  '//paypal-login.com/login',
+  'paypal.com@login',
+  'paypal-secure.web/login',
+  'evil.ישראל',
+  "flown.app/help'dan",
+  'flown.app/help-evil',
+  'https://example.com/settings%2eevil%2ecom',
+  '<https://evil.example/x>',
+  '‹http://192.168.1.10:8080/admin›'
+]
+const hostile = [...samples.links, ...Object.values(samples.findings).flat(), ...samples.earlierTests, ...thirdReview]
+const glue = [...samples.before, ...samples.after, '', '', ' ', '(', ')', '?next=', '/', '.', '**', '__', '\n', '$', '@', '//', '．', '「', '%2e', 'ht', 'tps://']
 const separators = [' ', ' ', ' ', ', ', '. ', '! ', '? ', ': ', ' — ', '\n', '\n\n', ' **', '** ']
 
 function texts(): { text: string; plain: boolean }[] {
