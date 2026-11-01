@@ -95,6 +95,14 @@ describe('parseNumberWords (test 38)', () => {
     expect(parseNumberWords(['five.', 'six'])).toEqual({ value: 5, used: 1 })
   })
 
+  it('reads no number from a word every object has a name for ("constructor")', () => {
+    expect(parseNumberWords(['constructor', 'call'], 'en')).toBeNull()
+    expect(parseNumberWords(['twenty', 'constructor'], 'en')).toEqual({ value: 20, used: 1 })
+    expect(parseNumberWords(['constructor'], 'bn')).toBeNull()
+    expect(parseNumberWords(['constructor'], 'hi')).toBeNull()
+    expect(findNumbers(seg('Our constructor grew 300 percent'), 'en')).toEqual([expect.objectContaining({ value: 300, from: 3, to: 4 })])
+  })
+
   it('reads Bangla and Hindi from the CLDR tables', () => {
     expect(parseNumberWords(['তিনশো'], 'bn')).toEqual({ value: 300, used: 1 })
     expect(parseNumberWords(['পঁচিশ', 'হাজার'], 'bn')).toEqual({ value: 25000, used: 2 })

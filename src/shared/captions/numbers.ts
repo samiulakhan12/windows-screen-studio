@@ -111,8 +111,13 @@ const EXTRA: Readonly<Record<'bn' | 'hi', { words: Readonly<Record<string, numbe
 
 const ENDS_CLAUSE = /[.!?,;:…।]["'”’)\]]*$/u
 
+/** Whether `table` has the word `w` itself: never a name every object has, such as "constructor". */
+const has = (table: Readonly<Record<string, number>>, w: string): boolean => Object.hasOwn(table, w)
+/** A word's value in `table`, or undefined. */
+const valueIn = (table: Readonly<Record<string, number>>, w: string): number | undefined => (has(table, w) ? table[w] : undefined)
+
 /** A word that can begin or go on with an English number (the parse below stops at any other). */
-const enNumberish = (w: string): boolean => w in EN_SMALL || w in EN_SCALES || w === 'hundred' || w === 'a' || w === 'an' || w === 'and'
+const enNumberish = (w: string): boolean => has(EN_SMALL, w) || has(EN_SCALES, w) || w === 'hundred' || w === 'a' || w === 'an' || w === 'and'
 
 /** English: "twenty five", "twenty-five", "one hundred and five", "a thousand". */
 function parseEnglish(words: readonly string[]): { value: number; used: number } | null {
@@ -132,16 +137,16 @@ function parseEnglish(words: readonly string[]): { value: number; used: number }
   for (let i = 0; i < parts.length; i++) {
     const { w, end, index } = parts[i]
     const next = parts[i + 1]?.w
-    if (w in EN_SMALL) group += EN_SMALL[w]
+    if (has(EN_SMALL, w)) group += EN_SMALL[w]
     else if (w === 'hundred' && any) group = group * 100
-    else if (w in EN_SCALES && any) {
+    else if (has(EN_SCALES, w) && any) {
       total += group * EN_SCALES[w]
       group = 0
-    } else if ((w === 'a' || w === 'an') && !any && next && (next === 'hundred' || next in EN_SCALES)) {
+    } else if ((w === 'a' || w === 'an') && !any && next && (next === 'hundred' || has(EN_SCALES, next))) {
       group = 1
       any = true
       continue
-    } else if (w === 'and' && any && next && next in EN_SMALL) continue
+    } else if (w === 'and' && any && next && has(EN_SMALL, next)) continue
     else break
     any = true
     used = index + 1
@@ -154,8 +159,8 @@ function parseEnglish(words: readonly string[]): { value: number; used: number }
 function parseTable(words: readonly string[], lang: 'bn' | 'hi'): { value: number; used: number } | null {
   const t = NUMBER_WORDS[lang]
   const extra = EXTRA[lang]
-  const small = (w: string): number | undefined => t.words[w] ?? extra.words[w]
-  const scale = (w: string): number | undefined => t.scales[w] ?? extra.scales[w]
+  const small = (w: string): number | undefined => valueIn(t.words, w) ?? valueIn(extra.words, w)
+  const scale = (w: string): number | undefined => valueIn(t.scales, w) ?? valueIn(extra.scales, w)
   const hundreds = [t.hundred.word, ...extra.hundreds]
   let total = 0
   let group = 0

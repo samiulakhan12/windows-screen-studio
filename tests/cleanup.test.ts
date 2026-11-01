@@ -48,6 +48,12 @@ describe('tidyCaptions (test 41)', () => {
     expect(out.changed).toBe(2)
   })
 
+  it('numbers as digits leave a word every object has a name for as it is ("constructor", not "NaN")', () => {
+    const p = project([timed('a', 0, 'now we call the constructor of the class')])
+    expect(texts(tidyCaptions(p, { ...OFF, digits: 'all', words: [] }).project)).toEqual(['now we call the constructor of the class'])
+    expect(texts(tidyCaptions(p, { ...OFF, digits: 'above-ten', words: [] }).project)).toEqual(['now we call the constructor of the class'])
+  })
+
   it('capitals only in scripts with case', () => {
     const p = project([{ id: 'a', start: 0, end: 2, text: 'আমি খুশি। ভালো' }], 'bn')
     expect(tidyCaptions(p, { ...OFF, caps: true, words: [] }).changed).toBe(0)
