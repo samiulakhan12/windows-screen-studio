@@ -98,7 +98,7 @@ export function spriteTexts(): Map<number, string[]> {
 
 export const hooks: {
   /** The poses of a frame (else identity, with the spoken mark on the word being spoken). */
-  poses?: (layout: StudioLayout, chunk: number, t: number) => { chunk: ChunkPose; words: WordPose[]; mark: MarkBox | null; out?: { chunk: number; pose: ChunkPose } }
+  poses?: (layout: StudioLayout, chunk: number, t: number) => { chunk: ChunkPose; words: WordPose[]; mark: MarkBox | null; out?: { chunk: number; pose: ChunkPose }; box?: ChunkPose }
   replaced?: (project: Project, t: number) => { captions: ReadonlySet<string>; chunks: readonly { caption: string; word: number }[] }
   burned?: (project: Project) => readonly CaptionSegment[]
   place?: (project: Project, caption: string, position: 'top' | 'middle' | 'bottom') => 'top' | 'middle' | 'bottom'

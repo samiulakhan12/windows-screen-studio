@@ -341,6 +341,25 @@ describe('spoken marks and word motion (§9.3)', () => {
     expect(captionPoses(l, 1, start + 0.21, ONE, s, U, null).out).toBeUndefined()
     expect(captionPoses(l, 0, 0.1, ONE, s, U, null).out).toBeUndefined()
   })
+
+  it('Glass Pill’s pills never blink between chunks: the words enter, the pills keep their opacity and glide for 0.16 s', () => {
+    const s = look('glass')
+    const l = lay(timed('one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen', 0.3), { ...s, layout: { ...s.layout, chars: 20 } }, 1920, 1080)
+    expect(l.chunks.length).toBeGreaterThan(1)
+    const start = l.chunks[1].start
+    const at = captionPoses(l, 1, start, ONE, s, U, null)
+    // The words grow in from alpha 0; the pills are already there, and start at the old chunk's width.
+    expect(at.chunk.alpha).toBe(0)
+    expect(at.box && isRest(at.box)).toBe(true)
+    expect(at.out).toEqual({ chunk: 0, pose: expect.objectContaining({ alpha: 0, reveal: 1 }) })
+    const mid = captionPoses(l, 1, start + 0.08, ONE, s, U, null)
+    expect(mid.out!.pose.reveal).toBeGreaterThan(0)
+    expect(mid.out!.pose.reveal).toBeLessThan(1)
+    expect(mid.box!.alpha).toBe(1)
+    expect(captionPoses(l, 1, start + 0.17, ONE, s, U, null).out).toBeUndefined()
+    // The first chunk enters with its pill.
+    expect(captionPoses(l, 0, 0, ONE, s, U, null).box).toBeUndefined()
+  })
 })
 
 describe('graphics timing (§10.1)', () => {

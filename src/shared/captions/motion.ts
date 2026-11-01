@@ -512,8 +512,10 @@ function spanOf(chunk: StudioChunk, first: number, last: number): { x: number; w
  * before a pause of CAPTION_JOIN or more until `nextStart`, the next caption's start; null: none
  * follows), each word's motion, spoken mark and emphasis mark, and the spoken box, pill or
  * underline. During News Bar's push and Glass Pill's glide (the first 0.2 s of a chunk after the
- * first) the outgoing chunk comes with its pose. `opts.spoken` false (a translated track): no
- * spoken mark, no word motion and every word shown.
+ * first) the outgoing chunk comes with its pose. On Glass Pill's chunks after the first, `box` is
+ * the pose of the pills: the chunk's without its entrance, so they never fade out and in between
+ * chunks (§5.3). `opts.spoken` false (a translated track): no spoken mark, no word motion and
+ * every word shown.
  */
 export function captionPoses(
   layout: StudioLayout,
@@ -524,7 +526,7 @@ export function captionPoses(
   u: number,
   nextStart: number | null,
   opts?: { spoken: boolean }
-): { chunk: ChunkPose; words: WordPose[]; mark: MarkBox | null; out?: { chunk: number; pose: ChunkPose } } {
+): { chunk: ChunkPose; words: WordPose[]; mark: MarkBox | null; out?: { chunk: number; pose: ChunkPose }; box?: ChunkPose } {
   const ch = layout.chunks[chunk]
   if (!ch) return { chunk: rest(), words: [], mark: null }
   const m = studio.motion.calm ? calmedOf(studio.motion) : studio.motion
@@ -543,6 +545,7 @@ export function captionPoses(
   const length = v.chunkEnds[chunk] - v.chunkStarts[chunk]
   let pose = rest()
   let out: { chunk: number; pose: ChunkPose } | undefined
+  const glide = handOver && studio.box.kind === 'glass'
   if (handOver && studio.box.kind === 'band') {
     // News Bar: the new chunk rises in while the old one is pushed up and out; the band stays.
     const d = duration(PUSH, m, 0.1)
@@ -555,22 +558,30 @@ export function captionPoses(
   } else {
     const d = duration(enterDuration(m.enter, chunk), m, 0.1)
     if (m.enter !== 'none' && age < d) pose = enterPose(m.enter, Math.max(0, age) / d, s, em, chunk, rtl, calm)
-    if (handOver && studio.box.kind === 'glass') {
-      // Glass Pill: the box width glides from the old chunk's to this one's; the old words are not drawn.
+    if (glide) {
+      // Glass Pill: the box width glides from the old chunk's to this one's (`out.pose.reveal`, the
+      // share of the old width); the old words are not drawn.
       const g = duration(GLIDE, m, 0.1)
       if (age < g) out = { chunk: chunk - 1, pose: { ...rest(), alpha: 0, reveal: 1 - EASE.emphDecel(age / g) } }
     }
   }
   // An exit only before a pause: on the caption's last chunk, when the next caption starts CAPTION_JOIN or more later.
   const last = chunk === layout.chunks.length - 1
+  let exit: ChunkPose | null = null
   if (last && m.exit !== 'none' && (nextStart === null || viewAt(clips, nextStart) - v.chunkEnds[chunk] >= CAPTION_JOIN)) {
     const d = Math.min(duration(EXIT_DURATION[m.exit], m, 0.1), length / 3)
     const left = v.chunkEnds[chunk] - now
-    if (d > 0 && left < d) pose = combine(pose, exitPose(m.exit, 1 - Math.max(0, left) / d, s, em))
+    if (d > 0 && left < d) exit = exitPose(m.exit, 1 - Math.max(0, left) / d, s, em)
   }
-  // Tilt on chunks: a seeded angle, the same for the chunk's whole time.
-  if (m.tilt > 0 && m.tiltOn === 'chunk') pose.rotate += signed(seedOf(`${key}|c${chunk}`)) * m.tilt * s
-  if (calm) pose = calmPose(pose, u)
+  const finish = (p: ChunkPose): ChunkPose => {
+    let q = exit ? combine(p, exit) : p
+    // Tilt on chunks: a seeded angle, the same for the chunk's whole time.
+    if (m.tilt > 0 && m.tiltOn === 'chunk') q = { ...q, rotate: q.rotate + signed(seedOf(`${key}|c${chunk}`)) * m.tilt * s }
+    return calm ? calmPose(q, u) : q
+  }
+  pose = finish(pose)
+  // Glass Pill's pills: the chunk's pose without its entrance.
+  const boxPose = glide ? finish(rest()) : undefined
 
   /* the words */
   const spokenAt = (() => {
@@ -703,7 +714,7 @@ export function captionPoses(
       mark = { x, w, line: here.line, alpha: 1, first: group.first, last: group.last }
     }
   }
-  return { chunk: pose, words, mark, ...(out ? { out } : {}) }
+  return { chunk: pose, words, mark, ...(out ? { out } : {}), ...(boxPose ? { box: boxPose } : {}) }
 }
 
 /* ---------- Typewriter's caret (§5.3) ---------- */

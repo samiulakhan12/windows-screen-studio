@@ -191,6 +191,35 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     expect(drawnWords(after.id)).toEqual(['COUNT', 'TODAY'])
   })
 
+  it('keeps Glass Pill’s pill while the next chunk’s words enter, its width gliding from the old line’s (§5.3)', () => {
+    const glass = look('glass')
+    glass.layout = { ...glass.layout, chunk: 'words', words: 3 }
+    const p = studioProject(glass)
+    // The pill of a frame: its first rounded rectangle on the frame, and the alpha it is drawn at.
+    const pill = (t: number): { w: number; alpha: unknown } | null => {
+      calls.length = 0
+      const { fc, id } = frameOf(p, t)
+      drawStudioCaptions(fc)
+      const r = onFrame(id).find((c) => c.name === 'roundRect')
+      return r ? { w: r.args[2] as number, alpha: r.alpha } : null
+    }
+    const old = pill(1.2)!.w
+    const next = pill(2.3)!.w
+    expect(next).not.toBeCloseTo(old, 3)
+    // The second chunk starts at 2.0 (count today): its words enter from alpha 0, the pills do not.
+    let reveal = 1
+    hooks.poses = (layout, chunk) => {
+      const c = layout.chunks[chunk]
+      const words = Array.from({ length: c.last - c.first + 1 }, (_, k) => idleWord(c.first + k))
+      if (chunk === 0) return { chunk: IDLE_CHUNK, words, mark: null }
+      return { chunk: { ...IDLE_CHUNK, alpha: 0 }, words, mark: null, out: { chunk: 0, pose: { ...IDLE_CHUNK, alpha: 0, reveal } }, box: IDLE_CHUNK }
+    }
+    expect(pill(2)).toEqual({ w: old, alpha: 1 })
+    reveal = 0.5
+    expect(pill(2.08)!.w).toBeCloseTo((old + next) / 2, 6)
+    expect(pill(2.08)!.alpha).toBe(1)
+  })
+
   it('draws a sticker per word, the spoken one in the spoken colour and grown (§0.1 Stickers)', () => {
     const { fc } = frameOf(studioProject(look('stickers')), 1.2)
     drawStudioCaptions(fc)

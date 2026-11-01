@@ -800,8 +800,11 @@ interface ChunkDraw {
   t: number
   /** Word motion and spoken marks show (not on a chunk being handed over). */
   live: boolean
-  /** The band is drawn by the caller (it stays while News Bar pushes its chunks, §5.3). */
-  noBand: boolean
+  /**
+   * The box is drawn by the caller: News Bar's band stays while its chunks push through it, and
+   * Glass Pill's pills keep full opacity while the words enter (§5.3).
+   */
+  noBox: boolean
 }
 
 /** The caption's speaker colour (§7.4), or null. */
@@ -887,7 +890,7 @@ function drawChunk(c: Ctx, d: ChunkDraw, frame: FrameContext | null): void {
   const { studio } = s
   const rows = rowsOf(s, chunk, placed)
   const clips = s.project.clips
-  drawBoxes(c, d, rows, frame)
+  if (!d.noBox) drawBoxes(c, d, rows, frame)
   const words = wordInfos(s, rows)
   const poseOf = new Map<number, WordPose>()
   if (d.live) for (const p of d.words) poseOf.set(p.token, p)
@@ -916,12 +919,11 @@ function drawChunk(c: Ctx, d: ChunkDraw, frame: FrameContext | null): void {
 }
 
 /** The boxes behind a chunk: per line, per chunk, glass, band, bubble or chat (§4.1, §0.1), drawn live. */
-function drawBoxes(c: Ctx, d: ChunkDraw, rows: Row[], frame: FrameContext | null): void {
+function drawBoxes(c: Ctx, d: ChunkDraw, rows: Row[], frame: FrameContext | null, glide?: { from: readonly Row[]; k: number }): void {
   const { s } = d
   const { studio, layout } = s
   const box = studio.box
   if (box.kind === 'none' || box.kind === 'word' || !rows.length) return
-  if (box.kind === 'band' && d.noBand) return
   const px = layout.px
   const padX = box.padX * px
   const padY = box.padY * px
@@ -951,9 +953,13 @@ function drawBoxes(c: Ctx, d: ChunkDraw, rows: Row[], frame: FrameContext | null
   if (box.kind === 'line' || box.kind === 'glass') {
     const gap = (box.gap ?? 0) * px
     const glass = box.kind === 'glass' ? glassFrame(frame) : null
-    for (const r of rows) {
+    rows.forEach((r, i) => {
+      // Glass Pill's glide (§5.3): each pill's width goes from the old chunk's line to this one's.
+      const was = glide && glide.k < 1 ? glide.from[i] : undefined
+      const x = was ? was.x + (r.x - was.x) * glide!.k : r.x
+      const width = was ? was.width + (r.width - was.width) * glide!.k : r.width
       const h = r.height + padY * 2 - gap
-      const rect = { x: r.x - padX, y: r.y - r.height / 2 - padY + gap / 2, w: r.width + padX * 2, h }
+      const rect = { x: x - padX, y: r.y - r.height / 2 - padY + gap / 2, w: width + padX * 2, h }
       const radius = Math.min(box.radius * px, h / 2)
       if (box.kind === 'glass') drawGlass(c, rect, radius, studio, fill, px, glass)
       else
@@ -961,7 +967,7 @@ function drawBoxes(c: Ctx, d: ChunkDraw, rows: Row[], frame: FrameContext | null
           c.beginPath()
           c.roundRect(rect.x, rect.y, rect.w, rect.h, radius)
         })
-    }
+    })
     return
   }
   const block = blockRect(s, d.chunk, d.placed)
@@ -1346,6 +1352,9 @@ function drawShown(c: Ctx, s: Shown, t: number, frame: FrameContext | null): voi
     c.rect(r.x, r.y, r.w, r.h)
     c.clip()
   }
+  // Glass Pill (§5.3): the pills keep their opacity while the words enter, and glide from the old chunk's widths.
+  const pills = poses.box
+  let glide: { from: Row[]; k: number } | undefined
   if (poses.out) {
     const out = s.layout.chunks[poses.out.chunk]
     if (out) {
@@ -1353,14 +1362,16 @@ function drawShown(c: Ctx, s: Shown, t: number, frame: FrameContext | null): voi
       const { placed, shiftX } = placeChunkOf(c, s.project, s.seg, s.studio, s.layout, out, s.w, s.h, s.area)
       const shownOut: Shown = { ...s, chunk: out, placed, shiftX }
       const pose = poses.out.pose
-      withChunkPose(c, shownOut, blockRect(shownOut, out, placed), band ? { ...pose, reveal: 1 } : pose, () =>
-        drawChunk(c, { s: shownOut, chunk: out, placed, pose, words: [], mark: null, t, live: false, noBand: band }, frame)
-      )
+      if (pills) glide = { from: rowsOf(shownOut, out, placed), k: 1 - pose.reveal }
+      else
+        withChunkPose(c, shownOut, blockRect(shownOut, out, placed), band ? { ...pose, reveal: 1 } : pose, () =>
+          drawChunk(c, { s: shownOut, chunk: out, placed, pose, words: [], mark: null, t, live: false, noBox: band }, frame)
+        )
     }
   }
-  withChunkPose(c, s, block, band ? { ...poses.chunk, reveal: poses.out ? 1 : poses.chunk.reveal } : poses.chunk, () =>
-    drawChunk(c, { s, chunk: s.chunk, placed: s.placed, pose: poses.chunk, words: poses.words, mark: poses.mark, t, live: true, noBand: band }, frame)
-  )
+  const d: ChunkDraw = { s, chunk: s.chunk, placed: s.placed, pose: poses.chunk, words: poses.words, mark: poses.mark, t, live: true, noBox: band || !!pills }
+  if (pills) withChunkPose(c, s, block, pills, () => drawBoxes(c, d, rowsOf(s, s.chunk, s.placed), frame, glide))
+  withChunkPose(c, s, block, band ? { ...poses.chunk, reveal: poses.out ? 1 : poses.chunk.reveal } : poses.chunk, () => drawChunk(c, d, frame))
   c.restore()
 }
 
@@ -1504,7 +1515,7 @@ export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: nu
     textPx = smallest(layout)
     ctx.translate(Math.round(tile.w / 2 - (block.x + block.w / 2)), Math.round(tile.h / 2 - (block.y + block.h / 2)))
     const poses = captionPoses(layout, 0, t, [], studio, Math.min(vw, vh), null, { spoken: true })
-    withChunkPose(ctx, s, block, poses.chunk, () => drawChunk(ctx, { s, chunk, placed, pose: poses.chunk, words: poses.words, mark: poses.mark, t, live: true, noBand: false }, null))
+    withChunkPose(ctx, s, block, poses.chunk, () => drawChunk(ctx, { s, chunk, placed, pose: poses.chunk, words: poses.words, mark: poses.mark, t, live: true, noBox: false }, null))
   }
   ctx.restore()
   return { textPx }
