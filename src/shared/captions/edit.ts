@@ -5,9 +5,10 @@
  */
 import { clamp } from '../engine/math'
 import { captionWordTimes } from '../editor/transcript'
-import { linkKeys, sliceAt, withLinksOf } from '../publish/text'
+import { linksToCheck, NOTHING_SAID, saidLinks, view } from '../publish/check'
+import { aiLinksOf, saidKeys, sliceAt, withLinksOf } from '../publish/text'
 import type { CaptionSegment, CaptionWord } from '../types'
-import { cleanCaptionText, MIN_CAPTION, newCaptionId } from './captionData'
+import { capAiLinks, cleanCaptionText, MIN_CAPTION, newCaptionId } from './captionData'
 
 /** Shortest caption a drag on the track leaves, seconds. */
 export const MIN_CAPTION_DRAG = 0.2
@@ -48,22 +49,26 @@ export function retimeWords(seg: CaptionSegment, next: { start: number; end: num
 
 /**
  * The links an AI wrote into caption `before` by giving it `text` (as stored: cleanCaptionText),
- * for CaptionSegment.aiLinks: those `text` has that `before` did not have as said (its links but
- * its own aiLinks). Empty when the text is the same or has no link (docs/design/publish-pack.md §4.6).
+ * for CaptionSegment.aiLinks (capAiLinks): those `text` has that `before` did not have as said (its
+ * links but its own aiLinks); without one, the stretches the safety net notes in `text` against
+ * `before` (check.ts, as `view` reads them: "ログインflown.jp/download" when "flown.jp/download" was
+ * said), so the net never takes a caption an AI wrote one into for said (saidLinks reads no stretch of
+ * a caption with aiLinks). Empty when the text is the same or has neither (docs/design/publish-pack.md §4.6).
  */
 export function aiLinksAfter(before: Pick<CaptionSegment, 'text' | 'aiLinks'>, text: string): string[] {
   if (text === before.text) return before.aiLinks ? [...before.aiLinks] : []
-  const now = linkKeys(text)
-  if (!now.size) return []
-  const mine = new Set(before.aiLinks)
-  const said = new Set([...linkKeys(before.text)].filter((k) => !mine.has(k)))
-  return [...now].filter((k) => !said.has(k))
+  const mine = new Set(aiLinksOf(before))
+  const said = new Set([...saidKeys(before.text)].filter((k) => !mine.has(k)))
+  const keys = [...saidKeys(text)].filter((k) => !said.has(k))
+  // Without one, what the net notes marks the caption as one an AI wrote a link into.
+  if (keys.length || !linksToCheck(text, NOTHING_SAID).length) return capAiLinks(keys)
+  return capAiLinks(linksToCheck(text, saidLinks([before])).map((run) => view(run)))
 }
 
-/** `seg` with `aiLinks` (none when empty). */
+/** `seg` with `aiLinks` (none when empty; capAiLinks). */
 function withAiLinks<T extends CaptionSegment>(seg: T, aiLinks: readonly string[] | undefined): T {
   const { aiLinks: _old, ...rest } = seg
-  return (aiLinks?.length ? { ...rest, aiLinks: [...new Set(aiLinks)] } : rest) as T
+  return (aiLinks?.length ? { ...rest, aiLinks: capAiLinks(aiLinks) } : rest) as T
 }
 
 /** The caption with new text: its word timings are kept while the text still has as many words. */
@@ -126,8 +131,11 @@ export function mergeWithNext(segments: readonly CaptionSegment[], id: string): 
   if (i < 0 || i + 1 >= segments.length) return null
   const a = segments[i]
   const b = segments[i + 1]
-  // Joined by a space and cut without making a link (cleanCaptionText): the links an AI wrote into either stay its own.
-  const merged: CaptionSegment = withAiLinks({ id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }, [...(a.aiLinks ?? []), ...(b.aiLinks ?? [])])
+  // Joined by a space and cut without making a link (cleanCaptionText): the links an AI wrote into either stay its own,
+  // but those the other one says ("Get it at flown.app." and a fixed "flown dot app": flown.app stays said).
+  const saidIn = (s: CaptionSegment, k: string): boolean => saidKeys(s.text).has(k) && !aiLinksOf(s).includes(k)
+  const ai = [...aiLinksOf(a), ...aiLinksOf(b)].filter((k) => !saidIn(a, k) && !saidIn(b, k))
+  const merged: CaptionSegment = withAiLinks({ id: a.id, start: a.start, end: b.end, text: cleanCaptionText(`${a.text} ${b.text}`) }, ai)
   const count = (s: CaptionSegment): number => s.text.split(' ').filter(Boolean).length
   if (a.words?.length || b.words?.length) merged.words = [...timingsOf(a, count(a)), ...timingsOf(b, count(b))]
   return [...segments.slice(0, i), merged, ...segments.slice(i + 2)]

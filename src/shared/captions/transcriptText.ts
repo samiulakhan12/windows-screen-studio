@@ -15,6 +15,7 @@ import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
 import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
+import { linksToCheck, saidLinks, type SaidLinks } from '../publish/check'
 import { plainText, unsaidLinks } from '../publish/text'
 import { readAiLinks } from './captionData'
 
@@ -224,16 +225,27 @@ const captionsText = (segments: readonly CaptionSegment[]): string => segments.m
 const withSaidLinks = (text: string, segments: readonly CaptionSegment[], max: number, oneLine: boolean): string =>
   plainText(text, { max, oneLine, linksFrom: captionsText(segments), untrusted: unsaidLinks(segments) })
 
-/** Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start; titles with only the links the captions have. */
+/**
+ * Whether the safety net (check.ts) notes anything in `text` that `segments` do not say: what an AI
+ * suggests for the recording's name or a chapter title is trusted as typed once it is there, so it
+ * may have nothing the net would note ("Sign in at 登录acme.com", which the cleaning keeps).
+ */
+const noted = (text: string, said: SaidLinks): boolean => linksToCheck(text, said).length > 0
+
+/**
+ * Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start;
+ * titles with only the links the captions have, and without a title the safety net notes (noted).
+ */
 export function validateChaptersAnswer(segments: readonly CaptionSegment[], answer: unknown): { t: number; title: string }[] {
   if (!isObject(answer) || !Array.isArray(answer.chapters)) throw new AiOutputError('no list of chapters')
   const first = segments.length ? segments[0].start : 0
   const last = segments.length ? segments[segments.length - 1].end : 0
   const raw: { t: number; title: string }[] = []
+  let said: SaidLinks | undefined
   for (const c of answer.chapters) {
     if (!isObject(c) || typeof c.start !== 'number' || !Number.isFinite(c.start) || typeof c.title !== 'string') continue
     const title = withSaidLinks(cleanText(c.title, 80).replace(/^\d+[.)]\s*/, ''), segments, 80, true)
-    if (!title || c.start > last + 1 || c.start < -1) continue
+    if (!title || c.start > last + 1 || c.start < -1 || noted(title, (said ??= saidLinks(segments)))) continue
     raw.push({ t: Math.min(Math.max(c.start, 0), last), title })
   }
   raw.sort((a, b) => a.t - b.t)
@@ -244,7 +256,10 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
   return out.slice(0, maxChapters(last)).map((c) => ({ t: Math.round(c.t * 1000) / 1000, title: c.title }))
 }
 
-/** A title or summary of an answer, with only the links `segments` (the captions sent) have. */
+/**
+ * A title or summary of an answer, with only the links `segments` (the captions sent) have; a title
+ * the safety net notes anything in is not used (noted: it may become the recording's name).
+ */
 export function validateTextAnswer(task: 'title' | 'summary', answer: unknown, segments: readonly CaptionSegment[]): string {
   if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(`no ${task}`)
   const text =
@@ -252,6 +267,7 @@ export function validateTextAnswer(task: 'title' | 'summary', answer: unknown, s
       ? withSaidLinks(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), segments, 120, true)
       : withSaidLinks(answer.text.trim().slice(0, 3000), segments, 3000, false)
   if (!text) throw new AiOutputError(`an empty ${task}`)
+  if (task === 'title' && noted(text, saidLinks(segments))) throw new AiOutputError('a title with a link that was not said')
   return text
 }
 

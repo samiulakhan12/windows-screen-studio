@@ -331,9 +331,11 @@ export interface CaptionSegment {
   /** Word timings when the provider returned them (karaoke highlighting, cut by word). */
   words?: CaptionWord[]
   /**
-   * The links (as the copy pack compares them: text.ts linkKeys) that Fix captions or Translate wrote
-   * into this caption and it did not have before: the copy pack never trusts them as said
-   * (docs/design/publish-pack.md §4.6). Gone once the user edits the caption's text by hand.
+   * The links (as the copy pack compares them: text.ts saidKeys) that Fix captions or Translate wrote
+   * into this caption and it did not have before, or, with none, what the safety net notes in it: the
+   * copy pack never trusts them as said, nor this caption's stretches (docs/design/publish-pack.md
+   * §4.6, §4.8). `['*']` (EVERY_LINK) when there were more than a caption records: every link of its
+   * text. Gone once the user edits the caption's text by hand.
    */
   aiLinks?: string[]
 }
