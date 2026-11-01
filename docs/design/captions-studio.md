@@ -2270,11 +2270,14 @@ about 2× slower.
 | **Typical** (1–3 words moving, the rest at rest, one graphic) | about 1.3 ms | |
 | Sprite memory | 'CHANNEL' at px 76: 486 × 215 px, 408 KiB | LRU 64 MB at 1080p, up to 256 MB at 4K |
 | Action obstacles for one caption (§8.6): 30 cursor samples, `frameView` each | to be measured | ≤ 0.2 ms, once per caption (cached) |
-| Make my captions great, offline, 5,000 captions | 78 ms (prototype, Node 22) | Under 200 ms |
+| Make my captions great, offline, 5,000 captions | 78 ms (prototype, Node 22). This build, Node on a shared 4-core box, first run / later runs: 0.21 / 0.13 s wide, 0.32 / 0.23 s tall, 0.41 / 0.31 s tall and camera-led (before the fixes of test greatPerf: 0.54 / 0.40 s wide, 1.07 / 0.94 s tall and camera-led) | Under 200 ms |
 | Export of 10 min at 1080p30 with Bold Pop | | Logged by the e2e test, target within 5% of the same export with Clean |
 
 A vitest performance test (test 30) lays out 5,000 captions and evaluates poses for 10,000 frames
-under a 6× margin on CI. The rows "to be measured" are measured by the e2e export log (§16.3) on
+under a 6× margin on CI. `tests/greatPerf.test.ts` plans 5,000 captions in a wide frame under the
+same margin, and counts what made the planner slow, so it cannot come back: a grapheme segmenter
+for plain ASCII words, a number format made per caption, the sensitive words tried stem by stem,
+a spelled-out number read on past a word that is no number, and the word scores made twice. The rows "to be measured" are measured by the e2e export log (§16.3) on
 the reference machine before P2 merges, and written into this table.
 
 ---

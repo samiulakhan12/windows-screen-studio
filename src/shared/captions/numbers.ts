@@ -25,8 +25,17 @@ export function asciiDigits(text: string): string {
 /* ---------- word lists (team-written, §11.4) ---------- */
 
 const baseLanguage = (language: string | undefined): string => (language ?? 'en').toLowerCase().split(/[-_]/)[0]
+/** Bare forms made (speech repeats its words, and every rule asks for them). */
+const bareForms = new Map<string, string>()
 /** A word as compared with the lists: lower case, punctuation off both ends. */
-export const bareWord = (w: string): string => w.toLocaleLowerCase().replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '')
+export const bareWord = (w: string): string => {
+  let bare = bareForms.get(w)
+  if (bare === undefined) {
+    if (bareForms.size >= 20000) bareForms.clear()
+    bareForms.set(w, (bare = w.toLocaleLowerCase().replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '')))
+  }
+  return bare
+}
 /** Sentence and clause marks after a word. */
 const TRAILING = /[.,!?;:…।)"”'’\]]+$/u
 
@@ -102,6 +111,9 @@ const EXTRA: Readonly<Record<'bn' | 'hi', { words: Readonly<Record<string, numbe
 
 const ENDS_CLAUSE = /[.!?,;:…।]["'”’)\]]*$/u
 
+/** A word that can begin or go on with an English number (the parse below stops at any other). */
+const enNumberish = (w: string): boolean => w in EN_SMALL || w in EN_SCALES || w === 'hundred' || w === 'a' || w === 'an' || w === 'and'
+
 /** English: "twenty five", "twenty-five", "one hundred and five", "a thousand". */
 function parseEnglish(words: readonly string[]): { value: number; used: number } | null {
   const parts: { w: string; end: boolean; index: number }[] = []
@@ -109,7 +121,9 @@ function parseEnglish(words: readonly string[]): { value: number; used: number }
     const end = ENDS_CLAUSE.test(words[k])
     const pieces = bareWord(words[k]).split('-').filter(Boolean)
     pieces.forEach((w, j) => parts.push({ w, end: end && j === pieces.length - 1, index: k }))
-    if (end) break
+    // The words after one that is no number word are never read: a caption is parsed from each of
+    // its words, and reading on to the clause's end (up to 40 words) read each word many times.
+    if (end || !pieces.every(enNumberish)) break
   }
   let total = 0
   let group = 0

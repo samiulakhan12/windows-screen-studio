@@ -53,13 +53,31 @@ const LETTER = /\p{L}/u
 const WORDISH = /[\p{L}\p{N}]/u
 
 const graphemer = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
-const graphemes = (s: string): number => (graphemer ? [...graphemer.segment(s)].length : [...s].length)
+/** Graphemes in `s`: its length when it is plain ASCII (most words, and a segmenter is slow), else as segmented. */
+const graphemes = (s: string): number => (/^[\x20-\x7e]*$/.test(s) ? s.length : graphemer ? [...graphemer.segment(s)].length : [...s].length)
 
 /** The bare form a word is counted and compared by. */
 export const emphasisKey = (word: string): string => bareWord(word)
 
-/** Every word's score (candidates at 2.5 or more), with phrases of capitalised words joined (`to`). */
-export function emphasisScores(segments: readonly CaptionSegment[], ctx: { language?: string; cursor?: CursorTrack; clips: Clip[] }): { caption: string; word: number; to: number; score: number }[] {
+type WordScore = { caption: string; word: number; to: number; score: number }
+
+/**
+ * The scores last made for each captions list, with the language and cursor they were made with
+ * (the clips are not read): Make my captions great reads them twice, in its emphasis step and for
+ * its keyword pop-ups (§11.8).
+ */
+const lastScores = new WeakMap<readonly CaptionSegment[], { language?: string; cursor?: CursorTrack; scores: WordScore[] }>()
+
+/** Every word's score (candidates at 2.5 or more), with phrases of capitalised words joined (`to`). The list is shared: callers never change it. */
+export function emphasisScores(segments: readonly CaptionSegment[], ctx: { language?: string; cursor?: CursorTrack; clips: Clip[] }): readonly WordScore[] {
+  const hit = lastScores.get(segments)
+  if (hit && hit.language === ctx.language && hit.cursor === ctx.cursor) return hit.scores
+  const scores = scoreWords(segments, ctx)
+  lastScores.set(segments, { language: ctx.language, cursor: ctx.cursor, scores })
+  return scores
+}
+
+function scoreWords(segments: readonly CaptionSegment[], ctx: { language?: string; cursor?: CursorTrack; clips: Clip[] }): WordScore[] {
   const lang = baseLanguage(ctx.language)
   const stop = STOP_WORDS[lang] ?? new Set<string>()
   const tokens = segments.map((s) => studioTokens(s, ctx.language).filter((t) => t.word >= 0))
@@ -68,7 +86,7 @@ export function emphasisScores(segments: readonly CaptionSegment[], ctx: { langu
   for (const ts of tokens) for (const k of new Set(ts.map((t) => emphasisKey(t.text)))) df.set(k, (df.get(k) ?? 0) + 1)
   const n = segments.length
   const actions = actionTimes(ctx.cursor)
-  const out: { caption: string; word: number; to: number; score: number }[] = []
+  const out: WordScore[] = []
   segments.forEach((seg, si) => {
     const ts = tokens[si]
     // Latin words in a caption mostly in another script ("Settings খুলুন").

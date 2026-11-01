@@ -72,29 +72,42 @@ const SENSITIVE: Readonly<Record<string, readonly string[]>> = {
 /** English sensitive words that also start harmless words, matched whole or with a suffix only. */
 const WHOLE = new Set(['war', 'wars', 'dead', 'died', 'crash', 'flood', 'tod', 'tot', 'mort', 'viol', 'mord', 'opfer'])
 
-/** Whether `word` (bare) is `stem` or `stem` with one of the language's endings. */
-function wordForm(word: string, stem: string, lang: string): boolean {
-  if (word === stem) return true
-  if (!word.startsWith(stem)) return false
-  const rest = word.slice(stem.length)
-  return (SUFFIXES[lang] ?? []).includes(rest)
+/** Each stem, and each stem with one of the language's endings. */
+const wordForms = (stems: readonly string[], lang: string): string[] => stems.flatMap((s) => [s, ...(SUFFIXES[lang] ?? []).map((x) => s + x)])
+
+interface SensitiveTest {
+  /** Phrases found anywhere in the caption ("passed away"). */
+  phrases: readonly string[]
+  /** Whether a word starts with one of the stems. */
+  starts: RegExp | null
+  /** The words that count whole or with an ending (and in another language the English words). */
+  forms: ReadonlySet<string>
+}
+
+/** Each language's test, made once: a caption is checked word by word, not stem by stem. */
+const sensitiveTests = new Map<string, SensitiveTest>()
+function sensitiveTest(lang: string): SensitiveTest {
+  let test = sensitiveTests.get(lang)
+  if (test) return test
+  const own = SENSITIVE[lang] ?? []
+  const words = own.filter((s) => !/\s/.test(s))
+  const starts = words.filter((s) => !WHOLE.has(s)).map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  // English words in a caption in another language count whole ("bomb", not "bombilla").
+  const forms = new Set([...wordForms(words.filter((s) => WHOLE.has(s)), lang), ...(lang === 'en' ? [] : wordForms(SENSITIVE.en, 'en'))])
+  test = { phrases: own.filter((s) => /\s/.test(s)), starts: starts.length ? new RegExp(`^(?:${starts.join('|')})`) : null, forms }
+  sensitiveTests.set(lang, test)
+  return test
 }
 
 /** Whether a caption is about a sensitive topic (no emoji or keyword pop-ups on it). */
 export function isSensitive(text: string, language?: string): boolean {
-  const lang = baseLanguage(language)
+  const test = sensitiveTest(baseLanguage(language))
   const lower = text.toLocaleLowerCase()
-  const words = lower.split(/\s+/).map(bareWord).filter(Boolean)
-  const own = SENSITIVE[lang] ?? []
-  for (const s of own) {
-    if (/\s/.test(s)) {
-      if (lower.includes(s)) return true
-      continue
-    }
-    for (const w of words) if (WHOLE.has(s) ? wordForm(w, s, lang) : w.startsWith(s)) return true
+  if (test.phrases.some((s) => lower.includes(s))) return true
+  for (const w of lower.split(/\s+/)) {
+    const bare = bareWord(w)
+    if (bare && (test.forms.has(bare) || !!test.starts?.test(bare))) return true
   }
-  // English words in a caption in another language count whole ("bomb", not "bombilla").
-  if (lang !== 'en') for (const s of SENSITIVE.en) for (const w of words) if (wordForm(w, s, 'en')) return true
   return false
 }
 

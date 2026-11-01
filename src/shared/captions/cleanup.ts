@@ -242,12 +242,20 @@ function numbering(lang: string, digits: CaptionSettings['digits']): string | un
   return undefined
 }
 
+/** The number formats made, by language and digits (one per caption would take most of a tidy's time). */
+const formats = new Map<string, Intl.NumberFormat>()
+function numberFormat(language: string, system: string | undefined): Intl.NumberFormat {
+  const key = `${language}|${system ?? ''}`
+  let fmt = formats.get(key)
+  if (!fmt) formats.set(key, (fmt = new Intl.NumberFormat(language, { useGrouping: false, maximumFractionDigits: 0, ...(system ? { numberingSystem: system } : {}) })))
+  return fmt
+}
+
 function applyDigits(tokens: Tok[], mode: CleanupChoices['digits'], language: string | undefined, digits: CaptionSettings['digits']): Tok[] {
   if (mode === 'off') return tokens
   const lang = baseLanguage(language)
   if (lang !== 'en' && lang !== 'bn' && lang !== 'hi') return tokens
-  const system = numbering(lang, digits)
-  const fmt = new Intl.NumberFormat(language || 'en', { useGrouping: false, maximumFractionDigits: 0, ...(system ? { numberingSystem: system } : {}) })
+  const fmt = numberFormat(language || 'en', numbering(lang, digits))
   const out: Tok[] = []
   let i = 0
   while (i < tokens.length) {
