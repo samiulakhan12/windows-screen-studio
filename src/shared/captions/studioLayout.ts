@@ -12,7 +12,7 @@ import type { CaptionSegment, CaptionSettings, CaptionStudio, Project, StudioPos
 import { scriptLineHeight, scriptScale } from './fontStack'
 import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST } from './layout'
 import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, POST_WORDS, SENTENCE_END, UNIT_WORDS } from './phraseWords'
-import { hasCase, mainScript, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
+import { hasCase, mainScript, scriptOf, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
 
 /** A word's font as drawn: the stack (its script's font first, §6.5), weight and letter spacing (em). */
 export interface StudioFace {
@@ -468,7 +468,13 @@ export function studioLayout(
   opts: { faceOf: (token: StudioToken, role: 'text' | 'emphasis') => StudioFace; area?: Rect | null; marks?: readonly { from: number; to: number; tone?: 2 }[]; language?: string; showSpeaker?: boolean; spoken?: boolean; digits?: 'native' | 'western' }
 ): StudioLayout {
   const language = opts.language
-  const tokens: StudioToken[] = studioTokens(seg, language, !!opts.showSpeaker).map((t) => ({ ...t, text: cased(withDigits(t.text, opts.digits, language), studio.text.case, language, t.script) }))
+  // Digits in the Digits choice: a word's script follows its new digits (300% written ৩০০% is Bangla,
+  // drawn in the Bangla font with the Bangla rules, as typed); a Latin word keeps its own ("MP3").
+  const tokens: StudioToken[] = studioTokens(seg, language, !!opts.showSpeaker).map((t) => {
+    const text = t.script === 'latin' ? t.text : withDigits(t.text, opts.digits, language)
+    const script = text === t.text ? t.script : scriptOf(text)
+    return { ...t, script, text: cased(text, studio.text.case, language, script) }
+  })
   const emphasis: (0 | 1 | 2)[] = tokens.map((t) => {
     if (t.label) return 0
     let tone: 0 | 1 | 2 = 0

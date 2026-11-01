@@ -159,6 +159,18 @@ describe('chunk modes (test 9)', () => {
     expect(l.tokens.map((t) => t.text)).toEqual(['STEP', '3', 'OF', 'FLOWN', 'আমরা'])
   })
 
+  it('a number written in Bangla digits is a Bangla word, as if typed so, and a Latin word keeps its digits', () => {
+    const run = (text: string): { text: string; script: string }[] => {
+      const faced: { text: string; script: string }[] = []
+      const l = studioLayout({ id: 'c', start: 0, end: 2, text }, look('bold-pop'), 1080, 1920, measure, { faceOf: (t) => (faced.push({ text: t.text, script: t.script }), FACE), language: 'bn', digits: 'native' })
+      expect(faced).toEqual(l.tokens.map((t) => ({ text: t.text, script: t.script })))
+      return faced
+    }
+    expect(run('আয় 300% বেড়েছে')).toEqual(run('আয় ৩০০% বেড়েছে'))
+    expect(run('আয় 300% বেড়েছে')[1]).toEqual({ text: '৩০০%', script: 'bengali' })
+    expect(run('MP3 ফাইল 1080p').map((t) => t.text)).toEqual(['MP3', 'ফাইল', '1080P'])
+  })
+
   it('in Bangla, a pop style leaves room for a word that grows (§0.2)', () => {
     const bp = look('bold-pop')
     const seg = { id: 'c', start: 0, end: 2, text: 'এক ক্লিকে সুন্দর' }
