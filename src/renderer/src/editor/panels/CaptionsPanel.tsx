@@ -1044,7 +1044,8 @@ function AiToolsSection({
     const pieces = notedPieces(text, projectSaid(store.state))
     if (pieces.length && live.current) setAsk({ what, action, text, pieces, run })
     else if (!pieces.length) run()
-    else onNotice(`${what}: not used, as it has a link nobody said. Run it again with the Captions tab open.`)
+    // The tab is gone (the answer came after it closed): nothing to ask in, so nothing is used.
+    else onNotice(`${what} not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.`)
   }
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
