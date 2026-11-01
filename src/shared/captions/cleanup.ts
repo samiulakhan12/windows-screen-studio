@@ -367,13 +367,29 @@ export function bleepKey(word: string): string {
 
 /**
  * Words the team writes for languages LDNOOBW lacks (Written for Flown, CC0-1.0; they start small
- * and need a native speaker's check before release, §0.3 decision 4).
+ * and need a native speaker's check before release, §0.3 decision 4). Matched whole, as Strict's are:
+ * each form a word takes is listed, since stems such as বাল and চোদ begin everyday words (বালক,
+ * বালিশ, চোদ্দ).
  */
 const TEAM_WORDS: Readonly<Record<string, readonly string[]>> = {
-  bn: ['চোদ', 'চুদি', 'চোদা', 'খানকি', 'মাগি', 'বাল', 'হারামি', 'হারামজাদা', 'শুয়োরের']
+  bn: [
+    'চোদ', 'চোদা', 'চোদে', 'চোদন', 'চোদার', 'চুদি', 'চুদে', 'চুদিস', 'চুদির',
+    'খানকি', 'খানকির', 'খানকিরা', 'খানকিটা', 'মাগি', 'মাগির', 'মাগিরা', 'মাগিটা',
+    'বাল', 'বালের', 'বালটা', 'হারামি', 'হারামির', 'হারামিরা', 'হারামিটা',
+    'হারামজাদা', 'হারামজাদার', 'হারামজাদারা', 'শুয়োরের'
+  ]
 }
 
 const standardRes = STANDARD_WORDS.map((w) => ({ word: w.word, res: w.patterns.map((p) => new RegExp(p, 'u')), safe: w.safe.map((s) => bleepKey(s)) }))
+const teamSets = new Map<string, ReadonlySet<string>>()
+function teamSet(lang: string): ReadonlySet<string> {
+  let s = teamSets.get(lang)
+  if (!s) {
+    s = new Set((TEAM_WORDS[lang] ?? []).map(bleepKey).filter(Boolean))
+    teamSets.set(lang, s)
+  }
+  return s
+}
 const strictSets = new Map<string, ReadonlySet<string>>()
 function strictSet(lang: string): ReadonlySet<string> {
   let s = strictSets.get(lang)
@@ -395,7 +411,7 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
   }
   const lang = baseLanguage(language)
   // Bangla and the languages LDNOOBW lacks have the team's lists in Standard too.
-  if (TEAM_WORDS[lang] && [...(TEAM_WORDS[lang] ?? [])].some((t) => bleepKey(t) === key || (key.startsWith(bleepKey(t)) && key.length - bleepKey(t).length <= 3))) return true
+  if (teamSet(lang).has(key)) return true
   if (mode === 'strict') {
     if (strictSet(lang).has(key) || (lang !== 'en' && strictSet('en').has(key))) return true
   }

@@ -2738,7 +2738,8 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      `NN-caption-data.txt`, §6.9; 28 languages, no bn, ur, ta, te or mr). Bangla and the missing
      languages: short lists the team writes (CC0-1.0). The user's own words can be added.
    - Matching: lower case, punctuation removed, repeated letters collapsed, safe look-alikes
-     checked.
+     checked. The team's lists match whole words, each form listed (বালের, খানকির), never as a
+     prefix: বাল and চোদ begin everyday words such as বালক, বালিশ and চোদ্দ.
    - **A bleep is time-based** (`Bleep`, §4.1): its source-time span is the word's time ± 0.05 s
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption

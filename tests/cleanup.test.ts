@@ -141,6 +141,14 @@ describe('bleeping (tests 41, 50)', () => {
     expect(isSwearWord('খানকি', 'standard', 'bn')).toBe(true)
   })
 
+  it('Bangla matches the team list whole: its forms are bleeped, everyday words that start the same are not', () => {
+    for (const word of ['বাল', 'বালের', 'চোদা', 'চুদির', 'খানকির', 'হারামজাদারা']) expect(isSwearWord(word, 'standard', 'bn')).toBe(true)
+    for (const word of ['চোদ্দ', 'চোদ্দো', 'বালক', 'বালকটি', 'বালিকা', 'বালিশ', 'বালতি', 'বালু', 'বালি', 'বালা', 'বালাই', 'মাগিনা']) {
+      expect(isSwearWord(word, 'standard', 'bn')).toBe(false)
+      expect(isSwearWord(word, 'strict', 'bn-BD')).toBe(false)
+    }
+  })
+
   it('bleeps are time-based: the word ± 0.05 s (± 0.15 s estimated), its word lower case', () => {
     const p = project([timed('a', 10, 'well fuck this'), { id: 'b', start: 20, end: 22, text: 'damn it' }])
     const out = tidyCaptions(p, { ...OFF, bleep: 'standard', words: [] })
