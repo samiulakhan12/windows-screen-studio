@@ -2668,7 +2668,10 @@ captions, Make my captions great or Polish) or the legacy fields equal `DEFAULT_
 from `show`, `showSpeaker`, `track` and `font` (a project still on the default). Every change in
 the Look section sets `picked` (§2.6, §5.8), so a look picked by hand, Clean included, is never
 replaced; an old project whose user chose Boxed in 0.8 has legacy fields that differ from the
-default and is never replaced either.
+default and is never replaced either. The Studio twin that emphasis makes of a Classic look
+(Ctrl+B, Find important words, Make my captions great's emphasis step; its `from` is the Classic
+preset) is neither a pick nor automation's: the Classic look's rule still applies to it, so that
+Boxed stays protected after Ctrl+B, and a twin of the default Clean can still be restyled.
 A brand kit's body font (written into every new recording's `captions.font` by
 `applyBrandKitToNew`) is not a pick: Auto style carries it into the new look's text font (and
 into the emphasis font when the look's emphasis uses the text's font). Old projects have no

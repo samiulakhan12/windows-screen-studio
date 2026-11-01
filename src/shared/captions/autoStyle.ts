@@ -5,7 +5,7 @@
 import { cameraBoxShown, outputSize, sceneCameraBox } from '../engine/layout'
 import { isTall } from '../engine/reframeData'
 import type { CaptionSettings, CaptionStudio, Project } from '../types'
-import { captionsOf, DEFAULT_CAPTIONS, withPreset } from './settings'
+import { CAPTION_PRESETS, captionsOf, DEFAULT_CAPTIONS, withPreset } from './settings'
 import { studioPreset } from './studioPresets'
 import { estimatedShare } from './transcriptTiming'
 
@@ -32,12 +32,19 @@ export const AUTO_STYLE_REASONS = {
 /** The legacy fields a project still on the default compares, apart from show, showSpeaker, track and font. */
 const DEFAULT_KEYS = ['preset', 'position', 'size', 'color', 'highlightColor', 'background', 'maxLines'] as const
 
-/** Whether automation may change the look (no `picked`; a Studio look set by automation, or the default legacy look). */
+/** The Classic looks: a Studio look `from` one of them is that look's twin (legacyTwin). */
+const CLASSIC = new Set<string>(CAPTION_PRESETS.map((p) => p.value))
+
+/**
+ * Whether automation may change the look (no `picked`; a Studio look set by automation, or the
+ * default legacy look). The twin emphasis makes of a Classic look is not a pick and not automation's:
+ * the Classic look's rule still applies, so a Boxed picked in 0.8 stays protected after Ctrl+B.
+ */
 export function autoStyleAllowed(project: Project): boolean {
   const c = project.captions
   if (!c) return true
   if (c.picked) return false
-  if (c.studio) return true
+  if (c.studio && !CLASSIC.has(c.studio.from)) return true
   return DEFAULT_KEYS.every((k) => c[k] === DEFAULT_CAPTIONS[k])
 }
 

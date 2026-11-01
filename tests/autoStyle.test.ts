@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { autoStyle, autoStyleAllowed, autoStyleOnFirstCaptions, cameraLed, suggestedTile } from '../src/shared/captions/autoStyle'
+import { toggleEmphasis } from '../src/shared/captions/marks'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import type { CaptionSegment } from '../src/shared/types'
@@ -71,6 +72,23 @@ describe('auto style (test 40)', () => {
     expect(autoStyleAllowed(studioProject({ segments: segs, captions: { ...DEFAULT_CAPTIONS, show: false, showSpeaker: true, track: 'bn' } }))).toBe(true)
     expect(autoStyleAllowed(studioProject({ segments: segs, captions: { ...DEFAULT_CAPTIONS, preset: 'boxed' } }))).toBe(false)
     expect(autoStyleAllowed(studioProject({ segments: segs, captions: { ...DEFAULT_CAPTIONS, studio: studioPreset('neon')!.look } }))).toBe(true)
+  })
+
+  it('emphasis on a Classic look is not a pick: a Boxed from 0.8 stays protected, the default Clean stays free', () => {
+    const boxed = studioProject({ segments: segs, captions: { ...DEFAULT_CAPTIONS, preset: 'boxed', background: 'box' } })
+    const marked = toggleEmphasis(boxed, [{ caption: segs[0].id, from: 0, to: 0 }])
+    expect(marked.captions?.studio?.from).toBe('boxed')
+    expect(marked.captions?.picked).toBeUndefined()
+    expect(autoStyleAllowed(marked)).toBe(false)
+    expect(autoStyle(marked, TALL)).toBeNull()
+    // Dragged afterwards (no legacy anchor, a place): still the Boxed twin.
+    const s = marked.captions!.studio!
+    const { legacyAnchor: _a, ...layout } = s.layout
+    void _a
+    expect(autoStyleAllowed({ ...marked, captions: { ...marked.captions!, studio: { ...s, layout: { ...layout, place: { x: 0.5, y: 0.3 } } } } })).toBe(false)
+    const clean = toggleEmphasis(studioProject({ segments: segs }), [{ caption: segs[0].id, from: 0, to: 0 }])
+    expect(clean.captions?.studio?.from).toBe('clean')
+    expect(autoStyleAllowed(clean)).toBe(true)
   })
 
   it('a brand body font in captions.font does not block it and becomes the look’s text font', () => {
