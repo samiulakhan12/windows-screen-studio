@@ -2371,8 +2371,10 @@ Candidate centres:
 The first candidate with no overlap wins. Else the first is shrunk with `keepInArea`
 (`safeZones.ts:138-149`, down to 0.6). Else the candidate with the least overlap that never
 covers a caption. Priority: captions, then the camera and face, then the action, then app safe
-zones, then other graphics. The place is computed once per (graphic, frame size, caption layout,
-camera layouts, action boxes, clips) and cached, so a graphic never moves while it shows. A
+zones, then other graphics. The place is computed once per (graphic, frame size, project, action
+boxes) and cached, so a graphic never moves while it shows; any edit places it again, as it does a
+caption (§8.6), since the zooms, style, crop, follow settings and title cards move the action and
+the captions. A
 dragged graphic (`place: { x, y }`) stays where the user put it, kept inside the frame. A list
 card's place is computed over its whole time, so it does not move between its windows.
 

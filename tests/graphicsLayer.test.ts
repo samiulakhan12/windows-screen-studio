@@ -119,6 +119,34 @@ describe('the graphics layer (§10.4)', () => {
     expect(hooks.log.filter((l) => l.name === 'placeGraphic').length).toBe(2)
   })
 
+  it('places a graphic again when an edit changes the camera’s view or the title cards (§10.3)', () => {
+    const cursor = { valid: true, samples: [], clicks: [] }
+    const p1 = project([keyword()])
+    const placed = (): number => hooks.log.filter((l) => l.name === 'placeGraphic').length
+    const seen = (): unknown[] => hooks.log.filter((l) => l.name === 'actionRects').map((l) => (l.args[0] as { project: Project }).project)
+    drawGraphicsLayer(frameOf(p1, 1.2, 1920, 1080, { cursor }).fc)
+    drawGraphicsLayer(frameOf(p1, 1.5, 1920, 1080, { cursor }).fc)
+    expect(placed()).toBe(1)
+    // A zoom added (the graphics, captions, camera and titles are the same objects): the cursor's place in the new view counts.
+    const p2 = { ...p1, zooms: [{ id: 'z1', start: 0, end: 5, scale: 2, x: 0.5, y: 0.3 }] } as unknown as Project
+    drawGraphicsLayer(frameOf(p2, 1.5, 1920, 1080, { cursor }).fc)
+    expect(placed()).toBe(2)
+    expect(seen().at(-1)).toBe(p2)
+    // So do the style, the crop, the follow settings and the title cards (a lower third moves the captions).
+    const p3 = { ...p2, style: { padding: 0.2 } } as unknown as Project
+    drawGraphicsLayer(frameOf(p3, 1.5, 1920, 1080, { cursor }).fc)
+    const p4 = { ...p3, crop: { x: 0, y: 0, w: 0.5, h: 0.5 } } as unknown as Project
+    drawGraphicsLayer(frameOf(p4, 1.5, 1920, 1080, { cursor, vw: 960, vh: 540 }).fc)
+    const p5 = { ...p4, reframe: { follow: true } } as unknown as Project
+    drawGraphicsLayer(frameOf(p5, 1.5, 1920, 1080, { cursor, vw: 960, vh: 540 }).fc)
+    const p6 = { ...p5, titles: [{ id: 't1', kind: 'lower-third', start: 0, end: 4, text: 'Ada' }] } as unknown as Project
+    drawGraphicsLayer(frameOf(p6, 1.5, 1920, 1080, { cursor, vw: 960, vh: 540 }).fc)
+    expect(placed()).toBe(6)
+    // Playback over the same project places it no more.
+    drawGraphicsLayer(frameOf(p6, 2.5, 1920, 1080, { cursor, vw: 960, vh: 540 }).fc)
+    expect(placed()).toBe(6)
+  })
+
   it('keeps a dragged graphic where the user put it, inside the frame', () => {
     const p = project([keyword({ place: { x: 0.25, y: 0.4 } }), keyword({ id: 'k2', place: { x: 1.2, y: -0.3 } })])
     const rects = graphicRects(contextOf(canvas()), p, 2, 1920, 1080)

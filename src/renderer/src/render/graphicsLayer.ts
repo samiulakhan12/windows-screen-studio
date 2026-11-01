@@ -16,7 +16,7 @@ import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { clampWeight } from '../../../shared/captions/fontStack'
 import { CAPTION_FONT, captionIndexAt, viewAt } from '../../../shared/captions/layout'
-import { clipsKey, counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
+import { counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
 import { captionObstacles } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { withDigits } from '../../../shared/captions/words'
@@ -220,9 +220,21 @@ function captionRects(ctx: Ctx, project: Project, start: number, end: number, w:
 }
 
 /**
+ * What a graphic's place reads besides the graphics before it: the frame size and area, the font
+ * generation, the project (its captions, title cards, camera and clips, and the zooms, style, crop
+ * and follow settings the camera's view reads: any edit places graphics again, as it does captions,
+ * §8.6) and the frame's scene, cursor, focus path and recording size (the action).
+ */
+function placeKey(project: Project, w: number, h: number, area: Rect | null): string {
+  const fc = frames.get(project)
+  const action = fc && fc.w === w && fc.h === h ? [idOf(fc.scene.project), idOf(fc.cursor), idOf(fc.scene.focusPath), fc.vw, fc.vh].join(',') : 0
+  return [w, h, area ? `${area.x},${area.y},${area.w},${area.h}` : '', fontGeneration(), idOf(project), action].join('|')
+}
+
+/**
  * Where graphic `g` is centred (§10.3): a dragged one where the user put it (kept inside the
  * frame); else the first free candidate, shrunk, or the least overlap, computed once per graphic,
- * frame size, caption layout, camera, action and clips, so it never moves while it shows.
+ * frame size, project and action (placeKey), so it never moves while it shows.
  */
 function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number, h: number, area: Rect | null, before: readonly { g: Graphic; rect: Rect }[]): Placed {
   if (g.place !== 'auto') {
@@ -233,7 +245,7 @@ function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number
   const fc = frames.get(project)
   const withAction = !!fc && fc.w === w && fc.h === h
   const anchorKey = g.kind === 'keyword' || g.kind === 'emoji' ? JSON.stringify(g.anchor ?? null) : ''
-  const key = [w, h, area ? `${area.x},${area.y},${area.w},${area.h}` : '', fontGeneration(), clipsKey(project.clips), idOf(project.transcript), idOf(project.captions), idOf(project.captionPlaces), idOf(project.layouts), idOf(project.webcam), withAction ? idOf(fc!.cursor) : 0, anchorKey, before.map((b) => `${b.rect.x | 0},${b.rect.y | 0}`).join(';')].join('|')
+  const key = [placeKey(project, w, h, area), anchorKey, before.map((b) => `${b.rect.x | 0},${b.rect.y | 0}`).join(';')].join('|')
   const hit = placeCache.get(g)
   if (hit && hit.key === key) return hit.place
   const seg = { id: `graphic:${g.id}`, start: g.start, end: g.end, text: '' }
@@ -276,8 +288,7 @@ function windowAt(g: Graphic, t: number, project: Project): { start: number; end
 const placements = new WeakMap<readonly Graphic[], { key: string; map: Map<Graphic, { shape: Shape; place: Placed }> }>()
 function placementsOf(ctx: Ctx, project: Project, w: number, h: number, area: Rect | null): Map<Graphic, { shape: Shape; place: Placed }> {
   const graphics = project.graphics ?? []
-  const fc = frames.get(project)
-  const key = [w, h, area ? `${area.x},${area.y},${area.w},${area.h}` : '', fontGeneration(), clipsKey(project.clips), idOf(project.transcript), idOf(project.captions), idOf(project.captionPlaces), idOf(project.layouts), idOf(project.webcam), idOf(project.fonts), fc && fc.w === w && fc.h === h ? idOf(fc.cursor) : 0].join('|')
+  const key = placeKey(project, w, h, area)
   const hit = placements.get(graphics)
   if (hit && hit.key === key) return hit.map
   const map = new Map<Graphic, { shape: Shape; place: Placed }>()
