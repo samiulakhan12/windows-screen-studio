@@ -351,6 +351,27 @@ describe('the legacy branch and its three guarded calls (tests 23, 50, 51)', () 
   })
 })
 
+describe('keeping clear (§8.6)', () => {
+  it('places a caption again when an edit changes what the camera shows, and not on every frame', () => {
+    const cursor = { valid: true, samples: [], clicks: [] }
+    const p1 = studioProject(look('subtitle'))
+    const seen = (): unknown[] => hooks.log.filter((l) => l.name === 'actionRects').map((l) => (l.args[0] as { project: Project }).project)
+    drawStudioCaptions(frameOf(p1, 1.2, 1920, 1080, { cursor }).fc)
+    drawStudioCaptions(frameOf(p1, 1.3, 1920, 1080, { cursor }).fc)
+    expect(seen()).toEqual([p1])
+    // A zoom added (the captions are the same objects): the cursor's place in the new view counts.
+    const p2 = { ...p1, zooms: [{ id: 'z1', start: 0, end: 5, scale: 2, x: 0.5, y: 0.3 }] } as unknown as Project
+    drawStudioCaptions(frameOf(p2, 1.3, 1920, 1080, { cursor }).fc)
+    expect(seen()).toEqual([p1, p2])
+    // So do the style and the crop.
+    const p3 = { ...p2, style: { ...p2.style, padding: 0.2 } } as unknown as Project
+    drawStudioCaptions(frameOf(p3, 1.3, 1920, 1080, { cursor }).fc)
+    const p4 = { ...p3, crop: { x: 0, y: 0, w: 0.5, h: 0.5 } } as unknown as Project
+    drawStudioCaptions(frameOf(p4, 1.3, 1920, 1080, { cursor, vw: 960, vh: 540 }).fc)
+    expect(seen()).toEqual([p1, p2, p3, p4])
+  })
+})
+
 describe('nothing is read twice (test 51)', () => {
   const keyword: Graphic = {
     id: 'g1',

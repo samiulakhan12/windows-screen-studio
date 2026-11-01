@@ -2026,7 +2026,9 @@ Then:
 
 The action ranks just below the camera: a block is never moved onto the camera to clear the
 cursor. The result is cached per caption, look, frame size, text area, obstacle boxes and the
-clips (cuts and speed change which samples fall inside the caption's viewing time). Legacy looks
+project (its clips: cuts and speed change which samples fall inside the caption's viewing time;
+its zooms, style, crop and follow settings: they change where the camera shows the action), so
+any edit places the caption again. Legacy looks
 do not keep clear of the action: their placement is pinned by the guard (§16.2); a per-caption
 position works for them.
 

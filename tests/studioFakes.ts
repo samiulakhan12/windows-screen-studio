@@ -317,7 +317,12 @@ export function fakeCaptionTracks(real: typeof import('../src/shared/captions/ca
 
 /* ---------- actionRects.ts, graphics.ts ---------- */
 
-export const fakeActionRects = { actionRects: () => [] }
+export const fakeActionRects = {
+  actionRects: (...args: unknown[]) => {
+    hooks.log.push({ name: 'actionRects', args })
+    return []
+  }
+}
 
 export const fakeGraphics = (real: typeof import('../src/shared/render/graphics')): Record<string, unknown> => {
   return {

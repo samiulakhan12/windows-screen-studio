@@ -198,12 +198,17 @@ interface CachedObstacles {
 }
 const obstacleCache = new WeakMap<CaptionSegment, CachedObstacles>()
 
-/** What a caption keeps clear of (§8.6), once per caption, look, frame size, area, camera, titles, cursor and clips. */
+/**
+ * What a caption keeps clear of (§8.6), once per caption, frame size, area and project (the
+ * camera's view reads its zooms, style, crop and follow settings, besides its camera, titles and
+ * clips), and per frame's cursor, focus path and recording size.
+ */
 function obstaclesOf(ctx: Ctx, project: Project, seg: CaptionSegment, studio: CaptionStudio, w: number, h: number, area: Rect | null): CaptionObstacles | undefined {
   if (!studio.layout.avoid || studio.layout.place) return undefined
   const fc = frames.get(project)
   const withAction = !!fc && fc.w === w && fc.h === h
-  const key = [w, h, areaKey(area), clipsKey(project.clips), idOf(project.titles), idOf(project.layouts), idOf(project.webcam), withAction ? idOf(fc!.cursor) : 0, idOf(project.zoomSettings)].join('|')
+  const frame = withAction ? [idOf(fc!.scene.project), idOf(fc!.cursor), idOf(fc!.scene.focusPath), fc!.vw, fc!.vh].join(',') : 0
+  const key = [w, h, areaKey(area), idOf(project), frame].join('|')
   const hit = obstacleCache.get(seg)
   if (hit && hit.key === key) return hit.obstacles
   const titles = lowerThirdBoxes(ctx, project, w, h, area).filter((b) => b.start < seg.end && b.end > seg.start)
