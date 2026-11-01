@@ -243,3 +243,36 @@ describe('key presses keep clear of a block P1 placed (test 54 on the real layou
           expect(y + ph <= box.y || y >= box.y + box.h).toBe(true)
         })
 })
+
+describe('the flash rule keeps a merged block inside the frame (§9.6 rule 2 on the real layout)', () => {
+  // Fast speech on a sped-up clip: big chunks under 0.34 s of viewing time merge until they show long enough.
+  const text = 'open the settings panel and choose export then pick the format you need and save it to your videos folder today'
+  const step = 1 / 3
+  const words = text.split(' ').map((t, i) => ({ text: t, start: 0.5 + i * step, end: 0.5 + i * step + step * 0.8 }))
+  const seg: CaptionSegment = { id: 'c1', start: 0.5, end: 0.5 + words.length * step, text, words }
+  for (const [id, position] of [
+    ['one-word', 'middle'],
+    ['one-word', 'lower'],
+    ['stacked', 'middle']
+  ] as const)
+    for (const [w, h] of [
+      [1920, 1080],
+      [1080, 1920],
+      [1080, 1080]
+    ])
+      it(`${id} at ${position} on a 4x clip in ${w}x${h}`, () => {
+        const studio = look(id)
+        studio.layout.position = position
+        const p = project([seg], 'en', { preset: 'bold', studio }, { clips: [{ id: 'c0', start: 0, end: 20, speed: 4 }] } as Partial<Project>)
+        const ctx = contextOf(canvas(w, h))
+        let blocks = 0
+        for (let t = seg.start; t < seg.end; t += 0.05) {
+          const b = studioBlockAt(ctx, p, t, w, h)
+          if (!b) continue
+          blocks++
+          expect(b.box.y, `top at ${t.toFixed(2)} s`).toBeGreaterThanOrEqual(0)
+          expect(b.box.y + b.box.h, `bottom at ${t.toFixed(2)} s`).toBeLessThanOrEqual(h)
+        }
+        expect(blocks).toBeGreaterThan(0)
+      })
+})

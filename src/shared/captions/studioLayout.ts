@@ -770,6 +770,59 @@ function keepClear(studio: CaptionStudio, size: { width: number; height: number 
   return { position: start, dy: lifted !== null && !hitsCamera(rectAt(start, lifted, cx0)) && !hitsHard(rectAt(start, lifted, cx0)) ? lifted : 0, cx: cx0 }
 }
 
+/** How far up and down a block may go (§8.5): inside the text area, else 0.03 u from the frame's edges. */
+function boundsOf(w: number, h: number, area: Rect | null): { top: number; bottom: number } {
+  const u = Math.min(w, h)
+  const margin = CAPTION_SAFE * u
+  const inset = TEXT_INSET * u
+  return area ? { top: Math.max(margin, area.y + inset), bottom: Math.min(h - margin, area.y + area.h - inset) } : { top: margin * 0.5, bottom: h - margin * 0.5 }
+}
+
+/**
+ * `chunk` drawn smaller when its block, box included, is taller than placeStudio leaves it at the
+ * look's place: a chunk the flash rule merged (§9.6 rule 2) stacks the lines of several, and would
+ * otherwise run past the frame or the text area. Every word's size and place and every line's
+ * size scale alike; a chunk that fits is returned as it is.
+ */
+export function fitChunk(
+  layout: StudioLayout,
+  chunk: StudioChunk,
+  studio: CaptionStudio,
+  w: number,
+  h: number,
+  opts: { area?: Rect | null; forced?: 'top' | 'bottom'; legacyAnchor?: (position: CaptionSettings['position']) => number }
+): StudioChunk {
+  const area = opts.area ?? null
+  const lay = studio.layout
+  const bounds = boundsOf(w, h, area)
+  const legacy = !!lay.legacyAnchor && !opts.forced
+  let room: number
+  if (lay.place && !opts.forced) {
+    // Dragged: kept 0.06 u inside the frame, or inside the text area.
+    room = area ? bounds.bottom - bounds.top : h - 2 * CAPTION_SAFE * Math.min(w, h)
+  } else if (area && !legacy) room = bounds.bottom - bounds.top
+  else {
+    // At an anchor the top is a - c × height (c: 0 for a top edge, 1/2 for a centre, 1 for a bottom edge).
+    const p = opts.forced ?? lay.position
+    const topOf = (height: number): number => (legacy ? legacyTop(legacyPosition(p), height, w, h, area, opts.legacyAnchor) : anchorTop(p, height, w, h))
+    const a = topOf(0)
+    const c = a - topOf(1)
+    room = Infinity
+    if (c > 1e-9) room = Math.min(room, (a - bounds.top) / c)
+    if (c < 1 - 1e-9) room = Math.min(room, (bounds.bottom - a) / (1 - c))
+  }
+  const height = blockOf(chunk, studio, layout.px, w).height
+  if (!(height > room) || !(chunk.height > 0)) return chunk
+  // The box's padding counts as fixed (where it is per line it shrinks too, leaving a little to spare).
+  const k = Math.min(1, Math.max(0.1, (room - (height - chunk.height)) / chunk.height))
+  return {
+    ...chunk,
+    lines: chunk.lines.map((l) => ({ ...l, words: l.words.map((wd) => ({ ...wd, x: wd.x * k, w: wd.w * k, px: wd.px * k })), width: l.width * k, height: l.height * k, px: l.px * k })),
+    width: chunk.width * k,
+    height: chunk.height * k
+  }
+}
+
 /** Where `chunk` goes (§8.5, §8.6): its lines, block and the edge key presses keep clear of. */
 export function placeStudio(
   layout: StudioLayout,
@@ -783,10 +836,9 @@ export function placeStudio(
   const lay = studio.layout
   const block = blockOf(chunk, studio, layout.px, w)
   const area = opts.area ?? null
-  const inset = TEXT_INSET * u
   const margin = CAPTION_SAFE * u
-  const bounds = area ? { top: Math.max(margin, area.y + inset), bottom: Math.min(h - margin, area.y + area.h - inset) } : { top: margin * 0.5, bottom: h - margin * 0.5 }
-  const intoArea = (top: number, height: number): number => (area ? Math.min(Math.max(top, bounds.top), Math.max(bounds.top, bounds.bottom - height)) : top)
+  const bounds = boundsOf(w, h, area)
+  const intoArea =(top: number, height: number): number => (area ? Math.min(Math.max(top, bounds.top), Math.max(bounds.top, bounds.bottom - height)) : top)
   const topOf = (p: StudioPosition, height: number): number => (lay.legacyAnchor && !opts.forced ? legacyTop(legacyPosition(p), height, w, h, area, opts.legacyAnchor) : intoArea(anchorTop(p, height, w, h), height))
   let top: number
   // Chat (§0.1): the captions of "You" sit on the right, others on the left.

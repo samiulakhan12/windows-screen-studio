@@ -31,7 +31,7 @@ import { marksByCaption } from '../../../shared/captions/marks'
 import { captionPoses, clipsKey, EASE, flashSafeChunks, seedOf, typewriterClip, type ChunkPose, type MarkBox, type WordPose } from '../../../shared/captions/motion'
 import { replacedAt } from '../../../shared/captions/replaced'
 import { speakersOf, STEM_SPEAKERS } from '../../../shared/captions/speakers'
-import { captionObstacles, placeStudio, studioChunkAt, studioLayout, type CaptionObstacles, type StudioChunk, type StudioFace, type StudioLayout, type StudioLine, type StudioWordBox } from '../../../shared/captions/studioLayout'
+import { captionObstacles, fitChunk, placeStudio, studioChunkAt, studioLayout, type CaptionObstacles, type StudioChunk, type StudioFace, type StudioLayout, type StudioLine, type StudioWordBox } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { prefixDrawsSame, scriptsIn, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
@@ -164,13 +164,16 @@ function layoutOf(i: LayoutInput): StudioLayout {
   const clips = i.project.clips
   // The Digits choice (§0.2) changes the words' text, so it is part of the key.
   const digits = i.project.captions?.digits
-  const key = [i.w, i.h, areaKey(i.area), fontGeneration(), clipsKey(clips), i.language ?? '', i.showSpeaker, i.spoken, digits ?? '', marks.map((m) => `${m.from}-${m.to}-${m.tone ?? 1}`).join(','), idOf(i.project.fonts)].join('|')
+  // A chunk the flash rule merges fits the room at the caption's place, which a forced position changes.
+  const forced = i.project.captionPlaces?.find((p) => p.caption === i.seg.id)?.position
+  const key = [i.w, i.h, areaKey(i.area), fontGeneration(), clipsKey(clips), i.language ?? '', i.showSpeaker, i.spoken, digits ?? '', marks.map((m) => `${m.from}-${m.to}-${m.tone ?? 1}`).join(','), idOf(i.project.fonts), forced ?? ''].join('|')
   const hit = layouts.get(i.seg)
   if (hit && hit.studio === i.studio && hit.key === key) return hit.layout
   const faceOf = (token: StudioToken, role: 'text' | 'emphasis'): StudioFace =>
     wordFace(i.studio, role, token.script, { language: i.language, scripts: i.scripts, fonts: i.project.fonts, downloaded: catalogFontReady })
   const raw = studioLayout(i.seg, i.studio, i.w, i.h, measureOn(i.ctx), { faceOf, area: i.area, marks, language: i.language, showSpeaker: i.showSpeaker, spoken: i.spoken, digits })
-  const layout = raw.chunks.length ? flashSafeChunks(raw, clips, i.w * i.h, (c) => chunkArea(i.studio, raw, raw.chunks[c])) : raw
+  const room = { area: i.area, ...(forced ? { forced } : {}), ...(i.studio.layout.legacyAnchor ? { legacyAnchor: legacyAnchorOf(i.w, i.h, i.area) } : {}) }
+  const layout = raw.chunks.length ? flashSafeChunks(raw, clips, i.w * i.h, (c) => chunkArea(i.studio, raw, raw.chunks[c]), (c) => fitChunk(raw, c, i.studio, i.w, i.h, room)) : raw
   layouts.set(i.seg, { key, studio: i.studio, layout })
   return layout
 }

@@ -219,6 +219,7 @@ export const fakeStudioLayout = {
     return { tokens, chunks, px, lineHeight: px * studio.text.lineHeight, rtl: false, dirs: tokens.map(() => 'l'), emphasis }
   },
   breakPhrases: () => [],
+  fitChunk: (_layout: StudioLayout, chunk: StudioChunk) => chunk,
   studioChunkAt: (layout: StudioLayout, t: number): number => {
     let i = -1
     layout.chunks.forEach((c, k) => {

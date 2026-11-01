@@ -898,9 +898,10 @@ const MIN_BIG = 0.34
  * a chunk whose block covers more than 2.5% of the frame and shows for less than 0.34 s of viewing
  * time is merged with the next one (the last with the one before), and `bigMark` is set when a
  * spoken box or pill around the widest word would cover more than 2.5% of the frame, so the mark
- * dwells. The layout itself when nothing changes.
+ * dwells. Each merged chunk goes through `fit` (studioLayout's fitChunk), which draws it smaller
+ * when its stacked lines would run past the frame. The layout itself when nothing changes.
  */
-export function flashSafeChunks(layout: StudioLayout, clips: Clip[], frameArea: number, boxArea: (chunk: number) => number): StudioLayout {
+export function flashSafeChunks(layout: StudioLayout, clips: Clip[], frameArea: number, boxArea: (chunk: number) => number, fit?: (chunk: StudioChunk) => StudioChunk): StudioLayout {
   const limit = BIG * frameArea
   let chunks = layout.chunks
   const big = chunks.map((_, i) => boxArea(i) > limit)
@@ -935,7 +936,10 @@ export function flashSafeChunks(layout: StudioLayout, clips: Clip[], frameArea: 
     out[out.length - 1] = join(out[out.length - 1], b)
     merged = true
   }
-  if (merged) chunks = out
+  if (merged) {
+    const own = new Set(layout.chunks)
+    chunks = fit ? out.map((c) => (own.has(c) ? c : fit(c))) : out
+  }
   // The spoken mark around the widest word: its box with the padding of §5.1 (0.15 / 0.09 em) around a 1 em glyph box.
   let widest = 0
   for (const c of layout.chunks) for (const l of c.lines) for (const w of l.words) widest = Math.max(widest, (w.w + 0.3 * w.px) * 1.18 * w.px)
