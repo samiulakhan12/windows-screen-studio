@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { BrandKit } from '../../../../shared/editor/brandKit'
+import { mostlyBangla } from '../../../../shared/captions/captionTracks'
 import { greatHint, resolveGreatOptions, type GreatOptions } from '../../../../shared/captions/great'
 import { suggestedTile } from '../../../../shared/captions/autoStyle'
 import { CAPTION_COLORS, CAPTION_SIZE, captionsOf, HIGHLIGHT_COLORS } from '../../../../shared/captions/settings'
@@ -57,16 +58,7 @@ export function captionsAreBangla(project: Project): boolean {
   const t = project.transcript
   if (!t) return false
   if (t.language?.toLowerCase().split('-')[0] === 'bn') return true
-  let letters = 0
-  let bengali = 0
-  for (const s of t.segments.slice(0, 50)) {
-    for (const ch of s.text) {
-      if (!/\p{L}/u.test(ch)) continue
-      letters++
-      if (/\p{Script=Bengali}/u.test(ch)) bengali++
-    }
-  }
-  return letters > 0 && bengali / letters > 0.5
+  return mostlyBangla(t.segments)
 }
 
 /** The brand kit's caption look (the Brand tile and filter), read when the kit changes. */

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   burnedSegments,
   burnedTrackNote,
+  captionLanguage,
   captionsToTranslate,
   defaultExportLanguages,
   exportLanguages,
@@ -49,6 +50,15 @@ const project = (extra: Partial<Project> = {}): Project =>
   ({ duration: 20, clips: [{ start: 0, end: 20, speed: 1 }], transcript: { language: 'en', provider: 'local', model: 'm', createdAt: '', segments: segs }, ...extra }) as unknown as Project
 
 describe('caption tracks (test 47)', () => {
+  it('the captions’ language is the shown track’s, else the transcript’s, else Bangla for Bangla text with no language', () => {
+    expect(captionLanguage(project())).toBe('en')
+    expect(captionLanguage(project({ captionTracks: [bn], captions: { ...DEFAULT_CAPTIONS, track: 'bn' } }))).toBe('bn')
+    const unnamed = (text: string): Project => project({ transcript: { provider: 'local', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 2, text }] } })
+    expect(captionLanguage(unnamed('এখন ৩টি ধাপ, Chrome খুলুন'))).toBe('bn')
+    expect(captionLanguage(unnamed('Open Chrome এখন'))).toBeUndefined()
+    expect(captionLanguage({ captions: undefined, transcript: undefined })).toBeUndefined()
+  })
+
   it('textHash is FNV-1a 32 bits in hex', () => {
     expect(textHash('')).toBe('811c9dc5')
     expect(textHash('a')).toBe('e40c292c')

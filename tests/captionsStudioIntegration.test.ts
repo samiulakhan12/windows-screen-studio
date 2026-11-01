@@ -80,6 +80,14 @@ describe('the Digits choice reaches every place §0.2 names (captions, counters,
     expect(texts).not.toContain('300')
   })
 
+  it('and for Bangla captions whose transcript names no language, as the Digits control offers it', () => {
+    const p = project([C], undefined as unknown as string, { preset: 'bold', studio: look('bold-pop'), digits: 'native' })
+    drawStudioCaptions(frameOf(p, 1.5).fc)
+    const texts = painted().join(' ')
+    expect(texts).toContain('৩০০')
+    expect(texts).not.toContain('300')
+  })
+
   it('and as written without the choice (the identity for every project before it)', () => {
     const p = project([C], 'bn', { preset: 'bold', studio: look('bold-pop') })
     drawStudioCaptions(frameOf(p, 1.5).fc)

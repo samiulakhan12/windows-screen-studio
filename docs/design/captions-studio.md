@@ -3182,7 +3182,10 @@ on the same thing:
   `youBox` and `youText` (Chat), `extrude` and `spokenExtrude`, `split`. `StudioEdge.extrude`
   (3D Block) and `split` (Retro Pixel). `StudioBox.gap`, `shadow` (a shadow under each box) and
   `tail`; the border limit is 0.12 em. `CaptionMotion.wordTilt` (Stickers' −4° / +3° by word
-  index), `spokenScale` (1..1.3) and `spokenTilt` (degrees, −8..8: Bold Pop's −2° while spoken). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2).
+  index), `spokenScale` (1..1.3) and `spokenTilt` (degrees, −8..8: Bold Pop's −2° while spoken). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2),
+  in the language of the captions on the video (`captionLanguage`: the shown track's, else the
+  transcript's, else Bangla when the transcript names none and is mostly Bangla); the Digits, Case
+  and Letter spacing controls follow the same language.
   `STUDIO_LIMITS` holds the new limits.
 - **Readers**: an unknown `cat:` emphasis font is dropped (the text's font draws); repeated ids
   become `id~2`, `id~3`; overlapping marks keep the first one's id and tone, `auto` only when both

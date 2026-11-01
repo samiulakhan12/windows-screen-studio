@@ -286,6 +286,36 @@ export function burnedSegments(project: Project): readonly CaptionSegment[] {
   return out
 }
 
+const banglaCache = new WeakMap<readonly CaptionSegment[], boolean>()
+
+/** Most letters of the first 50 captions are Bengali (§0.2, §8.1: a transcript that names no language). Memoised. */
+export function mostlyBangla(segments: readonly CaptionSegment[]): boolean {
+  let out = banglaCache.get(segments)
+  if (out === undefined) {
+    let letters = 0
+    let bengali = 0
+    for (const s of segments.slice(0, 50)) {
+      for (const ch of s.text) {
+        if (!/\p{L}/u.test(ch)) continue
+        letters++
+        if (/\p{Script=Bengali}/u.test(ch)) bengali++
+      }
+    }
+    banglaCache.set(segments, (out = letters > 0 && bengali / letters > 0.5))
+  }
+  return out
+}
+
+/**
+ * The language of the captions on the video: the shown track's, else the transcript's, else Bangla
+ * when the transcript names none and is mostly Bangla. The Digits choice, Case and letter spacing
+ * follow it, in the controls and the drawing alike (§0.2).
+ */
+export function captionLanguage(project: Pick<Project, 'captions' | 'transcript'>): string | undefined {
+  const t = project.transcript
+  return project.captions?.track || t?.language || (t && mostlyBangla(t.segments) ? 'bn' : undefined)
+}
+
 /** One caption's position (captionPlaces) for the legacy placement; `position` itself without one. */
 export function placeOf(project: Project, caption: string, position: CaptionSettings['position']): CaptionSettings['position'] {
   if (!project.captionPlaces?.length) return position

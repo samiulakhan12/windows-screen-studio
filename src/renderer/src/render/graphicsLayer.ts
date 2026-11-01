@@ -10,7 +10,7 @@
  * user put it. Cards, emoji and texts are sprites in the Studio LRU; a counter's digits are drawn
  * live in fixed cells. Nothing is drawn, and nothing is called on the frame, without graphics.
  */
-import { burnedSegments } from '../../../shared/captions/captionTracks'
+import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
 import { textOn } from '../../../shared/captions/colors'
 import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
@@ -634,7 +634,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
 
 /** A list number in the captions' Digits choice (§0.2: Bangla ০–৯, Devanagari ०–९… or Western 0–9). */
 function listNumber(n: number, project: Project): string {
-  const lang = project.captions?.track ?? project.transcript?.language ?? 'en'
+  const lang = captionLanguage(project) ?? 'en'
   return withDigits(String(n), project.captions?.digits, lang)
 }
 

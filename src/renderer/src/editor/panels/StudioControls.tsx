@@ -5,6 +5,7 @@
  * the same step. Show speaker names and the emphasis buttons do not set `picked`.
  */
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { captionLanguage } from '../../../../shared/captions/captionTracks'
 import { brandTheme, speakerColors, withTheme } from '../../../../shared/captions/colors'
 import { clearEmphasis } from '../../../../shared/captions/marks'
 import { catalogFont, catalogId } from '../../../../shared/captions/fontCatalog'
@@ -154,7 +155,8 @@ export function TextControls(props: { project: Project }): JSX.Element {
   const { store } = useEditor()
   const { settings, studio, edit } = useLook(project)
   const frame = frameOf(project)
-  const language = base(project.transcript?.language)
+  // The language drawn: a shown translation's, so Digits, Case and letter spacing match the video.
+  const language = base(captionLanguage(project))
   const weights = weightsOf(studio.text.font)
   const shown = studioSize(studio, frame.w, frame.h)
   const joined = JOINED[language]

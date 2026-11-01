@@ -24,7 +24,7 @@
  * placeChunk's: x the left edge of the text, y the middle of the line.
  */
 import { CAPTION_FONT, CAPTION_SAFE, captionIndexAt, viewAt } from '../../../shared/captions/layout'
-import { burnedSegments } from '../../../shared/captions/captionTracks'
+import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
 import { speakerColors, textOn } from '../../../shared/captions/colors'
 import { wordFace } from '../../../shared/captions/fontStack'
 import { marksByCaption } from '../../../shared/captions/marks'
@@ -287,7 +287,7 @@ function shownAt(ctx: Ctx, project: Project, t: number, w: number, h: number, ar
   if (replacedAt(project, t).captions.has(seg.id)) return null
   const studio = effectiveStudio(look, segments)
   const chat = studio.box.kind === 'chat'
-  const language = settings.track ?? project.transcript?.language
+  const language = captionLanguage(project)
   // A translated track has no word times: no spoken mark and no word motion (§9.1 rule 7).
   const spoken = !settings.track
   const layout = layoutOf({ ctx, project, seg, studio, w, h, area, language, scripts: scriptsOf(segments), showSpeaker: !!settings.showSpeaker && !chat, spoken })
@@ -347,7 +347,7 @@ function wordChunkOf(ctx: Ctx, project: Project, caption: string, word: number, 
   const seg = segments.find((s) => s.id === caption)
   if (!seg) return null
   const studio = effectiveStudio(look, segments)
-  const language = settings.track ?? project.transcript?.language
+  const language = captionLanguage(project)
   const layout = layoutOf({ ctx, project, seg, studio, w, h, area, language, scripts: scriptsOf(segments), showSpeaker: !!settings.showSpeaker && studio.box.kind !== 'chat', spoken: !settings.track })
   for (const chunk of layout.chunks) {
     for (const [li, line] of chunk.lines.entries()) {

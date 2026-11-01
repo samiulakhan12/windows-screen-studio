@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CaptionMark, CaptionSettings, Project } from '../src/shared/types'
+import type { CaptionMark, CaptionSettings, CaptionTrack, Project } from '../src/shared/types'
 import { byTestId, contexts, descendants, focused, key, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
@@ -352,6 +352,28 @@ describe('Digits (§0.2)', () => {
   it('is not offered for English', async () => {
     const els = await settle(view('TextControls'), SKIP)
     expect(byTestId(els, 'caption-digits')).toBeUndefined()
+  })
+
+  it('follows the caption track shown on the video, as the drawing does', async () => {
+    const bnTrack: CaptionTrack = { language: 'bn', by: 'openai', model: 'gpt-4.1-mini', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text: 'প্রতিটি শব্দ গুরুত্বপূর্ণ', src: 'x' }] }
+    // English speech with its Bangla translation burned in: Bangla digits can be chosen, Case has nothing to change.
+    store.state = project({ ...boldPop(), track: 'bn' }, { captionTracks: [bnTrack] })
+    let els = await settle(view('TextControls'), SKIP)
+    expect(byTestId(els, 'caption-case')).toBeUndefined()
+    ;(chipIn(els, 'caption-digits', 'Bangla ০–৯').props.onClick as () => void)()
+    expect(store.state.captions).toMatchObject({ digits: 'native', track: 'bn' })
+    // Bangla speech with its English translation burned in: no Bangla digits to offer.
+    const enTrack: CaptionTrack = { ...bnTrack, language: 'en', segments: [{ id: 'c1', text: 'Every word counts', src: 'x' }] }
+    store.state = project({ ...boldPop(), track: 'en' }, { transcript: { language: 'bn', segments: [{ id: 'c1', start: 0, end: 2, text: 'এখন এক্সপোর্ট চাপুন' }] } as Project['transcript'], captionTracks: [enTrack] })
+    els = await settle(view('TextControls'), SKIP)
+    expect(byTestId(els, 'caption-digits')).toBeUndefined()
+    expect(byTestId(els, 'caption-case')).toBeDefined()
+  })
+
+  it('is offered for Bangla captions whose transcript names no language', async () => {
+    store.state = project(boldPop(), { transcript: { segments: [{ id: 'c1', start: 0, end: 2, text: 'এখন ৩টি ধাপ' }] } as Project['transcript'] })
+    const els = await settle(view('TextControls'), SKIP)
+    expect(chipIn(els, 'caption-digits', 'Bangla ০–৯')).toBeDefined()
   })
 })
 

@@ -1,5 +1,6 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
+import { captionLanguage } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { withDigits } from '../../../shared/captions/words'
@@ -400,7 +401,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
 function drawnCard(project: Project, card: TitleCard): TitleCard {
   const digits = project.captions?.digits
   if (!digits || card.auto?.by !== 'chapter') return card
-  const title = withDigits(card.title, digits, project.captions?.track ?? project.transcript?.language)
+  const title = withDigits(card.title, digits, captionLanguage(project))
   return title === card.title ? card : { ...card, title }
 }
 
