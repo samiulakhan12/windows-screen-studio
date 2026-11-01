@@ -221,8 +221,10 @@ async function main() {
       await f.waitFor(() => fs.existsSync(srt), 'the SRT file is written again')
       h.assert(/\nPriya: Word 0\n/.test(fs.readFileSync(srt, 'utf8')), `names in the SRT when asked:\n${fs.readFileSync(srt, 'utf8').slice(0, 120)}`)
 
-      // Show speaker names on the video: off by default; on, the caption is wider in the export.
-      h.assert(!h.readProject(home, id).captions?.showSpeaker, 'speaker names are not drawn by default')
+      // Show speaker names on the video. With two named speakers the first captions get Captions
+      // Studio's Auto style (§11.6 rule 4): Subtitle with the names and a colour per speaker.
+      const auto = h.readProject(home, id).captions
+      h.assert(auto?.showSpeaker === true && auto.studio?.from === 'subtitle' && auto.studio.speakerColors === true && !auto.picked, `two speakers: Subtitle with names and colours, not picked (${JSON.stringify({ showSpeaker: auto?.showSpeaker, from: auto?.studio?.from, colours: auto?.studio?.speakerColors, picked: auto?.picked })})`)
       const out = (name) => path.join(home, `${name}.mp4`)
       const whiteSpan = async (file) => {
         const { width, height, frames } = fx.framesAt(file, [Math.round((STARTS[0] + 0.6) * 30)], 'rgb24')
@@ -252,6 +254,12 @@ async function main() {
         await win.click('.modal button:has-text("Done")')
         await win.waitForSelector('.modal', { state: 'detached' })
       }
+      // Off (which also turns the speaker colours off, §2.6): white words alone; on again: the name before them.
+      // A Studio look has the switch in Look › Speakers, which starts closed.
+      const speakersPart = win.locator('[data-testid="caption-speakers"] button.caption-part-head')
+      if ((await speakersPart.getAttribute('aria-expanded')) !== 'true') await speakersPart.click()
+      await win.locator('label', { hasText: 'Show speaker names' }).click()
+      await saved(home, id, (q) => !q.captions?.showSpeaker && !q.captions?.studio?.speakerColors, 'Show speaker names off is saved, with the colours')
       await exportTo(out('plain'))
       await win.locator('label', { hasText: 'Show speaker names' }).click()
       await saved(home, id, (q) => q.captions?.showSpeaker === true, 'Show speaker names is saved')

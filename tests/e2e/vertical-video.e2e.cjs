@@ -504,7 +504,11 @@ h.run(
     h.assert(fs.readFileSync(path.join(camDir, 'cursor.json')).equals(fs.readFileSync(path.join(copyDir, 'cursor.json'))), 'cursor.json is the same')
     h.assert(!fs.existsSync(path.join(copyDir, '.copying')), 'the copy is finished')
     h.assert(JSON.stringify(snapshot(camDir)) === JSON.stringify(camBefore), 'the original folder is byte for byte as it was, with no new file')
+    // Captions Studio §10.5: a look not picked by hand is chosen again for the new shape; with
+    // the camera on screen that is Bold Pop, and the notice says so.
+    h.assert(copy.captions?.studio?.from === 'bold-pop', `the copy's captions are Bold Pop (${copy.captions?.studio?.from})`)
     await titleIs(win, 'Cam (vertical)', 'the copy opens')
+    await noticeHas(win, 'Captions: Bold Pop for the vertical version.', 'the notice names the caption look')
     await noticeHas(win, 'Your original “Cam” is unchanged', 'the notice after the copy')
     await win.click('.notice-slot button:has-text("Open original")')
     await titleIs(win, 'Cam', 'Open original opens Cam')
@@ -522,26 +526,33 @@ h.run(
       let stripeAbove = 0
       let shown = 0
       let sampled = 0
-      let white = 0
+      let ink = 0
       const outside = []
+      // Bold Pop's caption at 2 s is its spoken word in #39e508 (one word a chunk here), white when
+      // not spoken, always inside its black outline: a stripe's edge can blend to that green, but no
+      // stripe and not the camera has black beside it.
+      const dark = (c) => c[0] < 50 && c[1] < 50 && c[2] < 50
+      const outlined = (x, y) => [[-6, 0], [6, 0], [0, -6], [0, 6]].some(([dx, dy]) => x + dx >= 0 && x + dx < OW && y + dy >= 0 && y + dy < OH && dark(px(frame, x + dx, y + dy)))
+      const captionColour = (c) => (Math.abs(c[0] - 0x39) < 30 && Math.abs(c[1] - 0xe5) < 30 && c[2] < 40) || (c[0] > 235 && c[1] > 235 && c[2] > 235)
       for (let y = 0; y < OH; y++) {
         for (let x = 0; x < OW; x++) {
           const c = px(frame, x, y)
+          const caption = (q) => captionColour(q) && outlined(x, y)
           if (y < 0.31 * OH && isStripe(classOf(c))) stripeAbove++
           if (y >= 0.34 * OH && x % 8 === 0 && y % 8 === 0) {
             sampled++
             if (isStripe(classOf(c))) shown++
           }
-          if (c[0] > 235 && c[1] > 235 && c[2] > 235) {
-            white++
+          if (caption(c)) {
+            ink++
             if (y < 0.32 * OH || y > 0.76 * OH || x < 0.06 * OW || x > 0.86 * OW) outside.push([x, y])
           }
         }
       }
       h.assert(stripeAbove === 0, `no stripe colour above 0.31 H (${stripeAbove} pixels)`)
       h.assert(shown >= 0.8 * sampled, `the screen shows below the band (${shown} of ${sampled} samples are stripes)`)
-      h.assert(white > 50, `the caption is drawn (${white} white pixels)`)
-      h.assert(outside.length === 0, `the caption stays in the text area (${outside.length} white pixels outside, e.g. ${JSON.stringify(outside.slice(0, 3))})`)
+      h.assert(ink > 50, `the caption is drawn (${ink} caption pixels)`)
+      h.assert(outside.length === 0, `the caption stays in the text area (${outside.length} caption pixels outside, e.g. ${JSON.stringify(outside.slice(0, 3))})`)
     }
 
     // 7. Steering: R holds the view where it is; dragging the picture aims it; undo, step by step.
