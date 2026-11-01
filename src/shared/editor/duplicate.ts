@@ -100,12 +100,14 @@ export function projectCopy(project: Project, kind: CopyKind, measure: MeasureTe
 /**
  * Whether a copy in another shape gets its caption look chosen again (§10.5): a look not picked
  * by hand (an automatic one, or the default Classic look), or an unedited built-in tile. An edited,
- * saved or brand look, and a Classic look picked by hand, are kept.
+ * saved or brand look, and a Classic look picked by hand, are kept; a brand or saved look is kept
+ * even when automation gave it (Auto style gives the brand kit's look without `picked`).
  */
 export function lookChosenAgain(captions: CaptionSettings | undefined): boolean {
   const c = captions
+  const s = c?.studio
+  if (s && (s.from === 'brand' || s.from.startsWith('mine:'))) return false
   if (!c?.picked) return true
-  const s = c.studio
   return !!s && !!studioPreset(s.from) && !studioEdited(s)
 }
 

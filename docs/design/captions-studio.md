@@ -2463,7 +2463,8 @@ work between graphics.
 ones are refitted like images (`refitItems`, `duplicate.ts:97-124`). The caption look is chosen
 again for the new shape when it was not picked by hand (`captions.picked` absent) or is an
 unedited built-in tile: the copy gets what Auto style gives the new frame (§11.6), with the notice
-"Captions: Bold Pop for the vertical version". An edited, saved or brand look is kept.
+"Captions: Bold Pop for the vertical version". An edited, saved or brand look is kept, a brand
+look given by Auto style (rule 1, not picked by hand) too.
 
 ### 10.6 Sound on pops
 

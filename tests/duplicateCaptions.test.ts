@@ -82,6 +82,18 @@ describe('the caption look of a vertical version', () => {
     expect(auto.calls).toHaveLength(0)
   })
 
+  it('keeps a brand or saved look that automation gave, without a notice', () => {
+    for (const from of ['brand', 'mine:abc']) {
+      const c = { ...DEFAULT_CAPTIONS, studio: { ...subtitle, from } }
+      const p = wide(c)
+      expect(lookChosenAgain(c)).toBe(false)
+      const copy = projectCopy(p, 'vertical', null)
+      expect(copy.captions).toBe(c)
+      expect(captionCopyNotice(p, copy, 'vertical')).toBeNull()
+    }
+    expect(auto.calls).toHaveLength(0)
+  })
+
   it('an edited look dragged to the bottom edge is kept without a notice, though its block is moved in', () => {
     const studio = { ...subtitle, text: { ...subtitle.text, size: 0.07 }, layout: { ...subtitle.layout, place: { x: 0.5, y: 0.97 } } }
     const p = wide({ ...DEFAULT_CAPTIONS, studio, picked: true })
