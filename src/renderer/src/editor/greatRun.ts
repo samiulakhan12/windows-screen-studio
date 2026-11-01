@@ -10,6 +10,7 @@ import { textHash } from '../../../shared/captions/captionTracks'
 import { readCleanupChoices, readWordList, type CleanupChoices, type WordListEntry } from '../../../shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, greatNotice, planCaptionsGreat, readGreatOptions, type GreatOptions, type GreatSummary } from '../../../shared/captions/great'
 import { readCaptionStudio } from '../../../shared/captions/studioData'
+import type { BrandKit } from '../../../shared/editor/brandKit'
 import type { EditStore } from '../../../shared/editor/editStore'
 import type { CaptionStudio, Project } from '../../../shared/types'
 
@@ -31,13 +32,13 @@ async function pref(key: 'captionsGreat' | 'captionCleanup' | 'captionWordList')
 }
 
 /**
- * The brand kit's caption style, or null. The kit gains `captionStyle` (Captions Studio part P3,
- * §4.6); a kit without one, or one that cannot be read, gives null.
+ * The brand kit's caption style, or null: the look of its `captionStyle` ({ name, look }, §4.6);
+ * a kit without one, or one that cannot be read, gives null.
  */
 export async function loadBrandLook(): Promise<CaptionStudio | null> {
   try {
-    const kit = (await window.api.getBrandKit()) as unknown as { captionStyle?: unknown }
-    return readCaptionStudio(kit.captionStyle) ?? null
+    const kit: BrandKit | null = await window.api.getBrandKit()
+    return readCaptionStudio(kit?.captionStyle?.look) ?? null
   } catch {
     return null
   }

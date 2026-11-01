@@ -197,13 +197,16 @@ describe('captionItems: the first captions get Auto style (Captions Studio test 
   })
 
   it("the brand kit's caption style wins", async () => {
-    kit.captionStyle = studioPreset('bold-pop')!.look
+    // As main hands it out: { name, look } (sanitizeBrandKit).
+    const look = studioPreset('bold-pop')!.look
+    kit.captionStyle = { name: 'Acme', look }
     try {
       const s = tall()
       const run = items.transcribe(s, { providerId: 'x' })
       calls.transcribe[0].resolve({ provider: 'openai', model: 'm', createdAt: '', segments })
       await run
-      expect(s.store.state.captions).toMatchObject({ studio: { from: 'brand' } })
+      expect(s.store.state.captions).toMatchObject({ studio: { from: 'brand', text: { font: look.text.font }, theme: look.theme } })
+      expect(look.text.font).not.toBe(studioPreset('subtitle')!.look.text.font)
     } finally {
       delete kit.captionStyle
     }
