@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import type { AiTextRequest, AiTextResult, AiTextTask } from '../src/shared/api/ai'
 import { MAX_AI_LINKS, readCaptionSegments } from '../src/shared/captions/captionData'
 import { aiLinksAfter, applyTextResult, mergeWithNext, splitCaption } from '../src/shared/captions/edit'
-import { AiOutputError, runTextTask, validateTextRequest } from '../src/shared/captions/transcriptText'
+import { runTextTask, validateTextRequest } from '../src/shared/captions/transcriptText'
 import { createProject } from '../src/shared/engine/project'
 import { linksToCheck, saidLinks } from '../src/shared/publish/check'
 import { publishSegments } from '../src/shared/publish/pack'
@@ -117,9 +117,11 @@ describe('the copy pack after the seventh review of its links', () => {
     expect(notes(card, reloaded(stored))).toEqual([card])
     // The said link itself stays said.
     expect(notes('Get it at flown.jp/download', stored)).toEqual([])
-    // A suggested title that the net notes is not used: it would become the name, which is trusted as typed.
+    // A suggested title that the net notes comes back with its note, and is not offered as the name, which is trusted as
+    // typed (the Captions tab and the Publish dialog: captionsPanel.test.ts, publishDialog.test.ts).
     const source: CaptionSegment[] = [{ id: 'b', start: 0, end: 8, text: 'You can download it from github.com/flown/recorder.' }]
-    await expect(runTextTask({ task: 'title', segments: source }, async () => ({ text: 'Get it at 登录github.com/flown/recorder' }))).rejects.toThrow(AiOutputError)
+    const noted = await runTextTask({ task: 'title', segments: source }, async () => ({ text: 'Get it at 登录github.com/flown/recorder' }))
+    expect(notes((noted as { text: string }).text, source)).toEqual(['登录github.com/flown/recorder'])
     await expect(runTextTask({ task: 'title', segments: source }, async () => ({ text: 'Get it at github.com/flown/recorder' }))).resolves.toEqual({ task: 'title', text: 'Get it at github.com/flown/recorder' })
   })
 

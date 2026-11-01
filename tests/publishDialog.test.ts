@@ -474,6 +474,18 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(note(card(out, 'xpost'))).toContain('evil⟨U+200B⟩reports.com')
   })
 
+  it('in a Chinese or Japanese paragraph the note and the copy name only the clauses to check (§4.8)', async () => {
+    const note = (els: El[]): string[] => els.filter((e) => e.props['data-testid'] === 'publish-check').map((box) => textOf(box.props.children))
+    let out = await opened()
+    type(card(out, 'linkedin'), 'LinkedIn post text', '第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。')
+    out = render()
+    expect(note(card(out, 'linkedin'))).toEqual([expect.stringContaining('Check this link before you post:打开README.md。 … 运行main.py。It is not')])
+    press(card(out, 'linkedin'), 'Copy')
+    await flush()
+    out = render()
+    expect(said(card(out, 'linkedin'))).toEqual([['status', 'LinkedIn post copied. Check this link before you post: 打开README.md。 … 运行main.py。']])
+  })
+
   it('the note agrees in number with the links it names (§4.8)', async () => {
     const note = (els: El[]): string | null => {
       const box = els.find((e) => e.props['data-testid'] === 'publish-check')

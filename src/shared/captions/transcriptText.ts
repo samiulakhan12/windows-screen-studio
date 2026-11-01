@@ -226,9 +226,10 @@ const withSaidLinks = (text: string, segments: readonly CaptionSegment[], max: n
   plainText(text, { max, oneLine, linksFrom: captionsText(segments), untrusted: unsaidLinks(segments) })
 
 /**
- * Whether the safety net (check.ts) notes anything in `text` that `segments` do not say: what an AI
- * suggests for the recording's name or a chapter title is trusted as typed once it is there, so it
- * may have nothing the net would note ("Sign in at 登录acme.com", which the cleaning keeps).
+ * Whether the safety net (check.ts) notes anything in `text` that `segments` do not say: a chapter
+ * title an AI suggests is added to the project, where it is trusted as typed, so it may have nothing
+ * the net would note ("Sign in at 登录acme.com", which the cleaning keeps). (A suggested title is
+ * shown with the net's note, and Rename the recording is not offered for it: §4.8.)
  */
 const noted = (text: string, said: SaidLinks): boolean => linksToCheck(text, said).length > 0
 
@@ -257,8 +258,9 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
 }
 
 /**
- * A title or summary of an answer, with only the links `segments` (the captions sent) have; a title
- * the safety net notes anything in is not used (noted: it may become the recording's name).
+ * A title or summary of an answer, with only the links `segments` (the captions sent) have. What the
+ * safety net notes in it is shown with the net's note where it is shown (the Captions tab, the Publish
+ * dialog), and a noted title cannot become the recording's name there (docs/design/publish-pack.md §4.8).
  */
 export function validateTextAnswer(task: 'title' | 'summary', answer: unknown, segments: readonly CaptionSegment[]): string {
   if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(`no ${task}`)
@@ -267,7 +269,6 @@ export function validateTextAnswer(task: 'title' | 'summary', answer: unknown, s
       ? withSaidLinks(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), segments, 120, true)
       : withSaidLinks(answer.text.trim().slice(0, 3000), segments, 3000, false)
   if (!text) throw new AiOutputError(`an empty ${task}`)
-  if (task === 'title' && noted(text, saidLinks(segments))) throw new AiOutputError('a title with a link that was not said')
   return text
 }
 

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 import { MAX_CAPTIONS } from '../src/shared/captions/captionData'
 
@@ -220,12 +220,15 @@ function descendants(el: El): El[] {
   return found
 }
 
+/** The notices the tab gave (its onNotice), in order. */
+const panelNotices: string[] = []
+
 /** The tab for the project in the store, rendered until its state and effects settle. */
 function render(panel: (props: unknown) => unknown = CaptionsPanel, extra: unknown = null): El[] {
   for (let pass = 0; pass < 20; pass++) {
     dirty = false
     const out: El[] = []
-    walk([{ type: panel, props: { project: store.state, selection: null, onSelect: () => undefined, onNotice: () => undefined } }, extra], 'root', out)
+    walk([{ type: panel, props: { project: store.state, selection: null, onSelect: () => undefined, onNotice: (m: string) => void panelNotices.push(m) } }, extra], 'root', out)
     const run = effects
     effects = []
     run.forEach((e) => e())
@@ -1375,6 +1378,61 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     store.state = { ...store.state, transcript }
     await show()
     expect(aiAsked).toHaveLength(3)
+  })
+
+  it('a suggested summary with a link nobody said shows the safety net\'s note, and Copy says it (publish-pack §4.8)', async () => {
+    let clipboardText = ''
+    // The clipboard (only for this test: the window stub stays).
+    const navigatorBefore = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: (t: string) => ((clipboardText = t), Promise.resolve()) } } })
+    onTestFinished(() => void (navigatorBefore ? Object.defineProperty(globalThis, 'navigator', navigatorBefore) : delete (globalThis as { navigator?: unknown }).navigator))
+    const said = [{ id: 'a', start: 0, end: 5, text: 'You can download it from flown.jp/download today.' }]
+    store.state = { ...store.state, name: 'Demo', transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    command('summary')
+    let out = await answer(0, { task: 'summary', text: 'Grab the project at ログインflown.jp/download today.' })
+    const note = byTest(out, 'publish-check')
+    expect(note.map((n) => textOf(n.props.children))).toEqual([
+      "Check this link before you post:ログインflown.jp/downloadIt is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+    ])
+    expect(note[0].props.role).toBe('note')
+    const copy = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Copy') as El
+    expect(copy.props['aria-describedby']).toBe(note[0].props.id)
+    panelNotices.length = 0
+    click(out, 'Copy')
+    await flush()
+    // Copied as written, with the note said.
+    expect(clipboardText).toBe('Grab the project at ログインflown.jp/download today.')
+    expect(panelNotices).toEqual(['Summary copied. Check this link before you post: ログインflown.jp/download'])
+    // The said link needs no note.
+    command('summary')
+    out = await answer(1, { task: 'summary', text: 'Grab the project at flown.jp/download today.' })
+    expect(byTest(out, 'publish-check')).toEqual([])
+    panelNotices.length = 0
+    click(out, 'Copy')
+    await flush()
+    expect(panelNotices).toEqual(['Summary copied'])
+  })
+
+  it('a suggested title with a link nobody said shows the note, and Rename the recording is not offered for it (publish-pack §4.8)', async () => {
+    const said = [{ id: 'a', start: 0, end: 5, text: 'You can download it from github.com/flown/recorder or from flown.app.' }]
+    store.state = { ...store.state, name: 'Demo', transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    command('title')
+    let out = await answer(0, { task: 'title', text: 'Get it at 登录github.com/flown/recorder' })
+    expect(byTest(out, 'publish-check').map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this link before you post:登录github.com/flown/recorder')])
+    const rename = (els: El[]): El => els.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Rename the recording') as El
+    expect(rename(out).props.disabled).toBe(true)
+    expect(rename(out).props['aria-describedby']).toBe('captions-title-check')
+    // A title with the said link, or glued to Chinese text where no site reads a longer name, is offered.
+    for (const [i, text] of [[1, 'Get it at github.com/flown/recorder'], [2, '用flown.app轻松录制屏幕']] as const) {
+      command('title')
+      out = await answer(i, { task: 'title', text })
+      expect(byTest(out, 'publish-check')).toEqual([])
+      expect(rename(out).props.disabled).toBe(false)
+    }
+    click(out, 'Rename the recording')
+    expect(store.state.name).toBe('用flown.app轻松录制屏幕')
   })
 
   it('brings the AI tools into view, where the work and its answer show', async () => {

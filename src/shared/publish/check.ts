@@ -3,7 +3,8 @@
  * an answer for every reading it knows; this never changes text. It reads each card paranoidly, as a
  * browser might read a host (characters it drops dropped, escapes decoded, NFKC, IDNA's dots as dots),
  * and returns every stretch some site could turn into a link that is not a said one, for the Publish
- * dialog to show as "Check this link before you post". A false alarm only shows a note. Pure.
+ * dialog and the Captions tab's suggested title and summary to show as "Check this link before you
+ * post" (a noted title is not offered as the recording's name). Pure.
  */
 import { isMailAt, saidKeys, trustedText, unsaidLinks } from './text'
 import { isTopLevelDomain } from './twitterText'
@@ -343,3 +344,23 @@ export function saidLinks(segments: readonly { text: string; aiLinks?: readonly 
 /** How a stretch shows in a note: invisible characters as their code ("evil⟨U+200B⟩.com"), so nothing in it is hidden. */
 export const shownRun = (run: string): string =>
   run.replace(INVISIBLE, (c) => `⟨U+${(c.codePointAt(0) as number).toString(16).toUpperCase().padStart(4, '0')}⟩`)
+
+/** What ends a clause in Chinese and Japanese, where one stretch between spaces may be a whole paragraph. */
+const CLAUSE_END = /(?<=[。｡！？；，、])/u
+
+/**
+ * What a note shows of `run` (a stretch linksToCheck returned for `said`). In Chinese and Japanese a
+ * stretch may be a whole paragraph: then only its clauses the net notes on their own ("打开README.md。
+ * … 运行main.py。"), when what is left without them is noted nowhere. Else, and where it has a host,
+ * an escape or a control character (a clause's end may be part of a link there: "//paypal-login。com"),
+ * the whole stretch. Display only: what is noted is linksToCheck's.
+ */
+export function shownPart(run: string, said: SaidLinks): string {
+  if (/[&\\%\p{Cc}]/u.test(run) || view(run).search(AUTHORITY) >= 0) return run
+  const parts = run.split(CLAUSE_END).filter(Boolean)
+  if (parts.length < 2) return run
+  const hit = parts.map((p) => linksToCheck(p, said).length > 0)
+  if (!hit.includes(true) || !hit.includes(false)) return run
+  if (linksToCheck(parts.map((p, i) => (hit[i] ? ' ' : p)).join(''), said).length) return run
+  return parts.filter((_, i) => hit[i]).join(' … ')
+}

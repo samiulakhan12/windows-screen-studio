@@ -11,6 +11,7 @@ import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
+import { linksToCheck } from '../../../../shared/publish/check'
 import type { CaptionPreset, CaptionSegment, CaptionSettings, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { SearchIcon } from '../CommandPalette'
@@ -33,6 +34,7 @@ import { FontPicker } from './FontPicker'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
+import { checkNote, checkText, projectSaid } from '../../publish/checkNote'
 import { LOCAL_TRANSCRIBER_ID } from '../../../../shared/api/speech'
 import { BANGLA_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
 import { doneLine, downloadSpaceNeeded, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
@@ -1030,6 +1032,15 @@ function AiToolsSection({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
   const [summary, setSummary] = useState<string | null>(null)
+  // The safety net (publish-pack §4.8) reads a suggested title and summary as the Publish dialog reads its cards: a
+  // title it notes is not offered as the recording's name (which is trusted as typed), and Copy says what to check.
+  const project = store.state
+  const said = useMemo(
+    () => (title || summary ? projectSaid(project) : null),
+    [title, summary, project.transcript, project.clips, project.freezes, project.chapters, project.name] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const titleChecks = useMemo(() => (title && said ? linksToCheck(title, said) : []), [title, said])
+  const summaryChecks = useMemo(() => (summary && said ? linksToCheck(summary, said) : []), [summary, said])
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   const live = useRef(true)
@@ -1165,9 +1176,12 @@ function AiToolsSection({
               <p>
                 Suggested title: <strong>{title}</strong>
               </p>
+              {said && checkNote(titleChecks, said, 'captions-title-check')}
               <div className="row start">
                 <button
                   className="btn small primary"
+                  disabled={titleChecks.length > 0}
+                  aria-describedby={titleChecks.length ? 'captions-title-check' : undefined}
                   onClick={() => {
                     store.update((p) => ({ ...p, name: title }))
                     setTitle(null)
@@ -1186,15 +1200,19 @@ function AiToolsSection({
             <div className="captions-suggestion" role="status">
               <p>Summary:</p>
               <p className="captions-summary">{summary}</p>
+              {said && checkNote(summaryChecks, said, 'captions-summary-check')}
               <div className="row start">
                 <button
                   className="btn small primary"
-                  onClick={() =>
+                  aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined}
+                  onClick={() => {
+                    // The safety net's note is said with the copy too, as the Publish dialog's Copy says it.
+                    const check = said ? checkText(summaryChecks, said) : ''
                     void navigator.clipboard.writeText(summary).then(
-                      () => onNotice('Summary copied'),
+                      () => onNotice(check ? `Summary copied. ${check}` : 'Summary copied'),
                       () => onNotice('The summary could not be copied')
                     )
-                  }
+                  }}
                 >
                   Copy
                 </button>

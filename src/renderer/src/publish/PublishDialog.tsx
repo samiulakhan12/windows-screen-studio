@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AiProviderInfo } from '../../../shared/api/ai'
-import { linksToCheck, saidLinks, shownRun, type SaidLinks } from '../../../shared/publish/check'
+import { linksToCheck, saidLinks, type SaidLinks } from '../../../shared/publish/check'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
 import { composeYoutubeDescription, descriptionBody, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
@@ -16,6 +16,7 @@ import { Chips } from '../editor/controls'
 import { EditorIcon } from '../editor/EditorIcon'
 import { useModalFocus } from '../editor/modalFocus'
 import { useAiProviders } from '../editor/panels/CaptionsPanel'
+import { checkNote, checkText } from './checkNote'
 import { loadPublishPrefs, savePublishPrefs } from './publishPrefs'
 import { editItem, isRunning, seedItem, stopAll, stopItem, usePackItems, writeItem, type PackItem, type WriteContext } from './publishRun'
 import './publish.css'
@@ -151,7 +152,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
 
   const copy = (kind: PublishKind, text: string, what: string): void => {
     // The safety net's notes are said with the copy too (§4.8).
-    const check = checkText(checksOf(text, said))
+    const check = checkText(checksOf(text, said), said)
     void navigator.clipboard.writeText(text).then(
       () => say(kind, check ? `${what} copied. ${check}` : `${what} copied`),
       () => say(kind, `${what} could not be copied`, true)
@@ -250,7 +251,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
                 if (!description) return
                 store.update((p) => ({ ...p, publish: { description } }))
                 // The safety net's notes are said here too: every export's description file will have the link.
-                const check = checkText(checksOf(composeYoutubeDescription(description, youtube.chapters, youtube.duration), said))
+                const check = checkText(checksOf(composeYoutubeDescription(description, youtube.chapters, youtube.duration), said), said)
                 say(kind, check ? `The export's description file will use this text. ${check}` : "The export's description file will use this text")
               }}
               onStopForExports={() => {
@@ -336,10 +337,6 @@ function checksOf(text: string, said: SaidLinks): string[] {
   return runs
 }
 
-/** The safety net's words for `runs` (linksToCheck), each as written with what is invisible in it shown; '' for none. */
-const checkText = (runs: readonly string[]): string =>
-  runs.length ? `Check ${runs.length === 1 ? 'this link' : 'these links'} before you post: ${runs.map(shownRun).join(', ')}` : ''
-
 /** A card's status line (role status): "Written" is how a screen reader hears the text is ready. */
 const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: 'Written', error: '' }
 /** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
@@ -389,23 +386,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, saidLinks: spoken, 
         aria-describedby={checks.length && !busy ? `${id}-check` : undefined}
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
       />
-      {checks.length > 0 && !busy && (
-        <div className="publish-check" role="note" id={`${id}-check`} data-testid="publish-check">
-          <p className="publish-check-title">{checks.length === 1 ? 'Check this link before you post:' : 'Check these links before you post:'}</p>
-          <ul>
-            {checks.map((run) => (
-              <li key={run}>
-                <code>{shownRun(run)}</code>
-              </li>
-            ))}
-          </ul>
-          <p className="publish-check-why">
-            {checks.length === 1
-              ? "It is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
-              : "They are not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."}
-          </p>
-        </div>
-      )}
+      {!busy && checkNote(checks, spoken, `${id}-check`)}
       {isYoutube && (
         <div className="publish-youtube">
           <p className="publish-sub">Chapters (from your timeline)</p>
