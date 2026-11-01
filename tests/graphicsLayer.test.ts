@@ -199,6 +199,15 @@ describe('the graphics layer (§10.4)', () => {
     expect(c).toBeCloseTo(a, 6)
   })
 
+  it('draws a counter’s words whole, so Bangla and Hindi units keep their vowel signs and conjuncts', () => {
+    for (const suffix of [' টাকা', ' লক্ষ', ' लाख']) {
+      calls.length = 0
+      drawGraphicsLayer(frameOf(project([counter({ to: 12, suffix })]), 4.5).fc)
+      const parts = calls.filter((c) => c.name === 'fillText').map((c) => String(c.args[0]))
+      expect(parts).toEqual(['1', '2', suffix])
+    }
+  })
+
   it('shows a list card’s items from their times', () => {
     const list: ListGraphic = { id: 'l1', kind: 'list', start: 1, end: 8, place: 'auto', size: 0.045, title: 'Three steps', marker: 'number', items: [{ text: 'Open settings', at: 1.2 }, { text: 'Click export', at: 3 }, { text: 'Save', at: 5 }], ...motion }
     const items = (t: number): string[] => {

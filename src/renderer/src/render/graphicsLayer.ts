@@ -87,6 +87,9 @@ function measure(ctx: Ctx, text: string, font: string): number {
 
 const DIGIT = /\p{Nd}/u
 
+/** A counter's text in parts: each digit alone, and each run between digits whole, so its letters join and shape (Bangla, Hindi, Arabic units). */
+const counterParts = (text: string): string[] => text.match(/\p{Nd}|\P{Nd}+/gu) ?? []
+
 /** A counter's text in the captions' Digits choice (§0.2: Bangla ০–৯ or Western 0–9 when chosen). */
 const counterOf = (project: Project, g: CounterGraphic, value: number): ReturnType<typeof counterText> => counterText(g, value, project.captions?.digits)
 
@@ -103,7 +106,7 @@ function cellWidth(ctx: Ctx, font: string, project: Project, g: CounterGraphic):
 /** A counter's text width with its digits in cells. */
 function counterWidth(ctx: Ctx, font: string, text: string, cell: number): number {
   let w = 0
-  for (const ch of text) w += DIGIT.test(ch) ? cell : measure(ctx, ch, font)
+  for (const part of counterParts(text)) w += DIGIT.test(part) ? cell : measure(ctx, part, font)
   return w
 }
 
@@ -540,9 +543,9 @@ function drawCounter(c: Ctx, project: Project, g: CounterGraphic, shape: Shape, 
   c.textBaseline = 'middle'
   c.textAlign = 'center'
   c.fillStyle = ink
-  for (const ch of text) {
-    const cw = DIGIT.test(ch) ? cell : measure(c, ch, font)
-    c.fillText(ch, x + cw / 2, y)
+  for (const part of counterParts(text)) {
+    const cw = DIGIT.test(part) ? cell : measure(c, part, font)
+    c.fillText(part, x + cw / 2, y)
     x += cw
   }
   c.restore()
