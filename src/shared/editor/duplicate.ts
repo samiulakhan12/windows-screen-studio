@@ -165,11 +165,14 @@ function refitCaptions(copy: Project, w: number, h: number, areaAt: (t: number) 
 
 const VERSION: Record<Exclude<CopyKind, 'copy'>, string> = { vertical: 'the vertical version', square: 'the square version' }
 
-/** "Captions: Bold Pop for the vertical version" when the copy's look was chosen again (§10.5), else null. */
+/**
+ * "Captions: Bold Pop for the vertical version" when the copy's look was chosen again (§10.5), else
+ * null. A kept look whose dragged block was only moved into the new frame is not chosen again.
+ */
 export function captionCopyNotice(before: Project, after: Project, kind: CopyKind): string | null {
   if (kind === 'copy' || !after.transcript?.segments.length) return null
   const a = after.captions?.studio
-  if (!a || a === before.captions?.studio) return null
+  if (!a || a === before.captions?.studio || !lookChosenAgain(before.captions)) return null
   const name = studioPreset(a.from)?.name
   return name ? `Captions: ${name} for ${VERSION[kind]}` : null
 }

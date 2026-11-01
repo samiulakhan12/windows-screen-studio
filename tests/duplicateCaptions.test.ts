@@ -82,6 +82,19 @@ describe('the caption look of a vertical version', () => {
     expect(auto.calls).toHaveLength(0)
   })
 
+  it('an edited look dragged to the bottom edge is kept without a notice, though its block is moved in', () => {
+    const studio = { ...subtitle, text: { ...subtitle.text, size: 0.07 }, layout: { ...subtitle.layout, place: { x: 0.5, y: 0.97 } } }
+    const p = wide({ ...DEFAULT_CAPTIONS, studio, picked: true })
+    for (const kind of ['vertical', 'square'] as const) {
+      const copy = projectCopy(p, kind, null)
+      expect(copy.captions?.studio?.from).toBe('subtitle')
+      expect(copy.captions?.studio?.text).toBe(studio.text)
+      expect(captionCopyNotice(p, copy, kind)).toBeNull()
+    }
+    expect(projectCopy(p, 'vertical', null).captions!.studio!.layout.place!.y).toBeLessThan(0.97)
+    expect(auto.calls).toHaveLength(0)
+  })
+
   it('a plain copy and a project without captions keep their look', () => {
     const p = wide({ ...DEFAULT_CAPTIONS, studio: subtitle })
     expect(projectCopy(p, 'copy', null).captions).toBe(p.captions)
