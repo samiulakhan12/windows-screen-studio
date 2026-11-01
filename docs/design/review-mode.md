@@ -221,8 +221,12 @@ Project.autoCutOutcomes?: AutoCutOutcome[]
 * `readAutoCuts(raw, duration)`: an array of plain objects only; `id` 1–64 characters, unique;
   `by` and `action` from their lists; `start < end`, finite, clamped to `[0, duration]`; `was`
   pieces finite, inside `[start, end]`, speed in `[0.25, 16]`; `words` a string cut to 80
-  characters; the newest records that fit whole in 10,000 records and 64,000 pieces in all
-  (`newestAutoCuts`: walking from the newest, up to the first that does not fit). Anything else is
+  characters; no two pieces of one action over the same footage, as the editor writes them (a cut
+  or a speed-up claims footage no other record of its action holds): the pieces of each action gone
+  through by where they start, one that starts inside one kept already is dropped, and a record
+  left without a piece goes (`withoutOverlaps`); the newest records that fit whole in 10,000
+  records and 64,000 pieces in all (`newestAutoCuts`: walking from the newest, up to the first
+  that does not fit). Anything else is
   dropped; an empty result is `undefined` (no key). Idempotent. The count is well above what the
   runs over one long recording write (Remove silences and then Polish on a 1-hour recording with a
   pause every 10 s write 1,078 records: past a cap of 1000 the oldest went, their rows read kept and
@@ -458,10 +462,14 @@ make Remove restore time outside the recording (`restoreRange` clamps to the dur
 its list, at most 10,000); a choice only ever changes how a row reads, never the footage.
 What records hold is worked out a speed at a time, each speed as one set of parts, and a chain
 only goes on to a faster record, so the cost grows with the pieces stored, never with the ways
-footage is handed from one record to another: a file with as many records over the same footage as
-it may hold (ten thousand of one piece, or a thousand of 64 pieces; at their own speed, or over
-three rising speeds, or half of them speed-ups that go at once with the other half around or
-inside them) is listed, settled and shown in the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
+footage is handed from one record to another. A file never holds two pieces of one action over the
+same footage (`readAutoCuts`): one that stacked them made a single Remove split every copy at every
+piece end of a speed-up (two records, a cut holding 2000 copies of a 2× holding 8000 pieces, ran
+the editor out of memory). So a file with as many records as it may hold (ten thousand of a few
+pieces each, or a thousand of 64), the records of each action sharing the footage out and those of
+different actions over the same footage (at their own speed, or over three rising speeds, or half
+of them speed-ups that go at once with the other half around or inside them), is listed, settled
+and shown in the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
 a time, not one by one. Taking a speed-up from under the other records (`withoutSpeedUp`) and
 giving up the parts of a speed-up kept (`withSpeedUpKept`) go by binary search over its pieces
 joined once, so two records of 32,000 pieces each take milliseconds too. Remove and Remove all
@@ -518,9 +526,11 @@ its record and the clips, so reading the rows again after many are kept or remov
 ## 9. Test plan
 
 Unit (`tests/review*.test.ts`), each failing without its code:
-* `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; capped (the newest
-  records whole within 10,000 records and 64,000 pieces, a record past 64 pieces kept whole);
-  idempotent; a project without `autoCuts`
+* `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; a piece over footage a
+  piece of its action read before it holds dropped, and a record left with none (a cut holding a
+  thousand copies of a 2×'s footage is read with one, and Delete on the 2× stays quick); capped
+  (the newest records whole within 10,000 records and 64,000 pieces, a record past 64 pieces kept
+  whole); idempotent; a project without `autoCuts`
   migrates with no key (byte-for-byte JSON equal to the old migration). `withAutoCuts` keeps the
   same records. Saved and opened again: an idle part with 80 pauses inside it kept (81 pieces), and
   a retake cut inside an 8× an edit by hand took away (over 64 pieces), each removed after opening,

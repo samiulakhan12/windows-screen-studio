@@ -62,12 +62,45 @@ export function newestAutoCuts<T extends { was: readonly unknown[] }>(list: T[])
 }
 
 /**
+ * `list` with no two pieces of one action overlapping, as the editor writes records (a cut or a
+ * speed-up claims footage no other record of its action holds, and a record's pieces never overlap):
+ * the pieces of each action gone through by where they start, a piece that starts before the end of
+ * one kept already is dropped, and a record left without a piece goes. A hand-made file that stacks
+ * pieces would otherwise make the steps that split records at a speed-up's pieces
+ * (withSpeedsBefore, autoCuts.ts) grow with the product of the two. Idempotent.
+ */
+function withoutOverlaps(list: AutoCut[]): AutoCut[] {
+  const all = list.flatMap((c, i) => c.was.map((p, j) => ({ i, j, p, a: c.action })))
+  const drop = new Set<string>()
+  const byAction = new Map<AutoCut['action'], typeof all>()
+  for (const x of all) {
+    const xs = byAction.get(x.a)
+    if (xs) xs.push(x)
+    else byAction.set(x.a, [x])
+  }
+  for (const xs of byAction.values()) {
+    xs.sort((u, v) => u.p.start - v.p.start || u.i - v.i || u.j - v.j)
+    let end = -Infinity
+    for (const x of xs) {
+      if (x.p.start < end - EPS) drop.add(`${x.i}:${x.j}`)
+      else end = Math.max(end, x.p.end)
+    }
+  }
+  if (drop.size === 0) return list
+  return list.flatMap((c, i) => {
+    const was = c.was.filter((_, j) => !drop.has(`${i}:${j}`))
+    return was.length === 0 ? [] : [was.length === c.was.length ? c : { ...c, was }]
+  })
+}
+
+/**
  * The stored records, sanitised (§3): plain objects only, fields read one by one; ids 1..64
  * characters and unique; `by`/`action` from their lists; ranges finite, clamped to [0, duration]
  * and not empty; pieces inside the range with a speed in [MIN_SPEED, MAX_SPEED]; `words` cut to
- * MAX_WORDS_TEXT; the newest records that fit whole in MAX_AUTO_CUTS records and
- * MAX_AUTO_CUT_PIECES pieces (newestAutoCuts). A record without a piece is dropped. Undefined when
- * nothing is left (no key in the project). Idempotent.
+ * MAX_WORDS_TEXT; no two pieces of one action over the same footage (withoutOverlaps); the newest
+ * records that fit whole in MAX_AUTO_CUTS records and MAX_AUTO_CUT_PIECES pieces (newestAutoCuts). A
+ * record without a piece is dropped. Undefined when nothing is left (no key in the project).
+ * Idempotent.
  */
 export function readAutoCuts(raw: unknown, duration: number): AutoCut[] | undefined {
   if (!Array.isArray(raw)) return undefined
@@ -98,7 +131,7 @@ export function readAutoCuts(raw: unknown, duration: number): AutoCut[] | undefi
     ids.add(id)
     out.push({ id, by, action, start, end, was, ...(words ? { words } : {}) })
   }
-  const kept = newestAutoCuts(out)
+  const kept = newestAutoCuts(withoutOverlaps(out))
   return kept.length ? kept : undefined
 }
 
