@@ -141,8 +141,11 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         if (mine.cancelled || !live.current) return
         leftOut = `The AI fix was left out: ${ipcMessage(err).replace(/\.?$/, '.')}`
       } finally {
-        if (run.current === mine) run.current = null
-        if (live.current) setBusy(false)
+        // Only the run still going: a cancelled run's late answer leaves the next run busy (and its Cancel).
+        if (run.current === mine) {
+          run.current = null
+          if (live.current) setBusy(false)
+        }
       }
     }
     // The AI fix only onto the captions it was made from (edits made meanwhile would be lost), and
