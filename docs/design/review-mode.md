@@ -296,8 +296,9 @@ cut, every `was` piece is kept again (at any speed), within 1 ms; for a speed-up
 Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
 clip it was part of), and joins it to touching clips at the same speed, keeping the old clip's id;
-a split of the user's next to it stays. Remove of a speed-up sets each piece back with
-`setRangeSpeed`, which snaps a range end within `MIN_CLIP` of a clip edge onto the nearest such
+a split of the user's next to it stays, and so does every clip it put no piece in (a clip under
+`MIN_CLIP` a hand restore left at the start or end of the video is not dropped). Remove of a
+speed-up sets each piece back with `setRangeSpeed`, which snaps a range end within `MIN_CLIP` of a clip edge onto the nearest such
 edge (a clip is never shorter; an end on an edge stays). So a reset can leave a sliver at another
 speed than it had before the record: one beside the record's own footage (a cut ending 0.05 s
 before two touching 2× records meet leaves 0.05 s of the first in the second's clip, and the
@@ -599,6 +600,9 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   their record and keep it (undone runs, runs undone from the inside out, Polish undone and run
   again, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken over by a later
   one), and every state reads the same each time undo or redo comes back to it.
+* A clip under `MIN_CLIP` a hand restore left at the end of the video (the last 0.05 s cut inside
+  an 8× and put back) stays through Remove of a cut elsewhere, and the filler cut before it stays to
+  review.
 * A piece of a cut shorter than `MIN_CLIP` (§4.1): Remove silences run three times with less
   padding over one pause (the planner's own ranges), its five rows removed in every order and with
   Remove all, ends with all the footage back; the piece goes to the cut next to it while that one is

@@ -558,6 +558,22 @@ describe('edits by hand after a choice', () => {
     expect(keepItems(opened, [item])).toBe(opened)
     expect(removeItems(opened, [item])).toBe(opened)
   })
+
+  it('a clip under MIN_CLIP a hand restore left at the end of the video stays through a Remove somewhere else', () => {
+    // The last 0.05 s cut inside an 8x and put back by hand comes back as a 1x clip of its own
+    // (restoreRange: its neighbour plays at 8x). Remove of a cut elsewhere normalised every clip and
+    // dropped it: the filler cut before it grew, the settle step took it as a cut made longer by
+    // hand, its row read kept, and the end of the video was cut.
+    const s = replay('tool 10-20 8 smart-speed; tool 19.95-20 cut silences; hand restore 19.95-20; tool 19.8-19.95 cut filler; tool 5-6 cut silences; open')
+    expect(plays(s.p.clips)).toBe('[0,5]@1 [6,10]@1 [10,19.8]@8 [19.95,20]@1')
+    expect(s.rows()).toEqual(['r3:pending', 'r2:pending'])
+    s.run('R r3')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,19.8]@8 [19.95,20]@1')
+    expect(s.rows()).toEqual(['r3:removed', 'r2:pending'])
+    expect(pendingCount(s.p)).toBe(1)
+    s.run('R r2')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,19.95]@8 [19.95,20]@1')
+  })
 })
 
 describe('with no choice made, a row whose record went reads removed when its change was gone from the video then', () => {

@@ -9,6 +9,7 @@
  */
 import type { AutoCut, AutoCutSource, Clip, Project } from '../types'
 import { setRangeSpeed } from '../editor/clips'
+import { clamp } from '../engine/math'
 import { MIN_CLIP, newClipId, normalizeClips } from '../engine/timeline'
 import { finite, MAX_WAS_PIECES, newestAutoCuts, wordsText } from './autoCutData'
 
@@ -751,7 +752,10 @@ function spare(clips: Clip[], next: Clip[], r: { start: number; end: number }, s
  * The clips with `pieces` put back (a cut's Remove, §2.4): each as a clip at its own speed where
  * nothing plays it now, with no snapping, joined to touching clips at the same speed as
  * restoreRange joins. A piece shorter than MIN_CLIP that joins nothing cannot be a clip of its own
- * and stays out (normalizeClips). `clips` itself when nothing is to put back.
+ * and stays out (normalizeClips' rule). Only the clips a piece came back in are held to that rule,
+ * and the start of the clip after each: a clip the Remove did not touch stays as it is (a clip
+ * under MIN_CLIP a hand restore left at the start or end of the video, say). `clips` itself when
+ * nothing is to put back.
  */
 function putBack(clips: Clip[], pieces: readonly Piece[], duration: number): Clip[] {
   const back: Clip[] = []
@@ -769,15 +773,31 @@ function putBack(clips: Clip[], pieces: readonly Piece[], duration: number): Cli
   const fresh = new Set(back)
   // A piece put back joins touching clips at its speed on both sides; the joined clip keeps the
   // id of the first clip that was there (restoreRange's rule).
-  const out: { clip: Clip; joins: boolean; oldId: boolean }[] = []
+  // `back`: a piece came back in the clip (alone or joined).
+  const out: { clip: Clip; joins: boolean; oldId: boolean; back: boolean }[] = []
   for (const c of [...clips, ...back].sort((x, y) => x.start - y.start)) {
     const last = out[out.length - 1]
     const isFresh = fresh.has(c)
     if (last && Math.abs(last.clip.end - c.start) <= EPS && last.clip.speed === c.speed && (last.joins || isFresh)) {
-      out[out.length - 1] = { clip: { ...last.clip, id: last.oldId ? last.clip.id : c.id, end: c.end }, joins: isFresh, oldId: last.oldId || !isFresh }
-    } else out.push({ clip: c, joins: isFresh, oldId: !isFresh })
+      out[out.length - 1] = { clip: { ...last.clip, id: last.oldId ? last.clip.id : c.id, end: c.end }, joins: isFresh, oldId: last.oldId || !isFresh, back: true }
+    } else out.push({ clip: c, joins: isFresh, oldId: !isFresh, back: isFresh })
   }
-  return normalizeClips(out.map((o) => o.clip), duration)
+  const kept: Clip[] = []
+  let after = false
+  for (const o of out) {
+    const prevEnd = kept.length ? kept[kept.length - 1].end : 0
+    if (!o.back) {
+      kept.push(after && o.clip.start < prevEnd ? { ...o.clip, start: prevEnd } : o.clip)
+      after = false
+      continue
+    }
+    // normalizeClips' rule: inside the video, after the clip before it, MIN_CLIP long or left out.
+    const start = clamp(Math.max(o.clip.start, prevEnd), 0, duration)
+    const end = clamp(o.clip.end, 0, duration)
+    after = end - start >= MIN_CLIP - 1e-9
+    if (after) kept.push({ ...o.clip, start, end })
+  }
+  return kept.length ? kept : normalizeClips(out.map((o) => o.clip), duration)
 }
 
 /**
