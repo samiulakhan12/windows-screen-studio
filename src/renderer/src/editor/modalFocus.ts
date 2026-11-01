@@ -22,8 +22,8 @@ function targetsFromHere(): HTMLElement[] {
  * click moved focus off a button, see focus.ts), Esc closes it unless a control inside
  * already handled Esc (calling preventDefault), and focus goes back to where it was when the
  * dialog closes, unless something else took it meanwhile (a dialog the closing one opened). When
- * what had it is gone or disabled by then and was in a panel, the focus goes to the first control
- * of its nearest container still there.
+ * what had it is gone or disabled by then and was in a panel, the focus goes to the panel's current
+ * item (aria-current), else to the first control of its nearest container still there.
  */
 export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void): void {
   const close = useRef(onClose)
@@ -77,8 +77,12 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
       // focus was lost with it: a dialog opened in its place has already focused its own field.
       const active = document.activeElement
       if (box?.isConnected || (active && active !== document.body)) return
+      // The panel's current item (its roving row) before any container's first control: a footer
+      // button an undo disabled has only the panel's Close before it, or the other footer button.
+      const region = around[around.length - 1]
       const back =
         targets.find((el) => el.isConnected && !el.matches(':disabled')) ??
+        (region?.isConnected ? region.querySelector<HTMLElement>('[aria-current="true"]:not(:disabled)') : null) ??
         around
           .filter((el) => el.isConnected)
           .map((el) => el.querySelector<HTMLElement>(FOCUSABLE))

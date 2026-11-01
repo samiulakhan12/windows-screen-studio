@@ -642,7 +642,9 @@ Then, with the panel open, Polish (silences only, against the AI mock) on a reco
 words, `Ctrl+Z` from the first row's Keep button (the focus goes back to that row), and the same
 Polish again: the first run's rows read removed after the undo and
 still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kept, no choice saved);
-`Ctrl+Z` from Keep all, which the undo disables: the focus back on a row, and Escape closes.
+`Ctrl+Z` from Keep all, which the undo disables: the focus back on a row; `Ctrl+Y`, then Undo run
+from the palette with the focus on Keep all: the focus on a row too (the panel's current item, not
+its Close button), `N` moves in the list, and Escape closes.
 
 ## 10. Later
 

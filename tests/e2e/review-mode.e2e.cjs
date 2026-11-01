@@ -13,7 +13,8 @@
 // local mock of the AI providers: with the panel open, Polish cuts the silences of a recording with
 // spoken "words", Ctrl+Z takes them back (the rows read removed), and the same Polish again lists
 // its new rows to review while the first run's rows still read removed, with no choice saved;
-// Ctrl+Z from Keep all, which it disables, leaves the focus on a row.
+// Ctrl+Z from Keep all, which it disables, leaves the focus on a row, and so does Undo run from the
+// palette with the focus on Keep all (N then moves in the list).
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -365,6 +366,32 @@ async function main() {
       await h.sleep(100)
       const row = await focused(win)
       h.assert(row.startsWith('Cut ') && row.endsWith(', removed'), `the focus back on a row from the disabled Keep all: ${row}`)
+
+      // The same undo run from the palette: the palette gives the focus back to Keep all as it
+      // closes, but the undo disabled it, so it goes to the focused item's row, not to the panel's
+      // Close button (the first control of the panel, where N and Delete would reach the editor).
+      await win.keyboard.press('Control+y')
+      await f.waitFor(async () => {
+        const r = await rows(win)
+        return again.every((k) => r.includes(`${k}=pending`))
+      }, 'the second run redone', 5000)
+      await win.focus('[data-testid="review-keep-all"]')
+      h.assert(await win.evaluate(() => document.activeElement?.getAttribute('data-testid') === 'review-keep-all'), 'on Keep all again')
+      await win.keyboard.press('Control+k')
+      await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+      await win.keyboard.type('undo')
+      await f.waitFor(async () => (await win.$eval('.command-palette [role="option"] .palette-title', (e) => e.textContent).catch(() => '')) === 'Undo', '"Undo" listed first', 3000)
+      await win.keyboard.press('Enter')
+      await f.waitFor(async () => (await rows(win)).every((r) => r.endsWith('=removed')), 'the second run undone from the palette', 5000)
+      h.assert(await win.$eval('[data-testid="review-keep-all"]', (e) => e.disabled), 'Keep all disabled again')
+      await h.sleep(100)
+      const fromPalette = await focused(win)
+      h.assert(fromPalette.startsWith('Cut ') && fromPalette.endsWith(', removed'), `the focus on a row after Undo from the palette: ${fromPalette}`)
+      // N stays in the list (it would switch Snapping off in the editor).
+      await win.keyboard.press('n')
+      await h.sleep(100)
+      const moved = await focused(win)
+      h.assert(moved.startsWith('Cut ') && moved.endsWith(', removed'), `N moves in the list: ${moved}`)
       await win.keyboard.press('Escape')
       await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'Escape closes the panel', 3000)
       h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
