@@ -481,7 +481,22 @@ join the pieces still out to a clip, and hand them on to a cut, pass after pass 
 look at a piece again only once a clip or a record beside it changed, and find what touches a piece
 by the times its pieces start and end: Remove all over 500 chains of 64 slivers, each handed on or
 joined one piece at a time, takes well under a second (it took up to 95 s). A row's status reads its recorded choice by id, or
-its record and the clips, so reading the rows again after many are kept or removed costs no more.
+its record (by id) and whether it is intact, so reading the rows again after many are kept or
+removed costs no more.
+
+A long recording is the other side of the same budget, and only part of it is fast. Remove silences
+and then Polish over 3 hours with a pause every 4 s write 8,098 cuts over 2,700 clips, or, sped up
+instead (2×, then Polish 4× and 8×), 5,399 speed-ups over 10,799 clips. Whether each record is
+intact is worked out once for a state of the project, and the settle step, the list, the Review
+button's count and every row's status share it (`staleAmong`); a record's footage is measured over
+only the clips it can touch, found by binary search over the clips in order; Keep all gives up the
+parts of all its speed-ups at once. There, opening the panel, one K, Keep all, Delete, the settle
+step after an edit by hand and the Review button's count after any edit each take from a few
+milliseconds to a few tens (tested: the panel's steps under 250 ms, the count under 50 ms; they took
+0.3 to 3 s, and the count 55 to 600 ms on every edit). Not fast there: the tool runs that write the
+records (about half a second for a cut run, 3 to 4 s for each speed-up run over 10,000 clips),
+Remove all of a kind over thousands of rows (about 1.5 s for the cuts, 5 s for the speed-ups), and
+drawing the rows, which are not virtualised (§8).
 
 ## 7. Files and exported signatures
 
@@ -490,7 +505,8 @@ its record and the clips, so reading the rows again after many are kept or remov
   editor code).
 * `src/shared/review/autoCuts.ts` — `recordAutoCuts(project, nextClips, ranges, action, by, newId?)`,
   `autoCutIntact(cut, clips, list?)`, `changeGone(cut, clips)`, `undoAutoCut(clips, cut, duration)`,
-  `liveAutoCuts(project)`, `settleAutoCuts(next, prev)`, `withSpeedUpKept(list, kept)`,
+  `liveAutoCuts(project)`, `staleAmong(list, clips)`, `settleAutoCuts(next, prev)`,
+  `withSpeedUpKept(list, kept)`, `withSpeedUpsKept(list, kept)`,
   `withoutSpeedUp(list, speedUp)`, `withAutoCuts(project, list)`.
 * `src/shared/review/review.ts` — `ReviewKind`, `ReviewItem`, `ReviewStatus`, `reviewItems(project)`,
   `reviewStatus(project, item)`, `keepItems(project, items)`, `removeItems(project, items)`,
@@ -525,7 +541,9 @@ its record and the clips, so reading the rows again after many are kept or remov
 * **Shift+R** could clash with a user's own binding: the keymap's conflict rules already handle a
   clash (the user's binding wins in their keymap file).
 * **Long lists** (a long recording with 300 zooms): items are plain rows, computed once per project
-  change; no virtualisation needed below a few thousand (tested 2000 in < 50 ms).
+  change; no virtualisation needed below a few thousand (tested 2000 in < 50 ms). A 3-hour recording
+  after Remove silences and Polish lists up to about 8,000 rows: what they read is worked out in
+  milliseconds (§6), but all of them are drawn.
 
 ## 9. Test plan
 
@@ -566,7 +584,10 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   all and Remove all are one undo step each: the rows go back to
   pending and forward again on redo. Reopening lists only what is still automatic. Remove
   silences and then Polish on a 1-hour recording (1,078 records) leave every row to review, and the
-  project opens again with all of them. Edits by hand
+  project opens again with all of them. On a 3-hour one (8,098 cuts over 2,700 clips, or 5,399
+  speed-ups over 10,799 clips), opening the panel, K as the panel runs it (Keep, the settle step,
+  the rows read twice and the list merged) and Keep all each take under 250 ms, and the Review
+  button's count after an edit under 50 ms (they took up to 3 s and 600 ms). Edits by hand
   after a choice leave it; with no choice, the rows read `changeGone` in the first state without
   their record and keep it (undone runs, runs undone from the inside out, Polish undone and run
   again, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken over by a later

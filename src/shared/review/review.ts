@@ -13,7 +13,7 @@ import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, AutoCutOutcome, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
 import { withOutcomes } from './autoCutData'
-import { autoCutIntact, changeGone, liveAutoCuts, takeBack, withAutoCuts, withSpeedUpKept } from './autoCuts'
+import { changeGone, liveAutoCuts, staleAmong, takeBack, withAutoCuts, withSpeedUpsKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -86,6 +86,18 @@ export const pendingCount = (project: Project): number => reviewItems(project).l
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
 
+const recordMemo = new WeakMap<readonly AutoCut[], Map<string, AutoCut>>()
+/** The records by id, the first for an id (worked out once for each list). */
+function recordsById(records: readonly AutoCut[]): ReadonlyMap<string, AutoCut> {
+  let byId = recordMemo.get(records)
+  if (!byId) {
+    byId = new Map()
+    for (const c of records) if (!byId.has(c.id)) byId.set(c.id, c)
+    recordMemo.set(records, byId)
+  }
+  return byId
+}
+
 const NO_OUTCOMES: ReadonlyMap<string, AutoCutOutcome['outcome']> = new Map()
 const outcomeMemo = new WeakMap<readonly AutoCutOutcome[], Map<string, AutoCutOutcome['outcome']>>()
 /** The choices made in the panel for cuts and speed-ups, by record id (worked out once for each list). */
@@ -127,9 +139,11 @@ export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
   if (!cut) return 'removed'
   const chosen = outcomesOf(project).get(cut.id)
   if (chosen) return chosen
+  // Looked up by id, and judged once for all the rows of a state (staleAmong): a long recording
+  // has thousands of rows, read again on every change.
   const records = project.autoCuts ?? []
-  const rec = records.find((c) => c.id === cut.id)
-  if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
+  const rec = recordsById(records).get(cut.id)
+  if (rec && !staleAmong(records, project.clips).has(rec)) return 'pending'
   return item.went ?? (changeGone(cut, project.clips) ? 'removed' : 'kept')
 }
 
@@ -171,7 +185,7 @@ const pendingOf = (project: Project, items: readonly ReviewItem[]): ReviewItem[]
  * The project with `items` kept (§2.4): zooms and camera segments no longer automatic (as an edit
  * by hand), the face framing the user's (director.framed dropped), cut records dropped (the cuts
  * stay, as plain cuts; a speed-up kept inside another one makes that part of the other the user's,
- * withSpeedUpKept) and each recorded as kept (withChoices). Items not pending are left alone.
+ * withSpeedUpsKept) and each recorded as kept (withChoices). Items not pending are left alone.
  * `project` itself when nothing changes.
  */
 export function keepItems(project: Project, items: readonly ReviewItem[]): Project {
@@ -189,8 +203,9 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
     next = { ...next, director }
   }
   if (todo.some((i) => i.cut)) {
+    // All at once (one pass over the records for each level outward, not one for each kept).
     let list = next.autoCuts ?? []
-    for (const k of list.filter((c) => keys.has(`cut:${c.id}`))) list = withSpeedUpKept(list, k)
+    list = withSpeedUpsKept(list, list.filter((c) => keys.has(`cut:${c.id}`)))
     next = withChoices(withAutoCuts(next, list.filter((c) => !keys.has(`cut:${c.id}`) && c.was.length > 0)), todo, 'kept')
   }
   return next

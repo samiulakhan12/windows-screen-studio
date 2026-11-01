@@ -33,17 +33,56 @@ export interface AutoRange {
 let counter = 0
 const newCutId = (): string => `a${Date.now().toString(36)}${(counter++).toString(36)}`
 
+const orderMemo = new WeakMap<readonly Clip[], boolean>()
+/** Whether the clips are in order (starts and ends never going back), worked out once for each list. */
+function inOrder(clips: readonly Clip[]): boolean {
+  let sorted = orderMemo.get(clips)
+  if (sorted === undefined) orderMemo.set(clips, (sorted = clips.every((c, i) => i === 0 || (c.start >= clips[i - 1].start && c.end >= clips[i - 1].end))))
+  return sorted
+}
+
+/**
+ * The indexes [from, to) of the clips that can play part of [a, b]. Clips in order (as the editor
+ * keeps them): from the first that ends after `a` to the first that starts at or after `b`, both by
+ * binary search, so reading a record costs the log of the clips, not all of them (a long recording
+ * has thousands). Any other list: all of it.
+ */
+function clipsOver(clips: readonly Clip[], a: number, b: number): [number, number] {
+  if (!inOrder(clips)) return [0, clips.length]
+  let lo = 0
+  let hi = clips.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (clips[mid].end > a) hi = mid
+    else lo = mid + 1
+  }
+  const from = lo
+  hi = clips.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (clips[mid].start >= b) hi = mid
+    else lo = mid + 1
+  }
+  return [from, lo]
+}
+
 /** Length of [a, b] covered by the clips that pass `which`. */
 function covered(clips: readonly Clip[], a: number, b: number, which: (c: Clip) => boolean = () => true): number {
+  const [from, to] = clipsOver(clips, a, b)
   let sum = 0
-  for (const c of clips) if (which(c)) sum += Math.max(0, Math.min(b, c.end) - Math.max(a, c.start))
+  for (let i = from; i < to; i++) {
+    const c = clips[i]
+    if (which(c)) sum += Math.max(0, Math.min(b, c.end) - Math.max(a, c.start))
+  }
   return sum
 }
 
 /** The parts of [a, b] the clips play at `speed`. */
 function playing(clips: readonly Clip[], a: number, b: number, speed: number): Piece[] {
   const out: Piece[] = []
-  for (const c of clips) {
+  const [from, to] = clipsOver(clips, a, b)
+  for (let i = from; i < to; i++) {
+    const c = clips[i]
     const lo = Math.max(a, c.start)
     const hi = Math.min(b, c.end)
     if (c.speed === speed && hi > lo) out.push({ start: lo, end: hi, speed })
@@ -184,11 +223,34 @@ export function changeGone(cut: AutoCut, clips: readonly Clip[]): boolean {
   return cut.was.reduce((n, p) => n + covered(clips, p.start, p.end, (c) => c.speed === cut.action), 0) <= SLACK
 }
 
+const NONE: ReadonlySet<AutoCut> = new Set()
+/** What staleAmong worked out, by list and clips; neither is ever changed in place. */
+const staleMemo = new WeakMap<readonly AutoCut[], WeakMap<readonly Clip[], ReadonlySet<AutoCut>>>()
+
+/**
+ * The records of `list` whose change is no longer in `clips` (stale), each judged among all of
+ * `list` (autoCutIntact). Worked out once for a list and clips: the settle step, the list, the
+ * Review button's count and every row's status in one state of the project share it, so each
+ * change pays for it once (a long recording has thousands of records). Kept as the few stale ones
+ * (none in a settled state), so the states the undo history holds cost next to nothing.
+ */
+export function staleAmong(list: readonly AutoCut[], clips: readonly Clip[]): ReadonlySet<AutoCut> {
+  let byClips = staleMemo.get(list)
+  if (!byClips) staleMemo.set(list, (byClips = new WeakMap()))
+  let stale = byClips.get(clips)
+  if (!stale) {
+    const out = list.filter((c) => !autoCutIntact(c, clips, list))
+    byClips.set(clips, (stale = out.length ? new Set(out) : NONE))
+  }
+  return stale
+}
+
 /** The records of `list` whose change is still in `clips`, each judged among the others still there. */
 function intactOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
-  let live = [...list]
+  let live = list
   for (;;) {
-    const next = live.filter((c) => autoCutIntact(c, clips, live))
+    const stale = staleAmong(live, clips)
+    const next = live.filter((c) => !stale.has(c))
     if (next.length === live.length) return next
     live = next
   }
@@ -205,7 +267,7 @@ function intactOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
  * are judged again until none goes.
  */
 function settledOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
-  let live = [...list]
+  let live = list
   for (;;) {
     const next = intactOf(live, clips)
     if (next.length === live.length) return next
@@ -229,9 +291,13 @@ export function liveAutoCuts(project: Pick<Project, 'autoCuts' | 'clips'>): Auto
 /** Kept time of `before` that `after` no longer keeps, with its old speed. */
 function cutPieces(before: readonly Clip[], after: readonly Clip[]): Piece[] {
   const out: Piece[] = []
+  // Sorted once, and only the clips over each one gone through (every edit by hand runs this).
+  const sorted = [...after].sort((x, y) => x.start - y.start)
   for (const c of before) {
     let at = c.start
-    for (const k of [...after].sort((x, y) => x.start - y.start)) {
+    const [from, to] = clipsOver(sorted, c.start, c.end)
+    for (let i = from; i < to; i++) {
+      const k = sorted[i]
       if (k.end <= at || k.start >= c.end) continue
       if (k.start - at > EPS) out.push({ start: at, end: k.start, speed: c.speed })
       at = Math.max(at, k.end)
@@ -490,9 +556,17 @@ function sameGap(cut: AutoCut, pieces: readonly Piece[], clips: readonly Clip[])
   return cut.was.some((w) => {
     let lo = -Infinity
     let hi = Infinity
-    for (const c of clips) {
-      if (c.end <= w.start + SLACK) lo = Math.max(lo, c.end)
-      else if (c.start >= w.end - SLACK) hi = Math.min(hi, c.start)
+    if (inOrder(clips)) {
+      // The clip before the gap is the last to end by its start, the one after it the first after
+      // those to start by its end (by binary search: every edit by hand looks at every cut).
+      const [from, to] = clipsOver(clips, w.start + SLACK, w.end - SLACK)
+      if (from > 0) lo = clips[from - 1].end
+      if (to < clips.length) hi = clips[to].start
+    } else {
+      for (const c of clips) {
+        if (c.end <= w.start + SLACK) lo = Math.max(lo, c.end)
+        else if (c.start >= w.end - SLACK) hi = Math.min(hi, c.start)
+      }
     }
     return pieces.some((p) => p.start >= lo - EPS && p.end <= hi + EPS)
   })
@@ -513,7 +587,9 @@ export function settleAutoCuts(next: Project, prev: Project): Project {
   const old = new Set((prev.autoCuts ?? []).map((c) => c.id))
   const byHand = next.clips === prev.clips ? [] : without(cutPieces(prev.clips, next.clips), list.filter((c) => !old.has(c.id)).flatMap((c) => c.was))
   const absorbed = (c: AutoCut): boolean => c.action === 'cut' && old.has(c.id) && byHand.length > 0 && sameGap(c, byHand, next.clips)
-  const live = settledOf(list.filter((c) => !absorbed(c)), next.clips)
+  const left = list.filter((c) => !absorbed(c))
+  // The list itself when nothing is absorbed, so what it works out for the new state is shared.
+  const live = settledOf(left.length === list.length ? list : left, next.clips)
   return live.length === list.length ? next : withAutoCuts(next, live)
 }
 
@@ -534,7 +610,7 @@ export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
  * cost grows with the pieces, not with the records kept times the records left. `ks` themselves and
  * records that change nothing are the same objects.
  */
-function withSpeedUpsKept(list: AutoCut[], ks: readonly AutoCut[]): AutoCut[] {
+export function withSpeedUpsKept(list: AutoCut[], ks: readonly AutoCut[]): AutoCut[] {
   const skip = new Set(ks.map((k) => k.id))
   let out = list
   let gone: Piece[] = ks.flatMap((k) => (k.action === 'cut' ? [] : k.was))

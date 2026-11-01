@@ -429,6 +429,90 @@ describe('reopening the panel', () => {
   })
 })
 
+describe('a 3-hour recording: opening the panel, K, Keep all and the Review button take milliseconds', () => {
+  // Remove silences and then Polish over a 3-hour recording write thousands of records over
+  // thousands of clips. A row's status looked for its record through all of them and read every
+  // clip for each of its pieces, two or three times for each key; Keep all kept one speed-up at a
+  // time: one K took 0.8 to 3 s, and the Review button's count, worked out again on every change,
+  // 110 to 620 ms.
+  const D = 3 * 3600
+  /** Opening the panel, one K, Keep all (ms): each took from a third of a second to seconds. */
+  const PANEL = 250
+  /** The Review button's count after an edit (ms). */
+  const COUNT = 50
+  const ms = (f: () => void): number => {
+    const t = performance.now()
+    f()
+    return performance.now() - t
+  }
+  const settle = (next: Project, prev: Project): Project => settleAutoCuts(settleDeletedWords(next, prev), prev)
+
+  /**
+   * The editor's store over a 3-hour recording with a 2.5 s pause every `period` s, after Remove
+   * silences (padding 0.5) and Polish (padding 0.25, then 0.3), each run with its action of
+   * `actions`; saved and opened again.
+   */
+  function recording(period: number, actions: readonly AutoCut['action'][]): EditStore<Project> {
+    const sound = Array.from({ length: D / period }, (_, k) => ({ start: k * period, end: k * period + period - 2.5 }))
+    const store = new EditStore<Project>({ ...base(), duration: D, clips: [{ id: 'c0', start: 0, end: D, speed: 1 }] }, 500, 800, () => 0, settle)
+    let n = 0
+    actions.forEach((action, i) => {
+      const by: AutoCutSource = i === 0 ? 'silences' : 'polish'
+      const ranges = planSilences(sound, store.state.clips, { minLength: 1, padding: [0.5, 0.25, 0.3][i] }, action).parts.flatMap((x) => x.pieces)
+      store.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, ranges, action), ranges, action, by, () => `r${n++}`))
+    })
+    return new EditStore(migrateProject(JSON.parse(JSON.stringify(store.state))), 500, 800, () => 0, settle)
+  }
+
+  /**
+   * One K in the panel as ReviewPanel runs it: Keep (with the editor's settle step), the rows read for
+   * the next one to review, the list merged with the new state and read again, and the count.
+   */
+  function k(store: EditStore<Project>, shown: ReviewItem[], item: ReviewItem): ReviewItem[] {
+    store.update((p) => keepItems(p, [item]))
+    shown.map((i) => reviewStatus(store.state, i))
+    const merged = mergeSnapshot(shown, store.state)
+    merged.map((i) => reviewStatus(store.state, i))
+    pendingCount(store.state)
+    return merged
+  }
+
+  for (const [name, period, actions, rows] of [
+    ['cut, a pause every 4 s: 8,098 rows over 2,700 clips', 4, ['cut', 'cut', 'cut'], 8098],
+    ['sped up 2x, then 4x and 8x, a pause every 4 s: 5,399 rows over 10,799 clips', 4, [2, 4, 8], 5399]
+  ] as const) {
+    it(name, () => {
+      const store = recording(period, actions)
+      let shown: ReviewItem[] = []
+      const open = ms(() => {
+        shown = reviewItems(store.state)
+        shown.map((i) => reviewStatus(store.state, i))
+      })
+      expect(shown).toHaveLength(rows)
+      expect(open, 'opening the panel').toBeLessThan(PANEL)
+      for (const at of [5, 500, 3000]) {
+        const item = shown[at]
+        expect(ms(() => (shown = k(store, shown, item))), `K on row ${at}`).toBeLessThan(PANEL)
+        expect(reviewStatus(store.state, item)).toBe('kept')
+      }
+      // An edit somewhere else: the count is worked out again (the best of three).
+      const count = Math.min(
+        ...[0, 1, 2].map(() =>
+          ms(() => {
+            store.update((p) => ({ ...p, zooms: [...p.zooms] }))
+            pendingCount(store.state)
+          })
+        )
+      )
+      expect(count, 'the count after an edit').toBeLessThan(COUNT)
+      expect(pendingCount(store.state)).toBe(rows - 3)
+      expect(ms(() => store.update((p) => keepItems(p, shown))), 'Keep all').toBeLessThan(PANEL)
+      expect(pendingCount(store.state)).toBe(0)
+      expect(store.state.autoCutOutcomes).toHaveLength(rows)
+    }, 60_000)
+  }
+})
+
 describe('edits by hand after a choice', () => {
   it('a cut kept and then put back by hand still reads kept; one removed and cut again by hand still reads removed', () => {
     const kept = replay('tool 5-9 cut; open; K r0; hand restore 5-9')
