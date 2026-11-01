@@ -310,19 +310,18 @@ X links `1paypal-login.com/verify`). Added to X's in every reading: links X leav
 length (over 4 096 characters), names on such a domain with no Latin letters (`госуслуги.рф`, which X
 links only after a scheme but other sites may), names on the top-level domains IANA delegated after
 twitter-text's lists (`newerTlds.ts`: `evil.web`, `evil.amazon`, `evil.亚马逊`…), and every
-`http(s)://` or `www.` link X does not link but YouTube and LinkedIn do, and every protocol-relative
-`//` link linkify-it makes (a `//` not right after `:` or `/`, as after a separator or right where a
-link or address it read ends, with a dot inside its host: `//203.0.113.7/login`,
-`//paypal-login.com\ufe0f/login`, `support@flown.app//203.0.113.7`; it has no scheme, so it is
-broken like a bare name, and compares as the name after it: `//flown.app/docs` is `flown.app/docs`)
-(glued to a word, `xhttps://…`; inside another link's query, `flown.app?next=https://evil.com/login`;
-on an address X does not know, `http://192.168.1.1/login`, `https://evil.example`), as X ends it from
-there, else up
+`http(s)://` or `www.` link X does not link but YouTube and LinkedIn do (glued to a word,
+`xhttps://…`; inside another link's query, `flown.app?next=https://evil.com/login`; on an address X
+does not know, `http://192.168.1.1/login`, `https://evil.example`), as X ends it from there, else up
 to a space, a quotation mark (`"`, `'`, `` ` ``), an angle bracket, Chinese or Japanese text (not
 full-width Latin letters: IDNA reads `https://ｅｖｉｌ.ｃｏｍ` as `evil.com`) or punctuation other than
 ASCII's that no host holds (`，`, `（`, `！`, `；`, `“”‘’‹›«»„‚`, `—`, `।`; not `．`, `－`, `＿`, `｡` or
 `…`, which IDNA reads as `.`, `-` and `_`): `http://localhost:3000，就能看到` links
-`http://localhost:3000`, and keeps its comma.
+`http://localhost:3000`, and keeps its comma. So is every protocol-relative `//` link linkify-it
+makes: a `//` not right after `:` or `/` (after a separator, or right where a link or address it read
+ends) with a dot inside its host (`//203.0.113.7/login`, `//paypal-login.com\ufe0f/login`,
+`support@flown.app//203.0.113.7`), ended the same way. It has no scheme, so it is broken like a bare
+name, and compares as the name after it: `//flown.app/docs` is `flown.app/docs`.
 
 Where X ends such a link before the next space, the stretch to that space is a link too when a
 browser may open another name for it. Its authority runs to the first `/`, `?`, `#` or `\`. With an
