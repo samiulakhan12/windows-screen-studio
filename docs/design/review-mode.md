@@ -159,7 +159,7 @@ Reopening lists only what is still automatic: a record with a choice is never li
 | zoom | `auto: false` (as an edit by hand does) | the zoom is deleted |
 | camera segment | `auto` and `cutOut` cleared | the segment is deleted; a `cutOut` piece turns back into the position's corner and joins its touching pieces (as `withoutDirected` does for one run) |
 | face framing | `director.framed` dropped (the framing is yours) | webcam `zoom/cropX/cropY` removed and `director.framed` dropped (`clearDirected`'s framing part) |
-| automatic cut | the record is dropped (the cut stays, now a plain cut); `kept` is recorded for its id | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); the record is dropped; `removed` is recorded for its id |
+| automatic cut | the record is dropped (the cut stays, now a plain cut); `kept` is recorded for its id | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); a piece shorter than `MIN_CLIP` that cannot come back alone joins a clip it touches, or goes to a cut still to review next to it (§4.1); the record is dropped; `removed` is recorded for its id |
 | automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`), and so does one that holds that part of it in turn (a 2× around a 4× around the 8× kept): the part is yours now, and the earlier ones stay listed for the rest; `kept` is recorded for its id | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one; `removed` is recorded for its id |
 
 Each Keep or Remove is **one** `store.update` (one undo step), the recorded choice included.
@@ -281,6 +281,25 @@ Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own 
 plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
 clip it was part of), and joins it to touching clips at the same speed, keeping the old clip's id;
 a split of the user's next to it stays.
+
+A piece shorter than `MIN_CLIP` (Remove silences run again with less padding cuts 0.05 s more on
+each side of the same pause) comes back only by joining a clip: alone it cannot be one. Remove
+and Remove all (`takeBack`) therefore, once every record they act on is back:
+1. put such a piece back again, so it joins a neighbour at its speed that came back with it (Remove
+   all, or a record whose range starts before its own footage, taken back first);
+2. put touching pieces at different speeds that are long enough together (a cut across a speed
+   change, each side under `MIN_CLIP`) back as one clip, at the speed of the longest; join one that
+   touches no clip at its speed to a clip it touches at another speed, the one whose speed is
+   nearest its own (it plays again, at that speed; removing a speed-up there later sets it back
+   with the rest). Neither is done when it changes a record still listed (a speed-up holding that
+   time would no longer play it at its speed);
+3. hand one with cut footage on both sides to a cut still to review whose footage touches it (one
+   at its speed first): that record holds it from then on (its `was`, `start` and `end` grow), so
+   its Remove brings the piece back with its own footage, and its Keep keeps it cut with it.
+A piece stays out only where none of these can take it: between two cuts no row can take back
+(the user's own, or kept), or between such a cut and a clip at another speed that it cannot join
+without changing a speed-up still listed. Alone it cannot be a clip; its row reads removed, as
+chosen.
 
 ### 4.2 The list (`reviewItems`)
 
@@ -491,6 +510,14 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   their record and keep it (undone runs, runs undone from the inside out, Polish undone and run
   again, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken over by a later
   one), and every state reads the same each time undo or redo comes back to it.
+* A piece of a cut shorter than `MIN_CLIP` (§4.1): Remove silences run three times with less
+  padding over one pause (the planner's own ranges), its five rows removed in every order and with
+  Remove all, ends with all the footage back; the piece goes to the cut next to it while that one is
+  to review (and stays cut when that one is kept); Remove all brings back a piece whose record's
+  range starts before it; a piece between two parts sped up since, or re-timed by hand, joins the
+  clip at the nearest speed; one inside a speed-up still to review goes to the cut beside it instead
+  of joining a clip outside it at another speed (the speed-up stays to review); one between two
+  kept cuts stays out and reads removed.
 * Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
 * `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
 * Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).

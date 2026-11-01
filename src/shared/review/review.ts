@@ -13,7 +13,7 @@ import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, AutoCutOutcome, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
 import { withOutcomes } from './autoCutData'
-import { autoCutIntact, changeGone, liveAutoCuts, undoAutoCut, withAutoCuts, withoutSpeedUp, withSpeedUpKept } from './autoCuts'
+import { autoCutIntact, changeGone, liveAutoCuts, takeBack, withAutoCuts, withSpeedUpKept } from './autoCuts'
 import {
   cutDetail,
   cutKind,
@@ -199,10 +199,13 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
 /**
  * The project with `items` removed (§2.4): zooms deleted; the director's segments deleted (a
  * cut-out given back to its camera position); the face framing reset; each cut or speed-up taken
- * back (undoAutoCut, latest first), its record dropped and the choice recorded (withChoices). A
- * speed-up taken back leaves the records inside it holding their footage at its speed from before
- * (withoutSpeedUp), so removing a cut inside it later, in any order, never brings the footage back
- * at the removed speed. Items not pending are left alone. `project` itself when nothing changes.
+ * back (takeBack: undoAutoCut, latest first), its record dropped and the choice recorded
+ * (withChoices). A speed-up taken back leaves the records inside it holding their footage at its
+ * speed from before (withoutSpeedUp), so removing a cut inside it later, in any order, never brings
+ * the footage back at the removed speed. A piece of a cut too short to come back alone comes back
+ * with its neighbours of the same Remove all, joins a clip it touches, or goes to a cut still to
+ * review next to it (takeBack, §4.1). Items not pending are left alone. `project` itself when
+ * nothing changes.
  */
 export function removeItems(project: Project, items: readonly ReviewItem[]): Project {
   const todo = pendingOf(project, items)
@@ -224,17 +227,15 @@ export function removeItems(project: Project, items: readonly ReviewItem[]): Pro
       next = { ...next, director }
     }
   }
-  const cuts = todo.flatMap((i) => (i.cut ? [(next.autoCuts ?? []).find((c) => c.id === i.cut!.id)!] : [])).filter(Boolean)
-  if (cuts.length) {
-    let clips = next.clips
-    let list = next.autoCuts ?? []
-    for (const { id } of [...cuts].sort((a, b) => b.start - a.start)) {
-      const c = list.find((x) => x.id === id)!
-      clips = undoAutoCut(clips, c, next.duration)
-      if (c.action !== 'cut') list = withoutSpeedUp(list, c)
-    }
-    const gone = new Set(cuts.map((c) => c.id))
-    next = withChoices(withAutoCuts({ ...next, clips }, list.filter((c) => !gone.has(c.id))), todo, 'removed')
+  const ids = todo.flatMap((i) => (i.cut ? [i.cut.id] : []))
+  if (ids.some((id) => (next.autoCuts ?? []).some((c) => c.id === id))) {
+    const from = next
+    const chosen = outcomesOf(from)
+    let listed: ReadonlySet<string> | null = null
+    // A piece too short to come back alone goes to a cut still to review next to it.
+    const heir = (c: AutoCut): boolean => !chosen.has(c.id) && (listed ??= new Set(liveAutoCuts(from).map((x) => x.id))).has(c.id)
+    const { clips, list } = takeBack(from.clips, from.autoCuts ?? [], ids, from.duration, heir)
+    next = withChoices(withAutoCuts({ ...from, clips }, list), todo, 'removed')
   }
   return next
 }

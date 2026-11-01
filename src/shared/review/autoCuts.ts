@@ -9,7 +9,7 @@
  */
 import type { AutoCut, AutoCutSource, Clip, Project } from '../types'
 import { setRangeSpeed } from '../editor/clips'
-import { newClipId, normalizeClips } from '../engine/timeline'
+import { MIN_CLIP, newClipId, normalizeClips } from '../engine/timeline'
 import { finite, MAX_AUTO_CUTS, MAX_WAS_PIECES, wordsText } from './autoCutData'
 
 /** How far (seconds) clips may differ from a record and still count as its change being there. */
@@ -610,31 +610,7 @@ export function withAutoCuts(project: Project, list: AutoCut[]): Project {
  * (parts re-timed by hand since are left alone), latest first.
  */
 export function undoAutoCut(clips: Clip[], cut: AutoCut, duration: number): Clip[] {
-  if (cut.action === 'cut') {
-    const back: Clip[] = []
-    for (const p of cut.was) {
-      let at = p.start
-      for (const c of [...clips].sort((x, y) => x.start - y.start)) {
-        if (c.end <= at + EPS || c.start >= p.end - EPS) continue
-        if (c.start - at > EPS) back.push({ id: newClipId(), start: at, end: c.start, speed: p.speed })
-        at = Math.max(at, c.end)
-      }
-      if (p.end - at > EPS) back.push({ id: newClipId(), start: at, end: p.end, speed: p.speed })
-    }
-    if (back.length === 0) return clips
-    const fresh = new Set(back)
-    // A piece put back joins touching clips at its speed on both sides; the joined clip keeps the
-    // id of the first clip that was there (restoreRange's rule).
-    const out: { clip: Clip; joins: boolean; oldId: boolean }[] = []
-    for (const c of [...clips, ...back].sort((x, y) => x.start - y.start)) {
-      const last = out[out.length - 1]
-      const isFresh = fresh.has(c)
-      if (last && Math.abs(last.clip.end - c.start) <= EPS && last.clip.speed === c.speed && (last.joins || isFresh)) {
-        out[out.length - 1] = { clip: { ...last.clip, id: last.oldId ? last.clip.id : c.id, end: c.end }, joins: isFresh, oldId: last.oldId || !isFresh }
-      } else out.push({ clip: c, joins: isFresh, oldId: !isFresh })
-    }
-    return normalizeClips(out.map((o) => o.clip), duration)
-  }
+  if (cut.action === 'cut') return putBack(clips, cut.was, duration)
   let out = clips
   for (const p of [...cut.was].sort((a, b) => b.start - a.start)) {
     const fast = out
@@ -643,4 +619,145 @@ export function undoAutoCut(clips: Clip[], cut: AutoCut, duration: number): Clip
     for (const r of fast) out = setRangeSpeed(out, r.start, r.end, p.speed)
   }
   return out
+}
+
+/**
+ * The clips with `pieces` put back (a cut's Remove, §2.4): each as a clip at its own speed where
+ * nothing plays it now, with no snapping, joined to touching clips at the same speed as
+ * restoreRange joins. A piece shorter than MIN_CLIP that joins nothing cannot be a clip of its own
+ * and stays out (normalizeClips). `clips` itself when nothing is to put back.
+ */
+function putBack(clips: Clip[], pieces: readonly Piece[], duration: number): Clip[] {
+  const back: Clip[] = []
+  for (const p of pieces) {
+    let at = p.start
+    for (const c of [...clips].sort((x, y) => x.start - y.start)) {
+      if (c.end <= at + EPS || c.start >= p.end - EPS) continue
+      if (c.start - at > EPS) back.push({ id: newClipId(), start: at, end: c.start, speed: p.speed })
+      at = Math.max(at, c.end)
+    }
+    if (p.end - at > EPS) back.push({ id: newClipId(), start: at, end: p.end, speed: p.speed })
+  }
+  if (back.length === 0) return clips
+  const fresh = new Set(back)
+  // A piece put back joins touching clips at its speed on both sides; the joined clip keeps the
+  // id of the first clip that was there (restoreRange's rule).
+  const out: { clip: Clip; joins: boolean; oldId: boolean }[] = []
+  for (const c of [...clips, ...back].sort((x, y) => x.start - y.start)) {
+    const last = out[out.length - 1]
+    const isFresh = fresh.has(c)
+    if (last && Math.abs(last.clip.end - c.start) <= EPS && last.clip.speed === c.speed && (last.joins || isFresh)) {
+      out[out.length - 1] = { clip: { ...last.clip, id: last.oldId ? last.clip.id : c.id, end: c.end }, joins: isFresh, oldId: last.oldId || !isFresh }
+    } else out.push({ clip: c, joins: isFresh, oldId: !isFresh })
+  }
+  return normalizeClips(out.map((o) => o.clip), duration)
+}
+
+/**
+ * The clips and records with the records `ids` of `list` taken back (Remove and Remove all, §2.4):
+ * each as undoAutoCut, the latest in source time first, a speed-up leaving the records inside it
+ * holding their footage at the speed from before it (withoutSpeedUp); the records taken back are
+ * left out.
+ *
+ * A piece of a cut shorter than MIN_CLIP comes back only by joining a clip (alone it cannot be
+ * one). Once all are back it is put back again, so it joins a neighbour at its speed that came back
+ * with it. Touching pieces at different speeds, long enough together, come back as one clip at the
+ * speed of the longest. One that touches no clip at its speed joins a clip it touches at another
+ * speed (joinAcross: it plays again, at that speed). Neither is done when it changes a record left,
+ * one holding that time. One with the footage on both sides still cut goes to a cut record left
+ * that `heir` allows (one still to review) and whose footage touches it: that record holds it from
+ * then on, so its Remove brings the piece back with its own footage. So Remove leaves no footage cut
+ * that nothing in Review can bring back, except a piece between two cuts no row can take back (the
+ * user's own, or kept), or between such a cut and a clip it cannot join without changing a record
+ * left: alone it cannot be a clip, so it stays out.
+ */
+export function takeBack(
+  clips: Clip[],
+  list: readonly AutoCut[],
+  ids: readonly string[],
+  duration: number,
+  heir: (c: AutoCut) => boolean
+): { clips: Clip[]; list: AutoCut[] } {
+  const gone = new Set(ids)
+  let out = [...list]
+  let at = clips
+  const order = ids.flatMap((id) => list.filter((c) => c.id === id).slice(0, 1))
+  for (const { id } of order.sort((a, b) => b.start - a.start)) {
+    const c = out.find((x) => x.id === id)!
+    at = undoAutoCut(at, c, duration)
+    if (c.action !== 'cut') out = withoutSpeedUp(out, c)
+  }
+  const outOf = (pieces: readonly Piece[]): Piece[] =>
+    outside(pieces, union(at.map((c) => ({ start: c.start, end: c.end, speed: c.speed })))).filter((p) => p.end - p.start > SLACK)
+  let left = outOf(out.filter((c) => gone.has(c.id) && c.action === 'cut').flatMap((c) => c.was))
+  if (left.length === 0) return { clips: at, list: out.filter((c) => !gone.has(c.id)) }
+  at = putBack(at, left, duration)
+  left = outOf(left).sort((a, b) => a.start - b.start)
+  const rest = out.filter((c) => !gone.has(c.id))
+  // A piece that comes back at another speed must leave every record left as it was: a speed-up
+  // holding that time would no longer play it at its speed, a cut holding it would be undone.
+  const leaves = (p: Piece, next: Clip[]): boolean => {
+    const holding = rest.filter((c) => c.was.some((w) => Math.min(w.end, p.end) - Math.max(w.start, p.start) > EPS))
+    return !holding.some((c) => autoCutIntact(c, at, rest) && !autoCutIntact(c, next, rest))
+  }
+  // Touching pieces at different speeds, each too short alone and long enough together (a cut
+  // across a speed change), come back as one clip at the speed of the longest.
+  const runs: Piece[][] = []
+  for (const p of left) {
+    const run = runs[runs.length - 1]
+    if (run && Math.abs(run[run.length - 1].end - p.start) <= EPS) run.push(p)
+    else runs.push([p])
+  }
+  left = runs.flatMap((run) => {
+    const whole = { start: run[0].start, end: run[run.length - 1].end, speed: run.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a)).speed }
+    if (run.length < 2 || whole.end - whole.start < MIN_CLIP - 1e-9) return run
+    const next = putBack(at, [whole], duration)
+    if (!leaves(whole, next)) return run
+    at = next
+    return []
+  })
+  for (let joined = true; joined && left.length; ) {
+    joined = false
+    left = left.filter((p) => {
+      const next = joinAcross(at, p, duration)
+      if (!next || !leaves(p, next)) return true
+      at = next
+      joined = true
+      return false
+    })
+  }
+  // Hand each piece still out to a cut to review whose footage touches it (or touches one handed
+  // on before it), one at its speed first, so their Remove puts them back together.
+  const touches = (w: Piece, p: Piece): boolean => Math.abs(w.end - p.start) <= EPS || Math.abs(p.end - w.start) <= EPS
+  for (let handed = true; handed && left.length; ) {
+    handed = false
+    left = left.filter((p) => {
+      const heirs = out.filter((c) => c.action === 'cut' && !gone.has(c.id) && c.was.some((w) => touches(w, p)) && heir(c) && autoCutIntact(c, at))
+      const to = heirs.find((c) => c.was.some((w) => touches(w, p) && w.speed === p.speed)) ?? heirs[0]
+      const was = to && joinPieces([...to.was, p])
+      if (!to || !was || was.length > MAX_WAS_PIECES) return true
+      out = out.map((c) => (c === to ? { ...c, start: Math.min(c.start, p.start), end: Math.max(c.end, p.end), was } : c))
+      handed = true
+      return false
+    })
+  }
+  return { clips: at, list: out.filter((c) => !gone.has(c.id)) }
+}
+
+/**
+ * The clips with `p` (a cut piece shorter than MIN_CLIP that touches no clip at its speed) joined to
+ * a clip it touches at another speed: the one whose speed is nearest its own (the earlier on a tie),
+ * or both into one when they play at one speed (restoreRange's join). The joined clip keeps its id.
+ * null when it touches no clip.
+ */
+function joinAcross(clips: Clip[], p: Piece, duration: number): Clip[] | null {
+  const before = clips.find((c) => Math.abs(c.end - p.start) <= EPS)
+  const after = clips.find((c) => Math.abs(c.start - p.end) <= EPS)
+  if (!before && !after) return null
+  if (before && after && before.speed === after.speed) {
+    return normalizeClips(clips.flatMap((c) => (c === after ? [] : c === before ? [{ ...c, end: after.end }] : [c])), duration)
+  }
+  const far = (c: Clip | undefined): number => (c ? Math.abs(Math.log(c.speed / p.speed)) : Infinity)
+  const to = far(before) <= far(after) ? before! : after!
+  return normalizeClips(clips.map((c) => (c !== to ? c : to === before ? { ...c, end: p.end } : { ...c, start: p.start })), duration)
 }

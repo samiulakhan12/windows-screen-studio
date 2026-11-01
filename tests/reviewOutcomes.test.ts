@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest'
 import { restoreRange, setRangeSpeed } from '../src/shared/editor/clips'
 import { EditStore } from '../src/shared/editor/editStore'
-import { applySmartSpeed } from '../src/shared/editor/smartSpeed'
+import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
 import { createProject } from '../src/shared/engine/project'
 import { cutRange } from '../src/shared/engine/timeline'
@@ -627,6 +627,114 @@ describe('every reviewed row reads what was chosen, in any order (nested runs)',
   })
 })
 
+describe('a piece of a cut too short to come back alone (shorter than MIN_CLIP)', () => {
+  // Remove silences (Clip panel: Cut, min length 0.5 s) three times over one pause [8.1, 10.9], with
+  // padding 0.4, 0.35 and 0.3: each run cuts 0.05 s more on each side. r0 = [8.5, 10.5]; r1, r2 =
+  // [8.45, 8.5], [10.5, 10.55]; r3, r4 = [8.4, 8.45], [10.55, 10.6].
+  const three = 'tool 8.5-10.5 cut silences; tool 8.45-8.5,10.5-10.55 cut silences; tool 8.4-8.45,10.55-10.6 cut silences; open'
+  const sound = [
+    { start: 0, end: 8.1 },
+    { start: 10.9, end: 20 }
+  ]
+
+  it('the three runs are the planner’s own ranges', () => {
+    const s = new Session()
+    const want = [['8.5-10.5'], ['8.45-8.5', '10.5-10.55'], ['8.4-8.45', '10.55-10.6']]
+    ;[0.4, 0.35, 0.3].forEach((padding, k) => {
+      const plan = planSilences(sound, s.p.clips, { minLength: 0.5, padding }, 'cut')
+      const ranges = plan.parts.flatMap((p) => p.pieces).map((r) => `${+r.start.toFixed(3)}-${+r.end.toFixed(3)}`)
+      expect(ranges).toEqual(want[k])
+      s.run(`tool ${ranges.join(',')} cut silences`)
+    })
+    expect(plays(s.p.clips)).toBe('[0,8.4]@1 [10.6,20]@1')
+  })
+
+  it('Remove on the middle run’s piece first: it goes to the cut beside it, and the rest bring all of it back', () => {
+    const s = replay(`${three}; R r1`)
+    // Alone between two cuts it cannot be a clip: r0, still to review, holds it now.
+    expect(plays(s.p.clips)).toBe('[0,8.4]@1 [10.6,20]@1')
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([{ start: 8.45, end: 10.5, speed: 1 }])
+    expect(s.rows()).toEqual(['r3:pending', 'r0:pending', 'r1:removed', 'r2:pending', 'r4:pending'])
+    s.run('R r2; R r0; R r3; R r4')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+    expect(s.rows().sort()).toEqual(['r0:removed', 'r1:removed', 'r2:removed', 'r3:removed', 'r4:removed'])
+    expect(s.p.autoCuts).toBeUndefined()
+  })
+
+  it('every order of the five Removes, and Remove all, brings all the footage back', () => {
+    const orders = (xs: number[]): number[][] => (xs.length <= 1 ? [xs] : xs.flatMap((x) => orders(xs.filter((y) => y !== x)).map((o) => [x, ...o])))
+    for (const order of orders([0, 1, 2, 3, 4])) {
+      const s = replay(`${three}; ${order.map((k) => `R r${k}`).join('; ')}`)
+      expect(plays(s.p.clips), order.join(',')).toBe('[0,20]@1')
+      expect(s.p.autoCuts, order.join(',')).toBeUndefined()
+    }
+    for (const first of ['', 'R r1; ', 'R r2; ', 'R r1; R r2; ']) expect(plays(replay(`${three}; ${first}R all`).p.clips), first).toBe('[0,20]@1')
+  })
+
+  it('Remove all brings back a piece that a record whose range starts before it cut, between two others', () => {
+    // r1's range [2, 3] starts before its footage [2.95, 3]: Remove all took it back first, alone.
+    const s = replay('tool 1.75-2.95 cut silences; tool 2-3 cut silences; tool 1.5-3.5 cut silences; open; R all')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+    expect(s.rows().sort()).toEqual(['r0:removed', 'r1:removed', 'r2:removed'])
+  })
+
+  it('a piece between two parts sped up since joins them, at their speed, and comes back to 1x with them', () => {
+    // r1 cut [1.65, 2] and [3, 3.05]; r0's [2, 3] put back; then Polish 8x over [1.5, 3.2].
+    const s = replay('tool 2-3 cut silences; tool 1.65-3.05 cut silences; open; R r0; tool 1.5-3.2 8 silences; R r1')
+    expect(plays(s.p.clips)).toBe('[0,1.5]@1 [1.5,1.65]@8 [1.65,2]@1 [2,3.2]@8 [3.2,20]@1')
+    expect(s.rows()).toEqual(['r2:pending', 'r1:removed', 'r0:removed'])
+    s.run('R r2')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+  })
+
+  it('a piece between two clips re-timed by hand joins the one whose speed is nearest its own', () => {
+    const s = replay('tool 9-10 cut silences; tool 8.95-9 cut silences; hand speed 0-8.95 2; open; R r0; hand speed 9-20 4; R r1')
+    expect(plays(s.p.clips)).toBe('[0,9]@2 [9,20]@4')
+    expect(s.p.autoCuts).toBeUndefined()
+  })
+
+  it('a piece inside a speed-up still to review never joins a clip outside it at another speed: it goes to the cut beside it', () => {
+    // Smart speed 2x over [3, 5]; cuts [5, 6], then [4.95, 5] and [4.8, 4.95] inside the 2x. With [5, 6]
+    // back at 1x, [4.95, 5] joining it would play the 2x's footage at 1x and take the 2x off the list.
+    const s = replay('tool 3-5 2 smart-speed; tool 5-6 cut silences; tool 4.95-5 cut silences; tool 4.8-4.95 cut silences; open; R r1; R r2')
+    expect(plays(s.p.clips)).toBe('[0,3]@1 [3,4.8]@2 [5,20]@1')
+    expect(s.p.autoCuts?.find((c) => c.id === 'r3')?.was).toEqual([{ start: 4.8, end: 5, speed: 2 }])
+    expect(s.rows()).toEqual(['r0:pending', 'r3:pending', 'r2:removed', 'r1:removed'])
+    s.run('R r3')
+    expect(plays(s.p.clips)).toBe('[0,3]@1 [3,5]@2 [5,20]@1')
+    s.run('R r0')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+  })
+
+  it('the cut that holds the piece kept: the piece stays cut with it, and each row reads its choice', () => {
+    const s = replay(`${three}; R r1; K r0`)
+    expect(plays(s.p.clips)).toBe('[0,8.4]@1 [10.6,20]@1')
+    expect(s.rows()).toEqual(['r3:pending', 'r0:kept', 'r1:removed', 'r2:pending', 'r4:pending'])
+    s.run('undo; undo')
+    expect(s.rows()).toEqual(['r3:pending', 'r1:pending', 'r0:pending', 'r2:pending', 'r4:pending'])
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([{ start: 8.5, end: 10.5, speed: 1 }])
+  })
+
+  it('a cut across a speed change, each side too short and both long enough together, comes back as one clip between two kept cuts', () => {
+    // r0 cut [10.48, 10.6] across the 1x/2x change at 10.55: [10.48, 10.55] at 1x and [10.55, 10.6] at 2x.
+    const s = replay('hand speed 10.55-20 2; tool 10.48-10.6 cut silences; tool 9-10.48 cut silences; tool 10.6-12 cut silences; open; K r1; K r2; R r0')
+    expect(plays(s.p.clips)).toBe('[0,9]@1 [10.48,10.6]@1 [12,20]@2')
+    expect(s.rows()).toEqual(['r1:kept', 'r0:removed', 'r2:kept'])
+  })
+
+  it('a piece inside a speed-up still to review, between a kept cut and a clip at another speed, stays out; the speed-up stays to review', () => {
+    const s = replay('tool 7.05-10 2 smart-speed; tool 5-7.1 cut silences; tool 7.1-7.5 cut silences; open; K r2; R r1')
+    expect(plays(s.p.clips)).toBe('[0,7.05]@1 [7.5,10]@2 [10,20]@1')
+    expect(s.rows()).toEqual(['r1:removed', 'r0:pending', 'r2:kept'])
+  })
+
+  it('a piece between two cuts no row can take back stays out with them; its row reads removed', () => {
+    const s = replay(`${three}; K r0; K r3; R r1`)
+    expect(plays(s.p.clips)).toBe('[0,8.4]@1 [10.6,20]@1')
+    expect(s.rows()).toEqual(['r3:kept', 'r1:removed', 'r0:kept', 'r2:pending', 'r4:pending'])
+  })
+})
+
 describe('random histories', () => {
   // Tool runs over random and nested ranges, Keep and Remove (one row, Keep all, Remove all), undo,
   // redo, closing and reopening the panel and edits by hand: after every step each row the user
@@ -694,5 +802,87 @@ describe('random histories', () => {
     ['speed-ups, cuts and edits by hand', 4, [2, 4, 8, 'cut'], true]
   ] as const)('%s', (_name, seed, actions, hand) => {
     for (let k = 0; k < 120; k++) history(seed * 7919 + k * 104729, 16, [...actions], hand)
+  })
+
+  /**
+   * Remove silences run again and again over the same pauses with other padding (each run cuts a
+   * few hundredths more or less on each side), Smart speed over them, Keep and Remove, undo, redo and
+   * edits by hand. Besides Session.check: after a Remove, a piece of a removed cut that is still out
+   * is held by a cut still to review, or touches neither a clip at its speed nor a cut still to
+   * review (§4.1).
+   */
+  function padded(seed: number, steps: number, hand: boolean): void {
+    let x = seed
+    const rnd = (): number => {
+      x ^= x << 13
+      x ^= x >>> 17
+      x ^= x << 5
+      return ((x >>> 0) % 1000000) / 1000000
+    }
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rnd() * xs.length)]
+    const pauses: [number, number][] = [[1.5, 3.2], [5, 6.4], [8.1, 10.9], [13, 13.8], [15.5, 19]]
+    const s = new Session()
+    const script: string[] = []
+    for (let k = 0; k < steps; k++) {
+      const r = rnd()
+      let raw = ''
+      if (r < 0.35) {
+        const pad = pick([0.25, 0.3, 0.35, 0.4, 0.45])
+        const ranges = pauses
+          .filter(([a, b]) => b - a - 2 * pad > 0.3 && rnd() < 0.7)
+          .map(([a, b]) => `${+(a + pad).toFixed(2)}-${+(b - pad).toFixed(2)}`)
+        if (ranges.length) raw = `tool ${ranges.join(',')} ${rnd() < 0.8 ? 'cut' : pick([2, 4])} ${pick(['silences', 'polish'])}`
+      } else if (r < 0.43) raw = s.store.canUndo ? 'undo' : ''
+      else if (r < 0.47) raw = s.store.canRedo ? 'redo' : ''
+      else if (hand && r < 0.53) {
+        const a = Math.floor(rnd() * 36) / 2
+        raw = rnd() < 0.7 ? `hand speed ${a}-${a + 1 + Math.floor(rnd() * 4) / 2} ${pick([1, 2, 4])}` : `hand cut ${a}-${a + 0.5}`
+      } else {
+        if (!s.shown) {
+          s.step('open')
+          script.push('open')
+        }
+        const pending = s.list.filter((i) => s.status(i) === 'pending')
+        if (pending.length) {
+          const how = rnd() < 0.35 ? 'K' : 'R'
+          raw = rnd() < 0.15 ? `${how} all` : `${how} ${pick(pending).cut!.id}`
+        }
+      }
+      if (!raw) continue
+      script.push(raw)
+      const before = s.p
+      try {
+        s.step(raw)
+        s.check(raw)
+        if (raw.startsWith('R ')) piecesOut(before, s.p, raw)
+      } catch (e) {
+        throw new Error(`${(e as Error).message}\n  history: ${script.join('; ')}`)
+      }
+    }
+  }
+
+  /** After a Remove from `before` to `after`: each piece of a removed cut still out is held, or nothing can take it. */
+  function piecesOut(before: Project, after: Project, raw: string): void {
+    const left = new Set((after.autoCuts ?? []).map((c) => c.id))
+    const removed = (before.autoCuts ?? []).filter((c) => c.action === 'cut' && !left.has(c.id))
+    const toReview = new Set(reviewItems(after).flatMap((i) => (i.cut ? [i.cut.id] : [])))
+    const covered = (a: number, b: number, clips: readonly { start: number; end: number }[]): number =>
+      clips.reduce((n, c) => n + Math.max(0, Math.min(b, c.end) - Math.max(a, c.start)), 0)
+    for (const w of removed.flatMap((c) => c.was)) {
+      if (covered(w.start, w.end, after.clips) >= w.end - w.start - 1e-3) continue
+      const held = (after.autoCuts ?? []).some((c) => c.action === 'cut' && covered(w.start, w.end, c.was) > 1e-3)
+      if (held) continue
+      const touch = (c: { start: number; end: number }): boolean => Math.abs(c.end - w.start) < 1e-6 || Math.abs(c.start - w.end) < 1e-6
+      expect(w.end - w.start, `${raw}: ${w.start}-${w.end} out`).toBeLessThan(0.1)
+      expect(after.clips.some((c) => touch(c) && c.speed === w.speed), `${raw}: ${w.start}-${w.end} out beside a clip at its speed`).toBe(false)
+      expect((after.autoCuts ?? []).some((c) => toReview.has(c.id) && c.action === 'cut' && c.was.some(touch)), `${raw}: ${w.start}-${w.end} out beside a cut to review`).toBe(false)
+    }
+  }
+
+  it.each([
+    ['without edits by hand', 5, false],
+    ['with edits by hand', 6, true]
+  ] as const)('Remove silences run again with other padding, %s', (_name, seed, hand) => {
+    for (let k = 0; k < 150; k++) padded(seed * 7919 + k * 104729, 24, hand)
   })
 })
