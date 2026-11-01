@@ -134,6 +134,19 @@ describe('downloading an asset (§12)', () => {
     expect(waits).toEqual([])
   })
 
+  it('says what stopped a font download in font words: GitHub refused it, or the font is gone (no model, no Hugging Face)', async () => {
+    use(server(() => ({ status: 403 })).get)
+    const refused = store.downloadAsset('test-cjk', progress)
+    await expect(refused).rejects.toThrow('GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.')
+    await expect(refused).rejects.not.toThrow(/model|Hugging Face/)
+    for (const status of [404, 410]) {
+      use(server(() => ({ status })).get)
+      const gone = store.downloadAsset('test-cjk', progress)
+      await expect(gone).rejects.toThrow(`The font is no longer at its address (HTTP ${status}).`)
+      await expect(gone).rejects.not.toThrow(/model/)
+    }
+  })
+
   it('tries the sources in order: a missing or busy one gives way to the next', async () => {
     const pin = { url: 'https://a.example/f', bytes: FILE.length, sha256: SHA }
     const allow = (): boolean => true

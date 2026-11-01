@@ -2977,7 +2977,10 @@ translation is applied when the worker or provider has finished.
   `.part` file resumed with Range, the hash computed while the bytes stream, the size checked
   before more bytes are written than pinned, fsync, rename with retries, a disk-space check with
   64 MB spare, three retries. A mismatch deletes the file: "The download did not match the
-  expected file, so it was deleted."
+  expected file, so it was deleted." A font download the last source refuses says "GitHub or your
+  network refused the download (HTTP 403). A proxy or firewall may be blocking it."; one no longer
+  there says "The font is no longer at its address (HTTP 404)." (the speech store's words name a
+  model and Hugging Face).
 - **Hosts**: `downloadPinned` gains an `allow(url)` option and a list of sources tried in order.
   Caption assets allow only https on port 443 without credentials and exactly these prefixes:
   1. the Qbexel mirror on Hugging Face at a pinned commit

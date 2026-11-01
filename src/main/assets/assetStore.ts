@@ -195,6 +195,9 @@ function failureMessage(err: unknown): string {
     if (err.kind === 'cancelled') return 'The download was cancelled.'
     if (err.kind === 'disk') return err.message
     if (err.kind === 'network') return `The download stopped: ${err.message} Try again.`
+    // The speech store's words name a model and Hugging Face; fonts come from GitHub (the last source).
+    if (err.kind === 'refused') return 'GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.'
+    if (err.kind === 'missing') return `The font is no longer at its address (HTTP ${err.status ?? 404}).`
     return err.message
   }
   return err instanceof Error ? err.message : String(err)
