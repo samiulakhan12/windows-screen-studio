@@ -55,7 +55,7 @@ mockReact()
 const GALLERY = '../src/renderer/src/editor/panels/CaptionGallery'
 const LOOK = '../src/renderer/src/editor/panels/CaptionLookSection'
 const PREVIEW = '../src/renderer/src/editor/previewLook'
-const { CaptionGallery, FILTER_KEY } = (await import(/* @vite-ignore */ GALLERY)) as { CaptionGallery: (p: unknown) => unknown; FILTER_KEY: string }
+const { CaptionGallery, FILTER_KEY, FOCUS_WAIT, focusGallery } = (await import(/* @vite-ignore */ GALLERY)) as { CaptionGallery: (p: unknown) => unknown; FILTER_KEY: string; FOCUS_WAIT: number; focusGallery(): void }
 const { CaptionLookSection } = (await import(/* @vite-ignore */ LOOK)) as { CaptionLookSection: (p: unknown) => unknown }
 const preview = (await import(/* @vite-ignore */ PREVIEW)) as { previewLook(): { tile: string; name: string; captions: CaptionSettings } | null; previewLabel(l: unknown): string }
 await useEditorContexts()
@@ -151,6 +151,72 @@ describe('filters and rows', () => {
     expect(bold.props['aria-checked']).toBe(true)
     expect(grid(els).props.role).toBe('radiogroup')
     expect(grid(els).props['aria-label']).toBe('Caption style')
+  })
+})
+
+describe('the checked look, wherever it comes in its filter (§2.5, §2.14, §2.15)', () => {
+  const SQUARE = { w: 1080, h: 1080 }
+  const highlight = { ...DEFAULT_CAPTIONS, studio: { ...studioPreset('highlight-box')!.look, from: 'highlight-box' } }
+  const short = STUDIO_PRESETS.filter((p) => p.group === 'short').map((p) => p.id)
+
+  it('is among the two rows, in the last place, as the radio group’s tab stop', async () => {
+    expect(short.indexOf('highlight-box')).toBeGreaterThanOrEqual(4)
+    const els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(ids(els)).toEqual([...short.slice(0, 3), 'highlight-box'])
+    const tile = tiles(els)[3]
+    expect(tile.props['aria-checked']).toBe(true)
+    expect(tiles(els).filter((t) => t.props.tabIndex === 0)).toEqual([tile])
+  })
+
+  it('Play names and plays the same tile: the focused one, else the checked one, even after a filter change', async () => {
+    reduced = true
+    const picture = (els: El[], id: string): unknown => (els.filter((e) => e.props.className === 'tile-thumb')[ids(els).indexOf(id)].props.children as El | null)?.type
+    let els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(byTestId(els, 'caption-tile-play')!.props['aria-label']).toBe('Play a preview of Highlight Box')
+    ;(byTestId(els, 'caption-tile-play')!.props.onClick as () => void)()
+    els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(picture(els, 'highlight-box')).toBe('canvas')
+    expect(picture(els, short[0])).toBe('img')
+    // A tile focused under another filter is not shown here: Play goes back to the checked tile.
+    unmountAll()
+    els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    const chip = (text: string): El => descendants(byTestId(els, 'caption-gallery-filter')!).find((e) => textOf(e) === text)!
+    ;(chip('Long videos').props.onClick as () => void)()
+    els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    ;(tiles(els)[1].props.onFocus as () => void)()
+    ;(chip('Short clips').props.onClick as () => void)()
+    els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(byTestId(els, 'caption-tile-play')!.props['aria-label']).toBe('Play a preview of Highlight Box')
+    ;(byTestId(els, 'caption-tile-play')!.props.onClick as () => void)()
+    els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(picture(els, 'highlight-box')).toBe('canvas')
+  })
+
+  it('Caption styles… focuses the checked tile, on its own filter, without changing the remembered one', async () => {
+    storage.set(FILTER_KEY, 'long')
+    const bold = { ...DEFAULT_CAPTIONS, studio: { ...studioPreset('bold-pop')!.look, from: 'bold-pop' } }
+    let els = await settle(gallery({ value: bold }))
+    expect(ids(els).includes('bold-pop')).toBe(false)
+    focusGallery()
+    els = await settle(gallery({ value: bold }))
+    expect(focused.at(-1)?.props['data-tile']).toBe('bold-pop')
+    const pressed = descendants(byTestId(els, 'caption-gallery-filter')!).filter((e) => e.props['aria-pressed'] === true)
+    expect(pressed.map(textOf)).toEqual(['Short clips'])
+    expect(storage.get(FILTER_KEY)).toBe('long')
+  })
+
+  it('Caption styles… with no gallery to take it (the Selection view is open) does not move the focus when the gallery shows later', async () => {
+    // At once: the gallery mounting takes it.
+    focusGallery()
+    await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(focused.at(-1)?.props['data-tile']).toBe('highlight-box')
+    unmountAll()
+    vi.useFakeTimers()
+    focusGallery()
+    vi.advanceTimersByTime(FOCUS_WAIT + 1)
+    vi.useRealTimers()
+    await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(focused).toEqual([])
   })
 })
 

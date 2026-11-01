@@ -255,7 +255,7 @@ Shown only with a transcript, as today. `data-testid="caption-look"`.
 | Button `captions-great` | **Make my captions great** | Primary button, sparkle icon. The hint under it is built from the options as they resolve for this project (§2.8). Wide frame with the defaults: "Emphasises key words, tidies the text and adds lower thirds. You can review every change." Tall camera-led frame: "Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change." |
 | Icon button `captions-great-options` | aria-label and title "Choose what Make my captions great does" | Opens the options popover (§2.8). |
 | Chips `caption-gallery-filter` | **Long videos** · **Short clips** · **Classic** · **Mine** · **Brand** · **All** | *Mine* only when the user saved a look; *Brand* only when the brand kit has a caption style. *Classic* holds the five legacy looks; *All* holds every look except Classic. On first open the filter is the frame's group (*Short clips* for tall and square frames, *Long videos* for wide ones); after that the last choice is remembered per window (`localStorage` `captions-gallery-filter`). |
-| Grid `caption-gallery` | Tiles (§2.5) | `role="radiogroup"`, aria-label "Caption style". Shows two rows; **Show all styles** (`caption-gallery-more`, `aria-expanded`) shows the rest of the filter's tiles, so Text and Layout stay in reach. |
+| Grid `caption-gallery` | Tiles (§2.5) | `role="radiogroup"`, aria-label "Caption style". Shows two rows; **Show all styles** (`caption-gallery-more`, `aria-expanded`) shows the rest of the filter's tiles, so Text and Layout stay in reach. The checked tile is always among the two rows (in the last place when it comes later in the filter), so the radio group's tab stop is the checked radio. |
 | Line `caption-style-name` | "Bold Pop" or "Bold Pop (edited)" | With **Reset** (`caption-style-reset`, title "Go back to Bold Pop as it comes") while edited. |
 | Button `caption-style-save` | **Save as my style** | Asks for a name in an inline field ("Name", default "My style 1"), **Save**, **Cancel**. At most 50 saved looks: "You have 50 saved styles. Delete one first." |
 | Section `caption-text` | **Text** | §2.6. |
@@ -604,7 +604,10 @@ letter falls back to the letter, `shortcuts.ts:331`):
 | `captionLanguage` | Add a caption language… | translate subtitles track |
 | `saveCaptionStyle` | Save caption style as mine | preset save |
 
-`captionStyles` opens the Captions tab, opens Look and focuses the checked tile.
+`captionStyles` opens the Captions tab, opens Look and focuses the checked tile, switching to its
+filter first when another one is shown (not remembered as the user's filter). A request no gallery
+takes within 1 s (the Selection view hides the Captions tab) is dropped, so the focus does not jump
+into the gallery when it shows later.
 
 Two publish-pack commands change target (ids, titles and keywords stay):
 

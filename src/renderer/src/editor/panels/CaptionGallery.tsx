@@ -153,10 +153,26 @@ function Thumb({ look, frame, size, language, playing, onDone, fonts }: { look: 
 
 /** Caption styles… (§2.14) asks the gallery to take the focus, on its checked tile. */
 let focusAsked = false
+let focusExpiry: ReturnType<typeof setTimeout> | null = null
+/**
+ * A request no gallery takes this soon, ms, is dropped (the Selection view hid the Captions tab):
+ * the focus does not jump into the gallery when it shows later.
+ */
+export const FOCUS_WAIT = 1000
 const focusListeners = new Set<() => void>()
 export function focusGallery(): void {
   focusAsked = true
+  if (focusExpiry) clearTimeout(focusExpiry)
+  focusExpiry = setTimeout(() => {
+    focusAsked = false
+    focusExpiry = null
+  }, FOCUS_WAIT)
   for (const l of focusListeners) l()
+}
+const focusTaken = (): void => {
+  focusAsked = false
+  if (focusExpiry) clearTimeout(focusExpiry)
+  focusExpiry = null
 }
 
 export function CaptionGallery(props: {
@@ -196,7 +212,11 @@ export function CaptionGallery(props: {
   const cols = width > 460 ? 3 : 2
   const tileW = Math.max(96, Math.min(TILE.w, Math.floor((width - GAP * (cols - 1)) / cols)))
   const size = { w: tileW, h: Math.round((tileW * TILE.h) / TILE.w) }
-  const shown = showAll ? tiles : tiles.slice(0, cols * 2)
+  // Two rows; the checked tile is always among them (it takes the last place when it comes later),
+  // so the radio group's tab stop is the checked radio (§2.15).
+  const rows = tiles.slice(0, cols * 2)
+  const later = showAll || !checked || rows.some((t) => t.id === checked) ? undefined : tiles.find((t) => t.id === checked)
+  const shown = showAll ? tiles : later ? [...rows.slice(0, -1), later] : rows
 
   // The roving tab stop: the focused tile, else the checked one, else the first.
   const [focusId, setFocusId] = useState<string | null>(null)
@@ -242,17 +262,28 @@ export function CaptionGallery(props: {
     setFocusId(id)
     gridRef.current?.querySelector<HTMLElement>(`[data-tile="${id}"]`)?.focus()
   }
-  // Caption styles…: the focus goes to the checked tile (the tab stop) once the gallery shows.
-  useEffect(() => {
-    const take = (): void => {
-      if (!focusAsked || !stop) return
-      focusAsked = false
-      gridRef.current?.querySelector<HTMLElement>(`[data-tile="${stop}"]`)?.focus()
+  // Caption styles…: the focus goes to the checked tile once the gallery shows, on the checked
+  // tile's filter (switched to for this, not remembered).
+  const takeFocus = (): void => {
+    if (!focusAsked) return
+    if (checked && !tiles.some((t) => t.id === checked)) {
+      const home = galleryTiles('all', value, saved, brand).find((t) => t.id === checked)?.group
+      // Taken once that filter shows (the effect below runs again).
+      if (home && home !== filter) return setWanted(home)
     }
-    take()
+    const id = shown.find((t) => t.id === checked)?.id ?? stop
+    if (!id) return
+    focusTaken()
+    gridRef.current?.querySelector<HTMLElement>(`[data-tile="${id}"]`)?.focus()
+  }
+  const takeRef = useRef(takeFocus)
+  takeRef.current = takeFocus
+  useEffect(() => {
+    const take = (): void => takeRef.current()
     focusListeners.add(take)
     return () => void focusListeners.delete(take)
-  }, [stop])
+  }, [])
+  useEffect(() => takeRef.current(), [filter, stop])
   const onKeyDown = (e: ReactKeyboardEvent): void => {
     const i = shown.findIndex((t) => t.id === stop)
     if (i < 0) return
@@ -290,8 +321,9 @@ export function CaptionGallery(props: {
       (err: unknown) => group.notice(`The style could not be deleted: ${err instanceof Error ? err.message : String(err)}`)
     )
   }
-  const playName = (shown.find((t) => t.id === (focusId ?? checked)) ?? tiles.find((t) => t.id === checked) ?? shown[0])?.name
-  const playTile = shown.find((t) => t.id === (focusId ?? checked))?.id ?? shown[0]?.id
+  // Play plays the tile it names: the tab stop's (the focused tile, else the checked one, §2.5).
+  const playTile = stop
+  const playName = shown.find((t) => t.id === stop)?.name
 
   return (
     <div className="caption-gallery-wrap">
