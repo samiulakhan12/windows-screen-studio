@@ -18,10 +18,20 @@ import { History } from '../engine/history'
  * (the gesture ends, another edit, undo, redo), against the state before it:
  * a drag works out each move from where it started, and must not lose what a
  * passing move would settle away.
+ *
+ * Holding (`hold`): long work that makes one edit at its end from the state it started on (Review
+ * mode's Remove all over thousands of rows, a slice of time at a time) holds the store while it
+ * works. Undo and redo asked for meanwhile, and what is handed to `whenFree`, wait and are then
+ * done in order, after the work's own edit, as if asked for once it was done: Ctrl+Z then undoes
+ * that edit, and the step before it, or the redo list, is never taken by the wait. Other edits are
+ * not held.
  */
 export class EditStore<T> {
   private readonly history: History<T>
   private readonly listeners = new Set<() => void>()
+  private holds = 0
+  /** What waits for the store to be let go, in the order it was asked for. */
+  private readonly waiting: (() => void)[] = []
   private gestures = 0
   private lastKey: string | null = null
   private lastAt = 0
@@ -93,18 +103,55 @@ export class EditStore<T> {
     this.changed()
   }
 
+  /** Goes back a step; false when there is none. While the store is held it waits (true). */
   undo = (): boolean => {
+    if (this.holds > 0) {
+      this.waiting.push(() => void this.undo())
+      return true
+    }
     this.seal()
     if (this.history.undo() === null) return false
     this.changed()
     return true
   }
 
+  /** Goes forward a step; false when there is none. While the store is held it waits (true). */
   redo = (): boolean => {
+    if (this.holds > 0) {
+      this.waiting.push(() => void this.redo())
+      return true
+    }
     this.seal()
     if (this.history.redo() === null) return false
     this.changed()
     return true
+  }
+
+  /** Whether something holds the store (undo, redo and `whenFree` wait). */
+  get held(): boolean {
+    return this.holds > 0
+  }
+
+  /**
+   * Holds the store until the function returned is called (once; again does nothing). Then, once
+   * nothing holds it, what waited is done in order; a waiting step that holds it again leaves the
+   * rest waiting for that.
+   */
+  hold = (): (() => void) => {
+    this.holds++
+    let held = true
+    return () => {
+      if (!held) return
+      held = false
+      this.holds--
+      while (this.holds === 0 && this.waiting.length > 0) this.waiting.shift()!()
+    }
+  }
+
+  /** Runs `fn` now, or, while the store is held, once it is let go, in turn with the undo and redo that wait. */
+  whenFree = (fn: () => void): void => {
+    if (this.holds > 0) this.waiting.push(fn)
+    else fn()
   }
 
   beginGesture = (): void => {

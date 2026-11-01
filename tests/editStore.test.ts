@@ -133,4 +133,70 @@ describe('EditStore', () => {
     expect(s.canRedo).toBe(false)
     expect(s.redo()).toBe(false)
   })
+
+  // Review mode's Remove all on a long list (docs/design/review-mode.md §4.3): Ctrl+Z pressed while
+  // it works undoes the Remove all, as when it was instant, never the Keep before it.
+  it('holds undo and redo while held: they are done in order after the holder edits, as if asked for after it', () => {
+    const { s } = store()
+    s.update(() => 1) // the user's Keep
+    const release = s.hold()
+    expect(s.held).toBe(true)
+    expect(s.undo()).toBe(true) // waits
+    expect(s.state).toBe(1)
+    expect(s.canUndo).toBe(true)
+    s.update(() => 2) // the work's one edit, at its end
+    release()
+    expect(s.held).toBe(false)
+    expect(s.state).toBe(1) // the undo took the work's edit back, not the Keep
+    expect(s.canRedo).toBe(true)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(2)
+    release() // a second call does nothing
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(1)
+  })
+
+  it('a hold let go with no edit (the work stopped) does what waited on the history as it was, redo list kept', () => {
+    const { s } = store()
+    s.update(() => 1)
+    s.update(() => 2)
+    s.undo() // redo holds 2
+    const release = s.hold()
+    s.redo()
+    s.undo()
+    expect(s.state).toBe(1)
+    release()
+    expect(s.state).toBe(1) // redo then undo, in order
+    expect(s.canRedo).toBe(true)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(2)
+  })
+
+  it('whenFree runs at once when free, else in turn with the waiting undo and redo; one that holds again keeps the rest waiting', () => {
+    const { s } = store()
+    const order: string[] = []
+    s.whenFree(() => order.push('now'))
+    expect(order).toEqual(['now'])
+    s.update(() => 1)
+    const first = s.hold()
+    s.whenFree(() => {
+      order.push('keep')
+      s.update((v) => v + 10)
+    })
+    s.undo()
+    let second: (() => void) | null = null
+    s.whenFree(() => {
+      order.push('hold again')
+      second = s.hold()
+    })
+    s.whenFree(() => order.push('last'))
+    s.update(() => 5) // the first holder's edit
+    first()
+    expect(order).toEqual(['now', 'keep', 'hold again'])
+    expect(s.state).toBe(5) // 5, then 15, then undone back to 5
+    expect(s.held).toBe(true)
+    second!()
+    expect(order).toEqual(['now', 'keep', 'hold again', 'last'])
+    expect(s.held).toBe(false)
+  })
 })
