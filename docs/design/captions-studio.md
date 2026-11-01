@@ -1972,6 +1972,7 @@ Breaks are chosen by dynamic programming over the words of a caption, minimising
 | Before a word of the language's join list (en: and, but, or, so, because, that, which, when, while, if, to, of, in, on, at, for, with, from, by, about, into, than) | −1 |
 | After a word of that list (a line ends in "the", "to", "and") | +4 |
 | Between a number and its unit or currency ("300 percent", "$ 5") | +8 |
+| Before a postposition, which goes with the word before it (bn: জন্য, থেকে, দিয়ে, সাথে; hi: के, की, का, में, से, पर; "ঢাকা থেকে") | +8 |
 | Inside a run of capitalised words ("Visual Studio Code") | +4 |
 
 - **Two-line chunks** are bottom-heavy: +2 when the top line is wider than the bottom one by more
@@ -1981,9 +1982,9 @@ Breaks are chosen by dynamic programming over the words of a caption, minimising
   never after opening punctuation (「『（【〈《〔). Such a break is not allowed at all (infinite
   cost). Korean uses its spaces like Latin.
 
-Join lists (`phraseWords.ts`) exist for en, bn (এবং, কিন্তু, অথবা, যে, কারণ, জন্য, থেকে, দিয়ে,
-সাথে), hi (और, लेकिन, या, कि, क्योंकि, के, की, का, में, से, पर), es, fr, de and pt. Other
-languages use punctuation and pauses only. A caption of up to 400 words (`MAX_WORDS`) is broken in
+Join lists (`phraseWords.ts`) exist for en, bn (এবং, কিন্তু, অথবা, যে, কারণ), hi (और, लेकिन, या,
+कि, क्योंकि), es, fr, de and pt; the postposition lists for bn and hi. Other languages use
+punctuation and pauses only. A caption of up to 400 words (`MAX_WORDS`) is broken in
 under 1 ms.
 
 ### 8.4 Size and room

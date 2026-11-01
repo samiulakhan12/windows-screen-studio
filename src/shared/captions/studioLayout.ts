@@ -11,7 +11,7 @@ import { TEXT_INSET } from '../render/safeZones'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, Project, StudioPosition } from '../types'
 import { scriptLineHeight, scriptScale } from './fontStack'
 import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST } from './layout'
-import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, SENTENCE_END, UNIT_WORDS } from './phraseWords'
+import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, POST_WORDS, SENTENCE_END, UNIT_WORDS } from './phraseWords'
 import { hasCase, mainScript, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
 
 /** A word's font as drawn: the stack (its script's font first, §6.5), weight and letter spacing (em). */
@@ -167,6 +167,7 @@ function breakCost(tokens: readonly StudioToken[], i: number, language: string |
   const wa = bare(a.text)
   const wb = bare(b.text)
   if (join?.includes(wb)) cost -= 1
+  if (POST_WORDS[lang]?.includes(wb)) cost += 8
   if (!SENTENCE_END.test(a.text) && !CLAUSE_END.test(a.text) && (join?.includes(wa) || ends?.includes(wa))) cost += 4
   // A number and its unit or currency ("300 percent", "$ 5").
   if ((isNumber(a.text) && !CLAUSE_END.test(a.text) && !SENTENCE_END.test(a.text) && (UNIT_WORDS.has(wb) || /^[%‰]/.test(b.text))) || (CURRENCY.test(a.text) && isNumber(b.text))) cost += 8

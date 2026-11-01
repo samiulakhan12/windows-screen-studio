@@ -104,4 +104,23 @@ describe('phrase breaks (§8.3)', () => {
     const first = l.chunks[0].lines[0].words.map((w) => w.text)
     expect(first.slice(0, 3)).toEqual(['Priya', 'Das:', 'Hello'])
   })
+
+  it('in Bangla and Hindi no line starts with a postposition: it stays after its noun ("ঢাকা থেকে", "दिल्ली से")', () => {
+    const post = new Set(['জন্য', 'থেকে', 'দিয়ে', 'সাথে', 'के', 'की', 'का', 'में', 'से', 'पर'])
+    const cases: [string, string][] = [
+      ['আমি সকালে ঢাকা থেকে চট্টগ্রামে এসেছি', 'bn'],
+      ['তুমি আমার সাথে বাজারে চলো', 'bn'],
+      ['আমরা আমাদের দলের সাথে প্রতি সপ্তাহে মিটিং করি', 'bn'],
+      ['এই ফিচারটি নতুন ব্যবহারকারীদের জন্য খুবই দরকারি হবে', 'bn'],
+      ['প্রথমে ফাইল মেনু থেকে নতুন প্রজেক্ট খুলুন', 'bn'],
+      ['मैं कल दिल्ली से मुंबई गया था', 'hi'],
+      ['इस ऐप से आप अपनी स्क्रीन रिकॉर्ड कर सकते हैं', 'hi']
+    ]
+    for (const [text, language] of cases)
+      for (const [w, h] of [[1920, 1080], [1080, 1920]])
+        for (const chars of [16, 20, 24, 28, 32]) {
+          const lines = allLines(layout(text, subtitle(chars), w, h, {}, language))
+          for (const line of lines) expect(post.has(line.split(' ')[0]), `${w}x${h} ${chars}: ${lines.join(' | ')}`).toBe(false)
+        }
+  })
 })

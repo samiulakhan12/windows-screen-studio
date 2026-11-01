@@ -7,8 +7,8 @@
 /** Words a line should not end with and may start with (§8.3), by language; other languages use punctuation and pauses only. */
 export const JOIN_WORDS: Readonly<Record<string, readonly string[]>> = {
   en: ['and', 'but', 'or', 'so', 'because', 'that', 'which', 'when', 'while', 'if', 'to', 'of', 'in', 'on', 'at', 'for', 'with', 'from', 'by', 'about', 'into', 'than'],
-  bn: ['এবং', 'কিন্তু', 'অথবা', 'যে', 'কারণ', 'জন্য', 'থেকে', 'দিয়ে', 'সাথে'],
-  hi: ['और', 'लेकिन', 'या', 'कि', 'क्योंकि', 'के', 'की', 'का', 'में', 'से', 'पर'],
+  bn: ['এবং', 'কিন্তু', 'অথবা', 'যে', 'কারণ'],
+  hi: ['और', 'लेकिन', 'या', 'कि', 'क्योंकि'],
   es: ['y', 'e', 'o', 'u', 'pero', 'porque', 'que', 'cuando', 'mientras', 'si', 'a', 'de', 'del', 'en', 'con', 'por', 'para', 'sin', 'sobre', 'desde', 'hasta', 'entre', 'como'],
   fr: ['et', 'mais', 'ou', 'donc', 'car', 'parce', 'que', 'qui', 'quand', 'si', 'à', 'au', 'aux', 'de', 'du', 'en', 'dans', 'sur', 'pour', 'avec', 'par', 'sans', 'vers', 'chez', 'entre', 'comme'],
   de: ['und', 'aber', 'oder', 'denn', 'weil', 'dass', 'wenn', 'als', 'ob', 'zu', 'von', 'vom', 'in', 'im', 'an', 'am', 'auf', 'für', 'mit', 'aus', 'bei', 'nach', 'über', 'durch', 'um'],
@@ -26,6 +26,15 @@ export const END_WORDS: Readonly<Record<string, readonly string[]>> = {
   fr: ['le', 'la', 'les', 'un', 'une', 'des', 'mon', 'ma', 'mes', 'ton', 'ta', 'son', 'sa', 'ses', 'ce', 'cette'],
   de: ['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'einem', 'einer', 'mein', 'dein', 'sein', 'ihr'],
   pt: ['o', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'meu', 'minha', 'seu', 'sua']
+}
+
+/**
+ * Postpositions, which go with the word before them ("ঢাকা থেকে", "दिल्ली से"): a line should not
+ * start with one (§8.3), so a break before one costs +4, by language.
+ */
+export const POST_WORDS: Readonly<Record<string, readonly string[]>> = {
+  bn: ['জন্য', 'থেকে', 'দিয়ে', 'সাথে'],
+  hi: ['के', 'की', 'का', 'में', 'से', 'पर']
 }
 
 /**
