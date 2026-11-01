@@ -35,14 +35,20 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const keymap = useKeymap()
   const shortcuts = useMemo(() => shortcutIndex(keymap), [keymap])
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  // What the panel has shown: reviewed items stay in the list, marked, until it closes.
-  const [shown, setShown] = useState<ReviewItem[]>(() => reviewItems(store.state))
-  const list = useMemo(() => mergeSnapshot(shown, reviewItems(project)), [shown, project])
+  // What the panel has shown (and the state it was last merged with): reviewed items stay in the
+  // list, marked, until it closes. It follows every state the store takes, in turn (two edits
+  // before one render too), so a row whose record goes with no choice made keeps how it read in the
+  // first state without it (mergeSnapshot).
+  const [shown, setShown] = useState(() => ({ at: store.state, list: reviewItems(store.state) }))
   useEffect(() => {
-    // A record rewritten while pending (a speed-up around it removed) is kept as it is now, so a row
-    // whose record goes with no choice made (an undo, an edit by hand) reads its latest footage.
-    if (list.length !== shown.length || list.some((i, k) => i.cut !== shown[k].cut)) setShown(list)
-  }, [list, shown])
+    const follow = (): void => {
+      const p = store.state
+      setShown((s) => (s.at === p ? s : { at: p, list: mergeSnapshot(s.list, p) }))
+    }
+    follow()
+    return store.subscribe(follow)
+  }, [store])
+  const list = useMemo(() => (shown.at === project ? shown.list : mergeSnapshot(shown.list, project)), [shown, project])
   const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
   const { reviewed, total } = reviewProgress(statuses)
   const plan = planOf(project)

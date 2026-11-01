@@ -62,6 +62,8 @@ class Session {
   shown: ReviewItem[] | null = null
   /** What the user chose, by row, for each state the store has had: undo and redo bring it back with the state. */
   private readonly chosen = new WeakMap<Project, ReadonlyMap<string, Choice>>()
+  /** How each row read in each state the store has had: undo and redo back to it read the same. */
+  private readonly seen = new WeakMap<Project, Map<string, ReviewStatus>>()
   private n = 0
 
   constructor(start: Project = base()) {
@@ -80,7 +82,7 @@ class Session {
 
   /** The panel's list now: what it showed, plus what is pending now (ReviewPanel). */
   get list(): ReviewItem[] {
-    return this.shown ? mergeSnapshot(this.shown, reviewItems(this.p)) : []
+    return this.shown ? mergeSnapshot(this.shown, this.p) : []
   }
 
   status(item: ReviewItem): ReviewStatus {
@@ -150,7 +152,7 @@ class Session {
     } else throw new Error(`unknown step ${raw}`)
   }
 
-  /** Every row the user chose reads that choice, in the panel and in the project; every row still automatic reads pending. */
+  /** Every row the user chose reads that choice, in the panel and in the project; every row still automatic reads pending; a state the store comes back to reads as before. */
   check(after: string): void {
     const now = new Set(reviewItems(this.p).map((i) => i.key))
     for (const i of this.list) {
@@ -162,6 +164,14 @@ class Session {
     }
     const recorded = new Map((this.p.autoCutOutcomes ?? []).map((o) => [`cut:${o.id}`, o.outcome]))
     expect(recorded, `the project's choices after "${after}"`).toEqual(new Map(this.choices))
+    const seen = this.seen.get(this.p) ?? new Map<string, ReviewStatus>()
+    for (const i of this.list) {
+      const got = this.status(i)
+      const was = seen.get(i.key)
+      if (was) expect(got, `${i.key} back in a state after "${after}"`).toBe(was)
+      seen.set(i.key, got)
+    }
+    this.seen.set(this.p, seen)
   }
 
   private edit(f: (p: Project) => Project, items: readonly ReviewItem[] = [], outcome?: Choice): void {
@@ -177,7 +187,7 @@ class Session {
 
   /** The panel follows the project while it is open (ReviewPanel's effect). */
   private follow(): void {
-    if (this.shown) this.shown = mergeSnapshot(this.shown, reviewItems(this.p))
+    if (this.shown) this.shown = mergeSnapshot(this.shown, this.p)
   }
 }
 
@@ -422,7 +432,7 @@ describe('edits by hand after a choice', () => {
   })
 })
 
-describe('with no choice made, a row whose record went reads removed when its change is gone from the video', () => {
+describe('with no choice made, a row whose record went reads removed when its change was gone from the video then', () => {
   it('an undone run: removed, and pending again after redo', () => {
     const cut = replay('open; tool 5-9 cut; undo')
     expect(cut.rows()).toEqual(['r0:removed'])
@@ -465,11 +475,34 @@ describe('with no choice made, a row whose record went reads removed when its ch
     expect(replay('tool 5-9 2; open; tool 4-10 cut').rows()).toEqual(['r1:pending', 'r0:removed'])
   })
 
-  it('the footage cannot always tell: a run undone and then made again over part of it at its speed reads kept', () => {
-    expect(replay('open; tool 17.5-20 4; undo').rows()).toEqual(['r0:removed'])
-    expect(replay('open; tool 17.5-20 4; undo; tool 19.5-20 4').rows()).toEqual(['r0:kept', 'r1:pending'])
-    // A choice made in the panel is certain.
-    expect(replay('open; tool 17.5-20 4; R r0; tool 19.5-20 4').rows()).toEqual(['r0:removed', 'r1:pending'])
+  it('Polish undone and run again with the panel open: the rows of the first run still read removed', () => {
+    // Two silences sped up at 4x, Ctrl+Z, the same Polish again: each silence is listed twice.
+    const same = replay('open; tool 2-4,8-10 4; undo; tool 2-4,8-10 4')
+    expect(plays(same.p.clips)).toBe('[0,2]@1 [2,4]@4 [4,8]@1 [8,10]@4 [10,20]@1')
+    expect(same.rows()).toEqual(['r0:removed', 'r2:pending', 'r1:removed', 'r3:pending'])
+    expect(replay('open; tool 2-4,8-10 cut; undo; tool 2-4,8-10 cut').rows()).toEqual(['r0:removed', 'r2:pending', 'r1:removed', 'r3:pending'])
+    // With the padding a little wider or narrower, or over part of the same footage.
+    expect(replay('open; tool 2-4,8-10 4; undo; tool 1.9-4.1,7.9-10.1 4').rows()).toEqual(['r2:pending', 'r0:removed', 'r3:pending', 'r1:removed'])
+    expect(replay('open; tool 2-4,8-10 4; undo; tool 2.1-3.9,8.1-9.9 4').rows()).toEqual(['r0:removed', 'r2:pending', 'r1:removed', 'r3:pending'])
+    expect(replay('open; tool 17.5-20 4; undo; tool 19.5-20 4').rows()).toEqual(['r0:removed', 'r1:pending'])
+    // Keep or Remove on the new rows, undo and redo leave the first run's rows as they read.
+    const acted = replay('open; tool 2-4,8-10 4; undo; tool 2-4,8-10 4; K r2; R r3; undo; undo; redo')
+    expect(acted.rows()).toEqual(['r0:removed', 'r2:kept', 'r1:removed', 'r3:pending'])
+    // Run again and undone in turn: removed too; redo makes them pending again.
+    const twice = replay('open; tool 2-4,8-10 4; undo; tool 2-4,8-10 4; undo')
+    expect(twice.rows()).toEqual(['r0:removed', 'r2:removed', 'r1:removed', 'r3:removed'])
+    expect(twice.run('redo').rows()).toEqual(['r0:removed', 'r2:pending', 'r1:removed', 'r3:pending'])
+  })
+
+  it('a row whose record went reads what it read then while the panel stays open, as a choice does', () => {
+    // Made the user's by hand (part slowed, part put back), then a later run over it or more by hand.
+    expect(replay('tool 5-9 2; open; hand speed 6-7 1; tool 4-10 4').rows()).toEqual(['r1:pending', 'r0:kept'])
+    expect(replay('tool 5-9 cut; open; hand restore 5-7; hand restore 7-9').rows()).toEqual(['r0:kept'])
+    // Undone, it is to review again; done again, it reads the same.
+    expect(replay('tool 5-9 cut; open; hand restore 5-7; hand restore 7-9; undo; undo').rows()).toEqual(['r0:pending'])
+    expect(replay('tool 5-9 cut; open; hand restore 5-7; hand restore 7-9; undo; undo; redo; redo').rows()).toEqual(['r0:kept'])
+    // Reopened, the panel lists only what is still automatic.
+    expect(replay('open; tool 2-4 4; undo; close; open').rows()).toEqual([])
   })
 })
 

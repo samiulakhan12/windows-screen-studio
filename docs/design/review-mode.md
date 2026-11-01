@@ -113,11 +113,16 @@ Each listed item is **pending**, **kept** or **removed**, read from the current 
   framing back to none → removed.
 * automatic cut or speed-up: the choice made for it in the panel (`Project.autoCutOutcomes`, §3)
   when there is one. Else record present and intact → pending. Else (an undo, an edit by hand or a
-  later tool run took the record, with no choice made) → **removed** when its change is gone from
-  the video (all of a cut's footage plays again, at any speed; none of a speed-up's footage plays
-  at its speed), **kept** otherwise (`changeGone`). The footage cannot always tell: a run undone
-  and then made again over part of the same footage at the same speed reads kept. Only a choice
-  made in the panel is certain.
+  later tool run took the record, with no choice made) the row reads what the video showed in the
+  first state without the record: **removed** when its change was gone from it (all of a cut's
+  footage plays again, at any speed; none of a speed-up's footage plays at its speed), **kept**
+  otherwise (`changeGone`). It keeps that reading as a choice is kept: a later run over the same
+  footage (Polish undone and run again: the first run's rows still read removed beside the new
+  ones), an edit by hand or another row's Keep or Remove leaves it; undo or redo that brings the
+  record back makes the row pending again, and its record going again reads it again. Only the
+  panel lists such a row (a record with neither a choice nor its change is never listed), so the
+  panel holds that reading with the row it shows (below). The footage alone cannot tell it later:
+  the run made again cuts or speeds up the same footage the undone one did.
 
 Why cuts and speed-ups record the choice: a zoom or camera segment carries its state itself
 (`auto`), so the project tells. Keep and Remove both drop a cut's record, and the footage cannot
@@ -133,8 +138,12 @@ project after any undo.
 
 The panel keeps one thing of its own: the list of items it showed (a snapshot taken when it opens,
 with every new pending item added as it appears, and every pending item taken as it is now), so
-kept and removed items stay in the list, marked, until the panel closes. Reopening lists only what
-is still automatic: a record with a choice is never listed.
+kept and removed items stay in the list, marked, until the panel closes, each cut or speed-up whose
+record went with no choice made carrying how it read then (`went`). The list follows every state
+the store takes, in turn, so that reading is the one of the state the record left in; an edit
+settles before its record leaves (a drag's moves keep the record), and undo and redo bring back
+states the record left in the same way, so a state reads the same each time it comes back.
+Reopening lists only what is still automatic: a record with a choice is never listed.
 
 ### 2.4 Keep and Remove
 
@@ -277,6 +286,8 @@ interface ReviewItem {
   start: number; end: number   // source seconds
   title: string          // "Cut 2.4 s of silence"
   detail: string         // "Remove silences", "Polish", "2×", "Camera director"
+  cut?: AutoCut          // a cut or speed-up: its record as last listed
+  went?: 'kept' | 'removed'    // how it read once its record went with no choice made (mergeSnapshot)
 }
 ```
 
@@ -311,8 +322,10 @@ gives `{ reviewed, total }`. A cut or speed-up with a recorded choice is not lis
 `pendingCount(project)` is the badge on the Review button (`reviewItems(project).length`, every
 listed item being pending by construction).
 
-`mergeSnapshot(shown, current)` is the panel's list (§2.3): `shown` with each item still pending
-taken as it is in `current`, plus the items of `current` not shown yet, in time order.
+`mergeSnapshot(shown, project)` is the panel's list (§2.3): `shown` with each item still pending
+taken as it is in `reviewItems(project)`, plus the items pending there not shown yet, in time
+order; a cut or speed-up whose record is gone from `project` with no choice made gets how it reads
+there (`went`, `changeGone`) and keeps it until its record comes back.
 
 ### 4.3 The panel
 
@@ -402,7 +415,7 @@ clips, so reading the rows again after many are kept or removed costs no more.
   `withoutSpeedUp(list, speedUp)`, `withAutoCuts(project, list)`.
 * `src/shared/review/review.ts` — `ReviewKind`, `ReviewItem`, `ReviewStatus`, `reviewItems(project)`,
   `reviewStatus(project, item)`, `keepItems(project, items)`, `removeItems(project, items)`,
-  `mergeSnapshot(snapshot, current)`, `reviewProgress`, `KIND_WORDS`.
+  `mergeSnapshot(shown, project)`, `reviewProgress`, `KIND_WORDS`.
 * `src/shared/review/copy.ts` — titles, places, the live messages, `itemAccessibleName`.
 * `src/shared/review/preview.ts` — `previewStretch(clips, start, end)` (where to seek, when to stop).
 * `src/shared/review/stretch.ts` — `playStretch(player, clips, stretch, clock)`: plays the stretch,
@@ -452,6 +465,9 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   user re-timed since are left alone.
 * `reviewItems`/`reviewStatus`: each kind and title; statuses after keep, remove, undo (an
   `EditStore` round trip: one undo step each, `Keep all` and `Remove all` one step).
+* `mergeSnapshot`: a cut whose record is gone with no choice made gets its reading (not while a
+  drag has not settled and the record is still there), keeps it when a later run makes the same
+  cut, and is taken as listed again when its record comes back; a choice is read, never fixed.
 * Choices (`tests/reviewOutcomes.test.ts`): histories replayed through the editor's store (its
   settle step) and the panel's list, as the panel drives them: every case earlier review rounds
   found (nested speed-ups, undo, redo, reopening, later runs, Keep all), every order of Keep and
@@ -462,9 +478,10 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   step dropped leaves the records inside and around it as its row reads, §2.1). Keep, Remove, Keep
   all and Remove all are one undo step each: the rows go back to
   pending and forward again on redo. Reopening lists only what is still automatic. Edits by hand
-  after a choice leave it; with no choice, the rows read `changeGone` (undone runs, runs undone
-  from the inside out, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken
-  over by a later one).
+  after a choice leave it; with no choice, the rows read `changeGone` in the first state without
+  their record and keep it (undone runs, runs undone from the inside out, Polish undone and run
+  again, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken over by a later
+  one), and every state reads the same each time undo or redo comes back to it.
 * Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
 * `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
 * Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).
@@ -475,6 +492,9 @@ and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows 
 moves and the playhead jumps; `K` keeps the zoom (it stays, `auto` false in the saved project);
 Delete removes the cut (clips back, record gone, `removed` saved for it); `Ctrl+Z` brings the cut
 back and the row back to pending (the choice gone); Keep all (`kept` saved); Escape returns the focus to the button; screenshots.
+Then, with the panel open, Polish (silences only, against the AI mock) on a recording with spoken
+words, `Ctrl+Z`, and the same Polish again: the first run's rows read removed after the undo and
+still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kept, no choice saved).
 
 ## 10. Later
 

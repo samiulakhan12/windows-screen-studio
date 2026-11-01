@@ -236,7 +236,7 @@ describe('a cut inside an automatic speed-up', () => {
     expect(shown.map((i) => i.kind)).toEqual(['idle', 'silence'])
     // The panel: Delete on each row in turn, its list following the project.
     const one = removeItems(p, [shown[0]])
-    shown = mergeSnapshot(shown, reviewItems(one))
+    shown = mergeSnapshot(shown, one)
     const two = removeItems(one, [shown[1]])
     expect(plays(two.clips)).toEqual([[0, 20, 1]])
     expect(shown.map((i) => reviewStatus(two, i))).toEqual(['removed', 'removed'])
@@ -304,7 +304,33 @@ describe('mergeSnapshot', () => {
     const shown = reviewItems(p)
     const after = keepItems(p, [shown[0]])
     const fresh = { ...after, zooms: [...after.zooms, zoom('z9', 0.5)] }
-    expect(mergeSnapshot(shown, reviewItems(fresh)).map((i) => i.key)).toEqual(['zoom:z9', 'zoom:z1', 'camera:l1', 'cut:s1'])
+    expect(mergeSnapshot(shown, fresh).map((i) => i.key)).toEqual(['zoom:z9', 'zoom:z1', 'camera:l1', 'cut:s1'])
+  })
+
+  it('fixes how a cut reads once its record is gone with no choice made, and keeps it until the record comes back', () => {
+    const p = fixture()
+    const shown = reviewItems(p)
+    const row = (list: typeof shown) => list.find((i) => i.key === 'cut:s1')!
+    // A drag that puts part of the cut back has not settled: the record is still there, nothing fixed.
+    const dragging = { ...p, clips: [clip(0, 9), clip(10.4, 20)] }
+    expect(row(mergeSnapshot(shown, dragging)).went).toBeUndefined()
+    expect(reviewStatus(dragging, row(mergeSnapshot(shown, dragging)))).toBe('kept')
+    // Undone: the record is gone and all of the footage plays again.
+    const undone = { ...p, clips: [clip(0, 20)], autoCuts: undefined }
+    const after = mergeSnapshot(shown, undone)
+    expect(row(after).went).toBe('removed')
+    // The same cut made again by a later run: the row still reads removed.
+    const again = { ...p, autoCuts: [{ ...silence, id: 's2' }] }
+    const later = mergeSnapshot(after, again)
+    expect(later.map((i) => i.key)).toEqual(['zoom:z1', 'camera:l1', 'cut:s1', 'cut:s2'])
+    expect(reviewStatus(again, row(later))).toBe('removed')
+    // The record back (redo): pending again, as listed now.
+    expect(row(mergeSnapshot(later, p))).toEqual(row(reviewItems(p)))
+    expect(reviewStatus(p, row(mergeSnapshot(later, p)))).toBe('pending')
+    // A choice made in the panel is read, never a fixed reading.
+    const removed = removeItems(p, [row(shown)])
+    expect(row(mergeSnapshot(shown, removed)).went).toBeUndefined()
+    expect(reviewStatus(removed, row(mergeSnapshot(shown, removed)))).toBe('removed')
   })
 })
 

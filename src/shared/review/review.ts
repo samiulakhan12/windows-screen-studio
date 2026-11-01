@@ -43,8 +43,13 @@ export interface ReviewItem {
   detail: string
   /** A camera segment as listed (its status compares the layout). */
   segment?: Pick<LayoutSegment, 'id' | 'layout' | 'corner' | 'cutOut'>
-  /** A cut or speed-up as listed (with no choice recorded, its status reads its footage once the record is gone). */
+  /** A cut or speed-up: its record as last listed. */
   cut?: AutoCut
+  /**
+   * A cut or speed-up whose record went with no choice made (an undo, an edit by hand, a later run):
+   * how it read in the first state without its record (mergeSnapshot), kept as a choice is.
+   */
+  went?: 'kept' | 'removed'
 }
 
 const EPS = 1e-6
@@ -96,7 +101,8 @@ function outcomesOf(project: Pick<Project, 'autoCutOutcomes'>): ReadonlyMap<stri
  * Whether `item` is still automatic, was kept (now the user's) or removed, read from `project`
  * (§2.3). A cut or speed-up: the choice made for it in the panel (Project.autoCutOutcomes); else
  * pending while its record is there and intact; else (it went with no choice made: an undo, an
- * edit by hand, a later tool run) removed when its change is gone from the video (changeGone),
+ * edit by hand, a later tool run) how it read in the first state without its record (`went`, set by
+ * mergeSnapshot), else in `project`: removed when its change is gone from the video (changeGone),
  * kept otherwise.
  */
 export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
@@ -124,7 +130,7 @@ export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
   const records = project.autoCuts ?? []
   const rec = records.find((c) => c.id === cut.id)
   if (rec && autoCutIntact(rec, project.clips, records)) return 'pending'
-  return changeGone(cut, project.clips) ? 'removed' : 'kept'
+  return item.went ?? (changeGone(cut, project.clips) ? 'removed' : 'kept')
 }
 
 /** Reviewed items of `statuses` and how many in all. */
@@ -133,15 +139,27 @@ export function reviewProgress(statuses: readonly ReviewStatus[]): { reviewed: n
 }
 
 /**
- * The panel's list: what it showed (`shown`; kept and removed items stay, marked) plus every item of
- * `current` (pending now) it did not show yet, in time order. A pending item also shown takes its
+ * The panel's list in `project`: what it showed (`shown`; kept and removed items stay, marked) plus
+ * every item pending now that it did not show yet, in time order. A pending item also shown takes its
  * current version (a zoom's place could change; a record's pieces could, when a speed-up around it
- * was removed).
+ * was removed). A cut or speed-up whose record is gone from `project` with no choice made gets how it
+ * reads there (`went`) and keeps it until its record comes back (undo, redo): a later run over the
+ * same footage (Polish undone and run again), an edit by hand or another row's Keep or Remove leaves
+ * that row as it read when its record went, as they leave a choice. The panel calls this on every
+ * state the project takes while it is open; a record leaves the project only once the edit settles
+ * (a drag's moves keep it), so the reading is the settled one.
  */
-export function mergeSnapshot(shown: readonly ReviewItem[], current: readonly ReviewItem[]): ReviewItem[] {
+export function mergeSnapshot(shown: readonly ReviewItem[], project: Project): ReviewItem[] {
+  const current = reviewItems(project)
   const now = new Map(current.map((i) => [i.key, i]))
   const keys = new Set(shown.map((i) => i.key))
-  const out = shown.map((i) => now.get(i.key) ?? i)
+  let records: ReadonlySet<string> | null = null
+  const went = (i: ReviewItem): ReviewItem => {
+    if (!i.cut || i.went || outcomesOf(project).has(i.cut.id)) return i
+    records ??= new Set((project.autoCuts ?? []).map((c) => c.id))
+    return records.has(i.cut.id) ? i : { ...i, went: changeGone(i.cut, project.clips) ? 'removed' : 'kept' }
+  }
+  const out = shown.map((i) => now.get(i.key) ?? went(i))
   for (const i of current) if (!keys.has(i.key)) out.push(i)
   return out.sort(byTime)
 }

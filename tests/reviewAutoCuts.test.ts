@@ -601,7 +601,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     for (let k = 0; k < shown.length; k++) {
       const item = shown[k]
       p = removeItems(p, [item])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
     }
     return p
   }
@@ -611,7 +611,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     let shown = reviewItems(p)
     for (const [k, how] of steps) {
       p = how === 'K' ? keepItems(p, [shown[k]]) : removeItems(p, [shown[k]])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
     }
     return { p, shown }
   }
@@ -657,7 +657,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
       let p = nested()
       let shown = reviewItems(p)
       p = removeItems(p, [shown[1]])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
       expect(plays(p.clips)).toEqual([
         [0, 5, 1],
         [5, 15, 2],
@@ -681,7 +681,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
       let shown = reviewItems(p)
       for (const k of [1, 0]) {
         p = removeItems(p, [shown[k]])
-        shown = mergeSnapshot(shown, reviewItems(p))
+        shown = mergeSnapshot(shown, p)
       }
       expect(plays(p.clips)).toEqual([[0, 20, 1]])
       expect(statuses(p, shown)).toEqual(['f1:removed', 'g1:removed'])
@@ -694,7 +694,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
       let p = nested()
       let shown = reviewItems(p)
       p = removeItems(p, [shown[0]])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
       expect(plays(p.clips)).toEqual([
         [0, 8, 1],
         [8, 10, 4],
@@ -715,10 +715,10 @@ describe('an automatic change over an earlier automatic speed-up', () => {
       let p = nested()
       let shown = reviewItems(p)
       p = keepItems(p, [shown[1]])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
       expect(statuses(p, shown)).toEqual(['f1:pending', 'g1:kept'])
       p = removeItems(p, [shown[0]])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
       expect(plays(p.clips)).toEqual([
         [0, 8, 1],
         [8, 10, 4],
@@ -878,12 +878,12 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     let p = auto(project(), 5, 9, 2, 'polish', 'a')
     let shown = reviewItems(p)
     p = removeItems(p, [shown[0]])
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     p = auto(p, 5, 9, 2, 'polish', 'b')
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     expect(rows(p, shown)).toEqual(['a1:removed', 'b1:pending'])
     p = keepItems(p, [shown[1]])
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     expect(plays(p.clips)).toEqual([
       [0, 5, 1],
       [5, 9, 2],
@@ -894,11 +894,11 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     p = auto(project(), 3, 15, 2, 'smart-speed', 'f')
     shown = reviewItems(p)
     p = removeItems(p, [shown[0]])
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     p = auto(p, 5, 9, 2, 'polish', 'g')
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     p = keepItems(p, [shown[1]])
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     expect(plays(p.clips)).toEqual([
       [0, 5, 1],
       [5, 9, 2],
@@ -913,14 +913,14 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     let p = auto(project(), 7.5, 13.5, 4, 'polish', 'k')
     let shown = reviewItems(p)
     p = keepItems(p, shown)
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     p = auto(p, 14.5, 18.5, 2, 'smart-speed', 'f')
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     p = auto(p, 10, 15.5, 8, 'polish', 'e')
-    shown = mergeSnapshot(shown, reviewItems(p))
+    shown = mergeSnapshot(shown, p)
     for (const id of ['e1', 'f1']) {
       p = removeItems(p, [shown.find((i) => i.cut!.id === id)!])
-      shown = mergeSnapshot(shown, reviewItems(p))
+      shown = mergeSnapshot(shown, p)
     }
     expect(plays(p.clips)).toEqual([
       [0, 7.5, 1],
@@ -935,7 +935,7 @@ describe('an automatic change over an earlier automatic speed-up', () => {
     const ui = { p: start, shown: reviewItems(start) }
     const step = (p: Project): void => {
       ui.p = p
-      ui.shown = mergeSnapshot(ui.shown, reviewItems(p))
+      ui.shown = mergeSnapshot(ui.shown, p)
     }
     const item = (id: string): ReviewItem => ui.shown.find((i) => i.cut!.id === id)!
     return { ui, step, item }

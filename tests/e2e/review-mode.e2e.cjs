@@ -8,11 +8,19 @@
 // before is announced again); Keep all, pressed from the keyboard, reviews the rest and leaves the
 // focus in the list; Escape closes and gives the focus back to the button; the palette opens it
 // again, now empty; a palette command that shows an Inspector tab closes it, the focus going to the
-// button when it was in the panel and staying where it was when it was outside.
+// button when it was in the panel and staying where it was when it was outside. Then, against the
+// local mock of the AI providers: with the panel open, Polish cuts the silences of a recording with
+// spoken "words", Ctrl+Z takes them back (the rows read removed), and the same Polish again lists
+// its new rows to review while the first run's rows still read removed, with no choice saved.
 const fs = require('node:fs')
 const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
+const fx = require('./render-fixtures.cjs')
+const { startMockAi, mockAiEnv, burstAudioArgs } = require('./ai-mock-server.cjs')
+
+const FF = require(path.join(h.APP_DIR, 'node_modules/ffmpeg-static'))
 
 /** Screenshots of the panel when set to a folder (docs/screenshots/review-mode-*.png). */
 const SHOTS = process.env.SSW_E2E_SHOTS || null
@@ -51,7 +59,62 @@ function seed(home) {
   return id
 }
 
+/** A 12 s test pattern whose sound is four "Word k" bursts, 0.5-3.2 s and 8.0-10.7 s (cached, as one-click-polish.e2e.cjs makes it). */
+const WORDS_SECONDS = 12
+const WORDS_NAME = 'Polish twice'
+function wordsVideo() {
+  fs.mkdirSync(fx.MEDIA_CACHE, { recursive: true })
+  const file = path.join(fx.MEDIA_CACHE, `polish-words-${WORDS_SECONDS}s-640x360-30.mp4`)
+  if (fs.existsSync(file)) return file
+  const tmp = file.replace(/\.mp4$/, '.part.mp4')
+  execFileSync(FF, [
+    '-v', 'error', '-y',
+    '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30', ...burstAudioArgs([0.5, 2.0, 8.0, 9.5], WORDS_SECONDS),
+    '-t', String(WORDS_SECONDS), '-map', '0:v', '-map', '1:a',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
+    tmp
+  ])
+  fs.renameSync(tmp, file)
+  return file
+}
+
+function seedWords(home) {
+  const id = f.seedProject(home, {
+    id: 'rec-review-polish',
+    name: WORDS_NAME,
+    seconds: WORDS_SECONDS,
+    width: 640,
+    height: 360,
+    fps: 30,
+    audio: true,
+    webcam: false,
+    capture: { method: 'chromium', cursorInVideo: false, region: null }
+  })
+  const dir = path.join(h.projectsRoot(home), id)
+  fs.unlinkSync(path.join(dir, 'screen.mp4'))
+  fs.symlinkSync(wordsVideo(), path.join(dir, 'screen.mp4'))
+  return id
+}
+
+/** Polish with only Remove silences ticked, through its dialog (Shift+P), to Done. */
+async function polishSilences(win) {
+  await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+  await win.keyboard.press('Shift+P')
+  const dialog = win.locator('.polish-dialog[role="dialog"]')
+  await dialog.waitFor({ timeout: 10000 })
+  await win.waitForSelector('.polish-dialog .modal-foot button.primary:not([disabled])', { timeout: 10000 })
+  for (const step of ['zoom', 'captions', 'director']) {
+    const box = win.locator(`[data-testid="polish-row-${step}"] input[type="checkbox"]`)
+    if ((await box.count()) && (await box.isChecked().catch(() => false))) await box.uncheck()
+  }
+  await win.click('.polish-dialog .modal-foot button.primary:has-text("Polish")')
+  await win.waitForSelector('[data-testid="polish-summary"]', { timeout: 60000 })
+  await win.click('.polish-dialog .modal-foot button:has-text("Done")')
+  await dialog.waitFor({ state: 'detached' })
+}
+
 const rows = (win) => win.$$eval('[data-testid="review-row"]', (els) => els.map((e) => `${e.dataset.key}=${e.dataset.status}`))
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 const focused = (win) => win.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName ?? '')
 const timecode = (win) => win.$eval('.timecode', (e) => e.textContent ?? '')
 const playing = (win) => win.$eval('.transport .btn.round', (e) => e.dataset.playing === 'true')
@@ -215,6 +278,51 @@ async function main() {
     h.assert((await focused(win)) === 'Keyboard shortcuts', `the focus back where it was: ${await focused(win)}`)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
+
+  const mock = await startMockAi({ ffmpeg: FF })
+  try {
+    await test('review mode: Polish undone and run again with the panel open', async (ctx) => {
+      const home = h.tempHome('review-polish')
+      const id = seedWords(home)
+      const { app, win, logs } = await h.launch({ home, env: mockAiEnv(mock.url) })
+      ctx.app = app
+      ctx.logs = logs
+      await f.openProject(win, WORDS_NAME)
+      await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+      await win.keyboard.press('Shift+R')
+      await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
+
+      await polishSilences(win)
+      const first = await savedWhen(home, id, (p) => Array.isArray(p.autoCuts), 'the first Polish saved')
+      const ids = first.autoCuts.map((c) => `cut:${c.id}`)
+      h.assert(ids.length >= 1, `Polish cut the silences: ${JSON.stringify(first.autoCuts)}`)
+      await f.waitFor(async () => same(await rows(win), ids.map((k) => `${k}=pending`)), 'the first run listed to review', 5000)
+
+      // Ctrl+Z takes the run back: its rows read removed.
+      await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+      await win.keyboard.press('Control+z')
+      await savedWhen(home, id, (p) => !('autoCuts' in p), 'the run undone')
+      await f.waitFor(async () => same(await rows(win), ids.map((k) => `${k}=removed`)), 'the undone rows read removed', 5000)
+
+      // The same Polish again: new rows to review beside the first run's, which still read removed.
+      await polishSilences(win)
+      const second = await savedWhen(home, id, (p) => Array.isArray(p.autoCuts) && !p.autoCuts.some((c) => ids.includes(`cut:${c.id}`)), 'the second Polish saved')
+      const again = second.autoCuts.map((c) => `cut:${c.id}`)
+      h.assert(same(second.autoCuts.map(({ id: _id, ...c }) => c), first.autoCuts.map(({ id: _id, ...c }) => c)), 'the same cuts made again')
+      await f.waitFor(async () => (await rows(win)).length === ids.length + again.length, 'both runs listed', 5000)
+      const now = await rows(win)
+      for (const k of ids) h.assert(now.includes(`${k}=removed`), `${k} still reads removed: ${now}`)
+      for (const k of again) h.assert(now.includes(`${k}=pending`), `${k} to review: ${now}`)
+      const names = await win.$$eval('[data-testid="review-row"] .review-item', (els) => els.map((e) => e.getAttribute('aria-label')))
+      h.assert(names.filter((n) => n.endsWith(', kept')).length === 0, `no row read out as kept: ${names}`)
+      const progress = await win.textContent('[data-testid="review-progress"]')
+      h.assert(progress === `${ids.length} of ${ids.length + again.length} reviewed`, `progress: ${progress}`)
+      h.assert(!('autoCutOutcomes' in second), 'no choice saved')
+      h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+    })
+  } finally {
+    await mock.close()
+  }
 }
 
 main().catch((err) => {
