@@ -409,7 +409,7 @@ async function main() {
     const pending = LONG_ROWS - 1
     await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `${LONG_ROWS} of ${LONG_ROWS} reviewed`, 'all removed or kept', 15000)
     const said = await win.evaluate(() => window.__said)
-    h.assert(same(said, [`Removing ${pending} silence cuts…`, `Removed ${pending} silence cuts.`]), `said what it does, then what it did: ${JSON.stringify(said)}`)
+    h.assert(same(said, [`Removing ${pending} silence cuts… Keep, Remove, Undo and Redo wait until it is done.`, `Removed ${pending} silence cuts.`]), `said what it does and what waits, then what it did: ${JSON.stringify(said)}`)
     h.assert(await win.evaluate(() => window.__busy), 'the button said it was working')
     h.assert((await win.textContent('[data-testid="review-remove-kind"]')) === 'Remove all silence cuts', 'the button back')
     await win.keyboard.press('Control+z')

@@ -8,8 +8,8 @@ import { applySmartSpeed, planSilences } from '../src/shared/editor/smartSpeed'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
 import { createProject, migrateProject } from '../src/shared/engine/project'
 import { finish, recordAutoCuts, settleAutoCuts } from '../src/shared/review/autoCuts'
-import { pendingCount, removeItems, removeSteps, reviewItems, reviewStatus } from '../src/shared/review/review'
-import { inSlices, type Tasks } from '../src/shared/review/slices'
+import { keepItems, pendingCount, removeItems, removeSteps, reviewItems, reviewStatus } from '../src/shared/review/review'
+import { heldInSlices, inSlices, type Tasks } from '../src/shared/review/slices'
 import type { AutoCut, AutoCutSource, Project } from '../src/shared/types'
 
 const settle = (next: Project, prev: Project): Project => settleAutoCuts(settleDeletedWords(next, prev), prev)
@@ -175,5 +175,95 @@ describe('inSlices', () => {
     // One undo step back to where it started.
     store.undo()
     expect(store.state).toBe(p)
+  })
+})
+
+describe('heldInSlices', () => {
+  /** The silence rows, as the panel lists them: those of the project when it opened, kept or removed rows staying listed. */
+  const listed = (q: Project) => reviewItems(q).filter((i) => i.kind === 'silence')
+  const pending = (q: Project, items: readonly ReturnType<typeof listed>[number][]) => items.filter((i) => reviewStatus(q, i) === 'pending')
+  /** A 400 s sped-up recording, the first silence row kept (the user's last step), and Remove all of the rest under way. */
+  function underWay() {
+    const p = recording(400, [2, 4, 8])
+    const rows = listed(p)
+    const store = new EditStore<Project>(p, 200, 800, () => 0, settle)
+    store.update((q) => keepItems(q, [rows[0]]))
+    const kept = store.state
+    let edits = 0
+    store.subscribe(() => edits++)
+    const t = handTasks(true)
+    const stop = heldInSlices(
+      store,
+      (q) => removeSteps(q, pending(q, rows)),
+      (base, next) => store.update((q) => (q === base ? next : removeItems(q, pending(q, rows)))),
+      t,
+      1
+    )
+    t.queue.shift()!()
+    t.queue.shift()!()
+    return { p, rows, kept, store, t, stop, edits: () => edits }
+  }
+
+  it('Ctrl+Z while it works undoes the Remove all once it is done, never the Keep before it, and Ctrl+Y brings it back', () => {
+    const { rows, kept, store, t, edits } = underWay()
+    expect(store.held).toBe(true)
+    expect(store.undo()).toBe(true) // waits
+    expect(store.state).toBe(kept)
+    expect(edits()).toBe(0)
+    t.runAll()
+    expect(store.held).toBe(false)
+    expect(edits()).toBe(2) // the Remove all, then the undo
+    // Back to the Keep, which is still there.
+    expect(store.state).toBe(kept)
+    expect(reviewStatus(store.state, rows[0])).toBe('kept')
+    expect(store.canRedo).toBe(true)
+    store.redo()
+    expect(rows.slice(1).every((i) => reviewStatus(store.state, i) === 'removed')).toBe(true)
+    expect(reviewStatus(store.state, rows[0])).toBe('kept')
+    store.undo()
+    expect(store.state).toBe(kept)
+    store.undo()
+    expect(reviewStatus(store.state, rows[0])).toBe('pending')
+  })
+
+  it('a Keep handed to whenFree while it works is done after the Remove all, its own step, in turn with an undo', () => {
+    const { rows, kept, store, t } = underWay()
+    // Keep on the second silence row, then Ctrl+Z, while it works: the Remove all took that row,
+    // so the Keep finds nothing to keep, and the undo takes the Remove all back.
+    store.whenFree(() => store.update((q) => (reviewStatus(q, rows[1]) === 'pending' ? keepItems(q, [rows[1]]) : q)))
+    store.undo()
+    t.runAll()
+    expect(store.state).toBe(kept)
+    // Work that is stopped (the panel closed): nothing of it, and a Keep that waited is then done.
+    const t2 = handTasks(true)
+    const stop = heldInSlices(store, (q) => removeSteps(q, pending(q, rows)), () => store.update((q) => removeItems(q, pending(q, rows))), t2, 1)
+    store.whenFree(() => store.update((q) => keepItems(q, [rows[2]])))
+    expect(reviewStatus(store.state, rows[2])).toBe('pending')
+    stop()
+    expect(store.held).toBe(false)
+    expect(reviewStatus(store.state, rows[2])).toBe('kept')
+    expect(rows.slice(3).every((i) => reviewStatus(store.state, i) === 'pending')).toBe(true)
+    t2.runAll() // the task already asked for does nothing
+    expect(rows.slice(3).every((i) => reviewStatus(store.state, i) === 'pending')).toBe(true)
+    store.undo()
+    expect(store.state).toBe(kept)
+  })
+
+  it('stopped, nothing changes and the redo list stays; a redo that waited is then done', () => {
+    const { p, kept, rows, store, t, stop } = underWay()
+    stop()
+    t.runAll()
+    expect(store.state).toBe(kept)
+    store.undo() // the Keep
+    expect(store.state).toBe(p)
+    const t2 = handTasks(true)
+    const stop2 = heldInSlices(store, (q) => removeSteps(q, pending(q, rows)), () => store.update((q) => removeItems(q, pending(q, rows))), t2, 1)
+    t2.queue.shift()!()
+    expect(store.redo()).toBe(true) // waits
+    expect(store.state).toBe(p)
+    stop2()
+    t2.runAll()
+    // Nothing of the work; the redo that waited brought the Keep back.
+    expect(store.state).toBe(kept)
   })
 })

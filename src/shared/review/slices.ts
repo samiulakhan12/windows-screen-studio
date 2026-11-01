@@ -1,8 +1,8 @@
 /**
  * Long work in steps over several tasks (docs/design/review-mode.md §4.3): Remove all over thousands
  * of speed-ups takes seconds, so the panel takes its steps (removeSteps) a slice of time at a time,
- * the page drawing in between, and makes the result one edit at the end. Pure apart from the tasks
- * it is given.
+ * the page drawing in between, and makes the result one edit at the end, holding the store's undo
+ * and redo meanwhile (heldInSlices). Pure apart from the tasks and the store it is given.
  */
 
 export interface Tasks {
@@ -49,5 +49,45 @@ export function inSlices<S, T>(
   tasks.post(run)
   return () => {
     stopped = true
+  }
+}
+
+/** What heldInSlices needs of the edit store (shared/editor/editStore.ts). */
+export interface HeldStore<S> {
+  readonly state: S
+  hold: () => () => void
+}
+
+/**
+ * inSlices on the store's state, holding the store while it works: undo and redo asked for
+ * meanwhile (and what is handed to its `whenFree`) wait, and are done in order once `done` has
+ * made the work's edit, as if asked for after it (so Ctrl+Z undoes it, never the step before). The
+ * function returned stops the work with nothing changed (`done` never called) and lets the store
+ * go, so what waited is then done on the history as it was.
+ */
+export function heldInSlices<S, T>(
+  store: HeldStore<S>,
+  start: (base: S) => Iterator<unknown, T, undefined>,
+  done: (base: S, value: T) => void,
+  tasks: Tasks,
+  slice = 25
+): () => void {
+  const release = store.hold()
+  const stop = inSlices(
+    () => store.state,
+    start,
+    (base, value) => {
+      try {
+        done(base, value)
+      } finally {
+        release()
+      }
+    },
+    tasks,
+    slice
+  )
+  return () => {
+    stop()
+    release()
   }
 }

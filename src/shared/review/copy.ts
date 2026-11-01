@@ -129,14 +129,40 @@ export function bulkMessage(action: 'keep' | 'remove', count: number, kind?: Rev
   return `Removed ${count} ${noun}.`
 }
 
+/** "8098 changes", "5399 silence cuts": what Keep all or Remove all works on. */
+function workNoun(action: 'keep' | 'remove', count: number, kind?: ReviewKind): string {
+  const k = action === 'remove' && kind ? KIND_WORDS[kind] : null
+  return `${count} ${count === 1 ? (k?.one ?? 'change') : (k?.plural ?? 'changes')}`
+}
+
+/** What waits while Keep all or Remove all works on a long list, said as it starts (§4.3). */
+export const BUSY_RULE = 'Keep, Remove, Undo and Redo wait until it is done.'
+
 /**
- * The live message as Keep all or Remove all starts on a long list, before the work (§4.3):
- * "Keeping 8098 changes…", "Removing 5399 silence cuts…".
+ * The live message as Keep all or Remove all starts on a long list, before the work (§4.3), with
+ * what waits for it: "Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done."
  */
 export function busyMessage(action: 'keep' | 'remove', count: number, kind?: ReviewKind): string {
-  const k = action === 'remove' && kind ? KIND_WORDS[kind] : null
-  const noun = count === 1 ? (k?.one ?? 'change') : (k?.plural ?? 'changes')
-  return `${action === 'keep' ? 'Keeping' : 'Removing'} ${count} ${noun}…`
+  return `${action === 'keep' ? 'Keeping' : 'Removing'} ${workNoun(action, count, kind)}… ${BUSY_RULE}`
+}
+
+/** Said when Keep all or Remove all is pressed while one works: "Still removing 5399 silence cuts…". */
+export function stillBusyMessage(action: 'keep' | 'remove', count: number, kind?: ReviewKind): string {
+  return `Still ${action === 'keep' ? 'keeping' : 'removing'} ${workNoun(action, count, kind)}…`
+}
+
+/** Said when a row's Keep or Remove is pressed while Keep all or Remove all works: "Keep waits until Remove all is done." */
+export function waitMessage(action: 'keep' | 'remove', busy: 'keep' | 'remove'): string {
+  return `${action === 'keep' ? 'Keep' : 'Remove'} waits until ${busy === 'keep' ? 'Keep all' : 'Remove all'} is done.`
+}
+
+/**
+ * Said when a Keep or Remove that waited finds its row reviewed meanwhile (by the Keep all or
+ * Remove all it waited for): "Not kept: already removed.", "Already removed."
+ */
+export function staleMessage(action: 'keep' | 'remove', status: Exclude<ReviewStatus, 'pending'>): string {
+  const did = action === 'keep' ? 'kept' : 'removed'
+  return did === status ? `Already ${status}.` : `Not ${did}: already ${status}.`
 }
 
 /** What a footer button reads while it works. */

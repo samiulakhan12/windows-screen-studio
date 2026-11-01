@@ -25,7 +25,10 @@ import {
   progressText,
   REVIEW_EMPTY,
   REVIEW_HINT,
-  REVIEW_TITLE
+  REVIEW_TITLE,
+  staleMessage,
+  stillBusyMessage,
+  waitMessage
 } from '../../../shared/review/copy'
 import { listKey } from '../../../shared/review/keys'
 import { previewStretch } from '../../../shared/review/preview'
@@ -41,7 +44,7 @@ import {
   type ReviewKind,
   type ReviewStatus
 } from '../../../shared/review/review'
-import { inSlices } from '../../../shared/review/slices'
+import { heldInSlices } from '../../../shared/review/slices'
 import { rowTimes } from '../../../shared/review/times'
 import type { Project } from '../../../shared/types'
 import { useEditor } from '../editor/context'
@@ -80,9 +83,18 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const [activeKey, setActiveKey] = useState<string | null>(() => list.find((_, i) => statuses[i] === 'pending')?.key ?? list[0]?.key ?? null)
   const active = (activeKey !== null ? indexOf.get(activeKey) : undefined) ?? 0
   // What the live region says. Each message is a new node, so the same words twice (Keep, Ctrl+Z,
-  // Keep) are read out twice.
+  // Keep) are read out twice; messages said before the page shows the first are said together
+  // (Remove all done, then the Keep that waited for it), so none is lost.
   const [said, setSaid] = useState({ text: '', n: 0 })
-  const say = (text: string): void => setSaid((s) => ({ text, n: s.n + 1 }))
+  const saying = useRef<string[]>([])
+  const say = (text: string): void => {
+    saying.current.push(text)
+    const all = saying.current.join(' ')
+    setSaid((s) => ({ text: all, n: s.n + 1 }))
+  }
+  useLayoutEffect(() => {
+    saying.current = []
+  })
   const rows = useRef(new Map<string, HTMLButtonElement>())
   const closeRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -153,6 +165,11 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     focusLater.current = null
     el.focus()
   })
+  /** Whether the focus is in the panel, or was dropped to the page (where the panel takes it back). */
+  const focusHere = (): boolean => {
+    const el = document.activeElement
+    return !el || el === document.body || !!panelRef.current?.contains(el)
+  }
 
   /** Jumps the preview to the item and plays a short stretch around it. */
   const play = (item: ReviewItem): void => {
@@ -187,24 +204,67 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     return list[index]?.key ?? null
   }
 
-  const act = (item: ReviewItem, action: 'keep' | 'remove'): void => {
+  /**
+   * Keep or Remove one row (one undo step), say so, and move on to the next row to review. One that
+   * waited for Keep all or Remove all (`waited`, see ask) moved on when it was asked for, so it
+   * leaves the focus where it is now, and says so when that reviewed its row meanwhile.
+   */
+  const act = (item: ReviewItem, action: 'keep' | 'remove', waited = false): void => {
     const index = indexOf.get(item.key) ?? -1
-    if (index < 0 || busy || reviewStatus(store.state, item) !== 'pending') return
+    if (index < 0) return
+    const status = reviewStatus(store.state, item)
+    if (status !== 'pending') {
+      if (waited) say(staleMessage(action, status))
+      return
+    }
     stopStretch()
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
     const after = list.map((i) => reviewStatus(store.state, i))
     const done = reviewProgress(after)
     say(actedMessage(action, done.reviewed, done.total))
+    if (waited) return
     const next = nextPending(list, after, index)
     if (next) focusKey(next)
   }
 
+  /**
+   * A row's Keep or Remove (K, Delete, its buttons). While Keep all or Remove all works it waits,
+   * in turn with the undo and redo asked for meanwhile (the store is held), and is done once that is
+   * done, as if pressed then (§4.3): the live region says it waits, and the focus moves on at once
+   * as after a Keep or Remove, to the next row still to review once what waits is done (not one the
+   * work or another waiting Keep or Remove reviews), so K then Delete keeps one row and removes the next.
+   */
+  const waiting = useRef(new Set<string>())
+  const ask = (item: ReviewItem, action: 'keep' | 'remove'): void => {
+    if (!store.held) return act(item, action)
+    const index = indexOf.get(item.key) ?? -1
+    if (index < 0 || reviewStatus(store.state, item) !== 'pending') return
+    stopStretch()
+    if (busy) say(waitMessage(action, busy.action))
+    const key = item.key
+    waiting.current.add(key)
+    store.whenFree(() => {
+      waiting.current.delete(key)
+      const { list, indexOf, act } = latest.current
+      const k = indexOf.get(key)
+      if (k !== undefined) act(list[k], action, true)
+    })
+    const stays = (i: ReviewItem, k: number): boolean =>
+      statuses[k] === 'pending' && !waiting.current.has(i.key) && !(busy && (busy.action === 'keep' || busy.kind === i.kind))
+    for (let k = 1; k < list.length; k++) {
+      const j = (index + k) % list.length
+      if (stays(list[j], j)) return focusKey(list[j].key)
+    }
+  }
+
   // Keep all and Remove all over more than BUSY_FROM rows (§4.3): the button says it is working and
-  // the live region what it does, drawn before the work starts; then the work goes a slice of time
-  // at a time (Remove all: removeSteps, one cut or speed-up a step), the page drawing in between, and
-  // is one edit (one undo step) at the end, made from the project as it is then. Meanwhile the
-  // panel's other Keep and Remove wait; closing the panel stops it, and nothing has changed then.
-  const [busy, setBusy] = useState<'keep' | 'remove' | null>(null)
+  // the live region what it does and what waits for it, drawn before the work starts; then the work
+  // goes a slice of time at a time (Remove all: removeSteps, one cut or speed-up a step), the page
+  // drawing in between, and is one edit (one undo step) at the end, made from the project as it is
+  // then. Meanwhile the store is held: undo and redo, and the rows' Keep and Remove (ask), wait and
+  // are done in order after it, as if pressed once it was done (Ctrl+Z undoes it, never the step
+  // before). Closing the panel stops it with nothing of it done; what waited is then done in order.
+  const [busy, setBusy] = useState<{ action: 'keep' | 'remove'; count: number; kind?: ReviewKind } | null>(null)
   const working = useRef<(() => void) | null>(null)
   useEffect(() => () => working.current?.(), [])
 
@@ -222,10 +282,10 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
       after(true)
       return
     }
-    setBusy(action)
+    setBusy({ action, count, kind })
     say(busyMessage(action, count, kind))
-    working.current = inSlices(
-      () => store.state,
+    working.current = heldInSlices(
+      store,
       (p) =>
         action === 'remove'
           ? removeSteps(p, targets(p))
@@ -239,16 +299,22 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
         setBusy(null)
         say(bulkMessage(action, done, kind))
         // The focus moves on only when it is still in the panel (or was dropped to the page).
-        const el = document.activeElement
-        after(!el || el === document.body || !!panelRef.current?.contains(el))
+        after(focusHere())
       },
       pageTasks()
     )
   }
 
+  /** Pressed while Keep all or Remove all works: says it still works (the buttons are aria-disabled). */
+  const stillBusy = (): boolean => {
+    if (busy) say(stillBusyMessage(busy.action, busy.count, busy.kind))
+    return !!busy
+  }
+
   const keepAll = (): void => {
+    if (stillBusy()) return
     const count = statuses.filter((s) => s === 'pending').length
-    if (count === 0 || busy) return
+    if (count === 0) return
     // Keep all turns disabled under the focus, which would drop to the page (Esc and the list's
     // keys would then miss the panel): the focus goes back to the row.
     bulk('keep', undefined, count, (here) => {
@@ -270,11 +336,13 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const kind = current?.kind
   const kindPending = useMemo(() => (kind ? list.filter((i, k) => i.kind === kind && statuses[k] === 'pending') : []), [list, statuses, kind])
   const removeKind = (): void => {
-    if (!current || kindPending.length === 0 || busy) return
+    if (stillBusy() || !current || kindPending.length === 0) return
     bulk('remove', current.kind, kindPending.length, (here) => {
+      // On to the next row to review after the focused one, which is the one pressed from unless
+      // another was chosen meanwhile: that one stays when it is still to review.
       const { list, active } = latest.current
       const after = list.map((i) => reviewStatus(store.state, i))
-      const next = nextPending(list, after, active)
+      const next = after[active] === 'pending' ? list[active].key : nextPending(list, after, active)
       if (next && here) focusKey(next)
       else if (next) pick(next)
     })
@@ -282,17 +350,17 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
 
   // The rows' handlers stay the same function from render to render, so a row draws again only
   // when what it shows changes (N redraws the two rows whose focus moved, not the whole list).
-  const latest = useRef({ choose, act, list, indexOf, active })
-  latest.current = { choose, act, list, indexOf, active }
+  const latest = useRef({ choose, act, ask, list, indexOf, active })
+  latest.current = { choose, act, ask, list, indexOf, active }
   const onRowChoose = useCallback((key: string) => {
     const { list, indexOf, choose } = latest.current
     const k = indexOf.get(key)
     if (k !== undefined) choose(list[k])
   }, [])
   const onRowAct = useCallback((key: string, action: 'keep' | 'remove') => {
-    const { list, indexOf, act } = latest.current
+    const { list, indexOf, ask } = latest.current
     const k = indexOf.get(key)
-    if (k !== undefined) act(list[k], action)
+    if (k !== undefined) ask(list[k], action)
   }, [])
   const setRow = useCallback((key: string, el: HTMLButtonElement | null) => {
     if (el) rows.current.set(key, el)
@@ -309,7 +377,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     else if (key.action === 'previous') move(active - 1)
     else if (key.action === 'first') move(0)
     else if (key.action === 'last') move(list.length - 1)
-    else if (current) act(current, key.action)
+    else if (current) ask(current, key.action)
   }
 
   const onPanelKey = (e: React.KeyboardEvent): void => {
@@ -387,20 +455,20 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
               data-testid="review-keep-all"
               disabled={reviewed === total}
               aria-disabled={busy ? 'true' : undefined}
-              aria-busy={busy === 'keep' ? 'true' : undefined}
+              aria-busy={busy?.action === 'keep' ? 'true' : undefined}
               onClick={keepAll}
             >
-              {busy === 'keep' ? BUSY_WORDS.keep : 'Keep all'}
+              {busy?.action === 'keep' ? BUSY_WORDS.keep : 'Keep all'}
             </button>
             <button
               className="btn"
               data-testid="review-remove-kind"
-              disabled={kindPending.length === 0 && busy !== 'remove'}
+              disabled={kindPending.length === 0 && busy?.action !== 'remove'}
               aria-disabled={busy ? 'true' : undefined}
-              aria-busy={busy === 'remove' ? 'true' : undefined}
+              aria-busy={busy?.action === 'remove' ? 'true' : undefined}
               onClick={removeKind}
             >
-              {busy === 'remove' ? BUSY_WORDS.remove : current ? KIND_WORDS[current.kind].all : 'Remove all'}
+              {busy?.action === 'remove' ? BUSY_WORDS.remove : current ? KIND_WORDS[current.kind].all : 'Remove all'}
             </button>
           </div>
         </>
