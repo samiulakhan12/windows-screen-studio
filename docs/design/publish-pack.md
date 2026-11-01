@@ -162,6 +162,11 @@ dropped. Absent stays absent (`optional()`), so **every older project loads byte
 unchanged**, and a project with `publish` opened in an older Flown keeps it (unknown fields pass
 through `...rest`).
 
+A caption gains `aiLinks?: string[]`, the links *Fix captions* or *Translate to…* wrote into it that
+it did not have (§4.6). `readCaptionSegments` keeps it (distinct strings of at most 2 000 characters,
+at most 100); absent stays absent, so older projects load unchanged, and the AI requests carry it
+(`validateTextRequest` reads it the same way).
+
 `AiTextRequest` gains optional fields used only by the pack's tasks; the existing tasks ignore
 them, so their prompts are unchanged:
 
@@ -260,7 +265,7 @@ one in. One-line fields (titles, headings, tags, steps) also turn line breaks in
 *Which links.* Every link X finds, by X's own rules: `findUrls` in `twitterText.ts`, the port of
 twitter-text 3.1.0's `extractUrlsWithIndices` (its top-level domain lists, what may come before and
 after a link, `@`, `#` and `$`, ports, paths, queries, punycode, any script). A text is read three
-ways. As X reads it at its very start and as it reads it after a space, since a part of the pack
+ways (four with an `@` and text of a language written without spaces: below). As X reads it at its very start and as it reads it after a space, since a part of the pack
 becomes either as it is put together and pasted (at the start, X takes a first `é` or `(` as what
 comes before a link: `éflown.app` links `flown.app`; after a space it links `éflown.app`). And as
 sites other than X read it (LinkedIn, YouTube, a help centre's linkifier). There, what a browser
@@ -281,9 +286,10 @@ spaces:
   `「support@flown.app」`, `support@flown.app’s`, `@flown.studio`, `@flown@mastodon.social`), or when
   it is an e-mail address's as linkify-it 5 (markdown-it's linkifier) reads one: a user name of ASCII
   letters, digits and `-;:&=+$,._` after the start, a space or one of `<>｜"(`, then dotted names on
-  a top-level domain of two letters, punycode or its list (com, net, org, edu, gov, biz, info, name,
-  pro, aero, asia, coop, museum, shop, web, xxx, рф), not followed by `_`, a port or more of a name
-  (`wei.wang@acme.com`). Else the name before it is read: `paypal.com@login`,
+  a top-level domain from its lists (a country's two letters, not any two: `paypal-login.com@hi.zz`
+  is no address; punycode; com, net, org, edu, gov, biz, info, name, pro, aero, asia, coop, museum,
+  shop, web, xxx, рф), labels of at most 63 characters, not followed by `_`, a port or more of a
+  name (`wei.wang@acme.com`). Else the name before it is read: `paypal.com@login`,
   `paypal-login.com@evil.comx`, `paypal-login.com@flown.app` (linkify-it does not know `.app` for an
   address, so it links the name before the `@`), `paypal-login.com@x.com:80/verify`,
   `|paypal-login.com@evil.com`;
@@ -294,12 +300,14 @@ spaces:
   (`support@flown.app｜paypal-login.com`, `｜` being the usual separator in Japanese text), the text
   of languages written without spaces (`网站flown.app/download`, where X counts the whole run as one label, too long to link), but not
   right after a `.`, where that text is a top-level domain (`$paypal-login.在线/verify`,
-  `「paypal-login.コム」`);
+  `「paypal-login.コム」`); and, where an `@` follows, not at all, as linkify-it reads that text in
+  a host (`paypalログイン.com@verify`, `登录.com@客服`): a fourth reading keeps it in names;
 - the ASCII punctuation X reads on through in a path or query it drops (`flown.app?README.md`: X
   links `flown.app` and nothing in its query, other sites start again after the `?`;
   `!?*'();=+,%[]~|&{}^<>\`).
 
-A `.` right after one of these (not after a space) is an end too: X links no name after a `.`, but
+A `.` right after one of these (not after a space or punctuation, which no site reads in a host:
+`*.example.com`, `(.env.dev)`, `(.co.uk)`) is an end too: X links no name after a `.`, but
 a site may read what ended the name as a label of the name after it, a subdomain its owner creates
 (linkify-it reads `ログイン`, `~`, `$` or `𐄀` in a host: `support@flown.app，ログイン.paypal-login.com`,
 `~.paypal-login.com`, `//$.paypal-login.com`), so the name after the `.` is read.
@@ -308,7 +316,8 @@ Each reading is read with X's top-level domains and, apart, with the wider lists
 the wider lists make and X drops can use up the text X links from (`/a.web:1paypal-login.com/verify`:
 X links `1paypal-login.com/verify`). Added to X's in every reading: links X leaves only for their
 length (over 4 096 characters), names on such a domain with no Latin letters (`госуслуги.рф`, which X
-links only after a scheme but other sites may), names on the top-level domains IANA delegated after
+links only after a scheme but other sites may; from after the punctuation X reads into it, so
+`«госуслуги.рф»` is `госуслуги.рф` and `«.NET»` or `".com"` no name), names on the top-level domains IANA delegated after
 twitter-text's lists (`newerTlds.ts`: `evil.web`, `evil.amazon`, `evil.亚马逊`…), and every
 `http(s)://` or `www.` link X does not link but YouTube and LinkedIn do (glued to a word,
 `xhttps://…`; inside another link's query, `flown.app?next=https://evil.com/login`; on an address X
@@ -318,9 +327,12 @@ full-width Latin letters: IDNA reads `https://ｅｖｉｌ.ｃｏｍ` as `evil.c
 ASCII's that no host holds (`，`, `（`, `！`, `；`, `“”‘’‹›«»„‚`, `—`, `।`; not `．`, `－`, `＿`, `｡` or
 `…`, which IDNA reads as `.`, `-` and `_`): `http://localhost:3000，就能看到` links
 `http://localhost:3000`, and keeps its comma. So is every protocol-relative `//` link linkify-it
-makes: a `//` not right after `:` or `/` (after a separator, or right where a link or address it read
-ends) with a dot inside its host (`//203.0.113.7/login`, `//paypal-login.com\ufe0f/login`,
-`support@flown.app//203.0.113.7`), ended the same way. It has no scheme, so it is broken like a bare
+makes: a `//` not right after `:` or `/`, nor glued to a letter or digit (floor division,
+`img.height//self.scale`) unless an address ends there (`support@flown.app//203.0.113.7`), with a dot
+inside its host (`//203.0.113.7/login`, `//paypal-login.com\ufe0f/login`), ended the same way. One
+whose user name runs across `\`, `?` or `#` to an `@` and a dotted host is the stretch to the space:
+linkify-it links the host after the `@`, a browser opens the name before (`//paypal-login｡com\support@flown.app`,
+`//3405803783#support@flown.app`). It has no scheme, so it is broken like a bare
 name, and compares as the name after it: `//flown.app/docs` is `flown.app/docs`.
 
 Where X ends such a link before the next space, the stretch to that space is a link too when a
@@ -347,7 +359,8 @@ has the very same link (`trustedText`, read the same three ways), without `http(
 compared without case in ASCII only (the Kelvin sign is not `k`), the rest exactly. `example.co` is
 not `example.com/settings`. A link that is a said one with a word's ending glued on
 (`flown.app/download'dan`, `github.com/flown/recorder's`, `…/download-Seite`, `…:sta`,
-`…-странице`, which X reads into its path) keeps the said link: U+2060, the word joiner, goes before
+`…-странице`, which X reads into its path, or Bangla's `…/guide-এ`, where X ends the link at the `-`)
+keeps the said link: U+2060, the word joiner, goes before
 the ending, so X links exactly the said link and no letter is lost; a transcript that says the link
 with an ending allows it without too. So does a said bare name that X reads with the `-` before it:
 Hebrew attaches its one-letter prefixes so (`ל-flown.app`, `ב-github.com/flown/recorder`), and after
@@ -421,11 +434,20 @@ and leaves no link its text did not have.
   job's late answer is dropped). The renderer cleans the text again (§4.4) before showing it; the
   title and summary, which main checks the Captions tab's way (losing there the links the captions
   lack, as its chapter titles do: §4.4), lose there the links the captions sent, the name and the
-  chapter titles do not have, as the pack's items do in main. The captions themselves are what the
-  pack trusts most, so what *Fix captions* and *Translate to…* write into them keeps only the links
-  of the captions sent (`validateSegmentsAnswer`): an injected caption can no longer have the
-  clean-up write `paypal-login.com/verify` into the next one (it becomes `paypal-login. com/verify`),
-  while a said `flown.app/docs` survives a translation.
+  chapter titles do not have, as the pack's items do in main.
+- *The captions are the user's.* *Fix captions* and *Translate to…* store what the AI wrote, never
+  rewritten for links (`Socket.IO`, `README.md`, a corrected `www.flown.app` stay as written, and no
+  caption is emptied). Instead, when the Captions tab applies the answer (`applyTextResult`, the same
+  undo step), each caption records the links its stored text has (after `cleanCaptionText`: controls
+  as spaces, the 500-character cut) that it did not have as said: `CaptionSegment.aiLinks`. They stay
+  through a split, a merge and a save, and go when the user edits that caption by hand. The pack
+  never trusts them unless something else says them (`unsaidLinks`: another caption, the name or a
+  chapter title): its items, title, summary and suggested chapters treat them as unsaid, so an
+  injected caption can no longer have the clean-up write `paypal-login.com/verify` into the next one
+  for the pack to keep. So the pack's said links come only from what the speech recognizer heard and
+  what the user typed. `cleanCaptionText` cuts with `sliceAt`, so no cut or merge makes a link.
+  Captions an AI changed before this (no `aiLinks`) count as said; the safety net (§4.8) still reads
+  every card.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
 
@@ -439,6 +461,29 @@ When the whole is over YouTube's 5 000 characters the text is cut (at a sentence
 fit. Chapters come
 from `outputChapters(project.chapters, project.clips, planOf(project))` and the duration from
 `videoDuration`, as `exportBundleRun.ts` does.
+
+### 4.8 The safety net (`linksToCheck`, `src/shared/publish/check.ts`)
+
+The cleaning above rewrites text for every reading it knows, and six reviews each found a new one. So
+the dialog also reads every card's text (what *Copy* gives, tags too) with a paranoid detector that
+never changes it. It splits the text at spaces and reads each stretch as a browser may read a host:
+controls, format characters and variation selectors dropped (and controls also as spaces), escapes
+decoded, NFKC, lower case, `。｡．` as dots. A stretch is noted when it has a scheme, `www.`, an IP
+address after `//` or `@`, or a dotted name one of whose labels after the first is a top-level domain
+(IANA's, also before text of another script, also without its marks). A name is not one right after
+`@` (an address's domain, with no `//` before), one `/` (a path), `_`, or a `.` after punctuation;
+after `//`, `~`, `$`, `#` or other text it is. A stretch is said, and needs no note, when it is written
+as a stretch of the captions (those without `aiLinks`), the name or a chapter title, or when nothing
+in it links once the said links and addresses are taken out of it (not where they are part of a
+longer name or a user name: `paypal-flown.app`, `https://flown.app@evil.com`).
+
+Each card shows its stretches under its text, exactly as written with invisible characters shown as
+`⟨U+200B⟩`: **Check this link before you post:** … *It is not in what was said, the recording's name
+or its chapters. Nothing was changed: post it only if you know where it goes.* *Copy* says the same
+("LinkedIn post copied. Check this link before you post: …"). A false alarm only shows a note: a said
+link glued to Chinese text (`从flown.app下载`) or after a Hebrew prefix, a name over 63 characters.
+What the cleaning still misses (the mixed-script class: `登录flown.app`, which linkify-it with every
+top-level domain reads as one host) is noted here.
 
 ---
 
@@ -473,6 +518,9 @@ export's description file will use this text" / "The export's description is bac
 standard one"), *Rename the recording* on Title (notice "Recording renamed"). These notices show
 on their card, next to its buttons (`role="status"`; a copy the clipboard refused, "X post could
 not be copied", is `role="alert"`), for 4 s: the editor's own notice would sit behind the dialog.
+
+A card whose text has a link nobody said shows the safety net's note under its text (`role="note"`,
+§4.8), and *Copy* adds it to "… copied".
 
 Errors show on their card (role alert) with the provider's message, e.g. "The AI's answer could
 not be used (no tags). Nothing was changed; try again."
@@ -539,9 +587,11 @@ All above AA (4.5:1).
   tab's chapter titles, title and summary lose in main the links their captions lack, since the
   chapter titles and the name (once *Rename the recording* is used) go into the project, whose links
   the pack trusts; what the renderer then does to them (quotation marks off, a cut by UTF-16 units),
-  and a copy's name cut before its suffix, makes no link (`sliceAt`, §4.4). The captions *Fix
-  captions* and *Translate to…* write keep only the links of the captions they were written from
-  (§4.6), so no AI answer puts a link into the project that nobody said.
+  and a copy's name cut before its suffix, makes no link (`sliceAt`, §4.4). The links *Fix captions*
+  and *Translate to…* write into the captions are recorded and never trusted (§4.6), so no AI answer
+  puts a link into the project that the pack takes for said.
+- **Safety net:** every card is also read paranoidly and anything a site could link that was not
+  said is shown next to it and with its copy (§4.8). It never changes the text.
 - **No HTML:** textareas and text nodes only (§2.5).
 - **Export bundle:** the description is plain text written by main's existing sidecar writer
   (size, NUL and path checks unchanged).
@@ -583,6 +633,7 @@ New:
   `projectYoutubeChapters(project)`, `tagsText(tags)`, `YOUTUBE_DESCRIPTION_MAX`.
 - `src/shared/publish/queue.ts`: `createQueue(limit)` → `{ add(job), cancel(id), cancelAll(), running, waiting }`.
 - `src/shared/publish/project.ts`: `readPublish(raw)`.
+- `src/shared/publish/check.ts`: the safety net, `linksToCheck(text, said)`, `saidLinks(segments, context)`, `view(s)`, `shownRun(run)`.
 - `src/renderer/src/publish/PublishDialog.tsx`, `publish.css`, `publishPrefs.ts`,
   `publishRun.ts` (the session cache and the runner), `publishRequests.ts` (palette → dialog item).
 
@@ -593,8 +644,11 @@ Changed (additive): `src/shared/api/ai.ts` (task ids, request fields, results, `
 `src/shared/editor/commands.ts` (a *Publish* category and 11 commands),
 `src/renderer/src/views/Editor.tsx` (the button, the dialog, the command handlers),
 `src/renderer/src/editor/captionItems.ts` + `panels/CaptionsPanel.tsx` (an `ai` request kind),
-`src/shared/captions/edit.ts` (`readSuggestedText(task, text)`, and `readSuggestedChapters` cuts
-with `sliceAt`), `src/shared/editor/duplicate.ts` (`copyName` cuts with `sliceAt`),
+`src/shared/captions/edit.ts` (`readSuggestedText(task, text)`, `readSuggestedChapters` cuts
+with `sliceAt`; `applyTextResult`, `splitCaption` and `mergeWithNext` keep `aiLinks`, `aiLinksAfter`),
+`src/shared/captions/captionData.ts` (`cleanCaptionText` cuts with `sliceAt`, `readAiLinks`),
+`src/shared/captions/subtitles.ts` (`sourcedCues`), `src/shared/types.ts` (`CaptionSegment.aiLinks`),
+`src/shared/publish/text.ts` (`unsaidLinks`, `PlainTextOptions.untrusted`), `src/shared/editor/duplicate.ts` (`copyName` cuts with `sliceAt`),
 `src/renderer/src/editor/exportBundleRun.ts` (the saved description),
 `ExportBundleOptions.tsx` + `ExportDialog.tsx` (the Description choice's tooltip names it),
 `tests/e2e/ai-mock-server.cjs` (answers for the pack's prompts).
@@ -628,7 +682,9 @@ Unit (vitest, each failing without its code):
   registry's integrity; the fast match finder equals twitter-text's own loop on seeded random texts.
 - `publishFindings.test.ts`: one test per problem the second review confirmed (17);
   `publishReview3.test.ts`: one per problem the third confirmed (15, two of them the same);
-  `publishReview4.test.ts` (11) and `publishReview5.test.ts` (11) the same for the fourth and fifth.
+  `publishReview4.test.ts` (11) and `publishReview5.test.ts` (11) the same for the fourth and fifth;
+  `publishReview6.test.ts` the 11 left after the fifth fixes, `aiLinks`, and the safety net (every
+  bypass example of that review noted, no note on common tutorial text in 25 languages and scripts).
 - `publishProperty.test.ts`: 3 000 seeded texts, ordinary and hostile, through every task and the
   cards: no link the transcript, name and chapter titles lack, and no letter of ordinary text lost;
   the worst texts (10 000 dots, nested brackets, long queries, links in links, runs of `//`)
@@ -714,7 +770,7 @@ Where the build differs from or adds to the sections above:
   a said name after an emoji with a variation selector (`➡\ufe0fflown.app`) or a Hebrew prefix
   (`ל-flown.app`) was broken, the http(s) and `www.` reading took quadratic time in its matches, and
   punycode.js lacked a notice. So linkify-it's separators end a name, punctuation joins none, a `.`
-  after an end is an end, `//` is read as linkify-it reads it, the captions keep only said links, a
+  after an end is an end, `//` is read as linkify-it reads it, the captions kept only said links (undone in the sixth: §4.6), a
   said link before such a stretch stays with a no-break space after it, what joins a name is read as
   a digit and a variation selector as part of the character before it, a Hebrew prefix's `-` gets the
   word joiner after it, and the links found are swept once. As a result:
@@ -739,6 +795,18 @@ Where the build differs from or adds to the sections above:
     too (`г. Москва`), as other sites may link them.
   - the Kelvin sign is `K` after NFC, so `evil.comK` (with it) is one word, as X reads it.
   - tags keep the links the transcript has (`ASP.NET` when it was said), and are broken otherwise.
+- **The sixth review: the rewriter is not the last word.** Six rounds each found new bypasses and new
+  damage: a rewriter that must match every linkifier cannot be both complete and harmless. So the final
+  shape has three parts. The captions are the user's: *Fix captions* and *Translate to…* are no longer
+  rewritten for links (`Socket.IO`, `README.md` and a corrected address stay; no run fails on a caption
+  it emptied), and the links they add are recorded from the stored text and never trusted (§4.6),
+  which closes at the root the laundering through control characters and the 500-character cut. The
+  rewriter keeps what it does well, with that review's small fixes (an address's two-letter domain
+  from linkify-it's list, `//` user names across `\`, `?`, `#`, text without spaces before `@`, Bangla,
+  Hindi and Tamil endings, `*.example.com` and dotfiles, floor division, a quotation mark before a
+  top-level domain). And a safety net that never changes text notes whatever is left (§4.8). Each fix
+  was worth its code: all are a few lines, and the fourth reading runs only on text with an `@` and
+  text without spaces.
 - **What the user typed is trusted like the transcript.** The recording's name and chapter titles go
   to the provider as typed (one line, capped, control characters removed: `readPackContext`), and an
   answer may keep a link they have (`trustedText`), in the pack's items and in the title and summary
