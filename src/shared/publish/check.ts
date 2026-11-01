@@ -5,12 +5,12 @@
  * and returns every stretch some site could turn into a link that is not a said one, for the Publish
  * dialog to show as "Check this link before you post". A false alarm only shows a note. Pure.
  */
-import { linkKeys, trustedText, unsaidLinks } from './text'
+import { saidKeys, trustedText, unsaidLinks } from './text'
 import { isTopLevelDomain } from './twitterText'
 
 /** What was said, as the safety net compares it: the links the pack trusts, and the e-mail addresses said. */
 export interface SaidLinks {
-  /** The pack's said links (linkKeys of the transcript, name and chapter titles, but those an AI wrote into the captions), as `view` reads them. */
+  /** The pack's said links (saidKeys of the transcript, name and chapter titles, but those an AI wrote into the captions), as `view` reads them. */
   links: readonly string[]
   /** E-mail addresses said (in captions no AI wrote a link into, the name or a chapter title), as `view` reads them. */
   mails: ReadonlySet<string>
@@ -18,31 +18,92 @@ export interface SaidLinks {
   runs: ReadonlySet<string>
 }
 
+/** Nothing said: linksToCheck then notes every stretch some site could link (what is said only takes notes away). */
+export const NOTHING_SAID: SaidLinks = { links: [], mails: new Set(), runs: new Set() }
+
 /** Spaces that end every reading of a link (not U+FEFF or U+180E, which a linkifier reads into a host and a browser drops). */
 const SPACE = /[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/
 /** What a browser drops from a host, or what shows nothing: controls, format characters, variation selectors, the combining grapheme joiner, Hangul fillers. */
 const INVISIBLE = /[\p{Cc}\p{Cf}\u034f\u115f\u1160\u3164\uffa0\u180b-\u180f\ufe00-\ufe0f\u{e0100}-\u{e01ef}]/gu
 
-/** `s` as a browser may read it in a host: invisible characters dropped, escapes decoded, NFKC, lower case, IDNA's dots ("。", "｡", "．") as ".". */
-export function view(s: string): string {
-  const decoded = s.replace(INVISIBLE, '').replace(/(?:%[0-9a-f]{2})+/gi, (m) => {
+/**
+ * A stand-in (a private-use character) for an HTML character reference by a name this does not know:
+ * it may be any letter ("&rcy;&fcy;" is "рф", "&oopf;" NFKC's "o"), so a label with it may be a
+ * top-level domain (mayBeTld).
+ */
+const ANY = '\ue000'
+/** Named character references for the ASCII punctuation a link is written with (and the no-break space). */
+const NAMED: Readonly<Record<string, string>> = {
+  period: '.', colon: ':', sol: '/', bsol: '\\', commat: '@', num: '#', quest: '?', percnt: '%', lowbar: '_', UnderBar: '_', amp: '&', AMP: '&',
+  excl: '!', dollar: '$', plus: '+', equals: '=', comma: ',', semi: ';', ast: '*', midast: '*', lpar: '(', rpar: ')', lsqb: '[', lbrack: '[',
+  rsqb: ']', rbrack: ']', lcub: '{', lbrace: '{', rcub: '}', rbrace: '}', verbar: '|', vert: '|', VerticalLine: '|', apos: "'", quot: '"',
+  QUOT: '"', lt: '<', LT: '<', gt: '>', GT: '>', Hat: '^', grave: '`', DiacriticalGrave: '`', nbsp: '\u00a0', NonBreakingSpace: '\u00a0'
+}
+/** A backslash escape of ASCII punctuation, or a character reference (CommonMark's). */
+const MARKDOWN_ESCAPE = /\\([!-/:-@[-`{-~])|&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([A-Za-z][A-Za-z0-9]{1,31}));/g
+
+/**
+ * `s` as a Markdown renderer gives it to a linkifier or a browser (a help centre's article, a link's
+ * destination: "[here](https\\://paypal-login\\.com)", "paypal-login&#46;com"): backslash escapes and
+ * character references decoded, an unknown name as ANY.
+ */
+function unescapeMarkdown(s: string): string {
+  return s.replace(MARKDOWN_ESCAPE, (_m, punct?: string, dec?: string, hex?: string, name?: string) => {
+    if (punct) return punct
+    if (name) return NAMED[name] ?? ANY
+    const code = parseInt(dec ?? (hex as string), dec ? 10 : 16)
+    return code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff) ? String.fromCodePoint(code) : '\ufffd'
+  })
+}
+
+/**
+ * Where a browser reads a host: after "//" (either slash may be "\\") or a special scheme (which needs
+ * no slashes: "https:evil.com"), to its path, query or fragment.
+ */
+const AUTHORITY = /(?:[/\\]{2}|(?<![a-z0-9+.-])(?:https?|ftp|wss?):[/\\]*)[^/?#\\]*/giu
+
+/**
+ * `s` as a browser may read it in a host: Markdown's escapes decoded (unless `markdown` is false: a
+ * site that does not render Markdown reads them as written), invisible characters dropped, escapes
+ * decoded, NFKC, lower case. IDNA's dots ("。", "｡", "．") are dots in a host a browser is given (after
+ * "//" or a scheme, to its path), and nowhere else: no site links across them in text, where Chinese
+ * and Japanese end their sentences with them ("设置完成。网站上有更多教程。").
+ */
+export function view(s: string, markdown = true): string {
+  const decoded = (markdown ? unescapeMarkdown(s) : s).replace(INVISIBLE, '').replace(/(?:%[0-9a-f]{2})+/gi, (m) => {
     try {
       return decodeURIComponent(m)
     } catch {
       return m.replace(/%([0-7][0-9a-f])/gi, (_e, h: string) => String.fromCharCode(parseInt(h, 16)))
     }
   })
-  return decoded.normalize('NFKC').toLowerCase().replace(/[。｡．]/g, '.').replace(INVISIBLE, '')
+  // "．" outside a host as "。", which NFKC keeps.
+  const dotted = decoded.replace(AUTHORITY, (m) => m.replace(/[。｡．]/g, '.')).replace(/．/g, '。')
+  return dotted.normalize('NFKC').toLowerCase().replace(INVISIBLE, '')
 }
 
-/** A scheme a site links from ("https://", "ftp://", "javascript:"…). */
-const SCHEME = /(?<![a-z0-9+.-])(?:[a-z][a-z0-9+.-]*:\/\/|(?:mailto|javascript|vbscript|data):)/
+/**
+ * A scheme a site links from ("https://", "ftp://", "javascript:"…), and a special scheme a browser
+ * reads without its slashes before a host ("https:paypal-login.com", "http:/evil.com",
+ * "https:3405803783"; not "https:で始まります", which has none).
+ */
+const SCHEME = /(?<![a-z0-9+.-])(?:[a-z][a-z0-9+.-]*:\/\/|(?:mailto|javascript|vbscript|data):|(?:https?|ftp|wss?):(?=[/\\a-z0-9\ue000]|[^\s/?#\\]*\.))/u
 /** "www." starting a name. */
 const WWW = /(?<![\p{L}\p{N}_-])www\d{0,3}\./u
-/** An IP address as a browser reads a host after "//" or "@": a dotted quad (of decimal or hex parts), or one number (eight digits or more, or hex). */
-const NUMERIC_HOST = /(?:\/\/|@)[/\\]*(?:\d{8,}|0x[0-9a-f]{6,}|(?:0x[0-9a-f]+|\d+)(?:\.(?:0x[0-9a-f]+|\d+)){3})(?![\p{L}\p{N}])/u
-/** A stretch of name characters (letters, digits, marks, "-" and "."): its dotted names are read from it in one pass. */
-const NAME_CHARS = /[\p{L}\p{N}\p{M}.-]+/gu
+/**
+ * An IP address as a browser reads a host after "//" or "@": a dotted quad (of decimal or hex parts),
+ * or one number (eight digits or more, or hex); and after a "//" that is not glued to a letter or
+ * digit (where linkify-it starts one: not floor division, "3//4.5"), two or three parts
+ * ("//203.28935" and "//1.1" are 203.0.113.7 and 1.0.0.1).
+ */
+const NUMERIC_HOST =
+  /(?:\/\/|@)[/\\]*(?:\d{8,}|0x[0-9a-f]{6,}|(?:0x[0-9a-f]+|\d+)(?:\.(?:0x[0-9a-f]+|\d+)){3})(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])\/\/[/\\]*(?:0x[0-9a-f]+|\d+)(?:\.(?:0x[0-9a-f]+|\d+)){1,2}(?![\p{L}\p{N}]|\.[\p{L}\p{N}])/u
+/**
+ * A stretch of name characters (letters, digits, marks, "-", "." and ANY, and symbols other than
+ * ASCII's, which linkify-it reads in a host: "😀flown.to", "➡flown.app"): its dotted names are read
+ * from it in one pass.
+ */
+const NAME_CHARS = /(?:[\p{L}\p{N}\p{M}.\-\ue000]|(?![\x00-\x7f])\p{S})+/gu
 
 /** Each dotted name in `v` (labels of letters, digits, marks and "-"), with where it starts. Linear. */
 function* namesIn(v: string): Generator<{ at: number; labels: string[] }> {
@@ -61,7 +122,7 @@ function* namesIn(v: string): Generator<{ at: number; labels: string[] }> {
 
 /** Whether `label` may be read as a top-level domain: it is one, or starts with one before a letter of another script ("comログイン"). */
 function mayBeTld(label: string): boolean {
-  if (isTopLevelDomain(label)) return true
+  if (isTopLevelDomain(label) || label.includes(ANY)) return true
   // With its marks off: X reads a decomposed "io" + U+0300 as "io".
   const bare = label.normalize('NFD').replace(/\p{M}/gu, '')
   if (bare !== label && mayBeTld(bare)) return true
@@ -93,7 +154,13 @@ function linkable(v: string): boolean {
   return false
 }
 
-const LABEL = /[\p{L}\p{N}\p{M}_-]/u
+/** A character that goes on with a name: a letter, digit, mark, "_", "-", ANY, or a symbol other than ASCII's (NAME_CHARS). */
+const LABEL = /[\p{L}\p{N}\p{M}_\-\ue000]|(?![\x00-\x7f])\p{S}/u
+/** A letter or symbol of another script than ASCII's: after a name that ends in ASCII, it is no top-level domain's ("flown.app에서"). */
+const OTHER_SCRIPT = /(?![\x00-\x7f])[\p{L}\p{S}]/u
+/** The character (code point) of `s` that ends at `i`, and the one that starts there. */
+const charBefore = (s: string, i: number): string => (i > 0 ? String.fromCodePoint(s.codePointAt(i >= 2 && /[\udc00-\udfff]/.test(s[i - 1]) ? i - 2 : i - 1) as number) : '')
+const charAt = (s: string, i: number): string => (i < s.length ? String.fromCodePoint(s.codePointAt(i) as number) : '')
 const MAIL_USER = /[a-z0-9._%+-]/
 const SENTENCE_ENDS = /^[\p{P}]+|[\p{P}]+$/gu
 
@@ -109,12 +176,16 @@ function withoutSaid(v: string, said: SaidLinks): string {
       const scheme = /(?:https?:\/\/|\/\/)$/.exec(out.slice(Math.max(0, at - 8), at))?.[0] ?? ''
       start -= scheme.length
       const end = at + find.length
-      const prev = out[start - 1] ?? ''
-      const next = out.slice(end, end + 2)
-      // A name goes on with a letter, digit, "-" or a dot and a label, and is a user name before "@" or a port and "@"
-      // ("https://flown.app@evil.com", "flown.app:8443@3405803783"); a path or address may be followed by anything.
-      const userName = host && (next[0] === '@' || /^:\d/.test(next))
-      const longer = (mail ? MAIL_USER.test(prev) : LABEL.test(prev) || prev === '.') || (host && (LABEL.test(next[0] ?? '') || (next[0] === '.' && LABEL.test(next[1] ?? '')))) || userName
+      const prev = charBefore(out, start)
+      const next = charAt(out, end)
+      // A name goes on with a letter, digit, "-" or a dot and a label (after a name that ends in ASCII, not with the
+      // letters of another script, where every site ends it: "flown.app에서", "README.md를"; before a scheme, only with
+      // a letter or digit: "👉https://flown.app"), and is a user name before "@" or a port and "@" ("https://flown.app@evil.com",
+      // "flown.app:8443@3405803783"; "main.py:42" is main.py); a path or address may be followed by anything.
+      const userName = host && (next === '@' || /^:\d{0,5}@/.test(out.slice(end, end + 8)))
+      const before = mail ? MAIL_USER.test(prev) : scheme ? /[\p{L}\p{N}\p{M}_-]/u.test(prev) : LABEL.test(prev) || prev === '.'
+      const after = host && ((LABEL.test(next) && !(/[a-z0-9]$/.test(find) && OTHER_SCRIPT.test(next))) || (next === '.' && LABEL.test(charAt(out, end + 1))))
+      const longer = before || after || userName
       if (!longer) out = `${out.slice(0, start)}${' '.repeat(end - start)}${out.slice(end)}`
       from = end
     }
@@ -134,11 +205,18 @@ export function linksToCheck(text: string, said: SaidLinks): string[] {
   const out: string[] = []
   for (const run of text.split(SPACE)) {
     if (!run || out.includes(run)) continue
-    // A control character is dropped by one reader and a space to another (a caption stores it as one: "_\u0001evil.com").
-    const views = /\p{Cc}/u.test(run) ? [view(run), view(run.replace(/\p{Cc}/gu, ' '))] : [view(run)]
+    // A control character is dropped by one reader and a space to another (a caption stores it as one: "_\u0001evil.com");
+    // Markdown's escapes are decoded by one site and read as written by another.
+    const views = readingsOf(run)
     if (views.some((v) => linkable(v) && !said.runs.has(v.replace(SENTENCE_ENDS, '')) && linkable(withoutSaid(v, said)))) out.push(run)
   }
   return out
+}
+
+/** The ways `run` may be read (view): with its controls dropped and as spaces, with Markdown's escapes decoded and as written. */
+function readingsOf(run: string): string[] {
+  const texts = /\p{Cc}/u.test(run) ? [run, run.replace(/\p{Cc}/gu, ' ')] : [run]
+  return /[\\&]/.test(run) ? texts.flatMap((t) => [view(t), view(t, false)]) : texts.map((t) => view(t))
 }
 
 /** An e-mail address, as `view` reads it (its user name in ASCII, as linkifiers read one). */
@@ -152,15 +230,16 @@ const MAIL = /[a-z0-9._%+-]+@[\p{L}\p{N}\p{M}-]+(?:\.[\p{L}\p{N}\p{M}-]+)+/gu
  */
 export function saidLinks(segments: readonly { text: string; aiLinks?: readonly string[] }[], context?: { title?: string; chapters?: string[] }): SaidLinks {
   const untrusted = new Set(unsaidLinks(segments, context))
-  const links = [...linkKeys(trustedText(segments.map((s) => s.text).join(' '), context))].filter((k) => !untrusted.has(k)).map(view)
+  const links = [...saidKeys(trustedText(segments.map((s) => s.text).join(' '), context))].filter((k) => !untrusted.has(k)).map((k) => view(k))
   const plain = trustedText(segments.filter((s) => !s.aiLinks?.length).map((s) => s.text).join(' '), context)
   const runs = new Set<string>()
   const mails = new Set<string>()
   for (const run of plain.split(SPACE)) {
-    const v = view(run)
-    if (!v || !linkable(v)) continue
-    runs.add(v.replace(SENTENCE_ENDS, ''))
-    for (const m of v.matchAll(MAIL)) mails.add(m[0].replace(/^[._%+-]+/, ''))
+    for (const v of readingsOf(run)) {
+      if (!v || !linkable(v)) continue
+      runs.add(v.replace(SENTENCE_ENDS, ''))
+      for (const m of v.matchAll(MAIL)) mails.add(m[0].replace(/^[._%+-]+/, ''))
+    }
   }
   return { links: [...new Set(links)].sort((a, b) => b.length - a.length), mails, runs }
 }
