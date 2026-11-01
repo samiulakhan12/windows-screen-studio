@@ -3,10 +3,13 @@
 //  1. Nothing to write from: no provider (Add an AI provider), no sound, no captions (Generate
 //     captions opens the Captions tab and starts it).
 //  2. Write all with a slow key: seven cards, at most two requests at once, progress; tone and length
-//     reach the prompts; markup in an answer is text, a link the transcript lacks is dropped; X fits
-//     280; Copy gives the exact text (the YouTube one with the timeline's chapters); edits are copied;
-//     Regenerate sends one request; Stop cancels one.
-//  3. Use for exports: one undo step; the export's description file is what Copy gives.
+//     reach the prompts; markup in an answer is text, a link the transcript lacks is kept as written and
+//     noted under its card; X fits 280; Copy of a noted text asks first (one dialog, the focus on
+//     Cancel, Esc cancels it and not the Publish dialog, Tab stays in it), then gives the exact text (the
+//     YouTube one with the timeline's chapters); edits are copied; Regenerate sends one request; Stop
+//     cancels one.
+//  3. Use for exports: asked about first for a noted text; one undo step; the export's description
+//     file is what Copy gives.
 //  4. Tone and length are remembered after a restart.
 //  5. The palette: "Write an X post" writes that item only, with the focus on its text; "Summarize
 //     with AI" runs the Captions tab's summary; the AI tools are greyed out without captions.
@@ -107,9 +110,16 @@ async function chip(win, group, label) {
 }
 const chipOn = (win, group, label) => dialog(win).locator(`.chips[aria-label="${group}"] button`, { hasText: label }).getAttribute('aria-pressed')
 
-async function copyFrom(win, app, kind, label = 'Copy') {
+/** The link check's confirm (§4.8), over the Publish dialog. */
+const confirmBox = (win) => win.locator('[data-testid="publish-confirm"]')
+
+async function copyFrom(win, app, kind, label = 'Copy', anyway = false) {
   await app.evaluate(({ clipboard }) => clipboard.writeText('before'))
   await card(win, kind).locator('.publish-actions button', { hasText: new RegExp(`^${label}$`) }).click()
+  if (anyway) {
+    await confirmBox(win).waitFor({ timeout: 5000 })
+    await confirmBox(win).locator('button', { hasText: 'Copy anyway' }).click()
+  }
   return f.waitFor(async () => {
     const t = await clipboard(app)
     return t !== 'before' ? t : null
@@ -212,7 +222,7 @@ async function main() {
         const yt = await cardText(win, 'youtube')
         h.assert(yt.startsWith(`Mock description (professional short, ${WORDS} words).`), `tone and length reach the prompt: ${yt}`)
         h.assert(yt.includes('<img src=x onerror="document.title=\'pwned\'">'), 'markup is shown as text')
-        h.assert(!yt.includes('evil.example'), 'a link the transcript lacks is dropped')
+        h.assert(yt.includes('See https://evil.example/x now.'), 'a link the transcript lacks is kept as written')
         h.assert((await dialog(win).locator('img').count()) === 0 && (await win.title()) !== 'pwned', 'nothing from the answer became markup')
         h.assert((await card(win, 'youtube').locator('textarea.publish-tags').inputValue()) === 'mock, flown demo, btag/b', 'tags cleaned')
         h.assert((await win.textContent('[data-testid="publish-chapters"]')) === '0:00 Intro\n0:02 Settings\n0:04 Save', 'chapters from the timeline')
@@ -225,22 +235,44 @@ async function main() {
         h.assert((await cardText(win, 'summary')) === 'A mock summary of the recording.', 'summary from the existing task')
         if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'publish-pack-written.png') })
 
+        // The link check (§4.8): the link nobody said is noted under the YouTube card, and its Copy asks
+        // first, in one dialog with the focus on Cancel; Esc cancels it, not the Publish dialog; Tab stays in it.
+        const ytNote = card(win, 'youtube').locator('[data-testid="publish-check"]')
+        h.assert((await ytNote.count()) === 1 && (await ytNote.getAttribute('role')) === 'note', 'the YouTube card has a note')
+        h.assert((await ytNote.textContent()).includes('Check this before you post:https://evil.example/x'), `note: ${await ytNote.textContent()}`)
+        h.assert((await card(win, 'youtube').locator('textarea.publish-text').getAttribute('aria-describedby')) === 'publish-youtube-check', 'the note describes the text')
+        h.assert((await dialog(win).locator('[data-testid="publish-check"]').count()) === 1, 'no note on the other written cards')
+        await app.evaluate(({ clipboard }) => clipboard.writeText('before'))
+        await card(win, 'youtube').locator('.publish-actions button', { hasText: /^Copy$/ }).click()
+        await confirmBox(win).waitFor({ timeout: 5000 })
+        h.assert((await confirmBox(win).getAttribute('role')) === 'alertdialog' && (await confirmBox(win).getAttribute('aria-modal')) === 'true', 'one modal dialog')
+        const items = await confirmBox(win).locator('li').allTextContents()
+        h.assert(items.length === 1 && items[0].startsWith('…') && items[0].includes(' See https://evil.example/x now.'), `the piece with its context: ${items}`)
+        await f.waitFor(async () => (await win.evaluate(() => document.activeElement && document.activeElement.textContent)) === 'Cancel', 'the focus starts on Cancel', 3000)
+        await win.keyboard.press('Tab')
+        h.assert((await win.evaluate(() => document.activeElement && document.activeElement.textContent)) === 'Copy anyway', 'Tab goes to Copy anyway')
+        await win.keyboard.press('Tab')
+        h.assert((await win.evaluate(() => document.activeElement && document.activeElement.textContent)) === 'Cancel', 'and stays in the confirm')
+        await win.keyboard.press('Escape')
+        await f.waitFor(async () => (await confirmBox(win).count()) === 0, 'Esc cancels the confirm', 3000)
+        h.assert((await dialog(win).count()) === 1, 'the Publish dialog stays open')
+        h.assert((await clipboard(app)) === 'before', 'nothing was copied')
+        h.assert((await win.evaluate(() => document.activeElement && document.activeElement.textContent)) === 'Copy', 'the focus is back on Copy')
+
         // Copy: the exact text, the YouTube one with the chapters and "<" and ">" (which YouTube
         // refuses) as "‹" and "›"; an edit is what gets copied.
-        const copied = await copyFrom(win, app, 'youtube')
+        const copied = await copyFrom(win, app, 'youtube', 'Copy', true)
         const ytCopy = yt.replace(/</g, '‹').replace(/>/g, '›')
         h.assert(copied === `${ytCopy}\n\nChapters\n0:00 Intro\n0:02 Settings\n0:04 Save`, `YouTube copy: ${JSON.stringify(copied)}`)
         h.assert((await copyFrom(win, app, 'youtube', 'Copy tags')) === 'mock, flown demo, btag/b', 'tags copied')
-        // The safety net (§4.8): no card the mock wrote has a note; a link nobody said, typed into a
-        // card, gets one next to it and in the copy's notice, and is copied as written.
-        h.assert((await dialog(win).locator('[data-testid="publish-check"]').count()) === 0, 'no note on the written cards')
+        // A link nobody said, typed into a card, gets a note next to it, and is copied as written after the confirm.
         await card(win, 'linkedin').locator('textarea.publish-text').fill('Get the files at paypal-login.com/verify today')
         const note = card(win, 'linkedin').locator('[data-testid="publish-check"]')
         await f.waitFor(async () => (await note.count()) === 1, 'the note shows', 5000)
-        h.assert((await note.textContent()).includes('Check this link before you post:paypal-login.com/verify'), `note: ${await note.textContent()}`)
-        h.assert((await copyFrom(win, app, 'linkedin')) === 'Get the files at paypal-login.com/verify today', 'copied as written')
+        h.assert((await note.textContent()).includes('Check this before you post:paypal-login.com/verify'), `note: ${await note.textContent()}`)
+        h.assert((await copyFrom(win, app, 'linkedin', 'Copy', true)) === 'Get the files at paypal-login.com/verify today', 'copied as written')
         const said = await card(win, 'linkedin').locator('.publish-said[role="status"]').textContent()
-        h.assert(said === 'LinkedIn post copied. Check this link before you post: paypal-login.com/verify', `copy notice: ${said}`)
+        h.assert(said === 'LinkedIn post copied', `copy notice: ${said}`)
         await card(win, 'linkedin').locator('textarea.publish-text').fill('My own words <b>here</b>')
         await f.waitFor(async () => (await note.count()) === 0, 'the note goes with the link', 5000)
         h.assert((await copyFrom(win, app, 'linkedin')) === 'My own words <b>here</b>', 'the edit is copied')
@@ -260,8 +292,11 @@ async function main() {
         await f.waitFor(async () => mock.pack.inFlight === 0, 'the request was cancelled', 5000)
         h.assert((await cardText(win, 'article')) === article, 'the text stays')
 
-        // Use for exports: one undo step.
+        // Use for exports: asked about first (the description has the link nobody said); one undo step.
         await card(win, 'youtube').locator('button', { hasText: 'Use for exports' }).click()
+        await confirmBox(win).waitFor({ timeout: 5000 })
+        h.assert((await confirmBox(win).textContent()).includes('YouTube description: check this before you use it'), 'Use for exports asks first')
+        await confirmBox(win).locator('button', { hasText: 'Use anyway' }).click()
         await f.waitFor(async () => (await card(win, 'youtube').locator('button', { hasText: 'Stop using for exports' }).count()) === 1, 'saved for exports', 5000)
         const saved = await f.waitFor(() => h.readProject(home, 'rec-pub').publish, 'the description is saved', 10000)
         h.assert(saved.description === yt, `saved text: ${JSON.stringify(saved)}`)

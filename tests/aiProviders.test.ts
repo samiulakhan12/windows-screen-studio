@@ -467,7 +467,7 @@ describe('text tasks', () => {
       const id = providers[name].id
       const opts = { segments, tone: 'professional', length: 'short' }
       const yt = await call<AiTextResult>('ai:text', id, { task: 'youtube', ...opts })
-      expect(yt).toEqual({ task: 'youtube', text: 'Mock description (professional short, 6 words). <img src=x onerror="document.title=\'pwned\'"> See now.', tags: ['mock', 'flown demo', 'btag/b'] })
+      expect(yt).toEqual({ task: 'youtube', text: 'Mock description (professional short, 6 words). <img src=x onerror="document.title=\'pwned\'"> See https://evil.example/x now.', tags: ['mock', 'flown demo', 'btag/b'] })
       expect(await call('ai:text', id, { task: 'linkedin', ...opts })).toEqual({ task: 'linkedin', text: 'Mock LinkedIn post (professional short).\n\n#flown' })
       const x = await call<AiTextResult>('ai:text', id, { task: 'xpost', ...opts })
       expect(x.task === 'xpost' && x.text.startsWith('Mock X post (professional short) word') && x.text.endsWith('…') && x.text.length <= 280).toBe(true)
