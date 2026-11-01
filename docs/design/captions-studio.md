@@ -2370,7 +2370,7 @@ the options of Make my captions great:
 | `emoji` | Emoji, anchored to their word | At most one per 8 s (§11.3). |
 | `speakers` | Lower thirds | At each speaker's first caption, only for names the user typed (not "You", "Others" or "Speaker 2", NW-09's default names). |
 | `chapters` | Chapter titles | Every chapter except one that starts in the first 2 s; at most one per 30 s. |
-| `quotes` | Quote cards | Only with a provider (the AI `marks` answer, §11.2), at most one per 2 minutes. Off by default. |
+| `quotes` | Quote cards | Only with a provider (the AI `marks` answer, §11.2), at most one per 2 minutes; a run without that answer keeps the quote cards made. Off by default. |
 
 - **Timing.** A graphic starts 0.1 s before its word, in source seconds (a keyword: its chunk's
   time).

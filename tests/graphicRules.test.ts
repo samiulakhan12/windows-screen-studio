@@ -156,4 +156,13 @@ describe('graphic generation (§10.2)', () => {
     // Turned off: the run leaves that kind alone.
     expect(planGraphics(once, { ...NONE })).toBe(once)
   })
+
+  it('quote cards asked for without the provider’s marks answer: the ones made stay', () => {
+    const p = studioProject({ segments: captions(['Make every word count today', 'Then quiet']) })
+    const marks = { captions: [], numbers: [], lists: [], quotes: [{ id: 'c0', from: 0, to: 4 }] }
+    const once = planGraphics(p, { ...NONE, quotes: true, marks, marksVia: 'openai' })
+    expect(once.titles?.map((c) => c.auto)).toEqual([{ by: 'quote', via: 'openai', caption: 'c0' }])
+    // Add pop-ups from captions with Quotes on asks without marks.
+    expect(planGraphics(once, { ...NONE, quotes: true })).toBe(once)
+  })
 })

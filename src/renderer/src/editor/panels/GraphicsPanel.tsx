@@ -179,7 +179,7 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
         speakers: on('speakers'),
         chapters: on('chapters'),
         // Quote cards come from the AI provider's `marks` answer, which part P4's runner gathers
-        // (greatRun.ts); asked without it, the planner makes none.
+        // (greatRun.ts); asked without it, the planner makes none and keeps those made.
         quotes: on('quotes'),
         sound: great.options.sound
       })

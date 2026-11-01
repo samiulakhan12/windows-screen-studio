@@ -92,7 +92,9 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
   const transcript = project.transcript
   const segments = transcript?.segments ?? []
   const language = transcript?.language
-  const on = (by: AutoOrigin['by']): boolean => (Object.keys(BY_OF_SWITCH) as (keyof typeof BY_OF_SWITCH)[]).some((k) => BY_OF_SWITCH[k] === by && opts[k])
+  // Quote cards are made only from the provider's `marks` answer: asked without it, the ones made stay.
+  const on = (by: AutoOrigin['by']): boolean =>
+    (Object.keys(BY_OF_SWITCH) as (keyof typeof BY_OF_SWITCH)[]).some((k) => BY_OF_SWITCH[k] === by && opts[k] && (k !== 'quotes' || !!opts.marks))
   // Kept: the user's items, and automatic ones of kinds this run does not make.
   const keptGraphics = (project.graphics ?? []).filter((g) => !g.auto || !on(g.auto.by))
   const keptTitles = (project.titles ?? []).filter((c) => !c.auto || !on(c.auto.by))
