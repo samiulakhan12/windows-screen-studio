@@ -25,13 +25,21 @@ const QUOTE_FONT = 'instrument-serif-italic'
 /** After a catalogue font: the bundled script fonts and the colour emoji face (§6.6), then the title font. */
 const CATALOG_FALLBACK = ['noto-sans-bengali', 'noto-sans-devanagari', 'noto-sans-arabic', 'noto-sans-hebrew', 'noto-sans-thai', 'noto-color-emoji'].map((id) => `"${catalogFamily(id)}"`).join(', ')
 
+const BENGALI = /\p{Script=Bengali}/u
+
 /**
  * The font stack of a card: a catalogue font (`cat:`, and the quote style's), its brand font, else
  * the title font. Cards without a `cat:` font and of the older styles draw exactly as before.
+ * Bangla on a card without a font of its own (BANGLA-NOTES): a quote's in Noto Serif Bengali, an
+ * automatic lower third's or chapter title's in the caption look's Bangla font (§0.2).
  */
-function cardFont(project: Pick<Project, 'id' | 'fonts'>, card: TitleCard): string {
-  const cat = catalogId(card.font) ?? (card.style === 'quote' && !card.font ? QUOTE_FONT : null)
-  if (cat) return `"${catalogFamily(cat)}", ${CATALOG_FALLBACK}, ${TITLE_FONT}`
+function cardFont(project: Pick<Project, 'id' | 'fonts' | 'captions'>, card: TitleCard): string {
+  const quote = card.style === 'quote' && !card.font
+  const cat = catalogId(card.font) ?? (quote ? QUOTE_FONT : null)
+  if (cat) return `"${catalogFamily(cat)}", ${quote ? `"${catalogFamily('noto-serif-bengali')}", ` : ''}${CATALOG_FALLBACK}, ${TITLE_FONT}`
+  const bangla = card.auto && !card.font && BENGALI.test(`${card.title}\n${card.subtitle ?? ''}`) ? catalogId((project.captions?.studio ?? STUDIO_BASE).text.scripts?.bengali?.font) : null
+  // After Segoe UI, which has no Bangla, so the other letters draw as before.
+  if (bangla) return `'Segoe UI Variable Display', 'Segoe UI', "${catalogFamily(bangla)}", ${TITLE_FONT}`
   return projectFontStack(project, card.font, TITLE_FONT)
 }
 
@@ -417,7 +425,7 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
   // Later cards on top.
   active.sort((a, b) => a.card.start - b.card.start)
   // Catalogue fonts (cat: and quote cards) load as the editor draws; the export waits for them (prepareCaptionFonts).
-  if (titles.some((c) => c.style === 'quote' || catalogId(c.font))) ensureCaptionFonts(fc.project)
+  if (titles.some((c) => c.style === 'quote' || c.auto || catalogId(c.font))) ensureCaptionFonts(fc.project)
   for (const { card, phase } of active) {
     const font = cardFont(fc.project, card)
     const lower = card.style === 'lower-third'

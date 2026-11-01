@@ -144,6 +144,18 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(project({ transcript } as Partial<Project>))).toEqual([])
   })
 
+  it('adds the look’s Bangla font for Bangla graphics, Subtitle’s on a legacy look, and the Bangla fonts of cards without a font', () => {
+    const bn = keyword({ text: 'স্বয়ংক্রিয়' })
+    expect(fonts.catalogFontsFor(project({ graphics: [bn] }))).toContain('hind-siliguri')
+    expect(fonts.catalogFontsFor(withStudio(look('bold-pop'), { graphics: [bn] }))).toContain('baloo-da-2')
+    const name = { id: 't1', start: 0, end: 2, title: 'রহিম', style: 'lower-third', background: 'blur', auto: { by: 'speaker', via: 'rules' } } as TitleCard
+    expect(fonts.catalogFontsFor(withStudio(look('bold-pop'), { titles: [name] }))).toContain('baloo-da-2')
+    const quote = { id: 't2', start: 3, end: 5, title: 'প্রতিটি শব্দ গুরুত্বপূর্ণ', subtitle: 'রহিম', style: 'quote', background: 'blur' } as TitleCard
+    expect(fonts.catalogFontsFor(project({ titles: [quote] }))).toEqual(expect.arrayContaining(['instrument-serif-italic', 'noto-serif-bengali']))
+    // A lower third placed by hand draws in the title font as before: nothing to load for it.
+    expect(fonts.catalogFontsFor(withStudio(look('bold-pop'), { titles: [{ ...name, auto: undefined }] }))).not.toContain('baloo-da-2')
+  })
+
   it('adds the partner when the language needs letters the look font lacks, and the CJK download of the language', () => {
     const ru = { language: 'ru', segments: [{ id: 'c1', start: 0, end: 2, text: 'Привет мир' }] }
     expect(fonts.catalogFontsFor(withStudio(look('one-word'), { transcript: ru } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald']))

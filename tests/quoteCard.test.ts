@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { quoteName, quotePanel, titleLayout } from '../src/shared/render/titleCards'
-import type { Project, TitleCard } from '../src/shared/types'
+import { studioPreset } from '../src/shared/captions/studioPresets'
+import type { CaptionStudio, Project, TitleCard } from '../src/shared/types'
 import { calls, canvas, frameOf } from './studioFakes'
 
 /*
@@ -80,5 +81,25 @@ describe('the quote panel (§10.1)', () => {
     calls.length = 0
     drawTitleCardsLayer(frameOf(project([plain]), 1.5).fc)
     expect(calls.filter((c) => c.name === 'fillText').some((c) => String(c.font).includes('FlownCat'))).toBe(false)
+  })
+  it('draws Bangla on a card without a font as the mock-ups: a quote in Noto Serif Bengali, an automatic lower third in the look’s Bangla font', () => {
+    const fills = (titles: TitleCard[], studio?: CaptionStudio): string[] => {
+      calls.length = 0
+      drawTitleCardsLayer(frameOf({ ...project(titles), ...(studio ? { captions: { studio } } : {}) } as Project, 1.5).fc)
+      return calls.filter((c) => c.name === 'fillText').map((c) => String(c.font))
+    }
+    const bnQuote: TitleCard = { ...quote, title: 'প্রতিটি শব্দ গুরুত্বপূর্ণ', subtitle: 'রহিম' }
+    const q = fills([bnQuote])
+    expect(q.length).toBeGreaterThan(0)
+    for (const f of q) expect(f).toContain('"FlownCat-instrument-serif-italic", "FlownCat-noto-serif-bengali", "FlownCat-noto-sans-bengali"')
+    const boldPop = studioPreset('bold-pop')!.look as CaptionStudio
+    const name: TitleCard = { id: 's1', start: 0, end: 4, title: 'রহিম', style: 'lower-third', background: 'blur', auto: { by: 'speaker', via: 'rules' } }
+    const l = fills([name], boldPop)
+    expect(l.length).toBeGreaterThan(0)
+    // After Segoe UI, which has no Bangla: Baloo Da 2 draws the name.
+    for (const f of l) expect(f).toContain(`'Segoe UI', "FlownCat-baloo-da-2", 'Segoe UI Variable Display'`)
+    // Placed by hand, or in English: the title font as before.
+    expect(fills([{ ...name, auto: undefined }], boldPop).some((f) => f.includes('FlownCat'))).toBe(false)
+    expect(fills([{ ...name, title: 'Sam' }], boldPop).some((f) => f.includes('FlownCat'))).toBe(false)
   })
 })

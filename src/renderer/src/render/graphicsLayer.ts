@@ -47,12 +47,18 @@ const lookOf = (project: Project): CaptionStudio => project.captions?.studio ?? 
 /** A graphic's font reference: its own, else the look's text font. */
 const fontRef = (project: Project, g: Graphic): string => g.font ?? lookOf(project).text.font
 
-/** The canvas font stack of a font reference: a catalogue font, a brand font (FlownFontW-, §6.7), else the caption font. */
+/**
+ * The canvas font stack of a font reference: a catalogue font, a brand font (FlownFontW-, §6.7),
+ * else the caption font. Bangla the font lacks draws in the look's Bangla font, as the captions'
+ * does (§0.2: Baloo Da 2 in Bold Pop, Hind Siliguri in Subtitle), before the bundled script fonts.
+ */
 function stackOf(project: Project, ref: string): string {
+  const bangla = catalogId(lookOf(project).text.scripts?.bengali?.font)
+  const rest = `${bangla ? `"${catalogFamily(bangla)}", ` : ''}${FALLBACK}, ${CAPTION_FONT}`
   const cat = catalogId(ref)
-  if (cat) return `"${catalogFamily(cat)}", ${FALLBACK}, ${CAPTION_FONT}`
-  if (fontOf(project.fonts, ref)) return `"${studioBrandFamily(ref)}", ${FALLBACK}, ${CAPTION_FONT}`
-  return `${FALLBACK}, ${CAPTION_FONT}`
+  if (cat) return `"${catalogFamily(cat)}", ${rest}`
+  if (fontOf(project.fonts, ref)) return `"${studioBrandFamily(ref)}", ${rest}`
+  return rest
 }
 
 /** A weight the font has (§6.5): clamped for catalogue fonts. */

@@ -376,11 +376,18 @@ export function catalogFontsFor(project: Project): string[] {
   }
   const text = texts.join('\n')
   for (const [re, id] of SCRIPT_FONTS) if (re.test(text)) ids.add(id)
-  if (studio && BENGALI.test(text)) {
-    // The look's Bangla font (§0.2), or Baloo Da 2 for heavy looks without one (§6.6).
-    const bn = studio.text.scripts?.bengali
+  if ((studio || graphics.length) && BENGALI.test(text)) {
+    // The look's Bangla font (§0.2; graphics on a legacy look take Subtitle's), or Baloo Da 2 for heavy looks without one (§6.6).
+    const look = studio ?? STUDIO_BASE
+    const bn = look.text.scripts?.bengali
     if (bn) add(bn.font)
-    else if (studio.text.weight >= 700) ids.add('baloo-da-2')
+    else if (look.text.weight >= 700) ids.add('baloo-da-2')
+  }
+  // Bangla on a card without a font of its own (BANGLA-NOTES): a quote's in Noto Serif Bengali, an automatic lower third's in the look's Bangla font.
+  for (const c of project.titles ?? []) {
+    if (c.font || !BENGALI.test(`${c.title}\n${c.subtitle ?? ''}`)) continue
+    if (c.style === 'quote') ids.add('noto-serif-bengali')
+    else if (c.auto) add((studio ?? STUDIO_BASE).text.scripts?.bengali?.font)
   }
   if (DEVANAGARI.test(text) && (language === 'hi' || language === 'mr')) ids.add('poppins')
   const cjk = cjkFont(language, text)

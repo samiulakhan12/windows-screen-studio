@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { planOf, videoFrames } from '../src/shared/engine/freeze'
 import { popJob } from '../src/shared/render/popSound'
-import type { CounterGraphic, EmojiGraphic, Graphic, KeywordGraphic, ListGraphic, Project } from '../src/shared/types'
+import { studioPreset } from '../src/shared/captions/studioPresets'
+import type { CaptionStudio, CounterGraphic, EmojiGraphic, Graphic, KeywordGraphic, ListGraphic, Project } from '../src/shared/types'
 import { calls, canvas, contextOf, frameOf, hooks, sets } from './studioFakes'
 import { sceneFixtures } from './verticalFixtures'
 
@@ -238,6 +239,21 @@ describe('the graphics layer (§10.4)', () => {
     const p = project([list], { transcript: { segments: [{ id: 'c1', start: 0, end: 2, text: 'এখন সেটিংস খুলুন' }] }, captions: { digits: 'native' } } as unknown as Partial<Project>)
     drawGraphicsLayer(frameOf(p, 2).fc)
     expect(calls.filter((c) => c.name === 'fillText').map((c) => String(c.args[0]))).toEqual(['ধাপ', '১', 'সেটিংস খুলুন'])
+  })
+  it('draws a graphic’s Bangla in the look’s Bangla font, as its captions do (§0.2)', () => {
+    const fonts = (graphics: Graphic[], studio?: CaptionStudio): string[] => {
+      calls.length = 0
+      STUDIO_SPRITES.clear()
+      drawGraphicsLayer(frameOf(project(graphics, studio ? ({ captions: { studio } } as unknown as Partial<Project>) : {}), 2.5).fc)
+      return calls.filter((c) => c.name === 'fillText').map((c) => String(c.font))
+    }
+    const bn = [keyword({ text: 'স্বয়ংক্রিয়' }), counter({ label: 'হয়েছে', locale: 'bn' })]
+    // Bold Pop: Montserrat, then Baloo Da 2 for the Bangla Montserrat lacks, then the bundled script fonts.
+    const boldPop = fonts(bn, { ...structuredClone(studioPreset('bold-pop')!.look), from: 'bold-pop' })
+    expect(boldPop.length).toBeGreaterThan(2)
+    for (const f of boldPop) expect(f).toContain('"FlownCat-montserrat", "FlownCat-baloo-da-2", "FlownCat-noto-sans-bengali"')
+    // A legacy look: Subtitle's Inter Tight and Hind Siliguri.
+    for (const f of fonts([bn[0]])) expect(f).toContain('"FlownCat-inter-tight", "FlownCat-hind-siliguri", "FlownCat-noto-sans-bengali"')
   })
 })
 
