@@ -426,9 +426,10 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   Keep all, whose button then turns disabled, the focus goes back to the focused item's row.
   Undo and redo (the editor's `Ctrl+Z`, `Ctrl+Y`) can take a row in or out of review under the
   focus too: its Keep and Remove buttons go, or a footer button turns disabled. When the focus was
-  in the panel as the project changed and is on the page once the change is shown, it goes back to
-  the focused item's row (else Close), so `Escape` and the list's keys keep working and do not
-  reach the editor as Snapping, Pause or delete.
+  in the panel as the project changed and is on the page once the change is shown, or still on a
+  button the change disabled (Chromium drops it from there only at its next rendering update), it
+  goes back to the focused item's row (else Close), so `Escape` and the list's keys keep working and
+  do not reach the editor as Snapping, Pause or delete.
 * Empty: `Nothing to review. Flown has not changed anything by itself yet, or you have reviewed it all.`
 
 ## 5. UI and copy
@@ -602,7 +603,8 @@ row's Keep, `Ctrl+Y`: the focus back on the row; Escape returns the focus to the
 Then, with the panel open, Polish (silences only, against the AI mock) on a recording with spoken
 words, `Ctrl+Z` from the first row's Keep button (the focus goes back to that row), and the same
 Polish again: the first run's rows read removed after the undo and
-still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kept, no choice saved).
+still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kept, no choice saved);
+`Ctrl+Z` from Keep all, which the undo disables: the focus back on a row, and Escape closes.
 
 ## 10. Later
 

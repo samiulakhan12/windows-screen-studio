@@ -67,8 +67,10 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   // Undo and redo (the editor's Ctrl+Z, Ctrl+Y) can take a row in or out of review under the focus:
   // its Keep and Remove buttons go, or a footer button turns disabled, and the focus would drop to
   // the page, taking the panel's keys (Escape, N, K, Delete) with it. When the focus was in the
-  // panel as the project changed and is on the page once the change is shown, it goes back to the
-  // focused item's row (else Close). Keep, Remove and the footer move it first themselves.
+  // panel as the project changed and is on the page once the change is shown, or still on a button
+  // the change disabled (Chromium drops it from there only at its next rendering update, after
+  // this), it goes back to the focused item's row (else Close). Keep, Remove and the footer move it
+  // first themselves.
   const focusWasIn = useRef(false)
   useEffect(
     () =>
@@ -165,7 +167,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     if (!focusWasIn.current) return
     focusWasIn.current = false
     const el = document.activeElement
-    if (el && el !== document.body) return
+    if (el && el !== document.body && !(el instanceof HTMLButtonElement && el.disabled)) return
     ;((list[active] && rows.current.get(list[active].key)) || closeRef.current)?.focus()
   })
 

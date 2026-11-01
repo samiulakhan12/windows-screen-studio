@@ -11,7 +11,8 @@
 // button when it was in the panel and staying where it was when it was outside. Then, against the
 // local mock of the AI providers: with the panel open, Polish cuts the silences of a recording with
 // spoken "words", Ctrl+Z takes them back (the rows read removed), and the same Polish again lists
-// its new rows to review while the first run's rows still read removed, with no choice saved.
+// its new rows to review while the first run's rows still read removed, with no choice saved;
+// Ctrl+Z from Keep all, which it disables, leaves the focus on a row.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -336,6 +337,20 @@ async function main() {
       const progress = await win.textContent('[data-testid="review-progress"]')
       h.assert(progress === `${ids.length} of ${ids.length + again.length} reviewed`, `progress: ${progress}`)
       h.assert(!('autoCutOutcomes' in second), 'no choice saved')
+
+      // Ctrl+Z with the focus on Keep all takes the second run back and disables the button under
+      // the focus, which Chromium drops to the page only after the panel has looked: the focus goes
+      // back to a row, so the panel's keys (Escape below) still work.
+      await win.focus('[data-testid="review-keep-all"]')
+      h.assert(await win.evaluate(() => document.activeElement?.getAttribute('data-testid') === 'review-keep-all'), 'on Keep all')
+      await win.keyboard.press('Control+z')
+      await f.waitFor(async () => (await rows(win)).every((r) => r.endsWith('=removed')), 'the second run undone', 5000)
+      h.assert(await win.$eval('[data-testid="review-keep-all"]', (e) => e.disabled), 'Keep all disabled')
+      await h.sleep(100)
+      const row = await focused(win)
+      h.assert(row.startsWith('Cut ') && row.endsWith(', removed'), `the focus back on a row from the disabled Keep all: ${row}`)
+      await win.keyboard.press('Escape')
+      await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'Escape closes the panel', 3000)
       h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
     })
   } finally {
