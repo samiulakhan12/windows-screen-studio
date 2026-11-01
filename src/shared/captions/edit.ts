@@ -5,6 +5,7 @@
  */
 import { clamp } from '../engine/math'
 import { captionWordTimes } from '../editor/transcript'
+import { sliceAt, withLinksOf } from '../publish/text'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanCaptionText, MIN_CAPTION, newCaptionId } from './captionData'
 
@@ -173,7 +174,11 @@ export function applyTextResult(current: readonly CaptionSegment[], result: unkn
   return out
 }
 
-/** Chapters an AI task suggested, inside the recording and in order (unusable entries dropped); titles one line. */
+/**
+ * Chapters an AI task suggested, inside the recording and in order (unusable entries dropped); titles
+ * one line, at most 100 UTF-16 units, with no link main's cleaned title lacked (the copy pack trusts
+ * chapter titles as typed: withLinksOf, sliceAt).
+ */
 export function readSuggestedChapters(result: unknown, duration: number): { t: number; title: string }[] {
   if (!Array.isArray(result)) return []
   const out: { t: number; title: string }[] = []
@@ -181,9 +186,24 @@ export function readSuggestedChapters(result: unknown, duration: number): { t: n
     if (!c || typeof c !== 'object') continue
     const { t, title } = c as { t?: unknown; title?: unknown }
     if (typeof t !== 'number' || !Number.isFinite(t) || typeof title !== 'string') continue
-    const name = title.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 100)
+    const name = sliceAt(withLinksOf(title.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim(), title), 100)
     if (!name) continue
     out.push({ t: clamp(t, 0, duration), title: name })
   }
   return out.sort((a, b) => a.t - b.t)
+}
+
+/**
+ * A title (one line, without quotation marks at its ends, at most 120 UTF-16 units) or a summary (line
+ * breaks kept, at most 4000) an AI task suggested, as the Captions tab shows it; '' when there is none.
+ * Main cleaned it against the captions; what is done to it here makes no link it lacked (withLinksOf,
+ * sliceAt), as the recording's name is then trusted as typed.
+ */
+export function readSuggestedText(task: 'title' | 'summary', text: unknown): string {
+  if (typeof text !== 'string') return ''
+  const shown =
+    task === 'title'
+      ? text.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().replace(/^["“'\s]+|["”'\s]+$/g, '')
+      : text.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  return sliceAt(withLinksOf(shown, text), task === 'title' ? 120 : 4000)
 }

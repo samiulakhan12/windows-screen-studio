@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } from '../../../../shared/api/ai'
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
-import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, replaceInCaptions, splitCaption } from '../../../../shared/captions/edit'
+import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { CAPTION_COLORS, CAPTION_PRESETS, CAPTION_SIZE, captionsOf, HIGHLIGHT_COLORS, withPreset } from '../../../../shared/captions/settings'
 import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
@@ -1006,10 +1006,6 @@ function TranscriptSection({
 
 type AiTask = CaptionsAiTask
 
-/** Control characters of an AI answer as spaces (`keepLines`: line breaks stay), trimmed. */
-const plainAnswer = (text: string, keepLines = false): string =>
-  (keepLines ? text.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n') : text.replace(/[\u0000-\u001f\u007f]+/g, ' ')).trim()
-
 function AiToolsSection({
   providers,
   onNotice,
@@ -1087,11 +1083,11 @@ function AiToolsSection({
       store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
       onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
     } else if (result.task === 'title') {
-      const text = typeof result.text === 'string' ? plainAnswer(result.text).replace(/^["“'\s]+|["”'\s]+$/g, '').slice(0, 120) : ''
+      const text = readSuggestedText('title', result.text)
       if (!text) return fail('The provider suggested no title.')
       if (live.current) setTitle(text)
     } else if (result.task === 'summary') {
-      const text = typeof result.text === 'string' ? plainAnswer(result.text, true).slice(0, 4000) : ''
+      const text = readSuggestedText('summary', result.text)
       if (!text) return fail('The provider wrote no summary.')
       if (live.current) setSummary(text)
     }

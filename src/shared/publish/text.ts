@@ -519,6 +519,23 @@ export function cutAt(s: string, max: number): string {
   return settle(linkKeys(s), max, (budget) => cutText(s, budget), charLength)
 }
 
+/**
+ * `s` cut to at most `max` UTF-16 units, never inside a surrogate pair, as a name or a field that
+ * counts them is cut (no "…", no word end), with no link the cut made that `s` lacks: a title that
+ * ends in "flown-files.comfy" cut after "com" gives "flown-files.c", as its break would not fit.
+ * Text an AI wrote that the copy pack then trusts as typed (the recording's name, a chapter title) is
+ * cut with this, so a cut cannot make a link nobody said.
+ */
+export function sliceAt(s: string, max: number): string {
+  if (s.length <= max) return s
+  const units = (budget: number): string => {
+    const end = Math.max(0, budget)
+    const code = s.charCodeAt(end - 1)
+    return s.slice(0, code >= 0xd800 && code <= 0xdbff ? end - 1 : end)
+  }
+  return settle(linkKeys(s), max, units, (t) => t.length)
+}
+
 /* ---------- X ---------- */
 
 /** X's limit for a post (weighted length). */
