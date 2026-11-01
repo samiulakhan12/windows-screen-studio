@@ -115,8 +115,18 @@ export function sidecarName(videoFile: string, kind: SidecarKind, language?: str
 
 /* ---------- subtitles in several languages (Captions Studio §11.10) ---------- */
 
-/** The language a project's captions are spoken in ('en' when the transcript does not say). */
-export const spokenLanguage = (project: Pick<Project, 'transcript'>): string => project.transcript?.language || 'en'
+/** The code of a spoken language the transcript does not name (ISO 639-2 "undetermined"): never a track's language. */
+export const UNKNOWN_SPOKEN = 'und'
+
+/**
+ * The language a project's captions are spoken in, UNKNOWN_SPOKEN when the transcript does not
+ * say (automatic detection with a model that does not tell): a track in any language, English
+ * included, then stays a language of its own.
+ */
+export const spokenLanguage = (project: Pick<Project, 'transcript'>): string => project.transcript?.language || UNKNOWN_SPOKEN
+
+/** What the spoken captions are called when the transcript does not name their language. */
+export const UNKNOWN_SPOKEN_NAME = 'Spoken language'
 
 /**
  * The subtitle languages of an export, the spoken language first: the ticked ones that are the
@@ -158,7 +168,7 @@ export function subtitleStreams(
   const out: { language: string; name: string; vtt: string; default: boolean }[] = []
   for (const language of subtitleLanguages(project, ticked)) {
     const text = vtt(language, language === spoken)
-    if (text) out.push({ language, name: languageName(language), vtt: text, default: !burned && language === spoken })
+    if (text) out.push({ language, name: language === UNKNOWN_SPOKEN ? UNKNOWN_SPOKEN_NAME : languageName(language), vtt: text, default: !burned && language === spoken })
   }
   return out
 }

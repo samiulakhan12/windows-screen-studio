@@ -5,6 +5,7 @@
  * burnedSegments and placeOf return their input without the new fields: the legacy drawing's
  * guarded calls (§14.2) then draw old projects exactly as before.
  */
+import { spokenLanguage, UNKNOWN_SPOKEN, UNKNOWN_SPOKEN_NAME } from '../render/exportBundle'
 import type { CaptionSegment, CaptionSettings, CaptionTrack, Project } from '../types'
 import { CAPTION_MAX_CHARS, cleanCaptionText } from './captionData'
 import { maskedSegments } from './cleanup'
@@ -215,15 +216,21 @@ export function burnedTrackNote(project: Project): string | null {
   return `${plural(missing, 'caption')} ${missing === 1 ? 'is' : 'are'} not translated into ${languageName(track.language)}: ${missing === 1 ? 'it shows' : 'they show'} in ${spoken ? languageName(spoken) : 'the spoken language'}.`
 }
 
-/** The subtitle languages an export can write (§2.13): the spoken language ('en' when unknown, as the export names it) first, then each track's. */
+/**
+ * The subtitle languages an export can write (§2.13): the spoken language first (as the export
+ * names it: 'und', "Spoken language", when the transcript does not say), then each track's.
+ */
 export function exportLanguages(project: Project): { code: string; name: string; spoken: boolean }[] {
-  const spoken = project.transcript?.language || 'en'
-  return [{ code: spoken, name: languageName(spoken), spoken: true }, ...(project.captionTracks ?? []).map((t) => ({ code: t.language, name: languageName(t.language), spoken: false }))]
+  const spoken = spokenLanguage(project)
+  return [
+    { code: spoken, name: spoken === UNKNOWN_SPOKEN ? UNKNOWN_SPOKEN_NAME : languageName(spoken), spoken: true },
+    ...(project.captionTracks ?? []).map((t) => ({ code: t.language, name: languageName(t.language), spoken: false }))
+  ]
 }
 
 /** The languages ticked by default (§2.13): the spoken language, and the burned-in track's when one is shown on the video. */
 export function defaultExportLanguages(project: Project): string[] {
-  const spoken = project.transcript?.language || 'en'
+  const spoken = spokenLanguage(project)
   const track = project.captions?.show !== false ? shownTrack(project) : undefined
   return track ? [spoken, track.language] : [spoken]
 }

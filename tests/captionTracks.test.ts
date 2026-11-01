@@ -231,4 +231,16 @@ describe("the export's ticked languages (§2.13)", () => {
     expect(tickedExportLanguages(p, ['fr'])).toEqual(['en'])
     expect(tickedExportLanguages(project(), ['bn'])).toEqual(['en'])
   })
+
+  it('keeps an English track apart from spoken captions whose language the transcript does not name', () => {
+    // Detect automatically with a model that does not say the language: the speech may be Spanish.
+    const unnamed = project({ transcript: { provider: 'openai', model: 'm', createdAt: '', segments: segs }, captionTracks: [{ ...bn, language: 'en' }] } as Partial<Project>)
+    expect(languagesToAdd(project({ transcript: { provider: 'openai', model: 'm', createdAt: '', segments: segs } } as Partial<Project>)).map((l) => l.code)).toContain('en')
+    expect(exportLanguages(unnamed)).toEqual([
+      { code: 'und', name: 'Spoken language', spoken: true },
+      { code: 'en', name: 'English', spoken: false }
+    ])
+    expect(defaultExportLanguages(unnamed)).toEqual(['und'])
+    expect(tickedExportLanguages(unnamed, ['und', 'en'])).toEqual(['und', 'en'])
+  })
 })

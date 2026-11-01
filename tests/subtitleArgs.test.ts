@@ -162,6 +162,21 @@ describe('streams and files per language (§11.10)', () => {
     expect(subtitleStreams(burned, { format: 'mp4', subtitleStreams: true }, ['en', 'bn'], vtt).map((s) => s.default)).toEqual([false, false])
   })
 
+  it('writes an English track as well as spoken captions whose language the transcript does not name', () => {
+    const unnamed = { ...project, transcript: { segments: segs }, captionTracks: [{ ...project.captionTracks![0], language: 'en' }] } as unknown as Project
+    const vttOf = (language: string, spoken: boolean): string => languageSubtitleFile(unnamed, spoken ? null : language, 'vtt')
+    expect(subtitleLanguages(unnamed, ['und', 'en'])).toEqual(['und', 'en'])
+    expect(subtitleLanguages(unnamed, undefined)).toEqual(['und'])
+    const streams = subtitleStreams(unnamed, { format: 'mp4', subtitleStreams: true }, ['und', 'en'], vttOf)
+    expect(streams.map((s) => [s.language, s.name, s.default])).toEqual([
+      ['und', 'Spoken language', true],
+      ['en', 'English', false]
+    ])
+    expect(streams[0].vtt).toContain('We make every word count')
+    expect(streams[1].vtt).toContain('hola')
+    expect(iso6392('und')).toBe('und')
+  })
+
   it('names a translated language’s files after it, and the spoken one’s as before', () => {
     expect(subtitleLanguages(project, ['bn', 'en', 'fr'])).toEqual(['en', 'bn'])
     expect(subtitleLanguages(project, undefined)).toEqual(['en'])

@@ -577,7 +577,10 @@ captions moves the item.
 The subtitle part of the export options becomes one field **Subtitles** (`export-subtitles`):
 
 - **Languages**: one checkbox per caption language ("English", "Bengali"). Default: the spoken
-  language, plus the burned-in track's language when one is shown on the video.
+  language, plus the burned-in track's language when one is shown on the video. When the
+  transcript does not name the spoken language (Detect automatically with a model that does not
+  say), the spoken captions are "Spoken language" with the code `und`, never a track's language,
+  so an English track is a language of its own; its stream is tagged `und`.
 - **As files**: the existing **SRT** and **VTT** checkboxes. Each writes one file per ticked
   language (§11.10). This is what YouTube creators upload.
 - **Also inside the video (players can switch them)** (`export-subtitle-streams`, MP4, MOV and
