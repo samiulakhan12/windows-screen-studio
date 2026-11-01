@@ -15,6 +15,7 @@ import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
 import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
+import { plainText } from '../publish/text'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
 export interface TextPrompt {
@@ -206,7 +207,19 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
   })
 }
 
-/** Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start. */
+/** The captions' text as one string: an answer may have only the links it has. */
+const captionsText = (segments: readonly CaptionSegment[]): string => segments.map((s) => s.text).join(' ')
+
+/**
+ * `text` without the links `segments` do not have (removed, or a bare name broken: plainText, the
+ * copy pack's rule, docs/design/publish-pack.md §4.4). A chapter title or a title goes into the
+ * project, and the copy pack trusts the links of the project's name and chapter titles as the user's
+ * own, so what the AI wrote there may only have the links that were said.
+ */
+const withSaidLinks = (text: string, segments: readonly CaptionSegment[], max: number, oneLine: boolean): string =>
+  plainText(text, { max, oneLine, linksFrom: captionsText(segments) })
+
+/** Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start; titles with only the links the captions have. */
 export function validateChaptersAnswer(segments: readonly CaptionSegment[], answer: unknown): { t: number; title: string }[] {
   if (!isObject(answer) || !Array.isArray(answer.chapters)) throw new AiOutputError('no list of chapters')
   const first = segments.length ? segments[0].start : 0
@@ -214,7 +227,7 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
   const raw: { t: number; title: string }[] = []
   for (const c of answer.chapters) {
     if (!isObject(c) || typeof c.start !== 'number' || !Number.isFinite(c.start) || typeof c.title !== 'string') continue
-    const title = cleanText(c.title, 80).replace(/^\d+[.)]\s*/, '')
+    const title = withSaidLinks(cleanText(c.title, 80).replace(/^\d+[.)]\s*/, ''), segments, 80, true)
     if (!title || c.start > last + 1 || c.start < -1) continue
     raw.push({ t: Math.min(Math.max(c.start, 0), last), title })
   }
@@ -226,10 +239,13 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
   return out.slice(0, maxChapters(last)).map((c) => ({ t: Math.round(c.t * 1000) / 1000, title: c.title }))
 }
 
-/** A title or summary of an answer. */
-export function validateTextAnswer(task: 'title' | 'summary', answer: unknown): string {
+/** A title or summary of an answer, with only the links `segments` (the captions sent) have. */
+export function validateTextAnswer(task: 'title' | 'summary', answer: unknown, segments: readonly CaptionSegment[]): string {
   if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(`no ${task}`)
-  const text = task === 'title' ? cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim() : answer.text.trim().slice(0, 3000)
+  const text =
+    task === 'title'
+      ? withSaidLinks(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), segments, 120, true)
+      : withSaidLinks(answer.text.trim().slice(0, 3000), segments, 3000, false)
   if (!text) throw new AiOutputError(`an empty ${task}`)
   return text
 }
@@ -250,7 +266,7 @@ export async function runTextTask(request: AiTextRequest, ask: (prompt: TextProm
       return { task: 'chapters', chapters: validateChaptersAnswer(request.segments, await ask(textPrompt(request))) }
     case 'title':
     case 'summary':
-      return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request))) }
+      return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request)), request.segments) }
     case 'youtube':
     case 'linkedin':
     case 'xpost':
