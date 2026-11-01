@@ -1915,7 +1915,9 @@ time-based, §11.7.)
 1. Split on white space.
 2. A piece longer than 4 graphemes in a script written without spaces (Han, Hiragana, Katakana,
    Thai, Lao, Khmer, Myanmar) is split with `Intl.Segmenter(language, { granularity: 'word' })`.
-   Punctuation stays with the word before it.
+   Punctuation stays with the word before it, except opening brackets and quotes (「 『 （ “),
+   which go with the word after them, as in `transcriptTiming.ts` (§8.3: no chunk or line ends
+   on one).
 3. Each word remembers whether white space came before it in the text (`gap`). Words split out
    of one piece by step 2 have `gap: false`. NW-09 text-only answers and local whisper join
    Chinese, Japanese and Thai words without spaces (`transcription.md` §3.3), so those captions

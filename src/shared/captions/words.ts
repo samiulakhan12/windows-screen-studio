@@ -64,7 +64,13 @@ function wordSegmenter(language: string | undefined): Intl.Segmenter | null {
   return s
 }
 
-/** A piece without spaces split into words by the Segmenter; punctuation stays with the word before it (or, at the start, the word after). */
+/** Opening brackets and quotes (「 “ （) go with the word after them, never ending a word (§8.3). */
+const OPENING = /^[\p{Ps}\p{Pi}]+$/u
+
+/**
+ * A piece without spaces split into words by the Segmenter; punctuation stays with the word before
+ * it (or, at the start, the word after), opening brackets and quotes with the word after them.
+ */
 function splitPiece(piece: string, language: string | undefined): string[] {
   const seg = wordSegmenter(language)
   if (!seg) return [piece]
@@ -74,7 +80,7 @@ function splitPiece(piece: string, language: string | undefined): string[] {
     if (WORDISH.test(segment)) {
       out.push(lead + segment)
       lead = ''
-    } else if (out.length) out[out.length - 1] += segment
+    } else if (out.length && !lead && !OPENING.test(segment)) out[out.length - 1] += segment
     else lead += segment
   }
   if (lead) {
@@ -87,7 +93,8 @@ function splitPiece(piece: string, language: string | undefined): string[] {
 /**
  * The words of `text` (§8.1): split on white space; a piece longer than 4 graphemes in a script
  * written without spaces (Han, Hiragana, Katakana, Thai, Lao, Khmer, Myanmar) split with
- * Intl.Segmenter, punctuation staying with the word before it. `gap` says whether white space came
+ * Intl.Segmenter, punctuation staying with the word before it (opening brackets and quotes with the
+ * word after them). `gap` says whether white space came
  * before the word (false for words split out of one piece, and for the first word).
  */
 export function studioWords(text: string, language?: string): { text: string; gap: boolean }[] {

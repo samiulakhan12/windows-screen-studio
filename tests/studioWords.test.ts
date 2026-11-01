@@ -25,6 +25,17 @@ describe('studioWords (§8.1)', () => {
     expect(studioWords('我们今天学习。', 'zh').map((w) => w.text)).toEqual(['我们', '今天', '学习。'])
   })
 
+  it('gives opening brackets and quotes to the word after them, so no word ends on one (§8.3)', () => {
+    const ja = studioWords('彼は言いました。「ありがとう」と。', 'ja').map((w) => w.text)
+    expect(ja.slice(-3)).toEqual(['した。', '「ありがとう」', 'と。'])
+    const zh = studioWords('他说：“我们走吧。”', 'zh').map((w) => w.text)
+    expect(zh).toContain('“我们')
+    for (const w of [...ja, ...zh]) expect(w, w).not.toMatch(/[\p{Ps}\p{Pi}]$/u)
+    // The words are as many as before, so marks and anchors keep their indexes; an opener with no word after stays on the last.
+    expect(ja.length).toBe(7)
+    expect(studioWords('今日は新機能「', 'ja').map((w) => w.text).at(-1)).toMatch(/「$/u)
+  })
+
   it('has no gap inside 我们今天学习如何导出视频 or a Thai caption', () => {
     const zh = studioWords('我们今天学习如何导出视频', 'zh')
     expect(zh.length).toBeGreaterThan(3)
