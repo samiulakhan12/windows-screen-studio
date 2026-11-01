@@ -25,6 +25,8 @@ export interface Call {
 }
 
 export const calls: Call[] = []
+/** The stops added to gradients, in order: where and in which colour. */
+export const gradientStops: { offset: number; colour: string }[] = []
 /** Every property set on any canvas context (`filter` included): canvas id and name. */
 export const sets: { canvas: number; name: string; value: unknown }[] = []
 let canvases = 0
@@ -50,7 +52,7 @@ export function canvas(w = 300, h = 150): Record<string, unknown> & { id: number
     get(target, prop) {
       if (prop === 'canvas') return c
       if (prop in target) return target[prop]
-      if (prop === 'createLinearGradient' || prop === 'createRadialGradient' || prop === 'createPattern') return () => ({ addColorStop() {} })
+      if (prop === 'createLinearGradient' || prop === 'createRadialGradient' || prop === 'createPattern') return () => ({ addColorStop: (offset: number, colour: string) => void gradientStops.push({ offset, colour }) })
       // 10 units a character at 100 px, a narrow "1" (5): digits differ in width, as in most fonts; a condensed font is 0.75 as wide.
       if (prop === 'measureText')
         return (text: string) => {

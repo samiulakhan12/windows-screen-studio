@@ -464,11 +464,12 @@ const MORE_LONG: StudioPreset[] = [
     group: 'long',
     description: 'Gold serif letters for titles and launches',
     fallback: 'clean',
-    // The gradient's stops sweep from top to bottom; a thin black edge keeps the darkest (#b7862b, 6.5:1) readable.
+    // The gradient's stops sweep from top to bottom, with the metal's band at the middle of the letters
+    // (more.html: 0, 45, 55, 100%); a thin black edge keeps the darkest (#b7862b, 6.5:1) readable.
     look: look('gold', {
       text: { font: cat('playfair-display'), weight: 900, case: 'asis', tracking: 0, lineHeight: 1.15, size: 0.065, tall: 1.15, scripts: bengali('noto-serif-bengali', 700) },
       emphasis: { weight: 900 },
-      theme: { text: '#f5c84c', spoken: '#ffffff', emphasis: '#fff3c4', fill: { stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], axis: 'down' } },
+      theme: { text: '#f5c84c', spoken: '#ffffff', emphasis: '#fff3c4', fill: { stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], at: [0, 0.45, 0.55, 1], axis: 'down' } },
       edge: { outline: 0.04, outlineAlpha: 1, shadow: { x: 0, y: 0.08, blur: 0.16, alpha: 0.7 } },
       spoken: 'none',
       layout: { chunk: 'phrase', lines: 2, chars: 32, tallChars: 22, position: 'lower' },

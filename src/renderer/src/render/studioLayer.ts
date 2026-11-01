@@ -416,8 +416,8 @@ interface WordPaint {
   px: number
   /** Paint scale (the spoken word's grown size, so it stays crisp while it holds). */
   scale: number
-  /** A colour, or gradient stops ('across' runs over the whole line: from, to are the word's share of it). */
-  fill: string | { stops: readonly string[]; axis: 'across' | 'down'; from: number; to: number }
+  /** A colour, or gradient stops at their places ('across' runs over the whole line: from, to are the word's share of it). */
+  fill: string | { stops: readonly string[]; at?: readonly number[]; axis: 'across' | 'down'; from: number; to: number }
   /** Outline's words not filled yet: a thin stroke in the text colour over a dark halo. */
   hollow: boolean
   outline: { width: number; color: string } | null
@@ -599,7 +599,7 @@ function paintWord(c: Ctx, p: WordPaint, width: number): void {
       const x0 = -f.from * lineW
       g = p.dir === 'rtl' ? c.createLinearGradient(x0 + lineW, 0, x0, 0) : c.createLinearGradient(x0, 0, x0 + lineW, 0)
     }
-    f.stops.forEach((stop, i) => g.addColorStop(f.stops.length === 1 ? 0 : i / (f.stops.length - 1), stop))
+    f.stops.forEach((stop, i) => g.addColorStop(f.at?.[i] ?? (f.stops.length === 1 ? 0 : i / (f.stops.length - 1)), stop))
     c.fillStyle = g
   }
   if (p.glow) {
@@ -669,7 +669,7 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   if (lit && spokenMark === 'weight' && !emph) face = { ...face, weight: studio.text.spokenWeight ?? Math.min(900, face.weight + 300) }
   let fill: WordPaint['fill'] = wi.textColor
   if (state === 'upcoming' && theme.upcoming) fill = theme.upcoming
-  if (theme.fill && !emph) fill = { stops: theme.fill.stops, axis: theme.fill.axis, from: wi.from, to: wi.to }
+  if (theme.fill && !emph) fill = { stops: theme.fill.stops, ...(theme.fill.at ? { at: theme.fill.at } : {}), axis: theme.fill.axis, from: wi.from, to: wi.to }
   if (emph) fill = markOnBox ? (theme.emphasisText ?? textOn(emphColor)) : studio.emphasis.mark === 'circle' ? (theme.emphasisText ?? wi.textColor) : emphColor
   const boxedSpoken = spokenMark === 'box' || spokenMark === 'pill'
   if (lit && !emph) {

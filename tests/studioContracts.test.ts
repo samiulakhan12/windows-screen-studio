@@ -217,7 +217,7 @@ describe('the gallery looks', () => {
     expect(v('stickers')).toMatchObject({ spoken: 'box', box: { kind: 'word' }, motion: { wordTilt: [-4, 3], spokenScale: 1.12 }, text: { font: 'cat:lilita-one' } })
     expect(v('retro-pixel')).toMatchObject({ text: { font: 'cat:press-start-2p' }, theme: { split: ['#ff004c', '#00e5ff'] } })
     expect(v('block-3d')).toMatchObject({ text: { font: 'cat:rubik', weight: 900, case: 'upper' }, edge: { extrude: { steps: 6 } } })
-    expect(v('gold').theme.fill).toEqual({ stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], axis: 'down' })
+    expect(v('gold').theme.fill).toEqual({ stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], at: [0, 0.45, 0.55, 1], axis: 'down' })
     expect(v('gradient').theme.fill).toEqual({ stops: ['#ff3dcb', '#ff8a00'], axis: 'across' })
     expect(v('circle').emphasis.mark).toBe('circle')
     expect(v('chat').box.kind).toBe('chat')

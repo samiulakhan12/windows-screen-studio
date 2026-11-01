@@ -485,8 +485,10 @@ export interface StudioTheme {
   /**
    * Every word filled with a gradient instead of `text` (§0.1: Gradient across the reading
    * direction, Gold from top to bottom): 2..6 stops, each passing the contrast rule. Absent: solid.
+   * `at`: each stop's place along the axis, 0..1, never going back (Gold's metal band: 0, 0.45,
+   * 0.55, 1); absent: evenly spaced.
    */
-  fill?: { stops: string[]; axis: 'across' | 'down' }
+  fill?: { stops: string[]; at?: number[]; axis: 'across' | 'down' }
   /** The border of the boxes (StudioBox.border); absent: #ffffff at α 0.28 (glass). */
   border?: string
   /** Chat: the bubble and text colours of the captions of "You"; absent: `box` and `text`. */

@@ -141,6 +141,15 @@ describe('readCaptionStudio (test 4)', () => {
     expect(readCaptionStudio(lookWith({ theme: { gradient: seven } }))!.theme.gradient).toEqual(seven.slice(0, 6))
   })
 
+  it('keeps a fill’s stop places only one for each stop, 0..1 and never going back (Gold: 0, 45, 55, 100%)', () => {
+    const fill = (at: unknown): unknown => readCaptionStudio(lookWith({ theme: { fill: { stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], at, axis: 'down' } } }))!.theme.fill
+    expect(fill([0, 0.45, 0.55, 1])).toEqual({ stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], at: [0, 0.45, 0.55, 1], axis: 'down' })
+    for (const bad of [[0, 0.5, 1], [0, 0.55, 0.45, 1], [0, 0.45, 0.55, 1.2], [-0.1, 0.45, 0.55, 1], [0, Number.NaN, 0.55, 1], [0, '0.45', 0.55, 1], 'x', null])
+      expect(fill(bad), JSON.stringify(bad)).toEqual({ stops: ['#fff3c4', '#f5c84c', '#b7862b', '#f9e08a'], axis: 'down' })
+    // A stop dropped as no colour drops the places too: they no longer say which stop is where.
+    expect(readCaptionStudio(lookWith({ theme: { fill: { stops: ['#ffffff', 'pink', '#000000'], at: [0, 0.5, 1], axis: 'down' } } }))!.theme.fill).toEqual({ stops: ['#ffffff', '#000000'], axis: 'down' })
+  })
+
   it('keeps a dragged place only with finite x and y', () => {
     expect(readCaptionStudio(lookWith({ layout: { place: { x: 0.25, y: 0.75 } } }))!.layout.place).toEqual({ x: 0.25, y: 0.75 })
     expect(readCaptionStudio(lookWith({ layout: { place: { x: 0.25, y: Number.NaN } } }))!.layout).not.toHaveProperty('place')

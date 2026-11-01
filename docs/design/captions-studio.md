@@ -86,7 +86,7 @@ where a mock-up colour fails it, darken or lighten it until it passes and say so
 | Spotlight Word (`spotlight-word`) | Short clips | Poppins 800; words not spoken yet dimmed (contrast checked on the dimmed colour against the outline), the spoken word bigger, full white with a soft blue glow. Reduce motion: no size change. |
 | Cinema (`cinema`) | Long videos | Film subtitles: Inter 600, warm yellow #ffe680, a strong shadow, low on the frame; optional letterbox bars are not drawn (the look only places the text where bars would be). |
 | Retro Pixel (`retro-pixel`) | Short clips | Press Start 2P (OFL; add it to §6.1), a static red/cyan offset of 3 px at 1080p and a hard dark drop; the spoken word yellow. The offset never moves (not the left-out glitch). |
-| Gold (`gold`) | Long videos | Playfair Display 900 with a gold vertical gradient and a dark soft shadow; for titles and launches. |
+| Gold (`gold`) | Long videos | Playfair Display 900 with a gold vertical gradient (stops at 0, 45, 55 and 100%: a metal band at the middle of the letters) and a dark soft shadow; for titles and launches. |
 | 3D Block (`block-3d`) | Short clips | Rubik 900 capitals (OFL; add it) with a six-step extrusion in a darker shade of the fill and a soft shadow; the spoken word changes to yellow with its own darker extrusion. |
 | Bubble (`bubble-round`) | Short clips | Fredoka 700 in pastel pink with a thick white outline and a soft drop; the spoken word purple. |
 | Circle (`circle`) | Long videos | Clean white text with a dark outline; emphasised words (§2.7) get a hand-drawn red ellipse drawn around them in 0.3 s; the path is fixed per word (from the word's index), never random. |
@@ -3111,7 +3111,7 @@ on the same thing:
   `EmphasisMark` gains `'circle'` (Circle; `theme.emphasisText` is then the words' colour);
   `WordMotion` gains `'grow'` (Editorial's emphasis). `StudioText.spokenWeight` (Light to Bold's
   700) and `StudioText.scripts.bengali` (`StudioScriptFont`: the look's Bangla font, weight and
-  width). `StudioTheme.fill` (a gradient text fill, `across` or `down`: Gradient, Gold), `border`,
+  width). `StudioTheme.fill` (a gradient text fill, `across` or `down`: Gradient, Gold; optional stop places `at`, 0..1 and never going back, which Gold's 0, 45, 55 and 100% use), `border`,
   `youBox` and `youText` (Chat), `extrude` and `spokenExtrude`, `split`. `StudioEdge.extrude`
   (3D Block) and `split` (Retro Pixel). `StudioBox.gap`, `shadow` (a shadow under each box) and
   `tail`; the border limit is 0.12 em. `CaptionMotion.wordTilt` (Stickers' −4° / +3° by word

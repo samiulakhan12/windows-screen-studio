@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, Graphic, Project } from '../src/shared/types'
-import { calls, canvas, contextOf, frameOf, hooks, idleWord, IDLE_CHUNK, sets, spriteTexts } from './studioFakes'
+import { calls, canvas, contextOf, frameOf, gradientStops, hooks, idleWord, IDLE_CHUNK, sets, spriteTexts } from './studioFakes'
 
 /*
  * The Captions Studio caption layer (docs/design/captions-studio.md §9.7, tests 23, 50 and 51) on
@@ -321,6 +321,24 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     drawStudioCaptions(frameOf(studioProject(look('block-3d')), 1.2).fc)
     const extruded = calls.filter((c) => c.name === 'fillText' && c.args[0] === 'MAKE' && c.fill === '#551329')
     expect(extruded.length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('fills Gold’s letters with its metal band at the middle, the stops at 0, 45, 55 and 100% (more.html); Gradient’s evenly', () => {
+    gradientStops.length = 0
+    drawStudioCaptions(frameOf(studioProject(look('gold')), 1.2).fc)
+    expect(gradientStops.slice(0, 4)).toEqual([
+      { offset: 0, colour: '#fff3c4' },
+      { offset: 0.45, colour: '#f5c84c' },
+      { offset: 0.55, colour: '#b7862b' },
+      { offset: 1, colour: '#f9e08a' }
+    ])
+    gradientStops.length = 0
+    STUDIO_SPRITES.clear()
+    drawStudioCaptions(frameOf(studioProject(look('gradient')), 1.2).fc)
+    expect(gradientStops.slice(0, 2)).toEqual([
+      { offset: 0, colour: '#ff3dcb' },
+      { offset: 1, colour: '#ff8a00' }
+    ])
   })
 
   it('draws and measures Stacked’s Bangla font at its width 75, condensed (§0.2)', () => {

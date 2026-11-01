@@ -158,6 +158,12 @@ function readShadow(v: unknown): { x: number; y: number; blur: number; alpha: nu
   return { x: clamp(v.x, L.shadowOffset), y: clamp(v.y, L.shadowOffset), blur: clamp(v.blur, L.shadowBlur), alpha: clamp(v.alpha, { min: 0, max: 1 }) }
 }
 
+/** Places of `count` gradient stops, 0..1 and never going back, else undefined (evenly spaced). */
+function readStopsAt(v: unknown, count: number): number[] | undefined {
+  if (!Array.isArray(v) || v.length !== count) return undefined
+  return v.every((x, i) => finite(x) && x >= 0 && x <= 1 && (i === 0 || x >= (v[i - 1] as number))) ? (v as number[]).slice() : undefined
+}
+
 /** 2..6 valid stops (cut to the first 6), else undefined. */
 function readStops(v: unknown): string[] | undefined {
   if (!Array.isArray(v)) return undefined
@@ -208,6 +214,7 @@ function readTheme(v: unknown): StudioTheme {
   if (!isObj(v)) return structuredClone(b)
   const gradient = readStops(v.gradient)
   const fillStops = isObj(v.fill) ? readStops(v.fill.stops) : undefined
+  const fillAt = isObj(v.fill) && fillStops ? readStopsAt(v.fill.at, fillStops.length) : undefined
   const fillAxis = isObj(v.fill) ? pick(v.fill.axis, ['across', 'down'] as const, 'across') : 'across'
   const split = Array.isArray(v.split) && v.split.length === 2 ? v.split.map(colour) : []
   return {
@@ -223,7 +230,7 @@ function readTheme(v: unknown): StudioTheme {
     box: colourOr(v.box, b.box),
     glow: colourOr(v.glow, b.glow),
     ...opt('gradient', gradient),
-    ...opt('fill', fillStops ? { stops: fillStops, axis: fillAxis } : undefined),
+    ...opt('fill', fillStops ? { stops: fillStops, ...opt('at', fillAt), axis: fillAxis } : undefined),
     ...opt('border', colour(v.border)),
     ...opt('youBox', colour(v.youBox)),
     ...opt('youText', colour(v.youText)),
